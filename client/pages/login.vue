@@ -1,6 +1,6 @@
 <template>
   <div>
-    <UiLoader v-if="isLoading" />
+    <UiLoader v-if="isLoading || isNavigating" />
     <div v-else class="relative flex items-center justify-center min-h-screen px-4 bg-[#050505]">
       <!-- Logo en haut à gauche -->
       <div class="absolute top-6 left-6 flex items-center gap-2">
@@ -93,7 +93,7 @@
 
 <script setup lang="ts">
 import type { Ref } from 'vue';
-import { ref } from 'vue';
+import { ref, onMounted } from 'vue';
 import { useAuth } from '~/composables/useAuth';
 
 /**
@@ -106,7 +106,12 @@ definePageMeta({
 /**
  * Auth composable
  */
-const { login, isLoading } = useAuth();
+const { login, isLoading, isAuthenticated } = useAuth();
+
+/**
+ * Router for navigation
+ */
+const router = useRouter();
 
 /**
  * Form state
@@ -116,11 +121,27 @@ const password: Ref<string> = ref('');
 const showPassword: Ref<boolean> = ref(false);
 
 /**
+ * Navigation state - keeps loader visible during redirect
+ */
+const isNavigating: Ref<boolean> = ref(false);
+
+/**
  * Error state
  */
 const emailError: Ref<string> = ref('');
 const passwordError: Ref<string> = ref('');
 const generalError: Ref<string> = ref('');
+
+/**
+ * Check if user is already authenticated on mount
+ * Redirect to dashboard if already logged in
+ */
+onMounted(() => {
+  if (isAuthenticated.value) {
+    isNavigating.value = true;
+    router.push('/dashboard');
+  }
+});
 
 /**
  * Validate email format
@@ -165,6 +186,8 @@ const handleSubmit = async (): Promise<void> => {
       email: email.value,
       password: password.value
     });
+    // Keep loader visible during navigation
+    isNavigating.value = true;
   } catch (error) {
     // Set general error message
     generalError.value = 'Incorrect login credentials. Please try again.';
