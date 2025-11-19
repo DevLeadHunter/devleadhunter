@@ -114,7 +114,7 @@ class StripePaymentService:
         try:
             # Create Stripe Checkout Session
             checkout_session = self.stripe_client.checkout.Session.create(
-                payment_method_types=['card'],  # Base payment method
+                payment_method_types=['card', 'alipay'],  # Cartes + Apple/Google Pay + Alipay pour la Chine
                 line_items=[
                     {
                         'price_data': {
