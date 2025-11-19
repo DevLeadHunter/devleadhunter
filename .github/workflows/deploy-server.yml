@@ -125,6 +125,9 @@ jobs:
             ADMIN_PASSWORD=${{ secrets.ADMIN_PASSWORD }}
             FRONTEND_URL=${{ secrets.FRONTEND_URL }}
             ACCESS_TOKEN_EXPIRE_MINUTES=30
+            STRIPE_SECRET_KEY=${{ secrets.STRIPE_SECRET_KEY }}
+            STRIPE_PUBLIC_KEY=${{ secrets.STRIPE_PUBLIC_KEY }}
+            STRIPE_WEBHOOK_SECRET=${{ secrets.STRIPE_WEBHOOK_SECRET }}
             SUPPORT_FTP_HOST=${{ secrets.SUPPORT_FTP_HOST }}
             SUPPORT_FTP_PORT=${{ secrets.SUPPORT_FTP_PORT }}
             SUPPORT_FTP_USER=${{ secrets.SUPPORT_FTP_USER }}
