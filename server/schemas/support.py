@@ -52,6 +52,16 @@ class SupportTicketStatusUpdate(BaseModel):
     status: SupportTicketStatus
 
 
+class SupportTicketUpdate(BaseModel):
+    """
+    Payload for updating a support ticket.
+    """
+
+    topic: Optional[SupportTicketTopic] = None
+    subject: Optional[str] = Field(None, min_length=4, max_length=255)
+    status: Optional[SupportTicketStatus] = None
+
+
 class SupportMessageCreate(BaseModel):
     """
     Payload for posting a new support message.
@@ -95,6 +105,14 @@ class SupportTicketBaseResponse(BaseModel):
     updated_at: Optional[datetime] = None
     last_message_at: Optional[datetime] = None
     closed_at: Optional[datetime] = None
+
+
+class SupportTicketResponse(SupportTicketBaseResponse):
+    """
+    Basic representation of a support ticket.
+    """
+
+    pass
 
 
 class SupportTicketSummaryResponse(SupportTicketBaseResponse):

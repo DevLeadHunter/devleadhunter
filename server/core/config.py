@@ -155,6 +155,42 @@ class Settings(BaseSettings):
         description="Comma-separated list of allowed MIME types for support attachments"
     )
     
+    # Mailjet settings
+    mailjet_api_key: str = Field(
+        default="",
+        alias="MAILJET_API_KEY",
+        description="Mailjet API key"
+    )
+    mailjet_secret_key: str = Field(
+        default="",
+        alias="MAILJET_SECRET_KEY",
+        description="Mailjet secret key"
+    )
+    
+    # Google OAuth settings (for Gmail)
+    google_client_id: str = Field(
+        default="",
+        alias="GOOGLE_CLIENT_ID",
+        description="Google OAuth client ID"
+    )
+    google_client_secret: str = Field(
+        default="",
+        alias="GOOGLE_CLIENT_SECRET",
+        description="Google OAuth client secret"
+    )
+    google_redirect_uri: str = Field(
+        default="http://localhost:8000/api/v1/email-accounts/gmail/callback",
+        alias="GOOGLE_REDIRECT_URI",
+        description="Google OAuth redirect URI"
+    )
+    
+    # Encryption settings (for OAuth tokens)
+    encryption_key: Optional[str] = Field(
+        default=None,
+        alias="ENCRYPTION_KEY",
+        description="Encryption key for sensitive data (OAuth tokens). Generate with Fernet.generate_key()"
+    )
+    
     @property
     def cors_origins(self) -> List[str]:
         """

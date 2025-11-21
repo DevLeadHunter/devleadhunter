@@ -108,12 +108,25 @@ interface Props {
    * Array of prospects to display
    */
   prospects: Prospect[];
+  /**
+   * Array of selected prospect IDs
+   */
+  selectedProspects?: string[];
 }
 
 /**
  * Props definition
  */
 const props = defineProps<Props>();
+
+/**
+ * Emit events
+ */
+const emit = defineEmits<{
+  toggleProspect: [id: number];
+  viewProspect: [prospect: Prospect];
+  deleteProspect: [prospect: Prospect];
+}>();
 
 /**
  * Toast composable
@@ -140,10 +153,10 @@ const formatSource = (source: string): string => {
 
 /**
  * Handle add to campaign click
- * @param {string} prospectId - Prospect ID
+ * @param {number} prospectId - Prospect ID
  * @returns {void}
  */
-const handleAddToCampaign = (prospectId: string): void => {
+const handleAddToCampaign = (prospectId: number): void => {
   navigateTo(`/dashboard/campaigns?addProspect=${prospectId}`);
   toast.info('Navigate to campaigns to add this prospect');
 };
@@ -156,5 +169,23 @@ const handleAddToCampaign = (prospectId: string): void => {
 const handleSendEmail = (prospect: Prospect): void => {
   // This would open a modal or navigate to email page
   toast.info('Email functionality would open here');
+};
+
+/**
+ * Handle view prospect
+ * @param {Prospect} prospect - Prospect object
+ * @returns {void}
+ */
+const handleViewProspect = (prospect: Prospect): void => {
+  emit('viewProspect', prospect);
+};
+
+/**
+ * Handle delete prospect
+ * @param {Prospect} prospect - Prospect object
+ * @returns {void}
+ */
+const handleDeleteProspect = (prospect: Prospect): void => {
+  emit('deleteProspect', prospect);
 };
 </script>

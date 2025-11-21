@@ -31,7 +31,9 @@ export type ProspectSource =
  */
 export interface Prospect {
   /** Unique identifier for the prospect */
-  id: string;
+  id: number;
+  /** User ID who saved this prospect */
+  user_id: number;
   /** Business name */
   name: string;
   /** Street address */
@@ -51,7 +53,7 @@ export interface Prospect {
   /** Confidence score (1-4) */
   confidence: number;
   /** Timestamp of when prospect was found */
-  createdAt?: string;
+  created_at?: string;
 }
 
 /**
@@ -433,4 +435,224 @@ export interface SupportTicketSummary {
 export interface SupportTicketDetail extends Omit<SupportTicketSummary, 'messages_count'> {
   attachments: SupportAttachment[];
   messages: SupportMessage[];
+}
+
+/**
+ * Email account type
+ */
+export type EmailAccountType = 'custom_domain' | 'gmail_oauth';
+
+/**
+ * Email account interface
+ */
+export interface EmailAccount {
+  /** Unique identifier */
+  id: number;
+  /** User ID */
+  user_id: number;
+  /** Account type */
+  account_type: EmailAccountType;
+  /** Email address */
+  email: string;
+  /** Sender name */
+  name: string;
+  /** Whether account is verified */
+  is_verified: boolean;
+  /** Whether this is the default account */
+  is_default: boolean;
+  /** Whether account is active */
+  is_active: boolean;
+  /** Domain name (for custom_domain) */
+  domain?: string | null;
+  /** SPF verified status */
+  spf_verified: boolean;
+  /** DKIM verified status */
+  dkim_verified: boolean;
+  /** OAuth token expiration (for gmail_oauth) */
+  oauth_token_expires_at?: string | null;
+  /** Created timestamp */
+  created_at: string;
+  /** Updated timestamp */
+  updated_at?: string | null;
+}
+
+/**
+ * Email template interface
+ */
+export interface EmailTemplate {
+  /** Unique identifier */
+  id: number;
+  /** User ID */
+  user_id: number;
+  /** Associated email account ID */
+  email_account_id?: number | null;
+  /** Template name */
+  name: string;
+  /** Email subject */
+  subject: string;
+  /** Email HTML body */
+  body_html: string;
+  /** List of variable names */
+  variables?: string[];
+  /** Whether template is active */
+  is_active: boolean;
+  /** Created timestamp */
+  created_at: string;
+  /** Updated timestamp */
+  updated_at?: string | null;
+}
+
+/**
+ * Email status
+ */
+export type EmailStatus = 
+  | 'pending' 
+  | 'sending' 
+  | 'sent' 
+  | 'delivered' 
+  | 'opened' 
+  | 'clicked' 
+  | 'bounced' 
+  | 'failed' 
+  | 'complained';
+
+/**
+ * Email log interface
+ */
+export interface EmailLog {
+  /** Unique identifier */
+  id: number;
+  /** User ID */
+  user_id: number;
+  /** Email account ID */
+  email_account_id: number;
+  /** Prospect ID */
+  prospect_id?: string | null;
+  /** Campaign ID */
+  campaign_id?: string | null;
+  /** Recipient email */
+  recipient_email: string;
+  /** Recipient name */
+  recipient_name?: string | null;
+  /** Email subject */
+  subject: string;
+  /** Email status */
+  status: EmailStatus;
+  /** Email provider */
+  provider: string;
+  /** Provider message ID */
+  provider_message_id?: string | null;
+  /** Sent timestamp */
+  sent_at?: string | null;
+  /** Delivered timestamp */
+  delivered_at?: string | null;
+  /** Opened timestamp */
+  opened_at?: string | null;
+  /** Clicked timestamp */
+  clicked_at?: string | null;
+  /** Bounced timestamp */
+  bounced_at?: string | null;
+  /** Failed timestamp */
+  failed_at?: string | null;
+  /** Error message */
+  error_message?: string | null;
+  /** Created timestamp */
+  created_at: string;
+  /** Updated timestamp */
+  updated_at?: string | null;
+}
+
+/**
+ * Email account creation request (custom domain)
+ */
+export interface EmailAccountCreateCustomDomain {
+  email: string;
+  name: string;
+  domain: string;
+  is_default?: boolean;
+}
+
+/**
+ * Email account creation request (Gmail OAuth)
+ */
+export interface EmailAccountCreateGmail {
+  email: string;
+  name: string;
+  oauth_code: string;
+  is_default?: boolean;
+}
+
+/**
+ * Email template creation request
+ */
+export interface EmailTemplateCreate {
+  name: string;
+  subject: string;
+  body_html: string;
+  email_account_id?: number;
+  variables?: string[];
+}
+
+/**
+ * Email template update request
+ */
+export interface EmailTemplateUpdate {
+  name?: string;
+  subject?: string;
+  body_html?: string;
+  email_account_id?: number;
+  variables?: string[];
+  is_active?: boolean;
+}
+
+/**
+ * Send email request
+ */
+export interface SendEmailRequest {
+  email_account_id: number;
+  recipient_email: string;
+  recipient_name?: string;
+  subject: string;
+  body_html: string;
+  prospect_id?: string;
+  template_id?: number;
+  variables?: Record<string, string>;
+}
+
+/**
+ * Send campaign email request
+ */
+export interface SendCampaignEmailRequest {
+  email_account_id: number;
+  campaign_id: string;
+  template_id: number;
+  prospect_ids: string[];
+  variables_per_prospect?: Record<string, Record<string, string>>;
+}
+
+/**
+ * Email stats response
+ */
+export interface EmailStats {
+  total_sent: number;
+  total_delivered: number;
+  total_opened: number;
+  total_clicked: number;
+  total_bounced: number;
+  total_failed: number;
+  delivery_rate: number;
+  open_rate: number;
+  click_rate: number;
+}
+
+/**
+ * DNS verification response
+ */
+export interface DNSVerificationResponse {
+  spf_verified: boolean;
+  dkim_verified: boolean;
+  is_verified: boolean;
+  spf_record?: string | null;
+  dkim_record?: string | null;
+  instructions: string;
 }

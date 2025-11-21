@@ -1,24 +1,26 @@
 <template>
-  <div class="space-y-8">
-    <NuxtLink
-      to="/dashboard/support"
-      class="btn-secondary inline-flex items-center gap-2 w-fit"
-    >
-      <i class="fa-solid fa-arrow-left"></i>
-      Back to tickets
-    </NuxtLink>
+  <div>
+    <UiLoader v-if="isSubmitting" />
+    <div v-else class="space-y-8">
+      <NuxtLink
+        to="/dashboard/support"
+        class="btn-secondary inline-flex items-center gap-2 w-fit"
+      >
+        <i class="fa-solid fa-arrow-left"></i>
+        Back to tickets
+      </NuxtLink>
 
-    <header class="space-y-2">
-      <h1 class="text-[32px] font-semibold text-[#f9f9f9] leading-tight">
-        Report an issue or request help
-      </h1>
-      <p class="text-sm text-[#8b949e] max-w-2xl">
-        Describe what happened, add as much context as possible and attach screenshots if you have them.
-        Our team will get back to you directly in the conversation thread.
-      </p>
-    </header>
+      <header class="space-y-2">
+        <h1 class="text-[32px] font-semibold text-[#f9f9f9] leading-tight">
+          Report an issue or request help
+        </h1>
+        <p class="text-sm text-[#8b949e] max-w-2xl">
+          Describe what happened, add as much context as possible and attach screenshots if you have them.
+          Our team will get back to you directly in the conversation thread.
+        </p>
+      </header>
 
-    <div class="grid gap-6 xl:grid-cols-[2fr_1fr]">
+      <div class="grid gap-6 xl:grid-cols-[2fr_1fr]">
       <form class="card p-6 space-y-6" @submit.prevent="handleSubmit">
         <div class="space-y-2">
           <label class="text-sm text-[#f9f9f9] font-medium" for="subject">Subject</label>
@@ -116,8 +118,7 @@
             Cancel
           </NuxtLink>
           <button type="submit" class="btn-primary gap-2 w-full sm:w-auto" :disabled="isSubmitting">
-            <Loader v-if="isSubmitting" class="w-4 h-4" />
-            <span>{{ isSubmitting ? 'Submitting…' : 'Create ticket' }}</span>
+            <span>Create ticket</span>
           </button>
         </div>
       </form>
@@ -158,6 +159,7 @@
           </ul>
         </div>
       </aside>
+      </div>
     </div>
   </div>
 </template>
@@ -165,7 +167,6 @@
 <script setup lang="ts">
 import { onBeforeUnmount, onMounted, reactive, ref } from 'vue';
 import { useRouter } from 'vue-router';
-import Loader from '~/components/ui/Loader.vue';
 import { useToast } from '~/composables/useToast';
 import type { SupportTicketTopic, SupportTopicOption } from '~/types';
 import * as supportService from '~/services/supportService';

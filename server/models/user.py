@@ -14,6 +14,10 @@ if TYPE_CHECKING:
     from models.credit_transaction import CreditTransaction
     from models.support_ticket import SupportTicket
     from models.support_message import SupportMessage
+    from models.email_account import EmailAccount
+    from models.email_template import EmailTemplate
+    from models.email_log import EmailLog
+    from models.campaign import Campaign
 
 
 class User(Base):
@@ -64,6 +68,26 @@ class User(Base):
         back_populates="sender",
         cascade="all, delete-orphan",
         foreign_keys="SupportMessage.sender_id"
+    )
+    email_accounts: Mapped[list["EmailAccount"]] = relationship(
+        "EmailAccount",
+        back_populates="user",
+        cascade="all, delete-orphan"
+    )
+    email_templates: Mapped[list["EmailTemplate"]] = relationship(
+        "EmailTemplate",
+        back_populates="user",
+        cascade="all, delete-orphan"
+    )
+    email_logs: Mapped[list["EmailLog"]] = relationship(
+        "EmailLog",
+        back_populates="user",
+        cascade="all, delete-orphan"
+    )
+    campaigns: Mapped[list["Campaign"]] = relationship(
+        "Campaign",
+        back_populates="user",
+        cascade="all, delete-orphan"
     )
     
     def __repr__(self) -> str:

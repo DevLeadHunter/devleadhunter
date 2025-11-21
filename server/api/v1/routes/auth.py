@@ -3,9 +3,11 @@ Authentication routes for user signup and login.
 """
 from typing import Any
 from datetime import timedelta
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Request
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
+from slowapi import Limiter
+from slowapi.util import get_remote_address
 
 from core.config import settings
 from core.database import get_db
@@ -22,10 +24,13 @@ from services.credit_service import credit_service
 from models.user import User
 
 router = APIRouter(prefix="/auth", tags=["authentication"])
+limiter = Limiter(key_func=get_remote_address)
 
 
 @router.post("/signup", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
+@limiter.limit("5/minute")  # Limit signup attempts to prevent abuse
 async def signup(
+    request: Request,
     user_data: UserCreate,
     db: Session = Depends(get_db)
 ) -> Any:
@@ -84,7 +89,9 @@ async def signup(
 
 
 @router.post("/login", response_model=Token)
+@limiter.limit("10/minute")  # Limit login attempts to prevent brute force
 async def login(
+    request: Request,
     user_credentials: UserLogin,
     db: Session = Depends(get_db)
 ) -> Any:

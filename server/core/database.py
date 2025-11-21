@@ -69,6 +69,13 @@ def init_db():
     from models.support_ticket import SupportTicket  # noqa: F401
     from models.support_message import SupportMessage  # noqa: F401
     from models.support_attachment import SupportAttachment  # noqa: F401
+    from models.email_account import EmailAccount  # noqa: F401
+    from models.email_template import EmailTemplate  # noqa: F401
+    from models.email_log import EmailLog  # noqa: F401
+    from models.prospect_db import ProspectDB  # noqa: F401
+    from models.campaign import Campaign  # noqa: F401
+    from models.email_unsubscribe import EmailUnsubscribe  # noqa: F401
+    from models.prospect_interaction import ProspectInteraction  # noqa: F401
     
     Base.metadata.create_all(bind=engine)
 

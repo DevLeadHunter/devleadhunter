@@ -9,20 +9,8 @@
 <script setup lang="ts">
 /**
  * Root component
- * Initializes user store authentication
+ * Note: Authentication initialization is handled by the auth.client.ts plugin
  */
-
-/**
- * User store
- */
-const userStore = useUserStore();
-
-/**
- * Initialize authentication on app mount
- */
-onMounted(() => {
-  userStore.initializeAuth();
-});
 </script>
 
 

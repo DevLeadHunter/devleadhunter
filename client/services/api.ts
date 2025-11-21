@@ -95,10 +95,24 @@ export const api = {
   /**
    * GET request
    * @param {string} endpoint - API endpoint
+   * @param {object} options - Optional params
    * @returns {Promise<T>} Response data
    */
-  get<T>(endpoint: string): Promise<T> {
-    return request<T>(endpoint, { method: 'GET' });
+  get<T>(endpoint: string, options?: { params?: any }): Promise<T> {
+    let url = endpoint;
+    if (options?.params) {
+      const params = new URLSearchParams();
+      Object.entries(options.params).forEach(([key, value]) => {
+        if (value !== null && value !== undefined) {
+          params.append(key, String(value));
+        }
+      });
+      const queryString = params.toString();
+      if (queryString) {
+        url += `?${queryString}`;
+      }
+    }
+    return request<T>(url, { method: 'GET' });
   },
 
   /**
@@ -123,6 +137,19 @@ export const api = {
   put<T>(endpoint: string, data: any): Promise<T> {
     return request<T>(endpoint, {
       method: 'PUT',
+      body: JSON.stringify(data)
+    });
+  },
+
+  /**
+   * PATCH request
+   * @param {string} endpoint - API endpoint
+   * @param {any} data - Request body
+   * @returns {Promise<T>} Response data
+   */
+  patch<T>(endpoint: string, data: any): Promise<T> {
+    return request<T>(endpoint, {
+      method: 'PATCH',
       body: JSON.stringify(data)
     });
   },

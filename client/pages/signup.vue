@@ -111,6 +111,7 @@
 import type { Ref } from 'vue';
 import { ref, onMounted } from 'vue';
 import { useAuth } from '~/composables/useAuth';
+import { useUserStore } from '~/stores/user';
 
 /**
  * Signup page
@@ -123,6 +124,11 @@ definePageMeta({
  * Auth composable
  */
 const { signup, isLoading, isAuthenticated } = useAuth();
+
+/**
+ * User store
+ */
+const userStore = useUserStore();
 
 /**
  * Router for navigation
@@ -153,11 +159,19 @@ const generalError: Ref<string> = ref('');
 /**
  * Check if user is already authenticated on mount
  * Redirect to dashboard if already logged in
+ * Validate the token first to avoid redirecting with expired tokens
  */
-onMounted(() => {
+onMounted(async () => {
   if (isAuthenticated.value) {
     isNavigating.value = true;
-    router.push('/dashboard');
+    // Validate token before redirecting to avoid issues with expired tokens
+    const isValid = await userStore.validateAuth();
+    if (isValid) {
+      router.push('/dashboard');
+    } else {
+      // Token was invalid, stay on signup page
+      isNavigating.value = false;
+    }
   }
 });
 

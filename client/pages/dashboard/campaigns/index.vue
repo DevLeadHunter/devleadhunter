@@ -24,6 +24,7 @@
         v-for="campaign in campaignsStore.campaigns"
         :key="campaign.id"
         class="card hover:border-[#f9f9f9] transition-colors cursor-pointer"
+        @click="router.push(`/dashboard/campaigns/${campaign.id}`)"
       >
         <div class="flex justify-between items-start">
           <div class="flex-1">
@@ -47,7 +48,7 @@
             </div>
           </div>
           <button
-            @click="handleSendCampaignEmail(campaign.id)"
+            @click.stop="handleSendCampaignEmail(campaign.id)"
             class="btn-secondary ml-4"
           >
             Send Emails
@@ -130,6 +131,7 @@ import type { Ref } from 'vue';
 import { ref, onMounted } from 'vue';
 import { useCampaignsStore } from '~/stores/campaigns';
 import { useToast } from '~/composables/useToast';
+import { useRouter } from 'vue-router';
 
 /**
  * Dashboard campaigns page
@@ -148,6 +150,11 @@ const campaignsStore = useCampaignsStore();
  * Toast composable
  */
 const toast = useToast();
+
+/**
+ * Router
+ */
+const router = useRouter();
 
 /**
  * Modal state
@@ -188,7 +195,7 @@ const handleCreateCampaign = async (): Promise<void> => {
  * @returns {void}
  */
 const handleSendCampaignEmail = (campaignId: string): void => {
-  navigateTo(`/dashboard/campaigns/${campaignId}/send`);
+  router.push(`/dashboard/campaigns/${campaignId}/send`);
 };
 
 /**
@@ -198,3 +205,7 @@ onMounted(() => {
   campaignsStore.fetchCampaigns();
 });
 </script>
+
+
+
+

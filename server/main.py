@@ -34,15 +34,25 @@ logging.getLogger('uvicorn.access').setLevel(logging.WARNING)
 logging.getLogger('uvicorn.error').setLevel(logging.WARNING)
 
 # NOW import other modules after logging is configured
-from fastapi import FastAPI
+from fastapi import FastAPI, Request, status
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.util import get_remote_address
+from slowapi.errors import RateLimitExceeded
 from api.v1.router import router as api_router
 from core.config import settings
 from services.scraper_service import scraper_service
 from scrappers.mock_scraper import MockScraper
 from scrappers.google_scraper import GoogleScraper
 from scrappers.pagesjaunes_scraper import PagesJaunesScraper
+from scrappers.yelp_scraper import YelpScraper
+from scrappers.osm_scraper import OSMScraper
+from scrappers.mappy_scraper import MappyScraper
 
+
+# Initialize rate limiter
+limiter = Limiter(key_func=get_remote_address, default_limits=["200/minute"])
 
 # Initialize FastAPI app
 app = FastAPI(
@@ -53,6 +63,10 @@ app = FastAPI(
     redoc_url="/redoc",
     openapi_url="/openapi.json"
 )
+
+# Add rate limiter to app state
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 # Configure CORS
 app.add_middleware(
@@ -84,6 +98,15 @@ async def startup_event() -> None:
     
     pagesjaunes_scraper = PagesJaunesScraper()
     await scraper_service.add_scraper(pagesjaunes_scraper)
+    
+    yelp_scraper = YelpScraper()
+    await scraper_service.add_scraper(yelp_scraper)
+    
+    osm_scraper = OSMScraper()
+    await scraper_service.add_scraper(osm_scraper)
+    
+    mappy_scraper = MappyScraper()
+    await scraper_service.add_scraper(mappy_scraper)
 
 
 @app.on_event("shutdown")

@@ -145,8 +145,11 @@ const userStore = useUserStore();
  */
 const links = computed(() => {
   const baseLinks = [
-    { to: '/dashboard', label: 'Prospect Search', icon: 'fa-solid fa-magnifying-glass' },
+    { to: '/dashboard/search-prospects', label: 'Recherche Prospects', icon: 'fa-solid fa-magnifying-glass' },
+    { to: '/dashboard/my-prospects', label: 'Mes Prospects', icon: 'fa-solid fa-users' },
     { to: '/dashboard/campaigns', label: 'Campaigns', icon: 'fa-solid fa-envelope' },
+    { to: '/dashboard/email-accounts', label: 'Email Accounts', icon: 'fa-solid fa-at' },
+    { to: '/dashboard/email-templates', label: 'Email Templates', icon: 'fa-solid fa-file-lines' },
     { to: '/dashboard/credits', label: 'My Credits', icon: 'fa-solid fa-coins' },
     { to: '/dashboard/support', label: 'Support', icon: 'fa-solid fa-headset' },
     { to: '/dashboard/buy-credits', label: 'Buy Credits', icon: 'fa-solid fa-credit-card' }
@@ -154,8 +157,8 @@ const links = computed(() => {
 
   // Add admin links for admin users
   if (userStore.user?.role === 'ADMIN') {
-    baseLinks.push({ to: '/dashboard/users', label: 'Users', icon: 'fa-solid fa-users' });
-    baseLinks.push({ to: '/dashboard/credit-settings', label: 'Credit Settings', icon: 'fa-solid fa-coins' });
+    baseLinks.push({ to: '/dashboard/users', label: 'Users', icon: 'fa-solid fa-users-gear' });
+    baseLinks.push({ to: '/dashboard/credit-settings', label: 'Credit Settings', icon: 'fa-solid fa-sliders' });
     baseLinks.push({ to: '/dashboard/accounting', label: 'Comptabilité', icon: 'fa-solid fa-chart-line' });
   }
 

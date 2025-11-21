@@ -24,9 +24,7 @@
       </p>
     </header>
 
-    <div v-if="isLoading" class="card flex items-center justify-center py-16 text-[#8b949e] max-w-full">
-      <Loader class="w-6 h-6 mx-auto" />
-    </div>
+    <UiLoader v-if="isLoading" />
 
     <div v-else-if="!ticket" class="card flex items-center justify-center py-16 text-[#8b949e]">
       <p class="text-sm">We could not find this ticket. Check the URL or return to the list.</p>
@@ -222,7 +220,6 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { useRoute } from 'vue-router';
-import Loader from '~/components/ui/Loader.vue';
 import { useUserStore } from '~/stores/user';
 import { useToast } from '~/composables/useToast';
 import type { SupportTicketDetail, SupportMessage } from '~/types';

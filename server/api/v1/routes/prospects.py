@@ -25,8 +25,8 @@ router = APIRouter(
     "/search",
     response_model=ProspectSearchResponse,
     status_code=status.HTTP_200_OK,
-    summary="Search for prospects",
-    description="Search for prospects based on category, city, and other criteria"
+    summary="Search for prospects (deprecated)",
+    description="⚠️ DEPRECATED: Use POST /scraping-jobs instead for better UX with async processing"
 )
 async def search_prospects(
     request: ProspectSearchRequest,
@@ -35,6 +35,10 @@ async def search_prospects(
 ) -> ProspectSearchResponse:
     """
     Search for prospects matching the given criteria.
+    
+    ⚠️ DEPRECATED: This endpoint is synchronous and blocks until scraping is complete.
+    Use POST /scraping-jobs instead for better user experience with async processing,
+    real-time progress updates, and ability to leave/return to the page.
     
     Args:
         request: Search criteria including category, city, and max results
@@ -69,33 +73,22 @@ async def search_prospects(
             )
         
         # Calculate total credits needed
-        # Base cost per search
         credits_per_search = credit_settings.credits_per_search
-        
-        # Calculate maximum cost: base search + max results * cost per result
-        # We'll deduct base cost first, then adjust after getting actual results
         max_credits_needed = credits_per_search + (request.max_results * credit_settings.credits_per_result)
         
         # Check user balance
         user_balance = credit_service.get_user_balance(db, current_user.id)
         
         # For admin users, balance is -1 (unlimited)
-        if user_balance == -1:
-            # Admin has unlimited credits, skip deduction
-            pass
-        else:
+        if user_balance != -1:
             if user_balance < credits_per_search:
                 raise HTTPException(
                     status_code=status.HTTP_402_PAYMENT_REQUIRED,
                     detail=f"Insufficient credits. You need at least {credits_per_search} credits to perform a search. Current balance: {user_balance}"
                 )
         
-        print('Ok')
         # Run scrapers to get fresh data
-        # request.source is already a Source enum
         source_value = request.source.value if request.source else None
-        print(f"[DEBUG] Search request - source: {request.source}, source_value: {source_value}")
-        print(f"[DEBUG] Request details - category: {request.category}, city: {request.city}, max_results: {request.max_results}")
         
         scraped_prospects = await scraper_service.scrape_all(
             category=request.category or "",
@@ -104,26 +97,41 @@ async def search_prospects(
             source_filter=source_value
         )
         
-        print(f"[DEBUG] Scraped {len(scraped_prospects)} prospects")
-        
-        # Save scraped prospects and convert to Prospect objects
+        # Save scraped prospects to database
         prospects = []
+        skipped_count = 0
+        
         for prospect_data in scraped_prospects:
-            prospect = await prospect_service.create_prospect(prospect_data)
+            # Check for duplicates
+            is_duplicate = await prospect_service.check_duplicate(
+                db=db,
+                name=prospect_data.name,
+                city=prospect_data.city,
+                user_id=current_user.id
+            )
+            
+            if is_duplicate:
+                skipped_count += 1
+                # Still include in results but don't save
+                continue
+            
+            # Save to database
+            prospect = await prospect_service.create_prospect(
+                db=db,
+                prospect=prospect_data,
+                user_id=current_user.id
+            )
             prospects.append(prospect)
-
-        print(f"[DEBUG] Prospects: {prospects}")
         
         # Calculate actual credits needed based on results
         actual_credits_needed = credits_per_search + (len(prospects) * credit_settings.credits_per_result)
         
         # Deduct credits from user account (if not admin)
         if user_balance != -1:
-            # Check again if user has enough credits for actual results
             if user_balance < actual_credits_needed:
                 raise HTTPException(
                     status_code=status.HTTP_402_PAYMENT_REQUIRED,
-                    detail=f"Insufficient credits. This search requires {actual_credits_needed} credits (search: {credits_per_search}, results: {len(prospects)} × {credit_settings.credits_per_result}). Current balance: {user_balance}"
+                    detail=f"Insufficient credits. This search requires {actual_credits_needed} credits. Current balance: {user_balance}"
                 )
             
             # Deduct credits
@@ -132,7 +140,7 @@ async def search_prospects(
                 user_id=current_user.id,
                 amount=actual_credits_needed,
                 description=f"Prospect search: {request.category or 'all'} in {request.city or 'all locations'} ({len(prospects)} results)",
-                metadata=f"search_category:{request.category or 'all'},search_city:{request.city or 'all'},results_count:{len(prospects)}"
+                metadata=f"search_category:{request.category or 'all'},search_city:{request.city or 'all'},results_count:{len(prospects)},skipped:{skipped_count}"
             )
             
             if not success:
@@ -153,7 +161,6 @@ async def search_prospects(
         )
     
     except HTTPException:
-        # Re-raise HTTP exceptions as-is
         raise
     except Exception as e:
         raise HTTPException(
@@ -165,18 +172,33 @@ async def search_prospects(
 @router.get(
     "",
     response_model=List[Prospect],
-    summary="List all prospects",
-    description="Get a list of all prospects"
+    summary="List all saved prospects",
+    description="Get a list of all prospects saved by the current user"
 )
-async def list_prospects() -> List[Prospect]:
+async def list_prospects(
+    skip: int = 0,
+    limit: int = 1000,
+    current_user: User = Depends(require_auth),
+    db: Session = Depends(get_db)
+) -> List[Prospect]:
     """
-    Get all prospects.
+    Get all saved prospects for the current user.
     
+    Args:
+        skip: Number of records to skip
+        limit: Maximum number of records to return
+        current_user: Current authenticated user
+        db: Database session
+        
     Returns:
-        List of all prospects
+        List of saved prospects
     """
-    request = ProspectSearchRequest(max_results=1000)
-    return await prospect_service.search_prospects(request)
+    return await prospect_service.get_all_prospects(
+        db=db,
+        user_id=current_user.id,
+        skip=skip,
+        limit=limit
+    )
 
 
 @router.get(
@@ -185,25 +207,39 @@ async def list_prospects() -> List[Prospect]:
     summary="Get prospect by ID",
     description="Retrieve a specific prospect by its ID"
 )
-async def get_prospect(prospect_id: str) -> Prospect:
+async def get_prospect(
+    prospect_id: int,
+    current_user: User = Depends(require_auth),
+    db: Session = Depends(get_db)
+) -> Prospect:
     """
     Get a prospect by ID.
     
     Args:
         prospect_id: Unique prospect identifier
+        current_user: Current authenticated user
+        db: Database session
         
     Returns:
         Prospect object
         
     Raises:
-        HTTPException: If prospect not found
+        HTTPException: If prospect not found or not owned by user
     """
-    prospect = await prospect_service.get_prospect(prospect_id)
+    prospect = await prospect_service.get_prospect(db, prospect_id)
     if not prospect:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Prospect {prospect_id} not found"
         )
+    
+    # Check ownership
+    if prospect.user_id != current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You don't have access to this prospect"
+        )
+    
     return prospect
 
 
@@ -214,17 +250,27 @@ async def get_prospect(prospect_id: str) -> Prospect:
     summary="Create a new prospect",
     description="Create a new prospect manually"
 )
-async def create_prospect(prospect: ProspectCreate) -> Prospect:
+async def create_prospect(
+    prospect: ProspectCreate,
+    current_user: User = Depends(require_auth),
+    db: Session = Depends(get_db)
+) -> Prospect:
     """
-    Create a new prospect.
+    Create a new prospect manually.
     
     Args:
         prospect: Prospect data to create
+        current_user: Current authenticated user
+        db: Database session
         
     Returns:
         Created prospect with generated ID
     """
-    return await prospect_service.create_prospect(prospect)
+    return await prospect_service.create_prospect(
+        db=db,
+        prospect=prospect,
+        user_id=current_user.id
+    )
 
 
 @router.put(
@@ -234,8 +280,10 @@ async def create_prospect(prospect: ProspectCreate) -> Prospect:
     description="Update an existing prospect by ID"
 )
 async def update_prospect(
-    prospect_id: str,
-    update_data: ProspectUpdate
+    prospect_id: int,
+    update_data: ProspectUpdate,
+    current_user: User = Depends(require_auth),
+    db: Session = Depends(get_db)
 ) -> Prospect:
     """
     Update a prospect.
@@ -243,14 +291,30 @@ async def update_prospect(
     Args:
         prospect_id: Prospect ID to update
         update_data: Fields to update
+        current_user: Current authenticated user
+        db: Database session
         
     Returns:
         Updated prospect
         
     Raises:
-        HTTPException: If prospect not found
+        HTTPException: If prospect not found or not owned by user
     """
-    prospect = await prospect_service.update_prospect(prospect_id, update_data)
+    # Check ownership first
+    existing = await prospect_service.get_prospect(db, prospect_id)
+    if not existing:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Prospect {prospect_id} not found"
+        )
+    
+    if existing.user_id != current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You don't have access to this prospect"
+        )
+    
+    prospect = await prospect_service.update_prospect(db, prospect_id, update_data)
     if not prospect:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -265,20 +329,39 @@ async def update_prospect(
     summary="Delete a prospect",
     description="Delete a prospect by ID"
 )
-async def delete_prospect(prospect_id: str) -> None:
+async def delete_prospect(
+    prospect_id: int,
+    current_user: User = Depends(require_auth),
+    db: Session = Depends(get_db)
+) -> None:
     """
     Delete a prospect.
     
     Args:
         prospect_id: Prospect ID to delete
+        current_user: Current authenticated user
+        db: Database session
         
     Raises:
-        HTTPException: If prospect not found
+        HTTPException: If prospect not found or not owned by user
     """
-    deleted = await prospect_service.delete_prospect(prospect_id)
+    # Check ownership first
+    existing = await prospect_service.get_prospect(db, prospect_id)
+    if not existing:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Prospect {prospect_id} not found"
+        )
+    
+    if existing.user_id != current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You don't have access to this prospect"
+        )
+    
+    deleted = await prospect_service.delete_prospect(db, prospect_id)
     if not deleted:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Prospect {prospect_id} not found"
         )
-

@@ -49,13 +49,32 @@ class GoogleScraper(BaseScraper):
         if not self.playwright:
             self.playwright = await async_playwright().start()
             self.browser = await self.playwright.chromium.launch(
-                headless=False,  # For debugging
+                headless=True,
                 args=[
                     "--no-sandbox",
                     "--disable-setuid-sandbox",
+                    "--disable-dev-shm-usage",
+                    "--disable-gpu",
+                    "--disable-software-rasterizer",
                     "--disable-blink-features=AutomationControlled",
                     "--disable-infobars",
-                    "--start-fullscreen"
+                    "--disable-extensions",
+                    "--disable-background-networking",
+                    "--disable-background-timer-throttling",
+                    "--disable-backgrounding-occluded-windows",
+                    "--disable-breakpad",
+                    "--disable-component-extensions-with-background-pages",
+                    "--disable-features=TranslateUI",
+                    "--disable-ipc-flooding-protection",
+                    "--disable-renderer-backgrounding",
+                    "--force-color-profile=srgb",
+                    "--metrics-recording-only",
+                    "--mute-audio",
+                    "--no-first-run",
+                    "--enable-automation",
+                    "--password-store=basic",
+                    "--use-mock-keychain",
+                    "--js-flags=--max-old-space-size=512"
                 ]
             )
     

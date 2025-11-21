@@ -2,6 +2,7 @@
 Prospect data models.
 """
 from typing import Optional
+from datetime import datetime
 from pydantic import BaseModel, Field, EmailStr
 from enums.source import Source
 
@@ -65,15 +66,20 @@ class Prospect(ProspectBase):
     
     Attributes:
         id: Unique prospect identifier
+        user_id: ID of the user who saved this prospect
+        created_at: Timestamp when prospect was created
     """
     
-    id: str = Field(..., description="Unique prospect identifier")
+    id: int = Field(..., description="Unique prospect identifier")
+    user_id: int = Field(..., description="User ID who saved this prospect")
+    created_at: Optional[datetime] = Field(None, description="Timestamp when created")
     
     class Config:
         """Pydantic configuration."""
+        from_attributes = True
         json_schema_extra = {
             "example": {
-                "id": "prospect_123",
+                "id": 123,
                 "name": "Le Bon Restaurant",
                 "address": "123 Rue de la Paix",
                 "city": "Paris",
@@ -82,6 +88,8 @@ class Prospect(ProspectBase):
                 "category": "restaurant",
                 "source": "google",
                 "confidence": 3,
-                "phone": "+33123456789"
+                "phone": "+33123456789",
+                "user_id": 1,
+                "created_at": "2024-01-15T10:30:00Z"
             }
         }
