@@ -2,7 +2,7 @@
   <div>
     <!-- Header -->
     <div class="flex justify-between items-center mb-6">
-      <h1 class="text-[32px] font-semibold text-[#f9f9f9]">Accounting</h1>
+      <h1 class="text-xl font-semibold text-[#f9f9f9]">Accounting</h1>
     </div>
 
     <!-- Loading State -->
@@ -24,7 +24,7 @@
           <div class="flex items-start justify-between">
             <div class="flex-1">
               <p class="text-xs text-[#8b949e] mb-1">Total received</p>
-              <p class="text-2xl font-bold text-[#f9f9f9]">
+              <p class="text-lg font-bold text-[#f9f9f9]">
                 €{{ formatCurrency(accountingData?.summary?.total_paid || 0) }}
               </p>
             </div>
@@ -39,7 +39,7 @@
           <div class="flex items-start justify-between">
             <div class="flex-1">
               <p class="text-xs text-[#8b949e] mb-1">Net (after fees)</p>
-              <p class="text-2xl font-bold text-[#f9f9f9]">
+              <p class="text-lg font-bold text-[#f9f9f9]">
                 €{{ formatCurrency(accountingData?.summary?.net_total || 0) }}
               </p>
             </div>
@@ -54,7 +54,7 @@
           <div class="flex items-start justify-between">
             <div class="flex-1">
               <p class="text-xs text-[#8b949e] mb-1">Stripe fees</p>
-              <p class="text-2xl font-bold text-[#DC4747]">
+              <p class="text-lg font-bold text-[#DC4747]">
                 -€{{ formatCurrency(accountingData?.summary?.total_stripe_fees || 0) }}
               </p>
             </div>
@@ -69,7 +69,7 @@
           <div class="flex items-start justify-between">
             <div class="flex-1">
               <p class="text-xs text-[#8b949e] mb-1">Available balance</p>
-              <p class="text-2xl font-bold text-[#f9f9f9]">
+              <p class="text-lg font-bold text-[#f9f9f9]">
                 <span v-if="accountingData?.summary?.available_balance !== null && accountingData?.summary?.available_balance !== undefined">
                   €{{ formatCurrency(accountingData.summary.available_balance) }}
                 </span>
@@ -87,19 +87,19 @@
       <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
         <div class="card">
           <p class="text-xs text-[#8b949e] mb-1">Total refunded</p>
-          <p class="text-lg font-semibold text-[#f9f9f9]">
+          <p class="text-base font-semibold text-[#f9f9f9]">
             €{{ formatCurrency(accountingData?.summary?.total_refunded || 0) }}
           </p>
         </div>
         <div class="card">
           <p class="text-xs text-[#8b949e] mb-1">Transactions (raw)</p>
-          <p class="text-lg font-semibold text-[#f9f9f9]">
+          <p class="text-base font-semibold text-[#f9f9f9]">
             {{ accountingData?.summary?.total_transactions || 0 }}
           </p>
         </div>
         <div class="card">
           <p class="text-xs text-[#8b949e] mb-1">Transactions displayed</p>
-          <p class="text-lg font-semibold text-[#f9f9f9]">
+          <p class="text-base font-semibold text-[#f9f9f9]">
             {{ displayedTransactions.length }}
           </p>
         </div>

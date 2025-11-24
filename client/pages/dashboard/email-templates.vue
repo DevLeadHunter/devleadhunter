@@ -2,7 +2,7 @@
   <div>
     <!-- Header -->
     <div class="flex justify-between items-center mb-4">
-      <h1 class="text-[32px] font-semibold text-[#f9f9f9]">Email Templates</h1>
+      <h1 class="text-xl font-semibold text-[#f9f9f9]">Email Templates</h1>
       <button
         @click="openCreateModal"
         class="btn-primary"

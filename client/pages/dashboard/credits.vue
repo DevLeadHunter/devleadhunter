@@ -2,7 +2,7 @@
   <div>
     <!-- Header -->
     <div class="flex justify-between items-center mb-6">
-      <h1 class="text-[32px] font-semibold text-[#f9f9f9]">Credit Usage</h1>
+      <h1 class="text-xl font-semibold text-[#f9f9f9]">Credit Usage</h1>
       <NuxtLink 
         to="/dashboard/buy-credits"
         class="text-[#f9f9f9] hover:text-[#8b949e] transition-colors text-sm flex items-center gap-1"

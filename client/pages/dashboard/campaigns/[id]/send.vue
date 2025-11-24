@@ -11,7 +11,7 @@
 
     <!-- Header -->
     <div class="card mb-4">
-      <h1 class="text-[32px] font-semibold text-[#f9f9f9]">Send Campaign</h1>
+      <h1 class="text-xl font-semibold text-[#f9f9f9]">Send Campaign</h1>
       <p v-if="campaign" class="text-sm text-muted mt-2">
         {{ campaign.name }} - {{ campaign.prospectIds.length }} prospect(s)
       </p>

@@ -2,7 +2,7 @@
   <div>
     <!-- Header -->
     <div class="flex justify-between items-center mb-6">
-      <h1 class="text-[32px] font-semibold text-[#f9f9f9]">Buy Credits</h1>
+      <h1 class="text-xl font-semibold text-[#f9f9f9]">Buy Credits</h1>
     </div>
 
     <!-- Success Message -->

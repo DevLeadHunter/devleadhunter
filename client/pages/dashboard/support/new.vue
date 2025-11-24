@@ -11,7 +11,7 @@
       </NuxtLink>
 
       <header class="space-y-2">
-        <h1 class="text-[32px] font-semibold text-[#f9f9f9] leading-tight">
+        <h1 class="text-xl font-semibold text-[#f9f9f9] leading-tight">
           Report an issue or request help
         </h1>
         <p class="text-sm text-[#8b949e] max-w-2xl">

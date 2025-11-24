@@ -1,0 +1,166 @@
+{
+  "nav": {
+    "features": "Features",
+    "pricing": "Pricing",
+    "login": "Login",
+    "signup": "Try for free"
+  },
+  "hero": {
+    "badge": "Prospecting tool for freelance developers",
+    "title": "Find clients who",
+    "titleHighlight": "need you",
+    "subtitle": "Automatically search for businesses without websites, create personalized email campaigns and grow your freelance business.",
+    "ctaPrimary": "Start for free",
+    "ctaSecondary": "Discover features",
+    "stats": {
+      "prospects": "Prospects found",
+      "developers": "Active developers",
+      "satisfaction": "Satisfaction rate"
+    }
+  },
+  "features": {
+    "title": "Everything you need",
+    "subtitle": "A complete platform to find, contact and convert your prospects",
+    "search": {
+      "title": "Smart search",
+      "description": "Search for businesses by category, city and source. Our system analyzes Google, Pages Jaunes and more to find the best prospects.",
+      "badge": "Smart search",
+      "heading": "Find the best prospects automatically",
+      "descriptionFull": "Our advanced scraping system automatically scans Google, Pages Jaunes, Yelp and other sources to identify businesses without websites. Filter by category, city, and number of results to precisely target your market.",
+      "feature1": "Multi-source search (Google, Pages Jaunes, Yelp, OSM, Mappy)",
+      "feature2": "Advanced filters by category and location",
+      "feature3": "Confidence score for each prospect",
+      "feature4": "Export results with one click"
+    },
+    "campaigns": {
+      "title": "Email campaigns",
+      "description": "Create and manage personalized email campaigns. Send in bulk with customizable templates.",
+      "badge": "Email campaigns",
+      "heading": "Create and manage your email campaigns",
+      "descriptionFull": "Create personalized email campaigns with our WYSIWYG editor. Personalize each message with prospect information and send in bulk. Track the sending status of each email in real-time.",
+      "feature1": "WYSIWYG editor to create your templates",
+      "feature2": "Automatic personalization with prospect data",
+      "feature3": "Bulk sending with queue management",
+      "feature4": "Real-time tracking of sends and replies",
+      "campaignExample": "Campaign \"Restaurants Paris\"",
+      "prospects": "prospects",
+      "sent": "sent",
+      "replies": "replies"
+    },
+    "management": {
+      "title": "Prospect management",
+      "description": "Organize all your prospects in one place. Add notes, track your interactions.",
+      "badge": "Prospect management",
+      "heading": "Organize all your prospects",
+      "descriptionFull": "Centralize all your prospects in one place. Add notes, track your interactions, mark statuses and never miss an opportunity. Your prospect database is always up to date and accessible.",
+      "feature1": "Centralized database of all your prospects",
+      "feature2": "Notes and interactions for each prospect",
+      "feature3": "Customizable statuses (contacted, interested, client, etc.)",
+      "feature4": "Advanced search and filters in your database",
+      "myProspects": "My Prospects",
+      "activeCampaigns": "Active campaigns",
+      "allContacts": "All your contacts in one place",
+      "trackCampaigns": "Track your ongoing campaigns"
+    },
+    "analytics": {
+      "badge": "Statistics",
+      "heading": "Analyze your performance",
+      "descriptionFull": "Track your performance with comprehensive dashboards. Analyze your campaigns, open rates, responses and conversions. Identify what works and optimize your strategies.",
+      "feature1": "Dashboards with charts and metrics",
+      "feature2": "Open and reply rates per campaign",
+      "feature3": "Complete history of your interactions",
+      "feature4": "Export detailed reports",
+      "openRate": "Open rate",
+      "replyRate": "Reply rate",
+      "converted": "Converted prospects"
+    },
+    "more": {
+      "title": "And much more",
+      "credits": {
+        "title": "Credit system",
+        "description": "Buy credits and use them for your searches and email sends."
+      },
+      "emailAccounts": {
+        "title": "Multiple email accounts",
+        "description": "Manage multiple email accounts to send from different addresses."
+      },
+      "templates": {
+        "title": "Customizable templates",
+        "description": "Create and reuse email templates to save time."
+      },
+      "support": {
+        "title": "Dedicated support",
+        "description": "A team ready to help you succeed."
+      },
+      "responsive": {
+        "title": "100% responsive",
+        "description": "Use devleadhunter on all your devices, everywhere."
+      },
+      "security": {
+        "title": "Maximum security",
+        "description": "Your data is encrypted and protected according to the strictest standards."
+      }
+    }
+  },
+  "howItWorks": {
+    "title": "How it works",
+    "subtitle": "In 3 simple steps, find and contact your future clients",
+    "step1": {
+      "title": "Search for prospects",
+      "description": "Define your search criteria: business category, city, number of results. Our system automatically scans directories and search engines to find businesses without websites."
+    },
+    "step2": {
+      "title": "Create your campaign",
+      "description": "Select the prospects that interest you and create a personalized email campaign. Use our templates or create your own message. Personalize each email with prospect information."
+    },
+    "step3": {
+      "title": "Send and convert",
+      "description": "Launch your campaign and track results in real-time. Receive notifications for each response and turn your prospects into clients."
+    }
+  },
+  "cta": {
+    "title": "Ready to grow your business?",
+    "subtitle": "Join the freelance developers using devleadhunter to find their clients and grow their business.",
+    "primary": "Start for free",
+    "secondary": "View pricing"
+  },
+  "pricing": {
+    "title": "Simple and transparent pricing",
+    "subtitle": "Buy credits as you need them. No subscription, no commitment.",
+    "creditsTitle": "How credits work",
+    "creditsSubtitle": "Credits are used for your searches and email sends",
+    "search": {
+      "title": "Prospect search",
+      "description": "Each search costs a few credits. The more you search, the more prospects you find."
+    },
+    "email": {
+      "title": "Email sending",
+      "description": "Each email sent consumes credits. Buy additional credits anytime."
+    },
+    "freeCredits": "Free credits on signup",
+    "minPurchase": "Minimum purchase",
+    "pricePerCredit": "Price per credit",
+    "creditsPerSearch": "Credits per search",
+    "creditsPerResult": "Credits per result",
+    "creditsPerEmail": "Credits per email",
+    "buyCredits": "Buy credits",
+    "faq": {
+      "title": "Frequently asked questions",
+      "q1": "What happens if I run out of credits?",
+      "a1": "You can buy additional credits anytime from your dashboard. Credits never expire.",
+      "q2": "Can I try for free?",
+      "a2": "Yes, create an account and receive free credits to test all features.",
+      "q3": "How are credits used?",
+      "a3": "Credits are consumed when you search for prospects and send emails. Each action has a fixed cost in credits."
+    }
+  },
+  "footer": {
+    "product": "Product",
+    "account": "Account",
+    "privacy": "Privacy",
+    "terms": "Terms",
+    "copyright": "All rights reserved.",
+    "description": "The intelligent prospecting tool for freelance web developers. Find and contact businesses that need your expertise."
+  }
+}
+

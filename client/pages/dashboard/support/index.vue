@@ -3,7 +3,7 @@
     <header class="space-y-4 mb-6">
       <div class="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
         <div class="space-y-2">
-          <h1 class="text-2xl md:text-[32px] font-semibold text-[#f9f9f9] leading-tight">
+          <h1 class="text-lg md:text-xl font-semibold text-[#f9f9f9] leading-tight">
             Support tickets
           </h1>
           <p class="text-sm text-[#8b949e] max-w-2xl">

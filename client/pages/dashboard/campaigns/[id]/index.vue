@@ -10,7 +10,7 @@
           >
             <i class="fa-solid fa-arrow-left"></i>
           </button>
-          <h1 class="text-[32px] font-semibold text-[#f9f9f9]">{{ campaign?.name || 'Campaign' }}</h1>
+          <h1 class="text-xl font-semibold text-[#f9f9f9]">{{ campaign?.name || 'Campaign' }}</h1>
           <span
             v-if="campaign"
             :class="[
@@ -488,6 +488,8 @@ onMounted(async () => {
   await loadCampaign();
 });
 </script>
+
+
 
 
 

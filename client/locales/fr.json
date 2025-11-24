@@ -1,0 +1,166 @@
+{
+  "nav": {
+    "features": "Fonctionnalités",
+    "pricing": "Tarifs",
+    "login": "Connexion",
+    "signup": "Essayer gratuitement"
+  },
+  "hero": {
+    "badge": "Outil de prospection pour développeurs freelance",
+    "title": "Trouvez des clients qui ont",
+    "titleHighlight": "besoin de vous",
+    "subtitle": "Recherchez automatiquement des entreprises sans site web, créez des campagnes email personnalisées et développez votre activité de freelance.",
+    "ctaPrimary": "Commencer gratuitement",
+    "ctaSecondary": "Découvrir les fonctionnalités",
+    "stats": {
+      "prospects": "Prospects trouvés",
+      "developers": "Développeurs actifs",
+      "satisfaction": "Taux de satisfaction"
+    }
+  },
+  "features": {
+    "title": "Tout ce dont vous avez besoin",
+    "subtitle": "Une plateforme complète pour trouver, contacter et convertir vos prospects",
+    "search": {
+      "title": "Recherche intelligente",
+      "description": "Recherchez des entreprises par catégorie, ville et source. Notre système analyse Google, Pages Jaunes et bien plus encore pour trouver les meilleurs prospects.",
+      "badge": "Recherche intelligente",
+      "heading": "Trouvez les meilleurs prospects automatiquement",
+      "descriptionFull": "Notre système de scraping avancé parcourt automatiquement Google, Pages Jaunes, Yelp et d'autres sources pour identifier les entreprises sans site web. Filtrez par catégorie, ville, et nombre de résultats pour cibler précisément votre marché.",
+      "feature1": "Recherche multi-sources (Google, Pages Jaunes, Yelp, OSM, Mappy)",
+      "feature2": "Filtres avancés par catégorie et localisation",
+      "feature3": "Score de confiance pour chaque prospect",
+      "feature4": "Export des résultats en un clic"
+    },
+    "campaigns": {
+      "title": "Campagnes email",
+      "description": "Créez et gérez des campagnes email personnalisées. Envoyez en masse avec des templates personnalisables.",
+      "badge": "Campagnes email",
+      "heading": "Créez et gérez vos campagnes email",
+      "descriptionFull": "Créez des campagnes email personnalisées avec notre éditeur WYSIWYG. Personnalisez chaque message avec les informations du prospect et envoyez en masse. Suivez l'état d'envoi de chaque email en temps réel.",
+      "feature1": "Éditeur WYSIWYG pour créer vos templates",
+      "feature2": "Personnalisation automatique avec les données du prospect",
+      "feature3": "Envoi en masse avec gestion de la file d'attente",
+      "feature4": "Suivi en temps réel des envois et réponses",
+      "campaignExample": "Campagne \"Restaurants Paris\"",
+      "prospects": "prospects",
+      "sent": "envoyés",
+      "replies": "réponses"
+    },
+    "management": {
+      "title": "Gestion de prospects",
+      "description": "Organisez tous vos prospects en un seul endroit. Ajoutez des notes, suivez vos interactions.",
+      "badge": "Gestion de prospects",
+      "heading": "Organisez tous vos prospects",
+      "descriptionFull": "Centralisez tous vos prospects dans un seul endroit. Ajoutez des notes, suivez vos interactions, marquez les statuts et ne perdez jamais une opportunité. Votre base de données de prospects est toujours à jour et accessible.",
+      "feature1": "Base de données centralisée de tous vos prospects",
+      "feature2": "Notes et interactions pour chaque prospect",
+      "feature3": "Statuts personnalisables (contacté, intéressé, client, etc.)",
+      "feature4": "Recherche et filtres avancés dans votre base",
+      "myProspects": "Mes Prospects",
+      "activeCampaigns": "Campagnes actives",
+      "allContacts": "Tous vos contacts en un seul endroit",
+      "trackCampaigns": "Suivez vos campagnes en cours"
+    },
+    "analytics": {
+      "badge": "Statistiques",
+      "heading": "Analysez vos performances",
+      "descriptionFull": "Suivez vos performances avec des tableaux de bord complets. Analysez vos campagnes, vos taux d'ouverture, vos réponses et vos conversions. Identifiez ce qui fonctionne et optimisez vos stratégies.",
+      "feature1": "Tableaux de bord avec graphiques et métriques",
+      "feature2": "Taux d'ouverture et de réponse par campagne",
+      "feature3": "Historique complet de vos interactions",
+      "feature4": "Export de rapports détaillés",
+      "openRate": "Taux d'ouverture",
+      "replyRate": "Taux de réponse",
+      "converted": "Prospects convertis"
+    },
+    "more": {
+      "title": "Et bien plus encore",
+      "credits": {
+        "title": "Système de crédits",
+        "description": "Achetez des crédits et utilisez-les pour vos recherches et envois d'emails."
+      },
+      "emailAccounts": {
+        "title": "Comptes email multiples",
+        "description": "Gérez plusieurs comptes email pour envoyer depuis différentes adresses."
+      },
+      "templates": {
+        "title": "Templates personnalisables",
+        "description": "Créez et réutilisez des templates d'email pour gagner du temps."
+      },
+      "support": {
+        "title": "Support dédié",
+        "description": "Une équipe à votre écoute pour vous aider à réussir."
+      },
+      "responsive": {
+        "title": "100% responsive",
+        "description": "Utilisez devleadhunter sur tous vos appareils, partout."
+      },
+      "security": {
+        "title": "Sécurité maximale",
+        "description": "Vos données sont chiffrées et protégées selon les standards les plus stricts."
+      }
+    }
+  },
+  "howItWorks": {
+    "title": "Comment ça fonctionne",
+    "subtitle": "En 3 étapes simples, trouvez et contactez vos futurs clients",
+    "step1": {
+      "title": "Recherchez vos prospects",
+      "description": "Définissez vos critères de recherche : catégorie d'entreprise, ville, nombre de résultats. Notre système parcourt automatiquement les annuaires et moteurs de recherche pour trouver des entreprises sans site web."
+    },
+    "step2": {
+      "title": "Créez votre campagne",
+      "description": "Sélectionnez les prospects qui vous intéressent et créez une campagne email personnalisée. Utilisez nos templates ou créez votre propre message. Personnalisez chaque email avec les informations du prospect."
+    },
+    "step3": {
+      "title": "Envoyez et convertissez",
+      "description": "Lancez votre campagne et suivez les résultats en temps réel. Recevez des notifications pour chaque réponse et transformez vos prospects en clients."
+    }
+  },
+  "cta": {
+    "title": "Prêt à développer votre activité ?",
+    "subtitle": "Rejoignez les développeurs freelance qui utilisent devleadhunter pour trouver leurs clients et développer leur activité.",
+    "primary": "Commencer gratuitement",
+    "secondary": "Voir les tarifs"
+  },
+  "pricing": {
+    "title": "Tarifs simples et transparents",
+    "subtitle": "Achetez des crédits selon vos besoins. Pas d'abonnement, pas d'engagement.",
+    "creditsTitle": "Comment fonctionnent les crédits",
+    "creditsSubtitle": "Les crédits sont utilisés pour vos recherches et envois d'emails",
+    "search": {
+      "title": "Recherche de prospects",
+      "description": "Chaque recherche coûte quelques crédits. Plus vous recherchez, plus vous trouvez de prospects."
+    },
+    "email": {
+      "title": "Envoi d'emails",
+      "description": "Chaque email envoyé consomme des crédits. Achetez des crédits supplémentaires à tout moment."
+    },
+    "freeCredits": "Crédits gratuits à l'inscription",
+    "minPurchase": "Achat minimum",
+    "pricePerCredit": "Prix par crédit",
+    "creditsPerSearch": "Crédits par recherche",
+    "creditsPerResult": "Crédits par résultat",
+    "creditsPerEmail": "Crédits par email",
+    "buyCredits": "Acheter des crédits",
+    "faq": {
+      "title": "Questions fréquentes",
+      "q1": "Que se passe-t-il si je n'ai plus de crédits ?",
+      "a1": "Vous pouvez acheter des crédits supplémentaires à tout moment depuis votre tableau de bord. Les crédits n'expirent pas.",
+      "q2": "Puis-je essayer gratuitement ?",
+      "a2": "Oui, créez un compte et recevez des crédits gratuits pour tester toutes les fonctionnalités.",
+      "q3": "Comment sont utilisés les crédits ?",
+      "a3": "Les crédits sont consommés lorsque vous recherchez des prospects et envoyez des emails. Chaque action a un coût fixe en crédits."
+    }
+  },
+  "footer": {
+    "product": "Produit",
+    "account": "Compte",
+    "privacy": "Confidentialité",
+    "terms": "Conditions",
+    "copyright": "Tous droits réservés.",
+    "description": "L'outil de prospection intelligent pour développeurs web freelance. Trouvez et contactez des entreprises qui ont besoin de votre expertise."
+  }
+}
+

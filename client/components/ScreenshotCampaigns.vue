@@ -1,0 +1,92 @@
+<template>
+  <div class="bg-[#050505] rounded-xl border border-[#30363d]/30 overflow-hidden shadow-2xl">
+    <!-- Browser Chrome -->
+    <div class="bg-[#1a1a1a] border-b border-[#30363d]/30 px-4 py-3 flex items-center gap-2">
+      <div class="flex gap-1.5">
+        <div class="w-3 h-3 rounded-full bg-[#DC4747]"></div>
+        <div class="w-3 h-3 rounded-full bg-[#f9f9f9]/20"></div>
+        <div class="w-3 h-3 rounded-full bg-[#2BAD5F]"></div>
+      </div>
+      <div class="flex-1 bg-[#050505] rounded-lg px-4 py-1.5 text-xs text-[#8b949e] text-center font-light">
+        devleadhunter.dibodev.fr/dashboard/campaigns
+      </div>
+    </div>
+    
+    <!-- App Content -->
+    <div class="flex h-[500px]">
+      <!-- Sidebar -->
+      <div class="w-64 bg-[#1a1a1a] border-r border-[#30363d] p-4">
+        <div class="flex items-center gap-2 mb-6">
+          <div class="w-5 h-5 flex items-center justify-center">
+            <svg class="w-full h-full fill-current text-[#f9f9f9]" viewBox="0 0 493 515" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M40.6667 1.73334C13.3333 8.80001 2.93333 27.6 8.53333 59.3333C9.73333 65.8667 15.4667 86.6667 21.3333 105.333C33.4667 143.6 41.2 173.733 45.6 199.333C48 213.867 48.5333 221.867 48.5333 248C48.6667 296.8 44.1333 319.067 19.3333 392.667C3.46667 440 0 453.867 0 469.867C0 489.067 6.8 500.933 21.7333 508.133C44.2667 518.8 77.8667 516.133 107.333 501.333C144.533 482.667 158.933 460.133 168.667 404.933C174.8 369.6 179.733 357.6 194 343.2C199.2 337.867 207.6 331.333 212.933 328.133C233.067 316.533 266.267 305.733 291.467 302.667C298 301.867 305.333 301.067 307.733 300.667L312 300.133V335.067C312 385.6 314.667 410.933 322.267 435.2C333.333 470.533 356.267 493.333 393.867 506.533C435.067 521.067 476 515.067 486.533 492.933C493.6 477.867 491.467 464.133 473.867 410.933C459.867 368.8 452.533 341.733 447.867 315.333C445.2 300.533 444.8 293.6 444.8 267.333C444.8 241.6 445.333 234 447.867 220C453.333 189.2 460 164.4 477.6 108C491.867 62.1333 494.533 45.2 490 29.7333C484.267 10.4 465.6 5.71296e-06 437.067 5.71296e-06C405.867 5.71296e-06 378.533 10.8 358.4 31.0667C341.467 47.8667 331.6 71.3333 325.467 108.667C321.2 134.533 317.733 147.467 312.4 158.667C298 188.8 258.533 207.6 192.933 215.467C182.8 216.667 174.267 217.333 173.867 216.933C173.467 216.533 173.867 206.133 174.8 193.867C178.667 139.867 172.133 78 160.133 53.0667C148.8 29.4667 126 12.1333 96.1333 4.40001C80.5333 0.400006 51.4667 -1.06666 40.6667 1.73334Z" fill="currentColor" />
+            </svg>
+          </div>
+          <span class="text-xs font-semibold text-[#f9f9f9]">devleadhunter</span>
+        </div>
+      </div>
+      
+      <!-- Main Content -->
+      <div class="flex-1 bg-[#050505] p-8 overflow-y-auto">
+        <div class="flex justify-between items-center mb-8">
+          <h1 class="text-3xl font-bold text-[#f9f9f9]">Campaigns</h1>
+          <div class="h-10 bg-[#f9f9f9] text-[#050505] rounded-lg px-6 flex items-center text-sm font-medium">
+            <i class="fa-solid fa-plus mr-2"></i>
+            New Campaign
+          </div>
+        </div>
+        
+        <div class="space-y-4">
+          <div class="bg-transparent rounded-xl border border-[#30363d]/30 p-6 hover:border-[#30363d]/50 transition-all">
+            <div class="flex justify-between items-start">
+              <div class="flex-1">
+                <h3 class="text-lg font-semibold text-[#f9f9f9] mb-2">Restaurants Paris</h3>
+                <p class="text-sm text-[#8b949e] mb-4 font-light">Campagne pour les restaurants parisiens</p>
+                <div class="flex gap-6 text-sm">
+                  <span class="text-[#8b949e] font-light">
+                    <i class="fa-solid fa-users inline mr-2"></i>
+                    25 prospects
+                  </span>
+                  <span class="inline-flex items-center px-3 py-1 rounded-lg text-sm font-medium bg-[#2BAD5F]/10 text-[#3fb950]">
+                    active
+                  </span>
+                </div>
+              </div>
+              <div class="h-10 bg-transparent border border-[#30363d]/50 text-[#f9f9f9] rounded-lg px-6 flex items-center text-sm ml-6">
+                Send Emails
+              </div>
+            </div>
+          </div>
+          
+          <div class="bg-transparent rounded-xl border border-[#30363d]/30 p-6 hover:border-[#30363d]/50 transition-all">
+            <div class="flex justify-between items-start">
+              <div class="flex-1">
+                <h3 class="text-lg font-semibold text-[#f9f9f9] mb-2">Salons de coiffure Lyon</h3>
+                <p class="text-sm text-[#8b949e] mb-4 font-light">Prospection pour salons de coiffure à Lyon</p>
+                <div class="flex gap-6 text-sm">
+                  <span class="text-[#8b949e] font-light">
+                    <i class="fa-solid fa-users inline mr-2"></i>
+                    18 prospects
+                  </span>
+                  <span class="inline-flex items-center px-3 py-1 rounded-lg text-sm font-medium bg-[#71A3DB]/10 text-[#58a6ff]">
+                    completed
+                  </span>
+                </div>
+              </div>
+              <div class="h-10 bg-transparent border border-[#30363d]/50 text-[#f9f9f9] rounded-lg px-6 flex items-center text-sm ml-6">
+                Send Emails
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</template>
+
+<script setup lang="ts">
+/**
+ * Screenshot component for Campaigns view
+ */
+</script>
+

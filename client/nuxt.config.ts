@@ -4,18 +4,46 @@ export default defineNuxtConfig({
   
   modules: [
     '@nuxtjs/tailwindcss',
-    '@pinia/nuxt'
+    '@pinia/nuxt',
+    '@nuxtjs/i18n'
   ],
+  
+  i18n: {
+    locales: [
+      { code: 'en', iso: 'en-US', name: 'English', file: 'en.json' },
+      { code: 'fr', iso: 'fr-FR', name: 'Français', file: 'fr.json' }
+    ],
+    defaultLocale: 'en',
+    strategy: 'prefix_except_default',
+    langDir: 'locales',
+    vueI18n: './i18n.config.ts',
+    detectBrowserLanguage: {
+      useCookie: true,
+      cookieKey: 'i18n_redirected',
+      redirectOn: 'root'
+    }
+  },
   
   css: ['~/assets/css/main.css'],
   
   app: {
     head: {
-      title: 'devleadhunter',
+      title: 'devleadhunter - Trouvez des clients pour votre activité de freelance',
+      htmlAttrs: {
+        lang: 'fr'
+      },
       meta: [
         { charset: 'utf-8' },
         { name: 'viewport', content: 'width=device-width, initial-scale=1, maximum-scale=1.0, user-scalable=no' },
-        { name: 'description', content: 'devleadhunter - Personal prospect research tool for freelance web developers' }
+        { name: 'description', content: 'Outil de prospection intelligent pour développeurs web freelance. Recherchez automatiquement des entreprises sans site web et créez des campagnes email personnalisées.' },
+        { name: 'keywords', content: 'prospection, freelance, développeur web, recherche clients, email marketing, campagnes email, prospects, devleadhunter' },
+        { name: 'author', content: 'devleadhunter' },
+        { name: 'robots', content: 'index, follow' },
+        { name: 'googlebot', content: 'index, follow' },
+        { property: 'og:site_name', content: 'devleadhunter' },
+        { property: 'og:locale', content: 'fr_FR' },
+        { name: 'twitter:site', content: '@devleadhunter' },
+        { name: 'theme-color', content: '#050505' }
       ],
       link: [
         {
@@ -39,6 +67,11 @@ export default defineNuxtConfig({
         {
           src: 'https://kit.fontawesome.com/dcc05147de.js',
           crossorigin: 'anonymous'
+        },
+        {
+          src: 'https://www.umami.dibodev.fr/script.js',
+          defer: true,
+          'data-website-id': '0734f93b-7047-425b-8593-1f5b2711c6ff'
         }
       ]
     }
