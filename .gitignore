@@ -55,8 +55,12 @@ dist/
 .env
 .env.local
 .env.*.local
-client/.env
-server/.env
+web/.env
+api/.env
+
+# Reference project (local only)
+GoupixDex/
+nginx/
 
 # Logs
 *.log

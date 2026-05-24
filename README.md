@@ -1,231 +1,119 @@
-# devleadhunter
+# DevLeadHunter
 
 **Personal prospect research tool for freelance web developers**
 
-A comprehensive full-stack application for finding and managing business prospects without websites. Built with modern technologies to help freelance developers find and contact potential clients efficiently.
+Full-stack application for finding and managing business prospects without websites.
 
-## 🚀 Features
-
-- 🔐 **Authentication** - Secure login and signup system
-- 🔍 **Smart Prospect Search** - Search for prospects by category, city, and source
-- 📧 **Email Campaigns** - Create and manage bulk email campaigns
-- 👤 **Profile Management** - Manage user profile and preferences
-- 📱 **Responsive Design** - Works seamlessly on mobile and desktop
-- 🌙 **Dark Theme** - Beautiful GitHub-inspired dark theme
-
-## 🏗️ Architecture
-
-This project is split into two main parts:
+## Architecture
 
 ```
 .
-├── client/          # Nuxt.js 4 frontend
-└── server/          # FastAPI backend
+├── web/     # Nuxt 4 frontend (+ Tauri desktop shell)
+└── api/     # FastAPI backend
 ```
 
-### Frontend (`client/`)
+## Stack
 
-- **Framework**: Nuxt.js 4
-- **Language**: TypeScript (strict mode)
-- **State Management**: Pinia
-- **Styling**: TailwindCSS
-- **Icons**: Font Awesome
+| Layer    | Technology                          |
+| -------- | ----------------------------------- |
+| Frontend | Nuxt 4, Vue 3.5, TypeScript (strict) |
+| Backend  | FastAPI, Pydantic v2, SQLAlchemy    |
+| Desktop  | Tauri 2 + static Nuxt generate      |
+| State    | Pinia                               |
+| Styling  | TailwindCSS                         |
 
-### Backend (`server/`)
+## Prerequisites
 
-- **Framework**: FastAPI
-- **Language**: Python 3.11+
-- **Scrapers**: Playwright-based web scrapers
-- **Sources**: Google, Pages Jaunes
+- Node.js 22+
+- Python 3.11+
+- Rust stable (desktop builds only)
 
-## 📦 Prerequisites
-
-- **Node.js** 18+ (for frontend)
-- **Python** 3.11+ (for backend)
-- **npm** or **pnpm** (for frontend)
-- **pip** (for backend)
-- **Playwright** (for web scraping)
-
-## 🛠️ Installation
-
-### 1. Clone the repository
+## Installation
 
 ```bash
-git clone <repository-url>
-cd devleadhunter
-```
-
-### 2. Install Frontend Dependencies
-
-```bash
-cd client
+# Frontend
+cd web
 npm install
-```
 
-### 3. Install Backend Dependencies
-
-```bash
-cd ../server
+# Backend
+cd ../api
 pip install -r requirements.txt
-
-# Install Playwright browsers
 playwright install chromium
 ```
 
-### 4. Configure Environment
+### Environment
 
-Create a `.env` file in the `client/` directory:
-
-```env
-API_BASE_URL=http://localhost:8000
-```
-
-Create a `.env` file in the `server/` directory (optional):
+`web/.env`:
 
 ```env
-# See server/core/config.py for default values
+NUXT_PUBLIC_API_BASE=http://localhost:8000
 ```
 
-## 🚦 Getting Started
+`api/.env` — see `api/core/config.py` and `api/.env.example`.
 
-### Start the Backend Server
+## Development
 
 ```bash
-cd server
+# API
+cd api
 python main.py
-```
 
-The API will be available at `http://localhost:8000`
-
-API Documentation:
-- **Swagger UI**: http://localhost:8000/docs
-- **ReDoc**: http://localhost:8000/redoc
-
-### Start the Frontend Development Server
-
-```bash
-cd client
+# Web
+cd web
 npm run dev
 ```
 
-The application will be available at `http://localhost:3000`
+- Web: http://localhost:3000
+- API: http://localhost:8000 (Swagger: `/docs`)
 
-### Access the Application
-
-Open your browser and navigate to:
-- **Frontend**: http://localhost:3000
-- **Backend API**: http://localhost:8000
-
-## 📖 API Endpoints
-
-### Health Check
-- `GET /api/v1/health` - Check API health status
-
-### Prospects
-- `GET /api/v1/prospects` - List all prospects
-- `GET /api/v1/prospects/{id}` - Get prospect by ID
-- `POST /api/v1/prospects/search` - Search for prospects
-- `POST /api/v1/prospects` - Create new prospect
-- `PUT /api/v1/prospects/{id}` - Update prospect
-- `DELETE /api/v1/prospects/{id}` - Delete prospect
-
-## 🧩 Project Structure
-
-### Frontend Structure
-
-```
-client/
-├── assets/          # Global styles and Tailwind
-├── components/      # Reusable UI components
-├── composables/     # Reusable composables
-├── layouts/         # Layout components
-├── middleware/      # Route middleware
-├── pages/           # Application pages
-├── services/        # API services
-├── stores/          # Pinia stores
-└── types/           # TypeScript types
-```
-
-### Backend Structure
-
-```
-server/
-├── api/             # API routes
-│   └── v1/          # API version 1
-├── core/            # Core configuration
-├── models/          # Pydantic models
-├── services/        # Business logic
-├── scrappers/       # Web scrapers
-└── main.py          # Application entry point
-```
-
-## 🧪 Development
-
-### Frontend Development
+## Desktop (Tauri)
 
 ```bash
-cd client
-
-# Development mode
-npm run dev
-
-# Build for production
-npm run build
-
-# Preview production build
-npm run preview
+cd web
+npm run tauri:dev      # dev shell on port 1420
+npm run tauri:build    # local release build
 ```
 
-### Backend Development
+Desktop builds use `NUXT_DESKTOP_BUILD=1` (SSR off, static preset). The app talks to the remote API configured via `NUXT_PUBLIC_API_BASE`.
+
+CI release workflow: `.github/workflows/desktop-release.yml` (Windows + macOS, auto-updater).
+
+Required GitHub secrets (same pattern as GoupixDex):
+
+- `TAURI_UPDATER_PUBKEY`
+- `TAURI_SIGNING_PRIVATE_KEY`
+- `TAURI_SIGNING_PRIVATE_KEY_PASSWORD`
+- `NUXT_PUBLIC_API_BASE`
+
+## Code quality
+
+Standards: [`STANDARDS_CODE_ET_ARCHITECTURE.md`](./STANDARDS_CODE_ET_ARCHITECTURE.md)
 
 ```bash
-cd server
-
-# Development mode (with auto-reload)
-python main.py
-
-# Or using uvicorn directly
-uvicorn main:app --reload --host 0.0.0.0 --port 8000
+cd web
+npm run lint        # prettier + eslint + vue-tsc
+npm run lint:fix
 ```
 
-## 🎯 How to Use
+Pre-commit hook (root): `npm --prefix web run lint`
 
-1. **Sign Up / Login**: Create an account or login to access the dashboard
-2. **Search Prospects**: Use the search form to find prospects by category, city, and source
-3. **View Results**: Browse the prospects table with details and confidence scores
-4. **Create Campaigns**: Select prospects and create email campaigns
-5. **Send Emails**: Send bulk emails to your selected prospects
+## Demo site builder
 
-## 🔧 Technologies Used
+Generate temporary client websites from templates (14-day hosting on `demo.dibodev.fr/{slug}`):
 
-### Frontend
-- [Nuxt.js 4](https://nuxt.com/) - Vue.js framework
-- [TypeScript](https://www.typescriptlang.org/) - Type safety
-- [Pinia](https://pinia.vuejs.org/) - State management
-- [TailwindCSS](https://tailwindcss.com/) - Utility-first CSS
-- [Font Awesome](https://fontawesome.com/) - Icons
+- Dashboard stepper: `/dashboard/demo-sites/create`
+- API: `POST /api/v1/demo-sites`
+- Public renderer: `demo-host/` (deploy to Vercel → `demo.dibodev.fr`)
+- Storyblok: set `STORYBLOK_MANAGEMENT_TOKEN` on the API for live CMS spaces
 
-### Backend
-- [FastAPI](https://fastapi.tiangolo.com/) - Modern Python web framework
-- [Pydantic](https://pydantic-docs.helpmanual.io/) - Data validation
-- [Playwright](https://playwright.dev/) - Browser automation
-- [Uvicorn](https://www.uvicorn.org/) - ASGI server
+```bash
+# Create / upgrade DB schema
+cd api && python migrations/run_migrations.py
 
-## 📝 Contributing
+# Run demo host locally
+cd demo-host && npm install && npm run dev
+```
 
-When contributing to this project:
-
-1. Follow the existing code structure and conventions
-2. Add proper type annotations and JSDoc/docstrings
-3. Write meaningful commit messages
-4. Test your changes thoroughly
-5. Update documentation as needed
-
-## 📄 License
+## License
 
 MIT
-
----
-
-Built with ❤️ for freelance developers
-

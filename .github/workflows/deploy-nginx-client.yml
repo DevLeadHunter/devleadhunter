@@ -16,7 +16,6 @@ jobs:
         with:
           sparse-checkout: |
             nginx/nginx-client.conf
-          sparse-checkout-cone: true
 
       - name: 📤 Deploy nginx config to VPS
         uses: appleboy/scp-action@master

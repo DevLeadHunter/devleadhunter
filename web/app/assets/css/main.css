@@ -1,0 +1,153 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    @apply bg-[#050505] font-sans text-[#f9f9f9];
+    font-family: 'Inter', sans-serif;
+  }
+
+  * {
+    @apply border-[#30363d];
+  }
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes slideInLeft {
+  from {
+    opacity: 0;
+    transform: translateX(-30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes slideInRight {
+  from {
+    opacity: 0;
+    transform: translateX(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@layer components {
+  .btn-primary {
+    @apply flex h-12 min-h-12 items-center justify-center rounded-lg bg-[#f9f9f9] px-6 text-base font-medium text-[#050505] shadow-sm hover:bg-[#e4e4e4] hover:shadow-md;
+    transition: all 0.2s ease-in-out;
+  }
+
+  .btn-secondary {
+    @apply flex h-12 min-h-12 items-center justify-center rounded-lg border border-[#30363d]/50 bg-transparent px-6 text-base font-medium text-[#f9f9f9] hover:border-[#30363d] hover:bg-[#1a1a1a];
+    transition: all 0.2s ease-in-out;
+  }
+
+  .btn-danger {
+    @apply flex items-center justify-center rounded bg-[#da3633] px-3 py-1.5 font-medium text-[#f9f9f9] transition-all hover:bg-[#DC4747];
+  }
+
+  .input-field {
+    @apply h-10 min-h-10 w-full rounded border border-[#30363d] bg-[#050505] px-3 text-sm text-[#f9f9f9] placeholder-[#8b949e] transition-all focus:border-[#f9f9f9] focus:outline-none;
+  }
+
+  .input-field option {
+    @apply bg-[#1a1a1a] text-[#f9f9f9];
+  }
+
+  textarea.input-field {
+    @apply h-auto py-2;
+  }
+
+  .card {
+    @apply rounded-lg border border-[#30363d] bg-[#1a1a1a] p-4 shadow-sm;
+  }
+
+  .text-muted {
+    @apply text-[#8b949e];
+  }
+
+  .border-muted {
+    @apply border-[#30363d];
+  }
+
+  h1 {
+    @apply text-xl font-semibold text-[#f9f9f9];
+  }
+
+  .btn-sidebar-hover {
+    background-color: rgba(255, 255, 255, 0.08);
+  }
+
+  .btn-sidebar-active {
+    background-color: rgba(255, 255, 255, 0.12);
+  }
+
+  .animate-fadeInUp {
+    animation: fadeInUp 0.6s ease-out forwards;
+    opacity: 0;
+  }
+
+  .animate-fadeIn {
+    animation: fadeIn 0.6s ease-out forwards;
+    opacity: 0;
+  }
+
+  .animate-slideInLeft {
+    animation: slideInLeft 0.8s ease-out forwards;
+    opacity: 0;
+  }
+
+  .animate-slideInRight {
+    animation: slideInRight 0.8s ease-out forwards;
+    opacity: 0;
+  }
+}
+
+/* Mobile menu slide animation */
+.slide-enter-active,
+.slide-leave-active {
+  transition: opacity 0.3s ease;
+}
+
+.slide-enter-active aside,
+.slide-leave-active aside {
+  transition: transform 0.3s ease;
+}
+
+.slide-enter-from aside,
+.slide-leave-to aside {
+  transform: translateX(-100%);
+}
+
+.slide-enter-to aside,
+.slide-leave-from aside {
+  transform: translateX(0);
+}
