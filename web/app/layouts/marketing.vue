@@ -98,10 +98,7 @@
               <a
                 href="#features"
                 class="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-[#8b949e] transition-colors hover:bg-[#21262d] hover:text-[#f9f9f9]"
-                @click.prevent="
-                  scrollToSection('#features')
-                  closeMobileMenu()
-                "
+                @click.prevent="handleMobileSection('#features')"
               >
                 <i class="fa-solid fa-star h-4 w-4"></i>
                 <span>{{ $t('nav.features') }}</span>
@@ -109,10 +106,7 @@
               <a
                 href="#pricing"
                 class="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-[#8b949e] transition-colors hover:bg-[#21262d] hover:text-[#f9f9f9]"
-                @click.prevent="
-                  scrollToSection('#pricing')
-                  closeMobileMenu()
-                "
+                @click.prevent="handleMobileSection('#pricing')"
               >
                 <i class="fa-solid fa-tag h-4 w-4"></i>
                 <span>{{ $t('nav.pricing') }}</span>
@@ -306,6 +300,14 @@ const toggleMobileMenu = (): void => {
  */
 const closeMobileMenu = (): void => {
   isMobileMenuOpen.value = false
+}
+
+/**
+ * Scroll to a section and close the mobile menu.
+ */
+const handleMobileSection = (selector: string): void => {
+  scrollToSection(selector)
+  closeMobileMenu()
 }
 
 /**

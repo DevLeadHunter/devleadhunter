@@ -60,7 +60,6 @@ api/.env
 
 # Reference project (local only)
 GoupixDex/
-nginx/
 
 # Logs
 *.log
