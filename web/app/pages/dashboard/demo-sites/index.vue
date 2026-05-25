@@ -39,14 +39,6 @@
               {{ regeneratingId === site.id ? 'Regenerating…' : 'Regenerate' }}
             </button>
             <button
-              v-if="site.demo_url"
-              type="button"
-              class="text-sm text-blue-400 underline"
-              @click="openDemoUrl(site.demo_url)"
-            >
-              Open demo
-            </button>
-            <button
               v-if="shareUrl(site)"
               type="button"
               class="btn-secondary px-3 py-1.5 text-xs"
@@ -55,7 +47,22 @@
               {{ copiedUrl === shareUrl(site) ? 'Copied!' : 'Copy link' }}
             </button>
             <button
-              v-if="site.status !== 'failed'"
+              v-if="site.demo_url"
+              type="button"
+              class="btn-secondary px-3 py-1.5 text-xs"
+              @click="openDemoUrl(site.demo_url)"
+            >
+              Open demo
+            </button>
+            <button
+              type="button"
+              class="btn-secondary px-3 py-1.5 text-xs text-red-300 hover:text-red-200"
+              :disabled="deletingId === site.id"
+              @click="handleDelete(site.id, site.business_name)"
+            >
+              {{ deletingId === site.id ? 'Deleting…' : 'Delete' }}
+            </button>
+            <button
               type="button"
               class="btn-secondary px-3 py-1.5 text-xs"
               :disabled="verifyingId === site.id"
@@ -74,7 +81,7 @@
 <script lang="ts" setup>
 import type { Ref } from 'vue'
 import type { DemoSite } from '~/services/demoSiteService'
-import { listDemoSites, regenerateDemoSite, verifyDemoSite } from '~/services/demoSiteService'
+import { deleteDemoSite, listDemoSites, regenerateDemoSite, verifyDemoSite } from '~/services/demoSiteService'
 
 definePageMeta({
   layout: 'dashboard',
@@ -86,6 +93,7 @@ const pending: Ref<boolean> = ref(true)
 const copiedUrl: Ref<string | null> = ref(null)
 const verifyingId: Ref<number | null> = ref(null)
 const regeneratingId: Ref<number | null> = ref(null)
+const deletingId: Ref<number | null> = ref(null)
 
 const { copy } = useCopyToClipboard()
 const { openExternalUrl } = useOpenExternalUrl()
@@ -157,6 +165,26 @@ async function handleRegenerate(demoSiteId: number): Promise<void> {
     alert(error instanceof Error ? error.message : 'Regeneration failed')
   } finally {
     regeneratingId.value = null
+  }
+}
+
+/**
+ * Delete a listed demo site after confirmation.
+ */
+async function handleDelete(demoSiteId: number, businessName: string): Promise<void> {
+  const confirmed: boolean = window.confirm(`Delete demo site "${businessName}"? This cannot be undone.`)
+  if (!confirmed) {
+    return
+  }
+  deletingId.value = demoSiteId
+  try {
+    await deleteDemoSite(demoSiteId)
+    sites.value = sites.value.filter((site: DemoSite): boolean => site.id !== demoSiteId)
+  } catch (error) {
+    console.error(error)
+    alert(error instanceof Error ? error.message : 'Delete failed')
+  } finally {
+    deletingId.value = null
   }
 }
 

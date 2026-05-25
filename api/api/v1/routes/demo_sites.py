@@ -155,3 +155,16 @@ async def regenerate_demo_site(
     site = _get_editable_demo_site(db, current_user.id, demo_site_id)
     site = await demo_site_service.regenerate_demo_site(db, site)
     return DemoSiteResponse.model_validate(site)
+
+
+@router.delete("/{demo_site_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_demo_site(
+    demo_site_id: int,
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db),
+) -> None:
+    """Delete a demo site owned by the current user."""
+    site = demo_site_service.get_for_user(db, current_user.id, demo_site_id)
+    if not site:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Demo site not found")
+    await demo_site_service.delete_demo_site(db, site)

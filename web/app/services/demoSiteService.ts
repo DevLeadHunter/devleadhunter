@@ -109,3 +109,11 @@ export async function updateDemoSite(demoSiteId: number, payload: DemoSiteUpdate
 export async function regenerateDemoSite(demoSiteId: number): Promise<DemoSite> {
   return api.post<DemoSite>(`${BASE_URL}/${demoSiteId}/regenerate`, {})
 }
+
+/**
+ * Delete a demo site owned by the current user.
+ * @param demoSiteId - Demo site primary key.
+ */
+export async function deleteDemoSite(demoSiteId: number): Promise<void> {
+  await api.delete(`${BASE_URL}/${demoSiteId}`)
+}

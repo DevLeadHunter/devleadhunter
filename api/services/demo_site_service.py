@@ -273,18 +273,14 @@ class DemoSiteService:
         )
 
     def get_public_by_slug(self, db: Session, slug: str) -> Optional[DemoSite]:
-        """Fetch an active demo site for the public demo host."""
+        """Fetch a demo site for the public demo host when content is available."""
         now: datetime = datetime.now(timezone.utc)
         site: Optional[DemoSite] = (
             db.query(DemoSite)
             .filter(
                 DemoSite.slug == slug,
-                DemoSite.status.in_(
-                    [
-                        DemoSiteStatus.ACTIVE.value,
-                        DemoSiteStatus.UNAVAILABLE.value,
-                    ]
-                ),
+                DemoSite.status != DemoSiteStatus.DELETED.value,
+                DemoSite.content_json.isnot(None),
             )
             .first()
         )
@@ -299,6 +295,19 @@ class DemoSiteService:
             return None
 
         return site
+
+    async def delete_demo_site(self, db: Session, demo_site: DemoSite) -> None:
+        """Soft-delete a demo site and remove its Storyblok space when present."""
+        now: datetime = datetime.now(timezone.utc)
+        try:
+            if demo_site.storyblok_space_id:
+                await storyblok_service.delete_space(demo_site.storyblok_space_id)
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("Failed to delete Storyblok space %s: %s", demo_site.storyblok_space_id, exc)
+
+        demo_site.status = DemoSiteStatus.DELETED.value
+        demo_site.deleted_at = now
+        db.commit()
 
     async def expire_due_sites(self, db: Session) -> int:
         """

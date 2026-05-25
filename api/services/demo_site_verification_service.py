@@ -69,20 +69,22 @@ class DemoSiteVerificationService:
                 message="Site content was not generated. Provisioning may have failed.",
             )
 
-        public_api_url: str = self._public_api_urls(site.slug)[0]
         public_api_ok: bool = False
         for candidate_url in self._public_api_urls(site.slug):
             if await self._check_url(candidate_url):
                 public_api_ok = True
-                public_api_url = candidate_url
                 break
+
         if not public_api_ok:
             return DemoSiteVerificationResult(
                 public_api_ok=False,
                 demo_url_live=False,
                 local_demo_url=None,
                 local_demo_url_live=False,
-                message="Public API payload is not available. Check that the API is running.",
+                message=(
+                    "Public API payload is not available. "
+                    f"Check GET {settings.api_prefix}/demo-sites/public/{site.slug} on the API."
+                ),
             )
 
         demo_url: str = site.demo_url or ""
