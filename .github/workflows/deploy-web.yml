@@ -43,8 +43,21 @@ jobs:
           NITRO_PRESET: node-server
           NODE_ENV: production
 
+      - name: 🧹 Prepare server directory on VPS
+        if: github.event_name != 'pull_request'
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          port: ${{ secrets.SSH_PORT }}
+          username: ${{ secrets.SSH_USERNAME }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script: |
+            rm -rf /var/www/devleadhunter.dibodev.fr/server
+            mkdir -p /var/www/devleadhunter.dibodev.fr/server
+
       - name: 📤 Deploy web assets
-        uses: appleboy/scp-action@master
+        if: github.event_name != 'pull_request'
+        uses: appleboy/scp-action@v0.1.7
         with:
           host: ${{ secrets.SSH_HOST }}
           port: ${{ secrets.SSH_PORT }}
@@ -55,7 +68,8 @@ jobs:
           strip_components: 3
 
       - name: 📤 Deploy Nitro server
-        uses: appleboy/scp-action@master
+        if: github.event_name != 'pull_request'
+        uses: appleboy/scp-action@v0.1.7
         with:
           host: ${{ secrets.SSH_HOST }}
           port: ${{ secrets.SSH_PORT }}
@@ -64,9 +78,12 @@ jobs:
           source: 'web/.output/server/'
           target: '/var/www/devleadhunter.dibodev.fr/server'
           strip_components: 3
+          tar_dereference: true
+          overwrite: true
 
       - name: 📤 Deploy .env to server
-        uses: appleboy/scp-action@master
+        if: github.event_name != 'pull_request'
+        uses: appleboy/scp-action@v0.1.7
         with:
           host: ${{ secrets.SSH_HOST }}
           port: ${{ secrets.SSH_PORT }}
@@ -76,7 +93,8 @@ jobs:
           target: '/var/www/devleadhunter.dibodev.fr/server'
 
       - name: 🛠️ Start Nitro server
-        uses: appleboy/ssh-action@master
+        if: github.event_name != 'pull_request'
+        uses: appleboy/ssh-action@v1.2.0
         with:
           host: ${{ secrets.SSH_HOST }}
           port: ${{ secrets.SSH_PORT }}
