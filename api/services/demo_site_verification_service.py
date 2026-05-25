@@ -39,6 +39,19 @@ class DemoSiteVerificationService:
             logger.info("Demo URL check failed for %s: %s", url, exc)
             return False
 
+    def _public_api_urls(self, slug: str) -> list[str]:
+        """Return public API URLs to try when verifying demo site content."""
+        urls: list[str] = [
+            f"{settings.api_base_url.rstrip('/')}{settings.api_prefix}/demo-sites/public/{slug}",
+        ]
+        if settings.is_production:
+            internal_url: str = (
+                f"http://127.0.0.1:{settings.port}{settings.api_prefix}/demo-sites/public/{slug}"
+            )
+            if internal_url not in urls:
+                urls.append(internal_url)
+        return urls
+
     async def verify(self, db: Session, site: DemoSite) -> DemoSiteVerificationResult:
         """
         Verify content exists and the demo host serves the slug on demo.dibodev.fr.
@@ -56,10 +69,13 @@ class DemoSiteVerificationService:
                 message="Site content was not generated. Provisioning may have failed.",
             )
 
-        public_api_url: str = (
-            f"{settings.api_base_url.rstrip('/')}{settings.api_prefix}/demo-sites/public/{site.slug}"
-        )
-        public_api_ok: bool = await self._check_url(public_api_url)
+        public_api_url: str = self._public_api_urls(site.slug)[0]
+        public_api_ok: bool = False
+        for candidate_url in self._public_api_urls(site.slug):
+            if await self._check_url(candidate_url):
+                public_api_ok = True
+                public_api_url = candidate_url
+                break
         if not public_api_ok:
             return DemoSiteVerificationResult(
                 public_api_ok=False,

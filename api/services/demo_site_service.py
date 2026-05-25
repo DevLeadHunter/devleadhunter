@@ -108,6 +108,8 @@ class DemoSiteService:
         """
         content_json: dict = self._build_content_for_site(demo_site)
         demo_site.content_json = content_json
+        demo_site.demo_url = demo_site.demo_url or self.demo_url_for_slug(demo_site.slug)
+        demo_site.vercel_deployment_url = demo_site.demo_url
         demo_site.error_message = None
 
         if demo_site.storyblok_space_id:
@@ -238,6 +240,9 @@ class DemoSiteService:
                 )
         except Exception as exc:  # noqa: BLE001 — surface provisioning failure on the record
             logger.exception("Demo site provisioning failed for slug=%s", slug)
+            demo_site.content_json = demo_site.content_json or self._build_content_for_site(demo_site)
+            demo_site.demo_url = demo_site.demo_url or self.demo_url_for_slug(slug)
+            demo_site.vercel_deployment_url = demo_site.demo_url
             demo_site.status = DemoSiteStatus.FAILED.value
             demo_site.error_message = str(exc)
             demo_site.demo_url_live = False

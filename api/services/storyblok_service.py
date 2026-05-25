@@ -94,7 +94,14 @@ class StoryblokService:
                     "_uid": "services-1",
                     "component": "services",
                     "heading": "Our services",
-                    "items": [{"_uid": f"s-{i}", "label": label} for i, label in enumerate(services)],
+                    "items": [
+                        {
+                            "_uid": f"s-{i}",
+                            "component": "service_item",
+                            "label": label,
+                        }
+                        for i, label in enumerate(services)
+                    ],
                 },
                 {
                     "_uid": "contact-1",
@@ -106,6 +113,53 @@ class StoryblokService:
                 },
             ],
         }
+
+    def _storyblok_error_message(self, exc: httpx.HTTPStatusError) -> str:
+        """Build a readable Storyblok API error for API responses."""
+        detail: str = exc.response.text.strip()
+        if detail:
+            return f"Storyblok API error ({exc.response.status_code}): {detail}"
+        return f"Storyblok API error ({exc.response.status_code}) for {exc.request.method} {exc.request.url}"
+
+    async def _publish_home_story(
+        self,
+        client: httpx.AsyncClient,
+        space_id: int,
+        content_json: dict[str, Any],
+        *,
+        story_id: Optional[int] = None,
+    ) -> None:
+        """Create or update the home story and publish it."""
+        payload: dict[str, Any] = {
+            "story": {
+                "name": "Home",
+                "slug": "home",
+                "content": content_json,
+            },
+            "publish": 1,
+        }
+
+        if story_id is not None:
+            update_resp = await client.put(
+                f"{self._base_url}/spaces/{space_id}/stories/{story_id}",
+                headers=self._headers(),
+                json={"story": {"content": content_json}, "publish": 1},
+            )
+            try:
+                update_resp.raise_for_status()
+            except httpx.HTTPStatusError as exc:
+                raise ValueError(self._storyblok_error_message(exc)) from exc
+            return
+
+        create_resp = await client.post(
+            f"{self._base_url}/spaces/{space_id}/stories/",
+            headers=self._headers(),
+            json=payload,
+        )
+        try:
+            create_resp.raise_for_status()
+        except httpx.HTTPStatusError as exc:
+            raise ValueError(self._storyblok_error_message(exc)) from exc
 
     async def provision_space(
         self,
@@ -161,19 +215,7 @@ class StoryblokService:
 
             await self._ensure_template_components(client, space_id)
 
-            story_resp = await client.post(
-                f"{self._base_url}/spaces/{space_id}/stories/",
-                headers=self._headers(),
-                json={
-                    "story": {
-                        "name": "Home",
-                        "slug": "home",
-                        "content": content_json,
-                    },
-                    "publish": 1,
-                },
-            )
-            story_resp.raise_for_status()
+            await self._publish_home_story(client, space_id, content_json)
 
             space_detail = await client.get(
                 f"{self._base_url}/spaces/{space_id}",
@@ -222,26 +264,21 @@ class StoryblokService:
             return
 
         async with httpx.AsyncClient(timeout=60.0) as client:
+            await self._ensure_template_components(client, space_id)
+
             list_resp = await client.get(
                 f"{self._base_url}/spaces/{space_id}/stories/",
                 headers=self._headers(),
                 params={"with_slug": "home"},
             )
-            list_resp.raise_for_status()
-            stories: list[dict[str, Any]] = list_resp.json().get("stories", [])
-            if not stories:
-                raise ValueError("Home story not found in Storyblok space.")
+            try:
+                list_resp.raise_for_status()
+            except httpx.HTTPStatusError as exc:
+                raise ValueError(self._storyblok_error_message(exc)) from exc
 
-            story_id: int = int(stories[0]["id"])
-            update_resp = await client.put(
-                f"{self._base_url}/spaces/{space_id}/stories/{story_id}",
-                headers=self._headers(),
-                json={
-                    "story": {"content": content_json},
-                    "publish": 1,
-                },
-            )
-            update_resp.raise_for_status()
+            stories: list[dict[str, Any]] = list_resp.json().get("stories", [])
+            story_id: Optional[int] = int(stories[0]["id"]) if stories else None
+            await self._publish_home_story(client, space_id, content_json, story_id=story_id)
 
     async def delete_space(self, space_id: int) -> None:
         """Delete a Storyblok space by id."""
