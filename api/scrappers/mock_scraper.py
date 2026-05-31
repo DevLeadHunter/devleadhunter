@@ -1,10 +1,12 @@
 """
 Mock scraper for testing and development.
 """
-from typing import List
+from typing import Callable, List, Optional
+import asyncio
 import random
 from models.prospect import ProspectCreate
 from enums.source import Source
+from services.scrape_progress import ScrapeProgressReporter
 from .base_scraper import BaseScraper
 
 
@@ -38,35 +40,37 @@ class MockScraper(BaseScraper):
         }
     
     async def scrape(
-        self, 
-        category: str, 
-        city: str, 
-        max_results: int = 50
+        self,
+        category: str,
+        city: str,
+        max_results: int = 50,
+        *,
+        only_without_website: bool = True,
+        progress: Optional[ScrapeProgressReporter] = None,
+        should_stop: Optional[Callable[[], bool]] = None,
     ) -> List[ProspectCreate]:
-        """
-        Generate mock prospect data.
-        
-        Args:
-            category: Business category
-            city: City name
-            max_results: Number of mock results to generate
-            
-        Returns:
-            List of mock ProspectCreate objects
-        """
+        """Generate mock prospect data."""
         await self.start()
-        
+
         try:
+            if progress:
+                await progress.log("Mock — génération de prospects de test…")
+
             prospects = []
-            
-            # Generate random prospects
-            for i in range(min(max_results, 20)):  # Limit to 20 for performance
+            count = min(max_results, 20)
+
+            for i in range(count):
+                if should_stop and should_stop():
+                    break
                 name = self._generate_name(category, i)
                 address = self._generate_address(city)
                 phone = self._generate_phone()
                 email = self._generate_email(name)
-                website = self._generate_website(name) if random.random() > 0.3 else None
-                
+                if only_without_website:
+                    website = None
+                else:
+                    website = self._generate_website(name) if random.random() > 0.3 else None
+
                 prospect = ProspectCreate(
                     name=name,
                     address=address,
@@ -80,6 +84,9 @@ class MockScraper(BaseScraper):
                 )
                 
                 prospects.append(prospect)
+                if progress:
+                    await progress.prospect(prospect)
+                await asyncio.sleep(0.15)
             
             return prospects
         

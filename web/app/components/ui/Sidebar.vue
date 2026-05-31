@@ -1,7 +1,7 @@
 <template>
   <aside
     :class="[
-      'fixed left-0 top-0 z-40 h-full border-r border-[#30363d] bg-[#1a1a1a] transition-transform duration-300',
+      'fixed top-0 left-0 z-40 h-full border-r border-[#30363d] bg-[#1a1a1a] transition-transform duration-300',
       isOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0',
       isMobile ? 'w-64' : 'w-64',
     ]"
@@ -28,79 +28,126 @@
 
     <!-- Navigation Links -->
     <nav class="flex flex-col gap-2 px-2 py-4">
-      <!-- Desktop Credits Section -->
-      <div v-if="!isMobile" class="px-2 py-2">
-        <div class="relative" @mouseenter="handleMouseEnter" @mouseleave="handleMouseLeave">
+      <!-- Administration sub-panel (replaces main menu, Vercel-style) -->
+      <template v-if="isAdmin && showAdminPanel">
+        <div class="px-1 pb-2">
           <button
-            class="hover:btn-sidebar-hover flex w-full cursor-pointer items-center justify-start gap-2 rounded text-sm font-medium text-[#8b949e] transition-all hover:text-[#f9f9f9]"
-            @click.stop="toggleCreditsPopover"
+            type="button"
+            class="hover:btn-sidebar-hover flex w-full cursor-pointer items-center gap-2 rounded px-2 py-2 text-sm font-semibold text-[#f9f9f9] transition-all"
+            @click="handleAdminBack"
           >
-            <div
-              :class="[
-                'flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full border-2 bg-[#050505] font-semibold text-[#f9f9f9]',
-                creditBorderColor,
-                creditTextSize,
-              ]"
-            >
-              {{ creditIconValue }}
-            </div>
-            <span>Remaining Credits</span>
+            <i class="fa-solid fa-chevron-left text-xs text-[#8b949e]"></i>
+            <span>Menu principal</span>
           </button>
-          <!-- Desktop Popover -->
-          <div
-            v-if="showCreditsPopover && !isMobile"
-            class="absolute left-full top-0 z-50 ml-4 w-80 rounded-lg border border-[#30363d] bg-[#1a1a1a] p-4 shadow-xl"
-            @mouseenter="handleMouseEnter"
-            @mouseleave="handleMouseLeave"
-            @click.stop
-          >
-            <div class="mb-3 flex items-start gap-4">
+        </div>
+        <NuxtLink
+          v-for="link in adminLinks"
+          :key="link.to"
+          :to="link.to"
+          :class="[
+            'flex cursor-pointer items-center gap-2 rounded px-3 py-2 text-sm font-medium transition-all',
+            isLinkActive(link.to)
+              ? 'btn-sidebar-active text-[#f9f9f9]'
+              : 'hover:btn-sidebar-hover text-[#8b949e] hover:text-[#f9f9f9]',
+          ]"
+          @click="handleClick"
+        >
+          <i :class="link.icon" class="h-4 w-4"></i>
+          <span>{{ link.label }}</span>
+        </NuxtLink>
+      </template>
+
+      <template v-else>
+        <!-- Desktop Credits Section -->
+        <div v-if="!isMobile" class="px-2 py-2">
+          <div class="relative" @mouseenter="handleMouseEnter" @mouseleave="handleMouseLeave">
+            <button
+              class="hover:btn-sidebar-hover flex w-full cursor-pointer items-center justify-start gap-2 rounded text-sm font-medium text-[#8b949e] transition-all hover:text-[#f9f9f9]"
+              @click.stop="toggleCreditsPopover"
+            >
               <div
                 :class="[
-                  'flex h-16 w-16 flex-shrink-0 items-center justify-center rounded-full border-2 bg-[#1a1a1a] font-semibold text-[#f9f9f9]',
+                  'flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full border-2 bg-[#050505] font-semibold text-[#f9f9f9]',
                   creditBorderColor,
-                  creditTextSizeLarge,
+                  creditTextSize,
                 ]"
               >
                 {{ creditIconValue }}
               </div>
-              <div class="min-w-0 flex-1">
-                <p class="mb-1 text-sm font-bold uppercase text-[#f9f9f9]">Remaining Credits</p>
-                <p class="text-xs leading-relaxed text-[#8b949e]">
-                  Used to search and find prospects for your campaigns and send emails
-                </p>
-              </div>
-            </div>
-            <NuxtLink
-              to="/dashboard/buy-credits"
-              class="btn-secondary flex w-full items-center justify-center px-3 py-2 text-center text-xs"
-              @click="showCreditsPopover = false"
+              <span>Remaining Credits</span>
+            </button>
+            <!-- Desktop Popover -->
+            <div
+              v-if="showCreditsPopover && !isMobile"
+              class="absolute top-0 left-full z-50 ml-4 w-80 rounded-lg border border-[#30363d] bg-[#1a1a1a] p-4 shadow-xl"
+              @mouseenter="handleMouseEnter"
+              @mouseleave="handleMouseLeave"
+              @click.stop
             >
-              Refill now
-            </NuxtLink>
+              <div class="mb-3 flex items-start gap-4">
+                <div
+                  :class="[
+                    'flex h-16 w-16 flex-shrink-0 items-center justify-center rounded-full border-2 bg-[#1a1a1a] font-semibold text-[#f9f9f9]',
+                    creditBorderColor,
+                    creditTextSizeLarge,
+                  ]"
+                >
+                  {{ creditIconValue }}
+                </div>
+                <div class="min-w-0 flex-1">
+                  <p class="mb-1 text-sm font-bold text-[#f9f9f9] uppercase">Remaining Credits</p>
+                  <p class="text-xs leading-relaxed text-[#8b949e]">
+                    Used to search and find prospects for your campaigns and send emails
+                  </p>
+                </div>
+              </div>
+              <NuxtLink
+                to="/dashboard/buy-credits"
+                class="btn-secondary flex w-full items-center justify-center px-3 py-2 text-center text-xs"
+                @click="showCreditsPopover = false"
+              >
+                Refill now
+              </NuxtLink>
+            </div>
           </div>
         </div>
-      </div>
 
-      <NuxtLink
-        v-for="link in links"
-        :key="link.to"
-        :to="link.to"
-        :class="[
-          'flex items-center gap-2 rounded px-3 py-2 text-sm font-medium transition-all',
-          isActive(link.to)
-            ? 'btn-sidebar-active text-[#f9f9f9]'
-            : 'hover:btn-sidebar-hover text-[#8b949e] hover:text-[#f9f9f9]',
-        ]"
-        @click="handleClick"
-      >
-        <i :class="link.icon" class="h-4 w-4"></i>
-        <span>{{ link.label }}</span>
-      </NuxtLink>
+        <NuxtLink
+          v-for="link in links"
+          :key="link.to"
+          :to="link.to"
+          :class="[
+            'flex cursor-pointer items-center gap-2 rounded px-3 py-2 text-sm font-medium transition-all',
+            isActive(link.to)
+              ? 'btn-sidebar-active text-[#f9f9f9]'
+              : 'hover:btn-sidebar-hover text-[#8b949e] hover:text-[#f9f9f9]',
+          ]"
+          @click="handleClick"
+        >
+          <i :class="link.icon" class="h-4 w-4"></i>
+          <span>{{ link.label }}</span>
+        </NuxtLink>
+
+        <button
+          v-if="isAdmin"
+          type="button"
+          :class="[
+            'flex w-full cursor-pointer items-center gap-2 rounded px-3 py-2 text-sm font-medium transition-all',
+            isAdminNavActive
+              ? 'btn-sidebar-active text-[#f9f9f9]'
+              : 'hover:btn-sidebar-hover text-[#8b949e] hover:text-[#f9f9f9]',
+          ]"
+          @click="handleAdminClick"
+        >
+          <i class="fa-solid fa-shield-halved h-4 w-4"></i>
+          <span>Administration</span>
+          <i class="fa-solid fa-chevron-right ml-auto text-xs opacity-60"></i>
+        </button>
+      </template>
     </nav>
 
     <!-- User Info -->
-    <div class="absolute bottom-0 left-0 right-0 border-t border-[#30363d] bg-[#1a1a1a] p-4">
+    <div class="absolute right-0 bottom-0 left-0 border-t border-[#30363d] bg-[#1a1a1a] p-4">
       <!-- User Profile - Clickable -->
       <button
         class="group mb-2 flex w-full items-center gap-2 rounded-lg px-2 py-2 text-sm transition-all hover:bg-[#2a2a2a]"
@@ -174,6 +221,24 @@ const emit = defineEmits<{
  */
 const userStore = useUserStore()
 
+const {
+  isAdmin,
+  isAdminNavOpen,
+  isAdminNavActive,
+  isMobileAdminPanel,
+  adminLinks,
+  openAdminNav,
+  closeAdminNav,
+  isLinkActive,
+} = useAdminNav()
+
+/**
+ * Whether the Administration sub-panel replaces the main sidebar menu.
+ */
+const showAdminPanel = computed(() => {
+  return props.isMobile ? isMobileAdminPanel.value : isAdminNavOpen.value
+})
+
 /**
  * Navigation links configuration
  */
@@ -186,15 +251,15 @@ const links = computed(() => {
     { to: '/dashboard/email-accounts', label: 'Email Accounts', icon: 'fa-solid fa-at' },
     { to: '/dashboard/email-templates', label: 'Email Templates', icon: 'fa-solid fa-file-lines' },
     { to: '/dashboard/credits', label: 'My Credits', icon: 'fa-solid fa-coins' },
-    { to: '/dashboard/support', label: 'Support', icon: 'fa-solid fa-headset' },
     { to: '/dashboard/buy-credits', label: 'Buy Credits', icon: 'fa-solid fa-credit-card' },
   ]
 
-  // Add admin links for admin users
-  if (userStore.user?.role === 'ADMIN') {
-    baseLinks.push({ to: '/dashboard/users', label: 'Users', icon: 'fa-solid fa-users-gear' })
-    baseLinks.push({ to: '/dashboard/credit-settings', label: 'Credit Settings', icon: 'fa-solid fa-sliders' })
-    baseLinks.push({ to: '/dashboard/accounting', label: 'Comptabilité', icon: 'fa-solid fa-chart-line' })
+  if (!isAdmin.value) {
+    baseLinks.splice(7, 0, {
+      to: '/dashboard/support',
+      label: 'Support',
+      icon: 'fa-solid fa-headset',
+    })
   }
 
   return baseLinks
@@ -375,6 +440,23 @@ const isActive = (path: string): boolean => {
 const handleClick = (): void => {
   if (props.isMobile) {
     emit('toggle')
+  }
+}
+
+/**
+ * Close the Administration sub-panel and return to the main menu.
+ */
+const handleAdminBack = (): void => {
+  closeAdminNav(props.isMobile)
+}
+
+/**
+ * Open the Administration sub-panel inside the sidebar.
+ */
+const handleAdminClick = (): void => {
+  openAdminNav(props.isMobile)
+  if (props.isMobile) {
+    return
   }
 }
 

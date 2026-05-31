@@ -16,7 +16,7 @@
         <div class="space-y-6">
           <div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
             <div class="min-w-0 space-y-2">
-              <p class="text-xs font-semibold uppercase tracking-[0.12em] text-blue-400">Desktop update</p>
+              <p class="text-xs font-semibold tracking-[0.12em] text-blue-400 uppercase">Desktop update</p>
               <h2 class="text-xl font-semibold text-[#f9f9f9] sm:text-2xl">{{ statusTitle }}</h2>
               <p class="text-muted text-sm leading-relaxed">{{ statusDescription }}</p>
             </div>
@@ -33,7 +33,7 @@
 
           <div v-if="status === 'downloading'" class="space-y-3">
             <div class="text-muted flex items-center justify-between gap-3 text-xs">
-              <span class="font-medium tabular-nums text-[#f9f9f9]">{{ downloadLabel }}</span>
+              <span class="font-medium text-[#f9f9f9] tabular-nums">{{ downloadLabel }}</span>
               <span v-if="totalBytes && totalBytes > 0" class="tabular-nums">
                 {{ (downloadedBytes / (1024 * 1024)).toFixed(1) }} / {{ (totalBytes / (1024 * 1024)).toFixed(1) }} MB
               </span>

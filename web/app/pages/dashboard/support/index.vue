@@ -3,7 +3,7 @@
     <header class="mb-6 space-y-4">
       <div class="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
         <div class="space-y-2">
-          <h1 class="text-lg font-semibold leading-tight text-[#f9f9f9] md:text-xl">Support tickets</h1>
+          <h1 class="text-lg leading-tight font-semibold text-[#f9f9f9] md:text-xl">Support tickets</h1>
           <p class="max-w-2xl text-sm text-[#8b949e]">
             Review every request in one place and jump back into conversations instantly. Admins see the full queue
             while members only see their own tickets.
@@ -28,7 +28,7 @@
     <div class="space-y-4">
       <div v-if="isAdmin" class="card p-4 sm:p-6">
         <div class="space-y-3">
-          <h2 class="text-sm font-semibold uppercase tracking-wide text-[#f9f9f9]">Filter</h2>
+          <h2 class="text-sm font-semibold tracking-wide text-[#f9f9f9] uppercase">Filter</h2>
           <div class="flex flex-wrap gap-2">
             <button
               v-for="filter in statusFilters"
@@ -71,7 +71,7 @@
           :to="`/dashboard/support/${ticket.id}`"
           class="card relative block overflow-hidden transition-colors hover:border-[#f9f9f9]"
         >
-          <div :class="['absolute bottom-0 left-0 top-0 w-1.5', getStatusBorderColor(ticket.status)]"></div>
+          <div :class="['absolute top-0 bottom-0 left-0 w-1.5', getStatusBorderColor(ticket.status)]"></div>
           <div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
             <div class="min-w-0 flex-1 space-y-2">
               <h3 class="text-base font-semibold text-[#f9f9f9]">{{ ticket.subject }}</h3>

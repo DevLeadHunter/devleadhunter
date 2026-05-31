@@ -6,11 +6,11 @@
         Back to tickets
       </NuxtLink>
 
-      <p class="text-xs font-semibold uppercase tracking-wider text-[#71A3DB]">Ticket #{{ ticketId }}</p>
+      <p class="text-xs font-semibold tracking-wider text-[#71A3DB] uppercase">Ticket #{{ ticketId }}</p>
     </div>
 
     <header class="space-y-2">
-      <h1 class="break-words text-[28px] font-semibold leading-tight text-[#f9f9f9]">
+      <h1 class="text-[28px] leading-tight font-semibold break-words text-[#f9f9f9]">
         {{ ticket?.subject || 'Loading…' }}
       </h1>
       <p class="max-w-2xl text-sm text-[#8b949e]">
@@ -28,23 +28,23 @@
     <div v-else class="grid max-w-full items-start gap-6 xl:grid-cols-[320px_1fr]">
       <aside class="card h-fit max-w-full space-y-6 overflow-hidden bg-[#101216] p-4 sm:p-6 xl:sticky xl:top-6">
         <div class="space-y-3">
-          <h2 class="text-sm font-semibold uppercase tracking-wide text-[#f9f9f9]">Ticket summary</h2>
+          <h2 class="text-sm font-semibold tracking-wide text-[#f9f9f9] uppercase">Ticket summary</h2>
           <dl class="space-y-3 text-xs leading-relaxed text-[#8b949e]">
             <div class="flex items-start justify-between gap-4">
               <dt class="font-medium text-[#f9f9f9]">Requester</dt>
-              <dd class="min-w-0 break-words text-right">{{ ticket.user_name }}</dd>
+              <dd class="min-w-0 text-right break-words">{{ ticket.user_name }}</dd>
             </div>
             <div class="flex items-start justify-between gap-4">
               <dt class="font-medium text-[#f9f9f9]">Topic</dt>
-              <dd class="min-w-0 break-words text-right">{{ topicLabel(ticket.topic) }}</dd>
+              <dd class="min-w-0 text-right break-words">{{ topicLabel(ticket.topic) }}</dd>
             </div>
             <div class="flex items-start justify-between gap-4">
               <dt class="font-medium text-[#f9f9f9]">Created</dt>
-              <dd class="min-w-0 break-words text-right">{{ formatDate(ticket.created_at, true) }}</dd>
+              <dd class="min-w-0 text-right break-words">{{ formatDate(ticket.created_at, true) }}</dd>
             </div>
             <div class="flex items-start justify-between gap-4">
               <dt class="font-medium text-[#f9f9f9]">Last update</dt>
-              <dd class="min-w-0 break-words text-right">
+              <dd class="min-w-0 text-right break-words">
                 {{ ticket.last_message_at ? formatDate(ticket.last_message_at, true) : 'Just now' }}
               </dd>
             </div>
@@ -53,7 +53,7 @@
               <dd>
                 <span
                   :class="[
-                    'rounded-full px-3 py-1 text-[11px] font-semibold uppercase tracking-wide',
+                    'rounded-full px-3 py-1 text-[11px] font-semibold tracking-wide uppercase',
                     statusStyles[ticket.status] || statusStyles.default,
                   ]"
                 >
@@ -66,7 +66,7 @@
 
         <div class="space-y-2">
           <h3 class="text-sm font-semibold text-[#f9f9f9]">Initial description</h3>
-          <p class="overflow-wrap-anywhere whitespace-pre-wrap break-words text-xs leading-relaxed text-[#8b949e]">
+          <p class="overflow-wrap-anywhere text-xs leading-relaxed break-words whitespace-pre-wrap text-[#8b949e]">
             {{ ticket.description }}
           </p>
         </div>
@@ -110,7 +110,7 @@
             <div
               v-if="message.content && message.content.trim()"
               :class="[
-                'max-w-full whitespace-pre-wrap break-words rounded-2xl px-4 py-3 text-sm leading-relaxed',
+                'max-w-full rounded-2xl px-4 py-3 text-sm leading-relaxed break-words whitespace-pre-wrap',
                 message.sender_id === userStore.user?.id
                   ? 'bg-[#71A3DB] text-[#050505]'
                   : 'bg-[#1a1f26] text-[#f9f9f9]',
@@ -151,7 +151,7 @@
               placeholder="Write a reply…"
               @keydown="handleKeydown"
             ></textarea>
-            <div class="absolute bottom-3 right-3 flex items-center gap-2">
+            <div class="absolute right-3 bottom-3 flex items-center gap-2">
               <label
                 class="flex h-9 w-9 cursor-pointer items-center justify-center rounded-lg border border-[#30363d] bg-[#050505] text-[#8b949e] transition-colors hover:text-[#f9f9f9]"
               >
@@ -188,7 +188,7 @@
               </figcaption>
               <button
                 type="button"
-                class="absolute right-2 top-2 flex h-6 w-6 items-center justify-center rounded-full bg-[#050505]/80 text-[11px] text-[#f9f9f9] transition-colors hover:bg-[#DC4747] hover:text-white"
+                class="absolute top-2 right-2 flex h-6 w-6 items-center justify-center rounded-full bg-[#050505]/80 text-[11px] text-[#f9f9f9] transition-colors hover:bg-[#DC4747] hover:text-white"
                 @click="removeComposerAttachment(index)"
               >
                 <i class="fa-solid fa-xmark"></i>

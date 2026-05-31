@@ -1,149 +1,120 @@
 """
 Web scraper service for fetching prospect data.
 """
-from typing import List, Optional
-import asyncio
+from __future__ import annotations
+
+from typing import Callable, List, Optional
 import logging
+
 from models.prospect import ProspectCreate
 from scrappers.base_scraper import BaseScraper
-
+from services.scrape_progress import ScrapeProgressReporter
 
 logger = logging.getLogger(__name__)
 
 
 class ScraperService:
-    """
-    Service for coordinating web scraping operations.
-    
-    This service manages multiple scrapers and orchestrates
-    data collection from various sources.
-    """
-    
-    def __init__(self):
-        """Initialize the scraper service."""
+    """Service for coordinating web scraping operations."""
+
+    def __init__(self) -> None:
         self._scrapers: List[BaseScraper] = []
         self._is_active = False
-    
+
     async def add_scraper(self, scraper: BaseScraper) -> None:
-        """
-        Register a scraper with the service.
-        
-        Args:
-            scraper: Scraper instance to register
-        """
         if scraper not in self._scrapers:
             self._scrapers.append(scraper)
-    
+
     async def remove_scraper(self, scraper: BaseScraper) -> None:
-        """
-        Unregister a scraper from the service.
-        
-        Args:
-            scraper: Scraper instance to remove
-        """
         if scraper in self._scrapers:
             self._scrapers.remove(scraper)
-    
+
     async def scrape_all(
-        self, 
-        category: str, 
-        city: str, 
+        self,
+        category: str,
+        city: str,
         max_results: int = 50,
-        source_filter: Optional[str] = None
+        source_filter: Optional[str] = None,
+        *,
+        only_without_website: bool = True,
+        progress: Optional[ScrapeProgressReporter] = None,
+        should_stop: Optional[Callable[[], bool]] = None,
     ) -> List[ProspectCreate]:
-        """
-        Run all registered scrapers and collect results.
-        
-        Args:
-            category: Business category to search
-            city: City to search in
-            max_results: Maximum number of results per scraper
-            source_filter: Optional source filter (e.g., 'google', 'mock', 'all')
-            
-        Returns:
-            Combined list of prospects from all scrapers
-            
-        Example:
-            >>> prospects = await scraper_service.scrape_all("restaurant", "Paris", 50, "google")
-        """
-        logger.info(f"[ScraperService] scrape_all called: category={category}, city={city}, max_results={max_results}, source_filter={source_filter}")
-        
+        """Run scrapers and collect results, optionally streaming progress."""
+        logger.info(
+            "[ScraperService] scrape_all category=%s city=%s max=%s source=%s",
+            category,
+            city,
+            max_results,
+            source_filter,
+        )
+
         if not self._scrapers:
-            logger.warning("[ScraperService] No scrapers registered!")
+            if progress:
+                await progress.log("Aucun scraper enregistré.")
             return []
-        
-        # Filter scrapers by source if needed
+
         scrapers_to_use = self._scrapers
-        logger.info(f"Total scrapers registered: {len(self._scrapers)}")
-        for s in self._scrapers:
-            logger.info(f"Registered scraper: {s.__class__.__name__} with source: {s.source}")
-        
         if source_filter and source_filter != "all":
             from enums.source import Source
-            # Try to find matching source (case insensitive)
-            source_filter_lower = source_filter.lower()
-            target_source = None
-            for source in Source:
-                if source.value.lower() == source_filter_lower:
-                    target_source = source
-                    break
-            
+
+            target_source = next(
+                (s for s in Source if s.value.lower() == source_filter.lower()),
+                None,
+            )
             if target_source is None:
-                logger.warning(f"Unknown source filter: {source_filter}, using all scrapers")
+                logger.warning("Unknown source filter: %s", source_filter)
             else:
                 scrapers_to_use = [s for s in self._scrapers if s.source == target_source]
-                logger.info(f"Filtering scrapers by source: {source_filter} -> {len(scrapers_to_use)} scrapers found")
-                for s in scrapers_to_use:
-                    logger.info(f"Selected scraper: {s.__class__.__name__} with source: {s.source}")
-        else:
-            logger.info(f"Using all scrapers: {len(scrapers_to_use)} scrapers available")
-        
-        # Run scrapers concurrently
-        logger.info(f"Starting {len(scrapers_to_use)} scrapers...")
+
+        all_prospects: list[ProspectCreate] = []
+        seen: set[tuple[str, str]] = set()
+
         for scraper in scrapers_to_use:
-            logger.info(f"Calling scraper: {scraper.__class__.__name__} with category={category}, city={city}, max_results={max_results}")
-        
-        tasks = [
-            scraper.scrape(category, city, max_results) 
-            for scraper in scrapers_to_use
-        ]
-        
-        results = await asyncio.gather(*tasks, return_exceptions=True)
-        
-        # Combine results and filter exceptions
-        all_prospects = []
-        for i, result in enumerate(results):
-            if isinstance(result, list):
-                all_prospects.extend(result)
-                logger.info(f"Scraper {i} returned {len(result)} prospects")
-            elif isinstance(result, Exception):
-                logger.error(f"Scraper {i} raised exception: {result}", exc_info=result)
-        
-        # Remove duplicates (simple name-based deduplication)
-        seen = set()
-        unique_prospects = []
-        for prospect in all_prospects:
-            key = (prospect.name.lower(), prospect.city.lower())
-            if key not in seen:
+            if should_stop and should_stop():
+                break
+
+            source_name = scraper.source.value
+            if progress:
+                await progress.log(f"Source {source_name} — lancement du scrape…")
+
+            try:
+                results = await scraper.scrape(
+                    category,
+                    city,
+                    max_results,
+                    only_without_website=only_without_website,
+                    progress=progress,
+                    should_stop=should_stop,
+                )
+            except Exception as exc:
+                logger.error("Scraper %s failed: %s", scraper.__class__.__name__, exc, exc_info=True)
+                if progress:
+                    await progress.log(f"Source {source_name} — erreur : {exc}")
+                continue
+
+            if progress:
+                await progress.log(f"Source {source_name} — {len(results)} résultat(s) brut(s)")
+
+            for prospect in results:
+                if should_stop and should_stop():
+                    break
+                key = (prospect.name.lower(), (prospect.city or "").lower())
+                if key in seen:
+                    continue
                 seen.add(key)
-                unique_prospects.append(prospect)
-        
-        return unique_prospects[:max_results]
-    
+                all_prospects.append(prospect)
+
+            if len(all_prospects) >= max_results:
+                break
+
+        return all_prospects[:max_results]
+
     async def get_status(self) -> dict:
-        """
-        Get status of all registered scrapers.
-        
-        Returns:
-            Dictionary with scraper statuses
-        """
         return {
             "total_scrapers": len(self._scrapers),
             "scraper_names": [s.__class__.__name__ for s in self._scrapers],
-            "is_active": self._is_active
+            "is_active": self._is_active,
         }
 
 
-# Global service instance
 scraper_service = ScraperService()
-

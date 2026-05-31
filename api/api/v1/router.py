@@ -3,9 +3,9 @@ Main API v1 router.
 """
 from fastapi import APIRouter
 from .routes import (
-    health, prospects, auth, users, credit_settings, credits, payments, 
+    health, prospects, auth, users, credit_settings, credits, payments,
     accounting, support, email_accounts, email_templates, emails, scraping_jobs,
-    campaigns, unsubscribe, exports, interactions, demo_sites
+    campaigns, unsubscribe, exports, interactions, demo_sites, sources,
 )
 from core.config import settings
 
@@ -35,4 +35,5 @@ router.include_router(unsubscribe.router)
 router.include_router(exports.router)
 router.include_router(interactions.router)
 router.include_router(demo_sites.router)
+router.include_router(sources.router)
 

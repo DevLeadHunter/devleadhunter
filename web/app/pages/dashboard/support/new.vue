@@ -8,7 +8,7 @@
       </NuxtLink>
 
       <header class="space-y-2">
-        <h1 class="text-xl font-semibold leading-tight text-[#f9f9f9]">Report an issue or request help</h1>
+        <h1 class="text-xl leading-tight font-semibold text-[#f9f9f9]">Report an issue or request help</h1>
         <p class="max-w-2xl text-sm text-[#8b949e]">
           Describe what happened, add as much context as possible and attach screenshots if you have them. Our team will
           get back to you directly in the conversation thread.
@@ -82,7 +82,7 @@
                 </figcaption>
                 <button
                   type="button"
-                  class="absolute right-2 top-2 flex h-6 w-6 items-center justify-center rounded-full bg-[#050505]/80 text-[11px] text-[#f9f9f9] transition-colors hover:bg-[#DC4747] hover:text-white"
+                  class="absolute top-2 right-2 flex h-6 w-6 items-center justify-center rounded-full bg-[#050505]/80 text-[11px] text-[#f9f9f9] transition-colors hover:bg-[#DC4747] hover:text-white"
                   @click="removeAttachment(index)"
                 >
                   <i class="fa-solid fa-xmark"></i>
@@ -101,7 +101,7 @@
 
         <aside class="card space-y-6 bg-[#101216] p-6">
           <div>
-            <h2 class="text-sm font-semibold uppercase tracking-wide text-[#f9f9f9]">Tips to speed things up</h2>
+            <h2 class="text-sm font-semibold tracking-wide text-[#f9f9f9] uppercase">Tips to speed things up</h2>
             <ul class="mt-3 space-y-2 text-xs leading-relaxed text-[#8b949e]">
               <li class="flex items-start gap-2">
                 <i class="fa-regular fa-circle-check mt-0.5 text-[#71A3DB]"></i>

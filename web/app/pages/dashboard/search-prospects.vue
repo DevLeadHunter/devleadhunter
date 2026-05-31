@@ -50,24 +50,28 @@
           <div>
             <label class="text-muted mb-1.5 block text-xs font-medium">Source</label>
             <select v-model="searchForm.source" class="input-field">
-              <option value="">Toutes les sources</option>
-              <option value="google">Google</option>
-              <option value="pagesjaunes">Pages Jaunes</option>
-              <option value="mock">Mock (Test)</option>
+              <option
+                v-for="option in PROSPECT_SOURCE_SEARCH_OPTIONS"
+                :key="option.value || 'all'"
+                :value="option.value"
+              >
+                {{ option.label }}
+              </option>
             </select>
           </div>
         </div>
 
-        <div class="flex items-center">
-          <input
+        <div class="space-y-3">
+          <UiCheckbox
+            id="onlyWithoutWebsite"
+            v-model="searchForm.onlyWithoutWebsite"
+            label="Uniquement les prospects sans site web (recommandé)"
+          />
+          <UiCheckbox
             id="skipDuplicates"
             v-model="searchForm.skipDuplicates"
-            type="checkbox"
-            class="h-4 w-4 rounded border-[#30363d] bg-[#050505] text-[#f9f9f9] focus:ring-[#f9f9f9]"
+            label="Ignorer les prospects déjà enregistrés (recommandé)"
           />
-          <label for="skipDuplicates" class="text-muted ml-2 text-sm">
-            Ignorer les prospects déjà enregistrés (recommandé)
-          </label>
         </div>
 
         <div class="flex items-center gap-4 pt-4">
@@ -114,36 +118,53 @@
         </div>
       </div>
 
-      <!-- Progress Bar -->
-      <div v-if="currentJob.status === 'running'" class="space-y-4">
+      <!-- Progress + live stream -->
+      <div v-if="currentJob.status === 'running' || currentJob.status === 'pending'" class="space-y-4">
         <div>
           <div class="mb-2 flex items-center justify-between">
             <span class="text-muted text-sm font-medium">
-              {{ currentJob.progress.current }} / {{ currentJob.progress.total }} prospects traités
+              {{ liveProgress.current }} / {{ liveProgress.total || currentJob.max_results }} prospects ajoutés
             </span>
-            <span class="text-muted text-sm font-medium"> {{ Math.round(currentJob.progress.percentage) }}% </span>
+            <span class="text-muted text-sm font-medium"> {{ Math.round(liveProgress.percentage) }}% </span>
           </div>
           <div class="h-3 w-full overflow-hidden rounded-full border border-[#30363d] bg-[#050505]">
             <div
               class="h-full rounded-full bg-[#f9f9f9] transition-all duration-300"
-              :style="{ width: currentJob.progress.percentage + '%' }"
+              :style="{ width: Math.min(liveProgress.percentage, 100) + '%' }"
             ></div>
           </div>
         </div>
 
-        <div v-if="currentJob.progress.current_prospect" class="rounded-lg border border-[#30363d] bg-[#1a1a1a] p-3">
+        <div v-if="liveProgress.current_prospect" class="rounded-lg border border-[#30363d] bg-[#1a1a1a] p-3">
           <p class="text-sm text-[#f9f9f9]">
-            <span class="font-medium">En cours:</span> {{ currentJob.progress.current_prospect }}
+            <span class="font-medium">En cours:</span> {{ liveProgress.current_prospect }}
           </p>
         </div>
 
         <div
-          v-if="currentJob.progress.estimated_time_remaining !== null"
+          v-if="liveProgress.estimated_time_remaining !== null && liveProgress.estimated_time_remaining > 0"
           class="text-muted flex items-center gap-2 text-sm"
         >
           <i class="fa-solid fa-clock h-4 w-4"></i>
-          Temps restant estimé: {{ formatTime(currentJob.progress.estimated_time_remaining) }}
+          Temps restant estimé: {{ formatTime(liveProgress.estimated_time_remaining) }}
         </div>
+
+        <div class="flex items-center gap-2 text-xs">
+          <span
+            class="inline-flex items-center gap-1.5 rounded-full border px-2 py-0.5"
+            :class="streamConnected ? 'border-[#2BAD5F] text-[#2BAD5F]' : 'border-[#8b949e] text-[#8b949e]'"
+          >
+            <span class="h-1.5 w-1.5 rounded-full" :class="streamConnected ? 'bg-[#2BAD5F]' : 'bg-[#8b949e]'"></span>
+            {{ streamConnected ? 'Temps réel actif' : 'Connexion temps réel…' }}
+          </span>
+          <span v-if="streamSkipped > 0" class="text-muted"> {{ streamSkipped }} doublon(s) ignoré(s) </span>
+        </div>
+
+        <ScrapingJobLivePanel
+          :logs="streamLogs"
+          :prospects="streamProspects"
+          :is-running="currentJob.status === 'running'"
+        />
 
         <div class="rounded-lg border border-[#30363d] bg-[#1a1a1a] p-4">
           <div class="flex items-start gap-3">
@@ -156,6 +177,11 @@
             </div>
           </div>
         </div>
+      </div>
+
+      <!-- Live recap after completion (last run) -->
+      <div v-if="currentJob.status === 'completed' && streamLogs.length > 0" class="space-y-4">
+        <ScrapingJobLivePanel :logs="streamLogs" :prospects="streamProspects" :is-running="false" />
       </div>
 
       <!-- Results -->
@@ -253,9 +279,12 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useRuntimeConfig } from '#app'
 import { useUserStore } from '~/stores/user'
+import { PROSPECT_SOURCE_SEARCH_OPTIONS } from '~/constants/prospectSources'
+import { useScrapingJobStream } from '~/composables/useScrapingJobStream'
+import type { Prospect } from '~/types'
 
 definePageMeta({
   layout: 'dashboard',
@@ -278,6 +307,8 @@ interface ScrapingJob {
     current_prospect: string | null
     estimated_time_remaining: number | null
   }
+  logs?: string[]
+  live_prospects?: Prospect[]
   results: number[]
   skipped_duplicates: number
   error: string | null
@@ -289,25 +320,106 @@ interface ScrapingJob {
 const config = useRuntimeConfig()
 const userStore = useUserStore()
 
-// State
-const searchForm = ref({
+const SEARCH_FORM_STORAGE_KEY = 'devleadhunter-search-form'
+
+interface SearchFormState {
+  category: string
+  city: string
+  maxResults: number
+  source: string
+  skipDuplicates: boolean
+  onlyWithoutWebsite: boolean
+}
+
+const defaultSearchForm = (): SearchFormState => ({
   category: '',
   city: '',
   maxResults: 50,
   source: '',
   skipDuplicates: true,
+  onlyWithoutWebsite: true,
 })
+
+function loadSavedSearchForm(): SearchFormState {
+  if (import.meta.server) {
+    return defaultSearchForm()
+  }
+  try {
+    const raw = localStorage.getItem(SEARCH_FORM_STORAGE_KEY)
+    if (!raw) {
+      return defaultSearchForm()
+    }
+    const parsed = JSON.parse(raw) as Partial<SearchFormState>
+    return { ...defaultSearchForm(), ...parsed }
+  } catch {
+    return defaultSearchForm()
+  }
+}
+
+function persistSearchForm(form: SearchFormState): void {
+  if (import.meta.server) {
+    return
+  }
+  localStorage.setItem(SEARCH_FORM_STORAGE_KEY, JSON.stringify(form))
+}
+
+// State — restored from last search
+const searchForm = ref<SearchFormState>(loadSavedSearchForm())
 
 const currentJob = ref<ScrapingJob | null>(null)
 const recentJobs = ref<ScrapingJob[]>([])
 const isStarting = ref(false)
 const isRefreshing = ref(false)
+const stream = useScrapingJobStream()
 let pollInterval: ReturnType<typeof setInterval> | null = null
+
+const liveProgress = computed(() => {
+  if (stream.progress.value.total > 0 || stream.progress.value.current > 0) {
+    return stream.progress.value
+  }
+  return currentJob.value?.progress ?? stream.progress.value
+})
+
+const streamLogs = computed(() => stream.logs.value)
+const streamProspects = computed(() => stream.prospects.value)
+const streamConnected = computed(() => stream.isConnected.value)
+const streamSkipped = computed(() => stream.skippedDuplicates.value)
+
+function attachStream(job: ScrapingJob): void {
+  stream.hydrateFromJob({
+    logs: job.logs,
+    live_prospects: job.live_prospects,
+    progress: job.progress,
+    skipped_duplicates: job.skipped_duplicates,
+  })
+
+  const token = userStore.token
+  if (!token) {
+    return
+  }
+
+  stream.connect(job.id, token, {
+    onDone: async (summary) => {
+      stopPolling()
+      stream.disconnect()
+      await refreshJobStatus()
+      if (currentJob.value) {
+        currentJob.value.status = 'completed'
+        currentJob.value.skipped_duplicates = summary.skipped_duplicates
+      }
+    },
+    onError: async () => {
+      stopPolling()
+      await refreshJobStatus()
+    },
+  })
+}
 
 // Methods
 async function startSearch() {
   try {
     isStarting.value = true
+    persistSearchForm(searchForm.value)
 
     const response = await $fetch<ScrapingJob>(`${config.public.apiBase}/api/v1/scraping-jobs`, {
       method: 'POST',
@@ -321,10 +433,13 @@ async function startSearch() {
         max_results: searchForm.value.maxResults,
         source: searchForm.value.source || null,
         skip_duplicates: searchForm.value.skipDuplicates,
+        only_without_website: searchForm.value.onlyWithoutWebsite,
       },
     })
 
     currentJob.value = response
+    stream.reset()
+    attachStream(response)
     startPolling()
   } catch (err: unknown) {
     alert(`Erreur: ${err.data?.detail || err.message}`)
@@ -370,8 +485,10 @@ async function loadJob(jobId: string) {
     })
 
     currentJob.value = response
+    stream.reset()
+    attachStream(response)
 
-    if (response.status === 'running') {
+    if (response.status === 'running' || response.status === 'pending') {
       startPolling()
     }
   } catch (err: unknown) {
@@ -398,6 +515,8 @@ async function loadRecentJobs() {
       const runningJob = recentJobs.value.find((j) => j.status === 'running')
       if (runningJob) {
         currentJob.value = runningJob
+        stream.reset()
+        attachStream(runningJob)
         startPolling()
       }
     }
@@ -408,21 +527,24 @@ async function loadRecentJobs() {
 
 function resetSearch() {
   currentJob.value = null
+  stream.disconnect()
+  stream.reset()
   stopPolling()
-  searchForm.value = {
-    category: '',
-    city: '',
-    maxResults: 50,
-    source: '',
-    skipDuplicates: true,
-  }
 }
+
+watch(
+  searchForm,
+  (form) => {
+    persistSearchForm(form)
+  },
+  { deep: true },
+)
 
 function startPolling() {
   stopPolling()
   pollInterval = setInterval(() => {
     refreshJobStatus()
-  }, 2000) // Poll every 2 seconds
+  }, 8000)
 }
 
 function stopPolling() {
@@ -458,5 +580,6 @@ onMounted(() => {
 
 onUnmounted(() => {
   stopPolling()
+  stream.disconnect()
 })
 </script>

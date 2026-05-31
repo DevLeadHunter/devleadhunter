@@ -7,7 +7,6 @@ from .google_scraper import GoogleScraper
 from .pagesjaunes_scraper import PagesJaunesScraper
 from .yelp_scraper import YelpScraper
 from .osm_scraper import OSMScraper
-from .mappy_scraper import MappyScraper
 from .mock_scraper import MockScraper
 
 __all__ = [
@@ -16,7 +15,6 @@ __all__ = [
     'PagesJaunesScraper',
     'YelpScraper',
     'OSMScraper',
-    'MappyScraper',
     'MockScraper'
 ]
 

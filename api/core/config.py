@@ -41,7 +41,7 @@ class Settings(BaseSettings):
     port: int = 8000
     
     cors_origins_str: Optional[str] = Field(
-        default="http://localhost:3000,http://localhost:5173,http://localhost:1420,https://demo.dibodev.fr",
+        default="http://localhost:3000,http://localhost:3001,http://localhost:5173,http://localhost:1420,https://demo.dibodev.fr",
         alias="CORS_ORIGINS",
         description="Comma-separated list of allowed CORS origins"
     )
@@ -105,9 +105,9 @@ class Settings(BaseSettings):
 
     # Demo site builder / Storyblok
     demo_host_base_url: str = Field(
-        default="https://demo.dibodev.fr",
+        default="http://localhost:3001",
         alias="DEMO_HOST_BASE_URL",
-        description="Public base URL for generated demo websites",
+        description="Public base URL for generated demo websites (localhost:3001 in dev, demo.dibodev.fr in prod)",
     )
     demo_site_ttl_days: int = Field(
         default=14,
@@ -138,6 +138,43 @@ class Settings(BaseSettings):
         default=None,
         alias="VERCEL_TOKEN",
         description="Optional Vercel token for future per-site deployments",
+    )
+
+    # Nodriver / Chrome scraping (see scrappers.nodriver_browser)
+    scraper_browser_headless: bool = Field(
+        default=False,
+        alias="SCRAPER_BROWSER_HEADLESS",
+        description="When False, Chrome opens visibly for scraping (GoupixDex-style)",
+    )
+    scraper_browser_keep_open: bool = Field(
+        default=False,
+        alias="SCRAPER_BROWSER_KEEP_OPEN",
+        description="When True, do not close Chrome after a scrape job (debug)",
+    )
+    scraper_browser_close_delay_sec: float = Field(
+        default=2.5,
+        alias="SCRAPER_BROWSER_CLOSE_DELAY_SEC",
+        description="Seconds to wait before closing visible Chrome after a job",
+    )
+    scraper_chrome_executable: Optional[str] = Field(
+        default=None,
+        alias="SCRAPER_CHROME_EXECUTABLE",
+        description="Optional path to chrome.exe when not on PATH",
+    )
+    scraper_user_data_dir: Optional[str] = Field(
+        default=None,
+        alias="SCRAPER_USER_DATA_DIR",
+        description="Persistent Chrome profile directory for scraping sessions",
+    )
+    scraper_inline_email: bool = Field(
+        default=False,
+        alias="SCRAPER_INLINE_EMAIL",
+        description="When True, search Google for emails during bulk scraping (slow, extra Chrome)",
+    )
+    scraper_warmup_maps: bool = Field(
+        default=False,
+        alias="SCRAPER_WARMUP_MAPS",
+        description="Pre-open Chrome for Google Maps autocomplete on API startup",
     )
 
     # Support / ticketing settings
@@ -253,6 +290,8 @@ class Settings(BaseSettings):
         if self.env.lower() != "production":
             development_origins = [
                 "http://localhost:3000",
+                "http://localhost:3001",
+                "http://127.0.0.1:3001",
                 "http://localhost:5173",
                 "http://localhost:1420",
                 "http://127.0.0.1:1420",

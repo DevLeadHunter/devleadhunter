@@ -1,52 +1,38 @@
 """
 Scraping job service for managing async scraping tasks.
 """
+from __future__ import annotations
+
 import asyncio
 import time
+import threading
 from datetime import datetime
 from typing import Dict, Optional, List
 from uuid import uuid4
 import logging
 
-from sqlalchemy.orm import Session
-from models.scraping_job import ScrapingJob, ScrapingJobCreate, JobStatus, ScrapingJobProgress
-from models.prospect import ProspectCreate
+from core.database import SessionLocal
+from models.scraping_job import ScrapingJob, ScrapingJobCreate, JobStatus
+from models.prospect import ProspectCreate, Prospect
 from services.scraper_service import scraper_service
 from services.prospect_service import prospect_service
+from services.scrape_progress import ScrapeProgressReporter
+from services.scraping_job_stream_hub import scraping_job_stream_hub
 
 logger = logging.getLogger(__name__)
 
+MAX_JOB_LOGS = 300
+
 
 class ScrapingJobService:
-    """
-    Service for managing scraping jobs.
-    
-    This service handles the lifecycle of scraping jobs including
-    creation, execution, progress tracking, and result storage.
-    """
-    
-    def __init__(self):
-        """Initialize the scraping job service."""
+    """Service for managing scraping jobs with live WebSocket progress."""
+
+    def __init__(self) -> None:
         self._jobs: Dict[str, ScrapingJob] = {}
         self._running_tasks: Dict[str, asyncio.Task] = {}
-    
-    def create_job(
-        self,
-        user_id: int,
-        job_data: ScrapingJobCreate
-    ) -> ScrapingJob:
-        """
-        Create a new scraping job.
-        
-        Args:
-            user_id: ID of the user creating the job
-            job_data: Job configuration data
-            
-        Returns:
-            Created scraping job
-        """
+
+    def create_job(self, user_id: int, job_data: ScrapingJobCreate) -> ScrapingJob:
         job_id = f"job_{uuid4().hex[:12]}"
-        
         job = ScrapingJob(
             id=job_id,
             user_id=user_id,
@@ -55,214 +41,240 @@ class ScrapingJobService:
             city=job_data.city,
             max_results=job_data.max_results,
             source=job_data.source,
-            skip_duplicates=job_data.skip_duplicates
+            skip_duplicates=job_data.skip_duplicates,
+            only_without_website=job_data.only_without_website,
         )
-        
         self._jobs[job_id] = job
-        logger.info(f"Created job {job_id} for user {user_id}")
-        
+        logger.info("Created job %s for user %s", job_id, user_id)
         return job
-    
+
     def get_job(self, job_id: str) -> Optional[ScrapingJob]:
-        """
-        Get a job by ID.
-        
-        Args:
-            job_id: Job identifier
-            
-        Returns:
-            Job if found, None otherwise
-        """
         return self._jobs.get(job_id)
-    
+
     def get_user_jobs(self, user_id: int) -> List[ScrapingJob]:
-        """
-        Get all jobs for a user.
-        
-        Args:
-            user_id: User identifier
-            
-        Returns:
-            List of user's jobs
-        """
         return [job for job in self._jobs.values() if job.user_id == user_id]
-    
-    async def execute_job(
-        self,
-        job_id: str,
-        db: Session
-    ) -> None:
-        """
-        Execute a scraping job asynchronously.
-        
-        Args:
-            job_id: Job identifier
-            db: Database session
-        """
+
+    async def _append_log(self, job: ScrapingJob, message: str) -> None:
+        timestamp = datetime.utcnow().strftime("%H:%M:%S")
+        line = f"[{timestamp}] {message}"
+        job.logs.append(line)
+        if len(job.logs) > MAX_JOB_LOGS:
+            job.logs = job.logs[-MAX_JOB_LOGS:]
+        await scraping_job_stream_hub.broadcast(job.id, {"type": "log", "message": line})
+
+    async def _emit_progress(self, job: ScrapingJob) -> None:
+        await scraping_job_stream_hub.broadcast(
+            job.id,
+            {
+                "type": "progress",
+                "current": job.progress.current,
+                "total": job.progress.total,
+                "percentage": job.progress.percentage,
+                "current_prospect": job.progress.current_prospect,
+                "estimated_time_remaining": job.progress.estimated_time_remaining,
+            },
+        )
+
+    async def execute_job(self, job_id: str) -> None:
         job = self._jobs.get(job_id)
         if not job:
-            logger.error(f"Job {job_id} not found")
+            logger.error("Job %s not found", job_id)
             return
-        
+
+        db = SessionLocal()
+        saved_count = 0
+        skipped_count = 0
+        seen_keys: set[tuple[str, str]] = set()
+        start_time = time.time()
+        stop_scraping = False
+        state_lock = threading.Lock()
+        main_loop = asyncio.get_running_loop()
+
+        async def on_log(message: str) -> None:
+            await self._append_log(job, message)
+
+        async def on_prospect(prospect_data: ProspectCreate) -> None:
+            nonlocal saved_count, skipped_count, stop_scraping
+            with state_lock:
+                if stop_scraping or saved_count >= job.max_results:
+                    stop_scraping = True
+                    return
+
+            key = (prospect_data.name.lower(), (prospect_data.city or "").lower())
+            if key in seen_keys:
+                return
+            seen_keys.add(key)
+
+            job.progress.current_prospect = prospect_data.name
+            await self._emit_progress(job)
+
+            if job.skip_duplicates:
+                is_duplicate = await prospect_service.check_duplicate(
+                    db=db,
+                    name=prospect_data.name,
+                    city=prospect_data.city,
+                    user_id=job.user_id,
+                )
+                if is_duplicate:
+                    skipped_count += 1
+                    job.skipped_duplicates = skipped_count
+                    await self._append_log(job, f"Doublon ignoré : {prospect_data.name}")
+                    await scraping_job_stream_hub.broadcast(
+                        job.id,
+                        {"type": "duplicate_skipped", "name": prospect_data.name},
+                    )
+                    return
+
+            try:
+                created = await prospect_service.create_prospect(
+                    db=db,
+                    prospect=prospect_data,
+                    user_id=job.user_id,
+                )
+            except Exception as exc:  # noqa: BLE001
+                logger.error("Job %s: failed to save %s: %s", job_id, prospect_data.name, exc)
+                await self._append_log(job, f"Erreur enregistrement {prospect_data.name}: {exc}")
+                return
+
+            saved_count += 1
+            job.results.append(created.id)
+            job.progress.current = saved_count
+            job.progress.total = max(job.progress.total, job.max_results)
+            job.progress.percentage = min(100.0, (saved_count / job.max_results) * 100)
+
+            elapsed = time.time() - start_time
+            if saved_count > 0:
+                avg = elapsed / saved_count
+                job.progress.estimated_time_remaining = int(
+                    avg * max(job.max_results - saved_count, 0)
+                )
+
+            prospect_payload = Prospect.model_validate(created).model_dump(mode="json")
+            job.live_prospects.append(prospect_payload)
+
+            await scraping_job_stream_hub.broadcast(
+                job.id,
+                {"type": "prospect", "prospect": prospect_payload},
+            )
+            await self._append_log(job, f"Prospect ajouté : {created.name} ({created.city or '—'})")
+            await self._emit_progress(job)
+
+            if saved_count >= job.max_results:
+                with state_lock:
+                    stop_scraping = True
+
+        progress = ScrapeProgressReporter(
+            on_log=on_log,
+            on_prospect=on_prospect,
+            main_loop=main_loop,
+        )
+
         try:
-            # Update job status
             job.status = JobStatus.RUNNING
             job.started_at = datetime.utcnow()
-            logger.info(f"Starting job {job_id}")
-            
-            start_time = time.time()
-            
-            # Run scrapers
-            scraped_prospects: List[ProspectCreate] = await scraper_service.scrape_all(
+            job.progress.total = job.max_results
+            await self._append_log(
+                job,
+                f"Démarrage — {job.category or '?'} à {job.city or '?'} "
+                f"(max {job.max_results}, source={job.source or 'all'})",
+            )
+            await self._emit_progress(job)
+            # Let the client WebSocket connect before nodriver work starts.
+            await asyncio.sleep(0.05)
+
+            def should_stop() -> bool:
+                with state_lock:
+                    return stop_scraping or saved_count >= job.max_results
+
+            await scraper_service.scrape_all(
                 category=job.category or "",
                 city=job.city or "",
                 max_results=job.max_results,
-                source_filter=job.source
+                source_filter=job.source,
+                only_without_website=job.only_without_website,
+                progress=progress,
+                should_stop=should_stop,
             )
-            
-            logger.info(f"Job {job_id}: Scraped {len(scraped_prospects)} prospects")
-            
-            # Update progress
-            job.progress.total = len(scraped_prospects)
-            
-            # Save prospects to database
-            created_prospects = []
-            skipped_count = 0
-            
-            for i, prospect_data in enumerate(scraped_prospects):
-                try:
-                    # Update progress
-                    job.progress.current = i + 1
-                    job.progress.percentage = ((i + 1) / len(scraped_prospects)) * 100
-                    job.progress.current_prospect = prospect_data.name
-                    
-                    # Estimate time remaining
-                    elapsed_time = time.time() - start_time
-                    avg_time_per_prospect = elapsed_time / (i + 1)
-                    remaining_prospects = len(scraped_prospects) - (i + 1)
-                    job.progress.estimated_time_remaining = int(avg_time_per_prospect * remaining_prospects)
-                    
-                    # Check for duplicates if enabled
-                    if job.skip_duplicates:
-                        is_duplicate = await prospect_service.check_duplicate(
-                            db=db,
-                            name=prospect_data.name,
-                            city=prospect_data.city,
-                            user_id=job.user_id
-                        )
-                        if is_duplicate:
-                            skipped_count += 1
-                            logger.debug(f"Job {job_id}: Skipped duplicate prospect: {prospect_data.name}")
-                            continue
-                    
-                    # Create prospect
-                    created = await prospect_service.create_prospect(
-                        db=db,
-                        prospect=prospect_data,
-                        user_id=job.user_id
-                    )
-                    created_prospects.append(created)
-                    job.results.append(created.id)
-                    
-                    # Small delay to allow other operations
-                    await asyncio.sleep(0.01)
-                    
-                except Exception as e:
-                    logger.error(f"Job {job_id}: Error processing prospect {prospect_data.name}: {e}")
-                    continue
-            
-            # Mark job as completed
+
             job.status = JobStatus.COMPLETED
             job.completed_at = datetime.utcnow()
             job.skipped_duplicates = skipped_count
-            job.progress.current = len(scraped_prospects)
+            job.progress.current = saved_count
             job.progress.percentage = 100.0
             job.progress.estimated_time_remaining = 0
-            
-            logger.info(f"Job {job_id} completed: {len(created_prospects)} prospects created, {skipped_count} duplicates skipped")
-            
-        except Exception as e:
-            logger.error(f"Job {job_id} failed: {e}", exc_info=True)
+            job.progress.current_prospect = None
+
+            await self._append_log(
+                job,
+                f"Terminé — {saved_count} prospect(s) ajouté(s), {skipped_count} doublon(s) ignoré(s)",
+            )
+            await scraping_job_stream_hub.broadcast(
+                job.id,
+                {
+                    "type": "done",
+                    "summary": {
+                        "added": saved_count,
+                        "skipped_duplicates": skipped_count,
+                        "status": job.status.value,
+                    },
+                },
+            )
+            await self._emit_progress(job)
+            logger.info(
+                "Job %s completed: %s prospects, %s skipped",
+                job_id,
+                saved_count,
+                skipped_count,
+            )
+
+        except Exception as exc:
+            logger.error("Job %s failed: %s", job_id, exc, exc_info=True)
             job.status = JobStatus.FAILED
-            job.error = str(e)
+            job.error = str(exc)
             job.completed_at = datetime.utcnow()
+            await self._append_log(job, f"Échec : {exc}")
+            await scraping_job_stream_hub.broadcast(
+                job.id,
+                {"type": "error", "message": str(exc)},
+            )
         finally:
-            # Cleanup task reference
-            if job_id in self._running_tasks:
-                del self._running_tasks[job_id]
-    
-    def start_job(
-        self,
-        job_id: str,
-        db: Session
-    ) -> None:
-        """
-        Start executing a job in the background.
-        
-        Args:
-            job_id: Job identifier
-            db: Database session
-        """
+            db.close()
+            self._running_tasks.pop(job_id, None)
+
+    def start_job(self, job_id: str) -> None:
         if job_id in self._running_tasks:
-            logger.warning(f"Job {job_id} is already running")
+            logger.warning("Job %s is already running", job_id)
             return
-        
-        # Create background task
-        task = asyncio.create_task(self.execute_job(job_id, db))
+        task = asyncio.create_task(self.execute_job(job_id))
         self._running_tasks[job_id] = task
-        logger.info(f"Started background task for job {job_id}")
-    
+        logger.info("Started background task for job %s", job_id)
+
     def delete_job(self, job_id: str) -> bool:
-        """
-        Delete a job.
-        
-        Args:
-            job_id: Job identifier
-            
-        Returns:
-            True if deleted, False if not found
-        """
-        if job_id in self._jobs:
-            # Cancel running task if exists
-            if job_id in self._running_tasks:
-                self._running_tasks[job_id].cancel()
-                del self._running_tasks[job_id]
-            
-            del self._jobs[job_id]
-            logger.info(f"Deleted job {job_id}")
-            return True
-        return False
-    
+        if job_id not in self._jobs:
+            return False
+        if job_id in self._running_tasks:
+            self._running_tasks[job_id].cancel()
+            del self._running_tasks[job_id]
+        del self._jobs[job_id]
+        scraping_job_stream_hub.clear(job_id)
+        logger.info("Deleted job %s", job_id)
+        return True
+
     def cleanup_old_jobs(self, max_age_hours: int = 24) -> int:
-        """
-        Clean up old completed/failed jobs.
-        
-        Args:
-            max_age_hours: Maximum age in hours to keep jobs
-            
-        Returns:
-            Number of jobs deleted
-        """
         now = datetime.utcnow()
         deleted_count = 0
-        
-        jobs_to_delete = []
-        for job_id, job in self._jobs.items():
-            if job.status in [JobStatus.COMPLETED, JobStatus.FAILED]:
-                age_hours = (now - job.created_at).total_seconds() / 3600
-                if age_hours > max_age_hours:
-                    jobs_to_delete.append(job_id)
-        
+        jobs_to_delete = [
+            job_id
+            for job_id, job in self._jobs.items()
+            if job.status in [JobStatus.COMPLETED, JobStatus.FAILED]
+            and (now - job.created_at).total_seconds() / 3600 > max_age_hours
+        ]
         for job_id in jobs_to_delete:
             if self.delete_job(job_id):
                 deleted_count += 1
-        
         if deleted_count > 0:
-            logger.info(f"Cleaned up {deleted_count} old jobs")
-        
+            logger.info("Cleaned up %s old jobs", deleted_count)
         return deleted_count
 
 
-# Global service instance
 scraping_job_service = ScrapingJobService()
-

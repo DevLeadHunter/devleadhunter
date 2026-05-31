@@ -1,17 +1,17 @@
 """
-Email scraper using Google search to find contact emails.
+Email scraper using Google search to find contact emails (nodriver).
 """
+from __future__ import annotations
+
 import asyncio
-import re
 import logging
+import re
 from typing import Optional
+from urllib.parse import quote_plus
 
-try:
-    from playwright.async_api import async_playwright
-    PLAYWRIGHT_AVAILABLE = True
-except ImportError:
-    PLAYWRIGHT_AVAILABLE = False
-
+from scrappers.nodriver_browser import NODRIVER_AVAILABLE, NodriverBrowser, _env_bool
+from scrappers.nodriver_dom import NodriverDom
+from scrappers.nodriver_executor import run_nodriver_task
 
 logger = logging.getLogger(__name__)
 
@@ -19,274 +19,212 @@ logger = logging.getLogger(__name__)
 class EmailScraper:
     """
     Email scraper that searches Google to find business emails.
-    
-    This scraper performs Google searches to find email addresses
-    associated with business names and locations.
+
+    Uses nodriver (Chrome CDP) to perform Google searches and extract
+    email addresses from result pages.
     """
-    
-    def __init__(self):
-        """Initialize the email scraper."""
-        self.playwright = None
-        self.browser = None
+
+    def __init__(self) -> None:
+        # Ephemeral profile: avoids locking the main scraper's Chrome profile.
+        self._browser = NodriverBrowser(ephemeral=True)
         self.email_pattern = re.compile(
-            r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b'
+            r"\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b"
         )
-    
+
+    @property
+    def browser(self) -> object | None:
+        """Backward-compatible accessor used by legacy scraper close hooks."""
+        return self._browser._browser
+
     async def ensure_browser(self) -> None:
-        """Ensure browser is initialized and running."""
-        if not PLAYWRIGHT_AVAILABLE:
-            logger.warning("Playwright not available, email scraping will be skipped")
+        """Ensure the nodriver browser is initialized."""
+        if not NODRIVER_AVAILABLE:
+            logger.warning("nodriver not available, email scraping will be skipped")
             return
-        
-        if not self.playwright:
-            self.playwright = await async_playwright().start()
-            self.browser = await self.playwright.chromium.launch(
-                headless=True,
-                args=[
-                    "--no-sandbox",
-                    "--disable-setuid-sandbox",
-                    "--disable-blink-features=AutomationControlled",
-                ]
-            )
-    
+        await self._browser.ensure_browser()
+
     async def close(self) -> None:
-        """Close browser and cleanup resources."""
-        if self.browser:
-            await self.browser.close()
-        if self.playwright:
-            await self.playwright.stop()
-        self.browser = None
-        self.playwright = None
-    
-    def extract_emails_from_text(self, text: str) -> list:
+        """Close the browser and release resources."""
+        await self._browser.close()
+
+    def extract_emails_from_text(self, text: str) -> list[str]:
         """
         Extract email addresses from text using regex.
-        
+
         Args:
-            text: Text to search for emails
-            
+            text: Text to search for emails.
+
         Returns:
-            List of email addresses found
+            List of email addresses found.
         """
         if not text:
             return []
         return self.email_pattern.findall(text)
-    
-    async def accept_google_cookies(self, page) -> None:
+
+    async def accept_google_cookies(self, tab: object) -> None:
         """
-        Accept Google cookies if present.
-        
+        Accept Google cookie consent if present.
+
         Args:
-            page: Playwright page object
+            tab: nodriver Tab instance.
         """
         try:
             await asyncio.sleep(0.5)
-            
-            # Check if there's an iframe for the consent dialog
-            frames = page.frames
-            consent_frame = None
-            for frame in frames:
-                if 'consent.google.com' in frame.url:
-                    consent_frame = frame
-                    break
-            
-            if not consent_frame:
-                logger.debug("No consent frame found")
+            iframe_js = """
+            (() => {
+                for (const frame of document.querySelectorAll('iframe')) {
+                    if ((frame.src || '').includes('consent.google.com')) return true;
+                }
+                return false;
+            })()
+            """
+            has_consent_frame = await NodriverDom.evaluate(tab, iframe_js, by_value=True)
+            if not has_consent_frame:
                 return
-            
-            # Try multiple selectors for the "Accept all" button inside the iframe
-            selectors = [
-                'input[value="Tout accepter"]',
-                'input[aria-label="Tout accepter"]',
-                'button[aria-label="Tout accepter"]',
-                '.searchButton[value="Tout accepter"]',
-                'input.button[value="Tout accepter"]',
-                'input.baseButtonGm3.filledButtonGm3'
-            ]
-            
-            for selector in selectors:
-                try:
-                    accept_button = consent_frame.locator(selector)
-                    count = await accept_button.count()
-                    print(f"COOKIE MODAL GOOGLE DEBUG: Found {count} elements with selector {selector}")
-                    if count > 0:
-                        await accept_button.first.click()
-                        logger.info("Google cookies accepted")
-                        await asyncio.sleep(0.5)
-                        return
-                except Exception as e:
-                    logger.debug(f"Selector {selector} failed: {e}")
-                    continue
-            
-            # Fallback: try to find any button with "Tout accepter" text
-            try:
-                all_buttons = consent_frame.locator('input, button')
-                count = await all_buttons.count()
-                for i in range(count):
-                    btn = all_buttons.nth(i)
-                    text = await btn.text_content()
-                    value = await btn.get_attribute('value')
-                    aria_label = await btn.get_attribute('aria-label')
-                    if text and 'accepter' in text.lower():
-                        await btn.click()
-                        logger.info("Google cookies accepted (by text)")
-                        await asyncio.sleep(0.5)
-                        return
-                    if value and 'accepter' in value.lower():
-                        await btn.click()
-                        logger.info("Google cookies accepted (by value)")
-                        await asyncio.sleep(0.5)
-                        return
-                    if aria_label and 'accepter' in aria_label.lower():
-                        await btn.click()
-                        logger.info("Google cookies accepted (by aria-label)")
-                        await asyncio.sleep(0.5)
-                        return
-            except Exception as e:
-                logger.debug(f"Could not search all buttons: {e}")
-                
-        except Exception as e:
-            logger.debug(f"Could not handle Google cookie consent: {e}")
-    
-    async def search_google_page(self, page, query: str, page_number: int = 0) -> Optional[str]:
+
+            clicked = await NodriverDom.click_by_text(tab, "input", "Tout accepter")
+            if not clicked:
+                clicked = await NodriverDom.click_by_text(tab, "button", "Tout accepter")
+            if not clicked:
+                clicked = await NodriverDom.click(tab, "input.baseButtonGm3.filledButtonGm3")
+            if clicked:
+                logger.info("Google cookies accepted")
+                await asyncio.sleep(0.5)
+        except Exception as exc:  # noqa: BLE001
+            logger.debug("Could not handle Google cookie consent: %s", exc)
+
+    async def search_google_page(
+        self, tab: object, query: str, page_number: int = 0
+    ) -> Optional[str]:
         """
-        Search Google on a specific page and extract the first valid email from results.
-        
+        Search Google on a specific results page and extract the first valid email.
+
         Args:
-            page: Playwright page object
-            query: Search query
-            page_number: Page number (0 = first page, 1 = second page, etc.)
-            
+            tab: nodriver Tab instance.
+            query: Search query.
+            page_number: Zero-based page index.
+
         Returns:
-            First email found or None
+            First valid email found, or None.
         """
         try:
-            # Navigate to Google search
-            from urllib.parse import quote_plus
             if page_number == 0:
                 search_url = f"https://www.google.com/search?q={quote_plus(query)}"
             else:
-                # For subsequent pages, use start parameter
                 start_param = page_number * 10
-                search_url = f"https://www.google.com/search?q={quote_plus(query)}&start={start_param}"
-            
-            await page.goto(search_url, wait_until="domcontentloaded", timeout=10000)
-            
-            # Accept cookies if present (only on first page)
+                search_url = (
+                    f"https://www.google.com/search?q={quote_plus(query)}&start={start_param}"
+                )
+
+            await NodriverDom.navigate(tab, search_url, sleep_s=0.5)
+
             if page_number == 0:
-                await self.accept_google_cookies(page)
+                await self.accept_google_cookies(tab)
                 await asyncio.sleep(0.5)
-            
-            # Get page content
-            page_text = await page.content()
-            
-            # Extract emails from the page
+
+            page_text = await tab.get_content()
             emails = self.extract_emails_from_text(page_text)
-            
+
             if emails:
-                # Filter out common spam/irrelevant emails (domains de test et services, mais pas les fournisseurs d'email)
                 spam_domains = [
-                    'example.com', 'test.com', 'domain.com', 'yoursite.com',
-                    'google.com', 'gstatic.com', 'facebook.com'
+                    "example.com",
+                    "test.com",
+                    "domain.com",
+                    "yoursite.com",
+                    "google.com",
+                    "gstatic.com",
+                    "facebook.com",
                 ]
-                filtered_emails = [
-                    email for email in emails 
+                filtered = [
+                    email
+                    for email in emails
                     if not any(spam in email.lower() for spam in spam_domains)
                 ]
-                if filtered_emails:
-                    logger.info(f"Found email(s) for query '{query}' on page {page_number + 1}: {filtered_emails}")
-                    return filtered_emails[0]
-            
+                if filtered:
+                    logger.info(
+                        "Found email(s) for query '%s' page %s: %s",
+                        query,
+                        page_number + 1,
+                        filtered,
+                    )
+                    return filtered[0]
             return None
-            
-        except Exception as e:
-            logger.debug(f"Error searching Google page {page_number + 1} for '{query}': {e}")
+        except Exception as exc:  # noqa: BLE001
+            logger.debug(
+                "Error searching Google page %s for '%s': %s", page_number + 1, query, exc
+            )
             return None
-    
-    async def search_google_multiple_pages(self, page, query: str, max_pages: int = 3) -> Optional[str]:
+
+    async def search_google_multiple_pages(
+        self, tab: object, query: str, max_pages: int = 3
+    ) -> Optional[str]:
         """
-        Search Google on multiple pages and return the first valid email found.
-        Stops as soon as an email is found.
-        
+        Search Google across multiple pages until an email is found.
+
         Args:
-            page: Playwright page object
-            query: Search query
-            max_pages: Maximum number of pages to search
-            
+            tab: nodriver Tab instance.
+            query: Search query.
+            max_pages: Maximum number of result pages to scan.
+
         Returns:
-            First email found or None
+            First email found, or None.
         """
         for page_num in range(max_pages):
-            email = await self.search_google_page(page, query, page_num)
+            email = await self.search_google_page(tab, query, page_num)
             if email:
                 return email
-            # Small delay between page searches
             if page_num < max_pages - 1:
                 await asyncio.sleep(0.5)
         return None
-    
+
+    async def _find_email_nodriver(self, name: str, city: str) -> Optional[str]:
+        """Internal nodriver implementation for email lookup."""
+        if not NODRIVER_AVAILABLE:
+            return None
+
+        await self.ensure_browser()
+        tab = await self._browser.get_tab()
+        try:
+            query1 = f"{name} {city} email"
+            logger.info("Searching for email with query: %s (3 pages)", query1)
+            email = await self.search_google_multiple_pages(tab, query1, max_pages=3)
+            if email:
+                return email
+
+            query2 = f"{name} {city} contact"
+            logger.info("Trying contact query: %s (3 pages)", query2)
+            return await self.search_google_multiple_pages(tab, query2, max_pages=3)
+        finally:
+            pass
+
     async def find_email(self, name: str, city: str) -> Optional[str]:
         """
-        Find email address for a business by searching Google.
-        
-        Strategy:
-        1. Search "nom + ville + email" on 3 pages of Google results
-        2. If no email found, search "nom + ville + contact" on 3 pages
-        3. Stop as soon as an email is found
-        
-        Args:
-            name: Business name
-            city: City name
-            
-        Returns:
-            Email address if found, None otherwise
+        Find an email address for a business via Google search.
+
+        Skipped when ``SCRAPER_INLINE_EMAIL=false`` (default) to keep bulk scrapes
+        fast and avoid opening a second Chrome alongside the main scraper.
         """
-        if not PLAYWRIGHT_AVAILABLE:
-            logger.warning("Playwright not available, skipping email search")
-            return None
-        
         try:
-            await self.ensure_browser()
-            
-            if not self.browser:
+            from core.config import settings
+
+            if not settings.scraper_inline_email:
                 return None
-            
-            context = await self.browser.new_context(
-                user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
-                viewport={"width": 1920, "height": 1080},
+        except Exception:  # noqa: BLE001
+            if not _env_bool("SCRAPER_INLINE_EMAIL", default=False):
+                return None
+
+        if not NODRIVER_AVAILABLE:
+            logger.warning("nodriver not available, skipping email search")
+            return None
+
+        try:
+            return await run_nodriver_task(
+                lambda: self._find_email_nodriver(name, city),
+                timeout=120,
             )
-            
-            page = await context.new_page()
-            page.set_default_timeout(10000)
-            
-            try:
-                # First search: "nom + ville + email" on 3 pages
-                query1 = f"{name} {city} email"
-                logger.info(f"Searching for email with query: {query1} (3 pages)")
-                email = await self.search_google_multiple_pages(page, query1, max_pages=3)
-                
-                if email:
-                    logger.info(f"Email found with 'email' query: {email}")
-                    return email
-                
-                # If no email found, try with "contact" on 3 pages
-                query2 = f"{name} {city} contact"
-                logger.info(f"No email found with 'email' query, trying with: {query2} (3 pages)")
-                email = await self.search_google_multiple_pages(page, query2, max_pages=3)
-                
-                if email:
-                    logger.info(f"Email found with 'contact' query: {email}")
-                
-                return email
-                
-            finally:
-                await context.close()
-                
-        except Exception as e:
-            logger.error(f"Error in email scraper: {e}")
+        except Exception as exc:  # noqa: BLE001
+            logger.error("Error in email scraper: %s", exc)
             return None
 
 
-# Singleton instance
 email_scraper = EmailScraper()
-

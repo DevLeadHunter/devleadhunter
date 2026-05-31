@@ -4,7 +4,7 @@ import { defineNuxtConfig } from 'nuxt/config'
 const isDesktopBuild: boolean = process.env.NUXT_DESKTOP_BUILD === '1'
 
 export default defineNuxtConfig({
-  modules: ['@nuxt/eslint', '@nuxtjs/tailwindcss', '@pinia/nuxt', '@nuxtjs/i18n'],
+  modules: ['@nuxt/eslint', '@nuxt/ui', '@vueuse/nuxt', '@pinia/nuxt', '@nuxtjs/i18n'],
 
   ssr: !isDesktopBuild,
 
@@ -14,9 +14,13 @@ export default defineNuxtConfig({
       prefix: 'Ui',
     },
     {
+      path: '~/components/demo-sites',
+      prefix: 'DemoSites',
+    },
+    {
       path: '~/components',
       pathPrefix: false,
-      ignore: ['**/ui/**'],
+      ignore: ['**/ui/**', '**/demo-sites/**'],
     },
   ],
   devtools: { enabled: !isDesktopBuild },
@@ -64,10 +68,6 @@ export default defineNuxtConfig({
           ? []
           : [
               {
-                src: 'https://kit.fontawesome.com/dcc05147de.js',
-                crossorigin: 'anonymous' as const,
-              },
-              {
                 src: 'https://www.umami.dibodev.fr/script.js',
                 defer: true,
                 'data-website-id': '0734f93b-7047-425b-8593-1f5b2711c6ff',
@@ -78,6 +78,18 @@ export default defineNuxtConfig({
   },
 
   css: ['~/assets/css/main.css'],
+
+  colorMode: {
+    preference: 'dark',
+    fallback: 'dark',
+    classSuffix: '',
+  },
+
+  ui: {
+    theme: {
+      colors: ['primary', 'neutral', 'success', 'info', 'warning', 'error'],
+    },
+  },
 
   runtimeConfig: {
     public: {

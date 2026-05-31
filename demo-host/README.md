@@ -42,3 +42,7 @@ NUXT_PUBLIC_API_BASE=https://api.devleadhunter.dibodev.fr
 ## Storyblok
 
 When `STORYBLOK_MANAGEMENT_TOKEN` is configured on the API, each demo gets its own Storyblok space and collaborator invite. Without the token, the API runs in mock mode and stores `content_json` locally (still rendered by this host).
+
+The API sets each space preview URL to `https://demo.dibodev.fr/{slug}`. When you open **Content** in Storyblok, the Visual Editor loads this host in an iframe with the Storyblok bridge enabled for live draft preview.
+
+For existing demo sites created before this integration, run **Regenerate** in the dashboard once to sync the Storyblok preview URL.

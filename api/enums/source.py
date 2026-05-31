@@ -13,7 +13,6 @@ class Source(str, Enum):
         PAGESJAUNES: Pages Jaunes (French directory)
         YELP: Yelp platform
         OSM: OpenStreetMap
-        MAPPY: Mappy platform
         MOCK: Mock/test data
         ALL: All sources
     """
@@ -22,7 +21,6 @@ class Source(str, Enum):
     PAGESJAUNES = "pagesjaunes"
     YELP = "yelp"
     OSM = "osm"
-    MAPPY = "mappy"
     MOCK = "mock"
     ALL = "all"
 

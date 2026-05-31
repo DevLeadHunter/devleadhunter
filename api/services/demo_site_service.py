@@ -13,7 +13,11 @@ from core.config import settings
 from enums.demo_site_status import DemoSiteStatus
 from models.demo_site import DemoSite
 from models.user import User
-from services.storyblok_service import storyblok_service, StoryblokProvisionResult
+from services.storyblok_service import (
+    storyblok_service,
+    StoryblokProvisionResult,
+    StoryblokProvisionError,
+)
 from services.demo_site_verification_service import (
     demo_site_verification_service,
     DemoSiteVerificationResult,
@@ -21,11 +25,18 @@ from services.demo_site_verification_service import (
 
 logger = logging.getLogger(__name__)
 
-AVAILABLE_TEMPLATES: list[dict[str, str]] = [
+AVAILABLE_TEMPLATES: list[dict[str, object]] = [
     {
         "id": "plumber-simple",
-        "name": "Plumber — Simple",
-        "description": "Single-page layout with hero, services list, and contact section.",
+        "name": "Plombier Pro",
+        "description": "Site vitrine premium pour artisan plombier : hero animé, services, garanties et contact.",
+        "preview_image_url": None,
+        "category": "artisan",
+        "default_theme": {
+            "primary": "#0284c7",
+            "secondary": "#0f172a",
+            "accent": "#f59e0b",
+        },
     },
 ]
 
@@ -33,9 +44,77 @@ AVAILABLE_TEMPLATES: list[dict[str, str]] = [
 class DemoSiteService:
     """Orchestrates demo site creation, listing, and cleanup."""
 
-    def list_templates(self) -> list[dict[str, str]]:
+    def list_templates(self) -> list[dict[str, object]]:
         """Return templates available in the stepper."""
         return AVAILABLE_TEMPLATES
+
+    def _theme_from_content(self, content_json: Optional[dict]) -> Optional[dict[str, str]]:
+        """Extract a theme palette from stored content JSON."""
+        if not content_json:
+            return None
+        theme = content_json.get("theme")
+        if isinstance(theme, dict):
+            return {
+                "primary": str(theme.get("primary", "#0284c7")),
+                "secondary": str(theme.get("secondary", "#0f172a")),
+                "accent": str(theme.get("accent", "#f59e0b")),
+            }
+        return None
+
+    def _default_theme_for_template(self, template_id: str) -> dict[str, str]:
+        """Return default theme colors for a template id."""
+        for template in AVAILABLE_TEMPLATES:
+            if template["id"] == template_id:
+                default_theme = template.get("default_theme")
+                if isinstance(default_theme, dict):
+                    return {
+                        "primary": str(default_theme.get("primary", "#0284c7")),
+                        "secondary": str(default_theme.get("secondary", "#0f172a")),
+                        "accent": str(default_theme.get("accent", "#f59e0b")),
+                    }
+        return {"primary": "#0284c7", "secondary": "#0f172a", "accent": "#f59e0b"}
+
+    def build_preview_content(
+        self,
+        *,
+        business_name: str,
+        template_id: str,
+        phone: Optional[str] = None,
+        email: Optional[str] = None,
+        city: Optional[str] = None,
+        description: Optional[str] = None,
+        theme: Optional[dict[str, str]] = None,
+    ) -> dict:
+        """Build content JSON for client-side preview without provisioning."""
+        palette = theme or self._default_theme_for_template(template_id)
+        return storyblok_service.build_content_json(
+            business_name=business_name,
+            phone=phone,
+            email=email,
+            city=city,
+            description=description,
+            template_id=template_id,
+            theme=palette,
+        )
+
+    def _build_content_for_site(self, demo_site: DemoSite) -> dict:
+        """Build Storyblok content JSON from the demo site record."""
+        return self._build_content_for_site_with_theme(demo_site, theme=None)
+
+    def _build_content_for_site_with_theme(self, demo_site: DemoSite, theme: Optional[dict[str, str]] = None) -> dict:
+        """Build Storyblok content JSON from the demo site record."""
+        palette = theme or self._theme_from_content(demo_site.content_json) or self._default_theme_for_template(
+            demo_site.template_id
+        )
+        return storyblok_service.build_content_json(
+            business_name=demo_site.business_name,
+            phone=demo_site.phone,
+            email=demo_site.email,
+            city=demo_site.city,
+            description=demo_site.description,
+            template_id=demo_site.template_id,
+            theme=palette,
+        )
 
     def slugify(self, value: str) -> str:
         """Convert a business name into a URL-safe slug."""
@@ -77,6 +156,12 @@ class DemoSiteService:
             demo_site.error_message = None
             return
 
+        if verification.local_demo_url_live and not settings.is_production:
+            demo_site.status = DemoSiteStatus.ACTIVE.value
+            demo_site.demo_url_live = True
+            demo_site.error_message = None
+            return
+
         demo_site.status = DemoSiteStatus.UNAVAILABLE.value
         demo_site.error_message = verification.message
 
@@ -87,17 +172,6 @@ class DemoSiteService:
         db.commit()
         db.refresh(demo_site)
         return demo_site
-
-    def _build_content_for_site(self, demo_site: DemoSite) -> dict:
-        """Build Storyblok content JSON from the demo site record."""
-        return storyblok_service.build_content_json(
-            business_name=demo_site.business_name,
-            phone=demo_site.phone,
-            email=demo_site.email,
-            city=demo_site.city,
-            description=demo_site.description,
-            template_id=demo_site.template_id,
-        )
 
     async def regenerate_demo_site(self, db: Session, demo_site: DemoSite) -> DemoSite:
         """
@@ -114,6 +188,10 @@ class DemoSiteService:
 
         if demo_site.storyblok_space_id:
             try:
+                await storyblok_service.configure_preview_url(
+                    demo_site.storyblok_space_id,
+                    demo_site.demo_url or self.demo_url_for_slug(demo_site.slug),
+                )
                 await storyblok_service.update_home_story_content(
                     demo_site.storyblok_space_id,
                     content_json,
@@ -144,8 +222,10 @@ class DemoSiteService:
         email: Optional[str] = None,
         city: Optional[str] = None,
         description: Optional[str] = None,
+        theme: Optional[dict[str, str]] = None,
     ) -> DemoSite:
         """Update demo site fields and regenerate its published content."""
+        pending_theme = theme
         if business_name is not None:
             demo_site.business_name = business_name
         if template_id is not None:
@@ -162,7 +242,42 @@ class DemoSiteService:
         if description is not None:
             demo_site.description = description or None
 
+        if pending_theme is not None:
+            existing_content = dict(demo_site.content_json or {})
+            existing_content["theme"] = pending_theme
+            demo_site.content_json = existing_content
+
         return await self.regenerate_demo_site(db, demo_site)
+
+    async def invite_client_to_cms(self, db: Session, demo_site: DemoSite) -> DemoSite:
+        """Send a Storyblok CMS invitation to the demo site client email."""
+        if demo_site.storyblok_invite_sent:
+            raise ValueError("The client has already been invited to Storyblok.")
+
+        email: Optional[str] = demo_site.email or demo_site.storyblok_login_email
+        if not email or not email.strip():
+            raise ValueError("Client email is required to send a Storyblok invitation.")
+
+        space_id: Optional[int] = demo_site.storyblok_space_id
+        if not space_id:
+            space_id = await storyblok_service.resolve_space_id(
+                space_id=None,
+                editor_url=demo_site.storyblok_editor_url,
+                business_name=demo_site.business_name,
+                slug=demo_site.slug,
+            )
+            if space_id:
+                demo_site.storyblok_space_id = space_id
+
+        if not space_id:
+            raise ValueError("This demo site has no Storyblok space.")
+
+        await storyblok_service.invite_collaborator(space_id, email.strip())
+        demo_site.storyblok_login_email = email.strip()
+        demo_site.storyblok_invite_sent = True
+        db.commit()
+        db.refresh(demo_site)
+        return demo_site
 
     async def create_demo_site(
         self,
@@ -175,6 +290,8 @@ class DemoSiteService:
         email: Optional[str],
         city: Optional[str],
         description: Optional[str],
+        invite_client_to_cms: bool = False,
+        theme: Optional[dict[str, str]] = None,
     ) -> DemoSite:
         """
         Create and provision a demo site for the authenticated user.
@@ -184,7 +301,7 @@ class DemoSiteService:
         @returns Persisted demo site record in ACTIVE or FAILED status.
         """
         if not email or not email.strip():
-            raise ValueError("Client email is required to provision Storyblok access.")
+            raise ValueError("Client email is required for the demo site record.")
 
         slug: str = self.unique_slug(db, business_name)
         expires_at: datetime = datetime.now(timezone.utc) + timedelta(days=settings.demo_site_ttl_days)
@@ -215,6 +332,9 @@ class DemoSiteService:
                 description=description,
                 template_id=template_id,
                 collaborator_email=email.strip(),
+                preview_url=self.demo_url_for_slug(slug),
+                invite_client=invite_client_to_cms,
+                theme=theme,
             )
 
             demo_site.storyblok_space_id = provision.space_id
@@ -232,12 +352,25 @@ class DemoSiteService:
                     "Storyblok mock mode: configure STORYBLOK_MANAGEMENT_TOKEN for live CMS spaces."
                 )
 
+            db.commit()
+            db.refresh(demo_site)
+
             verification: DemoSiteVerificationResult = await demo_site_verification_service.verify(db, demo_site)
             self._apply_verification(demo_site, verification)
             if provision.mock_mode and demo_site.status == DemoSiteStatus.ACTIVE.value:
                 demo_site.verification_message = (
                     f"{verification.message} Storyblok mock mode is enabled."
                 )
+        except StoryblokProvisionError as exc:
+            logger.exception("Demo site provisioning failed for slug=%s after Storyblok space creation", slug)
+            demo_site.storyblok_space_id = exc.space_id
+            demo_site.storyblok_editor_url = exc.editor_url
+            demo_site.content_json = exc.content_json or self._build_content_for_site(demo_site)
+            demo_site.demo_url = demo_site.demo_url or self.demo_url_for_slug(slug)
+            demo_site.vercel_deployment_url = demo_site.demo_url
+            demo_site.status = DemoSiteStatus.FAILED.value
+            demo_site.error_message = str(exc)
+            demo_site.demo_url_live = False
         except Exception as exc:  # noqa: BLE001 — surface provisioning failure on the record
             logger.exception("Demo site provisioning failed for slug=%s", slug)
             demo_site.content_json = demo_site.content_json or self._build_content_for_site(demo_site)
@@ -300,11 +433,32 @@ class DemoSiteService:
         """Soft-delete a demo site and remove its Storyblok space when present."""
         now: datetime = datetime.now(timezone.utc)
         try:
-            if demo_site.storyblok_space_id:
-                await storyblok_service.delete_space(demo_site.storyblok_space_id)
+            deleted_space_id: Optional[int] = await storyblok_service.delete_demo_space(
+                space_id=demo_site.storyblok_space_id,
+                editor_url=demo_site.storyblok_editor_url,
+                business_name=demo_site.business_name,
+                slug=demo_site.slug,
+            )
+            if deleted_space_id:
+                logger.info("Deleted Storyblok space %s for demo site slug=%s", deleted_space_id, demo_site.slug)
         except Exception as exc:  # noqa: BLE001
-            logger.warning("Failed to delete Storyblok space %s: %s", demo_site.storyblok_space_id, exc)
+            logger.warning("Failed to delete Storyblok space for slug=%s: %s", demo_site.slug, exc)
 
+        demo_site.storyblok_space_id = None
+        demo_site.storyblok_public_token = None
+        demo_site.storyblok_preview_token = None
+        demo_site.storyblok_editor_url = None
+        demo_site.storyblok_login_email = None
+        demo_site.storyblok_login_password = None
+        demo_site.storyblok_invite_sent = False
+        demo_site.content_json = None
+        demo_site.demo_url = None
+        demo_site.demo_url_live = False
+        demo_site.local_demo_url = None
+        demo_site.vercel_deployment_id = None
+        demo_site.vercel_deployment_url = None
+        demo_site.verification_message = None
+        demo_site.error_message = None
         demo_site.status = DemoSiteStatus.DELETED.value
         demo_site.deleted_at = now
         db.commit()
@@ -333,11 +487,20 @@ class DemoSiteService:
         cleaned: int = 0
         for site in due_sites:
             try:
-                if site.storyblok_space_id:
-                    await storyblok_service.delete_space(site.storyblok_space_id)
+                await storyblok_service.delete_demo_space(
+                    space_id=site.storyblok_space_id,
+                    editor_url=site.storyblok_editor_url,
+                    business_name=site.business_name,
+                    slug=site.slug,
+                )
             except Exception as exc:  # noqa: BLE001
-                logger.warning("Failed to delete Storyblok space %s: %s", site.storyblok_space_id, exc)
+                logger.warning("Failed to delete Storyblok space for slug=%s: %s", site.slug, exc)
 
+            site.storyblok_space_id = None
+            site.storyblok_public_token = None
+            site.storyblok_preview_token = None
+            site.storyblok_editor_url = None
+            site.content_json = None
             site.status = DemoSiteStatus.DELETED.value
             site.deleted_at = now
             cleaned += 1

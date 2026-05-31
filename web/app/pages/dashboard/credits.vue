@@ -45,7 +45,7 @@
             <!-- Credits Used -->
             <div
               :style="{ width: `${usedPercentage}%` }"
-              class="absolute left-0 top-0 h-full bg-[#71A3DB] transition-all duration-300"
+              class="absolute top-0 left-0 h-full bg-[#71A3DB] transition-all duration-300"
             ></div>
 
             <!-- Credits Remaining -->

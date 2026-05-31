@@ -1,10 +1,10 @@
 <template>
-  <div>
+  <UApp>
     <DevLeadHunterDesktopUpdaterPanel />
     <NuxtLayout>
       <NuxtPage />
     </NuxtLayout>
-  </div>
+  </UApp>
 </template>
 
 <script lang="ts" setup>

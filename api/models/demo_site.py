@@ -2,7 +2,7 @@
 from datetime import datetime
 from typing import Optional, TYPE_CHECKING
 
-from sqlalchemy import Boolean, ForeignKey, String, Text, JSON
+from sqlalchemy import BigInteger, Boolean, ForeignKey, String, Text, JSON
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.sql import func
 
@@ -37,7 +37,7 @@ class DemoSite(Base):
         default=DemoSiteStatus.PENDING.value,
         index=True,
     )
-    storyblok_space_id: Mapped[Optional[int]] = mapped_column(nullable=True)
+    storyblok_space_id: Mapped[Optional[int]] = mapped_column(BigInteger, nullable=True)
     storyblok_public_token: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
     storyblok_preview_token: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
     storyblok_editor_url: Mapped[Optional[str]] = mapped_column(String(512), nullable=True)

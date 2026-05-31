@@ -3,7 +3,7 @@
     <UiLoader v-if="isLoading || isNavigating" />
     <div v-else class="relative flex min-h-screen items-center justify-center bg-[#050505] px-4">
       <!-- Logo en haut à gauche -->
-      <div class="absolute left-6 top-6 flex items-center gap-2">
+      <div class="absolute top-6 left-6 flex items-center gap-2">
         <div class="flex h-5 w-5 items-center justify-center rounded">
           <svg
             class="h-full w-full fill-current text-white"

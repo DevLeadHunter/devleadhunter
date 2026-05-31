@@ -4,11 +4,19 @@ Prospect management routes.
 from typing import List
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
-from models.prospect import Prospect, ProspectCreate, ProspectUpdate
+from models.prospect import (
+    Prospect,
+    ProspectCreate,
+    ProspectUpdate,
+    ProspectEnrichRequest,
+    ProspectSearchSuggestion,
+    ProspectSearchSuggestionsRequest,
+)
 from models.search import ProspectSearchRequest, ProspectSearchResponse
 from models.credit_settings import CreditSettings
 from models.user import User
 from services.prospect_service import prospect_service
+from services.prospect_enrichment_service import prospect_enrichment_service
 from services.scraper_service import scraper_service
 from services.auth_service import require_auth
 from services.credit_service import credit_service
@@ -94,7 +102,8 @@ async def search_prospects(
             category=request.category or "",
             city=request.city or "",
             max_results=request.max_results,
-            source_filter=source_value
+            source_filter=source_value,
+            only_without_website=request.only_without_website,
         )
         
         # Save scraped prospects to database
@@ -199,6 +208,60 @@ async def list_prospects(
         skip=skip,
         limit=limit
     )
+
+
+@router.post(
+    "/search-suggestions",
+    response_model=List[ProspectSearchSuggestion],
+    summary="Search businesses on Google Maps",
+    description="Return Google Maps business suggestions for autocomplete when adding a prospect manually",
+)
+async def search_prospect_suggestions(
+    request: ProspectSearchSuggestionsRequest,
+    current_user: User = Depends(require_auth),
+) -> List[ProspectSearchSuggestion]:
+    """Search Google Maps for business name suggestions without saving a prospect."""
+    del current_user
+    try:
+        return await prospect_enrichment_service.search_suggestions(
+            query=request.query,
+            city=request.city,
+            max_results=request.max_results,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+    except Exception as exc:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Search failed: {exc}",
+        ) from exc
+
+
+@router.post(
+    "/enrich",
+    response_model=ProspectCreate,
+    summary="Enrich a prospect from Google Maps",
+    description="Pre-fill prospect fields from a Google Maps link and/or business name",
+)
+async def enrich_prospect(
+    request: ProspectEnrichRequest,
+    current_user: User = Depends(require_auth),
+) -> ProspectCreate:
+    """Fetch public business details from Google Maps without saving the prospect."""
+    del current_user
+    try:
+        return await prospect_enrichment_service.enrich_from_google(
+            business_name=request.business_name,
+            google_maps_url=request.google_maps_url,
+            city=request.city,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+    except Exception as exc:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Enrichment failed: {exc}",
+        ) from exc
 
 
 @router.get(

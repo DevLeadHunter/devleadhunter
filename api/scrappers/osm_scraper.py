@@ -1,7 +1,7 @@
 """
 OpenStreetMap (Nominatim) scraper for fetching business prospects.
 """
-from typing import List, Optional
+from typing import Callable, List, Optional
 import asyncio
 import logging
 import re
@@ -10,6 +10,7 @@ from models.prospect import ProspectCreate
 from enums.source import Source
 from services.validation_service import validation_service
 from services.address_service import address_service
+from services.scrape_progress import ScrapeProgressReporter
 from .base_scraper import BaseScraper
 from .email_scraper import email_scraper
 
@@ -86,42 +87,123 @@ class OSMScraper(BaseScraper):
     
     def build_overpass_query(self, category: str, city: str) -> str:
         """
-        Build Overpass API query for searching businesses.
-        
-        Args:
-            category: Business category (e.g., "plombier", "restaurant")
-            city: City name
-            
-        Returns:
-            Overpass QL query string
+        Build Overpass API query for searching businesses in a city admin area.
         """
-        # Map categories to OSM tags
         category_tags = {
-            "restaurant": "amenity=restaurant",
-            "plombier": "craft=plumber",
-            "electricien": "craft=electrician",
-            "coiffeur": "shop=hairdresser",
-            "boulangerie": "shop=bakery",
-            "garage": "shop=car_repair"
+            "restaurant": ["amenity=restaurant"],
+            "plombier": ["craft=plumber"],
+            "electricien": ["craft=electrician"],
+            "coiffeur": ["shop=hairdresser"],
+            "boulangerie": ["shop=bakery"],
+            "garage": ["shop=car_repair"],
         }
-        
-        tag = category_tags.get(category.lower(), f"name~'{category}'")
-        
-        # Overpass query to search in area
-        query = f"""
+
+        tag_filters = category_tags.get(category.lower(), [f'name~"{category}",i'])
+        union_lines = []
+        for tag_filter in tag_filters:
+            union_lines.extend(
+                [
+                    f"  node[{tag_filter}](area.searchArea);",
+                    f"  way[{tag_filter}](area.searchArea);",
+                    f"  relation[{tag_filter}](area.searchArea);",
+                ]
+            )
+
+        union_block = "\n".join(union_lines)
+        return f"""
         [out:json][timeout:25];
         area["name"="{city}"]["admin_level"~"[8-9]"]->.searchArea;
         (
-          node[{tag}](area.searchArea);
-          way[{tag}](area.searchArea);
-          relation[{tag}](area.searchArea);
+        {union_block}
         );
         out body;
         >;
         out skel qt;
         """
-        
-        return query
+
+    def build_overpass_radius_query(
+        self, category: str, *, lat: float, lon: float, radius_m: int = 20000
+    ) -> str:
+        """Build Overpass query around coordinates when admin-area search is sparse."""
+        category_tags = {
+            "restaurant": ["amenity=restaurant"],
+            "plombier": ["craft=plumber"],
+            "electricien": ["craft=electrician"],
+            "coiffeur": ["shop=hairdresser"],
+            "boulangerie": ["shop=bakery"],
+            "garage": ["shop=car_repair"],
+        }
+        tag_filters = category_tags.get(category.lower(), [f'name~"{category}",i'])
+        union_lines = []
+        for tag_filter in tag_filters:
+            union_lines.extend(
+                [
+                    f"  node[{tag_filter}](around:{radius_m},{lat},{lon});",
+                    f"  way[{tag_filter}](around:{radius_m},{lat},{lon});",
+                ]
+            )
+        union_block = "\n".join(union_lines)
+        return f"""
+        [out:json][timeout:25];
+        (
+        {union_block}
+        );
+        out body;
+        >;
+        out skel qt;
+        """
+
+    async def geocode_city(self, city: str) -> Optional[tuple[float, float]]:
+        """Resolve city center coordinates via Nominatim."""
+        await self.ensure_session()
+        params = {"q": city, "format": "json", "limit": 1, "countrycodes": "fr"}
+        async with self.session.get(
+            f"{self.base_url}/search",
+            params=params,
+            timeout=aiohttp.ClientTimeout(total=15),
+        ) as response:
+            if response.status != 200:
+                return None
+            results = await response.json()
+            if not results:
+                return None
+            first = results[0]
+            return float(first["lat"]), float(first["lon"])
+
+    @staticmethod
+    def _business_key(business: dict) -> str:
+        tags = business.get("tags", {})
+        name = (tags.get("name") or "").strip().lower()
+        street = (tags.get("addr:street") or "").strip().lower()
+        return f"{name}|{street}|{business.get('id')}"
+
+    async def _run_overpass_query(self, query: str) -> list[dict]:
+        """Execute an Overpass query and return normalized business dicts."""
+        await self.ensure_session()
+        async with self.session.post(
+            self.overpass_url,
+            data={"data": query},
+            timeout=aiohttp.ClientTimeout(total=30),
+        ) as response:
+            if response.status != 200:
+                logger.error("Overpass API error: %s", response.status)
+                return []
+            data = await response.json()
+            businesses: list[dict] = []
+            for elem in data.get("elements", []):
+                tags = elem.get("tags", {})
+                if not tags.get("name"):
+                    continue
+                businesses.append(
+                    {
+                        "id": elem.get("id"),
+                        "type": elem.get("type"),
+                        "lat": elem.get("lat"),
+                        "lon": elem.get("lon"),
+                        "tags": tags,
+                    }
+                )
+            return businesses
     
     async def search_overpass(self, category: str, city: str, max_results: int) -> List[dict]:
         """
@@ -136,39 +218,33 @@ class OSMScraper(BaseScraper):
             List of business data dictionaries
         """
         try:
-            await self.ensure_session()
-            
-            query = self.build_overpass_query(category, city)
-            
-            async with self.session.post(
-                self.overpass_url,
-                data={"data": query},
-                timeout=aiohttp.ClientTimeout(total=30)
-            ) as response:
-                if response.status != 200:
-                    logger.error(f"Overpass API error: {response.status}")
-                    return []
-                
-                data = await response.json()
-                elements = data.get("elements", [])
-                
-                # Filter and process results
-                businesses = []
-                for elem in elements[:max_results * 2]:
-                    tags = elem.get("tags", {})
-                    if not tags.get("name"):
+            businesses: list[dict] = []
+            seen: set[str] = set()
+
+            def _merge(items: list[dict]) -> None:
+                for item in items:
+                    key = self._business_key(item)
+                    if key in seen:
                         continue
-                    
-                    businesses.append({
-                        "id": elem.get("id"),
-                        "type": elem.get("type"),
-                        "lat": elem.get("lat"),
-                        "lon": elem.get("lon"),
-                        "tags": tags
-                    })
-                
-                logger.info(f"Found {len(businesses)} businesses from Overpass API")
-                return businesses[:max_results * 2]
+                    seen.add(key)
+                    businesses.append(item)
+
+            coords = await self.geocode_city(city)
+            if coords:
+                lat, lon = coords
+                radius_results = await self._run_overpass_query(
+                    self.build_overpass_radius_query(category, lat=lat, lon=lon, radius_m=15000)
+                )
+                _merge(radius_results)
+
+            if len(businesses) < max_results * 3:
+                area_results = await self._run_overpass_query(
+                    self.build_overpass_query(category, city)
+                )
+                _merge(area_results)
+
+            logger.info("Found %s businesses from Overpass API", len(businesses))
+            return businesses
         
         except asyncio.TimeoutError:
             logger.error("Overpass API timeout")
@@ -177,7 +253,13 @@ class OSMScraper(BaseScraper):
             logger.error(f"Error querying Overpass API: {e}")
             return []
     
-    async def extract_prospect_from_osm_data(self, business: dict, city_search: str) -> Optional[ProspectCreate]:
+    async def extract_prospect_from_osm_data(
+        self,
+        business: dict,
+        city_search: str,
+        *,
+        only_without_website: bool = True,
+    ) -> Optional[ProspectCreate]:
         """
         Extract prospect details from OSM business data.
         
@@ -237,7 +319,7 @@ class OSMScraper(BaseScraper):
                 website = None
             
             # Only return prospect if no website
-            if website:
+            if only_without_website and website:
                 logger.info(f"Prospect {name} has a website, skipping")
                 return None
             
@@ -282,10 +364,14 @@ class OSMScraper(BaseScraper):
         self,
         category: str,
         city: str,
-        max_results: int = 50
+        max_results: int = 50,
+        *,
+        only_without_website: bool = True,
+        progress: Optional[ScrapeProgressReporter] = None,
+        should_stop: Optional[Callable[[], bool]] = None,
     ) -> List[ProspectCreate]:
         """
-        Scrape prospects from OpenStreetMap without websites.
+        Scrape prospects from OpenStreetMap.
         
         Args:
             category: Business category to search for
@@ -301,7 +387,9 @@ class OSMScraper(BaseScraper):
         
         try:
             await self.ensure_session()
-            
+            if progress:
+                await progress.log("OpenStreetMap — recherche des entreprises…")
+
             # Search using Overpass API
             businesses = await self.search_overpass(category, city, max_results)
             
@@ -310,16 +398,26 @@ class OSMScraper(BaseScraper):
                 return []
             
             prospects = []
-            
+            if progress:
+                await progress.log(f"OpenStreetMap — {len(businesses)} résultat(s) à traiter")
+
             # Process each business
             for business in businesses:
+                if should_stop and should_stop():
+                    break
                 if len(prospects) >= max_results:
                     break
                 
                 try:
-                    prospect = await self.extract_prospect_from_osm_data(business, city)
+                    prospect = await self.extract_prospect_from_osm_data(
+                        business,
+                        city,
+                        only_without_website=only_without_website,
+                    )
                     if prospect:
                         prospects.append(prospect)
+                        if progress:
+                            await progress.prospect(prospect)
                     
                     # Rate limiting
                     await asyncio.sleep(0.1)
@@ -337,4 +435,5 @@ class OSMScraper(BaseScraper):
         
         finally:
             await self.stop()
+            await self.close()
 

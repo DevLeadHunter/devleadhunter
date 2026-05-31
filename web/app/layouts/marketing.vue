@@ -66,7 +66,7 @@
         <div class="fixed inset-0 bg-black/60 backdrop-blur-sm" @click="closeMobileMenu"></div>
 
         <!-- Sidebar -->
-        <aside class="fixed left-0 top-0 z-[60] h-full w-full border-r border-[#30363d] bg-[#1a1a1a] shadow-xl">
+        <aside class="fixed top-0 left-0 z-[60] h-full w-full border-r border-[#30363d] bg-[#1a1a1a] shadow-xl">
           <div class="flex h-full flex-col">
             <!-- Header -->
             <div class="border-b border-[#30363d] px-4 py-5">
@@ -163,14 +163,14 @@
               </div>
               <span class="text-base font-semibold text-[#f9f9f9]">devleadhunter</span>
             </div>
-            <p class="max-w-md text-base font-light leading-relaxed text-[#8b949e]">
+            <p class="max-w-md text-base leading-relaxed font-light text-[#8b949e]">
               {{ $t('footer.description') }}
             </p>
           </div>
 
           <!-- Links -->
           <div>
-            <h3 class="mb-6 text-sm font-semibold uppercase tracking-wider text-[#f9f9f9]">
+            <h3 class="mb-6 text-sm font-semibold tracking-wider text-[#f9f9f9] uppercase">
               {{ $t('footer.product') }}
             </h3>
             <ul class="space-y-4">
@@ -196,7 +196,7 @@
           </div>
 
           <div>
-            <h3 class="mb-6 text-sm font-semibold uppercase tracking-wider text-[#f9f9f9]">
+            <h3 class="mb-6 text-sm font-semibold tracking-wider text-[#f9f9f9] uppercase">
               {{ $t('footer.account') }}
             </h3>
             <ul class="space-y-4">

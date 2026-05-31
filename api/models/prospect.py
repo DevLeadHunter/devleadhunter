@@ -42,6 +42,31 @@ class ProspectCreate(ProspectBase):
     pass
 
 
+class ProspectEnrichRequest(BaseModel):
+    """Request payload to pre-fill a prospect from Google Maps."""
+
+    business_name: Optional[str] = Field(None, max_length=255, description="Business name")
+    google_maps_url: Optional[str] = Field(None, max_length=2048, description="Google Maps place URL")
+    city: Optional[str] = Field(None, max_length=128, description="City hint for business name search")
+
+
+class ProspectSearchSuggestionsRequest(BaseModel):
+    """Request payload to search businesses on Google Maps."""
+
+    query: str = Field(..., min_length=2, max_length=255, description="Business name search query")
+    city: Optional[str] = Field(None, max_length=128, description="City hint")
+    max_results: int = Field(default=8, ge=1, le=15, description="Maximum suggestions to return")
+
+
+class ProspectSearchSuggestion(BaseModel):
+    """A Google Maps business suggestion for autocomplete."""
+
+    id: str = Field(..., description="Unique suggestion id (Google Maps URL)")
+    label: str = Field(..., description="Business display name")
+    description: Optional[str] = Field(None, description="Address or secondary line")
+    google_maps_url: str = Field(..., description="Google Maps place URL")
+
+
 class ProspectUpdate(BaseModel):
     """
     Model for updating an existing prospect.

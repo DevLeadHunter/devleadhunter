@@ -34,6 +34,7 @@ MIGRATION_MODULES: list[tuple[str, str]] = [
     ("add_demo_sites_table", "migrations.add_demo_sites_table"),
     ("add_demo_site_verification_columns", "migrations.add_demo_site_verification_columns"),
     ("add_demo_site_storyblok_invite_sent", "migrations.add_demo_site_storyblok_invite_sent"),
+    ("add_demo_site_storyblok_space_id_bigint", "migrations.add_demo_site_storyblok_space_id_bigint"),
 ]
 
 

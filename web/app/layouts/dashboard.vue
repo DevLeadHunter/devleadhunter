@@ -8,7 +8,7 @@
       <UiSidebar :is-open="isSidebarOpen" :is-mobile="isMobile" @toggle="toggleSidebar" />
 
       <!-- Main Content -->
-      <div class="ml-0 flex flex-1 flex-col overflow-hidden md:ml-64">
+      <div class="ml-0 flex flex-1 flex-col overflow-hidden transition-[margin] duration-200 md:ml-64">
         <!-- Mobile Header -->
         <header class="sticky top-0 z-10 border-b border-[#30363d] bg-[#1a1a1a] px-4 py-3 md:hidden">
           <div v-if="showCreditsPopover && isMobile" class="fixed inset-0 z-40" @click="handleClickOutside"></div>
@@ -34,7 +34,7 @@
               <!-- Mobile Popover -->
               <div
                 v-if="showCreditsPopover && isMobile"
-                class="absolute right-0 top-10 z-50 w-72 rounded-lg border border-[#30363d] bg-[#1a1a1a] p-4 shadow-xl"
+                class="absolute top-10 right-0 z-50 w-72 rounded-lg border border-[#30363d] bg-[#1a1a1a] p-4 shadow-xl"
                 @click.stop
               >
                 <div class="mb-3 flex items-start gap-4">
@@ -48,7 +48,7 @@
                     {{ creditIconValue }}
                   </div>
                   <div class="min-w-0 flex-1">
-                    <p class="mb-1 text-sm font-bold uppercase text-[#f9f9f9]">Remaining Credits</p>
+                    <p class="mb-1 text-sm font-bold text-[#f9f9f9] uppercase">Remaining Credits</p>
                     <p class="text-xs leading-relaxed text-[#8b949e]">
                       Used to search and find prospects for your campaigns and send emails
                     </p>

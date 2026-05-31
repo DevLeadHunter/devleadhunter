@@ -226,6 +226,8 @@ async def update_email_template(
         template.subject = template_data.subject
     if template_data.body_html is not None:
         template.body_html = template_data.body_html
+    if template_data.body_text is not None:
+        template.body_text = template_data.body_text
     if template_data.is_active is not None:
         template.is_active = template_data.is_active
     

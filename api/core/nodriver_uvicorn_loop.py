@@ -1,4 +1,4 @@
-"""Asyncio event loop for uvicorn on Windows.
+"""Asyncio event loop for uvicorn + nodriver on Windows.
 
 With ``--reload``, uvicorn may pick ``SelectorEventLoop``, which breaks subprocess-based
 scrapers (Playwright, Selenium, etc.).

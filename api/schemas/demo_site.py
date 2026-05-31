@@ -5,6 +5,14 @@ from typing import Optional
 from pydantic import BaseModel, EmailStr, Field
 
 
+class DemoSiteTheme(BaseModel):
+    """Customizable color palette for a demo site template."""
+
+    primary: str = Field(default="#0284c7", pattern=r"^#[0-9A-Fa-f]{6}$")
+    secondary: str = Field(default="#0f172a", pattern=r"^#[0-9A-Fa-f]{6}$")
+    accent: str = Field(default="#f59e0b", pattern=r"^#[0-9A-Fa-f]{6}$")
+
+
 class DemoSiteCreateRequest(BaseModel):
     """Payload to create a demo site from the stepper tunnel."""
 
@@ -12,8 +20,36 @@ class DemoSiteCreateRequest(BaseModel):
     template_id: str = Field(default="plumber-simple", max_length=64)
     phone: Optional[str] = Field(default=None, max_length=64)
     email: EmailStr
+    invite_client_to_cms: bool = Field(
+        default=False,
+        description="When true, Storyblok sends a CMS invitation email to the client immediately.",
+    )
     city: Optional[str] = Field(default=None, max_length=128)
     description: Optional[str] = Field(default=None, max_length=2000)
+    theme: Optional[DemoSiteTheme] = None
+    prospect_id: Optional[int] = Field(
+        default=None,
+        description="Optional saved prospect used to pre-fill business fields on the client.",
+    )
+
+
+class DemoSitePreviewRequest(BaseModel):
+    """Payload to render a demo site preview without provisioning."""
+
+    business_name: str = Field(..., min_length=2, max_length=255)
+    template_id: str = Field(default="plumber-simple", max_length=64)
+    phone: Optional[str] = Field(default=None, max_length=64)
+    email: Optional[EmailStr] = None
+    city: Optional[str] = Field(default=None, max_length=128)
+    description: Optional[str] = Field(default=None, max_length=2000)
+    theme: Optional[DemoSiteTheme] = None
+
+
+class DemoSitePreviewResponse(BaseModel):
+    """Client-side preview payload before publish."""
+
+    template_id: str
+    content_json: dict
 
 
 class DemoSiteUpdateRequest(BaseModel):
@@ -25,6 +61,15 @@ class DemoSiteUpdateRequest(BaseModel):
     email: Optional[EmailStr] = None
     city: Optional[str] = Field(default=None, max_length=128)
     description: Optional[str] = Field(default=None, max_length=2000)
+    theme: Optional[DemoSiteTheme] = None
+
+
+class DemoSiteTemplateTheme(BaseModel):
+    """Default theme colors for a template."""
+
+    primary: str
+    secondary: str
+    accent: str
 
 
 class DemoSiteTemplateResponse(BaseModel):
@@ -34,6 +79,8 @@ class DemoSiteTemplateResponse(BaseModel):
     name: str
     description: str
     preview_image_url: Optional[str] = None
+    default_theme: DemoSiteTemplateTheme
+    category: str = "artisan"
 
 
 class DemoSiteResponse(BaseModel):
@@ -59,6 +106,7 @@ class DemoSiteResponse(BaseModel):
     expires_at: datetime
     created_at: datetime
     error_message: Optional[str] = None
+    theme: Optional[DemoSiteTheme] = None
 
     model_config = {"from_attributes": True}
 
@@ -72,6 +120,7 @@ class DemoSitePublicResponse(BaseModel):
     storyblok_space_id: Optional[int] = None
     storyblok_public_token: Optional[str] = None
     storyblok_preview_token: Optional[str] = None
+    storyblok_region: Optional[str] = None
     content_json: Optional[dict] = None
     status: str
     expires_at: datetime

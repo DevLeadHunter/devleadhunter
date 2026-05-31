@@ -120,11 +120,11 @@
 
           <div class="flex flex-col gap-3 lg:flex-row">
             <div class="relative flex-1">
-              <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-[#8b949e]"></i>
+              <i class="fa-solid fa-magnifying-glass absolute top-1/2 left-3 -translate-y-1/2 text-[#8b949e]"></i>
               <input
                 v-model="searchQuery"
                 type="search"
-                class="w-full rounded border border-[#30363d] bg-[#1a1a1a] px-10 py-2 text-sm text-[#f9f9f9] placeholder:text-[#8b949e] focus:border-[#f9f9f9] focus:outline-none focus:ring-1 focus:ring-[#f9f9f9]"
+                class="w-full rounded border border-[#30363d] bg-[#1a1a1a] px-10 py-2 text-sm text-[#f9f9f9] placeholder:text-[#8b949e] focus:border-[#f9f9f9] focus:ring-1 focus:ring-[#f9f9f9] focus:outline-none"
                 placeholder="Search (name, email, Stripe ID, description...)"
               />
             </div>
@@ -174,27 +174,27 @@
           <table class="w-full">
             <thead>
               <tr class="border-b border-[#30363d] bg-[#050505]">
-                <th class="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-[#8b949e]">Status</th>
-                <th class="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-[#8b949e]">
+                <th class="px-4 py-3 text-left text-xs font-medium tracking-wider text-[#8b949e] uppercase">Status</th>
+                <th class="px-4 py-3 text-left text-xs font-medium tracking-wider text-[#8b949e] uppercase">
                   Customer
                 </th>
-                <th class="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-[#8b949e]">Date</th>
-                <th class="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-[#8b949e]">Credits</th>
-                <th class="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-[#8b949e]">Amount</th>
-                <th class="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-[#8b949e]">
+                <th class="px-4 py-3 text-left text-xs font-medium tracking-wider text-[#8b949e] uppercase">Date</th>
+                <th class="px-4 py-3 text-left text-xs font-medium tracking-wider text-[#8b949e] uppercase">Credits</th>
+                <th class="px-4 py-3 text-left text-xs font-medium tracking-wider text-[#8b949e] uppercase">Amount</th>
+                <th class="px-4 py-3 text-left text-xs font-medium tracking-wider text-[#8b949e] uppercase">
                   Stripe fees
                 </th>
-                <th class="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-[#8b949e]">Net</th>
-                <th class="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-[#8b949e]">
+                <th class="px-4 py-3 text-left text-xs font-medium tracking-wider text-[#8b949e] uppercase">Net</th>
+                <th class="px-4 py-3 text-left text-xs font-medium tracking-wider text-[#8b949e] uppercase">
                   Funds availability
                 </th>
-                <th class="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-[#8b949e]">
+                <th class="px-4 py-3 text-left text-xs font-medium tracking-wider text-[#8b949e] uppercase">
                   Payment method
                 </th>
-                <th class="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-[#8b949e]">Country</th>
-                <th class="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-[#8b949e]">IP</th>
-                <th class="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-[#8b949e]">Device</th>
-                <th class="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-[#8b949e]">Details</th>
+                <th class="px-4 py-3 text-left text-xs font-medium tracking-wider text-[#8b949e] uppercase">Country</th>
+                <th class="px-4 py-3 text-left text-xs font-medium tracking-wider text-[#8b949e] uppercase">IP</th>
+                <th class="px-4 py-3 text-left text-xs font-medium tracking-wider text-[#8b949e] uppercase">Device</th>
+                <th class="px-4 py-3 text-left text-xs font-medium tracking-wider text-[#8b949e] uppercase">Details</th>
               </tr>
             </thead>
             <tbody>
@@ -317,7 +317,7 @@
             <div class="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
               <!-- Payment Information -->
               <div v-if="transaction.payment_info">
-                <h3 class="mb-3 text-xs font-semibold uppercase text-[#8b949e]">Payment information</h3>
+                <h3 class="mb-3 text-xs font-semibold text-[#8b949e] uppercase">Payment information</h3>
                 <div class="space-y-2">
                   <div class="flex justify-between text-sm">
                     <span class="text-[#8b949e]">Method:</span>
@@ -327,7 +327,7 @@
                   </div>
                   <div class="flex justify-between text-sm">
                     <span class="text-[#8b949e]">Currency:</span>
-                    <span class="font-medium uppercase text-[#f9f9f9]">
+                    <span class="font-medium text-[#f9f9f9] uppercase">
                       {{ transaction.payment_info.currency }}
                     </span>
                   </div>
@@ -360,7 +360,7 @@
 
               <!-- Financial Details -->
               <div v-if="transaction.payment_info">
-                <h3 class="mb-3 text-xs font-semibold uppercase text-[#8b949e]">Financial details</h3>
+                <h3 class="mb-3 text-xs font-semibold text-[#8b949e] uppercase">Financial details</h3>
                 <div class="space-y-2">
                   <div class="flex justify-between text-sm">
                     <span class="text-[#8b949e]">Payment amount:</span>
@@ -406,7 +406,7 @@
 
               <!-- Transaction Details -->
               <div>
-                <h3 class="mb-3 text-xs font-semibold uppercase text-[#8b949e]">Transaction</h3>
+                <h3 class="mb-3 text-xs font-semibold text-[#8b949e] uppercase">Transaction</h3>
                 <div class="space-y-2">
                   <div class="flex justify-between text-sm">
                     <span class="text-[#8b949e]">Transaction ID:</span>
@@ -511,7 +511,7 @@ import * as accountingService from '~/services/accountingService'
  */
 definePageMeta({
   layout: 'dashboard',
-  middleware: 'auth',
+  middleware: ['auth', 'admin'],
 })
 
 /**

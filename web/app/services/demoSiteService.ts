@@ -2,20 +2,46 @@ import { api } from '~/services/api'
 
 const BASE_URL = '/api/v1/demo-sites'
 
+export interface DemoSiteTheme {
+  primary: string
+  secondary: string
+  accent: string
+}
+
 export interface DemoSiteTemplate {
   id: string
   name: string
   description: string
   preview_image_url?: string | null
+  default_theme: DemoSiteTheme
+  category?: string
 }
 
 export interface DemoSiteCreatePayload {
   business_name: string
   template_id: string
   email: string
+  invite_client_to_cms?: boolean
   phone?: string
   city?: string
   description?: string
+  theme?: DemoSiteTheme
+  prospect_id?: number
+}
+
+export interface DemoSitePreviewPayload {
+  business_name: string
+  template_id: string
+  phone?: string
+  email?: string
+  city?: string
+  description?: string
+  theme?: DemoSiteTheme
+}
+
+export interface DemoSitePreviewResult {
+  template_id: string
+  content_json: Record<string, unknown>
 }
 
 export interface DemoSiteUpdatePayload {
@@ -25,6 +51,7 @@ export interface DemoSiteUpdatePayload {
   phone?: string
   city?: string
   description?: string
+  theme?: DemoSiteTheme
 }
 
 export interface DemoSite {
@@ -48,6 +75,7 @@ export interface DemoSite {
   expires_at: string
   created_at: string
   error_message?: string | null
+  theme?: DemoSiteTheme | null
 }
 
 export interface DemoSiteListResponse {
@@ -63,6 +91,13 @@ export async function listDemoSiteTemplates(): Promise<DemoSiteTemplate[]> {
 }
 
 /**
+ * Build preview content without provisioning Storyblok/Vercel.
+ */
+export async function previewDemoSite(payload: DemoSitePreviewPayload): Promise<DemoSitePreviewResult> {
+  return api.post<DemoSitePreviewResult>(`${BASE_URL}/preview`, payload)
+}
+
+/**
  * List demo sites created by the current user.
  */
 export async function listDemoSites(): Promise<DemoSiteListResponse> {
@@ -71,7 +106,6 @@ export async function listDemoSites(): Promise<DemoSiteListResponse> {
 
 /**
  * Create and provision a demo website.
- * @param payload - Business info and selected template.
  */
 export async function createDemoSite(payload: DemoSiteCreatePayload): Promise<DemoSite> {
   return api.post<DemoSite>(BASE_URL, payload)
@@ -79,7 +113,6 @@ export async function createDemoSite(payload: DemoSiteCreatePayload): Promise<De
 
 /**
  * Fetch a single demo site by id.
- * @param demoSiteId - Demo site primary key.
  */
 export async function getDemoSite(demoSiteId: number): Promise<DemoSite> {
   return api.get<DemoSite>(`${BASE_URL}/${demoSiteId}`)
@@ -87,7 +120,6 @@ export async function getDemoSite(demoSiteId: number): Promise<DemoSite> {
 
 /**
  * Re-run live URL verification for a demo site.
- * @param demoSiteId - Demo site primary key.
  */
 export async function verifyDemoSite(demoSiteId: number): Promise<DemoSite> {
   return api.post<DemoSite>(`${BASE_URL}/${demoSiteId}/verify`, {})
@@ -95,8 +127,6 @@ export async function verifyDemoSite(demoSiteId: number): Promise<DemoSite> {
 
 /**
  * Update demo site fields and regenerate its content.
- * @param demoSiteId - Demo site primary key.
- * @param payload - Partial business info to update.
  */
 export async function updateDemoSite(demoSiteId: number, payload: DemoSiteUpdatePayload): Promise<DemoSite> {
   return api.patch<DemoSite>(`${BASE_URL}/${demoSiteId}`, payload)
@@ -104,16 +134,49 @@ export async function updateDemoSite(demoSiteId: number, payload: DemoSiteUpdate
 
 /**
  * Rebuild demo site content from stored fields without changing them.
- * @param demoSiteId - Demo site primary key.
  */
 export async function regenerateDemoSite(demoSiteId: number): Promise<DemoSite> {
   return api.post<DemoSite>(`${BASE_URL}/${demoSiteId}/regenerate`, {})
 }
 
 /**
+ * Send a Storyblok CMS invitation to the demo site client.
+ */
+export async function inviteDemoSiteClientToCms(demoSiteId: number): Promise<DemoSite> {
+  return api.post<DemoSite>(`${BASE_URL}/${demoSiteId}/invite-cms`, {})
+}
+
+/**
  * Delete a demo site owned by the current user.
- * @param demoSiteId - Demo site primary key.
  */
 export async function deleteDemoSite(demoSiteId: number): Promise<void> {
   await api.delete(`${BASE_URL}/${demoSiteId}`)
+}
+
+/**
+ * Compute days remaining before a demo site expires.
+ */
+export function daysUntilExpiry(expiresAt: string): number {
+  const diff = new Date(expiresAt).getTime() - Date.now()
+  return Math.max(0, Math.ceil(diff / (1000 * 60 * 60 * 24)))
+}
+
+/**
+ * Best URL to open/share for a demo site (prefers live local URL in dev).
+ */
+export function getDemoSiteOpenUrl(site: DemoSite): string | null {
+  if (site.demo_url_live && site.demo_url) {
+    return site.demo_url
+  }
+  if (site.local_demo_url) {
+    return site.local_demo_url
+  }
+  return site.demo_url ?? null
+}
+
+/**
+ * Whether the demo site is reachable (prod URL or local fallback).
+ */
+export function isDemoSiteReachable(site: DemoSite): boolean {
+  return Boolean(site.demo_url_live || site.local_demo_url)
 }

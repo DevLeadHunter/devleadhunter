@@ -1,23 +1,25 @@
 <template>
-  <div
-    v-if="isOpen"
-    class="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm"
-    @click.self="handleCancel"
-  >
-    <div class="border-muted mx-4 w-full max-w-md rounded-lg border bg-[#1a1a1a] p-6">
-      <h2 class="mb-3 text-base font-semibold text-[#f9f9f9]">{{ title }}</h2>
-      <p class="text-muted mb-6 text-sm">{{ message }}</p>
+  <Teleport to="body">
+    <div
+      v-if="isOpen"
+      class="fixed inset-0 z-[100] flex items-center justify-center bg-black/70 backdrop-blur-sm"
+      @click.self="handleCancel"
+    >
+      <div class="border-muted mx-4 w-full max-w-md rounded-lg border bg-[#1a1a1a] p-6">
+        <h2 class="mb-3 text-base font-semibold text-[#f9f9f9]">{{ title }}</h2>
+        <p class="text-muted mb-6 text-sm">{{ message }}</p>
 
-      <div class="flex gap-3">
-        <button class="btn-secondary flex-1" @click="handleCancel">
-          {{ cancelText }}
-        </button>
-        <button class="btn-danger flex-1" @click="handleConfirm">
-          {{ confirmText }}
-        </button>
+        <div class="flex gap-3">
+          <button class="btn-secondary flex-1" @click="handleCancel">
+            {{ cancelText }}
+          </button>
+          <button class="btn-danger flex-1" @click="handleConfirm">
+            {{ confirmText }}
+          </button>
+        </div>
       </div>
     </div>
-  </div>
+  </Teleport>
 </template>
 
 <script setup lang="ts">

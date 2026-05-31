@@ -30,12 +30,9 @@
       <div>
         <label for="source" class="text-muted mb-1.5 block text-xs font-medium"> Source </label>
         <select id="source" v-model="localFilters.source" class="input-field">
-          <option value="all">All Sources</option>
-          <option value="google">Google</option>
-          <option value="pagesjaunes">Pages Jaunes</option>
-          <option value="yelp">Yelp</option>
-          <option value="osm">OSM</option>
-          <option value="mappy">Mappy</option>
+          <option v-for="option in PROSPECT_SOURCE_FILTER_OPTIONS" :key="option.value" :value="option.value">
+            {{ option.label }}
+          </option>
         </select>
       </div>
 
@@ -76,6 +73,7 @@ import type { Ref } from 'vue'
 import { ref, watch } from 'vue'
 import { useProspectsStore } from '~/stores/prospects'
 import { useToast } from '~/composables/useToast'
+import { PROSPECT_SOURCE_FILTER_OPTIONS } from '~/constants/prospectSources'
 
 /**
  * Props for the SearchForm component

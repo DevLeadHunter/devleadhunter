@@ -49,15 +49,25 @@
             </span>
           </td>
           <td class="text-muted px-3 py-2.5 text-xs">
-            {{ formatSource(prospect.source) }}
+            {{ formatProspectSource(prospect.source) }}
           </td>
           <td class="px-3 py-2.5">
-            <div class="flex gap-1.5">
-              <button class="btn-secondary" @click="handleAddToCampaign(prospect.id)">
-                <i class="fa-solid fa-plus mr-1"></i> Add to Campaign
+            <div class="flex flex-wrap gap-1.5">
+              <button type="button" class="btn-secondary" @click="handleAddToCampaign(prospect.id)">
+                <i class="fa-solid fa-plus mr-1"></i>
+                Campagne
               </button>
-              <button v-if="prospect.email" class="btn-secondary" @click="handleSendEmail(prospect)">
-                <i class="fa-solid fa-envelope mr-1"></i> Send Email
+              <button v-if="prospect.email" type="button" class="btn-secondary" @click="handleSendEmail(prospect)">
+                <i class="fa-solid fa-envelope mr-1"></i>
+                Email
+              </button>
+              <button
+                type="button"
+                class="btn-danger"
+                title="Supprimer ce prospect"
+                @click="emit('deleteProspect', prospect)"
+              >
+                <i class="fa-solid fa-trash"></i>
               </button>
             </div>
           </td>
@@ -76,6 +86,7 @@
 <script setup lang="ts">
 import type { Prospect } from '~/types'
 import { useToast } from '~/composables/useToast'
+import { formatProspectSource } from '~/constants/prospectSources'
 
 /**
  * Props for the ProspectTable component
@@ -96,10 +107,7 @@ interface Props {
  */
 defineProps<Props>()
 
-/**
- * Emit events
- */
-defineEmits<{
+const emit = defineEmits<{
   toggleProspect: [id: number]
   viewProspect: [prospect: Prospect]
   deleteProspect: [prospect: Prospect]
@@ -109,24 +117,6 @@ defineEmits<{
  * Toast composable
  */
 const toast = useToast()
-
-/**
- * Format source name for display
- * @param {string} source - Source name
- * @returns {string} Formatted source name
- */
-const formatSource = (source: string): string => {
-  const sourceMap: Record<string, string> = {
-    google: 'Google',
-    pagesjaunes: 'Pages Jaunes',
-    yelp: 'Yelp',
-    osm: 'OSM',
-    mappy: 'Mappy',
-    mock: 'Mock',
-  }
-
-  return sourceMap[source] || source
-}
 
 /**
  * Handle add to campaign click

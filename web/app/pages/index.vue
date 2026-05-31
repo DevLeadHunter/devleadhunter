@@ -1,12 +1,12 @@
 <template>
   <div>
     <!-- Hero Section -->
-    <section class="relative overflow-hidden pb-24 pt-32 md:pb-32 md:pt-40">
-      <div class="container relative z-10 mx-auto px-4 md:px-6 lg:px-8">
+    <section class="relative overflow-hidden pt-32 pb-24 md:pt-40 md:pb-32">
+      <div class="relative z-10 container mx-auto px-4 md:px-6 lg:px-8">
         <div class="mx-auto max-w-5xl text-center">
           <!-- Main Heading -->
           <h1
-            class="mb-6 text-3xl font-bold leading-tight tracking-tight text-[#f9f9f9] md:text-4xl md:leading-tight lg:text-5xl"
+            class="mb-6 text-3xl leading-tight font-bold tracking-tight text-[#f9f9f9] md:text-4xl md:leading-tight lg:text-5xl"
           >
             {{ $t('hero.title') }}
             <span class="mt-3 block text-[#f9f9f9]">
@@ -15,7 +15,7 @@
           </h1>
 
           <!-- Subheading -->
-          <p class="mx-auto mb-10 max-w-3xl text-base font-light leading-relaxed text-[#8b949e] md:text-lg">
+          <p class="mx-auto mb-10 max-w-3xl text-base leading-relaxed font-light text-[#8b949e] md:text-lg">
             {{ $t('hero.subtitle') }}
           </p>
 
@@ -77,7 +77,7 @@
               <h2 class="mb-6 text-xl font-bold tracking-tight text-[#f9f9f9] md:text-2xl lg:text-3xl">
                 {{ $t('features.search.heading') }}
               </h2>
-              <p class="mb-8 text-sm font-light leading-relaxed text-[#8b949e]">
+              <p class="mb-8 text-sm leading-relaxed font-light text-[#8b949e]">
                 {{ $t('features.search.descriptionFull') }}
               </p>
               <ul class="space-y-4">
@@ -134,7 +134,7 @@
 
           <!-- Feature 2: Campagnes -->
           <div class="grid grid-cols-1 items-center gap-16 md:grid-cols-2 md:gap-20">
-            <div class="order-2 animate-slideInRight md:order-1">
+            <div class="animate-slideInRight order-2 md:order-1">
               <div class="rounded-xl border border-[#30363d] bg-[#1a1a1a] p-3 md:p-6">
                 <div class="space-y-4">
                   <div
@@ -154,7 +154,7 @@
                 </div>
               </div>
             </div>
-            <div class="order-1 animate-slideInLeft md:order-2">
+            <div class="animate-slideInLeft order-1 md:order-2">
               <div
                 class="mb-8 inline-flex items-center gap-2 rounded-full border border-[#30363d]/30 bg-[#1a1a1a]/50 px-4 py-2"
               >
@@ -164,7 +164,7 @@
               <h2 class="mb-6 text-xl font-bold tracking-tight text-[#f9f9f9] md:text-2xl lg:text-3xl">
                 {{ $t('features.campaigns.heading') }}
               </h2>
-              <p class="mb-8 text-sm font-light leading-relaxed text-[#8b949e]">
+              <p class="mb-8 text-sm leading-relaxed font-light text-[#8b949e]">
                 {{ $t('features.campaigns.descriptionFull') }}
               </p>
               <ul class="space-y-4">
@@ -200,7 +200,7 @@
               <h2 class="mb-6 text-xl font-bold tracking-tight text-[#f9f9f9] md:text-2xl lg:text-3xl">
                 {{ $t('features.management.heading') }}
               </h2>
-              <p class="mb-8 text-sm font-light leading-relaxed text-[#8b949e]">
+              <p class="mb-8 text-sm leading-relaxed font-light text-[#8b949e]">
                 {{ $t('features.management.descriptionFull') }}
               </p>
               <ul class="space-y-4">
@@ -252,7 +252,7 @@
 
           <!-- Feature 4: Statistiques -->
           <div class="grid grid-cols-1 items-center gap-16 md:grid-cols-2 md:gap-20">
-            <div class="order-2 animate-slideInRight md:order-1">
+            <div class="animate-slideInRight order-2 md:order-1">
               <div class="rounded-xl border border-[#30363d] bg-[#1a1a1a] p-3 md:p-6">
                 <div class="space-y-4">
                   <div
@@ -276,7 +276,7 @@
                 </div>
               </div>
             </div>
-            <div class="order-1 animate-slideInLeft md:order-2">
+            <div class="animate-slideInLeft order-1 md:order-2">
               <div
                 class="mb-8 inline-flex items-center gap-2 rounded-full border border-[#30363d]/30 bg-[#1a1a1a]/50 px-4 py-2"
               >
@@ -286,7 +286,7 @@
               <h2 class="mb-6 text-xl font-bold tracking-tight text-[#f9f9f9] md:text-2xl lg:text-3xl">
                 {{ $t('features.analytics.heading') }}
               </h2>
-              <p class="mb-8 text-sm font-light leading-relaxed text-[#8b949e]">
+              <p class="mb-8 text-sm leading-relaxed font-light text-[#8b949e]">
                 {{ $t('features.analytics.descriptionFull') }}
               </p>
               <ul class="space-y-4">
@@ -422,7 +422,7 @@
         <div class="mx-auto max-w-5xl px-2 md:px-0">
           <div class="space-y-20">
             <!-- Step 1 -->
-            <div class="flex animate-fadeInUp flex-col items-start gap-10 md:flex-row" style="animation-delay: 0.1s">
+            <div class="animate-fadeInUp flex flex-col items-start gap-10 md:flex-row" style="animation-delay: 0.1s">
               <div
                 class="flex h-16 w-16 flex-shrink-0 items-center justify-center rounded-2xl bg-[#21262d]/50 text-2xl font-bold text-[#f9f9f9]"
               >
@@ -430,14 +430,14 @@
               </div>
               <div class="flex-1">
                 <h3 class="mb-4 text-lg font-semibold text-[#f9f9f9] md:text-xl">{{ $t('howItWorks.step1.title') }}</h3>
-                <p class="text-sm font-light leading-relaxed text-[#8b949e]">
+                <p class="text-sm leading-relaxed font-light text-[#8b949e]">
                   {{ $t('howItWorks.step1.description') }}
                 </p>
               </div>
             </div>
 
             <!-- Step 2 -->
-            <div class="flex animate-fadeInUp flex-col items-start gap-10 md:flex-row" style="animation-delay: 0.2s">
+            <div class="animate-fadeInUp flex flex-col items-start gap-10 md:flex-row" style="animation-delay: 0.2s">
               <div
                 class="flex h-16 w-16 flex-shrink-0 items-center justify-center rounded-2xl bg-[#21262d]/50 text-2xl font-bold text-[#f9f9f9]"
               >
@@ -445,14 +445,14 @@
               </div>
               <div class="flex-1">
                 <h3 class="mb-4 text-lg font-semibold text-[#f9f9f9] md:text-xl">{{ $t('howItWorks.step2.title') }}</h3>
-                <p class="text-sm font-light leading-relaxed text-[#8b949e]">
+                <p class="text-sm leading-relaxed font-light text-[#8b949e]">
                   {{ $t('howItWorks.step2.description') }}
                 </p>
               </div>
             </div>
 
             <!-- Step 3 -->
-            <div class="flex animate-fadeInUp flex-col items-start gap-10 md:flex-row" style="animation-delay: 0.3s">
+            <div class="animate-fadeInUp flex flex-col items-start gap-10 md:flex-row" style="animation-delay: 0.3s">
               <div
                 class="flex h-16 w-16 flex-shrink-0 items-center justify-center rounded-2xl bg-[#21262d]/50 text-2xl font-bold text-[#f9f9f9]"
               >
@@ -460,7 +460,7 @@
               </div>
               <div class="flex-1">
                 <h3 class="mb-4 text-lg font-semibold text-[#f9f9f9] md:text-xl">{{ $t('howItWorks.step3.title') }}</h3>
-                <p class="text-sm font-light leading-relaxed text-[#8b949e]">
+                <p class="text-sm leading-relaxed font-light text-[#8b949e]">
                   {{ $t('howItWorks.step3.description') }}
                 </p>
               </div>
@@ -485,7 +485,7 @@
           >
             <i class="fa-solid fa-coins mb-4 text-xl text-[#8b949e]"></i>
             <h3 class="mb-3 text-base font-semibold text-[#f9f9f9]">{{ $t('features.more.credits.title') }}</h3>
-            <p class="text-sm font-light leading-relaxed text-[#8b949e]">
+            <p class="text-sm leading-relaxed font-light text-[#8b949e]">
               {{ $t('features.more.credits.description') }}
             </p>
           </div>
@@ -495,7 +495,7 @@
           >
             <i class="fa-solid fa-envelope-circle-check mb-4 text-xl text-[#8b949e]"></i>
             <h3 class="mb-3 text-base font-semibold text-[#f9f9f9]">{{ $t('features.more.emailAccounts.title') }}</h3>
-            <p class="text-sm font-light leading-relaxed text-[#8b949e]">
+            <p class="text-sm leading-relaxed font-light text-[#8b949e]">
               {{ $t('features.more.emailAccounts.description') }}
             </p>
           </div>
@@ -505,7 +505,7 @@
           >
             <i class="fa-solid fa-file-lines mb-4 text-xl text-[#8b949e]"></i>
             <h3 class="mb-3 text-base font-semibold text-[#f9f9f9]">{{ $t('features.more.templates.title') }}</h3>
-            <p class="text-sm font-light leading-relaxed text-[#8b949e]">
+            <p class="text-sm leading-relaxed font-light text-[#8b949e]">
               {{ $t('features.more.templates.description') }}
             </p>
           </div>
@@ -515,7 +515,7 @@
           >
             <i class="fa-solid fa-headset mb-4 text-xl text-[#8b949e]"></i>
             <h3 class="mb-3 text-base font-semibold text-[#f9f9f9]">{{ $t('features.more.support.title') }}</h3>
-            <p class="text-sm font-light leading-relaxed text-[#8b949e]">
+            <p class="text-sm leading-relaxed font-light text-[#8b949e]">
               {{ $t('features.more.support.description') }}
             </p>
           </div>
@@ -525,7 +525,7 @@
           >
             <i class="fa-solid fa-mobile-screen mb-4 text-xl text-[#8b949e]"></i>
             <h3 class="mb-3 text-base font-semibold text-[#f9f9f9]">{{ $t('features.more.responsive.title') }}</h3>
-            <p class="text-sm font-light leading-relaxed text-[#8b949e]">
+            <p class="text-sm leading-relaxed font-light text-[#8b949e]">
               {{ $t('features.more.responsive.description') }}
             </p>
           </div>
@@ -535,7 +535,7 @@
           >
             <i class="fa-solid fa-lock mb-4 text-xl text-[#8b949e]"></i>
             <h3 class="mb-3 text-base font-semibold text-[#f9f9f9]">{{ $t('features.more.security.title') }}</h3>
-            <p class="text-sm font-light leading-relaxed text-[#8b949e]">
+            <p class="text-sm leading-relaxed font-light text-[#8b949e]">
               {{ $t('features.more.security.description') }}
             </p>
           </div>
@@ -574,7 +574,7 @@
                 ></i>
               </button>
               <div v-show="openFaqs.has(index)" class="px-6 pb-6">
-                <p class="text-base font-light leading-relaxed text-[#8b949e]">
+                <p class="text-base leading-relaxed font-light text-[#8b949e]">
                   {{ faq.answer }}
                 </p>
               </div>
@@ -591,7 +591,7 @@
           <h2 class="mb-6 text-2xl font-bold tracking-tight text-[#f9f9f9] md:text-3xl lg:text-4xl">
             {{ $t('cta.title') }}
           </h2>
-          <p class="mx-auto mb-10 max-w-2xl text-base font-light leading-relaxed text-[#8b949e] md:text-lg">
+          <p class="mx-auto mb-10 max-w-2xl text-base leading-relaxed font-light text-[#8b949e] md:text-lg">
             {{ $t('cta.subtitle') }}
           </p>
           <div class="flex flex-col justify-center gap-4 sm:flex-row">

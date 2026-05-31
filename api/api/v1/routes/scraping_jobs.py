@@ -2,14 +2,24 @@
 Scraping job management routes.
 """
 from typing import List
-from fastapi import APIRouter, Depends, HTTPException, status, BackgroundTasks
+from fastapi import (
+    APIRouter,
+    BackgroundTasks,
+    Depends,
+    HTTPException,
+    Query,
+    WebSocket,
+    WebSocketDisconnect,
+    status,
+)
 from sqlalchemy.orm import Session
 
+from core.database import SessionLocal, get_db
 from models.scraping_job import ScrapingJob, ScrapingJobCreate
 from models.user import User
+from services.auth_service import require_auth, resolve_user_from_token
 from services.scraping_job_service import scraping_job_service
-from services.auth_service import require_auth
-from core.database import get_db
+from services.scraping_job_stream_hub import scraping_job_stream_hub
 
 
 router = APIRouter(
@@ -64,7 +74,7 @@ async def create_scraping_job(
         )
         
         # Start job in background
-        scraping_job_service.start_job(job.id, db)
+        scraping_job_service.start_job(job.id)
         
         return job
     
@@ -173,4 +183,38 @@ async def delete_scraping_job(
         )
     
     scraping_job_service.delete_job(job_id)
+
+
+@router.websocket("/{job_id}/ws")
+async def scraping_job_websocket(
+    websocket: WebSocket,
+    job_id: str,
+    token: str | None = Query(default=None),
+) -> None:
+    """
+    Real-time channel for scraping job progress (logs + prospects).
+    """
+    if token is None:
+        await websocket.close(code=status.WS_1008_POLICY_VIOLATION)
+        return
+
+    db: Session = SessionLocal()
+    try:
+        user = resolve_user_from_token(token, db)
+        job = scraping_job_service.get_job(job_id)
+        if not job or job.user_id != user.id:
+            await websocket.close(code=status.WS_1008_POLICY_VIOLATION)
+            return
+
+        await scraping_job_stream_hub.connect(job_id, websocket)
+        try:
+            while True:
+                await websocket.receive_text()
+        except WebSocketDisconnect:
+            scraping_job_stream_hub.disconnect(job_id, websocket)
+        except Exception:
+            scraping_job_stream_hub.disconnect(job_id, websocket)
+            await websocket.close(code=status.WS_1011_INTERNAL_ERROR)
+    finally:
+        db.close()
 

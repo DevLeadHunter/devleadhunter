@@ -15,7 +15,11 @@
           <i class="fa-solid fa-rotate-right mr-2"></i>
           Actualiser
         </button>
-        <NuxtLink to="/dashboard/search-prospects" class="btn-primary"> Nouvelle Recherche </NuxtLink>
+        <NuxtLink to="/dashboard/my-prospects/add" class="btn-secondary inline-flex">
+          <i class="fa-solid fa-user-plus mr-2"></i>
+          Ajouter manuellement
+        </NuxtLink>
+        <NuxtLink to="/dashboard/search-prospects" class="btn-primary inline-flex"> Nouvelle Recherche </NuxtLink>
       </div>
     </div>
 
@@ -79,12 +83,7 @@
         </div>
         <div>
           <label class="text-muted mb-1.5 block text-xs font-medium">Source</label>
-          <select v-model="filterSource" class="input-field">
-            <option value="">Toutes les sources</option>
-            <option value="google">Google</option>
-            <option value="pagesjaunes">Pages Jaunes</option>
-            <option value="mock">Mock</option>
-          </select>
+          <UiSelectField v-model="filterSource" :options="sourceFilterOptions" />
         </div>
         <div>
           <label class="text-muted mb-1.5 block text-xs font-medium">Catégorie</label>
@@ -113,24 +112,24 @@
       <h3 class="mt-4 text-lg font-medium text-[#f9f9f9]">Aucun prospect trouvé</h3>
       <p class="text-muted mt-2 text-sm">
         {{
-          searchQuery || filterSource || filterCategory
+          searchQuery || hasActiveSourceFilter || filterCategory
             ? 'Essayez de modifier vos filtres'
             : 'Commencez par faire une recherche de prospects'
         }}
       </p>
-      <NuxtLink to="/dashboard/search-prospects" class="btn-primary mt-4 inline-block">
+      <NuxtLink to="/dashboard/search-prospects" class="btn-primary mt-4 inline-flex">
         Rechercher des prospects
       </NuxtLink>
     </div>
 
     <!-- Prospects Table -->
     <div v-else class="card overflow-hidden">
-      <ProspectTable
+      <UiProspectTable
         :prospects="paginatedProspects"
         :selected-prospects="selectedProspects"
         @toggle-prospect="toggleProspect"
         @view-prospect="viewProspect"
-        @delete-prospect="deleteProspect"
+        @delete-prospect="handleDeleteProspect"
       />
 
       <!-- Pagination -->
@@ -142,7 +141,7 @@
         <div class="flex items-center gap-2">
           <button
             :disabled="currentPage === 1"
-            class="btn-secondary px-3 py-1 text-xs disabled:cursor-not-allowed disabled:opacity-50"
+            class="btn-secondary h-auto min-h-0 px-3 py-1 text-xs disabled:cursor-not-allowed disabled:opacity-50"
             @click="currentPage--"
           >
             Précédent
@@ -150,7 +149,7 @@
           <span class="text-muted px-4 py-1 text-sm font-medium"> Page {{ currentPage }} / {{ totalPages }} </span>
           <button
             :disabled="currentPage === totalPages"
-            class="btn-secondary px-3 py-1 text-xs disabled:cursor-not-allowed disabled:opacity-50"
+            class="btn-secondary h-auto min-h-0 px-3 py-1 text-xs disabled:cursor-not-allowed disabled:opacity-50"
             @click="currentPage++"
           >
             Suivant
@@ -158,22 +157,30 @@
         </div>
       </div>
     </div>
+
+    <UiConfirmModal
+      ref="deleteConfirmModal"
+      title="Supprimer le prospect"
+      :message="deleteConfirmMessage"
+      confirm-text="Supprimer"
+      cancel-text="Annuler"
+      @confirm="confirmDeleteProspect"
+    />
   </div>
 </template>
 
-<script setup lang="ts">
+<script lang="ts" setup>
 import { ref, computed, onMounted } from 'vue'
-import { useRuntimeConfig } from '#app'
-import { useUserStore } from '~/stores/user'
 import type { Prospect } from '~/types'
+import { deleteProspect as deleteProspectApi, listProspects } from '~/services/prospectsService'
+import { useToast } from '~/composables/useToast'
+
+import { ALL_SOURCES_VALUE, PROSPECT_SOURCE_FILTER_OPTIONS } from '~/constants/prospectSources'
 
 definePageMeta({
   layout: 'dashboard',
   middleware: ['auth'],
 })
-
-const config = useRuntimeConfig()
-const userStore = useUserStore()
 
 // State
 const prospects = ref<Prospect[]>([])
@@ -181,12 +188,25 @@ const isLoading = ref(false)
 const error = ref<string | null>(null)
 const selectedProspects = ref<string[]>([])
 const searchQuery = ref('')
-const filterSource = ref('')
+const filterSource = ref(ALL_SOURCES_VALUE)
 const filterCategory = ref('')
 const currentPage = ref(1)
 const pageSize = 50
+const prospectToDelete = ref<Prospect | null>(null)
+const deleteConfirmModal = ref<{ open: () => void; close: () => void } | null>(null)
+const toast = useToast()
 
-// Computed
+const sourceFilterOptions = PROSPECT_SOURCE_FILTER_OPTIONS
+
+const deleteConfirmMessage = computed(() => {
+  if (!prospectToDelete.value) {
+    return 'Cette action est irréversible.'
+  }
+  return `Supprimer définitivement « ${prospectToDelete.value.name} » ? Cette action est irréversible.`
+})
+
+const hasActiveSourceFilter = computed(() => filterSource.value !== ALL_SOURCES_VALUE)
+
 const totalProspects = computed(() => prospects.value.length)
 const prospectsWithEmail = computed(() => prospects.value.filter((p) => p.email).length)
 const prospectsWithWebsite = computed(() => prospects.value.filter((p) => p.website).length)
@@ -195,7 +215,6 @@ const prospectsWithPhone = computed(() => prospects.value.filter((p) => p.phone)
 const filteredProspects = computed(() => {
   let filtered = prospects.value
 
-  // Search filter
   if (searchQuery.value) {
     const query = searchQuery.value.toLowerCase()
     filtered = filtered.filter(
@@ -207,12 +226,10 @@ const filteredProspects = computed(() => {
     )
   }
 
-  // Source filter
-  if (filterSource.value) {
+  if (hasActiveSourceFilter.value) {
     filtered = filtered.filter((p) => p.source === filterSource.value)
   }
 
-  // Category filter
   if (filterCategory.value) {
     const cat = filterCategory.value.toLowerCase()
     filtered = filtered.filter((p) => p.category.toLowerCase().includes(cat))
@@ -229,23 +246,13 @@ const paginatedProspects = computed(() => {
   return filteredProspects.value.slice(start, end)
 })
 
-// Methods
 async function loadProspects() {
   try {
     isLoading.value = true
     error.value = null
-
-    const response = await $fetch<Prospect[]>(`${config.public.apiBase}/api/v1/prospects`, {
-      method: 'GET',
-      headers: {
-        'Content-Type': 'application/json',
-        ...(userStore.token && { Authorization: `Bearer ${userStore.token}` }),
-      },
-    })
-
-    prospects.value = response
+    prospects.value = await listProspects()
   } catch (err: unknown) {
-    error.value = err.message || 'Erreur lors du chargement des prospects'
+    error.value = err instanceof Error ? err.message : 'Erreur lors du chargement des prospects'
     console.error('Error loading prospects:', err)
   } finally {
     isLoading.value = false
@@ -259,7 +266,7 @@ function refreshProspects() {
 
 function clearFilters() {
   searchQuery.value = ''
-  filterSource.value = ''
+  filterSource.value = ALL_SOURCES_VALUE
   filterCategory.value = ''
   currentPage.value = 1
 }
@@ -274,31 +281,32 @@ function toggleProspect(prospectId: string) {
 }
 
 function viewProspect(prospect: Prospect) {
-  // TODO: Implement prospect detail view
   console.log('View prospect:', prospect)
 }
 
-async function deleteProspect(prospect: Prospect) {
-  if (!confirm(`Êtes-vous sûr de vouloir supprimer le prospect "${prospect.name}" ?`)) {
+function handleDeleteProspect(prospect: Prospect) {
+  prospectToDelete.value = prospect
+  deleteConfirmModal.value?.open()
+}
+
+async function confirmDeleteProspect() {
+  const prospect = prospectToDelete.value
+  if (!prospect) {
     return
   }
 
   try {
-    await $fetch(`${config.public.apiBase}/api/v1/prospects/${prospect.id}`, {
-      method: 'DELETE',
-      headers: {
-        ...(userStore.token && { Authorization: `Bearer ${userStore.token}` }),
-      },
-    })
-
-    // Remove from local list
+    await deleteProspectApi(prospect.id)
     prospects.value = prospects.value.filter((p) => p.id !== prospect.id)
+    selectedProspects.value = selectedProspects.value.filter((id) => id !== String(prospect.id))
+    toast.success(`Prospect « ${prospect.name} » supprimé`)
   } catch (err: unknown) {
-    alert(`Erreur lors de la suppression: ${err.message}`)
+    toast.error(err instanceof Error ? err.message : 'Erreur lors de la suppression')
+  } finally {
+    prospectToDelete.value = null
   }
 }
 
-// Lifecycle
 onMounted(() => {
   loadProspects()
 })

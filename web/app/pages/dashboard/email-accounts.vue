@@ -187,7 +187,7 @@
         <h2 class="mb-4 text-base font-semibold text-[#f9f9f9]">DNS Configuration Instructions</h2>
 
         <div class="border-muted mb-4 overflow-x-auto rounded border bg-[#050505] p-4">
-          <pre class="text-muted whitespace-pre-wrap text-xs">{{ dnsInstructions }}</pre>
+          <pre class="text-muted text-xs whitespace-pre-wrap">{{ dnsInstructions }}</pre>
         </div>
 
         <button class="btn-primary w-full" @click="showDnsInstructionsModal = false">Close</button>

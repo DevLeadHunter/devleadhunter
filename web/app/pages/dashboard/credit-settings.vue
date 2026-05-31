@@ -16,7 +16,7 @@
               Price per Credit (EUR)
             </label>
             <div class="relative">
-              <span class="absolute left-3 top-1/2 -translate-y-1/2 text-[#8b949e]">€</span>
+              <span class="absolute top-1/2 left-3 -translate-y-1/2 text-[#8b949e]">€</span>
               <input
                 id="price-per-credit"
                 v-model.number="form.price_per_credit"

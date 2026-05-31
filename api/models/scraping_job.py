@@ -1,7 +1,7 @@
 """
 Scraping job models for managing async scraping tasks.
 """
-from typing import Optional, List
+from typing import Any, Optional, List
 from datetime import datetime
 from enum import Enum
 from pydantic import BaseModel, Field
@@ -22,6 +22,10 @@ class ScrapingJobCreate(BaseModel):
     max_results: int = Field(50, description="Maximum results to fetch")
     source: Optional[str] = Field(None, description="Source filter (google, pagesjaunes, etc.)")
     skip_duplicates: bool = Field(True, description="Skip duplicate prospects")
+    only_without_website: bool = Field(
+        True,
+        description="When True, only keep prospects without an existing website",
+    )
 
 
 class ScrapingJobProgress(BaseModel):
@@ -43,7 +47,16 @@ class ScrapingJob(BaseModel):
     max_results: int = Field(50, description="Maximum results to fetch")
     source: Optional[str] = Field(None, description="Source filter")
     skip_duplicates: bool = Field(True, description="Skip duplicate prospects")
+    only_without_website: bool = Field(
+        True,
+        description="When True, only keep prospects without an existing website",
+    )
     progress: ScrapingJobProgress = Field(default_factory=ScrapingJobProgress, description="Job progress")
+    logs: List[str] = Field(default_factory=list, description="Live log lines for the job")
+    live_prospects: List[dict[str, Any]] = Field(
+        default_factory=list,
+        description="Prospects saved during the job (for reconnect / polling)",
+    )
     results: List[int] = Field(default_factory=list, description="List of prospect IDs created")
     skipped_duplicates: int = Field(0, description="Number of duplicates skipped")
     error: Optional[str] = Field(None, description="Error message if failed")

@@ -23,6 +23,9 @@
     "typecheck": "nuxt typecheck"
   },
   "dependencies": {
+    "@fortawesome/fontawesome-free": "^6.7.2",
+    "@iconify-json/lucide": "^1.2.109",
+    "@nuxt/ui": "^4.8.0",
     "@nuxtjs/i18n": "^10.4.0",
     "@pinia/nuxt": "^0.11.3",
     "@tauri-apps/api": "^2.10.1",
@@ -36,6 +39,8 @@
     "@tiptap/extension-underline": "^3.11.0",
     "@tiptap/starter-kit": "^3.11.0",
     "@tiptap/vue-3": "^3.11.0",
+    "@vueuse/core": "^14.3.0",
+    "@vueuse/nuxt": "^14.3.0",
     "chart.js": "^4.5.1",
     "nuxt": "^4.4.6",
     "pinia": "^3.0.4",
@@ -46,7 +51,6 @@
     "@commitlint/cli": "^20.5.2",
     "@commitlint/config-conventional": "^20.5.0",
     "@nuxt/eslint": "^1.15.2",
-    "@nuxtjs/tailwindcss": "^6.12.1",
     "@tauri-apps/cli": "^2.0.0",
     "@types/node": "^25.5.2",
     "@typescript-eslint/eslint-plugin": "^8.59.0",
@@ -62,7 +66,7 @@
     "postcss": "^8.4.39",
     "prettier": "^3.8.3",
     "prettier-plugin-tailwindcss": "^0.7.3",
-    "tailwindcss": "^3.4.4",
+    "tailwindcss": "^4.3.0",
     "typescript": "^5.9.3",
     "vue-eslint-parser": "^10.4.0",
     "vue-tsc": "^3.2.7"

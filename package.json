@@ -3,9 +3,16 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "prepare": "husky"
+    "prepare": "husky",
+    "postinstall": "npm run install:apps",
+    "install:apps": "npm install --prefix web && npm install --prefix demo-host",
+    "dev": "concurrently -n api,web,demo -c blue,green,yellow \"npm run dev:api\" \"npm run dev:web\" \"npm run dev:demo-host\"",
+    "dev:api": "cd api && python run_dev.py",
+    "dev:web": "npm run dev --prefix web",
+    "dev:demo-host": "npm run dev --prefix demo-host"
   },
   "devDependencies": {
+    "concurrently": "^9.2.1",
     "husky": "^9.1.7"
   }
 }

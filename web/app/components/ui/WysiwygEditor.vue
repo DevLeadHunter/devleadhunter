@@ -271,11 +271,11 @@ onBeforeUnmount(() => {
 }
 
 :deep(.ProseMirror h1) {
-  @apply mb-3 mt-4 text-2xl font-bold;
+  @apply mt-4 mb-3 text-2xl font-bold;
 }
 
 :deep(.ProseMirror h2) {
-  @apply mb-2 mt-3 text-xl font-bold;
+  @apply mt-3 mb-2 text-xl font-bold;
 }
 
 :deep(.ProseMirror ul) {

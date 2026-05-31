@@ -11,6 +11,7 @@ class EmailTemplateBase(BaseModel):
     name: str = Field(..., max_length=255)
     subject: str = Field(..., max_length=500)
     body_html: str
+    body_text: Optional[str] = None
     variables: Optional[List[str]] = None
 
 
@@ -24,6 +25,7 @@ class EmailTemplateUpdate(BaseModel):
     name: Optional[str] = Field(None, max_length=255)
     subject: Optional[str] = Field(None, max_length=500)
     body_html: Optional[str] = None
+    body_text: Optional[str] = None
     email_account_id: Optional[int] = None
     variables: Optional[List[str]] = None
     is_active: Optional[bool] = None
@@ -37,6 +39,7 @@ class EmailTemplateResponse(BaseModel):
     name: str
     subject: str
     body_html: str
+    body_text: Optional[str] = None
     variables: Optional[List[str]] = None
     is_active: bool
     created_at: datetime

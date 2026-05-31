@@ -12,7 +12,7 @@
     <!-- Search Bar -->
     <div class="card mb-6">
       <div class="relative">
-        <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-[#8b949e]"></i>
+        <i class="fa-solid fa-magnifying-glass absolute top-1/2 left-3 -translate-y-1/2 text-[#8b949e]"></i>
         <input v-model="searchQuery" type="text" placeholder="Search by name or email" class="input-field pl-10" />
       </div>
     </div>
@@ -23,16 +23,16 @@
         <table class="w-full">
           <thead>
             <tr class="border-b border-[#30363d] bg-[#050505]">
-              <th class="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-[#8b949e]">User</th>
-              <th class="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-[#8b949e]">Email</th>
-              <th class="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-[#8b949e]">Role</th>
-              <th class="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-[#8b949e]">
+              <th class="px-4 py-3 text-left text-xs font-medium tracking-wider text-[#8b949e] uppercase">User</th>
+              <th class="px-4 py-3 text-left text-xs font-medium tracking-wider text-[#8b949e] uppercase">Email</th>
+              <th class="px-4 py-3 text-left text-xs font-medium tracking-wider text-[#8b949e] uppercase">Role</th>
+              <th class="px-4 py-3 text-left text-xs font-medium tracking-wider text-[#8b949e] uppercase">
                 Credits Available
               </th>
-              <th class="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-[#8b949e]">
+              <th class="px-4 py-3 text-left text-xs font-medium tracking-wider text-[#8b949e] uppercase">
                 Credits Consumed
               </th>
-              <th class="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-[#8b949e]">Actions</th>
+              <th class="px-4 py-3 text-right text-xs font-medium tracking-wider text-[#8b949e] uppercase">Actions</th>
             </tr>
           </thead>
           <tbody>
@@ -182,7 +182,7 @@
               />
               <button
                 type="button"
-                class="absolute right-3 top-1/2 -translate-y-1/2 text-[#8b949e] transition-colors hover:text-[#f9f9f9]"
+                class="absolute top-1/2 right-3 -translate-y-1/2 text-[#8b949e] transition-colors hover:text-[#f9f9f9]"
                 @click="showCreatePassword = !showCreatePassword"
               >
                 <i :class="showCreatePassword ? 'fa-solid fa-eye-slash' : 'fa-solid fa-eye'" class="h-4 w-4"></i>

@@ -2,9 +2,13 @@
 Base scraper class for web scraping operations.
 """
 from abc import ABC, abstractmethod
-from typing import List
+from typing import Callable, List, Optional, TYPE_CHECKING
+
 from models.prospect import ProspectCreate
 from enums.source import Source
+
+if TYPE_CHECKING:
+    from services.scrape_progress import ScrapeProgressReporter
 
 
 class BaseScraper(ABC):
@@ -28,24 +32,26 @@ class BaseScraper(ABC):
     
     @abstractmethod
     async def scrape(
-        self, 
-        category: str, 
-        city: str, 
-        max_results: int = 50
+        self,
+        category: str,
+        city: str,
+        max_results: int = 50,
+        *,
+        only_without_website: bool = True,
+        progress: Optional["ScrapeProgressReporter"] = None,
+        should_stop: Optional[Callable[[], bool]] = None,
     ) -> List[ProspectCreate]:
         """
         Scrape prospects from the source.
-        
+
         Args:
             category: Business category to search for
             city: City to search in
             max_results: Maximum number of results to return
-            
+            only_without_website: When True, skip prospects that already have a website
+
         Returns:
             List of ProspectCreate objects
-            
-        Raises:
-            NotImplementedError: If not implemented by subclass
         """
         raise NotImplementedError("Subclasses must implement scrape method")
     

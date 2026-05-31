@@ -45,7 +45,6 @@ from scrappers.google_scraper import GoogleScraper
 from scrappers.pagesjaunes_scraper import PagesJaunesScraper
 from scrappers.yelp_scraper import YelpScraper
 from scrappers.osm_scraper import OSMScraper
-from scrappers.mappy_scraper import MappyScraper
 from services.demo_site_cleanup_service import run_demo_site_cleanup_loop
 from core.win32_asyncio import ensure_proactor_event_loop
 
@@ -105,13 +104,28 @@ async def startup_event() -> None:
     
     osm_scraper = OSMScraper()
     await scraper_service.add_scraper(osm_scraper)
-    
-    mappy_scraper = MappyScraper()
-    await scraper_service.add_scraper(mappy_scraper)
 
     import asyncio
 
     asyncio.create_task(run_demo_site_cleanup_loop())
+    asyncio.create_task(_warmup_maps_autocomplete())
+
+
+async def _warmup_maps_autocomplete() -> None:
+    """Optionally warm nodriver Chrome for Google Maps autocomplete."""
+    try:
+        if not settings.scraper_warmup_maps:
+            return
+        from scrappers.nodriver_browser import NODRIVER_AVAILABLE
+        from scrappers.nodriver_executor import run_nodriver_task
+        from scrappers.google_scraper import warmup_maps_suggestion_session
+
+        if not NODRIVER_AVAILABLE:
+            return
+        await run_nodriver_task(lambda: warmup_maps_suggestion_session(), timeout=60)
+        logging.getLogger(__name__).info("Google Maps autocomplete session ready")
+    except Exception as exc:
+        logging.getLogger(__name__).warning("Google Maps autocomplete warmup skipped: %s", exc)
 
 
 @app.on_event("shutdown")

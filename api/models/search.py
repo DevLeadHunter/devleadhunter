@@ -22,6 +22,10 @@ class ProspectSearchRequest(BaseModel):
     city: Optional[str] = Field(None, description="City name")
     source: Optional[Source] = Field(Source.ALL, description="Data source to search in")
     max_results: int = Field(50, ge=1, le=1000, description="Maximum results to return")
+    only_without_website: bool = Field(
+        True,
+        description="When True, only return prospects without an existing website",
+    )
     
     class Config:
         """Pydantic configuration."""

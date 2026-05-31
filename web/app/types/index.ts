@@ -11,7 +11,7 @@ export type BusinessCategory = 'restaurant' | 'plombier' | 'electricien' | 'coif
 /**
  * Source of prospect data
  */
-export type ProspectSource = 'google' | 'pagesjaunes' | 'yelp' | 'osm' | 'mappy' | 'mock' | 'all'
+export type ProspectSource = 'google' | 'pagesjaunes' | 'yelp' | 'osm' | 'mock' | 'all'
 
 /**
  * Prospect interface representing a business without website
@@ -41,6 +41,58 @@ export interface Prospect {
   confidence: number
   /** Timestamp of when prospect was found */
   created_at?: string
+}
+
+/**
+ * Payload pour pré-remplir un prospect depuis Google Maps.
+ */
+export interface ProspectEnrichPayload {
+  business_name?: string
+  google_maps_url?: string
+  city?: string
+}
+
+/**
+ * Suggestion d'entreprise retournée par la recherche Google Maps.
+ */
+export interface ProspectSearchSuggestion {
+  id: string
+  label: string
+  description?: string | null
+  google_maps_url: string
+}
+
+/**
+ * Payload pour rechercher des suggestions d'entreprises.
+ */
+export interface ProspectSearchSuggestionsPayload {
+  query: string
+  city?: string
+  max_results?: number
+}
+
+/**
+ * Payload pour créer un prospect manuellement.
+ */
+export interface ProspectCreatePayload {
+  name: string
+  address?: string | null
+  city?: string | null
+  phone?: string | null
+  email?: string | null
+  website?: string | null
+  category: string
+  source: ProspectSource
+  confidence: number
+}
+
+/**
+ * Formulaire de saisie pour l'ajout manuel d'un prospect.
+ */
+export interface ManualProspectAddForm {
+  business_name: string
+  google_maps_url: string
+  city: string
 }
 
 /**

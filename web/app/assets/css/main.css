@@ -1,6 +1,8 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import 'tailwindcss';
+@import '@nuxt/ui';
+@import '@fortawesome/fontawesome-free/css/all.min.css';
+
+@config '../../../tailwind.config.js';
 
 @layer base {
   html {
@@ -60,18 +62,29 @@
 }
 
 @layer components {
+  /* Legacy DevLeadHunter utility classes — kept for existing pages */
   .btn-primary {
-    @apply flex h-12 min-h-12 items-center justify-center rounded-lg bg-[#f9f9f9] px-6 text-base font-medium text-[#050505] shadow-sm hover:bg-[#e4e4e4] hover:shadow-md;
+    @apply flex h-10 min-h-10 cursor-pointer items-center justify-center gap-2 rounded-lg bg-[#f9f9f9] px-4 text-sm font-medium text-[#050505] shadow-sm hover:bg-[#e4e4e4] hover:shadow-md;
     transition: all 0.2s ease-in-out;
   }
 
   .btn-secondary {
-    @apply flex h-12 min-h-12 items-center justify-center rounded-lg border border-[#30363d]/50 bg-transparent px-6 text-base font-medium text-[#f9f9f9] hover:border-[#30363d] hover:bg-[#1a1a1a];
+    @apply flex h-10 min-h-10 cursor-pointer items-center justify-center gap-2 rounded-lg border border-[#30363d]/50 bg-transparent px-4 text-sm font-medium text-[#f9f9f9] hover:border-[#30363d] hover:bg-[#1a1a1a];
     transition: all 0.2s ease-in-out;
   }
 
+  .btn-primary .fa-solid,
+  .btn-primary .fa-regular,
+  .btn-primary .fa-brands,
+  .btn-secondary .fa-solid,
+  .btn-secondary .fa-regular,
+  .btn-secondary .fa-brands {
+    line-height: 1;
+    font-size: 0.875rem;
+  }
+
   .btn-danger {
-    @apply flex items-center justify-center rounded bg-[#da3633] px-3 py-1.5 font-medium text-[#f9f9f9] transition-all hover:bg-[#DC4747];
+    @apply flex cursor-pointer items-center justify-center rounded bg-[#da3633] px-3 py-1.5 font-medium text-[#f9f9f9] transition-all hover:bg-[#DC4747];
   }
 
   .input-field {
