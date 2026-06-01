@@ -9,9 +9,19 @@
 export type BusinessCategory = 'restaurant' | 'plombier' | 'electricien' | 'coiffeur' | 'garage' | 'all'
 
 /**
- * Source of prospect data
+ * Source of prospect data.
+ *
+ * Mirrors the backend ``Source`` enum in ``api/enums/source.py``.
+ * - ``google``      — Google Maps / Google Business scraper
+ * - ``pagesjaunes`` — Pages Jaunes directory scraper (Chrome / nodriver)
+ * - ``yelp``        — Yelp platform scraper
+ * - ``osm``         — OpenStreetMap / Overpass API (pure HTTP, fast)
+ * - ``mock``        — Mock data for local development and tests
+ * - ``auto``        — Smart combo: OSM + Pages Jaunes in parallel, then email enrichment
+ * - ``brightdata``  — BrightData HTTP API (Web Unlocker + SERP, no browser required)
+ * - ``all``         — Sentinel value used in filter selects to mean "every source"
  */
-export type ProspectSource = 'google' | 'pagesjaunes' | 'yelp' | 'osm' | 'mock' | 'all'
+export type ProspectSource = 'google' | 'pagesjaunes' | 'yelp' | 'osm' | 'mock' | 'auto' | 'brightdata' | 'all'
 
 /**
  * Prospect interface representing a business without website
@@ -69,6 +79,26 @@ export interface ProspectSearchSuggestionsPayload {
   query: string
   city?: string
   max_results?: number
+}
+
+/**
+ * Payload pour mettre à jour un prospect existant (tous les champs sont optionnels).
+ */
+export interface ProspectUpdatePayload {
+  /** Business name */
+  name?: string
+  /** Street address */
+  address?: string | null
+  /** City */
+  city?: string | null
+  /** Phone number */
+  phone?: string | null
+  /** Email address */
+  email?: string | null
+  /** Website URL */
+  website?: string | null
+  /** Business category */
+  category?: string
 }
 
 /**

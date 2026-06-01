@@ -76,7 +76,7 @@
 
     <!-- Filters -->
     <div class="card">
-      <div class="grid grid-cols-1 gap-4 md:grid-cols-4">
+      <div class="grid grid-cols-1 gap-4 md:grid-cols-5">
         <div>
           <label class="text-muted mb-1.5 block text-xs font-medium">Rechercher</label>
           <input v-model="searchQuery" type="text" placeholder="Nom, ville, email..." class="input-field" />
@@ -88,6 +88,10 @@
         <div>
           <label class="text-muted mb-1.5 block text-xs font-medium">Catégorie</label>
           <input v-model="filterCategory" type="text" placeholder="Ex: restaurant" class="input-field" />
+        </div>
+        <div>
+          <label class="text-muted mb-1.5 block text-xs font-medium">Site web</label>
+          <UiSelectField v-model="filterWebsite" :options="websiteFilterOptions" />
         </div>
         <div class="flex items-end">
           <button class="btn-secondary w-full" @click="clearFilters">Réinitialiser</button>
@@ -127,8 +131,7 @@
       <UiProspectTable
         :prospects="paginatedProspects"
         :selected-prospects="selectedProspects"
-        @toggle-prospect="toggleProspect"
-        @view-prospect="viewProspect"
+        @view-prospect="openDrawer"
         @delete-prospect="handleDeleteProspect"
       />
 
@@ -158,6 +161,7 @@
       </div>
     </div>
 
+    <!-- Quick-delete confirmation modal -->
     <UiConfirmModal
       ref="deleteConfirmModal"
       title="Supprimer le prospect"
@@ -165,6 +169,17 @@
       confirm-text="Supprimer"
       cancel-text="Annuler"
       @confirm="confirmDeleteProspect"
+    />
+
+    <!-- Prospect detail drawer -->
+    <UiProspectDrawer
+      :open="drawerOpen"
+      :prospect="drawerProspect"
+      @close="drawerOpen = false"
+      @updated="handleProspectUpdated"
+      @deleted="handleProspectDeleted"
+      @add-to-campaign="handleAddToCampaign"
+      @send-email="handleSendEmail"
     />
   </div>
 </template>
@@ -174,7 +189,6 @@ import { ref, computed, onMounted } from 'vue'
 import type { Prospect } from '~/types'
 import { deleteProspect as deleteProspectApi, listProspects } from '~/services/prospectsService'
 import { useToast } from '~/composables/useToast'
-
 import { ALL_SOURCES_VALUE, PROSPECT_SOURCE_FILTER_OPTIONS } from '~/constants/prospectSources'
 
 definePageMeta({
@@ -182,7 +196,8 @@ definePageMeta({
   middleware: ['auth'],
 })
 
-// State
+// ─── State ────────────────────────────────────────────────────────────────────
+
 const prospects = ref<Prospect[]>([])
 const isLoading = ref(false)
 const error = ref<string | null>(null)
@@ -190,18 +205,31 @@ const selectedProspects = ref<string[]>([])
 const searchQuery = ref('')
 const filterSource = ref(ALL_SOURCES_VALUE)
 const filterCategory = ref('')
+const filterWebsite = ref<'all' | 'yes' | 'no'>('all')
+
+const websiteFilterOptions = [
+  { value: 'all', label: 'Tous' },
+  { value: 'yes', label: 'Oui' },
+  { value: 'no', label: 'Non' },
+]
 const currentPage = ref(1)
 const pageSize = 50
+
+// Quick-delete (from table row icon)
 const prospectToDelete = ref<Prospect | null>(null)
 const deleteConfirmModal = ref<{ open: () => void; close: () => void } | null>(null)
-const toast = useToast()
 
+// Detail drawer
+const drawerOpen = ref(false)
+const drawerProspect = ref<Prospect | null>(null)
+
+const toast = useToast()
 const sourceFilterOptions = PROSPECT_SOURCE_FILTER_OPTIONS
 
+// ─── Computed ─────────────────────────────────────────────────────────────────
+
 const deleteConfirmMessage = computed(() => {
-  if (!prospectToDelete.value) {
-    return 'Cette action est irréversible.'
-  }
+  if (!prospectToDelete.value) return 'Cette action est irréversible.'
   return `Supprimer définitivement « ${prospectToDelete.value.name} » ? Cette action est irréversible.`
 })
 
@@ -235,6 +263,12 @@ const filteredProspects = computed(() => {
     filtered = filtered.filter((p) => p.category.toLowerCase().includes(cat))
   }
 
+  if (filterWebsite.value === 'yes') {
+    filtered = filtered.filter((p) => !!p.website)
+  } else if (filterWebsite.value === 'no') {
+    filtered = filtered.filter((p) => !p.website)
+  }
+
   return filtered
 })
 
@@ -242,63 +276,79 @@ const totalPages = computed(() => Math.ceil(filteredProspects.value.length / pag
 
 const paginatedProspects = computed(() => {
   const start = (currentPage.value - 1) * pageSize
-  const end = start + pageSize
-  return filteredProspects.value.slice(start, end)
+  return filteredProspects.value.slice(start, start + pageSize)
 })
 
-async function loadProspects() {
+// ─── Data loading ─────────────────────────────────────────────────────────────
+
+async function loadProspects(): Promise<void> {
   try {
     isLoading.value = true
     error.value = null
     prospects.value = await listProspects()
   } catch (err: unknown) {
     error.value = err instanceof Error ? err.message : 'Erreur lors du chargement des prospects'
-    console.error('Error loading prospects:', err)
   } finally {
     isLoading.value = false
   }
 }
 
-function refreshProspects() {
+function refreshProspects(): void {
   currentPage.value = 1
   loadProspects()
 }
 
-function clearFilters() {
+function clearFilters(): void {
   searchQuery.value = ''
   filterSource.value = ALL_SOURCES_VALUE
   filterCategory.value = ''
+  filterWebsite.value = 'all'
   currentPage.value = 1
 }
 
-function toggleProspect(prospectId: string) {
-  const index = selectedProspects.value.indexOf(prospectId)
-  if (index > -1) {
-    selectedProspects.value.splice(index, 1)
-  } else {
-    selectedProspects.value.push(prospectId)
-  }
+// ─── Drawer ───────────────────────────────────────────────────────────────────
+
+/** Open the detail drawer for a given prospect. */
+function openDrawer(prospect: Prospect): void {
+  drawerProspect.value = prospect
+  drawerOpen.value = true
 }
 
-function viewProspect(prospect: Prospect) {
-  console.log('View prospect:', prospect)
+/** Drawer emitted 'updated' — patch the local list in place. */
+function handleProspectUpdated(updated: Prospect): void {
+  const idx = prospects.value.findIndex((p) => p.id === updated.id)
+  if (idx !== -1) prospects.value.splice(idx, 1, updated)
+  // Keep the drawer open with fresh data
+  drawerProspect.value = updated
 }
 
-function handleDeleteProspect(prospect: Prospect) {
+/** Drawer emitted 'deleted' — remove from local list. */
+function handleProspectDeleted(prospectId: number): void {
+  prospects.value = prospects.value.filter((p) => p.id !== prospectId)
+  selectedProspects.value = selectedProspects.value.filter((id) => id !== String(prospectId))
+}
+
+function handleAddToCampaign(prospect: Prospect): void {
+  navigateTo(`/dashboard/campaigns?addProspect=${prospect.id}`)
+}
+
+function handleSendEmail(_prospect: Prospect): void {
+  toast.info('La fonctionnalité email sera disponible prochainement.')
+}
+
+// ─── Quick-delete (table row icon) ────────────────────────────────────────────
+
+function handleDeleteProspect(prospect: Prospect): void {
   prospectToDelete.value = prospect
   deleteConfirmModal.value?.open()
 }
 
-async function confirmDeleteProspect() {
+async function confirmDeleteProspect(): Promise<void> {
   const prospect = prospectToDelete.value
-  if (!prospect) {
-    return
-  }
-
+  if (!prospect) return
   try {
     await deleteProspectApi(prospect.id)
-    prospects.value = prospects.value.filter((p) => p.id !== prospect.id)
-    selectedProspects.value = selectedProspects.value.filter((id) => id !== String(prospect.id))
+    handleProspectDeleted(prospect.id)
     toast.success(`Prospect « ${prospect.name} » supprimé`)
   } catch (err: unknown) {
     toast.error(err instanceof Error ? err.message : 'Erreur lors de la suppression')
@@ -306,6 +356,8 @@ async function confirmDeleteProspect() {
     prospectToDelete.value = null
   }
 }
+
+// ─── Init ─────────────────────────────────────────────────────────────────────
 
 onMounted(() => {
   loadProspects()

@@ -1,5 +1,10 @@
 """
 Prospect source metadata shared by API and scrapers.
+
+Keep in sync with:
+- ``api/enums/source.py``              (Python ``Source`` enum)
+- ``web/app/types/index.ts``           (TypeScript ``ProspectSource`` type)
+- ``web/app/constants/prospectSources.ts``  (UI display options)
 """
 from __future__ import annotations
 
@@ -12,24 +17,30 @@ SOURCE_LABELS: dict[Source, str] = {
     Source.YELP: "Yelp",
     Source.OSM: "OpenStreetMap",
     Source.MOCK: "Mock (Test)",
+    Source.AUTO: "Auto (recommandé)",
+    Source.BRIGHTDATA: "BrightData",
     Source.ALL: "Toutes les sources",
 }
 
-# Sources that have a registered scraper (excludes ALL filter).
+# Sources that have a registered scraper (excludes the ALL aggregate sentinel).
 SCRAPER_SOURCES: tuple[Source, ...] = (
     Source.GOOGLE,
     Source.PAGESJAUNES,
     Source.YELP,
     Source.OSM,
     Source.MOCK,
+    Source.AUTO,
+    Source.BRIGHTDATA,
 )
 
-# Sources exposed in search/filter UI (excludes mock in production UI — kept for dev).
+# Sources exposed in the search/filter UI (keep mock for dev convenience).
 SEARCH_FILTER_SOURCES: tuple[Source, ...] = (
+    Source.AUTO,
     Source.GOOGLE,
     Source.PAGESJAUNES,
-    Source.YELP,
     Source.OSM,
+    Source.BRIGHTDATA,
+    Source.YELP,
     Source.MOCK,
 )
 

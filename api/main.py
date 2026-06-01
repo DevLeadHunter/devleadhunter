@@ -45,6 +45,8 @@ from scrappers.google_scraper import GoogleScraper
 from scrappers.pagesjaunes_scraper import PagesJaunesScraper
 from scrappers.yelp_scraper import YelpScraper
 from scrappers.osm_scraper import OSMScraper
+from scrappers.auto_scraper import AutoScraper
+from scrappers.brightdata_scraper import BrightDataScraper
 from services.demo_site_cleanup_service import run_demo_site_cleanup_loop
 from core.win32_asyncio import ensure_proactor_event_loop
 
@@ -104,6 +106,12 @@ async def startup_event() -> None:
     
     osm_scraper = OSMScraper()
     await scraper_service.add_scraper(osm_scraper)
+
+    auto_scraper = AutoScraper()
+    await scraper_service.add_scraper(auto_scraper)
+
+    brightdata_scraper = BrightDataScraper()
+    await scraper_service.add_scraper(brightdata_scraper)
 
     import asyncio
 

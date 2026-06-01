@@ -23,4 +23,6 @@ class Source(str, Enum):
     OSM = "osm"
     MOCK = "mock"
     ALL = "all"
+    AUTO = "auto"
+    BRIGHTDATA = "brightdata"
 

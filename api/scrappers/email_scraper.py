@@ -127,19 +127,45 @@ class EmailScraper:
 
             if emails:
                 spam_domains = [
-                    "example.com",
-                    "test.com",
-                    "domain.com",
-                    "yoursite.com",
-                    "google.com",
-                    "gstatic.com",
-                    "facebook.com",
+                    # Generic / placeholder
+                    "example.com", "test.com", "domain.com", "yoursite.com",
+                    # Big platforms
+                    "google.com", "gstatic.com", "facebook.com",
+                    "instagram.com", "twitter.com", "linkedin.com",
+                    "youtube.com", "tiktok.com",
+                    # Review / aggregator sites
+                    "eldo.com", "avis-verifies.com", "trustpilot.com",
+                    "tripadvisor.com", "tripadvisor.fr",
+                    "yelp.com", "yelp.fr",
+                    # Generic artisan / professional directories
+                    "plombiers.com", "electriciens.com", "artisans.com",
+                    "pagesjaunes.fr", "pages-jaunes.fr",
+                    "annuaire.com", "annuaires.com",
+                    "kompass.com", "societe.com", "verif.com",
+                    "infogreffe.fr",
+                    # Genealogy / off-topic sites that appear in broad searches
+                    "geneafrance.com", "geneanet.org", "filae.com",
                 ]
-                filtered = [
-                    email
-                    for email in emails
-                    if not any(spam in email.lower() for spam in spam_domains)
-                ]
+                # Reject HTML-encoding artifacts (e.g. "u003e" = ">") and
+                # generic role addresses from directories that are never the
+                # actual business contact
+                spam_prefixes = (
+                    "u003", "u0022",  # HTML entity remnants
+                    "noreply", "no-reply", "donotreply",
+                    "service-avis", "avis@",
+                    "mairie",  # city-hall addresses (mairie@ville.fr etc.)
+                )
+
+                def _is_valid(addr: str) -> bool:
+                    low = addr.lower()
+                    if any(sp in low for sp in spam_domains):
+                        return False
+                    local = low.split("@")[0]
+                    if any(local.startswith(pfx) for pfx in spam_prefixes):
+                        return False
+                    return True
+
+                filtered = [e for e in emails if _is_valid(e)]
                 if filtered:
                     logger.info(
                         "Found email(s) for query '%s' page %s: %s",
@@ -196,6 +222,302 @@ class EmailScraper:
             return await self.search_google_multiple_pages(tab, query2, max_pages=3)
         finally:
             pass
+
+    async def _find_email_smart_nodriver(
+        self,
+        name: str,
+        city: str,
+        phone: Optional[str] = None,
+        social_url: Optional[str] = None,
+    ) -> Optional[str]:
+        """
+        Smart email lookup with tiered query strategy (always enabled).
+
+        Priority:
+          0. Direct social profile URL from PagesJaunes  — fastest, no Google search needed
+          1. ``"{name}" "{phone}"``                       — most targeted (guide-artisan.fr, RGE)
+          2. ``"{name}" "{city}" email``                  — city-scoped (page 1 only)
+          3. ``"{name}" {city} contact email``            — broad fallback (page 1 only)
+          4. Social media bio search (Facebook / Instagram) — last resort (Google → social)
+
+        Args:
+            name: Business name.
+            city: City name.
+            phone: Phone number (optional, greatly improves P1 accuracy).
+            social_url: Direct Facebook / Instagram profile URL already known
+                (e.g. extracted from a PagesJaunes listing).  When provided the
+                scraper navigates there directly, bypassing the Google SERP step.
+
+        Returns:
+            First valid email found, or ``None``.
+        """
+        if not NODRIVER_AVAILABLE:
+            return None
+
+        await self.ensure_browser()
+        tab = await self._browser.get_tab()
+        try:
+            # Priority 0: direct social profile — skip the Google search entirely
+            if social_url:
+                logger.info("Smart email P0 (direct social URL): %s", social_url)
+                found = await self._scrape_social_profile_nodriver(tab, social_url, name)
+                if found:
+                    return found
+
+            # Priority 1: name + phone (most precise)
+            if phone:
+                phone_clean = re.sub(r"[\-\.\(\)]", "", phone).strip()
+                # Ensure spaces in French format: "06 63 96 82 57"
+                digits_only = re.sub(r"\s+", "", phone_clean)
+                if digits_only.startswith("33") and len(digits_only) == 11:
+                    # International +33… → 0…
+                    digits_only = "0" + digits_only[2:]
+                if len(digits_only) == 10:
+                    phone_formatted = " ".join(
+                        digits_only[i: i + 2] for i in range(0, 10, 2)
+                    )
+                else:
+                    phone_formatted = phone.strip()
+                query1 = f'"{name}" "{phone_formatted}"'
+                logger.info("Smart email P1 (name+phone): %s", query1)
+                email = await self.search_google_multiple_pages(tab, query1, max_pages=2)
+                if email:
+                    return email
+
+            # Priority 2: name + city + email keyword (page 1 only — page 2 mixes unrelated results)
+            query2 = f'"{name}" "{city}" email'
+            logger.info("Smart email P2 (name+city): %s", query2)
+            email = await self.search_google_multiple_pages(tab, query2, max_pages=1)
+            if email:
+                return email
+
+            # Priority 3: broad fallback — keep name quoted to avoid cross-business pollution
+            # (unquoted searches return city-wide listings where a neighbour's email leaks in)
+            query3 = f'"{name}" {city} contact email'
+            logger.info("Smart email P3 (broad): %s", query3)
+            email = await self.search_google_multiple_pages(tab, query3, max_pages=1)
+            if email:
+                return email
+
+            # Priority 4: social media bio search via Google (when no social_url was given)
+            # Many small businesses publish their email only in their social profile.
+            logger.info("Smart email P4 (social search): %s %s", name, city)
+            return await self._find_email_social_nodriver(tab, name, city, phone)
+        finally:
+            pass
+
+    # ------------------------------------------------------------------
+    # Social profile helpers
+    # ------------------------------------------------------------------
+
+    # Spam domains that are never a real business contact email
+    _SOCIAL_SPAM_DOMAINS: tuple[str, ...] = (
+        "example.com", "test.com", "google.com", "gstatic.com",
+        "facebook.com", "instagram.com", "twitter.com", "linkedin.com",
+        "pagesjaunes.fr", "yelp.com", "tripadvisor.com",
+        "geneafrance.com", "geneanet.org",
+    )
+    _SOCIAL_SPAM_PREFIXES: tuple[str, ...] = (
+        "u003", "u0022", "noreply", "no-reply", "donotreply",
+        "service-avis", "mairie",
+    )
+
+    def _is_valid_social_email(self, addr: str) -> bool:
+        """
+        Return True when *addr* passes the social-profile spam filter.
+
+        Args:
+            addr: Email address candidate to validate.
+
+        Returns:
+            True if the address is not on the social spam blocklist.
+        """
+        low = addr.lower()
+        if any(sp in low for sp in self._SOCIAL_SPAM_DOMAINS):
+            return False
+        return not any(
+            low.split("@")[0].startswith(pfx) for pfx in self._SOCIAL_SPAM_PREFIXES
+        )
+
+    async def _scrape_social_profile_nodriver(
+        self,
+        tab: object,
+        social_url: str,
+        name: str,
+    ) -> Optional[str]:
+        """
+        Navigate directly to a Facebook or Instagram profile and extract an email.
+
+        For Facebook the ``/about`` sub-page is used because it surfaces the
+        contact section.  For Instagram the root profile URL is scraped directly.
+
+        Args:
+            tab: Active nodriver :class:`Tab` instance.
+            social_url: Direct profile URL (must contain ``facebook.com/`` or
+                ``instagram.com/``).
+            name: Business name (used only for logging).
+
+        Returns:
+            First valid email found on the profile page, or ``None``.
+        """
+        # Facebook /about exposes the contact section; Instagram root is sufficient
+        if "facebook.com/" in social_url.lower() and "/about" not in social_url.lower():
+            target = social_url.rstrip("/") + "/about"
+        else:
+            target = social_url
+
+        try:
+            await NodriverDom.navigate(tab, target, sleep_s=1.5)
+            page_text = await tab.get_content()
+            emails = self.extract_emails_from_text(page_text)
+            filtered = [e for e in emails if self._is_valid_social_email(e)]
+            if filtered:
+                logger.info(
+                    "Social email for '%s' at %s: %s",
+                    name,
+                    social_url,
+                    filtered[0],
+                )
+                return filtered[0]
+        except Exception as exc:  # noqa: BLE001
+            logger.debug(
+                "Could not scrape social profile %s for '%s': %s",
+                social_url,
+                name,
+                exc,
+            )
+        return None
+
+    async def _find_email_social_nodriver(
+        self,
+        tab: object,
+        name: str,
+        city: str,
+        phone: Optional[str] = None,
+    ) -> Optional[str]:
+        """
+        Search Google for a business social profile and extract an email from it.
+
+        Steps:
+        1. Search Google for ``"{name}" "{city}" facebook OR instagram``.
+        2. Extract social-profile URLs from the SERP page links via JS.
+        3. Delegate each URL to :meth:`_scrape_social_profile_nodriver`.
+
+        Args:
+            tab: Active nodriver :class:`Tab` instance.
+            name: Business name.
+            city: City name.
+            phone: Phone number (optional, used to build a tighter query).
+
+        Returns:
+            Email address extracted from the social profile, or ``None``.
+        """
+        # Build the most targeted query available
+        if phone:
+            digits = re.sub(r"\D", "", phone)
+            if digits.startswith("33") and len(digits) == 11:
+                digits = "0" + digits[2:]
+            if len(digits) == 10:
+                phone_fmt = " ".join(digits[i: i + 2] for i in range(0, 10, 2))
+                query = f'"{name}" "{phone_fmt}" facebook OR instagram'
+            else:
+                query = f'"{name}" "{city}" facebook OR instagram'
+        else:
+            query = f'"{name}" "{city}" facebook OR instagram'
+
+        search_url = (
+            f"https://www.google.com/search"
+            f"?q={quote_plus(query)}&gl=fr&hl=fr"
+        )
+        try:
+            await NodriverDom.navigate(tab, search_url, sleep_s=0.5)
+        except Exception as exc:  # noqa: BLE001
+            logger.debug("Social P4 navigate failed: %s", exc)
+            return None
+
+        # Collect social-profile URLs from SERP result links (avoid navigation/share URLs).
+        # NOTE: evaluate_list() must be used for JS expressions returning arrays —
+        # evaluate(..., by_value=True) returns a RemoteObject for array results.
+        _js_collect_links = """
+        (() => {
+            const found = [];
+            for (const a of document.querySelectorAll('a[href]')) {
+                const h = a.href || '';
+                if (
+                    (h.includes('facebook.com/') || h.includes('instagram.com/'))
+                    && !h.includes('/login')
+                    && !h.includes('/signup')
+                    && !h.includes('/share')
+                    && !h.includes('l.facebook.com')
+                    && !h.includes('/search/')
+                    && !h.includes('facebook.com/help')
+                    && !h.includes('instagram.com/about')
+                ) {
+                    found.push(h);
+                }
+            }
+            // Unique, prefer page roots over sub-pages
+            return [...new Set(found)].slice(0, 5);
+        })()
+        """
+        try:
+            # evaluate_list wraps the JS in JSON.stringify so arrays come back as Python lists
+            raw_links: list[str] = await NodriverDom.evaluate_list(tab, _js_collect_links)
+        except Exception as exc:  # noqa: BLE001
+            logger.debug("Social P4 link extraction failed: %s", exc)
+            return None
+
+        # Keep only genuine profile URLs (path segment of at least 3 non-special chars)
+        profile_urls = [
+            link for link in raw_links
+            if re.search(r"(facebook\.com|instagram\.com)/[^/?#]{3,}", link)
+        ]
+
+        for profile_url in profile_urls[:2]:
+            found = await self._scrape_social_profile_nodriver(tab, profile_url, name)
+            if found:
+                return found
+
+        return None
+
+    async def find_email_smart(
+        self,
+        name: str,
+        city: str,
+        phone: Optional[str] = None,
+        social_url: Optional[str] = None,
+    ) -> Optional[str]:
+        """
+        Find email with smart query prioritisation.
+
+        Unlike ``find_email()``, this method:
+        - Always runs (not gated by ``SCRAPER_INLINE_EMAIL`` flag).
+        - Accepts an optional ``social_url`` (e.g. from PagesJaunes) to bypass
+          the Google search step entirely when a direct social profile is known.
+
+        Args:
+            name: Business name.
+            city: City name.
+            phone: Phone number (optional, greatly improves accuracy).
+            social_url: Direct Facebook / Instagram profile URL already known.
+                When provided, the scraper navigates there first (P0) before
+                falling through to the Google-search tiers.
+
+        Returns:
+            Email address if found, otherwise None.
+        """
+        if not NODRIVER_AVAILABLE:
+            logger.warning("nodriver not available, skipping smart email search")
+            return None
+
+        try:
+            return await run_nodriver_task(
+                lambda: self._find_email_smart_nodriver(name, city, phone, social_url),
+                timeout=120,
+            )
+        except Exception as exc:  # noqa: BLE001
+            logger.error("Error in smart email scraper: %s", exc)
+            return None
 
     async def find_email(self, name: str, city: str) -> Optional[str]:
         """

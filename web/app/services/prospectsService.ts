@@ -3,6 +3,7 @@ import { api } from '~/services/api'
 import type {
   Prospect,
   ProspectCreatePayload,
+  ProspectUpdatePayload,
   ProspectEnrichPayload,
   ProspectSearchSuggestion,
   ProspectSearchSuggestionsPayload,
@@ -79,7 +80,20 @@ export async function listProspects(): Promise<Prospect[]> {
 }
 
 /**
- 
+
+ * Met à jour les champs d'un prospect existant.
+
+ * @param prospectId - Identifiant du prospect à modifier.
+ * @param payload - Champs à mettre à jour (partiels).
+ * @returns Le prospect mis à jour.
+
+ */
+export async function updateProspect(prospectId: number, payload: ProspectUpdatePayload): Promise<Prospect> {
+  return api.put<Prospect>(`${BASE_URL}/${prospectId}`, payload)
+}
+
+/**
+
  * Supprime un prospect par identifiant.
  
  * @param prospectId - Identifiant du prospect à supprimer.

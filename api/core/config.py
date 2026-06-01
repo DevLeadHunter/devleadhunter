@@ -177,6 +177,18 @@ class Settings(BaseSettings):
         description="Pre-open Chrome for Google Maps autocomplete on API startup",
     )
 
+    # BrightData HTTP API
+    brightdata_api_token: str = Field(
+        default="",
+        alias="BRIGHTDATA_API_TOKEN",
+        description="BrightData API bearer token for Web Unlocker and SERP requests",
+    )
+    brightdata_zone: str = Field(
+        default="mcp_unlocker",
+        alias="BRIGHTDATA_ZONE",
+        description="BrightData zone name used for Web Unlocker requests",
+    )
+
     # Support / ticketing settings
     support_local_upload_dir: str = Field(
         default="uploads/support",

@@ -37,9 +37,24 @@ class ProspectBase(BaseModel):
 class ProspectCreate(ProspectBase):
     """
     Model for creating a new prospect.
-    Inherits all fields from ProspectBase.
+
+    Inherits all persistent fields from :class:`ProspectBase` and adds
+    ``social_url`` — a **transient, in-memory-only** field used during the
+    scraping pipeline to carry a Facebook / Instagram profile URL found on
+    PagesJaunes.
+
+    ``social_url`` is never persisted to the database: the repository layer
+    (``prospect_service.create_prospect``) maps fields explicitly and ignores
+    unknown ones.
     """
-    pass
+
+    social_url: Optional[str] = Field(
+        None,
+        description=(
+            "Transient: Facebook / Instagram profile URL extracted from PagesJaunes. "
+            "Used during email enrichment; never written to the database."
+        ),
+    )
 
 
 class ProspectEnrichRequest(BaseModel):
