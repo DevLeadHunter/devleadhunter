@@ -57,6 +57,33 @@
         </NuxtLink>
       </template>
 
+      <!-- Paramètres sub-panel -->
+      <template v-else-if="showSettingsPanel">
+        <div class="px-1 pb-2">
+          <button
+            type="button"
+            class="hover:btn-sidebar-hover flex w-full cursor-pointer items-center gap-2 rounded px-2 py-2 text-sm font-semibold text-[#f9f9f9] transition-all"
+            @click="showSettingsPanel = false"
+          >
+            <i class="fa-solid fa-chevron-left text-xs text-[#8b949e]"></i>
+            <span>Menu principal</span>
+          </button>
+        </div>
+        <NuxtLink
+          to="/dashboard/settings/resend"
+          :class="[
+            'flex cursor-pointer items-center gap-2 rounded px-3 py-2 text-sm font-medium transition-all',
+            isActive('/dashboard/settings/resend')
+              ? 'btn-sidebar-active text-[#f9f9f9]'
+              : 'hover:btn-sidebar-hover text-[#8b949e] hover:text-[#f9f9f9]',
+          ]"
+          @click="handleClick"
+        >
+          <i class="fa-solid fa-envelope-open-text h-4 w-4"></i>
+          <span>Configuration Resend</span>
+        </NuxtLink>
+      </template>
+
       <template v-else>
         <!-- Desktop Credits Section -->
         <div v-if="!isMobile" class="px-2 py-2">
@@ -128,6 +155,23 @@
           <span>{{ link.label }}</span>
         </NuxtLink>
 
+        <!-- Paramètres -->
+        <button
+          type="button"
+          :class="[
+            'flex w-full cursor-pointer items-center gap-2 rounded px-3 py-2 text-sm font-medium transition-all',
+            showSettingsPanel
+              ? 'btn-sidebar-active text-[#f9f9f9]'
+              : 'hover:btn-sidebar-hover text-[#8b949e] hover:text-[#f9f9f9]',
+          ]"
+          @click="showSettingsPanel = true"
+        >
+          <i class="fa-solid fa-gear h-4 w-4"></i>
+          <span>Paramètres</span>
+          <i class="fa-solid fa-chevron-right ml-auto text-xs opacity-60"></i>
+        </button>
+
+        <!-- Administration (admin only) -->
         <button
           v-if="isAdmin"
           type="button"
@@ -235,9 +279,12 @@ const {
 /**
  * Whether the Administration sub-panel replaces the main sidebar menu.
  */
-const showAdminPanel = computed(() => {
+const showAdminPanel = computed((): boolean => {
   return props.isMobile ? isMobileAdminPanel.value : isAdminNavOpen.value
 })
+
+/** Whether the Settings sub-panel is currently open. */
+const showSettingsPanel: Ref<boolean> = ref(false)
 
 /**
  * Navigation links configuration
@@ -247,11 +294,11 @@ const links = computed(() => {
     { to: '/dashboard/search-prospects', label: 'Recherche Prospects', icon: 'fa-solid fa-magnifying-glass' },
     { to: '/dashboard/my-prospects', label: 'Mes Prospects', icon: 'fa-solid fa-users' },
     { to: '/dashboard/demo-sites', label: 'Demo Websites', icon: 'fa-solid fa-globe' },
-    { to: '/dashboard/campaigns', label: 'Campaigns', icon: 'fa-solid fa-envelope' },
-    { to: '/dashboard/email-accounts', label: 'Email Accounts', icon: 'fa-solid fa-at' },
-    { to: '/dashboard/email-templates', label: 'Email Templates', icon: 'fa-solid fa-file-lines' },
-    { to: '/dashboard/credits', label: 'My Credits', icon: 'fa-solid fa-coins' },
-    { to: '/dashboard/buy-credits', label: 'Buy Credits', icon: 'fa-solid fa-credit-card' },
+    { to: '/dashboard/campaigns', label: 'Campagnes', icon: 'fa-solid fa-bullhorn' },
+    { to: '/dashboard/emails', label: 'Emails envoyés', icon: 'fa-regular fa-envelope' },
+    { to: '/dashboard/email-templates', label: 'Templates email', icon: 'fa-solid fa-file-lines' },
+    { to: '/dashboard/credits', label: 'Mes crédits', icon: 'fa-solid fa-coins' },
+    { to: '/dashboard/buy-credits', label: 'Acheter des crédits', icon: 'fa-solid fa-credit-card' },
   ]
 
   if (!isAdmin.value) {

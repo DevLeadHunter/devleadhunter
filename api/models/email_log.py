@@ -53,9 +53,9 @@ class EmailLog(Base):
     
     id: Mapped[int] = mapped_column(primary_key=True, index=True)
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), nullable=False, index=True)
-    email_account_id: Mapped[int] = mapped_column(
-        ForeignKey("email_accounts.id"),
-        nullable=False,
+    email_account_id: Mapped[Optional[int]] = mapped_column(
+        ForeignKey("email_accounts.id", ondelete="SET NULL"),
+        nullable=True,
         index=True
     )
     
@@ -85,8 +85,13 @@ class EmailLog(Base):
     opened_at: Mapped[Optional[datetime]] = mapped_column(nullable=True)
     clicked_at: Mapped[Optional[datetime]] = mapped_column(nullable=True)
     bounced_at: Mapped[Optional[datetime]] = mapped_column(nullable=True)
+    complained_at: Mapped[Optional[datetime]] = mapped_column(nullable=True)
+    suppressed_at: Mapped[Optional[datetime]] = mapped_column(nullable=True)
     failed_at: Mapped[Optional[datetime]] = mapped_column(nullable=True)
     
+    # A/B variant ('A' or 'B') — populated from the queue item at send time.
+    ab_variant: Mapped[Optional[str]] = mapped_column(String(1), nullable=True)
+
     error_message: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     extra_metadata: Mapped[Optional[str]] = mapped_column(Text, nullable=True)  # JSON string
     

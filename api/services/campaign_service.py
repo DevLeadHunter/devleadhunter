@@ -7,13 +7,15 @@ from sqlalchemy import func, case
 from fastapi import HTTPException, status
 
 from models.campaign import Campaign, CampaignStatus
+from models.campaign_follow_up import CampaignFollowUp
 from models.prospect_db import ProspectDB
 from models.email_log import EmailLog
 from enums.email_status import EmailStatus
 from schemas.campaign import (
     CampaignCreate,
     CampaignUpdate,
-    CampaignStats
+    CampaignStats,
+    CampaignVariantStats,
 )
 
 
@@ -42,7 +44,10 @@ class CampaignService:
             user_id=user_id,
             name=campaign_data.name,
             description=campaign_data.description,
-            status=campaign_data.status or CampaignStatus.DRAFT.value
+            status=campaign_data.status or CampaignStatus.DRAFT.value,
+            template_id=campaign_data.template_id,
+            ab_template_id_b=campaign_data.ab_template_id_b,
+            send_delay_minutes=campaign_data.send_delay_minutes,
         )
         
         # Add prospects if provided
@@ -77,7 +82,8 @@ class CampaignService:
             Campaign if found and owned by user, None otherwise
         """
         campaign = db.query(Campaign).options(
-            joinedload(Campaign.prospects)
+            joinedload(Campaign.prospects),
+            joinedload(Campaign.follow_ups),
         ).filter(
             Campaign.id == campaign_id,
             Campaign.user_id == user_id
@@ -309,6 +315,35 @@ class CampaignService:
         open_rate = (opened / delivered * 100) if delivered > 0 else 0
         click_rate = (clicked / opened * 100) if opened > 0 else 0
         
+        # A/B breakdown (only when campaign has a B variant)
+        ab_stats: list[CampaignVariantStats] | None = None
+        if campaign.ab_template_id_b:
+            ab_stats = []
+            for variant in ("A", "B"):
+                row = db.query(
+                    func.count(EmailLog.id).label('sent'),
+                    func.sum(case((EmailLog.status == EmailStatus.DELIVERED.value, 1), else_=0)).label('delivered'),
+                    func.sum(case((EmailLog.status == EmailStatus.OPENED.value, 1), else_=0)).label('opened'),
+                    func.sum(case((EmailLog.clicked_at.isnot(None), 1), else_=0)).label('clicked'),
+                ).filter(
+                    EmailLog.campaign_id == campaign_id,
+                    EmailLog.user_id == user_id,
+                    EmailLog.ab_variant == variant,
+                ).first()
+                v_sent = row.sent or 0
+                v_delivered = row.delivered or 0
+                v_opened = row.opened or 0
+                v_clicked = row.clicked or 0
+                ab_stats.append(CampaignVariantStats(
+                    variant=variant,
+                    sent=v_sent,
+                    delivered=v_delivered,
+                    opened=v_opened,
+                    clicked=v_clicked,
+                    open_rate=round((v_opened / v_delivered * 100) if v_delivered else 0, 2),
+                    click_rate=round((v_clicked / v_opened * 100) if v_opened else 0, 2),
+                ))
+
         return CampaignStats(
             campaign_id=campaign_id,
             total_prospects=total_prospects,
@@ -320,7 +355,8 @@ class CampaignService:
             emails_failed=failed,
             delivery_rate=round(delivery_rate, 2),
             open_rate=round(open_rate, 2),
-            click_rate=round(click_rate, 2)
+            click_rate=round(click_rate, 2),
+            ab_stats=ab_stats,
         )
 
 

@@ -1,28 +1,284 @@
 """
 Email sending routes for sending individual and campaign emails.
 """
-from typing import List
-from fastapi import APIRouter, Depends, HTTPException, status, Query
-from sqlalchemy.orm import Session
+from __future__ import annotations
+
+from typing import Any, List, Optional
+
+from fastapi import APIRouter, Depends, HTTPException, Query, status
+from pydantic import BaseModel
 from sqlalchemy import select, func
+from sqlalchemy.orm import Session
 
 from core.database import get_db
-from models.user import User
+from enums.email_status import EmailStatus
 from models.email_log import EmailLog
+from models.resend_config import ResendConfig
+from models.user import User
 from schemas.email_sending import (
-    SendEmailRequest,
-    SendCampaignEmailRequest,
-    SendEmailResponse,
-    SendCampaignEmailResponse,
-    EmailLogResponse,
     EmailLogListResponse,
-    EmailStatsResponse
+    EmailLogResponse,
+    EmailStatsResponse,
+    SendCampaignEmailRequest,
+    SendCampaignEmailResponse,
+    SendEmailRequest,
+    SendEmailResponse,
 )
 from services.auth_service import get_current_user
 from services.email_sending_service import EmailSendingService
-from enums.email_status import EmailStatus
+from services.encryption_service import encryption_service
+from services.resend_service import ResendService
 
 router = APIRouter(prefix="/emails", tags=["emails"])
+
+# Resend GET /emails/{id} last_event values → our EmailStatus values.
+_RESEND_EVENT_TO_STATUS: dict[str, str] = {
+    "scheduled":        EmailStatus.SCHEDULED.value,
+    "sent":             EmailStatus.SENT.value,
+    "delivered":        EmailStatus.DELIVERED.value,
+    "delivery_delayed": EmailStatus.DELIVERY_DELAYED.value,
+    "opened":           EmailStatus.OPENED.value,
+    "clicked":          EmailStatus.CLICKED.value,
+    "bounced":          EmailStatus.BOUNCED.value,
+    "complained":       EmailStatus.COMPLAINED.value,
+    "failed":           EmailStatus.FAILED.value,
+    "suppressed":       EmailStatus.SUPPRESSED.value,
+}
+
+# Statuses still eligible for further events.
+# Scheduled/sent/delivered/opened/clicked can all receive later events.
+_UNRESOLVED_STATUSES = (
+    EmailStatus.PENDING.value,
+    EmailStatus.SENDING.value,
+    EmailStatus.SCHEDULED.value,
+    EmailStatus.SENT.value,
+    EmailStatus.DELIVERY_DELAYED.value,
+    EmailStatus.DELIVERED.value,
+    EmailStatus.OPENED.value,
+    EmailStatus.CLICKED.value,
+)
+
+# When syncing from Resend's last_event, cascade-fill all timestamp columns
+# implied by that state (e.g. if "opened", delivery must have happened too).
+_CASCADE_TIMESTAMPS: dict[str, list[str]] = {
+    EmailStatus.DELIVERED.value:        ["delivered_at"],
+    EmailStatus.DELIVERY_DELAYED.value: [],
+    EmailStatus.OPENED.value:           ["delivered_at", "opened_at"],
+    EmailStatus.CLICKED.value:          ["delivered_at", "opened_at", "clicked_at"],
+    EmailStatus.BOUNCED.value:          ["bounced_at"],
+    EmailStatus.COMPLAINED.value:       ["complained_at"],
+    EmailStatus.FAILED.value:           ["failed_at"],
+    EmailStatus.SUPPRESSED.value:       ["suppressed_at"],
+}
+
+
+# ---------------------------------------------------------------------------
+# Resend status sync (fallback for local dev without public webhook)
+# ---------------------------------------------------------------------------
+
+@router.post("/sync-resend-status")
+async def sync_resend_status(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> dict[str, Any]:
+    """
+    Poll the Resend API for the latest status of all unresolved emails.
+
+    Designed as a fallback for local development where the webhook endpoint
+    is not publicly reachable.  Fetches ``GET /emails/{id}`` for every
+    EmailLog row whose status is still unresolved (sent / pending /
+    delivery_delayed) and has a ``provider_message_id`` set.
+
+    Returns a summary of how many rows were updated.
+    """
+    import aiohttp
+    from datetime import datetime, timezone
+
+    config: ResendConfig | None = db.execute(
+        select(ResendConfig).where(ResendConfig.user_id == current_user.id)
+    ).scalar_one_or_none()
+
+    if config is None or not config.api_key:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="Resend non configuré",
+        )
+
+    api_key: str = encryption_service.decrypt(config.api_key)
+
+    # Fetch all unresolved logs that have a Resend message ID
+    logs: list[EmailLog] = db.execute(
+        select(EmailLog).where(
+            EmailLog.user_id == current_user.id,
+            EmailLog.provider == "resend",
+            EmailLog.provider_message_id.isnot(None),
+            EmailLog.status.in_(_UNRESOLVED_STATUSES),
+        )
+    ).scalars().all()
+
+    if not logs:
+        return {"updated": 0, "checked": 0}
+
+    updated: int = 0
+    errors: list[str] = []
+    now = datetime.now(timezone.utc).replace(tzinfo=None)
+
+    async with aiohttp.ClientSession() as session:
+        for log in logs:
+            try:
+                async with session.get(
+                    f"https://api.resend.com/emails/{log.provider_message_id}",
+                    headers={"Authorization": f"Bearer {api_key}"},
+                    timeout=aiohttp.ClientTimeout(total=10),
+                ) as resp:
+                    if resp.status == 401:
+                        body_text = await resp.text()
+                        if "restricted_api_key" in body_text:
+                            errors.append(
+                                "restricted_api_key: la clé API Resend n'a pas la permission de lire "
+                                "les emails (emails:read). Créez une clé Full Access dans le dashboard "
+                                "Resend et mettez-la à jour dans Paramètres."
+                            )
+                        else:
+                            errors.append(f"401 Unauthorized — vérifiez votre clé API Resend")
+                        break  # même clé pour tous les emails, inutile de continuer
+                    if resp.status != 200:
+                        errors.append(
+                            f"log={log.id} resend_id={log.provider_message_id} http={resp.status}"
+                        )
+                        continue
+                    data: dict[str, Any] = await resp.json(content_type=None)
+
+                last_event: str = data.get("last_event", "")
+                new_status: str | None = _RESEND_EVENT_TO_STATUS.get(last_event)
+
+                if new_status and new_status != log.status:
+                    log.status = new_status
+                    # Fill in all timestamps implied by this event (cascade).
+                    for ts_col in _CASCADE_TIMESTAMPS.get(new_status, []):
+                        if not getattr(log, ts_col):
+                            setattr(log, ts_col, now)
+                    updated += 1
+
+            except Exception as exc:  # noqa: BLE001
+                errors.append(f"log={log.id} error={exc!r}")
+                continue
+
+    if updated:
+        db.commit()
+
+    return {"updated": updated, "checked": len(logs), "errors": errors}
+
+
+# ---------------------------------------------------------------------------
+# Quick-send schema (no email_account_id — uses resend_config directly)
+# ---------------------------------------------------------------------------
+
+class QuickSendRequest(BaseModel):
+    """Payload for the /emails/quick-send endpoint."""
+    recipient_email: str
+    recipient_name: Optional[str] = None
+    subject: str
+    body_html: str
+    prospect_id: Optional[str] = None
+    campaign_id: Optional[str] = None
+
+
+@router.post("/quick-send", response_model=SendEmailResponse)
+async def quick_send_email(
+    payload: QuickSendRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> dict[str, Any]:
+    """
+    Send a one-off email using the current user's Resend configuration.
+
+    Resolves the sender address and API key automatically from the
+    ``resend_config`` row — no ``email_account_id`` required.
+    """
+    from datetime import datetime, timezone
+    from core.config import settings as app_settings
+    from services.unsubscribe_service import unsubscribe_service
+
+    # ── Resolve user Resend config ─────────────────────────────────────────
+    config: ResendConfig | None = db.execute(
+        select(ResendConfig).where(ResendConfig.user_id == current_user.id)
+    ).scalar_one_or_none()
+
+    if config is None or not config.api_key:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="Resend non configuré — Paramètres → Configuration Resend",
+        )
+
+    api_key: str = encryption_service.decrypt(config.api_key)
+    from_email: str = config.from_email
+    from_name: str = config.from_name or current_user.name
+
+    # ── RGPD unsubscribe check ─────────────────────────────────────────────
+    if unsubscribe_service.is_unsubscribed(db, payload.recipient_email):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"{payload.recipient_email} s'est désabonné",
+        )
+
+    unsubscribe_link = unsubscribe_service.generate_unsubscribe_link(
+        payload.recipient_email,
+        int(payload.prospect_id) if payload.prospect_id else None,
+        getattr(app_settings, "frontend_url", "http://localhost:3000"),
+    )
+    body_html: str = unsubscribe_service.add_unsubscribe_footer(
+        payload.body_html, unsubscribe_link
+    )
+
+    # ── Create EmailLog row ────────────────────────────────────────────────
+    # email_account_id is a NOT NULL FK in the schema; we use 0 as a sentinel
+    # value indicating "direct Resend send via resend_config".
+    email_log = EmailLog(
+        user_id=current_user.id,
+        email_account_id=None,   # direct resend_config send — no EmailAccount row
+        prospect_id=payload.prospect_id,
+        campaign_id=payload.campaign_id,
+        recipient_email=payload.recipient_email,
+        recipient_name=payload.recipient_name,
+        subject=payload.subject,
+        body_html=body_html,
+        status=EmailStatus.PENDING.value,
+        provider="resend",
+    )
+    db.add(email_log)
+    db.commit()
+    db.refresh(email_log)
+
+    # ── Dispatch via Resend ────────────────────────────────────────────────
+    try:
+        result: dict[str, Any] = await ResendService().send_email(
+            from_email=from_email,
+            from_name=from_name,
+            to_email=payload.recipient_email,
+            to_name=payload.recipient_name,
+            subject=payload.subject,
+            html_body=body_html,
+            custom_id=str(email_log.id),
+            api_key_override=api_key,
+        )
+
+        email_log.status = EmailStatus.SENT.value
+        email_log.provider_message_id = result.get("message_id")
+        email_log.sent_at = datetime.now(timezone.utc).replace(tzinfo=None)
+        db.commit()
+
+        return {
+            "success": True,
+            "email_log_id": email_log.id,
+            "message_id": result.get("message_id"),
+        }
+
+    except Exception as exc:  # noqa: BLE001
+        email_log.status = EmailStatus.FAILED.value
+        email_log.error_message = str(exc)
+        db.commit()
+        return {"success": False, "email_log_id": email_log.id, "error": str(exc)}
 
 
 @router.post("/send", response_model=SendEmailResponse)
@@ -99,7 +355,7 @@ async def get_email_logs(
     campaign_id: str = Query(None, description="Filter by campaign ID"),
     prospect_id: str = Query(None, description="Filter by prospect ID"),
     status_filter: EmailStatus = Query(None, alias="status", description="Filter by status"),
-    limit: int = Query(50, ge=1, le=100, description="Number of logs to return"),
+    limit: int = Query(50, ge=1, le=1000, description="Number of logs to return"),
     offset: int = Query(0, ge=0, description="Number of logs to skip"),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)

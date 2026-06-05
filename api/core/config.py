@@ -241,7 +241,19 @@ class Settings(BaseSettings):
         description="Comma-separated list of allowed MIME types for support attachments"
     )
     
-    # Mailjet settings
+    # Resend settings (primary cold-email provider)
+    resend_api_key: str = Field(
+        default="",
+        alias="RESEND_API_KEY",
+        description="Resend API key — create at https://resend.com/api-keys",
+    )
+    resend_webhook_secret: str = Field(
+        default="",
+        alias="RESEND_WEBHOOK_SECRET",
+        description="Resend webhook signing secret for verifying event payloads",
+    )
+
+    # Mailjet settings (legacy / fallback)
     mailjet_api_key: str = Field(
         default="",
         alias="MAILJET_API_KEY",

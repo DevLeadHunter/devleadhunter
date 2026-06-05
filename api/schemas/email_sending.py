@@ -54,23 +54,27 @@ class EmailLogResponse(BaseModel):
     """Schema for email log response."""
     id: int
     user_id: int
-    email_account_id: int
+    email_account_id: Optional[int] = None
     prospect_id: Optional[str] = None
     campaign_id: Optional[str] = None
     
     recipient_email: str
     recipient_name: Optional[str] = None
     subject: str
-    
+    body_html: Optional[str] = None
+
     status: EmailStatus
     provider: str
     provider_message_id: Optional[str] = None
+    ab_variant: Optional[str] = None
     
     sent_at: Optional[datetime] = None
     delivered_at: Optional[datetime] = None
     opened_at: Optional[datetime] = None
     clicked_at: Optional[datetime] = None
     bounced_at: Optional[datetime] = None
+    complained_at: Optional[datetime] = None
+    suppressed_at: Optional[datetime] = None
     failed_at: Optional[datetime] = None
     
     error_message: Optional[str] = None

@@ -504,7 +504,7 @@ export interface SupportTicketDetail extends Omit<SupportTicketSummary, 'message
 /**
  * Email account type
  */
-export type EmailAccountType = 'custom_domain' | 'gmail_oauth'
+export type EmailAccountType = 'custom_domain' | 'gmail_oauth' | 'resend'
 
 /**
  * Email account interface
@@ -572,13 +572,43 @@ export interface EmailTemplate {
 export type EmailStatus =
   | 'pending'
   | 'sending'
+  | 'scheduled'
   | 'sent'
   | 'delivered'
+  | 'delivery_delayed'
   | 'opened'
   | 'clicked'
   | 'bounced'
   | 'failed'
   | 'complained'
+  | 'suppressed'
+
+/**
+ * A follow-up step in a campaign email sequence.
+ */
+export interface CampaignFollowUp {
+  id: number
+  campaign_id: number
+  template_id: number
+  template_name?: string | null
+  template_subject?: string | null
+  delay_days: number
+  position: number
+  created_at: string
+}
+
+/**
+ * A/B stats for one variant.
+ */
+export interface CampaignVariantStats {
+  variant: 'A' | 'B'
+  sent: number
+  delivered: number
+  opened: number
+  clicked: number
+  open_rate: number
+  click_rate: number
+}
 
 /**
  * Email log interface
@@ -588,8 +618,8 @@ export interface EmailLog {
   id: number
   /** User ID */
   user_id: number
-  /** Email account ID */
-  email_account_id: number
+  /** Email account ID (null for direct resend_config sends) */
+  email_account_id: number | null
   /** Prospect ID */
   prospect_id?: string | null
   /** Campaign ID */
@@ -600,6 +630,8 @@ export interface EmailLog {
   recipient_name?: string | null
   /** Email subject */
   subject: string
+  /** Email HTML body */
+  body_html?: string | null
   /** Email status */
   status: EmailStatus
   /** Email provider */
@@ -616,8 +648,14 @@ export interface EmailLog {
   clicked_at?: string | null
   /** Bounced timestamp */
   bounced_at?: string | null
+  /** Spam-complaint timestamp */
+  complained_at?: string | null
+  /** Suppressed timestamp (recipient on Resend suppression list) */
+  suppressed_at?: string | null
   /** Failed timestamp */
   failed_at?: string | null
+  /** A/B variant ('A' or 'B') */
+  ab_variant?: string | null
   /** Error message */
   error_message?: string | null
   /** Created timestamp */

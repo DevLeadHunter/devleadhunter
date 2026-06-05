@@ -14,4 +14,5 @@ class EmailAccountType(str, Enum):
     """
     CUSTOM_DOMAIN = "custom_domain"
     GMAIL_OAUTH = "gmail_oauth"
+    RESEND = "resend"
 

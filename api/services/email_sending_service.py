@@ -12,6 +12,7 @@ from models.email_template import EmailTemplate
 from models.email_log import EmailLog
 from services.mailjet_service import MailjetService
 from services.gmail_oauth_service import GmailOAuthService
+from services.resend_service import ResendService
 from services.unsubscribe_service import unsubscribe_service
 from services.encryption_service import encryption_service
 from enums.email_account_type import EmailAccountType
@@ -32,6 +33,7 @@ class EmailSendingService:
         self.db = db
         self.mailjet_service = MailjetService()
         self.gmail_service = GmailOAuthService()
+        self.resend_service = ResendService()
     
     async def send_email(
         self,
@@ -112,7 +114,17 @@ class EmailSendingService:
         
         try:
             # Send via appropriate provider
-            if email_account.account_type == EmailAccountType.CUSTOM_DOMAIN:
+            if email_account.account_type == EmailAccountType.RESEND:
+                result = await self._send_via_resend(
+                    email_account=email_account,
+                    recipient_email=recipient_email,
+                    recipient_name=recipient_name,
+                    subject=subject,
+                    body_html=body_html,
+                    body_text=body_text,
+                    custom_id=str(email_log.id)
+                )
+            elif email_account.account_type == EmailAccountType.CUSTOM_DOMAIN:
                 result = await self._send_via_mailjet(
                     email_account=email_account,
                     recipient_email=recipient_email,
@@ -163,6 +175,28 @@ class EmailSendingService:
                 "error": str(e)
             }
     
+    async def _send_via_resend(
+        self,
+        email_account: EmailAccount,
+        recipient_email: str,
+        subject: str,
+        body_html: str,
+        recipient_name: Optional[str] = None,
+        body_text: Optional[str] = None,
+        custom_id: Optional[str] = None,
+    ) -> Dict:
+        """Send email via Resend."""
+        return await self.resend_service.send_email(
+            from_email=email_account.email,
+            from_name=email_account.name,
+            to_email=recipient_email,
+            to_name=recipient_name,
+            subject=subject,
+            html_body=body_html,
+            text_body=body_text,
+            custom_id=custom_id,
+        )
+
     async def _send_via_mailjet(
         self,
         email_account: EmailAccount,
@@ -225,6 +259,107 @@ class EmailSendingService:
             text_body=body_text
         )
     
+    async def send_via_resend_config(
+        self,
+        user_id: int,
+        recipient_email: str,
+        subject: str,
+        body_html: str,
+        recipient_name: Optional[str] = None,
+        prospect_id: Optional[str] = None,
+        campaign_id: Optional[str] = None,
+        ab_variant: Optional[str] = None,
+    ) -> Dict:
+        """
+        Send an email using the user's ResendConfig — no EmailAccount needed.
+
+        This is the unified send path for campaigns and one-off sends: one user
+        has exactly one Resend sending identity (from_email / API key), stored
+        in the ``resend_config`` table.  No account selection is required.
+
+        Args:
+            user_id:         Owner of the ResendConfig.
+            recipient_email: Recipient address.
+            subject:         Email subject (already variable-substituted).
+            body_html:       Email HTML body (already variable-substituted).
+            recipient_name:  Recipient display name (optional).
+            prospect_id:     Prospect ID for logging / unsubscribe link (optional).
+            campaign_id:     Campaign ID for logging (optional).
+            ab_variant:      A/B variant ('A'/'B') stamped on the log (optional).
+
+        Returns:
+            Dict with ``success``, ``email_log_id`` and ``message_id`` / ``error``.
+        """
+        from models.resend_config import ResendConfig
+
+        config = self.db.execute(
+            select(ResendConfig).where(ResendConfig.user_id == user_id)
+        ).scalar_one_or_none()
+
+        if config is None or not config.api_key:
+            raise Exception("Resend non configuré — Paramètres → Configuration Resend")
+
+        api_key = encryption_service.decrypt(config.api_key)
+        from_email = config.from_email
+        from_name = config.from_name or ""
+
+        # RGPD: never send to an unsubscribed address.
+        if unsubscribe_service.is_unsubscribed(self.db, recipient_email):
+            raise Exception(f"{recipient_email} s'est désabonné")
+
+        base_url = getattr(settings, "frontend_url", "http://localhost:3000")
+        unsubscribe_link = unsubscribe_service.generate_unsubscribe_link(
+            recipient_email,
+            int(prospect_id) if prospect_id else None,
+            base_url,
+        )
+        body_html = unsubscribe_service.add_unsubscribe_footer(body_html, unsubscribe_link)
+
+        email_log = EmailLog(
+            user_id=user_id,
+            email_account_id=None,
+            prospect_id=prospect_id,
+            campaign_id=campaign_id,
+            recipient_email=recipient_email,
+            recipient_name=recipient_name,
+            subject=subject,
+            body_html=body_html,
+            status=EmailStatus.PENDING.value,
+            provider="resend",
+            ab_variant=ab_variant,
+        )
+        self.db.add(email_log)
+        self.db.commit()
+        self.db.refresh(email_log)
+
+        try:
+            result = await self.resend_service.send_email(
+                from_email=from_email,
+                from_name=from_name,
+                to_email=recipient_email,
+                to_name=recipient_name,
+                subject=subject,
+                html_body=body_html,
+                custom_id=str(email_log.id),
+                api_key_override=api_key,
+            )
+            email_log.status = EmailStatus.SENT.value
+            email_log.provider_message_id = result.get("message_id")
+            email_log.sent_at = datetime.utcnow()
+            self.db.commit()
+            return {
+                "success": True,
+                "email_log_id": email_log.id,
+                "message_id": result.get("message_id"),
+            }
+        except Exception as e:  # noqa: BLE001
+            email_log.status = EmailStatus.FAILED.value
+            email_log.error_message = str(e)
+            email_log.failed_at = datetime.utcnow()
+            self.db.commit()
+            logger.error(f"Failed to send via resend_config: {e}")
+            return {"success": False, "email_log_id": email_log.id, "error": str(e)}
+
     def replace_variables(self, text: str, variables: dict) -> str:
         """Replace variables in text with values."""
         for key, value in variables.items():

@@ -14,6 +14,7 @@ if TYPE_CHECKING:
     from models.user import User
     from models.prospect_db import ProspectDB
     from models.email_log import EmailLog
+    from models.campaign_follow_up import CampaignFollowUp
 
 
 class CampaignStatus(enum.Enum):
@@ -62,6 +63,25 @@ class Campaign(Base):
         nullable=False,
         index=True
     )
+    # Campaign configuration — stored here so the detail page can edit anytime.
+    template_id: Mapped[Optional[int]] = mapped_column(
+        ForeignKey("email_templates.id", ondelete="SET NULL"), nullable=True
+    )
+    email_account_id: Mapped[Optional[int]] = mapped_column(
+        ForeignKey("email_accounts.id", ondelete="SET NULL"), nullable=True
+    )
+    # A/B testing: template_id = variant A, ab_template_id_b = variant B
+    ab_template_id_b: Mapped[Optional[int]] = mapped_column(
+        ForeignKey("email_templates.id", ondelete="SET NULL"), nullable=True
+    )
+    # Legacy single-follow-up fields (kept for backward compat, superseded by campaign_follow_ups)
+    follow_up_template_id: Mapped[Optional[int]] = mapped_column(
+        ForeignKey("email_templates.id", ondelete="SET NULL"), nullable=True
+    )
+    follow_up_delay_days: Mapped[int] = mapped_column(default=5, nullable=False)
+    send_delay_minutes: Mapped[int] = mapped_column(default=20, nullable=False)
+    started_at: Mapped[Optional[datetime]] = mapped_column(nullable=True)
+
     created_at: Mapped[datetime] = mapped_column(server_default=func.now(), nullable=False)
     updated_at: Mapped[Optional[datetime]] = mapped_column(onupdate=func.now(), nullable=True)
     
@@ -76,6 +96,12 @@ class Campaign(Base):
         "EmailLog",
         back_populates="campaign",
         cascade="all, delete-orphan"
+    )
+    follow_ups: Mapped[List["CampaignFollowUp"]] = relationship(
+        "CampaignFollowUp",
+        back_populates="campaign",
+        cascade="all, delete-orphan",
+        order_by="CampaignFollowUp.position",
     )
     
     def __repr__(self) -> str:

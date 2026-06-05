@@ -5,9 +5,9 @@ from fastapi import APIRouter
 from .routes import (
     health, prospects, auth, users, credit_settings, credits, payments,
     accounting, support, email_accounts, email_templates, emails, scraping_jobs,
-    campaigns, unsubscribe, exports, interactions, demo_sites, sources,
+    campaigns, unsubscribe, exports, interactions, demo_sites, sources, webhooks,
+    settings as settings_routes,
 )
-from core.config import settings
 
 
 router = APIRouter(
@@ -36,4 +36,6 @@ router.include_router(exports.router)
 router.include_router(interactions.router)
 router.include_router(demo_sites.router)
 router.include_router(sources.router)
+router.include_router(webhooks.router)
+router.include_router(settings_routes.router)
 

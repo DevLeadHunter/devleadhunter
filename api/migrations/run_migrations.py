@@ -35,6 +35,11 @@ MIGRATION_MODULES: list[tuple[str, str]] = [
     ("add_demo_site_verification_columns", "migrations.add_demo_site_verification_columns"),
     ("add_demo_site_storyblok_invite_sent", "migrations.add_demo_site_storyblok_invite_sent"),
     ("add_demo_site_storyblok_space_id_bigint", "migrations.add_demo_site_storyblok_space_id_bigint"),
+    ("add_complained_at", "migrations.add_complained_at"),
+    ("add_suppressed_at", "migrations.add_suppressed_at"),
+    ("add_campaign_settings", "migrations.add_campaign_settings"),
+    ("add_campaign_follow_ups_table", "migrations.add_campaign_follow_ups_table"),
+    ("nullable_queue_email_account", "migrations.nullable_queue_email_account"),
 ]
 
 

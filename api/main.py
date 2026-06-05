@@ -48,6 +48,7 @@ from scrappers.osm_scraper import OSMScraper
 from scrappers.auto_scraper import AutoScraper
 from scrappers.brightdata_scraper import BrightDataScraper
 from services.demo_site_cleanup_service import run_demo_site_cleanup_loop
+from services.email_queue_worker import run_queue_worker
 from core.win32_asyncio import ensure_proactor_event_loop
 
 ensure_proactor_event_loop()
@@ -116,6 +117,7 @@ async def startup_event() -> None:
     import asyncio
 
     asyncio.create_task(run_demo_site_cleanup_loop())
+    asyncio.create_task(run_queue_worker())
     asyncio.create_task(_warmup_maps_autocomplete())
 
 

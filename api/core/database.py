@@ -77,6 +77,9 @@ def init_db():
     from models.email_unsubscribe import EmailUnsubscribe  # noqa: F401
     from models.prospect_interaction import ProspectInteraction  # noqa: F401
     from models.demo_site import DemoSite  # noqa: F401
-    
+    from models.campaign_follow_up import CampaignFollowUp  # noqa: F401
+    from models.email_queue import EmailQueue  # noqa: F401
+    from models.resend_config import ResendConfig  # noqa: F401
+
     Base.metadata.create_all(bind=engine)
 
