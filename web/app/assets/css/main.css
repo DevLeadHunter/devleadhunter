@@ -87,6 +87,28 @@
     @apply flex cursor-pointer items-center justify-center rounded bg-[#da3633] px-3 py-1.5 font-medium text-[#f9f9f9] transition-all hover:bg-[#DC4747];
   }
 
+  /* Landing — emerald conversion CTA (kept separate from app-wide .btn-primary) */
+  .btn-emerald {
+    @apply inline-flex cursor-pointer items-center justify-center gap-2 rounded-xl bg-[#2BAD5F] px-6 text-sm font-semibold text-[#04130a] hover:bg-[#34c46d] focus-visible:ring-2 focus-visible:ring-[#34c46d] focus-visible:ring-offset-2 focus-visible:ring-offset-[#050505] focus-visible:outline-none;
+    box-shadow: 0 10px 30px -12px rgba(43, 173, 95, 0.7);
+    transition: all 0.2s ease-in-out;
+  }
+
+  .btn-emerald:hover {
+    box-shadow: 0 14px 36px -10px rgba(43, 173, 95, 0.85);
+  }
+
+  /* Landing — ghost CTA on the dark base */
+  .btn-ghost {
+    @apply inline-flex cursor-pointer items-center justify-center gap-2 rounded-xl border border-[#30363d] bg-[#1a1a1a]/40 px-6 text-sm font-semibold text-[#f9f9f9] hover:border-[#484f58] hover:bg-[#1a1a1a] focus-visible:ring-2 focus-visible:ring-[#484f58] focus-visible:outline-none;
+    transition: all 0.2s ease-in-out;
+  }
+
+  /* Emerald gradient text accent for headlines */
+  .text-gradient-emerald {
+    @apply bg-gradient-to-r from-[#56d364] via-[#3fb950] to-[#2BAD5F] bg-clip-text text-transparent;
+  }
+
   .input-field {
     @apply h-10 min-h-10 w-full rounded border border-[#30363d] bg-[#050505] px-3 text-sm text-[#f9f9f9] placeholder-[#8b949e] transition-all focus:border-[#f9f9f9] focus:outline-none;
   }
@@ -141,6 +163,48 @@
   .animate-slideInRight {
     animation: slideInRight 0.8s ease-out forwards;
     opacity: 0;
+  }
+}
+
+/* Scroll-reveal (armed client-side by the `v-reveal` directive) */
+.reveal {
+  opacity: 0;
+  transform: translateY(28px);
+  transition:
+    opacity 0.7s cubic-bezier(0.22, 1, 0.36, 1),
+    transform 0.7s cubic-bezier(0.22, 1, 0.36, 1);
+  will-change: opacity, transform;
+}
+
+.reveal.is-visible {
+  opacity: 1;
+  transform: none;
+}
+
+/* Soft conic/radial glow used behind hero & feature sections */
+.landing-glow {
+  position: absolute;
+  border-radius: 9999px;
+  filter: blur(80px);
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* Respect users who prefer reduced motion — also neutralizes legacy animations */
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  .animate-fadeInUp,
+  .animate-fadeIn,
+  .animate-slideInLeft,
+  .animate-slideInRight,
+  .reveal {
+    animation: none !important;
+    opacity: 1 !important;
+    transform: none !important;
+    transition: none !important;
   }
 }
 

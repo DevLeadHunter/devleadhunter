@@ -25,34 +25,52 @@
           </NuxtLink>
 
           <!-- Desktop Navigation -->
-          <div class="hidden items-center gap-8 md:flex">
+          <div class="hidden items-center gap-7 lg:flex">
+            <a
+              href="#how-it-works"
+              class="text-sm font-medium text-[#8b949e] transition-colors hover:text-[#f9f9f9]"
+              @click.prevent="scrollToSection('#how-it-works')"
+            >
+              {{ $t('nav.howItWorks') }}
+            </a>
             <a
               href="#features"
-              class="text-base font-medium text-[#8b949e] transition-colors hover:text-[#f9f9f9]"
+              class="text-sm font-medium text-[#8b949e] transition-colors hover:text-[#f9f9f9]"
               @click.prevent="scrollToSection('#features')"
             >
               {{ $t('nav.features') }}
             </a>
             <a
+              href="#platforms"
+              class="text-sm font-medium text-[#8b949e] transition-colors hover:text-[#f9f9f9]"
+              @click.prevent="scrollToSection('#platforms')"
+            >
+              {{ $t('nav.platforms') }}
+            </a>
+            <a
               href="#pricing"
-              class="text-base font-medium text-[#8b949e] transition-colors hover:text-[#f9f9f9]"
+              class="text-sm font-medium text-[#8b949e] transition-colors hover:text-[#f9f9f9]"
               @click.prevent="scrollToSection('#pricing')"
             >
               {{ $t('nav.pricing') }}
             </a>
             <NuxtLink
               :to="localePath('/login')"
-              class="text-base font-medium text-[#8b949e] transition-colors hover:text-[#f9f9f9]"
+              class="text-sm font-medium text-[#8b949e] transition-colors hover:text-[#f9f9f9]"
             >
               {{ $t('nav.login') }}
             </NuxtLink>
-            <NuxtLink :to="localePath('/signup')" class="btn-primary px-4 py-2 text-sm">
+            <NuxtLink :to="localePath('/signup')" class="btn-emerald px-4 py-2 text-sm">
               {{ $t('nav.signup') }}
             </NuxtLink>
           </div>
 
           <!-- Mobile Menu Button -->
-          <button class="p-2 text-[#8b949e] transition-colors hover:text-[#f9f9f9] md:hidden" @click="toggleMobileMenu">
+          <button
+            class="p-2 text-[#8b949e] transition-colors hover:text-[#f9f9f9] lg:hidden"
+            :aria-label="isMobileMenuOpen ? 'Close menu' : 'Open menu'"
+            @click="toggleMobileMenu"
+          >
             <i :class="isMobileMenuOpen ? 'fa-solid fa-times' : 'fa-solid fa-bars'" class="h-5 w-5"></i>
           </button>
         </div>
@@ -61,7 +79,7 @@
 
     <!-- Mobile Sidebar Menu (slides from left) -->
     <Transition name="slide">
-      <div v-if="isMobileMenuOpen" class="fixed inset-0 z-[60] md:hidden">
+      <div v-if="isMobileMenuOpen" class="fixed inset-0 z-[60] lg:hidden">
         <!-- Overlay -->
         <div class="fixed inset-0 bg-black/60 backdrop-blur-sm" @click="closeMobileMenu"></div>
 
@@ -96,20 +114,14 @@
             <!-- Navigation Links -->
             <nav class="flex-1 space-y-1 overflow-y-auto px-2 py-4">
               <a
-                href="#features"
+                v-for="link in mobileSectionLinks"
+                :key="link.target"
+                :href="link.target"
                 class="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-[#8b949e] transition-colors hover:bg-[#21262d] hover:text-[#f9f9f9]"
-                @click.prevent="handleMobileSection('#features')"
+                @click.prevent="handleMobileSection(link.target)"
               >
-                <i class="fa-solid fa-star h-4 w-4"></i>
-                <span>{{ $t('nav.features') }}</span>
-              </a>
-              <a
-                href="#pricing"
-                class="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-[#8b949e] transition-colors hover:bg-[#21262d] hover:text-[#f9f9f9]"
-                @click.prevent="handleMobileSection('#pricing')"
-              >
-                <i class="fa-solid fa-tag h-4 w-4"></i>
-                <span>{{ $t('nav.pricing') }}</span>
+                <i :class="['fa-solid', link.icon, 'h-4 w-4']"></i>
+                <span>{{ $t(link.label) }}</span>
               </a>
               <NuxtLink
                 :to="localePath('/login')"
@@ -125,7 +137,7 @@
             <div class="border-t border-[#30363d] p-4">
               <NuxtLink
                 :to="localePath('/signup')"
-                class="btn-primary w-full text-center text-sm"
+                class="btn-emerald w-full py-2.5 text-center text-sm"
                 @click="closeMobileMenu"
               >
                 {{ $t('nav.signup') }}
@@ -144,9 +156,9 @@
     <!-- Footer -->
     <footer class="mt-32 border-t border-[#30363d]/30 bg-[#1a1a1a]">
       <div class="container mx-auto px-4 py-20 md:px-6 lg:px-8">
-        <div class="grid grid-cols-1 gap-16 md:grid-cols-4">
+        <div class="grid grid-cols-2 gap-x-8 gap-y-12 md:grid-cols-5 md:gap-16">
           <!-- Brand -->
-          <div class="col-span-1 md:col-span-2">
+          <div class="col-span-2 md:col-span-2">
             <div class="mb-4 flex items-center gap-2.5">
               <div class="flex h-5 w-5 items-center justify-center">
                 <svg
@@ -168,33 +180,51 @@
             </p>
           </div>
 
-          <!-- Links -->
+          <!-- Product links -->
           <div>
             <h3 class="mb-6 text-sm font-semibold tracking-wider text-[#f9f9f9] uppercase">
               {{ $t('footer.product') }}
             </h3>
             <ul class="space-y-4">
-              <li>
+              <li v-for="link in footerProductLinks" :key="link.target">
                 <a
-                  href="#features"
+                  :href="link.target"
                   class="text-base font-light text-[#8b949e] transition-colors hover:text-[#f9f9f9]"
-                  @click.prevent="scrollToSection('#features')"
+                  @click.prevent="scrollToSection(link.target)"
                 >
-                  {{ $t('nav.features') }}
-                </a>
-              </li>
-              <li>
-                <a
-                  href="#pricing"
-                  class="text-base font-light text-[#8b949e] transition-colors hover:text-[#f9f9f9]"
-                  @click.prevent="scrollToSection('#pricing')"
-                >
-                  {{ $t('nav.pricing') }}
+                  {{ $t(link.label) }}
                 </a>
               </li>
             </ul>
           </div>
 
+          <!-- Resources links -->
+          <div>
+            <h3 class="mb-6 text-sm font-semibold tracking-wider text-[#f9f9f9] uppercase">
+              {{ $t('footer.resources') }}
+            </h3>
+            <ul class="space-y-4">
+              <li>
+                <a
+                  href="#faq"
+                  class="text-base font-light text-[#8b949e] transition-colors hover:text-[#f9f9f9]"
+                  @click.prevent="scrollToSection('#faq')"
+                >
+                  {{ $t('footer.links.faq') }}
+                </a>
+              </li>
+              <li>
+                <NuxtLink
+                  :to="localePath('/downloads')"
+                  class="text-base font-light text-[#8b949e] transition-colors hover:text-[#f9f9f9]"
+                >
+                  {{ $t('footer.links.downloads') }}
+                </NuxtLink>
+              </li>
+            </ul>
+          </div>
+
+          <!-- Account links -->
           <div>
             <h3 class="mb-6 text-sm font-semibold tracking-wider text-[#f9f9f9] uppercase">
               {{ $t('footer.account') }}
@@ -205,7 +235,7 @@
                   :to="localePath('/login')"
                   class="text-base font-light text-[#8b949e] transition-colors hover:text-[#f9f9f9]"
                 >
-                  {{ $t('nav.login') }}
+                  {{ $t('footer.links.login') }}
                 </NuxtLink>
               </li>
               <li>
@@ -213,7 +243,7 @@
                   :to="localePath('/signup')"
                   class="text-base font-light text-[#8b949e] transition-colors hover:text-[#f9f9f9]"
                 >
-                  {{ $t('nav.signup') }}
+                  {{ $t('footer.links.signup') }}
                 </NuxtLink>
               </li>
             </ul>
@@ -260,6 +290,32 @@ import { ref, computed } from 'vue'
 
 const { locale, locales, setLocale } = useI18n()
 const localePath = useLocalePath()
+
+/** A navigation link that scrolls to an on-page section. */
+interface SectionLink {
+  /** Anchor target (e.g. `#features`). */
+  target: string
+  /** i18n key for the link label. */
+  label: string
+  /** FontAwesome icon class (mobile menu only). */
+  icon: string
+}
+
+/** Section links shown in the mobile slide-in menu. */
+const mobileSectionLinks: SectionLink[] = [
+  { target: '#how-it-works', label: 'nav.howItWorks', icon: 'fa-diagram-project' },
+  { target: '#features', label: 'nav.features', icon: 'fa-star' },
+  { target: '#platforms', label: 'nav.platforms', icon: 'fa-layer-group' },
+  { target: '#pricing', label: 'nav.pricing', icon: 'fa-tag' },
+]
+
+/** Section links shown in the footer "Product" column. */
+const footerProductLinks: SectionLink[] = [
+  { target: '#how-it-works', label: 'footer.links.howItWorks', icon: '' },
+  { target: '#features', label: 'footer.links.features', icon: '' },
+  { target: '#platforms', label: 'footer.links.platforms', icon: '' },
+  { target: '#pricing', label: 'footer.links.pricing', icon: '' },
+]
 
 /**
  * Mobile menu state
