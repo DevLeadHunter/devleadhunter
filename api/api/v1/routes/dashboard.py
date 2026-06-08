@@ -1,5 +1,7 @@
 """Dashboard home KPIs aggregated for the current user."""
-from fastapi import APIRouter, Depends
+from datetime import date, datetime, timedelta, timezone
+
+from fastapi import APIRouter, Depends, Query
 from sqlalchemy import Select, func, select
 from sqlalchemy.orm import Session
 
@@ -10,7 +12,13 @@ from models.demo_site import DemoSite
 from models.email_log import EmailLog
 from models.prospect_db import ProspectDB
 from models.user import User
-from schemas.dashboard import DashboardStatsResponse, HotLeadResponse, HotLeadsResponse
+from schemas.dashboard import (
+    ActivityPoint,
+    DashboardActivityResponse,
+    DashboardStatsResponse,
+    HotLeadResponse,
+    HotLeadsResponse,
+)
 from services.auth_service import get_current_active_user
 from services.behavior_service import behavior_service
 from services.order_service import order_service
@@ -75,6 +83,47 @@ async def dashboard_stats(
         pipeline_cents=sales["pipeline_cents"],
         currency=sales["currency"],
     )
+
+
+def _daily_counts(db: Session, uid: int, column, since: date) -> dict[str, int]:
+    """Return a {YYYY-MM-DD: count} map of rows whose ``column`` day is >= ``since``."""
+    day = func.date(column)
+    rows = db.execute(
+        select(day, func.count())
+        .where(EmailLog.user_id == uid, column.isnot(None), day >= since)
+        .group_by(day)
+    ).all()
+    return {str(d): int(c or 0) for d, c in rows}
+
+
+@router.get("/activity", response_model=DashboardActivityResponse)
+async def dashboard_activity(
+    days: int = Query(default=14, ge=1, le=90),
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db),
+) -> DashboardActivityResponse:
+    """Return the daily email activity (sent/opened/clicked) over the last ``days`` days."""
+    uid = current_user.id
+    today = datetime.now(timezone.utc).date()
+    start = today - timedelta(days=days - 1)
+
+    sent = _daily_counts(db, uid, EmailLog.sent_at, start)
+    opened = _daily_counts(db, uid, EmailLog.opened_at, start)
+    clicked = _daily_counts(db, uid, EmailLog.clicked_at, start)
+
+    series: list[ActivityPoint] = []
+    for offset in range(days):
+        d = start + timedelta(days=offset)
+        key = d.isoformat()
+        series.append(
+            ActivityPoint(
+                date=key,
+                sent=sent.get(key, 0),
+                opened=opened.get(key, 0),
+                clicked=clicked.get(key, 0),
+            )
+        )
+    return DashboardActivityResponse(days=series)
 
 
 @router.get("/hot-leads", response_model=HotLeadsResponse)

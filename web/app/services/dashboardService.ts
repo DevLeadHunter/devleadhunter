@@ -33,6 +33,19 @@ export interface HotLeadsResponse {
   items: HotLead[]
 }
 
+/** Email activity counters for a single day. */
+export interface ActivityPoint {
+  date: string
+  sent: number
+  opened: number
+  clicked: number
+}
+
+/** Daily email activity series response. */
+export interface DashboardActivityResponse {
+  days: ActivityPoint[]
+}
+
 /**
  * Fetch the dashboard home KPIs for the current user.
  * @returns Aggregated dashboard stats.
@@ -47,4 +60,13 @@ export async function getDashboardStats(): Promise<DashboardStats> {
  */
 export async function getHotLeads(): Promise<HotLeadsResponse> {
   return api.get<HotLeadsResponse>('/api/v1/dashboard/hot-leads')
+}
+
+/**
+ * Fetch the daily email activity series for the trend chart.
+ * @param days - Number of days to look back (1-90).
+ * @returns The daily activity series.
+ */
+export async function getDashboardActivity(days: number = 14): Promise<DashboardActivityResponse> {
+  return api.get<DashboardActivityResponse>(`/api/v1/dashboard/activity?days=${days}`)
 }

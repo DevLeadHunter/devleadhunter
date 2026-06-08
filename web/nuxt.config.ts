@@ -18,31 +18,35 @@ export default defineNuxtConfig({
       prefix: 'DemoSites',
     },
     {
+      path: '~/components/dashboard',
+      prefix: 'Dashboard',
+    },
+    {
       path: '~/components',
       pathPrefix: false,
-      ignore: ['**/ui/**', '**/demo-sites/**'],
+      ignore: ['**/ui/**', '**/demo-sites/**', '**/dashboard/**'],
     },
   ],
   devtools: { enabled: !isDesktopBuild },
 
   app: {
     head: {
-      title: 'DevLeadHunter — Find clients for your freelance business',
+      title: 'DevLeadHunter — Turn businesses without a website into paying clients',
       htmlAttrs: {
         lang: 'en',
       },
       meta: [
         { charset: 'utf-8' },
-        { name: 'viewport', content: 'width=device-width, initial-scale=1, maximum-scale=1.0, user-scalable=no' },
+        { name: 'viewport', content: 'width=device-width, initial-scale=1' },
         {
           name: 'description',
           content:
-            'Smart prospecting tool for freelance web developers. Find businesses without websites and run personalized email campaigns.',
+            'DevLeadHunter finds local businesses without a website, automatically generates a demo site for each, reaches out by cold email and deploys their site live when they pay. End-to-end prospecting automation on web, desktop and mobile.',
         },
         {
           name: 'keywords',
           content:
-            'prospecting, freelance, web developer, client search, email marketing, campaigns, prospects, devleadhunter',
+            'prospecting automation, freelance web developer, lead generation, cold email, demo website generation, businesses without websites, devleadhunter',
         },
         { name: 'author', content: 'DevLeadHunter' },
         { name: 'robots', content: 'index, follow' },

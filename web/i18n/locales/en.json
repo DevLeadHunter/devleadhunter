@@ -1,141 +1,219 @@
 {
   "nav": {
     "features": "Features",
+    "howItWorks": "How it works",
+    "platforms": "Platforms",
     "pricing": "Pricing",
+    "faq": "FAQ",
     "login": "Login",
-    "signup": "Try for free"
+    "signup": "Try for free",
+    "downloads": "Download"
   },
   "hero": {
-    "badge": "Prospecting tool for freelance developers",
-    "title": "Find clients who",
-    "titleHighlight": "need you",
-    "subtitle": "Automatically search for businesses without websites, create personalized email campaigns and grow your freelance business.",
+    "badge": "End-to-end prospecting automation",
+    "title": "Turn businesses without a website into",
+    "titleHighlight": "paying clients",
+    "subtitle": "DevLeadHunter finds local businesses with no website, automatically generates a real demo site for each one, reaches out by email — and deploys their site live the day they pay. You sell, the tool does the rest.",
     "ctaPrimary": "Start for free",
-    "ctaSecondary": "Discover features",
-    "stats": {
-      "prospects": "Prospects found",
-      "developers": "Active developers",
-      "satisfaction": "Satisfaction rate"
+    "ctaSecondary": "See how it works",
+    "trust": {
+      "noSubscription": "No subscription",
+      "freeCredits": "Free credits on signup",
+      "noCard": "No credit card"
+    },
+    "availableOn": "Available on",
+    "mockup": {
+      "title": "Live pipeline",
+      "live": "Running",
+      "step1": "Prospect found",
+      "step1detail": "Martin Plumbing · Lyon",
+      "step2": "Demo site generated",
+      "step2detail": "demo.dibodev.fr/martin-plumbing",
+      "step3": "Cold email sent",
+      "step3detail": "Variant A · follow-up scheduled",
+      "step4": "Sold",
+      "step4detail": "Site deployed · €500"
+    }
+  },
+  "metrics": {
+    "sources": "Data sources",
+    "sourcesValue": "4+",
+    "steps": "Automated steps",
+    "stepsValue": "6",
+    "demo": "Live demo",
+    "demoValue": "14 d",
+    "subscription": "Subscription",
+    "subscriptionValue": "€0"
+  },
+  "pipeline": {
+    "badge": "The full pipeline",
+    "title": "From research to sale, on autopilot",
+    "subtitle": "One chain, six steps linked automatically. You stay in control at every step — but nothing is done by hand anymore.",
+    "step1": {
+      "title": "Find",
+      "description": "We surface businesses without a website on Google, Pages Jaunes, Yelp and OpenStreetMap, along with their contact email."
+    },
+    "step2": {
+      "title": "Enrich",
+      "description": "Photos, reviews, opening hours, Google rating, logo: every record is automatically enriched with its public data."
+    },
+    "step3": {
+      "title": "Generate the site",
+      "description": "A real website is generated from an industry template, ready to edit in a CMS — without a single line of code."
+    },
+    "step4": {
+      "title": "Publish a demo",
+      "description": "The site goes live on a personalized demo link, active for 14 days before it's automatically removed."
+    },
+    "step5": {
+      "title": "Reach out",
+      "description": "A cold email campaign kicks off: A/B testing, follow-ups and an anti-spam cadence of one email every 20 minutes."
+    },
+    "step6": {
+      "title": "Sell & deploy",
+      "description": "The prospect pays via Stripe → their site goes to production on their domain and CMS access is handed over."
     }
   },
   "features": {
-    "title": "Everything you need",
-    "subtitle": "A complete platform to find, contact and convert your prospects",
-    "search": {
-      "title": "Smart search",
-      "description": "Search for businesses by category, city and source. Our system analyzes Google, Pages Jaunes and more to find the best prospects.",
-      "badge": "Smart search",
-      "heading": "Find the best prospects automatically",
-      "descriptionFull": "Our advanced scraping system automatically scans Google, Pages Jaunes, Yelp and other sources to identify businesses without websites. Filter by category, city, and number of results to precisely target your market.",
-      "feature1": "Multi-source search (Google, Pages Jaunes, Yelp, OSM)",
-      "feature2": "Advanced filters by category and location",
-      "feature3": "Confidence score for each prospect",
-      "feature4": "Export results with one click"
+    "title": "Everything an agency does by hand, automated",
+    "subtitle": "Every building block of prospecting, from first contact to going live, in a single tool.",
+    "demoSite": {
+      "badge": "Automatic site generation",
+      "heading": "A real website generated for every prospect",
+      "description": "No more hand-made mockups. DevLeadHunter fills an industry template with the prospect's real data and publishes a complete website, editable in a CMS. Your prospect sees a site with their name before they even reply.",
+      "feature1": "Polished industry templates — not an \"AI-generated\" look",
+      "feature2": "Content, photos and colors injected automatically",
+      "feature3": "Editable in a CMS (Storyblok), no developer needed",
+      "feature4": "Dedicated CMS space and access handed over on sale",
+      "mockupUrl": "demo.dibodev.fr/martin-plumbing",
+      "mockupTitle": "Martin Plumbing",
+      "mockupTag": "24/7 emergency service in Lyon",
+      "mockupCta": "Request a quote",
+      "mockupEdit": "Editable in the CMS"
     },
-    "campaigns": {
-      "title": "Email campaigns",
-      "description": "Create and manage personalized email campaigns. Send in bulk with customizable templates.",
-      "badge": "Email campaigns",
-      "heading": "Create and manage your email campaigns",
-      "descriptionFull": "Create personalized email campaigns with our WYSIWYG editor. Personalize each message with prospect information and send in bulk. Track the sending status of each email in real-time.",
-      "feature1": "WYSIWYG editor to create your templates",
-      "feature2": "Automatic personalization with prospect data",
-      "feature3": "Bulk sending with queue management",
-      "feature4": "Real-time tracking of sends and replies",
-      "campaignExample": "Campaign \"Restaurants Paris\"",
-      "prospects": "prospects",
-      "sent": "sent",
-      "replies": "replies"
+    "prospecting": {
+      "badge": "Prospecting & enrichment",
+      "heading": "Find the businesses that need you the most",
+      "description": "Pick a trade and a city. The tool scans several directories, keeps only the businesses without a website, grabs their email and enriches every record with its public data.",
+      "feature1": "Multi-source search: Google, Pages Jaunes, Yelp, OpenStreetMap",
+      "feature2": "Detects businesses without a website",
+      "feature3": "Automatic contact email retrieval",
+      "feature4": "Enrichment: photos, reviews, rating, hours, logo",
+      "mockupTag": "No website",
+      "card1Name": "Martin Plumbing",
+      "card1Meta": "Lyon · 4.8 ★ (126 reviews)",
+      "card2Name": "Dupont Electric",
+      "card2Meta": "Villeurbanne · 4.6 ★ (84 reviews)",
+      "card3Name": "Petit Joinery",
+      "card3Meta": "Bron · 4.9 ★ (57 reviews)"
     },
-    "management": {
-      "title": "Prospect management",
-      "description": "Organize all your prospects in one place. Add notes, track your interactions.",
-      "badge": "Prospect management",
-      "heading": "Organize all your prospects",
-      "descriptionFull": "Centralize all your prospects in one place. Add notes, track your interactions, mark statuses and never miss an opportunity. Your prospect database is always up to date and accessible.",
-      "feature1": "Centralized database of all your prospects",
-      "feature2": "Notes and interactions for each prospect",
-      "feature3": "Customizable statuses (contacted, interested, client, etc.)",
-      "feature4": "Advanced search and filters in your database",
-      "myProspects": "My Prospects",
-      "activeCampaigns": "Active campaigns",
-      "allContacts": "All your contacts in one place",
-      "trackCampaigns": "Track your ongoing campaigns"
+    "coldEmail": {
+      "badge": "Automated cold email",
+      "heading": "Email campaigns that run on their own",
+      "description": "Write two variants and the tool sends, tests, follows up and respects anti-spam best practices. Every email contains the prospect's personalized demo link.",
+      "feature1": "A/B testing to find the message that converts",
+      "feature2": "Customizable automatic follow-ups",
+      "feature3": "Anti-spam cadence: 1 email every 20 minutes",
+      "feature4": "Resend, Gmail or your own domain — GDPR unsubscribe included",
+      "variantA": "Variant A",
+      "variantB": "Variant B",
+      "variantApreview": "Hi, I've prepared a website for your business…",
+      "variantBpreview": "What if your customers could finally find you online?",
+      "queueLabel": "Send queue",
+      "queueValue": "1 / 20 min",
+      "followUp": "Follow-up D+3 scheduled"
     },
-    "analytics": {
-      "badge": "Statistics",
-      "heading": "Analyze your performance",
-      "descriptionFull": "Track your performance with comprehensive dashboards. Analyze your campaigns, open rates, responses and conversions. Identify what works and optimize your strategies.",
-      "feature1": "Dashboards with charts and metrics",
-      "feature2": "Open and reply rates per campaign",
-      "feature3": "Complete history of your interactions",
-      "feature4": "Export detailed reports",
-      "openRate": "Open rate",
-      "replyRate": "Reply rate",
-      "converted": "Converted prospects"
+    "leadScoring": {
+      "badge": "Scoring & behavior (AI)",
+      "heading": "Know who to call back first",
+      "description": "DevLeadHunter tracks what your prospects do on their demo and with your emails, computes a hot / warm / cold score and summarizes each one's interest with AI. Follow-ups can even adapt to their behavior.",
+      "feature1": "Hot / warm / cold score combining demo and emails",
+      "feature2": "Behavior tracking on the demo site",
+      "feature3": "AI summary of each prospect's interest",
+      "feature4": "Follow-ups personalized to behavior",
+      "hot": "Hot",
+      "warm": "Warm",
+      "cold": "Cold",
+      "timeline1": "Visited their demo 3 times",
+      "timeline2": "Opened the email 2 times",
+      "timeline3": "Clicked \"Request a quote\"",
+      "aiLabel": "AI summary",
+      "aiSummary": "Highly engaged prospect: came back to their demo several times and clicked the quote button. Follow up first today."
     },
-    "more": {
-      "title": "And much more",
+    "sales": {
+      "badge": "Sales funnel & go-live",
+      "heading": "From payment to production site in one click",
+      "description": "Send a Stripe payment link with a preview of the site. Once paid, the site goes to production on the client's domain, the demo is removed and CMS access is transferred — automatically.",
+      "feature1": "Stripe payment link with a site preview",
+      "feature2": "Automatic production deploy (Vercel) + domain",
+      "feature3": "CMS access handed over to the client on sale",
+      "feature4": "Sales tracking: orders, revenue, pipeline",
+      "orderLabel": "Order #1042",
+      "orderPaid": "Paid · €500",
+      "deploying": "Deploying…",
+      "deployed": "Live on martin-plumbing.com"
+    },
+    "highlights": {
+      "title": "And everything around it",
+      "analytics": {
+        "title": "Analytics dashboard",
+        "description": "KPIs, conversion funnel and activity: steer your prospecting at a glance."
+      },
       "credits": {
         "title": "Credit system",
-        "description": "Buy credits and use them for your searches and email sends."
+        "description": "Pay as you go, no subscription. Buy credits whenever you need them."
       },
       "emailAccounts": {
         "title": "Multiple email accounts",
-        "description": "Manage multiple email accounts to send from different addresses."
-      },
-      "templates": {
-        "title": "Customizable templates",
-        "description": "Create and reuse email templates to save time."
-      },
-      "support": {
-        "title": "Dedicated support",
-        "description": "A team ready to help you succeed."
-      },
-      "responsive": {
-        "title": "100% responsive",
-        "description": "Use devleadhunter on all your devices, everywhere."
+        "description": "Send from Resend, Gmail or your own domain, switching between addresses."
       },
       "security": {
-        "title": "Maximum security",
-        "description": "Your data is encrypted and protected according to the strictest standards."
+        "title": "Encrypted data",
+        "description": "Your accounts and secrets are encrypted and protected to strict standards."
+      },
+      "i18n": {
+        "title": "Multilingual",
+        "description": "Interface available in French and English, ready for new markets."
+      },
+      "autoUpdate": {
+        "title": "Automatic updates",
+        "description": "The desktop app updates itself, with no reinstall required."
       }
     }
   },
-  "howItWorks": {
-    "title": "How it works",
-    "subtitle": "In 3 simple steps, find and contact your future clients",
-    "step1": {
-      "title": "Search for prospects",
-      "description": "Define your search criteria: business category, city, number of results. Our system automatically scans directories and search engines to find businesses without websites."
+  "platforms": {
+    "badge": "Available everywhere",
+    "title": "Work wherever you want",
+    "subtitle": "The same power on the web, on your computer and on your phone. Your data stays in sync through your account.",
+    "web": {
+      "title": "Web app",
+      "description": "A complete web application in any browser. Nothing to install, available instantly.",
+      "cta": "Open the web app"
     },
-    "step2": {
-      "title": "Create your campaign",
-      "description": "Select the prospects that interest you and create a personalized email campaign. Use our templates or create your own message. Personalize each email with prospect information."
+    "desktop": {
+      "title": "Desktop software",
+      "os": "Windows · macOS",
+      "description": "A native Windows and macOS application with automatic updates. Perfect for long prospecting sessions.",
+      "cta": "Download the app"
     },
-    "step3": {
-      "title": "Send and convert",
-      "description": "Launch your campaign and track results in real-time. Receive notifications for each response and turn your prospects into clients."
+    "mobile": {
+      "title": "Mobile",
+      "description": "Fully responsive interface: track your prospects and run your campaigns from your phone.",
+      "badge": "100% responsive"
     }
   },
-  "cta": {
-    "title": "Ready to grow your business?",
-    "subtitle": "Join the freelance developers using devleadhunter to find their clients and grow their business.",
-    "primary": "Start for free",
-    "secondary": "View pricing"
-  },
   "pricing": {
-    "title": "Simple and transparent pricing",
-    "subtitle": "Buy credits as you need them. No subscription, no commitment.",
+    "title": "Simple pricing: pay as you go",
+    "subtitle": "No subscription, no commitment. Free credits to get started, then you only buy what you need.",
     "creditsTitle": "How credits work",
-    "creditsSubtitle": "Credits are used for your searches and email sends",
+    "creditsSubtitle": "Credits are consumed for your searches and email sends — you only pay for what you use.",
     "search": {
-      "title": "Prospect search",
-      "description": "Each search costs a few credits. The more you search, the more prospects you find."
+      "title": "Search & enrichment",
+      "description": "Each search consumes a few credits. The more you explore, the more qualified prospects you find."
     },
     "email": {
       "title": "Email sending",
-      "description": "Each email sent consumes credits. Buy additional credits anytime."
+      "description": "Each email sent consumes credits. Top up anytime, in under a minute."
     },
     "freeCredits": "Free credits on signup",
     "minPurchase": "Minimum purchase",
@@ -144,22 +222,48 @@
     "creditsPerResult": "Credits per result",
     "creditsPerEmail": "Credits per email",
     "buyCredits": "Buy credits",
+    "roiNote": "A single site sold funds thousands of credits.",
+    "loadError": "Unable to load pricing right now. Please try again later.",
     "faq": {
       "title": "Frequently asked questions",
-      "q1": "What happens if I run out of credits?",
-      "a1": "You can buy additional credits anytime from your dashboard. Credits never expire.",
-      "q2": "Can I try for free?",
-      "a2": "Yes, create an account and receive free credits to test all features.",
-      "q3": "How are credits used?",
-      "a3": "Credits are consumed when you search for prospects and send emails. Each action has a fixed cost in credits."
+      "q1": "In plain terms, what is DevLeadHunter?",
+      "a1": "It's a complete automation chain: it finds businesses without a website, generates a demo site for them, reaches out by cold email and deploys their site to production when they buy — all from a single tool.",
+      "q2": "Is the generated site a real, editable website?",
+      "a2": "Yes. It's not just an image: it's a real, high-performance website connected to a CMS (Storyblok). The client can edit the content, photos and pages themselves, without a developer.",
+      "q3": "Which platforms can I use it on?",
+      "a3": "On the web (any browser), as a native Windows and macOS desktop app, and on mobile thanks to a fully responsive interface. Everything stays in sync through your account.",
+      "q4": "How do credits work?",
+      "a4": "You get free credits on signup. After that, credits are consumed as you go (searches and emails) and never expire. No subscription — top up whenever you like.",
+      "q5": "Is it GDPR and anti-spam compliant?",
+      "a5": "Every email includes an unsubscribe link, sends are throttled to one every 20 minutes, and you control your sending domain (Resend, Gmail or your own) to protect your reputation.",
+      "q6": "Can I try it for free?",
+      "a6": "Yes. Create an account, get free credits and test the entire pipeline with no credit card."
     }
+  },
+  "cta": {
+    "title": "Ready to fill your calendar with clients?",
+    "subtitle": "Create your account, get free credits and launch your first automated campaign today.",
+    "primary": "Start for free",
+    "secondary": "View pricing",
+    "note": "No credit card · Free credits on signup"
   },
   "footer": {
     "product": "Product",
+    "resources": "Resources",
     "account": "Account",
     "privacy": "Privacy",
     "terms": "Terms",
     "copyright": "All rights reserved.",
-    "description": "The intelligent prospecting tool for freelance web developers. Find and contact businesses that need your expertise."
+    "description": "The automation chain that turns businesses without a website into clients: research, site generation, cold email and go-live — end to end.",
+    "links": {
+      "features": "Features",
+      "howItWorks": "How it works",
+      "platforms": "Platforms",
+      "pricing": "Pricing",
+      "faq": "FAQ",
+      "downloads": "Download the app",
+      "login": "Login",
+      "signup": "Create an account"
+    }
   }
 }
