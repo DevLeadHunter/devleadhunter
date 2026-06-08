@@ -122,6 +122,15 @@ jobs:
             DEMO_SITE_TTL_DAYS=14
             STORYBLOK_MANAGEMENT_TOKEN=${{ secrets.STORYBLOK_MANAGEMENT_TOKEN }}
             STORYBLOK_REGION=eu
+            VERCEL_TOKEN=${{ secrets.VERCEL_TOKEN }}
+            VERCEL_DEMO_HOST_PROJECT_ID=${{ secrets.VERCEL_DEMO_HOST_PROJECT_ID }}
+            VERCEL_DEPLOY_HOOK_URL=${{ secrets.VERCEL_DEPLOY_HOOK_URL }}
+            POSTHOG_API_HOST=${{ secrets.POSTHOG_API_HOST }}
+            POSTHOG_PROJECT_ID=${{ secrets.POSTHOG_PROJECT_ID }}
+            POSTHOG_PERSONAL_API_KEY=${{ secrets.POSTHOG_PERSONAL_API_KEY }}
+            POSTHOG_PROJECT_API_KEY=${{ secrets.NUXT_PUBLIC_POSTHOG_PROJECT_API_KEY }}
+            POSTHOG_INGESTION_HOST=${{ secrets.NUXT_PUBLIC_POSTHOG_INGESTION_HOST }}
+            GROQ_API_KEY=${{ secrets.GROQ_API_KEY }}
             SUPPORT_FTP_HOST=${{ secrets.SUPPORT_FTP_HOST }}
             SUPPORT_FTP_PORT=${{ secrets.SUPPORT_FTP_PORT }}
             SUPPORT_FTP_USER=${{ secrets.SUPPORT_FTP_USER }}

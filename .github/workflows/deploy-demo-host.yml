@@ -30,6 +30,8 @@ jobs:
         run: npm run build
         env:
           NUXT_PUBLIC_API_BASE: https://api.devleadhunter.dibodev.fr
+          NUXT_PUBLIC_POSTHOG_PROJECT_API_KEY: ${{ secrets.NUXT_PUBLIC_POSTHOG_PROJECT_API_KEY }}
+          NUXT_PUBLIC_POSTHOG_INGESTION_HOST: ${{ secrets.NUXT_PUBLIC_POSTHOG_INGESTION_HOST }}
 
       - name: Deploy to Vercel
         uses: amondnet/vercel-action@v25

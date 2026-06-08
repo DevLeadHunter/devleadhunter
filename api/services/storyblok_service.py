@@ -17,6 +17,8 @@ from typing import Any, Optional
 import httpx
 
 from core.config import settings
+from services.enrichment_content import apply_to_content as apply_enrichment_to_content
+from services.templates import registry as template_registry
 
 logger = logging.getLogger(__name__)
 
@@ -94,6 +96,7 @@ class StoryblokService:
         description: Optional[str],
         template_id: str,
         theme: Optional[dict[str, str]] = None,
+        enrichment: Optional[dict[str, Any]] = None,
     ) -> dict[str, Any]:
         """
         Build the default Storyblok story payload for a template.
@@ -105,6 +108,7 @@ class StoryblokService:
         @param description - Short business description.
         @param template_id - Selected template identifier.
         @param theme - Optional color palette (primary, secondary, accent).
+        @param enrichment - Optional rich data merged into the content (photos, reviews…).
         @returns Storyblok-compatible content object.
         """
         area: str = city or "votre secteur"
@@ -115,106 +119,17 @@ class StoryblokService:
             "accent": "#f59e0b",
         }
 
-        if template_id == "plumber-simple":
-            services: list[dict[str, str]] = [
-                {
-                    "label": "Dépannage urgent",
-                    "description": "Fuite, canalisation bouchée ou chauffe-eau en panne — intervention rapide.",
-                    "icon": "emergency",
-                },
-                {
-                    "label": "Installation sanitaire",
-                    "description": "Salle de bain, robinetterie, WC et équipements neufs posés proprement.",
-                    "icon": "install",
-                },
-                {
-                    "label": "Chauffe-eau & chaudière",
-                    "description": "Entretien, remplacement et mise aux normes de vos équipements.",
-                    "icon": "heater",
-                },
-                {
-                    "label": "Recherche de fuite",
-                    "description": "Diagnostic précis sans casse inutile grâce à des outils professionnels.",
-                    "icon": "leak",
-                },
-            ]
-            trust_stats: list[dict[str, str]] = [
-                {"value": "500+", "label": "Clients satisfaits"},
-                {"value": "15 ans", "label": "D'expérience"},
-                {"value": "24/7", "label": "Dépannage"},
-                {"value": "4,9/5", "label": "Avis Google"},
-            ]
-            why_us: list[str] = [
-                "Devis gratuit et transparent avant intervention",
-                "Artisan qualifié — travail soigné et garanti",
-                "Intervention en moins de 2 h en urgence",
-            ]
-        else:
-            services = [
-                {"label": "Urgences", "description": "Réponse rapide", "icon": "emergency"},
-                {"label": "Installations", "description": "Pose professionnelle", "icon": "install"},
-                {"label": "Entretien", "description": "Suivi régulier", "icon": "heater"},
-            ]
-            trust_stats = [
-                {"value": "100+", "label": "Clients"},
-                {"value": "10 ans", "label": "Expérience"},
-            ]
-            why_us = ["Devis gratuit", "Travail garanti"]
-
-        return {
-            "component": "page",
-            "theme": palette,
-            "body": [
-                {
-                    "_uid": "hero-1",
-                    "component": "hero",
-                    "title": business_name,
-                    "subtitle": subtitle,
-                    "phone": phone or "",
-                    "cta_label": "Appeler maintenant",
-                    "badge": "Intervention 24h/24",
-                    "city": city or "",
-                },
-                {
-                    "_uid": "trust-1",
-                    "component": "trust",
-                    "heading": "La confiance de nos clients",
-                    "items": [
-                        {"_uid": f"t-{i}", "component": "trust_item", **item}
-                        for i, item in enumerate(trust_stats)
-                    ],
-                },
-                {
-                    "_uid": "services-1",
-                    "component": "services",
-                    "heading": "Nos services",
-                    "subheading": f"Des solutions complètes pour particuliers et professionnels à {area}.",
-                    "items": [
-                        {
-                            "_uid": f"s-{i}",
-                            "component": "service_item",
-                            **item,
-                        }
-                        for i, item in enumerate(services)
-                    ],
-                },
-                {
-                    "_uid": "why-1",
-                    "component": "why_us",
-                    "heading": "Pourquoi nous choisir ?",
-                    "items": [{"_uid": f"w-{i}", "component": "why_item", "label": label} for i, label in enumerate(why_us)],
-                },
-                {
-                    "_uid": "contact-1",
-                    "component": "contact",
-                    "heading": "Contactez-nous",
-                    "subheading": "Un devis gratuit en quelques minutes — réponse rapide garantie.",
-                    "email": email or "",
-                    "phone": phone or "",
-                    "city": city or "",
-                },
-            ],
-        }
+        content = template_registry.build_content(
+            template_id=template_id,
+            business_name=business_name,
+            phone=phone,
+            email=email,
+            city=city,
+            area=area,
+            subtitle=subtitle,
+            palette=palette,
+        )
+        return apply_enrichment_to_content(content, enrichment)
 
     def _to_storyblok_content(self, content_json: dict[str, Any]) -> dict[str, Any]:
         """Adapt local demo content to Storyblok blok schemas."""
@@ -419,6 +334,7 @@ class StoryblokService:
         preview_url: str,
         invite_client: bool = False,
         theme: Optional[dict[str, str]] = None,
+        enrichment: Optional[dict[str, Any]] = None,
     ) -> StoryblokProvisionResult:
         """
         Create a Storyblok space and seed the home story.
@@ -434,6 +350,7 @@ class StoryblokService:
             description=description,
             template_id=template_id,
             theme=theme,
+            enrichment=enrichment,
         )
 
         if not self.is_configured:
@@ -640,7 +557,14 @@ class StoryblokService:
                     "body": {
                         "type": "bloks",
                         "restrict_components": True,
-                        "component_whitelist": ["hero", "trust", "services", "why_us", "contact"],
+                        "component_whitelist": [
+                            "hero",
+                            "trust",
+                            "services",
+                            "why_us",
+                            "contact",
+                            *template_registry.body_components(),
+                        ],
                     },
                 },
             },
@@ -654,6 +578,7 @@ class StoryblokService:
                     "cta_label": {"type": "text"},
                     "badge": {"type": "text"},
                     "city": {"type": "text"},
+                    "image": {"type": "text"},
                 },
             },
             {
@@ -724,9 +649,11 @@ class StoryblokService:
                     "email": {"type": "text"},
                     "phone": {"type": "text"},
                     "city": {"type": "text"},
+                    "hours": {"type": "text"},
                 },
             },
         ]
+        components.extend(template_registry.component_schemas())
 
         for component in components:
             response = await self._storyblok_request(

@@ -180,6 +180,7 @@
       @deleted="handleProspectDeleted"
       @add-to-campaign="handleAddToCampaign"
       @send-email="handleSendEmail"
+      @mark-as-sold="handleMarkAsSold"
     />
   </div>
 </template>
@@ -188,6 +189,7 @@
 import { ref, computed, onMounted } from 'vue'
 import type { Prospect } from '~/types'
 import { deleteProspect as deleteProspectApi, listProspects } from '~/services/prospectsService'
+import { createOrder } from '~/services/ordersService'
 import { useToast } from '~/composables/useToast'
 import { ALL_SOURCES_VALUE, PROSPECT_SOURCE_FILTER_OPTIONS } from '~/constants/prospectSources'
 
@@ -336,6 +338,26 @@ function handleSendEmail(_prospect: Prospect): void {
   toast.info('La fonctionnalité email sera disponible prochainement.')
 }
 
+/**
+ * Create a website order from a prospect and open the sales page.
+ * @param prospect - The prospect being marked as sold.
+ */
+async function handleMarkAsSold(prospect: Prospect): Promise<void> {
+  try {
+    await createOrder({
+      product_type: 'website',
+      prospect_id: prospect.id,
+      business_name: prospect.name,
+      customer_email: prospect.email ?? null,
+    })
+    toast.success(`Vente créée pour « ${prospect.name} »`)
+    drawerOpen.value = false
+    navigateTo('/dashboard/orders')
+  } catch (err: unknown) {
+    toast.error(err instanceof Error ? err.message : 'Erreur lors de la création de la vente')
+  }
+}
+
 // ─── Quick-delete (table row icon) ────────────────────────────────────────────
 
 function handleDeleteProspect(prospect: Prospect): void {
@@ -359,7 +381,14 @@ async function confirmDeleteProspect(): Promise<void> {
 
 // ─── Init ─────────────────────────────────────────────────────────────────────
 
-onMounted(() => {
-  loadProspects()
+onMounted(async (): Promise<void> => {
+  await loadProspects()
+  // Deep-link from the dashboard hot-leads widget: ?open=<prospectId> opens the drawer.
+  const openParam = useRoute().query.open
+  const openId: number = Number(Array.isArray(openParam) ? openParam[0] : openParam)
+  if (!Number.isNaN(openId) && openId > 0) {
+    const target = prospects.value.find((p) => p.id === openId)
+    if (target) openDrawer(target)
+  }
 })
 </script>

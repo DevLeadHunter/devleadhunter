@@ -6,7 +6,7 @@ from .routes import (
     health, prospects, auth, users, credit_settings, credits, payments,
     accounting, support, email_accounts, email_templates, emails, scraping_jobs,
     campaigns, unsubscribe, exports, interactions, demo_sites, sources, webhooks,
-    settings as settings_routes,
+    enrichment, orders, dashboard, behavior, settings as settings_routes,
 )
 
 
@@ -35,6 +35,10 @@ router.include_router(unsubscribe.router)
 router.include_router(exports.router)
 router.include_router(interactions.router)
 router.include_router(demo_sites.router)
+router.include_router(enrichment.router)
+router.include_router(orders.router)
+router.include_router(dashboard.router)
+router.include_router(behavior.router)
 router.include_router(sources.router)
 router.include_router(webhooks.router)
 router.include_router(settings_routes.router)

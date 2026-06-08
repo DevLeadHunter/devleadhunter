@@ -252,6 +252,22 @@
               </button>
             </div>
           </div>
+
+          <!-- Behaviour-personalised follow-ups (additive) -->
+          <label class="mt-4 flex cursor-pointer items-start gap-3 rounded-lg border border-[#30363d] bg-[#161b22] p-3">
+            <input
+              v-model="settingsForm.behavior_personalized_followups"
+              type="checkbox"
+              class="mt-0.5 h-4 w-4 rounded border-[#30363d]"
+            />
+            <span class="text-xs">
+              <span class="font-medium text-[#f9f9f9]">Relance personnalisée selon le comportement</span>
+              <span class="text-muted mt-0.5 block">
+                Personnalise le corps des relances à partir du comportement du prospect sur la démo (clics, visites…).
+                Conserve le template comme base si aucune donnée n'est disponible.
+              </span>
+            </span>
+          </label>
         </section>
 
         <div class="flex items-center justify-end gap-3">
@@ -703,12 +719,14 @@ const settingsForm: Ref<{
   ab_template_id_b: number
   send_delay_minutes: number
   enable_ab: boolean
+  behavior_personalized_followups: boolean
   follow_ups: Array<{ template_id: number; delay_days: number }>
 }> = ref({
   template_id: 0,
   ab_template_id_b: 0,
   send_delay_minutes: 20,
   enable_ab: false,
+  behavior_personalized_followups: false,
   follow_ups: [],
 })
 
@@ -759,6 +777,7 @@ const settingsDirty: ComputedRef<boolean> = computed((): boolean => {
   const f = settingsForm.value
   if (f.template_id !== (c.template_id ?? 0)) return true
   if (f.send_delay_minutes !== c.send_delay_minutes) return true
+  if (f.behavior_personalized_followups !== c.behavior_personalized_followups) return true
   if (f.enable_ab !== !!c.ab_template_id_b) return true
   if (f.enable_ab && f.ab_template_id_b !== (c.ab_template_id_b ?? 0)) return true
   if (f.follow_ups.length !== c.follow_ups.length) return true
@@ -820,6 +839,7 @@ function syncSettingsForm(c: CampaignDetailResponse): void {
     ab_template_id_b: c.ab_template_id_b ?? 0,
     send_delay_minutes: c.send_delay_minutes,
     enable_ab: !!c.ab_template_id_b,
+    behavior_personalized_followups: c.behavior_personalized_followups,
     follow_ups: c.follow_ups.map((fu) => ({ template_id: fu.template_id, delay_days: fu.delay_days })),
   }
 }
@@ -845,6 +865,7 @@ async function saveSettings(): Promise<void> {
       ab_template_id_b: f.enable_ab && f.ab_template_id_b > 0 ? f.ab_template_id_b : undefined,
       disable_ab: !f.enable_ab,
       send_delay_minutes: f.send_delay_minutes,
+      behavior_personalized_followups: f.behavior_personalized_followups,
       follow_ups: f.follow_ups
         .filter((fu) => fu.template_id > 0)
         .map((fu, i) => ({ template_id: fu.template_id, delay_days: fu.delay_days, position: i + 1 })),

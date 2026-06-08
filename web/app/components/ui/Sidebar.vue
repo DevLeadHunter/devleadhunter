@@ -85,8 +85,8 @@
       </template>
 
       <template v-else>
-        <!-- Desktop Credits Section -->
-        <div v-if="!isMobile" class="px-2 py-2">
+        <!-- Desktop Credits Section (admin only — credit purchase is an admin concern) -->
+        <div v-if="!isMobile && isAdmin" class="px-2 py-2">
           <div class="relative" @mouseenter="handleMouseEnter" @mouseleave="handleMouseLeave">
             <button
               class="hover:btn-sidebar-hover flex w-full cursor-pointer items-center justify-start gap-2 rounded text-sm font-medium text-[#8b949e] transition-all hover:text-[#f9f9f9]"
@@ -297,12 +297,13 @@ const links = computed(() => {
     { to: '/dashboard/campaigns', label: 'Campagnes', icon: 'fa-solid fa-bullhorn' },
     { to: '/dashboard/emails', label: 'Emails envoyés', icon: 'fa-regular fa-envelope' },
     { to: '/dashboard/email-templates', label: 'Templates email', icon: 'fa-solid fa-file-lines' },
-    { to: '/dashboard/credits', label: 'Mes crédits', icon: 'fa-solid fa-coins' },
-    { to: '/dashboard/buy-credits', label: 'Acheter des crédits', icon: 'fa-solid fa-credit-card' },
+    { to: '/dashboard/orders', label: 'Ventes', icon: 'fa-solid fa-cart-shopping' },
   ]
 
+  // Credit purchase / balance is an admin concern → shown in the Administration panel.
+  // Support stays available to regular users in the main menu.
   if (!isAdmin.value) {
-    baseLinks.splice(7, 0, {
+    baseLinks.push({
       to: '/dashboard/support',
       label: 'Support',
       icon: 'fa-solid fa-headset',

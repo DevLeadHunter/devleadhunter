@@ -162,6 +162,57 @@ class StripePaymentService:
         except stripe.error.StripeError as e:
             raise Exception(f"Stripe error: {str(e)}")
     
+    def create_order_payment_link(
+        self,
+        *,
+        order_id: int,
+        user_id: int,
+        amount_cents: int,
+        currency: str,
+        product_label: str,
+        business_name: Optional[str],
+    ) -> Dict[str, Any]:
+        """
+        Create a persistent Stripe Payment Link for a website sale (not credits).
+
+        Returns a dict with ``payment_link_id``, ``url`` and ``amount``. The link
+        carries ``metadata.type = "order"`` so the webhook can route it correctly.
+        """
+        if amount_cents <= 0:
+            raise ValueError("Order amount must be greater than 0")
+
+        label = product_label if not business_name else f"{product_label} — {business_name}"
+        try:
+            product = self.stripe_client.Product.create(name=label)
+            price = self.stripe_client.Price.create(
+                product=product.id,
+                unit_amount=amount_cents,
+                currency=currency or "eur",
+            )
+            link = self.stripe_client.PaymentLink.create(
+                line_items=[{"price": price.id, "quantity": 1}],
+                metadata={
+                    "type": "order",
+                    "order_id": str(order_id),
+                    "user_id": str(user_id),
+                },
+                after_completion={"type": "hosted_confirmation"},
+            )
+            return {
+                "payment_link_id": link.id,
+                "url": link.url,
+                "amount": amount_cents,
+            }
+        except stripe.error.StripeError as exc:
+            raise Exception(f"Stripe error: {str(exc)}")
+
+    def deactivate_payment_link(self, payment_link_id: str) -> None:
+        """Best-effort deactivation of a Stripe payment link (e.g. on cancel)."""
+        try:
+            self.stripe_client.PaymentLink.modify(payment_link_id, active=False)
+        except stripe.error.StripeError:
+            pass
+
     def handle_webhook_event(
         self,
         db: Session,

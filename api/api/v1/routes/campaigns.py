@@ -236,6 +236,8 @@ async def update_campaign_settings(
         campaign.ab_template_id_b = settings.ab_template_id_b
     if settings.send_delay_minutes is not None:
         campaign.send_delay_minutes = settings.send_delay_minutes
+    if settings.behavior_personalized_followups is not None:
+        campaign.behavior_personalized_followups = settings.behavior_personalized_followups
 
     if settings.follow_ups is not None:
         # Replace the entire follow-up sequence.

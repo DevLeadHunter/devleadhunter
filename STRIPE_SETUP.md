@@ -54,9 +54,23 @@ Les webhooks permettent à Stripe de notifier votre API lors d'un paiement réus
 
 #### Étape 4.2 : Sélectionner les Événements
 
-Cochez ces événements :
-- ✅ `checkout.session.completed`
-- ✅ `payment_intent.succeeded`
+Événements activés sur le webhook (référence — pour retrouver la liste exacte) :
+
+| Événement | Géré par le code | Rôle |
+|-----------|------------------|------|
+| `checkout.session.completed` | ✅ | Paiement crédits **et** vente website → `Order` payé + `sale` PostHog + fulfilment (`payments.py` → `order_service.try_mark_paid_from_event`) |
+| `payment_intent.succeeded` | ✅ | Fallback crédits |
+| `charge.refunded` | ✅ | Remboursement → `Order` `refunded` (`order_service.try_handle_refund_from_event`) |
+| `refund.created` | ✅ | Remboursement (idem) |
+| `refund.updated` | ✅ | Remboursement (statut `succeeded`) |
+| `charge.refund.updated` | ➖ | Activé mais non traité spécifiquement (ignoré proprement) |
+| `checkout.session.async_payment_succeeded` | ➖ | Moyens de paiement différés — non géré aujourd'hui (le code lit `checkout.session.completed`) |
+| `checkout.session.async_payment_failed` | ➖ | Observabilité (échec paiement différé) |
+| `checkout.session.expired` | ➖ | Observabilité (session expirée) |
+| `payment_intent.created` | ➖ | Observabilité |
+
+> ✅ = déclenche une action côté API. ➖ = activé pour visibilité/futur, ignoré sans erreur par le handler.
+> Le minimum **fonctionnel** = `checkout.session.completed`, `payment_intent.succeeded`, `charge.refunded` (+ `refund.created` / `refund.updated`).
 
 #### Étape 4.3 : Récupérer le Signing Secret
 
