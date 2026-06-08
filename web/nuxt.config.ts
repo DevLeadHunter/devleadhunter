@@ -18,9 +18,13 @@ export default defineNuxtConfig({
       prefix: 'DemoSites',
     },
     {
+      path: '~/components/dashboard',
+      prefix: 'Dashboard',
+    },
+    {
       path: '~/components',
       pathPrefix: false,
-      ignore: ['**/ui/**', '**/demo-sites/**'],
+      ignore: ['**/ui/**', '**/demo-sites/**', '**/dashboard/**'],
     },
   ],
   devtools: { enabled: !isDesktopBuild },

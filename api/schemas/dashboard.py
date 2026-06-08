@@ -38,3 +38,18 @@ class HotLeadsResponse(BaseModel):
     """List of hot leads for the dashboard widget."""
 
     items: list[HotLeadResponse]
+
+
+class ActivityPoint(BaseModel):
+    """Email activity counters for a single day."""
+
+    date: str
+    sent: int
+    opened: int
+    clicked: int
+
+
+class DashboardActivityResponse(BaseModel):
+    """Daily email activity series for the dashboard trend chart."""
+
+    days: list[ActivityPoint]

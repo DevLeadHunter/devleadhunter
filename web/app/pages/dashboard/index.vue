@@ -1,152 +1,233 @@
 <template>
   <div class="space-y-6">
     <!-- Header -->
-    <div>
-      <h1 class="text-3xl font-bold text-[#f9f9f9]">Tableau de bord</h1>
-      <p class="text-muted mt-2 text-sm">Vue d'ensemble de votre tunnel, de la prospection à la vente</p>
+    <div class="flex flex-wrap items-end justify-between gap-3">
+      <div>
+        <h1 class="text-2xl font-bold text-[#f9f9f9]">Tableau de bord</h1>
+        <p class="text-muted mt-1 text-sm">Vue d'ensemble de votre tunnel, de la prospection à la vente</p>
+      </div>
+      <div class="flex items-center gap-3">
+        <span v-if="lastUpdated" class="text-muted hidden text-xs sm:inline">Mis à jour à {{ lastUpdated }}</span>
+        <button type="button" class="btn-secondary h-9 px-3 text-xs" :disabled="isLoading" @click="load">
+          <i class="fa-solid fa-rotate-right" :class="isLoading ? 'fa-spin' : ''"></i>
+          Actualiser
+        </button>
+      </div>
     </div>
 
-    <div v-if="isLoading" class="flex items-center justify-center py-16">
-      <i class="fa-solid fa-spinner fa-spin text-muted text-4xl"></i>
+    <!-- Loading skeleton -->
+    <div v-if="isLoading && !stats" class="space-y-6">
+      <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <div v-for="n in 4" :key="n" class="card h-28 animate-pulse">
+          <div class="h-10 w-10 rounded-lg bg-[#21262d]"></div>
+          <div class="mt-4 h-6 w-2/3 rounded bg-[#21262d]"></div>
+        </div>
+      </div>
+      <div class="grid grid-cols-1 gap-6 lg:grid-cols-3">
+        <div class="card h-80 animate-pulse lg:col-span-2"></div>
+        <div class="card h-80 animate-pulse"></div>
+      </div>
     </div>
 
     <template v-else-if="stats">
-      <!-- Pipeline KPIs -->
-      <div class="grid grid-cols-1 gap-6 md:grid-cols-3">
-        <NuxtLink to="/dashboard/my-prospects" class="card transition-colors hover:border-[#30363d]">
-          <div class="flex items-center justify-between">
-            <div>
-              <p class="text-muted text-sm font-medium">Prospects</p>
-              <p class="mt-2 text-3xl font-bold text-[#f9f9f9]">{{ stats.prospects_total }}</p>
+      <!-- KPI row -->
+      <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <DashboardKpiCard
+          label="Prospects"
+          :value="formatInt(stats.prospects_total)"
+          icon="fa-solid fa-users"
+          accent="blue"
+          :hint="`${stats.demo_sites_active} avec démo active`"
+          to="/dashboard/my-prospects"
+        />
+        <DashboardKpiCard
+          label="Démos actives"
+          :value="formatInt(stats.demo_sites_active)"
+          icon="fa-solid fa-globe"
+          accent="violet"
+          hint="En ligne sur demo.dibodev.fr"
+          to="/dashboard/demo-sites"
+        />
+        <DashboardKpiCard
+          label="Campagnes actives"
+          :value="formatInt(stats.campaigns_active)"
+          icon="fa-solid fa-bullhorn"
+          accent="amber"
+          :hint="`${formatInt(stats.emails_sent)} emails envoyés`"
+          to="/dashboard/campaigns"
+        />
+        <DashboardKpiCard
+          label="Chiffre d'affaires"
+          :value="formatCents(stats.revenue_cents)"
+          icon="fa-solid fa-sack-dollar"
+          accent="green"
+          :hint="`${stats.sales_won} vente${stats.sales_won > 1 ? 's' : ''} · pipeline ${formatCents(stats.pipeline_cents)}`"
+          to="/dashboard/orders"
+        />
+      </div>
+
+      <!-- Funnel + activity (left) · engagement + sales (right) -->
+      <div class="grid grid-cols-1 gap-6 lg:grid-cols-3">
+        <div class="space-y-6 lg:col-span-2">
+          <!-- Conversion funnel -->
+          <section class="card">
+            <div class="mb-4 flex items-center justify-between">
+              <h2 class="flex items-center gap-2 text-sm font-semibold text-[#f9f9f9]">
+                <i class="fa-solid fa-filter text-xs text-[#58a6ff]"></i> Tunnel de conversion
+              </h2>
+              <span class="text-muted text-xs">{{ funnelTopToBottom }}</span>
             </div>
-            <i class="fa-solid fa-users text-2xl text-[#8b949e]"></i>
-          </div>
-        </NuxtLink>
-        <NuxtLink to="/dashboard/demo-sites" class="card transition-colors hover:border-[#30363d]">
-          <div class="flex items-center justify-between">
-            <div>
-              <p class="text-muted text-sm font-medium">Démos actives</p>
-              <p class="mt-2 text-3xl font-bold text-[#f9f9f9]">{{ stats.demo_sites_active }}</p>
+            <DashboardConversionFunnel :stages="funnelStages" />
+          </section>
+
+          <!-- Activity trend -->
+          <section class="card">
+            <div class="mb-1 flex items-center justify-between">
+              <h2 class="text-sm font-semibold text-[#f9f9f9]">Activité email — 14 derniers jours</h2>
+              <NuxtLink to="/dashboard/emails" class="text-xs text-[#58a6ff] hover:underline">Détails →</NuxtLink>
             </div>
-            <i class="fa-solid fa-globe text-2xl text-[#8b949e]"></i>
-          </div>
-        </NuxtLink>
-        <NuxtLink to="/dashboard/campaigns" class="card transition-colors hover:border-[#30363d]">
-          <div class="flex items-center justify-between">
-            <div>
-              <p class="text-muted text-sm font-medium">Campagnes actives</p>
-              <p class="mt-2 text-3xl font-bold text-[#f9f9f9]">{{ stats.campaigns_active }}</p>
+            <DashboardActivityChart v-if="activity.length" :points="activity" />
+            <p v-else class="text-muted py-10 text-center text-sm">Aucune activité email sur la période.</p>
+          </section>
+        </div>
+
+        <div class="space-y-6">
+          <!-- Email engagement -->
+          <section class="card">
+            <h2 class="mb-4 text-sm font-semibold text-[#f9f9f9]">Engagement email</h2>
+            <div class="flex items-center justify-around">
+              <DashboardRadialRate
+                :value="stats.open_rate"
+                label="Taux d'ouverture"
+                accent="blue"
+                :sublabel="`${formatInt(stats.emails_opened)} / ${formatInt(stats.emails_sent)}`"
+              />
+              <DashboardRadialRate
+                :value="stats.click_rate"
+                label="Taux de clic"
+                accent="green"
+                :sublabel="`${formatInt(stats.emails_clicked)} / ${formatInt(stats.emails_sent)}`"
+              />
             </div>
-            <i class="fa-solid fa-bullhorn text-2xl text-[#8b949e]"></i>
-          </div>
-        </NuxtLink>
+            <div class="mt-4 grid grid-cols-3 gap-2 border-t border-[#21262d] pt-4 text-center">
+              <div>
+                <p class="text-lg font-bold text-[#f9f9f9] tabular-nums">{{ formatInt(stats.emails_sent) }}</p>
+                <p class="text-muted text-[11px]">Envoyés</p>
+              </div>
+              <div>
+                <p class="text-lg font-bold text-[#f9f9f9] tabular-nums">{{ formatInt(stats.emails_opened) }}</p>
+                <p class="text-muted text-[11px]">Ouverts</p>
+              </div>
+              <div>
+                <p class="text-lg font-bold text-[#f9f9f9] tabular-nums">{{ formatInt(stats.emails_clicked) }}</p>
+                <p class="text-muted text-[11px]">Cliqués</p>
+              </div>
+            </div>
+          </section>
+
+          <!-- Sales -->
+          <section class="card">
+            <div class="mb-4 flex items-center justify-between">
+              <h2 class="text-sm font-semibold text-[#f9f9f9]">Ventes</h2>
+              <NuxtLink to="/dashboard/orders" class="text-xs text-[#58a6ff] hover:underline">Voir →</NuxtLink>
+            </div>
+            <p class="text-3xl font-bold text-[#3fb950] tabular-nums">{{ formatCents(stats.revenue_cents) }}</p>
+            <p class="text-muted mt-1 text-xs">Chiffre d'affaires encaissé</p>
+
+            <div class="mt-4 space-y-3">
+              <div>
+                <div class="mb-1 flex items-center justify-between text-xs">
+                  <span class="text-[#c9d1d9]">Ventes gagnées</span>
+                  <span class="text-[#8b949e] tabular-nums">{{ stats.sales_won }} / {{ stats.orders_total }}</span>
+                </div>
+                <div class="h-2 overflow-hidden rounded-full bg-[#0d0d0d]">
+                  <div
+                    class="h-full rounded-full bg-[#3fb950] transition-all duration-700"
+                    :style="{ width: `${wonRatio}%` }"
+                  ></div>
+                </div>
+              </div>
+              <div class="flex items-center justify-between rounded-lg border border-[#21262d] px-3 py-2">
+                <span class="flex items-center gap-2 text-xs text-[#c9d1d9]">
+                  <i class="fa-solid fa-hourglass-half text-[#e3b341]"></i> Pipeline en cours
+                </span>
+                <span class="text-sm font-bold text-[#e3b341] tabular-nums">{{
+                  formatCents(stats.pipeline_cents)
+                }}</span>
+              </div>
+            </div>
+          </section>
+        </div>
       </div>
 
       <!-- Hot leads -->
-      <div v-if="hotLeads.length" class="card">
+      <section class="card">
         <div class="mb-4 flex items-center justify-between">
-          <h2 class="text-sm font-semibold text-[#f9f9f9]">
-            <i class="fa-solid fa-fire mr-1.5 text-[#ff7b72]"></i>Leads chauds
+          <h2 class="flex items-center gap-2 text-sm font-semibold text-[#f9f9f9]">
+            <i class="fa-solid fa-fire text-xs text-[#ff7b72]"></i> Leads chauds
+            <span v-if="hotLeads.length" class="text-muted font-normal">({{ hotLeads.length }})</span>
           </h2>
           <NuxtLink to="/dashboard/my-prospects" class="text-xs text-[#58a6ff] hover:underline">
             Tous les prospects →
           </NuxtLink>
         </div>
-        <div class="space-y-2">
+
+        <div v-if="hotLeads.length" class="grid grid-cols-1 gap-2 md:grid-cols-2">
           <button
             v-for="lead in hotLeads"
             :key="lead.prospect_id"
             type="button"
-            class="flex w-full items-center gap-3 rounded-lg border border-[#1f1f1f] p-3 text-left transition-colors hover:border-[#30363d] hover:bg-[#1a1a1a]"
+            class="flex w-full items-center gap-3 rounded-lg border border-[#21262d] p-3 text-left transition-all hover:-translate-y-0.5 hover:border-[#3d444d] hover:bg-[#161616]"
             @click="openProspect(lead.prospect_id)"
           >
             <span
-              :class="[
-                'inline-flex items-center rounded px-2 py-0.5 text-[10px] font-medium',
-                temperatureClass(lead.temperature),
-              ]"
+              class="inline-flex flex-shrink-0 items-center gap-1 rounded px-2 py-0.5 text-[10px] font-semibold"
+              :class="temperatureClass(lead.temperature)"
             >
-              {{ temperatureLabel(lead.temperature) }}
+              <i class="fa-solid fa-circle text-[6px]"></i>{{ temperatureLabel(lead.temperature) }}
             </span>
             <div class="min-w-0 flex-1">
               <p class="truncate text-sm font-medium text-[#f9f9f9]">{{ lead.name }}</p>
-              <p class="text-xs text-[#8b949e]">
-                {{ lead.city || '—' }}<span v-if="lead.last_seen"> · {{ formatDate(lead.last_seen) }}</span>
+              <p class="text-muted truncate text-xs">
+                {{ lead.city || '—' }}<span v-if="lead.last_seen"> · vu {{ formatDate(lead.last_seen) }}</span>
               </p>
             </div>
-            <span class="text-sm font-bold text-[#f9f9f9]"
-              >{{ lead.score }}<span class="text-xs text-[#8b949e]">/100</span></span
-            >
-            <i class="fa-solid fa-chevron-right text-xs text-[#8b949e]"></i>
+            <div class="flex flex-shrink-0 items-center gap-2">
+              <div class="w-16">
+                <div class="h-1.5 overflow-hidden rounded-full bg-[#0d0d0d]">
+                  <div class="h-full rounded-full" :style="scoreBarStyle(lead.score)"></div>
+                </div>
+              </div>
+              <span class="w-10 text-right text-sm font-bold text-[#f9f9f9] tabular-nums">{{ lead.score }}</span>
+              <i class="fa-solid fa-chevron-right text-xs text-[#6e7681]"></i>
+            </div>
           </button>
         </div>
-      </div>
 
-      <!-- Email engagement -->
-      <div class="card">
-        <h2 class="mb-4 text-sm font-semibold text-[#f9f9f9]">Engagement email</h2>
-        <div class="grid grid-cols-2 gap-6 md:grid-cols-5">
-          <div>
-            <p class="text-muted text-xs">Envoyés</p>
-            <p class="mt-1 text-2xl font-bold text-[#f9f9f9]">{{ stats.emails_sent }}</p>
-          </div>
-          <div>
-            <p class="text-muted text-xs">Ouverts</p>
-            <p class="mt-1 text-2xl font-bold text-[#f9f9f9]">{{ stats.emails_opened }}</p>
-          </div>
-          <div>
-            <p class="text-muted text-xs">Cliqués</p>
-            <p class="mt-1 text-2xl font-bold text-[#f9f9f9]">{{ stats.emails_clicked }}</p>
-          </div>
-          <div>
-            <p class="text-muted text-xs">Taux d'ouverture</p>
-            <p class="mt-1 text-2xl font-bold text-[#58a6ff]">{{ stats.open_rate }}%</p>
-          </div>
-          <div>
-            <p class="text-muted text-xs">Taux de clic</p>
-            <p class="mt-1 text-2xl font-bold text-[#58a6ff]">{{ stats.click_rate }}%</p>
-          </div>
+        <div v-else class="flex flex-col items-center gap-2 py-8 text-center">
+          <i class="fa-regular fa-snowflake text-2xl text-[#30363d]"></i>
+          <p class="text-muted text-sm">Aucun lead chaud pour l'instant.</p>
+          <p class="text-xs text-[#6e7681]">
+            Les prospects qui ouvrent vos emails et visitent leur démo apparaîtront ici.
+          </p>
         </div>
-      </div>
-
-      <!-- Sales -->
-      <div class="card">
-        <div class="mb-4 flex items-center justify-between">
-          <h2 class="text-sm font-semibold text-[#f9f9f9]">Ventes</h2>
-          <NuxtLink to="/dashboard/orders" class="text-xs text-[#58a6ff] hover:underline">Voir les ventes →</NuxtLink>
-        </div>
-        <div class="grid grid-cols-2 gap-6 md:grid-cols-4">
-          <div>
-            <p class="text-muted text-xs">Chiffre d'affaires</p>
-            <p class="mt-1 text-2xl font-bold text-[#3fb950]">{{ formatCents(stats.revenue_cents) }}</p>
-          </div>
-          <div>
-            <p class="text-muted text-xs">Ventes gagnées</p>
-            <p class="mt-1 text-2xl font-bold text-[#f9f9f9]">{{ stats.sales_won }}</p>
-          </div>
-          <div>
-            <p class="text-muted text-xs">Commandes</p>
-            <p class="mt-1 text-2xl font-bold text-[#f9f9f9]">{{ stats.orders_total }}</p>
-          </div>
-          <div>
-            <p class="text-muted text-xs">Pipeline</p>
-            <p class="mt-1 text-2xl font-bold text-[#e3b341]">{{ formatCents(stats.pipeline_cents) }}</p>
-          </div>
-        </div>
-      </div>
+      </section>
     </template>
 
     <div v-else class="rounded-lg border border-[#DC4747] bg-[#1a1a1a] p-4 text-[#DC4747]">
       <p class="text-sm">Impossible de charger les statistiques.</p>
+      <button type="button" class="btn-secondary mt-3 h-9 px-3 text-xs" @click="load">Réessayer</button>
     </div>
   </div>
 </template>
 
 <script lang="ts" setup>
-import { ref, onMounted } from 'vue'
-import type { Ref } from 'vue'
-import type { DashboardStats, HotLead } from '~/services/dashboardService'
-import { getDashboardStats, getHotLeads } from '~/services/dashboardService'
+import type { ComputedRef, Ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
+import type { FunnelStage } from '~/types/DashboardConversionFunnel'
+import type { ActivityPoint, DashboardStats, HotLead } from '~/services/dashboardService'
+import { getDashboardActivity, getDashboardStats, getHotLeads } from '~/services/dashboardService'
+import { hexAlpha } from '~/utils/dashboardTheme'
 
 definePageMeta({
   layout: 'dashboard',
@@ -155,7 +236,9 @@ definePageMeta({
 
 const stats: Ref<DashboardStats | null> = ref<DashboardStats | null>(null)
 const hotLeads: Ref<HotLead[]> = ref<HotLead[]>([])
+const activity: Ref<ActivityPoint[]> = ref<ActivityPoint[]>([])
 const isLoading: Ref<boolean> = ref(false)
+const lastUpdated: Ref<string | null> = ref<string | null>(null)
 
 const TEMPERATURE_LABELS: Record<string, string> = {
   hot: 'Chaud',
@@ -164,14 +247,51 @@ const TEMPERATURE_LABELS: Record<string, string> = {
   unknown: 'Inconnu',
 }
 
+/** Funnel stages derived from the headline KPIs (prospect → sale). */
+const funnelStages: ComputedRef<FunnelStage[]> = computed((): FunnelStage[] => {
+  const s: DashboardStats | null = stats.value
+  if (!s) return []
+  return [
+    { label: 'Prospects', value: s.prospects_total, accent: 'slate' },
+    { label: 'Emails envoyés', value: s.emails_sent, accent: 'blue' },
+    { label: 'Emails ouverts', value: s.emails_opened, accent: 'violet' },
+    { label: 'Emails cliqués', value: s.emails_clicked, accent: 'amber' },
+    { label: 'Ventes', value: s.sales_won, accent: 'green' },
+  ]
+})
+
+/** Short "top → bottom" conversion label for the funnel header. */
+const funnelTopToBottom: ComputedRef<string> = computed((): string => {
+  const s: DashboardStats | null = stats.value
+  if (!s || s.prospects_total <= 0) return ''
+  const pct: number = Math.round((s.sales_won / s.prospects_total) * 100)
+  return `${pct}% prospect → vente`
+})
+
+/** Share of won orders over total orders, as a percentage. */
+const wonRatio: ComputedRef<number> = computed((): number => {
+  const s: DashboardStats | null = stats.value
+  if (!s || s.orders_total <= 0) return 0
+  return Math.round((s.sales_won / s.orders_total) * 100)
+})
+
+/**
+ * Format an integer with French thousands separators.
+ * @param n - Number to format.
+ * @returns Locale-formatted string.
+ */
+function formatInt(n: number): string {
+  return n.toLocaleString('fr-FR')
+}
+
 /**
  * Format an amount in cents as euros.
  * @param cents - Amount in cents.
  * @returns Formatted euro string.
  */
 function formatCents(cents: number): string {
-  const euros = cents / 100
-  return `${euros % 1 === 0 ? euros.toFixed(0) : euros.toFixed(2)} €`
+  const euros: number = cents / 100
+  return `${euros.toLocaleString('fr-FR', { maximumFractionDigits: euros % 1 === 0 ? 0 : 2 })} €`
 }
 
 /**
@@ -200,6 +320,20 @@ function temperatureClass(temperature: string): string {
 }
 
 /**
+ * Inline style for a lead score progress bar (color scales with score).
+ * @param score - Lead score 0–100.
+ * @returns Inline style object.
+ */
+function scoreBarStyle(score: number): Record<string, string> {
+  const color: string = score >= 70 ? '#ff7b72' : score >= 40 ? '#e3b341' : '#58a6ff'
+  return {
+    width: `${Math.max(0, Math.min(100, score))}%`,
+    backgroundColor: color,
+    boxShadow: `0 0 6px ${hexAlpha(color, 0.5)}`,
+  }
+}
+
+/**
  * Format an ISO timestamp to a short French date-time.
  * @param ts - ISO timestamp.
  * @returns Human-readable date-time.
@@ -216,19 +350,30 @@ function openProspect(prospectId: number): void {
   navigateTo(`/dashboard/my-prospects?open=${prospectId}`)
 }
 
-onMounted(async (): Promise<void> => {
+/**
+ * Load (or refresh) every dashboard data source.
+ * @returns Resolves once all sources have settled.
+ */
+async function load(): Promise<void> {
   isLoading.value = true
   try {
-    const [s, leads] = await Promise.all([
+    const [s, leads, act] = await Promise.all([
       getDashboardStats(),
       getHotLeads().catch((): { items: HotLead[] } => ({ items: [] })),
+      getDashboardActivity(14).catch((): { days: ActivityPoint[] } => ({ days: [] })),
     ])
     stats.value = s
     hotLeads.value = leads.items
+    activity.value = act.days
+    lastUpdated.value = new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })
   } catch {
     stats.value = null
   } finally {
     isLoading.value = false
   }
+}
+
+onMounted(async (): Promise<void> => {
+  await load()
 })
 </script>
