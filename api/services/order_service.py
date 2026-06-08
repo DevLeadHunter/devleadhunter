@@ -397,6 +397,41 @@ class OrderService:
         self.mark_refunded(db, order)
         return order.id
 
+    async def _verify_delivery(self, order: Order, demo_site: "DemoSite") -> tuple[bool, str]:
+        """
+        Verify the client truly has a working site on their domain AND CMS access.
+
+        Returns ``(ok, message)``. ``ok`` is True only when the custom domain
+        serves a page (HTTP < 400) and the Storyblok CMS handover is real — a
+        space exists and the invite was sent (not mock mode).
+
+        @param order - The paid order being fulfilled (provides the domain).
+        @param demo_site - The linked demo site (provides CMS state).
+        @returns Tuple of (delivered_ok, human-readable reason).
+        """
+        from services.demo_site_verification_service import demo_site_verification_service
+
+        problems: list[str] = []
+
+        if not order.domain:
+            domain_live = False
+            problems.append("aucun domaine défini")
+        else:
+            domain_live = await demo_site_verification_service.check_domain_live(order.domain)
+            if not domain_live:
+                problems.append(f"le domaine {order.domain} ne répond pas encore (DNS/Vercel)")
+
+        cms_ready: bool = bool(demo_site.storyblok_space_id) and bool(demo_site.storyblok_invite_sent)
+        if not cms_ready:
+            if not demo_site.storyblok_space_id:
+                problems.append("espace CMS Storyblok non créé (mode mock ?)")
+            else:
+                problems.append("invitation CMS non envoyée au client")
+
+        if domain_live and cms_ready:
+            return True, "Site en ligne sur le domaine client et accès CMS transmis."
+        return False, "Livraison incomplète : " + " ; ".join(problems)
+
     async def fulfill_order_async(self, order_id: int) -> None:
         """
         Post-payment fulfilment in its own DB session (safe for background tasks):
@@ -458,8 +493,20 @@ class OrderService:
         except Exception:  # noqa: BLE001
             logger.warning("Storyblok handover failed for order_id=%s", order.id, exc_info=True)
 
-        order.status = OrderStatus.DELIVERED.value
-        order.delivered_at = datetime.now(timezone.utc)
+        db.refresh(demo_site)
+
+        # 4) Only declare the order delivered once the client truly has a working
+        #    site on their domain AND real CMS access. Otherwise keep it DEPLOYING
+        #    with a reason — the operator fixes DNS/CMS and re-runs
+        #    POST /orders/{id}/deploy to re-verify.
+        delivered_ok, message = await self._verify_delivery(order, demo_site)
+        demo_site.verification_message = message
+        if delivered_ok:
+            order.status = OrderStatus.DELIVERED.value
+            order.delivered_at = datetime.now(timezone.utc)
+        else:
+            order.status = OrderStatus.DEPLOYING.value
+            logger.warning("Order %s kept in DEPLOYING — %s", order.id, message)
         db.commit()
         db.refresh(order)
         return order

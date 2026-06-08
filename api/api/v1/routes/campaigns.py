@@ -439,17 +439,21 @@ async def launch_campaign(
     db.commit()
 
     queue_service = CampaignQueueService(db)
-    enqueued = queue_service.enqueue_campaign(
+    result = queue_service.enqueue_campaign(
         campaign,
         template_id=template_id,
         ab_template_id_b=ab_template_id_b,
     )
 
     ab_info = " (A/B 50/50)" if ab_template_id_b else ""
+    message = f"{result.enqueued} email(s) mis en file{ab_info} — 1 toutes les {campaign.send_delay_minutes} min"
+    if result.skipped_no_demo:
+        message += f" · {len(result.skipped_no_demo)} prospect(s) ignoré(s) faute de site de démo"
     return {
-        "success":  True,
-        "enqueued": enqueued,
-        "message":  f"{enqueued} email(s) mis en file{ab_info} — 1 toutes les {campaign.send_delay_minutes} min",
+        "success": True,
+        "enqueued": result.enqueued,
+        "skipped_no_demo": result.skipped_no_demo,
+        "message": message,
     }
 
 
@@ -503,12 +507,16 @@ async def resume_campaign(
     db.commit()
 
     queue_service = CampaignQueueService(db)
-    enqueued = queue_service.enqueue_campaign(
+    result = queue_service.enqueue_campaign(
         campaign,
         template_id=campaign.template_id,
         ab_template_id_b=campaign.ab_template_id_b,
     )
-    return {"success": True, "enqueued": enqueued}
+    return {
+        "success": True,
+        "enqueued": result.enqueued,
+        "skipped_no_demo": result.skipped_no_demo,
+    }
 
 
 # ---------------------------------------------------------------------------

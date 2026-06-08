@@ -14,6 +14,7 @@ Responsibilities:
 from __future__ import annotations
 
 import logging
+from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
 from typing import TYPE_CHECKING
 
@@ -56,6 +57,22 @@ _STATUS_SKIPPED  = "skipped"
 _STATUS_FAILED   = "failed"
 
 
+@dataclass
+class EnqueueResult:
+    """
+    Outcome of enqueuing a campaign.
+
+    Attributes:
+        enqueued:        Number of J1 queue items added.
+        skipped_no_demo: Prospects skipped because their template uses
+                         ``{lien_demo}`` but they have no active demo site.
+                         Each entry is ``{"id": int, "name": str}``.
+    """
+
+    enqueued: int = 0
+    skipped_no_demo: list[dict[str, object]] = field(default_factory=list)
+
+
 def _utcnow() -> datetime:
     """Return the current UTC time as a timezone-naive datetime (DB-compatible)."""
     return datetime.now(timezone.utc).replace(tzinfo=None)
@@ -76,7 +93,7 @@ class CampaignQueueService:
         campaign: Campaign,
         template_id: int,
         ab_template_id_b: int | None = None,
-    ) -> int:
+    ) -> EnqueueResult:
         """
         Populate the queue with J1 items for all prospects in the campaign.
 
@@ -87,16 +104,31 @@ class CampaignQueueService:
         can dispatch them without extra rate-limiting logic.  Emails are sent
         via the user's ResendConfig — no EmailAccount selection.
 
+        Guard: a prospect is **not** enqueued when its assigned template uses the
+        ``{lien_demo}`` placeholder but the prospect has no active demo site.
+        This prevents sending a cold email with an empty demo link; such
+        prospects are returned in ``skipped_no_demo`` so the operator can
+        generate their sites and re-launch.
+
         Args:
             campaign:         The campaign whose prospects should be enqueued.
             template_id:      J1 template (variant A when A/B testing).
             ab_template_id_b: J1 template for variant B (A/B testing only).
 
         Returns:
-            Number of queue items added.
+            An :class:`EnqueueResult` with the enqueued count and the list of
+            prospects skipped for lacking a demo site.
         """
         now = _utcnow()
         is_ab = ab_template_id_b is not None
+
+        # Pre-load templates once to know whether each variant needs a demo link.
+        template_a: EmailTemplate | None = self.db.get(EmailTemplate, template_id)
+        template_b: EmailTemplate | None = (
+            self.db.get(EmailTemplate, ab_template_id_b) if ab_template_id_b else None
+        )
+        uses_demo_a: bool = self._template_uses_demo_link(template_a)
+        uses_demo_b: bool = self._template_uses_demo_link(template_b)
 
         # Append after the last pending slot so re-launching is safe.
         latest: datetime | None = self.db.execute(
@@ -119,7 +151,7 @@ class CampaignQueueService:
             ).all()
         }
 
-        count = 0
+        result = EnqueueResult()
         for idx, prospect in enumerate(campaign.prospects):
             if prospect.id in already_queued:
                 continue
@@ -130,9 +162,19 @@ class CampaignQueueService:
             if is_ab:
                 variant = "A" if idx % 2 == 0 else "B"
                 tpl_id = template_id if variant == "A" else ab_template_id_b
+                uses_demo = uses_demo_a if variant == "A" else uses_demo_b
             else:
                 variant = None
                 tpl_id = template_id
+                uses_demo = uses_demo_a
+
+            # Guard: never enqueue an email that would ship an empty {lien_demo}.
+            if uses_demo and not self._demo_link_for_prospect(prospect.id, campaign.user_id, variant):
+                logger.info(
+                    "[Queue] Skipping prospect %d — no active demo site for {lien_demo}", prospect.id
+                )
+                result.skipped_no_demo.append({"id": prospect.id, "name": prospect.name or ""})
+                continue
 
             self.db.add(EmailQueue(
                 user_id=campaign.user_id,
@@ -147,11 +189,14 @@ class CampaignQueueService:
                 status=_STATUS_PENDING,
             ))
             next_slot += delay
-            count += 1
+            result.enqueued += 1
 
         self.db.commit()
-        logger.info("[Queue] Enqueued %d J1 items for campaign %d (A/B=%s)", count, campaign.id, is_ab)
-        return count
+        logger.info(
+            "[Queue] Enqueued %d J1 items for campaign %d (A/B=%s, %d skipped no-demo)",
+            result.enqueued, campaign.id, is_ab, len(result.skipped_no_demo),
+        )
+        return result
 
     # -----------------------------------------------------------------------
     # Worker tick
@@ -195,6 +240,22 @@ class CampaignQueueService:
             self.db.commit()
 
         return True
+
+    @staticmethod
+    def _template_uses_demo_link(template: EmailTemplate | None) -> bool:
+        """
+        Return True when a template references the ``{lien_demo}`` placeholder.
+
+        Args:
+            template: Template to inspect (subject + HTML body), or None.
+
+        Returns:
+            True if the rendered email would contain the demo link placeholder.
+        """
+        if template is None:
+            return False
+        haystack: str = f"{template.subject or ''} {template.body_html or ''}"
+        return f"{{{_VAR_DEMO_LINK}}}" in haystack
 
     def _demo_link_for_prospect(self, prospect_id: int, user_id: int, variant: str | None) -> str:
         """
@@ -255,6 +316,18 @@ class CampaignQueueService:
                 self.db.commit()
                 return
 
+        # Guard (defense in depth): never send an email whose template needs
+        # {lien_demo} when the prospect has no active demo site — e.g. the demo
+        # expired between enqueue and dispatch.
+        demo_link: str = self._demo_link_for_prospect(prospect.id, item.user_id, item.ab_variant)
+        if self._template_uses_demo_link(template) and not demo_link:
+            logger.info(
+                "[Queue] Skipping send for prospect %d — no active demo site for {lien_demo}", prospect.id
+            )
+            item.status = _STATUS_SKIPPED
+            self.db.commit()
+            return
+
         # Build personalisation variables.
         name_parts = (prospect.name or "").split()
         variables: dict[str, str] = {
@@ -264,7 +337,7 @@ class CampaignQueueService:
             _VAR_EMAIL:      prospect.email or "",
             _VAR_PHONE:      prospect.phone or "",
             _VAR_METIER:     prospect.category or "",
-            _VAR_DEMO_LINK:  self._demo_link_for_prospect(prospect.id, item.user_id, item.ab_variant),
+            _VAR_DEMO_LINK:  demo_link,
         }
 
         email_service = EmailSendingService(self.db)
