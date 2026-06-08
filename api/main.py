@@ -43,7 +43,6 @@ from services.scraper_service import scraper_service
 from scrappers.mock_scraper import MockScraper
 from scrappers.google_scraper import GoogleScraper
 from scrappers.pagesjaunes_scraper import PagesJaunesScraper
-from scrappers.yelp_scraper import YelpScraper
 from scrappers.osm_scraper import OSMScraper
 from scrappers.auto_scraper import AutoScraper
 from scrappers.brightdata_scraper import BrightDataScraper
@@ -101,10 +100,7 @@ async def startup_event() -> None:
     
     pagesjaunes_scraper = PagesJaunesScraper()
     await scraper_service.add_scraper(pagesjaunes_scraper)
-    
-    yelp_scraper = YelpScraper()
-    await scraper_service.add_scraper(yelp_scraper)
-    
+
     osm_scraper = OSMScraper()
     await scraper_service.add_scraper(osm_scraper)
 

@@ -51,7 +51,7 @@
     "subtitle": "One chain, six steps linked automatically. You stay in control at every step — but nothing is done by hand anymore.",
     "step1": {
       "title": "Find",
-      "description": "We surface businesses without a website on Google, Pages Jaunes, Yelp and OpenStreetMap, along with their contact email."
+      "description": "We surface businesses without a website on Google, Pages Jaunes and OpenStreetMap, along with their contact email."
     },
     "step2": {
       "title": "Enrich",
@@ -95,7 +95,7 @@
       "badge": "Prospecting & enrichment",
       "heading": "Find the businesses that need you the most",
       "description": "Pick a trade and a city. The tool scans several directories, keeps only the businesses without a website, grabs their email and enriches every record with its public data.",
-      "feature1": "Multi-source search: Google, Pages Jaunes, Yelp, OpenStreetMap",
+      "feature1": "Multi-source search: Google, Pages Jaunes, OpenStreetMap",
       "feature2": "Detects businesses without a website",
       "feature3": "Automatic contact email retrieval",
       "feature4": "Enrichment: photos, reviews, rating, hours, logo",

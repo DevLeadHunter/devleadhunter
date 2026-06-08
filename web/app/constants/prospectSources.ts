@@ -57,11 +57,6 @@ export const PROSPECT_SOURCE_OPTIONS: ProspectSourceOption[] = [
     description: 'API BrightData Web Unlocker + SERP (sans navigateur)',
   },
   {
-    value: 'yelp',
-    label: 'Yelp',
-    description: 'Plateforme Yelp',
-  },
-  {
     value: 'mock',
     label: 'Mock (Test)',
     description: 'Données fictives pour le développement local',
