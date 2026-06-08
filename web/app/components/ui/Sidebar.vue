@@ -291,6 +291,7 @@ const showSettingsPanel: Ref<boolean> = ref(false)
  */
 const links = computed(() => {
   const baseLinks = [
+    { to: '/dashboard', label: 'Tableau de bord', icon: 'fa-solid fa-gauge-high' },
     { to: '/dashboard/search-prospects', label: 'Recherche Prospects', icon: 'fa-solid fa-magnifying-glass' },
     { to: '/dashboard/my-prospects', label: 'Mes Prospects', icon: 'fa-solid fa-users' },
     { to: '/dashboard/demo-sites', label: 'Demo Websites', icon: 'fa-solid fa-globe' },
