@@ -25,8 +25,11 @@ from sqlalchemy.orm import Session
 
 from core.config import settings
 from core.database import get_db
+from enums.demo_site_status import DemoSiteStatus
 from enums.email_status import EmailStatus
+from models.demo_site import DemoSite
 from models.email_log import EmailLog
+from services.posthog_service import posthog_service
 
 router = APIRouter(prefix="/webhooks", tags=["webhooks"])
 logger = logging.getLogger(__name__)
@@ -137,6 +140,23 @@ def _verify_signature(
     return False
 
 
+def _resolve_demo_slug(db: Session, email_log: EmailLog) -> str | None:
+    """Return the prospect's most recent non-deleted demo slug (PostHog identity)."""
+    if not email_log.prospect_id:
+        return None
+    site = db.execute(
+        select(DemoSite)
+        .where(
+            DemoSite.prospect_id == email_log.prospect_id,
+            DemoSite.user_id == email_log.user_id,
+            DemoSite.status != DemoSiteStatus.DELETED.value,
+        )
+        .order_by(DemoSite.created_at.desc())
+        .limit(1)
+    ).scalar_one_or_none()
+    return site.slug if site else None
+
+
 # ---------------------------------------------------------------------------
 # Endpoint
 # ---------------------------------------------------------------------------
@@ -242,3 +262,26 @@ async def resend_webhook(
             email_log.provider_message_id = resend_message_id
         db.commit()
         logger.info("[Webhook] EmailLog %d: %s → %s", email_log.id, email_log.status, new_status)
+
+        # Mirror the event into the PostHog event stream so it can be combined with
+        # demo events in funnels. distinct_id = the prospect's demo slug → same person
+        # as the demo capture. Best-effort (capture never raises).
+        demo_slug: str | None = _resolve_demo_slug(db, email_log)
+        distinct_id: str = demo_slug or (
+            f"prospect_{email_log.prospect_id}"
+            if email_log.prospect_id
+            else f"email_{email_log.recipient_email}"
+        )
+        await posthog_service.capture(
+            distinct_id=distinct_id,
+            event=event_type.replace(".", "_"),  # "email.opened" → "email_opened"
+            properties={
+                "demo_slug": demo_slug,
+                "prospect_id": email_log.prospect_id,
+                "campaign_id": email_log.campaign_id,
+                "ab_variant": email_log.ab_variant,
+                "email_log_id": email_log.id,
+                "$lib": "devleadhunter-api",
+            },
+            timestamp=now.isoformat(),
+        )

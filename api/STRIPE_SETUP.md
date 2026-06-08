@@ -85,9 +85,11 @@ Vous devriez voir des événements webhook apparaître en temps réel lorsque vo
 1. Allez sur [Stripe Dashboard > Webhooks](https://dashboard.stripe.com/webhooks)
 2. Cliquez sur "Add endpoint"
 3. URL : `https://votre-domaine.com/api/v1/payments/webhook`
-4. Sélectionnez les événements :
-   - `checkout.session.completed`
-   - `payment_intent.succeeded` (optionnel, backup)
+4. Sélectionnez les événements (liste de référence complète) :
+   - **Gérés par le code** : `checkout.session.completed` (crédits + ventes website), `payment_intent.succeeded` (fallback crédits), `charge.refunded`, `refund.created`, `refund.updated` (remboursements → `Order` refunded)
+   - **Activés mais non traités** (observabilité / futur, ignorés sans erreur) : `charge.refund.updated`, `checkout.session.async_payment_succeeded`, `checkout.session.async_payment_failed`, `checkout.session.expired`, `payment_intent.created`
+   - Minimum fonctionnel : `checkout.session.completed` + `payment_intent.succeeded` + `charge.refunded`
+   - Détail complet (tableau) : voir `STRIPE_SETUP.md` à la racine.
 5. Copiez le "Signing secret" dans votre `.env`
 
 ## 4. Méthodes de paiement disponibles

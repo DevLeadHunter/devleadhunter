@@ -40,6 +40,10 @@ MIGRATION_MODULES: list[tuple[str, str]] = [
     ("add_campaign_settings", "migrations.add_campaign_settings"),
     ("add_campaign_follow_ups_table", "migrations.add_campaign_follow_ups_table"),
     ("nullable_queue_email_account", "migrations.nullable_queue_email_account"),
+    ("add_demo_site_prospect_id", "migrations.add_demo_site_prospect_id"),
+    ("add_order_refund_columns", "migrations.add_order_refund_columns"),
+    ("add_campaign_behavior_followups", "migrations.add_campaign_behavior_followups"),
+    ("add_demo_site_custom_domain", "migrations.add_demo_site_custom_domain"),
 ]
 
 

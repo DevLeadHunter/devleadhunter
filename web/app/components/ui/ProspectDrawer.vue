@@ -179,6 +179,23 @@
                 </div>
               </div>
             </div>
+
+            <!-- Divider -->
+            <div class="border-t border-[#1f1f1f]"></div>
+
+            <!-- Enrichment -->
+            <UiProspectEnrichment :prospect-id="prospect.id" :open="open" />
+
+            <!-- Divider -->
+            <div class="border-t border-[#1f1f1f]"></div>
+
+            <!-- Behaviour (demo tracking → scoring / timeline / AI) -->
+            <UiProspectBehavior
+              :prospect-id="prospect.id"
+              :prospect-email="prospect.email ?? null"
+              :prospect-name="prospect.name"
+              :open="open"
+            />
           </template>
 
           <!-- EDIT MODE -->
@@ -274,6 +291,9 @@
                 <i class="fa-regular fa-trash-can mr-1.5"></i>Supprimer
               </button>
             </div>
+            <button class="btn-primary w-full" @click="$emit('markAsSold', prospect)">
+              <i class="fa-solid fa-cart-shopping mr-1.5"></i>Marquer comme vendu
+            </button>
           </div>
 
           <!-- Edit mode actions -->
@@ -318,6 +338,8 @@ const emit = defineEmits<{
   addToCampaign: [prospect: Prospect]
   /** User clicked "Send email" */
   sendEmail: [prospect: Prospect]
+  /** User clicked "Marquer comme vendu" */
+  markAsSold: [prospect: Prospect]
 }>()
 
 // ─── State ────────────────────────────────────────────────────────────────────

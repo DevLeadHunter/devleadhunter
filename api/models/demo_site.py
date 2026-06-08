@@ -2,7 +2,7 @@
 from datetime import datetime
 from typing import Optional, TYPE_CHECKING
 
-from sqlalchemy import BigInteger, Boolean, ForeignKey, String, Text, JSON
+from sqlalchemy import BigInteger, Boolean, ForeignKey, Integer, String, Text, JSON
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.sql import func
 
@@ -24,6 +24,7 @@ class DemoSite(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True, index=True)
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), nullable=False, index=True)
+    prospect_id: Mapped[Optional[int]] = mapped_column(Integer, nullable=True, index=True)
     slug: Mapped[str] = mapped_column(String(120), nullable=False, unique=True, index=True)
     template_id: Mapped[str] = mapped_column(String(64), nullable=False, default="plumber-simple")
     business_name: Mapped[str] = mapped_column(String(255), nullable=False)
@@ -48,6 +49,8 @@ class DemoSite(Base):
     vercel_deployment_id: Mapped[Optional[str]] = mapped_column(String(128), nullable=True)
     vercel_deployment_url: Mapped[Optional[str]] = mapped_column(String(512), nullable=True)
     demo_url: Mapped[Optional[str]] = mapped_column(String(512), nullable=True)
+    # Client production domain once sold (e.g. toto-plombier-rennes.fr).
+    custom_domain: Mapped[Optional[str]] = mapped_column(String(255), nullable=True, index=True)
     demo_url_live: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     local_demo_url: Mapped[Optional[str]] = mapped_column(String(512), nullable=True)
     verification_message: Mapped[Optional[str]] = mapped_column(Text, nullable=True)

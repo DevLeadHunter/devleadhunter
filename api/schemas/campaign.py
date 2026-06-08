@@ -72,6 +72,8 @@ class CampaignSettingsUpdate(BaseModel):
     # Explicit flag to disable A/B (since None means "unchanged")
     disable_ab: bool = False
     send_delay_minutes: Optional[int] = Field(None, ge=1, le=1440)
+    # Personalise follow-up bodies from demo behaviour (additive — falls back to template)
+    behavior_personalized_followups: Optional[bool] = None
     # Full replacement of the follow-up sequence (if provided)
     follow_ups: Optional[List[CampaignFollowUpCreate]] = None
 
@@ -148,6 +150,7 @@ class CampaignResponse(CampaignBase):
     ab_template_id_b: Optional[int] = None
     send_delay_minutes: int = 20
     follow_up_delay_days: int = 5
+    behavior_personalized_followups: bool = False
     started_at: Optional[datetime] = None
     created_at: datetime
     updated_at: Optional[datetime] = None

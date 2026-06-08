@@ -234,7 +234,7 @@ import { useUserStore } from '~/stores/user'
  */
 definePageMeta({
   layout: 'dashboard',
-  middleware: 'auth',
+  middleware: ['auth', 'admin'],
 })
 
 /**

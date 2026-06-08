@@ -19,6 +19,8 @@ from models.campaign import Campaign, CampaignStatus
 from models.email_unsubscribe import EmailUnsubscribe
 from models.prospect_interaction import ProspectInteraction
 from models.demo_site import DemoSite
+from models.prospect_enrichment import ProspectEnrichment
+from models.order import Order
 
 __all__ = [
     "User",
@@ -41,4 +43,6 @@ __all__ = [
     "EmailUnsubscribe",
     "ProspectInteraction",
     "DemoSite",
+    "ProspectEnrichment",
+    "Order",
 ]

@@ -63,6 +63,21 @@ async def preview_demo_site(payload: DemoSitePreviewRequest) -> DemoSitePreviewR
     return DemoSitePreviewResponse(template_id=payload.template_id, content_json=content_json)
 
 
+@router.get("/public/by-domain", response_model=DemoSitePublicResponse)
+async def get_public_demo_site_by_domain(
+    host: str,
+    db: Session = Depends(get_db),
+) -> DemoSitePublicResponse:
+    """Public endpoint to serve a sold site on its own domain (host → site)."""
+    site = demo_site_service.get_public_by_domain(db, host)
+    if not site:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="No site for this domain")
+    payload = DemoSitePublicResponse.model_validate(site).model_dump()
+    if site.storyblok_preview_token:
+        payload["storyblok_region"] = settings.storyblok_region
+    return DemoSitePublicResponse(**payload)
+
+
 @router.get("/public/{slug}", response_model=DemoSitePublicResponse)
 async def get_public_demo_site(
     slug: str,
@@ -114,6 +129,7 @@ async def create_demo_site(
             description=payload.description,
             invite_client_to_cms=payload.invite_client_to_cms,
             theme=payload.theme.model_dump() if payload.theme else None,
+            prospect_id=payload.prospect_id,
         )
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc

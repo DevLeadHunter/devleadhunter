@@ -132,16 +132,33 @@ async def stripe_webhook(
                 detail="Stripe payment service is not available"
             )
         event = payment_service.verify_webhook_signature(payload, stripe_signature)
-        
+
         if not event:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Invalid webhook signature"
             )
-        
-        # Process webhook event
+
+        # Website sale? Route to the order handler and trigger fulfilment
+        # (deploy to prod + Storyblok handover) in the background.
+        from services.order_service import order_service
+
+        paid_order_id = order_service.try_mark_paid_from_event(db, event)
+        if paid_order_id is not None:
+            import asyncio
+
+            await order_service.capture_sale_event(db, paid_order_id)
+            asyncio.create_task(order_service.fulfill_order_async(paid_order_id))
+            return {"status": "success", "message": "Order payment processed"}
+
+        # Refund of a website sale → mark the order refunded.
+        refunded_order_id = order_service.try_handle_refund_from_event(db, event)
+        if refunded_order_id is not None:
+            return {"status": "success", "message": "Order refund processed"}
+
+        # Otherwise fall back to the credits purchase handler.
         success = payment_service.handle_webhook_event(db, event)
-        
+
         if success:
             return {"status": "success", "message": "Webhook processed successfully"}
         else:

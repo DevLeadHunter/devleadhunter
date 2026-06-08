@@ -40,6 +40,8 @@ export interface CampaignResponse {
   ab_template_id_b?: number | null
   send_delay_minutes: number
   follow_up_delay_days: number
+  /** Personalise follow-up bodies from demo behaviour (additive). */
+  behavior_personalized_followups: boolean
   started_at?: string | null
   created_at: string
   updated_at?: string | null
@@ -94,6 +96,7 @@ export interface CampaignSettingsData {
   /** Explicitly turn A/B off (since null means "unchanged"). */
   disable_ab?: boolean
   send_delay_minutes?: number
+  behavior_personalized_followups?: boolean
   follow_ups?: Array<{ template_id: number; delay_days: number; position: number }>
 }
 

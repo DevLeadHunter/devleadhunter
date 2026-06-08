@@ -137,7 +137,61 @@ class Settings(BaseSettings):
     vercel_token: Optional[str] = Field(
         default=None,
         alias="VERCEL_TOKEN",
-        description="Optional Vercel token for future per-site deployments",
+        description="Vercel API token used for per-site domain attachment / deploys",
+    )
+    vercel_team_id: Optional[str] = Field(
+        default=None,
+        alias="VERCEL_TEAM_ID",
+        description="Optional Vercel team id (for team-scoped API calls)",
+    )
+    vercel_demo_host_project_id: Optional[str] = Field(
+        default=None,
+        alias="VERCEL_DEMO_HOST_PROJECT_ID",
+        description="Vercel project id of the demo-host prod project (domains attach here)",
+    )
+    vercel_deploy_hook_url: Optional[str] = Field(
+        default=None,
+        alias="VERCEL_DEPLOY_HOOK_URL",
+        description="Optional Vercel Deploy Hook URL to trigger a production rebuild",
+    )
+
+    # PostHog — behavioural tracking on demo sites (read side for scoring/timeline)
+    posthog_api_host: str = Field(
+        default="https://eu.posthog.com",
+        alias="POSTHOG_API_HOST",
+        description="PostHog app/API host used to query events (eu/us cloud or self-hosted)",
+    )
+    posthog_project_id: Optional[str] = Field(
+        default=None,
+        alias="POSTHOG_PROJECT_ID",
+        description="PostHog project id used for the query API",
+    )
+    posthog_personal_api_key: Optional[str] = Field(
+        default=None,
+        alias="POSTHOG_PERSONAL_API_KEY",
+        description="PostHog personal API key (read events for scoring/timeline)",
+    )
+    posthog_project_api_key: Optional[str] = Field(
+        default=None,
+        alias="POSTHOG_PROJECT_API_KEY",
+        description="PostHog project API key (phc_) for server-side event capture (email events)",
+    )
+    posthog_ingestion_host: str = Field(
+        default="https://eu.i.posthog.com",
+        alias="POSTHOG_INGESTION_HOST",
+        description="PostHog ingestion host used for server-side capture (eu/us)",
+    )
+
+    # Groq — LLM for behaviour summary and personalised follow-ups
+    groq_api_key: Optional[str] = Field(
+        default=None,
+        alias="GROQ_API_KEY",
+        description="Groq API key (OpenAI-compatible) for AI summary / personalised relance",
+    )
+    groq_model: str = Field(
+        default="llama-3.3-70b-versatile",
+        alias="GROQ_MODEL",
+        description="Groq model id used for completions",
     )
 
     # Nodriver / Chrome scraping (see scrappers.nodriver_browser)

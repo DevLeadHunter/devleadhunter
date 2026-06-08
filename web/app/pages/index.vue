@@ -626,6 +626,8 @@ import * as creditSettingsService from '~/services/creditSettingsService'
  */
 definePageMeta({
   layout: 'marketing',
+  // Desktop app: skip the landing and go to the dashboard (web keeps the landing).
+  middleware: ['desktop-redirect'],
 })
 
 const localePath = useLocalePath()

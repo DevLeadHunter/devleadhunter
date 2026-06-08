@@ -22,23 +22,12 @@ from services.demo_site_verification_service import (
     demo_site_verification_service,
     DemoSiteVerificationResult,
 )
+from services.enrichment_service import enrichment_service
+from services.templates import registry as template_registry
 
 logger = logging.getLogger(__name__)
 
-AVAILABLE_TEMPLATES: list[dict[str, object]] = [
-    {
-        "id": "plumber-simple",
-        "name": "Plombier Pro",
-        "description": "Site vitrine premium pour artisan plombier : hero animé, services, garanties et contact.",
-        "preview_image_url": None,
-        "category": "artisan",
-        "default_theme": {
-            "primary": "#0284c7",
-            "secondary": "#0f172a",
-            "accent": "#f59e0b",
-        },
-    },
-]
+AVAILABLE_TEMPLATES: list[dict[str, object]] = template_registry.AVAILABLE_TEMPLATES
 
 
 class DemoSiteService:
@@ -97,12 +86,38 @@ class DemoSiteService:
             theme=palette,
         )
 
-    def _build_content_for_site(self, demo_site: DemoSite) -> dict:
-        """Build Storyblok content JSON from the demo site record."""
-        return self._build_content_for_site_with_theme(demo_site, theme=None)
+    def _enrichment_dict_for_site(self, db: Session, demo_site: DemoSite) -> Optional[dict]:
+        """Return the prospect's enrichment data for a demo site, when linked."""
+        prospect_id: Optional[int] = getattr(demo_site, "prospect_id", None)
+        if not prospect_id:
+            return None
+        record = enrichment_service.get_for_prospect(db, demo_site.user_id, prospect_id)
+        return enrichment_service.to_dict(record)
 
-    def _build_content_for_site_with_theme(self, demo_site: DemoSite, theme: Optional[dict[str, str]] = None) -> dict:
+    async def _resolve_enrichment_for_creation(
+        self, db: Session, user_id: int, prospect_id: Optional[int]
+    ) -> Optional[dict]:
+        """Fetch (and run on demand if missing) the prospect enrichment before generation."""
+        if not prospect_id:
+            return None
+        try:
+            prospect = enrichment_service.get_prospect_for_user(db, user_id, prospect_id)
+            if not prospect:
+                return None
+            record = await enrichment_service.ensure_enriched(db, user_id, prospect)
+            return enrichment_service.to_dict(record)
+        except Exception:  # noqa: BLE001 — never block site creation on enrichment
+            logger.warning("Enrichment resolution failed for prospect_id=%s", prospect_id, exc_info=True)
+            return None
+
+    def _build_content_for_site(self, db: Session, demo_site: DemoSite) -> dict:
         """Build Storyblok content JSON from the demo site record."""
+        return self._build_content_for_site_with_theme(db, demo_site, theme=None)
+
+    def _build_content_for_site_with_theme(
+        self, db: Session, demo_site: DemoSite, theme: Optional[dict[str, str]] = None
+    ) -> dict:
+        """Build Storyblok content JSON from the demo site record (with enrichment)."""
         palette = theme or self._theme_from_content(demo_site.content_json) or self._default_theme_for_template(
             demo_site.template_id
         )
@@ -114,6 +129,7 @@ class DemoSiteService:
             description=demo_site.description,
             template_id=demo_site.template_id,
             theme=palette,
+            enrichment=self._enrichment_dict_for_site(db, demo_site),
         )
 
     def slugify(self, value: str) -> str:
@@ -180,7 +196,7 @@ class DemoSiteService:
         Updates ``content_json`` in the database and publishes the home story
         when a Storyblok space exists, then re-runs URL verification.
         """
-        content_json: dict = self._build_content_for_site(demo_site)
+        content_json: dict = self._build_content_for_site(db, demo_site)
         demo_site.content_json = content_json
         demo_site.demo_url = demo_site.demo_url or self.demo_url_for_slug(demo_site.slug)
         demo_site.vercel_deployment_url = demo_site.demo_url
@@ -292,12 +308,15 @@ class DemoSiteService:
         description: Optional[str],
         invite_client_to_cms: bool = False,
         theme: Optional[dict[str, str]] = None,
+        prospect_id: Optional[int] = None,
     ) -> DemoSite:
         """
         Create and provision a demo site for the authenticated user.
 
         @param db - SQLAlchemy session.
         @param user - Owner account.
+        @param prospect_id - Optional source prospect; its enrichment data (run on
+            demand here if missing) is merged into the generated site content.
         @returns Persisted demo site record in ACTIVE or FAILED status.
         """
         if not email or not email.strip():
@@ -308,6 +327,7 @@ class DemoSiteService:
 
         demo_site: DemoSite = DemoSite(
             user_id=user.id,
+            prospect_id=prospect_id,
             slug=slug,
             template_id=template_id,
             business_name=business_name,
@@ -322,6 +342,8 @@ class DemoSiteService:
         db.commit()
         db.refresh(demo_site)
 
+        enrichment_dict: Optional[dict] = await self._resolve_enrichment_for_creation(db, user.id, prospect_id)
+
         try:
             provision: StoryblokProvisionResult = await storyblok_service.provision_space(
                 business_name=business_name,
@@ -335,6 +357,7 @@ class DemoSiteService:
                 preview_url=self.demo_url_for_slug(slug),
                 invite_client=invite_client_to_cms,
                 theme=theme,
+                enrichment=enrichment_dict,
             )
 
             demo_site.storyblok_space_id = provision.space_id
@@ -365,7 +388,7 @@ class DemoSiteService:
             logger.exception("Demo site provisioning failed for slug=%s after Storyblok space creation", slug)
             demo_site.storyblok_space_id = exc.space_id
             demo_site.storyblok_editor_url = exc.editor_url
-            demo_site.content_json = exc.content_json or self._build_content_for_site(demo_site)
+            demo_site.content_json = exc.content_json or self._build_content_for_site(db, demo_site)
             demo_site.demo_url = demo_site.demo_url or self.demo_url_for_slug(slug)
             demo_site.vercel_deployment_url = demo_site.demo_url
             demo_site.status = DemoSiteStatus.FAILED.value
@@ -373,7 +396,7 @@ class DemoSiteService:
             demo_site.demo_url_live = False
         except Exception as exc:  # noqa: BLE001 — surface provisioning failure on the record
             logger.exception("Demo site provisioning failed for slug=%s", slug)
-            demo_site.content_json = demo_site.content_json or self._build_content_for_site(demo_site)
+            demo_site.content_json = demo_site.content_json or self._build_content_for_site(db, demo_site)
             demo_site.demo_url = demo_site.demo_url or self.demo_url_for_slug(slug)
             demo_site.vercel_deployment_url = demo_site.demo_url
             demo_site.status = DemoSiteStatus.FAILED.value
@@ -406,13 +429,20 @@ class DemoSiteService:
         )
 
     def get_public_by_slug(self, db: Session, slug: str) -> Optional[DemoSite]:
-        """Fetch a demo site for the public demo host when content is available."""
+        """
+        Fetch a *demo* by slug for demo.dibodev.fr/{slug}.
+
+        Served while the demo lives (pending/provisioning/active/unavailable…), so
+        post-provisioning verification and the demo-host render work. A **sold**
+        site (status DELIVERED) or a deleted one is taken down here (404) — a sold
+        site then lives only on the client's own domain.
+        """
         now: datetime = datetime.now(timezone.utc)
         site: Optional[DemoSite] = (
             db.query(DemoSite)
             .filter(
                 DemoSite.slug == slug,
-                DemoSite.status != DemoSiteStatus.DELETED.value,
+                DemoSite.status.notin_([DemoSiteStatus.DELETED.value, DemoSiteStatus.DELIVERED.value]),
                 DemoSite.content_json.isnot(None),
             )
             .first()
@@ -428,6 +458,52 @@ class DemoSiteService:
             return None
 
         return site
+
+    def get_public_by_domain(self, db: Session, host: str) -> Optional[DemoSite]:
+        """
+        Fetch a sold site by its production domain (host → site).
+
+        Used to serve the client's site on their own domain once DELIVERED.
+        """
+        normalized: str = (host or "").strip().lower().removeprefix("www.")
+        if not normalized:
+            return None
+        return (
+            db.query(DemoSite)
+            .filter(
+                DemoSite.custom_domain == normalized,
+                DemoSite.status == DemoSiteStatus.DELIVERED.value,
+                DemoSite.content_json.isnot(None),
+            )
+            .first()
+        )
+
+    async def mark_delivered(self, db: Session, demo_site: DemoSite, domain: str) -> DemoSite:
+        """
+        Take the demo offline and promote it to the client's production domain.
+
+        Sets status DELIVERED (excluded from TTL cleanup), stores the custom
+        domain, makes it permanent, and points the Storyblok preview URL to the
+        new domain so the client edits against their real site.
+        """
+        normalized: str = (domain or "").strip().lower().removeprefix("www.")
+        demo_site.custom_domain = normalized or None
+        demo_site.status = DemoSiteStatus.DELIVERED.value
+        # Make permanent: a sold site must never be auto-expired.
+        demo_site.expires_at = datetime.now(timezone.utc) + timedelta(days=365 * 50)
+        if normalized:
+            demo_site.demo_url = f"https://{normalized}"
+            demo_site.vercel_deployment_url = demo_site.demo_url
+            if demo_site.storyblok_space_id:
+                try:
+                    await storyblok_service.configure_preview_url(
+                        demo_site.storyblok_space_id, demo_site.demo_url
+                    )
+                except Exception:  # noqa: BLE001 — preview URL is non-critical
+                    logger.warning("Storyblok preview URL update failed for slug=%s", demo_site.slug, exc_info=True)
+        db.commit()
+        db.refresh(demo_site)
+        return demo_site
 
     async def delete_demo_site(self, db: Session, demo_site: DemoSite) -> None:
         """Soft-delete a demo site and remove its Storyblok space when present."""

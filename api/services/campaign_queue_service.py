@@ -26,9 +26,11 @@ from models.email_queue import EmailQueue
 from models.email_log import EmailLog
 from models.prospect_db import ProspectDB
 from models.email_template import EmailTemplate
+from models.demo_site import DemoSite
 from services.email_sending_service import EmailSendingService
 from services.unsubscribe_service import unsubscribe_service
 from enums.email_status import EmailStatus
+from enums.demo_site_status import DemoSiteStatus
 
 if TYPE_CHECKING:
     pass
@@ -194,6 +196,29 @@ class CampaignQueueService:
 
         return True
 
+    def _demo_link_for_prospect(self, prospect_id: int, user_id: int, variant: str | None) -> str:
+        """
+        Resolve the ``{lien_demo}`` value: the prospect's active demo URL, with the
+        A/B variant appended (``?v=A``) so PostHog can attribute the demo visit to
+        the email variant. Returns "" when the prospect has no active demo.
+        """
+        site: DemoSite | None = self.db.execute(
+            select(DemoSite)
+            .where(
+                DemoSite.prospect_id == prospect_id,
+                DemoSite.user_id == user_id,
+                DemoSite.status == DemoSiteStatus.ACTIVE.value,
+            )
+            .order_by(DemoSite.created_at.desc())
+            .limit(1)
+        ).scalar_one_or_none()
+        if not site or not site.demo_url:
+            return ""
+        url: str = site.demo_url
+        if variant:
+            url = f"{url}{'&' if '?' in url else '?'}v={variant}"
+        return url
+
     async def _dispatch(self, item: EmailQueue) -> None:
         """
         Render and send the email for a single queue item, then schedule follow-ups.
@@ -239,12 +264,30 @@ class CampaignQueueService:
             _VAR_EMAIL:      prospect.email or "",
             _VAR_PHONE:      prospect.phone or "",
             _VAR_METIER:     prospect.category or "",
-            _VAR_DEMO_LINK:  "",
+            _VAR_DEMO_LINK:  self._demo_link_for_prospect(prospect.id, item.user_id, item.ab_variant),
         }
 
         email_service = EmailSendingService(self.db)
         subject: str = email_service.replace_variables(template.subject, variables)
         body_html: str = email_service.replace_variables(template.body_html, variables)
+
+        # Behaviour-personalised follow-up (additive — keeps the rendered template
+        # as the base and falls back to it if there is no behaviour data / LLM).
+        if item.queue_type == "followup" and getattr(campaign, "behavior_personalized_followups", False):
+            try:
+                from services.behavior_service import behavior_service
+
+                personalized = await behavior_service.draft_personalized_followup(
+                    self.db,
+                    item.user_id,
+                    prospect,
+                    base_subject=subject,
+                    base_body_html=body_html,
+                )
+                subject = personalized.get("subject", subject) or subject
+                body_html = personalized.get("body_html", body_html) or body_html
+            except Exception as exc:  # noqa: BLE001 — never block a send on personalisation
+                logger.warning("[Queue] Behaviour personalisation failed for prospect %d: %s", prospect.id, exc)
 
         result: dict = await email_service.send_via_resend_config(
             user_id=item.user_id,
@@ -364,7 +407,7 @@ class CampaignQueueService:
             _VAR_EMAIL:      prospect.email or "",
             _VAR_PHONE:      prospect.phone or "",
             _VAR_METIER:     prospect.category or "",
-            _VAR_DEMO_LINK:  "",
+            _VAR_DEMO_LINK:  self._demo_link_for_prospect(prospect_id, campaign.user_id, None),
         }
 
         email_service = EmailSendingService(self.db)
