@@ -52,6 +52,29 @@ class DemoSiteVerificationService:
                 await asyncio.sleep(settings.demo_site_verify_retry_delay_seconds)
         return False
 
+    async def check_domain_live(self, domain: str) -> bool:
+        """
+        Return True when the client's custom domain serves a page (HTTP < 400).
+
+        Accepts a bare host or a full URL. Tries HTTPS first, then HTTP, each with
+        the standard retry policy so a freshly-attached domain (propagating DNS)
+        gets a fair chance before delivery is verified.
+
+        Args:
+            domain: The client's domain (e.g. "monsite.fr") or a full URL.
+
+        Returns:
+            True if the domain responds with a non-error status.
+        """
+        if not domain:
+            return False
+        host: str = domain.strip().rstrip("/")
+        if host.startswith(("http://", "https://")):
+            return await self._check_url_with_retries(host)
+        if await self._check_url_with_retries(f"https://{host}"):
+            return True
+        return await self._check_url_with_retries(f"http://{host}")
+
     def _is_local_host_url(self, url: str) -> bool:
         lowered: str = url.lower()
         return "localhost" in lowered or "127.0.0.1" in lowered

@@ -133,6 +133,8 @@
         :selected-prospects="selectedProspects"
         @view-prospect="openDrawer"
         @delete-prospect="handleDeleteProspect"
+        @toggle-select="toggleSelect"
+        @toggle-select-all="toggleSelectAll"
       />
 
       <!-- Pagination -->
@@ -182,6 +184,59 @@
       @send-email="handleSendEmail"
       @mark-as-sold="handleMarkAsSold"
     />
+
+    <!-- Bulk action bar (visible when prospects are selected) -->
+    <Transition name="bulkbar">
+      <div v-if="selectedProspects.length > 0" class="fixed inset-x-0 bottom-6 z-40 flex justify-center px-4">
+        <div
+          class="flex flex-wrap items-center justify-center gap-2 rounded-2xl border border-[#30363d] bg-[#161b22]/95 px-4 py-3 shadow-2xl backdrop-blur"
+        >
+          <span class="px-1 text-sm font-semibold text-[#f9f9f9]">
+            {{ selectedProspects.length }} sélectionné{{ selectedProspects.length > 1 ? 's' : '' }}
+          </span>
+          <span class="hidden h-5 w-px bg-[#30363d] sm:block"></span>
+          <button type="button" class="btn-secondary" @click="bulkCampaignOpen = true">
+            <i class="fa-solid fa-bullhorn mr-2"></i>Campagne
+          </button>
+          <button
+            type="button"
+            class="btn-secondary disabled:cursor-not-allowed disabled:opacity-50"
+            :disabled="bulkBusy"
+            @click="bulkEnrich"
+          >
+            <i :class="bulkBusy ? 'fa-solid fa-spinner fa-spin' : 'fa-solid fa-wand-magic-sparkles'" class="mr-2"></i>
+            Enrichir
+          </button>
+          <button type="button" class="btn-primary" @click="bulkGenerateOpen = true">
+            <i class="fa-solid fa-globe mr-2"></i>Générer les sites
+          </button>
+          <button
+            type="button"
+            class="text-muted ml-1 cursor-pointer p-2 transition-colors hover:text-[#f9f9f9]"
+            aria-label="Désélectionner tout"
+            @click="clearSelection"
+          >
+            <i class="fa-solid fa-times"></i>
+          </button>
+        </div>
+      </div>
+    </Transition>
+
+    <!-- Bulk: add to campaign -->
+    <UiBulkCampaignModal
+      :open="bulkCampaignOpen"
+      :prospect-ids="selectedIds"
+      @close="bulkCampaignOpen = false"
+      @added="handleBulkAdded"
+    />
+
+    <!-- Bulk: generate websites -->
+    <UiBulkGenerateModal
+      :open="bulkGenerateOpen"
+      :prospect-ids="selectedIds"
+      @close="bulkGenerateOpen = false"
+      @generated="handleBulkGenerated"
+    />
   </div>
 </template>
 
@@ -190,6 +245,8 @@ import { ref, computed, onMounted } from 'vue'
 import type { Prospect } from '~/types'
 import { deleteProspect as deleteProspectApi, listProspects } from '~/services/prospectsService'
 import { createOrder } from '~/services/ordersService'
+import { runBulkEnrichment } from '~/services/enrichmentService'
+import type { BulkGenerateResult } from '~/services/demoSiteService'
 import { useToast } from '~/composables/useToast'
 import { ALL_SOURCES_VALUE, PROSPECT_SOURCE_FILTER_OPTIONS } from '~/constants/prospectSources'
 
@@ -204,6 +261,9 @@ const prospects = ref<Prospect[]>([])
 const isLoading = ref(false)
 const error = ref<string | null>(null)
 const selectedProspects = ref<string[]>([])
+const bulkCampaignOpen = ref(false)
+const bulkGenerateOpen = ref(false)
+const bulkBusy = ref(false)
 const searchQuery = ref('')
 const filterSource = ref(ALL_SOURCES_VALUE)
 const filterCategory = ref('')
@@ -236,6 +296,10 @@ const deleteConfirmMessage = computed(() => {
 })
 
 const hasActiveSourceFilter = computed(() => filterSource.value !== ALL_SOURCES_VALUE)
+
+const selectedIds = computed<number[]>(() =>
+  selectedProspects.value.map((id) => Number(id)).filter((n) => !Number.isNaN(n)),
+)
 
 const totalProspects = computed(() => prospects.value.length)
 const prospectsWithEmail = computed(() => prospects.value.filter((p) => p.email).length)
@@ -306,6 +370,82 @@ function clearFilters(): void {
   filterCategory.value = ''
   filterWebsite.value = 'all'
   currentPage.value = 1
+}
+
+// ─── Selection ──────────────────────────────────────────────────────────────
+
+/**
+ * Toggle a single prospect in the selection.
+ * @param prospect - The prospect whose checkbox was toggled.
+ */
+function toggleSelect(prospect: Prospect): void {
+  const id = String(prospect.id)
+  const idx = selectedProspects.value.indexOf(id)
+  if (idx === -1) selectedProspects.value.push(id)
+  else selectedProspects.value.splice(idx, 1)
+}
+
+/**
+ * Select or clear every prospect on the current page.
+ * @param checked - True to add the page's prospects, false to remove them.
+ */
+function toggleSelectAll(checked: boolean): void {
+  const pageIds = paginatedProspects.value.map((p) => String(p.id))
+  if (checked) {
+    const set = new Set([...selectedProspects.value, ...pageIds])
+    selectedProspects.value = Array.from(set)
+  } else {
+    const pageSet = new Set(pageIds)
+    selectedProspects.value = selectedProspects.value.filter((id) => !pageSet.has(id))
+  }
+}
+
+/** Clear the entire selection. */
+function clearSelection(): void {
+  selectedProspects.value = []
+}
+
+// ─── Bulk actions ─────────────────────────────────────────────────────────────
+
+/**
+ * Campaign modal succeeded — toast and clear the selection.
+ * @param payload - The add-to-campaign result.
+ * @param payload.campaignName - Name of the campaign the prospects were added to.
+ * @param payload.count - Number of prospects added.
+ */
+function handleBulkAdded(payload: { campaignName: string; count: number }): void {
+  toast.success(`${payload.count} prospect(s) ajouté(s) à « ${payload.campaignName} »`)
+  clearSelection()
+}
+
+/**
+ * Bulk generation finished — surface skipped/failed items and clear selection.
+ * @param result - The aggregated bulk generation result.
+ */
+function handleBulkGenerated(result: BulkGenerateResult): void {
+  if (result.failed > 0 || result.skipped_no_email.length > 0) {
+    toast.info(
+      `${result.created} site(s) créé(s) · ${result.skipped_no_email.length} sans email · ${result.failed} échec(s)`,
+    )
+  }
+  clearSelection()
+}
+
+/**
+ * Run enrichment for every selected prospect (sequential server-side).
+ */
+async function bulkEnrich(): Promise<void> {
+  if (bulkBusy.value || selectedIds.value.length === 0) return
+  bulkBusy.value = true
+  try {
+    const res = await runBulkEnrichment(selectedIds.value)
+    toast.success(`Enrichissement : ${res.succeeded} réussi(s), ${res.failed} échec(s)`)
+    clearSelection()
+  } catch (err: unknown) {
+    toast.error(err instanceof Error ? err.message : "Erreur lors de l'enrichissement")
+  } finally {
+    bulkBusy.value = false
+  }
 }
 
 // ─── Drawer ───────────────────────────────────────────────────────────────────
@@ -392,3 +532,29 @@ onMounted(async (): Promise<void> => {
   }
 })
 </script>
+
+<style scoped>
+.bulkbar-enter-active,
+.bulkbar-leave-active {
+  transition:
+    opacity 0.2s ease,
+    transform 0.2s ease;
+}
+
+.bulkbar-enter-from,
+.bulkbar-leave-to {
+  opacity: 0;
+  transform: translateY(12px);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bulkbar-enter-active,
+  .bulkbar-leave-active {
+    transition: none;
+  }
+  .bulkbar-enter-from,
+  .bulkbar-leave-to {
+    transform: none;
+  }
+}
+</style>

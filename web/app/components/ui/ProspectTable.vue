@@ -3,6 +3,16 @@
     <table class="w-full border-collapse">
       <thead>
         <tr class="bg-[#050505]">
+          <th class="border-muted w-10 border-b px-3 py-2.5 text-left">
+            <input
+              type="checkbox"
+              class="h-4 w-4 cursor-pointer accent-[#2BAD5F]"
+              :checked="allSelected"
+              :indeterminate.prop="someSelected && !allSelected"
+              aria-label="Tout sélectionner sur cette page"
+              @change="onToggleAll"
+            />
+          </th>
           <th class="text-muted border-muted border-b px-3 py-2.5 text-left text-xs font-semibold">Nom</th>
           <th class="text-muted border-muted border-b px-3 py-2.5 text-left text-xs font-semibold">Ville</th>
           <th class="text-muted border-muted border-b px-3 py-2.5 text-left text-xs font-semibold">Téléphone</th>
@@ -19,7 +29,19 @@
           v-for="prospect in prospects"
           :key="prospect.id"
           class="border-muted border-b transition-colors last:border-b-0 hover:bg-[#222222]"
+          :class="isSelected(prospect) ? 'bg-[#2BAD5F]/[0.06]' : ''"
         >
+          <!-- Row selection -->
+          <td class="px-3 py-2.5">
+            <input
+              type="checkbox"
+              class="h-4 w-4 cursor-pointer accent-[#2BAD5F]"
+              :checked="isSelected(prospect)"
+              :aria-label="`Sélectionner ${prospect.name}`"
+              @change="emit('toggleSelect', prospect)"
+            />
+          </td>
+
           <!-- Name — clickable to open detail drawer -->
           <td class="px-3 py-2.5">
             <button
@@ -84,6 +106,8 @@
 </template>
 
 <script setup lang="ts">
+import type { ComputedRef } from 'vue'
+import { computed } from 'vue'
 import type { Prospect } from '~/types'
 
 /**
@@ -92,16 +116,51 @@ import type { Prospect } from '~/types'
 interface Props {
   /** Array of prospects to display */
   prospects: Prospect[]
-  /** Array of selected prospect IDs */
+  /** Array of selected prospect IDs (as strings) */
   selectedProspects?: string[]
 }
 
-defineProps<Props>()
+const props = defineProps<Props>()
 
 const emit = defineEmits<{
   /** Row name clicked — open the detail drawer */
   viewProspect: [prospect: Prospect]
   /** Quick-delete icon clicked */
   deleteProspect: [prospect: Prospect]
+  /** Row checkbox toggled */
+  toggleSelect: [prospect: Prospect]
+  /** Header checkbox toggled — select/clear all rows on the current page */
+  toggleSelectAll: [checked: boolean]
 }>()
+
+/** Fast lookup set of the currently-selected prospect IDs. */
+const selectedSet: ComputedRef<Set<string>> = computed((): Set<string> => new Set(props.selectedProspects ?? []))
+
+/** Whether every visible prospect is selected. */
+const allSelected: ComputedRef<boolean> = computed(
+  (): boolean =>
+    props.prospects.length > 0 && props.prospects.every((p: Prospect): boolean => selectedSet.value.has(String(p.id))),
+)
+
+/** Whether at least one visible prospect is selected. */
+const someSelected: ComputedRef<boolean> = computed((): boolean =>
+  props.prospects.some((p: Prospect): boolean => selectedSet.value.has(String(p.id))),
+)
+
+/**
+ * Whether a given prospect is currently selected.
+ * @param prospect - The prospect to test.
+ * @returns True when the prospect's id is in the selection.
+ */
+function isSelected(prospect: Prospect): boolean {
+  return selectedSet.value.has(String(prospect.id))
+}
+
+/**
+ * Relay the header checkbox toggle to the parent.
+ * @param event - The native change event.
+ */
+function onToggleAll(event: Event): void {
+  emit('toggleSelectAll', (event.target as HTMLInputElement).checked)
+}
 </script>

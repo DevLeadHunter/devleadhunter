@@ -51,7 +51,7 @@
     "subtitle": "Une seule chaîne, six étapes enchaînées automatiquement. Vous gardez la main à chaque étape, mais plus rien n'est fait à la main.",
     "step1": {
       "title": "Trouver",
-      "description": "On déniche les entreprises sans site web sur Google, Pages Jaunes, Yelp et OpenStreetMap, avec leur email de contact."
+      "description": "On déniche les entreprises sans site web sur Google, Pages Jaunes et OpenStreetMap, avec leur email de contact."
     },
     "step2": {
       "title": "Enrichir",
@@ -95,7 +95,7 @@
       "badge": "Prospection & enrichissement",
       "heading": "Trouvez les entreprises qui ont le plus besoin de vous",
       "description": "Ciblez un métier et une ville. L'outil parcourt plusieurs annuaires, ne garde que les entreprises sans site web, récupère leur email et enrichit chaque fiche avec ses données publiques.",
-      "feature1": "Recherche multi-sources : Google, Pages Jaunes, Yelp, OpenStreetMap",
+      "feature1": "Recherche multi-sources : Google, Pages Jaunes, OpenStreetMap",
       "feature2": "Détection des entreprises sans site web",
       "feature3": "Récupération automatique de l'email de contact",
       "feature4": "Enrichissement : photos, avis, note, horaires, logo",

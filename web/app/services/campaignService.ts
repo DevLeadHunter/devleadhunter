@@ -111,6 +111,8 @@ export interface LaunchCampaignData {
 export interface LaunchCampaignResponse {
   success: boolean
   enqueued: number
+  /** Prospects skipped at launch because they lack an active demo site for {lien_demo}. */
+  skipped_no_demo?: Array<{ id: number; name: string }>
   message: string
 }
 

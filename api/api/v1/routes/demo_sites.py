@@ -1,12 +1,14 @@
 """Demo site routes for the website builder tunnel."""
-from typing import List
+from typing import Any, List
 
 from fastapi import APIRouter, Depends, HTTPException, status
+from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
 from core.config import settings
 from core.database import get_db
 from enums.demo_site_status import DemoSiteStatus
+from models.prospect_db import ProspectDB
 from models.user import User
 from schemas.demo_site import (
     DemoSiteCreateRequest,
@@ -16,12 +18,25 @@ from schemas.demo_site import (
     DemoSitePublicResponse,
     DemoSiteResponse,
     DemoSiteTemplateResponse,
+    DemoSiteTheme,
     DemoSiteUpdateRequest,
 )
 from services.auth_service import get_current_active_user
 from services.demo_site_service import demo_site_service
 
 router = APIRouter(prefix="/demo-sites", tags=["demo-sites"])
+
+# Cap a single bulk site-generation request — each item provisions a CMS space.
+_MAX_BULK_GENERATE = 25
+
+
+class BulkDemoSiteCreateRequest(BaseModel):
+    """Payload to generate demo sites for several prospects with one template."""
+
+    prospect_ids: list[int] = Field(..., min_length=1, max_length=_MAX_BULK_GENERATE)
+    template_id: str = Field(default="plumber-simple", max_length=64)
+    theme: DemoSiteTheme | None = None
+    invite_client_to_cms: bool = Field(default=False)
 
 
 def _serialize_demo_site(site) -> DemoSiteResponse:
@@ -134,6 +149,77 @@ async def create_demo_site(
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
     return _serialize_demo_site(site)
+
+
+@router.post("/bulk")
+async def create_demo_sites_bulk(
+    payload: BulkDemoSiteCreateRequest,
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db),
+) -> dict[str, Any]:
+    """
+    Generate demo sites for several prospects using the same template.
+
+    Runs sequentially (each item provisions a CMS space and verifies the URL).
+    Prospects without an email are skipped and reported (the demo record needs a
+    client email); missing prospects and provisioning errors are reported per item.
+    """
+    known_templates = {template["id"] for template in demo_site_service.list_templates()}
+    if payload.template_id not in known_templates:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Unknown template_id")
+
+    theme_dict = payload.theme.model_dump() if payload.theme else None
+    results: list[dict[str, Any]] = []
+    created = 0
+    failed = 0
+    skipped_no_email: list[dict[str, Any]] = []
+
+    for prospect_id in payload.prospect_ids:
+        prospect: ProspectDB | None = (
+            db.query(ProspectDB)
+            .filter(ProspectDB.id == prospect_id, ProspectDB.user_id == current_user.id)
+            .first()
+        )
+        if not prospect:
+            results.append({"prospect_id": prospect_id, "status": "failed", "error": "Prospect introuvable"})
+            failed += 1
+            continue
+        if not prospect.email or not prospect.email.strip():
+            skipped_no_email.append({"id": prospect_id, "name": prospect.name or ""})
+            continue
+
+        try:
+            site = await demo_site_service.create_demo_site(
+                db,
+                user=current_user,
+                business_name=prospect.name or f"Prospect {prospect_id}",
+                template_id=payload.template_id,
+                phone=prospect.phone,
+                email=prospect.email,
+                city=prospect.city,
+                description=None,
+                invite_client_to_cms=payload.invite_client_to_cms,
+                theme=theme_dict,
+                prospect_id=prospect.id,
+            )
+            results.append({
+                "prospect_id": prospect_id,
+                "demo_site_id": site.id,
+                "slug": site.slug,
+                "status": site.status,
+            })
+            created += 1
+        except Exception as exc:  # noqa: BLE001 — report per item, never fail the whole batch
+            results.append({"prospect_id": prospect_id, "status": "failed", "error": str(exc)})
+            failed += 1
+
+    return {
+        "results": results,
+        "created": created,
+        "failed": failed,
+        "skipped_no_email": skipped_no_email,
+        "total": len(payload.prospect_ids),
+    }
 
 
 @router.post("/{demo_site_id}/verify", response_model=DemoSiteResponse)

@@ -220,11 +220,6 @@ class Settings(BaseSettings):
         alias="SCRAPER_USER_DATA_DIR",
         description="Persistent Chrome profile directory for scraping sessions",
     )
-    scraper_inline_email: bool = Field(
-        default=False,
-        alias="SCRAPER_INLINE_EMAIL",
-        description="When True, search Google for emails during bulk scraping (slow, extra Chrome)",
-    )
     scraper_warmup_maps: bool = Field(
         default=False,
         alias="SCRAPER_WARMUP_MAPS",

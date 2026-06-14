@@ -11,7 +11,6 @@ from scrappers.google_scraper import GoogleScraper
 from scrappers.mock_scraper import MockScraper
 from scrappers.osm_scraper import OSMScraper
 from scrappers.pagesjaunes_scraper import PagesJaunesScraper
-from scrappers.yelp_scraper import YelpScraper
 
 CATEGORY = "plombier"
 CITY = "Iffendic"
@@ -46,7 +45,6 @@ async def main() -> None:
         ("mock", MockScraper()),
         ("pagesjaunes", PagesJaunesScraper()),
         ("google", GoogleScraper()),
-        ("yelp", YelpScraper()),
         ("osm", OSMScraper()),
     ]
     failures: list[str] = []

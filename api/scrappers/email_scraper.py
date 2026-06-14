@@ -9,7 +9,7 @@ import re
 from typing import Optional
 from urllib.parse import quote_plus
 
-from scrappers.nodriver_browser import NODRIVER_AVAILABLE, NodriverBrowser, _env_bool
+from scrappers.nodriver_browser import NODRIVER_AVAILABLE, NodriverBrowser
 from scrappers.nodriver_dom import NodriverDom
 from scrappers.nodriver_executor import run_nodriver_task
 
@@ -490,10 +490,9 @@ class EmailScraper:
         """
         Find email with smart query prioritisation.
 
-        Unlike ``find_email()``, this method:
-        - Always runs (not gated by ``SCRAPER_INLINE_EMAIL`` flag).
-        - Accepts an optional ``social_url`` (e.g. from PagesJaunes) to bypass
-          the Google search step entirely when a direct social profile is known.
+        Unlike ``find_email()``, this method accepts an optional ``social_url``
+        (e.g. from PagesJaunes) to bypass the Google search step entirely when a
+        direct social profile is known.
 
         Args:
             name: Business name.
@@ -523,18 +522,9 @@ class EmailScraper:
         """
         Find an email address for a business via Google search.
 
-        Skipped when ``SCRAPER_INLINE_EMAIL=false`` (default) to keep bulk scrapes
-        fast and avoid opening a second Chrome alongside the main scraper.
+        Always attempts the lookup when a browser engine is available — we
+        recover the contact email whenever it is publicly discoverable.
         """
-        try:
-            from core.config import settings
-
-            if not settings.scraper_inline_email:
-                return None
-        except Exception:  # noqa: BLE001
-            if not _env_bool("SCRAPER_INLINE_EMAIL", default=False):
-                return None
-
         if not NODRIVER_AVAILABLE:
             logger.warning("nodriver not available, skipping email search")
             return None

@@ -69,6 +69,30 @@ export async function runProspectEnrichment(prospectId: number): Promise<Prospec
   return api.post<ProspectEnrichment>(`/api/v1/prospects/${prospectId}/enrichment/run`, {})
 }
 
+/** Per-prospect outcome of a bulk enrichment run. */
+export interface BulkEnrichItemResult {
+  prospect_id: number
+  status: string
+  error?: string | null
+}
+
+/** Aggregated result of a bulk enrichment run. */
+export interface BulkEnrichResult {
+  results: BulkEnrichItemResult[]
+  succeeded: number
+  failed: number
+  total: number
+}
+
+/**
+ * Enrich several prospects in one call (runs sequentially server-side).
+ * @param prospectIds - Target prospect ids.
+ * @returns Per-prospect results plus succeeded/failed counts.
+ */
+export async function runBulkEnrichment(prospectIds: number[]): Promise<BulkEnrichResult> {
+  return api.post<BulkEnrichResult>('/api/v1/prospects/enrichment/bulk-run', { prospect_ids: prospectIds })
+}
+
 /**
  * Apply manual edits to a prospect's enrichment data.
  * @param prospectId - Target prospect id.

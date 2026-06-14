@@ -26,7 +26,6 @@ SOURCE_LABELS: dict[Source, str] = {
 SCRAPER_SOURCES: tuple[Source, ...] = (
     Source.GOOGLE,
     Source.PAGESJAUNES,
-    Source.YELP,
     Source.OSM,
     Source.MOCK,
     Source.AUTO,
@@ -40,7 +39,6 @@ SEARCH_FILTER_SOURCES: tuple[Source, ...] = (
     Source.PAGESJAUNES,
     Source.OSM,
     Source.BRIGHTDATA,
-    Source.YELP,
     Source.MOCK,
 )
 

@@ -1,14 +1,27 @@
 """Prospect enrichment routes — on-demand rich data for site generation."""
+from typing import Any
+
 from fastapi import APIRouter, Depends, HTTPException, status
+from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
 from core.database import get_db
+from enums.enrichment_status import EnrichmentStatus
 from models.user import User
 from schemas.enrichment import ProspectEnrichmentResponse, ProspectEnrichmentUpdate
 from services.auth_service import get_current_active_user
 from services.enrichment_service import enrichment_service
 
 router = APIRouter(prefix="/prospects", tags=["enrichment"])
+
+# Cap a single bulk enrichment request — each item drives a headless browser.
+_MAX_BULK_ENRICH = 50
+
+
+class BulkEnrichRequest(BaseModel):
+    """Payload for POST /prospects/enrichment/bulk-run."""
+
+    prospect_ids: list[int] = Field(..., min_length=1, max_length=_MAX_BULK_ENRICH)
 
 
 @router.get("/{prospect_id}/enrichment", response_model=ProspectEnrichmentResponse)
@@ -36,6 +49,48 @@ async def run_prospect_enrichment(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Prospect not found")
     record = await enrichment_service.enrich(db, current_user.id, prospect)
     return ProspectEnrichmentResponse.model_validate(record)
+
+
+@router.post("/enrichment/bulk-run")
+async def run_bulk_enrichment(
+    payload: BulkEnrichRequest,
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db),
+) -> dict[str, Any]:
+    """
+    Enrich several prospects in one call (runs sequentially to share one browser).
+
+    Returns a per-prospect result list plus succeeded/failed counts. Missing
+    prospects (not found / not owned) are reported as failures, never raised.
+    """
+    results: list[dict[str, Any]] = []
+    succeeded = 0
+    failed = 0
+
+    for prospect_id in payload.prospect_ids:
+        prospect = enrichment_service.get_prospect_for_user(db, current_user.id, prospect_id)
+        if not prospect:
+            results.append({"prospect_id": prospect_id, "status": "failed", "error": "Prospect introuvable"})
+            failed += 1
+            continue
+
+        record = await enrichment_service.enrich(db, current_user.id, prospect)
+        if record.status == EnrichmentStatus.COMPLETED.value:
+            succeeded += 1
+        else:
+            failed += 1
+        results.append({
+            "prospect_id": prospect_id,
+            "status": record.status,
+            "error": record.error_message,
+        })
+
+    return {
+        "results": results,
+        "succeeded": succeeded,
+        "failed": failed,
+        "total": len(payload.prospect_ids),
+    }
 
 
 @router.patch("/{prospect_id}/enrichment", response_model=ProspectEnrichmentResponse)

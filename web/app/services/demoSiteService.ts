@@ -111,6 +111,40 @@ export async function createDemoSite(payload: DemoSiteCreatePayload): Promise<De
   return api.post<DemoSite>(BASE_URL, payload)
 }
 
+/** Payload to generate demo sites for several prospects with one template. */
+export interface BulkGeneratePayload {
+  prospect_ids: number[]
+  template_id: string
+  theme?: DemoSiteTheme
+  invite_client_to_cms?: boolean
+}
+
+/** Per-prospect outcome of a bulk site generation. */
+export interface BulkGenerateItemResult {
+  prospect_id: number
+  demo_site_id?: number
+  slug?: string
+  status: string
+  error?: string
+}
+
+/** Aggregated result of a bulk site generation. */
+export interface BulkGenerateResult {
+  results: BulkGenerateItemResult[]
+  created: number
+  failed: number
+  skipped_no_email: Array<{ id: number; name: string }>
+  total: number
+}
+
+/**
+ * Generate demo sites for several prospects using the same template.
+ * Prospects without an email are reported in ``skipped_no_email``.
+ */
+export async function createDemoSitesBulk(payload: BulkGeneratePayload): Promise<BulkGenerateResult> {
+  return api.post<BulkGenerateResult>(`${BASE_URL}/bulk`, payload)
+}
+
 /**
  * Fetch a single demo site by id.
  */
