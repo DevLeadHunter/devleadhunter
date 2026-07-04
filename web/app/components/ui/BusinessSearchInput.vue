@@ -137,7 +137,6 @@ watch(
 
 /**
  * Ouvre la liste de suggestions quand le champ reçoit le focus.
- * @returns void
  */
 function handleFocus(): void {
   if (blurTimeoutId !== null) {
@@ -151,7 +150,6 @@ function handleFocus(): void {
 
 /**
  * Ferme la liste après un court délai pour laisser le clic sur une suggestion se produire.
- * @returns void
  */
 function handleBlur(): void {
   blurTimeoutId = setTimeout((): void => {
@@ -163,7 +161,6 @@ function handleBlur(): void {
 /**
  * Applique une suggestion sélectionnée dans la liste.
  * @param suggestion - Entreprise sélectionnée.
- * @returns void
  */
 function selectSuggestion(suggestion: ProspectSearchSuggestion): void {
   searchTerm.value = suggestion.label
@@ -173,7 +170,6 @@ function selectSuggestion(suggestion: ProspectSearchSuggestion): void {
 
 /**
  * Réinitialise le champ de recherche et l'état interne du composant.
- * @returns void
  */
 function reset(): void {
   searchRequestId += 1

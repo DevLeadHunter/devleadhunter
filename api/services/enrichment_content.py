@@ -108,4 +108,105 @@ def apply_to_content(
         elif component == "contact" and hours_label:
             blok["hours"] = hours_label
 
+        # --- 'electrician-lumen' namespaced bloks (additive, other templates untouched) ---
+
+        elif component == "lumen_hero" and photos:
+            blok["image"] = photos[0]
+
+        elif component == "lumen_trust" and rating_label:
+            items = blok.get("items")
+            if isinstance(items, list) and items:
+                matched = False
+                for item in items:
+                    if isinstance(item, dict) and "avis" in str(item.get("label", "")).lower():
+                        item["value"] = rating_label
+                        matched = True
+                        break
+                if not matched:
+                    last = items[-1]
+                    if isinstance(last, dict):
+                        last["value"] = rating_label
+                        last["label"] = "Avis Google"
+
+        elif component == "lumen_gallery" and photos:
+            blok["items"] = [
+                {
+                    "_uid": f"lumen-g-enriched-{i}",
+                    "component": "lumen_gallery_item",
+                    "image": url,
+                    "caption": "",
+                }
+                for i, url in enumerate(photos[:8])
+            ]
+
+        elif component == "lumen_reviews" and reviews:
+            mapped = [
+                {
+                    "_uid": f"lumen-r-enriched-{i}",
+                    "component": "lumen_review_item",
+                    "quote": str(review.get("text", "")).strip(),
+                    "author": str(review.get("author", "Client")).strip() or "Client",
+                    "rating": int(review["rating"]) if isinstance(review.get("rating"), (int, float)) else 5,
+                }
+                for i, review in enumerate(reviews[:6])
+                if str(review.get("text", "")).strip()
+            ]
+            if mapped:
+                blok["items"] = mapped
+
+        elif component == "lumen_contact" and hours_label:
+            blok["hours"] = hours_label
+
+        # --- 'plumber-cuivre' namespaced bloks (additive, other templates untouched) ---
+
+        elif component == "cuivre_hero" and photos:
+            blok["image"] = photos[0]
+
+        elif component == "cuivre_trust" and rating_label:
+            items = blok.get("items")
+            if isinstance(items, list) and items:
+                matched = False
+                for item in items:
+                    if isinstance(item, dict) and "avis" in str(item.get("label", "")).lower():
+                        item["value"] = rating_label
+                        matched = True
+                        break
+                if not matched:
+                    last = items[-1]
+                    if isinstance(last, dict):
+                        last["value"] = rating_label
+                        last["label"] = "Avis Google"
+
+        elif component == "cuivre_about" and len(photos) > 1:
+            blok["image"] = photos[1]
+
+        elif component == "cuivre_gallery" and photos:
+            blok["items"] = [
+                {
+                    "_uid": f"cuivre-g-enriched-{i}",
+                    "component": "cuivre_gallery_item",
+                    "image": url,
+                    "caption": "",
+                }
+                for i, url in enumerate(photos[:8])
+            ]
+
+        elif component == "cuivre_reviews" and reviews:
+            mapped = [
+                {
+                    "_uid": f"cuivre-r-enriched-{i}",
+                    "component": "cuivre_review_item",
+                    "quote": str(review.get("text", "")).strip(),
+                    "author": str(review.get("author", "Client")).strip() or "Client",
+                    "rating": int(review["rating"]) if isinstance(review.get("rating"), (int, float)) else 5,
+                }
+                for i, review in enumerate(reviews[:6])
+                if str(review.get("text", "")).strip()
+            ]
+            if mapped:
+                blok["items"] = mapped
+
+        elif component == "cuivre_contact" and hours_label:
+            blok["hours"] = hours_label
+
     return content

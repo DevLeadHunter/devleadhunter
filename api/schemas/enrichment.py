@@ -2,7 +2,7 @@
 from datetime import datetime
 from typing import Any, Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 
 class ProspectEnrichmentResponse(BaseModel):
@@ -25,6 +25,18 @@ class ProspectEnrichmentResponse(BaseModel):
     enriched_at: Optional[datetime] = None
     created_at: datetime
     updated_at: Optional[datetime] = None
+
+    @field_validator("photos", "reviews", "opening_hours", "services", mode="before")
+    @classmethod
+    def _none_to_empty_list(cls, value: Any) -> Any:
+        """NULL collection columns from the DB are exposed as empty lists."""
+        return [] if value is None else value
+
+    @field_validator("social_links", mode="before")
+    @classmethod
+    def _none_to_empty_dict(cls, value: Any) -> Any:
+        """A NULL social_links column from the DB is exposed as an empty dict."""
+        return {} if value is None else value
 
     model_config = {"from_attributes": True}
 

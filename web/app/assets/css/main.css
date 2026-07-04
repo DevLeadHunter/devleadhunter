@@ -17,6 +17,22 @@
   * {
     @apply border-[#30363d];
   }
+
+  /* Hide native Edge/IE password reveal & clear controls — we ship our own
+     toggle in UiPasswordInput; without this Edge shows a second eye icon. */
+  input::-ms-reveal,
+  input::-ms-clear {
+    display: none;
+  }
+
+  /* Tailwind v4 dropped the default pointer cursor on buttons — restore it
+     app-wide so every clickable button/role=button shows the right cursor. */
+  button:not(:disabled),
+  [role='button']:not([aria-disabled='true']),
+  summary,
+  label[for] {
+    cursor: pointer;
+  }
 }
 
 @keyframes fadeInUp {

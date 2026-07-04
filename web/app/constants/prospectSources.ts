@@ -1,7 +1,6 @@
 /**
  * Prospect source options aligned with the backend ``Source`` enum
  * (``api/enums/source.py``) and the ``/api/v1/sources`` endpoint.
- *
  * @module prospectSources
  */
 import type { ProspectSource } from '~/types'
@@ -25,7 +24,6 @@ export interface ProspectSourceOption {
  * Keep in sync with:
  * - ``api/enums/source.py``  (Python ``Source`` enum)
  * - ``api/schemas/sources.py``
- *
  * @remarks
  * - ``auto``        launches OSM + Pages Jaunes in parallel then enriches emails — recommended default
  * - ``brightdata``  calls the BrightData HTTP API (no browser) — requires ``BRIGHTDATA_API_TOKEN``
@@ -65,7 +63,6 @@ export const PROSPECT_SOURCE_OPTIONS: ProspectSourceOption[] = [
 
 /**
  * Options for the search-job form (empty string means "all sources — let the server decide").
- *
  * @returns Array with a leading "all sources" sentinel followed by all individual sources.
  */
 export const PROSPECT_SOURCE_SEARCH_OPTIONS: ProspectSourceOption[] = [
@@ -75,7 +72,6 @@ export const PROSPECT_SOURCE_SEARCH_OPTIONS: ProspectSourceOption[] = [
 
 /**
  * Options for the my-prospects filter panel (uses the explicit ``"all"`` enum value).
- *
  * @returns Array with a leading "all sources" option followed by all individual sources.
  */
 export const PROSPECT_SOURCE_FILTER_OPTIONS: ProspectSourceOption[] = [
@@ -93,10 +89,8 @@ const SOURCE_LABEL_MAP: Record<string, string> = Object.fromEntries(
  *
  * Falls back to the raw slug when the source is not in the registry,
  * so unknown future sources degrade gracefully.
- *
- * @param source - Backend source value (e.g. ``"auto"``, ``"pagesjaunes"``).
- * @returns Human-readable label (e.g. ``"Auto (recommandé)"``).
- *
+ * @param {string} source - Backend source value (e.g. ``"auto"``, ``"pagesjaunes"``).
+ * @returns {string} Human-readable label (e.g. ``"Auto (recommandé)"``).
  * @example
  * formatProspectSource('auto')        // → "Auto (recommandé)"
  * formatProspectSource('pagesjaunes') // → "Pages Jaunes"

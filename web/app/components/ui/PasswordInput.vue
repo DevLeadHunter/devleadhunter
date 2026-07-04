@@ -11,7 +11,7 @@
     />
     <button
       type="button"
-      class="absolute top-1/2 right-3 -translate-y-1/2 text-[#8b949e] transition-colors hover:text-[#f9f9f9]"
+      class="absolute top-1/2 right-3 -translate-y-1/2 cursor-pointer text-[#8b949e] transition-colors hover:text-[#f9f9f9]"
       :aria-label="showPassword ? 'Hide password' : 'Show password'"
       @click="showPassword = !showPassword"
     >

@@ -17,7 +17,7 @@
           <div
             class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-[#30363d] bg-[#1a1a1a]"
           >
-            <i class="fa-solid fa-store text-sm text-[#8b949e]"></i>
+            <UIcon name="i-lucide-store" class="h-4 w-4 text-[#8b949e]" />
           </div>
 
           <div class="min-w-0 flex-1">
@@ -52,7 +52,7 @@
             class="flex h-7 w-7 shrink-0 items-center justify-center rounded text-[#8b949e] transition-colors hover:bg-[#1a1a1a] hover:text-[#f9f9f9]"
             @click="$emit('close')"
           >
-            <i class="fa-solid fa-xmark"></i>
+            <UIcon name="i-lucide-x" class="h-4 w-4" />
           </button>
         </div>
 
@@ -67,7 +67,7 @@
               <!-- Phone -->
               <div class="flex items-center gap-3">
                 <div class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[#1a1a1a]">
-                  <i class="fa-solid fa-phone text-xs text-[#8b949e]"></i>
+                  <UIcon name="i-lucide-phone" class="h-4 w-4 text-[#8b949e]" />
                 </div>
                 <div class="min-w-0 flex-1">
                   <p class="text-[10px] text-[#8b949e]">Téléphone</p>
@@ -82,14 +82,14 @@
                   class="flex h-7 w-7 items-center justify-center rounded text-[#8b949e] transition-colors hover:bg-[#1a1a1a] hover:text-[#58a6ff]"
                   title="Appeler"
                 >
-                  <i class="fa-solid fa-arrow-up-right-from-square text-xs"></i>
+                  <UIcon name="i-lucide-external-link" class="h-3.5 w-3.5" />
                 </a>
               </div>
 
               <!-- Email -->
               <div class="flex items-center gap-3">
                 <div class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[#1a1a1a]">
-                  <i class="fa-regular fa-envelope text-xs text-[#8b949e]"></i>
+                  <UIcon name="i-lucide-mail" class="h-4 w-4 text-[#8b949e]" />
                 </div>
                 <div class="min-w-0 flex-1">
                   <p class="text-[10px] text-[#8b949e]">Email</p>
@@ -104,14 +104,14 @@
                   class="flex h-7 w-7 items-center justify-center rounded text-[#8b949e] transition-colors hover:bg-[#1a1a1a] hover:text-[#58a6ff]"
                   title="Composer un email"
                 >
-                  <i class="fa-solid fa-arrow-up-right-from-square text-xs"></i>
+                  <UIcon name="i-lucide-external-link" class="h-3.5 w-3.5" />
                 </a>
               </div>
 
               <!-- Website -->
               <div class="flex items-center gap-3">
                 <div class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[#1a1a1a]">
-                  <i class="fa-solid fa-globe text-xs text-[#8b949e]"></i>
+                  <UIcon name="i-lucide-globe" class="h-4 w-4 text-[#8b949e]" />
                 </div>
                 <div class="min-w-0 flex-1">
                   <p class="text-[10px] text-[#8b949e]">Site web</p>
@@ -128,7 +128,7 @@
                   class="flex h-7 w-7 items-center justify-center rounded text-[#8b949e] transition-colors hover:bg-[#1a1a1a] hover:text-[#58a6ff]"
                   title="Ouvrir le site"
                 >
-                  <i class="fa-solid fa-arrow-up-right-from-square text-xs"></i>
+                  <UIcon name="i-lucide-external-link" class="h-3.5 w-3.5" />
                 </a>
               </div>
             </div>
@@ -141,7 +141,7 @@
               <p class="text-[10px] font-semibold tracking-wider text-[#8b949e] uppercase">Localisation</p>
               <div class="flex items-start gap-3">
                 <div class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[#1a1a1a]">
-                  <i class="fa-solid fa-location-dot text-xs text-[#8b949e]"></i>
+                  <UIcon name="i-lucide-map-pin" class="h-4 w-4 text-[#8b949e]" />
                 </div>
                 <div>
                   <p class="text-[10px] text-[#8b949e]">Adresse</p>
@@ -262,7 +262,7 @@
                 Annuler
               </button>
               <button class="btn-danger flex-1 text-xs" :disabled="isDeleting" @click="handleDelete">
-                <i v-if="isDeleting" class="fa-solid fa-spinner fa-spin mr-1"></i>
+                <UIcon v-if="isDeleting" name="i-lucide-loader-circle" class="mr-1 h-4 w-4 animate-spin" />
                 Confirmer
               </button>
             </div>
@@ -270,9 +270,21 @@
 
           <!-- View mode actions -->
           <div v-else-if="!editMode" class="space-y-2">
+            <button
+              class="btn-secondary w-full"
+              :class="prospect.contacted ? 'text-[#3fb950]' : ''"
+              :title="prospect.contacted ? 'Marquer comme pas contacté' : 'Marquer comme contacté'"
+              @click="$emit('toggleContacted', prospect)"
+            >
+              <UIcon
+                :name="prospect.contacted ? 'i-lucide-circle-check-big' : 'i-lucide-circle'"
+                class="mr-1.5 h-4 w-4"
+              />
+              {{ prospect.contacted ? 'Contacté' : 'Marquer comme contacté' }}
+            </button>
             <div class="flex gap-2">
               <button class="btn-secondary flex-1" @click="$emit('addToCampaign', prospect)">
-                <i class="fa-solid fa-plus mr-1.5"></i>Campagne
+                <UIcon name="i-lucide-plus" class="mr-1.5 h-4 w-4" />Campagne
               </button>
               <button
                 class="btn-secondary flex-1"
@@ -280,19 +292,19 @@
                 :disabled="!prospect.email"
                 @click="prospect.email && $emit('sendEmail', prospect)"
               >
-                <i class="fa-regular fa-envelope mr-1.5"></i>Email
+                <UIcon name="i-lucide-mail" class="mr-1.5 h-4 w-4" />Email
               </button>
             </div>
             <div class="flex gap-2">
               <button class="btn-secondary flex-1" @click="startEdit">
-                <i class="fa-regular fa-pen-to-square mr-1.5"></i>Modifier
+                <UIcon name="i-lucide-square-pen" class="mr-1.5 h-4 w-4" />Modifier
               </button>
               <button class="btn-danger flex-1" @click="showDeleteConfirm = true">
-                <i class="fa-regular fa-trash-can mr-1.5"></i>Supprimer
+                <UIcon name="i-lucide-trash-2" class="mr-1.5 h-4 w-4" />Supprimer
               </button>
             </div>
             <button class="btn-primary w-full" @click="$emit('markAsSold', prospect)">
-              <i class="fa-solid fa-cart-shopping mr-1.5"></i>Marquer comme vendu
+              <UIcon name="i-lucide-shopping-cart" class="mr-1.5 h-4 w-4" />Marquer comme vendu
             </button>
           </div>
 
@@ -300,7 +312,7 @@
           <div v-else class="flex gap-2">
             <button type="button" class="btn-secondary flex-1" :disabled="isSaving" @click="cancelEdit">Annuler</button>
             <button type="submit" form="prospect-edit-form" class="btn-primary flex-1" :disabled="isSaving">
-              <i v-if="isSaving" class="fa-solid fa-spinner fa-spin mr-1.5"></i>
+              <UIcon v-if="isSaving" name="i-lucide-loader-circle" class="mr-1.5 h-4 w-4 animate-spin" />
               Enregistrer
             </button>
           </div>
@@ -340,6 +352,8 @@ const emit = defineEmits<{
   sendEmail: [prospect: Prospect]
   /** User clicked "Marquer comme vendu" */
   markAsSold: [prospect: Prospect]
+  /** User toggled the contacted status */
+  toggleContacted: [prospect: Prospect]
 }>()
 
 // ─── State ────────────────────────────────────────────────────────────────────

@@ -112,7 +112,7 @@ class StoryblokService:
         @returns Storyblok-compatible content object.
         """
         area: str = city or "votre secteur"
-        subtitle: str = description or f"Plombier professionnel — dépannage rapide à {area}"
+        subtitle: str = description or template_registry.default_subtitle(template_id, area)
         palette: dict[str, str] = theme or {
             "primary": "#0284c7",
             "secondary": "#0f172a",

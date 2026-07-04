@@ -8,6 +8,10 @@ import type { Component, ComputedRef, PropType, Ref } from 'vue'
 import DemoPlumberSimplePage from '~/components/templates/plumber-simple/index.vue'
 import DemoPlumberAtelierPage from '~/components/templates/plumber-atelier/index.vue'
 import DemoPlumberSignaturePage from '~/components/templates/plumber-signature/index.vue'
+
+// Templates chargées en lazy : leur code (GSAP inclus pour Lumen) n'alourdit pas les démos des autres templates.
+const DemoElectricianLumenPage = defineAsyncComponent(() => import('~/components/templates/electrician-lumen/index.vue'))
+const DemoPlumberCuivrePage = defineAsyncComponent(() => import('~/components/templates/plumber-cuivre/index.vue'))
 import { fetchStoryblokDraftContent, isStoryblokVisualEditor, useStoryblokBridge } from '~/composables/useStoryblokPreview'
 import type { DemoSitePublic } from '~/types/demoSite'
 
@@ -26,6 +30,8 @@ const TEMPLATE_COMPONENTS: Record<string, Component> = {
   'plumber-simple': DemoPlumberSimplePage,
   'plumber-atelier': DemoPlumberAtelierPage,
   'plumber-signature': DemoPlumberSignaturePage,
+  'plumber-cuivre': DemoPlumberCuivrePage,
+  'electrician-lumen': DemoElectricianLumenPage,
 }
 const templateComponent: ComputedRef<Component> = computed(
   (): Component => TEMPLATE_COMPONENTS[props.site.template_id] ?? DemoPlumberSimplePage,

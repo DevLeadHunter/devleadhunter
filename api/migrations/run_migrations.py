@@ -44,6 +44,7 @@ MIGRATION_MODULES: list[tuple[str, str]] = [
     ("add_order_refund_columns", "migrations.add_order_refund_columns"),
     ("add_campaign_behavior_followups", "migrations.add_campaign_behavior_followups"),
     ("add_demo_site_custom_domain", "migrations.add_demo_site_custom_domain"),
+    ("add_prospect_contacted", "migrations.add_prospect_contacted"),
 ]
 
 

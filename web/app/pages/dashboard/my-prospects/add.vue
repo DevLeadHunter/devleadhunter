@@ -150,7 +150,6 @@ function createEmptyProspectDraft(): ProspectCreatePayload {
 /**
  * Applique une suggestion Google Maps sélectionnée puis lance l'enrichissement.
  * @param suggestion - Entreprise sélectionnée dans l'autocomplete.
- * @returns void
  */
 function handleBusinessSelect(suggestion: ProspectSearchSuggestion): void {
   addForm.value.business_name = suggestion.label

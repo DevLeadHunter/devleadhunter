@@ -49,6 +49,8 @@ export interface Prospect {
   source: ProspectSource
   /** Confidence score (1-4) */
   confidence: number
+  /** Whether this prospect has been contacted (auto on email send + manual toggle) */
+  contacted: boolean
   /** Timestamp of when prospect was found */
   created_at?: string
 }
@@ -99,6 +101,8 @@ export interface ProspectUpdatePayload {
   website?: string | null
   /** Business category */
   category?: string
+  /** Contacted status */
+  contacted?: boolean
 }
 
 /**

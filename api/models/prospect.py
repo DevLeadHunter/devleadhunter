@@ -98,6 +98,7 @@ class ProspectUpdate(BaseModel):
     category: Optional[str] = Field(None, description="Business category")
     source: Optional[Source] = Field(None, description="Data source identifier")
     confidence: Optional[int] = Field(None, ge=1, le=4, description="Confidence score 1-4")
+    contacted: Optional[bool] = Field(None, description="Whether this prospect has been contacted")
 
 
 class Prospect(ProspectBase):
@@ -112,6 +113,7 @@ class Prospect(ProspectBase):
     
     id: int = Field(..., description="Unique prospect identifier")
     user_id: int = Field(..., description="User ID who saved this prospect")
+    contacted: bool = Field(False, description="Whether this prospect has been contacted")
     created_at: Optional[datetime] = Field(None, description="Timestamp when created")
     
     class Config:

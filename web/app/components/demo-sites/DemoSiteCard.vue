@@ -95,6 +95,8 @@ const statusClass = computed(() => {
 const templateLabel = computed(() => {
   const labels: Record<string, string> = {
     'plumber-simple': 'Plombier Pro',
+    'plumber-cuivre': 'Plombier Source',
+    'electrician-lumen': 'Électricien Lumen',
   }
   return labels[props.site.template_id] ?? props.site.template_id
 })

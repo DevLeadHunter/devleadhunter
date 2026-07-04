@@ -36,7 +36,7 @@
             class="hover:btn-sidebar-hover flex w-full cursor-pointer items-center gap-2 rounded px-2 py-2 text-sm font-semibold text-[#f9f9f9] transition-all"
             @click="handleAdminBack"
           >
-            <i class="fa-solid fa-chevron-left text-xs text-[#8b949e]"></i>
+            <UIcon name="i-lucide-chevron-left" class="h-3.5 w-3.5 text-[#8b949e]" />
             <span>Menu principal</span>
           </button>
         </div>
@@ -52,7 +52,8 @@
           ]"
           @click="handleClick"
         >
-          <i :class="link.icon" class="h-4 w-4"></i>
+          <UIcon v-if="link.icon.startsWith('i-')" :name="link.icon" class="h-4 w-4" />
+          <i v-else :class="link.icon" class="h-4 w-4"></i>
           <span>{{ link.label }}</span>
         </NuxtLink>
       </template>
@@ -65,7 +66,7 @@
             class="hover:btn-sidebar-hover flex w-full cursor-pointer items-center gap-2 rounded px-2 py-2 text-sm font-semibold text-[#f9f9f9] transition-all"
             @click="showSettingsPanel = false"
           >
-            <i class="fa-solid fa-chevron-left text-xs text-[#8b949e]"></i>
+            <UIcon name="i-lucide-chevron-left" class="h-3.5 w-3.5 text-[#8b949e]" />
             <span>Menu principal</span>
           </button>
         </div>
@@ -79,7 +80,7 @@
           ]"
           @click="handleClick"
         >
-          <i class="fa-solid fa-envelope-open-text h-4 w-4"></i>
+          <UIcon name="i-lucide-mail-open" class="h-4 w-4" />
           <span>Configuration Resend</span>
         </NuxtLink>
       </template>
@@ -151,7 +152,8 @@
           ]"
           @click="handleClick"
         >
-          <i :class="link.icon" class="h-4 w-4"></i>
+          <UIcon v-if="link.icon.startsWith('i-')" :name="link.icon" class="h-4 w-4" />
+          <i v-else :class="link.icon" class="h-4 w-4"></i>
           <span>{{ link.label }}</span>
         </NuxtLink>
 
@@ -166,9 +168,9 @@
           ]"
           @click="showSettingsPanel = true"
         >
-          <i class="fa-solid fa-gear h-4 w-4"></i>
+          <UIcon name="i-lucide-settings" class="h-4 w-4" />
           <span>Paramètres</span>
-          <i class="fa-solid fa-chevron-right ml-auto text-xs opacity-60"></i>
+          <UIcon name="i-lucide-chevron-right" class="ml-auto h-3.5 w-3.5 opacity-60" />
         </button>
 
         <!-- Administration (admin only) -->
@@ -183,9 +185,9 @@
           ]"
           @click="handleAdminClick"
         >
-          <i class="fa-solid fa-shield-halved h-4 w-4"></i>
+          <UIcon name="i-lucide-shield" class="h-4 w-4" />
           <span>Administration</span>
-          <i class="fa-solid fa-chevron-right ml-auto text-xs opacity-60"></i>
+          <UIcon name="i-lucide-chevron-right" class="ml-auto h-3.5 w-3.5 opacity-60" />
         </button>
       </template>
     </nav>
@@ -291,14 +293,13 @@ const showSettingsPanel: Ref<boolean> = ref(false)
  */
 const links = computed(() => {
   const baseLinks = [
-    { to: '/dashboard', label: 'Tableau de bord', icon: 'fa-solid fa-gauge-high' },
-    { to: '/dashboard/search-prospects', label: 'Recherche Prospects', icon: 'fa-solid fa-magnifying-glass' },
-    { to: '/dashboard/my-prospects', label: 'Mes Prospects', icon: 'fa-solid fa-users' },
-    { to: '/dashboard/demo-sites', label: 'Demo Websites', icon: 'fa-solid fa-globe' },
-    { to: '/dashboard/campaigns', label: 'Campagnes', icon: 'fa-solid fa-bullhorn' },
-    { to: '/dashboard/emails', label: 'Emails envoyés', icon: 'fa-regular fa-envelope' },
-    { to: '/dashboard/email-templates', label: 'Templates email', icon: 'fa-solid fa-file-lines' },
-    { to: '/dashboard/orders', label: 'Ventes', icon: 'fa-solid fa-cart-shopping' },
+    { to: '/dashboard', label: 'Tableau de bord', icon: 'i-lucide-layout-dashboard' },
+    { to: '/dashboard/my-prospects', label: 'Mes Prospects', icon: 'i-lucide-users' },
+    { to: '/dashboard/demo-sites', label: 'Demo Websites', icon: 'i-lucide-app-window' },
+    { to: '/dashboard/campaigns', label: 'Campagnes', icon: 'i-lucide-megaphone' },
+    { to: '/dashboard/emails', label: 'Emails envoyés', icon: 'i-lucide-send' },
+    { to: '/dashboard/email-templates', label: 'Templates email', icon: 'i-lucide-layout-template' },
+    { to: '/dashboard/orders', label: 'Ventes', icon: 'i-lucide-banknote' },
   ]
 
   // Credit purchase / balance is an admin concern → shown in the Administration panel.
@@ -307,7 +308,7 @@ const links = computed(() => {
     baseLinks.push({
       to: '/dashboard/support',
       label: 'Support',
-      icon: 'fa-solid fa-headset',
+      icon: 'i-lucide-life-buoy',
     })
   }
 

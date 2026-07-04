@@ -194,6 +194,16 @@ class Settings(BaseSettings):
         description="Groq model id used for completions",
     )
 
+    # Dev / testing — outbound email safety
+    dev_email_redirect: Optional[str] = Field(
+        default=None,
+        alias="DEV_EMAIL_REDIRECT",
+        description=(
+            "When set, ALL outbound prospect emails are rerouted to this address "
+            "(dev safety — nothing reaches real clients). Leave empty in production."
+        ),
+    )
+
     # Nodriver / Chrome scraping (see scrappers.nodriver_browser)
     scraper_browser_headless: bool = Field(
         default=False,

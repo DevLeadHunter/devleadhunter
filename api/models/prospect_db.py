@@ -3,7 +3,7 @@ Prospect database model for SQLAlchemy.
 """
 from datetime import datetime
 from typing import Optional, TYPE_CHECKING, List
-from sqlalchemy import String, Integer, Text
+from sqlalchemy import String, Integer, Text, Boolean
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.sql import func
 
@@ -45,6 +45,9 @@ class ProspectDB(Base):
     category: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
     source: Mapped[str] = mapped_column(String(50), nullable=False, index=True)
     confidence: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
+    contacted: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=False, server_default="0", index=True
+    )
     user_id: Mapped[int] = mapped_column(Integer, nullable=False, index=True)
     created_at: Mapped[datetime] = mapped_column(server_default=func.now(), nullable=False)
     updated_at: Mapped[Optional[datetime]] = mapped_column(onupdate=func.now(), nullable=True)

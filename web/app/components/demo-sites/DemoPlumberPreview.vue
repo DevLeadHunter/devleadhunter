@@ -276,7 +276,6 @@ function serviceIcon(icon?: string): string {
  * Scroll vers une section du template dans l'aperçu embarqué.
  * @param sectionId - Identifiant de la section cible.
  * @param event - Événement de clic sur le lien d'ancrage.
- * @returns void
  */
 function scrollToSection(sectionId: string, event: MouseEvent): void {
   if (!props.embedded) {

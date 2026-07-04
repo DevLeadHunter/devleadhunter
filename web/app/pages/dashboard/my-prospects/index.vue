@@ -1,22 +1,22 @@
 <template>
   <div class="space-y-6">
     <!-- Header -->
-    <div class="flex items-center justify-between">
+    <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
       <div>
-        <h1 class="text-3xl font-bold text-[#f9f9f9]">Mes Prospects</h1>
+        <h1 class="text-2xl font-bold text-[#f9f9f9] sm:text-3xl">Mes Prospects</h1>
         <p class="text-muted mt-2 text-sm">Tous vos prospects sauvegardés depuis vos recherches</p>
       </div>
-      <div class="flex items-center gap-3">
+      <div class="flex flex-wrap items-center gap-2 sm:gap-3">
         <button
           :disabled="isLoading"
           class="btn-secondary disabled:cursor-not-allowed disabled:opacity-50"
           @click="refreshProspects"
         >
-          <i class="fa-solid fa-rotate-right mr-2"></i>
+          <UIcon name="i-lucide-refresh-cw" class="mr-2 h-4 w-4" />
           Actualiser
         </button>
         <NuxtLink to="/dashboard/my-prospects/add" class="btn-secondary inline-flex">
-          <i class="fa-solid fa-user-plus mr-2"></i>
+          <UIcon name="i-lucide-user-plus" class="mr-2 h-4 w-4" />
           Ajouter manuellement
         </NuxtLink>
         <NuxtLink to="/dashboard/search-prospects" class="btn-primary inline-flex"> Nouvelle Recherche </NuxtLink>
@@ -24,74 +24,31 @@
     </div>
 
     <!-- Stats -->
-    <div class="grid grid-cols-1 gap-6 md:grid-cols-4">
-      <div class="card">
-        <div class="flex items-center">
-          <div class="flex-1">
-            <p class="text-muted text-sm font-medium">Total Prospects</p>
-            <p class="mt-2 text-3xl font-bold text-[#f9f9f9]">{{ totalProspects }}</p>
-          </div>
-          <div class="rounded-lg border border-[#30363d] bg-[#050505] p-3">
-            <i class="fa-solid fa-users text-xl text-[#f9f9f9]"></i>
-          </div>
-        </div>
-      </div>
-
-      <div class="card">
-        <div class="flex items-center">
-          <div class="flex-1">
-            <p class="text-muted text-sm font-medium">Avec Email</p>
-            <p class="mt-2 text-3xl font-bold text-[#f9f9f9]">{{ prospectsWithEmail }}</p>
-          </div>
-          <div class="rounded-lg border border-[#30363d] bg-[#050505] p-3">
-            <i class="fa-solid fa-envelope text-xl text-[#2BAD5F]"></i>
-          </div>
-        </div>
-      </div>
-
-      <div class="card">
-        <div class="flex items-center">
-          <div class="flex-1">
-            <p class="text-muted text-sm font-medium">Avec Site Web</p>
-            <p class="mt-2 text-3xl font-bold text-[#f9f9f9]">{{ prospectsWithWebsite }}</p>
-          </div>
-          <div class="rounded-lg border border-[#30363d] bg-[#050505] p-3">
-            <i class="fa-solid fa-globe text-xl text-[#f9f9f9]"></i>
-          </div>
-        </div>
-      </div>
-
-      <div class="card">
-        <div class="flex items-center">
-          <div class="flex-1">
-            <p class="text-muted text-sm font-medium">Avec Téléphone</p>
-            <p class="mt-2 text-3xl font-bold text-[#f9f9f9]">{{ prospectsWithPhone }}</p>
-          </div>
-          <div class="rounded-lg border border-[#30363d] bg-[#050505] p-3">
-            <i class="fa-solid fa-phone text-xl text-[#8b949e]"></i>
-          </div>
-        </div>
-      </div>
+    <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <UiStatCard label="Total Prospects" :value="totalProspects" icon="i-lucide-users" accent="neutral" />
+      <UiStatCard label="Avec Email" :value="prospectsWithEmail" icon="i-lucide-mail" accent="emerald" />
+      <UiStatCard label="Sans Site Web" :value="prospectsWithoutWebsite" icon="i-lucide-globe-lock" accent="danger" />
+      <UiStatCard label="Avec Téléphone" :value="prospectsWithPhone" icon="i-lucide-phone" accent="sky" />
     </div>
 
     <!-- Filters -->
     <div class="card">
-      <div class="grid grid-cols-1 gap-4 md:grid-cols-5">
+      <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5">
         <div>
           <label class="text-muted mb-1.5 block text-xs font-medium">Rechercher</label>
           <input v-model="searchQuery" type="text" placeholder="Nom, ville, email..." class="input-field" />
         </div>
         <div>
-          <label class="text-muted mb-1.5 block text-xs font-medium">Source</label>
-          <UiSelectField v-model="filterSource" :options="sourceFilterOptions" />
+          <label class="text-muted mb-1.5 block text-xs font-medium">Site web</label>
+          <UiSelectField v-model="filterWebsite" :options="websiteFilterOptions" />
+        </div>
+        <div>
+          <label class="text-muted mb-1.5 block text-xs font-medium">Ville</label>
+          <UiCitySelect v-model="filterCity" placeholder="Toutes les villes" />
         </div>
         <div>
           <label class="text-muted mb-1.5 block text-xs font-medium">Catégorie</label>
           <input v-model="filterCategory" type="text" placeholder="Ex: restaurant" class="input-field" />
-        </div>
-        <div>
-          <label class="text-muted mb-1.5 block text-xs font-medium">Site web</label>
-          <UiSelectField v-model="filterWebsite" :options="websiteFilterOptions" />
         </div>
         <div class="flex items-end">
           <button class="btn-secondary w-full" @click="clearFilters">Réinitialiser</button>
@@ -99,9 +56,33 @@
       </div>
     </div>
 
+    <!-- Contacted tabs -->
+    <div class="flex items-center gap-1 border-b border-[#30363d]">
+      <button
+        type="button"
+        class="relative cursor-pointer px-4 py-2.5 text-sm font-medium transition-colors"
+        :class="activeTab === 'not_contacted' ? 'text-[#f9f9f9]' : 'text-[#8b949e] hover:text-[#f9f9f9]'"
+        @click="activeTab = 'not_contacted'"
+      >
+        Pas contacté
+        <span class="ml-1.5 rounded-full bg-[#30363d] px-2 py-0.5 text-xs">{{ notContactedCount }}</span>
+        <span v-if="activeTab === 'not_contacted'" class="absolute inset-x-0 -bottom-px h-0.5 bg-[#f9f9f9]"></span>
+      </button>
+      <button
+        type="button"
+        class="relative cursor-pointer px-4 py-2.5 text-sm font-medium transition-colors"
+        :class="activeTab === 'contacted' ? 'text-[#f9f9f9]' : 'text-[#8b949e] hover:text-[#f9f9f9]'"
+        @click="activeTab = 'contacted'"
+      >
+        Contacté
+        <span class="ml-1.5 rounded-full bg-[#30363d] px-2 py-0.5 text-xs">{{ contactedCount }}</span>
+        <span v-if="activeTab === 'contacted'" class="absolute inset-x-0 -bottom-px h-0.5 bg-[#f9f9f9]"></span>
+      </button>
+    </div>
+
     <!-- Loader -->
     <div v-if="isLoading" class="flex items-center justify-center py-12">
-      <i class="fa-solid fa-spinner fa-spin text-muted text-4xl"></i>
+      <UIcon name="i-lucide-loader-circle" class="text-muted h-10 w-10 animate-spin" />
     </div>
 
     <!-- Error -->
@@ -112,11 +93,11 @@
 
     <!-- Empty State -->
     <div v-else-if="filteredProspects.length === 0" class="py-12 text-center">
-      <i class="fa-solid fa-inbox text-muted mb-4 text-6xl"></i>
+      <UIcon name="i-lucide-inbox" class="text-muted mb-4 h-16 w-16" />
       <h3 class="mt-4 text-lg font-medium text-[#f9f9f9]">Aucun prospect trouvé</h3>
       <p class="text-muted mt-2 text-sm">
         {{
-          searchQuery || hasActiveSourceFilter || filterCategory
+          searchQuery || filterCity || filterCategory
             ? 'Essayez de modifier vos filtres'
             : 'Commencez par faire une recherche de prospects'
         }}
@@ -138,7 +119,9 @@
       />
 
       <!-- Pagination -->
-      <div class="flex items-center justify-between border-t border-[#30363d] px-6 py-4">
+      <div
+        class="flex flex-col gap-3 border-t border-[#30363d] px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6"
+      >
         <div class="text-muted text-sm">
           Affichage de {{ (currentPage - 1) * pageSize + 1 }} à
           {{ Math.min(currentPage * pageSize, filteredProspects.length) }} sur {{ filteredProspects.length }} prospects
@@ -183,6 +166,7 @@
       @add-to-campaign="handleAddToCampaign"
       @send-email="handleSendEmail"
       @mark-as-sold="handleMarkAsSold"
+      @toggle-contacted="handleToggleContacted"
     />
 
     <!-- Bulk action bar (visible when prospects are selected) -->
@@ -196,7 +180,7 @@
           </span>
           <span class="hidden h-5 w-px bg-[#30363d] sm:block"></span>
           <button type="button" class="btn-secondary" @click="bulkCampaignOpen = true">
-            <i class="fa-solid fa-bullhorn mr-2"></i>Campagne
+            <UIcon name="i-lucide-megaphone" class="mr-2 h-4 w-4" />Campagne
           </button>
           <button
             type="button"
@@ -204,11 +188,14 @@
             :disabled="bulkBusy"
             @click="bulkEnrich"
           >
-            <i :class="bulkBusy ? 'fa-solid fa-spinner fa-spin' : 'fa-solid fa-wand-magic-sparkles'" class="mr-2"></i>
+            <UIcon
+              :name="bulkBusy ? 'i-lucide-loader-circle' : 'i-lucide-sparkles'"
+              :class="['mr-2 h-4 w-4', bulkBusy && 'animate-spin']"
+            />
             Enrichir
           </button>
           <button type="button" class="btn-primary" @click="bulkGenerateOpen = true">
-            <i class="fa-solid fa-globe mr-2"></i>Générer les sites
+            <UIcon name="i-lucide-globe" class="mr-2 h-4 w-4" />Générer les sites
           </button>
           <button
             type="button"
@@ -216,7 +203,7 @@
             aria-label="Désélectionner tout"
             @click="clearSelection"
           >
-            <i class="fa-solid fa-times"></i>
+            <UIcon name="i-lucide-x" class="h-4 w-4" />
           </button>
         </div>
       </div>
@@ -241,14 +228,13 @@
 </template>
 
 <script lang="ts" setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, watch, onMounted } from 'vue'
 import type { Prospect } from '~/types'
-import { deleteProspect as deleteProspectApi, listProspects } from '~/services/prospectsService'
+import { deleteProspect as deleteProspectApi, listProspects, updateProspect } from '~/services/prospectsService'
 import { createOrder } from '~/services/ordersService'
 import { runBulkEnrichment } from '~/services/enrichmentService'
 import type { BulkGenerateResult } from '~/services/demoSiteService'
 import { useToast } from '~/composables/useToast'
-import { ALL_SOURCES_VALUE, PROSPECT_SOURCE_FILTER_OPTIONS } from '~/constants/prospectSources'
 
 definePageMeta({
   layout: 'dashboard',
@@ -265,9 +251,10 @@ const bulkCampaignOpen = ref(false)
 const bulkGenerateOpen = ref(false)
 const bulkBusy = ref(false)
 const searchQuery = ref('')
-const filterSource = ref(ALL_SOURCES_VALUE)
 const filterCategory = ref('')
-const filterWebsite = ref<'all' | 'yes' | 'no'>('all')
+const filterCity = ref('')
+const filterWebsite = ref<'all' | 'yes' | 'no'>('no')
+const activeTab = ref<'not_contacted' | 'contacted'>('not_contacted')
 
 const websiteFilterOptions = [
   { value: 'all', label: 'Tous' },
@@ -286,7 +273,6 @@ const drawerOpen = ref(false)
 const drawerProspect = ref<Prospect | null>(null)
 
 const toast = useToast()
-const sourceFilterOptions = PROSPECT_SOURCE_FILTER_OPTIONS
 
 // ─── Computed ─────────────────────────────────────────────────────────────────
 
@@ -295,18 +281,17 @@ const deleteConfirmMessage = computed(() => {
   return `Supprimer définitivement « ${prospectToDelete.value.name} » ? Cette action est irréversible.`
 })
 
-const hasActiveSourceFilter = computed(() => filterSource.value !== ALL_SOURCES_VALUE)
-
 const selectedIds = computed<number[]>(() =>
   selectedProspects.value.map((id) => Number(id)).filter((n) => !Number.isNaN(n)),
 )
 
 const totalProspects = computed(() => prospects.value.length)
 const prospectsWithEmail = computed(() => prospects.value.filter((p) => p.email).length)
-const prospectsWithWebsite = computed(() => prospects.value.filter((p) => p.website).length)
+const prospectsWithoutWebsite = computed(() => prospects.value.filter((p) => !p.website).length)
 const prospectsWithPhone = computed(() => prospects.value.filter((p) => p.phone).length)
 
-const filteredProspects = computed(() => {
+/** Prospects matching every filter EXCEPT the contacted tab (drives the tab counts). */
+const baseFiltered = computed(() => {
   let filtered = prospects.value
 
   if (searchQuery.value) {
@@ -320,8 +305,9 @@ const filteredProspects = computed(() => {
     )
   }
 
-  if (hasActiveSourceFilter.value) {
-    filtered = filtered.filter((p) => p.source === filterSource.value)
+  if (filterCity.value) {
+    const city = filterCity.value.toLowerCase()
+    filtered = filtered.filter((p) => p.city?.toLowerCase().includes(city))
   }
 
   if (filterCategory.value) {
@@ -337,6 +323,13 @@ const filteredProspects = computed(() => {
 
   return filtered
 })
+
+const notContactedCount = computed(() => baseFiltered.value.filter((p) => !p.contacted).length)
+const contactedCount = computed(() => baseFiltered.value.filter((p) => p.contacted).length)
+
+const filteredProspects = computed(() =>
+  baseFiltered.value.filter((p) => (activeTab.value === 'contacted' ? p.contacted : !p.contacted)),
+)
 
 const totalPages = computed(() => Math.ceil(filteredProspects.value.length / pageSize))
 
@@ -366,11 +359,16 @@ function refreshProspects(): void {
 
 function clearFilters(): void {
   searchQuery.value = ''
-  filterSource.value = ALL_SOURCES_VALUE
+  filterCity.value = ''
   filterCategory.value = ''
-  filterWebsite.value = 'all'
+  filterWebsite.value = 'no'
   currentPage.value = 1
 }
+
+// Reset to the first page whenever the active filter set or tab changes.
+watch([activeTab, searchQuery, filterCity, filterCategory, filterWebsite], (): void => {
+  currentPage.value = 1
+})
 
 // ─── Selection ──────────────────────────────────────────────────────────────
 
@@ -468,6 +466,22 @@ function handleProspectUpdated(updated: Prospect): void {
 function handleProspectDeleted(prospectId: number): void {
   prospects.value = prospects.value.filter((p) => p.id !== prospectId)
   selectedProspects.value = selectedProspects.value.filter((id) => id !== String(prospectId))
+}
+
+/**
+ * Table emitted 'toggleContacted' — flip the contacted status and patch local state.
+ * @param prospect - The prospect whose contacted status was toggled.
+ */
+async function handleToggleContacted(prospect: Prospect): Promise<void> {
+  const next = !prospect.contacted
+  try {
+    const updated = await updateProspect(prospect.id, { contacted: next })
+    const idx = prospects.value.findIndex((p) => p.id === updated.id)
+    if (idx !== -1) prospects.value.splice(idx, 1, updated)
+    toast.success(next ? `« ${prospect.name} » marqué comme contacté` : `« ${prospect.name} » remis en non contacté`)
+  } catch (err: unknown) {
+    toast.error(err instanceof Error ? err.message : 'Erreur lors de la mise à jour')
+  }
 }
 
 function handleAddToCampaign(prospect: Prospect): void {

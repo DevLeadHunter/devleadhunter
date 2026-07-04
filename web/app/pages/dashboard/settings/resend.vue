@@ -204,7 +204,6 @@ const form: Ref<{ api_key: string; webhook_secret: string; from_email: string; f
 
 /**
  * Fetch the current Resend configuration and populate the form's non-secret fields.
- *
  * @returns A promise that resolves once the config is loaded.
  */
 async function loadConfig(): Promise<void> {
@@ -222,7 +221,6 @@ async function loadConfig(): Promise<void> {
 
 /**
  * Save the Resend configuration to the backend.
- *
  * @returns A promise that resolves once the save is complete.
  */
 async function handleSave(): Promise<void> {

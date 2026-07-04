@@ -16,10 +16,10 @@ from __future__ import annotations
 
 from typing import Any, Optional
 
-from services.templates import plumber_atelier, plumber_signature, plumber_simple
+from services.templates import electrician_lumen, plumber_atelier, plumber_cuivre, plumber_signature, plumber_simple
 
 # Order here defines the order shown in the template picker.
-TEMPLATE_MODULES = [plumber_signature, plumber_atelier, plumber_simple]
+TEMPLATE_MODULES = [plumber_signature, plumber_atelier, plumber_simple, plumber_cuivre, electrician_lumen]
 
 TEMPLATES_BY_ID: dict[str, Any] = {module.TEMPLATE_ID: module for module in TEMPLATE_MODULES}
 
@@ -31,6 +31,18 @@ DEFAULT_TEMPLATE_ID: str = plumber_simple.TEMPLATE_ID
 def get_module(template_id: str) -> Any:
     """Return the template module for an id, falling back to the default template."""
     return TEMPLATES_BY_ID.get(template_id, plumber_simple)
+
+
+def default_subtitle(template_id: str, area: str) -> str:
+    """Trade-aware default subtitle when the prospect has no description.
+
+    Templates may expose ``default_subtitle(area)``; historical plumber wording
+    is kept as the fallback so existing templates behave exactly as before.
+    """
+    builder = getattr(get_module(template_id), "default_subtitle", None)
+    if callable(builder):
+        return str(builder(area))
+    return f"Plombier professionnel — dépannage rapide à {area}"
 
 
 def build_content(

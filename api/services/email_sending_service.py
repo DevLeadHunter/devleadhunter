@@ -34,7 +34,42 @@ class EmailSendingService:
         self.mailjet_service = MailjetService()
         self.gmail_service = GmailOAuthService()
         self.resend_service = ResendService()
-    
+
+    def _apply_dev_redirect(self, recipient_email: str, subject: str) -> tuple[str, str]:
+        """
+        Reroute every outbound email to a single test inbox in development.
+
+        When ``DEV_EMAIL_REDIRECT`` is set, no email ever reaches a real prospect:
+        the recipient is swapped for the dev address and the original recipient is
+        kept visible in the subject. A no-op (returns inputs unchanged) in prod.
+        """
+        redirect = getattr(settings, "dev_email_redirect", None)
+        if redirect:
+            logger.warning("[DEV] Email rerouted %s -> %s", recipient_email, redirect)
+            return redirect, f"[DEV→{recipient_email}] {subject}"
+        return recipient_email, subject
+
+    def _mark_prospect_contacted(self, prospect_id: Optional[str]) -> None:
+        """
+        Flag a prospect as contacted after a successful send (idempotent).
+
+        Never raises: a bookkeeping failure must not turn a successful send into a
+        failure.
+        """
+        if not prospect_id:
+            return
+        try:
+            from models.prospect_db import ProspectDB
+
+            prospect = (
+                self.db.query(ProspectDB).filter(ProspectDB.id == int(prospect_id)).first()
+            )
+            if prospect and not prospect.contacted:
+                prospect.contacted = True
+                self.db.commit()
+        except Exception as exc:  # noqa: BLE001 — never block a send on bookkeeping
+            logger.warning("Could not mark prospect %s as contacted: %s", prospect_id, exc)
+
     async def send_email(
         self,
         user_id: int,
@@ -80,7 +115,10 @@ class EmailSendingService:
         
         if not email_account.is_verified:
             raise Exception("Email account is not verified. Please verify DNS records or reconnect Gmail.")
-        
+
+        # Dev safety: reroute every outbound email to a single test inbox (no-op in prod).
+        recipient_email, subject = self._apply_dev_redirect(recipient_email, subject)
+
         # Check if email is unsubscribed (RGPD)
         if unsubscribe_service.is_unsubscribed(self.db, recipient_email):
             raise Exception(f"Email {recipient_email} has unsubscribed from our emails")
@@ -151,9 +189,10 @@ class EmailSendingService:
             email_log.provider = result["provider"]
             email_log.provider_message_id = result.get("message_id")
             email_log.sent_at = datetime.utcnow()
-            
+
             self.db.commit()
-            
+            self._mark_prospect_contacted(prospect_id)
+
             return {
                 "success": True,
                 "email_log_id": email_log.id,
@@ -303,6 +342,9 @@ class EmailSendingService:
         from_email = config.from_email
         from_name = config.from_name or ""
 
+        # Dev safety: reroute every outbound email to a single test inbox (no-op in prod).
+        recipient_email, subject = self._apply_dev_redirect(recipient_email, subject)
+
         # RGPD: never send to an unsubscribed address.
         if unsubscribe_service.is_unsubscribed(self.db, recipient_email):
             raise Exception(f"{recipient_email} s'est désabonné")
@@ -347,6 +389,7 @@ class EmailSendingService:
             email_log.provider_message_id = result.get("message_id")
             email_log.sent_at = datetime.utcnow()
             self.db.commit()
+            self._mark_prospect_contacted(prospect_id)
             return {
                 "success": True,
                 "email_log_id": email_log.id,
