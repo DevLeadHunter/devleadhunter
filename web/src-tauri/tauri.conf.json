@@ -32,7 +32,7 @@
   },
   "plugins": {
     "updater": {
-      "endpoints": ["https://github.com/leogu/devleadhunter/releases/download/desktop/latest.json"],
+      "endpoints": ["https://github.com/devleadhunter/devleadhunter/releases/latest/download/latest.json"],
       "pubkey": "__TAURI_UPDATER_PUBKEY__"
     }
   }
