@@ -14,51 +14,33 @@ concurrency:
 
 jobs:
   build-desktop:
-    name: Build desktop (${{ matrix.platform }})
-    env:
-      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+    name: Build desktop (windows)
+    runs-on: windows-latest
     permissions:
       contents: write
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - platform: macos-latest
-            args: --target x86_64-apple-darwin
-          - platform: macos-latest
-            args: --target aarch64-apple-darwin
-          - platform: windows-latest
-            args: ''
-    runs-on: ${{ matrix.platform }}
-
     defaults:
       run:
         working-directory: web
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v4
 
       - name: Setup Node.js
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@v4
         with:
           node-version: '24'
           cache: npm
           cache-dependency-path: web/package-lock.json
 
-      - name: Install frontend dependencies
-        run: npm ci
-
       - name: Install Rust stable
         uses: dtolnay/rust-toolchain@stable
 
-      - name: Install macOS Rust targets
-        if: startsWith(matrix.platform, 'macos')
-        run: |
-          rustup target add aarch64-apple-darwin
-          rustup target add x86_64-apple-darwin
+      - name: Install frontend dependencies
+        run: npm ci
 
-      - name: Set desktop version for this release
+      # Version + updater injectés avant le build (signature des artefacts).
+      - name: Set desktop version and updater config
         shell: bash
         working-directory: web
         env:
@@ -67,11 +49,11 @@ jobs:
           UPDATER_PUBKEY: ${{ secrets.TAURI_UPDATER_PUBKEY }}
         run: |
           if [ -z "$UPDATER_PUBKEY" ]; then
-            echo "Secret TAURI_UPDATER_PUBKEY is missing."
+            echo "Secret TAURI_UPDATER_PUBKEY manquant (clé publique minisign pour le plugin updater)."
             exit 1
           fi
 
-          python3 << 'PY'
+          python << 'PY'
           import json, os, re
           version = os.environ["RELEASE_VERSION"]
           updater_endpoint = os.environ["UPDATER_ENDPOINT"]
@@ -100,7 +82,7 @@ jobs:
           conf.setdefault("plugins", {})
           conf["plugins"]["updater"] = {
               "endpoints": [updater_endpoint],
-              "pubkey": updater_pubkey
+              "pubkey": updater_pubkey,
           }
           with open("tauri.conf.json", "w", encoding="utf-8") as f:
               json.dump(conf, f, indent=2, ensure_ascii=False)
@@ -125,11 +107,10 @@ jobs:
           tagName: v0.1.${{ github.run_number }}
           releaseName: "DevLeadHunter Desktop v0.1.${{ github.run_number }}"
           releaseBody: |
-            Production Windows / macOS desktop build (Rust `--release`).
+            Build Windows (Tauri + Nuxt).
 
-            Installers are attached to this release (.exe, .msi, .dmg).
+            **Version appli :** `0.1.${{ github.run_number }}` (semver patch = numéro de run GitHub Actions).
 
-            **App version:** `0.1.${{ github.run_number }}` (semver patch = GitHub Actions run number on `main`).
+            Mise à jour in-app : le binaire vérifie `latest.json` sur la dernière release GitHub.
           releaseDraft: false
           prerelease: false
-          args: ${{ matrix.args }}
