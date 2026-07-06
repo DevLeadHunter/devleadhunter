@@ -47,6 +47,7 @@ lerna-debug.log*
 .nitro/
 .cache/
 dist/
+.vercel/
 
 # TypeScript
 *.tsbuildinfo
