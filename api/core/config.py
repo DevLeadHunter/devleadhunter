@@ -370,6 +370,18 @@ class Settings(BaseSettings):
         """
         origins = self.cors_origins.copy()
 
+        # Tauri desktop app origins (constant across API environments). On Windows/WebView2
+        # the packaged app is served from http://tauri.localhost; macOS/Linux use tauri://localhost.
+        # Without these, the desktop login preflight is blocked by CORS.
+        desktop_origins = [
+            "http://tauri.localhost",
+            "https://tauri.localhost",
+            "tauri://localhost",
+        ]
+        for origin in desktop_origins:
+            if origin not in origins:
+                origins.append(origin)
+
         if self.env.lower() != "production":
             development_origins = [
                 "http://localhost:3000",
