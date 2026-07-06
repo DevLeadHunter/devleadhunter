@@ -90,6 +90,11 @@ export default defineNuxtConfig({
   },
 
   ui: {
+    // Disable @nuxt/ui's bundled @nuxt/fonts self-hosting. On the OVH/nginx host the
+    // self-hosted /_fonts/*.woff2 are served with the wrong MIME type (application/json)
+    // and, with nosniff, the browser aborts the download. Inter is loaded from the Google
+    // Fonts CDN <link> in app.head instead, which serves the correct font/woff2 MIME.
+    fonts: false,
     theme: {
       colors: ['primary', 'neutral', 'success', 'info', 'warning', 'error'],
     },
