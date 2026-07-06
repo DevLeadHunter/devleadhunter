@@ -1,4 +1,5 @@
 """Dashboard home KPIs aggregated for the current user."""
+import logging
 from datetime import date, datetime, timedelta, timezone
 
 from fastapi import APIRouter, Depends, Query
@@ -22,6 +23,8 @@ from schemas.dashboard import (
 from services.auth_service import get_current_active_user
 from services.behavior_service import behavior_service
 from services.order_service import order_service
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/dashboard", tags=["dashboard"])
 
@@ -131,13 +134,18 @@ async def dashboard_hot_leads(
     current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db),
 ) -> HotLeadsResponse:
-    """Return the hottest leads (demo + email engagement) for the current user."""
-    leads = await behavior_service.get_hot_leads(db, current_user.id, limit=20)
-    return HotLeadsResponse(
-        items=[
+    """
+    Return the hottest leads (demo + email engagement) for the current user.
+
+    Behaviour aggregation depends on PostHog + DB reads; on any unexpected failure we
+    return an empty list so the dashboard widget degrades gracefully instead of 500.
+    """
+    try:
+        leads = await behavior_service.get_hot_leads(db, current_user.id, limit=20)
+        items = [
             HotLeadResponse(
                 prospect_id=lead["prospect_id"],
-                name=lead["name"],
+                name=lead.get("name") or "—",
                 city=lead.get("city"),
                 temperature=lead["temperature"],
                 score=lead["score"],
@@ -146,4 +154,7 @@ async def dashboard_hot_leads(
             )
             for lead in leads
         ]
-    )
+    except Exception:  # noqa: BLE001
+        logger.exception("hot-leads aggregation failed for user %s", current_user.id)
+        return HotLeadsResponse(items=[])
+    return HotLeadsResponse(items=items)

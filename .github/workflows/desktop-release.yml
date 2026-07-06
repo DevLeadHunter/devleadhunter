@@ -98,7 +98,10 @@ jobs:
         uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          NUXT_PUBLIC_API_BASE: ${{ secrets.NUXT_PUBLIC_API_BASE }}
+          # Baked into the static desktop bundle. Must be non-empty: an empty env var
+          # overrides the nuxt.config fallback and ships apiBase="" (all API calls then
+          # resolve against http://tauri.localhost and return the SPA HTML, not the API).
+          NUXT_PUBLIC_API_BASE: ${{ secrets.NUXT_PUBLIC_API_BASE || 'https://api.devleadhunter.dibodev.fr' }}
           NUXT_PUBLIC_GITHUB_REPO: ${{ github.repository }}
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}

@@ -79,6 +79,39 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+
+@app.exception_handler(Exception)
+async def unhandled_exception_handler(request: Request, exc: Exception) -> JSONResponse:
+    """
+    Return a clean 500 that still carries CORS headers.
+
+    Starlette emits its default 500 above the CORS middleware, so the browser sees
+    "CORS header missing" instead of the real error. We log the exception and re-add
+    the CORS headers (based on the request Origin) so the frontend gets a proper error.
+
+    Args:
+        request: The incoming request that failed.
+        exc: The unhandled exception raised while processing the request.
+
+    Returns:
+        A JSON 500 response with CORS headers when the Origin is allowed.
+    """
+    logging.getLogger(__name__).exception(
+        "Unhandled error on %s %s", request.method, request.url.path
+    )
+    headers: dict = {}
+    origin = request.headers.get("origin")
+    if origin and origin in settings.allowed_cors_origins:
+        headers["Access-Control-Allow-Origin"] = origin
+        headers["Access-Control-Allow-Credentials"] = "true"
+        headers["Vary"] = "Origin"
+    return JSONResponse(
+        status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        content={"detail": "Internal server error"},
+        headers=headers,
+    )
+
+
 # Include API routes
 app.include_router(api_router, prefix=settings.api_prefix)
 

@@ -23,6 +23,11 @@ jobs:
           cache: npm
           cache-dependency-path: demo-host/package-lock.json
 
+      # vercel build runs `nuxt build` but does not reliably install deps in this
+      # sub-directory setup → install them ourselves so the nuxt binary is present.
+      - name: Install demo-host dependencies
+        run: npm ci
+
       - name: Deploy demo-host to Vercel
         env:
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
