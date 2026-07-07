@@ -23,8 +23,7 @@ jobs:
           cache: npm
           cache-dependency-path: demo-host/package-lock.json
 
-      # vercel build runs `nuxt build` but does not reliably install deps in this
-      # sub-directory setup → install them ourselves so the nuxt binary is present.
+      # Install deps so the local nuxt binary exists for the build step below.
       - name: Install demo-host dependencies
         run: npm ci
 
@@ -39,5 +38,8 @@ jobs:
         run: |
           npm i -g vercel@latest
           vercel pull --yes --environment=production --token="$VERCEL_TOKEN"
-          vercel build --prod --token="$VERCEL_TOKEN"
+          # `vercel build` runs `nuxt build` without node_modules/.bin on PATH → "nuxt: not found".
+          # Build ourselves via npm (resolves the local nuxt) with Nitro's Vercel preset, which
+          # emits the .vercel/output Build Output API that `vercel deploy --prebuilt` consumes.
+          NITRO_PRESET=vercel npm run build
           vercel deploy --prebuilt --prod --token="$VERCEL_TOKEN"
