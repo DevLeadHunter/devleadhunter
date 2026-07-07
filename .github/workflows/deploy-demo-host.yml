@@ -11,9 +11,6 @@ on:
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: demo-host
     steps:
       - uses: actions/checkout@v6
 
@@ -23,23 +20,35 @@ jobs:
           cache: npm
           cache-dependency-path: demo-host/package-lock.json
 
-      # Install deps so the local nuxt binary exists for the build step below.
       - name: Install demo-host dependencies
+        working-directory: demo-host
         run: npm ci
 
+      # Build with Nitro's Vercel preset → demo-host/.vercel/output (Build Output API).
+      # Public runtime config is baked here, so the NUXT_PUBLIC_* vars live on this step.
+      - name: Build demo-host
+        working-directory: demo-host
+        env:
+          NUXT_PUBLIC_API_BASE: https://api.devleadhunter.dibodev.fr
+          NUXT_PUBLIC_POSTHOG_PROJECT_API_KEY: ${{ secrets.NUXT_PUBLIC_POSTHOG_PROJECT_API_KEY }}
+          NUXT_PUBLIC_POSTHOG_INGESTION_HOST: ${{ secrets.NUXT_PUBLIC_POSTHOG_INGESTION_HOST }}
+        run: NITRO_PRESET=vercel npm run build
+
+      # Deploy from the repo ROOT (not demo-host). The Vercel project's Root Directory is
+      # `demo-host`; running from inside demo-host doubled the path to demo-host/demo-host
+      # and failed. From the root, the Root Directory only has to resolve to an existing
+      # folder (demo-host does) while the prebuilt output is read from the root .vercel/output.
       - name: Deploy demo-host to Vercel
         env:
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
           VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
           VERCEL_PROJECT_ID: ${{ secrets.VERCEL_DEMO_HOST_PROJECT_ID }}
-          NUXT_PUBLIC_API_BASE: https://api.devleadhunter.dibodev.fr
-          NUXT_PUBLIC_POSTHOG_PROJECT_API_KEY: ${{ secrets.NUXT_PUBLIC_POSTHOG_PROJECT_API_KEY }}
-          NUXT_PUBLIC_POSTHOG_INGESTION_HOST: ${{ secrets.NUXT_PUBLIC_POSTHOG_INGESTION_HOST }}
         run: |
           npm i -g vercel@latest
           vercel pull --yes --environment=production --token="$VERCEL_TOKEN"
-          # `vercel build` runs `nuxt build` without node_modules/.bin on PATH → "nuxt: not found".
-          # Build ourselves via npm (resolves the local nuxt) with Nitro's Vercel preset, which
-          # emits the .vercel/output Build Output API that `vercel deploy --prebuilt` consumes.
-          NITRO_PRESET=vercel npm run build
+          # Nitro emitted demo-host/.vercel/output, but `vercel deploy --prebuilt` reads the
+          # Build Output API from the monorepo ROOT .vercel/output (it only checks that the
+          # Root Directory `demo-host` resolves to an existing folder). Lift it up to the root.
+          rm -rf .vercel/output
+          cp -r demo-host/.vercel/output .vercel/output
           vercel deploy --prebuilt --prod --token="$VERCEL_TOKEN"
