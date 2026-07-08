@@ -6,8 +6,8 @@
     template until they expire (14-day TTL) — so nothing breaks during the transition.
   -->
   <component
-    v-if="migratedRootName && isSiteContent"
-    :is="migratedRootName"
+    v-if="migratedRoot && isSiteContent"
+    :is="migratedRoot"
     :content="resolvedSiteContent" />
   <component
     v-else
@@ -28,6 +28,18 @@ const DemoPlumberCuivrePage = defineAsyncComponent(() => import('~/components/te
 import { fetchStoryblokDraftContent, isStoryblokVisualEditor, useStoryblokBridge } from '~/composables/useStoryblokPreview'
 import type { DemoSitePublic } from '~/types/demoSite'
 import type { SiteContent } from '@devleadhunter/website-content'
+// Migrated layer roots (one per extends'd template). `Lazy*` = async → code-split, so a demo
+// only loads its own template's chunk. We resolve to component OBJECTS here: a runtime string
+// name is NOT resolvable via `<component :is>` for Nuxt auto-imported components (they aren't
+// registered globally), so passing the object is required — passing a string renders an empty
+// literal element.
+import {
+  LazyPlumberSimpleRoot,
+  LazyPlumberSignatureRoot,
+  LazyPlumberAtelierRoot,
+  LazyPlumberCuivreRoot,
+  LazyElectricianLumenRoot,
+} from '#components'
 
 const props = defineProps({
   site: {
@@ -39,16 +51,13 @@ const props = defineProps({
 const route = useRoute()
 const isVisualEditor: ComputedRef<boolean> = computed((): boolean => isStoryblokVisualEditor(route.query))
 
-/**
- * template_id → the extends'd layer root component name (each template layer auto-registers
- * exactly one root globally). Passed as a string to `<component :is>`.
- */
-const MIGRATED_ROOTS: Record<string, string> = {
-  'plumber-simple': 'PlumberSimpleRoot',
-  'plumber-signature': 'PlumberSignatureRoot',
-  'plumber-atelier': 'PlumberAtelierRoot',
-  'plumber-cuivre': 'PlumberCuivreRoot',
-  'electrician-lumen': 'ElectricianLumenRoot',
+/** template_id → the extends'd layer root component (async → each renders as its own chunk). */
+const MIGRATED_ROOTS: Record<string, Component> = {
+  'plumber-simple': LazyPlumberSimpleRoot,
+  'plumber-signature': LazyPlumberSignatureRoot,
+  'plumber-atelier': LazyPlumberAtelierRoot,
+  'plumber-cuivre': LazyPlumberCuivreRoot,
+  'electrician-lumen': LazyElectricianLumenRoot,
 }
 
 /** template_id → legacy in-repo template, for OLD rich-content demos during the transition. */
@@ -89,9 +98,9 @@ const isSiteContent: ComputedRef<boolean> = computed((): boolean => {
   return ('businessName' in content && !('body' in content)) || isStoryblokSiteContent(content)
 })
 
-/** The extends'd root component name for this template, or null when it isn't migrated yet. */
-const migratedRootName: ComputedRef<string | null> = computed(
-  (): string | null => MIGRATED_ROOTS[props.site.template_id] ?? null,
+/** The extends'd root component for this template, or null when it isn't migrated yet. */
+const migratedRoot: ComputedRef<Component | null> = computed(
+  (): Component | null => MIGRATED_ROOTS[props.site.template_id] ?? null,
 )
 
 /** Resolve the SiteContent from either the flat shape (pass-through) or Storyblok-native (flatten). */
