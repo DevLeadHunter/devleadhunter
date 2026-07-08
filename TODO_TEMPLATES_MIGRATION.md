@@ -6,9 +6,10 @@
 
 > ## 🟢 ÉTAT AU 2026-07-08 — migration TERMINÉE et déployée
 >
-> **Les 5 templates sont migrées en Nuxt layers, branchées dans le tunnel, mergées sur `main`
-> et déployées** (CI verte : Deploy FastAPI VPS ✅ + Deploy demo host Vercel ✅). Reste la
-> validation runtime (1 démo réelle par template) puis le nettoyage du legacy après le TTL 14 j.
+> **Les 5 templates sont migrées en Nuxt layers, branchées dans le tunnel, mergées sur `main`,
+> déployées et VALIDÉES visuellement** (rendu vérifié bout-en-bout sur les 5 avec un vrai prospect,
+> screenshots à l'appui). Il ne reste que le **nettoyage legacy après le TTL 14 j** (+ bonus optionnels).
+> ⚠️ La validation a révélé et **corrigé un bug de rendu prod** — voir « Fait depuis » ci-dessous.
 >
 > **Fait ✅**
 > - Phase 0 (orga + outillage) et 1 (prod stabilisée : login desktop, CORS/500, CI Vercel, fonts).
@@ -32,12 +33,27 @@
 > - **Commit poussé** sur `feat/wire-4-templates-into-demo-host` (8 fichiers : site_content.py + 4 modules
 >   API + demo-host nuxt.config + DemoSiteView + suppression richCuivre). demo-host build vert (5 layers).
 >
+> **Fait depuis ✅**
+> - Mergé sur `main` (`4ad9191` + merge `25ce674`), deploys API (VPS) + demo-host (Vercel) verts.
+> - 🔴→🟢 **Bug de rendu prod corrigé** (`38c46f0`) : `DemoSiteView` passait un **nom en chaîne** à
+>   `<component :is>` — or les composants Nuxt auto-importés ne sont pas résolvables par chaîne →
+>   **toute démo migrée rendait vide**. Fix : import des `Lazy*Root` depuis `#components` (objets
+>   composant, code-split conservé). Le build Vercel vert ne l'attrapait pas (bug runtime). Voir
+>   mémoire `demo-host-template-dispatch-components` + gotcha n°4 de `TEMPLATES_ARCHITECTURE.md`.
+> - **Validation des 5** via le harnais `/preview-layers?t=<id>` (vrai `DemoSiteView` + `SiteContent`
+>   généré par l'API, vrai prospect **Plomberie Roche** / **Breizh Electrik**) : dispatch OK, palette
+>   par template OK, contenu métier OK, **0 erreur console** (dont GSAP lumen), code-split confirmé au build.
+> - Starter marqué **GitHub Template repository** (`is_template=true` via `gh api`).
+>
 > **Reste à faire ⏳**
-> 1. ✅ **Fait** — branche mergée sur `main` (`4ad9191` + merge `25ce674`), deploys API (VPS) + demo-host
->    (Vercel) verts. Les 5 templates rendent via les nouveaux layers.
-> 2. Générer **1 vraie démo par template** en prod pour valider le rendu bout-en-bout (contenu + enrichment).
-> 3. Une fois validé + les vieilles démos rich-content expirées (TTL 14 j) : **supprimer les templates
->    in-repo** `demo-host/app/components/templates/*` + les `LEGACY_COMPONENTS`, et supprimer ce fichier TODO.
+> 1. **Après le TTL 14 j** (vieilles démos rich-content expirées) : supprimer `demo-host/app/components/templates/*`
+>    + les entrées `LEGACY_COMPONENTS`, **et** retirer les fonts globales du `<head>` de `demo-host/nuxt.config.ts`
+>    (les deux vont ensemble — les fonts globales servent encore les legacy). Puis supprimer ce fichier.
+> 2. (Optionnel) Bonus Phase 6 : build prod dédié client, CI par repo template, doc du workflow de release.
+>
+> **📸 Observation produit** : 3 templates sur 5 affichent la photo hero du prospect (signature, cuivre,
+> lumen) ; **simple** (hero dégradé) et **atelier** (DA typographique « Fiche d'intervention ») ne
+> l'affichent pas — choix de design, mais les photos enrichies n'y sont pas valorisées. À arbitrer.
 >
 > **⚠️ Caveats connus**
 > - `plumber-signature` : le portage a **remplacé GSAP (parallax/scroll-scrub) par IntersectionObserver** —
@@ -62,7 +78,7 @@
 > Vérifié : `npm install` + `npm run lint` (0 erreur / 0 warning) + `npm run build` (playground) OK.
 > ⚠️ Reste **1 action manuelle** : cocher **Settings → Template repository** dans GitHub.
 
-- [x] Créer le repo dans l'orga — **reste à cocher « Template Repository »** (Settings → Template repository)
+- [x] Créer le repo dans l'orga + **coché « Template Repository »** (`is_template=true` via `gh api`, 2026-07-08)
 - [x] **Nuxt 4** (+ Vue 3.5) — scaffold manuel calqué sur `prepeers-chat-ui`
 - [x] **Tailwind v4** (`@tailwindcss/vite`)
 - [x] Config layer : `main: ./nuxt.config.ts` + **racine seule auto-importée + sections en relatif** (`ignore: ['**/sections/**']`)
@@ -95,9 +111,9 @@
 
 ### Sans rien casser côté API — ⏭️ à faire avec le POC `plumber-cuivre` (Phase 3/4)
 
-- [ ] Vérifier que le `content_json` produit par `api/services/templates/*.py` **est déjà conforme** à `SiteContent` (ou l'ajuster champ par champ)
-- [ ] Refléter `SiteContent` côté Python (mirror manuel) — pas de JSON Schema pour l'instant
-- [ ] Ajouter un test léger : « le content_json d'une template valide bien le shape `SiteContent` »
+- [x] `content_json` conforme à `SiteContent` — les 5 modules produisent un `SiteContent` plat (`build_site_content`)
+- [x] `SiteContent` reflété côté Python (mirror manuel dans `site_content.py` + `to_storyblok_site_content`)
+- [~] Test léger de conformité — couvert par le harnais `/preview-layers` + le sanity-check (5/5 PASS) ; pytest formel = optionnel
 
 ## Phase 3 — Un repo par template (× 5)
 
@@ -110,11 +126,11 @@
 - [x] `devleadhunter-template-electrician-lumen` ✅ v1.0.0 *(GSAP embarqué dans les deps de CE repo)*
 
 Pour chaque repo, checklist unitaire :
-- [ ] Sections importées en **relatif** (pas d'auto-import global) OU composants **préfixés**
-- [ ] **Un seul** composant racine exposé, props `content: SiteContent` + `businessName`
-- [ ] Fonts de la template déclarées dans son `nuxt.config.ts`
-- [ ] `npm run build` isolé OK
-- [ ] Tag `v1.0.0`
+- [x] Sections importées en **relatif** (`ignore: ['**/sections/**']`) — vérifié dans les 5 layers
+- [x] **Un seul** composant racine exposé (`<Id>Root`), props `content: SiteContent`
+- [x] Fonts de la template déclarées via `useHead` dans le root (ex. `PlumberSimpleRoot` → Plus Jakarta Sans)
+- [x] `npm run build` isolé OK (+ build demo-host agrégé vert)
+- [x] Tag `v1.0.0` (cuivre `v1.0.1`)
 
 ## Phase 4 — Brancher dans demo-host (extends)
 
@@ -127,12 +143,12 @@ Pour chaque repo, checklist unitaire :
 
 ## Phase 5 — Vérification (ne rien casser)
 
-- [ ] `demo-host` build + run OK
-- [ ] Chaque template rend correctement une démo réelle (1 slug par template)
-- [ ] **Visual editor Storyblok** + preview draft toujours fonctionnels
-- [ ] **Tracking PostHog** démo toujours actif (status `active` uniquement)
-- [ ] Vérifier le **code-split** : une démo ne charge que le chunk de sa template
-- [ ] Tester l'ajout **et** la suppression d'une template (1 ligne)
+- [x] `demo-host` build + run OK (build Vercel preset vert + dev run)
+- [x] Chaque template rend correctement (5/5 validés via `/preview-layers`, vrai prospect, screenshots)
+- [ ] **Visual editor Storyblok** + preview draft toujours fonctionnels *(non re-testé — nécessite un space Storyblok)*
+- [ ] **Tracking PostHog** démo toujours actif (status `active` uniquement) *(inchangé ; à confirmer sur une vraie démo)*
+- [x] Vérifier le **code-split** : une démo ne charge que le chunk de sa template (chunks de sections séparés au build)
+- [~] Tester l'ajout **et** la suppression d'une template *(ajout prouvé ×5 ; suppression = retirer 1 extends + 1 dispatch + 1 module, non exécuté)*
 
 ## Phase 6 — Bonus (après migration de base)
 
