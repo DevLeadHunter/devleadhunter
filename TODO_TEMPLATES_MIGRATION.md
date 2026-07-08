@@ -4,11 +4,11 @@
 > Templates à migrer : `plumber-simple`, `plumber-signature`, `plumber-atelier`, `plumber-cuivre`, `electrician-lumen`.
 > Règle d'or : **ne rien casser dans le tunnel** — demo-host doit continuer à servir les démos à chaque étape.
 
-> ## 🟢 ÉTAT AU 2026-07-08 — migration quasi finie, 1 PR à merger
+> ## 🟢 ÉTAT AU 2026-07-08 — migration TERMINÉE et déployée
 >
-> **Les 5 templates sont migrées en Nuxt layers + branchées dans le tunnel.** Il ne reste qu'à
-> **merger la PR `feat/wire-4-templates-into-demo-host`** (branche poussée, PR à ouvrir) puis
-> surveiller les deploys API + demo-host.
+> **Les 5 templates sont migrées en Nuxt layers, branchées dans le tunnel, mergées sur `main`
+> et déployées** (CI verte : Deploy FastAPI VPS ✅ + Deploy demo host Vercel ✅). Reste la
+> validation runtime (1 démo réelle par template) puis le nettoyage du legacy après le TTL 14 j.
 >
 > **Fait ✅**
 > - Phase 0 (orga + outillage) et 1 (prod stabilisée : login desktop, CORS/500, CI Vercel, fonts).
@@ -33,8 +33,8 @@
 >   API + demo-host nuxt.config + DemoSiteView + suppression richCuivre). demo-host build vert (5 layers).
 >
 > **Reste à faire ⏳**
-> 1. **Ouvrir la PR** `feat/wire-4-templates-into-demo-host` → `main`, merger, surveiller les deploys
->    (API + demo-host Vercel). Après merge : les 5 templates rendent via les nouveaux layers.
+> 1. ✅ **Fait** — branche mergée sur `main` (`4ad9191` + merge `25ce674`), deploys API (VPS) + demo-host
+>    (Vercel) verts. Les 5 templates rendent via les nouveaux layers.
 > 2. Générer **1 vraie démo par template** en prod pour valider le rendu bout-en-bout (contenu + enrichment).
 > 3. Une fois validé + les vieilles démos rich-content expirées (TTL 14 j) : **supprimer les templates
 >    in-repo** `demo-host/app/components/templates/*` + les `LEGACY_COMPONENTS`, et supprimer ce fichier TODO.
@@ -103,11 +103,11 @@
 
 > Pour **chaque** template ci-dessous : « Use this template » depuis le starter → `devleadhunter-template-<id>`, copier les sections + `index.vue` depuis `demo-host/app/components/templates/<id>/`, typer avec `SiteContent`, mock dans `content.ts`, valider en `.playground`, tagger `v1.0.0`.
 
-- [ ] `devleadhunter-template-plumber-simple`
-- [ ] `devleadhunter-template-plumber-signature`
-- [ ] `devleadhunter-template-plumber-atelier`
+- [x] `devleadhunter-template-plumber-simple` ✅ v1.0.0
+- [x] `devleadhunter-template-plumber-signature` ✅ v1.0.0
+- [x] `devleadhunter-template-plumber-atelier` ✅ v1.0.0
 - [x] `devleadhunter-template-plumber-cuivre` ✅ **POC** — créé via `gh --template`, porté (13 sections + racine + `buildCuivreContent(SiteContent)`, copie générique en défauts), lint+build verts, rendu validé (13 sections, thème bleu Source, fonts OK), tag `v1.0.0`. Créé au passage : content `v1.1.0` (+ `heroImage`/`aboutImage`/`about`) + starter aligné.
-- [ ] `devleadhunter-template-electrician-lumen` *(embarque GSAP → vérifier qu'il reste dans les deps de CE repo)*
+- [x] `devleadhunter-template-electrician-lumen` ✅ v1.0.0 *(GSAP embarqué dans les deps de CE repo)*
 
 Pour chaque repo, checklist unitaire :
 - [ ] Sections importées en **relatif** (pas d'auto-import global) OU composants **préfixés**
@@ -118,12 +118,12 @@ Pour chaque repo, checklist unitaire :
 
 ## Phase 4 — Brancher dans demo-host (extends)
 
-- [ ] Ajouter les 5 `extends` `github:devleadhunter/devleadhunter-template-<id>#v1.0.0` dans `demo-host/nuxt.config.ts`
-- [ ] `demo-host/package.json` : dépendance `@devleadhunter/website-content` + token GitHub configuré (`.npmrc` / env CI)
-- [ ] Mettre à jour le dispatch dans `DemoSiteView.vue` : `template_id → composant racine` (garder `defineAsyncComponent` pour le code-split)
-- [ ] `demo-host` passe un `SiteContent` typé unique (plus de typage par-template)
-- [ ] **Supprimer** l'ancien dossier `demo-host/app/components/templates/` une fois les 5 migrées
-- [ ] Retirer les fonts des templates du `<head>` global de `demo-host/nuxt.config.ts`
+- [x] Ajouter les 5 `extends` `github:DevLeadHunter/devleadhunter-template-<id>#vX.Y.Z` dans `demo-host/nuxt.config.ts`
+- [x] `demo-host/package.json` : dépendance `@devleadhunter/website-content` (repos publics → **pas de token**)
+- [x] Mettre à jour le dispatch dans `DemoSiteView.vue` : `template_id → composant racine` (`MIGRATED_ROOTS`, `defineAsyncComponent` conservé)
+- [x] `demo-host` passe un `SiteContent` typé unique (plus de typage par-template)
+- [ ] **Supprimer** l'ancien dossier `demo-host/app/components/templates/` (+ entrées `LEGACY_COMPONENTS`) — **après le TTL 14 j**
+- [ ] Retirer les fonts globales du `<head>` de `demo-host/nuxt.config.ts` (chaque layer déclare déjà ses fonts) — **cleanup restant**
 
 ## Phase 5 — Vérification (ne rien casser)
 

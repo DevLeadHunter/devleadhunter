@@ -101,7 +101,7 @@ export default defineNuxtConfig({
 
 - `[slug].vue` fetch le site, résout le `content` (Storyblok draft ou `content_json`), et le passe **typé** au composant racine de la template.
 - Le dispatch `template_id → composant racine` reste en **`defineAsyncComponent`** → chaque démo prospect n'embarque que **son** chunk de template.
-- Repos privés → la CI/dev a besoin d'un token GitHub (`GIGET_AUTH`). C'est la seule plomberie.
+- Repos **publics** → les `extends` `github:` (giget) et l'install `git+https` marchent **sans token**. (Un `GIGET_AUTH` ne serait requis que si un repo repassait privé.)
 - Ajouter une template = 1 ligne dans `extends`. La retirer = supprimer la ligne.
 
 ## Le contrat entre template et tunnel
@@ -194,7 +194,7 @@ Deux contextes distincts :
 
 1. **Collisions d'auto-import.** Deux templates ont chacune `HeroSection.vue`. En layer, Nuxt auto-importe et merge globalement → collision silencieuse (last-wins). **Parade** : soit chaque template préfixe ses composants (`components: [{ path, prefix: 'PlumberCuivre' }]`), soit — recommandé — la template n'expose **qu'un composant racine** et importe ses sections en **relatif** (jamais enregistrées globalement). Zéro collision par construction.
 
-2. **Repos privés = token.** Les layers `github:` passent par giget. Repos privés → `GIGET_AUTH` (token GitHub) en dev **et** en CI. Le pinning `#vX.Y.Z` donne des mises à jour **contrôlées** (bump volontaire).
+2. **Repos publics = pas de token.** Les layers `github:` passent par giget ; comme les repos sont **publics**, ni dev ni CI n'ont besoin de `GIGET_AUTH` (il ne redeviendrait nécessaire que si un repo passait privé). Le pinning `#vX.Y.Z` donne des mises à jour **contrôlées** (bump volontaire).
 
 3. **Fonts par template.** Chaque template layer déclare **ses** fonts ; demo-host les merge via `extends`. Une template supprimée n'alourdit plus les autres. (Avant : un seul `<head>` chargeait les fonts de toutes les templates.)
 
