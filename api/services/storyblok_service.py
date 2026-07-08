@@ -347,6 +347,14 @@ class StoryblokService:
         if not collaborator_email or not collaborator_email.strip():
             raise ValueError("Client email is required to send a Storyblok invitation.")
 
+        # Dev safety: never send a CMS invite to a real client. Storyblok sends this email
+        # itself, so it bypasses EmailSendingService's redirect — reroute it here. When
+        # DEV_EMAIL_REDIRECT is set, the invitation goes to the dev inbox instead.
+        redirect = getattr(settings, "dev_email_redirect", None)
+        if redirect:
+            logger.warning("[DEV] Storyblok invite rerouted %s -> %s", collaborator_email, redirect)
+            collaborator_email = redirect.strip()
+
         async with httpx.AsyncClient(timeout=60.0) as client:
             invite_resp = await client.post(
                 f"{self._base_url}/spaces/{space_id}/collaborators/",

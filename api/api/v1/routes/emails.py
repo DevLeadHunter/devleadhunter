@@ -27,7 +27,6 @@ from schemas.email_sending import (
 from services.auth_service import get_current_user
 from services.email_sending_service import EmailSendingService
 from services.encryption_service import encryption_service
-from services.resend_service import ResendService
 
 router = APIRouter(prefix="/emails", tags=["emails"])
 
@@ -196,89 +195,37 @@ async def quick_send_email(
     Resolves the sender address and API key automatically from the
     ``resend_config`` row — no ``email_account_id`` required.
     """
-    from datetime import datetime, timezone
-    from core.config import settings as app_settings
     from services.unsubscribe_service import unsubscribe_service
 
-    # ── Resolve user Resend config ─────────────────────────────────────────
+    # Fail fast with friendly codes (the shared send path would surface a 500 here).
     config: ResendConfig | None = db.execute(
         select(ResendConfig).where(ResendConfig.user_id == current_user.id)
     ).scalar_one_or_none()
-
     if config is None or not config.api_key:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail="Resend non configuré — Paramètres → Configuration Resend",
         )
-
-    api_key: str = encryption_service.decrypt(config.api_key)
-    from_email: str = config.from_email
-    from_name: str = config.from_name or current_user.name
-
-    # ── RGPD unsubscribe check ─────────────────────────────────────────────
     if unsubscribe_service.is_unsubscribed(db, payload.recipient_email):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"{payload.recipient_email} s'est désabonné",
         )
 
-    unsubscribe_link = unsubscribe_service.generate_unsubscribe_link(
-        payload.recipient_email,
-        int(payload.prospect_id) if payload.prospect_id else None,
-        getattr(app_settings, "frontend_url", "http://localhost:3000"),
-    )
-    body_html: str = unsubscribe_service.add_unsubscribe_footer(
-        payload.body_html, unsubscribe_link
-    )
-
-    # ── Create EmailLog row ────────────────────────────────────────────────
-    # email_account_id is a NOT NULL FK in the schema; we use 0 as a sentinel
-    # value indicating "direct Resend send via resend_config".
-    email_log = EmailLog(
+    # Route through the shared send path so DEV_EMAIL_REDIRECT (dev safety), the RGPD
+    # unsubscribe footer and the EmailLog are all applied. NEVER call the provider
+    # directly here — a direct send would bypass the dev-email redirect and could reach
+    # a real prospect in development.
+    sending = EmailSendingService(db)
+    return await sending.send_via_resend_config(
         user_id=current_user.id,
-        email_account_id=None,   # direct resend_config send — no EmailAccount row
+        recipient_email=payload.recipient_email,
+        subject=payload.subject,
+        body_html=payload.body_html,
+        recipient_name=payload.recipient_name,
         prospect_id=payload.prospect_id,
         campaign_id=payload.campaign_id,
-        recipient_email=payload.recipient_email,
-        recipient_name=payload.recipient_name,
-        subject=payload.subject,
-        body_html=body_html,
-        status=EmailStatus.PENDING.value,
-        provider="resend",
     )
-    db.add(email_log)
-    db.commit()
-    db.refresh(email_log)
-
-    # ── Dispatch via Resend ────────────────────────────────────────────────
-    try:
-        result: dict[str, Any] = await ResendService().send_email(
-            from_email=from_email,
-            from_name=from_name,
-            to_email=payload.recipient_email,
-            to_name=payload.recipient_name,
-            subject=payload.subject,
-            html_body=body_html,
-            custom_id=str(email_log.id),
-            api_key_override=api_key,
-        )
-
-        email_log.status = EmailStatus.SENT.value
-        email_log.provider_message_id = result.get("message_id")
-        email_log.sent_at = datetime.now(timezone.utc).replace(tzinfo=None)
-        db.commit()
-
-        return {
-            "success": True,
-            "email_log_id": email_log.id,
-            "message_id": result.get("message_id"),
-        }
-
-    except Exception as exc:  # noqa: BLE001
-        email_log.status = EmailStatus.FAILED.value
-        email_log.error_message = str(exc)
-        db.commit()
-        return {"success": False, "email_log_id": email_log.id, "error": str(exc)}
 
 
 @router.post("/send", response_model=SendEmailResponse)
