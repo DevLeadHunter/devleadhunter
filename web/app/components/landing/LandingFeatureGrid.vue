@@ -2,12 +2,9 @@
   <!-- Full-bleed ink band — the page's contrast moment -->
   <section id="features" class="relative overflow-hidden bg-[#1b1813] px-5 py-24 md:px-8 md:py-36">
     <!-- Oversized asterisk watermark -->
-    <span
-      class="font-display pointer-events-none absolute -top-16 -right-10 rotate-12 text-[16rem] leading-none text-[#e8a33c]/[0.08] select-none"
-      aria-hidden="true"
-    >
-      ✳
-    </span>
+    <LandingAsterisk
+      class="pointer-events-none absolute -top-20 -right-16 rotate-12 text-[13rem] text-[#e8a33c]/[0.08]"
+    />
 
     <div class="relative mx-auto max-w-6xl">
       <p v-reveal class="landing-eyebrow landing-eyebrow--inverse">{{ $t('landing.features.eyebrow') }}</p>

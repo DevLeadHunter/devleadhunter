@@ -5,18 +5,10 @@
       class="relative mx-auto max-w-6xl overflow-hidden rounded-[2rem] bg-[#1b1813] px-6 py-20 text-center md:py-28"
     >
       <!-- Decorative asterisks -->
-      <span
-        class="font-display pointer-events-none absolute -top-10 -left-6 text-[11rem] leading-none text-[#e8a33c]/20 select-none"
-        aria-hidden="true"
-      >
-        ✳
-      </span>
-      <span
-        class="font-display pointer-events-none absolute -right-8 -bottom-14 rotate-12 text-[13rem] leading-none text-[#e8a33c]/15 select-none"
-        aria-hidden="true"
-      >
-        ✳
-      </span>
+      <LandingAsterisk class="pointer-events-none absolute -top-14 -left-10 text-[9rem] text-[#e8a33c]/20" />
+      <LandingAsterisk
+        class="pointer-events-none absolute -right-12 -bottom-16 rotate-12 text-[11rem] text-[#e8a33c]/15"
+      />
 
       <div class="relative">
         <h2

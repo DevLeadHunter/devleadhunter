@@ -12,7 +12,7 @@
       <div v-for="copy in 2" :key="copy" class="flex items-center" :aria-hidden="copy === 2 ? 'true' : undefined">
         <span v-for="item in tickerItems" :key="`${copy}-${item}`" class="flex items-center">
           <span class="font-label px-6 text-sm whitespace-nowrap text-[#6b6355]">{{ item }}</span>
-          <span class="text-xs text-[#e8a33c]" aria-hidden="true">✳</span>
+          <LandingAsterisk class="text-xs text-[#e8a33c]" />
         </span>
       </div>
     </div>
