@@ -1,5 +1,13 @@
 <template>
-  <component :is="templateComponent" :content="renderContent" :business-name="site.business_name" />
+  <!-- plumber-cuivre renders from its own extends'd layer (typed SiteContent). -->
+  <PlumberCuivreRoot
+    v-if="isCuivreTemplate"
+    :content="cuivreSiteContent" />
+  <component
+    v-else
+    :is="templateComponent"
+    :content="renderContent"
+    :business-name="site.business_name" />
 </template>
 
 <script lang="ts" setup>
@@ -11,9 +19,10 @@ import DemoPlumberSignaturePage from '~/components/templates/plumber-signature/i
 
 // Templates chargées en lazy : leur code (GSAP inclus pour Lumen) n'alourdit pas les démos des autres templates.
 const DemoElectricianLumenPage = defineAsyncComponent(() => import('~/components/templates/electrician-lumen/index.vue'))
-const DemoPlumberCuivrePage = defineAsyncComponent(() => import('~/components/templates/plumber-cuivre/index.vue'))
+// plumber-cuivre is now served from its own repo as a Nuxt layer (extends) → PlumberCuivreRoot.
 import { fetchStoryblokDraftContent, isStoryblokVisualEditor, useStoryblokBridge } from '~/composables/useStoryblokPreview'
 import type { DemoSitePublic } from '~/types/demoSite'
+import type { SiteContent } from '@devleadhunter/website-content'
 
 const props = defineProps({
   site: {
@@ -30,7 +39,6 @@ const TEMPLATE_COMPONENTS: Record<string, Component> = {
   'plumber-simple': DemoPlumberSimplePage,
   'plumber-atelier': DemoPlumberAtelierPage,
   'plumber-signature': DemoPlumberSignaturePage,
-  'plumber-cuivre': DemoPlumberCuivrePage,
   'electrician-lumen': DemoElectricianLumenPage,
 }
 const templateComponent: ComputedRef<Component> = computed(
@@ -59,6 +67,15 @@ const renderContent: ComputedRef<Record<string, unknown>> = computed((): Record<
   }
   return (props.site.content_json as Record<string, unknown>) ?? {}
 })
+
+/** plumber-cuivre is rendered by its extends'd layer (PlumberCuivreRoot), fed a typed SiteContent. */
+const isCuivreTemplate: ComputedRef<boolean> = computed(
+  (): boolean => props.site.template_id === 'plumber-cuivre',
+)
+/** Bridge the resolved (rich) content into the shared SiteContent the layer consumes. */
+const cuivreSiteContent: ComputedRef<SiteContent> = computed(
+  (): SiteContent => richCuivreToSiteContent(renderContent.value, props.site.business_name),
+)
 
 watch(storyblokDraftContent, (): void => {
   liveContent.value = {}
