@@ -211,6 +211,7 @@ class DemoSiteService:
                 await storyblok_service.update_home_story_content(
                     demo_site.storyblok_space_id,
                     content_json,
+                    demo_site.template_id,
                 )
             except Exception as exc:  # noqa: BLE001
                 logger.exception("Demo site content sync failed for slug=%s", demo_site.slug)

@@ -72,10 +72,23 @@ const renderContent: ComputedRef<Record<string, unknown>> = computed((): Record<
 const isCuivreTemplate: ComputedRef<boolean> = computed(
   (): boolean => props.site.template_id === 'plumber-cuivre',
 )
-/** Bridge the resolved (rich) content into the shared SiteContent the layer consumes. */
-const cuivreSiteContent: ComputedRef<SiteContent> = computed(
-  (): SiteContent => richCuivreToSiteContent(renderContent.value, props.site.business_name),
-)
+/**
+ * Resolve the SiteContent for the plumber-cuivre layer from whichever of three shapes
+ * `renderContent` currently is:
+ * 1. flat SiteContent (Phase 4b content_json) — `businessName` present, no `body` → pass through.
+ * 2. Storyblok-native `site_content` (Visual Editor / preview draft) → flatten via the bridge.
+ * 3. legacy rich `cuivre_*` bloks (old demos' content_json / Storyblok) → the historical bridge.
+ */
+const cuivreSiteContent: ComputedRef<SiteContent> = computed((): SiteContent => {
+  const content: Record<string, unknown> = renderContent.value
+  if ('businessName' in content && !('body' in content)) {
+    return content as SiteContent
+  }
+  if (isStoryblokSiteContent(content)) {
+    return storyblokSiteContentToSiteContent(content)
+  }
+  return richCuivreToSiteContent(content, props.site.business_name)
+})
 
 watch(storyblokDraftContent, (): void => {
   liveContent.value = {}
