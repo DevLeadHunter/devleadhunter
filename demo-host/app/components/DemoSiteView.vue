@@ -1,25 +1,30 @@
 <template>
-  <!-- plumber-cuivre renders from its own extends'd layer (typed SiteContent). -->
-  <PlumberCuivreRoot
-    v-if="isCuivreTemplate"
-    :content="cuivreSiteContent" />
+  <!--
+    Migrated templates render from their own extends'd layer (a typed SiteContent) as soon as
+    the resolved content is a SiteContent (Phase 4b — flat content_json or Storyblok-native).
+    Legacy demos, whose content_json is still the rich blok tree, fall back to the in-repo
+    template until they expire (14-day TTL) — so nothing breaks during the transition.
+  -->
+  <component
+    v-if="migratedRootName && isSiteContent"
+    :is="migratedRootName"
+    :content="resolvedSiteContent" />
   <component
     v-else
-    :is="templateComponent"
+    :is="legacyComponent"
     :content="renderContent"
     :business-name="site.business_name" />
 </template>
 
 <script lang="ts" setup>
 import type { Component, ComputedRef, PropType, Ref } from 'vue'
-// Chaque template est isolée dans son dossier — imports directs (pas d'auto-import par nom).
+// Legacy in-repo templates — render OLD demos whose content_json is still the rich blok tree.
 import DemoPlumberSimplePage from '~/components/templates/plumber-simple/index.vue'
 import DemoPlumberAtelierPage from '~/components/templates/plumber-atelier/index.vue'
 import DemoPlumberSignaturePage from '~/components/templates/plumber-signature/index.vue'
-
-// Templates chargées en lazy : leur code (GSAP inclus pour Lumen) n'alourdit pas les démos des autres templates.
+// Lazy: heavier templates don't weigh down the others' bundles.
 const DemoElectricianLumenPage = defineAsyncComponent(() => import('~/components/templates/electrician-lumen/index.vue'))
-// plumber-cuivre is now served from its own repo as a Nuxt layer (extends) → PlumberCuivreRoot.
+const DemoPlumberCuivrePage = defineAsyncComponent(() => import('~/components/templates/plumber-cuivre/index.vue'))
 import { fetchStoryblokDraftContent, isStoryblokVisualEditor, useStoryblokBridge } from '~/composables/useStoryblokPreview'
 import type { DemoSitePublic } from '~/types/demoSite'
 import type { SiteContent } from '@devleadhunter/website-content'
@@ -34,16 +39,26 @@ const props = defineProps({
 const route = useRoute()
 const isVisualEditor: ComputedRef<boolean> = computed((): boolean => isStoryblokVisualEditor(route.query))
 
-/** Map template_id → composant de rendu (fallback : plumber-simple historique). */
-const TEMPLATE_COMPONENTS: Record<string, Component> = {
+/**
+ * template_id → the extends'd layer root component name (each template layer auto-registers
+ * exactly one root globally). Passed as a string to `<component :is>`.
+ */
+const MIGRATED_ROOTS: Record<string, string> = {
+  'plumber-simple': 'PlumberSimpleRoot',
+  'plumber-signature': 'PlumberSignatureRoot',
+  'plumber-atelier': 'PlumberAtelierRoot',
+  'plumber-cuivre': 'PlumberCuivreRoot',
+  'electrician-lumen': 'ElectricianLumenRoot',
+}
+
+/** template_id → legacy in-repo template, for OLD rich-content demos during the transition. */
+const LEGACY_COMPONENTS: Record<string, Component> = {
   'plumber-simple': DemoPlumberSimplePage,
   'plumber-atelier': DemoPlumberAtelierPage,
   'plumber-signature': DemoPlumberSignaturePage,
+  'plumber-cuivre': DemoPlumberCuivrePage,
   'electrician-lumen': DemoElectricianLumenPage,
 }
-const templateComponent: ComputedRef<Component> = computed(
-  (): Component => TEMPLATE_COMPONENTS[props.site.template_id] ?? DemoPlumberSimplePage,
-)
 
 const { data: storyblokDraftContent } = useAsyncData(
   () => `storyblok-draft-${props.site.slug}-${isVisualEditor.value}`,
@@ -68,27 +83,30 @@ const renderContent: ComputedRef<Record<string, unknown>> = computed((): Record<
   return (props.site.content_json as Record<string, unknown>) ?? {}
 })
 
-/** plumber-cuivre is rendered by its extends'd layer (PlumberCuivreRoot), fed a typed SiteContent. */
-const isCuivreTemplate: ComputedRef<boolean> = computed(
-  (): boolean => props.site.template_id === 'plumber-cuivre',
+/** True when the resolved content is a SiteContent — flat (Phase 4b) or Storyblok-native `site_content`. */
+const isSiteContent: ComputedRef<boolean> = computed((): boolean => {
+  const content: Record<string, unknown> = renderContent.value
+  return ('businessName' in content && !('body' in content)) || isStoryblokSiteContent(content)
+})
+
+/** The extends'd root component name for this template, or null when it isn't migrated yet. */
+const migratedRootName: ComputedRef<string | null> = computed(
+  (): string | null => MIGRATED_ROOTS[props.site.template_id] ?? null,
 )
-/**
- * Resolve the SiteContent for the plumber-cuivre layer from whichever of three shapes
- * `renderContent` currently is:
- * 1. flat SiteContent (Phase 4b content_json) — `businessName` present, no `body` → pass through.
- * 2. Storyblok-native `site_content` (Visual Editor / preview draft) → flatten via the bridge.
- * 3. legacy rich `cuivre_*` bloks (old demos' content_json / Storyblok) → the historical bridge.
- */
-const cuivreSiteContent: ComputedRef<SiteContent> = computed((): SiteContent => {
+
+/** Resolve the SiteContent from either the flat shape (pass-through) or Storyblok-native (flatten). */
+const resolvedSiteContent: ComputedRef<SiteContent> = computed((): SiteContent => {
   const content: Record<string, unknown> = renderContent.value
   if ('businessName' in content && !('body' in content)) {
     return content as SiteContent
   }
-  if (isStoryblokSiteContent(content)) {
-    return storyblokSiteContentToSiteContent(content)
-  }
-  return richCuivreToSiteContent(content, props.site.business_name)
+  return storyblokSiteContentToSiteContent(content)
 })
+
+/** Legacy in-repo template for old rich demos (fallback: historical plumber-simple). */
+const legacyComponent: ComputedRef<Component> = computed(
+  (): Component => LEGACY_COMPONENTS[props.site.template_id] ?? DemoPlumberSimplePage,
+)
 
 watch(storyblokDraftContent, (): void => {
   liveContent.value = {}
