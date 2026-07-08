@@ -190,13 +190,15 @@ Deux contextes distincts :
 - ⇒ *Le build ne contient QUE la template du client.* Petit, rapide, propre.
 - C'est le bon modèle pour la mise en prod Vercel par client (meilleur que déployer le demo-host complet).
 
-## Les 3 gotchas à ne pas oublier
+## Les 4 gotchas à ne pas oublier
 
 1. **Collisions d'auto-import.** Deux templates ont chacune `HeroSection.vue`. En layer, Nuxt auto-importe et merge globalement → collision silencieuse (last-wins). **Parade** : soit chaque template préfixe ses composants (`components: [{ path, prefix: 'PlumberCuivre' }]`), soit — recommandé — la template n'expose **qu'un composant racine** et importe ses sections en **relatif** (jamais enregistrées globalement). Zéro collision par construction.
 
 2. **Repos publics = pas de token.** Les layers `github:` passent par giget ; comme les repos sont **publics**, ni dev ni CI n'ont besoin de `GIGET_AUTH` (il ne redeviendrait nécessaire que si un repo passait privé). Le pinning `#vX.Y.Z` donne des mises à jour **contrôlées** (bump volontaire).
 
 3. **Fonts par template.** Chaque template layer déclare **ses** fonts ; demo-host les merge via `extends`. Une template supprimée n'alourdit plus les autres. (Avant : un seul `<head>` chargeait les fonts de toutes les templates.)
+
+4. **Dispatch par composant, jamais par nom en chaîne.** Le root d'un layer est **auto-importé** mais **pas** enregistré globalement (`app.component()`) → `<component :is="'PlumberCuivreRoot'">` (nom en **chaîne**) ne résout **rien** et rend un **élément littéral vide** (le build reste vert : bug de rendu runtime, pas de compile). **Parade** : `import { LazyPlumberCuivreRoot } from '#components'` et passer l'**objet composant** à `:is`. `Lazy*` = async → le code-split par démo est conservé. (Régression réelle corrigée le 2026-07-08.)
 
 ## Checklists
 
