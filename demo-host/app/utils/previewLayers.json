@@ -1,12 +1,12 @@
 {
   "plumber-simple": {
-    "businessName": "Plomberie Riviere",
-    "phone": "02 99 12 34 56",
-    "email": "contact@plomberie-riviere.fr",
-    "city": "Rennes",
-    "area": "Rennes et ses alentours",
-    "subtitle": "Depannage, debouchage, chauffe-eau et salle de bain - un travail propre, garanti, au juste prix.",
-    "about": "Artisan plombier de confiance, j'interviens en depannage, installation et renovation avec le meme soin. Diagnostic honnete, travail propre, prix juste.",
+    "businessName": "Plomberie Roche",
+    "phone": "04 72 07 07 07",
+    "email": "contact@plomberie-roche.fr",
+    "city": "Lyon",
+    "area": "Lyon et ses alentours",
+    "subtitle": "Depannage plomberie en 30 minutes, 7j/7 et 365 jours par an a Lyon : fuite, chauffe-eau, canalisation.",
+    "about": "Artisan plombier de confiance a Lyon : depannage, installation et renovation avec le meme soin. Intervention rapide, diagnostic honnete, prix juste.",
     "heroImage": "https://images.unsplash.com/photo-1584622650111-993a426fbf0a?auto=format&fit=crop&w=1400&q=75",
     "aboutImage": "https://images.unsplash.com/photo-1620626011761-996317b8d101?auto=format&fit=crop&w=1200&q=70",
     "gallery": [
@@ -113,13 +113,13 @@
     ]
   },
   "plumber-signature": {
-    "businessName": "Atelier Sanitaire Lyon",
-    "phone": "04 78 12 34 56",
-    "email": "contact@atelier-sanitaire.fr",
+    "businessName": "Plomberie Roche",
+    "phone": "04 72 07 07 07",
+    "email": "contact@plomberie-roche.fr",
     "city": "Lyon",
     "area": "Lyon et ses alentours",
-    "subtitle": "Plomberie et salle de bain haut de gamme - finitions soignees et suivi de A a Z.",
-    "about": "Artisan plombier de confiance, j'interviens en depannage, installation et renovation avec le meme soin. Diagnostic honnete, travail propre, prix juste.",
+    "subtitle": "Depannage plomberie en 30 minutes, 7j/7 et 365 jours par an a Lyon : fuite, chauffe-eau, canalisation.",
+    "about": "Artisan plombier de confiance a Lyon : depannage, installation et renovation avec le meme soin. Intervention rapide, diagnostic honnete, prix juste.",
     "heroImage": "https://images.unsplash.com/photo-1584622650111-993a426fbf0a?auto=format&fit=crop&w=1400&q=75",
     "aboutImage": "https://images.unsplash.com/photo-1620626011761-996317b8d101?auto=format&fit=crop&w=1200&q=70",
     "gallery": [
@@ -226,13 +226,13 @@
     ]
   },
   "plumber-atelier": {
-    "businessName": "Plomberie de l'Atelier",
-    "phone": "05 56 12 34 56",
-    "email": "contact@plomberie-atelier.fr",
-    "city": "Bordeaux",
-    "area": "Bordeaux et ses alentours",
-    "subtitle": "L'artisanat de la plomberie : depannage rapide et renovation complete, dans les regles de l'art.",
-    "about": "Artisan plombier de confiance, j'interviens en depannage, installation et renovation avec le meme soin. Diagnostic honnete, travail propre, prix juste.",
+    "businessName": "Plomberie Roche",
+    "phone": "04 72 07 07 07",
+    "email": "contact@plomberie-roche.fr",
+    "city": "Lyon",
+    "area": "Lyon et ses alentours",
+    "subtitle": "Depannage plomberie en 30 minutes, 7j/7 et 365 jours par an a Lyon : fuite, chauffe-eau, canalisation.",
+    "about": "Artisan plombier de confiance a Lyon : depannage, installation et renovation avec le meme soin. Intervention rapide, diagnostic honnete, prix juste.",
     "heroImage": "https://images.unsplash.com/photo-1584622650111-993a426fbf0a?auto=format&fit=crop&w=1400&q=75",
     "aboutImage": "https://images.unsplash.com/photo-1620626011761-996317b8d101?auto=format&fit=crop&w=1200&q=70",
     "gallery": [
@@ -339,13 +339,13 @@
     ]
   },
   "plumber-cuivre": {
-    "businessName": "Plomberie Cuivre",
-    "phone": "02 99 55 44 33",
-    "email": "contact@plomberie-cuivre.fr",
-    "city": "Rennes",
-    "area": "Rennes et ses alentours",
-    "subtitle": "Depannage, chauffe-eau, salle de bain cle en main - un artisan d'ici, pas une plateforme.",
-    "about": "Artisan plombier de confiance, j'interviens en depannage, installation et renovation avec le meme soin. Diagnostic honnete, travail propre, prix juste.",
+    "businessName": "Plomberie Roche",
+    "phone": "04 72 07 07 07",
+    "email": "contact@plomberie-roche.fr",
+    "city": "Lyon",
+    "area": "Lyon et ses alentours",
+    "subtitle": "Depannage plomberie en 30 minutes, 7j/7 et 365 jours par an a Lyon : fuite, chauffe-eau, canalisation.",
+    "about": "Artisan plombier de confiance a Lyon : depannage, installation et renovation avec le meme soin. Intervention rapide, diagnostic honnete, prix juste.",
     "heroImage": "https://images.unsplash.com/photo-1584622650111-993a426fbf0a?auto=format&fit=crop&w=1400&q=75",
     "aboutImage": "https://images.unsplash.com/photo-1620626011761-996317b8d101?auto=format&fit=crop&w=1200&q=70",
     "gallery": [
@@ -472,13 +472,13 @@
     ]
   },
   "electrician-lumen": {
-    "businessName": "Volt & Fils",
-    "phone": "02 40 12 34 56",
-    "email": "contact@voltetfils.fr",
+    "businessName": "Breizh Electrik",
+    "phone": "02 40 89 12 34",
+    "email": "contact@breizh-electrik.fr",
     "city": "Nantes",
     "area": "Nantes et ses alentours",
-    "subtitle": "Depannage, mise aux normes, renovation et borne de recharge - propre, securise et garanti.",
-    "about": "Electricien qualifie a votre service : depannage, mise aux normes, renovation et borne de recharge. Travail conforme, soigne et securise.",
+    "subtitle": "Installations electriques, mise aux normes, borne de recharge (IRVE) et photovoltaique a Nantes et 50 km alentours.",
+    "about": "Artisan electricien a Nantes : installations, mise aux normes, borne de recharge (IRVE) et photovoltaique. Travail conforme, soigne et securise, en residentiel comme en tertiaire.",
     "heroImage": "https://images.unsplash.com/photo-1621905251189-08b45d6a269e?auto=format&fit=crop&w=1400&q=75",
     "aboutImage": "https://images.unsplash.com/photo-1621905252507-b35492cc74b4?auto=format&fit=crop&w=1200&q=70",
     "gallery": [
