@@ -57,7 +57,9 @@
       "visual": {
         "prospectLabel": "Fiche prospect",
         "prospectName": "Plomberie Martin",
-        "prospectMeta": "Lyon 7ᵉ · 4,8 ★ · 126 avis",
+        "prospectCity": "Lyon 7ᵉ",
+        "prospectRating": "4,8 ★",
+        "prospectReviews": "126 avis",
         "prospectEmail": "Email trouvé : contact{'@'}…",
         "prospectStamp": "Sans site web",
         "siteLabel": "Site démo · 14 jours",

@@ -9,7 +9,13 @@
         <p class="font-display text-2xl font-semibold text-[#1b1813] md:text-3xl">
           {{ $t('landing.story.visual.prospectName') }}
         </p>
-        <p class="mt-1.5 text-sm text-[#6b6355]">{{ $t('landing.story.visual.prospectMeta') }}</p>
+        <p class="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-[#6b6355]">
+          <span>{{ $t('landing.story.visual.prospectCity') }}</span>
+          <span class="text-[#6b6355]/40" aria-hidden="true">·</span>
+          <span>{{ $t('landing.story.visual.prospectRating') }}</span>
+          <span class="text-[#6b6355]/40" aria-hidden="true">·</span>
+          <span>{{ $t('landing.story.visual.prospectReviews') }}</span>
+        </p>
       </div>
       <span
         class="font-label inline-block shrink-0 -rotate-6 rounded border-2 border-[#bf4d33] px-2.5 py-1 text-[0.65rem] font-medium tracking-[0.14em] text-[#bf4d33] uppercase"

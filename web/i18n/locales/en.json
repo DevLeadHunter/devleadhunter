@@ -57,7 +57,9 @@
       "visual": {
         "prospectLabel": "Prospect card",
         "prospectName": "Martin Plumbing",
-        "prospectMeta": "Lyon · 4.8 ★ · 126 reviews",
+        "prospectCity": "Lyon",
+        "prospectRating": "4.8 ★",
+        "prospectReviews": "126 reviews",
         "prospectEmail": "Email found: contact{'@'}…",
         "prospectStamp": "No website",
         "siteLabel": "Demo site · 14 days",
