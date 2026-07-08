@@ -2,6 +2,11 @@ import tailwindcss from '@tailwindcss/vite'
 
 export default defineNuxtConfig({
   ssr: true,
+
+  // Website templates consumed as Nuxt layers from GitHub (public repos, no token),
+  // pinned by tag. Each exposes one root component + relative-only sections.
+  extends: ['github:DevLeadHunter/devleadhunter-template-plumber-cuivre#v1.0.1'],
+
   compatibilityDate: '2024-07-11',
   css: ['~/assets/css/main.css'],
   vite: {
