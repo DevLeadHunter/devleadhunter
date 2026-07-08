@@ -8,8 +8,9 @@
 >
 > **Les 5 templates sont migrées en Nuxt layers, branchées dans le tunnel, mergées sur `main`,
 > déployées et VALIDÉES visuellement** (rendu vérifié bout-en-bout sur les 5 avec un vrai prospect,
-> screenshots à l'appui). Il ne reste que le **nettoyage legacy après le TTL 14 j** (+ bonus optionnels).
-> ⚠️ La validation a révélé et **corrigé un bug de rendu prod** — voir « Fait depuis » ci-dessous.
+> screenshots à l'appui). **Le legacy a été retiré** (Léo a confirmé aucun site vendu d'avant en ligne) —
+> il ne reste que des **bonus optionnels** (Phase 6). ⚠️ La validation avait révélé et **corrigé un bug de
+> rendu prod** — voir ci-dessous.
 >
 > **Fait ✅**
 > - Phase 0 (orga + outillage) et 1 (prod stabilisée : login desktop, CORS/500, CI Vercel, fonts).
@@ -45,11 +46,15 @@
 >   par template OK, contenu métier OK, **0 erreur console** (dont GSAP lumen), code-split confirmé au build.
 > - Starter marqué **GitHub Template repository** (`is_template=true` via `gh api`).
 >
+> **Fait encore depuis ✅**
+> - 🧹 **Legacy retiré (2026-07-08)** — Léo a confirmé « aucun site vendu d'avant en ligne ». Supprimés :
+>   `demo-host/app/components/templates/*`, les entrées `LEGACY_COMPONENTS` (+ `DemoSiteView` simplifié au
+>   seul chemin `SiteContent`), les fonts globales du `<head>` (chaque layer déclare les siennes), et les
+>   5 pages `preview-*` legacy. Build Vercel vert, bundle **−0,4 MB**. Harnais `/preview-layers` conservé.
+>
 > **Reste à faire ⏳**
-> 1. **Après le TTL 14 j** (vieilles démos rich-content expirées) : supprimer `demo-host/app/components/templates/*`
->    + les entrées `LEGACY_COMPONENTS`, **et** retirer les fonts globales du `<head>` de `demo-host/nuxt.config.ts`
->    (les deux vont ensemble — les fonts globales servent encore les legacy). Puis supprimer ce fichier.
-> 2. (Optionnel) Bonus Phase 6 : build prod dédié client, CI par repo template, doc du workflow de release.
+> 1. (Optionnel) Bonus Phase 6 : build prod dédié client, CI par repo template, doc du workflow de release.
+> 2. Supprimer ce fichier quand tu veux — la migration est **fonctionnellement terminée**.
 >
 > **📸 Observation produit** : 3 templates sur 5 affichent la photo hero du prospect (signature, cuivre,
 > lumen) ; **simple** (hero dégradé) et **atelier** (DA typographique « Fiche d'intervention ») ne
@@ -138,8 +143,8 @@ Pour chaque repo, checklist unitaire :
 - [x] `demo-host/package.json` : dépendance `@devleadhunter/website-content` (repos publics → **pas de token**)
 - [x] Mettre à jour le dispatch dans `DemoSiteView.vue` : `template_id → composant racine` (`MIGRATED_ROOTS`, `defineAsyncComponent` conservé)
 - [x] `demo-host` passe un `SiteContent` typé unique (plus de typage par-template)
-- [ ] **Supprimer** l'ancien dossier `demo-host/app/components/templates/` (+ entrées `LEGACY_COMPONENTS`) — **après le TTL 14 j**
-- [ ] Retirer les fonts globales du `<head>` de `demo-host/nuxt.config.ts` (chaque layer déclare déjà ses fonts) — **cleanup restant**
+- [x] **Supprimé** l'ancien dossier `demo-host/app/components/templates/` + entrées `LEGACY_COMPONENTS` (2026-07-08)
+- [x] Retiré les fonts globales du `<head>` de `demo-host/nuxt.config.ts` (chaque layer déclare les siennes)
 
 ## Phase 5 — Vérification (ne rien casser)
 
