@@ -119,6 +119,21 @@ class StoryblokService:
             "accent": "#f59e0b",
         }
 
+        # Phase 4b — templates that opt in produce a FLAT SiteContent that already
+        # consumes enrichment; the rich enrichment merge must not run for them.
+        if template_registry.uses_site_content(template_id):
+            return template_registry.build_site_content(
+                template_id=template_id,
+                business_name=business_name,
+                phone=phone,
+                email=email,
+                city=city,
+                area=area,
+                subtitle=subtitle,
+                palette=palette,
+                enrichment=enrichment,
+            )
+
         content = template_registry.build_content(
             template_id=template_id,
             business_name=business_name,
@@ -131,9 +146,28 @@ class StoryblokService:
         )
         return apply_enrichment_to_content(content, enrichment)
 
-    def _to_storyblok_content(self, content_json: dict[str, Any]) -> dict[str, Any]:
-        """Adapt local demo content to Storyblok blok schemas."""
+    @staticmethod
+    def _is_flat_site_content(content_json: dict[str, Any]) -> bool:
+        """Detect the flat ``SiteContent`` shape (Phase 4b) vs the rich body-based content.
+
+        Flat SiteContent has no ``body`` list and carries a ``businessName`` key.
+        """
+        return "body" not in content_json and "businessName" in content_json
+
+    def _to_storyblok_content(
+        self, content_json: dict[str, Any], template_id: Optional[str] = None
+    ) -> dict[str, Any]:
+        """Adapt local demo content to Storyblok blok schemas.
+
+        Rich content (``{theme, body:[...]}``) is wrapped as a ``page`` with its
+        body bloks. Flat ``SiteContent`` (Phase 4b) is expressed as a native
+        ``site_content`` blok (via the template) and dropped into the page body,
+        so the Visual Editor can edit every field.
+        """
         theme_raw = content_json.get("theme")
+        # Flat SiteContent keeps the palette under ``palette`` (theme lives inside it).
+        if theme_raw is None and isinstance(content_json.get("palette"), dict):
+            theme_raw = content_json.get("palette")
         theme_block: dict[str, Any] = {
             "_uid": "theme-1",
             "component": "theme_palette",
@@ -144,11 +178,19 @@ class StoryblokService:
         if isinstance(theme_raw, dict):
             theme_block.update(
                 {
-                    "primary": str(theme_raw.get("primary", theme_block["primary"])),
-                    "secondary": str(theme_raw.get("secondary", theme_block["secondary"])),
-                    "accent": str(theme_raw.get("accent", theme_block["accent"])),
+                    "primary": str(theme_raw.get("primary") or theme_block["primary"]),
+                    "secondary": str(theme_raw.get("secondary") or theme_block["secondary"]),
+                    "accent": str(theme_raw.get("accent") or theme_block["accent"]),
                 }
             )
+
+        if self._is_flat_site_content(content_json) and template_id and template_registry.uses_site_content(template_id):
+            site_content_blok = template_registry.to_storyblok_site_content(template_id, content_json)
+            return {
+                "component": "page",
+                "theme": theme_block,
+                "body": [site_content_blok],
+            }
 
         return {
             "component": "page",
@@ -230,9 +272,10 @@ class StoryblokService:
         content_json: dict[str, Any],
         *,
         story_id: Optional[int] = None,
+        template_id: Optional[str] = None,
     ) -> None:
         """Create or update the home story and publish it."""
-        storyblok_content = self._to_storyblok_content(content_json)
+        storyblok_content = self._to_storyblok_content(content_json, template_id)
         if story_id is None:
             story_id = await self._find_home_story_id(client, space_id)
 
@@ -264,6 +307,7 @@ class StoryblokService:
                         space_id,
                         content_json,
                         story_id=existing_id,
+                        template_id=template_id,
                     )
                     return
             raise ValueError(self._storyblok_error_message(exc)) from exc
@@ -386,7 +430,7 @@ class StoryblokService:
             try:
                 await self._configure_preview_url(client, space_id, preview_url)
                 await self._ensure_template_components(client, space_id)
-                await self._publish_home_story(client, space_id, content_json)
+                await self._publish_home_story(client, space_id, content_json, template_id=template_id)
 
                 space_detail = await client.get(
                     f"{self._base_url}/spaces/{space_id}",
@@ -429,7 +473,9 @@ class StoryblokService:
                     content_json=content_json,
                 ) from exc
 
-    async def update_home_story_content(self, space_id: int, content_json: dict[str, Any]) -> None:
+    async def update_home_story_content(
+        self, space_id: int, content_json: dict[str, Any], template_id: Optional[str] = None
+    ) -> None:
         """Update and publish the home story content in an existing Storyblok space."""
         if not self.is_configured or not space_id:
             return
@@ -438,7 +484,9 @@ class StoryblokService:
             await self._ensure_template_components(client, space_id)
 
             story_id = await self._find_home_story_id(client, space_id)
-            await self._publish_home_story(client, space_id, content_json, story_id=story_id)
+            await self._publish_home_story(
+                client, space_id, content_json, story_id=story_id, template_id=template_id
+            )
 
     def expected_space_name(self, business_name: str, slug: str) -> str:
         """Return the Storyblok space name used when provisioning a demo site."""
@@ -563,6 +611,8 @@ class StoryblokService:
                             "services",
                             "why_us",
                             "contact",
+                            # Phase 4b — the flat SiteContent page carries one ``site_content`` blok.
+                            "site_content",
                             *template_registry.body_components(),
                         ],
                     },
