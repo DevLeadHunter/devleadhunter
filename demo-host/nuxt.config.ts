@@ -5,7 +5,13 @@ export default defineNuxtConfig({
 
   // Website templates consumed as Nuxt layers from GitHub (public repos, no token),
   // pinned by tag. Each exposes one root component + relative-only sections.
-  extends: ['github:DevLeadHunter/devleadhunter-template-plumber-cuivre#v1.0.1'],
+  extends: [
+    'github:DevLeadHunter/devleadhunter-template-plumber-simple#v1.0.0',
+    'github:DevLeadHunter/devleadhunter-template-plumber-signature#v1.0.0',
+    'github:DevLeadHunter/devleadhunter-template-plumber-atelier#v1.0.0',
+    'github:DevLeadHunter/devleadhunter-template-plumber-cuivre#v1.0.1',
+    'github:DevLeadHunter/devleadhunter-template-electrician-lumen#v1.0.0',
+  ],
 
   compatibilityDate: '2024-07-11',
   css: ['~/assets/css/main.css'],
