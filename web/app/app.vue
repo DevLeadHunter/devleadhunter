@@ -1,6 +1,7 @@
 <template>
   <UApp>
     <DevLeadHunterDesktopUpdaterPanel />
+    <DevLeadHunterDevToolbar />
     <NuxtLayout>
       <NuxtPage />
     </NuxtLayout>
