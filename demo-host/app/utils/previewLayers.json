@@ -1,0 +1,587 @@
+{
+  "plumber-simple": {
+    "businessName": "Plomberie Riviere",
+    "phone": "02 99 12 34 56",
+    "email": "contact@plomberie-riviere.fr",
+    "city": "Rennes",
+    "area": "Rennes et ses alentours",
+    "subtitle": "Depannage, debouchage, chauffe-eau et salle de bain - un travail propre, garanti, au juste prix.",
+    "about": "Artisan plombier de confiance, j'interviens en depannage, installation et renovation avec le meme soin. Diagnostic honnete, travail propre, prix juste.",
+    "heroImage": "https://images.unsplash.com/photo-1584622650111-993a426fbf0a?auto=format&fit=crop&w=1400&q=75",
+    "aboutImage": "https://images.unsplash.com/photo-1620626011761-996317b8d101?auto=format&fit=crop&w=1200&q=70",
+    "gallery": [
+      {
+        "url": "https://images.unsplash.com/photo-1552321554-5fefe8c9ef14?auto=format&fit=crop&w=1200&q=70",
+        "alt": ""
+      },
+      {
+        "url": "https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=1200&q=70",
+        "alt": ""
+      },
+      {
+        "url": "https://images.unsplash.com/photo-1507089947368-19c1da9775ae?auto=format&fit=crop&w=1200&q=70",
+        "alt": ""
+      },
+      {
+        "url": "https://images.unsplash.com/photo-1564540583246-934409427776?auto=format&fit=crop&w=1200&q=70",
+        "alt": ""
+      }
+    ],
+    "palette": {
+      "primary": "#0284c7",
+      "secondary": "#0f172a",
+      "accent": "#f59e0b"
+    },
+    "reviews": [
+      {
+        "author": "Camille B.",
+        "text": "Fuite sous l'evier un dimanche soir : rappele en dix minutes, repare le lendemain matin. Serieux, propre et honnete sur le prix.",
+        "rating": 5
+      },
+      {
+        "author": "Herve M.",
+        "text": "Remplacement de notre chauffe-eau : devis clair, pose soignee, tout explique. Chantier impeccable en partant.",
+        "rating": 5
+      },
+      {
+        "author": "Nathalie P.",
+        "text": "Salle de bain refaite du sol au plafond. Delais tenus, belles finitions, vrai suivi. Je recommande sans hesiter.",
+        "rating": 4
+      }
+    ],
+    "openingHours": [
+      {
+        "day": "Lundi - Vendredi",
+        "hours": "8h - 19h"
+      },
+      {
+        "day": "Samedi",
+        "hours": "9h - 12h"
+      },
+      {
+        "day": "Dimanche",
+        "hours": "Urgences uniquement"
+      }
+    ],
+    "services": [
+      {
+        "title": "Dépannage & urgences",
+        "description": "Fuite, engorgement, panne de chauffe-eau : intervention rapide 7j/7."
+      },
+      {
+        "title": "Recherche de fuite",
+        "description": "Détection précise sans casse inutile, puis réparation durable."
+      },
+      {
+        "title": "Installation sanitaire",
+        "description": "Salle de bain, cuisine, WC : pose complète et soignée."
+      },
+      {
+        "title": "Chauffe-eau & chauffage",
+        "description": "Installation, remplacement et entretien de vos équipements."
+      },
+      {
+        "title": "Rénovation de salle de bain",
+        "description": "Modernisation complète de vos pièces d'eau, clé en main."
+      },
+      {
+        "title": "Débouchage de canalisation",
+        "description": "Curage et débouchage rapide, sans dégât."
+      }
+    ],
+    "faq": [
+      {
+        "question": "Intervenez-vous en urgence le week-end ?",
+        "answer": "Oui, nous intervenons 7j/7 pour les urgences. Appelez, on vous rappelle rapidement."
+      },
+      {
+        "question": "Le devis est-il gratuit ?",
+        "answer": "Le devis est toujours gratuit et sans engagement, remis avant toute intervention."
+      },
+      {
+        "question": "Quelles zones couvrez-vous ?",
+        "answer": "Votre ville et les communes voisines. Appelez pour vérifier, nous nous déplaçons souvent au-delà."
+      },
+      {
+        "question": "Quels moyens de paiement acceptez-vous ?",
+        "answer": "Carte bancaire, chèque et virement, avec facture détaillée."
+      },
+      {
+        "question": "Proposez-vous une garantie sur vos travaux ?",
+        "answer": "Oui, nos installations sont couvertes par la garantie décennale."
+      }
+    ]
+  },
+  "plumber-signature": {
+    "businessName": "Atelier Sanitaire Lyon",
+    "phone": "04 78 12 34 56",
+    "email": "contact@atelier-sanitaire.fr",
+    "city": "Lyon",
+    "area": "Lyon et ses alentours",
+    "subtitle": "Plomberie et salle de bain haut de gamme - finitions soignees et suivi de A a Z.",
+    "about": "Artisan plombier de confiance, j'interviens en depannage, installation et renovation avec le meme soin. Diagnostic honnete, travail propre, prix juste.",
+    "heroImage": "https://images.unsplash.com/photo-1584622650111-993a426fbf0a?auto=format&fit=crop&w=1400&q=75",
+    "aboutImage": "https://images.unsplash.com/photo-1620626011761-996317b8d101?auto=format&fit=crop&w=1200&q=70",
+    "gallery": [
+      {
+        "url": "https://images.unsplash.com/photo-1552321554-5fefe8c9ef14?auto=format&fit=crop&w=1200&q=70",
+        "alt": ""
+      },
+      {
+        "url": "https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=1200&q=70",
+        "alt": ""
+      },
+      {
+        "url": "https://images.unsplash.com/photo-1507089947368-19c1da9775ae?auto=format&fit=crop&w=1200&q=70",
+        "alt": ""
+      },
+      {
+        "url": "https://images.unsplash.com/photo-1564540583246-934409427776?auto=format&fit=crop&w=1200&q=70",
+        "alt": ""
+      }
+    ],
+    "palette": {
+      "primary": "#0F5257",
+      "secondary": "#14181C",
+      "accent": "#E8552D"
+    },
+    "reviews": [
+      {
+        "author": "Camille B.",
+        "text": "Fuite sous l'evier un dimanche soir : rappele en dix minutes, repare le lendemain matin. Serieux, propre et honnete sur le prix.",
+        "rating": 5
+      },
+      {
+        "author": "Herve M.",
+        "text": "Remplacement de notre chauffe-eau : devis clair, pose soignee, tout explique. Chantier impeccable en partant.",
+        "rating": 5
+      },
+      {
+        "author": "Nathalie P.",
+        "text": "Salle de bain refaite du sol au plafond. Delais tenus, belles finitions, vrai suivi. Je recommande sans hesiter.",
+        "rating": 4
+      }
+    ],
+    "openingHours": [
+      {
+        "day": "Lundi - Vendredi",
+        "hours": "8h - 19h"
+      },
+      {
+        "day": "Samedi",
+        "hours": "9h - 12h"
+      },
+      {
+        "day": "Dimanche",
+        "hours": "Urgences uniquement"
+      }
+    ],
+    "services": [
+      {
+        "title": "Dépannage & urgences",
+        "description": "Fuite, engorgement, panne de chauffe-eau : intervention rapide 7j/7."
+      },
+      {
+        "title": "Recherche de fuite",
+        "description": "Détection précise sans casse inutile, puis réparation durable."
+      },
+      {
+        "title": "Installation sanitaire",
+        "description": "Salle de bain, cuisine, WC : pose complète et soignée."
+      },
+      {
+        "title": "Chauffe-eau & chauffage",
+        "description": "Installation, remplacement et entretien de vos équipements."
+      },
+      {
+        "title": "Rénovation de salle de bain",
+        "description": "Modernisation complète de vos pièces d'eau, clé en main."
+      },
+      {
+        "title": "Débouchage de canalisation",
+        "description": "Curage et débouchage rapide, sans dégât."
+      }
+    ],
+    "faq": [
+      {
+        "question": "Intervenez-vous en urgence le week-end ?",
+        "answer": "Oui, nous intervenons 7j/7 pour les urgences. Appelez, on vous rappelle rapidement."
+      },
+      {
+        "question": "Le devis est-il gratuit ?",
+        "answer": "Le devis est toujours gratuit et sans engagement, remis avant toute intervention."
+      },
+      {
+        "question": "Quelles zones couvrez-vous ?",
+        "answer": "Votre ville et les communes voisines. Appelez pour vérifier, nous nous déplaçons souvent au-delà."
+      },
+      {
+        "question": "Quels moyens de paiement acceptez-vous ?",
+        "answer": "Carte bancaire, chèque et virement, avec facture détaillée."
+      },
+      {
+        "question": "Proposez-vous une garantie sur vos travaux ?",
+        "answer": "Oui, nos installations sont couvertes par la garantie décennale."
+      }
+    ]
+  },
+  "plumber-atelier": {
+    "businessName": "Plomberie de l'Atelier",
+    "phone": "05 56 12 34 56",
+    "email": "contact@plomberie-atelier.fr",
+    "city": "Bordeaux",
+    "area": "Bordeaux et ses alentours",
+    "subtitle": "L'artisanat de la plomberie : depannage rapide et renovation complete, dans les regles de l'art.",
+    "about": "Artisan plombier de confiance, j'interviens en depannage, installation et renovation avec le meme soin. Diagnostic honnete, travail propre, prix juste.",
+    "heroImage": "https://images.unsplash.com/photo-1584622650111-993a426fbf0a?auto=format&fit=crop&w=1400&q=75",
+    "aboutImage": "https://images.unsplash.com/photo-1620626011761-996317b8d101?auto=format&fit=crop&w=1200&q=70",
+    "gallery": [
+      {
+        "url": "https://images.unsplash.com/photo-1552321554-5fefe8c9ef14?auto=format&fit=crop&w=1200&q=70",
+        "alt": ""
+      },
+      {
+        "url": "https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=1200&q=70",
+        "alt": ""
+      },
+      {
+        "url": "https://images.unsplash.com/photo-1507089947368-19c1da9775ae?auto=format&fit=crop&w=1200&q=70",
+        "alt": ""
+      },
+      {
+        "url": "https://images.unsplash.com/photo-1564540583246-934409427776?auto=format&fit=crop&w=1200&q=70",
+        "alt": ""
+      }
+    ],
+    "palette": {
+      "primary": "#B8732E",
+      "secondary": "#1C1B19",
+      "accent": "#2E5B6B"
+    },
+    "reviews": [
+      {
+        "author": "Camille B.",
+        "text": "Fuite sous l'evier un dimanche soir : rappele en dix minutes, repare le lendemain matin. Serieux, propre et honnete sur le prix.",
+        "rating": 5
+      },
+      {
+        "author": "Herve M.",
+        "text": "Remplacement de notre chauffe-eau : devis clair, pose soignee, tout explique. Chantier impeccable en partant.",
+        "rating": 5
+      },
+      {
+        "author": "Nathalie P.",
+        "text": "Salle de bain refaite du sol au plafond. Delais tenus, belles finitions, vrai suivi. Je recommande sans hesiter.",
+        "rating": 4
+      }
+    ],
+    "openingHours": [
+      {
+        "day": "Lundi - Vendredi",
+        "hours": "8h - 19h"
+      },
+      {
+        "day": "Samedi",
+        "hours": "9h - 12h"
+      },
+      {
+        "day": "Dimanche",
+        "hours": "Urgences uniquement"
+      }
+    ],
+    "services": [
+      {
+        "title": "Dépannage & urgences",
+        "description": "Fuite, engorgement, panne de chauffe-eau : intervention rapide 7j/7."
+      },
+      {
+        "title": "Recherche de fuite",
+        "description": "Détection précise sans casse inutile, puis réparation durable."
+      },
+      {
+        "title": "Installation sanitaire",
+        "description": "Salle de bain, cuisine, WC : pose complète et soignée."
+      },
+      {
+        "title": "Chauffe-eau & chauffage",
+        "description": "Installation, remplacement et entretien de vos équipements."
+      },
+      {
+        "title": "Rénovation de salle de bain",
+        "description": "Modernisation complète de vos pièces d'eau, clé en main."
+      },
+      {
+        "title": "Débouchage de canalisation",
+        "description": "Curage et débouchage rapide, sans dégât."
+      }
+    ],
+    "faq": [
+      {
+        "question": "Intervenez-vous en urgence le week-end ?",
+        "answer": "Oui, nous intervenons 7j/7 pour les urgences. Appelez, on vous rappelle rapidement."
+      },
+      {
+        "question": "Le devis est-il gratuit ?",
+        "answer": "Le devis est toujours gratuit et sans engagement, remis avant toute intervention."
+      },
+      {
+        "question": "Quelles zones couvrez-vous ?",
+        "answer": "Votre ville et les communes voisines. Appelez pour vérifier, nous nous déplaçons souvent au-delà."
+      },
+      {
+        "question": "Quels moyens de paiement acceptez-vous ?",
+        "answer": "Carte bancaire, chèque et virement, avec facture détaillée."
+      },
+      {
+        "question": "Proposez-vous une garantie sur vos travaux ?",
+        "answer": "Oui, nos installations sont couvertes par la garantie décennale."
+      }
+    ]
+  },
+  "plumber-cuivre": {
+    "businessName": "Plomberie Cuivre",
+    "phone": "02 99 55 44 33",
+    "email": "contact@plomberie-cuivre.fr",
+    "city": "Rennes",
+    "area": "Rennes et ses alentours",
+    "subtitle": "Depannage, chauffe-eau, salle de bain cle en main - un artisan d'ici, pas une plateforme.",
+    "about": "Artisan plombier de confiance, j'interviens en depannage, installation et renovation avec le meme soin. Diagnostic honnete, travail propre, prix juste.",
+    "heroImage": "https://images.unsplash.com/photo-1584622650111-993a426fbf0a?auto=format&fit=crop&w=1400&q=75",
+    "aboutImage": "https://images.unsplash.com/photo-1620626011761-996317b8d101?auto=format&fit=crop&w=1200&q=70",
+    "gallery": [
+      {
+        "url": "https://images.unsplash.com/photo-1552321554-5fefe8c9ef14?auto=format&fit=crop&w=1200&q=70",
+        "alt": ""
+      },
+      {
+        "url": "https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=1200&q=70",
+        "alt": ""
+      },
+      {
+        "url": "https://images.unsplash.com/photo-1507089947368-19c1da9775ae?auto=format&fit=crop&w=1200&q=70",
+        "alt": ""
+      },
+      {
+        "url": "https://images.unsplash.com/photo-1564540583246-934409427776?auto=format&fit=crop&w=1200&q=70",
+        "alt": ""
+      }
+    ],
+    "palette": {
+      "primary": "#1080B4",
+      "secondary": "#10293D",
+      "accent": "#22A8C4"
+    },
+    "services": [
+      {
+        "title": "Dépannage & recherche de fuite",
+        "description": "Fuites visibles ou cachées : détection précise, réparation durable, dégâts limités."
+      },
+      {
+        "title": "Débouchage de canalisations",
+        "description": "WC, éviers, douches, colonnes : un débouchage propre, au furet ou à la pompe, sans abîmer vos installations."
+      },
+      {
+        "title": "Chauffe-eau & ballon",
+        "description": "Remplacement, entretien et réglage — de l'électrique au thermodynamique, dimensionné pour votre foyer."
+      },
+      {
+        "title": "Chauffage & radiateurs",
+        "description": "Purge, équilibrage, remplacement de radiateurs et raccordements — pour un hiver sans mauvaise surprise."
+      },
+      {
+        "title": "Salle de bain clé en main",
+        "description": "De la dépose à la pose finale : douche, baignoire, meubles — coordonné avec les bons corps de métier."
+      },
+      {
+        "title": "Robinetterie & sanitaires",
+        "description": "Pose et remplacement de robinets, WC, éviers — des marques fiables, posées dans les règles."
+      },
+      {
+        "title": "Cuisine & électroménager",
+        "description": "Évier, lave-vaisselle, lave-linge : arrivées d'eau, évacuations et pose soignée, sans fuite au premier cycle."
+      },
+      {
+        "title": "Entretien & mise en conformité",
+        "description": "Adoucisseur, groupe de sécurité, arrivées d'eau : une installation saine, durable et aux normes."
+      }
+    ],
+    "reviews": [
+      {
+        "author": "Camille B.",
+        "text": "Fuite sous l'evier un dimanche soir : rappele en dix minutes, repare le lendemain matin. Serieux, propre et honnete sur le prix.",
+        "rating": 5
+      },
+      {
+        "author": "Herve M.",
+        "text": "Remplacement de notre chauffe-eau : devis clair, pose soignee, tout explique. Chantier impeccable en partant.",
+        "rating": 5
+      },
+      {
+        "author": "Nathalie P.",
+        "text": "Salle de bain refaite du sol au plafond. Delais tenus, belles finitions, vrai suivi. Je recommande sans hesiter.",
+        "rating": 4
+      }
+    ],
+    "faq": [
+      {
+        "question": "Le devis est-il vraiment gratuit ?",
+        "answer": "Oui. Le déplacement pour constater et le chiffrage sont gratuits et sans engagement. Le prix validé ensemble est le prix payé."
+      },
+      {
+        "question": "En combien de temps intervenez-vous pour une fuite ?",
+        "answer": "Les urgences passent en priorité : l'objectif est d'intervenir dans la journée. Au téléphone, on vous donne aussi les premiers gestes pour limiter les dégâts."
+      },
+      {
+        "question": "Travaillez-vous avec les assurances en cas de dégât des eaux ?",
+        "answer": "Oui. On vous fournit les éléments nécessaires à votre dossier (constat, factures, photos) et, si besoin, une recherche de fuite documentée."
+      },
+      {
+        "question": "Vos travaux sont-ils garantis ?",
+        "answer": "Oui. Les travaux sont couverts par la garantie décennale et une assurance responsabilité civile professionnelle ; le matériel posé conserve sa garantie fabricant."
+      },
+      {
+        "question": "Pouvez-vous rénover une salle de bain complète ?",
+        "answer": "Oui, en coordonnant les corps de métier nécessaires (carrelage, électricité) pour livrer une salle de bain terminée, prête à utiliser."
+      },
+      {
+        "question": "Quels moyens de paiement acceptez-vous ?",
+        "answer": "Carte, virement ou chèque, avec une facture détaillée remise après chaque intervention. Pour les gros chantiers, un échéancier peut être convenu au devis."
+      },
+      {
+        "question": "Quels délais pour des travaux planifiés ?",
+        "answer": "Après validation du devis, une date est calée ensemble — en général sous une à trois semaines selon la saison et l'ampleur du chantier. La date convenue est tenue."
+      },
+      {
+        "question": "Intervenez-vous pour les copropriétés et les professionnels ?",
+        "answer": "Oui : syndics, gestionnaires, commerces et petites entreprises. Interventions documentées (photos, rapport) et facturation adaptée."
+      }
+    ],
+    "openingHours": [
+      {
+        "day": "Lundi - Vendredi",
+        "hours": "8h - 19h"
+      },
+      {
+        "day": "Samedi",
+        "hours": "9h - 12h"
+      },
+      {
+        "day": "Dimanche",
+        "hours": "Urgences uniquement"
+      }
+    ]
+  },
+  "electrician-lumen": {
+    "businessName": "Volt & Fils",
+    "phone": "02 40 12 34 56",
+    "email": "contact@voltetfils.fr",
+    "city": "Nantes",
+    "area": "Nantes et ses alentours",
+    "subtitle": "Depannage, mise aux normes, renovation et borne de recharge - propre, securise et garanti.",
+    "about": "Electricien qualifie a votre service : depannage, mise aux normes, renovation et borne de recharge. Travail conforme, soigne et securise.",
+    "heroImage": "https://images.unsplash.com/photo-1621905251189-08b45d6a269e?auto=format&fit=crop&w=1400&q=75",
+    "aboutImage": "https://images.unsplash.com/photo-1621905252507-b35492cc74b4?auto=format&fit=crop&w=1200&q=70",
+    "gallery": [
+      {
+        "url": "https://images.unsplash.com/photo-1558618666-fcd25c85cd64?auto=format&fit=crop&w=1200&q=70",
+        "alt": ""
+      },
+      {
+        "url": "https://images.unsplash.com/photo-1581092918056-0c4c3acd3789?auto=format&fit=crop&w=1200&q=70",
+        "alt": ""
+      },
+      {
+        "url": "https://images.unsplash.com/photo-1581091226825-a6a2a5aee158?auto=format&fit=crop&w=1200&q=70",
+        "alt": ""
+      },
+      {
+        "url": "https://images.unsplash.com/photo-1581092160562-40aa08e78837?auto=format&fit=crop&w=1200&q=70",
+        "alt": ""
+      }
+    ],
+    "palette": {
+      "primary": "#FFD400",
+      "secondary": "#070B14",
+      "accent": "#FF9F1C"
+    },
+    "reviews": [
+      {
+        "author": "Marie L.",
+        "text": "Intervention le jour meme pour une panne generale. Probleme trouve en 20 minutes, tout remis en service et bien explique.",
+        "rating": 5
+      },
+      {
+        "author": "Julien R.",
+        "text": "Remplacement complet de notre vieux tableau. Travail tres propre, delais tenus, prix du devis respecte au centime.",
+        "rating": 5
+      },
+      {
+        "author": "Sophie D.",
+        "text": "Pose d'une borne de recharge pour ma voiture electrique. Bons conseils, installation nickel. Je recommande.",
+        "rating": 4
+      }
+    ],
+    "openingHours": [
+      {
+        "day": "Lundi - Vendredi",
+        "hours": "8h - 19h"
+      },
+      {
+        "day": "Samedi",
+        "hours": "9h - 12h"
+      },
+      {
+        "day": "Dimanche",
+        "hours": "Urgences uniquement"
+      }
+    ],
+    "services": [
+      {
+        "title": "Dépannage électrique",
+        "description": "Panne, court-circuit, disjoncteur qui saute : diagnostic et remise en service rapides."
+      },
+      {
+        "title": "Mise aux normes",
+        "description": "Remise à niveau de votre installation (NF C 15-100) et attestation Consuel."
+      },
+      {
+        "title": "Tableau électrique",
+        "description": "Remplacement et modernisation de votre tableau et de vos protections."
+      },
+      {
+        "title": "Installation & rénovation",
+        "description": "Neuf ou rénovation : réseau complet, prises, points lumineux."
+      },
+      {
+        "title": "Éclairage & domotique",
+        "description": "Éclairage intérieur/extérieur, interrupteurs connectés, domotique."
+      },
+      {
+        "title": "Borne de recharge",
+        "description": "Installation de bornes de recharge pour véhicule électrique."
+      }
+    ],
+    "faq": [
+      {
+        "question": "Intervenez-vous en urgence ?",
+        "answer": "Oui, pour toute panne électrique nous intervenons au plus vite, 7j/7."
+      },
+      {
+        "question": "Le devis est-il gratuit ?",
+        "answer": "Le devis est gratuit et sans engagement, remis avant les travaux."
+      },
+      {
+        "question": "Délivrez-vous une attestation Consuel ?",
+        "answer": "Oui, pour toute installation neuve ou mise aux normes soumise au Consuel."
+      },
+      {
+        "question": "Quelles zones couvrez-vous ?",
+        "answer": "Votre ville et ses alentours. Appelez pour vérifier votre commune."
+      },
+      {
+        "question": "Vos travaux sont-ils garantis ?",
+        "answer": "Oui, nos installations sont conformes et couvertes par la garantie décennale."
+      }
+    ]
+  }
+}
