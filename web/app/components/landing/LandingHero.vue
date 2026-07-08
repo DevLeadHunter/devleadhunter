@@ -39,13 +39,16 @@
       </div>
 
       <!-- Trust row -->
-      <ul class="hero-rise mt-9 flex flex-wrap items-center gap-x-6 gap-y-2" :style="{ animationDelay: '360ms' }">
+      <ul
+        class="hero-rise mt-9 flex flex-wrap items-center gap-x-6 gap-y-4 sm:gap-y-2"
+        :style="{ animationDelay: '360ms' }"
+      >
         <li
           v-for="trustKey in trustKeys"
           :key="trustKey"
           class="font-label inline-flex items-center gap-2 text-xs tracking-wide text-[#6b6355] uppercase"
         >
-          <i class="fa-solid fa-check text-[0.65rem] text-[#1b1813]" aria-hidden="true"></i>
+          <i class="fa-solid fa-check text-[0.65rem] text-[#e8a33c]" aria-hidden="true"></i>
           {{ $t(trustKey) }}
         </li>
       </ul>
