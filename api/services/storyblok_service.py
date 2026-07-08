@@ -113,11 +113,9 @@ class StoryblokService:
         """
         area: str = city or "votre secteur"
         subtitle: str = description or template_registry.default_subtitle(template_id, area)
-        palette: dict[str, str] = theme or {
-            "primary": "#0284c7",
-            "secondary": "#0f172a",
-            "accent": "#f59e0b",
-        }
+        # No explicit theme → use the template's own signature palette (Lumen yellow,
+        # Cuivre water-blue…) instead of a generic fallback, so generated demos keep their DA.
+        palette: dict[str, str] = theme or template_registry.default_theme(template_id)
 
         # Phase 4b — templates that opt in produce a FLAT SiteContent that already
         # consumes enrichment; the rich enrichment merge must not run for them.

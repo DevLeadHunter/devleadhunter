@@ -51,6 +51,23 @@ def default_subtitle(template_id: str, area: str) -> str:
     return f"Plombier professionnel — dépannage rapide à {area}"
 
 
+def default_theme(template_id: str) -> dict[str, str]:
+    """Return a template's signature palette (its ``TEMPLATE_META['default_theme']``).
+
+    Used when a demo is generated without an explicit theme, so the site renders in the
+    template's own DA colours (e.g. Lumen's yellow) rather than a generic fallback.
+    """
+    meta = getattr(get_module(template_id), "TEMPLATE_META", {}) or {}
+    theme = meta.get("default_theme")
+    if isinstance(theme, dict) and theme:
+        return {
+            "primary": str(theme.get("primary", "#0284c7")),
+            "secondary": str(theme.get("secondary", "#0f172a")),
+            "accent": str(theme.get("accent", "#f59e0b")),
+        }
+    return {"primary": "#0284c7", "secondary": "#0f172a", "accent": "#f59e0b"}
+
+
 def build_content(
     *,
     template_id: str,
