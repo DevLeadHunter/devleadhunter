@@ -12,6 +12,11 @@ export default {
     extend: {
       fontFamily: {
         sans: ['Inter', 'system-ui', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'sans-serif'],
+        // Landing (editorial light theme) — Fraunces display serif, Instrument Sans body,
+        // Spline Sans Mono for data labels/eyebrows.
+        display: ['Fraunces', 'Georgia', 'serif'],
+        body: ['Instrument Sans', 'Inter', 'system-ui', 'sans-serif'],
+        label: ['Spline Sans Mono', 'ui-monospace', 'SFMono-Regular', 'monospace'],
       },
       colors: {
         dark: {

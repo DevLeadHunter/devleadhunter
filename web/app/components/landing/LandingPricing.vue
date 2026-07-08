@@ -1,120 +1,64 @@
 <template>
-  <section id="pricing" class="scroll-mt-20 bg-[#050505] py-24 md:py-32">
-    <div class="container mx-auto px-4 md:px-6 lg:px-8">
-      <div class="mx-auto mb-16 max-w-2xl text-center">
-        <div
-          v-reveal
-          class="mb-5 inline-flex items-center gap-2 rounded-full border border-[#2BAD5F]/30 bg-[#2BAD5F]/10 px-4 py-1.5"
+  <section id="pricing" class="px-5 py-24 md:px-8 md:py-36">
+    <div class="mx-auto max-w-6xl">
+      <div class="mx-auto max-w-2xl text-center">
+        <p v-reveal class="landing-eyebrow">{{ $t('landing.pricing.eyebrow') }}</p>
+        <h2
+          v-reveal="{ delay: 80 }"
+          class="font-display mt-6 text-4xl leading-[1.06] font-semibold tracking-[-0.015em] text-[#1b1813] md:text-5xl"
         >
-          <i class="fa-solid fa-tag text-xs text-[#3fb950]"></i>
-          <span class="text-xs font-semibold tracking-wide text-[#3fb950] uppercase">{{ $t('nav.pricing') }}</span>
-        </div>
-        <h2 v-reveal class="mb-5 text-3xl font-bold tracking-tight text-[#f9f9f9] md:text-4xl lg:text-5xl">
-          {{ $t('pricing.title') }}
+          {{ $t('landing.pricing.title') }}
         </h2>
-        <p v-reveal class="text-base leading-relaxed text-[#8b949e] md:text-lg">{{ $t('pricing.subtitle') }}</p>
+        <p v-reveal="{ delay: 160 }" class="mt-5 text-lg leading-relaxed text-[#6b6355]">
+          {{ $t('landing.pricing.subtitle') }}
+        </p>
       </div>
 
-      <!-- Loading skeleton -->
-      <div v-if="loading" class="mx-auto max-w-4xl">
-        <div class="animate-pulse rounded-3xl border border-[#30363d] bg-[#0d1117] p-8">
-          <div class="mb-4 h-6 w-1/3 rounded bg-[#21262d]"></div>
-          <div class="mb-8 h-4 w-2/3 rounded bg-[#21262d]"></div>
-          <div class="grid grid-cols-2 gap-4 md:grid-cols-4">
-            <div v-for="n in 4" :key="n" class="h-20 rounded-xl bg-[#21262d]"></div>
+      <div
+        v-reveal="{ delay: 220 }"
+        class="landing-card mx-auto mt-14 max-w-3xl overflow-hidden md:grid md:grid-cols-2"
+      >
+        <!-- ROI pull-quote + CTA -->
+        <div class="flex flex-col justify-between gap-10 p-8 md:border-r md:border-[#e3dccd] md:p-10">
+          <blockquote class="font-display text-2xl leading-snug font-medium text-[#1b1813] italic md:text-[1.7rem]">
+            «&nbsp;{{ $t('landing.pricing.roiNote') }}&nbsp;»
+          </blockquote>
+          <div>
+            <NuxtLink :to="localePath('/signup')" class="landing-btn-primary w-full text-center md:w-auto">
+              {{ $t('landing.pricing.cta') }}
+            </NuxtLink>
           </div>
         </div>
-      </div>
 
-      <!-- Pricing card -->
-      <div v-else-if="settings" v-reveal class="mx-auto max-w-4xl">
-        <div class="overflow-hidden rounded-3xl border border-[#30363d] bg-[#0d1117]">
-          <div class="border-b border-[#30363d] bg-[#161b22] p-7 md:p-9">
-            <div class="flex flex-col items-start justify-between gap-5 md:flex-row md:items-center">
-              <div>
-                <h3 class="mb-1.5 text-xl font-bold text-[#f9f9f9] md:text-2xl">{{ $t('pricing.creditsTitle') }}</h3>
-                <p class="text-sm text-[#8b949e]">{{ $t('pricing.creditsSubtitle') }}</p>
-              </div>
-              <div class="flex items-baseline gap-1.5 rounded-2xl border border-[#2BAD5F]/30 bg-[#2BAD5F]/10 px-5 py-3">
-                <span class="text-3xl font-bold text-[#f9f9f9]">€{{ settings.price_per_credit.toFixed(2) }}</span>
-                <span class="text-sm font-medium text-[#8b949e]"
-                  >/ {{ $t('pricing.pricePerCredit').toLowerCase() }}</span
-                >
-              </div>
+        <!-- Credit stats -->
+        <div class="bg-[#f6f3ec]/60 p-8 md:p-10">
+          <!-- Loading skeleton -->
+          <div v-if="props.loading" class="space-y-6" aria-hidden="true">
+            <div v-for="row in 4" :key="row" class="animate-pulse border-b border-dashed border-[#e3dccd] pb-5">
+              <div class="h-7 w-16 rounded bg-[#e3dccd]"></div>
+              <div class="mt-2 h-3 w-40 rounded bg-[#e3dccd]/70"></div>
             </div>
           </div>
 
-          <div class="p-7 md:p-9">
-            <!-- Usage cards -->
-            <div class="mb-8 grid grid-cols-1 gap-4 md:grid-cols-2">
-              <div class="rounded-2xl border border-[#30363d] bg-[#161b22] p-5">
-                <div class="mb-3 flex h-10 w-10 items-center justify-center rounded-xl bg-[#58a6ff]/10">
-                  <i class="fa-solid fa-magnifying-glass text-[#58a6ff]"></i>
-                </div>
-                <h4 class="mb-1.5 text-base font-semibold text-[#f9f9f9]">{{ $t('pricing.search.title') }}</h4>
-                <p class="text-sm leading-relaxed text-[#8b949e]">{{ $t('pricing.search.description') }}</p>
-              </div>
-              <div class="rounded-2xl border border-[#30363d] bg-[#161b22] p-5">
-                <div class="mb-3 flex h-10 w-10 items-center justify-center rounded-xl bg-[#2BAD5F]/10">
-                  <i class="fa-solid fa-paper-plane text-[#3fb950]"></i>
-                </div>
-                <h4 class="mb-1.5 text-base font-semibold text-[#f9f9f9]">{{ $t('pricing.email.title') }}</h4>
-                <p class="text-sm leading-relaxed text-[#8b949e]">{{ $t('pricing.email.description') }}</p>
-              </div>
-            </div>
-
-            <!-- Credit cost breakdown -->
-            <div class="grid grid-cols-2 gap-4 border-t border-[#30363d] pt-8 md:grid-cols-4">
-              <div class="text-center">
-                <div class="mb-1 text-2xl font-bold text-[#f9f9f9]">{{ settings.credits_per_search }}</div>
-                <div class="text-xs font-medium tracking-wide text-[#8b949e] uppercase">
-                  {{ $t('pricing.creditsPerSearch') }}
-                </div>
-              </div>
-              <div class="text-center">
-                <div class="mb-1 text-2xl font-bold text-[#f9f9f9]">{{ settings.credits_per_result }}</div>
-                <div class="text-xs font-medium tracking-wide text-[#8b949e] uppercase">
-                  {{ $t('pricing.creditsPerResult') }}
-                </div>
-              </div>
-              <div class="text-center">
-                <div class="mb-1 text-2xl font-bold text-[#f9f9f9]">{{ settings.credits_per_email }}</div>
-                <div class="text-xs font-medium tracking-wide text-[#8b949e] uppercase">
-                  {{ $t('pricing.creditsPerEmail') }}
-                </div>
-              </div>
-              <div class="text-center">
-                <div class="mb-1 text-2xl font-bold text-[#f9f9f9]">{{ settings.minimum_credits_purchase }}</div>
-                <div class="text-xs font-medium tracking-wide text-[#8b949e] uppercase">
-                  {{ $t('pricing.minPurchase') }}
-                </div>
-              </div>
-            </div>
-
-            <!-- Free credits highlight + CTA -->
+          <!-- Stats -->
+          <dl v-else-if="pricingStats.length > 0">
             <div
-              class="mt-8 flex flex-col items-center justify-between gap-5 rounded-2xl border border-[#2BAD5F]/30 bg-[#2BAD5F]/[0.07] p-6 sm:flex-row"
+              v-for="(stat, index) in pricingStats"
+              :key="stat.labelKey"
+              class="border-dashed border-[#e3dccd] py-5 first:pt-0 last:pb-0"
+              :class="index < pricingStats.length - 1 ? 'border-b' : ''"
             >
-              <div class="text-center sm:text-left">
-                <div class="flex items-center justify-center gap-2 sm:justify-start">
-                  <i class="fa-solid fa-gift text-[#3fb950]"></i>
-                  <span class="text-2xl font-bold text-[#3fb950]">{{ settings.free_credits_on_signup }}</span>
-                  <span class="text-base font-medium text-[#f9f9f9]">{{ $t('pricing.freeCredits') }}</span>
-                </div>
-                <p class="mt-1.5 text-xs text-[#8b949e]">{{ $t('pricing.roiNote') }}</p>
-              </div>
-              <NuxtLink :to="localePath('/signup')" class="btn-emerald w-full py-3 text-sm sm:w-auto">
-                {{ $t('cta.primary') }}<i class="fa-solid fa-arrow-right text-xs"></i>
-              </NuxtLink>
+              <dt class="font-label order-2 text-[0.7rem] tracking-[0.14em] text-[#6b6355] uppercase">
+                {{ $t(stat.labelKey) }}
+              </dt>
+              <dd class="font-display order-1 text-3xl font-semibold text-[#1b1813]">{{ stat.value }}</dd>
             </div>
-          </div>
-        </div>
-      </div>
+          </dl>
 
-      <!-- Error fallback -->
-      <div v-else class="mx-auto max-w-2xl">
-        <div class="rounded-2xl border border-[#30363d] bg-[#0d1117] p-8 text-center text-sm text-[#8b949e]">
-          {{ $t('pricing.loadError') }}
+          <!-- Load error -->
+          <p v-else class="text-sm leading-relaxed text-[#6b6355]">
+            {{ $t('landing.pricing.loadError') }}
+          </p>
         </div>
       </div>
     </div>
@@ -122,30 +66,61 @@
 </template>
 
 <script lang="ts" setup>
-import type { ComputedRef, PropType } from 'vue'
-import { computed } from 'vue'
+import type { PropType, ComputedRef } from 'vue'
 import type { CreditSettings } from '~/types'
 import type { LandingPricingProps } from '~/types/LandingPricing'
+import { computed } from 'vue'
 
 /**
- * Pricing section presenting the pay-as-you-go credit model, fed by the API.
+ * Defines the component props.
  */
 const props: LandingPricingProps = defineProps({
   settings: {
+    // Nullable: Vue rejects `null` on a required Object prop, so use a default instead.
     type: Object as PropType<CreditSettings | null>,
     default: null,
   },
   loading: {
     type: Boolean,
-    default: false,
+    required: true,
   },
 })
 
+const { locale } = useI18n()
 const localePath = useLocalePath()
 
-/** Credit settings exposed to the template (null while loading or on error). */
-const settings: ComputedRef<CreditSettings | null> = computed((): CreditSettings | null => props.settings)
+/** One credit metric displayed in the pricing card. */
+interface LandingPricingStat {
+  /** Formatted value (count or price). */
+  value: string
+  /** i18n key of the metric label. */
+  labelKey: string
+}
 
-/** Whether the credit settings are still loading. */
-const loading: ComputedRef<boolean> = computed((): boolean => props.loading)
+/**
+ * Format a price in EUR for the active locale.
+ * @param value - Price in euros.
+ * @returns Localized currency string (e.g. « 0,05 € »).
+ */
+function formatPrice(value: number): string {
+  return new Intl.NumberFormat(locale.value, {
+    style: 'currency',
+    currency: 'EUR',
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 3,
+  }).format(value)
+}
+
+/** Credit metrics derived from the API settings (empty while unavailable). */
+const pricingStats: ComputedRef<LandingPricingStat[]> = computed((): LandingPricingStat[] => {
+  if (!props.settings) {
+    return []
+  }
+  return [
+    { value: String(props.settings.free_credits_on_signup), labelKey: 'landing.pricing.freeCredits' },
+    { value: formatPrice(props.settings.price_per_credit), labelKey: 'landing.pricing.pricePerCredit' },
+    { value: String(props.settings.credits_per_search), labelKey: 'landing.pricing.creditsPerSearch' },
+    { value: String(props.settings.credits_per_email), labelKey: 'landing.pricing.creditsPerEmail' },
+  ]
+})
 </script>

@@ -1,0 +1,165 @@
+<template>
+  <section id="how-it-works" class="relative pt-28 md:pt-40">
+    <!-- Section header -->
+    <div class="mx-auto max-w-6xl px-5 md:px-8">
+      <p v-reveal class="landing-eyebrow">{{ $t('landing.story.eyebrow') }}</p>
+      <h2
+        v-reveal="{ delay: 80 }"
+        class="font-display mt-6 max-w-3xl text-4xl leading-[1.06] font-semibold tracking-[-0.015em] text-[#1b1813] md:text-5xl"
+      >
+        {{ $t('landing.story.title') }}
+      </h2>
+      <p v-reveal="{ delay: 160 }" class="mt-5 max-w-xl text-lg leading-relaxed text-[#6b6355]">
+        {{ $t('landing.story.subtitle') }}
+      </p>
+    </div>
+
+    <!-- Desktop — sticky scroll narrative: the page pins while the acts advance.
+         Native position:sticky + scroll listener (no GSAP), so it works everywhere. -->
+    <div ref="stickyWrapperRef" class="relative hidden h-[400vh] md:block">
+      <div class="sticky top-0 flex h-screen items-center">
+        <div class="mx-auto w-full max-w-6xl px-8">
+          <div class="grid w-full grid-cols-2 items-center gap-12 xl:gap-20">
+            <!-- Acts -->
+            <div class="relative pl-10">
+              <div class="absolute top-2 bottom-2 left-0 w-px bg-[#e3dccd]" aria-hidden="true">
+                <div
+                  class="absolute inset-x-0 top-0 h-full origin-top bg-[#e8a33c]"
+                  :style="{ transform: `scaleY(${storyProgress})` }"
+                ></div>
+              </div>
+              <ol class="space-y-8">
+                <li
+                  v-for="act in storyActs"
+                  :key="act.actIndex"
+                  class="transition-opacity duration-500"
+                  :class="act.actIndex === activeActIndex ? 'opacity-100' : 'opacity-30'"
+                >
+                  <p class="font-label text-xs font-medium text-[#e8a33c]">0{{ act.actIndex + 1 }}</p>
+                  <h3 class="font-display mt-1 text-3xl font-semibold text-[#1b1813] xl:text-4xl">
+                    {{ $t(act.verbKey) }}
+                  </h3>
+                  <div
+                    class="grid transition-[grid-template-rows] duration-500 ease-out"
+                    :class="act.actIndex === activeActIndex ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]'"
+                  >
+                    <p class="max-w-md overflow-hidden text-base leading-relaxed text-[#6b6355]">
+                      {{ $t(act.descriptionKey) }}
+                    </p>
+                  </div>
+                </li>
+              </ol>
+            </div>
+
+            <!-- Visual stage -->
+            <div class="relative h-[440px]">
+              <div
+                v-for="act in storyActs"
+                :key="act.actIndex"
+                class="absolute inset-0 flex items-center transition-all duration-500 ease-out"
+                :class="stageCardClass(act.actIndex)"
+              >
+                <LandingStoryVisual :act-index="act.actIndex" class="w-full" />
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Mobile — stacked acts -->
+    <div class="mx-auto max-w-6xl space-y-16 px-5 pt-16 pb-24 md:hidden">
+      <div v-for="act in storyActs" :key="act.actIndex" class="grid gap-8">
+        <div v-reveal>
+          <p class="font-label text-xs font-medium text-[#e8a33c]">0{{ act.actIndex + 1 }}</p>
+          <h3 class="font-display mt-1 text-3xl font-semibold text-[#1b1813]">
+            {{ $t(act.verbKey) }}
+          </h3>
+          <p class="mt-3 max-w-md text-base leading-relaxed text-[#6b6355]">
+            {{ $t(act.descriptionKey) }}
+          </p>
+        </div>
+        <LandingStoryVisual v-reveal="{ delay: 120 }" :act-index="act.actIndex" class="mx-auto w-full max-w-md" />
+      </div>
+    </div>
+  </section>
+</template>
+
+<script lang="ts" setup>
+import type { Ref } from 'vue'
+import type { LandingStoryActIndex } from '~/types/LandingStoryVisual'
+import { ref, onMounted, onBeforeUnmount } from 'vue'
+
+/** One act of the prospect journey shown in the scroll narrative. */
+interface LandingStoryAct {
+  /** Stable act index, also passed to the visual card. */
+  actIndex: LandingStoryActIndex
+  /** i18n key of the act verb (e.g. « Trouver »). */
+  verbKey: string
+  /** i18n key of the act description. */
+  descriptionKey: string
+}
+
+/** The four acts of the pipeline story. */
+const storyActs: LandingStoryAct[] = [
+  { actIndex: 0, verbKey: 'landing.story.act1.verb', descriptionKey: 'landing.story.act1.description' },
+  { actIndex: 1, verbKey: 'landing.story.act2.verb', descriptionKey: 'landing.story.act2.description' },
+  { actIndex: 2, verbKey: 'landing.story.act3.verb', descriptionKey: 'landing.story.act3.description' },
+  { actIndex: 3, verbKey: 'landing.story.act4.verb', descriptionKey: 'landing.story.act4.description' },
+]
+
+/** Tall wrapper whose scroll range drives the narrative (4 acts ≈ 75vh each). */
+const stickyWrapperRef: Ref<HTMLElement | null> = ref<HTMLElement | null>(null)
+
+/** Index of the act currently highlighted by the scroll position. */
+const activeActIndex: Ref<number> = ref<number>(0)
+
+/** Scroll progress through the narrative, from 0 to 1 (drives the rail fill). */
+const storyProgress: Ref<number> = ref<number>(0)
+
+/**
+ * Compute the transition classes of a stage card from its position relative
+ * to the active act (active card visible, others slid away and hidden).
+ * @param index - Act index of the stage card.
+ * @returns Tailwind classes describing the card state.
+ */
+function stageCardClass(index: number): string {
+  if (index === activeActIndex.value) {
+    return 'z-10 translate-y-0 scale-100 opacity-100'
+  }
+  if (index < activeActIndex.value) {
+    return 'pointer-events-none z-0 -translate-y-10 scale-[0.96] opacity-0'
+  }
+  return 'pointer-events-none z-0 translate-y-10 scale-[0.96] opacity-0'
+}
+
+/**
+ * Update the narrative progress from the sticky wrapper position.
+ * Cheap enough to run directly in the scroll handler (one getBoundingClientRect).
+ */
+function handleStoryScroll(): void {
+  const wrapper: HTMLElement | null = stickyWrapperRef.value
+  if (!wrapper) {
+    return
+  }
+  const rect: DOMRect = wrapper.getBoundingClientRect()
+  const scrollableHeight: number = rect.height - window.innerHeight
+  if (scrollableHeight <= 0) {
+    return
+  }
+  const progress: number = Math.min(1, Math.max(0, -rect.top / scrollableHeight))
+  storyProgress.value = progress
+  activeActIndex.value = Math.min(storyActs.length - 1, Math.floor(progress * storyActs.length))
+}
+
+onMounted((): void => {
+  window.addEventListener('scroll', handleStoryScroll, { passive: true })
+  window.addEventListener('resize', handleStoryScroll, { passive: true })
+  handleStoryScroll()
+})
+
+onBeforeUnmount((): void => {
+  window.removeEventListener('scroll', handleStoryScroll)
+  window.removeEventListener('resize', handleStoryScroll)
+})
+</script>

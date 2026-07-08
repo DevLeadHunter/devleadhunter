@@ -1,12 +1,19 @@
 <template>
   <div>
     <LandingHero @discover="scrollToSection('#how-it-works')" />
-    <LandingPipeline />
-    <LandingFeatures />
-    <LandingPlatforms />
+    <LandingPipelineStory />
+    <LandingProductProof />
+    <LandingSectionDivider />
+    <LandingEmailCampaigns />
+    <LandingSectionDivider />
+    <LandingLeadScoring />
+    <LandingSectionDivider />
+    <LandingSaleAutomation />
+    <LandingFeatureGrid />
     <LandingPricing :settings="creditSettings" :loading="isLoading" />
+    <LandingSectionDivider />
     <LandingFaq />
-    <LandingCta />
+    <LandingFinalCta />
   </div>
 </template>
 
@@ -18,8 +25,8 @@ import * as creditSettingsService from '~/services/creditSettingsService'
 
 /**
  * Landing page — marketing presentation of DevLeadHunter.
- * Composes the hero, automation pipeline, feature deep-dives, platforms,
- * pricing, FAQ and final call-to-action.
+ * Editorial light redesign: hero, pinned pipeline story, product proof,
+ * feature grid, pricing, FAQ and final call-to-action.
  */
 definePageMeta({
   layout: 'marketing',
@@ -28,6 +35,9 @@ definePageMeta({
 })
 
 const { t } = useI18n()
+
+/** i18n-aware head attributes (lang, hreflang alternates, og:locale). */
+const localeHead = useLocaleHead()
 
 /** Credit settings fetched from the API (null while loading or on error). */
 const creditSettings: Ref<CreditSettings | null> = ref<CreditSettings | null>(null)
@@ -67,14 +77,43 @@ onMounted(async (): Promise<void> => {
   await loadCreditSettings()
 })
 
-// SEO meta
-useHead({
-  title: (): string => `DevLeadHunter — ${t('hero.title')} ${t('hero.titleHighlight')}`,
+// SEO meta — localized title/description, social cards, hreflang and JSON-LD.
+useHead(() => ({
+  title: t('landing.seo.title'),
+  htmlAttrs: localeHead.value.htmlAttrs,
+  link: localeHead.value.link,
   meta: [
+    { name: 'description', content: t('landing.seo.description') },
+    { property: 'og:title', content: t('landing.seo.title') },
+    { property: 'og:description', content: t('landing.seo.description') },
+    { property: 'og:type', content: 'website' },
+    { name: 'twitter:title', content: t('landing.seo.title') },
+    { name: 'twitter:description', content: t('landing.seo.description') },
+    ...(localeHead.value.meta ?? []),
+  ],
+  script: [
     {
-      name: 'description',
-      content: (): string => t('hero.subtitle'),
+      type: 'application/ld+json',
+      innerHTML: JSON.stringify({
+        '@context': 'https://schema.org',
+        '@type': 'SoftwareApplication',
+        name: 'DevLeadHunter',
+        description: t('landing.seo.description'),
+        applicationCategory: 'BusinessApplication',
+        operatingSystem: 'Web, Windows, macOS',
+        offers: {
+          '@type': 'Offer',
+          price: '0',
+          priceCurrency: 'EUR',
+          description: t('landing.hero.trust2'),
+        },
+        author: {
+          '@type': 'Person',
+          name: 'Léo Guillaume',
+          url: 'https://dibodev.fr',
+        },
+      }),
     },
   ],
-})
+}))
 </script>

@@ -1,264 +1,284 @@
 {
   "nav": {
-    "features": "Fonctionnalités",
-    "howItWorks": "Fonctionnement",
-    "platforms": "Plateformes",
+    "howItWorks": "Comment ça marche",
+    "product": "Le site livré",
     "pricing": "Tarifs",
     "faq": "FAQ",
     "login": "Connexion",
-    "signup": "Essayer gratuitement",
-    "downloads": "Télécharger"
+    "signup": "Commencer gratuitement"
   },
-  "hero": {
-    "badge": "Prospection automatisée de A à Z",
-    "title": "Transformez les entreprises sans site web en",
-    "titleHighlight": "clients qui paient",
-    "subtitle": "DevLeadHunter trouve les artisans et TPE sans site web, leur génère automatiquement un vrai site de démonstration, les contacte par email — et déploie leur site en ligne le jour où ils paient. Vous vendez, l'outil fait le reste.",
-    "ctaPrimary": "Commencer gratuitement",
-    "ctaSecondary": "Voir le fonctionnement",
-    "trust": {
-      "noSubscription": "Sans abonnement",
-      "freeCredits": "Crédits offerts à l'inscription",
-      "noCard": "Sans carte bancaire"
+  "landing": {
+    "seo": {
+      "title": "DevLeadHunter — Vendez des sites web aux artisans qui n'en ont pas",
+      "description": "DevLeadHunter trouve les entreprises sans site web, génère un site de démonstration à leur nom, les démarche par cold email et met le site en ligne au paiement. Prospection automatisée de bout en bout."
     },
-    "availableOn": "Disponible sur",
-    "mockup": {
-      "title": "Pipeline en direct",
-      "live": "En cours",
-      "step1": "Prospect trouvé",
-      "step1detail": "Plomberie Martin · Lyon",
-      "step2": "Site de démo généré",
-      "step2detail": "demo.dibodev.fr/plomberie-martin",
-      "step3": "Cold email envoyé",
-      "step3detail": "Variante A · relance programmée",
-      "step4": "Vendu",
-      "step4detail": "Site déployé · 500 €"
-    }
-  },
-  "metrics": {
-    "sources": "Sources de données",
-    "sourcesValue": "4+",
-    "steps": "Étapes automatisées",
-    "stepsValue": "6",
-    "demo": "Démo en ligne",
-    "demoValue": "14 j",
-    "subscription": "Abonnement",
-    "subscriptionValue": "0 €"
-  },
-  "pipeline": {
-    "badge": "Le pipeline complet",
-    "title": "De la recherche à la vente, en pilote automatique",
-    "subtitle": "Une seule chaîne, six étapes enchaînées automatiquement. Vous gardez la main à chaque étape, mais plus rien n'est fait à la main.",
-    "step1": {
-      "title": "Trouver",
-      "description": "On déniche les entreprises sans site web sur Google, Pages Jaunes et OpenStreetMap, avec leur email de contact."
+    "hero": {
+      "eyebrow": "Prospection automatisée · de la recherche à la vente",
+      "titleStart": "Vendez des sites web aux artisans",
+      "titleAccent": "qui n'en ont pas encore",
+      "subtitle": "DevLeadHunter trouve les entreprises sans site, génère un vrai site de démonstration à leur nom, les démarche par email — et le met en ligne le jour où elles paient.",
+      "ctaPrimary": "Commencer gratuitement",
+      "ctaSecondary": "Voir comment ça marche",
+      "trust1": "Sans abonnement",
+      "trust2": "Crédits offerts à l'inscription",
+      "trust3": "Sans carte bancaire"
     },
-    "step2": {
-      "title": "Enrichir",
-      "description": "Photos, avis, horaires, note Google, logo : chaque fiche est enrichie automatiquement avec ses données publiques."
+    "ticker": {
+      "ariaLabel": "Exemples de métiers prospectés",
+      "item1": "Plombier · Lyon",
+      "item2": "Électricien · Nantes",
+      "item3": "Menuisier · Bordeaux",
+      "item4": "Paysagiste · Toulouse",
+      "item5": "Carreleur · Lille",
+      "item6": "Couvreur · Rennes",
+      "item7": "Peintre · Marseille",
+      "item8": "Serrurier · Strasbourg"
     },
-    "step3": {
-      "title": "Générer le site",
-      "description": "Un vrai site web est généré depuis une template métier, prêt à être édité dans un CMS, sans une ligne de code."
+    "story": {
+      "eyebrow": "Comment ça marche",
+      "title": "Suivez un prospect dans la machine.",
+      "subtitle": "De la recherche au paiement, tout s'enchaîne automatiquement. Voici le trajet complet, avec un exemple.",
+      "act1": {
+        "verb": "Trouver",
+        "description": "Choisissez un métier et une ville. L'outil fouille Google, les Pages Jaunes et OpenStreetMap, écarte les entreprises qui ont déjà un site et récupère l'email de contact."
+      },
+      "act2": {
+        "verb": "Générer",
+        "description": "Une template métier se remplit avec ses vraies données — photos, avis, horaires — et devient un site de démonstration en ligne à son nom, pendant 14 jours."
+      },
+      "act3": {
+        "verb": "Démarcher",
+        "description": "Une campagne de cold email se lance : deux variantes en test A/B, relances automatiques et un envoi toutes les 20 minutes pour protéger votre réputation."
+      },
+      "act4": {
+        "verb": "Encaisser",
+        "description": "Le prospect paie par lien Stripe. Son site passe en production sur son domaine, il reçoit les accès du CMS — et vous encaissez 500 €."
+      },
+      "visual": {
+        "prospectLabel": "Fiche prospect",
+        "prospectName": "Plomberie Martin",
+        "prospectMeta": "Lyon 7ᵉ · 4,8 ★ · 126 avis",
+        "prospectEmail": "Email trouvé : contact{'@'}…",
+        "prospectStamp": "Sans site web",
+        "siteLabel": "Site démo · 14 jours",
+        "siteUrl": "demo.dibodev.fr/plomberie-martin",
+        "siteTitle": "Plomberie Martin",
+        "siteTagline": "Dépannage & rénovation à Lyon",
+        "siteCta": "Demander un devis",
+        "siteChip": "Éditable dans le CMS",
+        "emailLabel": "Cold email",
+        "emailSubject": "Un site web pour Plomberie Martin",
+        "emailPreview": "Bonjour, j'ai préparé un site de démonstration pour votre entreprise. Il est déjà en ligne, jetez-y un œil…",
+        "emailMeta": "Variante A · relance J+3 programmée",
+        "saleLabel": "Vente",
+        "saleAmount": "500 €",
+        "saleStatus": "Paiement reçu",
+        "saleDeploy": "En production sur plomberie-martin.fr",
+        "saleHandover": "Accès CMS transmis au client"
+      }
     },
-    "step4": {
-      "title": "Mettre en démo",
-      "description": "Le site part en ligne sur un lien de démonstration personnalisé, actif 14 jours, avant suppression automatique."
+    "proof": {
+      "eyebrow": "Ce que le prospect reçoit",
+      "title": "Un vrai site, pas une maquette.",
+      "description": "Chaque démonstration est un site complet, rapide, connecté à un CMS. Votre prospect découvre son entreprise déjà en ligne — c'est ce qui déclenche la vente.",
+      "bullet1": "Des templates métier au design soigné, qui ne sentent pas le site généré par IA",
+      "bullet2": "Le client modifie contenu, photos et pages lui-même dans le CMS, sans développeur",
+      "bullet3": "En démo pendant 14 jours, supprimé automatiquement ensuite"
     },
-    "step5": {
-      "title": "Contacter",
-      "description": "Une campagne de cold email se lance : test A/B, relances et cadence anti-spam d'un envoi toutes les 20 minutes."
+    "campaigns": {
+      "eyebrow": "Cold email & A/B testing",
+      "title": "Deux emails s'affrontent, le meilleur gagne.",
+      "description": "Chaque campagne envoie deux variantes d'email en test A/B et mesure ouvertures et clics par variante. Les silencieux sont relancés automatiquement, et la cadence d'envoi protège votre domaine.",
+      "bullet1": "Deux variantes testées sur chaque campagne, stats par variante",
+      "bullet2": "Relances automatiques programmables (J+3, J+7…)",
+      "bullet3": "Un envoi toutes les 20 minutes, réputation d'envoi préservée",
+      "bullet4": "Désinscription RGPD incluse dans chaque email",
+      "card": {
+        "label": "Campagne · Plombiers Lyon",
+        "leaderBadge": "En tête",
+        "variantALabel": "Variante A",
+        "variantASubject": "Un site web pour Plomberie Martin",
+        "variantAStats": "38 % ouvertures · 12 % clics",
+        "variantBLabel": "Variante B",
+        "variantBSubject": "Et si vos clients vous trouvaient sur Google ?",
+        "variantBStats": "26 % ouvertures · 5 % clics",
+        "meta": "Relance J+3 programmée · 1 envoi / 20 min"
+      }
     },
-    "step6": {
-      "title": "Vendre & déployer",
-      "description": "Le prospect paie via Stripe → son site passe en production sur son domaine et les accès au CMS lui sont remis."
-    }
-  },
-  "features": {
-    "title": "Tout ce qu'une agence fait à la main, automatisé",
-    "subtitle": "Chaque brique du métier de prospection, du premier contact à la mise en ligne, réunie dans un seul outil.",
-    "demoSite": {
-      "badge": "Génération de site automatique",
-      "heading": "Un vrai site web généré pour chaque prospect",
-      "description": "Fini les maquettes faites à la main. DevLeadHunter remplit une template métier avec les vraies données du prospect et publie un site complet, éditable dans un CMS. Votre prospect voit un site à son nom avant même de vous répondre.",
-      "feature1": "Templates par métier au design soigné — pas un site « fait par IA »",
-      "feature2": "Contenu, photos et couleurs injectés automatiquement",
-      "feature3": "Éditable dans un CMS (Storyblok), sans développeur",
-      "feature4": "Espace CMS dédié et accès remis automatiquement à la vente",
-      "mockupUrl": "demo.dibodev.fr/plomberie-martin",
-      "mockupTitle": "Plomberie Martin",
-      "mockupTag": "Dépannage 24/7 à Lyon",
-      "mockupCta": "Demander un devis",
-      "mockupEdit": "Modifiable dans le CMS"
+    "behavior": {
+      "eyebrow": "Scoring & comportement",
+      "title": "Sachez qui rappeler en premier.",
+      "description": "DevLeadHunter suit ce que fait chaque prospect sur sa démo et avec vos emails, calcule un score chaud / tiède / froid, et l'IA résume l'intérêt de chacun. Les relances peuvent même s'adapter à ce comportement.",
+      "bullet1": "Score combinant visites de la démo et engagement email",
+      "bullet2": "Résumé IA de l'intérêt de chaque prospect",
+      "bullet3": "Relances personnalisées selon le comportement",
+      "card": {
+        "label": "Comportement prospect",
+        "name": "Plomberie Martin",
+        "badge": "Chaud",
+        "event1": "A visité sa démo 3 fois",
+        "event2": "A ouvert l'email 2 fois",
+        "event3": "A cliqué sur « Demander un devis »",
+        "aiLabel": "Résumé IA",
+        "aiSummary": "Prospect très engagé : revenu plusieurs fois sur sa démo et a cliqué sur le devis. À relancer en priorité aujourd'hui."
+      }
     },
-    "prospecting": {
-      "badge": "Prospection & enrichissement",
-      "heading": "Trouvez les entreprises qui ont le plus besoin de vous",
-      "description": "Ciblez un métier et une ville. L'outil parcourt plusieurs annuaires, ne garde que les entreprises sans site web, récupère leur email et enrichit chaque fiche avec ses données publiques.",
-      "feature1": "Recherche multi-sources : Google, Pages Jaunes, OpenStreetMap",
-      "feature2": "Détection des entreprises sans site web",
-      "feature3": "Récupération automatique de l'email de contact",
-      "feature4": "Enrichissement : photos, avis, note, horaires, logo",
-      "mockupTag": "Sans site web",
-      "card1Name": "Plomberie Martin",
-      "card1Meta": "Lyon · 4,8 ★ (126 avis)",
-      "card2Name": "Élec Dupont",
-      "card2Meta": "Villeurbanne · 4,6 ★ (84 avis)",
-      "card3Name": "Menuiserie Petit",
-      "card3Meta": "Bron · 4,9 ★ (57 avis)"
+    "sale": {
+      "eyebrow": "Vente & mise en ligne",
+      "title": "Du paiement au site en prod, en un clic.",
+      "description": "Envoyez un lien de paiement Stripe accompagné de l'aperçu du site. Une fois payé : déploiement en production sur le domaine du client, retrait de la démo et remise des accès CMS — automatiquement.",
+      "bullet1": "Lien de paiement Stripe avec aperçu du site",
+      "bullet2": "Déploiement automatique en production (Vercel) + domaine",
+      "bullet3": "Accès CMS remis au client à la vente",
+      "bullet4": "Suivi commercial : commandes, chiffre d'affaires, pipeline",
+      "card": {
+        "label": "Commande nº 1042",
+        "name": "Plomberie Martin",
+        "provider": "Stripe",
+        "step1": "Paiement reçu · 500 €",
+        "step2": "Déploiement en production…",
+        "step3": "En ligne sur plomberie-martin.fr",
+        "step4": "Accès CMS transmis au client"
+      }
     },
-    "coldEmail": {
-      "badge": "Cold email automatisé",
-      "heading": "Des campagnes email qui tournent toutes seules",
-      "description": "Rédigez deux variantes, l'outil envoie, teste, relance et respecte les bonnes pratiques anti-spam. Chaque email contient le lien de démo personnalisé du prospect.",
-      "feature1": "Test A/B pour trouver le message qui convertit",
-      "feature2": "Relances automatiques personnalisables",
-      "feature3": "Cadence anti-spam : 1 email toutes les 20 minutes",
-      "feature4": "Resend, Gmail ou votre domaine — désinscription RGPD incluse",
-      "variantA": "Variante A",
-      "variantB": "Variante B",
-      "variantApreview": "Bonjour, j'ai préparé un site pour votre entreprise…",
-      "variantBpreview": "Et si vos clients vous trouvaient enfin en ligne ?",
-      "queueLabel": "File d'envoi",
-      "queueValue": "1 / 20 min",
-      "followUp": "Relance J+3 programmée"
-    },
-    "leadScoring": {
-      "badge": "Scoring & comportement (IA)",
-      "heading": "Sachez qui rappeler en premier",
-      "description": "DevLeadHunter suit ce que font vos prospects sur leur démo et avec vos emails, calcule un score chaud / tiède / froid et résume l'intérêt de chacun grâce à l'IA. Les relances peuvent même s'adapter à leur comportement.",
-      "feature1": "Score chaud / tiède / froid combinant démo et emails",
-      "feature2": "Suivi du comportement sur le site de démo",
-      "feature3": "Résumé IA de l'intérêt de chaque prospect",
-      "feature4": "Relances personnalisées selon le comportement",
-      "hot": "Chaud",
-      "warm": "Tiède",
-      "cold": "Froid",
-      "timeline1": "A visité sa démo 3 fois",
-      "timeline2": "A ouvert l'email 2 fois",
-      "timeline3": "A cliqué sur « Demander un devis »",
-      "aiLabel": "Résumé IA",
-      "aiSummary": "Prospect très engagé : revenu plusieurs fois sur sa démo et a cliqué sur le devis. À relancer en priorité aujourd'hui."
-    },
-    "sales": {
-      "badge": "Tunnel de vente & mise en ligne",
-      "heading": "Du paiement au site en production, en un clic",
-      "description": "Envoyez un lien de paiement Stripe avec un aperçu du site. Une fois payé, le site passe en production sur le domaine du client, la démo est retirée et les accès au CMS sont transférés — automatiquement.",
-      "feature1": "Lien de paiement Stripe avec aperçu du site",
-      "feature2": "Déploiement automatique en production (Vercel) + domaine",
-      "feature3": "Remise des accès CMS au client à la vente",
-      "feature4": "Suivi commercial : commandes, chiffre d'affaires, pipeline",
-      "orderLabel": "Commande #1042",
-      "orderPaid": "Payé · 500 €",
-      "deploying": "Déploiement en cours…",
-      "deployed": "En ligne sur plomberie-martin.fr"
-    },
-    "highlights": {
-      "title": "Et tout ce qu'il faut autour",
+    "features": {
+      "eyebrow": "Sous le capot",
+      "title": "La prospection entière, sans les corvées.",
+      "deliverability": {
+        "title": "Envoi irréprochable",
+        "description": "Resend, Gmail ou votre propre domaine. Désinscription RGPD dans chaque email, cadence anti-spam automatique."
+      },
+      "platforms": {
+        "title": "Web, desktop et mobile",
+        "description": "Une app web complète, un logiciel Windows / macOS avec mises à jour automatiques, une interface pensée pour le téléphone."
+      },
       "analytics": {
-        "title": "Tableau de bord analytique",
-        "description": "KPIs, tunnel de conversion et activité : pilotez votre prospection d'un coup d'œil."
-      },
-      "credits": {
-        "title": "Système de crédits",
-        "description": "Payez à l'usage, sans abonnement. Achetez des crédits quand vous en avez besoin."
-      },
-      "emailAccounts": {
-        "title": "Plusieurs comptes email",
-        "description": "Envoyez depuis Resend, Gmail ou votre propre domaine, en jonglant entre les adresses."
+        "title": "Tableau de bord & suivi commercial",
+        "description": "KPIs, tunnel de conversion, commandes et chiffre d'affaires : votre prospection se pilote d'un coup d'œil."
       },
       "security": {
-        "title": "Données chiffrées",
-        "description": "Vos comptes et secrets sont chiffrés et protégés selon des standards stricts."
-      },
-      "i18n": {
-        "title": "Multilingue",
-        "description": "Interface disponible en français et en anglais, prête pour de nouveaux marchés."
-      },
-      "autoUpdate": {
-        "title": "Mises à jour automatiques",
-        "description": "L'application desktop se met à jour toute seule, sans réinstallation."
+        "title": "Vos données chiffrées",
+        "description": "Comptes email et secrets chiffrés en base, données scopées par utilisateur. Votre prospection reste la vôtre."
       }
-    }
-  },
-  "platforms": {
-    "badge": "Disponible partout",
-    "title": "Travaillez où vous voulez",
-    "subtitle": "La même puissance sur le web, sur votre ordinateur et sur votre téléphone. Vos données sont synchronisées via votre compte.",
-    "web": {
-      "title": "Application web",
-      "description": "Une application web complète, dans n'importe quel navigateur. Rien à installer, accessible immédiatement.",
-      "cta": "Ouvrir l'application web"
     },
-    "desktop": {
-      "title": "Logiciel desktop",
-      "os": "Windows · macOS",
-      "description": "Une application native pour Windows et macOS, avec mises à jour automatiques. Idéale pour les longues sessions de prospection.",
-      "cta": "Télécharger l'app"
+    "pricing": {
+      "eyebrow": "Tarifs",
+      "title": "Pas d'abonnement. Des crédits.",
+      "subtitle": "Testez avec des crédits offerts, puis payez à l'usage : les crédits servent aux recherches et aux envois d'emails.",
+      "freeCredits": "crédits offerts à l'inscription",
+      "pricePerCredit": "par crédit",
+      "creditsPerSearch": "crédits par recherche",
+      "creditsPerEmail": "crédits par email",
+      "cta": "Commencer gratuitement",
+      "roiNote": "Un seul site vendu — 500 € — rembourse des années de crédits.",
+      "loadError": "Impossible de charger les tarifs pour le moment. Réessayez plus tard."
     },
-    "mobile": {
-      "title": "Mobile",
-      "description": "Interface 100% responsive : suivez vos prospects et pilotez vos campagnes depuis votre téléphone.",
-      "badge": "100% responsive"
-    }
-  },
-  "pricing": {
-    "title": "Un tarif simple : payez à l'usage",
-    "subtitle": "Pas d'abonnement, pas d'engagement. Des crédits offerts pour tester, puis vous achetez seulement ce dont vous avez besoin.",
-    "creditsTitle": "Comment fonctionnent les crédits",
-    "creditsSubtitle": "Les crédits sont consommés pour vos recherches et vos envois d'emails — vous ne payez que ce que vous utilisez.",
-    "search": {
-      "title": "Recherche & enrichissement",
-      "description": "Chaque recherche consomme quelques crédits. Plus vous explorez, plus vous trouvez de prospects qualifiés."
-    },
-    "email": {
-      "title": "Envoi d'emails",
-      "description": "Chaque email envoyé consomme des crédits. Rechargez à tout moment, en une minute."
-    },
-    "freeCredits": "Crédits offerts à l'inscription",
-    "minPurchase": "Achat minimum",
-    "pricePerCredit": "Prix par crédit",
-    "creditsPerSearch": "Crédits par recherche",
-    "creditsPerResult": "Crédits par résultat",
-    "creditsPerEmail": "Crédits par email",
-    "buyCredits": "Acheter des crédits",
-    "roiNote": "Un seul site vendu finance des milliers de crédits.",
-    "loadError": "Impossible de charger les tarifs pour le moment. Réessayez plus tard.",
     "faq": {
-      "title": "Questions fréquentes",
+      "eyebrow": "FAQ",
+      "title": "Questions fréquentes.",
       "q1": "Concrètement, qu'est-ce que DevLeadHunter ?",
-      "a1": "C'est une chaîne d'automatisation complète : elle trouve des entreprises sans site web, leur génère un site de démonstration, les contacte par cold email et déploie leur site en production quand elles achètent — le tout depuis un seul outil.",
+      "a1": "Une chaîne d'automatisation complète : elle trouve des entreprises sans site web, leur génère un site de démonstration, les contacte par cold email et déploie leur site en production quand elles achètent — le tout depuis un seul outil.",
       "q2": "Le site généré est-il un vrai site éditable ?",
-      "a2": "Oui. Ce n'est pas une simple image : c'est un vrai site web, performant, connecté à un CMS (Storyblok). Le client peut modifier le contenu, les photos et les pages lui-même, sans développeur.",
+      "a2": "Oui. Ce n'est pas une image : c'est un vrai site web performant, connecté à un CMS (Storyblok). Le client modifie le contenu, les photos et les pages lui-même, sans développeur.",
       "q3": "Sur quelles plateformes puis-je l'utiliser ?",
-      "a3": "Sur le web (n'importe quel navigateur), en application desktop native Windows et macOS, et sur mobile grâce à une interface 100% responsive. Tout est synchronisé via votre compte.",
+      "a3": "Sur le web depuis n'importe quel navigateur, en application desktop native Windows et macOS, et sur mobile grâce à une interface 100 % responsive. Tout est synchronisé via votre compte.",
       "q4": "Comment fonctionnent les crédits ?",
-      "a4": "Vous recevez des crédits offerts à l'inscription. Ensuite, les crédits sont consommés à l'usage (recherches et emails) et n'expirent pas. Aucun abonnement, vous rechargez quand vous le souhaitez.",
+      "a4": "Vous recevez des crédits offerts à l'inscription. Ensuite, les crédits sont consommés à l'usage — recherches et emails — et n'expirent pas. Aucun abonnement, vous rechargez quand vous voulez.",
       "q5": "Est-ce conforme au RGPD et aux règles anti-spam ?",
       "a5": "Chaque email inclut un lien de désinscription, les envois sont limités à un toutes les 20 minutes, et vous contrôlez votre domaine d'envoi (Resend, Gmail ou domaine perso) pour préserver votre réputation.",
       "q6": "Puis-je essayer gratuitement ?",
       "a6": "Oui. Créez un compte, recevez des crédits offerts et testez l'ensemble du pipeline sans carte bancaire."
+    },
+    "finalCta": {
+      "title": "Votre prochain client n'a pas encore de site web.",
+      "subtitle": "Créez un compte, recevez vos crédits offerts et lancez votre première campagne aujourd'hui.",
+      "cta": "Commencer gratuitement",
+      "note": "Sans carte bancaire · Sans abonnement"
     }
   },
-  "cta": {
-    "title": "Prêt à remplir votre agenda de clients ?",
-    "subtitle": "Créez votre compte, recevez des crédits offerts et lancez votre première campagne automatisée dès aujourd'hui.",
-    "primary": "Commencer gratuitement",
-    "secondary": "Voir les tarifs",
-    "note": "Sans carte bancaire · Crédits offerts à l'inscription"
+  "legal": {
+    "updated": "Dernière mise à jour : juillet 2026",
+    "privacy": {
+      "title": "Politique de confidentialité",
+      "intro": "DevLeadHunter accorde une grande importance à la protection de vos données. Cette page décrit, simplement, ce que nous collectons et pourquoi.",
+      "s1": {
+        "title": "Responsable du traitement",
+        "body": "DevLeadHunter est édité par Léo Guillaume (Dibodev). Pour toute question relative à vos données : leo{'@'}dibodev.fr."
+      },
+      "s2": {
+        "title": "Données collectées",
+        "body": "Compte : adresse email et mot de passe (stocké haché). Usage : les recherches, prospects et campagnes que vous créez dans l'outil. Paiement : les achats de crédits sont traités par Stripe — aucun numéro de carte ne transite par nos serveurs."
+      },
+      "s3": {
+        "title": "Mesure d'audience",
+        "body": "Ce site utilise Umami, un outil de mesure d'audience auto-hébergé, sans cookies publicitaires et sans suivi entre sites. Les statistiques sont agrégées et anonymes."
+      },
+      "s4": {
+        "title": "Finalités",
+        "body": "Vos données servent uniquement à fournir le service : authentification, exécution de vos recherches et campagnes, facturation des crédits. Elles ne sont ni vendues, ni partagées à des fins publicitaires."
+      },
+      "s5": {
+        "title": "Durée de conservation",
+        "body": "Les données de votre compte sont conservées tant que votre compte est actif, puis supprimées à la fermeture du compte ou sur demande."
+      },
+      "s6": {
+        "title": "Vos droits",
+        "body": "Conformément au RGPD, vous disposez d'un droit d'accès, de rectification, d'effacement et de portabilité de vos données. Écrivez à leo{'@'}dibodev.fr — réponse sous 30 jours."
+      },
+      "s7": {
+        "title": "Cookies",
+        "body": "Le site n'utilise que des cookies techniques : session de connexion et préférence de langue. Aucun cookie publicitaire ou de suivi tiers."
+      }
+    },
+    "terms": {
+      "title": "Conditions d'utilisation",
+      "intro": "En créant un compte DevLeadHunter, vous acceptez les conditions ci-dessous.",
+      "s1": {
+        "title": "Éditeur",
+        "body": "DevLeadHunter est édité par Léo Guillaume (Dibodev). Contact : leo{'@'}dibodev.fr."
+      },
+      "s2": {
+        "title": "Objet du service",
+        "body": "DevLeadHunter est un outil d'automatisation de prospection : recherche d'entreprises sans site web, génération de sites de démonstration, campagnes de cold email et suivi des ventes."
+      },
+      "s3": {
+        "title": "Compte",
+        "body": "L'inscription requiert une adresse email valide. Vous êtes responsable de la confidentialité de vos identifiants et de l'activité réalisée depuis votre compte."
+      },
+      "s4": {
+        "title": "Crédits & paiement",
+        "body": "L'outil fonctionne à l'usage via un système de crédits, sans abonnement. Les paiements sont traités par Stripe. Les crédits achetés n'expirent pas."
+      },
+      "s5": {
+        "title": "Usage responsable",
+        "body": "Vous êtes seul responsable de la conformité de vos campagnes avec la réglementation applicable (RGPD, règles anti-spam) : lien de désinscription, respect des destinataires et de votre domaine d'envoi. L'outil intègre ces garde-fous, leur bon usage vous revient."
+      },
+      "s6": {
+        "title": "Disponibilité & responsabilité",
+        "body": "Le service est fourni « en l'état », sans garantie de disponibilité continue. La responsabilité de l'éditeur est limitée au montant des crédits achetés au cours des douze derniers mois."
+      },
+      "s7": {
+        "title": "Résiliation",
+        "body": "Vous pouvez fermer votre compte à tout moment. L'éditeur peut suspendre un compte en cas d'usage abusif, frauduleux ou illégal de l'outil."
+      },
+      "s8": {
+        "title": "Droit applicable",
+        "body": "Les présentes conditions sont régies par le droit français."
+      }
+    }
   },
   "footer": {
+    "description": "La chaîne d'automatisation qui transforme les entreprises sans site web en clients : recherche, génération de site, cold email et mise en ligne — de bout en bout.",
     "product": "Produit",
     "resources": "Ressources",
     "account": "Compte",
     "privacy": "Confidentialité",
     "terms": "Conditions",
     "copyright": "Tous droits réservés.",
-    "description": "La chaîne d'automatisation qui transforme les entreprises sans site web en clients : recherche, génération de site, cold email et mise en ligne — de bout en bout.",
+    "language": "Langue :",
     "links": {
-      "features": "Fonctionnalités",
-      "howItWorks": "Fonctionnement",
-      "platforms": "Plateformes",
+      "howItWorks": "Comment ça marche",
+      "product": "Le site livré",
       "pricing": "Tarifs",
       "faq": "FAQ",
       "downloads": "Télécharger l'app",

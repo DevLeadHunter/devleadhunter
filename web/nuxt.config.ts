@@ -53,6 +53,13 @@ export default defineNuxtConfig({
         { name: 'googlebot', content: 'index, follow' },
         { property: 'og:site_name', content: 'DevLeadHunter' },
         { property: 'og:locale', content: 'en_US' },
+        // Social preview card (generated in the landing "Atelier" DA)
+        { property: 'og:image', content: 'https://devleadhunter.dibodev.fr/og-image.png' },
+        { property: 'og:image:width', content: '1200' },
+        { property: 'og:image:height', content: '630' },
+        { property: 'og:image:type', content: 'image/png' },
+        { name: 'twitter:card', content: 'summary_large_image' },
+        { name: 'twitter:image', content: 'https://devleadhunter.dibodev.fr/og-image.png' },
         { name: 'twitter:site', content: '@devleadhunter' },
         { name: 'theme-color', content: '#050505' },
       ],
@@ -62,6 +69,12 @@ export default defineNuxtConfig({
         {
           rel: 'stylesheet',
           href: 'https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap',
+        },
+        // Landing fonts (editorial redesign) — loaded from the Google Fonts CDN for the
+        // same reason as Inter above (self-hosted fonts broken on the OVH/nginx host).
+        {
+          rel: 'stylesheet',
+          href: 'https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,500;0,9..144,600;0,9..144,700;1,9..144,500;1,9..144,600&family=Instrument+Sans:ital,wght@0,400;0,500;0,600;1,400&family=Spline+Sans+Mono:wght@400;500&display=swap',
         },
         { rel: 'icon', type: 'image/x-icon', href: '/favicon.ico' },
         { rel: 'manifest', href: '/site.webmanifest' },
@@ -137,9 +150,11 @@ export default defineNuxtConfig({
   },
 
   i18n: {
+    // Absolute base for hreflang/og:locale alternate links (SEO).
+    baseUrl: 'https://devleadhunter.dibodev.fr',
     locales: [
-      { code: 'en', iso: 'en-US', name: 'English', file: 'en.json' },
-      { code: 'fr', iso: 'fr-FR', name: 'Français', file: 'fr.json' },
+      { code: 'en', language: 'en-US', name: 'English', file: 'en.json' },
+      { code: 'fr', language: 'fr-FR', name: 'Français', file: 'fr.json' },
     ],
     defaultLocale: 'en',
     strategy: 'prefix_except_default',
