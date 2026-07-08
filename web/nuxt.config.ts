@@ -122,6 +122,10 @@ export default defineNuxtConfig({
       githubRepo: process.env.NUXT_PUBLIC_GITHUB_REPO || 'leogu/devleadhunter',
       desktopReleaseChannel: process.env.NUXT_PUBLIC_DESKTOP_RELEASE_CHANNEL || 'latest',
       githubApiBase: process.env.NUXT_PUBLIC_GITHUB_API_BASE || 'https://api.github.com',
+      // Base URL of the demo-host app — used to iframe live template previews in the builder.
+      demoHostBase:
+        process.env.NUXT_PUBLIC_DEMO_HOST_BASE ||
+        (process.env.NODE_ENV === 'production' ? 'https://demo.dibodev.fr' : 'http://localhost:3001'),
       // True for the Tauri desktop build → the landing page redirects to the app.
       isDesktop: isDesktopBuild,
     },

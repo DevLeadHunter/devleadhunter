@@ -29,17 +29,24 @@ const templateId: ComputedRef<string> = computed(
   (): string => (typeof route.query.t === 'string' ? route.query.t : 'plumber-signature'),
 )
 
+/** Optional business-name override (?business=) so the builder preview shows the client's name. */
+const businessOverride: ComputedRef<string> = computed(
+  (): string => (typeof route.query.business === 'string' ? route.query.business.trim() : ''),
+)
+
 /** Faux DemoSitePublic (status draft → aucun tracking) pour nourrir DemoSiteView. */
 const site: ComputedRef<DemoSitePublic | null> = computed((): DemoSitePublic | null => {
-  const siteContent: Record<string, unknown> | undefined = CONTENTS[templateId.value]
-  if (!siteContent) {
+  const base: Record<string, unknown> | undefined = CONTENTS[templateId.value]
+  if (!base) {
     return null
   }
+  const name: string = businessOverride.value || String(base.businessName ?? 'Preview')
+  const content: Record<string, unknown> = businessOverride.value ? { ...base, businessName: name } : base
   return {
     slug: `preview-${templateId.value}`,
-    business_name: String(siteContent.businessName ?? 'Preview'),
+    business_name: name,
     template_id: templateId.value,
-    content_json: siteContent,
+    content_json: content,
     status: 'draft',
     storyblok_preview_token: null,
     storyblok_region: null,

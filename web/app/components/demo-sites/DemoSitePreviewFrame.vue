@@ -6,44 +6,74 @@
       <span class="h-3 w-3 rounded-full bg-[#2BAD5F]"></span>
       <span class="ml-2 truncate text-xs text-[#8b949e]">{{ previewLabel }}</span>
     </div>
-    <div class="preview-viewport bg-white" :style="viewportStyle">
-      <DemoSitesDemoPlumberPreview
-        v-if="templateId === 'plumber-simple'"
-        embedded
-        :content="content"
-        :business-name="businessName"
-      />
-    </div>
+    <iframe
+      :src="previewSrc"
+      :style="viewportStyle"
+      class="w-full border-0 bg-white"
+      title="Aperçu du site"
+      loading="lazy"
+    />
   </div>
 </template>
 
 <script lang="ts" setup>
-const props = withDefaults(
-  defineProps<{
-    content: Record<string, unknown>
-    businessName: string
-    templateId?: string
-    height?: number
-    previewLabel?: string
-  }>(),
-  {
-    templateId: 'plumber-simple',
-    height: 720,
-    previewLabel: 'Aperçu du site',
+import type { ComputedRef, PropType } from 'vue'
+import type { DemoSitePreviewFrameProps } from '~/types/DemoSitePreviewFrame'
+
+/**
+ * Frame previewing a demo site by iframing the demo-host renderer — the real published
+ * site when a ``slug`` is given, otherwise a placeholder render of the chosen template.
+ */
+const props: DemoSitePreviewFrameProps = defineProps({
+  templateId: {
+    type: String,
+    required: true,
   },
+  businessName: {
+    type: String,
+    default: '',
+  },
+  content: {
+    type: Object as PropType<Record<string, unknown>>,
+    default: () => ({}),
+  },
+  slug: {
+    type: String as PropType<string | null>,
+    default: null,
+  },
+  height: {
+    type: Number,
+    default: 720,
+  },
+  previewLabel: {
+    type: String,
+    default: 'Aperçu du site',
+  },
+})
+
+const config = useRuntimeConfig()
+
+/**
+ * Build the demo-host URL: the real published demo (by slug) or a placeholder template
+ * preview (by template id, with the client's business name overlaid) before creation.
+ */
+const previewSrc: ComputedRef<string> = computed((): string => {
+  const base: string = String(config.public.demoHostBase).replace(/\/$/, '')
+  if (props.slug) {
+    return `${base}/${props.slug}`
+  }
+  const params = new URLSearchParams({ t: props.templateId })
+  if (props.businessName) {
+    params.set('business', props.businessName)
+  }
+  return `${base}/preview-layers?${params.toString()}`
+})
+
+/** Iframe viewport height (capped to the visible area). */
+const viewportStyle: ComputedRef<Record<string, string>> = computed(
+  (): Record<string, string> => ({
+    height: `${props.height}px`,
+    maxHeight: 'min(75vh, 800px)',
+  }),
 )
-
-const viewportStyle = computed(() => ({
-  height: `${props.height}px`,
-  maxHeight: 'min(75vh, 800px)',
-}))
 </script>
-
-<style scoped>
-.preview-viewport {
-  overflow-x: hidden;
-  overflow-y: auto;
-  overscroll-behavior: contain;
-  -webkit-overflow-scrolling: touch;
-}
-</style>

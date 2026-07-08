@@ -179,6 +179,7 @@
               :content="previewContent"
               :business-name="site.business_name"
               :template-id="site.template_id"
+              :slug="site.slug"
               preview-label="demo.dibodev.fr"
             />
             <div v-else-if="openUrl" class="p-5">
