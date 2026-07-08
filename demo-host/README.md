@@ -10,7 +10,7 @@ https://demo.dibodev.fr/{slug}
 
 1. DevLeadHunter API provisions a demo site (Storyblok space + DB record).
 2. This app fetches public content from `GET /api/v1/demo-sites/public/{slug}`.
-3. The plumber-simple template is rendered server-side.
+3. The site's template (a Nuxt layer consumed via `extends`) is rendered server-side from the resolved `SiteContent`.
 4. After 14 days the API cleanup job deletes the Storyblok space and marks the site expired.
 
 ## Local development

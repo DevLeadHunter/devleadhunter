@@ -1,12 +1,12 @@
 # ⏳ TODO — Migration templates vers extends (fichier temporaire)
 
 > À supprimer une fois la migration finie. Réf. archi : `TEMPLATES_ARCHITECTURE.md`.
-> Templates à migrer : `plumber-simple`, `plumber-signature`, `plumber-atelier`, `plumber-cuivre`, `electrician-lumen`.
+> Templates actuelles (4) : `plumber-signature` (défaut), `plumber-atelier`, `plumber-cuivre`, `electrician-lumen`. *(`plumber-simple` retiré + repo archivé le 2026-07-08 — jugé trop générique.)*
 > Règle d'or : **ne rien casser dans le tunnel** — demo-host doit continuer à servir les démos à chaque étape.
 
-> ## 🟢 ÉTAT AU 2026-07-08 — migration TERMINÉE et déployée
+> ## 🟢 ÉTAT AU 2026-07-08 — migration TERMINÉE, déployée, legacy retiré, `plumber-simple` supprimé
 >
-> **Les 5 templates sont migrées en Nuxt layers, branchées dans le tunnel, mergées sur `main`,
+> **Les 4 templates sont migrées en Nuxt layers, branchées dans le tunnel, mergées sur `main`,
 > déployées et VALIDÉES visuellement** (rendu vérifié bout-en-bout sur les 5 avec un vrai prospect,
 > screenshots à l'appui). **Le legacy a été retiré** (Léo a confirmé aucun site vendu d'avant en ligne) —
 > il ne reste que des **bonus optionnels** (Phase 6). ⚠️ La validation avait révélé et **corrigé un bug de
@@ -124,7 +124,7 @@
 
 > Pour **chaque** template ci-dessous : « Use this template » depuis le starter → `devleadhunter-template-<id>`, copier les sections + `index.vue` depuis `demo-host/app/components/templates/<id>/`, typer avec `SiteContent`, mock dans `content.ts`, valider en `.playground`, tagger `v1.0.0`.
 
-- [x] `devleadhunter-template-plumber-simple` ✅ v1.0.0
+- [x] ~~`devleadhunter-template-plumber-simple`~~ ✅ v1.0.0 — **retiré du système + repo archivé le 2026-07-08** (trop générique)
 - [x] `devleadhunter-template-plumber-signature` ✅ v1.0.0
 - [x] `devleadhunter-template-plumber-atelier` ✅ v1.0.0
 - [x] `devleadhunter-template-plumber-cuivre` ✅ **POC** — créé via `gh --template`, porté (13 sections + racine + `buildCuivreContent(SiteContent)`, copie générique en défauts), lint+build verts, rendu validé (13 sections, thème bleu Source, fonts OK), tag `v1.0.0`. Créé au passage : content `v1.1.0` (+ `heroImage`/`aboutImage`/`about`) + starter aligné.
@@ -133,7 +133,7 @@
 Pour chaque repo, checklist unitaire :
 - [x] Sections importées en **relatif** (`ignore: ['**/sections/**']`) — vérifié dans les 5 layers
 - [x] **Un seul** composant racine exposé (`<Id>Root`), props `content: SiteContent`
-- [x] Fonts de la template déclarées via `useHead` dans le root (ex. `PlumberSimpleRoot` → Plus Jakarta Sans)
+- [x] Fonts de la template déclarées via `useHead` dans le root (ex. `PlumberSignatureRoot` → Archivo + Bricolage)
 - [x] `npm run build` isolé OK (+ build demo-host agrégé vert)
 - [x] Tag `v1.0.0` (cuivre `v1.0.1`)
 
