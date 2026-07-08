@@ -116,28 +116,48 @@ Storyblok et PostHog restent **côté demo-host**. La template ne les voit jamai
 
 ### Le type `SiteContent` (partagé, tout optionnel)
 
-Un seul modèle pour toutes les templates (elles rendent le même genre de site artisan ;
-seule la DA change). **Toutes les clés sont optionnelles** — une clé vide/absente masque
-la section correspondante.
+**Le modèle de contenu (tranché par Léo, 2026-07-08).** On récupère TOUT le contenu réel
+du prospect (photos, avis, textes, services…) **une fois**, on le range dans **un seul
+`SiteContent` de même forme pour toutes les templates**. But : **switcher de template sans
+re-récupérer le contenu**. **Toutes les clés sont optionnelles** — une template rend le
+sous-ensemble qu'elle utilise, une clé vide/absente masque la section.
+
+`SiteContent` ne porte que le **contenu variable du prospect**. La **copie éditoriale
+générique** (titres de sections, framing craft/process/brands, badges, labels CTA, métriques
+trust) vit en **défauts dans chaque template** (c'est du design) — jamais dans `SiteContent`.
+
+Le contenu est **stocké dans Storyblok** (éditable), avec le `content_json` en DB comme
+**fallback** (priorité déjà en place côté demo-host : live Storyblok → draft → content_json).
 
 ```ts
-// @devleadhunter/website-content
+// @devleadhunter/website-content — shape actuel (tag v1.1.0)
 export interface SiteContent {
+  // Identité / contact
   businessName?: string
   phone?: string
   email?: string
   city?: string
   area?: string
+
+  // Éditorial (les mots du prospect : accroche + histoire plus longue)
   subtitle?: string
+  about?: string
+
+  // Médias (photos scrapées/enrichies)
+  heroImage?: string
+  aboutImage?: string
+  gallery?: Array<{ url?: string; alt?: string }>
+
+  // Design
   palette?: { primary?: string; secondary?: string; accent?: string }
 
+  // Contenu structuré (une template rend le sous-ensemble qu'elle utilise)
   services?: Array<{ title?: string; description?: string; icon?: string }>
   reviews?: Array<{ author?: string; rating?: number; text?: string }>
   faq?: Array<{ question?: string; answer?: string }>
-  gallery?: Array<{ url?: string; alt?: string }>
   zones?: string[]
   openingHours?: Array<{ day?: string; hours?: string }>
-  // … étendre ici quand un besoin transverse apparaît, toujours optionnel
+  // … étendre ADDITIVEMENT (toujours optionnel) quand une template migrée a un besoin transverse
 }
 
 export function emptySiteContent(): SiteContent {
@@ -145,7 +165,10 @@ export function emptySiteContent(): SiteContent {
 }
 ```
 
-**Règle** : on n'ajoute au type que ce qui est **transverse** (utile à plusieurs métiers). Un besoin ultra-spécifique à une seule template se gère à l'intérieur de cette template, pas dans le contrat partagé — sinon `SiteContent` devient un god-object.
+**Règle** : on n'ajoute au type que du **transverse** (utile à plusieurs métiers), **toujours
+optionnel**. Un besoin ultra-spécifique à une seule template, ou de la copie de mise en forme,
+se gère **dans la template** — pas dans le contrat partagé, sinon `SiteContent` devient un
+god-object.
 
 ### Le seam TS ↔ Python
 
