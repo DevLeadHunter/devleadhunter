@@ -4,8 +4,48 @@
 > Templates à migrer : `plumber-simple`, `plumber-signature`, `plumber-atelier`, `plumber-cuivre`, `electrician-lumen`.
 > Règle d'or : **ne rien casser dans le tunnel** — demo-host doit continuer à servir les démos à chaque étape.
 
-> **Avancement (2026-07-07)** : Phases 0 et 1 ✅. Repo principal transféré dans l'orga + prod stabilisée
-> (login desktop, CORS/500, CI Vercel demo-host, fonts). Prochaine étape : Phase 2 (package `SiteContent`).
+> ## 🟢 ÉTAT AU 2026-07-08 — migration quasi finie, 1 PR à merger
+>
+> **Les 5 templates sont migrées en Nuxt layers + branchées dans le tunnel.** Il ne reste qu'à
+> **merger la PR `feat/wire-4-templates-into-demo-host`** (branche poussée, PR à ouvrir) puis
+> surveiller les deploys API + demo-host.
+>
+> **Fait ✅**
+> - Phase 0 (orga + outillage) et 1 (prod stabilisée : login desktop, CORS/500, CI Vercel, fonts).
+> - Phase 2 : package `@devleadhunter/website-content` (type `SiteContent`, types-only, tag **v1.1.0**),
+>   consommé par demo-host + les 5 repos template via `git+https://…#v1.1.0`.
+> - Phase 3 : les **5 repos template** créés dans l'orga + taggés :
+>   `plumber-simple` **v1.0.0**, `plumber-signature` **v1.0.0**, `plumber-atelier` **v1.0.0**,
+>   `plumber-cuivre` **v1.0.1**, `electrician-lumen` **v1.0.0**. Chacun = 1 root auto-registered
+>   (`PlumberSimpleRoot`, `PlumberSignatureRoot`, `PlumberAtelierRoot`, `PlumberCuivreRoot`,
+>   `ElectricianLumenRoot`) + sections en imports relatifs (`ignore: ['**/sections/**']`). **Pas de
+>   `modules` dans les `nuxt.config.ts` des layers** (le `@nuxt/eslint` dev-only vit dans `.playground`).
+> - Phase 4 : `demo-host/nuxt.config.ts` = les **5 `extends`** ; `DemoSiteView.vue` = **dispatch généralisé**
+>   (`MIGRATED_ROOTS` = template_id→nom du root ; `LEGACY_COMPONENTS` = fallback in-repo pour les vieilles
+>   démos rich-content pendant leur TTL 14 j ; rend le root migré **si** le contenu est un `SiteContent`,
+>   sinon le legacy). `richCuivreToSiteContent.ts` supprimé.
+> - Phase 4b : l'**API produit le `SiteContent` plat** pour les 5. Module partagé
+>   `api/services/templates/site_content.py` (schémas Storyblok natifs `site_content*`, mapper
+>   prospect+enrichment, défauts éditoriaux par métier). Les 5 modules exposent `build_site_content(...)`
+>   → `registry.uses_site_content()` route dessus ; `storyblok_service.build_content_json` bascule
+>   auto. Sanity-check : **5/5 PASS**, schéma `site_content` dédupliqué à **1** (63 schémas, tous uniques).
+> - **Commit poussé** sur `feat/wire-4-templates-into-demo-host` (8 fichiers : site_content.py + 4 modules
+>   API + demo-host nuxt.config + DemoSiteView + suppression richCuivre). demo-host build vert (5 layers).
+>
+> **Reste à faire ⏳**
+> 1. **Ouvrir la PR** `feat/wire-4-templates-into-demo-host` → `main`, merger, surveiller les deploys
+>    (API + demo-host Vercel). Après merge : les 5 templates rendent via les nouveaux layers.
+> 2. Générer **1 vraie démo par template** en prod pour valider le rendu bout-en-bout (contenu + enrichment).
+> 3. Une fois validé + les vieilles démos rich-content expirées (TTL 14 j) : **supprimer les templates
+>    in-repo** `demo-host/app/components/templates/*` + les `LEGACY_COMPONENTS`, et supprimer ce fichier TODO.
+>
+> **⚠️ Caveats connus**
+> - `plumber-signature` : le portage a **remplacé GSAP (parallax/scroll-scrub) par IntersectionObserver** —
+>   fidélité d'anim légèrement dégradée vs l'original. À revoir si Léo veut l'anim exacte.
+> - `plumber-signature` : la section **avant/après n'a pas de champ `SiteContent`** → elle s'auto-masque.
+> - `plumber-cuivre` **non refactorisé** vers le module partagé (garde son `build_site_content`/`_SERVICE_ITEMS`/
+>   `_FAQ_ITEMS` sur-mesure, 8 services / 8 FAQ) — choix low-risk car il est déjà live. Les 4 autres
+>   utilisent les défauts génériques `site_content.py` (6 services / 5 FAQ par métier).
 
 ---
 
