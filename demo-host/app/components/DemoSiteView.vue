@@ -1,38 +1,20 @@
 <template>
   <!--
-    Migrated templates render from their own extends'd layer (a typed SiteContent) as soon as
-    the resolved content is a SiteContent (Phase 4b — flat content_json or Storyblok-native).
-    Legacy demos, whose content_json is still the rich blok tree, fall back to the in-repo
-    template until they expire (14-day TTL) — so nothing breaks during the transition.
+    Each template renders from its own extends'd layer (a typed SiteContent). demo-host resolves
+    the content (flat content_json or Storyblok-native `site_content`) to a SiteContent and passes
+    it to the layer root. The legacy in-repo templates were removed once the migration completed.
   -->
   <component
     v-if="migratedRoot && isSiteContent"
     :is="migratedRoot"
     :content="resolvedSiteContent" />
-  <component
-    v-else
-    :is="legacyComponent"
-    :content="renderContent"
-    :business-name="site.business_name" />
 </template>
 
 <script lang="ts" setup>
 import type { Component, ComputedRef, PropType, Ref } from 'vue'
-// Legacy in-repo templates — render OLD demos whose content_json is still the rich blok tree.
-import DemoPlumberSimplePage from '~/components/templates/plumber-simple/index.vue'
-import DemoPlumberAtelierPage from '~/components/templates/plumber-atelier/index.vue'
-import DemoPlumberSignaturePage from '~/components/templates/plumber-signature/index.vue'
-// Lazy: heavier templates don't weigh down the others' bundles.
-const DemoElectricianLumenPage = defineAsyncComponent(() => import('~/components/templates/electrician-lumen/index.vue'))
-const DemoPlumberCuivrePage = defineAsyncComponent(() => import('~/components/templates/plumber-cuivre/index.vue'))
-import { fetchStoryblokDraftContent, isStoryblokVisualEditor, useStoryblokBridge } from '~/composables/useStoryblokPreview'
-import type { DemoSitePublic } from '~/types/demoSite'
-import type { SiteContent } from '@devleadhunter/website-content'
 // Migrated layer roots (one per extends'd template). `Lazy*` = async → code-split, so a demo
-// only loads its own template's chunk. We resolve to component OBJECTS here: a runtime string
-// name is NOT resolvable via `<component :is>` for Nuxt auto-imported components (they aren't
-// registered globally), so passing the object is required — passing a string renders an empty
-// literal element.
+// only loads its own template's chunk. We pass the component OBJECT (not a string name): a
+// runtime string name isn't resolvable via `<component :is>` for Nuxt auto-imported components.
 import {
   LazyPlumberSimpleRoot,
   LazyPlumberSignatureRoot,
@@ -40,6 +22,9 @@ import {
   LazyPlumberCuivreRoot,
   LazyElectricianLumenRoot,
 } from '#components'
+import { fetchStoryblokDraftContent, isStoryblokVisualEditor, useStoryblokBridge } from '~/composables/useStoryblokPreview'
+import type { DemoSitePublic } from '~/types/demoSite'
+import type { SiteContent } from '@devleadhunter/website-content'
 
 const props = defineProps({
   site: {
@@ -58,15 +43,6 @@ const MIGRATED_ROOTS: Record<string, Component> = {
   'plumber-atelier': LazyPlumberAtelierRoot,
   'plumber-cuivre': LazyPlumberCuivreRoot,
   'electrician-lumen': LazyElectricianLumenRoot,
-}
-
-/** template_id → legacy in-repo template, for OLD rich-content demos during the transition. */
-const LEGACY_COMPONENTS: Record<string, Component> = {
-  'plumber-simple': DemoPlumberSimplePage,
-  'plumber-atelier': DemoPlumberAtelierPage,
-  'plumber-signature': DemoPlumberSignaturePage,
-  'plumber-cuivre': DemoPlumberCuivrePage,
-  'electrician-lumen': DemoElectricianLumenPage,
 }
 
 const { data: storyblokDraftContent } = useAsyncData(
@@ -92,13 +68,13 @@ const renderContent: ComputedRef<Record<string, unknown>> = computed((): Record<
   return (props.site.content_json as Record<string, unknown>) ?? {}
 })
 
-/** True when the resolved content is a SiteContent — flat (Phase 4b) or Storyblok-native `site_content`. */
+/** True when the resolved content is a SiteContent — flat (content_json) or Storyblok-native `site_content`. */
 const isSiteContent: ComputedRef<boolean> = computed((): boolean => {
   const content: Record<string, unknown> = renderContent.value
   return ('businessName' in content && !('body' in content)) || isStoryblokSiteContent(content)
 })
 
-/** The extends'd root component for this template, or null when it isn't migrated yet. */
+/** The extends'd root component for this template, or null for an unknown template_id. */
 const migratedRoot: ComputedRef<Component | null> = computed(
   (): Component | null => MIGRATED_ROOTS[props.site.template_id] ?? null,
 )
@@ -111,11 +87,6 @@ const resolvedSiteContent: ComputedRef<SiteContent> = computed((): SiteContent =
   }
   return storyblokSiteContentToSiteContent(content)
 })
-
-/** Legacy in-repo template for old rich demos (fallback: historical plumber-simple). */
-const legacyComponent: ComputedRef<Component> = computed(
-  (): Component => LEGACY_COMPONENTS[props.site.template_id] ?? DemoPlumberSimplePage,
-)
 
 watch(storyblokDraftContent, (): void => {
   liveContent.value = {}
