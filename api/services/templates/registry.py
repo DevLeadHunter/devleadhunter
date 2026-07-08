@@ -22,21 +22,21 @@ from __future__ import annotations
 
 from typing import Any, Optional
 
-from services.templates import electrician_lumen, plumber_atelier, plumber_cuivre, plumber_signature, plumber_simple
+from services.templates import electrician_lumen, plumber_atelier, plumber_cuivre, plumber_signature
 
 # Order here defines the order shown in the template picker.
-TEMPLATE_MODULES = [plumber_signature, plumber_atelier, plumber_simple, plumber_cuivre, electrician_lumen]
+TEMPLATE_MODULES = [plumber_signature, plumber_atelier, plumber_cuivre, electrician_lumen]
 
 TEMPLATES_BY_ID: dict[str, Any] = {module.TEMPLATE_ID: module for module in TEMPLATE_MODULES}
 
 AVAILABLE_TEMPLATES: list[dict[str, object]] = [module.TEMPLATE_META for module in TEMPLATE_MODULES]
 
-DEFAULT_TEMPLATE_ID: str = plumber_simple.TEMPLATE_ID
+DEFAULT_TEMPLATE_ID: str = plumber_signature.TEMPLATE_ID
 
 
 def get_module(template_id: str) -> Any:
     """Return the template module for an id, falling back to the default template."""
-    return TEMPLATES_BY_ID.get(template_id, plumber_simple)
+    return TEMPLATES_BY_ID.get(template_id, plumber_signature)
 
 
 def default_subtitle(template_id: str, area: str) -> str:

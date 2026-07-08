@@ -17,7 +17,7 @@ class DemoSiteCreateRequest(BaseModel):
     """Payload to create a demo site from the stepper tunnel."""
 
     business_name: str = Field(..., min_length=2, max_length=255)
-    template_id: str = Field(default="plumber-simple", max_length=64)
+    template_id: str = Field(default="plumber-signature", max_length=64)
     phone: Optional[str] = Field(default=None, max_length=64)
     email: EmailStr
     invite_client_to_cms: bool = Field(
@@ -37,7 +37,7 @@ class DemoSitePreviewRequest(BaseModel):
     """Payload to render a demo site preview without provisioning."""
 
     business_name: str = Field(..., min_length=2, max_length=255)
-    template_id: str = Field(default="plumber-simple", max_length=64)
+    template_id: str = Field(default="plumber-signature", max_length=64)
     phone: Optional[str] = Field(default=None, max_length=64)
     email: Optional[EmailStr] = None
     city: Optional[str] = Field(default=None, max_length=128)

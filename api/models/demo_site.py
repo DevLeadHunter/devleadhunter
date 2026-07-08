@@ -26,7 +26,7 @@ class DemoSite(Base):
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), nullable=False, index=True)
     prospect_id: Mapped[Optional[int]] = mapped_column(Integer, nullable=True, index=True)
     slug: Mapped[str] = mapped_column(String(120), nullable=False, unique=True, index=True)
-    template_id: Mapped[str] = mapped_column(String(64), nullable=False, default="plumber-simple")
+    template_id: Mapped[str] = mapped_column(String(64), nullable=False, default="plumber-signature")
     business_name: Mapped[str] = mapped_column(String(255), nullable=False)
     phone: Mapped[Optional[str]] = mapped_column(String(64), nullable=True)
     email: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)

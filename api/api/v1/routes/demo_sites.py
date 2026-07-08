@@ -34,7 +34,7 @@ class BulkDemoSiteCreateRequest(BaseModel):
     """Payload to generate demo sites for several prospects with one template."""
 
     prospect_ids: list[int] = Field(..., min_length=1, max_length=_MAX_BULK_GENERATE)
-    template_id: str = Field(default="plumber-simple", max_length=64)
+    template_id: str = Field(default="plumber-signature", max_length=64)
     theme: DemoSiteTheme | None = None
     invite_client_to_cms: bool = Field(default=False)
 

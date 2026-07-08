@@ -13,7 +13,7 @@
  * passés dans la logique API). Outil de DEV uniquement — les vraies démos passent par
  * [slug].vue (fetch API par slug). Ne pas servir en démo réelle.
  *
- * Usage : /preview-layers?t=<template_id>   (défaut : plumber-simple)
+ * Usage : /preview-layers?t=<template_id>   (défaut : plumber-signature)
  */
 import type { ComputedRef } from 'vue'
 import type { DemoSitePublic } from '~/types/demoSite'
@@ -24,9 +24,9 @@ const CONTENTS: Record<string, Record<string, unknown>> = previewLayers as Recor
 
 const route = useRoute()
 
-/** template_id ciblé via ?t= (défaut : plumber-simple). */
+/** template_id ciblé via ?t= (défaut : plumber-signature). */
 const templateId: ComputedRef<string> = computed(
-  (): string => (typeof route.query.t === 'string' ? route.query.t : 'plumber-simple'),
+  (): string => (typeof route.query.t === 'string' ? route.query.t : 'plumber-signature'),
 )
 
 /** Faux DemoSitePublic (status draft → aucun tracking) pour nourrir DemoSiteView. */

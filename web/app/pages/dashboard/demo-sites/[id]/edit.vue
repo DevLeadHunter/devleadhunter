@@ -97,7 +97,7 @@ const defaultTheme: DemoSiteTheme = { primary: '#0284c7', secondary: '#0f172a', 
 
 const form = ref({
   business_name: '',
-  template_id: 'plumber-simple',
+  template_id: 'plumber-signature',
   phone: '',
   email: '',
   city: '',
