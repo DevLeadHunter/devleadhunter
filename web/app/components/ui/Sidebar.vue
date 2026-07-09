@@ -5,11 +5,11 @@
       isOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0',
     ]"
   >
-    <!-- Brand + module -->
-    <div class="border-b border-[var(--app-line)] px-5 pt-5 pb-4">
-      <div class="flex items-center gap-2.5">
+    <!-- Brand + module switcher -->
+    <div class="border-b border-[var(--app-line)] px-4 pt-4 pb-3">
+      <div class="flex items-center gap-2.5 px-1">
         <svg
-          class="h-4.5 w-4.5 fill-current text-[var(--app-ink)]"
+          class="h-4 w-4 fill-current text-[var(--app-ink)]"
           viewBox="0 0 493 515"
           fill="none"
           xmlns="http://www.w3.org/2000/svg"
@@ -20,25 +20,61 @@
             fill="currentColor"
           />
         </svg>
-        <span class="font-display text-base font-semibold tracking-tight text-[var(--app-ink)]">devleadhunter</span>
+        <span class="text-sm font-semibold tracking-tight text-[var(--app-ink)]">devleadhunter</span>
       </div>
-      <!-- Module indicator (module-aware shell: websites is the first of three) -->
-      <p class="app-label mt-2.5 flex items-center gap-1.5 !text-[0.6rem]">
-        <span class="h-1.5 w-1.5 rounded-full bg-[var(--app-accent)]"></span>
-        Module Sites web
-      </p>
+
+      <!-- Module switcher — the shell is built for three activatable modules -->
+      <div class="relative mt-2.5">
+        <div v-if="showModuleMenu" class="fixed inset-0 z-40" @click="showModuleMenu = false"></div>
+        <button
+          type="button"
+          class="relative z-50 flex w-full cursor-pointer items-center justify-between rounded-lg border border-[var(--app-line)] bg-[var(--app-bg)] px-2.5 py-1.5 transition-colors hover:border-[var(--app-ink-soft)]"
+          aria-label="Changer de module"
+          @click.stop="showModuleMenu = !showModuleMenu"
+        >
+          <span class="app-label flex items-center gap-1.5 !text-[0.6rem]">
+            <span class="h-1.5 w-1.5 rounded-full bg-[var(--app-accent)]"></span>
+            {{ activeModuleLabel }}
+          </span>
+          <UIcon name="i-lucide-chevrons-up-down" class="h-3 w-3 text-[var(--app-ink-soft)]" />
+        </button>
+        <div
+          v-if="showModuleMenu"
+          class="app-card absolute inset-x-0 top-full z-50 mt-1 p-1 shadow-[var(--app-shadow-soft)]"
+        >
+          <button
+            v-for="moduleEntry in modules"
+            :key="moduleEntry.key"
+            type="button"
+            class="flex w-full cursor-pointer items-center justify-between rounded-md px-2 py-1.5 text-left text-xs transition-colors hover:bg-[var(--app-surface-2)]"
+            :class="moduleEntry.locked ? 'text-[var(--app-ink-soft)]' : 'font-medium text-[var(--app-ink)]'"
+            @click="handleModuleClick(moduleEntry)"
+          >
+            <span class="flex items-center gap-2">
+              <UIcon :name="moduleEntry.icon" class="h-3.5 w-3.5" />
+              {{ moduleEntry.label }}
+            </span>
+            <UIcon v-if="moduleEntry.locked" name="i-lucide-lock" class="h-3 w-3 opacity-70" />
+            <span v-else class="h-1.5 w-1.5 rounded-full bg-[var(--app-accent)]"></span>
+          </button>
+        </div>
+      </div>
     </div>
 
     <!-- Primary action -->
-    <div class="px-4 pt-4">
-      <NuxtLink to="/dashboard/demo-sites/create" class="app-btn-primary h-9 w-full text-xs" @click="handleClick">
+    <div class="px-4 pt-3">
+      <NuxtLink
+        to="/dashboard/demo-sites/create"
+        class="app-btn-primary h-8 min-h-8 w-full text-xs"
+        @click="handleClick"
+      >
         <UIcon name="i-lucide-plus" class="h-3.5 w-3.5" />
         Créer un site
       </NuxtLink>
     </div>
 
     <!-- Navigation -->
-    <nav class="flex-1 overflow-y-auto px-4 py-4">
+    <nav class="flex-1 overflow-y-auto px-4 py-3">
       <!-- Administration sub-panel (replaces main menu, Vercel-style) -->
       <template v-if="isAdmin && showAdminPanel">
         <button
@@ -88,7 +124,7 @@
 
       <!-- Main grouped menu -->
       <template v-else>
-        <div v-for="group in navGroups" :key="group.heading ?? 'top'" class="mb-5 last:mb-0">
+        <div v-for="group in navGroups" :key="group.heading ?? 'top'" class="mb-4 last:mb-0">
           <p v-if="group.heading" class="app-label mb-1.5 px-3 !text-[0.6rem]">{{ group.heading }}</p>
           <div class="space-y-0.5">
             <NuxtLink
@@ -221,11 +257,12 @@
 <script setup lang="ts">
 import type { ComputedRef, Ref } from 'vue'
 import type { AppTheme } from '~/types/AppTheme'
-import type { UiSidebarGroup, UiSidebarProps } from '~/types/UiSidebar'
+import type { DlhModuleEntry, UiSidebarGroup, UiSidebarProps } from '~/types/UiSidebar'
 import { ref, computed } from 'vue'
 import { useUserStore } from '~/stores/user'
 import { useAuth } from '~/composables/useAuth'
 import { useAppTheme } from '~/composables/useAppTheme'
+import { useToast } from '~/composables/useToast'
 
 /**
  * Defines the component props.
@@ -247,6 +284,8 @@ const emit = defineEmits<{
 
 /** User store instance. */
 const userStore = useUserStore()
+
+const toast = useToast()
 
 const { logout } = useAuth()
 
@@ -270,6 +309,33 @@ const showAdminPanel: ComputedRef<boolean> = computed((): boolean => {
 
 /** Whether the Settings sub-panel is currently open. */
 const showSettingsPanel: Ref<boolean> = ref<boolean>(false)
+
+/** Whether the module switcher menu is open. */
+const showModuleMenu: Ref<boolean> = ref<boolean>(false)
+
+/** The three product modules of DevLeadHunter (only websites is live today). */
+const modules: DlhModuleEntry[] = [
+  { key: 'websites', label: 'Sites web', icon: 'i-lucide-globe', locked: false },
+  { key: 'wallet-cards', label: 'Cartes Apple Wallet', icon: 'i-lucide-wallet-cards', locked: true },
+  { key: 'freelance-missions', label: 'Missions freelance', icon: 'i-lucide-briefcase-business', locked: true },
+]
+
+/** Label of the currently active module. */
+const activeModuleLabel: ComputedRef<string> = computed((): string => {
+  return modules.find((moduleEntry: DlhModuleEntry): boolean => !moduleEntry.locked)?.label ?? 'Sites web'
+})
+
+/**
+ * Handle a click on a module entry: locked modules announce their arrival,
+ * the active one simply closes the menu.
+ * @param moduleEntry - The clicked module.
+ */
+function handleModuleClick(moduleEntry: DlhModuleEntry): void {
+  showModuleMenu.value = false
+  if (moduleEntry.locked) {
+    toast.info(`Le module « ${moduleEntry.label} » arrive bientôt.`)
+  }
+}
 
 /** Credits popover visibility state. */
 const showCreditsPopover: Ref<boolean> = ref<boolean>(false)
@@ -376,7 +442,7 @@ const creditDotColor: ComputedRef<string> = computed((): string => {
  */
 function navItemClass(active: boolean): string {
   const base =
-    'relative flex cursor-pointer items-center gap-2.5 rounded-lg py-2 pr-3 pl-4 text-sm font-medium transition-colors'
+    'relative flex cursor-pointer items-center gap-2.5 rounded-lg py-1.5 pr-3 pl-4 text-sm font-medium transition-colors'
   if (active) {
     return `${base} bg-[var(--app-surface-2)] text-[var(--app-ink)]`
   }

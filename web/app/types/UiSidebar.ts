@@ -25,3 +25,18 @@ export interface UiSidebarGroup {
   /** Links of the group. */
   links: UiSidebarLink[]
 }
+
+/** Identifier of a DevLeadHunter product module. */
+export type DlhModuleKey = 'websites' | 'wallet-cards' | 'freelance-missions'
+
+/** One entry of the module switcher (the shell hosts three activatable modules). */
+export interface DlhModuleEntry {
+  /** Stable module identifier. */
+  key: DlhModuleKey
+  /** Visible label. */
+  label: string
+  /** Icon name (lucide via UIcon). */
+  icon: string
+  /** Whether the module is not yet available (shows a lock, click = coming soon). */
+  locked: boolean
+}

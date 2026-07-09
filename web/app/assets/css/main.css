@@ -170,6 +170,9 @@
    .app-theme[data-theme='dark'].
    ============================================================ */
 :root {
+  --app-font-ui: 'IBM Plex Sans', 'Inter', system-ui, sans-serif;
+  --app-font-mono: 'IBM Plex Mono', ui-monospace, SFMono-Regular, monospace;
+
   --app-bg: #f4f1e9;
   --app-surface: #fbf9f3;
   --app-surface-2: #ede9de;
@@ -191,35 +194,47 @@
   --app-shadow-soft: 0 10px 30px -18px rgba(29, 26, 20, 0.35);
 }
 
-/* `.dark` (posé sur <html> par useAppTheme) couvre aussi les éléments
+/* Dark « charbon neutre » — logiciel, ni GitHub bleu-gris ni brun.
+   `.dark` (posé sur <html> par useAppTheme) couvre aussi les éléments
    téléportés dans <body> (drawers, modales) qui sortent de .app-theme. */
 .app-theme[data-theme='dark'],
 html.dark {
-  --app-bg: #151210;
-  --app-surface: #1d1915;
-  --app-surface-2: #27221b;
-  --app-ink: #efe9dc;
-  --app-ink-soft: #a69d8c;
-  --app-faint: #5a5344;
-  --app-line: #322c22;
-  --app-line-soft: #2a251c;
+  --app-bg: #131312;
+  --app-surface: #1b1b1a;
+  --app-surface-2: #242423;
+  --app-ink: #f0efeb;
+  --app-ink-soft: #a1a09a;
+  --app-faint: #565550;
+  --app-line: #2b2b29;
+  --app-line-soft: #232322;
   --app-accent: #e8a33c;
-  --app-accent-ink: #eab965;
-  --app-accent-soft: rgba(232, 163, 60, 0.14);
-  --app-green: #4fa571;
-  --app-green-soft: rgba(79, 165, 113, 0.16);
-  --app-red: #d4694f;
-  --app-red-soft: rgba(212, 105, 79, 0.16);
-  --app-overlay: rgba(0, 0, 0, 0.6);
-  --app-btn-bg: #efe9dc;
-  --app-btn-text: #151210;
-  --app-shadow-soft: 0 10px 30px -18px rgba(0, 0, 0, 0.6);
+  --app-accent-ink: #ecb865;
+  --app-accent-soft: rgba(232, 163, 60, 0.13);
+  --app-green: #55a878;
+  --app-green-soft: rgba(85, 168, 120, 0.15);
+  --app-red: #d76a55;
+  --app-red-soft: rgba(215, 106, 85, 0.15);
+  --app-overlay: rgba(0, 0, 0, 0.65);
+  --app-btn-bg: #f0efeb;
+  --app-btn-text: #131312;
+  --app-shadow-soft: 0 10px 30px -18px rgba(0, 0, 0, 0.65);
 }
 
 .app-theme {
   background-color: var(--app-bg);
   color: var(--app-ink);
-  font-family: 'Instrument Sans', 'Inter', system-ui, sans-serif;
+  font-family: var(--app-font-ui);
+}
+
+/* Dans l'app, les familles héritées de la landing basculent sur les
+   polices logiciel (les composants balayés utilisent ces classes). */
+.app-theme .font-display,
+.app-theme .font-body {
+  font-family: var(--app-font-ui);
+}
+
+.app-theme .font-label {
+  font-family: var(--app-font-mono);
 }
 
 .app-theme ::selection {
@@ -236,7 +251,7 @@ html.dark {
   }
 
   .app-btn-primary {
-    @apply inline-flex h-10 min-h-10 cursor-pointer items-center justify-center gap-2 rounded-full px-5 text-sm font-semibold;
+    @apply inline-flex h-9 min-h-9 cursor-pointer items-center justify-center gap-2 rounded-full px-4 text-sm font-semibold;
     background-color: var(--app-btn-bg);
     color: var(--app-btn-text);
     transition:
@@ -249,7 +264,7 @@ html.dark {
   }
 
   .app-btn-secondary {
-    @apply inline-flex h-10 min-h-10 cursor-pointer items-center justify-center gap-2 rounded-full border px-5 text-sm font-medium;
+    @apply inline-flex h-9 min-h-9 cursor-pointer items-center justify-center gap-2 rounded-full border px-4 text-sm font-medium;
     border-color: var(--app-line);
     background-color: var(--app-surface);
     color: var(--app-ink);
@@ -264,7 +279,7 @@ html.dark {
   }
 
   .app-btn-danger {
-    @apply inline-flex h-10 min-h-10 cursor-pointer items-center justify-center gap-2 rounded-full px-5 text-sm font-semibold;
+    @apply inline-flex h-9 min-h-9 cursor-pointer items-center justify-center gap-2 rounded-full px-4 text-sm font-semibold;
     background-color: var(--app-red);
     color: #fbf9f3;
     transition: opacity 0.2s ease;
@@ -275,7 +290,8 @@ html.dark {
   }
 
   .app-input {
-    @apply font-body h-10 min-h-10 w-full rounded-lg border px-3 text-sm;
+    @apply h-9 min-h-9 w-full rounded-lg border px-3 text-sm;
+    font-family: var(--app-font-ui);
     border-color: var(--app-line);
     background-color: var(--app-surface);
     color: var(--app-ink);
@@ -293,13 +309,15 @@ html.dark {
 
   /* Mono uppercase data label (table headers, section titles, form labels) */
   .app-label {
-    @apply font-label text-[0.68rem] font-medium tracking-[0.14em] uppercase;
+    @apply text-[0.66rem] font-medium tracking-[0.12em] uppercase;
+    font-family: var(--app-font-mono);
     color: var(--app-ink-soft);
   }
 
-  /* Page title — the Fraunces signature moment of each screen */
+  /* Page title — software scale, UI family */
   .app-page-title {
-    @apply font-display text-2xl font-semibold tracking-[-0.01em] sm:text-3xl;
+    @apply text-lg font-semibold tracking-[-0.01em] sm:text-xl;
+    font-family: var(--app-font-ui);
     color: var(--app-ink);
   }
 
@@ -334,7 +352,7 @@ html.dark {
   }
 
   .app-theme .btn-primary {
-    @apply h-10 min-h-10 rounded-full px-5 text-sm font-semibold shadow-none;
+    @apply h-9 min-h-9 rounded-full px-4 text-sm font-semibold shadow-none;
     background-color: var(--app-btn-bg);
     color: var(--app-btn-text);
   }
@@ -346,7 +364,7 @@ html.dark {
   }
 
   .app-theme .btn-secondary {
-    @apply h-10 min-h-10 rounded-full border px-5 text-sm font-medium;
+    @apply h-9 min-h-9 rounded-full border px-4 text-sm font-medium;
     border-color: var(--app-line);
     background-color: var(--app-surface);
     color: var(--app-ink);

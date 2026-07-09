@@ -1,5 +1,5 @@
 <template>
-  <div class="space-y-6">
+  <div class="space-y-5">
     <!-- Header -->
     <div class="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
       <div>
@@ -39,7 +39,7 @@
     </div>
 
     <!-- Filters -->
-    <div class="app-card p-5">
+    <div class="app-card p-4">
       <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5">
         <div>
           <label class="app-label mb-1.5 block">Rechercher</label>
@@ -115,7 +115,7 @@
     </div>
 
     <!-- Empty State -->
-    <div v-else-if="filteredProspects.length === 0" class="app-card px-6 py-16 text-center">
+    <div v-else-if="filteredProspects.length === 0" class="app-card px-6 py-12 text-center">
       <LandingAsterisk class="text-4xl text-[var(--app-accent)]" />
       <h3 class="font-display mt-5 text-2xl font-semibold text-[var(--app-ink)]">Aucun prospect trouvé</h3>
       <p class="mx-auto mt-2 max-w-sm text-sm leading-relaxed text-[var(--app-ink-soft)]">
