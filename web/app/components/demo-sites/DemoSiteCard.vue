@@ -74,7 +74,7 @@ const cardGradient = computed(() => {
   if (isDemoSiteReachable(props.site)) {
     return 'linear-gradient(135deg, #0f172a 0%, #0284c7 100%)'
   }
-  return 'linear-gradient(135deg, #1a1a1a 0%, #30363d 100%)'
+  return 'linear-gradient(135deg, var(--app-surface-2) 0%, var(--app-line) 100%)'
 })
 
 const statusLabel = computed(() => {

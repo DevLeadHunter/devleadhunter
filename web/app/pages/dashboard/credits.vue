@@ -45,7 +45,7 @@
             <!-- Credits Used -->
             <div
               :style="{ width: `${usedPercentage}%` }"
-              class="absolute top-0 left-0 h-full bg-[#71A3DB] transition-all duration-300"
+              class="absolute top-0 left-0 h-full bg-[var(--app-accent-ink)] transition-all duration-300"
             ></div>
 
             <!-- Credits Remaining -->
@@ -87,7 +87,7 @@
                 <!-- Credits Used -->
                 <div class="flex items-center justify-between">
                   <div class="flex items-center gap-2">
-                    <div class="h-3 w-3 flex-shrink-0 rounded bg-[#71A3DB]"></div>
+                    <div class="h-3 w-3 flex-shrink-0 rounded bg-[var(--app-accent-ink)]"></div>
                     <span class="text-sm text-[var(--app-ink)]">Credits Used</span>
                   </div>
                   <span class="text-sm font-medium text-[var(--app-ink)]">{{ creditsUsed }}</span>
@@ -147,7 +147,7 @@
                 <!-- Credits Used -->
                 <div class="flex items-center justify-between">
                   <div class="flex items-center gap-2">
-                    <div class="h-3 w-3 flex-shrink-0 rounded bg-[#71A3DB] opacity-50"></div>
+                    <div class="h-3 w-3 flex-shrink-0 rounded bg-[var(--app-accent-ink)] opacity-50"></div>
                     <span class="text-sm text-[var(--app-ink-soft)]">Credits Used</span>
                   </div>
                   <span class="text-sm font-medium text-[var(--app-ink-soft)]">0</span>
@@ -475,7 +475,7 @@ const chartData = computed(() => {
       {
         label: 'Credits Used',
         data,
-        backgroundColor: '#A585DB',
+        backgroundColor: '#8d7bb8',
         borderRadius: 4,
         maxBarThickness: 50,
       },
@@ -500,12 +500,12 @@ const chartOptions = {
         size: 13,
         weight: '500',
       },
-      bodyColor: '#8b949e',
+      bodyColor: '#8f887b',
       bodyFont: {
         size: 12,
         weight: '400',
       },
-      borderColor: '#30363d',
+      borderColor: 'rgba(140, 132, 118, 0.35)',
       borderWidth: 1,
       borderRadius: 8,
       padding: 16,
@@ -535,11 +535,11 @@ const chartOptions = {
   scales: {
     x: {
       grid: {
-        color: '#30363d',
+        color: 'rgba(140, 132, 118, 0.22)',
         display: false,
       },
       ticks: {
-        color: '#8b949e',
+        color: '#8f887b',
         font: {
           size: 11,
         },
@@ -547,10 +547,10 @@ const chartOptions = {
     },
     y: {
       grid: {
-        color: '#30363d',
+        color: 'rgba(140, 132, 118, 0.22)',
       },
       ticks: {
-        color: '#8b949e',
+        color: '#8f887b',
         font: {
           size: 11,
         },

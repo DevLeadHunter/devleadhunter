@@ -342,89 +342,93 @@ html.dark {
     background-color: var(--app-accent-soft);
     color: var(--app-accent-ink);
   }
+}
 
-  /* — Legacy class remap, scoped to the dashboard shell —
-     Every not-yet-migrated dashboard page keeps using .card/.btn-*/
-  .input-field/.text-muted and instantly follows both themes. */ .app-theme .card {
-    @apply rounded-xl border p-4 shadow-none;
-    border-color: var(--app-line);
-    background-color: var(--app-surface);
-  }
+/* — Legacy class remap, scoped to the dashboard shell —
+   Every not-yet-migrated dashboard page keeps using .card/.btn-*/
+/* .input-field/.text-muted and instantly follows both themes.
+   Volontairement HORS @layer : Tailwind v4 tree-shake les sélecteurs
+   descendants déclarés dans @layer components, et le CSS non-layered
+   gagne la cascade sur les définitions legacy layerées. */
+.app-theme .card {
+  @apply rounded-xl border p-4 shadow-none;
+  border-color: var(--app-line);
+  background-color: var(--app-surface);
+}
 
-  .app-theme .btn-primary {
-    @apply h-9 min-h-9 rounded-full px-4 text-sm font-semibold shadow-none;
-    background-color: var(--app-btn-bg);
-    color: var(--app-btn-text);
-  }
+.app-theme .btn-primary {
+  @apply h-9 min-h-9 rounded-full px-4 text-sm font-semibold shadow-none;
+  background-color: var(--app-btn-bg);
+  color: var(--app-btn-text);
+}
 
-  .app-theme .btn-primary:hover {
-    @apply shadow-none;
-    background-color: var(--app-btn-bg);
-    opacity: 0.88;
-  }
+.app-theme .btn-primary:hover {
+  @apply shadow-none;
+  background-color: var(--app-btn-bg);
+  opacity: 0.88;
+}
 
-  .app-theme .btn-secondary {
-    @apply h-9 min-h-9 rounded-full border px-4 text-sm font-medium;
-    border-color: var(--app-line);
-    background-color: var(--app-surface);
-    color: var(--app-ink);
-  }
+.app-theme .btn-secondary {
+  @apply h-9 min-h-9 rounded-full border px-4 text-sm font-medium;
+  border-color: var(--app-line);
+  background-color: var(--app-surface);
+  color: var(--app-ink);
+}
 
-  .app-theme .btn-secondary:hover {
-    border-color: var(--app-ink-soft);
-    background-color: var(--app-surface-2);
-  }
+.app-theme .btn-secondary:hover {
+  border-color: var(--app-ink-soft);
+  background-color: var(--app-surface-2);
+}
 
-  .app-theme .btn-danger {
-    @apply rounded-full;
-    background-color: var(--app-red);
-    color: #fbf9f3;
-  }
+.app-theme .btn-danger {
+  @apply rounded-full;
+  background-color: var(--app-red);
+  color: #fbf9f3;
+}
 
-  .app-theme .btn-danger:hover {
-    background-color: var(--app-red);
-    opacity: 0.88;
-  }
+.app-theme .btn-danger:hover {
+  background-color: var(--app-red);
+  opacity: 0.88;
+}
 
-  .app-theme .input-field {
-    @apply rounded-lg;
-    border-color: var(--app-line);
-    background-color: var(--app-surface);
-    color: var(--app-ink);
-  }
+.app-theme .input-field {
+  @apply rounded-lg;
+  border-color: var(--app-line);
+  background-color: var(--app-surface);
+  color: var(--app-ink);
+}
 
-  .app-theme .input-field::placeholder {
-    color: var(--app-faint);
-  }
+.app-theme .input-field::placeholder {
+  color: var(--app-faint);
+}
 
-  .app-theme .input-field:focus {
-    border-color: var(--app-ink);
-  }
+.app-theme .input-field:focus {
+  border-color: var(--app-ink);
+}
 
-  .app-theme .input-field option {
-    background-color: var(--app-surface);
-    color: var(--app-ink);
-  }
+.app-theme .input-field option {
+  background-color: var(--app-surface);
+  color: var(--app-ink);
+}
 
-  .app-theme .text-muted {
-    color: var(--app-ink-soft);
-  }
+.app-theme .text-muted {
+  color: var(--app-ink-soft);
+}
 
-  .app-theme .border-muted {
-    border-color: var(--app-line);
-  }
+.app-theme .border-muted {
+  border-color: var(--app-line);
+}
 
-  .app-theme h1 {
-    color: var(--app-ink);
-  }
+.app-theme h1 {
+  color: var(--app-ink);
+}
 
-  .app-theme .btn-sidebar-hover {
-    background-color: var(--app-surface-2);
-  }
+.app-theme .btn-sidebar-hover {
+  background-color: var(--app-surface-2);
+}
 
-  .app-theme .btn-sidebar-active {
-    background-color: var(--app-surface-2);
-  }
+.app-theme .btn-sidebar-active {
+  background-color: var(--app-surface-2);
 }
 
 /* Themed spinner (dashboard boot + inline loaders) */

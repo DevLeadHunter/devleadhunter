@@ -145,7 +145,7 @@
             <div class="mt-4 space-y-3">
               <div>
                 <div class="mb-1 flex items-center justify-between text-xs">
-                  <span class="text-[#c9d1d9]">Ventes gagnées</span>
+                  <span class="text-[var(--app-ink)]">Ventes gagnées</span>
                   <span class="text-[var(--app-ink-soft)] tabular-nums"
                     >{{ stats.sales_won }} / {{ stats.orders_total }}</span
                   >
@@ -158,7 +158,7 @@
                 </div>
               </div>
               <div class="flex items-center justify-between rounded-lg border border-[var(--app-surface-2)] px-3 py-2">
-                <span class="flex items-center gap-2 text-xs text-[#c9d1d9]">
+                <span class="flex items-center gap-2 text-xs text-[var(--app-ink)]">
                   <i class="fa-solid fa-hourglass-half text-[var(--app-accent)]"></i> Pipeline en cours
                 </span>
                 <span class="text-sm font-bold text-[var(--app-accent)] tabular-nums">{{
@@ -174,7 +174,7 @@
       <section class="card">
         <div class="mb-4 flex items-center justify-between">
           <h2 class="flex items-center gap-2 text-sm font-semibold text-[var(--app-ink)]">
-            <i class="fa-solid fa-fire text-xs text-[#ff7b72]"></i> Leads chauds
+            <i class="fa-solid fa-fire text-xs text-[var(--app-red)]"></i> Leads chauds
             <span v-if="hotLeads.length" class="text-muted font-normal">({{ hotLeads.length }})</span>
           </h2>
           <NuxtLink to="/dashboard/my-prospects" class="text-xs text-[var(--app-accent-ink)] hover:underline">
@@ -187,7 +187,7 @@
             v-for="lead in hotLeads"
             :key="lead.prospect_id"
             type="button"
-            class="flex w-full items-center gap-3 rounded-lg border border-[var(--app-surface-2)] p-3 text-left transition-all hover:-translate-y-0.5 hover:border-[#3d444d] hover:bg-[#161616]"
+            class="flex w-full items-center gap-3 rounded-lg border border-[var(--app-surface-2)] p-3 text-left transition-all hover:-translate-y-0.5 hover:border-[var(--app-ink-soft)] hover:bg-[#161616]"
             @click="openProspect(lead.prospect_id)"
           >
             <span
@@ -321,7 +321,7 @@ function temperatureLabel(temperature: string): string {
 function temperatureClass(temperature: string): string {
   switch (temperature) {
     case 'hot':
-      return 'border border-[var(--app-red)]/40 bg-[var(--app-red)]/10 text-[#ff7b72]'
+      return 'border border-[var(--app-red)]/40 bg-[var(--app-red)]/10 text-[var(--app-red)]'
     case 'warm':
       return 'border border-[var(--app-accent)]/40 bg-[var(--app-accent)]/10 text-[var(--app-accent)]'
     default:
@@ -335,7 +335,7 @@ function temperatureClass(temperature: string): string {
  * @returns Inline style object.
  */
 function scoreBarStyle(score: number): Record<string, string> {
-  const color: string = score >= 70 ? '#ff7b72' : score >= 40 ? '#e3b341' : '#58a6ff'
+  const color: string = score >= 70 ? 'var(--app-red)' : score >= 40 ? 'var(--app-accent)' : 'var(--app-accent-ink)'
   return {
     width: `${Math.max(0, Math.min(100, score))}%`,
     backgroundColor: color,

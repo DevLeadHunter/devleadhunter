@@ -421,7 +421,7 @@ const confidenceColor = computed((): string => {
     case 4:
       return 'bg-[var(--app-green)]'
     default:
-      return 'bg-[#8b949e]'
+      return 'bg-[var(--app-ink-soft)]'
   }
 })
 

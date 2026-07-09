@@ -56,9 +56,9 @@
           <div class="space-y-3">
             <label class="text-sm font-medium text-[var(--app-ink)]">Screenshots (optional)</label>
             <label
-              class="flex cursor-pointer flex-col items-center justify-center gap-2 rounded-lg border border-dashed border-[var(--app-line)] bg-[var(--app-bg)] px-4 py-6 text-xs text-[var(--app-ink-soft)] transition-colors hover:border-[#71A3DB]/50 hover:text-[var(--app-ink)]"
+              class="flex cursor-pointer flex-col items-center justify-center gap-2 rounded-lg border border-dashed border-[var(--app-line)] bg-[var(--app-bg)] px-4 py-6 text-xs text-[var(--app-ink-soft)] transition-colors hover:border-[var(--app-accent-ink)]/50 hover:text-[var(--app-ink)]"
             >
-              <i class="fa-solid fa-cloud-arrow-up text-lg text-[#71A3DB]"></i>
+              <i class="fa-solid fa-cloud-arrow-up text-lg text-[var(--app-accent-ink)]"></i>
               <span>Upload one or many images — JPG, PNG or WEBP (8 MB max per file)</span>
               <input
                 ref="attachmentInput"
@@ -106,15 +106,15 @@
             <h2 class="text-sm font-semibold tracking-wide text-[var(--app-ink)] uppercase">Tips to speed things up</h2>
             <ul class="mt-3 space-y-2 text-xs leading-relaxed text-[var(--app-ink-soft)]">
               <li class="flex items-start gap-2">
-                <i class="fa-regular fa-circle-check mt-0.5 text-[#71A3DB]"></i>
+                <i class="fa-regular fa-circle-check mt-0.5 text-[var(--app-accent-ink)]"></i>
                 Share the steps you followed and where it went wrong (e.g. credits consumed without results).
               </li>
               <li class="flex items-start gap-2">
-                <i class="fa-regular fa-circle-check mt-0.5 text-[#71A3DB]"></i>
+                <i class="fa-regular fa-circle-check mt-0.5 text-[var(--app-accent-ink)]"></i>
                 Mention dates, campaigns or prospect names so we can find the event quickly.
               </li>
               <li class="flex items-start gap-2">
-                <i class="fa-regular fa-circle-check mt-0.5 text-[#71A3DB]"></i>
+                <i class="fa-regular fa-circle-check mt-0.5 text-[var(--app-accent-ink)]"></i>
                 Attach clear screenshots of the error message or unexpected screen.
               </li>
             </ul>

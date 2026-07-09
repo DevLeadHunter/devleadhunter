@@ -8,7 +8,7 @@
       :class="[
         'group overflow-hidden rounded-2xl border text-left transition-all duration-300',
         modelValue === template.id
-          ? 'border-[var(--app-ink)] bg-[var(--app-surface)] shadow-lg ring-1 shadow-white/5 ring-[#f9f9f9]/20'
+          ? 'border-[var(--app-ink)] bg-[var(--app-surface)] shadow-[var(--app-shadow-soft)] ring-1 ring-[var(--app-ink)]/15'
           : 'border-[var(--app-line)] bg-[var(--app-surface)] hover:border-[var(--app-ink-soft)] hover:shadow-md',
       ]"
       @click="selectTemplate(template)"

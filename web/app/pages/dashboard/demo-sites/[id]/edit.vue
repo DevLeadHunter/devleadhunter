@@ -3,13 +3,13 @@
     <div>
       <NuxtLink
         :to="`/dashboard/demo-sites/${demoSiteId}`"
-        class="inline-flex items-center gap-2 text-sm text-[#8b949e] hover:text-[#f9f9f9]"
+        class="inline-flex items-center gap-2 text-sm text-[var(--app-ink-soft)] hover:text-[var(--app-ink)]"
       >
         <i class="fa-solid fa-arrow-left text-xs"></i>
         Retour à la fiche
       </NuxtLink>
-      <h1 class="mt-4 text-2xl font-semibold text-[#f9f9f9]">Modifier le site démo</h1>
-      <p v-if="site" class="mt-1 text-sm text-[#8b949e]">{{ site.business_name }} · {{ site.slug }}</p>
+      <h1 class="mt-4 text-2xl font-semibold text-[var(--app-ink)]">Modifier le site démo</h1>
+      <p v-if="site" class="mt-1 text-sm text-[var(--app-ink-soft)]">{{ site.business_name }} · {{ site.slug }}</p>
     </div>
 
     <UiLoader v-if="pending" />
@@ -18,33 +18,33 @@
 
     <form v-else-if="site" class="space-y-6" @submit.prevent="handleSave">
       <div class="card space-y-5 p-6">
-        <h2 class="font-semibold text-[#f9f9f9]">Informations entreprise</h2>
+        <h2 class="font-semibold text-[var(--app-ink)]">Informations entreprise</h2>
         <div>
-          <label class="mb-1 block text-sm text-[#8b949e]">Nom de l'entreprise *</label>
+          <label class="mb-1 block text-sm text-[var(--app-ink-soft)]">Nom de l'entreprise *</label>
           <input v-model="form.business_name" type="text" class="input-field w-full" required />
         </div>
         <div class="grid gap-4 sm:grid-cols-2">
           <div>
-            <label class="mb-1 block text-sm text-[#8b949e]">Téléphone</label>
+            <label class="mb-1 block text-sm text-[var(--app-ink-soft)]">Téléphone</label>
             <input v-model="form.phone" type="text" class="input-field w-full" />
           </div>
           <div>
-            <label class="mb-1 block text-sm text-[#8b949e]">Ville</label>
+            <label class="mb-1 block text-sm text-[var(--app-ink-soft)]">Ville</label>
             <input v-model="form.city" type="text" class="input-field w-full" />
           </div>
         </div>
         <div>
-          <label class="mb-1 block text-sm text-[#8b949e]">Email client *</label>
+          <label class="mb-1 block text-sm text-[var(--app-ink-soft)]">Email client *</label>
           <input v-model="form.email" type="email" required class="input-field w-full" />
         </div>
         <div>
-          <label class="mb-1 block text-sm text-[#8b949e]">Description</label>
+          <label class="mb-1 block text-sm text-[var(--app-ink-soft)]">Description</label>
           <textarea v-model="form.description" rows="3" class="input-field w-full" />
         </div>
       </div>
 
       <div class="card space-y-5 p-6">
-        <h2 class="font-semibold text-[#f9f9f9]">Template & couleurs</h2>
+        <h2 class="font-semibold text-[var(--app-ink)]">Template & couleurs</h2>
         <DemoSitesTemplatePicker
           v-model="form.template_id"
           :templates="templates"
@@ -57,7 +57,7 @@
         v-if="saveMessage"
         :class="[
           'card p-4 text-sm',
-          saveSuccess ? 'border-[#2BAD5F]/30 text-[#2BAD5F]' : 'border-red-500/30 text-red-300',
+          saveSuccess ? 'border-[var(--app-green)]/30 text-[var(--app-green)]' : 'border-red-500/30 text-red-300',
         ]"
       >
         {{ saveMessage }}

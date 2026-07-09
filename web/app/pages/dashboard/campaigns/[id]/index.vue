@@ -2,7 +2,7 @@
   <div class="space-y-6">
     <!-- Loading -->
     <div v-if="isLoading" class="flex items-center justify-center py-20">
-      <UIcon name="i-lucide-loader-circle" class="h-8 w-8 animate-spin text-[#8b949e]" />
+      <UIcon name="i-lucide-loader-circle" class="h-8 w-8 animate-spin text-[var(--app-ink-soft)]" />
     </div>
 
     <template v-else-if="campaign">
@@ -10,26 +10,28 @@
       <div class="flex flex-wrap items-start justify-between gap-4">
         <div class="flex min-w-0 items-center gap-3">
           <button
-            class="flex h-8 w-8 items-center justify-center rounded-lg text-[#8b949e] transition-colors hover:bg-[#1a1a1a] hover:text-[#f9f9f9]"
+            class="flex h-8 w-8 items-center justify-center rounded-lg text-[var(--app-ink-soft)] transition-colors hover:bg-[var(--app-surface)] hover:text-[var(--app-ink)]"
             @click="router.push('/dashboard/campaigns')"
           >
             <UIcon name="i-lucide-arrow-left" class="h-4 w-4" />
           </button>
           <div class="min-w-0">
             <div class="flex flex-wrap items-center gap-2">
-              <h1 class="truncate text-xl font-semibold text-[#f9f9f9]">{{ campaign.name }}</h1>
+              <h1 class="truncate text-xl font-semibold text-[var(--app-ink)]">{{ campaign.name }}</h1>
               <span
                 :class="[
                   'inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium',
-                  STATUS_STYLE[campaign.status] ?? 'bg-[#30363d] text-[#8b949e]',
+                  STATUS_STYLE[campaign.status] ?? 'bg-[var(--app-surface-2)] text-[var(--app-ink-soft)]',
                 ]"
               >
-                <span :class="['h-1.5 w-1.5 rounded-full', STATUS_DOT[campaign.status] ?? 'bg-[#8b949e]']" />
+                <span
+                  :class="['h-1.5 w-1.5 rounded-full', STATUS_DOT[campaign.status] ?? 'bg-[var(--app-ink-soft)]']"
+                />
                 {{ STATUS_LABELS[campaign.status] ?? campaign.status }}
               </span>
               <span
                 v-if="campaign.ab_template_id_b"
-                class="inline-flex items-center gap-1 rounded-full bg-[#1f1b40] px-2 py-0.5 text-[10px] font-semibold text-[#a78bfa]"
+                class="inline-flex items-center gap-1 rounded-full bg-[#8d7bb8]/15 px-2 py-0.5 text-[10px] font-semibold text-[#8d7bb8]"
               >
                 <UIcon name="i-lucide-flask-conical" class="h-3 w-3" /> A/B
               </span>
@@ -58,14 +60,14 @@
             {{ campaign.status === 'paused' ? 'Relancer' : 'Lancer' }}
           </button>
           <button
-            class="flex h-10 w-10 items-center justify-center rounded-lg border border-[#30363d] text-[#8b949e] transition-colors hover:bg-[#1a1a1a] hover:text-[#f9f9f9]"
+            class="flex h-10 w-10 items-center justify-center rounded-lg border border-[var(--app-line)] text-[var(--app-ink-soft)] transition-colors hover:bg-[var(--app-surface)] hover:text-[var(--app-ink)]"
             title="Modifier"
             @click="openEditModal"
           >
             <UIcon name="i-lucide-pencil" class="h-4 w-4" />
           </button>
           <button
-            class="flex h-10 w-10 items-center justify-center rounded-lg border border-[#DC4747]/40 text-[#DC4747] transition-colors hover:bg-[#DC4747]/10"
+            class="flex h-10 w-10 items-center justify-center rounded-lg border border-[var(--app-red)]/40 text-[var(--app-red)] transition-colors hover:bg-[var(--app-red)]/10"
             title="Supprimer"
             @click="confirmDeleteModal?.open()"
           >
@@ -76,7 +78,11 @@
 
       <!-- ─── Stats strip ─────────────────────────────────────────────────── -->
       <div v-if="stats" class="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
-        <div v-for="m in metricCards" :key="m.label" class="rounded-xl border border-[#30363d] bg-[#0d0d0d] p-3.5">
+        <div
+          v-for="m in metricCards"
+          :key="m.label"
+          class="rounded-xl border border-[var(--app-line)] bg-[var(--app-surface)] p-3.5"
+        >
           <div class="flex items-center gap-2">
             <UIcon :name="m.icon" :class="['h-3.5 w-3.5', m.color]" />
             <p class="text-muted text-xs">{{ m.label }}</p>
@@ -86,7 +92,7 @@
       </div>
 
       <!-- ─── Tabs ────────────────────────────────────────────────────────── -->
-      <div class="border-b border-[#30363d]">
+      <div class="border-b border-[var(--app-line)]">
         <nav class="flex gap-1">
           <button
             v-for="tab in TABS"
@@ -94,8 +100,8 @@
             :class="[
               '-mb-px flex items-center gap-2 border-b-2 px-3 pt-1 pb-2.5 text-sm font-medium transition-colors',
               activeTab === tab.key
-                ? 'border-[#f9f9f9] text-[#f9f9f9]'
-                : 'border-transparent text-[#8b949e] hover:text-[#f9f9f9]',
+                ? 'border-[var(--app-ink)] text-[var(--app-ink)]'
+                : 'border-transparent text-[var(--app-ink-soft)] hover:text-[var(--app-ink)]',
             ]"
             @click="activeTab = tab.key"
           >
@@ -103,7 +109,7 @@
             {{ tab.label }}
             <span
               v-if="tab.key === 'queue' && queueData?.pending_count"
-              class="rounded-full bg-[#1f3a5c] px-1.5 py-0.5 text-[10px] font-semibold text-[#58a6ff]"
+              class="rounded-full bg-[#1f3a5c] px-1.5 py-0.5 text-[10px] font-semibold text-[var(--app-accent-ink)]"
             >
               {{ queueData.pending_count }}
             </span>
@@ -114,12 +120,12 @@
       <!-- ═══ Tab: Configuration ══════════════════════════════════════════ -->
       <div v-if="activeTab === 'config'" class="space-y-4">
         <!-- Cadence -->
-        <section class="rounded-xl border border-[#30363d] bg-[#0d0d0d] p-5">
+        <section class="rounded-xl border border-[var(--app-line)] bg-[var(--app-surface)] p-5">
           <div class="mb-4 flex items-center gap-2">
-            <UIcon name="i-lucide-timer" class="h-4 w-4 text-[#58a6ff]" />
-            <h3 class="text-sm font-semibold text-[#f9f9f9]">Cadence d'envoi</h3>
+            <UIcon name="i-lucide-timer" class="h-4 w-4 text-[var(--app-accent-ink)]" />
+            <h3 class="text-sm font-semibold text-[var(--app-ink)]">Cadence d'envoi</h3>
           </div>
-          <div class="flex items-center gap-2 text-sm text-[#f9f9f9]">
+          <div class="flex items-center gap-2 text-sm text-[var(--app-ink)]">
             <span>1 email toutes les</span>
             <input
               v-model.number="settingsForm.send_delay_minutes"
@@ -136,15 +142,15 @@
         </section>
 
         <!-- Templates -->
-        <section class="rounded-xl border border-[#30363d] bg-[#0d0d0d] p-5">
+        <section class="rounded-xl border border-[var(--app-line)] bg-[var(--app-surface)] p-5">
           <div class="mb-4 flex items-center justify-between">
             <div class="flex items-center gap-2">
-              <UIcon name="i-lucide-mail" class="h-4 w-4 text-[#3fb950]" />
-              <h3 class="text-sm font-semibold text-[#f9f9f9]">Email initial (J1)</h3>
+              <UIcon name="i-lucide-mail" class="h-4 w-4 text-[var(--app-green)]" />
+              <h3 class="text-sm font-semibold text-[var(--app-ink)]">Email initial (J1)</h3>
             </div>
             <button
               type="button"
-              class="flex items-center gap-2 text-xs text-[#8b949e] transition-colors hover:text-[#f9f9f9]"
+              class="flex items-center gap-2 text-xs text-[var(--app-ink-soft)] transition-colors hover:text-[var(--app-ink)]"
               @click="settingsForm.enable_ab = !settingsForm.enable_ab"
             >
               <UIcon name="i-lucide-flask-conical" class="h-3.5 w-3.5" />
@@ -152,7 +158,7 @@
               <span
                 :class="[
                   'relative inline-block h-5 w-9 rounded-full transition-colors',
-                  settingsForm.enable_ab ? 'bg-[#a78bfa]' : 'bg-[#30363d]',
+                  settingsForm.enable_ab ? 'bg-[#8d7bb8]' : 'bg-[var(--app-surface-2)]',
                 ]"
               >
                 <span
@@ -169,15 +175,15 @@
             <div>
               <label
                 v-if="settingsForm.enable_ab"
-                class="mb-1.5 flex items-center gap-1.5 text-xs font-medium text-[#58a6ff]"
+                class="mb-1.5 flex items-center gap-1.5 text-xs font-medium text-[var(--app-accent-ink)]"
               >
                 <span class="rounded bg-[#1f3a5c] px-1.5 py-0.5 font-bold">A</span> Variante A
               </label>
               <UiTemplateSelect v-model="settingsForm.template_id" :templates="templates" />
             </div>
             <div v-if="settingsForm.enable_ab">
-              <label class="mb-1.5 flex items-center gap-1.5 text-xs font-medium text-[#a78bfa]">
-                <span class="rounded bg-[#1f1b40] px-1.5 py-0.5 font-bold">B</span> Variante B
+              <label class="mb-1.5 flex items-center gap-1.5 text-xs font-medium text-[#8d7bb8]">
+                <span class="rounded bg-[#8d7bb8]/15 px-1.5 py-0.5 font-bold">B</span> Variante B
               </label>
               <UiTemplateSelect v-model="settingsForm.ab_template_id_b" :templates="templates" />
             </div>
@@ -185,24 +191,24 @@
 
           <div
             v-if="settingsForm.enable_ab"
-            class="mt-3 flex items-start gap-2 rounded-lg border border-[#a78bfa]/20 bg-[#a78bfa]/5 px-3 py-2"
+            class="mt-3 flex items-start gap-2 rounded-lg border border-[#8d7bb8]/20 bg-[#8d7bb8]/5 px-3 py-2"
           >
-            <UIcon name="i-lucide-info" class="mt-0.5 h-3.5 w-3.5 shrink-0 text-[#a78bfa]" />
-            <p class="text-xs text-[#a78bfa]">
+            <UIcon name="i-lucide-info" class="mt-0.5 h-3.5 w-3.5 shrink-0 text-[#8d7bb8]" />
+            <p class="text-xs text-[#8d7bb8]">
               Distribution 50/50 automatique — chaque variante part à la moitié des prospects.
             </p>
           </div>
         </section>
 
         <!-- Follow-ups -->
-        <section class="rounded-xl border border-[#30363d] bg-[#0d0d0d] p-5">
+        <section class="rounded-xl border border-[var(--app-line)] bg-[var(--app-surface)] p-5">
           <div class="mb-4 flex items-center justify-between">
             <div class="flex items-center gap-2">
-              <UIcon name="i-lucide-reply" class="h-4 w-4 text-[#fbbf24]" />
-              <h3 class="text-sm font-semibold text-[#f9f9f9]">Séquence de relances</h3>
+              <UIcon name="i-lucide-reply" class="h-4 w-4 text-[var(--app-accent)]" />
+              <h3 class="text-sm font-semibold text-[var(--app-ink)]">Séquence de relances</h3>
             </div>
             <button
-              class="flex items-center gap-1.5 rounded-lg border border-[#30363d] px-2.5 py-1 text-xs text-[#f9f9f9] transition-colors hover:bg-[#1a1a1a]"
+              class="flex items-center gap-1.5 rounded-lg border border-[var(--app-line)] px-2.5 py-1 text-xs text-[var(--app-ink)] transition-colors hover:bg-[var(--app-surface)]"
               @click="addFollowUp"
             >
               <UIcon name="i-lucide-plus" class="h-3.5 w-3.5" />Ajouter
@@ -211,9 +217,9 @@
 
           <div
             v-if="settingsForm.follow_ups.length === 0"
-            class="rounded-lg border border-dashed border-[#30363d] py-8 text-center"
+            class="rounded-lg border border-dashed border-[var(--app-line)] py-8 text-center"
           >
-            <UIcon name="i-lucide-reply-all" class="mx-auto mb-2 h-7 w-7 text-[#30363d]" />
+            <UIcon name="i-lucide-reply-all" class="mx-auto mb-2 h-7 w-7 text-[var(--app-faint)]" />
             <p class="text-muted text-sm">Aucune relance configurée</p>
             <p class="text-muted mt-0.5 text-xs">Les prospects qui ne répondent pas ne recevront pas de suivi.</p>
           </div>
@@ -222,15 +228,15 @@
             <div
               v-for="(fu, idx) in settingsForm.follow_ups"
               :key="idx"
-              class="relative flex gap-3 rounded-lg border border-[#30363d] bg-[#161b22] p-3"
+              class="relative flex gap-3 rounded-lg border border-[var(--app-line)] bg-[var(--app-surface)] p-3"
             >
               <div
-                class="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[#3a2a0a] text-xs font-bold text-[#fbbf24]"
+                class="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[#3a2a0a] text-xs font-bold text-[var(--app-accent)]"
               >
                 {{ idx + 1 }}
               </div>
               <div class="flex-1 space-y-2.5">
-                <div class="flex items-center gap-2 text-xs text-[#8b949e]">
+                <div class="flex items-center gap-2 text-xs text-[var(--app-ink-soft)]">
                   <UIcon name="i-lucide-clock" class="h-3.5 w-3.5" />
                   <span>J+</span>
                   <input
@@ -245,7 +251,7 @@
                 <UiTemplateSelect v-model="fu.template_id" :templates="templates" />
               </div>
               <button
-                class="absolute top-2 right-2 text-[#8b949e] transition-colors hover:text-[#DC4747]"
+                class="absolute top-2 right-2 text-[var(--app-ink-soft)] transition-colors hover:text-[var(--app-red)]"
                 @click="removeFollowUp(idx)"
               >
                 <UIcon name="i-lucide-x" class="h-4 w-4" />
@@ -254,14 +260,16 @@
           </div>
 
           <!-- Behaviour-personalised follow-ups (additive) -->
-          <label class="mt-4 flex cursor-pointer items-start gap-3 rounded-lg border border-[#30363d] bg-[#161b22] p-3">
+          <label
+            class="mt-4 flex cursor-pointer items-start gap-3 rounded-lg border border-[var(--app-line)] bg-[var(--app-surface)] p-3"
+          >
             <input
               v-model="settingsForm.behavior_personalized_followups"
               type="checkbox"
-              class="mt-0.5 h-4 w-4 rounded border-[#30363d]"
+              class="mt-0.5 h-4 w-4 rounded border-[var(--app-line)]"
             />
             <span class="text-xs">
-              <span class="font-medium text-[#f9f9f9]">Relance personnalisée selon le comportement</span>
+              <span class="font-medium text-[var(--app-ink)]">Relance personnalisée selon le comportement</span>
               <span class="text-muted mt-0.5 block">
                 Personnalise le corps des relances à partir du comportement du prospect sur la démo (clics, visites…).
                 Conserve le template comme base si aucune donnée n'est disponible.
@@ -284,10 +292,10 @@
       <div v-if="activeTab === 'ab'" class="space-y-4">
         <div
           v-if="!campaign.ab_template_id_b"
-          class="rounded-xl border border-[#30363d] bg-[#0d0d0d] py-14 text-center"
+          class="rounded-xl border border-[var(--app-line)] bg-[var(--app-surface)] py-14 text-center"
         >
-          <UIcon name="i-lucide-flask-conical" class="mx-auto mb-3 h-10 w-10 text-[#30363d]" />
-          <p class="font-medium text-[#f9f9f9]">A/B test non activé</p>
+          <UIcon name="i-lucide-flask-conical" class="mx-auto mb-3 h-10 w-10 text-[var(--app-faint)]" />
+          <p class="font-medium text-[var(--app-ink)]">A/B test non activé</p>
           <p class="text-muted mx-auto mt-1 max-w-sm text-sm">
             Active l'A/B test dans la configuration pour comparer deux variantes en temps réel.
           </p>
@@ -302,21 +310,21 @@
               v-for="v in stats.ab_stats"
               :key="v.variant"
               :class="[
-                'rounded-xl border-2 bg-[#0d0d0d] p-5',
-                v.variant === 'A' ? 'border-[#58a6ff]/30' : 'border-[#a78bfa]/30',
+                'rounded-xl border-2 bg-[var(--app-surface)] p-5',
+                v.variant === 'A' ? 'border-[var(--app-accent-ink)]/30' : 'border-[#8d7bb8]/30',
               ]"
             >
               <div class="mb-4 flex items-center justify-between">
                 <span
                   :class="[
                     'flex items-center gap-2 text-base font-bold',
-                    v.variant === 'A' ? 'text-[#58a6ff]' : 'text-[#a78bfa]',
+                    v.variant === 'A' ? 'text-[var(--app-accent-ink)]' : 'text-[#8d7bb8]',
                   ]"
                 >
                   <span
                     :class="[
                       'flex h-6 w-6 items-center justify-center rounded-lg text-sm',
-                      v.variant === 'A' ? 'bg-[#1f3a5c]' : 'bg-[#1f1b40]',
+                      v.variant === 'A' ? 'bg-[#1f3a5c]' : 'bg-[#8d7bb8]/15',
                     ]"
                     >{{ v.variant }}</span
                   >
@@ -324,33 +332,36 @@
                 </span>
                 <span
                   v-if="isWinner(v)"
-                  class="inline-flex items-center gap-1 rounded-full bg-[#1a3a2a] px-2 py-0.5 text-xs font-semibold text-[#3fb950]"
+                  class="inline-flex items-center gap-1 rounded-full bg-[#1a3a2a] px-2 py-0.5 text-xs font-semibold text-[var(--app-green)]"
                 >
                   <UIcon name="i-lucide-trophy" class="h-3 w-3" /> Gagnant
                 </span>
               </div>
               <div class="grid grid-cols-3 gap-3 text-center">
                 <div>
-                  <p class="text-xl font-bold text-[#f9f9f9]">{{ v.sent }}</p>
+                  <p class="text-xl font-bold text-[var(--app-ink)]">{{ v.sent }}</p>
                   <p class="text-muted text-xs">Envoyés</p>
                 </div>
                 <div>
-                  <p class="text-xl font-bold text-[#f9f9f9]">{{ v.open_rate }}%</p>
+                  <p class="text-xl font-bold text-[var(--app-ink)]">{{ v.open_rate }}%</p>
                   <p class="text-muted text-xs">Ouverture</p>
                 </div>
                 <div>
-                  <p class="text-xl font-bold text-[#f9f9f9]">{{ v.click_rate }}%</p>
+                  <p class="text-xl font-bold text-[var(--app-ink)]">{{ v.click_rate }}%</p>
                   <p class="text-muted text-xs">Clic</p>
                 </div>
               </div>
               <div class="mt-4">
-                <div class="mb-1 flex justify-between text-xs text-[#8b949e]">
+                <div class="mb-1 flex justify-between text-xs text-[var(--app-ink-soft)]">
                   <span>Taux d'ouverture</span>
                   <span>{{ v.opened }}/{{ v.sent }}</span>
                 </div>
-                <div class="h-2 w-full rounded-full bg-[#30363d]">
+                <div class="h-2 w-full rounded-full bg-[var(--app-surface-2)]">
                   <div
-                    :class="['h-2 rounded-full transition-all', v.variant === 'A' ? 'bg-[#58a6ff]' : 'bg-[#a78bfa]']"
+                    :class="[
+                      'h-2 rounded-full transition-all',
+                      v.variant === 'A' ? 'bg-[var(--app-accent-ink)]' : 'bg-[#8d7bb8]',
+                    ]"
                     :style="`width: ${Math.min(v.open_rate, 100)}%`"
                   />
                 </div>
@@ -361,14 +372,19 @@
           <div
             :class="[
               'flex items-start gap-2 rounded-lg border px-3 py-2.5',
-              hasSignificantDiff ? 'border-[#3fb950]/20 bg-[#3fb950]/5' : 'border-[#30363d] bg-[#0d0d0d]',
+              hasSignificantDiff
+                ? 'border-[var(--app-green)]/20 bg-[var(--app-green)]/5'
+                : 'border-[var(--app-line)] bg-[var(--app-surface)]',
             ]"
           >
             <UIcon
               :name="hasSignificantDiff ? 'i-lucide-circle-check' : 'i-lucide-info'"
-              :class="['mt-0.5 h-4 w-4 shrink-0', hasSignificantDiff ? 'text-[#3fb950]' : 'text-[#8b949e]']"
+              :class="[
+                'mt-0.5 h-4 w-4 shrink-0',
+                hasSignificantDiff ? 'text-[var(--app-green)]' : 'text-[var(--app-ink-soft)]',
+              ]"
             />
-            <p :class="['text-sm', hasSignificantDiff ? 'text-[#3fb950]' : 'text-muted']">
+            <p :class="['text-sm', hasSignificantDiff ? 'text-[var(--app-green)]' : 'text-muted']">
               {{
                 hasSignificantDiff
                   ? winnerMessage
@@ -392,17 +408,17 @@
 
         <div
           v-if="campaign.prospects.length === 0"
-          class="rounded-xl border border-[#30363d] bg-[#0d0d0d] py-14 text-center"
+          class="rounded-xl border border-[var(--app-line)] bg-[var(--app-surface)] py-14 text-center"
         >
-          <UIcon name="i-lucide-users" class="mx-auto mb-3 h-10 w-10 text-[#30363d]" />
+          <UIcon name="i-lucide-users" class="mx-auto mb-3 h-10 w-10 text-[var(--app-faint)]" />
           <p class="text-muted text-sm">Aucun prospect dans cette campagne</p>
           <button class="btn-secondary mt-4" @click="showAddProspectsModal = true">Ajouter des prospects</button>
         </div>
 
-        <div v-else class="overflow-hidden rounded-xl border border-[#30363d]">
+        <div v-else class="overflow-hidden rounded-xl border border-[var(--app-line)]">
           <table class="w-full border-collapse">
             <thead>
-              <tr class="bg-[#050505]">
+              <tr class="bg-[var(--app-bg)]">
                 <th class="text-muted px-3 py-2.5 text-left text-xs font-semibold">Prospect</th>
                 <th class="text-muted px-3 py-2.5 text-left text-xs font-semibold">Ville</th>
                 <th class="text-muted px-3 py-2.5 text-left text-xs font-semibold">Catégorie</th>
@@ -416,10 +432,10 @@
               <tr
                 v-for="prospect in campaign.prospects"
                 :key="prospect.id"
-                class="border-t border-[#30363d] transition-colors hover:bg-[#1a1a1a]"
+                class="border-t border-[var(--app-line)] transition-colors hover:bg-[var(--app-surface)]"
               >
                 <td class="px-3 py-2.5">
-                  <div class="text-sm font-medium text-[#f9f9f9]">{{ prospect.name }}</div>
+                  <div class="text-sm font-medium text-[var(--app-ink)]">{{ prospect.name }}</div>
                   <div class="text-muted text-xs">{{ prospect.email || '—' }}</div>
                 </td>
                 <td class="text-muted px-3 py-2.5 text-sm">{{ prospect.city || '—' }}</td>
@@ -429,7 +445,9 @@
                     v-if="prospect.ab_variant"
                     :class="[
                       'rounded px-1.5 py-0.5 text-xs font-bold',
-                      prospect.ab_variant === 'A' ? 'bg-[#1f3a5c] text-[#58a6ff]' : 'bg-[#1f1b40] text-[#a78bfa]',
+                      prospect.ab_variant === 'A'
+                        ? 'bg-[#1f3a5c] text-[var(--app-accent-ink)]'
+                        : 'bg-[#8d7bb8]/15 text-[#8d7bb8]',
                     ]"
                     >{{ prospect.ab_variant }}</span
                   >
@@ -437,7 +455,7 @@
                 </td>
                 <td class="px-3 py-2.5 text-right">
                   <button
-                    class="inline-flex items-center gap-1 rounded-lg border border-[#DC4747]/30 px-2 py-1 text-xs text-[#DC4747] transition-colors hover:bg-[#DC4747]/10"
+                    class="inline-flex items-center gap-1 rounded-lg border border-[var(--app-red)]/30 px-2 py-1 text-xs text-[var(--app-red)] transition-colors hover:bg-[var(--app-red)]/10"
                     @click="startRemoveProspect(prospect.id)"
                   >
                     <UIcon name="i-lucide-trash-2" class="h-3.5 w-3.5" />Retirer
@@ -453,7 +471,7 @@
       <div v-if="activeTab === 'queue'" class="space-y-4">
         <div class="flex items-center justify-between">
           <p class="text-muted text-sm">
-            <span class="font-semibold text-[#58a6ff]">{{ queueData?.pending_count ?? 0 }}</span> email{{
+            <span class="font-semibold text-[var(--app-accent-ink)]">{{ queueData?.pending_count ?? 0 }}</span> email{{
               (queueData?.pending_count ?? 0) !== 1 ? 's' : ''
             }}
             en attente
@@ -465,16 +483,16 @@
 
         <div
           v-if="!queueData || queueData.items.length === 0"
-          class="rounded-xl border border-[#30363d] bg-[#0d0d0d] py-14 text-center"
+          class="rounded-xl border border-[var(--app-line)] bg-[var(--app-surface)] py-14 text-center"
         >
-          <UIcon name="i-lucide-inbox" class="mx-auto mb-3 h-10 w-10 text-[#30363d]" />
+          <UIcon name="i-lucide-inbox" class="mx-auto mb-3 h-10 w-10 text-[var(--app-faint)]" />
           <p class="text-muted text-sm">Aucun élément en file d'attente</p>
         </div>
 
-        <div v-else class="overflow-hidden rounded-xl border border-[#30363d]">
+        <div v-else class="overflow-hidden rounded-xl border border-[var(--app-line)]">
           <table class="w-full border-collapse">
             <thead>
-              <tr class="bg-[#050505]">
+              <tr class="bg-[var(--app-bg)]">
                 <th class="text-muted px-3 py-2.5 text-left text-xs font-semibold">Prospect</th>
                 <th class="text-muted px-3 py-2.5 text-left text-xs font-semibold">Type</th>
                 <th class="text-muted px-3 py-2.5 text-left text-xs font-semibold">Planifié</th>
@@ -485,17 +503,19 @@
               <tr
                 v-for="item in queueData.items"
                 :key="item.id"
-                class="border-t border-[#30363d] transition-colors hover:bg-[#1a1a1a]"
+                class="border-t border-[var(--app-line)] transition-colors hover:bg-[var(--app-surface)]"
               >
                 <td class="px-3 py-2.5">
-                  <div class="text-sm text-[#f9f9f9]">{{ item.prospect_name || `#${item.prospect_id}` }}</div>
+                  <div class="text-sm text-[var(--app-ink)]">{{ item.prospect_name || `#${item.prospect_id}` }}</div>
                   <div class="text-muted text-xs">{{ item.prospect_email || '' }}</div>
                 </td>
                 <td class="px-3 py-2.5">
                   <span
                     :class="[
                       'rounded px-1.5 py-0.5 text-xs font-medium',
-                      item.queue_type === 'initial' ? 'bg-[#1f3a5c] text-[#58a6ff]' : 'bg-[#3a2a0a] text-[#fbbf24]',
+                      item.queue_type === 'initial'
+                        ? 'bg-[#1f3a5c] text-[var(--app-accent-ink)]'
+                        : 'bg-[#3a2a0a] text-[var(--app-accent)]',
                     ]"
                   >
                     {{ item.queue_type === 'initial' ? 'J1' : `Relance ${item.follow_up_index}` }}
@@ -504,7 +524,7 @@
                     v-if="item.ab_variant"
                     :class="[
                       'ml-1 text-[10px] font-bold',
-                      item.ab_variant === 'A' ? 'text-[#58a6ff]' : 'text-[#a78bfa]',
+                      item.ab_variant === 'A' ? 'text-[var(--app-accent-ink)]' : 'text-[#8d7bb8]',
                     ]"
                     >{{ item.ab_variant }}</span
                   >
@@ -514,7 +534,7 @@
                   <span
                     :class="[
                       'rounded px-1.5 py-0.5 text-xs font-medium',
-                      QUEUE_STATUS_STYLE[item.status] ?? 'bg-[#30363d] text-[#8b949e]',
+                      QUEUE_STATUS_STYLE[item.status] ?? 'bg-[var(--app-surface-2)] text-[var(--app-ink-soft)]',
                     ]"
                     >{{ QUEUE_STATUS_LABELS[item.status] ?? item.status }}</span
                   >
@@ -531,11 +551,11 @@
     <!-- Edit -->
     <div
       v-if="showEditModal"
-      class="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm"
+      class="fixed inset-0 z-50 flex items-center justify-center bg-[var(--app-overlay)] backdrop-blur-sm"
       @click.self="showEditModal = false"
     >
-      <div class="w-full max-w-md rounded-xl border border-[#30363d] bg-[#161b22] p-6">
-        <h2 class="mb-4 text-base font-semibold text-[#f9f9f9]">Modifier la campagne</h2>
+      <div class="w-full max-w-md rounded-xl border border-[var(--app-line)] bg-[var(--app-surface)] p-6">
+        <h2 class="mb-4 text-base font-semibold text-[var(--app-ink)]">Modifier la campagne</h2>
         <form class="space-y-3" @submit.prevent="handleUpdateCampaign">
           <div>
             <label class="text-muted mb-1.5 block text-xs font-medium">Nom</label>
@@ -556,11 +576,11 @@
     <!-- Add prospects -->
     <div
       v-if="showAddProspectsModal"
-      class="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm"
+      class="fixed inset-0 z-50 flex items-center justify-center bg-[var(--app-overlay)] backdrop-blur-sm"
       @click.self="showAddProspectsModal = false"
     >
-      <div class="w-full max-w-2xl rounded-xl border border-[#30363d] bg-[#161b22] p-6">
-        <h2 class="mb-4 text-base font-semibold text-[#f9f9f9]">Ajouter des prospects</h2>
+      <div class="w-full max-w-2xl rounded-xl border border-[var(--app-line)] bg-[var(--app-surface)] p-6">
+        <h2 class="mb-4 text-base font-semibold text-[var(--app-ink)]">Ajouter des prospects</h2>
         <div v-if="availableProspects.length === 0" class="py-8 text-center">
           <p class="text-muted text-sm">Aucun prospect disponible à ajouter</p>
         </div>
@@ -569,7 +589,7 @@
             <div
               v-for="prospect in availableProspects"
               :key="prospect.id"
-              class="flex cursor-pointer items-center gap-3 rounded-lg p-2.5 transition-colors hover:bg-[#1a1a1a]"
+              class="flex cursor-pointer items-center gap-3 rounded-lg p-2.5 transition-colors hover:bg-[var(--app-surface)]"
               @click="toggleProspect(prospect.id)"
             >
               <UiCheckbox
@@ -578,12 +598,12 @@
                 @update:model-value="toggleProspect(prospect.id)"
               />
               <div>
-                <p class="text-sm text-[#f9f9f9]">{{ prospect.name }}</p>
+                <p class="text-sm text-[var(--app-ink)]">{{ prospect.name }}</p>
                 <p class="text-muted text-xs">{{ prospect.city }} · {{ prospect.category }}</p>
               </div>
             </div>
           </div>
-          <div class="flex gap-3 border-t border-[#30363d] pt-3">
+          <div class="flex gap-3 border-t border-[var(--app-line)] pt-3">
             <button class="btn-secondary flex-1" @click="showAddProspectsModal = false">Annuler</button>
             <button
               :disabled="selectedProspectIds.length === 0"
@@ -667,18 +687,18 @@ const STATUS_LABELS: Record<string, string> = {
   cancelled: 'Annulée',
 }
 const STATUS_STYLE: Record<string, string> = {
-  draft: 'bg-[#30363d] text-[#8b949e]',
-  active: 'bg-[#1a3a2a] text-[#3fb950]',
-  completed: 'bg-[#1f3a5c] text-[#58a6ff]',
-  paused: 'bg-[#3a2a0a] text-[#fbbf24]',
-  cancelled: 'bg-[#3a1a1a] text-[#DC4747]',
+  draft: 'bg-[var(--app-surface-2)] text-[var(--app-ink-soft)]',
+  active: 'bg-[#1a3a2a] text-[var(--app-green)]',
+  completed: 'bg-[#1f3a5c] text-[var(--app-accent-ink)]',
+  paused: 'bg-[#3a2a0a] text-[var(--app-accent)]',
+  cancelled: 'bg-[#3a1a1a] text-[var(--app-red)]',
 }
 const STATUS_DOT: Record<string, string> = {
-  draft: 'bg-[#8b949e]',
-  active: 'bg-[#3fb950]',
-  completed: 'bg-[#58a6ff]',
-  paused: 'bg-[#fbbf24]',
-  cancelled: 'bg-[#DC4747]',
+  draft: 'bg-[var(--app-ink-soft)]',
+  active: 'bg-[var(--app-green)]',
+  completed: 'bg-[var(--app-accent-ink)]',
+  paused: 'bg-[var(--app-accent)]',
+  cancelled: 'bg-[var(--app-red)]',
 }
 const QUEUE_STATUS_LABELS: Record<string, string> = {
   pending: 'En attente',
@@ -688,11 +708,11 @@ const QUEUE_STATUS_LABELS: Record<string, string> = {
   failed: 'Échoué',
 }
 const QUEUE_STATUS_STYLE: Record<string, string> = {
-  pending: 'bg-[#1f3a5c] text-[#58a6ff]',
-  sending: 'bg-[#3a2a0a] text-[#fbbf24]',
-  sent: 'bg-[#1a3a2a] text-[#3fb950]',
-  skipped: 'bg-[#30363d] text-[#8b949e]',
-  failed: 'bg-[#3a1a1a] text-[#DC4747]',
+  pending: 'bg-[#1f3a5c] text-[var(--app-accent-ink)]',
+  sending: 'bg-[#3a2a0a] text-[var(--app-accent)]',
+  sent: 'bg-[#1a3a2a] text-[var(--app-green)]',
+  skipped: 'bg-[var(--app-surface-2)] text-[var(--app-ink-soft)]',
+  failed: 'bg-[#3a1a1a] text-[var(--app-red)]',
 }
 
 // ─── State ────────────────────────────────────────────────────────────────────
@@ -748,12 +768,12 @@ const metricCards: ComputedRef<Array<{ label: string; value: number | string; ic
     const s = stats.value
     if (!s) return []
     return [
-      { label: 'Envoyés', value: s.total_emails_sent, icon: 'i-lucide-send', color: 'text-[#f9f9f9]' },
-      { label: 'Délivrés', value: s.emails_delivered, icon: 'i-lucide-circle-check', color: 'text-[#3fb950]' },
-      { label: 'Ouverts', value: s.emails_opened, icon: 'i-lucide-mail-open', color: 'text-[#a78bfa]' },
+      { label: 'Envoyés', value: s.total_emails_sent, icon: 'i-lucide-send', color: 'text-[var(--app-ink)]' },
+      { label: 'Délivrés', value: s.emails_delivered, icon: 'i-lucide-circle-check', color: 'text-[var(--app-green)]' },
+      { label: 'Ouverts', value: s.emails_opened, icon: 'i-lucide-mail-open', color: 'text-[#8d7bb8]' },
       { label: 'Cliqués', value: s.emails_clicked, icon: 'i-lucide-mouse-pointer-click', color: 'text-[#c4b5fd]' },
-      { label: 'Taux ouv.', value: `${s.open_rate}%`, icon: 'i-lucide-eye', color: 'text-[#58a6ff]' },
-      { label: 'Taux clic', value: `${s.click_rate}%`, icon: 'i-lucide-pointer', color: 'text-[#fbbf24]' },
+      { label: 'Taux ouv.', value: `${s.open_rate}%`, icon: 'i-lucide-eye', color: 'text-[var(--app-accent-ink)]' },
+      { label: 'Taux clic', value: `${s.click_rate}%`, icon: 'i-lucide-pointer', color: 'text-[var(--app-accent)]' },
     ]
   })
 

@@ -2,7 +2,15 @@
   <div class="flex flex-col items-center text-center">
     <div class="relative h-24 w-24">
       <svg viewBox="0 0 100 100" class="h-full w-full -rotate-90">
-        <circle cx="50" cy="50" :r="radius" fill="none" stroke="#21262d" stroke-width="9" />
+        <circle
+          cx="50"
+          cy="50"
+          :r="radius"
+          fill="none"
+          stroke="currentColor"
+          class="text-[var(--app-line)]"
+          stroke-width="9"
+        />
         <circle
           cx="50"
           cy="50"
@@ -20,7 +28,7 @@
         <span class="text-xl font-bold text-[var(--app-ink)] tabular-nums">{{ clamped }}%</span>
       </div>
     </div>
-    <p class="mt-2 text-xs font-medium text-[#c9d1d9]">{{ label }}</p>
+    <p class="mt-2 text-xs font-medium text-[var(--app-ink-soft)]">{{ label }}</p>
     <p v-if="sublabel" class="text-muted text-[11px] tabular-nums">{{ sublabel }}</p>
   </div>
 </template>

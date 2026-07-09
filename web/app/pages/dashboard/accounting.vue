@@ -43,8 +43,8 @@
                 €{{ formatCurrency(accountingData?.summary?.net_total || 0) }}
               </p>
             </div>
-            <div class="flex h-10 w-10 items-center justify-center rounded-lg bg-[#71A3DB]/20">
-              <i class="fa-solid fa-wallet text-lg text-[#71A3DB]"></i>
+            <div class="flex h-10 w-10 items-center justify-center rounded-lg bg-[var(--app-accent-ink)]/20">
+              <i class="fa-solid fa-wallet text-lg text-[var(--app-accent-ink)]"></i>
             </div>
           </div>
         </div>
@@ -126,7 +126,7 @@
               <input
                 v-model="searchQuery"
                 type="search"
-                class="w-full rounded border border-[var(--app-line)] bg-[var(--app-surface)] px-10 py-2 text-sm text-[var(--app-ink)] placeholder:text-[var(--app-ink-soft)] focus:border-[var(--app-ink)] focus:ring-1 focus:ring-[#f9f9f9] focus:outline-none"
+                class="w-full rounded border border-[var(--app-line)] bg-[var(--app-surface)] px-10 py-2 text-sm text-[var(--app-ink)] placeholder:text-[var(--app-ink-soft)] focus:border-[var(--app-ink)] focus:ring-1 focus:ring-[var(--app-ink)] focus:outline-none"
                 placeholder="Search (name, email, Stripe ID, description...)"
               />
             </div>
@@ -317,7 +317,7 @@
                 <!-- Details Button -->
                 <td class="px-4 py-3">
                   <button
-                    class="text-xs font-medium text-[#71A3DB] transition-colors hover:text-[var(--app-accent-ink)]"
+                    class="text-xs font-medium text-[var(--app-accent-ink)] transition-colors hover:text-[var(--app-accent-ink)]"
                     @click="toggleTransactionDetails(getTransactionKey(transaction))"
                   >
                     {{ expandedTransactions.has(getTransactionKey(transaction)) ? 'Hide' : 'Show' }}
@@ -795,7 +795,7 @@ const getStatusClass = (status: string): string => {
     return 'bg-[var(--app-green)]/20 text-[var(--app-green)] border border-[var(--app-green)]/30'
   }
   if (['pending', 'requires_confirmation', 'requires_action'].includes(normalized)) {
-    return 'bg-[#71A3DB]/20 text-[#71A3DB] border border-[#71A3DB]/30'
+    return 'bg-[var(--app-accent-ink)]/20 text-[var(--app-accent-ink)] border border-[var(--app-accent-ink)]/30'
   }
   if (['failed', 'canceled', 'requires_payment_method', 'expired'].includes(normalized)) {
     return 'bg-[var(--app-red)]/20 text-[var(--app-red)] border border-[var(--app-red)]/30'
@@ -803,7 +803,7 @@ const getStatusClass = (status: string): string => {
   if (['refunded', 'partially_refunded'].includes(normalized)) {
     return 'bg-[var(--app-red)]/20 text-[var(--app-red)] border border-[var(--app-red)]/30'
   }
-  return 'bg-[#8b949e]/20 text-[var(--app-ink-soft)] border border-[#8b949e]/30'
+  return 'bg-[var(--app-ink-soft)]/20 text-[var(--app-ink-soft)] border border-[var(--app-ink-soft)]/30'
 }
 
 /**

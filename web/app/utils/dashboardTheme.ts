@@ -10,14 +10,14 @@
 /** Accent keys available to dashboard widgets. */
 export type DashboardAccent = 'blue' | 'green' | 'amber' | 'violet' | 'red' | 'slate'
 
-/** Accent key → hex color. */
+/** Accent key → hex color (mid-tones readable on both app themes). */
 export const ACCENT_HEX: Record<DashboardAccent, string> = {
-  blue: '#58a6ff',
-  green: '#3fb950',
-  amber: '#e3b341',
-  violet: '#bc8cff',
-  red: '#ff7b72',
-  slate: '#8b949e',
+  blue: '#5f7f9e',
+  green: '#3f8f60',
+  amber: '#dd9a35',
+  violet: '#8d7bb8',
+  red: '#c65a41',
+  slate: '#8f887b',
 }
 
 /**

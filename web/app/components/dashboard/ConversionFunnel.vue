@@ -18,7 +18,7 @@
       <!-- Stage bar -->
       <div class="group flex items-center gap-3">
         <div class="w-32 flex-shrink-0 text-right">
-          <p class="truncate text-xs font-medium text-[#c9d1d9]">{{ row.label }}</p>
+          <p class="truncate text-xs font-medium text-[var(--app-ink)]">{{ row.label }}</p>
         </div>
         <div class="relative h-9 flex-1 overflow-hidden rounded-md bg-[var(--app-surface)]">
           <div
@@ -88,7 +88,8 @@ const rows: ComputedRef<FunnelRow[]> = computed((): FunnelRow[] => {
     const prev: number = index > 0 ? (props.stages[index - 1]?.value ?? 0) : stage.value
     const conversionPct: number = prev > 0 ? Math.round((stage.value / prev) * 100) : 0
     const sharePct: number = top > 0 ? Math.round((stage.value / top) * 100) : 0
-    const conversionColor: string = conversionPct >= 60 ? '#3fb950' : conversionPct >= 25 ? '#e3b341' : '#ff7b72'
+    const conversionColor: string =
+      conversionPct >= 60 ? 'var(--app-green)' : conversionPct >= 25 ? 'var(--app-accent)' : 'var(--app-red)'
     return {
       label: stage.label,
       value: stage.value,

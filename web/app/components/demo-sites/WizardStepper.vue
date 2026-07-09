@@ -1,45 +1,83 @@
 <template>
-  <div class="mb-10">
-    <div class="flex items-center justify-between gap-4">
-      <div v-for="(step, index) in steps" :key="step.id" class="flex flex-1 items-center">
-        <div class="flex flex-col items-center gap-2">
-          <div
-            :class="[
-              'flex h-10 w-10 items-center justify-center rounded-full text-sm font-bold transition-all duration-300',
-              currentStep > step.id
-                ? 'bg-[var(--app-green)] text-white'
-                : currentStep === step.id
-                  ? 'bg-[var(--app-ink)] text-[var(--app-bg)] shadow-lg shadow-white/10'
-                  : 'border border-[var(--app-line)] bg-[var(--app-surface)] text-[var(--app-ink-soft)]',
-            ]"
-          >
-            <i v-if="currentStep > step.id" class="fa-solid fa-check text-xs"></i>
-            <span v-else>{{ step.id }}</span>
-          </div>
+  <nav class="mb-8" aria-label="Étapes du builder">
+    <ol class="flex items-center">
+      <li v-for="(step, index) in steps" :key="step.id" class="flex items-center" :class="index > 0 ? 'flex-1' : ''">
+        <!-- Connector -->
+        <div
+          v-if="index > 0"
+          class="mx-3 h-px flex-1 rounded-full transition-colors duration-500"
+          :class="currentStep > step.id - 1 ? 'bg-[var(--app-ink)]' : 'bg-[var(--app-line)]'"
+        ></div>
+
+        <!-- Node (past steps are clickable to go back) -->
+        <button
+          type="button"
+          class="group flex items-center gap-2"
+          :class="step.id < currentStep ? 'cursor-pointer' : 'cursor-default'"
+          :aria-current="currentStep === step.id ? 'step' : undefined"
+          :disabled="step.id >= currentStep"
+          @click="emit('navigate', step.id)"
+        >
           <span
-            :class="[
-              'hidden text-center text-xs font-medium sm:block',
-              currentStep >= step.id ? 'text-[var(--app-ink)]' : 'text-[var(--app-ink-soft)]',
-            ]"
+            class="font-label flex h-7 w-7 items-center justify-center rounded-full text-[0.65rem] font-medium transition-all duration-300"
+            :class="nodeClass(step.id)"
+          >
+            <UIcon v-if="currentStep > step.id" name="i-lucide-check" class="h-3.5 w-3.5" />
+            <span v-else>0{{ step.id }}</span>
+          </span>
+          <span
+            class="hidden text-xs font-medium whitespace-nowrap transition-colors md:block"
+            :class="
+              currentStep === step.id
+                ? 'text-[var(--app-ink)]'
+                : step.id < currentStep
+                  ? 'text-[var(--app-ink-soft)] group-hover:text-[var(--app-ink)]'
+                  : 'text-[var(--app-faint)]'
+            "
           >
             {{ step.label }}
           </span>
-        </div>
-        <div
-          v-if="index < steps.length - 1"
-          :class="[
-            'mx-2 hidden h-0.5 flex-1 rounded-full transition-colors duration-500 sm:block',
-            currentStep > step.id ? 'bg-[var(--app-green)]' : 'bg-[var(--app-surface-2)]',
-          ]"
-        ></div>
-      </div>
-    </div>
-  </div>
+        </button>
+      </li>
+    </ol>
+  </nav>
 </template>
 
 <script lang="ts" setup>
-defineProps<{
-  steps: Array<{ id: number; label: string }>
-  currentStep: number
+import type { PropType } from 'vue'
+import type { DemoSitesWizardStep, DemoSitesWizardStepperProps } from '~/types/DemoSitesWizardStepper'
+
+/**
+ * Defines the component props.
+ */
+const props: DemoSitesWizardStepperProps = defineProps({
+  steps: {
+    type: Array as PropType<DemoSitesWizardStep[]>,
+    required: true,
+  },
+  currentStep: {
+    type: Number,
+    required: true,
+  },
+})
+
+const emit = defineEmits<{
+  /** A past step node was clicked — the wizard may navigate back to it. */
+  (e: 'navigate', stepId: number): void
 }>()
+
+/**
+ * Classes of a step node for its state (done / active / upcoming).
+ * @param stepId - The node's step id.
+ * @returns Tailwind classes for the node circle.
+ */
+function nodeClass(stepId: number): string {
+  if (props.currentStep > stepId) {
+    return 'bg-[var(--app-green-soft)] text-[var(--app-green)] group-hover:bg-[var(--app-green)] group-hover:text-white'
+  }
+  if (props.currentStep === stepId) {
+    return 'bg-[var(--app-ink)] text-[var(--app-btn-text)] ring-2 ring-[var(--app-accent)] ring-offset-2 ring-offset-[var(--app-bg)]'
+  }
+  return 'border border-[var(--app-line)] bg-[var(--app-surface)] text-[var(--app-faint)]'
+}
 </script>

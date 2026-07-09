@@ -36,7 +36,7 @@
               <h3 class="text-base font-semibold text-[var(--app-ink)]">{{ account.name }}</h3>
               <span
                 v-if="account.is_default"
-                class="inline-flex items-center rounded-full bg-[#71A3DB]/20 px-2 py-0.5 text-xs font-medium text-[var(--app-accent-ink)]"
+                class="inline-flex items-center rounded-full bg-[var(--app-accent-ink)]/20 px-2 py-0.5 text-xs font-medium text-[var(--app-accent-ink)]"
               >
                 Default
               </span>

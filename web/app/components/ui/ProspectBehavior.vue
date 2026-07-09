@@ -155,7 +155,7 @@ const temperatureLabel: ComputedRef<string> = computed(
 const temperatureClass: ComputedRef<string> = computed((): string => {
   switch (behavior.value?.temperature) {
     case 'hot':
-      return 'border border-[var(--app-red)]/40 bg-[var(--app-red)]/10 text-[#ff7b72]'
+      return 'border border-[var(--app-red)]/40 bg-[var(--app-red)]/10 text-[var(--app-red)]'
     case 'warm':
       return 'border border-[var(--app-accent)]/40 bg-[var(--app-accent)]/10 text-[var(--app-accent)]'
     case 'cold':

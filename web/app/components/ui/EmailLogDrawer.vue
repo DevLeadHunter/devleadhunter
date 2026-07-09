@@ -297,7 +297,7 @@ const timelineItems: ComputedRef<EmailTimelineItem[]> = computed((): EmailTimeli
       ts: l.opened_at,
       alwaysShow: true,
       style: {
-        indicator: 'bg-[#1e1b4b] text-[#a78bfa] ring-1 ring-inset ring-[#2a2060]',
+        indicator: 'bg-[#1e1b4b] text-[#8d7bb8] ring-1 ring-inset ring-[#2a2060]',
         separator: 'bg-[#2a2060]',
       },
     },
@@ -330,7 +330,7 @@ const timelineItems: ComputedRef<EmailTimelineItem[]> = computed((): EmailTimeli
       ts: l.complained_at,
       alwaysShow: false,
       style: {
-        indicator: 'bg-[#2d1f0a] text-[#f97316] ring-1 ring-inset ring-[#3a2a1a]',
+        indicator: 'bg-[#2d1f0a] text-[var(--app-accent)] ring-1 ring-inset ring-[#3a2a1a]',
         separator: 'bg-[#3a2a1a]',
       },
     },

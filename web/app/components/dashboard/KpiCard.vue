@@ -3,7 +3,7 @@
     :is="to ? NuxtLink : 'div'"
     :to="to || undefined"
     class="group card relative flex flex-col gap-3 overflow-hidden transition-all duration-200"
-    :class="to ? 'cursor-pointer hover:-translate-y-0.5 hover:border-[#3d444d]' : ''"
+    :class="to ? 'cursor-pointer hover:-translate-y-0.5 hover:border-[var(--app-ink-soft)]' : ''"
   >
     <!-- Accent glow strip -->
     <span class="absolute inset-x-0 top-0 h-px" :style="{ background: hex }" aria-hidden="true" />
@@ -94,7 +94,8 @@ const trendIcon: ComputedRef<string> = computed((): string => {
 
 /** Inline style (color + tinted background) for the trend chip. */
 const trendStyle: ComputedRef<Record<string, string>> = computed((): Record<string, string> => {
-  const color: string = props.trend === 'down' ? '#ff7b72' : props.trend === 'up' ? '#3fb950' : '#8b949e'
+  const color: string =
+    props.trend === 'down' ? 'var(--app-red)' : props.trend === 'up' ? 'var(--app-green)' : 'var(--app-ink-soft)'
   return { color, backgroundColor: hexAlpha(color, 0.12) }
 })
 </script>

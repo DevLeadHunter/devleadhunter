@@ -56,7 +56,7 @@
             <option v-for="tpl in templates" :key="tpl.id" :value="tpl.id">{{ tpl.name }}</option>
           </select>
 
-          <label class="mt-4 flex cursor-pointer items-center gap-2.5 text-sm text-[#c9d1d9]">
+          <label class="mt-4 flex cursor-pointer items-center gap-2.5 text-sm text-[var(--app-ink)]">
             <input v-model="inviteCms" type="checkbox" class="h-4 w-4 cursor-pointer accent-[var(--app-green)]" />
             Inviter chaque client au CMS immédiatement
           </label>

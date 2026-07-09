@@ -30,7 +30,7 @@
               <h3 class="text-base font-semibold text-[var(--app-ink)]">{{ template.name }}</h3>
               <span
                 v-if="!template.is_active"
-                class="text-muted inline-flex items-center rounded-full bg-[#8b949e]/20 px-2 py-0.5 text-xs font-medium"
+                class="text-muted inline-flex items-center rounded-full bg-[var(--app-ink-soft)]/20 px-2 py-0.5 text-xs font-medium"
               >
                 Inactive
               </span>

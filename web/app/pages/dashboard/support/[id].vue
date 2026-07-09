@@ -6,7 +6,7 @@
         Back to tickets
       </NuxtLink>
 
-      <p class="text-xs font-semibold tracking-wider text-[#71A3DB] uppercase">Ticket #{{ ticketId }}</p>
+      <p class="text-xs font-semibold tracking-wider text-[var(--app-accent-ink)] uppercase">Ticket #{{ ticketId }}</p>
     </div>
 
     <header class="space-y-2">
@@ -114,7 +114,7 @@
               :class="[
                 'max-w-full rounded-2xl px-4 py-3 text-sm leading-relaxed break-words whitespace-pre-wrap',
                 message.sender_id === userStore.user?.id
-                  ? 'bg-[#71A3DB] text-[var(--app-bg)]'
+                  ? 'bg-[var(--app-accent-ink)] text-[var(--app-bg)]'
                   : 'bg-[#1a1f26] text-[var(--app-ink)]',
               ]"
             >
@@ -169,7 +169,7 @@
               </label>
               <button
                 type="submit"
-                class="flex h-10 w-10 items-center justify-center rounded-full bg-[#71A3DB] text-[var(--app-bg)] transition-colors hover:bg-[#71A3DB]/80 disabled:cursor-not-allowed disabled:opacity-60"
+                class="flex h-10 w-10 items-center justify-center rounded-full bg-[var(--app-accent-ink)] text-[var(--app-bg)] transition-colors hover:bg-[var(--app-accent-ink)]/80 disabled:cursor-not-allowed disabled:opacity-60"
                 :disabled="(!messageInput.trim() && composerPreviews.length === 0) || isSending"
                 title="Send"
               >
@@ -249,11 +249,11 @@ const statusLabels: Record<string, string> = {
 }
 
 const statusStyles: Record<string, string> = {
-  open: 'bg-[#71A3DB]/20 text-[#71A3DB]',
-  waiting_support: 'bg-[#F8D57E]/15 text-[#F8D57E]',
-  waiting_user: 'bg-[#A585DB]/20 text-[#A585DB]',
+  open: 'bg-[var(--app-accent-ink)]/20 text-[var(--app-accent-ink)]',
+  waiting_support: 'bg-[var(--app-accent)]/15 text-[var(--app-accent-ink)]',
+  waiting_user: 'bg-[#8d7bb8]/20 text-[#8d7bb8]',
   resolved: 'bg-[var(--app-green)]/20 text-[var(--app-green)]',
-  closed: 'bg-[#8b949e]/20 text-[var(--app-ink-soft)]',
+  closed: 'bg-[var(--app-ink-soft)]/20 text-[var(--app-ink-soft)]',
   default: 'bg-[var(--app-surface-2)] text-[var(--app-ink)]',
 }
 
@@ -569,7 +569,7 @@ onBeforeUnmount(() => {
 }
 
 .custom-scrollbar::-webkit-scrollbar-thumb {
-  background-color: #30363d;
+  background-color: var(--app-surface-2);
   border-radius: 999px;
 }
 </style>

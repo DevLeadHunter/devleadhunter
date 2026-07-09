@@ -20,7 +20,7 @@
           </NuxtLink>
         </div>
       </div>
-      <div class="text-sm font-medium text-[#c9d1d9]">
+      <div class="text-sm font-medium text-[var(--app-ink)]">
         {{ filteredTickets.length }} ticket{{ filteredTickets.length !== 1 ? 's' : '' }}
       </div>
     </header>
@@ -58,7 +58,7 @@
       </div>
 
       <div v-else-if="filteredTickets.length === 0" class="card py-16 text-center">
-        <i class="fa-regular fa-face-smile mb-3 text-5xl text-[#71A3DB]"></i>
+        <i class="fa-regular fa-face-smile mb-3 text-5xl text-[var(--app-accent-ink)]"></i>
         <p class="text-sm text-[var(--app-ink-soft)]">
           No tickets for this filter yet. Create a request or adjust the status above.
         </p>
@@ -146,11 +146,11 @@ const statusLabels: Record<string, string> = {
 }
 
 const statusStyles: Record<string, string> = {
-  open: 'bg-[#71A3DB]/20 text-[#71A3DB]',
-  waiting_support: 'bg-[#F8D57E]/20 text-[#F8D57E]',
-  waiting_user: 'bg-[#A585DB]/25 text-[#A585DB]',
+  open: 'bg-[var(--app-accent-ink)]/20 text-[var(--app-accent-ink)]',
+  waiting_support: 'bg-[var(--app-accent)]/20 text-[var(--app-accent-ink)]',
+  waiting_user: 'bg-[#8d7bb8]/20 text-[#8d7bb8]',
   resolved: 'bg-[var(--app-green)]/20 text-[var(--app-green)]',
-  closed: 'bg-[#8b949e]/20 text-[var(--app-ink-soft)]',
+  closed: 'bg-[var(--app-ink-soft)]/20 text-[var(--app-ink-soft)]',
   default: 'bg-[var(--app-surface-2)] text-[var(--app-ink)]',
 }
 
@@ -191,11 +191,11 @@ function topicLabel(topic: SupportTicketSummary['topic']): string {
 
 function getStatusBorderColor(status: string): string {
   const borderColors: Record<string, string> = {
-    open: 'bg-[#71A3DB]',
-    waiting_support: 'bg-[#F8D57E]',
-    waiting_user: 'bg-[#A585DB]',
+    open: 'bg-[var(--app-accent-ink)]',
+    waiting_support: 'bg-[var(--app-accent)]',
+    waiting_user: 'bg-[#8d7bb8]',
     resolved: 'bg-[var(--app-green)]',
-    closed: 'bg-[#8b949e]',
+    closed: 'bg-[var(--app-ink-soft)]',
   }
   return borderColors[status] || 'bg-[var(--app-surface-2)]'
 }

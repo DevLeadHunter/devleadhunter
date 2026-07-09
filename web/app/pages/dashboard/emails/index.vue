@@ -47,7 +47,7 @@
       </div>
       <div class="card text-center">
         <p class="text-muted text-xs font-medium">Cliqués</p>
-        <p class="mt-1 text-2xl font-bold text-[#a78bfa]">{{ stats.total_clicked }}</p>
+        <p class="mt-1 text-2xl font-bold text-[#8d7bb8]">{{ stats.total_clicked }}</p>
       </div>
       <div class="card text-center">
         <p class="text-muted text-xs font-medium">Bounces</p>
@@ -461,7 +461,7 @@ function getEngagement(log: EmailLog): EngagementStep[] {
       ts: log.delivered_at,
       color: 'text-[var(--app-green)]',
     },
-    { key: 'opened', label: 'Ouvert', icon: 'i-lucide-mail-open', ts: log.opened_at, color: 'text-[#a78bfa]' },
+    { key: 'opened', label: 'Ouvert', icon: 'i-lucide-mail-open', ts: log.opened_at, color: 'text-[#8d7bb8]' },
     {
       key: 'clicked',
       label: 'Cliqué',

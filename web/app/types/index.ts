@@ -16,12 +16,11 @@ export type BusinessCategory = 'restaurant' | 'plombier' | 'electricien' | 'coif
  * - ``pagesjaunes`` — Pages Jaunes directory scraper (Chrome / nodriver)
  * - ``yelp``        — Yelp platform scraper
  * - ``osm``         — OpenStreetMap / Overpass API (pure HTTP, fast)
- * - ``mock``        — Mock data for local development and tests
  * - ``auto``        — Smart combo: OSM + Pages Jaunes in parallel, then email enrichment
  * - ``brightdata``  — BrightData HTTP API (Web Unlocker + SERP, no browser required)
  * - ``all``         — Sentinel value used in filter selects to mean "every source"
  */
-export type ProspectSource = 'google' | 'pagesjaunes' | 'yelp' | 'osm' | 'mock' | 'auto' | 'brightdata' | 'all'
+export type ProspectSource = 'google' | 'pagesjaunes' | 'yelp' | 'osm' | 'auto' | 'brightdata' | 'all'
 
 /**
  * Prospect interface representing a business without website

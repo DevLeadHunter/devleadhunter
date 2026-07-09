@@ -1,14 +1,14 @@
 <template>
   <div>
     <!-- Back button -->
-    <button class="text-muted mb-4 flex items-center gap-2 text-sm hover:text-[#f9f9f9]" @click="$router.back()">
+    <button class="text-muted mb-4 flex items-center gap-2 text-sm hover:text-[var(--app-ink)]" @click="$router.back()">
       <i class="fa-solid fa-arrow-left"></i>
       <span>Back to campaigns</span>
     </button>
 
     <!-- Header -->
     <div class="card mb-4">
-      <h1 class="text-xl font-semibold text-[#f9f9f9]">Send Campaign</h1>
+      <h1 class="text-xl font-semibold text-[var(--app-ink)]">Send Campaign</h1>
       <p v-if="campaign" class="text-muted mt-2 text-sm">
         {{ campaign.name }} - {{ campaign.prospectIds.length }} prospect(s)
       </p>
@@ -17,8 +17,8 @@
     <!-- Loading state -->
     <div v-if="isLoading" class="card">
       <div class="animate-pulse space-y-3">
-        <div class="h-4 w-3/4 rounded bg-[#2a2a2a]"></div>
-        <div class="h-4 w-full rounded bg-[#2a2a2a]"></div>
+        <div class="h-4 w-3/4 rounded bg-[var(--app-surface-2)]"></div>
+        <div class="h-4 w-full rounded bg-[var(--app-surface-2)]"></div>
       </div>
     </div>
 
@@ -35,9 +35,12 @@
               {{ account.is_default ? ' - Default' : '' }}
             </option>
           </select>
-          <p v-if="emailAccounts.filter((a) => a.is_verified).length === 0" class="mt-1.5 text-xs text-[#DC4747]">
+          <p
+            v-if="emailAccounts.filter((a) => a.is_verified).length === 0"
+            class="mt-1.5 text-xs text-[var(--app-red)]"
+          >
             No verified account available.
-            <NuxtLink to="/dashboard/email-accounts" class="text-[#58a6ff] hover:underline">
+            <NuxtLink to="/dashboard/email-accounts" class="text-[var(--app-accent-ink)] hover:underline">
               Configure an email account
             </NuxtLink>
           </p>
@@ -56,17 +59,17 @@
               {{ template.name }} - {{ template.subject }}
             </option>
           </select>
-          <p v-if="emailTemplates.filter((t) => t.is_active).length === 0" class="mt-1.5 text-xs text-[#DC4747]">
+          <p v-if="emailTemplates.filter((t) => t.is_active).length === 0" class="mt-1.5 text-xs text-[var(--app-red)]">
             No active template available.
-            <NuxtLink to="/dashboard/email-templates" class="text-[#58a6ff] hover:underline">
+            <NuxtLink to="/dashboard/email-templates" class="text-[var(--app-accent-ink)] hover:underline">
               Create a template
             </NuxtLink>
           </p>
         </div>
 
         <!-- Template Preview -->
-        <div v-if="selectedTemplate" class="border-muted rounded border bg-[#050505] p-3">
-          <h3 class="mb-2 text-xs font-medium text-[#f9f9f9]">Template Preview</h3>
+        <div v-if="selectedTemplate" class="border-muted rounded border bg-[var(--app-bg)] p-3">
+          <h3 class="mb-2 text-xs font-medium text-[var(--app-ink)]">Template Preview</h3>
           <div class="text-muted mb-2 text-xs">
             <span class="font-medium">Subject:</span> {{ selectedTemplate.subject }}
           </div>
@@ -76,22 +79,24 @@
           >
             <span class="font-medium">Variables:</span> {{ selectedTemplate.variables.join(', ') }}
           </div>
-          <div class="border-muted rounded border bg-[#1a1a1a] p-2 text-xs">
+          <div class="border-muted rounded border bg-[var(--app-surface)] p-2 text-xs">
             <!-- eslint-disable-next-line vue/no-v-html -- Trusted HTML from user's own email template -->
             <div class="line-clamp-4" v-html="selectedTemplate.body_html"></div>
           </div>
         </div>
 
         <!-- Prospects Summary -->
-        <div class="rounded border border-[#71A3DB]/30 bg-[#71A3DB]/10 p-3">
-          <h3 class="mb-1 text-xs font-medium text-[#58a6ff]">Sending Summary</h3>
-          <p class="text-xs text-[#58a6ff]">{{ campaign?.prospectIds.length || 0 }} email(s) will be sent</p>
+        <div class="rounded border border-[var(--app-accent-ink)]/30 bg-[var(--app-accent-ink)]/10 p-3">
+          <h3 class="mb-1 text-xs font-medium text-[var(--app-accent-ink)]">Sending Summary</h3>
+          <p class="text-xs text-[var(--app-accent-ink)]">
+            {{ campaign?.prospectIds.length || 0 }} email(s) will be sent
+          </p>
           <p class="text-muted mt-1 text-xs">Variables will be automatically replaced for each prospect</p>
         </div>
 
         <!-- Warning -->
-        <div class="rounded border border-[#DC4747]/30 bg-[#DC4747]/10 p-3">
-          <p class="text-xs text-[#DC4747]">
+        <div class="rounded border border-[var(--app-red)]/30 bg-[var(--app-red)]/10 p-3">
+          <p class="text-xs text-[var(--app-red)]">
             <i class="fa-solid fa-exclamation-triangle mr-1"></i>
             <strong>Warning:</strong> Once sent, emails cannot be canceled. Double-check your template and prospect
             list.
@@ -112,15 +117,15 @@
     <!-- Sending Progress Modal -->
     <div
       v-if="showProgressModal"
-      class="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm"
+      class="fixed inset-0 z-50 flex items-center justify-center bg-[var(--app-overlay)] backdrop-blur-sm"
     >
-      <div class="border-muted mx-4 w-full max-w-md rounded-lg border bg-[#1a1a1a] p-6">
-        <h2 class="mb-6 text-center text-base font-semibold text-[#f9f9f9]">Sending in progress...</h2>
+      <div class="border-muted mx-4 w-full max-w-md rounded-lg border bg-[var(--app-surface)] p-6">
+        <h2 class="mb-6 text-center text-base font-semibold text-[var(--app-ink)]">Sending in progress...</h2>
 
         <div class="mb-6">
-          <div class="h-3 w-full overflow-hidden rounded-full bg-[#2a2a2a]">
+          <div class="h-3 w-full overflow-hidden rounded-full bg-[var(--app-surface-2)]">
             <div
-              class="h-3 rounded-full bg-[#3fb950] transition-all duration-300"
+              class="h-3 rounded-full bg-[var(--app-green)] transition-all duration-300"
               :style="{ width: `${sendProgress}%` }"
             ></div>
           </div>
@@ -129,12 +134,12 @@
 
         <div v-if="sendResult" class="space-y-2 text-sm">
           <div class="flex justify-between">
-            <span class="text-[#3fb950]"><i class="fa-solid fa-check mr-1"></i>Sent:</span>
-            <span class="font-medium text-[#f9f9f9]">{{ sendResult.sent_count }}</span>
+            <span class="text-[var(--app-green)]"><i class="fa-solid fa-check mr-1"></i>Sent:</span>
+            <span class="font-medium text-[var(--app-ink)]">{{ sendResult.sent_count }}</span>
           </div>
           <div v-if="sendResult.failed_count > 0" class="flex justify-between">
-            <span class="text-[#DC4747]"><i class="fa-solid fa-xmark mr-1"></i>Failed:</span>
-            <span class="font-medium text-[#f9f9f9]">{{ sendResult.failed_count }}</span>
+            <span class="text-[var(--app-red)]"><i class="fa-solid fa-xmark mr-1"></i>Failed:</span>
+            <span class="font-medium text-[var(--app-ink)]">{{ sendResult.failed_count }}</span>
           </div>
         </div>
 

@@ -89,7 +89,7 @@
             </a>
           </p>
           <div
-            class="mt-2 flex items-start gap-2 rounded-lg border border-[var(--app-accent)]/30 bg-[#3a2e0a] px-3 py-2"
+            class="mt-2 flex items-start gap-2 rounded-lg border border-[var(--app-accent)]/30 bg-[var(--app-accent-soft)] px-3 py-2"
           >
             <i class="fa-solid fa-triangle-exclamation mt-0.5 text-[10px] text-[var(--app-accent)]"></i>
             <p class="text-xs text-[var(--app-accent)]">

@@ -41,17 +41,17 @@
                   campaign.status === 'active'
                     ? 'bg-[var(--app-green)]/20 text-[var(--app-green)]'
                     : campaign.status === 'completed'
-                      ? 'bg-[#71A3DB]/20 text-[var(--app-accent-ink)]'
+                      ? 'bg-[var(--app-accent-ink)]/20 text-[var(--app-accent-ink)]'
                       : campaign.status === 'paused'
-                        ? 'bg-[#f97316]/20 text-[#f97316]'
-                        : 'text-muted bg-[#8b949e]/20',
+                        ? 'bg-[var(--app-accent)]/20 text-[var(--app-accent)]'
+                        : 'text-muted bg-[var(--app-ink-soft)]/20',
                 ]"
               >
                 {{ CAMPAIGN_STATUS_LABELS[campaign.status] ?? campaign.status }}
               </span>
               <span
                 v-if="campaign.ab_template_id_b"
-                class="inline-flex items-center gap-1 rounded-full bg-[#1f1b40] px-2 py-0.5 text-[10px] font-semibold text-[#a78bfa]"
+                class="inline-flex items-center gap-1 rounded-full bg-[#8d7bb8]/15 px-2 py-0.5 text-[10px] font-semibold text-[#8d7bb8]"
               >
                 <i class="fa-solid fa-flask-vial text-[9px]"></i> A/B
               </span>

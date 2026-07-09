@@ -158,12 +158,12 @@
             :class="
               streamConnected
                 ? 'border-[var(--app-green)] text-[var(--app-green)]'
-                : 'border-[#8b949e] text-[var(--app-ink-soft)]'
+                : 'border-[var(--app-ink-soft)] text-[var(--app-ink-soft)]'
             "
           >
             <span
               class="h-1.5 w-1.5 rounded-full"
-              :class="streamConnected ? 'bg-[var(--app-green)]' : 'bg-[#8b949e]'"
+              :class="streamConnected ? 'bg-[var(--app-green)]' : 'bg-[var(--app-ink-soft)]'"
             ></span>
             {{ streamConnected ? 'Temps réel actif' : 'Connexion temps réel…' }}
           </span>
@@ -269,7 +269,7 @@
                   'rounded-full px-2 py-0.5 text-xs font-medium': true,
                   'border border-[var(--app-green)] bg-[var(--app-surface)] text-[var(--app-green)]':
                     job.status === 'completed',
-                  'border border-[#8b949e] bg-[var(--app-surface)] text-[var(--app-ink-soft)]':
+                  'border border-[var(--app-ink-soft)] bg-[var(--app-surface)] text-[var(--app-ink-soft)]':
                     job.status === 'running',
                   'border border-[var(--app-red)] bg-[var(--app-surface)] text-[var(--app-red)]':
                     job.status === 'failed',

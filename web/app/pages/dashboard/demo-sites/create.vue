@@ -1,279 +1,317 @@
 <template>
-  <div class="mx-auto max-w-5xl">
-    <div class="mb-8">
+  <div class="mx-auto max-w-4xl">
+    <!-- Header -->
+    <div class="mb-6">
       <NuxtLink
         to="/dashboard/demo-sites"
-        class="inline-flex items-center gap-2 text-sm text-[var(--app-ink-soft)] transition hover:text-[var(--app-ink)]"
+        class="inline-flex items-center gap-1.5 text-xs font-medium text-[var(--app-ink-soft)] transition-colors hover:text-[var(--app-ink)]"
       >
-        <i class="fa-solid fa-arrow-left text-xs"></i>
-        Retour aux sites démo
+        <UIcon name="i-lucide-arrow-left" class="h-3.5 w-3.5" />
+        Sites démo
       </NuxtLink>
-      <h1 class="mt-4 text-2xl font-semibold text-[var(--app-ink)]">Website builder</h1>
-      <p class="mt-2 text-sm text-[var(--app-ink-soft)]">
-        Créez un site vitrine professionnel pour votre prospect — publié sur demo.dibodev.fr pendant 14 jours.
+      <p class="app-label mt-4 flex items-center gap-2">
+        <LandingAsterisk class="text-[0.6rem] text-[var(--app-accent)]" />
+        Website builder
+      </p>
+      <h1 class="app-page-title mt-2">Créer un site vitrine</h1>
+      <p class="mt-1.5 text-sm text-[var(--app-ink-soft)]">
+        Un vrai site professionnel pour votre prospect — publié sur demo.dibodev.fr pendant 14 jours.
       </p>
     </div>
 
-    <DemoSitesWizardStepper :steps="steps" :current-step="currentStep" />
+    <DemoSitesWizardStepper :steps="steps" :current-step="currentStep" @navigate="handleStepNavigate" />
 
-    <Transition name="wizard-step" mode="out-in">
-      <!-- Étape 1 : Informations -->
-      <div v-if="currentStep === 1" key="step-1" class="card space-y-6 p-6 md:p-8">
-        <div>
-          <h2 class="text-lg font-semibold text-[var(--app-ink)]">Informations entreprise</h2>
-          <p class="mt-1 text-sm text-[var(--app-ink-soft)]">
-            Sélectionnez un prospect existant ou saisissez les informations manuellement.
-          </p>
-        </div>
-
-        <div class="flex gap-2 rounded-xl border border-[var(--app-line)] bg-[var(--app-bg)] p-1">
-          <button
-            type="button"
-            :class="[
-              'flex-1 rounded-lg px-4 py-2.5 text-sm font-medium transition',
-              inputMode === 'prospect'
-                ? 'bg-[var(--app-surface)] text-[var(--app-ink)]'
-                : 'text-[var(--app-ink-soft)] hover:text-[var(--app-ink)]',
-            ]"
-            @click="inputMode = 'prospect'"
-          >
-            <i class="fa-solid fa-users mr-2"></i>
-            Depuis un prospect
-          </button>
-          <button
-            type="button"
-            :class="[
-              'flex-1 rounded-lg px-4 py-2.5 text-sm font-medium transition',
-              inputMode === 'manual'
-                ? 'bg-[var(--app-surface)] text-[var(--app-ink)]'
-                : 'text-[var(--app-ink-soft)] hover:text-[var(--app-ink)]',
-            ]"
-            @click="inputMode = 'manual'"
-          >
-            <i class="fa-solid fa-pen mr-2"></i>
-            Saisie manuelle
-          </button>
-        </div>
-
-        <div v-if="inputMode === 'prospect'" class="space-y-3">
-          <label class="text-sm text-[var(--app-ink-soft)]">Choisir un prospect</label>
-          <select v-model="selectedProspectId" class="input-field w-full" @change="applyProspect">
-            <option :value="null">— Sélectionner —</option>
-            <option v-for="p in prospects" :key="p.id" :value="p.id">
-              {{ p.name }}{{ p.city ? ` · ${p.city}` : '' }}
-            </option>
-          </select>
-          <p v-if="prospectsLoading" class="text-xs text-[var(--app-ink-soft)]">Chargement des prospects…</p>
-          <p v-else-if="!prospects.length" class="text-xs text-amber-300/90">
-            Aucun prospect enregistré.
-            <NuxtLink to="/dashboard/my-prospects" class="underline">Ajouter un prospect</NuxtLink>
-          </p>
-        </div>
-
-        <div class="grid gap-5 md:grid-cols-2">
-          <div class="md:col-span-2">
-            <label class="mb-1 block text-sm text-[var(--app-ink-soft)]">Nom de l'entreprise *</label>
-            <input v-model="form.business_name" type="text" class="input-field w-full" placeholder="Plomberie Dupont" />
-          </div>
-          <div>
-            <label class="mb-1 block text-sm text-[var(--app-ink-soft)]">Téléphone</label>
-            <input v-model="form.phone" type="text" class="input-field w-full" placeholder="01 23 45 67 89" />
-          </div>
-          <div>
-            <label class="mb-1 block text-sm text-[var(--app-ink-soft)]">Ville</label>
-            <input v-model="form.city" type="text" class="input-field w-full" placeholder="Paris" />
-          </div>
-          <div class="md:col-span-2">
-            <label class="mb-1 block text-sm text-[var(--app-ink-soft)]">Email client *</label>
-            <input v-model="form.email" type="email" class="input-field w-full" placeholder="client@example.com" />
-          </div>
-          <div class="md:col-span-2">
-            <label class="mb-1 block text-sm text-[var(--app-ink-soft)]">Description courte</label>
-            <textarea
-              v-model="form.description"
-              rows="3"
-              class="input-field w-full"
-              placeholder="Dépannage plomberie 24h/24, installation sanitaire, recherche de fuite…"
-            />
-          </div>
-        </div>
-
-        <div class="flex justify-end">
-          <button type="button" class="btn-primary" :disabled="!canGoToStep2" @click="goToStep(2)">
-            Continuer
-            <i class="fa-solid fa-arrow-right ml-2"></i>
-          </button>
-        </div>
-      </div>
-
-      <!-- Étape 2 : Template -->
-      <div v-else-if="currentStep === 2" key="step-2" class="space-y-6">
-        <div>
-          <h2 class="text-lg font-semibold text-[var(--app-ink)]">Choix du template</h2>
-          <p class="mt-1 text-sm text-[var(--app-ink-soft)]">
-            Sélectionnez un modèle et personnalisez les couleurs de la charte graphique.
-          </p>
-        </div>
-        <DemoSitesTemplatePicker
-          v-model="form.template_id"
-          :templates="templates"
-          :theme="form.theme"
-          @update:theme="form.theme = $event"
-        />
-        <div class="flex justify-between">
-          <button type="button" class="btn-secondary" @click="goToStep(1)">Retour</button>
-          <button type="button" class="btn-primary" @click="loadPreviewAndContinue">
-            Voir l'aperçu
-            <i class="fa-solid fa-eye ml-2"></i>
-          </button>
-        </div>
-      </div>
-
-      <!-- Étape 3 : Aperçu -->
-      <div v-else-if="currentStep === 3" key="step-3" class="space-y-6">
-        <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-          <div>
-            <h2 class="text-lg font-semibold text-[var(--app-ink)]">Aperçu du site</h2>
-            <p class="mt-1 text-sm text-[var(--app-ink-soft)]">
-              Faites défiler l'aperçu et testez la navigation avant publication sur Storyblok et demo.dibodev.fr.
-            </p>
-          </div>
-          <button type="button" class="btn-secondary inline-flex shrink-0 items-center gap-2" @click="goToStep(2)">
-            <i class="fa-solid fa-arrow-left text-xs"></i>
-            Quitter l'aperçu
-          </button>
-        </div>
-
-        <div v-if="previewLoading" class="card flex items-center justify-center py-24">
-          <div class="loader-smooth"></div>
-        </div>
-        <DemoSitesDemoSitePreviewFrame
-          v-else-if="previewContent"
-          :content="previewContent"
-          :business-name="form.business_name"
-          :template-id="form.template_id"
-        />
-
-        <div class="card grid gap-4 p-6 md:grid-cols-2">
-          <div v-for="item in recapItems" :key="item.label" class="flex justify-between gap-4 text-sm">
-            <span class="text-[var(--app-ink-soft)]">{{ item.label }}</span>
-            <span class="text-right font-medium text-[var(--app-ink)]">{{ item.value }}</span>
-          </div>
-        </div>
-
-        <div class="flex justify-between">
-          <button type="button" class="btn-secondary" @click="goToStep(2)">Modifier le template</button>
-          <button type="button" class="btn-primary" @click="goToStep(4)">
-            Continuer vers la publication
-            <i class="fa-solid fa-arrow-right ml-2"></i>
-          </button>
-        </div>
-      </div>
-
-      <!-- Étape 4 : Publication -->
-      <div v-else-if="currentStep === 4" key="step-4" class="card space-y-6 p-6 md:p-8">
-        <div>
-          <h2 class="text-lg font-semibold text-[var(--app-ink)]">Publication</h2>
-          <p class="mt-1 text-sm text-[var(--app-ink-soft)]">
-            Confirmez la génération — le site sera publié immédiatement.
-          </p>
-        </div>
-
-        <label
-          class="flex cursor-pointer items-start gap-4 rounded-xl border border-[var(--app-line)] bg-[var(--app-bg)] p-5 transition hover:border-[var(--app-ink-soft)]"
-        >
-          <input
-            v-model="form.invite_client_to_cms"
-            type="checkbox"
-            class="mt-1 h-4 w-4 rounded border-[var(--app-line)]"
-          />
-          <span>
-            <span class="font-medium text-[var(--app-ink)]">Inviter le client au CMS Storyblok</span>
-            <span class="mt-1 block text-xs text-[var(--app-ink-soft)]">
-              Storyblok enverra un email d'invitation au client. Décochez pour inviter plus tard depuis la fiche du
-              site.
-            </span>
-          </span>
-        </label>
-
-        <p class="text-xs text-[var(--app-ink-soft)]">
-          <i class="fa-solid fa-clock mr-1"></i>
-          Le site démo sera actif pendant 14 jours, puis supprimé automatiquement.
+    <!-- Étape 1 : Informations -->
+    <div v-if="currentStep === 1" key="step-1" class="wizard-step app-card space-y-6 p-6 md:p-7">
+      <div>
+        <h2 class="text-base font-semibold text-[var(--app-ink)]">Informations entreprise</h2>
+        <p class="mt-1 text-sm text-[var(--app-ink-soft)]">
+          Sélectionnez un prospect existant ou saisissez les informations manuellement.
         </p>
+      </div>
 
-        <div class="flex justify-between">
-          <button type="button" class="btn-secondary" @click="goToStep(3)">Retour à l'aperçu</button>
-          <button
-            type="button"
-            class="btn-primary inline-flex items-center gap-2"
-            :disabled="isSubmitting"
-            @click="handleGenerate"
-          >
-            <i v-if="isSubmitting" class="fa-solid fa-spinner fa-spin"></i>
-            <i v-else class="fa-solid fa-rocket"></i>
-            {{ isSubmitting ? 'Publication en cours…' : 'Publier le site' }}
-          </button>
+      <!-- Source segmented control -->
+      <div class="flex gap-1 rounded-full border border-[var(--app-line)] bg-[var(--app-bg)] p-1">
+        <button type="button" :class="segmentClass(inputMode === 'prospect')" @click="inputMode = 'prospect'">
+          <UIcon name="i-lucide-users" class="h-3.5 w-3.5" />
+          Depuis un prospect
+        </button>
+        <button type="button" :class="segmentClass(inputMode === 'manual')" @click="inputMode = 'manual'">
+          <UIcon name="i-lucide-pen-line" class="h-3.5 w-3.5" />
+          Saisie manuelle
+        </button>
+      </div>
+
+      <div v-if="inputMode === 'prospect'" class="space-y-2">
+        <label class="app-label block">Choisir un prospect</label>
+        <select v-model="selectedProspectId" class="app-input w-full" @change="applyProspect">
+          <option :value="null">— Sélectionner —</option>
+          <option v-for="p in prospects" :key="p.id" :value="p.id">
+            {{ p.name }}{{ p.city ? ` · ${p.city}` : '' }}
+          </option>
+        </select>
+        <p v-if="prospectsLoading" class="text-xs text-[var(--app-ink-soft)]">Chargement des prospects…</p>
+        <p v-else-if="!prospects.length" class="text-xs text-[var(--app-accent-ink)]">
+          Aucun prospect enregistré.
+          <NuxtLink to="/dashboard/my-prospects" class="underline underline-offset-2">Ajouter un prospect</NuxtLink>
+        </p>
+        <p v-else-if="form.prospect_id" class="inline-flex items-center gap-1.5 text-xs text-[var(--app-green)]">
+          <UIcon name="i-lucide-circle-check" class="h-3.5 w-3.5" />
+          Champs pré-remplis — le site sera relié à ce prospect
+        </p>
+      </div>
+
+      <div class="grid gap-5 md:grid-cols-2">
+        <div class="md:col-span-2">
+          <label class="app-label mb-1.5 block">Nom de l'entreprise *</label>
+          <input v-model="form.business_name" type="text" class="app-input w-full" placeholder="Plomberie Dupont" />
+        </div>
+        <div>
+          <label class="app-label mb-1.5 block">Téléphone</label>
+          <input v-model="form.phone" type="text" class="app-input w-full" placeholder="01 23 45 67 89" />
+        </div>
+        <div>
+          <label class="app-label mb-1.5 block">Ville</label>
+          <input v-model="form.city" type="text" class="app-input w-full" placeholder="Paris" />
+        </div>
+        <div class="md:col-span-2">
+          <label class="app-label mb-1.5 block">Email client *</label>
+          <input v-model="form.email" type="email" class="app-input w-full" placeholder="client@example.com" />
+        </div>
+        <div class="md:col-span-2">
+          <label class="app-label mb-1.5 block">Description courte</label>
+          <textarea
+            v-model="form.description"
+            rows="3"
+            class="app-input h-auto w-full py-2"
+            placeholder="Dépannage plomberie 24h/24, installation sanitaire, recherche de fuite…"
+          />
         </div>
       </div>
 
-      <!-- Étape 5 : Terminé -->
-      <div
-        v-else-if="currentStep === 5 && createdSite"
-        key="step-5"
-        :class="[
-          'card space-y-6 p-6 md:p-8',
-          isDemoLive ? 'border-[var(--app-green)]/30' : '',
-          isDemoFailed ? 'border-red-500/30' : '',
-        ]"
+      <div class="flex items-center justify-between gap-4 border-t border-[var(--app-line-soft)] pt-5">
+        <p v-if="!canGoToStep2" class="text-xs text-[var(--app-ink-soft)]">
+          Le nom et un email valide sont requis pour continuer.
+        </p>
+        <span v-else></span>
+        <button type="button" class="app-btn-primary" :disabled="!canGoToStep2" @click="goToStep(2)">
+          Continuer
+          <UIcon name="i-lucide-arrow-right" class="h-3.5 w-3.5" />
+        </button>
+      </div>
+    </div>
+
+    <!-- Étape 2 : Template -->
+    <div v-else-if="currentStep === 2" key="step-2" class="wizard-step space-y-6">
+      <div>
+        <h2 class="text-base font-semibold text-[var(--app-ink)]">Choix de la template</h2>
+        <p class="mt-1 text-sm text-[var(--app-ink-soft)]">
+          Sélectionnez un modèle et personnalisez les couleurs de la charte graphique.
+        </p>
+      </div>
+      <DemoSitesTemplatePicker
+        v-model="form.template_id"
+        :templates="templates"
+        :theme="form.theme"
+        @update:theme="form.theme = $event"
+      />
+      <div class="flex justify-between border-t border-[var(--app-line-soft)] pt-5">
+        <button type="button" class="app-btn-secondary" @click="goToStep(1)">
+          <UIcon name="i-lucide-arrow-left" class="h-3.5 w-3.5" />
+          Retour
+        </button>
+        <button type="button" class="app-btn-primary" @click="loadPreviewAndContinue">
+          Voir l'aperçu
+          <UIcon name="i-lucide-arrow-right" class="h-3.5 w-3.5" />
+        </button>
+      </div>
+    </div>
+
+    <!-- Étape 3 : Aperçu -->
+    <div v-else-if="currentStep === 3" key="step-3" class="wizard-step space-y-6">
+      <div>
+        <h2 class="text-base font-semibold text-[var(--app-ink)]">Aperçu du site</h2>
+        <p class="mt-1 text-sm text-[var(--app-ink-soft)]">
+          Faites défiler l'aperçu et testez la navigation avant publication.
+        </p>
+      </div>
+
+      <div v-if="previewLoading" class="app-card flex flex-col items-center justify-center gap-4 py-24">
+        <div class="loader-ring"></div>
+        <p class="font-label text-xs tracking-wide text-[var(--app-ink-soft)] uppercase">Génération de l'aperçu…</p>
+      </div>
+      <DemoSitesDemoSitePreviewFrame
+        v-else-if="previewContent"
+        :content="previewContent"
+        :business-name="form.business_name"
+        :template-id="form.template_id"
+      />
+
+      <!-- Récapitulatif -->
+      <div class="app-card p-5 md:p-6">
+        <p class="app-label mb-4">Récapitulatif</p>
+        <dl class="grid gap-x-8 gap-y-3 sm:grid-cols-2">
+          <div v-for="item in recapItems" :key="item.label" class="flex items-baseline justify-between gap-4">
+            <dt class="text-xs text-[var(--app-ink-soft)]">{{ item.label }}</dt>
+            <dd class="text-right text-sm font-medium text-[var(--app-ink)]">{{ item.value }}</dd>
+          </div>
+        </dl>
+      </div>
+
+      <div class="flex justify-between border-t border-[var(--app-line-soft)] pt-5">
+        <button type="button" class="app-btn-secondary" @click="goToStep(2)">
+          <UIcon name="i-lucide-arrow-left" class="h-3.5 w-3.5" />
+          Modifier la template
+        </button>
+        <button type="button" class="app-btn-primary" @click="goToStep(4)">
+          Continuer vers la publication
+          <UIcon name="i-lucide-arrow-right" class="h-3.5 w-3.5" />
+        </button>
+      </div>
+    </div>
+
+    <!-- Étape 4 : Publication -->
+    <div v-else-if="currentStep === 4" key="step-4" class="wizard-step app-card space-y-6 p-6 md:p-7">
+      <div>
+        <h2 class="text-base font-semibold text-[var(--app-ink)]">Publication</h2>
+        <p class="mt-1 text-sm text-[var(--app-ink-soft)]">
+          Confirmez la génération — le site sera publié immédiatement.
+        </p>
+      </div>
+
+      <label
+        class="flex cursor-pointer items-start gap-3.5 rounded-xl border p-4 transition-colors"
+        :class="
+          form.invite_client_to_cms
+            ? 'border-[var(--app-ink)] bg-[var(--app-surface-2)]/60'
+            : 'border-[var(--app-line)] bg-[var(--app-bg)] hover:border-[var(--app-ink-soft)]'
+        "
       >
-        <div class="text-center">
-          <div
-            :class="[
-              'mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full text-2xl',
-              isDemoLive
-                ? 'bg-[var(--app-green)]/20 text-[var(--app-green)]'
-                : isDemoFailed
-                  ? 'bg-red-500/20 text-red-300'
-                  : 'bg-amber-500/20 text-amber-300',
-            ]"
-          >
-            <i :class="isDemoLive ? 'fa-solid fa-check' : isDemoFailed ? 'fa-solid fa-xmark' : 'fa-solid fa-clock'"></i>
-          </div>
-          <h2 class="text-xl font-semibold text-[var(--app-ink)]">{{ resultTitle }}</h2>
-          <p v-if="resultMessage" class="mt-2 text-sm text-[var(--app-ink-soft)]">{{ resultMessage }}</p>
-        </div>
+        <input v-model="form.invite_client_to_cms" type="checkbox" class="mt-0.5 h-4 w-4 accent-(--app-accent)" />
+        <span>
+          <span class="text-sm font-medium text-[var(--app-ink)]">Inviter le client au CMS Storyblok</span>
+          <span class="mt-1 block text-xs leading-relaxed text-[var(--app-ink-soft)]">
+            Storyblok enverra un email d'invitation au client. Décochez pour inviter plus tard depuis la fiche du site.
+          </span>
+        </span>
+      </label>
 
-        <div
-          v-if="!isDemoFailed && createdOpenUrl"
-          class="rounded-xl border border-[var(--app-line)] bg-[var(--app-bg)] p-5"
+      <p class="flex items-center gap-2 text-xs text-[var(--app-ink-soft)]">
+        <LandingAsterisk class="text-[0.6rem] text-[var(--app-accent)]" />
+        Le site démo sera actif pendant 14 jours, puis supprimé automatiquement.
+      </p>
+
+      <div class="flex justify-between border-t border-[var(--app-line-soft)] pt-5">
+        <button type="button" class="app-btn-secondary" @click="goToStep(3)">
+          <UIcon name="i-lucide-arrow-left" class="h-3.5 w-3.5" />
+          Retour à l'aperçu
+        </button>
+        <button type="button" class="app-btn-primary" :disabled="isSubmitting" @click="handleGenerate">
+          <UIcon
+            :name="isSubmitting ? 'i-lucide-loader-circle' : 'i-lucide-rocket'"
+            :class="['h-3.5 w-3.5', isSubmitting && 'animate-spin']"
+          />
+          {{ isSubmitting ? 'Publication en cours…' : 'Publier le site' }}
+        </button>
+      </div>
+    </div>
+
+    <!-- Étape 5 : Terminé -->
+    <div v-else-if="currentStep === 5 && createdSite" key="step-5" class="wizard-step space-y-5">
+      <!-- Échec -->
+      <div v-if="isDemoFailed" class="app-card border-[var(--app-red)]/40 p-6 text-center md:p-8">
+        <span
+          class="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-[var(--app-red-soft)] text-[var(--app-red)]"
         >
-          <p class="text-xs tracking-wide text-[var(--app-ink-soft)] uppercase">URL du site</p>
-          <p class="mt-1 font-medium break-all text-[var(--app-ink)]">{{ createdOpenUrl }}</p>
-          <div class="mt-4 flex flex-wrap gap-2">
-            <button type="button" class="btn-primary h-9 px-4 text-xs" @click="openDemoUrl(createdOpenUrl)">
-              Ouvrir
-            </button>
-            <button type="button" class="btn-secondary h-9 px-4 text-xs" @click="copyDemoUrl">
-              {{ copied ? 'Copié !' : 'Copier le lien' }}
-            </button>
-            <NuxtLink
-              :to="`/dashboard/demo-sites/${createdSite.id}`"
-              class="btn-secondary inline-flex h-9 items-center px-4 text-xs"
-              >Voir la fiche</NuxtLink
-            >
-          </div>
-        </div>
-
-        <div class="flex flex-wrap justify-center gap-3">
-          <NuxtLink to="/dashboard/demo-sites" class="btn-secondary">Mes sites démo</NuxtLink>
-          <button type="button" class="btn-primary" @click="resetForm">Créer un autre site</button>
+          <UIcon name="i-lucide-x" class="h-6 w-6" />
+        </span>
+        <h2 class="mt-4 text-lg font-semibold text-[var(--app-ink)]">{{ resultTitle }}</h2>
+        <p v-if="resultMessage" class="mx-auto mt-2 max-w-md text-sm text-[var(--app-ink-soft)]">
+          {{ resultMessage }}
+        </p>
+        <div class="mt-6 flex flex-wrap justify-center gap-2">
+          <button type="button" class="app-btn-primary" @click="goToStep(4)">Réessayer la publication</button>
+          <NuxtLink to="/dashboard/demo-sites" class="app-btn-secondary">Mes sites démo</NuxtLink>
         </div>
       </div>
-    </Transition>
+
+      <template v-else>
+        <!-- Succès / en attente -->
+        <div class="app-card p-6 text-center md:p-8">
+          <span
+            class="mx-auto flex h-14 w-14 items-center justify-center rounded-full"
+            :class="
+              isDemoLive
+                ? 'bg-[var(--app-green-soft)] text-[var(--app-green)]'
+                : 'bg-[var(--app-accent-soft)] text-[var(--app-accent-ink)]'
+            "
+          >
+            <UIcon :name="isDemoLive ? 'i-lucide-check' : 'i-lucide-clock'" class="h-6 w-6" />
+          </span>
+          <h2 class="mt-4 text-lg font-semibold text-[var(--app-ink)]">{{ resultTitle }}</h2>
+          <p v-if="resultMessage" class="mx-auto mt-2 max-w-md text-sm text-[var(--app-ink-soft)]">
+            {{ resultMessage }}
+          </p>
+
+          <!-- URL -->
+          <div
+            v-if="createdOpenUrl"
+            class="mx-auto mt-6 max-w-lg rounded-xl border border-[var(--app-line)] bg-[var(--app-bg)] p-4 text-left"
+          >
+            <p class="app-label">URL du site</p>
+            <p class="font-label mt-1.5 text-sm break-all text-[var(--app-ink)]">{{ createdOpenUrl }}</p>
+            <div class="mt-3 flex flex-wrap gap-2">
+              <button
+                type="button"
+                class="app-btn-secondary h-8 min-h-8 px-3 text-xs"
+                @click="openDemoUrl(createdOpenUrl)"
+              >
+                <UIcon name="i-lucide-external-link" class="h-3 w-3" />
+                Ouvrir
+              </button>
+              <button type="button" class="app-btn-secondary h-8 min-h-8 px-3 text-xs" @click="copyDemoUrl">
+                <UIcon :name="copied ? 'i-lucide-check' : 'i-lucide-copy'" class="h-3 w-3" />
+                {{ copied ? 'Copié !' : 'Copier le lien' }}
+              </button>
+              <NuxtLink
+                :to="`/dashboard/demo-sites/${createdSite.id}`"
+                class="app-btn-secondary h-8 min-h-8 px-3 text-xs"
+              >
+                <UIcon name="i-lucide-file-text" class="h-3 w-3" />
+                Voir la fiche
+              </NuxtLink>
+            </div>
+          </div>
+        </div>
+
+        <!-- Et maintenant ? — chaîner vers le démarchage -->
+        <div class="app-card p-5 md:p-6">
+          <p class="app-label flex items-center gap-2">
+            <LandingAsterisk class="text-[0.6rem] text-[var(--app-accent)]" />
+            Et maintenant ?
+          </p>
+          <p class="mt-2 text-sm leading-relaxed text-[var(--app-ink-soft)]">
+            Le site est en ligne — il ne vend rien tant que le prospect ne l'a pas vu. Lancez le démarchage.
+          </p>
+          <div class="mt-4 flex flex-wrap gap-2">
+            <NuxtLink v-if="campaignChainUrl" :to="campaignChainUrl" class="app-btn-primary">
+              <UIcon name="i-lucide-megaphone" class="h-3.5 w-3.5" />
+              Ajouter à une campagne
+            </NuxtLink>
+            <button type="button" class="app-btn-secondary" @click="resetForm">
+              <UIcon name="i-lucide-plus" class="h-3.5 w-3.5" />
+              Créer un autre site
+            </button>
+            <NuxtLink to="/dashboard/demo-sites" class="app-btn-secondary">Mes sites démo</NuxtLink>
+          </div>
+        </div>
+      </template>
+    </div>
   </div>
 </template>
 
 <script lang="ts" setup>
+import type { ComputedRef } from 'vue'
 import type { DemoSite, DemoSiteTemplate, DemoSiteTheme } from '~/services/demoSiteService'
 import type { Prospect } from '~/types'
 import {
@@ -284,10 +322,12 @@ import {
   previewDemoSite,
 } from '~/services/demoSiteService'
 import { listProspects } from '~/services/prospectsService'
+import { useToast } from '~/composables/useToast'
 
 definePageMeta({ layout: 'dashboard', middleware: 'auth' })
 
 const route = useRoute()
+const toast = useToast()
 const { copy, copied } = useCopyToClipboard()
 const { openExternalUrl } = useOpenExternalUrl()
 
@@ -350,9 +390,39 @@ const resultTitle = computed(() => {
 })
 const resultMessage = computed(() => createdSite.value?.verification_message ?? createdSite.value?.error_message ?? '')
 
+/** Deep-link to the campaigns page with the prospect pre-selected (null without a linked prospect). */
+const campaignChainUrl: ComputedRef<string | null> = computed((): string | null => {
+  return form.value.prospect_id ? `/dashboard/campaigns?addProspect=${form.value.prospect_id}` : null
+})
+
+/**
+ * Classes of a source segmented-control button.
+ * @param active - Whether the segment is selected.
+ * @returns Tailwind classes for the segment.
+ */
+function segmentClass(active: boolean): string {
+  const base =
+    'flex flex-1 cursor-pointer items-center justify-center gap-2 rounded-full px-4 py-2 text-sm font-medium transition-colors'
+  if (active) {
+    return `${base} bg-[var(--app-btn-bg)] text-[var(--app-btn-text)]`
+  }
+  return `${base} text-[var(--app-ink-soft)] hover:text-[var(--app-ink)]`
+}
+
 function goToStep(step: number): void {
   currentStep.value = step
   window.scrollTo({ top: 0, behavior: 'smooth' })
+}
+
+/**
+ * Stepper node clicked — allow going back to a previous step
+ * (never forward, never once the site is created).
+ * @param stepId - Target step id.
+ */
+function handleStepNavigate(stepId: number): void {
+  if (stepId < currentStep.value && currentStep.value < 5) {
+    goToStep(stepId)
+  }
 }
 
 function applyProspect(): void {
@@ -384,7 +454,7 @@ async function loadPreviewAndContinue(): Promise<void> {
     previewContent.value = result.content_json
   } catch (error) {
     console.error(error)
-    alert(error instanceof Error ? error.message : "Impossible de générer l'aperçu")
+    toast.error(error instanceof Error ? error.message : "Impossible de générer l'aperçu")
     goToStep(2)
   } finally {
     previewLoading.value = false
@@ -408,7 +478,7 @@ async function handleGenerate(): Promise<void> {
     goToStep(5)
   } catch (error) {
     console.error(error)
-    alert(error instanceof Error ? error.message : 'Échec de la publication')
+    toast.error(error instanceof Error ? error.message : 'Échec de la publication')
   } finally {
     isSubmitting.value = false
   }
@@ -463,30 +533,40 @@ onMounted(async () => {
 </script>
 
 <style scoped>
-.wizard-step-enter-active,
-.wizard-step-leave-active {
-  transition: all 0.35s ease;
-}
-.wizard-step-enter-from {
-  opacity: 0;
-  transform: translateX(24px);
-}
-.wizard-step-leave-to {
-  opacity: 0;
-  transform: translateX(-24px);
+/* Entrée d'étape en animation CSS pure : aucune machinerie JS <Transition>
+   (rAF gelé en onglet inactif, reduced-motion…) ne peut figer le wizard. */
+.wizard-step {
+  animation: wizard-step-in 0.3s ease;
 }
 
-.loader-smooth {
+@keyframes wizard-step-in {
+  from {
+    opacity: 0;
+    transform: translateX(18px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.loader-ring {
   width: 48px;
   height: 48px;
-  border: 3px solid rgba(255, 255, 255, 0.1);
-  border-left-color: #f9f9f9;
+  border: 3px solid var(--app-line);
+  border-left-color: var(--app-accent);
   border-radius: 50%;
   animation: spin 0.8s linear infinite;
 }
 @keyframes spin {
   to {
     transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .wizard-step {
+    animation: none;
   }
 }
 </style>

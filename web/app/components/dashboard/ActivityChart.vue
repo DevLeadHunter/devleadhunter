@@ -2,31 +2,41 @@
   <div class="relative">
     <!-- Legend -->
     <div class="mb-3 flex items-center gap-4">
-      <span class="flex items-center gap-1.5 text-xs text-[#c9d1d9]">
-        <span class="h-2 w-2 rounded-full" style="background-color: #58a6ff"></span> Envoyés
+      <span class="flex items-center gap-1.5 text-xs text-[var(--app-ink-soft)]">
+        <span class="h-2 w-2 rounded-full" style="background-color: #dd9a35"></span> Envoyés
       </span>
-      <span class="flex items-center gap-1.5 text-xs text-[#c9d1d9]">
-        <span class="h-2 w-2 rounded-full" style="background-color: #3fb950"></span> Ouverts
+      <span class="flex items-center gap-1.5 text-xs text-[var(--app-ink-soft)]">
+        <span class="h-2 w-2 rounded-full" style="background-color: #3f8f60"></span> Ouverts
       </span>
     </div>
 
     <div class="relative" @mouseleave="activeIndex = null">
       <svg :viewBox="`0 0 ${W} ${H}`" preserveAspectRatio="none" class="h-44 w-full overflow-visible">
         <!-- Horizontal gridlines -->
-        <line v-for="g in gridLines" :key="g.y" :x1="0" :x2="W" :y1="g.y" :y2="g.y" stroke="#21262d" stroke-width="1" />
+        <line
+          v-for="g in gridLines"
+          :key="g.y"
+          :x1="0"
+          :x2="W"
+          :y1="g.y"
+          :y2="g.y"
+          stroke="currentColor"
+          class="text-[var(--app-line)]"
+          stroke-width="1"
+        />
 
         <!-- Sent area -->
         <defs>
           <linearGradient id="sentGradient" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stop-color="#58a6ff" stop-opacity="0.35" />
-            <stop offset="100%" stop-color="#58a6ff" stop-opacity="0" />
+            <stop offset="0%" stop-color="#dd9a35" stop-opacity="0.35" />
+            <stop offset="100%" stop-color="#dd9a35" stop-opacity="0" />
           </linearGradient>
         </defs>
         <path :d="sentArea" fill="url(#sentGradient)" />
-        <path :d="sentLine" fill="none" stroke="#58a6ff" stroke-width="2" vector-effect="non-scaling-stroke" />
+        <path :d="sentLine" fill="none" stroke="#dd9a35" stroke-width="2" vector-effect="non-scaling-stroke" />
 
         <!-- Opened line -->
-        <path :d="openedLine" fill="none" stroke="#3fb950" stroke-width="2" vector-effect="non-scaling-stroke" />
+        <path :d="openedLine" fill="none" stroke="#3f8f60" stroke-width="2" vector-effect="non-scaling-stroke" />
 
         <!-- Active guide -->
         <line
@@ -35,7 +45,8 @@
           :x2="active.x"
           :y1="0"
           :y2="H"
-          stroke="#6e7681"
+          stroke="currentColor"
+          class="text-[var(--app-ink-soft)]"
           stroke-width="1"
           stroke-dasharray="3 3"
           vector-effect="non-scaling-stroke"
@@ -45,7 +56,7 @@
           :cx="active.x"
           :cy="active.sentY"
           r="3.5"
-          fill="#58a6ff"
+          fill="#dd9a35"
           vector-effect="non-scaling-stroke"
         />
         <circle
@@ -53,7 +64,7 @@
           :cx="active.x"
           :cy="active.openedY"
           r="3.5"
-          fill="#3fb950"
+          fill="#3f8f60"
           vector-effect="non-scaling-stroke"
         />
       </svg>
@@ -79,11 +90,11 @@
       >
         <p class="mb-1 text-[11px] font-semibold text-[var(--app-ink)]">{{ formatDay(active.date) }}</p>
         <p class="flex items-center gap-1.5 text-[11px] text-[var(--app-ink-soft)]">
-          <span class="h-1.5 w-1.5 rounded-full" style="background-color: #58a6ff"></span>
+          <span class="h-1.5 w-1.5 rounded-full" style="background-color: #dd9a35"></span>
           {{ active.sent }} envoyés
         </p>
         <p class="flex items-center gap-1.5 text-[11px] text-[var(--app-ink-soft)]">
-          <span class="h-1.5 w-1.5 rounded-full" style="background-color: #3fb950"></span>
+          <span class="h-1.5 w-1.5 rounded-full" style="background-color: #3f8f60"></span>
           {{ active.opened }} ouverts
         </p>
       </div>
