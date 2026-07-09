@@ -9,7 +9,7 @@
       </select>
       <UIcon
         name="i-lucide-chevron-down"
-        class="pointer-events-none absolute top-1/2 right-3 h-4 w-4 -translate-y-1/2 text-[#8b949e]"
+        class="pointer-events-none absolute top-1/2 right-3 h-4 w-4 -translate-y-1/2 text-[var(--app-ink-soft)]"
       />
     </div>
     <p v-if="selected" class="text-muted mt-1.5 flex items-center gap-1.5 text-xs">

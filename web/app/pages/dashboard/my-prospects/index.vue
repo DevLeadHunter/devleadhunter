@@ -1,25 +1,32 @@
 <template>
   <div class="space-y-6">
     <!-- Header -->
-    <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+    <div class="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
       <div>
-        <h1 class="text-2xl font-bold text-[#f9f9f9] sm:text-3xl">Mes Prospects</h1>
-        <p class="text-muted mt-2 text-sm">Tous vos prospects sauvegardés depuis vos recherches</p>
+        <p class="app-label flex items-center gap-2">
+          <LandingAsterisk class="text-[0.6rem] text-[var(--app-accent)]" />
+          Prospection
+        </p>
+        <h1 class="app-page-title mt-2">Mes prospects</h1>
+        <p class="mt-1.5 text-sm text-[var(--app-ink-soft)]">Tous vos prospects sauvegardés depuis vos recherches</p>
       </div>
       <div class="flex flex-wrap items-center gap-2 sm:gap-3">
         <button
           :disabled="isLoading"
-          class="btn-secondary disabled:cursor-not-allowed disabled:opacity-50"
+          class="app-btn-secondary h-9 px-4 text-xs disabled:cursor-not-allowed disabled:opacity-50"
           @click="refreshProspects"
         >
-          <UIcon name="i-lucide-refresh-cw" class="mr-2 h-4 w-4" />
+          <UIcon name="i-lucide-refresh-cw" class="h-3.5 w-3.5" />
           Actualiser
         </button>
-        <NuxtLink to="/dashboard/my-prospects/add" class="btn-secondary inline-flex">
-          <UIcon name="i-lucide-user-plus" class="mr-2 h-4 w-4" />
+        <NuxtLink to="/dashboard/my-prospects/add" class="app-btn-secondary h-9 px-4 text-xs">
+          <UIcon name="i-lucide-user-plus" class="h-3.5 w-3.5" />
           Ajouter manuellement
         </NuxtLink>
-        <NuxtLink to="/dashboard/search-prospects" class="btn-primary inline-flex"> Nouvelle Recherche </NuxtLink>
+        <NuxtLink to="/dashboard/search-prospects" class="app-btn-primary h-9 px-4 text-xs">
+          <UIcon name="i-lucide-search" class="h-3.5 w-3.5" />
+          Nouvelle recherche
+        </NuxtLink>
       </div>
     </div>
 
@@ -32,83 +39,99 @@
     </div>
 
     <!-- Filters -->
-    <div class="card">
+    <div class="app-card p-5">
       <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5">
         <div>
-          <label class="text-muted mb-1.5 block text-xs font-medium">Rechercher</label>
-          <input v-model="searchQuery" type="text" placeholder="Nom, ville, email..." class="input-field" />
+          <label class="app-label mb-1.5 block">Rechercher</label>
+          <input v-model="searchQuery" type="text" placeholder="Nom, ville, email..." class="app-input" />
         </div>
         <div>
-          <label class="text-muted mb-1.5 block text-xs font-medium">Site web</label>
+          <label class="app-label mb-1.5 block">Site web</label>
           <UiSelectField v-model="filterWebsite" :options="websiteFilterOptions" />
         </div>
         <div>
-          <label class="text-muted mb-1.5 block text-xs font-medium">Ville</label>
+          <label class="app-label mb-1.5 block">Ville</label>
           <UiCitySelect v-model="filterCity" placeholder="Toutes les villes" />
         </div>
         <div>
-          <label class="text-muted mb-1.5 block text-xs font-medium">Catégorie</label>
-          <input v-model="filterCategory" type="text" placeholder="Ex: restaurant" class="input-field" />
+          <label class="app-label mb-1.5 block">Catégorie</label>
+          <input v-model="filterCategory" type="text" placeholder="Ex: restaurant" class="app-input" />
         </div>
         <div class="flex items-end">
-          <button class="btn-secondary w-full" @click="clearFilters">Réinitialiser</button>
+          <button class="app-btn-secondary w-full" @click="clearFilters">Réinitialiser</button>
         </div>
       </div>
     </div>
 
     <!-- Contacted tabs -->
-    <div class="flex items-center gap-1 border-b border-[#30363d]">
+    <div class="flex items-center gap-1 border-b border-[var(--app-line)]">
       <button
         type="button"
         class="relative cursor-pointer px-4 py-2.5 text-sm font-medium transition-colors"
-        :class="activeTab === 'not_contacted' ? 'text-[#f9f9f9]' : 'text-[#8b949e] hover:text-[#f9f9f9]'"
+        :class="
+          activeTab === 'not_contacted'
+            ? 'text-[var(--app-ink)]'
+            : 'text-[var(--app-ink-soft)] hover:text-[var(--app-ink)]'
+        "
         @click="activeTab = 'not_contacted'"
       >
         Pas contacté
-        <span class="ml-1.5 rounded-full bg-[#30363d] px-2 py-0.5 text-xs">{{ notContactedCount }}</span>
-        <span v-if="activeTab === 'not_contacted'" class="absolute inset-x-0 -bottom-px h-0.5 bg-[#f9f9f9]"></span>
+        <span class="font-label ml-1.5 rounded-full bg-[var(--app-surface-2)] px-2 py-0.5 text-xs">
+          {{ notContactedCount }}
+        </span>
+        <span
+          v-if="activeTab === 'not_contacted'"
+          class="absolute inset-x-3 -bottom-px h-0.5 rounded-full bg-[var(--app-accent)]"
+        ></span>
       </button>
       <button
         type="button"
         class="relative cursor-pointer px-4 py-2.5 text-sm font-medium transition-colors"
-        :class="activeTab === 'contacted' ? 'text-[#f9f9f9]' : 'text-[#8b949e] hover:text-[#f9f9f9]'"
+        :class="
+          activeTab === 'contacted' ? 'text-[var(--app-ink)]' : 'text-[var(--app-ink-soft)] hover:text-[var(--app-ink)]'
+        "
         @click="activeTab = 'contacted'"
       >
         Contacté
-        <span class="ml-1.5 rounded-full bg-[#30363d] px-2 py-0.5 text-xs">{{ contactedCount }}</span>
-        <span v-if="activeTab === 'contacted'" class="absolute inset-x-0 -bottom-px h-0.5 bg-[#f9f9f9]"></span>
+        <span class="font-label ml-1.5 rounded-full bg-[var(--app-surface-2)] px-2 py-0.5 text-xs">
+          {{ contactedCount }}
+        </span>
+        <span
+          v-if="activeTab === 'contacted'"
+          class="absolute inset-x-3 -bottom-px h-0.5 rounded-full bg-[var(--app-accent)]"
+        ></span>
       </button>
     </div>
 
     <!-- Loader -->
-    <div v-if="isLoading" class="flex items-center justify-center py-12">
-      <UIcon name="i-lucide-loader-circle" class="text-muted h-10 w-10 animate-spin" />
+    <div v-if="isLoading" class="flex items-center justify-center py-16">
+      <UIcon name="i-lucide-loader-circle" class="h-8 w-8 animate-spin text-[var(--app-accent)]" />
     </div>
 
     <!-- Error -->
-    <div v-else-if="error" class="rounded-lg border border-[#DC4747] bg-[#1a1a1a] p-4 text-[#DC4747]">
-      <p class="font-semibold">Erreur</p>
-      <p class="text-muted mt-1 text-sm">{{ error }}</p>
+    <div v-else-if="error" class="app-card border-[var(--app-red)]/40 bg-[var(--app-red-soft)] p-5">
+      <p class="font-semibold text-[var(--app-red)]">Erreur</p>
+      <p class="mt-1 text-sm text-[var(--app-ink-soft)]">{{ error }}</p>
     </div>
 
     <!-- Empty State -->
-    <div v-else-if="filteredProspects.length === 0" class="py-12 text-center">
-      <UIcon name="i-lucide-inbox" class="text-muted mb-4 h-16 w-16" />
-      <h3 class="mt-4 text-lg font-medium text-[#f9f9f9]">Aucun prospect trouvé</h3>
-      <p class="text-muted mt-2 text-sm">
+    <div v-else-if="filteredProspects.length === 0" class="app-card px-6 py-16 text-center">
+      <LandingAsterisk class="text-4xl text-[var(--app-accent)]" />
+      <h3 class="font-display mt-5 text-2xl font-semibold text-[var(--app-ink)]">Aucun prospect trouvé</h3>
+      <p class="mx-auto mt-2 max-w-sm text-sm leading-relaxed text-[var(--app-ink-soft)]">
         {{
           searchQuery || filterCity || filterCategory
-            ? 'Essayez de modifier vos filtres'
-            : 'Commencez par faire une recherche de prospects'
+            ? 'Essayez de modifier vos filtres pour élargir la sélection.'
+            : 'Lancez une recherche pour trouver des artisans sans site web près de chez vous.'
         }}
       </p>
-      <NuxtLink to="/dashboard/search-prospects" class="btn-primary mt-4 inline-flex">
+      <NuxtLink to="/dashboard/search-prospects" class="app-btn-primary mt-6 inline-flex">
         Rechercher des prospects
       </NuxtLink>
     </div>
 
     <!-- Prospects Table -->
-    <div v-else class="card overflow-hidden">
+    <div v-else class="app-card overflow-hidden">
       <UiProspectTable
         :prospects="paginatedProspects"
         :selected-prospects="selectedProspects"
@@ -120,24 +143,26 @@
 
       <!-- Pagination -->
       <div
-        class="flex flex-col gap-3 border-t border-[#30363d] px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6"
+        class="flex flex-col gap-3 border-t border-[var(--app-line)] bg-[var(--app-surface-2)]/50 px-4 py-3.5 sm:flex-row sm:items-center sm:justify-between sm:px-6"
       >
-        <div class="text-muted text-sm">
-          Affichage de {{ (currentPage - 1) * pageSize + 1 }} à
-          {{ Math.min(currentPage * pageSize, filteredProspects.length) }} sur {{ filteredProspects.length }} prospects
+        <div class="font-label text-xs text-[var(--app-ink-soft)]">
+          {{ (currentPage - 1) * pageSize + 1 }}–{{ Math.min(currentPage * pageSize, filteredProspects.length) }} sur
+          {{ filteredProspects.length }} prospects
         </div>
         <div class="flex items-center gap-2">
           <button
             :disabled="currentPage === 1"
-            class="btn-secondary h-auto min-h-0 px-3 py-1 text-xs disabled:cursor-not-allowed disabled:opacity-50"
+            class="app-btn-secondary h-8 min-h-8 px-3 text-xs disabled:cursor-not-allowed disabled:opacity-50"
             @click="currentPage--"
           >
             Précédent
           </button>
-          <span class="text-muted px-4 py-1 text-sm font-medium"> Page {{ currentPage }} / {{ totalPages }} </span>
+          <span class="font-label px-2 text-xs text-[var(--app-ink-soft)]">
+            Page {{ currentPage }} / {{ totalPages }}
+          </span>
           <button
             :disabled="currentPage === totalPages"
-            class="btn-secondary h-auto min-h-0 px-3 py-1 text-xs disabled:cursor-not-allowed disabled:opacity-50"
+            class="app-btn-secondary h-8 min-h-8 px-3 text-xs disabled:cursor-not-allowed disabled:opacity-50"
             @click="currentPage++"
           >
             Suivant
@@ -173,33 +198,33 @@
     <Transition name="bulkbar">
       <div v-if="selectedProspects.length > 0" class="fixed inset-x-0 bottom-6 z-40 flex justify-center px-4">
         <div
-          class="flex flex-wrap items-center justify-center gap-2 rounded-2xl border border-[#30363d] bg-[#161b22]/95 px-4 py-3 shadow-2xl backdrop-blur"
+          class="app-card flex flex-wrap items-center justify-center gap-2 rounded-full px-4 py-2.5 shadow-[var(--app-shadow-soft)] backdrop-blur"
         >
-          <span class="px-1 text-sm font-semibold text-[#f9f9f9]">
+          <span class="font-label px-1.5 text-xs font-medium text-[var(--app-ink)]">
             {{ selectedProspects.length }} sélectionné{{ selectedProspects.length > 1 ? 's' : '' }}
           </span>
-          <span class="hidden h-5 w-px bg-[#30363d] sm:block"></span>
-          <button type="button" class="btn-secondary" @click="bulkCampaignOpen = true">
-            <UIcon name="i-lucide-megaphone" class="mr-2 h-4 w-4" />Campagne
+          <span class="hidden h-5 w-px bg-[var(--app-line)] sm:block"></span>
+          <button type="button" class="app-btn-secondary h-9 px-4 text-xs" @click="bulkCampaignOpen = true">
+            <UIcon name="i-lucide-megaphone" class="h-3.5 w-3.5" />Campagne
           </button>
           <button
             type="button"
-            class="btn-secondary disabled:cursor-not-allowed disabled:opacity-50"
+            class="app-btn-secondary h-9 px-4 text-xs disabled:cursor-not-allowed disabled:opacity-50"
             :disabled="bulkBusy"
             @click="bulkEnrich"
           >
             <UIcon
               :name="bulkBusy ? 'i-lucide-loader-circle' : 'i-lucide-sparkles'"
-              :class="['mr-2 h-4 w-4', bulkBusy && 'animate-spin']"
+              :class="['h-3.5 w-3.5', bulkBusy && 'animate-spin']"
             />
             Enrichir
           </button>
-          <button type="button" class="btn-primary" @click="bulkGenerateOpen = true">
-            <UIcon name="i-lucide-globe" class="mr-2 h-4 w-4" />Générer les sites
+          <button type="button" class="app-btn-primary h-9 px-4 text-xs" @click="bulkGenerateOpen = true">
+            <UIcon name="i-lucide-globe" class="h-3.5 w-3.5" />Générer les sites
           </button>
           <button
             type="button"
-            class="text-muted ml-1 cursor-pointer p-2 transition-colors hover:text-[#f9f9f9]"
+            class="ml-0.5 cursor-pointer rounded-full p-2 text-[var(--app-ink-soft)] transition-colors hover:bg-[var(--app-surface-2)] hover:text-[var(--app-ink)]"
             aria-label="Désélectionner tout"
             @click="clearSelection"
           >

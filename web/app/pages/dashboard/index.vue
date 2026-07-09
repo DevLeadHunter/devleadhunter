@@ -3,7 +3,7 @@
     <!-- Header -->
     <div class="flex flex-wrap items-end justify-between gap-3">
       <div>
-        <h1 class="text-2xl font-bold text-[#f9f9f9]">Tableau de bord</h1>
+        <h1 class="text-2xl font-bold text-[var(--app-ink)]">Tableau de bord</h1>
         <p class="text-muted mt-1 text-sm">Vue d'ensemble de votre tunnel, de la prospection à la vente</p>
       </div>
       <div class="flex items-center gap-3">
@@ -19,8 +19,8 @@
     <div v-if="isLoading && !stats" class="space-y-6">
       <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <div v-for="n in 4" :key="n" class="card h-28 animate-pulse">
-          <div class="h-10 w-10 rounded-lg bg-[#21262d]"></div>
-          <div class="mt-4 h-6 w-2/3 rounded bg-[#21262d]"></div>
+          <div class="h-10 w-10 rounded-lg bg-[var(--app-surface-2)]"></div>
+          <div class="mt-4 h-6 w-2/3 rounded bg-[var(--app-surface-2)]"></div>
         </div>
       </div>
       <div class="grid grid-cols-1 gap-6 lg:grid-cols-3">
@@ -72,8 +72,8 @@
           <!-- Conversion funnel -->
           <section class="card">
             <div class="mb-4 flex items-center justify-between">
-              <h2 class="flex items-center gap-2 text-sm font-semibold text-[#f9f9f9]">
-                <i class="fa-solid fa-filter text-xs text-[#58a6ff]"></i> Tunnel de conversion
+              <h2 class="flex items-center gap-2 text-sm font-semibold text-[var(--app-ink)]">
+                <i class="fa-solid fa-filter text-xs text-[var(--app-accent-ink)]"></i> Tunnel de conversion
               </h2>
               <span class="text-muted text-xs">{{ funnelTopToBottom }}</span>
             </div>
@@ -83,8 +83,10 @@
           <!-- Activity trend -->
           <section class="card">
             <div class="mb-1 flex items-center justify-between">
-              <h2 class="text-sm font-semibold text-[#f9f9f9]">Activité email — 14 derniers jours</h2>
-              <NuxtLink to="/dashboard/emails" class="text-xs text-[#58a6ff] hover:underline">Détails →</NuxtLink>
+              <h2 class="text-sm font-semibold text-[var(--app-ink)]">Activité email — 14 derniers jours</h2>
+              <NuxtLink to="/dashboard/emails" class="text-xs text-[var(--app-accent-ink)] hover:underline"
+                >Détails →</NuxtLink
+              >
             </div>
             <DashboardActivityChart v-if="activity.length" :points="activity" />
             <p v-else class="text-muted py-10 text-center text-sm">Aucune activité email sur la période.</p>
@@ -94,7 +96,7 @@
         <div class="space-y-6">
           <!-- Email engagement -->
           <section class="card">
-            <h2 class="mb-4 text-sm font-semibold text-[#f9f9f9]">Engagement email</h2>
+            <h2 class="mb-4 text-sm font-semibold text-[var(--app-ink)]">Engagement email</h2>
             <div class="flex items-center justify-around">
               <DashboardRadialRate
                 :value="stats.open_rate"
@@ -109,17 +111,19 @@
                 :sublabel="`${formatInt(stats.emails_clicked)} / ${formatInt(stats.emails_sent)}`"
               />
             </div>
-            <div class="mt-4 grid grid-cols-3 gap-2 border-t border-[#21262d] pt-4 text-center">
+            <div class="mt-4 grid grid-cols-3 gap-2 border-t border-[var(--app-surface-2)] pt-4 text-center">
               <div>
-                <p class="text-lg font-bold text-[#f9f9f9] tabular-nums">{{ formatInt(stats.emails_sent) }}</p>
+                <p class="text-lg font-bold text-[var(--app-ink)] tabular-nums">{{ formatInt(stats.emails_sent) }}</p>
                 <p class="text-muted text-[11px]">Envoyés</p>
               </div>
               <div>
-                <p class="text-lg font-bold text-[#f9f9f9] tabular-nums">{{ formatInt(stats.emails_opened) }}</p>
+                <p class="text-lg font-bold text-[var(--app-ink)] tabular-nums">{{ formatInt(stats.emails_opened) }}</p>
                 <p class="text-muted text-[11px]">Ouverts</p>
               </div>
               <div>
-                <p class="text-lg font-bold text-[#f9f9f9] tabular-nums">{{ formatInt(stats.emails_clicked) }}</p>
+                <p class="text-lg font-bold text-[var(--app-ink)] tabular-nums">
+                  {{ formatInt(stats.emails_clicked) }}
+                </p>
                 <p class="text-muted text-[11px]">Cliqués</p>
               </div>
             </div>
@@ -128,30 +132,36 @@
           <!-- Sales -->
           <section class="card">
             <div class="mb-4 flex items-center justify-between">
-              <h2 class="text-sm font-semibold text-[#f9f9f9]">Ventes</h2>
-              <NuxtLink to="/dashboard/orders" class="text-xs text-[#58a6ff] hover:underline">Voir →</NuxtLink>
+              <h2 class="text-sm font-semibold text-[var(--app-ink)]">Ventes</h2>
+              <NuxtLink to="/dashboard/orders" class="text-xs text-[var(--app-accent-ink)] hover:underline"
+                >Voir →</NuxtLink
+              >
             </div>
-            <p class="text-3xl font-bold text-[#3fb950] tabular-nums">{{ formatCents(stats.revenue_cents) }}</p>
+            <p class="text-3xl font-bold text-[var(--app-green)] tabular-nums">
+              {{ formatCents(stats.revenue_cents) }}
+            </p>
             <p class="text-muted mt-1 text-xs">Chiffre d'affaires encaissé</p>
 
             <div class="mt-4 space-y-3">
               <div>
                 <div class="mb-1 flex items-center justify-between text-xs">
                   <span class="text-[#c9d1d9]">Ventes gagnées</span>
-                  <span class="text-[#8b949e] tabular-nums">{{ stats.sales_won }} / {{ stats.orders_total }}</span>
+                  <span class="text-[var(--app-ink-soft)] tabular-nums"
+                    >{{ stats.sales_won }} / {{ stats.orders_total }}</span
+                  >
                 </div>
-                <div class="h-2 overflow-hidden rounded-full bg-[#0d0d0d]">
+                <div class="h-2 overflow-hidden rounded-full bg-[var(--app-surface)]">
                   <div
-                    class="h-full rounded-full bg-[#3fb950] transition-all duration-700"
+                    class="h-full rounded-full bg-[var(--app-green)] transition-all duration-700"
                     :style="{ width: `${wonRatio}%` }"
                   ></div>
                 </div>
               </div>
-              <div class="flex items-center justify-between rounded-lg border border-[#21262d] px-3 py-2">
+              <div class="flex items-center justify-between rounded-lg border border-[var(--app-surface-2)] px-3 py-2">
                 <span class="flex items-center gap-2 text-xs text-[#c9d1d9]">
-                  <i class="fa-solid fa-hourglass-half text-[#e3b341]"></i> Pipeline en cours
+                  <i class="fa-solid fa-hourglass-half text-[var(--app-accent)]"></i> Pipeline en cours
                 </span>
-                <span class="text-sm font-bold text-[#e3b341] tabular-nums">{{
+                <span class="text-sm font-bold text-[var(--app-accent)] tabular-nums">{{
                   formatCents(stats.pipeline_cents)
                 }}</span>
               </div>
@@ -163,11 +173,11 @@
       <!-- Hot leads -->
       <section class="card">
         <div class="mb-4 flex items-center justify-between">
-          <h2 class="flex items-center gap-2 text-sm font-semibold text-[#f9f9f9]">
+          <h2 class="flex items-center gap-2 text-sm font-semibold text-[var(--app-ink)]">
             <i class="fa-solid fa-fire text-xs text-[#ff7b72]"></i> Leads chauds
             <span v-if="hotLeads.length" class="text-muted font-normal">({{ hotLeads.length }})</span>
           </h2>
-          <NuxtLink to="/dashboard/my-prospects" class="text-xs text-[#58a6ff] hover:underline">
+          <NuxtLink to="/dashboard/my-prospects" class="text-xs text-[var(--app-accent-ink)] hover:underline">
             Tous les prospects →
           </NuxtLink>
         </div>
@@ -177,7 +187,7 @@
             v-for="lead in hotLeads"
             :key="lead.prospect_id"
             type="button"
-            class="flex w-full items-center gap-3 rounded-lg border border-[#21262d] p-3 text-left transition-all hover:-translate-y-0.5 hover:border-[#3d444d] hover:bg-[#161616]"
+            class="flex w-full items-center gap-3 rounded-lg border border-[var(--app-surface-2)] p-3 text-left transition-all hover:-translate-y-0.5 hover:border-[#3d444d] hover:bg-[#161616]"
             @click="openProspect(lead.prospect_id)"
           >
             <span
@@ -187,34 +197,34 @@
               <i class="fa-solid fa-circle text-[6px]"></i>{{ temperatureLabel(lead.temperature) }}
             </span>
             <div class="min-w-0 flex-1">
-              <p class="truncate text-sm font-medium text-[#f9f9f9]">{{ lead.name }}</p>
+              <p class="truncate text-sm font-medium text-[var(--app-ink)]">{{ lead.name }}</p>
               <p class="text-muted truncate text-xs">
                 {{ lead.city || '—' }}<span v-if="lead.last_seen"> · vu {{ formatDate(lead.last_seen) }}</span>
               </p>
             </div>
             <div class="flex flex-shrink-0 items-center gap-2">
               <div class="w-16">
-                <div class="h-1.5 overflow-hidden rounded-full bg-[#0d0d0d]">
+                <div class="h-1.5 overflow-hidden rounded-full bg-[var(--app-surface)]">
                   <div class="h-full rounded-full" :style="scoreBarStyle(lead.score)"></div>
                 </div>
               </div>
-              <span class="w-10 text-right text-sm font-bold text-[#f9f9f9] tabular-nums">{{ lead.score }}</span>
-              <i class="fa-solid fa-chevron-right text-xs text-[#6e7681]"></i>
+              <span class="w-10 text-right text-sm font-bold text-[var(--app-ink)] tabular-nums">{{ lead.score }}</span>
+              <i class="fa-solid fa-chevron-right text-xs text-[var(--app-ink-soft)]"></i>
             </div>
           </button>
         </div>
 
         <div v-else class="flex flex-col items-center gap-2 py-8 text-center">
-          <i class="fa-regular fa-snowflake text-2xl text-[#30363d]"></i>
+          <i class="fa-regular fa-snowflake text-2xl text-[var(--app-faint)]"></i>
           <p class="text-muted text-sm">Aucun lead chaud pour l'instant.</p>
-          <p class="text-xs text-[#6e7681]">
+          <p class="text-xs text-[var(--app-ink-soft)]">
             Les prospects qui ouvrent vos emails et visitent leur démo apparaîtront ici.
           </p>
         </div>
       </section>
     </template>
 
-    <div v-else class="rounded-lg border border-[#DC4747] bg-[#1a1a1a] p-4 text-[#DC4747]">
+    <div v-else class="rounded-lg border border-[var(--app-red)] bg-[var(--app-surface)] p-4 text-[var(--app-red)]">
       <p class="text-sm">Impossible de charger les statistiques.</p>
       <button type="button" class="btn-secondary mt-3 h-9 px-3 text-xs" @click="load">Réessayer</button>
     </div>
@@ -311,11 +321,11 @@ function temperatureLabel(temperature: string): string {
 function temperatureClass(temperature: string): string {
   switch (temperature) {
     case 'hot':
-      return 'border border-[#da3633]/40 bg-[#da3633]/10 text-[#ff7b72]'
+      return 'border border-[var(--app-red)]/40 bg-[var(--app-red)]/10 text-[#ff7b72]'
     case 'warm':
-      return 'border border-[#e3b341]/40 bg-[#e3b341]/10 text-[#e3b341]'
+      return 'border border-[var(--app-accent)]/40 bg-[var(--app-accent)]/10 text-[var(--app-accent)]'
     default:
-      return 'border border-[#58a6ff]/40 bg-[#58a6ff]/10 text-[#58a6ff]'
+      return 'border border-[var(--app-accent-ink)]/40 bg-[var(--app-accent-ink)]/10 text-[var(--app-accent-ink)]'
   }
 }
 

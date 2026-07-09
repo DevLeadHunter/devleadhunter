@@ -1,14 +1,14 @@
 <template>
   <article
-    class="card group relative overflow-hidden transition-all duration-300 hover:border-[#484f58] hover:shadow-lg hover:shadow-black/20"
+    class="card group relative overflow-hidden transition-all duration-300 hover:border-[var(--app-ink-soft)] hover:shadow-lg hover:shadow-black/20"
   >
     <NuxtLink :to="`/dashboard/demo-sites/${site.id}`" class="block">
       <!-- Preview header -->
       <div
-        class="relative h-36 overflow-hidden border-b border-[#30363d] transition-transform duration-500 group-hover:scale-[1.02]"
+        class="relative h-36 overflow-hidden border-b border-[var(--app-line)] transition-transform duration-500 group-hover:scale-[1.02]"
         :style="{ background: cardGradient }"
       >
-        <div class="absolute inset-0 bg-gradient-to-t from-[#1a1a1a] via-transparent to-transparent"></div>
+        <div class="absolute inset-0 bg-gradient-to-t from-[var(--app-surface)] via-transparent to-transparent"></div>
         <div class="relative px-5 pt-5">
           <span
             :class="[
@@ -24,7 +24,7 @@
       </div>
 
       <div class="space-y-4 p-5">
-        <div class="flex items-center justify-between text-xs text-[#8b949e]">
+        <div class="flex items-center justify-between text-xs text-[var(--app-ink-soft)]">
           <span class="flex items-center gap-1.5">
             <i class="fa-solid fa-clock"></i>
             Expire {{ formatDate(site.expires_at) }}
@@ -86,7 +86,7 @@ const statusLabel = computed(() => {
 
 const statusClass = computed(() => {
   if (isDemoSiteReachable(props.site)) {
-    return 'bg-[#2BAD5F]/20 text-[#2BAD5F]'
+    return 'bg-[var(--app-green)]/20 text-[var(--app-green)]'
   }
   if (props.site.status === 'failed') return 'bg-red-500/20 text-red-300'
   return 'bg-amber-500/20 text-amber-300'

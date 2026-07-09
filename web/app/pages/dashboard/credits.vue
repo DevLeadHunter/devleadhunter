@@ -2,10 +2,10 @@
   <div>
     <!-- Header -->
     <div class="mb-6 flex items-center justify-between">
-      <h1 class="text-xl font-semibold text-[#f9f9f9]">Credit Usage</h1>
+      <h1 class="text-xl font-semibold text-[var(--app-ink)]">Credit Usage</h1>
       <NuxtLink
         to="/dashboard/buy-credits"
-        class="flex items-center gap-1 text-sm text-[#f9f9f9] transition-colors hover:text-[#8b949e]"
+        class="flex items-center gap-1 text-sm text-[var(--app-ink)] transition-colors hover:text-[var(--app-ink-soft)]"
       >
         View Pricing Page
         <i class="fa-solid fa-external-link-alt text-xs"></i>
@@ -16,8 +16,8 @@
     <div v-if="isLoading" class="space-y-6">
       <div class="card">
         <div class="animate-pulse space-y-4">
-          <div class="h-6 w-1/4 rounded bg-[#2a2a2a]"></div>
-          <div class="h-32 rounded bg-[#2a2a2a]"></div>
+          <div class="h-6 w-1/4 rounded bg-[var(--app-surface-2)]"></div>
+          <div class="h-32 rounded bg-[var(--app-surface-2)]"></div>
         </div>
       </div>
     </div>
@@ -27,18 +27,18 @@
       <!-- Credit Usage Progress Bar -->
       <div class="card">
         <div class="mb-4 flex items-center justify-between">
-          <h2 class="text-lg font-semibold text-[#f9f9f9]">Credit Usage</h2>
+          <h2 class="text-lg font-semibold text-[var(--app-ink)]">Credit Usage</h2>
           <NuxtLink to="/dashboard/buy-credits" class="btn-primary h-auto px-4 py-2 text-xs">
             Buy More Credits
           </NuxtLink>
         </div>
 
-        <p class="mb-4 text-xs text-[#8b949e]">Last updated: {{ lastUpdated }}</p>
+        <p class="mb-4 text-xs text-[var(--app-ink-soft)]">Last updated: {{ lastUpdated }}</p>
 
         <!-- Progress Bar Container -->
         <div ref="progressBarRef" class="relative">
           <div
-            class="relative h-8 cursor-pointer overflow-hidden rounded-lg border border-[#30363d] bg-[#050505]"
+            class="relative h-8 cursor-pointer overflow-hidden rounded-lg border border-[var(--app-line)] bg-[var(--app-bg)]"
             @mouseenter="handleTooltipEnter"
             @mouseleave="handleTooltipLeave"
           >
@@ -51,13 +51,13 @@
             <!-- Credits Remaining -->
             <div
               :style="{ width: `${remainingPercentage}%`, left: `${usedPercentage}%` }"
-              class="absolute top-0 h-full bg-[#30363d] transition-all duration-300"
+              class="absolute top-0 h-full bg-[var(--app-surface-2)] transition-all duration-300"
             ></div>
 
             <!-- Labels on Progress Bar -->
             <div class="relative flex h-full items-center px-3 text-xs font-medium">
-              <span class="text-[#f9f9f9]">{{ creditsUsed }}</span>
-              <span class="ml-auto text-[#f9f9f9]">
+              <span class="text-[var(--app-ink)]">{{ creditsUsed }}</span>
+              <span class="ml-auto text-[var(--app-ink)]">
                 {{ creditsRemaining === Infinity || creditsRemaining === -1 ? '∞' : creditsRemaining }}
               </span>
             </div>
@@ -73,13 +73,13 @@
                 top: `${tooltipPosition.y}px`,
                 transform: 'translateX(-50%)',
               }"
-              class="pointer-events-none z-[100] w-72 rounded-lg border border-[#30363d] bg-[#1a1a1a] p-4 shadow-lg"
+              class="pointer-events-none z-[100] w-72 rounded-lg border border-[var(--app-line)] bg-[var(--app-surface)] p-4 shadow-lg"
               style="box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3)"
             >
               <!-- Header -->
-              <div class="mb-3 flex items-center justify-between border-b border-[#30363d] pb-2">
-                <span class="text-sm font-medium text-[#f9f9f9]">Credit Usage</span>
-                <span class="text-xs text-[#8b949e]">Current Status</span>
+              <div class="mb-3 flex items-center justify-between border-b border-[var(--app-line)] pb-2">
+                <span class="text-sm font-medium text-[var(--app-ink)]">Credit Usage</span>
+                <span class="text-xs text-[var(--app-ink-soft)]">Current Status</span>
               </div>
 
               <!-- Data Rows -->
@@ -88,28 +88,28 @@
                 <div class="flex items-center justify-between">
                   <div class="flex items-center gap-2">
                     <div class="h-3 w-3 flex-shrink-0 rounded bg-[#71A3DB]"></div>
-                    <span class="text-sm text-[#f9f9f9]">Credits Used</span>
+                    <span class="text-sm text-[var(--app-ink)]">Credits Used</span>
                   </div>
-                  <span class="text-sm font-medium text-[#f9f9f9]">{{ creditsUsed }}</span>
+                  <span class="text-sm font-medium text-[var(--app-ink)]">{{ creditsUsed }}</span>
                 </div>
 
                 <!-- Credits Remaining -->
                 <div class="flex items-center justify-between">
                   <div class="flex items-center gap-2">
-                    <div class="h-3 w-3 flex-shrink-0 rounded bg-[#30363d]"></div>
-                    <span class="text-sm text-[#8b949e]">Credits Remaining</span>
+                    <div class="h-3 w-3 flex-shrink-0 rounded bg-[var(--app-surface-2)]"></div>
+                    <span class="text-sm text-[var(--app-ink-soft)]">Credits Remaining</span>
                   </div>
-                  <span class="text-sm font-medium text-[#8b949e]">{{ creditsRemaining }}</span>
+                  <span class="text-sm font-medium text-[var(--app-ink-soft)]">{{ creditsRemaining }}</span>
                 </div>
               </div>
 
               <!-- Separator -->
-              <div class="my-2.5 border-t border-[#30363d]"></div>
+              <div class="my-2.5 border-t border-[var(--app-line)]"></div>
 
               <!-- Total Variation -->
               <div class="flex items-center justify-between">
-                <span class="text-sm text-[#8b949e]">Total Credits</span>
-                <span class="text-sm font-medium text-[#2BAD5F]">{{ totalCredits }}</span>
+                <span class="text-sm text-[var(--app-ink-soft)]">Total Credits</span>
+                <span class="text-sm font-medium text-[var(--app-green)]">{{ totalCredits }}</span>
               </div>
             </div>
           </Teleport>
@@ -124,13 +124,13 @@
                 top: `${tooltipPosition.y}px`,
                 transform: 'translateX(-50%)',
               }"
-              class="pointer-events-none z-[100] w-72 rounded-lg border border-[#30363d] bg-[#1a1a1a] p-4 shadow-lg"
+              class="pointer-events-none z-[100] w-72 rounded-lg border border-[var(--app-line)] bg-[var(--app-surface)] p-4 shadow-lg"
               style="box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3)"
             >
               <!-- Header -->
-              <div class="mb-3 flex items-center justify-between border-b border-[#30363d] pb-2">
-                <span class="text-sm font-medium text-[#f9f9f9]">Credit Usage</span>
-                <span class="text-xs text-[#8b949e]">Current Status</span>
+              <div class="mb-3 flex items-center justify-between border-b border-[var(--app-line)] pb-2">
+                <span class="text-sm font-medium text-[var(--app-ink)]">Credit Usage</span>
+                <span class="text-xs text-[var(--app-ink-soft)]">Current Status</span>
               </div>
 
               <!-- Data Rows -->
@@ -138,29 +138,29 @@
                 <!-- Credits Remaining -->
                 <div class="flex items-center justify-between">
                   <div class="flex items-center gap-2">
-                    <div class="h-3 w-3 flex-shrink-0 rounded bg-[#30363d]"></div>
-                    <span class="text-sm text-[#8b949e]">Credits Remaining</span>
+                    <div class="h-3 w-3 flex-shrink-0 rounded bg-[var(--app-surface-2)]"></div>
+                    <span class="text-sm text-[var(--app-ink-soft)]">Credits Remaining</span>
                   </div>
-                  <span class="text-sm font-medium text-[#8b949e]">{{ creditsRemaining }}</span>
+                  <span class="text-sm font-medium text-[var(--app-ink-soft)]">{{ creditsRemaining }}</span>
                 </div>
 
                 <!-- Credits Used -->
                 <div class="flex items-center justify-between">
                   <div class="flex items-center gap-2">
                     <div class="h-3 w-3 flex-shrink-0 rounded bg-[#71A3DB] opacity-50"></div>
-                    <span class="text-sm text-[#8b949e]">Credits Used</span>
+                    <span class="text-sm text-[var(--app-ink-soft)]">Credits Used</span>
                   </div>
-                  <span class="text-sm font-medium text-[#8b949e]">0</span>
+                  <span class="text-sm font-medium text-[var(--app-ink-soft)]">0</span>
                 </div>
               </div>
 
               <!-- Separator -->
-              <div class="my-2.5 border-t border-[#30363d]"></div>
+              <div class="my-2.5 border-t border-[var(--app-line)]"></div>
 
               <!-- Total Variation -->
               <div class="flex items-center justify-between">
-                <span class="text-sm text-[#8b949e]">Total Credits</span>
-                <span class="text-sm font-medium text-[#2BAD5F]">{{ totalCredits }}</span>
+                <span class="text-sm text-[var(--app-ink-soft)]">Total Credits</span>
+                <span class="text-sm font-medium text-[var(--app-green)]">{{ totalCredits }}</span>
               </div>
             </div>
           </Teleport>
@@ -169,50 +169,57 @@
 
       <!-- Daily Usage Chart -->
       <div class="card">
-        <h2 class="mb-4 text-lg font-semibold text-[#f9f9f9]">Daily Credit Usage</h2>
+        <h2 class="mb-4 text-lg font-semibold text-[var(--app-ink)]">Daily Credit Usage</h2>
         <div v-if="chartData && chartData.labels && chartData.labels.length > 0" class="h-64">
           <canvas ref="chartCanvasRef"></canvas>
         </div>
-        <div v-else class="flex h-64 items-center justify-center text-[#8b949e]">
+        <div v-else class="flex h-64 items-center justify-center text-[var(--app-ink-soft)]">
           <p>No usage data available</p>
         </div>
       </div>
 
       <!-- Recent Credit Usage List -->
       <div class="card">
-        <h2 class="mb-4 text-lg font-semibold text-[#f9f9f9]">Recent Credit Usage</h2>
+        <h2 class="mb-4 text-lg font-semibold text-[var(--app-ink)]">Recent Credit Usage</h2>
         <div v-if="recentTransactions.length > 0" class="space-y-0">
           <div
             v-for="transaction in recentTransactions"
             :key="transaction.id"
-            class="flex items-center justify-between border-b border-[#30363d] py-3 last:border-b-0"
+            class="flex items-center justify-between border-b border-[var(--app-line)] py-3 last:border-b-0"
           >
             <div class="flex-1">
-              <p class="text-sm font-medium text-[#f9f9f9]">
+              <p class="text-sm font-medium text-[var(--app-ink)]">
                 {{ formatTransactionDescription(transaction) }}
               </p>
-              <p class="mt-1 text-xs text-[#8b949e]">
+              <p class="mt-1 text-xs text-[var(--app-ink-soft)]">
                 {{ formatTransactionDate(transaction.created_at) }}
               </p>
             </div>
             <div class="text-right">
-              <p :class="['text-sm font-medium', transaction.amount < 0 ? 'text-[#DC4747]' : 'text-[#2BAD5F]']">
+              <p
+                :class="[
+                  'text-sm font-medium',
+                  transaction.amount < 0 ? 'text-[var(--app-red)]' : 'text-[var(--app-green)]',
+                ]"
+              >
                 {{ transaction.amount < 0 ? '-' : '+' }}{{ Math.abs(transaction.amount) }} credits
               </p>
             </div>
           </div>
         </div>
-        <div v-else class="py-12 text-center text-[#8b949e]">
+        <div v-else class="py-12 text-center text-[var(--app-ink-soft)]">
           <p class="text-sm">No transactions yet</p>
         </div>
       </div>
 
       <!-- CTA Section -->
-      <div class="card border-[#30363d] bg-gradient-to-r from-[#1a1a1a] to-[#050505]">
+      <div class="card border-[var(--app-line)] bg-gradient-to-r from-[var(--app-surface)] to-[var(--app-bg)]">
         <div class="flex flex-col items-center justify-between gap-4 md:flex-row">
           <div>
-            <h3 class="mb-2 text-lg font-semibold text-[#f9f9f9]">Need More Credits?</h3>
-            <p class="text-sm text-[#8b949e]">Purchase credits to continue searching prospects and sending campaigns</p>
+            <h3 class="mb-2 text-lg font-semibold text-[var(--app-ink)]">Need More Credits?</h3>
+            <p class="text-sm text-[var(--app-ink-soft)]">
+              Purchase credits to continue searching prospects and sending campaigns
+            </p>
           </div>
           <NuxtLink to="/dashboard/buy-credits" class="btn-primary whitespace-nowrap"> Buy Credits </NuxtLink>
         </div>

@@ -34,19 +34,19 @@
 
     <template v-else-if="site">
       <header class="space-y-2">
-        <p class="text-xs font-semibold tracking-wider text-[#8b949e] uppercase">Site démo</p>
-        <h1 class="text-[28px] leading-tight font-semibold text-[#f9f9f9]">{{ site.business_name }}</h1>
-        <p class="text-sm text-[#8b949e]">{{ site.slug }} · {{ templateLabel }}</p>
+        <p class="text-xs font-semibold tracking-wider text-[var(--app-ink-soft)] uppercase">Site démo</p>
+        <h1 class="text-[28px] leading-tight font-semibold text-[var(--app-ink)]">{{ site.business_name }}</h1>
+        <p class="text-sm text-[var(--app-ink-soft)]">{{ site.slug }} · {{ templateLabel }}</p>
       </header>
 
       <div class="grid items-start gap-6 xl:grid-cols-[320px_1fr]">
         <!-- Aside -->
         <aside class="card sticky top-6 space-y-6 bg-[#101216] p-5">
           <div>
-            <h2 class="text-sm font-semibold tracking-wide text-[#f9f9f9] uppercase">Résumé</h2>
+            <h2 class="text-sm font-semibold tracking-wide text-[var(--app-ink)] uppercase">Résumé</h2>
             <dl class="mt-4 space-y-3 text-xs">
               <div class="flex justify-between gap-3">
-                <dt class="text-[#8b949e]">Statut</dt>
+                <dt class="text-[var(--app-ink-soft)]">Statut</dt>
                 <dd>
                   <span :class="['rounded-full px-2.5 py-0.5 text-[10px] font-bold uppercase', statusClass]">
                     {{ statusLabel }}
@@ -54,39 +54,41 @@
                 </dd>
               </div>
               <div class="flex justify-between gap-3">
-                <dt class="text-[#8b949e]">Template</dt>
-                <dd class="text-right text-[#f9f9f9]">{{ templateLabel }}</dd>
+                <dt class="text-[var(--app-ink-soft)]">Template</dt>
+                <dd class="text-right text-[var(--app-ink)]">{{ templateLabel }}</dd>
               </div>
               <div v-if="site.city" class="flex justify-between gap-3">
-                <dt class="text-[#8b949e]">Ville</dt>
-                <dd class="text-right text-[#f9f9f9]">{{ site.city }}</dd>
+                <dt class="text-[var(--app-ink-soft)]">Ville</dt>
+                <dd class="text-right text-[var(--app-ink)]">{{ site.city }}</dd>
               </div>
               <div v-if="site.email" class="flex justify-between gap-3">
-                <dt class="text-[#8b949e]">Email client</dt>
-                <dd class="text-right break-all text-[#f9f9f9]">{{ site.email }}</dd>
+                <dt class="text-[var(--app-ink-soft)]">Email client</dt>
+                <dd class="text-right break-all text-[var(--app-ink)]">{{ site.email }}</dd>
               </div>
               <div v-if="site.phone" class="flex justify-between gap-3">
-                <dt class="text-[#8b949e]">Téléphone</dt>
-                <dd class="text-right text-[#f9f9f9]">{{ site.phone }}</dd>
+                <dt class="text-[var(--app-ink-soft)]">Téléphone</dt>
+                <dd class="text-right text-[var(--app-ink)]">{{ site.phone }}</dd>
               </div>
               <div class="flex justify-between gap-3">
-                <dt class="text-[#8b949e]">Expire dans</dt>
-                <dd class="text-right text-[#f9f9f9]">{{ daysLeft }} jours</dd>
+                <dt class="text-[var(--app-ink-soft)]">Expire dans</dt>
+                <dd class="text-right text-[var(--app-ink)]">{{ daysLeft }} jours</dd>
               </div>
               <div class="flex justify-between gap-3">
-                <dt class="text-[#8b949e]">Créé le</dt>
-                <dd class="text-right text-[#f9f9f9]">{{ formatDate(site.created_at) }}</dd>
+                <dt class="text-[var(--app-ink-soft)]">Créé le</dt>
+                <dd class="text-right text-[var(--app-ink)]">{{ formatDate(site.created_at) }}</dd>
               </div>
             </dl>
           </div>
 
-          <div v-if="site.description" class="border-t border-[#30363d] pt-4">
-            <h3 class="text-sm font-semibold text-[#f9f9f9]">Description</h3>
-            <p class="mt-2 text-xs leading-relaxed whitespace-pre-wrap text-[#8b949e]">{{ site.description }}</p>
+          <div v-if="site.description" class="border-t border-[var(--app-line)] pt-4">
+            <h3 class="text-sm font-semibold text-[var(--app-ink)]">Description</h3>
+            <p class="mt-2 text-xs leading-relaxed whitespace-pre-wrap text-[var(--app-ink-soft)]">
+              {{ site.description }}
+            </p>
           </div>
 
-          <div class="space-y-2 border-t border-[#30363d] pt-4">
-            <h3 class="text-sm font-semibold text-[#f9f9f9]">Actions</h3>
+          <div class="space-y-2 border-t border-[var(--app-line)] pt-4">
+            <h3 class="text-sm font-semibold text-[var(--app-ink)]">Actions</h3>
             <button v-if="openUrl" type="button" class="btn-secondary w-full text-xs" @click="copyDemoUrl(openUrl)">
               {{ copied ? 'Lien copié !' : 'Copier le lien' }}
             </button>
@@ -111,8 +113,11 @@
             </button>
           </div>
 
-          <div v-if="site.storyblok_editor_url" class="rounded-xl border border-[#30363d] bg-[#0d1117] p-4">
-            <h3 class="text-sm font-semibold text-[#f9f9f9]">Storyblok CMS</h3>
+          <div
+            v-if="site.storyblok_editor_url"
+            class="rounded-xl border border-[var(--app-line)] bg-[var(--app-bg)] p-4"
+          >
+            <h3 class="text-sm font-semibold text-[var(--app-ink)]">Storyblok CMS</h3>
             <button
               type="button"
               class="mt-2 text-xs text-blue-400 underline"
@@ -120,7 +125,7 @@
             >
               Ouvrir l'éditeur
             </button>
-            <p v-if="site.storyblok_invite_sent" class="mt-2 text-xs text-[#2BAD5F]">
+            <p v-if="site.storyblok_invite_sent" class="mt-2 text-xs text-[var(--app-green)]">
               Invitation envoyée à {{ site.storyblok_login_email || site.email }}
             </p>
             <button
@@ -145,18 +150,18 @@
           </div>
           <div
             v-if="site.local_demo_url && site.local_demo_url !== site.demo_url"
-            class="card border-[#2BAD5F]/30 bg-[#2BAD5F]/10 p-4 text-sm text-[#2BAD5F]"
+            class="card border-[var(--app-green)]/30 bg-[var(--app-green)]/10 p-4 text-sm text-[var(--app-green)]"
           >
             URL locale : {{ site.local_demo_url }}
           </div>
 
           <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             <div v-for="stat in stats" :key="stat.label" class="card p-4">
-              <p class="text-xs font-medium tracking-wide text-[#8b949e] uppercase">{{ stat.label }}</p>
+              <p class="text-xs font-medium tracking-wide text-[var(--app-ink-soft)] uppercase">{{ stat.label }}</p>
               <p
-                class="mt-1 text-xl font-semibold text-[#f9f9f9]"
+                class="mt-1 text-xl font-semibold text-[var(--app-ink)]"
                 :class="[
-                  stat.tone === 'success' && 'text-[#2BAD5F]',
+                  stat.tone === 'success' && 'text-[var(--app-green)]',
                   stat.tone === 'warning' && 'text-amber-300',
                   stat.tone === 'muted' && 'truncate text-base',
                 ]"
@@ -167,9 +172,9 @@
           </div>
 
           <div class="card overflow-hidden p-0">
-            <div class="border-b border-[#30363d] px-5 py-4">
-              <h2 class="font-semibold text-[#f9f9f9]">Aperçu du site</h2>
-              <p class="text-xs text-[#8b949e]">Rendu actuel du site démo publié</p>
+            <div class="border-b border-[var(--app-line)] px-5 py-4">
+              <h2 class="font-semibold text-[var(--app-ink)]">Aperçu du site</h2>
+              <p class="text-xs text-[var(--app-ink-soft)]">Rendu actuel du site démo publié</p>
             </div>
             <div v-if="previewLoading" class="flex items-center justify-center py-24">
               <div class="loader-smooth"></div>
@@ -185,7 +190,7 @@
             <div v-else-if="openUrl" class="p-5">
               <iframe
                 :src="openUrl"
-                class="h-[600px] w-full rounded-lg border border-[#30363d] bg-white"
+                class="h-[600px] w-full rounded-lg border border-[var(--app-line)] bg-white"
                 title="Aperçu live"
               />
             </div>
@@ -246,7 +251,7 @@ const statusLabel = computed(() => {
 })
 
 const statusClass = computed(() => {
-  if (site.value && isDemoSiteReachable(site.value)) return 'bg-[#2BAD5F]/20 text-[#2BAD5F]'
+  if (site.value && isDemoSiteReachable(site.value)) return 'bg-[var(--app-green)]/20 text-[var(--app-green)]'
   if (site.value?.status === 'failed') return 'bg-red-500/20 text-red-300'
   return 'bg-amber-500/20 text-amber-300'
 })

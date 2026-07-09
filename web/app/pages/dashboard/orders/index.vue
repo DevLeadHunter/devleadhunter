@@ -3,7 +3,7 @@
     <!-- Header -->
     <div class="flex items-center justify-between">
       <div>
-        <h1 class="text-3xl font-bold text-[#f9f9f9]">Ventes</h1>
+        <h1 class="text-3xl font-bold text-[var(--app-ink)]">Ventes</h1>
         <p class="text-muted mt-2 text-sm">Suivi commercial de vos ventes de sites web</p>
       </div>
       <div class="flex items-center gap-3">
@@ -20,19 +20,19 @@
     <div class="grid grid-cols-1 gap-6 md:grid-cols-4">
       <div class="card">
         <p class="text-muted text-sm font-medium">Chiffre d'affaires</p>
-        <p class="mt-2 text-3xl font-bold text-[#3fb950]">{{ formatCents(stats?.revenue_cents ?? 0) }}</p>
+        <p class="mt-2 text-3xl font-bold text-[var(--app-green)]">{{ formatCents(stats?.revenue_cents ?? 0) }}</p>
       </div>
       <div class="card">
         <p class="text-muted text-sm font-medium">Ventes gagnées</p>
-        <p class="mt-2 text-3xl font-bold text-[#f9f9f9]">{{ stats?.won_count ?? 0 }}</p>
+        <p class="mt-2 text-3xl font-bold text-[var(--app-ink)]">{{ stats?.won_count ?? 0 }}</p>
       </div>
       <div class="card">
         <p class="text-muted text-sm font-medium">En attente de paiement</p>
-        <p class="mt-2 text-3xl font-bold text-[#e3b341]">{{ stats?.pending_count ?? 0 }}</p>
+        <p class="mt-2 text-3xl font-bold text-[var(--app-accent)]">{{ stats?.pending_count ?? 0 }}</p>
       </div>
       <div class="card">
         <p class="text-muted text-sm font-medium">Pipeline</p>
-        <p class="mt-2 text-3xl font-bold text-[#f9f9f9]">{{ formatCents(stats?.pipeline_cents ?? 0) }}</p>
+        <p class="mt-2 text-3xl font-bold text-[var(--app-ink)]">{{ formatCents(stats?.pipeline_cents ?? 0) }}</p>
       </div>
     </div>
 
@@ -43,34 +43,40 @@
 
     <div v-else-if="orders.length === 0" class="py-12 text-center">
       <i class="fa-solid fa-cart-shopping text-muted mb-4 text-6xl"></i>
-      <h3 class="mt-4 text-lg font-medium text-[#f9f9f9]">Aucune vente</h3>
+      <h3 class="mt-4 text-lg font-medium text-[var(--app-ink)]">Aucune vente</h3>
       <p class="text-muted mt-2 text-sm">Marquez un prospect comme vendu, ou créez une vente manuellement.</p>
     </div>
 
     <div v-else class="card overflow-hidden p-0">
       <table class="w-full border-collapse">
         <thead>
-          <tr class="bg-[#050505]">
-            <th class="text-muted border-b border-[#30363d] px-4 py-3 text-left text-xs font-semibold">Client</th>
-            <th class="text-muted border-b border-[#30363d] px-4 py-3 text-left text-xs font-semibold">Montant</th>
-            <th class="text-muted border-b border-[#30363d] px-4 py-3 text-left text-xs font-semibold">Statut</th>
-            <th class="text-muted border-b border-[#30363d] px-4 py-3 text-left text-xs font-semibold">Date</th>
+          <tr class="bg-[var(--app-bg)]">
+            <th class="text-muted border-b border-[var(--app-line)] px-4 py-3 text-left text-xs font-semibold">
+              Client
+            </th>
+            <th class="text-muted border-b border-[var(--app-line)] px-4 py-3 text-left text-xs font-semibold">
+              Montant
+            </th>
+            <th class="text-muted border-b border-[var(--app-line)] px-4 py-3 text-left text-xs font-semibold">
+              Statut
+            </th>
+            <th class="text-muted border-b border-[var(--app-line)] px-4 py-3 text-left text-xs font-semibold">Date</th>
           </tr>
         </thead>
         <tbody>
           <tr
             v-for="order in orders"
             :key="order.id"
-            class="cursor-pointer border-b border-[#1f1f1f] transition-colors last:border-b-0 hover:bg-[#222222]"
+            class="cursor-pointer border-b border-[var(--app-surface-2)] transition-colors last:border-b-0 hover:bg-[var(--app-surface-2)]"
             @click="openDrawer(order)"
           >
             <td class="px-4 py-3">
-              <p class="text-sm font-medium text-[#f9f9f9]">
+              <p class="text-sm font-medium text-[var(--app-ink)]">
                 {{ order.business_name || order.customer_email || `#${order.id}` }}
               </p>
-              <p v-if="order.customer_email" class="text-xs text-[#8b949e]">{{ order.customer_email }}</p>
+              <p v-if="order.customer_email" class="text-xs text-[var(--app-ink-soft)]">{{ order.customer_email }}</p>
             </td>
-            <td class="px-4 py-3 text-sm text-[#f9f9f9]">{{ formatCents(order.amount_cents) }}</td>
+            <td class="px-4 py-3 text-sm text-[var(--app-ink)]">{{ formatCents(order.amount_cents) }}</td>
             <td class="px-4 py-3">
               <span
                 :class="[
@@ -81,7 +87,7 @@
                 {{ statusLabel(order.status) }}
               </span>
             </td>
-            <td class="px-4 py-3 text-xs text-[#8b949e]">{{ formatDate(order.created_at) }}</td>
+            <td class="px-4 py-3 text-xs text-[var(--app-ink-soft)]">{{ formatDate(order.created_at) }}</td>
           </tr>
         </tbody>
       </table>
@@ -166,15 +172,15 @@ function statusClass(status: string): string {
   switch (status) {
     case 'paid':
     case 'delivered':
-      return 'border border-[#3fb950]/40 bg-[#3fb950]/10 text-[#3fb950]'
+      return 'border border-[var(--app-green)]/40 bg-[var(--app-green)]/10 text-[var(--app-green)]'
     case 'payment_pending':
     case 'deploying':
-      return 'border border-[#e3b341]/40 bg-[#e3b341]/10 text-[#e3b341]'
+      return 'border border-[var(--app-accent)]/40 bg-[var(--app-accent)]/10 text-[var(--app-accent)]'
     case 'cancelled':
     case 'refunded':
-      return 'border border-[#da3633]/40 bg-[#da3633]/10 text-[#da3633]'
+      return 'border border-[var(--app-red)]/40 bg-[var(--app-red)]/10 text-[var(--app-red)]'
     default:
-      return 'border border-[#30363d] bg-[#1a1a1a] text-[#8b949e]'
+      return 'border border-[var(--app-line)] bg-[var(--app-surface)] text-[var(--app-ink-soft)]'
   }
 }
 

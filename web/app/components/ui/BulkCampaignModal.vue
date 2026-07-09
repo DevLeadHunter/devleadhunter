@@ -2,13 +2,13 @@
   <Teleport to="body">
     <div
       v-if="open"
-      class="fixed inset-0 z-[100] flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm"
+      class="fixed inset-0 z-[100] flex items-center justify-center bg-[var(--app-overlay)] p-4 backdrop-blur-sm"
       @click.self="emit('close')"
     >
-      <div class="border-muted w-full max-w-md rounded-xl border bg-[#1a1a1a] p-6">
+      <div class="border-muted w-full max-w-md rounded-xl border bg-[var(--app-surface)] p-6">
         <div class="mb-5 flex items-start justify-between gap-4">
           <div>
-            <h2 class="text-base font-semibold text-[#f9f9f9]">Ajouter à une campagne</h2>
+            <h2 class="text-base font-semibold text-[var(--app-ink)]">Ajouter à une campagne</h2>
             <p class="text-muted mt-1 text-sm">
               {{ prospectIds.length }} prospect{{ prospectIds.length > 1 ? 's' : '' }} sélectionné{{
                 prospectIds.length > 1 ? 's' : ''
@@ -17,7 +17,7 @@
           </div>
           <button
             type="button"
-            class="text-muted cursor-pointer p-1 transition-colors hover:text-[#f9f9f9]"
+            class="text-muted cursor-pointer p-1 transition-colors hover:text-[var(--app-ink)]"
             aria-label="Fermer"
             @click="emit('close')"
           >
@@ -32,8 +32,8 @@
             class="cursor-pointer rounded-lg border px-3 py-2 text-sm font-medium transition-colors"
             :class="
               mode === 'existing'
-                ? 'border-[#2BAD5F]/50 bg-[#2BAD5F]/10 text-[#3fb950]'
-                : 'border-[#30363d] text-[#8b949e] hover:text-[#f9f9f9]'
+                ? 'border-[var(--app-green)]/50 bg-[var(--app-green)]/10 text-[var(--app-green)]'
+                : 'border-[var(--app-line)] text-[var(--app-ink-soft)] hover:text-[var(--app-ink)]'
             "
             @click="mode = 'existing'"
           >
@@ -44,8 +44,8 @@
             class="cursor-pointer rounded-lg border px-3 py-2 text-sm font-medium transition-colors"
             :class="
               mode === 'new'
-                ? 'border-[#2BAD5F]/50 bg-[#2BAD5F]/10 text-[#3fb950]'
-                : 'border-[#30363d] text-[#8b949e] hover:text-[#f9f9f9]'
+                ? 'border-[var(--app-green)]/50 bg-[var(--app-green)]/10 text-[var(--app-green)]'
+                : 'border-[var(--app-line)] text-[var(--app-ink-soft)] hover:text-[var(--app-ink)]'
             "
             @click="mode = 'new'"
           >
@@ -80,7 +80,7 @@
           />
         </div>
 
-        <p v-if="error" class="mt-3 text-sm text-[#DC4747]">{{ error }}</p>
+        <p v-if="error" class="mt-3 text-sm text-[var(--app-red)]">{{ error }}</p>
 
         <div class="mt-6 flex gap-3">
           <button type="button" class="btn-secondary flex-1" :disabled="submitting" @click="emit('close')">

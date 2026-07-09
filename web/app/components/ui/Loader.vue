@@ -1,22 +1,26 @@
 <template>
-  <div class="fixed inset-0 z-50 flex items-center justify-center bg-[#050505]">
-    <div class="loader-smooth"></div>
+  <div
+    class="fixed inset-0 z-50 flex items-center justify-center"
+    :style="{ backgroundColor: 'var(--app-bg, #050505)' }"
+  >
+    <div class="loader-ring"></div>
   </div>
 </template>
 
 <script setup lang="ts">
 /**
- * Full-screen loader component with smooth spinner
+ * Full-screen loader overlay themed by the app variables
+ * (falls back to the legacy dark backdrop outside the dashboard shell).
  * @module components/ui/Loader
  */
 </script>
 
 <style scoped>
-.loader-smooth {
-  width: 60px;
-  height: 60px;
-  border: 4px solid rgba(255, 255, 255, 0.1);
-  border-left-color: #f9f9f9;
+.loader-ring {
+  width: 48px;
+  height: 48px;
+  border: 3px solid var(--app-line, rgba(255, 255, 255, 0.1));
+  border-left-color: var(--app-accent, #e8a33c);
   border-radius: 50%;
   animation: spin 0.8s linear infinite;
 }

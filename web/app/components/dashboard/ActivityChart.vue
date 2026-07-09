@@ -74,15 +74,15 @@
       <!-- Tooltip -->
       <div
         v-if="active"
-        class="pointer-events-none absolute z-10 -translate-x-1/2 rounded-lg border border-[#30363d] bg-[#0d0d0d] px-3 py-2 shadow-xl"
+        class="pointer-events-none absolute z-10 -translate-x-1/2 rounded-lg border border-[var(--app-line)] bg-[var(--app-surface)] px-3 py-2 shadow-xl"
         :style="{ left: `${active.leftPct}%`, top: '0' }"
       >
-        <p class="mb-1 text-[11px] font-semibold text-[#f9f9f9]">{{ formatDay(active.date) }}</p>
-        <p class="flex items-center gap-1.5 text-[11px] text-[#8b949e]">
+        <p class="mb-1 text-[11px] font-semibold text-[var(--app-ink)]">{{ formatDay(active.date) }}</p>
+        <p class="flex items-center gap-1.5 text-[11px] text-[var(--app-ink-soft)]">
           <span class="h-1.5 w-1.5 rounded-full" style="background-color: #58a6ff"></span>
           {{ active.sent }} envoyés
         </p>
-        <p class="flex items-center gap-1.5 text-[11px] text-[#8b949e]">
+        <p class="flex items-center gap-1.5 text-[11px] text-[var(--app-ink-soft)]">
           <span class="h-1.5 w-1.5 rounded-full" style="background-color: #3fb950"></span>
           {{ active.opened }} ouverts
         </p>
@@ -90,7 +90,7 @@
     </div>
 
     <!-- X axis labels (sparse) -->
-    <div class="mt-2 flex justify-between text-[10px] text-[#6e7681]">
+    <div class="mt-2 flex justify-between text-[10px] text-[var(--app-ink-soft)]">
       <span>{{ formatDay(points[0]?.date) }}</span>
       <span v-if="midPoint">{{ formatDay(midPoint.date) }}</span>
       <span>{{ formatDay(points[points.length - 1]?.date) }}</span>

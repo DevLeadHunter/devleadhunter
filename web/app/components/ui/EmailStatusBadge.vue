@@ -1,5 +1,5 @@
 <template>
-  <span :class="['inline-flex items-center gap-1 rounded px-2 py-0.5 text-xs font-semibold', config.bg, config.text]">
+  <span :class="['app-badge', config.variant]">
     <i :class="[config.icon, 'text-[10px]']"></i>
     {{ config.label }}
   </span>
@@ -29,35 +29,33 @@ interface StatusConfig {
   label: string
   /** Font Awesome icon class. */
   icon: string
-  /** Tailwind background class. */
-  bg: string
-  /** Tailwind text colour class. */
-  text: string
+  /** app-badge variant modifier ('' = neutral). */
+  variant: string
 }
 
 /**
- * Visual configuration for every possible EmailStatus value.
- * Using ``Record<EmailStatus, StatusConfig>`` ensures a compile error if a
- * new status is added to the union without updating this map.
+ * Visual configuration for every possible EmailStatus value, mapped onto the
+ * four semantic badge families of the app theme (neutral / progress /
+ * success / danger). Using ``Record<EmailStatus, StatusConfig>`` ensures a
+ * compile error if a new status is added without updating this map.
  */
 const STATUS_CONFIG: Record<EmailStatus, StatusConfig> = {
-  pending: { label: 'En attente', icon: 'fa-solid fa-clock', bg: 'bg-[#30363d]', text: 'text-[#8b949e]' },
-  sending: { label: 'Envoi…', icon: 'fa-solid fa-spinner fa-spin', bg: 'bg-[#1f3a5c]', text: 'text-[#58a6ff]' },
-  scheduled: { label: 'Planifié', icon: 'fa-solid fa-calendar-clock', bg: 'bg-[#1f3a5c]', text: 'text-[#58a6ff]' },
-  sent: { label: 'Envoyé', icon: 'fa-solid fa-paper-plane', bg: 'bg-[#1f3a5c]', text: 'text-[#58a6ff]' },
-  delivered: { label: 'Délivré', icon: 'fa-solid fa-check', bg: 'bg-[#1a3a2a]', text: 'text-[#3fb950]' },
+  pending: { label: 'En attente', icon: 'fa-solid fa-clock', variant: '' },
+  sending: { label: 'Envoi…', icon: 'fa-solid fa-spinner fa-spin', variant: 'app-badge--progress' },
+  scheduled: { label: 'Planifié', icon: 'fa-solid fa-calendar-clock', variant: 'app-badge--progress' },
+  sent: { label: 'Envoyé', icon: 'fa-solid fa-paper-plane', variant: 'app-badge--progress' },
+  delivered: { label: 'Délivré', icon: 'fa-solid fa-check', variant: 'app-badge--success' },
   delivery_delayed: {
     label: 'Retardé',
     icon: 'fa-solid fa-clock-rotate-left',
-    bg: 'bg-[#3a2a0a]',
-    text: 'text-[#fbbf24]',
+    variant: 'app-badge--progress',
   },
-  opened: { label: 'Ouvert', icon: 'fa-regular fa-envelope-open', bg: 'bg-[#2a2060]', text: 'text-[#a78bfa]' },
-  clicked: { label: 'Cliqué', icon: 'fa-solid fa-cursor', bg: 'bg-[#2a1a6c]', text: 'text-[#c4b5fd]' },
-  bounced: { label: 'Bounce', icon: 'fa-solid fa-triangle-exclamation', bg: 'bg-[#3a1a1a]', text: 'text-[#DC4747]' },
-  failed: { label: 'Échoué', icon: 'fa-solid fa-xmark', bg: 'bg-[#3a1a1a]', text: 'text-[#DC4747]' },
-  complained: { label: 'Spam', icon: 'fa-solid fa-ban', bg: 'bg-[#3a2a1a]', text: 'text-[#f97316]' },
-  suppressed: { label: 'Supprimé', icon: 'fa-solid fa-circle-minus', bg: 'bg-[#2a1a2a]', text: 'text-[#c084fc]' },
+  opened: { label: 'Ouvert', icon: 'fa-regular fa-envelope-open', variant: 'app-badge--success' },
+  clicked: { label: 'Cliqué', icon: 'fa-solid fa-arrow-pointer', variant: 'app-badge--success' },
+  bounced: { label: 'Bounce', icon: 'fa-solid fa-triangle-exclamation', variant: 'app-badge--danger' },
+  failed: { label: 'Échoué', icon: 'fa-solid fa-xmark', variant: 'app-badge--danger' },
+  complained: { label: 'Spam', icon: 'fa-solid fa-ban', variant: 'app-badge--danger' },
+  suppressed: { label: 'Supprimé', icon: 'fa-solid fa-circle-minus', variant: '' },
 }
 
 const config: ComputedRef<StatusConfig> = computed(

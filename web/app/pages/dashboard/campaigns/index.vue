@@ -1,7 +1,7 @@
 <template>
   <div>
     <div class="mb-4 flex items-center justify-between">
-      <h1 class="text-xl font-semibold text-[#f9f9f9]">Campagnes</h1>
+      <h1 class="text-xl font-semibold text-[var(--app-ink)]">Campagnes</h1>
       <button class="btn-primary" @click="showCreateModal = true">
         <i class="fa-solid fa-plus mr-1.5"></i>
         <span>Nouvelle campagne</span>
@@ -11,8 +11,8 @@
     <!-- Chargement -->
     <div v-if="campaignsStore.isLoading" class="card">
       <div class="animate-pulse space-y-3">
-        <div class="h-4 w-3/4 rounded bg-[#2a2a2a]"></div>
-        <div class="h-4 w-full rounded bg-[#2a2a2a]"></div>
+        <div class="h-4 w-3/4 rounded bg-[var(--app-surface-2)]"></div>
+        <div class="h-4 w-full rounded bg-[var(--app-surface-2)]"></div>
       </div>
     </div>
 
@@ -21,12 +21,12 @@
       <div
         v-for="campaign in campaignsStore.campaigns"
         :key="campaign.id"
-        class="card cursor-pointer transition-colors hover:border-[#f9f9f9]"
+        class="card cursor-pointer transition-colors hover:border-[var(--app-ink)]"
         @click="router.push(`/dashboard/campaigns/${campaign.id}`)"
       >
         <div class="flex items-start justify-between">
           <div class="flex-1">
-            <h3 class="mb-1 text-base font-semibold text-[#f9f9f9]">{{ campaign.name }}</h3>
+            <h3 class="mb-1 text-base font-semibold text-[var(--app-ink)]">{{ campaign.name }}</h3>
             <p v-if="campaign.description" class="text-muted mb-2 text-sm">
               {{ campaign.description }}
             </p>
@@ -39,9 +39,9 @@
                 :class="[
                   'inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium',
                   campaign.status === 'active'
-                    ? 'bg-[#2BAD5F]/20 text-[#3fb950]'
+                    ? 'bg-[var(--app-green)]/20 text-[var(--app-green)]'
                     : campaign.status === 'completed'
-                      ? 'bg-[#71A3DB]/20 text-[#58a6ff]'
+                      ? 'bg-[#71A3DB]/20 text-[var(--app-accent-ink)]'
                       : campaign.status === 'paused'
                         ? 'bg-[#f97316]/20 text-[#f97316]'
                         : 'text-muted bg-[#8b949e]/20',
@@ -72,11 +72,11 @@
     <!-- Modale de création -->
     <div
       v-if="showCreateModal"
-      class="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm"
+      class="fixed inset-0 z-50 flex items-center justify-center bg-[var(--app-overlay)] backdrop-blur-sm"
       @click.self="showCreateModal = false"
     >
-      <div class="border-muted w-full max-w-md rounded-lg border bg-[#1a1a1a] p-6 shadow-lg">
-        <h2 class="mb-4 text-base font-semibold text-[#f9f9f9]">Nouvelle campagne</h2>
+      <div class="border-muted w-full max-w-md rounded-lg border bg-[var(--app-surface)] p-6 shadow-lg">
+        <h2 class="mb-4 text-base font-semibold text-[var(--app-ink)]">Nouvelle campagne</h2>
 
         <form class="space-y-3" @submit.prevent="handleCreateCampaign">
           <div>

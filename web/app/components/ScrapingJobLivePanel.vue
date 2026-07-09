@@ -1,20 +1,20 @@
 <template>
   <div class="grid grid-cols-1 gap-4 lg:grid-cols-2">
     <!-- Logs -->
-    <div class="flex flex-col overflow-hidden rounded-lg border border-[#30363d] bg-[#050505]">
-      <div class="flex items-center justify-between border-b border-[#30363d] px-4 py-2.5">
+    <div class="flex flex-col overflow-hidden rounded-lg border border-[var(--app-line)] bg-[var(--app-bg)]">
+      <div class="flex items-center justify-between border-b border-[var(--app-line)] px-4 py-2.5">
         <div class="flex items-center gap-2">
           <span class="relative flex h-2 w-2">
             <span
               v-if="isRunning"
-              class="absolute inline-flex h-full w-full animate-ping rounded-full bg-[#2BAD5F] opacity-60"
+              class="absolute inline-flex h-full w-full animate-ping rounded-full bg-[var(--app-green)] opacity-60"
             ></span>
             <span
               class="relative inline-flex h-2 w-2 rounded-full"
-              :class="isRunning ? 'bg-[#2BAD5F]' : 'bg-[#8b949e]'"
+              :class="isRunning ? 'bg-[var(--app-green)]' : 'bg-[#8b949e]'"
             ></span>
           </span>
-          <h3 class="text-sm font-medium text-[#f9f9f9]">Journal en direct</h3>
+          <h3 class="text-sm font-medium text-[var(--app-ink)]">Journal en direct</h3>
         </div>
         <span class="text-muted text-xs">{{ logs.length }} ligne(s)</span>
       </div>
@@ -32,9 +32,9 @@
     </div>
 
     <!-- Prospects -->
-    <div class="flex flex-col overflow-hidden rounded-lg border border-[#30363d] bg-[#050505]">
-      <div class="flex items-center justify-between border-b border-[#30363d] px-4 py-2.5">
-        <h3 class="text-sm font-medium text-[#f9f9f9]">Prospects trouvés</h3>
+    <div class="flex flex-col overflow-hidden rounded-lg border border-[var(--app-line)] bg-[var(--app-bg)]">
+      <div class="flex items-center justify-between border-b border-[var(--app-line)] px-4 py-2.5">
+        <h3 class="text-sm font-medium text-[var(--app-ink)]">Prospects trouvés</h3>
         <span class="text-muted text-xs">{{ prospects.length }} ajouté(s)</span>
       </div>
 
@@ -46,11 +46,11 @@
         <div
           v-for="prospect in prospects"
           :key="prospect.id"
-          class="animate-fade-in mb-2 rounded-lg border border-[#30363d] bg-[#1a1a1a] p-3 last:mb-0"
+          class="animate-fade-in mb-2 rounded-lg border border-[var(--app-line)] bg-[var(--app-surface)] p-3 last:mb-0"
         >
           <div class="flex items-start justify-between gap-2">
             <div class="min-w-0 flex-1">
-              <p class="truncate text-sm font-medium text-[#f9f9f9]">{{ prospect.name }}</p>
+              <p class="truncate text-sm font-medium text-[var(--app-ink)]">{{ prospect.name }}</p>
               <p v-if="prospect.city" class="text-muted mt-0.5 truncate text-xs">{{ prospect.city }}</p>
               <p v-if="prospect.phone" class="text-muted mt-1 truncate text-xs">
                 <i class="fa-solid fa-phone mr-1"></i>{{ prospect.phone }}

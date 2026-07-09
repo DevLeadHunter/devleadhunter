@@ -28,7 +28,7 @@
 
     <div>
       <p class="text-muted text-xs font-medium tracking-wide uppercase">{{ label }}</p>
-      <p class="mt-1 text-3xl font-bold text-[#f9f9f9] tabular-nums">{{ value }}</p>
+      <p class="mt-1 text-3xl font-bold text-[var(--app-ink)] tabular-nums">{{ value }}</p>
       <p v-if="hint" class="text-muted mt-1 truncate text-xs">{{ hint }}</p>
     </div>
   </component>

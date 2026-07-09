@@ -2,7 +2,7 @@
   <div class="space-y-6">
     <!-- Header -->
     <div>
-      <h1 class="text-3xl font-bold text-[#f9f9f9]">Recherche de Prospects</h1>
+      <h1 class="text-3xl font-bold text-[var(--app-ink)]">Recherche de Prospects</h1>
       <p class="text-muted mt-2 text-sm">
         Lancez une recherche pour trouver de nouveaux prospects. Vous pouvez quitter cette page et revenir plus tard.
       </p>
@@ -10,7 +10,7 @@
 
     <!-- Search Form (only show if no active job) -->
     <div v-if="!currentJob" class="card">
-      <h2 class="mb-6 text-xl font-semibold text-[#f9f9f9]">Nouvelle Recherche</h2>
+      <h2 class="mb-6 text-xl font-semibold text-[var(--app-ink)]">Nouvelle Recherche</h2>
       <form class="space-y-4" @submit.prevent="startSearch">
         <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
           <div>
@@ -92,10 +92,10 @@
     <div v-if="currentJob" class="card">
       <div class="mb-6 flex items-center justify-between">
         <div>
-          <h2 class="text-xl font-semibold text-[#f9f9f9]">
+          <h2 class="text-xl font-semibold text-[var(--app-ink)]">
             Recherche en cours
-            <span v-if="currentJob.status === 'completed'" class="ml-2 text-[#2BAD5F]">✓ Terminée</span>
-            <span v-else-if="currentJob.status === 'failed'" class="ml-2 text-[#DC4747]">✗ Échec</span>
+            <span v-if="currentJob.status === 'completed'" class="ml-2 text-[var(--app-green)]">✓ Terminée</span>
+            <span v-else-if="currentJob.status === 'failed'" class="ml-2 text-[var(--app-red)]">✗ Échec</span>
           </h2>
           <p class="text-muted mt-1 text-sm">{{ currentJob.category }} à {{ currentJob.city }}</p>
         </div>
@@ -127,16 +127,19 @@
             </span>
             <span class="text-muted text-sm font-medium"> {{ Math.round(liveProgress.percentage) }}% </span>
           </div>
-          <div class="h-3 w-full overflow-hidden rounded-full border border-[#30363d] bg-[#050505]">
+          <div class="h-3 w-full overflow-hidden rounded-full border border-[var(--app-line)] bg-[var(--app-bg)]">
             <div
-              class="h-full rounded-full bg-[#f9f9f9] transition-all duration-300"
+              class="h-full rounded-full bg-[var(--app-ink)] transition-all duration-300"
               :style="{ width: Math.min(liveProgress.percentage, 100) + '%' }"
             ></div>
           </div>
         </div>
 
-        <div v-if="liveProgress.current_prospect" class="rounded-lg border border-[#30363d] bg-[#1a1a1a] p-3">
-          <p class="text-sm text-[#f9f9f9]">
+        <div
+          v-if="liveProgress.current_prospect"
+          class="rounded-lg border border-[var(--app-line)] bg-[var(--app-surface)] p-3"
+        >
+          <p class="text-sm text-[var(--app-ink)]">
             <span class="font-medium">En cours:</span> {{ liveProgress.current_prospect }}
           </p>
         </div>
@@ -152,9 +155,16 @@
         <div class="flex items-center gap-2 text-xs">
           <span
             class="inline-flex items-center gap-1.5 rounded-full border px-2 py-0.5"
-            :class="streamConnected ? 'border-[#2BAD5F] text-[#2BAD5F]' : 'border-[#8b949e] text-[#8b949e]'"
+            :class="
+              streamConnected
+                ? 'border-[var(--app-green)] text-[var(--app-green)]'
+                : 'border-[#8b949e] text-[var(--app-ink-soft)]'
+            "
           >
-            <span class="h-1.5 w-1.5 rounded-full" :class="streamConnected ? 'bg-[#2BAD5F]' : 'bg-[#8b949e]'"></span>
+            <span
+              class="h-1.5 w-1.5 rounded-full"
+              :class="streamConnected ? 'bg-[var(--app-green)]' : 'bg-[#8b949e]'"
+            ></span>
             {{ streamConnected ? 'Temps réel actif' : 'Connexion temps réel…' }}
           </span>
           <span v-if="streamSkipped > 0" class="text-muted"> {{ streamSkipped }} doublon(s) ignoré(s) </span>
@@ -166,11 +176,11 @@
           :is-running="currentJob.status === 'running'"
         />
 
-        <div class="rounded-lg border border-[#30363d] bg-[#1a1a1a] p-4">
+        <div class="rounded-lg border border-[var(--app-line)] bg-[var(--app-surface)] p-4">
           <div class="flex items-start gap-3">
-            <i class="fa-solid fa-info-circle mt-0.5 text-[#8b949e]"></i>
+            <i class="fa-solid fa-info-circle mt-0.5 text-[var(--app-ink-soft)]"></i>
             <div class="flex-1">
-              <p class="text-sm font-medium text-[#f9f9f9]">Vous pouvez quitter cette page</p>
+              <p class="text-sm font-medium text-[var(--app-ink)]">Vous pouvez quitter cette page</p>
               <p class="text-muted mt-1 text-sm">
                 La recherche continue en arrière-plan. Revenez plus tard pour voir les résultats.
               </p>
@@ -187,37 +197,37 @@
       <!-- Results -->
       <div v-if="currentJob.status === 'completed'" class="space-y-4">
         <div class="grid grid-cols-1 gap-4 md:grid-cols-3">
-          <div class="rounded-lg border border-[#30363d] bg-[#1a1a1a] p-4">
+          <div class="rounded-lg border border-[var(--app-line)] bg-[var(--app-surface)] p-4">
             <div class="flex items-center gap-3">
-              <div class="rounded-lg border border-[#30363d] bg-[#050505] p-2">
-                <i class="fa-solid fa-check text-lg text-[#2BAD5F]"></i>
+              <div class="rounded-lg border border-[var(--app-line)] bg-[var(--app-bg)] p-2">
+                <i class="fa-solid fa-check text-lg text-[var(--app-green)]"></i>
               </div>
               <div>
-                <p class="text-2xl font-bold text-[#f9f9f9]">{{ currentJob.results.length }}</p>
+                <p class="text-2xl font-bold text-[var(--app-ink)]">{{ currentJob.results.length }}</p>
                 <p class="text-muted text-sm">Prospects ajoutés</p>
               </div>
             </div>
           </div>
 
-          <div class="rounded-lg border border-[#30363d] bg-[#1a1a1a] p-4">
+          <div class="rounded-lg border border-[var(--app-line)] bg-[var(--app-surface)] p-4">
             <div class="flex items-center gap-3">
-              <div class="rounded-lg border border-[#30363d] bg-[#050505] p-2">
-                <i class="fa-solid fa-file-lines text-lg text-[#f9f9f9]"></i>
+              <div class="rounded-lg border border-[var(--app-line)] bg-[var(--app-bg)] p-2">
+                <i class="fa-solid fa-file-lines text-lg text-[var(--app-ink)]"></i>
               </div>
               <div>
-                <p class="text-2xl font-bold text-[#f9f9f9]">{{ currentJob.progress.total }}</p>
+                <p class="text-2xl font-bold text-[var(--app-ink)]">{{ currentJob.progress.total }}</p>
                 <p class="text-muted text-sm">Prospects trouvés</p>
               </div>
             </div>
           </div>
 
-          <div class="rounded-lg border border-[#30363d] bg-[#1a1a1a] p-4">
+          <div class="rounded-lg border border-[var(--app-line)] bg-[var(--app-surface)] p-4">
             <div class="flex items-center gap-3">
-              <div class="rounded-lg border border-[#30363d] bg-[#050505] p-2">
+              <div class="rounded-lg border border-[var(--app-line)] bg-[var(--app-bg)] p-2">
                 <i class="fa-solid fa-ban text-muted text-lg"></i>
               </div>
               <div>
-                <p class="text-2xl font-bold text-[#f9f9f9]">{{ currentJob.skipped_duplicates }}</p>
+                <p class="text-2xl font-bold text-[var(--app-ink)]">{{ currentJob.skipped_duplicates }}</p>
                 <p class="text-muted text-sm">Doublons ignorés</p>
               </div>
             </div>
@@ -233,7 +243,7 @@
       <!-- Error -->
       <div
         v-if="currentJob.status === 'failed'"
-        class="rounded-lg border border-[#DC4747] bg-[#1a1a1a] p-4 text-[#DC4747]"
+        class="rounded-lg border border-[var(--app-red)] bg-[var(--app-surface)] p-4 text-[var(--app-red)]"
       >
         <p class="font-semibold">La recherche a échoué</p>
         <p class="text-muted mt-1 text-sm">{{ currentJob.error }}</p>
@@ -243,24 +253,27 @@
 
     <!-- Recent Jobs -->
     <div v-if="recentJobs.length > 0" class="card">
-      <h2 class="mb-4 text-xl font-semibold text-[#f9f9f9]">Recherches récentes</h2>
+      <h2 class="mb-4 text-xl font-semibold text-[var(--app-ink)]">Recherches récentes</h2>
       <div class="space-y-3">
         <div
           v-for="job in recentJobs"
           :key="job.id"
-          class="flex cursor-pointer items-center justify-between rounded-lg border border-[#30363d] p-4 transition-colors hover:bg-[#050505]"
+          class="flex cursor-pointer items-center justify-between rounded-lg border border-[var(--app-line)] p-4 transition-colors hover:bg-[var(--app-bg)]"
           @click="loadJob(job.id)"
         >
           <div class="flex-1">
             <div class="flex items-center gap-2">
-              <p class="font-medium text-[#f9f9f9]">{{ job.category }} à {{ job.city }}</p>
+              <p class="font-medium text-[var(--app-ink)]">{{ job.category }} à {{ job.city }}</p>
               <span
                 :class="{
                   'rounded-full px-2 py-0.5 text-xs font-medium': true,
-                  'border border-[#2BAD5F] bg-[#1a1a1a] text-[#2BAD5F]': job.status === 'completed',
-                  'border border-[#8b949e] bg-[#1a1a1a] text-[#8b949e]': job.status === 'running',
-                  'border border-[#DC4747] bg-[#1a1a1a] text-[#DC4747]': job.status === 'failed',
-                  'text-muted border border-[#30363d] bg-[#1a1a1a]': job.status === 'pending',
+                  'border border-[var(--app-green)] bg-[var(--app-surface)] text-[var(--app-green)]':
+                    job.status === 'completed',
+                  'border border-[#8b949e] bg-[var(--app-surface)] text-[var(--app-ink-soft)]':
+                    job.status === 'running',
+                  'border border-[var(--app-red)] bg-[var(--app-surface)] text-[var(--app-red)]':
+                    job.status === 'failed',
+                  'text-muted border border-[var(--app-line)] bg-[var(--app-surface)]': job.status === 'pending',
                 }"
               >
                 {{ formatStatus(job.status) }}

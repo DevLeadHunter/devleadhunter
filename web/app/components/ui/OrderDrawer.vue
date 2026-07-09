@@ -1,20 +1,20 @@
 <template>
   <Teleport to="body">
     <Transition name="drawer-backdrop">
-      <div v-if="open" class="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm" @click="$emit('close')" />
+      <div v-if="open" class="fixed inset-0 z-40 bg-[var(--app-overlay)] backdrop-blur-sm" @click="$emit('close')" />
     </Transition>
 
     <Transition name="drawer-panel">
       <div
         v-if="open && order"
-        class="fixed top-0 right-0 z-50 flex h-dvh w-full max-w-[480px] flex-col border-l border-[#30363d] bg-[#0d0d0d] shadow-2xl"
+        class="fixed top-0 right-0 z-50 flex h-dvh w-full max-w-[480px] flex-col border-l border-[var(--app-line)] bg-[var(--app-surface)] shadow-2xl"
       >
         <!-- Header -->
-        <div class="flex items-start gap-3 border-b border-[#30363d] px-5 py-4">
+        <div class="flex items-start gap-3 border-b border-[var(--app-line)] px-5 py-4">
           <div
-            class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-[#30363d] bg-[#1a1a1a]"
+            class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-[var(--app-line)] bg-[var(--app-surface)]"
           >
-            <i class="fa-solid fa-cart-shopping text-sm text-[#8b949e]"></i>
+            <i class="fa-solid fa-cart-shopping text-sm text-[var(--app-ink-soft)]"></i>
           </div>
           <div class="min-w-0 flex-1">
             <div class="mb-1 flex flex-wrap items-center gap-1.5">
@@ -22,18 +22,18 @@
                 {{ statusLabel }}
               </span>
               <span
-                class="inline-flex items-center rounded border border-[#30363d] bg-[#1a1a1a] px-2 py-0.5 text-[10px] font-medium text-[#8b949e]"
+                class="inline-flex items-center rounded border border-[var(--app-line)] bg-[var(--app-surface)] px-2 py-0.5 text-[10px] font-medium text-[var(--app-ink-soft)]"
               >
                 {{ productLabel }}
               </span>
             </div>
-            <h2 class="truncate text-base leading-tight font-semibold text-[#f9f9f9]">
+            <h2 class="truncate text-base leading-tight font-semibold text-[var(--app-ink)]">
               {{ order.business_name || order.customer_email || `Commande #${order.id}` }}
             </h2>
-            <p class="mt-0.5 text-sm font-semibold text-[#58a6ff]">{{ amountLabel }}</p>
+            <p class="mt-0.5 text-sm font-semibold text-[var(--app-accent-ink)]">{{ amountLabel }}</p>
           </div>
           <button
-            class="flex h-7 w-7 shrink-0 items-center justify-center rounded text-[#8b949e] transition-colors hover:bg-[#1a1a1a] hover:text-[#f9f9f9]"
+            class="flex h-7 w-7 shrink-0 items-center justify-center rounded text-[var(--app-ink-soft)] transition-colors hover:bg-[var(--app-surface)] hover:text-[var(--app-ink)]"
             @click="$emit('close')"
           >
             <i class="fa-solid fa-xmark"></i>
@@ -45,58 +45,62 @@
           <!-- VIEW MODE -->
           <template v-if="!editMode">
             <div class="space-y-3 px-5 py-4">
-              <p class="text-[10px] font-semibold tracking-wider text-[#8b949e] uppercase">Client</p>
+              <p class="text-[10px] font-semibold tracking-wider text-[var(--app-ink-soft)] uppercase">Client</p>
               <div class="flex items-center gap-3">
-                <div class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[#1a1a1a]">
-                  <i class="fa-regular fa-envelope text-xs text-[#8b949e]"></i>
+                <div class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[var(--app-surface)]">
+                  <i class="fa-regular fa-envelope text-xs text-[var(--app-ink-soft)]"></i>
                 </div>
                 <div class="min-w-0 flex-1">
-                  <p class="text-[10px] text-[#8b949e]">Email</p>
-                  <p class="truncate text-sm font-medium text-[#f9f9f9]">{{ order.customer_email || '—' }}</p>
+                  <p class="text-[10px] text-[var(--app-ink-soft)]">Email</p>
+                  <p class="truncate text-sm font-medium text-[var(--app-ink)]">{{ order.customer_email || '—' }}</p>
                 </div>
               </div>
               <div v-if="order.domain" class="flex items-center gap-3">
-                <div class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[#1a1a1a]">
-                  <i class="fa-solid fa-globe text-xs text-[#8b949e]"></i>
+                <div class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[var(--app-surface)]">
+                  <i class="fa-solid fa-globe text-xs text-[var(--app-ink-soft)]"></i>
                 </div>
                 <div class="min-w-0 flex-1">
-                  <p class="text-[10px] text-[#8b949e]">Domaine</p>
-                  <p class="truncate text-sm font-medium text-[#f9f9f9]">{{ order.domain }}</p>
+                  <p class="text-[10px] text-[var(--app-ink-soft)]">Domaine</p>
+                  <p class="truncate text-sm font-medium text-[var(--app-ink)]">{{ order.domain }}</p>
                 </div>
               </div>
             </div>
 
-            <div class="border-t border-[#1f1f1f]"></div>
+            <div class="border-t border-[var(--app-surface-2)]"></div>
 
             <!-- Payment link -->
             <div class="space-y-2 px-5 py-4">
-              <p class="text-[10px] font-semibold tracking-wider text-[#8b949e] uppercase">Paiement</p>
+              <p class="text-[10px] font-semibold tracking-wider text-[var(--app-ink-soft)] uppercase">Paiement</p>
               <div v-if="order.stripe_payment_url" class="flex items-center gap-2">
                 <input :value="order.stripe_payment_url" readonly class="input-field flex-1 truncate text-xs" />
                 <button
-                  class="flex h-9 w-9 shrink-0 items-center justify-center rounded border border-[#30363d] text-[#8b949e] hover:text-[#58a6ff]"
+                  class="flex h-9 w-9 shrink-0 items-center justify-center rounded border border-[var(--app-line)] text-[var(--app-ink-soft)] hover:text-[var(--app-accent-ink)]"
                   title="Copier"
                   @click="copyLink"
                 >
                   <i class="fa-regular fa-copy"></i>
                 </button>
               </div>
-              <p v-else class="text-sm text-[#30363d]">Aucun lien de paiement généré.</p>
-              <p v-if="order.payment_link_sent_at" class="text-[10px] text-[#8b949e]">
+              <p v-else class="text-sm text-[var(--app-faint)]">Aucun lien de paiement généré.</p>
+              <p v-if="order.payment_link_sent_at" class="text-[10px] text-[var(--app-ink-soft)]">
                 Email envoyé le {{ formatDate(order.payment_link_sent_at) }}
               </p>
-              <p v-if="order.paid_at" class="text-[10px] text-[#3fb950]">Payé le {{ formatDate(order.paid_at) }}</p>
+              <p v-if="order.paid_at" class="text-[10px] text-[var(--app-green)]">
+                Payé le {{ formatDate(order.paid_at) }}
+              </p>
             </div>
 
             <!-- Email preview -->
-            <div v-if="emailPreview" class="border-t border-[#1f1f1f] px-5 py-4">
-              <p class="mb-2 text-[10px] font-semibold tracking-wider text-[#8b949e] uppercase">Aperçu de l'email</p>
-              <p class="mb-2 text-xs text-[#8b949e]">
-                <span class="font-medium text-[#f9f9f9]">Objet :</span> {{ emailPreview.subject }}
+            <div v-if="emailPreview" class="border-t border-[var(--app-surface-2)] px-5 py-4">
+              <p class="mb-2 text-[10px] font-semibold tracking-wider text-[var(--app-ink-soft)] uppercase">
+                Aperçu de l'email
+              </p>
+              <p class="mb-2 text-xs text-[var(--app-ink-soft)]">
+                <span class="font-medium text-[var(--app-ink)]">Objet :</span> {{ emailPreview.subject }}
               </p>
               <iframe
                 :srcdoc="emailPreview.body_html"
-                class="h-64 w-full rounded border border-[#30363d] bg-white"
+                class="h-64 w-full rounded border border-[var(--app-line)] bg-white"
                 sandbox=""
               ></iframe>
               <button class="btn-primary mt-3 w-full" :disabled="isSending" @click="handleSendEmail">
@@ -105,56 +109,60 @@
               </button>
             </div>
 
-            <div v-if="order.notes" class="border-t border-[#1f1f1f] px-5 py-4">
-              <p class="mb-1 text-[10px] font-semibold tracking-wider text-[#8b949e] uppercase">Notes</p>
-              <p class="text-sm whitespace-pre-line text-[#f9f9f9]">{{ order.notes }}</p>
+            <div v-if="order.notes" class="border-t border-[var(--app-surface-2)] px-5 py-4">
+              <p class="mb-1 text-[10px] font-semibold tracking-wider text-[var(--app-ink-soft)] uppercase">Notes</p>
+              <p class="text-sm whitespace-pre-line text-[var(--app-ink)]">{{ order.notes }}</p>
             </div>
           </template>
 
           <!-- EDIT MODE -->
           <form v-else id="order-edit-form" class="space-y-4 p-5" @submit.prevent="handleSave">
             <div>
-              <label class="mb-1 block text-[10px] font-medium tracking-wider text-[#8b949e] uppercase"
+              <label class="mb-1 block text-[10px] font-medium tracking-wider text-[var(--app-ink-soft)] uppercase"
                 >Montant (€)</label
               >
               <input v-model.number="editForm.amount_euros" type="number" min="0" step="1" class="input-field" />
             </div>
             <div>
-              <label class="mb-1 block text-[10px] font-medium tracking-wider text-[#8b949e] uppercase"
+              <label class="mb-1 block text-[10px] font-medium tracking-wider text-[var(--app-ink-soft)] uppercase"
                 >Nom de l'entreprise</label
               >
               <input v-model="editForm.business_name" type="text" class="input-field" />
             </div>
             <div>
-              <label class="mb-1 block text-[10px] font-medium tracking-wider text-[#8b949e] uppercase"
+              <label class="mb-1 block text-[10px] font-medium tracking-wider text-[var(--app-ink-soft)] uppercase"
                 >Email client</label
               >
               <input v-model="editForm.customer_email" type="email" class="input-field" />
             </div>
             <div>
-              <label class="mb-1 block text-[10px] font-medium tracking-wider text-[#8b949e] uppercase"
+              <label class="mb-1 block text-[10px] font-medium tracking-wider text-[var(--app-ink-soft)] uppercase"
                 >Domaine (mise en ligne)</label
               >
               <input v-model="editForm.domain" type="text" class="input-field" placeholder="monentreprise.fr" />
             </div>
             <div>
-              <label class="mb-1 block text-[10px] font-medium tracking-wider text-[#8b949e] uppercase">Statut</label>
+              <label class="mb-1 block text-[10px] font-medium tracking-wider text-[var(--app-ink-soft)] uppercase"
+                >Statut</label
+              >
               <select v-model="editForm.status" class="input-field">
                 <option v-for="s in statusOptions" :key="s.value" :value="s.value">{{ s.label }}</option>
               </select>
             </div>
             <div>
-              <label class="mb-1 block text-[10px] font-medium tracking-wider text-[#8b949e] uppercase">Notes</label>
+              <label class="mb-1 block text-[10px] font-medium tracking-wider text-[var(--app-ink-soft)] uppercase"
+                >Notes</label
+              >
               <textarea v-model="editForm.notes" rows="3" class="input-field"></textarea>
             </div>
           </form>
         </div>
 
         <!-- Footer -->
-        <div class="border-t border-[#30363d] px-5 py-4">
-          <div v-if="showDeleteConfirm" class="rounded-lg border border-[#da3633]/40 bg-[#da3633]/10 p-4">
-            <p class="mb-0.5 text-sm font-medium text-[#f9f9f9]">Supprimer cette vente ?</p>
-            <p class="mb-3 text-xs text-[#8b949e]">Le lien de paiement Stripe sera désactivé.</p>
+        <div class="border-t border-[var(--app-line)] px-5 py-4">
+          <div v-if="showDeleteConfirm" class="rounded-lg border border-[var(--app-red)]/40 bg-[var(--app-red)]/10 p-4">
+            <p class="mb-0.5 text-sm font-medium text-[var(--app-ink)]">Supprimer cette vente ?</p>
+            <p class="mb-3 text-xs text-[var(--app-ink-soft)]">Le lien de paiement Stripe sera désactivé.</p>
             <div class="flex gap-2">
               <button class="btn-secondary flex-1 text-xs" :disabled="isBusy" @click="showDeleteConfirm = false">
                 Annuler
@@ -309,15 +317,15 @@ const statusBadgeClass: ComputedRef<string> = computed((): string => {
   switch (props.order?.status) {
     case 'paid':
     case 'delivered':
-      return 'border border-[#3fb950]/40 bg-[#3fb950]/10 text-[#3fb950]'
+      return 'border border-[var(--app-green)]/40 bg-[var(--app-green)]/10 text-[var(--app-green)]'
     case 'payment_pending':
     case 'deploying':
-      return 'border border-[#e3b341]/40 bg-[#e3b341]/10 text-[#e3b341]'
+      return 'border border-[var(--app-accent)]/40 bg-[var(--app-accent)]/10 text-[var(--app-accent)]'
     case 'cancelled':
     case 'refunded':
-      return 'border border-[#da3633]/40 bg-[#da3633]/10 text-[#da3633]'
+      return 'border border-[var(--app-red)]/40 bg-[var(--app-red)]/10 text-[var(--app-red)]'
     default:
-      return 'border border-[#30363d] bg-[#1a1a1a] text-[#8b949e]'
+      return 'border border-[var(--app-line)] bg-[var(--app-surface)] text-[var(--app-ink-soft)]'
   }
 })
 

@@ -2,20 +2,20 @@
   <Teleport to="body">
     <div
       v-if="open"
-      class="fixed inset-0 z-[100] flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm"
+      class="fixed inset-0 z-[100] flex items-center justify-center bg-[var(--app-overlay)] p-4 backdrop-blur-sm"
       @click.self="emit('close')"
     >
-      <div class="border-muted w-full max-w-md rounded-xl border bg-[#1a1a1a] p-6">
+      <div class="border-muted w-full max-w-md rounded-xl border bg-[var(--app-surface)] p-6">
         <div class="mb-5 flex items-start justify-between gap-4">
           <div>
-            <h2 class="text-base font-semibold text-[#f9f9f9]">Générer les sites web</h2>
+            <h2 class="text-base font-semibold text-[var(--app-ink)]">Générer les sites web</h2>
             <p class="text-muted mt-1 text-sm">
               {{ prospectIds.length }} prospect{{ prospectIds.length > 1 ? 's' : '' }} — même template
             </p>
           </div>
           <button
             type="button"
-            class="text-muted cursor-pointer p-1 transition-colors hover:text-[#f9f9f9]"
+            class="text-muted cursor-pointer p-1 transition-colors hover:text-[var(--app-ink)]"
             aria-label="Fermer"
             @click="emit('close')"
           >
@@ -26,17 +26,17 @@
         <!-- Result summary -->
         <div v-if="result" class="space-y-4">
           <div class="grid grid-cols-3 gap-2 text-center">
-            <div class="rounded-lg border border-[#2BAD5F]/30 bg-[#2BAD5F]/10 px-2 py-3">
-              <div class="text-xl font-bold text-[#3fb950]">{{ result.created }}</div>
-              <div class="text-[10px] tracking-wide text-[#8b949e] uppercase">Créés</div>
+            <div class="rounded-lg border border-[var(--app-green)]/30 bg-[var(--app-green)]/10 px-2 py-3">
+              <div class="text-xl font-bold text-[var(--app-green)]">{{ result.created }}</div>
+              <div class="text-[10px] tracking-wide text-[var(--app-ink-soft)] uppercase">Créés</div>
             </div>
-            <div class="rounded-lg border border-[#30363d] bg-[#161b22] px-2 py-3">
-              <div class="text-xl font-bold text-[#e3b341]">{{ result.skipped_no_email.length }}</div>
-              <div class="text-[10px] tracking-wide text-[#8b949e] uppercase">Sans email</div>
+            <div class="rounded-lg border border-[var(--app-line)] bg-[var(--app-surface)] px-2 py-3">
+              <div class="text-xl font-bold text-[var(--app-accent)]">{{ result.skipped_no_email.length }}</div>
+              <div class="text-[10px] tracking-wide text-[var(--app-ink-soft)] uppercase">Sans email</div>
             </div>
-            <div class="rounded-lg border border-[#30363d] bg-[#161b22] px-2 py-3">
-              <div class="text-xl font-bold text-[#DC4747]">{{ result.failed }}</div>
-              <div class="text-[10px] tracking-wide text-[#8b949e] uppercase">Échecs</div>
+            <div class="rounded-lg border border-[var(--app-line)] bg-[var(--app-surface)] px-2 py-3">
+              <div class="text-xl font-bold text-[var(--app-red)]">{{ result.failed }}</div>
+              <div class="text-[10px] tracking-wide text-[var(--app-ink-soft)] uppercase">Échecs</div>
             </div>
           </div>
           <p v-if="result.skipped_no_email.length" class="text-muted text-xs leading-relaxed">
@@ -57,7 +57,7 @@
           </select>
 
           <label class="mt-4 flex cursor-pointer items-center gap-2.5 text-sm text-[#c9d1d9]">
-            <input v-model="inviteCms" type="checkbox" class="h-4 w-4 cursor-pointer accent-[#2BAD5F]" />
+            <input v-model="inviteCms" type="checkbox" class="h-4 w-4 cursor-pointer accent-[var(--app-green)]" />
             Inviter chaque client au CMS immédiatement
           </label>
 
@@ -66,7 +66,7 @@
             est appliqué automatiquement.
           </p>
 
-          <p v-if="error" class="mt-3 text-sm text-[#DC4747]">{{ error }}</p>
+          <p v-if="error" class="mt-3 text-sm text-[var(--app-red)]">{{ error }}</p>
 
           <div class="mt-6 flex gap-3">
             <button type="button" class="btn-secondary flex-1" :disabled="submitting" @click="emit('close')">

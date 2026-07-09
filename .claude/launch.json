@@ -9,6 +9,12 @@
       "autoPort": true
     },
     {
+      "name": "web-atelier",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["--prefix", "web", "run", "dev", "--", "--port", "5173"],
+      "port": 5173
+    },
+    {
       "name": "demo-host",
       "runtimeExecutable": "npm",
       "runtimeArgs": ["--prefix", "demo-host", "run", "dev"],

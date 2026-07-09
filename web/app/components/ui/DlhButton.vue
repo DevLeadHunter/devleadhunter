@@ -1,51 +1,61 @@
 <template>
-  <UButton
-    :color="nuxtColor"
-    :variant="nuxtVariant"
-    :size="size"
+  <button
     :type="type"
-    :disabled="disabled"
-    :loading="loading"
-    :class="props.class"
+    :disabled="disabled || loading"
+    :class="[buttonClass, sizeClass, props.class, (disabled || loading) && 'cursor-not-allowed opacity-50']"
   >
+    <i v-if="loading" class="fa-solid fa-circle-notch fa-spin text-xs" aria-hidden="true"></i>
     <slot />
-  </UButton>
+  </button>
 </template>
 
 <script setup lang="ts">
-type DlhButtonVariant = 'primary' | 'secondary' | 'danger'
-type DlhButtonSize = 'md' | 'lg'
+import type { ComputedRef, PropType } from 'vue'
+import type { DlhButtonProps, DlhButtonSize, DlhButtonType, DlhButtonVariant } from '~/types/DlhButton'
+import { computed } from 'vue'
 
-const props = withDefaults(
-  defineProps<{
-    variant?: DlhButtonVariant
-    size?: DlhButtonSize
-    type?: 'button' | 'submit' | 'reset'
-    disabled?: boolean
-    loading?: boolean
-    class?: string
-  }>(),
-  {
-    variant: 'primary',
-    size: 'lg',
-    type: 'button',
-    disabled: false,
-    loading: false,
-    class: '',
+/**
+ * Defines the component props.
+ */
+const props: DlhButtonProps = defineProps({
+  variant: {
+    type: String as PropType<DlhButtonVariant>,
+    default: 'primary',
   },
-)
-
-const nuxtColor = computed((): 'primary' | 'neutral' | 'error' => {
-  if (props.variant === 'secondary') {
-    return 'neutral'
-  }
-  if (props.variant === 'danger') {
-    return 'error'
-  }
-  return 'primary'
+  size: {
+    type: String as PropType<DlhButtonSize>,
+    default: 'lg',
+  },
+  type: {
+    type: String as PropType<DlhButtonType>,
+    default: 'button',
+  },
+  disabled: {
+    type: Boolean,
+    default: false,
+  },
+  loading: {
+    type: Boolean,
+    default: false,
+  },
+  class: {
+    type: String,
+    default: '',
+  },
 })
 
-const nuxtVariant = computed((): 'solid' | 'outline' => {
-  return props.variant === 'secondary' ? 'outline' : 'solid'
+/** Variant class of the button. */
+const buttonClass: ComputedRef<string> = computed((): string => {
+  const map: Record<DlhButtonVariant, string> = {
+    primary: 'app-btn-primary',
+    secondary: 'app-btn-secondary',
+    danger: 'app-btn-danger',
+  }
+  return map[props.variant ?? 'primary']
+})
+
+/** Size adjustment class of the button. */
+const sizeClass: ComputedRef<string> = computed((): string => {
+  return (props.size ?? 'lg') === 'md' ? 'h-9 min-h-9 px-4' : ''
 })
 </script>

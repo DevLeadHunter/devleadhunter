@@ -2,20 +2,20 @@
   <div>
     <!-- Header -->
     <div class="mb-6 flex items-center justify-between">
-      <h1 class="text-xl font-semibold text-[#f9f9f9]">Buy Credits</h1>
+      <h1 class="text-xl font-semibold text-[var(--app-ink)]">Buy Credits</h1>
     </div>
 
     <!-- Success Message -->
-    <div v-if="showSuccess" class="card mb-6 border border-[#2BAD5F]/30 bg-[#2BAD5F]/10">
-      <div class="flex items-center gap-2 text-[#3fb950]">
+    <div v-if="showSuccess" class="card mb-6 border border-[var(--app-green)]/30 bg-[var(--app-green)]/10">
+      <div class="flex items-center gap-2 text-[var(--app-green)]">
         <i class="fa-solid fa-circle-check"></i>
         <p>Payment successful! Your credits have been added to your account.</p>
       </div>
     </div>
 
     <!-- Cancel Message -->
-    <div v-if="showCancel" class="card mb-6 border border-[#da3633]/30 bg-[#da3633]/10">
-      <div class="flex items-center gap-2 text-[#DC4747]">
+    <div v-if="showCancel" class="card mb-6 border border-[var(--app-red)]/30 bg-[var(--app-red)]/10">
+      <div class="flex items-center gap-2 text-[var(--app-red)]">
         <i class="fa-solid fa-circle-xmark"></i>
         <p>Payment was cancelled. No charges were made.</p>
       </div>
@@ -26,7 +26,7 @@
       <form @submit.prevent="handlePurchase">
         <!-- Credits Input -->
         <div class="mb-6">
-          <label for="credits" class="mb-2 block text-sm font-medium text-[#f9f9f9]"> Number of Credits </label>
+          <label for="credits" class="mb-2 block text-sm font-medium text-[var(--app-ink)]"> Number of Credits </label>
           <input
             id="credits"
             v-model.number="credits"
@@ -37,12 +37,15 @@
             placeholder="Enter number of credits"
             class="input-field"
           />
-          <p v-if="credits < (creditSettings?.minimum_credits_purchase || 1)" class="mt-1.5 text-xs text-[#da3633]">
+          <p
+            v-if="credits < (creditSettings?.minimum_credits_purchase || 1)"
+            class="mt-1.5 text-xs text-[var(--app-red)]"
+          >
             ⚠️ Minimum requis: {{ creditSettings?.minimum_credits_purchase || 1 }} crédit{{
               creditSettings?.minimum_credits_purchase !== 1 ? 's' : ''
             }}
           </p>
-          <p v-else class="mt-1.5 text-xs text-[#8b949e]">
+          <p v-else class="mt-1.5 text-xs text-[var(--app-ink-soft)]">
             Minimum: {{ creditSettings?.minimum_credits_purchase || 1 }} crédit{{
               creditSettings?.minimum_credits_purchase !== 1 ? 's' : ''
             }}
@@ -50,33 +53,38 @@
         </div>
 
         <!-- Price Display -->
-        <div v-if="credits > 0 && creditSettings" class="mb-6 rounded border border-[#30363d] bg-[#050505] p-4">
+        <div
+          v-if="credits > 0 && creditSettings"
+          class="mb-6 rounded border border-[var(--app-line)] bg-[var(--app-bg)] p-4"
+        >
           <div class="mb-2 flex items-center justify-between">
-            <span class="text-sm text-[#8b949e]">Credits:</span>
-            <span class="text-sm font-medium text-[#f9f9f9]">{{ credits }}</span>
+            <span class="text-sm text-[var(--app-ink-soft)]">Credits:</span>
+            <span class="text-sm font-medium text-[var(--app-ink)]">{{ credits }}</span>
           </div>
           <div class="mb-2 flex items-center justify-between">
-            <span class="text-sm text-[#8b949e]">Price per credit:</span>
-            <span class="text-sm font-medium text-[#f9f9f9]">€{{ creditSettings.price_per_credit.toFixed(2) }}</span>
+            <span class="text-sm text-[var(--app-ink-soft)]">Price per credit:</span>
+            <span class="text-sm font-medium text-[var(--app-ink)]"
+              >€{{ creditSettings.price_per_credit.toFixed(2) }}</span
+            >
           </div>
-          <div class="flex items-center justify-between border-t border-[#30363d] pt-2">
-            <span class="text-base font-semibold text-[#f9f9f9]">Total:</span>
-            <span class="text-lg font-bold text-[#f9f9f9]">€{{ totalPrice.toFixed(2) }}</span>
+          <div class="flex items-center justify-between border-t border-[var(--app-line)] pt-2">
+            <span class="text-base font-semibold text-[var(--app-ink)]">Total:</span>
+            <span class="text-lg font-bold text-[var(--app-ink)]">€{{ totalPrice.toFixed(2) }}</span>
           </div>
         </div>
 
         <!-- Current Balance Info -->
-        <div v-if="currentBalance !== null" class="mb-6 rounded border border-[#30363d] bg-[#050505] p-4">
+        <div v-if="currentBalance !== null" class="mb-6 rounded border border-[var(--app-line)] bg-[var(--app-bg)] p-4">
           <div class="flex items-center justify-between">
-            <span class="text-sm text-[#8b949e]">Current credits available:</span>
-            <span class="text-sm font-medium text-[#f9f9f9]">
+            <span class="text-sm text-[var(--app-ink-soft)]">Current credits available:</span>
+            <span class="text-sm font-medium text-[var(--app-ink)]">
               {{ currentBalance === -1 ? 'Unlimited' : currentBalance }}
             </span>
           </div>
         </div>
 
         <!-- Submit Button -->
-        <div class="flex justify-end border-t border-[#30363d] pt-4">
+        <div class="flex justify-end border-t border-[var(--app-line)] pt-4">
           <button
             type="submit"
             class="btn-primary cursor-pointer"
@@ -92,15 +100,15 @@
     <!-- Loading State -->
     <div v-if="isLoading" class="card">
       <div class="animate-pulse space-y-4">
-        <div class="h-4 w-3/4 rounded bg-[#2a2a2a]"></div>
-        <div class="h-10 w-full rounded bg-[#2a2a2a]"></div>
-        <div class="h-4 w-5/6 rounded bg-[#2a2a2a]"></div>
+        <div class="h-4 w-3/4 rounded bg-[var(--app-surface-2)]"></div>
+        <div class="h-10 w-full rounded bg-[var(--app-surface-2)]"></div>
+        <div class="h-4 w-5/6 rounded bg-[var(--app-surface-2)]"></div>
       </div>
     </div>
 
     <!-- Error State -->
-    <div v-if="error && !isLoading" class="card mt-6 border border-[#da3633]/30 bg-[#da3633]/10">
-      <div class="flex items-center gap-2 text-[#DC4747]">
+    <div v-if="error && !isLoading" class="card mt-6 border border-[var(--app-red)]/30 bg-[var(--app-red)]/10">
+      <div class="flex items-center gap-2 text-[var(--app-red)]">
         <i class="fa-solid fa-circle-exclamation"></i>
         <p>{{ error }}</p>
       </div>

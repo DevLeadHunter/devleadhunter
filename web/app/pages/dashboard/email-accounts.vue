@@ -2,7 +2,7 @@
   <div>
     <!-- Header -->
     <div class="mb-4 flex items-center justify-between">
-      <h1 class="text-xl font-semibold text-[#f9f9f9]">Email Accounts</h1>
+      <h1 class="text-xl font-semibold text-[var(--app-ink)]">Email Accounts</h1>
       <div class="flex gap-3">
         <button class="btn-secondary" @click="showAddCustomDomainModal = true">
           <i class="fa-solid fa-globe mr-1.5"></i>
@@ -18,33 +18,37 @@
     <!-- Loading state -->
     <div v-if="isLoading" class="card">
       <div class="animate-pulse space-y-3">
-        <div class="h-4 w-3/4 rounded bg-[#2a2a2a]"></div>
-        <div class="h-4 w-full rounded bg-[#2a2a2a]"></div>
+        <div class="h-4 w-3/4 rounded bg-[var(--app-surface-2)]"></div>
+        <div class="h-4 w-full rounded bg-[var(--app-surface-2)]"></div>
       </div>
     </div>
 
     <!-- Email accounts list -->
     <div v-else-if="emailAccounts && emailAccounts.length > 0" class="space-y-2">
-      <div v-for="account in emailAccounts" :key="account.id" class="card transition-colors hover:border-[#f9f9f9]">
+      <div
+        v-for="account in emailAccounts"
+        :key="account.id"
+        class="card transition-colors hover:border-[var(--app-ink)]"
+      >
         <div class="flex items-start justify-between">
           <div class="flex-1">
             <div class="mb-1 flex items-center gap-2">
-              <h3 class="text-base font-semibold text-[#f9f9f9]">{{ account.name }}</h3>
+              <h3 class="text-base font-semibold text-[var(--app-ink)]">{{ account.name }}</h3>
               <span
                 v-if="account.is_default"
-                class="inline-flex items-center rounded-full bg-[#71A3DB]/20 px-2 py-0.5 text-xs font-medium text-[#58a6ff]"
+                class="inline-flex items-center rounded-full bg-[#71A3DB]/20 px-2 py-0.5 text-xs font-medium text-[var(--app-accent-ink)]"
               >
                 Default
               </span>
               <span
                 v-if="account.is_verified"
-                class="inline-flex items-center rounded-full bg-[#2BAD5F]/20 px-2 py-0.5 text-xs font-medium text-[#3fb950]"
+                class="inline-flex items-center rounded-full bg-[var(--app-green)]/20 px-2 py-0.5 text-xs font-medium text-[var(--app-green)]"
               >
                 <i class="fa-solid fa-check mr-1"></i>Verified
               </span>
               <span
                 v-else
-                class="inline-flex items-center rounded-full bg-[#DC4747]/20 px-2 py-0.5 text-xs font-medium text-[#DC4747]"
+                class="inline-flex items-center rounded-full bg-[var(--app-red)]/20 px-2 py-0.5 text-xs font-medium text-[var(--app-red)]"
               >
                 <i class="fa-solid fa-exclamation-triangle mr-1"></i>Not Verified
               </span>
@@ -66,19 +70,19 @@
             <!-- DNS verification status for custom domains -->
             <div
               v-if="account.account_type === 'custom_domain' && !account.is_verified"
-              class="mt-3 rounded border border-[#DC4747]/30 bg-[#2a2a2a] p-3"
+              class="mt-3 rounded border border-[var(--app-red)]/30 bg-[var(--app-surface-2)] p-3"
             >
-              <p class="mb-2 text-xs font-medium text-[#f9f9f9]">DNS Configuration Required</p>
+              <p class="mb-2 text-xs font-medium text-[var(--app-ink)]">DNS Configuration Required</p>
               <div class="text-muted space-y-1 text-xs">
                 <p>
                   SPF:
-                  <span :class="account.spf_verified ? 'text-[#3fb950]' : 'text-[#DC4747]'">
+                  <span :class="account.spf_verified ? 'text-[var(--app-green)]' : 'text-[var(--app-red)]'">
                     {{ account.spf_verified ? '✓ Configured' : '✗ Not configured' }}
                   </span>
                 </p>
                 <p>
                   DKIM:
-                  <span :class="account.dkim_verified ? 'text-[#3fb950]' : 'text-[#DC4747]'">
+                  <span :class="account.dkim_verified ? 'text-[var(--app-green)]' : 'text-[var(--app-red)]'">
                     {{ account.dkim_verified ? '✓ Configured' : '✗ Not configured' }}
                   </span>
                 </p>
@@ -124,11 +128,11 @@
     <!-- Add Custom Domain Modal -->
     <div
       v-if="showAddCustomDomainModal"
-      class="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm"
+      class="fixed inset-0 z-50 flex items-center justify-center bg-[var(--app-overlay)] backdrop-blur-sm"
       @click.self="showAddCustomDomainModal = false"
     >
-      <div class="border-muted mx-4 w-full max-w-lg rounded-lg border bg-[#1a1a1a] p-6">
-        <h2 class="mb-4 text-base font-semibold text-[#f9f9f9]">Add Custom Domain</h2>
+      <div class="border-muted mx-4 w-full max-w-lg rounded-lg border bg-[var(--app-surface)] p-6">
+        <h2 class="mb-4 text-base font-semibold text-[var(--app-ink)]">Add Custom Domain</h2>
 
         <form class="space-y-3" @submit.prevent="handleAddCustomDomain">
           <div>
@@ -180,13 +184,13 @@
     <!-- DNS Instructions Modal -->
     <div
       v-if="showDnsInstructionsModal && dnsInstructions"
-      class="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-black/70 backdrop-blur-sm"
+      class="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-[var(--app-overlay)] backdrop-blur-sm"
       @click.self="showDnsInstructionsModal = false"
     >
-      <div class="border-muted mx-4 my-8 w-full max-w-2xl rounded-lg border bg-[#1a1a1a] p-6">
-        <h2 class="mb-4 text-base font-semibold text-[#f9f9f9]">DNS Configuration Instructions</h2>
+      <div class="border-muted mx-4 my-8 w-full max-w-2xl rounded-lg border bg-[var(--app-surface)] p-6">
+        <h2 class="mb-4 text-base font-semibold text-[var(--app-ink)]">DNS Configuration Instructions</h2>
 
-        <div class="border-muted mb-4 overflow-x-auto rounded border bg-[#050505] p-4">
+        <div class="border-muted mb-4 overflow-x-auto rounded border bg-[var(--app-bg)] p-4">
           <pre class="text-muted text-xs whitespace-pre-wrap">{{ dnsInstructions }}</pre>
         </div>
 

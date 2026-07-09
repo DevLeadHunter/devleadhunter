@@ -2,7 +2,7 @@
   <div>
     <!-- Header -->
     <div class="mb-4 flex items-center justify-between">
-      <h1 class="text-xl font-semibold text-[#f9f9f9]">Email Templates</h1>
+      <h1 class="text-xl font-semibold text-[var(--app-ink)]">Email Templates</h1>
       <button class="btn-primary" @click="openCreateModal">
         <i class="fa-solid fa-plus mr-1.5"></i>
         <span>New Template</span>
@@ -12,18 +12,22 @@
     <!-- Loading state -->
     <div v-if="isLoading" class="card">
       <div class="animate-pulse space-y-3">
-        <div class="h-4 w-3/4 rounded bg-[#2a2a2a]"></div>
-        <div class="h-4 w-full rounded bg-[#2a2a2a]"></div>
+        <div class="h-4 w-3/4 rounded bg-[var(--app-surface-2)]"></div>
+        <div class="h-4 w-full rounded bg-[var(--app-surface-2)]"></div>
       </div>
     </div>
 
     <!-- Templates list -->
     <div v-else-if="emailTemplates && emailTemplates.length > 0" class="space-y-2">
-      <div v-for="template in emailTemplates" :key="template.id" class="card transition-colors hover:border-[#f9f9f9]">
+      <div
+        v-for="template in emailTemplates"
+        :key="template.id"
+        class="card transition-colors hover:border-[var(--app-ink)]"
+      >
         <div class="flex items-start justify-between">
           <div class="flex-1">
             <div class="mb-1 flex items-center gap-2">
-              <h3 class="text-base font-semibold text-[#f9f9f9]">{{ template.name }}</h3>
+              <h3 class="text-base font-semibold text-[var(--app-ink)]">{{ template.name }}</h3>
               <span
                 v-if="!template.is_active"
                 class="text-muted inline-flex items-center rounded-full bg-[#8b949e]/20 px-2 py-0.5 text-xs font-medium"
@@ -68,11 +72,11 @@
     <!-- Create/Edit Template Modal -->
     <div
       v-if="showTemplateModal"
-      class="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-black/70 backdrop-blur-sm"
+      class="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-[var(--app-overlay)] backdrop-blur-sm"
       @click.self="closeTemplateModal"
     >
-      <div class="border-muted mx-4 my-8 w-full max-w-4xl rounded-lg border bg-[#1a1a1a] p-6">
-        <h2 class="mb-4 text-base font-semibold text-[#f9f9f9]">
+      <div class="border-muted mx-4 my-8 w-full max-w-4xl rounded-lg border bg-[var(--app-surface)] p-6">
+        <h2 class="mb-4 text-base font-semibold text-[var(--app-ink)]">
           {{ editingTemplate ? 'Edit Template' : 'New Template' }}
         </h2>
 
@@ -125,16 +129,16 @@
     <!-- Preview Modal -->
     <div
       v-if="showPreviewModal && previewHtml"
-      class="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-black/70 backdrop-blur-sm"
+      class="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-[var(--app-overlay)] backdrop-blur-sm"
       @click.self="showPreviewModal = false"
     >
-      <div class="border-muted mx-4 my-8 w-full max-w-4xl rounded-lg border bg-[#1a1a1a] p-6">
-        <h2 class="mb-4 text-base font-semibold text-[#f9f9f9]">Template Preview</h2>
+      <div class="border-muted mx-4 my-8 w-full max-w-4xl rounded-lg border bg-[var(--app-surface)] p-6">
+        <h2 class="mb-4 text-base font-semibold text-[var(--app-ink)]">Template Preview</h2>
 
-        <div class="border-muted rounded border bg-[#050505] p-6">
+        <div class="border-muted rounded border bg-[var(--app-bg)] p-6">
           <div class="border-muted mb-4 border-b pb-4">
             <p class="text-muted text-xs">Subject:</p>
-            <p class="text-sm font-medium text-[#f9f9f9]">{{ previewSubject }}</p>
+            <p class="text-sm font-medium text-[var(--app-ink)]">{{ previewSubject }}</p>
           </div>
           <!-- eslint-disable-next-line vue/no-v-html -- Preview of user's own email template HTML -->
           <div class="prose prose-invert max-w-none text-sm" v-html="previewHtml"></div>

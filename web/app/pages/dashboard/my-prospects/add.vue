@@ -3,12 +3,12 @@
     <div>
       <NuxtLink
         to="/dashboard/my-prospects"
-        class="inline-flex items-center gap-2 text-sm text-[#8b949e] transition hover:text-[#f9f9f9]"
+        class="inline-flex items-center gap-2 text-sm text-[var(--app-ink-soft)] transition hover:text-[var(--app-ink)]"
       >
         <i class="fa-solid fa-arrow-left text-xs"></i>
         Retour aux prospects
       </NuxtLink>
-      <h1 class="mt-4 text-2xl font-semibold text-[#f9f9f9]">Ajouter un prospect</h1>
+      <h1 class="mt-4 text-2xl font-semibold text-[var(--app-ink)]">Ajouter un prospect</h1>
       <p class="text-muted mt-2 text-sm">
         Saisissez le nom de l'entreprise et/ou le lien Google Maps pour pré-remplir automatiquement.
       </p>
@@ -51,8 +51,8 @@
         {{ enrichError }}
       </div>
 
-      <div class="space-y-4 rounded-lg border border-[#30363d] bg-[#050505] p-4">
-        <h2 class="text-sm font-medium text-[#f9f9f9]">Informations du prospect</h2>
+      <div class="space-y-4 rounded-lg border border-[var(--app-line)] bg-[var(--app-bg)] p-4">
+        <h2 class="text-sm font-medium text-[var(--app-ink)]">Informations du prospect</h2>
         <div class="grid gap-4 md:grid-cols-2">
           <div class="md:col-span-2">
             <label class="text-muted mb-1.5 block text-xs font-medium">Nom *</label>

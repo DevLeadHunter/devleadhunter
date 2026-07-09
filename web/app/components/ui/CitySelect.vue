@@ -8,13 +8,13 @@
       aria-autocomplete="list"
       :aria-expanded="open"
       :placeholder="placeholder"
-      class="input-field hover:border-[#f9f9f9]"
+      class="input-field hover:border-[var(--app-ink)]"
       @focus="open = items.length > 0"
       @keydown="onKeydown"
     />
     <ul
       v-if="open && items.length > 0"
-      class="absolute z-50 mt-1 max-h-60 w-full overflow-auto rounded-lg border border-[#30363d] bg-[#1a1a1a] py-1 shadow-lg"
+      class="absolute z-50 mt-1 max-h-60 w-full overflow-auto rounded-lg border border-[var(--app-line)] bg-[var(--app-surface)] py-1 shadow-lg"
       role="listbox"
     >
       <li
@@ -23,8 +23,8 @@
         role="option"
         :aria-selected="index === highlighted"
         :class="[
-          'cursor-pointer px-3 py-2 text-sm text-[#f9f9f9]',
-          index === highlighted ? 'bg-[#30363d]' : 'hover:bg-[#30363d]/60',
+          'cursor-pointer px-3 py-2 text-sm text-[var(--app-ink)]',
+          index === highlighted ? 'bg-[var(--app-surface-2)]' : 'hover:bg-[var(--app-surface-2)]/60',
         ]"
         @mousedown.prevent="select(city)"
       >

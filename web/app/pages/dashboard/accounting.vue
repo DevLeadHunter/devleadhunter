@@ -2,15 +2,15 @@
   <div>
     <!-- Header -->
     <div class="mb-6 flex items-center justify-between">
-      <h1 class="text-xl font-semibold text-[#f9f9f9]">Accounting</h1>
+      <h1 class="text-xl font-semibold text-[var(--app-ink)]">Accounting</h1>
     </div>
 
     <!-- Loading State -->
     <div v-if="isLoading" class="space-y-6">
       <div class="card">
         <div class="animate-pulse space-y-4">
-          <div class="h-6 w-1/4 rounded bg-[#2a2a2a]"></div>
-          <div class="h-32 rounded bg-[#2a2a2a]"></div>
+          <div class="h-6 w-1/4 rounded bg-[var(--app-surface-2)]"></div>
+          <div class="h-32 rounded bg-[var(--app-surface-2)]"></div>
         </div>
       </div>
     </div>
@@ -23,13 +23,13 @@
         <div class="card">
           <div class="flex items-start justify-between">
             <div class="flex-1">
-              <p class="mb-1 text-xs text-[#8b949e]">Total received</p>
-              <p class="text-lg font-bold text-[#f9f9f9]">
+              <p class="mb-1 text-xs text-[var(--app-ink-soft)]">Total received</p>
+              <p class="text-lg font-bold text-[var(--app-ink)]">
                 €{{ formatCurrency(accountingData?.summary?.total_paid || 0) }}
               </p>
             </div>
-            <div class="flex h-10 w-10 items-center justify-center rounded-lg bg-[#2BAD5F]/20">
-              <i class="fa-solid fa-euro-sign text-lg text-[#3fb950]"></i>
+            <div class="flex h-10 w-10 items-center justify-center rounded-lg bg-[var(--app-green)]/20">
+              <i class="fa-solid fa-euro-sign text-lg text-[var(--app-green)]"></i>
             </div>
           </div>
         </div>
@@ -38,8 +38,8 @@
         <div class="card">
           <div class="flex items-start justify-between">
             <div class="flex-1">
-              <p class="mb-1 text-xs text-[#8b949e]">Net (after fees)</p>
-              <p class="text-lg font-bold text-[#f9f9f9]">
+              <p class="mb-1 text-xs text-[var(--app-ink-soft)]">Net (after fees)</p>
+              <p class="text-lg font-bold text-[var(--app-ink)]">
                 €{{ formatCurrency(accountingData?.summary?.net_total || 0) }}
               </p>
             </div>
@@ -53,13 +53,13 @@
         <div class="card">
           <div class="flex items-start justify-between">
             <div class="flex-1">
-              <p class="mb-1 text-xs text-[#8b949e]">Stripe fees</p>
-              <p class="text-lg font-bold text-[#DC4747]">
+              <p class="mb-1 text-xs text-[var(--app-ink-soft)]">Stripe fees</p>
+              <p class="text-lg font-bold text-[var(--app-red)]">
                 -€{{ formatCurrency(accountingData?.summary?.total_stripe_fees || 0) }}
               </p>
             </div>
-            <div class="flex h-10 w-10 items-center justify-center rounded-lg bg-[#da3633]/20">
-              <i class="fa-solid fa-credit-card text-lg text-[#DC4747]"></i>
+            <div class="flex h-10 w-10 items-center justify-center rounded-lg bg-[var(--app-red)]/20">
+              <i class="fa-solid fa-credit-card text-lg text-[var(--app-red)]"></i>
             </div>
           </div>
         </div>
@@ -68,8 +68,8 @@
         <div class="card">
           <div class="flex items-start justify-between">
             <div class="flex-1">
-              <p class="mb-1 text-xs text-[#8b949e]">Available balance</p>
-              <p class="text-lg font-bold text-[#f9f9f9]">
+              <p class="mb-1 text-xs text-[var(--app-ink-soft)]">Available balance</p>
+              <p class="text-lg font-bold text-[var(--app-ink)]">
                 <span
                   v-if="
                     accountingData?.summary?.available_balance !== null &&
@@ -78,11 +78,11 @@
                 >
                   €{{ formatCurrency(accountingData.summary.available_balance) }}
                 </span>
-                <span v-else class="text-[#8b949e]">N/A</span>
+                <span v-else class="text-[var(--app-ink-soft)]">N/A</span>
               </p>
             </div>
-            <div class="flex h-10 w-10 items-center justify-center rounded-lg bg-[#30363d]">
-              <i class="fa-solid fa-bank text-lg text-[#8b949e]"></i>
+            <div class="flex h-10 w-10 items-center justify-center rounded-lg bg-[var(--app-surface-2)]">
+              <i class="fa-solid fa-bank text-lg text-[var(--app-ink-soft)]"></i>
             </div>
           </div>
         </div>
@@ -91,20 +91,20 @@
       <!-- Additional Summary Info -->
       <div class="grid grid-cols-1 gap-4 md:grid-cols-3">
         <div class="card">
-          <p class="mb-1 text-xs text-[#8b949e]">Total refunded</p>
-          <p class="text-base font-semibold text-[#f9f9f9]">
+          <p class="mb-1 text-xs text-[var(--app-ink-soft)]">Total refunded</p>
+          <p class="text-base font-semibold text-[var(--app-ink)]">
             €{{ formatCurrency(accountingData?.summary?.total_refunded || 0) }}
           </p>
         </div>
         <div class="card">
-          <p class="mb-1 text-xs text-[#8b949e]">Transactions (raw)</p>
-          <p class="text-base font-semibold text-[#f9f9f9]">
+          <p class="mb-1 text-xs text-[var(--app-ink-soft)]">Transactions (raw)</p>
+          <p class="text-base font-semibold text-[var(--app-ink)]">
             {{ accountingData?.summary?.total_transactions || 0 }}
           </p>
         </div>
         <div class="card">
-          <p class="mb-1 text-xs text-[#8b949e]">Transactions displayed</p>
-          <p class="text-base font-semibold text-[#f9f9f9]">
+          <p class="mb-1 text-xs text-[var(--app-ink-soft)]">Transactions displayed</p>
+          <p class="text-base font-semibold text-[var(--app-ink)]">
             {{ displayedTransactions.length }}
           </p>
         </div>
@@ -112,19 +112,21 @@
 
       <!-- Transactions Table - Qonto Style -->
       <div class="card overflow-hidden p-0">
-        <div class="space-y-4 border-b border-[#30363d] bg-[#050505] px-2 py-4 sm:px-6">
+        <div class="space-y-4 border-b border-[var(--app-line)] bg-[var(--app-bg)] px-2 py-4 sm:px-6">
           <div>
-            <h2 class="text-base font-semibold text-[#f9f9f9]">Credit transactions</h2>
-            <p class="mt-1 text-xs text-[#8b949e]">Payments pulled directly from Stripe</p>
+            <h2 class="text-base font-semibold text-[var(--app-ink)]">Credit transactions</h2>
+            <p class="mt-1 text-xs text-[var(--app-ink-soft)]">Payments pulled directly from Stripe</p>
           </div>
 
           <div class="flex flex-col gap-3 lg:flex-row">
             <div class="relative flex-1">
-              <i class="fa-solid fa-magnifying-glass absolute top-1/2 left-3 -translate-y-1/2 text-[#8b949e]"></i>
+              <i
+                class="fa-solid fa-magnifying-glass absolute top-1/2 left-3 -translate-y-1/2 text-[var(--app-ink-soft)]"
+              ></i>
               <input
                 v-model="searchQuery"
                 type="search"
-                class="w-full rounded border border-[#30363d] bg-[#1a1a1a] px-10 py-2 text-sm text-[#f9f9f9] placeholder:text-[#8b949e] focus:border-[#f9f9f9] focus:ring-1 focus:ring-[#f9f9f9] focus:outline-none"
+                class="w-full rounded border border-[var(--app-line)] bg-[var(--app-surface)] px-10 py-2 text-sm text-[var(--app-ink)] placeholder:text-[var(--app-ink-soft)] focus:border-[var(--app-ink)] focus:ring-1 focus:ring-[#f9f9f9] focus:outline-none"
                 placeholder="Search (name, email, Stripe ID, description...)"
               />
             </div>
@@ -132,7 +134,7 @@
             <div class="grid flex-1 grid-cols-1 gap-3 sm:grid-cols-2">
               <select
                 v-model="statusFilter"
-                class="min-w-[160px] rounded border border-[#30363d] bg-[#1a1a1a] px-3 py-2 text-sm text-[#f9f9f9]"
+                class="min-w-[160px] rounded border border-[var(--app-line)] bg-[var(--app-surface)] px-3 py-2 text-sm text-[var(--app-ink)]"
               >
                 <option value="">All statuses</option>
                 <option v-for="status in statusOptions" :key="status" :value="status">
@@ -143,7 +145,7 @@
               <div class="flex items-center gap-2">
                 <select
                   v-model="sortKey"
-                  class="rounded border border-[#30363d] bg-[#1a1a1a] px-3 py-2 text-sm text-[#f9f9f9]"
+                  class="rounded border border-[var(--app-line)] bg-[var(--app-surface)] px-3 py-2 text-sm text-[var(--app-ink)]"
                 >
                   <option value="date">Date</option>
                   <option value="amount">Amount</option>
@@ -156,7 +158,7 @@
                 </select>
                 <button
                   type="button"
-                  class="flex items-center gap-2 rounded border border-[#30363d] bg-[#1a1a1a] px-3 py-2 text-sm text-[#f9f9f9] transition hover:border-[#f9f9f9] hover:text-[#f9f9f9]"
+                  class="flex items-center gap-2 rounded border border-[var(--app-line)] bg-[var(--app-surface)] px-3 py-2 text-sm text-[var(--app-ink)] transition hover:border-[var(--app-ink)] hover:text-[var(--app-ink)]"
                   @click="toggleSortDirection"
                 >
                   <i
@@ -173,35 +175,53 @@
         <div class="overflow-x-auto">
           <table class="w-full">
             <thead>
-              <tr class="border-b border-[#30363d] bg-[#050505]">
-                <th class="px-4 py-3 text-left text-xs font-medium tracking-wider text-[#8b949e] uppercase">Status</th>
-                <th class="px-4 py-3 text-left text-xs font-medium tracking-wider text-[#8b949e] uppercase">
+              <tr class="border-b border-[var(--app-line)] bg-[var(--app-bg)]">
+                <th class="px-4 py-3 text-left text-xs font-medium tracking-wider text-[var(--app-ink-soft)] uppercase">
+                  Status
+                </th>
+                <th class="px-4 py-3 text-left text-xs font-medium tracking-wider text-[var(--app-ink-soft)] uppercase">
                   Customer
                 </th>
-                <th class="px-4 py-3 text-left text-xs font-medium tracking-wider text-[#8b949e] uppercase">Date</th>
-                <th class="px-4 py-3 text-left text-xs font-medium tracking-wider text-[#8b949e] uppercase">Credits</th>
-                <th class="px-4 py-3 text-left text-xs font-medium tracking-wider text-[#8b949e] uppercase">Amount</th>
-                <th class="px-4 py-3 text-left text-xs font-medium tracking-wider text-[#8b949e] uppercase">
+                <th class="px-4 py-3 text-left text-xs font-medium tracking-wider text-[var(--app-ink-soft)] uppercase">
+                  Date
+                </th>
+                <th class="px-4 py-3 text-left text-xs font-medium tracking-wider text-[var(--app-ink-soft)] uppercase">
+                  Credits
+                </th>
+                <th class="px-4 py-3 text-left text-xs font-medium tracking-wider text-[var(--app-ink-soft)] uppercase">
+                  Amount
+                </th>
+                <th class="px-4 py-3 text-left text-xs font-medium tracking-wider text-[var(--app-ink-soft)] uppercase">
                   Stripe fees
                 </th>
-                <th class="px-4 py-3 text-left text-xs font-medium tracking-wider text-[#8b949e] uppercase">Net</th>
-                <th class="px-4 py-3 text-left text-xs font-medium tracking-wider text-[#8b949e] uppercase">
+                <th class="px-4 py-3 text-left text-xs font-medium tracking-wider text-[var(--app-ink-soft)] uppercase">
+                  Net
+                </th>
+                <th class="px-4 py-3 text-left text-xs font-medium tracking-wider text-[var(--app-ink-soft)] uppercase">
                   Funds availability
                 </th>
-                <th class="px-4 py-3 text-left text-xs font-medium tracking-wider text-[#8b949e] uppercase">
+                <th class="px-4 py-3 text-left text-xs font-medium tracking-wider text-[var(--app-ink-soft)] uppercase">
                   Payment method
                 </th>
-                <th class="px-4 py-3 text-left text-xs font-medium tracking-wider text-[#8b949e] uppercase">Country</th>
-                <th class="px-4 py-3 text-left text-xs font-medium tracking-wider text-[#8b949e] uppercase">IP</th>
-                <th class="px-4 py-3 text-left text-xs font-medium tracking-wider text-[#8b949e] uppercase">Device</th>
-                <th class="px-4 py-3 text-left text-xs font-medium tracking-wider text-[#8b949e] uppercase">Details</th>
+                <th class="px-4 py-3 text-left text-xs font-medium tracking-wider text-[var(--app-ink-soft)] uppercase">
+                  Country
+                </th>
+                <th class="px-4 py-3 text-left text-xs font-medium tracking-wider text-[var(--app-ink-soft)] uppercase">
+                  IP
+                </th>
+                <th class="px-4 py-3 text-left text-xs font-medium tracking-wider text-[var(--app-ink-soft)] uppercase">
+                  Device
+                </th>
+                <th class="px-4 py-3 text-left text-xs font-medium tracking-wider text-[var(--app-ink-soft)] uppercase">
+                  Details
+                </th>
               </tr>
             </thead>
             <tbody>
               <tr
                 v-for="transaction in displayedTransactions"
                 :key="getTransactionKey(transaction)"
-                class="border-b border-[#30363d] transition-colors last:border-b-0 hover:bg-[#2a2a2a]"
+                class="border-b border-[var(--app-line)] transition-colors last:border-b-0 hover:bg-[var(--app-surface-2)]"
               >
                 <!-- Status -->
                 <td class="px-4 py-3">
@@ -218,62 +238,62 @@
                 <!-- Customer -->
                 <td class="px-4 py-3">
                   <div class="flex flex-col">
-                    <span class="text-sm font-medium text-[#f9f9f9]">{{ transaction.user_name }}</span>
-                    <span class="text-xs text-[#8b949e]">{{ transaction.user_email }}</span>
+                    <span class="text-sm font-medium text-[var(--app-ink)]">{{ transaction.user_name }}</span>
+                    <span class="text-xs text-[var(--app-ink-soft)]">{{ transaction.user_email }}</span>
                   </div>
                 </td>
 
                 <!-- Date -->
-                <td class="px-4 py-3 text-sm text-[#f9f9f9]">
+                <td class="px-4 py-3 text-sm text-[var(--app-ink)]">
                   {{ formatDate(transaction.credits_available_date) }}
                 </td>
 
                 <!-- Credits -->
-                <td class="px-4 py-3 text-sm font-medium text-[#f9f9f9]">
+                <td class="px-4 py-3 text-sm font-medium text-[var(--app-ink)]">
                   {{ transaction.credits_amount }}
                 </td>
 
                 <!-- Amount -->
-                <td class="px-4 py-3 text-sm font-medium text-[#f9f9f9]">
+                <td class="px-4 py-3 text-sm font-medium text-[var(--app-ink)]">
                   <span v-if="transaction.payment_info"> €{{ formatCurrency(transaction.payment_info.amount) }} </span>
-                  <span v-else class="text-[#8b949e]">N/A</span>
+                  <span v-else class="text-[var(--app-ink-soft)]">N/A</span>
                 </td>
 
                 <!-- Stripe Fees -->
-                <td class="px-4 py-3 text-sm text-[#DC4747]">
+                <td class="px-4 py-3 text-sm text-[var(--app-red)]">
                   <span v-if="transaction.payment_info?.application_fee_amount">
                     -€{{ formatCurrency(transaction.payment_info.application_fee_amount) }}
                   </span>
-                  <span v-else class="text-[#8b949e]">N/A</span>
+                  <span v-else class="text-[var(--app-ink-soft)]">N/A</span>
                 </td>
 
                 <!-- Net -->
-                <td class="px-4 py-3 text-sm font-medium text-[#f9f9f9]">
+                <td class="px-4 py-3 text-sm font-medium text-[var(--app-ink)]">
                   <span v-if="transaction.payment_info?.net_amount">
                     €{{ formatCurrency(transaction.payment_info.net_amount) }}
                   </span>
-                  <span v-else class="text-[#8b949e]">N/A</span>
+                  <span v-else class="text-[var(--app-ink-soft)]">N/A</span>
                 </td>
 
                 <!-- Funds availability -->
-                <td class="px-4 py-3 text-sm text-[#f9f9f9]">
+                <td class="px-4 py-3 text-sm text-[var(--app-ink)]">
                   {{ formatAvailability(transaction.payment_info) }}
                 </td>
 
                 <!-- Payment Method -->
-                <td class="px-4 py-3 text-sm text-[#f9f9f9]">
+                <td class="px-4 py-3 text-sm text-[var(--app-ink)]">
                   <div class="flex flex-col">
-                    <span class="font-medium text-[#f9f9f9]">
+                    <span class="font-medium text-[var(--app-ink)]">
                       {{ transaction.payment_info?.payment_method_type?.toUpperCase() || 'N/A' }}
                     </span>
-                    <span class="text-xs text-[#8b949e]">
+                    <span class="text-xs text-[var(--app-ink-soft)]">
                       {{ formatPaymentDetails(transaction.payment_info) }}
                     </span>
                   </div>
                 </td>
 
                 <!-- Country -->
-                <td class="px-4 py-3 text-sm text-[#f9f9f9]">
+                <td class="px-4 py-3 text-sm text-[var(--app-ink)]">
                   <span
                     v-if="transaction.payment_info?.customer_country"
                     :title="getCountryName(transaction.payment_info.customer_country)"
@@ -285,19 +305,19 @@
                 </td>
 
                 <!-- IP -->
-                <td class="px-4 py-3 font-mono text-sm text-[#8b949e]">
+                <td class="px-4 py-3 font-mono text-sm text-[var(--app-ink-soft)]">
                   {{ transaction.payment_info?.ip_address || 'N/A' }}
                 </td>
 
                 <!-- Device -->
-                <td class="px-4 py-3 text-sm text-[#8b949e]">
+                <td class="px-4 py-3 text-sm text-[var(--app-ink-soft)]">
                   {{ parseUserAgent(transaction.payment_info?.user_agent) }}
                 </td>
 
                 <!-- Details Button -->
                 <td class="px-4 py-3">
                   <button
-                    class="text-xs font-medium text-[#71A3DB] transition-colors hover:text-[#58a6ff]"
+                    class="text-xs font-medium text-[#71A3DB] transition-colors hover:text-[var(--app-accent-ink)]"
                     @click="toggleTransactionDetails(getTransactionKey(transaction))"
                   >
                     {{ expandedTransactions.has(getTransactionKey(transaction)) ? 'Hide' : 'Show' }}
@@ -312,46 +332,46 @@
         <div v-for="transaction in displayedTransactions" :key="`details-${getTransactionKey(transaction)}`">
           <div
             v-if="expandedTransactions.has(getTransactionKey(transaction))"
-            class="border-t border-[#30363d] bg-[#050505] px-6 py-4"
+            class="border-t border-[var(--app-line)] bg-[var(--app-bg)] px-6 py-4"
           >
             <div class="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
               <!-- Payment Information -->
               <div v-if="transaction.payment_info">
-                <h3 class="mb-3 text-xs font-semibold text-[#8b949e] uppercase">Payment information</h3>
+                <h3 class="mb-3 text-xs font-semibold text-[var(--app-ink-soft)] uppercase">Payment information</h3>
                 <div class="space-y-2">
                   <div class="flex justify-between text-sm">
-                    <span class="text-[#8b949e]">Method:</span>
-                    <span class="font-medium text-[#f9f9f9]">
+                    <span class="text-[var(--app-ink-soft)]">Method:</span>
+                    <span class="font-medium text-[var(--app-ink)]">
                       {{ transaction.payment_info.payment_method_type?.toUpperCase() || 'N/A' }}
                     </span>
                   </div>
                   <div class="flex justify-between text-sm">
-                    <span class="text-[#8b949e]">Currency:</span>
-                    <span class="font-medium text-[#f9f9f9] uppercase">
+                    <span class="text-[var(--app-ink-soft)]">Currency:</span>
+                    <span class="font-medium text-[var(--app-ink)] uppercase">
                       {{ transaction.payment_info.currency }}
                     </span>
                   </div>
                   <div class="flex justify-between text-sm">
-                    <span class="text-[#8b949e]">Payment date:</span>
-                    <span class="font-medium text-[#f9f9f9]">
+                    <span class="text-[var(--app-ink-soft)]">Payment date:</span>
+                    <span class="font-medium text-[var(--app-ink)]">
                       {{ formatDateTime(transaction.payment_info.payment_date) }}
                     </span>
                   </div>
                   <div v-if="transaction.payment_info.customer_country" class="flex justify-between text-sm">
-                    <span class="text-[#8b949e]">Country:</span>
-                    <span class="font-medium text-[#f9f9f9]">
+                    <span class="text-[var(--app-ink-soft)]">Country:</span>
+                    <span class="font-medium text-[var(--app-ink)]">
                       {{ transaction.payment_info.customer_country }}
                     </span>
                   </div>
                   <div v-if="transaction.payment_info.ip_address" class="flex justify-between text-sm">
-                    <span class="text-[#8b949e]">IP:</span>
-                    <span class="font-mono text-xs font-medium text-[#f9f9f9]">
+                    <span class="text-[var(--app-ink-soft)]">IP:</span>
+                    <span class="font-mono text-xs font-medium text-[var(--app-ink)]">
                       {{ transaction.payment_info.ip_address }}
                     </span>
                   </div>
                   <div v-if="transaction.payment_info.user_agent" class="flex justify-between text-sm">
-                    <span class="text-[#8b949e]">Device:</span>
-                    <span class="truncate text-xs font-medium text-[#f9f9f9]">
+                    <span class="text-[var(--app-ink-soft)]">Device:</span>
+                    <span class="truncate text-xs font-medium text-[var(--app-ink)]">
                       {{ parseUserAgent(transaction.payment_info.user_agent) }}
                     </span>
                   </div>
@@ -360,44 +380,44 @@
 
               <!-- Financial Details -->
               <div v-if="transaction.payment_info">
-                <h3 class="mb-3 text-xs font-semibold text-[#8b949e] uppercase">Financial details</h3>
+                <h3 class="mb-3 text-xs font-semibold text-[var(--app-ink-soft)] uppercase">Financial details</h3>
                 <div class="space-y-2">
                   <div class="flex justify-between text-sm">
-                    <span class="text-[#8b949e]">Payment amount:</span>
-                    <span class="font-medium text-[#f9f9f9]">
+                    <span class="text-[var(--app-ink-soft)]">Payment amount:</span>
+                    <span class="font-medium text-[var(--app-ink)]">
                       €{{ formatCurrency(transaction.payment_info.amount) }}
                     </span>
                   </div>
                   <div v-if="transaction.payment_info.amount_received" class="flex justify-between text-sm">
-                    <span class="text-[#8b949e]">Amount received:</span>
-                    <span class="font-medium text-[#f9f9f9]">
+                    <span class="text-[var(--app-ink-soft)]">Amount received:</span>
+                    <span class="font-medium text-[var(--app-ink)]">
                       €{{ formatCurrency(transaction.payment_info.amount_received) }}
                     </span>
                   </div>
                   <div v-if="transaction.payment_info.application_fee_amount" class="flex justify-between text-sm">
-                    <span class="text-[#8b949e]">Stripe fees:</span>
-                    <span class="font-medium text-[#DC4747]">
+                    <span class="text-[var(--app-ink-soft)]">Stripe fees:</span>
+                    <span class="font-medium text-[var(--app-red)]">
                       -€{{ formatCurrency(transaction.payment_info.application_fee_amount) }}
                     </span>
                   </div>
                   <div
                     v-if="transaction.payment_info.net_amount"
-                    class="flex justify-between border-t border-[#30363d] pt-2 text-sm"
+                    class="flex justify-between border-t border-[var(--app-line)] pt-2 text-sm"
                   >
-                    <span class="font-medium text-[#8b949e]">Net amount:</span>
-                    <span class="font-bold text-[#2BAD5F]">
+                    <span class="font-medium text-[var(--app-ink-soft)]">Net amount:</span>
+                    <span class="font-bold text-[var(--app-green)]">
                       €{{ formatCurrency(transaction.payment_info.net_amount) }}
                     </span>
                   </div>
                   <div v-if="transaction.payment_info.refund_amount" class="flex justify-between text-sm">
-                    <span class="text-[#8b949e]">Refund:</span>
-                    <span class="font-medium text-[#DC4747]">
+                    <span class="text-[var(--app-ink-soft)]">Refund:</span>
+                    <span class="font-medium text-[var(--app-red)]">
                       -€{{ formatCurrency(transaction.payment_info.refund_amount) }}
                     </span>
                   </div>
                   <div v-if="transaction.payment_info.refund_date" class="flex justify-between text-sm">
-                    <span class="text-[#8b949e]">Refund date:</span>
-                    <span class="font-medium text-[#f9f9f9]">
+                    <span class="text-[var(--app-ink-soft)]">Refund date:</span>
+                    <span class="font-medium text-[var(--app-ink)]">
                       {{ formatDateTime(transaction.payment_info.refund_date) }}
                     </span>
                   </div>
@@ -406,35 +426,35 @@
 
               <!-- Transaction Details -->
               <div>
-                <h3 class="mb-3 text-xs font-semibold text-[#8b949e] uppercase">Transaction</h3>
+                <h3 class="mb-3 text-xs font-semibold text-[var(--app-ink-soft)] uppercase">Transaction</h3>
                 <div class="space-y-2">
                   <div class="flex justify-between text-sm">
-                    <span class="text-[#8b949e]">Transaction ID:</span>
-                    <span class="font-mono text-xs font-medium text-[#f9f9f9]">
+                    <span class="text-[var(--app-ink-soft)]">Transaction ID:</span>
+                    <span class="font-mono text-xs font-medium text-[var(--app-ink)]">
                       #{{ transaction.transaction_id }}
                     </span>
                   </div>
                   <div v-if="transaction.payment_info?.session_id" class="flex justify-between text-sm">
-                    <span class="text-[#8b949e]">Session ID:</span>
-                    <span class="truncate font-mono text-xs font-medium text-[#f9f9f9]">
+                    <span class="text-[var(--app-ink-soft)]">Session ID:</span>
+                    <span class="truncate font-mono text-xs font-medium text-[var(--app-ink)]">
                       {{ transaction.payment_info.session_id }}
                     </span>
                   </div>
                   <div v-if="transaction.payment_info?.payment_intent_id" class="flex justify-between text-sm">
-                    <span class="text-[#8b949e]">Payment Intent:</span>
-                    <span class="truncate font-mono text-xs font-medium text-[#f9f9f9]">
+                    <span class="text-[var(--app-ink-soft)]">Payment Intent:</span>
+                    <span class="truncate font-mono text-xs font-medium text-[var(--app-ink)]">
                       {{ transaction.payment_info.payment_intent_id }}
                     </span>
                   </div>
                   <div class="flex justify-between text-sm">
-                    <span class="text-[#8b949e]">Credits available at:</span>
-                    <span class="font-medium text-[#f9f9f9]">
+                    <span class="text-[var(--app-ink-soft)]">Credits available at:</span>
+                    <span class="font-medium text-[var(--app-ink)]">
                       {{ formatDateTime(transaction.credits_available_date) }}
                     </span>
                   </div>
                   <div class="flex justify-between text-sm">
-                    <span class="text-[#8b949e]">Description:</span>
-                    <span class="max-w-xs truncate text-right text-xs font-medium text-[#f9f9f9]">
+                    <span class="text-[var(--app-ink-soft)]">Description:</span>
+                    <span class="max-w-xs truncate text-right text-xs font-medium text-[var(--app-ink)]">
                       {{ transaction.description }}
                     </span>
                   </div>
@@ -446,27 +466,27 @@
 
         <!-- Empty State -->
         <div v-if="displayedTransactions.length === 0" class="px-6 py-12 text-center">
-          <i class="fa-solid fa-receipt mb-3 text-5xl text-[#8b949e]"></i>
-          <p class="text-[#8b949e]">No transaction matches your filters</p>
+          <i class="fa-solid fa-receipt mb-3 text-5xl text-[var(--app-ink-soft)]"></i>
+          <p class="text-[var(--app-ink-soft)]">No transaction matches your filters</p>
         </div>
 
         <!-- Pagination Controls -->
         <div
           v-if="showPagination"
-          class="flex flex-col gap-3 border-t border-[#30363d] bg-[#050505] px-6 py-4 md:flex-row md:items-center md:justify-between"
+          class="flex flex-col gap-3 border-t border-[var(--app-line)] bg-[var(--app-bg)] px-6 py-4 md:flex-row md:items-center md:justify-between"
         >
-          <div class="text-xs text-[#8b949e]">
+          <div class="text-xs text-[var(--app-ink-soft)]">
             Showing
-            <span class="font-medium text-[#f9f9f9]">{{ pageStart }}-{{ pageEnd }}</span>
+            <span class="font-medium text-[var(--app-ink)]">{{ pageStart }}-{{ pageEnd }}</span>
             of
-            <span class="font-medium text-[#f9f9f9]">{{ totalTransactions }}</span>
+            <span class="font-medium text-[var(--app-ink)]">{{ totalTransactions }}</span>
           </div>
           <div class="flex items-center gap-3">
             <div class="flex items-center gap-2 text-xs">
-              <span class="text-[#8b949e]">Per page</span>
+              <span class="text-[var(--app-ink-soft)]">Per page</span>
               <select
                 v-model.number="pageSize"
-                class="rounded border border-[#30363d] bg-[#1a1a1a] px-2 py-1 text-xs text-[#f9f9f9]"
+                class="rounded border border-[var(--app-line)] bg-[var(--app-surface)] px-2 py-1 text-xs text-[var(--app-ink)]"
               >
                 <option :value="10">10</option>
                 <option :value="20">20</option>
@@ -478,8 +498,8 @@
               <button class="btn-secondary px-3 py-1 text-xs" :disabled="page <= 1" @click="goToPrevPage">
                 Previous
               </button>
-              <span class="text-xs text-[#8b949e]"
-                >Page <span class="text-[#f9f9f9]">{{ page }}</span> / {{ totalPages }}</span
+              <span class="text-xs text-[var(--app-ink-soft)]"
+                >Page <span class="text-[var(--app-ink)]">{{ page }}</span> / {{ totalPages }}</span
               >
               <button class="btn-secondary px-3 py-1 text-xs" :disabled="page >= totalPages" @click="goToNextPage">
                 Next
@@ -491,8 +511,8 @@
     </div>
 
     <!-- Error State -->
-    <div v-if="error && !isLoading" class="card mt-6 border border-[#da3633]/30 bg-[#da3633]/10">
-      <div class="flex items-center gap-2 text-[#DC4747]">
+    <div v-if="error && !isLoading" class="card mt-6 border border-[var(--app-red)]/30 bg-[var(--app-red)]/10">
+      <div class="flex items-center gap-2 text-[var(--app-red)]">
         <i class="fa-solid fa-circle-exclamation"></i>
         <p>{{ error }}</p>
       </div>
@@ -772,18 +792,18 @@ const formatDateTime = (dateString: string): string => {
 const getStatusClass = (status: string): string => {
   const normalized = status.toLowerCase()
   if (['paid', 'complete', 'succeeded', 'processing', 'requires_capture'].includes(normalized)) {
-    return 'bg-[#2BAD5F]/20 text-[#3fb950] border border-[#2BAD5F]/30'
+    return 'bg-[var(--app-green)]/20 text-[var(--app-green)] border border-[var(--app-green)]/30'
   }
   if (['pending', 'requires_confirmation', 'requires_action'].includes(normalized)) {
     return 'bg-[#71A3DB]/20 text-[#71A3DB] border border-[#71A3DB]/30'
   }
   if (['failed', 'canceled', 'requires_payment_method', 'expired'].includes(normalized)) {
-    return 'bg-[#da3633]/20 text-[#DC4747] border border-[#da3633]/30'
+    return 'bg-[var(--app-red)]/20 text-[var(--app-red)] border border-[var(--app-red)]/30'
   }
   if (['refunded', 'partially_refunded'].includes(normalized)) {
-    return 'bg-[#DC4747]/20 text-[#DC4747] border border-[#DC4747]/30'
+    return 'bg-[var(--app-red)]/20 text-[var(--app-red)] border border-[var(--app-red)]/30'
   }
-  return 'bg-[#8b949e]/20 text-[#8b949e] border border-[#8b949e]/30'
+  return 'bg-[#8b949e]/20 text-[var(--app-ink-soft)] border border-[#8b949e]/30'
 }
 
 /**

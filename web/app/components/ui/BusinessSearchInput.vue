@@ -14,22 +14,24 @@
 
     <ul
       v-if="isOpen"
-      class="absolute z-50 mt-1 max-h-60 w-full overflow-y-auto rounded-lg border border-[#30363d] bg-[#1a1a1a] shadow-lg"
+      class="absolute z-50 mt-1 max-h-60 w-full overflow-y-auto rounded-lg border border-[var(--app-line)] bg-[var(--app-surface)] shadow-lg"
     >
-      <li v-if="isSearching" class="px-3 py-2 text-sm text-[#8b949e]">Recherche en cours…</li>
-      <li v-else-if="searchTerm.trim().length < minQueryLength" class="px-3 py-2 text-sm text-[#8b949e]">
+      <li v-if="isSearching" class="px-3 py-2 text-sm text-[var(--app-ink-soft)]">Recherche en cours…</li>
+      <li v-else-if="searchTerm.trim().length < minQueryLength" class="px-3 py-2 text-sm text-[var(--app-ink-soft)]">
         Saisissez au moins {{ minQueryLength }} caractères
       </li>
-      <li v-else-if="suggestions.length === 0" class="px-3 py-2 text-sm text-[#8b949e]">Aucune entreprise trouvée</li>
+      <li v-else-if="suggestions.length === 0" class="px-3 py-2 text-sm text-[var(--app-ink-soft)]">
+        Aucune entreprise trouvée
+      </li>
       <template v-else>
         <li
           v-for="suggestion in suggestions"
           :key="suggestion.id"
-          class="cursor-pointer px-3 py-2 text-sm text-[#f9f9f9] hover:bg-[#30363d]"
+          class="cursor-pointer px-3 py-2 text-sm text-[var(--app-ink)] hover:bg-[var(--app-surface-2)]"
           @mousedown.prevent="selectSuggestion(suggestion)"
         >
           <div class="font-medium">{{ suggestion.label }}</div>
-          <p v-if="suggestion.description" class="mt-0.5 text-xs text-[#8b949e]">
+          <p v-if="suggestion.description" class="mt-0.5 text-xs text-[var(--app-ink-soft)]">
             {{ suggestion.description }}
           </p>
         </li>

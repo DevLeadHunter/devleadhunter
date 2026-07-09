@@ -9,15 +9,17 @@
   >
     <div
       v-if="visible"
-      class="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 p-4 backdrop-blur-md"
+      class="fixed inset-0 z-[100] flex items-center justify-center bg-[var(--app-overlay)] p-4 backdrop-blur-md"
       @click.self="closePanel"
     >
-      <div class="border-muted relative w-full max-w-lg overflow-hidden rounded-2xl border bg-[#1a1a1a] p-6 sm:p-8">
+      <div
+        class="border-muted relative w-full max-w-lg overflow-hidden rounded-2xl border bg-[var(--app-surface)] p-6 sm:p-8"
+      >
         <div class="space-y-6">
           <div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
             <div class="min-w-0 space-y-2">
               <p class="text-xs font-semibold tracking-[0.12em] text-blue-400 uppercase">Desktop update</p>
-              <h2 class="text-xl font-semibold text-[#f9f9f9] sm:text-2xl">{{ statusTitle }}</h2>
+              <h2 class="text-xl font-semibold text-[var(--app-ink)] sm:text-2xl">{{ statusTitle }}</h2>
               <p class="text-muted text-sm leading-relaxed">{{ statusDescription }}</p>
             </div>
             <div v-if="currentVersion || nextVersion" class="flex shrink-0 flex-wrap items-center gap-2">
@@ -33,7 +35,7 @@
 
           <div v-if="status === 'downloading'" class="space-y-3">
             <div class="text-muted flex items-center justify-between gap-3 text-xs">
-              <span class="font-medium text-[#f9f9f9] tabular-nums">{{ downloadLabel }}</span>
+              <span class="font-medium text-[var(--app-ink)] tabular-nums">{{ downloadLabel }}</span>
               <span v-if="totalBytes && totalBytes > 0" class="tabular-nums">
                 {{ (downloadedBytes / (1024 * 1024)).toFixed(1) }} / {{ (totalBytes / (1024 * 1024)).toFixed(1) }} MB
               </span>

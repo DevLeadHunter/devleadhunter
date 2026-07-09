@@ -54,11 +54,6 @@ export const PROSPECT_SOURCE_OPTIONS: ProspectSourceOption[] = [
     label: 'BrightData',
     description: 'API BrightData Web Unlocker + SERP (sans navigateur)',
   },
-  {
-    value: 'mock',
-    label: 'Mock (Test)',
-    description: 'Données fictives pour le développement local',
-  },
 ]
 
 /**

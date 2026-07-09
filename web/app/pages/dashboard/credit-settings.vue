@@ -2,7 +2,7 @@
   <div>
     <!-- Header -->
     <div class="mb-6 flex items-center justify-between">
-      <h1 class="text-xl font-semibold text-[#f9f9f9]">Credit Settings</h1>
+      <h1 class="text-xl font-semibold text-[var(--app-ink)]">Credit Settings</h1>
     </div>
 
     <!-- Credit Settings Form -->
@@ -12,11 +12,11 @@
         <div class="mb-6 grid grid-cols-1 gap-6 md:grid-cols-2">
           <!-- Price per Credit -->
           <div>
-            <label for="price-per-credit" class="mb-2 block text-sm font-medium text-[#f9f9f9]">
+            <label for="price-per-credit" class="mb-2 block text-sm font-medium text-[var(--app-ink)]">
               Price per Credit (EUR)
             </label>
             <div class="relative">
-              <span class="absolute top-1/2 left-3 -translate-y-1/2 text-[#8b949e]">€</span>
+              <span class="absolute top-1/2 left-3 -translate-y-1/2 text-[var(--app-ink-soft)]">€</span>
               <input
                 id="price-per-credit"
                 v-model.number="form.price_per_credit"
@@ -28,12 +28,12 @@
                 class="input-field pl-8"
               />
             </div>
-            <p class="mt-1.5 text-xs text-[#8b949e]">Unit price of one credit in euros</p>
+            <p class="mt-1.5 text-xs text-[var(--app-ink-soft)]">Unit price of one credit in euros</p>
           </div>
 
           <!-- Credits per Search -->
           <div>
-            <label for="credits-per-search" class="mb-2 block text-sm font-medium text-[#f9f9f9]">
+            <label for="credits-per-search" class="mb-2 block text-sm font-medium text-[var(--app-ink)]">
               Credits per Search
             </label>
             <input
@@ -45,12 +45,14 @@
               placeholder="5"
               class="input-field"
             />
-            <p class="mt-1.5 text-xs text-[#8b949e]">Number of credits required to launch a search (minimum)</p>
+            <p class="mt-1.5 text-xs text-[var(--app-ink-soft)]">
+              Number of credits required to launch a search (minimum)
+            </p>
           </div>
 
           <!-- Credits per Result -->
           <div>
-            <label for="credits-per-result" class="mb-2 block text-sm font-medium text-[#f9f9f9]">
+            <label for="credits-per-result" class="mb-2 block text-sm font-medium text-[var(--app-ink)]">
               Credits per Result
             </label>
             <input
@@ -62,12 +64,12 @@
               placeholder="1"
               class="input-field"
             />
-            <p class="mt-1.5 text-xs text-[#8b949e]">Number of credits required per prospect found</p>
+            <p class="mt-1.5 text-xs text-[var(--app-ink-soft)]">Number of credits required per prospect found</p>
           </div>
 
           <!-- Credits per Email -->
           <div>
-            <label for="credits-per-email" class="mb-2 block text-sm font-medium text-[#f9f9f9]">
+            <label for="credits-per-email" class="mb-2 block text-sm font-medium text-[var(--app-ink)]">
               Credits per Email
             </label>
             <input
@@ -79,12 +81,12 @@
               placeholder="3"
               class="input-field"
             />
-            <p class="mt-1.5 text-xs text-[#8b949e]">Number of credits required to send an email</p>
+            <p class="mt-1.5 text-xs text-[var(--app-ink-soft)]">Number of credits required to send an email</p>
           </div>
 
           <!-- Free Credits on Signup -->
           <div>
-            <label for="free-credits" class="mb-2 block text-sm font-medium text-[#f9f9f9]">
+            <label for="free-credits" class="mb-2 block text-sm font-medium text-[var(--app-ink)]">
               Free Credits on Signup
             </label>
             <input
@@ -96,12 +98,12 @@
               placeholder="15"
               class="input-field"
             />
-            <p class="mt-1.5 text-xs text-[#8b949e]">Number of credits offered when a new user registers</p>
+            <p class="mt-1.5 text-xs text-[var(--app-ink-soft)]">Number of credits offered when a new user registers</p>
           </div>
 
           <!-- Minimum Credits Purchase -->
           <div>
-            <label for="minimum-credits-purchase" class="mb-2 block text-sm font-medium text-[#f9f9f9]">
+            <label for="minimum-credits-purchase" class="mb-2 block text-sm font-medium text-[var(--app-ink)]">
               Minimum Credits Purchase
             </label>
             <input
@@ -113,12 +115,12 @@
               placeholder="10"
               class="input-field"
             />
-            <p class="mt-1.5 text-xs text-[#8b949e]">Minimum number of credits that can be purchased</p>
+            <p class="mt-1.5 text-xs text-[var(--app-ink-soft)]">Minimum number of credits that can be purchased</p>
           </div>
         </div>
 
         <!-- Form Actions -->
-        <div class="flex flex-col gap-3 border-t border-[#30363d] pt-4 sm:flex-row sm:justify-end">
+        <div class="flex flex-col gap-3 border-t border-[var(--app-line)] pt-4 sm:flex-row sm:justify-end">
           <button type="button" class="btn-secondary flex-1 sm:flex-none" :disabled="isSaving" @click="resetForm">
             Reset
           </button>
@@ -137,16 +139,16 @@
     <!-- Loading State -->
     <div v-if="isLoading" class="card">
       <div class="animate-pulse space-y-4">
-        <div class="h-4 w-3/4 rounded bg-[#2a2a2a]"></div>
-        <div class="h-10 w-full rounded bg-[#2a2a2a]"></div>
-        <div class="h-4 w-5/6 rounded bg-[#2a2a2a]"></div>
-        <div class="h-10 w-full rounded bg-[#2a2a2a]"></div>
+        <div class="h-4 w-3/4 rounded bg-[var(--app-surface-2)]"></div>
+        <div class="h-10 w-full rounded bg-[var(--app-surface-2)]"></div>
+        <div class="h-4 w-5/6 rounded bg-[var(--app-surface-2)]"></div>
+        <div class="h-10 w-full rounded bg-[var(--app-surface-2)]"></div>
       </div>
     </div>
 
     <!-- Error State -->
-    <div v-if="error && !isLoading" class="card mt-6 border border-[#da3633]/30 bg-[#da3633]/10">
-      <div class="flex items-center gap-2 text-[#DC4747]">
+    <div v-if="error && !isLoading" class="card mt-6 border border-[var(--app-red)]/30 bg-[var(--app-red)]/10">
+      <div class="flex items-center gap-2 text-[var(--app-red)]">
         <i class="fa-solid fa-circle-exclamation"></i>
         <p>{{ error }}</p>
       </div>

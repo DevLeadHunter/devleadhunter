@@ -1,7 +1,7 @@
 <template>
   <div
     v-if="isDesktopDev"
-    class="fixed right-4 bottom-4 z-[90] flex items-center gap-2 rounded-full border border-[#30363d] bg-[#1a1a1a]/90 px-2 py-1 shadow-lg backdrop-blur"
+    class="fixed right-4 bottom-4 z-[90] flex items-center gap-2 rounded-full border border-[var(--app-line)] bg-[var(--app-surface)]/90 px-2 py-1 shadow-lg backdrop-blur"
   >
     <span class="pl-2 text-[10px] font-semibold tracking-[0.12em] text-amber-400 uppercase">Dev</span>
     <UButton

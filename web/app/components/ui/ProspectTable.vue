@@ -1,27 +1,27 @@
 <template>
-  <div class="border-muted overflow-hidden rounded-lg border bg-[#1a1a1a]">
+  <div class="overflow-hidden">
     <div class="overflow-x-auto">
       <table class="w-full min-w-[720px] border-collapse">
         <thead>
-          <tr class="bg-[#050505]">
-            <th class="border-muted w-10 border-b px-3 py-2.5 text-left">
+          <tr class="bg-[var(--app-surface-2)]">
+            <th class="w-12 border-b border-[var(--app-line)] px-4 py-3 text-left">
               <input
                 type="checkbox"
-                class="h-4 w-4 cursor-pointer accent-[#2BAD5F]"
+                class="h-4 w-4 cursor-pointer accent-(--app-accent)"
                 :checked="allSelected"
                 :indeterminate.prop="someSelected && !allSelected"
                 aria-label="Tout sélectionner sur cette page"
                 @change="onToggleAll"
               />
             </th>
-            <th class="text-muted border-muted border-b px-3 py-2.5 text-left text-xs font-semibold">Nom</th>
-            <th class="text-muted border-muted border-b px-3 py-2.5 text-left text-xs font-semibold">Ville</th>
-            <th class="text-muted border-muted border-b px-3 py-2.5 text-left text-xs font-semibold">Téléphone</th>
-            <th class="text-muted border-muted border-b px-3 py-2.5 text-left text-xs font-semibold">Email</th>
-            <th class="text-muted border-muted border-b px-3 py-2.5 text-left text-xs font-semibold">Site web</th>
-            <th class="text-muted border-muted border-b px-3 py-2.5 text-left text-xs font-semibold">Contacté</th>
-            <th class="text-muted border-muted border-b px-3 py-2.5 text-left text-xs font-semibold">Source</th>
-            <th class="text-muted border-muted border-b px-3 py-2.5 text-center text-xs font-semibold">
+            <th class="app-label border-b border-[var(--app-line)] px-4 py-3 text-left">Nom</th>
+            <th class="app-label border-b border-[var(--app-line)] px-4 py-3 text-left">Ville</th>
+            <th class="app-label border-b border-[var(--app-line)] px-4 py-3 text-left">Téléphone</th>
+            <th class="app-label border-b border-[var(--app-line)] px-4 py-3 text-left">Email</th>
+            <th class="app-label border-b border-[var(--app-line)] px-4 py-3 text-left">Site web</th>
+            <th class="app-label border-b border-[var(--app-line)] px-4 py-3 text-left">Contacté</th>
+            <th class="app-label border-b border-[var(--app-line)] px-4 py-3 text-left">Source</th>
+            <th class="border-b border-[var(--app-line)] px-4 py-3 text-center">
               <span class="sr-only">Actions</span>
             </th>
           </tr>
@@ -30,14 +30,14 @@
           <tr
             v-for="prospect in prospects"
             :key="prospect.id"
-            class="border-muted border-b transition-colors last:border-b-0 hover:bg-[#222222]"
-            :class="isSelected(prospect) ? 'bg-[#2BAD5F]/[0.06]' : ''"
+            class="group border-b border-[var(--app-line-soft)] transition-colors last:border-b-0 hover:bg-[var(--app-surface-2)]/60"
+            :class="isSelected(prospect) ? 'bg-[var(--app-accent-soft)]' : ''"
           >
             <!-- Row selection -->
-            <td class="px-3 py-2.5">
+            <td class="px-4 py-3.5">
               <input
                 type="checkbox"
-                class="h-4 w-4 cursor-pointer accent-[#2BAD5F]"
+                class="h-4 w-4 cursor-pointer accent-(--app-accent)"
                 :checked="isSelected(prospect)"
                 :aria-label="`Sélectionner ${prospect.name}`"
                 @change="emit('toggleSelect', prospect)"
@@ -45,67 +45,55 @@
             </td>
 
             <!-- Name — clickable to open detail drawer -->
-            <td class="px-3 py-2.5">
+            <td class="px-4 py-3.5">
               <button
                 type="button"
-                class="cursor-pointer text-left text-sm font-medium text-[#f9f9f9] underline decoration-[#30363d] underline-offset-2 transition-colors hover:text-[#58a6ff] hover:decoration-[#58a6ff]"
+                class="cursor-pointer text-left text-sm font-semibold text-[var(--app-ink)] underline decoration-transparent underline-offset-4 transition-colors hover:decoration-[var(--app-accent)]"
                 @click="emit('viewProspect', prospect)"
               >
                 {{ prospect.name }}
               </button>
             </td>
 
-            <td class="text-muted px-3 py-2.5 text-sm">{{ prospect.city || '—' }}</td>
+            <td class="px-4 py-3.5 text-sm text-[var(--app-ink-soft)]">{{ prospect.city || '—' }}</td>
 
-            <td class="text-muted px-3 py-2.5 text-sm">{{ prospect.phone || '—' }}</td>
+            <td class="font-label px-4 py-3.5 text-xs text-[var(--app-ink-soft)]">{{ prospect.phone || '—' }}</td>
 
-            <td class="text-muted px-3 py-2.5 text-sm">
-              <span v-if="prospect.email" class="text-[#f9f9f9]">{{ prospect.email }}</span>
-              <span v-else class="text-[#30363d]">—</span>
+            <td class="px-4 py-3.5">
+              <span v-if="prospect.email" class="font-label text-xs text-[var(--app-ink)]">{{ prospect.email }}</span>
+              <span v-else class="text-sm text-[var(--app-faint)]">—</span>
             </td>
 
-            <td class="px-3 py-2.5">
-              <span
-                v-if="prospect.website"
-                class="inline-flex items-center rounded bg-[#2BAD5F]/20 px-2 py-0.5 text-xs font-medium text-[#3fb950]"
-              >
-                <UIcon name="i-lucide-circle-check" class="mr-1 h-3 w-3" />
+            <!-- Website: no website = the amber opportunity, not an error -->
+            <td class="px-4 py-3.5">
+              <span v-if="prospect.website" class="app-badge">
+                <UIcon name="i-lucide-circle-check" class="h-3 w-3" />
                 Oui
               </span>
-              <span
-                v-else
-                class="inline-flex items-center rounded bg-[#da3633]/20 px-2 py-0.5 text-xs font-medium text-[#DC4747]"
-              >
+              <span v-else class="app-badge app-badge--progress">
+                <UIcon name="i-lucide-sparkle" class="h-3 w-3" />
                 Non
               </span>
             </td>
 
             <!-- Contacted status (read-only — toggle lives in the prospect drawer) -->
-            <td class="px-3 py-2.5">
-              <span
-                v-if="prospect.contacted"
-                class="inline-flex items-center rounded bg-[#2BAD5F]/20 px-2 py-0.5 text-xs font-medium text-[#3fb950]"
-              >
-                <UIcon name="i-lucide-circle-check" class="mr-1 h-3 w-3" />
+            <td class="px-4 py-3.5">
+              <span v-if="prospect.contacted" class="app-badge app-badge--success">
+                <UIcon name="i-lucide-circle-check" class="h-3 w-3" />
                 Oui
               </span>
-              <span
-                v-else
-                class="inline-flex items-center rounded bg-[#da3633]/20 px-2 py-0.5 text-xs font-medium text-[#DC4747]"
-              >
-                Non
-              </span>
+              <span v-else class="app-badge">Non</span>
             </td>
 
-            <td class="px-3 py-2.5">
+            <td class="px-4 py-3.5">
               <UiProspectSourceBadge :source="prospect.source" />
             </td>
 
-            <!-- Delete quick action -->
-            <td class="px-3 py-2.5 text-center">
+            <!-- Delete quick action (revealed on row hover) -->
+            <td class="px-4 py-3.5 text-center">
               <button
                 type="button"
-                class="inline-flex h-7 w-7 cursor-pointer items-center justify-center rounded bg-[#da3633]/20 text-[#DC4747] transition-colors hover:bg-[#da3633]/40"
+                class="inline-flex h-7 w-7 cursor-pointer items-center justify-center rounded-full text-[var(--app-ink-soft)] opacity-0 transition-all group-hover:opacity-100 hover:bg-[var(--app-red-soft)] hover:text-[var(--app-red)] focus-visible:opacity-100"
                 title="Supprimer ce prospect"
                 @click="emit('deleteProspect', prospect)"
               >
@@ -119,8 +107,8 @@
 
     <!-- Empty State -->
     <div v-if="prospects.length === 0" class="py-12 text-center">
-      <UIcon name="i-lucide-search" class="text-muted mb-3 h-10 w-10" />
-      <p class="text-muted text-sm">Aucun prospect trouvé.</p>
+      <LandingAsterisk class="mb-3 text-3xl text-[var(--app-accent)]" />
+      <p class="text-sm text-[var(--app-ink-soft)]">Aucun prospect trouvé.</p>
     </div>
   </div>
 </template>

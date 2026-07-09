@@ -3,7 +3,7 @@
     <!-- Header -->
     <div class="flex items-center justify-between">
       <div>
-        <h1 class="text-3xl font-bold text-[#f9f9f9]">Emails envoyés</h1>
+        <h1 class="text-3xl font-bold text-[var(--app-ink)]">Emails envoyés</h1>
         <p class="text-muted mt-2 text-sm">Historique complet des emails de prospection</p>
       </div>
       <div class="flex items-center gap-3">
@@ -35,15 +35,15 @@
     <div class="grid grid-cols-2 gap-4 md:grid-cols-6">
       <div class="card text-center">
         <p class="text-muted text-xs font-medium">Envoyés</p>
-        <p class="mt-1 text-2xl font-bold text-[#f9f9f9]">{{ stats.total_sent }}</p>
+        <p class="mt-1 text-2xl font-bold text-[var(--app-ink)]">{{ stats.total_sent }}</p>
       </div>
       <div class="card text-center">
         <p class="text-muted text-xs font-medium">Délivrés</p>
-        <p class="mt-1 text-2xl font-bold text-[#3fb950]">{{ stats.total_delivered }}</p>
+        <p class="mt-1 text-2xl font-bold text-[var(--app-green)]">{{ stats.total_delivered }}</p>
       </div>
       <div class="card text-center">
         <p class="text-muted text-xs font-medium">Ouverts</p>
-        <p class="mt-1 text-2xl font-bold text-[#58a6ff]">{{ stats.total_opened }}</p>
+        <p class="mt-1 text-2xl font-bold text-[var(--app-accent-ink)]">{{ stats.total_opened }}</p>
       </div>
       <div class="card text-center">
         <p class="text-muted text-xs font-medium">Cliqués</p>
@@ -51,11 +51,11 @@
       </div>
       <div class="card text-center">
         <p class="text-muted text-xs font-medium">Bounces</p>
-        <p class="mt-1 text-2xl font-bold text-[#DC4747]">{{ stats.total_bounced }}</p>
+        <p class="mt-1 text-2xl font-bold text-[var(--app-red)]">{{ stats.total_bounced }}</p>
       </div>
       <div class="card text-center">
         <p class="text-muted text-xs font-medium">Taux ouv.</p>
-        <p class="mt-1 text-2xl font-bold text-[#f9f9f9]">{{ stats.open_rate }}%</p>
+        <p class="mt-1 text-2xl font-bold text-[var(--app-ink)]">{{ stats.open_rate }}%</p>
       </div>
     </div>
 
@@ -81,7 +81,10 @@
     </div>
 
     <!-- Error -->
-    <div v-if="error" class="rounded-lg border border-[#DC4747] bg-[#1a1a1a] p-4 text-[#DC4747]">
+    <div
+      v-if="error"
+      class="rounded-lg border border-[var(--app-red)] bg-[var(--app-surface)] p-4 text-[var(--app-red)]"
+    >
       <p class="font-semibold">Erreur de chargement</p>
       <p class="text-muted mt-1 text-sm">{{ error }}</p>
     </div>
@@ -94,7 +97,7 @@
     <!-- Empty -->
     <div v-else-if="filteredLogs.length === 0" class="py-12 text-center">
       <i class="fa-solid fa-envelope-open text-muted mb-4 text-6xl"></i>
-      <h3 class="mt-4 text-lg font-medium text-[#f9f9f9]">Aucun email trouvé</h3>
+      <h3 class="mt-4 text-lg font-medium text-[var(--app-ink)]">Aucun email trouvé</h3>
       <p class="text-muted mt-2 text-sm">
         {{
           filterStatus !== 'all' || filterCampaignId !== 'all' || searchQuery
@@ -108,7 +111,7 @@
     <div v-else class="card overflow-hidden">
       <table class="w-full border-collapse">
         <thead>
-          <tr class="bg-[#050505]">
+          <tr class="bg-[var(--app-bg)]">
             <th class="text-muted border-muted border-b px-3 py-2.5 text-left text-xs font-semibold">Destinataire</th>
             <th class="text-muted border-muted border-b px-3 py-2.5 text-left text-xs font-semibold">Sujet</th>
             <th class="text-muted border-muted border-b px-3 py-2.5 text-left text-xs font-semibold">Campagne</th>
@@ -121,11 +124,11 @@
           <tr
             v-for="log in paginatedLogs"
             :key="log.id"
-            class="border-muted cursor-pointer border-b transition-colors last:border-b-0 hover:bg-[#222222]"
+            class="border-muted cursor-pointer border-b transition-colors last:border-b-0 hover:bg-[var(--app-surface-2)]"
             @click="openDrawer(log)"
           >
             <td class="px-3 py-2.5">
-              <div class="text-sm font-medium text-[#f9f9f9]">
+              <div class="text-sm font-medium text-[var(--app-ink)]">
                 {{ log.recipient_name || log.recipient_email }}
               </div>
               <div class="text-muted text-xs">{{ log.recipient_email }}</div>
@@ -148,14 +151,18 @@
                   :key="step.key"
                   :title="step.ts ? `${step.label} — ${formatDate(step.ts)}` : `${step.label} : pas encore`"
                   class="flex h-6 w-6 items-center justify-center rounded-md"
-                  :class="step.ts ? 'bg-[#1a1a1a]' : 'bg-transparent'"
+                  :class="step.ts ? 'bg-[var(--app-surface)]' : 'bg-transparent'"
                 >
-                  <UIcon :name="step.icon" class="h-3.5 w-3.5" :class="step.ts ? step.color : 'text-[#30363d]'" />
+                  <UIcon
+                    :name="step.icon"
+                    class="h-3.5 w-3.5"
+                    :class="step.ts ? step.color : 'text-[var(--app-faint)]'"
+                  />
                 </span>
               </div>
             </td>
             <td class="px-3 py-2.5 text-sm">
-              <div class="text-[#f9f9f9]">{{ log.sent_at ? formatDate(log.sent_at) : '—' }}</div>
+              <div class="text-[var(--app-ink)]">{{ log.sent_at ? formatDate(log.sent_at) : '—' }}</div>
               <div v-if="lastActivityAt(log) && lastActivityAt(log) !== log.sent_at" class="text-muted mt-0.5 text-xs">
                 Activité : {{ formatDate(lastActivityAt(log)) }}
               </div>
@@ -165,7 +172,7 @@
       </table>
 
       <!-- Pagination -->
-      <div class="flex items-center justify-between border-t border-[#30363d] px-6 py-4">
+      <div class="flex items-center justify-between border-t border-[var(--app-line)] px-6 py-4">
         <div class="text-muted text-sm">
           {{ (currentPage - 1) * pageSize + 1 }}–{{ Math.min(currentPage * pageSize, filteredLogs.length) }} sur
           {{ filteredLogs.length }}
@@ -201,13 +208,13 @@
     <!-- Modale envoi manuel -->
     <div
       v-if="showSendModal"
-      class="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm"
+      class="fixed inset-0 z-50 flex items-center justify-center bg-[var(--app-overlay)] backdrop-blur-sm"
       @click.self="showSendModal = false"
     >
-      <div class="border-muted w-full max-w-lg rounded-lg border bg-[#1a1a1a] p-6 shadow-lg">
+      <div class="border-muted w-full max-w-lg rounded-lg border bg-[var(--app-surface)] p-6 shadow-lg">
         <div class="mb-5 flex items-center justify-between">
-          <h2 class="text-base font-semibold text-[#f9f9f9]">Envoyer un email</h2>
-          <button class="text-muted hover:text-[#f9f9f9]" @click="showSendModal = false">
+          <h2 class="text-base font-semibold text-[var(--app-ink)]">Envoyer un email</h2>
+          <button class="text-muted hover:text-[var(--app-ink)]" @click="showSendModal = false">
             <i class="fa-solid fa-xmark"></i>
           </button>
         </div>
@@ -216,7 +223,7 @@
           <!-- Destinataire -->
           <div>
             <label class="text-muted mb-1.5 block text-xs font-medium">
-              Email destinataire <span class="text-[#DC4747]">*</span>
+              Email destinataire <span class="text-[var(--app-red)]">*</span>
             </label>
             <input
               v-model="sendForm.recipient_email"
@@ -236,7 +243,7 @@
           <!-- Sujet -->
           <div>
             <label class="text-muted mb-1.5 block text-xs font-medium">
-              Sujet <span class="text-[#DC4747]">*</span>
+              Sujet <span class="text-[var(--app-red)]">*</span>
             </label>
             <input v-model="sendForm.subject" type="text" required class="input-field" placeholder="votre site demo" />
           </div>
@@ -244,7 +251,7 @@
           <!-- Corps -->
           <div>
             <label class="text-muted mb-1.5 block text-xs font-medium">
-              Message <span class="text-[#DC4747]">*</span>
+              Message <span class="text-[var(--app-red)]">*</span>
             </label>
             <textarea
               v-model="sendForm.body"
@@ -452,7 +459,7 @@ function getEngagement(log: EmailLog): EngagementStep[] {
       label: 'Délivré',
       icon: 'i-lucide-circle-check',
       ts: log.delivered_at,
-      color: 'text-[#3fb950]',
+      color: 'text-[var(--app-green)]',
     },
     { key: 'opened', label: 'Ouvert', icon: 'i-lucide-mail-open', ts: log.opened_at, color: 'text-[#a78bfa]' },
     {

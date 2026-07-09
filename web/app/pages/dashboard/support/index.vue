@@ -3,8 +3,8 @@
     <header class="mb-6 space-y-4">
       <div class="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
         <div class="space-y-2">
-          <h1 class="text-lg leading-tight font-semibold text-[#f9f9f9] md:text-xl">Support tickets</h1>
-          <p class="max-w-2xl text-sm text-[#8b949e]">
+          <h1 class="text-lg leading-tight font-semibold text-[var(--app-ink)] md:text-xl">Support tickets</h1>
+          <p class="max-w-2xl text-sm text-[var(--app-ink-soft)]">
             Review every request in one place and jump back into conversations instantly. Admins see the full queue
             while members only see their own tickets.
           </p>
@@ -28,7 +28,7 @@
     <div class="space-y-4">
       <div v-if="isAdmin" class="card p-4 sm:p-6">
         <div class="space-y-3">
-          <h2 class="text-sm font-semibold tracking-wide text-[#f9f9f9] uppercase">Filter</h2>
+          <h2 class="text-sm font-semibold tracking-wide text-[var(--app-ink)] uppercase">Filter</h2>
           <div class="flex flex-wrap gap-2">
             <button
               v-for="filter in statusFilters"
@@ -38,7 +38,7 @@
                 'rounded-full border px-3 py-1.5 text-xs font-medium transition-all',
                 activeStatus === filter.value
                   ? `${filter.classes} border-transparent`
-                  : 'border-[#30363d] text-[#8b949e] hover:text-[#f9f9f9]',
+                  : 'border-[var(--app-line)] text-[var(--app-ink-soft)] hover:text-[var(--app-ink)]',
               ]"
               @click="updateStatus(filter.value)"
             >
@@ -51,15 +51,15 @@
       <div v-if="isLoading" class="space-y-2">
         <div v-for="n in 6" :key="`skeleton-${n}`" class="card">
           <div class="animate-pulse">
-            <div class="mb-2 h-4 w-3/4 rounded bg-[#2a2a2a]"></div>
-            <div class="h-4 w-full rounded bg-[#2a2a2a]"></div>
+            <div class="mb-2 h-4 w-3/4 rounded bg-[var(--app-surface-2)]"></div>
+            <div class="h-4 w-full rounded bg-[var(--app-surface-2)]"></div>
           </div>
         </div>
       </div>
 
       <div v-else-if="filteredTickets.length === 0" class="card py-16 text-center">
         <i class="fa-regular fa-face-smile mb-3 text-5xl text-[#71A3DB]"></i>
-        <p class="text-sm text-[#8b949e]">
+        <p class="text-sm text-[var(--app-ink-soft)]">
           No tickets for this filter yet. Create a request or adjust the status above.
         </p>
       </div>
@@ -69,30 +69,30 @@
           v-for="ticket in filteredTickets"
           :key="ticket.id"
           :to="`/dashboard/support/${ticket.id}`"
-          class="card relative block overflow-hidden transition-colors hover:border-[#f9f9f9]"
+          class="card relative block overflow-hidden transition-colors hover:border-[var(--app-ink)]"
         >
           <div :class="['absolute top-0 bottom-0 left-0 w-1.5', getStatusBorderColor(ticket.status)]"></div>
           <div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
             <div class="min-w-0 flex-1 space-y-2">
-              <h3 class="text-base font-semibold text-[#f9f9f9]">{{ ticket.subject }}</h3>
-              <p class="line-clamp-2 text-sm text-[#8b949e]">
+              <h3 class="text-base font-semibold text-[var(--app-ink)]">{{ ticket.subject }}</h3>
+              <p class="line-clamp-2 text-sm text-[var(--app-ink-soft)]">
                 {{ ticket.description }}
               </p>
-              <div class="flex flex-wrap items-center gap-3 text-xs text-[#8b949e]">
+              <div class="flex flex-wrap items-center gap-3 text-xs text-[var(--app-ink-soft)]">
                 <span class="inline-flex items-center gap-1">
-                  <i class="fa-solid fa-user text-[#f9f9f9]"></i>
+                  <i class="fa-solid fa-user text-[var(--app-ink)]"></i>
                   {{ ticket.user_name }}
                 </span>
                 <span class="inline-flex items-center gap-1">
-                  <i class="fa-solid fa-tag text-[#f9f9f9]"></i>
+                  <i class="fa-solid fa-tag text-[var(--app-ink)]"></i>
                   {{ topicLabel(ticket.topic) }}
                 </span>
                 <span class="inline-flex items-center gap-1">
-                  <i class="fa-regular fa-clock text-[#f9f9f9]"></i>
+                  <i class="fa-regular fa-clock text-[var(--app-ink)]"></i>
                   {{ formatRelative(ticket.last_message_at || ticket.created_at) }}
                 </span>
                 <span v-if="ticket.attachments_count > 0" class="inline-flex items-center gap-1">
-                  <i class="fa-solid fa-paperclip text-[#f9f9f9]"></i>
+                  <i class="fa-solid fa-paperclip text-[var(--app-ink)]"></i>
                   {{ ticket.attachments_count }}
                 </span>
                 <span
@@ -149,9 +149,9 @@ const statusStyles: Record<string, string> = {
   open: 'bg-[#71A3DB]/20 text-[#71A3DB]',
   waiting_support: 'bg-[#F8D57E]/20 text-[#F8D57E]',
   waiting_user: 'bg-[#A585DB]/25 text-[#A585DB]',
-  resolved: 'bg-[#2BAD5F]/20 text-[#2BAD5F]',
-  closed: 'bg-[#8b949e]/20 text-[#8b949e]',
-  default: 'bg-[#30363d] text-[#f9f9f9]',
+  resolved: 'bg-[var(--app-green)]/20 text-[var(--app-green)]',
+  closed: 'bg-[#8b949e]/20 text-[var(--app-ink-soft)]',
+  default: 'bg-[var(--app-surface-2)] text-[var(--app-ink)]',
 }
 
 const statusFilters = [
@@ -160,7 +160,7 @@ const statusFilters = [
   { value: 'waiting_user', label: 'Waiting on customer', classes: statusStyles.waiting_user },
   { value: 'resolved', label: 'Resolved', classes: statusStyles.resolved },
   { value: 'closed', label: 'Closed', classes: statusStyles.closed },
-  { value: 'all', label: 'All tickets', classes: 'bg-[#050505] text-[#f9f9f9]' },
+  { value: 'all', label: 'All tickets', classes: 'bg-[var(--app-bg)] text-[var(--app-ink)]' },
 ]
 
 const filteredTickets = computed(() => {
@@ -194,10 +194,10 @@ function getStatusBorderColor(status: string): string {
     open: 'bg-[#71A3DB]',
     waiting_support: 'bg-[#F8D57E]',
     waiting_user: 'bg-[#A585DB]',
-    resolved: 'bg-[#2BAD5F]',
+    resolved: 'bg-[var(--app-green)]',
     closed: 'bg-[#8b949e]',
   }
-  return borderColors[status] || 'bg-[#30363d]'
+  return borderColors[status] || 'bg-[var(--app-surface-2)]'
 }
 
 function formatRelative(value: string): string {

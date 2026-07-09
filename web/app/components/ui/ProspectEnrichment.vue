@@ -1,7 +1,7 @@
 <template>
   <div class="space-y-3 px-5 py-4">
     <div class="flex items-center justify-between">
-      <p class="text-[10px] font-semibold tracking-wider text-[#8b949e] uppercase">Enrichissement</p>
+      <p class="text-[10px] font-semibold tracking-wider text-[var(--app-ink-soft)] uppercase">Enrichissement</p>
       <span
         v-if="record"
         :class="['inline-flex items-center rounded px-2 py-0.5 text-[10px] font-medium', statusClass]"
@@ -10,7 +10,7 @@
       </span>
     </div>
 
-    <p class="text-xs text-[#8b949e]">
+    <p class="text-xs text-[var(--app-ink-soft)]">
       Données riches (photos, avis, horaires, note) utilisées pour générer le site. Séparé de la recherche de prospects.
     </p>
 
@@ -35,27 +35,27 @@
         <!-- Rating + reviews count + description -->
         <div class="grid grid-cols-2 gap-3">
           <div>
-            <label class="mb-1 block text-[10px] text-[#8b949e]">Note (/5)</label>
+            <label class="mb-1 block text-[10px] text-[var(--app-ink-soft)]">Note (/5)</label>
             <input v-model.number="form.rating" type="number" min="0" max="5" step="0.1" class="input-field" />
           </div>
           <div>
-            <label class="mb-1 block text-[10px] text-[#8b949e]">Nb d'avis</label>
+            <label class="mb-1 block text-[10px] text-[var(--app-ink-soft)]">Nb d'avis</label>
             <input v-model.number="form.reviews_count" type="number" min="0" class="input-field" />
           </div>
         </div>
         <div>
-          <label class="mb-1 block text-[10px] text-[#8b949e]">Description</label>
+          <label class="mb-1 block text-[10px] text-[var(--app-ink-soft)]">Description</label>
           <textarea v-model="form.description" rows="2" class="input-field"></textarea>
         </div>
 
         <!-- Photos -->
         <div>
-          <label class="mb-1 block text-[10px] text-[#8b949e]">Photos ({{ form.photos.length }})</label>
+          <label class="mb-1 block text-[10px] text-[var(--app-ink-soft)]">Photos ({{ form.photos.length }})</label>
           <div v-if="form.photos.length" class="mb-2 grid grid-cols-3 gap-2">
             <div v-for="(photo, i) in form.photos" :key="i" class="group relative">
-              <img :src="photo" alt="" class="h-16 w-full rounded border border-[#30363d] object-cover" />
+              <img :src="photo" alt="" class="h-16 w-full rounded border border-[var(--app-line)] object-cover" />
               <button
-                class="absolute top-0.5 right-0.5 flex h-5 w-5 items-center justify-center rounded bg-black/70 text-[10px] text-white opacity-0 transition-opacity group-hover:opacity-100"
+                class="absolute top-0.5 right-0.5 flex h-5 w-5 items-center justify-center rounded bg-[var(--app-overlay)] text-[10px] text-white opacity-0 transition-opacity group-hover:opacity-100"
                 @click="removePhoto(i)"
               >
                 <i class="fa-solid fa-xmark"></i>
@@ -70,15 +70,15 @@
 
         <!-- Services -->
         <div>
-          <label class="mb-1 block text-[10px] text-[#8b949e]">Services</label>
+          <label class="mb-1 block text-[10px] text-[var(--app-ink-soft)]">Services</label>
           <div v-if="form.services.length" class="mb-2 flex flex-wrap gap-1.5">
             <span
               v-for="(svc, i) in form.services"
               :key="i"
-              class="inline-flex items-center gap-1 rounded border border-[#30363d] bg-[#1a1a1a] px-2 py-0.5 text-xs text-[#f9f9f9]"
+              class="inline-flex items-center gap-1 rounded border border-[var(--app-line)] bg-[var(--app-surface)] px-2 py-0.5 text-xs text-[var(--app-ink)]"
             >
               {{ svc }}
-              <button class="text-[#8b949e] hover:text-[#da3633]" @click="removeService(i)">
+              <button class="text-[var(--app-ink-soft)] hover:text-[var(--app-red)]" @click="removeService(i)">
                 <i class="fa-solid fa-xmark text-[10px]"></i>
               </button>
             </span>
@@ -96,18 +96,18 @@
 
         <!-- Reviews (read-only, removable) -->
         <div v-if="form.reviews.length">
-          <label class="mb-1 block text-[10px] text-[#8b949e]">Avis ({{ form.reviews.length }})</label>
+          <label class="mb-1 block text-[10px] text-[var(--app-ink-soft)]">Avis ({{ form.reviews.length }})</label>
           <div class="space-y-1.5">
             <div
               v-for="(review, i) in form.reviews"
               :key="i"
-              class="flex items-start gap-2 rounded border border-[#30363d] bg-[#1a1a1a] p-2"
+              class="flex items-start gap-2 rounded border border-[var(--app-line)] bg-[var(--app-surface)] p-2"
             >
               <div class="min-w-0 flex-1">
-                <p class="text-[10px] font-medium text-[#f9f9f9]">{{ review.author || 'Client' }}</p>
-                <p class="line-clamp-2 text-[11px] text-[#8b949e]">{{ review.text }}</p>
+                <p class="text-[10px] font-medium text-[var(--app-ink)]">{{ review.author || 'Client' }}</p>
+                <p class="line-clamp-2 text-[11px] text-[var(--app-ink-soft)]">{{ review.text }}</p>
               </div>
-              <button class="text-[#8b949e] hover:text-[#da3633]" @click="removeReview(i)">
+              <button class="text-[var(--app-ink-soft)] hover:text-[var(--app-red)]" @click="removeReview(i)">
                 <i class="fa-solid fa-xmark text-xs"></i>
               </button>
             </div>
@@ -116,23 +116,23 @@
 
         <!-- Opening hours (read-only, removable) -->
         <div v-if="form.opening_hours.length">
-          <label class="mb-1 block text-[10px] text-[#8b949e]">Horaires</label>
+          <label class="mb-1 block text-[10px] text-[var(--app-ink-soft)]">Horaires</label>
           <div class="space-y-1">
             <div
               v-for="(row, i) in form.opening_hours"
               :key="i"
-              class="flex items-center justify-between rounded border border-[#30363d] bg-[#1a1a1a] px-2 py-1 text-[11px]"
+              class="flex items-center justify-between rounded border border-[var(--app-line)] bg-[var(--app-surface)] px-2 py-1 text-[11px]"
             >
-              <span class="text-[#f9f9f9]">{{ row.day }}</span>
-              <span class="text-[#8b949e]">{{ row.hours }}</span>
-              <button class="text-[#8b949e] hover:text-[#da3633]" @click="removeHours(i)">
+              <span class="text-[var(--app-ink)]">{{ row.day }}</span>
+              <span class="text-[var(--app-ink-soft)]">{{ row.hours }}</span>
+              <button class="text-[var(--app-ink-soft)] hover:text-[var(--app-red)]" @click="removeHours(i)">
                 <i class="fa-solid fa-xmark text-[10px]"></i>
               </button>
             </div>
           </div>
         </div>
 
-        <p v-if="record.error_message" class="text-[11px] text-[#da3633]">{{ record.error_message }}</p>
+        <p v-if="record.error_message" class="text-[11px] text-[var(--app-red)]">{{ record.error_message }}</p>
 
         <div class="flex gap-2 pt-1">
           <button class="btn-secondary flex-1 text-xs" :disabled="isRunning" @click="run">
@@ -212,11 +212,11 @@ const statusLabel: ComputedRef<string> = computed((): string => STATUS_LABELS[re
 const statusClass: ComputedRef<string> = computed((): string => {
   switch (record.value?.status) {
     case 'completed':
-      return 'border border-[#3fb950]/40 bg-[#3fb950]/10 text-[#3fb950]'
+      return 'border border-[var(--app-green)]/40 bg-[var(--app-green)]/10 text-[var(--app-green)]'
     case 'failed':
-      return 'border border-[#da3633]/40 bg-[#da3633]/10 text-[#da3633]'
+      return 'border border-[var(--app-red)]/40 bg-[var(--app-red)]/10 text-[var(--app-red)]'
     default:
-      return 'border border-[#30363d] bg-[#1a1a1a] text-[#8b949e]'
+      return 'border border-[var(--app-line)] bg-[var(--app-surface)] text-[var(--app-ink-soft)]'
   }
 })
 

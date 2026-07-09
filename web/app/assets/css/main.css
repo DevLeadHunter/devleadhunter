@@ -161,6 +161,271 @@
 }
 
 /* ============================================================
+   App (dashboard) — « Atelier, édition outil »
+   Same brand world as the landing (paper/ink/amber annotations,
+   black & white actions) tuned for daily dense usage, with a
+   light (paper) and a dark (warm ink) theme driven by variables.
+   Light values live at :root so shared components keep sane
+   colors outside the dashboard; dark only applies inside
+   .app-theme[data-theme='dark'].
+   ============================================================ */
+:root {
+  --app-bg: #f4f1e9;
+  --app-surface: #fbf9f3;
+  --app-surface-2: #ede9de;
+  --app-ink: #1d1a14;
+  --app-ink-soft: #6e6759;
+  --app-faint: #b7ae9c;
+  --app-line: #e1dbcc;
+  --app-line-soft: #eae5d8;
+  --app-accent: #e8a33c;
+  --app-accent-ink: #9c6b14;
+  --app-accent-soft: rgba(232, 163, 60, 0.14);
+  --app-green: #2f7d4e;
+  --app-green-soft: rgba(47, 125, 78, 0.12);
+  --app-red: #bf4d33;
+  --app-red-soft: rgba(191, 77, 51, 0.12);
+  --app-overlay: rgba(29, 26, 20, 0.45);
+  --app-btn-bg: #1d1a14;
+  --app-btn-text: #fbf9f3;
+  --app-shadow-soft: 0 10px 30px -18px rgba(29, 26, 20, 0.35);
+}
+
+/* `.dark` (posé sur <html> par useAppTheme) couvre aussi les éléments
+   téléportés dans <body> (drawers, modales) qui sortent de .app-theme. */
+.app-theme[data-theme='dark'],
+html.dark {
+  --app-bg: #151210;
+  --app-surface: #1d1915;
+  --app-surface-2: #27221b;
+  --app-ink: #efe9dc;
+  --app-ink-soft: #a69d8c;
+  --app-faint: #5a5344;
+  --app-line: #322c22;
+  --app-line-soft: #2a251c;
+  --app-accent: #e8a33c;
+  --app-accent-ink: #eab965;
+  --app-accent-soft: rgba(232, 163, 60, 0.14);
+  --app-green: #4fa571;
+  --app-green-soft: rgba(79, 165, 113, 0.16);
+  --app-red: #d4694f;
+  --app-red-soft: rgba(212, 105, 79, 0.16);
+  --app-overlay: rgba(0, 0, 0, 0.6);
+  --app-btn-bg: #efe9dc;
+  --app-btn-text: #151210;
+  --app-shadow-soft: 0 10px 30px -18px rgba(0, 0, 0, 0.6);
+}
+
+.app-theme {
+  background-color: var(--app-bg);
+  color: var(--app-ink);
+  font-family: 'Instrument Sans', 'Inter', system-ui, sans-serif;
+}
+
+.app-theme ::selection {
+  background-color: var(--app-ink);
+  color: var(--app-bg);
+}
+
+@layer components {
+  /* — App primitives — */
+  .app-card {
+    @apply rounded-xl border;
+    border-color: var(--app-line);
+    background-color: var(--app-surface);
+  }
+
+  .app-btn-primary {
+    @apply inline-flex h-10 min-h-10 cursor-pointer items-center justify-center gap-2 rounded-full px-5 text-sm font-semibold;
+    background-color: var(--app-btn-bg);
+    color: var(--app-btn-text);
+    transition:
+      opacity 0.2s ease,
+      transform 0.2s ease;
+  }
+
+  .app-btn-primary:hover {
+    opacity: 0.88;
+  }
+
+  .app-btn-secondary {
+    @apply inline-flex h-10 min-h-10 cursor-pointer items-center justify-center gap-2 rounded-full border px-5 text-sm font-medium;
+    border-color: var(--app-line);
+    background-color: var(--app-surface);
+    color: var(--app-ink);
+    transition:
+      border-color 0.2s ease,
+      background-color 0.2s ease;
+  }
+
+  .app-btn-secondary:hover {
+    border-color: var(--app-ink-soft);
+    background-color: var(--app-surface-2);
+  }
+
+  .app-btn-danger {
+    @apply inline-flex h-10 min-h-10 cursor-pointer items-center justify-center gap-2 rounded-full px-5 text-sm font-semibold;
+    background-color: var(--app-red);
+    color: #fbf9f3;
+    transition: opacity 0.2s ease;
+  }
+
+  .app-btn-danger:hover {
+    opacity: 0.88;
+  }
+
+  .app-input {
+    @apply font-body h-10 min-h-10 w-full rounded-lg border px-3 text-sm;
+    border-color: var(--app-line);
+    background-color: var(--app-surface);
+    color: var(--app-ink);
+    transition: border-color 0.2s ease;
+  }
+
+  .app-input::placeholder {
+    color: var(--app-faint);
+  }
+
+  .app-input:focus {
+    border-color: var(--app-ink);
+    outline: none;
+  }
+
+  /* Mono uppercase data label (table headers, section titles, form labels) */
+  .app-label {
+    @apply font-label text-[0.68rem] font-medium tracking-[0.14em] uppercase;
+    color: var(--app-ink-soft);
+  }
+
+  /* Page title — the Fraunces signature moment of each screen */
+  .app-page-title {
+    @apply font-display text-2xl font-semibold tracking-[-0.01em] sm:text-3xl;
+    color: var(--app-ink);
+  }
+
+  /* Status pill */
+  .app-badge {
+    @apply inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-medium;
+    background-color: var(--app-surface-2);
+    color: var(--app-ink-soft);
+  }
+
+  .app-badge--success {
+    background-color: var(--app-green-soft);
+    color: var(--app-green);
+  }
+
+  .app-badge--danger {
+    background-color: var(--app-red-soft);
+    color: var(--app-red);
+  }
+
+  .app-badge--progress {
+    background-color: var(--app-accent-soft);
+    color: var(--app-accent-ink);
+  }
+
+  /* — Legacy class remap, scoped to the dashboard shell —
+     Every not-yet-migrated dashboard page keeps using .card/.btn-*/
+  .input-field/.text-muted and instantly follows both themes. */ .app-theme .card {
+    @apply rounded-xl border p-4 shadow-none;
+    border-color: var(--app-line);
+    background-color: var(--app-surface);
+  }
+
+  .app-theme .btn-primary {
+    @apply h-10 min-h-10 rounded-full px-5 text-sm font-semibold shadow-none;
+    background-color: var(--app-btn-bg);
+    color: var(--app-btn-text);
+  }
+
+  .app-theme .btn-primary:hover {
+    @apply shadow-none;
+    background-color: var(--app-btn-bg);
+    opacity: 0.88;
+  }
+
+  .app-theme .btn-secondary {
+    @apply h-10 min-h-10 rounded-full border px-5 text-sm font-medium;
+    border-color: var(--app-line);
+    background-color: var(--app-surface);
+    color: var(--app-ink);
+  }
+
+  .app-theme .btn-secondary:hover {
+    border-color: var(--app-ink-soft);
+    background-color: var(--app-surface-2);
+  }
+
+  .app-theme .btn-danger {
+    @apply rounded-full;
+    background-color: var(--app-red);
+    color: #fbf9f3;
+  }
+
+  .app-theme .btn-danger:hover {
+    background-color: var(--app-red);
+    opacity: 0.88;
+  }
+
+  .app-theme .input-field {
+    @apply rounded-lg;
+    border-color: var(--app-line);
+    background-color: var(--app-surface);
+    color: var(--app-ink);
+  }
+
+  .app-theme .input-field::placeholder {
+    color: var(--app-faint);
+  }
+
+  .app-theme .input-field:focus {
+    border-color: var(--app-ink);
+  }
+
+  .app-theme .input-field option {
+    background-color: var(--app-surface);
+    color: var(--app-ink);
+  }
+
+  .app-theme .text-muted {
+    color: var(--app-ink-soft);
+  }
+
+  .app-theme .border-muted {
+    border-color: var(--app-line);
+  }
+
+  .app-theme h1 {
+    color: var(--app-ink);
+  }
+
+  .app-theme .btn-sidebar-hover {
+    background-color: var(--app-surface-2);
+  }
+
+  .app-theme .btn-sidebar-active {
+    background-color: var(--app-surface-2);
+  }
+}
+
+/* Themed spinner (dashboard boot + inline loaders) */
+.app-theme .loader-smooth {
+  width: 48px;
+  height: 48px;
+  border: 3px solid var(--app-line);
+  border-left-color: var(--app-accent);
+  border-radius: 50%;
+  animation: app-spin 0.8s linear infinite;
+}
+
+@keyframes app-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* ============================================================
    Landing — editorial light theme (« Atelier »)
    Warm paper background, black & white DA: ink is the only
    action color (matches the DevLeadHunter app identity).

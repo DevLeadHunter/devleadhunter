@@ -2,7 +2,7 @@
   <div>
     <!-- Header -->
     <div class="mb-6 flex items-center justify-between">
-      <h1 class="text-xl font-semibold text-[#f9f9f9]">Users</h1>
+      <h1 class="text-xl font-semibold text-[var(--app-ink)]">Users</h1>
       <button class="btn-primary" @click="showCreateModal = true">
         <i class="fa-solid fa-plus mr-1.5"></i>
         <span>Add User</span>
@@ -12,7 +12,7 @@
     <!-- Search Bar -->
     <div class="card mb-6">
       <div class="relative">
-        <i class="fa-solid fa-magnifying-glass absolute top-1/2 left-3 -translate-y-1/2 text-[#8b949e]"></i>
+        <i class="fa-solid fa-magnifying-glass absolute top-1/2 left-3 -translate-y-1/2 text-[var(--app-ink-soft)]"></i>
         <input v-model="searchQuery" type="text" placeholder="Search by name or email" class="input-field pl-10" />
       </div>
     </div>
@@ -22,59 +22,70 @@
       <div class="overflow-x-auto">
         <table class="w-full">
           <thead>
-            <tr class="border-b border-[#30363d] bg-[#050505]">
-              <th class="px-4 py-3 text-left text-xs font-medium tracking-wider text-[#8b949e] uppercase">User</th>
-              <th class="px-4 py-3 text-left text-xs font-medium tracking-wider text-[#8b949e] uppercase">Email</th>
-              <th class="px-4 py-3 text-left text-xs font-medium tracking-wider text-[#8b949e] uppercase">Role</th>
-              <th class="px-4 py-3 text-left text-xs font-medium tracking-wider text-[#8b949e] uppercase">
+            <tr class="border-b border-[var(--app-line)] bg-[var(--app-bg)]">
+              <th class="px-4 py-3 text-left text-xs font-medium tracking-wider text-[var(--app-ink-soft)] uppercase">
+                User
+              </th>
+              <th class="px-4 py-3 text-left text-xs font-medium tracking-wider text-[var(--app-ink-soft)] uppercase">
+                Email
+              </th>
+              <th class="px-4 py-3 text-left text-xs font-medium tracking-wider text-[var(--app-ink-soft)] uppercase">
+                Role
+              </th>
+              <th class="px-4 py-3 text-left text-xs font-medium tracking-wider text-[var(--app-ink-soft)] uppercase">
                 Credits Available
               </th>
-              <th class="px-4 py-3 text-left text-xs font-medium tracking-wider text-[#8b949e] uppercase">
+              <th class="px-4 py-3 text-left text-xs font-medium tracking-wider text-[var(--app-ink-soft)] uppercase">
                 Credits Consumed
               </th>
-              <th class="px-4 py-3 text-right text-xs font-medium tracking-wider text-[#8b949e] uppercase">Actions</th>
+              <th class="px-4 py-3 text-right text-xs font-medium tracking-wider text-[var(--app-ink-soft)] uppercase">
+                Actions
+              </th>
             </tr>
           </thead>
           <tbody>
             <tr
               v-for="(user, index) in filteredUsers"
               :key="user.id"
-              class="border-b border-[#30363d] transition-colors last:border-b-0 hover:bg-[#2a2a2a]"
+              class="border-b border-[var(--app-line)] transition-colors last:border-b-0 hover:bg-[var(--app-surface-2)]"
             >
-              <td class="px-4 py-3 text-sm text-[#f9f9f9]">
+              <td class="px-4 py-3 text-sm text-[var(--app-ink)]">
                 <div class="flex items-center gap-2">
                   <div
-                    class="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full border border-[#30363d] bg-[#050505]"
+                    class="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full border border-[var(--app-line)] bg-[var(--app-bg)]"
                   >
-                    <span class="text-xs font-semibold text-[#f9f9f9]">
+                    <span class="text-xs font-semibold text-[var(--app-ink)]">
                       {{ getUserInitials(user.name) }}
                     </span>
                   </div>
                   <span class="font-medium">{{ user.name }}</span>
                 </div>
               </td>
-              <td class="px-4 py-3 text-sm text-[#f9f9f9]">{{ user.email }}</td>
+              <td class="px-4 py-3 text-sm text-[var(--app-ink)]">{{ user.email }}</td>
               <td class="px-4 py-3 text-sm">
                 <span
                   :class="[
                     'inline-flex items-center rounded px-2.5 py-0.5 text-xs font-medium',
                     user.role === 'ADMIN'
-                      ? 'border border-[#da3633]/30 bg-[#da3633]/20 text-[#DC4747]'
-                      : 'border border-[#2BAD5F]/30 bg-[#2BAD5F]/20 text-[#3fb950]',
+                      ? 'border border-[var(--app-red)]/30 bg-[var(--app-red)]/20 text-[var(--app-red)]'
+                      : 'border border-[var(--app-green)]/30 bg-[var(--app-green)]/20 text-[var(--app-green)]',
                   ]"
                 >
                   {{ user.role }}
                 </span>
               </td>
-              <td class="px-4 py-3 text-sm text-[#f9f9f9]">
-                <span v-if="user.credits_available === -1 || user.credits_available === null" class="text-[#8b949e]">
+              <td class="px-4 py-3 text-sm text-[var(--app-ink)]">
+                <span
+                  v-if="user.credits_available === -1 || user.credits_available === null"
+                  class="text-[var(--app-ink-soft)]"
+                >
                   Unlimited
                 </span>
                 <span v-else class="font-medium">
                   {{ user.credits_available }}
                 </span>
               </td>
-              <td class="px-4 py-3 text-sm text-[#f9f9f9]">
+              <td class="px-4 py-3 text-sm text-[var(--app-ink)]">
                 <span class="font-medium">
                   {{ user.credits_consumed ?? 0 }}
                 </span>
@@ -82,7 +93,7 @@
               <td class="px-4 py-3 text-right">
                 <div class="user-menu-container relative inline-block">
                   <button
-                    class="text-[#8b949e] transition-colors hover:text-[#f9f9f9]"
+                    class="text-[var(--app-ink-soft)] transition-colors hover:text-[var(--app-ink)]"
                     @click="toggleUserMenu(user.id, $event)"
                   >
                     <i class="fa-solid fa-ellipsis-vertical h-5 w-5"></i>
@@ -91,19 +102,19 @@
                   <div
                     v-if="openMenuId === user.id"
                     :class="[
-                      'absolute right-0 z-10 w-48 rounded border border-[#30363d] bg-[#1a1a1a] shadow-lg',
+                      'absolute right-0 z-10 w-48 rounded border border-[var(--app-line)] bg-[var(--app-surface)] shadow-lg',
                       index >= filteredUsers.length - 2 ? 'bottom-full mb-1' : 'top-full mt-1',
                     ]"
                   >
                     <button
-                      class="w-full px-4 py-2 text-left text-sm text-[#f9f9f9] transition-colors hover:bg-[#2a2a2a]"
+                      class="w-full px-4 py-2 text-left text-sm text-[var(--app-ink)] transition-colors hover:bg-[var(--app-surface-2)]"
                       @click="handleEdit(user)"
                     >
                       <i class="fa-solid fa-pen-to-square mr-2 w-4"></i>
                       Edit User
                     </button>
                     <button
-                      class="w-full px-4 py-2 text-left text-sm text-[#DC4747] transition-colors hover:bg-[#da3633]/20"
+                      class="w-full px-4 py-2 text-left text-sm text-[var(--app-red)] transition-colors hover:bg-[var(--app-red)]/20"
                       @click="handleDelete(user)"
                     >
                       <i class="fa-solid fa-trash mr-2 w-4"></i>
@@ -121,30 +132,30 @@
     <!-- Loading State -->
     <div v-if="isLoading" class="card">
       <div class="animate-pulse space-y-3">
-        <div class="h-4 w-3/4 rounded bg-[#2a2a2a]"></div>
-        <div class="h-4 w-full rounded bg-[#2a2a2a]"></div>
-        <div class="h-4 w-5/6 rounded bg-[#2a2a2a]"></div>
+        <div class="h-4 w-3/4 rounded bg-[var(--app-surface-2)]"></div>
+        <div class="h-4 w-full rounded bg-[var(--app-surface-2)]"></div>
+        <div class="h-4 w-5/6 rounded bg-[var(--app-surface-2)]"></div>
       </div>
     </div>
 
     <!-- Empty State -->
     <div v-else-if="filteredUsers.length === 0" class="card py-12 text-center">
-      <i class="fa-solid fa-users mb-3 text-5xl text-[#8b949e]"></i>
-      <p class="text-[#8b949e]">No users found</p>
+      <i class="fa-solid fa-users mb-3 text-5xl text-[var(--app-ink-soft)]"></i>
+      <p class="text-[var(--app-ink-soft)]">No users found</p>
     </div>
 
     <!-- Create User Modal -->
     <div
       v-if="showCreateModal"
-      class="fixed inset-0 z-50 flex items-center justify-center bg-black/70"
+      class="fixed inset-0 z-50 flex items-center justify-center bg-[var(--app-overlay)]"
       @click.self="showCreateModal = false"
     >
-      <div class="w-full max-w-md rounded-lg border border-[#30363d] bg-[#1a1a1a] p-6 shadow-lg">
-        <h2 class="mb-4 text-base font-semibold text-[#f9f9f9]">Add New User</h2>
+      <div class="w-full max-w-md rounded-lg border border-[var(--app-line)] bg-[var(--app-surface)] p-6 shadow-lg">
+        <h2 class="mb-4 text-base font-semibold text-[var(--app-ink)]">Add New User</h2>
         <form @submit.prevent="handleCreateSubmit">
           <!-- Name -->
           <div class="mb-4">
-            <label for="create-name" class="mb-1.5 block text-xs font-medium text-[#8b949e]"> Name </label>
+            <label for="create-name" class="mb-1.5 block text-xs font-medium text-[var(--app-ink-soft)]"> Name </label>
             <input
               id="create-name"
               v-model="createForm.name"
@@ -157,7 +168,9 @@
 
           <!-- Email -->
           <div class="mb-4">
-            <label for="create-email" class="mb-1.5 block text-xs font-medium text-[#8b949e]"> Email </label>
+            <label for="create-email" class="mb-1.5 block text-xs font-medium text-[var(--app-ink-soft)]">
+              Email
+            </label>
             <input
               id="create-email"
               v-model="createForm.email"
@@ -170,7 +183,9 @@
 
           <!-- Password -->
           <div class="mb-4">
-            <label for="create-password" class="mb-1.5 block text-xs font-medium text-[#8b949e]"> Password </label>
+            <label for="create-password" class="mb-1.5 block text-xs font-medium text-[var(--app-ink-soft)]">
+              Password
+            </label>
             <div class="relative">
               <input
                 id="create-password"
@@ -182,7 +197,7 @@
               />
               <button
                 type="button"
-                class="absolute top-1/2 right-3 -translate-y-1/2 text-[#8b949e] transition-colors hover:text-[#f9f9f9]"
+                class="absolute top-1/2 right-3 -translate-y-1/2 text-[var(--app-ink-soft)] transition-colors hover:text-[var(--app-ink)]"
                 @click="showCreatePassword = !showCreatePassword"
               >
                 <i :class="showCreatePassword ? 'fa-solid fa-eye-slash' : 'fa-solid fa-eye'" class="h-4 w-4"></i>
@@ -192,7 +207,7 @@
 
           <!-- Role -->
           <div class="mb-4">
-            <label for="create-role" class="mb-1.5 block text-xs font-medium text-[#8b949e]"> Role </label>
+            <label for="create-role" class="mb-1.5 block text-xs font-medium text-[var(--app-ink-soft)]"> Role </label>
             <select id="create-role" v-model="createForm.role" class="input-field">
               <option value="USER">USER</option>
               <option value="ADMIN">ADMIN</option>
@@ -214,15 +229,15 @@
     <!-- Edit User Modal -->
     <div
       v-if="showEditModal && editingUser"
-      class="fixed inset-0 z-50 flex items-center justify-center bg-black/70"
+      class="fixed inset-0 z-50 flex items-center justify-center bg-[var(--app-overlay)]"
       @click.self="showEditModal = false"
     >
-      <div class="w-full max-w-md rounded-lg border border-[#30363d] bg-[#1a1a1a] p-6 shadow-lg">
-        <h2 class="mb-4 text-base font-semibold text-[#f9f9f9]">Edit User</h2>
+      <div class="w-full max-w-md rounded-lg border border-[var(--app-line)] bg-[var(--app-surface)] p-6 shadow-lg">
+        <h2 class="mb-4 text-base font-semibold text-[var(--app-ink)]">Edit User</h2>
         <form @submit.prevent="handleEditSubmit">
           <!-- Name -->
           <div class="mb-4">
-            <label for="edit-name" class="mb-1.5 block text-xs font-medium text-[#8b949e]"> Name </label>
+            <label for="edit-name" class="mb-1.5 block text-xs font-medium text-[var(--app-ink-soft)]"> Name </label>
             <input
               id="edit-name"
               v-model="editForm.name"
@@ -235,7 +250,7 @@
 
           <!-- Email -->
           <div class="mb-4">
-            <label for="edit-email" class="mb-1.5 block text-xs font-medium text-[#8b949e]"> Email </label>
+            <label for="edit-email" class="mb-1.5 block text-xs font-medium text-[var(--app-ink-soft)]"> Email </label>
             <input
               id="edit-email"
               v-model="editForm.email"
@@ -261,13 +276,13 @@
     <!-- Delete Confirmation Modal -->
     <div
       v-if="showDeleteModal && deletingUser"
-      class="fixed inset-0 z-50 flex items-center justify-center bg-black/70"
+      class="fixed inset-0 z-50 flex items-center justify-center bg-[var(--app-overlay)]"
       @click.self="showDeleteModal = false"
     >
-      <div class="w-full max-w-md rounded-lg border border-[#30363d] bg-[#1a1a1a] p-6 shadow-lg">
-        <h2 class="mb-4 text-base font-semibold text-[#f9f9f9]">Delete User</h2>
-        <p class="mb-6 text-sm text-[#8b949e]">
-          Are you sure you want to delete <strong class="text-[#f9f9f9]">{{ deletingUser.name }}</strong
+      <div class="w-full max-w-md rounded-lg border border-[var(--app-line)] bg-[var(--app-surface)] p-6 shadow-lg">
+        <h2 class="mb-4 text-base font-semibold text-[var(--app-ink)]">Delete User</h2>
+        <p class="mb-6 text-sm text-[var(--app-ink-soft)]">
+          Are you sure you want to delete <strong class="text-[var(--app-ink)]">{{ deletingUser.name }}</strong
           >? This action cannot be undone.
         </p>
         <div class="flex gap-3">

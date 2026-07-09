@@ -1,10 +1,10 @@
 <template>
-  <div class="overflow-hidden rounded-xl border border-[#30363d] bg-[#0d1117] shadow-2xl">
-    <div class="flex items-center gap-2 border-b border-[#30363d] bg-[#1a1a1a] px-4 py-2">
-      <span class="h-3 w-3 rounded-full bg-[#DC4747]"></span>
+  <div class="overflow-hidden rounded-xl border border-[var(--app-line)] bg-[var(--app-bg)] shadow-2xl">
+    <div class="flex items-center gap-2 border-b border-[var(--app-line)] bg-[var(--app-surface)] px-4 py-2">
+      <span class="h-3 w-3 rounded-full bg-[var(--app-red)]"></span>
       <span class="h-3 w-3 rounded-full bg-[#f59e0b]"></span>
-      <span class="h-3 w-3 rounded-full bg-[#2BAD5F]"></span>
-      <span class="ml-2 truncate text-xs text-[#8b949e]">{{ previewLabel }}</span>
+      <span class="h-3 w-3 rounded-full bg-[var(--app-green)]"></span>
+      <span class="ml-2 truncate text-xs text-[var(--app-ink-soft)]">{{ previewLabel }}</span>
     </div>
     <iframe
       :src="previewSrc"

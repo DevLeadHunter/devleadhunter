@@ -7,10 +7,10 @@
             :class="[
               'flex h-10 w-10 items-center justify-center rounded-full text-sm font-bold transition-all duration-300',
               currentStep > step.id
-                ? 'bg-[#2BAD5F] text-white'
+                ? 'bg-[var(--app-green)] text-white'
                 : currentStep === step.id
-                  ? 'bg-[#f9f9f9] text-[#050505] shadow-lg shadow-white/10'
-                  : 'border border-[#30363d] bg-[#1a1a1a] text-[#8b949e]',
+                  ? 'bg-[var(--app-ink)] text-[var(--app-bg)] shadow-lg shadow-white/10'
+                  : 'border border-[var(--app-line)] bg-[var(--app-surface)] text-[var(--app-ink-soft)]',
             ]"
           >
             <i v-if="currentStep > step.id" class="fa-solid fa-check text-xs"></i>
@@ -19,7 +19,7 @@
           <span
             :class="[
               'hidden text-center text-xs font-medium sm:block',
-              currentStep >= step.id ? 'text-[#f9f9f9]' : 'text-[#8b949e]',
+              currentStep >= step.id ? 'text-[var(--app-ink)]' : 'text-[var(--app-ink-soft)]',
             ]"
           >
             {{ step.label }}
@@ -29,7 +29,7 @@
           v-if="index < steps.length - 1"
           :class="[
             'mx-2 hidden h-0.5 flex-1 rounded-full transition-colors duration-500 sm:block',
-            currentStep > step.id ? 'bg-[#2BAD5F]' : 'bg-[#30363d]',
+            currentStep > step.id ? 'bg-[var(--app-green)]' : 'bg-[var(--app-surface-2)]',
           ]"
         ></div>
       </div>

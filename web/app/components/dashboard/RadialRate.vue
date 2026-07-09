@@ -17,7 +17,7 @@
         />
       </svg>
       <div class="absolute inset-0 flex flex-col items-center justify-center">
-        <span class="text-xl font-bold text-[#f9f9f9] tabular-nums">{{ clamped }}%</span>
+        <span class="text-xl font-bold text-[var(--app-ink)] tabular-nums">{{ clamped }}%</span>
       </div>
     </div>
     <p class="mt-2 text-xs font-medium text-[#c9d1d9]">{{ label }}</p>

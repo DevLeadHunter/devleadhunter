@@ -8,13 +8,13 @@
       :class="[
         'group overflow-hidden rounded-2xl border text-left transition-all duration-300',
         modelValue === template.id
-          ? 'border-[#f9f9f9] bg-[#1a1a1a] shadow-lg ring-1 shadow-white/5 ring-[#f9f9f9]/20'
-          : 'border-[#30363d] bg-[#1a1a1a] hover:border-[#484f58] hover:shadow-md',
+          ? 'border-[var(--app-ink)] bg-[var(--app-surface)] shadow-lg ring-1 shadow-white/5 ring-[#f9f9f9]/20'
+          : 'border-[var(--app-line)] bg-[var(--app-surface)] hover:border-[var(--app-ink-soft)] hover:shadow-md',
       ]"
       @click="selectTemplate(template)"
     >
       <!-- Mini preview mockup -->
-      <div class="relative h-44 overflow-hidden border-b border-[#30363d]">
+      <div class="relative h-44 overflow-hidden border-b border-[var(--app-line)]">
         <div
           class="absolute inset-0 transition-transform duration-500 group-hover:scale-105"
           :style="{ background: previewGradient(template) }"
@@ -41,7 +41,7 @@
         </div>
         <div
           v-if="modelValue === template.id"
-          class="absolute top-3 right-3 flex h-7 w-7 items-center justify-center rounded-full bg-[#f9f9f9] text-[#050505]"
+          class="absolute top-3 right-3 flex h-7 w-7 items-center justify-center rounded-full bg-[var(--app-ink)] text-[var(--app-bg)]"
         >
           <i class="fa-solid fa-check text-xs"></i>
         </div>
@@ -50,14 +50,14 @@
       <div class="p-5">
         <div class="flex items-start justify-between gap-3">
           <div>
-            <p class="font-semibold text-[#f9f9f9]">{{ template.name }}</p>
-            <p class="mt-1 text-sm leading-relaxed text-[#8b949e]">{{ template.description }}</p>
+            <p class="font-semibold text-[var(--app-ink)]">{{ template.name }}</p>
+            <p class="mt-1 text-sm leading-relaxed text-[var(--app-ink-soft)]">{{ template.description }}</p>
           </div>
         </div>
 
         <!-- Color swatches -->
         <div class="mt-4 flex items-center gap-3">
-          <span class="text-xs text-[#8b949e]">Couleurs</span>
+          <span class="text-xs text-[var(--app-ink-soft)]">Couleurs</span>
           <div class="flex gap-2">
             <button
               v-for="colorKey in colorKeys"
@@ -76,7 +76,9 @@
 
         <div v-if="modelValue === template.id" class="mt-4 grid grid-cols-3 gap-2">
           <label v-for="colorKey in colorKeys" :key="colorKey" class="space-y-1">
-            <span class="text-[10px] tracking-wide text-[#8b949e] uppercase">{{ colorLabels[colorKey] }}</span>
+            <span class="text-[10px] tracking-wide text-[var(--app-ink-soft)] uppercase">{{
+              colorLabels[colorKey]
+            }}</span>
             <input
               :value="theme[colorKey]"
               type="text"

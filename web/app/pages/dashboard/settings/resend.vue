@@ -2,20 +2,22 @@
   <div class="space-y-6">
     <!-- Header -->
     <div>
-      <h1 class="text-3xl font-bold text-[#f9f9f9]">Configuration Resend</h1>
+      <h1 class="text-3xl font-bold text-[var(--app-ink)]">Configuration Resend</h1>
       <p class="text-muted mt-2 text-sm">Configurez votre compte Resend pour envoyer vos emails de prospection.</p>
     </div>
 
     <!-- Statut actuel -->
     <div class="card">
-      <h2 class="mb-4 text-sm font-semibold text-[#f9f9f9]">Statut actuel</h2>
+      <h2 class="mb-4 text-sm font-semibold text-[var(--app-ink)]">Statut actuel</h2>
       <div class="space-y-3">
         <div class="flex items-center justify-between">
           <span class="text-muted text-sm">Clé API</span>
           <span
             :class="[
               'inline-flex items-center gap-1.5 rounded px-2 py-0.5 text-xs font-semibold',
-              currentConfig?.has_api_key ? 'bg-[#1a3a2a] text-[#3fb950]' : 'bg-[#3a1a1a] text-[#DC4747]',
+              currentConfig?.has_api_key
+                ? 'bg-[#1a3a2a] text-[var(--app-green)]'
+                : 'bg-[#3a1a1a] text-[var(--app-red)]',
             ]"
           >
             <i :class="currentConfig?.has_api_key ? 'fa-solid fa-check' : 'fa-solid fa-xmark'" class="text-[10px]"></i>
@@ -27,7 +29,9 @@
           <span
             :class="[
               'inline-flex items-center gap-1.5 rounded px-2 py-0.5 text-xs font-semibold',
-              currentConfig?.has_webhook_secret ? 'bg-[#1a3a2a] text-[#3fb950]' : 'bg-[#30363d] text-[#8b949e]',
+              currentConfig?.has_webhook_secret
+                ? 'bg-[#1a3a2a] text-[var(--app-green)]'
+                : 'bg-[var(--app-surface-2)] text-[var(--app-ink-soft)]',
             ]"
           >
             <i
@@ -39,18 +43,18 @@
         </div>
         <div v-if="currentConfig?.from_email" class="flex items-center justify-between">
           <span class="text-muted text-sm">Email d'envoi</span>
-          <span class="text-sm text-[#f9f9f9]">{{ currentConfig.from_email }}</span>
+          <span class="text-sm text-[var(--app-ink)]">{{ currentConfig.from_email }}</span>
         </div>
         <div v-if="currentConfig?.from_name" class="flex items-center justify-between">
           <span class="text-muted text-sm">Nom d'envoi</span>
-          <span class="text-sm text-[#f9f9f9]">{{ currentConfig.from_name }}</span>
+          <span class="text-sm text-[var(--app-ink)]">{{ currentConfig.from_name }}</span>
         </div>
       </div>
     </div>
 
     <!-- Formulaire -->
     <div class="card">
-      <h2 class="mb-1 text-sm font-semibold text-[#f9f9f9]">Mettre à jour la configuration</h2>
+      <h2 class="mb-1 text-sm font-semibold text-[var(--app-ink)]">Mettre à jour la configuration</h2>
       <p class="text-muted mb-5 text-xs">
         La clé API et le secret webhook sont chiffrés avant d'être enregistrés en base de données.
       </p>
@@ -60,7 +64,7 @@
         <div>
           <label class="text-muted mb-1.5 block text-xs font-medium">
             Clé API Resend
-            <span class="text-[#DC4747]">*</span>
+            <span class="text-[var(--app-red)]">*</span>
           </label>
           <div class="relative">
             <input
@@ -72,7 +76,7 @@
             />
             <button
               type="button"
-              class="text-muted absolute top-1/2 right-3 -translate-y-1/2 transition-colors hover:text-[#f9f9f9]"
+              class="text-muted absolute top-1/2 right-3 -translate-y-1/2 transition-colors hover:text-[var(--app-ink)]"
               @click="showApiKey = !showApiKey"
             >
               <i :class="showApiKey ? 'fa-solid fa-eye-slash' : 'fa-solid fa-eye'" class="text-xs"></i>
@@ -80,13 +84,15 @@
           </div>
           <p class="text-muted mt-1 text-xs">
             Créer une clé sur
-            <a href="https://resend.com/api-keys" target="_blank" class="text-[#58a6ff] hover:underline">
+            <a href="https://resend.com/api-keys" target="_blank" class="text-[var(--app-accent-ink)] hover:underline">
               resend.com/api-keys
             </a>
           </p>
-          <div class="mt-2 flex items-start gap-2 rounded-lg border border-[#e3b341]/30 bg-[#3a2e0a] px-3 py-2">
-            <i class="fa-solid fa-triangle-exclamation mt-0.5 text-[10px] text-[#e3b341]"></i>
-            <p class="text-xs text-[#e3b341]">
+          <div
+            class="mt-2 flex items-start gap-2 rounded-lg border border-[var(--app-accent)]/30 bg-[#3a2e0a] px-3 py-2"
+          >
+            <i class="fa-solid fa-triangle-exclamation mt-0.5 text-[10px] text-[var(--app-accent)]"></i>
+            <p class="text-xs text-[var(--app-accent)]">
               Utilisez une clé <strong>Full Access</strong> — une clé restreinte "Sending access" ne permettra pas la
               synchronisation des statuts (ouvertures, clics, bounces) depuis la page Emails.
             </p>
@@ -105,7 +111,7 @@
             />
             <button
               type="button"
-              class="text-muted absolute top-1/2 right-3 -translate-y-1/2 transition-colors hover:text-[#f9f9f9]"
+              class="text-muted absolute top-1/2 right-3 -translate-y-1/2 transition-colors hover:text-[var(--app-ink)]"
               @click="showWebhookSecret = !showWebhookSecret"
             >
               <i :class="showWebhookSecret ? 'fa-solid fa-eye-slash' : 'fa-solid fa-eye'" class="text-xs"></i>
@@ -118,7 +124,7 @@
         <div>
           <label class="text-muted mb-1.5 block text-xs font-medium">
             Email d'envoi
-            <span class="text-[#DC4747]">*</span>
+            <span class="text-[var(--app-red)]">*</span>
           </label>
           <input
             v-model="form.from_email"
@@ -151,21 +157,21 @@
     </div>
 
     <!-- Aide -->
-    <div class="rounded-lg border border-[#30363d] bg-[#0d0d0d] p-4">
-      <h3 class="mb-2 text-sm font-semibold text-[#f9f9f9]">
-        <i class="fa-solid fa-circle-info mr-2 text-[#58a6ff]"></i>
+    <div class="rounded-lg border border-[var(--app-line)] bg-[var(--app-surface)] p-4">
+      <h3 class="mb-2 text-sm font-semibold text-[var(--app-ink)]">
+        <i class="fa-solid fa-circle-info mr-2 text-[var(--app-accent-ink)]"></i>
         Configuration du webhook
       </h3>
       <p class="text-muted text-xs leading-relaxed">
         Pour recevoir le tracking en temps réel (ouvertures, clics, bounces), configurez le webhook dans Resend →
         Settings → Webhooks avec l'URL suivante :
       </p>
-      <code class="mt-2 block rounded bg-[#1a1a1a] px-3 py-2 text-xs text-[#3fb950]">
+      <code class="mt-2 block rounded bg-[var(--app-surface)] px-3 py-2 text-xs text-[var(--app-green)]">
         POST https://votre-api.com/api/v1/webhooks/resend
       </code>
       <p class="text-muted mt-2 text-xs">
         Activez les events :
-        <span class="text-[#f9f9f9]"
+        <span class="text-[var(--app-ink)]"
           >email.sent · email.delivered · email.opened · email.clicked · email.bounced · email.complained</span
         >
       </p>

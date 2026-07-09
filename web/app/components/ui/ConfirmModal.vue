@@ -2,18 +2,19 @@
   <Teleport to="body">
     <div
       v-if="isOpen"
-      class="fixed inset-0 z-[100] flex items-center justify-center bg-black/70 backdrop-blur-sm"
+      class="fixed inset-0 z-[100] flex items-center justify-center backdrop-blur-sm"
+      :style="{ backgroundColor: 'var(--app-overlay, rgba(0, 0, 0, 0.7))' }"
       @click.self="handleCancel"
     >
-      <div class="border-muted mx-4 w-full max-w-md rounded-lg border bg-[#1a1a1a] p-6">
-        <h2 class="mb-3 text-base font-semibold text-[#f9f9f9]">{{ title }}</h2>
-        <p class="text-muted mb-6 text-sm">{{ message }}</p>
+      <div class="app-card mx-4 w-full max-w-md p-6 shadow-[var(--app-shadow-soft)]">
+        <h2 class="font-display mb-2 text-lg font-semibold text-[var(--app-ink)]">{{ title }}</h2>
+        <p class="mb-6 text-sm leading-relaxed text-[var(--app-ink-soft)]">{{ message }}</p>
 
         <div class="flex gap-3">
-          <button class="btn-secondary flex-1" @click="handleCancel">
+          <button class="app-btn-secondary flex-1" @click="handleCancel">
             {{ cancelText }}
           </button>
-          <button class="btn-danger flex-1" @click="handleConfirm">
+          <button class="app-btn-danger flex-1" @click="handleConfirm">
             {{ confirmText }}
           </button>
         </div>
@@ -23,44 +24,64 @@
 </template>
 
 <script setup lang="ts">
+import type { Ref } from 'vue'
 import { ref } from 'vue'
 
-withDefaults(
-  defineProps<{
-    title?: string
-    message?: string
-    confirmText?: string
-    cancelText?: string
-  }>(),
-  {
-    title: 'Confirm',
-    message: 'Are you sure?',
-    confirmText: 'Confirm',
-    cancelText: 'Cancel',
+/**
+ * Defines the component props (interface exportée : ~/types/UiConfirmModal).
+ */
+defineProps({
+  title: {
+    type: String,
+    default: 'Confirmer',
   },
-)
+  message: {
+    type: String,
+    default: 'Êtes-vous sûr ?',
+  },
+  confirmText: {
+    type: String,
+    default: 'Confirmer',
+  },
+  cancelText: {
+    type: String,
+    default: 'Annuler',
+  },
+})
 
 const emit = defineEmits<{
-  confirm: []
-  cancel: []
+  (e: 'confirm' | 'cancel'): void
 }>()
 
-const isOpen = ref(false)
+/** Whether the modal is visible. */
+const isOpen: Ref<boolean> = ref<boolean>(false)
 
-const open = () => {
+/**
+ * Open the modal.
+ */
+function open(): void {
   isOpen.value = true
 }
 
-const close = () => {
+/**
+ * Close the modal.
+ */
+function close(): void {
   isOpen.value = false
 }
 
-const handleConfirm = () => {
+/**
+ * Confirm and close.
+ */
+function handleConfirm(): void {
   emit('confirm')
   close()
 }
 
-const handleCancel = () => {
+/**
+ * Cancel and close.
+ */
+function handleCancel(): void {
   emit('cancel')
   close()
 }

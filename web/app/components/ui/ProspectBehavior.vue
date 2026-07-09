@@ -1,7 +1,7 @@
 <template>
   <div class="space-y-3 px-5 py-4">
     <div class="flex items-center justify-between">
-      <p class="text-[10px] font-semibold tracking-wider text-[#8b949e] uppercase">Comportement démo</p>
+      <p class="text-[10px] font-semibold tracking-wider text-[var(--app-ink-soft)] uppercase">Comportement démo</p>
       <span
         v-if="behavior"
         :class="['inline-flex items-center gap-1 rounded px-2 py-0.5 text-[10px] font-medium', temperatureClass]"
@@ -17,22 +17,22 @@
 
     <template v-else-if="behavior">
       <!-- No tracking configured -->
-      <p v-if="!behavior.tracking_configured" class="text-xs text-[#8b949e]">
+      <p v-if="!behavior.tracking_configured" class="text-xs text-[var(--app-ink-soft)]">
         PostHog n'est pas configuré — le suivi comportemental est inactif.
       </p>
 
       <!-- No data yet -->
-      <p v-else-if="!behavior.has_data" class="text-xs text-[#8b949e]">
+      <p v-else-if="!behavior.has_data" class="text-xs text-[var(--app-ink-soft)]">
         Aucune activité détectée sur la démo pour l'instant.
       </p>
 
       <template v-else>
         <!-- Score + signals -->
         <div class="flex items-center gap-3">
-          <div class="text-2xl font-bold text-[#f9f9f9]">
-            {{ behavior.score }}<span class="text-sm text-[#8b949e]">/100</span>
+          <div class="text-2xl font-bold text-[var(--app-ink)]">
+            {{ behavior.score }}<span class="text-sm text-[var(--app-ink-soft)]">/100</span>
           </div>
-          <div class="grid flex-1 grid-cols-2 gap-x-3 gap-y-0.5 text-[11px] text-[#8b949e]">
+          <div class="grid flex-1 grid-cols-2 gap-x-3 gap-y-0.5 text-[11px] text-[var(--app-ink-soft)]">
             <span>Visites : {{ signalNumber('visits') }}</span>
             <span>Temps : {{ signalNumber('total_seconds') }}s</span>
             <span>Clics tel : {{ signalNumber('phone_clicks') }}</span>
@@ -47,28 +47,30 @@
             :key="i"
             class="flex items-center gap-2 text-[11px]"
           >
-            <span class="h-1.5 w-1.5 shrink-0 rounded-full bg-[#58a6ff]"></span>
-            <span class="text-[#f9f9f9]">{{ entry.label }}</span>
-            <span class="ml-auto text-[#8b949e]">{{ formatTime(entry.timestamp) }}</span>
+            <span class="h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--app-accent-ink)]"></span>
+            <span class="text-[var(--app-ink)]">{{ entry.label }}</span>
+            <span class="ml-auto text-[var(--app-ink-soft)]">{{ formatTime(entry.timestamp) }}</span>
           </div>
         </div>
       </template>
 
       <!-- AI summary -->
-      <div v-if="summary" class="rounded border border-[#30363d] bg-[#1a1a1a] p-3">
-        <p class="mb-1 text-[10px] font-semibold tracking-wider text-[#8b949e] uppercase">Analyse IA</p>
-        <p class="text-xs whitespace-pre-line text-[#f9f9f9]">{{ summary }}</p>
+      <div v-if="summary" class="rounded border border-[var(--app-line)] bg-[var(--app-surface)] p-3">
+        <p class="mb-1 text-[10px] font-semibold tracking-wider text-[var(--app-ink-soft)] uppercase">Analyse IA</p>
+        <p class="text-xs whitespace-pre-line text-[var(--app-ink)]">{{ summary }}</p>
       </div>
 
       <!-- Personalized follow-up draft -->
-      <div v-if="followup" class="space-y-2 rounded border border-[#30363d] bg-[#1a1a1a] p-3">
-        <p class="text-[10px] font-semibold tracking-wider text-[#8b949e] uppercase">Relance personnalisée</p>
-        <p class="text-xs text-[#8b949e]">
-          <span class="font-medium text-[#f9f9f9]">Objet :</span> {{ followup.subject }}
+      <div v-if="followup" class="space-y-2 rounded border border-[var(--app-line)] bg-[var(--app-surface)] p-3">
+        <p class="text-[10px] font-semibold tracking-wider text-[var(--app-ink-soft)] uppercase">
+          Relance personnalisée
+        </p>
+        <p class="text-xs text-[var(--app-ink-soft)]">
+          <span class="font-medium text-[var(--app-ink)]">Objet :</span> {{ followup.subject }}
         </p>
         <iframe
           :srcdoc="followup.body_html"
-          class="h-48 w-full rounded border border-[#30363d] bg-white"
+          class="h-48 w-full rounded border border-[var(--app-line)] bg-white"
           sandbox=""
         ></iframe>
         <button class="btn-primary w-full text-xs" :disabled="isSending || !prospectEmail" @click="handleSendFollowup">
@@ -153,13 +155,13 @@ const temperatureLabel: ComputedRef<string> = computed(
 const temperatureClass: ComputedRef<string> = computed((): string => {
   switch (behavior.value?.temperature) {
     case 'hot':
-      return 'border border-[#da3633]/40 bg-[#da3633]/10 text-[#ff7b72]'
+      return 'border border-[var(--app-red)]/40 bg-[var(--app-red)]/10 text-[#ff7b72]'
     case 'warm':
-      return 'border border-[#e3b341]/40 bg-[#e3b341]/10 text-[#e3b341]'
+      return 'border border-[var(--app-accent)]/40 bg-[var(--app-accent)]/10 text-[var(--app-accent)]'
     case 'cold':
-      return 'border border-[#58a6ff]/40 bg-[#58a6ff]/10 text-[#58a6ff]'
+      return 'border border-[var(--app-accent-ink)]/40 bg-[var(--app-accent-ink)]/10 text-[var(--app-accent-ink)]'
     default:
-      return 'border border-[#30363d] bg-[#1a1a1a] text-[#8b949e]'
+      return 'border border-[var(--app-line)] bg-[var(--app-surface)] text-[var(--app-ink-soft)]'
   }
 })
 

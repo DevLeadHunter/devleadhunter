@@ -3,13 +3,13 @@
     <div class="mb-8">
       <NuxtLink
         to="/dashboard/demo-sites"
-        class="inline-flex items-center gap-2 text-sm text-[#8b949e] transition hover:text-[#f9f9f9]"
+        class="inline-flex items-center gap-2 text-sm text-[var(--app-ink-soft)] transition hover:text-[var(--app-ink)]"
       >
         <i class="fa-solid fa-arrow-left text-xs"></i>
         Retour aux sites démo
       </NuxtLink>
-      <h1 class="mt-4 text-2xl font-semibold text-[#f9f9f9]">Website builder</h1>
-      <p class="mt-2 text-sm text-[#8b949e]">
+      <h1 class="mt-4 text-2xl font-semibold text-[var(--app-ink)]">Website builder</h1>
+      <p class="mt-2 text-sm text-[var(--app-ink-soft)]">
         Créez un site vitrine professionnel pour votre prospect — publié sur demo.dibodev.fr pendant 14 jours.
       </p>
     </div>
@@ -20,18 +20,20 @@
       <!-- Étape 1 : Informations -->
       <div v-if="currentStep === 1" key="step-1" class="card space-y-6 p-6 md:p-8">
         <div>
-          <h2 class="text-lg font-semibold text-[#f9f9f9]">Informations entreprise</h2>
-          <p class="mt-1 text-sm text-[#8b949e]">
+          <h2 class="text-lg font-semibold text-[var(--app-ink)]">Informations entreprise</h2>
+          <p class="mt-1 text-sm text-[var(--app-ink-soft)]">
             Sélectionnez un prospect existant ou saisissez les informations manuellement.
           </p>
         </div>
 
-        <div class="flex gap-2 rounded-xl border border-[#30363d] bg-[#0d1117] p-1">
+        <div class="flex gap-2 rounded-xl border border-[var(--app-line)] bg-[var(--app-bg)] p-1">
           <button
             type="button"
             :class="[
               'flex-1 rounded-lg px-4 py-2.5 text-sm font-medium transition',
-              inputMode === 'prospect' ? 'bg-[#1a1a1a] text-[#f9f9f9]' : 'text-[#8b949e] hover:text-[#f9f9f9]',
+              inputMode === 'prospect'
+                ? 'bg-[var(--app-surface)] text-[var(--app-ink)]'
+                : 'text-[var(--app-ink-soft)] hover:text-[var(--app-ink)]',
             ]"
             @click="inputMode = 'prospect'"
           >
@@ -42,7 +44,9 @@
             type="button"
             :class="[
               'flex-1 rounded-lg px-4 py-2.5 text-sm font-medium transition',
-              inputMode === 'manual' ? 'bg-[#1a1a1a] text-[#f9f9f9]' : 'text-[#8b949e] hover:text-[#f9f9f9]',
+              inputMode === 'manual'
+                ? 'bg-[var(--app-surface)] text-[var(--app-ink)]'
+                : 'text-[var(--app-ink-soft)] hover:text-[var(--app-ink)]',
             ]"
             @click="inputMode = 'manual'"
           >
@@ -52,14 +56,14 @@
         </div>
 
         <div v-if="inputMode === 'prospect'" class="space-y-3">
-          <label class="text-sm text-[#8b949e]">Choisir un prospect</label>
+          <label class="text-sm text-[var(--app-ink-soft)]">Choisir un prospect</label>
           <select v-model="selectedProspectId" class="input-field w-full" @change="applyProspect">
             <option :value="null">— Sélectionner —</option>
             <option v-for="p in prospects" :key="p.id" :value="p.id">
               {{ p.name }}{{ p.city ? ` · ${p.city}` : '' }}
             </option>
           </select>
-          <p v-if="prospectsLoading" class="text-xs text-[#8b949e]">Chargement des prospects…</p>
+          <p v-if="prospectsLoading" class="text-xs text-[var(--app-ink-soft)]">Chargement des prospects…</p>
           <p v-else-if="!prospects.length" class="text-xs text-amber-300/90">
             Aucun prospect enregistré.
             <NuxtLink to="/dashboard/my-prospects" class="underline">Ajouter un prospect</NuxtLink>
@@ -68,23 +72,23 @@
 
         <div class="grid gap-5 md:grid-cols-2">
           <div class="md:col-span-2">
-            <label class="mb-1 block text-sm text-[#8b949e]">Nom de l'entreprise *</label>
+            <label class="mb-1 block text-sm text-[var(--app-ink-soft)]">Nom de l'entreprise *</label>
             <input v-model="form.business_name" type="text" class="input-field w-full" placeholder="Plomberie Dupont" />
           </div>
           <div>
-            <label class="mb-1 block text-sm text-[#8b949e]">Téléphone</label>
+            <label class="mb-1 block text-sm text-[var(--app-ink-soft)]">Téléphone</label>
             <input v-model="form.phone" type="text" class="input-field w-full" placeholder="01 23 45 67 89" />
           </div>
           <div>
-            <label class="mb-1 block text-sm text-[#8b949e]">Ville</label>
+            <label class="mb-1 block text-sm text-[var(--app-ink-soft)]">Ville</label>
             <input v-model="form.city" type="text" class="input-field w-full" placeholder="Paris" />
           </div>
           <div class="md:col-span-2">
-            <label class="mb-1 block text-sm text-[#8b949e]">Email client *</label>
+            <label class="mb-1 block text-sm text-[var(--app-ink-soft)]">Email client *</label>
             <input v-model="form.email" type="email" class="input-field w-full" placeholder="client@example.com" />
           </div>
           <div class="md:col-span-2">
-            <label class="mb-1 block text-sm text-[#8b949e]">Description courte</label>
+            <label class="mb-1 block text-sm text-[var(--app-ink-soft)]">Description courte</label>
             <textarea
               v-model="form.description"
               rows="3"
@@ -105,8 +109,8 @@
       <!-- Étape 2 : Template -->
       <div v-else-if="currentStep === 2" key="step-2" class="space-y-6">
         <div>
-          <h2 class="text-lg font-semibold text-[#f9f9f9]">Choix du template</h2>
-          <p class="mt-1 text-sm text-[#8b949e]">
+          <h2 class="text-lg font-semibold text-[var(--app-ink)]">Choix du template</h2>
+          <p class="mt-1 text-sm text-[var(--app-ink-soft)]">
             Sélectionnez un modèle et personnalisez les couleurs de la charte graphique.
           </p>
         </div>
@@ -127,11 +131,17 @@
 
       <!-- Étape 3 : Aperçu -->
       <div v-else-if="currentStep === 3" key="step-3" class="space-y-6">
-        <div>
-          <h2 class="text-lg font-semibold text-[#f9f9f9]">Aperçu du site</h2>
-          <p class="mt-1 text-sm text-[#8b949e]">
-            Faites défiler l'aperçu et testez la navigation avant publication sur Storyblok et demo.dibodev.fr.
-          </p>
+        <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+          <div>
+            <h2 class="text-lg font-semibold text-[var(--app-ink)]">Aperçu du site</h2>
+            <p class="mt-1 text-sm text-[var(--app-ink-soft)]">
+              Faites défiler l'aperçu et testez la navigation avant publication sur Storyblok et demo.dibodev.fr.
+            </p>
+          </div>
+          <button type="button" class="btn-secondary inline-flex shrink-0 items-center gap-2" @click="goToStep(2)">
+            <i class="fa-solid fa-arrow-left text-xs"></i>
+            Quitter l'aperçu
+          </button>
         </div>
 
         <div v-if="previewLoading" class="card flex items-center justify-center py-24">
@@ -146,8 +156,8 @@
 
         <div class="card grid gap-4 p-6 md:grid-cols-2">
           <div v-for="item in recapItems" :key="item.label" class="flex justify-between gap-4 text-sm">
-            <span class="text-[#8b949e]">{{ item.label }}</span>
-            <span class="text-right font-medium text-[#f9f9f9]">{{ item.value }}</span>
+            <span class="text-[var(--app-ink-soft)]">{{ item.label }}</span>
+            <span class="text-right font-medium text-[var(--app-ink)]">{{ item.value }}</span>
           </div>
         </div>
 
@@ -163,24 +173,30 @@
       <!-- Étape 4 : Publication -->
       <div v-else-if="currentStep === 4" key="step-4" class="card space-y-6 p-6 md:p-8">
         <div>
-          <h2 class="text-lg font-semibold text-[#f9f9f9]">Publication</h2>
-          <p class="mt-1 text-sm text-[#8b949e]">Confirmez la génération — le site sera publié immédiatement.</p>
+          <h2 class="text-lg font-semibold text-[var(--app-ink)]">Publication</h2>
+          <p class="mt-1 text-sm text-[var(--app-ink-soft)]">
+            Confirmez la génération — le site sera publié immédiatement.
+          </p>
         </div>
 
         <label
-          class="flex cursor-pointer items-start gap-4 rounded-xl border border-[#30363d] bg-[#0d1117] p-5 transition hover:border-[#484f58]"
+          class="flex cursor-pointer items-start gap-4 rounded-xl border border-[var(--app-line)] bg-[var(--app-bg)] p-5 transition hover:border-[var(--app-ink-soft)]"
         >
-          <input v-model="form.invite_client_to_cms" type="checkbox" class="mt-1 h-4 w-4 rounded border-[#30363d]" />
+          <input
+            v-model="form.invite_client_to_cms"
+            type="checkbox"
+            class="mt-1 h-4 w-4 rounded border-[var(--app-line)]"
+          />
           <span>
-            <span class="font-medium text-[#f9f9f9]">Inviter le client au CMS Storyblok</span>
-            <span class="mt-1 block text-xs text-[#8b949e]">
+            <span class="font-medium text-[var(--app-ink)]">Inviter le client au CMS Storyblok</span>
+            <span class="mt-1 block text-xs text-[var(--app-ink-soft)]">
               Storyblok enverra un email d'invitation au client. Décochez pour inviter plus tard depuis la fiche du
               site.
             </span>
           </span>
         </label>
 
-        <p class="text-xs text-[#8b949e]">
+        <p class="text-xs text-[var(--app-ink-soft)]">
           <i class="fa-solid fa-clock mr-1"></i>
           Le site démo sera actif pendant 14 jours, puis supprimé automatiquement.
         </p>
@@ -206,7 +222,7 @@
         key="step-5"
         :class="[
           'card space-y-6 p-6 md:p-8',
-          isDemoLive ? 'border-[#2BAD5F]/30' : '',
+          isDemoLive ? 'border-[var(--app-green)]/30' : '',
           isDemoFailed ? 'border-red-500/30' : '',
         ]"
       >
@@ -215,7 +231,7 @@
             :class="[
               'mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full text-2xl',
               isDemoLive
-                ? 'bg-[#2BAD5F]/20 text-[#2BAD5F]'
+                ? 'bg-[var(--app-green)]/20 text-[var(--app-green)]'
                 : isDemoFailed
                   ? 'bg-red-500/20 text-red-300'
                   : 'bg-amber-500/20 text-amber-300',
@@ -223,13 +239,16 @@
           >
             <i :class="isDemoLive ? 'fa-solid fa-check' : isDemoFailed ? 'fa-solid fa-xmark' : 'fa-solid fa-clock'"></i>
           </div>
-          <h2 class="text-xl font-semibold text-[#f9f9f9]">{{ resultTitle }}</h2>
-          <p v-if="resultMessage" class="mt-2 text-sm text-[#8b949e]">{{ resultMessage }}</p>
+          <h2 class="text-xl font-semibold text-[var(--app-ink)]">{{ resultTitle }}</h2>
+          <p v-if="resultMessage" class="mt-2 text-sm text-[var(--app-ink-soft)]">{{ resultMessage }}</p>
         </div>
 
-        <div v-if="!isDemoFailed && createdOpenUrl" class="rounded-xl border border-[#30363d] bg-[#0d1117] p-5">
-          <p class="text-xs tracking-wide text-[#8b949e] uppercase">URL du site</p>
-          <p class="mt-1 font-medium break-all text-[#f9f9f9]">{{ createdOpenUrl }}</p>
+        <div
+          v-if="!isDemoFailed && createdOpenUrl"
+          class="rounded-xl border border-[var(--app-line)] bg-[var(--app-bg)] p-5"
+        >
+          <p class="text-xs tracking-wide text-[var(--app-ink-soft)] uppercase">URL du site</p>
+          <p class="mt-1 font-medium break-all text-[var(--app-ink)]">{{ createdOpenUrl }}</p>
           <div class="mt-4 flex flex-wrap gap-2">
             <button type="button" class="btn-primary h-9 px-4 text-xs" @click="openDemoUrl(createdOpenUrl)">
               Ouvrir

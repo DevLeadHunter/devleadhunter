@@ -1,65 +1,60 @@
 <template>
-  <div>
-    <div v-if="isInitializing" class="fixed inset-0 z-50 flex items-center justify-center bg-[#050505]">
+  <div class="app-theme" :data-theme="theme">
+    <div
+      v-if="isInitializing"
+      class="fixed inset-0 z-50 flex items-center justify-center"
+      :style="{ backgroundColor: 'var(--app-bg)' }"
+    >
       <div class="loader-smooth"></div>
     </div>
-    <div v-else class="flex h-screen w-full bg-[#050505]">
+    <div v-else class="flex h-screen w-full" :style="{ backgroundColor: 'var(--app-bg)' }">
       <!-- Sidebar -->
       <UiSidebar :is-open="isSidebarOpen" :is-mobile="isMobile" @toggle="toggleSidebar" />
 
       <!-- Main Content -->
       <div class="ml-0 flex flex-1 flex-col overflow-hidden transition-[margin] duration-200 md:ml-64">
         <!-- Mobile Header -->
-        <header class="sticky top-0 z-10 border-b border-[#30363d] bg-[#1a1a1a] px-4 py-3 md:hidden">
+        <header class="sticky top-0 z-10 border-b border-[var(--app-line)] bg-[var(--app-surface)] px-4 py-3 md:hidden">
           <div v-if="showCreditsPopover && isMobile" class="fixed inset-0 z-40" @click="handleClickOutside"></div>
           <div class="flex items-center justify-between">
-            <button class="text-[#8b949e] transition-colors hover:text-[#f9f9f9]" @click="toggleSidebar">
-              <i class="fa-solid fa-bars h-5 w-5"></i>
+            <button
+              class="flex h-9 w-9 items-center justify-center rounded-lg text-[var(--app-ink-soft)] transition-colors hover:bg-[var(--app-surface-2)] hover:text-[var(--app-ink)]"
+              aria-label="Ouvrir le menu"
+              @click="toggleSidebar"
+            >
+              <i class="fa-solid fa-bars"></i>
             </button>
-            <div class="flex flex-1 items-center justify-center gap-3">
-              <h1 class="text-sm font-semibold text-[#f9f9f9]">devleadhunter</h1>
-            </div>
-            <!-- Mobile Credits Icon -->
+            <span class="font-display text-base font-semibold tracking-tight text-[var(--app-ink)]">
+              devleadhunter
+            </span>
+            <!-- Mobile credits pill -->
             <div class="relative z-50">
               <button
-                :class="[
-                  'flex h-8 w-8 items-center justify-center rounded-full border-2 bg-[#1a1a1a] font-semibold text-[#f9f9f9]',
-                  creditBorderColor,
-                  creditTextSize,
-                ]"
+                class="flex items-center gap-2 rounded-full border border-[var(--app-line)] bg-[var(--app-surface)] px-3 py-1.5"
                 @click.stop="toggleCreditsPopover"
               >
-                {{ creditIconValue }}
+                <span class="h-2 w-2 rounded-full" :style="{ backgroundColor: creditDotColor }"></span>
+                <span class="font-label text-xs font-medium text-[var(--app-ink)]">{{ creditIconValue }}</span>
               </button>
               <!-- Mobile Popover -->
               <div
                 v-if="showCreditsPopover && isMobile"
-                class="absolute top-10 right-0 z-50 w-72 rounded-lg border border-[#30363d] bg-[#1a1a1a] p-4 shadow-xl"
+                class="app-card absolute top-11 right-0 z-50 w-72 p-4 shadow-[var(--app-shadow-soft)]"
                 @click.stop
               >
-                <div class="mb-3 flex items-start gap-4">
-                  <div
-                    :class="[
-                      'flex h-14 w-14 flex-shrink-0 items-center justify-center rounded-full border-2 bg-[#1a1a1a] font-semibold text-[#f9f9f9]',
-                      creditBorderColor,
-                      creditTextSizeLarge,
-                    ]"
-                  >
-                    {{ creditIconValue }}
-                  </div>
-                  <div class="min-w-0 flex-1">
-                    <p class="mb-1 text-sm font-bold text-[#f9f9f9] uppercase">Remaining Credits</p>
-                    <p class="text-xs leading-relaxed text-[#8b949e]">
-                      Used to search and find prospects for your campaigns and send emails
-                    </p>
-                  </div>
-                </div>
+                <p class="app-label">Crédits restants</p>
+                <p class="font-display mt-1 text-3xl font-semibold text-[var(--app-ink)]">
+                  {{ creditIconValue }}
+                </p>
+                <p class="mt-2 text-xs leading-relaxed text-[var(--app-ink-soft)]">
+                  Consommés par les recherches de prospects et les envois d'emails.
+                </p>
                 <NuxtLink
                   to="/dashboard/buy-credits"
-                  class="btn-secondary flex w-full items-center justify-center px-3 py-2 text-center text-xs"
+                  class="app-btn-secondary mt-4 h-9 w-full text-xs"
                   @click="showCreditsPopover = false"
                 >
-                  Refill now
+                  Recharger
                 </NuxtLink>
               </div>
             </div>
@@ -67,8 +62,10 @@
         </header>
 
         <!-- Page Content -->
-        <main class="flex-1 overflow-y-auto px-4 py-6 md:px-8">
-          <slot />
+        <main class="flex-1 overflow-y-auto px-4 py-6 md:px-10 md:py-10">
+          <div class="mx-auto w-full max-w-[1440px]">
+            <slot />
+          </div>
         </main>
       </div>
     </div>
@@ -76,128 +73,82 @@
 </template>
 
 <script setup lang="ts">
-import type { Ref } from 'vue'
+import type { ComputedRef, Ref } from 'vue'
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useUserStore } from '~/stores/user'
+import { useAppTheme } from '~/composables/useAppTheme'
 
-/**
- * Auth initialization state
- */
-const isInitializing: Ref<boolean> = ref(true)
+/** Auth initialization state (boot loader overlay). */
+const isInitializing: Ref<boolean> = ref<boolean>(true)
 
-/**
- * Sidebar state
- */
-const isSidebarOpen: Ref<boolean> = ref(false)
+/** Sidebar visibility (always open on desktop, toggled on mobile). */
+const isSidebarOpen: Ref<boolean> = ref<boolean>(false)
 
-/**
- * Mobile state
- */
-const isMobile: Ref<boolean> = ref(false)
+/** Whether the viewport is below the md breakpoint. */
+const isMobile: Ref<boolean> = ref<boolean>(false)
 
-/**
- * Credits popover visibility state
- */
-const showCreditsPopover: Ref<boolean> = ref(false)
+/** Credits popover visibility (mobile header). */
+const showCreditsPopover: Ref<boolean> = ref<boolean>(false)
 
-/**
- * User store instance
- */
+/** User store instance. */
 const userStore = useUserStore()
 
-/**
- * Credit icon value for circular icon
- */
-const creditIconValue = computed(() => {
-  const credits = userStore.user?.credits_available ?? userStore.user?.credit_balance
+/** Dashboard theme (light paper / dark warm ink). */
+const { theme, initTheme } = useAppTheme()
+
+/** Credits counter shown in the pill ("∞" when unlimited). */
+const creditIconValue: ComputedRef<string> = computed((): string => {
+  const credits: number | null | undefined = userStore.user?.credits_available ?? userStore.user?.credit_balance
   if (credits === null || credits === undefined) {
     return '0'
   }
   if (credits === -1) {
     return '∞'
   }
-  // Always show the real number of credits
   return credits.toString()
 })
 
-/**
- * Credit border color based on remaining credits
- */
-const creditBorderColor = computed(() => {
-  const credits = userStore.user?.credits_available ?? userStore.user?.credit_balance
-  if (credits === null || credits === undefined || credits === 0) {
-    return 'border-[#DC4747]' // Red for no credits
-  }
+/** Semantic dot colour next to the credits counter. */
+const creditDotColor: ComputedRef<string> = computed((): string => {
+  const credits: number | null | undefined = userStore.user?.credits_available ?? userStore.user?.credit_balance
   if (credits === -1) {
-    return 'border-[#30363d]' // Default gray for unlimited
+    return 'var(--app-ink-soft)'
   }
-  if (credits <= 10) {
-    return 'border-[#DC4747]' // Red for low credits
+  if (credits === null || credits === undefined || credits === 0 || credits <= 10) {
+    return 'var(--app-red)'
   }
-  return 'border-[#2BAD5F]' // Green for sufficient credits
+  return 'var(--app-green)'
 })
 
 /**
- * Credit text size based on remaining credits
- * Smaller font if 1000 or more
+ * Toggle the mobile credits popover.
  */
-const creditTextSize = computed(() => {
-  const credits = userStore.user?.credits_available ?? userStore.user?.credit_balance
-  if (credits === null || credits === undefined || credits === -1) {
-    return 'text-xs'
-  }
-  if (credits >= 1000) {
-    return 'text-[10px]'
-  }
-  return 'text-xs'
-})
-
-/**
- * Credit text size for large popover icon
- * Smaller font if 1000 or more
- */
-const creditTextSizeLarge = computed(() => {
-  const credits = userStore.user?.credits_available ?? userStore.user?.credit_balance
-  if (credits === null || credits === undefined || credits === -1) {
-    return 'text-lg'
-  }
-  if (credits >= 1000) {
-    return 'text-sm'
-  }
-  return 'text-lg'
-})
-
-/**
- * Toggle credits popover (for mobile click)
- */
-const toggleCreditsPopover = (): void => {
+function toggleCreditsPopover(): void {
   showCreditsPopover.value = !showCreditsPopover.value
 }
 
 /**
- * Handle click outside to close popover
+ * Close the credits popover when clicking outside of it.
  */
-const handleClickOutside = (): void => {
+function handleClickOutside(): void {
   showCreditsPopover.value = false
 }
 
 /**
- * Initialize authentication
- * @returns {Promise<void>}
+ * Wait for the auth store hydration before revealing the shell.
  */
 async function initializeAuth(): Promise<void> {
   if (import.meta.client) {
     // Small delay to ensure store is hydrated from localStorage
-    await new Promise((resolve) => setTimeout(resolve, 300))
+    await new Promise((resolve: (value: unknown) => void): ReturnType<typeof setTimeout> => setTimeout(resolve, 300))
     isInitializing.value = false
   }
 }
 
 /**
- * Check if viewport is mobile size
- * @returns {void}
+ * Track the md breakpoint and force the sidebar open on desktop.
  */
-const checkMobile = (): void => {
+function checkMobile(): void {
   if (import.meta.client) {
     isMobile.value = window.innerWidth < 768
     if (!isMobile.value) {
@@ -207,23 +158,21 @@ const checkMobile = (): void => {
 }
 
 /**
- * Toggle sidebar
- * @returns {void}
+ * Toggle the sidebar (mobile).
  */
-const toggleSidebar = (): void => {
+function toggleSidebar(): void {
   isSidebarOpen.value = !isSidebarOpen.value
 }
 
 /**
- * Handle window resize
- * @returns {void}
+ * Window resize handler.
  */
-const handleResize = (): void => {
+function handleResize(): void {
   checkMobile()
 }
 
-// Lifecycle hooks
-onMounted(async () => {
+onMounted(async (): Promise<void> => {
+  initTheme()
   await initializeAuth()
   checkMobile()
   if (import.meta.client) {
@@ -231,26 +180,9 @@ onMounted(async () => {
   }
 })
 
-onUnmounted(() => {
+onUnmounted((): void => {
   if (import.meta.client) {
     window.removeEventListener('resize', handleResize)
   }
 })
 </script>
-
-<style scoped>
-.loader-smooth {
-  width: 60px;
-  height: 60px;
-  border: 4px solid rgba(255, 255, 255, 0.1);
-  border-left-color: #f9f9f9;
-  border-radius: 50%;
-  animation: spin 0.8s linear infinite;
-}
-
-@keyframes spin {
-  to {
-    transform: rotate(360deg);
-  }
-}
-</style>

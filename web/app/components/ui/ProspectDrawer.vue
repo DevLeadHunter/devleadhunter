@@ -2,29 +2,29 @@
   <Teleport to="body">
     <!-- Backdrop -->
     <Transition name="drawer-backdrop">
-      <div v-if="open" class="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm" @click="$emit('close')" />
+      <div v-if="open" class="fixed inset-0 z-40 bg-[var(--app-overlay)] backdrop-blur-sm" @click="$emit('close')" />
     </Transition>
 
     <!-- Slide-over panel -->
     <Transition name="drawer-panel">
       <div
         v-if="open && prospect"
-        class="fixed top-0 right-0 z-50 flex h-dvh w-full max-w-[480px] flex-col border-l border-[#30363d] bg-[#0d0d0d] shadow-2xl"
+        class="fixed top-0 right-0 z-50 flex h-dvh w-full max-w-[480px] flex-col border-l border-[var(--app-line)] bg-[var(--app-surface)] shadow-2xl"
       >
         <!-- ───────────────────────── Header ───────────────────────── -->
-        <div class="flex items-start gap-3 border-b border-[#30363d] px-5 py-4">
+        <div class="flex items-start gap-3 border-b border-[var(--app-line)] px-5 py-4">
           <!-- Business icon -->
           <div
-            class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-[#30363d] bg-[#1a1a1a]"
+            class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-[var(--app-line)] bg-[var(--app-surface-2)]"
           >
-            <UIcon name="i-lucide-store" class="h-4 w-4 text-[#8b949e]" />
+            <UIcon name="i-lucide-store" class="h-4 w-4 text-[var(--app-ink-soft)]" />
           </div>
 
           <div class="min-w-0 flex-1">
             <!-- Badges -->
             <div class="mb-1 flex flex-wrap items-center gap-1.5">
               <span
-                class="inline-flex items-center rounded border border-[#30363d] bg-[#1a1a1a] px-2 py-0.5 text-[10px] font-medium text-[#8b949e]"
+                class="inline-flex items-center rounded border border-[var(--app-line)] bg-[var(--app-surface-2)] px-2 py-0.5 text-[10px] font-medium text-[var(--app-ink-soft)]"
               >
                 {{ prospect.category }}
               </span>
@@ -32,7 +32,7 @@
             </div>
 
             <!-- Name -->
-            <h2 class="truncate text-base leading-tight font-semibold text-[#f9f9f9]">
+            <h2 class="truncate text-base leading-tight font-semibold text-[var(--app-ink)]">
               {{ prospect.name }}
             </h2>
 
@@ -41,15 +41,18 @@
               <span
                 v-for="i in 4"
                 :key="i"
-                :class="['h-1.5 w-1.5 rounded-full', i <= prospect.confidence ? confidenceColor : 'bg-[#30363d]']"
+                :class="[
+                  'h-1.5 w-1.5 rounded-full',
+                  i <= prospect.confidence ? confidenceColor : 'bg-[var(--app-surface-2)]',
+                ]"
               />
-              <span class="ml-1 text-[10px] text-[#8b949e]">Confiance {{ prospect.confidence }}/4</span>
+              <span class="ml-1 text-[10px] text-[var(--app-ink-soft)]">Confiance {{ prospect.confidence }}/4</span>
             </div>
           </div>
 
           <!-- Close button -->
           <button
-            class="flex h-7 w-7 shrink-0 items-center justify-center rounded text-[#8b949e] transition-colors hover:bg-[#1a1a1a] hover:text-[#f9f9f9]"
+            class="flex h-7 w-7 shrink-0 items-center justify-center rounded text-[var(--app-ink-soft)] transition-colors hover:bg-[var(--app-surface-2)] hover:text-[var(--app-ink)]"
             @click="$emit('close')"
           >
             <UIcon name="i-lucide-x" class="h-4 w-4" />
@@ -62,24 +65,24 @@
           <template v-if="!editMode">
             <!-- Contact -->
             <div class="space-y-3 px-5 py-4">
-              <p class="text-[10px] font-semibold tracking-wider text-[#8b949e] uppercase">Contact</p>
+              <p class="text-[10px] font-semibold tracking-wider text-[var(--app-ink-soft)] uppercase">Contact</p>
 
               <!-- Phone -->
               <div class="flex items-center gap-3">
-                <div class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[#1a1a1a]">
-                  <UIcon name="i-lucide-phone" class="h-4 w-4 text-[#8b949e]" />
+                <div class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[var(--app-surface-2)]">
+                  <UIcon name="i-lucide-phone" class="h-4 w-4 text-[var(--app-ink-soft)]" />
                 </div>
                 <div class="min-w-0 flex-1">
-                  <p class="text-[10px] text-[#8b949e]">Téléphone</p>
-                  <p v-if="prospect.phone" class="text-sm font-medium text-[#f9f9f9]">
+                  <p class="text-[10px] text-[var(--app-ink-soft)]">Téléphone</p>
+                  <p v-if="prospect.phone" class="text-sm font-medium text-[var(--app-ink)]">
                     {{ prospect.phone }}
                   </p>
-                  <p v-else class="text-sm text-[#30363d]">—</p>
+                  <p v-else class="text-sm text-[var(--app-faint)]">—</p>
                 </div>
                 <a
                   v-if="prospect.phone"
                   :href="`tel:${prospect.phone}`"
-                  class="flex h-7 w-7 items-center justify-center rounded text-[#8b949e] transition-colors hover:bg-[#1a1a1a] hover:text-[#58a6ff]"
+                  class="flex h-7 w-7 items-center justify-center rounded text-[var(--app-ink-soft)] transition-colors hover:bg-[var(--app-surface-2)] hover:text-[var(--app-accent-ink)]"
                   title="Appeler"
                 >
                   <UIcon name="i-lucide-external-link" class="h-3.5 w-3.5" />
@@ -88,20 +91,20 @@
 
               <!-- Email -->
               <div class="flex items-center gap-3">
-                <div class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[#1a1a1a]">
-                  <UIcon name="i-lucide-mail" class="h-4 w-4 text-[#8b949e]" />
+                <div class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[var(--app-surface-2)]">
+                  <UIcon name="i-lucide-mail" class="h-4 w-4 text-[var(--app-ink-soft)]" />
                 </div>
                 <div class="min-w-0 flex-1">
-                  <p class="text-[10px] text-[#8b949e]">Email</p>
-                  <p v-if="prospect.email" class="truncate text-sm font-medium text-[#f9f9f9]">
+                  <p class="text-[10px] text-[var(--app-ink-soft)]">Email</p>
+                  <p v-if="prospect.email" class="truncate text-sm font-medium text-[var(--app-ink)]">
                     {{ prospect.email }}
                   </p>
-                  <p v-else class="text-sm text-[#30363d]">—</p>
+                  <p v-else class="text-sm text-[var(--app-faint)]">—</p>
                 </div>
                 <a
                   v-if="prospect.email"
                   :href="`mailto:${prospect.email}`"
-                  class="flex h-7 w-7 items-center justify-center rounded text-[#8b949e] transition-colors hover:bg-[#1a1a1a] hover:text-[#58a6ff]"
+                  class="flex h-7 w-7 items-center justify-center rounded text-[var(--app-ink-soft)] transition-colors hover:bg-[var(--app-surface-2)] hover:text-[var(--app-accent-ink)]"
                   title="Composer un email"
                 >
                   <UIcon name="i-lucide-external-link" class="h-3.5 w-3.5" />
@@ -110,22 +113,22 @@
 
               <!-- Website -->
               <div class="flex items-center gap-3">
-                <div class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[#1a1a1a]">
-                  <UIcon name="i-lucide-globe" class="h-4 w-4 text-[#8b949e]" />
+                <div class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[var(--app-surface-2)]">
+                  <UIcon name="i-lucide-globe" class="h-4 w-4 text-[var(--app-ink-soft)]" />
                 </div>
                 <div class="min-w-0 flex-1">
-                  <p class="text-[10px] text-[#8b949e]">Site web</p>
-                  <p v-if="prospect.website" class="truncate text-sm text-[#58a6ff]">
+                  <p class="text-[10px] text-[var(--app-ink-soft)]">Site web</p>
+                  <p v-if="prospect.website" class="truncate text-sm text-[var(--app-accent-ink)]">
                     {{ prospect.website }}
                   </p>
-                  <p v-else class="text-sm text-[#30363d]">—</p>
+                  <p v-else class="text-sm text-[var(--app-faint)]">—</p>
                 </div>
                 <a
                   v-if="prospect.website"
                   :href="prospect.website"
                   target="_blank"
                   rel="noopener noreferrer"
-                  class="flex h-7 w-7 items-center justify-center rounded text-[#8b949e] transition-colors hover:bg-[#1a1a1a] hover:text-[#58a6ff]"
+                  class="flex h-7 w-7 items-center justify-center rounded text-[var(--app-ink-soft)] transition-colors hover:bg-[var(--app-surface-2)] hover:text-[var(--app-accent-ink)]"
                   title="Ouvrir le site"
                 >
                   <UIcon name="i-lucide-external-link" class="h-3.5 w-3.5" />
@@ -134,60 +137,62 @@
             </div>
 
             <!-- Divider -->
-            <div class="border-t border-[#1f1f1f]"></div>
+            <div class="border-t border-[var(--app-surface-2)]"></div>
 
             <!-- Location -->
             <div class="space-y-3 px-5 py-4">
-              <p class="text-[10px] font-semibold tracking-wider text-[#8b949e] uppercase">Localisation</p>
+              <p class="text-[10px] font-semibold tracking-wider text-[var(--app-ink-soft)] uppercase">Localisation</p>
               <div class="flex items-start gap-3">
-                <div class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[#1a1a1a]">
-                  <UIcon name="i-lucide-map-pin" class="h-4 w-4 text-[#8b949e]" />
+                <div class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[var(--app-surface-2)]">
+                  <UIcon name="i-lucide-map-pin" class="h-4 w-4 text-[var(--app-ink-soft)]" />
                 </div>
                 <div>
-                  <p class="text-[10px] text-[#8b949e]">Adresse</p>
+                  <p class="text-[10px] text-[var(--app-ink-soft)]">Adresse</p>
                   <div v-if="prospect.address || prospect.city" class="mt-0.5">
-                    <p v-if="prospect.address" class="text-sm text-[#f9f9f9]">{{ prospect.address }}</p>
-                    <p v-if="prospect.city" class="text-sm text-[#8b949e]">{{ prospect.city }}</p>
+                    <p v-if="prospect.address" class="text-sm text-[var(--app-ink)]">{{ prospect.address }}</p>
+                    <p v-if="prospect.city" class="text-sm text-[var(--app-ink-soft)]">{{ prospect.city }}</p>
                   </div>
-                  <p v-else class="text-sm text-[#30363d]">—</p>
+                  <p v-else class="text-sm text-[var(--app-faint)]">—</p>
                 </div>
               </div>
             </div>
 
             <!-- Divider -->
-            <div class="border-t border-[#1f1f1f]"></div>
+            <div class="border-t border-[var(--app-surface-2)]"></div>
 
             <!-- Meta -->
             <div class="px-5 py-4">
-              <p class="mb-3 text-[10px] font-semibold tracking-wider text-[#8b949e] uppercase">Informations</p>
+              <p class="mb-3 text-[10px] font-semibold tracking-wider text-[var(--app-ink-soft)] uppercase">
+                Informations
+              </p>
               <div class="grid grid-cols-2 gap-x-4 gap-y-3">
                 <div>
-                  <p class="text-[10px] text-[#8b949e]">Catégorie</p>
-                  <p class="mt-0.5 text-sm text-[#f9f9f9]">{{ prospect.category }}</p>
+                  <p class="text-[10px] text-[var(--app-ink-soft)]">Catégorie</p>
+                  <p class="mt-0.5 text-sm text-[var(--app-ink)]">{{ prospect.category }}</p>
                 </div>
                 <div>
-                  <p class="mb-1 text-[10px] text-[#8b949e]">Source</p>
+                  <p class="mb-1 text-[10px] text-[var(--app-ink-soft)]">Source</p>
                   <UiProspectSourceBadge :source="prospect.source" />
                 </div>
                 <div v-if="prospect.created_at">
-                  <p class="text-[10px] text-[#8b949e]">Ajouté le</p>
-                  <p class="mt-0.5 text-sm text-[#f9f9f9]">{{ formatDate(prospect.created_at) }}</p>
+                  <p class="text-[10px] text-[var(--app-ink-soft)]">Ajouté le</p>
+                  <p class="mt-0.5 text-sm text-[var(--app-ink)]">{{ formatDate(prospect.created_at) }}</p>
                 </div>
                 <div>
-                  <p class="text-[10px] text-[#8b949e]">ID</p>
-                  <p class="mt-0.5 font-mono text-sm text-[#8b949e]">#{{ prospect.id }}</p>
+                  <p class="text-[10px] text-[var(--app-ink-soft)]">ID</p>
+                  <p class="mt-0.5 font-mono text-sm text-[var(--app-ink-soft)]">#{{ prospect.id }}</p>
                 </div>
               </div>
             </div>
 
             <!-- Divider -->
-            <div class="border-t border-[#1f1f1f]"></div>
+            <div class="border-t border-[var(--app-surface-2)]"></div>
 
             <!-- Enrichment -->
             <UiProspectEnrichment :prospect-id="prospect.id" :open="open" />
 
             <!-- Divider -->
-            <div class="border-t border-[#1f1f1f]"></div>
+            <div class="border-t border-[var(--app-surface-2)]"></div>
 
             <!-- Behaviour (demo tracking → scoring / timeline / AI) -->
             <UiProspectBehavior
@@ -201,19 +206,21 @@
           <!-- EDIT MODE -->
           <form v-else id="prospect-edit-form" class="space-y-4 p-5" @submit.prevent="handleSave">
             <div>
-              <label class="mb-1 block text-[10px] font-medium tracking-wider text-[#8b949e] uppercase"> Nom * </label>
+              <label class="mb-1 block text-[10px] font-medium tracking-wider text-[var(--app-ink-soft)] uppercase">
+                Nom *
+              </label>
               <input v-model="editForm.name" type="text" required class="input-field" placeholder="Nom du prospect" />
             </div>
 
             <div class="grid grid-cols-2 gap-3">
               <div>
-                <label class="mb-1 block text-[10px] font-medium tracking-wider text-[#8b949e] uppercase">
+                <label class="mb-1 block text-[10px] font-medium tracking-wider text-[var(--app-ink-soft)] uppercase">
                   Téléphone
                 </label>
                 <input v-model="editForm.phone" type="tel" class="input-field" placeholder="06 12 34 56 78" />
               </div>
               <div>
-                <label class="mb-1 block text-[10px] font-medium tracking-wider text-[#8b949e] uppercase">
+                <label class="mb-1 block text-[10px] font-medium tracking-wider text-[var(--app-ink-soft)] uppercase">
                   Email
                 </label>
                 <input v-model="editForm.email" type="email" class="input-field" placeholder="contact@..." />
@@ -221,14 +228,14 @@
             </div>
 
             <div>
-              <label class="mb-1 block text-[10px] font-medium tracking-wider text-[#8b949e] uppercase">
+              <label class="mb-1 block text-[10px] font-medium tracking-wider text-[var(--app-ink-soft)] uppercase">
                 Site web
               </label>
               <input v-model="editForm.website" type="url" class="input-field" placeholder="https://..." />
             </div>
 
             <div>
-              <label class="mb-1 block text-[10px] font-medium tracking-wider text-[#8b949e] uppercase">
+              <label class="mb-1 block text-[10px] font-medium tracking-wider text-[var(--app-ink-soft)] uppercase">
                 Adresse
               </label>
               <input v-model="editForm.address" type="text" class="input-field" placeholder="12 Rue de la Paix" />
@@ -236,13 +243,13 @@
 
             <div class="grid grid-cols-2 gap-3">
               <div>
-                <label class="mb-1 block text-[10px] font-medium tracking-wider text-[#8b949e] uppercase">
+                <label class="mb-1 block text-[10px] font-medium tracking-wider text-[var(--app-ink-soft)] uppercase">
                   Ville
                 </label>
                 <input v-model="editForm.city" type="text" class="input-field" placeholder="Paris" />
               </div>
               <div>
-                <label class="mb-1 block text-[10px] font-medium tracking-wider text-[#8b949e] uppercase">
+                <label class="mb-1 block text-[10px] font-medium tracking-wider text-[var(--app-ink-soft)] uppercase">
                   Catégorie
                 </label>
                 <input v-model="editForm.category" type="text" class="input-field" placeholder="plombier" />
@@ -252,11 +259,11 @@
         </div>
 
         <!-- ───────────────────────── Footer ─────────────────────── -->
-        <div class="border-t border-[#30363d] px-5 py-4">
+        <div class="border-t border-[var(--app-line)] px-5 py-4">
           <!-- Delete confirmation inline -->
-          <div v-if="showDeleteConfirm" class="rounded-lg border border-[#da3633]/40 bg-[#da3633]/10 p-4">
-            <p class="mb-0.5 text-sm font-medium text-[#f9f9f9]">Supprimer ce prospect ?</p>
-            <p class="mb-3 text-xs text-[#8b949e]">Cette action est irréversible.</p>
+          <div v-if="showDeleteConfirm" class="rounded-lg border border-[var(--app-red)]/40 bg-[var(--app-red)]/10 p-4">
+            <p class="mb-0.5 text-sm font-medium text-[var(--app-ink)]">Supprimer ce prospect ?</p>
+            <p class="mb-3 text-xs text-[var(--app-ink-soft)]">Cette action est irréversible.</p>
             <div class="flex gap-2">
               <button class="btn-secondary flex-1 text-xs" :disabled="isDeleting" @click="showDeleteConfirm = false">
                 Annuler
@@ -272,7 +279,7 @@
           <div v-else-if="!editMode" class="space-y-2">
             <button
               class="btn-secondary w-full"
-              :class="prospect.contacted ? 'text-[#3fb950]' : ''"
+              :class="prospect.contacted ? 'text-[var(--app-green)]' : ''"
               :title="prospect.contacted ? 'Marquer comme pas contacté' : 'Marquer comme contacté'"
               @click="$emit('toggleContacted', prospect)"
             >
@@ -406,13 +413,13 @@ watch(
 const confidenceColor = computed((): string => {
   switch (props.prospect?.confidence) {
     case 1:
-      return 'bg-[#dc4747]'
+      return 'bg-[var(--app-red)]'
     case 2:
-      return 'bg-[#e3b341]'
+      return 'bg-[var(--app-accent)]'
     case 3:
-      return 'bg-[#58a6ff]'
+      return 'bg-[var(--app-accent-ink)]'
     case 4:
-      return 'bg-[#3fb950]'
+      return 'bg-[var(--app-green)]'
     default:
       return 'bg-[#8b949e]'
   }

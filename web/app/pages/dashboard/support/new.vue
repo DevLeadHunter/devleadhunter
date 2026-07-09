@@ -8,8 +8,8 @@
       </NuxtLink>
 
       <header class="space-y-2">
-        <h1 class="text-xl leading-tight font-semibold text-[#f9f9f9]">Report an issue or request help</h1>
-        <p class="max-w-2xl text-sm text-[#8b949e]">
+        <h1 class="text-xl leading-tight font-semibold text-[var(--app-ink)]">Report an issue or request help</h1>
+        <p class="max-w-2xl text-sm text-[var(--app-ink-soft)]">
           Describe what happened, add as much context as possible and attach screenshots if you have them. Our team will
           get back to you directly in the conversation thread.
         </p>
@@ -18,7 +18,7 @@
       <div class="grid gap-6 xl:grid-cols-[2fr_1fr]">
         <form class="card space-y-6 p-6" @submit.prevent="handleSubmit">
           <div class="space-y-2">
-            <label class="text-sm font-medium text-[#f9f9f9]" for="subject">Subject</label>
+            <label class="text-sm font-medium text-[var(--app-ink)]" for="subject">Subject</label>
             <input
               id="subject"
               v-model="form.subject"
@@ -31,7 +31,7 @@
           </div>
 
           <div class="space-y-2">
-            <label class="text-sm font-medium text-[#f9f9f9]" for="topic">Category</label>
+            <label class="text-sm font-medium text-[var(--app-ink)]" for="topic">Category</label>
             <select id="topic" v-model="form.topic" required class="input-field">
               <option disabled value="">Select a topic</option>
               <option v-for="topic in topics" :key="topic.value" :value="topic.value">
@@ -41,7 +41,7 @@
           </div>
 
           <div class="space-y-2">
-            <label class="text-sm font-medium text-[#f9f9f9]" for="message"> Details </label>
+            <label class="text-sm font-medium text-[var(--app-ink)]" for="message"> Details </label>
             <textarea
               id="message"
               v-model="form.message"
@@ -54,9 +54,9 @@
           </div>
 
           <div class="space-y-3">
-            <label class="text-sm font-medium text-[#f9f9f9]">Screenshots (optional)</label>
+            <label class="text-sm font-medium text-[var(--app-ink)]">Screenshots (optional)</label>
             <label
-              class="flex cursor-pointer flex-col items-center justify-center gap-2 rounded-lg border border-dashed border-[#30363d] bg-[#050505] px-4 py-6 text-xs text-[#8b949e] transition-colors hover:border-[#71A3DB]/50 hover:text-[#f9f9f9]"
+              class="flex cursor-pointer flex-col items-center justify-center gap-2 rounded-lg border border-dashed border-[var(--app-line)] bg-[var(--app-bg)] px-4 py-6 text-xs text-[var(--app-ink-soft)] transition-colors hover:border-[#71A3DB]/50 hover:text-[var(--app-ink)]"
             >
               <i class="fa-solid fa-cloud-arrow-up text-lg text-[#71A3DB]"></i>
               <span>Upload one or many images — JPG, PNG or WEBP (8 MB max per file)</span>
@@ -74,15 +74,15 @@
               <figure
                 v-for="(preview, index) in previews"
                 :key="preview.url"
-                class="relative overflow-hidden rounded-lg border border-[#30363d] bg-[#0d1117]"
+                class="relative overflow-hidden rounded-lg border border-[var(--app-line)] bg-[var(--app-bg)]"
               >
                 <img :src="preview.url" :alt="preview.name" class="h-32 w-full object-cover" />
-                <figcaption class="truncate px-3 py-2 text-[11px] text-[#8b949e]">
+                <figcaption class="truncate px-3 py-2 text-[11px] text-[var(--app-ink-soft)]">
                   {{ preview.name }}
                 </figcaption>
                 <button
                   type="button"
-                  class="absolute top-2 right-2 flex h-6 w-6 items-center justify-center rounded-full bg-[#050505]/80 text-[11px] text-[#f9f9f9] transition-colors hover:bg-[#DC4747] hover:text-white"
+                  class="absolute top-2 right-2 flex h-6 w-6 items-center justify-center rounded-full bg-[var(--app-bg)]/80 text-[11px] text-[var(--app-ink)] transition-colors hover:bg-[var(--app-red)] hover:text-white"
                   @click="removeAttachment(index)"
                 >
                   <i class="fa-solid fa-xmark"></i>
@@ -92,7 +92,9 @@
           </div>
 
           <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-end">
-            <NuxtLink to="/dashboard/support" class="text-xs text-[#8b949e] hover:text-[#f9f9f9]"> Cancel </NuxtLink>
+            <NuxtLink to="/dashboard/support" class="text-xs text-[var(--app-ink-soft)] hover:text-[var(--app-ink)]">
+              Cancel
+            </NuxtLink>
             <button type="submit" class="btn-primary w-full gap-2 sm:w-auto" :disabled="isSubmitting">
               <span>Create ticket</span>
             </button>
@@ -101,8 +103,8 @@
 
         <aside class="card space-y-6 bg-[#101216] p-6">
           <div>
-            <h2 class="text-sm font-semibold tracking-wide text-[#f9f9f9] uppercase">Tips to speed things up</h2>
-            <ul class="mt-3 space-y-2 text-xs leading-relaxed text-[#8b949e]">
+            <h2 class="text-sm font-semibold tracking-wide text-[var(--app-ink)] uppercase">Tips to speed things up</h2>
+            <ul class="mt-3 space-y-2 text-xs leading-relaxed text-[var(--app-ink-soft)]">
               <li class="flex items-start gap-2">
                 <i class="fa-regular fa-circle-check mt-0.5 text-[#71A3DB]"></i>
                 Share the steps you followed and where it went wrong (e.g. credits consumed without results).
@@ -119,19 +121,19 @@
           </div>
 
           <div class="space-y-3 border-t border-[#1f252d] pt-4">
-            <h3 class="text-sm font-semibold text-[#f9f9f9]">Popular topics</h3>
-            <ul class="space-y-2 text-xs leading-relaxed text-[#8b949e]">
+            <h3 class="text-sm font-semibold text-[var(--app-ink)]">Popular topics</h3>
+            <ul class="space-y-2 text-xs leading-relaxed text-[var(--app-ink-soft)]">
               <li>
-                <strong class="text-[#f9f9f9]">Credits & billing</strong> — tell us how many credits were used and what
-                result you expected.
+                <strong class="text-[var(--app-ink)]">Credits & billing</strong> — tell us how many credits were used
+                and what result you expected.
               </li>
               <li>
-                <strong class="text-[#f9f9f9]">Bug report</strong> — explain the workflow, browser, and page where the
-                issue appears.
+                <strong class="text-[var(--app-ink)]">Bug report</strong> — explain the workflow, browser, and page
+                where the issue appears.
               </li>
               <li>
-                <strong class="text-[#f9f9f9]">Refund request</strong> — include the payment amount and date if you ask
-                for a refund.
+                <strong class="text-[var(--app-ink)]">Refund request</strong> — include the payment amount and date if
+                you ask for a refund.
               </li>
             </ul>
           </div>

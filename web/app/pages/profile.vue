@@ -1,6 +1,6 @@
 <template>
   <div class="max-w-2xl">
-    <h1 class="mb-4 text-xl font-semibold text-[#f9f9f9]">Profile</h1>
+    <h1 class="mb-4 text-xl font-semibold text-[var(--app-ink)]">Profile</h1>
 
     <div class="card">
       <form class="space-y-4" @submit.prevent="handleSubmit">

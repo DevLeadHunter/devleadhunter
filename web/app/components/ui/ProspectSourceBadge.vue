@@ -1,5 +1,11 @@
 <template>
-  <span :class="['inline-flex items-center gap-1.5 rounded px-2 py-0.5 text-xs font-semibold', config.bg, config.text]">
+  <span
+    :class="[
+      'inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-semibold',
+      config.bg,
+      config.text,
+    ]"
+  >
     <!-- Real brand favicon (pagesjaunes, google, osm, yelp, brightdata) -->
     <img
       v-if="config.logoUrl"
@@ -8,7 +14,7 @@
       class="h-3.5 w-3.5 shrink-0 object-contain"
       loading="lazy"
     />
-    <!-- Fallback icon for sources without a real website (auto, mock, unknown) -->
+    <!-- Fallback icon for sources without a real website (auto, unknown) -->
     <i v-else :class="[config.icon, 'text-[10px]']"></i>
 
     {{ config.label }}
@@ -56,7 +62,6 @@ interface SourceConfig {
  *   Yelp          #D32323  (Yelp red)
  *   BrightData    #0099E5  (BrightData cyan-blue)
  *   Auto          #7C3AED  (purple — composite source)
- *   Mock          #4B5563  (neutral grey)
  *
  * Logos are loaded via Google's favicon service so they always match the
  * source's current brand icon without storing local assets.
@@ -102,13 +107,6 @@ const SOURCE_CONFIG: Record<string, SourceConfig> = {
     logoUrl: null,
     icon: 'fa-solid fa-wand-magic-sparkles',
     bg: 'bg-[#7C3AED]',
-    text: 'text-white',
-  },
-  mock: {
-    label: 'Mock',
-    logoUrl: null,
-    icon: 'fa-solid fa-flask',
-    bg: 'bg-[#4B5563]',
     text: 'text-white',
   },
 }
