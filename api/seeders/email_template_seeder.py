@@ -68,6 +68,33 @@ _TEMPLATES: list[dict[str, str]] = [
             "<p>Léo</p>"
         ),
     },
+    # ── Refonte : prospects qui ONT déjà un site, jugé faible par l'audit
+    #    Lighthouse (filtre « Améliorable » dans Mes prospects). Le pitch ne
+    #    vend pas une création mais une V2 comparable côte à côte.
+    {
+        "name": "Refonte — J1 (site existant dépassé)",
+        "subject": "une v2 de votre site",
+        "body_html": (
+            "<p>Bonjour {prenom},</p>"
+            "<p>Je suis tombé sur le site de {entreprise}. Il fait le job, mais il vous dessert : "
+            "lent sur mobile, et Google fait passer devant des {metier} de {ville} moins bons que vous.</p>"
+            "<p>Plutôt que d'en parler, j'en ai monté une version moderne — comparez vous-même : {lien_demo}</p>"
+            "<p>Vous en pensez quoi ?</p>"
+            "<p>Léo</p>"
+        ),
+    },
+    {
+        "name": "Refonte — Relance (J+5, avec prix)",
+        "subject": "l'ancien ou le nouveau ?",
+        "body_html": (
+            "<p>Bonjour {prenom},</p>"
+            "<p>La comparaison avec votre site actuel est toujours en ligne : {lien_demo}</p>"
+            "<p>500€ une fois, sans abonnement : je bascule votre nom de domaine dessus et vous "
+            "gardez la main sur tout le contenu.</p>"
+            "<p>On en discute ?</p>"
+            "<p>Léo</p>"
+        ),
+    },
 ]
 
 

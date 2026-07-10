@@ -32,6 +32,10 @@ class BehaviorScore(TypedDict):
     temperature: str  # hot | warm | cold | unknown
     score: int  # 0–100
     signals: BehaviorSignals
+    # Opportunity flag: the prospect's EXISTING website scored poorly on
+    # Lighthouse → a redesign pitch has real ammunition. Orthogonal to the
+    # engagement temperature but folded into the score as a bonus.
+    site_improvable: bool
 
 
 def empty_signals() -> BehaviorSignals:
@@ -68,10 +72,19 @@ def _has_any_activity(signals: BehaviorSignals) -> bool:
     )
 
 
-def score_from_signals(signals: BehaviorSignals) -> BehaviorScore:
-    """Compute temperature + 0–100 score from a signals structure (demo + email)."""
+def score_from_signals(signals: BehaviorSignals, site_improvable: bool = False) -> BehaviorScore:
+    """Compute temperature + 0–100 score from a signals structure (demo + email).
+
+    @param signals - Aggregated demo + email signals.
+    @param site_improvable - Lighthouse verdict on the prospect's EXISTING website
+        (True = weak site → redesign opportunity). Adds a score bonus once the
+        prospect shows any engagement; never creates activity by itself.
+    @returns Temperature, 0–100 score, signals and the opportunity flag.
+    """
     if not _has_any_activity(signals):
-        return {"temperature": "unknown", "score": 0, "signals": signals}
+        # No engagement: the weak-website opportunity is surfaced via the flag
+        # but must not fabricate a temperature on its own.
+        return {"temperature": "unknown", "score": 0, "signals": signals, "site_improvable": site_improvable}
 
     score = 0
     # Demo behaviour
@@ -86,6 +99,10 @@ def score_from_signals(signals: BehaviorSignals) -> BehaviorScore:
     # Email engagement
     score += min(signals["emails_opened"], 5) * 4
     score += min(signals["emails_clicked"], 5) * 12  # clicked the demo link = strong intent
+    # Redesign opportunity: an engaged prospect whose current site is weak is
+    # easier to close (the pitch has proof) → flat bonus.
+    if site_improvable:
+        score += 10
     score = min(score, 100)
 
     strong_intent = (
@@ -98,7 +115,7 @@ def score_from_signals(signals: BehaviorSignals) -> BehaviorScore:
     else:
         temperature = "cold"
 
-    return {"temperature": temperature, "score": score, "signals": signals}
+    return {"temperature": temperature, "score": score, "signals": signals, "site_improvable": site_improvable}
 
 
 def _apply_email(signals: BehaviorSignals, email: Optional[dict[str, Any]]) -> None:
@@ -110,12 +127,17 @@ def _apply_email(signals: BehaviorSignals, email: Optional[dict[str, Any]]) -> N
     signals["emails_clicked"] = int(email.get("clicked", 0) or 0)
 
 
-def compute(events: list[dict[str, Any]], email: Optional[dict[str, Any]] = None) -> BehaviorScore:
+def compute(
+    events: list[dict[str, Any]],
+    email: Optional[dict[str, Any]] = None,
+    site_improvable: bool = False,
+) -> BehaviorScore:
     """
     Compute a lead score from raw demo events + optional email engagement.
 
     @param events - List of ``{"event", "timestamp", "properties"}`` items.
     @param email - Optional ``{"sent", "opened", "clicked"}`` counts.
+    @param site_improvable - Lighthouse verdict on the prospect's existing website.
     @returns Temperature, a 0–100 score and the underlying signals.
     """
     signals = empty_signals()
@@ -155,7 +177,7 @@ def compute(events: list[dict[str, Any]], email: Optional[dict[str, Any]] = None
         signals["last_seen"] = events[0].get("timestamp")
 
     _apply_email(signals, email)
-    return score_from_signals(signals)
+    return score_from_signals(signals, site_improvable=site_improvable)
 
 
 def build_signals_from_aggregate(

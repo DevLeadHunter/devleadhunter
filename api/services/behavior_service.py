@@ -145,15 +145,24 @@ class BehaviorService:
     # Public API
     # ------------------------------------------------------------------ #
 
+    @staticmethod
+    def _site_improvable(db: Session, prospect_id: int) -> bool:
+        """Lighthouse verdict on the prospect's existing website (False when unaudited)."""
+        prospect = db.get(ProspectDB, prospect_id)
+        audit = prospect.lighthouse_json if prospect is not None else None
+        return bool(audit.get("is_improvable")) if isinstance(audit, dict) else False
+
     async def get_behavior(self, db: Session, user_id: int, prospect_id: int) -> dict[str, Any]:
         """Return combined (demo + email) temperature, score, signals and timeline."""
         events = await self._events_for_prospect(db, user_id, prospect_id)
         email = self._email_engagement(db, user_id, prospect_id)
-        score = lead_scoring.compute(events, email=email)
+        site_improvable = self._site_improvable(db, prospect_id)
+        score = lead_scoring.compute(events, email=email, site_improvable=site_improvable)
         return {
             "temperature": score["temperature"],
             "score": score["score"],
             "signals": score["signals"],
+            "site_improvable": score["site_improvable"],
             "timeline": self._build_timeline(events, email["timeline"]),
             "has_data": bool(events) or email["sent"] > 0,
             "tracking_configured": posthog_service.is_configured,
@@ -248,7 +257,10 @@ class BehaviorService:
                     combined["last_seen"] = last
 
             signals = lead_scoring.build_signals_from_aggregate(combined, email_by_pid.get(pid))
-            score = lead_scoring.score_from_signals(signals)
+            audit = prospect.lighthouse_json if isinstance(prospect.lighthouse_json, dict) else None
+            score = lead_scoring.score_from_signals(
+                signals, site_improvable=bool(audit.get("is_improvable")) if audit else False
+            )
             if score["temperature"] == "unknown":
                 continue
             leads.append(
@@ -258,6 +270,7 @@ class BehaviorService:
                     "city": prospect.city,
                     "temperature": score["temperature"],
                     "score": score["score"],
+                    "site_improvable": score["site_improvable"],
                     "last_seen": combined["last_seen"],
                     "signals": score["signals"],
                 }
