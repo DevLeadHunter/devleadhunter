@@ -25,6 +25,8 @@ class Source(str, Enum):
     # Deprecated: the mock/test scraper was removed. Kept so existing prospects with
     # source="mock" still deserialize; not offered in the UI or scraper registry.
     MOCK = "mock"
+    # Manually added or JSON-imported prospects (no scraper involved).
+    MANUAL = "manual"
     ALL = "all"
     AUTO = "auto"
     BRIGHTDATA = "brightdata"
