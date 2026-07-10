@@ -4,7 +4,7 @@
   "version": "0.1.0",
   "identifier": "fr.dibodev.devleadhunter",
   "build": {
-    "beforeDevCommand": "cross-env NUXT_DESKTOP_BUILD=1 nuxt dev --port 1420",
+    "beforeDevCommand": "node scripts/dev-desktop.mjs",
     "devUrl": "http://localhost:1420",
     "beforeBuildCommand": "npm run desktop:generate",
     "frontendDist": "../.output/public"
