@@ -139,6 +139,11 @@ class Settings(BaseSettings):
         alias="STORYBLOK_WEBHOOK_SECRET",
         description="Shared secret used to sign Storyblok publish webhooks (optional)",
     )
+    pagespeed_api_key: Optional[str] = Field(
+        default=None,
+        alias="PAGESPEED_API_KEY",
+        description="Google PageSpeed Insights API key (optional — raises the free quota)",
+    )
     vercel_token: Optional[str] = Field(
         default=None,
         alias="VERCEL_TOKEN",

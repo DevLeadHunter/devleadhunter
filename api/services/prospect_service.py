@@ -3,10 +3,25 @@ Prospect data service.
 """
 from typing import List, Optional
 from sqlalchemy.orm import Session
-from sqlalchemy import or_, and_
+from sqlalchemy import or_, and_, select
 from models.prospect import Prospect, ProspectCreate, ProspectUpdate
 from models.prospect_db import ProspectDB
 from models.search import ProspectSearchRequest
+from models.user import User
+
+
+def _org_visibility_filter(user_id: int, organization_id: Optional[int]):
+    """SQLAlchemy filter: prospects owned by the user OR shared with their org.
+
+    The org side is strictly scoped to ``organization_id`` — a prospect from
+    another organization can never match (no cross-org leak).
+    """
+    if organization_id is None:
+        return ProspectDB.user_id == user_id
+    return or_(
+        ProspectDB.user_id == user_id,
+        ProspectDB.organization_id == organization_id,
+    )
 
 
 class ProspectService:
@@ -70,33 +85,51 @@ class ProspectService:
         db: Session,
         user_id: Optional[int] = None,
         skip: int = 0,
-        limit: int = 1000
+        limit: int = 1000,
+        organization_id: Optional[int] = None,
     ) -> List[Prospect]:
         """
-        Get all prospects for a user.
-        
+        Get all prospects visible to a user (their own + their organization's).
+
         Args:
             db: Database session
             user_id: Optional user ID to filter prospects by user
             skip: Number of records to skip
             limit: Maximum number of records to return
-            
+            organization_id: The user's organization (None = personal scope only)
+
         Returns:
-            List of all prospects
+            List of all visible prospects, reservation names resolved
         """
         query = db.query(ProspectDB)
-        
+
         # Filter by user if provided
         if user_id is not None:
-            query = query.filter(ProspectDB.user_id == user_id)
-        
+            query = query.filter(_org_visibility_filter(user_id, organization_id))
+
         # Order by creation date (most recent first)
         query = query.order_by(ProspectDB.created_at.desc())
-        
+
         db_prospects = query.offset(skip).limit(limit).all()
-        
-        # Convert to Pydantic models
-        return [Prospect.model_validate(p) for p in db_prospects]
+
+        return self._to_models_with_reservers(db, db_prospects)
+
+    @staticmethod
+    def _to_models_with_reservers(db: Session, db_prospects: List[ProspectDB]) -> List[Prospect]:
+        """Convert rows to Pydantic models, resolving ``reserved_by_name`` in one query."""
+        reserver_ids = {p.reserved_by_user_id for p in db_prospects if p.reserved_by_user_id}
+        names: dict[int, str] = {}
+        if reserver_ids:
+            rows = db.execute(select(User.id, User.name).where(User.id.in_(reserver_ids))).all()
+            names = {row[0]: row[1] for row in rows}
+
+        prospects: List[Prospect] = []
+        for db_prospect in db_prospects:
+            prospect = Prospect.model_validate(db_prospect)
+            if prospect.reserved_by_user_id:
+                prospect.reserved_by_name = names.get(prospect.reserved_by_user_id)
+            prospects.append(prospect)
+        return prospects
     
     async def get_prospect(self, db: Session, prospect_id: int) -> Optional[Prospect]:
         """
@@ -115,25 +148,27 @@ class ProspectService:
         return None
     
     async def create_prospect(
-        self, 
-        db: Session, 
+        self,
+        db: Session,
         prospect: ProspectCreate,
-        user_id: int
+        user_id: int,
+        organization_id: Optional[int] = None,
     ) -> Prospect:
         """
         Create a new prospect.
-        
+
         Args:
             db: Database session
             prospect: Prospect data to create
             user_id: ID of the user creating the prospect
-            
+            organization_id: The creator's organization — the prospect is shared with it
+
         Returns:
             Created prospect with generated ID
         """
         # Convert Source enum to string
         source_value = prospect.source.value if hasattr(prospect.source, 'value') else str(prospect.source)
-        
+
         db_prospect = ProspectDB(
             name=prospect.name,
             address=prospect.address,
@@ -144,12 +179,13 @@ class ProspectService:
             category=prospect.category,
             source=source_value,
             confidence=prospect.confidence,
-            user_id=user_id
+            user_id=user_id,
+            organization_id=organization_id,
         )
         db.add(db_prospect)
         db.commit()
         db.refresh(db_prospect)
-        
+
         return Prospect.model_validate(db_prospect)
     
     async def check_duplicate(

@@ -21,9 +21,12 @@ from models.prospect_interaction import ProspectInteraction
 from models.demo_site import DemoSite
 from models.prospect_enrichment import ProspectEnrichment
 from models.order import Order
+from models.organization import Organization, OrganizationMember
 
 __all__ = [
     "User",
+    "Organization",
+    "OrganizationMember",
     "HealthStatus",
     "Prospect",
     "ProspectSearchRequest",

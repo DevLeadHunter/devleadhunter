@@ -16,6 +16,7 @@ from models.scraping_job import ScrapingJob, ScrapingJobCreate, JobStatus
 from models.prospect import ProspectCreate, Prospect
 from services.scraper_service import scraper_service
 from services.prospect_service import prospect_service
+from services.organization_service import organization_service
 from services.scrape_progress import ScrapeProgressReporter
 from services.scraping_job_stream_hub import scraping_job_stream_hub
 
@@ -130,6 +131,7 @@ class ScrapingJobService:
                     db=db,
                     prospect=prospect_data,
                     user_id=job.user_id,
+                    organization_id=organization_service.user_org_id(db, job.user_id),
                 )
             except Exception as exc:  # noqa: BLE001
                 logger.error("Job %s: failed to save %s: %s", job_id, prospect_data.name, exc)

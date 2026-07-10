@@ -115,6 +115,20 @@ class Prospect(ProspectBase):
     user_id: int = Field(..., description="User ID who saved this prospect")
     contacted: bool = Field(False, description="Whether this prospect has been contacted")
     created_at: Optional[datetime] = Field(None, description="Timestamp when created")
+    organization_id: Optional[int] = Field(
+        None, description="Organization the prospect is shared with (creator's org)"
+    )
+    reserved_by_user_id: Optional[int] = Field(
+        None, description="Member currently reserving this prospect (None = free)"
+    )
+    reserved_by_name: Optional[str] = Field(
+        None, description="Display name of the reserving member (resolved server-side)"
+    )
+    reserved_at: Optional[datetime] = Field(None, description="When the reservation was made")
+    lighthouse_json: Optional[dict] = Field(
+        None, description="Latest Lighthouse audit of the prospect's existing website"
+    )
+    lighthouse_at: Optional[datetime] = Field(None, description="When the audit was run")
     
     class Config:
         """Pydantic configuration."""
