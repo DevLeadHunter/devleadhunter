@@ -126,8 +126,18 @@ sous-ensemble qu'elle utilise, une clé vide/absente masque la section.
 générique** (titres de sections, framing craft/process/brands, badges, labels CTA, métriques
 trust) vit en **défauts dans chaque template** (c'est du design) — jamais dans `SiteContent`.
 
-Le contenu est **stocké dans Storyblok** (éditable), avec le `content_json` en DB comme
-**fallback** (priorité déjà en place côté demo-host : live Storyblok → draft → content_json).
+**Comment Storyblok et `content_json` se combinent (mécanique réelle, corrigée 2026-07-10)** :
+le site public (démo `[slug].vue` **et** site vendu par domaine `index.vue`) rend **toujours
+`content_json`** (la copie en DB). Storyblok n'est lu en direct **que dans le Visual Editor**
+(query `?_storyblok`, version draft, via `useStoryblokPreview`) — priorité côté demo-host :
+live bridge → draft → `content_json`. Le retour se fait par **webhook** : à chaque publication
+cliente, Storyblok appelle `POST /api/v1/webhooks/storyblok`, l'API re-fetch la story **publiée**
+(CDN, token public du site — le payload n'est jamais cru) et la réaplatit en `SiteContent` via
+`from_storyblok_site_content` (`api/services/templates/site_content.py`, miroir Python du bridge
+TS `storyblokSiteContentToSiteContent.ts`). Le webhook est enregistré par space au provisioning
+(`_register_publish_webhook` — skippé si `API_BASE_URL` est localhost ; secret optionnel
+`STORYBLOK_WEBHOOK_SECRET`). Sans ce webhook, les éditions publiées par le client ne seraient
+**jamais visibles** sur son site.
 
 ```ts
 // @devleadhunter/website-content — shape actuel (tag v1.1.0)
@@ -210,7 +220,41 @@ Deux contextes distincts :
 4. Fournir un mock dans `content.ts` pour le `.playground`.
 5. Tag `v1.0.0`.
 6. Côté demo-host : ajouter 1 ligne dans `extends` + l'entrée dans le dispatch `defineAsyncComponent`.
-7. Côté API : créer `api/services/templates/<id>.py` (`TEMPLATE_ID`, `TEMPLATE_META`, `build_content` produisant du `SiteContent`) + l'ajouter à `TEMPLATE_MODULES` dans `registry.py`.
+7. Côté API : créer `api/services/templates/<id>.py` (`TEMPLATE_ID`, `TEMPLATE_META`, **`build_site_content`** — appelle `map_prospect_and_enrichment` de `site_content.py` et ajoute ses `services`/`faq` métier) + l'ajouter à `TEMPLATE_MODULES` dans `registry.py`.
+8. **Vérifier la checklist Storyblok ci-dessous** — c'est elle qui garantit que le client livré peut vraiment éditer son site.
+
+### Checklist Storyblok d'une template (CMS client fonctionnel)
+
+Le but produit : le client livré ouvre SON space Storyblok et modifie **le plus de choses
+possibles** sur son site, seul. La template ne voit jamais Storyblok — ce qui est éditable,
+c'est **exactement ce que la template consomme depuis `SiteContent`**. Donc :
+
+1. **Consommer TOUTES les clés de `SiteContent` qui ont un sens pour le métier** — au minimum :
+   `businessName`, `phone`, `email`, `city`/`area`, `subtitle`, `about`, `heroImage`,
+   `gallery`, `services`, `reviews`, `faq`, `openingHours`, `palette`. Une clé non consommée
+   = un champ que le client remplit dans Storyblok **sans effet visible** (contre-exemple
+   historique : `plumber-atelier` n'affiche ni avis, ni FAQ, ni galerie, ni horaires — à éviter).
+2. **Une clé vide/absente masque la section** (`v-if`) ou tombe sur le défaut du template —
+   jamais de crash, jamais de « undefined » à l'écran.
+3. La **copie éditoriale** (titres de sections, badges, CTA, framing) vit en défauts dans la
+   template : le client ne peut PAS l'éditer aujourd'hui. **Ne pas prétendre le contraire dans
+   les commentaires** (contre-exemple historique : `BrandsSection.vue` de cuivre annonçait des
+   marques « éditables dans Storyblok » alors qu'elles sont en dur). Si un contenu doit être
+   éditable par le client, il doit passer par une clé (transverse, optionnelle) de `SiteContent`.
+4. Côté Storyblok, **rien à faire par template** : le space n'enregistre que la famille de bloks
+   partagée `site_content` (+ `theme_palette`, `page`) — schémas dans
+   `api/services/templates/site_content.py` (`SITE_CONTENT_SCHEMAS`). **Ne pas ajouter de
+   `COMPONENT_SCHEMAS` riches par template** : ils ne sont plus enregistrés (ils polluaient les
+   spaces clients avec des dizaines de bloks sans effet).
+5. Étendre `SiteContent` (nouvelle clé transverse) = **4 endroits, additivement et optionnel** :
+   le type TS (`@devleadhunter/website-content` + tag), le blok (`SITE_CONTENT_SCHEMAS` +
+   `to_storyblok_site_content` + `from_storyblok_site_content` dans `site_content.py`), le
+   bridge TS demo-host (`storyblokSiteContentToSiteContent.ts`), et le builder
+   (`map_prospect_and_enrichment`). Les deux bridges (TS et Python) doivent rester des miroirs.
+6. **Tester le cycle complet** : générer un site → ouvrir le Visual Editor (les champs du blok
+   `site_content` s'éditent et se voient en live) → **Publish** → vérifier que le webhook
+   `/webhooks/storyblok` a bien mis à jour `demo_site.content_json` et que le site public
+   affiche l'édition.
 
 ### Supprimer une template
 
