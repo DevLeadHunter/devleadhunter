@@ -65,6 +65,11 @@ export interface OrganizationDrawerEntry {
   kind: 'organization'
 }
 
+/** Campaign creation drawer entry. */
+export interface CreateCampaignDrawerEntry {
+  kind: 'create-campaign'
+}
+
 /** One entry of the persistent drawer stack. */
 export type DrawerStackEntry =
   | ProspectDrawerEntry
@@ -73,6 +78,7 @@ export type DrawerStackEntry =
   | EmailTemplateDrawerEntry
   | ProfileDrawerEntry
   | OrganizationDrawerEntry
+  | CreateCampaignDrawerEntry
 
 /** Cross-page notice describing the latest prospect mutation done from a drawer. */
 export type ProspectMutationNotice = { type: 'updated'; prospect: Prospect } | { type: 'deleted'; prospectId: number }

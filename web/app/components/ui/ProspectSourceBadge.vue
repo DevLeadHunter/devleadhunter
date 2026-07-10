@@ -82,10 +82,13 @@ const SOURCE_CONFIG: Record<string, SourceConfig> = {
     text: 'text-white',
   },
   osm: {
-    label: 'OSM',
-    logoUrl: 'https://www.google.com/s2/favicons?domain=openstreetmap.org&sz=32',
-    icon: 'i-lucide-map',
-    bg: 'bg-[#73B73B]',
+    // OSM/Bright Data : favicon distant illisible à 14 px (logo détaillé fondu
+    // dans le fond) → icône lucide nette + couleur franche, au niveau des
+    // badges Pages Jaunes / Yelp.
+    label: 'OpenStreetMap',
+    logoUrl: null,
+    icon: 'i-lucide-map-pinned',
+    bg: 'bg-[#3F7E1E]',
     text: 'text-white',
   },
   yelp: {
@@ -96,11 +99,11 @@ const SOURCE_CONFIG: Record<string, SourceConfig> = {
     text: 'text-white',
   },
   brightdata: {
-    label: 'BrightData',
-    logoUrl: 'https://www.google.com/s2/favicons?domain=brightdata.com&sz=32',
-    icon: 'i-lucide-zap',
-    bg: 'bg-[#0099E5]',
-    text: 'text-white',
+    label: 'Bright Data',
+    logoUrl: null,
+    icon: 'i-lucide-radar',
+    bg: 'bg-[#12395F]',
+    text: 'text-[#9BD3FF]',
   },
   auto: {
     label: 'Auto',

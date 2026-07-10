@@ -19,14 +19,16 @@
           </button>
 
           <span
-            class="font-label flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[var(--app-ink)] text-xs font-semibold text-[var(--app-surface)]"
+            class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-[var(--app-line)] bg-[var(--app-surface-2)]"
           >
-            {{ userInitials }}
+            <UIcon name="i-lucide-megaphone" class="h-4 w-4 text-[var(--app-ink-soft)]" />
           </span>
 
           <div class="min-w-0 flex-1">
-            <h2 class="text-base leading-tight font-semibold text-[var(--app-ink)]">Mon profil</h2>
-            <p class="mt-0.5 truncate text-[11px] text-[var(--app-ink-soft)]">Modifiez vos informations de compte</p>
+            <h2 class="text-base leading-tight font-semibold text-[var(--app-ink)]">Nouvelle campagne</h2>
+            <p class="mt-0.5 truncate text-[11px] text-[var(--app-ink-soft)]">
+              Séquence de cold email : envoi initial A/B puis relances
+            </p>
           </div>
 
           <button
@@ -38,40 +40,56 @@
         </div>
 
         <!-- ───────────────────────── Body ────────────────────────── -->
-        <form id="profile-form" class="flex-1 space-y-4 overflow-y-auto px-5 py-4" @submit.prevent="handleSave">
+        <form
+          id="create-campaign-form"
+          class="flex-1 space-y-4 overflow-y-auto px-5 py-4"
+          @submit.prevent="handleCreate"
+        >
           <div>
-            <label class="text-muted mb-1.5 block text-xs font-medium" for="profile-name">Nom</label>
-            <input id="profile-name" v-model="form.name" type="text" required class="input-field" />
+            <label class="text-muted mb-1.5 block text-xs font-medium" for="campaign-name">Nom de la campagne</label>
+            <input
+              id="campaign-name"
+              v-model="form.name"
+              type="text"
+              required
+              minlength="2"
+              placeholder="Ex : Plombiers Lyon — juillet"
+              class="input-field"
+            />
           </div>
 
           <div>
-            <label class="text-muted mb-1.5 block text-xs font-medium" for="profile-email"> Email de connexion </label>
-            <input id="profile-email" v-model="form.email" type="email" required class="input-field" />
-            <p class="text-muted mt-1 text-xs">
-              Sert à vous connecter à DevLeadHunter. L'adresse d'envoi de vos emails de prospection se règle dans
-              <NuxtLink
-                to="/dashboard/email-accounts"
-                class="underline decoration-[var(--app-line)] underline-offset-2 transition-colors hover:text-[var(--app-ink)]"
-              >
-                Comptes email </NuxtLink
-              >.
-            </p>
+            <label class="text-muted mb-1.5 block text-xs font-medium" for="campaign-description">
+              Description (optionnel)
+            </label>
+            <textarea
+              id="campaign-description"
+              v-model="form.description"
+              rows="3"
+              placeholder="Objectif, cible, notes…"
+              class="input-field h-auto min-h-20 py-2"
+            ></textarea>
           </div>
+
+          <p class="text-muted text-xs leading-relaxed">
+            Vous choisirez ensuite les modèles d'email (variantes A/B), les relances et les prospects depuis la page de
+            la campagne.
+          </p>
         </form>
 
         <!-- ───────────────────────── Footer ─────────────────────── -->
         <div class="flex gap-2 border-t border-[var(--app-line)] px-5 py-4">
-          <button type="button" class="btn-secondary flex-1" :disabled="isSaving" @click="emit('close')">
+          <button type="button" class="btn-secondary flex-1" :disabled="isCreating" @click="emit('close')">
             Annuler
           </button>
           <button
             type="submit"
-            form="profile-form"
+            form="create-campaign-form"
             class="btn-primary flex-1 disabled:cursor-not-allowed disabled:opacity-50"
-            :disabled="isSaving"
+            :disabled="isCreating"
           >
-            <UIcon v-if="isSaving" name="i-lucide-loader-circle" class="mr-1.5 h-4 w-4 animate-spin" />
-            {{ isSaving ? 'Enregistrement…' : 'Enregistrer' }}
+            <UIcon v-if="isCreating" name="i-lucide-loader-circle" class="mr-1.5 h-4 w-4 animate-spin" />
+            {{ isCreating ? 'Création…' : 'Créer la campagne' }}
           </button>
         </div>
       </div>
@@ -80,15 +98,15 @@
 </template>
 
 <script lang="ts" setup>
-import type { ComputedRef, Ref } from 'vue'
-import { computed, ref, watch } from 'vue'
-import { useUserStore } from '~/stores/user'
+import type { Ref } from 'vue'
+import { ref, watch } from 'vue'
+import { useCampaignsStore } from '~/stores/campaigns'
 import { useToast } from '~/composables/useToast'
 
-/** Local shape of the profile form. */
-interface ProfileForm {
+/** Local shape of the campaign creation form. */
+interface CreateCampaignForm {
   name: string
-  email: string
+  description: string
 }
 
 /**
@@ -112,41 +130,33 @@ const emit = defineEmits<{
   back: []
 }>()
 
-const userStore = useUserStore()
-
+const campaignsStore = useCampaignsStore()
 const toast = useToast()
 
-/** Whether the save request is in flight. */
-const isSaving: Ref<boolean> = ref<boolean>(false)
+/** Whether the create request is in flight. */
+const isCreating: Ref<boolean> = ref<boolean>(false)
 
-/** Editable profile form state. */
-const form: Ref<ProfileForm> = ref<ProfileForm>({ name: '', email: '' })
-
-/** Initials shown in the header avatar. */
-const userInitials: ComputedRef<string> = computed((): string => {
-  const name: string = userStore.userName || ''
-  if (!name) return 'U'
-  const parts: string[] = name.split(' ')
-  if (parts.length >= 2 && parts[0] && parts[1]) {
-    return `${parts[0][0]}${parts[1][0]}`.toUpperCase()
-  }
-  return name.substring(0, 2).toUpperCase()
-})
+/** Campaign creation form state. */
+const form: Ref<CreateCampaignForm> = ref<CreateCampaignForm>({ name: '', description: '' })
 
 /**
- * Persist the edited profile.
- * @returns A promise that resolves once the profile is saved.
+ * Create the campaign then close the drawer (the store prepends it to the list).
+ * @returns A promise resolved once the campaign is created.
  */
-async function handleSave(): Promise<void> {
-  isSaving.value = true
+async function handleCreate(): Promise<void> {
+  isCreating.value = true
   try {
-    await userStore.updateProfile({ name: form.value.name, email: form.value.email })
-    toast.success('Profil mis à jour')
+    await campaignsStore.createCampaign({
+      name: form.value.name.trim(),
+      description: form.value.description.trim() || undefined,
+      prospect_ids: [],
+    })
+    toast.success('Campagne créée avec succès')
     emit('close')
   } catch {
-    toast.error('Erreur lors de la mise à jour du profil')
+    toast.error('Erreur lors de la création de la campagne')
   } finally {
-    isSaving.value = false
+    isCreating.value = false
   }
 }
 
@@ -154,13 +164,9 @@ watch(
   (): boolean => props.open,
   (open: boolean): void => {
     if (open) {
-      form.value = {
-        name: userStore.user?.name ?? '',
-        email: userStore.user?.email ?? '',
-      }
+      form.value = { name: '', description: '' }
     }
   },
-  { immediate: true },
 )
 </script>
 

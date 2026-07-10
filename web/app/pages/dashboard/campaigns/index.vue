@@ -6,7 +6,7 @@
         <h1 class="text-xl font-semibold text-[var(--app-ink)]">Campagnes</h1>
         <p class="text-muted mt-1 text-sm">Vos séquences de cold email, de l'envoi initial aux relances.</p>
       </div>
-      <button class="btn-primary" @click="showCreateModal = true">
+      <button class="btn-primary" @click="openCreateDrawer">
         <UIcon name="i-lucide-plus" class="h-4 w-4" />
         <span>Nouvelle campagne</span>
       </button>
@@ -142,53 +142,7 @@
         Créez une campagne pour envoyer vos premiers cold emails et leurs relances automatiques.
       </p>
       <div class="mt-6 flex justify-center">
-        <button class="btn-primary" @click="showCreateModal = true">Créer ma première campagne</button>
-      </div>
-    </div>
-
-    <!-- Modale de création -->
-    <div
-      v-if="showCreateModal"
-      class="fixed inset-0 z-50 flex items-center justify-center bg-[var(--app-overlay)] backdrop-blur-sm"
-      @click.self="showCreateModal = false"
-    >
-      <div class="border-muted w-full max-w-md rounded-lg border bg-[var(--app-surface)] p-6 shadow-lg">
-        <h2 class="mb-4 text-base font-semibold text-[var(--app-ink)]">Nouvelle campagne</h2>
-
-        <form class="space-y-3" @submit.prevent="handleCreateCampaign">
-          <div>
-            <label for="name" class="text-muted mb-1.5 block text-xs font-medium"> Nom de la campagne </label>
-            <input
-              id="name"
-              v-model="campaignName"
-              type="text"
-              required
-              class="input-field"
-              placeholder="Ex : Plombiers Paris"
-            />
-          </div>
-
-          <div>
-            <label for="description" class="text-muted mb-1.5 block text-xs font-medium">
-              Description (optionnelle)
-            </label>
-            <textarea
-              id="description"
-              v-model="campaignDescription"
-              class="input-field"
-              rows="3"
-              placeholder="Décrivez votre campagne"
-            />
-          </div>
-
-          <div class="flex gap-3 pt-2">
-            <button type="button" class="btn-secondary flex-1" @click="showCreateModal = false">Annuler</button>
-            <button type="submit" :disabled="isCreating" class="btn-primary flex-1">
-              <UIcon v-if="isCreating" name="i-lucide-loader-circle" class="mr-1.5 h-4 w-4 animate-spin" />
-              {{ isCreating ? 'Création…' : 'Créer' }}
-            </button>
-          </div>
-        </form>
+        <button class="btn-primary" @click="openCreateDrawer">Créer ma première campagne</button>
       </div>
     </div>
   </div>
@@ -199,7 +153,7 @@ import { computed, onMounted, ref, watch } from 'vue'
 import type { ComputedRef, Ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useCampaignsStore } from '~/stores/campaigns'
-import { useToast } from '~/composables/useToast'
+import { useDrawerStackStore } from '~/stores/drawerStack'
 import { campaignService } from '~/services/campaignService'
 import type { CampaignResponse, CampaignStats, CampaignStatus } from '~/services/campaignService'
 
@@ -211,7 +165,6 @@ definePageMeta({
 // ─── Composables ──────────────────────────────────────────────────────────────
 
 const campaignsStore = useCampaignsStore()
-const toast = useToast()
 const router = useRouter()
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -245,10 +198,15 @@ const STATUS_DOT: Record<CampaignStatus, string> = {
 
 // ─── State ────────────────────────────────────────────────────────────────────
 
-const showCreateModal: Ref<boolean> = ref(false)
-const campaignName: Ref<string> = ref('')
-const campaignDescription: Ref<string> = ref('')
-const isCreating: Ref<boolean> = ref(false)
+/** Persistent drawer stack — campaign creation opens as a drawer, not a modal. */
+const drawerStack = useDrawerStackStore()
+
+/**
+ * Open the campaign creation drawer.
+ */
+function openCreateDrawer(): void {
+  drawerStack.push({ kind: 'create-campaign' })
+}
 
 /** Per-campaign stats (null while loading or when the fetch failed). */
 const statsById: Ref<Record<number, CampaignStats | null>> = ref<Record<number, CampaignStats | null>>({})
@@ -314,31 +272,6 @@ async function loadStats(): Promise<void> {
  */
 function formatDate(dateStr: string): string {
   return new Date(dateStr).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })
-}
-
-// ─── Handlers ─────────────────────────────────────────────────────────────────
-
-/**
- * Submit the create-campaign form, then close the modal on success.
- * @returns A promise that resolves once the campaign has been created.
- */
-const handleCreateCampaign = async (): Promise<void> => {
-  isCreating.value = true
-  try {
-    await campaignsStore.createCampaign({
-      name: campaignName.value,
-      description: campaignDescription.value,
-      prospect_ids: [],
-    })
-    toast.success('Campagne créée avec succès')
-    showCreateModal.value = false
-    campaignName.value = ''
-    campaignDescription.value = ''
-  } catch {
-    toast.error('Erreur lors de la création de la campagne')
-  } finally {
-    isCreating.value = false
-  }
 }
 
 // ─── Watchers ─────────────────────────────────────────────────────────────────

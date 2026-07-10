@@ -93,7 +93,7 @@
     </div>
 
     <!-- Navigation -->
-    <nav class="flex-1 overflow-y-auto px-4 py-3">
+    <nav class="flex flex-1 flex-col overflow-y-auto px-4 py-3">
       <!-- Administration sub-panel (replaces main menu, Vercel-style) -->
       <template v-if="isAdmin && showAdminPanel">
         <button
@@ -160,34 +160,43 @@
           </div>
         </div>
 
-        <!-- Paramètres -->
-        <button type="button" :class="navItemClass(showSettingsPanel)" class="w-full" @click="showSettingsPanel = true">
-          <span :class="navBarClass(false)"></span>
-          <UIcon name="i-lucide-settings" class="h-4 w-4 shrink-0" />
-          <span>Paramètres</span>
-          <UIcon name="i-lucide-chevron-right" class="ml-auto h-3.5 w-3.5 opacity-50" />
-        </button>
+        <!-- Réglages (Paramètres + Administration) -->
+        <div class="mb-4">
+          <p class="app-label mb-1.5 px-3 !text-[0.6rem]">Réglages</p>
+          <div class="space-y-0.5">
+            <button
+              type="button"
+              :class="navItemClass(showSettingsPanel)"
+              class="w-full"
+              @click="showSettingsPanel = true"
+            >
+              <span :class="navBarClass(false)"></span>
+              <UIcon name="i-lucide-settings" class="h-4 w-4 shrink-0" />
+              <span>Paramètres</span>
+              <UIcon name="i-lucide-chevron-right" class="ml-auto h-3.5 w-3.5 opacity-50" />
+            </button>
 
-        <!-- Administration (admin only) -->
-        <button
-          v-if="isAdmin"
-          type="button"
-          :class="navItemClass(isAdminNavActive)"
-          class="w-full"
-          @click="handleAdminClick"
-        >
-          <span :class="navBarClass(isAdminNavActive)"></span>
-          <UIcon name="i-lucide-shield" class="h-4 w-4 shrink-0" />
-          <span>Administration</span>
-          <UIcon name="i-lucide-chevron-right" class="ml-auto h-3.5 w-3.5 opacity-50" />
-        </button>
+            <button
+              v-if="isAdmin"
+              type="button"
+              :class="navItemClass(isAdminNavActive)"
+              class="w-full"
+              @click="handleAdminClick"
+            >
+              <span :class="navBarClass(isAdminNavActive)"></span>
+              <UIcon name="i-lucide-shield" class="h-4 w-4 shrink-0" />
+              <span>Administration</span>
+              <UIcon name="i-lucide-chevron-right" class="ml-auto h-3.5 w-3.5 opacity-50" />
+            </button>
+          </div>
+        </div>
 
-        <!-- Credits (admin only) — static link card, no popover (a hover menu
-             here gets clipped by the nav's overflow and forces an X scrollbar) -->
+        <!-- Credits (admin only) — pinned at the very bottom of the menu (mt-auto;
+             the nav keeps its own bottom padding so the card never sticks to the edge) -->
         <NuxtLink
           v-if="!isMobile && isAdmin"
           to="/dashboard/buy-credits"
-          class="group mt-5 flex items-center justify-between rounded-lg border border-[var(--app-line)] bg-[var(--app-bg)] px-3 py-2 transition-colors hover:border-[var(--app-ink-soft)]"
+          class="group mt-auto flex items-center justify-between rounded-lg border border-[var(--app-line)] bg-[var(--app-bg)] px-3 py-2 transition-colors hover:border-[var(--app-ink-soft)]"
         >
           <span class="flex flex-col gap-0.5">
             <span class="app-label !text-[0.6rem]">Crédits</span>
@@ -416,8 +425,8 @@ const navGroups: ComputedRef<UiSidebarGroup[]> = computed((): UiSidebarGroup[] =
     {
       heading: 'Prospection',
       links: [
-        { to: '/dashboard/my-prospects', label: 'Mes prospects', icon: 'i-lucide-users' },
         { to: '/dashboard/search-prospects', label: 'Trouver des prospects', icon: 'i-lucide-search' },
+        { to: '/dashboard/my-prospects', label: 'Mes prospects', icon: 'i-lucide-users' },
       ],
     },
     {

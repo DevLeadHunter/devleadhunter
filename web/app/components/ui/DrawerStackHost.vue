@@ -64,12 +64,21 @@
       @close="drawerStack.closeAll()"
       @back="drawerStack.back()"
     />
+
+    <!-- Campaign creation -->
+    <UiCreateCampaignDrawer
+      :open="createCampaignEntry !== null"
+      :show-back="hasPrevious"
+      @close="drawerStack.closeAll()"
+      @back="drawerStack.back()"
+    />
   </div>
 </template>
 
 <script lang="ts" setup>
 import type { ComputedRef } from 'vue'
 import type {
+  CreateCampaignDrawerEntry,
   EmailLogDrawerEntry,
   EmailTemplateDrawerEntry,
   OrganizationDrawerEntry,
@@ -119,6 +128,13 @@ const profileEntry: ComputedRef<ProfileDrawerEntry | null> = computed((): Profil
 const organizationEntry: ComputedRef<OrganizationDrawerEntry | null> = computed((): OrganizationDrawerEntry | null => {
   return drawerStack.topEntry?.kind === 'organization' ? drawerStack.topEntry : null
 })
+
+/** Top entry narrowed to the campaign creation drawer. */
+const createCampaignEntry: ComputedRef<CreateCampaignDrawerEntry | null> = computed(
+  (): CreateCampaignDrawerEntry | null => {
+    return drawerStack.topEntry?.kind === 'create-campaign' ? drawerStack.topEntry : null
+  },
+)
 
 /** Whether the back affordance should be visible on the top drawer. */
 const hasPrevious: ComputedRef<boolean> = computed((): boolean => drawerStack.hasPrevious)

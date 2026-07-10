@@ -209,6 +209,15 @@ const visibleGroups: ComputedRef<PaletteGroup[]> = computed((): PaletteGroup[] =
       },
     },
     {
+      id: 'action-new-campaign',
+      label: 'Nouvelle campagne',
+      icon: 'i-lucide-megaphone',
+      keywords: 'créer cold email',
+      run: (): void => {
+        drawerStack.push({ kind: 'create-campaign' })
+      },
+    },
+    {
       id: 'action-profile',
       label: 'Mon profil',
       icon: 'i-lucide-user-round',

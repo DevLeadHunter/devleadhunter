@@ -265,13 +265,14 @@ const bulkBusy = ref(false)
 const searchQuery = ref('')
 const filterCategory = ref('')
 const filterCity = ref('')
-const filterWebsite = ref<'all' | 'yes' | 'no'>('no')
+const filterWebsite = ref<'all' | 'yes' | 'no' | 'improvable'>('no')
 const activeTab = ref<'not_contacted' | 'contacted'>('not_contacted')
 
 const websiteFilterOptions = [
   { value: 'all', label: 'Tous' },
   { value: 'yes', label: 'Oui' },
   { value: 'no', label: 'Non' },
+  { value: 'improvable', label: 'Améliorable (audit)' },
 ]
 const currentPage = ref(1)
 const pageSize = 50
@@ -331,6 +332,9 @@ const baseFiltered = computed(() => {
     filtered = filtered.filter((p) => !!p.website)
   } else if (filterWebsite.value === 'no') {
     filtered = filtered.filter((p) => !p.website)
+  } else if (filterWebsite.value === 'improvable') {
+    // Site existant jugé faible par l'audit Lighthouse → cible refonte.
+    filtered = filtered.filter((p) => !!p.website && p.lighthouse_json?.is_improvable === true)
   }
 
   return filtered
