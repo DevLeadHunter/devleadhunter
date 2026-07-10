@@ -30,6 +30,8 @@ from enums.email_status import EmailStatus
 from models.demo_site import DemoSite
 from models.email_log import EmailLog
 from services.posthog_service import posthog_service
+from services.storyblok_service import storyblok_service
+from services.templates.site_content import from_storyblok_site_content
 
 router = APIRouter(prefix="/webhooks", tags=["webhooks"])
 logger = logging.getLogger(__name__)
@@ -285,3 +287,111 @@ async def resend_webhook(
             },
             timestamp=now.isoformat(),
         )
+
+
+# ---------------------------------------------------------------------------
+# Storyblok — sync client-published edits back into content_json
+# ---------------------------------------------------------------------------
+
+
+def _verify_storyblok_signature(body: bytes, signature: str) -> bool:
+    """
+    Verify the Storyblok ``webhook-signature`` header (HMAC-SHA1 of the body).
+
+    Returns ``True`` when no secret is configured — the endpoint is safe by
+    design: the payload is never trusted, the story is always re-fetched from
+    Storyblok with the site's own token, so a forged request can only trigger
+    a resync from the source of truth.
+    """
+    secret: str = getattr(settings, "storyblok_webhook_secret", None) or ""
+    if not secret:
+        return True
+    expected: str = hmac.new(secret.encode(), body, hashlib.sha1).hexdigest()
+    return hmac.compare_digest(signature, expected)
+
+
+@router.post("/storyblok", status_code=status.HTTP_204_NO_CONTENT)
+async def storyblok_webhook(
+    request: Request,
+    webhook_signature: str = Header(default="", alias="webhook-signature"),
+    db: Session = Depends(get_db),
+) -> None:
+    """
+    Receive Storyblok publish events and refresh ``demo_site.content_json``.
+
+    The public site (demo AND delivered domain) renders ``content_json`` — this
+    webhook is what makes the CMS functional for the client: whenever they hit
+    "Publish" in their space, the published story is re-fetched (CDN API,
+    ``version=published``, the site's own public token) and flattened back into
+    the ``SiteContent`` shape stored in the database.
+
+    Registered per space at provisioning (``_register_publish_webhook``).
+    """
+    body: bytes = await request.body()
+
+    if not _verify_storyblok_signature(body, webhook_signature):
+        logger.warning("[Webhook] Invalid Storyblok signature — request rejected")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid webhook signature",
+        )
+
+    try:
+        payload: dict[str, Any] = json.loads(body)
+    except json.JSONDecodeError as exc:
+        logger.warning("[Webhook] Malformed Storyblok JSON body: %s", exc)
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid JSON body",
+        ) from exc
+
+    action: str = str(payload.get("action", ""))
+    space_id_raw: Any = payload.get("space_id")
+    full_slug: str = str(payload.get("full_slug", "") or "")
+
+    logger.info("[Webhook] Storyblok action=%s space_id=%s slug=%s", action, space_id_raw, full_slug)
+
+    # Only story publications matter; sites have a single "home" story.
+    if action and action != "published":
+        return
+    if full_slug and full_slug != "home":
+        return
+    if not isinstance(space_id_raw, int):
+        try:
+            space_id_raw = int(space_id_raw)
+        except (TypeError, ValueError):
+            return
+
+    site: DemoSite | None = db.execute(
+        select(DemoSite)
+        .where(
+            DemoSite.storyblok_space_id == space_id_raw,
+            DemoSite.status != DemoSiteStatus.DELETED.value,
+        )
+        .order_by(DemoSite.created_at.desc())
+        .limit(1)
+    ).scalar_one_or_none()
+    if site is None:
+        logger.info("[Webhook] Storyblok space %s has no matching demo site", space_id_raw)
+        return
+    if not site.storyblok_public_token:
+        logger.warning("[Webhook] Demo site %d has no Storyblok public token — cannot sync", site.id)
+        return
+
+    # Never trust the payload — re-fetch the PUBLISHED story from Storyblok.
+    story_content = await storyblok_service.fetch_published_home_content(site.storyblok_public_token)
+    if story_content is None:
+        logger.warning("[Webhook] Could not fetch published story for demo site %d", site.id)
+        return
+
+    flat_content = from_storyblok_site_content(story_content)
+    if flat_content is None:
+        logger.warning(
+            "[Webhook] Published story for demo site %d carries no site_content blok — skipped",
+            site.id,
+        )
+        return
+
+    site.content_json = flat_content
+    db.commit()
+    logger.info("[Webhook] Demo site %d content_json synced from Storyblok space %s", site.id, space_id_raw)

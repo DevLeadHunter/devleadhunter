@@ -8,6 +8,10 @@ same, template-AGNOSTIC pieces defined here:
 - ``SITE_CONTENT_SCHEMAS`` — the native Storyblok blok schemas for ``site_content`` + its
   nested item bloks, so the Visual Editor can edit every field.
 - ``to_storyblok_site_content`` — wraps a flat ``SiteContent`` into those native bloks.
+- ``from_storyblok_site_content`` — the inverse bridge (published story → flat ``SiteContent``),
+  used by the Storyblok webhook to sync client edits back into ``demo_site.content_json``
+  (the public site renders content_json, not Storyblok). Python mirror of demo-host's
+  ``storyblokSiteContentToSiteContent.ts``.
 
 A template's own ``build_site_content`` calls ``map_prospect_and_enrichment`` and adds its
 editorial ``services`` / ``faq`` (design copy, per trade). The demo-host layer supplies the
@@ -212,4 +216,111 @@ def to_storyblok_site_content(site_content: dict[str, Any]) -> dict[str, Any]:
         "reviews": _items_to_bloks(site_content.get("reviews"), "site_content_review", ("author", "rating", "text")),
         "faq": _items_to_bloks(site_content.get("faq"), "site_content_faq", ("question", "answer")),
         "openingHours": _items_to_bloks(site_content.get("openingHours"), "site_content_hours", ("day", "hours")),
+    }
+
+
+def _clean_str(value: Any) -> str:
+    """Return the value as a stripped string, or ``""`` when absent/not a string."""
+    return value.strip() if isinstance(value, str) else ""
+
+
+def _blok_list(value: Any) -> list[dict[str, Any]]:
+    """Return the value as a list of blok dicts, or an empty list."""
+    if not isinstance(value, list):
+        return []
+    return [item for item in value if isinstance(item, dict)]
+
+
+def _single_blok(value: Any) -> dict[str, Any]:
+    """Return a single-blok field as a dict.
+
+    Our API writes single bloks as plain dicts, but once the story is edited and
+    published in Storyblok the field comes back as a LIST of bloks — handle both.
+    """
+    if isinstance(value, dict):
+        return value
+    if isinstance(value, list) and value and isinstance(value[0], dict):
+        return value[0]
+    return {}
+
+
+def find_site_content_blok(raw: dict[str, Any]) -> Optional[dict[str, Any]]:
+    """Locate the ``site_content`` blok inside a resolved story content object.
+
+    Handles both shapes: page-wrapped (``{component: 'page', body: [site_content]}``)
+    and the bare ``site_content`` blok itself.
+
+    @param raw - The story content (from the CDN API or content_json).
+    @returns The ``site_content`` blok, or None when absent.
+    """
+    if raw.get("component") == "site_content":
+        return raw
+    for blok in _blok_list(raw.get("body")):
+        if blok.get("component") == "site_content":
+            return blok
+    return None
+
+
+def from_storyblok_site_content(raw: dict[str, Any]) -> Optional[dict[str, Any]]:
+    """Flatten a published Storyblok story back into the flat ``SiteContent`` shape.
+
+    Inverse of ``to_storyblok_site_content`` and Python mirror of demo-host's
+    ``storyblokSiteContentToSiteContent.ts``: nested item bloks lose their
+    ``_uid``/``component``, the palette is read from the nested ``theme_palette``
+    blok, images stay plain URL strings. Used by the Storyblok publish webhook to
+    sync client edits into ``demo_site.content_json`` (what the public site renders).
+
+    @param raw - The story ``content`` object fetched from the Storyblok CDN API.
+    @returns A flat ``SiteContent`` dict, or None when no ``site_content`` blok exists.
+    """
+    blok = find_site_content_blok(raw)
+    if blok is None:
+        return None
+    palette = _single_blok(blok.get("palette"))
+
+    reviews: list[dict[str, Any]] = []
+    for item in _blok_list(blok.get("reviews")):
+        entry: dict[str, Any] = {"author": _clean_str(item.get("author")), "text": _clean_str(item.get("text"))}
+        rating_raw = item.get("rating")
+        # Storyblok "number" fields may come back as strings — normalise to int.
+        if isinstance(rating_raw, (int, float)):
+            entry["rating"] = int(rating_raw)
+        elif isinstance(rating_raw, str) and rating_raw.strip().isdigit():
+            entry["rating"] = int(rating_raw.strip())
+        reviews.append(entry)
+
+    return {
+        "businessName": _clean_str(blok.get("businessName")),
+        "phone": _clean_str(blok.get("phone")),
+        "email": _clean_str(blok.get("email")),
+        "city": _clean_str(blok.get("city")),
+        "area": _clean_str(blok.get("area")),
+        "subtitle": _clean_str(blok.get("subtitle")),
+        "about": _clean_str(blok.get("about")),
+        "heroImage": _clean_str(blok.get("heroImage")),
+        "aboutImage": _clean_str(blok.get("aboutImage")),
+        "palette": {
+            "primary": _clean_str(palette.get("primary")),
+            "secondary": _clean_str(palette.get("secondary")),
+            "accent": _clean_str(palette.get("accent")),
+        },
+        "gallery": [
+            {"url": _clean_str(item.get("url")), "alt": _clean_str(item.get("alt"))}
+            for item in _blok_list(blok.get("gallery"))
+            if _clean_str(item.get("url"))
+        ],
+        "services": [
+            {"title": _clean_str(item.get("title")), "description": _clean_str(item.get("description"))}
+            for item in _blok_list(blok.get("services"))
+        ],
+        "reviews": reviews,
+        "faq": [
+            {"question": _clean_str(item.get("question")), "answer": _clean_str(item.get("answer"))}
+            for item in _blok_list(blok.get("faq"))
+        ],
+        "openingHours": [
+            {"day": _clean_str(item.get("day")), "hours": _clean_str(item.get("hours"))}
+            for item in _blok_list(blok.get("openingHours"))
+            if _clean_str(item.get("day")) or _clean_str(item.get("hours"))
+        ],
     }

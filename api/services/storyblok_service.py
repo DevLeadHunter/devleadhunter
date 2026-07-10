@@ -12,6 +12,7 @@ import re
 import secrets
 import string
 from dataclasses import dataclass
+from datetime import datetime, timezone
 from typing import Any, Optional
 
 import httpx
@@ -19,6 +20,7 @@ import httpx
 from core.config import settings
 from services.enrichment_content import apply_to_content as apply_enrichment_to_content
 from services.templates import registry as template_registry
+from services.templates.site_content import SITE_CONTENT_SCHEMAS
 
 logger = logging.getLogger(__name__)
 
@@ -436,6 +438,7 @@ class StoryblokService:
             try:
                 await self._configure_preview_url(client, space_id, preview_url)
                 await self._ensure_template_components(client, space_id)
+                await self._register_publish_webhook(client, space_id)
                 await self._publish_home_story(client, space_id, content_json, template_id=template_id)
 
                 space_detail = await client.get(
@@ -585,7 +588,15 @@ class StoryblokService:
                 response.raise_for_status()
 
     async def _ensure_template_components(self, client: httpx.AsyncClient, space_id: int) -> None:
-        """Register blok components required by the plumber-simple template."""
+        """Register the blok components the client actually edits.
+
+        All active templates use the flat ``SiteContent`` path, so a space only
+        needs: ``page`` (root), ``theme_palette``, and the shared ``site_content``
+        blok family (``SITE_CONTENT_SCHEMAS``). The legacy per-section bloks
+        (hero/trust/…) and the per-template rich schemas are intentionally NOT
+        registered anymore — they were never consumed by demo-host and polluted
+        the client's editor with ~60 unusable blok types.
+        """
         components: list[dict[str, Any]] = [
             {
                 "name": "theme_palette",
@@ -611,105 +622,13 @@ class StoryblokService:
                     "body": {
                         "type": "bloks",
                         "restrict_components": True,
-                        "component_whitelist": [
-                            "hero",
-                            "trust",
-                            "services",
-                            "why_us",
-                            "contact",
-                            # Phase 4b — the flat SiteContent page carries one ``site_content`` blok.
-                            "site_content",
-                            *template_registry.body_components(),
-                        ],
+                        # The flat SiteContent page carries one ``site_content`` blok.
+                        "component_whitelist": ["site_content"],
                     },
                 },
             },
-            {
-                "name": "hero",
-                "display_name": "Hero",
-                "schema": {
-                    "title": {"type": "text"},
-                    "subtitle": {"type": "textarea"},
-                    "phone": {"type": "text"},
-                    "cta_label": {"type": "text"},
-                    "badge": {"type": "text"},
-                    "city": {"type": "text"},
-                    "image": {"type": "text"},
-                },
-            },
-            {
-                "name": "trust",
-                "display_name": "Trust",
-                "schema": {
-                    "heading": {"type": "text"},
-                    "items": {
-                        "type": "bloks",
-                        "restrict_components": True,
-                        "component_whitelist": ["trust_item"],
-                    },
-                },
-            },
-            {
-                "name": "trust_item",
-                "display_name": "Trust item",
-                "schema": {
-                    "value": {"type": "text"},
-                    "label": {"type": "text"},
-                },
-            },
-            {
-                "name": "services",
-                "display_name": "Services",
-                "schema": {
-                    "heading": {"type": "text"},
-                    "subheading": {"type": "textarea"},
-                    "items": {
-                        "type": "bloks",
-                        "restrict_components": True,
-                        "component_whitelist": ["service_item"],
-                    },
-                },
-            },
-            {
-                "name": "service_item",
-                "display_name": "Service item",
-                "schema": {
-                    "label": {"type": "text"},
-                    "description": {"type": "textarea"},
-                    "icon": {"type": "text"},
-                },
-            },
-            {
-                "name": "why_us",
-                "display_name": "Why us",
-                "schema": {
-                    "heading": {"type": "text"},
-                    "items": {
-                        "type": "bloks",
-                        "restrict_components": True,
-                        "component_whitelist": ["why_item"],
-                    },
-                },
-            },
-            {
-                "name": "why_item",
-                "display_name": "Why item",
-                "schema": {"label": {"type": "text"}},
-            },
-            {
-                "name": "contact",
-                "display_name": "Contact",
-                "schema": {
-                    "heading": {"type": "text"},
-                    "subheading": {"type": "textarea"},
-                    "email": {"type": "text"},
-                    "phone": {"type": "text"},
-                    "city": {"type": "text"},
-                    "hours": {"type": "text"},
-                },
-            },
+            *SITE_CONTENT_SCHEMAS,
         ]
-        components.extend(template_registry.component_schemas())
 
         for component in components:
             response = await self._storyblok_request(
@@ -721,6 +640,73 @@ class StoryblokService:
             if response.status_code not in (200, 201, 422):
                 response.raise_for_status()
             await asyncio.sleep(0.15)
+
+    async def _register_publish_webhook(self, client: httpx.AsyncClient, space_id: int) -> None:
+        """Register the story-publish webhook so client edits sync back to ``content_json``.
+
+        The public site renders ``demo_site.content_json`` — without this webhook a
+        client publishing in Storyblok would never see their edits live. Failures are
+        logged, never raised (the webhook can be re-registered later); localhost API
+        URLs are skipped because Storyblok could not reach them anyway.
+        """
+        endpoint_url: str = f"{settings.api_base_url.rstrip('/')}{settings.api_prefix}/webhooks/storyblok"
+        if "localhost" in endpoint_url or "127.0.0.1" in endpoint_url:
+            logger.info("Skipping Storyblok webhook registration (local API URL: %s)", endpoint_url)
+            return
+
+        payload: dict[str, Any] = {
+            "webhook_endpoint": {
+                "name": "DevLeadHunter — sync content_json",
+                "endpoint": endpoint_url,
+                "actions": ["story.published"],
+                "activated": True,
+            }
+        }
+        secret: Optional[str] = settings.storyblok_webhook_secret
+        if secret:
+            payload["webhook_endpoint"]["secret"] = secret
+
+        response = await self._storyblok_request(
+            client,
+            "POST",
+            f"{self._base_url}/spaces/{space_id}/webhook_endpoints",
+            json=payload,
+        )
+        if response.status_code not in (200, 201, 422):
+            logger.warning(
+                "Storyblok webhook registration failed for space %s (%s): %s",
+                space_id,
+                response.status_code,
+                response.text[:300],
+            )
+
+    async def fetch_published_home_content(self, public_token: str) -> Optional[dict[str, Any]]:
+        """Fetch the PUBLISHED home story content from the Storyblok CDN API.
+
+        Used by the publish webhook: the payload is never trusted, the story is
+        always re-fetched from Storyblok (source of truth) with the space's own
+        public token.
+
+        @param public_token - The space's public (published-only) token.
+        @returns The story ``content`` dict, or None when unavailable.
+        """
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            response = await client.get(
+                f"{self.cdn_base_url}/v2/cdn/stories/home",
+                params={
+                    "token": public_token,
+                    "version": "published",
+                    # Cache-buster: always read the freshly published version.
+                    "cv": str(int(datetime.now(timezone.utc).timestamp())),
+                },
+            )
+            if response.status_code != 200:
+                logger.warning(
+                    "Storyblok CDN fetch failed (%s): %s", response.status_code, response.text[:300]
+                )
+                return None
+            content = response.json().get("story", {}).get("content")
+            return content if isinstance(content, dict) else None
 
     @staticmethod
     def _generate_password(length: int = 14) -> str:

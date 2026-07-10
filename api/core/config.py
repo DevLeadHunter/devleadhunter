@@ -134,6 +134,11 @@ class Settings(BaseSettings):
         alias="STORYBLOK_REGION",
         description="Storyblok region (eu, us, ap, ca, cn)",
     )
+    storyblok_webhook_secret: Optional[str] = Field(
+        default=None,
+        alias="STORYBLOK_WEBHOOK_SECRET",
+        description="Shared secret used to sign Storyblok publish webhooks (optional)",
+    )
     vercel_token: Optional[str] = Field(
         default=None,
         alias="VERCEL_TOKEN",
