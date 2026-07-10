@@ -39,6 +39,7 @@ class ResendService:
         custom_id: str | None = None,
         tags: list[dict[str, str]] | None = None,
         api_key_override: str | None = None,
+        extra_headers: dict[str, str] | None = None,
     ) -> dict[str, Any]:
         """
         Send a single email via Resend.
@@ -59,6 +60,8 @@ class ResendService:
             tags:             Additional Resend tags.
             api_key_override: Use this API key instead of the one in settings.
                               Useful when a per-user key is stored in ``resend_config``.
+            extra_headers:    Custom SMTP headers forwarded to Resend (e.g.
+                              ``List-Unsubscribe`` / ``List-Unsubscribe-Post``).
 
         Returns:
             Dict with keys ``message_id`` (str) and ``provider`` (str).
@@ -82,6 +85,8 @@ class ResendService:
         }
         if text_body:
             payload["text"] = text_body
+        if extra_headers:
+            payload["headers"] = extra_headers
 
         # Build the tags list — always include email_log_id for webhook lookup.
         all_tags: list[dict[str, str]] = []

@@ -160,7 +160,8 @@ class EmailSendingService:
                     subject=subject,
                     body_html=body_html,
                     body_text=body_text,
-                    custom_id=str(email_log.id)
+                    custom_id=str(email_log.id),
+                    unsubscribe_link=unsubscribe_link,
                 )
             elif email_account.account_type == EmailAccountType.CUSTOM_DOMAIN:
                 result = await self._send_via_mailjet(
@@ -214,6 +215,21 @@ class EmailSendingService:
                 "error": str(e)
             }
     
+    @staticmethod
+    def _unsubscribe_headers(unsubscribe_link: str) -> Dict[str, str]:
+        """RFC 8058 one-click unsubscribe headers (Gmail/Yahoo bulk-sender requirement).
+
+        Args:
+            unsubscribe_link: The per-recipient unsubscribe URL (GET and POST both work).
+
+        Returns:
+            The ``List-Unsubscribe`` / ``List-Unsubscribe-Post`` header pair.
+        """
+        return {
+            "List-Unsubscribe": f"<{unsubscribe_link}>",
+            "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",
+        }
+
     async def _send_via_resend(
         self,
         email_account: EmailAccount,
@@ -223,6 +239,7 @@ class EmailSendingService:
         recipient_name: Optional[str] = None,
         body_text: Optional[str] = None,
         custom_id: Optional[str] = None,
+        unsubscribe_link: Optional[str] = None,
     ) -> Dict:
         """Send email via Resend."""
         return await self.resend_service.send_email(
@@ -234,6 +251,7 @@ class EmailSendingService:
             html_body=body_html,
             text_body=body_text,
             custom_id=custom_id,
+            extra_headers=self._unsubscribe_headers(unsubscribe_link) if unsubscribe_link else None,
         )
 
     async def _send_via_mailjet(
@@ -384,6 +402,9 @@ class EmailSendingService:
                 html_body=body_html,
                 custom_id=str(email_log.id),
                 api_key_override=api_key,
+                # RFC 8058 one-click unsubscribe — required by Gmail/Yahoo for bulk
+                # senders; the POST route exists on /api/v1/unsubscribe.
+                extra_headers=self._unsubscribe_headers(unsubscribe_link),
             )
             email_log.status = EmailStatus.SENT.value
             email_log.provider_message_id = result.get("message_id")
