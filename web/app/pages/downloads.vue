@@ -1,78 +1,97 @@
 <template>
-  <div class="min-h-screen bg-[#050505] px-4 py-10 text-[#f9f9f9]">
-    <div class="mx-auto max-w-3xl space-y-8">
-      <div class="space-y-3">
-        <p class="text-sm font-medium text-blue-400">Desktop application</p>
-        <h1 class="text-3xl font-semibold tracking-tight">Install DevLeadHunter on your computer</h1>
-        <p class="text-muted leading-relaxed">
-          Download the desktop app for Windows or macOS. It connects to your DevLeadHunter account and the hosted API —
-          no local server required.
+  <section class="mx-auto max-w-3xl px-5 pt-14 pb-24 text-[#1b1813] md:px-8 md:pt-20 md:pb-32">
+    <div class="space-y-10">
+      <div class="space-y-5">
+        <p
+          class="font-label flex items-center gap-2 text-[0.65rem] font-medium tracking-[0.18em] text-[#6b6355] uppercase"
+        >
+          <LandingAsterisk class="text-[0.7rem] text-[#e8a33c]" />
+          Application de bureau
+        </p>
+        <h1 class="font-display text-4xl leading-[1.06] font-semibold tracking-[-0.015em] md:text-5xl">
+          Installez DevLeadHunter sur votre ordinateur
+        </h1>
+        <p class="max-w-xl text-lg leading-relaxed text-[#6b6355]">
+          Téléchargez l'application pour Windows ou macOS. Elle se connecte à votre compte DevLeadHunter et à l'API
+          hébergée — aucun serveur local requis.
         </p>
       </div>
 
-      <div v-if="pending" class="border-muted text-muted rounded-lg border bg-[#1a1a1a] p-6 text-sm">
-        Fetching installers from GitHub…
+      <div v-if="pending" class="rounded-2xl border border-[#e3dccd] bg-[#fcfaf5] p-6 text-sm text-[#6b6355]">
+        Récupération des installateurs depuis GitHub…
       </div>
 
-      <div v-else-if="error" class="space-y-4 rounded-lg border border-red-500/30 bg-red-500/10 p-6">
-        <p class="font-medium text-red-300">Unable to load downloads</p>
-        <p class="text-muted text-sm">{{ String(error) }}</p>
-        <button type="button" class="btn-secondary" @click="refresh()">Retry</button>
+      <div v-else-if="error" class="space-y-4 rounded-2xl border border-[#bf4d33]/30 bg-[#bf4d33]/10 p-6">
+        <p class="font-medium text-[#bf4d33]">Impossible de charger les téléchargements</p>
+        <p class="text-sm text-[#6b6355]">{{ String(error) }}</p>
+        <button
+          type="button"
+          class="inline-flex cursor-pointer items-center rounded-full border border-[#1b1813] px-5 py-2 text-sm font-semibold text-[#1b1813] transition-colors hover:bg-[#1b1813] hover:text-[#fcfaf5]"
+          @click="refresh()"
+        >
+          Réessayer
+        </button>
       </div>
 
       <template v-else>
-        <div v-if="releaseVersionLabel" class="text-muted text-sm">
-          Latest release: <span class="font-mono text-[#f9f9f9]">{{ releaseVersionLabel }}</span>
+        <div v-if="releaseVersionLabel" class="font-label text-xs tracking-wide text-[#6b6355]">
+          Dernière version : <span class="text-[#1b1813]">{{ releaseVersionLabel }}</span>
         </div>
 
-        <section v-if="windowsDownloads.length" class="space-y-3">
-          <h2 class="text-lg font-semibold">Windows</h2>
+        <section v-if="windowsDownloads.length" class="space-y-4">
+          <h2 class="font-display text-2xl font-semibold">Windows</h2>
           <div class="space-y-3">
             <a
               v-for="item in windowsDownloads"
               :key="item.id"
               :href="item.asset.browser_download_url"
-              class="border-muted block rounded-lg border bg-[#1a1a1a] p-4 transition hover:border-blue-500/50"
+              class="block rounded-2xl border border-[#e3dccd] bg-[#fcfaf5] p-5 transition-colors hover:border-[#1b1813]"
               target="_blank"
               rel="noopener noreferrer"
             >
-              <p class="font-medium">{{ item.label }}</p>
-              <p class="text-muted mt-1 text-sm">{{ item.description }}</p>
-              <p v-if="item.asset.size" class="text-muted mt-2 text-xs">{{ formatBytes(item.asset.size) }}</p>
+              <p class="font-semibold text-[#1b1813]">{{ item.label }}</p>
+              <p class="mt-1 text-sm text-[#6b6355]">{{ item.description }}</p>
+              <p v-if="item.asset.size" class="font-label mt-2 text-xs text-[#6b6355]">
+                {{ formatBytes(item.asset.size) }}
+              </p>
             </a>
           </div>
         </section>
 
-        <section v-if="macDownloads.length" class="space-y-3">
-          <h2 class="text-lg font-semibold">macOS</h2>
+        <section v-if="macDownloads.length" class="space-y-4">
+          <h2 class="font-display text-2xl font-semibold">macOS</h2>
           <div class="space-y-3">
             <a
               v-for="item in macDownloads"
               :key="item.id"
               :href="item.asset.browser_download_url"
-              class="border-muted block rounded-lg border bg-[#1a1a1a] p-4 transition hover:border-blue-500/50"
+              class="block rounded-2xl border border-[#e3dccd] bg-[#fcfaf5] p-5 transition-colors hover:border-[#1b1813]"
               target="_blank"
               rel="noopener noreferrer"
             >
-              <p class="font-medium">{{ item.label }}</p>
-              <p class="text-muted mt-1 text-sm">{{ item.description }}</p>
-              <p v-if="item.asset.size" class="text-muted mt-2 text-xs">{{ formatBytes(item.asset.size) }}</p>
+              <p class="font-semibold text-[#1b1813]">{{ item.label }}</p>
+              <p class="mt-1 text-sm text-[#6b6355]">{{ item.description }}</p>
+              <p v-if="item.asset.size" class="font-label mt-2 text-xs text-[#6b6355]">
+                {{ formatBytes(item.asset.size) }}
+              </p>
             </a>
           </div>
         </section>
 
-        <p v-if="!windowsDownloads.length && !macDownloads.length" class="text-muted text-sm">
-          No desktop installers found in the latest GitHub release yet.
+        <p v-if="!windowsDownloads.length && !macDownloads.length" class="text-sm text-[#6b6355]">
+          Aucun installateur de bureau dans la dernière version GitHub pour l'instant.
         </p>
       </template>
-
-      <NuxtLink to="/" class="inline-block text-sm text-blue-400 hover:underline">← Back to home</NuxtLink>
     </div>
-  </div>
+  </section>
 </template>
 
 <script lang="ts" setup>
 import type { ComputedRef } from 'vue'
+
+definePageMeta({
+  layout: 'marketing',
+})
 
 type ReleaseAsset = {
   id?: number
@@ -99,7 +118,7 @@ type DownloadItem = {
 const runtime = useRuntimeConfig()
 
 const repoSlug: ComputedRef<string> = computed(
-  (): string => (runtime.public.githubRepo as string | undefined)?.trim() || 'leogu/devleadhunter',
+  (): string => (runtime.public.githubRepo as string | undefined)?.trim() || 'DevLeadHunter/devleadhunter',
 )
 const releaseChannel: ComputedRef<string> = computed(
   (): string => (runtime.public.desktopReleaseChannel as string | undefined)?.trim() || 'latest',
@@ -160,8 +179,8 @@ function classifyAsset(asset: ReleaseAsset): DownloadItem | null {
       asset,
       platform: 'windows',
       sortKey: 20,
-      label: 'Windows x64 — MSI installer',
-      description: 'MSI package for managed Windows environments.',
+      label: 'Windows x64 — installateur MSI',
+      description: 'Paquet MSI pour les environnements Windows administrés.',
     }
   }
 
@@ -172,8 +191,8 @@ function classifyAsset(asset: ReleaseAsset): DownloadItem | null {
       asset,
       platform: 'windows',
       sortKey: isSetup ? 10 : 15,
-      label: isSetup ? 'Windows x64 — installer (recommended)' : 'Windows x64 — installer',
-      description: 'Standard Windows installer for Windows 10/11 (64-bit).',
+      label: isSetup ? 'Windows x64 — installateur (recommandé)' : 'Windows x64 — installateur',
+      description: 'Installateur standard pour Windows 10/11 (64 bits).',
     }
   }
 
@@ -185,7 +204,7 @@ function classifyAsset(asset: ReleaseAsset): DownloadItem | null {
       platform: 'macos',
       sortKey: appleSilicon ? 10 : 20,
       label: appleSilicon ? 'macOS — Apple Silicon' : 'macOS — Intel',
-      description: appleSilicon ? 'For Macs with Apple Silicon (M1 and later).' : 'For Intel-based Macs.',
+      description: appleSilicon ? 'Pour les Mac Apple Silicon (M1 et suivants).' : 'Pour les Mac Intel.',
     }
   }
 
@@ -248,8 +267,8 @@ function formatBytes(n?: number): string {
 }
 
 useSeoMeta({
-  title: 'Download DevLeadHunter Desktop',
-  description: 'Download the DevLeadHunter desktop app for Windows and macOS.',
+  title: 'Télécharger DevLeadHunter Desktop',
+  description: "Téléchargez l'application de bureau DevLeadHunter pour Windows et macOS.",
   robots: 'noindex, nofollow',
 })
 </script>

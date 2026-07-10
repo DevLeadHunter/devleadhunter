@@ -37,12 +37,6 @@
           >
             {{ $t(link.label) }}
           </a>
-          <NuxtLink
-            :to="localePath('/login')"
-            class="text-sm font-medium text-[#6b6355] transition-colors hover:text-[#1b1813]"
-          >
-            {{ $t('nav.login') }}
-          </NuxtLink>
           <NuxtLink :to="localePath('/signup')" class="landing-btn-primary px-5 py-2.5 text-sm">
             {{ $t('nav.signup') }}
           </NuxtLink>
@@ -84,13 +78,6 @@
           >
             {{ $t(link.label) }}
           </a>
-          <NuxtLink
-            class="menu-item font-display mt-4 text-4xl font-semibold text-[#6b6355] transition-colors hover:text-[#1b1813]"
-            :to="localePath('/login')"
-            @click="closeMobileMenu"
-          >
-            {{ $t('nav.login') }}
-          </NuxtLink>
         </nav>
         <div class="border-t border-[#e3dccd] p-6">
           <NuxtLink :to="localePath('/signup')" class="landing-btn-primary w-full text-center" @click="closeMobileMenu">
