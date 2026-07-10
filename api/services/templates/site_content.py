@@ -136,33 +136,56 @@ def map_prospect_and_enrichment(
 # Native Storyblok blok schemas for the ``site_content`` representation. The flat SiteContent
 # expressed as editable bloks so the Visual Editor reaches every field: scalars as text/textarea,
 # image URLs as text (external URLs), arrays as nested bloks. Template-agnostic — registered once.
+# Field labels/descriptions are in FRENCH: they are what the CLIENT sees in his
+# Storyblok editor — the editing experience is part of the product promise.
 SITE_CONTENT_SCHEMAS: list[dict[str, Any]] = [
     {
         "name": "site_content",
-        "display_name": "Site content",
+        "display_name": "Contenu du site",
         "schema": {
-            "businessName": {"type": "text"},
-            "phone": {"type": "text"},
-            "email": {"type": "text"},
-            "city": {"type": "text"},
-            "area": {"type": "text"},
-            "subtitle": {"type": "textarea"},
-            "about": {"type": "textarea"},
-            "heroImage": {"type": "text"},
-            "aboutImage": {"type": "text"},
-            "gallery": {"type": "bloks", "restrict_components": True, "component_whitelist": ["site_content_gallery_item"]},
-            "palette": {"type": "blok", "restrict_components": True, "component_whitelist": ["theme_palette"], "maximum": 1},
-            "services": {"type": "bloks", "restrict_components": True, "component_whitelist": ["site_content_service"]},
-            "reviews": {"type": "bloks", "restrict_components": True, "component_whitelist": ["site_content_review"]},
-            "faq": {"type": "bloks", "restrict_components": True, "component_whitelist": ["site_content_faq"]},
-            "openingHours": {"type": "bloks", "restrict_components": True, "component_whitelist": ["site_content_hours"]},
+            # ── Identité & contact ────────────────────────────────────────
+            "businessName": {"type": "text", "pos": 0, "display_name": "Nom de l'entreprise"},
+            "phone": {"type": "text", "pos": 1, "display_name": "Téléphone"},
+            "email": {"type": "text", "pos": 2, "display_name": "Email de contact"},
+            "city": {"type": "text", "pos": 3, "display_name": "Ville"},
+            "area": {"type": "text", "pos": 4, "display_name": "Secteur d'intervention", "description": "Ex : « Lyon et ses alentours »"},
+            # ── Textes principaux ─────────────────────────────────────────
+            "subtitle": {"type": "textarea", "pos": 5, "display_name": "Phrase d'accroche", "description": "Le texte principal en haut du site"},
+            "about": {"type": "textarea", "pos": 6, "display_name": "À propos", "description": "Votre histoire, votre façon de travailler"},
+            # ── Copie éditoriale (vide = texte par défaut du site) ────────
+            "heroBadge": {"type": "text", "pos": 7, "display_name": "Badge d'en-tête", "description": "Petit libellé au-dessus du titre (ex : « Artisan plombier »)"},
+            "heroPoints": {"type": "bloks", "pos": 8, "display_name": "Points forts d'en-tête", "description": "3 arguments courts sous l'accroche", "restrict_components": True, "component_whitelist": ["site_content_hero_point"]},
+            "ctaCallLabel": {"type": "text", "pos": 9, "display_name": "Bouton « appeler »", "description": "Texte du bouton d'appel"},
+            "ctaQuoteLabel": {"type": "text", "pos": 10, "display_name": "Bouton « devis »", "description": "Texte du bouton de demande de devis"},
+            "trustItems": {"type": "bloks", "pos": 11, "display_name": "Repères de confiance", "description": "Chiffres/garanties affichés sous l'en-tête (ex : 7j/7, Devis 0 €)", "restrict_components": True, "component_whitelist": ["site_content_trust_item"]},
+            "servicesHeading": {"type": "text", "pos": 12, "display_name": "Titre de la section Services"},
+            "galleryHeading": {"type": "text", "pos": 13, "display_name": "Titre de la section Photos"},
+            "reviewsHeading": {"type": "text", "pos": 14, "display_name": "Titre de la section Avis"},
+            "faqHeading": {"type": "text", "pos": 15, "display_name": "Titre de la section Questions"},
+            "aboutHeading": {"type": "text", "pos": 16, "display_name": "Titre de la section À propos"},
+            "contactHeading": {"type": "text", "pos": 17, "display_name": "Titre de la section Contact"},
+            # ── Médias ────────────────────────────────────────────────────
+            "heroImage": {"type": "text", "pos": 18, "display_name": "Photo principale (URL)"},
+            "aboutImage": {"type": "text", "pos": 19, "display_name": "Photo « à propos » (URL)"},
+            "gallery": {"type": "bloks", "pos": 20, "display_name": "Galerie photos", "restrict_components": True, "component_whitelist": ["site_content_gallery_item"]},
+            "beforeAfter": {"type": "bloks", "pos": 21, "display_name": "Réalisations avant/après", "description": "Paires de photos avant travaux / après travaux", "restrict_components": True, "component_whitelist": ["site_content_before_after"]},
+            # ── Contenu structuré ─────────────────────────────────────────
+            "services": {"type": "bloks", "pos": 22, "display_name": "Services", "restrict_components": True, "component_whitelist": ["site_content_service"]},
+            "reviews": {"type": "bloks", "pos": 23, "display_name": "Avis clients", "restrict_components": True, "component_whitelist": ["site_content_review"]},
+            "faq": {"type": "bloks", "pos": 24, "display_name": "Questions fréquentes", "restrict_components": True, "component_whitelist": ["site_content_faq"]},
+            "openingHours": {"type": "bloks", "pos": 25, "display_name": "Horaires d'ouverture", "restrict_components": True, "component_whitelist": ["site_content_hours"]},
+            # ── Design ────────────────────────────────────────────────────
+            "palette": {"type": "blok", "pos": 26, "display_name": "Couleurs du site", "restrict_components": True, "component_whitelist": ["theme_palette"], "maximum": 1},
         },
     },
-    {"name": "site_content_service", "display_name": "Site content — Service", "schema": {"title": {"type": "text"}, "description": {"type": "textarea"}}},
-    {"name": "site_content_review", "display_name": "Site content — Review", "schema": {"author": {"type": "text"}, "rating": {"type": "number"}, "text": {"type": "textarea"}}},
-    {"name": "site_content_faq", "display_name": "Site content — FAQ item", "schema": {"question": {"type": "text"}, "answer": {"type": "textarea"}}},
-    {"name": "site_content_hours", "display_name": "Site content — Opening hours", "schema": {"day": {"type": "text"}, "hours": {"type": "text"}}},
-    {"name": "site_content_gallery_item", "display_name": "Site content — Gallery item", "schema": {"url": {"type": "text"}, "alt": {"type": "text"}}},
+    {"name": "site_content_service", "display_name": "Service", "schema": {"title": {"type": "text", "pos": 0, "display_name": "Titre"}, "description": {"type": "textarea", "pos": 1, "display_name": "Description"}}},
+    {"name": "site_content_review", "display_name": "Avis client", "schema": {"author": {"type": "text", "pos": 0, "display_name": "Auteur"}, "rating": {"type": "number", "pos": 1, "display_name": "Note (0-5)"}, "text": {"type": "textarea", "pos": 2, "display_name": "Texte de l'avis"}}},
+    {"name": "site_content_faq", "display_name": "Question fréquente", "schema": {"question": {"type": "text", "pos": 0, "display_name": "Question"}, "answer": {"type": "textarea", "pos": 1, "display_name": "Réponse"}}},
+    {"name": "site_content_hours", "display_name": "Horaire", "schema": {"day": {"type": "text", "pos": 0, "display_name": "Jour(s)"}, "hours": {"type": "text", "pos": 1, "display_name": "Heures"}}},
+    {"name": "site_content_gallery_item", "display_name": "Photo de galerie", "schema": {"url": {"type": "text", "pos": 0, "display_name": "URL de la photo"}, "alt": {"type": "text", "pos": 1, "display_name": "Description (référencement)"}}},
+    {"name": "site_content_before_after", "display_name": "Avant / après", "schema": {"before": {"type": "text", "pos": 0, "display_name": "Photo avant (URL)"}, "after": {"type": "text", "pos": 1, "display_name": "Photo après (URL)"}, "label": {"type": "text", "pos": 2, "display_name": "Légende"}}},
+    {"name": "site_content_hero_point", "display_name": "Point fort", "schema": {"text": {"type": "text", "pos": 0, "display_name": "Texte"}}},
+    {"name": "site_content_trust_item", "display_name": "Repère de confiance", "schema": {"value": {"type": "text", "pos": 0, "display_name": "Chiffre / valeur"}, "label": {"type": "text", "pos": 1, "display_name": "Libellé"}}},
 ]
 
 
@@ -202,6 +225,22 @@ def to_storyblok_site_content(site_content: dict[str, Any]) -> dict[str, Any]:
         "area": site_content.get("area", ""),
         "subtitle": site_content.get("subtitle", ""),
         "about": site_content.get("about", ""),
+        # Editorial copy (empty = template default)
+        "heroBadge": site_content.get("heroBadge", ""),
+        "heroPoints": [
+            {"_uid": _uid(), "component": "site_content_hero_point", "text": str(point)}
+            for point in site_content.get("heroPoints") or []
+            if isinstance(point, str) and point.strip()
+        ],
+        "ctaCallLabel": site_content.get("ctaCallLabel", ""),
+        "ctaQuoteLabel": site_content.get("ctaQuoteLabel", ""),
+        "trustItems": _items_to_bloks(site_content.get("trustItems"), "site_content_trust_item", ("value", "label")),
+        "servicesHeading": site_content.get("servicesHeading", ""),
+        "galleryHeading": site_content.get("galleryHeading", ""),
+        "reviewsHeading": site_content.get("reviewsHeading", ""),
+        "faqHeading": site_content.get("faqHeading", ""),
+        "aboutHeading": site_content.get("aboutHeading", ""),
+        "contactHeading": site_content.get("contactHeading", ""),
         "heroImage": site_content.get("heroImage", ""),
         "aboutImage": site_content.get("aboutImage", ""),
         "palette": {
@@ -216,6 +255,9 @@ def to_storyblok_site_content(site_content: dict[str, Any]) -> dict[str, Any]:
         "reviews": _items_to_bloks(site_content.get("reviews"), "site_content_review", ("author", "rating", "text")),
         "faq": _items_to_bloks(site_content.get("faq"), "site_content_faq", ("question", "answer")),
         "openingHours": _items_to_bloks(site_content.get("openingHours"), "site_content_hours", ("day", "hours")),
+        "beforeAfter": _items_to_bloks(
+            site_content.get("beforeAfter"), "site_content_before_after", ("before", "after", "label")
+        ),
     }
 
 
@@ -297,6 +339,25 @@ def from_storyblok_site_content(raw: dict[str, Any]) -> Optional[dict[str, Any]]
         "area": _clean_str(blok.get("area")),
         "subtitle": _clean_str(blok.get("subtitle")),
         "about": _clean_str(blok.get("about")),
+        "heroBadge": _clean_str(blok.get("heroBadge")),
+        "heroPoints": [
+            _clean_str(item.get("text"))
+            for item in _blok_list(blok.get("heroPoints"))
+            if _clean_str(item.get("text"))
+        ],
+        "ctaCallLabel": _clean_str(blok.get("ctaCallLabel")),
+        "ctaQuoteLabel": _clean_str(blok.get("ctaQuoteLabel")),
+        "trustItems": [
+            {"value": _clean_str(item.get("value")), "label": _clean_str(item.get("label"))}
+            for item in _blok_list(blok.get("trustItems"))
+            if _clean_str(item.get("value")) or _clean_str(item.get("label"))
+        ],
+        "servicesHeading": _clean_str(blok.get("servicesHeading")),
+        "galleryHeading": _clean_str(blok.get("galleryHeading")),
+        "reviewsHeading": _clean_str(blok.get("reviewsHeading")),
+        "faqHeading": _clean_str(blok.get("faqHeading")),
+        "aboutHeading": _clean_str(blok.get("aboutHeading")),
+        "contactHeading": _clean_str(blok.get("contactHeading")),
         "heroImage": _clean_str(blok.get("heroImage")),
         "aboutImage": _clean_str(blok.get("aboutImage")),
         "palette": {
@@ -322,5 +383,14 @@ def from_storyblok_site_content(raw: dict[str, Any]) -> Optional[dict[str, Any]]
             {"day": _clean_str(item.get("day")), "hours": _clean_str(item.get("hours"))}
             for item in _blok_list(blok.get("openingHours"))
             if _clean_str(item.get("day")) or _clean_str(item.get("hours"))
+        ],
+        "beforeAfter": [
+            {
+                "before": _clean_str(item.get("before")),
+                "after": _clean_str(item.get("after")),
+                "label": _clean_str(item.get("label")),
+            }
+            for item in _blok_list(blok.get("beforeAfter"))
+            if _clean_str(item.get("before")) or _clean_str(item.get("after"))
         ],
     }

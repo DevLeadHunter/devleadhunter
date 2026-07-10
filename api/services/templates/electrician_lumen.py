@@ -638,6 +638,29 @@ _SITE_ABOUT_DEFAULT: str = (
 )
 
 
+# Editorial copy pre-filled into the CMS so the client sees (and edits) his real
+# texts instead of blank fields silently falling back to template defaults.
+# Values mirror the layer defaults of devleadhunter-template-electrician-lumen.
+_EDITORIAL_DEFAULTS: dict[str, Any] = {
+    "heroBadge": "Artisan électricien",
+    "heroPoints": ["Devis gratuit", "Intervention rapide", "Travail garanti"],
+    "ctaCallLabel": "Appeler maintenant",
+    "ctaQuoteLabel": "Demander un devis",
+    "trustItems": [
+        {"value": "7j/7", "label": "Dépannage & urgences"},
+        {"value": "NF C 15-100", "label": "Installations aux normes"},
+        {"value": "Garantie décennale", "label": "Travaux assurés"},
+        {"value": "Devis 0 €", "label": "Sans engagement"},
+    ],
+    "servicesHeading": "Nos services",
+    "galleryHeading": "Nos chantiers récents",
+    "reviewsHeading": "Ce que disent nos clients",
+    "faqHeading": "Questions fréquentes",
+    "aboutHeading": "Une installation sûre, aux normes",
+    "contactHeading": "Parlons de votre projet",
+}
+
+
 def build_site_content(
     *,
     business_name: str,
@@ -674,4 +697,6 @@ def build_site_content(
     ]
     site["services"] = scraped or ELECTRICIAN_SERVICES
     site["faq"] = ELECTRICIAN_FAQ
+    # Pre-fill editorial copy (client edits his real texts in the CMS).
+    site.update(_EDITORIAL_DEFAULTS)
     return site

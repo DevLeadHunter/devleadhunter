@@ -785,6 +785,29 @@ def build_content(
 _ABOUT_TEXT_SHORT: str = _ABOUT_TEXT
 
 
+# Editorial copy pre-filled into the CMS so the client sees (and edits) his real
+# texts instead of blank fields silently falling back to template defaults.
+# Values mirror the layer defaults of devleadhunter-template-plumber-cuivre.
+_EDITORIAL_DEFAULTS: dict[str, Any] = {
+    "heroBadge": "Artisan plombier",
+    "heroPoints": ["Devis gratuit", "Intervention rapide", "Travail garanti"],
+    "ctaCallLabel": "Appeler maintenant",
+    "ctaQuoteLabel": "Demander un devis",
+    "trustItems": [
+        {"value": "7j/7", "label": "Dépannage & urgences"},
+        {"value": "Garantie décennale", "label": "Travaux assurés"},
+        {"value": "Devis 0 €", "label": "Sans engagement"},
+        {"value": "Artisan local", "label": "Proche de chez vous"},
+    ],
+    "servicesHeading": "Nos services",
+    "galleryHeading": "Nos chantiers récents",
+    "reviewsHeading": "Ce que disent nos clients",
+    "faqHeading": "Questions fréquentes",
+    "aboutHeading": "Un artisan, pas une plateforme",
+    "contactHeading": "Parlons de votre projet",
+}
+
+
 def build_site_content(
     *,
     business_name: str,
@@ -881,6 +904,8 @@ def build_site_content(
             for item in _FAQ_ITEMS
         ],
         "openingHours": opening_hours,
+        # Pre-fill editorial copy (client edits his real texts in the CMS).
+        **_EDITORIAL_DEFAULTS,
     }
 
 

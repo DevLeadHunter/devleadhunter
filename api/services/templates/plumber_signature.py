@@ -389,6 +389,29 @@ _SITE_ABOUT_DEFAULT: str = (
 )
 
 
+# Editorial copy pre-filled into the CMS so the client sees (and edits) his real
+# texts instead of blank fields silently falling back to template defaults.
+# Values mirror the layer defaults of devleadhunter-template-plumber-signature.
+_EDITORIAL_DEFAULTS: dict[str, Any] = {
+    "heroBadge": "Artisan plombier",
+    "heroPoints": ["Devis gratuit", "Intervention rapide", "Travail garanti"],
+    "ctaCallLabel": "Appeler maintenant",
+    "ctaQuoteLabel": "",
+    "trustItems": [
+        {"value": "7j/7", "label": "Urgences 24 h/24"},
+        {"value": "Devis 0 €", "label": "Sans engagement"},
+        {"value": "Garantie", "label": "Travail assuré"},
+        {"value": "Local", "label": "Artisan proche de vous"},
+    ],
+    "servicesHeading": "Ce que nous prenons en charge",
+    "galleryHeading": "Quelques chantiers récents",
+    "reviewsHeading": "Ce que disent nos clients",
+    "faqHeading": "Vous vous demandez peut-être…",
+    "aboutHeading": "Un savoir-faire transmis, pas sous-traité",
+    "contactHeading": "Parlons de votre projet",
+}
+
+
 def build_site_content(
     *,
     business_name: str,
@@ -425,4 +448,6 @@ def build_site_content(
     ]
     site["services"] = scraped or PLUMBER_SERVICES
     site["faq"] = PLUMBER_FAQ
+    # Pre-fill editorial copy (client edits his real texts in the CMS).
+    site.update(_EDITORIAL_DEFAULTS)
     return site
