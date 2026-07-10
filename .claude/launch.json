@@ -25,6 +25,12 @@
       "runtimeExecutable": "npm",
       "runtimeArgs": ["--prefix", "../devleadhunter-template-plumber-cuivre", "run", "dev", "--", "--port", "3005"],
       "port": 3005
+    },
+    {
+      "name": "atelier-template",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["--prefix", "../devleadhunter-template-plumber-atelier", "run", "dev", "--", "--port", "3006"],
+      "port": 3006
     }
   ]
 }
