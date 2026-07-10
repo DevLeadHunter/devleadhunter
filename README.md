@@ -1,26 +1,42 @@
 # DevLeadHunter
 
-**Personal prospect research tool for freelance web developers**
+**End-to-end prospecting automation for freelance web developers**
 
-Full-stack application for finding and managing business prospects without websites.
+DevLeadHunter finds local businesses without a website, enriches their public data
+(photos, reviews, hours), generates a real demo website in their name (Storyblok CMS,
+one template repo per trade), reaches out by A/B cold email with throttled follow-ups,
+tracks prospect behaviour (PostHog + lead scoring), and closes the sale via Stripe —
+the delivered site then goes live on the client's own domain (Vercel). Teams can work
+together: the prospect list is shared inside an organization, with per-member
+reservations to avoid double outreach.
 
 ## Architecture
 
 ```
 .
-├── web/     # Nuxt 4 frontend (+ Tauri desktop shell)
-└── api/     # FastAPI backend
+├── web/         # Nuxt 4 dashboard (+ landing) — Tauri desktop shell
+├── api/         # FastAPI backend (scraping, campaigns, Storyblok, Stripe, orgs)
+└── demo-host/   # Nuxt renderer for prospect demo sites (Vercel → demo.dibodev.fr)
+                 # pulls website templates as Nuxt layers from the DevLeadHunter org repos
 ```
+
+Website templates live in **separate GitHub repos** (`devleadhunter-template-<id>`),
+consumed by `demo-host` via `extends` pinned by tag — see
+[`TEMPLATES_ARCHITECTURE.md`](./TEMPLATES_ARCHITECTURE.md).
 
 ## Stack
 
-| Layer    | Technology                          |
-| -------- | ----------------------------------- |
-| Frontend | Nuxt 4, Vue 3.5, TypeScript (strict) |
-| Backend  | FastAPI, Pydantic v2, SQLAlchemy    |
-| Desktop  | Tauri 2 + static Nuxt generate      |
-| State    | Pinia                               |
-| Styling  | TailwindCSS                         |
+| Layer    | Technology                            |
+| -------- | ------------------------------------- |
+| Frontend | Nuxt 4, Vue 3.5, TypeScript (strict), Pinia, TailwindCSS v4 |
+| Backend  | FastAPI, Pydantic v2, SQLAlchemy, MySQL |
+| Desktop  | Tauri 2 + static Nuxt generate (auto-updater CI) |
+| Scraping | nodriver (driven Chrome), BrightData  |
+| CMS      | Storyblok (one space per client, publish webhook → content sync) |
+| Email    | Resend (A/B campaigns, RFC 8058 unsubscribe), Gmail OAuth |
+| Payments | Stripe (payment links + webhooks)     |
+| Tracking | PostHog (demo behaviour → lead scoring, Groq AI summaries) |
+| Hosting  | Vercel (demo host + delivered client sites by domain) |
 
 ## Prerequisites
 

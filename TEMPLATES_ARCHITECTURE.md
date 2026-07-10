@@ -38,6 +38,18 @@ Toute l'intégration (bridge Storyblok, tracking démo, fetch par slug, type `De
 
 ## Les repos
 
+### État des templates (2026-07-11)
+
+| `template_id` | Métier | Tag live | Notes |
+|---|---|---|---|
+| `plumber-signature` | Plombier (**défaut**) | **v1.0.1** | La plus riche (11 sections). v1.0.1 : footer « Propulsé par DevLeadHunter » retiré |
+| `plumber-atelier` | Plombier | **v1.1.0** | DA typographique « fiche d'intervention ». v1.1.0 : rend enfin TOUT `SiteContent` (about, galerie, avis, FAQ, horaires, images) + footer retiré |
+| `plumber-cuivre` | Plombier | **v1.0.2** | DA bleu eau « Source », 13 sections, marques posées (défauts, non éditables) |
+| `electrician-lumen` | Électricien | **v1.0.0** | GSAP embarqué dans SES deps ; ne consomme pas `aboutImage` |
+
+*(`plumber-simple` retiré + archivé le 2026-07-08 — trop générique.)* La migration en layers est
+**terminée et en prod** depuis le 2026-07-08 ; le legacy in-repo a été supprimé.
+
 ### 1. Le starter — `devleadhunter-website-template-starter`
 
 GitHub **Template Repository** (bouton « Use this template »). C'est le « init Nuxt 4 à jour » :
@@ -209,6 +221,17 @@ Deux contextes distincts :
 3. **Fonts par template.** Chaque template layer déclare **ses** fonts ; demo-host les merge via `extends`. Une template supprimée n'alourdit plus les autres. (Avant : un seul `<head>` chargeait les fonts de toutes les templates.)
 
 4. **Dispatch par composant, jamais par nom en chaîne.** Le root d'un layer est **auto-importé** mais **pas** enregistré globalement (`app.component()`) → `<component :is="'PlumberCuivreRoot'">` (nom en **chaîne**) ne résout **rien** et rend un **élément littéral vide** (le build reste vert : bug de rendu runtime, pas de compile). **Parade** : `import { LazyPlumberCuivreRoot } from '#components'` et passer l'**objet composant** à `:is`. `Lazy*` = async → le code-split par démo est conservé. (Régression réelle corrigée le 2026-07-08.)
+
+## Caveats connus (hérités de la migration)
+
+- `plumber-signature` : le portage a remplacé **GSAP (parallax/scroll-scrub) par IntersectionObserver** —
+  fidélité d'animation légèrement dégradée vs l'original. À revoir si l'anim exacte redevient prioritaire.
+- `plumber-signature` : la section **avant/après n'a pas de champ `SiteContent`** → elle s'auto-masque.
+- `plumber-cuivre` garde son `build_site_content` sur-mesure (8 services / 8 FAQ) au lieu des défauts
+  génériques de `site_content.py` — choix low-risk (déjà live), pas un bug.
+- La **copie éditoriale** (titres de sections, CTA, framing, marques) reste des défauts par template,
+  **non éditable par le client** — c'est documenté et assumé ; l'ouvrir passerait par des clés
+  transverses de `SiteContent` (voir checklist Storyblok).
 
 ## Checklists
 

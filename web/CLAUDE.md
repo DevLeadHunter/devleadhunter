@@ -23,7 +23,7 @@
 | nuxt        | 4.x         |
 | vue         | 3.5.x       |
 | typescript  | 5.x         |
-| tailwindcss | 3.x         |
+| tailwindcss | 4.x         |
 | eslint      | 9.x         |
 | prettier    | 3.x         |
 | husky       | 9.x         |
