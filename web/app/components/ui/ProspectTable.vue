@@ -30,36 +30,70 @@
           <tr
             v-for="prospect in prospects"
             :key="prospect.id"
-            class="group border-b border-[var(--app-line-soft)] transition-colors last:border-b-0 hover:bg-[var(--app-surface-2)]/60"
-            :class="isSelected(prospect) ? 'bg-[var(--app-accent-soft)]' : ''"
+            class="group border-b border-[var(--app-line-soft)] transition-colors last:border-b-0"
+            :class="[
+              isSelected(prospect) ? 'bg-[var(--app-accent-soft)]' : '',
+              isLockedForMe(prospect) ? 'bg-[var(--app-surface-2)]/40' : 'hover:bg-[var(--app-surface-2)]/60',
+            ]"
           >
-            <!-- Row selection -->
+            <!-- Row selection (disabled while another member holds the prospect) -->
             <td class="px-4 py-3">
               <input
                 type="checkbox"
-                class="h-4 w-4 cursor-pointer accent-(--app-accent)"
+                class="h-4 w-4 accent-(--app-accent)"
+                :class="isLockedForMe(prospect) ? 'cursor-not-allowed opacity-30' : 'cursor-pointer'"
                 :checked="isSelected(prospect)"
+                :disabled="isLockedForMe(prospect)"
                 :aria-label="`Sélectionner ${prospect.name}`"
                 @change="emit('toggleSelect', prospect)"
               />
             </td>
 
-            <!-- Name — clickable to open detail drawer -->
+            <!-- Name — clickable to open detail drawer (locked rows show a padlock instead) -->
             <td class="px-4 py-3">
+              <div
+                v-if="isLockedForMe(prospect)"
+                class="flex items-center gap-2"
+                :title="`Réservé par ${prospect.reserved_by_name || 'un membre de votre organisation'}`"
+              >
+                <UIcon name="i-lucide-lock" class="h-3.5 w-3.5 shrink-0 text-[var(--app-faint)]" />
+                <span class="min-w-0">
+                  <span class="block truncate text-sm font-semibold text-[var(--app-ink-soft)]">
+                    {{ prospect.name }}
+                  </span>
+                  <span class="text-[11px] text-[var(--app-faint)]">
+                    Réservé par {{ prospect.reserved_by_name || 'un membre' }}
+                  </span>
+                </span>
+              </div>
               <button
+                v-else
                 type="button"
                 class="cursor-pointer text-left text-sm font-semibold text-[var(--app-ink)] underline decoration-transparent underline-offset-4 transition-colors hover:decoration-[var(--app-accent)]"
                 @click="emit('viewProspect', prospect)"
               >
-                {{ prospect.name }}
+                <span class="flex items-center gap-1.5">
+                  {{ prospect.name }}
+                  <UIcon
+                    v-if="isReservedByMe(prospect)"
+                    name="i-lucide-lock-keyhole"
+                    class="h-3 w-3 text-[var(--app-accent)]"
+                    title="Vous avez réservé ce prospect"
+                  />
+                </span>
               </button>
             </td>
 
             <td class="px-4 py-3 text-sm text-[var(--app-ink-soft)]">{{ prospect.city || '—' }}</td>
 
-            <td class="font-label px-4 py-3 text-xs text-[var(--app-ink-soft)]">{{ prospect.phone || '—' }}</td>
+            <td
+              class="font-label px-4 py-3 text-xs text-[var(--app-ink-soft)]"
+              :class="isLockedForMe(prospect) && 'blur-[3px] select-none'"
+            >
+              {{ prospect.phone || '—' }}
+            </td>
 
-            <td class="px-4 py-3">
+            <td class="px-4 py-3" :class="isLockedForMe(prospect) && 'blur-[3px] select-none'">
               <span v-if="prospect.email" class="font-label text-xs text-[var(--app-ink)]">{{ prospect.email }}</span>
               <span v-else class="text-sm text-[var(--app-faint)]">—</span>
             </td>
@@ -89,9 +123,10 @@
               <UiProspectSourceBadge :source="prospect.source" />
             </td>
 
-            <!-- Delete quick action (revealed on row hover) -->
+            <!-- Delete quick action (revealed on row hover, hidden on locked rows) -->
             <td class="px-4 py-3 text-center">
               <button
+                v-if="!isLockedForMe(prospect)"
                 type="button"
                 class="inline-flex h-7 w-7 cursor-pointer items-center justify-center rounded-full text-[var(--app-ink-soft)] opacity-0 transition-all group-hover:opacity-100 hover:bg-[var(--app-red-soft)] hover:text-[var(--app-red)] focus-visible:opacity-100"
                 title="Supprimer ce prospect"
@@ -117,6 +152,7 @@
 import type { ComputedRef } from 'vue'
 import { computed } from 'vue'
 import type { Prospect } from '~/types'
+import { useUserStore } from '~/stores/user'
 
 /**
  * Props for the ProspectTable component.
@@ -141,8 +177,31 @@ const emit = defineEmits<{
   toggleSelectAll: [checked: boolean]
 }>()
 
+const userStore = useUserStore()
+
+/** Current user id (0 while the store hydrates). */
+const currentUserId: ComputedRef<number> = computed((): number => userStore.user?.id ?? 0)
+
 /** Fast lookup set of the currently-selected prospect IDs. */
 const selectedSet: ComputedRef<Set<string>> = computed((): Set<string> => new Set(props.selectedProspects ?? []))
+
+/**
+ * Whether the prospect is reserved by ANOTHER organization member → locked for me.
+ * @param prospect - The prospect to test.
+ * @returns True when someone else holds the reservation.
+ */
+function isLockedForMe(prospect: Prospect): boolean {
+  return prospect.reserved_by_user_id != null && prospect.reserved_by_user_id !== currentUserId.value
+}
+
+/**
+ * Whether the current user holds the reservation on this prospect.
+ * @param prospect - The prospect to test.
+ * @returns True when the reservation is mine.
+ */
+function isReservedByMe(prospect: Prospect): boolean {
+  return prospect.reserved_by_user_id != null && prospect.reserved_by_user_id === currentUserId.value
+}
 
 /** Whether every visible prospect is selected. */
 const allSelected: ComputedRef<boolean> = computed(

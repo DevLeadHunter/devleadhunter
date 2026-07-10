@@ -69,6 +69,53 @@
         <div class="flex-1 overflow-y-auto">
           <!-- VIEW MODE -->
           <template v-if="!editMode">
+            <!-- Reservation (organization sharing) -->
+            <div v-if="prospect.organization_id" class="px-5 pt-4">
+              <div
+                v-if="isReservedByMe"
+                class="flex items-center justify-between gap-3 rounded-lg border border-[var(--app-accent)]/40 bg-[var(--app-accent-soft)] px-3 py-2.5"
+              >
+                <span class="flex items-center gap-2 text-xs font-medium text-[var(--app-accent-ink)]">
+                  <UIcon name="i-lucide-lock-keyhole" class="h-3.5 w-3.5" />
+                  Vous avez réservé ce prospect — il est verrouillé pour les autres membres.
+                </span>
+                <button
+                  type="button"
+                  class="btn-secondary shrink-0 text-xs"
+                  :disabled="isReserving"
+                  @click="handleRelease"
+                >
+                  <UIcon v-if="isReserving" name="i-lucide-loader-circle" class="h-3.5 w-3.5 animate-spin" />
+                  Libérer
+                </button>
+              </div>
+              <div
+                v-else-if="isReservedByOther"
+                class="flex items-center gap-2 rounded-lg border border-[var(--app-line)] bg-[var(--app-surface-2)] px-3 py-2.5 text-xs font-medium text-[var(--app-ink-soft)]"
+              >
+                <UIcon name="i-lucide-lock" class="h-3.5 w-3.5" />
+                Réservé par {{ prospect.reserved_by_name || 'un membre de votre organisation' }}.
+              </div>
+              <div
+                v-else
+                class="flex items-center justify-between gap-3 rounded-lg border border-[var(--app-line)] bg-[var(--app-bg)] px-3 py-2.5"
+              >
+                <span class="flex items-center gap-2 text-xs text-[var(--app-ink-soft)]">
+                  <UIcon name="i-lucide-lock-open" class="h-3.5 w-3.5" />
+                  Prospect partagé avec votre organisation — libre.
+                </span>
+                <button
+                  type="button"
+                  class="btn-secondary shrink-0 text-xs"
+                  :disabled="isReserving"
+                  @click="handleReserve"
+                >
+                  <UIcon v-if="isReserving" name="i-lucide-loader-circle" class="h-3.5 w-3.5 animate-spin" />
+                  Réserver
+                </button>
+              </div>
+            </div>
+
             <!-- Contact -->
             <div class="space-y-3 px-5 py-4">
               <p class="text-[10px] font-semibold tracking-wider text-[var(--app-ink-soft)] uppercase">Contact</p>
@@ -193,6 +240,73 @@
 
             <!-- Divider -->
             <div class="border-t border-[var(--app-surface-2)]"></div>
+
+            <!-- Lighthouse — audit of the EXISTING website (redesign pitch) -->
+            <div v-if="prospect.website" class="space-y-3 px-5 py-4">
+              <div class="flex items-center justify-between gap-3">
+                <p class="text-[10px] font-semibold tracking-wider text-[var(--app-ink-soft)] uppercase">
+                  Audit du site existant
+                </p>
+                <button type="button" class="btn-secondary text-xs" :disabled="isAuditing" @click="handleLighthouse">
+                  <UIcon
+                    :name="isAuditing ? 'i-lucide-loader-circle' : 'i-lucide-gauge'"
+                    :class="['h-3.5 w-3.5', isAuditing && 'animate-spin']"
+                  />
+                  {{ isAuditing ? 'Analyse…' : prospect.lighthouse_json ? 'Relancer' : 'Analyser' }}
+                </button>
+              </div>
+
+              <p v-if="isAuditing" class="text-xs leading-relaxed text-[var(--app-ink-soft)]">
+                Lighthouse analyse le site (30 à 60 secondes)…
+              </p>
+
+              <template v-else-if="prospect.lighthouse_json">
+                <div class="grid grid-cols-4 gap-2">
+                  <div
+                    v-for="gauge in lighthouseGauges"
+                    :key="gauge.label"
+                    class="rounded-lg border border-[var(--app-line)] bg-[var(--app-bg)] px-2 py-2.5 text-center"
+                  >
+                    <p class="text-lg font-bold tabular-nums" :style="{ color: gauge.color }">
+                      {{ gauge.score ?? '—' }}
+                    </p>
+                    <p class="mt-0.5 text-[9px] leading-tight text-[var(--app-ink-soft)] uppercase">
+                      {{ gauge.label }}
+                    </p>
+                  </div>
+                </div>
+                <div
+                  :class="[
+                    'flex items-start gap-2 rounded-lg px-3 py-2.5 text-xs leading-relaxed',
+                    prospect.lighthouse_json.is_improvable
+                      ? 'bg-[var(--app-accent-soft)] text-[var(--app-accent-ink)]'
+                      : 'bg-[var(--app-green-soft)] text-[var(--app-green)]',
+                  ]"
+                >
+                  <UIcon
+                    :name="prospect.lighthouse_json.is_improvable ? 'i-lucide-flame' : 'i-lucide-circle-check'"
+                    class="mt-0.5 h-3.5 w-3.5 shrink-0"
+                  />
+                  <span>
+                    {{
+                      prospect.lighthouse_json.is_improvable
+                        ? 'Site améliorable — bon candidat pour proposer une refonte.'
+                        : 'Site plutôt sain — la refonte sera plus difficile à vendre.'
+                    }}
+                  </span>
+                </div>
+                <p v-if="prospect.lighthouse_at" class="text-[10px] text-[var(--app-faint)]">
+                  Audité le {{ formatDate(prospect.lighthouse_at) }} · mobile
+                </p>
+              </template>
+
+              <p v-else class="text-xs leading-relaxed text-[var(--app-ink-soft)]">
+                Ce prospect a déjà un site — analysez sa qualité (performance, SEO…) pour savoir si une refonte se vend.
+              </p>
+            </div>
+
+            <!-- Divider -->
+            <div v-if="prospect.website" class="border-t border-[var(--app-surface-2)]"></div>
 
             <!-- Enrichment -->
             <UiProspectEnrichment :prospect-id="prospect.id" :open="open" />
@@ -336,10 +450,18 @@
 </template>
 
 <script setup lang="ts">
+import type { ComputedRef, Ref } from 'vue'
 import { ref, computed, watch } from 'vue'
 import type { Prospect, ProspectUpdatePayload } from '~/types'
-import { updateProspect, deleteProspect as deleteProspectApi } from '~/services/prospectsService'
+import {
+  updateProspect,
+  deleteProspect as deleteProspectApi,
+  reserveProspect,
+  releaseProspect,
+  runLighthouseAudit,
+} from '~/services/prospectsService'
 import { useToast } from '~/composables/useToast'
+import { useUserStore } from '~/stores/user'
 
 // ─── Props & Emits ────────────────────────────────────────────────────────────
 
@@ -376,11 +498,111 @@ const emit = defineEmits<{
 // ─── State ────────────────────────────────────────────────────────────────────
 
 const toast = useToast()
+const userStore = useUserStore()
 
 const editMode = ref(false)
 const isSaving = ref(false)
 const isDeleting = ref(false)
 const showDeleteConfirm = ref(false)
+const isReserving: Ref<boolean> = ref<boolean>(false)
+const isAuditing: Ref<boolean> = ref<boolean>(false)
+
+// ─── Reservation & Lighthouse ─────────────────────────────────────────────────
+
+/** Current user id (0 while the store hydrates). */
+const currentUserId: ComputedRef<number> = computed((): number => userStore.user?.id ?? 0)
+
+/** Whether the current user holds the reservation. */
+const isReservedByMe: ComputedRef<boolean> = computed(
+  (): boolean =>
+    props.prospect?.reserved_by_user_id != null && props.prospect.reserved_by_user_id === currentUserId.value,
+)
+
+/** Whether another organization member holds the reservation. */
+const isReservedByOther: ComputedRef<boolean> = computed(
+  (): boolean =>
+    props.prospect?.reserved_by_user_id != null && props.prospect.reserved_by_user_id !== currentUserId.value,
+)
+
+interface LighthouseGauge {
+  label: string
+  score: number | null
+  color: string
+}
+
+/** The four Lighthouse category gauges (red < 50, amber < 90, green otherwise). */
+const lighthouseGauges: ComputedRef<LighthouseGauge[]> = computed((): LighthouseGauge[] => {
+  const scores = props.prospect?.lighthouse_json?.scores
+  const colorOf = (score: number | null): string => {
+    if (score === null) return 'var(--app-faint)'
+    if (score < 50) return 'var(--app-red)'
+    if (score < 90) return 'var(--app-accent)'
+    return 'var(--app-green)'
+  }
+  const entries: Array<[string, number | null]> = [
+    ['Perf.', scores?.performance ?? null],
+    ['Accessib.', scores?.accessibility ?? null],
+    ['Pratiques', scores?.bestPractices ?? null],
+    ['SEO', scores?.seo ?? null],
+  ]
+  return entries.map(([label, score]: [string, number | null]): LighthouseGauge => {
+    return { label, score, color: colorOf(score) }
+  })
+})
+
+/**
+ * Reserve the prospect for the current user (locks it for other members).
+ * @returns A promise resolved once reserved.
+ */
+async function handleReserve(): Promise<void> {
+  if (!props.prospect) return
+  isReserving.value = true
+  try {
+    const updated: Prospect = await reserveProspect(props.prospect.id)
+    emit('updated', updated)
+    toast.success('Prospect réservé — verrouillé pour les autres membres')
+  } catch (err: unknown) {
+    toast.error(err instanceof Error ? err.message : 'Réservation impossible')
+  } finally {
+    isReserving.value = false
+  }
+}
+
+/**
+ * Release the reservation so another member can take the prospect.
+ * @returns A promise resolved once released.
+ */
+async function handleRelease(): Promise<void> {
+  if (!props.prospect) return
+  isReserving.value = true
+  try {
+    const updated: Prospect = await releaseProspect(props.prospect.id)
+    emit('updated', updated)
+    toast.success('Prospect libéré')
+  } catch (err: unknown) {
+    toast.error(err instanceof Error ? err.message : 'Libération impossible')
+  } finally {
+    isReserving.value = false
+  }
+}
+
+/**
+ * Run the Lighthouse audit on the prospect's existing website (slow, 30-60s).
+ * @returns A promise resolved once the audit is stored.
+ */
+async function handleLighthouse(): Promise<void> {
+  if (!props.prospect) return
+  isAuditing.value = true
+  try {
+    const updated: Prospect = await runLighthouseAudit(props.prospect.id)
+    emit('updated', updated)
+    toast.success('Audit Lighthouse terminé')
+  } catch (err: unknown) {
+    toast.error(err instanceof Error ? err.message : "L'audit a échoué")
+  } finally {
+    isAuditing.value = false
+  }
+}
 
 interface EditForm {
   name: string

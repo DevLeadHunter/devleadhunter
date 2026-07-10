@@ -60,6 +60,11 @@ export interface ProfileDrawerEntry {
   kind: 'profile'
 }
 
+/** Organization (team) management drawer entry. */
+export interface OrganizationDrawerEntry {
+  kind: 'organization'
+}
+
 /** One entry of the persistent drawer stack. */
 export type DrawerStackEntry =
   | ProspectDrawerEntry
@@ -67,6 +72,7 @@ export type DrawerStackEntry =
   | EmailLogDrawerEntry
   | EmailTemplateDrawerEntry
   | ProfileDrawerEntry
+  | OrganizationDrawerEntry
 
 /** Cross-page notice describing the latest prospect mutation done from a drawer. */
 export type ProspectMutationNotice = { type: 'updated'; prospect: Prospect } | { type: 'deleted'; prospectId: number }

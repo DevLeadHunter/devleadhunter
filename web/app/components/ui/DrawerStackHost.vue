@@ -56,6 +56,14 @@
       @close="drawerStack.closeAll()"
       @back="drawerStack.back()"
     />
+
+    <!-- Organization (team) management -->
+    <UiOrganizationDrawer
+      :open="organizationEntry !== null"
+      :show-back="hasPrevious"
+      @close="drawerStack.closeAll()"
+      @back="drawerStack.back()"
+    />
   </div>
 </template>
 
@@ -64,6 +72,7 @@ import type { ComputedRef } from 'vue'
 import type {
   EmailLogDrawerEntry,
   EmailTemplateDrawerEntry,
+  OrganizationDrawerEntry,
   ProfileDrawerEntry,
   ProspectDrawerEntry,
   SendEmailDrawerEntry,
@@ -104,6 +113,11 @@ const emailTemplateEntry: ComputedRef<EmailTemplateDrawerEntry | null> = compute
 /** Top entry narrowed to the profile drawer. */
 const profileEntry: ComputedRef<ProfileDrawerEntry | null> = computed((): ProfileDrawerEntry | null => {
   return drawerStack.topEntry?.kind === 'profile' ? drawerStack.topEntry : null
+})
+
+/** Top entry narrowed to the organization drawer. */
+const organizationEntry: ComputedRef<OrganizationDrawerEntry | null> = computed((): OrganizationDrawerEntry | null => {
+  return drawerStack.topEntry?.kind === 'organization' ? drawerStack.topEntry : null
 })
 
 /** Whether the back affordance should be visible on the top drawer. */

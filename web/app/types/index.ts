@@ -52,6 +52,61 @@ export interface Prospect {
   contacted: boolean
   /** Timestamp of when prospect was found */
   created_at?: string
+  /** Organization the prospect is shared with (creator's org, null = personal) */
+  organization_id?: number | null
+  /** Member currently reserving this prospect (null = free to take) */
+  reserved_by_user_id?: number | null
+  /** Display name of the reserving member (resolved server-side) */
+  reserved_by_name?: string | null
+  /** When the reservation was made */
+  reserved_at?: string | null
+  /** Latest Lighthouse audit of the prospect's existing website */
+  lighthouse_json?: ProspectLighthouseAudit | null
+  /** When the Lighthouse audit was run */
+  lighthouse_at?: string | null
+}
+
+/**
+ * Résultat d'un audit Lighthouse (PageSpeed Insights) du site existant d'un prospect.
+ */
+export interface ProspectLighthouseAudit {
+  /** Scores 0-100 par catégorie (null si PSI n'a pas pu calculer) */
+  scores: {
+    performance: number | null
+    accessibility: number | null
+    bestPractices: number | null
+    seo: number | null
+  }
+  /** Au moins un score clé sous le seuil → argument refonte */
+  is_improvable: boolean
+  /** Stratégie d'audit (mobile) */
+  strategy: string
+  /** URL réellement analysée */
+  final_url: string
+  /** Date ISO de l'audit */
+  fetched_at: string
+}
+
+/**
+ * Organisation (équipe) de l'utilisateur courant.
+ */
+export interface Organization {
+  id: number
+  name: string
+  owner_user_id: number
+  created_at?: string
+  members: OrganizationMember[]
+}
+
+/**
+ * Membre d'une organisation (identité résolue côté API).
+ */
+export interface OrganizationMember {
+  user_id: number
+  name: string
+  email: string
+  role: 'owner' | 'member'
+  joined_at?: string
 }
 
 /**

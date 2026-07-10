@@ -227,6 +227,15 @@
           Profil
         </button>
 
+        <button
+          type="button"
+          class="flex w-full cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-left text-xs font-medium text-[var(--app-ink)] transition-colors hover:bg-[var(--app-surface-2)]"
+          @click="handleOrganizationFromMenu"
+        >
+          <UIcon name="i-lucide-users-round" class="h-3.5 w-3.5 text-[var(--app-ink-soft)]" />
+          Organisation
+        </button>
+
         <div class="flex items-center justify-between rounded-md px-2 py-1.5">
           <span class="flex items-center gap-2 text-xs font-medium text-[var(--app-ink)]">
             <UIcon name="i-lucide-sun-moon" class="h-3.5 w-3.5 text-[var(--app-ink-soft)]" />
@@ -571,6 +580,15 @@ function handleAdminClick(): void {
 function handleProfileFromMenu(): void {
   showUserMenu.value = false
   drawerStack.push({ kind: 'profile' })
+  handleClick()
+}
+
+/**
+ * Open the organization (team) drawer from the user menu (no page navigation).
+ */
+function handleOrganizationFromMenu(): void {
+  showUserMenu.value = false
+  drawerStack.push({ kind: 'organization' })
   handleClick()
 }
 

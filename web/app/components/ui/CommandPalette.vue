@@ -218,6 +218,15 @@ const visibleGroups: ComputedRef<PaletteGroup[]> = computed((): PaletteGroup[] =
       },
     },
     {
+      id: 'action-organization',
+      label: 'Organisation',
+      icon: 'i-lucide-users-round',
+      keywords: 'équipe team membres inviter',
+      run: (): void => {
+        drawerStack.push({ kind: 'organization' })
+      },
+    },
+    {
       id: 'action-toggle-theme',
       label: 'Basculer le thème clair / sombre',
       icon: 'i-lucide-sun-moon',

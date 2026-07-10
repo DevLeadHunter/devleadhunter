@@ -89,6 +89,34 @@ export async function getProspect(prospectId: number): Promise<Prospect> {
 }
 
 /**
+ * Reserve a shared prospect for the current user (organization anti double-outreach).
+ * @param prospectId - Identifiant du prospect à réserver.
+ * @returns Le prospect avec sa réservation posée.
+ */
+export async function reserveProspect(prospectId: number): Promise<Prospect> {
+  return api.post<Prospect>(`${BASE_URL}/${prospectId}/reserve`, {})
+}
+
+/**
+ * Release the current reservation so another member can take the prospect.
+ * @param prospectId - Identifiant du prospect à libérer.
+ * @returns Le prospect libéré.
+ */
+export async function releaseProspect(prospectId: number): Promise<Prospect> {
+  return api.delete<Prospect>(`${BASE_URL}/${prospectId}/reserve`)
+}
+
+/**
+ * Run a Lighthouse (PageSpeed Insights) audit on the prospect's existing website.
+ * Slow call (30-60s) — the caller must show a loader.
+ * @param prospectId - Identifiant du prospect à auditer.
+ * @returns Le prospect avec son audit stocké.
+ */
+export async function runLighthouseAudit(prospectId: number): Promise<Prospect> {
+  return api.post<Prospect>(`${BASE_URL}/${prospectId}/lighthouse-audit`, {})
+}
+
+/**
  
  * Met à jour les champs d'un prospect existant.
  
