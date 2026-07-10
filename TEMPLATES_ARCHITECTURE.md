@@ -152,7 +152,7 @@ TS `storyblokSiteContentToSiteContent.ts`). Le webhook est enregistré par space
 **jamais visibles** sur son site.
 
 ```ts
-// @devleadhunter/website-content — shape actuel (tag v1.1.0)
+// @devleadhunter/website-content — shape actuel (tag v1.2.0)
 export interface SiteContent {
   // Identité / contact
   businessName?: string
@@ -164,6 +164,20 @@ export interface SiteContent {
   // Éditorial (les mots du prospect : accroche + histoire plus longue)
   subtitle?: string
   about?: string
+
+  // Copie éditoriale ÉDITABLE PAR LE CLIENT (vide = texte par défaut du template).
+  // Pré-remplie à la génération avec la vraie copie du template (voir plus bas).
+  heroBadge?: string
+  heroPoints?: string[]
+  ctaCallLabel?: string
+  ctaQuoteLabel?: string
+  trustItems?: Array<{ value?: string; label?: string }>
+  servicesHeading?: string
+  galleryHeading?: string
+  reviewsHeading?: string
+  faqHeading?: string
+  aboutHeading?: string
+  contactHeading?: string
 
   // Médias (photos scrapées/enrichies)
   heroImage?: string
@@ -179,6 +193,7 @@ export interface SiteContent {
   faq?: Array<{ question?: string; answer?: string }>
   zones?: string[]
   openingHours?: Array<{ day?: string; hours?: string }>
+  beforeAfter?: Array<{ before?: string; after?: string; label?: string }>
   // … étendre ADDITIVEMENT (toujours optionnel) quand une template migrée a un besoin transverse
 }
 
@@ -188,9 +203,12 @@ export function emptySiteContent(): SiteContent {
 ```
 
 **Règle** : on n'ajoute au type que du **transverse** (utile à plusieurs métiers), **toujours
-optionnel**. Un besoin ultra-spécifique à une seule template, ou de la copie de mise en forme,
-se gère **dans la template** — pas dans le contrat partagé, sinon `SiteContent` devient un
-god-object.
+optionnel**. Un besoin ultra-spécifique à une seule template se gère **dans la template** — pas
+dans le contrat partagé, sinon `SiteContent` devient un god-object. *(Exception assumée
+2026-07-11 : la copie éditoriale COMMUNE aux templates — badge, CTA, titres des 6 sections
+partagées, repères de confiance — est montée dans le contrat pour être éditable par le client ;
+les headings ultra-spécifiques d'une seule template — craft, process, urgence… — restent des
+défauts de la template.)*
 
 ### Le seam TS ↔ Python
 
@@ -259,22 +277,33 @@ c'est **exactement ce que la template consomme depuis `SiteContent`**. Donc :
    historique : `plumber-atelier` n'affiche ni avis, ni FAQ, ni galerie, ni horaires — à éviter).
 2. **Une clé vide/absente masque la section** (`v-if`) ou tombe sur le défaut du template —
    jamais de crash, jamais de « undefined » à l'écran.
-3. La **copie éditoriale** (titres de sections, badges, CTA, framing) vit en défauts dans la
-   template : le client ne peut PAS l'éditer aujourd'hui. **Ne pas prétendre le contraire dans
-   les commentaires** (contre-exemple historique : `BrandsSection.vue` de cuivre annonçait des
-   marques « éditables dans Storyblok » alors qu'elles sont en dur). Si un contenu doit être
-   éditable par le client, il doit passer par une clé (transverse, optionnelle) de `SiteContent`.
-4. Côté Storyblok, **rien à faire par template** : le space n'enregistre que la famille de bloks
-   partagée `site_content` (+ `theme_palette`, `page`) — schémas dans
-   `api/services/templates/site_content.py` (`SITE_CONTENT_SCHEMAS`). **Ne pas ajouter de
-   `COMPONENT_SCHEMAS` riches par template** : ils ne sont plus enregistrés (ils polluaient les
-   spaces clients avec des dizaines de bloks sans effet).
-5. Étendre `SiteContent` (nouvelle clé transverse) = **4 endroits, additivement et optionnel** :
+3. **Câbler la copie éditoriale cliente** (depuis le 2026-07-11) : le contrat porte
+   `heroBadge`, `heroPoints`, `ctaCallLabel`/`ctaQuoteLabel`, `trustItems` et les 6 titres de
+   sections communs. La template les consomme avec fallback sur SES défauts
+   (`content.heroBadge || defaults.heroBadge` ; tableaux :
+   `content.trustItems?.length ? … : defaults.trustItems`). Les headings ultra-spécifiques
+   d'une template (craft, process, urgence…) restent des défauts non éditables — **ne pas
+   prétendre le contraire dans les commentaires**. Un besoin éditable vraiment transverse →
+   nouvelle clé du contrat (point 6).
+4. **Pré-remplir la copie éditoriale côté API** : le module Python de la template définit
+   `_EDITORIAL_DEFAULTS` (copie EXACTE des défauts du layer : badge, points, CTA, trust items,
+   headings) appliqué dans `build_site_content` — ainsi le client voit **ses vrais textes**
+   dans Storyblok au lieu de champs vides à fallback invisible. Si la copie du layer change,
+   synchroniser ce dict.
+5. Côté Storyblok, **rien à enregistrer par template** : le space n'enregistre que la famille
+   de bloks partagée `site_content` (+ `theme_palette`, `page`) — schémas dans
+   `api/services/templates/site_content.py` (`SITE_CONTENT_SCHEMAS`), avec **display_name et
+   description en FRANÇAIS** (c'est l'UI du client — toute nouvelle clé doit avoir son libellé
+   FR + un `pos`). **Ne pas ajouter de `COMPONENT_SCHEMAS` riches par template** : ils ne sont
+   plus enregistrés (ils polluaient les spaces clients). ⚠️ Les schémas ne s'appliquent qu'aux
+   **nouveaux** spaces (l'API ne met pas à jour les composants existants).
+6. Étendre `SiteContent` (nouvelle clé transverse) = **4 endroits, additivement et optionnel** :
    le type TS (`@devleadhunter/website-content` + tag), le blok (`SITE_CONTENT_SCHEMAS` +
    `to_storyblok_site_content` + `from_storyblok_site_content` dans `site_content.py`), le
-   bridge TS demo-host (`storyblokSiteContentToSiteContent.ts`), et le builder
-   (`map_prospect_and_enrichment`). Les deux bridges (TS et Python) doivent rester des miroirs.
-6. **Tester le cycle complet** : générer un site → ouvrir le Visual Editor (les champs du blok
+   bridge TS demo-host (`storyblokSiteContentToSiteContent.ts`), et le builder. Les deux
+   bridges (TS et Python) doivent rester des **miroirs** — y compris les pièges Storyblok
+   (champ single-blok renvoyé en LISTE après édition cliente, number en string).
+7. **Tester le cycle complet** : générer un site → ouvrir le Visual Editor (les champs du blok
    `site_content` s'éditent et se voient en live) → **Publish** → vérifier que le webhook
    `/webhooks/storyblok` a bien mis à jour `demo_site.content_json` et que le site public
    affiche l'édition.
