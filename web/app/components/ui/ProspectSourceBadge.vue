@@ -112,6 +112,13 @@ const SOURCE_CONFIG: Record<string, SourceConfig> = {
     bg: 'bg-[#7C3AED]',
     text: 'text-white',
   },
+  manual: {
+    label: 'Manuel',
+    logoUrl: null,
+    icon: 'i-lucide-pen-line',
+    bg: 'bg-[#57534E]',
+    text: 'text-white',
+  },
 }
 
 /** Fallback for unknown / future sources */

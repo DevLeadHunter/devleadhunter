@@ -19,10 +19,38 @@
           <UIcon name="i-lucide-refresh-cw" class="h-3.5 w-3.5" />
           Actualiser
         </button>
-        <NuxtLink to="/dashboard/my-prospects/add" class="app-btn-secondary h-9 px-4 text-xs">
+        <button
+          type="button"
+          class="app-btn-secondary h-9 px-3 text-xs"
+          title="Télécharger le modèle JSON d'import"
+          @click="downloadProspectTemplateJson()"
+        >
+          <UIcon name="i-lucide-file-json" class="h-3.5 w-3.5" />
+          Modèle
+        </button>
+        <button
+          type="button"
+          class="app-btn-secondary h-9 px-4 text-xs disabled:cursor-not-allowed disabled:opacity-50"
+          :disabled="isImporting"
+          @click="importInput?.click()"
+        >
+          <UIcon
+            :name="isImporting ? 'i-lucide-loader-circle' : 'i-lucide-upload'"
+            :class="['h-3.5 w-3.5', isImporting && 'animate-spin']"
+          />
+          {{ isImporting ? 'Import…' : 'Importer' }}
+        </button>
+        <input
+          ref="importInput"
+          type="file"
+          accept=".json,application/json"
+          class="hidden"
+          @change="handleImportFile"
+        />
+        <button type="button" class="app-btn-secondary h-9 px-4 text-xs" @click="openAddProspectDrawer">
           <UIcon name="i-lucide-user-plus" class="h-3.5 w-3.5" />
           Ajouter manuellement
-        </NuxtLink>
+        </button>
         <NuxtLink to="/dashboard/search-prospects" class="app-btn-primary h-9 px-4 text-xs">
           <UIcon name="i-lucide-search" class="h-3.5 w-3.5" />
           Nouvelle recherche
@@ -191,6 +219,9 @@
             {{ selectedProspects.length }} sélectionné{{ selectedProspects.length > 1 ? 's' : '' }}
           </span>
           <span class="hidden h-5 w-px bg-[var(--app-line)] sm:block"></span>
+          <button type="button" class="app-btn-secondary h-9 px-4 text-xs" @click="exportSelected">
+            <UIcon name="i-lucide-download" class="h-3.5 w-3.5" />Exporter
+          </button>
           <button type="button" class="app-btn-secondary h-9 px-4 text-xs" @click="bulkCampaignOpen = true">
             <UIcon name="i-lucide-megaphone" class="h-3.5 w-3.5" />Campagne
           </button>
@@ -241,8 +272,10 @@
 
 <script lang="ts" setup>
 import { ref, computed, watch, onMounted } from 'vue'
+import type { Ref } from 'vue'
 import type { Prospect } from '~/types'
-import { deleteProspect as deleteProspectApi, listProspects } from '~/services/prospectsService'
+import { createProspect, deleteProspect as deleteProspectApi, listProspects } from '~/services/prospectsService'
+import { downloadProspectsJson, downloadProspectTemplateJson, parseProspectsJson } from '~/utils/prospectJson'
 import { runBulkEnrichment } from '~/services/enrichmentService'
 import { useDrawerStackStore } from '~/stores/drawerStack'
 import type { BulkGenerateResult } from '~/services/demoSiteService'
@@ -469,10 +502,97 @@ function openDrawer(prospect: Prospect): void {
   drawerStack.push({ kind: 'prospect', prospect })
 }
 
-/** Drawer notified 'updated' — patch the local list in place. */
+/** Drawer notified 'updated' — patch the local list, or insert a freshly created prospect. */
 function handleProspectUpdated(updated: Prospect): void {
   const idx = prospects.value.findIndex((p) => p.id === updated.id)
   if (idx !== -1) prospects.value.splice(idx, 1, updated)
+  else prospects.value.unshift(updated)
+}
+
+// ─── Import / export JSON ─────────────────────────────────────────────────────
+
+/** Hidden file input used by the « Importer » button. */
+const importInput: Ref<HTMLInputElement | null> = ref<HTMLInputElement | null>(null)
+
+/** Whether a JSON import is currently running. */
+const isImporting: Ref<boolean> = ref<boolean>(false)
+
+/**
+ * Open the manual prospect creation drawer.
+ */
+function openAddProspectDrawer(): void {
+  drawerStack.push({ kind: 'add-prospect' })
+}
+
+/**
+ * Export the selected prospects as a JSON file (import-compatible shape).
+ */
+function exportSelected(): void {
+  const selected: Prospect[] = prospects.value.filter((p: Prospect): boolean =>
+    selectedProspects.value.includes(String(p.id)),
+  )
+  if (selected.length === 0) return
+  downloadProspectsJson(selected)
+  toast.success(
+    `${selected.length} prospect${selected.length > 1 ? 's' : ''} exporté${selected.length > 1 ? 's' : ''} en JSON`,
+  )
+}
+
+/**
+ * Import prospects from a JSON file (see the downloadable template): each valid
+ * row is created with source « manual », invalid rows are reported.
+ * @param event - The file input change event.
+ * @returns A promise resolved once the import completes.
+ */
+async function handleImportFile(event: Event): Promise<void> {
+  const input = event.target as HTMLInputElement
+  const file: File | undefined = input.files?.[0]
+  input.value = ''
+  if (!file) return
+
+  isImporting.value = true
+  try {
+    const { valid, errors } = parseProspectsJson(await file.text())
+    if (valid.length === 0) {
+      toast.error(errors[0] ?? 'Aucun prospect valide dans ce fichier — utilisez le modèle JSON.')
+      return
+    }
+
+    let created = 0
+    let failed = 0
+    for (const item of valid) {
+      try {
+        const prospect: Prospect = await createProspect({
+          name: item.name,
+          address: item.address || null,
+          city: item.city || null,
+          phone: item.phone || null,
+          email: item.email || null,
+          website: item.website || null,
+          category: item.category ?? 'Entreprise',
+          source: 'manual',
+          confidence: 1,
+        })
+        handleProspectUpdated(prospect)
+        created += 1
+      } catch {
+        failed += 1
+      }
+    }
+
+    const skipped: number = errors.length + failed
+    if (created > 0) {
+      toast.success(
+        `${created} prospect${created > 1 ? 's' : ''} importé${created > 1 ? 's' : ''}${skipped ? ` (${skipped} ignoré${skipped > 1 ? 's' : ''})` : ''}`,
+      )
+    } else {
+      toast.error('Import terminé sans création — vérifiez le contenu du fichier.')
+    }
+  } catch (err: unknown) {
+    toast.error(err instanceof Error ? err.message : "Impossible de lire ce fichier d'import")
+  } finally {
+    isImporting.value = false
+  }
 }
 
 /** Drawer notified 'deleted' — remove from local list. */

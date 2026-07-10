@@ -72,12 +72,22 @@
       @close="drawerStack.closeAll()"
       @back="drawerStack.back()"
     />
+
+    <!-- Manual prospect creation -->
+    <UiAddProspectDrawer
+      :open="addProspectEntry !== null"
+      :show-back="hasPrevious"
+      @close="drawerStack.closeAll()"
+      @back="drawerStack.back()"
+      @created="handleProspectCreated"
+    />
   </div>
 </template>
 
 <script lang="ts" setup>
 import type { ComputedRef } from 'vue'
 import type {
+  AddProspectDrawerEntry,
   CreateCampaignDrawerEntry,
   EmailLogDrawerEntry,
   EmailTemplateDrawerEntry,
@@ -135,6 +145,21 @@ const createCampaignEntry: ComputedRef<CreateCampaignDrawerEntry | null> = compu
     return drawerStack.topEntry?.kind === 'create-campaign' ? drawerStack.topEntry : null
   },
 )
+
+/** Top entry narrowed to the manual prospect creation drawer. */
+const addProspectEntry: ComputedRef<AddProspectDrawerEntry | null> = computed((): AddProspectDrawerEntry | null => {
+  return drawerStack.topEntry?.kind === 'add-prospect' ? drawerStack.topEntry : null
+})
+
+/**
+ * Prospect created from the add drawer — notify pages (list insert) and chain
+ * straight to the new prospect's detail drawer.
+ * @param created - The freshly created prospect.
+ */
+function handleProspectCreated(created: Prospect): void {
+  drawerStack.notifyProspectUpdated(created)
+  drawerStack.push({ kind: 'prospect', prospect: created })
+}
 
 /** Whether the back affordance should be visible on the top drawer. */
 const hasPrevious: ComputedRef<boolean> = computed((): boolean => drawerStack.hasPrevious)

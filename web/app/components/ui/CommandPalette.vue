@@ -205,7 +205,7 @@ const visibleGroups: ComputedRef<PaletteGroup[]> = computed((): PaletteGroup[] =
       icon: 'i-lucide-user-plus',
       keywords: 'nouveau manuel',
       run: (): void => {
-        navigateTo('/dashboard/my-prospects/add')
+        drawerStack.push({ kind: 'add-prospect' })
       },
     },
     {

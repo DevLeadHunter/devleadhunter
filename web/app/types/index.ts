@@ -20,7 +20,7 @@ export type BusinessCategory = 'restaurant' | 'plombier' | 'electricien' | 'coif
  * - ``brightdata``  — BrightData HTTP API (Web Unlocker + SERP, no browser required)
  * - ``all``         — Sentinel value used in filter selects to mean "every source"
  */
-export type ProspectSource = 'google' | 'pagesjaunes' | 'yelp' | 'osm' | 'auto' | 'brightdata' | 'all'
+export type ProspectSource = 'google' | 'pagesjaunes' | 'yelp' | 'osm' | 'auto' | 'brightdata' | 'manual' | 'all'
 
 /**
  * Prospect interface representing a business without website
