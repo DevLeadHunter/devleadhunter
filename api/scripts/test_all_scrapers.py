@@ -8,7 +8,6 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from scrappers.google_scraper import GoogleScraper
-from scrappers.mock_scraper import MockScraper
 from scrappers.osm_scraper import OSMScraper
 from scrappers.pagesjaunes_scraper import PagesJaunesScraper
 
@@ -42,7 +41,6 @@ async def run_one(name: str, scraper, category: str, city: str) -> None:
 
 async def main() -> None:
     scrapers = [
-        ("mock", MockScraper()),
         ("pagesjaunes", PagesJaunesScraper()),
         ("google", GoogleScraper()),
         ("osm", OSMScraper()),

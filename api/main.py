@@ -40,7 +40,6 @@ from slowapi.errors import RateLimitExceeded
 from api.v1.router import router as api_router
 from core.config import settings
 from services.scraper_service import scraper_service
-from scrappers.mock_scraper import MockScraper
 from scrappers.google_scraper import GoogleScraper
 from scrappers.pagesjaunes_scraper import PagesJaunesScraper
 from scrappers.osm_scraper import OSMScraper
@@ -125,9 +124,6 @@ async def startup_event() -> None:
     It sets up scrapers and other services.
     """
     # Register scrapers
-    mock_scraper = MockScraper()
-    await scraper_service.add_scraper(mock_scraper)
-    
     google_scraper = GoogleScraper()
     await scraper_service.add_scraper(google_scraper)
     

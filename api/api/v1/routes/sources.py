@@ -18,4 +18,4 @@ async def get_prospect_sources() -> list[dict[str, str]]:
     Returns:
         Source options with ``value`` and ``label`` keys.
     """
-    return list_source_options(include_all=True, include_mock=True)
+    return list_source_options(include_all=True)
