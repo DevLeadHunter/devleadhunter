@@ -2,8 +2,8 @@
   <div class="space-y-8">
     <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
       <NuxtLink to="/dashboard/support" class="btn-secondary inline-flex w-fit items-center gap-2">
-        <i class="fa-solid fa-arrow-left"></i>
-        Back to tickets
+        <UIcon name="i-lucide-arrow-left" class="h-4 w-4" />
+        Retour aux tickets
       </NuxtLink>
 
       <p class="text-xs font-semibold tracking-wider text-[var(--app-accent-ink)] uppercase">Ticket #{{ ticketId }}</p>
@@ -11,45 +11,45 @@
 
     <header class="space-y-2">
       <h1 class="text-[28px] leading-tight font-semibold break-words text-[var(--app-ink)]">
-        {{ ticket?.subject || 'Loading…' }}
+        {{ ticket?.subject || 'Chargement…' }}
       </h1>
       <p class="max-w-2xl text-sm text-[var(--app-ink-soft)]">
-        Keep track of the latest replies. Members can only access their own tickets while admins see the global queue.
-        Status updates are handled automatically by the platform.
+        Suivez les dernières réponses. Les membres n'accèdent qu'à leurs propres tickets, les admins voient toute la
+        file. Les statuts sont mis à jour automatiquement.
       </p>
     </header>
 
     <UiLoader v-if="isLoading" />
 
     <div v-else-if="!ticket" class="card flex items-center justify-center py-16 text-[var(--app-ink-soft)]">
-      <p class="text-sm">We could not find this ticket. Check the URL or return to the list.</p>
+      <p class="text-sm">Ticket introuvable. Vérifiez l'URL ou revenez à la liste.</p>
     </div>
 
     <div v-else class="grid max-w-full items-start gap-6 xl:grid-cols-[320px_1fr]">
-      <aside class="card h-fit max-w-full space-y-6 overflow-hidden bg-[#101216] p-4 sm:p-6 xl:sticky xl:top-6">
+      <aside class="card h-fit max-w-full space-y-6 overflow-hidden p-4 sm:p-6 xl:sticky xl:top-6">
         <div class="space-y-3">
-          <h2 class="text-sm font-semibold tracking-wide text-[var(--app-ink)] uppercase">Ticket summary</h2>
+          <h2 class="text-sm font-semibold tracking-wide text-[var(--app-ink)] uppercase">Résumé du ticket</h2>
           <dl class="space-y-3 text-xs leading-relaxed text-[var(--app-ink-soft)]">
             <div class="flex items-start justify-between gap-4">
-              <dt class="font-medium text-[var(--app-ink)]">Requester</dt>
+              <dt class="font-medium text-[var(--app-ink)]">Demandeur</dt>
               <dd class="min-w-0 text-right break-words">{{ ticket.user_name }}</dd>
             </div>
             <div class="flex items-start justify-between gap-4">
-              <dt class="font-medium text-[var(--app-ink)]">Topic</dt>
+              <dt class="font-medium text-[var(--app-ink)]">Catégorie</dt>
               <dd class="min-w-0 text-right break-words">{{ topicLabel(ticket.topic) }}</dd>
             </div>
             <div class="flex items-start justify-between gap-4">
-              <dt class="font-medium text-[var(--app-ink)]">Created</dt>
+              <dt class="font-medium text-[var(--app-ink)]">Créé le</dt>
               <dd class="min-w-0 text-right break-words">{{ formatDate(ticket.created_at, true) }}</dd>
             </div>
             <div class="flex items-start justify-between gap-4">
-              <dt class="font-medium text-[var(--app-ink)]">Last update</dt>
+              <dt class="font-medium text-[var(--app-ink)]">Dernière activité</dt>
               <dd class="min-w-0 text-right break-words">
-                {{ ticket.last_message_at ? formatDate(ticket.last_message_at, true) : 'Just now' }}
+                {{ ticket.last_message_at ? formatDate(ticket.last_message_at, true) : "À l'instant" }}
               </dd>
             </div>
             <div class="flex items-start justify-between gap-4">
-              <dt class="font-medium text-[var(--app-ink)]">Status</dt>
+              <dt class="font-medium text-[var(--app-ink)]">Statut</dt>
               <dd>
                 <span
                   :class="[
@@ -65,7 +65,7 @@
         </div>
 
         <div class="space-y-2">
-          <h3 class="text-sm font-semibold text-[var(--app-ink)]">Initial description</h3>
+          <h3 class="text-sm font-semibold text-[var(--app-ink)]">Description initiale</h3>
           <p
             class="overflow-wrap-anywhere text-xs leading-relaxed break-words whitespace-pre-wrap text-[var(--app-ink-soft)]"
           >
@@ -74,7 +74,7 @@
         </div>
 
         <div v-if="ticket.attachments.length" class="space-y-3">
-          <h3 class="text-sm font-semibold text-[var(--app-ink)]">Attached images</h3>
+          <h3 class="text-sm font-semibold text-[var(--app-ink)]">Images jointes</h3>
           <div class="grid gap-3 sm:grid-cols-2">
             <a
               v-for="attachment in ticket.attachments"
@@ -115,7 +115,7 @@
                 'max-w-full rounded-2xl px-4 py-3 text-sm leading-relaxed break-words whitespace-pre-wrap',
                 message.sender_id === userStore.user?.id
                   ? 'bg-[var(--app-accent-ink)] text-[var(--app-bg)]'
-                  : 'bg-[#1a1f26] text-[var(--app-ink)]',
+                  : 'bg-[var(--app-surface-2)] text-[var(--app-ink)]',
               ]"
             >
               {{ message.content }}
@@ -144,20 +144,20 @@
           </div>
         </div>
 
-        <form class="flex-shrink-0 space-y-4 border-t border-[#1f252d] pt-4" @submit.prevent="sendMessage">
+        <form class="flex-shrink-0 space-y-4 border-t border-[var(--app-line)] pt-4" @submit.prevent="sendMessage">
           <div class="relative">
             <textarea
               v-model="messageInput"
               rows="3"
               class="input-field pr-28"
-              placeholder="Write a reply…"
+              placeholder="Écrire une réponse…"
               @keydown="handleKeydown"
             ></textarea>
             <div class="absolute right-3 bottom-3 flex items-center gap-2">
               <label
                 class="flex h-9 w-9 cursor-pointer items-center justify-center rounded-lg border border-[var(--app-line)] bg-[var(--app-bg)] text-[var(--app-ink-soft)] transition-colors hover:text-[var(--app-ink)]"
               >
-                <i class="fa-solid fa-paperclip text-sm"></i>
+                <UIcon name="i-lucide-paperclip" class="h-4 w-4" />
                 <input
                   ref="composerInput"
                   type="file"
@@ -171,9 +171,9 @@
                 type="submit"
                 class="flex h-10 w-10 items-center justify-center rounded-full bg-[var(--app-accent-ink)] text-[var(--app-bg)] transition-colors hover:bg-[var(--app-accent-ink)]/80 disabled:cursor-not-allowed disabled:opacity-60"
                 :disabled="(!messageInput.trim() && composerPreviews.length === 0) || isSending"
-                title="Send"
+                title="Envoyer"
               >
-                <i class="fa-solid fa-paper-plane"></i>
+                <UIcon name="i-lucide-send" class="h-4 w-4" />
               </button>
             </div>
           </div>
@@ -193,7 +193,7 @@
                 class="absolute top-2 right-2 flex h-6 w-6 items-center justify-center rounded-full bg-[var(--app-bg)]/80 text-[11px] text-[var(--app-ink)] transition-colors hover:bg-[var(--app-red)] hover:text-white"
                 @click="removeComposerAttachment(index)"
               >
-                <i class="fa-solid fa-xmark"></i>
+                <UIcon name="i-lucide-x" class="h-3.5 w-3.5" />
               </button>
             </figure>
           </div>
@@ -241,30 +241,30 @@ const websocketRef = ref<WebSocket | null>(null)
 const globalWebsocketRef = ref<WebSocket | null>(null)
 
 const statusLabels: Record<string, string> = {
-  open: 'Open',
-  waiting_support: 'Waiting on support',
-  waiting_user: 'Waiting on customer',
-  resolved: 'Resolved',
-  closed: 'Closed',
+  open: 'Ouvert',
+  waiting_support: 'Attente support',
+  waiting_user: 'Attente client',
+  resolved: 'Résolu',
+  closed: 'Fermé',
 }
 
 const statusStyles: Record<string, string> = {
   open: 'bg-[var(--app-accent-ink)]/20 text-[var(--app-accent-ink)]',
   waiting_support: 'bg-[var(--app-accent)]/15 text-[var(--app-accent-ink)]',
-  waiting_user: 'bg-[#8d7bb8]/20 text-[#8d7bb8]',
+  waiting_user: 'bg-[var(--app-violet-soft)] text-[var(--app-violet)]',
   resolved: 'bg-[var(--app-green)]/20 text-[var(--app-green)]',
   closed: 'bg-[var(--app-ink-soft)]/20 text-[var(--app-ink-soft)]',
   default: 'bg-[var(--app-surface-2)] text-[var(--app-ink)]',
 }
 
 const topicMap: Record<string, string> = {
-  credits_billing: 'Credits & billing',
-  missing_results: 'Missing results',
-  bug_report: 'Bug report',
-  refund_credits: 'Credit refund',
-  refund_payment: 'Payment refund',
-  feature_request: 'Feature request',
-  other: 'Other',
+  credits_billing: 'Crédits & facturation',
+  missing_results: 'Résultats manquants',
+  bug_report: 'Signalement de bug',
+  refund_credits: 'Remboursement crédits',
+  refund_payment: 'Remboursement paiement',
+  feature_request: 'Suggestion',
+  other: 'Autre',
 }
 
 function topicLabel(topic: SupportTicketDetail['topic']): string {
@@ -274,7 +274,7 @@ function topicLabel(topic: SupportTicketDetail['topic']): string {
 function formatDate(value: string | null | undefined, includeTime = false): string {
   if (!value) return ''
   const date = new Date(value)
-  return date.toLocaleString('en-US', {
+  return date.toLocaleString('fr-FR', {
     year: 'numeric',
     month: 'short',
     day: 'numeric',
@@ -293,7 +293,7 @@ async function loadTicket(): Promise<void> {
     connectWebSocket()
   } catch (error) {
     console.error('Failed to load ticket', error)
-    toast.error('Unable to load this ticket right now.')
+    toast.error('Impossible de charger ce ticket pour le moment.')
   } finally {
     isLoading.value = false
   }
@@ -323,11 +323,11 @@ function handleComposerAttachments(event: Event): void {
 
   files.forEach((file) => {
     if (!['image/png', 'image/jpeg', 'image/webp'].includes(file.type)) {
-      toast.error('Unsupported format. Please use PNG, JPG or WEBP.')
+      toast.error('Format non pris en charge. Utilisez PNG, JPG ou WEBP.')
       return
     }
     if (file.size > 8 * 1024 * 1024) {
-      toast.error('File is too large (maximum 8 MB per image).')
+      toast.error('Fichier trop volumineux (8 Mo maximum par image).')
       return
     }
     composerFiles.value.push(file)
@@ -362,7 +362,7 @@ async function sendMessage(): Promise<void> {
     resetComposerInput()
   } catch (error) {
     console.error('Failed to send message', error)
-    toast.error('We could not send your reply. Please try again.')
+    toast.error("Impossible d'envoyer votre réponse. Réessayez.")
   } finally {
     isSending.value = false
   }
@@ -471,8 +471,8 @@ function handleGlobalWebsocketEvent(event: SupportWebsocketEvent): void {
       senderId && currentUserId && senderId !== currentUserId && (ticketUserId === currentUserId || isAdmin)
 
     if (shouldNotify) {
-      const ticketSubject = event.data?.subject || 'a ticket'
-      toast.info(`${senderName} replied to "${ticketSubject}"`)
+      const ticketSubject = event.data?.subject || 'un ticket'
+      toast.info(`${senderName} a répondu à « ${ticketSubject} »`)
     }
   }
 
@@ -482,7 +482,7 @@ function handleGlobalWebsocketEvent(event: SupportWebsocketEvent): void {
     if (isAdmin) {
       const userCreatedBy = event.data?.user_name
       if (userCreatedBy && userCreatedBy !== userStore.user?.name) {
-        toast.info(`New ticket created by ${userCreatedBy}`)
+        toast.info(`Nouveau ticket créé par ${userCreatedBy}`)
       }
     }
   }

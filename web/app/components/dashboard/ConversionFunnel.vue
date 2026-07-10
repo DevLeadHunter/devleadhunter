@@ -3,7 +3,7 @@
     <template v-for="(row, index) in rows" :key="row.label">
       <!-- Conversion connector between stages -->
       <div v-if="index > 0" class="flex items-center gap-2 py-1 pl-1">
-        <i class="fa-solid fa-arrow-down-long text-[10px] text-[var(--app-ink-soft)]"></i>
+        <UIcon name="i-lucide-arrow-down" class="h-3 w-3 text-[var(--app-ink-soft)]" />
         <span
           class="rounded px-1.5 py-0.5 text-[11px] font-semibold tabular-nums"
           :style="{ color: row.conversionColor, backgroundColor: hexAlpha(row.conversionColor, 0.1) }"

@@ -2,15 +2,15 @@
   <div>
     <!-- Header -->
     <div class="mb-4 flex items-center justify-between">
-      <h1 class="text-xl font-semibold text-[var(--app-ink)]">Email Accounts</h1>
+      <h1 class="text-xl font-semibold text-[var(--app-ink)]">Comptes email</h1>
       <div class="flex gap-3">
         <button class="btn-secondary" @click="showAddCustomDomainModal = true">
-          <i class="fa-solid fa-globe mr-1.5"></i>
-          <span>Custom Domain</span>
+          <UIcon name="i-lucide-globe" class="h-4 w-4" />
+          <span>Domaine personnalisé</span>
         </button>
         <button class="btn-primary" @click="handleGmailConnect">
-          <i class="fa-brands fa-google mr-1.5"></i>
-          <span>Connect Gmail</span>
+          <i class="fa-brands fa-google"></i>
+          <span>Connecter Gmail</span>
         </button>
       </div>
     </div>
@@ -38,31 +38,29 @@
                 v-if="account.is_default"
                 class="inline-flex items-center rounded-full bg-[var(--app-accent-ink)]/20 px-2 py-0.5 text-xs font-medium text-[var(--app-accent-ink)]"
               >
-                Default
+                Par défaut
               </span>
               <span
                 v-if="account.is_verified"
                 class="inline-flex items-center rounded-full bg-[var(--app-green)]/20 px-2 py-0.5 text-xs font-medium text-[var(--app-green)]"
               >
-                <i class="fa-solid fa-check mr-1"></i>Verified
+                <UIcon name="i-lucide-check" class="mr-1 h-3.5 w-3.5" />Vérifié
               </span>
               <span
                 v-else
                 class="inline-flex items-center rounded-full bg-[var(--app-red)]/20 px-2 py-0.5 text-xs font-medium text-[var(--app-red)]"
               >
-                <i class="fa-solid fa-exclamation-triangle mr-1"></i>Not Verified
+                <UIcon name="i-lucide-triangle-alert" class="mr-1 h-3.5 w-3.5" />Non vérifié
               </span>
             </div>
 
             <p class="text-muted mb-2 text-sm">{{ account.email }}</p>
 
             <div class="text-muted flex items-center gap-4 text-xs">
-              <span>
-                <i
-                  :class="account.account_type === 'custom_domain' ? 'fa-solid fa-globe' : 'fa-brands fa-google'"
-                  class="mr-1"
-                ></i>
-                {{ account.account_type === 'custom_domain' ? 'Custom Domain' : 'Gmail OAuth' }}
+              <span class="flex items-center gap-1.5">
+                <UIcon v-if="account.account_type === 'custom_domain'" name="i-lucide-globe" class="h-3.5 w-3.5" />
+                <i v-else class="fa-brands fa-google"></i>
+                {{ account.account_type === 'custom_domain' ? 'Domaine personnalisé' : 'Gmail OAuth' }}
               </span>
               <span v-if="account.domain">{{ account.domain }}</span>
             </div>
@@ -72,22 +70,22 @@
               v-if="account.account_type === 'custom_domain' && !account.is_verified"
               class="mt-3 rounded border border-[var(--app-red)]/30 bg-[var(--app-surface-2)] p-3"
             >
-              <p class="mb-2 text-xs font-medium text-[var(--app-ink)]">DNS Configuration Required</p>
+              <p class="mb-2 text-xs font-medium text-[var(--app-ink)]">Configuration DNS requise</p>
               <div class="text-muted space-y-1 text-xs">
                 <p>
-                  SPF:
+                  SPF :
                   <span :class="account.spf_verified ? 'text-[var(--app-green)]' : 'text-[var(--app-red)]'">
-                    {{ account.spf_verified ? '✓ Configured' : '✗ Not configured' }}
+                    {{ account.spf_verified ? '✓ Configuré' : '✗ Non configuré' }}
                   </span>
                 </p>
                 <p>
-                  DKIM:
+                  DKIM :
                   <span :class="account.dkim_verified ? 'text-[var(--app-green)]' : 'text-[var(--app-red)]'">
-                    {{ account.dkim_verified ? '✓ Configured' : '✗ Not configured' }}
+                    {{ account.dkim_verified ? '✓ Configuré' : '✗ Non configuré' }}
                   </span>
                 </p>
               </div>
-              <button class="btn-secondary mt-2 text-xs" @click="handleVerifyDns(account)">Verify Now</button>
+              <button class="btn-secondary mt-2 text-xs" @click="handleVerifyDns(account)">Vérifier maintenant</button>
             </div>
           </div>
 
@@ -96,13 +94,13 @@
             <button
               v-if="!account.is_default"
               class="btn-secondary text-xs"
-              title="Set as default"
+              title="Définir par défaut"
               @click="handleSetDefault(account)"
             >
-              Set Default
+              Par défaut
             </button>
-            <button class="btn-danger text-xs" title="Delete" @click="handleDeleteAccount(account)">
-              <i class="fa-solid fa-trash"></i>
+            <button class="btn-danger text-xs" title="Supprimer" @click="handleDeleteAccount(account)">
+              <UIcon name="i-lucide-trash-2" class="h-3.5 w-3.5" />
             </button>
           </div>
         </div>
@@ -110,17 +108,20 @@
     </div>
 
     <!-- Empty state -->
-    <div v-else class="card py-12 text-center">
-      <i class="fa-solid fa-at text-muted mb-3 text-5xl"></i>
-      <p class="text-muted mb-4 text-sm">No email accounts configured</p>
-      <div class="flex justify-center gap-3">
+    <div v-else class="card px-6 py-12 text-center">
+      <LandingAsterisk class="text-4xl text-[var(--app-accent)]" />
+      <h3 class="font-display mt-5 text-2xl font-semibold text-[var(--app-ink)]">Aucun compte email</h3>
+      <p class="text-muted mx-auto mt-2 max-w-sm text-sm leading-relaxed">
+        Connectez un compte pour envoyer vos emails de prospection depuis votre propre adresse.
+      </p>
+      <div class="mt-6 flex justify-center gap-3">
         <button class="btn-secondary" @click="showAddCustomDomainModal = true">
-          <i class="fa-solid fa-globe mr-1.5"></i>
-          <span>Custom Domain</span>
+          <UIcon name="i-lucide-globe" class="h-4 w-4" />
+          <span>Domaine personnalisé</span>
         </button>
         <button class="btn-primary" @click="handleGmailConnect">
-          <i class="fa-brands fa-google mr-1.5"></i>
-          <span>Connect Gmail</span>
+          <i class="fa-brands fa-google"></i>
+          <span>Connecter Gmail</span>
         </button>
       </div>
     </div>
@@ -132,49 +133,51 @@
       @click.self="showAddCustomDomainModal = false"
     >
       <div class="border-muted mx-4 w-full max-w-lg rounded-lg border bg-[var(--app-surface)] p-6">
-        <h2 class="mb-4 text-base font-semibold text-[var(--app-ink)]">Add Custom Domain</h2>
+        <h2 class="mb-4 text-base font-semibold text-[var(--app-ink)]">Ajouter un domaine personnalisé</h2>
 
         <form class="space-y-3" @submit.prevent="handleAddCustomDomain">
           <div>
-            <label class="text-muted mb-1.5 block text-xs font-medium"> Sender Name </label>
+            <label class="text-muted mb-1.5 block text-xs font-medium"> Nom d'expéditeur </label>
             <input
               v-model="customDomainForm.name"
               type="text"
               required
-              placeholder="e.g., Jean Dupont"
+              placeholder="Ex : Jean Dupont"
               class="input-field"
             />
           </div>
 
           <div>
-            <label class="text-muted mb-1.5 block text-xs font-medium"> Email Address </label>
+            <label class="text-muted mb-1.5 block text-xs font-medium"> Adresse email </label>
             <input
               v-model="customDomainForm.email"
               type="email"
               required
-              placeholder="contact@yourdomain.com"
+              placeholder="contact@votredomaine.fr"
               class="input-field"
               @blur="extractDomainFromEmail"
             />
           </div>
 
           <div>
-            <label class="text-muted mb-1.5 block text-xs font-medium"> Domain </label>
+            <label class="text-muted mb-1.5 block text-xs font-medium"> Domaine </label>
             <input
               v-model="customDomainForm.domain"
               type="text"
               required
-              placeholder="yourdomain.com"
+              placeholder="votredomaine.fr"
               class="input-field"
             />
           </div>
 
-          <UiCheckbox id="is_default" v-model="customDomainForm.is_default" label="Set as default account" />
+          <UiCheckbox id="is_default" v-model="customDomainForm.is_default" label="Définir comme compte par défaut" />
 
           <div class="flex gap-3 pt-2">
-            <button type="button" class="btn-secondary flex-1" @click="showAddCustomDomainModal = false">Cancel</button>
+            <button type="button" class="btn-secondary flex-1" @click="showAddCustomDomainModal = false">
+              Annuler
+            </button>
             <button type="submit" :disabled="isSaving" class="btn-primary flex-1">
-              {{ isSaving ? 'Adding...' : 'Add Account' }}
+              {{ isSaving ? 'Ajout…' : 'Ajouter le compte' }}
             </button>
           </div>
         </form>
@@ -188,13 +191,13 @@
       @click.self="showDnsInstructionsModal = false"
     >
       <div class="border-muted mx-4 my-8 w-full max-w-2xl rounded-lg border bg-[var(--app-surface)] p-6">
-        <h2 class="mb-4 text-base font-semibold text-[var(--app-ink)]">DNS Configuration Instructions</h2>
+        <h2 class="mb-4 text-base font-semibold text-[var(--app-ink)]">Instructions de configuration DNS</h2>
 
         <div class="border-muted mb-4 overflow-x-auto rounded border bg-[var(--app-bg)] p-4">
           <pre class="text-muted text-xs whitespace-pre-wrap">{{ dnsInstructions }}</pre>
         </div>
 
-        <button class="btn-primary w-full" @click="showDnsInstructionsModal = false">Close</button>
+        <button class="btn-primary w-full" @click="showDnsInstructionsModal = false">Fermer</button>
       </div>
     </div>
   </div>
@@ -344,16 +347,16 @@ const handleSetDefault = async (account: EmailAccount) => {
 
 // Delete account
 const handleDeleteAccount = async (account: EmailAccount) => {
-  if (!confirm(`Delete account ${account.email}?`)) {
+  if (!confirm(`Supprimer le compte ${account.email} ?`)) {
     return
   }
 
   try {
     await deleteEmailAccount(account.id)
     emailAccounts.value = emailAccounts.value.filter((a) => a.id !== account.id)
-    toast.success('Account deleted')
+    toast.success('Compte supprimé')
   } catch (error) {
-    toast.error('Failed to delete account')
+    toast.error('Échec de la suppression du compte')
     console.error(error)
   }
 }

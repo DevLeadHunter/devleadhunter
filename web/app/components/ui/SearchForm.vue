@@ -55,12 +55,12 @@
     <div class="mt-4 flex justify-center sm:justify-end">
       <button type="submit" :disabled="isLoading" class="btn-primary w-full sm:w-auto">
         <span v-if="isLoading" class="flex items-center justify-center gap-2">
-          <i class="fa-solid fa-spinner fa-spin"></i>
-          Searching...
+          <UIcon name="i-lucide-loader-circle" class="h-4 w-4 animate-spin" />
+          Recherche…
         </span>
         <span v-else class="flex items-center justify-center gap-1.5">
-          <i class="fa-solid fa-magnifying-glass"></i>
-          Search Prospects
+          <UIcon name="i-lucide-search" class="h-4 w-4" />
+          Rechercher des prospects
         </span>
       </button>
     </div>

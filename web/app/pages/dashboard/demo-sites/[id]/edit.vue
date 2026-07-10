@@ -5,7 +5,7 @@
         :to="`/dashboard/demo-sites/${demoSiteId}`"
         class="inline-flex items-center gap-2 text-sm text-[var(--app-ink-soft)] hover:text-[var(--app-ink)]"
       >
-        <i class="fa-solid fa-arrow-left text-xs"></i>
+        <UIcon name="i-lucide-arrow-left" class="h-3.5 w-3.5" />
         Retour à la fiche
       </NuxtLink>
       <h1 class="mt-4 text-2xl font-semibold text-[var(--app-ink)]">Modifier le site démo</h1>

@@ -2,13 +2,13 @@
   <div>
     <!-- Header -->
     <div class="mb-6 flex items-center justify-between">
-      <h1 class="text-xl font-semibold text-[var(--app-ink)]">Credit Usage</h1>
+      <h1 class="text-xl font-semibold text-[var(--app-ink)]">Mes crédits</h1>
       <NuxtLink
         to="/dashboard/buy-credits"
-        class="flex items-center gap-1 text-sm text-[var(--app-ink)] transition-colors hover:text-[var(--app-ink-soft)]"
+        class="flex items-center gap-1.5 text-sm text-[var(--app-ink)] transition-colors hover:text-[var(--app-ink-soft)]"
       >
-        View Pricing Page
-        <i class="fa-solid fa-external-link-alt text-xs"></i>
+        Voir les tarifs
+        <UIcon name="i-lucide-external-link" class="h-3.5 w-3.5" />
       </NuxtLink>
     </div>
 
@@ -27,13 +27,13 @@
       <!-- Credit Usage Progress Bar -->
       <div class="card">
         <div class="mb-4 flex items-center justify-between">
-          <h2 class="text-lg font-semibold text-[var(--app-ink)]">Credit Usage</h2>
+          <h2 class="text-lg font-semibold text-[var(--app-ink)]">Consommation de crédits</h2>
           <NuxtLink to="/dashboard/buy-credits" class="btn-primary h-auto px-4 py-2 text-xs">
-            Buy More Credits
+            Acheter des crédits
           </NuxtLink>
         </div>
 
-        <p class="mb-4 text-xs text-[var(--app-ink-soft)]">Last updated: {{ lastUpdated }}</p>
+        <p class="mb-4 text-xs text-[var(--app-ink-soft)]">Mis à jour le {{ lastUpdated }}</p>
 
         <!-- Progress Bar Container -->
         <div ref="progressBarRef" class="relative">
@@ -78,8 +78,8 @@
             >
               <!-- Header -->
               <div class="mb-3 flex items-center justify-between border-b border-[var(--app-line)] pb-2">
-                <span class="text-sm font-medium text-[var(--app-ink)]">Credit Usage</span>
-                <span class="text-xs text-[var(--app-ink-soft)]">Current Status</span>
+                <span class="text-sm font-medium text-[var(--app-ink)]">Consommation</span>
+                <span class="text-xs text-[var(--app-ink-soft)]">État actuel</span>
               </div>
 
               <!-- Data Rows -->
@@ -88,7 +88,7 @@
                 <div class="flex items-center justify-between">
                   <div class="flex items-center gap-2">
                     <div class="h-3 w-3 flex-shrink-0 rounded bg-[var(--app-accent-ink)]"></div>
-                    <span class="text-sm text-[var(--app-ink)]">Credits Used</span>
+                    <span class="text-sm text-[var(--app-ink)]">Crédits utilisés</span>
                   </div>
                   <span class="text-sm font-medium text-[var(--app-ink)]">{{ creditsUsed }}</span>
                 </div>
@@ -97,7 +97,7 @@
                 <div class="flex items-center justify-between">
                   <div class="flex items-center gap-2">
                     <div class="h-3 w-3 flex-shrink-0 rounded bg-[var(--app-surface-2)]"></div>
-                    <span class="text-sm text-[var(--app-ink-soft)]">Credits Remaining</span>
+                    <span class="text-sm text-[var(--app-ink-soft)]">Crédits restants</span>
                   </div>
                   <span class="text-sm font-medium text-[var(--app-ink-soft)]">{{ creditsRemaining }}</span>
                 </div>
@@ -108,7 +108,7 @@
 
               <!-- Total Variation -->
               <div class="flex items-center justify-between">
-                <span class="text-sm text-[var(--app-ink-soft)]">Total Credits</span>
+                <span class="text-sm text-[var(--app-ink-soft)]">Total des crédits</span>
                 <span class="text-sm font-medium text-[var(--app-green)]">{{ totalCredits }}</span>
               </div>
             </div>
@@ -129,8 +129,8 @@
             >
               <!-- Header -->
               <div class="mb-3 flex items-center justify-between border-b border-[var(--app-line)] pb-2">
-                <span class="text-sm font-medium text-[var(--app-ink)]">Credit Usage</span>
-                <span class="text-xs text-[var(--app-ink-soft)]">Current Status</span>
+                <span class="text-sm font-medium text-[var(--app-ink)]">Consommation</span>
+                <span class="text-xs text-[var(--app-ink-soft)]">État actuel</span>
               </div>
 
               <!-- Data Rows -->
@@ -139,7 +139,7 @@
                 <div class="flex items-center justify-between">
                   <div class="flex items-center gap-2">
                     <div class="h-3 w-3 flex-shrink-0 rounded bg-[var(--app-surface-2)]"></div>
-                    <span class="text-sm text-[var(--app-ink-soft)]">Credits Remaining</span>
+                    <span class="text-sm text-[var(--app-ink-soft)]">Crédits restants</span>
                   </div>
                   <span class="text-sm font-medium text-[var(--app-ink-soft)]">{{ creditsRemaining }}</span>
                 </div>
@@ -148,7 +148,7 @@
                 <div class="flex items-center justify-between">
                   <div class="flex items-center gap-2">
                     <div class="h-3 w-3 flex-shrink-0 rounded bg-[var(--app-accent-ink)] opacity-50"></div>
-                    <span class="text-sm text-[var(--app-ink-soft)]">Credits Used</span>
+                    <span class="text-sm text-[var(--app-ink-soft)]">Crédits utilisés</span>
                   </div>
                   <span class="text-sm font-medium text-[var(--app-ink-soft)]">0</span>
                 </div>
@@ -159,7 +159,7 @@
 
               <!-- Total Variation -->
               <div class="flex items-center justify-between">
-                <span class="text-sm text-[var(--app-ink-soft)]">Total Credits</span>
+                <span class="text-sm text-[var(--app-ink-soft)]">Total des crédits</span>
                 <span class="text-sm font-medium text-[var(--app-green)]">{{ totalCredits }}</span>
               </div>
             </div>
@@ -169,18 +169,18 @@
 
       <!-- Daily Usage Chart -->
       <div class="card">
-        <h2 class="mb-4 text-lg font-semibold text-[var(--app-ink)]">Daily Credit Usage</h2>
+        <h2 class="mb-4 text-lg font-semibold text-[var(--app-ink)]">Consommation quotidienne</h2>
         <div v-if="chartData && chartData.labels && chartData.labels.length > 0" class="h-64">
           <canvas ref="chartCanvasRef"></canvas>
         </div>
         <div v-else class="flex h-64 items-center justify-center text-[var(--app-ink-soft)]">
-          <p>No usage data available</p>
+          <p>Aucune donnée de consommation</p>
         </div>
       </div>
 
       <!-- Recent Credit Usage List -->
       <div class="card">
-        <h2 class="mb-4 text-lg font-semibold text-[var(--app-ink)]">Recent Credit Usage</h2>
+        <h2 class="mb-4 text-lg font-semibold text-[var(--app-ink)]">Activité récente</h2>
         <div v-if="recentTransactions.length > 0" class="space-y-0">
           <div
             v-for="transaction in recentTransactions"
@@ -202,13 +202,13 @@
                   transaction.amount < 0 ? 'text-[var(--app-red)]' : 'text-[var(--app-green)]',
                 ]"
               >
-                {{ transaction.amount < 0 ? '-' : '+' }}{{ Math.abs(transaction.amount) }} credits
+                {{ transaction.amount < 0 ? '-' : '+' }}{{ Math.abs(transaction.amount) }} crédits
               </p>
             </div>
           </div>
         </div>
         <div v-else class="py-12 text-center text-[var(--app-ink-soft)]">
-          <p class="text-sm">No transactions yet</p>
+          <p class="text-sm">Aucune transaction pour l'instant</p>
         </div>
       </div>
 
@@ -216,12 +216,12 @@
       <div class="card border-[var(--app-line)] bg-gradient-to-r from-[var(--app-surface)] to-[var(--app-bg)]">
         <div class="flex flex-col items-center justify-between gap-4 md:flex-row">
           <div>
-            <h3 class="mb-2 text-lg font-semibold text-[var(--app-ink)]">Need More Credits?</h3>
+            <h3 class="mb-2 text-lg font-semibold text-[var(--app-ink)]">Besoin de plus de crédits ?</h3>
             <p class="text-sm text-[var(--app-ink-soft)]">
-              Purchase credits to continue searching prospects and sending campaigns
+              Rechargez pour continuer à chercher des prospects et envoyer vos campagnes.
             </p>
           </div>
-          <NuxtLink to="/dashboard/buy-credits" class="btn-primary whitespace-nowrap"> Buy Credits </NuxtLink>
+          <NuxtLink to="/dashboard/buy-credits" class="btn-primary whitespace-nowrap"> Acheter des crédits </NuxtLink>
         </div>
       </div>
     </div>
@@ -450,7 +450,7 @@ const chartData = computed(() => {
     .filter((t) => t.amount < 0) // Only usage transactions
     .forEach((transaction) => {
       const dateObj = new Date(transaction.created_at)
-      const dateKey = dateObj.toLocaleDateString('en-US', {
+      const dateKey = dateObj.toLocaleDateString('fr-FR', {
         month: 'short',
         day: 'numeric',
       })
@@ -473,7 +473,7 @@ const chartData = computed(() => {
     labels,
     datasets: [
       {
-        label: 'Credits Used',
+        label: 'Crédits utilisés',
         data,
         backgroundColor: '#8d7bb8',
         borderRadius: 4,
@@ -523,7 +523,7 @@ const chartOptions = {
           return context[0]?.label ?? ''
         },
         label: function (context: TooltipItem<'bar'>) {
-          return `${context.parsed.y} credits used`
+          return `${context.parsed.y} crédits utilisés`
         },
       },
     },
@@ -570,19 +570,19 @@ const formatTransactionDescription = (transaction: CreditTransaction): string =>
   if (transaction.transaction_type === 'USAGE') {
     // Try to extract action from description
     const desc = transaction.description.toLowerCase()
-    if (desc.includes('search')) return 'Prospect Search'
-    if (desc.includes('email') || desc.includes('campaign')) return 'Email Campaign'
-    if (desc.includes('prospect')) return 'Prospect Found'
+    if (desc.includes('search')) return 'Recherche de prospects'
+    if (desc.includes('email') || desc.includes('campaign')) return 'Campagne email'
+    if (desc.includes('prospect')) return 'Prospect trouvé'
     return transaction.description
   }
   if (transaction.transaction_type === 'PURCHASE') {
-    return 'Credit Purchase'
+    return 'Achat de crédits'
   }
   if (transaction.transaction_type === 'FREE_GIFT') {
-    return 'Free Credits'
+    return 'Crédits offerts'
   }
   if (transaction.transaction_type === 'REFUND') {
-    return 'Credit Refund'
+    return 'Remboursement de crédits'
   }
   return transaction.description
 }
@@ -597,14 +597,14 @@ const formatTransactionDate = (dateString: string): string => {
   const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24))
 
   if (diffDays === 0) {
-    return 'Today'
+    return "Aujourd'hui"
   } else if (diffDays === 1) {
-    return 'Yesterday'
+    return 'Hier'
   } else if (diffDays < 7) {
-    return `${diffDays} days ago`
+    return `il y a ${diffDays} jours`
   } else if (diffDays < 30) {
     const weeks = Math.floor(diffDays / 7)
-    return `${weeks} week${weeks > 1 ? 's' : ''} ago`
+    return `il y a ${weeks} semaine${weeks > 1 ? 's' : ''}`
   } else {
     return date.toLocaleDateString('fr-FR', {
       year: 'numeric',

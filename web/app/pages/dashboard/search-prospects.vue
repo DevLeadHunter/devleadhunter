@@ -2,43 +2,63 @@
   <div class="space-y-6">
     <!-- Header -->
     <div>
-      <h1 class="text-3xl font-bold text-[var(--app-ink)]">Recherche de Prospects</h1>
-      <p class="text-muted mt-2 text-sm">
-        Lancez une recherche pour trouver de nouveaux prospects. Vous pouvez quitter cette page et revenir plus tard.
+      <p class="app-label flex items-center gap-2">
+        <LandingAsterisk class="text-[0.6rem] text-[var(--app-accent)]" />
+        Prospection
+      </p>
+      <h1 class="app-page-title mt-2">Trouver des prospects</h1>
+      <p class="mt-1.5 text-sm text-[var(--app-ink-soft)]">
+        Décrivez un métier et une ville — DevLeadHunter va chercher les artisans qui correspondent. La recherche
+        continue en arrière-plan, vous pouvez quitter la page.
       </p>
     </div>
 
     <!-- Search Form (only show if no active job) -->
-    <div v-if="!currentJob" class="card">
-      <h2 class="mb-6 text-xl font-semibold text-[var(--app-ink)]">Nouvelle Recherche</h2>
-      <form class="space-y-4" @submit.prevent="startSearch">
-        <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
+    <div v-if="!currentJob" class="grid gap-6 lg:grid-cols-[minmax(0,1fr)_260px]">
+      <form class="app-card space-y-5 p-5 md:p-6" @submit.prevent="startSearch">
+        <div class="space-y-4">
           <div>
-            <label class="text-muted mb-1.5 block text-xs font-medium">Catégorie</label>
-            <input
-              v-model="searchForm.category"
-              type="text"
-              placeholder="Ex: restaurant, plombier, etc."
-              required
-              class="input-field"
-            />
+            <label for="search-category" class="app-label mb-1.5 block">
+              Métier recherché <span class="text-[var(--app-accent)]">*</span>
+            </label>
+            <div class="relative">
+              <UIcon
+                name="i-lucide-hammer"
+                class="pointer-events-none absolute top-1/2 left-3 h-3.5 w-3.5 -translate-y-1/2 text-[var(--app-faint)]"
+              />
+              <input
+                id="search-category"
+                v-model="searchForm.category"
+                type="text"
+                placeholder="Plombier, électricien, restaurant…"
+                required
+                class="input-field pl-9"
+              />
+            </div>
+            <div class="mt-2 flex flex-wrap gap-1.5">
+              <button
+                v-for="quick in QUICK_CATEGORIES"
+                :key="quick"
+                type="button"
+                class="cursor-pointer rounded-full border border-[var(--app-line)] bg-[var(--app-bg)] px-2.5 py-1 text-xs text-[var(--app-ink-soft)] transition-colors hover:border-[var(--app-ink-soft)] hover:text-[var(--app-ink)]"
+                @click="searchForm.category = quick"
+              >
+                {{ quick }}
+              </button>
+            </div>
           </div>
-          <div>
-            <label class="text-muted mb-1.5 block text-xs font-medium">Ville</label>
-            <input
-              v-model="searchForm.city"
-              type="text"
-              placeholder="Ex: Paris, Lyon, etc."
-              required
-              class="input-field"
-            />
-          </div>
-        </div>
 
-        <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
           <div>
-            <label class="text-muted mb-1.5 block text-xs font-medium">Nombre maximum de résultats</label>
+            <label for="search-city" class="app-label mb-1.5 block">
+              Ville <span class="text-[var(--app-accent)]">*</span>
+            </label>
+            <UiCityAutocompleteInput v-model="searchForm.city" input-id="search-city" required show-icon />
+          </div>
+
+          <div>
+            <label for="search-max-results" class="app-label mb-1.5 block">Nombre maximum de résultats</label>
             <input
+              id="search-max-results"
               v-model.number="searchForm.maxResults"
               type="number"
               min="1"
@@ -47,9 +67,10 @@
               class="input-field"
             />
           </div>
+
           <div>
-            <label class="text-muted mb-1.5 block text-xs font-medium">Source</label>
-            <select v-model="searchForm.source" class="input-field">
+            <label for="search-source" class="app-label mb-1.5 block">Source</label>
+            <select id="search-source" v-model="searchForm.source" class="input-field">
               <option
                 v-for="option in PROSPECT_SOURCE_SEARCH_OPTIONS"
                 :key="option.value || 'all'"
@@ -61,7 +82,7 @@
           </div>
         </div>
 
-        <div class="space-y-3">
+        <div class="space-y-3 border-t border-[var(--app-line-soft)] pt-4">
           <UiCheckbox
             id="onlyWithoutWebsite"
             v-model="searchForm.onlyWithoutWebsite"
@@ -74,18 +95,42 @@
           />
         </div>
 
-        <div class="flex items-center gap-4 pt-4">
+        <div class="flex items-center gap-3 border-t border-[var(--app-line-soft)] pt-4">
           <button
             type="submit"
             :disabled="isStarting"
             class="btn-primary disabled:cursor-not-allowed disabled:opacity-50"
           >
-            <span v-if="isStarting">Démarrage...</span>
-            <span v-else>Lancer la recherche</span>
+            <UIcon
+              :name="isStarting ? 'i-lucide-loader-circle' : 'i-lucide-search'"
+              :class="['h-4 w-4', isStarting && 'animate-spin']"
+            />
+            {{ isStarting ? 'Démarrage…' : 'Lancer la recherche' }}
           </button>
-          <NuxtLink to="/dashboard/my-prospects" class="btn-secondary"> Voir mes prospects </NuxtLink>
+          <NuxtLink to="/dashboard/my-prospects" class="btn-secondary">Voir mes prospects</NuxtLink>
         </div>
       </form>
+
+      <!-- Side rail : comment ça marche -->
+      <aside class="app-card h-fit space-y-4 p-5">
+        <p class="app-label">Comment ça marche</p>
+        <ol class="space-y-3">
+          <li v-for="(step, index) in SEARCH_STEPS" :key="step" class="flex items-start gap-3">
+            <span
+              class="font-label flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[var(--app-surface-2)] text-[0.65rem] font-semibold text-[var(--app-ink)]"
+            >
+              {{ index + 1 }}
+            </span>
+            <p class="text-xs leading-relaxed text-[var(--app-ink-soft)]">{{ step }}</p>
+          </li>
+        </ol>
+        <p
+          class="flex items-center gap-2 border-t border-[var(--app-line-soft)] pt-3 text-[11px] leading-relaxed text-[var(--app-ink-soft)]"
+        >
+          <UIcon name="i-lucide-info" class="h-3.5 w-3.5 shrink-0 text-[var(--app-accent-ink)]" />
+          Chaque prospect trouvé consomme des crédits selon vos paramètres.
+        </p>
+      </aside>
     </div>
 
     <!-- Job Progress -->
@@ -105,7 +150,7 @@
             class="btn-secondary px-3 py-1.5 text-xs disabled:opacity-50"
             @click="refreshJobStatus"
           >
-            <i class="fa-solid fa-rotate-right mr-1"></i>
+            <UIcon name="i-lucide-rotate-cw" :class="['h-3.5 w-3.5', isRefreshing && 'animate-spin']" />
             Actualiser
           </button>
           <button
@@ -148,8 +193,8 @@
           v-if="liveProgress.estimated_time_remaining !== null && liveProgress.estimated_time_remaining > 0"
           class="text-muted flex items-center gap-2 text-sm"
         >
-          <i class="fa-solid fa-clock h-4 w-4"></i>
-          Temps restant estimé: {{ formatTime(liveProgress.estimated_time_remaining) }}
+          <UIcon name="i-lucide-clock" class="h-4 w-4" />
+          Temps restant estimé : {{ formatTime(liveProgress.estimated_time_remaining) }}
         </div>
 
         <div class="flex items-center gap-2 text-xs">
@@ -178,7 +223,7 @@
 
         <div class="rounded-lg border border-[var(--app-line)] bg-[var(--app-surface)] p-4">
           <div class="flex items-start gap-3">
-            <i class="fa-solid fa-info-circle mt-0.5 text-[var(--app-ink-soft)]"></i>
+            <UIcon name="i-lucide-info" class="mt-0.5 h-4 w-4 shrink-0 text-[var(--app-ink-soft)]" />
             <div class="flex-1">
               <p class="text-sm font-medium text-[var(--app-ink)]">Vous pouvez quitter cette page</p>
               <p class="text-muted mt-1 text-sm">
@@ -197,37 +242,37 @@
       <!-- Results -->
       <div v-if="currentJob.status === 'completed'" class="space-y-4">
         <div class="grid grid-cols-1 gap-4 md:grid-cols-3">
-          <div class="rounded-lg border border-[var(--app-line)] bg-[var(--app-surface)] p-4">
+          <div class="rounded-xl border border-[var(--app-line)] bg-[var(--app-surface)] p-4">
             <div class="flex items-center gap-3">
-              <div class="rounded-lg border border-[var(--app-line)] bg-[var(--app-bg)] p-2">
-                <i class="fa-solid fa-check text-lg text-[var(--app-green)]"></i>
+              <div class="flex h-10 w-10 items-center justify-center rounded-lg bg-[var(--app-green-soft)]">
+                <UIcon name="i-lucide-user-check" class="h-5 w-5 text-[var(--app-green)]" />
               </div>
               <div>
-                <p class="text-2xl font-bold text-[var(--app-ink)]">{{ currentJob.results.length }}</p>
+                <p class="text-2xl font-bold text-[var(--app-ink)] tabular-nums">{{ currentJob.results.length }}</p>
                 <p class="text-muted text-sm">Prospects ajoutés</p>
               </div>
             </div>
           </div>
 
-          <div class="rounded-lg border border-[var(--app-line)] bg-[var(--app-surface)] p-4">
+          <div class="rounded-xl border border-[var(--app-line)] bg-[var(--app-surface)] p-4">
             <div class="flex items-center gap-3">
-              <div class="rounded-lg border border-[var(--app-line)] bg-[var(--app-bg)] p-2">
-                <i class="fa-solid fa-file-lines text-lg text-[var(--app-ink)]"></i>
+              <div class="flex h-10 w-10 items-center justify-center rounded-lg bg-[var(--app-blue-soft)]">
+                <UIcon name="i-lucide-search" class="h-5 w-5 text-[var(--app-blue)]" />
               </div>
               <div>
-                <p class="text-2xl font-bold text-[var(--app-ink)]">{{ currentJob.progress.total }}</p>
+                <p class="text-2xl font-bold text-[var(--app-ink)] tabular-nums">{{ currentJob.progress.total }}</p>
                 <p class="text-muted text-sm">Prospects trouvés</p>
               </div>
             </div>
           </div>
 
-          <div class="rounded-lg border border-[var(--app-line)] bg-[var(--app-surface)] p-4">
+          <div class="rounded-xl border border-[var(--app-line)] bg-[var(--app-surface)] p-4">
             <div class="flex items-center gap-3">
-              <div class="rounded-lg border border-[var(--app-line)] bg-[var(--app-bg)] p-2">
-                <i class="fa-solid fa-ban text-muted text-lg"></i>
+              <div class="flex h-10 w-10 items-center justify-center rounded-lg bg-[var(--app-surface-2)]">
+                <UIcon name="i-lucide-copy-x" class="h-5 w-5 text-[var(--app-ink-soft)]" />
               </div>
               <div>
-                <p class="text-2xl font-bold text-[var(--app-ink)]">{{ currentJob.skipped_duplicates }}</p>
+                <p class="text-2xl font-bold text-[var(--app-ink)] tabular-nums">{{ currentJob.skipped_duplicates }}</p>
                 <p class="text-muted text-sm">Doublons ignorés</p>
               </div>
             </div>
@@ -252,40 +297,32 @@
     </div>
 
     <!-- Recent Jobs -->
-    <div v-if="recentJobs.length > 0" class="card">
-      <h2 class="mb-4 text-xl font-semibold text-[var(--app-ink)]">Recherches récentes</h2>
-      <div class="space-y-3">
-        <div
+    <div v-if="recentJobs.length > 0" class="app-card p-5 md:p-6">
+      <h2 class="mb-4 text-sm font-semibold text-[var(--app-ink)]">Recherches récentes</h2>
+      <div class="divide-y divide-[var(--app-line-soft)]">
+        <button
           v-for="job in recentJobs"
           :key="job.id"
-          class="flex cursor-pointer items-center justify-between rounded-lg border border-[var(--app-line)] p-4 transition-colors hover:bg-[var(--app-bg)]"
+          type="button"
+          class="group flex w-full cursor-pointer items-center justify-between gap-3 py-3 text-left transition-colors first:pt-0 last:pb-0"
           @click="loadJob(job.id)"
         >
-          <div class="flex-1">
-            <div class="flex items-center gap-2">
-              <p class="font-medium text-[var(--app-ink)]">{{ job.category }} à {{ job.city }}</p>
-              <span
-                :class="{
-                  'rounded-full px-2 py-0.5 text-xs font-medium': true,
-                  'border border-[var(--app-green)] bg-[var(--app-surface)] text-[var(--app-green)]':
-                    job.status === 'completed',
-                  'border border-[var(--app-ink-soft)] bg-[var(--app-surface)] text-[var(--app-ink-soft)]':
-                    job.status === 'running',
-                  'border border-[var(--app-red)] bg-[var(--app-surface)] text-[var(--app-red)]':
-                    job.status === 'failed',
-                  'text-muted border border-[var(--app-line)] bg-[var(--app-surface)]': job.status === 'pending',
-                }"
+          <div class="min-w-0 flex-1">
+            <div class="flex flex-wrap items-center gap-2">
+              <p
+                class="truncate text-sm font-medium text-[var(--app-ink)] capitalize underline decoration-transparent underline-offset-4 transition-colors group-hover:decoration-[var(--app-accent)]"
               >
-                {{ formatStatus(job.status) }}
-              </span>
+                {{ job.category }} · {{ job.city }}
+              </p>
+              <span :class="['app-badge', jobStatusVariant(job.status)]">{{ formatStatus(job.status) }}</span>
             </div>
-            <p class="text-muted mt-1 text-sm">
+            <p class="text-muted mt-0.5 text-xs">
               {{ new Date(job.created_at).toLocaleString('fr-FR') }}
-              <span v-if="job.status === 'completed'" class="ml-2"> • {{ job.results.length }} prospects ajoutés </span>
+              <span v-if="job.status === 'completed'"> · {{ job.results.length }} prospects ajoutés</span>
             </p>
           </div>
-          <i class="fa-solid fa-chevron-right text-muted"></i>
-        </div>
+          <UIcon name="i-lucide-chevron-right" class="h-4 w-4 shrink-0 text-[var(--app-ink-soft)]" />
+        </button>
       </div>
     </div>
   </div>
@@ -297,12 +334,46 @@ import { useRuntimeConfig } from '#app'
 import { useUserStore } from '~/stores/user'
 import { PROSPECT_SOURCE_SEARCH_OPTIONS } from '~/constants/prospectSources'
 import { useScrapingJobStream } from '~/composables/useScrapingJobStream'
+import { useToast } from '~/composables/useToast'
 import type { Prospect } from '~/types'
 
 definePageMeta({
   layout: 'dashboard',
   middleware: ['auth'],
 })
+
+const toast = useToast()
+
+/** Quick-pick trades filling the category field in one click. */
+const QUICK_CATEGORIES: readonly string[] = [
+  'Plombier',
+  'Électricien',
+  'Menuisier',
+  'Restaurant',
+  'Coiffeur',
+  'Garagiste',
+  'Serrurier',
+  'Paysagiste',
+]
+
+/** Steps shown in the "comment ça marche" side rail. */
+const SEARCH_STEPS: readonly string[] = [
+  'Saisissez un métier et une ville, puis lancez la recherche.',
+  'DevLeadHunter parcourt les sources et ajoute les artisans trouvés à vos prospects.',
+  'Générez un site démo et lancez une campagne depuis la fiche de chaque prospect.',
+]
+
+/**
+ * app-badge variant class for a scraping job status.
+ * @param status - Job status.
+ * @returns The badge variant modifier class.
+ */
+function jobStatusVariant(status: string): string {
+  if (status === 'completed') return 'app-badge--success'
+  if (status === 'failed') return 'app-badge--danger'
+  if (status === 'running') return 'app-badge--info'
+  return ''
+}
 
 interface ScrapingJob {
   id: string
@@ -455,7 +526,11 @@ async function startSearch() {
     attachStream(response)
     startPolling()
   } catch (err: unknown) {
-    alert(`Erreur: ${err.data?.detail || err.message}`)
+    const detail =
+      (err as { data?: { detail?: string }; message?: string })?.data?.detail ??
+      (err as { message?: string })?.message ??
+      'Erreur inconnue'
+    toast.error(`Erreur : ${detail}`)
   } finally {
     isStarting.value = false
   }
@@ -505,7 +580,7 @@ async function loadJob(jobId: string) {
       startPolling()
     }
   } catch (err: unknown) {
-    alert(`Erreur: ${err.message}`)
+    toast.error(`Erreur : ${(err as { message?: string })?.message ?? 'chargement impossible'}`)
   }
 }
 

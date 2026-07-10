@@ -1,12 +1,32 @@
 <template>
-  <div>
+  <div class="space-y-5">
     <!-- Header -->
-    <div class="mb-4 flex items-center justify-between">
-      <h1 class="text-xl font-semibold text-[var(--app-ink)]">Email Templates</h1>
-      <button class="btn-primary" @click="openCreateModal">
-        <i class="fa-solid fa-plus mr-1.5"></i>
-        <span>New Template</span>
+    <div class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+        <h1 class="text-xl font-semibold text-[var(--app-ink)]">Modèles d'email</h1>
+        <p class="text-muted mt-1 text-sm">Les contenus réutilisés par vos campagnes et relances.</p>
+      </div>
+      <button class="btn-primary" @click="openCreateDrawer">
+        <UIcon name="i-lucide-plus" class="h-4 w-4" />
+        <span>Nouveau modèle</span>
       </button>
+    </div>
+
+    <!-- Toolbar -->
+    <div class="flex flex-wrap items-center gap-3">
+      <div class="relative w-full max-w-xs">
+        <UIcon
+          name="i-lucide-search"
+          class="pointer-events-none absolute top-1/2 left-3 h-3.5 w-3.5 -translate-y-1/2 text-[var(--app-faint)]"
+        />
+        <input v-model="searchQuery" type="text" placeholder="Rechercher un modèle…" class="input-field pl-9" />
+      </div>
+      <p class="text-muted text-xs">
+        {{ emailTemplates.length }} modèle{{ emailTemplates.length > 1 ? 's' : '' }}
+        <template v-if="inactiveTemplates.length">
+          · {{ inactiveTemplates.length }} inactif{{ inactiveTemplates.length > 1 ? 's' : '' }}
+        </template>
+      </p>
     </div>
 
     <!-- Loading state -->
@@ -17,308 +37,311 @@
       </div>
     </div>
 
-    <!-- Templates list -->
-    <div v-else-if="emailTemplates && emailTemplates.length > 0" class="space-y-2">
-      <div
-        v-for="template in emailTemplates"
-        :key="template.id"
-        class="card transition-colors hover:border-[var(--app-ink)]"
-      >
-        <div class="flex items-start justify-between">
-          <div class="flex-1">
-            <div class="mb-1 flex items-center gap-2">
-              <h3 class="text-base font-semibold text-[var(--app-ink)]">{{ template.name }}</h3>
-              <span
-                v-if="!template.is_active"
-                class="text-muted inline-flex items-center rounded-full bg-[var(--app-ink-soft)]/20 px-2 py-0.5 text-xs font-medium"
-              >
-                Inactive
-              </span>
-            </div>
-            <p class="text-muted mb-2 text-sm">{{ template.subject }}</p>
-            <div class="text-muted text-xs">
-              <span v-if="template.variables && template.variables.length > 0">
-                <i class="fa-solid fa-code mr-1"></i>{{ template.variables.join(', ') }}
-              </span>
-              <span v-else>No variables</span>
-            </div>
-          </div>
-          <div class="ml-4 flex gap-2">
-            <button class="btn-secondary text-xs" @click="openEditModal(template)">Edit</button>
-            <button class="btn-secondary text-xs" @click="handlePreviewTemplate(template)">Preview</button>
-            <button
-              class="btn-danger flex h-10 w-10 items-center justify-center text-xs"
-              @click="confirmDelete(template)"
-            >
-              <i class="fa-solid fa-trash"></i>
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
-
     <!-- Empty state -->
-    <div v-else class="card py-12 text-center">
-      <i class="fa-solid fa-file-lines text-muted mb-3 text-5xl"></i>
-      <p class="text-muted mb-4 text-sm">No templates created</p>
-      <div class="flex justify-center">
-        <button class="btn-primary" @click="openCreateModal">
-          <i class="fa-solid fa-plus mr-1.5"></i>
-          <span>Create Your First Template</span>
+    <div v-else-if="emailTemplates.length === 0" class="card px-6 py-12 text-center">
+      <LandingAsterisk class="text-4xl text-[var(--app-accent)]" />
+      <h3 class="font-display mt-5 text-2xl font-semibold text-[var(--app-ink)]">Aucun modèle d'email</h3>
+      <p class="text-muted mx-auto mt-2 max-w-sm text-sm leading-relaxed">
+        Créez un premier modèle pour alimenter vos campagnes de prospection.
+      </p>
+      <div class="mt-6 flex justify-center">
+        <button class="btn-primary" @click="openCreateDrawer">
+          <UIcon name="i-lucide-plus" class="h-4 w-4" />
+          <span>Créer un premier modèle</span>
         </button>
       </div>
     </div>
 
-    <!-- Create/Edit Template Modal -->
-    <div
-      v-if="showTemplateModal"
-      class="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-[var(--app-overlay)] backdrop-blur-sm"
-      @click.self="closeTemplateModal"
-    >
-      <div class="border-muted mx-4 my-8 w-full max-w-4xl rounded-lg border bg-[var(--app-surface)] p-6">
-        <h2 class="mb-4 text-base font-semibold text-[var(--app-ink)]">
-          {{ editingTemplate ? 'Edit Template' : 'New Template' }}
-        </h2>
+    <!-- No search result -->
+    <div v-else-if="filteredTemplates.length === 0" class="card px-6 py-10 text-center">
+      <p class="text-muted text-sm">Aucun modèle ne correspond à « {{ searchQuery }} ».</p>
+    </div>
 
-        <form class="space-y-3" @submit.prevent="handleSaveTemplate">
-          <div>
-            <label class="text-muted mb-1.5 block text-xs font-medium"> Template Name * </label>
-            <input
-              v-model="templateForm.name"
-              type="text"
-              required
-              placeholder="e.g., Website Proposal"
-              class="input-field"
-            />
-          </div>
-
-          <div>
-            <label class="text-muted mb-1.5 block text-xs font-medium"> Email Subject * </label>
-            <input
-              v-model="templateForm.subject"
-              type="text"
-              required
-              placeholder="e.g., Website creation for {company_name}"
-              class="input-field"
-            />
-            <p class="text-muted mt-1 text-xs">Use {variable} for dynamic variables</p>
-          </div>
-
-          <div>
-            <label class="text-muted mb-1.5 block text-xs font-medium"> Email Body (HTML) * </label>
-            <textarea
-              v-model="templateForm.body_html"
-              required
-              rows="16"
-              placeholder="Hello {name},&#10;&#10;Let me introduce myself..."
-              class="input-field font-mono text-xs"
-            ></textarea>
-            <p class="text-muted mt-1 text-xs">Available variables: {name}, {company_name}, {email}, etc.</p>
-          </div>
-
-          <div class="flex gap-3 pt-2">
-            <button type="button" class="btn-secondary flex-1" @click="closeTemplateModal">Cancel</button>
-            <button type="submit" :disabled="isSaving" class="btn-primary flex-1">
-              {{ isSaving ? 'Saving...' : 'Save Template' }}
+    <!-- Grouped list -->
+    <template v-else>
+      <section v-for="group in templateGroups" :key="group.key">
+        <p class="app-label mb-2">{{ group.heading }} · {{ group.templates.length }}</p>
+        <div class="card divide-y divide-[var(--app-line-soft)] overflow-hidden p-0">
+          <div
+            v-for="template in group.templates"
+            :key="template.id"
+            class="group flex items-start gap-4 px-4 py-3 transition-colors hover:bg-[var(--app-surface-2)]/60"
+            :class="template.is_active ? '' : 'opacity-70'"
+          >
+            <!-- Identity -->
+            <button type="button" class="min-w-0 flex-1 cursor-pointer text-left" @click="openPreviewDrawer(template)">
+              <div class="flex flex-wrap items-center gap-2">
+                <h3
+                  class="truncate text-sm font-semibold text-[var(--app-ink)] underline decoration-transparent underline-offset-4 transition-colors group-hover:decoration-[var(--app-accent)]"
+                >
+                  {{ template.name }}
+                </h3>
+                <span v-if="!template.is_active" class="app-badge">Inactif</span>
+              </div>
+              <p class="text-muted mt-0.5 truncate text-xs">{{ template.subject }}</p>
+              <p
+                v-if="template.variables && template.variables.length"
+                class="font-label mt-1.5 text-[10px] text-[var(--app-faint)]"
+              >
+                <UIcon name="i-lucide-braces" class="mr-1 inline-block h-3 w-3 align-[-2px]" />{{
+                  variablesLabel(template)
+                }}
+              </p>
             </button>
-          </div>
-        </form>
-      </div>
-    </div>
 
-    <!-- Preview Modal -->
-    <div
-      v-if="showPreviewModal && previewHtml"
-      class="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-[var(--app-overlay)] backdrop-blur-sm"
-      @click.self="showPreviewModal = false"
-    >
-      <div class="border-muted mx-4 my-8 w-full max-w-4xl rounded-lg border bg-[var(--app-surface)] p-6">
-        <h2 class="mb-4 text-base font-semibold text-[var(--app-ink)]">Template Preview</h2>
-
-        <div class="border-muted rounded border bg-[var(--app-bg)] p-6">
-          <div class="border-muted mb-4 border-b pb-4">
-            <p class="text-muted text-xs">Subject:</p>
-            <p class="text-sm font-medium text-[var(--app-ink)]">{{ previewSubject }}</p>
+            <!-- Actions -->
+            <div class="flex shrink-0 items-center gap-1.5">
+              <button
+                class="btn-secondary h-8 min-h-8 px-2.5 text-xs"
+                title="Aperçu avec des données d'exemple"
+                @click="openPreviewDrawer(template)"
+              >
+                <UIcon name="i-lucide-eye" class="h-3.5 w-3.5" />
+              </button>
+              <button
+                class="btn-secondary h-8 min-h-8 px-2.5 text-xs"
+                title="Modifier"
+                @click="openEditDrawer(template)"
+              >
+                <UIcon name="i-lucide-square-pen" class="h-3.5 w-3.5" />
+              </button>
+              <button
+                class="btn-secondary h-8 min-h-8 px-2.5 text-xs"
+                title="Dupliquer"
+                @click="duplicateTemplate(template)"
+              >
+                <UIcon name="i-lucide-copy" class="h-3.5 w-3.5" />
+              </button>
+              <button
+                class="btn-secondary h-8 min-h-8 px-2.5 text-xs"
+                :title="template.is_active ? 'Désactiver' : 'Activer'"
+                @click="toggleTemplateActive(template)"
+              >
+                <UIcon :name="template.is_active ? 'i-lucide-pause' : 'i-lucide-play'" class="h-3.5 w-3.5" />
+              </button>
+              <button
+                class="btn-danger flex h-8 min-h-8 items-center justify-center px-2.5 text-xs"
+                title="Supprimer"
+                @click="confirmDelete(template)"
+              >
+                <UIcon name="i-lucide-trash-2" class="h-3.5 w-3.5" />
+              </button>
+            </div>
           </div>
-          <!-- eslint-disable-next-line vue/no-v-html -- Preview of user's own email template HTML -->
-          <div class="prose prose-invert max-w-none text-sm" v-html="previewHtml"></div>
         </div>
-
-        <button class="btn-primary mt-6 w-full" @click="showPreviewModal = false">Close</button>
-      </div>
-    </div>
+      </section>
+    </template>
 
     <!-- Confirm Delete Modal -->
     <UiConfirmModal
       ref="confirmModal"
-      title="Delete Template"
-      :message="`Are you sure you want to delete the template '${templateToDelete?.name}'? This action cannot be undone.`"
-      confirm-text="Delete"
-      cancel-text="Cancel"
+      title="Supprimer le modèle"
+      :message="`Supprimer le modèle « ${templateToDelete?.name} » ? Cette action est irréversible.`"
+      confirm-text="Supprimer"
+      cancel-text="Annuler"
       @confirm="handleDeleteTemplate"
     />
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import type { ComputedRef, Ref } from 'vue'
 import type { EmailTemplate } from '~/types'
+import { computed, onMounted, ref, watch } from 'vue'
 import {
   getEmailTemplates,
   createEmailTemplate,
   updateEmailTemplate,
   deleteEmailTemplate,
-  previewEmailTemplate,
 } from '~/services/emailTemplatesService'
 import { useToast } from '~/composables/useToast'
+import { useDrawerStackStore } from '~/stores/drawerStack'
 
 definePageMeta({
   layout: 'dashboard',
   middleware: 'auth',
 })
 
+/** One displayed group of templates. */
+interface TemplateGroup {
+  key: string
+  heading: string
+  templates: EmailTemplate[]
+}
+
 const toast = useToast()
 
-// State
-const emailTemplates = ref<EmailTemplate[]>([])
-const isLoading = ref(false)
-const isSaving = ref(false)
-const showTemplateModal = ref(false)
-const showPreviewModal = ref(false)
-const editingTemplate = ref<EmailTemplate | null>(null)
-const previewSubject = ref('')
-const previewHtml = ref('')
-const templateToDelete = ref<EmailTemplate | null>(null)
-const confirmModal = ref<{ open: () => void; close: () => void } | null>(null)
+/** Persistent drawer stack (create/edit/preview live there). */
+const drawerStack = useDrawerStackStore()
 
-// Form data
-const templateForm = ref({
-  name: '',
-  subject: '',
-  body_html: '',
+// ─── State ────────────────────────────────────────────────────────────────────
+
+const emailTemplates: Ref<EmailTemplate[]> = ref<EmailTemplate[]>([])
+const isLoading: Ref<boolean> = ref<boolean>(false)
+const searchQuery: Ref<string> = ref<string>('')
+const templateToDelete: Ref<EmailTemplate | null> = ref<EmailTemplate | null>(null)
+const confirmModal: Ref<{ open: () => void; close: () => void } | null> = ref<{
+  open: () => void
+  close: () => void
+} | null>(null)
+
+// ─── Computed ─────────────────────────────────────────────────────────────────
+
+/** Templates matching the search query (name or subject). */
+const filteredTemplates: ComputedRef<EmailTemplate[]> = computed((): EmailTemplate[] => {
+  const query: string = searchQuery.value.trim().toLowerCase()
+  if (!query) return emailTemplates.value
+  return emailTemplates.value.filter(
+    (template: EmailTemplate): boolean =>
+      template.name.toLowerCase().includes(query) || template.subject.toLowerCase().includes(query),
+  )
 })
 
-// Load templates
-const loadTemplates = async () => {
+/** Inactive templates (used by the counter). */
+const inactiveTemplates: ComputedRef<EmailTemplate[]> = computed((): EmailTemplate[] => {
+  return emailTemplates.value.filter((template: EmailTemplate): boolean => !template.is_active)
+})
+
+/** Filtered templates grouped into « Actifs » / « Inactifs » sections. */
+const templateGroups: ComputedRef<TemplateGroup[]> = computed((): TemplateGroup[] => {
+  const active: EmailTemplate[] = filteredTemplates.value.filter(
+    (template: EmailTemplate): boolean => template.is_active,
+  )
+  const inactive: EmailTemplate[] = filteredTemplates.value.filter(
+    (template: EmailTemplate): boolean => !template.is_active,
+  )
+  const groups: TemplateGroup[] = []
+  if (active.length) groups.push({ key: 'active', heading: 'Modèles actifs', templates: active })
+  if (inactive.length) groups.push({ key: 'inactive', heading: 'Modèles inactifs', templates: inactive })
+  return groups
+})
+
+// ─── Data loading ─────────────────────────────────────────────────────────────
+
+/**
+ * Load every template of the current user.
+ * @returns A promise that resolves once the list is loaded.
+ */
+async function loadTemplates(): Promise<void> {
   try {
     isLoading.value = true
     emailTemplates.value = await getEmailTemplates()
-  } catch (error) {
-    toast.error('Failed to load templates')
-    console.error(error)
+  } catch (err: unknown) {
+    toast.error(err instanceof Error ? err.message : 'Erreur lors du chargement des modèles')
   } finally {
     isLoading.value = false
   }
 }
 
-// Open create modal
-const openCreateModal = () => {
-  editingTemplate.value = null
-  templateForm.value = {
-    name: '',
-    subject: '',
-    body_html: '',
-  }
-  showTemplateModal.value = true
+/**
+ * Human-readable list of a template's variables (e.g. "{name} {company_name}").
+ * Built in script because a template literal containing braces breaks the Vue
+ * template expression parser.
+ * @param template - Template whose variables are displayed.
+ * @returns Space-separated variable placeholders.
+ */
+function variablesLabel(template: EmailTemplate): string {
+  return (template.variables ?? []).map((variableName: string): string => '{' + variableName + '}').join(' ')
 }
 
-// Open edit modal
-const openEditModal = (template: EmailTemplate) => {
-  editingTemplate.value = template
-  templateForm.value = {
-    name: template.name,
-    subject: template.subject,
-    body_html: template.body_html,
-  }
-  showTemplateModal.value = true
+// ─── Drawer openers ───────────────────────────────────────────────────────────
+
+/** Open the creation drawer. */
+function openCreateDrawer(): void {
+  drawerStack.push({ kind: 'email-template', mode: 'create', template: null })
 }
 
-// Close template modal
-const closeTemplateModal = () => {
-  showTemplateModal.value = false
-  editingTemplate.value = null
+/**
+ * Open the edit drawer for a template.
+ * @param template - Template to edit.
+ */
+function openEditDrawer(template: EmailTemplate): void {
+  drawerStack.push({ kind: 'email-template', mode: 'edit', template })
 }
 
-// Save template
-const handleSaveTemplate = async () => {
+/**
+ * Open the preview drawer for a template (rendered with sample data).
+ * @param template - Template to preview.
+ */
+function openPreviewDrawer(template: EmailTemplate): void {
+  drawerStack.push({ kind: 'email-template', mode: 'preview', template })
+}
+
+// ─── Quick actions ────────────────────────────────────────────────────────────
+
+/**
+ * Duplicate a template (suffixe « (copie) »), useful to iterate on a variant.
+ * @param template - Template to duplicate.
+ */
+async function duplicateTemplate(template: EmailTemplate): Promise<void> {
   try {
-    isSaving.value = true
-
-    if (editingTemplate.value) {
-      // Update existing template
-      const updated = await updateEmailTemplate(editingTemplate.value.id, templateForm.value)
-      const index = emailTemplates.value.findIndex((t) => t.id === updated.id)
-      if (index !== -1) {
-        emailTemplates.value[index] = updated
-      }
-      toast.success('Template updated')
-    } else {
-      // Create new template
-      const newTemplate = await createEmailTemplate(templateForm.value)
-      if (!emailTemplates.value) {
-        emailTemplates.value = []
-      }
-      emailTemplates.value.unshift(newTemplate)
-      toast.success('Template created successfully')
-    }
-
-    closeTemplateModal()
-  } catch (error: unknown) {
-    toast.error(error.response?.data?.detail || 'Failed to save template')
-    console.error(error)
-  } finally {
-    isSaving.value = false
+    const copy: EmailTemplate = await createEmailTemplate({
+      name: `${template.name} (copie)`,
+      subject: template.subject,
+      body_html: template.body_html,
+    })
+    emailTemplates.value.unshift(copy)
+    toast.success(`Modèle « ${template.name} » dupliqué`)
+  } catch (err: unknown) {
+    toast.error(err instanceof Error ? err.message : 'Erreur lors de la duplication')
   }
 }
 
-// Preview template
-const handlePreviewTemplate = async (template: EmailTemplate) => {
+/**
+ * Toggle the active flag of a template without opening the drawer.
+ * @param template - Template to toggle.
+ */
+async function toggleTemplateActive(template: EmailTemplate): Promise<void> {
   try {
-    // Use sample data for preview
-    const sampleVariables: Record<string, string> = {
-      name: 'Jean Dupont',
-      company_name: 'Restaurant Le Gourmet',
-      email: 'contact@legourmet.fr',
-      phone: '01 23 45 67 89',
-    }
-
-    const preview = await previewEmailTemplate(template.id, sampleVariables)
-    previewSubject.value = preview.subject
-    previewHtml.value = preview.body_html
-    showPreviewModal.value = true
-  } catch {
-    // If preview fails, show template as-is
-    previewSubject.value = template.subject
-    previewHtml.value = template.body_html
-    showPreviewModal.value = true
+    const updated: EmailTemplate = await updateEmailTemplate(template.id, { is_active: !template.is_active })
+    const index: number = emailTemplates.value.findIndex((t: EmailTemplate): boolean => t.id === updated.id)
+    if (index !== -1) emailTemplates.value.splice(index, 1, updated)
+    toast.success(updated.is_active ? `« ${updated.name} » activé` : `« ${updated.name} » désactivé`)
+  } catch (err: unknown) {
+    toast.error(err instanceof Error ? err.message : 'Erreur lors de la mise à jour')
   }
 }
 
-// Confirm delete
-const confirmDelete = (template: EmailTemplate) => {
+/**
+ * Ask for confirmation before deleting a template.
+ * @param template - Template to delete.
+ */
+function confirmDelete(template: EmailTemplate): void {
   templateToDelete.value = template
   confirmModal.value?.open()
 }
 
-// Delete template
-const handleDeleteTemplate = async () => {
-  if (!templateToDelete.value) return
-
+/**
+ * Delete the pending template after confirmation.
+ * @returns A promise that resolves once the template is removed.
+ */
+async function handleDeleteTemplate(): Promise<void> {
+  const template: EmailTemplate | null = templateToDelete.value
+  if (!template) return
   try {
-    await deleteEmailTemplate(templateToDelete.value.id)
-    if (emailTemplates.value) {
-      emailTemplates.value = emailTemplates.value.filter((t) => t.id !== templateToDelete.value!.id)
-    }
-    toast.success('Template deleted')
-  } catch (error) {
-    toast.error('Failed to delete template')
-    console.error(error)
+    await deleteEmailTemplate(template.id)
+    emailTemplates.value = emailTemplates.value.filter((t: EmailTemplate): boolean => t.id !== template.id)
+    toast.success(`Modèle « ${template.name} » supprimé`)
+  } catch (err: unknown) {
+    toast.error(err instanceof Error ? err.message : 'Erreur lors de la suppression')
   } finally {
     templateToDelete.value = null
   }
 }
 
-onMounted(() => {
-  loadTemplates()
+// ─── Watchers ─────────────────────────────────────────────────────────────────
+
+// Créations/éditions faites dans le drawer (hébergé par le layout) → recharger.
+watch(
+  (): number => drawerStack.emailTemplatesRefreshCounter,
+  (): void => {
+    void loadTemplates()
+  },
+)
+
+// ─── Init ─────────────────────────────────────────────────────────────────────
+
+onMounted(async (): Promise<void> => {
+  await loadTemplates()
 })
 </script>

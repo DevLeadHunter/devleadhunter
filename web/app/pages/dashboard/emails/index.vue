@@ -3,8 +3,8 @@
     <!-- Header -->
     <div class="flex items-center justify-between">
       <div>
-        <h1 class="text-3xl font-bold text-[var(--app-ink)]">Emails envoyés</h1>
-        <p class="text-muted mt-2 text-sm">Historique complet des emails de prospection</p>
+        <h1 class="text-3xl font-bold text-[var(--app-ink)]">Suivi des emails</h1>
+        <p class="text-muted mt-2 text-sm">Historique et statut de chaque email de prospection envoyé</p>
       </div>
       <div class="flex items-center gap-3">
         <button
@@ -13,7 +13,10 @@
           :title="'Synchronise les statuts depuis Resend (utile en local sans webhook)'"
           @click="syncStatus"
         >
-          <i :class="isSyncing ? 'fa-solid fa-spinner fa-spin' : 'fa-solid fa-arrows-rotate'" class="mr-2"></i>
+          <UIcon
+            :name="isSyncing ? 'i-lucide-loader-circle' : 'i-lucide-rotate-cw'"
+            :class="['h-4 w-4', isSyncing && 'animate-spin']"
+          />
           {{ isSyncing ? 'Sync…' : 'Sync Resend' }}
         </button>
         <button
@@ -21,11 +24,11 @@
           class="btn-secondary disabled:cursor-not-allowed disabled:opacity-50"
           @click="loadLogs"
         >
-          <i class="fa-solid fa-rotate-right mr-2"></i>
+          <UIcon name="i-lucide-rotate-cw" class="h-4 w-4" />
           Actualiser
         </button>
-        <button class="btn-primary" @click="showSendModal = true">
-          <i class="fa-solid fa-paper-plane mr-2"></i>
+        <button class="btn-primary" @click="drawerStack.push({ kind: 'send-email', prospect: null })">
+          <UIcon name="i-lucide-send" class="h-4 w-4" />
           Envoyer un email
         </button>
       </div>
@@ -43,11 +46,11 @@
       </div>
       <div class="card text-center">
         <p class="text-muted text-xs font-medium">Ouverts</p>
-        <p class="mt-1 text-2xl font-bold text-[var(--app-accent-ink)]">{{ stats.total_opened }}</p>
+        <p class="mt-1 text-2xl font-bold text-[var(--app-violet)]">{{ stats.total_opened }}</p>
       </div>
       <div class="card text-center">
         <p class="text-muted text-xs font-medium">Cliqués</p>
-        <p class="mt-1 text-2xl font-bold text-[#8d7bb8]">{{ stats.total_clicked }}</p>
+        <p class="mt-1 text-2xl font-bold text-[var(--app-ink)]">{{ stats.total_clicked }}</p>
       </div>
       <div class="card text-center">
         <p class="text-muted text-xs font-medium">Bounces</p>
@@ -91,13 +94,13 @@
 
     <!-- Loader -->
     <div v-else-if="isLoading" class="flex items-center justify-center py-12">
-      <i class="fa-solid fa-spinner fa-spin text-muted text-4xl"></i>
+      <UIcon name="i-lucide-loader-circle" class="text-muted h-9 w-9 animate-spin" />
     </div>
 
     <!-- Empty -->
-    <div v-else-if="filteredLogs.length === 0" class="py-12 text-center">
-      <i class="fa-solid fa-envelope-open text-muted mb-4 text-6xl"></i>
-      <h3 class="mt-4 text-lg font-medium text-[var(--app-ink)]">Aucun email trouvé</h3>
+    <div v-else-if="filteredLogs.length === 0" class="card px-6 py-12 text-center">
+      <LandingAsterisk class="text-4xl text-[var(--app-accent)]" />
+      <h3 class="font-display mt-5 text-2xl font-semibold text-[var(--app-ink)]">Aucun email trouvé</h3>
       <p class="text-muted mt-2 text-sm">
         {{
           filterStatus !== 'all' || filterCampaignId !== 'all' || searchQuery
@@ -196,96 +199,17 @@
         </div>
       </div>
     </div>
-
-    <!-- Email log drawer -->
-    <UiEmailLogDrawer
-      :open="drawerOpen"
-      :log="drawerLog"
-      :campaign-name="drawerLog ? resolveCampaignName(drawerLog.campaign_id) : undefined"
-      @close="drawerOpen = false"
-    />
-
-    <!-- Modale envoi manuel -->
-    <div
-      v-if="showSendModal"
-      class="fixed inset-0 z-50 flex items-center justify-center bg-[var(--app-overlay)] backdrop-blur-sm"
-      @click.self="showSendModal = false"
-    >
-      <div class="border-muted w-full max-w-lg rounded-lg border bg-[var(--app-surface)] p-6 shadow-lg">
-        <div class="mb-5 flex items-center justify-between">
-          <h2 class="text-base font-semibold text-[var(--app-ink)]">Envoyer un email</h2>
-          <button class="text-muted hover:text-[var(--app-ink)]" @click="showSendModal = false">
-            <i class="fa-solid fa-xmark"></i>
-          </button>
-        </div>
-
-        <form class="space-y-4" @submit.prevent="handleSendManual">
-          <!-- Destinataire -->
-          <div>
-            <label class="text-muted mb-1.5 block text-xs font-medium">
-              Email destinataire <span class="text-[var(--app-red)]">*</span>
-            </label>
-            <input
-              v-model="sendForm.recipient_email"
-              type="email"
-              required
-              class="input-field"
-              placeholder="prospect@exemple.fr"
-            />
-          </div>
-
-          <!-- Nom destinataire -->
-          <div>
-            <label class="text-muted mb-1.5 block text-xs font-medium">Nom destinataire</label>
-            <input v-model="sendForm.recipient_name" type="text" class="input-field" placeholder="Jean Dupont" />
-          </div>
-
-          <!-- Sujet -->
-          <div>
-            <label class="text-muted mb-1.5 block text-xs font-medium">
-              Sujet <span class="text-[var(--app-red)]">*</span>
-            </label>
-            <input v-model="sendForm.subject" type="text" required class="input-field" placeholder="votre site demo" />
-          </div>
-
-          <!-- Corps -->
-          <div>
-            <label class="text-muted mb-1.5 block text-xs font-medium">
-              Message <span class="text-[var(--app-red)]">*</span>
-            </label>
-            <textarea
-              v-model="sendForm.body"
-              required
-              rows="6"
-              class="input-field resize-none"
-              placeholder="Bonjour,&#10;&#10;J'ai créé un site vitrine pour votre entreprise…"
-            />
-          </div>
-
-          <div class="flex gap-3 pt-2">
-            <button type="button" class="btn-secondary flex-1" @click="showSendModal = false">Annuler</button>
-            <button
-              type="submit"
-              :disabled="isSending"
-              class="btn-primary flex-1 disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              <i v-if="isSending" class="fa-solid fa-spinner fa-spin mr-2"></i>
-              {{ isSending ? 'Envoi…' : 'Envoyer' }}
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import type { EmailLog, EmailStats, EmailStatus } from '~/types'
 import { formatDate } from '~/utils/date'
 import { getEmailLogs, getEmailStats } from '~/services/emailCampaignsService'
 import { campaignService, type CampaignResponse } from '~/services/campaignService'
 import { useToast } from '~/composables/useToast'
+import { useDrawerStackStore } from '~/stores/drawerStack'
 import { api } from '~/services/api'
 
 definePageMeta({ layout: 'dashboard', middleware: ['auth'] })
@@ -296,22 +220,12 @@ const toast = useToast()
 const logs = ref<EmailLog[]>([])
 const campaigns = ref<CampaignResponse[]>([])
 
-// ─── Envoi manuel ─────────────────────────────────────────────────────────────
+// ─── Envoi manuel (drawer persistant hébergé par le layout) ──────────────────
+
+/** Persistent drawer stack (composer + email log detail live there). */
+const drawerStack = useDrawerStackStore()
 
 const isSyncing = ref<boolean>(false)
-const showSendModal = ref<boolean>(false)
-const isSending = ref<boolean>(false)
-const sendForm = ref<{
-  recipient_email: string
-  recipient_name: string
-  subject: string
-  body: string
-}>({
-  recipient_email: '',
-  recipient_name: '',
-  subject: '',
-  body: '',
-})
 const isLoading = ref(false)
 const error = ref<string | null>(null)
 const searchQuery = ref('')
@@ -319,9 +233,6 @@ const filterStatus = ref('all')
 const filterCampaignId = ref('all')
 const currentPage = ref(1)
 const pageSize = 50
-
-const drawerOpen = ref(false)
-const drawerLog = ref<EmailLog | null>(null)
 
 /** Full stats object — typed strictly as EmailStats so every field is present. */
 const stats = ref<EmailStats>({
@@ -461,13 +372,19 @@ function getEngagement(log: EmailLog): EngagementStep[] {
       ts: log.delivered_at,
       color: 'text-[var(--app-green)]',
     },
-    { key: 'opened', label: 'Ouvert', icon: 'i-lucide-mail-open', ts: log.opened_at, color: 'text-[#8d7bb8]' },
+    {
+      key: 'opened',
+      label: 'Ouvert',
+      icon: 'i-lucide-mail-open',
+      ts: log.opened_at,
+      color: 'text-[var(--app-violet)]',
+    },
     {
       key: 'clicked',
       label: 'Cliqué',
       icon: 'i-lucide-mouse-pointer-click',
       ts: log.clicked_at,
-      color: 'text-[#c4b5fd]',
+      color: 'text-[var(--app-ink)]',
     },
   ]
 }
@@ -500,8 +417,7 @@ function clearFilters(): void {
 }
 
 function openDrawer(log: EmailLog): void {
-  drawerLog.value = log
-  drawerOpen.value = true
+  drawerStack.push({ kind: 'email-log', log, campaignName: resolveCampaignName(log.campaign_id) })
 }
 
 // ─── Data loading ─────────────────────────────────────────────────────────────
@@ -525,34 +441,13 @@ async function loadLogs(): Promise<void> {
   }
 }
 
-/**
- * Send a manual one-off email from the send modal.
- * @returns A promise that resolves once the email has been dispatched.
- */
-/**
- * Send a manual one-off email via the quick-send endpoint.
- * Uses the user's Resend configuration automatically — no account selection needed.
- * @returns A promise that resolves once the email has been dispatched.
- */
-async function handleSendManual(): Promise<void> {
-  isSending.value = true
-  try {
-    await api.post('/api/v1/emails/quick-send', {
-      recipient_email: sendForm.value.recipient_email,
-      recipient_name: sendForm.value.recipient_name || undefined,
-      subject: sendForm.value.subject,
-      body_html: `<p>${sendForm.value.body.replace(/\n/g, '<br>')}</p>`,
-    })
-    toast.success('Email envoyé avec succès')
-    showSendModal.value = false
-    sendForm.value = { recipient_email: '', recipient_name: '', subject: '', body: '' }
-    await loadLogs()
-  } catch {
-    toast.error("Erreur lors de l'envoi — vérifiez votre configuration Resend dans les Paramètres")
-  } finally {
-    isSending.value = false
-  }
-}
+// Un email envoyé depuis le drawer (d'ici ou d'une fiche prospect) rafraîchit la liste.
+watch(
+  (): number => drawerStack.emailLogsRefreshCounter,
+  (): void => {
+    void loadLogs()
+  },
+)
 
 /**
  * Poll the Resend API for the latest status of all unresolved emails.

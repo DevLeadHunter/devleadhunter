@@ -22,18 +22,19 @@ export default defineAppConfig({
         {
           color: 'primary',
           variant: 'solid',
-          class: 'rounded-lg bg-[#f9f9f9] text-[#050505] shadow-sm hover:bg-[#e4e4e4] hover:shadow-md',
+          class:
+            'rounded-full bg-[var(--app-btn-bg)] text-[var(--app-btn-text)] shadow-sm hover:opacity-90 hover:shadow-md',
         },
         {
           color: 'neutral',
           variant: 'outline',
           class:
-            'rounded-lg border border-[#30363d]/50 bg-transparent text-[#f9f9f9] hover:border-[#30363d] hover:bg-[#1a1a1a]',
+            'rounded-full border border-[var(--app-line)] bg-transparent text-[var(--app-ink)] hover:border-[var(--app-ink-soft)] hover:bg-[var(--app-surface-2)]',
         },
         {
           color: 'error',
           variant: 'solid',
-          class: 'rounded bg-[#da3633] text-[#f9f9f9] hover:bg-[#DC4747]',
+          class: 'rounded-full bg-[var(--app-red)] text-[var(--app-surface)] hover:opacity-90',
         },
       ],
       defaultVariants: {
@@ -43,58 +44,60 @@ export default defineAppConfig({
     input: {
       slots: {
         root: 'w-full',
-        base: 'h-10 w-full rounded border border-[#30363d] bg-[#050505] px-3 text-sm text-[#f9f9f9] placeholder-[#8b949e] transition-all focus:border-[#f9f9f9] focus:ring-0 focus:outline-none',
+        base: 'h-9 w-full rounded-lg px-3 text-sm transition-all',
       },
     },
     textarea: {
       slots: {
         root: 'w-full',
-        base: 'w-full rounded border border-[#30363d] bg-[#050505] px-3 py-2 text-sm text-[#f9f9f9] placeholder-[#8b949e] transition-all focus:border-[#f9f9f9] focus:ring-0 focus:outline-none',
+        base: 'w-full rounded-lg px-3 py-2 text-sm transition-all',
       },
     },
     selectMenu: {
       slots: {
         root: 'relative inline-flex w-full items-center',
-        base: 'h-10 w-full rounded border border-[#30363d] bg-[#050505] px-3 text-sm text-[#f9f9f9] transition-all focus:border-[#f9f9f9] focus:ring-0 focus:outline-none',
-        placeholder: 'text-[#8b949e]',
-        content: 'rounded-lg border border-[#30363d] bg-[#1a1a1a] shadow-lg',
-        item: 'text-sm text-[#f9f9f9] data-[highlighted]:bg-[#30363d] data-[state=checked]:bg-[#30363d]/70',
-        trailingIcon: 'text-[#8b949e]',
+        base: 'h-9 w-full cursor-pointer rounded-lg px-3 text-sm transition-all',
+        placeholder: 'text-[var(--app-faint)]',
+        content: 'rounded-lg shadow-[var(--app-shadow-soft)]',
+        // Barre de recherche intégrée : pas de cadre propre, juste un filet bas.
+        input: 'h-9 border-0 border-b border-[var(--app-line)] text-sm focus:ring-0 focus:outline-none',
+        item: 'cursor-pointer text-sm',
+        trailingIcon: 'text-[var(--app-ink-soft)]',
       },
     },
     inputMenu: {
       slots: {
-        root: 'relative inline-flex w-full items-center h-10 rounded border border-[#30363d] bg-[#050505] ring-0 shadow-none',
-        base: 'h-full w-full border-0 bg-transparent px-3 text-sm text-[#f9f9f9] placeholder-[#8b949e] focus:outline-none focus:ring-0',
-        placeholder: 'text-[#8b949e]',
-        content: 'rounded-lg border border-[#30363d] bg-[#1a1a1a] shadow-lg',
-        item: 'text-sm text-[#f9f9f9] data-[highlighted]:bg-[#30363d] data-[state=checked]:bg-[#30363d]/70',
-        itemDescription: 'text-xs text-[#8b949e]',
-        trailingIcon: 'text-[#8b949e]',
+        root: 'relative inline-flex h-9 w-full items-center rounded-lg',
+        base: 'h-full w-full px-3 text-sm',
+        placeholder: 'text-[var(--app-faint)]',
+        content: 'rounded-lg shadow-[var(--app-shadow-soft)]',
+        item: 'cursor-pointer text-sm',
+        itemDescription: 'text-xs text-[var(--app-ink-soft)]',
+        trailingIcon: 'text-[var(--app-ink-soft)]',
       },
     },
     modal: {
       slots: {
-        overlay: 'bg-black/70',
-        content: 'rounded-lg border border-[#30363d] bg-[#1a1a1a] shadow-xl',
-        header: 'border-b border-[#30363d]',
-        body: 'text-[#f9f9f9]',
-        footer: 'border-t border-[#30363d]',
+        overlay: 'bg-[var(--app-overlay)]',
+        content: 'rounded-xl border border-[var(--app-line)] bg-[var(--app-surface)] shadow-xl',
+        header: 'border-b border-[var(--app-line)]',
+        body: 'text-[var(--app-ink)]',
+        footer: 'border-t border-[var(--app-line)]',
       },
     },
     card: {
       slots: {
-        root: 'rounded-lg border border-[#30363d] bg-[#1a1a1a] shadow-sm',
-        header: 'border-b border-[#30363d]',
-        body: 'text-[#f9f9f9]',
-        footer: 'border-t border-[#30363d]',
+        root: 'rounded-xl border border-[var(--app-line)] bg-[var(--app-surface)] shadow-none',
+        header: 'border-b border-[var(--app-line)]',
+        body: 'text-[var(--app-ink)]',
+        footer: 'border-t border-[var(--app-line)]',
       },
     },
     formField: {
       slots: {
-        label: 'text-xs font-medium text-[#8b949e]',
-        error: 'text-xs text-[#DC4747]',
-        hint: 'text-xs text-[#8b949e]',
+        label: 'text-xs font-medium text-[var(--app-ink-soft)]',
+        error: 'text-xs text-[var(--app-red)]',
+        hint: 'text-xs text-[var(--app-ink-soft)]',
       },
     },
     badge: {
@@ -105,17 +108,17 @@ export default defineAppConfig({
         {
           color: 'neutral',
           variant: 'subtle',
-          class: 'border border-[#30363d] bg-[#050505] text-[#f9f9f9]',
+          class: 'border border-[var(--app-line)] bg-[var(--app-surface-2)] text-[var(--app-ink)]',
         },
       ],
     },
     checkbox: {
       slots: {
         root: 'items-center',
-        base: 'size-4 rounded border border-[#30363d] bg-[#050505] ring-0 transition-colors hover:border-[#8b949e] focus-visible:outline-none focus-visible:border-[#f9f9f9] data-[state=checked]:border-[#f9f9f9] data-[state=checked]:bg-[#f9f9f9]',
-        indicator: 'text-[#050505]',
+        base: 'size-4 cursor-pointer rounded border border-[var(--app-line)] bg-[var(--app-surface)] ring-0 transition-colors hover:border-[var(--app-ink-soft)] focus-visible:outline-none focus-visible:border-[var(--app-ink)] data-[state=checked]:border-[var(--app-ink)] data-[state=checked]:bg-[var(--app-ink)]',
+        indicator: 'text-[var(--app-bg)]',
         icon: 'size-3',
-        label: 'text-sm font-normal text-[#8b949e] cursor-pointer select-none',
+        label: 'text-sm font-normal text-[var(--app-ink-soft)] cursor-pointer select-none',
         wrapper: 'ms-2.5',
       },
       defaultVariants: {

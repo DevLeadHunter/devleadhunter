@@ -1,10 +1,7 @@
 <template>
   <Teleport to="body">
-    <!-- Backdrop -->
-    <Transition name="drawer-backdrop">
-      <div v-if="open" class="fixed inset-0 z-40 bg-[var(--app-overlay)] backdrop-blur-sm" @click="emit('close')" />
-    </Transition>
-
+    <!-- Pas de backdrop : le drawer est non-modal pour laisser la navigation
+         (sidebar, pages) cliquable pendant qu'il est ouvert. -->
     <!-- Panel -->
     <Transition name="drawer-panel">
       <div
@@ -13,11 +10,14 @@
       >
         <!-- ───────────────────────── Header ───────────────────────── -->
         <div class="flex items-start gap-3 border-b border-[var(--app-line)] px-5 py-4">
-          <div
-            class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-[var(--app-line)] bg-gradient-to-br from-[#1f2937] to-[#111827]"
+          <button
+            v-if="showBack"
+            class="flex h-10 w-7 shrink-0 items-center justify-center rounded text-[var(--app-ink-soft)] transition-colors hover:bg-[var(--app-surface-2)] hover:text-[var(--app-ink)]"
+            title="Revenir au volet précédent"
+            @click="emit('back')"
           >
-            <UIcon name="i-lucide-mail" class="h-5 w-5 text-[var(--app-accent-ink)]" />
-          </div>
+            <UIcon name="i-lucide-chevron-left" class="h-4 w-4" />
+          </button>
 
           <div class="min-w-0 flex-1">
             <div class="mb-1.5 flex flex-wrap items-center gap-1.5">
@@ -48,7 +48,7 @@
         <div class="flex-1 overflow-y-auto">
           <!-- Subject card -->
           <div class="px-5 py-4">
-            <div class="rounded-xl border border-[var(--app-line)] bg-[#111318] p-4">
+            <div class="rounded-xl border border-[var(--app-line)] bg-[var(--app-surface-2)] p-4">
               <p class="mb-1 text-[10px] font-semibold tracking-wider text-[var(--app-ink-soft)] uppercase">Sujet</p>
               <p class="text-sm leading-snug font-medium text-[var(--app-ink)]">{{ log.subject }}</p>
             </div>
@@ -139,6 +139,17 @@
             </div>
           </div>
         </div>
+
+        <!-- ───────────────────────── Footer ─────────────────────── -->
+        <div class="border-t border-[var(--app-line)] px-5 py-4">
+          <button class="btn-primary w-full" @click="emit('resend')">
+            <UIcon name="i-lucide-send" class="mr-1.5 h-4 w-4" />
+            Renvoyer un email
+          </button>
+          <p class="text-muted mt-2 text-center text-[11px]">
+            Ouvre le composeur pré-rempli avec ce destinataire, ce sujet et ce contenu.
+          </p>
+        </div>
       </div>
     </Transition>
   </Teleport>
@@ -168,11 +179,19 @@ const props: EmailLogDrawerProps = defineProps({
     type: String,
     default: undefined,
   },
+  showBack: {
+    type: Boolean,
+    default: false,
+  },
 })
 
 const emit = defineEmits<{
   /** Fired when the user dismisses the drawer. */
-  (e: 'close'): void
+  close: []
+  /** Go back to the previous drawer of the stack. */
+  back: []
+  /** Open the composer prefilled with this log's recipient/subject/body. */
+  resend: []
 }>()
 
 // ─── Status badges ────────────────────────────────────────────────────────────
@@ -275,8 +294,8 @@ const timelineItems: ComputedRef<EmailTimelineItem[]> = computed((): EmailTimeli
       ts: l.sent_at,
       alwaysShow: true,
       style: {
-        indicator: 'bg-[#0d2847] text-[var(--app-accent-ink)] ring-1 ring-inset ring-[#1f3a5c]',
-        separator: 'bg-[#1f3a5c]',
+        indicator: 'bg-[var(--app-blue-soft)] text-[var(--app-blue)] ring-1 ring-inset ring-[var(--app-blue)]/25',
+        separator: 'bg-[var(--app-blue)]/30',
       },
     },
     {
@@ -286,8 +305,8 @@ const timelineItems: ComputedRef<EmailTimelineItem[]> = computed((): EmailTimeli
       ts: l.delivered_at,
       alwaysShow: true,
       style: {
-        indicator: 'bg-[#0f2e1a] text-[var(--app-green)] ring-1 ring-inset ring-[#1a3a2a]',
-        separator: 'bg-[#1a3a2a]',
+        indicator: 'bg-[var(--app-green-soft)] text-[var(--app-green)] ring-1 ring-inset ring-[var(--app-green)]/25',
+        separator: 'bg-[var(--app-green)]/30',
       },
     },
     {
@@ -297,8 +316,8 @@ const timelineItems: ComputedRef<EmailTimelineItem[]> = computed((): EmailTimeli
       ts: l.opened_at,
       alwaysShow: true,
       style: {
-        indicator: 'bg-[#1e1b4b] text-[#8d7bb8] ring-1 ring-inset ring-[#2a2060]',
-        separator: 'bg-[#2a2060]',
+        indicator: 'bg-[var(--app-violet-soft)] text-[var(--app-violet)] ring-1 ring-inset ring-[var(--app-violet)]/25',
+        separator: 'bg-[var(--app-violet)]/30',
       },
     },
     {
@@ -308,8 +327,8 @@ const timelineItems: ComputedRef<EmailTimelineItem[]> = computed((): EmailTimeli
       ts: l.clicked_at,
       alwaysShow: true,
       style: {
-        indicator: 'bg-[#241a52] text-[#c4b5fd] ring-1 ring-inset ring-[#2a1a6c]',
-        separator: 'bg-[#2a1a6c]',
+        indicator: 'bg-[var(--app-ink)] text-[var(--app-bg)] ring-1 ring-inset ring-[var(--app-ink)]/20',
+        separator: 'bg-[var(--app-ink)]/25',
       },
     },
     {
@@ -319,8 +338,8 @@ const timelineItems: ComputedRef<EmailTimelineItem[]> = computed((): EmailTimeli
       ts: l.bounced_at,
       alwaysShow: false,
       style: {
-        indicator: 'bg-[#2d1212] text-[var(--app-red)] ring-1 ring-inset ring-[#3a1a1a]',
-        separator: 'bg-[#3a1a1a]',
+        indicator: 'bg-[var(--app-red-soft)] text-[var(--app-red)] ring-1 ring-inset ring-[var(--app-red)]/25',
+        separator: 'bg-[var(--app-red)]/30',
       },
     },
     {
@@ -330,8 +349,8 @@ const timelineItems: ComputedRef<EmailTimelineItem[]> = computed((): EmailTimeli
       ts: l.complained_at,
       alwaysShow: false,
       style: {
-        indicator: 'bg-[#2d1f0a] text-[var(--app-accent)] ring-1 ring-inset ring-[#3a2a1a]',
-        separator: 'bg-[#3a2a1a]',
+        indicator: 'bg-[var(--app-red-soft)] text-[var(--app-red)] ring-1 ring-inset ring-[var(--app-red)]/25',
+        separator: 'bg-[var(--app-red)]/30',
       },
     },
     {
@@ -341,8 +360,8 @@ const timelineItems: ComputedRef<EmailTimelineItem[]> = computed((): EmailTimeli
       ts: l.suppressed_at,
       alwaysShow: false,
       style: {
-        indicator: 'bg-[#1f0f2d] text-[#c084fc] ring-1 ring-inset ring-[#2a1a2a]',
-        separator: 'bg-[#2a1a2a]',
+        indicator: 'bg-[var(--app-surface-2)] text-[var(--app-ink-soft)] ring-1 ring-inset ring-[var(--app-line)]',
+        separator: 'bg-[var(--app-line)]',
       },
     },
     {
@@ -352,8 +371,8 @@ const timelineItems: ComputedRef<EmailTimelineItem[]> = computed((): EmailTimeli
       ts: l.failed_at,
       alwaysShow: false,
       style: {
-        indicator: 'bg-[#2d1212] text-[var(--app-red)] ring-1 ring-inset ring-[#3a1a1a]',
-        separator: 'bg-[#3a1a1a]',
+        indicator: 'bg-[var(--app-red-soft)] text-[var(--app-red)] ring-1 ring-inset ring-[var(--app-red)]/25',
+        separator: 'bg-[var(--app-red)]/30',
       },
     },
   ]
@@ -379,15 +398,6 @@ const timelineItems: ComputedRef<EmailTimelineItem[]> = computed((): EmailTimeli
 </script>
 
 <style scoped>
-.drawer-backdrop-enter-active,
-.drawer-backdrop-leave-active {
-  transition: opacity 0.2s ease;
-}
-.drawer-backdrop-enter-from,
-.drawer-backdrop-leave-to {
-  opacity: 0;
-}
-
 .drawer-panel-enter-active,
 .drawer-panel-leave-active {
   transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);

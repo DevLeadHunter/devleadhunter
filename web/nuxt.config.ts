@@ -125,7 +125,7 @@ export default defineNuxtConfig({
         process.env.NUXT_PUBLIC_API_BASE ||
         process.env.API_BASE_URL ||
         (process.env.NODE_ENV === 'production' ? 'https://api.devleadhunter.dibodev.fr' : 'http://localhost:8000'),
-      githubRepo: process.env.NUXT_PUBLIC_GITHUB_REPO || 'leogu/devleadhunter',
+      githubRepo: process.env.NUXT_PUBLIC_GITHUB_REPO || 'DevLeadHunter/devleadhunter',
       desktopReleaseChannel: process.env.NUXT_PUBLIC_DESKTOP_RELEASE_CHANNEL || 'latest',
       githubApiBase: process.env.NUXT_PUBLIC_GITHUB_API_BASE || 'https://api.github.com',
       // Base URL of the demo-host app — used to iframe live template previews in the builder.

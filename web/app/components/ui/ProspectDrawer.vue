@@ -1,10 +1,7 @@
 <template>
   <Teleport to="body">
-    <!-- Backdrop -->
-    <Transition name="drawer-backdrop">
-      <div v-if="open" class="fixed inset-0 z-40 bg-[var(--app-overlay)] backdrop-blur-sm" @click="$emit('close')" />
-    </Transition>
-
+    <!-- Pas de backdrop : le drawer est non-modal pour laisser la navigation
+         (sidebar, pages) cliquable pendant qu'il est ouvert. -->
     <!-- Slide-over panel -->
     <Transition name="drawer-panel">
       <div
@@ -13,6 +10,15 @@
       >
         <!-- ───────────────────────── Header ───────────────────────── -->
         <div class="flex items-start gap-3 border-b border-[var(--app-line)] px-5 py-4">
+          <button
+            v-if="showBack"
+            class="flex h-10 w-7 shrink-0 items-center justify-center rounded text-[var(--app-ink-soft)] transition-colors hover:bg-[var(--app-surface-2)] hover:text-[var(--app-ink)]"
+            title="Revenir au volet précédent"
+            @click="$emit('back')"
+          >
+            <UIcon name="i-lucide-chevron-left" class="h-4 w-4" />
+          </button>
+
           <!-- Business icon -->
           <div
             class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-[var(--app-line)] bg-[var(--app-surface-2)]"
@@ -246,7 +252,7 @@
                 <label class="mb-1 block text-[10px] font-medium tracking-wider text-[var(--app-ink-soft)] uppercase">
                   Ville
                 </label>
-                <input v-model="editForm.city" type="text" class="input-field" placeholder="Paris" />
+                <UiCityAutocompleteInput v-model="editForm.city" placeholder="Paris" />
               </div>
               <div>
                 <label class="mb-1 block text-[10px] font-medium tracking-wider text-[var(--app-ink-soft)] uppercase">
@@ -342,6 +348,8 @@ interface Props {
   open: boolean
   /** Prospect to display — null means nothing is shown */
   prospect: Prospect | null
+  /** Whether a previous drawer exists in the stack (shows the back button) */
+  showBack?: boolean
 }
 
 const props = defineProps<Props>()
@@ -349,6 +357,8 @@ const props = defineProps<Props>()
 const emit = defineEmits<{
   /** Close the drawer */
   close: []
+  /** Go back to the previous drawer of the stack */
+  back: []
   /** Prospect was successfully updated */
   updated: [prospect: Prospect]
   /** Prospect was deleted */
@@ -516,16 +526,6 @@ async function handleDelete(): Promise<void> {
 </script>
 
 <style scoped>
-/* Backdrop fade */
-.drawer-backdrop-enter-active,
-.drawer-backdrop-leave-active {
-  transition: opacity 0.2s ease;
-}
-.drawer-backdrop-enter-from,
-.drawer-backdrop-leave-to {
-  opacity: 0;
-}
-
 /* Panel slide from right */
 .drawer-panel-enter-active,
 .drawer-panel-leave-active {

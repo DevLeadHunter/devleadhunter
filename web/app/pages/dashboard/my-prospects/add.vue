@@ -5,7 +5,7 @@
         to="/dashboard/my-prospects"
         class="inline-flex items-center gap-2 text-sm text-[var(--app-ink-soft)] transition hover:text-[var(--app-ink)]"
       >
-        <i class="fa-solid fa-arrow-left text-xs"></i>
+        <UIcon name="i-lucide-arrow-left" class="h-3.5 w-3.5" />
         Retour aux prospects
       </NuxtLink>
       <h1 class="mt-4 text-2xl font-semibold text-[var(--app-ink)]">Ajouter un prospect</h1>
@@ -32,8 +32,8 @@
       </div>
 
       <div>
-        <label class="text-muted mb-1.5 block text-xs font-medium">Ville (optionnel)</label>
-        <input v-model="addForm.city" type="text" class="input-field" placeholder="Paris" />
+        <label for="add-prospect-city" class="text-muted mb-1.5 block text-xs font-medium">Ville (optionnel)</label>
+        <UiCityAutocompleteInput v-model="addForm.city" input-id="add-prospect-city" placeholder="Paris" />
         <p class="text-muted mt-1 text-xs">Affine les suggestions quand vous recherchez par nom d'entreprise.</p>
       </div>
 
@@ -43,7 +43,7 @@
         :disabled="isEnriching || !canEnrichProspect"
         @click="handleEnrichProspect"
       >
-        <i v-if="isEnriching" class="fa-solid fa-spinner fa-spin mr-2"></i>
+        <UIcon v-if="isEnriching" name="i-lucide-loader-circle" class="h-4 w-4 animate-spin" />
         {{ isEnriching ? 'Récupération depuis Google…' : 'Pré-remplir depuis Google' }}
       </button>
 
@@ -63,8 +63,8 @@
             <input v-model="prospectDraft.address" type="text" class="input-field" />
           </div>
           <div>
-            <label class="text-muted mb-1.5 block text-xs font-medium">Ville</label>
-            <input v-model="prospectDraft.city" type="text" class="input-field" />
+            <label for="draft-city" class="text-muted mb-1.5 block text-xs font-medium">Ville</label>
+            <UiCityAutocompleteInput v-model="prospectDraft.city" input-id="draft-city" />
           </div>
           <div>
             <label class="text-muted mb-1.5 block text-xs font-medium">Catégorie</label>

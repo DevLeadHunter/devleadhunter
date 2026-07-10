@@ -15,8 +15,8 @@
     </p>
 
     <!-- Initial / empty state -->
-    <div v-if="isLoading" class="py-4 text-center">
-      <i class="fa-solid fa-spinner fa-spin text-muted text-xl"></i>
+    <div v-if="isLoading" class="flex justify-center py-4">
+      <UIcon name="i-lucide-loader-circle" class="h-5 w-5 animate-spin text-[var(--app-faint)]" />
     </div>
 
     <template v-else>
@@ -26,8 +26,10 @@
         :disabled="isRunning"
         @click="run"
       >
-        <i v-if="isRunning" class="fa-solid fa-spinner fa-spin mr-1.5"></i>
-        <i v-else class="fa-solid fa-wand-magic-sparkles mr-1.5"></i>
+        <UIcon
+          :name="isRunning ? 'i-lucide-loader-circle' : 'i-lucide-wand-sparkles'"
+          :class="['h-4 w-4', isRunning && 'animate-spin']"
+        />
         Récupérer les données
       </button>
 
@@ -55,10 +57,10 @@
             <div v-for="(photo, i) in form.photos" :key="i" class="group relative">
               <img :src="photo" alt="" class="h-16 w-full rounded border border-[var(--app-line)] object-cover" />
               <button
-                class="absolute top-0.5 right-0.5 flex h-5 w-5 items-center justify-center rounded bg-[var(--app-overlay)] text-[10px] text-white opacity-0 transition-opacity group-hover:opacity-100"
+                class="absolute top-0.5 right-0.5 flex h-5 w-5 items-center justify-center rounded bg-[var(--app-overlay)] text-white opacity-0 transition-opacity group-hover:opacity-100"
                 @click="removePhoto(i)"
               >
-                <i class="fa-solid fa-xmark"></i>
+                <UIcon name="i-lucide-x" class="h-3 w-3" />
               </button>
             </div>
           </div>
@@ -79,7 +81,7 @@
             >
               {{ svc }}
               <button class="text-[var(--app-ink-soft)] hover:text-[var(--app-red)]" @click="removeService(i)">
-                <i class="fa-solid fa-xmark text-[10px]"></i>
+                <UIcon name="i-lucide-x" class="h-3 w-3" />
               </button>
             </span>
           </div>
@@ -108,7 +110,7 @@
                 <p class="line-clamp-2 text-[11px] text-[var(--app-ink-soft)]">{{ review.text }}</p>
               </div>
               <button class="text-[var(--app-ink-soft)] hover:text-[var(--app-red)]" @click="removeReview(i)">
-                <i class="fa-solid fa-xmark text-xs"></i>
+                <UIcon name="i-lucide-x" class="h-3.5 w-3.5" />
               </button>
             </div>
           </div>
@@ -126,7 +128,7 @@
               <span class="text-[var(--app-ink)]">{{ row.day }}</span>
               <span class="text-[var(--app-ink-soft)]">{{ row.hours }}</span>
               <button class="text-[var(--app-ink-soft)] hover:text-[var(--app-red)]" @click="removeHours(i)">
-                <i class="fa-solid fa-xmark text-[10px]"></i>
+                <UIcon name="i-lucide-x" class="h-3 w-3" />
               </button>
             </div>
           </div>
@@ -136,12 +138,14 @@
 
         <div class="flex gap-2 pt-1">
           <button class="btn-secondary flex-1 text-xs" :disabled="isRunning" @click="run">
-            <i v-if="isRunning" class="fa-solid fa-spinner fa-spin mr-1"></i>
-            <i v-else class="fa-solid fa-rotate-right mr-1"></i>
+            <UIcon
+              :name="isRunning ? 'i-lucide-loader-circle' : 'i-lucide-rotate-cw'"
+              :class="['h-3.5 w-3.5', isRunning && 'animate-spin']"
+            />
             Relancer
           </button>
           <button class="btn-primary flex-1 text-xs" :disabled="isSaving" @click="save">
-            <i v-if="isSaving" class="fa-solid fa-spinner fa-spin mr-1"></i>
+            <UIcon v-if="isSaving" name="i-lucide-loader-circle" class="h-3.5 w-3.5 animate-spin" />
             Enregistrer
           </button>
         </div>

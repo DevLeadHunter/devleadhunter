@@ -78,15 +78,31 @@
 }
 
 @layer components {
-  /* Legacy DevLeadHunter utility classes — kept for existing pages */
+  /* Legacy DevLeadHunter utility classes — themed via --app-* variables so
+     they follow the light/dark theme EVERYWHERE, including inside drawers and
+     modals teleported to <body> (outside the .app-theme scope). The variables
+     resolve on :root (paper) and html.dark (charbon), so no ancestor is
+     required. */
   .btn-primary {
-    @apply flex h-10 min-h-10 cursor-pointer items-center justify-center gap-2 rounded-lg bg-[#f9f9f9] px-4 text-sm font-medium text-[#050505] shadow-sm hover:bg-[#e4e4e4] hover:shadow-md;
-    transition: all 0.2s ease-in-out;
+    @apply flex h-9 min-h-9 cursor-pointer items-center justify-center gap-2 rounded-full px-4 text-sm font-semibold transition-all;
+    background-color: var(--app-btn-bg);
+    color: var(--app-btn-text);
+  }
+
+  .btn-primary:hover {
+    opacity: 0.88;
   }
 
   .btn-secondary {
-    @apply flex h-10 min-h-10 cursor-pointer items-center justify-center gap-2 rounded-lg border border-[#30363d]/50 bg-transparent px-4 text-sm font-medium text-[#f9f9f9] hover:border-[#30363d] hover:bg-[#1a1a1a];
-    transition: all 0.2s ease-in-out;
+    @apply flex h-9 min-h-9 cursor-pointer items-center justify-center gap-2 rounded-full border px-4 text-sm font-medium transition-all;
+    border-color: var(--app-line);
+    background-color: var(--app-surface);
+    color: var(--app-ink);
+  }
+
+  .btn-secondary:hover {
+    border-color: var(--app-ink-soft);
+    background-color: var(--app-surface-2);
   }
 
   .btn-primary .fa-solid,
@@ -100,15 +116,33 @@
   }
 
   .btn-danger {
-    @apply flex cursor-pointer items-center justify-center rounded bg-[#da3633] px-3 py-1.5 font-medium text-[#f9f9f9] transition-all hover:bg-[#DC4747];
+    @apply flex cursor-pointer items-center justify-center gap-2 rounded-full px-3 py-1.5 text-sm font-medium transition-all;
+    background-color: var(--app-red);
+    color: #fbf9f3;
+  }
+
+  .btn-danger:hover {
+    opacity: 0.88;
   }
 
   .input-field {
-    @apply h-10 min-h-10 w-full rounded border border-[#30363d] bg-[#050505] px-3 text-sm text-[#f9f9f9] placeholder-[#8b949e] transition-all focus:border-[#f9f9f9] focus:outline-none;
+    @apply h-9 min-h-9 w-full rounded-lg border px-3 text-sm transition-all focus:outline-none;
+    border-color: var(--app-line);
+    background-color: var(--app-surface);
+    color: var(--app-ink);
+  }
+
+  .input-field::placeholder {
+    color: var(--app-faint);
+  }
+
+  .input-field:focus {
+    border-color: var(--app-ink);
   }
 
   .input-field option {
-    @apply bg-[#1a1a1a] text-[#f9f9f9];
+    background-color: var(--app-surface);
+    color: var(--app-ink);
   }
 
   textarea.input-field {
@@ -116,19 +150,28 @@
   }
 
   .card {
-    @apply rounded-lg border border-[#30363d] bg-[#1a1a1a] p-4 shadow-sm;
+    @apply rounded-xl border p-4 shadow-none;
+    border-color: var(--app-line);
+    background-color: var(--app-surface);
   }
 
   .text-muted {
-    @apply text-[#8b949e];
+    color: var(--app-ink-soft);
   }
 
   .border-muted {
-    @apply border-[#30363d];
+    border-color: var(--app-line);
   }
 
   h1 {
-    @apply text-xl font-semibold text-[#f9f9f9];
+    @apply text-xl font-semibold;
+    color: var(--app-ink);
+  }
+
+  /* Le site vitrine (landing-theme) est en DA light fixe : ses titres ne doivent
+     jamais hériter de l'encre du thème app (html.dark pose --app-ink clair). */
+  .landing-theme h1 {
+    color: #1b1813;
   }
 
   .btn-sidebar-hover {
@@ -188,6 +231,10 @@
   --app-green-soft: rgba(47, 125, 78, 0.12);
   --app-red: #bf4d33;
   --app-red-soft: rgba(191, 77, 51, 0.12);
+  --app-blue: #4a6b8f;
+  --app-blue-soft: rgba(95, 127, 158, 0.16);
+  --app-violet: #7a63ad;
+  --app-violet-soft: rgba(141, 123, 184, 0.16);
   --app-overlay: rgba(29, 26, 20, 0.45);
   --app-btn-bg: #1d1a14;
   --app-btn-text: #fbf9f3;
@@ -214,10 +261,43 @@ html.dark {
   --app-green-soft: rgba(85, 168, 120, 0.15);
   --app-red: #d76a55;
   --app-red-soft: rgba(215, 106, 85, 0.15);
+  --app-blue: #85a8c8;
+  --app-blue-soft: rgba(133, 168, 200, 0.15);
+  --app-violet: #a894d6;
+  --app-violet-soft: rgba(168, 148, 214, 0.15);
   --app-overlay: rgba(0, 0, 0, 0.65);
   --app-btn-bg: #f0efeb;
   --app-btn-text: #131312;
   --app-shadow-soft: 0 10px 30px -18px rgba(0, 0, 0, 0.65);
+}
+
+/* Tokens Nuxt UI (--ui-*) remappés sur les tokens Atelier : les classes de
+   variant des composants (bg-default, text-highlighted, ring-accented…)
+   suivent ainsi les 2 thèmes sans se battre avec app.config. Redéclaré sous
+   html.dark car Nuxt UI redéfinit ses tokens sous `.dark` (spécificité
+   supérieure à :root) — les valeurs référencées basculent d'elles-mêmes. */
+:root,
+html.dark {
+  --ui-bg: var(--app-surface);
+  --ui-bg-muted: var(--app-surface-2);
+  --ui-bg-elevated: var(--app-surface-2);
+  --ui-bg-accented: var(--app-surface-2);
+  --ui-bg-inverted: var(--app-ink);
+  --ui-text-dimmed: var(--app-faint);
+  --ui-text-muted: var(--app-ink-soft);
+  --ui-text-toned: var(--app-ink-soft);
+  --ui-text: var(--app-ink);
+  --ui-text-highlighted: var(--app-ink);
+  --ui-text-inverted: var(--app-bg);
+  --ui-border: var(--app-line);
+  --ui-border-muted: var(--app-line-soft);
+  --ui-border-accented: var(--app-line);
+  --ui-border-inverted: var(--app-ink);
+  --ui-primary: var(--app-ink);
+  --ui-success: var(--app-green);
+  --ui-error: var(--app-red);
+  --ui-warning: var(--app-accent-ink);
+  --ui-info: var(--app-blue);
 }
 
 .app-theme {
@@ -342,86 +422,30 @@ html.dark {
     background-color: var(--app-accent-soft);
     color: var(--app-accent-ink);
   }
+
+  .app-badge--info {
+    background-color: var(--app-blue-soft);
+    color: var(--app-blue);
+  }
+
+  .app-badge--engaged {
+    background-color: var(--app-violet-soft);
+    color: var(--app-violet);
+  }
+
+  /* Signal fort (ex. email cliqué) : encre pleine, lisible sur les 2 thèmes. */
+  .app-badge--strong {
+    background-color: var(--app-ink);
+    color: var(--app-bg);
+  }
 }
 
-/* — Legacy class remap, scoped to the dashboard shell —
-   Every not-yet-migrated dashboard page keeps using .card/.btn-*/
-/* .input-field/.text-muted and instantly follows both themes.
-   Volontairement HORS @layer : Tailwind v4 tree-shake les sélecteurs
-   descendants déclarés dans @layer components, et le CSS non-layered
-   gagne la cascade sur les définitions legacy layerées. */
-.app-theme .card {
-  @apply rounded-xl border p-4 shadow-none;
-  border-color: var(--app-line);
-  background-color: var(--app-surface);
-}
-
-.app-theme .btn-primary {
-  @apply h-9 min-h-9 rounded-full px-4 text-sm font-semibold shadow-none;
-  background-color: var(--app-btn-bg);
-  color: var(--app-btn-text);
-}
-
-.app-theme .btn-primary:hover {
-  @apply shadow-none;
-  background-color: var(--app-btn-bg);
-  opacity: 0.88;
-}
-
-.app-theme .btn-secondary {
-  @apply h-9 min-h-9 rounded-full border px-4 text-sm font-medium;
-  border-color: var(--app-line);
-  background-color: var(--app-surface);
-  color: var(--app-ink);
-}
-
-.app-theme .btn-secondary:hover {
-  border-color: var(--app-ink-soft);
-  background-color: var(--app-surface-2);
-}
-
-.app-theme .btn-danger {
-  @apply rounded-full;
-  background-color: var(--app-red);
-  color: #fbf9f3;
-}
-
-.app-theme .btn-danger:hover {
-  background-color: var(--app-red);
-  opacity: 0.88;
-}
-
-.app-theme .input-field {
-  @apply rounded-lg;
-  border-color: var(--app-line);
-  background-color: var(--app-surface);
-  color: var(--app-ink);
-}
-
-.app-theme .input-field::placeholder {
-  color: var(--app-faint);
-}
-
-.app-theme .input-field:focus {
-  border-color: var(--app-ink);
-}
-
-.app-theme .input-field option {
-  background-color: var(--app-surface);
-  color: var(--app-ink);
-}
-
-.app-theme .text-muted {
-  color: var(--app-ink-soft);
-}
-
-.app-theme .border-muted {
-  border-color: var(--app-line);
-}
-
-.app-theme h1 {
-  color: var(--app-ink);
-}
+/* Les classes legacy (.card / .btn-* / .input-field / .text-muted / h1) sont
+   désormais thémées directement dans @layer components via les variables
+   --app-*, donc elles suivent le thème PARTOUT — y compris dans les drawers
+   et modales téléportés dans <body>, hors du scope .app-theme. Plus besoin de
+   remap scopé ici (c'était l'origine du bug « inputs noirs / boutons blanc sur
+   blanc » en light mode dans les drawers). */
 
 .app-theme .btn-sidebar-hover {
   background-color: var(--app-surface-2);

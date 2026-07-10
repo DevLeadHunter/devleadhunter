@@ -14,7 +14,7 @@
           <div
             class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-[var(--app-line)] bg-[var(--app-surface)]"
           >
-            <i class="fa-solid fa-cart-shopping text-sm text-[var(--app-ink-soft)]"></i>
+            <UIcon name="i-lucide-shopping-cart" class="h-4 w-4 text-[var(--app-ink-soft)]" />
           </div>
           <div class="min-w-0 flex-1">
             <div class="mb-1 flex flex-wrap items-center gap-1.5">
@@ -36,7 +36,7 @@
             class="flex h-7 w-7 shrink-0 items-center justify-center rounded text-[var(--app-ink-soft)] transition-colors hover:bg-[var(--app-surface)] hover:text-[var(--app-ink)]"
             @click="$emit('close')"
           >
-            <i class="fa-solid fa-xmark"></i>
+            <UIcon name="i-lucide-x" class="h-4 w-4" />
           </button>
         </div>
 
@@ -48,7 +48,7 @@
               <p class="text-[10px] font-semibold tracking-wider text-[var(--app-ink-soft)] uppercase">Client</p>
               <div class="flex items-center gap-3">
                 <div class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[var(--app-surface)]">
-                  <i class="fa-regular fa-envelope text-xs text-[var(--app-ink-soft)]"></i>
+                  <UIcon name="i-lucide-mail" class="h-3.5 w-3.5 text-[var(--app-ink-soft)]" />
                 </div>
                 <div class="min-w-0 flex-1">
                   <p class="text-[10px] text-[var(--app-ink-soft)]">Email</p>
@@ -57,7 +57,7 @@
               </div>
               <div v-if="order.domain" class="flex items-center gap-3">
                 <div class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[var(--app-surface)]">
-                  <i class="fa-solid fa-globe text-xs text-[var(--app-ink-soft)]"></i>
+                  <UIcon name="i-lucide-globe" class="h-3.5 w-3.5 text-[var(--app-ink-soft)]" />
                 </div>
                 <div class="min-w-0 flex-1">
                   <p class="text-[10px] text-[var(--app-ink-soft)]">Domaine</p>
@@ -78,7 +78,7 @@
                   title="Copier"
                   @click="copyLink"
                 >
-                  <i class="fa-regular fa-copy"></i>
+                  <UIcon name="i-lucide-copy" class="h-4 w-4" />
                 </button>
               </div>
               <p v-else class="text-sm text-[var(--app-faint)]">Aucun lien de paiement généré.</p>
@@ -104,7 +104,7 @@
                 sandbox=""
               ></iframe>
               <button class="btn-primary mt-3 w-full" :disabled="isSending" @click="handleSendEmail">
-                <i v-if="isSending" class="fa-solid fa-spinner fa-spin mr-1.5"></i>
+                <UIcon v-if="isSending" name="i-lucide-loader-circle" class="h-4 w-4 animate-spin" />
                 Envoyer l'email au client
               </button>
             </div>
@@ -179,28 +179,28 @@
                 :disabled="isBusy"
                 @click="handleGenerateLink"
               >
-                <i v-if="isBusy" class="fa-solid fa-spinner fa-spin mr-1.5"></i>
-                <i v-else class="fa-solid fa-link mr-1.5"></i>
+                <UIcon v-if="isBusy" name="i-lucide-loader-circle" class="h-4 w-4 animate-spin" />
+                <UIcon v-else name="i-lucide-link" class="h-4 w-4" />
                 Générer le lien de paiement
               </button>
               <button v-else class="btn-secondary flex-1" :disabled="isBusy" @click="loadEmailPreview">
-                <i class="fa-regular fa-eye mr-1.5"></i>Aperçu de l'email
+                <UIcon name="i-lucide-eye" class="h-4 w-4" />Aperçu de l'email
               </button>
             </div>
             <div class="flex gap-2">
               <button v-if="!order.paid_at" class="btn-secondary flex-1" :disabled="isBusy" @click="handleMarkPaid">
-                <i class="fa-solid fa-circle-check mr-1.5"></i>Marquer payé
+                <UIcon name="i-lucide-circle-check" class="h-4 w-4" />Marquer payé
               </button>
               <button class="btn-secondary flex-1" :disabled="isBusy" @click="handleDeploy">
-                <i class="fa-solid fa-rocket mr-1.5"></i>Mettre en ligne
+                <UIcon name="i-lucide-rocket" class="h-4 w-4" />Mettre en ligne
               </button>
             </div>
             <div class="flex gap-2">
               <button class="btn-secondary flex-1" @click="startEdit">
-                <i class="fa-regular fa-pen-to-square mr-1.5"></i>Modifier
+                <UIcon name="i-lucide-square-pen" class="h-4 w-4" />Modifier
               </button>
               <button class="btn-danger flex-1" @click="showDeleteConfirm = true">
-                <i class="fa-regular fa-trash-can mr-1.5"></i>Supprimer
+                <UIcon name="i-lucide-trash-2" class="h-4 w-4" />Supprimer
               </button>
             </div>
           </div>
@@ -210,7 +210,7 @@
               Annuler
             </button>
             <button type="submit" form="order-edit-form" class="btn-primary flex-1" :disabled="isBusy">
-              <i v-if="isBusy" class="fa-solid fa-spinner fa-spin mr-1.5"></i>Enregistrer
+              <UIcon v-if="isBusy" name="i-lucide-loader-circle" class="h-4 w-4 animate-spin" />Enregistrer
             </button>
           </div>
         </div>

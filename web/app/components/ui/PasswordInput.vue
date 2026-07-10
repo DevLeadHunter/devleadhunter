@@ -6,12 +6,12 @@
       :type="showPassword ? 'text' : 'password'"
       :required="required"
       :placeholder="placeholder"
-      :class="['input-field pr-10', hasError && 'border-[#DC4747]']"
+      :class="['input-field pr-10', hasError && 'border-[var(--app-red)]']"
       @input="$emit('update:modelValue', ($event.target as HTMLInputElement).value)"
     />
     <button
       type="button"
-      class="absolute top-1/2 right-3 -translate-y-1/2 cursor-pointer text-[#8b949e] transition-colors hover:text-[#f9f9f9]"
+      class="absolute top-1/2 right-3 -translate-y-1/2 cursor-pointer text-[var(--app-ink-soft)] transition-colors hover:text-[var(--app-ink)]"
       :aria-label="showPassword ? 'Hide password' : 'Show password'"
       @click="showPassword = !showPassword"
     >

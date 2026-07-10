@@ -26,11 +26,11 @@
       <div class="space-y-4 p-5">
         <div class="flex items-center justify-between text-xs text-[var(--app-ink-soft)]">
           <span class="flex items-center gap-1.5">
-            <i class="fa-solid fa-clock"></i>
+            <UIcon name="i-lucide-clock" class="h-3.5 w-3.5" />
             Expire {{ formatDate(site.expires_at) }}
           </span>
           <span v-if="site.city" class="flex items-center gap-1.5">
-            <i class="fa-solid fa-location-dot"></i>
+            <UIcon name="i-lucide-map-pin" class="h-3.5 w-3.5" />
             {{ site.city }}
           </span>
         </div>

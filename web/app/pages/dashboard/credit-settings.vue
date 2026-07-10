@@ -2,7 +2,7 @@
   <div>
     <!-- Header -->
     <div class="mb-6 flex items-center justify-between">
-      <h1 class="text-xl font-semibold text-[var(--app-ink)]">Credit Settings</h1>
+      <h1 class="text-xl font-semibold text-[var(--app-ink)]">Paramètres des crédits</h1>
     </div>
 
     <!-- Credit Settings Form -->
@@ -13,7 +13,7 @@
           <!-- Price per Credit -->
           <div>
             <label for="price-per-credit" class="mb-2 block text-sm font-medium text-[var(--app-ink)]">
-              Price per Credit (EUR)
+              Prix par crédit (EUR)
             </label>
             <div class="relative">
               <span class="absolute top-1/2 left-3 -translate-y-1/2 text-[var(--app-ink-soft)]">€</span>
@@ -28,13 +28,13 @@
                 class="input-field pl-8"
               />
             </div>
-            <p class="mt-1.5 text-xs text-[var(--app-ink-soft)]">Unit price of one credit in euros</p>
+            <p class="mt-1.5 text-xs text-[var(--app-ink-soft)]">Prix unitaire d'un crédit en euros</p>
           </div>
 
           <!-- Credits per Search -->
           <div>
             <label for="credits-per-search" class="mb-2 block text-sm font-medium text-[var(--app-ink)]">
-              Credits per Search
+              Crédits par recherche
             </label>
             <input
               id="credits-per-search"
@@ -46,14 +46,14 @@
               class="input-field"
             />
             <p class="mt-1.5 text-xs text-[var(--app-ink-soft)]">
-              Number of credits required to launch a search (minimum)
+              Nombre de crédits requis pour lancer une recherche (minimum)
             </p>
           </div>
 
           <!-- Credits per Result -->
           <div>
             <label for="credits-per-result" class="mb-2 block text-sm font-medium text-[var(--app-ink)]">
-              Credits per Result
+              Crédits par résultat
             </label>
             <input
               id="credits-per-result"
@@ -64,13 +64,13 @@
               placeholder="1"
               class="input-field"
             />
-            <p class="mt-1.5 text-xs text-[var(--app-ink-soft)]">Number of credits required per prospect found</p>
+            <p class="mt-1.5 text-xs text-[var(--app-ink-soft)]">Nombre de crédits requis par prospect trouvé</p>
           </div>
 
           <!-- Credits per Email -->
           <div>
             <label for="credits-per-email" class="mb-2 block text-sm font-medium text-[var(--app-ink)]">
-              Credits per Email
+              Crédits par email
             </label>
             <input
               id="credits-per-email"
@@ -81,13 +81,13 @@
               placeholder="3"
               class="input-field"
             />
-            <p class="mt-1.5 text-xs text-[var(--app-ink-soft)]">Number of credits required to send an email</p>
+            <p class="mt-1.5 text-xs text-[var(--app-ink-soft)]">Nombre de crédits requis pour envoyer un email</p>
           </div>
 
           <!-- Free Credits on Signup -->
           <div>
             <label for="free-credits" class="mb-2 block text-sm font-medium text-[var(--app-ink)]">
-              Free Credits on Signup
+              Crédits offerts à l'inscription
             </label>
             <input
               id="free-credits"
@@ -98,13 +98,13 @@
               placeholder="15"
               class="input-field"
             />
-            <p class="mt-1.5 text-xs text-[var(--app-ink-soft)]">Number of credits offered when a new user registers</p>
+            <p class="mt-1.5 text-xs text-[var(--app-ink-soft)]">Nombre de crédits offerts à chaque nouvel inscrit</p>
           </div>
 
           <!-- Minimum Credits Purchase -->
           <div>
             <label for="minimum-credits-purchase" class="mb-2 block text-sm font-medium text-[var(--app-ink)]">
-              Minimum Credits Purchase
+              Achat minimum de crédits
             </label>
             <input
               id="minimum-credits-purchase"
@@ -115,22 +115,22 @@
               placeholder="10"
               class="input-field"
             />
-            <p class="mt-1.5 text-xs text-[var(--app-ink-soft)]">Minimum number of credits that can be purchased</p>
+            <p class="mt-1.5 text-xs text-[var(--app-ink-soft)]">Nombre minimum de crédits achetables en une fois</p>
           </div>
         </div>
 
         <!-- Form Actions -->
         <div class="flex flex-col gap-3 border-t border-[var(--app-line)] pt-4 sm:flex-row sm:justify-end">
           <button type="button" class="btn-secondary flex-1 sm:flex-none" :disabled="isSaving" @click="resetForm">
-            Reset
+            Réinitialiser
           </button>
           <button
             type="submit"
             class="btn-primary flex-1 cursor-pointer sm:flex-none"
             :disabled="isSaving || !hasChanges"
           >
-            <span v-if="isSaving">Saving...</span>
-            <span v-else>Save Changes</span>
+            <span v-if="isSaving">Enregistrement…</span>
+            <span v-else>Enregistrer</span>
           </button>
         </div>
       </form>
@@ -149,7 +149,7 @@
     <!-- Error State -->
     <div v-if="error && !isLoading" class="card mt-6 border border-[var(--app-red)]/30 bg-[var(--app-red)]/10">
       <div class="flex items-center gap-2 text-[var(--app-red)]">
-        <i class="fa-solid fa-circle-exclamation"></i>
+        <UIcon name="i-lucide-circle-alert" class="h-4 w-4 shrink-0" />
         <p>{{ error }}</p>
       </div>
     </div>
@@ -259,7 +259,7 @@ const loadCreditSettings = async (): Promise<void> => {
     // Update original form for comparison
     originalForm.value = { ...form.value }
   } catch (err) {
-    const errorMessage = err instanceof Error ? err.message : 'Failed to load credit settings'
+    const errorMessage = err instanceof Error ? err.message : 'Erreur lors du chargement des paramètres de crédits'
     error.value = errorMessage
     toast.error(errorMessage)
   } finally {
@@ -324,9 +324,9 @@ const handleSubmit = async (): Promise<void> => {
     }
     originalForm.value = { ...form.value }
 
-    toast.success('Credit settings updated successfully')
+    toast.success('Paramètres des crédits mis à jour')
   } catch (err) {
-    const errorMessage = err instanceof Error ? err.message : 'Failed to update credit settings'
+    const errorMessage = err instanceof Error ? err.message : 'Erreur lors de la mise à jour des paramètres'
     error.value = errorMessage
     toast.error(errorMessage)
   } finally {

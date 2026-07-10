@@ -52,8 +52,8 @@
             <div class="min-w-0 flex-1">
               <p class="truncate text-sm font-medium text-[var(--app-ink)]">{{ prospect.name }}</p>
               <p v-if="prospect.city" class="text-muted mt-0.5 truncate text-xs">{{ prospect.city }}</p>
-              <p v-if="prospect.phone" class="text-muted mt-1 truncate text-xs">
-                <i class="fa-solid fa-phone mr-1"></i>{{ prospect.phone }}
+              <p v-if="prospect.phone" class="text-muted mt-1 flex items-center gap-1.5 truncate text-xs">
+                <UIcon name="i-lucide-phone" class="h-3 w-3 shrink-0" />{{ prospect.phone }}
               </p>
             </div>
             <span class="text-muted shrink-0 text-[10px] tracking-wide uppercase">

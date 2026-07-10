@@ -4,7 +4,7 @@
     :disabled="disabled || loading"
     :class="[buttonClass, sizeClass, props.class, (disabled || loading) && 'cursor-not-allowed opacity-50']"
   >
-    <i v-if="loading" class="fa-solid fa-circle-notch fa-spin text-xs" aria-hidden="true"></i>
+    <UIcon v-if="loading" name="i-lucide-loader-circle" class="h-4 w-4 animate-spin" aria-hidden="true" />
     <slot />
   </button>
 </template>

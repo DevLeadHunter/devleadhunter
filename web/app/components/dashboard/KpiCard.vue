@@ -13,7 +13,7 @@
         class="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-lg"
         :style="{ backgroundColor: hexAlpha(hex, 0.12), color: hex }"
       >
-        <i :class="icon" class="text-base"></i>
+        <UIcon :name="icon" class="h-5 w-5" />
       </div>
 
       <span
@@ -21,7 +21,7 @@
         class="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-semibold"
         :style="trendStyle"
       >
-        <i :class="trendIcon" class="text-[9px]"></i>
+        <UIcon :name="trendIcon" class="h-3 w-3" />
         {{ trendLabel || '' }}
       </span>
     </div>
@@ -85,11 +85,11 @@ const NuxtLink = resolveComponent('NuxtLink')
 /** Resolved accent hex color. */
 const hex: ComputedRef<string> = computed((): string => accentHex(props.accent))
 
-/** Font Awesome icon for the current trend direction. */
+/** Lucide icon for the current trend direction. */
 const trendIcon: ComputedRef<string> = computed((): string => {
-  if (props.trend === 'up') return 'fa-solid fa-arrow-trend-up'
-  if (props.trend === 'down') return 'fa-solid fa-arrow-trend-down'
-  return 'fa-solid fa-minus'
+  if (props.trend === 'up') return 'i-lucide-trending-up'
+  if (props.trend === 'down') return 'i-lucide-trending-down'
+  return 'i-lucide-minus'
 })
 
 /** Inline style (color + tinted background) for the trend chip. */

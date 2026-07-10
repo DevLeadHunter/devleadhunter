@@ -2,22 +2,22 @@
   <div>
     <!-- Header -->
     <div class="mb-6 flex items-center justify-between">
-      <h1 class="text-xl font-semibold text-[var(--app-ink)]">Buy Credits</h1>
+      <h1 class="text-xl font-semibold text-[var(--app-ink)]">Acheter des crédits</h1>
     </div>
 
     <!-- Success Message -->
     <div v-if="showSuccess" class="card mb-6 border border-[var(--app-green)]/30 bg-[var(--app-green)]/10">
       <div class="flex items-center gap-2 text-[var(--app-green)]">
-        <i class="fa-solid fa-circle-check"></i>
-        <p>Payment successful! Your credits have been added to your account.</p>
+        <UIcon name="i-lucide-circle-check" class="h-4 w-4" />
+        <p>Paiement réussi ! Vos crédits ont été ajoutés à votre compte.</p>
       </div>
     </div>
 
     <!-- Cancel Message -->
     <div v-if="showCancel" class="card mb-6 border border-[var(--app-red)]/30 bg-[var(--app-red)]/10">
       <div class="flex items-center gap-2 text-[var(--app-red)]">
-        <i class="fa-solid fa-circle-xmark"></i>
-        <p>Payment was cancelled. No charges were made.</p>
+        <UIcon name="i-lucide-circle-x" class="h-4 w-4" />
+        <p>Paiement annulé. Aucun débit n'a été effectué.</p>
       </div>
     </div>
 
@@ -26,7 +26,7 @@
       <form @submit.prevent="handlePurchase">
         <!-- Credits Input -->
         <div class="mb-6">
-          <label for="credits" class="mb-2 block text-sm font-medium text-[var(--app-ink)]"> Number of Credits </label>
+          <label for="credits" class="mb-2 block text-sm font-medium text-[var(--app-ink)]"> Nombre de crédits </label>
           <input
             id="credits"
             v-model.number="credits"
@@ -34,7 +34,7 @@
             :min="creditSettings?.minimum_credits_purchase || 1"
             step="1"
             required
-            placeholder="Enter number of credits"
+            placeholder="Saisissez un nombre de crédits"
             class="input-field"
           />
           <p
@@ -58,27 +58,27 @@
           class="mb-6 rounded border border-[var(--app-line)] bg-[var(--app-bg)] p-4"
         >
           <div class="mb-2 flex items-center justify-between">
-            <span class="text-sm text-[var(--app-ink-soft)]">Credits:</span>
+            <span class="text-sm text-[var(--app-ink-soft)]">Crédits :</span>
             <span class="text-sm font-medium text-[var(--app-ink)]">{{ credits }}</span>
           </div>
           <div class="mb-2 flex items-center justify-between">
-            <span class="text-sm text-[var(--app-ink-soft)]">Price per credit:</span>
+            <span class="text-sm text-[var(--app-ink-soft)]">Prix par crédit :</span>
             <span class="text-sm font-medium text-[var(--app-ink)]"
-              >€{{ creditSettings.price_per_credit.toFixed(2) }}</span
+              >{{ creditSettings.price_per_credit.toFixed(2) }} €</span
             >
           </div>
           <div class="flex items-center justify-between border-t border-[var(--app-line)] pt-2">
-            <span class="text-base font-semibold text-[var(--app-ink)]">Total:</span>
-            <span class="text-lg font-bold text-[var(--app-ink)]">€{{ totalPrice.toFixed(2) }}</span>
+            <span class="text-base font-semibold text-[var(--app-ink)]">Total :</span>
+            <span class="text-lg font-bold text-[var(--app-ink)]">{{ totalPrice.toFixed(2) }} €</span>
           </div>
         </div>
 
         <!-- Current Balance Info -->
         <div v-if="currentBalance !== null" class="mb-6 rounded border border-[var(--app-line)] bg-[var(--app-bg)] p-4">
           <div class="flex items-center justify-between">
-            <span class="text-sm text-[var(--app-ink-soft)]">Current credits available:</span>
+            <span class="text-sm text-[var(--app-ink-soft)]">Crédits disponibles actuellement :</span>
             <span class="text-sm font-medium text-[var(--app-ink)]">
-              {{ currentBalance === -1 ? 'Unlimited' : currentBalance }}
+              {{ currentBalance === -1 ? 'Illimités' : currentBalance }}
             </span>
           </div>
         </div>
@@ -90,8 +90,8 @@
             class="btn-primary cursor-pointer"
             :disabled="isProcessing || !creditSettings || credits < creditSettings.minimum_credits_purchase"
           >
-            <span v-if="isProcessing">Processing...</span>
-            <span v-else>Proceed to Payment</span>
+            <span v-if="isProcessing">Redirection…</span>
+            <span v-else>Procéder au paiement</span>
           </button>
         </div>
       </form>
@@ -109,7 +109,7 @@
     <!-- Error State -->
     <div v-if="error && !isLoading" class="card mt-6 border border-[var(--app-red)]/30 bg-[var(--app-red)]/10">
       <div class="flex items-center gap-2 text-[var(--app-red)]">
-        <i class="fa-solid fa-circle-exclamation"></i>
+        <UIcon name="i-lucide-triangle-alert" class="h-4 w-4" />
         <p>{{ error }}</p>
       </div>
     </div>
@@ -194,7 +194,7 @@ const loadCreditSettings = async (): Promise<void> => {
     error.value = null
     creditSettings.value = await creditSettingsService.getCreditSettings()
   } catch (err) {
-    const errorMessage = err instanceof Error ? err.message : 'Failed to load credit settings'
+    const errorMessage = err instanceof Error ? err.message : 'Erreur lors du chargement des paramètres de crédits'
     error.value = errorMessage
     toast.error(errorMessage)
   } finally {
@@ -254,7 +254,7 @@ const handlePurchase = async (): Promise<void> => {
       throw new Error('No checkout URL returned from server')
     }
   } catch (err) {
-    const errorMessage = err instanceof Error ? err.message : 'Failed to create checkout session'
+    const errorMessage = err instanceof Error ? err.message : 'Erreur lors de la création de la session de paiement'
     error.value = errorMessage
     toast.error(errorMessage)
     isProcessing.value = false

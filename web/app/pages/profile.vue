@@ -1,12 +1,12 @@
 <template>
   <div class="max-w-2xl">
-    <h1 class="mb-4 text-xl font-semibold text-[var(--app-ink)]">Profile</h1>
+    <h1 class="mb-4 text-xl font-semibold text-[var(--app-ink)]">Profil</h1>
 
     <div class="card">
       <form class="space-y-4" @submit.prevent="handleSubmit">
         <!-- Name -->
         <div>
-          <label for="name" class="text-muted mb-1.5 block text-xs font-medium"> Name </label>
+          <label for="name" class="text-muted mb-1.5 block text-xs font-medium"> Nom </label>
           <input id="name" v-model="name" type="text" required class="input-field" />
         </div>
 
@@ -19,11 +19,11 @@
         <!-- Save Button -->
         <div class="flex justify-end gap-3 pt-2">
           <NuxtLink to="/dashboard" class="btn-secondary">
-            <span> Cancel </span>
+            <span> Annuler </span>
           </NuxtLink>
           <button type="submit" :disabled="isLoading" class="btn-primary">
-            <span v-if="isLoading">Saving...</span>
-            <span v-else>Save Changes</span>
+            <span v-if="isLoading">Enregistrement…</span>
+            <span v-else>Enregistrer</span>
           </button>
         </div>
       </form>
@@ -87,9 +87,9 @@ const handleSubmit = async (): Promise<void> => {
       email: email.value,
     })
 
-    toast.success('Profile updated successfully')
+    toast.success('Profil mis à jour')
   } catch {
-    toast.error('Failed to update profile')
+    toast.error('Erreur lors de la mise à jour du profil')
   }
 }
 </script>

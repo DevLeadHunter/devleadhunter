@@ -31,7 +31,7 @@
               </span>
               <span
                 v-if="campaign.ab_template_id_b"
-                class="inline-flex items-center gap-1 rounded-full bg-[#8d7bb8]/15 px-2 py-0.5 text-[10px] font-semibold text-[#8d7bb8]"
+                class="inline-flex items-center gap-1 rounded-full bg-[var(--app-violet-soft)] px-2 py-0.5 text-[10px] font-semibold text-[var(--app-violet)]"
               >
                 <UIcon name="i-lucide-flask-conical" class="h-3 w-3" /> A/B
               </span>
@@ -109,7 +109,7 @@
             {{ tab.label }}
             <span
               v-if="tab.key === 'queue' && queueData?.pending_count"
-              class="rounded-full bg-[#1f3a5c] px-1.5 py-0.5 text-[10px] font-semibold text-[var(--app-accent-ink)]"
+              class="rounded-full bg-[var(--app-blue-soft)] px-1.5 py-0.5 text-[10px] font-semibold text-[var(--app-blue)]"
             >
               {{ queueData.pending_count }}
             </span>
@@ -158,7 +158,7 @@
               <span
                 :class="[
                   'relative inline-block h-5 w-9 rounded-full transition-colors',
-                  settingsForm.enable_ab ? 'bg-[#8d7bb8]' : 'bg-[var(--app-surface-2)]',
+                  settingsForm.enable_ab ? 'bg-[var(--app-violet)]' : 'bg-[var(--app-surface-2)]',
                 ]"
               >
                 <span
@@ -177,13 +177,13 @@
                 v-if="settingsForm.enable_ab"
                 class="mb-1.5 flex items-center gap-1.5 text-xs font-medium text-[var(--app-accent-ink)]"
               >
-                <span class="rounded bg-[#1f3a5c] px-1.5 py-0.5 font-bold">A</span> Variante A
+                <span class="rounded bg-[var(--app-accent-soft)] px-1.5 py-0.5 font-bold">A</span> Variante A
               </label>
               <UiTemplateSelect v-model="settingsForm.template_id" :templates="templates" />
             </div>
             <div v-if="settingsForm.enable_ab">
-              <label class="mb-1.5 flex items-center gap-1.5 text-xs font-medium text-[#8d7bb8]">
-                <span class="rounded bg-[#8d7bb8]/15 px-1.5 py-0.5 font-bold">B</span> Variante B
+              <label class="mb-1.5 flex items-center gap-1.5 text-xs font-medium text-[var(--app-violet)]">
+                <span class="rounded bg-[var(--app-violet-soft)] px-1.5 py-0.5 font-bold">B</span> Variante B
               </label>
               <UiTemplateSelect v-model="settingsForm.ab_template_id_b" :templates="templates" />
             </div>
@@ -191,10 +191,10 @@
 
           <div
             v-if="settingsForm.enable_ab"
-            class="mt-3 flex items-start gap-2 rounded-lg border border-[#8d7bb8]/20 bg-[#8d7bb8]/5 px-3 py-2"
+            class="mt-3 flex items-start gap-2 rounded-lg border border-[var(--app-violet)]/20 bg-[var(--app-violet-soft)] px-3 py-2"
           >
-            <UIcon name="i-lucide-info" class="mt-0.5 h-3.5 w-3.5 shrink-0 text-[#8d7bb8]" />
-            <p class="text-xs text-[#8d7bb8]">
+            <UIcon name="i-lucide-info" class="mt-0.5 h-3.5 w-3.5 shrink-0 text-[var(--app-violet)]" />
+            <p class="text-xs text-[var(--app-violet)]">
               Distribution 50/50 automatique — chaque variante part à la moitié des prospects.
             </p>
           </div>
@@ -231,7 +231,7 @@
               class="relative flex gap-3 rounded-lg border border-[var(--app-line)] bg-[var(--app-surface)] p-3"
             >
               <div
-                class="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[#3a2a0a] text-xs font-bold text-[var(--app-accent)]"
+                class="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[var(--app-accent-soft)] text-xs font-bold text-[var(--app-accent-ink)]"
               >
                 {{ idx + 1 }}
               </div>
@@ -311,20 +311,20 @@
               :key="v.variant"
               :class="[
                 'rounded-xl border-2 bg-[var(--app-surface)] p-5',
-                v.variant === 'A' ? 'border-[var(--app-accent-ink)]/30' : 'border-[#8d7bb8]/30',
+                v.variant === 'A' ? 'border-[var(--app-accent-ink)]/30' : 'border-[var(--app-violet)]/30',
               ]"
             >
               <div class="mb-4 flex items-center justify-between">
                 <span
                   :class="[
                     'flex items-center gap-2 text-base font-bold',
-                    v.variant === 'A' ? 'text-[var(--app-accent-ink)]' : 'text-[#8d7bb8]',
+                    v.variant === 'A' ? 'text-[var(--app-accent-ink)]' : 'text-[var(--app-violet)]',
                   ]"
                 >
                   <span
                     :class="[
                       'flex h-6 w-6 items-center justify-center rounded-lg text-sm',
-                      v.variant === 'A' ? 'bg-[#1f3a5c]' : 'bg-[#8d7bb8]/15',
+                      v.variant === 'A' ? 'bg-[var(--app-accent-soft)]' : 'bg-[var(--app-violet-soft)]',
                     ]"
                     >{{ v.variant }}</span
                   >
@@ -332,7 +332,7 @@
                 </span>
                 <span
                   v-if="isWinner(v)"
-                  class="inline-flex items-center gap-1 rounded-full bg-[#1a3a2a] px-2 py-0.5 text-xs font-semibold text-[var(--app-green)]"
+                  class="inline-flex items-center gap-1 rounded-full bg-[var(--app-green-soft)] px-2 py-0.5 text-xs font-semibold text-[var(--app-green)]"
                 >
                   <UIcon name="i-lucide-trophy" class="h-3 w-3" /> Gagnant
                 </span>
@@ -360,7 +360,7 @@
                   <div
                     :class="[
                       'h-2 rounded-full transition-all',
-                      v.variant === 'A' ? 'bg-[var(--app-accent-ink)]' : 'bg-[#8d7bb8]',
+                      v.variant === 'A' ? 'bg-[var(--app-accent-ink)]' : 'bg-[var(--app-violet)]',
                     ]"
                     :style="`width: ${Math.min(v.open_rate, 100)}%`"
                   />
@@ -446,8 +446,8 @@
                     :class="[
                       'rounded px-1.5 py-0.5 text-xs font-bold',
                       prospect.ab_variant === 'A'
-                        ? 'bg-[#1f3a5c] text-[var(--app-accent-ink)]'
-                        : 'bg-[#8d7bb8]/15 text-[#8d7bb8]',
+                        ? 'bg-[var(--app-accent-soft)] text-[var(--app-accent-ink)]'
+                        : 'bg-[var(--app-violet-soft)] text-[var(--app-violet)]',
                     ]"
                     >{{ prospect.ab_variant }}</span
                   >
@@ -514,8 +514,8 @@
                     :class="[
                       'rounded px-1.5 py-0.5 text-xs font-medium',
                       item.queue_type === 'initial'
-                        ? 'bg-[#1f3a5c] text-[var(--app-accent-ink)]'
-                        : 'bg-[#3a2a0a] text-[var(--app-accent)]',
+                        ? 'bg-[var(--app-blue-soft)] text-[var(--app-blue)]'
+                        : 'bg-[var(--app-accent-soft)] text-[var(--app-accent-ink)]',
                     ]"
                   >
                     {{ item.queue_type === 'initial' ? 'J1' : `Relance ${item.follow_up_index}` }}
@@ -524,7 +524,7 @@
                     v-if="item.ab_variant"
                     :class="[
                       'ml-1 text-[10px] font-bold',
-                      item.ab_variant === 'A' ? 'text-[var(--app-accent-ink)]' : 'text-[#8d7bb8]',
+                      item.ab_variant === 'A' ? 'text-[var(--app-accent-ink)]' : 'text-[var(--app-violet)]',
                     ]"
                     >{{ item.ab_variant }}</span
                   >
@@ -688,15 +688,15 @@ const STATUS_LABELS: Record<string, string> = {
 }
 const STATUS_STYLE: Record<string, string> = {
   draft: 'bg-[var(--app-surface-2)] text-[var(--app-ink-soft)]',
-  active: 'bg-[#1a3a2a] text-[var(--app-green)]',
-  completed: 'bg-[#1f3a5c] text-[var(--app-accent-ink)]',
-  paused: 'bg-[#3a2a0a] text-[var(--app-accent)]',
-  cancelled: 'bg-[#3a1a1a] text-[var(--app-red)]',
+  active: 'bg-[var(--app-green-soft)] text-[var(--app-green)]',
+  completed: 'bg-[var(--app-blue-soft)] text-[var(--app-blue)]',
+  paused: 'bg-[var(--app-accent-soft)] text-[var(--app-accent-ink)]',
+  cancelled: 'bg-[var(--app-red-soft)] text-[var(--app-red)]',
 }
 const STATUS_DOT: Record<string, string> = {
   draft: 'bg-[var(--app-ink-soft)]',
   active: 'bg-[var(--app-green)]',
-  completed: 'bg-[var(--app-accent-ink)]',
+  completed: 'bg-[var(--app-blue)]',
   paused: 'bg-[var(--app-accent)]',
   cancelled: 'bg-[var(--app-red)]',
 }
@@ -708,11 +708,11 @@ const QUEUE_STATUS_LABELS: Record<string, string> = {
   failed: 'Échoué',
 }
 const QUEUE_STATUS_STYLE: Record<string, string> = {
-  pending: 'bg-[#1f3a5c] text-[var(--app-accent-ink)]',
-  sending: 'bg-[#3a2a0a] text-[var(--app-accent)]',
-  sent: 'bg-[#1a3a2a] text-[var(--app-green)]',
+  pending: 'bg-[var(--app-blue-soft)] text-[var(--app-blue)]',
+  sending: 'bg-[var(--app-accent-soft)] text-[var(--app-accent-ink)]',
+  sent: 'bg-[var(--app-green-soft)] text-[var(--app-green)]',
   skipped: 'bg-[var(--app-surface-2)] text-[var(--app-ink-soft)]',
-  failed: 'bg-[#3a1a1a] text-[var(--app-red)]',
+  failed: 'bg-[var(--app-red-soft)] text-[var(--app-red)]',
 }
 
 // ─── State ────────────────────────────────────────────────────────────────────
@@ -770,8 +770,13 @@ const metricCards: ComputedRef<Array<{ label: string; value: number | string; ic
     return [
       { label: 'Envoyés', value: s.total_emails_sent, icon: 'i-lucide-send', color: 'text-[var(--app-ink)]' },
       { label: 'Délivrés', value: s.emails_delivered, icon: 'i-lucide-circle-check', color: 'text-[var(--app-green)]' },
-      { label: 'Ouverts', value: s.emails_opened, icon: 'i-lucide-mail-open', color: 'text-[#8d7bb8]' },
-      { label: 'Cliqués', value: s.emails_clicked, icon: 'i-lucide-mouse-pointer-click', color: 'text-[#c4b5fd]' },
+      { label: 'Ouverts', value: s.emails_opened, icon: 'i-lucide-mail-open', color: 'text-[var(--app-violet)]' },
+      {
+        label: 'Cliqués',
+        value: s.emails_clicked,
+        icon: 'i-lucide-mouse-pointer-click',
+        color: 'text-[var(--app-ink)]',
+      },
       { label: 'Taux ouv.', value: `${s.open_rate}%`, icon: 'i-lucide-eye', color: 'text-[var(--app-accent-ink)]' },
       { label: 'Taux clic', value: `${s.click_rate}%`, icon: 'i-lucide-pointer', color: 'text-[var(--app-accent)]' },
     ]

@@ -126,7 +126,7 @@
         }}
       </p>
       <NuxtLink to="/dashboard/search-prospects" class="app-btn-primary mt-6 inline-flex">
-        Rechercher des prospects
+        Trouver des prospects
       </NuxtLink>
     </div>
 
@@ -179,19 +179,6 @@
       confirm-text="Supprimer"
       cancel-text="Annuler"
       @confirm="confirmDeleteProspect"
-    />
-
-    <!-- Prospect detail drawer -->
-    <UiProspectDrawer
-      :open="drawerOpen"
-      :prospect="drawerProspect"
-      @close="drawerOpen = false"
-      @updated="handleProspectUpdated"
-      @deleted="handleProspectDeleted"
-      @add-to-campaign="handleAddToCampaign"
-      @send-email="handleSendEmail"
-      @mark-as-sold="handleMarkAsSold"
-      @toggle-contacted="handleToggleContacted"
     />
 
     <!-- Bulk action bar (visible when prospects are selected) -->
@@ -255,9 +242,9 @@
 <script lang="ts" setup>
 import { ref, computed, watch, onMounted } from 'vue'
 import type { Prospect } from '~/types'
-import { deleteProspect as deleteProspectApi, listProspects, updateProspect } from '~/services/prospectsService'
-import { createOrder } from '~/services/ordersService'
+import { deleteProspect as deleteProspectApi, listProspects } from '~/services/prospectsService'
 import { runBulkEnrichment } from '~/services/enrichmentService'
+import { useDrawerStackStore } from '~/stores/drawerStack'
 import type { BulkGenerateResult } from '~/services/demoSiteService'
 import { useToast } from '~/composables/useToast'
 
@@ -294,8 +281,8 @@ const prospectToDelete = ref<Prospect | null>(null)
 const deleteConfirmModal = ref<{ open: () => void; close: () => void } | null>(null)
 
 // Detail drawer
-const drawerOpen = ref(false)
-const drawerProspect = ref<Prospect | null>(null)
+/** Persistent drawer stack (the prospect drawer is hosted by the layout). */
+const drawerStack = useDrawerStackStore()
 
 const toast = useToast()
 
@@ -471,71 +458,36 @@ async function bulkEnrich(): Promise<void> {
   }
 }
 
-// ─── Drawer ───────────────────────────────────────────────────────────────────
+// ─── Drawer (persistent stack hosted by the layout) ──────────────────────────
 
 /** Open the detail drawer for a given prospect. */
 function openDrawer(prospect: Prospect): void {
-  drawerProspect.value = prospect
-  drawerOpen.value = true
+  drawerStack.push({ kind: 'prospect', prospect })
 }
 
-/** Drawer emitted 'updated' — patch the local list in place. */
+/** Drawer notified 'updated' — patch the local list in place. */
 function handleProspectUpdated(updated: Prospect): void {
   const idx = prospects.value.findIndex((p) => p.id === updated.id)
   if (idx !== -1) prospects.value.splice(idx, 1, updated)
-  // Keep the drawer open with fresh data
-  drawerProspect.value = updated
 }
 
-/** Drawer emitted 'deleted' — remove from local list. */
+/** Drawer notified 'deleted' — remove from local list. */
 function handleProspectDeleted(prospectId: number): void {
   prospects.value = prospects.value.filter((p) => p.id !== prospectId)
   selectedProspects.value = selectedProspects.value.filter((id) => id !== String(prospectId))
 }
 
-/**
- * Table emitted 'toggleContacted' — flip the contacted status and patch local state.
- * @param prospect - The prospect whose contacted status was toggled.
- */
-async function handleToggleContacted(prospect: Prospect): Promise<void> {
-  const next = !prospect.contacted
-  try {
-    const updated = await updateProspect(prospect.id, { contacted: next })
-    const idx = prospects.value.findIndex((p) => p.id === updated.id)
-    if (idx !== -1) prospects.value.splice(idx, 1, updated)
-    toast.success(next ? `« ${prospect.name} » marqué comme contacté` : `« ${prospect.name} » remis en non contacté`)
-  } catch (err: unknown) {
-    toast.error(err instanceof Error ? err.message : 'Erreur lors de la mise à jour')
-  }
-}
-
-function handleAddToCampaign(prospect: Prospect): void {
-  navigateTo(`/dashboard/campaigns?addProspect=${prospect.id}`)
-}
-
-function handleSendEmail(_prospect: Prospect): void {
-  toast.info('La fonctionnalité email sera disponible prochainement.')
-}
-
-/**
- * Create a website order from a prospect and open the sales page.
- * @param prospect - The prospect being marked as sold.
- */
-async function handleMarkAsSold(prospect: Prospect): Promise<void> {
-  try {
-    await createOrder({
-      product_type: 'website',
-      prospect_id: prospect.id,
-      business_name: prospect.name,
-      customer_email: prospect.email ?? null,
-    })
-    toast.success(`Vente créée pour « ${prospect.name} »`)
-    drawerOpen.value = false
-    navigateTo('/dashboard/orders')
-  } catch (err: unknown) {
-    toast.error(err instanceof Error ? err.message : 'Erreur lors de la création de la vente')
-  }
-}
+// Mutations done inside the drawer (edit, delete, contacted…) are broadcast
+// through the store — keep the local list in sync.
+watch(
+  (): number => drawerStack.prospectMutationCounter,
+  (): void => {
+    const mutation = drawerStack.lastProspectMutation
+    if (!mutation) return
+    if (mutation.type === 'updated') handleProspectUpdated(mutation.prospect)
+    else handleProspectDeleted(mutation.prospectId)
+  },
+)
 
 // ─── Quick-delete (table row icon) ────────────────────────────────────────────
 

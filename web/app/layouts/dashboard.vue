@@ -11,8 +11,11 @@
       <!-- Sidebar -->
       <UiSidebar :is-open="isSidebarOpen" :is-mobile="isMobile" @toggle="toggleSidebar" />
 
-      <!-- Main Content -->
-      <div class="ml-0 flex flex-1 flex-col overflow-hidden transition-[margin] duration-200 md:ml-64">
+      <!-- Main Content — pushed left when a drawer is open (nothing gets hidden) -->
+      <div
+        class="ml-0 flex flex-1 flex-col overflow-hidden transition-[margin] duration-200 md:ml-64"
+        :class="drawerPushClass"
+      >
         <!-- Mobile Header -->
         <header class="sticky top-0 z-10 border-b border-[var(--app-line)] bg-[var(--app-surface)] px-4 py-3 md:hidden">
           <div v-if="showCreditsPopover && isMobile" class="fixed inset-0 z-40" @click="handleClickOutside"></div>
@@ -22,7 +25,7 @@
               aria-label="Ouvrir le menu"
               @click="toggleSidebar"
             >
-              <i class="fa-solid fa-bars"></i>
+              <UIcon name="i-lucide-menu" class="h-4 w-4" />
             </button>
             <span class="font-display text-base font-semibold tracking-tight text-[var(--app-ink)]">
               devleadhunter
@@ -66,6 +69,13 @@
           <slot />
         </main>
       </div>
+
+      <!-- Persistent drawer stack — rendered once here so open drawers
+           survive page navigation. -->
+      <UiDrawerStackHost />
+
+      <!-- Global command palette (Ctrl+K) -->
+      <UiCommandPalette />
     </div>
   </div>
 </template>
@@ -75,6 +85,7 @@ import type { ComputedRef, Ref } from 'vue'
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useUserStore } from '~/stores/user'
 import { useAppTheme } from '~/composables/useAppTheme'
+import { useDrawerStackStore } from '~/stores/drawerStack'
 
 /** Auth initialization state (boot loader overlay). */
 const isInitializing: Ref<boolean> = ref<boolean>(true)
@@ -93,6 +104,19 @@ const userStore = useUserStore()
 
 /** Dashboard theme (light paper / dark warm ink). */
 const { theme, initTheme } = useAppTheme()
+
+/** Persistent drawer stack — drives the content push when a drawer is open. */
+const drawerStack = useDrawerStackStore()
+
+/**
+ * Right margin pushing the content aside so the open drawer hides nothing.
+ * Matches each drawer's width; only from lg up (below, the drawer overlays).
+ */
+const drawerPushClass: ComputedRef<string> = computed((): string => {
+  const top = drawerStack.topEntry
+  if (!top) return ''
+  return top.kind === 'email-template' ? 'lg:mr-[560px]' : 'lg:mr-[480px]'
+})
 
 /** Credits counter shown in the pill ("∞" when unlimited). */
 const creditIconValue: ComputedRef<string> = computed((): string => {

@@ -14,30 +14,21 @@
           <span class="text-muted text-sm">Clé API</span>
           <span
             :class="[
-              'inline-flex items-center gap-1.5 rounded px-2 py-0.5 text-xs font-semibold',
-              currentConfig?.has_api_key
-                ? 'bg-[#1a3a2a] text-[var(--app-green)]'
-                : 'bg-[#3a1a1a] text-[var(--app-red)]',
+              'app-badge font-semibold',
+              currentConfig?.has_api_key ? 'app-badge--success' : 'app-badge--danger',
             ]"
           >
-            <i :class="currentConfig?.has_api_key ? 'fa-solid fa-check' : 'fa-solid fa-xmark'" class="text-[10px]"></i>
+            <UIcon :name="currentConfig?.has_api_key ? 'i-lucide-check' : 'i-lucide-x'" class="h-3.5 w-3.5" />
             {{ currentConfig?.has_api_key ? 'Configurée' : 'Non configurée' }}
           </span>
         </div>
         <div class="flex items-center justify-between">
           <span class="text-muted text-sm">Secret webhook</span>
-          <span
-            :class="[
-              'inline-flex items-center gap-1.5 rounded px-2 py-0.5 text-xs font-semibold',
-              currentConfig?.has_webhook_secret
-                ? 'bg-[#1a3a2a] text-[var(--app-green)]'
-                : 'bg-[var(--app-surface-2)] text-[var(--app-ink-soft)]',
-            ]"
-          >
-            <i
-              :class="currentConfig?.has_webhook_secret ? 'fa-solid fa-check' : 'fa-solid fa-minus'"
-              class="text-[10px]"
-            ></i>
+          <span :class="['app-badge font-semibold', currentConfig?.has_webhook_secret ? 'app-badge--success' : '']">
+            <UIcon
+              :name="currentConfig?.has_webhook_secret ? 'i-lucide-check' : 'i-lucide-minus'"
+              class="h-3.5 w-3.5"
+            />
             {{ currentConfig?.has_webhook_secret ? 'Configuré' : 'Non configuré' }}
           </span>
         </div>
@@ -79,7 +70,7 @@
               class="text-muted absolute top-1/2 right-3 -translate-y-1/2 transition-colors hover:text-[var(--app-ink)]"
               @click="showApiKey = !showApiKey"
             >
-              <i :class="showApiKey ? 'fa-solid fa-eye-slash' : 'fa-solid fa-eye'" class="text-xs"></i>
+              <UIcon :name="showApiKey ? 'i-lucide-eye-off' : 'i-lucide-eye'" class="h-3.5 w-3.5" />
             </button>
           </div>
           <p class="text-muted mt-1 text-xs">
@@ -91,7 +82,7 @@
           <div
             class="mt-2 flex items-start gap-2 rounded-lg border border-[var(--app-accent)]/30 bg-[var(--app-accent-soft)] px-3 py-2"
           >
-            <i class="fa-solid fa-triangle-exclamation mt-0.5 text-[10px] text-[var(--app-accent)]"></i>
+            <UIcon name="i-lucide-triangle-alert" class="mt-0.5 h-3.5 w-3.5 text-[var(--app-accent)]" />
             <p class="text-xs text-[var(--app-accent)]">
               Utilisez une clé <strong>Full Access</strong> — une clé restreinte "Sending access" ne permettra pas la
               synchronisation des statuts (ouvertures, clics, bounces) depuis la page Emails.
@@ -114,7 +105,7 @@
               class="text-muted absolute top-1/2 right-3 -translate-y-1/2 transition-colors hover:text-[var(--app-ink)]"
               @click="showWebhookSecret = !showWebhookSecret"
             >
-              <i :class="showWebhookSecret ? 'fa-solid fa-eye-slash' : 'fa-solid fa-eye'" class="text-xs"></i>
+              <UIcon :name="showWebhookSecret ? 'i-lucide-eye-off' : 'i-lucide-eye'" class="h-3.5 w-3.5" />
             </button>
           </div>
           <p class="text-muted mt-1 text-xs">Trouvable dans Resend → Settings → Webhooks après création du webhook.</p>
@@ -149,7 +140,7 @@
             :disabled="isSaving"
             class="btn-primary disabled:cursor-not-allowed disabled:opacity-50"
           >
-            <i v-if="isSaving" class="fa-solid fa-spinner fa-spin mr-2"></i>
+            <UIcon v-if="isSaving" name="i-lucide-loader-circle" class="h-4 w-4 animate-spin" />
             {{ isSaving ? 'Enregistrement…' : 'Enregistrer la configuration' }}
           </button>
         </div>
@@ -159,7 +150,7 @@
     <!-- Aide -->
     <div class="rounded-lg border border-[var(--app-line)] bg-[var(--app-surface)] p-4">
       <h3 class="mb-2 text-sm font-semibold text-[var(--app-ink)]">
-        <i class="fa-solid fa-circle-info mr-2 text-[var(--app-accent-ink)]"></i>
+        <UIcon name="i-lucide-info" class="mr-2 h-4 w-4 text-[var(--app-accent-ink)]" />
         Configuration du webhook
       </h3>
       <p class="text-muted text-xs leading-relaxed">

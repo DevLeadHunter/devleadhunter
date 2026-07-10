@@ -43,7 +43,7 @@
           v-if="modelValue === template.id"
           class="absolute top-3 right-3 flex h-7 w-7 items-center justify-center rounded-full bg-[var(--app-ink)] text-[var(--app-bg)]"
         >
-          <i class="fa-solid fa-check text-xs"></i>
+          <UIcon name="i-lucide-check" class="h-3.5 w-3.5" />
         </div>
       </div>
 

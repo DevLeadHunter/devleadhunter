@@ -9,7 +9,7 @@
         </p>
       </div>
       <NuxtLink to="/dashboard/demo-sites/create" class="btn-primary inline-flex w-fit items-center gap-2">
-        <i class="fa-solid fa-plus"></i>
+        <UIcon name="i-lucide-plus" class="h-4 w-4" />
         Créer un site
       </NuxtLink>
     </div>
@@ -26,14 +26,14 @@
 
     <div v-else-if="!sites.length" class="card flex flex-col items-center justify-center px-8 py-16 text-center">
       <div class="mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-[var(--app-surface-2)]/50">
-        <i class="fa-solid fa-globe text-2xl text-[var(--app-ink-soft)]"></i>
+        <UIcon name="i-lucide-globe" class="h-6 w-6 text-[var(--app-ink-soft)]" />
       </div>
       <h2 class="text-lg font-semibold text-[var(--app-ink)]">Aucun site démo</h2>
       <p class="mt-2 max-w-sm text-sm text-[var(--app-ink-soft)]">
         Créez votre premier site vitrine en quelques minutes à partir d'un prospect ou d'une saisie manuelle.
       </p>
       <NuxtLink to="/dashboard/demo-sites/create" class="btn-primary mt-6 inline-flex items-center gap-2">
-        <i class="fa-solid fa-wand-magic-sparkles"></i>
+        <UIcon name="i-lucide-wand-sparkles" class="h-4 w-4" />
         Lancer le builder
       </NuxtLink>
     </div>

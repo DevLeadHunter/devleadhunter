@@ -19,7 +19,7 @@
             aria-label="Fermer"
             @click="emit('close')"
           >
-            <i class="fa-solid fa-times"></i>
+            <UIcon name="i-lucide-x" class="h-4 w-4" />
           </button>
         </div>
 
@@ -50,7 +50,7 @@
         <div v-else>
           <label class="text-muted mb-1.5 block text-xs font-medium" for="bulk-template-select">Template</label>
           <div v-if="loading" class="text-muted py-3 text-sm">
-            <i class="fa-solid fa-spinner fa-spin mr-2"></i>Chargement des templates…
+            <UIcon name="i-lucide-loader-circle" class="mr-2 h-4 w-4 animate-spin" />Chargement des templates…
           </div>
           <select v-else id="bulk-template-select" v-model="selectedTemplateId" class="input-field appearance-none">
             <option v-for="tpl in templates" :key="tpl.id" :value="tpl.id">{{ tpl.name }}</option>
@@ -78,7 +78,7 @@
               :disabled="submitting || !selectedTemplateId"
               @click="submit"
             >
-              <i v-if="submitting" class="fa-solid fa-spinner fa-spin mr-2"></i>
+              <UIcon v-if="submitting" name="i-lucide-loader-circle" class="h-4 w-4 animate-spin" />
               {{ submitting ? 'Génération…' : 'Générer' }}
             </button>
           </div>

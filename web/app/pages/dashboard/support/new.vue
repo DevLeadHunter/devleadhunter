@@ -3,22 +3,24 @@
     <UiLoader v-if="isSubmitting" />
     <div v-else class="space-y-8">
       <NuxtLink to="/dashboard/support" class="btn-secondary inline-flex w-fit items-center gap-2">
-        <i class="fa-solid fa-arrow-left"></i>
-        Back to tickets
+        <UIcon name="i-lucide-arrow-left" class="h-4 w-4" />
+        Retour aux tickets
       </NuxtLink>
 
       <header class="space-y-2">
-        <h1 class="text-xl leading-tight font-semibold text-[var(--app-ink)]">Report an issue or request help</h1>
+        <h1 class="text-xl leading-tight font-semibold text-[var(--app-ink)]">
+          Signaler un problème ou demander de l'aide
+        </h1>
         <p class="max-w-2xl text-sm text-[var(--app-ink-soft)]">
-          Describe what happened, add as much context as possible and attach screenshots if you have them. Our team will
-          get back to you directly in the conversation thread.
+          Décrivez ce qui s'est passé, donnez un maximum de contexte et joignez des captures d'écran si vous en avez.
+          Notre équipe vous répondra directement dans le fil de conversation.
         </p>
       </header>
 
       <div class="grid gap-6 xl:grid-cols-[2fr_1fr]">
         <form class="card space-y-6 p-6" @submit.prevent="handleSubmit">
           <div class="space-y-2">
-            <label class="text-sm font-medium text-[var(--app-ink)]" for="subject">Subject</label>
+            <label class="text-sm font-medium text-[var(--app-ink)]" for="subject">Sujet</label>
             <input
               id="subject"
               v-model="form.subject"
@@ -26,14 +28,14 @@
               required
               minlength="4"
               class="input-field"
-              placeholder="Give your request a short title"
+              placeholder="Donnez un titre court à votre demande"
             />
           </div>
 
           <div class="space-y-2">
-            <label class="text-sm font-medium text-[var(--app-ink)]" for="topic">Category</label>
+            <label class="text-sm font-medium text-[var(--app-ink)]" for="topic">Catégorie</label>
             <select id="topic" v-model="form.topic" required class="input-field">
-              <option disabled value="">Select a topic</option>
+              <option disabled value="">Sélectionner une catégorie</option>
               <option v-for="topic in topics" :key="topic.value" :value="topic.value">
                 {{ topic.label }}
               </option>
@@ -41,7 +43,7 @@
           </div>
 
           <div class="space-y-2">
-            <label class="text-sm font-medium text-[var(--app-ink)]" for="message"> Details </label>
+            <label class="text-sm font-medium text-[var(--app-ink)]" for="message"> Détails </label>
             <textarea
               id="message"
               v-model="form.message"
@@ -49,17 +51,17 @@
               required
               minlength="10"
               class="input-field"
-              placeholder="Explain what you expected, what happened and how we can help."
+              placeholder="Expliquez ce que vous attendiez, ce qui s'est passé et comment nous pouvons aider."
             ></textarea>
           </div>
 
           <div class="space-y-3">
-            <label class="text-sm font-medium text-[var(--app-ink)]">Screenshots (optional)</label>
+            <label class="text-sm font-medium text-[var(--app-ink)]">Captures d'écran (optionnel)</label>
             <label
               class="flex cursor-pointer flex-col items-center justify-center gap-2 rounded-lg border border-dashed border-[var(--app-line)] bg-[var(--app-bg)] px-4 py-6 text-xs text-[var(--app-ink-soft)] transition-colors hover:border-[var(--app-accent-ink)]/50 hover:text-[var(--app-ink)]"
             >
-              <i class="fa-solid fa-cloud-arrow-up text-lg text-[var(--app-accent-ink)]"></i>
-              <span>Upload one or many images — JPG, PNG or WEBP (8 MB max per file)</span>
+              <UIcon name="i-lucide-cloud-upload" class="h-5 w-5 text-[var(--app-accent-ink)]" />
+              <span>Déposez une ou plusieurs images — JPG, PNG ou WEBP (8 Mo max par fichier)</span>
               <input
                 ref="attachmentInput"
                 type="file"
@@ -85,7 +87,7 @@
                   class="absolute top-2 right-2 flex h-6 w-6 items-center justify-center rounded-full bg-[var(--app-bg)]/80 text-[11px] text-[var(--app-ink)] transition-colors hover:bg-[var(--app-red)] hover:text-white"
                   @click="removeAttachment(index)"
                 >
-                  <i class="fa-solid fa-xmark"></i>
+                  <UIcon name="i-lucide-x" class="h-3.5 w-3.5" />
                 </button>
               </figure>
             </div>
@@ -93,47 +95,49 @@
 
           <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-end">
             <NuxtLink to="/dashboard/support" class="text-xs text-[var(--app-ink-soft)] hover:text-[var(--app-ink)]">
-              Cancel
+              Annuler
             </NuxtLink>
             <button type="submit" class="btn-primary w-full gap-2 sm:w-auto" :disabled="isSubmitting">
-              <span>Create ticket</span>
+              <span>Créer le ticket</span>
             </button>
           </div>
         </form>
 
-        <aside class="card space-y-6 bg-[#101216] p-6">
+        <aside class="card space-y-6 p-6">
           <div>
-            <h2 class="text-sm font-semibold tracking-wide text-[var(--app-ink)] uppercase">Tips to speed things up</h2>
+            <h2 class="text-sm font-semibold tracking-wide text-[var(--app-ink)] uppercase">
+              Pour accélérer le traitement
+            </h2>
             <ul class="mt-3 space-y-2 text-xs leading-relaxed text-[var(--app-ink-soft)]">
               <li class="flex items-start gap-2">
-                <i class="fa-regular fa-circle-check mt-0.5 text-[var(--app-accent-ink)]"></i>
-                Share the steps you followed and where it went wrong (e.g. credits consumed without results).
+                <UIcon name="i-lucide-circle-check" class="mt-0.5 h-3.5 w-3.5 shrink-0 text-[var(--app-accent-ink)]" />
+                Décrivez les étapes suivies et le moment où ça a échoué (ex. crédits consommés sans résultat).
               </li>
               <li class="flex items-start gap-2">
-                <i class="fa-regular fa-circle-check mt-0.5 text-[var(--app-accent-ink)]"></i>
-                Mention dates, campaigns or prospect names so we can find the event quickly.
+                <UIcon name="i-lucide-circle-check" class="mt-0.5 h-3.5 w-3.5 shrink-0 text-[var(--app-accent-ink)]" />
+                Mentionnez les dates, campagnes ou noms de prospects pour retrouver l'événement rapidement.
               </li>
               <li class="flex items-start gap-2">
-                <i class="fa-regular fa-circle-check mt-0.5 text-[var(--app-accent-ink)]"></i>
-                Attach clear screenshots of the error message or unexpected screen.
+                <UIcon name="i-lucide-circle-check" class="mt-0.5 h-3.5 w-3.5 shrink-0 text-[var(--app-accent-ink)]" />
+                Joignez des captures nettes du message d'erreur ou de l'écran inattendu.
               </li>
             </ul>
           </div>
 
-          <div class="space-y-3 border-t border-[#1f252d] pt-4">
-            <h3 class="text-sm font-semibold text-[var(--app-ink)]">Popular topics</h3>
+          <div class="space-y-3 border-t border-[var(--app-line)] pt-4">
+            <h3 class="text-sm font-semibold text-[var(--app-ink)]">Sujets fréquents</h3>
             <ul class="space-y-2 text-xs leading-relaxed text-[var(--app-ink-soft)]">
               <li>
-                <strong class="text-[var(--app-ink)]">Credits & billing</strong> — tell us how many credits were used
-                and what result you expected.
+                <strong class="text-[var(--app-ink)]">Crédits & facturation</strong> — indiquez le nombre de crédits
+                utilisés et le résultat attendu.
               </li>
               <li>
-                <strong class="text-[var(--app-ink)]">Bug report</strong> — explain the workflow, browser, and page
-                where the issue appears.
+                <strong class="text-[var(--app-ink)]">Signalement de bug</strong> — précisez le parcours, le navigateur
+                et la page concernée.
               </li>
               <li>
-                <strong class="text-[var(--app-ink)]">Refund request</strong> — include the payment amount and date if
-                you ask for a refund.
+                <strong class="text-[var(--app-ink)]">Demande de remboursement</strong> — incluez le montant et la date
+                du paiement.
               </li>
             </ul>
           </div>
@@ -191,11 +195,11 @@ function handleAttachments(event: Event): void {
 
   files.forEach((file) => {
     if (!['image/png', 'image/jpeg', 'image/webp'].includes(file.type)) {
-      toast.error('Unsupported format. Please use PNG, JPG or WEBP.')
+      toast.error('Format non pris en charge. Utilisez PNG, JPG ou WEBP.')
       return
     }
     if (file.size > 8 * 1024 * 1024) {
-      toast.error('File is too large (maximum 8 MB per image).')
+      toast.error('Fichier trop volumineux (8 Mo maximum par image).')
       return
     }
 
@@ -220,13 +224,13 @@ async function loadTopics(): Promise<void> {
     topics.value = await supportService.getTopics()
   } catch (error) {
     console.error('Failed to load support topics', error)
-    toast.error('Unable to load support topics right now.')
+    toast.error('Impossible de charger les catégories pour le moment.')
   }
 }
 
 async function handleSubmit(): Promise<void> {
   if (!form.topic) {
-    toast.warning('Please select a topic.')
+    toast.warning('Sélectionnez une catégorie.')
     return
   }
   try {
@@ -238,11 +242,11 @@ async function handleSubmit(): Promise<void> {
       attachments: attachments.value,
     })
 
-    toast.success('Ticket created successfully.')
+    toast.success('Ticket créé.')
     await router.push(`/dashboard/support/${ticket.id}`)
   } catch (error) {
     console.error('Failed to create ticket', error)
-    toast.error('We could not create your ticket. Please try again later.')
+    toast.error('Impossible de créer le ticket. Réessayez plus tard.')
   } finally {
     isSubmitting.value = false
   }

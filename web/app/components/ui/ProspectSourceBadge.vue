@@ -15,7 +15,7 @@
       loading="lazy"
     />
     <!-- Fallback icon for sources without a real website (auto, unknown) -->
-    <i v-else :class="[config.icon, 'text-[10px]']"></i>
+    <UIcon v-else :name="config.icon" class="h-3.5 w-3.5 shrink-0" />
 
     {{ config.label }}
   </span>
@@ -44,7 +44,7 @@ interface SourceConfig {
    * Null for internal / synthetic sources that have no real website logo.
    */
   logoUrl: string | null
-  /** Font Awesome class used when logoUrl is null */
+  /** Lucide icon name used when logoUrl is null */
   icon: string
   /** Tailwind solid background class — full brand colour */
   bg: string
@@ -70,42 +70,42 @@ const SOURCE_CONFIG: Record<string, SourceConfig> = {
   pagesjaunes: {
     label: 'Pages Jaunes',
     logoUrl: 'https://www.google.com/s2/favicons?domain=pagesjaunes.fr&sz=32',
-    icon: 'fa-solid fa-book-open',
+    icon: 'i-lucide-book-open',
     bg: 'bg-[#F7C500]',
     text: 'text-[#1a1200]',
   },
   google: {
     label: 'Google',
     logoUrl: 'https://www.google.com/s2/favicons?domain=google.com&sz=32',
-    icon: 'fa-brands fa-google',
+    icon: 'i-lucide-globe',
     bg: 'bg-[#4285F4]',
     text: 'text-white',
   },
   osm: {
     label: 'OSM',
     logoUrl: 'https://www.google.com/s2/favicons?domain=openstreetmap.org&sz=32',
-    icon: 'fa-solid fa-map',
+    icon: 'i-lucide-map',
     bg: 'bg-[#73B73B]',
     text: 'text-white',
   },
   yelp: {
     label: 'Yelp',
     logoUrl: 'https://www.google.com/s2/favicons?domain=yelp.com&sz=32',
-    icon: 'fa-brands fa-yelp',
+    icon: 'i-lucide-star',
     bg: 'bg-[#D32323]',
     text: 'text-white',
   },
   brightdata: {
     label: 'BrightData',
     logoUrl: 'https://www.google.com/s2/favicons?domain=brightdata.com&sz=32',
-    icon: 'fa-solid fa-bolt',
+    icon: 'i-lucide-zap',
     bg: 'bg-[#0099E5]',
     text: 'text-white',
   },
   auto: {
     label: 'Auto',
     logoUrl: null,
-    icon: 'fa-solid fa-wand-magic-sparkles',
+    icon: 'i-lucide-wand-sparkles',
     bg: 'bg-[#7C3AED]',
     text: 'text-white',
   },
@@ -115,7 +115,7 @@ const SOURCE_CONFIG: Record<string, SourceConfig> = {
 const FALLBACK: SourceConfig = {
   label: '',
   logoUrl: null,
-  icon: 'fa-solid fa-database',
+  icon: 'i-lucide-database',
   bg: 'bg-[#4B5563]',
   text: 'text-white',
 }

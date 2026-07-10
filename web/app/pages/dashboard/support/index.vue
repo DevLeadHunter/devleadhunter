@@ -3,20 +3,20 @@
     <header class="mb-6 space-y-4">
       <div class="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
         <div class="space-y-2">
-          <h1 class="text-lg leading-tight font-semibold text-[var(--app-ink)] md:text-xl">Support tickets</h1>
+          <h1 class="text-lg leading-tight font-semibold text-[var(--app-ink)] md:text-xl">Tickets de support</h1>
           <p class="max-w-2xl text-sm text-[var(--app-ink-soft)]">
-            Review every request in one place and jump back into conversations instantly. Admins see the full queue
-            while members only see their own tickets.
+            Retrouvez toutes vos demandes au même endroit et reprenez les conversations en un clic. Les admins voient
+            toute la file, les membres uniquement leurs tickets.
           </p>
         </div>
         <div class="flex w-full items-center gap-3 lg:ml-auto lg:w-auto">
           <button class="btn-secondary flex-1 gap-2 px-4 lg:flex-none" type="button" @click="refreshTickets">
-            <i class="fa-solid fa-rotate-right text-sm"></i>
-            <span class="lg:inline">Refresh</span>
+            <UIcon name="i-lucide-rotate-cw" class="h-4 w-4" />
+            <span class="lg:inline">Actualiser</span>
           </button>
           <NuxtLink to="/dashboard/support/new" class="btn-primary flex-1 gap-2 px-4 lg:flex-none">
-            <i class="fa-solid fa-plus text-sm"></i>
-            <span class="lg:inline">New ticket</span>
+            <UIcon name="i-lucide-plus" class="h-4 w-4" />
+            <span class="lg:inline">Nouveau ticket</span>
           </NuxtLink>
         </div>
       </div>
@@ -28,7 +28,7 @@
     <div class="space-y-4">
       <div v-if="isAdmin" class="card p-4 sm:p-6">
         <div class="space-y-3">
-          <h2 class="text-sm font-semibold tracking-wide text-[var(--app-ink)] uppercase">Filter</h2>
+          <h2 class="text-sm font-semibold tracking-wide text-[var(--app-ink)] uppercase">Filtrer</h2>
           <div class="flex flex-wrap gap-2">
             <button
               v-for="filter in statusFilters"
@@ -57,10 +57,11 @@
         </div>
       </div>
 
-      <div v-else-if="filteredTickets.length === 0" class="card py-16 text-center">
-        <i class="fa-regular fa-face-smile mb-3 text-5xl text-[var(--app-accent-ink)]"></i>
-        <p class="text-sm text-[var(--app-ink-soft)]">
-          No tickets for this filter yet. Create a request or adjust the status above.
+      <div v-else-if="filteredTickets.length === 0" class="card px-6 py-12 text-center">
+        <LandingAsterisk class="text-4xl text-[var(--app-accent)]" />
+        <h3 class="font-display mt-5 text-2xl font-semibold text-[var(--app-ink)]">Aucun ticket</h3>
+        <p class="text-muted mx-auto mt-2 max-w-sm text-sm leading-relaxed">
+          Rien pour ce filtre — créez une demande ou changez de statut ci-dessus.
         </p>
       </div>
 
@@ -80,19 +81,19 @@
               </p>
               <div class="flex flex-wrap items-center gap-3 text-xs text-[var(--app-ink-soft)]">
                 <span class="inline-flex items-center gap-1">
-                  <i class="fa-solid fa-user text-[var(--app-ink)]"></i>
+                  <UIcon name="i-lucide-user-round" class="h-3.5 w-3.5 text-[var(--app-ink)]" />
                   {{ ticket.user_name }}
                 </span>
                 <span class="inline-flex items-center gap-1">
-                  <i class="fa-solid fa-tag text-[var(--app-ink)]"></i>
+                  <UIcon name="i-lucide-tag" class="h-3.5 w-3.5 text-[var(--app-ink)]" />
                   {{ topicLabel(ticket.topic) }}
                 </span>
                 <span class="inline-flex items-center gap-1">
-                  <i class="fa-regular fa-clock text-[var(--app-ink)]"></i>
+                  <UIcon name="i-lucide-clock" class="h-3.5 w-3.5 text-[var(--app-ink)]" />
                   {{ formatRelative(ticket.last_message_at || ticket.created_at) }}
                 </span>
                 <span v-if="ticket.attachments_count > 0" class="inline-flex items-center gap-1">
-                  <i class="fa-solid fa-paperclip text-[var(--app-ink)]"></i>
+                  <UIcon name="i-lucide-paperclip" class="h-3.5 w-3.5 text-[var(--app-ink)]" />
                   {{ ticket.attachments_count }}
                 </span>
                 <span
@@ -138,29 +139,29 @@ const tickets = ref<SupportTicketSummary[]>([])
 const isLoading = ref(false)
 
 const statusLabels: Record<string, string> = {
-  open: 'Open',
-  waiting_support: 'Waiting on support',
-  waiting_user: 'Waiting on customer',
-  resolved: 'Resolved',
-  closed: 'Closed',
+  open: 'Ouvert',
+  waiting_support: 'Attente support',
+  waiting_user: 'Attente client',
+  resolved: 'Résolu',
+  closed: 'Fermé',
 }
 
 const statusStyles: Record<string, string> = {
   open: 'bg-[var(--app-accent-ink)]/20 text-[var(--app-accent-ink)]',
   waiting_support: 'bg-[var(--app-accent)]/20 text-[var(--app-accent-ink)]',
-  waiting_user: 'bg-[#8d7bb8]/20 text-[#8d7bb8]',
+  waiting_user: 'bg-[var(--app-violet-soft)] text-[var(--app-violet)]',
   resolved: 'bg-[var(--app-green)]/20 text-[var(--app-green)]',
   closed: 'bg-[var(--app-ink-soft)]/20 text-[var(--app-ink-soft)]',
   default: 'bg-[var(--app-surface-2)] text-[var(--app-ink)]',
 }
 
 const statusFilters = [
-  { value: 'open', label: 'Open', classes: statusStyles.open },
-  { value: 'waiting_support', label: 'Waiting on support', classes: statusStyles.waiting_support },
-  { value: 'waiting_user', label: 'Waiting on customer', classes: statusStyles.waiting_user },
-  { value: 'resolved', label: 'Resolved', classes: statusStyles.resolved },
-  { value: 'closed', label: 'Closed', classes: statusStyles.closed },
-  { value: 'all', label: 'All tickets', classes: 'bg-[var(--app-bg)] text-[var(--app-ink)]' },
+  { value: 'open', label: 'Ouverts', classes: statusStyles.open },
+  { value: 'waiting_support', label: 'Attente support', classes: statusStyles.waiting_support },
+  { value: 'waiting_user', label: 'Attente client', classes: statusStyles.waiting_user },
+  { value: 'resolved', label: 'Résolus', classes: statusStyles.resolved },
+  { value: 'closed', label: 'Fermés', classes: statusStyles.closed },
+  { value: 'all', label: 'Tous les tickets', classes: 'bg-[var(--app-bg)] text-[var(--app-ink)]' },
 ]
 
 const filteredTickets = computed(() => {
@@ -178,13 +179,13 @@ const filteredTickets = computed(() => {
 
 function topicLabel(topic: SupportTicketSummary['topic']): string {
   const mapping: Record<string, string> = {
-    credits_billing: 'Credits & billing',
-    missing_results: 'Missing results',
-    bug_report: 'Bug report',
-    refund_credits: 'Credit refund',
-    refund_payment: 'Payment refund',
-    feature_request: 'Feature request',
-    other: 'Other',
+    credits_billing: 'Crédits & facturation',
+    missing_results: 'Résultats manquants',
+    bug_report: 'Signalement de bug',
+    refund_credits: 'Remboursement crédits',
+    refund_payment: 'Remboursement paiement',
+    feature_request: 'Suggestion',
+    other: 'Autre',
   }
   return mapping[topic] ?? 'Support'
 }
@@ -193,7 +194,7 @@ function getStatusBorderColor(status: string): string {
   const borderColors: Record<string, string> = {
     open: 'bg-[var(--app-accent-ink)]',
     waiting_support: 'bg-[var(--app-accent)]',
-    waiting_user: 'bg-[#8d7bb8]',
+    waiting_user: 'bg-[var(--app-violet)]',
     resolved: 'bg-[var(--app-green)]',
     closed: 'bg-[var(--app-ink-soft)]',
   }
@@ -208,12 +209,12 @@ function formatRelative(value: string): string {
   const diffHours = Math.floor(diffMinutes / 60)
   const diffDays = Math.floor(diffHours / 24)
 
-  if (diffMinutes < 1) return 'Just now'
-  if (diffMinutes < 60) return `${diffMinutes} min ago`
-  if (diffHours < 24) return `${diffHours} h ago`
-  if (diffDays === 1) return 'Yesterday'
-  if (diffDays < 7) return `${diffDays} days ago`
-  return date.toLocaleDateString('en-US', {
+  if (diffMinutes < 1) return "À l'instant"
+  if (diffMinutes < 60) return `il y a ${diffMinutes} min`
+  if (diffHours < 24) return `il y a ${diffHours} h`
+  if (diffDays === 1) return 'Hier'
+  if (diffDays < 7) return `il y a ${diffDays} jours`
+  return date.toLocaleDateString('fr-FR', {
     month: 'short',
     day: 'numeric',
     year: 'numeric',
@@ -232,7 +233,7 @@ async function loadTickets(): Promise<void> {
     })
   } catch (error) {
     console.error('Failed to load tickets', error)
-    toast.error('Unable to fetch tickets right now.')
+    toast.error('Impossible de charger les tickets pour le moment.')
   } finally {
     isLoading.value = false
   }
@@ -261,7 +262,7 @@ function handleWebsocketEvent(event: SupportWebsocketEvent): void {
       if (isAdmin.value) {
         const userCreatedBy = event.data?.user_name
         if (userCreatedBy && userCreatedBy !== userStore.user?.name) {
-          toast.info(`New ticket created by ${String(userCreatedBy)}`)
+          toast.info(`Nouveau ticket créé par ${String(userCreatedBy)}`)
         }
       }
       void loadTickets()
@@ -286,8 +287,8 @@ function handleWebsocketEvent(event: SupportWebsocketEvent): void {
         senderId && currentUserId && senderId !== currentUserId && (ticketUserId === currentUserId || isAdmin.value)
 
       if (shouldNotify) {
-        const ticketSubject = event.data?.subject || 'a ticket'
-        toast.info(`${String(senderName)} replied to "${String(ticketSubject)}"`)
+        const ticketSubject = event.data?.subject || 'un ticket'
+        toast.info(`${String(senderName)} a répondu à « ${String(ticketSubject)} »`)
       }
 
       const ticket = tickets.value.find((t) => t.id === event.data?.id)

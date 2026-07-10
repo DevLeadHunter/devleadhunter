@@ -5,12 +5,12 @@ export interface AdminNavLink {
 }
 
 export const ADMIN_NAV_LINKS: AdminNavLink[] = [
-  { to: '/dashboard/users', label: 'Users', icon: 'fa-solid fa-users' },
-  { to: '/dashboard/credits', label: 'Mes crédits', icon: 'fa-solid fa-coins' },
-  { to: '/dashboard/buy-credits', label: 'Acheter des crédits', icon: 'fa-solid fa-credit-card' },
-  { to: '/dashboard/credit-settings', label: 'Credit Settings', icon: 'fa-solid fa-sliders' },
-  { to: '/dashboard/support', label: 'Support', icon: 'fa-solid fa-headset' },
-  { to: '/dashboard/accounting', label: 'Comptabilité', icon: 'fa-solid fa-calculator' },
+  { to: '/dashboard/users', label: 'Utilisateurs', icon: 'i-lucide-users' },
+  { to: '/dashboard/credits', label: 'Mes crédits', icon: 'i-lucide-coins' },
+  { to: '/dashboard/buy-credits', label: 'Acheter des crédits', icon: 'i-lucide-credit-card' },
+  { to: '/dashboard/credit-settings', label: 'Paramètres des crédits', icon: 'i-lucide-sliders-horizontal' },
+  { to: '/dashboard/support', label: 'Support', icon: 'i-lucide-life-buoy' },
+  { to: '/dashboard/accounting', label: 'Comptabilité', icon: 'i-lucide-calculator' },
 ]
 
 /**

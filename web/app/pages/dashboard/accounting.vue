@@ -29,7 +29,7 @@
               </p>
             </div>
             <div class="flex h-10 w-10 items-center justify-center rounded-lg bg-[var(--app-green)]/20">
-              <i class="fa-solid fa-euro-sign text-lg text-[var(--app-green)]"></i>
+              <UIcon name="i-lucide-euro" class="h-5 w-5 text-[var(--app-green)]" />
             </div>
           </div>
         </div>
@@ -44,7 +44,7 @@
               </p>
             </div>
             <div class="flex h-10 w-10 items-center justify-center rounded-lg bg-[var(--app-accent-ink)]/20">
-              <i class="fa-solid fa-wallet text-lg text-[var(--app-accent-ink)]"></i>
+              <UIcon name="i-lucide-wallet" class="h-5 w-5 text-[var(--app-accent-ink)]" />
             </div>
           </div>
         </div>
@@ -59,7 +59,7 @@
               </p>
             </div>
             <div class="flex h-10 w-10 items-center justify-center rounded-lg bg-[var(--app-red)]/20">
-              <i class="fa-solid fa-credit-card text-lg text-[var(--app-red)]"></i>
+              <UIcon name="i-lucide-credit-card" class="h-5 w-5 text-[var(--app-red)]" />
             </div>
           </div>
         </div>
@@ -82,7 +82,7 @@
               </p>
             </div>
             <div class="flex h-10 w-10 items-center justify-center rounded-lg bg-[var(--app-surface-2)]">
-              <i class="fa-solid fa-bank text-lg text-[var(--app-ink-soft)]"></i>
+              <UIcon name="i-lucide-landmark" class="h-5 w-5 text-[var(--app-ink-soft)]" />
             </div>
           </div>
         </div>
@@ -120,9 +120,10 @@
 
           <div class="flex flex-col gap-3 lg:flex-row">
             <div class="relative flex-1">
-              <i
-                class="fa-solid fa-magnifying-glass absolute top-1/2 left-3 -translate-y-1/2 text-[var(--app-ink-soft)]"
-              ></i>
+              <UIcon
+                name="i-lucide-search"
+                class="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-[var(--app-ink-soft)]"
+              />
               <input
                 v-model="searchQuery"
                 type="search"
@@ -161,10 +162,12 @@
                   class="flex items-center gap-2 rounded border border-[var(--app-line)] bg-[var(--app-surface)] px-3 py-2 text-sm text-[var(--app-ink)] transition hover:border-[var(--app-ink)] hover:text-[var(--app-ink)]"
                   @click="toggleSortDirection"
                 >
-                  <i
-                    class="fa-solid"
-                    :class="sortDirection === 'asc' ? 'fa-arrow-up-short-wide' : 'fa-arrow-down-wide-short'"
-                  ></i>
+                  <UIcon
+                    :name="
+                      sortDirection === 'asc' ? 'i-lucide-arrow-up-narrow-wide' : 'i-lucide-arrow-down-wide-narrow'
+                    "
+                    class="h-4 w-4"
+                  />
                   {{ sortDirection === 'asc' ? 'Ascending' : 'Descending' }}
                 </button>
               </div>
@@ -466,7 +469,7 @@
 
         <!-- Empty State -->
         <div v-if="displayedTransactions.length === 0" class="px-6 py-12 text-center">
-          <i class="fa-solid fa-receipt mb-3 text-5xl text-[var(--app-ink-soft)]"></i>
+          <UIcon name="i-lucide-receipt" class="mb-3 h-12 w-12 text-[var(--app-ink-soft)]" />
           <p class="text-[var(--app-ink-soft)]">No transaction matches your filters</p>
         </div>
 
@@ -513,7 +516,7 @@
     <!-- Error State -->
     <div v-if="error && !isLoading" class="card mt-6 border border-[var(--app-red)]/30 bg-[var(--app-red)]/10">
       <div class="flex items-center gap-2 text-[var(--app-red)]">
-        <i class="fa-solid fa-circle-exclamation"></i>
+        <UIcon name="i-lucide-triangle-alert" class="h-4 w-4" />
         <p>{{ error }}</p>
       </div>
     </div>

@@ -6,13 +6,13 @@
         v-if="behavior"
         :class="['inline-flex items-center gap-1 rounded px-2 py-0.5 text-[10px] font-medium', temperatureClass]"
       >
-        <i class="fa-solid fa-temperature-half"></i>
+        <UIcon name="i-lucide-thermometer" class="h-3 w-3" />
         {{ temperatureLabel }}
       </span>
     </div>
 
-    <div v-if="isLoading" class="py-3 text-center">
-      <i class="fa-solid fa-spinner fa-spin text-muted text-lg"></i>
+    <div v-if="isLoading" class="flex justify-center py-3">
+      <UIcon name="i-lucide-loader-circle" class="h-5 w-5 animate-spin text-[var(--app-faint)]" />
     </div>
 
     <template v-else-if="behavior">
@@ -74,7 +74,7 @@
           sandbox=""
         ></iframe>
         <button class="btn-primary w-full text-xs" :disabled="isSending || !prospectEmail" @click="handleSendFollowup">
-          <i v-if="isSending" class="fa-solid fa-spinner fa-spin mr-1"></i>
+          <UIcon v-if="isSending" name="i-lucide-loader-circle" class="h-3.5 w-3.5 animate-spin" />
           Envoyer la relance
         </button>
       </div>
@@ -82,13 +82,17 @@
       <!-- Actions -->
       <div class="flex gap-2">
         <button class="btn-secondary flex-1 text-xs" :disabled="isSummarizing" @click="handleSummary">
-          <i v-if="isSummarizing" class="fa-solid fa-spinner fa-spin mr-1"></i>
-          <i v-else class="fa-solid fa-wand-magic-sparkles mr-1"></i>
+          <UIcon
+            :name="isSummarizing ? 'i-lucide-loader-circle' : 'i-lucide-wand-sparkles'"
+            :class="['h-3.5 w-3.5', isSummarizing && 'animate-spin']"
+          />
           Résumé IA
         </button>
         <button class="btn-secondary flex-1 text-xs" :disabled="isDrafting" @click="handleDraft">
-          <i v-if="isDrafting" class="fa-solid fa-spinner fa-spin mr-1"></i>
-          <i v-else class="fa-regular fa-paper-plane mr-1"></i>
+          <UIcon
+            :name="isDrafting ? 'i-lucide-loader-circle' : 'i-lucide-send'"
+            :class="['h-3.5 w-3.5', isDrafting && 'animate-spin']"
+          />
           Relance perso
         </button>
       </div>

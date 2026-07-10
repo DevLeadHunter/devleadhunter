@@ -80,6 +80,15 @@ export async function listProspects(): Promise<Prospect[]> {
 }
 
 /**
+ * Fetch a single prospect by its identifier.
+ * @param prospectId - Identifiant du prospect.
+ * @returns Le prospect complet.
+ */
+export async function getProspect(prospectId: number): Promise<Prospect> {
+  return api.get<Prospect>(`${BASE_URL}/${prospectId}`)
+}
+
+/**
  
  * Met à jour les champs d'un prospect existant.
  

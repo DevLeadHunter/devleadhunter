@@ -73,6 +73,25 @@
       </NuxtLink>
     </div>
 
+    <!-- Command palette trigger -->
+    <div class="px-4 pt-2">
+      <button
+        type="button"
+        class="flex w-full cursor-pointer items-center justify-between rounded-lg border border-[var(--app-line)] bg-[var(--app-bg)] px-2.5 py-1.5 text-xs text-[var(--app-faint)] transition-colors hover:border-[var(--app-ink-soft)] hover:text-[var(--app-ink-soft)]"
+        @click="commandPalette.open()"
+      >
+        <span class="flex items-center gap-2">
+          <UIcon name="i-lucide-search" class="h-3.5 w-3.5" />
+          Rechercher…
+        </span>
+        <span
+          class="font-label rounded border border-[var(--app-line)] bg-[var(--app-surface)] px-1 py-0.5 text-[9px] uppercase"
+        >
+          Ctrl K
+        </span>
+      </button>
+    </div>
+
     <!-- Navigation -->
     <nav class="flex-1 overflow-y-auto px-4 py-3">
       <!-- Administration sub-panel (replaces main menu, Vercel-style) -->
@@ -163,67 +182,101 @@
           <UIcon name="i-lucide-chevron-right" class="ml-auto h-3.5 w-3.5 opacity-50" />
         </button>
 
-        <!-- Credits (admin only) -->
-        <div
+        <!-- Credits (admin only) — static link card, no popover (a hover menu
+             here gets clipped by the nav's overflow and forces an X scrollbar) -->
+        <NuxtLink
           v-if="!isMobile && isAdmin"
-          class="relative mt-5"
-          @mouseenter="handleMouseEnter"
-          @mouseleave="handleMouseLeave"
+          to="/dashboard/buy-credits"
+          class="group mt-5 flex items-center justify-between rounded-lg border border-[var(--app-line)] bg-[var(--app-bg)] px-3 py-2 transition-colors hover:border-[var(--app-ink-soft)]"
         >
-          <button
-            class="flex w-full cursor-pointer items-center justify-between rounded-lg border border-[var(--app-line)] bg-[var(--app-bg)] px-3 py-2.5 transition-colors hover:border-[var(--app-ink-soft)]"
-            @click.stop="toggleCreditsPopover"
-          >
+          <span class="flex flex-col gap-0.5">
             <span class="app-label !text-[0.6rem]">Crédits</span>
             <span class="flex items-center gap-2">
-              <span class="h-2 w-2 rounded-full" :style="{ backgroundColor: creditDotColor }"></span>
-              <span class="font-label text-xs font-medium text-[var(--app-ink)]">{{ creditIconValue }}</span>
+              <span class="h-2.5 w-2.5 rounded-full" :style="{ backgroundColor: creditDotColor }"></span>
+              <UIcon v-if="hasUnlimitedCredits" name="i-lucide-infinity" class="h-5 w-5 text-[var(--app-ink)]" />
+              <span v-else class="font-label text-lg leading-tight font-semibold text-[var(--app-ink)]">{{
+                creditBalanceLabel
+              }}</span>
             </span>
-          </button>
-          <!-- Desktop popover -->
-          <div
-            v-if="showCreditsPopover && !isMobile"
-            class="app-card absolute bottom-0 left-full z-50 ml-3 w-72 p-4 shadow-[var(--app-shadow-soft)]"
-            @mouseenter="handleMouseEnter"
-            @mouseleave="handleMouseLeave"
-            @click.stop
+          </span>
+          <span
+            class="app-label flex items-center gap-1 !text-[0.6rem] transition-colors group-hover:!text-[var(--app-ink)]"
           >
-            <p class="app-label">Crédits restants</p>
-            <p class="font-display mt-1 text-3xl font-semibold text-[var(--app-ink)]">{{ creditIconValue }}</p>
-            <p class="mt-2 text-xs leading-relaxed text-[var(--app-ink-soft)]">
-              Consommés par les recherches de prospects et les envois d'emails.
-            </p>
-            <NuxtLink
-              to="/dashboard/buy-credits"
-              class="app-btn-secondary mt-4 h-9 w-full text-xs"
-              @click="showCreditsPopover = false"
-            >
-              Recharger
-            </NuxtLink>
-          </div>
-        </div>
+            Recharger
+            <UIcon name="i-lucide-arrow-right" class="h-3 w-3" />
+          </span>
+        </NuxtLink>
       </template>
     </nav>
 
-    <!-- Footer: theme, user, logout -->
-    <div class="border-t border-[var(--app-line)] px-4 py-3">
-      <!-- Theme switch -->
-      <div class="mb-2 flex items-center justify-between px-2">
-        <span class="app-label !text-[0.6rem]">Thème</span>
-        <div class="flex items-center gap-1 rounded-full border border-[var(--app-line)] bg-[var(--app-bg)] p-0.5">
-          <button type="button" :class="themeButtonClass('light')" aria-label="Thème clair" @click="setTheme('light')">
-            <UIcon name="i-lucide-sun" class="h-3.5 w-3.5" />
-          </button>
-          <button type="button" :class="themeButtonClass('dark')" aria-label="Thème sombre" @click="setTheme('dark')">
-            <UIcon name="i-lucide-moon" class="h-3.5 w-3.5" />
-          </button>
+    <!-- Footer: user menu (Profil / Thème / Déconnexion) -->
+    <div class="relative border-t border-[var(--app-line)] px-4 py-3">
+      <div v-if="showUserMenu" class="fixed inset-0 z-40" @click="showUserMenu = false"></div>
+
+      <!-- Menu (opens above the user block) -->
+      <div
+        v-if="showUserMenu"
+        class="app-card absolute inset-x-4 bottom-full z-50 mb-1.5 p-1 shadow-[var(--app-shadow-soft)]"
+      >
+        <button
+          type="button"
+          class="flex w-full cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-left text-xs font-medium text-[var(--app-ink)] transition-colors hover:bg-[var(--app-surface-2)]"
+          @click="handleProfileFromMenu"
+        >
+          <UIcon name="i-lucide-user-round" class="h-3.5 w-3.5 text-[var(--app-ink-soft)]" />
+          Profil
+        </button>
+
+        <div class="flex items-center justify-between rounded-md px-2 py-1.5">
+          <span class="flex items-center gap-2 text-xs font-medium text-[var(--app-ink)]">
+            <UIcon name="i-lucide-sun-moon" class="h-3.5 w-3.5 text-[var(--app-ink-soft)]" />
+            Thème
+          </span>
+          <span class="flex items-center gap-1 rounded-full border border-[var(--app-line)] bg-[var(--app-bg)] p-0.5">
+            <button
+              type="button"
+              :class="themeButtonClass('light')"
+              aria-label="Thème clair"
+              @click="setTheme('light')"
+            >
+              <UIcon name="i-lucide-sun" class="h-3.5 w-3.5" />
+            </button>
+            <button type="button" :class="themeButtonClass('dark')" aria-label="Thème sombre" @click="setTheme('dark')">
+              <UIcon name="i-lucide-moon" class="h-3.5 w-3.5" />
+            </button>
+          </span>
         </div>
+
+        <div class="my-1 border-t border-[var(--app-line)]"></div>
+
+        <!-- Lien vers l'app de bureau — inutile quand on est déjà dans le desktop. -->
+        <NuxtLink
+          v-if="!isDesktopApp"
+          to="/downloads"
+          target="_blank"
+          class="flex w-full cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-left text-xs font-medium text-[var(--app-ink)] transition-colors hover:bg-[var(--app-surface-2)]"
+          @click="showUserMenu = false"
+        >
+          <UIcon name="i-lucide-monitor-down" class="h-3.5 w-3.5 text-[var(--app-ink-soft)]" />
+          Télécharger l'app
+        </NuxtLink>
+
+        <button
+          type="button"
+          class="flex w-full cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-left text-xs font-medium text-[var(--app-red)] transition-colors hover:bg-[var(--app-red-soft)]"
+          @click="handleLogout"
+        >
+          <UIcon name="i-lucide-log-out" class="h-3.5 w-3.5" />
+          Déconnexion
+        </button>
       </div>
 
-      <!-- User -->
+      <!-- User block (menu trigger) -->
       <button
-        class="group flex w-full items-center gap-2.5 rounded-lg px-2 py-2 text-left transition-colors hover:bg-[var(--app-surface-2)]"
-        @click="handleProfile"
+        class="group flex w-full cursor-pointer items-center gap-2.5 rounded-lg px-2 py-2 text-left transition-colors hover:bg-[var(--app-surface-2)]"
+        :aria-expanded="showUserMenu"
+        aria-label="Ouvrir le menu du compte"
+        @click.stop="showUserMenu = !showUserMenu"
       >
         <span
           class="font-label flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[var(--app-ink)] text-[0.65rem] font-semibold text-[var(--app-surface)]"
@@ -234,14 +287,7 @@
           <span class="block truncate text-sm font-medium text-[var(--app-ink)]">{{ userName }}</span>
           <span class="block truncate text-xs text-[var(--app-ink-soft)]">{{ userEmail }}</span>
         </span>
-      </button>
-
-      <button
-        class="mt-1 flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-sm text-[var(--app-red)] transition-colors hover:bg-[var(--app-red-soft)]"
-        @click="handleLogout"
-      >
-        <UIcon name="i-lucide-log-out" class="h-3.5 w-3.5" />
-        Déconnexion
+        <UIcon name="i-lucide-chevrons-up-down" class="h-3.5 w-3.5 shrink-0 text-[var(--app-ink-soft)]" />
       </button>
     </div>
   </aside>
@@ -262,6 +308,8 @@ import { ref, computed } from 'vue'
 import { useUserStore } from '~/stores/user'
 import { useAuth } from '~/composables/useAuth'
 import { useAppTheme } from '~/composables/useAppTheme'
+import { useCommandPalette } from '~/composables/useCommandPalette'
+import { useDrawerStackStore } from '~/stores/drawerStack'
 import { useToast } from '~/composables/useToast'
 
 /**
@@ -291,6 +339,15 @@ const { logout } = useAuth()
 
 const { theme, toggleTheme } = useAppTheme()
 
+/** Global Ctrl+K command palette (opened from the sidebar trigger). */
+const commandPalette = useCommandPalette()
+
+/** Persistent drawer stack — the profile entry opens from the user menu. */
+const drawerStack = useDrawerStackStore()
+
+/** Tauri desktop detection → hide the "download the app" link when already in the desktop app. */
+const { isDesktopApp } = useDesktopRuntime()
+
 const {
   isAdmin,
   isAdminNavOpen,
@@ -312,6 +369,9 @@ const showSettingsPanel: Ref<boolean> = ref<boolean>(false)
 
 /** Whether the module switcher menu is open. */
 const showModuleMenu: Ref<boolean> = ref<boolean>(false)
+
+/** Whether the user account menu (Profil / Thème / Déconnexion) is open. */
+const showUserMenu: Ref<boolean> = ref<boolean>(false)
 
 /** The three product modules of DevLeadHunter (only websites is live today). */
 const modules: DlhModuleEntry[] = [
@@ -337,15 +397,6 @@ function handleModuleClick(moduleEntry: DlhModuleEntry): void {
   }
 }
 
-/** Credits popover visibility state. */
-const showCreditsPopover: Ref<boolean> = ref<boolean>(false)
-
-/** Popover hover state. */
-const isHoveringPopover: Ref<boolean> = ref<boolean>(false)
-
-/** Pending popover close timer. */
-let hoverTimeout: ReturnType<typeof setTimeout> | null = null
-
 /** Grouped navigation of the websites module. */
 const navGroups: ComputedRef<UiSidebarGroup[]> = computed((): UiSidebarGroup[] => {
   const groups: UiSidebarGroup[] = [
@@ -357,7 +408,7 @@ const navGroups: ComputedRef<UiSidebarGroup[]> = computed((): UiSidebarGroup[] =
       heading: 'Prospection',
       links: [
         { to: '/dashboard/my-prospects', label: 'Mes prospects', icon: 'i-lucide-users' },
-        { to: '/dashboard/search-prospects', label: 'Rechercher', icon: 'i-lucide-search' },
+        { to: '/dashboard/search-prospects', label: 'Trouver des prospects', icon: 'i-lucide-search' },
       ],
     },
     {
@@ -368,8 +419,8 @@ const navGroups: ComputedRef<UiSidebarGroup[]> = computed((): UiSidebarGroup[] =
       heading: 'Campagnes',
       links: [
         { to: '/dashboard/campaigns', label: 'Campagnes', icon: 'i-lucide-megaphone' },
-        { to: '/dashboard/emails', label: 'Emails envoyés', icon: 'i-lucide-send' },
-        { to: '/dashboard/email-templates', label: 'Templates email', icon: 'i-lucide-layout-template' },
+        { to: '/dashboard/emails', label: 'Suivi des emails', icon: 'i-lucide-send' },
+        { to: '/dashboard/email-templates', label: "Modèles d'email", icon: 'i-lucide-layout-template' },
       ],
     },
     {
@@ -411,27 +462,24 @@ const userInitials: ComputedRef<string> = computed((): string => {
   return name.substring(0, 2).toUpperCase()
 })
 
-/** Credits counter shown in the pill ("∞" when unlimited). */
-const creditIconValue: ComputedRef<string> = computed((): string => {
-  const credits: number | null | undefined = userStore.user?.credits_available ?? userStore.user?.credit_balance
-  if (credits === null || credits === undefined) {
-    return '0'
-  }
-  if (credits === -1) {
-    return '∞'
-  }
-  return credits.toString()
+/** Raw credit balance (null when the field is missing). */
+const creditBalance: ComputedRef<number | null> = computed((): number | null => {
+  return userStore.user?.credits_available ?? userStore.user?.credit_balance ?? null
+})
+
+/** Whether the account has an unlimited plan. */
+const hasUnlimitedCredits: ComputedRef<boolean> = computed((): boolean => creditBalance.value === -1)
+
+/** Credits balance shown in the credits card (the unlimited case renders an infinity icon instead). */
+const creditBalanceLabel: ComputedRef<string> = computed((): string => {
+  return (creditBalance.value ?? 0).toString()
 })
 
 /** Semantic dot colour next to the credits counter. */
 const creditDotColor: ComputedRef<string> = computed((): string => {
-  const credits: number | null | undefined = userStore.user?.credits_available ?? userStore.user?.credit_balance
-  if (credits === -1) {
-    return 'var(--app-ink-soft)'
-  }
-  if (credits === null || credits === undefined || credits === 0 || credits <= 10) {
-    return 'var(--app-red)'
-  }
+  if (hasUnlimitedCredits.value) return 'var(--app-ink-soft)'
+  const credits: number | null = creditBalance.value
+  if (credits === null || credits === 0 || credits <= 10) return 'var(--app-red)'
   return 'var(--app-green)'
 })
 
@@ -483,41 +531,6 @@ function setTheme(value: AppTheme): void {
 }
 
 /**
- * Toggle the credits popover (click).
- */
-function toggleCreditsPopover(): void {
-  showCreditsPopover.value = !showCreditsPopover.value
-}
-
-/**
- * Open the credits popover on hover (desktop).
- */
-function handleMouseEnter(): void {
-  if (!props.isMobile) {
-    if (hoverTimeout) {
-      clearTimeout(hoverTimeout)
-      hoverTimeout = null
-    }
-    isHoveringPopover.value = true
-    showCreditsPopover.value = true
-  }
-}
-
-/**
- * Close the credits popover shortly after the pointer leaves (desktop).
- */
-function handleMouseLeave(): void {
-  if (!props.isMobile) {
-    isHoveringPopover.value = false
-    hoverTimeout = setTimeout((): void => {
-      if (!isHoveringPopover.value) {
-        showCreditsPopover.value = false
-      }
-    }, 100)
-  }
-}
-
-/**
  * Whether a route is active (exact, or a sub-route for non-root paths).
  * @param path - Route path to check.
  * @returns True if the route is active.
@@ -553,10 +566,11 @@ function handleAdminClick(): void {
 }
 
 /**
- * Open the profile page.
+ * Open the profile edit drawer from the user menu (no page navigation).
  */
-function handleProfile(): void {
-  navigateTo('/profile')
+function handleProfileFromMenu(): void {
+  showUserMenu.value = false
+  drawerStack.push({ kind: 'profile' })
   handleClick()
 }
 
@@ -564,6 +578,7 @@ function handleProfile(): void {
  * Log the user out.
  */
 function handleLogout(): void {
+  showUserMenu.value = false
   logout()
   handleClick()
 }

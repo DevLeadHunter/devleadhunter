@@ -1,6 +1,6 @@
 <template>
   <span :class="['app-badge', config.variant]">
-    <i :class="[config.icon, 'text-[10px]']"></i>
+    <UIcon :name="config.icon" :class="['h-3 w-3', config.spin && 'animate-spin']" />
     {{ config.label }}
   </span>
 </template>
@@ -27,35 +27,40 @@ const props: EmailStatusBadgeProps = defineProps({
 interface StatusConfig {
   /** Human-readable French label. */
   label: string
-  /** Font Awesome icon class. */
+  /** Lucide icon name. */
   icon: string
   /** app-badge variant modifier ('' = neutral). */
   variant: string
+  /** Whether the icon should spin (in-progress states). */
+  spin?: boolean
 }
 
 /**
- * Visual configuration for every possible EmailStatus value, mapped onto the
- * four semantic badge families of the app theme (neutral / progress /
- * success / danger). Using ``Record<EmailStatus, StatusConfig>`` ensures a
- * compile error if a new status is added without updating this map.
+ * Visual configuration for every possible EmailStatus value. Each step of the
+ * positive funnel gets its own colour family so a list of logs reads at a
+ * glance: sent = info (blue), delivered = success (green), opened = engaged
+ * (violet), clicked = strong (full ink). Transient states are progress
+ * (amber), failures are danger (red). Using ``Record<EmailStatus,
+ * StatusConfig>`` ensures a compile error if a new status is added without
+ * updating this map.
  */
 const STATUS_CONFIG: Record<EmailStatus, StatusConfig> = {
-  pending: { label: 'En attente', icon: 'fa-solid fa-clock', variant: '' },
-  sending: { label: 'Envoi…', icon: 'fa-solid fa-spinner fa-spin', variant: 'app-badge--progress' },
-  scheduled: { label: 'Planifié', icon: 'fa-solid fa-calendar-clock', variant: 'app-badge--progress' },
-  sent: { label: 'Envoyé', icon: 'fa-solid fa-paper-plane', variant: 'app-badge--progress' },
-  delivered: { label: 'Délivré', icon: 'fa-solid fa-check', variant: 'app-badge--success' },
+  pending: { label: 'En attente', icon: 'i-lucide-clock', variant: '' },
+  sending: { label: 'Envoi…', icon: 'i-lucide-loader-circle', variant: 'app-badge--progress', spin: true },
+  scheduled: { label: 'Planifié', icon: 'i-lucide-calendar-clock', variant: 'app-badge--progress' },
+  sent: { label: 'Envoyé', icon: 'i-lucide-send', variant: 'app-badge--info' },
+  delivered: { label: 'Délivré', icon: 'i-lucide-check', variant: 'app-badge--success' },
   delivery_delayed: {
     label: 'Retardé',
-    icon: 'fa-solid fa-clock-rotate-left',
+    icon: 'i-lucide-clock-alert',
     variant: 'app-badge--progress',
   },
-  opened: { label: 'Ouvert', icon: 'fa-regular fa-envelope-open', variant: 'app-badge--success' },
-  clicked: { label: 'Cliqué', icon: 'fa-solid fa-arrow-pointer', variant: 'app-badge--success' },
-  bounced: { label: 'Bounce', icon: 'fa-solid fa-triangle-exclamation', variant: 'app-badge--danger' },
-  failed: { label: 'Échoué', icon: 'fa-solid fa-xmark', variant: 'app-badge--danger' },
-  complained: { label: 'Spam', icon: 'fa-solid fa-ban', variant: 'app-badge--danger' },
-  suppressed: { label: 'Supprimé', icon: 'fa-solid fa-circle-minus', variant: '' },
+  opened: { label: 'Ouvert', icon: 'i-lucide-mail-open', variant: 'app-badge--engaged' },
+  clicked: { label: 'Cliqué', icon: 'i-lucide-mouse-pointer-click', variant: 'app-badge--strong' },
+  bounced: { label: 'Bounce', icon: 'i-lucide-triangle-alert', variant: 'app-badge--danger' },
+  failed: { label: 'Échoué', icon: 'i-lucide-x', variant: 'app-badge--danger' },
+  complained: { label: 'Spam', icon: 'i-lucide-ban', variant: 'app-badge--danger' },
+  suppressed: { label: 'Supprimé', icon: 'i-lucide-circle-minus', variant: '' },
 }
 
 const config: ComputedRef<StatusConfig> = computed(

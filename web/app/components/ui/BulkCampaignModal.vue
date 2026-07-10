@@ -21,7 +21,7 @@
             aria-label="Fermer"
             @click="emit('close')"
           >
-            <i class="fa-solid fa-times"></i>
+            <UIcon name="i-lucide-x" class="h-4 w-4" />
           </button>
         </div>
 
@@ -57,7 +57,7 @@
         <div v-if="mode === 'existing'">
           <label class="text-muted mb-1.5 block text-xs font-medium" for="bulk-campaign-select">Campagne</label>
           <div v-if="loading" class="text-muted py-3 text-sm">
-            <i class="fa-solid fa-spinner fa-spin mr-2"></i>Chargement…
+            <UIcon name="i-lucide-loader-circle" class="mr-2 h-4 w-4 animate-spin" />Chargement…
           </div>
           <div v-else-if="campaigns.length === 0" class="text-muted py-3 text-sm">
             Aucune campagne. Créez-en une nouvelle.
@@ -92,7 +92,7 @@
             :disabled="submitting || !canSubmit"
             @click="submit"
           >
-            <i v-if="submitting" class="fa-solid fa-spinner fa-spin mr-2"></i>
+            <UIcon v-if="submitting" name="i-lucide-loader-circle" class="h-4 w-4 animate-spin" />
             Ajouter
           </button>
         </div>

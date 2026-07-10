@@ -2,18 +2,21 @@
   <div>
     <!-- Header -->
     <div class="mb-6 flex items-center justify-between">
-      <h1 class="text-xl font-semibold text-[var(--app-ink)]">Users</h1>
+      <h1 class="text-xl font-semibold text-[var(--app-ink)]">Utilisateurs</h1>
       <button class="btn-primary" @click="showCreateModal = true">
-        <i class="fa-solid fa-plus mr-1.5"></i>
-        <span>Add User</span>
+        <UIcon name="i-lucide-plus" class="h-4 w-4" />
+        <span>Ajouter un utilisateur</span>
       </button>
     </div>
 
     <!-- Search Bar -->
     <div class="card mb-6">
       <div class="relative">
-        <i class="fa-solid fa-magnifying-glass absolute top-1/2 left-3 -translate-y-1/2 text-[var(--app-ink-soft)]"></i>
-        <input v-model="searchQuery" type="text" placeholder="Search by name or email" class="input-field pl-10" />
+        <UIcon
+          name="i-lucide-search"
+          class="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-[var(--app-ink-soft)]"
+        />
+        <input v-model="searchQuery" type="text" placeholder="Rechercher par nom ou email" class="input-field pl-10" />
       </div>
     </div>
 
@@ -24,19 +27,19 @@
           <thead>
             <tr class="border-b border-[var(--app-line)] bg-[var(--app-bg)]">
               <th class="px-4 py-3 text-left text-xs font-medium tracking-wider text-[var(--app-ink-soft)] uppercase">
-                User
+                Utilisateur
               </th>
               <th class="px-4 py-3 text-left text-xs font-medium tracking-wider text-[var(--app-ink-soft)] uppercase">
                 Email
               </th>
               <th class="px-4 py-3 text-left text-xs font-medium tracking-wider text-[var(--app-ink-soft)] uppercase">
-                Role
+                Rôle
               </th>
               <th class="px-4 py-3 text-left text-xs font-medium tracking-wider text-[var(--app-ink-soft)] uppercase">
-                Credits Available
+                Crédits disponibles
               </th>
               <th class="px-4 py-3 text-left text-xs font-medium tracking-wider text-[var(--app-ink-soft)] uppercase">
-                Credits Consumed
+                Crédits consommés
               </th>
               <th class="px-4 py-3 text-right text-xs font-medium tracking-wider text-[var(--app-ink-soft)] uppercase">
                 Actions
@@ -79,7 +82,7 @@
                   v-if="user.credits_available === -1 || user.credits_available === null"
                   class="text-[var(--app-ink-soft)]"
                 >
-                  Unlimited
+                  Illimités
                 </span>
                 <span v-else class="font-medium">
                   {{ user.credits_available }}
@@ -96,7 +99,7 @@
                     class="text-[var(--app-ink-soft)] transition-colors hover:text-[var(--app-ink)]"
                     @click="toggleUserMenu(user.id, $event)"
                   >
-                    <i class="fa-solid fa-ellipsis-vertical h-5 w-5"></i>
+                    <UIcon name="i-lucide-ellipsis-vertical" class="h-5 w-5" />
                   </button>
                   <!-- Dropdown Menu -->
                   <div
@@ -110,15 +113,15 @@
                       class="w-full px-4 py-2 text-left text-sm text-[var(--app-ink)] transition-colors hover:bg-[var(--app-surface-2)]"
                       @click="handleEdit(user)"
                     >
-                      <i class="fa-solid fa-pen-to-square mr-2 w-4"></i>
-                      Edit User
+                      <UIcon name="i-lucide-square-pen" class="mr-2 h-4 w-4" />
+                      Modifier
                     </button>
                     <button
                       class="w-full px-4 py-2 text-left text-sm text-[var(--app-red)] transition-colors hover:bg-[var(--app-red)]/20"
                       @click="handleDelete(user)"
                     >
-                      <i class="fa-solid fa-trash mr-2 w-4"></i>
-                      Delete User
+                      <UIcon name="i-lucide-trash-2" class="mr-2 h-4 w-4" />
+                      Supprimer
                     </button>
                   </div>
                 </div>
@@ -139,9 +142,9 @@
     </div>
 
     <!-- Empty State -->
-    <div v-else-if="filteredUsers.length === 0" class="card py-12 text-center">
-      <i class="fa-solid fa-users mb-3 text-5xl text-[var(--app-ink-soft)]"></i>
-      <p class="text-[var(--app-ink-soft)]">No users found</p>
+    <div v-else-if="filteredUsers.length === 0" class="card px-6 py-12 text-center">
+      <LandingAsterisk class="text-4xl text-[var(--app-accent)]" />
+      <h3 class="font-display mt-5 text-2xl font-semibold text-[var(--app-ink)]">Aucun utilisateur trouvé</h3>
     </div>
 
     <!-- Create User Modal -->
@@ -151,17 +154,17 @@
       @click.self="showCreateModal = false"
     >
       <div class="w-full max-w-md rounded-lg border border-[var(--app-line)] bg-[var(--app-surface)] p-6 shadow-lg">
-        <h2 class="mb-4 text-base font-semibold text-[var(--app-ink)]">Add New User</h2>
+        <h2 class="mb-4 text-base font-semibold text-[var(--app-ink)]">Ajouter un utilisateur</h2>
         <form @submit.prevent="handleCreateSubmit">
           <!-- Name -->
           <div class="mb-4">
-            <label for="create-name" class="mb-1.5 block text-xs font-medium text-[var(--app-ink-soft)]"> Name </label>
+            <label for="create-name" class="mb-1.5 block text-xs font-medium text-[var(--app-ink-soft)]"> Nom </label>
             <input
               id="create-name"
               v-model="createForm.name"
               type="text"
               required
-              placeholder="John Doe"
+              placeholder="Jean Dupont"
               class="input-field"
             />
           </div>
@@ -176,7 +179,7 @@
               v-model="createForm.email"
               type="email"
               required
-              placeholder="john@example.com"
+              placeholder="jean@exemple.fr"
               class="input-field"
             />
           </div>
@@ -184,7 +187,7 @@
           <!-- Password -->
           <div class="mb-4">
             <label for="create-password" class="mb-1.5 block text-xs font-medium text-[var(--app-ink-soft)]">
-              Password
+              Mot de passe
             </label>
             <div class="relative">
               <input
@@ -192,7 +195,7 @@
                 v-model="createForm.password"
                 :type="showCreatePassword ? 'text' : 'password'"
                 required
-                placeholder="Enter password"
+                placeholder="Saisir un mot de passe"
                 class="input-field pr-10"
               />
               <button
@@ -200,14 +203,14 @@
                 class="absolute top-1/2 right-3 -translate-y-1/2 text-[var(--app-ink-soft)] transition-colors hover:text-[var(--app-ink)]"
                 @click="showCreatePassword = !showCreatePassword"
               >
-                <i :class="showCreatePassword ? 'fa-solid fa-eye-slash' : 'fa-solid fa-eye'" class="h-4 w-4"></i>
+                <UIcon :name="showCreatePassword ? 'i-lucide-eye-off' : 'i-lucide-eye'" class="h-4 w-4" />
               </button>
             </div>
           </div>
 
           <!-- Role -->
           <div class="mb-4">
-            <label for="create-role" class="mb-1.5 block text-xs font-medium text-[var(--app-ink-soft)]"> Role </label>
+            <label for="create-role" class="mb-1.5 block text-xs font-medium text-[var(--app-ink-soft)]"> Rôle </label>
             <select id="create-role" v-model="createForm.role" class="input-field">
               <option value="USER">USER</option>
               <option value="ADMIN">ADMIN</option>
@@ -216,10 +219,10 @@
 
           <!-- Buttons -->
           <div class="flex gap-3 pt-2">
-            <button type="button" class="btn-secondary flex-1" @click="showCreateModal = false">Cancel</button>
+            <button type="button" class="btn-secondary flex-1" @click="showCreateModal = false">Annuler</button>
             <button type="submit" :disabled="isCreating" class="btn-primary flex-1">
-              <span v-if="isCreating">Creating...</span>
-              <span v-else>Create User</span>
+              <span v-if="isCreating">Création…</span>
+              <span v-else>Créer l'utilisateur</span>
             </button>
           </div>
         </form>
@@ -233,17 +236,17 @@
       @click.self="showEditModal = false"
     >
       <div class="w-full max-w-md rounded-lg border border-[var(--app-line)] bg-[var(--app-surface)] p-6 shadow-lg">
-        <h2 class="mb-4 text-base font-semibold text-[var(--app-ink)]">Edit User</h2>
+        <h2 class="mb-4 text-base font-semibold text-[var(--app-ink)]">Modifier l'utilisateur</h2>
         <form @submit.prevent="handleEditSubmit">
           <!-- Name -->
           <div class="mb-4">
-            <label for="edit-name" class="mb-1.5 block text-xs font-medium text-[var(--app-ink-soft)]"> Name </label>
+            <label for="edit-name" class="mb-1.5 block text-xs font-medium text-[var(--app-ink-soft)]"> Nom </label>
             <input
               id="edit-name"
               v-model="editForm.name"
               type="text"
               required
-              placeholder="John Doe"
+              placeholder="Jean Dupont"
               class="input-field"
             />
           </div>
@@ -256,17 +259,17 @@
               v-model="editForm.email"
               type="email"
               required
-              placeholder="john@example.com"
+              placeholder="jean@exemple.fr"
               class="input-field"
             />
           </div>
 
           <!-- Buttons -->
           <div class="flex gap-3 pt-2">
-            <button type="button" class="btn-secondary flex-1" @click="showEditModal = false">Cancel</button>
+            <button type="button" class="btn-secondary flex-1" @click="showEditModal = false">Annuler</button>
             <button type="submit" :disabled="isEditing" class="btn-primary flex-1">
-              <span v-if="isEditing">Saving...</span>
-              <span v-else>Save Changes</span>
+              <span v-if="isEditing">Enregistrement…</span>
+              <span v-else>Enregistrer</span>
             </button>
           </div>
         </form>
@@ -280,16 +283,16 @@
       @click.self="showDeleteModal = false"
     >
       <div class="w-full max-w-md rounded-lg border border-[var(--app-line)] bg-[var(--app-surface)] p-6 shadow-lg">
-        <h2 class="mb-4 text-base font-semibold text-[var(--app-ink)]">Delete User</h2>
+        <h2 class="mb-4 text-base font-semibold text-[var(--app-ink)]">Supprimer l'utilisateur</h2>
         <p class="mb-6 text-sm text-[var(--app-ink-soft)]">
-          Are you sure you want to delete <strong class="text-[var(--app-ink)]">{{ deletingUser.name }}</strong
-          >? This action cannot be undone.
+          Supprimer <strong class="text-[var(--app-ink)]">{{ deletingUser.name }}</strong> ? Cette action est
+          irréversible.
         </p>
         <div class="flex gap-3">
-          <button type="button" class="btn-secondary flex-1" @click="showDeleteModal = false">Cancel</button>
+          <button type="button" class="btn-secondary flex-1" @click="showDeleteModal = false">Annuler</button>
           <button :disabled="isDeleting" class="btn-danger flex-1" @click="confirmDelete">
-            <span v-if="isDeleting">Deleting...</span>
-            <span v-else>Delete User</span>
+            <span v-if="isDeleting">Suppression…</span>
+            <span v-else>Supprimer</span>
           </button>
         </div>
       </div>
@@ -416,7 +419,7 @@ const loadUsers = async (): Promise<void> => {
     isLoading.value = true
     users.value = await usersService.getAllUsers()
   } catch (error) {
-    toast.error(error instanceof Error ? error.message : 'Failed to load users')
+    toast.error(error instanceof Error ? error.message : 'Erreur lors du chargement des utilisateurs')
   } finally {
     isLoading.value = false
   }
@@ -430,12 +433,12 @@ const handleCreateSubmit = async (): Promise<void> => {
   try {
     isCreating.value = true
     await usersService.createUser(createForm.value)
-    toast.success('User created successfully')
+    toast.success('Utilisateur créé')
     showCreateModal.value = false
     createForm.value = { name: '', email: '', password: '', role: 'USER' }
     await loadUsers()
   } catch (error) {
-    toast.error(error instanceof Error ? error.message : 'Failed to create user')
+    toast.error(error instanceof Error ? error.message : "Erreur lors de la création de l'utilisateur")
   } finally {
     isCreating.value = false
   }
@@ -466,12 +469,12 @@ const handleEditSubmit = async (): Promise<void> => {
   try {
     isEditing.value = true
     await usersService.updateUser(editingUser.value.id, editForm.value)
-    toast.success('User updated successfully')
+    toast.success('Utilisateur mis à jour')
     showEditModal.value = false
     editingUser.value = null
     await loadUsers()
   } catch (error) {
-    toast.error(error instanceof Error ? error.message : 'Failed to update user')
+    toast.error(error instanceof Error ? error.message : 'Erreur lors de la mise à jour')
   } finally {
     isEditing.value = false
   }
@@ -498,12 +501,12 @@ const confirmDelete = async (): Promise<void> => {
   try {
     isDeleting.value = true
     await usersService.deleteUser(deletingUser.value.id)
-    toast.success('User deleted successfully')
+    toast.success('Utilisateur supprimé')
     showDeleteModal.value = false
     deletingUser.value = null
     await loadUsers()
   } catch (error) {
-    toast.error(error instanceof Error ? error.message : 'Failed to delete user')
+    toast.error(error instanceof Error ? error.message : 'Erreur lors de la suppression')
   } finally {
     isDeleting.value = false
   }

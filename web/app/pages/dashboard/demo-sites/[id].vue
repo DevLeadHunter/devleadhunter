@@ -2,7 +2,7 @@
   <div class="space-y-8">
     <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
       <NuxtLink to="/dashboard/demo-sites" class="btn-secondary inline-flex w-fit items-center gap-2">
-        <i class="fa-solid fa-arrow-left"></i>
+        <UIcon name="i-lucide-arrow-left" class="h-4 w-4" />
         Retour aux sites
       </NuxtLink>
       <div class="flex flex-wrap gap-2">
@@ -11,7 +11,7 @@
           :to="`/dashboard/demo-sites/${site.id}/edit`"
           class="btn-primary inline-flex items-center gap-2"
         >
-          <i class="fa-solid fa-pen"></i>
+          <UIcon name="i-lucide-square-pen" class="h-4 w-4" />
           Modifier
         </NuxtLink>
         <button
@@ -20,7 +20,7 @@
           class="btn-secondary inline-flex items-center gap-2"
           @click="openDemoUrl(openUrl)"
         >
-          <i class="fa-solid fa-arrow-up-right-from-square"></i>
+          <UIcon name="i-lucide-external-link" class="h-4 w-4" />
           Ouvrir le site
         </button>
       </div>
@@ -41,7 +41,7 @@
 
       <div class="grid items-start gap-6 xl:grid-cols-[320px_1fr]">
         <!-- Aside -->
-        <aside class="card sticky top-6 space-y-6 bg-[#101216] p-5">
+        <aside class="card sticky top-6 space-y-6 p-5">
           <div>
             <h2 class="text-sm font-semibold tracking-wide text-[var(--app-ink)] uppercase">Résumé</h2>
             <dl class="mt-4 space-y-3 text-xs">

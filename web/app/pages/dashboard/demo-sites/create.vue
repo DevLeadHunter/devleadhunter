@@ -1,7 +1,7 @@
 <template>
-  <div class="mx-auto max-w-4xl">
+  <div>
     <!-- Header -->
-    <div class="mb-6">
+    <div class="mb-5">
       <NuxtLink
         to="/dashboard/demo-sites"
         class="inline-flex items-center gap-1.5 text-xs font-medium text-[var(--app-ink-soft)] transition-colors hover:text-[var(--app-ink)]"
@@ -9,303 +9,328 @@
         <UIcon name="i-lucide-arrow-left" class="h-3.5 w-3.5" />
         Sites démo
       </NuxtLink>
-      <p class="app-label mt-4 flex items-center gap-2">
-        <LandingAsterisk class="text-[0.6rem] text-[var(--app-accent)]" />
-        Website builder
-      </p>
-      <h1 class="app-page-title mt-2">Créer un site vitrine</h1>
-      <p class="mt-1.5 text-sm text-[var(--app-ink-soft)]">
-        Un vrai site professionnel pour votre prospect — publié sur demo.dibodev.fr pendant 14 jours.
-      </p>
-    </div>
-
-    <DemoSitesWizardStepper :steps="steps" :current-step="currentStep" @navigate="handleStepNavigate" />
-
-    <!-- Étape 1 : Informations -->
-    <div v-if="currentStep === 1" key="step-1" class="wizard-step app-card space-y-6 p-6 md:p-7">
-      <div>
-        <h2 class="text-base font-semibold text-[var(--app-ink)]">Informations entreprise</h2>
-        <p class="mt-1 text-sm text-[var(--app-ink-soft)]">
-          Sélectionnez un prospect existant ou saisissez les informations manuellement.
+      <div class="mt-3 flex flex-wrap items-baseline gap-x-4 gap-y-1">
+        <p class="app-label flex items-center gap-2">
+          <LandingAsterisk class="text-[0.6rem] text-[var(--app-accent)]" />
+          Website builder
         </p>
-      </div>
-
-      <!-- Source segmented control -->
-      <div class="flex gap-1 rounded-full border border-[var(--app-line)] bg-[var(--app-bg)] p-1">
-        <button type="button" :class="segmentClass(inputMode === 'prospect')" @click="inputMode = 'prospect'">
-          <UIcon name="i-lucide-users" class="h-3.5 w-3.5" />
-          Depuis un prospect
-        </button>
-        <button type="button" :class="segmentClass(inputMode === 'manual')" @click="inputMode = 'manual'">
-          <UIcon name="i-lucide-pen-line" class="h-3.5 w-3.5" />
-          Saisie manuelle
-        </button>
-      </div>
-
-      <div v-if="inputMode === 'prospect'" class="space-y-2">
-        <label class="app-label block">Choisir un prospect</label>
-        <select v-model="selectedProspectId" class="app-input w-full" @change="applyProspect">
-          <option :value="null">— Sélectionner —</option>
-          <option v-for="p in prospects" :key="p.id" :value="p.id">
-            {{ p.name }}{{ p.city ? ` · ${p.city}` : '' }}
-          </option>
-        </select>
-        <p v-if="prospectsLoading" class="text-xs text-[var(--app-ink-soft)]">Chargement des prospects…</p>
-        <p v-else-if="!prospects.length" class="text-xs text-[var(--app-accent-ink)]">
-          Aucun prospect enregistré.
-          <NuxtLink to="/dashboard/my-prospects" class="underline underline-offset-2">Ajouter un prospect</NuxtLink>
+        <h1 class="app-page-title">Créer un site vitrine</h1>
+        <p class="text-sm text-[var(--app-ink-soft)]">
+          Un vrai site professionnel pour votre prospect — publié sur demo.dibodev.fr pendant 14 jours.
         </p>
-        <p v-else-if="form.prospect_id" class="inline-flex items-center gap-1.5 text-xs text-[var(--app-green)]">
-          <UIcon name="i-lucide-circle-check" class="h-3.5 w-3.5" />
-          Champs pré-remplis — le site sera relié à ce prospect
-        </p>
-      </div>
-
-      <div class="grid gap-5 md:grid-cols-2">
-        <div class="md:col-span-2">
-          <label class="app-label mb-1.5 block">Nom de l'entreprise *</label>
-          <input v-model="form.business_name" type="text" class="app-input w-full" placeholder="Plomberie Dupont" />
-        </div>
-        <div>
-          <label class="app-label mb-1.5 block">Téléphone</label>
-          <input v-model="form.phone" type="text" class="app-input w-full" placeholder="01 23 45 67 89" />
-        </div>
-        <div>
-          <label class="app-label mb-1.5 block">Ville</label>
-          <input v-model="form.city" type="text" class="app-input w-full" placeholder="Paris" />
-        </div>
-        <div class="md:col-span-2">
-          <label class="app-label mb-1.5 block">Email client *</label>
-          <input v-model="form.email" type="email" class="app-input w-full" placeholder="client@example.com" />
-        </div>
-        <div class="md:col-span-2">
-          <label class="app-label mb-1.5 block">Description courte</label>
-          <textarea
-            v-model="form.description"
-            rows="3"
-            class="app-input h-auto w-full py-2"
-            placeholder="Dépannage plomberie 24h/24, installation sanitaire, recherche de fuite…"
-          />
-        </div>
-      </div>
-
-      <div class="flex items-center justify-between gap-4 border-t border-[var(--app-line-soft)] pt-5">
-        <p v-if="!canGoToStep2" class="text-xs text-[var(--app-ink-soft)]">
-          Le nom et un email valide sont requis pour continuer.
-        </p>
-        <span v-else></span>
-        <button type="button" class="app-btn-primary" :disabled="!canGoToStep2" @click="goToStep(2)">
-          Continuer
-          <UIcon name="i-lucide-arrow-right" class="h-3.5 w-3.5" />
-        </button>
       </div>
     </div>
 
-    <!-- Étape 2 : Template -->
-    <div v-else-if="currentStep === 2" key="step-2" class="wizard-step space-y-6">
-      <div>
-        <h2 class="text-base font-semibold text-[var(--app-ink)]">Choix de la template</h2>
-        <p class="mt-1 text-sm text-[var(--app-ink-soft)]">
-          Sélectionnez un modèle et personnalisez les couleurs de la charte graphique.
-        </p>
-      </div>
-      <DemoSitesTemplatePicker
-        v-model="form.template_id"
-        :templates="templates"
-        :theme="form.theme"
-        @update:theme="form.theme = $event"
-      />
-      <div class="flex justify-between border-t border-[var(--app-line-soft)] pt-5">
-        <button type="button" class="app-btn-secondary" @click="goToStep(1)">
-          <UIcon name="i-lucide-arrow-left" class="h-3.5 w-3.5" />
-          Retour
-        </button>
-        <button type="button" class="app-btn-primary" @click="loadPreviewAndContinue">
-          Voir l'aperçu
-          <UIcon name="i-lucide-arrow-right" class="h-3.5 w-3.5" />
-        </button>
-      </div>
-    </div>
+    <div class="grid items-start gap-6 lg:grid-cols-[220px_minmax(0,1fr)] xl:grid-cols-[240px_minmax(0,1fr)]">
+      <!-- Rail : étapes verticales + récapitulatif live -->
+      <aside class="sticky top-6 hidden space-y-5 lg:block">
+        <DemoSitesWizardStepper
+          :steps="steps"
+          :current-step="currentStep"
+          orientation="vertical"
+          @navigate="handleStepNavigate"
+        />
 
-    <!-- Étape 3 : Aperçu -->
-    <div v-else-if="currentStep === 3" key="step-3" class="wizard-step space-y-6">
-      <div>
-        <h2 class="text-base font-semibold text-[var(--app-ink)]">Aperçu du site</h2>
-        <p class="mt-1 text-sm text-[var(--app-ink-soft)]">
-          Faites défiler l'aperçu et testez la navigation avant publication.
-        </p>
-      </div>
-
-      <div v-if="previewLoading" class="app-card flex flex-col items-center justify-center gap-4 py-24">
-        <div class="loader-ring"></div>
-        <p class="font-label text-xs tracking-wide text-[var(--app-ink-soft)] uppercase">Génération de l'aperçu…</p>
-      </div>
-      <DemoSitesDemoSitePreviewFrame
-        v-else-if="previewContent"
-        :content="previewContent"
-        :business-name="form.business_name"
-        :template-id="form.template_id"
-      />
-
-      <!-- Récapitulatif -->
-      <div class="app-card p-5 md:p-6">
-        <p class="app-label mb-4">Récapitulatif</p>
-        <dl class="grid gap-x-8 gap-y-3 sm:grid-cols-2">
-          <div v-for="item in recapItems" :key="item.label" class="flex items-baseline justify-between gap-4">
-            <dt class="text-xs text-[var(--app-ink-soft)]">{{ item.label }}</dt>
-            <dd class="text-right text-sm font-medium text-[var(--app-ink)]">{{ item.value }}</dd>
-          </div>
-        </dl>
-      </div>
-
-      <div class="flex justify-between border-t border-[var(--app-line-soft)] pt-5">
-        <button type="button" class="app-btn-secondary" @click="goToStep(2)">
-          <UIcon name="i-lucide-arrow-left" class="h-3.5 w-3.5" />
-          Modifier la template
-        </button>
-        <button type="button" class="app-btn-primary" @click="goToStep(4)">
-          Continuer vers la publication
-          <UIcon name="i-lucide-arrow-right" class="h-3.5 w-3.5" />
-        </button>
-      </div>
-    </div>
-
-    <!-- Étape 4 : Publication -->
-    <div v-else-if="currentStep === 4" key="step-4" class="wizard-step app-card space-y-6 p-6 md:p-7">
-      <div>
-        <h2 class="text-base font-semibold text-[var(--app-ink)]">Publication</h2>
-        <p class="mt-1 text-sm text-[var(--app-ink-soft)]">
-          Confirmez la génération — le site sera publié immédiatement.
-        </p>
-      </div>
-
-      <label
-        class="flex cursor-pointer items-start gap-3.5 rounded-xl border p-4 transition-colors"
-        :class="
-          form.invite_client_to_cms
-            ? 'border-[var(--app-ink)] bg-[var(--app-surface-2)]/60'
-            : 'border-[var(--app-line)] bg-[var(--app-bg)] hover:border-[var(--app-ink-soft)]'
-        "
-      >
-        <input v-model="form.invite_client_to_cms" type="checkbox" class="mt-0.5 h-4 w-4 accent-(--app-accent)" />
-        <span>
-          <span class="text-sm font-medium text-[var(--app-ink)]">Inviter le client au CMS Storyblok</span>
-          <span class="mt-1 block text-xs leading-relaxed text-[var(--app-ink-soft)]">
-            Storyblok enverra un email d'invitation au client. Décochez pour inviter plus tard depuis la fiche du site.
-          </span>
-        </span>
-      </label>
-
-      <p class="flex items-center gap-2 text-xs text-[var(--app-ink-soft)]">
-        <LandingAsterisk class="text-[0.6rem] text-[var(--app-accent)]" />
-        Le site démo sera actif pendant 14 jours, puis supprimé automatiquement.
-      </p>
-
-      <div class="flex justify-between border-t border-[var(--app-line-soft)] pt-5">
-        <button type="button" class="app-btn-secondary" @click="goToStep(3)">
-          <UIcon name="i-lucide-arrow-left" class="h-3.5 w-3.5" />
-          Retour à l'aperçu
-        </button>
-        <button type="button" class="app-btn-primary" :disabled="isSubmitting" @click="handleGenerate">
-          <UIcon
-            :name="isSubmitting ? 'i-lucide-loader-circle' : 'i-lucide-rocket'"
-            :class="['h-3.5 w-3.5', isSubmitting && 'animate-spin']"
-          />
-          {{ isSubmitting ? 'Publication en cours…' : 'Publier le site' }}
-        </button>
-      </div>
-    </div>
-
-    <!-- Étape 5 : Terminé -->
-    <div v-else-if="currentStep === 5 && createdSite" key="step-5" class="wizard-step space-y-5">
-      <!-- Échec -->
-      <div v-if="isDemoFailed" class="app-card border-[var(--app-red)]/40 p-6 text-center md:p-8">
-        <span
-          class="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-[var(--app-red-soft)] text-[var(--app-red)]"
-        >
-          <UIcon name="i-lucide-x" class="h-6 w-6" />
-        </span>
-        <h2 class="mt-4 text-lg font-semibold text-[var(--app-ink)]">{{ resultTitle }}</h2>
-        <p v-if="resultMessage" class="mx-auto mt-2 max-w-md text-sm text-[var(--app-ink-soft)]">
-          {{ resultMessage }}
-        </p>
-        <div class="mt-6 flex flex-wrap justify-center gap-2">
-          <button type="button" class="app-btn-primary" @click="goToStep(4)">Réessayer la publication</button>
-          <NuxtLink to="/dashboard/demo-sites" class="app-btn-secondary">Mes sites démo</NuxtLink>
-        </div>
-      </div>
-
-      <template v-else>
-        <!-- Succès / en attente -->
-        <div class="app-card p-6 text-center md:p-8">
-          <span
-            class="mx-auto flex h-14 w-14 items-center justify-center rounded-full"
-            :class="
-              isDemoLive
-                ? 'bg-[var(--app-green-soft)] text-[var(--app-green)]'
-                : 'bg-[var(--app-accent-soft)] text-[var(--app-accent-ink)]'
-            "
+        <div v-if="form.business_name" class="app-card p-4">
+          <p class="app-label mb-3">Récapitulatif</p>
+          <dl class="space-y-2.5">
+            <div v-for="item in recapItems" :key="item.label">
+              <dt class="text-[10px] text-[var(--app-ink-soft)]">{{ item.label }}</dt>
+              <dd class="truncate text-sm font-medium text-[var(--app-ink)]">{{ item.value || '—' }}</dd>
+            </div>
+          </dl>
+          <p
+            class="mt-3 flex items-center gap-1.5 border-t border-[var(--app-line-soft)] pt-3 text-[10px] text-[var(--app-ink-soft)]"
           >
-            <UIcon :name="isDemoLive ? 'i-lucide-check' : 'i-lucide-clock'" class="h-6 w-6" />
-          </span>
-          <h2 class="mt-4 text-lg font-semibold text-[var(--app-ink)]">{{ resultTitle }}</h2>
-          <p v-if="resultMessage" class="mx-auto mt-2 max-w-md text-sm text-[var(--app-ink-soft)]">
-            {{ resultMessage }}
+            <UIcon name="i-lucide-clock" class="h-3 w-3" />
+            Démo active 14 jours
           </p>
+        </div>
+      </aside>
 
-          <!-- URL -->
-          <div
-            v-if="createdOpenUrl"
-            class="mx-auto mt-6 max-w-lg rounded-xl border border-[var(--app-line)] bg-[var(--app-bg)] p-4 text-left"
-          >
-            <p class="app-label">URL du site</p>
-            <p class="font-label mt-1.5 text-sm break-all text-[var(--app-ink)]">{{ createdOpenUrl }}</p>
-            <div class="mt-3 flex flex-wrap gap-2">
-              <button
-                type="button"
-                class="app-btn-secondary h-8 min-h-8 px-3 text-xs"
-                @click="openDemoUrl(createdOpenUrl)"
-              >
-                <UIcon name="i-lucide-external-link" class="h-3 w-3" />
-                Ouvrir
-              </button>
-              <button type="button" class="app-btn-secondary h-8 min-h-8 px-3 text-xs" @click="copyDemoUrl">
-                <UIcon :name="copied ? 'i-lucide-check' : 'i-lucide-copy'" class="h-3 w-3" />
-                {{ copied ? 'Copié !' : 'Copier le lien' }}
-              </button>
-              <NuxtLink
-                :to="`/dashboard/demo-sites/${createdSite.id}`"
-                class="app-btn-secondary h-8 min-h-8 px-3 text-xs"
-              >
-                <UIcon name="i-lucide-file-text" class="h-3 w-3" />
-                Voir la fiche
-              </NuxtLink>
+      <div class="min-w-0">
+        <!-- Stepper horizontal (mobile / tablette) -->
+        <div class="lg:hidden">
+          <DemoSitesWizardStepper :steps="steps" :current-step="currentStep" @navigate="handleStepNavigate" />
+        </div>
+
+        <!-- Étape 1 : Informations -->
+        <div v-if="currentStep === 1" key="step-1" class="wizard-step app-card space-y-6 p-5 md:p-6">
+          <div>
+            <h2 class="text-base font-semibold text-[var(--app-ink)]">Informations entreprise</h2>
+            <p class="mt-1 text-sm text-[var(--app-ink-soft)]">
+              Sélectionnez un prospect existant ou saisissez les informations manuellement.
+            </p>
+          </div>
+
+          <!-- Source segmented control -->
+          <div class="flex gap-1 rounded-full border border-[var(--app-line)] bg-[var(--app-bg)] p-1">
+            <button type="button" :class="segmentClass(inputMode === 'prospect')" @click="inputMode = 'prospect'">
+              <UIcon name="i-lucide-users" class="h-3.5 w-3.5" />
+              Depuis un prospect
+            </button>
+            <button type="button" :class="segmentClass(inputMode === 'manual')" @click="inputMode = 'manual'">
+              <UIcon name="i-lucide-pen-line" class="h-3.5 w-3.5" />
+              Saisie manuelle
+            </button>
+          </div>
+
+          <div v-if="inputMode === 'prospect'" class="space-y-2">
+            <label class="app-label block">Choisir un prospect</label>
+            <select v-model="selectedProspectId" class="app-input w-full" @change="applyProspect">
+              <option :value="null">— Sélectionner —</option>
+              <option v-for="p in prospects" :key="p.id" :value="p.id">
+                {{ p.name }}{{ p.city ? ` · ${p.city}` : '' }}
+              </option>
+            </select>
+            <p v-if="prospectsLoading" class="text-xs text-[var(--app-ink-soft)]">Chargement des prospects…</p>
+            <p v-else-if="!prospects.length" class="text-xs text-[var(--app-accent-ink)]">
+              Aucun prospect enregistré.
+              <NuxtLink to="/dashboard/my-prospects" class="underline underline-offset-2">Ajouter un prospect</NuxtLink>
+            </p>
+            <p v-else-if="form.prospect_id" class="inline-flex items-center gap-1.5 text-xs text-[var(--app-green)]">
+              <UIcon name="i-lucide-circle-check" class="h-3.5 w-3.5" />
+              Champs pré-remplis — le site sera relié à ce prospect
+            </p>
+          </div>
+
+          <div class="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
+            <div class="md:col-span-2 xl:col-span-3">
+              <label class="app-label mb-1.5 block">Nom de l'entreprise *</label>
+              <input v-model="form.business_name" type="text" class="app-input w-full" placeholder="Plomberie Dupont" />
+            </div>
+            <div>
+              <label class="app-label mb-1.5 block">Téléphone</label>
+              <input v-model="form.phone" type="text" class="app-input w-full" placeholder="01 23 45 67 89" />
+            </div>
+            <div>
+              <label for="builder-city" class="app-label mb-1.5 block">Ville</label>
+              <UiCityAutocompleteInput v-model="form.city" input-id="builder-city" placeholder="Paris" />
+            </div>
+            <div class="md:col-span-2 xl:col-span-1">
+              <label class="app-label mb-1.5 block">Email client *</label>
+              <input v-model="form.email" type="email" class="app-input w-full" placeholder="client@example.com" />
+            </div>
+            <div class="md:col-span-2 xl:col-span-3">
+              <label class="app-label mb-1.5 block">Description courte</label>
+              <textarea
+                v-model="form.description"
+                rows="3"
+                class="app-input h-auto w-full py-2"
+                placeholder="Dépannage plomberie 24h/24, installation sanitaire, recherche de fuite…"
+              />
             </div>
           </div>
-        </div>
 
-        <!-- Et maintenant ? — chaîner vers le démarchage -->
-        <div class="app-card p-5 md:p-6">
-          <p class="app-label flex items-center gap-2">
-            <LandingAsterisk class="text-[0.6rem] text-[var(--app-accent)]" />
-            Et maintenant ?
-          </p>
-          <p class="mt-2 text-sm leading-relaxed text-[var(--app-ink-soft)]">
-            Le site est en ligne — il ne vend rien tant que le prospect ne l'a pas vu. Lancez le démarchage.
-          </p>
-          <div class="mt-4 flex flex-wrap gap-2">
-            <NuxtLink v-if="campaignChainUrl" :to="campaignChainUrl" class="app-btn-primary">
-              <UIcon name="i-lucide-megaphone" class="h-3.5 w-3.5" />
-              Ajouter à une campagne
-            </NuxtLink>
-            <button type="button" class="app-btn-secondary" @click="resetForm">
-              <UIcon name="i-lucide-plus" class="h-3.5 w-3.5" />
-              Créer un autre site
+          <div class="flex items-center justify-between gap-4 border-t border-[var(--app-line-soft)] pt-5">
+            <p v-if="!canGoToStep2" class="text-xs text-[var(--app-ink-soft)]">
+              Le nom et un email valide sont requis pour continuer.
+            </p>
+            <span v-else></span>
+            <button type="button" class="app-btn-primary" :disabled="!canGoToStep2" @click="goToStep(2)">
+              Continuer
+              <UIcon name="i-lucide-arrow-right" class="h-3.5 w-3.5" />
             </button>
-            <NuxtLink to="/dashboard/demo-sites" class="app-btn-secondary">Mes sites démo</NuxtLink>
           </div>
         </div>
-      </template>
+
+        <!-- Étape 2 : Template -->
+        <div v-else-if="currentStep === 2" key="step-2" class="wizard-step space-y-6">
+          <div>
+            <h2 class="text-base font-semibold text-[var(--app-ink)]">Choix de la template</h2>
+            <p class="mt-1 text-sm text-[var(--app-ink-soft)]">
+              Sélectionnez un modèle et personnalisez les couleurs de la charte graphique.
+            </p>
+          </div>
+          <DemoSitesTemplatePicker
+            v-model="form.template_id"
+            :templates="templates"
+            :theme="form.theme"
+            @update:theme="form.theme = $event"
+          />
+          <div class="flex justify-between border-t border-[var(--app-line-soft)] pt-5">
+            <button type="button" class="app-btn-secondary" @click="goToStep(1)">
+              <UIcon name="i-lucide-arrow-left" class="h-3.5 w-3.5" />
+              Retour
+            </button>
+            <button type="button" class="app-btn-primary" @click="loadPreviewAndContinue">
+              Voir l'aperçu
+              <UIcon name="i-lucide-arrow-right" class="h-3.5 w-3.5" />
+            </button>
+          </div>
+        </div>
+
+        <!-- Étape 3 : Aperçu -->
+        <div v-else-if="currentStep === 3" key="step-3" class="wizard-step space-y-6">
+          <div>
+            <h2 class="text-base font-semibold text-[var(--app-ink)]">Aperçu du site</h2>
+            <p class="mt-1 text-sm text-[var(--app-ink-soft)]">
+              Faites défiler l'aperçu et testez la navigation avant publication.
+            </p>
+          </div>
+
+          <div v-if="previewLoading" class="app-card flex flex-col items-center justify-center gap-4 py-24">
+            <div class="loader-ring"></div>
+            <p class="font-label text-xs tracking-wide text-[var(--app-ink-soft)] uppercase">Génération de l'aperçu…</p>
+          </div>
+          <DemoSitesDemoSitePreviewFrame
+            v-else-if="previewContent"
+            :content="previewContent"
+            :business-name="form.business_name"
+            :template-id="form.template_id"
+          />
+
+          <div class="flex justify-between border-t border-[var(--app-line-soft)] pt-5">
+            <button type="button" class="app-btn-secondary" @click="goToStep(2)">
+              <UIcon name="i-lucide-arrow-left" class="h-3.5 w-3.5" />
+              Modifier la template
+            </button>
+            <button type="button" class="app-btn-primary" @click="goToStep(4)">
+              Continuer vers la publication
+              <UIcon name="i-lucide-arrow-right" class="h-3.5 w-3.5" />
+            </button>
+          </div>
+        </div>
+
+        <!-- Étape 4 : Publication -->
+        <div v-else-if="currentStep === 4" key="step-4" class="wizard-step app-card space-y-6 p-5 md:p-6">
+          <div>
+            <h2 class="text-base font-semibold text-[var(--app-ink)]">Publication</h2>
+            <p class="mt-1 text-sm text-[var(--app-ink-soft)]">
+              Confirmez la génération — le site sera publié immédiatement.
+            </p>
+          </div>
+
+          <label
+            class="flex cursor-pointer items-start gap-3.5 rounded-xl border p-4 transition-colors"
+            :class="
+              form.invite_client_to_cms
+                ? 'border-[var(--app-ink)] bg-[var(--app-surface-2)]/60'
+                : 'border-[var(--app-line)] bg-[var(--app-bg)] hover:border-[var(--app-ink-soft)]'
+            "
+          >
+            <input v-model="form.invite_client_to_cms" type="checkbox" class="mt-0.5 h-4 w-4 accent-(--app-accent)" />
+            <span>
+              <span class="text-sm font-medium text-[var(--app-ink)]">Inviter le client au CMS Storyblok</span>
+              <span class="mt-1 block text-xs leading-relaxed text-[var(--app-ink-soft)]">
+                Storyblok enverra un email d'invitation au client. Décochez pour inviter plus tard depuis la fiche du
+                site.
+              </span>
+            </span>
+          </label>
+
+          <p class="flex items-center gap-2 text-xs text-[var(--app-ink-soft)]">
+            <LandingAsterisk class="text-[0.6rem] text-[var(--app-accent)]" />
+            Le site démo sera actif pendant 14 jours, puis supprimé automatiquement.
+          </p>
+
+          <div class="flex justify-between border-t border-[var(--app-line-soft)] pt-5">
+            <button type="button" class="app-btn-secondary" @click="goToStep(3)">
+              <UIcon name="i-lucide-arrow-left" class="h-3.5 w-3.5" />
+              Retour à l'aperçu
+            </button>
+            <button type="button" class="app-btn-primary" :disabled="isSubmitting" @click="handleGenerate">
+              <UIcon
+                :name="isSubmitting ? 'i-lucide-loader-circle' : 'i-lucide-rocket'"
+                :class="['h-3.5 w-3.5', isSubmitting && 'animate-spin']"
+              />
+              {{ isSubmitting ? 'Publication en cours…' : 'Publier le site' }}
+            </button>
+          </div>
+        </div>
+
+        <!-- Étape 5 : Terminé -->
+        <div v-else-if="currentStep === 5 && createdSite" key="step-5" class="wizard-step space-y-5">
+          <!-- Échec -->
+          <div v-if="isDemoFailed" class="app-card border-[var(--app-red)]/40 p-6 text-center md:p-8">
+            <span
+              class="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-[var(--app-red-soft)] text-[var(--app-red)]"
+            >
+              <UIcon name="i-lucide-x" class="h-6 w-6" />
+            </span>
+            <h2 class="mt-4 text-lg font-semibold text-[var(--app-ink)]">{{ resultTitle }}</h2>
+            <p v-if="resultMessage" class="mx-auto mt-2 max-w-md text-sm text-[var(--app-ink-soft)]">
+              {{ resultMessage }}
+            </p>
+            <div class="mt-6 flex flex-wrap justify-center gap-2">
+              <button type="button" class="app-btn-primary" @click="goToStep(4)">Réessayer la publication</button>
+              <NuxtLink to="/dashboard/demo-sites" class="app-btn-secondary">Mes sites démo</NuxtLink>
+            </div>
+          </div>
+
+          <template v-else>
+            <!-- Succès / en attente -->
+            <div class="app-card p-6 text-center md:p-8">
+              <span
+                class="mx-auto flex h-14 w-14 items-center justify-center rounded-full"
+                :class="
+                  isDemoLive
+                    ? 'bg-[var(--app-green-soft)] text-[var(--app-green)]'
+                    : 'bg-[var(--app-accent-soft)] text-[var(--app-accent-ink)]'
+                "
+              >
+                <UIcon :name="isDemoLive ? 'i-lucide-check' : 'i-lucide-clock'" class="h-6 w-6" />
+              </span>
+              <h2 class="mt-4 text-lg font-semibold text-[var(--app-ink)]">{{ resultTitle }}</h2>
+              <p v-if="resultMessage" class="mx-auto mt-2 max-w-md text-sm text-[var(--app-ink-soft)]">
+                {{ resultMessage }}
+              </p>
+
+              <!-- URL -->
+              <div
+                v-if="createdOpenUrl"
+                class="mx-auto mt-6 max-w-lg rounded-xl border border-[var(--app-line)] bg-[var(--app-bg)] p-4 text-left"
+              >
+                <p class="app-label">URL du site</p>
+                <p class="font-label mt-1.5 text-sm break-all text-[var(--app-ink)]">{{ createdOpenUrl }}</p>
+                <div class="mt-3 flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    class="app-btn-secondary h-8 min-h-8 px-3 text-xs"
+                    @click="openDemoUrl(createdOpenUrl)"
+                  >
+                    <UIcon name="i-lucide-external-link" class="h-3 w-3" />
+                    Ouvrir
+                  </button>
+                  <button type="button" class="app-btn-secondary h-8 min-h-8 px-3 text-xs" @click="copyDemoUrl">
+                    <UIcon :name="copied ? 'i-lucide-check' : 'i-lucide-copy'" class="h-3 w-3" />
+                    {{ copied ? 'Copié !' : 'Copier le lien' }}
+                  </button>
+                  <NuxtLink
+                    :to="`/dashboard/demo-sites/${createdSite.id}`"
+                    class="app-btn-secondary h-8 min-h-8 px-3 text-xs"
+                  >
+                    <UIcon name="i-lucide-file-text" class="h-3 w-3" />
+                    Voir la fiche
+                  </NuxtLink>
+                </div>
+              </div>
+            </div>
+
+            <!-- Et maintenant ? — chaîner vers le démarchage -->
+            <div class="app-card p-5 md:p-6">
+              <p class="app-label flex items-center gap-2">
+                <LandingAsterisk class="text-[0.6rem] text-[var(--app-accent)]" />
+                Et maintenant ?
+              </p>
+              <p class="mt-2 text-sm leading-relaxed text-[var(--app-ink-soft)]">
+                Le site est en ligne — il ne vend rien tant que le prospect ne l'a pas vu. Lancez le démarchage.
+              </p>
+              <div class="mt-4 flex flex-wrap gap-2">
+                <NuxtLink v-if="campaignChainUrl" :to="campaignChainUrl" class="app-btn-primary">
+                  <UIcon name="i-lucide-megaphone" class="h-3.5 w-3.5" />
+                  Ajouter à une campagne
+                </NuxtLink>
+                <button type="button" class="app-btn-secondary" @click="resetForm">
+                  <UIcon name="i-lucide-plus" class="h-3.5 w-3.5" />
+                  Créer un autre site
+                </button>
+                <NuxtLink to="/dashboard/demo-sites" class="app-btn-secondary">Mes sites démo</NuxtLink>
+              </div>
+            </div>
+          </template>
+        </div>
+      </div>
     </div>
   </div>
 </template>

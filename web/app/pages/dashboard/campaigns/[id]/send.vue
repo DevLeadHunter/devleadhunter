@@ -2,13 +2,13 @@
   <div>
     <!-- Back button -->
     <button class="text-muted mb-4 flex items-center gap-2 text-sm hover:text-[var(--app-ink)]" @click="$router.back()">
-      <i class="fa-solid fa-arrow-left"></i>
-      <span>Back to campaigns</span>
+      <UIcon name="i-lucide-arrow-left" class="h-3.5 w-3.5" />
+      <span>Retour aux campagnes</span>
     </button>
 
     <!-- Header -->
     <div class="card mb-4">
-      <h1 class="text-xl font-semibold text-[var(--app-ink)]">Send Campaign</h1>
+      <h1 class="text-xl font-semibold text-[var(--app-ink)]">Envoyer la campagne</h1>
       <p v-if="campaign" class="text-muted mt-2 text-sm">
         {{ campaign.name }} - {{ campaign.prospectIds.length }} prospect(s)
       </p>
@@ -27,30 +27,30 @@
       <form class="space-y-4" @submit.prevent="handleSendCampaign">
         <!-- Email Account Selection -->
         <div>
-          <label class="text-muted mb-1.5 block text-xs font-medium"> Sender Account * </label>
+          <label class="text-muted mb-1.5 block text-xs font-medium"> Compte expéditeur * </label>
           <select v-model="sendForm.email_account_id" required class="input-field">
-            <option value="">Select an account</option>
+            <option value="">Sélectionner un compte</option>
             <option v-for="account in emailAccounts.filter((a) => a.is_verified)" :key="account.id" :value="account.id">
               {{ account.name }} ({{ account.email }})
-              {{ account.is_default ? ' - Default' : '' }}
+              {{ account.is_default ? ' - Par défaut' : '' }}
             </option>
           </select>
           <p
             v-if="emailAccounts.filter((a) => a.is_verified).length === 0"
             class="mt-1.5 text-xs text-[var(--app-red)]"
           >
-            No verified account available.
+            Aucun compte vérifié disponible.
             <NuxtLink to="/dashboard/email-accounts" class="text-[var(--app-accent-ink)] hover:underline">
-              Configure an email account
+              Configurer un compte email
             </NuxtLink>
           </p>
         </div>
 
         <!-- Template Selection -->
         <div>
-          <label class="text-muted mb-1.5 block text-xs font-medium"> Email Template * </label>
+          <label class="text-muted mb-1.5 block text-xs font-medium"> Modèle d'email * </label>
           <select v-model="sendForm.template_id" required class="input-field" @change="loadTemplatePreview">
-            <option value="">Select a template</option>
+            <option value="">Sélectionner un modèle</option>
             <option
               v-for="template in emailTemplates.filter((t) => t.is_active)"
               :key="template.id"
@@ -60,24 +60,24 @@
             </option>
           </select>
           <p v-if="emailTemplates.filter((t) => t.is_active).length === 0" class="mt-1.5 text-xs text-[var(--app-red)]">
-            No active template available.
+            Aucun modèle actif disponible.
             <NuxtLink to="/dashboard/email-templates" class="text-[var(--app-accent-ink)] hover:underline">
-              Create a template
+              Créer un modèle
             </NuxtLink>
           </p>
         </div>
 
         <!-- Template Preview -->
         <div v-if="selectedTemplate" class="border-muted rounded border bg-[var(--app-bg)] p-3">
-          <h3 class="mb-2 text-xs font-medium text-[var(--app-ink)]">Template Preview</h3>
+          <h3 class="mb-2 text-xs font-medium text-[var(--app-ink)]">Aperçu du modèle</h3>
           <div class="text-muted mb-2 text-xs">
-            <span class="font-medium">Subject:</span> {{ selectedTemplate.subject }}
+            <span class="font-medium">Sujet :</span> {{ selectedTemplate.subject }}
           </div>
           <div
             v-if="selectedTemplate.variables && selectedTemplate.variables.length > 0"
             class="text-muted mb-2 text-xs"
           >
-            <span class="font-medium">Variables:</span> {{ selectedTemplate.variables.join(', ') }}
+            <span class="font-medium">Variables :</span> {{ selectedTemplate.variables.join(', ') }}
           </div>
           <div class="border-muted rounded border bg-[var(--app-surface)] p-2 text-xs">
             <!-- eslint-disable-next-line vue/no-v-html -- Trusted HTML from user's own email template -->
@@ -87,28 +87,28 @@
 
         <!-- Prospects Summary -->
         <div class="rounded border border-[var(--app-accent-ink)]/30 bg-[var(--app-accent-ink)]/10 p-3">
-          <h3 class="mb-1 text-xs font-medium text-[var(--app-accent-ink)]">Sending Summary</h3>
+          <h3 class="mb-1 text-xs font-medium text-[var(--app-accent-ink)]">Résumé de l'envoi</h3>
           <p class="text-xs text-[var(--app-accent-ink)]">
-            {{ campaign?.prospectIds.length || 0 }} email(s) will be sent
+            {{ campaign?.prospectIds.length || 0 }} email(s) seront envoyés
           </p>
-          <p class="text-muted mt-1 text-xs">Variables will be automatically replaced for each prospect</p>
+          <p class="text-muted mt-1 text-xs">Les variables seront remplacées automatiquement pour chaque prospect</p>
         </div>
 
         <!-- Warning -->
         <div class="rounded border border-[var(--app-red)]/30 bg-[var(--app-red)]/10 p-3">
           <p class="text-xs text-[var(--app-red)]">
-            <i class="fa-solid fa-exclamation-triangle mr-1"></i>
-            <strong>Warning:</strong> Once sent, emails cannot be canceled. Double-check your template and prospect
-            list.
+            <UIcon name="i-lucide-triangle-alert" class="mr-1 inline-block h-3.5 w-3.5 align-[-2px]" />
+            <strong>Attention :</strong> une fois partis, les emails ne peuvent pas être annulés. Vérifiez votre modèle
+            et votre liste de prospects.
           </p>
         </div>
 
         <!-- Actions -->
         <div class="flex gap-3 pt-2">
-          <button type="button" class="btn-secondary flex-1" @click="$router.back()">Cancel</button>
+          <button type="button" class="btn-secondary flex-1" @click="$router.back()">Annuler</button>
           <button type="submit" :disabled="isSending || !canSend" class="btn-primary flex-1">
-            <i v-if="isSending" class="fa-solid fa-spinner fa-spin mr-1.5"></i>
-            <span>{{ isSending ? 'Sending...' : 'Send Campaign' }}</span>
+            <UIcon v-if="isSending" name="i-lucide-loader-circle" class="h-4 w-4 animate-spin" />
+            <span>{{ isSending ? 'Envoi…' : 'Envoyer la campagne' }}</span>
           </button>
         </div>
       </form>
@@ -120,7 +120,7 @@
       class="fixed inset-0 z-50 flex items-center justify-center bg-[var(--app-overlay)] backdrop-blur-sm"
     >
       <div class="border-muted mx-4 w-full max-w-md rounded-lg border bg-[var(--app-surface)] p-6">
-        <h2 class="mb-6 text-center text-base font-semibold text-[var(--app-ink)]">Sending in progress...</h2>
+        <h2 class="mb-6 text-center text-base font-semibold text-[var(--app-ink)]">Envoi en cours…</h2>
 
         <div class="mb-6">
           <div class="h-3 w-full overflow-hidden rounded-full bg-[var(--app-surface-2)]">
@@ -129,21 +129,25 @@
               :style="{ width: `${sendProgress}%` }"
             ></div>
           </div>
-          <p class="text-muted mt-2 text-center text-xs">{{ sentCount }} / {{ totalCount }} emails sent</p>
+          <p class="text-muted mt-2 text-center text-xs">{{ sentCount }} / {{ totalCount }} emails envoyés</p>
         </div>
 
         <div v-if="sendResult" class="space-y-2 text-sm">
           <div class="flex justify-between">
-            <span class="text-[var(--app-green)]"><i class="fa-solid fa-check mr-1"></i>Sent:</span>
+            <span class="flex items-center gap-1.5 text-[var(--app-green)]"
+              ><UIcon name="i-lucide-check" class="h-3.5 w-3.5" />Envoyés :</span
+            >
             <span class="font-medium text-[var(--app-ink)]">{{ sendResult.sent_count }}</span>
           </div>
           <div v-if="sendResult.failed_count > 0" class="flex justify-between">
-            <span class="text-[var(--app-red)]"><i class="fa-solid fa-xmark mr-1"></i>Failed:</span>
+            <span class="flex items-center gap-1.5 text-[var(--app-red)]"
+              ><UIcon name="i-lucide-x" class="h-3.5 w-3.5" />Échecs :</span
+            >
             <span class="font-medium text-[var(--app-ink)]">{{ sendResult.failed_count }}</span>
           </div>
         </div>
 
-        <button v-if="sendResult" class="btn-primary mt-6 w-full" @click="handleCloseSendModal">Close</button>
+        <button v-if="sendResult" class="btn-primary mt-6 w-full" @click="handleCloseSendModal">Fermer</button>
       </div>
     </div>
   </div>
@@ -220,7 +224,7 @@ const loadData = async () => {
     campaign.value = campaignsStore.getCampaignById(campaignId) || null
 
     if (!campaign.value) {
-      toast.error('Campaign not found')
+      toast.error('Campagne introuvable')
       return
     }
 
@@ -239,7 +243,7 @@ const loadData = async () => {
       sendForm.value.email_account_id = defaultAccount.id
     }
   } catch (error) {
-    toast.error('Failed to load data')
+    toast.error('Erreur lors du chargement des données')
     console.error(error)
   } finally {
     isLoading.value = false
@@ -255,7 +259,7 @@ const loadTemplatePreview = () => {
 const handleSendCampaign = async () => {
   if (!canSend.value || !campaign.value) return
 
-  if (!confirm(`Send ${campaign.value.prospectIds.length} emails?`)) {
+  if (!confirm(`Envoyer ${campaign.value.prospectIds.length} emails ?`)) {
     return
   }
 
@@ -295,15 +299,15 @@ const handleSendCampaign = async () => {
     sendResult.value = result
 
     if (result.success) {
-      toast.success(`${result.sent_count} emails sent successfully`)
+      toast.success(`${result.sent_count} emails envoyés`)
       if (result.failed_count > 0) {
-        toast.warning(`${result.failed_count} emails failed`)
+        toast.warning(`${result.failed_count} emails en échec`)
       }
     } else {
-      toast.error('Failed to send campaign')
+      toast.error("Échec de l'envoi de la campagne")
     }
   } catch (error: unknown) {
-    toast.error(error.response?.data?.detail || 'Failed to send')
+    toast.error(error.response?.data?.detail || "Échec de l'envoi")
     console.error(error)
     showProgressModal.value = false
   } finally {

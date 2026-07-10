@@ -8,10 +8,10 @@
       </div>
       <div class="flex items-center gap-3">
         <button :disabled="isLoading" class="btn-secondary disabled:opacity-50" @click="loadAll">
-          <i class="fa-solid fa-rotate-right mr-2"></i>Actualiser
+          <UIcon name="i-lucide-rotate-cw" class="h-4 w-4" />Actualiser
         </button>
         <button class="btn-primary" :disabled="isCreating" @click="handleCreate">
-          <i class="fa-solid fa-plus mr-2"></i>Nouvelle vente
+          <UIcon name="i-lucide-plus" class="h-4 w-4" />Nouvelle vente
         </button>
       </div>
     </div>
@@ -38,13 +38,15 @@
 
     <!-- Loader / empty / table -->
     <div v-if="isLoading" class="flex items-center justify-center py-12">
-      <i class="fa-solid fa-spinner fa-spin text-muted text-4xl"></i>
+      <UIcon name="i-lucide-loader-circle" class="text-muted h-9 w-9 animate-spin" />
     </div>
 
-    <div v-else-if="orders.length === 0" class="py-12 text-center">
-      <i class="fa-solid fa-cart-shopping text-muted mb-4 text-6xl"></i>
-      <h3 class="mt-4 text-lg font-medium text-[var(--app-ink)]">Aucune vente</h3>
-      <p class="text-muted mt-2 text-sm">Marquez un prospect comme vendu, ou créez une vente manuellement.</p>
+    <div v-else-if="orders.length === 0" class="card px-6 py-12 text-center">
+      <LandingAsterisk class="text-4xl text-[var(--app-accent)]" />
+      <h3 class="font-display mt-5 text-2xl font-semibold text-[var(--app-ink)]">Aucune vente</h3>
+      <p class="mx-auto mt-2 max-w-sm text-sm leading-relaxed text-[var(--app-ink-soft)]">
+        Marquez un prospect comme vendu, ou créez une vente manuellement.
+      </p>
     </div>
 
     <div v-else class="card overflow-hidden p-0">
