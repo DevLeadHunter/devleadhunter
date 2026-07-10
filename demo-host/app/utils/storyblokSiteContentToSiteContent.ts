@@ -19,6 +19,20 @@ function obj(value: unknown): Blok {
 }
 
 /**
+ * Return a single-blok field as an object.
+ *
+ * Our API writes single bloks (e.g. the palette) as plain objects, but once the
+ * story has been edited and republished in Storyblok the field comes back as a
+ * LIST of bloks — handle both shapes (mirror of the Python `_single_blok`).
+ */
+function singleBlok(value: unknown): Blok {
+  if (Array.isArray(value)) {
+    return obj(value[0])
+  }
+  return obj(value)
+}
+
+/**
  * Locate the native `site_content` blok inside a resolved Storyblok content object.
  *
  * Handles both shapes Storyblok / the API can hand us:
@@ -63,7 +77,7 @@ export function isStoryblokSiteContent(raw: Record<string, unknown>): boolean {
  */
 export function storyblokSiteContentToSiteContent(raw: Record<string, unknown>): SiteContent {
   const blok: Blok = findSiteContentBlok(raw as Blok) ?? {}
-  const palette: Blok = obj(blok.palette)
+  const palette: Blok = singleBlok(blok.palette)
 
   return {
     businessName: str(blok.businessName),
@@ -73,6 +87,21 @@ export function storyblokSiteContentToSiteContent(raw: Record<string, unknown>):
     area: str(blok.area),
     subtitle: str(blok.subtitle),
     about: str(blok.about),
+    heroBadge: str(blok.heroBadge),
+    heroPoints: list(blok.heroPoints)
+      .map((item): string | undefined => str(item.text))
+      .filter((text): text is string => Boolean(text)),
+    ctaCallLabel: str(blok.ctaCallLabel),
+    ctaQuoteLabel: str(blok.ctaQuoteLabel),
+    trustItems: list(blok.trustItems)
+      .map((item): { value?: string; label?: string } => ({ value: str(item.value), label: str(item.label) }))
+      .filter((item): boolean => Boolean(item.value) || Boolean(item.label)),
+    servicesHeading: str(blok.servicesHeading),
+    galleryHeading: str(blok.galleryHeading),
+    reviewsHeading: str(blok.reviewsHeading),
+    faqHeading: str(blok.faqHeading),
+    aboutHeading: str(blok.aboutHeading),
+    contactHeading: str(blok.contactHeading),
     heroImage: str(blok.heroImage),
     aboutImage: str(blok.aboutImage),
     palette: {
@@ -99,5 +128,12 @@ export function storyblokSiteContentToSiteContent(raw: Record<string, unknown>):
     openingHours: list(blok.openingHours)
       .map((item): { day?: string; hours?: string } => ({ day: str(item.day), hours: str(item.hours) }))
       .filter((entry): boolean => Boolean(entry.day) || Boolean(entry.hours)),
+    beforeAfter: list(blok.beforeAfter)
+      .map((item): { before?: string; after?: string; label?: string } => ({
+        before: str(item.before),
+        after: str(item.after),
+        label: str(item.label),
+      }))
+      .filter((pair): boolean => Boolean(pair.before) || Boolean(pair.after)),
   }
 }
