@@ -12,6 +12,7 @@
 > - **2026-07-11** — ✅ **Résilience scraping (Étape 1)** : fallbacks sélecteur/regex/JSON-LD (Google + Pages Jaunes, 10 tests), failover inter-sources, capture réactive typée + page admin de monitoring. Correction du constat erroné sur `SCRAPER_BROWSER_HEADLESS` (headless=false volontaire, scraping sur IP résidentielle de l'utilisateur, pas un VPS).
 > - **2026-07-11** — ✅ **Fiabilisation enrichissement (Étape 2)** : source complémentaire **OpenStreetMap** (horaires ~60 % + social + email/site), fallback **JSON-LD** (description/note/avis), `social_links` branché, échec non silencieux (diagnostic « enrichment » → monitoring). Vérifié en live.
 > - **2026-07-11** — ✅ **Storyblok éprouvé & fiabilisé (Étape 3)** : cycle complet testé en live (2 bugs prod corrigés — provisioning du template par défaut + re-fetch CDN 301), re-sync des composants (upsert PUT + endpoints admin), provisioning parallélisé (~4 s). Rendu social visible sur les 5 templates au passage.
+> - **2026-07-11** — ✅ **Mailjet supprimé** (mort — Léo = Resend) : service + settings retirés, custom-domain reroutée vers Resend, et la vérif DNS custom-domain passe du **placeholder factice Mailjet** à de **vrais lookups SPF/DKIM** (`dns_service`, dnspython, testé en live). ✅ **Page campagnes** : grille 3 col → **2 col sous `2xl`** (le drawer « Nouvelle campagne » n'écrase plus les cartes) + texte redondant retiré du drawer.
 
 ---
 
@@ -112,17 +113,17 @@ Ce ne sont pas des généralités : ce sont des lignes de code précises à trai
 ### Étape 5 — Cold email
 **Bien** : A/B, file **throttlée 1 mail/20 min** via un **worker asyncio persistant** (tick 60 s, ≤10/tick, isolé par erreur — ne meurt jamais), relances multiples **automatiques** (temporelles), garde-fou « lien démo vide », **désinscription RGPD** (footer + triple filtre + headers RFC 8058), relance perso selon comportement, sélection A/B dès la création.
 **À améliorer / risqué** :
-- **Délivrabilité non gérée** : rien sur le warm-up de domaine, la vérif auto SPF/DKIM/DMARC, ou un cap quotidien global. Un mauvais départ **brûle le domaine `dibodev.fr`** — c'est le vrai risque du cold email.
+- **Délivrabilité partiellement gérée** : la **vérif SPF/DKIM** d'un compte custom-domain est désormais **réelle** (`dns_service`, lookups dnspython — cf. §journal). Reste ouvert : **warm-up de domaine, DMARC, cap quotidien global**. Un mauvais départ **brûle le domaine `dibodev.fr`** — c'est le vrai risque du cold email.
 - **Limites de tracking Resend** connues (réponses/suppressions non traçables) → angles morts du funnel.
-- **Fournisseur `mailjet_service` = placeholder** (implémentation factice) — legacy/mort.
+- ✅ **RÉSOLU (2026-07-11) — `mailjet_service` placeholder/mort** : supprimé (Léo utilise Resend). Les comptes custom-domain envoient via Resend ; la vérif DNS ne renvoie plus les fausses instructions Mailjet.
 
 ### Étape 6 — Vendre + mettre en prod
 **Bien** : section Ventes (`Order` multi-produit), lien Stripe **distinct des crédits**, email avec preview, **webhook Stripe → fulfilment auto**, remboursements gérés, **vérification avant `DELIVERED`** (domaine répond + CMS réel), mise en prod par domaine (Vercel host→slug — vrais appels API v10), handover Storyblok auto à la vente.
 **À améliorer / risqué** :
 - **Jamais déclenché par un vrai paiement** : tout le fulfilment est du code réel **non éprouvé en prod**. **La première vente = le vrai test d'intégration.**
-- **Asymétrie** : le `mark-paid` **manuel** ne lance PAS le fulfilment (seul le webhook le fait) → il faut re-cliquer « Déployer ».
+- **Asymétrie** : le `mark-paid` **manuel** ne lance PAS le fulfilment (seul le webhook le fait) → il faut re-cliquer « Déployer ». *(atténué : la loop de reprise rattrape désormais une commande `paid` non livrée — cf. §2.6.)*
 - **DNS du domaine = étape manuelle externe** (Vercel n'achète pas le domaine) — rupture dans « à vie sans dev ».
-- Fulfilment **fire-and-forget** (cf. §2.6).
+- ~~Fulfilment **fire-and-forget**~~ ✅ **RÉSOLU** (loop de reprise + cap + tracking — cf. §2.6).
 
 ---
 
@@ -135,26 +136,26 @@ Ce ne sont pas des généralités : ce sont des lignes de code précises à trai
 **163 `except Exception`** + **90 `# noqa: BLE001`** dans `api/` : la plupart dégradent gracieusement (bien), mais **masquent les causes** et **rien n'est monitoré**. **23 `print()`** en prod, y compris sur des chemins **financiers** (`payments.py`, `stripe_payment_service.py`, `accounting_service.py`). Le webhook Stripe renvoie `str(e)` dans un 500 (fuite d'info). **Bien** : handler global 500 propre avec CORS ; worker email résilient (anti-runaway).
 
 ### Observabilité — 🟠 Fragile
-**Aucun Sentry / APM / logging structuré** (recherche `sentry|opentelemetry|structlog|prometheus` = vide). Health check factice (cf. §2.5). Root logger à `WARNING` (les `INFO` masqués), pas d'ID de corrélation. → **on ne voit pas quand ça casse** (scraper cassé, webhook 4xx, envoi en série qui échoue).
+**Aucun Sentry / APM / logging structuré** (recherche `sentry|opentelemetry|structlog|prometheus` = vide) — **le principal trou d'observabilité encore ouvert**. ~~Health check factice~~ ✅ **résolu** (§2.5, probe DB + 503) ; une **capture réactive par source** existe désormais (diagnostics scraping/enrichment → page admin de monitoring). Root logger à `WARNING` (les `INFO` masqués), pas d'ID de corrélation. → sans Sentry, **on ne voit toujours pas** un webhook 4xx ou une erreur applicative en temps réel.
 
 ### Sécurité & RGPD — 🔴 Risqué
 - **Auth** : bcrypt (bon), JWT HS256, expiry 30 min, **pas de refresh token** ni de révocation → re-login fréquent (et le front stocke le token en localStorage).
 - **Rate limiting incohérent** : appliqué **seulement sur l'auth** ; `core/rate_limiter.py` définit un dict `RATE_LIMITS` **jamais utilisé (code mort)** ; **3 instances `Limiter`** distinctes ; **stockage in-memory** (reset au restart, ne tient pas multi-worker). Endpoints publics (unsubscribe) non spécifiquement limités.
-- **Unsubscribe sans token + XSS réfléchie** (cf. §2.4).
-- **Webhooks fail-open** : Resend (svix) et Storyblok **acceptent tout si le secret n'est pas configuré** (`return True`). Pour Storyblok c'est défendable (payload jamais cru, re-fetch source) ; **pour Resend, non**. Stripe **OK** (signature exigée).
-- **Secret BrightData committé** (cf. §2.2).
+- ~~**Unsubscribe sans token + XSS réfléchie**~~ ✅ **RÉSOLU** (cf. §2.4 — token HMAC + `html.escape`).
+- **Webhooks fail-open** : Resend (svix) et Storyblok **acceptent tout si le secret n'est pas configuré** (`return True`). Pour Storyblok c'est défendable (payload jamais cru, re-fetch source) ; **pour Resend, reste à durcir** (⏳ demi-item ouvert). Stripe **OK** (signature exigée).
+- ~~**Secret BrightData committé**~~ ✅ **RÉSOLU** (cf. §2.2 — révoqué + purgé).
 - **CORS** : `allow_credentials=True` avec origines `localhost` autorisées **en prod** (risque faible mais négligé).
 - **RGPD** : désinscription conforme, mais session replay nominatif sans consentement (cf. étape 4).
 
 ### Modèle de données & migrations — 🟠 Partiel
-Runner **idempotent** (table `schema_migrations` + garde `INFORMATION_SCHEMA` avant `ALTER`), scoping `user_id`/`organization_id` cohérent (multi-user sans fuite, testé cette session). **Mais** : forward-only (aucun rollback), **Alembic est installé mais inutilisé** (migrations réécrites à la main), **migrations non jouées en CI** (cf. §2.7), hybride `create_all` + migrations incrémentales qui peut **diverger** sans détection, quelques **incohérences mortes** (enum `YELP` gardé alors que le scraper est retiré, endpoint `GET /prospects/search` deprecated mais présent), et un **seeder qui injecte de fausses transactions crédit** en base d'init.
+Runner **idempotent** (table `schema_migrations` + garde `INFORMATION_SCHEMA` avant `ALTER`), scoping `user_id`/`organization_id` cohérent (multi-user sans fuite, testé cette session). ~~**migrations non jouées en CI**~~ → ✅ **jouées au déploiement** (§2.7). **Mais** : forward-only (aucun rollback), **Alembic est installé mais inutilisé** (migrations réécrites à la main), hybride `create_all` + migrations incrémentales qui peut **diverger** sans détection, quelques **incohérences mortes** (enum `YELP` gardé alors que le scraper est retiré, endpoint `GET /prospects/search` deprecated mais présent). ~~un **seeder qui injecte de fausses transactions crédit** en base d'init~~ → ✅ **gaté hors production** (`settings.is_production`).
 
 ### Qualité du code — 🟢 Front / 🟠 Back
 - **Front** : **TS ultra-strict réellement tenu** — 0 `any`, 0 `as any`, 0 `@ts-ignore` dans `web/app`, lint (prettier+eslint+vue-tsc) imposé au commit, arbo nette. **Rare et excellent.** Résidus : **65 `console.*`** laissés.
 - **Back** : **aucun outil de lint/type Python** (pas de mypy/ruff/black, pas de `pyproject.toml`), typage partiel (~65 % des fonctions de `services/` annotées), **services obèses** (`accounting_service` 1079 l, `storyblok_service` 717, `demo_site_service` 591, `campaign_queue_service` 549, `order_service` 535), et `@app.on_event` déprécié (vs `lifespan`).
 
 ### Complétude fonctionnelle — 🟠 Partiel
-**Réellement câblé** : tout le tunnel (code réel, pas stub) + Vercel (vrais appels) + Stripe (checkout/webhook/refund) + scoring PostHog. **À valider en live** : cycle Storyblok publish→webhook, sélecteurs enrichment, déploiement Vercel réel (achat domaine/DNS **hors scope**, manuels), webhooks Stripe jamais déclenchés en prod. **Stubs réels** : `updateProfile` (§2.3), `mailjet_service` (placeholder). **Vision non construite (normal)** : Apple Wallet, Missions freelance, facturation multi-user.
+**Réellement câblé** : tout le tunnel (code réel, pas stub) + Vercel (vrais appels) + Stripe (checkout/webhook/refund) + scoring PostHog. ~~**À valider en live** : cycle Storyblok publish→webhook, sélecteurs enrichment~~ → **désormais éprouvés en live** (cf. Étapes 2-3). Reste à valider en réel : **déploiement Vercel de vente** (achat domaine/DNS **hors scope**, manuels) et **webhooks Stripe jamais déclenchés en prod**. ~~**Stubs réels** : `updateProfile`, `mailjet_service`~~ → **résolus** (updateProfile branché §2.3 ; mailjet supprimé). **Vision non construite (normal)** : Apple Wallet, Missions freelance, facturation multi-user.
 
 ### CI/CD & déploiement — 🟠 Fragile
 4 workflows (deploy-api VPS OVH, deploy-web VPS, deploy-demo-host Vercel, desktop-release Tauri). **Fragilités** : **zéro job de test/lint en CI** (les workflows **déploient seulement** ; seul filet = pre-commit local, contournable via `--no-verify`), deploy-api fait `rm -rf` + ré-upload (**fenêtre de coupure, pas de health check post-restart, pas de rollback, migrations non jouées, secrets omis**), **desktop-release = Windows only** (README/skill affirment Windows+macOS — inexact), demo-host déployé avec contournements Vercel documentés.
@@ -163,7 +164,7 @@ Runner **idempotent** (table `schema_migrations` + garde `INFORMATION_SCHEMA` av
 Doc abondante et à jour (`README`, `LOCAL_DEV`, `STANDARDS…`, `TEMPLATES_ARCHITECTURE`, `.env.example` commenté, skill `/devleadhunter` excellent), onboarding one-command (`npm run dev` lance les 3). **Inexactitudes à corriger** : README `playwright install chromium` (le projet utilise `nodriver`, pas Playwright), desktop « Windows + macOS » (Windows seulement), le skill liste un scraper `yelp_` retiré.
 
 ### Frontend / UX — 🟢 Solide
-Refonte « Atelier » de qualité (tokens light/dark, IBM Plex, lucide, drawers persistants, palette Ctrl+K), `demo-host/` minimal et net. **Points faibles** : modif de profil non fonctionnelle (§2.3), 65 `console.*` résiduels, et **la vérification visuelle des écrans récents n'a pas pu se faire** (pas de tests Playwright + l'outil de navigation « Claude in Chrome » était déconnecté — c'est une capacité de l'assistant, **pas** un artefact du repo ; ma note antérieure « extension non testée » ne désigne donc aucun code d'ici). Un passage runtime/Playwright reste à faire.
+Refonte « Atelier » de qualité (tokens light/dark, IBM Plex, lucide, drawers persistants, palette Ctrl+K), `demo-host/` minimal et net. **Points faibles** : ~~modif de profil non fonctionnelle~~ ✅ (résolu §2.3), 65 `console.*` résiduels, et **la vérification visuelle des écrans récents n'a pas pu se faire** (pas de tests Playwright + l'outil de navigation « Claude in Chrome » était déconnecté — c'est une capacité de l'assistant, **pas** un artefact du repo ; ma note antérieure « extension non testée » ne désigne donc aucun code d'ici). Un passage runtime/Playwright reste à faire.
 
 ---
 
@@ -177,7 +178,7 @@ Refonte « Atelier » de qualité (tokens light/dark, IBM Plex, lucide, drawers 
 | ~~4~~ ✅ | ~~**Migrations non automatisées**~~ **RÉSOLU** | Élevé | Faible | `run_migrations.py` joué au déploiement (idempotent) |
 | 5 | **Maillons jamais éprouvés en prod** (1re vente, Stripe, Storyblok, Vercel) | Élevé | Faible | Une vente test de bout en bout dérisque d'un coup |
 | ~~6~~ ✅ | ~~**Fulfilment fire-and-forget**~~ **RÉSOLU** | Élevé | Moyen | Loop de reprise + cap + tracking ; redéploiement manuel réarme |
-| 7 | **Enrichissement fragile** (sélecteurs + services non extraits) | Élevé | Moyen | Qualité du site démo = taux de vente |
+| ~~7~~ ✅ | ~~**Enrichissement fragile**~~ **RÉSOLU** (fallbacks JSON-LD + source OSM + social branché & rendu) | Élevé | Moyen | `services` laissé manuel volontairement (défauts templates meilleurs) |
 | 8 | 🟡 **Unsubscribe** ✅ (token+XSS corrigés) / **webhooks Resend fail-open** ⏳ | Moyen-élevé | Faible | Unsubscribe sécurisé ; reste à exiger le secret Resend |
 | 9 | 🟡 **Health check** ✅ (probe DB réel) / **pas de Sentry** ⏳ | Moyen | Faible | Pannes DB détectables ; observabilité applicative encore absente |
 | 10 | **RGPD tracking nominatif** | Moyen (juridique) | Faible | À cadrer avant volume |
@@ -190,23 +191,23 @@ Refonte « Atelier » de qualité (tokens light/dark, IBM Plex, lucide, drawers 
 
 **Immédiat (heures)**
 - ~~**Vérifier `api/.env` sur le VPS** (secrets #1) + **révoquer le token BrightData** (#2) + purger `test_bedee_comparison.py`/`response.json`.~~ ✅ **FAIT (2026-07-11, commit `3b8db54`)** — secrets injectés au déploiement, token révoqué, fichiers purgés, PageSpeed vérifié. Reste : re-saisir les comptes email au 1er deploy.
-- **Brancher un Sentry** (gratuit) api + demo-host — voir enfin quand ça casse.
-- **Vrai health check** (ping DB) pour un monitoring uptime utile.
+- **Brancher un Sentry** (gratuit) api + demo-host — voir enfin quand ça casse. *(reste à faire — le seul demi-item d'observabilité encore ouvert)*
+- ~~**Vrai health check** (ping DB)~~ ✅ **FAIT** (§2.5, probe DB + 503).
 
 **Quick wins (jours)**
-- **Faire une vente test de bout en bout** (toi en cobaye : Stripe test → domaine → publication CMS → webhook → site à jour) : valide d'un coup #5, #6 et le cycle Storyblok.
-- **Corriger `updateProfile`** (brancher l'API — #11).
-- **Protéger l'unsubscribe** (token signé + échapper le HTML — #8) et **exiger le secret Resend** (fermer le fail-open).
+- **Faire une vente test de bout en bout** (toi en cobaye : Stripe test → domaine → publication CMS → webhook → site à jour) : valide d'un coup #5, #6 et le cycle Storyblok. *(le cycle Storyblok, lui, est déjà validé en live — cf. Étape 3.)*
+- ~~**Corriger `updateProfile`** (#11)~~ ✅ **FAIT**.
+- ~~**Protéger l'unsubscribe** (token signé + échapper le HTML — #8)~~ ✅ **FAIT**. Reste : **exiger le secret Resend** (fermer le fail-open).
 - **Cadrer le RGPD** (bandeau/consentement démos, ou couper le replay nominatif).
 - Configurer les clés d'env restantes + **Resend→PostHog**.
 
 **Court terme (semaines)**
-- **Jouer les migrations en CI** (ou au boot) — fin de la dérive de schéma (#4).
-- **Poser un socle de tests** sur les points où une régression coûte cher (bridges Storyblok, webhook Stripe/fulfilment, garde-fous d'envoi, parsing import, scoring) + **les faire tourner en CI** (avec le lint front déjà là).
-- **Fiabiliser l'enrichissement** : sélecteurs Google Maps à jour **+ un test/alerte** quand un champ retombe vide ; brancher enfin `services`/`social_links` (#7).
-- **Fulfilment robuste** : retry + dead-letter + reprise (`POST /orders/{id}/deploy` existe déjà comme base) (#6).
-- **Délivrabilité** : cap quotidien global, vérif SPF/DKIM à la connexion d'un compte, warm-up.
-- **Re-sync des schémas Storyblok** pour les spaces existants.
+- ~~**Jouer les migrations en CI** (ou au boot) (#4)~~ ✅ **FAIT** (au déploiement).
+- **Poser un socle de tests** sur les points où une régression coûte cher (bridges Storyblok, webhook Stripe/fulfilment, garde-fous d'envoi, parsing import, scoring) + **les faire tourner en CI** (avec le lint front déjà là). *(amorcé : `api/tests/` + 11 tests sur `resilient_extract` ; reste à élargir + brancher en CI.)*
+- ~~**Fiabiliser l'enrichissement** ... `services`/`social_links` (#7)~~ ✅ **FAIT** (fallbacks JSON-LD + OSM + social branché & rendu ; `services` laissé manuel volontairement).
+- ~~**Fulfilment robuste** : retry + dead-letter + reprise (#6)~~ ✅ **FAIT** (loop de reprise + cap + tracking).
+- **Délivrabilité** : ~~vérif SPF/DKIM~~ ✅ (réelle désormais) ; reste **cap quotidien global**, **warm-up**, **DMARC**.
+- ~~**Re-sync des schémas Storyblok** pour les spaces existants~~ ✅ **FAIT** (upsert PUT + endpoints admin).
 - **Lint/type Python** (ruff + mypy) en CI pour amener le back au niveau du front ; découper les god services au fil de l'eau.
 
 **Structurant**
