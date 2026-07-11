@@ -33,7 +33,7 @@ class EmailLog(Base):
         body_html: Email body HTML
         
         status: Email status (pending, sent, delivered, etc.)
-        provider: Email provider used (mailjet, gmail)
+        provider: Email provider used (resend, gmail)
         provider_message_id: Message ID from provider
         
         sent_at: Timestamp when email was sent

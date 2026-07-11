@@ -1,5 +1,5 @@
 """
-Email sending service - orchestrates sending via Mailjet or Gmail.
+Email sending service - orchestrates sending via Resend or Gmail.
 """
 import logging
 from typing import Optional, Dict
@@ -10,7 +10,6 @@ from sqlalchemy import select
 from models.email_account import EmailAccount
 from models.email_template import EmailTemplate
 from models.email_log import EmailLog
-from services.mailjet_service import MailjetService
 from services.gmail_oauth_service import GmailOAuthService
 from services.resend_service import ResendService
 from services.unsubscribe_service import unsubscribe_service
@@ -31,7 +30,6 @@ class EmailSendingService:
     def __init__(self, db: Session):
         """Initialize email sending service."""
         self.db = db
-        self.mailjet_service = MailjetService()
         self.gmail_service = GmailOAuthService()
         self.resend_service = ResendService()
 
@@ -151,8 +149,12 @@ class EmailSendingService:
         self.db.refresh(email_log)
         
         try:
-            # Send via appropriate provider
-            if email_account.account_type == EmailAccountType.RESEND:
+            # Send via appropriate provider. Custom-domain accounts also send via Resend
+            # (the domain is verified in Resend and used as the from address).
+            if email_account.account_type in (
+                EmailAccountType.RESEND,
+                EmailAccountType.CUSTOM_DOMAIN,
+            ):
                 result = await self._send_via_resend(
                     email_account=email_account,
                     recipient_email=recipient_email,
@@ -162,16 +164,6 @@ class EmailSendingService:
                     body_text=body_text,
                     custom_id=str(email_log.id),
                     unsubscribe_link=unsubscribe_link,
-                )
-            elif email_account.account_type == EmailAccountType.CUSTOM_DOMAIN:
-                result = await self._send_via_mailjet(
-                    email_account=email_account,
-                    recipient_email=recipient_email,
-                    recipient_name=recipient_name,
-                    subject=subject,
-                    body_html=body_html,
-                    body_text=body_text,
-                    custom_id=str(email_log.id)
                 )
             elif email_account.account_type == EmailAccountType.GMAIL_OAUTH:
                 result = await self._send_via_gmail(
@@ -254,28 +246,6 @@ class EmailSendingService:
             extra_headers=self._unsubscribe_headers(unsubscribe_link) if unsubscribe_link else None,
         )
 
-    async def _send_via_mailjet(
-        self,
-        email_account: EmailAccount,
-        recipient_email: str,
-        subject: str,
-        body_html: str,
-        recipient_name: Optional[str] = None,
-        body_text: Optional[str] = None,
-        custom_id: Optional[str] = None
-    ) -> Dict:
-        """Send email via Mailjet."""
-        return await self.mailjet_service.send_email(
-            from_email=email_account.email,
-            from_name=email_account.name,
-            to_email=recipient_email,
-            to_name=recipient_name,
-            subject=subject,
-            html_body=body_html,
-            text_body=body_text,
-            custom_id=custom_id
-        )
-    
     async def _send_via_gmail(
         self,
         email_account: EmailAccount,

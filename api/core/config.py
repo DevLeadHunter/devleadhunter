@@ -322,18 +322,7 @@ class Settings(BaseSettings):
         description="Resend webhook signing secret for verifying event payloads",
     )
 
-    # Mailjet settings (legacy / fallback)
-    mailjet_api_key: str = Field(
-        default="",
-        alias="MAILJET_API_KEY",
-        description="Mailjet API key"
-    )
-    mailjet_secret_key: str = Field(
-        default="",
-        alias="MAILJET_SECRET_KEY",
-        description="Mailjet secret key"
-    )
-    
+
     # Google OAuth settings (for Gmail)
     google_client_id: str = Field(
         default="",

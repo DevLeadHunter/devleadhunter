@@ -17,7 +17,7 @@ from schemas.email_account import (
     DNSVerificationResponse
 )
 from services.auth_service import get_current_user
-from services.mailjet_service import MailjetService
+from services.dns_service import verify_domain_dns
 from services.gmail_oauth_service import GmailOAuthService
 from services.encryption_service import encryption_service
 from enums.email_account_type import EmailAccountType
@@ -253,9 +253,8 @@ async def verify_dns_records(
             detail="DNS verification is only for custom domain accounts"
         )
     
-    # Verify DNS
-    mailjet_service = MailjetService()
-    verification_result = await mailjet_service.verify_dns_records(account.domain)
+    # Verify DNS (real SPF/DKIM lookups)
+    verification_result = await verify_domain_dns(account.domain)
     
     # Update account verification status
     account.spf_verified = verification_result["spf_verified"]
