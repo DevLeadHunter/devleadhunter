@@ -47,34 +47,39 @@ def seed_admin_user() -> None:
             
             print(f"[OK] Admin user created: {settings.admin_email}")
         
-        # Create 10 random users
-        users_created = 0
-        for i in range(10):
-            random_name = fake.name()
-            random_email = fake.email()
-            
-            # Check if user already exists
-            existing_user = get_user_by_email(db, random_email)
-            if existing_user:
-                continue
-            
-            # Create random user
-            random_user = User(
-                name=random_name,
-                email=random_email,
-                hashed_password=get_password_hash("password123"),  # Default password for random users
-                role=UserRole.USER.value,
-                is_active=True
-            )
-            
-            db.add(random_user)
-            users_created += 1
-        
-        if users_created > 0:
-            db.commit()
-            print(f"[OK] Created {users_created} random users")
+        # Random users are DEMO fixtures (random emails → never collide → 10 new
+        # accounts every run). Skip them in production so deploys don't pollute the DB.
+        if settings.is_production:
+            print("[SKIP] Random demo users are not seeded in production")
         else:
-            print(f"[OK] Random users already exist")
+            # Create 10 random users
+            users_created = 0
+            for i in range(10):
+                random_name = fake.name()
+                random_email = fake.email()
+
+                # Check if user already exists
+                existing_user = get_user_by_email(db, random_email)
+                if existing_user:
+                    continue
+
+                # Create random user
+                random_user = User(
+                    name=random_name,
+                    email=random_email,
+                    hashed_password=get_password_hash("password123"),  # Default password for random users
+                    role=UserRole.USER.value,
+                    is_active=True
+                )
+
+                db.add(random_user)
+                users_created += 1
+
+            if users_created > 0:
+                db.commit()
+                print(f"[OK] Created {users_created} random users")
+            else:
+                print(f"[OK] Random users already exist")
         
     except Exception as e:
         print(f"[ERROR] Failed to seed users: {e}")

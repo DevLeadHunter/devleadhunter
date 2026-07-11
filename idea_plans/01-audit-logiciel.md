@@ -8,7 +8,7 @@
 > **📋 Journal des corrections** (document vivant — on coche à mesure qu'on dépile) :
 > - **2026-07-11** — ✅ #1 Secrets de déploiement injectés (7 vars) + ✅ #2 token BrightData révoqué & fichiers purgés (commit `3b8db54`). PageSpeed vérifié fonctionnel.
 > - **2026-07-11** — ✅ #3 `updateProfile` branché sur `PATCH /auth/me` (persiste réellement) + ✅ #8 unsubscribe signé (token HMAC, XSS échappée) + ✅ #9 health check réel (probe DB, 503 si KO). Vérifiés en live.
-> - **2026-07-11** — ✅ #6 fulfilment robuste (loop de reprise + cap + `fulfillment_attempts`/`last_error`) + ✅ #4 migrations jouées au déploiement (`run_migrations.py` avant les seeders). Migration idempotente jouée en local, reprise testée E2E.
+> - **2026-07-11** — ✅ #6 fulfilment robuste (loop de reprise + cap + `fulfillment_attempts`/`last_error`) + ✅ #4 migrations jouées au déploiement (`run_migrations.py` avant les seeders). Migration idempotente jouée en local, reprise testée E2E. Déploiement prod OK (migrations « adoptent » le schéma existant sans casse). **Effet de bord découvert** : les seeders de démo (10 faux users + transactions) tournaient à chaque deploy → ✅ **gatés hors production** (`settings.is_production`).
 
 ---
 

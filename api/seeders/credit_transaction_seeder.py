@@ -5,6 +5,7 @@ from datetime import datetime, timedelta
 import random
 from sqlalchemy.orm import Session
 
+from core.config import settings
 from core.database import get_db, init_db
 from models.user import User
 from models.credit_settings import CreditSettings
@@ -21,12 +22,18 @@ def seed_credit_transactions() -> None:
     2. Adds some sample purchase transactions for test users
     3. Adds fake usage transactions spread over the last 30 days for graph visualization
     """
+    # Fake usage/purchase transactions are DEMO fixtures for graph visualization —
+    # they must never be generated in production (each deploy would add more).
+    if settings.is_production:
+        print("[SKIP] Fake credit transactions are not seeded in production")
+        return
+
     # Initialize database tables
     init_db()
-    
+
     # Get database session
     db: Session = next(get_db())
-    
+
     try:
         # Get credit settings to know how many free credits to give
         credit_settings = db.query(CreditSettings).filter(CreditSettings.id == 1).first()
