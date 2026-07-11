@@ -16,6 +16,7 @@ import type { Component, ComputedRef, PropType, Ref } from 'vue'
 // only loads its own template's chunk. We pass the component OBJECT (not a string name): a
 // runtime string name isn't resolvable via `<component :is>` for Nuxt auto-imported components.
 import {
+  LazyArtisanEditoRoot,
   LazyPlumberSignatureRoot,
   LazyPlumberAtelierRoot,
   LazyPlumberCuivreRoot,
@@ -37,6 +38,7 @@ const isVisualEditor: ComputedRef<boolean> = computed((): boolean => isStoryblok
 
 /** template_id → the extends'd layer root component (async → each renders as its own chunk). */
 const MIGRATED_ROOTS: Record<string, Component> = {
+  'artisan-edito': LazyArtisanEditoRoot,
   'plumber-signature': LazyPlumberSignatureRoot,
   'plumber-atelier': LazyPlumberAtelierRoot,
   'plumber-cuivre': LazyPlumberCuivreRoot,
