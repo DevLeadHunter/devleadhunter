@@ -1,4 +1,4 @@
-import type { User, LoginCredentials, SignupData, TokenResponse } from '~/types'
+import type { User, LoginCredentials, SignupData, TokenResponse, ProfileUpdate } from '~/types'
 
 /**
  * Authentication service for user management
@@ -77,6 +77,31 @@ export async function getCurrentUser(token: string): Promise<User> {
 
   if (!response.ok) {
     throw new Error('Failed to get current user')
+  }
+
+  return response.json()
+}
+
+/**
+ * Update the current user's profile (name and/or email) server-side.
+ * @param {string} token - JWT token.
+ * @param {ProfileUpdate} data - Fields to update (name and/or email).
+ * @returns {Promise<User>} The updated user as returned by the API.
+ * @throws {Error} If the update fails (e.g. email already registered).
+ */
+export async function updateProfile(token: string, data: ProfileUpdate): Promise<User> {
+  const response = await fetch(`${getApiUrl()}/api/v1/auth/me`, {
+    method: 'PATCH',
+    headers: {
+      Authorization: `Bearer ${token}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(data),
+  })
+
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({ detail: 'Profile update failed' }))
+    throw new Error(error.detail || 'Profile update failed')
   }
 
   return response.json()

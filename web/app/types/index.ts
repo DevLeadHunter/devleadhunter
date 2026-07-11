@@ -271,6 +271,17 @@ export interface SignupData {
 }
 
 /**
+ * Profile update payload (self-service `PATCH /auth/me`) — fields are optional so
+ * the user can change name and/or email.
+ */
+export interface ProfileUpdate {
+  /** New display name */
+  name?: string
+  /** New login email */
+  email?: string
+}
+
+/**
  * API Response wrapper
  */
 export interface ApiResponse<T> {

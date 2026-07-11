@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia'
-import type { User, LoginCredentials, SignupData } from '~/types'
+import type { User, LoginCredentials, SignupData, ProfileUpdate } from '~/types'
 import type { Ref } from 'vue'
 import { ref, computed } from 'vue'
 import * as authService from '~/services/authService'
@@ -128,24 +128,26 @@ export const useUserStore = defineStore('user', () => {
   }
 
   /**
-   * Update user profile
-   * @param {Partial<User>} data - Updated user data
-   * @returns {Promise<void>} Promise that resolves when update is complete
-   * @throws {Error} If update fails
+   * Update the current user's profile (name/email) server-side and sync local state.
+   * @param {ProfileUpdate} data - Fields to update (name and/or email).
+   * @returns {Promise<void>} Promise that resolves when the update is persisted.
+   * @throws {Error} If not authenticated or the update fails (e.g. email taken).
    */
-  async function updateProfile(data: Partial<User>): Promise<void> {
+  async function updateProfile(data: ProfileUpdate): Promise<void> {
     try {
       isLoading.value = true
       error.value = null
 
-      // Mock API call - simulate network delay
-      await new Promise((resolve) => setTimeout(resolve, 800))
+      if (!token.value) {
+        throw new Error('Not authenticated')
+      }
 
-      if (user.value) {
-        user.value = { ...user.value, ...data }
-        if (import.meta.client) {
-          localStorage.setItem('user', JSON.stringify(user.value))
-        }
+      // Persist to the API — the server is the source of truth for the returned user.
+      const updatedUser: User = await authService.updateProfile(token.value, data)
+      user.value = updatedUser
+
+      if (import.meta.client) {
+        localStorage.setItem('user', JSON.stringify(updatedUser))
       }
     } catch (err) {
       error.value = err instanceof Error ? err.message : 'Profile update failed'
@@ -153,13 +155,6 @@ export const useUserStore = defineStore('user', () => {
     } finally {
       isLoading.value = false
     }
-
-    // TODO: Replace with actual API call
-    // const response = await $fetch('/api/auth/profile', {
-    //   method: 'PUT',
-    //   headers: { Authorization: `Bearer ${token.value}` },
-    //   body: data
-    // });
   }
 
   /**

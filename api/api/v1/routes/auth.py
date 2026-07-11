@@ -11,7 +11,7 @@ from slowapi.util import get_remote_address
 
 from core.config import settings
 from core.database import get_db
-from schemas.user import UserCreate, UserResponse, Token, UserLogin
+from schemas.user import UserCreate, UserResponse, UserUpdate, Token, UserLogin
 from services.auth_service import (
     authenticate_user,
     create_access_token,
@@ -145,6 +145,66 @@ async def get_current_user_info(
     credits_available = balance
     credits_consumed = credit_service.get_user_credits_consumed(db, current_user.id)
     
+    user_dict = {
+        "id": current_user.id,
+        "name": current_user.name,
+        "email": current_user.email,
+        "role": current_user.role,
+        "is_active": current_user.is_active,
+        "created_at": current_user.created_at,
+        "updated_at": current_user.updated_at,
+        "credit_balance": balance,
+        "credits_available": credits_available,
+        "credits_consumed": credits_consumed
+    }
+    return UserResponse(**user_dict)
+
+
+@router.patch("/me", response_model=UserResponse)
+async def update_current_user_info(
+    user_data: UserUpdate,
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db)
+) -> Any:
+    """
+    Update the current user's own profile (name and/or email).
+
+    Self-service counterpart of the admin ``PUT /users/{id}``: a user can only edit
+    their own account. When the email changes it must not collide with another
+    account; note that the email is the JWT subject, so after an email change the
+    current token becomes stale and the user must re-authenticate.
+
+    Args:
+        user_data: Partial update (name and/or email).
+        current_user: Current authenticated user.
+        db: Database session.
+
+    Returns:
+        The updated user, with credit balance.
+
+    Raises:
+        HTTPException: If the new email is already registered to another account.
+    """
+    if user_data.email and user_data.email != current_user.email:
+        existing_user = get_user_by_email(db, user_data.email)
+        if existing_user:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Email already registered"
+            )
+
+    if user_data.name is not None:
+        current_user.name = user_data.name
+    if user_data.email is not None:
+        current_user.email = user_data.email
+
+    db.commit()
+    db.refresh(current_user)
+
+    balance = credit_service.get_user_balance(db, current_user.id)
+    credits_available = balance
+    credits_consumed = credit_service.get_user_credits_consumed(db, current_user.id)
+
     user_dict = {
         "id": current_user.id,
         "name": current_user.name,
