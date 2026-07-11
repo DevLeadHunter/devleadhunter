@@ -8,7 +8,7 @@ via the Stripe webhook), then fulfil it (deploy to prod + hand over CMS access).
 from __future__ import annotations
 
 import logging
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from typing import Any, Optional
 
 from sqlalchemy.orm import Session
@@ -20,6 +20,20 @@ from models.prospect_db import ProspectDB
 from models.user import User
 
 logger = logging.getLogger(__name__)
+
+# Post-payment fulfilment recovery bounds.
+# A paid order that never went live is retried by the background recovery loop up to
+# this many times, but only while it is recent enough (older ones need a human).
+MAX_FULFILMENT_ATTEMPTS: int = 8
+FULFILMENT_MAX_AGE_DAYS: int = 14
+# Statuses that mean "paid but not yet fully delivered" → eligible for a retry.
+_RETRYABLE_STATUSES: tuple[str, ...] = (OrderStatus.PAID.value, OrderStatus.DEPLOYING.value)
+# Terminal states that must never be re-fulfilled.
+_TERMINAL_STATUSES: tuple[str, ...] = (
+    OrderStatus.DELIVERED.value,
+    OrderStatus.REFUNDED.value,
+    OrderStatus.CANCELLED.value,
+)
 
 
 def format_amount(amount_cents: int, currency: str = "eur") -> str:
@@ -434,8 +448,12 @@ class OrderService:
 
     async def fulfill_order_async(self, order_id: int) -> None:
         """
-        Post-payment fulfilment in its own DB session (safe for background tasks):
+        One tracked fulfilment attempt in its own DB session (safe for background tasks):
         deploy the site to prod (Vercel + domain) and hand over CMS access.
+
+        Increments ``fulfillment_attempts`` and records ``fulfillment_last_error`` so a
+        paid-but-undelivered order is retried by the recovery loop (bounded) instead of
+        silently stuck. Terminal orders (delivered/refunded/cancelled) are skipped.
         """
         from core.database import SessionLocal
 
@@ -444,11 +462,45 @@ class OrderService:
             order = self.get_by_id(db, order_id)
             if not order or order.product_type != ProductType.WEBSITE.value:
                 return
-            await self.fulfill_order(db, order)
-        except Exception:  # noqa: BLE001
-            logger.exception("Order fulfilment failed for order_id=%s", order_id)
+            if order.status in _TERMINAL_STATUSES:
+                return
+
+            order.fulfillment_attempts = (order.fulfillment_attempts or 0) + 1
+            order.fulfillment_last_error = None
+            db.commit()
+
+            try:
+                await self.fulfill_order(db, order)
+            except Exception as exc:  # noqa: BLE001
+                logger.exception("Order fulfilment attempt failed for order_id=%s", order_id)
+                order = self.get_by_id(db, order_id)
+                if order is not None:
+                    order.fulfillment_last_error = str(exc)[:500]
+                    db.commit()
         finally:
             db.close()
+
+    def list_stuck_fulfilment_order_ids(self, db: Session) -> list[int]:
+        """
+        Ids of website orders that were paid but never fully delivered and are still
+        within the auto-retry budget (attempts + age). Consumed by the recovery loop.
+
+        @param db - Database session.
+        @returns The order ids to retry.
+        """
+        cutoff: datetime = datetime.now(timezone.utc) - timedelta(days=FULFILMENT_MAX_AGE_DAYS)
+        rows = (
+            db.query(Order.id)
+            .filter(
+                Order.product_type == ProductType.WEBSITE.value,
+                Order.status.in_(_RETRYABLE_STATUSES),
+                Order.deleted_at.is_(None),
+                Order.fulfillment_attempts < MAX_FULFILMENT_ATTEMPTS,
+                Order.created_at >= cutoff,
+            )
+            .all()
+        )
+        return [row[0] for row in rows]
 
     async def fulfill_order(self, db: Session, order: Order) -> Order:
         """Deploy the linked demo site to prod and hand over Storyblok access."""

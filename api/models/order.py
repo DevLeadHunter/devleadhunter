@@ -51,6 +51,14 @@ class Order(Base):
     paid_at: Mapped[Optional[datetime]] = mapped_column(nullable=True)
     delivered_at: Mapped[Optional[datetime]] = mapped_column(nullable=True)
 
+    # Post-payment fulfilment retry tracking (background recovery loop). Guard against
+    # the fire-and-forget gap: a paid order that never went live is retried, capped,
+    # and its last error kept for the operator.
+    fulfillment_attempts: Mapped[int] = mapped_column(
+        Integer, nullable=False, default=0, server_default="0"
+    )
+    fulfillment_last_error: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
+
     created_at: Mapped[datetime] = mapped_column(server_default=func.now(), nullable=False)
     updated_at: Mapped[Optional[datetime]] = mapped_column(onupdate=func.now(), nullable=True)
     deleted_at: Mapped[Optional[datetime]] = mapped_column(nullable=True)

@@ -180,5 +180,10 @@ async def deploy_order(
 ) -> OrderResponse:
     """Put the sold site online (Vercel + domain) and hand over CMS access."""
     order = _get_order_or_404(db, current_user.id, order_id)
+    # Manual redeploy = operator fixed the infra/DNS: reset the auto-retry budget so the
+    # background recovery loop resumes if this attempt still can't fully verify delivery.
+    order.fulfillment_attempts = 0
+    order.fulfillment_last_error = None
+    db.commit()
     order = await order_service.fulfill_order(db, order)
     return OrderResponse.model_validate(order)
