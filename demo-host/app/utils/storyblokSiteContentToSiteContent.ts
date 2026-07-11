@@ -135,5 +135,8 @@ export function storyblokSiteContentToSiteContent(raw: Record<string, unknown>):
         label: str(item.label),
       }))
       .filter((pair): boolean => Boolean(pair.before) || Boolean(pair.after)),
+    social: list(blok.social)
+      .map((item): { network?: string; url?: string } => ({ network: str(item.network), url: str(item.url) }))
+      .filter((link): boolean => Boolean(link.url)),
   }
 }

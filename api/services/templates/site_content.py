@@ -108,6 +108,13 @@ def map_prospect_and_enrichment(
             continue
         opening_hours.append({"day": day, "hours": hours})
 
+    raw_social = enrichment.get("social_links") or {}
+    social: list[dict[str, str]] = [
+        {"network": str(network), "url": str(url)}
+        for network, url in (raw_social.items() if isinstance(raw_social, dict) else [])
+        if isinstance(url, str) and url.strip()
+    ]
+
     about = description.strip() if isinstance(description, str) and description.strip() else about_default
     site_city = city or area
     area_label = f"{area} et ses alentours" if city else ""
@@ -130,6 +137,7 @@ def map_prospect_and_enrichment(
         },
         "reviews": reviews,
         "openingHours": opening_hours,
+        "social": social,
     }
 
 
@@ -174,10 +182,12 @@ SITE_CONTENT_SCHEMAS: list[dict[str, Any]] = [
             "reviews": {"type": "bloks", "pos": 23, "display_name": "Avis clients", "restrict_components": True, "component_whitelist": ["site_content_review"]},
             "faq": {"type": "bloks", "pos": 24, "display_name": "Questions fréquentes", "restrict_components": True, "component_whitelist": ["site_content_faq"]},
             "openingHours": {"type": "bloks", "pos": 25, "display_name": "Horaires d'ouverture", "restrict_components": True, "component_whitelist": ["site_content_hours"]},
+            "social": {"type": "bloks", "pos": 26, "display_name": "Réseaux sociaux", "description": "Liens Facebook, Instagram… affichés en pied de page", "restrict_components": True, "component_whitelist": ["site_content_social"]},
             # ── Design ────────────────────────────────────────────────────
-            "palette": {"type": "blok", "pos": 26, "display_name": "Couleurs du site", "restrict_components": True, "component_whitelist": ["theme_palette"], "maximum": 1},
+            "palette": {"type": "blok", "pos": 27, "display_name": "Couleurs du site", "restrict_components": True, "component_whitelist": ["theme_palette"], "maximum": 1},
         },
     },
+    {"name": "site_content_social", "display_name": "Réseau social", "schema": {"network": {"type": "text", "pos": 0, "display_name": "Réseau", "description": "facebook, instagram, linkedin, tiktok, youtube, twitter"}, "url": {"type": "text", "pos": 1, "display_name": "URL du profil"}}},
     {"name": "site_content_service", "display_name": "Service", "schema": {"title": {"type": "text", "pos": 0, "display_name": "Titre"}, "description": {"type": "textarea", "pos": 1, "display_name": "Description"}}},
     {"name": "site_content_review", "display_name": "Avis client", "schema": {"author": {"type": "text", "pos": 0, "display_name": "Auteur"}, "rating": {"type": "number", "pos": 1, "display_name": "Note (0-5)"}, "text": {"type": "textarea", "pos": 2, "display_name": "Texte de l'avis"}}},
     {"name": "site_content_faq", "display_name": "Question fréquente", "schema": {"question": {"type": "text", "pos": 0, "display_name": "Question"}, "answer": {"type": "textarea", "pos": 1, "display_name": "Réponse"}}},
@@ -258,6 +268,7 @@ def to_storyblok_site_content(site_content: dict[str, Any]) -> dict[str, Any]:
         "beforeAfter": _items_to_bloks(
             site_content.get("beforeAfter"), "site_content_before_after", ("before", "after", "label")
         ),
+        "social": _items_to_bloks(site_content.get("social"), "site_content_social", ("network", "url")),
     }
 
 
@@ -392,5 +403,10 @@ def from_storyblok_site_content(raw: dict[str, Any]) -> Optional[dict[str, Any]]
             }
             for item in _blok_list(blok.get("beforeAfter"))
             if _clean_str(item.get("before")) or _clean_str(item.get("after"))
+        ],
+        "social": [
+            {"network": _clean_str(item.get("network")), "url": _clean_str(item.get("url"))}
+            for item in _blok_list(blok.get("social"))
+            if _clean_str(item.get("url"))
         ],
     }
