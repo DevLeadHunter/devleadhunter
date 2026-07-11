@@ -16,10 +16,27 @@ from sqlalchemy.orm import Session
 from enums.enrichment_status import EnrichmentStatus
 from models.prospect_db import ProspectDB
 from models.prospect_enrichment import ProspectEnrichment
+from scrappers import scrape_signals
 from scrappers.enrichment_scraper import EnrichmentData, enrichment_scraper
 from services.enrichment_content import apply_to_content as _apply_to_content
+from services.scraper_diagnostics_service import (
+    STATUS_BLOCKED,
+    STATUS_EMPTY,
+    STATUS_ERROR,
+    STATUS_OK,
+    scraper_diagnostics_service,
+)
 
 logger = logging.getLogger(__name__)
+
+def _count_filled_fields(data: Optional[EnrichmentData]) -> int:
+    """Number of rich enrichment fields actually populated (0 = quietly empty)."""
+    if data is None:
+        return 0
+    scalars = [data.rating, data.reviews_count, data.description, data.logo_url]
+    collections = [data.photos, data.reviews, data.opening_hours, data.services, data.social_links]
+    return sum(1 for value in scalars if value) + sum(1 for value in collections if value)
+
 
 # Fields a client is allowed to edit manually on an enrichment record.
 EDITABLE_FIELDS: tuple[str, ...] = (
@@ -117,14 +134,47 @@ class EnrichmentService:
             self._apply_data(record, data)
             record.status = EnrichmentStatus.COMPLETED.value
             record.enriched_at = datetime.now(timezone.utc)
+            self._record_diagnostic(prospect, data, error=None)
         except Exception as exc:  # noqa: BLE001
             logger.exception("Enrichment failed for prospect_id=%s", prospect.id)
             record.status = EnrichmentStatus.FAILED.value
             record.error_message = str(exc)
+            self._record_diagnostic(prospect, None, error=str(exc))
 
         db.commit()
         db.refresh(record)
         return record
+
+    @staticmethod
+    def _record_diagnostic(
+        prospect: ProspectDB, data: Optional[EnrichmentData], error: Optional[str]
+    ) -> None:
+        """Record the enrichment outcome for the admin monitoring page (never silent).
+
+        Counts how many rich fields were actually filled so a quietly-empty enrichment
+        (the ``EnrichmentData()`` that used to pass unnoticed) surfaces as an incident.
+        """
+        block = scrape_signals.pop_block("enrichment")
+        if error is not None:
+            status, filled, html = STATUS_ERROR, 0, (block["html"] if block else None)
+        else:
+            filled = _count_filled_fields(data)
+            if filled > 0:
+                status, html = STATUS_OK, None
+            elif block is not None:
+                status, html, error = STATUS_BLOCKED, block["html"], block["reason"]
+            else:
+                status, html = STATUS_EMPTY, None
+        scraper_diagnostics_service.record(
+            source="enrichment",
+            status=status,
+            category=prospect.category,
+            city=prospect.city,
+            results_count=filled,
+            error_message=error,
+            html_snapshot=html,
+            user_id=prospect.user_id,
+        )
 
     async def ensure_enriched(
         self, db: Session, user_id: int, prospect: ProspectDB

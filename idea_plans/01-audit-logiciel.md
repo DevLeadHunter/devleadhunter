@@ -10,6 +10,7 @@
 > - **2026-07-11** — ✅ #3 `updateProfile` branché sur `PATCH /auth/me` (persiste réellement) + ✅ #8 unsubscribe signé (token HMAC, XSS échappée) + ✅ #9 health check réel (probe DB, 503 si KO). Vérifiés en live.
 > - **2026-07-11** — ✅ #6 fulfilment robuste (loop de reprise + cap + `fulfillment_attempts`/`last_error`) + ✅ #4 migrations jouées au déploiement (`run_migrations.py` avant les seeders). Migration idempotente jouée en local, reprise testée E2E. Déploiement prod OK (migrations « adoptent » le schéma existant sans casse). **Effet de bord découvert** : les seeders de démo (10 faux users + transactions) tournaient à chaque deploy → ✅ **gatés hors production** (`settings.is_production`).
 > - **2026-07-11** — ✅ **Résilience scraping (Étape 1)** : fallbacks sélecteur/regex/JSON-LD (Google + Pages Jaunes, 10 tests), failover inter-sources, capture réactive typée + page admin de monitoring. Correction du constat erroné sur `SCRAPER_BROWSER_HEADLESS` (headless=false volontaire, scraping sur IP résidentielle de l'utilisateur, pas un VPS).
+> - **2026-07-11** — ✅ **Fiabilisation enrichissement (Étape 2)** : source complémentaire **OpenStreetMap** (horaires ~60 % + social + email/site), fallback **JSON-LD** (description/note/avis), `social_links` branché, échec non silencieux (diagnostic « enrichment » → monitoring). Vérifié en live.
 
 ---
 
@@ -82,15 +83,16 @@ Ce ne sont pas des généralités : ce sont des lignes de code précises à trai
 - ~~**Footgun de config** : `SCRAPER_BROWSER_HEADLESS=false`~~ ❌ **CONSTAT ERRONÉ (retiré)** : `false` est **volontaire et correct**. Un Chrome headless a une empreinte détectable → bien plus challengé par Cloudflare. Et le scraping **ne tourne pas sur un VPS** mais sur **la machine de l'utilisateur (IP résidentielle)** via le sidecar de l'app desktop — une IP datacenter serait bloquée d'office. Aucun changement requis.
 - **Jobs de scraping en mémoire** (`self._jobs`) : perdus au redémarrage de l'API. *(inchangé ; les diagnostics par source, eux, sont désormais persistés en base.)*
 
-### Étape 2 — Enrichir (le point le plus rentable à fiabiliser)
+### Étape 2 — Enrichir (le point le plus rentable à fiabiliser) — ✅ **FIABILISÉ (2026-07-11)**
 **Bien** : séparé du scraping de recherche, à la demande ou en masse (`bulk-run`), injecté automatiquement dans le contenu du site à la génération (`ensure_enriched()` avant provisioning).
 **À améliorer / risqué** (état vérifié dans `enrichment_scraper.py`) :
 - `rating` + `opening_hours` : **OK**.
-- `description` : **fragile** — retombe sur le méta générique Google (`meta[name=description]`).
-- `reviews_count` / `reviews` : **fragiles** (souvent `None`/`0`).
-- `services` et `social_links` : **présents dans le modèle mais JAMAIS extraits** par le script → éditables à la main uniquement. Capacité annoncée, non branchée.
-- Casse **silencieuse** (un `logger.warning`, aucune alerte) → un `EnrichmentData()` vide passe inaperçu.
-- → **la qualité du site démo = ton taux de vente.** C'est le maillon fragile le plus stratégique : un site enrichi (vraies photos/avis) convainc, un site vide non.
+- ✅ `description` : ~~**fragile** — retombe sur le méta générique Google~~ → **JSON-LD** (schema.org) en fallback + `description` OSM en complément.
+- ✅ `reviews_count` / `reviews` : ~~**fragiles**~~ → `reviews_count` a un fallback **JSON-LD** (`aggregateRating.reviewCount`) ; `reviews` reste best-effort DOM (Google n'expose pas d'avis en JSON-LD sur Maps).
+- ✅ `social_links` : ~~**jamais extrait**~~ → **branché** (liens sociaux du panneau Google + `contact:facebook`/`contact:instagram` d'OSM). `services` : **volontairement laissé manuel** — aucune source fiable (ni Google DOM ni OSM ne donnent une liste propre), et les défauts éditoriaux par métier des templates sont meilleurs qu'une extraction faible.
+- ✅ Casse **silencieuse** : ~~un `EnrichmentData()` vide passait inaperçu~~ → chaque enrichissement **enregistre un diagnostic** (`source="enrichment"`, statut ok/vide/bloqué/erreur + HTML capturé au blocage) → visible sur la **page admin de monitoring**.
+- ✅ **Source complémentaire ajoutée : OpenStreetMap** (Nominatim `extratags`, gratuit, sans blocage, IP-agnostique). Couverture mesurée sur artisans FR : **~60 % ont `opening_hours`** (le point faible de Google), + email/website/phone/social. Fusionné en comblement de trous (Google prioritaire pour photos/avis/note ; OSM pour horaires/social/description). Enrichissement dégradé fonctionne même sans Chrome (OSM seul). **Vérifié en live** (« The Hair Academy », Lyon : vrais horaires + FB/IG + email + site).
+- → **la qualité du site démo = ton taux de vente.** Reste ouvert : le **rendu des `social_links` dans les templates** (extraits/stockés, mais pas encore de section réseaux sociaux dans le contrat `SiteContent` — nécessiterait une release du package partagé + les 5 repos templates).
 
 ### Étape 3 — Générer le site
 **Bien** : registre propre (un module Python/template), 4 templates en layers séparés, contrat `SiteContent` unique, copie éditoriale **désormais éditable par le client** et pré-remplie, **mock mode** sans token, injection auto de l'enrichissement. Génération unitaire ou en masse.

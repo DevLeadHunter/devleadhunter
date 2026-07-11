@@ -51,6 +51,13 @@ def test_parse_ld_json_typed_business() -> None:
     assert biz["category"] == "Plumber"
     assert biz["rating"] == 4.8
     assert biz["reviews_count"] == 132
+    assert biz["description"] is None  # not present in this fixture
+
+
+def test_parse_ld_json_description() -> None:
+    block = '{"@type":"HairSalon","name":"X","description":"Salon expert coloriste"}'
+    biz = parse_ld_json_blocks([block])
+    assert biz is not None and biz["description"] == "Salon expert coloriste"
 
 
 def test_parse_ld_json_graph_container() -> None:

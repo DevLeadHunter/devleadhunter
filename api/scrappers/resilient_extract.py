@@ -208,6 +208,7 @@ def parse_ld_json_blocks(blocks: Any) -> Optional[dict[str, Any]]:
         "phone": _stringify(business.get("telephone")),
         "website": _stringify(business.get("url") or business.get("sameAs")),
         "email": safe_email(_stringify(business.get("email"))),
+        "description": _stringify(business.get("description")),
         "street": address["street"],
         "postal_code": address["postal_code"],
         "city": address["city"],
