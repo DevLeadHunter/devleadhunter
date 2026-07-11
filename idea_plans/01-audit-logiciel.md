@@ -11,6 +11,7 @@
 > - **2026-07-11** — ✅ #6 fulfilment robuste (loop de reprise + cap + `fulfillment_attempts`/`last_error`) + ✅ #4 migrations jouées au déploiement (`run_migrations.py` avant les seeders). Migration idempotente jouée en local, reprise testée E2E. Déploiement prod OK (migrations « adoptent » le schéma existant sans casse). **Effet de bord découvert** : les seeders de démo (10 faux users + transactions) tournaient à chaque deploy → ✅ **gatés hors production** (`settings.is_production`).
 > - **2026-07-11** — ✅ **Résilience scraping (Étape 1)** : fallbacks sélecteur/regex/JSON-LD (Google + Pages Jaunes, 10 tests), failover inter-sources, capture réactive typée + page admin de monitoring. Correction du constat erroné sur `SCRAPER_BROWSER_HEADLESS` (headless=false volontaire, scraping sur IP résidentielle de l'utilisateur, pas un VPS).
 > - **2026-07-11** — ✅ **Fiabilisation enrichissement (Étape 2)** : source complémentaire **OpenStreetMap** (horaires ~60 % + social + email/site), fallback **JSON-LD** (description/note/avis), `social_links` branché, échec non silencieux (diagnostic « enrichment » → monitoring). Vérifié en live.
+> - **2026-07-11** — ✅ **Storyblok éprouvé & fiabilisé (Étape 3)** : cycle complet testé en live (2 bugs prod corrigés — provisioning du template par défaut + re-fetch CDN 301), re-sync des composants (upsert PUT + endpoints admin), provisioning parallélisé (~4 s). Rendu social visible sur les 5 templates au passage.
 
 ---
 
@@ -95,12 +96,12 @@ Ce ne sont pas des généralités : ce sont des lignes de code précises à trai
 - ✅ **Rendu des `social_links` sur les sites** : ~~pas encore de section réseaux sociaux~~ → **branché de bout en bout** — champ `social` ajouté au contrat partagé `SiteContent` (`@devleadhunter/website-content` **v1.3.0**), mappé par l'API (`map_prospect_and_enrichment` + schéma Storyblok + bridges), et **rendu dans le footer des 5 templates** (artisan-edito v1.2.0, plumber-signature v1.2.0, plumber-atelier v1.3.0, plumber-cuivre v1.2.0, electrician-lumen v1.2.0 — chacun à sa propre DA, liens vérifiés en SSR). Bridge demo-host + les 5 pins bumpés (typecheck vert).
 - → **la qualité du site démo = ton taux de vente.**
 
-### Étape 3 — Générer le site
+### Étape 3 — Générer le site — ✅ **ÉPROUVÉ & FIABILISÉ (2026-07-11)**
 **Bien** : registre propre (un module Python/template), 4 templates en layers séparés, contrat `SiteContent` unique, copie éditoriale **désormais éditable par le client** et pré-remplie, **mock mode** sans token, injection auto de l'enrichissement. Génération unitaire ou en masse.
 **À améliorer / risqué** :
-- **Storyblok jamais éprouvé en prod** sur le cycle complet (provision → édition client → publish → webhook → site public). Le webhook de resync existe mais le cycle réel reste **à valider live**.
-- **Les spaces déjà créés** ne reçoivent pas les nouveaux schémas (libellés FR, champs éditoriaux) — l'API ne met pas à jour les composants existants. Il manque une **commande de re-sync**.
-- ~5-6 appels Storyblok séquentiels par site (timeout 60 s chacun) → génération lente en masse.
+- ✅ **Storyblok éprouvé en réel** : ~~jamais testé en prod~~ → **cycle complet validé en live** avec un vrai token (provision → composants → publish → CDN fetch → aplatissement `from_storyblok_site_content` → re-sync), sur un space de test créé puis supprimé. **2 bugs prod trouvés & corrigés** : (a) `artisan_edito` (template **par défaut**) ne ré-exportait pas `to_storyblok_site_content` → **provisioning impossible** ; (b) le re-fetch CDN prenait un **301 non suivi** (`follow_redirects=False`) → en région EU **les éditions client ne se synchronisaient jamais** dans `content_json` → fix `follow_redirects=True`.
+- ✅ **Re-sync des spaces existants** : ~~l'API ne met pas à jour les composants existants~~ → `_ensure_template_components` fait désormais un **upsert** (PUT sur les composants existants, POST sinon) → propage les nouveaux champs (`social`) et libellés FR. Méthode publique `storyblok_service.resync_components(space_id)` + endpoints admin `POST /admin/storyblok/resync/{space_id}` et `/resync-all`.
+- ✅ **Génération accélérée** : ~~~5-6 appels séquentiels (timeout 60 s)~~ → les composants sont **upsertés en parallèle** (concurrence bornée) et les 3 étapes indépendantes de `provision_space` (preview URL, composants, webhook) tournent **en `asyncio.gather`** → **provision mesurée à ~4 s** en live (vs séquentiel + `sleep 0.15` × 12).
 
 ### Étape 4 — Démo
 **Bien** : `demo.dibodev.fr/{slug}`, TTL 14 j + nettoyage auto (worker de fond), vérification d'URL, **tracking PostHog** riche (pageviews, clics tel/email/CTA, scroll, temps, session replay), étiqueté `demo_slug` + variante A/B.

@@ -17,7 +17,10 @@ from __future__ import annotations
 
 from typing import Any, Optional
 
-from services.templates.site_content import map_prospect_and_enrichment
+from services.templates.site_content import (  # noqa: F401 — re-exported for the registry
+    map_prospect_and_enrichment,
+    to_storyblok_site_content,
+)
 
 TEMPLATE_ID: str = "artisan-edito"
 

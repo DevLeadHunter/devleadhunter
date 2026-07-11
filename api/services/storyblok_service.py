@@ -338,6 +338,18 @@ class StoryblokService:
         async with httpx.AsyncClient(timeout=60.0) as client:
             await self._configure_preview_url(client, space_id, preview_url)
 
+    async def resync_components(self, space_id: int) -> None:
+        """Re-sync (upsert) the blok schemas of an EXISTING space.
+
+        Propagates new fields (e.g. ``social``) and updated FR labels to
+        already-provisioned spaces — the audit's missing "re-sync command".
+        Idempotent; no-op in mock mode.
+        """
+        if not self.is_configured or not space_id:
+            return
+        async with httpx.AsyncClient(timeout=60.0) as client:
+            await self._ensure_template_components(client, space_id)
+
     async def invite_collaborator(self, space_id: int, collaborator_email: str) -> None:
         """Invite a client as Storyblok space admin. Storyblok sends the invitation email."""
         if not self.is_configured:
@@ -436,9 +448,14 @@ class StoryblokService:
             editor_url: str = f"https://app.storyblok.com/#/me/spaces/{space_id}/dashboard"
 
             try:
-                await self._configure_preview_url(client, space_id, preview_url)
-                await self._ensure_template_components(client, space_id)
-                await self._register_publish_webhook(client, space_id)
+                # These three are independent of each other → run concurrently
+                # (webhook registration is best-effort and never raises).
+                await asyncio.gather(
+                    self._configure_preview_url(client, space_id, preview_url),
+                    self._ensure_template_components(client, space_id),
+                    self._register_publish_webhook(client, space_id),
+                )
+                # Publish last: the home story references the ``site_content`` component.
                 await self._publish_home_story(client, space_id, content_json, template_id=template_id)
 
                 space_detail = await client.get(
@@ -587,8 +604,21 @@ class StoryblokService:
             if response.status_code not in (200, 204, 404):
                 response.raise_for_status()
 
+    async def _list_component_ids(self, client: httpx.AsyncClient, space_id: int) -> dict[str, int]:
+        """Return ``{component_name: id}`` for the space's existing components."""
+        response = await self._storyblok_request(
+            client, "GET", f"{self._base_url}/spaces/{space_id}/components/"
+        )
+        if response.status_code != 200:
+            return {}
+        return {
+            component["name"]: int(component["id"])
+            for component in response.json().get("components", [])
+            if component.get("name") and component.get("id") is not None
+        }
+
     async def _ensure_template_components(self, client: httpx.AsyncClient, space_id: int) -> None:
-        """Register the blok components the client actually edits.
+        """Upsert (create OR update) the blok components the client actually edits.
 
         All active templates use the flat ``SiteContent`` path, so a space only
         needs: ``page`` (root), ``theme_palette``, and the shared ``site_content``
@@ -596,6 +626,11 @@ class StoryblokService:
         (hero/trust/…) and the per-template rich schemas are intentionally NOT
         registered anymore — they were never consumed by demo-host and polluted
         the client's editor with ~60 unusable blok types.
+
+        **Existing components are UPDATED (PUT)** — this is what propagates new fields
+        (e.g. ``social``) and FR labels to already-provisioned spaces (the re-sync the
+        audit asked for). Upserts run with bounded concurrency instead of the old
+        sequential loop, so provisioning is markedly faster.
         """
         components: list[dict[str, Any]] = [
             {
@@ -630,16 +665,31 @@ class StoryblokService:
             *SITE_CONTENT_SCHEMAS,
         ]
 
-        for component in components:
-            response = await self._storyblok_request(
-                client,
-                "POST",
-                f"{self._base_url}/spaces/{space_id}/components/",
-                json={"component": component},
-            )
-            if response.status_code not in (200, 201, 422):
-                response.raise_for_status()
-            await asyncio.sleep(0.15)
+        existing: dict[str, int] = await self._list_component_ids(client, space_id)
+        semaphore = asyncio.Semaphore(5)
+
+        async def _upsert(component: dict[str, Any]) -> None:
+            async with semaphore:
+                name: str = component["name"]
+                component_id: Optional[int] = existing.get(name)
+                if component_id is not None:
+                    response = await self._storyblok_request(
+                        client,
+                        "PUT",
+                        f"{self._base_url}/spaces/{space_id}/components/{component_id}",
+                        json={"component": component},
+                    )
+                else:
+                    response = await self._storyblok_request(
+                        client,
+                        "POST",
+                        f"{self._base_url}/spaces/{space_id}/components/",
+                        json={"component": component},
+                    )
+                if response.status_code not in (200, 201, 422):
+                    response.raise_for_status()
+
+        await asyncio.gather(*(_upsert(component) for component in components))
 
     async def _register_publish_webhook(self, client: httpx.AsyncClient, space_id: int) -> None:
         """Register the story-publish webhook so client edits sync back to ``content_json``.
@@ -690,7 +740,9 @@ class StoryblokService:
         @param public_token - The space's public (published-only) token.
         @returns The story ``content`` dict, or None when unavailable.
         """
-        async with httpx.AsyncClient(timeout=30.0) as client:
+        # follow_redirects: the EU CDN host 301-redirects; without this the webhook
+        # re-fetch would silently fail and client edits would never sync back.
+        async with httpx.AsyncClient(timeout=30.0, follow_redirects=True) as client:
             response = await client.get(
                 f"{self.cdn_base_url}/v2/cdn/stories/home",
                 params={
