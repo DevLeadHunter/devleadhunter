@@ -102,14 +102,18 @@ export async function loadFranceRegions(): Promise<FranceRegion[]> {
     features: GeoFeature[]
   }
 
+  // Metropolitan region boundaries (simplified, ~220 KB) — the france-geojson
+  // reference dataset. geo.api.gouv.fr stopped serving `contour` geometry, so we
+  // source the shapes here; it is CORS-enabled and cached after first load.
+  const REGIONS_URL =
+    'https://raw.githubusercontent.com/gregoiredavid/france-geojson/master/regions-version-simplifiee.geojson'
+
   try {
-    const data: GeoCollection = await $fetch<GeoCollection>('https://geo.api.gouv.fr/regions', {
-      query: { fields: 'nom,code,contour', format: 'geojson', geometry: 'contour' },
-    })
+    const data: GeoCollection = await $fetch<GeoCollection>(REGIONS_URL)
     const regions: FranceRegion[] = []
     for (const feature of data.features ?? []) {
       const code: string = feature.properties.code
-      // Metropolitan region codes are >= 11; overseas are 01-06.
+      // Keep metropolitan regions only (codes >= 11); the simplified set already excludes overseas.
       if (Number(code) < 11) continue
       const rings: Array<Array<[number, number]>> = []
       const geom = feature.geometry
