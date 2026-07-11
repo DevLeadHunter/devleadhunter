@@ -1,16 +1,55 @@
 """
 Unsubscribe service for managing email unsubscriptions (RGPD compliance).
 """
+import hashlib
+import hmac
 from typing import Optional
+from urllib.parse import quote
 from sqlalchemy.orm import Session
-import secrets
 
+from core.config import settings
 from models.email_unsubscribe import EmailUnsubscribe
+
+
+def _normalize_email(email: str) -> str:
+    """Canonical form used both for signing and for storage (lowercased, trimmed)."""
+    return email.strip().lower()
 
 
 class UnsubscribeService:
     """Service for managing email unsubscriptions."""
-    
+
+    def generate_token(self, email: str) -> str:
+        """Compute the per-email unsubscribe token (HMAC-SHA256, keyed by SECRET_KEY).
+
+        The token binds the link to a specific address so a stranger cannot forge an
+        unsubscribe URL for an arbitrary prospect (unsubscribe-bombing). It is stable
+        (no expiry) so a link stays valid for the lifetime of a sent email.
+
+        Args:
+            email: Email address the link is for.
+
+        Returns:
+            Hex HMAC digest to append to the unsubscribe link as ``&token=``.
+        """
+        message: bytes = _normalize_email(email).encode()
+        return hmac.new(settings.secret_key.encode(), message, hashlib.sha256).hexdigest()
+
+    def verify_token(self, email: str, token: Optional[str]) -> bool:
+        """Constant-time check that ``token`` matches ``email``.
+
+        Args:
+            email: Email address claimed by the request.
+            token: Token supplied in the URL (may be missing on legacy links).
+
+        Returns:
+            True when the token is present and valid, False otherwise.
+        """
+        if not token:
+            return False
+        return hmac.compare_digest(token, self.generate_token(email))
+
+
     def is_unsubscribed(self, db: Session, email: str) -> bool:
         """
         Check if an email address is unsubscribed.
@@ -109,18 +148,16 @@ class UnsubscribeService:
             base_url: Base URL of the application
             
         Returns:
-            Unsubscribe link URL
+            Unsubscribe link URL, signed with a per-email token so it cannot be
+            forged for another address.
         """
-        # For security, we'll use a simple token-based system
-        # In production, consider using JWT tokens with expiration
-        from urllib.parse import quote
-        
         email_encoded = quote(email)
-        link = f"{base_url}/api/v1/unsubscribe?email={email_encoded}"
-        
+        token = self.generate_token(email)
+        link = f"{base_url}/api/v1/unsubscribe?email={email_encoded}&token={token}"
+
         if prospect_id:
             link += f"&prospect_id={prospect_id}"
-        
+
         return link
     
     def add_unsubscribe_footer(self, html_body: str, unsubscribe_link: str) -> str:
