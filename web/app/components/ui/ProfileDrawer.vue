@@ -47,15 +47,19 @@
           <div>
             <label class="text-muted mb-1.5 block text-xs font-medium" for="profile-email"> Email de connexion </label>
             <input id="profile-email" v-model="form.email" type="email" required class="input-field" />
-            <p class="text-muted mt-1 text-xs">
-              Sert à vous connecter à DevLeadHunter. L'adresse d'envoi de vos emails de prospection se règle dans
-              <NuxtLink
-                to="/dashboard/email-accounts"
-                class="underline decoration-[var(--app-line)] underline-offset-2 transition-colors hover:text-[var(--app-ink)]"
-              >
-                Comptes email </NuxtLink
-              >.
-            </p>
+            <div
+              class="mt-3 flex items-start gap-2 rounded border border-[var(--app-accent)]/20 bg-[var(--app-accent-soft)] px-3 py-2.5"
+            >
+              <UIcon name="i-lucide-info" class="mt-px h-3.5 w-3.5 shrink-0 text-[var(--app-accent-ink)]" />
+              <p class="text-xs leading-relaxed text-[var(--app-ink-soft)]">
+                Sert à vous connecter à DevLeadHunter. L'adresse d'envoi de vos emails de prospection se règle dans
+                <NuxtLink
+                  to="/dashboard/email-accounts"
+                  class="underline decoration-[var(--app-line)] underline-offset-2 transition-colors hover:text-[var(--app-ink)]"
+                  >Comptes email</NuxtLink
+                >.
+              </p>
+            </div>
           </div>
         </form>
 
