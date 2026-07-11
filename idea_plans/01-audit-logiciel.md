@@ -7,6 +7,7 @@
 >
 > **📋 Journal des corrections** (document vivant — on coche à mesure qu'on dépile) :
 > - **2026-07-11** — ✅ #1 Secrets de déploiement injectés (7 vars) + ✅ #2 token BrightData révoqué & fichiers purgés (commit `3b8db54`). PageSpeed vérifié fonctionnel.
+> - **2026-07-11** — ✅ #3 `updateProfile` branché sur `PATCH /auth/me` (persiste réellement) + ✅ #8 unsubscribe signé (token HMAC, XSS échappée) + ✅ #9 health check réel (probe DB, 503 si KO). Vérifiés en live.
 
 ---
 
@@ -49,13 +50,16 @@ Ce ne sont pas des généralités : ce sont des lignes de code précises à trai
 2. ✅ **RÉSOLU (2026-07-11)** — **Token BrightData en dur, committé dans git** : `api/test_bedee_comparison.py:22` → `os.environ.setdefault("BRIGHTDATA_API_TOKEN", "8daca9ae-…")`. Le fichier est suivi par git → **le secret est dans l'historique**. → **révoquer le token chez BrightData + purger le fichier** (et l'artefact `response.json` de debug committé à la racine).
    > **Correctif (commit `3b8db54`)** : token **révoqué + régénéré** chez BrightData, `test_bedee_comparison.py` et `response.json` **supprimés**. Le token demeure dans l'**historique** git (commit `77a44b5`) mais est **inoffensif car révoqué** → pas de réécriture d'historique (opération destructive évitée).
 
-3. **La modification de profil ne persiste pas** : `web/app/stores/user.ts` → `updateProfile` est un **mock** (`await new Promise(setTimeout 800ms)` + localStorage, l'appel API est **commenté** avec `// TODO`). L'utilisateur croit enregistrer son nom/email, **rien n'est sauvé côté serveur**. Bug fonctionnel réel, facile à corriger.
+3. ✅ **RÉSOLU (2026-07-11)** — **La modification de profil ne persiste pas** : `web/app/stores/user.ts` → `updateProfile` est un **mock** (`await new Promise(setTimeout 800ms)` + localStorage, l'appel API est **commenté** avec `// TODO`). L'utilisateur croit enregistrer son nom/email, **rien n'est sauvé côté serveur**.
+   > **Correctif** : endpoint self-service `PATCH /auth/me` (vérif d'unicité email), `authService.updateProfile` + store branchés dessus. Persistance **vérifiée en live** (PATCH → `GET /me` renvoie la nouvelle valeur). ⚠️ Un changement d'**email** invalide le token courant (l'email est le `sub` du JWT) → re-login requis après.
 
-4. **Endpoint de désinscription non protégé** (`api/api/v1/routes/unsubscribe.py`) :
+4. ✅ **RÉSOLU (2026-07-11)** — **Endpoint de désinscription non protégé** (`api/api/v1/routes/unsubscribe.py`) :
    - **Aucun token/signature** : `GET /unsubscribe?email=…` → **n'importe qui peut désinscrire n'importe lequel de tes prospects** en devinant l'URL (unsubscribe-bombing).
    - **XSS réfléchie** : l'`email` est injecté **brut** dans le HTML (f-string, l. ~102) sans échappement.
+   > **Correctif** : lien signé par **token HMAC-SHA256 par email** (`generate_token`/`verify_token`, clé = `SECRET_KEY`) — un token invalide/absent → **400 + page « lien invalide »** (aucune action) ; email **échappé** (`html.escape`). Vérifié en live (sans token → 400, token valide → OK, `<script>` → `&lt;script&gt;`). Note : les liens des emails **déjà envoyés** (sans token) afficheront la page « lien invalide ».
 
-5. **Health check factice** : `api/api/v1/routes/health.py` renvoie en dur `{"database":"healthy","scrapers":"healthy"}` **sans jamais tester** la DB ni les scrapers → **inutilisable pour du monitoring/uptime** (ne détectera jamais une panne).
+5. ✅ **RÉSOLU (2026-07-11)** — **Health check factice** : `api/api/v1/routes/health.py` renvoie en dur `{"database":"healthy","scrapers":"healthy"}` **sans jamais tester** la DB ni les scrapers → **inutilisable pour du monitoring/uptime** (ne détectera jamais une panne).
+   > **Correctif** : probe réel `SELECT 1` sur la DB → **HTTP 503** si elle tombe (détectable par un moniteur uptime) ; le faux `scrapers: healthy` retiré (jobs à la demande, pas un service persistant). Vérifié en live.
 
 6. **Fulfilment post-paiement en fire-and-forget** : `payments.py` → `asyncio.create_task(fulfill_order_async(...))` **sans retry ni dead-letter**. Si Vercel/Storyblok échoue **après** l'encaissement, l'`Order` reste `paid` **non livré**, récupération manuelle requise. Un client qui a payé et n'est pas livré, c'est le pire scénario commercial.
 
@@ -165,10 +169,10 @@ Refonte « Atelier » de qualité (tokens light/dark, IBM Plex, lucide, drawers 
 | 5 | **Maillons jamais éprouvés en prod** (1re vente, Stripe, Storyblok, Vercel) | Élevé | Faible | Une vente test de bout en bout dérisque d'un coup |
 | 6 | **Fulfilment fire-and-forget** | Élevé | Moyen | Client payé mais non livré si Vercel/Storyblok échoue |
 | 7 | **Enrichissement fragile** (sélecteurs + services non extraits) | Élevé | Moyen | Qualité du site démo = taux de vente |
-| 8 | **Unsubscribe sans token + XSS + webhooks fail-open** | Moyen-élevé | Faible | Surface d'abus + injection |
-| 9 | **Health check factice + pas de Sentry** | Moyen | Faible | Pannes invisibles |
+| 8 | 🟡 **Unsubscribe** ✅ (token+XSS corrigés) / **webhooks Resend fail-open** ⏳ | Moyen-élevé | Faible | Unsubscribe sécurisé ; reste à exiger le secret Resend |
+| 9 | 🟡 **Health check** ✅ (probe DB réel) / **pas de Sentry** ⏳ | Moyen | Faible | Pannes DB détectables ; observabilité applicative encore absente |
 | 10 | **RGPD tracking nominatif** | Moyen (juridique) | Faible | À cadrer avant volume |
-| 11 | **updateProfile mocké** | Moyen | Faible | Fonction qui ment à l'utilisateur |
+| ~~11~~ ✅ | ~~**updateProfile mocké**~~ **RÉSOLU** | Moyen | Faible | Branché sur `PATCH /auth/me` — persiste réellement |
 | 12 | **Délivrabilité cold email** non gérée | Moyen | Moyen | Un mauvais départ brûle le domaine |
 
 ---
