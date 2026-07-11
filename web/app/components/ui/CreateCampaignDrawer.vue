@@ -130,10 +130,6 @@
                 @update:model-value="form.templateIdB = $event"
               />
             </div>
-
-            <p class="text-muted text-xs leading-relaxed">
-              Vous pourrez aussi modifier les modèles et ajouter des relances depuis la page de la campagne.
-            </p>
           </div>
         </form>
 

@@ -44,7 +44,7 @@
       </div>
 
       <!-- Liste des campagnes — grille de cartes -->
-      <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
+      <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 2xl:grid-cols-3">
         <button
           v-for="campaign in campaignsStore.campaigns"
           :key="campaign.id"
