@@ -1,62 +1,86 @@
+import type { Ref } from 'vue'
+
 /**
- * Toast notification composable
+ * Toast notifications — reactive queue rendered by `UiToastHost` (mounted once
+ * in app.vue), styled on the Atelier design tokens (`--app-*`) in both themes.
  * @module composables/useToast
  */
 
+/** Visual family of a toast. */
+export type ToastType = 'success' | 'error' | 'info' | 'warning'
+
+/** One toast in the queue. */
+export interface ToastItem {
+  id: number
+  message: string
+  type: ToastType
+  /** Auto-dismiss delay in ms. */
+  duration: number
+}
+
 interface ToastOptions {
   duration?: number
-  type?: 'success' | 'error' | 'info' | 'warning'
+  type?: ToastType
+}
+
+let nextToastId: number = 1
+
+/**
+ * Reactive toast queue shared between callers and the host component.
+ * @returns The shared queue state.
+ */
+function useToastQueue(): Ref<ToastItem[]> {
+  return useState<ToastItem[]>('app-toasts', (): ToastItem[] => [])
 }
 
 /**
- * Use toast notification
- * @returns {object} Toast methods
+ * Toast notification API (kept stable: `success` / `error` / `info` / `warning`).
+ * @returns Toast methods.
  * @example
  * ```typescript
  * const toast = useToast();
- * toast.success('Operation successful');
- * toast.error('Operation failed');
+ * toast.success('Opération réussie');
+ * toast.error('Une erreur est survenue');
  * ```
  */
 export function useToast() {
-  const showToast = (message: string, options: ToastOptions = {}) => {
-    // Skip on server-side rendering
+  const queue: Ref<ToastItem[]> = useToastQueue()
+
+  /**
+   * Push a toast into the queue (client only — SSR renders nothing).
+   * @param message - Text shown to the user.
+   * @param options - Type + auto-dismiss duration.
+   */
+  const showToast = (message: string, options: ToastOptions = {}): void => {
     if (import.meta.server || !import.meta.client) {
       return
     }
-
-    // This is a simplified implementation
-    // In production, you'd use a proper toast library like vue-toastification
-
-    const { type = 'info', duration = 3000 } = options
-
-    // Create toast element
-    const toast = document.createElement('div')
-    toast.className = `fixed bottom-4 right-4 px-5 py-4 rounded shadow-xl z-50 border text-sm ${
-      type === 'success'
-        ? 'bg-[#2BAD5F] text-white border-[#2BAD5F]'
-        : type === 'error'
-          ? 'bg-[#DC4747] text-white border-[#DC4747]'
-          : type === 'warning'
-            ? 'bg-[#F8D57E] text-[#050505] border-[#F8D57E]'
-            : 'bg-[#1a1a1a] text-[#f9f9f9] border-[#30363d]'
-    }`
-    toast.style.borderRadius = '4px'
-    toast.style.maxWidth = '400px'
-    toast.textContent = message
-
-    document.body.appendChild(toast)
-
-    // Remove toast after duration
-    setTimeout(() => {
-      toast.remove()
-    }, duration)
+    const { type = 'info', duration = 3500 } = options
+    queue.value = [...queue.value, { id: nextToastId++, message, type, duration }]
   }
 
   return {
-    success: (message: string) => showToast(message, { type: 'success' }),
-    error: (message: string) => showToast(message, { type: 'error' }),
-    info: (message: string) => showToast(message, { type: 'info' }),
-    warning: (message: string) => showToast(message, { type: 'warning' }),
+    success: (message: string): void => showToast(message, { type: 'success' }),
+    error: (message: string): void => showToast(message, { type: 'error', duration: 5000 }),
+    info: (message: string): void => showToast(message, { type: 'info' }),
+    warning: (message: string): void => showToast(message, { type: 'warning' }),
   }
+}
+
+/**
+ * Host-side API: the shared queue and the dismiss action.
+ * @returns Queue state + dismiss.
+ */
+export function useToastHost(): { toasts: Ref<ToastItem[]>; dismiss: (id: number) => void } {
+  const queue: Ref<ToastItem[]> = useToastQueue()
+
+  /**
+   * Remove a toast from the queue.
+   * @param id - Toast identifier.
+   */
+  function dismiss(id: number): void {
+    queue.value = queue.value.filter((toast: ToastItem): boolean => toast.id !== id)
+  }
+
+  return { toasts: queue, dismiss }
 }

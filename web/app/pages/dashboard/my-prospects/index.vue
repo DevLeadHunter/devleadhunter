@@ -19,27 +19,55 @@
           <UIcon name="i-lucide-refresh-cw" class="h-3.5 w-3.5" />
           Actualiser
         </button>
-        <button
-          type="button"
-          class="app-btn-secondary h-9 px-3 text-xs"
-          title="Télécharger le modèle JSON d'import"
-          @click="downloadProspectTemplateJson()"
-        >
-          <UIcon name="i-lucide-file-json" class="h-3.5 w-3.5" />
-          Modèle
-        </button>
-        <button
-          type="button"
-          class="app-btn-secondary h-9 px-4 text-xs disabled:cursor-not-allowed disabled:opacity-50"
-          :disabled="isImporting"
-          @click="importInput?.click()"
-        >
-          <UIcon
-            :name="isImporting ? 'i-lucide-loader-circle' : 'i-lucide-upload'"
-            :class="['h-3.5 w-3.5', isImporting && 'animate-spin']"
-          />
-          {{ isImporting ? 'Import…' : 'Importer' }}
-        </button>
+        <div class="relative">
+          <button
+            type="button"
+            class="app-btn-secondary h-9 px-4 text-xs disabled:cursor-not-allowed disabled:opacity-50"
+            :disabled="isImporting"
+            :aria-expanded="showImportMenu"
+            @click.stop="showImportMenu = !showImportMenu"
+          >
+            <UIcon
+              :name="isImporting ? 'i-lucide-loader-circle' : 'i-lucide-upload'"
+              :class="['h-3.5 w-3.5', isImporting && 'animate-spin']"
+            />
+            {{ isImporting ? 'Import…' : 'Importer' }}
+            <UIcon
+              name="i-lucide-chevron-down"
+              :class="['h-3 w-3 opacity-60 transition-transform', showImportMenu && 'rotate-180']"
+            />
+          </button>
+
+          <!-- Import dropdown -->
+          <div v-if="showImportMenu" class="fixed inset-0 z-40" @click="showImportMenu = false"></div>
+          <div
+            v-if="showImportMenu"
+            class="absolute right-0 z-50 mt-1.5 w-64 rounded-xl border border-[var(--app-line)] bg-[var(--app-surface)] p-1 shadow-lg shadow-black/5"
+          >
+            <button
+              type="button"
+              class="flex w-full cursor-pointer items-start gap-2.5 rounded-lg px-2.5 py-2 text-left transition-colors hover:bg-[var(--app-surface-2)]"
+              @click="handleImportClick"
+            >
+              <UIcon name="i-lucide-upload" class="mt-0.5 h-3.5 w-3.5 shrink-0 text-[var(--app-ink-soft)]" />
+              <span>
+                <span class="block text-xs font-medium text-[var(--app-ink)]">Importer un fichier JSON</span>
+                <span class="text-[11px] text-[var(--app-faint)]">Ajoute les prospects du fichier à votre liste</span>
+              </span>
+            </button>
+            <button
+              type="button"
+              class="flex w-full cursor-pointer items-start gap-2.5 rounded-lg px-2.5 py-2 text-left transition-colors hover:bg-[var(--app-surface-2)]"
+              @click="handleDownloadTemplate"
+            >
+              <UIcon name="i-lucide-file-json" class="mt-0.5 h-3.5 w-3.5 shrink-0 text-[var(--app-ink-soft)]" />
+              <span>
+                <span class="block text-xs font-medium text-[var(--app-ink)]">Télécharger le modèle JSON</span>
+                <span class="text-[11px] text-[var(--app-faint)]">Gabarit à remplir puis à importer</span>
+              </span>
+            </button>
+          </div>
+        </div>
         <input
           ref="importInput"
           type="file"
@@ -511,11 +539,31 @@ function handleProspectUpdated(updated: Prospect): void {
 
 // ─── Import / export JSON ─────────────────────────────────────────────────────
 
-/** Hidden file input used by the « Importer » button. */
+/** Hidden file input used by the « Importer » dropdown. */
 const importInput: Ref<HTMLInputElement | null> = ref<HTMLInputElement | null>(null)
 
 /** Whether a JSON import is currently running. */
 const isImporting: Ref<boolean> = ref<boolean>(false)
+
+/** Whether the « Importer » dropdown menu is open. */
+const showImportMenu: Ref<boolean> = ref<boolean>(false)
+
+/**
+ * « Importer un fichier JSON » — close the menu and open the file picker.
+ */
+function handleImportClick(): void {
+  showImportMenu.value = false
+  importInput.value?.click()
+}
+
+/**
+ * « Télécharger le modèle JSON » — download the template and confirm it.
+ */
+function handleDownloadTemplate(): void {
+  showImportMenu.value = false
+  downloadProspectTemplateJson()
+  toast.success('Modèle téléchargé — remplissez-le puis importez-le ici')
+}
 
 /**
  * Open the manual prospect creation drawer.

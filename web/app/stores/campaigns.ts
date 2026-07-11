@@ -121,6 +121,8 @@ export const useCampaignsStore = defineStore('campaigns', () => {
     description?: string
     status?: string
     prospect_ids?: number[]
+    template_id?: number
+    ab_template_id_b?: number
   }): Promise<CampaignDetailResponse> {
     try {
       isLoading.value = true
