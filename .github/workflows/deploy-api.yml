@@ -150,7 +150,7 @@ jobs:
             SUPPORT_FTP_USE_TLS=${{ secrets.SUPPORT_FTP_USE_TLS }}
             EOF
 
-      - name: 🗄️ Run database initialization (SSH)
+      - name: 🧬 Run database migrations (SSH)
         uses: appleboy/ssh-action@v0.1.6
         with:
           host: ${{ secrets.SSH_HOST }}
@@ -161,6 +161,25 @@ jobs:
             set -e
             TARGET_DIR="/var/www/api.devleadhunter.dibodev.fr/html"
             cd "$TARGET_DIR/api"
+            # Idempotent runner: schema_migrations tracks applied migrations and each
+            # migration guards its own ALTER (INFORMATION_SCHEMA / checkfirst), so this
+            # is safe to run on every deploy and only applies what is missing. This is
+            # what actually propagates new columns (init_db.py never ALTERs).
+            ../.venv/bin/python migrations/run_migrations.py
+
+      - name: 🗄️ Run database seeders (SSH)
+        uses: appleboy/ssh-action@v0.1.6
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          port: ${{ secrets.SSH_PORT }}
+          username: ${{ secrets.SSH_USERNAME }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script: |
+            set -e
+            TARGET_DIR="/var/www/api.devleadhunter.dibodev.fr/html"
+            cd "$TARGET_DIR/api"
+            # Seeders are idempotent (existing records are skipped) — runs after
+            # migrations so any new column the seed data relies on already exists.
             ../.venv/bin/python init_db.py
 
       - name: ⚙️ Configure/restart systemd service (SSH)
