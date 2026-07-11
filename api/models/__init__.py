@@ -22,6 +22,8 @@ from models.demo_site import DemoSite
 from models.prospect_enrichment import ProspectEnrichment
 from models.order import Order
 from models.organization import Organization, OrganizationMember
+from models.acquisition_run import AcquisitionRun
+from models.acquisition_run_item import AcquisitionRunItem
 
 __all__ = [
     "User",
@@ -48,4 +50,6 @@ __all__ = [
     "DemoSite",
     "ProspectEnrichment",
     "Order",
+    "AcquisitionRun",
+    "AcquisitionRunItem",
 ]

@@ -430,6 +430,10 @@ const navGroups: ComputedRef<UiSidebarGroup[]> = computed((): UiSidebarGroup[] =
       ],
     },
     {
+      heading: 'Automatisation',
+      links: [{ to: '/dashboard/sequences', label: 'Séquences', icon: 'i-lucide-workflow' }],
+    },
+    {
       heading: 'Production',
       links: [{ to: '/dashboard/demo-sites', label: 'Sites démo', icon: 'i-lucide-app-window' }],
     },

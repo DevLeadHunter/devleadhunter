@@ -6,6 +6,26 @@
 
 ---
 
+## ✅ État d'implémentation — Phase 1 livrée (2026-07-11, branche `feat/acquisition-sequences`)
+
+Le **MVP « semi-auto sur un lot »** (§9 Phase 1) est construit de bout en bout, back + front, lint/types verts.
+
+**Back (`api/`)**
+- **Modèles** : `AcquisitionRun` + `AcquisitionRunItem` (`models/acquisition_run*.py`), enums `enums/acquisition.py` (statut run / mode / step). État 100 % en base → reprise après crash. Champs recherche (`search_*`, `only_without_website`) déjà prévus pour la Phase 2, nullables.
+- **Migration** : `migrations/add_acquisition_tables.py` (idempotente, `checkfirst`), enregistrée dans `run_migrations.py` + `init_db()` + `models/__init__.py`.
+- **Orchestrateur** : `services/acquisition_orchestrator.py` — worker asyncio `run_acquisition_loop()` (tick 30 s, budget d'avancées/tick), **stateless**, greffé au boot de `main.py` comme `run_queue_worker`. Machine à états par item `found → enriched → generated → (pause review) → campaigning`, réutilise `enrichment_service` / `demo_site_service` / `campaign_service` + `CampaignQueueService`. Retries bornés, garde-fous **crédits** (plancher + budget `max_credits` via delta consommé) et **cap emails/jour** (au lancement de la campagne, débordement `skipped` avec raison visible — pas de troncature silencieuse). Respecte la réservation org.
+- **Service métier** : `services/acquisition_service.py` (créer depuis prospects visibles, pause/reprise/annuler, **valider la review**, rejeter un site, stats dérivées : compteurs par step + `won` via Orders + emails via EmailLog).
+- **API** : `routes/acquisition_sequences.py` (`POST /acquisition-sequences`, list, detail, `pause`/`resume`/`cancel`/`approve`, `items/{id}/reject`, delete), scopée user, enregistrée dans le routeur v1.
+
+**Front (`web/`)**
+- `types/AcquisitionSequence.ts`, `services/acquisitionSequencesService.ts`, store Pinia `stores/acquisitionSequences.ts` (avec polling live via `hasActive`).
+- **Drawer** `UiCreateSequenceDrawer` (sélection de prospects filtrable, mode, étapes auto, template de site, modèles A/B, garde-fous) — poussé sur la pile de drawers (règle de Léo : formulaire = drawer), câblé dans `DrawerStackHost`.
+- **Page** `dashboard/sequences` — liste + **vue pipeline** (colonnes File/Enrichis/Sites générés/En campagne/Écartés), **bandeau de validation** « X sites à valider → Valider et démarcher », rejet au cas par cas, KPIs (sites/emails/**vendus**), pause/reprise/annuler. Entrée de nav « Séquences » (groupe Automatisation).
+
+**Reste (non fait) — Phases 2-4** : chaîner la recherche T1 (partir d'un métier+ville), full-auto planifié/scoring, reflet live du `won` en `step` d'item, éditeur de relances dans le drawer, les 2 « quick wins » §5 (fulfilment au `mark-paid`, migration `lifespan`). Vérif E2E réelle à faire par Léo (nécessite pile MySQL+API + compte connecté + prospects).
+
+---
+
 ## 1. Vision & principes
 
 Aujourd'hui chaque étape est un **déclenchement manuel** (choix historique assumé : garder la main). Le but : que Léo puisse dire « **prospecte 30 plombiers à Lyon, génère leurs sites, et lance la campagne** » — et que la machine le fasse seule, en le tenant informé et en s'arrêtant aux points où **son jugement** a de la valeur.
