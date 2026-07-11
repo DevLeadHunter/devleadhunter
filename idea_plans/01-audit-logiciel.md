@@ -8,6 +8,7 @@
 > **📋 Journal des corrections** (document vivant — on coche à mesure qu'on dépile) :
 > - **2026-07-11** — ✅ #1 Secrets de déploiement injectés (7 vars) + ✅ #2 token BrightData révoqué & fichiers purgés (commit `3b8db54`). PageSpeed vérifié fonctionnel.
 > - **2026-07-11** — ✅ #3 `updateProfile` branché sur `PATCH /auth/me` (persiste réellement) + ✅ #8 unsubscribe signé (token HMAC, XSS échappée) + ✅ #9 health check réel (probe DB, 503 si KO). Vérifiés en live.
+> - **2026-07-11** — ✅ #6 fulfilment robuste (loop de reprise + cap + `fulfillment_attempts`/`last_error`) + ✅ #4 migrations jouées au déploiement (`run_migrations.py` avant les seeders). Migration idempotente jouée en local, reprise testée E2E.
 
 ---
 
@@ -61,9 +62,11 @@ Ce ne sont pas des généralités : ce sont des lignes de code précises à trai
 5. ✅ **RÉSOLU (2026-07-11)** — **Health check factice** : `api/api/v1/routes/health.py` renvoie en dur `{"database":"healthy","scrapers":"healthy"}` **sans jamais tester** la DB ni les scrapers → **inutilisable pour du monitoring/uptime** (ne détectera jamais une panne).
    > **Correctif** : probe réel `SELECT 1` sur la DB → **HTTP 503** si elle tombe (détectable par un moniteur uptime) ; le faux `scrapers: healthy` retiré (jobs à la demande, pas un service persistant). Vérifié en live.
 
-6. **Fulfilment post-paiement en fire-and-forget** : `payments.py` → `asyncio.create_task(fulfill_order_async(...))` **sans retry ni dead-letter**. Si Vercel/Storyblok échoue **après** l'encaissement, l'`Order` reste `paid` **non livré**, récupération manuelle requise. Un client qui a payé et n'est pas livré, c'est le pire scénario commercial.
+6. ✅ **RÉSOLU (2026-07-11)** — **Fulfilment post-paiement en fire-and-forget** : `payments.py` → `asyncio.create_task(fulfill_order_async(...))` **sans retry ni dead-letter**. Si Vercel/Storyblok échoue **après** l'encaissement, l'`Order` reste `paid` **non livré**, récupération manuelle requise. Un client qui a payé et n'est pas livré, c'est le pire scénario commercial.
+   > **Correctif** : **loop de reprise en fond** (`order_fulfillment_recovery_service`, greffé comme le worker email/cleanup) qui rejoue toutes les 10 min les commandes `paid`/`deploying` non livrées — **plafonné** (`MAX_FULFILMENT_ATTEMPTS=8`, fenêtre 14 j) et **traçable** (colonnes `fulfillment_attempts` + `fulfillment_last_error` sur `orders`). Le `POST /orders/{id}/deploy` manuel **réarme** le budget. Reprise testée E2E (détection → tentative → cap → terminal ignoré).
 
-7. **Migrations non jouées au déploiement** : `deploy-api.yml` lance `init_db.py` (= `create_all` + seeders), qui **ne fait jamais d'`ALTER`**. Toute **nouvelle colonne** sur une table existante n'est **pas appliquée** au deploy → il faut SSH + `run_migrations.py` à la main (documenté mais non automatisé) → **dérive de schéma silencieuse → 500 en prod**.
+7. ✅ **RÉSOLU (2026-07-11)** — **Migrations non jouées au déploiement** : `deploy-api.yml` lance `init_db.py` (= `create_all` + seeders), qui **ne fait jamais d'`ALTER`**. Toute **nouvelle colonne** sur une table existante n'est **pas appliquée** au deploy → il faut SSH + `run_migrations.py` à la main (documenté mais non automatisé) → **dérive de schéma silencieuse → 500 en prod**.
+   > **Correctif** : nouvelle étape `run_migrations.py` **avant** les seeders dans `deploy-api.yml`. Runner **idempotent** (table `schema_migrations` + chaque migration gardée par `INFORMATION_SCHEMA`/`checkfirst`) — j'ai vérifié que **les 19 migrations existantes sont sûres à re-jouer** (le 1er deploy « adopte » proprement le schéma prod appliqué à la main). Les seeders (idempotents) restent inchangés. Runner joué en local (19 skip + 1 appliquée).
 
 ---
 
@@ -165,9 +168,9 @@ Refonte « Atelier » de qualité (tokens light/dark, IBM Plex, lucide, drawers 
 | ~~1~~ ✅ | ~~**Secrets de déploiement omis** (ENCRYPTION_KEY/RESEND)~~ **RÉSOLU** | Critique | Faible | Corrigé (commit `3b8db54`) — 7 vars injectées + secrets Actions ajoutés |
 | ~~2~~ ✅ | ~~**Token BrightData committé**~~ **RÉSOLU** | Élevé | Faible | Corrigé (commit `3b8db54`) — token révoqué + fichiers purgés |
 | 3 | **Zéro test + zéro gate CI** | Élevé | Moyen | Aucune détection de régression, surtout en montant en charge/multi-user |
-| 4 | **Migrations non automatisées** | Élevé | Faible | Dérive de schéma → 500 à chaque colonne ajoutée |
+| ~~4~~ ✅ | ~~**Migrations non automatisées**~~ **RÉSOLU** | Élevé | Faible | `run_migrations.py` joué au déploiement (idempotent) |
 | 5 | **Maillons jamais éprouvés en prod** (1re vente, Stripe, Storyblok, Vercel) | Élevé | Faible | Une vente test de bout en bout dérisque d'un coup |
-| 6 | **Fulfilment fire-and-forget** | Élevé | Moyen | Client payé mais non livré si Vercel/Storyblok échoue |
+| ~~6~~ ✅ | ~~**Fulfilment fire-and-forget**~~ **RÉSOLU** | Élevé | Moyen | Loop de reprise + cap + tracking ; redéploiement manuel réarme |
 | 7 | **Enrichissement fragile** (sélecteurs + services non extraits) | Élevé | Moyen | Qualité du site démo = taux de vente |
 | 8 | 🟡 **Unsubscribe** ✅ (token+XSS corrigés) / **webhooks Resend fail-open** ⏳ | Moyen-élevé | Faible | Unsubscribe sécurisé ; reste à exiger le secret Resend |
 | 9 | 🟡 **Health check** ✅ (probe DB réel) / **pas de Sentry** ⏳ | Moyen | Faible | Pannes DB détectables ; observabilité applicative encore absente |
