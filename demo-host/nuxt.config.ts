@@ -7,10 +7,10 @@ export default defineNuxtConfig({
   // pinned by tag. Each exposes one root component + relative-only sections.
   extends: [
     'github:DevLeadHunter/devleadhunter-template-artisan-edito#v1.2.0',
-    'github:DevLeadHunter/devleadhunter-template-plumber-signature#v1.1.0',
-    'github:DevLeadHunter/devleadhunter-template-plumber-atelier#v1.2.0',
-    'github:DevLeadHunter/devleadhunter-template-plumber-cuivre#v1.1.0',
-    'github:DevLeadHunter/devleadhunter-template-electrician-lumen#v1.1.0',
+    'github:DevLeadHunter/devleadhunter-template-plumber-signature#v1.2.0',
+    'github:DevLeadHunter/devleadhunter-template-plumber-atelier#v1.3.0',
+    'github:DevLeadHunter/devleadhunter-template-plumber-cuivre#v1.2.0',
+    'github:DevLeadHunter/devleadhunter-template-electrician-lumen#v1.2.0',
   ],
 
   compatibilityDate: '2024-07-11',
