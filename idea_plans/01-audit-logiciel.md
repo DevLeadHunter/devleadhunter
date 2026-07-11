@@ -9,6 +9,7 @@
 > - **2026-07-11** — ✅ #1 Secrets de déploiement injectés (7 vars) + ✅ #2 token BrightData révoqué & fichiers purgés (commit `3b8db54`). PageSpeed vérifié fonctionnel.
 > - **2026-07-11** — ✅ #3 `updateProfile` branché sur `PATCH /auth/me` (persiste réellement) + ✅ #8 unsubscribe signé (token HMAC, XSS échappée) + ✅ #9 health check réel (probe DB, 503 si KO). Vérifiés en live.
 > - **2026-07-11** — ✅ #6 fulfilment robuste (loop de reprise + cap + `fulfillment_attempts`/`last_error`) + ✅ #4 migrations jouées au déploiement (`run_migrations.py` avant les seeders). Migration idempotente jouée en local, reprise testée E2E. Déploiement prod OK (migrations « adoptent » le schéma existant sans casse). **Effet de bord découvert** : les seeders de démo (10 faux users + transactions) tournaient à chaque deploy → ✅ **gatés hors production** (`settings.is_production`).
+> - **2026-07-11** — ✅ **Résilience scraping (Étape 1)** : fallbacks sélecteur/regex/JSON-LD (Google + Pages Jaunes, 10 tests), failover inter-sources, capture réactive typée + page admin de monitoring. Correction du constat erroné sur `SCRAPER_BROWSER_HEADLESS` (headless=false volontaire, scraping sur IP résidentielle de l'utilisateur, pas un VPS).
 
 ---
 
@@ -75,10 +76,11 @@ Ce ne sont pas des généralités : ce sont des lignes de code précises à trai
 ### Étape 1 — Trouver (scraping)
 **Bien** : multi-sources (Pages Jaunes, Google, OSM, BrightData) via `nodriver` (Chrome piloté), jobs **asynchrones avec stream live**, déduplication, filtre « sans site web », email récupéré systématiquement. Timeouts partout (pas de hang). Dégradation gracieuse (une extraction partielle rend ce qu'elle a pu). Chaînes de fallback de requêtes. UX de la page « Trouver des prospects » claire.
 **À améliorer / risqué** :
-- **Sélecteurs fragiles** : le scraping DOM casse dès que Google/Pages Jaunes changent leur markup — et **aucun test de non-régression** ne l'attrape. Les classes Google (`div.F7nice`, `.d4r55`, `.wiI7pd`…) sont obfusquées et tournent souvent.
-- **Aucun retry/backoff** dans les scrapers (pas de `tenacity`) : un échec transitoire = échec.
-- **Footgun de config** : `SCRAPER_BROWSER_HEADLESS=false` par défaut → sur un VPS headless il **faut** le passer à `true`, sinon le scraping casse.
-- **Jobs de scraping en mémoire** (`self._jobs`) : perdus au redémarrage de l'API.
+- ✅ **RÉSOLU (2026-07-11) — Sélecteurs fragiles** : le scraping DOM casse dès que Google/Pages Jaunes changent leur markup — et **aucun test de non-régression** ne l'attrape. Les classes Google (`div.F7nice`, `.d4r55`, `.wiI7pd`…) sont obfusquées et tournent souvent.
+  > **Correctif** : (1) **chaînes de fallback** par champ (sélecteur actuel → alternatives sémantiques `aria`/`data-*` → regex) + **JSON-LD** (schema.org `LocalBusiness`, ancre la plus durable) sur Google + Pages Jaunes (`resilient_extract.py`, 10 tests unitaires) ; (2) **failover automatique entre sources** (`scraper_service` : si une source est bloquée/vide, bascule Google→Pages Jaunes→BrightData→OSM) ; (3) **capture réactive** (statut typé bloqué/vide/timeout + HTML capturé au blocage) et **page admin de monitoring** (`/dashboard/admin/monitoring`) pour voir la santé par source sans sonde proactive.
+- **Aucun retry/backoff** dans les scrapers (pas de `tenacity`) : un échec transitoire = échec. *(partiellement atténué par le failover inter-sources ci-dessus ; un retry/backoff intra-source reste à ajouter.)*
+- ~~**Footgun de config** : `SCRAPER_BROWSER_HEADLESS=false`~~ ❌ **CONSTAT ERRONÉ (retiré)** : `false` est **volontaire et correct**. Un Chrome headless a une empreinte détectable → bien plus challengé par Cloudflare. Et le scraping **ne tourne pas sur un VPS** mais sur **la machine de l'utilisateur (IP résidentielle)** via le sidecar de l'app desktop — une IP datacenter serait bloquée d'office. Aucun changement requis.
+- **Jobs de scraping en mémoire** (`self._jobs`) : perdus au redémarrage de l'API. *(inchangé ; les diagnostics par source, eux, sont désormais persistés en base.)*
 
 ### Étape 2 — Enrichir (le point le plus rentable à fiabiliser)
 **Bien** : séparé du scraping de recherche, à la demande ou en masse (`bulk-run`), injecté automatiquement dans le contenu du site à la génération (`ensure_enriched()` avant provisioning).
