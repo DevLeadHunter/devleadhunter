@@ -111,6 +111,47 @@ class NodriverDom:
         return [str(x) for x in NodriverDom._coerce_to_list(raw) if x]
 
     @staticmethod
+    async def inner_text_chain(tab: Any, selectors: list[str]) -> Optional[str]:
+        """Return the innerText of the first selector in the chain that matches.
+
+        Resilience helper: pass ``[current_selector, alternate1, alternate2, …]`` so a
+        rotated obfuscated class falls through to a still-valid alternate instead of
+        yielding an empty field.
+
+        @param selectors - Selectors tried in order (most specific/current first).
+        @returns The first non-empty text, or ``None``.
+        """
+        for selector in selectors:
+            value = await NodriverDom.inner_text(tab, selector)
+            if value:
+                return value
+        return None
+
+    @staticmethod
+    async def get_attribute_chain(
+        tab: Any, selectors: list[str], attr: str
+    ) -> Optional[str]:
+        """Return ``attr`` of the first selector in the chain that matches (non-empty)."""
+        for selector in selectors:
+            value = await NodriverDom.get_attribute(tab, selector, attr)
+            if value:
+                return value
+        return None
+
+    @staticmethod
+    async def ld_json_blocks(tab: Any) -> list[str]:
+        """Return the raw text of every ``<script type="application/ld+json">`` block.
+
+        The most durable extraction anchor (structured data changes far less than
+        rendered class names). Feed the result to
+        ``resilient_extract.parse_ld_json_blocks``.
+        """
+        from scrappers.resilient_extract import LD_JSON_JS
+
+        raw = await NodriverDom.evaluate_list(tab, LD_JSON_JS)
+        return [str(x) for x in raw if x]
+
+    @staticmethod
     async def get_attribute(
         tab: Any, selector: str, attr: str, *, index: int = 0
     ) -> Optional[str]:

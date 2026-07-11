@@ -18,6 +18,7 @@ from services.scrape_progress import ScrapeProgressReporter
 from scrappers.nodriver_browser import NODRIVER_AVAILABLE, NodriverBrowser, NodriverScraperMixin
 from scrappers.nodriver_dom import NodriverDom
 from scrappers.nodriver_executor import run_nodriver_task
+from scrappers.resilient_extract import find_phone, parse_ld_json_blocks
 
 from .base_scraper import BaseScraper
 from .email_scraper import email_scraper
@@ -262,19 +263,54 @@ class GoogleScraper(NodriverScraperMixin, BaseScraper):
         default_category: str = "Entreprise",
         item_timeout_s: float = 5.0,
     ) -> Optional[dict[str, Optional[str]]]:
-        """Extract business details from the currently open Google Maps place panel."""
+        """Extract business details from the currently open Google Maps place panel.
+
+        Resilient to Google's obfuscated-class churn: each field tries its current
+        selector first, then known alternates (``aria-label`` / ``data-*``), and finally
+        falls back to any JSON-LD on the page. A field going missing degrades that field
+        only — it never breaks the record (only a missing ``name`` is fatal).
+        """
         try:
             if not await NodriverDom.wait_for_selector(tab, "h1", timeout_s=item_timeout_s):
                 return None
 
-            name = await NodriverDom.inner_text(tab, "h1")
-            address = await NodriverDom.inner_text(tab, "[data-item-id='address']") or ""
-            phone = await NodriverDom.inner_text(tab, "[data-item-id='phone']")
-            website = await NodriverDom.get_attribute(tab, "a[data-item-id='authority']", "href")
-            category = (
-                await NodriverDom.inner_text(tab, "button[data-value='Main category']")
-                or default_category
-            )
+            # Layer 1 — current selector, then semantic / data-* alternates.
+            name = await NodriverDom.inner_text_chain(tab, ["h1", "[role='main'] h1"])
+            address = await NodriverDom.inner_text_chain(tab, [
+                "[data-item-id='address']",
+                "button[data-item-id='address']",
+                "[data-item-id^='address']",
+                "button[aria-label*='Adresse']",
+                "button[aria-label*='Address']",
+            ]) or ""
+            phone = await NodriverDom.inner_text_chain(tab, [
+                "[data-item-id='phone']",
+                "[data-item-id^='phone']",
+                "button[aria-label*='Téléphone']",
+                "button[aria-label*='Phone']",
+            ])
+            website = await NodriverDom.get_attribute_chain(tab, [
+                "a[data-item-id='authority']",
+                "a[data-item-id^='authority']",
+                "a[aria-label*='site Web']",
+                "a[aria-label*='website']",
+            ], "href")
+            category = await NodriverDom.inner_text_chain(tab, [
+                "button[data-value='Main category']",
+                "button[jsaction*='category']",
+                "[data-item-id='category']",
+            ]) or default_category
+
+            # Layer 2 — JSON-LD fallback for anything still missing.
+            if not (name and phone and address and website):
+                business = parse_ld_json_blocks(await NodriverDom.ld_json_blocks(tab))
+                if business:
+                    name = name or business.get("name")
+                    phone = phone or business.get("phone")
+                    address = address or business.get("street") or ""
+                    website = website or business.get("website")
+                    if category == default_category and business.get("category"):
+                        category = business["category"]
 
             name = self._sanitize_maps_text(name)
             address = self._sanitize_maps_text(address)
@@ -284,12 +320,15 @@ class GoogleScraper(NodriverScraperMixin, BaseScraper):
             if not name:
                 return None
 
+            # Layer 3 — regex-normalise the phone (markup-independent); keep raw if no match.
+            phone = find_phone(phone) or (phone.strip() if phone else None)
+
             city_name = self.extract_city(address)
             return {
                 "name": name.strip(),
                 "address": address.strip(),
                 "city": city_name,
-                "phone": phone.strip() if phone else None,
+                "phone": phone,
                 "website": website,
                 "category": category.strip(),
             }

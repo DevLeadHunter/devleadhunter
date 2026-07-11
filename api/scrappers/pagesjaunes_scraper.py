@@ -31,6 +31,7 @@ from services.scrape_progress import ScrapeProgressReporter
 from scrappers.nodriver_browser import NODRIVER_AVAILABLE, NodriverBrowser, NodriverScraperMixin, resolve_scraper_headless
 from scrappers.nodriver_dom import NodriverDom
 from scrappers.nodriver_executor import run_nodriver_task
+from scrappers.resilient_extract import extract_ld_json_from_html, parse_ld_json_blocks
 
 from .base_scraper import BaseScraper
 from .email_scraper import email_scraper
@@ -277,6 +278,16 @@ class PagesJaunesScraper(NodriverScraperMixin, BaseScraper):
                 if address:
                     break
 
+            # JSON-LD fallback: Pages Jaunes ships schema.org LocalBusiness data for SEO,
+            # far more stable than its rotating CSS classes. Parsed once, used only to fill
+            # the fields the selectors above could not find.
+            business_ld: Optional[dict] = None
+            if not (phone and address):
+                business_ld = parse_ld_json_blocks(await NodriverDom.ld_json_blocks(tab))
+                if business_ld:
+                    phone = phone or business_ld.get("phone")
+                    address = address or business_ld.get("street")
+
             city = self.extract_city(address) if address else search_city
             if address:
                 address = address_service.remove_city_and_postal_code(address, city)
@@ -310,6 +321,14 @@ class PagesJaunesScraper(NodriverScraperMixin, BaseScraper):
                 ):
                     social_url = href
                     logger.debug("[PJ] Social URL captured for '%s': %s", name, href)
+
+            # JSON-LD fallback for the website when no valid link element was found.
+            if not website:
+                if business_ld is None:
+                    business_ld = parse_ld_json_blocks(await NodriverDom.ld_json_blocks(tab))
+                ld_site = business_ld.get("website") if business_ld else None
+                if ld_site and validation_service.is_valid_website(ld_site):
+                    website = ld_site
 
             if only_without_website and website:
                 logger.info("Prospect %s has a website, skipping", name)
@@ -521,6 +540,13 @@ class PagesJaunesScraper(NodriverScraperMixin, BaseScraper):
                 address = el.get_text(" ", strip=True)
                 break
 
+        # -- JSON-LD fallback (Pages Jaunes ships schema.org LocalBusiness for SEO —
+        #    far more stable than its rotating classes). Parsed once from the raw HTML.
+        business_ld = parse_ld_json_blocks(extract_ld_json_from_html(html))
+        if business_ld:
+            phone = phone or business_ld.get("phone")
+            address = address or business_ld.get("street")
+
         # -- City --
         city = self.extract_city(address) if address else search_city
         if address:
@@ -554,6 +580,12 @@ class PagesJaunesScraper(NodriverScraperMixin, BaseScraper):
             ):
                 social_url = href
                 logger.debug("[PJ-HTTP] Social URL for '%s': %s", name, href)
+
+        # JSON-LD fallback for the website when no valid link element was found.
+        if not website and business_ld and business_ld.get("website"):
+            ld_site = business_ld["website"]
+            if validation_service.is_valid_website(ld_site):
+                website = ld_site
 
         if only_without_website and website:
             logger.info("[PJ-HTTP] Skipping %s — has website", name)
