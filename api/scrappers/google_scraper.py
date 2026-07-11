@@ -19,6 +19,7 @@ from scrappers.nodriver_browser import NODRIVER_AVAILABLE, NodriverBrowser, Nodr
 from scrappers.nodriver_dom import NodriverDom
 from scrappers.nodriver_executor import run_nodriver_task
 from scrappers.resilient_extract import find_phone, parse_ld_json_blocks
+from scrappers import scrape_signals
 
 from .base_scraper import BaseScraper
 from .email_scraper import email_scraper
@@ -687,6 +688,17 @@ class GoogleScraper(NodriverScraperMixin, BaseScraper):
                             await progress.prospect(prospect)
                         return [prospect]
                     logger.error("No feed and no single place — page may be blocked or consent pending")
+                    try:
+                        page_html = await NodriverDom.evaluate(
+                            tab, "document.documentElement.outerHTML", by_value=True
+                        )
+                    except Exception:  # noqa: BLE001
+                        page_html = None
+                    scrape_signals.note_block(
+                        self.source.value,
+                        reason="no feed (blocked or consent pending)",
+                        html=page_html if isinstance(page_html, str) else None,
+                    )
                     return []
 
                 place_hrefs: list[str] = []

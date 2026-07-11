@@ -196,6 +196,7 @@ class ScrapingJobService:
                 only_without_website=job.only_without_website,
                 progress=progress,
                 should_stop=should_stop,
+                user_id=job.user_id,
             )
 
             job.status = JobStatus.COMPLETED

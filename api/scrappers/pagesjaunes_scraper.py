@@ -32,6 +32,7 @@ from scrappers.nodriver_browser import NODRIVER_AVAILABLE, NodriverBrowser, Nodr
 from scrappers.nodriver_dom import NodriverDom
 from scrappers.nodriver_executor import run_nodriver_task
 from scrappers.resilient_extract import extract_ld_json_from_html, parse_ld_json_blocks
+from scrappers import scrape_signals
 
 from .base_scraper import BaseScraper
 from .email_scraper import email_scraper
@@ -433,6 +434,10 @@ class PagesJaunesScraper(NodriverScraperMixin, BaseScraper):
         """
         if self._pj_is_blocked(html):
             logger.info("[PJ-HTTP] Listing page blocked or empty (captcha / JS-gate)")
+            # Flag for the orchestrator (consumed only if the whole cascade yields nothing).
+            scrape_signals.note_block(
+                self.source.value, reason="http tier blocked (captcha/JS-gate)", html=html
+            )
             return None
 
         soup = BeautifulSoup(html, "html.parser")
