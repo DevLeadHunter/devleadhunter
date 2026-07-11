@@ -200,7 +200,7 @@
         </div>
 
         <!-- Ventes -->
-        <div v-else class="grid grid-cols-1 gap-6 md:grid-cols-2">
+        <div v-else-if="activeDetailTab === 'sales'" class="grid grid-cols-1 gap-6 md:grid-cols-2">
           <div>
             <p class="text-3xl font-bold text-[var(--app-green)] tabular-nums">
               {{ formatCents(stats.revenue_cents) }}
@@ -238,6 +238,11 @@
             </div>
           </div>
         </div>
+
+        <!-- Couverture géographique -->
+        <div v-else-if="activeDetailTab === 'coverage'">
+          <DashboardCoverageMap />
+        </div>
       </section>
     </template>
 
@@ -264,13 +269,14 @@ definePageMeta({
 })
 
 /** Keys of the detail tabs (progressive disclosure of the metrics). */
-type DashboardDetailTabKey = 'funnel' | 'emails' | 'sales'
+type DashboardDetailTabKey = 'funnel' | 'emails' | 'sales' | 'coverage'
 
 /** Detail tabs shown one at a time below the KPIs. */
 const DETAIL_TABS: ReadonlyArray<{ key: DashboardDetailTabKey; label: string; icon: string }> = [
   { key: 'funnel', label: 'Tunnel de conversion', icon: 'i-lucide-filter' },
   { key: 'emails', label: 'Emails', icon: 'i-lucide-mail' },
   { key: 'sales', label: 'Ventes', icon: 'i-lucide-banknote' },
+  { key: 'coverage', label: 'Couverture', icon: 'i-lucide-map' },
 ]
 
 const stats: Ref<DashboardStats | null> = ref<DashboardStats | null>(null)

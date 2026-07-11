@@ -70,3 +70,34 @@ export async function getHotLeads(): Promise<HotLeadsResponse> {
 export async function getDashboardActivity(days: number = 14): Promise<DashboardActivityResponse> {
   return api.get<DashboardActivityResponse>(`/api/v1/dashboard/activity?days=${days}`)
 }
+
+/** Prospect count for one city. */
+export interface CoverageCity {
+  city: string
+  count: number
+}
+
+/** An organization member selectable as a coverage scope. */
+export interface CoverageMember {
+  user_id: number
+  name: string
+}
+
+/** Prospection coverage aggregated by city. */
+export interface CoverageResponse {
+  scope: string
+  cities: CoverageCity[]
+  total_prospects: number
+  members: CoverageMember[]
+}
+
+/**
+ * Fetch the prospection coverage (prospect counts by city) for a scope.
+ * @param scope - 'me' (my prospects), 'org' (whole organization), or 'member'.
+ * @param memberId - Member user id when scope is 'member'.
+ * @returns The coverage aggregation + selectable members.
+ */
+export async function getCoverage(scope: string = 'me', memberId?: number): Promise<CoverageResponse> {
+  const params: string = memberId != null ? `?scope=${scope}&member_id=${memberId}` : `?scope=${scope}`
+  return api.get<CoverageResponse>(`/api/v1/dashboard/coverage${params}`)
+}

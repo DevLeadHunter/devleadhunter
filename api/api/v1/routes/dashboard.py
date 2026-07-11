@@ -11,10 +11,14 @@ from enums.demo_site_status import DemoSiteStatus
 from models.campaign import Campaign, CampaignStatus
 from models.demo_site import DemoSite
 from models.email_log import EmailLog
+from models.organization import OrganizationMember
 from models.prospect_db import ProspectDB
 from models.user import User
 from schemas.dashboard import (
     ActivityPoint,
+    CoverageCity,
+    CoverageMember,
+    CoverageResponse,
     DashboardActivityResponse,
     DashboardStatsResponse,
     HotLeadResponse,
@@ -23,6 +27,7 @@ from schemas.dashboard import (
 from services.auth_service import get_current_active_user
 from services.behavior_service import behavior_service
 from services.order_service import order_service
+from services.organization_service import organization_service
 
 logger = logging.getLogger(__name__)
 
@@ -158,3 +163,66 @@ async def dashboard_hot_leads(
         logger.exception("hot-leads aggregation failed for user %s", current_user.id)
         return HotLeadsResponse(items=[])
     return HotLeadsResponse(items=items)
+
+
+@router.get("/coverage", response_model=CoverageResponse)
+async def dashboard_coverage(
+    scope: str = Query("me", description="me | org | member"),
+    member_id: int | None = Query(None, description="User id when scope=member"),
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db),
+) -> CoverageResponse:
+    """
+    Return prospect counts grouped by city for the prospection coverage map.
+
+    Scope:
+      - ``me``      → the current user's own prospects (default).
+      - ``org``     → every prospect shared with the user's organization.
+      - ``member``  → one org member's prospects (``member_id``), org-scoped so a
+                      user can only inspect members of their own organization.
+
+    Cities are grouped case-insensitively; empty cities are excluded. The
+    ``members`` list is filled only when the user belongs to an organization, so
+    the frontend can offer a scope selector.
+    """
+    uid = current_user.id
+    org_id = organization_service.user_org_id(db, uid)
+
+    city_col = func.trim(ProspectDB.city)
+    stmt = select(
+        func.min(city_col).label("city"),
+        func.count().label("count"),
+    ).where(city_col.isnot(None), city_col != "")
+
+    resolved_scope = scope
+    if scope == "org" and org_id is not None:
+        stmt = stmt.where(ProspectDB.organization_id == org_id)
+    elif scope == "member" and member_id is not None and org_id is not None:
+        # Guard: the member must belong to the caller's organization.
+        stmt = stmt.where(
+            ProspectDB.user_id == member_id, ProspectDB.organization_id == org_id
+        )
+    else:
+        resolved_scope = "me"
+        stmt = stmt.where(ProspectDB.user_id == uid)
+
+    stmt = stmt.group_by(func.lower(city_col)).order_by(func.count().desc())
+    rows = db.execute(stmt).all()
+    cities = [CoverageCity(city=str(row.city), count=int(row.count)) for row in rows]
+    total = sum(c.count for c in cities)
+
+    members: list[CoverageMember] = []
+    if org_id is not None:
+        org = organization_service.get_user_organization(db, uid)
+        if org is not None:
+            member_rows = db.execute(
+                select(User.id, User.name)
+                .join(OrganizationMember, OrganizationMember.user_id == User.id)
+                .where(OrganizationMember.organization_id == org_id)
+                .order_by(User.name.asc())
+            ).all()
+            members = [CoverageMember(user_id=r.id, name=r.name) for r in member_rows]
+
+    return CoverageResponse(
+        scope=resolved_scope, cities=cities, total_prospects=total, members=members
+    )

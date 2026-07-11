@@ -53,3 +53,27 @@ class DashboardActivityResponse(BaseModel):
     """Daily email activity series for the dashboard trend chart."""
 
     days: list[ActivityPoint]
+
+
+class CoverageCity(BaseModel):
+    """Prospect count for one city (coverage map)."""
+
+    city: str
+    count: int
+
+
+class CoverageMember(BaseModel):
+    """An organization member selectable as a coverage scope."""
+
+    user_id: int
+    name: str
+
+
+class CoverageResponse(BaseModel):
+    """Prospection coverage aggregated by city, for the selected scope."""
+
+    scope: str
+    cities: list[CoverageCity]
+    total_prospects: int
+    # Populated only when the user belongs to an organization (scope selector).
+    members: list[CoverageMember] = Field(default_factory=list)
