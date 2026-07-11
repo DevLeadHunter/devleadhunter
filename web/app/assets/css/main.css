@@ -688,3 +688,54 @@ html.dark {
 .slide-leave-from aside {
   transform: translateX(0);
 }
+
+/* ============================================================
+   Carte de couverture (MapLibre) — habillage Atelier des contrôles
+   natifs (zoom, plein écran, attribution) + disposition plein écran.
+   Le FullscreenControl cible le wrapper `.coverage-map`, pas le canvas,
+   pour garder tooltip et légende visibles en plein écran.
+   ============================================================ */
+.coverage-map:fullscreen {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 1rem;
+  background: var(--app-bg);
+}
+
+.coverage-map:fullscreen .coverage-map__canvas {
+  height: auto;
+  flex: 1;
+}
+
+.coverage-map .maplibregl-ctrl-group {
+  overflow: hidden;
+  border: 1px solid var(--app-line);
+  border-radius: 0.5rem;
+  background: var(--app-surface);
+  box-shadow: var(--app-shadow-soft);
+}
+
+.coverage-map .maplibregl-ctrl-group button {
+  background: var(--app-surface);
+}
+
+.coverage-map .maplibregl-ctrl-group button + button {
+  border-top: 1px solid var(--app-line);
+}
+
+/* Les icônes des contrôles sont des SVG encre sombre : inversées en dark. */
+.app-theme[data-theme='dark'] .coverage-map .maplibregl-ctrl-group button .maplibregl-ctrl-icon,
+html.dark .coverage-map .maplibregl-ctrl-group button .maplibregl-ctrl-icon {
+  filter: invert(1) hue-rotate(180deg);
+}
+
+.coverage-map .maplibregl-ctrl-attrib {
+  font-size: 10px;
+  color: var(--app-ink-soft);
+  background: color-mix(in srgb, var(--app-surface) 82%, transparent);
+}
+
+.coverage-map .maplibregl-ctrl-attrib a {
+  color: var(--app-ink-soft);
+}
