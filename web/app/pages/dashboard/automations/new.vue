@@ -9,16 +9,10 @@
         <UIcon name="i-lucide-arrow-left" class="h-3.5 w-3.5" />
         Automatisations
       </NuxtLink>
-      <div class="mt-3 flex flex-wrap items-baseline gap-x-4 gap-y-1">
-        <p class="app-label flex items-center gap-2">
-          <LandingAsterisk class="text-[0.6rem] text-[var(--app-accent)]" />
-          Automatisation
-        </p>
-        <h1 class="app-page-title">Créer une automatisation</h1>
-        <p class="text-sm text-[var(--app-ink-soft)]">
-          Trouver → générer les sites → {{ form.mode === 'semi_auto' ? 'valider' : 'auto' }} → démarcher.
-        </p>
-      </div>
+      <h1 class="app-page-title mt-3">Créer une automatisation</h1>
+      <p class="mt-1.5 text-sm text-[var(--app-ink-soft)]">
+        Trouver → générer les sites → {{ form.mode === 'semi_auto' ? 'valider' : 'auto' }} → démarcher.
+      </p>
     </div>
 
     <div class="grid items-start gap-6 lg:grid-cols-[220px_minmax(0,1fr)] xl:grid-cols-[240px_minmax(0,1fr)]">
@@ -64,13 +58,13 @@
         <div v-if="currentStep === 1" key="step-1" class="wizard-step space-y-5">
           <div class="app-card space-y-5 p-5 md:p-6">
             <div>
-              <h2 class="text-base font-semibold text-[var(--app-ink)]">Cible</h2>
-              <p class="mt-1 text-sm text-[var(--app-ink-soft)]">Nomme l'automatisation et choisis son mode.</p>
-            </div>
-
-            <div>
-              <label class="app-label mb-1.5 block">Nom de l'automatisation *</label>
-              <input v-model="form.name" type="text" class="app-input w-full" placeholder="Plombiers — Rennes" />
+              <label class="app-label mb-1.5 block">Nom de l'automatisation</label>
+              <input
+                v-model="form.name"
+                type="text"
+                class="app-input w-full"
+                placeholder="Plombiers — Rennes (optionnel)"
+              />
             </div>
 
             <div class="flex gap-1 rounded-full border border-[var(--app-line)] bg-[var(--app-bg)] p-1">
@@ -83,13 +77,6 @@
                 Full-auto
               </button>
             </div>
-            <p class="text-xs text-[var(--app-ink-soft)]">
-              {{
-                form.mode === 'semi_auto'
-                  ? 'Tu sélectionnes les prospects et tu valides les sites avant tout envoi.'
-                  : 'Tu donnes un métier + une ville + un objectif en jours — la machine fait tout, sans validation.'
-              }}
-            </p>
           </div>
 
           <!-- Semi-auto: prospect selection -->
@@ -512,7 +499,6 @@ const recapItems: ComputedRef<RecapItem[]> = computed((): RecapItem[] => {
 /** Whether the current step can advance. */
 const canContinue: ComputedRef<boolean> = computed((): boolean => {
   if (currentStep.value === 1) {
-    if (!form.value.name.trim()) return false
     if (form.value.mode === 'semi_auto') return selectedProspectIds.value.length > 0
     return Boolean(form.value.metiers.trim() && form.value.villes.trim() && form.value.targetDays > 0)
   }
@@ -646,6 +632,21 @@ function splitList(raw: string): string[] {
 }
 
 /**
+ * The automatisation name — the typed one, or a sensible default when left blank.
+ * @returns A non-empty name.
+ */
+function resolvedName(): string {
+  const typed: string = form.value.name.trim()
+  if (typed) return typed
+  if (form.value.mode === 'full_auto') {
+    const metier: string = splitList(form.value.metiers)[0] ?? 'Prospection'
+    const ville: string = splitList(form.value.villes)[0] ?? ''
+    return ville ? `${metier} — ${ville}` : metier
+  }
+  return `Sélection — ${selectedProspectIds.value.length} prospect(s)`
+}
+
+/**
  * Create the automatisation then open its detail page.
  * @returns A promise resolved once created.
  */
@@ -653,7 +654,7 @@ async function launch(): Promise<void> {
   isCreating.value = true
   try {
     const detail = await createAutomation({
-      name: form.value.name.trim(),
+      name: resolvedName(),
       mode: form.value.mode,
       prospect_ids:
         form.value.mode === 'semi_auto' ? selectedProspectIds.value.map((id: string): number => Number(id)) : [],
