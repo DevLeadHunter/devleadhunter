@@ -125,10 +125,10 @@
               </p>
               <div class="flex items-center gap-2">
                 <button class="app-btn-secondary h-8 px-3 text-xs" @click="selectAllFiltered">Tout sélectionner</button>
-                <NuxtLink to="/dashboard/search-prospects" class="app-btn-secondary h-8 px-3 text-xs">
+                <button type="button" class="app-btn-secondary h-8 px-3 text-xs" @click="openSearchDrawer">
                   <UIcon name="i-lucide-search" class="h-3.5 w-3.5" />
                   Chercher plus
-                </NuxtLink>
+                </button>
               </div>
             </div>
 
@@ -140,9 +140,9 @@
               <p class="mt-4 text-sm text-[var(--app-ink-soft)]">
                 Aucun prospect disponible — ceux déjà pris par une automatisation sont masqués.
               </p>
-              <NuxtLink to="/dashboard/search-prospects" class="app-btn-primary mt-5 inline-flex">
+              <button type="button" class="app-btn-primary mt-5 inline-flex" @click="openSearchDrawer">
                 Trouver des prospects
-              </NuxtLink>
+              </button>
             </div>
             <div v-else class="app-card overflow-hidden">
               <UiProspectTable
@@ -356,6 +356,7 @@ import { deleteProspect as deleteProspectApi, listProspects } from '~/services/p
 import { getEmailTemplates } from '~/services/emailTemplatesService'
 import { listDemoSiteTemplates } from '~/services/demoSiteService'
 import { useDrawerStackStore } from '~/stores/drawerStack'
+import { useProspectSearchStore } from '~/stores/prospectSearch'
 import { useToast } from '~/composables/useToast'
 
 /** A wizard step. */
@@ -394,6 +395,7 @@ definePageMeta({
 const toast = useToast()
 const route = useRoute()
 const drawerStack = useDrawerStackStore()
+const searchStore = useProspectSearchStore()
 
 const defaultTheme: DemoSiteTheme = { primary: '#0284c7', secondary: '#0f172a', accent: '#f59e0b' }
 
@@ -683,17 +685,39 @@ watch([searchQuery, filterCity, filterCategory, filterWebsite], (): void => {
   currentPage.value = 1
 })
 
-onMounted(async (): Promise<void> => {
+/** Open the prospect-search drawer (scraping) without leaving the tunnel. */
+function openSearchDrawer(): void {
+  drawerStack.push({ kind: 'search-prospects' })
+}
+
+/**
+ * Reload the selectable prospects (unused only), preserving the selection.
+ * @returns A promise resolved once reloaded.
+ */
+async function reloadProspects(): Promise<void> {
   isLoadingProspects.value = true
   try {
-    const [prospectList, usedIds, emailList, demoList] = await Promise.all([
-      listProspects(),
-      getUsedProspectIds(),
-      getEmailTemplates(),
-      listDemoSiteTemplates(),
-    ])
+    const [prospectList, usedIds] = await Promise.all([listProspects(), getUsedProspectIds()])
     const used: Set<number> = new Set<number>(usedIds)
     prospects.value = prospectList.filter((p: Prospect): boolean => !used.has(p.id))
+  } catch {
+    // Non-critical.
+  } finally {
+    isLoadingProspects.value = false
+  }
+}
+
+// A search launched from the « Chercher plus » drawer just finished — refresh.
+watch(
+  (): number => searchStore.completedSignal,
+  (): void => {
+    void reloadProspects()
+  },
+)
+
+onMounted(async (): Promise<void> => {
+  try {
+    const [emailList, demoList] = await Promise.all([getEmailTemplates(), listDemoSiteTemplates()])
     emailTemplates.value = emailList.map((t): TemplateSelectOption => ({ id: t.id, name: t.name, subject: t.subject }))
     templates.value = demoList
     const first: DemoSiteTemplate | undefined = demoList[0]
@@ -703,9 +727,8 @@ onMounted(async (): Promise<void> => {
     }
   } catch {
     // Non-critical — the wizard still works with what loaded.
-  } finally {
-    isLoadingProspects.value = false
   }
+  await reloadProspects()
 
   // Pre-select a prospect passed via ?prospect= (single-site shortcut).
   const raw: string | undefined = Array.isArray(route.query.prospect) ? route.query.prospect[0] : route.query.prospect

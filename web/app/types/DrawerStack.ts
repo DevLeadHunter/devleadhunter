@@ -75,6 +75,11 @@ export interface AddProspectDrawerEntry {
   kind: 'add-prospect'
 }
 
+/** Prospect search (scraping) drawer entry. */
+export interface SearchProspectsDrawerEntry {
+  kind: 'search-prospects'
+}
+
 /** One entry of the persistent drawer stack. */
 export type DrawerStackEntry =
   | ProspectDrawerEntry
@@ -85,6 +90,7 @@ export type DrawerStackEntry =
   | OrganizationDrawerEntry
   | CreateCampaignDrawerEntry
   | AddProspectDrawerEntry
+  | SearchProspectsDrawerEntry
 
 /** Cross-page notice describing the latest prospect mutation done from a drawer. */
 export type ProspectMutationNotice = { type: 'updated'; prospect: Prospect } | { type: 'deleted'; prospectId: number }

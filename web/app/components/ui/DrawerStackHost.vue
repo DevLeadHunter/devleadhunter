@@ -81,6 +81,14 @@
       @back="drawerStack.back()"
       @created="handleProspectCreated"
     />
+
+    <!-- Prospect search (scraping) -->
+    <UiSearchProspectsDrawer
+      :open="searchProspectsEntry !== null"
+      :show-back="hasPrevious"
+      @close="drawerStack.closeAll()"
+      @back="drawerStack.back()"
+    />
   </div>
 </template>
 
@@ -94,6 +102,7 @@ import type {
   OrganizationDrawerEntry,
   ProfileDrawerEntry,
   ProspectDrawerEntry,
+  SearchProspectsDrawerEntry,
   SendEmailDrawerEntry,
 } from '~/types/DrawerStack'
 import type { EmailTemplate, Prospect } from '~/types'
@@ -150,6 +159,13 @@ const createCampaignEntry: ComputedRef<CreateCampaignDrawerEntry | null> = compu
 const addProspectEntry: ComputedRef<AddProspectDrawerEntry | null> = computed((): AddProspectDrawerEntry | null => {
   return drawerStack.topEntry?.kind === 'add-prospect' ? drawerStack.topEntry : null
 })
+
+/** Top entry narrowed to the prospect search drawer. */
+const searchProspectsEntry: ComputedRef<SearchProspectsDrawerEntry | null> = computed(
+  (): SearchProspectsDrawerEntry | null => {
+    return drawerStack.topEntry?.kind === 'search-prospects' ? drawerStack.topEntry : null
+  },
+)
 
 /**
  * Prospect created from the add drawer — notify pages (list insert) and chain
