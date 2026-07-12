@@ -63,6 +63,7 @@ class CreateSequenceInput:
     auto_enrich: bool = True
     auto_generate: bool = True
     template_id: Optional[str] = None
+    theme: Optional[dict] = None
     auto_campaign: bool = True
     email_template_id_a: Optional[int] = None
     email_template_id_b: Optional[int] = None
@@ -125,6 +126,7 @@ class AcquisitionService:
             auto_enrich=payload.auto_enrich,
             auto_generate=payload.auto_generate,
             template_id=payload.template_id,
+            theme=payload.theme,
             auto_campaign=payload.auto_campaign,
             email_template_id_a=payload.email_template_id_a,
             email_template_id_b=payload.email_template_id_b,

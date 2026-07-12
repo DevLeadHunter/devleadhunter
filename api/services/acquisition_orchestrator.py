@@ -384,6 +384,7 @@ async def _do_generate(db: Session, run, item, user, prospect) -> None:
             city=prospect.city,
             description=None,
             invite_client_to_cms=False,
+            theme=run.theme,
             prospect_id=prospect.id,
         )
     except ValueError as exc:

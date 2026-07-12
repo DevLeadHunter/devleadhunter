@@ -55,6 +55,7 @@ class AcquisitionRun(Base):
     auto_enrich: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True, server_default="1")
     auto_generate: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True, server_default="1")
     template_id: Mapped[Optional[str]] = mapped_column(String(64), nullable=True)  # demo-site template
+    theme: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True)  # {primary, secondary, accent}
     auto_campaign: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True, server_default="1")
     email_template_id_a: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
     email_template_id_b: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)

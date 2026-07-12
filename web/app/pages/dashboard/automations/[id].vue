@@ -8,70 +8,82 @@
       Automatisations
     </NuxtLink>
 
-    <div v-if="run === null" class="card animate-pulse">
-      <div class="h-4 w-1/3 rounded bg-[var(--app-surface-2)]" />
+    <div v-if="run === null" class="flex items-center justify-center py-16">
+      <UIcon name="i-lucide-loader-circle" class="h-8 w-8 animate-spin text-[var(--app-accent)]" />
     </div>
 
     <template v-else>
       <!-- Header -->
-      <div class="card space-y-4">
-        <div class="flex flex-wrap items-start justify-between gap-3">
-          <div class="min-w-0">
-            <div class="flex items-center gap-2">
-              <h1 class="truncate text-lg font-semibold text-[var(--app-ink)]">{{ run.name }}</h1>
-              <span class="app-badge" :class="statusBadgeClass(run.status)">{{ statusLabel(run.status) }}</span>
-            </div>
-            <p class="text-muted mt-0.5 text-xs">
-              {{ run.mode === 'full_auto' ? 'Full-auto' : 'Semi-auto' }} · {{ run.stats.total }} prospect(s)
-              <span v-if="run.campaign_id">
-                ·
-                <NuxtLink :to="`/dashboard/campaigns/${run.campaign_id}`" class="underline hover:text-[var(--app-ink)]"
-                  >campagne liée</NuxtLink
-                >
-              </span>
-            </p>
+      <div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+        <div class="min-w-0">
+          <p class="app-label flex items-center gap-2">
+            <LandingAsterisk class="text-[0.6rem] text-[var(--app-accent)]" />
+            Automatisation · {{ run.mode === 'full_auto' ? 'Full-auto' : 'Semi-auto' }}
+          </p>
+          <div class="mt-2 flex flex-wrap items-center gap-2.5">
+            <h1 class="app-page-title">{{ run.name }}</h1>
+            <span class="app-badge" :class="statusBadgeClass(run.status)">{{ statusLabel(run.status) }}</span>
           </div>
-          <div class="flex items-center gap-2">
-            <button
-              v-if="run.status === 'running'"
-              class="btn-secondary"
-              :disabled="isActing"
-              @click="run && store.pause(run.id)"
-            >
-              <UIcon name="i-lucide-pause" class="mr-1.5 h-3.5 w-3.5" />Pause
-            </button>
-            <button
-              v-if="run.status === 'paused'"
-              class="btn-secondary"
-              :disabled="isActing"
-              @click="run && store.resume(run.id)"
-            >
-              <UIcon name="i-lucide-play" class="mr-1.5 h-3.5 w-3.5" />Reprendre
-            </button>
-            <button v-if="canCancel" class="btn-secondary" :disabled="isActing" @click="cancel">Annuler</button>
-            <button v-if="isTerminal" class="btn-danger" :disabled="isActing" @click="remove">
-              <UIcon name="i-lucide-trash-2" class="mr-1.5 h-3.5 w-3.5" />Supprimer
-            </button>
-          </div>
+          <p class="mt-1.5 text-sm text-[var(--app-ink-soft)]">
+            {{ run.stats.total }} prospect(s)
+            <span v-if="run.campaign_id">
+              ·
+              <NuxtLink
+                :to="`/dashboard/campaigns/${run.campaign_id}`"
+                class="underline underline-offset-2 hover:text-[var(--app-ink)]"
+                >campagne liée</NuxtLink
+              >
+            </span>
+          </p>
         </div>
-
-        <div class="grid grid-cols-3 gap-3 sm:grid-cols-6">
-          <div v-for="kpi in kpis" :key="kpi.label" class="rounded-lg bg-[var(--app-surface-2)] px-3 py-2">
-            <p class="app-label">{{ kpi.label }}</p>
-            <p class="mt-0.5 text-xl font-bold tabular-nums" :class="kpi.class">{{ kpi.value }}</p>
-          </div>
+        <div class="flex flex-wrap items-center gap-2">
+          <button
+            v-if="run.status === 'running'"
+            class="app-btn-secondary h-9 px-4 text-xs"
+            :disabled="isActing"
+            @click="run && store.pause(run.id)"
+          >
+            <UIcon name="i-lucide-pause" class="h-3.5 w-3.5" />Pause
+          </button>
+          <button
+            v-if="run.status === 'paused'"
+            class="app-btn-secondary h-9 px-4 text-xs"
+            :disabled="isActing"
+            @click="run && store.resume(run.id)"
+          >
+            <UIcon name="i-lucide-play" class="h-3.5 w-3.5" />Reprendre
+          </button>
+          <button v-if="canCancel" class="app-btn-secondary h-9 px-4 text-xs" :disabled="isActing" @click="cancel">
+            Annuler
+          </button>
+          <button
+            v-if="isTerminal"
+            class="app-btn-secondary h-9 px-4 text-xs text-[var(--app-red)]"
+            :disabled="isActing"
+            @click="remove"
+          >
+            <UIcon name="i-lucide-trash-2" class="h-3.5 w-3.5" />Supprimer
+          </button>
         </div>
-
-        <p
-          v-if="run.note"
-          class="flex items-center gap-2 rounded-lg border border-[var(--app-line)] bg-[var(--app-bg)] px-3 py-2 text-xs text-[var(--app-ink-soft)]"
-        >
-          <UIcon name="i-lucide-info" class="h-3.5 w-3.5 shrink-0" />{{ run.note }}
-        </p>
       </div>
 
+      <!-- KPIs -->
+      <div class="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+        <div v-for="kpi in kpis" :key="kpi.label" class="app-card p-3.5">
+          <p class="app-label">{{ kpi.label }}</p>
+          <p class="mt-1 text-2xl font-bold tabular-nums" :class="kpi.class">{{ kpi.value }}</p>
+        </div>
+      </div>
+
+      <p v-if="run.note" class="app-card flex items-center gap-2 p-3.5 text-xs text-[var(--app-ink-soft)]">
+        <UIcon name="i-lucide-info" class="h-3.5 w-3.5 shrink-0" />{{ run.note }}
+      </p>
+
       <!-- Review gate -->
-      <div v-if="run.status === 'awaiting_review'" class="card border-[var(--app-blue)] bg-[var(--app-blue-soft)]">
+      <div
+        v-if="run.status === 'awaiting_review'"
+        class="app-card border-[var(--app-blue)]/50 bg-[var(--app-blue-soft)] p-5"
+      >
         <div class="flex flex-wrap items-center justify-between gap-3">
           <div class="flex items-start gap-2.5">
             <UIcon name="i-lucide-clipboard-check" class="mt-0.5 h-5 w-5 shrink-0 text-[var(--app-blue)]" />
@@ -79,45 +91,55 @@
               <p class="text-sm font-semibold text-[var(--app-ink)]">
                 {{ generatedCount }} site(s) à valider avant démarchage
               </p>
-              <p class="text-muted mt-0.5 text-xs">
-                Vérifie les sites (les moins bien remplis sont remontés en premier), corrige ou exclus, puis lance.
+              <p class="mt-0.5 text-xs text-[var(--app-ink-soft)]">
+                Les sites les moins bien remplis sont remontés en premier. Corrige, exclus, puis lance.
               </p>
             </div>
           </div>
-          <button class="btn-primary" :disabled="isActing" @click="approve">
-            <UIcon name="i-lucide-send" class="mr-1.5 h-4 w-4" />Valider et démarcher
+          <button class="app-btn-primary" :disabled="isActing" @click="approve">
+            <UIcon name="i-lucide-send" class="h-4 w-4" />Valider et démarcher
           </button>
         </div>
       </div>
 
-      <!-- Bulk toolbar -->
-      <div v-if="selected.size > 0" class="card flex flex-wrap items-center gap-2 py-3">
-        <span class="text-xs font-medium text-[var(--app-ink)]">{{ selected.size }} sélectionné(s)</span>
-        <select v-model="bulkTemplateId" class="input-field h-8 w-auto text-xs">
-          <option :value="''">Changer de template…</option>
-          <option v-for="tpl in demoTemplates" :key="tpl.id" :value="tpl.id">{{ tpl.name }}</option>
-        </select>
-        <button class="btn-secondary h-8 text-xs" :disabled="isActing" @click="regenerate">
-          <UIcon name="i-lucide-refresh-cw" class="mr-1 h-3.5 w-3.5" />Régénérer
-        </button>
-        <button class="btn-secondary h-8 text-xs" :disabled="isActing" @click="reenrich">
-          <UIcon name="i-lucide-sparkles" class="mr-1 h-3.5 w-3.5" />Ré-enrichir
-        </button>
-        <button class="btn-danger h-8 text-xs" :disabled="isActing" @click="exclude">Exclure</button>
-      </div>
-
       <!-- Prospect list -->
-      <div class="space-y-2">
-        <div
-          v-for="item in sortedItems"
-          :key="item.id"
-          class="card gap-3 p-3.5"
-          :class="item.won ? 'border-[var(--app-green)]' : ''"
-        >
-          <div class="flex items-start gap-3">
+      <div class="app-card overflow-hidden">
+        <!-- Toolbar -->
+        <div class="flex flex-wrap items-center gap-2 border-b border-[var(--app-line)] px-4 py-3">
+          <p class="text-sm font-medium text-[var(--app-ink)]">Prospects</p>
+          <template v-if="selected.size > 0">
+            <span class="h-4 w-px bg-[var(--app-line)]" />
+            <span class="font-label text-xs text-[var(--app-ink-soft)]">{{ selected.size }} sélectionné(s)</span>
+            <select v-model="bulkTemplateId" class="app-input h-8 w-auto min-w-40 text-xs">
+              <option :value="''">Changer de template…</option>
+              <option v-for="tpl in demoTemplates" :key="tpl.id" :value="tpl.id">{{ tpl.name }}</option>
+            </select>
+            <button class="app-btn-secondary h-8 px-3 text-xs" :disabled="isActing" @click="regenerate">
+              <UIcon name="i-lucide-refresh-cw" class="h-3.5 w-3.5" />Régénérer
+            </button>
+            <button class="app-btn-secondary h-8 px-3 text-xs" :disabled="isActing" @click="reenrich">
+              <UIcon name="i-lucide-sparkles" class="h-3.5 w-3.5" />Ré-enrichir
+            </button>
+            <button
+              class="app-btn-secondary h-8 px-3 text-xs text-[var(--app-red)]"
+              :disabled="isActing"
+              @click="exclude"
+            >
+              Exclure
+            </button>
+          </template>
+        </div>
+
+        <!-- Rows -->
+        <div class="divide-y divide-[var(--app-line-soft)]">
+          <div
+            v-for="item in sortedItems"
+            :key="item.id"
+            class="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-4 px-4 py-3 transition-colors hover:bg-[var(--app-surface-2)]/40"
+          >
             <button
               type="button"
-              class="mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded border"
+              class="flex h-4 w-4 shrink-0 items-center justify-center rounded border"
               :class="
                 selected.has(item.id)
                   ? 'border-[var(--app-ink)] bg-[var(--app-ink)] text-[var(--app-surface)]'
@@ -128,8 +150,8 @@
               <UIcon v-if="selected.has(item.id)" name="i-lucide-check" class="h-3 w-3" />
             </button>
 
-            <div class="min-w-0 flex-1">
-              <div class="flex items-center gap-2">
+            <div class="min-w-0">
+              <div class="flex flex-wrap items-center gap-2">
                 <p class="truncate text-sm font-medium text-[var(--app-ink)]">
                   {{ item.prospect_name || `#${item.prospect_id}` }}
                 </p>
@@ -139,55 +161,59 @@
                   >vendu</span
                 >
                 <span class="app-badge" :class="stepBadgeClass(item.step)">{{ stepLabel(item.step) }}</span>
+                <span v-if="item.prospect_city" class="text-[11px] text-[var(--app-ink-soft)]">{{
+                  item.prospect_city
+                }}</span>
               </div>
-              <p class="text-[11px] text-[var(--app-ink-soft)]">
-                {{ item.prospect_city || '—' }}
-                <span v-if="item.step_reason"> · {{ item.step_reason }}</span>
-              </p>
-
-              <!-- Quality -->
-              <div v-if="item.quality_score !== null" class="mt-2 flex items-center gap-2">
-                <div class="h-1.5 w-24 overflow-hidden rounded-full bg-[var(--app-surface-2)]">
-                  <div
-                    class="h-full rounded-full"
-                    :class="qualityColor(item.quality_score)"
-                    :style="{ width: `${item.quality_score}%` }"
-                  />
+              <div class="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1">
+                <div v-if="item.quality_score !== null" class="flex items-center gap-1.5">
+                  <div class="h-1.5 w-20 overflow-hidden rounded-full bg-[var(--app-surface-2)]">
+                    <div
+                      class="h-full rounded-full"
+                      :class="qualityColor(item.quality_score)"
+                      :style="{ width: `${item.quality_score}%` }"
+                    />
+                  </div>
+                  <span class="text-[10px] text-[var(--app-ink-soft)]">{{ item.quality_score }}/100</span>
                 </div>
-                <span class="text-[10px] text-[var(--app-ink-soft)]">{{ item.quality_score }}/100</span>
                 <span
                   v-if="item.quality_flags && item.quality_flags.length"
                   class="text-[10px] text-[var(--app-red)]"
                   >{{ item.quality_flags.join(', ') }}</span
                 >
+                <span v-else-if="item.step_reason" class="text-[10px] text-[var(--app-faint)]">{{
+                  item.step_reason
+                }}</span>
               </div>
+            </div>
 
-              <!-- Actions -->
-              <div class="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1">
-                <a
-                  v-if="item.demo_url"
-                  :href="item.demo_url"
-                  target="_blank"
-                  rel="noopener"
-                  class="flex items-center gap-1 text-[11px] text-[var(--app-ink-soft)] hover:text-[var(--app-ink)] hover:underline"
-                  ><UIcon name="i-lucide-external-link" class="h-3 w-3" />Voir le site</a
-                >
-                <a
-                  v-if="item.storyblok_editor_url"
-                  :href="item.storyblok_editor_url"
-                  target="_blank"
-                  rel="noopener"
-                  class="flex items-center gap-1 text-[11px] text-[var(--app-ink-soft)] hover:text-[var(--app-ink)] hover:underline"
-                  ><UIcon name="i-lucide-pencil" class="h-3 w-3" />Éditer (Storyblok)</a
-                >
-                <button
-                  v-if="run.email_template_id_a"
-                  class="flex items-center gap-1 text-[11px] text-[var(--app-ink-soft)] hover:text-[var(--app-ink)] hover:underline"
-                  @click="openPreview(item.id)"
-                >
-                  <UIcon name="i-lucide-mail" class="h-3 w-3" />Voir le mail
-                </button>
-              </div>
+            <div class="flex shrink-0 items-center gap-1">
+              <a
+                v-if="item.demo_url"
+                :href="item.demo_url"
+                target="_blank"
+                rel="noopener"
+                class="flex items-center gap-1 rounded-lg px-2 py-1 text-[11px] text-[var(--app-ink-soft)] transition-colors hover:bg-[var(--app-surface-2)] hover:text-[var(--app-ink)]"
+                title="Voir le site"
+                ><UIcon name="i-lucide-external-link" class="h-3.5 w-3.5"
+              /></a>
+              <a
+                v-if="item.storyblok_editor_url"
+                :href="item.storyblok_editor_url"
+                target="_blank"
+                rel="noopener"
+                class="flex items-center gap-1 rounded-lg px-2 py-1 text-[11px] text-[var(--app-ink-soft)] transition-colors hover:bg-[var(--app-surface-2)] hover:text-[var(--app-ink)]"
+                title="Éditer (Storyblok)"
+                ><UIcon name="i-lucide-pencil" class="h-3.5 w-3.5"
+              /></a>
+              <button
+                v-if="run.email_template_id_a"
+                class="flex items-center gap-1 rounded-lg px-2 py-1 text-[11px] text-[var(--app-ink-soft)] transition-colors hover:bg-[var(--app-surface-2)] hover:text-[var(--app-ink)]"
+                title="Voir le mail"
+                @click="openPreview(item.id)"
+              >
+                <UIcon name="i-lucide-mail" class="h-3.5 w-3.5" />
+              </button>
             </div>
           </div>
         </div>
@@ -202,26 +228,29 @@
         @click.self="previewOpen = false"
       >
         <div
-          class="flex max-h-[85vh] w-full max-w-2xl flex-col overflow-hidden rounded-xl border border-[var(--app-line)] bg-[var(--app-surface)] shadow-2xl"
+          class="flex max-h-[85vh] w-full max-w-2xl flex-col overflow-hidden rounded-2xl border border-[var(--app-line)] bg-[var(--app-surface)] shadow-2xl"
         >
-          <div class="flex items-center justify-between border-b border-[var(--app-line)] px-4 py-3">
+          <div class="flex items-center justify-between border-b border-[var(--app-line)] px-5 py-3.5">
             <p class="text-sm font-semibold text-[var(--app-ink)]">Aperçu du mail</p>
-            <button class="text-[var(--app-ink-soft)] hover:text-[var(--app-ink)]" @click="previewOpen = false">
+            <button
+              class="rounded-lg p-1 text-[var(--app-ink-soft)] transition-colors hover:bg-[var(--app-surface-2)] hover:text-[var(--app-ink)]"
+              @click="previewOpen = false"
+            >
               <UIcon name="i-lucide-x" class="h-4 w-4" />
             </button>
           </div>
-          <div class="overflow-y-auto p-4">
+          <div class="overflow-y-auto p-5">
             <p v-if="isPreviewing" class="flex items-center gap-2 text-sm text-[var(--app-ink-soft)]">
               <UIcon name="i-lucide-loader-circle" class="h-4 w-4 animate-spin" />Rendu…
             </p>
             <template v-else-if="preview">
-              <p class="mb-2 text-sm">
+              <p class="mb-3 text-sm">
                 <span class="text-[var(--app-ink-soft)]">Objet :</span>
                 <span class="font-medium text-[var(--app-ink)]">{{ preview.subject }}</span>
               </p>
               <!-- eslint-disable vue/no-v-html -- rendering our own backend-generated email HTML -->
               <div
-                class="prose-sm max-w-none rounded-lg border border-[var(--app-line)] bg-white p-4 text-black"
+                class="max-w-none rounded-xl border border-[var(--app-line)] bg-white p-4 text-black"
                 v-html="preview.body_html"
               />
               <!-- eslint-enable vue/no-v-html -->
@@ -293,11 +322,9 @@ const run: ComputedRef<AutomationDetail | null> = computed((): AutomationDetail 
 /** Items sorted so the risky (low-score) generated sites come first. */
 const sortedItems: ComputedRef<AutomationItem[]> = computed((): AutomationItem[] => {
   const items: AutomationItem[] = [...(run.value?.items ?? [])]
-  return items.sort((a: AutomationItem, b: AutomationItem): number => {
-    const sa: number = a.quality_score ?? 999
-    const sb: number = b.quality_score ?? 999
-    return sa - sb
-  })
+  return items.sort(
+    (a: AutomationItem, b: AutomationItem): number => (a.quality_score ?? 999) - (b.quality_score ?? 999),
+  )
 })
 
 /** Count of generated sites awaiting review. */

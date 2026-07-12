@@ -41,6 +41,7 @@ class SequenceCreateRequest(BaseModel):
     auto_enrich: bool = True
     auto_generate: bool = True
     template_id: Optional[str] = None
+    theme: Optional[dict] = None
     auto_campaign: bool = True
     email_template_id_a: Optional[int] = None
     email_template_id_b: Optional[int] = None

@@ -25,6 +25,7 @@ _COLUMNS: list[tuple[str, str, str]] = [
     ("acquisition_runs", "search_metiers", "JSON NULL"),
     ("acquisition_runs", "search_villes", "JSON NULL"),
     ("acquisition_runs", "target_days", "INT NULL"),
+    ("acquisition_runs", "theme", "JSON NULL"),
 ]
 
 

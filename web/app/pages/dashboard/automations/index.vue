@@ -1,26 +1,28 @@
 <template>
   <div class="space-y-5">
     <!-- Header -->
-    <div class="flex flex-wrap items-center justify-between gap-3">
+    <div class="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
       <div>
-        <h1 class="text-xl font-semibold text-[var(--app-ink)]">Automatisations</h1>
-        <p class="text-muted mt-1 text-sm">Trouver → générer les sites → valider → démarcher, en une passe.</p>
+        <p class="app-label flex items-center gap-2">
+          <LandingAsterisk class="text-[0.6rem] text-[var(--app-accent)]" />
+          Automatisation
+        </p>
+        <h1 class="app-page-title mt-2">Automatisations</h1>
+        <p class="mt-1.5 text-sm text-[var(--app-ink-soft)]">
+          Trouver → générer les sites → valider → démarcher, en une passe.
+        </p>
       </div>
-      <div class="flex items-center gap-2">
-        <NuxtLink to="/dashboard/settings/sending" class="btn-secondary">
-          <UIcon name="i-lucide-sliders-horizontal" class="mr-1.5 h-4 w-4" />Réglages d'envoi
-        </NuxtLink>
-        <NuxtLink to="/dashboard/automations/new" class="btn-primary">
-          <UIcon name="i-lucide-plus" class="mr-1.5 h-4 w-4" />Nouvelle automatisation
-        </NuxtLink>
-      </div>
+      <NuxtLink to="/dashboard/automations/new" class="app-btn-primary h-9 px-4 text-xs">
+        <UIcon name="i-lucide-plus" class="h-3.5 w-3.5" />
+        Nouvelle automatisation
+      </NuxtLink>
     </div>
 
     <!-- Awaiting-review banner -->
     <NuxtLink
       v-if="store.awaitingReviewCount > 0"
       :to="firstAwaitingReviewLink"
-      class="card flex items-center gap-2.5 border-[var(--app-blue)] bg-[var(--app-blue-soft)] transition-transform hover:-translate-y-0.5"
+      class="app-card flex items-center gap-2.5 border-[var(--app-blue)]/50 bg-[var(--app-blue-soft)] p-4 transition-transform hover:-translate-y-0.5"
     >
       <UIcon name="i-lucide-clipboard-check" class="h-5 w-5 shrink-0 text-[var(--app-blue)]" />
       <p class="text-sm font-medium text-[var(--app-ink)]">
@@ -29,23 +31,22 @@
     </NuxtLink>
 
     <!-- Loading -->
-    <div v-if="store.isLoading && store.automationsCount === 0" class="card animate-pulse space-y-3">
-      <div class="h-4 w-1/3 rounded bg-[var(--app-surface-2)]" />
-      <div class="h-3 w-1/2 rounded bg-[var(--app-surface-2)]" />
+    <div v-if="store.isLoading && store.automationsCount === 0" class="flex items-center justify-center py-16">
+      <UIcon name="i-lucide-loader-circle" class="h-8 w-8 animate-spin text-[var(--app-accent)]" />
     </div>
 
     <!-- Content -->
-    <div v-else-if="store.automationsCount > 0" class="grid grid-cols-1 gap-4 lg:grid-cols-2">
+    <div v-else-if="store.automationsCount > 0" class="grid grid-cols-1 gap-4 lg:grid-cols-2 2xl:grid-cols-3">
       <NuxtLink
         v-for="auto in store.automations"
         :key="auto.id"
         :to="`/dashboard/automations/${auto.id}`"
-        class="group card flex cursor-pointer flex-col gap-3 text-left transition-transform hover:-translate-y-0.5"
+        class="group app-card flex cursor-pointer flex-col gap-4 p-5 transition-transform hover:-translate-y-0.5"
       >
         <div class="flex items-start justify-between gap-2">
           <div class="min-w-0">
             <p class="truncate font-semibold text-[var(--app-ink)]">{{ auto.name }}</p>
-            <p class="text-muted mt-0.5 text-[11px]">
+            <p class="mt-0.5 text-[11px] text-[var(--app-ink-soft)]">
               {{ auto.mode === 'full_auto' ? 'Full-auto' : 'Semi-auto' }} · {{ formatDate(auto.created_at) }}
             </p>
           </div>
@@ -53,9 +54,13 @@
         </div>
 
         <div class="grid grid-cols-4 gap-2">
-          <div v-for="kpi in listKpis(auto)" :key="kpi.label" class="rounded-lg bg-[var(--app-surface-2)] px-2 py-1.5">
+          <div
+            v-for="kpi in listKpis(auto)"
+            :key="kpi.label"
+            class="rounded-xl bg-[var(--app-surface-2)]/60 px-2.5 py-2"
+          >
             <p class="text-[9px] tracking-wide text-[var(--app-faint)] uppercase">{{ kpi.label }}</p>
-            <p class="text-sm font-bold text-[var(--app-ink)] tabular-nums">{{ kpi.value }}</p>
+            <p class="text-base font-bold text-[var(--app-ink)] tabular-nums">{{ kpi.value }}</p>
           </div>
         </div>
 
@@ -65,18 +70,19 @@
         >
           <UIcon name="i-lucide-clipboard-check" class="h-3.5 w-3.5" />Des sites attendent ta validation
         </p>
+        <p v-else-if="auto.note" class="truncate text-[11px] text-[var(--app-ink-soft)]">{{ auto.note }}</p>
       </NuxtLink>
     </div>
 
     <!-- Empty -->
-    <div v-else class="card px-6 py-12 text-center">
-      <UIcon name="i-lucide-workflow" class="mx-auto h-8 w-8 text-[var(--app-faint)]" />
-      <p class="mt-3 font-medium text-[var(--app-ink)]">Aucune automatisation pour l'instant</p>
-      <p class="text-muted mx-auto mt-1 max-w-md text-sm">
+    <div v-else class="app-card px-6 py-14 text-center">
+      <LandingAsterisk class="text-4xl text-[var(--app-accent)]" />
+      <h3 class="font-display mt-5 text-2xl font-semibold text-[var(--app-ink)]">Aucune automatisation</h3>
+      <p class="mx-auto mt-2 max-w-md text-sm leading-relaxed text-[var(--app-ink-soft)]">
         Choisis des prospects (ou un métier + une ville) et laisse la machine enrichir, générer les sites et démarcher.
       </p>
-      <NuxtLink to="/dashboard/automations/new" class="btn-primary mx-auto mt-4 w-fit">
-        <UIcon name="i-lucide-plus" class="mr-1.5 h-4 w-4" />Créer une automatisation
+      <NuxtLink to="/dashboard/automations/new" class="app-btn-primary mt-6 inline-flex">
+        <UIcon name="i-lucide-plus" class="h-3.5 w-3.5" />Créer une automatisation
       </NuxtLink>
     </div>
   </div>

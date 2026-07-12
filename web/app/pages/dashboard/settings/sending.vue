@@ -1,47 +1,36 @@
 <template>
-  <div class="mx-auto max-w-xl space-y-5">
+  <div class="max-w-2xl space-y-5">
     <div>
-      <NuxtLink
-        to="/dashboard/automations"
-        class="inline-flex items-center gap-1.5 text-xs font-medium text-[var(--app-ink-soft)] transition-colors hover:text-[var(--app-ink)]"
-      >
-        <UIcon name="i-lucide-arrow-left" class="h-3.5 w-3.5" />
-        Automatisations
-      </NuxtLink>
-      <h1 class="app-page-title mt-3">Réglages d'envoi</h1>
-      <p class="mt-1 text-sm text-[var(--app-ink-soft)]">
+      <p class="app-label flex items-center gap-2">
+        <LandingAsterisk class="text-[0.6rem] text-[var(--app-accent)]" />
+        Paramètres
+      </p>
+      <h1 class="app-page-title mt-2">Réglages d'envoi</h1>
+      <p class="mt-1.5 text-sm text-[var(--app-ink-soft)]">
         La cadence globale de tes cold emails — s'applique à toutes tes automatisations et campagnes.
       </p>
     </div>
 
-    <div v-if="isLoading" class="card animate-pulse space-y-3">
-      <div class="h-4 w-1/3 rounded bg-[var(--app-surface-2)]" />
-      <div class="h-3 w-1/2 rounded bg-[var(--app-surface-2)]" />
+    <div v-if="isLoading" class="flex items-center justify-center py-16">
+      <UIcon name="i-lucide-loader-circle" class="h-8 w-8 animate-spin text-[var(--app-accent)]" />
     </div>
 
-    <form v-else class="card space-y-5" @submit.prevent="save">
+    <form v-else class="app-card space-y-6 p-5 md:p-6" @submit.prevent="save">
       <!-- Daily cap -->
       <div>
-        <label class="text-muted mb-1.5 block text-xs font-medium" for="daily-cap">Emails maximum par jour</label>
-        <input
-          id="daily-cap"
-          v-model.number="form.daily_cap"
-          type="number"
-          min="1"
-          max="500"
-          class="input-field w-32"
-        />
+        <label class="app-label mb-1.5 block" for="daily-cap">Emails maximum par jour</label>
+        <input id="daily-cap" v-model.number="form.daily_cap" type="number" min="1" max="500" class="app-input w-32" />
       </div>
 
       <!-- Days -->
       <div>
-        <p class="text-muted mb-1.5 text-xs font-medium">Jours d'envoi</p>
+        <p class="app-label mb-2">Jours d'envoi</p>
         <div class="flex flex-wrap gap-1.5">
           <button
             v-for="(label, index) in dayLabels"
             :key="label"
             type="button"
-            class="rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors"
+            class="rounded-full border px-3.5 py-1.5 text-xs font-medium transition-colors"
             :class="
               form.days_of_week.includes(index)
                 ? 'border-[var(--app-ink)] bg-[var(--app-ink)] text-[var(--app-surface)]'
@@ -57,14 +46,14 @@
       <!-- Window -->
       <div class="grid grid-cols-2 gap-4">
         <div>
-          <label class="text-muted mb-1.5 block text-xs font-medium" for="win-start">Début de journée</label>
-          <select id="win-start" v-model.number="form.window_start_hour" class="input-field">
+          <label class="app-label mb-1.5 block" for="win-start">Début de journée</label>
+          <select id="win-start" v-model.number="form.window_start_hour" class="app-input">
             <option v-for="h in 24" :key="h - 1" :value="h - 1">{{ String(h - 1).padStart(2, '0') }}:00</option>
           </select>
         </div>
         <div>
-          <label class="text-muted mb-1.5 block text-xs font-medium" for="win-end">Fin de journée</label>
-          <select id="win-end" v-model.number="form.window_end_hour" class="input-field">
+          <label class="app-label mb-1.5 block" for="win-end">Fin de journée</label>
+          <select id="win-end" v-model.number="form.window_end_hour" class="app-input">
             <option v-for="h in 24" :key="h" :value="h">{{ String(h).padStart(2, '0') }}:00</option>
           </select>
         </div>
@@ -72,32 +61,33 @@
 
       <!-- Spacing -->
       <div>
-        <label class="text-muted mb-1.5 block text-xs font-medium" for="spacing"
-          >Délai minimum entre deux envois (min)</label
-        >
+        <label class="app-label mb-1.5 block" for="spacing">Délai minimum entre deux envois (min)</label>
         <input
           id="spacing"
           v-model.number="form.spacing_minutes"
           type="number"
           min="1"
           max="1440"
-          class="input-field w-32"
+          class="app-input w-32"
         />
       </div>
 
       <p
-        class="rounded-lg border border-[var(--app-line)] bg-[var(--app-bg)] px-3 py-2 text-[11px] text-[var(--app-ink-soft)]"
+        class="flex items-start gap-2 rounded-xl border border-[var(--app-line)] bg-[var(--app-bg)] p-3.5 text-xs text-[var(--app-ink-soft)]"
       >
-        <UIcon name="i-lucide-info" class="mr-1 inline h-3 w-3" />
-        Résumé : max <strong>{{ form.daily_cap }}</strong
-        >/jour, {{ selectedDaysLabel }}, de <strong>{{ String(form.window_start_hour).padStart(2, '0') }}h</strong> à
-        <strong>{{ String(form.window_end_hour).padStart(2, '0') }}h</strong>, 1 toutes les
-        {{ form.spacing_minutes }} min.
+        <UIcon name="i-lucide-info" class="mt-0.5 h-3.5 w-3.5 shrink-0" />
+        <span>
+          Max <strong class="text-[var(--app-ink)]">{{ form.daily_cap }}</strong
+          >/jour, {{ selectedDaysLabel }}, de
+          <strong class="text-[var(--app-ink)]">{{ String(form.window_start_hour).padStart(2, '0') }}h</strong> à
+          <strong class="text-[var(--app-ink)]">{{ String(form.window_end_hour).padStart(2, '0') }}h</strong>, 1 toutes
+          les {{ form.spacing_minutes }} min.
+        </span>
       </p>
 
-      <div class="flex justify-end">
-        <button type="submit" class="btn-primary disabled:opacity-50" :disabled="isSaving || !isWindowValid">
-          <UIcon v-if="isSaving" name="i-lucide-loader-circle" class="mr-1.5 h-4 w-4 animate-spin" />
+      <div class="flex justify-end border-t border-[var(--app-line-soft)] pt-5">
+        <button type="submit" class="app-btn-primary disabled:opacity-50" :disabled="isSaving || !isWindowValid">
+          <UIcon v-if="isSaving" name="i-lucide-loader-circle" class="h-4 w-4 animate-spin" />
           {{ isSaving ? 'Enregistrement…' : 'Enregistrer' }}
         </button>
       </div>

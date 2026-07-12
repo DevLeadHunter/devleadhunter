@@ -135,6 +135,15 @@
           <UIcon name="i-lucide-mail-open" class="h-4 w-4 shrink-0" />
           <span>Configuration Resend</span>
         </NuxtLink>
+        <NuxtLink
+          to="/dashboard/settings/sending"
+          :class="navItemClass(isActive('/dashboard/settings/sending'))"
+          @click="handleClick"
+        >
+          <span :class="navBarClass(isActive('/dashboard/settings/sending'))"></span>
+          <UIcon name="i-lucide-sliders-horizontal" class="h-4 w-4 shrink-0" />
+          <span>Réglages d'envoi</span>
+        </NuxtLink>
       </template>
 
       <!-- Main grouped menu -->
@@ -416,20 +425,16 @@ const navGroups: ComputedRef<UiSidebarGroup[]> = computed((): UiSidebarGroup[] =
   const groups: UiSidebarGroup[] = [
     {
       heading: 'Pilotage',
-      links: [{ to: '/dashboard', label: 'Tableau de bord', icon: 'i-lucide-layout-dashboard' }],
+      links: [
+        { to: '/dashboard', label: 'Tableau de bord', icon: 'i-lucide-layout-dashboard' },
+        { to: '/dashboard/automations', label: 'Automatisations', icon: 'i-lucide-workflow' },
+      ],
     },
     {
       heading: 'Prospection',
       links: [
         { to: '/dashboard/search-prospects', label: 'Trouver des prospects', icon: 'i-lucide-search' },
         { to: '/dashboard/my-prospects', label: 'Mes prospects', icon: 'i-lucide-users' },
-      ],
-    },
-    {
-      heading: 'Automatisation',
-      links: [
-        { to: '/dashboard/automations', label: 'Automatisations', icon: 'i-lucide-workflow' },
-        { to: '/dashboard/settings/sending', label: "Réglages d'envoi", icon: 'i-lucide-sliders-horizontal' },
       ],
     },
     {
