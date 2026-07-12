@@ -11,6 +11,7 @@ export default defineNuxtConfig({
     'github:DevLeadHunter/devleadhunter-template-plumber-atelier#v1.3.0',
     'github:DevLeadHunter/devleadhunter-template-plumber-cuivre#v1.2.0',
     'github:DevLeadHunter/devleadhunter-template-electrician-lumen#v1.2.0',
+    'github:DevLeadHunter/devleadhunter-template-mechanic-pitlane#v1.3.0',
   ],
 
   compatibilityDate: '2024-07-11',

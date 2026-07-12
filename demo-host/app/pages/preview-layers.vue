@@ -8,7 +8,7 @@
  * Harnais de validation local — vérifie le rendu d'une template (Nuxt layer via extends)
  * en rejouant le VRAI chemin de prod : DemoSiteView dispatche `template_id` vers le
  * composant racine du layer, alimenté par un `SiteContent` plat identique à celui produit
- * par l'API (`build_site_content`). Les 5 SiteContents vivent dans
+ * par l'API (`build_site_content`). Les SiteContents vivent dans
  * app/utils/previewLayers.json (régénérables : un mock prospect + enrichment par métier
  * passés dans la logique API). Outil de DEV uniquement — les vraies démos passent par
  * [slug].vue (fetch API par slug). Ne pas servir en démo réelle.

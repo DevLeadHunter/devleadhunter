@@ -25,13 +25,21 @@ from typing import Any, Optional
 from services.templates import (
     artisan_edito,
     electrician_lumen,
+    mechanic_pitlane,
     plumber_atelier,
     plumber_cuivre,
     plumber_signature,
 )
 
 # Order here defines the order shown in the template picker (default first).
-TEMPLATE_MODULES = [artisan_edito, plumber_signature, plumber_atelier, plumber_cuivre, electrician_lumen]
+TEMPLATE_MODULES = [
+    artisan_edito,
+    plumber_signature,
+    plumber_atelier,
+    plumber_cuivre,
+    electrician_lumen,
+    mechanic_pitlane,
+]
 
 TEMPLATES_BY_ID: dict[str, Any] = {module.TEMPLATE_ID: module for module in TEMPLATE_MODULES}
 

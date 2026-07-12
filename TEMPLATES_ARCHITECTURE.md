@@ -38,14 +38,16 @@ Toute l'intégration (bridge Storyblok, tracking démo, fetch par slug, type `De
 
 ## Les repos
 
-### État des templates (2026-07-11)
+### État des templates (2026-07-12)
 
 | `template_id` | Métier | Tag live | Notes |
 |---|---|---|---|
-| `plumber-signature` | Plombier (**défaut**) | **v1.0.1** | La plus riche (11 sections). v1.0.1 : footer « Propulsé par DevLeadHunter » retiré |
-| `plumber-atelier` | Plombier | **v1.1.0** | DA typographique « fiche d'intervention ». v1.1.0 : rend enfin TOUT `SiteContent` (about, galerie, avis, FAQ, horaires, images) + footer retiré |
-| `plumber-cuivre` | Plombier | **v1.0.2** | DA bleu eau « Source », 13 sections, marques posées (défauts, non éditables) |
-| `electrician-lumen` | Électricien | **v1.0.0** | GSAP embarqué dans SES deps ; ne consomme pas `aboutImage` |
+| `artisan-edito` | Multi-métier (**défaut**) | **v1.2.0** | Template passe-partout éditoriale |
+| `plumber-signature` | Plombier | **v1.2.0** | La plus riche (11 sections) |
+| `plumber-atelier` | Plombier | **v1.3.0** | DA typographique « fiche d'intervention » |
+| `plumber-cuivre` | Plombier | **v1.2.0** | DA bleu eau « Source » |
+| `electrician-lumen` | Électricien | **v1.2.0** | GSAP embarqué dans SES deps |
+| `mechanic-pitlane` | Mécanicien / garagiste | **v1.3.0** | DA asphalt / racing red (AutoWorks), one-page vendable |
 
 *(`plumber-simple` retiré + archivé le 2026-07-08 — trop générique.)* La migration en layers est
 **terminée et en prod** depuis le 2026-07-08 ; le legacy in-repo a été supprimé.
@@ -107,6 +109,7 @@ export default defineNuxtConfig({
   extends: [
     'github:devleadhunter/devleadhunter-template-plumber-cuivre#v1.3.0',
     'github:devleadhunter/devleadhunter-template-electrician-lumen#v1.1.0',
+    'github:devleadhunter/devleadhunter-template-mechanic-pitlane#v1.3.0',
   ],
 })
 ```

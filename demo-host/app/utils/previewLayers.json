@@ -470,5 +470,150 @@
         "answer": "Oui, nos installations sont conformes et couvertes par la garantie décennale."
       }
     ]
+  },
+  "mechanic-pitlane": {
+    "businessName": "Automobiles du Landry",
+    "phone": "02 99 50 54 58",
+    "email": "contact@garagedulandry.com",
+    "city": "Rennes",
+    "area": "120 bis rue de Châteaugiron et ses alentours",
+    "subtitle": "Garage AD Expert à Rennes — révision, mécanique, carrosserie et pneus.",
+    "about": "Garage multi-marques de proximité : entretien, diagnostic électronique et réparations avec le même soin. Devis clair avant intervention, pièces de qualité, restitution dans les délais annoncés.",
+    "heroImage": "https://www.garagedulandry.com/sx-content/uploads/cms/medium1920/parallax.jpg",
+    "aboutImage": "https://www.garagedulandry.com/upload-settings/medium800/img-1.jpg",
+    "gallery": [
+      {
+        "url": "https://www.garagedulandry.com/upload-bloc_service/medium1200/img1.jpg",
+        "alt": ""
+      },
+      {
+        "url": "https://www.garagedulandry.com/upload-bloc_service/medium1200/img2.jpg",
+        "alt": ""
+      },
+      {
+        "url": "https://images.unsplash.com/photo-1486262715619-67b85e0b08d3?auto=format&fit=crop&w=1200&q=80",
+        "alt": ""
+      }
+    ],
+    "palette": {
+      "primary": "#E11D2E",
+      "secondary": "#0C0C0D",
+      "accent": "#F4F4F5"
+    },
+    "reviews": [
+      {
+        "author": "Marc D.",
+        "text": "Diagnostic sérieux sur une panne complexe. Je recommande.",
+        "rating": 5
+      },
+      {
+        "author": "Sophie L.",
+        "text": "Accueil correct, devis clair, restitution dans les temps.",
+        "rating": 5
+      }
+    ],
+    "openingHours": [
+      {
+        "day": "Lundi",
+        "hours": "8h30 – 12h · 14h – 18h"
+      },
+      {
+        "day": "Mardi",
+        "hours": "8h30 – 12h · 14h – 18h"
+      },
+      {
+        "day": "Mercredi",
+        "hours": "8h30 – 12h · 14h – 18h"
+      },
+      {
+        "day": "Jeudi",
+        "hours": "8h30 – 12h · 14h – 18h"
+      },
+      {
+        "day": "Vendredi",
+        "hours": "8h30 – 12h · 14h – 18h"
+      },
+      {
+        "day": "Samedi",
+        "hours": "Sur rendez-vous"
+      }
+    ],
+    "social": [],
+    "services": [
+      {
+        "title": "Révision & entretien",
+        "description": "Vidange, filtres, freins, climatisation : on suit le carnet constructeur et on vous prévient avant usure critique."
+      },
+      {
+        "title": "Diagnostic électronique",
+        "description": "Valise multi-marques, lecture des défauts, recherche de panne. Le devis part du diagnostic — pas l'inverse."
+      },
+      {
+        "title": "Freinage & trains roulants",
+        "description": "Plaquettes, disques, amortisseurs, silentblocs, géométrie : sécurité et tenue de route remises en état."
+      },
+      {
+        "title": "Distribution & mécanique",
+        "description": "Courroie / chaîne, pompe à eau, embrayage, joints — interventions planifiées avec devis ferme et délai clair."
+      },
+      {
+        "title": "Pneus & géométrie",
+        "description": "Montage, équilibrage, crevaison, conseil usure. On vous dit quand le pneu peut encore rouler — et quand non."
+      },
+      {
+        "title": "Carrosserie légère",
+        "description": "Rayures, chocs de parking, pare-chocs : remises en état propres pour un véhicule présentable."
+      }
+    ],
+    "faq": [
+      {
+        "question": "Faut-il prendre rendez-vous ?",
+        "answer": "Oui, de préférence. Ça nous permet de préparer le créneau et les pièces éventuelles. En urgence, appelez : on voit ce qui est possible le jour même."
+      },
+      {
+        "question": "Le devis est-il gratuit ?",
+        "answer": "Le devis de réparation est établi après diagnostic. On vous l'explique clairement avant toute intervention — rien n'est lancé sans votre accord."
+      },
+      {
+        "question": "Intervenez-vous sur toutes les marques ?",
+        "answer": "Oui, atelier multi-marques : citadines, breaks, SUV et utilitaires légers. Diagnostic électronique adapté aux véhicules récents."
+      },
+      {
+        "question": "Puis-je laisser la voiture la journée ?",
+        "answer": "Oui. Indiquez-nous à la prise de rendez-vous si vous avez besoin d'un créneau de restitution précis."
+      }
+    ],
+    "heroBadge": "Garage multi-marques",
+    "heroPoints": [
+      "Devis avant réparation",
+      "Toutes marques",
+      "Pièces garanties"
+    ],
+    "ctaCallLabel": "Appeler l'atelier",
+    "ctaQuoteLabel": "Prendre rendez-vous",
+    "trustItems": [
+      {
+        "value": "4,9/5",
+        "label": "Avis clients"
+      },
+      {
+        "value": "RDV",
+        "label": "Sur rendez-vous"
+      },
+      {
+        "value": "12 mois",
+        "label": "Garantie pièces"
+      },
+      {
+        "value": "Local",
+        "label": "Atelier de proximité"
+      }
+    ],
+    "servicesHeading": "Nos prestations",
+    "galleryHeading": "L'atelier en images",
+    "reviewsHeading": "Avis clients",
+    "faqHeading": "Questions fréquentes",
+    "aboutHeading": "L'atelier",
+    "contactHeading": "Prendre rendez-vous"
   }
 }
