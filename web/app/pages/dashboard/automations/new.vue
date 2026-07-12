@@ -22,23 +22,36 @@
     </div>
 
     <div class="grid items-start gap-6 lg:grid-cols-[220px_minmax(0,1fr)] xl:grid-cols-[240px_minmax(0,1fr)]">
-      <!-- Rail: stepper + live recap -->
-      <aside class="sticky top-6 hidden space-y-5 lg:block">
-        <DemoSitesWizardStepper
-          :steps="steps"
-          :current-step="currentStep"
-          orientation="vertical"
-          @navigate="handleStepNavigate"
-        />
-        <div class="app-card p-4">
-          <p class="app-label mb-3">Récapitulatif</p>
-          <dl class="space-y-2.5">
-            <div v-for="entry in recapItems" :key="entry.label">
-              <dt class="text-[10px] text-[var(--app-ink-soft)]">{{ entry.label }}</dt>
-              <dd class="truncate text-sm font-medium text-[var(--app-ink)]">{{ entry.value || '—' }}</dd>
+      <!-- Rail: prominent step timeline -->
+      <aside class="sticky top-6 hidden lg:block">
+        <ol>
+          <li v-for="(s, index) in steps" :key="s.id" class="relative flex gap-3.5 pb-7 last:pb-0">
+            <span
+              v-if="index < steps.length - 1"
+              class="absolute top-11 left-[19px] h-[calc(100%-2rem)] w-px"
+              :class="currentStep > s.id ? 'bg-[var(--app-ink)]' : 'bg-[var(--app-line)]'"
+            />
+            <button
+              type="button"
+              :disabled="s.id >= currentStep"
+              class="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-full border text-sm font-semibold transition-colors"
+              :class="stepNodeClass(s.id)"
+              @click="handleStepNavigate(s.id)"
+            >
+              <UIcon v-if="s.id < currentStep" name="i-lucide-check" class="h-4 w-4" />
+              <template v-else>{{ s.id }}</template>
+            </button>
+            <div class="pt-1.5">
+              <p
+                class="text-sm font-semibold"
+                :class="s.id === currentStep ? 'text-[var(--app-ink)]' : 'text-[var(--app-ink-soft)]'"
+              >
+                {{ s.label }}
+              </p>
+              <p class="mt-0.5 text-[11px] text-[var(--app-faint)]">{{ s.hint }}</p>
             </div>
-          </dl>
-        </div>
+          </li>
+        </ol>
       </aside>
 
       <div class="min-w-0">
@@ -200,12 +213,6 @@
               lancer une recherche pour compléter.
             </p>
           </div>
-
-          <div class="flex justify-end">
-            <button type="button" class="app-btn-primary" :disabled="!canContinue" @click="goToStep(2)">
-              Continuer<UIcon name="i-lucide-arrow-right" class="h-3.5 w-3.5" />
-            </button>
-          </div>
         </div>
 
         <!-- ══════════ Step 2 · Site ══════════ -->
@@ -222,14 +229,6 @@
             :theme="form.theme"
             @update:theme="form.theme = $event"
           />
-          <div class="flex justify-between border-t border-[var(--app-line-soft)] pt-5">
-            <button type="button" class="app-btn-secondary" @click="goToStep(1)">
-              <UIcon name="i-lucide-arrow-left" class="h-3.5 w-3.5" />Retour
-            </button>
-            <button type="button" class="app-btn-primary" @click="goToStep(3)">
-              Continuer<UIcon name="i-lucide-arrow-right" class="h-3.5 w-3.5" />
-            </button>
-          </div>
         </div>
 
         <!-- ══════════ Step 3 · Emails ══════════ -->
@@ -282,15 +281,6 @@
               réglages d'envoi </NuxtLink
             >.
           </p>
-
-          <div class="flex justify-between border-t border-[var(--app-line-soft)] pt-5">
-            <button type="button" class="app-btn-secondary" @click="goToStep(2)">
-              <UIcon name="i-lucide-arrow-left" class="h-3.5 w-3.5" />Retour
-            </button>
-            <button type="button" class="app-btn-primary" :disabled="!canContinue" @click="goToStep(4)">
-              Continuer<UIcon name="i-lucide-arrow-right" class="h-3.5 w-3.5" />
-            </button>
-          </div>
         </div>
 
         <!-- ══════════ Step 4 · Lancer ══════════ -->
@@ -316,18 +306,38 @@
             <UIcon name="i-lucide-clipboard-check" class="mt-0.5 h-4 w-4 shrink-0 text-[var(--app-blue)]" />
             La machine génère les sites puis <strong class="mx-1">s'arrête pour ta validation</strong> avant tout envoi.
           </p>
-          <div class="flex justify-between border-t border-[var(--app-line-soft)] pt-5">
-            <button type="button" class="app-btn-secondary" @click="goToStep(3)">
-              <UIcon name="i-lucide-arrow-left" class="h-3.5 w-3.5" />Retour
-            </button>
-            <button type="button" class="app-btn-primary" :disabled="isCreating || !canLaunch" @click="launch">
-              <UIcon
-                :name="isCreating ? 'i-lucide-loader-circle' : 'i-lucide-rocket'"
-                :class="['h-3.5 w-3.5', isCreating && 'animate-spin']"
-              />
-              {{ isCreating ? 'Lancement…' : "Lancer l'automatisation" }}
-            </button>
-          </div>
+        </div>
+
+        <!-- Unified sticky nav — always reachable, even on a long prospect list -->
+        <div
+          class="sticky bottom-4 z-10 mt-5 flex items-center justify-between gap-3 rounded-full border border-[var(--app-line)] bg-[var(--app-surface)]/90 px-3 py-2 shadow-lg backdrop-blur"
+        >
+          <button
+            v-if="currentStep > 1"
+            type="button"
+            class="app-btn-secondary"
+            :disabled="isCreating"
+            @click="goToStep(currentStep - 1)"
+          >
+            <UIcon name="i-lucide-arrow-left" class="h-3.5 w-3.5" />Précédent
+          </button>
+          <span v-else />
+          <button
+            v-if="currentStep < steps.length"
+            type="button"
+            class="app-btn-primary"
+            :disabled="!canContinue"
+            @click="goToStep(currentStep + 1)"
+          >
+            Continuer<UIcon name="i-lucide-arrow-right" class="h-3.5 w-3.5" />
+          </button>
+          <button v-else type="button" class="app-btn-primary" :disabled="isCreating || !canLaunch" @click="launch">
+            <UIcon
+              :name="isCreating ? 'i-lucide-loader-circle' : 'i-lucide-rocket'"
+              :class="['h-3.5 w-3.5', isCreating && 'animate-spin']"
+            />
+            {{ isCreating ? 'Lancement…' : "Lancer l'automatisation" }}
+          </button>
         </div>
       </div>
     </div>
@@ -352,6 +362,7 @@ import { useToast } from '~/composables/useToast'
 interface WizardStep {
   id: number
   label: string
+  hint: string
 }
 
 /** A recap row. */
@@ -388,10 +399,10 @@ const defaultTheme: DemoSiteTheme = { primary: '#0284c7', secondary: '#0f172a', 
 
 /** Wizard steps. */
 const steps: WizardStep[] = [
-  { id: 1, label: 'Cible' },
-  { id: 2, label: 'Site' },
-  { id: 3, label: 'Emails' },
-  { id: 4, label: 'Lancer' },
+  { id: 1, label: 'Cible', hint: 'Prospects ou métier + ville' },
+  { id: 2, label: 'Site', hint: 'Template des sites' },
+  { id: 3, label: 'Emails', hint: 'Cold email A/B' },
+  { id: 4, label: 'Lancer', hint: 'Vérifier & démarrer' },
 ]
 
 /** Current step (1-based). */
@@ -524,6 +535,19 @@ function segmentClass(active: boolean): string {
   return active
     ? `${base} bg-[var(--app-btn-bg)] text-[var(--app-btn-text)]`
     : `${base} text-[var(--app-ink-soft)] hover:text-[var(--app-ink)]`
+}
+
+/**
+ * Classes for a timeline step node based on its state.
+ * @param stepId - The step id (1-based).
+ * @returns Border/background/text classes.
+ */
+function stepNodeClass(stepId: number): string {
+  if (stepId < currentStep.value) {
+    return 'border-[var(--app-ink)] bg-[var(--app-ink)] text-[var(--app-surface)] cursor-pointer'
+  }
+  if (stepId === currentStep.value) return 'border-[var(--app-ink)] text-[var(--app-ink)]'
+  return 'border-[var(--app-line)] text-[var(--app-ink-soft)] cursor-default'
 }
 
 /**

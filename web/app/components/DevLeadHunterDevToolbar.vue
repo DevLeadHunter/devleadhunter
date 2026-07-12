@@ -1,9 +1,21 @@
 <template>
   <div
     v-if="isDesktopDev"
-    class="fixed right-4 bottom-4 z-[90] flex items-center gap-2 rounded-full border border-[var(--app-line)] bg-[var(--app-surface)]/90 px-2 py-1 shadow-lg backdrop-blur"
+    ref="rootEl"
+    class="fixed z-[90] flex items-center gap-1 rounded-full border border-[var(--app-line)] bg-[var(--app-surface)]/90 px-1.5 py-1 shadow-lg backdrop-blur"
+    :class="position === null ? 'right-4 bottom-4' : ''"
+    :style="floatingStyle"
   >
-    <span class="pl-2 text-[10px] font-semibold tracking-[0.12em] text-amber-400 uppercase">Dev</span>
+    <!-- Drag handle -->
+    <button
+      type="button"
+      class="flex cursor-grab touch-none items-center gap-1 rounded-full py-1 pr-1 pl-2 text-amber-400 active:cursor-grabbing"
+      title="Glisser pour déplacer"
+      @pointerdown="startDrag"
+    >
+      <UIcon name="i-lucide-grip-vertical" class="h-3.5 w-3.5 opacity-70" />
+      <span class="text-[10px] font-semibold tracking-[0.12em] uppercase">Dev</span>
+    </button>
     <UButton
       size="xs"
       color="warning"
@@ -19,17 +31,104 @@
 </template>
 
 <script lang="ts" setup>
-import type { Ref } from 'vue'
+import type { CSSProperties, Ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
+
+/** Persisted position of the floating dev toolbar. */
+interface ToolbarPosition {
+  left: number
+  top: number
+}
+
+const STORAGE_KEY: string = 'dlh-devtoolbar-pos'
 
 const { isDesktopDev, syncDevDatabaseFromProd } = useDesktopRuntime()
 const toast = useToast()
 
 const isSyncing: Ref<boolean> = ref<boolean>(false)
+/** Root element, used to measure the toolbar during a drag. */
+const rootEl: Ref<HTMLElement | null> = ref<HTMLElement | null>(null)
+/** Current absolute position (null = default bottom-right). */
+const position: Ref<ToolbarPosition | null> = ref<ToolbarPosition | null>(null)
+
+// Drag bookkeeping.
+let dragPointerId: number | null = null
+let startX: number = 0
+let startY: number = 0
+let startLeft: number = 0
+let startTop: number = 0
+
+/** Inline style pinning the toolbar to its dragged position, if any. */
+const floatingStyle: Ref<CSSProperties> = computed((): CSSProperties => {
+  if (position.value === null) return {}
+  return {
+    left: `${position.value.left}px`,
+    top: `${position.value.top}px`,
+    right: 'auto',
+    bottom: 'auto',
+  }
+})
+
+/**
+ * Clamp a position so the toolbar stays fully inside the viewport.
+ * @param left - Proposed left (px).
+ * @param top - Proposed top (px).
+ * @returns The clamped position.
+ */
+function clampToViewport(left: number, top: number): ToolbarPosition {
+  const rect: DOMRect | undefined = rootEl.value?.getBoundingClientRect()
+  const width: number = rect?.width ?? 0
+  const height: number = rect?.height ?? 0
+  const maxLeft: number = Math.max(0, window.innerWidth - width - 4)
+  const maxTop: number = Math.max(0, window.innerHeight - height - 4)
+  return {
+    left: Math.min(Math.max(4, left), maxLeft),
+    top: Math.min(Math.max(4, top), maxTop),
+  }
+}
+
+/**
+ * Begin dragging from the current on-screen position.
+ * @param event - The pointerdown event on the handle.
+ */
+function startDrag(event: PointerEvent): void {
+  const rect: DOMRect | undefined = rootEl.value?.getBoundingClientRect()
+  if (!rect) return
+  dragPointerId = event.pointerId
+  startX = event.clientX
+  startY = event.clientY
+  startLeft = rect.left
+  startTop = rect.top
+  // Anchor to top/left so the drag math is consistent.
+  position.value = { left: rect.left, top: rect.top }
+  window.addEventListener('pointermove', onDragMove)
+  window.addEventListener('pointerup', endDrag)
+}
+
+/**
+ * Move the toolbar with the pointer.
+ * @param event - The pointermove event.
+ */
+function onDragMove(event: PointerEvent): void {
+  if (dragPointerId === null) return
+  position.value = clampToViewport(startLeft + (event.clientX - startX), startTop + (event.clientY - startY))
+}
+
+/** Finish dragging and persist the position. */
+function endDrag(): void {
+  dragPointerId = null
+  window.removeEventListener('pointermove', onDragMove)
+  window.removeEventListener('pointerup', endDrag)
+  if (position.value !== null) {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(position.value))
+  }
+}
 
 /**
  * Confirm, then pull the prod database into the local dev database. Shows the result
  * (or error) via a toast. Only reachable in desktop dev (button is gated + the Tauri
  * command is compiled only into debug builds).
+ * @returns A promise resolved once the sync finishes.
  */
 async function onSyncDatabase(): Promise<void> {
   const confirmed: boolean = window.confirm(
@@ -52,4 +151,24 @@ async function onSyncDatabase(): Promise<void> {
     isSyncing.value = false
   }
 }
+
+onMounted((): void => {
+  try {
+    const raw: string | null = localStorage.getItem(STORAGE_KEY)
+    if (raw) {
+      const parsed: ToolbarPosition = JSON.parse(raw) as ToolbarPosition
+      if (typeof parsed.left === 'number' && typeof parsed.top === 'number') {
+        // Re-clamp on load in case the window was resized since last time.
+        position.value = clampToViewport(parsed.left, parsed.top)
+      }
+    }
+  } catch {
+    // Ignore malformed saved position — fall back to the default corner.
+  }
+})
+
+onBeforeUnmount((): void => {
+  window.removeEventListener('pointermove', onDragMove)
+  window.removeEventListener('pointerup', endDrag)
+})
 </script>
