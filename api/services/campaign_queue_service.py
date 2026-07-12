@@ -137,8 +137,6 @@ class CampaignQueueService:
                 EmailQueue.status == _STATUS_PENDING,
             )
         ).scalar()
-        next_slot: datetime = latest if (latest is not None and latest > now) else now
-        delay = timedelta(minutes=max(campaign.send_delay_minutes, 1))
 
         # Prospects already in the initial queue are never re-added.
         already_queued: set[int] = {
@@ -152,6 +150,9 @@ class CampaignQueueService:
         }
 
         result = EnqueueResult()
+
+        # --- Pass 1: decide who gets enqueued (skip filters) -----------------
+        to_enqueue: list[tuple[int, int, str | None]] = []  # (prospect_id, tpl_id, variant)
         for idx, prospect in enumerate(campaign.prospects):
             if prospect.id in already_queued:
                 continue
@@ -176,19 +177,25 @@ class CampaignQueueService:
                 result.skipped_no_demo.append({"id": prospect.id, "name": prospect.name or ""})
                 continue
 
+            to_enqueue.append((prospect.id, tpl_id, variant))
+
+        # --- Compute send slots (global send policy, or legacy spacing) ------
+        slots: list[datetime] = self._schedule_slots(campaign, len(to_enqueue), now, latest)
+
+        # --- Pass 2: create the queue rows ----------------------------------
+        for (prospect_id, tpl_id, variant), slot in zip(to_enqueue, slots):
             self.db.add(EmailQueue(
                 user_id=campaign.user_id,
                 campaign_id=campaign.id,
-                prospect_id=prospect.id,
+                prospect_id=prospect_id,
                 template_id=tpl_id,
                 email_account_id=None,
                 queue_type="initial",
                 ab_variant=variant,
                 follow_up_index=0,
-                scheduled_at=next_slot,
+                scheduled_at=slot,
                 status=_STATUS_PENDING,
             ))
-            next_slot += delay
             result.enqueued += 1
 
         self.db.commit()
@@ -197,6 +204,53 @@ class CampaignQueueService:
             result.enqueued, campaign.id, is_ab, len(result.skipped_no_demo),
         )
         return result
+
+    def _schedule_slots(
+        self,
+        campaign: Campaign,
+        count: int,
+        now: datetime,
+        latest: datetime | None,
+    ) -> list[datetime]:
+        """
+        Compute ``count`` send datetimes.
+
+        When the user has a :class:`SendPolicy`, slots honour its weekday/hour
+        window and daily cap (spread across days). Otherwise we keep the legacy
+        behaviour: one email every ``campaign.send_delay_minutes``, no window.
+
+        Args:
+            campaign: The campaign being enqueued.
+            count: Number of slots needed.
+            now: Current UTC time.
+            latest: Last pending scheduled slot of this campaign, if any.
+
+        Returns:
+            ``count`` ascending naive-UTC datetimes.
+        """
+        if count <= 0:
+            return []
+
+        from services.send_policy_service import send_policy_service
+
+        policy_row = send_policy_service.get_policy(self.db, campaign.user_id)
+        if policy_row is not None:
+            resolved = send_policy_service.resolve(self.db, campaign.user_id)
+            start = (
+                latest + timedelta(minutes=resolved.spacing_minutes)
+                if (latest is not None and latest > now)
+                else now
+            )
+            return send_policy_service.next_send_slots(
+                resolved,
+                count,
+                start_utc=start,
+                seed_counts=send_policy_service.pending_counts_by_day(self.db, campaign.user_id),
+            )
+
+        delay = timedelta(minutes=max(campaign.send_delay_minutes, 1))
+        start = latest + delay if (latest is not None and latest > now) else now
+        return [start + delay * i for i in range(count)]
 
     # -----------------------------------------------------------------------
     # Worker tick

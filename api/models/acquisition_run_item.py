@@ -7,7 +7,7 @@ crash mid-run resumes exactly where it stopped.
 from datetime import datetime
 from typing import Optional, TYPE_CHECKING
 
-from sqlalchemy import ForeignKey, Integer, String, Text
+from sqlalchemy import ForeignKey, Integer, JSON, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.sql import func
 
@@ -33,7 +33,12 @@ class AcquisitionRunItem(Base):
     )
     # Human-readable reason for the current step (skip cause, quality flag…).
     step_reason: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    # Demo-site template for THIS prospect (overrides the run default).
+    template_id: Mapped[Optional[str]] = mapped_column(String(64), nullable=True)
     demo_site_id: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    # Sellability triage: 0-100 score + the reasons it's flagged "à vérifier".
+    quality_score: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    quality_flags: Mapped[Optional[list]] = mapped_column(JSON, nullable=True)
     last_error: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     attempts: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default="0")
     created_at: Mapped[datetime] = mapped_column(server_default=func.now(), nullable=False)

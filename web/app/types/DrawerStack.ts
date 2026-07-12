@@ -75,13 +75,6 @@ export interface AddProspectDrawerEntry {
   kind: 'add-prospect'
 }
 
-/** Acquisition-sequence creation drawer entry. */
-export interface CreateSequenceDrawerEntry {
-  kind: 'create-sequence'
-  /** Prospect ids to pre-select (e.g. opened from a prospect selection). */
-  prospectIds?: number[]
-}
-
 /** One entry of the persistent drawer stack. */
 export type DrawerStackEntry =
   | ProspectDrawerEntry
@@ -92,7 +85,6 @@ export type DrawerStackEntry =
   | OrganizationDrawerEntry
   | CreateCampaignDrawerEntry
   | AddProspectDrawerEntry
-  | CreateSequenceDrawerEntry
 
 /** Cross-page notice describing the latest prospect mutation done from a drawer. */
 export type ProspectMutationNotice = { type: 'updated'; prospect: Prospect } | { type: 'deleted'; prospectId: number }

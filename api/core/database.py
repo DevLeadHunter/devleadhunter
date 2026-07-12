@@ -84,6 +84,7 @@ def init_db():
     from models.resend_config import ResendConfig  # noqa: F401
     from models.acquisition_run import AcquisitionRun  # noqa: F401
     from models.acquisition_run_item import AcquisitionRunItem  # noqa: F401
+    from models.send_policy import SendPolicy  # noqa: F401
 
     Base.metadata.create_all(bind=engine)
 

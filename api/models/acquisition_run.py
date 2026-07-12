@@ -36,7 +36,8 @@ class AcquisitionRun(Base):
         String(16), nullable=False, default=AcquisitionRunMode.SEMI_AUTO.value
     )
 
-    # --- Search config (reserved for Phase 2 "chain the search"; nullable now) ---
+    # --- Search config (full-auto: "métiers + villes + objectif en jours") ---
+    # Legacy single-value fields (kept for compat).
     search_category: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
     search_city: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
     search_source: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
@@ -44,6 +45,11 @@ class AcquisitionRun(Base):
     only_without_website: Mapped[bool] = mapped_column(
         Boolean, nullable=False, default=True, server_default="1"
     )
+    # Multi-value full-auto target + temporal objective.
+    search_metiers: Mapped[Optional[list]] = mapped_column(JSON, nullable=True)
+    search_villes: Mapped[Optional[list]] = mapped_column(JSON, nullable=True)
+    # Objective expressed in outreach days (× the send-policy daily cap = prospect target).
+    target_days: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
 
     # --- Step config: how far to go + with what ---
     auto_enrich: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True, server_default="1")

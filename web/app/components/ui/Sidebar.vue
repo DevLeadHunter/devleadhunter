@@ -63,13 +63,9 @@
 
     <!-- Primary action -->
     <div class="px-4 pt-3">
-      <NuxtLink
-        to="/dashboard/demo-sites/create"
-        class="app-btn-primary h-8 min-h-8 w-full text-xs"
-        @click="handleClick"
-      >
+      <NuxtLink to="/dashboard/automations/new" class="app-btn-primary h-8 min-h-8 w-full text-xs" @click="handleClick">
         <UIcon name="i-lucide-plus" class="h-3.5 w-3.5" />
-        Créer un site
+        Créer une automatisation
       </NuxtLink>
     </div>
 
@@ -431,7 +427,10 @@ const navGroups: ComputedRef<UiSidebarGroup[]> = computed((): UiSidebarGroup[] =
     },
     {
       heading: 'Automatisation',
-      links: [{ to: '/dashboard/sequences', label: 'Séquences', icon: 'i-lucide-workflow' }],
+      links: [
+        { to: '/dashboard/automations', label: 'Automatisations', icon: 'i-lucide-workflow' },
+        { to: '/dashboard/settings/sending', label: "Réglages d'envoi", icon: 'i-lucide-sliders-horizontal' },
+      ],
     },
     {
       heading: 'Production',

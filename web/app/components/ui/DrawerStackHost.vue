@@ -81,16 +81,6 @@
       @back="drawerStack.back()"
       @created="handleProspectCreated"
     />
-
-    <!-- Acquisition sequence creation -->
-    <UiCreateSequenceDrawer
-      :open="createSequenceEntry !== null"
-      :show-back="hasPrevious"
-      :prospect-ids="createSequenceEntry?.prospectIds ?? []"
-      @close="drawerStack.closeAll()"
-      @back="drawerStack.back()"
-      @created="handleSequenceCreated"
-    />
   </div>
 </template>
 
@@ -99,7 +89,6 @@ import type { ComputedRef } from 'vue'
 import type {
   AddProspectDrawerEntry,
   CreateCampaignDrawerEntry,
-  CreateSequenceDrawerEntry,
   EmailLogDrawerEntry,
   EmailTemplateDrawerEntry,
   OrganizationDrawerEntry,
@@ -108,16 +97,13 @@ import type {
   SendEmailDrawerEntry,
 } from '~/types/DrawerStack'
 import type { EmailTemplate, Prospect } from '~/types'
-import type { SequenceDetail } from '~/types/AcquisitionSequence'
 import { computed, onBeforeUnmount, onMounted } from 'vue'
 import { useDrawerStackStore } from '~/stores/drawerStack'
-import { useAcquisitionSequencesStore } from '~/stores/acquisitionSequences'
 import { updateProspect } from '~/services/prospectsService'
 import { createOrder } from '~/services/ordersService'
 import { useToast } from '~/composables/useToast'
 
 const drawerStack = useDrawerStackStore()
-const sequencesStore = useAcquisitionSequencesStore()
 
 const toast = useToast()
 
@@ -164,25 +150,6 @@ const createCampaignEntry: ComputedRef<CreateCampaignDrawerEntry | null> = compu
 const addProspectEntry: ComputedRef<AddProspectDrawerEntry | null> = computed((): AddProspectDrawerEntry | null => {
   return drawerStack.topEntry?.kind === 'add-prospect' ? drawerStack.topEntry : null
 })
-
-/** Top entry narrowed to the acquisition sequence creation drawer. */
-const createSequenceEntry: ComputedRef<CreateSequenceDrawerEntry | null> = computed(
-  (): CreateSequenceDrawerEntry | null => {
-    return drawerStack.topEntry?.kind === 'create-sequence' ? drawerStack.topEntry : null
-  },
-)
-
-/**
- * Sequence created from the drawer — push it into the store and open the
- * Séquences page so its pipeline board is visible.
- * @param sequence - The freshly created sequence.
- */
-function handleSequenceCreated(sequence: SequenceDetail): void {
-  sequencesStore.upsert(sequence)
-  sequencesStore.current = sequence
-  drawerStack.closeAll()
-  navigateTo(`/dashboard/sequences?open=${sequence.id}`)
-}
 
 /**
  * Prospect created from the add drawer — notify pages (list insert) and chain

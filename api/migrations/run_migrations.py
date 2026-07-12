@@ -50,6 +50,7 @@ MIGRATION_MODULES: list[tuple[str, str]] = [
     ("add_order_fulfillment_retry", "migrations.add_order_fulfillment_retry"),
     ("add_scraper_diagnostics", "migrations.add_scraper_diagnostics"),
     ("add_acquisition_tables", "migrations.add_acquisition_tables"),
+    ("add_automation_columns", "migrations.add_automation_columns"),
 ]
 
 

@@ -107,7 +107,7 @@ async def _advance_run(db: Session, run, budget: int) -> int:
     Returns:
         The number of item-advances actually performed (to debit the tick budget).
     """
-    from enums.acquisition import AcquisitionItemStep, AcquisitionRunStatus
+    from enums.acquisition import AcquisitionItemStep, AcquisitionRunMode, AcquisitionRunStatus
     from models.user import User
     from services.acquisition_service import acquisition_service
     from services.credit_service import CreditService
@@ -118,6 +118,11 @@ async def _advance_run(db: Session, run, budget: int) -> int:
         _merge_stats(run, {"error": "utilisateur introuvable"})
         db.commit()
         return 0
+
+    # Full-auto: seed items from the unused-prospect pool on the first pass.
+    if run.mode == AcquisitionRunMode.FULL_AUTO.value and not (run.stats or {}).get("t0_seeded"):
+        _seed_full_auto(db, run)
+        db.refresh(run)
 
     active_steps: set[str] = _active_steps(run)
     active_items: List = [i for i in run.items if i.step in active_steps]
@@ -170,6 +175,107 @@ async def _advance_run(db: Session, run, budget: int) -> int:
     _merge_stats(run, acquisition_service.build_stats(db, run))
     db.commit()
     return used
+
+
+def _seed_full_auto(db: Session, run) -> None:
+    """
+    Full-auto T0 — fill the run with items from the **unused-prospect pool**
+    matching its métier(s) + ville(s), up to ``target_days × daily_cap``.
+
+    Honest scope: we do NOT drive the scraper from here (it runs headful on the
+    user's residential machine, not this host). If the pool can't reach the
+    target, we proceed with what we have and record a clear shortfall note —
+    "lance une recherche pour compléter" — instead of faking a scrape.
+    """
+    from enums.acquisition import AcquisitionItemStep
+    from models.acquisition_run_item import AcquisitionRunItem
+    from services.acquisition_service import acquisition_service
+    from services.send_policy_service import send_policy_service
+
+    daily_cap: int = send_policy_service.resolve(db, run.user_id).daily_cap
+    target: int = min(max((run.target_days or 1) * daily_cap, 1), 500)
+
+    used: set[int] = acquisition_service.used_prospect_ids(db, run.user_id)
+    candidate_ids = acquisition_service.find_unused_prospects_for_query(
+        db,
+        run.user_id,
+        run.organization_id,
+        metiers=run.search_metiers or [],
+        villes=run.search_villes or [],
+        only_without_website=run.only_without_website,
+        exclude_ids=used,
+        limit=target,
+    )
+
+    for prospect_id in candidate_ids:
+        db.add(
+            AcquisitionRunItem(
+                run_id=run.id,
+                prospect_id=prospect_id,
+                step=AcquisitionItemStep.FOUND.value,
+                template_id=run.template_id,
+            )
+        )
+
+    note: dict[str, object] = {"t0_seeded": True, "target_prospects": target}
+    if len(candidate_ids) < target:
+        note["seed_note"] = (
+            f"{len(candidate_ids)}/{target} prospects disponibles — "
+            "lance une recherche pour compléter la cible."
+        )
+    _merge_stats(run, note)
+    db.commit()
+    logger.info(
+        "[Acquisition] Run %d full-auto seeded %d/%d prospect(s)",
+        run.id, len(candidate_ids), target,
+    )
+
+
+def _score_item(db: Session, run, item, prospect) -> None:
+    """
+    Compute a 0-100 "sellability" score + flags for a generated site, so the
+    review step can surface the risky ones first (and full-auto can flag them).
+    Sets ``item.quality_score`` / ``item.quality_flags`` (no commit).
+    """
+    from services.enrichment_service import enrichment_service
+
+    enrichment = None
+    try:
+        enrichment = enrichment_service.get_for_prospect(db, run.user_id, prospect.id)
+    except Exception:  # noqa: BLE001 — scoring must never break generation
+        enrichment = None
+
+    score: int = 0
+    flags: list[str] = []
+
+    def _has(attr: str) -> bool:
+        return bool(getattr(enrichment, attr, None)) if enrichment is not None else False
+
+    if prospect.email:
+        score += 15
+    else:
+        flags.append("pas d'email")
+    if prospect.phone or _has("phone"):
+        score += 15
+    else:
+        flags.append("pas de téléphone")
+    if _has("description") or _has("services"):
+        score += 20
+    else:
+        flags.append("pas de description")
+    if _has("photos"):
+        score += 20
+    else:
+        flags.append("pas de photo")
+    if _has("rating") or _has("reviews_count"):
+        score += 15
+    else:
+        flags.append("pas d'avis")
+    if prospect.city or _has("hours"):
+        score += 15
+
+    item.quality_score = min(score, 100)
+    item.quality_flags = flags or None
 
 
 def _active_steps(run) -> set[str]:
@@ -272,7 +378,7 @@ async def _do_generate(db: Session, run, item, user, prospect) -> None:
             db,
             user=user,
             business_name=prospect.name,
-            template_id=run.template_id or DEFAULT_TEMPLATE_ID,
+            template_id=item.template_id or run.template_id or DEFAULT_TEMPLATE_ID,
             phone=prospect.phone,
             email=prospect.email,
             city=prospect.city,
@@ -289,7 +395,11 @@ async def _do_generate(db: Session, run, item, user, prospect) -> None:
         return
 
     item.demo_site_id = site.id
-    _set_step(db, item, AcquisitionItemStep.GENERATED.value)
+    _score_item(db, run, item, prospect)
+    reason: Optional[str] = None
+    if item.quality_flags:
+        reason = "à vérifier : " + ", ".join(item.quality_flags[:2])
+    _set_step(db, item, AcquisitionItemStep.GENERATED.value, reason)
 
 
 # ---------------------------------------------------------------------------

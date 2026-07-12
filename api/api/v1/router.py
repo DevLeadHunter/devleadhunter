@@ -8,7 +8,7 @@ from .routes import (
     campaigns, unsubscribe, exports, interactions, demo_sites, sources, webhooks,
     enrichment, orders, dashboard, behavior, organizations,
     settings as settings_routes, admin_monitoring, admin_storyblok,
-    acquisition_sequences,
+    automations, send_policy,
 )
 
 
@@ -47,5 +47,6 @@ router.include_router(organizations.router)
 router.include_router(settings_routes.router)
 router.include_router(admin_monitoring.router)
 router.include_router(admin_storyblok.router)
-router.include_router(acquisition_sequences.router)
+router.include_router(automations.router)
+router.include_router(send_policy.router)
 

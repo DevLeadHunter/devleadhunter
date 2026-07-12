@@ -24,6 +24,7 @@ from models.order import Order
 from models.organization import Organization, OrganizationMember
 from models.acquisition_run import AcquisitionRun
 from models.acquisition_run_item import AcquisitionRunItem
+from models.send_policy import SendPolicy
 
 __all__ = [
     "User",
@@ -52,4 +53,5 @@ __all__ = [
     "Order",
     "AcquisitionRun",
     "AcquisitionRunItem",
+    "SendPolicy",
 ]
