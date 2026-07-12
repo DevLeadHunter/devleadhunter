@@ -80,6 +80,11 @@ export interface SearchProspectsDrawerEntry {
   kind: 'search-prospects'
 }
 
+/** Send-policy (email cadence) drawer entry. */
+export interface SendPolicyDrawerEntry {
+  kind: 'send-policy'
+}
+
 /** One entry of the persistent drawer stack. */
 export type DrawerStackEntry =
   | ProspectDrawerEntry
@@ -91,6 +96,7 @@ export type DrawerStackEntry =
   | CreateCampaignDrawerEntry
   | AddProspectDrawerEntry
   | SearchProspectsDrawerEntry
+  | SendPolicyDrawerEntry
 
 /** Cross-page notice describing the latest prospect mutation done from a drawer. */
 export type ProspectMutationNotice = { type: 'updated'; prospect: Prospect } | { type: 'deleted'; prospectId: number }

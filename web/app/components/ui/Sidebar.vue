@@ -135,15 +135,11 @@
           <UIcon name="i-lucide-mail-open" class="h-4 w-4 shrink-0" />
           <span>Configuration Resend</span>
         </NuxtLink>
-        <NuxtLink
-          to="/dashboard/settings/sending"
-          :class="navItemClass(isActive('/dashboard/settings/sending'))"
-          @click="handleClick"
-        >
-          <span :class="navBarClass(isActive('/dashboard/settings/sending'))"></span>
+        <button type="button" class="w-full" :class="navItemClass(false)" @click="handleSendPolicyFromMenu">
+          <span :class="navBarClass(false)"></span>
           <UIcon name="i-lucide-sliders-horizontal" class="h-4 w-4 shrink-0" />
           <span>Réglages d'envoi</span>
-        </NuxtLink>
+        </button>
       </template>
 
       <!-- Main grouped menu -->
@@ -606,6 +602,14 @@ function handleProfileFromMenu(): void {
 function handleOrganizationFromMenu(): void {
   showUserMenu.value = false
   drawerStack.push({ kind: 'organization' })
+  handleClick()
+}
+
+/**
+ * Open the send-policy (email cadence) drawer from the Paramètres panel.
+ */
+function handleSendPolicyFromMenu(): void {
+  drawerStack.push({ kind: 'send-policy' })
   handleClick()
 }
 

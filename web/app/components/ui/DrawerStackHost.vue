@@ -89,6 +89,14 @@
       @close="drawerStack.closeAll()"
       @back="drawerStack.back()"
     />
+
+    <!-- Send policy (email cadence) -->
+    <UiSendPolicyDrawer
+      :open="sendPolicyEntry !== null"
+      :show-back="hasPrevious"
+      @close="drawerStack.closeAll()"
+      @back="drawerStack.back()"
+    />
   </div>
 </template>
 
@@ -104,6 +112,7 @@ import type {
   ProspectDrawerEntry,
   SearchProspectsDrawerEntry,
   SendEmailDrawerEntry,
+  SendPolicyDrawerEntry,
 } from '~/types/DrawerStack'
 import type { EmailTemplate, Prospect } from '~/types'
 import { computed, onBeforeUnmount, onMounted } from 'vue'
@@ -166,6 +175,11 @@ const searchProspectsEntry: ComputedRef<SearchProspectsDrawerEntry | null> = com
     return drawerStack.topEntry?.kind === 'search-prospects' ? drawerStack.topEntry : null
   },
 )
+
+/** Top entry narrowed to the send-policy drawer. */
+const sendPolicyEntry: ComputedRef<SendPolicyDrawerEntry | null> = computed((): SendPolicyDrawerEntry | null => {
+  return drawerStack.topEntry?.kind === 'send-policy' ? drawerStack.topEntry : null
+})
 
 /**
  * Prospect created from the add drawer — notify pages (list insert) and chain

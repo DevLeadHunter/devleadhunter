@@ -257,13 +257,23 @@
           </div>
         </div>
 
-        <p v-if="form.autoCampaign" class="flex items-center gap-2 text-xs text-[var(--app-ink-soft)]">
-          <UIcon name="i-lucide-clock" class="h-3.5 w-3.5" />
-          La cadence d'envoi suit tes
-          <NuxtLink to="/dashboard/settings/sending" class="underline underline-offset-2 hover:text-[var(--app-ink)]">
-            réglages d'envoi </NuxtLink
-          >.
-        </p>
+        <div
+          v-if="form.autoCampaign"
+          class="flex flex-wrap items-center gap-x-2 gap-y-1.5 text-xs text-[var(--app-ink-soft)]"
+        >
+          <span class="flex items-center gap-1.5">
+            <UIcon name="i-lucide-clock" class="h-3.5 w-3.5" />
+            La cadence d'envoi suit tes réglages.
+          </span>
+          <button
+            type="button"
+            class="inline-flex items-center gap-1.5 rounded-full border border-[var(--app-line)] bg-[var(--app-bg)] px-3 py-1 font-medium text-[var(--app-ink)] transition-colors hover:border-[var(--app-ink-soft)] hover:bg-[var(--app-surface-2)]"
+            @click="openSendPolicyDrawer"
+          >
+            <UIcon name="i-lucide-sliders-horizontal" class="h-3.5 w-3.5" />
+            Réglages d'envoi
+          </button>
+        </div>
       </div>
 
       <!-- ══════════ Step 4 · Lancer ══════════ -->
@@ -684,6 +694,11 @@ watch([searchQuery, filterCity, filterCategory, filterWebsite], (): void => {
 /** Open the prospect-search drawer (scraping) without leaving the tunnel. */
 function openSearchDrawer(): void {
   drawerStack.push({ kind: 'search-prospects' })
+}
+
+/** Open the send-policy drawer without leaving the tunnel. */
+function openSendPolicyDrawer(): void {
+  drawerStack.push({ kind: 'send-policy' })
 }
 
 /**
