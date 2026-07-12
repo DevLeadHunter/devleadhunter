@@ -10,322 +10,317 @@
         Automatisations
       </NuxtLink>
       <h1 class="app-page-title mt-3">Créer une automatisation</h1>
-      <p class="mt-1.5 text-sm text-[var(--app-ink-soft)]">
-        Trouver → générer les sites → {{ form.mode === 'semi_auto' ? 'valider' : 'auto' }} → démarcher.
-      </p>
     </div>
 
-    <div class="grid items-start gap-6 lg:grid-cols-[220px_minmax(0,1fr)] xl:grid-cols-[240px_minmax(0,1fr)]">
-      <!-- Rail: prominent step timeline -->
-      <aside class="sticky top-6 hidden lg:block">
-        <ol>
-          <li v-for="(s, index) in steps" :key="s.id" class="relative flex gap-3.5 pb-7 last:pb-0">
+    <!-- Timeline (top, full width) -->
+    <div class="mb-6 overflow-x-auto rounded-2xl border border-[var(--app-line)] bg-[var(--app-surface)] p-1.5">
+      <ol class="flex min-w-max items-stretch sm:min-w-0">
+        <li v-for="(s, index) in steps" :key="s.id" class="flex flex-1 items-center">
+          <button
+            type="button"
+            :disabled="s.id >= currentStep"
+            class="flex flex-1 items-center gap-3 rounded-xl px-3 py-2.5 text-left transition-colors"
+            :class="
+              s.id === currentStep
+                ? 'bg-[var(--app-surface-2)]'
+                : s.id < currentStep
+                  ? 'cursor-pointer hover:bg-[var(--app-surface-2)]/60'
+                  : 'cursor-default'
+            "
+            @click="handleStepNavigate(s.id)"
+          >
             <span
-              v-if="index < steps.length - 1"
-              class="absolute top-11 left-[19px] h-[calc(100%-2rem)] w-px"
-              :class="currentStep > s.id ? 'bg-[var(--app-ink)]' : 'bg-[var(--app-line)]'"
-            />
-            <button
-              type="button"
-              :disabled="s.id >= currentStep"
-              class="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-full border text-sm font-semibold transition-colors"
+              class="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border text-sm font-semibold transition-colors"
               :class="stepNodeClass(s.id)"
-              @click="handleStepNavigate(s.id)"
             >
               <UIcon v-if="s.id < currentStep" name="i-lucide-check" class="h-4 w-4" />
               <template v-else>{{ s.id }}</template>
-            </button>
-            <div class="pt-1.5">
-              <p
-                class="text-sm font-semibold"
+            </span>
+            <span class="min-w-0">
+              <span
+                class="block text-sm font-semibold"
                 :class="s.id === currentStep ? 'text-[var(--app-ink)]' : 'text-[var(--app-ink-soft)]'"
+                >{{ s.label }}</span
               >
-                {{ s.label }}
-              </p>
-              <p class="mt-0.5 text-[11px] text-[var(--app-faint)]">{{ s.hint }}</p>
-            </div>
-          </li>
-        </ol>
-      </aside>
+              <span class="hidden truncate text-[11px] text-[var(--app-faint)] sm:block">{{ s.hint }}</span>
+            </span>
+          </button>
+          <UIcon
+            v-if="index < steps.length - 1"
+            name="i-lucide-chevron-right"
+            class="mx-0.5 h-4 w-4 shrink-0 text-[var(--app-faint)]"
+          />
+        </li>
+      </ol>
+    </div>
 
-      <div class="min-w-0">
-        <!-- Horizontal stepper (mobile / tablet) -->
-        <div class="mb-5 lg:hidden">
-          <DemoSitesWizardStepper :steps="steps" :current-step="currentStep" @navigate="handleStepNavigate" />
+    <div class="min-w-0">
+      <!-- ══════════ Step 1 · Cible ══════════ -->
+      <div v-if="currentStep === 1" key="step-1" class="wizard-step space-y-5">
+        <div class="app-card space-y-5 p-5 md:p-6">
+          <div>
+            <label class="app-label mb-1.5 block">Nom de l'automatisation</label>
+            <input
+              v-model="form.name"
+              type="text"
+              class="app-input w-full"
+              placeholder="Plombiers — Rennes (optionnel)"
+            />
+          </div>
+
+          <div class="flex gap-1 rounded-full border border-[var(--app-line)] bg-[var(--app-bg)] p-1">
+            <button type="button" :class="segmentClass(form.mode === 'semi_auto')" @click="form.mode = 'semi_auto'">
+              <UIcon name="i-lucide-hand" class="h-3.5 w-3.5" />
+              Semi-auto
+            </button>
+            <button type="button" :class="segmentClass(form.mode === 'full_auto')" @click="form.mode = 'full_auto'">
+              <UIcon name="i-lucide-bot" class="h-3.5 w-3.5" />
+              Full-auto
+            </button>
+          </div>
         </div>
 
-        <!-- ══════════ Step 1 · Cible ══════════ -->
-        <div v-if="currentStep === 1" key="step-1" class="wizard-step space-y-5">
-          <div class="app-card space-y-5 p-5 md:p-6">
-            <div>
-              <label class="app-label mb-1.5 block">Nom de l'automatisation</label>
-              <input
-                v-model="form.name"
-                type="text"
-                class="app-input w-full"
-                placeholder="Plombiers — Rennes (optionnel)"
-              />
+        <!-- Semi-auto: prospect selection -->
+        <template v-if="form.mode === 'semi_auto'">
+          <div class="app-card p-4">
+            <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5">
+              <div>
+                <label class="app-label mb-1.5 block">Rechercher</label>
+                <input v-model="searchQuery" type="text" placeholder="Nom, ville, email…" class="app-input" />
+              </div>
+              <div>
+                <label class="app-label mb-1.5 block">Site web</label>
+                <UiSelectField v-model="filterWebsite" :options="websiteFilterOptions" />
+              </div>
+              <div>
+                <label class="app-label mb-1.5 block">Ville</label>
+                <UiCitySelect v-model="filterCity" placeholder="Toutes les villes" />
+              </div>
+              <div>
+                <label class="app-label mb-1.5 block">Métier</label>
+                <input v-model="filterCategory" type="text" placeholder="Ex : plombier" class="app-input" />
+              </div>
+              <div class="flex items-end">
+                <button class="app-btn-secondary w-full" @click="clearFilters">Réinitialiser</button>
+              </div>
             </div>
+          </div>
 
-            <div class="flex gap-1 rounded-full border border-[var(--app-line)] bg-[var(--app-bg)] p-1">
-              <button type="button" :class="segmentClass(form.mode === 'semi_auto')" @click="form.mode = 'semi_auto'">
-                <UIcon name="i-lucide-hand" class="h-3.5 w-3.5" />
-                Semi-auto
-              </button>
-              <button type="button" :class="segmentClass(form.mode === 'full_auto')" @click="form.mode = 'full_auto'">
-                <UIcon name="i-lucide-bot" class="h-3.5 w-3.5" />
-                Full-auto
+          <div class="flex flex-wrap items-center justify-between gap-2">
+            <p class="text-sm text-[var(--app-ink-soft)]">
+              <span class="font-semibold text-[var(--app-ink)]">{{ selectedProspectIds.length }}</span> prospect(s)
+              sélectionné(s) · {{ filteredProspects.length }} disponible(s)
+            </p>
+            <div class="flex items-center gap-2">
+              <button class="app-btn-secondary h-8 px-3 text-xs" @click="selectAllFiltered">Tout sélectionner</button>
+              <button type="button" class="app-btn-secondary h-8 px-3 text-xs" @click="openSearchDrawer">
+                <UIcon name="i-lucide-search" class="h-3.5 w-3.5" />
+                Chercher plus
               </button>
             </div>
           </div>
 
-          <!-- Semi-auto: prospect selection -->
-          <template v-if="form.mode === 'semi_auto'">
-            <div class="app-card p-4">
-              <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5">
-                <div>
-                  <label class="app-label mb-1.5 block">Rechercher</label>
-                  <input v-model="searchQuery" type="text" placeholder="Nom, ville, email…" class="app-input" />
-                </div>
-                <div>
-                  <label class="app-label mb-1.5 block">Site web</label>
-                  <UiSelectField v-model="filterWebsite" :options="websiteFilterOptions" />
-                </div>
-                <div>
-                  <label class="app-label mb-1.5 block">Ville</label>
-                  <UiCitySelect v-model="filterCity" placeholder="Toutes les villes" />
-                </div>
-                <div>
-                  <label class="app-label mb-1.5 block">Métier</label>
-                  <input v-model="filterCategory" type="text" placeholder="Ex : plombier" class="app-input" />
-                </div>
-                <div class="flex items-end">
-                  <button class="app-btn-secondary w-full" @click="clearFilters">Réinitialiser</button>
-                </div>
-              </div>
-            </div>
-
-            <div class="flex flex-wrap items-center justify-between gap-2">
-              <p class="text-sm text-[var(--app-ink-soft)]">
-                <span class="font-semibold text-[var(--app-ink)]">{{ selectedProspectIds.length }}</span> prospect(s)
-                sélectionné(s) · {{ filteredProspects.length }} disponible(s)
-              </p>
+          <div v-if="isLoadingProspects" class="flex items-center justify-center py-16">
+            <UIcon name="i-lucide-loader-circle" class="h-8 w-8 animate-spin text-[var(--app-accent)]" />
+          </div>
+          <div v-else-if="filteredProspects.length === 0" class="app-card px-6 py-12 text-center">
+            <LandingAsterisk class="text-3xl text-[var(--app-accent)]" />
+            <p class="mt-4 text-sm text-[var(--app-ink-soft)]">
+              Aucun prospect disponible — ceux déjà pris par une automatisation sont masqués.
+            </p>
+            <button type="button" class="app-btn-primary mt-5 inline-flex" @click="openSearchDrawer">
+              Trouver des prospects
+            </button>
+          </div>
+          <div v-else class="app-card overflow-hidden">
+            <UiProspectTable
+              :prospects="paginatedProspects"
+              :selected-prospects="selectedProspectIds"
+              @view-prospect="openProspectDrawer"
+              @delete-prospect="handleDeleteProspect"
+              @toggle-select="toggleSelect"
+              @toggle-select-all="toggleSelectAll"
+            />
+            <div
+              v-if="totalPages > 1"
+              class="flex items-center justify-between border-t border-[var(--app-line)] bg-[var(--app-surface-2)]/50 px-4 py-3"
+            >
+              <span class="font-label text-xs text-[var(--app-ink-soft)]"
+                >Page {{ currentPage }} / {{ totalPages }}</span
+              >
               <div class="flex items-center gap-2">
-                <button class="app-btn-secondary h-8 px-3 text-xs" @click="selectAllFiltered">Tout sélectionner</button>
-                <button type="button" class="app-btn-secondary h-8 px-3 text-xs" @click="openSearchDrawer">
-                  <UIcon name="i-lucide-search" class="h-3.5 w-3.5" />
-                  Chercher plus
+                <button
+                  :disabled="currentPage === 1"
+                  class="app-btn-secondary h-8 min-h-8 px-3 text-xs disabled:opacity-50"
+                  @click="currentPage -= 1"
+                >
+                  Précédent
+                </button>
+                <button
+                  :disabled="currentPage === totalPages"
+                  class="app-btn-secondary h-8 min-h-8 px-3 text-xs disabled:opacity-50"
+                  @click="currentPage += 1"
+                >
+                  Suivant
                 </button>
               </div>
             </div>
-
-            <div v-if="isLoadingProspects" class="flex items-center justify-center py-16">
-              <UIcon name="i-lucide-loader-circle" class="h-8 w-8 animate-spin text-[var(--app-accent)]" />
-            </div>
-            <div v-else-if="filteredProspects.length === 0" class="app-card px-6 py-12 text-center">
-              <LandingAsterisk class="text-3xl text-[var(--app-accent)]" />
-              <p class="mt-4 text-sm text-[var(--app-ink-soft)]">
-                Aucun prospect disponible — ceux déjà pris par une automatisation sont masqués.
-              </p>
-              <button type="button" class="app-btn-primary mt-5 inline-flex" @click="openSearchDrawer">
-                Trouver des prospects
-              </button>
-            </div>
-            <div v-else class="app-card overflow-hidden">
-              <UiProspectTable
-                :prospects="paginatedProspects"
-                :selected-prospects="selectedProspectIds"
-                @view-prospect="openProspectDrawer"
-                @delete-prospect="handleDeleteProspect"
-                @toggle-select="toggleSelect"
-                @toggle-select-all="toggleSelectAll"
-              />
-              <div
-                v-if="totalPages > 1"
-                class="flex items-center justify-between border-t border-[var(--app-line)] bg-[var(--app-surface-2)]/50 px-4 py-3"
-              >
-                <span class="font-label text-xs text-[var(--app-ink-soft)]"
-                  >Page {{ currentPage }} / {{ totalPages }}</span
-                >
-                <div class="flex items-center gap-2">
-                  <button
-                    :disabled="currentPage === 1"
-                    class="app-btn-secondary h-8 min-h-8 px-3 text-xs disabled:opacity-50"
-                    @click="currentPage -= 1"
-                  >
-                    Précédent
-                  </button>
-                  <button
-                    :disabled="currentPage === totalPages"
-                    class="app-btn-secondary h-8 min-h-8 px-3 text-xs disabled:opacity-50"
-                    @click="currentPage += 1"
-                  >
-                    Suivant
-                  </button>
-                </div>
-              </div>
-            </div>
-          </template>
-
-          <!-- Full-auto: query -->
-          <div v-else class="app-card space-y-5 p-5 md:p-6">
-            <div class="grid gap-5 md:grid-cols-2">
-              <div>
-                <label class="app-label mb-1.5 block">Métier(s) *</label>
-                <input
-                  v-model="form.metiers"
-                  type="text"
-                  class="app-input w-full"
-                  placeholder="plombier, électricien"
-                />
-              </div>
-              <div>
-                <label class="app-label mb-1.5 block">Ville(s) *</label>
-                <input v-model="form.villes" type="text" class="app-input w-full" placeholder="Rennes, Iffendic" />
-              </div>
-              <div>
-                <label class="app-label mb-1.5 block">Objectif — jours de démarchage *</label>
-                <input v-model.number="form.targetDays" type="number" min="1" max="90" class="app-input w-full" />
-              </div>
-              <label class="flex items-center gap-2 self-end pb-2.5 text-sm text-[var(--app-ink-soft)]">
-                <input v-model="form.onlyWithoutWebsite" type="checkbox" class="h-4 w-4 accent-(--app-accent)" />
-                Uniquement sans site web
-              </label>
-            </div>
-            <p
-              class="flex items-start gap-2 rounded-xl border border-[var(--app-line)] bg-[var(--app-bg)] p-3.5 text-xs text-[var(--app-ink-soft)]"
-            >
-              <UIcon name="i-lucide-info" class="mt-0.5 h-3.5 w-3.5 shrink-0" />
-              La machine pioche dans tes prospects non-utilisés correspondants. S'il en manque, elle te préviendra de
-              lancer une recherche pour compléter.
-            </p>
           </div>
-        </div>
+        </template>
 
-        <!-- ══════════ Step 2 · Site ══════════ -->
-        <div v-else-if="currentStep === 2" key="step-2" class="wizard-step space-y-6">
-          <div>
-            <h2 class="text-base font-semibold text-[var(--app-ink)]">Template de site</h2>
-            <p class="mt-1 text-sm text-[var(--app-ink-soft)]">
-              Un modèle pour tous les prospects — tu pourras en changer par prospect à la validation.
-            </p>
-          </div>
-          <DemoSitesTemplatePicker
-            v-model="form.templateId"
-            :templates="templates"
-            :theme="form.theme"
-            @update:theme="form.theme = $event"
-          />
-        </div>
-
-        <!-- ══════════ Step 3 · Emails ══════════ -->
-        <div v-else-if="currentStep === 3" key="step-3" class="wizard-step app-card space-y-5 p-5 md:p-6">
-          <div>
-            <h2 class="text-base font-semibold text-[var(--app-ink)]">Démarchage</h2>
-            <p class="mt-1 text-sm text-[var(--app-ink-soft)]">Le cold email envoyé avec le lien de démo.</p>
-          </div>
-
-          <label
-            class="flex cursor-pointer items-start gap-3.5 rounded-xl border p-4 transition-colors"
-            :class="
-              form.autoCampaign
-                ? 'border-[var(--app-ink)] bg-[var(--app-surface-2)]/60'
-                : 'border-[var(--app-line)] bg-[var(--app-bg)] hover:border-[var(--app-ink-soft)]'
-            "
-          >
-            <input v-model="form.autoCampaign" type="checkbox" class="mt-0.5 h-4 w-4 accent-(--app-accent)" />
-            <span>
-              <span class="text-sm font-medium text-[var(--app-ink)]">Démarcher les prospects par email</span>
-              <span class="mt-1 block text-xs leading-relaxed text-[var(--app-ink-soft)]">
-                Décoche pour seulement générer les sites (sans envoi).
-              </span>
-            </span>
-          </label>
-
-          <div v-if="form.autoCampaign" class="grid gap-5 md:grid-cols-2">
+        <!-- Full-auto: query -->
+        <div v-else class="app-card space-y-5 p-5 md:p-6">
+          <div class="grid gap-5 md:grid-cols-2">
             <div>
-              <label class="app-label mb-1.5 block">Modèle A — envoi initial *</label>
-              <UiTemplateSelect
-                :model-value="form.emailA"
-                :templates="emailTemplates"
-                @update:model-value="form.emailA = $event"
-              />
+              <label class="app-label mb-1.5 block">Métier(s) *</label>
+              <input v-model="form.metiers" type="text" class="app-input w-full" placeholder="plombier, électricien" />
             </div>
             <div>
-              <label class="app-label mb-1.5 block">Modèle B — test A/B (optionnel)</label>
-              <UiTemplateSelect
-                :model-value="form.emailB"
-                :templates="emailTemplates"
-                @update:model-value="form.emailB = $event"
-              />
+              <label class="app-label mb-1.5 block">Ville(s) *</label>
+              <input v-model="form.villes" type="text" class="app-input w-full" placeholder="Rennes, Iffendic" />
             </div>
-          </div>
-
-          <p v-if="form.autoCampaign" class="flex items-center gap-2 text-xs text-[var(--app-ink-soft)]">
-            <UIcon name="i-lucide-clock" class="h-3.5 w-3.5" />
-            La cadence d'envoi suit tes
-            <NuxtLink to="/dashboard/settings/sending" class="underline underline-offset-2 hover:text-[var(--app-ink)]">
-              réglages d'envoi </NuxtLink
-            >.
-          </p>
-        </div>
-
-        <!-- ══════════ Step 4 · Lancer ══════════ -->
-        <div v-else key="step-4" class="wizard-step app-card space-y-5 p-5 md:p-6">
-          <div>
-            <h2 class="text-base font-semibold text-[var(--app-ink)]">Récapitulatif</h2>
-            <p class="mt-1 text-sm text-[var(--app-ink-soft)]">Vérifie puis lance l'automatisation.</p>
-          </div>
-          <dl class="grid gap-3 sm:grid-cols-2">
-            <div
-              v-for="entry in recapItems"
-              :key="entry.label"
-              class="rounded-xl border border-[var(--app-line)] bg-[var(--app-bg)] p-3.5"
-            >
-              <dt class="app-label">{{ entry.label }}</dt>
-              <dd class="mt-1 text-sm font-medium text-[var(--app-ink)]">{{ entry.value || '—' }}</dd>
+            <div>
+              <label class="app-label mb-1.5 block">Objectif — jours de démarchage *</label>
+              <input v-model.number="form.targetDays" type="number" min="1" max="90" class="app-input w-full" />
             </div>
-          </dl>
+            <label class="flex items-center gap-2 self-end pb-2.5 text-sm text-[var(--app-ink-soft)]">
+              <input v-model="form.onlyWithoutWebsite" type="checkbox" class="h-4 w-4 accent-(--app-accent)" />
+              Uniquement sans site web
+            </label>
+          </div>
           <p
-            v-if="form.mode === 'semi_auto'"
-            class="flex items-start gap-2 rounded-xl border border-[var(--app-blue)] bg-[var(--app-blue-soft)] p-3.5 text-xs text-[var(--app-ink)]"
+            class="flex items-start gap-2 rounded-xl border border-[var(--app-line)] bg-[var(--app-bg)] p-3.5 text-xs text-[var(--app-ink-soft)]"
           >
-            <UIcon name="i-lucide-clipboard-check" class="mt-0.5 h-4 w-4 shrink-0 text-[var(--app-blue)]" />
-            La machine génère les sites puis <strong class="mx-1">s'arrête pour ta validation</strong> avant tout envoi.
+            <UIcon name="i-lucide-info" class="mt-0.5 h-3.5 w-3.5 shrink-0" />
+            La machine pioche dans tes prospects non-utilisés correspondants. S'il en manque, elle te préviendra de
+            lancer une recherche pour compléter.
           </p>
         </div>
+      </div>
 
-        <!-- Unified sticky nav — always reachable, even on a long prospect list -->
-        <div
-          class="sticky bottom-4 z-10 mt-5 flex items-center justify-between gap-3 rounded-full border border-[var(--app-line)] bg-[var(--app-surface)]/90 px-3 py-2 shadow-lg backdrop-blur"
-        >
-          <button
-            v-if="currentStep > 1"
-            type="button"
-            class="app-btn-secondary"
-            :disabled="isCreating"
-            @click="goToStep(currentStep - 1)"
-          >
-            <UIcon name="i-lucide-arrow-left" class="h-3.5 w-3.5" />Précédent
-          </button>
-          <span v-else />
-          <button
-            v-if="currentStep < steps.length"
-            type="button"
-            class="app-btn-primary"
-            :disabled="!canContinue"
-            @click="goToStep(currentStep + 1)"
-          >
-            Continuer<UIcon name="i-lucide-arrow-right" class="h-3.5 w-3.5" />
-          </button>
-          <button v-else type="button" class="app-btn-primary" :disabled="isCreating || !canLaunch" @click="launch">
-            <UIcon
-              :name="isCreating ? 'i-lucide-loader-circle' : 'i-lucide-rocket'"
-              :class="['h-3.5 w-3.5', isCreating && 'animate-spin']"
-            />
-            {{ isCreating ? 'Lancement…' : "Lancer l'automatisation" }}
-          </button>
+      <!-- ══════════ Step 2 · Site ══════════ -->
+      <div v-else-if="currentStep === 2" key="step-2" class="wizard-step space-y-6">
+        <div>
+          <h2 class="text-base font-semibold text-[var(--app-ink)]">Template de site</h2>
+          <p class="mt-1 text-sm text-[var(--app-ink-soft)]">
+            Un modèle pour tous les prospects — tu pourras en changer par prospect à la validation.
+          </p>
         </div>
+        <DemoSitesTemplatePicker
+          v-model="form.templateId"
+          :templates="templates"
+          :theme="form.theme"
+          @update:theme="form.theme = $event"
+        />
+      </div>
+
+      <!-- ══════════ Step 3 · Emails ══════════ -->
+      <div v-else-if="currentStep === 3" key="step-3" class="wizard-step app-card space-y-5 p-5 md:p-6">
+        <div>
+          <h2 class="text-base font-semibold text-[var(--app-ink)]">Démarchage</h2>
+          <p class="mt-1 text-sm text-[var(--app-ink-soft)]">Le cold email envoyé avec le lien de démo.</p>
+        </div>
+
+        <label
+          class="flex cursor-pointer items-start gap-3.5 rounded-xl border p-4 transition-colors"
+          :class="
+            form.autoCampaign
+              ? 'border-[var(--app-ink)] bg-[var(--app-surface-2)]/60'
+              : 'border-[var(--app-line)] bg-[var(--app-bg)] hover:border-[var(--app-ink-soft)]'
+          "
+        >
+          <input v-model="form.autoCampaign" type="checkbox" class="mt-0.5 h-4 w-4 accent-(--app-accent)" />
+          <span>
+            <span class="text-sm font-medium text-[var(--app-ink)]">Démarcher les prospects par email</span>
+            <span class="mt-1 block text-xs leading-relaxed text-[var(--app-ink-soft)]">
+              Décoche pour seulement générer les sites (sans envoi).
+            </span>
+          </span>
+        </label>
+
+        <div v-if="form.autoCampaign" class="grid gap-5 md:grid-cols-2">
+          <div>
+            <label class="app-label mb-1.5 block">Modèle A — envoi initial *</label>
+            <UiTemplateSelect
+              :model-value="form.emailA"
+              :templates="emailTemplates"
+              @update:model-value="form.emailA = $event"
+            />
+          </div>
+          <div>
+            <label class="app-label mb-1.5 block">Modèle B — test A/B (optionnel)</label>
+            <UiTemplateSelect
+              :model-value="form.emailB"
+              :templates="emailTemplates"
+              @update:model-value="form.emailB = $event"
+            />
+          </div>
+        </div>
+
+        <p v-if="form.autoCampaign" class="flex items-center gap-2 text-xs text-[var(--app-ink-soft)]">
+          <UIcon name="i-lucide-clock" class="h-3.5 w-3.5" />
+          La cadence d'envoi suit tes
+          <NuxtLink to="/dashboard/settings/sending" class="underline underline-offset-2 hover:text-[var(--app-ink)]">
+            réglages d'envoi </NuxtLink
+          >.
+        </p>
+      </div>
+
+      <!-- ══════════ Step 4 · Lancer ══════════ -->
+      <div v-else key="step-4" class="wizard-step app-card space-y-5 p-5 md:p-6">
+        <div>
+          <h2 class="text-base font-semibold text-[var(--app-ink)]">Récapitulatif</h2>
+          <p class="mt-1 text-sm text-[var(--app-ink-soft)]">Vérifie puis lance l'automatisation.</p>
+        </div>
+        <dl class="grid gap-3 sm:grid-cols-2">
+          <div
+            v-for="entry in recapItems"
+            :key="entry.label"
+            class="rounded-xl border border-[var(--app-line)] bg-[var(--app-bg)] p-3.5"
+          >
+            <dt class="app-label">{{ entry.label }}</dt>
+            <dd class="mt-1 text-sm font-medium text-[var(--app-ink)]">{{ entry.value || '—' }}</dd>
+          </div>
+        </dl>
+        <p
+          v-if="form.mode === 'semi_auto'"
+          class="flex items-start gap-2 rounded-xl border border-[var(--app-blue)] bg-[var(--app-blue-soft)] p-3.5 text-xs text-[var(--app-ink)]"
+        >
+          <UIcon name="i-lucide-clipboard-check" class="mt-0.5 h-4 w-4 shrink-0 text-[var(--app-blue)]" />
+          La machine génère les sites puis <strong class="mx-1">s'arrête pour ta validation</strong> avant tout envoi.
+        </p>
+      </div>
+
+      <!-- Unified sticky nav — always reachable, even on a long prospect list -->
+      <div
+        class="sticky bottom-4 z-10 mt-5 flex items-center justify-between gap-3 rounded-full border border-[var(--app-line)] bg-[var(--app-surface)]/90 px-3 py-2 shadow-lg backdrop-blur"
+      >
+        <button
+          v-if="currentStep > 1"
+          type="button"
+          class="app-btn-secondary"
+          :disabled="isCreating"
+          @click="goToStep(currentStep - 1)"
+        >
+          <UIcon name="i-lucide-arrow-left" class="h-3.5 w-3.5" />Précédent
+        </button>
+        <span v-else />
+        <button
+          v-if="currentStep < steps.length"
+          type="button"
+          class="app-btn-primary"
+          :disabled="!canContinue"
+          @click="goToStep(currentStep + 1)"
+        >
+          Continuer<UIcon name="i-lucide-arrow-right" class="h-3.5 w-3.5" />
+        </button>
+        <button v-else type="button" class="app-btn-primary" :disabled="isCreating || !canLaunch" @click="launch">
+          <UIcon
+            :name="isCreating ? 'i-lucide-loader-circle' : 'i-lucide-rocket'"
+            :class="['h-3.5 w-3.5', isCreating && 'animate-spin']"
+          />
+          {{ isCreating ? 'Lancement…' : "Lancer l'automatisation" }}
+        </button>
       </div>
     </div>
   </div>

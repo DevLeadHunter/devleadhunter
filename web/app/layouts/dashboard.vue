@@ -64,8 +64,9 @@
           </div>
         </header>
 
-        <!-- Page Content -->
-        <main class="flex-1 overflow-y-auto px-4 py-5 md:px-6 md:py-6">
+        <!-- Page Content — clip horizontal overflow so the body never scrolls
+             sideways; wide content (tables) scrolls inside its own container. -->
+        <main class="flex-1 overflow-x-hidden overflow-y-auto px-4 py-5 md:px-6 md:py-6">
           <slot />
         </main>
       </div>
