@@ -45,6 +45,7 @@ from scrappers.pagesjaunes_scraper import PagesJaunesScraper
 from scrappers.osm_scraper import OSMScraper
 from scrappers.auto_scraper import AutoScraper
 from scrappers.brightdata_scraper import BrightDataScraper
+from services.acquisition_orchestrator import run_acquisition_loop
 from services.demo_site_cleanup_service import run_demo_site_cleanup_loop
 from services.email_queue_worker import run_queue_worker
 from services.order_fulfillment_recovery_service import run_order_fulfillment_recovery_loop
@@ -145,6 +146,7 @@ async def startup_event() -> None:
     asyncio.create_task(run_demo_site_cleanup_loop())
     asyncio.create_task(run_queue_worker())
     asyncio.create_task(run_order_fulfillment_recovery_loop())
+    asyncio.create_task(run_acquisition_loop())
     asyncio.create_task(_warmup_maps_autocomplete())
 
 

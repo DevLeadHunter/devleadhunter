@@ -63,13 +63,9 @@
 
     <!-- Primary action -->
     <div class="px-4 pt-3">
-      <NuxtLink
-        to="/dashboard/demo-sites/create"
-        class="app-btn-primary h-8 min-h-8 w-full text-xs"
-        @click="handleClick"
-      >
+      <NuxtLink to="/dashboard/automations/new" class="app-btn-primary h-8 min-h-8 w-full text-xs" @click="handleClick">
         <UIcon name="i-lucide-plus" class="h-3.5 w-3.5" />
-        Créer un site
+        Créer une automatisation
       </NuxtLink>
     </div>
 
@@ -139,6 +135,11 @@
           <UIcon name="i-lucide-mail-open" class="h-4 w-4 shrink-0" />
           <span>Configuration Resend</span>
         </NuxtLink>
+        <button type="button" class="w-full" :class="navItemClass(false)" @click="handleSendPolicyFromMenu">
+          <span :class="navBarClass(false)"></span>
+          <UIcon name="i-lucide-sliders-horizontal" class="h-4 w-4 shrink-0" />
+          <span>Réglages d'envoi</span>
+        </button>
       </template>
 
       <!-- Main grouped menu -->
@@ -420,7 +421,10 @@ const navGroups: ComputedRef<UiSidebarGroup[]> = computed((): UiSidebarGroup[] =
   const groups: UiSidebarGroup[] = [
     {
       heading: 'Pilotage',
-      links: [{ to: '/dashboard', label: 'Tableau de bord', icon: 'i-lucide-layout-dashboard' }],
+      links: [
+        { to: '/dashboard', label: 'Tableau de bord', icon: 'i-lucide-layout-dashboard' },
+        { to: '/dashboard/automations', label: 'Automatisations', icon: 'i-lucide-workflow' },
+      ],
     },
     {
       heading: 'Prospection',
@@ -598,6 +602,14 @@ function handleProfileFromMenu(): void {
 function handleOrganizationFromMenu(): void {
   showUserMenu.value = false
   drawerStack.push({ kind: 'organization' })
+  handleClick()
+}
+
+/**
+ * Open the send-policy (email cadence) drawer from the Paramètres panel.
+ */
+function handleSendPolicyFromMenu(): void {
+  drawerStack.push({ kind: 'send-policy' })
   handleClick()
 }
 
