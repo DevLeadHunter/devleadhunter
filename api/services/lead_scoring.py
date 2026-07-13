@@ -15,9 +15,11 @@ class BehaviorSignals(TypedDict):
 
     visits: int
     pageviews: int
+    sections_viewed: int
     cta_clicks: int
     phone_clicks: int
     contact_clicks: int
+    outbound_clicks: int
     max_scroll_depth: int
     total_seconds: int
     emails_sent: int
@@ -43,9 +45,11 @@ def empty_signals() -> BehaviorSignals:
     return {
         "visits": 0,
         "pageviews": 0,
+        "sections_viewed": 0,
         "cta_clicks": 0,
         "phone_clicks": 0,
         "contact_clicks": 0,
+        "outbound_clicks": 0,
         "max_scroll_depth": 0,
         "total_seconds": 0,
         "emails_sent": 0,
@@ -61,9 +65,11 @@ def _has_any_activity(signals: BehaviorSignals) -> bool:
         (
             signals["visits"],
             signals["pageviews"],
+            signals["sections_viewed"],
             signals["cta_clicks"],
             signals["phone_clicks"],
             signals["contact_clicks"],
+            signals["outbound_clicks"],
             signals["total_seconds"],
             signals["emails_sent"],
             signals["emails_opened"],
@@ -90,9 +96,11 @@ def score_from_signals(signals: BehaviorSignals, site_improvable: bool = False) 
     # Demo behaviour
     score += min(signals["visits"], 5) * 8
     score += min(signals["pageviews"], 6) * 3
+    score += min(signals["sections_viewed"], 5) * 3  # read several sections = genuine interest
     score += signals["cta_clicks"] * 10
     score += signals["phone_clicks"] * 20  # strongest demo intent
     score += signals["contact_clicks"] * 18
+    score += min(signals["outbound_clicks"], 3) * 6  # clicked map/social = intent to verify the business
     score += min(signals["total_seconds"] // 30, 6) * 4
     if signals["max_scroll_depth"] >= 75:
         score += 8
@@ -142,6 +150,7 @@ def compute(
     """
     signals = empty_signals()
     sessions: set[str] = set()
+    section_names: set[str] = set()
 
     for ev in events:
         name = ev.get("event", "")
@@ -153,12 +162,17 @@ def compute(
 
         if name == "$pageview":
             signals["pageviews"] += 1
+        elif name == "demo_section_view":
+            # Count DISTINCT sections read (reading several = genuine interest).
+            section_names.add(str(props.get("section") or props.get("position") or "?"))
         elif name == "demo_cta_click":
             signals["cta_clicks"] += 1
         elif name == "demo_phone_click":
             signals["phone_clicks"] += 1
         elif name == "demo_contact_click":
             signals["contact_clicks"] += 1
+        elif name == "demo_outbound_click":
+            signals["outbound_clicks"] += 1
         elif name == "demo_scroll_depth":
             depth = props.get("depth") or props.get("percent") or 0
             try:
@@ -172,6 +186,7 @@ def compute(
             except (TypeError, ValueError):
                 pass
 
+    signals["sections_viewed"] = len(section_names)
     signals["visits"] = len(sessions) if sessions else (1 if signals["pageviews"] else 0)
     if events:
         signals["last_seen"] = events[0].get("timestamp")
@@ -191,9 +206,11 @@ def build_signals_from_aggregate(
     signals = empty_signals()
     signals["pageviews"] = int(aggregate.get("pageviews", 0) or 0)
     signals["visits"] = int(aggregate.get("visits", 0) or 0)
+    signals["sections_viewed"] = int(aggregate.get("sections_viewed", 0) or 0)
     signals["cta_clicks"] = int(aggregate.get("cta_clicks", 0) or 0)
     signals["phone_clicks"] = int(aggregate.get("phone_clicks", 0) or 0)
     signals["contact_clicks"] = int(aggregate.get("contact_clicks", 0) or 0)
+    signals["outbound_clicks"] = int(aggregate.get("outbound_clicks", 0) or 0)
     last_seen = aggregate.get("last_seen")
     signals["last_seen"] = str(last_seen) if last_seen else None
     _apply_email(signals, email)

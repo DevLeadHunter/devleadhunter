@@ -21,11 +21,14 @@ logger = logging.getLogger(__name__)
 # Custom events emitted by the demo-host (plus PostHog's built-in "$pageview").
 DEMO_EVENTS: tuple[str, ...] = (
     "$pageview",
+    "demo_section_view",
     "demo_cta_click",
     "demo_phone_click",
     "demo_contact_click",
+    "demo_outbound_click",
     "demo_scroll_depth",
     "demo_time_on_page",
+    "demo_engaged",
 )
 
 
@@ -109,7 +112,8 @@ class PostHogService:
         """
         Return aggregated behaviour counts per demo slug (one grouped query).
 
-        Each value: ``{pageviews, visits, phone_clicks, contact_clicks, cta_clicks, last_seen}``.
+        Each value: ``{pageviews, visits, phone_clicks, contact_clicks, cta_clicks,
+        sections_viewed, outbound_clicks, last_seen}``.
         Empty dict when PostHog is not configured / no data.
         """
         safe_slugs = [self._safe_slug(s) for s in slugs if self._safe_slug(s)]
@@ -124,6 +128,8 @@ class PostHogService:
             "countIf(event = 'demo_phone_click') AS phone_clicks, "
             "countIf(event = 'demo_contact_click') AS contact_clicks, "
             "countIf(event = 'demo_cta_click') AS cta_clicks, "
+            "uniqIf(properties.section, event = 'demo_section_view') AS sections_viewed, "
+            "countIf(event = 'demo_outbound_click') AS outbound_clicks, "
             "max(timestamp) AS last_seen "
             "FROM events "
             f"WHERE properties.demo_slug IN ({in_list}) "
@@ -132,7 +138,7 @@ class PostHogService:
         rows = await self._run_query(query)
         result: dict[str, dict[str, Any]] = {}
         for row in rows:
-            if not isinstance(row, (list, tuple)) or len(row) < 7:
+            if not isinstance(row, (list, tuple)) or len(row) < 9:
                 continue
             slug = str(row[0])
             result[slug] = {
@@ -141,7 +147,9 @@ class PostHogService:
                 "phone_clicks": row[3],
                 "contact_clicks": row[4],
                 "cta_clicks": row[5],
-                "last_seen": row[6],
+                "sections_viewed": row[6],
+                "outbound_clicks": row[7],
+                "last_seen": row[8],
             }
         return result
 
