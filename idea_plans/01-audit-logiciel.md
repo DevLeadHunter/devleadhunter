@@ -13,6 +13,7 @@
 > - **2026-07-11** — ✅ **Fiabilisation enrichissement (Étape 2)** : source complémentaire **OpenStreetMap** (horaires ~60 % + social + email/site), fallback **JSON-LD** (description/note/avis), `social_links` branché, échec non silencieux (diagnostic « enrichment » → monitoring). Vérifié en live.
 > - **2026-07-11** — ✅ **Storyblok éprouvé & fiabilisé (Étape 3)** : cycle complet testé en live (2 bugs prod corrigés — provisioning du template par défaut + re-fetch CDN 301), re-sync des composants (upsert PUT + endpoints admin), provisioning parallélisé (~4 s). Rendu social visible sur les 5 templates au passage.
 > - **2026-07-11** — ✅ **Mailjet supprimé** (mort — Léo = Resend) : service + settings retirés, custom-domain reroutée vers Resend, et la vérif DNS custom-domain passe du **placeholder factice Mailjet** à de **vrais lookups SPF/DKIM** (`dns_service`, dnspython, testé en live). ✅ **Page campagnes** : grille 3 col → **2 col sous `2xl`** (le drawer « Nouvelle campagne » n'écrase plus les cartes) + texte redondant retiré du drawer.
+> - **2026-07-13** — ✅ **Funnel A/B email→démo→vente bouclé (Resend→PostHog)** : vérifié via le MCP PostHog que la source data-warehouse Resend est bien connectée & saine (« DevLeadHunter — Resend (prod) », synchro ~6 h, `resend.emails`/`domains`/`audiences` requêtables). **Trou trouvé & corrigé** : le statut passant `SENT` en base synchronement, le webhook `email.sent` arrivait au même rang → l'event **`email_sent` n'était jamais capté**. Émis désormais **à la source** (`email_sending_service`, les 2 chemins) avec `distinct_id = slug de la démo` (= identité des events démo) → parcours complet `email_sent → delivered → opened → clicked → $pageview (démo) → demo_engaged` résolu sur **une seule personne** (funnel + session replay reliés, découpable par variante A/B). Helper partagé `services/demo_identity.py` (source unique du `distinct_id`) réutilisé par l'envoi et le webhook ; `get_events_for_slug` filtré sur `DEMO_EVENTS` (les events email mirrorés ne polluent plus la timeline in-app, qui source l'email depuis `EmailLog`). Branche `feat/posthog-email-sent-capture`, commit `e1efd48` (compile + smoke + `test_lead_scoring` + lint web verts ; 1er `email_sent` réel visible au prochain envoi).
 
 ---
 
@@ -108,7 +109,7 @@ Ce ne sont pas des généralités : ce sont des lignes de code précises à trai
 **Bien** : `demo.dibodev.fr/{slug}`, TTL 14 j + nettoyage auto (worker de fond), vérification d'URL, **tracking PostHog** riche (pageviews, clics tel/email/CTA, scroll, temps, session replay), étiqueté `demo_slug` + variante A/B.
 **À améliorer / risqué** :
 - **RGPD** : session replay **nominatif** sans bandeau de consentement (choix assumé « en test »). À cadrer **avant** tout volume/revente — risque juridique réel.
-- Dépend de la **connexion Resend→PostHog** (config) pour boucler le funnel A/B email→démo→vente.
+- ✅ **RÉSOLU (2026-07-13)** — ~~Dépend de la **connexion Resend→PostHog** (config) pour boucler le funnel A/B email→démo→vente.~~ Source warehouse Resend connectée & saine (vérifiée via MCP) **+** events email captés à la source sous l'identité `demo_slug` → funnel `email→démo→vente` requêtable nativement (cf. §journal 2026-07-13).
 
 ### Étape 5 — Cold email
 **Bien** : A/B, file **throttlée 1 mail/20 min** via un **worker asyncio persistant** (tick 60 s, ≤10/tick, isolé par erreur — ne meurt jamais), relances multiples **automatiques** (temporelles), garde-fou « lien démo vide », **désinscription RGPD** (footer + triple filtre + headers RFC 8058), relance perso selon comportement, sélection A/B dès la création.
@@ -199,7 +200,7 @@ Refonte « Atelier » de qualité (tokens light/dark, IBM Plex, lucide, drawers 
 - ~~**Corriger `updateProfile`** (#11)~~ ✅ **FAIT**.
 - ~~**Protéger l'unsubscribe** (token signé + échapper le HTML — #8)~~ ✅ **FAIT**. Reste : **exiger le secret Resend** (fermer le fail-open).
 - **Cadrer le RGPD** (bandeau/consentement démos, ou couper le replay nominatif).
-- Configurer les clés d'env restantes + **Resend→PostHog**.
+- Configurer les clés d'env restantes. ~~**Resend→PostHog**~~ ✅ **FAIT (2026-07-13)** — source warehouse connectée + `email_sent` capté à la source (funnel bouclé, cf. §journal).
 
 **Court terme (semaines)**
 - ~~**Jouer les migrations en CI** (ou au boot) (#4)~~ ✅ **FAIT** (au déploiement).
