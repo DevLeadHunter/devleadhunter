@@ -10,7 +10,9 @@ from sqlalchemy import select
 from models.email_account import EmailAccount
 from models.email_template import EmailTemplate
 from models.email_log import EmailLog
+from services.demo_identity import posthog_distinct_id, resolve_demo_slug
 from services.gmail_oauth_service import GmailOAuthService
+from services.posthog_service import posthog_service
 from services.resend_service import ResendService
 from services.unsubscribe_service import unsubscribe_service
 from services.encryption_service import encryption_service
@@ -67,6 +69,51 @@ class EmailSendingService:
                 self.db.commit()
         except Exception as exc:  # noqa: BLE001 — never block a send on bookkeeping
             logger.warning("Could not mark prospect %s as contacted: %s", prospect_id, exc)
+
+    async def _capture_email_sent(
+        self,
+        *,
+        user_id: int,
+        prospect_id: Optional[str],
+        campaign_id: Optional[str],
+        email_log_id: int,
+        recipient_email: str,
+        ab_variant: Optional[str] = None,
+    ) -> None:
+        """
+        Mirror a successful send into PostHog as an ``email_sent`` event.
+
+        This is the FIRST step of the ``email → démo → vente`` funnel. The send
+        path sets ``status = SENT`` synchronously, so Resend's ``email.sent``
+        webhook arrives at an equal rank and won't emit it — we emit it here, at
+        the source. ``distinct_id`` = the prospect's demo slug so it resolves to
+        the same PostHog person as the demo capture. Best-effort: never raises,
+        never blocks a send.
+
+        @param user_id - Owner of the send (scopes the demo-slug lookup).
+        @param prospect_id - Prospect id (string from the send API), for slug + props.
+        @param campaign_id - Campaign id (string), stamped on the event.
+        @param email_log_id - EmailLog row id, stamped on the event.
+        @param recipient_email - Recipient address, last-resort identity.
+        @param ab_variant - A/B variant ('A'/'B') when known, stamped on the event.
+        """
+        try:
+            pid: Optional[int] = int(prospect_id) if prospect_id else None
+            demo_slug: Optional[str] = resolve_demo_slug(self.db, user_id, pid)
+            await posthog_service.capture(
+                distinct_id=posthog_distinct_id(demo_slug, pid, recipient_email),
+                event="email_sent",
+                properties={
+                    "demo_slug": demo_slug,
+                    "prospect_id": pid,
+                    "campaign_id": int(campaign_id) if campaign_id else None,
+                    "ab_variant": ab_variant,
+                    "email_log_id": email_log_id,
+                    "$lib": "devleadhunter-api",
+                },
+            )
+        except Exception as exc:  # noqa: BLE001 — tracking must never break a send
+            logger.warning("PostHog email_sent capture failed (log=%s): %s", email_log_id, exc)
 
     async def send_email(
         self,
@@ -185,6 +232,13 @@ class EmailSendingService:
 
             self.db.commit()
             self._mark_prospect_contacted(prospect_id)
+            await self._capture_email_sent(
+                user_id=user_id,
+                prospect_id=prospect_id,
+                campaign_id=campaign_id,
+                email_log_id=email_log.id,
+                recipient_email=recipient_email,
+            )
 
             return {
                 "success": True,
@@ -381,6 +435,14 @@ class EmailSendingService:
             email_log.sent_at = datetime.utcnow()
             self.db.commit()
             self._mark_prospect_contacted(prospect_id)
+            await self._capture_email_sent(
+                user_id=user_id,
+                prospect_id=prospect_id,
+                campaign_id=campaign_id,
+                email_log_id=email_log.id,
+                recipient_email=recipient_email,
+                ab_variant=ab_variant,
+            )
             return {
                 "success": True,
                 "email_log_id": email_log.id,

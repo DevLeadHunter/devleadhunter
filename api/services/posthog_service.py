@@ -155,7 +155,12 @@ class PostHogService:
 
     async def get_events_for_slug(self, slug: str, *, limit: int = 300) -> list[dict[str, Any]]:
         """
-        Return raw behavioural events captured for a demo slug, newest first.
+        Return raw DEMO behavioural events captured for a demo slug, newest first.
+
+        Restricted to demo events (``DEMO_EVENTS``): email events are also
+        mirrored into PostHog under the same ``demo_slug`` (for funnels), but the
+        in-app behaviour timeline sources email from ``EmailLog`` — so filtering
+        here avoids showing each email event twice.
 
         Each item: ``{"event": str, "timestamp": str, "properties": dict}``.
         Returns an empty list when PostHog is not configured or on error.
@@ -167,10 +172,12 @@ class PostHogService:
         if not safe_slug:
             return []
 
+        demo_events_list = ", ".join(f"'{e}'" for e in DEMO_EVENTS)
         query = (
             "SELECT event, timestamp, properties "
             "FROM events "
             f"WHERE properties.demo_slug = '{safe_slug}' "
+            f"AND event IN ({demo_events_list}) "
             f"ORDER BY timestamp DESC LIMIT {int(limit)}"
         )
 
