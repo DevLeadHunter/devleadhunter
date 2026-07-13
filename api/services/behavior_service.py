@@ -26,11 +26,14 @@ from services.posthog_service import posthog_service
 # Human labels for the timeline.
 _EVENT_LABELS: dict[str, str] = {
     "$pageview": "Visite de la démo",
+    "demo_section_view": "A consulté une section",
     "demo_cta_click": "Clic sur un bouton d'action",
     "demo_phone_click": "Clic sur le téléphone",
     "demo_contact_click": "Clic sur le contact",
+    "demo_outbound_click": "Clic vers un lien externe",
     "demo_scroll_depth": "A fait défiler la page",
     "demo_time_on_page": "Temps passé sur la page",
+    "demo_engaged": "Visite qualifiée (engagé)",
     "email_sent": "Email envoyé",
     "email_opened": "Email ouvert",
     "email_clicked": "Lien de l'email cliqué",
