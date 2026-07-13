@@ -61,6 +61,7 @@ api/.env
 
 # Reference project (local only)
 GoupixDex/
+devleadhunter-pencil/
 
 # Logs
 *.log
