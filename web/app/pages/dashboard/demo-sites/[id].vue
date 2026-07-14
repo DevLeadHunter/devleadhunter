@@ -105,6 +105,15 @@
             </button>
             <button
               type="button"
+              class="btn-secondary inline-flex w-full items-center justify-center gap-2 text-xs"
+              :disabled="exporting"
+              @click="handleExport"
+            >
+              <UIcon name="i-lucide-download" class="h-3.5 w-3.5" />
+              {{ exporting ? 'Préparation du zip…' : 'Exporter le code' }}
+            </button>
+            <button
+              type="button"
               class="btn-secondary w-full text-xs text-red-300"
               :disabled="deleting"
               @click="handleDelete"
@@ -206,6 +215,7 @@ import type { DemoSite } from '~/services/demoSiteService'
 import {
   daysUntilExpiry,
   deleteDemoSite,
+  exportDemoSiteCode,
   getDemoSite,
   getDemoSiteOpenUrl,
   inviteDemoSiteClientToCms,
@@ -231,6 +241,7 @@ const verifying = ref(false)
 const regenerating = ref(false)
 const deleting = ref(false)
 const inviting = ref(false)
+const exporting = ref(false)
 
 const templateLabel = computed(() => {
   const labels: Record<string, string> = {
@@ -345,6 +356,18 @@ async function handleInvite(): Promise<void> {
     alert(error instanceof Error ? error.message : "Échec de l'invitation")
   } finally {
     inviting.value = false
+  }
+}
+
+async function handleExport(): Promise<void> {
+  if (!site.value) return
+  exporting.value = true
+  try {
+    await exportDemoSiteCode(demoSiteId, site.value.slug)
+  } catch (error) {
+    alert(error instanceof Error ? error.message : "Échec de l'export du code")
+  } finally {
+    exporting.value = false
   }
 }
 

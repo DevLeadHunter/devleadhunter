@@ -188,6 +188,46 @@ export async function deleteDemoSite(demoSiteId: number): Promise<void> {
 }
 
 /**
+ * Download the generated site's source code as a standalone, runnable zip.
+ *
+ * Streams the authenticated binary response as a Blob and triggers a browser
+ * download (the shared ``api`` client only handles JSON, so this fetches directly).
+ * @param demoSiteId - Id of the demo site to export.
+ * @param slug - Site slug, used to name the downloaded file.
+ * @throws {Error} When the export request fails (message from the API when available).
+ */
+export async function exportDemoSiteCode(demoSiteId: number, slug: string): Promise<void> {
+  const userStore = useUserStore()
+  const config = useRuntimeConfig()
+  const response = await fetch(`${config.public.apiBase}${BASE_URL}/${demoSiteId}/export`, {
+    headers: userStore.token ? { Authorization: `Bearer ${userStore.token}` } : {},
+  })
+
+  if (!response.ok) {
+    const errorText = await response.text().catch(() => '')
+    let errorMessage = `Export échoué : ${response.statusText}`
+    if (errorText) {
+      try {
+        errorMessage = (JSON.parse(errorText).detail as string) || errorMessage
+      } catch {
+        errorMessage = errorText
+      }
+    }
+    throw new Error(errorMessage)
+  }
+
+  const blob = await response.blob()
+  const url = URL.createObjectURL(blob)
+  const link = document.createElement('a')
+  link.href = url
+  link.download = `${slug}-site.zip`
+  document.body.appendChild(link)
+  link.click()
+  link.remove()
+  URL.revokeObjectURL(url)
+}
+
+/**
  * Compute days remaining before a demo site expires.
  */
 export function daysUntilExpiry(expiresAt: string): number {

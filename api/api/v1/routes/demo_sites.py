@@ -1,7 +1,8 @@
 """Demo site routes for the website builder tunnel."""
+import logging
 from typing import Any, List
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Response, status
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
@@ -23,6 +24,9 @@ from schemas.demo_site import (
 )
 from services.auth_service import get_current_active_user
 from services.demo_site_service import demo_site_service
+from services.site_export_service import site_export_service
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/demo-sites", tags=["demo-sites"])
 
@@ -250,6 +254,37 @@ async def get_demo_site(
     if not site:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Demo site not found")
     return _serialize_demo_site(site)
+
+
+@router.get("/{demo_site_id}/export")
+async def export_demo_site_code(
+    demo_site_id: int,
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db),
+) -> Response:
+    """Download the generated site's source as a standalone, runnable zip.
+
+    Rebuilds a self-contained fork of the template with the client's ``content_json``
+    baked in (see ``site_export_service``) — meant for bespoke work after a sale.
+    """
+    site = demo_site_service.get_for_user(db, current_user.id, demo_site_id)
+    if not site:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Demo site not found")
+    try:
+        data, filename = await site_export_service.build_export(site)
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+    except Exception as exc:  # noqa: BLE001 — network / GitHub tarball failure
+        logger.exception("Site code export failed for slug=%s", site.slug)
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail="Échec de la récupération du code de la template. Réessayez plus tard.",
+        ) from exc
+    return Response(
+        content=data,
+        media_type="application/zip",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
 
 
 def _get_editable_demo_site(db: Session, user_id: int, demo_site_id: int):
