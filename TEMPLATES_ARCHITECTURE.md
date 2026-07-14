@@ -49,7 +49,8 @@ Toute l'intégration (bridge Storyblok, tracking démo, fetch par slug, type `De
 | `electrician-lumen` | Électricien | **v1.2.0** | GSAP embarqué dans SES deps |
 | `mechanic-pitlane` | Mécanicien / garagiste | **v1.3.0** | DA asphalt / racing red (AutoWorks), one-page vendable |
 | `dental` | Dentiste / cabinet dentaire | **v1.1.2** | DA Family Dental Care (El Messiri + Nunito), FR, palette thémable, mailto, favicon logo, fallbacks Unsplash |
-| `food` | Food truck / street food | **v1.0.2** | DA crème & vert forêt, one-page vendable, favicon logo |
+| `food` | Food truck / street food | **v1.0.3** | DA crème & vert forêt, primary thémable, Unsplash fallbacks, favicon logo |
+| `barber` | Barbier / coiffeur homme | **v1.1.0** | DA crème & charcoal (Barlow + Work Sans), one-page, favicon logo, fallbacks Unsplash |
 
 *(`plumber-simple` retiré + archivé le 2026-07-08 — trop générique.)* La migration en layers est
 **terminée et en prod** depuis le 2026-07-08 ; le legacy in-repo a été supprimé.
