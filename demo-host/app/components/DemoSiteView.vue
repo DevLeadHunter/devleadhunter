@@ -23,6 +23,7 @@ import {
   LazyElectricianLumenRoot,
   LazyMechanicPitlaneRoot,
   LazyDentalRoot,
+  LazyFoodRoot,
 } from '#components'
 import { fetchStoryblokDraftContent, isStoryblokVisualEditor, useStoryblokBridge } from '~/composables/useStoryblokPreview'
 import type { DemoSitePublic } from '~/types/demoSite'
@@ -47,6 +48,7 @@ const MIGRATED_ROOTS: Record<string, Component> = {
   'electrician-lumen': LazyElectricianLumenRoot,
   'mechanic-pitlane': LazyMechanicPitlaneRoot,
   dental: LazyDentalRoot,
+  food: LazyFoodRoot,
 }
 
 const { data: storyblokDraftContent } = useAsyncData(
