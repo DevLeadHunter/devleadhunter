@@ -24,6 +24,7 @@ from typing import Any, Optional
 
 from services.templates import (
     artisan_edito,
+    dental,
     electrician_lumen,
     mechanic_pitlane,
     plumber_atelier,
@@ -39,6 +40,7 @@ TEMPLATE_MODULES = [
     plumber_cuivre,
     electrician_lumen,
     mechanic_pitlane,
+    dental,
 ]
 
 TEMPLATES_BY_ID: dict[str, Any] = {module.TEMPLATE_ID: module for module in TEMPLATE_MODULES}
