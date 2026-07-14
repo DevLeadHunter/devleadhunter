@@ -48,7 +48,8 @@ Toute l'intégration (bridge Storyblok, tracking démo, fetch par slug, type `De
 | `plumber-cuivre` | Plombier | **v1.2.0** | DA bleu eau « Source » |
 | `electrician-lumen` | Électricien | **v1.2.0** | GSAP embarqué dans SES deps |
 | `mechanic-pitlane` | Mécanicien / garagiste | **v1.3.0** | DA asphalt / racing red (AutoWorks), one-page vendable |
-| `dental` | Dentiste / cabinet dentaire | **v1.0.0** | DA Family Dental Care (El Messiri + Nunito, rouge/beige) |
+| `dental` | Dentiste / cabinet dentaire | **v1.1.0** | DA Family Dental Care (El Messiri + Nunito), FR, palette thémable, mailto |
+| `food` | Food truck / street food | **v1.0.1** | DA crème & vert forêt, one-page vendable, SiteContent conditionnel |
 
 *(`plumber-simple` retiré + archivé le 2026-07-08 — trop générique.)* La migration en layers est
 **terminée et en prod** depuis le 2026-07-08 ; le legacy in-repo a été supprimé.
