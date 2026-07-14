@@ -102,6 +102,7 @@ export function storyblokSiteContentToSiteContent(raw: Record<string, unknown>):
     faqHeading: str(blok.faqHeading),
     aboutHeading: str(blok.aboutHeading),
     contactHeading: str(blok.contactHeading),
+    logo: str(blok.logo),
     heroImage: str(blok.heroImage),
     aboutImage: str(blok.aboutImage),
     palette: {

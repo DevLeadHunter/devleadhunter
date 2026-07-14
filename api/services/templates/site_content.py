@@ -119,6 +119,9 @@ def map_prospect_and_enrichment(
     site_city = city or area
     area_label = f"{area} et ses alentours" if city else ""
 
+    logo_raw = enrichment.get("logo_url")
+    logo = logo_raw.strip() if isinstance(logo_raw, str) and logo_raw.strip() else ""
+
     return {
         "businessName": business_name,
         "phone": phone or "",
@@ -127,6 +130,7 @@ def map_prospect_and_enrichment(
         "area": area_label,
         "subtitle": subtitle,
         "about": about,
+        "logo": logo,
         "heroImage": photos[0] if len(photos) > 0 else "",
         "aboutImage": photos[1] if len(photos) > 1 else "",
         "gallery": [{"url": url, "alt": ""} for url in photos[2:]],
@@ -173,18 +177,19 @@ SITE_CONTENT_SCHEMAS: list[dict[str, Any]] = [
             "aboutHeading": {"type": "text", "pos": 16, "display_name": "Titre de la section À propos"},
             "contactHeading": {"type": "text", "pos": 17, "display_name": "Titre de la section Contact"},
             # ── Médias ────────────────────────────────────────────────────
-            "heroImage": {"type": "text", "pos": 18, "display_name": "Photo principale (URL)"},
-            "aboutImage": {"type": "text", "pos": 19, "display_name": "Photo « à propos » (URL)"},
-            "gallery": {"type": "bloks", "pos": 20, "display_name": "Galerie photos", "restrict_components": True, "component_whitelist": ["site_content_gallery_item"]},
-            "beforeAfter": {"type": "bloks", "pos": 21, "display_name": "Réalisations avant/après", "description": "Paires de photos avant travaux / après travaux", "restrict_components": True, "component_whitelist": ["site_content_before_after"]},
+            "logo": {"type": "text", "pos": 18, "display_name": "Logo (URL)", "description": "Logo de l'entreprise — utilisé comme favicon du site"},
+            "heroImage": {"type": "text", "pos": 19, "display_name": "Photo principale (URL)"},
+            "aboutImage": {"type": "text", "pos": 20, "display_name": "Photo « à propos » (URL)"},
+            "gallery": {"type": "bloks", "pos": 21, "display_name": "Galerie photos", "restrict_components": True, "component_whitelist": ["site_content_gallery_item"]},
+            "beforeAfter": {"type": "bloks", "pos": 22, "display_name": "Réalisations avant/après", "description": "Paires de photos avant travaux / après travaux", "restrict_components": True, "component_whitelist": ["site_content_before_after"]},
             # ── Contenu structuré ─────────────────────────────────────────
-            "services": {"type": "bloks", "pos": 22, "display_name": "Services", "restrict_components": True, "component_whitelist": ["site_content_service"]},
-            "reviews": {"type": "bloks", "pos": 23, "display_name": "Avis clients", "restrict_components": True, "component_whitelist": ["site_content_review"]},
-            "faq": {"type": "bloks", "pos": 24, "display_name": "Questions fréquentes", "restrict_components": True, "component_whitelist": ["site_content_faq"]},
-            "openingHours": {"type": "bloks", "pos": 25, "display_name": "Horaires d'ouverture", "restrict_components": True, "component_whitelist": ["site_content_hours"]},
-            "social": {"type": "bloks", "pos": 26, "display_name": "Réseaux sociaux", "description": "Liens Facebook, Instagram… affichés en pied de page", "restrict_components": True, "component_whitelist": ["site_content_social"]},
+            "services": {"type": "bloks", "pos": 23, "display_name": "Services", "restrict_components": True, "component_whitelist": ["site_content_service"]},
+            "reviews": {"type": "bloks", "pos": 24, "display_name": "Avis clients", "restrict_components": True, "component_whitelist": ["site_content_review"]},
+            "faq": {"type": "bloks", "pos": 25, "display_name": "Questions fréquentes", "restrict_components": True, "component_whitelist": ["site_content_faq"]},
+            "openingHours": {"type": "bloks", "pos": 26, "display_name": "Horaires d'ouverture", "restrict_components": True, "component_whitelist": ["site_content_hours"]},
+            "social": {"type": "bloks", "pos": 27, "display_name": "Réseaux sociaux", "description": "Liens Facebook, Instagram… affichés en pied de page", "restrict_components": True, "component_whitelist": ["site_content_social"]},
             # ── Design ────────────────────────────────────────────────────
-            "palette": {"type": "blok", "pos": 27, "display_name": "Couleurs du site", "restrict_components": True, "component_whitelist": ["theme_palette"], "maximum": 1},
+            "palette": {"type": "blok", "pos": 28, "display_name": "Couleurs du site", "restrict_components": True, "component_whitelist": ["theme_palette"], "maximum": 1},
         },
     },
     {"name": "site_content_social", "display_name": "Réseau social", "schema": {"network": {"type": "text", "pos": 0, "display_name": "Réseau", "description": "facebook, instagram, linkedin, tiktok, youtube, twitter"}, "url": {"type": "text", "pos": 1, "display_name": "URL du profil"}}},
@@ -251,6 +256,7 @@ def to_storyblok_site_content(site_content: dict[str, Any]) -> dict[str, Any]:
         "faqHeading": site_content.get("faqHeading", ""),
         "aboutHeading": site_content.get("aboutHeading", ""),
         "contactHeading": site_content.get("contactHeading", ""),
+        "logo": site_content.get("logo", ""),
         "heroImage": site_content.get("heroImage", ""),
         "aboutImage": site_content.get("aboutImage", ""),
         "palette": {
@@ -369,6 +375,7 @@ def from_storyblok_site_content(raw: dict[str, Any]) -> Optional[dict[str, Any]]
         "faqHeading": _clean_str(blok.get("faqHeading")),
         "aboutHeading": _clean_str(blok.get("aboutHeading")),
         "contactHeading": _clean_str(blok.get("contactHeading")),
+        "logo": _clean_str(blok.get("logo")),
         "heroImage": _clean_str(blok.get("heroImage")),
         "aboutImage": _clean_str(blok.get("aboutImage")),
         "palette": {
