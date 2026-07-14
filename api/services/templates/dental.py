@@ -27,9 +27,9 @@ TEMPLATE_META: dict[str, object] = {
     "id": TEMPLATE_ID,
     "name": "Dentaire Family Care",
     "description": (
-        "Vitrine cabinet dentaire « Family Dental Care » : hero sourire, galerie, "
-        "stats, soins (général / esthétique / urgences), à propos, équipe, "
-        "assurances, prise de rendez-vous. Direction rouge / beige, typo El Messiri."
+        "Vitrine cabinet dentaire : hero sourire, galerie, stats, soins "
+        "(général / esthétique / urgences), à propos, équipe, prise de "
+        "rendez-vous (mailto). Couleurs thémables via palette, typo El Messiri."
     ),
     "preview_image_url": None,
     "category": "sante",
@@ -122,25 +122,25 @@ DENTAL_FAQ: list[dict[str, str]] = [
 # Editorial copy pre-filled into the CMS — EXACT mirror of the layer defaults
 # (devleadhunter-template-dental app/types/dental.ts).
 _EDITORIAL_DEFAULTS: dict[str, Any] = {
-    "heroBadge": "FAMILY DENTAL CARE",
+    "heroBadge": "CABINET DENTAIRE",
     "heroPoints": [
-        "Preventive Guidance",
-        "Friendly Service",
-        "Dental Technology",
+        "Prévention & hygiène",
+        "Accueil bienveillant",
+        "Technologies modernes",
     ],
-    "ctaCallLabel": "Book an Appointment",
-    "ctaQuoteLabel": "Browse our service",
+    "ctaCallLabel": "Prendre rendez-vous",
+    "ctaQuoteLabel": "Nos soins",
     "trustItems": [
-        {"value": "20+", "label": "Years Of Experience"},
-        {"value": "200+", "label": "Satisfied Clients"},
-        {"value": "20+", "label": "Certified Dentist"},
+        {"value": "20+", "label": "Années d'expérience"},
+        {"value": "2000+", "label": "Patients suivis"},
+        {"value": "5", "label": "Praticiens"},
     ],
-    "servicesHeading": "Quality dental services",
-    "galleryHeading": "Creating beautiful smiles for all ages",
-    "reviewsHeading": "Meet your neighborhood dentists",
+    "servicesHeading": "Des soins dentaires de qualité",
+    "galleryHeading": "Des sourires pour tous les âges",
+    "reviewsHeading": "Votre équipe soignante",
     "faqHeading": "Questions fréquentes",
-    "aboutHeading": "Your smile is our pride",
-    "contactHeading": "Book Appointment",
+    "aboutHeading": "Votre sourire, notre fierté",
+    "contactHeading": "Prendre rendez-vous",
 }
 
 
