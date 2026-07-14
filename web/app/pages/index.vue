@@ -12,6 +12,8 @@
     <LandingFeatureGrid />
     <LandingPricing :settings="creditSettings" :loading="isLoading" />
     <LandingSectionDivider />
+    <LandingDesktopApp />
+    <LandingSectionDivider />
     <LandingFaq />
     <LandingFinalCta />
   </div>

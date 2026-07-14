@@ -4,6 +4,7 @@
     "product": "The delivered site",
     "pricing": "Pricing",
     "faq": "FAQ",
+    "downloads": "Download the app",
     "login": "Log in",
     "signup": "Start for free"
   },
@@ -190,6 +191,23 @@
       "a5": "Every email includes an unsubscribe link, sends are limited to one every 20 minutes, and you control your sending domain (Resend, Gmail or your own) to protect your reputation.",
       "q6": "Can I try it for free?",
       "a6": "Yes. Create an account, receive free credits and test the entire pipeline without a credit card."
+    },
+    "desktop": {
+      "eyebrow": "Desktop app",
+      "title": "The whole tool, installed on your computer.",
+      "description": "DevLeadHunter also comes as a native Windows and macOS app. It signs into your account, updates itself, and runs your searches straight from your own machine.",
+      "bullet1": "Native Windows & macOS, automatic updates",
+      "bullet2": "Signed into your account, nothing to set up",
+      "bullet3": "Your searches run from your own connection",
+      "cta": "Download the app",
+      "note": "Free · included with your account",
+      "window": {
+        "title": "Prospecting",
+        "kpiProspects": "Prospects",
+        "kpiDemos": "Demos",
+        "kpiSales": "Sales"
+      },
+      "chip": "Windows · macOS"
     },
     "finalCta": {
       "title": "Your next client doesn't have a website yet.",

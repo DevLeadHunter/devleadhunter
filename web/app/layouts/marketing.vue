@@ -37,6 +37,12 @@
           >
             {{ $t(link.label) }}
           </a>
+          <NuxtLink
+            :to="localePath('/downloads')"
+            class="text-sm font-medium text-[#6b6355] transition-colors hover:text-[#1b1813]"
+          >
+            {{ $t('nav.downloads') }}
+          </NuxtLink>
           <NuxtLink :to="localePath('/signup')" class="landing-btn-primary px-5 py-2.5 text-sm">
             {{ $t('nav.signup') }}
           </NuxtLink>
@@ -78,6 +84,14 @@
           >
             {{ $t(link.label) }}
           </a>
+          <NuxtLink
+            :to="localePath('/downloads')"
+            class="menu-item font-display text-4xl font-semibold text-[#1b1813] transition-colors hover:text-[#6b6355]"
+            :style="{ transitionDelay: `${sectionLinks.length * 40}ms` }"
+            @click="closeMobileMenu"
+          >
+            {{ $t('nav.downloads') }}
+          </NuxtLink>
         </nav>
         <div class="border-t border-[#e3dccd] p-6">
           <NuxtLink :to="localePath('/signup')" class="landing-btn-primary w-full text-center" @click="closeMobileMenu">
