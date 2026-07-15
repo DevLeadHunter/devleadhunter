@@ -15,6 +15,56 @@
     "decline": "Refuser",
     "learnMore": "En savoir plus"
   },
+  "auth": {
+    "backHome": "Retour au site",
+    "fields": {
+      "name": "Nom",
+      "namePlaceholder": "Jean Dupont",
+      "email": "Email",
+      "emailPlaceholder": "vous{'@'}exemple.fr",
+      "password": "Mot de passe"
+    },
+    "errors": {
+      "emailFormat": "Format d'email invalide."
+    },
+    "login": {
+      "title": "Connexion",
+      "subtitle": "Retrouvez vos prospects, campagnes et ventes.",
+      "passwordPlaceholder": "Votre mot de passe",
+      "submit": "Se connecter",
+      "submitting": "Connexion…",
+      "switchQuestion": "Pas encore de compte ?",
+      "switchCta": "Créer un compte",
+      "errorGeneral": "Identifiants incorrects. Réessayez.",
+      "errorEmailRequired": "Saisissez votre adresse email pour accéder à votre compte.",
+      "errorPasswordRequired": "Saisissez votre mot de passe."
+    },
+    "signup": {
+      "title": "Créer votre compte",
+      "subtitle": "Trouvez des artisans sans site web et transformez-les en clients.",
+      "passwordPlaceholder": "6 caractères minimum",
+      "submit": "Créer mon compte",
+      "submitting": "Création…",
+      "switchQuestion": "Déjà un compte ?",
+      "switchCta": "Se connecter",
+      "errorGeneral": "La création du compte a échoué. Réessayez.",
+      "errorNameRequired": "Saisissez votre nom.",
+      "errorEmailRequired": "Saisissez votre adresse email.",
+      "errorPasswordRequired": "Saisissez votre mot de passe.",
+      "errorPasswordLength": "Le mot de passe doit contenir au moins 6 caractères."
+    },
+    "panel": {
+      "eyebrow": "Votre atelier de prospection",
+      "loginTitle": "Vos prospects vous attendent.",
+      "loginText": "Reprenez là où vous en étiez : recherches, sites de démonstration, campagnes et ventes — tout est au même endroit.",
+      "loginChip": "Recherche → démo → vente, au même endroit",
+      "signupTitle": "L'outil qui trouve des clients à votre place.",
+      "signupText": "Détectez les artisans sans site web, générez un site de démonstration à leur nom et démarchez-les — automatiquement.",
+      "bullet1": "Des artisans sans site web, trouvés automatiquement",
+      "bullet2": "Un site de démonstration généré pour chaque prospect",
+      "bullet3": "Des campagnes email qui vendent pour vous"
+    }
+  },
   "landing": {
     "seo": {
       "title": "DevLeadHunter — Vendez des sites web aux artisans qui n'en ont pas",

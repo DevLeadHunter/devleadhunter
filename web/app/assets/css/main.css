@@ -590,6 +590,39 @@ html.dark {
   box-shadow: 0 24px 48px -32px rgba(27, 24, 19, 0.25);
 }
 
+/* Form input on paper surfaces (auth pages) — ink focus, B&W DA */
+.landing-input {
+  @apply w-full rounded-xl border px-3.5 py-2.5 text-sm;
+  border-color: var(--dlh-line);
+  background-color: var(--dlh-paper-raised);
+  color: var(--dlh-ink);
+  transition:
+    border-color 0.2s ease,
+    box-shadow 0.2s ease;
+}
+
+.landing-input::placeholder {
+  color: color-mix(in srgb, var(--dlh-ink-soft) 55%, transparent);
+}
+
+.landing-input:focus {
+  outline: none;
+  border-color: var(--dlh-ink);
+  box-shadow: 0 0 0 3px rgba(27, 24, 19, 0.08);
+}
+
+.landing-input--error {
+  border-color: #b3462e;
+}
+
+/* Loader variable overrides so UiLoader blends with the paper DA
+   (the auth pages render outside the .app-theme scope). */
+.landing-loader-vars {
+  --app-bg: #f6f3ec;
+  --app-line: #e3dccd;
+  --app-accent: #e8a33c;
+}
+
 /* Playful lift + tilt on hover (collage feel, B&W-safe) */
 .landing-tilt {
   transition:

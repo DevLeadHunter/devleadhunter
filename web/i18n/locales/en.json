@@ -15,6 +15,56 @@
     "decline": "Decline",
     "learnMore": "Learn more"
   },
+  "auth": {
+    "backHome": "Back to site",
+    "fields": {
+      "name": "Name",
+      "namePlaceholder": "John Smith",
+      "email": "Email",
+      "emailPlaceholder": "you{'@'}example.com",
+      "password": "Password"
+    },
+    "errors": {
+      "emailFormat": "Invalid email format."
+    },
+    "login": {
+      "title": "Log in",
+      "subtitle": "Get back to your prospects, campaigns and sales.",
+      "passwordPlaceholder": "Your password",
+      "submit": "Log in",
+      "submitting": "Logging in…",
+      "switchQuestion": "No account yet?",
+      "switchCta": "Create an account",
+      "errorGeneral": "Invalid credentials. Try again.",
+      "errorEmailRequired": "Enter your email address to access your account.",
+      "errorPasswordRequired": "Enter your password."
+    },
+    "signup": {
+      "title": "Create your account",
+      "subtitle": "Find businesses without a website and turn them into clients.",
+      "passwordPlaceholder": "6 characters minimum",
+      "submit": "Create my account",
+      "submitting": "Creating…",
+      "switchQuestion": "Already have an account?",
+      "switchCta": "Log in",
+      "errorGeneral": "Account creation failed. Try again.",
+      "errorNameRequired": "Enter your name.",
+      "errorEmailRequired": "Enter your email address.",
+      "errorPasswordRequired": "Enter your password.",
+      "errorPasswordLength": "Password must be at least 6 characters."
+    },
+    "panel": {
+      "eyebrow": "Your prospecting workshop",
+      "loginTitle": "Your prospects are waiting.",
+      "loginText": "Pick up where you left off: searches, demo sites, campaigns and sales — everything in one place.",
+      "loginChip": "Search → demo → sale, in one place",
+      "signupTitle": "The tool that finds clients for you.",
+      "signupText": "Detect businesses without a website, generate a demo site in their name and reach out — automatically.",
+      "bullet1": "Businesses without a website, found automatically",
+      "bullet2": "A demo site generated for every prospect",
+      "bullet3": "Email campaigns that sell for you"
+    }
+  },
   "landing": {
     "seo": {
       "title": "DevLeadHunter — Sell websites to local businesses that don't have one",
