@@ -14,7 +14,7 @@ export default defineNuxtConfig({
     'github:DevLeadHunter/devleadhunter-template-mechanic-pitlane#v1.3.0',
     'github:DevLeadHunter/devleadhunter-template-dental#v1.1.2',
     'github:DevLeadHunter/devleadhunter-template-food#v1.0.3',
-    'github:DevLeadHunter/devleadhunter-template-barber#v1.1.1',
+    'github:DevLeadHunter/devleadhunter-template-barber#v1.1.2',
   ],
 
   compatibilityDate: '2024-07-11',
