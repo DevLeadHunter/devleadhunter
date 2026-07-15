@@ -54,15 +54,13 @@
       "errorPasswordLength": "Le mot de passe doit contenir au moins 6 caractères."
     },
     "panel": {
-      "eyebrow": "Votre atelier de prospection",
-      "loginTitle": "Vos prospects vous attendent.",
-      "loginText": "Reprenez là où vous en étiez : recherches, sites de démonstration, campagnes et ventes — tout est au même endroit.",
-      "loginChip": "Recherche → démo → vente, au même endroit",
-      "signupTitle": "L'outil qui trouve des clients à votre place.",
-      "signupText": "Détectez les artisans sans site web, générez un site de démonstration à leur nom et démarchez-les — automatiquement.",
-      "bullet1": "Des artisans sans site web, trouvés automatiquement",
-      "bullet2": "Un site de démonstration généré pour chaque prospect",
-      "bullet3": "Des campagnes email qui vendent pour vous"
+      "signupWord1": "Trouver",
+      "signupWord2": "Générer",
+      "signupWord3": "Vendre",
+      "signupLine": "De la recherche à la vente, au même endroit.",
+      "loginWord1": "Bon",
+      "loginWord2": "retour",
+      "loginLine": "Vos prospects vous attendent."
     }
   },
   "landing": {

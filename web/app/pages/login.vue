@@ -4,11 +4,18 @@
       <UiLoader />
     </div>
     <AuthShell v-else mode="login">
-      <LandingAsterisk class="text-2xl text-[#e8a33c]" />
-      <h1 class="font-display mt-4 text-3xl font-semibold tracking-[-0.015em]">{{ $t('auth.login.title') }}</h1>
-      <p class="mt-2 text-sm leading-relaxed text-[#6b6355]">{{ $t('auth.login.subtitle') }}</p>
+      <LandingAsterisk class="auth-rise text-2xl text-[#e8a33c]" :style="{ animationDelay: '0ms' }" />
+      <h1
+        class="auth-rise font-display mt-5 text-4xl font-semibold tracking-[-0.02em]"
+        :style="{ animationDelay: '70ms' }"
+      >
+        {{ $t('auth.login.title') }}
+      </h1>
+      <p class="auth-rise mt-2.5 text-sm leading-relaxed text-[#6b6355]" :style="{ animationDelay: '140ms' }">
+        {{ $t('auth.login.subtitle') }}
+      </p>
 
-      <form class="landing-card mt-8 space-y-4 p-6" @submit.prevent="handleSubmit">
+      <form class="mt-10 space-y-5" @submit.prevent="handleSubmit">
         <!-- General Error -->
         <div
           v-if="generalError"
@@ -18,8 +25,8 @@
         </div>
 
         <!-- Email -->
-        <div>
-          <label for="email" class="font-label mb-1.5 block text-xs tracking-[0.08em] text-[#6b6355] uppercase">
+        <div class="auth-rise" :style="{ animationDelay: '210ms' }">
+          <label for="email" class="font-label mb-2 block text-xs tracking-[0.08em] text-[#6b6355] uppercase">
             {{ $t('auth.fields.email') }}
           </label>
           <input
@@ -30,12 +37,12 @@
             :placeholder="$t('auth.fields.emailPlaceholder')"
             :class="['landing-input', emailError && 'landing-input--error']"
           />
-          <p v-if="emailError" class="mt-1 text-xs text-[#8f3a25]">{{ emailError }}</p>
+          <p v-if="emailError" class="mt-1.5 text-xs text-[#8f3a25]">{{ emailError }}</p>
         </div>
 
         <!-- Password -->
-        <div>
-          <label for="password" class="font-label mb-1.5 block text-xs tracking-[0.08em] text-[#6b6355] uppercase">
+        <div class="auth-rise" :style="{ animationDelay: '280ms' }">
+          <label for="password" class="font-label mb-2 block text-xs tracking-[0.08em] text-[#6b6355] uppercase">
             {{ $t('auth.fields.password') }}
           </label>
           <UiPasswordInput
@@ -46,17 +53,19 @@
             :placeholder="$t('auth.login.passwordPlaceholder')"
             :has-error="Boolean(passwordError)"
           />
-          <p v-if="passwordError" class="mt-1 text-xs text-[#8f3a25]">{{ passwordError }}</p>
+          <p v-if="passwordError" class="mt-1.5 text-xs text-[#8f3a25]">{{ passwordError }}</p>
         </div>
 
         <!-- Submit Button -->
-        <button type="submit" :disabled="isLoading" class="landing-btn-primary w-full">
-          <span v-if="isLoading">{{ $t('auth.login.submitting') }}</span>
-          <span v-else>{{ $t('auth.login.submit') }}</span>
-        </button>
+        <div class="auth-rise pt-2" :style="{ animationDelay: '350ms' }">
+          <button type="submit" :disabled="isLoading" class="landing-btn-primary w-full">
+            <span v-if="isLoading">{{ $t('auth.login.submitting') }}</span>
+            <span v-else>{{ $t('auth.login.submit') }}</span>
+          </button>
+        </div>
 
         <!-- Sign Up Link -->
-        <p class="text-center text-sm text-[#6b6355]">
+        <p class="auth-rise text-center text-sm text-[#6b6355]" :style="{ animationDelay: '420ms' }">
           {{ $t('auth.login.switchQuestion') }}
           <NuxtLink :to="localePath('/signup')" class="landing-link">{{ $t('auth.login.switchCta') }}</NuxtLink>
         </p>

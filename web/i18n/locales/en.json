@@ -54,15 +54,13 @@
       "errorPasswordLength": "Password must be at least 6 characters."
     },
     "panel": {
-      "eyebrow": "Your prospecting workshop",
-      "loginTitle": "Your prospects are waiting.",
-      "loginText": "Pick up where you left off: searches, demo sites, campaigns and sales — everything in one place.",
-      "loginChip": "Search → demo → sale, in one place",
-      "signupTitle": "The tool that finds clients for you.",
-      "signupText": "Detect businesses without a website, generate a demo site in their name and reach out — automatically.",
-      "bullet1": "Businesses without a website, found automatically",
-      "bullet2": "A demo site generated for every prospect",
-      "bullet3": "Email campaigns that sell for you"
+      "signupWord1": "Find",
+      "signupWord2": "Generate",
+      "signupWord3": "Sell",
+      "signupLine": "From search to sale, in one place.",
+      "loginWord1": "Welcome",
+      "loginWord2": "back",
+      "loginLine": "Your prospects are waiting."
     }
   },
   "landing": {

@@ -605,6 +605,10 @@ html.dark {
   color: color-mix(in srgb, var(--dlh-ink-soft) 55%, transparent);
 }
 
+.landing-input:hover {
+  border-color: #cfc6b4;
+}
+
 .landing-input:focus {
   outline: none;
   border-color: var(--dlh-ink);
@@ -613,6 +617,43 @@ html.dark {
 
 .landing-input--error {
   border-color: #b3462e;
+}
+
+/* Auth pages — staggered rise-in entrance (mirrors the landing hero) */
+.auth-rise {
+  opacity: 0;
+  transform: translateY(18px);
+  animation: auth-rise 0.9s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+@keyframes auth-rise {
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Ceremonial slow spin for the oversized asterisk on the auth poster panel */
+.auth-spin-slow {
+  animation: auth-spin 90s linear infinite;
+}
+
+@keyframes auth-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .auth-rise {
+    animation: none;
+    opacity: 1;
+    transform: none;
+  }
+
+  .auth-spin-slow {
+    animation: none;
+  }
 }
 
 /* Loader variable overrides so UiLoader blends with the paper DA
