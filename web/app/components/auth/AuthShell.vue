@@ -25,13 +25,16 @@
           </NuxtLink>
         </div>
 
-        <!-- Monumental asterisk, cropped on the right edge, in ceremonial slow spin -->
-        <span class="pointer-events-none absolute top-1/2 -right-44 -translate-y-1/2 select-none" aria-hidden="true">
-          <LandingAsterisk class="auth-spin-slow block text-[36rem] text-[#e8a33c]/15" />
+        <!-- Monumental asterisk in ceremonial slow spin, sealed behind the words -->
+        <span
+          class="pointer-events-none absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 select-none"
+          aria-hidden="true"
+        >
+          <LandingAsterisk class="auth-spin-slow block text-[30rem] text-[#e8a33c]/[0.13] xl:text-[34rem]" />
         </span>
 
-        <!-- Stacked pipeline words -->
-        <div class="relative z-10 flex flex-1 items-center px-10 xl:px-16">
+        <!-- Stacked pipeline words, centered like a poster -->
+        <div class="relative z-10 flex flex-1 items-center justify-center px-10 text-center">
           <div>
             <h2
               class="font-display text-[4.25rem] leading-[1.02] font-semibold tracking-[-0.025em] text-[#1b1813] xl:text-[5.25rem]"
@@ -48,7 +51,7 @@
               </span>
             </h2>
             <p
-              class="auth-rise mt-7 max-w-sm text-base leading-relaxed text-[#6b6355]"
+              class="auth-rise mx-auto mt-7 max-w-sm text-base leading-relaxed text-[#6b6355]"
               :style="{ animationDelay: `${120 + wordKeys.length * 110 + 130}ms` }"
             >
               {{ mode === 'signup' ? $t('auth.panel.signupLine') : $t('auth.panel.loginLine') }}
@@ -63,7 +66,7 @@
       </aside>
 
       <!-- Form column (raised paper) -->
-      <div class="relative flex w-full flex-col border-[#e3dccd] bg-[#fcfaf5] lg:w-[44%] lg:border-l xl:w-[40%]">
+      <div class="relative flex w-full flex-col border-[#e3dccd] bg-[#fcfaf5] lg:w-1/2 lg:border-l">
         <div class="flex items-center justify-between px-6 pt-6 md:px-10">
           <NuxtLink :to="localePath('/')" class="inline-flex items-center gap-2.5 lg:hidden" aria-label="DevLeadHunter">
             <svg
