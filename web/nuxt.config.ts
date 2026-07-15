@@ -210,7 +210,9 @@ export default defineNuxtConfig({
 
   sitemap: !isDesktopBuild
     ? {
-        // Auto-generated at /sitemap.xml (replaces the static public/sitemap.xml that 500'd in prod).
+        // Per-locale sitemaps live under /sitemaps/ (not /__sitemap__/) for cleaner URLs
+        // and better compatibility with crawlers / nginx security rules.
+        sitemapsPathPrefix: '/sitemaps/',
         exclude: ['/dashboard/**', '/login', '/profile'],
       }
     : undefined,
