@@ -95,6 +95,7 @@ Google/PagesJaunes mais **aucun site**. **Vendeur** : Léo Guillaume (marque Dib
 | **Clic démo** (du prospect, séquence) | 8 % | **15 %** | 25 % | Le hook « votre site » tire ce taux **au-dessus** des standards cold (2–5 %). |
 | **Réponse positive / intérêt** (du prospect) | 2 % | **5 %** | 9 % | Séquence complète (relances comprises). |
 | **Vente** (du prospect contacté) | 0,5 % | **1,5 %** | 3 % | 500 € one-shot, cycle court possible. Cohérent : ~5 % d'intérêt × ~30 % de closing ≈ 1,5 %. |
+| **💶 € estimé (par 100 prospects)** | **~250 €** | **~750 €** | **~1 500 €** | 0,5 / 1,5 / 3 ventes × 500 €. |
 
 **Lecture** : pour **100 prospects** menés dans la séquence (réaliste) → ~40 ouvrent, ~15 cliquent la
 démo, ~5 répondent avec intérêt, **~1,5 achètent** → **~750 € par tranche de 100 prospects**.
@@ -127,6 +128,38 @@ démo, ~5 répondent avec intérêt, **~1,5 achètent** → **~750 € par tranc
 > qui **valide le funnel**, pas d'un revenu de scale. Le vrai potentiel se débloque quand (a) le funnel
 > est prouvé et (b) on **augmente le volume d'envoi** (§10). Le but des 3 premiers mois : **prouver les
 > taux réels** et **encaisser les 1ères ventes** pour la preuve sociale.
+
+### 💶 Vue chiffre d'affaires : semaine par semaine, puis mois par mois
+
+> Réponse directe à « **combien je peux estimer vendre / encaisser ?** ». Mêmes hypothèses que ci-dessus.
+> Rappel : la **1ʳᵉ vente tombe rarement en semaine 1** (le prospect doit voir la démo, décider, prendre
+> un domaine → cycle de quelques jours à 2 semaines). Le **mois 1 est un rodage** (donc sous la vitesse
+> de croisière, atteinte à partir du mois 2 ≈ 5 ventes/mois).
+
+**Mois 1 — semaine par semaine (ventes → CA) :**
+
+| Période | Pessimiste | **Réaliste** | Optimiste |
+|---|---|---|---|
+| **Semaine 1** | 0 → **0 €** | 0 → **0 €** | 0–1 → **~250 €** |
+| **Semaine 2** | 0 → **0 €** | 0–1 → **~250 €** | 1 → **~500 €** |
+| **Semaine 3** | 0–1 → **~250 €** | 1 → **~500 €** | 2 → **~1 000 €** |
+| **Semaine 4** | 0–1 → **~250 €** | 1–2 → **~750 €** | 2–3 → **~1 250 €** |
+| **Total mois 1** | ~1 vente → **~500 €** | ~2–3 → **~1 250 €** | ~5 → **~2 750 €** |
+
+**Vue mensuelle (ventes → CA du mois) :**
+
+| Période | Pessimiste | **Réaliste** | Optimiste |
+|---|---|---|---|
+| **Mois 1** (rodage) | ~1 → **~500 €** | ~2–3 → **~1 250 €** | ~5 → **~2 750 €** |
+| **Mois 2** (vitesse de croisière) | ~2 → **~1 000 €** | ~5 → **~2 500 €** | ~11 → **~5 500 €** |
+| **Mois 3** | ~2 → **~1 000 €** | ~6 → **~3 000 €** | ~13 → **~6 500 €** |
+| **CUMUL 3 mois** | **~5 ventes → ~2 500 €** | **~13 ventes → ~6 500 €** | **~29 ventes → ~14 500 €** |
+
+**En clair** : compte **~0 € la 1ʳᵉ semaine**, ta **1ʳᵉ vente vers la semaine 2–4**, environ
+**1 000–1 500 € le 1er mois** (réaliste), puis **~2 500–3 000 €/mois** en vitesse de croisière →
+**~6 500 € cumulés sur 3 mois**. Même le scénario pessimiste reste **positif** (~2 500 € sur 3 mois)
+grâce à la marge quasi totale ; l'optimiste dépend surtout de la **délivrabilité** et de la **preuve
+sociale** qui s'accumule à chaque vente.
 
 ---
 
@@ -202,6 +235,7 @@ chaque semaine et à reporter dans le §10 :
 | Date | Version | Changement |
 |---|---|---|
 | 2026-07-15 | v1 | Création. Hypothèses de funnel, cadence 20 J1/j (relances par-dessus), projections S/M/3M, éco unitaire, leviers. **Aucun chiffre réel encore** — tout est estimation à valider. |
+| 2026-07-15 | v1.1 | Ajout ligne « 💶 € estimé » au funnel (§5) + vue CA semaine-par-semaine et mois-par-mois en euros (§6) pour lire directement le chiffre d'affaires estimé dans le temps. |
 
 > **Prochaine mise à jour attendue** : après la 1ʳᵉ semaine d'envois réels → remplacer open/clic
 > estimés par les vrais (PostHog + Resend), et corriger les projections.
