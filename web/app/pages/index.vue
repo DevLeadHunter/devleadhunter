@@ -37,6 +37,7 @@ definePageMeta({
 })
 
 const { t } = useI18n()
+const { track } = useSiteTracking()
 
 /** i18n-aware head attributes (lang, hreflang alternates, og:locale). */
 const localeHead = useLocaleHead()
@@ -75,7 +76,30 @@ function scrollToSection(selector: string): void {
   }
 }
 
+/**
+ * Fire a `site_section_view` event the first time each landing section scrolls into view.
+ */
+function trackSectionViews(): void {
+  if (typeof IntersectionObserver === 'undefined') return
+  const seen: Set<string> = new Set<string>()
+  const observer: IntersectionObserver = new IntersectionObserver(
+    (entries: IntersectionObserverEntry[]): void => {
+      for (const entry of entries) {
+        const id: string = (entry.target as HTMLElement).id
+        if (entry.isIntersecting && id && !seen.has(id)) {
+          seen.add(id)
+          track('site_section_view', { section: id })
+          observer.unobserve(entry.target)
+        }
+      }
+    },
+    { threshold: 0.5 },
+  )
+  document.querySelectorAll('section[id]').forEach((element: Element): void => observer.observe(element))
+}
+
 onMounted(async (): Promise<void> => {
+  trackSectionViews()
   await loadCreditSettings()
 })
 

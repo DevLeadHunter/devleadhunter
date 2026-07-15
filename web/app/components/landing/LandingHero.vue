@@ -29,11 +29,15 @@
         class="hero-rise mt-10 flex flex-col items-stretch gap-3 sm:flex-row sm:items-center"
         :style="{ animationDelay: '270ms' }"
       >
-        <NuxtLink :to="localePath('/signup')" class="landing-btn-primary">
+        <NuxtLink
+          :to="localePath('/signup')"
+          class="landing-btn-primary"
+          @click="track('site_cta_click', { location: 'hero', label: 'signup' })"
+        >
           {{ $t('landing.hero.ctaPrimary') }}
           <i class="fa-solid fa-arrow-right text-sm" aria-hidden="true"></i>
         </NuxtLink>
-        <button type="button" class="landing-btn-ghost" @click="emit('discover')">
+        <button type="button" class="landing-btn-ghost" @click="handleDiscover">
           {{ $t('landing.hero.ctaSecondary') }}
         </button>
       </div>
@@ -67,9 +71,18 @@ const emit = defineEmits<{
 }>()
 
 const localePath = useLocalePath()
+const { track } = useSiteTracking()
 
 /** i18n keys of the three trust markers under the CTAs. */
 const trustKeys: string[] = ['landing.hero.trust1', 'landing.hero.trust2', 'landing.hero.trust3']
+
+/**
+ * Track the secondary hero CTA, then emit the discover event.
+ */
+function handleDiscover(): void {
+  track('site_cta_click', { location: 'hero', label: 'discover' })
+  emit('discover')
+}
 </script>
 
 <style scoped>

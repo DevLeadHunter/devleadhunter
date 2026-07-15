@@ -22,6 +22,7 @@
         <NuxtLink
           :to="localePath('/signup')"
           class="mt-10 inline-flex items-center gap-2.5 rounded-full bg-[#fcfaf5] px-8 py-4 text-base font-semibold text-[#1b1813] transition-all duration-300 hover:-translate-y-0.5 hover:bg-white"
+          @click="track('site_cta_click', { location: 'final_cta', label: 'signup' })"
         >
           {{ $t('landing.finalCta.cta') }}
           <i class="fa-solid fa-arrow-right text-sm" aria-hidden="true"></i>
@@ -36,4 +37,5 @@
 
 <script lang="ts" setup>
 const localePath = useLocalePath()
+const { track } = useSiteTracking()
 </script>

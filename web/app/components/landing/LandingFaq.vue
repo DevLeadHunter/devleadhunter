@@ -73,11 +73,17 @@ const faqEntries: LandingFaqEntry[] = Array.from(
 /** Index of the currently open entry (null when all are collapsed). */
 const openIndex: Ref<number | null> = ref<number | null>(0)
 
+const { track } = useSiteTracking()
+
 /**
  * Open an entry, or collapse it when it is already open.
  * @param index - Index of the clicked entry.
  */
 function toggleEntry(index: number): void {
-  openIndex.value = openIndex.value === index ? null : index
+  const willOpen: boolean = openIndex.value !== index
+  openIndex.value = willOpen ? index : null
+  if (willOpen) {
+    track('site_faq_open', { index, question: faqEntries[index]?.questionKey })
+  }
 }
 </script>

@@ -24,7 +24,11 @@
             «&nbsp;{{ $t('landing.pricing.roiNote') }}&nbsp;»
           </blockquote>
           <div>
-            <NuxtLink :to="localePath('/signup')" class="landing-btn-primary w-full text-center md:w-auto">
+            <NuxtLink
+              :to="localePath('/signup')"
+              class="landing-btn-primary w-full text-center md:w-auto"
+              @click="track('site_cta_click', { location: 'pricing', label: 'signup' })"
+            >
               {{ $t('landing.pricing.cta') }}
             </NuxtLink>
           </div>
@@ -88,6 +92,7 @@ const props: LandingPricingProps = defineProps({
 
 const { locale } = useI18n()
 const localePath = useLocalePath()
+const { track } = useSiteTracking()
 
 /** One credit metric displayed in the pricing card. */
 interface LandingPricingStat {

@@ -25,8 +25,12 @@
               {{ $t(bulletKey) }}
             </li>
           </ul>
-          <div v-reveal="{ delay: 440 }" class="mt-9 flex flex-col items-start gap-4 sm:flex-row sm:items-center">
-            <NuxtLink :to="localePath('/downloads')" class="landing-btn-primary">
+          <div v-reveal="{ delay: 440 }" class="mt-9 flex flex-col items-start gap-3">
+            <NuxtLink
+              :to="localePath('/downloads')"
+              class="landing-btn-primary whitespace-nowrap"
+              @click="track('site_download_click', { location: 'section' })"
+            >
               {{ $t('landing.desktop.cta') }}
               <i class="fa-solid fa-arrow-down text-sm" aria-hidden="true"></i>
             </NuxtLink>
@@ -122,6 +126,7 @@ interface LandingDesktopKpi {
 }
 
 const localePath = useLocalePath()
+const { track } = useSiteTracking()
 
 /** i18n keys of the three benefit bullets under the heading. */
 const bulletKeys: string[] = ['landing.desktop.bullet1', 'landing.desktop.bullet2', 'landing.desktop.bullet3']

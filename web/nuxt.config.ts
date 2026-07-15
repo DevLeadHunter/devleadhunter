@@ -134,6 +134,11 @@ export default defineNuxtConfig({
         (process.env.NODE_ENV === 'production' ? 'https://demo.dibodev.fr' : 'http://localhost:3001'),
       // True for the Tauri desktop build → the landing page redirects to the app.
       isDesktop: isDesktopBuild,
+      // PostHog — marketing-site tracking (surface: 'marketing'). Same project as the
+      // demo sites; empty key → tracking disabled. Only the public site is tracked,
+      // never the dashboard app (see plugins/posthog.client.ts).
+      posthogProjectApiKey: process.env.NUXT_PUBLIC_POSTHOG_PROJECT_API_KEY || '',
+      posthogIngestionHost: process.env.NUXT_PUBLIC_POSTHOG_INGESTION_HOST || 'https://eu.i.posthog.com',
     },
   },
 

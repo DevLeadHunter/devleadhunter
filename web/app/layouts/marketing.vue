@@ -10,7 +10,7 @@
     >
       <nav class="mx-auto flex h-20 max-w-6xl items-center justify-between px-5 md:px-8">
         <!-- Logo -->
-        <NuxtLink :to="localePath('/')" class="group flex items-center gap-2.5">
+        <NuxtLink :to="localePath('index')" class="group flex items-center gap-2.5">
           <svg
             class="h-5 w-5 fill-current text-[#1b1813] transition-colors group-hover:text-[#6b6355]"
             viewBox="0 0 493 515"
@@ -33,17 +33,22 @@
             :key="link.target"
             :href="link.target"
             class="text-sm font-medium text-[#6b6355] transition-colors hover:text-[#1b1813]"
-            @click.prevent="scrollToSection(link.target)"
+            @click.prevent="onNavClick(link.target)"
           >
             {{ $t(link.label) }}
           </a>
           <NuxtLink
             :to="localePath('/downloads')"
             class="text-sm font-medium text-[#6b6355] transition-colors hover:text-[#1b1813]"
+            @click="track('site_download_click', { location: 'nav' })"
           >
             {{ $t('nav.downloads') }}
           </NuxtLink>
-          <NuxtLink :to="localePath('/signup')" class="landing-btn-primary px-5 py-2.5 text-sm">
+          <NuxtLink
+            :to="localePath('/signup')"
+            class="landing-btn-primary px-5 py-2.5 text-sm"
+            @click="track('site_cta_click', { location: 'header', label: 'signup' })"
+          >
             {{ $t('nav.signup') }}
           </NuxtLink>
         </div>
@@ -88,13 +93,13 @@
             :to="localePath('/downloads')"
             class="menu-item font-display text-4xl font-semibold text-[#1b1813] transition-colors hover:text-[#6b6355]"
             :style="{ transitionDelay: `${sectionLinks.length * 40}ms` }"
-            @click="closeMobileMenu"
+            @click="onMobileDownload"
           >
             {{ $t('nav.downloads') }}
           </NuxtLink>
         </nav>
         <div class="border-t border-[#e3dccd] p-6">
-          <NuxtLink :to="localePath('/signup')" class="landing-btn-primary w-full text-center" @click="closeMobileMenu">
+          <NuxtLink :to="localePath('/signup')" class="landing-btn-primary w-full text-center" @click="onMobileSignup">
             {{ $t('nav.signup') }}
           </NuxtLink>
         </div>
@@ -140,7 +145,7 @@
                 <a
                   :href="link.target"
                   class="text-sm text-[#6b6355] transition-colors hover:text-[#1b1813]"
-                  @click.prevent="scrollToSection(link.target)"
+                  @click.prevent="onNavClick(link.target)"
                 >
                   {{ $t(link.label) }}
                 </a>
@@ -156,7 +161,7 @@
                 <a
                   href="#faq"
                   class="text-sm text-[#6b6355] transition-colors hover:text-[#1b1813]"
-                  @click.prevent="scrollToSection('#faq')"
+                  @click.prevent="onNavClick('#faq')"
                 >
                   {{ $t('footer.links.faq') }}
                 </a>
@@ -165,6 +170,7 @@
                 <NuxtLink
                   :to="localePath('/downloads')"
                   class="text-sm text-[#6b6355] transition-colors hover:text-[#1b1813]"
+                  @click="track('site_download_click', { location: 'footer' })"
                 >
                   {{ $t('footer.links.downloads') }}
                 </NuxtLink>
@@ -180,6 +186,7 @@
                 <NuxtLink
                   :to="localePath('/login')"
                   class="text-sm text-[#6b6355] transition-colors hover:text-[#1b1813]"
+                  @click="track('site_cta_click', { location: 'footer', label: 'login' })"
                 >
                   {{ $t('footer.links.login') }}
                 </NuxtLink>
@@ -188,6 +195,7 @@
                 <NuxtLink
                   :to="localePath('/signup')"
                   class="text-sm text-[#6b6355] transition-colors hover:text-[#1b1813]"
+                  @click="track('site_cta_click', { location: 'footer', label: 'signup' })"
                 >
                   {{ $t('footer.links.signup') }}
                 </NuxtLink>
@@ -238,6 +246,7 @@ import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
 
 const { locale, locales, setLocale } = useI18n()
 const localePath = useLocalePath()
+const { track } = useSiteTracking()
 
 /** A navigation link that scrolls to an on-page landing section. */
 interface LandingSectionLink {
@@ -300,12 +309,38 @@ function closeMobileMenu(): void {
 }
 
 /**
- * Scroll to a section then close the mobile menu.
+ * Track a section nav click, then smooth-scroll to it.
+ * @param selector - CSS selector of the target section.
+ */
+function onNavClick(selector: string): void {
+  track('site_nav_click', { target: selector })
+  scrollToSection(selector)
+}
+
+/**
+ * Scroll to a section then close the mobile menu (tracked).
  * @param selector - CSS selector of the target section.
  */
 function handleMobileSection(selector: string): void {
+  track('site_nav_click', { target: selector })
   closeMobileMenu()
   scrollToSection(selector)
+}
+
+/**
+ * Track the mobile-menu download link, then close the menu.
+ */
+function onMobileDownload(): void {
+  track('site_download_click', { location: 'mobile_menu' })
+  closeMobileMenu()
+}
+
+/**
+ * Track the mobile-menu signup CTA, then close the menu.
+ */
+function onMobileSignup(): void {
+  track('site_cta_click', { location: 'mobile_menu', label: 'signup' })
+  closeMobileMenu()
 }
 
 /**

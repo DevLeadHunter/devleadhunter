@@ -123,6 +123,11 @@ definePageMeta({
 const { signup, isLoading, isAuthenticated } = useAuth()
 
 /**
+ * Marketing-site tracking (records the signup conversion).
+ */
+const { track } = useSiteTracking()
+
+/**
  * App theme (the auth pages follow the same light/dark choice as the app).
  */
 const { theme, initTheme } = useAppTheme()
@@ -233,6 +238,7 @@ const handleSubmit = async (): Promise<void> => {
       email: email.value,
       password: password.value,
     })
+    track('site_signup_completed')
     // Keep loader visible during navigation
     isNavigating.value = true
   } catch (error) {
