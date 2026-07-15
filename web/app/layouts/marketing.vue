@@ -236,6 +236,9 @@
         </div>
       </div>
     </footer>
+
+    <!-- GDPR cookie consent (marketing surface only) -->
+    <LandingCookieConsent />
   </div>
 </template>
 

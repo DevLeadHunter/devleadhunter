@@ -8,6 +8,13 @@
     "login": "Log in",
     "signup": "Start for free"
   },
+  "cookies": {
+    "title": "Cookies",
+    "message": "We use analytics cookies to understand how the site is used and improve it. Your choice doesn't affect your browsing.",
+    "accept": "Accept",
+    "decline": "Decline",
+    "learnMore": "Learn more"
+  },
   "landing": {
     "seo": {
       "title": "DevLeadHunter — Sell websites to local businesses that don't have one",
@@ -231,7 +238,7 @@
       },
       "s3": {
         "title": "Analytics",
-        "body": "This site uses Umami, a self-hosted analytics tool with no advertising cookies and no cross-site tracking. Statistics are aggregated and anonymous."
+        "body": "This site measures its audience with two tools. Umami, cookieless and anonymous, runs at all times. PostHog, subject to your consent via the cookie banner, uses cookies to analyse site usage in more detail (pageviews, clicks, journeys). Statistics stay internal: no data is sold or used for advertising."
       },
       "s4": {
         "title": "Purposes",
@@ -247,7 +254,7 @@
       },
       "s7": {
         "title": "Cookies",
-        "body": "The site only uses technical cookies: login session and language preference. No advertising or third-party tracking cookies."
+        "body": "The site uses technical cookies (login session, language preference) and, only if you accept them via the consent banner, analytics cookies (PostHog). You can decline the latter with no impact on your browsing, and change your choice by clearing the site's data in your browser. No advertising or third-party tracking cookies."
       }
     },
     "terms": {

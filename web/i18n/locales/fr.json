@@ -8,6 +8,13 @@
     "login": "Connexion",
     "signup": "Commencer gratuitement"
   },
+  "cookies": {
+    "title": "Cookies",
+    "message": "Nous utilisons des cookies de mesure d'audience pour comprendre comment le site est utilisé et l'améliorer. Votre choix n'affecte pas votre navigation.",
+    "accept": "Accepter",
+    "decline": "Refuser",
+    "learnMore": "En savoir plus"
+  },
   "landing": {
     "seo": {
       "title": "DevLeadHunter — Vendez des sites web aux artisans qui n'en ont pas",
@@ -231,7 +238,7 @@
       },
       "s3": {
         "title": "Mesure d'audience",
-        "body": "Ce site utilise Umami, un outil de mesure d'audience auto-hébergé, sans cookies publicitaires et sans suivi entre sites. Les statistiques sont agrégées et anonymes."
+        "body": "Ce site mesure son audience avec deux outils. Umami, sans cookie et anonyme, fonctionne en permanence. PostHog, soumis à votre consentement via le bandeau de cookies, utilise des cookies pour analyser plus finement l'usage du site (pages vues, clics, parcours). Les statistiques restent internes : aucune donnée n'est vendue ni utilisée à des fins publicitaires."
       },
       "s4": {
         "title": "Finalités",
@@ -247,7 +254,7 @@
       },
       "s7": {
         "title": "Cookies",
-        "body": "Le site n'utilise que des cookies techniques : session de connexion et préférence de langue. Aucun cookie publicitaire ou de suivi tiers."
+        "body": "Le site utilise des cookies techniques (session de connexion, préférence de langue) et, uniquement si vous les acceptez via le bandeau de consentement, des cookies de mesure d'audience (PostHog). Vous pouvez refuser ces derniers sans impact sur votre navigation, et modifier votre choix en vidant les données du site dans votre navigateur. Aucun cookie publicitaire ou de suivi tiers."
       }
     },
     "terms": {

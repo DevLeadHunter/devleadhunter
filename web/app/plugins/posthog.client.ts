@@ -1,4 +1,5 @@
 import type { PostHog } from 'posthog-js'
+import { watch } from 'vue'
 
 /**
  * PostHog tracking for the marketing site (``surface: 'marketing'``).
@@ -7,7 +8,11 @@ import type { PostHog } from 'posthog-js'
  * under ``/dashboard``) and never the Tauri desktop build. Autocapture is off; we
  * emit explicit ``site_*`` events plus manual ``$pageview``s, so the app stays
  * untracked and events read cleanly alongside the demo tracking (``surface: 'demo'``)
- * in the same PostHog project. Empty key → no-op.
+ * in the same PostHog project.
+ *
+ * GDPR: PostHog sets cookies, so it stays off until the visitor accepts analytics
+ * cookies (see ``useCookieConsent``). Cookieless Umami runs independently. Empty
+ * key → no-op.
  */
 export default defineNuxtPlugin((nuxtApp): void => {
   const config = useRuntimeConfig()
@@ -21,6 +26,7 @@ export default defineNuxtPlugin((nuxtApp): void => {
   }
 
   const router = useRouter()
+  const { hasAnalyticsConsent } = useCookieConsent()
   let instance: PostHog | null = null
 
   /**
@@ -33,7 +39,16 @@ export default defineNuxtPlugin((nuxtApp): void => {
   }
 
   /**
-   * Lazily initialise PostHog on the first marketing interaction.
+   * Whether tracking may run right now (marketing route + granted consent).
+   * @param {string} path - Route path to test.
+   * @returns {boolean} True when an event may be captured.
+   */
+  function canTrack(path: string): boolean {
+    return isMarketingRoute(path) && hasAnalyticsConsent.value
+  }
+
+  /**
+   * Lazily initialise PostHog on the first tracked interaction.
    * @returns {Promise<PostHog>} The initialised PostHog instance.
    */
   async function ensureInstance(): Promise<PostHog> {
@@ -51,12 +66,12 @@ export default defineNuxtPlugin((nuxtApp): void => {
   }
 
   /**
-   * Capture a manual ``$pageview`` when the current route is a marketing route.
+   * Capture a manual ``$pageview`` when tracking is allowed for the given route.
    * @param {string} path - The route path being viewed.
    * @returns {Promise<void>} Resolves once the pageview has been captured (or skipped).
    */
   async function trackPageview(path: string): Promise<void> {
-    if (!isMarketingRoute(path)) return
+    if (!canTrack(path)) return
     const posthog: PostHog = await ensureInstance()
     posthog.capture('$pageview')
   }
@@ -68,14 +83,19 @@ export default defineNuxtPlugin((nuxtApp): void => {
     void trackPageview(to.path)
   })
 
+  // Consent granted later (banner accept) → start tracking from the current page.
+  watch(hasAnalyticsConsent, (granted: boolean): void => {
+    if (granted) void trackPageview(router.currentRoute.value.path)
+  })
+
   /**
-   * Capture a marketing event (no-op on the app surface).
+   * Capture a marketing event (no-op on the app surface or without consent).
    * @param {string} event - Event name (``site_*``).
    * @param {Record<string, unknown>} [properties] - Optional event properties.
    * @returns {void}
    */
   const siteTrack = (event: string, properties?: Record<string, unknown>): void => {
-    if (!isMarketingRoute(router.currentRoute.value.path)) return
+    if (!canTrack(router.currentRoute.value.path)) return
     void ensureInstance().then((posthog: PostHog): void => {
       posthog.capture(event, properties)
     })
