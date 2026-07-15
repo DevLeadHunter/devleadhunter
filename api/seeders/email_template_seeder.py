@@ -9,7 +9,14 @@ Templates follow the /cold-email skill rules:
 
 Variables available: {prenom}, {entreprise}, {ville}, {metier}, {lien_demo}
 
-Safe to re-run: templates are matched by (user_id, name) and skipped if present.
+Ordering: ``sort_order`` (higher = pinned higher) drives the app's template list
+order. The "★ Recommandé" entries are the two best first-email angles and the two
+best follow-ups to A/B test first — they stay pinned at the top.
+
+Safe to re-run: templates are matched by (user_id, name) and skipped if present,
+so this only APPENDS new templates (never overwrites manual edits). The one-time
+fix of an already-seeded body (variant B's English CTA) lives in the
+``add_email_template_sort_order`` migration.
 """
 from __future__ import annotations
 
@@ -18,12 +25,69 @@ import re
 
 
 # ---------------------------------------------------------------------------
-# Template definitions — order matters only for display.
+# Template definitions.
+#   sort_order: higher = pinned higher in the app list (0 = normal).
+#   ★ Recommandé = the picks to A/B test first (2 first-emails, 2 follow-ups).
 # ---------------------------------------------------------------------------
 
-_TEMPLATES: list[dict[str, str]] = [
+_TEMPLATES: list[dict[str, object]] = [
+    # ── ★ Recommandés — Premier email (les 2 meilleurs angles à tester en A/B) ──
+    {
+        "name": "★ Recommandé 1 — Premier email (fiche Google)",
+        "sort_order": 100,
+        "subject": "votre fiche google",
+        "body_html": (
+            "<p>Bonjour {prenom},</p>"
+            "<p>Quand quelqu'un cherche un {metier} à {ville}, Google met en avant les fiches "
+            "reliées à un site — les autres passent derrière.</p>"
+            "<p>J'ai monté un site pour {entreprise} qui renforce votre fiche Google : {lien_demo}</p>"
+            "<p>Ça vous parle ?</p>"
+            "<p>Léo</p>"
+        ),
+    },
+    {
+        "name": "★ Recommandé 2 — Premier email (crédibilité)",
+        "sort_order": 95,
+        "subject": "avant d'appeler",
+        "body_html": (
+            "<p>Bonjour {prenom},</p>"
+            "<p>Aujourd'hui, avant d'appeler un {metier}, on vérifie en ligne. Pas de site = un "
+            "doute, même quand le travail est excellent.</p>"
+            "<p>J'ai créé un site pour {entreprise} qui lève ce doute en quelques secondes : {lien_demo}</p>"
+            "<p>Je vous montre ?</p>"
+            "<p>Léo</p>"
+        ),
+    },
+    # ── ★ Recommandés — Relance (les 2 meilleures relances à tester en A/B) ──
+    {
+        "name": "★ Recommandé 1 — Relance (question)",
+        "sort_order": 90,
+        "subject": "site ou timing",
+        "body_html": (
+            "<p>Bonjour {prenom},</p>"
+            "<p>Une question rapide : c'est le site qui ne vous convient pas, ou juste une "
+            "histoire de timing ?</p>"
+            "<p>Un mot et je m'adapte — il est toujours en ligne : {lien_demo}</p>"
+            "<p>Léo</p>"
+        ),
+    },
+    {
+        "name": "★ Recommandé 2 — Relance (offre à vie)",
+        "sort_order": 85,
+        "subject": "à vous à vie",
+        "body_html": (
+            "<p>Bonjour {prenom},</p>"
+            "<p>Le site de {entreprise} est prêt : {lien_demo}</p>"
+            "<p>500€ une fois, et il est à vous — pas d'abonnement, vous ne me repayez jamais. "
+            "Je m'occupe de la mise en ligne.</p>"
+            "<p>Ça vous intéresse ?</p>"
+            "<p>Léo</p>"
+        ),
+    },
+    # ── Premier email — autres angles (prospect SANS site) ──
     {
         "name": "J1 — Variante A (visibilité Google)",
+        "sort_order": 0,
         "subject": "votre site demo",
         "body_html": (
             "<p>Bonjour {prenom},</p>"
@@ -36,6 +100,7 @@ _TEMPLATES: list[dict[str, str]] = [
     },
     {
         "name": "J1 — Variante B (bouche-à-oreille)",
+        "sort_order": 0,
         "subject": "{ville} - {metier}",
         "body_html": (
             "<p>Bonjour {prenom},</p>"
@@ -48,31 +113,8 @@ _TEMPLATES: list[dict[str, str]] = [
         ),
     },
     {
-        "name": "J1 — Variante C (fiche Google/Maps)",
-        "subject": "votre fiche google",
-        "body_html": (
-            "<p>Bonjour {prenom},</p>"
-            "<p>Quand quelqu'un cherche un {metier} à {ville}, Google met en avant les fiches "
-            "reliées à un site — les autres passent derrière.</p>"
-            "<p>J'ai monté un site pour {entreprise} qui renforce votre fiche Google : {lien_demo}</p>"
-            "<p>Ça vous parle ?</p>"
-            "<p>Léo</p>"
-        ),
-    },
-    {
-        "name": "J1 — Variante D (crédibilité)",
-        "subject": "avant d'appeler",
-        "body_html": (
-            "<p>Bonjour {prenom},</p>"
-            "<p>Aujourd'hui, avant d'appeler un {metier}, on vérifie en ligne. Pas de site = un "
-            "doute, même quand le travail est excellent.</p>"
-            "<p>J'ai créé un site pour {entreprise} qui lève ce doute en quelques secondes : {lien_demo}</p>"
-            "<p>Je vous montre ?</p>"
-            "<p>Léo</p>"
-        ),
-    },
-    {
         "name": "J1 — Variante E (on vous retrouve)",
+        "sort_order": 0,
         "subject": "quand on vous recommande",
         "body_html": (
             "<p>Bonjour {prenom},</p>"
@@ -85,6 +127,7 @@ _TEMPLATES: list[dict[str, str]] = [
     },
     {
         "name": "J1 — Variante F (autonomie)",
+        "sort_order": 0,
         "subject": "vous gérez tout",
         "body_html": (
             "<p>Bonjour {prenom},</p>"
@@ -95,8 +138,21 @@ _TEMPLATES: list[dict[str, str]] = [
             "<p>Léo</p>"
         ),
     },
+    # ── Relances — autres options ──
+    {
+        "name": "Relance J+3 — rappel court",
+        "sort_order": 0,
+        "subject": "petit rappel",
+        "body_html": (
+            "<p>Bonjour {prenom},</p>"
+            "<p>Vous avez pu jeter un œil au site de {entreprise} ? {lien_demo}</p>"
+            "<p>Un mot me suffit, même un non.</p>"
+            "<p>Léo</p>"
+        ),
+    },
     {
         "name": "Relance 1 (J+5) — avec prix",
+        "sort_order": 0,
         "subject": "vous avez pu jeter un oeil ?",
         "body_html": (
             "<p>Bonjour {prenom},</p>"
@@ -108,6 +164,7 @@ _TEMPLATES: list[dict[str, str]] = [
     },
     {
         "name": "Relance 2 (J+10) — clôture",
+        "sort_order": 0,
         "subject": "je ferme le dossier",
         "body_html": (
             "<p>Bonjour {prenom},</p>"
@@ -121,6 +178,7 @@ _TEMPLATES: list[dict[str, str]] = [
     #    vend pas une création mais une V2 comparable côte à côte.
     {
         "name": "Refonte — J1 (site existant dépassé)",
+        "sort_order": 0,
         "subject": "une v2 de votre site",
         "body_html": (
             "<p>Bonjour {prenom},</p>"
@@ -133,6 +191,7 @@ _TEMPLATES: list[dict[str, str]] = [
     },
     {
         "name": "Refonte — Relance (J+5, avec prix)",
+        "sort_order": 0,
         "subject": "l'ancien ou le nouveau ?",
         "body_html": (
             "<p>Bonjour {prenom},</p>"
@@ -160,7 +219,7 @@ def seed_email_templates() -> None:
     Insert the cold-email starter templates for the admin user.
 
     Each template is matched by (user_id, name); existing rows are left
-    untouched so the seeder is safe to re-run.
+    untouched so the seeder is safe to re-run (only new templates are added).
     """
     from sqlalchemy import select
     from core.config import settings
@@ -182,24 +241,28 @@ def seed_email_templates() -> None:
 
         created = 0
         for tpl in _TEMPLATES:
+            name = str(tpl["name"])
+            subject = str(tpl["subject"])
+            body_html = str(tpl["body_html"])
             exists = db.execute(
                 select(EmailTemplate).where(
                     EmailTemplate.user_id == admin.id,
-                    EmailTemplate.name == tpl["name"],
+                    EmailTemplate.name == name,
                 )
             ).scalar_one_or_none()
             if exists is not None:
                 continue
 
-            variables = _extract_variables(tpl["subject"], tpl["body_html"])
+            variables = _extract_variables(subject, body_html)
             db.add(EmailTemplate(
                 user_id=admin.id,
                 email_account_id=None,
-                name=tpl["name"],
-                subject=tpl["subject"],
-                body_html=tpl["body_html"],
+                name=name,
+                subject=subject,
+                body_html=body_html,
                 variables=json.dumps(variables),
                 is_active=True,
+                sort_order=int(tpl["sort_order"]),
             ))
             created += 1
 

@@ -45,6 +45,8 @@ class EmailTemplate(Base):
     body_text: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     variables: Mapped[Optional[str]] = mapped_column(Text, nullable=True)  # JSON string
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    # Higher = pinned higher in the app's template list (recommended templates use a high value).
+    sort_order: Mapped[int] = mapped_column(Integer, nullable=False, server_default="0", default=0)
     created_at: Mapped[datetime] = mapped_column(server_default=func.now(), nullable=False)
     updated_at: Mapped[Optional[datetime]] = mapped_column(onupdate=func.now(), nullable=True)
     

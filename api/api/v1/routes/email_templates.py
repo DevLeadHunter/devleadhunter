@@ -53,7 +53,7 @@ async def get_email_templates(
     """
     stmt = select(EmailTemplate).where(
         EmailTemplate.user_id == current_user.id
-    ).order_by(EmailTemplate.created_at.desc())
+    ).order_by(EmailTemplate.sort_order.desc(), EmailTemplate.created_at.desc())
     
     result = db.execute(stmt)
     templates = result.scalars().all()
