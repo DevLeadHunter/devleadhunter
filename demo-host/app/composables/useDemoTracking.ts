@@ -5,7 +5,8 @@ import type { PostHog } from 'posthog-js'
  *
  * Tracking is enabled ONLY for live demos (status === 'active'); it is never
  * initialised on a delivered/sold site. Uses in-memory persistence (no cookies)
- * to stay frictionless and lighter on RGPD. All custom events carry a
+ * to stay frictionless and lighter on RGPD. All events carry ``surface: 'demo'``
+ * (to separate them from marketing-site events in the same PostHog project) and a
  * ``demo_slug`` super property so the API can read them back per prospect.
  *
  * The goal is to understand exactly what a prospect did on the demo link we sent
@@ -212,7 +213,9 @@ export function useDemoTracking(): { init: (slug: string, status: string, varian
         maskAllInputs: true,
       },
     })
-    posthog.register({ demo_slug: slug, ...(variant ? { ab_variant: variant } : {}) })
+    // `surface` separates demo events from marketing-site events sharing the same
+    // PostHog project (e.g. $pageview). Never renamed: demo_* names are read by the API.
+    posthog.register({ surface: 'demo', demo_slug: slug, ...(variant ? { ab_variant: variant } : {}) })
     initialized = true
     setupListeners(posthog)
   }
