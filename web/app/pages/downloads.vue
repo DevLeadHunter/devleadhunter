@@ -91,7 +91,6 @@ import type { ComputedRef } from 'vue'
 
 definePageMeta({
   layout: 'marketing',
-  sitemap: false,
 })
 
 type ReleaseAsset = {
@@ -270,6 +269,5 @@ function formatBytes(n?: number): string {
 useSeoMeta({
   title: 'Télécharger DevLeadHunter Desktop',
   description: "Téléchargez l'application de bureau DevLeadHunter pour Windows et macOS.",
-  robots: 'noindex, nofollow',
 })
 </script>

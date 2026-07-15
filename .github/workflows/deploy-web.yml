@@ -124,4 +124,9 @@ jobs:
             pm2 save
             pm2 list
 
+            # Nitro node-server serves static files from ../public (sibling of server/).
+            # Assets are deployed to html/ for nginx; symlink so Node can serve them too
+            # when nginx proxies the request (e.g. /favicon.ico).
+            ln -sfn /var/www/devleadhunter.dibodev.fr/html /var/www/devleadhunter.dibodev.fr/public
+
             sudo nginx -t && sudo systemctl reload nginx

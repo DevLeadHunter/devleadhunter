@@ -164,7 +164,6 @@ export default defineNuxtConfig({
     ? {
         '/dashboard/**': { robots: false },
         '/login': { robots: false },
-        '/downloads': { robots: false },
         '/profile': { robots: false },
       }
     : undefined,
@@ -212,7 +211,7 @@ export default defineNuxtConfig({
   sitemap: !isDesktopBuild
     ? {
         // Auto-generated at /sitemap.xml (replaces the static public/sitemap.xml that 500'd in prod).
-        exclude: ['/dashboard/**', '/login', '/downloads', '/profile'],
+        exclude: ['/dashboard/**', '/login', '/profile'],
       }
     : undefined,
 })
