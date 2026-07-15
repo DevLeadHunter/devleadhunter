@@ -101,6 +101,12 @@ definePageMeta({
   layout: false,
 })
 
+// Auth utility page — keep it out of the index (no SEO value, avoids thin-content pages).
+useSeoMeta({
+  title: 'Connexion — DevLeadHunter',
+  robots: 'noindex, nofollow',
+})
+
 /**
  * Auth composable
  */

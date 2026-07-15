@@ -1,11 +1,17 @@
 {
-  "name": "",
-  "short_name": "",
+  "name": "DevLeadHunter",
+  "short_name": "DevLeadHunter",
+  "description": "Turn local businesses without a website into paying clients — end-to-end prospecting automation on web, desktop and mobile.",
+  "id": "/",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "lang": "en",
+  "theme_color": "#050505",
+  "background_color": "#050505",
   "icons": [
+    { "src": "/favicon.svg", "type": "image/svg+xml", "sizes": "any" },
     { "src": "/android-chrome-192x192.png", "sizes": "192x192", "type": "image/png" },
     { "src": "/android-chrome-512x512.png", "sizes": "512x512", "type": "image/png" }
-  ],
-  "theme_color": "#ffffff",
-  "background_color": "#ffffff",
-  "display": "standalone"
+  ]
 }

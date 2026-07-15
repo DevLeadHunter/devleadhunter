@@ -39,9 +39,6 @@ definePageMeta({
 const { t } = useI18n()
 const { track } = useSiteTracking()
 
-/** i18n-aware head attributes (lang, hreflang alternates, og:locale). */
-const localeHead = useLocaleHead()
-
 /** Credit settings fetched from the API (null while loading or on error). */
 const creditSettings: Ref<CreditSettings | null> = ref<CreditSettings | null>(null)
 
@@ -103,11 +100,10 @@ onMounted(async (): Promise<void> => {
   await loadCreditSettings()
 })
 
-// SEO meta — localized title/description, social cards, hreflang and JSON-LD.
+// SEO meta — localized title/description, social cards and JSON-LD.
+// (canonical, hreflang alternates and <html lang> are set by the marketing layout)
 useHead(() => ({
   title: t('landing.seo.title'),
-  htmlAttrs: localeHead.value.htmlAttrs,
-  link: localeHead.value.link,
   meta: [
     { name: 'description', content: t('landing.seo.description') },
     { property: 'og:title', content: t('landing.seo.title') },
@@ -115,7 +111,6 @@ useHead(() => ({
     { property: 'og:type', content: 'website' },
     { name: 'twitter:title', content: t('landing.seo.title') },
     { name: 'twitter:description', content: t('landing.seo.description') },
-    ...(localeHead.value.meta ?? []),
   ],
   script: [
     {

@@ -251,6 +251,15 @@ const { locale, locales, setLocale } = useI18n()
 const localePath = useLocalePath()
 const { track } = useSiteTracking()
 
+// i18n SEO for every marketing page: canonical, hreflang alternates, and the correct
+// <html lang> per locale (without this, /fr pages inherit the default lang="en").
+const localeHead = useLocaleHead()
+useHead(() => ({
+  htmlAttrs: localeHead.value.htmlAttrs,
+  link: localeHead.value.link,
+  meta: localeHead.value.meta,
+}))
+
 /** A navigation link that scrolls to an on-page landing section. */
 interface LandingSectionLink {
   /** Anchor target (e.g. `#how-it-works`). */
