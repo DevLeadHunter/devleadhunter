@@ -1,0 +1,36 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "web",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["--prefix", "web", "run", "dev"],
+      "port": 3000,
+      "autoPort": true
+    },
+    {
+      "name": "web-atelier",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["--prefix", "web", "run", "dev", "--", "--port", "5173"],
+      "port": 5173
+    },
+    {
+      "name": "demo-host",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["--prefix", "demo-host", "run", "dev"],
+      "port": 3001
+    },
+    {
+      "name": "cuivre-template",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["--prefix", "../devleadhunter-template-plumber-cuivre", "run", "dev", "--", "--port", "3005"],
+      "port": 3005
+    },
+    {
+      "name": "atelier-template",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["--prefix", "../devleadhunter-template-plumber-atelier", "run", "dev", "--", "--port", "3006"],
+      "port": 3006
+    }
+  ]
+}

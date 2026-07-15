@@ -1,0 +1,50 @@
+services:
+  db_mariadb:
+    container_name: devleadhunter_db_mariadb
+    image: mariadb:latest
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: devleadhunter
+      MYSQL_USER: root
+      MYSQL_PASSWORD: root
+    ports:
+      - '3310:3306'
+    volumes:
+      - database_data:/var/lib/mysql
+    networks:
+      - app-network
+
+  phpmyadmin:
+    container_name: devleadhunter_phpmyadmin
+    image: phpmyadmin/phpmyadmin
+    restart: always
+    environment:
+      PMA_HOST: db_mariadb
+      PMA_USER: root
+      PMA_PASSWORD: root
+    ports:
+      - '7500:80'
+    networks:
+      - app-network
+
+  stripe_cli:
+    container_name: devleadhunter_stripe_cli
+    image: stripe/stripe-cli:latest
+    restart: unless-stopped
+    command: listen --forward-to http://host.docker.internal:8000/api/v1/payments/webhook
+    environment:
+      STRIPE_API_KEY: ${STRIPE_SECRET_KEY}
+    networks:
+      - app-network
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+networks:
+  app-network:
+
+volumes:
+  database_data:
+  app:
+  node_modules:
+

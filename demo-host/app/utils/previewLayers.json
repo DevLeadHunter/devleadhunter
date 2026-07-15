@@ -1,0 +1,1027 @@
+{
+  "plumber-signature": {
+    "businessName": "Plomberie Roche",
+    "phone": "04 72 07 07 07",
+    "email": "contact@plomberie-roche.fr",
+    "city": "Lyon",
+    "area": "Lyon et ses alentours",
+    "subtitle": "Depannage plomberie en 30 minutes, 7j/7 et 365 jours par an a Lyon : fuite, chauffe-eau, canalisation.",
+    "about": "Artisan plombier de confiance a Lyon : depannage, installation et renovation avec le meme soin. Intervention rapide, diagnostic honnete, prix juste.",
+    "heroImage": "https://images.unsplash.com/photo-1584622650111-993a426fbf0a?auto=format&fit=crop&w=1400&q=75",
+    "aboutImage": "https://images.unsplash.com/photo-1620626011761-996317b8d101?auto=format&fit=crop&w=1200&q=70",
+    "gallery": [
+      {
+        "url": "https://images.unsplash.com/photo-1552321554-5fefe8c9ef14?auto=format&fit=crop&w=1200&q=70",
+        "alt": ""
+      },
+      {
+        "url": "https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=1200&q=70",
+        "alt": ""
+      },
+      {
+        "url": "https://images.unsplash.com/photo-1507089947368-19c1da9775ae?auto=format&fit=crop&w=1200&q=70",
+        "alt": ""
+      },
+      {
+        "url": "https://images.unsplash.com/photo-1564540583246-934409427776?auto=format&fit=crop&w=1200&q=70",
+        "alt": ""
+      }
+    ],
+    "palette": {
+      "primary": "#0F5257",
+      "secondary": "#14181C",
+      "accent": "#E8552D"
+    },
+    "reviews": [
+      {
+        "author": "Camille B.",
+        "text": "Fuite sous l'evier un dimanche soir : rappele en dix minutes, repare le lendemain matin. Serieux, propre et honnete sur le prix.",
+        "rating": 5
+      },
+      {
+        "author": "Herve M.",
+        "text": "Remplacement de notre chauffe-eau : devis clair, pose soignee, tout explique. Chantier impeccable en partant.",
+        "rating": 5
+      },
+      {
+        "author": "Nathalie P.",
+        "text": "Salle de bain refaite du sol au plafond. Delais tenus, belles finitions, vrai suivi. Je recommande sans hesiter.",
+        "rating": 4
+      }
+    ],
+    "openingHours": [
+      {
+        "day": "Lundi - Vendredi",
+        "hours": "8h - 19h"
+      },
+      {
+        "day": "Samedi",
+        "hours": "9h - 12h"
+      },
+      {
+        "day": "Dimanche",
+        "hours": "Urgences uniquement"
+      }
+    ],
+    "services": [
+      {
+        "title": "Dépannage & urgences",
+        "description": "Fuite, engorgement, panne de chauffe-eau : intervention rapide 7j/7."
+      },
+      {
+        "title": "Recherche de fuite",
+        "description": "Détection précise sans casse inutile, puis réparation durable."
+      },
+      {
+        "title": "Installation sanitaire",
+        "description": "Salle de bain, cuisine, WC : pose complète et soignée."
+      },
+      {
+        "title": "Chauffe-eau & chauffage",
+        "description": "Installation, remplacement et entretien de vos équipements."
+      },
+      {
+        "title": "Rénovation de salle de bain",
+        "description": "Modernisation complète de vos pièces d'eau, clé en main."
+      },
+      {
+        "title": "Débouchage de canalisation",
+        "description": "Curage et débouchage rapide, sans dégât."
+      }
+    ],
+    "faq": [
+      {
+        "question": "Intervenez-vous en urgence le week-end ?",
+        "answer": "Oui, nous intervenons 7j/7 pour les urgences. Appelez, on vous rappelle rapidement."
+      },
+      {
+        "question": "Le devis est-il gratuit ?",
+        "answer": "Le devis est toujours gratuit et sans engagement, remis avant toute intervention."
+      },
+      {
+        "question": "Quelles zones couvrez-vous ?",
+        "answer": "Votre ville et les communes voisines. Appelez pour vérifier, nous nous déplaçons souvent au-delà."
+      },
+      {
+        "question": "Quels moyens de paiement acceptez-vous ?",
+        "answer": "Carte bancaire, chèque et virement, avec facture détaillée."
+      },
+      {
+        "question": "Proposez-vous une garantie sur vos travaux ?",
+        "answer": "Oui, nos installations sont couvertes par la garantie décennale."
+      }
+    ]
+  },
+  "plumber-atelier": {
+    "businessName": "Plomberie Roche",
+    "phone": "04 72 07 07 07",
+    "email": "contact@plomberie-roche.fr",
+    "city": "Lyon",
+    "area": "Lyon et ses alentours",
+    "subtitle": "Depannage plomberie en 30 minutes, 7j/7 et 365 jours par an a Lyon : fuite, chauffe-eau, canalisation.",
+    "about": "Artisan plombier de confiance a Lyon : depannage, installation et renovation avec le meme soin. Intervention rapide, diagnostic honnete, prix juste.",
+    "heroImage": "https://images.unsplash.com/photo-1584622650111-993a426fbf0a?auto=format&fit=crop&w=1400&q=75",
+    "aboutImage": "https://images.unsplash.com/photo-1620626011761-996317b8d101?auto=format&fit=crop&w=1200&q=70",
+    "gallery": [
+      {
+        "url": "https://images.unsplash.com/photo-1552321554-5fefe8c9ef14?auto=format&fit=crop&w=1200&q=70",
+        "alt": ""
+      },
+      {
+        "url": "https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=1200&q=70",
+        "alt": ""
+      },
+      {
+        "url": "https://images.unsplash.com/photo-1507089947368-19c1da9775ae?auto=format&fit=crop&w=1200&q=70",
+        "alt": ""
+      },
+      {
+        "url": "https://images.unsplash.com/photo-1564540583246-934409427776?auto=format&fit=crop&w=1200&q=70",
+        "alt": ""
+      }
+    ],
+    "palette": {
+      "primary": "#B8732E",
+      "secondary": "#1C1B19",
+      "accent": "#2E5B6B"
+    },
+    "reviews": [
+      {
+        "author": "Camille B.",
+        "text": "Fuite sous l'evier un dimanche soir : rappele en dix minutes, repare le lendemain matin. Serieux, propre et honnete sur le prix.",
+        "rating": 5
+      },
+      {
+        "author": "Herve M.",
+        "text": "Remplacement de notre chauffe-eau : devis clair, pose soignee, tout explique. Chantier impeccable en partant.",
+        "rating": 5
+      },
+      {
+        "author": "Nathalie P.",
+        "text": "Salle de bain refaite du sol au plafond. Delais tenus, belles finitions, vrai suivi. Je recommande sans hesiter.",
+        "rating": 4
+      }
+    ],
+    "openingHours": [
+      {
+        "day": "Lundi - Vendredi",
+        "hours": "8h - 19h"
+      },
+      {
+        "day": "Samedi",
+        "hours": "9h - 12h"
+      },
+      {
+        "day": "Dimanche",
+        "hours": "Urgences uniquement"
+      }
+    ],
+    "services": [
+      {
+        "title": "Dépannage & urgences",
+        "description": "Fuite, engorgement, panne de chauffe-eau : intervention rapide 7j/7."
+      },
+      {
+        "title": "Recherche de fuite",
+        "description": "Détection précise sans casse inutile, puis réparation durable."
+      },
+      {
+        "title": "Installation sanitaire",
+        "description": "Salle de bain, cuisine, WC : pose complète et soignée."
+      },
+      {
+        "title": "Chauffe-eau & chauffage",
+        "description": "Installation, remplacement et entretien de vos équipements."
+      },
+      {
+        "title": "Rénovation de salle de bain",
+        "description": "Modernisation complète de vos pièces d'eau, clé en main."
+      },
+      {
+        "title": "Débouchage de canalisation",
+        "description": "Curage et débouchage rapide, sans dégât."
+      }
+    ],
+    "faq": [
+      {
+        "question": "Intervenez-vous en urgence le week-end ?",
+        "answer": "Oui, nous intervenons 7j/7 pour les urgences. Appelez, on vous rappelle rapidement."
+      },
+      {
+        "question": "Le devis est-il gratuit ?",
+        "answer": "Le devis est toujours gratuit et sans engagement, remis avant toute intervention."
+      },
+      {
+        "question": "Quelles zones couvrez-vous ?",
+        "answer": "Votre ville et les communes voisines. Appelez pour vérifier, nous nous déplaçons souvent au-delà."
+      },
+      {
+        "question": "Quels moyens de paiement acceptez-vous ?",
+        "answer": "Carte bancaire, chèque et virement, avec facture détaillée."
+      },
+      {
+        "question": "Proposez-vous une garantie sur vos travaux ?",
+        "answer": "Oui, nos installations sont couvertes par la garantie décennale."
+      }
+    ]
+  },
+  "plumber-cuivre": {
+    "businessName": "Plomberie Roche",
+    "phone": "04 72 07 07 07",
+    "email": "contact@plomberie-roche.fr",
+    "city": "Lyon",
+    "area": "Lyon et ses alentours",
+    "subtitle": "Depannage plomberie en 30 minutes, 7j/7 et 365 jours par an a Lyon : fuite, chauffe-eau, canalisation.",
+    "about": "Artisan plombier de confiance a Lyon : depannage, installation et renovation avec le meme soin. Intervention rapide, diagnostic honnete, prix juste.",
+    "heroImage": "https://images.unsplash.com/photo-1584622650111-993a426fbf0a?auto=format&fit=crop&w=1400&q=75",
+    "aboutImage": "https://images.unsplash.com/photo-1620626011761-996317b8d101?auto=format&fit=crop&w=1200&q=70",
+    "gallery": [
+      {
+        "url": "https://images.unsplash.com/photo-1552321554-5fefe8c9ef14?auto=format&fit=crop&w=1200&q=70",
+        "alt": ""
+      },
+      {
+        "url": "https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=1200&q=70",
+        "alt": ""
+      },
+      {
+        "url": "https://images.unsplash.com/photo-1507089947368-19c1da9775ae?auto=format&fit=crop&w=1200&q=70",
+        "alt": ""
+      },
+      {
+        "url": "https://images.unsplash.com/photo-1564540583246-934409427776?auto=format&fit=crop&w=1200&q=70",
+        "alt": ""
+      }
+    ],
+    "palette": {
+      "primary": "#1080B4",
+      "secondary": "#10293D",
+      "accent": "#22A8C4"
+    },
+    "services": [
+      {
+        "title": "Dépannage & recherche de fuite",
+        "description": "Fuites visibles ou cachées : détection précise, réparation durable, dégâts limités."
+      },
+      {
+        "title": "Débouchage de canalisations",
+        "description": "WC, éviers, douches, colonnes : un débouchage propre, au furet ou à la pompe, sans abîmer vos installations."
+      },
+      {
+        "title": "Chauffe-eau & ballon",
+        "description": "Remplacement, entretien et réglage — de l'électrique au thermodynamique, dimensionné pour votre foyer."
+      },
+      {
+        "title": "Chauffage & radiateurs",
+        "description": "Purge, équilibrage, remplacement de radiateurs et raccordements — pour un hiver sans mauvaise surprise."
+      },
+      {
+        "title": "Salle de bain clé en main",
+        "description": "De la dépose à la pose finale : douche, baignoire, meubles — coordonné avec les bons corps de métier."
+      },
+      {
+        "title": "Robinetterie & sanitaires",
+        "description": "Pose et remplacement de robinets, WC, éviers — des marques fiables, posées dans les règles."
+      },
+      {
+        "title": "Cuisine & électroménager",
+        "description": "Évier, lave-vaisselle, lave-linge : arrivées d'eau, évacuations et pose soignée, sans fuite au premier cycle."
+      },
+      {
+        "title": "Entretien & mise en conformité",
+        "description": "Adoucisseur, groupe de sécurité, arrivées d'eau : une installation saine, durable et aux normes."
+      }
+    ],
+    "reviews": [
+      {
+        "author": "Camille B.",
+        "text": "Fuite sous l'evier un dimanche soir : rappele en dix minutes, repare le lendemain matin. Serieux, propre et honnete sur le prix.",
+        "rating": 5
+      },
+      {
+        "author": "Herve M.",
+        "text": "Remplacement de notre chauffe-eau : devis clair, pose soignee, tout explique. Chantier impeccable en partant.",
+        "rating": 5
+      },
+      {
+        "author": "Nathalie P.",
+        "text": "Salle de bain refaite du sol au plafond. Delais tenus, belles finitions, vrai suivi. Je recommande sans hesiter.",
+        "rating": 4
+      }
+    ],
+    "faq": [
+      {
+        "question": "Le devis est-il vraiment gratuit ?",
+        "answer": "Oui. Le déplacement pour constater et le chiffrage sont gratuits et sans engagement. Le prix validé ensemble est le prix payé."
+      },
+      {
+        "question": "En combien de temps intervenez-vous pour une fuite ?",
+        "answer": "Les urgences passent en priorité : l'objectif est d'intervenir dans la journée. Au téléphone, on vous donne aussi les premiers gestes pour limiter les dégâts."
+      },
+      {
+        "question": "Travaillez-vous avec les assurances en cas de dégât des eaux ?",
+        "answer": "Oui. On vous fournit les éléments nécessaires à votre dossier (constat, factures, photos) et, si besoin, une recherche de fuite documentée."
+      },
+      {
+        "question": "Vos travaux sont-ils garantis ?",
+        "answer": "Oui. Les travaux sont couverts par la garantie décennale et une assurance responsabilité civile professionnelle ; le matériel posé conserve sa garantie fabricant."
+      },
+      {
+        "question": "Pouvez-vous rénover une salle de bain complète ?",
+        "answer": "Oui, en coordonnant les corps de métier nécessaires (carrelage, électricité) pour livrer une salle de bain terminée, prête à utiliser."
+      },
+      {
+        "question": "Quels moyens de paiement acceptez-vous ?",
+        "answer": "Carte, virement ou chèque, avec une facture détaillée remise après chaque intervention. Pour les gros chantiers, un échéancier peut être convenu au devis."
+      },
+      {
+        "question": "Quels délais pour des travaux planifiés ?",
+        "answer": "Après validation du devis, une date est calée ensemble — en général sous une à trois semaines selon la saison et l'ampleur du chantier. La date convenue est tenue."
+      },
+      {
+        "question": "Intervenez-vous pour les copropriétés et les professionnels ?",
+        "answer": "Oui : syndics, gestionnaires, commerces et petites entreprises. Interventions documentées (photos, rapport) et facturation adaptée."
+      }
+    ],
+    "openingHours": [
+      {
+        "day": "Lundi - Vendredi",
+        "hours": "8h - 19h"
+      },
+      {
+        "day": "Samedi",
+        "hours": "9h - 12h"
+      },
+      {
+        "day": "Dimanche",
+        "hours": "Urgences uniquement"
+      }
+    ]
+  },
+  "electrician-lumen": {
+    "businessName": "Breizh Electrik",
+    "phone": "02 40 89 12 34",
+    "email": "contact@breizh-electrik.fr",
+    "city": "Nantes",
+    "area": "Nantes et ses alentours",
+    "subtitle": "Installations electriques, mise aux normes, borne de recharge (IRVE) et photovoltaique a Nantes et 50 km alentours.",
+    "about": "Artisan electricien a Nantes : installations, mise aux normes, borne de recharge (IRVE) et photovoltaique. Travail conforme, soigne et securise, en residentiel comme en tertiaire.",
+    "heroImage": "https://images.unsplash.com/photo-1621905251189-08b45d6a269e?auto=format&fit=crop&w=1400&q=75",
+    "aboutImage": "https://images.unsplash.com/photo-1621905252507-b35492cc74b4?auto=format&fit=crop&w=1200&q=70",
+    "gallery": [
+      {
+        "url": "https://images.unsplash.com/photo-1558618666-fcd25c85cd64?auto=format&fit=crop&w=1200&q=70",
+        "alt": ""
+      },
+      {
+        "url": "https://images.unsplash.com/photo-1581092918056-0c4c3acd3789?auto=format&fit=crop&w=1200&q=70",
+        "alt": ""
+      },
+      {
+        "url": "https://images.unsplash.com/photo-1581091226825-a6a2a5aee158?auto=format&fit=crop&w=1200&q=70",
+        "alt": ""
+      },
+      {
+        "url": "https://images.unsplash.com/photo-1581092160562-40aa08e78837?auto=format&fit=crop&w=1200&q=70",
+        "alt": ""
+      }
+    ],
+    "palette": {
+      "primary": "#FFD400",
+      "secondary": "#070B14",
+      "accent": "#FF9F1C"
+    },
+    "reviews": [
+      {
+        "author": "Marie L.",
+        "text": "Intervention le jour meme pour une panne generale. Probleme trouve en 20 minutes, tout remis en service et bien explique.",
+        "rating": 5
+      },
+      {
+        "author": "Julien R.",
+        "text": "Remplacement complet de notre vieux tableau. Travail tres propre, delais tenus, prix du devis respecte au centime.",
+        "rating": 5
+      },
+      {
+        "author": "Sophie D.",
+        "text": "Pose d'une borne de recharge pour ma voiture electrique. Bons conseils, installation nickel. Je recommande.",
+        "rating": 4
+      }
+    ],
+    "openingHours": [
+      {
+        "day": "Lundi - Vendredi",
+        "hours": "8h - 19h"
+      },
+      {
+        "day": "Samedi",
+        "hours": "9h - 12h"
+      },
+      {
+        "day": "Dimanche",
+        "hours": "Urgences uniquement"
+      }
+    ],
+    "services": [
+      {
+        "title": "Dépannage électrique",
+        "description": "Panne, court-circuit, disjoncteur qui saute : diagnostic et remise en service rapides."
+      },
+      {
+        "title": "Mise aux normes",
+        "description": "Remise à niveau de votre installation (NF C 15-100) et attestation Consuel."
+      },
+      {
+        "title": "Tableau électrique",
+        "description": "Remplacement et modernisation de votre tableau et de vos protections."
+      },
+      {
+        "title": "Installation & rénovation",
+        "description": "Neuf ou rénovation : réseau complet, prises, points lumineux."
+      },
+      {
+        "title": "Éclairage & domotique",
+        "description": "Éclairage intérieur/extérieur, interrupteurs connectés, domotique."
+      },
+      {
+        "title": "Borne de recharge",
+        "description": "Installation de bornes de recharge pour véhicule électrique."
+      }
+    ],
+    "faq": [
+      {
+        "question": "Intervenez-vous en urgence ?",
+        "answer": "Oui, pour toute panne électrique nous intervenons au plus vite, 7j/7."
+      },
+      {
+        "question": "Le devis est-il gratuit ?",
+        "answer": "Le devis est gratuit et sans engagement, remis avant les travaux."
+      },
+      {
+        "question": "Délivrez-vous une attestation Consuel ?",
+        "answer": "Oui, pour toute installation neuve ou mise aux normes soumise au Consuel."
+      },
+      {
+        "question": "Quelles zones couvrez-vous ?",
+        "answer": "Votre ville et ses alentours. Appelez pour vérifier votre commune."
+      },
+      {
+        "question": "Vos travaux sont-ils garantis ?",
+        "answer": "Oui, nos installations sont conformes et couvertes par la garantie décennale."
+      }
+    ]
+  },
+  "mechanic-pitlane": {
+    "businessName": "Automobiles du Landry",
+    "phone": "02 99 50 54 58",
+    "email": "contact@garagedulandry.com",
+    "city": "Rennes",
+    "area": "120 bis rue de Châteaugiron et ses alentours",
+    "subtitle": "Garage AD Expert à Rennes — révision, mécanique, carrosserie et pneus.",
+    "about": "Garage multi-marques de proximité : entretien, diagnostic électronique et réparations avec le même soin. Devis clair avant intervention, pièces de qualité, restitution dans les délais annoncés.",
+    "heroImage": "https://www.garagedulandry.com/sx-content/uploads/cms/medium1920/parallax.jpg",
+    "aboutImage": "https://www.garagedulandry.com/upload-settings/medium800/img-1.jpg",
+    "gallery": [
+      {
+        "url": "https://www.garagedulandry.com/upload-bloc_service/medium1200/img1.jpg",
+        "alt": ""
+      },
+      {
+        "url": "https://www.garagedulandry.com/upload-bloc_service/medium1200/img2.jpg",
+        "alt": ""
+      },
+      {
+        "url": "https://images.unsplash.com/photo-1486262715619-67b85e0b08d3?auto=format&fit=crop&w=1200&q=80",
+        "alt": ""
+      }
+    ],
+    "palette": {
+      "primary": "#E11D2E",
+      "secondary": "#0C0C0D",
+      "accent": "#F4F4F5"
+    },
+    "reviews": [
+      {
+        "author": "Marc D.",
+        "text": "Diagnostic sérieux sur une panne complexe. Je recommande.",
+        "rating": 5
+      },
+      {
+        "author": "Sophie L.",
+        "text": "Accueil correct, devis clair, restitution dans les temps.",
+        "rating": 5
+      }
+    ],
+    "openingHours": [
+      {
+        "day": "Lundi",
+        "hours": "8h30 – 12h · 14h – 18h"
+      },
+      {
+        "day": "Mardi",
+        "hours": "8h30 – 12h · 14h – 18h"
+      },
+      {
+        "day": "Mercredi",
+        "hours": "8h30 – 12h · 14h – 18h"
+      },
+      {
+        "day": "Jeudi",
+        "hours": "8h30 – 12h · 14h – 18h"
+      },
+      {
+        "day": "Vendredi",
+        "hours": "8h30 – 12h · 14h – 18h"
+      },
+      {
+        "day": "Samedi",
+        "hours": "Sur rendez-vous"
+      }
+    ],
+    "social": [],
+    "services": [
+      {
+        "title": "Révision & entretien",
+        "description": "Vidange, filtres, freins, climatisation : on suit le carnet constructeur et on vous prévient avant usure critique."
+      },
+      {
+        "title": "Diagnostic électronique",
+        "description": "Valise multi-marques, lecture des défauts, recherche de panne. Le devis part du diagnostic — pas l'inverse."
+      },
+      {
+        "title": "Freinage & trains roulants",
+        "description": "Plaquettes, disques, amortisseurs, silentblocs, géométrie : sécurité et tenue de route remises en état."
+      },
+      {
+        "title": "Distribution & mécanique",
+        "description": "Courroie / chaîne, pompe à eau, embrayage, joints — interventions planifiées avec devis ferme et délai clair."
+      },
+      {
+        "title": "Pneus & géométrie",
+        "description": "Montage, équilibrage, crevaison, conseil usure. On vous dit quand le pneu peut encore rouler — et quand non."
+      },
+      {
+        "title": "Carrosserie légère",
+        "description": "Rayures, chocs de parking, pare-chocs : remises en état propres pour un véhicule présentable."
+      }
+    ],
+    "faq": [
+      {
+        "question": "Faut-il prendre rendez-vous ?",
+        "answer": "Oui, de préférence. Ça nous permet de préparer le créneau et les pièces éventuelles. En urgence, appelez : on voit ce qui est possible le jour même."
+      },
+      {
+        "question": "Le devis est-il gratuit ?",
+        "answer": "Le devis de réparation est établi après diagnostic. On vous l'explique clairement avant toute intervention — rien n'est lancé sans votre accord."
+      },
+      {
+        "question": "Intervenez-vous sur toutes les marques ?",
+        "answer": "Oui, atelier multi-marques : citadines, breaks, SUV et utilitaires légers. Diagnostic électronique adapté aux véhicules récents."
+      },
+      {
+        "question": "Puis-je laisser la voiture la journée ?",
+        "answer": "Oui. Indiquez-nous à la prise de rendez-vous si vous avez besoin d'un créneau de restitution précis."
+      }
+    ],
+    "heroBadge": "Garage multi-marques",
+    "heroPoints": [
+      "Devis avant réparation",
+      "Toutes marques",
+      "Pièces garanties"
+    ],
+    "ctaCallLabel": "Appeler l'atelier",
+    "ctaQuoteLabel": "Prendre rendez-vous",
+    "trustItems": [
+      {
+        "value": "4,9/5",
+        "label": "Avis clients"
+      },
+      {
+        "value": "RDV",
+        "label": "Sur rendez-vous"
+      },
+      {
+        "value": "12 mois",
+        "label": "Garantie pièces"
+      },
+      {
+        "value": "Local",
+        "label": "Atelier de proximité"
+      }
+    ],
+    "servicesHeading": "Nos prestations",
+    "galleryHeading": "L'atelier en images",
+    "reviewsHeading": "Avis clients",
+    "faqHeading": "Questions fréquentes",
+    "aboutHeading": "L'atelier",
+    "contactHeading": "Prendre rendez-vous"
+  },
+  "dental": {
+    "businessName": "Cabinet Dentaire Dupont",
+    "phone": "04 78 60 12 45",
+    "email": "accueil@cabinet-dupont-lyon.fr",
+    "city": "Lyon",
+    "area": "Lyon 3e et Villeurbanne",
+    "subtitle": "Soins dentaires pour toute la famille à Lyon — prévention, esthétique et urgences.",
+    "about": "Le Cabinet Dentaire Dupont accompagne les familles lyonnaises depuis plus de vingt ans. Nous combinons écoute, technologies modernes et un parcours de soins clair pour préserver votre sourire au quotidien.",
+    "heroImage": "https://images.unsplash.com/photo-1606811841689-23dfddce3e95?auto=format&fit=crop&w=1400&q=80",
+    "aboutImage": "https://images.unsplash.com/photo-1588776814546-1ffcf47267a5?auto=format&fit=crop&w=1200&q=80",
+    "gallery": [
+      {
+        "url": "https://images.unsplash.com/photo-1629909613654-28e377c37b09?auto=format&fit=crop&w=800&q=80",
+        "alt": "Famille en consultation"
+      },
+      {
+        "url": "https://images.unsplash.com/photo-1609840114035-3c981b782dfe?auto=format&fit=crop&w=800&q=80",
+        "alt": "Patient souriant"
+      },
+      {
+        "url": "https://images.unsplash.com/photo-1598256989800-fe5f95da9787?auto=format&fit=crop&w=800&q=80",
+        "alt": "Soin au fauteuil"
+      },
+      {
+        "url": "https://images.unsplash.com/photo-1629909615184-74f495363b67?auto=format&fit=crop&w=800&q=80",
+        "alt": "Équipe dentaire"
+      }
+    ],
+    "palette": {
+      "primary": "#b1040e",
+      "secondary": "#2e333e",
+      "accent": "#80060d"
+    },
+    "services": [
+      {
+        "title": "Dentisterie générale",
+        "description": "Contrôles, détartrage, soins cariés et suivi préventif pour toute la famille, du plus jeune au plus âgé."
+      },
+      {
+        "title": "Esthétique du sourire",
+        "description": "Blanchiment, facettes, couronnes et aligners : des résultats naturels pour sourire en confiance."
+      },
+      {
+        "title": "Urgences dentaires",
+        "description": "Douleur, dent cassée ou abcès : contactez-nous rapidement, nous organisons un créneau prioritaire."
+      }
+    ],
+    "reviews": [
+      {
+        "author": "Dr Sophie Dupont",
+        "text": "Chirurgien-dentiste, spécialisée en soins familiaux et prévention.",
+        "rating": 5
+      },
+      {
+        "author": "Dr Marc Lefèvre",
+        "text": "Omnipraticien, passionné par la dentisterie esthétique et les implants.",
+        "rating": 5
+      },
+      {
+        "author": "Dr Amina Benali",
+        "text": "Spécialiste des soins pédiatriques et de l’accompagnement des plus jeunes.",
+        "rating": 5
+      }
+    ],
+    "faq": [
+      {
+        "question": "Faut-il prendre rendez-vous ?",
+        "answer": "Oui, de préférence. Appelez ou utilisez le formulaire : nous confirmons le créneau sous 24 h ouvrées."
+      },
+      {
+        "question": "Acceptez-vous les nouveaux patients ?",
+        "answer": "Oui. Nous accueillons les nouveaux patients pour un bilan complet et un plan de soins adapté."
+      }
+    ],
+    "openingHours": [
+      {
+        "day": "Lun–Ven",
+        "hours": "08:30 – 19:00"
+      }
+    ],
+    "zones": [
+      "Lyon 3e",
+      "Villeurbanne",
+      "Bron",
+      "Vaulx-en-Velin"
+    ],
+    "heroBadge": "CABINET DENTAIRE DUPONT",
+    "heroPoints": [
+      "Prévention & hygiène",
+      "Accueil bienveillant",
+      "Technologies modernes"
+    ],
+    "ctaCallLabel": "Prendre rendez-vous",
+    "ctaQuoteLabel": "Nos soins",
+    "trustItems": [
+      {
+        "value": "20+",
+        "label": "Années d'expérience"
+      },
+      {
+        "value": "2500+",
+        "label": "Patients suivis"
+      },
+      {
+        "value": "5",
+        "label": "Praticiens"
+      }
+    ],
+    "servicesHeading": "Nos soins dentaires",
+    "galleryHeading": "Des sourires pour tous les âges",
+    "reviewsHeading": "Votre équipe soignante",
+    "faqHeading": "Questions fréquentes",
+    "aboutHeading": "Votre sourire, notre fierté",
+    "contactHeading": "Prendre rendez-vous"
+  },
+  "food": {
+    "businessName": "Le Camion du Coin",
+    "phone": "06 12 45 78 90",
+    "email": "bonjour@lecamionducoin.fr",
+    "city": "Lyon",
+    "area": "Lyon et Presqu’île",
+    "subtitle": "Street food maison à Lyon : burgers, wings et classics préparés à la minute sur les places du centre.",
+    "about": "Depuis 2019, Le Camion du Coin sillonne Lyon avec une cuisine simple et généreuse. Pain brioché, sauces maison, frites croustillantes — on sert vite, on sert bien, et on revient chaque semaine sur vos places préférées.",
+    "heroImage": "https://images.unsplash.com/photo-1565123409695-7b5ef63a2efb?auto=format&fit=crop&w=1400&q=75",
+    "aboutImage": "https://images.unsplash.com/photo-1414235077428-338989a2e8c0?auto=format&fit=crop&w=1200&q=70",
+    "gallery": [
+      {
+        "url": "https://images.unsplash.com/photo-1550547660-d9450f859349?auto=format&fit=crop&w=1200&q=70",
+        "alt": "Burger maison"
+      },
+      {
+        "url": "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?auto=format&fit=crop&w=1200&q=70",
+        "alt": "Service en terrasse"
+      },
+      {
+        "url": "https://images.unsplash.com/photo-1626082927389-6cd097cdc6ec?auto=format&fit=crop&w=1200&q=70",
+        "alt": "Frites et wings"
+      },
+      {
+        "url": "https://images.unsplash.com/photo-1572802419224-296b0aeee0d9?auto=format&fit=crop&w=1200&q=70",
+        "alt": "Street food"
+      }
+    ],
+    "palette": {
+      "primary": "#055346",
+      "secondary": "#f9efe6",
+      "accent": "#f3c395"
+    },
+    "reviews": [
+      {
+        "author": "Camille R.",
+        "text": "Les meilleurs wings de Lyon, sauce maison au top. File d’attente qui avance vite et équipe super sympa.",
+        "rating": 5
+      },
+      {
+        "author": "Julien M.",
+        "text": "Burger généreux, frites parfaites. On les suit sur Instagram pour savoir où ils stationnent.",
+        "rating": 5
+      },
+      {
+        "author": "Sarah B.",
+        "text": "Idéal pour un déjeuner rapide sur la place. Qualité constante, prix justes.",
+        "rating": 4
+      }
+    ],
+    "openingHours": [
+      {
+        "day": "Mardi – Vendredi",
+        "hours": "11h30 – 14h30 · 18h – 22h"
+      },
+      {
+        "day": "Samedi",
+        "hours": "12h – 22h"
+      },
+      {
+        "day": "Dimanche – Lundi",
+        "hours": "Fermé (événements sur demande)"
+      }
+    ],
+    "social": [
+      {
+        "network": "instagram",
+        "url": "https://www.instagram.com/lecamionducoin/"
+      },
+      {
+        "network": "facebook",
+        "url": "https://www.facebook.com/lecamionducoin"
+      }
+    ],
+    "services": [
+      {
+        "title": "Burger dinde, œuf & fromage",
+        "description": "Pain brioché, dinde grillée, œuf coulant, cheddar et sauce maison. — 12 €",
+        "icon": "https://images.unsplash.com/photo-1550547660-d9450f859349?auto=format&fit=crop&w=800&q=70"
+      },
+      {
+        "title": "Hot wings & frites",
+        "description": "Ailes marinées, sauce piquante et frites croustillantes. — 11 €",
+        "icon": "https://images.unsplash.com/photo-1626082927389-6cd097cdc6ec?auto=format&fit=crop&w=800&q=70"
+      },
+      {
+        "title": "Duo hot-dog & soda",
+        "description": "Deux hot-dogs garnis, frites et boisson au choix. — 13 €",
+        "icon": "https://images.unsplash.com/photo-1553979459-d2229ba7433b?auto=format&fit=crop&w=800&q=70"
+      },
+      {
+        "title": "Soda float glacé",
+        "description": "Boisson gazeuse et boule de glace vanille — le classique. — 6 €",
+        "icon": "https://images.unsplash.com/photo-1572490122747-3968b75cc699?auto=format&fit=crop&w=800&q=70"
+      }
+    ],
+    "faq": [
+      {
+        "question": "Où vous trouver cette semaine ?",
+        "answer": "On publie chaque lundi notre planning sur Instagram."
+      },
+      {
+        "question": "Acceptez-vous les groupes et événements ?",
+        "answer": "Oui — mariages, séminaires, festivals."
+      },
+      {
+        "question": "Proposez-vous des options végétariennes ?",
+        "answer": "Oui, un burger veggie et des sides sont toujours au menu."
+      },
+      {
+        "question": "Quels moyens de paiement acceptez-vous ?",
+        "answer": "Espèces et carte bancaire, sur place."
+      }
+    ],
+    "heroBadge": "Food truck Lyonnais",
+    "heroPoints": [
+      "Fait maison",
+      "Produits frais",
+      "Sur place ou à emporter"
+    ],
+    "ctaCallLabel": "Envoyer la demande",
+    "ctaQuoteLabel": "Voir le menu",
+    "trustItems": [
+      {
+        "value": "4,9/5",
+        "label": "Avis Google"
+      },
+      {
+        "value": "12K+",
+        "label": "Sur Instagram"
+      }
+    ],
+    "servicesHeading": "Nos spécialités",
+    "galleryHeading": "En images",
+    "reviewsHeading": "Ce qu’ils en disent",
+    "faqHeading": "Questions fréquentes",
+    "aboutHeading": "Notre histoire gourmande",
+    "contactHeading": "Réserver une table",
+    "logo": "https://images.unsplash.com/photo-1550547660-d9450f859349?auto=format&fit=crop&w=128&h=128&q=80"
+  },
+  "barber": {
+    "businessName": "Atelier Barbier Martin",
+    "phone": "04 78 42 19 67",
+    "email": "contact@atelier-barbier-martin.fr",
+    "city": "Lyon",
+    "area": "Lyon 6e — Foch",
+    "subtitle": "Coupe, barbe et soins pour hommes à Lyon — un salon de quartier, sur rendez-vous.",
+    "about": "Installé depuis plus de dix ans près de Foch, l'Atelier Barbier Martin propose des coupes classiques et contemporaines, un entretien de barbe soigné et un accueil sans chichi. On prend le temps : diagnostic, conseil produit, et un résultat net que vous osez montrer.",
+    "heroImage": "https://images.unsplash.com/photo-1585747860715-2ba37e788b70?auto=format&fit=crop&w=1600&q=80",
+    "aboutImage": "https://images.unsplash.com/photo-1503951914875-452162b0f3f1?auto=format&fit=crop&w=1200&q=80",
+    "gallery": [
+      {
+        "url": "https://images.unsplash.com/photo-1585747860715-2ba37e788b70?auto=format&fit=crop&w=1600&q=80",
+        "alt": "Salon de coiffure pour hommes"
+      },
+      {
+        "url": "https://images.unsplash.com/photo-1503951914875-452162b0f3f1?auto=format&fit=crop&w=1200&q=80",
+        "alt": "Barbier au travail"
+      },
+      {
+        "url": "https://images.unsplash.com/photo-1621605815971-fbc98d665033?auto=format&fit=crop&w=1400&q=80",
+        "alt": "Rasage à l'ancienne"
+      },
+      {
+        "url": "https://images.unsplash.com/photo-1599351431202-1e0f0137899a?auto=format&fit=crop&w=1200&q=80",
+        "alt": "Quartier / accès"
+      },
+      {
+        "url": "https://images.unsplash.com/photo-1560250097-0b93528c311a?auto=format&fit=crop&w=400&q=80",
+        "alt": "Client satisfait"
+      },
+      {
+        "url": "https://images.unsplash.com/photo-1521590832167-7bcbfaaae1b0?auto=format&fit=crop&w=1400&q=80",
+        "alt": "Intérieur du salon"
+      }
+    ],
+    "palette": {
+      "primary": "#121212",
+      "secondary": "#f8f5ef",
+      "accent": "#dec7a6"
+    },
+    "reviews": [
+      {
+        "author": "Julien R.",
+        "text": "Enfin un barbier qui écoute. Coupe nette, barbe impeccable, et on ressort avec le moral. Je ne vais plus ailleurs.",
+        "rating": 5
+      },
+      {
+        "author": "Thomas M.",
+        "text": "Accueil pro, rendez-vous respectés, tarifs clairs. Le combo coupe + barbe vaut vraiment le coup.",
+        "rating": 5
+      },
+      {
+        "author": "Karim B.",
+        "text": "Ambiance salon de quartier, sans blabla inutile. Résultat nickel à chaque fois.",
+        "rating": 5
+      }
+    ],
+    "openingHours": [
+      {
+        "day": "Lun – Sam",
+        "hours": "09:00 – 19:00"
+      },
+      {
+        "day": "Dimanche",
+        "hours": "Fermé"
+      }
+    ],
+    "social": [
+      {
+        "network": "instagram",
+        "url": "https://www.instagram.com/atelierbarbiermartin/"
+      },
+      {
+        "network": "facebook",
+        "url": "https://www.facebook.com/atelierbarbiermartin"
+      }
+    ],
+    "zones": [
+      "Lyon 6e",
+      "Lyon 3e",
+      "Villeurbanne",
+      "Caluire"
+    ],
+    "services": [
+      {
+        "title": "Coupe homme",
+        "description": "Shampooing, coupe aux ciseaux ou tondeuse, séchage et conseils d'entretien. — 32 €"
+      },
+      {
+        "title": "Coupe enfant (-12 ans)",
+        "description": "Coupe adaptée aux plus jeunes, en douceur et sans stress. — 22 €"
+      },
+      {
+        "title": "Taille de barbe",
+        "description": "Contour, volume et finition rasoir — barbe nette et structurée. — 18 €"
+      },
+      {
+        "title": "Rasage traditionnel",
+        "description": "Serviette chaude, mousse, rasoir droit et after-shave. — 28 €"
+      },
+      {
+        "title": "Coupe + barbe",
+        "description": "Le duo signature : coupe complète et entretien de barbe. — 45 €"
+      },
+      {
+        "title": "Soin cuir chevelu",
+        "description": "Massage, masque hydratant et finition adaptée à votre cuir chevelu. — 15 €"
+      }
+    ],
+    "faq": [
+      {
+        "question": "Faut-il prendre rendez-vous ?",
+        "answer": "Oui, de préférence. Appelez ou utilisez le formulaire."
+      },
+      {
+        "question": "Proposez-vous coupe + barbe ?",
+        "answer": "Oui — le duo coupe et entretien de barbe est notre formule la plus demandée."
+      },
+      {
+        "question": "Quels moyens de paiement acceptez-vous ?",
+        "answer": "Espèces et carte bancaire, sur place."
+      },
+      {
+        "question": "Acceptez-vous les enfants ?",
+        "answer": "Oui, nous proposons une coupe adaptée aux moins de 12 ans."
+      }
+    ],
+    "heroBadge": "BARBIER",
+    "heroPoints": [
+      "Sur rendez-vous",
+      "Produits soignés",
+      "Salon de quartier"
+    ],
+    "ctaCallLabel": "Prendre rendez-vous",
+    "ctaQuoteLabel": "Voir les prestations",
+    "trustItems": [
+      {
+        "value": "98%",
+        "label": "Clients satisfaits"
+      },
+      {
+        "value": "12+",
+        "label": "Années d'expérience"
+      }
+    ],
+    "servicesHeading": "Nos prestations",
+    "galleryHeading": "En salon",
+    "reviewsHeading": "Avis clients",
+    "faqHeading": "Pourquoi nous choisir",
+    "aboutHeading": "Votre barbier de quartier à Lyon",
+    "contactHeading": "Prendre rendez-vous"
+  }
+}

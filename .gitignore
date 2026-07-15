@@ -47,6 +47,7 @@ lerna-debug.log*
 .nitro/
 .cache/
 dist/
+.vercel/
 
 # TypeScript
 *.tsbuildinfo
@@ -55,8 +56,12 @@ dist/
 .env
 .env.local
 .env.*.local
-client/.env
-server/.env
+web/.env
+api/.env
+
+# Reference project (local only)
+GoupixDex/
+devleadhunter-pencil/
 
 # Logs
 *.log

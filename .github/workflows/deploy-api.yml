@@ -1,0 +1,228 @@
+name: 🚀 Deploy FastAPI (api/) to VPS
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'api/**'
+      - 'api/requirements.txt'
+      - '.github/workflows/deploy-api.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'api/**'
+      - 'api/requirements.txt'
+  workflow_dispatch:
+
+concurrency:
+  group: fastapi-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    name: 🏗️ Deploy API
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 📥 Checkout (sparse)
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+          sparse-checkout: |
+            api
+          lfs: false
+
+      - name: 🧭 Debug workspace
+        run: |
+          pwd
+          ls -la
+          ls -la api || true
+          test -f api/requirements.txt && echo "requirements.txt exists" || echo "requirements.txt missing"
+
+      - name: 🧱 Ensure target structure (SSH)
+        uses: appleboy/ssh-action@v0.1.6
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          port: ${{ secrets.SSH_PORT }}
+          username: ${{ secrets.SSH_USERNAME }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script: |
+            set -e
+            TARGET_DIR="/var/www/api.devleadhunter.dibodev.fr/html"
+            sudo mkdir -p "$TARGET_DIR"
+            sudo rm -rf "$TARGET_DIR/api"
+            sudo mkdir -p "$TARGET_DIR/api"
+            sudo mkdir -p "$TARGET_DIR/.venv"
+            sudo chown -R $USER:$USER "$TARGET_DIR"
+
+      - name: 📤 Upload API sources (SCP)
+        uses: appleboy/scp-action@v0.1.4
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          port: ${{ secrets.SSH_PORT }}
+          username: ${{ secrets.SSH_USERNAME }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          strip_components: 0
+          source: "api"
+          target: /var/www/api.devleadhunter.dibodev.fr/html
+
+      - name: 🐍 Create/Update venv & install deps (SSH)
+        uses: appleboy/ssh-action@v0.1.6
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          port: ${{ secrets.SSH_PORT }}
+          username: ${{ secrets.SSH_USERNAME }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script: |
+            set -e
+            TARGET_DIR="/var/www/api.devleadhunter.dibodev.fr/html"
+            cd "$TARGET_DIR"
+            sudo apt-get update -y --allow-releaseinfo-change || true
+            sudo apt-get install -y python3-venv
+            if [ ! -x ".venv/bin/python" ]; then
+              python3 -m venv .venv
+            fi
+            . .venv/bin/activate
+            python -m pip install --upgrade pip wheel
+            pip install -r api/requirements.txt --no-cache-dir
+            deactivate
+
+      - name: ⚙️ Create .env file (SSH)
+        uses: appleboy/ssh-action@v0.1.6
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          port: ${{ secrets.SSH_PORT }}
+          username: ${{ secrets.SSH_USERNAME }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script: |
+            set -e
+            TARGET_DIR="/var/www/api.devleadhunter.dibodev.fr/html"
+            cd "$TARGET_DIR/api"
+            cat > .env <<EOF
+            ENV=production
+            DEBUG=false
+            # ⚠️ CLÉ DE CHIFFREMENT PERSISTANTE — sans elle, encryption_service.py
+            # regénère une clé aléatoire à CHAQUE restart et les comptes email / tokens
+            # OAuth chiffrés en base deviennent indéchiffrables. Doit rester STABLE.
+            ENCRYPTION_KEY=${{ secrets.ENCRYPTION_KEY }}
+            API_VERSION=v1
+            API_PREFIX=/api/v1
+            API_BASE_URL=${{ secrets.API_BASE_URL }}
+            HOST=127.0.0.1
+            PORT=8005
+            CORS_ORIGINS=http://localhost:3000,http://localhost:5173,https://demo.dibodev.fr
+            DATABASE_URL=${{ secrets.DATABASE_URL }}
+            SECRET_KEY=${{ secrets.SECRET_KEY }}
+            ADMIN_EMAIL=${{ secrets.ADMIN_EMAIL }}
+            ADMIN_PASSWORD=${{ secrets.ADMIN_PASSWORD }}
+            FRONTEND_URL=${{ secrets.FRONTEND_URL }}
+            ACCESS_TOKEN_EXPIRE_MINUTES=30
+            STRIPE_SECRET_KEY=${{ secrets.STRIPE_SECRET_KEY }}
+            STRIPE_PUBLIC_KEY=${{ secrets.STRIPE_PUBLIC_KEY }}
+            STRIPE_WEBHOOK_SECRET=${{ secrets.STRIPE_WEBHOOK_SECRET }}
+            DEMO_HOST_BASE_URL=https://demo.dibodev.fr
+            DEMO_SITE_VERIFY_RETRIES=3
+            DEMO_SITE_VERIFY_RETRY_DELAY_SECONDS=2
+            DEMO_SITE_TTL_DAYS=14
+            STORYBLOK_MANAGEMENT_TOKEN=${{ secrets.STORYBLOK_MANAGEMENT_TOKEN }}
+            STORYBLOK_REGION=eu
+            STORYBLOK_WEBHOOK_SECRET=${{ secrets.STORYBLOK_WEBHOOK_SECRET }}
+            RESEND_API_KEY=${{ secrets.RESEND_API_KEY }}
+            RESEND_WEBHOOK_SECRET=${{ secrets.RESEND_WEBHOOK_SECRET }}
+            BRIGHTDATA_API_TOKEN=${{ secrets.BRIGHTDATA_API_TOKEN }}
+            BRIGHTDATA_ZONE=mcp_unlocker
+            PAGESPEED_API_KEY=${{ secrets.PAGESPEED_API_KEY }}
+            VERCEL_TOKEN=${{ secrets.VERCEL_TOKEN }}
+            VERCEL_DEMO_HOST_PROJECT_ID=${{ secrets.VERCEL_DEMO_HOST_PROJECT_ID }}
+            VERCEL_DEPLOY_HOOK_URL=${{ secrets.VERCEL_DEPLOY_HOOK_URL }}
+            POSTHOG_API_HOST=${{ secrets.POSTHOG_API_HOST }}
+            POSTHOG_PROJECT_ID=${{ secrets.POSTHOG_PROJECT_ID }}
+            POSTHOG_PERSONAL_API_KEY=${{ secrets.POSTHOG_PERSONAL_API_KEY }}
+            POSTHOG_PROJECT_API_KEY=${{ secrets.NUXT_PUBLIC_POSTHOG_PROJECT_API_KEY }}
+            POSTHOG_INGESTION_HOST=${{ secrets.NUXT_PUBLIC_POSTHOG_INGESTION_HOST }}
+            GROQ_API_KEY=${{ secrets.GROQ_API_KEY }}
+            SUPPORT_FTP_HOST=${{ secrets.SUPPORT_FTP_HOST }}
+            SUPPORT_FTP_PORT=${{ secrets.SUPPORT_FTP_PORT }}
+            SUPPORT_FTP_USER=${{ secrets.SUPPORT_FTP_USER }}
+            SUPPORT_FTP_PASSWORD=${{ secrets.SUPPORT_FTP_PASSWORD }}
+            SUPPORT_FTP_BASE_DIR=${{ secrets.SUPPORT_FTP_BASE_DIR }}
+            SUPPORT_FTP_PUBLIC_BASE_URL=${{ secrets.SUPPORT_FTP_PUBLIC_BASE_URL }}
+            SUPPORT_FTP_USE_TLS=${{ secrets.SUPPORT_FTP_USE_TLS }}
+            EOF
+
+      - name: 🧬 Run database migrations (SSH)
+        uses: appleboy/ssh-action@v0.1.6
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          port: ${{ secrets.SSH_PORT }}
+          username: ${{ secrets.SSH_USERNAME }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script: |
+            set -e
+            TARGET_DIR="/var/www/api.devleadhunter.dibodev.fr/html"
+            cd "$TARGET_DIR/api"
+            # Idempotent runner: schema_migrations tracks applied migrations and each
+            # migration guards its own ALTER (INFORMATION_SCHEMA / checkfirst), so this
+            # is safe to run on every deploy and only applies what is missing. This is
+            # what actually propagates new columns (init_db.py never ALTERs).
+            ../.venv/bin/python migrations/run_migrations.py
+
+      - name: 🗄️ Run database seeders (SSH)
+        uses: appleboy/ssh-action@v0.1.6
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          port: ${{ secrets.SSH_PORT }}
+          username: ${{ secrets.SSH_USERNAME }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script: |
+            set -e
+            TARGET_DIR="/var/www/api.devleadhunter.dibodev.fr/html"
+            cd "$TARGET_DIR/api"
+            # Seeders are idempotent (existing records are skipped) — runs after
+            # migrations so any new column the seed data relies on already exists.
+            ../.venv/bin/python init_db.py
+
+      - name: ⚙️ Configure/restart systemd service (SSH)
+        uses: appleboy/ssh-action@v0.1.6
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          port: ${{ secrets.SSH_PORT }}
+          username: ${{ secrets.SSH_USERNAME }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script: |
+            set -e
+            TARGET_DIR="/var/www/api.devleadhunter.dibodev.fr/html"
+            SERVICE_NAME="devleadhunter-api.service"
+            DEPLOY_USER="${{ secrets.SSH_USERNAME }}"
+            sudo bash -c "cat > /etc/systemd/system/${SERVICE_NAME}" <<EOF
+            [Unit]
+            Description=DevLeadHunter FastAPI (Uvicorn)
+            After=network.target
+            [Service]
+            User=${DEPLOY_USER}
+            WorkingDirectory=${TARGET_DIR}/api
+            Environment=PYTHONPATH=${TARGET_DIR}/api
+            ExecStart=${TARGET_DIR}/.venv/bin/uvicorn main:app --host 127.0.0.1 --port 8005 --workers 1 --proxy-headers
+            Restart=always
+            RestartSec=5
+            KillSignal=SIGINT
+            MemoryMax=2G
+            MemoryHigh=1.5G
+            [Install]
+            WantedBy=multi-user.target
+            EOF
+            sudo systemctl daemon-reload
+            sudo systemctl enable ${SERVICE_NAME}
+            sudo systemctl restart ${SERVICE_NAME}
+
+      - name: 🔄 Test & reload Nginx (SSH)
+        uses: appleboy/ssh-action@v0.1.6
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          port: ${{ secrets.SSH_PORT }}
+          username: ${{ secrets.SSH_USERNAME }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script: |
+            set -e
+            sudo nginx -t
+            sudo systemctl reload nginx

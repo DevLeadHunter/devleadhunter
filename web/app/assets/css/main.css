@@ -1,0 +1,741 @@
+@import 'tailwindcss';
+@import '@nuxt/ui';
+@import '@fortawesome/fontawesome-free/css/all.min.css';
+
+@config '../../../tailwind.config.js';
+
+@layer base {
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    @apply bg-[#050505] font-sans text-[#f9f9f9];
+    font-family: 'Inter', sans-serif;
+  }
+
+  * {
+    @apply border-[#30363d];
+  }
+
+  /* Hide native Edge/IE password reveal & clear controls — we ship our own
+     toggle in UiPasswordInput; without this Edge shows a second eye icon. */
+  input::-ms-reveal,
+  input::-ms-clear {
+    display: none;
+  }
+
+  /* Tailwind v4 dropped the default pointer cursor on buttons — restore it
+     app-wide so every clickable button/role=button shows the right cursor. */
+  button:not(:disabled),
+  [role='button']:not([aria-disabled='true']),
+  summary,
+  label[for] {
+    cursor: pointer;
+  }
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes slideInLeft {
+  from {
+    opacity: 0;
+    transform: translateX(-30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes slideInRight {
+  from {
+    opacity: 0;
+    transform: translateX(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@layer components {
+  /* Legacy DevLeadHunter utility classes — themed via --app-* variables so
+     they follow the light/dark theme EVERYWHERE, including inside drawers and
+     modals teleported to <body> (outside the .app-theme scope). The variables
+     resolve on :root (paper) and html.dark (charbon), so no ancestor is
+     required. */
+  .btn-primary {
+    @apply flex h-9 min-h-9 cursor-pointer items-center justify-center gap-2 rounded-full px-4 text-sm font-semibold transition-all;
+    background-color: var(--app-btn-bg);
+    color: var(--app-btn-text);
+  }
+
+  .btn-primary:hover {
+    opacity: 0.88;
+  }
+
+  .btn-secondary {
+    @apply flex h-9 min-h-9 cursor-pointer items-center justify-center gap-2 rounded-full border px-4 text-sm font-medium transition-all;
+    border-color: var(--app-line);
+    background-color: var(--app-surface);
+    color: var(--app-ink);
+  }
+
+  .btn-secondary:hover {
+    border-color: var(--app-ink-soft);
+    background-color: var(--app-surface-2);
+  }
+
+  .btn-primary .fa-solid,
+  .btn-primary .fa-regular,
+  .btn-primary .fa-brands,
+  .btn-secondary .fa-solid,
+  .btn-secondary .fa-regular,
+  .btn-secondary .fa-brands {
+    line-height: 1;
+    font-size: 0.875rem;
+  }
+
+  .btn-danger {
+    @apply flex cursor-pointer items-center justify-center gap-2 rounded-full px-3 py-1.5 text-sm font-medium transition-all;
+    background-color: var(--app-red);
+    color: #fbf9f3;
+  }
+
+  .btn-danger:hover {
+    opacity: 0.88;
+  }
+
+  .input-field {
+    @apply h-9 min-h-9 w-full rounded-lg border px-3 text-sm transition-all focus:outline-none;
+    border-color: var(--app-line);
+    background-color: var(--app-surface);
+    color: var(--app-ink);
+  }
+
+  .input-field::placeholder {
+    color: var(--app-faint);
+  }
+
+  .input-field:focus {
+    border-color: var(--app-ink);
+  }
+
+  .input-field option {
+    background-color: var(--app-surface);
+    color: var(--app-ink);
+  }
+
+  textarea.input-field {
+    @apply h-auto py-2;
+  }
+
+  .card {
+    @apply rounded-xl border p-4 shadow-none;
+    border-color: var(--app-line);
+    background-color: var(--app-surface);
+  }
+
+  .text-muted {
+    color: var(--app-ink-soft);
+  }
+
+  .border-muted {
+    border-color: var(--app-line);
+  }
+
+  h1 {
+    @apply text-xl font-semibold;
+    color: var(--app-ink);
+  }
+
+  /* Le site vitrine (landing-theme) est en DA light fixe : ses titres ne doivent
+     jamais hériter de l'encre du thème app (html.dark pose --app-ink clair). */
+  .landing-theme h1 {
+    color: #1b1813;
+  }
+
+  .btn-sidebar-hover {
+    background-color: rgba(255, 255, 255, 0.08);
+  }
+
+  .btn-sidebar-active {
+    background-color: rgba(255, 255, 255, 0.12);
+  }
+
+  .animate-fadeInUp {
+    animation: fadeInUp 0.6s ease-out forwards;
+    opacity: 0;
+  }
+
+  .animate-fadeIn {
+    animation: fadeIn 0.6s ease-out forwards;
+    opacity: 0;
+  }
+
+  .animate-slideInLeft {
+    animation: slideInLeft 0.8s ease-out forwards;
+    opacity: 0;
+  }
+
+  .animate-slideInRight {
+    animation: slideInRight 0.8s ease-out forwards;
+    opacity: 0;
+  }
+}
+
+/* ============================================================
+   App (dashboard) — « Atelier, édition outil »
+   Same brand world as the landing (paper/ink/amber annotations,
+   black & white actions) tuned for daily dense usage, with a
+   light (paper) and a dark (warm ink) theme driven by variables.
+   Light values live at :root so shared components keep sane
+   colors outside the dashboard; dark only applies inside
+   .app-theme[data-theme='dark'].
+   ============================================================ */
+:root {
+  --app-font-ui: 'IBM Plex Sans', 'Inter', system-ui, sans-serif;
+  --app-font-mono: 'IBM Plex Mono', ui-monospace, SFMono-Regular, monospace;
+
+  --app-bg: #f4f1e9;
+  --app-surface: #fbf9f3;
+  --app-surface-2: #ede9de;
+  --app-ink: #1d1a14;
+  --app-ink-soft: #6e6759;
+  --app-faint: #b7ae9c;
+  --app-line: #e1dbcc;
+  --app-line-soft: #eae5d8;
+  --app-accent: #e8a33c;
+  --app-accent-ink: #9c6b14;
+  --app-accent-soft: rgba(232, 163, 60, 0.14);
+  --app-green: #2f7d4e;
+  --app-green-soft: rgba(47, 125, 78, 0.12);
+  --app-red: #bf4d33;
+  --app-red-soft: rgba(191, 77, 51, 0.12);
+  --app-blue: #4a6b8f;
+  --app-blue-soft: rgba(95, 127, 158, 0.16);
+  --app-violet: #7a63ad;
+  --app-violet-soft: rgba(141, 123, 184, 0.16);
+  --app-overlay: rgba(29, 26, 20, 0.45);
+  --app-btn-bg: #1d1a14;
+  --app-btn-text: #fbf9f3;
+  --app-shadow-soft: 0 10px 30px -18px rgba(29, 26, 20, 0.35);
+}
+
+/* Dark « charbon neutre » — logiciel, ni GitHub bleu-gris ni brun.
+   `.dark` (posé sur <html> par useAppTheme) couvre aussi les éléments
+   téléportés dans <body> (drawers, modales) qui sortent de .app-theme. */
+.app-theme[data-theme='dark'],
+html.dark {
+  --app-bg: #131312;
+  --app-surface: #1b1b1a;
+  --app-surface-2: #242423;
+  --app-ink: #f0efeb;
+  --app-ink-soft: #a1a09a;
+  --app-faint: #565550;
+  --app-line: #2b2b29;
+  --app-line-soft: #232322;
+  --app-accent: #e8a33c;
+  --app-accent-ink: #ecb865;
+  --app-accent-soft: rgba(232, 163, 60, 0.13);
+  --app-green: #55a878;
+  --app-green-soft: rgba(85, 168, 120, 0.15);
+  --app-red: #d76a55;
+  --app-red-soft: rgba(215, 106, 85, 0.15);
+  --app-blue: #85a8c8;
+  --app-blue-soft: rgba(133, 168, 200, 0.15);
+  --app-violet: #a894d6;
+  --app-violet-soft: rgba(168, 148, 214, 0.15);
+  --app-overlay: rgba(0, 0, 0, 0.65);
+  --app-btn-bg: #f0efeb;
+  --app-btn-text: #131312;
+  --app-shadow-soft: 0 10px 30px -18px rgba(0, 0, 0, 0.65);
+}
+
+/* Tokens Nuxt UI (--ui-*) remappés sur les tokens Atelier : les classes de
+   variant des composants (bg-default, text-highlighted, ring-accented…)
+   suivent ainsi les 2 thèmes sans se battre avec app.config. Redéclaré sous
+   html.dark car Nuxt UI redéfinit ses tokens sous `.dark` (spécificité
+   supérieure à :root) — les valeurs référencées basculent d'elles-mêmes. */
+:root,
+html.dark {
+  --ui-bg: var(--app-surface);
+  --ui-bg-muted: var(--app-surface-2);
+  --ui-bg-elevated: var(--app-surface-2);
+  --ui-bg-accented: var(--app-surface-2);
+  --ui-bg-inverted: var(--app-ink);
+  --ui-text-dimmed: var(--app-faint);
+  --ui-text-muted: var(--app-ink-soft);
+  --ui-text-toned: var(--app-ink-soft);
+  --ui-text: var(--app-ink);
+  --ui-text-highlighted: var(--app-ink);
+  --ui-text-inverted: var(--app-bg);
+  --ui-border: var(--app-line);
+  --ui-border-muted: var(--app-line-soft);
+  --ui-border-accented: var(--app-line);
+  --ui-border-inverted: var(--app-ink);
+  --ui-primary: var(--app-ink);
+  --ui-success: var(--app-green);
+  --ui-error: var(--app-red);
+  --ui-warning: var(--app-accent-ink);
+  --ui-info: var(--app-blue);
+}
+
+.app-theme {
+  background-color: var(--app-bg);
+  color: var(--app-ink);
+  font-family: var(--app-font-ui);
+}
+
+/* Dans l'app, les familles héritées de la landing basculent sur les
+   polices logiciel (les composants balayés utilisent ces classes). */
+.app-theme .font-display,
+.app-theme .font-body {
+  font-family: var(--app-font-ui);
+}
+
+.app-theme .font-label {
+  font-family: var(--app-font-mono);
+}
+
+.app-theme ::selection {
+  background-color: var(--app-ink);
+  color: var(--app-bg);
+}
+
+@layer components {
+  /* — App primitives — */
+  .app-card {
+    @apply rounded-xl border;
+    border-color: var(--app-line);
+    background-color: var(--app-surface);
+  }
+
+  .app-btn-primary {
+    @apply inline-flex h-9 min-h-9 cursor-pointer items-center justify-center gap-2 rounded-full px-4 text-sm font-semibold;
+    background-color: var(--app-btn-bg);
+    color: var(--app-btn-text);
+    transition:
+      opacity 0.2s ease,
+      transform 0.2s ease;
+  }
+
+  .app-btn-primary:hover {
+    opacity: 0.88;
+  }
+
+  .app-btn-secondary {
+    @apply inline-flex h-9 min-h-9 cursor-pointer items-center justify-center gap-2 rounded-full border px-4 text-sm font-medium;
+    border-color: var(--app-line);
+    background-color: var(--app-surface);
+    color: var(--app-ink);
+    transition:
+      border-color 0.2s ease,
+      background-color 0.2s ease;
+  }
+
+  .app-btn-secondary:hover {
+    border-color: var(--app-ink-soft);
+    background-color: var(--app-surface-2);
+  }
+
+  .app-btn-danger {
+    @apply inline-flex h-9 min-h-9 cursor-pointer items-center justify-center gap-2 rounded-full px-4 text-sm font-semibold;
+    background-color: var(--app-red);
+    color: #fbf9f3;
+    transition: opacity 0.2s ease;
+  }
+
+  .app-btn-danger:hover {
+    opacity: 0.88;
+  }
+
+  .app-input {
+    @apply h-9 min-h-9 w-full rounded-lg border px-3 text-sm;
+    font-family: var(--app-font-ui);
+    border-color: var(--app-line);
+    background-color: var(--app-surface);
+    color: var(--app-ink);
+    transition: border-color 0.2s ease;
+  }
+
+  .app-input::placeholder {
+    color: var(--app-faint);
+  }
+
+  .app-input:focus {
+    border-color: var(--app-ink);
+    outline: none;
+  }
+
+  /* Mono uppercase data label (table headers, section titles, form labels) */
+  .app-label {
+    @apply text-[0.66rem] font-medium tracking-[0.12em] uppercase;
+    font-family: var(--app-font-mono);
+    color: var(--app-ink-soft);
+  }
+
+  /* Page title — software scale, UI family */
+  .app-page-title {
+    @apply text-lg font-semibold tracking-[-0.01em] sm:text-xl;
+    font-family: var(--app-font-ui);
+    color: var(--app-ink);
+  }
+
+  /* Status pill */
+  .app-badge {
+    @apply inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-medium;
+    background-color: var(--app-surface-2);
+    color: var(--app-ink-soft);
+  }
+
+  .app-badge--success {
+    background-color: var(--app-green-soft);
+    color: var(--app-green);
+  }
+
+  .app-badge--danger {
+    background-color: var(--app-red-soft);
+    color: var(--app-red);
+  }
+
+  .app-badge--progress {
+    background-color: var(--app-accent-soft);
+    color: var(--app-accent-ink);
+  }
+
+  .app-badge--info {
+    background-color: var(--app-blue-soft);
+    color: var(--app-blue);
+  }
+
+  .app-badge--engaged {
+    background-color: var(--app-violet-soft);
+    color: var(--app-violet);
+  }
+
+  /* Signal fort (ex. email cliqué) : encre pleine, lisible sur les 2 thèmes. */
+  .app-badge--strong {
+    background-color: var(--app-ink);
+    color: var(--app-bg);
+  }
+}
+
+/* Les classes legacy (.card / .btn-* / .input-field / .text-muted / h1) sont
+   désormais thémées directement dans @layer components via les variables
+   --app-*, donc elles suivent le thème PARTOUT — y compris dans les drawers
+   et modales téléportés dans <body>, hors du scope .app-theme. Plus besoin de
+   remap scopé ici (c'était l'origine du bug « inputs noirs / boutons blanc sur
+   blanc » en light mode dans les drawers). */
+
+.app-theme .btn-sidebar-hover {
+  background-color: var(--app-surface-2);
+}
+
+.app-theme .btn-sidebar-active {
+  background-color: var(--app-surface-2);
+}
+
+/* Themed spinner (dashboard boot + inline loaders) */
+.app-theme .loader-smooth {
+  width: 48px;
+  height: 48px;
+  border: 3px solid var(--app-line);
+  border-left-color: var(--app-accent);
+  border-radius: 50%;
+  animation: app-spin 0.8s linear infinite;
+}
+
+@keyframes app-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* ============================================================
+   Landing — editorial light theme (« Atelier »)
+   Warm paper background, black & white DA: ink is the only
+   action color (matches the DevLeadHunter app identity).
+   Scoped under .landing-theme so the dark dashboard is untouched.
+   ============================================================ */
+.landing-theme {
+  --dlh-paper: #f6f3ec;
+  --dlh-paper-raised: #fcfaf5;
+  --dlh-ink: #1b1813;
+  --dlh-ink-strong: #0c0a08;
+  --dlh-ink-soft: #6b6355;
+  --dlh-line: #e3dccd;
+  /* Accent « annotation » : ambre miel, réservé aux marques (surligneur, ✳,
+     numéros, rail…) — jamais aux boutons ni aux liens (DA noir & blanc). */
+  --dlh-amber: #e8a33c;
+
+  background-color: var(--dlh-paper);
+  color: var(--dlh-ink);
+  font-family: 'Instrument Sans', 'Inter', system-ui, sans-serif;
+}
+
+.landing-theme ::selection {
+  background-color: var(--dlh-ink);
+  color: var(--dlh-paper);
+}
+
+/* Subtle paper grain over the whole landing (pure CSS, no asset) */
+.landing-grain {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  pointer-events: none;
+  opacity: 0.05;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+/* Mono eyebrow label above section titles */
+.landing-eyebrow {
+  @apply font-label inline-flex items-center gap-3 text-xs font-medium tracking-[0.18em] uppercase;
+  color: var(--dlh-ink-soft);
+}
+
+.landing-eyebrow::before {
+  content: '';
+  width: 2rem;
+  height: 2px;
+  background-color: var(--dlh-amber);
+}
+
+/* Primary conversion CTA — ink pill (black & white DA) */
+.landing-btn-primary {
+  @apply font-body inline-flex cursor-pointer items-center justify-center gap-2.5 rounded-full px-7 py-3.5 text-base font-semibold;
+  background-color: var(--dlh-ink);
+  color: var(--dlh-paper-raised);
+  box-shadow: 0 18px 32px -18px rgba(12, 10, 8, 0.5);
+  transition:
+    background-color 0.25s ease,
+    transform 0.25s ease,
+    box-shadow 0.25s ease;
+}
+
+.landing-btn-primary:hover {
+  background-color: var(--dlh-ink-strong);
+  transform: translateY(-2px);
+  box-shadow: 0 24px 40px -18px rgba(12, 10, 8, 0.55);
+}
+
+.landing-btn-primary:focus-visible {
+  outline: 2px solid var(--dlh-ink);
+  outline-offset: 3px;
+}
+
+/* Quiet secondary action — ink outline pill */
+.landing-btn-ghost {
+  @apply font-body inline-flex cursor-pointer items-center justify-center gap-2.5 rounded-full border px-7 py-3.5 text-base font-medium;
+  border-color: var(--dlh-line);
+  color: var(--dlh-ink);
+  background-color: transparent;
+  transition:
+    border-color 0.25s ease,
+    background-color 0.25s ease;
+}
+
+.landing-btn-ghost:hover {
+  border-color: var(--dlh-ink);
+  background-color: var(--dlh-paper-raised);
+}
+
+.landing-btn-ghost:focus-visible {
+  outline: 2px solid var(--dlh-ink);
+  outline-offset: 3px;
+}
+
+/* Editorial underlined text link */
+.landing-link {
+  @apply cursor-pointer font-medium;
+  color: var(--dlh-ink);
+  text-decoration: underline;
+  text-decoration-color: var(--dlh-line);
+  text-underline-offset: 4px;
+  transition:
+    text-decoration-color 0.2s ease,
+    color 0.2s ease;
+}
+
+.landing-link:hover {
+  color: var(--dlh-ink-strong);
+  text-decoration-color: var(--dlh-ink-strong);
+}
+
+/* Raised paper card */
+.landing-card {
+  @apply rounded-2xl border;
+  border-color: var(--dlh-line);
+  background-color: var(--dlh-paper-raised);
+  box-shadow: 0 24px 48px -32px rgba(27, 24, 19, 0.25);
+}
+
+/* Playful lift + tilt on hover (collage feel, B&W-safe) */
+.landing-tilt {
+  transition:
+    transform 0.35s cubic-bezier(0.22, 1, 0.36, 1),
+    box-shadow 0.35s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.landing-tilt:hover {
+  transform: translateY(-5px) rotate(-0.5deg);
+  box-shadow: 0 32px 56px -30px rgba(27, 24, 19, 0.35);
+}
+
+/* Eyebrow variant for ink (inverse) sections */
+.landing-eyebrow--inverse {
+  color: rgba(252, 250, 245, 0.55);
+}
+
+/* Infinite trades ticker (hero footer strip) */
+@keyframes landing-ticker-scroll {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+.landing-ticker-track {
+  animation: landing-ticker-scroll 36s linear infinite;
+  will-change: transform;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .landing-ticker-track {
+    animation: none;
+  }
+
+  .landing-btn-primary,
+  .landing-btn-primary:hover,
+  .landing-tilt,
+  .landing-tilt:hover {
+    transform: none;
+  }
+}
+
+/* Scroll-reveal (armed client-side by the `v-reveal` directive) */
+.reveal {
+  opacity: 0;
+  transform: translateY(28px);
+  transition:
+    opacity 0.7s cubic-bezier(0.22, 1, 0.36, 1),
+    transform 0.7s cubic-bezier(0.22, 1, 0.36, 1);
+  will-change: opacity, transform;
+}
+
+.reveal.is-visible {
+  opacity: 1;
+  transform: none;
+}
+
+/* Respect users who prefer reduced motion — also neutralizes legacy animations */
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  .animate-fadeInUp,
+  .animate-fadeIn,
+  .animate-slideInLeft,
+  .animate-slideInRight,
+  .reveal {
+    animation: none !important;
+    opacity: 1 !important;
+    transform: none !important;
+    transition: none !important;
+  }
+}
+
+/* Mobile menu slide animation */
+.slide-enter-active,
+.slide-leave-active {
+  transition: opacity 0.3s ease;
+}
+
+.slide-enter-active aside,
+.slide-leave-active aside {
+  transition: transform 0.3s ease;
+}
+
+.slide-enter-from aside,
+.slide-leave-to aside {
+  transform: translateX(-100%);
+}
+
+.slide-enter-to aside,
+.slide-leave-from aside {
+  transform: translateX(0);
+}
+
+/* ============================================================
+   Carte de couverture (MapLibre) — habillage Atelier des contrôles
+   natifs (zoom, plein écran, attribution) + disposition plein écran.
+   Le FullscreenControl cible le wrapper `.coverage-map`, pas le canvas,
+   pour garder tooltip et légende visibles en plein écran.
+   ============================================================ */
+.coverage-map:fullscreen {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 1rem;
+  background: var(--app-bg);
+}
+
+.coverage-map:fullscreen .coverage-map__canvas {
+  height: auto;
+  flex: 1;
+}
+
+.coverage-map .maplibregl-ctrl-group {
+  overflow: hidden;
+  border: 1px solid var(--app-line);
+  border-radius: 0.5rem;
+  background: var(--app-surface);
+  box-shadow: var(--app-shadow-soft);
+}
+
+.coverage-map .maplibregl-ctrl-group button {
+  background: var(--app-surface);
+}
+
+.coverage-map .maplibregl-ctrl-group button + button {
+  border-top: 1px solid var(--app-line);
+}
+
+/* Les icônes des contrôles sont des SVG encre sombre : inversées en dark. */
+.app-theme[data-theme='dark'] .coverage-map .maplibregl-ctrl-group button .maplibregl-ctrl-icon,
+html.dark .coverage-map .maplibregl-ctrl-group button .maplibregl-ctrl-icon {
+  filter: invert(1) hue-rotate(180deg);
+}
+
+.coverage-map .maplibregl-ctrl-attrib {
+  font-size: 10px;
+  color: var(--app-ink-soft);
+  background: color-mix(in srgb, var(--app-surface) 82%, transparent);
+}
+
+.coverage-map .maplibregl-ctrl-attrib a {
+  color: var(--app-ink-soft);
+}

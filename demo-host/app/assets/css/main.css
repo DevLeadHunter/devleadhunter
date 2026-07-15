@@ -1,0 +1,12 @@
+@import 'tailwindcss';
+
+@layer base {
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    @apply bg-white font-sans text-slate-900 antialiased;
+    font-family: 'Inter', system-ui, sans-serif;
+  }
+}

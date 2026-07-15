@@ -1,0 +1,61 @@
+INTEGRATION MAQUETTE DEVLEADHUNTER
+
+
+SOURCE:
+
+https://www.figma.com/@santonsujarwo
+
+autres sources ?
+
+
+/devleadhunter /pencil-pixel-perfect
+
+## Objectif
+Créer le repo template depuis le starter de l’orga, puis intégrer **pixel perfect** toute la maquette Pencil (toutes les pages, toutes les sections, contenu tel quel). Pas d’adaptation CMS / SiteContent pour l’instant — pure intégration maquette → code. Les adaptations viendront plus tard.
+
+## Skills (obligatoires)
+1. **devleadhunter** — lire le skill + `reference/templates-architecture.md` pour la création du repo uniquement :
+   - 1 template = 1 repo dans l’orga `devleadhunter`
+   - partir du starter **`devleadhunter-website-template-starter`**
+   - naming : `devleadhunter-template-<id>`
+   - Nuxt layer + `.playground/` pour développer / prévisualiser
+2. **pencil-pixel-perfect** — une fois le repo prêt, intégrer la maquette au pixel près via le MCP Pencil.
+
+## Maquette Pencil (source de vérité)
+- Dossier .pen et images : C:\Users\leogu\Desktop\Projects\devleadhunter\devleadhunter-pencil\Food
+- MCP Pencil : `get_editor_state` → `batch_get` → `get_screenshot` / géométrie.
+- Ne pas inventer spacing, radii, typo, couleurs : extraire depuis les nœuds.
+
+## Contexte template
+- `template_id` : food
+- Métier : « ex. restaurant, food truck, etc »
+- Repo : `devleadhunter-template-food`
+
+## Ordre de travail
+1. Charger **devleadhunter** → créer / cloner le repo depuis le starter.
+2. Installer deps, lancer le playground.
+3. Charger **pencil-pixel-perfect** + MCP Pencil sur le `.pen`.
+4. Cartographier toutes les frames / pages / sections de la maquette.
+5. Intégrer **tout** (pages, sections, textes, images, nav) en fidélité pixel perfect — contenu hardcodé OK.
+6. Desktop puis mobile selon les frames Pencil.
+7. QA : screenshots Pencil vs browser à 100 % zoom + checklist du skill.
+
+## Hors scope (pour plus tard)
+- Contrat `SiteContent`, Storyblok, registre API, `extends` demo-host, tags.
+
+## Contraintes
+- Stack : **Vue 3.5 / Nuxt 4 / Tailwind v4** — pas de React/JSX.
+- Réponses en français.
+- Ne pas committer / pusher dans le repo devleadhunter mais uniquement dans le nouveau repo template créer
+
+
+
+tu peux push sur main. Je veux bien que tu fasses une branche backup que tu nommes comme tu veux. Le but, c'est de sauvegarder l'état du site actuel avant de l'adapter pour devleadHunter. Tu push sur main et ensuite tu crées une branche en partant de main pour sauvegarder l'état du site complet avant qu'on l'adapte.
+
+
+Maintenant je veux bien que tu adaptes la template que tu as faite pour la rendre fonctionnelle avec devleadHunter et les données qu'on récupère du prospect (SiteContent). Si c'est pas fait, mettre en place Storyblok comme les autres maquetes: le but, je te rappelle, que l'entièreté du site soit modifiable dans Storyblok, le contenu, les images, etc comme les autres maquettes actuellement intégrées dans devleadHunter. Tu peux l'ajouter dans le listing des templates disponibles dans devleadHunter.
+
+Et une fois que c'est fait, je veux bien que tu me lances une preview avec le même type de données qu'on récupère pour que je m'imagine et que je vois le résultat du site web maintenant adapté à devleadHunter avec des vraies données. Donc tu peux trouver les données de quelqu'un qui fait le métier correspondant à la maquette pour que j'ai un aperçu en situation réelle. 
+
+
+C'est parfait. Vérifiez bien que le formulaire de contact est un mailto qui pré rempli un mail, car je ne compte pas faire de backend. Vérifiez bien que c'est un formulaire via mailto. Sinon, une fois que c'est fini, tu peux push sur main la template et le repo devleadHunter si tu as fait des modifications dessus pour tout mettre à jour et que j'ai la maquette fonctionnelle dans devleadHunter.

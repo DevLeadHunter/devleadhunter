@@ -1,0 +1,316 @@
+{
+  "nav": {
+    "howItWorks": "How it works",
+    "product": "The delivered site",
+    "pricing": "Pricing",
+    "faq": "FAQ",
+    "downloads": "Download the app",
+    "login": "Log in",
+    "signup": "Start for free"
+  },
+  "cookies": {
+    "title": "Cookies",
+    "message": "We use analytics cookies to understand how the site is used and improve it. Your choice doesn't affect your browsing.",
+    "accept": "Accept",
+    "decline": "Decline",
+    "learnMore": "Learn more"
+  },
+  "landing": {
+    "seo": {
+      "title": "DevLeadHunter — Sell websites to local businesses that don't have one",
+      "description": "DevLeadHunter finds businesses without a website, generates a demo site in their name, reaches out by cold email and deploys the site live on payment. End-to-end prospecting automation."
+    },
+    "hero": {
+      "eyebrow": "Automated prospecting · from research to sale",
+      "titleStart": "Sell websites to local businesses",
+      "titleAccent": "that don't have one yet",
+      "subtitle": "DevLeadHunter finds businesses without a website, generates a real demo site in their name, reaches out by email — and puts the site live the day they pay.",
+      "ctaPrimary": "Start for free",
+      "ctaSecondary": "See how it works",
+      "trust1": "No subscription",
+      "trust2": "Free credits on signup",
+      "trust3": "No credit card"
+    },
+    "ticker": {
+      "ariaLabel": "Examples of prospected trades",
+      "item1": "Plumber · Lyon",
+      "item2": "Electrician · Nantes",
+      "item3": "Carpenter · Bordeaux",
+      "item4": "Landscaper · Toulouse",
+      "item5": "Tiler · Lille",
+      "item6": "Roofer · Rennes",
+      "item7": "Painter · Marseille",
+      "item8": "Locksmith · Strasbourg"
+    },
+    "story": {
+      "eyebrow": "How it works",
+      "title": "Follow one prospect through the machine.",
+      "subtitle": "From research to payment, everything runs automatically. Here is the full journey, with an example.",
+      "act1": {
+        "verb": "Find",
+        "description": "Pick a trade and a city. The tool scans Google, local directories and OpenStreetMap, discards businesses that already have a website and grabs the contact email."
+      },
+      "act2": {
+        "verb": "Generate",
+        "description": "A trade-specific template fills itself with their real data — photos, reviews, opening hours — and becomes a live demo site in their name, for 14 days."
+      },
+      "act3": {
+        "verb": "Reach out",
+        "description": "A cold email campaign starts: two A/B-tested variants, automatic follow-ups, and one send every 20 minutes to protect your sender reputation."
+      },
+      "act4": {
+        "verb": "Get paid",
+        "description": "The prospect pays through a Stripe link. Their site goes to production on their domain, they receive the CMS access — and you collect €500."
+      },
+      "visual": {
+        "prospectLabel": "Prospect card",
+        "prospectName": "Martin Plumbing",
+        "prospectCity": "Lyon",
+        "prospectRating": "4.8 ★",
+        "prospectReviews": "126 reviews",
+        "prospectEmail": "Email found: contact{'@'}…",
+        "prospectStamp": "No website",
+        "siteLabel": "Demo site · 14 days",
+        "siteUrl": "demo.dibodev.fr/martin-plumbing",
+        "siteTitle": "Martin Plumbing",
+        "siteTagline": "Repairs & renovation in Lyon",
+        "siteCta": "Request a quote",
+        "siteChip": "Editable in the CMS",
+        "emailLabel": "Cold email",
+        "emailSubject": "A website for Martin Plumbing",
+        "emailPreview": "Hi, I built a demo website for your business. It's already live, take a look…",
+        "emailMeta": "Variant A · day-3 follow-up scheduled",
+        "saleLabel": "Sale",
+        "saleAmount": "€500",
+        "saleStatus": "Payment received",
+        "saleDeploy": "Live on martin-plumbing.com",
+        "saleHandover": "CMS access handed to the client"
+      }
+    },
+    "proof": {
+      "eyebrow": "What the prospect receives",
+      "title": "A real website, not a mockup.",
+      "description": "Every demo is a complete, fast website connected to a CMS. Your prospect discovers their business already online — that's what closes the sale.",
+      "bullet1": "Carefully designed trade templates that don't look AI-generated",
+      "bullet2": "The client edits content, photos and pages in the CMS, no developer needed",
+      "bullet3": "Live as a demo for 14 days, then removed automatically"
+    },
+    "campaigns": {
+      "eyebrow": "Cold email & A/B testing",
+      "title": "Two emails compete, the best one wins.",
+      "description": "Every campaign sends two A/B-tested email variants and tracks opens and clicks per variant. Silent prospects get automatic follow-ups, and the sending pace protects your domain.",
+      "bullet1": "Two variants tested on every campaign, stats per variant",
+      "bullet2": "Automatic, schedulable follow-ups (day 3, day 7…)",
+      "bullet3": "One send every 20 minutes, sender reputation preserved",
+      "bullet4": "GDPR unsubscribe link included in every email",
+      "card": {
+        "label": "Campaign · Plumbers Lyon",
+        "leaderBadge": "Leading",
+        "variantALabel": "Variant A",
+        "variantASubject": "A website for Martin Plumbing",
+        "variantAStats": "38% opens · 12% clicks",
+        "variantBLabel": "Variant B",
+        "variantBSubject": "What if clients found you on Google?",
+        "variantBStats": "26% opens · 5% clicks",
+        "meta": "Day-3 follow-up scheduled · 1 send / 20 min"
+      }
+    },
+    "behavior": {
+      "eyebrow": "Scoring & behavior",
+      "title": "Know who to call back first.",
+      "description": "DevLeadHunter tracks what each prospect does on their demo and with your emails, computes a hot / warm / cold score, and AI summarizes each prospect's interest. Follow-ups can even adapt to that behavior.",
+      "bullet1": "Score combining demo visits and email engagement",
+      "bullet2": "AI summary of each prospect's interest",
+      "bullet3": "Follow-ups personalized from behavior",
+      "card": {
+        "label": "Prospect behavior",
+        "name": "Martin Plumbing",
+        "badge": "Hot",
+        "event1": "Visited their demo 3 times",
+        "event2": "Opened the email twice",
+        "event3": "Clicked “Request a quote”",
+        "aiLabel": "AI summary",
+        "aiSummary": "Highly engaged prospect: came back to the demo several times and clicked the quote button. Call back first today."
+      }
+    },
+    "sale": {
+      "eyebrow": "Sale & go-live",
+      "title": "From payment to production, in one click.",
+      "description": "Send a Stripe payment link with a preview of the site. Once paid: production deploy on the client's domain, demo removed and CMS access handed over — automatically.",
+      "bullet1": "Stripe payment link with a site preview",
+      "bullet2": "Automatic production deploy (Vercel) + domain",
+      "bullet3": "CMS access handed to the client on sale",
+      "bullet4": "Sales tracking: orders, revenue, pipeline",
+      "card": {
+        "label": "Order no. 1042",
+        "name": "Martin Plumbing",
+        "provider": "Stripe",
+        "step1": "Payment received · €500",
+        "step2": "Deploying to production…",
+        "step3": "Live on martin-plumbing.com",
+        "step4": "CMS access handed to the client"
+      }
+    },
+    "features": {
+      "eyebrow": "Under the hood",
+      "title": "The whole prospecting job, without the chores.",
+      "deliverability": {
+        "title": "Clean sending",
+        "description": "Resend, Gmail or your own domain. GDPR unsubscribe link in every email, automatic anti-spam pacing."
+      },
+      "platforms": {
+        "title": "Web, desktop and mobile",
+        "description": "A full web app, a Windows / macOS desktop app with auto-updates, and an interface built for the phone."
+      },
+      "analytics": {
+        "title": "Dashboard & sales tracking",
+        "description": "KPIs, conversion funnel, orders and revenue: steer your whole prospecting at a glance."
+      },
+      "security": {
+        "title": "Your data, encrypted",
+        "description": "Email accounts and secrets encrypted at rest, data scoped per user. Your prospecting stays yours."
+      }
+    },
+    "pricing": {
+      "eyebrow": "Pricing",
+      "title": "No subscription. Credits.",
+      "subtitle": "Try it with free credits, then pay as you go: credits are spent on searches and email sends.",
+      "freeCredits": "free credits on signup",
+      "pricePerCredit": "per credit",
+      "creditsPerSearch": "credits per search",
+      "creditsPerEmail": "credits per email",
+      "cta": "Start for free",
+      "roiNote": "A single website sold — €500 — pays for years of credits.",
+      "loadError": "Pricing can't be loaded right now. Please try again later."
+    },
+    "faq": {
+      "eyebrow": "FAQ",
+      "title": "Frequently asked questions.",
+      "q1": "Concretely, what is DevLeadHunter?",
+      "a1": "A complete automation chain: it finds businesses without a website, generates a demo site for them, contacts them by cold email and deploys their site to production when they buy — all from a single tool.",
+      "q2": "Is the generated site a real, editable website?",
+      "a2": "Yes. It's not an image: it's a real, fast website connected to a CMS (Storyblok). The client edits content, photos and pages themselves, without a developer.",
+      "q3": "Which platforms can I use it on?",
+      "a3": "On the web from any browser, as a native Windows and macOS desktop app, and on mobile thanks to a fully responsive interface. Everything syncs through your account.",
+      "q4": "How do credits work?",
+      "a4": "You receive free credits on signup. Credits are then spent as you go — searches and emails — and never expire. No subscription; top up whenever you want.",
+      "q5": "Is it GDPR and anti-spam compliant?",
+      "a5": "Every email includes an unsubscribe link, sends are limited to one every 20 minutes, and you control your sending domain (Resend, Gmail or your own) to protect your reputation.",
+      "q6": "Can I try it for free?",
+      "a6": "Yes. Create an account, receive free credits and test the entire pipeline without a credit card."
+    },
+    "desktop": {
+      "eyebrow": "Desktop app",
+      "title": "The whole tool, installed on your computer.",
+      "description": "DevLeadHunter also comes as a native Windows and macOS app. It signs into your account, updates itself, and runs your searches straight from your own machine.",
+      "bullet1": "Native Windows & macOS, automatic updates",
+      "bullet2": "Signed into your account, nothing to set up",
+      "bullet3": "Your searches run from your own connection",
+      "cta": "Download the app",
+      "note": "Free · included with your account",
+      "window": {
+        "title": "Prospecting",
+        "kpiProspects": "Prospects",
+        "kpiDemos": "Demos",
+        "kpiSales": "Sales"
+      },
+      "chip": "Windows · macOS"
+    },
+    "finalCta": {
+      "title": "Your next client doesn't have a website yet.",
+      "subtitle": "Create an account, get your free credits and launch your first campaign today.",
+      "cta": "Start for free",
+      "note": "No credit card · No subscription"
+    }
+  },
+  "legal": {
+    "updated": "Last updated: July 2026",
+    "privacy": {
+      "title": "Privacy policy",
+      "intro": "DevLeadHunter takes the protection of your data seriously. This page describes, plainly, what we collect and why.",
+      "s1": {
+        "title": "Data controller",
+        "body": "DevLeadHunter is published by Léo Guillaume (Dibodev). For any question about your data: leo{'@'}dibodev.fr."
+      },
+      "s2": {
+        "title": "Data we collect",
+        "body": "Account: email address and password (stored hashed). Usage: the searches, prospects and campaigns you create in the tool. Payment: credit purchases are processed by Stripe — no card number ever reaches our servers."
+      },
+      "s3": {
+        "title": "Analytics",
+        "body": "This site measures its audience with two tools. Umami, cookieless and anonymous, runs at all times. PostHog, subject to your consent via the cookie banner, uses cookies to analyse site usage in more detail (pageviews, clicks, journeys). Statistics stay internal: no data is sold or used for advertising."
+      },
+      "s4": {
+        "title": "Purposes",
+        "body": "Your data is used only to provide the service: authentication, running your searches and campaigns, billing credits. It is never sold or shared for advertising."
+      },
+      "s5": {
+        "title": "Retention",
+        "body": "Your account data is kept while your account is active, then deleted when the account is closed or upon request."
+      },
+      "s6": {
+        "title": "Your rights",
+        "body": "Under the GDPR you have the right to access, rectify, erase and port your data. Write to leo{'@'}dibodev.fr — answer within 30 days."
+      },
+      "s7": {
+        "title": "Cookies",
+        "body": "The site uses technical cookies (login session, language preference) and, only if you accept them via the consent banner, analytics cookies (PostHog). You can decline the latter with no impact on your browsing, and change your choice by clearing the site's data in your browser. No advertising or third-party tracking cookies."
+      }
+    },
+    "terms": {
+      "title": "Terms of service",
+      "intro": "By creating a DevLeadHunter account, you accept the terms below.",
+      "s1": {
+        "title": "Publisher",
+        "body": "DevLeadHunter is published by Léo Guillaume (Dibodev). Contact: leo{'@'}dibodev.fr."
+      },
+      "s2": {
+        "title": "Purpose of the service",
+        "body": "DevLeadHunter is a prospecting automation tool: finding businesses without a website, generating demo sites, cold email campaigns and sales tracking."
+      },
+      "s3": {
+        "title": "Account",
+        "body": "Signing up requires a valid email address. You are responsible for keeping your credentials confidential and for the activity performed from your account."
+      },
+      "s4": {
+        "title": "Credits & payment",
+        "body": "The tool works pay-as-you-go through a credit system, with no subscription. Payments are processed by Stripe. Purchased credits never expire."
+      },
+      "s5": {
+        "title": "Responsible use",
+        "body": "You are solely responsible for the compliance of your campaigns with applicable regulations (GDPR, anti-spam rules): unsubscribe link, respect of recipients and of your sending domain. The tool ships these guardrails; using them properly is on you."
+      },
+      "s6": {
+        "title": "Availability & liability",
+        "body": "The service is provided “as is”, with no guarantee of continuous availability. The publisher's liability is limited to the amount of credits purchased over the last twelve months."
+      },
+      "s7": {
+        "title": "Termination",
+        "body": "You may close your account at any time. The publisher may suspend an account in case of abusive, fraudulent or illegal use of the tool."
+      },
+      "s8": {
+        "title": "Governing law",
+        "body": "These terms are governed by French law."
+      }
+    }
+  },
+  "footer": {
+    "description": "The automation chain that turns businesses without a website into clients: research, site generation, cold email and go-live — end to end.",
+    "product": "Product",
+    "resources": "Resources",
+    "account": "Account",
+    "privacy": "Privacy",
+    "terms": "Terms",
+    "copyright": "All rights reserved.",
+    "language": "Language:",
+    "links": {
+      "howItWorks": "How it works",
+      "product": "The delivered site",
+      "pricing": "Pricing",
+      "faq": "FAQ",
+      "downloads": "Download the app",
+      "login": "Log in",
+      "signup": "Create an account"
+    }
+  }
+}
