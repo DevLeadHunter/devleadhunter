@@ -135,6 +135,35 @@ useHead(() => ({
         },
       }),
     },
+    {
+      type: 'application/ld+json',
+      innerHTML: JSON.stringify({
+        '@context': 'https://schema.org',
+        '@type': 'Organization',
+        name: 'DevLeadHunter',
+        url: 'https://devleadhunter.dibodev.fr',
+        logo: 'https://devleadhunter.dibodev.fr/favicon.svg',
+        founder: {
+          '@type': 'Person',
+          name: 'Léo Guillaume',
+          url: 'https://dibodev.fr',
+        },
+      }),
+    },
+    {
+      type: 'application/ld+json',
+      innerHTML: JSON.stringify({
+        '@context': 'https://schema.org',
+        '@type': 'WebSite',
+        name: 'DevLeadHunter',
+        url: 'https://devleadhunter.dibodev.fr',
+        inLanguage: ['en-US', 'fr-FR'],
+        publisher: {
+          '@type': 'Organization',
+          name: 'DevLeadHunter',
+        },
+      }),
+    },
   ],
 }))
 </script>

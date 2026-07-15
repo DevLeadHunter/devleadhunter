@@ -91,6 +91,7 @@ import type { ComputedRef } from 'vue'
 
 definePageMeta({
   layout: 'marketing',
+  sitemap: false,
 })
 
 type ReleaseAsset = {

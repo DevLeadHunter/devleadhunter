@@ -54,6 +54,7 @@
     "@commitlint/cli": "^20.5.2",
     "@commitlint/config-conventional": "^20.5.0",
     "@nuxt/eslint": "^1.15.2",
+    "@nuxtjs/sitemap": "^8.2.2",
     "@tauri-apps/cli": "^2.0.0",
     "@types/node": "^25.5.2",
     "@typescript-eslint/eslint-plugin": "^8.59.0",

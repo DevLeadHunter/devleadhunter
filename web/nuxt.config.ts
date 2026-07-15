@@ -3,8 +3,17 @@ import { defineNuxtConfig } from 'nuxt/config'
 
 const isDesktopBuild: boolean = process.env.NUXT_DESKTOP_BUILD === '1'
 
+const siteUrl = 'https://devleadhunter.dibodev.fr'
+
 export default defineNuxtConfig({
-  modules: ['@nuxt/eslint', '@nuxt/ui', '@vueuse/nuxt', '@pinia/nuxt', '@nuxtjs/i18n'],
+  modules: [
+    '@nuxt/eslint',
+    '@nuxt/ui',
+    '@vueuse/nuxt',
+    '@pinia/nuxt',
+    '@nuxtjs/i18n',
+    ...(!isDesktopBuild ? ['@nuxtjs/sitemap'] : []),
+  ],
 
   ssr: !isDesktopBuild,
 
@@ -106,6 +115,11 @@ export default defineNuxtConfig({
 
   css: ['~/assets/css/main.css'],
 
+  site: {
+    url: siteUrl,
+    name: 'DevLeadHunter',
+  },
+
   colorMode: {
     preference: 'dark',
     fallback: 'dark',
@@ -146,6 +160,15 @@ export default defineNuxtConfig({
     },
   },
 
+  routeRules: !isDesktopBuild
+    ? {
+        '/dashboard/**': { robots: false },
+        '/login': { robots: false },
+        '/downloads': { robots: false },
+        '/profile': { robots: false },
+      }
+    : undefined,
+
   compatibilityDate: '2024-07-11',
 
   nitro: isDesktopBuild
@@ -170,7 +193,7 @@ export default defineNuxtConfig({
 
   i18n: {
     // Absolute base for hreflang/og:locale alternate links (SEO).
-    baseUrl: 'https://devleadhunter.dibodev.fr',
+    baseUrl: siteUrl,
     locales: [
       { code: 'en', language: 'en-US', name: 'English', file: 'en.json' },
       { code: 'fr', language: 'fr-FR', name: 'Français', file: 'fr.json' },
@@ -185,4 +208,11 @@ export default defineNuxtConfig({
       redirectOn: 'root',
     },
   },
+
+  sitemap: !isDesktopBuild
+    ? {
+        // Auto-generated at /sitemap.xml (replaces the static public/sitemap.xml that 500'd in prod).
+        exclude: ['/dashboard/**', '/login', '/downloads', '/profile'],
+      }
+    : undefined,
 })

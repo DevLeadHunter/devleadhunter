@@ -99,6 +99,7 @@ import { useUserStore } from '~/stores/user'
  */
 definePageMeta({
   layout: false,
+  sitemap: false,
 })
 
 // Auth utility page — keep it out of the index (no SEO value, avoids thin-content pages).

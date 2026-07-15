@@ -109,6 +109,11 @@ const { theme, initTheme } = useAppTheme()
 /** Persistent drawer stack — drives the content push when a drawer is open. */
 const drawerStack = useDrawerStackStore()
 
+// Authenticated app shell — never index dashboard pages (thin content behind auth).
+useSeoMeta({
+  robots: 'noindex, nofollow',
+})
+
 /**
  * Right margin pushing the content aside so the open drawer hides nothing.
  * Matches each drawer's width; only from lg up (below, the drawer overlays).
