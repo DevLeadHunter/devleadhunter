@@ -43,7 +43,55 @@ _TEMPLATES: list[dict[str, str]] = [
             "recommander, il faut votre numéro sous la main au bon moment.</p>"
             "<p>J'ai monté un site pour {entreprise} qui règle ça — vos clients partagent un lien, "
             "et c'est réglé : {lien_demo}</p>"
-            "<p>Worth a look ?</p>"
+            "<p>Ça vaut le coup d'œil ?</p>"
+            "<p>Léo</p>"
+        ),
+    },
+    {
+        "name": "J1 — Variante C (fiche Google/Maps)",
+        "subject": "votre fiche google",
+        "body_html": (
+            "<p>Bonjour {prenom},</p>"
+            "<p>Quand quelqu'un cherche un {metier} à {ville}, Google met en avant les fiches "
+            "reliées à un site — les autres passent derrière.</p>"
+            "<p>J'ai monté un site pour {entreprise} qui renforce votre fiche Google : {lien_demo}</p>"
+            "<p>Ça vous parle ?</p>"
+            "<p>Léo</p>"
+        ),
+    },
+    {
+        "name": "J1 — Variante D (crédibilité)",
+        "subject": "avant d'appeler",
+        "body_html": (
+            "<p>Bonjour {prenom},</p>"
+            "<p>Aujourd'hui, avant d'appeler un {metier}, on vérifie en ligne. Pas de site = un "
+            "doute, même quand le travail est excellent.</p>"
+            "<p>J'ai créé un site pour {entreprise} qui lève ce doute en quelques secondes : {lien_demo}</p>"
+            "<p>Je vous montre ?</p>"
+            "<p>Léo</p>"
+        ),
+    },
+    {
+        "name": "J1 — Variante E (on vous retrouve)",
+        "subject": "quand on vous recommande",
+        "body_html": (
+            "<p>Bonjour {prenom},</p>"
+            "<p>On vous recommande souvent, mais encore faut-il vous retrouver au bon moment — "
+            "sinon la personne appelle le premier venu.</p>"
+            "<p>Avec un site, on vous retrouve en 2 secondes. J'en ai fait un pour {entreprise} : {lien_demo}</p>"
+            "<p>Ça vous parle ?</p>"
+            "<p>Léo</p>"
+        ),
+    },
+    {
+        "name": "J1 — Variante F (autonomie)",
+        "subject": "vous gérez tout",
+        "body_html": (
+            "<p>Bonjour {prenom},</p>"
+            "<p>J'ai créé un site pour {entreprise} que vous modifiez vous-même, sans développeur "
+            "et sans rien y connaître : {lien_demo}</p>"
+            "<p>Vos horaires, vos photos, vos tarifs — vous changez ça en 2 clics.</p>"
+            "<p>Je vous montre ?</p>"
             "<p>Léo</p>"
         ),
     },
