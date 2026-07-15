@@ -42,6 +42,11 @@ jobs:
         env:
           NITRO_PRESET: node-server
           NODE_ENV: production
+          # Public runtime config is baked here → the marketing-site PostHog key must
+          # live on the build step (same pattern as deploy-demo-host.yml). Empty secret
+          # → tracking stays disabled (no-op). Never put it in web/.env (see .env.example).
+          NUXT_PUBLIC_POSTHOG_PROJECT_API_KEY: ${{ secrets.NUXT_PUBLIC_POSTHOG_PROJECT_API_KEY }}
+          NUXT_PUBLIC_POSTHOG_INGESTION_HOST: ${{ secrets.NUXT_PUBLIC_POSTHOG_INGESTION_HOST }}
 
       - name: 🧹 Prepare server directory on VPS
         if: github.event_name != 'pull_request'
