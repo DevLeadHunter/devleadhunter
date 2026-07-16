@@ -116,24 +116,42 @@
           <!-- Live status (compact) -->
           <div v-if="store.currentJob" class="rounded-xl border border-[var(--app-line)] bg-[var(--app-bg)] p-3.5">
             <div class="mb-1.5 flex items-center justify-between text-xs">
-              <span class="font-medium text-[var(--app-ink)]">
-                {{ store.currentJob.status === 'completed' ? 'Recherche terminée' : 'Recherche en cours…' }}
-              </span>
+              <span class="font-medium text-[var(--app-ink)]">{{ statusLabel }}</span>
               <span class="text-[var(--app-ink-soft)] tabular-nums">
                 {{ store.liveProgress.current }} / {{ store.liveProgress.total || store.currentJob.max_results }}
               </span>
             </div>
             <div class="h-2 w-full overflow-hidden rounded-full bg-[var(--app-surface-2)]">
               <div
-                class="h-full rounded-full bg-[var(--app-ink)] transition-all"
+                class="h-full rounded-full transition-all"
+                :class="store.currentJob.status === 'cancelled' ? 'bg-[var(--app-ink-soft)]' : 'bg-[var(--app-ink)]'"
                 :style="{ width: Math.min(store.liveProgress.percentage, 100) + '%' }"
               />
             </div>
-            <p v-if="store.liveProgress.current_prospect" class="mt-2 truncate text-[11px] text-[var(--app-ink-soft)]">
+            <p
+              v-if="store.isSearching && store.liveProgress.current_prospect"
+              class="mt-2 truncate text-[11px] text-[var(--app-ink-soft)]"
+            >
               {{ store.liveProgress.current_prospect }}
             </p>
+
+            <!-- Cancel a search launched by mistake -->
+            <button
+              v-if="store.isSearching"
+              type="button"
+              class="mt-2.5 inline-flex items-center gap-1.5 text-[11px] font-medium text-[var(--app-red)] transition-opacity hover:opacity-80 disabled:opacity-50"
+              :disabled="store.isCancelling"
+              @click="store.cancelSearch()"
+            >
+              <UIcon
+                :name="store.isCancelling ? 'i-lucide-loader-circle' : 'i-lucide-circle-stop'"
+                :class="['h-3.5 w-3.5', store.isCancelling && 'animate-spin']"
+              />
+              {{ store.isCancelling ? 'Annulation…' : 'Annuler la recherche' }}
+            </button>
+
             <NuxtLink
-              v-if="store.currentJob.status === 'completed'"
+              v-if="store.currentJob.status === 'completed' || store.currentJob.status === 'cancelled'"
               to="/dashboard/my-prospects"
               class="mt-2.5 inline-flex items-center gap-1 text-[11px] font-medium text-[var(--app-ink)] hover:underline"
               @click="emit('close')"
@@ -186,8 +204,8 @@
 </template>
 
 <script lang="ts" setup>
-import type { PropType, Ref } from 'vue'
-import { ref, watch } from 'vue'
+import type { ComputedRef, PropType, Ref } from 'vue'
+import { computed, ref, watch } from 'vue'
 import type { SearchProspectsDrawerProps, SearchProspectsPrefill } from '~/types/SearchProspectsDrawer'
 import { PROSPECT_SOURCE_SEARCH_OPTIONS } from '~/constants/prospectSources'
 import { useProspectSearchStore } from '~/stores/prospectSearch'
@@ -232,6 +250,20 @@ const emit = defineEmits<{
 
 const store = useProspectSearchStore()
 const toast = useToast()
+
+/** Label of the live-status card, driven by the job status. */
+const statusLabel: ComputedRef<string> = computed((): string => {
+  switch (store.currentJob?.status) {
+    case 'completed':
+      return 'Recherche terminée'
+    case 'cancelled':
+      return 'Recherche annulée'
+    case 'failed':
+      return 'Recherche échouée'
+    default:
+      return 'Recherche en cours…'
+  }
+})
 
 /** Quick-pick trades. */
 const QUICK_CATEGORIES: ReadonlyArray<string> = [

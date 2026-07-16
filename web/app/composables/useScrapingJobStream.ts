@@ -21,10 +21,12 @@ export type ScrapingJobStreamEvent =
       type: 'done'
       summary: { added: number; skipped_duplicates: number; status: string }
     }
+  | { type: 'cancelled'; summary: { added: number; skipped_duplicates: number } }
   | { type: 'error'; message: string }
 
 export interface ScrapingJobStreamHandlers {
   onDone?: (summary: { added: number; skipped_duplicates: number; status: string }) => void
+  onCancelled?: (summary: { added: number; skipped_duplicates: number }) => void
   onError?: (message: string) => void
 }
 
@@ -94,6 +96,9 @@ export function useScrapingJobStream() {
         break
       case 'done':
         handlers.onDone?.(event.summary)
+        break
+      case 'cancelled':
+        handlers.onCancelled?.(event.summary)
         break
       case 'error':
         handlers.onError?.(event.message)
