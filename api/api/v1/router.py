@@ -8,7 +8,7 @@ from .routes import (
     campaigns, unsubscribe, exports, interactions, demo_sites, sources, webhooks,
     enrichment, orders, dashboard, behavior, organizations,
     settings as settings_routes, admin_monitoring, admin_storyblok,
-    automations, send_policy,
+    automations, send_policy, email_health,
 )
 
 
@@ -32,6 +32,7 @@ router.include_router(support.router)
 router.include_router(email_accounts.router)
 router.include_router(email_templates.router)
 router.include_router(emails.router)
+router.include_router(email_health.router)
 router.include_router(campaigns.router)
 router.include_router(unsubscribe.router)
 router.include_router(exports.router)

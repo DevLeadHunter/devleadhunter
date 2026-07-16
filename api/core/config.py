@@ -144,6 +144,11 @@ class Settings(BaseSettings):
         alias="PAGESPEED_API_KEY",
         description="Google PageSpeed Insights API key (optional — raises the free quota)",
     )
+    google_postmaster_credentials_file: Optional[str] = Field(
+        default=None,
+        alias="GOOGLE_POSTMASTER_CREDENTIALS_FILE",
+        description="Path to the service-account JSON key for Gmail Postmaster Tools (optional)",
+    )
     vercel_token: Optional[str] = Field(
         default=None,
         alias="VERCEL_TOKEN",

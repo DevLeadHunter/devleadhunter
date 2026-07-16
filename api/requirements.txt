@@ -25,3 +25,4 @@ google-auth-httplib2==0.2.0
 google-api-python-client==2.169.0
 slowapi==0.1.9
 cryptography==44.0.3
+dnspython==2.8.0

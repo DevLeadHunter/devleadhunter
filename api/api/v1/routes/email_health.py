@@ -1,0 +1,145 @@
+"""Email deliverability health routes (per-user, not admin-only).
+
+Feeds the « Santé email » page: sending stats with thresholds, daily trends,
+per-provider breakdown, incident journal, DNS authentication checks, Gmail
+Postmaster reputation and the pre-send spam tester.
+"""
+from typing import Any
+
+from fastapi import APIRouter, Depends, HTTPException, Query, status
+from pydantic import BaseModel, Field
+from sqlalchemy.orm import Session
+
+from core.database import get_db
+from models.email_account import EmailAccount
+from models.user import User
+from services.auth_service import require_auth
+from services.email_dns_service import email_dns_service
+from services.email_health_service import email_health_service
+from services.email_spam_test_service import email_spam_test_service
+from services.postmaster_service import postmaster_service
+
+router = APIRouter(prefix="/email-health", tags=["email-health"])
+
+_ALLOWED_PERIODS: tuple[int, ...] = (7, 30, 90)
+
+
+def _validated_period(period_days: int) -> int:
+    """Clamp the requested window to the supported presets.
+
+    @param period_days - Raw query value.
+    @returns A supported window (falls back to 30).
+    """
+    return period_days if period_days in _ALLOWED_PERIODS else 30
+
+
+def _user_domains(db: Session, user: User) -> list[str]:
+    """The distinct sending domains of the user's email accounts.
+
+    @param db - Database session.
+    @param user - Authenticated user.
+    @returns Lower-cased domains, deduplicated, account order preserved.
+    """
+    accounts: list[EmailAccount] = (
+        db.query(EmailAccount).filter(EmailAccount.user_id == user.id).order_by(EmailAccount.id).all()
+    )
+    domains: list[str] = []
+    for account in accounts:
+        domain = (account.domain or account.email.split("@")[-1]).strip().lower()
+        if domain and domain not in domains:
+            domains.append(domain)
+    return domains
+
+
+class SpamTestRequest(BaseModel):
+    """Draft to score before sending."""
+
+    subject: str = Field(min_length=1, max_length=500)
+    body_html: str = Field(min_length=1)
+
+
+@router.get("/overview", summary="Deliverability totals + health signals")
+async def email_health_overview(
+    period_days: int = Query(30, description="Rolling window: 7, 30 or 90 days"),
+    current_user: User = Depends(require_auth),
+    db: Session = Depends(get_db),
+) -> dict[str, Any]:
+    """Global and per-account stats with ok/warn/danger signals."""
+    return email_health_service.overview(db, current_user.id, _validated_period(period_days))
+
+
+@router.get("/trends", summary="Daily send/bounce/complaint series")
+async def email_health_trends(
+    period_days: int = Query(30, description="Rolling window: 7, 30 or 90 days"),
+    current_user: User = Depends(require_auth),
+    db: Session = Depends(get_db),
+) -> dict[str, Any]:
+    """Cohort-by-send-day series for the trend charts."""
+    return email_health_service.trends(db, current_user.id, _validated_period(period_days))
+
+
+@router.get("/providers", summary="Deliverability per recipient mailbox provider")
+async def email_health_providers(
+    period_days: int = Query(30, description="Rolling window: 7, 30 or 90 days"),
+    current_user: User = Depends(require_auth),
+    db: Session = Depends(get_db),
+) -> dict[str, Any]:
+    """Gmail/Orange/Free/SFR… breakdown — detects silent spam-filtering."""
+    return email_health_service.providers(db, current_user.id, _validated_period(period_days))
+
+
+@router.get("/incidents", summary="Recent bounces, complaints, suppressions, failures")
+async def email_health_incidents(
+    limit: int = Query(50, ge=1, le=200),
+    current_user: User = Depends(require_auth),
+    db: Session = Depends(get_db),
+) -> dict[str, Any]:
+    """Incident journal, most recent first."""
+    return email_health_service.incidents(db, current_user.id, limit)
+
+
+@router.get("/dns", summary="SPF / DKIM / DMARC / MX / blocklists per sending domain")
+async def email_health_dns(
+    current_user: User = Depends(require_auth),
+    db: Session = Depends(get_db),
+) -> dict[str, Any]:
+    """DNS authentication checks for every domain the user sends from."""
+    domains = _user_domains(db, current_user)
+    return {"domains": [email_dns_service.check_domain(domain) for domain in domains]}
+
+
+@router.get("/postmaster", summary="Gmail Postmaster reputation for the sending domains")
+async def email_health_postmaster(
+    period_days: int = Query(30, description="History depth (max ~120 days at Google)"),
+    current_user: User = Depends(require_auth),
+    db: Session = Depends(get_db),
+) -> dict[str, Any]:
+    """Gmail-side domain reputation + user-reported spam rate (when configured)."""
+    domains = _user_domains(db, current_user)
+    return {"domains": [postmaster_service.domain_stats(domain, min(period_days, 120)) for domain in domains]}
+
+
+@router.post("/spam-test", summary="Score an email draft before sending")
+async def email_health_spam_test(
+    request: SpamTestRequest,
+    current_user: User = Depends(require_auth),
+    db: Session = Depends(get_db),
+) -> dict[str, Any]:
+    """SpamAssassin score (free Postmark endpoint) + local French-cold-email checks."""
+    default_account: EmailAccount | None = (
+        db.query(EmailAccount)
+        .filter(EmailAccount.user_id == current_user.id)
+        .order_by(EmailAccount.is_default.desc(), EmailAccount.id)
+        .first()
+    )
+    if default_account is None:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Configurez d'abord un compte d'envoi pour tester un email.",
+        )
+    return await email_spam_test_service.test(
+        subject=request.subject,
+        body_html=request.body_html,
+        from_email=default_account.email,
+        to_email="test@example.com",
+    )
