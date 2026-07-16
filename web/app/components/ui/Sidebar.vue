@@ -443,6 +443,7 @@ const navGroups: ComputedRef<UiSidebarGroup[]> = computed((): UiSidebarGroup[] =
         { to: '/dashboard/campaigns', label: 'Campagnes', icon: 'i-lucide-megaphone' },
         { to: '/dashboard/emails', label: 'Suivi des emails', icon: 'i-lucide-send' },
         { to: '/dashboard/email-templates', label: "Modèles d'email", icon: 'i-lucide-layout-template' },
+        { to: '/dashboard/email-health', label: 'Santé email', icon: 'i-lucide-heart-pulse' },
       ],
     },
     {
