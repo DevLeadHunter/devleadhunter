@@ -238,11 +238,6 @@
             </div>
           </div>
         </div>
-
-        <!-- Couverture géographique -->
-        <div v-else-if="activeDetailTab === 'coverage'">
-          <DashboardCoverageMap />
-        </div>
       </section>
     </template>
 
@@ -269,14 +264,13 @@ definePageMeta({
 })
 
 /** Keys of the detail tabs (progressive disclosure of the metrics). */
-type DashboardDetailTabKey = 'funnel' | 'emails' | 'sales' | 'coverage'
+type DashboardDetailTabKey = 'funnel' | 'emails' | 'sales'
 
-/** Detail tabs shown one at a time below the KPIs. */
+/** Detail tabs shown one at a time below the KPIs (coverage has its own page). */
 const DETAIL_TABS: ReadonlyArray<{ key: DashboardDetailTabKey; label: string; icon: string }> = [
   { key: 'funnel', label: 'Tunnel de conversion', icon: 'i-lucide-filter' },
   { key: 'emails', label: 'Emails', icon: 'i-lucide-mail' },
   { key: 'sales', label: 'Ventes', icon: 'i-lucide-banknote' },
-  { key: 'coverage', label: 'Couverture', icon: 'i-lucide-map' },
 ]
 
 const stats: Ref<DashboardStats | null> = ref<DashboardStats | null>(null)

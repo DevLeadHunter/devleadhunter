@@ -1,27 +1,5 @@
 <template>
   <div class="space-y-4">
-    <!-- Scope selector (organization only) + headline -->
-    <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-      <p class="text-muted max-w-md text-xs leading-relaxed">
-        Votre territoire de prospection. Chaque ville prospectée colore sa région — l'objectif est d'en verdir un
-        maximum.
-      </p>
-      <div v-if="members.length > 0" class="shrink-0">
-        <select
-          v-model="scope"
-          class="input-field h-9 w-full text-xs sm:w-52"
-          :disabled="isLoading"
-          @change="onScopeChange"
-        >
-          <option value="me">Mes prospects</option>
-          <option value="org">Toute l'organisation</option>
-          <option v-for="member in members" :key="member.user_id" :value="`member:${member.user_id}`">
-            {{ member.name }}
-          </option>
-        </select>
-      </div>
-    </div>
-
     <!-- Gamified counters -->
     <div class="grid grid-cols-3 gap-3">
       <div class="rounded-lg border border-[var(--app-line)] bg-[var(--app-bg)] px-3 py-2.5 text-center">
@@ -56,32 +34,29 @@
       </div>
     </div>
 
-    <!-- Initial loading -->
-    <div v-if="isLoading && !coverage" class="flex h-72 items-center justify-center">
+    <!-- Initial loading (until the first coverage load completes) -->
+    <div v-if="!store.hasLoaded" class="flex h-72 items-center justify-center">
       <UIcon name="i-lucide-loader-circle" class="h-7 w-7 animate-spin text-[var(--app-ink-soft)]" />
     </div>
 
     <!-- Empty -->
     <div
-      v-else-if="coverage && coverage.cities.length === 0"
+      v-else-if="store.coverage && store.coverage.cities.length === 0"
       class="flex h-72 flex-col items-center justify-center gap-3 text-center"
     >
       <UIcon name="i-lucide-map" class="h-8 w-8 text-[var(--app-faint)]" />
       <p class="text-muted max-w-xs text-sm leading-relaxed">
-        Aucune ville prospectée pour l'instant. Lancez une recherche pour commencer à colorer la carte.
+        Aucune ville prospectée pour ces filtres. Lancez une recherche pour commencer à colorer la carte.
       </p>
-      <NuxtLink to="/dashboard/search-prospects" class="btn-secondary text-xs">Trouver des prospects</NuxtLink>
+      <button type="button" class="btn-secondary text-xs" @click="openSearchDrawer">Trouver des prospects</button>
     </div>
 
     <!-- Map (MapLibre GL + OpenFreeMap — free, key-less, unlimited) -->
     <div v-else-if="!isMapFailed" ref="mapWrap" class="coverage-map relative">
       <div
         ref="mapContainer"
-        class="coverage-map__canvas w-full overflow-hidden rounded-xl border border-[var(--app-line)] bg-[var(--app-surface-2)] transition-opacity duration-300"
-        :class="[
-          isLoading ? 'opacity-60' : 'opacity-100',
-          variant === 'full' ? 'h-[520px] md:h-[620px]' : 'h-[420px] md:h-[480px]',
-        ]"
+        class="coverage-map__canvas h-[520px] w-full overflow-hidden rounded-xl border border-[var(--app-line)] bg-[var(--app-surface-2)] transition-opacity duration-300 md:h-[620px]"
+        :class="store.isLoading ? 'opacity-60' : 'opacity-100'"
       ></div>
 
       <!-- Tooltip -->
@@ -94,7 +69,7 @@
         <p class="text-muted tabular-nums">{{ tip.sub }}</p>
       </div>
 
-      <!-- Legend -->
+      <!-- Legend + click hint -->
       <div class="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1.5">
         <span class="text-muted text-[10px] tracking-wide uppercase">Intensité</span>
         <span v-for="bucket in legend" :key="bucket.label" class="flex items-center gap-1.5">
@@ -104,6 +79,10 @@
           ></span>
           <span class="text-[11px] text-[var(--app-ink-soft)]">{{ bucket.label }}</span>
         </span>
+        <span class="text-muted ml-auto hidden items-center gap-1.5 text-[11px] sm:flex">
+          <UIcon name="i-lucide-mouse-pointer-click" class="h-3 w-3" />
+          Cliquez une ville ou une région pour agir
+        </span>
       </div>
     </div>
 
@@ -112,7 +91,7 @@
       <p class="text-muted text-xs">Carte indisponible — voici vos villes les plus prospectées :</p>
       <ul class="divide-y divide-[var(--app-line-soft)]">
         <li
-          v-for="city in (coverage?.cities ?? []).slice(0, 12)"
+          v-for="city in (store.coverage?.cities ?? []).slice(0, 12)"
           :key="city.city"
           class="flex items-center justify-between py-1.5 text-sm"
         >
@@ -127,16 +106,16 @@
 <script lang="ts" setup>
 import type { Feature, FeatureCollection, Point } from 'geojson'
 import type { ExpressionSpecification, GeoJSONSource, Map as MaplibreMap, MapMouseEvent } from 'maplibre-gl'
-import type { ComputedRef, PropType, Ref } from 'vue'
-import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import type { ComputedRef, Ref } from 'vue'
+import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import 'maplibre-gl/dist/maplibre-gl.css'
 import type { CityGeo } from '~/composables/useFranceGeo'
-import { geocodeCities, lookupCity } from '~/composables/useFranceGeo'
+import { lookupCity, reverseGeocodeCommune } from '~/composables/useFranceGeo'
 import { useAppTheme } from '~/composables/useAppTheme'
-import type { CoverageMember, CoverageResponse } from '~/services/dashboardService'
-import { getCoverage } from '~/services/dashboardService'
+import { useCoverageStore } from '~/stores/coverage'
+import { useDrawerStackStore } from '~/stores/drawerStack'
 import type { AppTheme } from '~/types/AppTheme'
-import type { DashboardCoverageMapLoadedPayload, DashboardCoverageMapVariant } from '~/types/DashboardCoverageMap'
+import { FRANCE_MAJOR_CITIES, FRANCE_REGIONS } from '~/utils/franceTerritory'
 
 /**
  * Metropolitan region contours (simplified, ~220 KB) — the france-geojson reference
@@ -187,32 +166,9 @@ interface CoverageTierColors {
   strong: string
 }
 
-/**
- * Coverage map props — 'compact' keeps the historical dashboard-tab rendering;
- * 'full' is the dedicated page (taller map). `categories` filters by trade.
- */
-const props = defineProps({
-  variant: {
-    type: String as PropType<DashboardCoverageMapVariant>,
-    default: 'compact',
-  },
-  categories: {
-    type: Array as PropType<string[]>,
-    default: (): string[] => [],
-  },
-})
-
-const emit = defineEmits<{
-  (e: 'loaded', payload: DashboardCoverageMapLoadedPayload): void
-}>()
-
 const { theme } = useAppTheme()
-
-const isLoading: Ref<boolean> = ref<boolean>(true)
-const scope: Ref<string> = ref<string>('me')
-const coverage: Ref<CoverageResponse | null> = ref<CoverageResponse | null>(null)
-const members: Ref<CoverageMember[]> = ref<CoverageMember[]>([])
-const cityGeo: Ref<Record<string, CityGeo | null>> = ref<Record<string, CityGeo | null>>({})
+const store = useCoverageStore()
+const drawerStack = useDrawerStackStore()
 
 /** True when MapLibre could not start (WebGL unavailable, network down…). */
 const isMapFailed: Ref<boolean> = ref<boolean>(false)
@@ -232,13 +188,13 @@ const mapContainer: Ref<HTMLElement | null> = ref<HTMLElement | null>(null)
 /** MapLibre instance — deliberately non-reactive (huge mutable object). */
 let mapInstance: MaplibreMap | null = null
 
-// ─── Aggregations ──────────────────────────────────────────────────────────────
+// ─── Aggregations (from the shared coverage store) ────────────────────────────
 
 /** Prospect total per region code (from geocoded cities). */
 const regionTotals: ComputedRef<Record<string, number>> = computed((): Record<string, number> => {
   const totals: Record<string, number> = {}
-  for (const city of coverage.value?.cities ?? []) {
-    const geo: CityGeo | null = lookupCity(cityGeo.value, city.city)
+  for (const city of store.coverage?.cities ?? []) {
+    const geo: CityGeo | null = lookupCity(store.cityGeo, city.city)
     if (geo && geo.region) totals[geo.region] = (totals[geo.region] ?? 0) + city.count
   }
   return totals
@@ -247,8 +203,8 @@ const regionTotals: ComputedRef<Record<string, number>> = computed((): Record<st
 /** Distinct department codes touched. */
 const deptSet: ComputedRef<Set<string>> = computed((): Set<string> => {
   const set = new Set<string>()
-  for (const city of coverage.value?.cities ?? []) {
-    const geo: CityGeo | null = lookupCity(cityGeo.value, city.city)
+  for (const city of store.coverage?.cities ?? []) {
+    const geo: CityGeo | null = lookupCity(store.cityGeo, city.city)
     if (geo && geo.dept) set.add(geo.dept)
   }
   return set
@@ -257,7 +213,7 @@ const deptSet: ComputedRef<Set<string>> = computed((): Set<string> => {
 /** Cities successfully placed on the map. */
 const coveredCityCount: ComputedRef<number> = computed(
   (): number =>
-    (coverage.value?.cities ?? []).filter((c): boolean => lookupCity(cityGeo.value, c.city) !== null).length,
+    (store.coverage?.cities ?? []).filter((c): boolean => lookupCity(store.cityGeo, c.city) !== null).length,
 )
 
 /** Number of regions with at least one prospect. */
@@ -340,8 +296,8 @@ function regionFillColor(): string | ExpressionSpecification {
  */
 function buildCitiesCollection(): FeatureCollection<Point, CityFeatureProperties> {
   const features: Array<Feature<Point, CityFeatureProperties>> = []
-  for (const city of coverage.value?.cities ?? []) {
-    const geo: CityGeo | null = lookupCity(cityGeo.value, city.city)
+  for (const city of store.coverage?.cities ?? []) {
+    const geo: CityGeo | null = lookupCity(store.cityGeo, city.city)
     if (!geo) continue
     features.push({
       type: 'Feature',
@@ -450,10 +406,86 @@ async function initMap(): Promise<void> {
     })
     map.on('mousemove', onMapMouseMove)
     map.on('mouseout', hideTip)
+    map.on('click', (event: MapMouseEvent): void => {
+      void onMapClick(event)
+    })
     mapInstance = map
   } catch {
     isMapFailed.value = true
   }
+}
+
+// ─── Click → drawers (the map is the hub) ─────────────────────────────────────
+
+/**
+ * Trade prefilled into search drawers when exactly one trade is selected.
+ * @returns A prefill fragment ({} when 0 or several trades are selected).
+ */
+function categoryPrefill(): { category?: string } {
+  return store.selectedCategories.length === 1 ? { category: store.selectedCategories[0] as string } : {}
+}
+
+/**
+ * Route a map click to the right drawer:
+ * - city dot → zone drawer listing that city's prospects;
+ * - covered region → zone drawer listing the region's prospects;
+ * - anything else → reverse geocode the click and prefill a new search there
+ *   (fallback: the region's biggest city).
+ * @param event - MapLibre click event.
+ * @returns A promise resolved once the drawer is opened.
+ */
+async function onMapClick(event: MapMouseEvent): Promise<void> {
+  const map: MaplibreMap | null = mapInstance
+  if (!map || !isMapReady.value) return
+  const features = map.queryRenderedFeatures(event.point, {
+    layers: [CITIES_LAYER_ID, REGIONS_FILL_LAYER_ID],
+  })
+  const feature = features[0]
+  if (!feature) return
+
+  // ── City dot: prospected city → its prospect list ──
+  if (feature.layer.id === CITIES_LAYER_ID) {
+    const city: string = String(feature.properties?.city ?? '')
+    if (!city) return
+    drawerStack.push({
+      kind: 'coverage-prospects',
+      zone: { kind: 'city', label: city, cities: [city], prefillCity: city },
+    })
+    return
+  }
+
+  // ── Region fill ──
+  const code: string = String(feature.properties?.code ?? '')
+  const regionLabel: string = String(feature.properties?.nom ?? FRANCE_REGIONS[code] ?? '')
+  const isCovered: boolean = (regionTotals.value[code] ?? 0) > 0
+
+  if (isCovered) {
+    drawerStack.push({
+      kind: 'coverage-prospects',
+      zone: {
+        kind: 'region',
+        label: regionLabel,
+        cities: store.coveredCitiesOfRegion(code),
+        prefillCity: FRANCE_MAJOR_CITIES.find((c): boolean => c.region === code)?.name,
+      },
+    })
+    return
+  }
+
+  // Uncovered region: prefill a search with the commune under the cursor
+  // (clicking « Caen » prefills Caen), falling back to the region's biggest city.
+  const commune = await reverseGeocodeCommune(event.lngLat.lng, event.lngLat.lat)
+  const fallback: string | undefined = FRANCE_MAJOR_CITIES.find((c): boolean => c.region === code)?.name
+  const city: string | undefined = commune?.name ?? fallback
+  drawerStack.push({
+    kind: 'search-prospects',
+    prefill: { ...(city ? { city } : {}), ...categoryPrefill() },
+  })
+}
+
+/** Open the search drawer from the empty state. */
+function openSearchDrawer(): void {
+  drawerStack.push({ kind: 'search-prospects', prefill: { ...categoryPrefill() } })
 }
 
 // ─── Tooltip ───────────────────────────────────────────────────────────────────
@@ -482,7 +514,7 @@ function onMapMouseMove(event: MapMouseEvent): void {
       x,
       y,
       title: String(feature.properties?.city ?? ''),
-      sub: `${count} prospect${count > 1 ? 's' : ''}`,
+      sub: `${count} prospect${count > 1 ? 's' : ''} — cliquer pour voir`,
     }
   } else {
     const code: string = String(feature.properties?.code ?? '')
@@ -492,7 +524,10 @@ function onMapMouseMove(event: MapMouseEvent): void {
       x,
       y,
       title: String(feature.properties?.nom ?? ''),
-      sub: total > 0 ? `${total} prospect${total > 1 ? 's' : ''}` : 'Non prospectée',
+      sub:
+        total > 0
+          ? `${total} prospect${total > 1 ? 's' : ''} — cliquer pour voir`
+          : 'Non prospectée — cliquer pour attaquer',
     }
   }
 }
@@ -502,61 +537,28 @@ function hideTip(): void {
   tip.value.show = false
 }
 
-// ─── Data loading ────────────────────────────────────────────────────────────
+// ─── Reactivity ───────────────────────────────────────────────────────────────
 
-/**
- * Load coverage for the current scope, geocode its cities, then refresh the map.
- * @returns A promise resolved once loaded.
- */
-async function loadCoverage(): Promise<void> {
-  isLoading.value = true
-  try {
-    const [scopeName, memberId] = parseScope(scope.value)
-    const data: CoverageResponse = await getCoverage(scopeName, memberId, props.categories)
-    coverage.value = data
-    if (members.value.length === 0 && data.members.length > 0) members.value = data.members
-    cityGeo.value = await geocodeCities(data.cities.map((c): string => c.city))
-    emit('loaded', { coverage: data, cityGeo: cityGeo.value })
-  } catch {
-    coverage.value = {
-      scope: scope.value,
-      cities: [],
-      total_prospects: 0,
-      members: members.value,
-      available_categories: [],
-    }
-  } finally {
-    isLoading.value = false
-    refreshMapData()
-  }
-}
-
-/**
- * Split the scope select value into an API scope + optional member id.
- * @param value - 'me' | 'org' | 'member:{id}'.
- * @returns A [scope, memberId] tuple.
- */
-function parseScope(value: string): [string, number | undefined] {
-  if (value.startsWith('member:')) return ['member', Number(value.slice('member:'.length))]
-  return [value, undefined]
-}
-
-/** Reload coverage when the scope changes. */
-function onScopeChange(): void {
-  void loadCoverage()
-}
-
-// The map branch renders only once data exists — init when its container appears.
+// The map branch renders only once data exists — init when its container
+// appears. If the branch was torn down (empty state) and re-rendered, the old
+// map instance points at a dead container: drop it and recreate.
 watch(mapContainer, (container: HTMLElement | null): void => {
-  if (container) void initMap()
+  if (!container) return
+  if (mapInstance && mapInstance.getContainer() !== container) {
+    mapInstance.remove()
+    mapInstance = null
+    isMapReady.value = false
+  }
+  void initMap()
 })
 
-// Reload when the host page changes the trade filter.
+// Repaint whenever the store data changes (scope / trade filter reloads).
 watch(
-  (): string[] => props.categories,
+  (): [typeof store.coverage, Record<string, CityGeo | null>] => [store.coverage, store.cityGeo],
   (): void => {
-    void loadCoverage()
+    refreshMapData()
   },
+  { deep: false },
 )
 
 // Basemap follows the app theme; overlays are re-added after the style swap.
@@ -570,10 +572,6 @@ watch(theme, (mode: AppTheme): void => {
     addMapOverlays()
     refreshMapData()
   })
-})
-
-onMounted((): void => {
-  void loadCoverage()
 })
 
 onBeforeUnmount((): void => {

@@ -112,3 +112,39 @@ export async function geocodeCities(cities: string[]): Promise<Record<string, Ci
 export function lookupCity(map: Record<string, CityGeo | null>, city: string): CityGeo | null {
   return map[cityKey(city)] ?? null
 }
+
+/** Commune resolved from a map click (reverse geocoding). */
+export interface ReverseGeocodedCommune {
+  /** Commune display name (« Caen »). */
+  name: string
+  /** Department code. */
+  dept: string
+  /** INSEE region code. */
+  region: string
+}
+
+/**
+ * Resolve the commune under a map coordinate (reverse geocoding) — used by the
+ * coverage map to prefill a prospect search from a click on the basemap.
+ * Same public key-less API as the forward geocoding; null on miss/error.
+ * @param lng - Longitude of the clicked point.
+ * @param lat - Latitude of the clicked point.
+ * @returns The commune at this point, or null.
+ */
+export async function reverseGeocodeCommune(lng: number, lat: number): Promise<ReverseGeocodedCommune | null> {
+  interface Commune {
+    nom?: string
+    codeDepartement?: string
+    codeRegion?: string
+  }
+  try {
+    const results: Commune[] = await $fetch<Commune[]>('https://geo.api.gouv.fr/communes', {
+      query: { lat, lon: lng, fields: 'nom,codeDepartement,codeRegion' },
+    })
+    const top: Commune | undefined = results[0]
+    if (!top?.nom) return null
+    return { name: top.nom, dept: top.codeDepartement ?? '', region: top.codeRegion ?? '' }
+  } catch {
+    return null
+  }
+}

@@ -110,3 +110,43 @@ export async function getCoverage(
   for (const category of categories) params.append('categories', category)
   return api.get<CoverageResponse>(`/api/v1/dashboard/coverage?${params.toString()}`)
 }
+
+/** Light prospect recap for the coverage zone drawer. */
+export interface CoverageProspectRow {
+  id: number
+  name: string
+  city: string | null
+  category: string | null
+  has_demo: boolean
+  emails_sent: number
+  emails_opened: number
+  emails_clicked: number
+  is_sold: boolean
+}
+
+/** Prospects of a coverage zone. */
+export interface CoverageProspectsResponse {
+  items: CoverageProspectRow[]
+  total: number
+}
+
+/**
+ * Fetch the prospects of a coverage zone (one city, or a region's cities).
+ * @param cities - City names of the zone.
+ * @param scope - 'me' | 'org' | 'member'.
+ * @param memberId - Member user id when scope is 'member'.
+ * @param categories - Optional trade filter (empty = all trades).
+ * @returns Light prospect rows + real total.
+ */
+export async function getCoverageProspects(
+  cities: string[],
+  scope: string = 'me',
+  memberId?: number,
+  categories: string[] = [],
+): Promise<CoverageProspectsResponse> {
+  const params = new URLSearchParams({ scope })
+  if (memberId != null) params.set('member_id', String(memberId))
+  for (const city of cities) params.append('cities', city)
+  for (const category of categories) params.append('categories', category)
+  return api.get<CoverageProspectsResponse>(`/api/v1/dashboard/coverage/prospects?${params.toString()}`)
+}

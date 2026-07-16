@@ -88,6 +88,29 @@ export interface SendPolicyDrawerEntry {
   kind: 'send-policy'
 }
 
+/** A zone of the coverage map (one city, or a region's covered cities). */
+export interface CoverageZone {
+  /** Zone granularity. */
+  kind: 'city' | 'region'
+  /** Display label (« Rennes », « Bretagne »). */
+  label: string
+  /** Covered city names queried for the prospect list. */
+  cities: string[]
+  /** City prefilled by the « Prospecter à nouveau ici » action. */
+  prefillCity?: string
+}
+
+/** Coverage-map filters drawer entry (trades + zones to attack). */
+export interface CoverageFiltersDrawerEntry {
+  kind: 'coverage-filters'
+}
+
+/** Coverage-map zone prospects drawer entry. */
+export interface CoverageProspectsDrawerEntry {
+  kind: 'coverage-prospects'
+  zone: CoverageZone
+}
+
 /** One entry of the persistent drawer stack. */
 export type DrawerStackEntry =
   | ProspectDrawerEntry
@@ -100,6 +123,8 @@ export type DrawerStackEntry =
   | AddProspectDrawerEntry
   | SearchProspectsDrawerEntry
   | SendPolicyDrawerEntry
+  | CoverageFiltersDrawerEntry
+  | CoverageProspectsDrawerEntry
 
 /** Cross-page notice describing the latest prospect mutation done from a drawer. */
 export type ProspectMutationNotice = { type: 'updated'; prospect: Prospect } | { type: 'deleted'; prospectId: number }

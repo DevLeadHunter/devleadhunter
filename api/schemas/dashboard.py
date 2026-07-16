@@ -69,6 +69,27 @@ class CoverageMember(BaseModel):
     name: str
 
 
+class CoverageProspectRow(BaseModel):
+    """Light prospect recap for the coverage zone drawer (kept airy on purpose)."""
+
+    id: int
+    name: str
+    city: Optional[str] = None
+    category: Optional[str] = None
+    has_demo: bool = False
+    emails_sent: int = 0
+    emails_opened: int = 0
+    emails_clicked: int = 0
+    is_sold: bool = False
+
+
+class CoverageProspectsResponse(BaseModel):
+    """Prospects of a coverage zone (one or several cities)."""
+
+    items: list[CoverageProspectRow]
+    total: int
+
+
 class CoverageResponse(BaseModel):
     """Prospection coverage aggregated by city, for the selected scope."""
 

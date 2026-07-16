@@ -98,6 +98,23 @@
       @close="drawerStack.closeAll()"
       @back="drawerStack.back()"
     />
+
+    <!-- Coverage map: filters & zones -->
+    <UiCoverageFiltersDrawer
+      :open="coverageFiltersEntry !== null"
+      :show-back="hasPrevious"
+      @close="drawerStack.closeAll()"
+      @back="drawerStack.back()"
+    />
+
+    <!-- Coverage map: zone prospects -->
+    <UiCoverageProspectsDrawer
+      :open="coverageProspectsEntry !== null"
+      :show-back="hasPrevious"
+      :zone="coverageProspectsEntry?.zone ?? null"
+      @close="drawerStack.closeAll()"
+      @back="drawerStack.back()"
+    />
   </div>
 </template>
 
@@ -105,6 +122,8 @@
 import type { ComputedRef } from 'vue'
 import type {
   AddProspectDrawerEntry,
+  CoverageFiltersDrawerEntry,
+  CoverageProspectsDrawerEntry,
   CreateCampaignDrawerEntry,
   EmailLogDrawerEntry,
   EmailTemplateDrawerEntry,
@@ -181,6 +200,20 @@ const searchProspectsEntry: ComputedRef<SearchProspectsDrawerEntry | null> = com
 const sendPolicyEntry: ComputedRef<SendPolicyDrawerEntry | null> = computed((): SendPolicyDrawerEntry | null => {
   return drawerStack.topEntry?.kind === 'send-policy' ? drawerStack.topEntry : null
 })
+
+/** Coverage-map filters entry when it is the top of the stack. */
+const coverageFiltersEntry: ComputedRef<CoverageFiltersDrawerEntry | null> = computed(
+  (): CoverageFiltersDrawerEntry | null => {
+    return drawerStack.topEntry?.kind === 'coverage-filters' ? drawerStack.topEntry : null
+  },
+)
+
+/** Coverage-map zone prospects entry when it is the top of the stack. */
+const coverageProspectsEntry: ComputedRef<CoverageProspectsDrawerEntry | null> = computed(
+  (): CoverageProspectsDrawerEntry | null => {
+    return drawerStack.topEntry?.kind === 'coverage-prospects' ? drawerStack.topEntry : null
+  },
+)
 
 /**
  * Prospect created from the add drawer — notify pages (list insert) and chain
