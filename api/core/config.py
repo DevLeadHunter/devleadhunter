@@ -64,7 +64,7 @@ class Settings(BaseSettings):
         description="Algorithm for JWT token signing"
     )
     access_token_expire_minutes: int = Field(
-        default=30,
+        default=10080,  # 7 days — no refresh token yet, so keep sessions long-lived
         alias="ACCESS_TOKEN_EXPIRE_MINUTES",
         description="Access token expiration time in minutes"
     )
