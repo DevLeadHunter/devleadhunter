@@ -28,6 +28,13 @@ export interface ProspectEnrichment {
   opening_hours: EnrichmentOpeningHours[]
   services: string[]
   social_links: Record<string, string>
+  /** Decision-maker contact (resolved by the cascade, or set manually). */
+  contact_first_name: string | null
+  contact_last_name: string | null
+  contact_gender: string | null
+  contact_name_source: string | null
+  contact_name_confidence: number | null
+  contact_name_manual: boolean
   error_message: string | null
   enriched_at: string | null
   created_at: string
@@ -45,6 +52,8 @@ export interface ProspectEnrichmentUpdate {
   opening_hours?: EnrichmentOpeningHours[]
   services?: string[]
   social_links?: Record<string, string>
+  contact_first_name?: string | null
+  contact_last_name?: string | null
 }
 
 /**
@@ -67,6 +76,15 @@ export async function getProspectEnrichment(prospectId: number): Promise<Prospec
  */
 export async function runProspectEnrichment(prospectId: number): Promise<ProspectEnrichment> {
   return api.post<ProspectEnrichment>(`/api/v1/prospects/${prospectId}/enrichment/run`, {})
+}
+
+/**
+ * (Re)run only the decision-maker name resolution for a prospect.
+ * @param prospectId - Target prospect id.
+ * @returns The refreshed enrichment record (contact_* fields updated).
+ */
+export async function resolveProspectContact(prospectId: number): Promise<ProspectEnrichment> {
+  return api.post<ProspectEnrichment>(`/api/v1/prospects/${prospectId}/enrichment/resolve-contact`, {})
 }
 
 /** Per-prospect outcome of a bulk enrichment run. */

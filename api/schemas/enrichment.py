@@ -21,6 +21,13 @@ class ProspectEnrichmentResponse(BaseModel):
     opening_hours: list[dict[str, Any]] = Field(default_factory=list)
     services: list[str] = Field(default_factory=list)
     social_links: dict[str, Any] = Field(default_factory=dict)
+    # Decision-maker contact (resolved by the cascade, or set manually).
+    contact_first_name: Optional[str] = None
+    contact_last_name: Optional[str] = None
+    contact_gender: Optional[str] = None
+    contact_name_source: Optional[str] = None
+    contact_name_confidence: Optional[float] = None
+    contact_name_manual: bool = False
     error_message: Optional[str] = None
     enriched_at: Optional[datetime] = None
     created_at: datetime
@@ -53,3 +60,5 @@ class ProspectEnrichmentUpdate(BaseModel):
     opening_hours: Optional[list[dict[str, Any]]] = None
     services: Optional[list[str]] = None
     social_links: Optional[dict[str, Any]] = None
+    contact_first_name: Optional[str] = None
+    contact_last_name: Optional[str] = None

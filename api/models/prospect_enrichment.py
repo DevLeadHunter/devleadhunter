@@ -7,7 +7,7 @@ discovery, so the search scrapers stay fast.
 from datetime import datetime
 from typing import Optional
 
-from sqlalchemy import Float, ForeignKey, Integer, JSON, String, Text
+from sqlalchemy import Boolean, Float, ForeignKey, Integer, JSON, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
 from sqlalchemy.sql import func
 
@@ -35,6 +35,18 @@ class ProspectEnrichment(Base):
     rating: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
     reviews_count: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
     description: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+
+    # Decision-maker contact (resolved by the decision_maker cascade, or set
+    # manually). Golden rule: only trusted names land here — the greeting
+    # falls back to a plain « Bonjour » when these are empty.
+    contact_first_name: Mapped[Optional[str]] = mapped_column(String(120), nullable=True)
+    contact_last_name: Mapped[Optional[str]] = mapped_column(String(120), nullable=True)
+    contact_gender: Mapped[Optional[str]] = mapped_column(String(1), nullable=True)  # 'M' | 'F'
+    contact_name_source: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
+    contact_name_confidence: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    contact_name_manual: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=False, server_default="0"
+    )
 
     # Structured, editable collections (JSON)
     photos: Mapped[Optional[list]] = mapped_column(JSON, nullable=True)

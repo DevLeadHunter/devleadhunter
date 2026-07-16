@@ -155,7 +155,20 @@ _EXTRACT_JS = r"""
                 const m = (ratingEl.getAttribute('aria-label') || '').match(/([\d.,]+)/);
                 if (m) rating = parseFloat(m[1].replace(',', '.'));
             }
-            if (text) out.reviews.push({ author: author || 'Client', text, rating });
+            // « Réponse du propriétaire » — the owner's reply, often signed with a
+            // first name (fuels the decision-maker resolution). Selector-free:
+            // detected via the localized marker inside the block's inner text.
+            let ownerResponse = null;
+            try {
+                const full = b.innerText || '';
+                const marker = full.includes('Réponse du propriétaire')
+                    ? 'Réponse du propriétaire'
+                    : (full.includes('Response from the owner') ? 'Response from the owner' : null);
+                if (marker) {
+                    ownerResponse = full.split(marker)[1].replace(/^[\\s:.-]+/, '').trim().slice(0, 400) || null;
+                }
+            } catch (e) {}
+            if (text) out.reviews.push({ author: author || 'Client', text, rating, owner_response: ownerResponse });
         });
         out.reviews = out.reviews.slice(0, 6);
     } catch (e) {}

@@ -49,7 +49,12 @@ EDITABLE_FIELDS: tuple[str, ...] = (
     "opening_hours",
     "services",
     "social_links",
+    "contact_first_name",
+    "contact_last_name",
 )
+
+# Manual contact edits flip these bookkeeping fields (human input always wins).
+_CONTACT_FIELDS: tuple[str, ...] = ("contact_first_name", "contact_last_name")
 
 
 class EnrichmentService:
@@ -142,6 +147,71 @@ class EnrichmentService:
             self._record_diagnostic(prospect, None, error=str(exc))
 
         db.commit()
+
+        # Decision-maker name resolution (best-effort, never blocks enrichment).
+        await self._resolve_contact(db, prospect, record)
+
+        db.refresh(record)
+        return record
+
+    async def _resolve_contact(
+        self, db: Session, prospect: ProspectDB, record: ProspectEnrichment
+    ) -> None:
+        """Run the decision-maker cascade and store the trusted contact.
+
+        Skipped when a human already set the contact (manual edits win). Any
+        failure is swallowed + surfaced as a monitoring diagnostic — a broken
+        resolution must never break enrichment or sending.
+        """
+        if record.contact_name_manual:
+            return
+        try:
+            from services.decision_maker.resolver import (
+                context_from_prospect,
+                decision_maker_resolver,
+            )
+
+            candidate = await decision_maker_resolver.resolve(
+                context_from_prospect(prospect, record)
+            )
+            if candidate is not None:
+                record.contact_first_name = candidate.first
+                record.contact_last_name = candidate.last
+                record.contact_gender = candidate.gender
+                record.contact_name_source = candidate.source
+                record.contact_name_confidence = candidate.confidence
+            db.commit()
+            scraper_diagnostics_service.record(
+                source="decision_maker",
+                status=STATUS_OK if candidate is not None else STATUS_EMPTY,
+                category=prospect.category,
+                city=prospect.city,
+                results_count=1 if candidate is not None else 0,
+                error_message=None,
+                html_snapshot=None,
+                user_id=prospect.user_id,
+            )
+        except Exception as exc:  # noqa: BLE001 — resolution is best-effort
+            logger.warning("Decision-maker resolution failed for prospect %s: %s", prospect.id, exc)
+            scraper_diagnostics_service.record(
+                source="decision_maker",
+                status=STATUS_ERROR,
+                category=prospect.category,
+                city=prospect.city,
+                results_count=0,
+                error_message=str(exc),
+                html_snapshot=None,
+                user_id=prospect.user_id,
+            )
+
+    async def resolve_contact(
+        self, db: Session, user_id: int, prospect: ProspectDB
+    ) -> ProspectEnrichment:
+        """(Re)run only the decision-maker resolution for a prospect (on demand)."""
+        record = self.get_or_create(db, user_id, prospect.id)
+        # An explicit re-run overrides a previous manual lock on purpose.
+        record.contact_name_manual = False
+        await self._resolve_contact(db, prospect, record)
         db.refresh(record)
         return record
 
@@ -192,6 +262,14 @@ class EnrichmentService:
         for key, value in updates.items():
             if key in EDITABLE_FIELDS:
                 setattr(record, key, value)
+        # A human-set contact always wins over automatic resolution.
+        if any(key in updates for key in _CONTACT_FIELDS):
+            record.contact_name_manual = True
+            record.contact_name_source = "manual"
+            record.contact_name_confidence = 1.0
+            from services.decision_maker.normalize import infer_gender
+
+            record.contact_gender = infer_gender(record.contact_first_name)
         # A manually edited record is considered ready to use.
         if record.status != EnrichmentStatus.COMPLETED.value:
             record.status = EnrichmentStatus.COMPLETED.value

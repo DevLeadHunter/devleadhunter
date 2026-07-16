@@ -192,6 +192,14 @@ class Settings(BaseSettings):
         description="PostHog ingestion host used for server-side capture (eu/us)",
     )
 
+    # Pappers — structured company directors (decision-maker name cascade).
+    # Optional: the strategy is a clean no-op without a key.
+    pappers_api_key: str = Field(
+        default="",
+        alias="PAPPERS_API_KEY",
+        description="Pappers API key (optional) for company directors lookup",
+    )
+
     # Groq — LLM for behaviour summary and personalised follow-ups
     groq_api_key: Optional[str] = Field(
         default=None,

@@ -41,13 +41,10 @@ logger = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 # Personalisation variable keys used in cold-email templates.
 # ---------------------------------------------------------------------------
-_VAR_FIRST_NAME = "prenom"
-_VAR_COMPANY    = "entreprise"
-_VAR_CITY       = "ville"
-_VAR_EMAIL      = "email"
-_VAR_PHONE      = "phone"
-_VAR_DEMO_LINK  = "lien_demo"
-_VAR_METIER     = "metier"
+# Variable keys live in services.email_variables (single source of truth for
+# {salutation}/{prenom}/{nom}/{entreprise}…) — only the demo-link key is
+# needed here, for the « template uses {lien_demo} » guard.
+_VAR_DEMO_LINK = "lien_demo"
 
 # Queue item status values
 _STATUS_PENDING  = "pending"
@@ -382,17 +379,11 @@ class CampaignQueueService:
             self.db.commit()
             return
 
-        # Build personalisation variables.
-        name_parts = (prospect.name or "").split()
-        variables: dict[str, str] = {
-            _VAR_FIRST_NAME: name_parts[0] if name_parts else "",
-            _VAR_COMPANY:    prospect.name or "",
-            _VAR_CITY:       prospect.city or "",
-            _VAR_EMAIL:      prospect.email or "",
-            _VAR_PHONE:      prospect.phone or "",
-            _VAR_METIER:     prospect.category or "",
-            _VAR_DEMO_LINK:  demo_link,
-        }
+        # Build personalisation variables ({salutation}/{prenom}/{nom} come from
+        # the resolved decision-maker — never the company name).
+        from services.email_variables import build_prospect_variables
+
+        variables: dict[str, str] = build_prospect_variables(self.db, prospect, demo_link)
 
         email_service = EmailSendingService(self.db)
         subject: str = email_service.replace_variables(template.subject, variables)
@@ -526,16 +517,11 @@ class CampaignQueueService:
         if not template:
             return {"success": False, "error": "Template introuvable"}
 
-        name_parts = (prospect.name or "").split()
-        variables: dict[str, str] = {
-            _VAR_FIRST_NAME: name_parts[0] if name_parts else "",
-            _VAR_COMPANY:    prospect.name or "",
-            _VAR_CITY:       prospect.city or "",
-            _VAR_EMAIL:      prospect.email or "",
-            _VAR_PHONE:      prospect.phone or "",
-            _VAR_METIER:     prospect.category or "",
-            _VAR_DEMO_LINK:  self._demo_link_for_prospect(prospect_id, campaign.user_id, None),
-        }
+        from services.email_variables import build_prospect_variables
+
+        variables: dict[str, str] = build_prospect_variables(
+            self.db, prospect, self._demo_link_for_prospect(prospect_id, campaign.user_id, None)
+        )
 
         email_service = EmailSendingService(self.db)
         subject = email_service.replace_variables(template.subject, variables)

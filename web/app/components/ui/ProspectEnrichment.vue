@@ -20,6 +20,60 @@
     </div>
 
     <template v-else>
+      <!-- Decision-maker contact (feeds the email greeting {salutation}) —
+           always available, even before the first enrichment run. -->
+      <div class="rounded-lg border border-[var(--app-line)] bg-[var(--app-bg)] p-3">
+        <div class="mb-2 flex items-center justify-between">
+          <p
+            class="flex items-center gap-1.5 text-[10px] font-semibold tracking-wider text-[var(--app-ink-soft)] uppercase"
+          >
+            <UIcon name="i-lucide-user-round" class="h-3.5 w-3.5" />
+            Décisionnaire
+          </p>
+          <span
+            v-if="record?.contact_name_source"
+            class="rounded border border-[var(--app-line)] bg-[var(--app-surface)] px-1.5 py-0.5 text-[10px] text-[var(--app-ink-soft)]"
+            :title="`Confiance : ${Math.round((record?.contact_name_confidence ?? 0) * 100)} %`"
+          >
+            {{ contactSourceLabel }}
+            <template v-if="record?.contact_name_confidence != null">
+              · {{ Math.round((record?.contact_name_confidence ?? 0) * 100) }} %
+            </template>
+          </span>
+        </div>
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="mb-1 block text-[10px] text-[var(--app-ink-soft)]">Prénom</label>
+            <input v-model="form.contact_first_name" type="text" class="input-field" placeholder="Léo" />
+          </div>
+          <div>
+            <label class="mb-1 block text-[10px] text-[var(--app-ink-soft)]">Nom</label>
+            <input v-model="form.contact_last_name" type="text" class="input-field" placeholder="Guillaume" />
+          </div>
+        </div>
+        <p class="text-muted mt-1.5 text-[10px] leading-relaxed">
+          Utilisé pour l'accroche des emails ({salutation}) — vide = « Bonjour » neutre, jamais le nom d'entreprise.
+        </p>
+        <div class="mt-2 flex gap-2">
+          <button type="button" class="btn-secondary flex-1 text-xs" :disabled="isResolving" @click="resolveContact">
+            <UIcon
+              :name="isResolving ? 'i-lucide-loader-circle' : 'i-lucide-scan-search'"
+              :class="['h-3.5 w-3.5', isResolving && 'animate-spin']"
+            />
+            Rechercher automatiquement
+          </button>
+          <button
+            v-if="contactDirty"
+            type="button"
+            class="btn-primary shrink-0 text-xs"
+            :disabled="isSaving"
+            @click="saveContactOnly"
+          >
+            Enregistrer
+          </button>
+        </div>
+      </div>
+
       <button
         v-if="!record || record.status === 'pending'"
         class="btn-secondary w-full"
@@ -158,7 +212,12 @@
 import type { ComputedRef, PropType, Ref } from 'vue'
 import { ref, computed, watch } from 'vue'
 import type { EnrichmentOpeningHours, EnrichmentReview, ProspectEnrichment } from '~/services/enrichmentService'
-import { getProspectEnrichment, runProspectEnrichment, updateProspectEnrichment } from '~/services/enrichmentService'
+import {
+  getProspectEnrichment,
+  resolveProspectContact,
+  runProspectEnrichment,
+  updateProspectEnrichment,
+} from '~/services/enrichmentService'
 import type { UiProspectEnrichmentProps } from '~/types/UiProspectEnrichment'
 import { useToast } from '~/composables/useToast'
 
@@ -182,6 +241,7 @@ const record: Ref<ProspectEnrichment | null> = ref<ProspectEnrichment | null>(nu
 const isLoading: Ref<boolean> = ref(false)
 const isRunning: Ref<boolean> = ref(false)
 const isSaving: Ref<boolean> = ref(false)
+const isResolving: Ref<boolean> = ref(false)
 const newPhotoUrl: Ref<string> = ref('')
 const newService: Ref<string> = ref('')
 
@@ -193,6 +253,8 @@ interface EnrichmentForm {
   services: string[]
   reviews: EnrichmentReview[]
   opening_hours: EnrichmentOpeningHours[]
+  contact_first_name: string
+  contact_last_name: string
 }
 
 const form: Ref<EnrichmentForm> = ref<EnrichmentForm>({
@@ -203,7 +265,31 @@ const form: Ref<EnrichmentForm> = ref<EnrichmentForm>({
   services: [],
   reviews: [],
   opening_hours: [],
+  contact_first_name: '',
+  contact_last_name: '',
 })
+
+/** Human label of the resolved-contact source badge. */
+const CONTACT_SOURCE_LABELS: Record<string, string> = {
+  registre_gouv: 'Registre officiel',
+  pappers: 'Pappers',
+  owner_response: 'Réponse aux avis',
+  legal_mentions: 'Mentions légales',
+  llm_aggregate: 'IA (texte public)',
+  manual: 'Saisie manuelle',
+}
+
+const contactSourceLabel: ComputedRef<string> = computed(
+  (): string =>
+    CONTACT_SOURCE_LABELS[record.value?.contact_name_source ?? ''] ?? record.value?.contact_name_source ?? '',
+)
+
+/** True when the contact inputs differ from the stored record (shows Save). */
+const contactDirty: ComputedRef<boolean> = computed(
+  (): boolean =>
+    form.value.contact_first_name !== (record.value?.contact_first_name ?? '') ||
+    form.value.contact_last_name !== (record.value?.contact_last_name ?? ''),
+)
 
 const STATUS_LABELS: Record<string, string> = {
   pending: 'À récupérer',
@@ -235,6 +321,45 @@ function syncForm(): void {
     services: [...(r?.services ?? [])],
     reviews: [...(r?.reviews ?? [])],
     opening_hours: [...(r?.opening_hours ?? [])],
+    contact_first_name: r?.contact_first_name ?? '',
+    contact_last_name: r?.contact_last_name ?? '',
+  }
+}
+
+/** Persist ONLY the manual contact edit (works before any enrichment run). */
+async function saveContactOnly(): Promise<void> {
+  if (!props.prospectId) return
+  isSaving.value = true
+  try {
+    record.value = await updateProspectEnrichment(props.prospectId, {
+      contact_first_name: form.value.contact_first_name || null,
+      contact_last_name: form.value.contact_last_name || null,
+    })
+    syncForm()
+    toast.success('Décisionnaire enregistré')
+  } catch (err: unknown) {
+    toast.error(err instanceof Error ? err.message : 'Erreur lors de la sauvegarde')
+  } finally {
+    isSaving.value = false
+  }
+}
+
+/** (Re)run only the decision-maker name resolution. */
+async function resolveContact(): Promise<void> {
+  if (!props.prospectId) return
+  isResolving.value = true
+  try {
+    record.value = await resolveProspectContact(props.prospectId)
+    syncForm()
+    toast.success(
+      record.value?.contact_first_name || record.value?.contact_last_name
+        ? 'Décisionnaire trouvé'
+        : 'Aucun nom fiable trouvé — salutation neutre conservée',
+    )
+  } catch (err: unknown) {
+    toast.error(err instanceof Error ? err.message : 'Échec de la recherche du décisionnaire')
+  } finally {
+    isResolving.value = false
   }
 }
 
@@ -270,6 +395,12 @@ async function save(): Promise<void> {
   if (!props.prospectId) return
   isSaving.value = true
   try {
+    // Contact fields are sent ONLY when actually changed: a manual contact
+    // edit locks the automatic resolution (contact_name_manual), so untouched
+    // values must not flip that lock.
+    const contactChanged: boolean =
+      form.value.contact_first_name !== (record.value?.contact_first_name ?? '') ||
+      form.value.contact_last_name !== (record.value?.contact_last_name ?? '')
     record.value = await updateProspectEnrichment(props.prospectId, {
       rating: form.value.rating,
       reviews_count: form.value.reviews_count,
@@ -278,6 +409,12 @@ async function save(): Promise<void> {
       services: form.value.services,
       reviews: form.value.reviews,
       opening_hours: form.value.opening_hours,
+      ...(contactChanged
+        ? {
+            contact_first_name: form.value.contact_first_name || null,
+            contact_last_name: form.value.contact_last_name || null,
+          }
+        : {}),
     })
     syncForm()
     toast.success('Enrichissement enregistré')

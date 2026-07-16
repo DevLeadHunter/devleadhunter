@@ -7,7 +7,10 @@ Templates follow the /cold-email skill rules:
   - Price only appears in follow-ups, never in J1
   - Unsubscribe footer is added automatically at send time (not in the body)
 
-Variables available: {prenom}, {entreprise}, {ville}, {metier}, {lien_demo}
+Variables available: {salutation}, {prenom}, {nom}, {entreprise}, {ville}, {metier}, {lien_demo}
+({salutation} always renders a safe greeting — « Bonjour » / « Bonjour Léo » /
+« Bonjour M. Guillaume » — from the resolved decision-maker; {prenom}/{nom}
+are EMPTY when unknown, never a company word.)
 
 Ordering: ``sort_order`` (higher = pinned higher) drives the app's template list
 order. The "★ Recommandé" entries are the two best first-email angles and the two
@@ -37,7 +40,7 @@ _TEMPLATES: list[dict[str, object]] = [
         "sort_order": 100,
         "subject": "votre fiche google",
         "body_html": (
-            "<p>Bonjour {prenom},</p>"
+            "<p>{salutation},</p>"
             "<p>Quand quelqu'un cherche un {metier} à {ville}, Google met en avant les fiches "
             "reliées à un site — les autres passent derrière.</p>"
             "<p>J'ai monté un site pour {entreprise} qui renforce votre fiche Google : {lien_demo}</p>"
@@ -50,7 +53,7 @@ _TEMPLATES: list[dict[str, object]] = [
         "sort_order": 95,
         "subject": "avant d'appeler",
         "body_html": (
-            "<p>Bonjour {prenom},</p>"
+            "<p>{salutation},</p>"
             "<p>Aujourd'hui, avant d'appeler un {metier}, on vérifie en ligne. Pas de site = un "
             "doute, même quand le travail est excellent.</p>"
             "<p>J'ai créé un site pour {entreprise} qui lève ce doute en quelques secondes : {lien_demo}</p>"
@@ -64,7 +67,7 @@ _TEMPLATES: list[dict[str, object]] = [
         "sort_order": 90,
         "subject": "site ou timing",
         "body_html": (
-            "<p>Bonjour {prenom},</p>"
+            "<p>{salutation},</p>"
             "<p>Une question rapide : c'est le site qui ne vous convient pas, ou juste une "
             "histoire de timing ?</p>"
             "<p>Un mot et je m'adapte — il est toujours en ligne : {lien_demo}</p>"
@@ -76,7 +79,7 @@ _TEMPLATES: list[dict[str, object]] = [
         "sort_order": 85,
         "subject": "à vous à vie",
         "body_html": (
-            "<p>Bonjour {prenom},</p>"
+            "<p>{salutation},</p>"
             "<p>Le site de {entreprise} est prêt : {lien_demo}</p>"
             "<p>500€ une fois, et il est à vous — pas d'abonnement, vous ne me repayez jamais. "
             "Je m'occupe de la mise en ligne.</p>"
@@ -90,7 +93,7 @@ _TEMPLATES: list[dict[str, object]] = [
         "sort_order": 0,
         "subject": "votre site demo",
         "body_html": (
-            "<p>Bonjour {prenom},</p>"
+            "<p>{salutation},</p>"
             "<p>J'ai créé un site vitrine pour {entreprise} — vous pouvez le voir ici : {lien_demo}</p>"
             "<p>Quand quelqu'un cherche un {metier} à {ville} sur Google, il tombe surtout sur ceux "
             "qui ont un site. Sans ça, vous passez sous le radar même quand votre travail est meilleur.</p>"
@@ -103,7 +106,7 @@ _TEMPLATES: list[dict[str, object]] = [
         "sort_order": 0,
         "subject": "{ville} - {metier}",
         "body_html": (
-            "<p>Bonjour {prenom},</p>"
+            "<p>{salutation},</p>"
             "<p>La plupart de vos clients arrivent par bouche-à-oreille. Le souci : pour vous "
             "recommander, il faut votre numéro sous la main au bon moment.</p>"
             "<p>J'ai monté un site pour {entreprise} qui règle ça — vos clients partagent un lien, "
@@ -117,7 +120,7 @@ _TEMPLATES: list[dict[str, object]] = [
         "sort_order": 0,
         "subject": "quand on vous recommande",
         "body_html": (
-            "<p>Bonjour {prenom},</p>"
+            "<p>{salutation},</p>"
             "<p>On vous recommande souvent, mais encore faut-il vous retrouver au bon moment — "
             "sinon la personne appelle le premier venu.</p>"
             "<p>Avec un site, on vous retrouve en 2 secondes. J'en ai fait un pour {entreprise} : {lien_demo}</p>"
@@ -130,7 +133,7 @@ _TEMPLATES: list[dict[str, object]] = [
         "sort_order": 0,
         "subject": "vous gérez tout",
         "body_html": (
-            "<p>Bonjour {prenom},</p>"
+            "<p>{salutation},</p>"
             "<p>J'ai créé un site pour {entreprise} que vous modifiez vous-même, sans développeur "
             "et sans rien y connaître : {lien_demo}</p>"
             "<p>Vos horaires, vos photos, vos tarifs — vous changez ça en 2 clics.</p>"
@@ -144,7 +147,7 @@ _TEMPLATES: list[dict[str, object]] = [
         "sort_order": 0,
         "subject": "petit rappel",
         "body_html": (
-            "<p>Bonjour {prenom},</p>"
+            "<p>{salutation},</p>"
             "<p>Vous avez pu jeter un œil au site de {entreprise} ? {lien_demo}</p>"
             "<p>Un mot me suffit, même un non.</p>"
             "<p>Léo</p>"
@@ -155,7 +158,7 @@ _TEMPLATES: list[dict[str, object]] = [
         "sort_order": 0,
         "subject": "vous avez pu jeter un oeil ?",
         "body_html": (
-            "<p>Bonjour {prenom},</p>"
+            "<p>{salutation},</p>"
             "<p>Je reviens vite — le site pour {entreprise} est toujours là : {lien_demo}</p>"
             "<p>500€ une fois, sans abonnement. Je m'occupe de la mise en ligne sur votre nom de domaine.</p>"
             "<p>Ça vous intéresse ?</p>"
@@ -167,7 +170,7 @@ _TEMPLATES: list[dict[str, object]] = [
         "sort_order": 0,
         "subject": "je ferme le dossier",
         "body_html": (
-            "<p>Bonjour {prenom},</p>"
+            "<p>{salutation},</p>"
             "<p>Sans retour de votre part, je vais libérer le site de {entreprise} cette semaine.</p>"
             "<p>Si c'est juste une question de timing, dites-le moi et je le garde de côté : {lien_demo}</p>"
             "<p>Léo</p>"
@@ -181,7 +184,7 @@ _TEMPLATES: list[dict[str, object]] = [
         "sort_order": 0,
         "subject": "une v2 de votre site",
         "body_html": (
-            "<p>Bonjour {prenom},</p>"
+            "<p>{salutation},</p>"
             "<p>Je suis tombé sur le site de {entreprise}. Il fait le job, mais il vous dessert : "
             "lent sur mobile, et Google fait passer devant des {metier} de {ville} moins bons que vous.</p>"
             "<p>Plutôt que d'en parler, j'en ai monté une version moderne — comparez vous-même : {lien_demo}</p>"
@@ -194,7 +197,7 @@ _TEMPLATES: list[dict[str, object]] = [
         "sort_order": 0,
         "subject": "l'ancien ou le nouveau ?",
         "body_html": (
-            "<p>Bonjour {prenom},</p>"
+            "<p>{salutation},</p>"
             "<p>La comparaison avec votre site actuel est toujours en ligne : {lien_demo}</p>"
             "<p>500€ une fois, sans abonnement : je bascule votre nom de domaine dessus et vous "
             "gardez la main sur tout le contenu.</p>"
