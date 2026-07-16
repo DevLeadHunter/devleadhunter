@@ -11,10 +11,14 @@ a campaign.
 """
 from __future__ import annotations
 
+import asyncio
+import hashlib
 import logging
 import re
+import time
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
+from email.utils import formatdate, make_msgid
 from typing import Any
 
 import httpx
@@ -22,6 +26,11 @@ import httpx
 logger = logging.getLogger(__name__)
 
 _SPAMCHECK_URL: str = "https://spamcheck.postmarkapp.com/filter"
+
+# Template scores are recomputed at most every 6 h for unchanged content —
+# the page auto-scores every template on load, so caching is what keeps us
+# polite with the free SpamAssassin endpoint.
+_CACHE_TTL_SECONDS: float = 6 * 3600.0
 
 # French cold-email vocabulary that reliably trips content filters.
 _SPAMMY_WORDS: tuple[str, ...] = (
@@ -44,6 +53,29 @@ def _strip_html(html: str) -> str:
 
 class EmailSpamTestService:
     """Score an email draft before sending it."""
+
+    def __init__(self) -> None:
+        self._cache: dict[str, tuple[float, dict[str, Any]]] = {}
+
+    async def test_cached(self, *, subject: str, body_html: str, from_email: str, to_email: str) -> dict[str, Any]:
+        """Same as :meth:`test`, memoized on the content hash (TTL 6 h).
+
+        @param subject - Email subject.
+        @param body_html - HTML body.
+        @param from_email - Sender address.
+        @param to_email - Recipient address for the envelope.
+        @returns The (possibly cached) verdicts.
+        """
+        key = hashlib.sha1(f"{from_email}\x00{subject}\x00{body_html}".encode("utf-8")).hexdigest()
+        cached = self._cache.get(key)
+        if cached and (time.monotonic() - cached[0]) < _CACHE_TTL_SECONDS:
+            return cached[1]
+        result = await self.test(subject=subject, body_html=body_html, from_email=from_email, to_email=to_email)
+        # Only cache verdicts that actually reached the scorer (a network blip
+        # must not stick for 6 h).
+        if result.get("spamassassin", {}).get("available", False):
+            self._cache[key] = (time.monotonic(), result)
+        return result
 
     async def test(self, *, subject: str, body_html: str, from_email: str, to_email: str) -> dict[str, Any]:
         """Run SpamAssassin + local heuristics on a draft.
@@ -73,20 +105,33 @@ class EmailSpamTestService:
         message["Subject"] = subject
         message["From"] = from_email
         message["To"] = to_email
+        # Real sends get these from the provider (Resend) — without them
+        # SpamAssassin adds MISSING_DATE/MISSING_MID penalties that say
+        # nothing about the content being scored.
+        message["Date"] = formatdate(localtime=False)
+        message["Message-ID"] = make_msgid(domain=from_email.split("@")[-1] or "dibodev.fr")
         message.attach(MIMEText(_strip_html(body_html), "plain", "utf-8"))
         message.attach(MIMEText(body_html, "html", "utf-8"))
 
-        try:
-            async with httpx.AsyncClient(timeout=20.0) as client:
-                response = await client.post(
-                    _SPAMCHECK_URL,
-                    json={"email": message.as_string(), "options": "long"},
-                )
-                response.raise_for_status()
-                payload = response.json()
-        except Exception as exc:  # noqa: BLE001 — the tester must degrade gracefully
-            logger.warning("SpamCheck call failed: %s", exc)
-            return {"available": False, "error": "Le service SpamAssassin ne répond pas — réessayez plus tard."}
+        payload: dict[str, Any] | None = None
+        # The free endpoint occasionally drops one call in a burst — one
+        # polite retry recovers nearly all of them.
+        for attempt in range(2):
+            try:
+                async with httpx.AsyncClient(timeout=20.0) as client:
+                    response = await client.post(
+                        _SPAMCHECK_URL,
+                        json={"email": message.as_string(), "options": "long"},
+                    )
+                    response.raise_for_status()
+                    payload = response.json()
+                break
+            except Exception as exc:  # noqa: BLE001 — the tester must degrade gracefully
+                logger.warning("SpamCheck call failed (attempt %d): %s", attempt + 1, exc)
+                if attempt == 0:
+                    await asyncio.sleep(1.5)
+        if payload is None:
+            return {"available": False, "error": "Le service d'analyse ne répond pas — réessayez plus tard."}
 
         if not payload.get("success", False):
             return {"available": False, "error": payload.get("message", "Analyse impossible.")}

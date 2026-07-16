@@ -162,6 +162,24 @@ export interface SpamTestResult {
   checks: SpamLocalCheck[]
 }
 
+/** Anti-spam score of one email template (scored automatically, nothing sent). */
+export interface TemplateScore {
+  id: number
+  name: string
+  subject: string
+  group: 'initial' | 'follow_up'
+  spamassassin: SpamAssassinResult
+  checks: SpamLocalCheck[]
+  /** Checks that are not ok (the at-a-glance issue list). */
+  issues: SpamLocalCheck[]
+}
+
+/** Template scores grouped by role. */
+export interface TemplateScoresResponse {
+  initial: TemplateScore[]
+  follow_up: TemplateScore[]
+}
+
 /**
  * Fetch the deliverability overview (totals, signals, per-account stats).
  * @param periodDays - Rolling window: 7, 30 or 90 days.
@@ -229,4 +247,13 @@ export async function getEmailHealthPostmaster(periodDays: number): Promise<{ do
  */
 export async function runEmailSpamTest(subject: string, bodyHtml: string): Promise<SpamTestResult> {
   return api.post<SpamTestResult>('/api/v1/email-health/spam-test', { subject, body_html: bodyHtml })
+}
+
+/**
+ * Fetch the automatic anti-spam scores of every active email template.
+ * Nothing is sent — templates are scored server-side (results cached 6 h).
+ * @returns Scores grouped first-contact vs follow-up.
+ */
+export async function getEmailTemplateScores(): Promise<TemplateScoresResponse> {
+  return api.get<TemplateScoresResponse>('/api/v1/email-health/template-scores')
 }
