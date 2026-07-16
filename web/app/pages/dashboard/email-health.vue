@@ -91,7 +91,12 @@
     <section v-if="trendDays.length > 0" class="grid grid-cols-1 gap-6 lg:grid-cols-2">
       <div class="app-card p-5">
         <h2 class="mb-4 text-sm font-semibold text-[var(--app-ink)]">Volume d'envoi</h2>
-        <EmailHealthTrendChart :labels="trendLabels" :series="volumeSeries" unit="" />
+        <EmailHealthVolumeChart
+          :labels="trendLabels"
+          :sent="sentValues"
+          :delivered="deliveredValues"
+          :opened="openedValues"
+        />
       </div>
       <div class="app-card p-5">
         <h2 class="mb-4 text-sm font-semibold text-[var(--app-ink)]">Taux critiques</h2>
@@ -247,104 +252,128 @@
       </div>
     </section>
 
-    <!-- 6. Testeur anti-spam -->
+    <!-- 6. Score anti-spam des modèles (automatique, rien n'est envoyé) -->
     <section class="app-card p-5 md:p-6">
-      <h2 class="text-sm font-semibold text-[var(--app-ink)]">Tester un email avant envoi</h2>
-      <p class="mt-1 mb-4 text-xs text-[var(--app-ink-soft)]">
-        Score SpamAssassin (moteur anti-spam de référence) + vérifications propres au cold email français.
+      <div class="flex items-baseline justify-between gap-3">
+        <h2 class="text-sm font-semibold text-[var(--app-ink)]">Score anti-spam de vos modèles</h2>
+        <span v-if="isScoringTemplates" class="flex items-center gap-1.5 text-xs text-[var(--app-ink-soft)]">
+          <UIcon name="i-lucide-loader-circle" class="h-3.5 w-3.5 animate-spin" /> Analyse en cours…
+        </span>
+      </div>
+      <p class="mt-1 mb-5 text-xs text-[var(--app-ink-soft)]">
+        Chaque modèle actif est analysé automatiquement à l'ouverture de la page — aucun email n'est envoyé. En dessous
+        de 3 : sain · à partir de 5 : classé spam par la plupart des filtres.
       </p>
-      <div class="grid grid-cols-1 gap-5 lg:grid-cols-2">
-        <form class="space-y-3" @submit.prevent="runSpamTest">
-          <div>
-            <label for="eh-subject" class="app-label mb-1.5 block">Objet</label>
-            <input
-              id="eh-subject"
-              v-model="spamForm.subject"
-              type="text"
-              required
-              :placeholder="'Un site web pour {{nom_entreprise}} ?'"
-              class="app-input w-full"
-            />
-          </div>
-          <div>
-            <label for="eh-body" class="app-label mb-1.5 block">Corps HTML</label>
-            <textarea
-              id="eh-body"
-              v-model="spamForm.bodyHtml"
-              required
-              rows="9"
-              :placeholder="'Collez ici le HTML de votre email (les variables {{…}} peuvent rester).'"
-              class="app-input w-full resize-y font-mono text-xs"
-            ></textarea>
-          </div>
-          <button type="submit" class="app-btn-primary" :disabled="isSpamTesting">
-            <UIcon
-              :name="isSpamTesting ? 'i-lucide-loader-circle' : 'i-lucide-shield-check'"
-              :class="['h-4 w-4', isSpamTesting && 'animate-spin']"
-            />
-            {{ isSpamTesting ? 'Analyse…' : 'Analyser' }}
-          </button>
-        </form>
 
-        <div v-if="spamResult" class="space-y-4">
-          <!-- SpamAssassin score -->
-          <div class="rounded-xl border border-[var(--app-line)] bg-[var(--app-bg)] p-4">
-            <div class="flex items-center justify-between">
-              <p class="text-xs font-semibold text-[var(--app-ink)]">Score SpamAssassin</p>
-              <p
-                v-if="spamResult.spamassassin.available"
-                class="text-2xl font-bold tabular-nums"
-                :style="{ color: statusColor(spamResult.spamassassin.status ?? 'ok') }"
-              >
-                {{ formatRate(spamResult.spamassassin.score ?? 0)
-                }}<span class="text-sm font-medium text-[var(--app-ink-soft)]"> / 5</span>
-              </p>
-            </div>
-            <p v-if="!spamResult.spamassassin.available" class="mt-1 text-xs text-[var(--app-red)]">
-              {{ spamResult.spamassassin.error }}
-            </p>
-            <template v-else>
-              <p class="mt-1 text-[11px] text-[var(--app-ink-soft)]">
-                En dessous de 3 : sain. À partir de 5 : classé spam par la plupart des filtres.
-              </p>
-              <ul v-if="topSpamRules.length > 0" class="mt-2 space-y-1">
-                <li
-                  v-for="rule in topSpamRules"
-                  :key="rule.description ?? ''"
-                  class="flex items-start justify-between gap-3 text-[11px] text-[var(--app-ink-soft)]"
+      <div
+        v-if="!isScoringTemplates && templateGroups.every((group) => group.items.length === 0)"
+        class="py-6 text-center text-sm text-[var(--app-ink-soft)]"
+      >
+        Aucun modèle d'email actif à analyser.
+      </div>
+
+      <div v-else class="space-y-6">
+        <div v-for="group in templateGroups" :key="group.key">
+          <template v-if="group.items.length > 0">
+            <h3 class="app-label mb-2">{{ group.label }}</h3>
+            <div class="divide-y divide-[var(--app-line-soft)] rounded-xl border border-[var(--app-line)]">
+              <div v-for="(score, index) in group.items" :key="score.id">
+                <button
+                  type="button"
+                  class="grid w-full cursor-pointer grid-cols-[1fr_auto_auto] items-center gap-x-4 gap-y-1 px-4 py-3 text-left transition-colors hover:bg-[var(--app-bg)]"
+                  @click="toggleTemplate(score.id)"
                 >
-                  <span>{{ rule.description }}</span>
-                  <span class="shrink-0 font-mono tabular-nums">{{ rule.score }}</span>
-                </li>
-              </ul>
-            </template>
-          </div>
+                  <div class="min-w-0">
+                    <p class="truncate text-sm font-medium text-[var(--app-ink)]">
+                      {{ score.name }}
+                      <span
+                        v-if="index === 0 && group.items.length > 1 && score.spamassassin.available"
+                        class="ml-1.5 rounded-full bg-[var(--app-green-soft)] px-1.5 py-0.5 text-[9px] font-semibold tracking-wide text-[var(--app-green)] uppercase"
+                      >
+                        Meilleur score
+                      </span>
+                    </p>
+                    <p class="mt-0.5 truncate text-[11px] text-[var(--app-ink-soft)]">{{ score.subject }}</p>
+                    <p v-if="score.issues.length > 0" class="mt-1 flex flex-wrap gap-1">
+                      <span
+                        v-for="issue in score.issues.slice(0, 3)"
+                        :key="issue.key"
+                        class="rounded-full px-1.5 py-0.5 text-[10px] font-medium"
+                        :style="{ color: statusColor(issue.status), backgroundColor: statusSoft(issue.status) }"
+                      >
+                        {{ issue.label }}
+                      </span>
+                      <span v-if="score.issues.length > 3" class="text-[10px] text-[var(--app-ink-soft)]">
+                        +{{ score.issues.length - 3 }}
+                      </span>
+                    </p>
+                    <p v-else-if="score.spamassassin.available" class="mt-1 text-[10px] text-[var(--app-green)]">
+                      Aucun point bloquant
+                    </p>
+                  </div>
+                  <div class="text-right">
+                    <template v-if="score.spamassassin.available">
+                      <p
+                        class="text-xl font-bold tabular-nums"
+                        :style="{ color: statusColor(score.spamassassin.status ?? 'ok') }"
+                      >
+                        {{ formatRate(score.spamassassin.score ?? 0)
+                        }}<span class="text-xs font-medium text-[var(--app-ink-soft)]"> / 5</span>
+                      </p>
+                      <p class="text-[10px] text-[var(--app-ink-soft)]">
+                        {{ scoreVerdict(score.spamassassin.status ?? 'ok') }}
+                      </p>
+                    </template>
+                    <p v-else class="max-w-[140px] text-[10px] text-[var(--app-red)]">
+                      {{ score.spamassassin.error }}
+                    </p>
+                  </div>
+                  <UIcon
+                    :name="expandedTemplateId === score.id ? 'i-lucide-chevron-up' : 'i-lucide-chevron-down'"
+                    class="h-4 w-4 text-[var(--app-ink-soft)]"
+                  />
+                </button>
 
-          <!-- Local checks -->
-          <div class="rounded-xl border border-[var(--app-line)] bg-[var(--app-bg)] p-4">
-            <p class="mb-2 text-xs font-semibold text-[var(--app-ink)]">Checklist cold email</p>
-            <ul class="space-y-1.5">
-              <li v-for="check in spamResult.checks" :key="check.key" class="flex items-start gap-2 text-[11px]">
-                <UIcon
-                  :name="statusIcon(check.status)"
-                  class="mt-0.5 h-3.5 w-3.5 shrink-0"
-                  :style="{ color: statusColor(check.status) }"
-                />
-                <span class="text-[var(--app-ink-soft)]">
-                  <span class="font-medium text-[var(--app-ink)]">{{ check.label }}</span> — {{ check.detail }}
-                </span>
-              </li>
-            </ul>
-          </div>
-        </div>
-        <div
-          v-else
-          class="flex min-h-[200px] flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-[var(--app-line)] text-center"
-        >
-          <UIcon name="i-lucide-shield-question" class="h-7 w-7 text-[var(--app-faint)]" />
-          <p class="max-w-[240px] text-xs text-[var(--app-ink-soft)]">
-            Collez un objet et un corps d'email, l'analyse s'affichera ici.
-          </p>
+                <!-- Détail du modèle -->
+                <div
+                  v-if="expandedTemplateId === score.id"
+                  class="border-t border-[var(--app-line-soft)] bg-[var(--app-bg)] px-4 py-3"
+                >
+                  <div class="grid grid-cols-1 gap-4 lg:grid-cols-2">
+                    <div>
+                      <p class="mb-1.5 text-[11px] font-semibold text-[var(--app-ink)]">Checklist cold email</p>
+                      <ul class="space-y-1.5">
+                        <li v-for="check in score.checks" :key="check.key" class="flex items-start gap-2 text-[11px]">
+                          <UIcon
+                            :name="statusIcon(check.status)"
+                            class="mt-0.5 h-3.5 w-3.5 shrink-0"
+                            :style="{ color: statusColor(check.status) }"
+                          />
+                          <span class="text-[var(--app-ink-soft)]">
+                            <span class="font-medium text-[var(--app-ink)]">{{ check.label }}</span> —
+                            {{ check.detail }}
+                          </span>
+                        </li>
+                      </ul>
+                    </div>
+                    <div v-if="topRulesFor(score).length > 0">
+                      <p class="mb-1.5 text-[11px] font-semibold text-[var(--app-ink)]">Règles anti-spam déclenchées</p>
+                      <ul class="space-y-1">
+                        <li
+                          v-for="rule in topRulesFor(score)"
+                          :key="rule.description ?? ''"
+                          class="flex items-start justify-between gap-3 text-[11px] text-[var(--app-ink-soft)]"
+                        >
+                          <span>{{ rule.description }}</span>
+                          <span class="shrink-0 font-mono tabular-nums">{{ rule.score }}</span>
+                        </li>
+                      </ul>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </template>
         </div>
       </div>
     </section>
@@ -488,7 +517,8 @@ import type {
   EmailHealthProvider,
   EmailHealthTrendDay,
   PostmasterDomain,
-  SpamTestResult,
+  TemplateScore,
+  TemplateScoresResponse,
 } from '~/services/emailHealthService'
 import {
   getEmailHealthDns,
@@ -497,23 +527,21 @@ import {
   getEmailHealthPostmaster,
   getEmailHealthProviders,
   getEmailHealthTrends,
-  runEmailSpamTest,
+  getEmailTemplateScores,
 } from '~/services/emailHealthService'
 import type { EmailHealthChartSeries, EmailHealthChartThreshold } from '~/types/EmailHealthTrendChart'
-import { useToast } from '~/composables/useToast'
 
 definePageMeta({
   layout: 'dashboard',
   middleware: ['auth'],
 })
 
-/** Spam tester form state. */
-interface SpamFormState {
-  subject: string
-  bodyHtml: string
+/** One displayed group of template scores. */
+interface TemplateScoreGroup {
+  key: 'initial' | 'follow_up'
+  label: string
+  items: TemplateScore[]
 }
-
-const toast = useToast()
 
 /** Supported rolling windows (days). */
 const PERIODS: ReadonlyArray<number> = [7, 30, 90]
@@ -534,37 +562,27 @@ const incidents: Ref<EmailHealthIncident[]> = ref<EmailHealthIncident[]>([])
 const dnsDomains: Ref<EmailDnsDomain[]> = ref<EmailDnsDomain[]>([])
 const postmasterDomains: Ref<PostmasterDomain[]> = ref<PostmasterDomain[]>([])
 
-const spamForm: Ref<SpamFormState> = ref<SpamFormState>({ subject: '', bodyHtml: '' })
-const isSpamTesting: Ref<boolean> = ref<boolean>(false)
-const spamResult: Ref<SpamTestResult | null> = ref<SpamTestResult | null>(null)
+const templateScores: Ref<TemplateScoresResponse | null> = ref<TemplateScoresResponse | null>(null)
+const isScoringTemplates: Ref<boolean> = ref<boolean>(false)
+const expandedTemplateId: Ref<number | null> = ref<number | null>(null)
 
 /** ISO dates of the trend series. */
 const trendLabels: ComputedRef<string[]> = computed((): string[] =>
   trendDays.value.map((day: EmailHealthTrendDay): string => day.date),
 )
 
-/** Series of the volume chart (sent area + delivered + opened lines). */
-const volumeSeries: ComputedRef<EmailHealthChartSeries[]> = computed((): EmailHealthChartSeries[] => [
-  {
-    key: 'sent',
-    label: 'Envoyés',
-    tone: 'ink',
-    area: true,
-    values: trendDays.value.map((day: EmailHealthTrendDay): number => day.sent),
-  },
-  {
-    key: 'delivered',
-    label: 'Délivrés',
-    tone: 'green',
-    values: trendDays.value.map((day: EmailHealthTrendDay): number => day.delivered),
-  },
-  {
-    key: 'opened',
-    label: 'Ouverts',
-    tone: 'blue',
-    values: trendDays.value.map((day: EmailHealthTrendDay): number => day.opened),
-  },
-])
+/** Daily "sent" counts for the volume chart. */
+const sentValues: ComputedRef<number[]> = computed((): number[] =>
+  trendDays.value.map((day: EmailHealthTrendDay): number => day.sent),
+)
+/** Daily "delivered" counts for the volume chart. */
+const deliveredValues: ComputedRef<number[]> = computed((): number[] =>
+  trendDays.value.map((day: EmailHealthTrendDay): number => day.delivered),
+)
+/** Daily "opened" counts for the volume chart. */
+const openedValues: ComputedRef<number[]> = computed((): number[] =>
+  trendDays.value.map((day: EmailHealthTrendDay): number => day.opened),
+)
 
 /** Series of the critical-rates chart (bounce % + complaint %). */
 const criticalSeries: ComputedRef<EmailHealthChartSeries[]> = computed((): EmailHealthChartSeries[] => [
@@ -582,16 +600,54 @@ const criticalSeries: ComputedRef<EmailHealthChartSeries[]> = computed((): Email
   },
 ])
 
-/** SpamAssassin rules that actually raised the score, heaviest first. */
-const topSpamRules: ComputedRef<{ score: string | number | null; description: string | null }[]> = computed(
-  (): { score: string | number | null; description: string | null }[] => {
-    const rules = spamResult.value?.spamassassin.rules ?? []
-    return [...rules]
-      .filter((rule): boolean => Number(rule.score ?? 0) > 0)
-      .sort((a, b): number => Number(b.score ?? 0) - Number(a.score ?? 0))
-      .slice(0, 6)
-  },
-)
+/** Template scores grouped and sorted best-first (unavailable last). */
+const templateGroups: ComputedRef<TemplateScoreGroup[]> = computed((): TemplateScoreGroup[] => {
+  /**
+   * Sort scores ascending (best anti-spam score first), unscored at the end.
+   * @param items - Scores of one group.
+   * @returns The sorted copy.
+   */
+  const sorted = (items: TemplateScore[]): TemplateScore[] =>
+    [...items].sort((a: TemplateScore, b: TemplateScore): number => {
+      if (a.spamassassin.available !== b.spamassassin.available) return a.spamassassin.available ? -1 : 1
+      return (a.spamassassin.score ?? 99) - (b.spamassassin.score ?? 99)
+    })
+  return [
+    { key: 'initial', label: 'Premiers contacts', items: sorted(templateScores.value?.initial ?? []) },
+    { key: 'follow_up', label: 'Relances', items: sorted(templateScores.value?.follow_up ?? []) },
+  ]
+})
+
+/**
+ * Anti-spam rules that actually raised a template's score, heaviest first.
+ * @param score - The template score entry.
+ * @returns Up to 6 triggered rules.
+ */
+function topRulesFor(score: TemplateScore): { score: string | number | null; description: string | null }[] {
+  return [...(score.spamassassin.rules ?? [])]
+    .filter((rule): boolean => Number(rule.score ?? 0) > 0)
+    .sort((a, b): number => Number(b.score ?? 0) - Number(a.score ?? 0))
+    .slice(0, 6)
+}
+
+/**
+ * One-word verdict under a template's score.
+ * @param status - Score status.
+ * @returns The French verdict.
+ */
+function scoreVerdict(status: string): string {
+  if (status === 'ok') return 'Sain'
+  if (status === 'warn') return 'À surveiller'
+  return 'Risque spam'
+}
+
+/**
+ * Expand/collapse a template's detail panel.
+ * @param templateId - The template id.
+ */
+function toggleTemplate(templateId: number): void {
+  expandedTemplateId.value = expandedTemplateId.value === templateId ? null : templateId
+}
 
 /**
  * Daily sparkline values matching one health signal.
@@ -936,21 +992,23 @@ async function load(): Promise<void> {
 }
 
 /**
- * Run the pre-send spam analysis on the drafted email.
- * @returns A promise resolved once analyzed.
+ * Score every active email template automatically (nothing is sent).
+ * Independent of the period selector — run once per page visit.
+ * @returns A promise resolved once scored.
  */
-async function runSpamTest(): Promise<void> {
-  isSpamTesting.value = true
+async function loadTemplateScores(): Promise<void> {
+  isScoringTemplates.value = true
   try {
-    spamResult.value = await runEmailSpamTest(spamForm.value.subject, spamForm.value.bodyHtml)
-  } catch (error: unknown) {
-    toast.error(error instanceof Error ? error.message : "Impossible d'analyser cet email.")
+    templateScores.value = await getEmailTemplateScores()
+  } catch {
+    templateScores.value = { initial: [], follow_up: [] }
   } finally {
-    isSpamTesting.value = false
+    isScoringTemplates.value = false
   }
 }
 
 onMounted((): void => {
   void load()
+  void loadTemplateScores()
 })
 </script>
