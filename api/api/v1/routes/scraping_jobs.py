@@ -147,6 +147,41 @@ async def list_scraping_jobs(
     return scraping_job_service.get_user_jobs(current_user.id)
 
 
+@router.post(
+    "/{job_id}/cancel",
+    response_model=ScrapingJob,
+    summary="Cancel a running scraping job",
+    description="Gracefully stop a search launched by mistake (keeps prospects already found)",
+)
+async def cancel_scraping_job(
+    job_id: str,
+    current_user: User = Depends(require_auth),
+) -> ScrapingJob:
+    """
+    Cancel a running scraping job.
+
+    The scrape stops gracefully at its next checkpoint and the job ends in the
+    ``cancelled`` state; prospects already found are kept. Returns the job
+    snapshot (its status flips to ``cancelled`` once the scraper stops).
+
+    Raises:
+        HTTPException: If the job is unknown, not owned by the user, or already
+            finished.
+    """
+    job = scraping_job_service.get_job(job_id)
+    if not job:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Job {job_id} not found")
+    if job.user_id != current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN, detail="You don't have access to this job"
+        )
+    if not scraping_job_service.cancel_job(job_id):
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT, detail="Job is not running — nothing to cancel"
+        )
+    return job
+
+
 @router.delete(
     "/{job_id}",
     status_code=status.HTTP_204_NO_CONTENT,

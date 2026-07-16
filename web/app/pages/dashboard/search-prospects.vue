@@ -38,6 +38,9 @@
           <h2 class="text-lg font-semibold text-[var(--app-ink)]">
             Recherche
             <span v-if="store.currentJob.status === 'completed'" class="ml-2 text-[var(--app-green)]">✓ Terminée</span>
+            <span v-else-if="store.currentJob.status === 'cancelled'" class="ml-2 text-[var(--app-ink-soft)]">
+              ⊘ Annulée
+            </span>
             <span v-else-if="store.currentJob.status === 'failed'" class="ml-2 text-[var(--app-red)]">✗ Échec</span>
           </h2>
           <p class="mt-1 text-sm text-[var(--app-ink-soft)]">
@@ -64,7 +67,23 @@
             <span class="font-medium text-[var(--app-ink-soft)]">
               {{ store.liveProgress.current }} / {{ store.liveProgress.total || store.currentJob.max_results }} ajoutés
             </span>
-            <span class="font-medium text-[var(--app-ink-soft)]">{{ Math.round(store.liveProgress.percentage) }}%</span>
+            <div class="flex items-center gap-3">
+              <button
+                type="button"
+                class="inline-flex items-center gap-1.5 text-xs font-medium text-[var(--app-red)] transition-opacity hover:opacity-80 disabled:opacity-50"
+                :disabled="store.isCancelling"
+                @click="store.cancelSearch()"
+              >
+                <UIcon
+                  :name="store.isCancelling ? 'i-lucide-loader-circle' : 'i-lucide-circle-stop'"
+                  :class="['h-3.5 w-3.5', store.isCancelling && 'animate-spin']"
+                />
+                {{ store.isCancelling ? 'Annulation…' : 'Annuler' }}
+              </button>
+              <span class="font-medium text-[var(--app-ink-soft)]"
+                >{{ Math.round(store.liveProgress.percentage) }}%</span
+              >
+            </div>
           </div>
           <div class="h-3 w-full overflow-hidden rounded-full border border-[var(--app-line)] bg-[var(--app-bg)]">
             <div
@@ -88,8 +107,14 @@
         />
       </div>
 
-      <!-- Completed -->
-      <div v-else-if="store.currentJob.status === 'completed'" class="space-y-4">
+      <!-- Completed / cancelled — both keep the prospects already found -->
+      <div
+        v-else-if="store.currentJob.status === 'completed' || store.currentJob.status === 'cancelled'"
+        class="space-y-4"
+      >
+        <p v-if="store.currentJob.status === 'cancelled'" class="text-sm text-[var(--app-ink-soft)]">
+          Recherche annulée — les {{ store.currentJob.results.length }} prospect(s) déjà trouvé(s) ont été conservés.
+        </p>
         <div class="grid grid-cols-1 gap-4 md:grid-cols-3">
           <div
             v-for="stat in completedStats"
@@ -150,7 +175,9 @@
             </div>
             <p class="mt-0.5 text-xs text-[var(--app-ink-soft)]">
               {{ new Date(job.created_at).toLocaleString('fr-FR') }}
-              <span v-if="job.status === 'completed'"> · {{ job.results.length }} prospects ajoutés</span>
+              <span v-if="job.status === 'completed' || job.status === 'cancelled'">
+                · {{ job.results.length }} prospects ajoutés
+              </span>
             </p>
           </div>
           <UIcon name="i-lucide-chevron-right" class="h-4 w-4 shrink-0 text-[var(--app-ink-soft)]" />
@@ -239,6 +266,7 @@ function formatStatus(status: string): string {
     pending: 'En attente',
     running: 'En cours',
     completed: 'Terminée',
+    cancelled: 'Annulée',
     failed: 'Échec',
   }
   return map[status] ?? status

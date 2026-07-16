@@ -13,6 +13,9 @@ class JobStatus(str, Enum):
     RUNNING = "running"
     COMPLETED = "completed"
     FAILED = "failed"
+    # User cancelled the search (e.g. launched by mistake). Prospects already
+    # found are kept — cancellation just stops the scrape gracefully.
+    CANCELLED = "cancelled"
 
 
 class ScrapingJobCreate(BaseModel):
