@@ -132,6 +132,7 @@ jobs:
             BRIGHTDATA_API_TOKEN=${{ secrets.BRIGHTDATA_API_TOKEN }}
             BRIGHTDATA_ZONE=mcp_unlocker
             PAGESPEED_API_KEY=${{ secrets.PAGESPEED_API_KEY }}
+            GOOGLE_POSTMASTER_CREDENTIALS_JSON=${{ secrets.GOOGLE_POSTMASTER_CREDENTIALS_JSON }}
             VERCEL_TOKEN=${{ secrets.VERCEL_TOKEN }}
             VERCEL_DEMO_HOST_PROJECT_ID=${{ secrets.VERCEL_DEMO_HOST_PROJECT_ID }}
             VERCEL_DEPLOY_HOOK_URL=${{ secrets.VERCEL_DEPLOY_HOOK_URL }}
