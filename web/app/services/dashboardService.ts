@@ -89,15 +89,24 @@ export interface CoverageResponse {
   cities: CoverageCity[]
   total_prospects: number
   members: CoverageMember[]
+  /** Distinct trades present in the scope (unfiltered) — feeds the trade selector. */
+  available_categories: string[]
 }
 
 /**
  * Fetch the prospection coverage (prospect counts by city) for a scope.
  * @param scope - 'me' (my prospects), 'org' (whole organization), or 'member'.
  * @param memberId - Member user id when scope is 'member'.
- * @returns The coverage aggregation + selectable members.
+ * @param categories - Optional trade filter (empty = all trades).
+ * @returns The coverage aggregation + selectable members + available trades.
  */
-export async function getCoverage(scope: string = 'me', memberId?: number): Promise<CoverageResponse> {
-  const params: string = memberId != null ? `?scope=${scope}&member_id=${memberId}` : `?scope=${scope}`
-  return api.get<CoverageResponse>(`/api/v1/dashboard/coverage${params}`)
+export async function getCoverage(
+  scope: string = 'me',
+  memberId?: number,
+  categories: string[] = [],
+): Promise<CoverageResponse> {
+  const params = new URLSearchParams({ scope })
+  if (memberId != null) params.set('member_id', String(memberId))
+  for (const category of categories) params.append('categories', category)
+  return api.get<CoverageResponse>(`/api/v1/dashboard/coverage?${params.toString()}`)
 }

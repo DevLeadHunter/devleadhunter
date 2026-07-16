@@ -86,6 +86,7 @@
     <UiSearchProspectsDrawer
       :open="searchProspectsEntry !== null"
       :show-back="hasPrevious"
+      :prefill="searchProspectsEntry?.prefill ?? null"
       @close="drawerStack.closeAll()"
       @back="drawerStack.back()"
     />

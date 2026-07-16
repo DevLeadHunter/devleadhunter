@@ -186,9 +186,9 @@
 </template>
 
 <script lang="ts" setup>
-import type { Ref } from 'vue'
+import type { PropType, Ref } from 'vue'
 import { ref, watch } from 'vue'
-import type { SearchProspectsDrawerProps } from '~/types/SearchProspectsDrawer'
+import type { SearchProspectsDrawerProps, SearchProspectsPrefill } from '~/types/SearchProspectsDrawer'
 import { PROSPECT_SOURCE_SEARCH_OPTIONS } from '~/constants/prospectSources'
 import { useProspectSearchStore } from '~/stores/prospectSearch'
 import { useToast } from '~/composables/useToast'
@@ -216,6 +216,10 @@ const props: SearchProspectsDrawerProps = defineProps({
   showBack: {
     type: Boolean,
     default: false,
+  },
+  prefill: {
+    type: Object as PropType<SearchProspectsPrefill | null>,
+    default: null,
   },
 })
 
@@ -294,11 +298,15 @@ async function submit(): Promise<void> {
   }
 }
 
-// Load the saved form each time the drawer opens.
+// Load the saved form each time the drawer opens, then apply the host prefill
+// (e.g. « Prospecter » a suggested city from the coverage map) on top of it.
 watch(
   (): boolean => props.open,
   (open: boolean): void => {
-    if (open) loadForm()
+    if (!open) return
+    loadForm()
+    if (props.prefill?.category) form.value.category = props.prefill.category
+    if (props.prefill?.city) form.value.city = props.prefill.city
   },
   { immediate: true },
 )

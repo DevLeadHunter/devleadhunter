@@ -77,8 +77,11 @@
     <div v-else-if="!isMapFailed" ref="mapWrap" class="coverage-map relative">
       <div
         ref="mapContainer"
-        class="coverage-map__canvas h-[420px] w-full overflow-hidden rounded-xl border border-[var(--app-line)] bg-[var(--app-surface-2)] transition-opacity duration-300 md:h-[480px]"
-        :class="isLoading ? 'opacity-60' : 'opacity-100'"
+        class="coverage-map__canvas w-full overflow-hidden rounded-xl border border-[var(--app-line)] bg-[var(--app-surface-2)] transition-opacity duration-300"
+        :class="[
+          isLoading ? 'opacity-60' : 'opacity-100',
+          variant === 'full' ? 'h-[520px] md:h-[620px]' : 'h-[420px] md:h-[480px]',
+        ]"
       ></div>
 
       <!-- Tooltip -->
@@ -124,7 +127,7 @@
 <script lang="ts" setup>
 import type { Feature, FeatureCollection, Point } from 'geojson'
 import type { ExpressionSpecification, GeoJSONSource, Map as MaplibreMap, MapMouseEvent } from 'maplibre-gl'
-import type { ComputedRef, Ref } from 'vue'
+import type { ComputedRef, PropType, Ref } from 'vue'
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import 'maplibre-gl/dist/maplibre-gl.css'
 import type { CityGeo } from '~/composables/useFranceGeo'
@@ -133,6 +136,7 @@ import { useAppTheme } from '~/composables/useAppTheme'
 import type { CoverageMember, CoverageResponse } from '~/services/dashboardService'
 import { getCoverage } from '~/services/dashboardService'
 import type { AppTheme } from '~/types/AppTheme'
+import type { DashboardCoverageMapLoadedPayload, DashboardCoverageMapVariant } from '~/types/DashboardCoverageMap'
 
 /**
  * Metropolitan region contours (simplified, ~220 KB) — the france-geojson reference
@@ -182,6 +186,25 @@ interface CoverageTierColors {
   good: string
   strong: string
 }
+
+/**
+ * Coverage map props — 'compact' keeps the historical dashboard-tab rendering;
+ * 'full' is the dedicated page (taller map). `categories` filters by trade.
+ */
+const props = defineProps({
+  variant: {
+    type: String as PropType<DashboardCoverageMapVariant>,
+    default: 'compact',
+  },
+  categories: {
+    type: Array as PropType<string[]>,
+    default: (): string[] => [],
+  },
+})
+
+const emit = defineEmits<{
+  (e: 'loaded', payload: DashboardCoverageMapLoadedPayload): void
+}>()
 
 const { theme } = useAppTheme()
 
@@ -489,12 +512,19 @@ async function loadCoverage(): Promise<void> {
   isLoading.value = true
   try {
     const [scopeName, memberId] = parseScope(scope.value)
-    const data: CoverageResponse = await getCoverage(scopeName, memberId)
+    const data: CoverageResponse = await getCoverage(scopeName, memberId, props.categories)
     coverage.value = data
     if (members.value.length === 0 && data.members.length > 0) members.value = data.members
     cityGeo.value = await geocodeCities(data.cities.map((c): string => c.city))
+    emit('loaded', { coverage: data, cityGeo: cityGeo.value })
   } catch {
-    coverage.value = { scope: scope.value, cities: [], total_prospects: 0, members: members.value }
+    coverage.value = {
+      scope: scope.value,
+      cities: [],
+      total_prospects: 0,
+      members: members.value,
+      available_categories: [],
+    }
   } finally {
     isLoading.value = false
     refreshMapData()
@@ -520,6 +550,14 @@ function onScopeChange(): void {
 watch(mapContainer, (container: HTMLElement | null): void => {
   if (container) void initMap()
 })
+
+// Reload when the host page changes the trade filter.
+watch(
+  (): string[] => props.categories,
+  (): void => {
+    void loadCoverage()
+  },
+)
 
 // Basemap follows the app theme; overlays are re-added after the style swap.
 watch(theme, (mode: AppTheme): void => {

@@ -77,3 +77,6 @@ class CoverageResponse(BaseModel):
     total_prospects: int
     # Populated only when the user belongs to an organization (scope selector).
     members: list[CoverageMember] = Field(default_factory=list)
+    # Distinct trades (ProspectDB.category) present in the SCOPE, ignoring the
+    # ``categories`` filter — feeds the trade multi-select without ghost values.
+    available_categories: list[str] = Field(default_factory=list)

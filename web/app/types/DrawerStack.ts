@@ -1,4 +1,5 @@
 import type { EmailLog, EmailTemplate, Prospect } from '~/types'
+import type { SearchProspectsPrefill } from '~/types/SearchProspectsDrawer'
 
 /**
  * Entries of the persistent right-side drawer stack.
@@ -78,6 +79,8 @@ export interface AddProspectDrawerEntry {
 /** Prospect search (scraping) drawer entry. */
 export interface SearchProspectsDrawerEntry {
   kind: 'search-prospects'
+  /** Optional form prefill (e.g. « Prospecter » a suggested city on the coverage map). */
+  prefill?: SearchProspectsPrefill
 }
 
 /** Send-policy (email cadence) drawer entry. */

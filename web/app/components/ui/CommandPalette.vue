@@ -119,6 +119,7 @@ const hasLoadedSources: Ref<boolean> = ref<boolean>(false)
 const PAGES: ReadonlyArray<{ label: string; icon: string; to: string }> = [
   { label: 'Tableau de bord', icon: 'i-lucide-layout-dashboard', to: '/dashboard' },
   { label: 'Mes prospects', icon: 'i-lucide-users', to: '/dashboard/my-prospects' },
+  { label: 'Carte de prospection', icon: 'i-lucide-map', to: '/dashboard/coverage' },
   { label: 'Trouver des prospects', icon: 'i-lucide-search', to: '/dashboard/search-prospects' },
   { label: 'Sites démo', icon: 'i-lucide-app-window', to: '/dashboard/demo-sites' },
   { label: 'Campagnes', icon: 'i-lucide-megaphone', to: '/dashboard/campaigns' },

@@ -169,6 +169,9 @@ async def dashboard_hot_leads(
 async def dashboard_coverage(
     scope: str = Query("me", description="me | org | member"),
     member_id: int | None = Query(None, description="User id when scope=member"),
+    categories: list[str] | None = Query(
+        None, description="Optional trade filter (repeatable). Empty/absent = all trades."
+    ),
     current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db),
 ) -> CoverageResponse:
@@ -181,6 +184,11 @@ async def dashboard_coverage(
       - ``member``  → one org member's prospects (``member_id``), org-scoped so a
                       user can only inspect members of their own organization.
 
+    ``categories`` filters by trade (``ProspectDB.category``, case-insensitive);
+    absent or empty → all trades. ``available_categories`` always lists the
+    distinct trades present in the SCOPE (ignoring the filter) so the frontend
+    can build its trade selector from real values only.
+
     Cities are grouped case-insensitively; empty cities are excluded. The
     ``members`` list is filled only when the user belongs to an organization, so
     the frontend can offer a scope selector.
@@ -188,28 +196,49 @@ async def dashboard_coverage(
     uid = current_user.id
     org_id = organization_service.user_org_id(db, uid)
 
+    def scope_filter(stmt):  # noqa: ANN001, ANN202 — SQLAlchemy Select passthrough
+        """Apply the resolved scope restriction to a prospect select."""
+        if scope == "org" and org_id is not None:
+            return stmt.where(ProspectDB.organization_id == org_id)
+        if scope == "member" and member_id is not None and org_id is not None:
+            # Guard: the member must belong to the caller's organization.
+            return stmt.where(
+                ProspectDB.user_id == member_id, ProspectDB.organization_id == org_id
+            )
+        return stmt.where(ProspectDB.user_id == uid)
+
+    resolved_scope = scope
+    if not (scope == "org" and org_id is not None) and not (
+        scope == "member" and member_id is not None and org_id is not None
+    ):
+        resolved_scope = "me"
+
     city_col = func.trim(ProspectDB.city)
     stmt = select(
         func.min(city_col).label("city"),
         func.count().label("count"),
     ).where(city_col.isnot(None), city_col != "")
+    stmt = scope_filter(stmt)
 
-    resolved_scope = scope
-    if scope == "org" and org_id is not None:
-        stmt = stmt.where(ProspectDB.organization_id == org_id)
-    elif scope == "member" and member_id is not None and org_id is not None:
-        # Guard: the member must belong to the caller's organization.
-        stmt = stmt.where(
-            ProspectDB.user_id == member_id, ProspectDB.organization_id == org_id
-        )
-    else:
-        resolved_scope = "me"
-        stmt = stmt.where(ProspectDB.user_id == uid)
+    wanted = [c.strip().lower() for c in (categories or []) if c and c.strip()]
+    if wanted:
+        stmt = stmt.where(func.lower(func.trim(ProspectDB.category)).in_(wanted))
 
     stmt = stmt.group_by(func.lower(city_col)).order_by(func.count().desc())
     rows = db.execute(stmt).all()
     cities = [CoverageCity(city=str(row.city), count=int(row.count)) for row in rows]
     total = sum(c.count for c in cities)
+
+    # Distinct trades in the scope (unfiltered) — one small grouped query.
+    cat_col = func.trim(ProspectDB.category)
+    cat_stmt = scope_filter(
+        select(func.min(cat_col).label("category"))
+        .where(cat_col.isnot(None), cat_col != "")
+        .group_by(func.lower(cat_col))
+    )
+    available_categories = sorted(
+        (str(row.category) for row in db.execute(cat_stmt).all()), key=str.lower
+    )
 
     members: list[CoverageMember] = []
     if org_id is not None:
@@ -224,5 +253,9 @@ async def dashboard_coverage(
             members = [CoverageMember(user_id=r.id, name=r.name) for r in member_rows]
 
     return CoverageResponse(
-        scope=resolved_scope, cities=cities, total_prospects=total, members=members
+        scope=resolved_scope,
+        cities=cities,
+        total_prospects=total,
+        members=members,
+        available_categories=available_categories,
     )

@@ -429,8 +429,8 @@ const navGroups: ComputedRef<UiSidebarGroup[]> = computed((): UiSidebarGroup[] =
     {
       heading: 'Prospection',
       links: [
-        { to: '/dashboard/search-prospects', label: 'Trouver des prospects', icon: 'i-lucide-search' },
         { to: '/dashboard/my-prospects', label: 'Mes prospects', icon: 'i-lucide-users' },
+        { to: '/dashboard/coverage', label: 'Carte de prospection', icon: 'i-lucide-map' },
       ],
     },
     {
