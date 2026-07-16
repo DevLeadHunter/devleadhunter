@@ -1,7 +1,7 @@
 import { api } from '~/services/api'
 import type { Organization } from '~/types'
 
-const BASE_URL: string = '/organizations'
+const BASE_URL: string = '/api/v1/organizations'
 
 /**
  * Fetch the current user's organization (members included).

@@ -56,9 +56,8 @@
           <!-- No organization yet : create -->
           <template v-else-if="organization === null">
             <p class="text-xs leading-relaxed text-[var(--app-ink-soft)]">
-              Créez votre organisation puis invitez d'autres comptes DevLeadHunter : la liste de prospects devient
-              commune, chaque membre garde son propre email d'envoi, et un prospect réservé par un membre est verrouillé
-              pour les autres — un prospect, un démarcheur.
+              Invitez d'autres comptes DevLeadHunter : les prospects deviennent communs, chacun garde son email d'envoi,
+              et un prospect réservé est verrouillé pour les autres.
             </p>
             <form class="space-y-3" @submit.prevent="handleCreate">
               <div>

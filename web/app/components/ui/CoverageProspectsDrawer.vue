@@ -45,11 +45,24 @@
             Aucun prospect dans cette zone pour ces filtres.
           </p>
 
-          <ul v-else class="divide-y divide-[var(--app-line-soft)]">
+          <p
+            v-if="!isLoading && rows.length > 0"
+            class="text-muted flex items-center justify-end gap-3 px-3 pb-1.5 text-[10px]"
+          >
+            <span class="inline-flex items-center gap-1"><UIcon name="i-lucide-send" class="h-3 w-3" /> envoyés</span>
+            <span class="inline-flex items-center gap-1">
+              <UIcon name="i-lucide-mail-open" class="h-3 w-3" /> ouverts
+            </span>
+            <span class="inline-flex items-center gap-1">
+              <UIcon name="i-lucide-mouse-pointer-click" class="h-3 w-3" /> clics démo
+            </span>
+          </p>
+
+          <ul v-if="!isLoading && rows.length > 0" class="space-y-0.5">
             <li v-for="row in rows" :key="row.id">
               <button
                 type="button"
-                class="flex w-full cursor-pointer items-center justify-between gap-3 py-2.5 text-left transition-colors hover:bg-[var(--app-surface-2)]"
+                class="flex w-full cursor-pointer items-center justify-between gap-3 rounded-lg px-3 py-2.5 text-left transition-colors hover:bg-[var(--app-surface-2)]"
                 :title="`Ouvrir ${row.name}`"
                 @click="openProspect(row.id)"
               >
@@ -59,38 +72,48 @@
                     {{ zone?.kind === 'region' ? (row.city ?? '—') : (row.category ?? '—') }}
                   </p>
                 </div>
-                <!-- Light status icons: demo / sent / opened / clicked / sold -->
-                <div class="flex shrink-0 items-center gap-2">
-                  <UIcon
-                    name="i-lucide-app-window"
-                    class="h-3.5 w-3.5"
-                    :class="row.has_demo ? 'text-[var(--app-green)]' : 'text-[var(--app-line)]'"
-                    :title="row.has_demo ? 'Site démo généré' : 'Pas de site démo'"
-                  />
-                  <UIcon
-                    name="i-lucide-send"
-                    class="h-3.5 w-3.5"
-                    :class="row.emails_sent > 0 ? 'text-[var(--app-ink-soft)]' : 'text-[var(--app-line)]'"
+                <!-- Status recap: demo chip, visible email counts, sold chip -->
+                <div class="flex shrink-0 items-center gap-2.5">
+                  <span
+                    v-if="row.has_demo"
+                    class="inline-flex items-center gap-1 rounded-full bg-[var(--app-green)]/15 px-1.5 py-0.5 text-[10px] font-semibold text-[var(--app-green)]"
+                    title="Site démo généré"
+                  >
+                    <UIcon name="i-lucide-app-window" class="h-3 w-3" />
+                    Démo
+                  </span>
+                  <span
+                    class="inline-flex items-center gap-1 text-[11px] tabular-nums"
+                    :class="row.emails_sent > 0 ? 'text-[var(--app-ink)]' : 'text-[var(--app-faint)]'"
                     :title="`${row.emails_sent} email(s) envoyé(s)`"
-                  />
-                  <UIcon
-                    name="i-lucide-mail-open"
-                    class="h-3.5 w-3.5"
-                    :class="row.emails_opened > 0 ? 'text-[var(--app-accent)]' : 'text-[var(--app-line)]'"
+                  >
+                    <UIcon name="i-lucide-send" class="h-3.5 w-3.5" />
+                    {{ row.emails_sent }}
+                  </span>
+                  <span
+                    class="inline-flex items-center gap-1 text-[11px] tabular-nums"
+                    :class="row.emails_opened > 0 ? 'text-[var(--app-ink)]' : 'text-[var(--app-faint)]'"
                     :title="`${row.emails_opened} ouverture(s)`"
-                  />
-                  <UIcon
-                    name="i-lucide-mouse-pointer-click"
-                    class="h-3.5 w-3.5"
-                    :class="row.emails_clicked > 0 ? 'text-[var(--app-accent)]' : 'text-[var(--app-line)]'"
-                    :title="`${row.emails_clicked} clic(s)`"
-                  />
-                  <UIcon
-                    name="i-lucide-banknote"
-                    class="h-3.5 w-3.5"
-                    :class="row.is_sold ? 'text-[var(--app-green)]' : 'text-[var(--app-line)]'"
-                    :title="row.is_sold ? 'Vendu' : 'Pas encore vendu'"
-                  />
+                  >
+                    <UIcon name="i-lucide-mail-open" class="h-3.5 w-3.5" />
+                    {{ row.emails_opened }}
+                  </span>
+                  <span
+                    class="inline-flex items-center gap-1 text-[11px] tabular-nums"
+                    :class="row.emails_clicked > 0 ? 'text-[var(--app-ink)]' : 'text-[var(--app-faint)]'"
+                    :title="`${row.emails_clicked} clic(s) sur le lien de démo`"
+                  >
+                    <UIcon name="i-lucide-mouse-pointer-click" class="h-3.5 w-3.5" />
+                    {{ row.emails_clicked }}
+                  </span>
+                  <span
+                    v-if="row.is_sold"
+                    class="inline-flex items-center gap-1 rounded-full bg-[var(--app-green)]/15 px-1.5 py-0.5 text-[10px] font-semibold text-[var(--app-green)]"
+                    title="Vendu"
+                  >
+                    <UIcon name="i-lucide-banknote" class="h-3 w-3" />
+                    Vendu
+                  </span>
                 </div>
               </button>
             </li>

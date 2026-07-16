@@ -310,6 +310,19 @@ watch(
   },
   { immediate: true },
 )
+
+// A new prefill while the drawer is already open (e.g. clicking another city on
+// the coverage map) must update the form too — the stack replaces the entry
+// without closing the drawer, so the `open` watcher never re-fires.
+watch(
+  (): SearchProspectsPrefill | null => props.prefill ?? null,
+  (prefill: SearchProspectsPrefill | null): void => {
+    if (!props.open || !prefill) return
+    if (prefill.category) form.value.category = prefill.category
+    if (prefill.city) form.value.city = prefill.city
+  },
+  { deep: true },
+)
 </script>
 
 <style scoped>

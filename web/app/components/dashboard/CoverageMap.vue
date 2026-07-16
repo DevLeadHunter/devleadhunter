@@ -1,5 +1,5 @@
 <template>
-  <div class="space-y-4">
+  <div class="flex h-full min-h-0 flex-col gap-4">
     <!-- Gamified counters -->
     <div class="grid grid-cols-3 gap-3">
       <div class="rounded-lg border border-[var(--app-line)] bg-[var(--app-bg)] px-3 py-2.5 text-center">
@@ -52,10 +52,10 @@
     </div>
 
     <!-- Map (MapLibre GL + OpenFreeMap — free, key-less, unlimited) -->
-    <div v-else-if="!isMapFailed" ref="mapWrap" class="coverage-map relative">
+    <div v-else-if="!isMapFailed" ref="mapWrap" class="coverage-map relative flex min-h-0 flex-1 flex-col">
       <div
         ref="mapContainer"
-        class="coverage-map__canvas h-[520px] w-full overflow-hidden rounded-xl border border-[var(--app-line)] bg-[var(--app-surface-2)] transition-opacity duration-300 md:h-[620px]"
+        class="coverage-map__canvas min-h-[420px] w-full flex-1 overflow-hidden rounded-xl border border-[var(--app-line)] bg-[var(--app-surface-2)] transition-opacity duration-300"
         :class="store.isLoading ? 'opacity-60' : 'opacity-100'"
       ></div>
 
