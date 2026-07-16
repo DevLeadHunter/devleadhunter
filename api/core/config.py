@@ -147,7 +147,16 @@ class Settings(BaseSettings):
     google_postmaster_credentials_file: Optional[str] = Field(
         default=None,
         alias="GOOGLE_POSTMASTER_CREDENTIALS_FILE",
-        description="Path to the service-account JSON key for Gmail Postmaster Tools (optional)",
+        description="Path to the service-account JSON key for Gmail Postmaster Tools (optional, local dev)",
+    )
+    google_postmaster_credentials_json: Optional[str] = Field(
+        default=None,
+        alias="GOOGLE_POSTMASTER_CREDENTIALS_JSON",
+        description=(
+            "Service-account JSON key for Gmail Postmaster Tools, inline — raw JSON or "
+            "base64 of it. Preferred in production: ships as a single env secret, no key "
+            "file to write on the server. Takes precedence over the file path when both are set."
+        ),
     )
     vercel_token: Optional[str] = Field(
         default=None,
