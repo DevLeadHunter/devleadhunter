@@ -44,10 +44,19 @@ class PostmasterService:
     def credentials_file(self) -> Optional[str]:
         """Path to the service-account JSON key file (None = not set/found).
 
-        @returns The configured path when it exists on disk.
+        A relative path is resolved against the ``api/`` root, so a value like
+        ``credentials/google-postmaster.json`` works regardless of the current
+        working directory the server was launched from.
+
+        @returns The absolute path when the file exists on disk.
         """
         path = settings.google_postmaster_credentials_file
-        if path and os.path.isfile(path):
+        if not path:
+            return None
+        if not os.path.isabs(path):
+            api_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+            path = os.path.join(api_root, path)
+        if os.path.isfile(path):
             return path
         return None
 

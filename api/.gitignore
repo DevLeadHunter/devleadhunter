@@ -36,6 +36,10 @@ ENV/
 .env.local
 .env.sync
 
+# Local secrets (service-account keys, etc.) — keep the folder + README, never the keys
+credentials/*
+!credentials/README.md
+
 # OS
 .DS_Store
 Thumbs.db
