@@ -12,14 +12,30 @@
           Votre activité en un coup d'œil, de la prospection à la vente.
         </p>
       </div>
-      <div class="flex items-center gap-3">
-        <span v-if="lastUpdated" class="hidden text-xs text-[var(--app-ink-soft)] sm:inline">
-          Mis à jour à {{ lastUpdated }}
-        </span>
+      <div class="flex flex-wrap items-center gap-2">
+        <div class="flex overflow-hidden rounded-lg border border-[var(--app-line)]">
+          <button
+            v-for="preset in PERIOD_PRESETS"
+            :key="preset.days"
+            type="button"
+            class="cursor-pointer px-2.5 py-1.5 text-xs font-medium whitespace-nowrap transition-colors"
+            :class="
+              periodDays === preset.days
+                ? 'bg-[var(--app-ink)] text-[var(--app-surface)]'
+                : 'bg-[var(--app-surface)] text-[var(--app-ink-soft)] hover:text-[var(--app-ink)]'
+            "
+            @click="changePeriod(preset.days)"
+          >
+            {{ preset.label }}
+          </button>
+        </div>
         <button type="button" class="app-btn-secondary h-8 px-3 text-xs" :disabled="isLoading" @click="load">
           <UIcon name="i-lucide-rotate-cw" :class="['h-3.5 w-3.5', isLoading && 'animate-spin']" />
           Actualiser
         </button>
+        <span v-if="lastUpdated" class="w-full text-xs text-[var(--app-ink-soft)] sm:w-auto">
+          Mis à jour à {{ lastUpdated }}
+        </span>
       </div>
     </div>
 
@@ -39,7 +55,7 @@
       <section>
         <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <NuxtLink
-            v-for="(stage, index) in pipelineTiles"
+            v-for="stage in pipelineTiles"
             :key="stage.label"
             :to="stage.to"
             class="app-card group relative flex flex-col gap-1.5 p-4 transition-all hover:-translate-y-0.5"
@@ -54,13 +70,6 @@
               class="mt-1 inline-flex items-center gap-1 text-[11px] font-medium text-[var(--app-ink)] opacity-0 transition-opacity group-hover:opacity-100"
             >
               {{ stage.linkLabel }} <UIcon name="i-lucide-arrow-right" class="h-3 w-3" />
-            </span>
-            <!-- Connecteur vers l'étape suivante (desktop) -->
-            <span
-              v-if="index < pipelineTiles.length - 1"
-              class="absolute top-1/2 -right-[13px] hidden -translate-y-1/2 text-[var(--app-faint)] lg:block"
-            >
-              <UIcon name="i-lucide-chevron-right" class="h-4 w-4" />
             </span>
           </NuxtLink>
         </div>
@@ -106,7 +115,8 @@
                 </p>
               </div>
               <div class="flex shrink-0 items-center gap-2.5">
-                <div class="h-1.5 w-16 overflow-hidden rounded-full bg-[var(--app-surface-2)]">
+                <!-- La barre disparaît sous lg : elle s'écrasait, le chiffre suffit -->
+                <div class="hidden h-1.5 w-16 overflow-hidden rounded-full bg-[var(--app-surface-2)] lg:block">
                   <div
                     class="h-full rounded-full bg-[var(--app-ink)]"
                     :style="{ width: `${Math.min(lead.score, 100)}%` }"
@@ -130,12 +140,12 @@
         </div>
 
         <!-- Actions rapides — la page sert aussi de rampe de lancement -->
-        <div class="app-card p-5 md:p-6">
-          <h2 class="mb-4 text-sm font-semibold text-[var(--app-ink)]">Actions rapides</h2>
+        <div class="app-card p-4 md:p-5">
+          <h2 class="mb-3 text-sm font-semibold text-[var(--app-ink)]">Actions rapides</h2>
           <div class="space-y-2">
             <button
               type="button"
-              class="group flex w-full cursor-pointer items-center gap-3 rounded-xl border border-[var(--app-line)] bg-[var(--app-bg)] px-3.5 py-3 text-left transition-all hover:-translate-y-0.5 hover:border-[var(--app-ink-soft)]"
+              class="group flex w-full cursor-pointer items-center gap-3 rounded-xl border border-[var(--app-line)] bg-[var(--app-bg)] px-3 py-2.5 text-left transition-all hover:-translate-y-0.5 hover:border-[var(--app-ink-soft)]"
               @click="openSearchDrawer"
             >
               <span
@@ -154,7 +164,7 @@
               v-for="shortcut in QUICK_LINKS"
               :key="shortcut.to"
               :to="shortcut.to"
-              class="group flex w-full items-center gap-3 rounded-xl border border-[var(--app-line)] bg-[var(--app-bg)] px-3.5 py-3 transition-all hover:-translate-y-0.5 hover:border-[var(--app-ink-soft)]"
+              class="group flex w-full items-center gap-3 rounded-xl border border-[var(--app-line)] bg-[var(--app-bg)] px-3 py-2.5 transition-all hover:-translate-y-0.5 hover:border-[var(--app-ink-soft)]"
             >
               <span
                 class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-[var(--app-line)] bg-[var(--app-surface)]"
@@ -307,8 +317,17 @@ const QUICK_LINKS: ReadonlyArray<{ to: string; label: string; hint: string; icon
   },
 ]
 
+/** Period presets for the KPI filter (0 = all time, the default). */
+const PERIOD_PRESETS: ReadonlyArray<{ days: number; label: string }> = [
+  { days: 0, label: 'Depuis toujours' },
+  { days: 7, label: '7 j' },
+  { days: 30, label: '30 j' },
+  { days: 90, label: '3 mois' },
+]
+
 const drawerStack = useDrawerStackStore()
 
+const periodDays: Ref<number> = ref<number>(0)
 const stats: Ref<DashboardStats | null> = ref<DashboardStats | null>(null)
 const hotLeads: Ref<HotLead[]> = ref<HotLead[]>([])
 const trendDays: Ref<EmailHealthTrendDay[]> = ref<EmailHealthTrendDay[]>([])
@@ -460,6 +479,17 @@ function openSearchDrawer(): void {
 }
 
 /**
+ * Switch the KPI period filter and reload the stats.
+ * @param days - Rolling window in days (0 = all time).
+ * @returns A promise resolved once reloaded.
+ */
+async function changePeriod(days: number): Promise<void> {
+  if (periodDays.value === days) return
+  periodDays.value = days
+  await load()
+}
+
+/**
  * Open a hot lead's prospect drawer right here (no navigation). Falls back
  * to the prospects page deep-link if the fetch fails.
  * @param prospectId - Target prospect id.
@@ -481,7 +511,7 @@ async function load(): Promise<void> {
   isLoading.value = true
   try {
     const [statsData, leads, trends] = await Promise.all([
-      getDashboardStats(),
+      getDashboardStats(periodDays.value),
       getHotLeads().catch((): { items: HotLead[] } => ({ items: [] })),
       getEmailHealthTrends(30).catch((): { days: EmailHealthTrendDay[] } => ({ days: [] })),
     ])

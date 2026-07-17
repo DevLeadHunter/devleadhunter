@@ -45,13 +45,28 @@ def _count(db: Session, stmt: Select) -> int:
 
 @router.get("/stats", response_model=DashboardStatsResponse)
 async def dashboard_stats(
+    period_days: int = Query(default=0, ge=0, le=365, description="0 = depuis toujours"),
     current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db),
 ) -> DashboardStatsResponse:
-    """Return the headline KPIs for the dashboard home page."""
-    uid = current_user.id
+    """Return the headline KPIs for the dashboard home page.
 
-    prospects_total = _count(db, select(ProspectDB.id).where(ProspectDB.user_id == uid))
+    ``period_days`` restricts the cumulative KPIs (prospects added, emails,
+    sales) to a rolling window; current-state KPIs (active demos/campaigns)
+    always reflect right now.
+    """
+    uid = current_user.id
+    since = (
+        datetime.now(timezone.utc).replace(tzinfo=None) - timedelta(days=period_days)
+        if period_days > 0
+        else None
+    )
+
+    prospects_stmt = select(ProspectDB.id).where(ProspectDB.user_id == uid)
+    if since is not None:
+        prospects_stmt = prospects_stmt.where(ProspectDB.created_at >= since)
+    prospects_total = _count(db, prospects_stmt)
+
     demo_sites_active = _count(
         db,
         select(DemoSite.id).where(
@@ -65,20 +80,21 @@ async def dashboard_stats(
         ),
     )
 
-    emails_sent = _count(
-        db, select(EmailLog.id).where(EmailLog.user_id == uid, EmailLog.sent_at.isnot(None))
-    )
-    emails_opened = _count(
-        db, select(EmailLog.id).where(EmailLog.user_id == uid, EmailLog.opened_at.isnot(None))
-    )
-    emails_clicked = _count(
-        db, select(EmailLog.id).where(EmailLog.user_id == uid, EmailLog.clicked_at.isnot(None))
-    )
+    def _email_count(column) -> int:
+        """Count logs whose ``column`` is set, restricted to the window."""
+        stmt = select(EmailLog.id).where(EmailLog.user_id == uid, column.isnot(None))
+        if since is not None:
+            stmt = stmt.where(column >= since)
+        return _count(db, stmt)
+
+    emails_sent = _email_count(EmailLog.sent_at)
+    emails_opened = _email_count(EmailLog.opened_at)
+    emails_clicked = _email_count(EmailLog.clicked_at)
 
     open_rate = round(emails_opened / emails_sent * 100, 2) if emails_sent else 0.0
     click_rate = round(emails_clicked / emails_sent * 100, 2) if emails_sent else 0.0
 
-    sales = order_service.stats_for_user(db, uid)
+    sales = order_service.stats_for_user(db, uid, since=since)
 
     return DashboardStatsResponse(
         prospects_total=prospects_total,

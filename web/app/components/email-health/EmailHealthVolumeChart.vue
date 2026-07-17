@@ -3,18 +3,18 @@
     <!-- Legend: each encoding is visually distinct so the reading is immediate -->
     <div class="mb-3 flex flex-wrap items-center gap-x-4 gap-y-1">
       <span class="flex items-center gap-1.5 text-xs text-[var(--app-ink-soft)]">
-        <span class="h-3 w-2 rounded-[2px] bg-[var(--app-surface-2)] ring-1 ring-[var(--app-line)] ring-inset"></span>
+        <span class="h-3 w-2.5 rounded-[2px] border border-[var(--app-ink-soft)] bg-[var(--app-ink)]/15"></span>
         Envoyés
       </span>
       <span class="flex items-center gap-1.5 text-xs text-[var(--app-ink-soft)]">
-        <span class="h-3 w-2 rounded-[2px]" style="background-color: var(--app-green)"></span>
+        <span class="h-3 w-2.5 rounded-[2px]" style="background-color: var(--app-green)"></span>
         Délivrés
       </span>
       <span class="flex items-center gap-1.5 text-xs text-[var(--app-ink-soft)]">
-        <span class="relative inline-block h-[2px] w-4" style="background-color: var(--app-blue)">
+        <span class="relative inline-block h-[2.5px] w-5" style="background-color: var(--app-ink)">
           <span
-            class="absolute top-1/2 left-1/2 h-1.5 w-1.5 -translate-x-1/2 -translate-y-1/2 rounded-full"
-            style="background-color: var(--app-blue)"
+            class="absolute top-1/2 left-1/2 h-2 w-2 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-[var(--app-surface)]"
+            style="background-color: var(--app-ink)"
           ></span>
         </span>
         Ouverts
@@ -44,7 +44,7 @@
           </text>
         </g>
 
-        <!-- Daily bars: sent (light) with the delivered portion filled green -->
+        <!-- Daily bars: outlined ink column = sent, green filled portion = delivered -->
         <g v-for="(bar, index) in bars" :key="labels[index] ?? index">
           <rect
             v-if="bar.sentHeight > 0"
@@ -52,10 +52,11 @@
             :y="baseline - bar.sentHeight"
             :width="bar.width"
             :height="bar.sentHeight"
-            rx="1.5"
-            fill="var(--app-surface-2)"
-            stroke="var(--app-line)"
-            stroke-width="0.75"
+            rx="2"
+            fill="var(--app-ink)"
+            fill-opacity="0.14"
+            stroke="var(--app-ink-soft)"
+            stroke-width="1"
           />
           <rect
             v-if="bar.deliveredHeight > 0"
@@ -63,23 +64,23 @@
             :y="baseline - bar.deliveredHeight"
             :width="bar.width"
             :height="bar.deliveredHeight"
-            rx="1.5"
+            rx="2"
             fill="var(--app-green)"
-            :opacity="activeIndex === null || activeIndex === index ? 0.9 : 0.45"
+            :opacity="activeIndex === null || activeIndex === index ? 1 : 0.5"
           />
         </g>
 
-        <!-- Opened: line with dots on top of the bars -->
-        <path :d="openedPath" fill="none" stroke="var(--app-blue)" stroke-width="1.75" stroke-linecap="round" />
+        <!-- Opened: bold ink line with big dots — maximum contrast on both themes -->
+        <path :d="openedPath" fill="none" stroke="var(--app-ink)" stroke-width="2.5" stroke-linecap="round" />
         <circle
           v-for="dot in openedDots"
           :key="dot.x"
           :cx="dot.x"
           :cy="dot.y"
-          r="2.25"
-          fill="var(--app-blue)"
+          r="3.5"
+          fill="var(--app-ink)"
           stroke="var(--app-surface)"
-          stroke-width="1"
+          stroke-width="1.5"
         />
 
         <!-- Hover guide -->
@@ -132,7 +133,7 @@
         </p>
         <p class="flex items-center justify-between gap-3 text-[11px] text-[var(--app-ink-soft)]">
           <span class="flex items-center gap-1.5">
-            <span class="h-1.5 w-1.5 rounded-full" style="background-color: var(--app-blue)"></span> Ouverts
+            <span class="h-1.5 w-1.5 rounded-full" style="background-color: var(--app-ink)"></span> Ouverts
           </span>
           <span class="font-medium text-[var(--app-ink)] tabular-nums">{{ active.opened }}</span>
         </p>
@@ -158,8 +159,8 @@ import type { EmailHealthVolumeChartProps } from '~/types/EmailHealthVolumeChart
 
 /**
  * Daily sending-volume chart designed for readability at any density:
- * light bars = sent, their green-filled portion = delivered (the visible gray
- * cap is exactly the non-delivered part), blue dotted line = opened.
+ * outlined ink columns = sent, their green-filled portion = delivered (the
+ * visible cap is exactly the non-delivered part), bold ink dotted line = opened.
  */
 const props: EmailHealthVolumeChartProps = defineProps({
   labels: {
@@ -233,7 +234,7 @@ const bars: ComputedRef<{ x: number; width: number; sentHeight: number; delivere
   (): { x: number; width: number; sentHeight: number; deliveredHeight: number }[] => {
     const count: number = Math.max(props.labels.length, 1)
     const slot: number = plotWidth / count
-    const width: number = Math.max(Math.min(slot * 0.62, 22), 1.5)
+    const width: number = Math.max(Math.min(slot * 0.7, 26), 2)
     return props.labels.map((_: string, index: number) => ({
       x: centerAt(index) - width / 2,
       width,
