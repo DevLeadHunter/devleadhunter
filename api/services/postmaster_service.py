@@ -125,6 +125,7 @@ class PostmasterService:
         """
         from google.oauth2 import service_account  # local import: optional feature
         from googleapiclient.discovery import build
+        from googleapiclient.errors import HttpError
 
         info = self._service_account_info()
         if info is not None:
@@ -135,20 +136,33 @@ class PostmasterService:
             )
         client = build("gmailpostmastertools", "v1", credentials=credentials, cache_discovery=False)
 
-        start = datetime.utcnow().date() - timedelta(days=days)
+        # Bounded range (start + end): Postmaster's freshest data is ~2 days old.
+        end = datetime.utcnow().date()
+        start = end - timedelta(days=days)
         parent = f"domains/{domain}"
-        response = (
-            client.domains()
-            .trafficStats()
-            .list(
-                parent=parent,
-                startDate_year=start.year,
-                startDate_month=start.month,
-                startDate_day=start.day,
-                pageSize=days,
+        try:
+            response = (
+                client.domains()
+                .trafficStats()
+                .list(
+                    parent=parent,
+                    startDate_year=start.year,
+                    startDate_month=start.month,
+                    startDate_day=start.day,
+                    endDate_year=end.year,
+                    endDate_month=end.month,
+                    endDate_day=end.day,
+                    pageSize=days,
+                )
+                .execute()
             )
-            .execute()
-        )
+        except HttpError as exc:
+            # 404 here means the domain is reachable but Postmaster has no traffic
+            # stats yet — Google only publishes them above a minimum daily volume to
+            # Gmail. That is a normal empty state, not a setup error.
+            if exc.resp is not None and exc.resp.status == 404:
+                return {"configured": True, "domain": domain, "latest": None, "days": [], "no_data": True}
+            raise
 
         days_out: list[dict[str, Any]] = []
         for stat in response.get("trafficStats", []):
@@ -174,6 +188,7 @@ class PostmasterService:
             "domain": domain,
             "latest": latest,
             "days": days_out,
+            "no_data": not days_out,
         }
 
     @staticmethod
