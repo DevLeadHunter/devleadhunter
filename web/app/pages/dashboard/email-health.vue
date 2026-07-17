@@ -113,8 +113,8 @@
     <section v-if="providers.length > 0" class="app-card p-5 md:p-6">
       <h2 class="text-sm font-semibold text-[var(--app-ink)]">Par fournisseur destinataire</h2>
       <p class="mt-1 mb-4 text-xs text-[var(--app-ink-soft)]">
-        Orange, Free ou SFR n'ont pas d'outil de réputation public — mais si un fournisseur bounce ou n'ouvre jamais
-        alors que les autres répondent, c'est qu'il vous filtre.
+        Orange, Free ou SFR n'ont pas d'outil de réputation public — mais si un fournisseur rejette vos emails ou ne les
+        ouvre jamais alors que les autres répondent, c'est qu'il vous filtre.
       </p>
       <div class="divide-y divide-[var(--app-line-soft)]">
         <div
@@ -150,37 +150,7 @@
       </div>
     </section>
 
-    <!-- 4. Authentification du domaine -->
-    <section v-for="domain in dnsDomains" :key="domain.domain" class="app-card p-5 md:p-6">
-      <div class="mb-4 flex items-center justify-between">
-        <h2 class="text-sm font-semibold text-[var(--app-ink)]">
-          Authentification du domaine <span class="font-mono text-[var(--app-accent-ink)]">{{ domain.domain }}</span>
-        </h2>
-      </div>
-      <div class="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-5">
-        <div
-          v-for="check in dnsChecks(domain)"
-          :key="check.key"
-          class="rounded-xl border bg-[var(--app-bg)] p-3.5"
-          :style="{ borderColor: check.status === 'ok' ? 'var(--app-line)' : statusColor(check.status) }"
-        >
-          <div class="flex items-center justify-between">
-            <p class="text-xs font-semibold text-[var(--app-ink)]">{{ check.label }}</p>
-            <UIcon :name="statusIcon(check.status)" class="h-4 w-4" :style="{ color: statusColor(check.status) }" />
-          </div>
-          <p class="mt-1.5 text-[11px] leading-snug text-[var(--app-ink-soft)]">{{ check.detail }}</p>
-          <p
-            v-if="check.record"
-            class="mt-2 truncate rounded bg-[var(--app-surface-2)] px-1.5 py-1 font-mono text-[10px] text-[var(--app-ink-soft)]"
-            :title="check.record"
-          >
-            {{ check.record }}
-          </p>
-        </div>
-      </div>
-    </section>
-
-    <!-- 5. Réputation Gmail (Postmaster) -->
+    <!-- 4. Réputation Gmail (Postmaster) -->
     <section v-for="postmaster in postmasterDomains" :key="postmaster.domain" class="app-card p-5 md:p-6">
       <h2 class="text-sm font-semibold text-[var(--app-ink)]">
         Réputation Gmail — <span class="font-mono text-[var(--app-accent-ink)]">{{ postmaster.domain }}</span>
@@ -261,8 +231,9 @@
         </span>
       </div>
       <p class="mt-1 mb-5 text-xs text-[var(--app-ink-soft)]">
-        Chaque modèle actif est analysé automatiquement à l'ouverture de la page — aucun email n'est envoyé. En dessous
-        de 3 : sain · à partir de 5 : classé spam par la plupart des filtres.
+        Chaque modèle actif est analysé automatiquement à l'ouverture de la page — aucun email n'est envoyé. Plus le
+        score est bas, mieux c'est : 0 = aucun signal spam détecté dans le contenu · à partir de 3 : à retravailler · à
+        partir de 5 : classé spam.
       </p>
 
       <div
@@ -287,7 +258,7 @@
                     <p class="truncate text-sm font-medium text-[var(--app-ink)]">
                       {{ score.name }}
                       <span
-                        v-if="index === 0 && group.items.length > 1 && score.spamassassin.available"
+                        v-if="index === 0 && group.showBest && score.spamassassin.available"
                         class="ml-1.5 rounded-full bg-[var(--app-green-soft)] px-1.5 py-0.5 text-[9px] font-semibold tracking-wide text-[var(--app-green)] uppercase"
                       >
                         Meilleur score
@@ -313,15 +284,12 @@
                   </div>
                   <div class="text-right">
                     <template v-if="score.spamassassin.available">
-                      <p
-                        class="text-xl font-bold tabular-nums"
-                        :style="{ color: statusColor(score.spamassassin.status ?? 'ok') }"
-                      >
-                        {{ formatRate(score.spamassassin.score ?? 0)
+                      <p class="text-xl font-bold tabular-nums" :style="{ color: statusColor(combinedStatus(score)) }">
+                        {{ formatScore(score.spamassassin.score ?? 0)
                         }}<span class="text-xs font-medium text-[var(--app-ink-soft)]"> / 5</span>
                       </p>
                       <p class="text-[10px] text-[var(--app-ink-soft)]">
-                        {{ scoreVerdict(score.spamassassin.status ?? 'ok') }}
+                        {{ scoreVerdict(combinedStatus(score)) }}
                       </p>
                     </template>
                     <p v-else class="max-w-[140px] text-[10px] text-[var(--app-red)]">
@@ -382,7 +350,7 @@
     <section class="app-card p-5 md:p-6">
       <h2 class="mb-4 text-sm font-semibold text-[var(--app-ink)]">Journal des incidents</h2>
       <div v-if="incidents.length === 0" class="py-6 text-center text-sm text-[var(--app-ink-soft)]">
-        Aucun bounce, plainte ou échec récent — rien à signaler.
+        Aucun email rejeté, signalement spam ou échec récent — rien à signaler.
       </div>
       <div v-else class="overflow-x-auto">
         <table class="w-full min-w-[640px] text-sm">
@@ -452,10 +420,10 @@
               <th
                 class="py-2 pr-3 text-right text-[10px] font-medium tracking-wide text-[var(--app-ink-soft)] uppercase"
               >
-                Bounces
+                Rejetés
               </th>
               <th class="py-2 text-right text-[10px] font-medium tracking-wide text-[var(--app-ink-soft)] uppercase">
-                Plaintes
+                Signalés spam
               </th>
             </tr>
           </thead>
@@ -503,6 +471,36 @@
         </table>
       </div>
     </section>
+
+    <!-- 8. Authentification du domaine — configuration DNS, à consulter rarement -->
+    <section v-for="domain in dnsDomains" :key="domain.domain" class="app-card p-5 md:p-6">
+      <div class="mb-4 flex items-center justify-between">
+        <h2 class="text-sm font-semibold text-[var(--app-ink)]">
+          Authentification du domaine <span class="font-mono text-[var(--app-accent-ink)]">{{ domain.domain }}</span>
+        </h2>
+      </div>
+      <div class="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-5">
+        <div
+          v-for="check in dnsChecks(domain)"
+          :key="check.key"
+          class="rounded-xl border bg-[var(--app-bg)] p-3.5"
+          :style="{ borderColor: check.status === 'ok' ? 'var(--app-line)' : statusColor(check.status) }"
+        >
+          <div class="flex items-center justify-between">
+            <p class="text-xs font-semibold text-[var(--app-ink)]">{{ check.label }}</p>
+            <UIcon :name="statusIcon(check.status)" class="h-4 w-4" :style="{ color: statusColor(check.status) }" />
+          </div>
+          <p class="mt-1.5 text-[11px] leading-snug text-[var(--app-ink-soft)]">{{ check.detail }}</p>
+          <p
+            v-if="check.record"
+            class="mt-2 truncate rounded bg-[var(--app-surface-2)] px-1.5 py-1 font-mono text-[10px] text-[var(--app-ink-soft)]"
+            :title="check.record"
+          >
+            {{ check.record }}
+          </p>
+        </div>
+      </div>
+    </section>
   </div>
 </template>
 
@@ -541,6 +539,8 @@ interface TemplateScoreGroup {
   key: 'initial' | 'follow_up'
   label: string
   items: TemplateScore[]
+  /** Show the « Meilleur score » badge only when the scores actually differ. */
+  showBest: boolean
 }
 
 /** Supported rolling windows (days). */
@@ -548,8 +548,8 @@ const PERIODS: ReadonlyArray<number> = [7, 30, 90]
 
 /** Threshold guides of the critical-rates chart. */
 const CRITICAL_THRESHOLDS: EmailHealthChartThreshold[] = [
-  { value: 0.3, label: 'Plafond plaintes Gmail/Yahoo (0,3 %)', tone: 'red' },
-  { value: 2, label: 'Seuil bounce sain (2 %)', tone: 'amber' },
+  { value: 0.3, label: 'Plafond signalements spam Gmail/Yahoo (0,3 %)', tone: 'red' },
+  { value: 2, label: "Plafond sain d'emails rejetés (2 %)", tone: 'amber' },
 ]
 
 const period: Ref<number> = ref<number>(30)
@@ -588,13 +588,13 @@ const openedValues: ComputedRef<number[]> = computed((): number[] =>
 const criticalSeries: ComputedRef<EmailHealthChartSeries[]> = computed((): EmailHealthChartSeries[] => [
   {
     key: 'bounce_rate',
-    label: 'Bounces',
+    label: 'Rejetés',
     tone: 'amber',
     values: trendDays.value.map((day: EmailHealthTrendDay): number => day.bounce_rate),
   },
   {
     key: 'complaint_rate',
-    label: 'Plaintes (spam)',
+    label: 'Signalés spam',
     tone: 'red',
     values: trendDays.value.map((day: EmailHealthTrendDay): number => day.complaint_rate),
   },
@@ -612,11 +612,49 @@ const templateGroups: ComputedRef<TemplateScoreGroup[]> = computed((): TemplateS
       if (a.spamassassin.available !== b.spamassassin.available) return a.spamassassin.available ? -1 : 1
       return (a.spamassassin.score ?? 99) - (b.spamassassin.score ?? 99)
     })
+  /**
+   * Whether at least two scored templates of the group have different scores.
+   * @param items - Scores of one group.
+   * @returns True when a "best" actually exists.
+   */
+  const hasDistinctScores = (items: TemplateScore[]): boolean => {
+    const values: number[] = items
+      .filter((item: TemplateScore): boolean => item.spamassassin.available)
+      .map((item: TemplateScore): number => item.spamassassin.score ?? 0)
+    return values.length > 1 && new Set(values).size > 1
+  }
+  const initial: TemplateScore[] = sorted(templateScores.value?.initial ?? [])
+  const followUp: TemplateScore[] = sorted(templateScores.value?.follow_up ?? [])
   return [
-    { key: 'initial', label: 'Premiers contacts', items: sorted(templateScores.value?.initial ?? []) },
-    { key: 'follow_up', label: 'Relances', items: sorted(templateScores.value?.follow_up ?? []) },
+    { key: 'initial', label: 'Premiers contacts', items: initial, showBest: hasDistinctScores(initial) },
+    { key: 'follow_up', label: 'Relances', items: followUp, showBest: hasDistinctScores(followUp) },
   ]
 })
+
+/**
+ * Row status combining the anti-spam score with the checklist findings —
+ * a clean score with warning checks must not display as fully « Sain ».
+ * @param score - The template score entry.
+ * @returns The worst of both statuses.
+ */
+function combinedStatus(score: TemplateScore): 'ok' | 'warn' | 'danger' {
+  const rank: Record<string, number> = { ok: 0, warn: 1, danger: 2 }
+  const statuses: string[] = [score.spamassassin.status ?? 'ok', ...score.issues.map((issue): string => issue.status)]
+  const worst: string = statuses.reduce(
+    (acc: string, status: string): string => ((rank[status] ?? 0) > (rank[acc] ?? 0) ? status : acc),
+    'ok',
+  )
+  return worst as 'ok' | 'warn' | 'danger'
+}
+
+/**
+ * Format an anti-spam score with one decimal (avoids a bare misleading « 0 »).
+ * @param value - Raw score.
+ * @returns Localized string with exactly one decimal.
+ */
+function formatScore(value: number): string {
+  return value.toLocaleString('fr-FR', { minimumFractionDigits: 1, maximumFractionDigits: 1 })
+}
 
 /**
  * Anti-spam rules that actually raised a template's score, heaviest first.
@@ -690,7 +728,7 @@ function providerMetrics(
       color: 'var(--app-blue)',
     },
     {
-      label: 'Bounces',
+      label: 'Rejetés',
       value: `${formatRate(provider.bounce_rate)} %`,
       barPct: provider.bounce_rate,
       color: rateColor(provider.bounce_rate, 2, 5),
@@ -891,9 +929,9 @@ function incidentTone(kind: string): string {
  */
 function incidentLabel(kind: string): string {
   const labels: Record<string, string> = {
-    bounced: 'Bounce',
-    complained: 'Plainte spam',
-    suppressed: 'Supprimé',
+    bounced: 'Rejeté',
+    complained: 'Signalé spam',
+    suppressed: 'Bloqué (liste)',
     failed: 'Échec',
   }
   return labels[kind] ?? kind

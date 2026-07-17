@@ -48,10 +48,11 @@ export interface DashboardActivityResponse {
 
 /**
  * Fetch the dashboard home KPIs for the current user.
+ * @param periodDays - Rolling window in days (0 = all time).
  * @returns Aggregated dashboard stats.
  */
-export async function getDashboardStats(): Promise<DashboardStats> {
-  return api.get<DashboardStats>('/api/v1/dashboard/stats')
+export async function getDashboardStats(periodDays: number = 0): Promise<DashboardStats> {
+  return api.get<DashboardStats>('/api/v1/dashboard/stats', { params: { period_days: periodDays } })
 }
 
 /**

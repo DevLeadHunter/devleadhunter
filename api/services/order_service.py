@@ -567,9 +567,20 @@ class OrderService:
     # Commercial tracking
     # ------------------------------------------------------------------ #
 
-    def stats_for_user(self, db: Session, user_id: int) -> dict[str, Any]:
-        """Aggregate sales KPIs for a user (counts + revenue)."""
+    def stats_for_user(
+        self, db: Session, user_id: int, since: Optional[datetime] = None
+    ) -> dict[str, Any]:
+        """Aggregate sales KPIs for a user (counts + revenue).
+
+        Args:
+            db: Database session.
+            user_id: Owner of the orders.
+            since: When set, only count orders created after this moment
+                (drives the dashboard period filter).
+        """
         orders = self.list_for_user(db, user_id)
+        if since is not None:
+            orders = [o for o in orders if o.created_at is not None and o.created_at >= since]
         won = [o for o in orders if o.status in WON_STATUSES]
         revenue_cents = sum(o.amount_cents for o in won)
         pending = [o for o in orders if o.status == OrderStatus.PAYMENT_PENDING.value]

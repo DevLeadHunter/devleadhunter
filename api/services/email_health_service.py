@@ -135,20 +135,29 @@ class EmailHealthService:
 
         signals = [
             _signal(
-                "complaint_rate", "Taux de plainte (spam)", totals["complaint_rate"], 0.1, 0.3,
-                hint="Gmail et Yahoo coupent les expéditeurs au-dessus de 0,3 %.",
+                "complaint_rate", "Signalés comme spam", totals["complaint_rate"], 0.1, 0.3,
+                hint=(
+                    "Part des destinataires qui cliquent « Signaler comme spam ». Au-delà de 0,3 %, "
+                    "Gmail et Yahoo rangent vos prochains emails directement en spam."
+                ),
             ),
             _signal(
-                "bounce_rate", "Taux de bounce", totals["bounce_rate"], 2.0, 5.0,
-                hint="Au-dessus de 2 %, nettoyez la liste ; 5 % dégrade la réputation.",
+                "bounce_rate", "Emails rejetés", totals["bounce_rate"], 2.0, 5.0,
+                hint=(
+                    "Emails revenus sans être remis : adresse inexistante ou boîte pleine. "
+                    "Au-delà de 2 %, supprimez ces adresses de vos prospects."
+                ),
             ),
             _signal(
-                "delivery_rate", "Taux de délivrabilité", totals["delivery_rate"], 95.0, 90.0, invert=True,
-                hint="Part des envois confirmés délivrés par le fournisseur.",
+                "delivery_rate", "Bien arrivés", totals["delivery_rate"], 95.0, 90.0, invert=True,
+                hint="Part des emails acceptés par la boîte du destinataire. Visez 95 % ou plus.",
             ),
             _signal(
-                "unsubscribe_rate", "Taux de désinscription", totals["unsubscribe_rate"], 0.5, 2.0,
-                hint="Au-dessus de 0,5 %, le ciblage ou le message interroge.",
+                "unsubscribe_rate", "Désinscriptions", totals["unsubscribe_rate"], 0.5, 2.0,
+                hint=(
+                    "Part des destinataires qui se désinscrivent. Au-delà de 0,5 %, "
+                    "le message ou le choix des prospects est à revoir."
+                ),
             ),
         ]
 
@@ -468,10 +477,10 @@ class EmailHealthService:
             note = ""
             if bounce_rate >= 5.0 or complaint_rate >= 0.3:
                 status = "danger"
-                note = "Bounces/plaintes anormaux — ce fournisseur nous rejette."
+                note = "Trop d'emails rejetés ou signalés spam — ce fournisseur nous bloque."
             elif bounce_rate >= 2.0:
                 status = "warn"
-                note = "Taux de bounce à surveiller."
+                note = "Part d'emails rejetés à surveiller."
             elif sent >= 20 and bucket["opened"] == 0:
                 status = "warn"
                 note = "Aucune ouverture malgré le volume — filtrage spam probable."
