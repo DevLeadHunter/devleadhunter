@@ -136,28 +136,19 @@ class EmailHealthService:
         signals = [
             _signal(
                 "complaint_rate", "Signalés comme spam", totals["complaint_rate"], 0.1, 0.3,
-                hint=(
-                    "Part des destinataires qui cliquent « Signaler comme spam ». Au-delà de 0,3 %, "
-                    "Gmail et Yahoo rangent vos prochains emails directement en spam."
-                ),
+                hint="Au-delà de 0,3 %, Gmail et Yahoo vous rangent direct en spam.",
             ),
             _signal(
                 "bounce_rate", "Emails rejetés", totals["bounce_rate"], 2.0, 5.0,
-                hint=(
-                    "Emails revenus sans être remis : adresse inexistante ou boîte pleine. "
-                    "Au-delà de 2 %, supprimez ces adresses de vos prospects."
-                ),
+                hint="Adresses invalides ou boîtes pleines. À nettoyer au-delà de 2 %.",
             ),
             _signal(
                 "delivery_rate", "Bien arrivés", totals["delivery_rate"], 95.0, 90.0, invert=True,
-                hint="Part des emails acceptés par la boîte du destinataire. Visez 95 % ou plus.",
+                hint="Emails acceptés par le destinataire. Visez 95 % ou plus.",
             ),
             _signal(
                 "unsubscribe_rate", "Désinscriptions", totals["unsubscribe_rate"], 0.5, 2.0,
-                hint=(
-                    "Part des destinataires qui se désinscrivent. Au-delà de 0,5 %, "
-                    "le message ou le choix des prospects est à revoir."
-                ),
+                hint="Au-delà de 0,5 %, revoyez le message ou le ciblage.",
             ),
         ]
 

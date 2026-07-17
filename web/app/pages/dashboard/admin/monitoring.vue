@@ -71,7 +71,7 @@
           :style="{ borderColor: statusColor(s.latest_status) }"
         >
           <div class="flex items-center justify-between">
-            <span class="text-sm font-semibold text-[var(--app-ink)] capitalize">{{ s.source }}</span>
+            <span class="text-sm font-semibold text-[var(--app-ink)]">{{ sourceLabel(s.source) }}</span>
             <span
               class="rounded-full px-2 py-0.5 text-[10px] font-semibold tracking-wide uppercase"
               :style="{ color: statusColor(s.latest_status), backgroundColor: statusSoft(s.latest_status) }"
@@ -126,7 +126,7 @@
               <td class="text-muted px-3 py-2 whitespace-nowrap tabular-nums">
                 {{ incident.created_at ? formatDate(incident.created_at) : '—' }}
               </td>
-              <td class="px-3 py-2 font-medium text-[var(--app-ink)] capitalize">{{ incident.source }}</td>
+              <td class="px-3 py-2 font-medium text-[var(--app-ink)]">{{ sourceLabel(incident.source) }}</td>
               <td class="px-3 py-2">
                 <span
                   class="rounded-full px-2 py-0.5 text-[10px] font-semibold tracking-wide uppercase"
@@ -285,6 +285,25 @@ function statusLabel(status: string): string {
     error: 'Erreur',
   }
   return labels[status] ?? status
+}
+
+/**
+ * Human label for a diagnostics source (scrapers + enrichment steps).
+ * @param source - Raw source key recorded with each run.
+ * @returns The French label (falls back to a capitalized key).
+ */
+function sourceLabel(source: string): string {
+  const labels: Record<string, string> = {
+    google: 'Google',
+    pagesjaunes: 'Pages Jaunes',
+    osm: 'OpenStreetMap',
+    brightdata: 'Bright Data',
+    auto: 'Recherche auto',
+    yelp: 'Yelp',
+    enrichment: 'Enrichissement',
+    decision_maker: 'Nom du décisionnaire',
+  }
+  return labels[source] ?? source.charAt(0).toUpperCase() + source.slice(1)
 }
 
 /**
