@@ -1,5 +1,5 @@
 <template>
-  <div class="app-card flex flex-col gap-2 p-4">
+  <div class="app-card flex h-full flex-col gap-2 p-4">
     <div class="flex items-center justify-between gap-2">
       <p class="app-label">{{ label }}</p>
       <span class="h-2 w-2 shrink-0 rounded-full" :style="{ backgroundColor: statusColor }"></span>
@@ -7,9 +7,12 @@
     <p class="text-2xl font-bold tabular-nums" :style="{ color: valueColor }">
       {{ value }}<span class="ml-0.5 text-sm font-medium text-[var(--app-ink-soft)]">{{ unit }}</span>
     </p>
-    <svg v-if="sparkline.length > 1" :viewBox="`0 0 ${SPARK_W} ${SPARK_H}`" class="h-7 w-full overflow-visible">
-      <path :d="sparklinePath" fill="none" :stroke="statusColor" stroke-width="1.5" stroke-linecap="round" />
-    </svg>
+    <!-- Emplacement du sparkline toujours réservé : garde les descriptions alignées -->
+    <div class="h-7">
+      <svg v-if="sparkline.length > 1" :viewBox="`0 0 ${SPARK_W} ${SPARK_H}`" class="h-full w-full overflow-visible">
+        <path :d="sparklinePath" fill="none" :stroke="statusColor" stroke-width="1.5" stroke-linecap="round" />
+      </svg>
+    </div>
     <p class="text-[11px] leading-snug text-[var(--app-ink-soft)]">{{ hint }}</p>
   </div>
 </template>

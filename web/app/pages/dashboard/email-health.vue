@@ -68,7 +68,7 @@
           {{ formatInt(overview.totals.opened) }} ouverts sur {{ period }} jours
         </p>
       </div>
-      <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div class="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
         <EmailHealthSignalTile
           v-for="signal in overview.signals"
           :key="signal.key"
@@ -231,9 +231,9 @@
         </span>
       </div>
       <p class="mt-1 mb-5 text-xs text-[var(--app-ink-soft)]">
-        Chaque modèle actif est analysé automatiquement à l'ouverture de la page — aucun email n'est envoyé. Plus le
-        score est bas, mieux c'est : 0 = aucun signal spam détecté dans le contenu · à partir de 3 : à retravailler · à
-        partir de 5 : classé spam.
+        Chaque modèle actif est analysé automatiquement à l'ouverture de la page — aucun email n'est envoyé. Note sur 5,
+        comme à l'école : 5/5 = aucun signal spam · en dessous de 3/5 : à retravailler · 0/5 : classé spam par la
+        plupart des filtres.
       </p>
 
       <div
@@ -285,7 +285,7 @@
                   <div class="text-right">
                     <template v-if="score.spamassassin.available">
                       <p class="text-xl font-bold tabular-nums" :style="{ color: statusColor(combinedStatus(score)) }">
-                        {{ formatScore(score.spamassassin.score ?? 0)
+                        {{ formatNote(score.spamassassin.score ?? 0)
                         }}<span class="text-xs font-medium text-[var(--app-ink-soft)]"> / 5</span>
                       </p>
                       <p class="text-[10px] text-[var(--app-ink-soft)]">
@@ -648,12 +648,15 @@ function combinedStatus(score: TemplateScore): 'ok' | 'warn' | 'danger' {
 }
 
 /**
- * Format an anti-spam score with one decimal (avoids a bare misleading « 0 »).
- * @param value - Raw score.
- * @returns Localized string with exactly one decimal.
+ * Turn a raw SpamAssassin score into a school-style note out of 5 (higher is
+ * better): a clean template (score 0) shows 5/5, a spammy one (score ≥5) shows
+ * 0/5. The real score still drives the sort order and status color.
+ * @param score - Raw SpamAssassin score (lower = cleaner).
+ * @returns Localized note (0–5), at most one decimal.
  */
-function formatScore(value: number): string {
-  return value.toLocaleString('fr-FR', { minimumFractionDigits: 1, maximumFractionDigits: 1 })
+function formatNote(score: number): string {
+  const note: number = 5 - Math.min(Math.max(score, 0), 5)
+  return note.toLocaleString('fr-FR', { maximumFractionDigits: 1 })
 }
 
 /**
