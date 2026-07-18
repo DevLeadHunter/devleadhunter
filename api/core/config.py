@@ -124,6 +124,28 @@ class Settings(BaseSettings):
         alias="DEMO_SITE_VERIFY_RETRY_DELAY_SECONDS",
         description="Delay between demo URL verification attempts",
     )
+
+    # Prospection video (webcam générique + capture du site du prospect)
+    demo_video_dir: str = Field(
+        default="uploads/demo-videos",
+        alias="DEMO_VIDEO_DIR",
+        description="Local directory storing generated prospection videos + thumbnails",
+    )
+    presenter_video_dir: str = Field(
+        default="uploads/presenter-videos",
+        alias="PRESENTER_VIDEO_DIR",
+        description="Local directory storing per-user presenter (webcam) source clips",
+    )
+    presenter_video_max_mb: int = Field(
+        default=300,
+        alias="PRESENTER_VIDEO_MAX_MB",
+        description="Maximum upload size for the presenter clip (MB)",
+    )
+    ffmpeg_path: str = Field(
+        default="ffmpeg",
+        alias="FFMPEG_PATH",
+        description="ffmpeg executable used to compose prospection videos",
+    )
     storyblok_management_token: Optional[str] = Field(
         default=None,
         alias="STORYBLOK_MANAGEMENT_TOKEN",

@@ -42,9 +42,11 @@ logger = logging.getLogger(__name__)
 # Personalisation variable keys used in cold-email templates.
 # ---------------------------------------------------------------------------
 # Variable keys live in services.email_variables (single source of truth for
-# {salutation}/{prenom}/{nom}/{entreprise}…) — only the demo-link key is
-# needed here, for the « template uses {lien_demo} » guard.
+# {salutation}/{prenom}/{nom}/{entreprise}…) — only the demo-link and video
+# keys are needed here, for the « template uses {lien_demo}/{lien_video} » guards.
 _VAR_DEMO_LINK = "lien_demo"
+_VAR_VIDEO_LINK = "lien_video"
+_VAR_VIDEO_THUMBNAIL = "vignette_video"
 
 # Queue item status values
 _STATUS_PENDING  = "pending"
@@ -60,14 +62,18 @@ class EnqueueResult:
     Outcome of enqueuing a campaign.
 
     Attributes:
-        enqueued:        Number of J1 queue items added.
-        skipped_no_demo: Prospects skipped because their template uses
-                         ``{lien_demo}`` but they have no active demo site.
-                         Each entry is ``{"id": int, "name": str}``.
+        enqueued:         Number of J1 queue items added.
+        skipped_no_demo:  Prospects skipped because their template uses
+                          ``{lien_demo}`` but they have no active demo site.
+                          Each entry is ``{"id": int, "name": str}``.
+        skipped_no_video: Prospects skipped because their template uses
+                          ``{lien_video}``/``{vignette_video}`` but their demo
+                          has no generated prospection video.
     """
 
     enqueued: int = 0
     skipped_no_demo: list[dict[str, object]] = field(default_factory=list)
+    skipped_no_video: list[dict[str, object]] = field(default_factory=list)
 
 
 def _utcnow() -> datetime:
@@ -126,6 +132,8 @@ class CampaignQueueService:
         )
         uses_demo_a: bool = self._template_uses_demo_link(template_a)
         uses_demo_b: bool = self._template_uses_demo_link(template_b)
+        uses_video_a: bool = self._template_uses_video(template_a)
+        uses_video_b: bool = self._template_uses_video(template_b)
 
         # Append after the last pending slot so re-launching is safe.
         latest: datetime | None = self.db.execute(
@@ -161,10 +169,12 @@ class CampaignQueueService:
                 variant = "A" if idx % 2 == 0 else "B"
                 tpl_id = template_id if variant == "A" else ab_template_id_b
                 uses_demo = uses_demo_a if variant == "A" else uses_demo_b
+                uses_video = uses_video_a if variant == "A" else uses_video_b
             else:
                 variant = None
                 tpl_id = template_id
                 uses_demo = uses_demo_a
+                uses_video = uses_video_a
 
             # Guard: never enqueue an email that would ship an empty {lien_demo}.
             if uses_demo and not self._demo_link_for_prospect(prospect.id, campaign.user_id, variant):
@@ -172,6 +182,15 @@ class CampaignQueueService:
                     "[Queue] Skipping prospect %d — no active demo site for {lien_demo}", prospect.id
                 )
                 result.skipped_no_demo.append({"id": prospect.id, "name": prospect.name or ""})
+                continue
+
+            # Guard: same rule for {lien_video}/{vignette_video} — never ship
+            # an email whose video block would be empty.
+            if uses_video and not self._video_for_prospect(prospect.id, campaign.user_id, variant)[0]:
+                logger.info(
+                    "[Queue] Skipping prospect %d — no prospection video for {lien_video}", prospect.id
+                )
+                result.skipped_no_video.append({"id": prospect.id, "name": prospect.name or ""})
                 continue
 
             to_enqueue.append((prospect.id, tpl_id, variant))
@@ -308,13 +327,23 @@ class CampaignQueueService:
         haystack: str = f"{template.subject or ''} {template.body_html or ''}"
         return f"{{{_VAR_DEMO_LINK}}}" in haystack
 
-    def _demo_link_for_prospect(self, prospect_id: int, user_id: int, variant: str | None) -> str:
+    @staticmethod
+    def _template_uses_video(template: EmailTemplate | None) -> bool:
         """
-        Resolve the ``{lien_demo}`` value: the prospect's active demo URL, with the
-        A/B variant appended (``?v=A``) so PostHog can attribute the demo visit to
-        the email variant. Returns "" when the prospect has no active demo.
+        Return True when a template references ``{lien_video}`` or
+        ``{vignette_video}`` (either one requires a generated video).
         """
-        site: DemoSite | None = self.db.execute(
+        if template is None:
+            return False
+        haystack: str = f"{template.subject or ''} {template.body_html or ''}"
+        return (
+            f"{{{_VAR_VIDEO_LINK}}}" in haystack
+            or f"{{{_VAR_VIDEO_THUMBNAIL}}}" in haystack
+        )
+
+    def _active_demo_for_prospect(self, prospect_id: int, user_id: int) -> DemoSite | None:
+        """Latest ACTIVE demo site of a prospect (or None)."""
+        return self.db.execute(
             select(DemoSite)
             .where(
                 DemoSite.prospect_id == prospect_id,
@@ -324,12 +353,42 @@ class CampaignQueueService:
             .order_by(DemoSite.created_at.desc())
             .limit(1)
         ).scalar_one_or_none()
+
+    def _demo_link_for_prospect(self, prospect_id: int, user_id: int, variant: str | None) -> str:
+        """
+        Resolve the ``{lien_demo}`` value: the prospect's active demo URL, with the
+        A/B variant appended (``?v=A``) so PostHog can attribute the demo visit to
+        the email variant. Returns "" when the prospect has no active demo.
+        """
+        site: DemoSite | None = self._active_demo_for_prospect(prospect_id, user_id)
         if not site or not site.demo_url:
             return ""
         url: str = site.demo_url
         if variant:
             url = f"{url}{'&' if '?' in url else '?'}v={variant}"
         return url
+
+    def _video_for_prospect(
+        self, prospect_id: int, user_id: int, variant: str | None
+    ) -> tuple[str, str]:
+        """
+        Resolve the ``{lien_video}``/``{vignette_video}`` values for a prospect.
+
+        The player-page link carries the A/B variant (``?v=A``) so PostHog can
+        attribute the video view to the email variant, like ``{lien_demo}``.
+
+        @returns ``(player page URL, thumbnail URL)`` — both "" when the
+            prospect's active demo has no generated video.
+        """
+        from services.demo_video_service import has_ready_video, public_thumbnail_url, video_page_url
+
+        site: DemoSite | None = self._active_demo_for_prospect(prospect_id, user_id)
+        if not site or not has_ready_video(site):
+            return "", ""
+        url: str = video_page_url(site.slug)
+        if variant:
+            url = f"{url}{'&' if '?' in url else '?'}v={variant}"
+        return url, public_thumbnail_url(site.slug)
 
     async def _dispatch(self, item: EmailQueue) -> None:
         """
@@ -379,11 +438,26 @@ class CampaignQueueService:
             self.db.commit()
             return
 
+        # Same defense for {lien_video}/{vignette_video} — the video may have
+        # been deleted (or its demo expired) between enqueue and dispatch.
+        video_link, video_thumbnail_url = self._video_for_prospect(
+            prospect.id, item.user_id, item.ab_variant
+        )
+        if self._template_uses_video(template) and not video_link:
+            logger.info(
+                "[Queue] Skipping send for prospect %d — no prospection video for {lien_video}", prospect.id
+            )
+            item.status = _STATUS_SKIPPED
+            self.db.commit()
+            return
+
         # Build personalisation variables ({salutation}/{prenom}/{nom} come from
         # the resolved decision-maker — never the company name).
         from services.email_variables import build_prospect_variables
 
-        variables: dict[str, str] = build_prospect_variables(self.db, prospect, demo_link)
+        variables: dict[str, str] = build_prospect_variables(
+            self.db, prospect, demo_link, video_link, video_thumbnail_url
+        )
 
         email_service = EmailSendingService(self.db)
         subject: str = email_service.replace_variables(template.subject, variables)
@@ -519,8 +593,13 @@ class CampaignQueueService:
 
         from services.email_variables import build_prospect_variables
 
+        video_link, video_thumbnail_url = self._video_for_prospect(prospect_id, campaign.user_id, None)
         variables: dict[str, str] = build_prospect_variables(
-            self.db, prospect, self._demo_link_for_prospect(prospect_id, campaign.user_id, None)
+            self.db,
+            prospect,
+            self._demo_link_for_prospect(prospect_id, campaign.user_id, None),
+            video_link,
+            video_thumbnail_url,
         )
 
         email_service = EmailSendingService(self.db)

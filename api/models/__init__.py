@@ -25,6 +25,7 @@ from models.organization import Organization, OrganizationMember
 from models.acquisition_run import AcquisitionRun
 from models.acquisition_run_item import AcquisitionRunItem
 from models.send_policy import SendPolicy
+from models.presenter_video import PresenterVideo
 
 __all__ = [
     "User",

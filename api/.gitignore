@@ -58,3 +58,6 @@ chromedriver
 geckodriver
 *.chromedriver
 
+# Médias générés / uploadés (vidéos de prospection, clips webcam, pièces jointes)
+uploads/
+

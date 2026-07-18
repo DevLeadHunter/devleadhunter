@@ -76,7 +76,15 @@ export interface DemoSite {
   created_at: string
   error_message?: string | null
   theme?: DemoSiteTheme | null
+  video_status?: DemoSiteVideoStatus | null
+  video_error?: string | null
+  video_generated_at?: string | null
+  video_page_url?: string | null
+  video_thumbnail_url?: string | null
 }
+
+/** Lifecycle of a demo site's prospection video (null = never generated). */
+export type DemoSiteVideoStatus = 'pending' | 'generating' | 'ready' | 'failed'
 
 export interface DemoSiteListResponse {
   items: DemoSite[]
@@ -185,6 +193,23 @@ export async function inviteDemoSiteClientToCms(demoSiteId: number): Promise<Dem
  */
 export async function deleteDemoSite(demoSiteId: number): Promise<void> {
   await api.delete(`${BASE_URL}/${demoSiteId}`)
+}
+
+/**
+ * Start background generation of the prospection video (webcam + capture du site).
+ * @param demoSiteId - Id of the demo site.
+ * @returns The site with ``video_status`` set to ``pending``.
+ */
+export async function generateDemoSiteVideo(demoSiteId: number): Promise<DemoSite> {
+  return api.post<DemoSite>(`${BASE_URL}/${demoSiteId}/video`, {})
+}
+
+/**
+ * Delete the generated prospection video and reset the site's video state.
+ * @param demoSiteId - Id of the demo site.
+ */
+export async function deleteDemoSiteVideo(demoSiteId: number): Promise<DemoSite> {
+  return api.delete<DemoSite>(`${BASE_URL}/${demoSiteId}/video`)
 }
 
 /**

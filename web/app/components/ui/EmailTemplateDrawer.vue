@@ -106,7 +106,10 @@
               class="input-field font-mono text-xs"
               placeholder="Bonjour {name},&#10;&#10;Je me présente..."
             ></textarea>
-            <p class="text-muted mt-1 text-xs">Variables disponibles : {name}, {company_name}, {email}, etc.</p>
+            <p class="text-muted mt-1 text-xs">
+              Variables : {salutation}, {prenom}, {nom}, {entreprise}, {ville}, {metier}, {lien_demo}, {lien_video},
+              {vignette_video} (vignette cliquable de la vidéo de prospection)
+            </p>
           </div>
 
           <div

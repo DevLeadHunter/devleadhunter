@@ -30,6 +30,32 @@ VAR_EMAIL = "email"
 VAR_PHONE = "phone"
 VAR_METIER = "metier"
 VAR_DEMO_LINK = "lien_demo"
+# Prospection video: {lien_video} = URL of the tracked player page,
+# {vignette_video} = full clickable thumbnail HTML block (image → player page).
+VAR_VIDEO_LINK = "lien_video"
+VAR_VIDEO_THUMBNAIL = "vignette_video"
+
+
+def build_video_thumbnail_html(video_link: str, thumbnail_url: str) -> str:
+    """
+    Build the email-safe clickable thumbnail block for ``{vignette_video}``.
+
+    Emails cannot embed a playable video — the proven pattern is a
+    personalised thumbnail (his site + play button) linking to the player
+    page. Inline styles only (email clients strip stylesheets).
+
+    @param video_link - Player page URL (demo host ``/v/{slug}``).
+    @param thumbnail_url - Absolute public URL of the personalised JPEG.
+    @returns The HTML block, or an empty string when either URL is missing.
+    """
+    if not video_link or not thumbnail_url:
+        return ""
+    return (
+        f'<p style="margin:16px 0;"><a href="{video_link}" target="_blank">'
+        f'<img src="{thumbnail_url}" alt="Votre site en vidéo" width="480" '
+        f'style="display:block;width:100%;max-width:480px;border-radius:12px;border:0;" />'
+        f"</a></p>"
+    )
 
 
 def resolved_contact(
@@ -49,13 +75,19 @@ def resolved_contact(
 
 
 def build_prospect_variables(
-    db: Session, prospect: ProspectDB, demo_link: str = ""
+    db: Session,
+    prospect: ProspectDB,
+    demo_link: str = "",
+    video_link: str = "",
+    video_thumbnail_url: str = "",
 ) -> dict[str, str]:
     """Build the full substitution map for a prospect's emails.
 
     {salutation} is always safe (« Bonjour » / « Bonjour Léo » / « Bonjour
     M. Guillaume ») ; {prenom} and {nom} are empty strings when unknown —
-    never a company word.
+    never a company word. {lien_video}/{vignette_video} are empty when the
+    prospect has no generated prospection video (the queue guards prevent
+    sending a template that needs them in that case).
     """
     first, last, gender = resolved_contact(db, prospect.id)
     return {
@@ -68,4 +100,6 @@ def build_prospect_variables(
         VAR_PHONE: prospect.phone or "",
         VAR_METIER: prospect.category or "",
         VAR_DEMO_LINK: demo_link,
+        VAR_VIDEO_LINK: video_link,
+        VAR_VIDEO_THUMBNAIL: build_video_thumbnail_html(video_link, video_thumbnail_url),
     }

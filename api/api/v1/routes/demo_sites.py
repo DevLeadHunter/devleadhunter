@@ -3,6 +3,7 @@ import logging
 from typing import Any, List
 
 from fastapi import APIRouter, Depends, HTTPException, Response, status
+from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
@@ -22,8 +23,17 @@ from schemas.demo_site import (
     DemoSiteTheme,
     DemoSiteUpdateRequest,
 )
+from enums.demo_video_status import DemoVideoStatus
 from services.auth_service import get_current_active_user
 from services.demo_site_service import demo_site_service
+from services.demo_video_service import (
+    demo_video_service,
+    has_ready_video,
+    public_thumbnail_url,
+    thumbnail_file_path,
+    video_file_path,
+    video_page_url,
+)
 from services.site_export_service import site_export_service
 
 logger = logging.getLogger(__name__)
@@ -53,6 +63,9 @@ def _serialize_demo_site(site) -> DemoSiteResponse:
             "secondary": str(theme_raw.get("secondary", "#0f172a")),
             "accent": str(theme_raw.get("accent", "#f59e0b")),
         }
+    if has_ready_video(site):
+        payload["video_page_url"] = video_page_url(site.slug)
+        payload["video_thumbnail_url"] = public_thumbnail_url(site.slug)
     return DemoSiteResponse(**payload)
 
 
@@ -109,7 +122,40 @@ async def get_public_demo_site(
     payload = DemoSitePublicResponse.model_validate(site).model_dump()
     if site.storyblok_preview_token:
         payload["storyblok_region"] = settings.storyblok_region
+    payload["video_available"] = has_ready_video(site)
     return DemoSitePublicResponse(**payload)
+
+
+@router.get("/public/{slug}/video.mp4")
+async def stream_public_demo_video(
+    slug: str,
+    db: Session = Depends(get_db),
+) -> FileResponse:
+    """Stream the prospection video (mp4, Range-aware) for the player page."""
+    site = demo_site_service.get_public_by_slug(db, slug)
+    if not site or not has_ready_video(site):
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Video not found")
+    return FileResponse(
+        video_file_path(site.slug),
+        media_type="video/mp4",
+        headers={"Cache-Control": "public, max-age=3600"},
+    )
+
+
+@router.get("/public/{slug}/video-thumbnail.jpg")
+async def serve_public_demo_video_thumbnail(
+    slug: str,
+    db: Session = Depends(get_db),
+) -> FileResponse:
+    """Serve the personalised email thumbnail ({vignette_video} image)."""
+    site = demo_site_service.get_public_by_slug(db, slug)
+    if not site or not thumbnail_file_path(site.slug).is_file():
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Thumbnail not found")
+    return FileResponse(
+        thumbnail_file_path(site.slug),
+        media_type="image/jpeg",
+        headers={"Cache-Control": "public, max-age=3600"},
+    )
 
 
 @router.get("", response_model=DemoSiteListResponse)
@@ -336,6 +382,42 @@ async def regenerate_demo_site(
     """Rebuild demo site content from stored fields without changing them."""
     site = _get_editable_demo_site(db, current_user.id, demo_site_id)
     site = await demo_site_service.regenerate_demo_site(db, site)
+    return _serialize_demo_site(site)
+
+
+@router.post("/{demo_site_id}/video", response_model=DemoSiteResponse, status_code=status.HTTP_202_ACCEPTED)
+async def generate_demo_site_video(
+    demo_site_id: int,
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db),
+) -> DemoSiteResponse:
+    """Start background generation of the prospection video for a demo site."""
+    site = demo_site_service.get_for_user(db, current_user.id, demo_site_id)
+    if not site:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Demo site not found")
+    try:
+        site = demo_video_service.request_generation(db, site, current_user.id)
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+    return _serialize_demo_site(site)
+
+
+@router.delete("/{demo_site_id}/video", response_model=DemoSiteResponse)
+async def delete_demo_site_video(
+    demo_site_id: int,
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db),
+) -> DemoSiteResponse:
+    """Delete the generated prospection video and reset the video state."""
+    site = demo_site_service.get_for_user(db, current_user.id, demo_site_id)
+    if not site:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Demo site not found")
+    if site.video_status == DemoVideoStatus.GENERATING.value:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Une génération est en cours — attendez qu'elle se termine.",
+        )
+    site = demo_video_service.clear_video(db, site)
     return _serialize_demo_site(site)
 
 

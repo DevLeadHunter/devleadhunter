@@ -538,6 +538,14 @@ class DemoSiteService:
         demo_site.error_message = None
         demo_site.status = DemoSiteStatus.DELETED.value
         demo_site.deleted_at = now
+
+        # Purge the generated prospection video files with the demo.
+        from services.demo_video_service import delete_files_for_slug
+
+        delete_files_for_slug(demo_site.slug)
+        demo_site.video_status = None
+        demo_site.video_error = None
+        demo_site.video_generated_at = None
         db.commit()
 
     async def expire_due_sites(self, db: Session) -> int:
@@ -580,6 +588,14 @@ class DemoSiteService:
             site.content_json = None
             site.status = DemoSiteStatus.DELETED.value
             site.deleted_at = now
+
+            # La vidéo de prospection suit le TTL de la démo (lien mort sinon).
+            from services.demo_video_service import delete_files_for_slug
+
+            delete_files_for_slug(site.slug)
+            site.video_status = None
+            site.video_error = None
+            site.video_generated_at = None
             cleaned += 1
 
         if cleaned:

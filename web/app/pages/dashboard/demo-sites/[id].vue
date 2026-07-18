@@ -122,6 +122,91 @@
             </button>
           </div>
 
+          <div class="rounded-xl border border-[var(--app-line)] bg-[var(--app-bg)] p-4">
+            <div class="flex items-center justify-between gap-3">
+              <h3 class="text-sm font-semibold text-[var(--app-ink)]">Vidéo de prospection</h3>
+              <span
+                v-if="videoStatusLabel"
+                :class="['rounded-full px-2.5 py-0.5 text-[10px] font-bold uppercase', videoStatusClass]"
+              >
+                {{ videoStatusLabel }}
+              </span>
+            </div>
+            <p class="mt-1.5 text-xs leading-relaxed text-[var(--app-ink-soft)]">
+              Votre webcam + le site du prospect qui défile, avec « Bonjour {Prénom} » à l'écran. La vignette est
+              utilisable dans les emails via {vignette_video}.
+            </p>
+
+            <!-- Génération en cours -->
+            <div v-if="isVideoGenerating" class="mt-3 flex items-center gap-2 text-xs text-[var(--app-ink-soft)]">
+              <UIcon name="i-lucide-loader-circle" class="h-4 w-4 animate-spin" />
+              Génération en cours (capture + montage)…
+            </div>
+
+            <!-- Échec -->
+            <p v-else-if="site.video_status === 'failed'" class="mt-3 text-xs text-red-300">
+              {{ site.video_error || 'La génération a échoué.' }}
+            </p>
+
+            <!-- Prête : vignette + actions -->
+            <template v-if="site.video_status === 'ready' && site.video_page_url">
+              <button
+                type="button"
+                class="mt-3 block w-full overflow-hidden rounded-lg border border-[var(--app-line)]"
+                title="Ouvrir la page vidéo"
+                @click="openDemoUrl(site.video_page_url)"
+              >
+                <img
+                  v-if="site.video_thumbnail_url"
+                  :src="site.video_thumbnail_url"
+                  alt="Vignette de la vidéo de prospection"
+                  class="w-full"
+                />
+              </button>
+              <div class="mt-2 space-y-2">
+                <button type="button" class="btn-secondary w-full text-xs" @click="copyDemoUrl(site.video_page_url)">
+                  {{ copied ? 'Lien copié !' : 'Copier le lien vidéo' }}
+                </button>
+                <button
+                  type="button"
+                  class="btn-secondary w-full text-xs"
+                  :disabled="generatingVideo"
+                  @click="handleGenerateVideo"
+                >
+                  {{ generatingVideo ? 'Lancement…' : 'Régénérer la vidéo' }}
+                </button>
+                <button
+                  type="button"
+                  class="btn-secondary w-full text-xs text-red-300"
+                  :disabled="deletingVideo"
+                  @click="handleDeleteVideo"
+                >
+                  {{ deletingVideo ? 'Suppression…' : 'Supprimer la vidéo' }}
+                </button>
+              </div>
+            </template>
+
+            <!-- Jamais générée / échec : bouton de génération -->
+            <button
+              v-if="!isVideoGenerating && site.video_status !== 'ready'"
+              type="button"
+              class="btn-primary mt-3 w-full text-xs disabled:cursor-not-allowed disabled:opacity-50"
+              :disabled="generatingVideo"
+              @click="handleGenerateVideo"
+            >
+              <UIcon name="i-lucide-clapperboard" class="mr-1.5 h-3.5 w-3.5" />
+              {{ generatingVideo ? 'Lancement…' : site.video_status === 'failed' ? 'Réessayer' : 'Générer la vidéo' }}
+            </button>
+
+            <button
+              type="button"
+              class="mt-2 w-full text-center text-[11px] text-[var(--app-ink-soft)] underline underline-offset-2 transition-colors hover:text-[var(--app-ink)]"
+              @click="openPresenterVideoDrawer"
+            >
+              Configurer ma vidéo de présentation (webcam)
+            </button>
+          </div>
+
           <div
             v-if="site.storyblok_editor_url"
             class="rounded-xl border border-[var(--app-line)] bg-[var(--app-bg)] p-4"
@@ -215,7 +300,9 @@ import type { DemoSite } from '~/services/demoSiteService'
 import {
   daysUntilExpiry,
   deleteDemoSite,
+  deleteDemoSiteVideo,
   exportDemoSiteCode,
+  generateDemoSiteVideo,
   getDemoSite,
   getDemoSiteOpenUrl,
   inviteDemoSiteClientToCms,
@@ -224,6 +311,7 @@ import {
   regenerateDemoSite,
   verifyDemoSite,
 } from '~/services/demoSiteService'
+import { useDrawerStackStore } from '~/stores/drawerStack'
 
 definePageMeta({ layout: 'dashboard', middleware: 'auth' })
 
@@ -231,6 +319,7 @@ const route = useRoute()
 const demoSiteId = Number(route.params.id)
 const { copy, copied } = useCopyToClipboard()
 const { openExternalUrl } = useOpenExternalUrl()
+const drawerStack = useDrawerStackStore()
 
 const site = ref<DemoSite | null>(null)
 const pending = ref(true)
@@ -242,6 +331,9 @@ const regenerating = ref(false)
 const deleting = ref(false)
 const inviting = ref(false)
 const exporting = ref(false)
+const generatingVideo = ref(false)
+const deletingVideo = ref(false)
+let videoPollTimer: ReturnType<typeof setInterval> | null = null
 
 const templateLabel = computed(() => {
   const labels: Record<string, string> = {
@@ -268,6 +360,30 @@ const statusClass = computed(() => {
 })
 
 const daysLeft = computed(() => (site.value ? daysUntilExpiry(site.value.expires_at) : 0))
+
+const isVideoGenerating = computed(
+  () => site.value?.video_status === 'pending' || site.value?.video_status === 'generating',
+)
+
+const videoStatusLabel = computed(() => {
+  switch (site.value?.video_status) {
+    case 'pending':
+    case 'generating':
+      return 'En cours'
+    case 'ready':
+      return 'Prête'
+    case 'failed':
+      return 'Échec'
+    default:
+      return null
+  }
+})
+
+const videoStatusClass = computed(() => {
+  if (site.value?.video_status === 'ready') return 'bg-[var(--app-green)]/20 text-[var(--app-green)]'
+  if (site.value?.video_status === 'failed') return 'bg-red-500/20 text-red-300'
+  return 'bg-amber-500/20 text-amber-300'
+})
 
 const stats = computed(() => {
   if (!site.value) return []
@@ -382,15 +498,82 @@ async function handleDelete(): Promise<void> {
   }
 }
 
+/**
+ * Stop the video-status polling loop.
+ */
+function stopVideoPolling(): void {
+  if (videoPollTimer !== null) {
+    clearInterval(videoPollTimer)
+    videoPollTimer = null
+  }
+}
+
+/**
+ * Poll the site every 5 s while the video is generating (background job).
+ */
+function startVideoPolling(): void {
+  if (videoPollTimer !== null) return
+  videoPollTimer = setInterval(async (): Promise<void> => {
+    try {
+      site.value = await getDemoSite(demoSiteId)
+    } catch {
+      // Erreur transitoire : on retentera au prochain tick.
+    }
+    if (!isVideoGenerating.value) stopVideoPolling()
+  }, 5000)
+}
+
+/**
+ * Start (or restart) the prospection-video generation.
+ */
+async function handleGenerateVideo(): Promise<void> {
+  generatingVideo.value = true
+  try {
+    site.value = await generateDemoSiteVideo(demoSiteId)
+    startVideoPolling()
+  } catch (error) {
+    alert(error instanceof Error ? error.message : 'Échec du lancement de la génération')
+  } finally {
+    generatingVideo.value = false
+  }
+}
+
+/**
+ * Delete the generated video after confirmation.
+ */
+async function handleDeleteVideo(): Promise<void> {
+  if (!confirm('Supprimer la vidéo de prospection de ce site ?')) return
+  deletingVideo.value = true
+  try {
+    site.value = await deleteDemoSiteVideo(demoSiteId)
+  } catch (error) {
+    alert(error instanceof Error ? error.message : 'Échec de la suppression de la vidéo')
+  } finally {
+    deletingVideo.value = false
+  }
+}
+
+/**
+ * Open the presenter clip drawer (webcam recording used by every video).
+ */
+function openPresenterVideoDrawer(): void {
+  drawerStack.push({ kind: 'presenter-video' })
+}
+
 onMounted(async () => {
   try {
     site.value = await getDemoSite(demoSiteId)
     await loadPreview()
+    if (isVideoGenerating.value) startVideoPolling()
   } catch (error) {
     loadError.value = error instanceof Error ? error.message : 'Impossible de charger le site'
   } finally {
     pending.value = false
   }
+})
+
+onBeforeUnmount((): void => {
+  stopVideoPolling()
 })
 </script>
 
