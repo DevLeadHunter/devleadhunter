@@ -152,9 +152,9 @@
             <template v-if="site.video_status === 'ready' && site.video_page_url">
               <button
                 type="button"
-                class="mt-3 block w-full overflow-hidden rounded-lg border border-[var(--app-line)]"
+                class="mt-3 block w-full cursor-pointer overflow-hidden rounded-lg border border-[var(--app-line)] transition-opacity hover:opacity-90"
                 title="Ouvrir la page vidéo"
-                @click="openDemoUrl(site.video_page_url)"
+                @click="openVideoPage(site.video_page_url)"
               >
                 <img
                   v-if="site.video_thumbnail_url"
@@ -179,7 +179,7 @@
                   type="button"
                   class="btn-secondary w-full text-xs text-red-300"
                   :disabled="deletingVideo"
-                  @click="handleDeleteVideo"
+                  @click="askDeleteVideo"
                 >
                   {{ deletingVideo ? 'Suppression…' : 'Supprimer la vidéo' }}
                 </button>
@@ -198,14 +198,22 @@
               {{ generatingVideo ? 'Lancement…' : site.video_status === 'failed' ? 'Réessayer' : 'Générer la vidéo' }}
             </button>
 
-            <button
-              type="button"
-              class="mt-2 w-full text-center text-[11px] text-[var(--app-ink-soft)] underline underline-offset-2 transition-colors hover:text-[var(--app-ink)]"
-              @click="openPresenterVideoDrawer"
+            <NuxtLink
+              to="/dashboard/settings/video"
+              class="mt-2 block w-full text-center text-[11px] text-[var(--app-ink-soft)] underline underline-offset-2 transition-colors hover:text-[var(--app-ink)]"
             >
-              Configurer ma vidéo de présentation (webcam)
-            </button>
+              Configurer mon clip webcam (Paramètres → Vidéo de prospection)
+            </NuxtLink>
           </div>
+
+          <UiConfirmModal
+            ref="deleteVideoModalRef"
+            title="Supprimer la vidéo"
+            message="Supprimer la vidéo de prospection de ce site ? Le lien envoyé dans les emails ne fonctionnera plus."
+            confirm-text="Supprimer"
+            cancel-text="Annuler"
+            @confirm="handleDeleteVideoConfirmed"
+          />
 
           <div
             v-if="site.storyblok_editor_url"
@@ -311,7 +319,7 @@ import {
   regenerateDemoSite,
   verifyDemoSite,
 } from '~/services/demoSiteService'
-import { useDrawerStackStore } from '~/stores/drawerStack'
+import { useToast } from '~/composables/useToast'
 
 definePageMeta({ layout: 'dashboard', middleware: 'auth' })
 
@@ -319,7 +327,7 @@ const route = useRoute()
 const demoSiteId = Number(route.params.id)
 const { copy, copied } = useCopyToClipboard()
 const { openExternalUrl } = useOpenExternalUrl()
-const drawerStack = useDrawerStackStore()
+const toast = useToast()
 
 const site = ref<DemoSite | null>(null)
 const pending = ref(true)
@@ -333,6 +341,7 @@ const inviting = ref(false)
 const exporting = ref(false)
 const generatingVideo = ref(false)
 const deletingVideo = ref(false)
+const deleteVideoModalRef = ref<{ open: () => void } | null>(null)
 let videoPollTimer: ReturnType<typeof setInterval> | null = null
 
 const templateLabel = computed(() => {
@@ -531,33 +540,42 @@ async function handleGenerateVideo(): Promise<void> {
   try {
     site.value = await generateDemoSiteVideo(demoSiteId)
     startVideoPolling()
+    toast.success('Génération de la vidéo lancée (capture + montage en tâche de fond)')
   } catch (error) {
-    alert(error instanceof Error ? error.message : 'Échec du lancement de la génération')
+    toast.error(error instanceof Error ? error.message : 'Échec du lancement de la génération')
   } finally {
     generatingVideo.value = false
   }
 }
 
 /**
- * Delete the generated video after confirmation.
+ * Open the delete-video confirmation modal.
  */
-async function handleDeleteVideo(): Promise<void> {
-  if (!confirm('Supprimer la vidéo de prospection de ce site ?')) return
+function askDeleteVideo(): void {
+  deleteVideoModalRef.value?.open()
+}
+
+/**
+ * Delete the generated video once confirmed in the modal.
+ */
+async function handleDeleteVideoConfirmed(): Promise<void> {
   deletingVideo.value = true
   try {
     site.value = await deleteDemoSiteVideo(demoSiteId)
+    toast.success('Vidéo supprimée')
   } catch (error) {
-    alert(error instanceof Error ? error.message : 'Échec de la suppression de la vidéo')
+    toast.error(error instanceof Error ? error.message : 'Échec de la suppression de la vidéo')
   } finally {
     deletingVideo.value = false
   }
 }
 
 /**
- * Open the presenter clip drawer (webcam recording used by every video).
+ * Open the tracked player page with the in-app marker (adds a close button).
+ * @param url - Player page URL of the site's prospection video.
  */
-function openPresenterVideoDrawer(): void {
-  drawerStack.push({ kind: 'presenter-video' })
+async function openVideoPage(url: string): Promise<void> {
+  await openExternalUrl(`${url}${url.includes('?') ? '&' : '?'}from=app`)
 }
 
 onMounted(async () => {

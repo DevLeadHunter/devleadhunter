@@ -9,6 +9,7 @@ export interface PresenterVideoInfo {
   duration_seconds?: number
   intro_seconds?: number
   outro_seconds?: number
+  auto_generate?: boolean
   updated_at?: string | null
 }
 
@@ -28,6 +29,7 @@ export async function getPresenterVideo(): Promise<PresenterVideoInfo> {
  * @param file - Webcam clip (MP4 / WebM / MOV / MKV, 12-90 s).
  * @param introSeconds - Full-screen webcam seconds at the start.
  * @param outroSeconds - Full-screen webcam seconds at the end.
+ * @param autoGenerate - Auto-generate the video for every new demo site.
  * @returns The stored clip metadata (duration detected server-side).
  * @throws {Error} When the upload fails (message from the API when available).
  */
@@ -35,6 +37,7 @@ export async function uploadPresenterVideo(
   file: File,
   introSeconds: number,
   outroSeconds: number,
+  autoGenerate: boolean,
 ): Promise<PresenterVideoInfo> {
   const userStore = useUserStore()
   const config = useRuntimeConfig()
@@ -42,6 +45,7 @@ export async function uploadPresenterVideo(
   formData.append('file', file)
   formData.append('intro_seconds', String(introSeconds))
   formData.append('outro_seconds', String(outroSeconds))
+  formData.append('auto_generate', String(autoGenerate))
 
   const response = await fetch(`${config.public.apiBase}${BASE_URL}`, {
     method: 'PUT',
@@ -66,17 +70,20 @@ export async function uploadPresenterVideo(
 }
 
 /**
- * Adjust the intro/outro full-screen segments of the existing clip.
+ * Adjust the intro/outro segments + auto-generation toggle of the existing clip.
  * @param introSeconds - Full-screen webcam seconds at the start.
  * @param outroSeconds - Full-screen webcam seconds at the end.
+ * @param autoGenerate - Auto-generate the video for every new demo site.
  */
-export async function updatePresenterVideoTimings(
+export async function updatePresenterVideoSettings(
   introSeconds: number,
   outroSeconds: number,
+  autoGenerate: boolean,
 ): Promise<PresenterVideoInfo> {
   return api.patch<PresenterVideoInfo>(BASE_URL, {
     intro_seconds: introSeconds,
     outro_seconds: outroSeconds,
+    auto_generate: autoGenerate,
   })
 }
 

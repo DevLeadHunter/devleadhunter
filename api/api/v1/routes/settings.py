@@ -154,14 +154,16 @@ class PresenterVideoResponse(BaseModel):
     duration_seconds: float = 0.0
     intro_seconds: float = 4.0
     outro_seconds: float = 5.0
+    auto_generate: bool = True
     updated_at: Optional[str] = None
 
 
-class PresenterVideoTimingsUpdate(BaseModel):
-    """Payload to adjust the intro/outro full-screen segments."""
+class PresenterVideoSettingsUpdate(BaseModel):
+    """Payload to adjust the intro/outro segments + auto-generation toggle."""
 
     intro_seconds: float = Field(..., ge=0, le=30)
     outro_seconds: float = Field(..., ge=0, le=30)
+    auto_generate: bool = True
 
 
 def _serialize_presenter(record: PresenterVideo | None) -> dict[str, Any]:
@@ -175,6 +177,7 @@ def _serialize_presenter(record: PresenterVideo | None) -> dict[str, Any]:
         "duration_seconds": record.duration_seconds,
         "intro_seconds": record.intro_seconds,
         "outro_seconds": record.outro_seconds,
+        "auto_generate": record.auto_generate,
         "updated_at": timestamp.isoformat() if timestamp else None,
     }
 
@@ -193,28 +196,31 @@ async def upload_presenter_video(
     file: UploadFile = File(...),
     intro_seconds: float = Form(default=4.0, ge=0, le=30),
     outro_seconds: float = Form(default=5.0, ge=0, le=30),
+    auto_generate: bool = Form(default=True),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> dict[str, Any]:
     """Upload (or replace) the presenter clip used by prospection videos."""
     record = await presenter_video_service.store_upload(
-        db, current_user.id, file, intro_seconds, outro_seconds
+        db, current_user.id, file, intro_seconds, outro_seconds, auto_generate
     )
     logger.info("[Settings] Presenter clip uploaded for user %d (%.1fs)", current_user.id, record.duration_seconds)
     return _serialize_presenter(record)
 
 
 @router.patch("/presenter-video", response_model=PresenterVideoResponse)
-async def update_presenter_video_timings(
-    payload: PresenterVideoTimingsUpdate,
+async def update_presenter_video_settings(
+    payload: PresenterVideoSettingsUpdate,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> dict[str, Any]:
-    """Adjust the intro/outro segments of the existing presenter clip."""
+    """Adjust intro/outro segments + auto-generation of the existing clip."""
     record = presenter_video_service.get_for_user(db, current_user.id)
     if record is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Aucun clip de présentation.")
-    record = presenter_video_service.update_timings(db, record, payload.intro_seconds, payload.outro_seconds)
+    record = presenter_video_service.update_settings(
+        db, record, payload.intro_seconds, payload.outro_seconds, payload.auto_generate
+    )
     return _serialize_presenter(record)
 
 

@@ -26,6 +26,7 @@ from __future__ import annotations
 import asyncio
 import logging
 import shutil
+import subprocess
 import time
 import uuid
 from datetime import datetime, timezone
@@ -158,6 +159,33 @@ class DemoVideoService:
         asyncio.create_task(self._run_generation(site.id, user_id))
         return site
 
+    def maybe_start_auto_generation(self, db: Session, site: DemoSite, user_id: int) -> bool:
+        """
+        Best-effort auto-generation hook, called right after a demo site is
+        created (single, bulk AND full-automation paths all go through
+        ``demo_site_service.create_demo_site``).
+
+        Fires only when the user has a presenter clip with ``auto_generate``
+        enabled; never raises (a video failure must not fail site creation).
+
+        @returns True when a generation was started.
+        """
+        from services.presenter_video_service import presenter_video_service
+
+        try:
+            presenter = presenter_video_service.get_for_user(db, user_id)
+            if presenter is None or not presenter.auto_generate:
+                return False
+            self.request_generation(db, site, user_id)
+            logger.info("Auto video generation started for slug=%s", site.slug)
+            return True
+        except ValueError as exc:
+            logger.info("Auto video generation skipped for slug=%s: %s", site.slug, exc)
+            return False
+        except Exception:  # noqa: BLE001 — jamais bloquer la création du site
+            logger.exception("Auto video generation hook failed for slug=%s", site.slug)
+            return False
+
     def clear_video(self, db: Session, site: DemoSite) -> DemoSite:
         """Delete the generated video files and reset the site's video state."""
         delete_files_for_slug(site.slug)
@@ -264,15 +292,22 @@ class DemoVideoService:
         """
         Record the demo site scrolling smoothly for ``scroll_seconds``.
 
-        A first quick pass scrolls to the bottom and back so entrance
-        animations and lazy images are settled before the recorded pass.
+        ⚠️ Uses Playwright's SYNC API inside a worker thread: the uvicorn
+        reload worker may run a SelectorEventLoop on Windows, where asyncio
+        subprocess support (needed to spawn the browser) raises
+        ``NotImplementedError``. A plain thread has no event loop, so the
+        sync API works everywhere.
 
         @returns (capture webm path, offset of the scroll start inside the
             recording in seconds, top-of-page screenshot path).
         @throws DemoVideoGenerationError when the page cannot be captured.
         """
+        return await asyncio.to_thread(self._capture_site_sync, url, scroll_seconds, work_dir)
+
+    def _capture_site_sync(self, url: str, scroll_seconds: float, work_dir: Path) -> tuple[Path, float, Path]:
+        """Blocking Playwright capture (see ``_capture_site``)."""
         try:
-            from playwright.async_api import async_playwright
+            from playwright.sync_api import sync_playwright
         except ImportError as exc:  # pragma: no cover — dependency guard
             raise DemoVideoGenerationError(
                 "Playwright n'est pas installé (pip install playwright && playwright install chromium)."
@@ -280,25 +315,25 @@ class DemoVideoService:
 
         screenshot_path = work_dir / "top.png"
         try:
-            async with async_playwright() as playwright:
-                browser = await playwright.chromium.launch(headless=True)
-                context = await browser.new_context(
+            with sync_playwright() as playwright:
+                browser = playwright.chromium.launch(headless=True)
+                context = browser.new_context(
                     viewport={"width": _WIDTH, "height": _HEIGHT},
                     record_video_dir=str(work_dir),
                     record_video_size={"width": _WIDTH, "height": _HEIGHT},
                 )
-                page = await context.new_page()
+                page = context.new_page()
                 recording_start = time.monotonic()
 
                 try:
-                    await page.goto(url, wait_until="networkidle", timeout=45000)
+                    page.goto(url, wait_until="networkidle", timeout=45000)
                 except Exception:  # noqa: BLE001 — networkidle peut ne jamais arriver (analytics…)
-                    await page.goto(url, wait_until="load", timeout=45000)
-                await page.wait_for_timeout(1200)
+                    page.goto(url, wait_until="load", timeout=45000)
+                page.wait_for_timeout(1200)
 
                 # Pré-scroll : déclenche les animations d'entrée + lazy-load,
                 # puis retour en haut pour la passe enregistrée.
-                await page.evaluate(
+                page.evaluate(
                     """
                     async () => {
                       const step = window.innerHeight * 0.8;
@@ -313,14 +348,14 @@ class DemoVideoService:
                     }
                     """
                 )
-                await page.wait_for_timeout(800)
-                await page.screenshot(path=str(screenshot_path))
+                page.wait_for_timeout(800)
+                page.screenshot(path=str(screenshot_path))
 
                 # Passe enregistrée : scroll fluide (ease in/out) calé sur la
                 # durée du segment site de la piste audio.
                 scroll_start = time.monotonic()
                 scroll_offset = scroll_start - recording_start
-                await page.evaluate(
+                page.evaluate(
                     """
                     async (durationMs) => {
                       const max = document.documentElement.scrollHeight - window.innerHeight;
@@ -343,14 +378,14 @@ class DemoVideoService:
                     """,
                     int(scroll_seconds * 1000),
                 )
-                await page.wait_for_timeout(400)
+                page.wait_for_timeout(400)
 
                 video = page.video
-                await context.close()
-                await browser.close()
+                context.close()
+                browser.close()
                 if video is None:
                     raise DemoVideoGenerationError("Playwright n'a pas produit d'enregistrement vidéo.")
-                capture_path = Path(await video.path())
+                capture_path = Path(video.path())
         except DemoVideoGenerationError:
             raise
         except Exception as exc:  # noqa: BLE001 — navigation/record errors become a clean message
@@ -574,22 +609,25 @@ class DemoVideoService:
             str(output_path),
         ]
 
+        # ffmpeg via subprocess.run dans un thread — jamais asyncio subprocess
+        # (NotImplementedError sur le SelectorEventLoop du worker uvicorn Windows).
         try:
-            process = await asyncio.create_subprocess_exec(
-                *command,
-                stdout=asyncio.subprocess.DEVNULL,
-                stderr=asyncio.subprocess.PIPE,
+            result = await asyncio.to_thread(
+                subprocess.run,
+                command,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.PIPE,
+                timeout=600,
             )
-            _, stderr = await asyncio.wait_for(process.communicate(), timeout=600)
         except FileNotFoundError as exc:
             raise DemoVideoGenerationError(
                 f"ffmpeg introuvable ({settings.ffmpeg_path}). Installez-le ou configurez FFMPEG_PATH."
             ) from exc
-        except asyncio.TimeoutError as exc:
+        except subprocess.TimeoutExpired as exc:
             raise DemoVideoGenerationError("Montage ffmpeg trop long (timeout 10 min).") from exc
 
-        if process.returncode != 0:
-            detail = stderr.decode("utf-8", errors="replace").strip()[-500:]
+        if result.returncode != 0:
+            detail = result.stderr.decode("utf-8", errors="replace").strip()[-500:]
             raise DemoVideoGenerationError(f"Échec du montage ffmpeg : {detail}")
         if not output_path.is_file() or output_path.stat().st_size == 0:
             raise DemoVideoGenerationError("Le montage ffmpeg n'a produit aucun fichier.")
