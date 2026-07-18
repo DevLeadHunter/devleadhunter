@@ -65,6 +65,14 @@
       @back="drawerStack.back()"
     />
 
+    <!-- Presenter clip (prospection videos) -->
+    <UiPresenterVideoDrawer
+      :open="presenterVideoEntry !== null"
+      :show-back="hasPrevious"
+      @close="drawerStack.closeAll()"
+      @back="drawerStack.back()"
+    />
+
     <!-- Campaign creation -->
     <UiCreateCampaignDrawer
       :open="createCampaignEntry !== null"
@@ -128,6 +136,7 @@ import type {
   EmailLogDrawerEntry,
   EmailTemplateDrawerEntry,
   OrganizationDrawerEntry,
+  PresenterVideoDrawerEntry,
   ProfileDrawerEntry,
   ProspectDrawerEntry,
   SearchProspectsDrawerEntry,
@@ -176,6 +185,13 @@ const profileEntry: ComputedRef<ProfileDrawerEntry | null> = computed((): Profil
 const organizationEntry: ComputedRef<OrganizationDrawerEntry | null> = computed((): OrganizationDrawerEntry | null => {
   return drawerStack.topEntry?.kind === 'organization' ? drawerStack.topEntry : null
 })
+
+/** Top entry narrowed to the presenter clip drawer. */
+const presenterVideoEntry: ComputedRef<PresenterVideoDrawerEntry | null> = computed(
+  (): PresenterVideoDrawerEntry | null => {
+    return drawerStack.topEntry?.kind === 'presenter-video' ? drawerStack.topEntry : null
+  },
+)
 
 /** Top entry narrowed to the campaign creation drawer. */
 const createCampaignEntry: ComputedRef<CreateCampaignDrawerEntry | null> = computed(

@@ -22,6 +22,8 @@ class BehaviorSignals(TypedDict):
     outbound_clicks: int
     max_scroll_depth: int
     total_seconds: int
+    video_plays: int
+    video_completes: int
     emails_sent: int
     emails_opened: int
     emails_clicked: int
@@ -52,6 +54,8 @@ def empty_signals() -> BehaviorSignals:
         "outbound_clicks": 0,
         "max_scroll_depth": 0,
         "total_seconds": 0,
+        "video_plays": 0,
+        "video_completes": 0,
         "emails_sent": 0,
         "emails_opened": 0,
         "emails_clicked": 0,
@@ -71,6 +75,7 @@ def _has_any_activity(signals: BehaviorSignals) -> bool:
             signals["contact_clicks"],
             signals["outbound_clicks"],
             signals["total_seconds"],
+            signals["video_plays"],
             signals["emails_sent"],
             signals["emails_opened"],
             signals["emails_clicked"],
@@ -104,6 +109,10 @@ def score_from_signals(signals: BehaviorSignals, site_improvable: bool = False) 
     score += min(signals["total_seconds"] // 30, 6) * 4
     if signals["max_scroll_depth"] >= 75:
         score += 8
+    # Prospection video: pressing play = real curiosity; watching to the end
+    # (30-45 s of full attention) = a strong warm-up signal.
+    score += min(signals["video_plays"], 2) * 8
+    score += min(signals["video_completes"], 1) * 12
     # Email engagement
     score += min(signals["emails_opened"], 5) * 4
     score += min(signals["emails_clicked"], 5) * 12  # clicked the demo link = strong intent
@@ -185,6 +194,10 @@ def compute(
                 signals["total_seconds"] += int(seconds)
             except (TypeError, ValueError):
                 pass
+        elif name == "demo_video_play":
+            signals["video_plays"] += 1
+        elif name == "demo_video_complete":
+            signals["video_completes"] += 1
 
     signals["sections_viewed"] = len(section_names)
     signals["visits"] = len(sessions) if sessions else (1 if signals["pageviews"] else 0)

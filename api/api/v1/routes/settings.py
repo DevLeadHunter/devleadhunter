@@ -1,25 +1,30 @@
 """
 Settings routes — per-user application settings.
 
-Currently exposes Resend email configuration (GET + PUT).
-The API key and webhook secret are encrypted at rest and never returned
-in plain text to the frontend.
+Exposes the Resend email configuration (GET + PUT) and the presenter
+(webcam) clip used by prospection videos (GET/PUT/PATCH/DELETE + preview).
+The Resend API key and webhook secret are encrypted at rest and never
+returned in plain text to the frontend.
 """
 from __future__ import annotations
 
 import logging
-from typing import Any
+from pathlib import Path
+from typing import Any, Optional
 
-from fastapi import APIRouter, Depends, HTTPException, status
-from pydantic import BaseModel, EmailStr
+from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
+from fastapi.responses import FileResponse
+from pydantic import BaseModel, EmailStr, Field
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from core.database import get_db
+from models.presenter_video import PresenterVideo
 from models.resend_config import ResendConfig
 from models.user import User
 from services.auth_service import get_current_user
 from services.encryption_service import encryption_service
+from services.presenter_video_service import presenter_video_service
 
 router = APIRouter(prefix="/settings", tags=["settings"])
 logger = logging.getLogger(__name__)
@@ -134,3 +139,104 @@ async def upsert_resend_config(
         "from_email":         config.from_email,
         "from_name":          config.from_name,
     }
+
+
+# ---------------------------------------------------------------------------
+# Presenter video (clip webcam générique des vidéos de prospection)
+# ---------------------------------------------------------------------------
+
+
+class PresenterVideoResponse(BaseModel):
+    """Presenter clip state returned to the frontend (no file content)."""
+
+    has_video: bool
+    original_filename: Optional[str] = None
+    duration_seconds: float = 0.0
+    intro_seconds: float = 4.0
+    outro_seconds: float = 5.0
+    updated_at: Optional[str] = None
+
+
+class PresenterVideoTimingsUpdate(BaseModel):
+    """Payload to adjust the intro/outro full-screen segments."""
+
+    intro_seconds: float = Field(..., ge=0, le=30)
+    outro_seconds: float = Field(..., ge=0, le=30)
+
+
+def _serialize_presenter(record: PresenterVideo | None) -> dict[str, Any]:
+    """Build the presenter clip response payload."""
+    if record is None:
+        return {"has_video": False}
+    timestamp = record.updated_at or record.created_at
+    return {
+        "has_video": True,
+        "original_filename": record.original_filename,
+        "duration_seconds": record.duration_seconds,
+        "intro_seconds": record.intro_seconds,
+        "outro_seconds": record.outro_seconds,
+        "updated_at": timestamp.isoformat() if timestamp else None,
+    }
+
+
+@router.get("/presenter-video", response_model=PresenterVideoResponse)
+async def get_presenter_video(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> dict[str, Any]:
+    """Return the current user's presenter clip metadata."""
+    return _serialize_presenter(presenter_video_service.get_for_user(db, current_user.id))
+
+
+@router.put("/presenter-video", response_model=PresenterVideoResponse)
+async def upload_presenter_video(
+    file: UploadFile = File(...),
+    intro_seconds: float = Form(default=4.0, ge=0, le=30),
+    outro_seconds: float = Form(default=5.0, ge=0, le=30),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> dict[str, Any]:
+    """Upload (or replace) the presenter clip used by prospection videos."""
+    record = await presenter_video_service.store_upload(
+        db, current_user.id, file, intro_seconds, outro_seconds
+    )
+    logger.info("[Settings] Presenter clip uploaded for user %d (%.1fs)", current_user.id, record.duration_seconds)
+    return _serialize_presenter(record)
+
+
+@router.patch("/presenter-video", response_model=PresenterVideoResponse)
+async def update_presenter_video_timings(
+    payload: PresenterVideoTimingsUpdate,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> dict[str, Any]:
+    """Adjust the intro/outro segments of the existing presenter clip."""
+    record = presenter_video_service.get_for_user(db, current_user.id)
+    if record is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Aucun clip de présentation.")
+    record = presenter_video_service.update_timings(db, record, payload.intro_seconds, payload.outro_seconds)
+    return _serialize_presenter(record)
+
+
+@router.delete("/presenter-video", response_model=PresenterVideoResponse)
+async def delete_presenter_video(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> dict[str, Any]:
+    """Delete the presenter clip (file + record)."""
+    presenter_video_service.delete_for_user(db, current_user.id)
+    return {"has_video": False}
+
+
+@router.get("/presenter-video/file")
+async def stream_presenter_video_file(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> FileResponse:
+    """Stream the user's own presenter clip (in-app preview player)."""
+    record = presenter_video_service.get_for_user(db, current_user.id)
+    if record is None or not Path(record.file_path).is_file():
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Aucun clip de présentation.")
+    suffix = Path(record.file_path).suffix.lower()
+    media_types = {".mp4": "video/mp4", ".webm": "video/webm", ".mov": "video/quicktime", ".mkv": "video/x-matroska"}
+    return FileResponse(record.file_path, media_type=media_types.get(suffix, "application/octet-stream"))

@@ -52,6 +52,10 @@ class DemoSite(Base):
     # Client production domain once sold (e.g. toto-plombier-rennes.fr).
     custom_domain: Mapped[Optional[str]] = mapped_column(String(255), nullable=True, index=True)
     demo_url_live: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    # Prospection video (webcam + capture du site) — NULL = jamais générée.
+    video_status: Mapped[Optional[str]] = mapped_column(String(32), nullable=True, index=True)
+    video_error: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    video_generated_at: Mapped[Optional[datetime]] = mapped_column(nullable=True)
     local_demo_url: Mapped[Optional[str]] = mapped_column(String(512), nullable=True)
     verification_message: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     error_message: Mapped[Optional[str]] = mapped_column(Text, nullable=True)

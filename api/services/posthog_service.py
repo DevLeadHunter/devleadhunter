@@ -29,6 +29,10 @@ DEMO_EVENTS: tuple[str, ...] = (
     "demo_scroll_depth",
     "demo_time_on_page",
     "demo_engaged",
+    "demo_video_play",
+    "demo_video_progress",
+    "demo_video_complete",
+    "demo_video_cta_click",
 )
 
 

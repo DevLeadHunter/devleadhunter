@@ -7,7 +7,9 @@ Templates follow the /cold-email skill rules:
   - Price only appears in follow-ups, never in J1
   - Unsubscribe footer is added automatically at send time (not in the body)
 
-Variables available: {salutation}, {prenom}, {nom}, {entreprise}, {ville}, {metier}, {lien_demo}
+Variables available: {salutation}, {prenom}, {nom}, {entreprise}, {ville}, {metier}, {lien_demo},
+{lien_video} (player page of the prospection video), {vignette_video} (clickable
+personalised thumbnail block — the recommended way to put the video in a J1).
 ({salutation} always renders a safe greeting — « Bonjour » / « Bonjour Léo » /
 « Bonjour M. Guillaume » — from the resolved decision-maker; {prenom}/{nom}
 are EMPTY when unknown, never a company word.)
@@ -58,6 +60,35 @@ _TEMPLATES: list[dict[str, object]] = [
             "doute, même quand le travail est excellent.</p>"
             "<p>J'ai créé un site pour {entreprise} qui lève ce doute en quelques secondes : {lien_demo}</p>"
             "<p>Je vous montre ?</p>"
+            "<p>Léo</p>"
+        ),
+    },
+    # ── ★ Vidéo — Premier email avec la vidéo de prospection (A/B prêts) ──
+    # Nécessite une vidéo générée pour chaque prospect ({vignette_video}) :
+    # la file ignore automatiquement les prospects sans vidéo prête.
+    {
+        "name": "★ Vidéo 1 — Premier email (je vous montre)",
+        "sort_order": 98,
+        "subject": "votre site en vidéo",
+        "body_html": (
+            "<p>{salutation},</p>"
+            "<p>J'ai créé un site pour {entreprise}. Plutôt que de l'expliquer, "
+            "je vous le montre en 30 secondes :</p>"
+            "{vignette_video}"
+            "<p>Ça vous parle ?</p>"
+            "<p>Léo</p>"
+        ),
+    },
+    {
+        "name": "★ Vidéo 2 — Premier email (pas un robot)",
+        "sort_order": 97,
+        "subject": "30 secondes pour vous",
+        "body_html": (
+            "<p>{salutation},</p>"
+            "<p>Pas de démarchage anonyme : je me présente en 30 secondes, avec le site "
+            "que j'ai créé pour {entreprise} à l'écran.</p>"
+            "{vignette_video}"
+            "<p>Je vous montre la suite ?</p>"
             "<p>Léo</p>"
         ),
     },

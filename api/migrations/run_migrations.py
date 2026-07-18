@@ -54,6 +54,7 @@ MIGRATION_MODULES: list[tuple[str, str]] = [
     ("add_email_template_sort_order", "migrations.add_email_template_sort_order"),
     ("add_enrichment_contact_fields", "migrations.add_enrichment_contact_fields"),
     ("update_templates_salutation", "migrations.update_templates_salutation"),
+    ("add_demo_video", "migrations.add_demo_video"),
 ]
 
 

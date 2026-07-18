@@ -26,3 +26,7 @@ google-api-python-client==2.169.0
 slowapi==0.1.9
 cryptography==44.0.3
 dnspython==2.8.0
+# Vidéo de prospection : capture du site (playwright) + vignette/overlays (pillow).
+# Après install : `playwright install chromium`. ffmpeg doit être présent (FFMPEG_PATH).
+playwright>=1.43.0
+pillow>=10.0.0

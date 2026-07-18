@@ -107,6 +107,13 @@ class DemoSiteResponse(BaseModel):
     created_at: datetime
     error_message: Optional[str] = None
     theme: Optional[DemoSiteTheme] = None
+    # Prospection video (webcam + capture du site du prospect).
+    video_status: Optional[str] = None
+    video_error: Optional[str] = None
+    video_generated_at: Optional[datetime] = None
+    # Injected by the route when the video is ready (not model columns).
+    video_page_url: Optional[str] = None
+    video_thumbnail_url: Optional[str] = None
 
     model_config = {"from_attributes": True}
 
@@ -124,6 +131,8 @@ class DemoSitePublicResponse(BaseModel):
     content_json: Optional[dict] = None
     status: str
     expires_at: datetime
+    # True when a prospection video is generated for this demo (player at /v/{slug}).
+    video_available: bool = False
 
     model_config = {"from_attributes": True}
 

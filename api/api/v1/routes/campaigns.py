@@ -449,10 +449,13 @@ async def launch_campaign(
     message = f"{result.enqueued} email(s) mis en file{ab_info} — 1 toutes les {campaign.send_delay_minutes} min"
     if result.skipped_no_demo:
         message += f" · {len(result.skipped_no_demo)} prospect(s) ignoré(s) faute de site de démo"
+    if result.skipped_no_video:
+        message += f" · {len(result.skipped_no_video)} prospect(s) ignoré(s) faute de vidéo de prospection"
     return {
         "success": True,
         "enqueued": result.enqueued,
         "skipped_no_demo": result.skipped_no_demo,
+        "skipped_no_video": result.skipped_no_video,
         "message": message,
     }
 
@@ -516,6 +519,7 @@ async def resume_campaign(
         "success": True,
         "enqueued": result.enqueued,
         "skipped_no_demo": result.skipped_no_demo,
+        "skipped_no_video": result.skipped_no_video,
     }
 
 
