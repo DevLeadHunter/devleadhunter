@@ -19,12 +19,18 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from core.database import get_db
+from enums.sending_provider import SendingProvider
 from models.presenter_video import PresenterVideo
 from models.resend_config import ResendConfig
 from models.user import User
 from services.auth_service import get_current_user
 from services.encryption_service import encryption_service
 from services.presenter_video_service import presenter_video_service
+from services.sending_identity import (
+    SendingNotConfiguredError,
+    describe_sending_config,
+    set_active_provider,
+)
 
 router = APIRouter(prefix="/settings", tags=["settings"])
 logger = logging.getLogger(__name__)
@@ -139,6 +145,58 @@ async def upsert_resend_config(
         "from_email":         config.from_email,
         "from_name":          config.from_name,
     }
+
+
+# ---------------------------------------------------------------------------
+# Sending identity (active email transport: Resend or Gmail)
+# ---------------------------------------------------------------------------
+
+
+class SendingIdentityResponse(BaseModel):
+    """The user's active sending provider + per-provider readiness (no secrets)."""
+
+    provider: str
+    resend_configured: bool
+    resend_from_email: str | None
+    gmail_configured: bool
+    gmail_email: str | None
+
+
+class SendingProviderUpdate(BaseModel):
+    """Payload to switch the user's active sending provider."""
+
+    provider: SendingProvider
+
+
+@router.get("/sending-identity", response_model=SendingIdentityResponse)
+async def get_sending_identity(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> dict[str, Any]:
+    """Return the user's active sending provider and each provider's readiness."""
+    return describe_sending_config(db, current_user.id)
+
+
+@router.put("/sending-identity", response_model=SendingIdentityResponse)
+async def update_sending_identity(
+    payload: SendingProviderUpdate,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> dict[str, Any]:
+    """
+    Switch the user's active sending provider (Resend or Gmail).
+
+    Rejects a switch onto a provider that is not configured yet (422) so the
+    account can never point at an unusable transport.
+    """
+    try:
+        set_active_provider(db, current_user.id, payload.provider.value)
+    except SendingNotConfiguredError as exc:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc))
+    logger.info(
+        "[Settings] Sending provider set to %s for user %d", payload.provider.value, current_user.id
+    )
+    return describe_sending_config(db, current_user.id)
 
 
 # ---------------------------------------------------------------------------

@@ -239,7 +239,7 @@ class OrderService:
     async def send_payment_email(
         self, db: Session, user: User, order: Order
     ) -> dict[str, Any]:
-        """Send the payment-link email to the client via the user's Resend identity."""
+        """Send the payment-link email to the client via the user's active sending identity."""
         if not order.customer_email:
             raise ValueError("Aucune adresse email client sur la commande.")
         if not order.stripe_payment_url:
@@ -249,7 +249,7 @@ class OrderService:
 
         rendered = self.build_payment_email(order, sender_name=user.name)
         sending = EmailSendingService(db)
-        result = await sending.send_via_resend_config(
+        result = await sending.send_via_user_identity(
             user_id=user.id,
             recipient_email=order.customer_email,
             recipient_name=order.customer_name or order.business_name,

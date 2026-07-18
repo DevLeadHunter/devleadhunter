@@ -190,21 +190,21 @@ async def quick_send_email(
     db: Session = Depends(get_db),
 ) -> dict[str, Any]:
     """
-    Send a one-off email using the current user's Resend configuration.
+    Send a one-off email using the current user's active sending identity.
 
-    Resolves the sender address and API key automatically from the
-    ``resend_config`` row — no ``email_account_id`` required.
+    Resolves the sender + provider automatically from ``users.sending_provider``
+    (Resend or Gmail) — no ``email_account_id`` required.
     """
     from services.unsubscribe_service import unsubscribe_service
+    from services.sending_identity import resolve_sending_identity, SendingNotConfiguredError
 
     # Fail fast with friendly codes (the shared send path would surface a 500 here).
-    config: ResendConfig | None = db.execute(
-        select(ResendConfig).where(ResendConfig.user_id == current_user.id)
-    ).scalar_one_or_none()
-    if config is None or not config.api_key:
+    try:
+        resolve_sending_identity(db, current_user.id)
+    except SendingNotConfiguredError as exc:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail="Resend non configuré — Paramètres → Configuration Resend",
+            detail=str(exc),
         )
     if unsubscribe_service.is_unsubscribed(db, payload.recipient_email):
         raise HTTPException(
@@ -217,7 +217,7 @@ async def quick_send_email(
     # directly here — a direct send would bypass the dev-email redirect and could reach
     # a real prospect in development.
     sending = EmailSendingService(db)
-    return await sending.send_via_resend_config(
+    return await sending.send_via_user_identity(
         user_id=current_user.id,
         recipient_email=payload.recipient_email,
         subject=payload.subject,

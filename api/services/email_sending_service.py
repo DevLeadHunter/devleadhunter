@@ -16,7 +16,9 @@ from services.posthog_service import posthog_service
 from services.resend_service import ResendService
 from services.unsubscribe_service import unsubscribe_service
 from services.encryption_service import encryption_service
+from services.sending_identity import SendingIdentity, resolve_sending_identity
 from enums.email_account_type import EmailAccountType
+from enums.sending_provider import SendingProvider
 from enums.email_status import EmailStatus
 from core.config import settings
 import json
@@ -307,7 +309,8 @@ class EmailSendingService:
         subject: str,
         body_html: str,
         recipient_name: Optional[str] = None,
-        body_text: Optional[str] = None
+        body_text: Optional[str] = None,
+        unsubscribe_link: Optional[str] = None,
     ) -> Dict:
         """Send email via Gmail OAuth."""
         # Decrypt access token
@@ -337,10 +340,11 @@ class EmailSendingService:
             to_name=recipient_name,
             subject=subject,
             html_body=body_html,
-            text_body=body_text
+            text_body=body_text,
+            extra_headers=self._unsubscribe_headers(unsubscribe_link) if unsubscribe_link else None,
         )
     
-    async def send_via_resend_config(
+    async def send_via_user_identity(
         self,
         user_id: int,
         recipient_email: str,
@@ -352,14 +356,18 @@ class EmailSendingService:
         ab_variant: Optional[str] = None,
     ) -> Dict:
         """
-        Send an email using the user's ResendConfig — no EmailAccount needed.
+        Send an email via the user's active sending identity (Resend or Gmail).
 
-        This is the unified send path for campaigns and one-off sends: one user
-        has exactly one Resend sending identity (from_email / API key), stored
-        in the ``resend_config`` table.  No account selection is required.
+        This is the unified send path for campaigns, follow-ups, orders and
+        one-off sends. The provider is resolved once, from ``users.sending_provider``
+        (see :func:`services.sending_identity.resolve_sending_identity`), and all
+        the cross-cutting concerns — dev redirect, RGPD unsubscribe check + footer,
+        one-click unsubscribe headers, ``EmailLog`` bookkeeping and the PostHog
+        ``email_sent`` capture — are applied here regardless of provider. No
+        ``EmailAccount`` selection is required from the caller.
 
         Args:
-            user_id:         Owner of the ResendConfig.
+            user_id:         Owner of the sending identity.
             recipient_email: Recipient address.
             subject:         Email subject (already variable-substituted).
             body_html:       Email HTML body (already variable-substituted).
@@ -370,19 +378,12 @@ class EmailSendingService:
 
         Returns:
             Dict with ``success``, ``email_log_id`` and ``message_id`` / ``error``.
+
+        Raises:
+            SendingNotConfiguredError: When the active provider is not configured.
         """
-        from models.resend_config import ResendConfig
-
-        config = self.db.execute(
-            select(ResendConfig).where(ResendConfig.user_id == user_id)
-        ).scalar_one_or_none()
-
-        if config is None or not config.api_key:
-            raise Exception("Resend non configuré — Paramètres → Configuration Resend")
-
-        api_key = encryption_service.decrypt(config.api_key)
-        from_email = config.from_email
-        from_name = config.from_name or ""
+        # Resolve the provider once (raises SendingNotConfiguredError if unusable).
+        identity: SendingIdentity = resolve_sending_identity(self.db, user_id)
 
         # Dev safety: reroute every outbound email to a single test inbox (no-op in prod).
         recipient_email, subject = self._apply_dev_redirect(recipient_email, subject)
@@ -401,7 +402,9 @@ class EmailSendingService:
 
         email_log = EmailLog(
             user_id=user_id,
-            email_account_id=None,
+            # Gmail sends are tied to their EmailAccount (per-account health stats);
+            # Resend sends have no account row.
+            email_account_id=identity.gmail_account.id if identity.gmail_account else None,
             prospect_id=prospect_id,
             campaign_id=campaign_id,
             recipient_email=recipient_email,
@@ -409,7 +412,7 @@ class EmailSendingService:
             subject=subject,
             body_html=body_html,
             status=EmailStatus.PENDING.value,
-            provider="resend",
+            provider=identity.provider,
             ab_variant=ab_variant,
         )
         self.db.add(email_log)
@@ -417,20 +420,31 @@ class EmailSendingService:
         self.db.refresh(email_log)
 
         try:
-            result = await self.resend_service.send_email(
-                from_email=from_email,
-                from_name=from_name,
-                to_email=recipient_email,
-                to_name=recipient_name,
-                subject=subject,
-                html_body=body_html,
-                custom_id=str(email_log.id),
-                api_key_override=api_key,
-                # RFC 8058 one-click unsubscribe — required by Gmail/Yahoo for bulk
-                # senders; the POST route exists on /api/v1/unsubscribe.
-                extra_headers=self._unsubscribe_headers(unsubscribe_link),
-            )
+            if identity.provider == SendingProvider.GMAIL.value:
+                result = await self._send_via_gmail(
+                    email_account=identity.gmail_account,
+                    recipient_email=recipient_email,
+                    recipient_name=recipient_name,
+                    subject=subject,
+                    body_html=body_html,
+                    unsubscribe_link=unsubscribe_link,
+                )
+            else:
+                result = await self.resend_service.send_email(
+                    from_email=identity.from_email,
+                    from_name=identity.from_name,
+                    to_email=recipient_email,
+                    to_name=recipient_name,
+                    subject=subject,
+                    html_body=body_html,
+                    custom_id=str(email_log.id),
+                    api_key_override=identity.resend_api_key,
+                    # RFC 8058 one-click unsubscribe — required by Gmail/Yahoo for bulk
+                    # senders; the POST route exists on /api/v1/unsubscribe.
+                    extra_headers=self._unsubscribe_headers(unsubscribe_link),
+                )
             email_log.status = EmailStatus.SENT.value
+            email_log.provider = result.get("provider", identity.provider)
             email_log.provider_message_id = result.get("message_id")
             email_log.sent_at = datetime.utcnow()
             self.db.commit()
@@ -453,7 +467,7 @@ class EmailSendingService:
             email_log.error_message = str(e)
             email_log.failed_at = datetime.utcnow()
             self.db.commit()
-            logger.error(f"Failed to send via resend_config: {e}")
+            logger.error(f"Failed to send via user identity ({identity.provider}): {e}")
             return {"success": False, "email_log_id": email_log.id, "error": str(e)}
 
     def replace_variables(self, text: str, variables: dict) -> str:

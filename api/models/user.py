@@ -9,6 +9,7 @@ from sqlalchemy.sql import func
 
 from core.database import Base
 from enums.user_role import UserRole
+from enums.sending_provider import SendingProvider
 
 if TYPE_CHECKING:
     from models.credit_transaction import CreditTransaction
@@ -32,6 +33,7 @@ class User(Base):
         hashed_password: Hashed password
         role: User role (USER or ADMIN)
         is_active: Whether the user is active
+        sending_provider: Active email-sending transport (resend | gmail)
         created_at: Timestamp when user was created
         updated_at: Timestamp when user was last updated
         credit_transactions: Relationship to credit transactions
@@ -44,6 +46,10 @@ class User(Base):
     hashed_password: Mapped[str] = mapped_column(String(255), nullable=False)
     role: Mapped[str] = mapped_column(String(50), default=UserRole.USER.value, nullable=False)
     is_active: Mapped[bool] = mapped_column(default=True, nullable=False)
+    # Active email-sending transport (resend | gmail). One identity per user.
+    sending_provider: Mapped[str] = mapped_column(
+        String(20), default=SendingProvider.RESEND.value, nullable=False
+    )
     created_at: Mapped[datetime] = mapped_column(server_default=func.now(), nullable=False)
     updated_at: Mapped[Optional[datetime]] = mapped_column(onupdate=func.now(), nullable=True)
     
