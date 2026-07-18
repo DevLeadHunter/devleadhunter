@@ -162,11 +162,12 @@ class GmailOAuthService:
         to_name: Optional[str],
         subject: str,
         html_body: str,
-        text_body: Optional[str] = None
+        text_body: Optional[str] = None,
+        extra_headers: Optional[Dict[str, str]] = None,
     ) -> Dict:
         """
         Send an email via Gmail API.
-        
+
         Args:
             access_token: Valid OAuth access token
             from_email: Sender email (must match the authenticated Gmail account)
@@ -175,10 +176,12 @@ class GmailOAuthService:
             subject: Email subject
             html_body: HTML body
             text_body: Plain text body (optional)
-        
+            extra_headers: Additional MIME headers (e.g. RFC 8058
+                ``List-Unsubscribe`` / ``List-Unsubscribe-Post``).
+
         Returns:
             Dict with message_id and status
-        
+
         Raises:
             Exception: If email sending fails
         """
@@ -190,7 +193,7 @@ class GmailOAuthService:
                 message['From'] = from_email
                 message['To'] = f"{to_name} <{to_email}>" if to_name else to_email
                 message['Subject'] = subject
-                
+
                 # Attach both parts
                 part1 = MIMEText(text_body, 'plain')
                 part2 = MIMEText(html_body, 'html')
@@ -202,7 +205,11 @@ class GmailOAuthService:
                 message['From'] = from_email
                 message['To'] = f"{to_name} <{to_email}>" if to_name else to_email
                 message['Subject'] = subject
-            
+
+            # Custom headers (e.g. one-click unsubscribe) — parity with Resend.
+            for header_name, header_value in (extra_headers or {}).items():
+                message[header_name] = header_value
+
             # Encode message
             raw_message = base64.urlsafe_b64encode(message.as_bytes()).decode()
             

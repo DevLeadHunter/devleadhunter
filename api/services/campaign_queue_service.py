@@ -481,7 +481,7 @@ class CampaignQueueService:
             except Exception as exc:  # noqa: BLE001 — never block a send on personalisation
                 logger.warning("[Queue] Behaviour personalisation failed for prospect %d: %s", prospect.id, exc)
 
-        result: dict = await email_service.send_via_resend_config(
+        result: dict = await email_service.send_via_user_identity(
             user_id=item.user_id,
             recipient_email=prospect.email,
             recipient_name=prospect.name,
@@ -573,7 +573,8 @@ class CampaignQueueService:
     ) -> dict:
         """
         Immediately dispatch a follow-up email for a specific prospect,
-        bypassing the scheduled queue.  Sends via the user's ResendConfig.
+        bypassing the scheduled queue.  Sends via the user's active identity
+        (Resend or Gmail).
 
         Args:
             campaign:    The parent campaign.
@@ -581,7 +582,7 @@ class CampaignQueueService:
             template_id: Template to use.
 
         Returns:
-            Result dict from ``EmailSendingService.send_via_resend_config``.
+            Result dict from ``EmailSendingService.send_via_user_identity``.
         """
         prospect: ProspectDB | None = self.db.get(ProspectDB, prospect_id)
         template: EmailTemplate | None = self.db.get(EmailTemplate, template_id)
@@ -606,7 +607,7 @@ class CampaignQueueService:
         subject = email_service.replace_variables(template.subject, variables)
         body_html = email_service.replace_variables(template.body_html, variables)
 
-        return await email_service.send_via_resend_config(
+        return await email_service.send_via_user_identity(
             user_id=campaign.user_id,
             recipient_email=prospect.email,
             recipient_name=prospect.name,
