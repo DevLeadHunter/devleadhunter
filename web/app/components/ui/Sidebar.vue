@@ -135,6 +135,15 @@
           <UIcon name="i-lucide-mail-open" class="h-4 w-4 shrink-0" />
           <span>Configuration Resend</span>
         </NuxtLink>
+        <NuxtLink
+          to="/dashboard/settings/video"
+          :class="navItemClass(isActive('/dashboard/settings/video'))"
+          @click="handleClick"
+        >
+          <span :class="navBarClass(isActive('/dashboard/settings/video'))"></span>
+          <UIcon name="i-lucide-video" class="h-4 w-4 shrink-0" />
+          <span>Vidéo de prospection</span>
+        </NuxtLink>
         <button type="button" class="w-full" :class="navItemClass(false)" @click="handleSendPolicyFromMenu">
           <span :class="navBarClass(false)"></span>
           <UIcon name="i-lucide-sliders-horizontal" class="h-4 w-4 shrink-0" />

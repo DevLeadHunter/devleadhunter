@@ -406,6 +406,15 @@ class DemoSiteService:
 
         db.commit()
         db.refresh(demo_site)
+
+        # Vidéo de prospection : génération auto en tâche de fond dès que le
+        # site est actif, si l'utilisateur a configuré son clip webcam avec
+        # l'option activée (couvre le tunnel unitaire, le bulk ET l'automation).
+        if demo_site.status == DemoSiteStatus.ACTIVE.value:
+            from services.demo_video_service import demo_video_service
+
+            demo_video_service.maybe_start_auto_generation(db, demo_site, user.id)
+
         return demo_site
 
     def list_for_user(self, db: Session, user_id: int) -> list[DemoSite]:

@@ -9,6 +9,7 @@ from __future__ import annotations
 import asyncio
 import logging
 import re
+import subprocess
 from pathlib import Path
 from typing import Optional
 
@@ -37,6 +38,26 @@ MIN_PRESENTER_SECONDS = 12.0
 MAX_PRESENTER_SECONDS = 90.0
 
 
+def _probe_media_duration_sync(file_path: str) -> float:
+    """Blocking ffmpeg probe — run it via ``asyncio.to_thread`` only."""
+    try:
+        result = subprocess.run(
+            [settings.ffmpeg_path, "-hide_banner", "-i", file_path],
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.PIPE,
+            timeout=30,
+        )
+    except (FileNotFoundError, subprocess.TimeoutExpired) as exc:
+        logger.warning("ffmpeg probe failed for %s: %s", file_path, exc)
+        return 0.0
+
+    match = _DURATION_RE.search(result.stderr.decode("utf-8", errors="replace"))
+    if not match:
+        return 0.0
+    hours, minutes, seconds, fraction = match.groups()
+    return int(hours) * 3600 + int(minutes) * 60 + int(seconds) + float(f"0.{fraction}")
+
+
 async def probe_media_duration(file_path: str) -> float:
     """
     Return a media file's duration in seconds using ffmpeg.
@@ -44,28 +65,15 @@ async def probe_media_duration(file_path: str) -> float:
     Parses the ``Duration: HH:MM:SS.cc`` line from ``ffmpeg -i`` stderr so it
     works with the bundled ffmpeg builds that ship without ffprobe.
 
+    ⚠️ Runs ffmpeg in a worker thread (``subprocess.run``), never through
+    ``asyncio.create_subprocess_exec``: the uvicorn reload worker may run a
+    SelectorEventLoop on Windows, where asyncio subprocess support raises
+    ``NotImplementedError``.
+
     @param file_path - Absolute or repo-relative media path.
     @returns Duration in seconds (0.0 when it cannot be determined).
     """
-    try:
-        process = await asyncio.create_subprocess_exec(
-            settings.ffmpeg_path,
-            "-hide_banner",
-            "-i",
-            file_path,
-            stdout=asyncio.subprocess.DEVNULL,
-            stderr=asyncio.subprocess.PIPE,
-        )
-        _, stderr = await asyncio.wait_for(process.communicate(), timeout=30)
-    except (FileNotFoundError, asyncio.TimeoutError) as exc:
-        logger.warning("ffmpeg probe failed for %s: %s", file_path, exc)
-        return 0.0
-
-    match = _DURATION_RE.search(stderr.decode("utf-8", errors="replace"))
-    if not match:
-        return 0.0
-    hours, minutes, seconds, fraction = match.groups()
-    return int(hours) * 3600 + int(minutes) * 60 + int(seconds) + float(f"0.{fraction}")
+    return await asyncio.to_thread(_probe_media_duration_sync, file_path)
 
 
 class PresenterVideoService:
@@ -84,6 +92,7 @@ class PresenterVideoService:
         file: UploadFile,
         intro_seconds: float,
         outro_seconds: float,
+        auto_generate: bool = True,
     ) -> PresenterVideo:
         """
         Persist the uploaded presenter clip (replaces any previous one).
@@ -93,6 +102,7 @@ class PresenterVideoService:
         @param file - Uploaded video file (mp4 / webm / mov / mkv).
         @param intro_seconds - Full-screen webcam seconds at the start.
         @param outro_seconds - Full-screen webcam seconds at the end.
+        @param auto_generate - Auto-generate the video for every new demo site.
         @returns The up-to-date ``PresenterVideo`` row.
         @throws HTTPException 400/413 on invalid format, size or duration.
         """
@@ -159,16 +169,23 @@ class PresenterVideoService:
         record.duration_seconds = duration
         record.intro_seconds = self._clamp_segment(intro_seconds, duration)
         record.outro_seconds = self._clamp_segment(outro_seconds, duration)
+        record.auto_generate = auto_generate
         db.commit()
         db.refresh(record)
         return record
 
-    def update_timings(
-        self, db: Session, record: PresenterVideo, intro_seconds: float, outro_seconds: float
+    def update_settings(
+        self,
+        db: Session,
+        record: PresenterVideo,
+        intro_seconds: float,
+        outro_seconds: float,
+        auto_generate: bool,
     ) -> PresenterVideo:
-        """Update the intro/outro full-screen segments of an existing clip."""
+        """Update the intro/outro segments + auto-generation toggle of an existing clip."""
         record.intro_seconds = self._clamp_segment(intro_seconds, record.duration_seconds)
         record.outro_seconds = self._clamp_segment(outro_seconds, record.duration_seconds)
+        record.auto_generate = auto_generate
         db.commit()
         db.refresh(record)
         return record

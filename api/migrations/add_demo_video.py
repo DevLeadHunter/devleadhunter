@@ -58,6 +58,7 @@ def run_migration() -> None:
                   duration_seconds FLOAT NOT NULL DEFAULT 0,
                   intro_seconds FLOAT NOT NULL DEFAULT 4,
                   outro_seconds FLOAT NOT NULL DEFAULT 5,
+                  auto_generate TINYINT(1) NOT NULL DEFAULT 1,
                   created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
                   updated_at DATETIME NULL,
                   PRIMARY KEY (id),

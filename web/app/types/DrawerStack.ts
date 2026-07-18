@@ -66,11 +66,6 @@ export interface OrganizationDrawerEntry {
   kind: 'organization'
 }
 
-/** Presenter (webcam) clip management drawer entry — prospection videos. */
-export interface PresenterVideoDrawerEntry {
-  kind: 'presenter-video'
-}
-
 /** Campaign creation drawer entry. */
 export interface CreateCampaignDrawerEntry {
   kind: 'create-campaign'
@@ -124,7 +119,6 @@ export type DrawerStackEntry =
   | EmailTemplateDrawerEntry
   | ProfileDrawerEntry
   | OrganizationDrawerEntry
-  | PresenterVideoDrawerEntry
   | CreateCampaignDrawerEntry
   | AddProspectDrawerEntry
   | SearchProspectsDrawerEntry
