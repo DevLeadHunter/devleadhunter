@@ -107,23 +107,78 @@ function handleClose(): void {
 }
 
 /**
- * Attach play/progress/complete tracking to the player element.
+ * Attach exhaustive engagement tracking to the player element: play / resume /
+ * pause / replay / progress / complete / real watch-time / seek / fullscreen /
+ * mute. Kept property-rich so the API can score attention precisely.
  * @param player - The mounted video element.
  */
 function setupPlayerTracking(player: HTMLVideoElement): void {
   let playFired = false
   let completeFired = false
+  let replays = 0
+  let wasEnded = false
+  let lastMuted = player.muted
+  let seekFromPercent = 0
   const reachedThresholds = new Set<number>()
 
+  // Real watched time: accumulate wall-clock deltas between timeupdates while
+  // playing, ignoring big gaps (pause/seek) so the number reflects attention.
+  let watchedSeconds = 0
+  let lastTickMs = 0
+  let flushedSeconds = 0
+
+  /** Current playback position as an integer percent (0 when duration unknown). */
+  const percentNow = (): number => {
+    if (!player.duration || Number.isNaN(player.duration)) return 0
+    return Math.round((player.currentTime / player.duration) * 100)
+  }
+
+  /** Emit the real watched-seconds so far, only when it grew since last flush. */
+  const flushWatchTime = (): void => {
+    const seconds = Math.round(watchedSeconds)
+    if (seconds <= flushedSeconds) return
+    flushedSeconds = seconds
+    capture('demo_video_watch_time', { seconds, percent: percentNow() })
+  }
+
+  // ── Play: distinguish first play / replay (restart) / resume (from pause) ──
   player.addEventListener('play', (): void => {
-    if (playFired) return
-    playFired = true
-    capture('demo_video_play')
+    if (!playFired) {
+      playFired = true
+      capture('demo_video_play')
+    } else if (wasEnded || player.currentTime < 1) {
+      replays += 1
+      capture('demo_video_replay', { count: replays })
+    } else {
+      capture('demo_video_resume', { percent: percentNow() })
+    }
+    wasEnded = false
+    lastTickMs = 0
   })
 
+  // ── Pause (ignore the pause fired at the natural end of the clip) ──────────
+  player.addEventListener('pause', (): void => {
+    if (player.ended) return
+    capture('demo_video_pause', { percent: percentNow() })
+    flushWatchTime()
+  })
+
+  player.addEventListener('ended', (): void => {
+    wasEnded = true
+    flushWatchTime()
+  })
+
+  // ── Progress thresholds + complete + real watched-time accumulation ───────
   player.addEventListener('timeupdate', (): void => {
-    if (!player.duration || Number.isNaN(player.duration)) return
-    const percent = (player.currentTime / player.duration) * 100
+    const now = Date.now()
+    if (lastTickMs) {
+      const delta = (now - lastTickMs) / 1000
+      // A normal tick is ~0.25 s; a larger gap means paused/seeked → don't count.
+      if (delta > 0 && delta < 1.5) watchedSeconds += delta
+    }
+    lastTickMs = now
+
+    const percent = percentNow()
     for (const threshold of [25, 50, 75]) {
       if (percent >= threshold && !reachedThresholds.has(threshold)) {
         reachedThresholds.add(threshold)
@@ -133,8 +188,47 @@ function setupPlayerTracking(player: HTMLVideoElement): void {
     if (percent >= 95 && !completeFired) {
       completeFired = true
       capture('demo_video_complete')
+      flushWatchTime()
     }
   })
+
+  // ── Seek: he jumped forward or backward in the clip ───────────────────────
+  player.addEventListener('seeking', (): void => {
+    seekFromPercent = percentNow()
+  })
+  player.addEventListener('seeked', (): void => {
+    const to = percentNow()
+    lastTickMs = 0 // the seek gap must not inflate watched time
+    if (Math.abs(to - seekFromPercent) < 1) return
+    capture('demo_video_seek', {
+      from_percent: seekFromPercent,
+      to_percent: to,
+      direction: to > seekFromPercent ? 'forward' : 'backward',
+    })
+  })
+
+  // ── Fullscreen (standard + iOS Safari native video fullscreen) ────────────
+  const onFullscreenChange = (): void => {
+    capture('demo_video_fullscreen', { entered: document.fullscreenElement != null })
+  }
+  document.addEventListener('fullscreenchange', onFullscreenChange)
+  document.addEventListener('webkitfullscreenchange', onFullscreenChange)
+  player.addEventListener('webkitbeginfullscreen', (): void => capture('demo_video_fullscreen', { entered: true }))
+  player.addEventListener('webkitendfullscreen', (): void => capture('demo_video_fullscreen', { entered: false }))
+
+  // ── Mute / unmute ─────────────────────────────────────────────────────────
+  player.addEventListener('volumechange', (): void => {
+    if (player.muted === lastMuted) return
+    lastMuted = player.muted
+    capture('demo_video_mute', { muted: player.muted })
+  })
+
+  // ── Flush the watched-time when the prospect leaves or hides the tab ───────
+  const flushOnHidden = (): void => {
+    if (document.visibilityState === 'hidden') flushWatchTime()
+  }
+  document.addEventListener('visibilitychange', flushOnHidden)
+  window.addEventListener('pagehide', flushWatchTime)
 }
 
 useSeoMeta({

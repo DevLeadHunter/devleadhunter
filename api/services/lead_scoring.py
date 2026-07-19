@@ -24,6 +24,10 @@ class BehaviorSignals(TypedDict):
     total_seconds: int
     video_plays: int
     video_completes: int
+    video_replays: int
+    video_fullscreen: int
+    video_watch_seconds: int
+    video_max_progress: int
     emails_sent: int
     emails_opened: int
     emails_clicked: int
@@ -56,6 +60,10 @@ def empty_signals() -> BehaviorSignals:
         "total_seconds": 0,
         "video_plays": 0,
         "video_completes": 0,
+        "video_replays": 0,
+        "video_fullscreen": 0,
+        "video_watch_seconds": 0,
+        "video_max_progress": 0,
         "emails_sent": 0,
         "emails_opened": 0,
         "emails_clicked": 0,
@@ -76,6 +84,8 @@ def _has_any_activity(signals: BehaviorSignals) -> bool:
             signals["outbound_clicks"],
             signals["total_seconds"],
             signals["video_plays"],
+            signals["video_watch_seconds"],
+            signals["video_replays"],
             signals["emails_sent"],
             signals["emails_opened"],
             signals["emails_clicked"],
@@ -110,9 +120,16 @@ def score_from_signals(signals: BehaviorSignals, site_improvable: bool = False) 
     if signals["max_scroll_depth"] >= 75:
         score += 8
     # Prospection video: pressing play = real curiosity; watching to the end
-    # (30-45 s of full attention) = a strong warm-up signal.
+    # (30-45 s of full attention) = a strong warm-up signal. Rewatching, going
+    # fullscreen and actual watched seconds are extra attention signals — capped
+    # so the video can't dominate the score, and additive with play/complete.
     score += min(signals["video_plays"], 2) * 8
     score += min(signals["video_completes"], 1) * 12
+    score += min(signals["video_replays"], 2) * 8  # re-watched = strong interest
+    score += min(signals["video_fullscreen"], 1) * 6  # went fullscreen = deliberate attention
+    score += min(signals["video_watch_seconds"] // 10, 3) * 2  # real seconds actually watched
+    if signals["video_max_progress"] >= 75:
+        score += 4  # watched most of the clip even without hitting 95 %
     # Email engagement
     score += min(signals["emails_opened"], 5) * 4
     score += min(signals["emails_clicked"], 5) * 12  # clicked the demo link = strong intent
@@ -198,6 +215,28 @@ def compute(
             signals["video_plays"] += 1
         elif name == "demo_video_complete":
             signals["video_completes"] += 1
+        elif name == "demo_video_replay":
+            signals["video_replays"] += 1
+        elif name == "demo_video_fullscreen":
+            if props.get("entered"):
+                signals["video_fullscreen"] += 1
+        elif name == "demo_video_progress":
+            percent = props.get("percent") or 0
+            try:
+                signals["video_max_progress"] = max(signals["video_max_progress"], int(percent))
+            except (TypeError, ValueError):
+                pass
+        elif name == "demo_video_watch_time":
+            seconds = props.get("seconds") or 0
+            try:
+                # Events are cumulative — keep the largest watched-seconds seen.
+                signals["video_watch_seconds"] = max(signals["video_watch_seconds"], int(seconds))
+            except (TypeError, ValueError):
+                pass
+
+    # A complete (≥95 %) implies max progress even if no progress event landed.
+    if signals["video_completes"] > 0:
+        signals["video_max_progress"] = max(signals["video_max_progress"], 95)
 
     signals["sections_viewed"] = len(section_names)
     signals["visits"] = len(sessions) if sessions else (1 if signals["pageviews"] else 0)
