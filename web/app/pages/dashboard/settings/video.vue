@@ -33,7 +33,7 @@
           />
           <button
             type="button"
-            class="absolute top-3 right-3 z-10 flex h-9 w-9 items-center justify-center rounded-full bg-[var(--app-red-soft)] text-[var(--app-red)] backdrop-blur-sm transition-colors hover:bg-[var(--app-red)] hover:text-white disabled:opacity-50"
+            class="btn-danger absolute top-3 right-3 z-10 flex h-8 min-h-8 items-center justify-center px-2.5 text-xs disabled:opacity-50"
             :disabled="isDeleting"
             aria-label="Supprimer le clip"
             title="Supprimer le clip"
@@ -41,7 +41,7 @@
           >
             <UIcon
               :name="isDeleting ? 'i-lucide-loader-circle' : 'i-lucide-x'"
-              :class="['h-4 w-4', isDeleting && 'animate-spin']"
+              :class="['h-3.5 w-3.5', isDeleting && 'animate-spin']"
             />
           </button>
         </div>
@@ -144,7 +144,7 @@
             <!-- Le speech, mis en valeur dans un encart -->
             <div class="space-y-4 rounded-lg bg-[var(--app-bg)] p-4">
               <p class="text-[11px] font-semibold tracking-wide text-[var(--app-ink-soft)] uppercase">
-                Le speech à lire (~30 s, voix générique)
+                Le speech à lire (~30 s)
               </p>
               <div v-for="segment in speechSegments" :key="segment.timing" class="flex items-start gap-3">
                 <span
