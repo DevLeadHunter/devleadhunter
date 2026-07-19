@@ -15,7 +15,7 @@
         <li
           v-for="item in INTRO_ITEMS"
           :key="item.title"
-          class="flex items-center gap-3.5 rounded-xl border border-[var(--app-line)] bg-[var(--app-surface)] px-4 py-3.5"
+          class="flex items-start gap-3.5 rounded-xl border border-[var(--app-line)] bg-[var(--app-surface)] px-4 py-3.5"
         >
           <span
             class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-[var(--app-line)] bg-[var(--app-bg)]"
@@ -23,19 +23,21 @@
             <UIcon :name="item.icon" class="h-4 w-4 text-[var(--app-ink)]" />
           </span>
           <div class="min-w-0 flex-1">
-            <p class="text-sm font-semibold text-[var(--app-ink)]">{{ item.title }}</p>
-            <p class="text-muted text-xs leading-relaxed">{{ item.detail }}</p>
+            <div class="flex flex-wrap items-center gap-x-2 gap-y-1">
+              <p class="text-sm font-semibold text-[var(--app-ink)]">{{ item.title }}</p>
+              <span
+                class="rounded-full border px-2 py-0.5 text-[10px] font-semibold tracking-wide uppercase"
+                :class="
+                  item.required
+                    ? 'border-[var(--app-line)] bg-[var(--app-surface-2)] text-[var(--app-ink)]'
+                    : 'border-transparent px-0 text-[var(--app-ink-soft)]'
+                "
+              >
+                {{ item.required ? 'Requis' : 'Facultatif' }}
+              </span>
+            </div>
+            <p class="text-muted mt-0.5 text-xs leading-relaxed">{{ item.detail }}</p>
           </div>
-          <span
-            class="shrink-0 rounded-full border px-2.5 py-0.5 text-[10px] font-semibold tracking-wide uppercase"
-            :class="
-              item.required
-                ? 'border-[var(--app-line)] bg-[var(--app-surface-2)] text-[var(--app-ink)]'
-                : 'border-transparent text-[var(--app-ink-soft)]'
-            "
-          >
-            {{ item.required ? 'Requis' : 'Facultatif' }}
-          </span>
         </li>
       </ul>
 
@@ -159,7 +161,7 @@
             />
             <div class="min-w-0 flex-1">
               <dt class="app-label">{{ entry.label }}</dt>
-              <dd class="mt-0.5 truncate text-sm font-medium text-[var(--app-ink)]">{{ entry.value }}</dd>
+              <dd class="mt-0.5 text-sm font-medium break-words text-[var(--app-ink)]">{{ entry.value }}</dd>
             </div>
           </div>
         </dl>

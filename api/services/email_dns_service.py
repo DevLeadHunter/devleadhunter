@@ -89,6 +89,20 @@ def _parent_domains(name: str) -> list[str]:
     ]
 
 
+def _is_dkim_key(record: str) -> bool:
+    """Whether a TXT record published under ``_domainkey`` holds a public key.
+
+    ``v=`` is only RECOMMENDED by RFC 6376, and some providers omit it: Resend
+    publishes a bare ``p=…``. Keying the detection on ``v=DKIM1`` alone would
+    silently miss the very selector the campaigns are signed with.
+
+    @param record - Raw TXT value.
+    @returns ``True`` when the record carries a DKIM public key.
+    """
+    normalized = record.lower().replace(" ", "")
+    return "v=dkim1" in normalized or "k=rsa" in normalized or normalized.startswith("p=")
+
+
 def _dmarc_record(name: str) -> Optional[str]:
     """The DMARC TXT record published at ``_dmarc.<name>``, if any.
 
@@ -172,7 +186,7 @@ class EmailDnsService:
         found: list[str] = []
         for selector in _DKIM_SELECTORS:
             records = _txt_records(f"{selector}._domainkey.{domain}")
-            if any("v=dkim1" in record.lower() or "k=rsa" in record.lower() for record in records):
+            if any(_is_dkim_key(record) for record in records):
                 found.append(selector)
         if found:
             return {

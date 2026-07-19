@@ -73,6 +73,15 @@ def test_own_record_wins_over_the_parent(monkeypatch: pytest.MonkeyPatch) -> Non
     assert result["inherited_from"] is None
 
 
+def test_bare_p_selector_counts_as_a_dkim_key(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Resend publishes ``p=…`` without ``v=DKIM1`` — it must still be found."""
+    _with_records(monkeypatch, {"resend._domainkey.mail.example.fr": ["p=MIGfMA0GCSqGSIb3DQ"]})
+    result: dict[str, Any] = dns_service.email_dns_service._check_dkim("mail.example.fr")
+
+    assert result["status"] == "ok"
+    assert result["selectors"] == ["resend"]
+
+
 def test_organizational_domain_without_record_is_danger(monkeypatch: pytest.MonkeyPatch) -> None:
     """No DMARC anywhere stays a hard failure."""
     _with_records(monkeypatch, {})

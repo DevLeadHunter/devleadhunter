@@ -1,11 +1,33 @@
 <template>
-  <div class="overflow-x-auto rounded-2xl border border-[var(--app-line)] bg-[var(--app-surface)] p-1.5">
-    <ol class="flex min-w-max items-stretch sm:min-w-0">
-      <li v-for="(step, index) in steps" :key="step.id" class="flex flex-1 items-center">
+  <div>
+    <!-- ── Mobile : indicateur compact, jamais de scroll horizontal ───────── -->
+    <div class="rounded-2xl border border-[var(--app-line)] bg-[var(--app-surface)] p-4 md:hidden">
+      <div class="flex items-center gap-1.5">
+        <span
+          v-for="step in steps"
+          :key="step.id"
+          class="h-1 flex-1 rounded-full transition-colors"
+          :class="segmentClass(step.id)"
+        />
+      </div>
+      <p class="app-label mt-3">Étape {{ modelValue }} sur {{ steps.length }}</p>
+      <p class="mt-1 text-base leading-snug font-semibold text-[var(--app-ink)]">{{ activeStep?.label }}</p>
+      <p v-if="activeStep?.hint" class="mt-0.5 text-xs leading-snug text-[var(--app-ink-soft)]">
+        {{ activeStep.hint }}
+      </p>
+    </div>
+
+    <!-- ── Desktop : timeline, une colonne par étape ──────────────────────── -->
+    <ol
+      class="hidden rounded-2xl border border-[var(--app-line)] bg-[var(--app-surface)] p-2 md:flex md:items-stretch"
+      aria-label="Progression"
+    >
+      <li v-for="(step, index) in steps" :key="step.id" class="flex min-w-0 flex-1">
         <button
           type="button"
           :disabled="step.id >= modelValue"
-          class="flex flex-1 items-center gap-3 rounded-xl px-3 py-2.5 text-left transition-colors"
+          :aria-current="step.id === modelValue ? 'step' : undefined"
+          class="flex w-full flex-col items-center rounded-xl px-2 pt-3 pb-3.5 transition-colors"
           :class="
             step.id === modelValue
               ? 'bg-[var(--app-surface-2)]'
@@ -15,44 +37,56 @@
           "
           @click="handleStepNavigate(step.id)"
         >
-          <span
-            class="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border text-sm font-semibold transition-colors"
-            :class="stepNodeClass(step.id)"
-          >
-            <UiStepCheck v-if="step.id < modelValue" class="h-4 w-4" />
-            <template v-else>{{ step.id }}</template>
-          </span>
-          <span class="min-w-0">
+          <!-- Pastille + traits de liaison, centrés d'eux-mêmes -->
+          <span class="flex w-full items-center gap-2">
             <span
-              class="block text-sm font-semibold"
-              :class="step.id === modelValue ? 'text-[var(--app-ink)]' : 'text-[var(--app-ink-soft)]'"
-              >{{ step.label }}</span
+              class="h-px flex-1 rounded-full transition-colors"
+              :class="index === 0 ? 'invisible' : connectorClass(step.id - 1)"
+            />
+            <span
+              class="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border text-sm font-semibold transition-colors"
+              :class="stepNodeClass(step.id)"
             >
-            <span v-if="step.hint" class="hidden truncate text-[11px] text-[var(--app-faint)] sm:block">
+              <UiStepCheck v-if="step.id < modelValue" class="h-4 w-4" />
+              <template v-else>{{ step.id }}</template>
+            </span>
+            <span
+              class="h-px flex-1 rounded-full transition-colors"
+              :class="index === steps.length - 1 ? 'invisible' : connectorClass(step.id)"
+            />
+          </span>
+
+          <!-- Libellé : au large sous la pastille, il peut passer à la ligne -->
+          <span class="mt-2.5 block text-center text-balance">
+            <span
+              class="block text-[13px] leading-snug font-semibold"
+              :class="step.id === modelValue ? 'text-[var(--app-ink)]' : 'text-[var(--app-ink-soft)]'"
+            >
+              {{ step.label }}
+            </span>
+            <span v-if="step.hint" class="mt-0.5 block text-[11px] leading-snug text-[var(--app-faint)]">
               {{ step.hint }}
             </span>
           </span>
         </button>
-        <UIcon
-          v-if="index < steps.length - 1"
-          name="i-lucide-chevron-right"
-          class="mx-0.5 h-4 w-4 shrink-0 text-[var(--app-faint)]"
-        />
       </li>
     </ol>
   </div>
 </template>
 
 <script lang="ts" setup>
-import type { PropType } from 'vue'
+import type { ComputedRef, PropType } from 'vue'
+import { computed } from 'vue'
 import type { UiWizardStep, UiWizardStepperProps } from '~/types/UiWizardStepper'
 
 /**
  * Defines the component props.
  *
- * Horizontal step timeline used by the app's multi-step flows: the current step
- * is highlighted, completed steps show an animated green check and can be
- * clicked to go back, upcoming steps stay inert.
+ * Step progress for the app's multi-step flows. Below `md` it collapses to a
+ * compact « Étape 2 sur 4 » indicator (segments + current label) so nothing ever
+ * scrolls sideways; from `md` up it renders the full timeline, one column per
+ * step, with an animated green check on completed steps that can be clicked to
+ * go back.
  */
 const props: UiWizardStepperProps = defineProps({
   steps: {
@@ -70,6 +104,11 @@ const emit = defineEmits<{
   'update:modelValue': [step: number]
 }>()
 
+/** The step currently being shown. */
+const activeStep: ComputedRef<UiWizardStep | undefined> = computed((): UiWizardStep | undefined =>
+  props.steps.find((step: UiWizardStep): boolean => step.id === props.modelValue),
+)
+
 /**
  * Classes for a step node based on its state (done / current / upcoming).
  * @param stepId - The step id (1-based).
@@ -77,10 +116,30 @@ const emit = defineEmits<{
  */
 function stepNodeClass(stepId: number): string {
   if (stepId < props.modelValue) {
-    return 'border-[var(--app-green)] bg-[var(--app-green-soft)] text-[var(--app-green)] cursor-pointer'
+    return 'border-[var(--app-green)] bg-[var(--app-green-soft)] text-[var(--app-green)]'
   }
   if (stepId === props.modelValue) return 'border-[var(--app-ink)] text-[var(--app-ink)]'
-  return 'border-[var(--app-line)] text-[var(--app-ink-soft)] cursor-default'
+  return 'border-[var(--app-line)] text-[var(--app-ink-soft)]'
+}
+
+/**
+ * Classes for the line drawn after a given step.
+ * @param stepId - The step the connector starts from (1-based).
+ * @returns Background classes for the 1px line.
+ */
+function connectorClass(stepId: number): string {
+  return stepId < props.modelValue ? 'bg-[var(--app-green)]' : 'bg-[var(--app-line)]'
+}
+
+/**
+ * Classes for a segment of the mobile progress bar.
+ * @param stepId - The step the segment stands for (1-based).
+ * @returns Background classes for the segment.
+ */
+function segmentClass(stepId: number): string {
+  if (stepId < props.modelValue) return 'bg-[var(--app-green)]'
+  if (stepId === props.modelValue) return 'bg-[var(--app-ink)]'
+  return 'bg-[var(--app-line)]'
 }
 
 /**
