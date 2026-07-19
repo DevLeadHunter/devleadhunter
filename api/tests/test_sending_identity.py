@@ -53,14 +53,14 @@ def test_resolve_resend_identity(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(
         si,
         "_resend_config",
-        lambda db, uid: SimpleNamespace(api_key="enc", from_email="leo@dibodev.fr", from_name="Léo"),
+        lambda db, uid: SimpleNamespace(api_key="enc", from_email="leo@mail.dibodev.fr", from_name="Léo"),
     )
     monkeypatch.setattr(si.encryption_service, "decrypt", lambda value: "re_plain")
 
     identity = resolve_sending_identity(None, 1)
 
     assert identity.provider == SendingProvider.RESEND.value
-    assert identity.from_email == "leo@dibodev.fr"
+    assert identity.from_email == "leo@mail.dibodev.fr"
     assert identity.from_name == "Léo"
     assert identity.resend_api_key == "re_plain"
     assert identity.gmail_account is None
@@ -102,14 +102,14 @@ def test_describe_sending_config_shape(monkeypatch: pytest.MonkeyPatch) -> None:
     """The settings summary reports the active provider + both readiness flags."""
     monkeypatch.setattr(si, "get_active_provider", lambda db, uid: SendingProvider.GMAIL.value)
     monkeypatch.setattr(
-        si, "_resend_config", lambda db, uid: SimpleNamespace(api_key="enc", from_email="leo@dibodev.fr")
+        si, "_resend_config", lambda db, uid: SimpleNamespace(api_key="enc", from_email="leo@mail.dibodev.fr")
     )
     monkeypatch.setattr(si, "_default_gmail_account", lambda db, uid: SimpleNamespace(email="me@gmail.com"))
 
     assert describe_sending_config(None, 1) == {
         "provider": "gmail",
         "resend_configured": True,
-        "resend_from_email": "leo@dibodev.fr",
+        "resend_from_email": "leo@mail.dibodev.fr",
         "gmail_configured": True,
         "gmail_email": "me@gmail.com",
     }
