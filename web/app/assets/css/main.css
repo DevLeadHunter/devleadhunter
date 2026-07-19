@@ -306,6 +306,13 @@ html.dark {
   font-family: var(--app-font-ui);
 }
 
+/* Les wizards posent une barre d'action sticky au bas du viewport : réserver
+   cette hauteur dans le scrollport pour qu'un champ amené au bord bas (focus,
+   scrollIntoView « end »/« nearest ») ne se retrouve pas caché derrière elle. */
+html {
+  scroll-padding-bottom: 7rem;
+}
+
 /* Dans l'app, les familles héritées de la landing basculent sur les
    polices logiciel (les composants balayés utilisent ces classes). */
 .app-theme .font-display,
