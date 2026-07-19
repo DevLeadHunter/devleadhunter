@@ -115,6 +115,17 @@ class LLMService:
             bits.append(f"est revenu {signals['visits']} fois sur la démo")
         if signals.get("total_seconds", 0) >= 60:
             bits.append("a passé du temps sur la page")
+        # Prospection video attention
+        if signals.get("video_completes"):
+            bits.append("a regardé la vidéo en entier")
+        elif signals.get("video_max_progress", 0) >= 50:
+            bits.append(f"a regardé {signals['video_max_progress']}% de la vidéo")
+        elif signals.get("video_plays"):
+            bits.append("a lancé la vidéo")
+        if signals.get("video_replays"):
+            bits.append(f"a revu la vidéo {signals['video_replays']}x")
+        if signals.get("video_fullscreen"):
+            bits.append("a mis la vidéo en plein écran")
         if signals.get("emails_clicked"):
             bits.append("a cliqué le lien dans l'email")
         elif signals.get("emails_opened"):
