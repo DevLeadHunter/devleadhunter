@@ -19,9 +19,6 @@ from schemas.email_sending import (
     EmailLogListResponse,
     EmailLogResponse,
     EmailStatsResponse,
-    SendCampaignEmailRequest,
-    SendCampaignEmailResponse,
-    SendEmailRequest,
     SendEmailResponse,
 )
 from services.auth_service import get_current_user
@@ -228,73 +225,6 @@ async def quick_send_email(
     )
 
 
-@router.post("/send", response_model=SendEmailResponse)
-async def send_email(
-    email_data: SendEmailRequest,
-    current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
-):
-    """
-    Send a single email to a prospect.
-    """
-    email_service = EmailSendingService(db)
-    
-    try:
-        # Handle template variables if provided
-        subject = email_data.subject
-        body_html = email_data.body_html
-        
-        if email_data.variables:
-            subject = email_service.replace_variables(subject, email_data.variables)
-            body_html = email_service.replace_variables(body_html, email_data.variables)
-        
-        result = await email_service.send_email(
-            user_id=current_user.id,
-            email_account_id=email_data.email_account_id,
-            recipient_email=email_data.recipient_email,
-            recipient_name=email_data.recipient_name,
-            subject=subject,
-            body_html=body_html,
-            prospect_id=email_data.prospect_id
-        )
-        
-        return SendEmailResponse(**result)
-        
-    except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e)
-        )
-
-
-@router.post("/send-campaign", response_model=SendCampaignEmailResponse)
-async def send_campaign_emails(
-    campaign_data: SendCampaignEmailRequest,
-    current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
-):
-    """
-    Send emails to multiple prospects in a campaign.
-    """
-    email_service = EmailSendingService(db)
-    
-    try:
-        result = await email_service.send_campaign_emails(
-            user_id=current_user.id,
-            email_account_id=campaign_data.email_account_id,
-            campaign_id=campaign_data.campaign_id,
-            template_id=campaign_data.template_id,
-            prospect_ids=campaign_data.prospect_ids,
-            variables_per_prospect=campaign_data.variables_per_prospect
-        )
-        
-        return SendCampaignEmailResponse(**result)
-        
-    except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e)
-        )
 
 
 @router.get("/logs", response_model=EmailLogListResponse)

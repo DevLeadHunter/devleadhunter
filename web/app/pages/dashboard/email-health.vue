@@ -54,7 +54,7 @@
         Aucun compte d'envoi configuré — l'authentification du domaine et le testeur ont besoin d'une adresse
         d'expédition.
       </p>
-      <NuxtLink to="/dashboard/email-accounts" class="app-btn-secondary h-8 px-3 text-xs">
+      <NuxtLink to="/dashboard/settings/sending" class="app-btn-secondary h-8 px-3 text-xs">
         Configurer un compte
       </NuxtLink>
     </div>

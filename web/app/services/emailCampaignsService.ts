@@ -3,56 +3,8 @@
  * @module services/emailCampaignsService
  */
 
-import type { SendEmailRequest, SendCampaignEmailRequest, EmailLog, EmailStats } from '~/types'
+import type { EmailLog, EmailStats } from '~/types'
 import { api } from './api'
-
-/**
- * Send a single email to a prospect
- */
-export async function sendEmail(data: SendEmailRequest): Promise<{
-  success: boolean
-  message_id?: string
-  email_log_id: number
-  error?: string
-}> {
-  try {
-    return await api.post<{
-      success: boolean
-      message_id?: string
-      email_log_id: number
-      error?: string
-    }>('/api/v1/emails/send', data)
-  } catch (error) {
-    console.error('Failed to send email:', error)
-    throw error
-  }
-}
-
-/**
- * Send emails to multiple prospects in a campaign
- */
-export async function sendCampaignEmails(data: SendCampaignEmailRequest): Promise<{
-  success: boolean
-  total_emails: number
-  sent_count: number
-  failed_count: number
-  email_log_ids: number[]
-  errors?: string[]
-}> {
-  try {
-    return await api.post<{
-      success: boolean
-      total_emails: number
-      sent_count: number
-      failed_count: number
-      email_log_ids: number[]
-      errors?: string[]
-    }>('/api/v1/emails/send-campaign', data)
-  } catch (error) {
-    console.error('Failed to send campaign emails:', error)
-    throw error
-  }
-}
 
 /**
  * Get email logs with optional filters

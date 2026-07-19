@@ -127,13 +127,13 @@
           <span>Menu principal</span>
         </button>
         <NuxtLink
-          to="/dashboard/settings/resend"
-          :class="navItemClass(isActive('/dashboard/settings/resend'))"
+          to="/dashboard/settings/sending"
+          :class="navItemClass(isActive('/dashboard/settings/sending'))"
           @click="handleClick"
         >
-          <span :class="navBarClass(isActive('/dashboard/settings/resend'))"></span>
+          <span :class="navBarClass(isActive('/dashboard/settings/sending'))"></span>
           <UIcon name="i-lucide-mail-open" class="h-4 w-4 shrink-0" />
-          <span>Configuration Resend</span>
+          <span>Configuration d'envoi</span>
         </NuxtLink>
         <NuxtLink
           to="/dashboard/settings/video"

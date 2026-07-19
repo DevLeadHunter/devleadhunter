@@ -3,12 +3,7 @@
  * @module services/emailAccountsService
  */
 
-import type {
-  EmailAccount,
-  EmailAccountCreateCustomDomain,
-  EmailAccountCreateGmail,
-  DNSVerificationResponse,
-} from '~/types'
+import type { EmailAccount } from '~/types'
 import { api } from './api'
 
 /**
@@ -24,61 +19,15 @@ export async function getEmailAccounts(): Promise<EmailAccount[]> {
 }
 
 /**
- * Get a specific email account by ID
- */
-export async function getEmailAccount(id: number): Promise<EmailAccount> {
-  try {
-    return await api.get<EmailAccount>(`/api/v1/email-accounts/${id}`)
-  } catch (error) {
-    console.error('Failed to get email account:', error)
-    throw error
-  }
-}
-
-/**
- * Create a custom domain email account
- */
-export async function createCustomDomainAccount(data: EmailAccountCreateCustomDomain): Promise<EmailAccount> {
-  try {
-    return await api.post<EmailAccount>('/api/v1/email-accounts/custom-domain', data)
-  } catch (error) {
-    console.error('Failed to create custom domain account:', error)
-    throw error
-  }
-}
-
-/**
- * Get Gmail OAuth authorization URL
+ * Get Gmail OAuth authorization URL.
+ * The browser is redirected here to Google's consent screen; Google then
+ * returns to the backend callback which connects the account.
  */
 export async function getGmailAuthUrl(): Promise<{ auth_url: string; instructions: string }> {
   try {
     return await api.post<{ auth_url: string; instructions: string }>('/api/v1/email-accounts/gmail/auth-url')
   } catch (error) {
     console.error('Failed to get Gmail auth URL:', error)
-    throw error
-  }
-}
-
-/**
- * Connect a Gmail account using OAuth code
- */
-export async function connectGmailAccount(data: EmailAccountCreateGmail): Promise<EmailAccount> {
-  try {
-    return await api.post<EmailAccount>('/api/v1/email-accounts/gmail/connect', data)
-  } catch (error) {
-    console.error('Failed to connect Gmail account:', error)
-    throw error
-  }
-}
-
-/**
- * Verify DNS records for a custom domain email account
- */
-export async function verifyDnsRecords(accountId: number): Promise<DNSVerificationResponse> {
-  try {
-    return await api.post<DNSVerificationResponse>(`/api/v1/email-accounts/${accountId}/verify-dns`)
-  } catch (error) {
-    console.error('Failed to verify DNS records:', error)
     throw error
   }
 }
