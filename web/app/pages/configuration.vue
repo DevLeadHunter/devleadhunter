@@ -58,7 +58,12 @@
 
     <!-- ══════════ Les étapes ═══════════════════════════════════════════════ -->
     <template v-else>
-      <UiWizardStepper :model-value="currentStep" :steps="STEPS" @update:model-value="goToStep" />
+      <UiWizardStepper
+        class="mx-auto max-w-2xl"
+        :model-value="currentStep"
+        :steps="STEPS"
+        @update:model-value="goToStep"
+      />
 
       <!-- ── Étape 1 · Méthode d'envoi ───────────────────────────────────── -->
       <div v-if="currentStep === 1" key="step-1" class="wizard-step mt-8 space-y-6">
