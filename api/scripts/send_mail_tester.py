@@ -15,6 +15,7 @@ Usage::
     python scripts/send_mail_tester.py test-abc123@srv1.mail-tester.com
     python scripts/send_mail_tester.py test-abc123@srv1.mail-tester.com --template-id 4
     python scripts/send_mail_tester.py --list          # show available templates
+    python scripts/send_mail_tester.py test-abc@srv1.mail-tester.com --base-url https://x.fr
 """
 from __future__ import annotations
 
@@ -43,6 +44,8 @@ from services.unsubscribe_service import unsubscribe_service  # noqa: E402
 # before the first query, or the mappers fail to configure.
 for _module in pkgutil.iter_modules(models.__path__):
     importlib.import_module(f"models.{_module.name}")
+
+_PRODUCTION_FRONTEND_URL: str = "https://devleadhunter.dibodev.fr"
 
 # Realistic stand-ins: a template rendered with empty variables would score the
 # emptiness, not the copy.
@@ -91,13 +94,20 @@ def _pick_template(db, template_id: Optional[int]) -> EmailTemplate:
     return template
 
 
-async def _run(recipient: str, template_id: Optional[int], list_only: bool, dry_run: bool) -> int:
+async def _run(
+    recipient: str,
+    template_id: Optional[int],
+    list_only: bool,
+    dry_run: bool,
+    base_url_override: Optional[str],
+) -> int:
     """Render a real template and send it to *recipient*.
 
     @param recipient - The mail-tester disposable address.
     @param template_id - Template to use, or ``None`` for the first active one.
     @param list_only - Only list the templates, send nothing.
     @param dry_run - Build the message and stop before sending.
+    @param base_url_override - Base URL of the unsubscribe link (defaults to settings).
     @returns Process exit code.
     """
     db = SessionLocal()
@@ -122,8 +132,16 @@ async def _run(recipient: str, template_id: Optional[int], list_only: bool, dry_
         subject = _render(template.subject)
         body_html = _render(template.body_html)
 
-        # Same footer + headers as a production send.
-        base_url = getattr(settings, "frontend_url", "http://localhost:3000")
+        # Same footer + headers as a production send. The local FRONTEND_URL
+        # would ship an ``http://localhost:3000`` unsubscribe link: strict
+        # filters (iCloud rejects outright) treat that as a malformed message,
+        # so the test would measure the test rig instead of the campaign.
+        base_url = base_url_override or getattr(settings, "frontend_url", "http://localhost:3000")
+        if "localhost" in base_url or "127.0.0.1" in base_url:
+            raise SystemExit(
+                "FRONTEND_URL est local : le lien de désinscription pointerait sur localhost et "
+                f"fausserait le test. Relancez avec --base-url {_PRODUCTION_FRONTEND_URL}"
+            )
         unsubscribe_link = unsubscribe_service.generate_unsubscribe_link(recipient, None, base_url)
         body_html = unsubscribe_service.add_unsubscribe_footer(body_html, unsubscribe_link)
         headers = EmailSendingService._unsubscribe_headers(unsubscribe_link)
@@ -149,8 +167,8 @@ async def _run(recipient: str, template_id: Optional[int], list_only: bool, dry_
         )
         print(f"Envoyé (message_id={result.get('message_id')}).")
 
-        slug = recipient.split("@")[0]
-        print(f"Score    : https://www.mail-tester.com/{slug}  (attendre ~30 s)")
+        if "mail-tester.com" in recipient:
+            print(f"Score    : https://www.mail-tester.com/{recipient.split('@')[0]}  (attendre ~30 s)")
         return 0
     finally:
         db.close()
@@ -162,9 +180,14 @@ if __name__ == "__main__":
     parser.add_argument("--template-id", type=int, default=None, help="Modèle à envoyer")
     parser.add_argument("--list", action="store_true", help="Lister les modèles et quitter")
     parser.add_argument("--dry-run", action="store_true", help="Construire le message sans l'envoyer")
+    parser.add_argument(
+        "--base-url", default=None, help="Base URL du lien de désinscription (défaut : FRONTEND_URL)"
+    )
     args = parser.parse_args()
     if not args.recipient and not args.list:
         parser.error("Fournissez l'adresse mail-tester, ou --list.")
     raise SystemExit(
-        asyncio.run(_run(args.recipient or "", args.template_id, args.list, args.dry_run))
+        asyncio.run(
+            _run(args.recipient or "", args.template_id, args.list, args.dry_run, args.base_url)
+        )
     )

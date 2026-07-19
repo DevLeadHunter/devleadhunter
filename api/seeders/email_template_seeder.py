@@ -40,7 +40,11 @@ _TEMPLATES: list[dict[str, object]] = [
     {
         "name": "★ Recommandé 1 — Premier email (fiche Google)",
         "sort_order": 100,
-        "subject": "votre fiche google",
+        # Jamais « Google » dans l'objet : Apple rejette le message au niveau SMTP
+        # (hard bounce, pas une mise en indésirables) — « votre fiche Google » est
+        # la signature d'une arnaque massive au faux démarchage Google My Business
+        # en France. Dans le CORPS, la marque ne pose aucun problème (testé).
+        "subject": "votre fiche",
         "body_html": (
             "<p>{salutation},</p>"
             "<p>Quand quelqu'un cherche un {metier} à {ville}, Google met en avant les fiches "
