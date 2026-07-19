@@ -1,17 +1,19 @@
 """
 Email accounts routes for managing user's email sender configurations.
 """
+import logging
 from typing import List
 from fastapi import APIRouter, Depends, HTTPException, status, Query
+from fastapi.responses import RedirectResponse
 from sqlalchemy.orm import Session
 from sqlalchemy import select
 
+from core.config import settings
 from core.database import get_db
 from models.user import User
 from models.email_account import EmailAccount
 from schemas.email_account import (
     EmailAccountCreateCustomDomain,
-    EmailAccountCreateGmail,
     EmailAccountUpdate,
     EmailAccountResponse,
     DNSVerificationResponse
@@ -24,6 +26,7 @@ from enums.email_account_type import EmailAccountType
 import json
 
 router = APIRouter(prefix="/email-accounts", tags=["email-accounts"])
+logger = logging.getLogger(__name__)
 
 
 @router.get("", response_model=List[EmailAccountResponse])
@@ -146,82 +149,87 @@ async def get_gmail_auth_url(
     }
 
 
-@router.post("/gmail/connect", response_model=EmailAccountResponse, status_code=status.HTTP_201_CREATED)
-async def connect_gmail_account(
-    account_data: EmailAccountCreateGmail,
-    current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
-):
+def _sending_settings_redirect(outcome: str) -> RedirectResponse:
+    """Build a redirect back to the unified sending-config page with an outcome flag.
+
+    @param outcome - ``connected`` on success, otherwise an error slug.
+    @returns A 302 redirect to ``/dashboard/settings/sending?gmail=<outcome>``.
     """
-    Connect a Gmail account using OAuth authorization code.
+    base = (getattr(settings, "frontend_url", "") or "http://localhost:3000").rstrip("/")
+    return RedirectResponse(url=f"{base}/dashboard/settings/sending?gmail={outcome}")
+
+
+@router.get("/gmail/callback")
+async def gmail_oauth_callback(
+    code: str = Query(default=""),
+    state: str = Query(default=""),
+    error: str = Query(default=""),
+    db: Session = Depends(get_db),
+) -> RedirectResponse:
     """
-    gmail_service = GmailOAuthService()
-    
+    Google OAuth redirect target: exchange the code and connect the Gmail account.
+
+    This is the server-side completion of the Gmail connect flow. Google redirects
+    the browser here (``GOOGLE_REDIRECT_URI``) with ``?code`` and the ``state`` we
+    set at authorization time (``user_<id>``, which identifies the owner — no JWT
+    is present on this cross-site redirect). On success or failure the browser is
+    redirected back to the unified sending-config page with a ``?gmail=`` flag.
+    """
+    if error or not code:
+        logger.warning("[Gmail OAuth] Callback without code (error=%r)", error)
+        return _sending_settings_redirect("error")
+
+    # state = "user_<id>" — the only link back to the authenticated owner.
+    if not state.startswith("user_"):
+        logger.warning("[Gmail OAuth] Callback with unexpected state=%r", state)
+        return _sending_settings_redirect("error")
     try:
-        # Exchange code for tokens
-        tokens = await gmail_service.exchange_code_for_tokens(account_data.oauth_code)
-        
-        # Get user info to verify email
+        user_id = int(state.removeprefix("user_"))
+    except ValueError:
+        return _sending_settings_redirect("error")
+
+    gmail_service = GmailOAuthService()
+    try:
+        tokens = await gmail_service.exchange_code_for_tokens(code)
         user_info = await gmail_service.get_user_info(tokens["access_token"])
-        
-        if not user_info.get("verified_email"):
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Gmail account is not verified"
-            )
-        
         gmail_email = user_info.get("email")
-        
-        # Check if this Gmail account is already connected
-        stmt = select(EmailAccount).where(
-            EmailAccount.user_id == current_user.id,
-            EmailAccount.email == gmail_email
-        )
-        result = db.execute(stmt)
-        existing = result.scalar_one_or_none()
-        
-        if existing:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="This Gmail account is already connected"
+        if not user_info.get("verified_email") or not gmail_email:
+            return _sending_settings_redirect("error")
+
+        existing = db.execute(
+            select(EmailAccount).where(
+                EmailAccount.user_id == user_id,
+                EmailAccount.email == gmail_email,
             )
-        
-        # If this is set as default, unset other defaults
-        if account_data.is_default:
-            stmt = select(EmailAccount).where(
-                EmailAccount.user_id == current_user.id,
-                EmailAccount.is_default == True
-            )
-            result = db.execute(stmt)
-            for acc in result.scalars().all():
-                acc.is_default = False
-        
-        # Create new Gmail account with encrypted tokens
-        new_account = EmailAccount(
-            user_id=current_user.id,
+        ).scalar_one_or_none()
+
+        if existing is not None:
+            # Re-authorising an already-connected account: refresh its tokens.
+            existing.oauth_access_token = encryption_service.encrypt(tokens["access_token"])
+            if tokens.get("refresh_token"):
+                existing.oauth_refresh_token = encryption_service.encrypt(tokens["refresh_token"])
+            existing.oauth_token_expires_at = tokens["expires_at"]
+            existing.is_active = True
+            existing.is_verified = True
+            db.commit()
+            return _sending_settings_redirect("connected")
+
+        db.add(EmailAccount(
+            user_id=user_id,
             account_type=EmailAccountType.GMAIL_OAUTH,
             email=gmail_email,
-            name=account_data.name or user_info.get("name", gmail_email),
-            is_default=account_data.is_default,
+            name=user_info.get("name") or gmail_email,
+            is_default=False,
             is_verified=True,  # Gmail accounts are auto-verified
             oauth_access_token=encryption_service.encrypt(tokens["access_token"]),
             oauth_refresh_token=encryption_service.encrypt(tokens.get("refresh_token", "")),
-            oauth_token_expires_at=tokens["expires_at"]
-        )
-        
-        db.add(new_account)
+            oauth_token_expires_at=tokens["expires_at"],
+        ))
         db.commit()
-        db.refresh(new_account)
-        
-        return new_account
-        
-    except HTTPException:
-        raise
-    except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Failed to connect Gmail account: {str(e)}"
-        )
+        return _sending_settings_redirect("connected")
+    except Exception as exc:  # noqa: BLE001 — surface as a friendly redirect, never a 500
+        logger.error("[Gmail OAuth] Callback failed for user %s: %s", user_id, exc)
+        return _sending_settings_redirect("error")
 
 
 @router.post("/{account_id}/verify-dns", response_model=DNSVerificationResponse)

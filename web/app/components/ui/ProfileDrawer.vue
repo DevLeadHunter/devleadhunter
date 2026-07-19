@@ -53,10 +53,10 @@
               d'<strong class="font-medium text-[var(--app-ink)]">envoi</strong> de vos emails de prospection se règle
               dans
               <NuxtLink
-                to="/dashboard/email-accounts"
+                to="/dashboard/settings/sending"
                 class="font-medium text-[var(--app-blue)] underline underline-offset-2 transition-opacity hover:opacity-80"
                 @click="emit('close')"
-                >Comptes email</NuxtLink
+                >Configuration d'envoi</NuxtLink
               >.
             </UiCallout>
           </div>

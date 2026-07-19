@@ -38,6 +38,26 @@ export interface ResendConfigUpdate {
   from_name?: string
 }
 
+/** The active email-sending transport for the user. */
+export type SendingProvider = 'resend' | 'gmail'
+
+/**
+ * Summary of the user's sending setup (no secrets): the active provider plus
+ * a readiness flag for each provider.
+ */
+export interface SendingIdentityResponse {
+  /** Currently active transport (``resend`` | ``gmail``). */
+  provider: SendingProvider
+  /** Whether the Resend config (API key + from address) is usable. */
+  resend_configured: boolean
+  /** Verified Resend sender address, when configured. */
+  resend_from_email: string | null
+  /** Whether a Gmail account is connected and usable. */
+  gmail_configured: boolean
+  /** Connected Gmail address, when present. */
+  gmail_email: string | null
+}
+
 // ---------------------------------------------------------------------------
 // Service
 // ---------------------------------------------------------------------------
@@ -62,5 +82,25 @@ export const settingsService = {
    */
   async saveResendConfig(data: ResendConfigUpdate): Promise<ResendConfigResponse> {
     return api.put<ResendConfigResponse>('/api/v1/settings/resend', data)
+  },
+
+  /**
+   * Fetch the user's active sending provider and each provider's readiness.
+   *
+   * @returns Sending-identity summary (no secrets).
+   */
+  async getSendingIdentity(): Promise<SendingIdentityResponse> {
+    return api.get<SendingIdentityResponse>('/api/v1/settings/sending-identity')
+  },
+
+  /**
+   * Switch the user's active sending provider.
+   * Rejected (422) by the API when the target provider is not configured yet.
+   *
+   * @param provider - Target transport (``resend`` | ``gmail``).
+   * @returns Updated sending-identity summary.
+   */
+  async setSendingProvider(provider: SendingProvider): Promise<SendingIdentityResponse> {
+    return api.put<SendingIdentityResponse>('/api/v1/settings/sending-identity', { provider })
   },
 }

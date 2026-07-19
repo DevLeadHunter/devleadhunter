@@ -127,8 +127,7 @@ const PAGES: ReadonlyArray<{ label: string; icon: string; to: string }> = [
   { label: "Modèles d'email", icon: 'i-lucide-layout-template', to: '/dashboard/email-templates' },
   { label: 'Ventes', icon: 'i-lucide-banknote', to: '/dashboard/orders' },
   { label: 'Support', icon: 'i-lucide-life-buoy', to: '/dashboard/support' },
-  { label: 'Comptes email', icon: 'i-lucide-at-sign', to: '/dashboard/email-accounts' },
-  { label: 'Configuration Resend', icon: 'i-lucide-mail-open', to: '/dashboard/settings/resend' },
+  { label: "Configuration d'envoi", icon: 'i-lucide-mail-open', to: '/dashboard/settings/sending' },
 ]
 
 /**
