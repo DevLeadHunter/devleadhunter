@@ -9,6 +9,9 @@ Honest limits, surfaced in the payloads:
 - Spamhaus public mirrors refuse queries coming from big public resolvers
   (8.8.8.8…), so a blocklist check can come back ``unknown`` — that is not a
   listing.
+- The organizational domain of a sending subdomain is approximated by walking
+  up to the last two labels (correct for ``mail.dibodev.fr``, imprecise for
+  multi-label suffixes like ``.co.uk``).
 """
 from __future__ import annotations
 
@@ -40,6 +43,10 @@ _DOMAIN_BLOCKLISTS: tuple[str, ...] = ("dbl.spamhaus.org", "multi.surbl.org")
 _CACHE_TTL_SECONDS: float = 600.0
 _DNS_TIMEOUT_SECONDS: float = 4.0
 
+# Shortest domain we consider organizational when walking up for an inherited
+# DMARC record (``mail.dibodev.fr`` → ``dibodev.fr``).
+_MIN_ORGANIZATIONAL_LABELS: int = 2
+
 
 def _resolver() -> dns.resolver.Resolver:
     """A resolver with tight timeouts (the page must never hang on DNS).
@@ -67,6 +74,31 @@ def _txt_records(name: str) -> list[str]:
         return records
     except Exception:  # noqa: BLE001 — NXDOMAIN, timeout… all mean "no record"
         return []
+
+
+def _parent_domains(name: str) -> list[str]:
+    """Ancestors of *name*, closest first, down to the organizational domain.
+
+    @param name - A domain, possibly a sending subdomain.
+    @returns Parent domains (empty when *name* is already organizational).
+    """
+    labels = name.split(".")
+    return [
+        ".".join(labels[index:])
+        for index in range(1, len(labels) - _MIN_ORGANIZATIONAL_LABELS + 1)
+    ]
+
+
+def _dmarc_record(name: str) -> Optional[str]:
+    """The DMARC TXT record published at ``_dmarc.<name>``, if any.
+
+    @param name - Domain to look up.
+    @returns The raw record, or ``None``.
+    """
+    return next(
+        (record for record in _txt_records(f"_dmarc.{name}") if record.lower().startswith("v=dmarc1")),
+        None,
+    )
 
 
 class EmailDnsService:
@@ -158,20 +190,33 @@ class EmailDnsService:
         }
 
     def _check_dmarc(self, domain: str) -> dict[str, Any]:
-        """DMARC record, policy level and rua reporting address.
+        """DMARC record, *effective* policy level and rua reporting address.
+
+        A sending subdomain rarely publishes its own record: it inherits the
+        organizational domain's, and the policy that actually applies to it is
+        then ``sp=`` (which defaults to ``p=``), not ``p=``. Reading ``p=``
+        alone hides the classic trap of a parent in ``p=quarantine;sp=none``
+        whose subdomain is in fact enforced by nothing.
 
         @param domain - Sending domain.
-        @returns Status, policy, rua and advice.
+        @returns Status, effective policy, inheritance origin, rua and advice.
         """
-        dmarc: Optional[str] = next(
-            (record for record in _txt_records(f"_dmarc.{domain}") if record.lower().startswith("v=dmarc1")),
-            None,
-        )
+        dmarc: Optional[str] = _dmarc_record(domain)
+        inherited_from: Optional[str] = None
+        if dmarc is None:
+            for parent in _parent_domains(domain):
+                dmarc = _dmarc_record(parent)
+                if dmarc is not None:
+                    inherited_from = parent
+                    break
+
         if dmarc is None:
             return {
                 "status": "danger",
                 "record": None,
                 "policy": None,
+                "subdomain_policy": None,
+                "inherited_from": None,
                 "rua": None,
                 "detail": "Aucun enregistrement DMARC — requis par Gmail/Yahoo depuis 2024 pour les expéditeurs en volume.",
             }
@@ -182,23 +227,44 @@ class EmailDnsService:
                 key, _, value = part.strip().partition("=")
                 tags[key.strip().lower()] = value.strip()
 
-        policy = tags.get("p", "").lower() or None
+        declared_policy = tags.get("p", "").lower() or None
+        subdomain_policy = tags.get("sp", "").lower() or None
         rua = tags.get("rua") or None
+        # RFC 7489: subdomains follow ``sp`` when it is set, otherwise ``p``.
+        policy = (subdomain_policy or declared_policy) if inherited_from else declared_policy
+        tag_name = "sp" if inherited_from else "p"
 
         if policy in ("quarantine", "reject"):
             status = "ok"
-            detail = f"DMARC actif en « p={policy} »."
+            detail = f"DMARC actif en « {tag_name}={policy} »."
         elif policy == "none":
             status = "warn"
-            detail = "DMARC en « p=none » : les rapports arrivent mais rien n'est appliqué — passez à « quarantine »."
+            detail = (
+                f"DMARC en « {tag_name}=none » : les rapports arrivent mais rien n'est appliqué "
+                "— passez à « quarantine »."
+            )
         else:
             status = "warn"
             detail = "DMARC présent mais politique illisible."
 
+        if inherited_from:
+            detail += (
+                f" Ce sous-domaine n'a pas son propre enregistrement : il hérite de {inherited_from}, "
+                f"donc c'est « sp= » qui s'applique à vos envois, pas « p= »."
+            )
+
         if rua is None:
             detail += " Aucune adresse « rua » : vous ne recevez pas les rapports agrégés (gratuits et précieux)."
 
-        return {"status": status, "record": dmarc, "policy": policy, "rua": rua, "detail": detail}
+        return {
+            "status": status,
+            "record": dmarc,
+            "policy": policy,
+            "subdomain_policy": subdomain_policy,
+            "inherited_from": inherited_from,
+            "rua": rua,
+            "detail": detail,
+        }
 
     def _check_mx(self, domain: str) -> dict[str, Any]:
         """MX presence (a domain without MX looks disposable to filters).
@@ -211,10 +277,24 @@ class EmailDnsService:
             hosts = sorted(str(answer.exchange).rstrip(".") for answer in answers)
             return {"status": "ok", "hosts": hosts, "detail": "Le domaine sait recevoir des réponses."}
         except Exception:  # noqa: BLE001
+            pass
+        # No MX: RFC 5321 falls back to the A record, so replies may still be
+        # delivered — but only if that host accepts mail for this domain.
+        try:
+            _resolver().resolve(domain, "A")
             return {
                 "status": "warn",
                 "hosts": [],
-                "detail": "Aucun MX : les prospects ne peuvent pas vous répondre et les filtres s'en méfient.",
+                "detail": (
+                    "Aucun MX : les réponses retombent sur l'enregistrement A du domaine. "
+                    "Vérifiez qu'une réponse vous parvient vraiment, sinon vous perdrez des leads en silence."
+                ),
+            }
+        except Exception:  # noqa: BLE001
+            return {
+                "status": "danger",
+                "hosts": [],
+                "detail": "Ni MX ni A : les prospects ne peuvent pas vous répondre et les filtres s'en méfient.",
             }
 
     def _check_blocklists(self, domain: str) -> dict[str, Any]:

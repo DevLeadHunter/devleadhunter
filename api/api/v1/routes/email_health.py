@@ -23,6 +23,7 @@ from services.email_dns_service import email_dns_service
 from services.email_health_service import email_health_service
 from services.email_spam_test_service import email_spam_test_service
 from services.postmaster_service import postmaster_service
+from services.sending_identity import describe_sending_config
 
 router = APIRouter(prefix="/email-health", tags=["email-health"])
 
@@ -38,21 +39,43 @@ def _validated_period(period_days: int) -> int:
     return period_days if period_days in _ALLOWED_PERIODS else 30
 
 
+def _domain_of(address: Optional[str]) -> str:
+    """Extract the domain part of an email address.
+
+    @param address - Full address, or already a bare domain.
+    @returns The lower-cased domain (empty when *address* is empty).
+    """
+    return (address or "").strip().lower().rpartition("@")[2]
+
+
 def _user_domains(db: Session, user: User) -> list[str]:
-    """The distinct sending domains of the user's email accounts.
+    """Every domain the user actually sends from.
+
+    Covers the connected email accounts *and* the Resend sender address: Resend
+    sends carry no ``EmailAccount`` row, so its domain (often a subdomain such
+    as ``mail.example.fr``) would otherwise never be checked — precisely the
+    domain whose authentication matters most.
 
     @param db - Database session.
     @param user - Authenticated user.
-    @returns Lower-cased domains, deduplicated, account order preserved.
+    @returns Lower-cased domains, deduplicated, sending domain first.
     """
+    domains: list[str] = []
+
+    def add(candidate: str) -> None:
+        """Append *candidate* when it is a new, non-empty domain."""
+        if candidate and candidate not in domains:
+            domains.append(candidate)
+
+    config = describe_sending_config(db, user.id)
+    resend_from = config.get("resend_from_email")
+    add(_domain_of(resend_from if isinstance(resend_from, str) else None))
+
     accounts: list[EmailAccount] = (
         db.query(EmailAccount).filter(EmailAccount.user_id == user.id).order_by(EmailAccount.id).all()
     )
-    domains: list[str] = []
     for account in accounts:
-        domain = (account.domain or account.email.split("@")[-1]).strip().lower()
-        if domain and domain not in domains:
-            domains.append(domain)
+        add((account.domain or _domain_of(account.email)).strip().lower())
     return domains
 
 
@@ -205,13 +228,13 @@ async def email_health_template_scores(
         .all()
     )
 
-    default_account: Optional[EmailAccount] = (
-        db.query(EmailAccount)
-        .filter(EmailAccount.user_id == current_user.id)
-        .order_by(EmailAccount.is_default.desc(), EmailAccount.id)
-        .first()
-    )
-    from_email = default_account.email if default_account else "leo@dibodev.fr"
+    # Score against the address the user really sends from — the spam engine
+    # weighs the From domain, so a stale placeholder would skew every score.
+    sending = describe_sending_config(db, current_user.id)
+    resend_from = sending.get("resend_from_email")
+    gmail_from = sending.get("gmail_email")
+    active_from = gmail_from if sending.get("provider") == "gmail" else resend_from
+    from_email: str = active_from if isinstance(active_from, str) and active_from else "leo@mail.dibodev.fr"
 
     follow_up_ids = _follow_up_template_ids(db, current_user.id)
     initial_ids = _initial_template_ids(db, current_user.id)

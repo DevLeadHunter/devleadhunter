@@ -101,7 +101,12 @@ export interface EmailDnsCheck {
   status: 'ok' | 'warn' | 'danger'
   detail: string
   record?: string | null
+  /** Effective DMARC policy for this domain (``sp`` when inherited, else ``p``). */
   policy?: string | null
+  /** Raw ``sp=`` tag of the record, when present. */
+  subdomain_policy?: string | null
+  /** Organizational domain the DMARC record was inherited from, when any. */
+  inherited_from?: string | null
   rua?: string | null
   selectors?: string[]
   hosts?: string[]
