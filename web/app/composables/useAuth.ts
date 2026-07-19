@@ -35,14 +35,14 @@ export function useAuth() {
   }
 
   /**
-   * Handle signup
+   * Handle signup — a brand new account goes through the setup wizard first.
    * @param {SignupData} data - Signup data
    * @returns {Promise<void>} Promise that resolves when signup is complete
    */
   const signup = async (data: SignupData): Promise<void> => {
     try {
       await userStore.signup(data)
-      router.push('/dashboard')
+      router.push('/configuration')
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Signup failed')
       throw error
