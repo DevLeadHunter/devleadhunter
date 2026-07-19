@@ -17,50 +17,46 @@
 /**
  * A small, satisfying check mark that pops and draws itself in on mount.
  *
- * Sized and coloured by the parent (``currentColor`` stroke) — e.g.
- * ``<UiStepCheck class="h-4 w-4 text-[var(--app-green)]" />``. Used to reward a
- * completed step in wizard/stepper flows. Respects ``prefers-reduced-motion``.
+ * Its resting state is fully visible — the entrance runs as CSS transitions
+ * from ``@starting-style``, so any context that skips animations (occluded
+ * tab, screenshot rendering, reduced motion) still shows the drawn check
+ * instead of an empty circle. Sized and coloured by the parent
+ * (``currentColor`` stroke) — e.g.
+ * ``<UiStepCheck class="h-4 w-4 text-[var(--app-green)]" />``. Used to reward
+ * a completed step in wizard/stepper flows.
  */
 </script>
 
 <style scoped>
 .step-check {
-  animation: step-check-pop 320ms cubic-bezier(0.34, 1.56, 0.64, 1) both;
+  opacity: 1;
+  transform: scale(1);
+  transition:
+    opacity 200ms ease-out,
+    transform 320ms cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
 .step-check__path {
   stroke-dasharray: 24;
-  stroke-dashoffset: 24;
-  animation: step-check-draw 300ms 90ms ease-out forwards;
+  stroke-dashoffset: 0;
+  transition: stroke-dashoffset 300ms ease-out 90ms;
 }
 
-@keyframes step-check-pop {
-  0% {
-    transform: scale(0.3);
+@starting-style {
+  .step-check {
     opacity: 0;
+    transform: scale(0.3);
   }
-  60% {
-    transform: scale(1.12);
-    opacity: 1;
-  }
-  100% {
-    transform: scale(1);
-  }
-}
 
-@keyframes step-check-draw {
-  to {
-    stroke-dashoffset: 0;
+  .step-check__path {
+    stroke-dashoffset: 24;
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .step-check {
-    animation: none;
-  }
+  .step-check,
   .step-check__path {
-    animation: none;
-    stroke-dashoffset: 0;
+    transition: none;
   }
 }
 </style>
