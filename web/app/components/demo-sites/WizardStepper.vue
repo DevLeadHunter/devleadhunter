@@ -23,7 +23,7 @@
             class="font-label flex h-7 w-7 items-center justify-center rounded-full text-[0.65rem] font-medium transition-all duration-300"
             :class="nodeClass(step.id)"
           >
-            <UIcon v-if="currentStep > step.id" name="i-lucide-check" class="h-3.5 w-3.5" />
+            <UiStepCheck v-if="currentStep > step.id" class="h-3.5 w-3.5" />
             <span v-else>0{{ step.id }}</span>
           </span>
           <span class="text-xs font-medium whitespace-nowrap transition-colors" :class="labelClass(step.id)">
@@ -58,7 +58,7 @@
             class="font-label flex h-7 w-7 items-center justify-center rounded-full text-[0.65rem] font-medium transition-all duration-300"
             :class="nodeClass(step.id)"
           >
-            <UIcon v-if="currentStep > step.id" name="i-lucide-check" class="h-3.5 w-3.5" />
+            <UiStepCheck v-if="currentStep > step.id" class="h-3.5 w-3.5" />
             <span v-else>0{{ step.id }}</span>
           </span>
           <span
