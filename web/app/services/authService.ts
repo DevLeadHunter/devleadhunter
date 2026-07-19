@@ -83,6 +83,29 @@ export async function getCurrentUser(token: string): Promise<User> {
 }
 
 /**
+ * Mark the post-signup setup wizard (`/configuration`) as completed.
+ * @param {string} token - JWT token.
+ * @returns {Promise<User>} The updated user.
+ * @throws {Error} If the request fails.
+ */
+export async function completeOnboarding(token: string): Promise<User> {
+  const response = await fetch(`${getApiUrl()}/api/v1/auth/me/complete-onboarding`, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${token}`,
+      'Content-Type': 'application/json',
+    },
+  })
+
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({ detail: 'Onboarding completion failed' }))
+    throw new Error(error.detail || 'Onboarding completion failed')
+  }
+
+  return response.json()
+}
+
+/**
  * Update the current user's profile (name and/or email) server-side.
  * @param {string} token - JWT token.
  * @param {ProfileUpdate} data - Fields to update (name and/or email).

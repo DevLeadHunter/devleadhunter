@@ -126,6 +126,11 @@
           <UIcon name="i-lucide-chevron-left" class="h-3.5 w-3.5 text-[var(--app-ink-soft)]" />
           <span>Menu principal</span>
         </button>
+        <NuxtLink to="/configuration" :class="navItemClass(isActive('/configuration'))" @click="handleClick">
+          <span :class="navBarClass(isActive('/configuration'))"></span>
+          <UIcon name="i-lucide-rocket" class="h-4 w-4 shrink-0" />
+          <span>Mise en route</span>
+        </NuxtLink>
         <NuxtLink
           to="/dashboard/settings/sending"
           :class="navItemClass(isActive('/dashboard/settings/sending'))"

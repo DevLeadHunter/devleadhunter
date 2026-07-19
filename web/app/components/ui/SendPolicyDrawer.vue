@@ -38,78 +38,8 @@
             <UIcon name="i-lucide-loader-circle" class="h-7 w-7 animate-spin text-[var(--app-accent)]" />
           </div>
 
-          <form v-else id="send-policy-form" class="space-y-6" @submit.prevent="save">
-            <div>
-              <label class="app-label mb-1.5 block" for="sp-daily-cap">Emails maximum par jour</label>
-              <input
-                id="sp-daily-cap"
-                v-model.number="form.daily_cap"
-                type="number"
-                min="1"
-                max="500"
-                class="app-input w-32"
-              />
-            </div>
-
-            <div>
-              <p class="app-label mb-2">Jours d'envoi</p>
-              <div class="flex flex-wrap gap-1.5">
-                <button
-                  v-for="(label, index) in dayLabels"
-                  :key="label"
-                  type="button"
-                  class="rounded-full border px-3.5 py-1.5 text-xs font-medium transition-colors"
-                  :class="
-                    form.days_of_week.includes(index)
-                      ? 'border-[var(--app-ink)] bg-[var(--app-ink)] text-[var(--app-surface)]'
-                      : 'border-[var(--app-line)] text-[var(--app-ink-soft)] hover:border-[var(--app-ink-soft)]'
-                  "
-                  @click="toggleDay(index)"
-                >
-                  {{ label }}
-                </button>
-              </div>
-            </div>
-
-            <div class="grid grid-cols-2 gap-4">
-              <div>
-                <label class="app-label mb-1.5 block" for="sp-win-start">Début de journée</label>
-                <select id="sp-win-start" v-model.number="form.window_start_hour" class="app-input">
-                  <option v-for="h in 24" :key="h - 1" :value="h - 1">{{ String(h - 1).padStart(2, '0') }}:00</option>
-                </select>
-              </div>
-              <div>
-                <label class="app-label mb-1.5 block" for="sp-win-end">Fin de journée</label>
-                <select id="sp-win-end" v-model.number="form.window_end_hour" class="app-input">
-                  <option v-for="h in 24" :key="h" :value="h">{{ String(h).padStart(2, '0') }}:00</option>
-                </select>
-              </div>
-            </div>
-
-            <div>
-              <label class="app-label mb-1.5 block" for="sp-spacing">Délai minimum entre deux envois (min)</label>
-              <input
-                id="sp-spacing"
-                v-model.number="form.spacing_minutes"
-                type="number"
-                min="1"
-                max="1440"
-                class="app-input w-32"
-              />
-            </div>
-
-            <p
-              class="flex items-start gap-2 rounded-xl border border-[var(--app-line)] bg-[var(--app-bg)] p-3.5 text-[11px] text-[var(--app-ink-soft)]"
-            >
-              <UIcon name="i-lucide-info" class="mt-0.5 h-3.5 w-3.5 shrink-0" />
-              <span>
-                Max <strong class="text-[var(--app-ink)]">{{ form.daily_cap }}</strong
-                >/jour, {{ selectedDaysLabel }}, de
-                <strong class="text-[var(--app-ink)]">{{ String(form.window_start_hour).padStart(2, '0') }}h</strong> à
-                <strong class="text-[var(--app-ink)]">{{ String(form.window_end_hour).padStart(2, '0') }}h</strong>, 1
-                toutes les {{ form.spacing_minutes }} min.
-              </span>
-            </p>
+          <form v-else id="send-policy-form" @submit.prevent="save">
+            <UiSendPolicyFields v-model="form" />
           </form>
         </div>
 
@@ -176,30 +106,10 @@ const form: Ref<SendPolicy> = ref<SendPolicy>({
   spacing_minutes: 20,
 })
 
-/** Weekday labels (index 0 = Monday). */
-const dayLabels: ReadonlyArray<string> = ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim']
-
 /** Whether the end hour is strictly after the start hour. */
 const isWindowValid: ComputedRef<boolean> = computed(
   (): boolean => form.value.window_end_hour > form.value.window_start_hour,
 )
-
-/** Human list of the selected days. */
-const selectedDaysLabel: ComputedRef<string> = computed((): string => {
-  const days: number[] = [...form.value.days_of_week].sort((a: number, b: number): number => a - b)
-  return days.length ? days.map((d: number): string => dayLabels[d] ?? '').join(', ') : 'aucun jour'
-})
-
-/**
- * Toggle a weekday in the policy.
- * @param index - Weekday index (0 = Monday).
- */
-function toggleDay(index: number): void {
-  const set: Set<number> = new Set<number>(form.value.days_of_week)
-  if (set.has(index)) set.delete(index)
-  else set.add(index)
-  form.value.days_of_week = [...set].sort((a: number, b: number): number => a - b)
-}
 
 /**
  * Load the current policy from the API.

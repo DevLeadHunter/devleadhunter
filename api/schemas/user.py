@@ -56,11 +56,16 @@ class UserResponse(UserBase):
         credit_balance: Current credit balance (-1 for unlimited/admin)
         credits_available: Current credits available (-1 for unlimited/admin)
         credits_consumed: Total credits consumed
+        onboarding_completed: Whether the post-signup setup wizard is done
     """
     id: int
     is_active: bool
     created_at: datetime
     updated_at: Optional[datetime] = None
+    onboarding_completed: bool = Field(
+        default=False,
+        description="Whether the post-signup setup wizard (/configuration) has been completed"
+    )
     credit_balance: Optional[int] = Field(
         None,
         description="Current credit balance. -1 indicates unlimited credits (admin)"

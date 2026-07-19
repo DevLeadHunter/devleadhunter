@@ -57,6 +57,7 @@ MIGRATION_MODULES: list[tuple[str, str]] = [
     ("add_demo_video", "migrations.add_demo_video"),
     ("add_presenter_auto_generate", "migrations.add_presenter_auto_generate"),
     ("add_user_sending_provider", "migrations.add_user_sending_provider"),
+    ("add_user_onboarding_completed", "migrations.add_user_onboarding_completed"),
 ]
 
 

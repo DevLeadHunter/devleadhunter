@@ -158,6 +158,24 @@ export const useUserStore = defineStore('user', () => {
   }
 
   /**
+   * Mark the post-signup setup wizard as completed and sync local state.
+   * @returns {Promise<void>} Promise that resolves once the flag is persisted.
+   * @throws {Error} If not authenticated or the request fails.
+   */
+  async function completeOnboarding(): Promise<void> {
+    if (!token.value) {
+      throw new Error('Not authenticated')
+    }
+
+    const updatedUser: User = await authService.completeOnboarding(token.value)
+    user.value = updatedUser
+
+    if (import.meta.client) {
+      localStorage.setItem('user', JSON.stringify(updatedUser))
+    }
+  }
+
+  /**
    * Initialize user from localStorage
    * @returns {void}
    */
@@ -296,6 +314,7 @@ export const useUserStore = defineStore('user', () => {
     signup,
     logout,
     updateProfile,
+    completeOnboarding,
     initializeAuth,
     validateAuth,
     refreshUser,

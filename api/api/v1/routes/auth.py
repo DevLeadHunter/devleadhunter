@@ -27,6 +27,36 @@ router = APIRouter(prefix="/auth", tags=["authentication"])
 limiter = Limiter(key_func=get_remote_address)
 
 
+def _build_user_response(db: Session, user: User) -> UserResponse:
+    """
+    Serialize a user with their live credit figures.
+
+    Single place where the ``/auth`` payload is shaped, so every route that
+    returns a user (signup, me, profile update, onboarding) stays in sync.
+
+    Args:
+        db: Database session.
+        user: The user to serialize.
+
+    Returns:
+        The user response, credit balance included.
+    """
+    balance = credit_service.get_user_balance(db, user.id)
+    return UserResponse(
+        id=user.id,
+        name=user.name,
+        email=user.email,
+        role=user.role,
+        is_active=user.is_active,
+        created_at=user.created_at,
+        updated_at=user.updated_at,
+        onboarding_completed=user.onboarding_completed,
+        credit_balance=balance,
+        credits_available=balance,
+        credits_consumed=credit_service.get_user_credits_consumed(db, user.id),
+    )
+
+
 @router.post("/signup", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
 @limiter.limit("5/minute")  # Limit signup attempts to prevent abuse
 async def signup(
@@ -67,25 +97,8 @@ async def signup(
     db.add(db_user)
     db.commit()
     db.refresh(db_user)
-    
-    # Add credit balance, available, and consumed
-    balance = credit_service.get_user_balance(db, db_user.id)
-    credits_available = balance
-    credits_consumed = credit_service.get_user_credits_consumed(db, db_user.id)
-    
-    user_dict = {
-        "id": db_user.id,
-        "name": db_user.name,
-        "email": db_user.email,
-        "role": db_user.role,
-        "is_active": db_user.is_active,
-        "created_at": db_user.created_at,
-        "updated_at": db_user.updated_at,
-        "credit_balance": balance,
-        "credits_available": credits_available,
-        "credits_consumed": credits_consumed
-    }
-    return UserResponse(**user_dict)
+
+    return _build_user_response(db, db_user)
 
 
 @router.post("/login", response_model=Token)
@@ -140,24 +153,7 @@ async def get_current_user_info(
     Returns:
         Current user information with credit balance
     """
-    # Add credit balance, available, and consumed
-    balance = credit_service.get_user_balance(db, current_user.id)
-    credits_available = balance
-    credits_consumed = credit_service.get_user_credits_consumed(db, current_user.id)
-    
-    user_dict = {
-        "id": current_user.id,
-        "name": current_user.name,
-        "email": current_user.email,
-        "role": current_user.role,
-        "is_active": current_user.is_active,
-        "created_at": current_user.created_at,
-        "updated_at": current_user.updated_at,
-        "credit_balance": balance,
-        "credits_available": credits_available,
-        "credits_consumed": credits_consumed
-    }
-    return UserResponse(**user_dict)
+    return _build_user_response(db, current_user)
 
 
 @router.patch("/me", response_model=UserResponse)
@@ -201,21 +197,31 @@ async def update_current_user_info(
     db.commit()
     db.refresh(current_user)
 
-    balance = credit_service.get_user_balance(db, current_user.id)
-    credits_available = balance
-    credits_consumed = credit_service.get_user_credits_consumed(db, current_user.id)
+    return _build_user_response(db, current_user)
 
-    user_dict = {
-        "id": current_user.id,
-        "name": current_user.name,
-        "email": current_user.email,
-        "role": current_user.role,
-        "is_active": current_user.is_active,
-        "created_at": current_user.created_at,
-        "updated_at": current_user.updated_at,
-        "credit_balance": balance,
-        "credits_available": credits_available,
-        "credits_consumed": credits_consumed
-    }
-    return UserResponse(**user_dict)
+
+@router.post("/me/complete-onboarding", response_model=UserResponse)
+async def complete_onboarding(
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db)
+) -> Any:
+    """
+    Mark the post-signup setup wizard as completed for the current user.
+
+    Called by the last step of ``/configuration``. Idempotent: replaying it on an
+    already-onboarded account is a no-op that still returns the user.
+
+    Args:
+        current_user: Current authenticated user.
+        db: Database session.
+
+    Returns:
+        The updated user.
+    """
+    if not current_user.onboarding_completed:
+        current_user.onboarding_completed = True
+        db.commit()
+        db.refresh(current_user)
+
+    return _build_user_response(db, current_user)
 

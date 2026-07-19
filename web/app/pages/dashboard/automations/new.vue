@@ -13,46 +13,7 @@
     </div>
 
     <!-- Timeline (top, full width) -->
-    <div class="mb-6 overflow-x-auto rounded-2xl border border-[var(--app-line)] bg-[var(--app-surface)] p-1.5">
-      <ol class="flex min-w-max items-stretch sm:min-w-0">
-        <li v-for="(s, index) in steps" :key="s.id" class="flex flex-1 items-center">
-          <button
-            type="button"
-            :disabled="s.id >= currentStep"
-            class="flex flex-1 items-center gap-3 rounded-xl px-3 py-2.5 text-left transition-colors"
-            :class="
-              s.id === currentStep
-                ? 'bg-[var(--app-surface-2)]'
-                : s.id < currentStep
-                  ? 'cursor-pointer hover:bg-[var(--app-surface-2)]/60'
-                  : 'cursor-default'
-            "
-            @click="handleStepNavigate(s.id)"
-          >
-            <span
-              class="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border text-sm font-semibold transition-colors"
-              :class="stepNodeClass(s.id)"
-            >
-              <UiStepCheck v-if="s.id < currentStep" class="h-4 w-4" />
-              <template v-else>{{ s.id }}</template>
-            </span>
-            <span class="min-w-0">
-              <span
-                class="block text-sm font-semibold"
-                :class="s.id === currentStep ? 'text-[var(--app-ink)]' : 'text-[var(--app-ink-soft)]'"
-                >{{ s.label }}</span
-              >
-              <span class="hidden truncate text-[11px] text-[var(--app-faint)] sm:block">{{ s.hint }}</span>
-            </span>
-          </button>
-          <UIcon
-            v-if="index < steps.length - 1"
-            name="i-lucide-chevron-right"
-            class="mx-0.5 h-4 w-4 shrink-0 text-[var(--app-faint)]"
-          />
-        </li>
-      </ol>
-    </div>
+    <UiWizardStepper :model-value="currentStep" :steps="steps" class="mb-6" @update:model-value="goToStep" />
 
     <div class="min-w-0">
       <!-- ══════════ Step 1 · Cible ══════════ -->
@@ -342,6 +303,7 @@ import { computed, onMounted, ref, watch } from 'vue'
 import type { AutomationMode } from '~/types/Automation'
 import type { Prospect } from '~/types'
 import type { TemplateSelectOption } from '~/types/TemplateSelect'
+import type { UiWizardStep } from '~/types/UiWizardStepper'
 import type { DemoSiteTemplate, DemoSiteTheme } from '~/services/demoSiteService'
 import { createAutomation, getUsedProspectIds } from '~/services/automationsService'
 import { deleteProspect as deleteProspectApi, listProspects } from '~/services/prospectsService'
@@ -350,13 +312,6 @@ import { listDemoSiteTemplates } from '~/services/demoSiteService'
 import { useDrawerStackStore } from '~/stores/drawerStack'
 import { useProspectSearchStore } from '~/stores/prospectSearch'
 import { useToast } from '~/composables/useToast'
-
-/** A wizard step. */
-interface WizardStep {
-  id: number
-  label: string
-  hint: string
-}
 
 /** A recap row. */
 interface RecapItem {
@@ -392,7 +347,7 @@ const searchStore = useProspectSearchStore()
 const defaultTheme: DemoSiteTheme = { primary: '#0284c7', secondary: '#0f172a', accent: '#f59e0b' }
 
 /** Wizard steps. */
-const steps: WizardStep[] = [
+const steps: UiWizardStep[] = [
   { id: 1, label: 'Cible', hint: 'Prospects ou métier + ville' },
   { id: 2, label: 'Site', hint: 'Template des sites' },
   { id: 3, label: 'Emails', hint: 'Cold email A/B' },
@@ -531,33 +486,12 @@ function segmentClass(active: boolean): string {
 }
 
 /**
- * Classes for a timeline step node based on its state.
- * @param stepId - The step id (1-based).
- * @returns Border/background/text classes.
- */
-function stepNodeClass(stepId: number): string {
-  if (stepId < currentStep.value) {
-    return 'border-[var(--app-green)] bg-[var(--app-green-soft)] text-[var(--app-green)] cursor-pointer'
-  }
-  if (stepId === currentStep.value) return 'border-[var(--app-ink)] text-[var(--app-ink)]'
-  return 'border-[var(--app-line)] text-[var(--app-ink-soft)] cursor-default'
-}
-
-/**
  * Navigate to a step and scroll to top.
  * @param step - Target step (1-based).
  */
 function goToStep(step: number): void {
   currentStep.value = step
   window.scrollTo({ top: 0, behavior: 'smooth' })
-}
-
-/**
- * Stepper node clicked — only allow going back.
- * @param stepId - Target step id.
- */
-function handleStepNavigate(stepId: number): void {
-  if (stepId < currentStep.value) goToStep(stepId)
 }
 
 /** Reset the filters. */

@@ -34,6 +34,7 @@ class User(Base):
         role: User role (USER or ADMIN)
         is_active: Whether the user is active
         sending_provider: Active email-sending transport (resend | gmail)
+        onboarding_completed: Whether the setup wizard has been completed
         created_at: Timestamp when user was created
         updated_at: Timestamp when user was last updated
         credit_transactions: Relationship to credit transactions
@@ -50,6 +51,8 @@ class User(Base):
     sending_provider: Mapped[str] = mapped_column(
         String(20), default=SendingProvider.RESEND.value, nullable=False
     )
+    # Whether the post-signup setup wizard (/configuration) has been completed.
+    onboarding_completed: Mapped[bool] = mapped_column(default=False, nullable=False)
     created_at: Mapped[datetime] = mapped_column(server_default=func.now(), nullable=False)
     updated_at: Mapped[Optional[datetime]] = mapped_column(onupdate=func.now(), nullable=True)
     

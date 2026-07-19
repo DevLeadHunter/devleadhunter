@@ -246,6 +246,8 @@ export interface User {
   credits_available?: number | null
   /** Credits consumed */
   credits_consumed?: number | null
+  /** Whether the post-signup setup wizard (`/configuration`) has been completed */
+  onboarding_completed?: boolean
 }
 
 /**
