@@ -1,65 +1,34 @@
 <template>
-  <div class="space-y-6">
-    <!-- Active sending method ------------------------------------------------ -->
-    <div class="card">
-      <h2 class="text-sm font-semibold text-[var(--app-ink)]">Méthode d'envoi active</h2>
-      <p class="text-muted mt-1 mb-4 text-xs">
-        Le canal par lequel partent vos emails de prospection. Configurez celui de votre choix ci-dessous, puis
-        sélectionnez-le ici.
-      </p>
+  <div class="mx-auto max-w-2xl space-y-8">
+    <!-- Method chooser — one big tab per method, only the selected one is shown below -->
+    <UiTabs v-model="viewProvider" :tabs="TABS">
+      <template #icon="{ tab }">
+        <UiGoogleLogo v-if="tab.key === 'gmail'" class="h-5 w-5" />
+        <UIcon v-else name="i-lucide-globe" class="h-5 w-5" />
+      </template>
+    </UiTabs>
 
-      <div class="inline-flex rounded-lg border border-[var(--app-line)] bg-[var(--app-bg)] p-0.5">
-        <button
-          type="button"
-          :class="providerTabClass('resend')"
-          :disabled="isSwitching"
-          @click="switchProvider('resend')"
-        >
-          <UIcon name="i-lucide-mail-open" class="h-4 w-4" />
-          <span>Domaine (Resend)</span>
-          <UIcon v-if="activeProvider === 'resend'" name="i-lucide-check" class="h-3.5 w-3.5" />
-        </button>
-        <button
-          type="button"
-          :class="providerTabClass('gmail')"
-          :disabled="isSwitching"
-          @click="switchProvider('gmail')"
-        >
-          <i class="fa-brands fa-google"></i>
-          <span>Gmail</span>
-          <UIcon v-if="activeProvider === 'gmail'" name="i-lucide-check" class="h-3.5 w-3.5" />
-        </button>
-      </div>
-
-      <p v-if="activeSummary" class="text-muted mt-3 text-xs">{{ activeSummary }}</p>
-    </div>
-
-    <!-- Resend (custom domain) ---------------------------------------------- -->
-    <div class="card">
-      <div class="mb-4 flex items-center justify-between">
-        <div class="flex items-center gap-2">
-          <UIcon name="i-lucide-globe" class="h-4 w-4 text-[var(--app-ink)]" />
-          <h2 class="text-sm font-semibold text-[var(--app-ink)]">Envoi depuis votre domaine (Resend)</h2>
+    <!-- ── Domaine personnalisé (Resend) ─────────────────────────────────── -->
+    <section v-if="viewProvider === 'resend'" class="space-y-6">
+      <div class="space-y-3">
+        <p class="text-muted text-sm leading-relaxed">
+          Envoyez vos emails depuis votre propre adresse (ex :
+          <span class="text-[var(--app-ink)]">contact@votredomaine.fr</span>). Idéal pour la crédibilité et la
+          délivrabilité à grand volume.
+        </p>
+        <div v-if="isResendConfigured">
+          <span v-if="activeProvider === 'resend'" class="app-badge app-badge--success font-medium">
+            <UIcon name="i-lucide-check" class="h-3.5 w-3.5" />
+            Méthode d'envoi active
+          </span>
+          <button v-else class="btn-secondary text-xs" @click="activate('resend')">Utiliser cette méthode</button>
         </div>
-        <span
-          :class="['app-badge font-semibold', identity?.resend_configured ? 'app-badge--success' : 'app-badge--danger']"
-        >
-          <UIcon :name="identity?.resend_configured ? 'i-lucide-check' : 'i-lucide-x'" class="h-3.5 w-3.5" />
-          {{ identity?.resend_configured ? 'Configuré' : 'Non configuré' }}
-        </span>
       </div>
 
-      <p class="text-muted mb-5 text-xs">
-        Envoyez depuis <strong class="text-[var(--app-ink)]">votre propre adresse</strong> (ex :
-        contact@votredomaine.fr) via Resend. La clé API et le secret webhook sont chiffrés avant stockage.
-      </p>
-
-      <form class="space-y-4" @submit.prevent="saveResend">
-        <!-- Clé API -->
+      <form class="space-y-5" @submit.prevent="saveResend">
         <div>
           <label class="text-muted mb-1.5 block text-xs font-medium">
-            Clé API Resend
-            <span class="text-[var(--app-red)]">*</span>
+            Clé API Resend <span class="text-[var(--app-red)]">*</span>
           </label>
           <div class="relative">
             <input
@@ -72,54 +41,28 @@
             <button
               type="button"
               class="text-muted absolute top-1/2 right-3 -translate-y-1/2 transition-colors hover:text-[var(--app-ink)]"
+              :aria-label="showApiKey ? 'Masquer la clé' : 'Afficher la clé'"
               @click="showApiKey = !showApiKey"
             >
               <UIcon :name="showApiKey ? 'i-lucide-eye-off' : 'i-lucide-eye'" class="h-3.5 w-3.5" />
             </button>
           </div>
-          <p class="text-muted mt-1 text-xs">
-            Créer une clé sur
-            <a href="https://resend.com/api-keys" target="_blank" class="text-[var(--app-accent-ink)] hover:underline">
-              resend.com/api-keys
-            </a>
-          </p>
-          <div
-            class="mt-2 flex items-start gap-2 rounded-lg border border-[var(--app-accent)]/30 bg-[var(--app-accent-soft)] px-3 py-2"
-          >
-            <UIcon name="i-lucide-triangle-alert" class="mt-0.5 h-3.5 w-3.5 text-[var(--app-accent)]" />
-            <p class="text-xs text-[var(--app-accent)]">
-              Utilisez une clé <strong>Full Access</strong> — une clé restreinte "Sending access" ne permettra pas la
-              synchronisation des statuts (ouvertures, clics, bounces) depuis la page Emails.
-            </p>
-          </div>
-        </div>
-
-        <!-- Secret webhook -->
-        <div>
-          <label class="text-muted mb-1.5 block text-xs font-medium">Secret webhook</label>
-          <div class="relative">
-            <input
-              v-model="resendForm.webhook_secret"
-              :type="showWebhookSecret ? 'text' : 'password'"
-              class="input-field pr-10"
-              placeholder="whsec_xxxxxxxxxxxxxxxxxxxx"
-            />
-            <button
-              type="button"
-              class="text-muted absolute top-1/2 right-3 -translate-y-1/2 transition-colors hover:text-[var(--app-ink)]"
-              @click="showWebhookSecret = !showWebhookSecret"
+          <p class="text-muted mt-1.5 text-xs">
+            Créez une clé <span class="font-medium text-[var(--app-ink)]">Full Access</span> sur
+            <a
+              href="https://resend.com/api-keys"
+              target="_blank"
+              rel="noopener"
+              class="font-medium text-[var(--app-blue)] underline underline-offset-2 hover:opacity-80"
             >
-              <UIcon :name="showWebhookSecret ? 'i-lucide-eye-off' : 'i-lucide-eye'" class="h-3.5 w-3.5" />
-            </button>
-          </div>
-          <p class="text-muted mt-1 text-xs">Trouvable dans Resend → Settings → Webhooks après création du webhook.</p>
+              resend.com/api-keys </a
+            >.
+          </p>
         </div>
 
-        <!-- Email d'envoi -->
         <div>
           <label class="text-muted mb-1.5 block text-xs font-medium">
-            Email d'envoi
-            <span class="text-[var(--app-red)]">*</span>
+            Adresse d'envoi <span class="text-[var(--app-red)]">*</span>
           </label>
           <input
             v-model="resendForm.from_email"
@@ -128,100 +71,124 @@
             class="input-field"
             placeholder="contact@votredomaine.fr"
           />
-          <p class="text-muted mt-1 text-xs">Doit être un domaine vérifié sur Resend.</p>
+          <p class="text-muted mt-1.5 text-xs">Doit appartenir à un domaine vérifié sur Resend.</p>
         </div>
 
-        <!-- Nom d'envoi -->
         <div>
-          <label class="text-muted mb-1.5 block text-xs font-medium">Nom d'envoi</label>
-          <input v-model="resendForm.from_name" type="text" class="input-field" placeholder="Léo" />
-          <p class="text-muted mt-1 text-xs">Nom affiché dans la boîte de réception du destinataire.</p>
+          <label class="text-muted mb-1.5 block text-xs font-medium">Nom affiché</label>
+          <input v-model="resendForm.from_name" type="text" class="input-field" placeholder="Ex : Léo de Dibodev" />
         </div>
 
-        <div class="pt-1">
-          <button
-            type="submit"
-            :disabled="isSavingResend"
-            class="btn-primary disabled:cursor-not-allowed disabled:opacity-50"
+        <!-- Advanced (optional) — kept out of the way to stay onboarding-friendly -->
+        <details class="group rounded-lg border border-[var(--app-line)] bg-[var(--app-bg)]">
+          <summary
+            class="text-muted flex cursor-pointer items-center justify-between px-3 py-2.5 text-xs font-medium select-none hover:text-[var(--app-ink)]"
           >
+            <span class="flex items-center gap-2">
+              <UIcon name="i-lucide-sliders-horizontal" class="h-3.5 w-3.5" />
+              Options avancées (facultatif)
+            </span>
+            <UIcon name="i-lucide-chevron-down" class="h-3.5 w-3.5 transition-transform group-open:rotate-180" />
+          </summary>
+          <div class="space-y-3 border-t border-[var(--app-line)] px-3 py-3">
+            <div>
+              <label class="text-muted mb-1.5 block text-xs font-medium">Secret webhook</label>
+              <div class="relative">
+                <input
+                  v-model="resendForm.webhook_secret"
+                  :type="showWebhookSecret ? 'text' : 'password'"
+                  class="input-field pr-10"
+                  placeholder="whsec_xxxxxxxxxxxxxxxxxxxx"
+                />
+                <button
+                  type="button"
+                  class="text-muted absolute top-1/2 right-3 -translate-y-1/2 transition-colors hover:text-[var(--app-ink)]"
+                  :aria-label="showWebhookSecret ? 'Masquer le secret' : 'Afficher le secret'"
+                  @click="showWebhookSecret = !showWebhookSecret"
+                >
+                  <UIcon :name="showWebhookSecret ? 'i-lucide-eye-off' : 'i-lucide-eye'" class="h-3.5 w-3.5" />
+                </button>
+              </div>
+              <p class="text-muted mt-1.5 text-xs">
+                Nécessaire pour le suivi temps réel (ouvertures, clics, bounces). Webhook à créer dans Resend → Settings
+                → Webhooks vers
+                <code class="rounded bg-[var(--app-surface-2)] px-1 py-0.5 text-[var(--app-ink)]">
+                  /api/v1/webhooks/resend </code
+                >.
+              </p>
+            </div>
+          </div>
+        </details>
+
+        <div class="flex justify-end">
+          <button type="submit" :disabled="isSavingResend" class="btn-primary disabled:opacity-50">
             <UIcon v-if="isSavingResend" name="i-lucide-loader-circle" class="h-4 w-4 animate-spin" />
-            {{ isSavingResend ? 'Enregistrement…' : 'Enregistrer la configuration Resend' }}
+            {{ isSavingResend ? 'Enregistrement…' : 'Enregistrer' }}
           </button>
         </div>
       </form>
+    </section>
 
-      <!-- Aide webhook -->
-      <div class="mt-4 rounded-lg border border-[var(--app-line)] bg-[var(--app-bg)] p-4">
-        <h3 class="mb-2 text-xs font-semibold text-[var(--app-ink)]">
-          <UIcon name="i-lucide-info" class="mr-1.5 h-4 w-4 text-[var(--app-accent-ink)]" />
-          Configuration du webhook
-        </h3>
-        <p class="text-muted text-xs leading-relaxed">
-          Pour le tracking temps réel (ouvertures, clics, bounces), configurez le webhook dans Resend → Settings →
-          Webhooks avec l'URL :
-        </p>
-        <code class="mt-2 block rounded bg-[var(--app-surface)] px-3 py-2 text-xs text-[var(--app-green)]">
-          POST https://votre-api.com/api/v1/webhooks/resend
-        </code>
-        <p class="text-muted mt-2 text-xs">
-          Events :
-          <span class="text-[var(--app-ink)]"
-            >email.sent · email.delivered · email.opened · email.clicked · email.bounced · email.complained</span
-          >
-        </p>
-      </div>
-    </div>
-
-    <!-- Gmail --------------------------------------------------------------- -->
-    <div class="card">
-      <div class="mb-4 flex items-center justify-between">
-        <div class="flex items-center gap-2">
-          <i class="fa-brands fa-google text-[var(--app-ink)]"></i>
-          <h2 class="text-sm font-semibold text-[var(--app-ink)]">Envoi via Gmail</h2>
+    <!-- ── Gmail ─────────────────────────────────────────────────────────── -->
+    <section v-else class="space-y-6">
+      <!-- Empty state: friendly one-click connect -->
+      <div
+        v-if="gmailAccounts.length === 0"
+        class="flex flex-col items-center gap-4 rounded-xl border border-[var(--app-line)] bg-[var(--app-surface)] px-6 py-12 text-center"
+      >
+        <UiGoogleLogo class="h-11 w-11" />
+        <div class="space-y-1.5">
+          <h2 class="text-base font-semibold text-[var(--app-ink)]">Connectez votre boîte Gmail</h2>
+          <p class="text-muted mx-auto max-w-sm text-sm leading-relaxed">
+            Un seul clic, aucune configuration DNS. Parfait si vous n'avez pas encore de domaine.
+          </p>
         </div>
-        <span :class="['app-badge font-semibold', identity?.gmail_configured ? 'app-badge--success' : '']">
-          <UIcon :name="identity?.gmail_configured ? 'i-lucide-check' : 'i-lucide-minus'" class="h-3.5 w-3.5" />
-          {{ identity?.gmail_configured ? 'Connecté' : 'Non connecté' }}
-        </span>
+        <button class="btn-primary" @click="connectGmail">
+          <UiGoogleLogo class="h-4 w-4" />
+          Connecter Gmail
+        </button>
       </div>
 
-      <p class="text-muted mb-4 text-xs">
-        Pas de domaine ? Envoyez directement depuis votre boîte <strong class="text-[var(--app-ink)]">Gmail</strong>. Un
-        clic suffit — aucune configuration DNS.
-      </p>
+      <!-- Connected -->
+      <div v-else class="space-y-4">
+        <div v-if="activeProvider === 'gmail'">
+          <span class="app-badge app-badge--success font-medium">
+            <UIcon name="i-lucide-check" class="h-3.5 w-3.5" />
+            Méthode d'envoi active
+          </span>
+        </div>
+        <button v-else class="btn-secondary text-xs" @click="activate('gmail')">Utiliser Gmail pour l'envoi</button>
 
-      <!-- Connected accounts -->
-      <div v-if="gmailAccounts.length > 0" class="mb-4 space-y-2">
         <div
           v-for="account in gmailAccounts"
           :key="account.id"
-          class="flex items-center justify-between rounded-lg border border-[var(--app-line)] bg-[var(--app-bg)] px-3 py-2.5"
+          class="flex items-center justify-between rounded-xl border border-[var(--app-line)] bg-[var(--app-surface)] px-4 py-3"
         >
-          <div class="flex items-center gap-2.5">
-            <i class="fa-brands fa-google text-[var(--app-ink-soft)]"></i>
+          <div class="flex items-center gap-3">
+            <UiGoogleLogo class="h-6 w-6" />
             <div>
               <p class="text-sm font-medium text-[var(--app-ink)]">{{ account.email }}</p>
               <p class="text-muted text-xs">{{ account.name }}</p>
             </div>
           </div>
-          <button class="btn-danger text-xs" title="Déconnecter ce compte Gmail" @click="deleteGmailAccount(account)">
+          <button class="btn-danger text-xs" title="Déconnecter ce compte" @click="deleteGmailAccount(account)">
             <UIcon name="i-lucide-trash-2" class="h-3.5 w-3.5" />
           </button>
         </div>
-      </div>
 
-      <button class="btn-secondary" @click="connectGmail">
-        <i class="fa-brands fa-google"></i>
-        <span>{{ gmailAccounts.length > 0 ? 'Connecter un autre compte' : 'Connecter Gmail' }}</span>
-      </button>
-    </div>
+        <button class="text-muted text-xs font-medium hover:text-[var(--app-ink)]" @click="connectGmail">
+          + Connecter un autre compte
+        </button>
+      </div>
+    </section>
   </div>
 </template>
 
 <script lang="ts" setup>
 import type { ComputedRef, Ref } from 'vue'
 import type { EmailAccount } from '~/types'
-import type { ResendConfigResponse, SendingIdentityResponse, SendingProvider } from '~/services/settingsService'
+import type { SendingIdentityResponse, SendingProvider } from '~/services/settingsService'
+import type { UiTab } from '~/types/UiTabs'
 import { ref, computed, onMounted } from 'vue'
 import { settingsService } from '~/services/settingsService'
 import { getEmailAccounts, getGmailAuthUrl, deleteEmailAccount } from '~/services/emailAccountsService'
@@ -235,11 +202,15 @@ const router = useRouter()
 
 // ─── State ──────────────────────────────────────────────────────────────────
 
-const identity: Ref<SendingIdentityResponse | null> = ref<SendingIdentityResponse | null>(null)
-const resendConfig: Ref<ResendConfigResponse | null> = ref<ResendConfigResponse | null>(null)
-const gmailAccounts: Ref<EmailAccount[]> = ref<EmailAccount[]>([])
+const TABS: UiTab[] = [
+  { key: 'resend', label: 'Domaine personnalisé', hint: 'Votre adresse pro' },
+  { key: 'gmail', label: 'Gmail', hint: 'Sans domaine, en un clic' },
+]
 
-const isSwitching: Ref<boolean> = ref<boolean>(false)
+const identity: Ref<SendingIdentityResponse | null> = ref<SendingIdentityResponse | null>(null)
+const gmailAccounts: Ref<EmailAccount[]> = ref<EmailAccount[]>([])
+const viewProvider: Ref<SendingProvider> = ref<SendingProvider>('resend')
+
 const isSavingResend: Ref<boolean> = ref<boolean>(false)
 const showApiKey: Ref<boolean> = ref<boolean>(false)
 const showWebhookSecret: Ref<boolean> = ref<boolean>(false)
@@ -253,87 +224,85 @@ const resendForm: Ref<{ api_key: string; webhook_secret: string; from_email: str
 
 // ─── Computed ───────────────────────────────────────────────────────────────
 
-/** The currently active sending provider (defaults to Resend before load). */
+/** The provider currently used to send (defaults to Resend before load). */
 const activeProvider: ComputedRef<SendingProvider> = computed(
   (): SendingProvider => identity.value?.provider ?? 'resend',
 )
 
-/** Human sentence describing what the active method sends from. */
-const activeSummary: ComputedRef<string> = computed((): string => {
-  if (!identity.value) return ''
-  if (identity.value.provider === 'gmail') {
-    return identity.value.gmail_email
-      ? `Vos emails partent depuis ${identity.value.gmail_email} (Gmail).`
-      : 'Gmail est sélectionné mais aucun compte n’est connecté.'
-  }
-  return identity.value.resend_from_email
-    ? `Vos emails partent depuis ${identity.value.resend_from_email} (Resend).`
-    : 'Resend est sélectionné mais n’est pas encore configuré.'
-})
+/** Whether the Resend method is ready to send. */
+const isResendConfigured: ComputedRef<boolean> = computed((): boolean => Boolean(identity.value?.resend_configured))
 
 // ─── Methods ────────────────────────────────────────────────────────────────
 
 /**
- * Classes of a provider-selection tab for a given provider.
- * @param provider - The provider this tab activates.
- * @returns Tailwind classes reflecting the active state.
+ * Whether a given provider is configured and usable.
+ * @param provider - Provider to check.
+ * @returns True when that provider can send.
  */
-function providerTabClass(provider: SendingProvider): string {
-  const base =
-    'flex cursor-pointer items-center gap-2 rounded-md px-3 py-1.5 text-xs font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-60'
-  return activeProvider.value === provider
-    ? `${base} bg-[var(--app-ink)] text-[var(--app-surface)]`
-    : `${base} text-[var(--app-ink-soft)] hover:text-[var(--app-ink)]`
+function isConfigured(provider: SendingProvider): boolean {
+  return provider === 'gmail' ? Boolean(identity.value?.gmail_configured) : Boolean(identity.value?.resend_configured)
 }
 
 /**
- * Load the sending identity, Resend config and connected Gmail accounts.
- * @returns A promise that resolves once all data is loaded.
+ * Load the sending identity + connected Gmail accounts and open the tab of the
+ * active method.
+ * @returns A promise that resolves once loaded.
  */
 async function loadAll(): Promise<void> {
   try {
-    const [identityData, resendData, accounts] = await Promise.all([
+    const [identityData, accounts] = await Promise.all([
       settingsService.getSendingIdentity(),
-      settingsService.getResendConfig().catch((): ResendConfigResponse | null => null),
       getEmailAccounts().catch((): EmailAccount[] => []),
     ])
     identity.value = identityData
-    resendConfig.value = resendData
-    resendForm.value.from_email = resendData?.from_email ?? ''
-    resendForm.value.from_name = resendData?.from_name ?? ''
+    viewProvider.value = identityData.provider
+    resendForm.value.from_email = identityData.resend_from_email ?? ''
     gmailAccounts.value = accounts.filter((a: EmailAccount): boolean => a.account_type === 'gmail_oauth')
+    // Pre-fill the display name from the existing Resend config, if any.
+    const resend = await settingsService.getResendConfig().catch(() => null)
+    resendForm.value.from_name = resend?.from_name ?? ''
   } catch {
     toast.error('Échec du chargement de la configuration d’envoi')
   }
 }
 
 /**
- * Switch the active sending provider (guarded server-side against unusable providers).
- * @param provider - Target provider.
+ * Make a configured provider the active sending method.
+ * @param provider - Provider to activate.
+ * @param silent - When true, do not toast on success (used for auto-activation).
  * @returns A promise that resolves once the switch is attempted.
  */
-async function switchProvider(provider: SendingProvider): Promise<void> {
-  if (provider === activeProvider.value || isSwitching.value) return
-  isSwitching.value = true
+async function activate(provider: SendingProvider, silent = false): Promise<void> {
   try {
     identity.value = await settingsService.setSendingProvider(provider)
-    toast.success(provider === 'gmail' ? 'Envoi via Gmail activé' : 'Envoi via Resend activé')
-  } catch (error: unknown) {
-    const detail: string | undefined = extractErrorDetail(error)
-    toast.error(detail ?? 'Impossible de changer de méthode d’envoi')
-  } finally {
-    isSwitching.value = false
+    if (!silent) {
+      toast.success(provider === 'gmail' ? 'Envoi via Gmail activé' : 'Envoi via votre domaine activé')
+    }
+  } catch {
+    if (!silent) toast.error('Impossible d’activer cette méthode')
   }
 }
 
 /**
- * Persist the Resend configuration, then refresh the identity readiness flags.
- * @returns A promise that resolves once the save is complete.
+ * Auto-activate the method just configured when no usable method is active yet
+ * (keeps onboarding seamless without ever forcing a switch away from a working one).
+ * @param justConfigured - The provider that was just set up.
+ * @returns A promise that resolves once handled.
+ */
+async function maybeAutoActivate(justConfigured: SendingProvider): Promise<void> {
+  if (activeProvider.value !== justConfigured && !isConfigured(activeProvider.value)) {
+    await activate(justConfigured, true)
+  }
+}
+
+/**
+ * Persist the Resend configuration, refresh readiness, then auto-activate if needed.
+ * @returns A promise that resolves once the save completes.
  */
 async function saveResend(): Promise<void> {
   isSavingResend.value = true
   try {
-    resendConfig.value = await settingsService.saveResendConfig({
+    await settingsService.saveResendConfig({
       api_key: resendForm.value.api_key,
       webhook_secret: resendForm.value.webhook_secret || undefined,
       from_email: resendForm.value.from_email,
@@ -342,7 +311,8 @@ async function saveResend(): Promise<void> {
     resendForm.value.api_key = ''
     resendForm.value.webhook_secret = ''
     identity.value = await settingsService.getSendingIdentity()
-    toast.success('Configuration Resend enregistrée')
+    await maybeAutoActivate('resend')
+    toast.success('Configuration enregistrée')
   } catch {
     toast.error('Erreur lors de l’enregistrement')
   } finally {
@@ -351,7 +321,7 @@ async function saveResend(): Promise<void> {
 }
 
 /**
- * Start the Gmail OAuth flow — redirects the browser to Google's consent screen.
+ * Start the Gmail OAuth flow (redirects the browser to Google's consent screen).
  * @returns A promise that resolves once the auth URL is fetched (before redirect).
  */
 async function connectGmail(): Promise<void> {
@@ -381,33 +351,16 @@ async function deleteGmailAccount(account: EmailAccount): Promise<void> {
 }
 
 /**
- * Extract a human error detail from an API error, when present.
- * @param error - Unknown error thrown by the HTTP client.
- * @returns The API ``detail`` string, or undefined.
- */
-function extractErrorDetail(error: unknown): string | undefined {
-  if (typeof error === 'object' && error !== null && 'response' in error) {
-    const response: unknown = (error as { response?: unknown }).response
-    if (typeof response === 'object' && response !== null && 'data' in response) {
-      const data: unknown = (response as { data?: unknown }).data
-      if (typeof data === 'object' && data !== null && 'detail' in data) {
-        const detail: unknown = (data as { detail?: unknown }).detail
-        if (typeof detail === 'string') return detail
-      }
-    }
-  }
-  return undefined
-}
-
-/**
- * Surface the Gmail OAuth callback outcome (``?gmail=connected|error``) as a toast,
- * then strip the query param so a refresh does not re-toast.
- * @returns A promise that resolves once feedback is handled.
+ * Surface the Gmail OAuth callback outcome (``?gmail=connected|error``), refresh,
+ * auto-activate on first connect, then strip the query param.
+ * @returns A promise that resolves once handled.
  */
 async function handleGmailCallbackFeedback(): Promise<void> {
   const flag: unknown = route.query.gmail
   if (flag !== 'connected' && flag !== 'error') return
   if (flag === 'connected') {
+    viewProvider.value = 'gmail'
+    await maybeAutoActivate('gmail')
     toast.success('Compte Gmail connecté')
   } else {
     toast.error('La connexion Gmail a échoué')
