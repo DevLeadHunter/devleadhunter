@@ -32,6 +32,16 @@ _SPAMCHECK_URL: str = "https://spamcheck.postmarkapp.com/filter"
 # polite with the free SpamAssassin endpoint.
 _CACHE_TTL_SECONDS: float = 6 * 3600.0
 
+# Naming one of these in the SUBJECT gets the message rejected at SMTP level by
+# Apple — a hard bounce, worse than spam-foldering: the prospect never sees it
+# and the sender reputation takes the hit. Verified by bisection on a real
+# iCloud mailbox (2026-07-19): same body, « votre fiche » delivered, « votre
+# fiche google » bounced. In the BODY the same brand is harmless.
+_BRANDS_BANNED_IN_SUBJECT: tuple[str, ...] = (
+    "google", "apple", "microsoft", "amazon", "facebook", "instagram", "linkedin",
+    "paypal", "stripe", "netflix", "orange", "sfr", "free", "bouygues",
+)
+
 # French cold-email vocabulary that reliably trips content filters.
 _SPAMMY_WORDS: tuple[str, ...] = (
     "gratuit", "urgent", "cliquez ici", "offre exceptionnelle", "promotion",
@@ -195,6 +205,26 @@ class EmailSpamTestService:
                 "label": "Objet",
                 "status": "warn" if shouty else "ok",
                 "detail": "MAJUSCULES/exclamations excessives — signal spam classique." if shouty else "Sobre, rien à signaler.",
+            }
+        )
+
+        # 3 bis. Brand name in the subject — the only check here whose failure
+        # means « ce mail n'arrivera pas du tout », so it is a danger, not a warn.
+        lowered_subject = subject.lower()
+        branded = sorted({brand for brand in _BRANDS_BANNED_IN_SUBJECT if brand in lowered_subject})
+        checks.append(
+            {
+                "key": "subject_brand",
+                "label": "Marque dans l'objet",
+                "status": "danger" if branded else "ok",
+                "detail": (
+                    f"« {branded[0].capitalize()} » dans l'objet : Apple REJETTE le message "
+                    "(il n'arrive ni en boîte de réception ni en indésirables, et le rejet "
+                    "compte comme un bounce). Retirez la marque de l'objet — dans le corps "
+                    "elle ne pose aucun problème."
+                    if branded
+                    else "Aucune marque connue dans l'objet."
+                ),
             }
         )
 
