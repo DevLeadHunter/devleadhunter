@@ -33,7 +33,7 @@
               class="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border text-sm font-semibold transition-colors"
               :class="stepNodeClass(s.id)"
             >
-              <UIcon v-if="s.id < currentStep" name="i-lucide-check" class="h-4 w-4" />
+              <UiStepCheck v-if="s.id < currentStep" class="h-4 w-4" />
               <template v-else>{{ s.id }}</template>
             </span>
             <span class="min-w-0">
@@ -537,7 +537,7 @@ function segmentClass(active: boolean): string {
  */
 function stepNodeClass(stepId: number): string {
   if (stepId < currentStep.value) {
-    return 'border-[var(--app-ink)] bg-[var(--app-ink)] text-[var(--app-surface)] cursor-pointer'
+    return 'border-[var(--app-green)] bg-[var(--app-green-soft)] text-[var(--app-green)] cursor-pointer'
   }
   if (stepId === currentStep.value) return 'border-[var(--app-ink)] text-[var(--app-ink)]'
   return 'border-[var(--app-line)] text-[var(--app-ink-soft)] cursor-default'
