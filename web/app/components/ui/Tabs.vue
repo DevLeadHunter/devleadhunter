@@ -15,10 +15,10 @@
         </slot>
       </span>
       <span class="flex min-w-0 flex-col items-start text-left">
-        <span class="text-sm leading-tight font-semibold">{{ tab.label }}</span>
+        <span class="text-sm leading-tight font-semibold break-words">{{ tab.label }}</span>
         <span
           v-if="tab.hint"
-          class="truncate text-xs leading-tight"
+          class="max-w-full truncate text-xs leading-tight"
           :class="tab.key === modelValue ? 'text-[var(--app-surface)]/75' : 'text-[var(--app-ink-soft)]'"
         >
           {{ tab.hint }}

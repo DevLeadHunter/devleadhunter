@@ -220,7 +220,7 @@
         <div class="mt-6 text-center">
           <button
             type="button"
-            class="cursor-pointer text-xs font-medium text-[var(--app-faint)] underline underline-offset-4 transition-colors hover:text-[var(--app-ink)]"
+            class="cursor-pointer text-xs font-medium text-[var(--app-ink-soft)] underline underline-offset-4 transition-colors hover:text-[var(--app-ink)]"
             @click="postponeSetup"
           >
             Je ferai ça plus tard

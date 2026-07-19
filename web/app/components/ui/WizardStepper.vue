@@ -27,7 +27,7 @@
           type="button"
           :disabled="step.id >= modelValue"
           :aria-current="step.id === modelValue ? 'step' : undefined"
-          class="flex w-full flex-col items-center rounded-xl px-2 pt-3 pb-3.5 transition-colors"
+          class="flex w-full flex-col items-center rounded-xl pt-3 pb-3.5 transition-colors"
           :class="
             step.id === modelValue
               ? 'bg-[var(--app-surface-2)]'
@@ -57,7 +57,7 @@
           </span>
 
           <!-- Libellé : au large sous la pastille, il peut passer à la ligne -->
-          <span class="mt-2.5 block text-center text-balance">
+          <span class="mt-2.5 block px-2 text-center text-balance">
             <span
               class="block text-[13px] leading-snug font-semibold"
               :class="step.id === modelValue ? 'text-[var(--app-ink)]' : 'text-[var(--app-ink-soft)]'"
