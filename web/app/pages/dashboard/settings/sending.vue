@@ -7,7 +7,7 @@
       </p>
     </div>
 
-    <SettingsEmailSendingConfig />
+    <EmailSendingConfig />
   </div>
 </template>
 
