@@ -59,10 +59,11 @@
         />
       </section>
 
-      <!-- ── Réglages (seulement quand un clip est en place) ───────────────── -->
-      <form v-if="info?.has_video" class="space-y-4" @submit.prevent="handleSaveSettings">
-        <!-- Génération automatique -->
+      <!-- ── Les trois cartes de réglages, puis « Enregistrer » tout en bas ── -->
+      <div class="space-y-4">
+        <!-- Génération automatique (avec un clip en place) -->
         <div
+          v-if="info?.has_video"
           class="flex items-center justify-between gap-4 rounded-xl border border-[var(--app-line)] bg-[var(--app-surface)] px-4 py-3.5"
         >
           <div class="flex min-w-0 items-start gap-3">
@@ -77,8 +78,13 @@
           <UiSwitch id="video-auto-generate" v-model="autoGenerate" />
         </div>
 
-        <!-- Découpage (replié) -->
-        <UiCollapsibleCard icon="i-lucide-scissors" title="Découpage de la vidéo" suffix="facultatif">
+        <!-- Découpage (replié, avec un clip en place) -->
+        <UiCollapsibleCard
+          v-if="info?.has_video"
+          icon="i-lucide-scissors"
+          title="Découpage de la vidéo"
+          suffix="facultatif"
+        >
           <div class="space-y-4 px-4 py-4">
             <p class="text-muted text-xs leading-relaxed">
               Webcam plein écran au début (« Bonjour {Prénom} ») et à la fin (votre appel à l'action) ; entre les deux,
@@ -117,13 +123,72 @@
           </div>
         </UiCollapsibleCard>
 
-        <div class="flex justify-end">
-          <button type="submit" class="btn-primary" :disabled="isSavingSettings">
+        <!-- ── Comment enregistrer votre clip (toujours visible) ────────────── -->
+        <UiCollapsibleCard icon="i-lucide-clapperboard" title="Comment enregistrer votre clip">
+          <div class="space-y-6 px-4 py-5">
+            <!-- Les 3 étapes -->
+            <ol class="space-y-4">
+              <li v-for="(step, index) in WORKFLOW_STEPS" :key="step.title" class="flex items-start gap-3">
+                <span
+                  class="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-[var(--app-line)] bg-[var(--app-bg)] text-[11px] font-bold text-[var(--app-ink)]"
+                >
+                  {{ index + 1 }}
+                </span>
+                <div class="min-w-0 pt-0.5">
+                  <p class="text-sm font-medium text-[var(--app-ink)]">{{ step.title }}</p>
+                  <p class="text-muted mt-0.5 text-xs leading-relaxed">{{ step.detail }}</p>
+                </div>
+              </li>
+            </ol>
+
+            <!-- Le speech, mis en valeur dans un encart -->
+            <div class="space-y-4 rounded-lg bg-[var(--app-bg)] p-4">
+              <p class="text-[11px] font-semibold tracking-wide text-[var(--app-ink-soft)] uppercase">
+                Le speech à lire (~30 s, voix générique)
+              </p>
+              <div v-for="segment in SPEECH_SEGMENTS" :key="segment.timing" class="flex items-start gap-3">
+                <span
+                  class="mt-0.5 w-16 shrink-0 rounded-md bg-[var(--app-surface-2)] px-2 py-1 text-center text-[10px] font-bold tracking-wide text-[var(--app-ink-soft)] uppercase"
+                >
+                  {{ segment.timing }}
+                </span>
+                <p class="min-w-0 text-sm leading-relaxed text-[var(--app-ink)] italic">« {{ segment.text }} »</p>
+              </div>
+            </div>
+
+            <!-- Conseils de tournage -->
+            <div class="space-y-3">
+              <p class="text-[11px] font-semibold tracking-wide text-[var(--app-ink-soft)] uppercase">
+                Conseils de tournage
+              </p>
+              <div class="flex flex-wrap gap-2">
+                <span
+                  v-for="tip in RECORDING_TIPS"
+                  :key="tip"
+                  class="rounded-full border border-[var(--app-line)] bg-[var(--app-bg)] px-3 py-1 text-xs text-[var(--app-ink)]"
+                >
+                  {{ tip }}
+                </span>
+              </div>
+              <p class="text-muted flex items-start gap-2 text-xs leading-relaxed">
+                <UIcon name="i-lucide-circle-alert" class="mt-0.5 h-3.5 w-3.5 shrink-0 text-[var(--app-ink-soft)]" />
+                <span>
+                  <strong class="font-semibold text-[var(--app-ink)]">Restez générique</strong> : ne décrivez jamais une
+                  section précise du site.
+                </span>
+              </p>
+            </div>
+          </div>
+        </UiCollapsibleCard>
+
+        <!-- Enregistrer, tout en bas des trois cartes -->
+        <div v-if="info?.has_video" class="flex justify-end">
+          <button type="button" class="btn-primary" :disabled="isSavingSettings" @click="handleSaveSettings">
             <UIcon v-if="isSavingSettings" name="i-lucide-loader-circle" class="mr-1.5 h-4 w-4 animate-spin" />
             {{ isSavingSettings ? 'Enregistrement…' : 'Enregistrer les réglages' }}
           </button>
         </div>
-      </form>
+      </div>
 
       <!-- Le fichier réel, partagé par la dropzone -->
       <input
@@ -133,64 +198,6 @@
         class="hidden"
         @change="handleFileSelected"
       />
-
-      <!-- ── Comment enregistrer votre clip ────────────────────────────────── -->
-      <UiCollapsibleCard icon="i-lucide-clapperboard" title="Comment enregistrer votre clip">
-        <div class="space-y-6 px-4 py-5">
-          <!-- Les 3 étapes -->
-          <ol class="space-y-4">
-            <li v-for="(step, index) in WORKFLOW_STEPS" :key="step.title" class="flex items-start gap-3">
-              <span
-                class="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-[var(--app-line)] bg-[var(--app-bg)] text-[11px] font-bold text-[var(--app-ink)]"
-              >
-                {{ index + 1 }}
-              </span>
-              <div class="min-w-0 pt-0.5">
-                <p class="text-sm font-medium text-[var(--app-ink)]">{{ step.title }}</p>
-                <p class="text-muted mt-0.5 text-xs leading-relaxed">{{ step.detail }}</p>
-              </div>
-            </li>
-          </ol>
-
-          <!-- Le speech, mis en valeur dans un encart -->
-          <div class="space-y-4 rounded-lg bg-[var(--app-bg)] p-4">
-            <p class="text-[11px] font-semibold tracking-wide text-[var(--app-ink-soft)] uppercase">
-              Le speech à lire (~30 s, voix générique)
-            </p>
-            <div v-for="segment in SPEECH_SEGMENTS" :key="segment.timing" class="flex items-start gap-3">
-              <span
-                class="mt-0.5 w-16 shrink-0 rounded-md bg-[var(--app-surface-2)] px-2 py-1 text-center text-[10px] font-bold tracking-wide text-[var(--app-ink-soft)] uppercase"
-              >
-                {{ segment.timing }}
-              </span>
-              <p class="min-w-0 text-sm leading-relaxed text-[var(--app-ink)] italic">« {{ segment.text }} »</p>
-            </div>
-          </div>
-
-          <!-- Conseils de tournage -->
-          <div class="space-y-3">
-            <p class="text-[11px] font-semibold tracking-wide text-[var(--app-ink-soft)] uppercase">
-              Conseils de tournage
-            </p>
-            <div class="flex flex-wrap gap-2">
-              <span
-                v-for="tip in RECORDING_TIPS"
-                :key="tip"
-                class="rounded-full border border-[var(--app-line)] bg-[var(--app-bg)] px-3 py-1 text-xs text-[var(--app-ink)]"
-              >
-                {{ tip }}
-              </span>
-            </div>
-            <p class="text-muted flex items-start gap-2 text-xs leading-relaxed">
-              <UIcon name="i-lucide-circle-alert" class="mt-0.5 h-3.5 w-3.5 shrink-0 text-[var(--app-ink-soft)]" />
-              <span>
-                <strong class="font-semibold text-[var(--app-ink)]">Restez générique</strong> : ne décrivez jamais une
-                section précise du site.
-              </span>
-            </p>
-          </div>
-        </div>
-      </UiCollapsibleCard>
     </template>
 
     <UiConfirmModal
