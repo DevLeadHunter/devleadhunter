@@ -33,14 +33,14 @@
           />
           <button
             type="button"
-            class="absolute top-3 right-3 z-10 flex h-9 w-9 items-center justify-center rounded-full bg-[var(--app-red)] text-white shadow-md transition hover:opacity-90 disabled:opacity-50"
+            class="btn-danger absolute top-3 right-3 z-10 h-9 w-9 !p-0 disabled:opacity-50"
             :disabled="isDeleting"
             aria-label="Supprimer le clip"
             title="Supprimer le clip"
             @click="askDeleteClip"
           >
             <UIcon
-              :name="isDeleting ? 'i-lucide-loader-circle' : 'i-lucide-x'"
+              :name="isDeleting ? 'i-lucide-loader-circle' : 'i-lucide-trash-2'"
               :class="['h-4 w-4', isDeleting && 'animate-spin']"
             />
           </button>
@@ -78,19 +78,8 @@
         </div>
 
         <!-- Découpage (replié) -->
-        <details class="group rounded-xl border border-[var(--app-line)] bg-[var(--app-surface)]">
-          <summary class="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3.5 select-none">
-            <span class="flex items-center gap-3 text-sm font-semibold text-[var(--app-ink)]">
-              <UIcon name="i-lucide-scissors" class="h-4 w-4 shrink-0" />
-              Découpage de la vidéo
-              <span class="text-muted text-xs font-normal">facultatif</span>
-            </span>
-            <UIcon
-              name="i-lucide-chevron-down"
-              class="text-muted h-4 w-4 shrink-0 transition-transform group-open:rotate-180"
-            />
-          </summary>
-          <div class="space-y-4 border-t border-[var(--app-line)] px-4 py-4">
+        <UiCollapsibleCard icon="i-lucide-scissors" title="Découpage de la vidéo" suffix="facultatif">
+          <div class="space-y-4 px-4 py-4">
             <p class="text-muted text-xs leading-relaxed">
               Webcam plein écran au début (« Bonjour {Prénom} ») et à la fin (votre appel à l'action) ; entre les deux,
               le site du prospect défile avec votre webcam en pastille.
@@ -126,7 +115,7 @@
               <span class="font-medium text-[var(--app-ink)]">{{ siteSegmentSeconds }} s</span>
             </p>
           </div>
-        </details>
+        </UiCollapsibleCard>
 
         <div class="flex justify-end">
           <button type="submit" class="btn-primary" :disabled="isSavingSettings">
@@ -146,19 +135,8 @@
       />
 
       <!-- ── Comment enregistrer votre clip ────────────────────────────────── -->
-      <details class="group rounded-xl border border-[var(--app-line)] bg-[var(--app-surface)]">
-        <summary class="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3.5 select-none">
-          <span class="flex items-center gap-3 text-sm font-semibold text-[var(--app-ink)]">
-            <UIcon name="i-lucide-clapperboard" class="h-4 w-4 shrink-0" />
-            Comment enregistrer votre clip
-          </span>
-          <UIcon
-            name="i-lucide-chevron-down"
-            class="text-muted h-4 w-4 shrink-0 transition-transform group-open:rotate-180"
-          />
-        </summary>
-
-        <div class="space-y-6 border-t border-[var(--app-line)] px-4 py-5">
+      <UiCollapsibleCard icon="i-lucide-clapperboard" title="Comment enregistrer votre clip">
+        <div class="space-y-6 px-4 py-5">
           <!-- Les 3 étapes -->
           <ol class="space-y-4">
             <li v-for="(step, index) in WORKFLOW_STEPS" :key="step.title" class="flex items-start gap-3">
@@ -212,7 +190,7 @@
             </p>
           </div>
         </div>
-      </details>
+      </UiCollapsibleCard>
     </template>
 
     <UiConfirmModal
