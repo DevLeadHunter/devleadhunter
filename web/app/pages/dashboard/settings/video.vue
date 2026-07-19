@@ -33,14 +33,14 @@
           />
           <button
             type="button"
-            class="btn-danger absolute top-3 right-3 z-10 h-9 w-9 !p-0 disabled:opacity-50"
+            class="absolute top-3 right-3 z-10 flex h-9 w-9 items-center justify-center rounded-full bg-[var(--app-red-soft)] text-[var(--app-red)] backdrop-blur-sm transition-colors hover:bg-[var(--app-red)] hover:text-white disabled:opacity-50"
             :disabled="isDeleting"
             aria-label="Supprimer le clip"
             title="Supprimer le clip"
             @click="askDeleteClip"
           >
             <UIcon
-              :name="isDeleting ? 'i-lucide-loader-circle' : 'i-lucide-trash-2'"
+              :name="isDeleting ? 'i-lucide-loader-circle' : 'i-lucide-x'"
               :class="['h-4 w-4', isDeleting && 'animate-spin']"
             />
           </button>
@@ -146,13 +146,18 @@
               <p class="text-[11px] font-semibold tracking-wide text-[var(--app-ink-soft)] uppercase">
                 Le speech à lire (~30 s, voix générique)
               </p>
-              <div v-for="segment in SPEECH_SEGMENTS" :key="segment.timing" class="flex items-start gap-3">
+              <div v-for="segment in speechSegments" :key="segment.timing" class="flex items-start gap-3">
                 <span
                   class="mt-0.5 w-16 shrink-0 rounded-md bg-[var(--app-surface-2)] px-2 py-1 text-center text-[10px] font-bold tracking-wide text-[var(--app-ink-soft)] uppercase"
                 >
                   {{ segment.timing }}
                 </span>
-                <p class="min-w-0 text-sm leading-relaxed text-[var(--app-ink)] italic">« {{ segment.text }} »</p>
+                <div class="min-w-0">
+                  <p class="text-[10px] font-semibold tracking-wide text-[var(--app-ink-soft)] uppercase">
+                    {{ segment.role }}
+                  </p>
+                  <p class="mt-0.5 text-sm leading-relaxed text-[var(--app-ink)] italic">« {{ segment.text }} »</p>
+                </div>
               </div>
             </div>
 
@@ -223,6 +228,7 @@ import {
   uploadPresenterVideo,
 } from '~/services/presenterVideoService'
 import { useToast } from '~/composables/useToast'
+import { useAuth } from '~/composables/useAuth'
 
 definePageMeta({ layout: 'dashboard', middleware: 'auth' })
 
@@ -243,23 +249,11 @@ const WORKFLOW_STEPS: Array<{ title: string; detail: string }> = [
   },
 ]
 
-/** Recommended generic speech, segment by segment (~30 s total). */
-const SPEECH_SEGMENTS: Array<{ timing: string; text: string }> = [
-  { timing: '0 - 4 s', text: "Bonjour ! Moi c'est Léo, développeur web." },
-  {
-    timing: '4 - 27 s',
-    text:
-      "Si je vous contacte, c'est que j'ai déjà créé un site web pour votre entreprise — vous êtes en train de le voir. " +
-      'Il est en ligne, à votre nom, avec vos informations. Et surtout : vous pouvez tout modifier vous-même — ' +
-      'textes, photos, horaires — sans développeur, depuis un espace d’administration très simple.',
-  },
-  { timing: '27 - 32 s', text: 'Cliquez sur le lien juste en dessous pour le découvrir en vrai. À tout de suite !' },
-]
-
 /** Short recording tips rendered as pills. */
 const RECORDING_TIPS: string[] = ['1080p suffit', 'Lumière face à vous', 'Regardez l’objectif']
 
 const toast = useToast()
+const { user } = useAuth()
 
 const info: Ref<PresenterVideoInfo | null> = ref<PresenterVideoInfo | null>(null)
 const previewUrl: Ref<string | null> = ref<string | null>(null)
@@ -274,6 +268,33 @@ const deleteModalRef: Ref<{ open: () => void } | null> = ref<{ open: () => void 
 const introSeconds: Ref<number> = ref<number>(4)
 const outroSeconds: Ref<number> = ref<number>(5)
 const autoGenerate: Ref<boolean> = ref<boolean>(true)
+
+/** Recommended generic speech (~30 s) — the connected user's full name lands in the intro. */
+const speechSegments: ComputedRef<Array<{ timing: string; role: string; text: string }>> = computed(
+  (): Array<{ timing: string; role: string; text: string }> => {
+    const presenter: string = user.value?.name?.trim() ?? ''
+    return [
+      {
+        timing: '0 - 4 s',
+        role: 'Intro',
+        text: presenter ? `Bonjour ! Moi c'est ${presenter}, développeur web.` : 'Bonjour ! Je suis développeur web.',
+      },
+      {
+        timing: '4 - 27 s',
+        role: 'Le site web apparaît',
+        text:
+          "Si je vous contacte, c'est que j'ai déjà créé un site web pour votre entreprise — vous êtes en train de le voir. " +
+          'Il est en ligne, à votre nom, avec vos informations. Et surtout : vous pouvez tout modifier vous-même — ' +
+          'textes, photos, horaires — sans développeur, depuis un espace d’administration très simple.',
+      },
+      {
+        timing: '27 - 32 s',
+        role: 'Outro',
+        text: 'Cliquez sur le lien juste en dessous pour le découvrir en vrai. À tout de suite !',
+      },
+    ]
+  },
+)
 
 /** Seconds left for the site-scroll segment (duration - intro - outro). */
 const siteSegmentSeconds: ComputedRef<number | null> = computed((): number | null => {
