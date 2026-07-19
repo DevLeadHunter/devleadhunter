@@ -41,7 +41,7 @@
           <span class="flex w-full items-center gap-2">
             <span
               class="h-px flex-1 rounded-full transition-colors"
-              :class="index === 0 ? 'invisible' : connectorClass(step.id - 1)"
+              :class="index === 0 || step.id === modelValue ? 'invisible' : connectorClass(step.id - 1)"
             />
             <span
               class="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border text-sm font-semibold transition-colors"
@@ -52,7 +52,7 @@
             </span>
             <span
               class="h-px flex-1 rounded-full transition-colors"
-              :class="index === steps.length - 1 ? 'invisible' : connectorClass(step.id)"
+              :class="index === steps.length - 1 || step.id === modelValue ? 'invisible' : connectorClass(step.id)"
             />
           </span>
 
@@ -123,7 +123,9 @@ function stepNodeClass(stepId: number): string {
 }
 
 /**
- * Classes for the line drawn after a given step.
+ * Classes for the line drawn after a given step. The segments sitting inside
+ * the highlighted current tile are hidden in the template, so the line always
+ * stops at the edge of the active card instead of running through it.
  * @param stepId - The step the connector starts from (1-based).
  * @returns Background classes for the 1px line.
  */
@@ -132,14 +134,13 @@ function connectorClass(stepId: number): string {
 }
 
 /**
- * Classes for a segment of the mobile progress bar.
+ * Classes for a segment of the mobile progress bar. Reached steps (done and
+ * current) share one colour so the bar reads as a single progress fill.
  * @param stepId - The step the segment stands for (1-based).
  * @returns Background classes for the segment.
  */
 function segmentClass(stepId: number): string {
-  if (stepId < props.modelValue) return 'bg-[var(--app-green)]'
-  if (stepId === props.modelValue) return 'bg-[var(--app-ink)]'
-  return 'bg-[var(--app-line)]'
+  return stepId <= props.modelValue ? 'bg-[var(--app-green)]' : 'bg-[var(--app-line)]'
 }
 
 /**

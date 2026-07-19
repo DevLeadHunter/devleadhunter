@@ -48,12 +48,32 @@ _DNS_TIMEOUT_SECONDS: float = 4.0
 _MIN_ORGANIZATIONAL_LABELS: int = 2
 
 
+# Overrides the system resolver when set. A local/ISP resolver caches negative
+# answers, so a freshly published record can look missing for hours — a false
+# alarm right when a zone has just been edited.
+_NAMESERVERS: Optional[list[str]] = None
+
+
+def use_nameservers(nameservers: Optional[list[str]]) -> None:
+    """Force every lookup through *nameservers* (``None`` restores the system ones).
+
+    Blocklist queries are the exception to prefer the system resolver: Spamhaus
+    mirrors refuse queries coming from large public resolvers.
+
+    @param nameservers - Resolver IPs, or ``None``.
+    """
+    global _NAMESERVERS
+    _NAMESERVERS = nameservers
+
+
 def _resolver() -> dns.resolver.Resolver:
     """A resolver with tight timeouts (the page must never hang on DNS).
 
     @returns A configured dnspython resolver.
     """
     resolver = dns.resolver.Resolver()
+    if _NAMESERVERS:
+        resolver.nameservers = _NAMESERVERS
     resolver.timeout = _DNS_TIMEOUT_SECONDS
     resolver.lifetime = _DNS_TIMEOUT_SECONDS
     return resolver
