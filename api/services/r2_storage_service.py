@@ -320,6 +320,10 @@ def list_objects(prefix: str = "", *, bucket: Optional[str] = None) -> list[dict
             kwargs["ContinuationToken"] = token
         response = client.list_objects_v2(**kwargs)
         for item in response.get("Contents", []):
+            # La console Cloudflare matérialise les « dossiers » par des objets
+            # vides finissant par « / » : ce ne sont pas des fichiers.
+            if str(item["Key"]).endswith("/"):
+                continue
             results.append(
                 {
                     "key": item["Key"],

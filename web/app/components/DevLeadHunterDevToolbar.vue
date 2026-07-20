@@ -33,6 +33,7 @@
 <script lang="ts" setup>
 import type { CSSProperties, Ref } from 'vue'
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
+import { syncStorageFromProd } from '~/services/adminStorageService'
 
 /** Persisted position of the floating dev toolbar. */
 interface ToolbarPosition {
@@ -132,7 +133,9 @@ function endDrag(): void {
  */
 async function onSyncDatabase(): Promise<void> {
   const confirmed: boolean = window.confirm(
-    'Synchroniser la base LOCALE avec les données de PROD ?\n\nLes tables locales seront REMPLACÉES par le dump de prod.',
+    'Synchroniser la base LOCALE avec les données de PROD ?\n\n' +
+      'Les tables locales seront REMPLACÉES par le dump de prod, et le bucket R2 dev ' +
+      'sera aligné sur celui de prod (copie incrémentale).',
   )
   if (!confirmed) {
     return
@@ -140,7 +143,18 @@ async function onSyncDatabase(): Promise<void> {
   isSyncing.value = true
   try {
     const message: string = await syncDevDatabaseFromProd()
-    toast.add({ title: 'Synchro DB terminée', description: message, color: 'success' })
+    // Le stockage suit la base : sans ça, les démos synchronisées pointeraient
+    // vers des vidéos absentes du bucket dev.
+    let storageMessage = ''
+    try {
+      const storage = await syncStorageFromProd()
+      storageMessage = ` · Stockage : ${storage.message}`
+    } catch (storageError) {
+      storageMessage = ` · Stockage NON synchronisé (${
+        storageError instanceof Error ? storageError.message : String(storageError)
+      })`
+    }
+    toast.add({ title: 'Synchro terminée', description: `${message}${storageMessage}`, color: 'success' })
   } catch (error) {
     toast.add({
       title: 'Synchro DB — échec',

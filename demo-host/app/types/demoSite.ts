@@ -9,4 +9,8 @@ export type DemoSitePublic = {
   status: string
   /** True when a prospection video is generated (player page at /v/{slug}). */
   video_available?: boolean
+  /** Public Cloudflare R2 URL of the generated mp4 (absent when no video). */
+  video_url?: string | null
+  /** Public Cloudflare R2 URL of the email thumbnail, used as the player poster. */
+  video_thumbnail_url?: string | null
 }

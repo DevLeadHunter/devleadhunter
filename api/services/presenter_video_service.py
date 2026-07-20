@@ -10,6 +10,7 @@ from __future__ import annotations
 import asyncio
 import logging
 import re
+import shutil
 import subprocess
 import tempfile
 from pathlib import Path
@@ -21,6 +22,7 @@ from sqlalchemy.orm import Session
 
 from core.config import settings
 from models.presenter_video import PresenterVideo
+from services import r2_storage_service
 
 logger = logging.getLogger(__name__)
 
@@ -200,41 +202,40 @@ class PresenterVideoService:
                 detail=f"La vidéo dépasse {settings.presenter_video_max_mb} MB.",
             )
 
-        base_dir = Path(settings.presenter_video_dir)
-        base_dir.mkdir(parents=True, exist_ok=True)
-        target_path = base_dir / f"user-{user_id}{extension}"
+        work_dir = Path(tempfile.mkdtemp(prefix=f"presenter-upload-{user_id}-"))
+        try:
+            source_path = work_dir / f"source{extension}"
+            source_path.write_bytes(data)
 
-        # Purger les anciens fichiers du user (l'extension peut changer).
-        for old in base_dir.glob(f"user-{user_id}.*"):
-            try:
-                old.unlink()
-            except OSError:
-                pass
+            duration = await probe_media_duration(str(source_path))
+            if duration <= 0:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="Impossible de lire cette vidéo (fichier corrompu ?).",
+                )
+            if not (MIN_PRESENTER_SECONDS <= duration <= MAX_PRESENTER_SECONDS):
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail=(
+                        f"Durée du clip : {duration:.0f}s. Attendu entre {MIN_PRESENTER_SECONDS:.0f}s "
+                        f"et {MAX_PRESENTER_SECONDS:.0f}s (cible : 30-45s)."
+                    ),
+                )
 
-        target_path.write_bytes(data)
-
-        duration = await probe_media_duration(str(target_path))
-        if duration <= 0:
-            target_path.unlink(missing_ok=True)
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Impossible de lire cette vidéo (fichier corrompu ?).",
-            )
-        if not (MIN_PRESENTER_SECONDS <= duration <= MAX_PRESENTER_SECONDS):
-            target_path.unlink(missing_ok=True)
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=(
-                    f"Durée du clip : {duration:.0f}s. Attendu entre {MIN_PRESENTER_SECONDS:.0f}s "
-                    f"et {MAX_PRESENTER_SECONDS:.0f}s (cible : 30-45s)."
-                ),
-            )
+            # Normalisation sur le canvas du montage : sans perte visible (le
+            # montage y redimensionne de toute façon), mais source homogène,
+            # rendu plus fiable et stockage divisé par 10 à 20.
+            normalized_path = work_dir / "presenter.mp4"
+            await self._normalize_clip(source_path, normalized_path)
+            object_key = await self._publish(user_id, normalized_path)
+        finally:
+            shutil.rmtree(work_dir, ignore_errors=True)
 
         record = self.get_for_user(db, user_id)
         if record is None:
-            record = PresenterVideo(user_id=user_id, file_path=str(target_path))
+            record = PresenterVideo(user_id=user_id, file_path=object_key)
             db.add(record)
-        record.file_path = str(target_path)
+        record.file_path = object_key
         record.original_filename = file.filename or f"presenter{extension}"
         record.duration_seconds = duration
         record.intro_seconds = self._clamp_segment(intro_seconds, duration)
@@ -294,9 +295,10 @@ class PresenterVideoService:
                 detail=f"L'enregistrement dépasse {settings.presenter_video_max_mb} MB.",
             )
 
-        base_dir = Path(settings.presenter_video_dir)
-        base_dir.mkdir(parents=True, exist_ok=True)
-        target_path = base_dir / f"user-{user_id}.mp4"
+        # Le rendu final vit dans son propre dossier temporaire : `work_dir` est
+        # purgé dans le `finally` avant qu'on ait pu publier sur R2.
+        out_dir = Path(tempfile.mkdtemp(prefix=f"presenter-out-{user_id}-"))
+        target_path = out_dir / "presenter.mp4"
         work_dir = Path(tempfile.mkdtemp(prefix=f"presenter-{user_id}-"))
 
         try:
@@ -365,19 +367,16 @@ class PresenterVideoService:
             except OSError:
                 logger.warning("[Presenter] temp dir not fully cleaned: %s", work_dir)
 
-        # Purger les anciens fichiers du user (l'extension peut changer).
-        for old in base_dir.glob(f"user-{user_id}.*"):
-            if old != target_path:
-                try:
-                    old.unlink()
-                except OSError:
-                    pass
+        try:
+            object_key = await self._publish(user_id, target_path)
+        finally:
+            shutil.rmtree(out_dir, ignore_errors=True)
 
         record = self.get_for_user(db, user_id)
         if record is None:
-            record = PresenterVideo(user_id=user_id, file_path=str(target_path))
+            record = PresenterVideo(user_id=user_id, file_path=object_key)
             db.add(record)
-        record.file_path = str(target_path)
+        record.file_path = object_key
         record.original_filename = "enregistrement-devleadhunter.mp4"
         record.duration_seconds = duration if duration > 0 else total
         record.intro_seconds = round(intro_seconds, 2)
@@ -387,6 +386,108 @@ class PresenterVideoService:
         db.commit()
         db.refresh(record)
         return record
+
+    @staticmethod
+    async def _publish(user_id: int, local_path: Path) -> str:
+        """
+        Push the normalised clip to R2 and return its object key.
+
+        @param user_id - Owner of the clip.
+        @param local_path - Normalised MP4 to upload.
+        @returns The R2 key stored on the row (``videos/presenter/{user_id}.mp4``).
+        @throws HTTPException 500 when the storage rejects the upload.
+        """
+        key = r2_storage_service.presenter_key(user_id)
+        try:
+            await r2_storage_service.upload_file_async(local_path, key, "video/mp4")
+        except Exception as exc:  # noqa: BLE001 — surfaced as a readable API error
+            logger.exception("[Presenter] R2 upload failed for user=%s", user_id)
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Impossible d'enregistrer le clip sur le stockage. Réessayez.",
+            ) from exc
+        return key
+
+    async def _normalize_clip(self, source_path: Path, output_path: Path) -> None:
+        """
+        Re-encode an uploaded clip onto the composition canvas.
+
+        The montage scales the presenter to the same canvas anyway (and to a
+        260 px bubble for the PiP), so this costs no visible quality while
+        making every source homogeneous: faster and more reliable renders, and
+        a fraction of the storage. The audio track is optional here — the
+        upload path does not require one.
+
+        @param source_path - Raw uploaded clip.
+        @param output_path - Destination MP4.
+        @throws HTTPException 400 when ffmpeg is missing or fails.
+        """
+        command = [
+            settings.ffmpeg_path,
+            "-y",
+            "-hide_banner",
+            "-loglevel",
+            "error",
+            "-i",
+            str(source_path),
+            "-vf",
+            (
+                f"scale={_RECORDING_WIDTH}:{_RECORDING_HEIGHT}:force_original_aspect_ratio=increase,"
+                f"crop={_RECORDING_WIDTH}:{_RECORDING_HEIGHT},setsar=1,fps={_RECORDING_FPS},"
+                f"format=yuv420p"
+            ),
+            "-map",
+            "0:v:0",
+            "-map",
+            "0:a:0?",
+            "-c:v",
+            "libx264",
+            "-preset",
+            "veryfast",
+            "-crf",
+            "21",
+            "-c:a",
+            "aac",
+            "-b:a",
+            "128k",
+            "-ar",
+            "44100",
+            "-movflags",
+            "+faststart",
+            str(output_path),
+        ]
+
+        try:
+            result = await asyncio.to_thread(
+                subprocess.run,
+                command,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.PIPE,
+                timeout=600,
+            )
+        except FileNotFoundError as exc:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"ffmpeg introuvable ({settings.ffmpeg_path}). Installez-le ou configurez FFMPEG_PATH.",
+            ) from exc
+        except subprocess.TimeoutExpired as exc:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="La préparation du clip a dépassé le temps imparti.",
+            ) from exc
+
+        if result.returncode != 0:
+            detail = result.stderr.decode("utf-8", errors="replace").strip()[-300:]
+            logger.error("[Presenter] normalize failed: %s", detail)
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Impossible de préparer cette vidéo. Réessayez avec un autre fichier.",
+            )
+        if not output_path.is_file() or output_path.stat().st_size == 0:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="La préparation du clip n'a produit aucun fichier.",
+            )
 
     async def _concat_segments(self, segment_paths: list[Path], output_path: Path) -> None:
         """
@@ -523,14 +624,19 @@ class PresenterVideoService:
         return record
 
     def delete_for_user(self, db: Session, user_id: int) -> bool:
-        """Delete the user's presenter clip (file + row). Returns True if one existed."""
+        """Delete the user's presenter clip (object + row). Returns True if one existed."""
         record = self.get_for_user(db, user_id)
         if record is None:
             return False
+        stored = str(record.file_path or "")
         try:
-            Path(record.file_path).unlink(missing_ok=True)
-        except OSError:
-            pass
+            if stored.startswith(r2_storage_service.VIDEOS_PRESENTER_PREFIX):
+                r2_storage_service.delete(stored)
+            elif stored:
+                # Ligne écrite avant la migration R2 : fichier encore sur disque.
+                Path(stored).unlink(missing_ok=True)
+        except Exception:  # noqa: BLE001 — never block the delete on storage
+            logger.warning("[Presenter] clip cleanup failed for user=%s", user_id, exc_info=True)
         db.delete(record)
         db.commit()
         return True

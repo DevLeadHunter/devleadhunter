@@ -5,7 +5,6 @@ from __future__ import annotations
 
 from datetime import datetime
 from typing import List, Optional, Sequence
-from urllib.parse import quote
 
 from fastapi import HTTPException, status
 from sqlalchemy.orm import Session, joinedload, selectinload, load_only
@@ -25,6 +24,7 @@ from schemas.support import (
     SupportTicketSummaryResponse,
     SupportTopicOption,
 )
+from services import r2_storage_service
 from services.support_storage_service import StoredAttachment
 
 
@@ -382,6 +382,12 @@ class SupportService:
     def _build_attachment_url(self, path: Optional[str]) -> Optional[str]:
         """
         Build a publicly accessible URL for an attachment.
+
+        Attachments live on Cloudflare R2 and are served straight from its
+        public URL — identical in local and production.
+
+        @param path - Stored object key (or an already absolute URL).
+        @returns Absolute URL, or None when there is no attachment.
         """
         if not path:
             return None
@@ -389,13 +395,7 @@ class SupportService:
         if path.lower().startswith(("http://", "https://")):
             return path
 
-        if settings.is_production and settings.support_ftp_public_base_url:
-            base = settings.support_ftp_public_base_url.rstrip("/")
-            return f"{base}/{path.lstrip('/')}"
-
-        encoded = quote(path.strip("/"))
-        base_url = settings.api_base_url.rstrip("/")
-        return f"{base_url}{settings.api_prefix}/support/attachments/{encoded}"
+        return r2_storage_service.public_url(path.lstrip("/"))
 
 
 support_service = SupportService()

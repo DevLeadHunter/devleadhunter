@@ -1,6 +1,8 @@
 # Plan de migration du stockage vers Cloudflare R2
 
-> **Statut** : plan validé, **implémentation pas encore commencée**.
+> **Statut** : ✅ **IMPLÉMENTÉ** (phases 1 → 6 + 8). Vérifié en local contre les vrais buckets R2.
+> Reste à valider en production : une génération vidéo complète de bout en bout et
+> l'affichage de la vignette dans un vrai email (cf. §7).
 > **Objectif** : sortir tout le stockage de fichiers (vidéos de prospection, vignettes, clip webcam
 > presenter, pièces jointes support) du **disque du VPS** et du **FTP**, vers **Cloudflare R2**.
 > **Même fonctionnement en local et en production** (aucun backend conditionnel).
