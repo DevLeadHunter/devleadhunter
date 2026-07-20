@@ -3,7 +3,6 @@ Support ticket API endpoints.
 """
 from __future__ import annotations
 
-from pathlib import Path
 from typing import Dict, Literal, Optional, List
 
 from fastapi import (
@@ -18,10 +17,8 @@ from fastapi import (
     WebSocketDisconnect,
     status,
 )
-from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
 
-from core.config import settings
 from core.database import SessionLocal, get_db
 from enums.support_status import SupportTicketStatus
 from enums.support_topic import SupportTicketTopic

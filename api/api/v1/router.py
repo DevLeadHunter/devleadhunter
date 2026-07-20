@@ -7,7 +7,7 @@ from .routes import (
     accounting, support, email_accounts, email_templates, emails, scraping_jobs,
     campaigns, unsubscribe, exports, interactions, demo_sites, sources, webhooks,
     enrichment, orders, dashboard, behavior, organizations,
-    settings as settings_routes, admin_monitoring, admin_storyblok,
+    settings as settings_routes, admin_monitoring, admin_storyblok, admin_storage,
     automations, send_policy, email_health,
 )
 
@@ -44,6 +44,7 @@ router.include_router(dashboard.router)
 router.include_router(behavior.router)
 router.include_router(sources.router)
 router.include_router(webhooks.router)
+router.include_router(admin_storage.router)
 router.include_router(organizations.router)
 router.include_router(settings_routes.router)
 router.include_router(admin_monitoring.router)

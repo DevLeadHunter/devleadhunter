@@ -141,14 +141,17 @@ jobs:
             POSTHOG_PERSONAL_API_KEY=${{ secrets.POSTHOG_PERSONAL_API_KEY }}
             POSTHOG_PROJECT_API_KEY=${{ secrets.NUXT_PUBLIC_POSTHOG_PROJECT_API_KEY }}
             POSTHOG_INGESTION_HOST=${{ secrets.NUXT_PUBLIC_POSTHOG_INGESTION_HOST }}
+            # Stockage objet Cloudflare R2 (vidéos, vignettes, pièces jointes support).
+            R2_ACCOUNT_ID=${{ secrets.R2_ACCOUNT_ID }}
+            R2_ACCESS_KEY_ID=${{ secrets.R2_ACCESS_KEY_ID }}
+            R2_SECRET_ACCESS_KEY=${{ secrets.R2_SECRET_ACCESS_KEY }}
+            R2_ENDPOINT=${{ secrets.R2_ENDPOINT }}
+            R2_BUCKET_DEV=${{ secrets.R2_BUCKET_DEV }}
+            R2_BUCKET_PROD=${{ secrets.R2_BUCKET_PROD }}
+            # URLs publiques (pas des secrets, comme DEMO_HOST_BASE_URL).
+            R2_PUBLIC_BASE_URL_DEV=https://pub-8d8cdfbc7b25482cb36b13826e879fbc.r2.dev
+            R2_PUBLIC_BASE_URL_PROD=https://pub-16f42d674fbd407c8f21b3f152645750.r2.dev
             GROQ_API_KEY=${{ secrets.GROQ_API_KEY }}
-            SUPPORT_FTP_HOST=${{ secrets.SUPPORT_FTP_HOST }}
-            SUPPORT_FTP_PORT=${{ secrets.SUPPORT_FTP_PORT }}
-            SUPPORT_FTP_USER=${{ secrets.SUPPORT_FTP_USER }}
-            SUPPORT_FTP_PASSWORD=${{ secrets.SUPPORT_FTP_PASSWORD }}
-            SUPPORT_FTP_BASE_DIR=${{ secrets.SUPPORT_FTP_BASE_DIR }}
-            SUPPORT_FTP_PUBLIC_BASE_URL=${{ secrets.SUPPORT_FTP_PUBLIC_BASE_URL }}
-            SUPPORT_FTP_USE_TLS=${{ secrets.SUPPORT_FTP_USE_TLS }}
             EOF
 
       - name: 🧬 Run database migrations (SSH)

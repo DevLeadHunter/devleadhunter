@@ -11,6 +11,7 @@ export const ADMIN_NAV_LINKS: AdminNavLink[] = [
   { to: '/dashboard/credit-settings', label: 'Paramètres des crédits', icon: 'i-lucide-sliders-horizontal' },
   { to: '/dashboard/support', label: 'Support', icon: 'i-lucide-life-buoy' },
   { to: '/dashboard/admin/monitoring', label: 'Monitoring', icon: 'i-lucide-activity' },
+  { to: '/dashboard/admin/storage', label: 'Stockage', icon: 'i-lucide-hard-drive' },
   { to: '/dashboard/accounting', label: 'Comptabilité', icon: 'i-lucide-calculator' },
 ]
 
