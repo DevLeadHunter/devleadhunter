@@ -1,246 +1,178 @@
 <template>
-  <div class="space-y-8">
-    <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-      <NuxtLink to="/dashboard/support" class="btn-secondary inline-flex w-fit items-center gap-2">
-        <UIcon name="i-lucide-arrow-left" class="h-4 w-4" />
-        Retour aux tickets
+  <div class="mx-auto max-w-3xl space-y-6">
+    <!-- Header : retour, sujet, méta compacte -->
+    <div>
+      <NuxtLink
+        to="/dashboard/support"
+        class="text-muted mb-4 inline-flex items-center gap-1.5 text-xs font-medium transition-colors hover:text-[var(--app-ink)]"
+      >
+        <UIcon name="i-lucide-arrow-left" class="h-3.5 w-3.5" />
+        Support
       </NuxtLink>
 
-      <p class="text-xs font-semibold tracking-wider text-[var(--app-accent-ink)] uppercase">Ticket #{{ ticketId }}</p>
-    </div>
+      <div class="flex flex-wrap items-start justify-between gap-3">
+        <h1 class="min-w-0 text-2xl font-bold break-words text-[var(--app-ink)]">
+          {{ ticket?.subject || 'Chargement…' }}
+        </h1>
+        <span v-if="ticket" :class="['app-badge shrink-0 font-medium', statusBadgeClass(ticket.status)]">
+          {{ statusLabel(ticket.status) }}
+        </span>
+      </div>
 
-    <header class="space-y-2">
-      <h1 class="text-[28px] leading-tight font-semibold break-words text-[var(--app-ink)]">
-        {{ ticket?.subject || 'Chargement…' }}
-      </h1>
-      <p class="max-w-2xl text-sm text-[var(--app-ink-soft)]">
-        Suivez les dernières réponses. Les membres n'accèdent qu'à leurs propres tickets, les admins voient toute la
-        file. Les statuts sont mis à jour automatiquement.
+      <p v-if="ticket" class="text-muted mt-1.5 flex flex-wrap items-center gap-x-2 text-xs">
+        <span>#{{ ticket.id }}</span>
+        <span aria-hidden="true">·</span>
+        <span>{{ topicLabel(ticket.topic) }}</span>
+        <span aria-hidden="true">·</span>
+        <span>{{ ticket.user_name }}</span>
+        <span aria-hidden="true">·</span>
+        <span>ouvert le {{ formatDate(ticket.created_at) }}</span>
       </p>
-    </header>
+    </div>
 
     <UiLoader v-if="isLoading" />
 
-    <div v-else-if="!ticket" class="card flex items-center justify-center py-16 text-[var(--app-ink-soft)]">
-      <p class="text-sm">Ticket introuvable. Vérifiez l'URL ou revenez à la liste.</p>
+    <div
+      v-else-if="!ticket"
+      class="rounded-xl border border-[var(--app-line)] bg-[var(--app-surface)] px-6 py-14 text-center"
+    >
+      <p class="text-muted text-sm">Ticket introuvable. Vérifiez l'URL ou revenez à la liste.</p>
     </div>
 
-    <div v-else class="grid max-w-full items-start gap-6 xl:grid-cols-[320px_1fr]">
-      <aside class="card h-fit max-w-full space-y-6 overflow-hidden p-4 sm:p-6 xl:sticky xl:top-6">
-        <div class="space-y-3">
-          <h2 class="text-sm font-semibold tracking-wide text-[var(--app-ink)] uppercase">Résumé du ticket</h2>
-          <dl class="space-y-3 text-xs leading-relaxed text-[var(--app-ink-soft)]">
-            <div class="flex items-start justify-between gap-4">
-              <dt class="font-medium text-[var(--app-ink)]">Demandeur</dt>
-              <dd class="min-w-0 text-right break-words">{{ ticket.user_name }}</dd>
-            </div>
-            <div class="flex items-start justify-between gap-4">
-              <dt class="font-medium text-[var(--app-ink)]">Catégorie</dt>
-              <dd class="min-w-0 text-right break-words">{{ topicLabel(ticket.topic) }}</dd>
-            </div>
-            <div class="flex items-start justify-between gap-4">
-              <dt class="font-medium text-[var(--app-ink)]">Créé le</dt>
-              <dd class="min-w-0 text-right break-words">{{ formatDate(ticket.created_at, true) }}</dd>
-            </div>
-            <div class="flex items-start justify-between gap-4">
-              <dt class="font-medium text-[var(--app-ink)]">Dernière activité</dt>
-              <dd class="min-w-0 text-right break-words">
-                {{ ticket.last_message_at ? formatDate(ticket.last_message_at, true) : "À l'instant" }}
-              </dd>
-            </div>
-            <div class="flex items-start justify-between gap-4">
-              <dt class="font-medium text-[var(--app-ink)]">Statut</dt>
-              <dd>
-                <span
-                  :class="[
-                    'rounded-full px-3 py-1 text-[11px] font-semibold tracking-wide uppercase',
-                    statusStyles[ticket.status] || statusStyles.default,
-                  ]"
-                >
-                  {{ statusLabels[ticket.status] || ticket.status }}
-                </span>
-              </dd>
-            </div>
-          </dl>
-        </div>
-
-        <div class="space-y-2">
-          <h3 class="text-sm font-semibold text-[var(--app-ink)]">Description initiale</h3>
-          <p
-            class="overflow-wrap-anywhere text-xs leading-relaxed break-words whitespace-pre-wrap text-[var(--app-ink-soft)]"
-          >
-            {{ ticket.description }}
-          </p>
-        </div>
-
-        <div v-if="ticket.attachments.length" class="space-y-3">
-          <h3 class="text-sm font-semibold text-[var(--app-ink)]">Images jointes</h3>
-          <div class="grid gap-3 sm:grid-cols-2">
+    <template v-else>
+      <!-- Demande initiale : repliée, elle n'écrase pas la conversation -->
+      <UiCollapsibleCard icon="i-lucide-file-text" title="La demande initiale">
+        <div class="space-y-4 px-4 py-4">
+          <p class="text-sm leading-relaxed whitespace-pre-wrap text-[var(--app-ink)]">{{ ticket.description }}</p>
+          <div v-if="ticket.attachments.length" class="grid gap-3 sm:grid-cols-3">
             <a
               v-for="attachment in ticket.attachments"
               :key="attachment.id"
               :href="attachment.url"
               target="_blank"
               rel="noopener"
-              class="block overflow-hidden rounded-lg border border-[var(--app-line)] bg-[var(--app-bg)]"
+              class="block overflow-hidden rounded-lg border border-[var(--app-line)] bg-[var(--app-bg)] transition-colors hover:border-[var(--app-ink-soft)]"
             >
-              <img :src="attachment.url" :alt="attachment.original_filename" class="h-32 w-full object-cover" />
-              <p class="truncate px-3 py-2 text-[11px] text-[var(--app-ink-soft)]">
-                {{ attachment.original_filename }}
-              </p>
+              <img :src="attachment.url" :alt="attachment.original_filename" class="h-24 w-full object-cover" />
+              <p class="text-muted truncate px-2 py-1.5 text-[11px]">{{ attachment.original_filename }}</p>
             </a>
           </div>
         </div>
-      </aside>
+      </UiCollapsibleCard>
 
-      <section
-        class="card flex h-[600px] max-w-full flex-col space-y-6 overflow-hidden p-4 sm:p-6 md:h-[calc(100vh-280px)]"
-      >
-        <div ref="conversationContainer" class="custom-scrollbar min-h-0 flex-1 space-y-5 overflow-y-auto pr-2">
-          <div
-            v-for="message in ticket.messages"
-            :key="message.id"
-            :class="[
-              'flex w-full max-w-[85%] flex-col gap-3',
-              message.sender_id === userStore.user?.id ? 'ml-auto items-end' : 'items-start',
-            ]"
-          >
-            <div class="flex items-center gap-2 text-xs text-[var(--app-ink-soft)]">
-              <span class="font-medium text-[var(--app-ink)]">{{ message.sender_name }}</span>
-              <span>{{ formatDate(message.created_at, true) }}</span>
-            </div>
-            <div
-              v-if="message.content && message.content.trim()"
-              :class="[
-                'max-w-full rounded-2xl px-4 py-3 text-sm leading-relaxed break-words whitespace-pre-wrap',
-                message.sender_id === userStore.user?.id
-                  ? 'bg-[var(--app-accent-ink)] text-[var(--app-bg)]'
-                  : 'bg-[var(--app-surface-2)] text-[var(--app-ink)]',
-              ]"
-            >
-              {{ message.content }}
-            </div>
-            <div
-              v-if="message.attachments.length"
-              :class="[
-                'flex w-full flex-wrap gap-3',
-                message.sender_id === userStore.user?.id ? 'justify-end' : 'justify-start',
-              ]"
-            >
-              <a
-                v-for="attachment in message.attachments"
-                :key="attachment.id"
-                :href="attachment.url"
-                target="_blank"
-                rel="noopener"
-                class="block w-[200px] overflow-hidden rounded-lg border border-[var(--app-line)] bg-[var(--app-bg)]"
+      <!-- Conversation -->
+      <div class="space-y-5">
+        <div v-for="message in ticket.messages" :key="message.id" class="space-y-1.5">
+          <p :class="['text-muted flex items-center gap-2 text-xs', isMine(message) ? 'justify-end' : 'justify-start']">
+            <span class="font-medium text-[var(--app-ink)]">{{ message.sender_name }}</span>
+            <span>{{ formatDate(message.created_at, true) }}</span>
+          </p>
+
+          <div :class="['flex', isMine(message) ? 'justify-end' : 'justify-start']">
+            <div class="max-w-[85%] space-y-2">
+              <div
+                v-if="message.content && message.content.trim()"
+                :class="[
+                  'rounded-2xl px-4 py-2.5 text-sm leading-relaxed break-words whitespace-pre-wrap',
+                  isMine(message)
+                    ? 'bg-[var(--app-ink)] text-[var(--app-surface)]'
+                    : 'bg-[var(--app-surface-2)] text-[var(--app-ink)]',
+                ]"
               >
-                <img :src="attachment.url" :alt="attachment.original_filename" class="h-28 w-full object-cover" />
-                <p class="truncate px-3 py-2 text-[11px] text-[var(--app-ink-soft)]">
-                  {{ attachment.original_filename }}
-                </p>
-              </a>
+                {{ message.content }}
+              </div>
+
+              <div v-if="message.attachments.length" class="grid grid-cols-2 gap-2">
+                <a
+                  v-for="attachment in message.attachments"
+                  :key="attachment.id"
+                  :href="attachment.url"
+                  target="_blank"
+                  rel="noopener"
+                  class="block overflow-hidden rounded-lg border border-[var(--app-line)] bg-[var(--app-bg)] transition-colors hover:border-[var(--app-ink-soft)]"
+                >
+                  <img :src="attachment.url" :alt="attachment.original_filename" class="h-24 w-full object-cover" />
+                </a>
+              </div>
             </div>
           </div>
         </div>
+      </div>
 
-        <form class="flex-shrink-0 space-y-4 border-t border-[var(--app-line)] pt-4" @submit.prevent="sendMessage">
-          <div class="relative">
-            <textarea
-              v-model="messageInput"
-              rows="3"
-              class="input-field pr-28"
-              placeholder="Écrire une réponse…"
-              @keydown="handleKeydown"
-            ></textarea>
-            <div class="absolute right-3 bottom-3 flex items-center gap-2">
-              <label
-                class="flex h-9 w-9 cursor-pointer items-center justify-center rounded-lg border border-[var(--app-line)] bg-[var(--app-bg)] text-[var(--app-ink-soft)] transition-colors hover:text-[var(--app-ink)]"
-              >
-                <UIcon name="i-lucide-paperclip" class="h-4 w-4" />
-                <input
-                  ref="composerInput"
-                  type="file"
-                  accept="image/png,image/jpeg,image/webp"
-                  class="hidden"
-                  multiple
-                  @change="handleComposerAttachments"
-                />
-              </label>
-              <button
-                type="submit"
-                class="flex h-10 w-10 items-center justify-center rounded-full bg-[var(--app-accent-ink)] text-[var(--app-bg)] transition-colors hover:bg-[var(--app-accent-ink)]/80 disabled:cursor-not-allowed disabled:opacity-60"
-                :disabled="(!messageInput.trim() && composerPreviews.length === 0) || isSending"
-                title="Envoyer"
-              >
-                <UIcon name="i-lucide-send" class="h-4 w-4" />
-              </button>
-            </div>
-          </div>
-
-          <div v-if="composerPreviews.length" class="grid gap-3 sm:grid-cols-2 md:grid-cols-3">
-            <figure
-              v-for="(preview, index) in composerPreviews"
-              :key="preview.url"
-              class="relative overflow-hidden rounded-lg border border-[var(--app-line)] bg-[var(--app-bg)]"
+      <!-- Réponse -->
+      <form class="space-y-3" @submit.prevent="sendMessage">
+        <div class="relative">
+          <textarea
+            v-model="messageInput"
+            rows="3"
+            class="input-field h-auto py-2.5 pr-24"
+            placeholder="Écrire une réponse… (Entrée pour envoyer)"
+            @keydown="handleKeydown"
+          ></textarea>
+          <div class="absolute right-2.5 bottom-2.5 flex items-center gap-2">
+            <label
+              class="flex h-9 w-9 cursor-pointer items-center justify-center rounded-lg border border-[var(--app-line)] text-[var(--app-ink-soft)] transition-colors hover:border-[var(--app-ink-soft)] hover:text-[var(--app-ink)]"
+              title="Joindre une image"
             >
-              <img :src="preview.url" :alt="preview.name" class="h-28 w-full object-cover" />
-              <figcaption class="truncate px-3 py-2 text-[11px] text-[var(--app-ink-soft)]">
-                {{ preview.name }}
-              </figcaption>
-              <button
-                type="button"
-                class="absolute top-2 right-2 flex h-6 w-6 items-center justify-center rounded-full bg-[var(--app-bg)]/80 text-[11px] text-[var(--app-ink)] transition-colors hover:bg-[var(--app-red)] hover:text-white"
-                @click="removeComposerAttachment(index)"
-              >
-                <UIcon name="i-lucide-x" class="h-3.5 w-3.5" />
-              </button>
-            </figure>
+              <UIcon name="i-lucide-paperclip" class="h-4 w-4" />
+              <input
+                ref="composerInput"
+                type="file"
+                accept="image/png,image/jpeg,image/webp"
+                class="hidden"
+                multiple
+                @change="handleComposerAttachments"
+              />
+            </label>
+            <button
+              type="submit"
+              class="flex h-9 w-9 items-center justify-center rounded-lg bg-[var(--app-ink)] text-[var(--app-surface)] transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40"
+              :disabled="(!messageInput.trim() && composerPreviews.length === 0) || isSending"
+              title="Envoyer"
+            >
+              <UIcon
+                :name="isSending ? 'i-lucide-loader-circle' : 'i-lucide-send'"
+                :class="['h-4 w-4', isSending && 'animate-spin']"
+              />
+            </button>
           </div>
-        </form>
-      </section>
-    </div>
+        </div>
+
+        <div v-if="composerPreviews.length" class="grid gap-3 sm:grid-cols-4">
+          <figure
+            v-for="(preview, index) in composerPreviews"
+            :key="preview.url"
+            class="relative overflow-hidden rounded-lg border border-[var(--app-line)] bg-[var(--app-bg)]"
+          >
+            <img :src="preview.url" :alt="preview.name" class="h-20 w-full object-cover" />
+            <button
+              type="button"
+              class="btn-danger absolute top-1.5 right-1.5 flex h-5 w-5 items-center justify-center !p-0"
+              :aria-label="`Retirer ${preview.name}`"
+              @click="removeComposerAttachment(index)"
+            >
+              <UIcon name="i-lucide-x" class="h-3 w-3" />
+            </button>
+          </figure>
+        </div>
+      </form>
+    </template>
   </div>
 </template>
 
-<script setup lang="ts">
+<script lang="ts" setup>
+import type { ComputedRef, Ref } from 'vue'
+import type { SupportMessage, SupportTicketDetail } from '~/types'
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { useUserStore } from '~/stores/user'
 import { useToast } from '~/composables/useToast'
-import type { SupportTicketDetail, SupportMessage } from '~/types'
 import * as supportService from '~/services/supportService'
 
-type SupportWebsocketEvent = {
-  event?: string
-  data?: Record<string, unknown>
-}
+definePageMeta({ layout: 'dashboard', middleware: 'auth' })
 
-definePageMeta({
-  layout: 'dashboard',
-  middleware: 'auth',
-})
-
-const route = useRoute()
-const toast = useToast()
-const userStore = useUserStore()
-const runtimeConfig = useRuntimeConfig()
-
-const ticketId = computed(() => Number(route.params.id))
-const ticket = ref<SupportTicketDetail | null>(null)
-const isLoading = ref(true)
-const isSending = ref(false)
-
-const messageInput = ref('')
-const composerFiles = ref<File[]>([])
-const composerPreviews = ref<Array<{ url: string; name: string }>>([])
-const composerInput = ref<HTMLInputElement | null>(null)
-
-const conversationContainer = ref<HTMLDivElement | null>(null)
-const websocketRef = ref<WebSocket | null>(null)
-const globalWebsocketRef = ref<WebSocket | null>(null)
-
-const statusLabels: Record<string, string> = {
+/** Human labels for ticket statuses. */
+const STATUS_LABELS: Record<string, string> = {
   open: 'Ouvert',
   waiting_support: 'Attente support',
   waiting_user: 'Attente client',
@@ -248,16 +180,8 @@ const statusLabels: Record<string, string> = {
   closed: 'Fermé',
 }
 
-const statusStyles: Record<string, string> = {
-  open: 'bg-[var(--app-accent-ink)]/20 text-[var(--app-accent-ink)]',
-  waiting_support: 'bg-[var(--app-accent)]/15 text-[var(--app-accent-ink)]',
-  waiting_user: 'bg-[var(--app-violet-soft)] text-[var(--app-violet)]',
-  resolved: 'bg-[var(--app-green)]/20 text-[var(--app-green)]',
-  closed: 'bg-[var(--app-ink-soft)]/20 text-[var(--app-ink-soft)]',
-  default: 'bg-[var(--app-surface-2)] text-[var(--app-ink)]',
-}
-
-const topicMap: Record<string, string> = {
+/** Human labels for ticket topics. */
+const TOPIC_LABELS: Record<string, string> = {
   credits_billing: 'Crédits & facturation',
   missing_results: 'Résultats manquants',
   bug_report: 'Signalement de bug',
@@ -267,14 +191,82 @@ const topicMap: Record<string, string> = {
   other: 'Autre',
 }
 
-function topicLabel(topic: SupportTicketDetail['topic']): string {
-  return topicMap[topic] ?? topic
+/** Accepted image types for attachments. */
+const ALLOWED_TYPES: string[] = ['image/png', 'image/jpeg', 'image/webp']
+
+/** Maximum attachment size, in bytes. */
+const MAX_ATTACHMENT_BYTES: number = 8 * 1024 * 1024
+
+/** Shape of the realtime events pushed on the support websockets. */
+type SupportWebsocketEvent = {
+  event?: string
+  data?: Record<string, unknown>
 }
 
+const route = useRoute()
+const toast = useToast()
+const userStore = useUserStore()
+const runtimeConfig = useRuntimeConfig()
+
+const ticket: Ref<SupportTicketDetail | null> = ref<SupportTicketDetail | null>(null)
+const isLoading: Ref<boolean> = ref<boolean>(true)
+const isSending: Ref<boolean> = ref<boolean>(false)
+const messageInput: Ref<string> = ref<string>('')
+const composerFiles: Ref<File[]> = ref<File[]>([])
+const composerPreviews: Ref<Array<{ url: string; name: string }>> = ref<Array<{ url: string; name: string }>>([])
+const composerInput: Ref<HTMLInputElement | null> = ref<HTMLInputElement | null>(null)
+const websocketRef: Ref<WebSocket | null> = ref<WebSocket | null>(null)
+const globalWebsocketRef: Ref<WebSocket | null> = ref<WebSocket | null>(null)
+
+const ticketId: ComputedRef<number> = computed((): number => Number(route.params.id))
+
+/**
+ * Whether a message was written by the current user.
+ * @param message - Message to test.
+ * @returns True when the current user is the sender.
+ */
+function isMine(message: SupportMessage): boolean {
+  return message.sender_id === userStore.user?.id
+}
+
+/**
+ * Human label for a ticket topic.
+ * @param topic - Raw topic value.
+ * @returns Localised label.
+ */
+function topicLabel(topic: SupportTicketDetail['topic']): string {
+  return TOPIC_LABELS[topic] ?? topic
+}
+
+/**
+ * Human label for a ticket status.
+ * @param status - Raw status value.
+ * @returns Localised label.
+ */
+function statusLabel(status: string): string {
+  return STATUS_LABELS[status] ?? status
+}
+
+/**
+ * Badge modifier for a status — reuses the app badge family (no ad-hoc colours).
+ * @param status - Raw status value.
+ * @returns The modifier class, or an empty string for the neutral badge.
+ */
+function statusBadgeClass(status: string): string {
+  if (status === 'resolved') return 'app-badge--success'
+  if (status === 'open' || status === 'waiting_support') return 'app-badge--progress'
+  return ''
+}
+
+/**
+ * Format a timestamp for display.
+ * @param value - ISO timestamp.
+ * @param includeTime - Whether to append hours and minutes.
+ * @returns Localised date.
+ */
 function formatDate(value: string | null | undefined, includeTime = false): string {
   if (!value) return ''
-  const date = new Date(value)
-  return date.toLocaleString('fr-FR', {
+  return new Date(value).toLocaleString('fr-FR', {
     year: 'numeric',
     month: 'short',
     day: 'numeric',
@@ -283,6 +275,189 @@ function formatDate(value: string | null | undefined, includeTime = false): stri
   })
 }
 
+/**
+ * Scroll the window to the latest message.
+ */
+function scrollToBottom(): void {
+  requestAnimationFrame((): void => {
+    window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' })
+  })
+}
+
+/**
+ * Stage the picked images after validating type and size.
+ * @param event - Native change event of the file input.
+ */
+function handleComposerAttachments(event: Event): void {
+  const input = event.target as HTMLInputElement
+  for (const file of Array.from(input.files ?? [])) {
+    if (!ALLOWED_TYPES.includes(file.type)) {
+      toast.error('Format non pris en charge. Utilisez PNG, JPG ou WEBP.')
+      continue
+    }
+    if (file.size > MAX_ATTACHMENT_BYTES) {
+      toast.error('Fichier trop volumineux (8 Mo maximum par image).')
+      continue
+    }
+    composerFiles.value.push(file)
+    composerPreviews.value.push({ url: URL.createObjectURL(file), name: file.name })
+  }
+  if (composerInput.value) composerInput.value.value = ''
+}
+
+/**
+ * Remove a staged image and release its preview URL.
+ * @param index - Position in the staged list.
+ */
+function removeComposerAttachment(index: number): void {
+  const preview = composerPreviews.value[index]
+  if (preview) URL.revokeObjectURL(preview.url)
+  composerFiles.value.splice(index, 1)
+  composerPreviews.value.splice(index, 1)
+}
+
+/**
+ * Append a message to the thread when it is not already there.
+ * @param message - Message to add.
+ */
+function appendMessage(message: SupportMessage): void {
+  if (!ticket.value) return
+  if (ticket.value.messages.some((item: SupportMessage): boolean => item.id === message.id)) return
+  ticket.value.messages.push(message)
+  ticket.value.last_message_at = message.created_at
+  scrollToBottom()
+}
+
+/**
+ * Apply a realtime event scoped to this ticket.
+ * @param event - Incoming websocket payload.
+ */
+function handleWebsocketEvent(event: SupportWebsocketEvent): void {
+  if (!event?.event || !ticket.value) return
+  if (event.event === 'message.created' && event.data?.ticket_id === ticket.value.id) {
+    appendMessage(event.data as unknown as SupportMessage)
+    return
+  }
+  if (event.event === 'ticket.updated' && event.data?.id === ticket.value.id) {
+    ticket.value = { ...ticket.value, ...event.data, messages: ticket.value.messages }
+  }
+}
+
+/**
+ * Notify about activity happening on OTHER tickets.
+ * @param event - Incoming websocket payload.
+ */
+function handleGlobalWebsocketEvent(event: SupportWebsocketEvent): void {
+  if (!event?.event) return
+  const isAdmin = userStore.user?.role === 'ADMIN'
+
+  if (event.event === 'ticket.message') {
+    // Déjà sur ce ticket : la conversation se met à jour, pas besoin de toast.
+    if (event.data?.id && event.data.id === ticketId.value) return
+    const senderId = event.data?._sender_id
+    const currentUserId = userStore.user?.id
+    const shouldNotify =
+      senderId && currentUserId && senderId !== currentUserId && (event.data?.user_id === currentUserId || isAdmin)
+    if (shouldNotify) {
+      toast.info(`${String(event.data?._sender_name)} a répondu à « ${String(event.data?.subject || 'un ticket')} »`)
+    }
+    return
+  }
+
+  if (event.event === 'ticket.created' && isAdmin) {
+    const author = event.data?.user_name
+    if (author && author !== userStore.user?.name) toast.info(`Nouveau ticket créé par ${String(author)}`)
+  }
+}
+
+/**
+ * Close the per-ticket realtime connection, if any.
+ */
+function disconnectWebSocket(): void {
+  if (websocketRef.value) {
+    websocketRef.value.close()
+    websocketRef.value = null
+  }
+}
+
+/**
+ * Close the global realtime connection, if any.
+ */
+function disconnectGlobalWebSocket(): void {
+  if (globalWebsocketRef.value) {
+    globalWebsocketRef.value.close()
+    globalWebsocketRef.value = null
+  }
+}
+
+/**
+ * Build a websocket URL on the API host.
+ * @param path - Path appended after the API prefix.
+ * @param token - Auth token passed as a query param.
+ * @returns The absolute ws/wss URL.
+ */
+function buildSocketUrl(path: string, token: string): string {
+  const apiUrl = new URL(runtimeConfig.public.apiBase)
+  apiUrl.protocol = apiUrl.protocol === 'https:' ? 'wss:' : 'ws:'
+  apiUrl.pathname = `${apiUrl.pathname.replace(/\/$/, '')}/api/v1/support/${path}`
+  apiUrl.searchParams.set('token', token)
+  return apiUrl.toString()
+}
+
+/**
+ * Open the realtime connection scoped to this ticket.
+ */
+function connectWebSocket(): void {
+  disconnectWebSocket()
+  const token = userStore.token
+  if (!token || !ticket.value) return
+  try {
+    const ws = new WebSocket(buildSocketUrl(`tickets/${ticket.value.id}/ws`, token))
+    websocketRef.value = ws
+    ws.onmessage = (event: MessageEvent): void => {
+      try {
+        handleWebsocketEvent(JSON.parse(event.data))
+      } catch {
+        // Événement illisible : on ignore.
+      }
+    }
+    ws.onclose = (): void => {
+      websocketRef.value = null
+    }
+  } catch {
+    // Pas de temps réel : la page reste utilisable.
+  }
+}
+
+/**
+ * Open the global realtime connection (notifications for other tickets).
+ */
+function connectGlobalWebSocket(): void {
+  disconnectGlobalWebSocket()
+  const token = userStore.token
+  if (!token) return
+  try {
+    const ws = new WebSocket(buildSocketUrl('tickets/ws', token))
+    globalWebsocketRef.value = ws
+    ws.onmessage = (event: MessageEvent): void => {
+      try {
+        handleGlobalWebsocketEvent(JSON.parse(event.data))
+      } catch {
+        // Événement illisible : on ignore.
+      }
+    }
+    ws.onclose = (): void => {
+      globalWebsocketRef.value = null
+    }
+  } catch {
+    // Pas de notifications temps réel : sans impact sur la page.
+  }
+}
+
+/**
+ * Load the ticket and open its realtime connection.
+ * @returns A promise resolving once loaded.
+ */
 async function loadTicket(): Promise<void> {
   if (!ticketId.value) return
   try {
@@ -291,61 +466,17 @@ async function loadTicket(): Promise<void> {
     await nextTick()
     scrollToBottom()
     connectWebSocket()
-  } catch (error) {
-    console.error('Failed to load ticket', error)
+  } catch {
     toast.error('Impossible de charger ce ticket pour le moment.')
   } finally {
     isLoading.value = false
   }
 }
 
-function scrollToBottom(): void {
-  if (!conversationContainer.value) return
-  requestAnimationFrame(() => {
-    if (!conversationContainer.value) return
-    conversationContainer.value.scrollTop = conversationContainer.value.scrollHeight
-  })
-}
-
-function resetComposerInput(): void {
-  if (composerInput.value) {
-    composerInput.value.value = ''
-  }
-}
-
-function revokeComposerPreview(index: number): void {
-  URL.revokeObjectURL(composerPreviews.value[index].url)
-}
-
-function handleComposerAttachments(event: Event): void {
-  const input = event.target as HTMLInputElement
-  const files = Array.from(input.files ?? [])
-
-  files.forEach((file) => {
-    if (!['image/png', 'image/jpeg', 'image/webp'].includes(file.type)) {
-      toast.error('Format non pris en charge. Utilisez PNG, JPG ou WEBP.')
-      return
-    }
-    if (file.size > 8 * 1024 * 1024) {
-      toast.error('Fichier trop volumineux (8 Mo maximum par image).')
-      return
-    }
-    composerFiles.value.push(file)
-    composerPreviews.value.push({
-      url: URL.createObjectURL(file),
-      name: file.name,
-    })
-  })
-
-  resetComposerInput()
-}
-
-function removeComposerAttachment(index: number): void {
-  composerFiles.value.splice(index, 1)
-  revokeComposerPreview(index)
-  composerPreviews.value.splice(index, 1)
-}
-
+/**
+ * Post the composed reply (text and/or images).
+ * @returns A promise resolving once sent.
+ */
 async function sendMessage(): Promise<void> {
   if (!ticket.value || (!messageInput.value.trim() && composerFiles.value.length === 0)) return
   try {
@@ -357,180 +488,20 @@ async function sendMessage(): Promise<void> {
     appendMessage(message)
     messageInput.value = ''
     composerFiles.value = []
-    composerPreviews.value.forEach((preview) => URL.revokeObjectURL(preview.url))
+    composerPreviews.value.forEach((preview: { url: string; name: string }): void => URL.revokeObjectURL(preview.url))
     composerPreviews.value = []
-    resetComposerInput()
-  } catch (error) {
-    console.error('Failed to send message', error)
+    if (composerInput.value) composerInput.value.value = ''
+  } catch {
     toast.error("Impossible d'envoyer votre réponse. Réessayez.")
   } finally {
     isSending.value = false
   }
 }
 
-function appendMessage(message: SupportMessage): void {
-  if (!ticket.value) return
-  const exists = ticket.value.messages.some((item) => item.id === message.id)
-  if (!exists) {
-    ticket.value.messages.push(message)
-    ticket.value.last_message_at = message.created_at
-    scrollToBottom()
-  }
-}
-
-function handleWebsocketEvent(event: SupportWebsocketEvent): void {
-  if (!event || !event.event || !ticket.value) return
-  switch (event.event) {
-    case 'message.created':
-      if (event.data?.ticket_id === ticket.value.id) {
-        appendMessage(event.data as SupportMessage)
-      }
-      break
-    case 'ticket.updated':
-      if (event.data?.id === ticket.value.id) {
-        ticket.value = {
-          ...ticket.value,
-          ...event.data,
-          messages: ticket.value.messages,
-        }
-      }
-      break
-    default:
-      break
-  }
-}
-
-function connectWebSocket(): void {
-  disconnectWebSocket()
-  const token = userStore.token
-  if (!token || !ticket.value) return
-  try {
-    const apiUrl = new URL(runtimeConfig.public.apiBase)
-    apiUrl.protocol = apiUrl.protocol === 'https:' ? 'wss:' : 'ws:'
-    const basePath = apiUrl.pathname.replace(/\/$/, '')
-    apiUrl.pathname = `${basePath}/api/v1/support/tickets/${ticket.value.id}/ws`
-    apiUrl.searchParams.set('token', token)
-
-    const ws = new WebSocket(apiUrl.toString())
-    websocketRef.value = ws
-    ws.onmessage = (event) => {
-      try {
-        const payload = JSON.parse(event.data)
-        handleWebsocketEvent(payload)
-      } catch (error) {
-        console.warn('Invalid websocket event', error)
-      }
-    }
-    ws.onclose = () => {
-      websocketRef.value = null
-    }
-  } catch (error) {
-    console.error('Failed to connect websocket', error)
-  }
-}
-
-function disconnectWebSocket(): void {
-  if (websocketRef.value) {
-    websocketRef.value.close()
-    websocketRef.value = null
-  }
-}
-
-function handleGlobalWebsocketEvent(event: SupportWebsocketEvent): void {
-  if (!event || !event.event) return
-
-  // Handle new message notifications
-  if (event.event === 'ticket.message') {
-    const messageTicketId = event.data?.id
-    const currentTicketId = ticketId.value
-
-    // Debug log
-    console.log('[WebSocket] Message event:', {
-      messageTicketId,
-      currentTicketId,
-      areEqual: messageTicketId === currentTicketId,
-      messageTicketIdType: typeof messageTicketId,
-      currentTicketIdType: typeof currentTicketId,
-    })
-
-    // Don't show notification if the message is for the current ticket
-    // Use == instead of === to handle type coercion (string vs number)
-    if (messageTicketId && messageTicketId == currentTicketId) {
-      console.log('[WebSocket] Skipping notification - user is on this ticket page')
-      return // User is already on this ticket page, no need to notify
-    }
-
-    // Show notification for messages in other tickets
-    const senderId = event.data?._sender_id
-    const senderName = event.data?._sender_name
-    const currentUserId = userStore.user?.id
-    const isAdmin = userStore.user?.role === 'ADMIN'
-    const ticketUserId = event.data?.user_id
-
-    const shouldNotify =
-      senderId && currentUserId && senderId !== currentUserId && (ticketUserId === currentUserId || isAdmin)
-
-    if (shouldNotify) {
-      const ticketSubject = event.data?.subject || 'un ticket'
-      toast.info(`${senderName} a répondu à « ${ticketSubject} »`)
-    }
-  }
-
-  // Handle ticket created notifications for admins
-  if (event.event === 'ticket.created') {
-    const isAdmin = userStore.user?.role === 'ADMIN'
-    if (isAdmin) {
-      const userCreatedBy = event.data?.user_name
-      if (userCreatedBy && userCreatedBy !== userStore.user?.name) {
-        toast.info(`Nouveau ticket créé par ${userCreatedBy}`)
-      }
-    }
-  }
-}
-
-function connectGlobalWebSocket(): void {
-  disconnectGlobalWebSocket()
-  const token = userStore.token
-  if (!token) return
-
-  try {
-    const apiUrl = new URL(runtimeConfig.public.apiBase)
-    apiUrl.protocol = apiUrl.protocol === 'https:' ? 'wss:' : 'ws:'
-    const basePath = apiUrl.pathname.replace(/\/$/, '')
-    apiUrl.pathname = `${basePath}/api/v1/support/tickets/ws`
-    apiUrl.searchParams.set('token', token)
-
-    const ws = new WebSocket(apiUrl.toString())
-    globalWebsocketRef.value = ws
-
-    ws.onmessage = (event) => {
-      try {
-        const payload = JSON.parse(event.data)
-        handleGlobalWebsocketEvent(payload)
-      } catch (error) {
-        console.warn('Invalid websocket event', error)
-      }
-    }
-
-    ws.onclose = () => {
-      globalWebsocketRef.value = null
-    }
-
-    ws.onerror = () => {
-      console.warn('Global WebSocket error')
-    }
-  } catch (error) {
-    console.error('Failed to connect global websocket', error)
-  }
-}
-
-function disconnectGlobalWebSocket(): void {
-  if (globalWebsocketRef.value) {
-    globalWebsocketRef.value.close()
-    globalWebsocketRef.value = null
-  }
-}
-
+/**
+ * Send on Enter, newline on Shift+Enter.
+ * @param event - Keyboard event from the composer.
+ */
 function handleKeydown(event: KeyboardEvent): void {
   if (event.key === 'Enter' && !event.shiftKey) {
     event.preventDefault()
@@ -539,37 +510,26 @@ function handleKeydown(event: KeyboardEvent): void {
 }
 
 watch(
-  () => route.params.id,
-  () => {
+  (): string | string[] => route.params.id,
+  (): void => {
     disconnectWebSocket()
     ticket.value = null
     composerFiles.value = []
-    composerPreviews.value.forEach((preview) => URL.revokeObjectURL(preview.url))
+    composerPreviews.value.forEach((preview: { url: string; name: string }): void => URL.revokeObjectURL(preview.url))
     composerPreviews.value = []
-    resetComposerInput()
+    if (composerInput.value) composerInput.value.value = ''
     void loadTicket()
   },
 )
 
-onMounted(() => {
+onMounted((): void => {
   void loadTicket()
   connectGlobalWebSocket()
 })
 
-onBeforeUnmount(() => {
+onBeforeUnmount((): void => {
   disconnectWebSocket()
   disconnectGlobalWebSocket()
-  composerPreviews.value.forEach((preview) => URL.revokeObjectURL(preview.url))
+  composerPreviews.value.forEach((preview: { url: string; name: string }): void => URL.revokeObjectURL(preview.url))
 })
 </script>
-
-<style scoped>
-.custom-scrollbar::-webkit-scrollbar {
-  width: 6px;
-}
-
-.custom-scrollbar::-webkit-scrollbar-thumb {
-  background-color: var(--app-surface-2);
-  border-radius: 999px;
-}
-</style>
