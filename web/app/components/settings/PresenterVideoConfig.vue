@@ -37,17 +37,56 @@
           </button>
         </div>
 
-        <!-- Absent: the drop zone takes the clip's place -->
-        <UiPresenterVideoDropzone
-          v-else
-          :selected-file="selectedFile"
-          :is-dragging="isDragging"
-          :is-uploading="isUploading"
-          @pick="openFilePicker"
-          @drop-file="handleDropFile"
-          @dragging="isDragging = $event"
-          @upload="handleUpload"
-        />
+        <!-- Absent: on choisit d'abord comment obtenir le clip -->
+        <template v-else>
+          <!-- Le choix, tant qu'aucune méthode n'est engagée -->
+          <div v-if="captureMode === null" class="grid gap-3 sm:grid-cols-2">
+            <button
+              v-for="option in CAPTURE_OPTIONS"
+              :key="option.mode"
+              type="button"
+              class="flex cursor-pointer flex-col items-start gap-2 rounded-xl border border-[var(--app-line)] bg-[var(--app-surface)] px-4 py-4 text-left transition-colors hover:border-[var(--app-ink-soft)] hover:bg-[var(--app-surface-2)]"
+              @click="captureMode = option.mode"
+            >
+              <span
+                class="flex h-9 w-9 items-center justify-center rounded-lg border border-[var(--app-line)] bg-[var(--app-bg)]"
+              >
+                <UIcon :name="option.icon" class="h-4 w-4 text-[var(--app-ink)]" />
+              </span>
+              <span class="text-sm font-semibold text-[var(--app-ink)]">{{ option.title }}</span>
+              <span class="text-muted text-xs leading-relaxed">{{ option.detail }}</span>
+              <span v-if="option.badge" class="app-badge app-badge--info mt-1 font-medium">{{ option.badge }}</span>
+            </button>
+          </div>
+
+          <!-- Enregistrement dans l'app -->
+          <UiPresenterVideoRecorder
+            v-else-if="captureMode === 'record'"
+            :auto-generate="autoGenerate"
+            @saved="handleRecorded"
+            @cancel="captureMode = null"
+          />
+
+          <!-- Import d'un fichier -->
+          <div v-else class="space-y-3">
+            <UiPresenterVideoDropzone
+              :selected-file="selectedFile"
+              :is-dragging="isDragging"
+              :is-uploading="isUploading"
+              @pick="openFilePicker"
+              @drop-file="handleDropFile"
+              @dragging="isDragging = $event"
+              @upload="handleUpload"
+            />
+            <button
+              type="button"
+              class="cursor-pointer text-xs font-medium text-[var(--app-ink-soft)] underline underline-offset-4 transition-colors hover:text-[var(--app-ink)]"
+              @click="captureMode = null"
+            >
+              Revenir au choix
+            </button>
+          </div>
+        </template>
       </section>
 
       <!-- ── Les trois cartes de réglages, puis « Enregistrer » tout en bas ── -->
@@ -69,9 +108,27 @@
           <UiSwitch id="video-auto-generate" v-model="autoGenerate" />
         </div>
 
-        <!-- Découpage (replié, avec un clip en place) -->
+        <!-- Découpage mesuré : rien à régler, les prises SONT les segments -->
+        <div
+          v-if="info?.has_video && isRecordedClip"
+          class="flex items-start gap-3 rounded-xl border border-[var(--app-line)] bg-[var(--app-surface)] px-4 py-3.5"
+        >
+          <UIcon name="i-lucide-scissors" class="mt-0.5 h-4 w-4 shrink-0 text-[var(--app-ink)]" />
+          <div class="min-w-0">
+            <p class="text-sm font-semibold text-[var(--app-ink)]">Découpage automatique</p>
+            <p class="text-muted mt-0.5 text-xs leading-relaxed">
+              Clip filmé dans l'application : chaque prise est un segment, donc les coupes sont exactes — intro
+              {{ formatSegment(introSeconds) }}, site
+              <template v-if="siteSegmentSeconds !== null">{{ siteSegmentSeconds }} s</template>
+              <template v-else>—</template>
+              , outro {{ formatSegment(outroSeconds) }}. Rien à régler.
+            </p>
+          </div>
+        </div>
+
+        <!-- Découpage manuel (replié) — seulement pour un fichier importé -->
         <UiCollapsibleCard
-          v-if="info?.has_video"
+          v-if="info?.has_video && !isRecordedClip"
           icon="i-lucide-scissors"
           title="Découpage de la vidéo"
           suffix="facultatif"
@@ -114,12 +171,17 @@
           </div>
         </UiCollapsibleCard>
 
-        <!-- ── Comment enregistrer votre clip (toujours visible) ────────────── -->
-        <UiCollapsibleCard icon="i-lucide-clapperboard" title="Comment enregistrer votre clip">
+        <!-- ── Comment enregistrer votre clip (masqué pendant l'enregistrement,
+             où le prompteur affiche déjà le texte) ──────────────────────────── -->
+        <UiCollapsibleCard
+          v-if="captureMode !== 'record'"
+          icon="i-lucide-clapperboard"
+          title="Comment enregistrer votre clip"
+        >
           <div class="space-y-6 px-4 py-5">
             <!-- Les 3 étapes -->
             <ol class="space-y-4">
-              <li v-for="(step, index) in WORKFLOW_STEPS" :key="step.title" class="flex items-start gap-3">
+              <li v-for="(step, index) in workflowSteps" :key="step.title" class="flex items-start gap-3">
                 <span
                   class="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-[var(--app-line)] bg-[var(--app-bg)] text-[11px] font-bold text-[var(--app-ink)]"
                 >
@@ -210,6 +272,7 @@
 <script lang="ts" setup>
 import type { ComputedRef, Ref } from 'vue'
 import type { PresenterVideoInfo } from '~/services/presenterVideoService'
+import type { ProspectionScriptSegment } from '~/composables/useProspectionScript'
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import {
   deletePresenterVideo,
@@ -218,6 +281,7 @@ import {
   updatePresenterVideoSettings,
   uploadPresenterVideo,
 } from '~/services/presenterVideoService'
+import { buildDefaultScript } from '~/composables/useProspectionScript'
 import { useToast } from '~/composables/useToast'
 import { useAuth } from '~/composables/useAuth'
 
@@ -233,20 +297,25 @@ const emit = defineEmits<{
   'has-video': [hasVideo: boolean]
 }>()
 
-/** The three steps shown in the folded « Comment enregistrer votre clip » guide. */
-const WORKFLOW_STEPS: Array<{ title: string; detail: string }> = [
+/** How the user can obtain the clip. */
+type CaptureMode = 'record' | 'import'
+
+/** The two ways in, offered side by side when no clip exists yet. */
+const CAPTURE_OPTIONS: Array<{ mode: CaptureMode; icon: string; title: string; detail: string; badge: string }> = [
   {
-    title: 'Filmez-vous ~30 s, une seule fois',
-    detail: 'Webcam + micro, face caméra, en lisant le speech ci-dessous.',
-  },
-  {
-    title: 'Déposez le fichier',
-    detail: 'C’est votre seule action : le découpage et la personnalisation sont ensuite automatiques.',
-  },
-  {
-    title: 'Chaque prospect reçoit sa vidéo',
+    mode: 'record',
+    icon: 'i-lucide-video',
+    title: 'Filmer ici, avec le texte à lire',
     detail:
-      'Son site défile à l’écran, son prénom en incrustation. La vignette cliquable s’ajoute à vos emails via {vignette_video} — ou via l’un des deux modèles « Vidéo » déjà prêts.',
+      'Trois prises courtes — intro, milieu, fin — guidées par un prompteur. Chacune se refait toute seule si elle ne vous plaît pas.',
+    badge: 'Le plus simple',
+  },
+  {
+    mode: 'import',
+    icon: 'i-lucide-upload',
+    title: 'Importer un fichier',
+    detail: 'Vous avez déjà filmé, au reflex, au téléphone ou avec un autre outil ? Déposez le fichier ici.',
+    badge: '',
   },
 ]
 
@@ -269,32 +338,46 @@ const deleteModalRef: Ref<{ open: () => void } | null> = ref<{ open: () => void 
 const introSeconds: Ref<number> = ref<number>(4)
 const outroSeconds: Ref<number> = ref<number>(5)
 const autoGenerate: Ref<boolean> = ref<boolean>(true)
+const captureMode: Ref<CaptureMode | null> = ref<CaptureMode | null>(null)
 
-/** Recommended generic speech (~30 s) — the connected user's full name lands in the intro. */
+/** Whether the stored clip was filmed in-app (its cut points are measured). */
+const isRecordedClip: ComputedRef<boolean> = computed((): boolean => info.value?.source === 'recorded')
+
+/**
+ * Recommended speech, shared with the in-app teleprompter so the guide and the
+ * prompter can never drift apart.
+ */
 const speechSegments: ComputedRef<Array<{ timing: string; role: string; text: string }>> = computed(
-  (): Array<{ timing: string; role: string; text: string }> => {
-    const presenter: string = user.value?.name?.trim() ?? ''
-    return [
-      {
-        timing: '0 - 4 s',
-        role: 'Intro',
-        text: presenter ? `Bonjour ! Moi c'est ${presenter}, développeur web.` : 'Bonjour ! Je suis développeur web.',
-      },
-      {
-        timing: '4 - 27 s',
-        role: 'Le site web apparaît',
-        text:
-          "Si je vous contacte, c'est que j'ai déjà créé un site web pour votre entreprise — vous êtes en train de le voir. " +
-          'Il est en ligne, à votre nom, avec vos informations. Et surtout : vous pouvez tout modifier vous-même — ' +
-          'textes, photos, horaires — sans développeur, depuis un espace d’administration très simple.',
-      },
-      {
-        timing: '27 - 32 s',
-        role: 'Outro',
-        text: 'Cliquez sur le lien juste en dessous pour le découvrir en vrai. À tout de suite !',
-      },
-    ]
-  },
+  (): Array<{ timing: string; role: string; text: string }> =>
+    buildDefaultScript(user.value?.name ?? '').map(
+      (segment: ProspectionScriptSegment): { timing: string; role: string; text: string } => ({
+        timing: `~${segment.targetSeconds} s`,
+        role: segment.title,
+        text: segment.text,
+      }),
+    ),
+)
+
+/** The three steps of the folded guide, worded for the chosen capture method. */
+const workflowSteps: ComputedRef<Array<{ title: string; detail: string }>> = computed(
+  (): Array<{ title: string; detail: string }> => [
+    {
+      title: 'Filmez-vous ~30 s, une seule fois',
+      detail:
+        captureMode.value === 'import'
+          ? 'Webcam + micro, face caméra, en lisant le speech ci-dessous.'
+          : 'En trois prises courtes dans l’application, ou avec l’outil de votre choix puis en important le fichier.',
+    },
+    {
+      title: captureMode.value === 'import' ? 'Déposez le fichier' : 'Gardez vos prises',
+      detail: 'C’est votre seule action : le découpage et la personnalisation sont ensuite automatiques.',
+    },
+    {
+      title: 'Chaque prospect reçoit sa vidéo',
+      detail:
+        'Son site défile à l’écran, son prénom en incrustation. La vignette cliquable s’ajoute à vos emails via {vignette_video} — ou via l’un des deux modèles « Vidéo » déjà prêts.',
+    },
+  ],
 )
 
 /** Seconds left for the site-scroll segment (duration - intro - outro). */
@@ -340,6 +423,26 @@ async function loadInfo(): Promise<void> {
   } finally {
     isLoading.value = false
   }
+}
+
+/**
+ * Format a cut point for the read-only « découpage automatique » line.
+ * @param seconds - Segment length.
+ * @returns A short label (e.g. « 4,5 s »).
+ */
+function formatSegment(seconds: number): string {
+  return `${seconds.toFixed(1).replace(/\.0$/, '').replace('.', ',')} s`
+}
+
+/**
+ * Adopt the clip just assembled from the three in-app takes.
+ * @param payload - Fresh clip metadata returned by the API.
+ */
+async function handleRecorded(payload: PresenterVideoInfo): Promise<void> {
+  applyInfo(payload)
+  captureMode.value = null
+  releasePreview()
+  previewUrl.value = await getPresenterVideoObjectUrl()
 }
 
 /**
@@ -418,6 +521,9 @@ async function handleDeleteConfirmed(): Promise<void> {
   try {
     applyInfo(await deletePresenterVideo())
     releasePreview()
+    // Repartir du choix « filmer ici / importer » plutôt que de la méthode
+    // utilisée la fois précédente.
+    captureMode.value = null
     toast.success('Clip supprimé')
   } catch (err: unknown) {
     toast.error(err instanceof Error ? err.message : 'Échec de la suppression')

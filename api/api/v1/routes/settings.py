@@ -213,6 +213,8 @@ class PresenterVideoResponse(BaseModel):
     intro_seconds: float = 4.0
     outro_seconds: float = 5.0
     auto_generate: bool = True
+    # « upload » (fichier importé) ou « recorded » (filmé dans l'app).
+    source: str = "upload"
     updated_at: Optional[str] = None
 
 
@@ -236,6 +238,7 @@ def _serialize_presenter(record: PresenterVideo | None) -> dict[str, Any]:
         "intro_seconds": record.intro_seconds,
         "outro_seconds": record.outro_seconds,
         "auto_generate": record.auto_generate,
+        "source": record.source or "upload",
         "updated_at": timestamp.isoformat() if timestamp else None,
     }
 
@@ -263,6 +266,29 @@ async def upload_presenter_video(
         db, current_user.id, file, intro_seconds, outro_seconds, auto_generate
     )
     logger.info("[Settings] Presenter clip uploaded for user %d (%.1fs)", current_user.id, record.duration_seconds)
+    return _serialize_presenter(record)
+
+
+@router.put("/presenter-video/segments", response_model=PresenterVideoResponse)
+async def upload_presenter_video_segments(
+    intro: UploadFile = File(...),
+    middle: UploadFile = File(...),
+    outro: UploadFile = File(...),
+    auto_generate: bool = Form(default=True),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> dict[str, Any]:
+    """Assemble the three takes recorded in-app into the presenter clip."""
+    record = await presenter_video_service.store_recorded_segments(
+        db, current_user.id, intro, middle, outro, auto_generate
+    )
+    logger.info(
+        "[Settings] Presenter clip recorded in-app for user %d (%.1fs — intro %.1fs / outro %.1fs)",
+        current_user.id,
+        record.duration_seconds,
+        record.intro_seconds,
+        record.outro_seconds,
+    )
     return _serialize_presenter(record)
 
 

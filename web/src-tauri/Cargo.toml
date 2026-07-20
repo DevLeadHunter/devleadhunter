@@ -21,3 +21,8 @@ serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 # Loads api/.env.sync + web/.env.sync for the debug-only prod → local DB sync command.
 dotenvy = "0.15"
+
+# Grants the WebView2 camera/microphone permission so the in-app presenter-clip
+# recorder works in the desktop build. wry only auto-allows clipboard reads.
+[target.'cfg(windows)'.dependencies]
+webview2-com = "0.38"
