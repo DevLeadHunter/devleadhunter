@@ -629,12 +629,52 @@ export interface EmailTemplate {
   body_html: string
   /** List of variable names */
   variables?: string[]
+  /** Attached signature ID (null = none) */
+  signature_id?: number | null
   /** Whether template is active */
   is_active: boolean
   /** Created timestamp */
   created_at: string
   /** Updated timestamp */
   updated_at?: string | null
+}
+
+/**
+ * Reusable email signature (sign-off block, HTML, paste-friendly from Gmail).
+ */
+export interface EmailSignature {
+  /** Unique identifier */
+  id: number
+  /** Owner user ID */
+  user_id: number
+  /** Human label shown in the picker */
+  name: string
+  /** Signature body in HTML */
+  content_html: string
+  /** Whether this is the user's default signature */
+  is_default: boolean
+  /** Created timestamp */
+  created_at: string
+  /** Updated timestamp */
+  updated_at?: string | null
+}
+
+/**
+ * Email signature creation request
+ */
+export interface EmailSignatureCreate {
+  name: string
+  content_html: string
+  is_default?: boolean
+}
+
+/**
+ * Email signature update request
+ */
+export interface EmailSignatureUpdate {
+  name?: string
+  content_html?: string
+  is_default?: boolean
 }
 
 /**
@@ -764,6 +804,7 @@ export interface EmailTemplateCreate {
   body_html: string
   email_account_id?: number
   variables?: string[]
+  signature_id?: number | null
 }
 
 /**
@@ -776,6 +817,7 @@ export interface EmailTemplateUpdate {
   email_account_id?: number
   variables?: string[]
   is_active?: boolean
+  signature_id?: number | null
 }
 
 /**

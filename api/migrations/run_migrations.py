@@ -59,6 +59,7 @@ MIGRATION_MODULES: list[tuple[str, str]] = [
     ("add_user_sending_provider", "migrations.add_user_sending_provider"),
     ("add_user_onboarding_completed", "migrations.add_user_onboarding_completed"),
     ("add_presenter_video_source", "migrations.add_presenter_video_source"),
+    ("add_email_signatures", "migrations.add_email_signatures"),
 ]
 
 

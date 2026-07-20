@@ -80,6 +80,23 @@
               placeholder="Bonjour,&#10;&#10;J'ai créé un site vitrine pour votre entreprise…"
             />
           </div>
+
+          <div>
+            <label class="text-muted mb-1.5 block text-xs font-medium">Signature</label>
+            <select v-model="signatureId" class="input-field">
+              <option :value="null">Aucune signature</option>
+              <option v-for="signature in signatures" :key="signature.id" :value="signature.id">
+                {{ signature.name }}{{ signature.is_default ? ' (par défaut)' : '' }}
+              </option>
+            </select>
+            <button
+              type="button"
+              class="mt-1.5 text-xs font-medium text-[var(--app-ink-soft)] underline decoration-[var(--app-line)] underline-offset-2 hover:text-[var(--app-ink)]"
+              @click="openSignaturesDrawer"
+            >
+              Gérer mes signatures
+            </button>
+          </div>
         </form>
 
         <!-- ───────────────────────── Footer ─────────────────────── -->
@@ -104,10 +121,12 @@
 
 <script lang="ts" setup>
 import type { PropType, Ref } from 'vue'
-import type { Prospect } from '~/types'
+import type { EmailSignature, Prospect } from '~/types'
 import type { SendEmailPrefill } from '~/types/DrawerStack'
 import { ref, watch } from 'vue'
 import { api } from '~/services/api'
+import { getEmailSignatures } from '~/services/emailSignaturesService'
+import { useDrawerStackStore } from '~/stores/drawerStack'
 import { useToast } from '~/composables/useToast'
 
 /** Local shape of the manual send form. */
@@ -151,8 +170,20 @@ const emit = defineEmits<{
 
 const toast = useToast()
 
+/** Persistent drawer stack (to stack the signatures manager on top). */
+const drawerStack = useDrawerStackStore()
+
 /** Whether the quick-send request is in flight. */
 const isSending: Ref<boolean> = ref<boolean>(false)
+
+/** The user's signatures (for the optional selector). */
+const signatures: Ref<EmailSignature[]> = ref<EmailSignature[]>([])
+
+/** Selected signature id (null = none). */
+const signatureId: Ref<number | null> = ref<number | null>(null)
+
+/** Key of the recipient the form was last initialised for. */
+const lastInitKey: Ref<string> = ref<string>('')
 
 /** Manual send form state. */
 const form: Ref<SendEmailForm> = ref<SendEmailForm>({
@@ -161,6 +192,29 @@ const form: Ref<SendEmailForm> = ref<SendEmailForm>({
   subject: '',
   body: '',
 })
+
+/**
+ * Load the user's signatures and default the selection to the default one.
+ * @returns A promise that resolves once loaded.
+ */
+async function loadSignatures(): Promise<void> {
+  try {
+    signatures.value = await getEmailSignatures()
+  } catch {
+    signatures.value = []
+  }
+  const stillValid: boolean = signatures.value.some((s: EmailSignature): boolean => s.id === signatureId.value)
+  if (!stillValid) {
+    const preferred: EmailSignature | undefined =
+      signatures.value.find((s: EmailSignature): boolean => s.is_default) ?? signatures.value[0]
+    signatureId.value = preferred?.id ?? null
+  }
+}
+
+/** Stack the signatures manager on top of this drawer. */
+function openSignaturesDrawer(): void {
+  drawerStack.push({ kind: 'email-signatures' })
+}
 
 /**
  * Send the email through the quick-send endpoint (uses the user's Resend
@@ -175,6 +229,7 @@ async function handleSend(): Promise<void> {
       recipient_name: form.value.recipient_name || undefined,
       subject: form.value.subject,
       body_html: `<p>${form.value.body.replace(/\n/g, '<br>')}</p>`,
+      signature_id: signatureId.value ?? undefined,
     })
     toast.success('Email envoyé avec succès')
     emit('sent')
@@ -189,6 +244,15 @@ watch(
   (): [boolean, number | undefined, SendEmailPrefill | null] => [props.open, props.prospect?.id, props.prefill],
   ([open]: [boolean, number | undefined, SendEmailPrefill | null]): void => {
     if (!open) return
+    // Refresh signatures every time the composer is shown (e.g. after managing them).
+    void loadSignatures()
+    // Only (re)initialise the form when the recipient changes — returning from
+    // the stacked signatures drawer must NOT wipe a message being written.
+    const key: string = props.prefill
+      ? `prefill:${props.prefill.recipient_email}|${props.prefill.subject}`
+      : `prospect:${props.prospect?.id ?? 'blank'}`
+    if (key === lastInitKey.value) return
+    lastInitKey.value = key
     if (props.prefill) {
       form.value = { ...props.prefill }
       return

@@ -70,6 +70,7 @@ async def get_email_templates(
             "body_html": template.body_html,
             "body_text": template.body_text,
             "variables": json.loads(template.variables) if template.variables else [],
+            "signature_id": template.signature_id,
             "is_active": template.is_active,
             "created_at": template.created_at,
             "updated_at": template.updated_at
@@ -111,6 +112,7 @@ async def get_email_template(
         body_html=template.body_html,
         body_text=template.body_text,
         variables=json.loads(template.variables) if template.variables else [],
+        signature_id=template.signature_id,
         is_active=template.is_active,
         created_at=template.created_at,
         updated_at=template.updated_at
@@ -157,7 +159,8 @@ async def create_email_template(
         subject=template_data.subject,
         body_html=template_data.body_html,
         body_text=template_data.body_text,
-        variables=json.dumps(variables)
+        variables=json.dumps(variables),
+        signature_id=template_data.signature_id,
     )
     
     db.add(new_template)
@@ -173,6 +176,7 @@ async def create_email_template(
         body_html=new_template.body_html,
         body_text=new_template.body_text,
         variables=variables,
+        signature_id=new_template.signature_id,
         is_active=new_template.is_active,
         created_at=new_template.created_at,
         updated_at=new_template.updated_at
@@ -230,7 +234,13 @@ async def update_email_template(
         template.body_text = template_data.body_text
     if template_data.is_active is not None:
         template.is_active = template_data.is_active
-    
+    # Signature: apply only when the field is explicitly present in the payload.
+    # ``null`` means "detach" (switch off), so an ``is not None`` guard would be
+    # wrong; ``model_fields_set`` distinguishes omitted from explicit null and
+    # keeps a partial update (e.g. toggling is_active) from wiping the signature.
+    if "signature_id" in template_data.model_fields_set:
+        template.signature_id = template_data.signature_id
+
     # Update variables if provided, or auto-detect
     if template_data.variables is not None:
         template.variables = json.dumps(template_data.variables)
@@ -253,6 +263,7 @@ async def update_email_template(
         body_html=template.body_html,
         body_text=template.body_text,
         variables=json.loads(template.variables) if template.variables else [],
+        signature_id=template.signature_id,
         is_active=template.is_active,
         created_at=template.created_at,
         updated_at=template.updated_at
@@ -314,7 +325,17 @@ async def preview_email_template(
     # Replace variables in subject and body
     preview_subject = replace_variables(template.subject, preview_data.variables)
     preview_body_html = replace_variables(template.body_html, preview_data.variables)
-    
+
+    # Append the attached signature (same rendering as the real send paths).
+    from services.email_signatures import render_signature_html
+
+    preview_body_html += render_signature_html(
+        db,
+        template.signature_id,
+        preview_data.variables,
+        user_id=current_user.id,
+    )
+
     return EmailTemplatePreviewResponse(
         subject=preview_subject,
         body_html=preview_body_html

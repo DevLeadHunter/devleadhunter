@@ -481,6 +481,13 @@ class CampaignQueueService:
             except Exception as exc:  # noqa: BLE001 — never block a send on personalisation
                 logger.warning("[Queue] Behaviour personalisation failed for prospect %d: %s", prospect.id, exc)
 
+        # Append the signature LAST so it survives the LLM personalisation above.
+        from services.email_signatures import render_signature_html
+
+        body_html += render_signature_html(
+            self.db, template.signature_id, variables, user_id=item.user_id
+        )
+
         result: dict = await email_service.send_via_user_identity(
             user_id=item.user_id,
             recipient_email=prospect.email,
@@ -606,6 +613,12 @@ class CampaignQueueService:
         email_service = EmailSendingService(self.db)
         subject = email_service.replace_variables(template.subject, variables)
         body_html = email_service.replace_variables(template.body_html, variables)
+
+        from services.email_signatures import render_signature_html
+
+        body_html += render_signature_html(
+            self.db, template.signature_id, variables, user_id=campaign.user_id
+        )
 
         return await email_service.send_via_user_identity(
             user_id=campaign.user_id,

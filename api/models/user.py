@@ -17,6 +17,7 @@ if TYPE_CHECKING:
     from models.support_message import SupportMessage
     from models.email_account import EmailAccount
     from models.email_template import EmailTemplate
+    from models.email_signature import EmailSignature
     from models.email_log import EmailLog
     from models.campaign import Campaign
     from models.demo_site import DemoSite
@@ -86,6 +87,11 @@ class User(Base):
     )
     email_templates: Mapped[list["EmailTemplate"]] = relationship(
         "EmailTemplate",
+        back_populates="user",
+        cascade="all, delete-orphan"
+    )
+    email_signatures: Mapped[list["EmailSignature"]] = relationship(
+        "EmailSignature",
         back_populates="user",
         cascade="all, delete-orphan"
     )

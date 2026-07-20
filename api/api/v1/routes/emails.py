@@ -178,6 +178,7 @@ class QuickSendRequest(BaseModel):
     body_html: str
     prospect_id: Optional[str] = None
     campaign_id: Optional[str] = None
+    signature_id: Optional[int] = None
 
 
 @router.post("/quick-send", response_model=SendEmailResponse)
@@ -213,12 +214,19 @@ async def quick_send_email(
     # unsubscribe footer and the EmailLog are all applied. NEVER call the provider
     # directly here — a direct send would bypass the dev-email redirect and could reach
     # a real prospect in development.
+    # Append the chosen signature (if any) before the shared send path.
+    from services.email_signatures import render_signature_html
+
+    body_html = payload.body_html + render_signature_html(
+        db, payload.signature_id, user_id=current_user.id
+    )
+
     sending = EmailSendingService(db)
     return await sending.send_via_user_identity(
         user_id=current_user.id,
         recipient_email=payload.recipient_email,
         subject=payload.subject,
-        body_html=payload.body_html,
+        body_html=body_html,
         recipient_name=payload.recipient_name,
         prospect_id=payload.prospect_id,
         campaign_id=payload.campaign_id,

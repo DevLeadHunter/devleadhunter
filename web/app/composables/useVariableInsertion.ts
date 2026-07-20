@@ -1,0 +1,212 @@
+/**
+ * Assisted variable insertion for a subject/body field.
+ *
+ * Provides two things on top of a plain `<input>`/`<textarea>`:
+ * 1. cursor-aware insertion (`insertToken`) used by the clickable palette;
+ * 2. an inline `{`-triggered autocomplete (the "Nuxt-like" hint) with keyboard
+ *    navigation, anchored at the caret.
+ * @module composables/useVariableInsertion
+ */
+import type { Ref } from 'vue'
+import type { EmailVariable } from '~/utils/emailVariables'
+import { nextTick, ref } from 'vue'
+import { EMAIL_VARIABLES } from '~/utils/emailVariables'
+import { getCaretCoordinates } from '~/utils/textareaCaret'
+
+/** Viewport position (px) where the autocomplete dropdown is anchored. */
+export interface AutocompletePosition {
+  top: number
+  left: number
+}
+
+/** Reactive state + handlers returned by {@link useVariableInsertion}. */
+export interface VariableInsertion {
+  /** Whether the autocomplete dropdown is visible. */
+  open: Ref<boolean>
+  /** Variables matching the current `{query`. */
+  items: Ref<EmailVariable[]>
+  /** Index of the highlighted item in {@link items}. */
+  activeIndex: Ref<number>
+  /** Viewport anchor of the dropdown. */
+  position: Ref<AutocompletePosition>
+  /** Insert a full token (e.g. `{prenom}`) at the caret. */
+  insertToken: (token: string) => void
+  /** Complete the current `{query` with a chosen variable. */
+  selectVariable: (variable: EmailVariable) => void
+  /** `@input` handler — detects `{query` before the caret. */
+  onInput: () => void
+  /** `@keydown` handler — navigates/accepts/closes when open. */
+  onKeydown: (event: KeyboardEvent) => void
+  /** `@blur` handler — closes the dropdown (deferred so clicks land). */
+  onBlur: () => void
+}
+
+/** Matches a `{` + partial identifier at the very end of the pre-caret text. */
+const PARTIAL_TOKEN_REGEX: RegExp = /\{([a-zA-Z_]*)$/
+
+/**
+ * Wire assisted variable insertion to a field.
+ * @param fieldRef - The bound `<input>`/`<textarea>` element.
+ * @param getValue - Reads the current field value (the v-model getter).
+ * @param setValue - Writes the field value (the v-model setter).
+ * @returns Reactive autocomplete state and event handlers.
+ */
+export function useVariableInsertion(
+  fieldRef: Ref<HTMLTextAreaElement | HTMLInputElement | null>,
+  getValue: () => string,
+  setValue: (value: string) => void,
+): VariableInsertion {
+  const open: Ref<boolean> = ref<boolean>(false)
+  const items: Ref<EmailVariable[]> = ref<EmailVariable[]>([])
+  const activeIndex: Ref<number> = ref<number>(0)
+  const position: Ref<AutocompletePosition> = ref<AutocompletePosition>({ top: 0, left: 0 })
+
+  /** Start index of the `{query` currently being completed (-1 when none). */
+  let queryStart: number = -1
+
+  /**
+   * Move the caret to `index` after the value change has been rendered.
+   * @param index - Target caret position.
+   */
+  function setCaret(index: number): void {
+    void nextTick((): void => {
+      const field = fieldRef.value
+      if (!field) return
+      field.focus()
+      field.setSelectionRange(index, index)
+    })
+  }
+
+  /** Hide the dropdown and reset its transient state. */
+  function close(): void {
+    open.value = false
+    activeIndex.value = 0
+    queryStart = -1
+  }
+
+  /**
+   * Insert a full token at the caret (splice over the current selection).
+   * @param token - The placeholder to insert (e.g. `{lien_demo}`).
+   */
+  function insertToken(token: string): void {
+    const field = fieldRef.value
+    const value: string = getValue()
+    const start: number = field?.selectionStart ?? value.length
+    const end: number = field?.selectionEnd ?? value.length
+    setValue(value.slice(0, start) + token + value.slice(end))
+    close()
+    setCaret(start + token.length)
+  }
+
+  /**
+   * Anchor the dropdown at the caret using the mirror-div measurement.
+   * @param caretIndex - Caret index to measure.
+   */
+  function updatePosition(caretIndex: number): void {
+    const field = fieldRef.value
+    if (!field) return
+    const caret = getCaretCoordinates(field, caretIndex)
+    const rect: DOMRect = field.getBoundingClientRect()
+    position.value = {
+      top: rect.top + caret.top - field.scrollTop + caret.height,
+      left: rect.left + caret.left - field.scrollLeft,
+    }
+  }
+
+  /**
+   * Detect a `{query` immediately before the caret and open/refresh the list.
+   */
+  function onInput(): void {
+    const field = fieldRef.value
+    if (!field) return
+    const caret: number = field.selectionStart ?? 0
+    const beforeCaret: string = field.value.slice(0, caret)
+    const match: RegExpMatchArray | null = beforeCaret.match(PARTIAL_TOKEN_REGEX)
+
+    if (!match) {
+      close()
+      return
+    }
+
+    const query: string = match[1].toLowerCase()
+    queryStart = caret - match[0].length
+    items.value = query
+      ? EMAIL_VARIABLES.filter(
+          (variable: EmailVariable): boolean =>
+            variable.key.toLowerCase().includes(query) || variable.label.toLowerCase().includes(query),
+        )
+      : [...EMAIL_VARIABLES]
+
+    if (items.value.length === 0) {
+      close()
+      return
+    }
+
+    activeIndex.value = 0
+    updatePosition(caret)
+    open.value = true
+  }
+
+  /**
+   * Replace the active `{query` with a chosen variable's token.
+   * @param variable - The variable to insert.
+   */
+  function selectVariable(variable: EmailVariable): void {
+    const field = fieldRef.value
+    const value: string = getValue()
+    const caret: number = field?.selectionStart ?? value.length
+    const start: number = queryStart >= 0 ? queryStart : caret
+    setValue(value.slice(0, start) + variable.token + value.slice(caret))
+    const nextCaret: number = start + variable.token.length
+    close()
+    setCaret(nextCaret)
+  }
+
+  /**
+   * Keyboard control while the dropdown is open.
+   * @param event - The keydown event.
+   */
+  function onKeydown(event: KeyboardEvent): void {
+    if (!open.value || items.value.length === 0) return
+    switch (event.key) {
+      case 'ArrowDown':
+        event.preventDefault()
+        activeIndex.value = (activeIndex.value + 1) % items.value.length
+        break
+      case 'ArrowUp':
+        event.preventDefault()
+        activeIndex.value = (activeIndex.value - 1 + items.value.length) % items.value.length
+        break
+      case 'Enter':
+      case 'Tab': {
+        event.preventDefault()
+        const variable: EmailVariable | undefined = items.value[activeIndex.value]
+        if (variable) selectVariable(variable)
+        break
+      }
+      case 'Escape':
+        event.preventDefault()
+        close()
+        break
+      default:
+        break
+    }
+  }
+
+  /** Close on blur, deferred so a click on a dropdown item still registers. */
+  function onBlur(): void {
+    window.setTimeout((): void => close(), 150)
+  }
+
+  return {
+    open,
+    items,
+    activeIndex,
+    position,
+    insertToken,
+    selectVariable,
+    onInput,
+    onKeydown,
+    onBlur,
+  }
+}

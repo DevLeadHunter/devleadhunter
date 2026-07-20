@@ -49,6 +49,14 @@
       @edit="handleTemplateEdit"
     />
 
+    <!-- Email signatures management -->
+    <UiEmailSignaturesDrawer
+      :open="emailSignaturesEntry !== null"
+      :show-back="hasPrevious"
+      @close="drawerStack.closeAll()"
+      @back="drawerStack.back()"
+    />
+
     <!-- User profile edit -->
     <UiProfileDrawer
       :open="profileEntry !== null"
@@ -126,6 +134,7 @@ import type {
   CoverageProspectsDrawerEntry,
   CreateCampaignDrawerEntry,
   EmailLogDrawerEntry,
+  EmailSignaturesDrawerEntry,
   EmailTemplateDrawerEntry,
   OrganizationDrawerEntry,
   ProfileDrawerEntry,
@@ -164,6 +173,13 @@ const emailLogEntry: ComputedRef<EmailLogDrawerEntry | null> = computed((): Emai
 const emailTemplateEntry: ComputedRef<EmailTemplateDrawerEntry | null> = computed(
   (): EmailTemplateDrawerEntry | null => {
     return drawerStack.topEntry?.kind === 'email-template' ? drawerStack.topEntry : null
+  },
+)
+
+/** Top entry narrowed to the email-signatures drawer. */
+const emailSignaturesEntry: ComputedRef<EmailSignaturesDrawerEntry | null> = computed(
+  (): EmailSignaturesDrawerEntry | null => {
+    return drawerStack.topEntry?.kind === 'email-signatures' ? drawerStack.topEntry : null
   },
 )
 

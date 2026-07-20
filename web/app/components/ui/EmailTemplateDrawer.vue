@@ -86,13 +86,20 @@
               Sujet de l'email <span class="text-[var(--app-red)]">*</span>
             </label>
             <input
+              ref="subjectRef"
               v-model="form.subject"
               type="text"
               required
               class="input-field"
-              placeholder="Ex : Création de site web pour {company_name}"
+              placeholder="Ex : Création de site web pour {entreprise}"
+              @input="subjectInsertion.onInput"
+              @keydown="subjectInsertion.onKeydown"
+              @blur="subjectInsertion.onBlur"
             />
-            <p class="text-muted mt-1 text-xs">Utilisez {variable} pour les valeurs dynamiques</p>
+            <p class="text-muted mt-1.5 mb-1.5 text-xs">
+              Cliquez une variable pour l'insérer, ou tapez «&nbsp;{&nbsp;».
+            </p>
+            <UiVariableChips @insert="subjectInsertion.insertToken" />
           </div>
 
           <div>
@@ -100,16 +107,64 @@
               Corps de l'email (HTML) <span class="text-[var(--app-red)]">*</span>
             </label>
             <textarea
+              ref="bodyRef"
               v-model="form.body_html"
               required
-              rows="16"
+              rows="14"
               class="input-field font-mono text-xs"
-              placeholder="Bonjour {name},&#10;&#10;Je me présente..."
+              placeholder="Bonjour {salutation},&#10;&#10;Je me présente..."
+              @input="bodyInsertion.onInput"
+              @keydown="bodyInsertion.onKeydown"
+              @blur="bodyInsertion.onBlur"
             ></textarea>
-            <p class="text-muted mt-1 text-xs">
-              Variables : {salutation}, {prenom}, {nom}, {entreprise}, {ville}, {metier}, {lien_demo}, {lien_video},
-              {vignette_video} (vignette cliquable de la vidéo de prospection)
-            </p>
+            <p class="text-muted mt-1.5 mb-1.5 text-xs">Insérez une variable à l'endroit du curseur :</p>
+            <UiVariableChips @insert="bodyInsertion.insertToken" />
+          </div>
+
+          <!-- Signature -->
+          <div class="rounded-lg border border-[var(--app-line)] px-3 py-2.5">
+            <div class="flex items-center justify-between gap-3">
+              <div>
+                <p class="text-sm font-medium text-[var(--app-ink)]">Inclure une signature</p>
+                <p class="text-muted text-xs">Ajoutée automatiquement au bas de l'email envoyé.</p>
+              </div>
+              <UiSwitch
+                id="template-include-signature"
+                v-model="includeSignature"
+                :disabled="signatures.length === 0"
+              />
+            </div>
+
+            <!-- Selector (switch on + at least one signature) -->
+            <div v-if="includeSignature && signatures.length" class="mt-3">
+              <select v-model="form.signature_id" class="input-field">
+                <option v-for="signature in signatures" :key="signature.id" :value="signature.id">
+                  {{ signature.name }}{{ signature.is_default ? ' (par défaut)' : '' }}
+                </option>
+              </select>
+            </div>
+
+            <!-- Empty-state invite -->
+            <div
+              v-if="signatures.length === 0"
+              class="mt-3 rounded-md border border-dashed border-[var(--app-line)] px-3 py-2.5 text-center"
+            >
+              <p class="text-muted text-xs">Vous n'avez pas encore de signature.</p>
+              <button type="button" class="btn-secondary mt-2 h-8 min-h-8 text-xs" @click="openSignaturesDrawer">
+                <UIcon name="i-lucide-plus" class="mr-1 h-3.5 w-3.5" />
+                Créer une signature
+              </button>
+            </div>
+
+            <!-- Always-available manage link -->
+            <button
+              v-else
+              type="button"
+              class="mt-2.5 text-xs font-medium text-[var(--app-ink-soft)] underline decoration-[var(--app-line)] underline-offset-2 hover:text-[var(--app-ink)]"
+              @click="openSignaturesDrawer"
+            >
+              Gérer mes signatures
+            </button>
           </div>
 
           <div
@@ -150,24 +205,38 @@
         </div>
       </div>
     </Transition>
+
+    <!-- Inline `{`-autocomplete for the subject and body fields -->
+    <UiVariableAutocomplete
+      :open="subjectInsertion.open.value"
+      :items="subjectInsertion.items.value"
+      :active-index="subjectInsertion.activeIndex.value"
+      :position="subjectInsertion.position.value"
+      @select="subjectInsertion.selectVariable"
+      @activate="(index: number) => (subjectInsertion.activeIndex.value = index)"
+    />
+    <UiVariableAutocomplete
+      :open="bodyInsertion.open.value"
+      :items="bodyInsertion.items.value"
+      :active-index="bodyInsertion.activeIndex.value"
+      :position="bodyInsertion.position.value"
+      @select="bodyInsertion.selectVariable"
+      @activate="(index: number) => (bodyInsertion.activeIndex.value = index)"
+    />
   </Teleport>
 </template>
 
 <script lang="ts" setup>
 import type { ComputedRef, PropType, Ref } from 'vue'
-import type { EmailTemplate } from '~/types'
+import type { EmailSignature, EmailTemplate } from '~/types'
 import type { EmailTemplateDrawerMode } from '~/types/DrawerStack'
 import { computed, ref, watch } from 'vue'
 import { createEmailTemplate, previewEmailTemplate, updateEmailTemplate } from '~/services/emailTemplatesService'
+import { getEmailSignatures } from '~/services/emailSignaturesService'
+import { useVariableInsertion } from '~/composables/useVariableInsertion'
+import { buildPreviewSampleVariables } from '~/utils/emailVariables'
+import { useDrawerStackStore } from '~/stores/drawerStack'
 import { useToast } from '~/composables/useToast'
-
-/** Sample variables used to render a realistic preview. */
-const PREVIEW_SAMPLE_VARIABLES: Record<string, string> = {
-  name: 'Jean Dupont',
-  company_name: 'Restaurant Le Gourmet',
-  email: 'contact@legourmet.fr',
-  phone: '01 23 45 67 89',
-}
 
 /** Local shape of the template form. */
 interface EmailTemplateForm {
@@ -175,6 +244,7 @@ interface EmailTemplateForm {
   subject: string
   body_html: string
   is_active: boolean
+  signature_id: number | null
 }
 
 /**
@@ -212,6 +282,9 @@ const emit = defineEmits<{
 
 const toast = useToast()
 
+/** Persistent drawer stack (used to stack the signatures manager on top). */
+const drawerStack = useDrawerStackStore()
+
 /** Whether a save request is in flight. */
 const isSaving: Ref<boolean> = ref<boolean>(false)
 
@@ -224,13 +297,47 @@ const previewSubject: Ref<string> = ref<string>('')
 /** Rendered preview HTML body. */
 const previewHtml: Ref<string> = ref<string>('')
 
+/** The user's signatures (for the selector + invite). */
+const signatures: Ref<EmailSignature[]> = ref<EmailSignature[]>([])
+
+/** Whether the "include a signature" switch is on. */
+const includeSignature: Ref<boolean> = ref<boolean>(false)
+
 /** Template form state (create/edit modes). */
 const form: Ref<EmailTemplateForm> = ref<EmailTemplateForm>({
   name: '',
   subject: '',
   body_html: '',
   is_active: true,
+  signature_id: null,
 })
+
+/** Subject input element (for cursor-aware variable insertion). */
+const subjectRef: Ref<HTMLInputElement | null> = ref<HTMLInputElement | null>(null)
+
+/** Body textarea element. */
+const bodyRef: Ref<HTMLTextAreaElement | null> = ref<HTMLTextAreaElement | null>(null)
+
+/** Assisted insertion (chips + `{`-autocomplete) for the subject. */
+const subjectInsertion = useVariableInsertion(
+  subjectRef,
+  (): string => form.value.subject,
+  (value: string): void => {
+    form.value.subject = value
+  },
+)
+
+/** Assisted insertion for the body. */
+const bodyInsertion = useVariableInsertion(
+  bodyRef,
+  (): string => form.value.body_html,
+  (value: string): void => {
+    form.value.body_html = value
+  },
+)
+
+/** Key of the entity the form was last initialised for (mode + template id). */
+const lastInitKey: Ref<string> = ref<string>('')
 
 /** Drawer title matching the current mode. */
 const drawerTitle: ComputedRef<string> = computed((): string => {
@@ -240,11 +347,53 @@ const drawerTitle: ComputedRef<string> = computed((): string => {
 })
 
 /**
+ * Best default signature id: the flagged default, else the first one.
+ * @returns The id to preselect, or null when the user has no signature.
+ */
+function defaultSignatureId(): number | null {
+  const preferred: EmailSignature | undefined =
+    signatures.value.find((s: EmailSignature): boolean => s.is_default) ?? signatures.value[0]
+  return preferred?.id ?? null
+}
+
+/**
+ * Load the user's signatures and keep the selection coherent.
+ * @returns A promise that resolves once loaded.
+ */
+async function loadSignatures(): Promise<void> {
+  try {
+    signatures.value = await getEmailSignatures()
+  } catch {
+    // Non-blocking: the signature section simply shows the empty state.
+    signatures.value = []
+  }
+  // No signature available → the switch can't be on.
+  if (signatures.value.length === 0) {
+    includeSignature.value = false
+    form.value.signature_id = null
+    return
+  }
+  // Switch on but no valid selection → fall back to the default signature.
+  const isSelectionValid: boolean = signatures.value.some(
+    (s: EmailSignature): boolean => s.id === form.value.signature_id,
+  )
+  if (includeSignature.value && !isSelectionValid) {
+    form.value.signature_id = defaultSignatureId()
+  }
+}
+
+/** Stack the signatures manager on top of this drawer. */
+function openSignaturesDrawer(): void {
+  drawerStack.push({ kind: 'email-signatures' })
+}
+
+/**
  * Create or update the template, then notify the host.
  * @returns A promise that resolves once the template is persisted.
  */
 async function handleSave(): Promise<void> {
   isSaving.value = true
+  const signatureId: number | null = includeSignature.value ? form.value.signature_id : null
   try {
     if (props.mode === 'edit' && props.template) {
       const updated: EmailTemplate = await updateEmailTemplate(props.template.id, {
@@ -252,6 +401,7 @@ async function handleSave(): Promise<void> {
         subject: form.value.subject,
         body_html: form.value.body_html,
         is_active: form.value.is_active,
+        signature_id: signatureId,
       })
       toast.success('Modèle mis à jour')
       emit('saved', updated)
@@ -260,6 +410,7 @@ async function handleSave(): Promise<void> {
         name: form.value.name,
         subject: form.value.subject,
         body_html: form.value.body_html,
+        signature_id: signatureId,
       })
       toast.success('Modèle créé')
       emit('saved', created)
@@ -281,7 +432,7 @@ async function loadPreview(): Promise<void> {
   try {
     const preview: { subject: string; body_html: string } = await previewEmailTemplate(
       props.template.id,
-      PREVIEW_SAMPLE_VARIABLES,
+      buildPreviewSampleVariables(),
     )
     previewSubject.value = preview.subject
     previewHtml.value = preview.body_html
@@ -291,6 +442,13 @@ async function loadPreview(): Promise<void> {
     isPreviewLoading.value = false
   }
 }
+
+// Turning the switch on with no valid selection → preselect the default.
+watch(includeSignature, (on: boolean): void => {
+  if (on && form.value.signature_id == null) {
+    form.value.signature_id = defaultSignatureId()
+  }
+})
 
 watch(
   (): [boolean, EmailTemplateDrawerMode, number | undefined] => [props.open, props.mode, props.template?.id],
@@ -302,11 +460,20 @@ watch(
       void loadPreview()
       return
     }
+    // Refresh signatures every time the editor is shown (e.g. after managing them).
+    void loadSignatures()
+    // Only (re)initialise the form when the target template changes — returning
+    // from the stacked signatures drawer must NOT wipe unsaved edits.
+    const key: string = `${mode}:${props.template?.id ?? 'new'}`
+    if (key === lastInitKey.value) return
+    lastInitKey.value = key
+    includeSignature.value = props.template?.signature_id != null
     form.value = {
       name: props.template?.name ?? '',
       subject: props.template?.subject ?? '',
       body_html: props.template?.body_html ?? '',
       is_active: props.template?.is_active ?? true,
+      signature_id: props.template?.signature_id ?? null,
     }
   },
   { immediate: true },

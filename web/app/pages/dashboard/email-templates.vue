@@ -279,6 +279,7 @@ async function duplicateTemplate(template: EmailTemplate): Promise<void> {
       name: `${template.name} (copie)`,
       subject: template.subject,
       body_html: template.body_html,
+      signature_id: template.signature_id ?? null,
     })
     emailTemplates.value.unshift(copy)
     toast.success(`Modèle « ${template.name} » dupliqué`)

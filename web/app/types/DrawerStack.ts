@@ -56,6 +56,11 @@ export interface EmailTemplateDrawerEntry {
   template: EmailTemplate | null
 }
 
+/** Email signatures management drawer entry. */
+export interface EmailSignaturesDrawerEntry {
+  kind: 'email-signatures'
+}
+
 /** User profile edit drawer entry. */
 export interface ProfileDrawerEntry {
   kind: 'profile'
@@ -117,6 +122,7 @@ export type DrawerStackEntry =
   | SendEmailDrawerEntry
   | EmailLogDrawerEntry
   | EmailTemplateDrawerEntry
+  | EmailSignaturesDrawerEntry
   | ProfileDrawerEntry
   | OrganizationDrawerEntry
   | CreateCampaignDrawerEntry
