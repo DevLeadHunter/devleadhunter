@@ -32,6 +32,9 @@ class PresenterVideo(Base):
     outro_seconds: Mapped[float] = mapped_column(Float, nullable=False, default=5.0)
     # Génère automatiquement la vidéo de prospection à chaque site créé.
     auto_generate: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    # « upload » (fichier importé, découpage saisi à la main) ou « recorded »
+    # (trois prises filmées dans l'app : les segments sont mesurés, pas devinés).
+    source: Mapped[str] = mapped_column(String(16), nullable=False, default="upload")
     created_at: Mapped[datetime] = mapped_column(server_default=func.now(), nullable=False)
     updated_at: Mapped[Optional[datetime]] = mapped_column(onupdate=func.now(), nullable=True)
 

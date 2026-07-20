@@ -2,6 +2,9 @@ import { api } from '~/services/api'
 
 const BASE_URL = '/api/v1/settings/presenter-video'
 
+/** How the stored clip was produced. */
+export type PresenterVideoSource = 'upload' | 'recorded'
+
 /** Presenter clip state returned by the API (no file content). */
 export interface PresenterVideoInfo {
   has_video: boolean
@@ -10,7 +13,46 @@ export interface PresenterVideoInfo {
   intro_seconds?: number
   outro_seconds?: number
   auto_generate?: boolean
+  /** ``recorded`` when filmed in-app: the segments are measured, not guessed. */
+  source?: PresenterVideoSource
   updated_at?: string | null
+}
+
+/**
+ * Post a multipart request to the presenter-video API and parse its answer.
+ *
+ * The shared ``api`` client only speaks JSON, so the multipart calls go
+ * through ``fetch`` directly and share their error handling here.
+ *
+ * @param path - Path appended to the presenter-video base URL.
+ * @param formData - The multipart body.
+ * @returns The stored clip metadata.
+ * @throws {Error} With the API message when the request fails.
+ */
+async function putMultipart(path: string, formData: FormData): Promise<PresenterVideoInfo> {
+  const userStore = useUserStore()
+  const config = useRuntimeConfig()
+
+  const response = await fetch(`${config.public.apiBase}${BASE_URL}${path}`, {
+    method: 'PUT',
+    headers: userStore.token ? { Authorization: `Bearer ${userStore.token}` } : {},
+    body: formData,
+  })
+
+  if (!response.ok) {
+    const errorText = await response.text().catch((): string => '')
+    let errorMessage = `Upload échoué : ${response.statusText}`
+    if (errorText) {
+      try {
+        errorMessage = (JSON.parse(errorText).detail as string) || errorMessage
+      } catch {
+        errorMessage = errorText
+      }
+    }
+    throw new Error(errorMessage)
+  }
+
+  return (await response.json()) as PresenterVideoInfo
 }
 
 /**
@@ -39,34 +81,39 @@ export async function uploadPresenterVideo(
   outroSeconds: number,
   autoGenerate: boolean,
 ): Promise<PresenterVideoInfo> {
-  const userStore = useUserStore()
-  const config = useRuntimeConfig()
   const formData = new FormData()
   formData.append('file', file)
   formData.append('intro_seconds', String(introSeconds))
   formData.append('outro_seconds', String(outroSeconds))
   formData.append('auto_generate', String(autoGenerate))
+  return putMultipart('', formData)
+}
 
-  const response = await fetch(`${config.public.apiBase}${BASE_URL}`, {
-    method: 'PUT',
-    headers: userStore.token ? { Authorization: `Bearer ${userStore.token}` } : {},
-    body: formData,
-  })
-
-  if (!response.ok) {
-    const errorText = await response.text().catch(() => '')
-    let errorMessage = `Upload échoué : ${response.statusText}`
-    if (errorText) {
-      try {
-        errorMessage = (JSON.parse(errorText).detail as string) || errorMessage
-      } catch {
-        errorMessage = errorText
-      }
-    }
-    throw new Error(errorMessage)
-  }
-
-  return (await response.json()) as PresenterVideoInfo
+/**
+ * Send the three takes recorded in-app; the API concatenates them.
+ *
+ * Nothing is sent about where the cuts fall: each take *is* a segment, so the
+ * API measures them and stores the exact intro/outro seconds.
+ *
+ * @param intro - Full-screen greeting take.
+ * @param middle - Take played over the prospect's scrolling site.
+ * @param outro - Full-screen call-to-action take.
+ * @param autoGenerate - Auto-generate the video for every new demo site.
+ * @returns The stored clip metadata.
+ * @throws {Error} When the assembly fails (message from the API when available).
+ */
+export async function uploadPresenterVideoSegments(
+  intro: File,
+  middle: File,
+  outro: File,
+  autoGenerate: boolean,
+): Promise<PresenterVideoInfo> {
+  const formData = new FormData()
+  formData.append('intro', intro)
+  formData.append('middle', middle)
+  formData.append('outro', outro)
+  formData.append('auto_generate', String(autoGenerate))
+  return putMultipart('/segments', formData)
 }
 
 /**
