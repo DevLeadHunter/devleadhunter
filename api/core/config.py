@@ -125,17 +125,8 @@ class Settings(BaseSettings):
         description="Delay between demo URL verification attempts",
     )
 
-    # Prospection video (webcam générique + capture du site du prospect)
-    demo_video_dir: str = Field(
-        default="uploads/demo-videos",
-        alias="DEMO_VIDEO_DIR",
-        description="Local directory storing generated prospection videos + thumbnails",
-    )
-    presenter_video_dir: str = Field(
-        default="uploads/presenter-videos",
-        alias="PRESENTER_VIDEO_DIR",
-        description="Local directory storing per-user presenter (webcam) source clips",
-    )
+    # Prospection video (webcam générique + capture du site du prospect).
+    # Les fichiers vivent sur R2 ; le rendu passe par des dossiers temporaires.
     presenter_video_max_mb: int = Field(
         default=300,
         alias="PRESENTER_VIDEO_MAX_MB",
@@ -325,51 +316,12 @@ class Settings(BaseSettings):
         description="BrightData zone name used for Web Unlocker requests",
     )
 
-    # Support / ticketing settings
-    support_local_upload_dir: str = Field(
-        default="uploads/support",
-        alias="SUPPORT_LOCAL_UPLOAD_DIR",
-        description="Local directory for storing support attachments in non-production environments"
-    )
+    # Support / ticketing settings — les pièces jointes vivent sur R2 (voir
+    # `support_storage_service`), identique en local et en production.
     support_max_attachment_mb: int = Field(
         default=8,
         alias="SUPPORT_MAX_ATTACHMENT_MB",
         description="Maximum support attachment size (in megabytes)"
-    )
-    support_ftp_host: Optional[str] = Field(
-        default=None,
-        alias="SUPPORT_FTP_HOST",
-        description="FTP host for storing support attachments in production"
-    )
-    support_ftp_port: int = Field(
-        default=21,
-        alias="SUPPORT_FTP_PORT",
-        description="FTP port for storing support attachments in production"
-    )
-    support_ftp_user: Optional[str] = Field(
-        default=None,
-        alias="SUPPORT_FTP_USER",
-        description="FTP username for storing support attachments in production"
-    )
-    support_ftp_password: Optional[str] = Field(
-        default=None,
-        alias="SUPPORT_FTP_PASSWORD",
-        description="FTP password for storing support attachments in production"
-    )
-    support_ftp_base_dir: str = Field(
-        default="/support/uploads",
-        alias="SUPPORT_FTP_BASE_DIR",
-        description="Base directory on the FTP server for support attachments"
-    )
-    support_ftp_public_base_url: Optional[str] = Field(
-        default=None,
-        alias="SUPPORT_FTP_PUBLIC_BASE_URL",
-        description="Public base URL where uploaded FTP files are accessible"
-    )
-    support_ftp_use_tls: bool = Field(
-        default=True,
-        alias="SUPPORT_FTP_USE_TLS",
-        description="Whether to use explicit TLS when connecting to the FTP server"
     )
     support_attachment_allowed_mime: str = Field(
         default="image/jpeg,image/png,image/webp",

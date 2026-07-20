@@ -79,11 +79,16 @@ const { data: site, pending, error } = await useAsyncData(
   { watch: [slug] },
 )
 
+// Servis par Cloudflare R2 (URLs fournies par l'API) : le VPS ne stream rien.
+// Repli sur les anciennes routes API — qui redirigent vers R2 — par sécurité.
 const videoSrc: ComputedRef<string> = computed(
-  (): string => `${config.public.apiBase}/api/v1/demo-sites/public/${slug.value}/video.mp4`,
+  (): string =>
+    site.value?.video_url || `${config.public.apiBase}/api/v1/demo-sites/public/${slug.value}/video.mp4`,
 )
 const posterSrc: ComputedRef<string> = computed(
-  (): string => `${config.public.apiBase}/api/v1/demo-sites/public/${slug.value}/video-thumbnail.jpg`,
+  (): string =>
+    site.value?.video_thumbnail_url ||
+    `${config.public.apiBase}/api/v1/demo-sites/public/${slug.value}/video-thumbnail.jpg`,
 )
 
 /** Demo link keeping the A/B variant for PostHog attribution (full reload on purpose). */

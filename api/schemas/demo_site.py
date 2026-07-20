@@ -133,6 +133,9 @@ class DemoSitePublicResponse(BaseModel):
     expires_at: datetime
     # True when a prospection video is generated for this demo (player at /v/{slug}).
     video_available: bool = False
+    # Public R2 URLs consumed by the player page (empty when no video).
+    video_url: Optional[str] = None
+    video_thumbnail_url: Optional[str] = None
 
     model_config = {"from_attributes": True}
 

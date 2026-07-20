@@ -267,26 +267,6 @@ async def update_ticket_status(
     return response
 
 
-@router.get("/attachments/{object_key:path}")
-async def get_local_attachment(object_key: str) -> FileResponse:
-    """
-    Serve locally stored attachments (non-production).
-    """
-    if settings.is_production and settings.support_ftp_public_base_url:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="File not found.")
-
-    base_dir = Path(settings.support_local_upload_dir).resolve()
-    file_path = (base_dir / object_key).resolve()
-
-    if not str(file_path).startswith(str(base_dir)):
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid path.")
-
-    if not file_path.exists():
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="File not found.")
-
-    return FileResponse(file_path)
-
-
 @router.websocket("/tickets/{ticket_id}/ws")
 async def ticket_websocket(
     websocket: WebSocket,

@@ -3,7 +3,7 @@ import logging
 from typing import Any, List
 
 from fastapi import APIRouter, Depends, HTTPException, Response, status
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, RedirectResponse
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
@@ -30,8 +30,7 @@ from services.demo_video_service import (
     demo_video_service,
     has_ready_video,
     public_thumbnail_url,
-    thumbnail_file_path,
-    video_file_path,
+    public_video_file_url,
     video_page_url,
 )
 from services.site_export_service import site_export_service
@@ -123,6 +122,10 @@ async def get_public_demo_site(
     if site.storyblok_preview_token:
         payload["storyblok_region"] = settings.storyblok_region
     payload["video_available"] = has_ready_video(site)
+    if payload["video_available"]:
+        # URLs R2 : le lecteur charge la vidéo depuis Cloudflare, pas depuis l'API.
+        payload["video_url"] = public_video_file_url(site.slug)
+        payload["video_thumbnail_url"] = public_thumbnail_url(site.slug)
     return DemoSitePublicResponse(**payload)
 
 
@@ -130,32 +133,29 @@ async def get_public_demo_site(
 async def stream_public_demo_video(
     slug: str,
     db: Session = Depends(get_db),
-) -> FileResponse:
-    """Stream the prospection video (mp4, Range-aware) for the player page."""
+) -> RedirectResponse:
+    """
+    Redirect to the prospection video on R2.
+
+    Kept as a permanent redirect target because emails already sent embed this
+    API URL — the bytes themselves are served by Cloudflare, never by the VPS.
+    """
     site = demo_site_service.get_public_by_slug(db, slug)
     if not site or not has_ready_video(site):
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Video not found")
-    return FileResponse(
-        video_file_path(site.slug),
-        media_type="video/mp4",
-        headers={"Cache-Control": "public, max-age=3600"},
-    )
+    return RedirectResponse(url=public_video_file_url(site.slug), status_code=status.HTTP_302_FOUND)
 
 
 @router.get("/public/{slug}/video-thumbnail.jpg")
 async def serve_public_demo_video_thumbnail(
     slug: str,
     db: Session = Depends(get_db),
-) -> FileResponse:
-    """Serve the personalised email thumbnail ({vignette_video} image)."""
+) -> RedirectResponse:
+    """Redirect to the personalised email thumbnail ({vignette_video} image) on R2."""
     site = demo_site_service.get_public_by_slug(db, slug)
-    if not site or not thumbnail_file_path(site.slug).is_file():
+    if not site or not has_ready_video(site):
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Thumbnail not found")
-    return FileResponse(
-        thumbnail_file_path(site.slug),
-        media_type="image/jpeg",
-        headers={"Cache-Control": "public, max-age=3600"},
-    )
+    return RedirectResponse(url=public_thumbnail_url(site.slug), status_code=status.HTTP_302_FOUND)
 
 
 @router.get("", response_model=DemoSiteListResponse)

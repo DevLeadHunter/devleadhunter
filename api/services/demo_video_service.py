@@ -17,9 +17,11 @@ Timeline (D = presenter clip duration):
 The voice stays 100 % generic — personalisation is visual only (his site,
 his first name) so ONE recording works for every prospect.
 
-Files land in ``settings.demo_video_dir`` as ``{slug}.mp4`` / ``{slug}.jpg``
-and are served by the public demo-site routes; the player page lives on the
-demo host at ``/v/{slug}`` (PostHog-tracked, same identity as the demo).
+Rendering happens in a temp directory, then the mp4 + jpg are pushed to
+Cloudflare R2 (``videos/websites/{slug}.mp4`` / ``images/websites/{slug}.jpg``)
+and served straight from Cloudflare — the VPS never streams a byte. The player
+page lives on the demo host at ``/v/{slug}`` (PostHog-tracked, same identity as
+the demo).
 """
 from __future__ import annotations
 
@@ -27,8 +29,8 @@ import asyncio
 import logging
 import shutil
 import subprocess
+import tempfile
 import time
-import uuid
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Optional
@@ -40,6 +42,7 @@ from enums.demo_site_status import DemoSiteStatus
 from enums.demo_video_status import DemoVideoStatus
 from models.demo_site import DemoSite
 from models.presenter_video import PresenterVideo
+from services import r2_storage_service
 
 logger = logging.getLogger(__name__)
 
@@ -67,14 +70,14 @@ _FONT_CANDIDATES: tuple[str, ...] = (
 )
 
 
-def video_file_path(slug: str) -> Path:
-    """Local path of a demo site's generated prospection video."""
-    return Path(settings.demo_video_dir) / f"{slug}.mp4"
+def video_object_key(slug: str) -> str:
+    """R2 key of a demo site's generated prospection video."""
+    return r2_storage_service.website_video_key(slug)
 
 
-def thumbnail_file_path(slug: str) -> Path:
-    """Local path of a demo site's email thumbnail."""
-    return Path(settings.demo_video_dir) / f"{slug}.jpg"
+def thumbnail_object_key(slug: str) -> str:
+    """R2 key of a demo site's email thumbnail."""
+    return r2_storage_service.website_thumbnail_key(slug)
 
 
 def video_page_url(slug: str) -> str:
@@ -83,33 +86,32 @@ def video_page_url(slug: str) -> str:
 
 
 def public_video_file_url(slug: str) -> str:
-    """Public URL streaming the mp4 from the API."""
-    return f"{settings.api_base_url.rstrip('/')}{settings.api_prefix}/demo-sites/public/{slug}/video.mp4"
+    """Public R2 URL of the mp4 (served by Cloudflare, never by the API)."""
+    return r2_storage_service.public_url(video_object_key(slug))
 
 
 def public_thumbnail_url(slug: str) -> str:
-    """Public URL of the email thumbnail (absolute — embedded in emails)."""
-    return (
-        f"{settings.api_base_url.rstrip('/')}{settings.api_prefix}"
-        f"/demo-sites/public/{slug}/video-thumbnail.jpg"
-    )
+    """Public R2 URL of the email thumbnail (absolute — embedded in emails)."""
+    return r2_storage_service.public_url(thumbnail_object_key(slug))
 
 
 def has_ready_video(site: DemoSite) -> bool:
-    """True when the site's prospection video is generated and on disk."""
-    return (
-        site.video_status == DemoVideoStatus.READY.value
-        and video_file_path(site.slug).is_file()
-    )
+    """
+    True when the site's prospection video is generated.
+
+    Objects live on R2, so this trusts the DB status rather than doing a network
+    round-trip on every email render; deletions go through
+    :func:`delete_files_for_slug`, whose callers also reset the status.
+    """
+    return site.video_status == DemoVideoStatus.READY.value
 
 
 def delete_files_for_slug(slug: str) -> None:
-    """Remove the generated video + thumbnail files (best effort)."""
-    for path in (video_file_path(slug), thumbnail_file_path(slug)):
-        try:
-            path.unlink(missing_ok=True)
-        except OSError:
-            pass
+    """Remove the generated video + thumbnail from R2 (best effort)."""
+    try:
+        r2_storage_service.delete_many([video_object_key(slug), thumbnail_object_key(slug)])
+    except Exception:  # noqa: BLE001 — a storage hiccup must never block a deletion flow
+        logger.warning("[Video] R2 cleanup failed for slug=%s", slug, exc_info=True)
 
 
 class DemoVideoGenerationError(Exception):
@@ -212,9 +214,9 @@ class DemoVideoService:
                 if site is None:
                     return
                 presenter = presenter_video_service.get_for_user(db, user_id)
-                if presenter is None or not Path(presenter.file_path).is_file():
+                if presenter is None:
                     site.video_status = DemoVideoStatus.FAILED.value
-                    site.video_error = "Clip de présentation introuvable sur le disque."
+                    site.video_error = "Aucun clip de présentation configuré."
                     db.commit()
                     return
 
@@ -222,8 +224,11 @@ class DemoVideoService:
                 db.commit()
 
                 first_name = self._resolve_first_name(db, site)
+                # Le clip source vit sur R2 : on le matérialise en temp pour ffmpeg.
+                source_dir = Path(tempfile.mkdtemp(prefix=f"presenter-src-{user_id}-"))
                 try:
-                    await self._generate(site, presenter, first_name)
+                    presenter_path = await self._resolve_presenter_file(presenter, source_dir)
+                    await self._generate(site, presenter, presenter_path, first_name)
                 except DemoVideoGenerationError as exc:
                     site.video_status = DemoVideoStatus.FAILED.value
                     site.video_error = str(exc)[:1000]
@@ -236,6 +241,8 @@ class DemoVideoService:
                     db.commit()
                     logger.exception("Video generation crashed for slug=%s", site.slug)
                     return
+                finally:
+                    shutil.rmtree(source_dir, ignore_errors=True)
 
                 site.video_status = DemoVideoStatus.READY.value
                 site.video_error = None
@@ -259,11 +266,46 @@ class DemoVideoService:
     # Pipeline steps
     # ------------------------------------------------------------------ #
 
-    async def _generate(self, site: DemoSite, presenter: PresenterVideo, first_name: Optional[str]) -> None:
-        """Capture the site, compose the video, build the thumbnail."""
+    @staticmethod
+    async def _resolve_presenter_file(presenter: PresenterVideo, work_dir: Path) -> Path:
+        """
+        Materialise the presenter clip as a local file for ffmpeg.
+
+        Clips live on R2 under ``videos/presenter/{user_id}.mp4``; rows written
+        before the R2 migration still hold a local disk path and keep working.
+
+        @param presenter - The user's presenter clip row.
+        @param work_dir - Temp directory receiving the download.
+        @returns Path to a readable local file.
+        @throws DemoVideoGenerationError when the clip cannot be resolved.
+        """
+        stored = str(presenter.file_path or "").strip()
+        if not stored:
+            raise DemoVideoGenerationError("Clip de présentation introuvable.")
+
+        if stored.startswith(r2_storage_service.VIDEOS_PRESENTER_PREFIX):
+            try:
+                return await r2_storage_service.download_to_path_async(stored, work_dir / "presenter.mp4")
+            except Exception as exc:  # noqa: BLE001 — surfaced as a readable pipeline error
+                raise DemoVideoGenerationError(
+                    "Clip de présentation illisible sur le stockage (R2)."
+                ) from exc
+
+        legacy = Path(stored)
+        if legacy.is_file():
+            return legacy
+        raise DemoVideoGenerationError("Clip de présentation introuvable.")
+
+    async def _generate(
+        self,
+        site: DemoSite,
+        presenter: PresenterVideo,
+        presenter_path: Path,
+        first_name: Optional[str],
+    ) -> None:
+        """Capture the site, compose the video, build the thumbnail, publish to R2."""
         scroll_seconds = presenter.duration_seconds - presenter.intro_seconds - presenter.outro_seconds
-        work_dir = Path(settings.demo_video_dir) / "tmp" / f"{site.slug}-{uuid.uuid4().hex[:8]}"
-        work_dir.mkdir(parents=True, exist_ok=True)
+        work_dir = Path(tempfile.mkdtemp(prefix=f"demo-video-{site.slug}-"))
         try:
             capture_path, scroll_offset, screenshot_path = await self._capture_site(
                 site.demo_url or "", scroll_seconds, work_dir
@@ -271,10 +313,11 @@ class DemoVideoService:
             greeting_path = self._build_greeting_overlay(first_name, work_dir)
             mask_path = self._build_circle_mask(work_dir)
 
-            output_path = video_file_path(site.slug)
-            output_path.parent.mkdir(parents=True, exist_ok=True)
+            output_path = work_dir / "output.mp4"
+            thumbnail_path = work_dir / "thumbnail.jpg"
             await self._compose(
                 presenter=presenter,
+                presenter_path=presenter_path,
                 capture_path=capture_path,
                 scroll_offset=scroll_offset,
                 scroll_seconds=scroll_seconds,
@@ -282,7 +325,15 @@ class DemoVideoService:
                 mask_path=mask_path,
                 output_path=output_path,
             )
-            self._build_thumbnail(screenshot_path, first_name, thumbnail_file_path(site.slug))
+            self._build_thumbnail(screenshot_path, first_name, thumbnail_path)
+
+            # Publication sur R2 : c'est Cloudflare qui sert, plus le VPS.
+            await r2_storage_service.upload_file_async(
+                output_path, video_object_key(site.slug), "video/mp4"
+            )
+            await r2_storage_service.upload_file_async(
+                thumbnail_path, thumbnail_object_key(site.slug), "image/jpeg"
+            )
         finally:
             shutil.rmtree(work_dir, ignore_errors=True)
 
@@ -514,6 +565,7 @@ class DemoVideoService:
         self,
         *,
         presenter: PresenterVideo,
+        presenter_path: Path,
         capture_path: Path,
         scroll_offset: float,
         scroll_seconds: float,
@@ -563,7 +615,7 @@ class DemoVideoService:
             "-loglevel",
             "error",
             "-i",
-            str(presenter.file_path),
+            str(presenter_path),
             "-ss",
             f"{max(scroll_offset, 0):.3f}",
             "-t",
