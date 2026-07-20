@@ -30,3 +30,6 @@ dnspython==2.8.0
 # Après install : `playwright install chromium`. ffmpeg doit être présent (FFMPEG_PATH).
 playwright>=1.43.0
 pillow>=10.0.0
+
+# Stockage objet Cloudflare R2 (S3-compatible) : vidéos, vignettes, pièces jointes.
+boto3>=1.34.0
