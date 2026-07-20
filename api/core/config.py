@@ -141,6 +141,29 @@ class Settings(BaseSettings):
         alias="PRESENTER_VIDEO_MAX_MB",
         description="Maximum upload size for the presenter clip (MB)",
     )
+
+    # Cloudflare R2 (S3-compatible) — backend de stockage UNIQUE (local ET prod).
+    # Voir R2_STORAGE_PLAN.md. Le bucket et l'URL publique sont résolus selon `env`.
+    r2_account_id: Optional[str] = Field(default=None, alias="R2_ACCOUNT_ID")
+    r2_access_key_id: Optional[str] = Field(default=None, alias="R2_ACCESS_KEY_ID")
+    r2_secret_access_key: Optional[str] = Field(default=None, alias="R2_SECRET_ACCESS_KEY")
+    r2_endpoint: Optional[str] = Field(
+        default=None,
+        alias="R2_ENDPOINT",
+        description="S3 API endpoint (write path) — https://<account_id>.r2.cloudflarestorage.com",
+    )
+    r2_bucket_dev: Optional[str] = Field(default=None, alias="R2_BUCKET_DEV")
+    r2_bucket_prod: Optional[str] = Field(default=None, alias="R2_BUCKET_PROD")
+    r2_public_base_url_dev: Optional[str] = Field(
+        default=None,
+        alias="R2_PUBLIC_BASE_URL_DEV",
+        description="Public read URL of the dev bucket (r2.dev or custom domain)",
+    )
+    r2_public_base_url_prod: Optional[str] = Field(
+        default=None,
+        alias="R2_PUBLIC_BASE_URL_PROD",
+        description="Public read URL of the prod bucket (r2.dev or custom domain)",
+    )
     ffmpeg_path: str = Field(
         default="ffmpeg",
         alias="FFMPEG_PATH",
@@ -462,6 +485,27 @@ class Settings(BaseSettings):
             True if production environment
         """
         return self.env.lower() == "production"
+
+    @property
+    def r2_bucket(self) -> Optional[str]:
+        """
+        Bucket used by this environment (dev bucket locally, prod bucket in production).
+
+        Returns:
+            Bucket name, or None when not configured.
+        """
+        return self.r2_bucket_prod if self.is_production else self.r2_bucket_dev
+
+    @property
+    def r2_public_base_url(self) -> Optional[str]:
+        """
+        Public read base URL matching :attr:`r2_bucket` (no trailing slash).
+
+        Returns:
+            Base URL, or None when not configured.
+        """
+        raw = self.r2_public_base_url_prod if self.is_production else self.r2_public_base_url_dev
+        return raw.rstrip("/") if raw else None
 
 
 # Global settings instance
