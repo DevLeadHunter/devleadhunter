@@ -65,11 +65,12 @@
         <form
           v-else
           id="email-template-form"
-          class="flex-1 space-y-4 overflow-y-auto px-5 py-4"
+          class="flex-1 space-y-8 overflow-y-auto px-5 py-6"
           @submit.prevent="handleSave"
         >
+          <!-- Nom -->
           <div>
-            <label class="text-muted mb-1.5 block text-xs font-medium">
+            <label class="mb-2 block text-sm font-medium text-[var(--app-ink)]">
               Nom du modèle <span class="text-[var(--app-red)]">*</span>
             </label>
             <input
@@ -79,104 +80,134 @@
               class="input-field"
               placeholder="Ex : Proposition de site web"
             />
+            <p class="text-muted mt-1.5 text-xs">Pour vous y retrouver — jamais visible par le prospect.</p>
           </div>
 
-          <div>
-            <label class="text-muted mb-1.5 block text-xs font-medium">
-              Sujet de l'email <span class="text-[var(--app-red)]">*</span>
-            </label>
-            <input
-              ref="subjectRef"
-              v-model="form.subject"
-              type="text"
-              required
-              class="input-field"
-              placeholder="Ex : Création de site web pour {entreprise}"
-              @input="subjectInsertion.onInput"
-              @keydown="subjectInsertion.onKeydown"
-              @blur="subjectInsertion.onBlur"
-            />
-            <p class="text-muted mt-1.5 mb-1.5 text-xs">
-              Cliquez une variable pour l'insérer, ou tapez «&nbsp;{&nbsp;».
-            </p>
-            <UiVariableChips @insert="subjectInsertion.insertToken" />
-          </div>
+          <!-- Contenu -->
+          <section class="space-y-5">
+            <p class="app-label">Contenu</p>
 
-          <div>
-            <label class="text-muted mb-1.5 block text-xs font-medium">
-              Corps de l'email (HTML) <span class="text-[var(--app-red)]">*</span>
-            </label>
-            <textarea
-              ref="bodyRef"
-              v-model="form.body_html"
-              required
-              rows="14"
-              class="input-field font-mono text-xs"
-              placeholder="Bonjour {salutation},&#10;&#10;Je me présente..."
-              @input="bodyInsertion.onInput"
-              @keydown="bodyInsertion.onKeydown"
-              @blur="bodyInsertion.onBlur"
-            ></textarea>
-            <p class="text-muted mt-1.5 mb-1.5 text-xs">Insérez une variable à l'endroit du curseur :</p>
-            <UiVariableChips @insert="bodyInsertion.insertToken" />
-          </div>
-
-          <!-- Signature -->
-          <div class="rounded-lg border border-[var(--app-line)] px-3 py-2.5">
-            <div class="flex items-center justify-between gap-3">
-              <div>
-                <p class="text-sm font-medium text-[var(--app-ink)]">Inclure une signature</p>
-                <p class="text-muted text-xs">Ajoutée automatiquement au bas de l'email envoyé.</p>
-              </div>
-              <UiSwitch
-                id="template-include-signature"
-                v-model="includeSignature"
-                :disabled="signatures.length === 0"
+            <div>
+              <label class="mb-2 block text-sm font-medium text-[var(--app-ink)]">
+                Objet <span class="text-[var(--app-red)]">*</span>
+              </label>
+              <input
+                ref="subjectRef"
+                v-model="form.subject"
+                type="text"
+                required
+                class="input-field"
+                placeholder="Ex : Création de site web pour {entreprise}"
+                @focus="activeField = 'subject'"
+                @input="subjectInsertion.onInput"
+                @keydown="subjectInsertion.onKeydown"
+                @blur="subjectInsertion.onBlur"
               />
             </div>
 
-            <!-- Selector (switch on + at least one signature) -->
-            <div v-if="includeSignature && signatures.length" class="mt-3">
-              <select v-model="form.signature_id" class="input-field">
-                <option v-for="signature in signatures" :key="signature.id" :value="signature.id">
-                  {{ signature.name }}{{ signature.is_default ? ' (par défaut)' : '' }}
-                </option>
-              </select>
+            <div>
+              <label class="mb-2 block text-sm font-medium text-[var(--app-ink)]">
+                Message <span class="text-[var(--app-red)]">*</span>
+              </label>
+              <textarea
+                ref="bodyRef"
+                v-model="form.body_html"
+                required
+                rows="12"
+                class="input-field font-mono text-xs leading-relaxed"
+                placeholder="Bonjour {salutation},&#10;&#10;Je me présente..."
+                @focus="activeField = 'body'"
+                @input="bodyInsertion.onInput"
+                @keydown="bodyInsertion.onKeydown"
+                @blur="bodyInsertion.onBlur"
+              ></textarea>
+              <p class="text-muted mt-1.5 text-xs">Le message accepte du HTML.</p>
             </div>
 
-            <!-- Empty-state invite -->
-            <div
-              v-if="signatures.length === 0"
-              class="mt-3 rounded-md border border-dashed border-[var(--app-line)] px-3 py-2.5 text-center"
-            >
-              <p class="text-muted text-xs">Vous n'avez pas encore de signature.</p>
-              <button type="button" class="btn-secondary mt-2 h-8 min-h-8 text-xs" @click="openSignaturesDrawer">
-                <UIcon name="i-lucide-plus" class="mr-1 h-3.5 w-3.5" />
-                Créer une signature
+            <!-- Single variable palette — inserts into whichever field is focused -->
+            <div class="rounded-xl border border-[var(--app-line)] bg-[var(--app-surface-2)]/50 p-3.5">
+              <div class="mb-3 flex items-center justify-between gap-2">
+                <p class="text-xs font-medium text-[var(--app-ink)]">Variables personnalisées</p>
+                <span
+                  class="inline-flex items-center gap-1 rounded-md border border-[var(--app-line)] bg-[var(--app-surface)] px-1.5 py-0.5 font-mono text-[10px] text-[var(--app-ink-soft)]"
+                  title="Le clic insère dans ce champ"
+                >
+                  <UIcon name="i-lucide-corner-down-right" class="h-3 w-3" />
+                  {{ activeFieldLabel }}
+                </span>
+              </div>
+              <UiVariableChips @insert="insertIntoActiveField" />
+              <p class="text-muted mt-3 text-[11px] leading-snug">
+                Clic → insère au curseur dans le champ actif. Ou tapez «&nbsp;{&nbsp;» dans l'objet ou le message.
+              </p>
+            </div>
+          </section>
+
+          <!-- Signature -->
+          <section class="space-y-3">
+            <p class="app-label">Signature</p>
+            <div class="rounded-xl border border-[var(--app-line)] p-3.5">
+              <div class="flex items-center justify-between gap-3">
+                <div>
+                  <p class="text-sm font-medium text-[var(--app-ink)]">Inclure une signature</p>
+                  <p class="text-muted text-xs">Ajoutée au bas de l'email envoyé.</p>
+                </div>
+                <UiSwitch
+                  id="template-include-signature"
+                  v-model="includeSignature"
+                  :disabled="signatures.length === 0"
+                />
+              </div>
+
+              <!-- Selector (switch on + at least one signature) -->
+              <div v-if="includeSignature && signatures.length" class="mt-3.5">
+                <select v-model="form.signature_id" class="input-field">
+                  <option v-for="signature in signatures" :key="signature.id" :value="signature.id">
+                    {{ signature.name }}{{ signature.is_default ? ' (par défaut)' : '' }}
+                  </option>
+                </select>
+              </div>
+
+              <!-- Empty-state invite -->
+              <div
+                v-if="signatures.length === 0"
+                class="mt-3.5 rounded-lg border border-dashed border-[var(--app-line)] px-3 py-3 text-center"
+              >
+                <p class="text-muted text-xs">Aucune signature configurée.</p>
+                <button
+                  type="button"
+                  class="btn-secondary mx-auto mt-2 h-8 min-h-8 text-xs"
+                  @click="openSignaturesDrawer"
+                >
+                  <UIcon name="i-lucide-plus" class="mr-1 h-3.5 w-3.5" />
+                  Créer une signature
+                </button>
+              </div>
+
+              <!-- Always-available manage link -->
+              <button
+                v-else
+                type="button"
+                class="mt-3 inline-flex items-center gap-1.5 text-xs font-medium text-[var(--app-ink-soft)] transition-colors hover:text-[var(--app-ink)]"
+                @click="openSignaturesDrawer"
+              >
+                <UIcon name="i-lucide-settings-2" class="h-3.5 w-3.5" />
+                Gérer mes signatures
               </button>
             </div>
+          </section>
 
-            <!-- Always-available manage link -->
-            <button
-              v-else
-              type="button"
-              class="mt-2.5 text-xs font-medium text-[var(--app-ink-soft)] underline decoration-[var(--app-line)] underline-offset-2 hover:text-[var(--app-ink)]"
-              @click="openSignaturesDrawer"
-            >
-              Gérer mes signatures
-            </button>
-          </div>
-
-          <div
-            v-if="mode === 'edit'"
-            class="flex items-center justify-between rounded-lg border border-[var(--app-line)] px-3 py-2.5"
-          >
-            <div>
-              <p class="text-sm font-medium text-[var(--app-ink)]">Modèle actif</p>
-              <p class="text-muted text-xs">Les modèles inactifs restent enregistrés mais ne sont plus proposés.</p>
+          <!-- Statut (edit only) -->
+          <section v-if="mode === 'edit'" class="space-y-3">
+            <p class="app-label">Statut</p>
+            <div class="flex items-center justify-between rounded-xl border border-[var(--app-line)] p-3.5">
+              <div>
+                <p class="text-sm font-medium text-[var(--app-ink)]">Modèle actif</p>
+                <p class="text-muted text-xs">Les modèles inactifs restent enregistrés mais ne sont plus proposés.</p>
+              </div>
+              <UiSwitch id="template-active" v-model="form.is_active" />
             </div>
-            <UiCheckbox id="template-active" v-model="form.is_active" />
-          </div>
+          </section>
         </form>
 
         <!-- ───────────────────────── Footer ─────────────────────── -->
@@ -336,6 +367,9 @@ const bodyInsertion = useVariableInsertion(
   },
 )
 
+/** Field the single variable palette targets (last focused; defaults to body). */
+const activeField: Ref<'subject' | 'body'> = ref<'subject' | 'body'>('body')
+
 /** Key of the entity the form was last initialised for (mode + template id). */
 const lastInitKey: Ref<string> = ref<string>('')
 
@@ -345,6 +379,11 @@ const drawerTitle: ComputedRef<string> = computed((): string => {
   if (props.mode === 'edit') return 'Modifier le modèle'
   return 'Nouveau modèle'
 })
+
+/** Human label of the field the palette currently targets. */
+const activeFieldLabel: ComputedRef<string> = computed((): string =>
+  activeField.value === 'subject' ? 'Objet' : 'Message',
+)
 
 /**
  * Best default signature id: the flagged default, else the first one.
@@ -385,6 +424,15 @@ async function loadSignatures(): Promise<void> {
 /** Stack the signatures manager on top of this drawer. */
 function openSignaturesDrawer(): void {
   drawerStack.push({ kind: 'email-signatures' })
+}
+
+/**
+ * Insert a variable token into whichever field is currently focused.
+ * @param token - The placeholder to insert (e.g. `{prenom}`).
+ */
+function insertIntoActiveField(token: string): void {
+  if (activeField.value === 'subject') subjectInsertion.insertToken(token)
+  else bodyInsertion.insertToken(token)
 }
 
 /**

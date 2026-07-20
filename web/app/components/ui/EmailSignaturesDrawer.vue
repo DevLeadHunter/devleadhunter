@@ -249,8 +249,9 @@ async function loadSignatures(): Promise<void> {
   isLoading.value = true
   try {
     signatures.value = await getEmailSignatures()
-  } catch (err: unknown) {
-    toast.error(err instanceof Error ? err.message : 'Erreur lors du chargement des signatures')
+  } catch {
+    // Non-blocking: fall back to the empty state rather than a scary toast.
+    signatures.value = []
   } finally {
     isLoading.value = false
   }
