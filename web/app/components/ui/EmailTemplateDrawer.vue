@@ -68,24 +68,20 @@
           class="flex-1 space-y-8 overflow-y-auto px-5 py-6"
           @submit.prevent="handleSave"
         >
-          <!-- Nom -->
-          <div>
-            <label class="mb-2 block text-sm font-medium text-[var(--app-ink)]">
-              Nom du modèle <span class="text-[var(--app-red)]">*</span>
-            </label>
-            <input
-              v-model="form.name"
-              type="text"
-              required
-              class="input-field"
-              placeholder="Ex : Proposition de site web"
-            />
-            <p class="text-muted mt-1.5 text-xs">Pour vous y retrouver — jamais visible par le prospect.</p>
-          </div>
-
-          <!-- Contenu -->
-          <section class="space-y-5">
-            <p class="app-label">Contenu</p>
+          <!-- Nom + objet + message (flux serré, sans label de section) -->
+          <div class="space-y-5">
+            <div>
+              <label class="mb-2 block text-sm font-medium text-[var(--app-ink)]">
+                Nom du modèle <span class="text-[var(--app-red)]">*</span>
+              </label>
+              <input
+                v-model="form.name"
+                type="text"
+                required
+                class="input-field"
+                placeholder="Ex : Proposition de site web"
+              />
+            </div>
 
             <div>
               <label class="mb-2 block text-sm font-medium text-[var(--app-ink)]">
@@ -109,6 +105,25 @@
               <label class="mb-2 block text-sm font-medium text-[var(--app-ink)]">
                 Message <span class="text-[var(--app-red)]">*</span>
               </label>
+
+              <!-- Variable palette — above the message field, inserts into the focused field -->
+              <div class="mb-2 rounded-xl border border-[var(--app-line)] bg-[var(--app-surface-2)]/50 p-3.5">
+                <div class="mb-3 flex items-center justify-between gap-2">
+                  <p class="text-xs font-medium text-[var(--app-ink)]">Variables personnalisées</p>
+                  <span
+                    class="inline-flex items-center gap-1 rounded-md border border-[var(--app-line)] bg-[var(--app-surface)] px-1.5 py-0.5 font-mono text-[10px] text-[var(--app-ink-soft)]"
+                    title="Le clic insère dans ce champ"
+                  >
+                    <UIcon name="i-lucide-corner-down-right" class="h-3 w-3" />
+                    {{ activeFieldLabel }}
+                  </span>
+                </div>
+                <UiVariableChips @insert="insertIntoActiveField" />
+                <p class="text-muted mt-3 text-[11px] leading-snug">
+                  Clic → insère au curseur dans le champ actif. Ou tapez «&nbsp;{&nbsp;» dans l'objet ou le message.
+                </p>
+              </div>
+
               <textarea
                 ref="bodyRef"
                 v-model="form.body_html"
@@ -123,25 +138,7 @@
               ></textarea>
               <p class="text-muted mt-1.5 text-xs">Le message accepte du HTML.</p>
             </div>
-
-            <!-- Single variable palette — inserts into whichever field is focused -->
-            <div class="rounded-xl border border-[var(--app-line)] bg-[var(--app-surface-2)]/50 p-3.5">
-              <div class="mb-3 flex items-center justify-between gap-2">
-                <p class="text-xs font-medium text-[var(--app-ink)]">Variables personnalisées</p>
-                <span
-                  class="inline-flex items-center gap-1 rounded-md border border-[var(--app-line)] bg-[var(--app-surface)] px-1.5 py-0.5 font-mono text-[10px] text-[var(--app-ink-soft)]"
-                  title="Le clic insère dans ce champ"
-                >
-                  <UIcon name="i-lucide-corner-down-right" class="h-3 w-3" />
-                  {{ activeFieldLabel }}
-                </span>
-              </div>
-              <UiVariableChips @insert="insertIntoActiveField" />
-              <p class="text-muted mt-3 text-[11px] leading-snug">
-                Clic → insère au curseur dans le champ actif. Ou tapez «&nbsp;{&nbsp;» dans l'objet ou le message.
-              </p>
-            </div>
-          </section>
+          </div>
 
           <!-- Signature -->
           <section class="space-y-3">
@@ -169,17 +166,10 @@
               </div>
 
               <!-- Empty-state invite -->
-              <div
-                v-if="signatures.length === 0"
-                class="mt-3.5 rounded-lg border border-dashed border-[var(--app-line)] px-3 py-3 text-center"
-              >
-                <p class="text-muted text-xs">Aucune signature configurée.</p>
-                <button
-                  type="button"
-                  class="btn-secondary mx-auto mt-2 h-8 min-h-8 text-xs"
-                  @click="openSignaturesDrawer"
-                >
-                  <UIcon name="i-lucide-plus" class="mr-1 h-3.5 w-3.5" />
+              <div v-if="signatures.length === 0" class="mt-3.5">
+                <p class="text-muted mb-2.5 text-xs">Aucune signature configurée.</p>
+                <button type="button" class="btn-primary" @click="openSignaturesDrawer">
+                  <UIcon name="i-lucide-plus" class="h-4 w-4" />
                   Créer une signature
                 </button>
               </div>
