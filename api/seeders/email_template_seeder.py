@@ -29,11 +29,9 @@ import json
 import re
 
 
-# ---------------------------------------------------------------------------
 # Template definitions.
 #   sort_order: higher = pinned higher in the app list (0 = normal).
 #   ★ Recommandé = the picks to A/B test first (2 first-emails, 2 follow-ups).
-# ---------------------------------------------------------------------------
 
 _TEMPLATES: list[dict[str, object]] = [
     # ── ★ Recommandés — Premier email (les 2 meilleurs angles à tester en A/B) ──

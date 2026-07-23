@@ -37,9 +37,6 @@ from services.templates.site_content import from_storyblok_site_content
 router = APIRouter(prefix="/webhooks", tags=["webhooks"])
 logger = logging.getLogger(__name__)
 
-# ---------------------------------------------------------------------------
-# Constants
-# ---------------------------------------------------------------------------
 
 # Complete map of all Resend email webhook event types → EmailStatus.
 # Sources: https://resend.com/docs/dashboard/webhooks/event-types
@@ -89,10 +86,6 @@ _STATUS_RANK: dict[str, int] = {
     EmailStatus.SUPPRESSED.value:       7,
 }
 
-# ---------------------------------------------------------------------------
-# Signature verification
-# ---------------------------------------------------------------------------
-
 
 def _verify_signature(
     body: bytes,
@@ -141,11 +134,6 @@ def _verify_signature(
         if hmac.compare_digest(clean, expected_b64):
             return True
     return False
-
-
-# ---------------------------------------------------------------------------
-# Endpoint
-# ---------------------------------------------------------------------------
 
 
 @router.post("/resend", status_code=status.HTTP_204_NO_CONTENT)
@@ -269,11 +257,6 @@ async def resend_webhook(
             },
             timestamp=now.isoformat(),
         )
-
-
-# ---------------------------------------------------------------------------
-# Storyblok — sync client-published edits back into content_json
-# ---------------------------------------------------------------------------
 
 
 def _verify_storyblok_signature(body: bytes, signature: str) -> bool:

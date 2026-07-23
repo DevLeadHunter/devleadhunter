@@ -188,9 +188,6 @@ class BrightDataScraper(BaseScraper):
         self._token: str = self._load_token()
         self._zone: str = self._load_zone()
 
-    # ------------------------------------------------------------------
-    # Config helpers
-    # ------------------------------------------------------------------
 
     @staticmethod
     def _load_token() -> str:
@@ -226,9 +223,6 @@ class BrightDataScraper(BaseScraper):
 
             return os.environ.get("BRIGHTDATA_ZONE", "mcp_unlocker")
 
-    # ------------------------------------------------------------------
-    # HTTP layer
-    # ------------------------------------------------------------------
 
     async def _fetch(self, url: str, *, zone: Optional[str] = None) -> str:
         """
@@ -263,9 +257,6 @@ class BrightDataScraper(BaseScraper):
                 resp.raise_for_status()
                 return await resp.text()
 
-    # ------------------------------------------------------------------
-    # PagesJaunes — listing page
-    # ------------------------------------------------------------------
 
     async def _scrape_pj_listing(
         self,
@@ -337,9 +328,6 @@ class BrightDataScraper(BaseScraper):
         )
         return urls
 
-    # ------------------------------------------------------------------
-    # PagesJaunes — detail page
-    # ------------------------------------------------------------------
 
     async def _scrape_pj_detail(
         self,
@@ -490,9 +478,6 @@ class BrightDataScraper(BaseScraper):
             social_url=social_url,
         )
 
-    # ------------------------------------------------------------------
-    # Email enrichment via Google SERP
-    # ------------------------------------------------------------------
 
     async def _fetch_social_email(self, social_url: str, name: str) -> Optional[str]:
         """
@@ -602,9 +587,6 @@ class BrightDataScraper(BaseScraper):
 
         return None
 
-    # ------------------------------------------------------------------
-    # Main entry point
-    # ------------------------------------------------------------------
 
     async def scrape(
         self,
@@ -657,9 +639,6 @@ class BrightDataScraper(BaseScraper):
                     f"BrightData — récupération des fiches PagesJaunes ({category} / {city})…"
                 )
 
-            # --------------------------------------------------------
-            # Phase 1: discover detail pages from the PJ listing
-            # --------------------------------------------------------
             fetch_max = max(max_results * 4, 20)
             detail_urls = await self._scrape_pj_listing(category, city, fetch_max)
 
@@ -676,9 +655,6 @@ class BrightDataScraper(BaseScraper):
                     f"BrightData — {len(detail_urls)} fiche(s) trouvée(s), analyse en cours…"
                 )
 
-            # --------------------------------------------------------
-            # Phase 2: scrape detail pages
-            # --------------------------------------------------------
             candidates: list[ProspectCreate] = []
             for i, url in enumerate(detail_urls):
                 if should_stop and should_stop():
@@ -710,9 +686,6 @@ class BrightDataScraper(BaseScraper):
                     f"BrightData — enrichissement des emails ({len(candidates)} prospect(s))…"
                 )
 
-            # --------------------------------------------------------
-            # Phase 3: email enrichment via Google SERP
-            # --------------------------------------------------------
             enriched: list[ProspectCreate] = []
             for prospect in candidates:
                 if should_stop and should_stop():

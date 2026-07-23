@@ -37,10 +37,6 @@ from services.campaign_service import campaign_service
 router = APIRouter(prefix="/campaigns", tags=["campaigns"])
 
 
-# ---------------------------------------------------------------------------
-# Request schemas (route-local, not shared with other modules)
-# ---------------------------------------------------------------------------
-
 class LaunchCampaignRequest(BaseModel):
     """Payload for POST /campaigns/{id}/launch."""
     template_id: Optional[int] = None
@@ -64,10 +60,6 @@ def _has_resend_config(db: Session, user_id: int) -> bool:
     ).scalar_one_or_none()
     return config is not None and bool(config.api_key)
 
-
-# ---------------------------------------------------------------------------
-# Response builder helper
-# ---------------------------------------------------------------------------
 
 def _detail_response(campaign) -> CampaignDetailResponse:
     """Build a CampaignDetailResponse from a Campaign ORM object."""
@@ -121,10 +113,6 @@ def _get_or_404(db: Session, campaign_id: int, user_id: int):
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Campaign not found")
     return campaign
 
-
-# ---------------------------------------------------------------------------
-# CRUD
-# ---------------------------------------------------------------------------
 
 @router.post("", response_model=CampaignDetailResponse, status_code=status.HTTP_201_CREATED)
 async def create_campaign(
@@ -207,10 +195,6 @@ async def delete_campaign(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Campaign not found")
 
 
-# ---------------------------------------------------------------------------
-# Settings — update send configuration (editable anytime, even when active)
-# ---------------------------------------------------------------------------
-
 @router.patch("/{campaign_id}/settings", response_model=CampaignDetailResponse)
 async def update_campaign_settings(
     campaign_id: int,
@@ -257,10 +241,6 @@ async def update_campaign_settings(
     return _detail_response(campaign)
 
 
-# ---------------------------------------------------------------------------
-# Prospects
-# ---------------------------------------------------------------------------
-
 @router.post("/{campaign_id}/prospects", response_model=CampaignDetailResponse)
 async def add_prospects_to_campaign(
     campaign_id: int,
@@ -292,10 +272,6 @@ async def remove_prospect_from_campaign(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Campaign not found")
     return _detail_response(campaign)
 
-
-# ---------------------------------------------------------------------------
-# Follow-up sequence management
-# ---------------------------------------------------------------------------
 
 @router.post("/{campaign_id}/follow-ups", response_model=CampaignFollowUpResponse)
 async def add_follow_up(
@@ -387,10 +363,6 @@ async def delete_follow_up(
     db.delete(fu)
     db.commit()
 
-
-# ---------------------------------------------------------------------------
-# Launch / Pause / Resume
-# ---------------------------------------------------------------------------
 
 @router.post("/{campaign_id}/launch")
 async def launch_campaign(
@@ -523,10 +495,6 @@ async def resume_campaign(
     }
 
 
-# ---------------------------------------------------------------------------
-# Immediate send (bypass delay for a specific prospect)
-# ---------------------------------------------------------------------------
-
 @router.post("/{campaign_id}/send-now")
 async def send_now(
     campaign_id: int,
@@ -553,10 +521,6 @@ async def send_now(
     )
     return result
 
-
-# ---------------------------------------------------------------------------
-# Queue & Stats
-# ---------------------------------------------------------------------------
 
 @router.get("/{campaign_id}/queue")
 async def get_campaign_queue(

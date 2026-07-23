@@ -47,9 +47,6 @@ class AutoScraper(BaseScraper):
         self._osm = OSMScraper()
         self._pj = PagesJaunesScraper()
 
-    # ------------------------------------------------------------------
-    # Helpers
-    # ------------------------------------------------------------------
 
     @staticmethod
     def _normalize_name(name: str) -> str:
@@ -140,9 +137,6 @@ class AutoScraper(BaseScraper):
             logger.debug("[Auto] Email enrichment failed for %s: %s", prospect.name, exc)
         return prospect
 
-    # ------------------------------------------------------------------
-    # Main entry point
-    # ------------------------------------------------------------------
 
     async def scrape(
         self,
@@ -177,9 +171,6 @@ class AutoScraper(BaseScraper):
         await self.start()
 
         try:
-            # --------------------------------------------------------
-            # Phase 1: parallel OSM + Pages Jaunes
-            # --------------------------------------------------------
             if progress:
                 await progress.log("Auto — lancement OSM + Pages Jaunes en parallèle…")
 
@@ -200,10 +191,8 @@ class AutoScraper(BaseScraper):
                     f"Auto — OSM : {osm_count} résultat(s) · Pages Jaunes : {pj_count} résultat(s)"
                 )
 
-            # --------------------------------------------------------
             # Phase 2: merge + deduplicate
             # PagesJaunes results take priority (richer data: address, phone)
-            # --------------------------------------------------------
             merged: list[ProspectCreate] = []
             seen: set[str] = set()
 
@@ -223,9 +212,6 @@ class AutoScraper(BaseScraper):
                     await progress.log("Auto — aucun résultat trouvé.")
                 return []
 
-            # --------------------------------------------------------
-            # Phase 3: email enrichment (sequential — one Chrome instance)
-            # --------------------------------------------------------
             if progress:
                 await progress.log(
                     f"Auto — enrichissement des emails ({len(merged)} prospect(s))…"

@@ -6,10 +6,6 @@ from typing import Optional, List
 from pydantic import BaseModel, Field, ConfigDict
 
 
-# ---------------------------------------------------------------------------
-# Follow-up schemas
-# ---------------------------------------------------------------------------
-
 class CampaignFollowUpCreate(BaseModel):
     """Schema for adding a follow-up step to a campaign."""
     template_id: int = Field(..., description="Template to use for this follow-up")
@@ -37,10 +33,6 @@ class CampaignFollowUpResponse(BaseModel):
 
     model_config = ConfigDict(from_attributes=True)
 
-
-# ---------------------------------------------------------------------------
-# Campaign base schemas
-# ---------------------------------------------------------------------------
 
 class CampaignBase(BaseModel):
     """Base schema for campaign."""
@@ -88,10 +80,6 @@ class CampaignProspectRemove(BaseModel):
     prospect_id: int
 
 
-# ---------------------------------------------------------------------------
-# Stats
-# ---------------------------------------------------------------------------
-
 class CampaignVariantStats(BaseModel):
     """Stats broken down for a single A/B variant."""
     variant: str
@@ -121,10 +109,6 @@ class CampaignStats(BaseModel):
 
     model_config = ConfigDict(from_attributes=True)
 
-
-# ---------------------------------------------------------------------------
-# Response schemas
-# ---------------------------------------------------------------------------
 
 class CampaignProspectResponse(BaseModel):
     """Prospect embedded inside a campaign response."""

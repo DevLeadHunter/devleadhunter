@@ -9,10 +9,6 @@ from pydantic import BaseModel, ConfigDict, Field
 from enums.acquisition import AcquisitionRunMode
 
 
-# ---------------------------------------------------------------------------
-# Requests
-# ---------------------------------------------------------------------------
-
 class SequenceFollowUpInput(BaseModel):
     """One follow-up step in an automatisation's campaign."""
 
@@ -75,10 +71,6 @@ class EmailPreviewRequest(BaseModel):
     item_id: int
     template_id: int
 
-
-# ---------------------------------------------------------------------------
-# Responses
-# ---------------------------------------------------------------------------
 
 class EmailPreviewResponse(BaseModel):
     """A rendered email preview."""

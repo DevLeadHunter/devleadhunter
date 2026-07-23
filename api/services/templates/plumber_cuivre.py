@@ -769,7 +769,6 @@ def build_content(
     }
 
 
-# ---------------------------------------------------------------------------
 # Phase 4b — flat SiteContent path
 #
 # The contract with the demo-host template layer (@devleadhunter/website-content):
@@ -779,7 +778,6 @@ def build_content(
 # whose SiteContent array is empty — so the variable fields it DOES consume
 # (services, faq, reviews, gallery, hours, about, palette…) must be provided here
 # for the rendered page to match the historical rich look.
-# ---------------------------------------------------------------------------
 
 # Short editorial default (used when the prospect has no enrichment description).
 _ABOUT_TEXT_SHORT: str = _ABOUT_TEXT

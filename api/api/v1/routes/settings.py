@@ -35,10 +35,6 @@ from services.sending_identity import (
 router = APIRouter(prefix="/settings", tags=["settings"])
 logger = logging.getLogger(__name__)
 
-# ---------------------------------------------------------------------------
-# Pydantic schemas (local — only used by this module)
-# ---------------------------------------------------------------------------
-
 
 class ResendConfigUpdate(BaseModel):
     """Payload for creating or updating the user's Resend configuration."""
@@ -70,21 +66,11 @@ class ResendConfigResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 
-# ---------------------------------------------------------------------------
-# Helpers
-# ---------------------------------------------------------------------------
-
-
 def _get_or_none(db: Session, user_id: int) -> ResendConfig | None:
     """Return the ResendConfig row for *user_id*, or ``None`` if absent."""
     return db.execute(
         select(ResendConfig).where(ResendConfig.user_id == user_id)
     ).scalar_one_or_none()
-
-
-# ---------------------------------------------------------------------------
-# Routes
-# ---------------------------------------------------------------------------
 
 
 @router.get("/resend", response_model=ResendConfigResponse)
@@ -147,11 +133,6 @@ async def upsert_resend_config(
     }
 
 
-# ---------------------------------------------------------------------------
-# Sending identity (active email transport: Resend or Gmail)
-# ---------------------------------------------------------------------------
-
-
 class SendingIdentityResponse(BaseModel):
     """The user's active sending provider + per-provider readiness (no secrets)."""
 
@@ -197,11 +178,6 @@ async def update_sending_identity(
         "[Settings] Sending provider set to %s for user %d", payload.provider.value, current_user.id
     )
     return describe_sending_config(db, current_user.id)
-
-
-# ---------------------------------------------------------------------------
-# Presenter video (clip webcam générique des vidéos de prospection)
-# ---------------------------------------------------------------------------
 
 
 class PresenterVideoResponse(BaseModel):

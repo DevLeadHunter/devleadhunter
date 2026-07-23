@@ -79,9 +79,6 @@ class CreateSequenceInput:
 class AcquisitionService:
     """Business operations for acquisition sequences."""
 
-    # -----------------------------------------------------------------------
-    # Creation
-    # -----------------------------------------------------------------------
 
     def create_from_prospects(
         self,
@@ -260,9 +257,6 @@ class AcquisitionService:
                 visible.add(pid)
         return visible
 
-    # -----------------------------------------------------------------------
-    # Reads
-    # -----------------------------------------------------------------------
 
     def list_for_user(self, db: Session, user_id: int) -> List[AcquisitionRun]:
         """Return the user's sequences, newest first."""
@@ -285,9 +279,6 @@ class AcquisitionService:
             return None
         return run
 
-    # -----------------------------------------------------------------------
-    # Lifecycle operations
-    # -----------------------------------------------------------------------
 
     def pause(self, db: Session, run: AcquisitionRun) -> AcquisitionRun:
         """Pause a running sequence (safe: nothing destructive)."""
@@ -352,9 +343,6 @@ class AcquisitionService:
         db.delete(run)
         db.commit()
 
-    # -----------------------------------------------------------------------
-    # Per-prospect corrections (the heart of the review step)
-    # -----------------------------------------------------------------------
 
     def assign_templates(
         self,
@@ -477,9 +465,6 @@ class AcquisitionService:
             "body_html": service.replace_variables(template.body_html, variables),
         }
 
-    # -----------------------------------------------------------------------
-    # Stats (derived — always fresh)
-    # -----------------------------------------------------------------------
 
     def build_stats(self, db: Session, run: AcquisitionRun) -> dict:
         """

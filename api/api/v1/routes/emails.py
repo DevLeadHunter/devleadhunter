@@ -68,10 +68,6 @@ _CASCADE_TIMESTAMPS: dict[str, list[str]] = {
 }
 
 
-# ---------------------------------------------------------------------------
-# Resend status sync (fallback for local dev without public webhook)
-# ---------------------------------------------------------------------------
-
 @router.post("/sync-resend-status")
 async def sync_resend_status(
     current_user: User = Depends(get_current_user),
@@ -166,10 +162,6 @@ async def sync_resend_status(
     return {"updated": updated, "checked": len(logs), "errors": errors}
 
 
-# ---------------------------------------------------------------------------
-# Quick-send schema (no email_account_id — uses resend_config directly)
-# ---------------------------------------------------------------------------
-
 class QuickSendRequest(BaseModel):
     """Payload for the /emails/quick-send endpoint."""
     recipient_email: str
@@ -231,8 +223,6 @@ async def quick_send_email(
         prospect_id=payload.prospect_id,
         campaign_id=payload.campaign_id,
     )
-
-
 
 
 @router.get("/logs", response_model=EmailLogListResponse)

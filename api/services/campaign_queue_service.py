@@ -73,9 +73,6 @@ class CampaignQueueService:
     def __init__(self, db: Session) -> None:
         self.db = db
 
-    # -----------------------------------------------------------------------
-    # Enqueueing
-    # -----------------------------------------------------------------------
 
     def enqueue_campaign(
         self,
@@ -254,9 +251,6 @@ class CampaignQueueService:
         start = latest + delay if (latest is not None and latest > now) else now
         return [start + delay * i for i in range(count)]
 
-    # -----------------------------------------------------------------------
-    # Worker tick
-    # -----------------------------------------------------------------------
 
     async def process_next(self) -> bool:
         """
@@ -552,9 +546,6 @@ class CampaignQueueService:
             j1_item.prospect_id,
         )
 
-    # -----------------------------------------------------------------------
-    # Immediate send (bypass delay)
-    # -----------------------------------------------------------------------
 
     async def send_followup_now(
         self,
@@ -612,9 +603,6 @@ class CampaignQueueService:
             campaign_id=str(campaign.id),
         )
 
-    # -----------------------------------------------------------------------
-    # Queue management helpers
-    # -----------------------------------------------------------------------
 
     def cancel_campaign_queue(self, campaign_id: int) -> int:
         """
