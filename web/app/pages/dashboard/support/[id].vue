@@ -1,6 +1,5 @@
 <template>
   <div class="mx-auto max-w-3xl space-y-6">
-    <!-- Header : retour, sujet, méta compacte -->
     <div>
       <NuxtLink
         to="/dashboard/support"
@@ -40,7 +39,6 @@
     </div>
 
     <template v-else>
-      <!-- Demande initiale : repliée, elle n'écrase pas la conversation -->
       <UiCollapsibleCard icon="i-lucide-file-text" title="La demande initiale">
         <div class="space-y-4 px-4 py-4">
           <p class="text-sm leading-relaxed whitespace-pre-wrap text-[var(--app-ink)]">{{ ticket.description }}</p>
@@ -60,7 +58,6 @@
         </div>
       </UiCollapsibleCard>
 
-      <!-- Conversation -->
       <div class="space-y-5">
         <div v-for="message in ticket.messages" :key="message.id" class="space-y-1.5">
           <p :class="['text-muted flex items-center gap-2 text-xs', isMine(message) ? 'justify-end' : 'justify-start']">
@@ -99,7 +96,6 @@
         </div>
       </div>
 
-      <!-- Réponse -->
       <form class="space-y-3" @submit.prevent="sendMessage">
         <div class="relative">
           <textarea
@@ -167,7 +163,7 @@ import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { useUserStore } from '~/stores/user'
 import { useToast } from '~/composables/useToast'
-import * as supportService from '~/services/supportService'
+import { SupportService } from '~/services/supportService'
 
 definePageMeta({ layout: 'dashboard', middleware: 'auth' })
 
@@ -462,7 +458,7 @@ async function loadTicket(): Promise<void> {
   if (!ticketId.value) return
   try {
     isLoading.value = true
-    ticket.value = await supportService.getTicket(ticketId.value)
+    ticket.value = await SupportService.getTicket(ticketId.value)
     await nextTick()
     scrollToBottom()
     connectWebSocket()
@@ -481,7 +477,7 @@ async function sendMessage(): Promise<void> {
   if (!ticket.value || (!messageInput.value.trim() && composerFiles.value.length === 0)) return
   try {
     isSending.value = true
-    const message = await supportService.postMessage(ticket.value.id, {
+    const message = await SupportService.postMessage(ticket.value.id, {
       message: messageInput.value.trim() || ' ',
       attachments: composerFiles.value,
     })
@@ -510,7 +506,7 @@ function handleKeydown(event: KeyboardEvent): void {
 }
 
 watch(
-  (): string | string[] => route.params.id,
+  (): string | string[] => route.params.id ?? '',
   (): void => {
     disconnectWebSocket()
     ticket.value = null

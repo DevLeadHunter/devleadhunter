@@ -53,7 +53,7 @@
 <script lang="ts" setup>
 import type { Ref } from 'vue'
 import type { DemoSite } from '~/services/demoSiteService'
-import { listDemoSites } from '~/services/demoSiteService'
+import { DemoSiteService } from '~/services/demoSiteService'
 
 definePageMeta({ layout: 'dashboard', middleware: 'auth' })
 
@@ -79,7 +79,7 @@ async function copyDemoUrl(url: string): Promise<void> {
 
 onMounted(async () => {
   try {
-    const response = await listDemoSites()
+    const response = await DemoSiteService.listDemoSites()
     sites.value = response.items
   } finally {
     pending.value = false

@@ -1,6 +1,5 @@
 <template>
   <div>
-    <!-- ══════════ Écran d'accueil ══════════════════════════════════════════ -->
     <section v-if="!hasStarted" class="wizard-step">
       <div class="text-center">
         <LandingAsterisk class="text-2xl text-[var(--app-accent)]" />
@@ -56,7 +55,6 @@
       </div>
     </section>
 
-    <!-- ══════════ Les étapes ═══════════════════════════════════════════════ -->
     <template v-else>
       <UiWizardStepper
         class="mx-auto max-w-2xl"
@@ -65,7 +63,6 @@
         @update:model-value="goToStep"
       />
 
-      <!-- ── Étape 1 · Méthode d'envoi ───────────────────────────────────── -->
       <div v-if="currentStep === 1" key="step-1" class="wizard-step mt-8 space-y-6">
         <header class="mx-auto max-w-2xl">
           <h1 class="text-2xl font-bold text-[var(--app-ink)]">Comment enverrez-vous vos emails ?</h1>
@@ -78,7 +75,6 @@
         <EmailSendingConfig />
       </div>
 
-      <!-- ── Étape 2 · Cadence ───────────────────────────────────────────── -->
       <div v-else-if="currentStep === 2" key="step-2" class="wizard-step mx-auto mt-8 max-w-2xl space-y-6">
         <header>
           <h1 class="text-2xl font-bold text-[var(--app-ink)]">À quel rythme envoyer ?</h1>
@@ -98,9 +94,7 @@
         </UiCallout>
       </div>
 
-      <!-- ── Étape 3 · Vidéo de prospection ──────────────────────────────── -->
       <div v-else-if="currentStep === 3" key="step-3" class="wizard-step mx-auto mt-8 max-w-2xl space-y-6">
-        <!-- La question d'abord : personne ne subit un upload non désiré -->
         <div
           v-if="!wantsVideo"
           class="flex flex-col items-center gap-5 rounded-xl border border-[var(--app-line)] bg-[var(--app-surface)] px-6 py-12 text-center"
@@ -139,7 +133,6 @@
         </template>
       </div>
 
-      <!-- ── Étape 4 · C'est prêt ────────────────────────────────────────── -->
       <div v-else key="step-4" class="wizard-step mx-auto mt-8 max-w-2xl space-y-8">
         <div class="text-center">
           <span
@@ -190,7 +183,6 @@
         </div>
       </div>
 
-      <!-- ── Navigation (étapes 1 à 3) ───────────────────────────────────── -->
       <div v-if="currentStep < STEPS.length" class="mx-auto max-w-2xl">
         <div
           class="sticky bottom-4 z-10 mt-8 flex items-center justify-between gap-3 rounded-full border border-[var(--app-line)] bg-[var(--app-surface)]/90 px-3 py-2 shadow-lg backdrop-blur"
@@ -243,22 +235,22 @@ import type { SendPolicy } from '~/types/Automation'
 import type { SendingIdentityResponse, SendingProvider } from '~/services/settingsService'
 import type { PresenterVideoInfo } from '~/services/presenterVideoService'
 import type { UiWizardStep } from '~/types/UiWizardStepper'
-import { settingsService } from '~/services/settingsService'
-import { getPresenterVideo } from '~/services/presenterVideoService'
-import { getSendPolicy, updateSendPolicy } from '~/services/sendPolicyService'
+import { SettingsService } from '~/services/settingsService'
+import { PresenterVideoService } from '~/services/presenterVideoService'
+import { SendPolicyService } from '~/services/sendPolicyService'
 import { useOnboarding } from '~/composables/useOnboarding'
 import { useToast } from '~/composables/useToast'
 import { useUserStore } from '~/stores/user'
 
 /** A row of the « c'est prêt » recap. */
-interface RecapItem {
+type RecapItem = {
   label: string
   value: string
   done: boolean
 }
 
 /** A row of the welcome screen checklist. */
-interface IntroItem {
+type IntroItem = {
   icon: string
   title: string
   detail: string
@@ -269,15 +261,11 @@ definePageMeta({ layout: 'onboarding', middleware: 'auth' })
 
 useSeoMeta({ title: 'Mise en route — DevLeadHunter' })
 
-// ─── Composables ────────────────────────────────────────────────────────────
-
 const toast = useToast()
 const route = useRoute()
 const router = useRouter()
 const userStore = useUserStore()
 const { postpone, clearPostponed } = useOnboarding()
-
-// ─── Constantes ─────────────────────────────────────────────────────────────
 
 /** The wizard steps, in order. */
 const STEPS: UiWizardStep[] = [
@@ -312,8 +300,6 @@ const INTRO_ITEMS: IntroItem[] = [
 /** How long between two readiness checks while the sending step is open, in ms. */
 const SENDING_POLL_INTERVAL_MS: number = 3000
 
-// ─── État ───────────────────────────────────────────────────────────────────
-
 /** Whether the wizard itself is shown (false = welcome screen). */
 const hasStarted: Ref<boolean> = ref(false)
 /** Current step (1-based). */
@@ -340,8 +326,6 @@ const isSavingStep: Ref<boolean> = ref(false)
 const isFinishing: Ref<boolean> = ref(false)
 /** Handle of the sending-readiness poller. */
 const sendingPollHandle: Ref<ReturnType<typeof setInterval> | null> = ref(null)
-
-// ─── Computed ───────────────────────────────────────────────────────────────
 
 /** The connected user's first name, for the welcome line. */
 const firstName: ComputedRef<string> = computed((): string => (userStore.user?.name ?? '').trim().split(' ')[0] ?? '')
@@ -392,8 +376,6 @@ const recapItems: ComputedRef<RecapItem[]> = computed((): RecapItem[] => {
   ]
 })
 
-// ─── Méthodes ───────────────────────────────────────────────────────────────
-
 /**
  * Refresh the sending identity and repair a dangling selection: when the active
  * provider is not configured but the other one is (e.g. Gmail was connected from
@@ -402,7 +384,7 @@ const recapItems: ComputedRef<RecapItem[]> = computed((): RecapItem[] => {
  */
 async function refreshSendingIdentity(): Promise<void> {
   try {
-    const current: SendingIdentityResponse = await settingsService.getSendingIdentity()
+    const current: SendingIdentityResponse = await SettingsService.getSendingIdentity()
     identity.value = current
     const activeIsUsable: boolean = current.provider === 'gmail' ? current.gmail_configured : current.resend_configured
     if (activeIsUsable) return
@@ -411,7 +393,7 @@ async function refreshSendingIdentity(): Promise<void> {
       : current.resend_configured
         ? 'resend'
         : null
-    if (fallback) identity.value = await settingsService.setSendingProvider(fallback)
+    if (fallback) identity.value = await SettingsService.setSendingProvider(fallback)
   } catch {
     // Non-critical: the step simply stays blocked until the call succeeds.
   }
@@ -457,7 +439,7 @@ async function persistPolicy(): Promise<void> {
   if (policy.value.days_of_week.length === 0) {
     throw new Error('Choisissez au moins un jour d’envoi')
   }
-  policy.value = await updateSendPolicy(policy.value)
+  policy.value = await SendPolicyService.updateSendPolicy(policy.value)
   savedPolicy.value = JSON.stringify(policy.value)
 }
 
@@ -529,13 +511,9 @@ async function handleGmailCallbackFeedback(): Promise<void> {
   await router.replace({ query: { ...route.query, gmail: undefined } })
 }
 
-// ─── Watchers ───────────────────────────────────────────────────────────────
-
 watch([hasStarted, currentStep, isSendingReady], (): void => {
   syncSendingPoller()
 })
-
-// ─── Cycle de vie ───────────────────────────────────────────────────────────
 
 onMounted(async (): Promise<void> => {
   // Re-entering an already finished setup (from Paramètres) skips the welcome.
@@ -543,7 +521,7 @@ onMounted(async (): Promise<void> => {
 
   await Promise.all([
     refreshSendingIdentity(),
-    getSendPolicy()
+    SendPolicyService.getSendPolicy()
       .then((loaded: SendPolicy): void => {
         policy.value = loaded
         savedPolicy.value = JSON.stringify(loaded)
@@ -553,7 +531,7 @@ onMounted(async (): Promise<void> => {
       }),
     // An existing clip means the video step opens on its configuration, not on
     // the « do you want one? » question.
-    getPresenterVideo()
+    PresenterVideoService.getPresenterVideo()
       .then((video: PresenterVideoInfo): void => {
         hasPresenterVideo.value = video.has_video
         if (video.has_video) wantsVideo.value = true

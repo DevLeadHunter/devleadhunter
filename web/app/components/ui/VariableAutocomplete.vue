@@ -26,9 +26,7 @@ import type { PropType } from 'vue'
 import type { EmailVariable } from '~/utils/emailVariables'
 import type { AutocompletePosition } from '~/composables/useVariableInsertion'
 
-/**
- * Defines the component props.
- */
+/** Inline autocomplete for template variable insertion. */
 defineProps({
   open: {
     type: Boolean,

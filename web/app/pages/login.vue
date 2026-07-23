@@ -16,7 +16,6 @@
       </p>
 
       <form class="mt-10 space-y-5" @submit.prevent="handleSubmit">
-        <!-- General Error -->
         <div
           v-if="generalError"
           class="rounded-xl border border-[#e0b6a9] bg-[#f9ece7] px-3 py-2 text-sm text-[#8f3a25]"
@@ -24,7 +23,6 @@
           {{ generalError }}
         </div>
 
-        <!-- Email -->
         <div class="auth-rise" :style="{ animationDelay: '210ms' }">
           <label for="email" class="font-label mb-2 block text-xs tracking-[0.08em] text-[#6b6355] uppercase">
             {{ $t('auth.fields.email') }}
@@ -40,7 +38,6 @@
           <p v-if="emailError" class="mt-1.5 text-xs text-[#8f3a25]">{{ emailError }}</p>
         </div>
 
-        <!-- Password -->
         <div class="auth-rise" :style="{ animationDelay: '280ms' }">
           <label for="password" class="font-label mb-2 block text-xs tracking-[0.08em] text-[#6b6355] uppercase">
             {{ $t('auth.fields.password') }}
@@ -56,7 +53,6 @@
           <p v-if="passwordError" class="mt-1.5 text-xs text-[#8f3a25]">{{ passwordError }}</p>
         </div>
 
-        <!-- Submit Button -->
         <div class="auth-rise pt-2" :style="{ animationDelay: '350ms' }">
           <button type="submit" :disabled="isLoading" class="landing-btn-primary w-full">
             <span v-if="isLoading">{{ $t('auth.login.submitting') }}</span>
@@ -64,7 +60,6 @@
           </button>
         </div>
 
-        <!-- Sign Up Link -->
         <p class="auth-rise text-center text-sm text-[#6b6355]" :style="{ animationDelay: '420ms' }">
           {{ $t('auth.login.switchQuestion') }}
           <NuxtLink :to="localePath('/signup')" class="landing-link">{{ $t('auth.login.switchCta') }}</NuxtLink>
@@ -74,7 +69,7 @@
   </div>
 </template>
 
-<script setup lang="ts">
+<script lang="ts" setup>
 import type { Ref } from 'vue'
 import { ref, onMounted } from 'vue'
 import UiLoader from '~/components/ui/Loader.vue'
@@ -161,8 +156,8 @@ onMounted(async () => {
 
 /**
  * Validate email format
- * @param {string} email - Email to validate
- * @returns {boolean} True if valid
+ * @param email - Email to validate
+ * @returns True if valid
  */
 const validateEmail = (email: string): boolean => {
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/

@@ -6,12 +6,7 @@ import { watch } from 'vue'
 const APP_THEME_STORAGE_KEY = 'dlh-app-theme'
 
 /**
- * Dashboard theme state (light paper / dark warm ink).
- *
- * The theme value is bound as ``data-theme`` on the dashboard root by the
- * layout; this composable also mirrors it as a ``dark`` class on ``<html>``
- * so Nuxt UI components follow the same mode.
- *
+ * Dashboard theme state (light/dark) mirrored on `data-theme` and `<html class="dark">`.
  * @returns Theme ref plus init/toggle helpers.
  */
 export function useAppTheme(): {
@@ -19,7 +14,7 @@ export function useAppTheme(): {
   initTheme: () => void
   toggleTheme: () => void
 } {
-  const theme: Ref<AppTheme> = useState<AppTheme>('app-theme', (): AppTheme => 'light')
+  const theme: Ref<AppTheme> = useState('app-theme', (): AppTheme => 'light')
 
   /**
    * Mirror the current theme on ``<html>`` for Nuxt UI (Tailwind `dark` class).

@@ -1,6 +1,5 @@
 /**
  * Shared TypeScript types and interfaces for the application
- * @module types
  */
 
 /**
@@ -26,43 +25,24 @@ export type ProspectSource = 'google' | 'pagesjaunes' | 'yelp' | 'osm' | 'auto' 
  * Prospect interface representing a business without website
  */
 export type Prospect = {
-  /** Unique identifier for the prospect */
   id: number
-  /** User ID who saved this prospect */
   user_id: number
-  /** Business name */
   name: string
-  /** Street address */
   address?: string
-  /** City */
   city?: string
-  /** Phone number */
   phone?: string
-  /** Email address (if available) */
   email?: string
-  /** Website URL (if available) */
   website?: string
-  /** Business category */
   category: string
-  /** Source of the prospect data */
   source: ProspectSource
-  /** Confidence score (1-4) */
   confidence: number
-  /** Whether this prospect has been contacted (auto on email send + manual toggle) */
   contacted: boolean
-  /** Timestamp of when prospect was found */
   created_at?: string
-  /** Organization the prospect is shared with (creator's org, null = personal) */
   organization_id?: number | null
-  /** Member currently reserving this prospect (null = free to take) */
   reserved_by_user_id?: number | null
-  /** Display name of the reserving member (resolved server-side) */
   reserved_by_name?: string | null
-  /** When the reservation was made */
   reserved_at?: string | null
-  /** Latest Lighthouse audit of the prospect's existing website */
   lighthouse_json?: ProspectLighthouseAudit | null
-  /** When the Lighthouse audit was run */
   lighthouse_at?: string | null
 }
 
@@ -70,20 +50,15 @@ export type Prospect = {
  * Résultat d'un audit Lighthouse (PageSpeed Insights) du site existant d'un prospect.
  */
 export type ProspectLighthouseAudit = {
-  /** Scores 0-100 par catégorie (null si PSI n'a pas pu calculer) */
   scores: {
     performance: number | null
     accessibility: number | null
     bestPractices: number | null
     seo: number | null
   }
-  /** Au moins un score clé sous le seuil → argument refonte */
   is_improvable: boolean
-  /** Stratégie d'audit (mobile) */
   strategy: string
-  /** URL réellement analysée */
   final_url: string
-  /** Date ISO de l'audit */
   fetched_at: string
 }
 
@@ -141,21 +116,13 @@ export type ProspectSearchSuggestionsPayload = {
  * Payload pour mettre à jour un prospect existant (tous les champs sont optionnels).
  */
 export type ProspectUpdatePayload = {
-  /** Business name */
   name?: string
-  /** Street address */
   address?: string | null
-  /** City */
   city?: string | null
-  /** Phone number */
   phone?: string | null
-  /** Email address */
   email?: string | null
-  /** Website URL */
   website?: string | null
-  /** Business category */
   category?: string
-  /** Contacted status */
   contacted?: boolean
 }
 
@@ -187,13 +154,9 @@ export type ManualProspectAddForm = {
  * Search filters for prospect search
  */
 export type ProspectSearchFilters = {
-  /** Business category filter */
   category?: BusinessCategory
-  /** City filter */
   city?: string
-  /** Source filter */
   source?: ProspectSource
-  /** Maximum number of results */
   maxResults?: number
 }
 
@@ -201,19 +164,12 @@ export type ProspectSearchFilters = {
  * Campaign interface for bulk email sending
  */
 export type Campaign = {
-  /** Unique identifier for the campaign */
   id: string
-  /** Campaign name */
   name: string
-  /** Campaign description */
   description: string
-  /** List of prospect IDs in the campaign */
   prospectIds: string[]
-  /** Campaign status */
   status: 'draft' | 'active' | 'completed'
-  /** Timestamp of creation */
   createdAt: string
-  /** Timestamp of last update */
   updatedAt: string
 }
 
@@ -226,27 +182,16 @@ export type UserRole = 'USER' | 'ADMIN'
  * User interface
  */
 export type User = {
-  /** Unique identifier for the user */
   id: number
-  /** User name */
   name: string
-  /** User email */
   email: string
-  /** User role */
   role: UserRole
-  /** Whether user is active */
   is_active: boolean
-  /** Timestamp of account creation */
   created_at: string
-  /** Timestamp of last update */
   updated_at: string | null
-  /** Credit balance (-1 for unlimited/admin) */
   credit_balance?: number | null
-  /** Credits available (-1 for unlimited/admin) */
   credits_available?: number | null
-  /** Credits consumed */
   credits_consumed?: number | null
-  /** Whether the post-signup setup wizard (`/configuration`) has been completed */
   onboarding_completed?: boolean
 }
 
@@ -254,9 +199,7 @@ export type User = {
  * Login credentials
  */
 export type LoginCredentials = {
-  /** User email */
   email: string
-  /** User password */
   password: string
 }
 
@@ -264,11 +207,8 @@ export type LoginCredentials = {
  * Signup data
  */
 export type SignupData = {
-  /** User name */
   name: string
-  /** User email */
   email: string
-  /** User password */
   password: string
 }
 
@@ -277,9 +217,7 @@ export type SignupData = {
  * the user can change name and/or email.
  */
 export type ProfileUpdate = {
-  /** New display name */
   name?: string
-  /** New login email */
   email?: string
 }
 
@@ -287,11 +225,8 @@ export type ProfileUpdate = {
  * API Response wrapper
  */
 export type ApiResponse<T> = {
-  /** Response data */
   data: T
-  /** Success status */
   success: boolean
-  /** Error message (if any) */
   message?: string
 }
 
@@ -299,9 +234,7 @@ export type ApiResponse<T> = {
  * Auth token response
  */
 export type TokenResponse = {
-  /** JWT access token */
   access_token: string
-  /** Token type */
   token_type: string
 }
 
@@ -309,65 +242,25 @@ export type TokenResponse = {
  * Paginated response
  */
 export type PaginatedResponse<T> = {
-  /** List of items */
   items: T[]
-  /** Total number of items */
   total: number
-  /** Current page */
   page: number
-  /** Items per page */
   perPage: number
-  /** Total number of pages */
   totalPages: number
-}
-
-/**
- * Email sending data
- */
-export type EmailData = {
-  /** Recipient email */
-  to: string
-  /** Email subject */
-  subject: string
-  /** Email body */
-  body: string
-  /** Prospect ID (optional) */
-  prospectId?: string
-}
-
-/**
- * Bulk email sending data
- */
-export type BulkEmailData = {
-  /** Campaign ID */
-  campaignId: string
-  /** Email subject */
-  subject: string
-  /** Email body */
-  body: string
 }
 
 /**
  * Credit settings interface for credit system configuration
  */
 export type CreditSettings = {
-  /** Unique identifier for the settings (always 1) */
   id: number
-  /** Price of one credit in EUR */
   price_per_credit: number
-  /** Number of credits required for a search operation */
   credits_per_search: number
-  /** Number of credits required per prospect found */
   credits_per_result: number
-  /** Number of credits required per email sent */
   credits_per_email: number
-  /** Number of free credits given on user registration */
   free_credits_on_signup: number
-  /** Minimum number of credits that can be purchased */
   minimum_credits_purchase: number
-  /** Timestamp when settings were created */
   created_at: string
-  /** Timestamp when settings were last updated */
   updated_at: string | null
 }
 
@@ -375,11 +268,8 @@ export type CreditSettings = {
  * Checkout session creation request
  */
 export type CheckoutSessionCreate = {
-  /** Number of credits to purchase */
   credits: number
-  /** URL to redirect after successful payment (optional) */
   success_url?: string
-  /** URL to redirect if payment is cancelled (optional) */
   cancel_url?: string
 }
 
@@ -387,13 +277,9 @@ export type CheckoutSessionCreate = {
  * Checkout session response
  */
 export type CheckoutSessionResponse = {
-  /** Stripe checkout session ID */
   session_id: string
-  /** Stripe checkout session URL */
   url: string
-  /** Payment amount in cents */
   amount: number
-  /** Number of credits being purchased */
   credits: number
 }
 
@@ -406,19 +292,12 @@ export type CreditTransactionType = 'PURCHASE' | 'USAGE' | 'REFUND' | 'FREE_GIFT
  * Credit transaction interface
  */
 export type CreditTransaction = {
-  /** Transaction unique identifier */
   id: number
-  /** User ID who owns this transaction */
   user_id: number
-  /** Transaction type */
   transaction_type: CreditTransactionType
-  /** Number of credits (positive for additions, negative for usage) */
   amount: number
-  /** Description of the transaction */
   description: string
-  /** Optional JSON metadata */
   transaction_metadata?: string | null
-  /** Timestamp when transaction was created */
   created_at: string
 }
 
@@ -426,11 +305,8 @@ export type CreditTransaction = {
  * Credit balance response
  */
 export type CreditBalanceResponse = {
-  /** User ID */
   user_id: number
-  /** Current credit balance */
   balance: number
-  /** Whether user has unlimited credits (admin) */
   is_unlimited: boolean
 }
 
@@ -581,33 +457,19 @@ export type EmailAccountType = 'custom_domain' | 'gmail_oauth' | 'resend'
  * Email account interface
  */
 export type EmailAccount = {
-  /** Unique identifier */
   id: number
-  /** User ID */
   user_id: number
-  /** Account type */
   account_type: EmailAccountType
-  /** Email address */
   email: string
-  /** Sender name */
   name: string
-  /** Whether account is verified */
   is_verified: boolean
-  /** Whether this is the default account */
   is_default: boolean
-  /** Whether account is active */
   is_active: boolean
-  /** Domain name (for custom_domain) */
   domain?: string | null
-  /** SPF verified status */
   spf_verified: boolean
-  /** DKIM verified status */
   dkim_verified: boolean
-  /** OAuth token expiration (for gmail_oauth) */
   oauth_token_expires_at?: string | null
-  /** Created timestamp */
   created_at: string
-  /** Updated timestamp */
   updated_at?: string | null
 }
 
@@ -615,27 +477,16 @@ export type EmailAccount = {
  * Email template interface
  */
 export type EmailTemplate = {
-  /** Unique identifier */
   id: number
-  /** User ID */
   user_id: number
-  /** Associated email account ID */
   email_account_id?: number | null
-  /** Template name */
   name: string
-  /** Email subject */
   subject: string
-  /** Email HTML body */
   body_html: string
-  /** List of variable names */
   variables?: string[]
-  /** Attached signature ID (null = none) */
   signature_id?: number | null
-  /** Whether template is active */
   is_active: boolean
-  /** Created timestamp */
   created_at: string
-  /** Updated timestamp */
   updated_at?: string | null
 }
 
@@ -643,19 +494,12 @@ export type EmailTemplate = {
  * Reusable email signature (sign-off block, HTML, paste-friendly from Gmail).
  */
 export type EmailSignature = {
-  /** Unique identifier */
   id: number
-  /** Owner user ID */
   user_id: number
-  /** Human label shown in the picker */
   name: string
-  /** Signature body in HTML */
   content_html: string
-  /** Whether this is the user's default signature */
   is_default: boolean
-  /** Created timestamp */
   created_at: string
-  /** Updated timestamp */
   updated_at?: string | null
 }
 
@@ -725,53 +569,29 @@ export type CampaignVariantStats = {
  * Email log interface
  */
 export type EmailLog = {
-  /** Unique identifier */
   id: number
-  /** User ID */
   user_id: number
-  /** Email account ID (null for direct resend_config sends) */
   email_account_id: number | null
-  /** Prospect ID */
   prospect_id?: string | null
-  /** Campaign ID */
   campaign_id?: string | null
-  /** Recipient email */
   recipient_email: string
-  /** Recipient name */
   recipient_name?: string | null
-  /** Email subject */
   subject: string
-  /** Email HTML body */
   body_html?: string | null
-  /** Email status */
   status: EmailStatus
-  /** Email provider */
   provider: string
-  /** Provider message ID */
   provider_message_id?: string | null
-  /** Sent timestamp */
   sent_at?: string | null
-  /** Delivered timestamp */
   delivered_at?: string | null
-  /** Opened timestamp */
   opened_at?: string | null
-  /** Clicked timestamp */
   clicked_at?: string | null
-  /** Bounced timestamp */
   bounced_at?: string | null
-  /** Spam-complaint timestamp */
   complained_at?: string | null
-  /** Suppressed timestamp (recipient on Resend suppression list) */
   suppressed_at?: string | null
-  /** Failed timestamp */
   failed_at?: string | null
-  /** A/B variant ('A' or 'B') */
   ab_variant?: string | null
-  /** Error message */
   error_message?: string | null
-  /** Created timestamp */
   created_at: string
-  /** Updated timestamp */
   updated_at?: string | null
 }
 

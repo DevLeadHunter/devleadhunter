@@ -1,6 +1,5 @@
 <template>
   <div class="space-y-6">
-    <!-- Header -->
     <div class="flex items-center justify-between">
       <div>
         <h1 class="text-3xl font-bold text-[var(--app-ink)]">Suivi des emails</h1>
@@ -38,7 +37,6 @@
       </div>
     </div>
 
-    <!-- Stats cards -->
     <div class="grid grid-cols-2 gap-4 md:grid-cols-6">
       <div class="card text-center">
         <p class="text-muted text-xs font-medium">Envoyés</p>
@@ -66,7 +64,6 @@
       </div>
     </div>
 
-    <!-- Filters -->
     <div class="card">
       <div class="grid grid-cols-1 gap-4 md:grid-cols-4">
         <div>
@@ -87,7 +84,6 @@
       </div>
     </div>
 
-    <!-- Error -->
     <div
       v-if="error"
       class="rounded-lg border border-[var(--app-red)] bg-[var(--app-surface)] p-4 text-[var(--app-red)]"
@@ -96,12 +92,10 @@
       <p class="text-muted mt-1 text-sm">{{ error }}</p>
     </div>
 
-    <!-- Loader -->
     <div v-else-if="isLoading" class="flex items-center justify-center py-12">
       <UIcon name="i-lucide-loader-circle" class="text-muted h-9 w-9 animate-spin" />
     </div>
 
-    <!-- Empty -->
     <div v-else-if="filteredLogs.length === 0" class="card px-6 py-12 text-center">
       <LandingAsterisk class="text-4xl text-[var(--app-accent)]" />
       <h3 class="font-display mt-5 text-2xl font-semibold text-[var(--app-ink)]">Aucun email trouvé</h3>
@@ -114,7 +108,6 @@
       </p>
     </div>
 
-    <!-- Table -->
     <div v-else class="card overflow-hidden">
       <table class="w-full border-collapse">
         <thead>
@@ -178,7 +171,6 @@
         </tbody>
       </table>
 
-      <!-- Pagination -->
       <div class="flex items-center justify-between border-t border-[var(--app-line)] px-6 py-4">
         <div class="text-muted text-sm">
           {{ (currentPage - 1) * pageSize + 1 }}–{{ Math.min(currentPage * pageSize, filteredLogs.length) }} sur
@@ -211,21 +203,18 @@ import type { Ref } from 'vue'
 import { computed, onMounted, ref, watch } from 'vue'
 import type { EmailLog, EmailStats, EmailStatus } from '~/types'
 import { formatDate } from '~/utils/date'
-import { getEmailLogs, getEmailStats } from '~/services/emailCampaignsService'
-import { campaignService, type CampaignResponse } from '~/services/campaignService'
+import { EmailCampaignsService } from '~/services/emailCampaignsService'
+import type { CampaignResponse } from '~/services/campaignService'
+import { CampaignService } from '~/services/campaignService'
 import { useToast } from '~/composables/useToast'
 import { useDrawerStackStore } from '~/stores/drawerStack'
-import { api } from '~/services/api'
+import { ApiClient } from '~/services/api'
 
 definePageMeta({ layout: 'dashboard', middleware: ['auth'] })
-
-// ─── State ────────────────────────────────────────────────────────────────────
 
 const toast = useToast()
 const logs: Ref<EmailLog[]> = ref([])
 const campaigns: Ref<CampaignResponse[]> = ref([])
-
-// ─── Envoi manuel (drawer persistant hébergé par le layout) ──────────────────
 
 /** Persistent drawer stack (composer + email log detail live there). */
 const drawerStack = useDrawerStackStore()
@@ -252,8 +241,6 @@ const stats: Ref<EmailStats> = ref({
   click_rate: 0,
 })
 
-// ─── Filter options ───────────────────────────────────────────────────────────
-
 const statusOptions = [
   { value: 'all', label: 'Tous' },
   { value: 'pending', label: 'En attente' },
@@ -271,8 +258,6 @@ const campaignOptions = computed(() => [
   { value: 'all', label: 'Toutes les campagnes' },
   ...campaigns.value.map((c) => ({ value: String(c.id), label: c.name })),
 ])
-
-// ─── Computed ─────────────────────────────────────────────────────────────────
 
 const filteredLogs = computed((): EmailLog[] => {
   let list = logs.value
@@ -307,8 +292,6 @@ const paginatedLogs = computed((): EmailLog[] => {
   return filteredLogs.value.slice(start, start + pageSize)
 })
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
-
 /**
  * Resolve a campaign display name from its ID.
  * @param id - Campaign ID as stored on ``EmailLog.campaign_id`` (may be null).
@@ -322,10 +305,7 @@ function resolveCampaignName(id: string | number | null | undefined): string | u
 }
 
 /**
- * Returns the list of status badges to display for a given email log.
- *
- * Shows the best positive state reached (based on event timestamps) plus any
- * negative events as additional badges (e.g. "Ouvert" + "Spam").
+ * Status badges for an email log (best positive state plus complaint if any).
  * @param log - The email log entry to evaluate.
  * @returns Ordered array of EmailStatus values to render as badges.
  */
@@ -347,24 +327,16 @@ function getEmailBadges(log: EmailLog): EmailStatus[] {
 }
 
 /** A single engagement signal (delivered / opened / clicked) for the table. */
-interface EngagementStep {
-  /** Stable key. */
+type EngagementStep = {
   key: string
-  /** French label shown in the tooltip. */
   label: string
-  /** Lucide icon name. */
   icon: string
-  /** Event timestamp, or null/undefined when it hasn't happened. */
   ts: string | null | undefined
-  /** Tailwind text colour applied when the signal is reached. */
   color: string
 }
 
 /**
- * Build the engagement signals (delivered → opened → clicked) for a log row.
- *
- * These are the Resend-tracked events most useful at a glance for cold
- * outreach.  Each step lights up in colour once reached.
+ * Engagement signals (delivered → opened → clicked) for a log row.
  * @param log - The email log entry to evaluate.
  * @returns Ordered list of engagement steps.
  */
@@ -414,9 +386,7 @@ function lastActivityAt(log: EmailLog): string | null {
   return new Date(Math.max(...valid)).toISOString()
 }
 
-/**
- * Reset email log filters and pagination.
- */
+/** Reset filters and rewind pagination to page 1. */
 function clearFilters(): void {
   searchQuery.value = ''
   filterStatus.value = 'all'
@@ -426,24 +396,21 @@ function clearFilters(): void {
 
 /**
  * Open the email log detail drawer for a row.
+ * @param log - Email log row to open.
  */
 function openDrawer(log: EmailLog): void {
   drawerStack.push({ kind: 'email-log', log, campaignName: resolveCampaignName(log.campaign_id) })
 }
 
-// ─── Data loading ─────────────────────────────────────────────────────────────
-
-/**
- * Load email logs, campaigns and aggregate stats.
- */
+/** Fetch logs (limit 500), campaigns and stats in parallel. */
 async function loadLogs(): Promise<void> {
   isLoading.value = true
   error.value = null
   try {
     const [logsRes, campaignsRes, statsRes] = await Promise.all([
-      getEmailLogs({ limit: 500 }),
-      campaignService.list(0, 200),
-      getEmailStats(),
+      EmailCampaignsService.getEmailLogs({ limit: 500 }),
+      CampaignService.list(0, 200),
+      EmailCampaignsService.getEmailStats(),
     ])
     logs.value = logsRes.logs
     campaigns.value = campaignsRes.campaigns
@@ -471,7 +438,7 @@ watch(
 async function syncStatus(): Promise<void> {
   isSyncing.value = true
   try {
-    const result = await api.post<{ updated: number; checked: number; errors?: string[] }>(
+    const result = await ApiClient.post<{ updated: number; checked: number; errors?: string[] }>(
       '/api/v1/emails/sync-resend-status',
       {},
     )

@@ -1,21 +1,16 @@
 import { defineStore } from 'pinia'
 import type { Ref } from 'vue'
 import { ref, computed } from 'vue'
-import {
-  campaignService,
-  type CampaignResponse,
-  type CampaignDetailResponse,
-  type CampaignStats,
+import type {
+  CampaignCreateData,
+  CampaignDetailResponse,
+  CampaignResponse,
+  CampaignStats,
+  CampaignStatus,
+  CampaignUpdateData,
 } from '~/services/campaignService'
-
-/**
- * Pinia store for campaign management
- * @module stores/campaigns
- */
-
-/**
- * Campaigns store definition
- */
+import { CampaignService } from '~/services/campaignService'
+/** Pinia store for campaign CRUD and prospect membership. */
 export const useCampaignsStore = defineStore('campaigns', () => {
   // State
   const campaigns: Ref<CampaignResponse[]> = ref([])
@@ -35,20 +30,16 @@ export const useCampaignsStore = defineStore('campaigns', () => {
 
   /**
    * Fetch all campaigns for the user
-   * @param {string} [status] - Optional status filter (draft, active, completed)
-   * @returns {Promise<void>} Promise that resolves when fetch is complete
-   * @throws {Error} If fetch fails
-   * @example
-   * ```typescript
-   * await campaignsStore.fetchCampaigns();
-   * ```
+   * @param [status] - Optional status filter (draft, active, completed)
+   * @returns Promise that resolves when fetch is complete
+   * @throws If fetch fails
    */
-  async function fetchCampaigns(status?: string): Promise<void> {
+  async function fetchCampaigns(status?: CampaignStatus): Promise<void> {
     try {
       isLoading.value = true
       error.value = null
 
-      const response = await campaignService.list(0, 1000, status)
+      const response = await CampaignService.list(0, 1000, status)
       campaigns.value = response.campaigns
     } catch (err) {
       error.value = err instanceof Error ? err.message : 'Échec du chargement des campagnes'
@@ -61,16 +52,16 @@ export const useCampaignsStore = defineStore('campaigns', () => {
 
   /**
    * Fetch a single campaign by ID
-   * @param {number} id - Campaign ID
-   * @returns {Promise<CampaignDetailResponse>} Campaign details
-   * @throws {Error} If fetch fails
+   * @param id - Campaign ID
+   * @returns Campaign details
+   * @throws If fetch fails
    */
   async function fetchCampaign(id: number): Promise<CampaignDetailResponse> {
     try {
       isLoading.value = true
       error.value = null
 
-      const campaign = await campaignService.get(id)
+      const campaign = await CampaignService.get(id)
       currentCampaign.value = campaign
       return campaign
     } catch (err) {
@@ -83,13 +74,13 @@ export const useCampaignsStore = defineStore('campaigns', () => {
 
   /**
    * Fetch campaign statistics
-   * @param {number} id - Campaign ID
-   * @returns {Promise<CampaignStats>} Campaign statistics
-   * @throws {Error} If fetch fails
+   * @param id - Campaign ID
+   * @returns Campaign statistics
+   * @throws If fetch fails
    */
   async function fetchCampaignStats(id: number): Promise<CampaignStats> {
     try {
-      const stats = await campaignService.getStats(id)
+      const stats = await CampaignService.getStats(id)
       currentStats.value = stats
       return stats
     } catch (err) {
@@ -100,52 +91,23 @@ export const useCampaignsStore = defineStore('campaigns', () => {
 
   /**
    * Create a new campaign
-   * @param {object} data - Campaign data
-   * @param {string} data.name - Campaign name
-   * @param {string} data.description - Campaign description
-   * @param {string} data.status - Campaign status (draft, active, completed)
-   * @param {number[]} data.prospect_ids - Array of prospect IDs to add
-   * @returns {Promise<CampaignDetailResponse>} Created campaign
-   * @throws {Error} If creation fails
-   * @example
-   * ```typescript
-   * const campaign = await campaignsStore.createCampaign({
-   *   name: 'Ma campagne',
-   *   description: 'Description',
-   *   prospect_ids: [1, 2, 3]
-   * });
-   * ```
+   * @param data - Campaign data
+   * @param data.name - Campaign name
+   * @param data.description - Campaign description
+   * @param data.status - Campaign status (draft, active, completed)
+   * @param data.prospect_ids - Array of prospect IDs to add
+   * @returns Created campaign
+   * @throws If creation fails
    */
-  async function createCampaign(data: {
-    name: string
-    description?: string
-    status?: string
-    prospect_ids?: number[]
-    template_id?: number
-    ab_template_id_b?: number
-  }): Promise<CampaignDetailResponse> {
+  async function createCampaign(data: CampaignCreateData): Promise<CampaignDetailResponse> {
     try {
       isLoading.value = true
       error.value = null
 
-      const campaign = await campaignService.create(data)
+      const campaign = await CampaignService.create(data)
 
       // Add to campaigns list
-      campaigns.value.unshift({
-        id: campaign.id,
-        user_id: campaign.user_id,
-        name: campaign.name,
-        description: campaign.description,
-        status: campaign.status,
-        template_id: campaign.template_id,
-        ab_template_id_b: campaign.ab_template_id_b,
-        send_delay_minutes: campaign.send_delay_minutes,
-        follow_up_delay_days: campaign.follow_up_delay_days,
-        started_at: campaign.started_at,
-        created_at: campaign.created_at,
-        updated_at: campaign.updated_at,
-        prospects_count: campaign.prospects_count,
-      })
+      campaigns.value.unshift(campaign)
 
       return campaign
     } catch (err) {
@@ -158,27 +120,20 @@ export const useCampaignsStore = defineStore('campaigns', () => {
 
   /**
    * Update an existing campaign
-   * @param {number} id - Campaign ID
-   * @param {object} data - Updated campaign data
-   * @param {string} [data.name] - Campaign name
-   * @param {string} [data.description] - Campaign description
-   * @param {string} [data.status] - Campaign status (draft, active, completed)
-   * @returns {Promise<CampaignResponse>} Updated campaign
-   * @throws {Error} If update fails
+   * @param id - Campaign ID
+   * @param data - Updated campaign data
+   * @param [data.name] - Campaign name
+   * @param [data.description] - Campaign description
+   * @param [data.status] - Campaign status (draft, active, completed)
+   * @returns Updated campaign
+   * @throws If update fails
    */
-  async function updateCampaign(
-    id: number,
-    data: {
-      name?: string
-      description?: string
-      status?: string
-    },
-  ): Promise<CampaignResponse> {
+  async function updateCampaign(id: number, data: CampaignUpdateData): Promise<CampaignResponse> {
     try {
       isLoading.value = true
       error.value = null
 
-      const campaign = await campaignService.update(id, data)
+      const campaign = await CampaignService.update(id, data)
 
       // Update in campaigns list
       const index = campaigns.value.findIndex((c) => c.id === id)
@@ -205,16 +160,16 @@ export const useCampaignsStore = defineStore('campaigns', () => {
 
   /**
    * Delete a campaign
-   * @param {number} id - Campaign ID
-   * @returns {Promise<void>} Promise that resolves when deletion is complete
-   * @throws {Error} If deletion fails
+   * @param id - Campaign ID
+   * @returns Promise that resolves when deletion is complete
+   * @throws If deletion fails
    */
   async function deleteCampaign(id: number): Promise<void> {
     try {
       isLoading.value = true
       error.value = null
 
-      await campaignService.delete(id)
+      await CampaignService.delete(id)
 
       // Remove from campaigns list
       campaigns.value = campaigns.value.filter((c) => c.id !== id)
@@ -233,17 +188,17 @@ export const useCampaignsStore = defineStore('campaigns', () => {
 
   /**
    * Add prospects to campaign
-   * @param {number} campaignId - Campaign ID
-   * @param {number[]} prospectIds - Array of prospect IDs to add
-   * @returns {Promise<void>} Promise that resolves when prospects are added
-   * @throws {Error} If update fails
+   * @param campaignId - Campaign ID
+   * @param prospectIds - Array of prospect IDs to add
+   * @returns Promise that resolves when prospects are added
+   * @throws If update fails
    */
   async function addProspectsToCampaign(campaignId: number, prospectIds: number[]): Promise<void> {
     try {
       isLoading.value = true
       error.value = null
 
-      const campaign = await campaignService.addProspects(campaignId, prospectIds)
+      const campaign = await CampaignService.addProspects(campaignId, prospectIds)
 
       // Update current campaign
       currentCampaign.value = campaign
@@ -251,7 +206,7 @@ export const useCampaignsStore = defineStore('campaigns', () => {
       // Update in campaigns list
       const index = campaigns.value.findIndex((c) => c.id === campaignId)
       if (index !== -1) {
-        campaigns.value[index].prospects_count = campaign.prospects_count
+        campaigns.value.splice(index, 1, { ...campaign })
       }
     } catch (err) {
       error.value = err instanceof Error ? err.message : "Échec de l'ajout des prospects"
@@ -263,17 +218,17 @@ export const useCampaignsStore = defineStore('campaigns', () => {
 
   /**
    * Remove a prospect from campaign
-   * @param {number} campaignId - Campaign ID
-   * @param {number} prospectId - Prospect ID to remove
-   * @returns {Promise<void>} Promise that resolves when prospect is removed
-   * @throws {Error} If update fails
+   * @param campaignId - Campaign ID
+   * @param prospectId - Prospect ID to remove
+   * @returns Promise that resolves when prospect is removed
+   * @throws If update fails
    */
   async function removeProspectFromCampaign(campaignId: number, prospectId: number): Promise<void> {
     try {
       isLoading.value = true
       error.value = null
 
-      const campaign = await campaignService.removeProspect(campaignId, prospectId)
+      const campaign = await CampaignService.removeProspect(campaignId, prospectId)
 
       // Update current campaign
       currentCampaign.value = campaign
@@ -281,7 +236,7 @@ export const useCampaignsStore = defineStore('campaigns', () => {
       // Update in campaigns list
       const index = campaigns.value.findIndex((c) => c.id === campaignId)
       if (index !== -1) {
-        campaigns.value[index].prospects_count = campaign.prospects_count
+        campaigns.value.splice(index, 1, { ...campaign })
       }
     } catch (err) {
       error.value = err instanceof Error ? err.message : 'Échec de la suppression du prospect'
@@ -293,8 +248,8 @@ export const useCampaignsStore = defineStore('campaigns', () => {
 
   /**
    * Get campaign by ID from local state
-   * @param {number} id - Campaign ID
-   * @returns {CampaignResponse | undefined} The campaign or undefined if not found
+   * @param id - Campaign ID
+   * @returns The campaign or undefined if not found
    */
   function getCampaignById(id: number): CampaignResponse | undefined {
     return campaigns.value.find((c) => c.id === id)

@@ -13,7 +13,6 @@
       ]"
       @click="selectTemplate(template)"
     >
-      <!-- Mini preview mockup -->
       <div class="relative h-44 overflow-hidden border-b border-[var(--app-line)]">
         <div
           class="absolute inset-0 transition-transform duration-500 group-hover:scale-105"
@@ -55,7 +54,6 @@
           </div>
         </div>
 
-        <!-- Color swatches -->
         <div class="mt-4 flex items-center gap-3">
           <span class="text-xs text-[var(--app-ink-soft)]">Couleurs</span>
           <div class="flex gap-2">
@@ -94,14 +92,25 @@
 </template>
 
 <script lang="ts" setup>
-import type { Ref } from 'vue'
+import type { PropType, Ref } from 'vue'
 import type { DemoSiteTemplate, DemoSiteTheme } from '~/services/demoSiteService'
+import type { TemplatePickerProps } from '~/types/TemplatePicker'
 
-const props = defineProps<{
-  templates: DemoSiteTemplate[]
-  modelValue: string
-  theme: DemoSiteTheme
-}>()
+/** Demo site template picker with live theme color editing. */
+const props: TemplatePickerProps = defineProps({
+  templates: {
+    type: Array as PropType<DemoSiteTemplate[]>,
+    required: true,
+  },
+  modelValue: {
+    type: String,
+    required: true,
+  },
+  theme: {
+    type: Object as PropType<DemoSiteTheme>,
+    required: true,
+  },
+})
 
 const emit = defineEmits<{
   'update:modelValue': [value: string]

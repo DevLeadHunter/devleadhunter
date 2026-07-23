@@ -14,7 +14,6 @@ import type { SearchProspectsPrefill } from '~/types/SearchProspectsDrawer'
 /** Prospect detail drawer entry. */
 export type ProspectDrawerEntry = {
   kind: 'prospect'
-  /** Prospect displayed by the drawer. */
   prospect: Prospect
 }
 
@@ -29,18 +28,14 @@ export type SendEmailPrefill = {
 /** Manual email composer drawer entry. */
 export type SendEmailDrawerEntry = {
   kind: 'send-email'
-  /** Prefilled recipient (null opens a blank composer). */
   prospect: Prospect | null
-  /** Explicit prefill overriding the prospect-derived values. */
   prefill?: SendEmailPrefill
 }
 
 /** Email log detail drawer entry. */
 export type EmailLogDrawerEntry = {
   kind: 'email-log'
-  /** Log displayed by the drawer. */
   log: EmailLog
-  /** Resolved campaign name (display only). */
   campaignName: string | undefined
 }
 
@@ -50,9 +45,7 @@ export type EmailTemplateDrawerMode = 'create' | 'edit' | 'preview'
 /** Email template create/edit/preview drawer entry. */
 export type EmailTemplateDrawerEntry = {
   kind: 'email-template'
-  /** Drawer mode. */
   mode: EmailTemplateDrawerMode
-  /** Template being edited or previewed (null in create mode). */
   template: EmailTemplate | null
 }
 
@@ -84,7 +77,6 @@ export type AddProspectDrawerEntry = {
 /** Prospect search (scraping) drawer entry. */
 export type SearchProspectsDrawerEntry = {
   kind: 'search-prospects'
-  /** Optional form prefill (e.g. « Prospecter » a suggested city on the coverage map). */
   prefill?: SearchProspectsPrefill
 }
 
@@ -95,13 +87,9 @@ export type SendPolicyDrawerEntry = {
 
 /** A zone of the coverage map (one city, or a region's covered cities). */
 export type CoverageZone = {
-  /** Zone granularity. */
   kind: 'city' | 'region'
-  /** Display label (« Rennes », « Bretagne »). */
   label: string
-  /** Covered city names queried for the prospect list. */
   cities: string[]
-  /** City prefilled by the « Prospecter à nouveau ici » action. */
   prefillCity?: string
 }
 

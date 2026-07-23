@@ -3,7 +3,6 @@
     class="card group relative overflow-hidden transition-all duration-300 hover:border-[var(--app-ink-soft)] hover:shadow-lg hover:shadow-black/20"
   >
     <NuxtLink :to="`/dashboard/demo-sites/${site.id}`" class="block">
-      <!-- Preview header -->
       <div
         class="relative h-36 overflow-hidden border-b border-[var(--app-line)] transition-transform duration-500 group-hover:scale-[1.02]"
         :style="{ background: cardGradient }"
@@ -35,7 +34,10 @@
           </span>
         </div>
 
-        <p v-if="site.verification_message && !isDemoSiteReachable(site)" class="text-xs text-amber-300/90">
+        <p
+          v-if="site.verification_message && !DemoSiteService.isDemoSiteReachable(site)"
+          class="text-xs text-amber-300/90"
+        >
           {{ site.verification_message }}
         </p>
 
@@ -54,12 +56,18 @@
 </template>
 
 <script lang="ts" setup>
+import type { PropType } from 'vue'
 import type { DemoSite } from '~/services/demoSiteService'
-import { getDemoSiteOpenUrl, isDemoSiteReachable } from '~/services/demoSiteService'
+import type { DemoSiteCardProps } from '~/types/DemoSiteCard'
+import { DemoSiteService } from '~/services/demoSiteService'
 
-const props = defineProps<{
-  site: DemoSite
-}>()
+/** Demo site summary card with copy and open shortcuts. */
+const props: DemoSiteCardProps = defineProps({
+  site: {
+    type: Object as PropType<DemoSite>,
+    required: true,
+  },
+})
 
 const emit = defineEmits<{
   copy: [url: string]
@@ -68,24 +76,24 @@ const emit = defineEmits<{
 
 const copied = ref(false)
 
-const openUrl = computed(() => getDemoSiteOpenUrl(props.site))
+const openUrl = computed(() => DemoSiteService.getDemoSiteOpenUrl(props.site))
 
 const cardGradient = computed(() => {
-  if (isDemoSiteReachable(props.site)) {
+  if (DemoSiteService.isDemoSiteReachable(props.site)) {
     return 'linear-gradient(135deg, #0f172a 0%, #0284c7 100%)'
   }
   return 'linear-gradient(135deg, var(--app-surface-2) 0%, var(--app-line) 100%)'
 })
 
 const statusLabel = computed(() => {
-  if (isDemoSiteReachable(props.site)) return 'En ligne'
+  if (DemoSiteService.isDemoSiteReachable(props.site)) return 'En ligne'
   if (props.site.status === 'unavailable') return 'Hors ligne'
   if (props.site.status === 'failed') return 'Échec'
   return props.site.status
 })
 
 const statusClass = computed(() => {
-  if (isDemoSiteReachable(props.site)) {
+  if (DemoSiteService.isDemoSiteReachable(props.site)) {
     return 'bg-[var(--app-green)]/20 text-[var(--app-green)]'
   }
   if (props.site.status === 'failed') return 'bg-red-500/20 text-red-300'

@@ -15,17 +15,14 @@ import type { ComputedRef, PropType } from 'vue'
 import { computed } from 'vue'
 import type { UiCalloutProps, UiCalloutVariant } from '~/types/UiCallout'
 
-/** Resolved colours of a callout variant. */
-interface CalloutStyle {
+type CalloutStyle = {
   icon: string
   accent: string
   bg: string
   border: string
 }
 
-/**
- * Defines the component props.
- */
+/** Inline callout notice with semantic variant styling. */
 const props: UiCalloutProps = defineProps({
   variant: {
     type: String as PropType<UiCalloutVariant>,

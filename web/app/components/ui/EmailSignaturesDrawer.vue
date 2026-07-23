@@ -5,7 +5,6 @@
         v-if="open"
         class="fixed top-0 right-0 z-50 flex h-dvh w-full max-w-[560px] flex-col border-l border-[var(--app-line)] bg-[var(--app-surface)] shadow-2xl"
       >
-        <!-- Header -->
         <div class="flex items-start gap-3 border-b border-[var(--app-line)] px-5 py-4">
           <button
             v-if="view === 'editor' || showBack"
@@ -37,9 +36,7 @@
           </button>
         </div>
 
-        <!-- Body -->
         <div class="flex-1 overflow-y-auto px-5 py-4">
-          <!-- LIST VIEW -->
           <template v-if="view === 'list'">
             <div v-if="isLoading" class="flex items-center justify-center py-16">
               <UIcon name="i-lucide-loader-circle" class="h-6 w-6 animate-spin text-[var(--app-faint)]" />
@@ -95,7 +92,6 @@
             </div>
           </template>
 
-          <!-- EDITOR VIEW -->
           <form v-else id="signature-form" class="space-y-4" @submit.prevent="handleSave">
             <div>
               <label class="text-muted mb-1.5 block text-xs font-medium">
@@ -125,7 +121,6 @@
           </form>
         </div>
 
-        <!-- Footer -->
         <div class="flex gap-2 border-t border-[var(--app-line)] px-5 py-4">
           <template v-if="view === 'list'">
             <button type="button" class="btn-secondary flex-1" @click="emit('close')">Fermer</button>
@@ -166,29 +161,23 @@
 <script lang="ts" setup>
 import type { ComputedRef, Ref } from 'vue'
 import type { EmailSignature } from '~/types'
+import type { UiDrawerProps } from '~/types/UiDrawer'
 import { computed, ref, watch } from 'vue'
-import {
-  getEmailSignatures,
-  createEmailSignature,
-  updateEmailSignature,
-  deleteEmailSignature,
-} from '~/services/emailSignaturesService'
+import { EmailSignaturesService } from '~/services/emailSignaturesService'
 import { useToast } from '~/composables/useToast'
 
 /** Internal view of the drawer (list of signatures vs single-signature editor). */
 type SignaturesDrawerView = 'list' | 'editor'
 
 /** Local shape of the signature editor form. */
-interface SignatureForm {
+type SignatureForm = {
   name: string
   content_html: string
   is_default: boolean
 }
 
-/**
- * Defines the component props.
- */
-const props = defineProps({
+/** Drawer to manage rich HTML email signatures. */
+const props: UiDrawerProps = defineProps({
   open: {
     type: Boolean,
     required: true,
@@ -248,7 +237,7 @@ const drawerTitle: ComputedRef<string> = computed((): string => {
 async function loadSignatures(): Promise<void> {
   isLoading.value = true
   try {
-    signatures.value = await getEmailSignatures()
+    signatures.value = await EmailSignaturesService.getEmailSignatures()
   } catch {
     // Non-blocking: fall back to the empty state rather than a scary toast.
     signatures.value = []
@@ -290,14 +279,14 @@ async function handleSave(): Promise<void> {
   isSaving.value = true
   try {
     if (editingSignature.value) {
-      await updateEmailSignature(editingSignature.value.id, {
+      await EmailSignaturesService.updateEmailSignature(editingSignature.value.id, {
         name: form.value.name,
         content_html: form.value.content_html,
         is_default: form.value.is_default,
       })
       toast.success('Signature mise à jour')
     } else {
-      await createEmailSignature({
+      await EmailSignaturesService.createEmailSignature({
         name: form.value.name,
         content_html: form.value.content_html,
         is_default: form.value.is_default,
@@ -319,7 +308,7 @@ async function handleSave(): Promise<void> {
  */
 async function setAsDefault(signature: EmailSignature): Promise<void> {
   try {
-    await updateEmailSignature(signature.id, { is_default: true })
+    await EmailSignaturesService.updateEmailSignature(signature.id, { is_default: true })
     await loadSignatures()
     toast.success(`« ${signature.name} » définie par défaut`)
   } catch (err: unknown) {
@@ -344,7 +333,7 @@ async function handleDelete(): Promise<void> {
   const signature: EmailSignature | null = signatureToDelete.value
   if (!signature) return
   try {
-    await deleteEmailSignature(signature.id)
+    await EmailSignaturesService.deleteEmailSignature(signature.id)
     await loadSignatures()
     toast.success(`Signature « ${signature.name} » supprimée`)
   } catch (err: unknown) {

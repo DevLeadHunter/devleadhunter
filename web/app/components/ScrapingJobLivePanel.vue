@@ -1,6 +1,5 @@
 <template>
   <div class="grid grid-cols-1 gap-4 lg:grid-cols-2">
-    <!-- Logs -->
     <div class="flex flex-col overflow-hidden rounded-lg border border-[var(--app-line)] bg-[var(--app-bg)]">
       <div class="flex items-center justify-between border-b border-[var(--app-line)] px-4 py-2.5">
         <div class="flex items-center gap-2">
@@ -31,7 +30,6 @@
       </div>
     </div>
 
-    <!-- Prospects -->
     <div class="flex flex-col overflow-hidden rounded-lg border border-[var(--app-line)] bg-[var(--app-bg)]">
       <div class="flex items-center justify-between border-b border-[var(--app-line)] px-4 py-2.5">
         <h3 class="text-sm font-medium text-[var(--app-ink)]">Prospects trouvés</h3>
@@ -66,17 +64,28 @@
   </div>
 </template>
 
-<script setup lang="ts">
+<script lang="ts" setup>
+import type { PropType, Ref } from 'vue'
 import { nextTick, ref, watch } from 'vue'
-import type { Ref } from 'vue'
 import type { Prospect } from '~/types'
+import type { ScrapingJobLivePanelProps } from '~/types/ScrapingJobLivePanel'
 import { formatProspectSource } from '~/constants/prospectSources'
 
-const props = defineProps<{
-  logs: string[]
-  prospects: Prospect[]
-  isRunning: boolean
-}>()
+/** Live scraping feed: streamed logs next to the prospects found so far. */
+const props: ScrapingJobLivePanelProps = defineProps({
+  logs: {
+    type: Array as PropType<string[]>,
+    required: true,
+  },
+  prospects: {
+    type: Array as PropType<Prospect[]>,
+    required: true,
+  },
+  isRunning: {
+    type: Boolean,
+    required: true,
+  },
+})
 
 const logsContainerRef: Ref<HTMLElement | null> = ref(null)
 const prospectsContainerRef: Ref<HTMLElement | null> = ref(null)

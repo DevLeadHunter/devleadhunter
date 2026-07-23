@@ -1,6 +1,5 @@
 <template>
   <div>
-    <!-- Header -->
     <div class="mb-6 flex items-center justify-between">
       <h1 class="text-xl font-semibold text-[var(--app-ink)]">Utilisateurs</h1>
       <button class="btn-primary" @click="showCreateModal = true">
@@ -9,7 +8,6 @@
       </button>
     </div>
 
-    <!-- Search Bar -->
     <div class="card mb-6">
       <div class="relative">
         <UIcon
@@ -20,7 +18,6 @@
       </div>
     </div>
 
-    <!-- Users Table -->
     <div class="card overflow-hidden p-0">
       <div class="overflow-x-auto">
         <table class="w-full">
@@ -101,7 +98,7 @@
                   >
                     <UIcon name="i-lucide-ellipsis-vertical" class="h-5 w-5" />
                   </button>
-                  <!-- Dropdown Menu -->
+
                   <div
                     v-if="openMenuId === user.id"
                     :class="[
@@ -132,7 +129,6 @@
       </div>
     </div>
 
-    <!-- Loading State -->
     <div v-if="isLoading" class="card">
       <div class="animate-pulse space-y-3">
         <div class="h-4 w-3/4 rounded bg-[var(--app-surface-2)]"></div>
@@ -141,13 +137,11 @@
       </div>
     </div>
 
-    <!-- Empty State -->
     <div v-else-if="filteredUsers.length === 0" class="card px-6 py-12 text-center">
       <LandingAsterisk class="text-4xl text-[var(--app-accent)]" />
       <h3 class="font-display mt-5 text-2xl font-semibold text-[var(--app-ink)]">Aucun utilisateur trouvé</h3>
     </div>
 
-    <!-- Create User Modal -->
     <div
       v-if="showCreateModal"
       class="fixed inset-0 z-50 flex items-center justify-center bg-[var(--app-overlay)]"
@@ -156,7 +150,6 @@
       <div class="w-full max-w-md rounded-lg border border-[var(--app-line)] bg-[var(--app-surface)] p-6 shadow-lg">
         <h2 class="mb-4 text-base font-semibold text-[var(--app-ink)]">Ajouter un utilisateur</h2>
         <form @submit.prevent="handleCreateSubmit">
-          <!-- Name -->
           <div class="mb-4">
             <label for="create-name" class="mb-1.5 block text-xs font-medium text-[var(--app-ink-soft)]"> Nom </label>
             <input
@@ -169,7 +162,6 @@
             />
           </div>
 
-          <!-- Email -->
           <div class="mb-4">
             <label for="create-email" class="mb-1.5 block text-xs font-medium text-[var(--app-ink-soft)]">
               Email
@@ -184,7 +176,6 @@
             />
           </div>
 
-          <!-- Password -->
           <div class="mb-4">
             <label for="create-password" class="mb-1.5 block text-xs font-medium text-[var(--app-ink-soft)]">
               Mot de passe
@@ -208,7 +199,6 @@
             </div>
           </div>
 
-          <!-- Role -->
           <div class="mb-4">
             <label for="create-role" class="mb-1.5 block text-xs font-medium text-[var(--app-ink-soft)]"> Rôle </label>
             <select id="create-role" v-model="createForm.role" class="input-field">
@@ -217,7 +207,6 @@
             </select>
           </div>
 
-          <!-- Buttons -->
           <div class="flex gap-3 pt-2">
             <button type="button" class="btn-secondary flex-1" @click="showCreateModal = false">Annuler</button>
             <button type="submit" :disabled="isCreating" class="btn-primary flex-1">
@@ -229,7 +218,6 @@
       </div>
     </div>
 
-    <!-- Edit User Modal -->
     <div
       v-if="showEditModal && editingUser"
       class="fixed inset-0 z-50 flex items-center justify-center bg-[var(--app-overlay)]"
@@ -238,7 +226,6 @@
       <div class="w-full max-w-md rounded-lg border border-[var(--app-line)] bg-[var(--app-surface)] p-6 shadow-lg">
         <h2 class="mb-4 text-base font-semibold text-[var(--app-ink)]">Modifier l'utilisateur</h2>
         <form @submit.prevent="handleEditSubmit">
-          <!-- Name -->
           <div class="mb-4">
             <label for="edit-name" class="mb-1.5 block text-xs font-medium text-[var(--app-ink-soft)]"> Nom </label>
             <input
@@ -251,7 +238,6 @@
             />
           </div>
 
-          <!-- Email -->
           <div class="mb-4">
             <label for="edit-email" class="mb-1.5 block text-xs font-medium text-[var(--app-ink-soft)]"> Email </label>
             <input
@@ -264,7 +250,6 @@
             />
           </div>
 
-          <!-- Buttons -->
           <div class="flex gap-3 pt-2">
             <button type="button" class="btn-secondary flex-1" @click="showEditModal = false">Annuler</button>
             <button type="submit" :disabled="isEditing" class="btn-primary flex-1">
@@ -276,7 +261,6 @@
       </div>
     </div>
 
-    <!-- Delete Confirmation Modal -->
     <div
       v-if="showDeleteModal && deletingUser"
       class="fixed inset-0 z-50 flex items-center justify-center bg-[var(--app-overlay)]"
@@ -300,11 +284,11 @@
   </div>
 </template>
 
-<script setup lang="ts">
-import type { User } from '~/types'
+<script lang="ts" setup>
+import type { UserRole, User } from '~/types'
 import type { Ref } from 'vue'
 import { ref, computed, onMounted, onUnmounted } from 'vue'
-import * as usersService from '~/services/usersService'
+import { UsersService } from '~/services/usersService'
 import { useToast } from '~/composables/useToast'
 
 /**
@@ -333,7 +317,7 @@ const openMenuId: Ref<number | null> = ref(null)
 /**
  * Form states
  */
-const createForm: Ref<{ name: string; email: string; password: string; role: string }> = ref({
+const createForm: Ref<{ name: string; email: string; password: string; role: UserRole }> = ref({
   name: '',
   email: '',
   password: '',
@@ -372,22 +356,21 @@ const filteredUsers = computed(() => {
 
 /**
  * Get user initials
- * @param {string} name - User name
- * @returns {string} User initials
+ * @param name - User name
+ * @returns User initials
  */
 const getUserInitials = (name: string): string => {
   const parts = name.split(' ')
   if (parts.length >= 2) {
-    return `${parts[0][0]}${parts[1][0]}`.toUpperCase()
+    return `${parts[0]?.[0] ?? ''}${parts[1]?.[0] ?? ''}`.toUpperCase()
   }
   return name.substring(0, 2).toUpperCase()
 }
 
 /**
  * Toggle user menu
- * @param {number} userId - User ID
- * @param {Event} event - Click event
- * @returns {void}
+ * @param userId - User ID
+ * @param event - Click event
  */
 const toggleUserMenu = (userId: number, event?: Event): void => {
   if (event) {
@@ -398,8 +381,7 @@ const toggleUserMenu = (userId: number, event?: Event): void => {
 
 /**
  * Close menu on outside click
- * @param {Event} event - Click event
- * @returns {void}
+ * @param event - Click event
  */
 const handleClickOutside = (event: Event): void => {
   const target = event.target as HTMLElement
@@ -417,7 +399,7 @@ const handleClickOutside = (event: Event): void => {
 const loadUsers = async (): Promise<void> => {
   try {
     isLoading.value = true
-    users.value = await usersService.getAllUsers()
+    users.value = await UsersService.getAllUsers()
   } catch (error) {
     toast.error(error instanceof Error ? error.message : 'Erreur lors du chargement des utilisateurs')
   } finally {
@@ -432,7 +414,7 @@ const loadUsers = async (): Promise<void> => {
 const handleCreateSubmit = async (): Promise<void> => {
   try {
     isCreating.value = true
-    await usersService.createUser(createForm.value)
+    await UsersService.createUser(createForm.value)
     toast.success('Utilisateur créé')
     showCreateModal.value = false
     createForm.value = { name: '', email: '', password: '', role: 'USER' }
@@ -446,8 +428,7 @@ const handleCreateSubmit = async (): Promise<void> => {
 
 /**
  * Handle edit user
- * @param {User} user - User to edit
- * @returns {void}
+ * @param user - User to edit
  */
 const handleEdit = (user: User): void => {
   editingUser.value = user
@@ -468,7 +449,7 @@ const handleEditSubmit = async (): Promise<void> => {
 
   try {
     isEditing.value = true
-    await usersService.updateUser(editingUser.value.id, editForm.value)
+    await UsersService.updateUser(editingUser.value.id, editForm.value)
     toast.success('Utilisateur mis à jour')
     showEditModal.value = false
     editingUser.value = null
@@ -482,8 +463,7 @@ const handleEditSubmit = async (): Promise<void> => {
 
 /**
  * Handle delete user
- * @param {User} user - User to delete
- * @returns {void}
+ * @param user - User to delete
  */
 const handleDelete = (user: User): void => {
   deletingUser.value = user
@@ -500,7 +480,7 @@ const confirmDelete = async (): Promise<void> => {
 
   try {
     isDeleting.value = true
-    await usersService.deleteUser(deletingUser.value.id)
+    await UsersService.deleteUser(deletingUser.value.id)
     toast.success('Utilisateur supprimé')
     showDeleteModal.value = false
     deletingUser.value = null

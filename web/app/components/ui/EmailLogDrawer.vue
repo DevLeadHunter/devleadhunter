@@ -1,14 +1,10 @@
 <template>
   <Teleport to="body">
-    <!-- Pas de backdrop : le drawer est non-modal pour laisser la navigation
-         (sidebar, pages) cliquable pendant qu'il est ouvert. -->
-    <!-- Panel -->
     <Transition name="drawer-panel">
       <div
         v-if="open && log"
         class="fixed top-0 right-0 z-50 flex h-dvh w-full max-w-[480px] flex-col border-l border-[var(--app-line)] bg-[var(--app-surface)] shadow-2xl"
       >
-        <!-- ───────────────────────── Header ───────────────────────── -->
         <div class="flex items-start gap-3 border-b border-[var(--app-line)] px-5 py-4">
           <button
             v-if="showBack"
@@ -44,9 +40,7 @@
           </button>
         </div>
 
-        <!-- ───────────────────────── Body ────────────────────────── -->
         <div class="flex-1 overflow-y-auto">
-          <!-- Subject card -->
           <div class="px-5 py-4">
             <div class="rounded-xl border border-[var(--app-line)] bg-[var(--app-surface-2)] p-4">
               <p class="mb-1 text-[10px] font-semibold tracking-wider text-[var(--app-ink-soft)] uppercase">Sujet</p>
@@ -54,16 +48,13 @@
             </div>
           </div>
 
-          <!-- Timeline -->
           <div class="px-5 pb-2">
             <p class="mb-4 text-[10px] font-semibold tracking-wider text-[var(--app-ink-soft)] uppercase">Suivi</p>
             <UTimeline :items="timelineItems" size="md" color="neutral" :ui="{ date: 'text-[var(--app-ink-soft)]' }" />
           </div>
 
-          <!-- Divider -->
           <div class="mx-5 border-t border-[var(--app-surface-2)]"></div>
 
-          <!-- Email content -->
           <div class="px-5 py-4">
             <p class="mb-3 text-[10px] font-semibold tracking-wider text-[var(--app-ink-soft)] uppercase">Contenu</p>
             <iframe
@@ -81,10 +72,8 @@
             </div>
           </div>
 
-          <!-- Divider -->
           <div class="mx-5 border-t border-[var(--app-surface-2)]"></div>
 
-          <!-- Technical details -->
           <div class="px-5 py-4">
             <p class="mb-3 text-[10px] font-semibold tracking-wider text-[var(--app-ink-soft)] uppercase">
               Détails techniques
@@ -129,7 +118,6 @@
               </div>
             </div>
 
-            <!-- Error -->
             <div
               v-if="log.error_message"
               class="mt-3 flex items-start gap-2 rounded-lg border border-[var(--app-red)]/30 bg-[var(--app-red)]/5 px-3 py-2"
@@ -140,7 +128,6 @@
           </div>
         </div>
 
-        <!-- ───────────────────────── Footer ─────────────────────── -->
         <div class="border-t border-[var(--app-line)] px-5 py-4">
           <button class="btn-primary w-full" @click="emit('resend')">
             <UIcon name="i-lucide-send" class="mr-1.5 h-4 w-4" />
@@ -161,11 +148,7 @@ import type { EmailLog, EmailStatus } from '~/types'
 import type { EmailLogDrawerProps } from '~/types/EmailLogDrawer'
 import { formatDate } from '~/utils/date'
 
-// ─── Props & emits ────────────────────────────────────────────────────────────
-
-/**
- * Defines the component props.
- */
+/** Drawer showing email delivery timeline and events. */
 const props: EmailLogDrawerProps = defineProps({
   open: {
     type: Boolean,
@@ -194,8 +177,6 @@ const emit = defineEmits<{
   resend: []
 }>()
 
-// ─── Status badges ────────────────────────────────────────────────────────────
-
 /**
  * Returns all status badges to display: best positive state + complaint if any.
  * @returns Ordered array of EmailStatus values.
@@ -215,8 +196,6 @@ const statusBadges: ComputedRef<EmailStatus[]> = computed((): EmailStatus[] => {
   return badges
 })
 
-// ─── Email body ───────────────────────────────────────────────────────────────
-
 /**
  * Strip ``<script>`` tags from the HTML body as a defence-in-depth measure
  * before rendering in the sandboxed iframe.
@@ -228,34 +207,24 @@ const sanitizedBodyHtml: ComputedRef<string | null> = computed((): string | null
   return html.replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
 })
 
-// ─── Timeline ─────────────────────────────────────────────────────────────────
-
 /** Per-stage visual configuration for the timeline indicator + connector. */
-interface StageStyle {
-  /** Tailwind classes for the colored indicator circle (reached state). */
+type StageStyle = {
   indicator: string
-  /** Tailwind class for the connector line below a reached node. */
   separator: string
 }
 
 /** A single definition for one possible email event stage. */
-interface StageDef {
-  /** Stable key used as the timeline item value. */
+type StageDef = {
   key: string
-  /** French label shown as the item title. */
   label: string
-  /** Lucide icon name. */
   icon: string
-  /** Timestamp for this stage, or null/undefined when it hasn't happened. */
   ts: string | null | undefined
-  /** Visual style applied when the stage is reached. */
   style: StageStyle
-  /** When false, the stage is only rendered if it actually occurred. */
   alwaysShow: boolean
 }
 
 /** Shape of a Nuxt UI timeline item with per-item style overrides. */
-interface EmailTimelineItem {
+type EmailTimelineItem = {
   value: string
   title: string
   description?: string
@@ -272,16 +241,7 @@ interface EmailTimelineItem {
 const MUTED_INDICATOR: string =
   'bg-[var(--app-surface)] text-[var(--app-faint)] ring-1 ring-inset ring-[var(--app-line)]'
 
-/**
- * Build the ordered list of timeline items for the Nuxt UI ``UTimeline``.
- *
- * Positive stages (sent → delivered → opened → clicked) are always shown,
- * dimmed when not yet reached, so the recipient's journey is visible at a
- * glance.  Negative stages (bounced, spam, failed) appear only when they
- * actually occurred.  Each item carries per-item ``ui`` overrides so every
- * stage gets its own colour.
- * @returns Array of timeline items consumable by ``UTimeline``.
- */
+/** Timeline items for UTimeline from the log's delivery events. */
 const timelineItems: ComputedRef<EmailTimelineItem[]> = computed((): EmailTimelineItem[] => {
   if (!props.log) return []
   const l: EmailLog = props.log

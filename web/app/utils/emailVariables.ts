@@ -1,9 +1,4 @@
-/**
- * Personalisation variables available in email templates.
- *
- * Mirrors the backend source of truth (`api/services/email_variables.py`).
- * @module utils/emailVariables
- */
+/** Personalisation variables for email templates (mirrors `api/services/email_variables.py`). */
 
 export type EmailVariable = {
   key: string
@@ -13,10 +8,7 @@ export type EmailVariable = {
   example: string
 }
 
-// Static utility class — same pattern as FieldsValidation (B2B).
-// eslint-disable-next-line @typescript-eslint/no-extraneous-class -- intentional static-only API
 export class EmailVariables {
-  /** Prevent instantiation — static helpers only. */
   private constructor() {}
 
   static readonly catalog: EmailVariable[] = [

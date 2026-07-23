@@ -11,8 +11,6 @@
         {{ variable.token }}
       </button>
 
-      <!-- Hover preview: what the variable contains + an example. Flips to the
-           right edge when there is not enough room on the right. -->
       <div
         class="pointer-events-none absolute bottom-full z-10 mb-1.5 hidden w-max max-w-[260px] rounded-lg border border-[var(--app-line)] bg-[var(--app-surface)] p-2.5 text-left shadow-xl group-focus-within:block group-hover:block"
         :class="alignByKey[variable.key] === 'right' ? 'right-0' : 'left-0'"

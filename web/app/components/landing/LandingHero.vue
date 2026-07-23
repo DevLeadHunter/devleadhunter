@@ -1,12 +1,10 @@
 <template>
   <section class="relative overflow-hidden">
     <div class="mx-auto max-w-6xl px-5 pt-20 pb-16 md:px-8 md:pt-28 md:pb-24">
-      <!-- Eyebrow -->
       <p class="landing-eyebrow hero-rise" :style="{ animationDelay: '0ms' }">
         {{ $t('landing.hero.eyebrow') }}
       </p>
 
-      <!-- Headline -->
       <h1
         class="hero-rise font-display mt-7 max-w-4xl text-[2.75rem] leading-[1.04] font-semibold tracking-[-0.02em] text-[#1b1813] md:text-6xl lg:text-7xl"
         :style="{ animationDelay: '90ms' }"
@@ -16,7 +14,6 @@
         ><span class="text-[#e8a33c]" aria-hidden="true">.</span>
       </h1>
 
-      <!-- Subtitle -->
       <p
         class="hero-rise mt-7 max-w-xl text-lg leading-relaxed text-[#6b6355] md:text-xl"
         :style="{ animationDelay: '180ms' }"
@@ -24,7 +21,6 @@
         {{ $t('landing.hero.subtitle') }}
       </p>
 
-      <!-- CTAs -->
       <div
         class="hero-rise mt-10 flex flex-col items-stretch gap-3 sm:flex-row sm:items-center"
         :style="{ animationDelay: '270ms' }"
@@ -42,7 +38,6 @@
         </button>
       </div>
 
-      <!-- Trust row -->
       <ul
         class="hero-rise mt-9 flex flex-wrap items-center gap-x-6 gap-y-4 sm:gap-y-2"
         :style="{ animationDelay: '360ms' }"
@@ -58,7 +53,6 @@
       </ul>
     </div>
 
-    <!-- Trades ticker -->
     <div class="hero-rise" :style="{ animationDelay: '450ms' }">
       <LandingTradesTicker />
     </div>

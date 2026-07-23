@@ -2,7 +2,7 @@
   <LandingLegalArticle title-key="legal.privacy.title" intro-key="legal.privacy.intro" :section-keys="sectionKeys" />
 </template>
 
-<script setup lang="ts">
+<script lang="ts" setup>
 /**
  * Privacy policy page — light editorial layout on the marketing theme.
  */

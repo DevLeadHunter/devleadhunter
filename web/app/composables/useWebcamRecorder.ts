@@ -197,7 +197,7 @@ export function useWebcamRecorder(): {
       analyser = audioContext.createAnalyser()
       analyser.fftSize = 512
       audioContext.createMediaStreamSource(source).connect(analyser)
-      const samples: Uint8Array = new Uint8Array(analyser.frequencyBinCount)
+      const samples: Uint8Array<ArrayBuffer> = new Uint8Array(new ArrayBuffer(analyser.frequencyBinCount))
 
       const tick = (): void => {
         if (!analyser) return
@@ -259,7 +259,7 @@ export function useWebcamRecorder(): {
    * Open a stream for the given devices and wire the level meter to it.
    * @param cameraId - Camera device ID, or an empty string for the default.
    * @param microphoneId - Microphone device ID, or an empty string for the default.
-   * @throws {Error} With a user-facing message when capture is refused.
+   * @throws With a user-facing message when capture is refused.
    */
   async function openStream(cameraId: string, microphoneId: string): Promise<void> {
     const constraints: MediaStreamConstraints = {

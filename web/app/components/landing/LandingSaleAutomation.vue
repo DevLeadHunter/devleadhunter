@@ -2,7 +2,6 @@
   <section id="sale-automation" class="px-5 py-24 md:px-8 md:py-36">
     <div class="mx-auto max-w-6xl">
       <div class="grid items-center gap-14 lg:grid-cols-[1fr_1.15fr] lg:gap-20">
-        <!-- Copy -->
         <div>
           <p v-reveal class="landing-eyebrow">{{ $t('landing.sale.eyebrow') }}</p>
           <h2
@@ -27,7 +26,6 @@
           </ul>
         </div>
 
-        <!-- Animated order card -->
         <div v-reveal="{ delay: 150 }">
           <div ref="orderCardRef" class="landing-card landing-tilt mx-auto max-w-md p-6 md:p-7 lg:mx-0 lg:ml-auto">
             <div class="flex items-start justify-between gap-4">
@@ -39,7 +37,7 @@
                   {{ $t('landing.sale.card.name') }}
                 </p>
               </div>
-              <!-- Badge aux couleurs officielles Stripe (violet #635bff) -->
+
               <span
                 class="rounded-full bg-[#635bff] px-3.5 py-1 font-sans text-xs font-bold tracking-tight text-white lowercase"
               >
@@ -47,7 +45,6 @@
               </span>
             </div>
 
-            <!-- Fulfilment steps, played in sequence -->
             <ol class="mt-6 space-y-4 border-t border-dashed border-[#e3dccd] pt-5">
               <li
                 v-for="(stepKey, index) in stepKeys"

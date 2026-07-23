@@ -1,6 +1,5 @@
 <template>
   <div class="mx-auto max-w-2xl space-y-8">
-    <!-- Header -->
     <div>
       <NuxtLink
         to="/dashboard/support"
@@ -56,7 +55,6 @@
         ></textarea>
       </div>
 
-      <!-- Captures -->
       <div>
         <label class="text-muted mb-1.5 block text-xs font-medium">Captures d'écran</label>
         <label
@@ -97,7 +95,6 @@
         </div>
       </div>
 
-      <!-- Conseils : repliés, ils n'encombrent pas le formulaire -->
       <UiCollapsibleCard icon="i-lucide-lightbulb" title="Comment décrire votre problème" suffix="pour aller plus vite">
         <ul class="space-y-2.5 px-4 py-4">
           <li v-for="tip in WRITING_TIPS" :key="tip" class="text-muted flex items-start gap-2 text-xs leading-relaxed">
@@ -126,7 +123,7 @@ import type { SupportTicketTopic, SupportTopicOption } from '~/types'
 import { onBeforeUnmount, onMounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useToast } from '~/composables/useToast'
-import * as supportService from '~/services/supportService'
+import { SupportService } from '~/services/supportService'
 
 definePageMeta({ layout: 'dashboard', middleware: 'auth' })
 
@@ -196,7 +193,7 @@ function removeAttachment(index: number): void {
  */
 async function loadTopics(): Promise<void> {
   try {
-    topics.value = await supportService.getTopics()
+    topics.value = await SupportService.getTopics()
   } catch {
     toast.error('Impossible de charger les catégories pour le moment.')
   }
@@ -213,7 +210,7 @@ async function handleSubmit(): Promise<void> {
   }
   try {
     isSubmitting.value = true
-    const ticket = await supportService.createTicket({
+    const ticket = await SupportService.createTicket({
       subject: form.subject,
       topic: form.topic,
       message: form.message,

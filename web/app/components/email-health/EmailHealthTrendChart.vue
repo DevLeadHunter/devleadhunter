@@ -1,6 +1,5 @@
 <template>
   <div class="relative">
-    <!-- Legend -->
     <div class="mb-3 flex flex-wrap items-center gap-x-4 gap-y-1">
       <span
         v-for="serie in series"
@@ -22,7 +21,6 @@
 
     <div class="relative" @mouseleave="activeIndex = null">
       <svg :viewBox="`0 0 ${W} ${H}`" class="w-full overflow-visible">
-        <!-- Horizontal grid + value labels -->
         <g v-for="grid in gridLines" :key="grid.y">
           <line
             :x1="PAD_LEFT"
@@ -43,7 +41,6 @@
           </text>
         </g>
 
-        <!-- Threshold guides -->
         <g v-for="threshold in visibleThresholds" :key="threshold.label">
           <line
             :x1="PAD_LEFT"
@@ -57,7 +54,6 @@
           />
         </g>
 
-        <!-- Areas first (under every line) -->
         <template v-for="serie in series" :key="`area-${serie.key}`">
           <defs v-if="serie.area">
             <linearGradient :id="gradientId(serie.key)" x1="0" y1="0" x2="0" y2="1">
@@ -68,7 +64,6 @@
           <path v-if="serie.area" :d="areaPath(serie)" :fill="`url(#${gradientId(serie.key)})`" />
         </template>
 
-        <!-- Smooth lines -->
         <path
           v-for="serie in series"
           :key="`line-${serie.key}`"
@@ -79,7 +74,6 @@
           stroke-linecap="round"
         />
 
-        <!-- Hover guide + dots -->
         <g v-if="active">
           <line
             :x1="active.x"
@@ -104,7 +98,6 @@
         </g>
       </svg>
 
-      <!-- Hover hit areas -->
       <div class="absolute inset-0 flex" :style="{ paddingLeft: `${(PAD_LEFT / W) * 100}%` }">
         <button
           v-for="(label, index) in labels"
@@ -118,7 +111,6 @@
         />
       </div>
 
-      <!-- Tooltip -->
       <div
         v-if="active"
         class="pointer-events-none absolute top-0 z-10 min-w-[130px] rounded-lg border border-[var(--app-line)] bg-[var(--app-surface)] px-3 py-2 shadow-xl"
@@ -139,7 +131,6 @@
       </div>
     </div>
 
-    <!-- X axis labels (sparse) -->
     <div
       class="mt-1.5 flex justify-between text-[10px] text-[var(--app-ink-soft)]"
       :style="{ paddingLeft: `${(PAD_LEFT / W) * 100}%` }"
@@ -161,10 +152,7 @@ import type {
   EmailHealthTrendChartProps,
 } from '~/types/EmailHealthTrendChart'
 
-/**
- * Smooth multi-series SVG trend chart with threshold guides — theme-aware
- * (every color is an Atelier CSS variable) and dependency-free.
- */
+/** Multi-series SVG deliverability trend chart. */
 const props: EmailHealthTrendChartProps = defineProps({
   labels: {
     type: Array as PropType<string[]>,
@@ -205,7 +193,7 @@ const activeIndex: Ref<number | null> = ref(null)
 const maxValue: ComputedRef<number> = computed((): number => {
   const raw: number = Math.max(
     ...props.series.flatMap((serie: EmailHealthChartSeries): number[] => serie.values),
-    ...props.thresholds.map((threshold: EmailHealthChartThreshold): number => threshold.value * 1.25),
+    ...(props.thresholds ?? []).map((threshold: EmailHealthChartThreshold): number => threshold.value * 1.25),
     0.0001,
   )
   const magnitude: number = Math.pow(10, Math.floor(Math.log10(raw)))
@@ -318,7 +306,7 @@ const gridLines: ComputedRef<{ y: number; value: number }[]> = computed((): { y:
 
 /** Thresholds that fit inside the current scale. */
 const visibleThresholds: ComputedRef<EmailHealthChartThreshold[]> = computed((): EmailHealthChartThreshold[] =>
-  props.thresholds.filter((threshold: EmailHealthChartThreshold): boolean => threshold.value <= maxValue.value),
+  (props.thresholds ?? []).filter((threshold: EmailHealthChartThreshold): boolean => threshold.value <= maxValue.value),
 )
 
 /** The middle label used for the central x-axis tick. */

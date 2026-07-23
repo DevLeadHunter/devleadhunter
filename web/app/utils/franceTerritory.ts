@@ -37,7 +37,7 @@ export type FranceMajorCity = {
  * « villes jamais prospectées » — ordered by rough population so the biggest
  * opportunities come first.
  */
-export const FRANCE_MAJOR_CITIES: ReadonlyArray<FranceMajorCity> = [
+export const FRANCE_MAJOR_CITIES: FranceMajorCity[] = [
   { name: 'Paris', dept: '75', region: '11' },
   { name: 'Marseille', dept: '13', region: '93' },
   { name: 'Lyon', dept: '69', region: '84' },

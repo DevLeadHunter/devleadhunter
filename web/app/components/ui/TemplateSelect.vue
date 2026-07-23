@@ -1,16 +1,6 @@
 <template>
   <div>
-    <!-- Create button (top) -->
-    <div v-if="showCreateTop" class="mb-1.5 flex justify-end">
-      <button
-        type="button"
-        class="flex items-center gap-1 text-[11px] font-medium text-[var(--app-ink-soft)] transition-colors hover:text-[var(--app-ink)]"
-        @click="emit('create')"
-      >
-        <UIcon name="i-lucide-plus" class="h-3 w-3" />
-        Nouveau modèle
-      </button>
-    </div>
+    <UiTemplateSelectCreateLink v-if="showCreateTop" wrapper-class="mb-1.5" @click="emit('create')" />
 
     <div class="relative">
       <select :value="modelValue ?? 0" class="input-field appearance-none pr-9" @change="onChange">
@@ -29,31 +19,20 @@
       <span class="truncate italic">Objet : {{ selected.subject }}</span>
     </p>
 
-    <!-- Create button (bottom) -->
-    <div v-if="showCreateBottom" class="mt-1.5 flex justify-end">
-      <button
-        type="button"
-        class="flex items-center gap-1 text-[11px] font-medium text-[var(--app-ink-soft)] transition-colors hover:text-[var(--app-ink)]"
-        @click="emit('create')"
-      >
-        <UIcon name="i-lucide-plus" class="h-3 w-3" />
-        Nouveau modèle
-      </button>
-    </div>
+    <UiTemplateSelectCreateLink v-if="showCreateBottom" wrapper-class="mt-1.5" @click="emit('create')" />
   </div>
 </template>
 
 <script lang="ts" setup>
 import type { ComputedRef, PropType } from 'vue'
+import { computed } from 'vue'
 import type {
   TemplateSelectCreateButtonPosition,
   TemplateSelectOption,
   TemplateSelectProps,
 } from '~/types/TemplateSelect'
 
-/**
- * Defines the component props.
- */
+/** Email template picker with optional inline create action. */
 const props: TemplateSelectProps = defineProps({
   modelValue: {
     type: Number as PropType<number | null>,
@@ -85,12 +64,13 @@ const selected: ComputedRef<TemplateSelectOption | undefined> = computed((): Tem
 )
 
 const showCreateTop: ComputedRef<boolean> = computed(
-  (): boolean => props.allowCreate && (props.createButtonPosition === 'top' || props.createButtonPosition === 'both'),
+  (): boolean =>
+    Boolean(props.allowCreate) && (props.createButtonPosition === 'top' || props.createButtonPosition === 'both'),
 )
 
 const showCreateBottom: ComputedRef<boolean> = computed(
   (): boolean =>
-    props.allowCreate && (props.createButtonPosition === 'bottom' || props.createButtonPosition === 'both'),
+    Boolean(props.allowCreate) && (props.createButtonPosition === 'bottom' || props.createButtonPosition === 'both'),
 )
 
 /**

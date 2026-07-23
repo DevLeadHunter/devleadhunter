@@ -1,9 +1,6 @@
 import type { Prospect } from '~/types'
 
-/**
- * JSON import/export helpers for prospects (client side only — the JSON file
- * is the exchange format between DevLeadHunter and the outside world).
- */
+/** JSON import/export helpers for prospects (client-side exchange format). */
 
 /** Shape of one prospect inside an import/export JSON file. */
 export type ProspectJsonItem = {
@@ -101,7 +98,7 @@ function cleanString(value: unknown): string {
  * validation are reported, valid rows are returned normalised.
  * @param text - Raw file content.
  * @returns Valid items + per-row error messages.
- * @throws {Error} When the file is not valid JSON or not an array.
+ * @throws When the file is not valid JSON or not an array.
  */
 export function parseProspectsJson(text: string): ProspectJsonParseResult {
   let raw: unknown

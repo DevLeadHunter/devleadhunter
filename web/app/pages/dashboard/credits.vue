@@ -1,6 +1,5 @@
 <template>
   <div>
-    <!-- Header -->
     <div class="mb-6 flex items-center justify-between">
       <h1 class="text-xl font-semibold text-[var(--app-ink)]">Mes crédits</h1>
       <NuxtLink
@@ -12,7 +11,6 @@
       </NuxtLink>
     </div>
 
-    <!-- Loading State -->
     <div v-if="isLoading" class="space-y-6">
       <div class="card">
         <div class="animate-pulse space-y-4">
@@ -22,9 +20,7 @@
       </div>
     </div>
 
-    <!-- Content -->
     <div v-else class="space-y-6">
-      <!-- Credit Usage Progress Bar -->
       <div class="card">
         <div class="mb-4 flex items-center justify-between">
           <h2 class="text-lg font-semibold text-[var(--app-ink)]">Consommation de crédits</h2>
@@ -35,26 +31,22 @@
 
         <p class="mb-4 text-xs text-[var(--app-ink-soft)]">Mis à jour le {{ lastUpdated }}</p>
 
-        <!-- Progress Bar Container -->
         <div ref="progressBarRef" class="relative">
           <div
             class="relative h-8 cursor-pointer overflow-hidden rounded-lg border border-[var(--app-line)] bg-[var(--app-bg)]"
             @mouseenter="handleTooltipEnter"
             @mouseleave="handleTooltipLeave"
           >
-            <!-- Credits Used -->
             <div
               :style="{ width: `${usedPercentage}%` }"
               class="absolute top-0 left-0 h-full bg-[var(--app-accent-ink)] transition-all duration-300"
             ></div>
 
-            <!-- Credits Remaining -->
             <div
               :style="{ width: `${remainingPercentage}%`, left: `${usedPercentage}%` }"
               class="absolute top-0 h-full bg-[var(--app-surface-2)] transition-all duration-300"
             ></div>
 
-            <!-- Labels on Progress Bar -->
             <div class="relative flex h-full items-center px-3 text-xs font-medium">
               <span class="text-[var(--app-ink)]">{{ creditsUsed }}</span>
               <span class="ml-auto text-[var(--app-ink)]">
@@ -63,7 +55,6 @@
             </div>
           </div>
 
-          <!-- Tooltip Qonto Style - Using Teleport to render in body -->
           <Teleport to="body">
             <div
               v-if="showProgressTooltip && usedPercentage > 0 && tooltipPosition"
@@ -76,15 +67,12 @@
               class="pointer-events-none z-[100] w-72 rounded-lg border border-[var(--app-line)] bg-[var(--app-surface)] p-4 shadow-lg"
               style="box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3)"
             >
-              <!-- Header -->
               <div class="mb-3 flex items-center justify-between border-b border-[var(--app-line)] pb-2">
                 <span class="text-sm font-medium text-[var(--app-ink)]">Consommation</span>
                 <span class="text-xs text-[var(--app-ink-soft)]">État actuel</span>
               </div>
 
-              <!-- Data Rows -->
               <div class="mb-2.5 space-y-2.5">
-                <!-- Credits Used -->
                 <div class="flex items-center justify-between">
                   <div class="flex items-center gap-2">
                     <div class="h-3 w-3 flex-shrink-0 rounded bg-[var(--app-accent-ink)]"></div>
@@ -93,7 +81,6 @@
                   <span class="text-sm font-medium text-[var(--app-ink)]">{{ creditsUsed }}</span>
                 </div>
 
-                <!-- Credits Remaining -->
                 <div class="flex items-center justify-between">
                   <div class="flex items-center gap-2">
                     <div class="h-3 w-3 flex-shrink-0 rounded bg-[var(--app-surface-2)]"></div>
@@ -103,10 +90,8 @@
                 </div>
               </div>
 
-              <!-- Separator -->
               <div class="my-2.5 border-t border-[var(--app-line)]"></div>
 
-              <!-- Total Variation -->
               <div class="flex items-center justify-between">
                 <span class="text-sm text-[var(--app-ink-soft)]">Total des crédits</span>
                 <span class="text-sm font-medium text-[var(--app-green)]">{{ totalCredits }}</span>
@@ -114,7 +99,6 @@
             </div>
           </Teleport>
 
-          <!-- Alternative tooltip when no credits used - Using Teleport -->
           <Teleport to="body">
             <div
               v-if="showProgressTooltip && usedPercentage === 0 && tooltipPosition"
@@ -127,15 +111,12 @@
               class="pointer-events-none z-[100] w-72 rounded-lg border border-[var(--app-line)] bg-[var(--app-surface)] p-4 shadow-lg"
               style="box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3)"
             >
-              <!-- Header -->
               <div class="mb-3 flex items-center justify-between border-b border-[var(--app-line)] pb-2">
                 <span class="text-sm font-medium text-[var(--app-ink)]">Consommation</span>
                 <span class="text-xs text-[var(--app-ink-soft)]">État actuel</span>
               </div>
 
-              <!-- Data Rows -->
               <div class="mb-2.5 space-y-2.5">
-                <!-- Credits Remaining -->
                 <div class="flex items-center justify-between">
                   <div class="flex items-center gap-2">
                     <div class="h-3 w-3 flex-shrink-0 rounded bg-[var(--app-surface-2)]"></div>
@@ -144,7 +125,6 @@
                   <span class="text-sm font-medium text-[var(--app-ink-soft)]">{{ creditsRemaining }}</span>
                 </div>
 
-                <!-- Credits Used -->
                 <div class="flex items-center justify-between">
                   <div class="flex items-center gap-2">
                     <div class="h-3 w-3 flex-shrink-0 rounded bg-[var(--app-accent-ink)] opacity-50"></div>
@@ -154,10 +134,8 @@
                 </div>
               </div>
 
-              <!-- Separator -->
               <div class="my-2.5 border-t border-[var(--app-line)]"></div>
 
-              <!-- Total Variation -->
               <div class="flex items-center justify-between">
                 <span class="text-sm text-[var(--app-ink-soft)]">Total des crédits</span>
                 <span class="text-sm font-medium text-[var(--app-green)]">{{ totalCredits }}</span>
@@ -167,7 +145,6 @@
         </div>
       </div>
 
-      <!-- Daily Usage Chart -->
       <div class="card">
         <h2 class="mb-4 text-lg font-semibold text-[var(--app-ink)]">Consommation quotidienne</h2>
         <div v-if="chartData && chartData.labels && chartData.labels.length > 0" class="h-64">
@@ -178,7 +155,6 @@
         </div>
       </div>
 
-      <!-- Recent Credit Usage List -->
       <div class="card">
         <h2 class="mb-4 text-lg font-semibold text-[var(--app-ink)]">Activité récente</h2>
         <div v-if="recentTransactions.length > 0" class="space-y-0">
@@ -212,7 +188,6 @@
         </div>
       </div>
 
-      <!-- CTA Section -->
       <div class="card border-[var(--app-line)] bg-gradient-to-r from-[var(--app-surface)] to-[var(--app-bg)]">
         <div class="flex flex-col items-center justify-between gap-4 md:flex-row">
           <div>
@@ -228,12 +203,12 @@
   </div>
 </template>
 
-<script setup lang="ts">
+<script lang="ts" setup>
 import type { CreditTransaction } from '~/types'
 import type { Ref } from 'vue'
 import { ref, computed, onMounted, onBeforeUnmount, watch, nextTick } from 'vue'
 import { Chart, type ChartConfiguration, type TooltipItem } from 'chart.js'
-import * as creditTransactionService from '~/services/creditTransactionService'
+import { CreditTransactionService } from '~/services/creditTransactionService'
 import { useUserStore } from '~/stores/user'
 
 /**
@@ -421,6 +396,7 @@ const lastUpdated = computed(() => {
     })
   }
   const lastTransaction = transactions.value[0]
+  if (!lastTransaction) return ''
   return new Date(lastTransaction.created_at).toLocaleDateString('fr-FR', {
     year: 'numeric',
     month: 'short',
@@ -629,7 +605,7 @@ const formatTransactionDate = (dateString: string): string => {
 const loadTransactions = async (): Promise<void> => {
   try {
     isLoading.value = true
-    const data = await creditTransactionService.getMyTransactions(0, 1000)
+    const data = await CreditTransactionService.getMyTransactions(0, 1000)
     transactions.value = data
   } catch (error) {
     console.error('Failed to load transactions:', error)
@@ -658,7 +634,7 @@ const initChart = (): void => {
   const config: ChartConfiguration<'bar'> = {
     type: 'bar',
     data: chartData.value,
-    options: chartOptions,
+    options: chartOptions as ChartConfiguration<'bar'>['options'],
   }
 
   try {

@@ -82,7 +82,7 @@ export function getCaretCoordinates(
       style.lineHeight = computed.height
     } else {
       // Index via a loose cast — CSSStyleDeclaration has no string index signature.
-      ;(style as unknown as Record<string, string>)[prop] = (computed as unknown as Record<string, string>)[prop]
+      ;(style as unknown as Record<string, string>)[prop] = (computed as unknown as Record<string, string>)[prop] ?? ''
     }
   }
 

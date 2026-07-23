@@ -36,9 +36,7 @@ import type { UiTeleprompterProps, UiTeleprompterVariant } from '~/types/UiTelep
 import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import { estimateBeatSeconds, splitIntoBeats } from '~/composables/useProspectionScript'
 
-/**
- * Defines the component props.
- */
+/** Beat-by-beat teleprompter for video takes; `overlay` superposes the camera preview. */
 const props: UiTeleprompterProps = defineProps({
   text: {
     type: String,

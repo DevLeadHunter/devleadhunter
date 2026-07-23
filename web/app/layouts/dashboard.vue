@@ -8,15 +8,12 @@
       <div class="loader-smooth"></div>
     </div>
     <div v-else class="flex h-screen w-full" :style="{ backgroundColor: 'var(--app-bg)' }">
-      <!-- Sidebar -->
       <UiSidebar :is-open="isSidebarOpen" :is-mobile="isMobile" @toggle="toggleSidebar" />
 
-      <!-- Main Content — pushed left when a drawer is open (nothing gets hidden) -->
       <div
         class="ml-0 flex flex-1 flex-col overflow-hidden transition-[margin] duration-200 md:ml-64"
         :class="drawerPushClass"
       >
-        <!-- Mobile Header -->
         <header class="sticky top-0 z-10 border-b border-[var(--app-line)] bg-[var(--app-surface)] px-4 py-3 md:hidden">
           <div v-if="showCreditsPopover && isMobile" class="fixed inset-0 z-40" @click="handleClickOutside"></div>
           <div class="flex items-center justify-between">
@@ -30,7 +27,7 @@
             <span class="font-display text-base font-semibold tracking-tight text-[var(--app-ink)]">
               devleadhunter
             </span>
-            <!-- Mobile credits pill -->
+
             <div class="relative z-50">
               <button
                 class="flex items-center gap-2 rounded-full border border-[var(--app-line)] bg-[var(--app-surface)] px-3 py-1.5"
@@ -39,7 +36,7 @@
                 <span class="h-2 w-2 rounded-full" :style="{ backgroundColor: creditDotColor }"></span>
                 <span class="font-label text-xs font-medium text-[var(--app-ink)]">{{ creditIconValue }}</span>
               </button>
-              <!-- Mobile Popover -->
+
               <div
                 v-if="showCreditsPopover && isMobile"
                 class="app-card absolute top-11 right-0 z-50 w-72 p-4 shadow-[var(--app-shadow-soft)]"
@@ -64,24 +61,19 @@
           </div>
         </header>
 
-        <!-- Page Content — clip horizontal overflow so the body never scrolls
-             sideways; wide content (tables) scrolls inside its own container. -->
         <main class="flex-1 scroll-pb-28 overflow-x-hidden overflow-y-auto px-4 py-5 md:px-6 md:py-6">
           <slot />
         </main>
       </div>
 
-      <!-- Persistent drawer stack — rendered once here so open drawers
-           survive page navigation. -->
       <UiDrawerStackHost />
 
-      <!-- Global command palette (Ctrl+K) -->
       <UiCommandPalette />
     </div>
   </div>
 </template>
 
-<script setup lang="ts">
+<script lang="ts" setup>
 import type { ComputedRef, Ref } from 'vue'
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useUserStore } from '~/stores/user'

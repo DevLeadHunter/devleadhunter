@@ -5,8 +5,6 @@ export type UiCalloutVariant = 'info' | 'warning' | 'success' | 'neutral'
  * Props of the UiCallout component.
  */
 export type UiCalloutProps = {
-  /** Semantic colour family. */
   variant?: UiCalloutVariant
-  /** Override the default lucide icon of the variant. */
   icon?: string
 }

@@ -46,16 +46,14 @@ import { ref, watch } from 'vue'
 import { useDebounceFn } from '@vueuse/core'
 import type { BusinessSearchInputExpose, BusinessSearchInputProps } from '~/types/BusinessSearchInput'
 import type { ProspectSearchSuggestion } from '~/types'
-import { searchProspectSuggestions } from '~/services/prospectsService'
+import { ProspectsService } from '~/services/prospectsService'
 
 const minQueryLength: number = 3
 const debounceDelayMs: number = 500
 const maxResults: number = 8
 const blurCloseDelayMs: number = 150
 
-/**
- * Définit les props du composant BusinessSearchInput.
- */
+/** Business name search input with Google Maps autosuggest. */
 const props: BusinessSearchInputProps = defineProps({
   city: {
     type: String,
@@ -92,7 +90,7 @@ const fetchSuggestions = useDebounceFn(async (query: string): Promise<void> => {
   isOpen.value = true
 
   try {
-    const results: ProspectSearchSuggestion[] = await searchProspectSuggestions({
+    const results: ProspectSearchSuggestion[] = await ProspectsService.searchProspectSuggestions({
       query: trimmedQuery,
       city: props.city?.trim() || undefined,
       max_results: maxResults,

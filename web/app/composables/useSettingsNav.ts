@@ -12,9 +12,7 @@ export type SettingsNav = {
 }
 
 /**
- * State and helpers for the Paramètres sub-panel (replaces the main sidebar menu).
- * Auto-opens when navigating onto any settings route.
- *
+ * Paramètres sub-panel state; auto-opens on settings routes.
  * @returns Panel state, admin-filtered groups, and route helpers.
  */
 export function useSettingsNav(): SettingsNav {
@@ -22,7 +20,7 @@ export function useSettingsNav(): SettingsNav {
   const userStore = useUserStore()
 
   const isAdmin: ComputedRef<boolean> = computed((): boolean => userStore.user?.role === 'ADMIN')
-  const showSettingsPanel: Ref<boolean> = useState<boolean>('settings-nav-open', (): boolean => false)
+  const showSettingsPanel: Ref<boolean> = useState('settings-nav-open', (): boolean => false)
 
   const settingsGroups: ComputedRef<SettingsNavGroup[]> = computed((): SettingsNavGroup[] =>
     SETTINGS_NAV_GROUPS.filter((group: SettingsNavGroup): boolean => !group.adminOnly || isAdmin.value)
@@ -43,7 +41,6 @@ export function useSettingsNav(): SettingsNav {
 
   /**
    * Whether a route path matches the current route (exact or nested).
-   *
    * @param path - Route path to test.
    * @returns True when the current route is at or under `path`.
    */
@@ -63,19 +60,18 @@ export function useSettingsNav(): SettingsNav {
     { immediate: true },
   )
 
-  /** Open the settings sub-panel (replaces the main menu). */
+  /** Show the settings sub-panel instead of the main menu. */
   function openSettingsPanel(): void {
     showSettingsPanel.value = true
   }
 
-  /** Collapse the settings sub-panel back to the main menu. */
+  /** Return to the main sidebar menu. */
   function closeSettingsPanel(): void {
     showSettingsPanel.value = false
   }
 
   /**
    * Whether a sub-panel link matches the current route.
-   *
    * @param path - Link route path.
    * @returns True when the link is active.
    */

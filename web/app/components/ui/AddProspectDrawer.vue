@@ -1,13 +1,10 @@
 <template>
   <Teleport to="body">
-    <!-- Pas de backdrop : drawer non-modal (navigation possible pendant qu'il
-         est ouvert), fermeture par X / Échap. -->
     <Transition name="drawer-panel">
       <div
         v-if="open"
         class="fixed top-0 right-0 z-50 flex h-dvh w-full max-w-[480px] flex-col border-l border-[var(--app-line)] bg-[var(--app-surface)] shadow-2xl"
       >
-        <!-- ───────────────────────── Header ───────────────────────── -->
         <div class="flex items-start gap-3 border-b border-[var(--app-line)] px-5 py-4">
           <button
             v-if="showBack"
@@ -39,9 +36,7 @@
           </button>
         </div>
 
-        <!-- ───────────────────────── Body ────────────────────────── -->
         <div class="flex-1 space-y-5 overflow-y-auto px-5 py-4">
-          <!-- Étape 1 — pré-remplissage Google (optionnel) -->
           <div class="space-y-3">
             <p class="text-[10px] font-semibold tracking-wider text-[var(--app-ink-soft)] uppercase">
               1 · Pré-remplir depuis Google (optionnel)
@@ -89,7 +84,6 @@
             </p>
           </div>
 
-          <!-- Étape 2 — informations du prospect -->
           <form
             id="add-prospect-form"
             class="space-y-3 border-t border-[var(--app-line-soft)] pt-4"
@@ -124,7 +118,7 @@
             <div class="grid grid-cols-2 gap-3">
               <div>
                 <label class="text-muted mb-1.5 block text-xs font-medium" for="draft-city-input">Ville</label>
-                <UiCityAutocompleteInput v-model="prospectDraft.city" input-id="draft-city-input" />
+                <UiCityAutocompleteInput v-model="draftCity" input-id="draft-city-input" />
               </div>
               <div>
                 <label class="text-muted mb-1.5 block text-xs font-medium" for="draft-phone">Téléphone</label>
@@ -148,7 +142,6 @@
           </form>
         </div>
 
-        <!-- ───────────────────────── Footer ─────────────────────── -->
         <div class="flex gap-2 border-t border-[var(--app-line)] px-5 py-4">
           <button type="button" class="btn-secondary flex-1" :disabled="isCreatingProspect" @click="emit('close')">
             Annuler
@@ -173,20 +166,19 @@ import type { ComputedRef, Ref } from 'vue'
 import { computed, ref, watch } from 'vue'
 import type { Prospect, ProspectCreatePayload, ProspectSearchSuggestion } from '~/types'
 import type { BusinessSearchInputExpose } from '~/types/BusinessSearchInput'
-import { createProspect, enrichProspect } from '~/services/prospectsService'
+import type { UiDrawerProps } from '~/types/UiDrawer'
+import { ProspectsService } from '~/services/prospectsService'
 import { useToast } from '~/composables/useToast'
 
 /** Local shape of the Google prefill form. */
-interface AddProspectPrefillForm {
+type AddProspectPrefillForm = {
   business_name: string
   google_maps_url: string
   city: string
 }
 
-/**
- * Defines the component props.
- */
-const props = defineProps({
+/** Drawer to add a prospect manually. */
+const props: UiDrawerProps = defineProps({
   open: {
     type: Boolean,
     required: true,
@@ -218,6 +210,14 @@ const addForm: Ref<AddProspectPrefillForm> = ref({
   city: '',
 })
 const prospectDraft: Ref<ProspectCreatePayload> = ref(createEmptyProspectDraft())
+
+/** The city field is nullable on the payload but the autocomplete binds a plain string. */
+const draftCity: WritableComputedRef<string> = computed({
+  get: (): string => prospectDraft.value.city ?? '',
+  set: (value: string): void => {
+    prospectDraft.value.city = value
+  },
+})
 
 /** Whether the Google prefill can run (name or Maps link present). */
 const canEnrichProspect: ComputedRef<boolean> = computed((): boolean => {
@@ -268,7 +268,7 @@ async function handleEnrichProspect(): Promise<void> {
   isEnriching.value = true
   enrichError.value = null
   try {
-    const result = await enrichProspect({
+    const result = await ProspectsService.enrichProspect({
       business_name: addForm.value.business_name.trim() || undefined,
       google_maps_url: addForm.value.google_maps_url.trim() || undefined,
       city: addForm.value.city.trim() || undefined,
@@ -299,7 +299,7 @@ async function handleCreateProspect(): Promise<void> {
   isCreatingProspect.value = true
   enrichError.value = null
   try {
-    const created: Prospect = await createProspect({
+    const created: Prospect = await ProspectsService.createProspect({
       name: prospectDraft.value.name.trim(),
       address: prospectDraft.value.address?.trim() || null,
       city: prospectDraft.value.city?.trim() || null,

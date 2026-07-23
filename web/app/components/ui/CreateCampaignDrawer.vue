@@ -1,13 +1,10 @@
 <template>
   <Teleport to="body">
-    <!-- Pas de backdrop : drawer non-modal (navigation possible pendant qu'il
-         est ouvert), fermeture par X / Échap. -->
     <Transition name="drawer-panel">
       <div
         v-if="open"
         class="fixed top-0 right-0 z-50 flex h-dvh w-full max-w-[480px] flex-col border-l border-[var(--app-line)] bg-[var(--app-surface)] shadow-2xl"
       >
-        <!-- ───────────────────────── Header ───────────────────────── -->
         <div class="flex items-start gap-3 border-b border-[var(--app-line)] px-5 py-4">
           <button
             v-if="showBack"
@@ -39,7 +36,6 @@
           </button>
         </div>
 
-        <!-- ───────────────────────── Body ────────────────────────── -->
         <form
           id="create-campaign-form"
           class="flex-1 space-y-5 overflow-y-auto px-5 py-4"
@@ -71,11 +67,9 @@
             ></textarea>
           </div>
 
-          <!-- ── Modèles d'email ─────────────────────────────────── -->
           <div class="space-y-3">
             <p class="text-muted text-[11px] font-medium tracking-wide uppercase">Modèles d'email</p>
 
-            <!-- Variante A -->
             <div>
               <label class="text-muted mb-1.5 block text-xs font-medium">
                 Variante A
@@ -95,7 +89,6 @@
               />
             </div>
 
-            <!-- Variante B -->
             <div>
               <label class="text-muted mb-1.5 block text-xs font-medium">
                 Variante B
@@ -117,7 +110,6 @@
           </div>
         </form>
 
-        <!-- ───────────────────────── Footer ─────────────────────── -->
         <div class="flex gap-2 border-t border-[var(--app-line)] px-5 py-4">
           <button type="button" class="btn-secondary flex-1" :disabled="isCreating" @click="emit('close')">
             Annuler
@@ -141,13 +133,13 @@
 import type { Ref } from 'vue'
 import { ref, watch } from 'vue'
 import type { EmailTemplate } from '~/types'
+import type { UiDrawerProps } from '~/types/UiDrawer'
 import { useCampaignsStore } from '~/stores/campaigns'
 import { useDrawerStackStore } from '~/stores/drawerStack'
 import { useToast } from '~/composables/useToast'
-import { getEmailTemplates } from '~/services/emailTemplatesService'
-
+import { EmailTemplatesService } from '~/services/emailTemplatesService'
 /** Local shape of the campaign creation form. */
-interface CreateCampaignForm {
+type CreateCampaignForm = {
   name: string
   description: string
   /** Template ID for variant A (0 = none selected). */
@@ -156,10 +148,8 @@ interface CreateCampaignForm {
   templateIdB: number
 }
 
-/**
- * Defines the component props.
- */
-const props = defineProps({
+/** Drawer to create an email campaign. */
+const props: UiDrawerProps = defineProps({
   open: {
     type: Boolean,
     required: true,
@@ -215,7 +205,7 @@ let stackLengthWhenHidden: number = 0
 async function loadTemplates(): Promise<void> {
   isLoadingTemplates.value = true
   try {
-    templates.value = await getEmailTemplates()
+    templates.value = await EmailTemplatesService.getEmailTemplates()
   } catch {
     // Non-critical — the selects will remain empty.
   } finally {

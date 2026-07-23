@@ -1,12 +1,10 @@
 <template>
   <div class="space-y-6">
-    <!-- Loading -->
     <div v-if="isLoading" class="flex items-center justify-center py-20">
       <UIcon name="i-lucide-loader-circle" class="h-8 w-8 animate-spin text-[var(--app-ink-soft)]" />
     </div>
 
     <template v-else-if="campaign">
-      <!-- ─── Header ──────────────────────────────────────────────────────── -->
       <div class="flex flex-wrap items-start justify-between gap-4">
         <div class="flex min-w-0 items-center gap-3">
           <button
@@ -76,7 +74,6 @@
         </div>
       </div>
 
-      <!-- ─── Stats strip ─────────────────────────────────────────────────── -->
       <div v-if="stats" class="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
         <div
           v-for="m in metricCards"
@@ -91,7 +88,6 @@
         </div>
       </div>
 
-      <!-- ─── Tabs ────────────────────────────────────────────────────────── -->
       <div class="border-b border-[var(--app-line)]">
         <nav class="flex gap-1">
           <button
@@ -117,9 +113,7 @@
         </nav>
       </div>
 
-      <!-- ═══ Tab: Configuration ══════════════════════════════════════════ -->
       <div v-if="activeTab === 'config'" class="space-y-4">
-        <!-- Cadence -->
         <section class="rounded-xl border border-[var(--app-line)] bg-[var(--app-surface)] p-5">
           <div class="mb-4 flex items-center gap-2">
             <UIcon name="i-lucide-timer" class="h-4 w-4 text-[var(--app-accent-ink)]" />
@@ -141,7 +135,6 @@
           </p>
         </section>
 
-        <!-- Templates -->
         <section class="rounded-xl border border-[var(--app-line)] bg-[var(--app-surface)] p-5">
           <div class="mb-4 flex items-center justify-between">
             <div class="flex items-center gap-2">
@@ -210,7 +203,6 @@
           </div>
         </section>
 
-        <!-- Follow-ups -->
         <section class="rounded-xl border border-[var(--app-line)] bg-[var(--app-surface)] p-5">
           <div class="mb-4 flex items-center justify-between">
             <div class="flex items-center gap-2">
@@ -274,7 +266,6 @@
             </div>
           </div>
 
-          <!-- Behaviour-personalised follow-ups (additive) -->
           <label
             class="mt-4 flex cursor-pointer items-start gap-3 rounded-lg border border-[var(--app-line)] bg-[var(--app-surface)] p-3"
           >
@@ -303,7 +294,6 @@
         </div>
       </div>
 
-      <!-- ═══ Tab: A/B ════════════════════════════════════════════════════ -->
       <div v-if="activeTab === 'ab'" class="space-y-4">
         <div
           v-if="!campaign.ab_template_id_b"
@@ -410,7 +400,6 @@
         </template>
       </div>
 
-      <!-- ═══ Tab: Prospects ══════════════════════════════════════════════ -->
       <div v-if="activeTab === 'prospects'" class="space-y-4">
         <div class="flex items-center justify-between">
           <p class="text-muted text-sm">
@@ -482,7 +471,6 @@
         </div>
       </div>
 
-      <!-- ═══ Tab: Queue ══════════════════════════════════════════════════ -->
       <div v-if="activeTab === 'queue'" class="space-y-4">
         <div class="flex items-center justify-between">
           <p class="text-muted text-sm">
@@ -561,9 +549,6 @@
       </div>
     </template>
 
-    <!-- ─── Modals ──────────────────────────────────────────────────────── -->
-
-    <!-- Edit -->
     <div
       v-if="showEditModal"
       class="fixed inset-0 z-50 flex items-center justify-center bg-[var(--app-overlay)] backdrop-blur-sm"
@@ -588,7 +573,6 @@
       </div>
     </div>
 
-    <!-- Add prospects -->
     <div
       v-if="showAddProspectsModal"
       class="fixed inset-0 z-50 flex items-center justify-center bg-[var(--app-overlay)] backdrop-blur-sm"
@@ -656,38 +640,28 @@
 import { computed, onMounted, ref, watch } from 'vue'
 import type { ComputedRef, Ref } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
-import {
-  campaignService,
-  type CampaignDetailResponse,
-  type CampaignQueueResponse,
-  type CampaignStats,
-} from '~/services/campaignService'
-import { listProspects } from '~/services/prospectsService'
-import { api } from '~/services/api'
+import type { CampaignDetailResponse, CampaignQueueResponse, CampaignStats } from '~/services/campaignService'
+import { CampaignService } from '~/services/campaignService'
+import { ProspectsService } from '~/services/prospectsService'
+import { ApiClient } from '~/services/api'
 import type { Prospect, CampaignVariantStats } from '~/types'
 import { formatDate } from '~/utils/date'
 import { useToast } from '~/composables/useToast'
 
 definePageMeta({ layout: 'dashboard', middleware: 'auth' })
 
-// ─── Types ──────────────────────────────────────────────────────────────────
-
 /** Lightweight template shape used by the selects. */
-interface TemplateOption {
+type TemplateOption = {
   id: number
   name: string
   subject: string
 }
 
-// ─── Composables ──────────────────────────────────────────────────────────────
-
 const router = useRouter()
 const route = useRoute()
 const toast = useToast()
 
-// ─── Constants ────────────────────────────────────────────────────────────────
-
-const TABS: ReadonlyArray<{ key: string; label: string; icon: string }> = [
+const TABS: { key: string; label: string; icon: string }[] = [
   { key: 'config', label: 'Configuration', icon: 'i-lucide-settings-2' },
   { key: 'ab', label: 'A/B Test', icon: 'i-lucide-flask-conical' },
   { key: 'prospects', label: 'Prospects', icon: 'i-lucide-users' },
@@ -730,8 +704,6 @@ const QUEUE_STATUS_STYLE: Record<string, string> = {
   failed: 'bg-[var(--app-red-soft)] text-[var(--app-red)]',
 }
 
-// ─── State ────────────────────────────────────────────────────────────────────
-
 const campaign: Ref<CampaignDetailResponse | null> = ref(null)
 const stats: Ref<CampaignStats | null> = ref(null)
 const queueData: Ref<CampaignQueueResponse | null> = ref(null)
@@ -765,9 +737,9 @@ const settingsForm: Ref<{
   follow_ups: [],
 })
 
-const campaignId: ComputedRef<number> = computed((): number => Number(route.params.id))
+const { openCreate } = useEmailTemplateCreator(templates, reloadTemplates)
 
-// ─── Computed ─────────────────────────────────────────────────────────────────
+const campaignId: ComputedRef<number> = computed((): number => Number(route.params.id))
 
 const availableProspects: ComputedRef<Prospect[]> = computed((): Prospect[] => {
   if (!campaign.value) return []
@@ -798,15 +770,15 @@ const metricCards: ComputedRef<Array<{ label: string; value: number | string; ic
   })
 
 const hasSignificantDiff: ComputedRef<boolean> = computed((): boolean => {
-  const ab = stats.value?.ab_stats
-  if (!ab || ab.length < 2) return false
-  return Math.abs(ab[0].open_rate - ab[1].open_rate) >= 10
+  const [first, second] = stats.value?.ab_stats ?? []
+  if (!first || !second) return false
+  return Math.abs(first.open_rate - second.open_rate) >= 10
 })
 
 const winnerMessage: ComputedRef<string> = computed((): string => {
-  const ab = stats.value?.ab_stats
-  if (!ab || ab.length < 2) return ''
-  const winner = ab[0].open_rate > ab[1].open_rate ? ab[0] : ab[1]
+  const [first, second] = stats.value?.ab_stats ?? []
+  if (!first || !second) return ''
+  const winner = first.open_rate > second.open_rate ? first : second
   return `Variante ${winner.variant} en tête avec ${winner.open_rate}% d'ouverture.`
 })
 
@@ -826,8 +798,6 @@ const settingsDirty: ComputedRef<boolean> = computed((): boolean => {
   )
 })
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
-
 /**
  * Determine if a variant is the open-rate winner (>= 10pp lead).
  * @param v - Variant stats to evaluate.
@@ -840,8 +810,6 @@ function isWinner(v: CampaignVariantStats): boolean {
   )
 }
 
-// ─── Data loading ─────────────────────────────────────────────────────────────
-
 /**
  * Load campaign, stats, queue, prospects and templates in parallel.
  */
@@ -849,11 +817,11 @@ async function loadAll(): Promise<void> {
   isLoading.value = true
   try {
     const [c, s, q, prospects, tpls] = await Promise.all([
-      campaignService.get(campaignId.value),
-      campaignService.getStats(campaignId.value).catch((): null => null),
-      campaignService.getQueue(campaignId.value, { limit: 100 }).catch((): null => null),
-      listProspects(),
-      api.get<TemplateOption[]>('/api/v1/email-templates').catch((): TemplateOption[] => []),
+      CampaignService.get(campaignId.value),
+      CampaignService.getStats(campaignId.value).catch((): null => null),
+      CampaignService.getQueue(campaignId.value, { limit: 100 }).catch((): null => null),
+      ProspectsService.listProspects(),
+      ApiClient.get<TemplateOption[]>('/api/v1/email-templates').catch((): TemplateOption[] => []),
     ])
     campaign.value = c
     stats.value = s
@@ -874,12 +842,9 @@ async function loadAll(): Promise<void> {
  * @returns A promise resolved once the templates are reloaded.
  */
 async function reloadTemplates(): Promise<void> {
-  const tpls = await api.get<TemplateOption[]>('/api/v1/email-templates').catch((): TemplateOption[] => [])
+  const tpls = await ApiClient.get<TemplateOption[]>('/api/v1/email-templates').catch((): TemplateOption[] => [])
   templates.value = Array.isArray(tpls) ? tpls : []
 }
-
-/** Create-a-template flow shared by the config/follow-up selects (opens the drawer, auto-selects). */
-const { openCreate } = useEmailTemplateCreator(templates, reloadTemplates)
 
 /**
  * Mirror persisted campaign config into the editable settings form.
@@ -900,10 +865,8 @@ function syncSettingsForm(c: CampaignDetailResponse): void {
  * Reload only the queue (used by the refresh button and tab switch).
  */
 async function loadQueue(): Promise<void> {
-  queueData.value = await campaignService.getQueue(campaignId.value, { limit: 100 })
+  queueData.value = await CampaignService.getQueue(campaignId.value, { limit: 100 })
 }
-
-// ─── Handlers ─────────────────────────────────────────────────────────────────
 
 /**
  * Persist the settings form to the backend.
@@ -912,7 +875,7 @@ async function saveSettings(): Promise<void> {
   isSavingSettings.value = true
   try {
     const f = settingsForm.value
-    const updated = await campaignService.updateSettings(campaignId.value, {
+    const updated = await CampaignService.updateSettings(campaignId.value, {
       template_id: f.template_id > 0 ? f.template_id : undefined,
       ab_template_id_b: f.enable_ab && f.ab_template_id_b > 0 ? f.ab_template_id_b : undefined,
       disable_ab: !f.enable_ab,
@@ -938,7 +901,7 @@ async function saveSettings(): Promise<void> {
 async function handleLaunch(): Promise<void> {
   try {
     if (settingsDirty.value) await saveSettings()
-    const result = await campaignService.launch(campaignId.value)
+    const result = await CampaignService.launch(campaignId.value)
     toast.success(result.message)
     await loadAll()
   } catch (err: unknown) {
@@ -951,7 +914,7 @@ async function handleLaunch(): Promise<void> {
  */
 async function handlePause(): Promise<void> {
   try {
-    const result = await campaignService.pause(campaignId.value)
+    const result = await CampaignService.pause(campaignId.value)
     toast.success(`Campagne en pause — ${result.cancelled} email(s) annulé(s)`)
     await loadAll()
   } catch {
@@ -964,7 +927,7 @@ async function handlePause(): Promise<void> {
  */
 async function handleResume(): Promise<void> {
   try {
-    const result = await campaignService.resume(campaignId.value)
+    const result = await CampaignService.resume(campaignId.value)
     toast.success(`Campagne reprise — ${result.enqueued} email(s) planifié(s)`)
     await loadAll()
   } catch (err: unknown) {
@@ -977,7 +940,7 @@ async function handleResume(): Promise<void> {
  */
 async function handleUpdateCampaign(): Promise<void> {
   try {
-    const updated = await campaignService.update(campaignId.value, {
+    const updated = await CampaignService.update(campaignId.value, {
       name: editForm.value.name,
       description: editForm.value.description,
     })
@@ -994,7 +957,7 @@ async function handleUpdateCampaign(): Promise<void> {
  */
 async function handleDeleteCampaign(): Promise<void> {
   try {
-    await campaignService.delete(campaignId.value)
+    await CampaignService.delete(campaignId.value)
     toast.success('Campagne supprimée')
     router.push('/dashboard/campaigns')
   } catch {
@@ -1008,7 +971,7 @@ async function handleDeleteCampaign(): Promise<void> {
 async function handleAddProspects(): Promise<void> {
   if (selectedProspectIds.value.length === 0) return
   try {
-    campaign.value = await campaignService.addProspects(campaignId.value, selectedProspectIds.value)
+    campaign.value = await CampaignService.addProspects(campaignId.value, selectedProspectIds.value)
     toast.success(`${selectedProspectIds.value.length} prospect(s) ajouté(s)`)
     selectedProspectIds.value = []
     showAddProspectsModal.value = false
@@ -1032,7 +995,7 @@ function startRemoveProspect(prospectId: number): void {
 async function handleRemoveProspect(): Promise<void> {
   if (!prospectToRemoveId.value) return
   try {
-    campaign.value = await campaignService.removeProspect(campaignId.value, prospectToRemoveId.value)
+    campaign.value = await CampaignService.removeProspect(campaignId.value, prospectToRemoveId.value)
     toast.success('Prospect retiré')
   } catch {
     toast.error('Erreur lors du retrait')
@@ -1072,8 +1035,6 @@ function addFollowUp(): void {
 function removeFollowUp(idx: number): void {
   settingsForm.value.follow_ups.splice(idx, 1)
 }
-
-// ─── Lifecycle ────────────────────────────────────────────────────────────────
 
 onMounted((): void => {
   loadAll()

@@ -36,7 +36,6 @@
               isLockedForMe(prospect) ? 'bg-[var(--app-surface-2)]/40' : 'hover:bg-[var(--app-surface-2)]/60',
             ]"
           >
-            <!-- Row selection (disabled while another member holds the prospect) -->
             <td class="px-4 py-3">
               <input
                 type="checkbox"
@@ -49,7 +48,6 @@
               />
             </td>
 
-            <!-- Name — clickable to open detail drawer (locked rows show a padlock instead) -->
             <td class="px-4 py-3">
               <div
                 v-if="isLockedForMe(prospect)"
@@ -98,7 +96,6 @@
               <span v-else class="text-sm text-[var(--app-faint)]">—</span>
             </td>
 
-            <!-- Website: no website = the amber opportunity, not an error -->
             <td class="px-4 py-3">
               <span v-if="prospect.website" class="app-badge">
                 <UIcon name="i-lucide-circle-check" class="h-3 w-3" />
@@ -110,7 +107,6 @@
               </span>
             </td>
 
-            <!-- Contacted status (read-only — toggle lives in the prospect drawer) -->
             <td class="px-4 py-3">
               <span v-if="prospect.contacted" class="app-badge app-badge--success">
                 <UIcon name="i-lucide-circle-check" class="h-3 w-3" />
@@ -123,7 +119,6 @@
               <UiProspectSourceBadge :source="prospect.source" />
             </td>
 
-            <!-- Delete quick action (revealed on row hover, hidden on locked rows) -->
             <td class="px-4 py-3 text-center">
               <button
                 v-if="!isLockedForMe(prospect)"
@@ -140,7 +135,6 @@
       </table>
     </div>
 
-    <!-- Empty State -->
     <div v-if="prospects.length === 0" class="py-12 text-center">
       <LandingAsterisk class="mb-3 text-3xl text-[var(--app-accent)]" />
       <p class="text-sm text-[var(--app-ink-soft)]">Aucun prospect trouvé.</p>
@@ -148,23 +142,24 @@
   </div>
 </template>
 
-<script setup lang="ts">
-import type { ComputedRef } from 'vue'
+<script lang="ts" setup>
+import type { ComputedRef, PropType } from 'vue'
 import { computed } from 'vue'
 import type { Prospect } from '~/types'
+import type { UiProspectTableProps } from '~/types/UiProspectTable'
 import { useUserStore } from '~/stores/user'
 
-/**
- * Props for the ProspectTable component.
- */
-interface Props {
-  /** Array of prospects to display */
-  prospects: Prospect[]
-  /** Array of selected prospect IDs (as strings) */
-  selectedProspects?: string[]
-}
-
-const props = defineProps<Props>()
+/** Paginated prospect rows with per-row and select-all checkboxes. */
+const props: UiProspectTableProps = defineProps({
+  prospects: {
+    type: Array as PropType<Prospect[]>,
+    required: true,
+  },
+  selectedProspects: {
+    type: Array as PropType<string[]>,
+    default: () => [],
+  },
+})
 
 const emit = defineEmits<{
   /** Row name clicked — open the detail drawer */

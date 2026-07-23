@@ -18,8 +18,22 @@ export default withNuxt(
       prettier: eslintPluginPrettier,
       '@typescript-eslint': eslintPluginTypeScript,
     },
+    settings: {
+      jsdoc: {
+        mode: 'typescript',
+      },
+    },
     rules: {
+      // Types are carried by TypeScript, never by JSDoc tags — these would ask for `@param {string}`.
+      'jsdoc/require-param-type': 'off',
+      'jsdoc/require-returns-type': 'off',
+      'jsdoc/require-throws-type': 'off',
+      'jsdoc/no-undefined-types': 'off',
+      'jsdoc/reject-any-type': 'off',
+      'jsdoc/tag-lines': 'off',
       '@typescript-eslint/no-explicit-any': 'error',
+      // A class of static methods is the house style for a cohesive helper set (see the standards).
+      '@typescript-eslint/no-extraneous-class': 'off',
       '@typescript-eslint/explicit-function-return-type': 'off',
       '@typescript-eslint/typedef': 'off',
       '@typescript-eslint/no-unused-vars': 'off',
@@ -55,54 +69,20 @@ export default withNuxt(
   },
   {
     files: ['**/*.vue'],
-    settings: {
-      jsdoc: {
-        mode: 'typescript',
-      },
-    },
     rules: {
-      'jsdoc/require-jsdoc': [
-        'error',
-        {
-          require: {
-            FunctionDeclaration: true,
-            MethodDefinition: true,
-            ArrowFunctionExpression: false,
-            FunctionExpression: true,
-          },
-        },
-      ],
       'jsdoc/require-param': 'off',
       'jsdoc/require-returns': 'off',
       'jsdoc/require-param-description': 'off',
       'jsdoc/require-returns-description': 'off',
-      'jsdoc/require-param-type': 'off',
-      'jsdoc/require-returns-type': 'off',
-      '@typescript-eslint/explicit-function-return-type': 'off',
-      '@typescript-eslint/typedef': 'off',
     },
   },
   {
     files: ['app/composables/**/*.ts', 'app/services/**/*.ts', 'app/stores/**/*.ts'],
-    settings: {
-      jsdoc: {
-        mode: 'typescript',
-      },
-    },
     rules: {
-      /**
-       * Match GoupixDex policy: English prose + `@param` / `@returns`, types from TypeScript.
-       */
-      'jsdoc/require-param-type': 'off',
-      'jsdoc/require-returns-type': 'off',
-      'jsdoc/require-param-description': 'off',
-      'jsdoc/require-returns': 'off',
-      'jsdoc/no-undefined-types': 'off',
-      'jsdoc/reject-any-type': 'off',
-      'jsdoc/require-throws-type': 'off',
-      'jsdoc/tag-lines': 'off',
-      'jsdoc/check-param-names': 'off',
       'jsdoc/require-param': 'off',
+      'jsdoc/require-returns': 'off',
+      'jsdoc/require-param-description': 'off',
+      'jsdoc/check-param-names': 'off',
     },
   },
   {
@@ -113,8 +93,6 @@ export default withNuxt(
       'jsdoc/require-returns': 'off',
       'jsdoc/require-param-description': 'off',
       'jsdoc/require-returns-description': 'off',
-      'jsdoc/require-param-type': 'off',
-      'jsdoc/require-returns-type': 'off',
     },
   },
   eslintConfigPrettier,

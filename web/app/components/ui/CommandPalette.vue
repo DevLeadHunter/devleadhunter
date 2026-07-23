@@ -7,7 +7,6 @@
         @click.self="close()"
       >
         <div class="app-card w-full max-w-xl overflow-hidden p-0 shadow-[var(--app-shadow-soft)]">
-          <!-- Search input -->
           <div class="flex items-center gap-3 border-b border-[var(--app-line)] px-4 py-3">
             <UIcon name="i-lucide-search" class="h-4 w-4 shrink-0 text-[var(--app-faint)]" />
             <input
@@ -25,7 +24,6 @@
             </span>
           </div>
 
-          <!-- Results -->
           <div ref="resultsContainer" class="max-h-[50vh] overflow-y-auto p-1.5">
             <template v-for="group in visibleGroups" :key="group.key">
               <p class="app-label px-2.5 pt-2.5 pb-1 !text-[0.6rem]">{{ group.heading }}</p>
@@ -54,7 +52,6 @@
             </p>
           </div>
 
-          <!-- Footer hint -->
           <div class="text-muted flex items-center gap-3 border-t border-[var(--app-line)] px-4 py-2 text-[10px]">
             <span>↑↓ naviguer</span>
             <span>Entrée ouvrir</span>
@@ -74,26 +71,25 @@ import type { ComputedRef, Ref } from 'vue'
 import type { CampaignResponse } from '~/services/campaignService'
 import type { Prospect } from '~/types'
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
-import { campaignService } from '~/services/campaignService'
-import { listProspects } from '~/services/prospectsService'
+import { CampaignService } from '~/services/campaignService'
+import { ProspectsService } from '~/services/prospectsService'
 import { useAppTheme } from '~/composables/useAppTheme'
 import { useCommandPalette } from '~/composables/useCommandPalette'
 import { useDrawerStackStore } from '~/stores/drawerStack'
 
 /** One actionable row of the palette. */
-interface PaletteItem {
+type PaletteItem = {
   id: string
   label: string
   icon: string
   meta?: string
-  /** Extra text matched by the search (city, email…). */
   keywords?: string
   run: () => void
   flatIndex: number
 }
 
 /** One displayed group of palette rows. */
-interface PaletteGroup {
+type PaletteGroup = {
   key: string
   heading: string
   items: PaletteItem[]
@@ -116,7 +112,7 @@ const campaigns: Ref<CampaignResponse[]> = ref([])
 const hasLoadedSources: Ref<boolean> = ref(false)
 
 /** Static navigation entries. */
-const PAGES: ReadonlyArray<{ label: string; icon: string; to: string }> = [
+const PAGES: { label: string; icon: string; to: string }[] = [
   { label: 'Tableau de bord', icon: 'i-lucide-layout-dashboard', to: '/dashboard' },
   { label: 'Mes prospects', icon: 'i-lucide-users', to: '/dashboard/my-prospects' },
   { label: 'Carte de prospection', icon: 'i-lucide-map', to: '/dashboard/coverage' },
@@ -331,8 +327,8 @@ async function loadSources(): Promise<void> {
   if (hasLoadedSources.value) return
   hasLoadedSources.value = true
   const [prospectsResult, campaignsResult] = await Promise.all([
-    listProspects().catch((): Prospect[] => []),
-    campaignService.list(0, 200).then(
+    ProspectsService.listProspects().catch((): Prospect[] => []),
+    CampaignService.list(0, 200).then(
       (response: { campaigns: CampaignResponse[] }): CampaignResponse[] => response.campaigns,
       (): CampaignResponse[] => [],
     ),

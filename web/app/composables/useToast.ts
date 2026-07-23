@@ -1,10 +1,6 @@
 import type { Ref } from 'vue'
 
-/**
- * Toast notifications — reactive queue rendered by `UiToastHost` (mounted once
- * in app.vue), styled on the Atelier design tokens (`--app-*`) in both themes.
- * @module composables/useToast
- */
+/** Toast queue shared between `useToast` callers and `UiToastHost`. */
 
 /** Visual family of a toast. */
 export type ToastType = 'success' | 'error' | 'info' | 'warning'
@@ -18,7 +14,7 @@ export type ToastItem = {
   duration: number
 }
 
-interface ToastOptions {
+type ToastOptions = {
   duration?: number
   type?: ToastType
 }
@@ -30,18 +26,12 @@ let nextToastId: number = 1
  * @returns The shared queue state.
  */
 function useToastQueue(): Ref<ToastItem[]> {
-  return useState<ToastItem[]>('app-toasts', (): ToastItem[] => [])
+  return useState('app-toasts', (): ToastItem[] => [])
 }
 
 /**
  * Toast notification API (kept stable: `success` / `error` / `info` / `warning`).
  * @returns Toast methods.
- * @example
- * ```typescript
- * const toast = useToast();
- * toast.success('Opération réussie');
- * toast.error('Une erreur est survenue');
- * ```
  */
 export function useToast() {
   const queue: Ref<ToastItem[]> = useToastQueue()

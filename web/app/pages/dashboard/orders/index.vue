@@ -1,6 +1,5 @@
 <template>
   <div class="space-y-6">
-    <!-- Header -->
     <div class="flex items-center justify-between">
       <div>
         <h1 class="text-3xl font-bold text-[var(--app-ink)]">Ventes</h1>
@@ -16,7 +15,6 @@
       </div>
     </div>
 
-    <!-- Stats -->
     <div class="grid grid-cols-1 gap-6 md:grid-cols-4">
       <div class="card">
         <p class="text-muted text-sm font-medium">Chiffre d'affaires</p>
@@ -36,7 +34,6 @@
       </div>
     </div>
 
-    <!-- Loader / empty / table -->
     <div v-if="isLoading" class="flex items-center justify-center py-12">
       <UIcon name="i-lucide-loader-circle" class="text-muted h-9 w-9 animate-spin" />
     </div>
@@ -109,7 +106,7 @@
 import { ref, onMounted } from 'vue'
 import type { Ref } from 'vue'
 import type { Order, OrderStats } from '~/services/ordersService'
-import { createOrder, getOrderStats, listOrders } from '~/services/ordersService'
+import { OrdersService } from '~/services/ordersService'
 import { useToast } from '~/composables/useToast'
 
 definePageMeta({
@@ -190,7 +187,7 @@ function statusClass(status: string): string {
 async function loadAll(): Promise<void> {
   isLoading.value = true
   try {
-    const [list, s] = await Promise.all([listOrders(), getOrderStats()])
+    const [list, s] = await Promise.all([OrdersService.listOrders(), OrdersService.getOrderStats()])
     orders.value = list.items
     stats.value = s
   } catch (err: unknown) {
@@ -204,7 +201,7 @@ async function loadAll(): Promise<void> {
 async function handleCreate(): Promise<void> {
   isCreating.value = true
   try {
-    const order = await createOrder({ product_type: 'website' })
+    const order = await OrdersService.createOrder({ product_type: 'website' })
     orders.value.unshift(order)
     openDrawer(order)
   } catch (err: unknown) {
@@ -237,7 +234,7 @@ function handleOrderDeleted(orderId: number): void {
 /** Refresh just the stats block. */
 async function refreshStats(): Promise<void> {
   try {
-    stats.value = await getOrderStats()
+    stats.value = await OrdersService.getOrderStats()
   } catch {
     // non-blocking
   }

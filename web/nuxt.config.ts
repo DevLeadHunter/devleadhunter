@@ -160,14 +160,6 @@ export default defineNuxtConfig({
     },
   },
 
-  routeRules: !isDesktopBuild
-    ? {
-        '/dashboard/**': { robots: false },
-        '/login': { robots: false },
-        '/profile': { robots: false },
-      }
-    : undefined,
-
   compatibilityDate: '2024-07-11',
 
   nitro: isDesktopBuild

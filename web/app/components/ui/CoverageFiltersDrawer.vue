@@ -2,13 +2,12 @@
   <Teleport to="body">
     <Transition name="drawer-panel">
       <div
-        v-if="open"
+        v-if="props.open"
         class="fixed top-0 right-0 z-50 flex h-dvh w-full max-w-[460px] flex-col border-l border-[var(--app-line)] bg-[var(--app-surface)] shadow-2xl"
       >
-        <!-- Header -->
         <div class="flex items-start gap-3 border-b border-[var(--app-line)] px-5 py-4">
           <button
-            v-if="showBack"
+            v-if="props.showBack"
             class="flex h-10 w-7 shrink-0 items-center justify-center rounded text-[var(--app-ink-soft)] transition-colors hover:bg-[var(--app-surface-2)] hover:text-[var(--app-ink)]"
             title="Revenir au volet précédent"
             @click="emit('back')"
@@ -32,9 +31,7 @@
           </button>
         </div>
 
-        <!-- Body -->
         <div class="flex-1 space-y-6 overflow-y-auto px-5 py-4">
-          <!-- Trades: search bar with suggestions + selected pills -->
           <section>
             <label for="coverage-trade-search" class="app-label mb-1.5 block">Métiers</label>
             <div class="relative">
@@ -52,7 +49,7 @@
                 @keydown.enter.prevent="pickFirstSuggestion"
                 @keydown.escape="tradeQuery = ''"
               />
-              <!-- Suggestions -->
+
               <ul
                 v-if="tradeSuggestions.length > 0"
                 class="absolute z-10 mt-1 w-full overflow-hidden rounded-lg border border-[var(--app-line)] bg-[var(--app-surface)] shadow-lg"
@@ -70,7 +67,6 @@
               </ul>
             </div>
 
-            <!-- Selected pills -->
             <div class="mt-2.5 flex flex-wrap items-center gap-1.5">
               <button
                 type="button"
@@ -102,7 +98,6 @@
             </div>
           </section>
 
-          <!-- Cities to attack -->
           <section>
             <h3 class="app-label mb-1 flex items-center gap-1.5">
               <UIcon name="i-lucide-crosshair" class="h-3.5 w-3.5 text-[var(--app-accent)]" />
@@ -135,7 +130,6 @@
             </ul>
           </section>
 
-          <!-- Uncovered regions (info only) -->
           <section>
             <h3 class="app-label mb-1.5 flex items-center gap-1.5">
               <UIcon name="i-lucide-flag" class="h-3.5 w-3.5 text-[var(--app-accent)]" />
@@ -160,19 +154,16 @@
   </Teleport>
 </template>
 
-<script setup lang="ts">
+<script lang="ts" setup>
 import type { ComputedRef, Ref } from 'vue'
 import { computed, ref } from 'vue'
 import { normalizeCityName, useCoverageStore } from '~/stores/coverage'
 import { useDrawerStackStore } from '~/stores/drawerStack'
+import type { UiCoverageFiltersDrawerProps } from '~/types/UiCoverageFiltersDrawer'
 import { FRANCE_REGIONS } from '~/utils/franceTerritory'
 
-/**
- * Coverage-map filters drawer: trade search bar with suggestions (scales to
- * many trades), the selected trades as removable pills, the « villes à
- * attaquer » shortcuts and the uncovered regions as plain info.
- */
-defineProps({
+/** Coverage map filters: trades, cities and uncovered regions. */
+const props: UiCoverageFiltersDrawerProps = defineProps({
   open: {
     type: Boolean,
     required: true,

@@ -14,7 +14,6 @@
       </button>
     </div>
 
-    <!-- Source (HTML) view -->
     <textarea
       v-if="showSource"
       v-model="sourceProxy"
@@ -23,7 +22,6 @@
       placeholder="<p>Léo Guillaume — Dibodev</p>"
     ></textarea>
 
-    <!-- Rich (paste-friendly) view -->
     <div
       v-else
       ref="editableRef"

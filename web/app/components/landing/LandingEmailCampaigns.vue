@@ -2,14 +2,12 @@
   <section id="email-campaigns" class="px-5 py-24 md:px-8 md:py-36">
     <div class="mx-auto max-w-6xl">
       <div class="grid items-center gap-14 lg:grid-cols-[1.15fr_1fr] lg:gap-20">
-        <!-- Campaign A/B card -->
         <div v-reveal="{ delay: 150 }" class="order-2 lg:order-1">
           <div class="landing-card landing-tilt mx-auto max-w-md p-6 md:p-7 lg:mx-0">
             <p class="font-label text-[0.65rem] font-medium tracking-[0.18em] text-[#6b6355] uppercase">
               {{ $t('landing.campaigns.card.label') }}
             </p>
 
-            <!-- Variant A — leading -->
             <div class="mt-5 rounded-xl border border-[#e3dccd] bg-[#f6f3ec] p-4">
               <div class="flex items-center justify-between gap-3">
                 <p class="font-label text-[0.65rem] font-medium tracking-[0.14em] text-[#6b6355] uppercase">
@@ -33,7 +31,6 @@
               </p>
             </div>
 
-            <!-- Variant B -->
             <div class="mt-3 rounded-xl border border-[#e3dccd] bg-[#fcfaf5] p-4">
               <p class="font-label text-[0.65rem] font-medium tracking-[0.14em] text-[#6b6355] uppercase">
                 {{ $t('landing.campaigns.card.variantBLabel') }}
@@ -57,7 +54,6 @@
           </div>
         </div>
 
-        <!-- Copy -->
         <div class="order-1 lg:order-2">
           <p v-reveal class="landing-eyebrow">{{ $t('landing.campaigns.eyebrow') }}</p>
           <h2

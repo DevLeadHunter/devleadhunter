@@ -1,18 +1,9 @@
 import type { LoginCredentials, SignupData } from '~/types'
+import { useToast } from '~/composables/useToast'
 
 /**
- * Composable for authentication operations
- * @module composables/useAuth
- */
-
-/**
- * Use authentication composable
- * @returns {object} Authentication methods and state
- * @example
- * ```typescript
- * const { login, signup, logout, isAuthenticated } = useAuth();
- * await login({ email: 'user@example.com', password: 'password' });
- * ```
+ * Auth facade over `useUserStore` — handles navigation and toasts after login/signup/logout.
+ * @returns Store-backed auth actions and reactive session state.
  */
 export function useAuth() {
   const userStore = useUserStore()
@@ -20,9 +11,8 @@ export function useAuth() {
   const toast = useToast()
 
   /**
-   * Handle login
-   * @param {LoginCredentials} credentials - Login credentials
-   * @returns {Promise<void>} Promise that resolves when login is complete
+   * Log in and redirect to the dashboard.
+   * @param credentials - Email and password.
    */
   const login = async (credentials: LoginCredentials): Promise<void> => {
     try {
@@ -35,9 +25,8 @@ export function useAuth() {
   }
 
   /**
-   * Handle signup — a brand new account goes through the setup wizard first.
-   * @param {SignupData} data - Signup data
-   * @returns {Promise<void>} Promise that resolves when signup is complete
+   * Sign up and redirect to the setup wizard.
+   * @param data - Registration fields.
    */
   const signup = async (data: SignupData): Promise<void> => {
     try {
@@ -49,10 +38,7 @@ export function useAuth() {
     }
   }
 
-  /**
-   * Handle logout
-   * @returns {void}
-   */
+  /** Log out, toast, and redirect to the login page. */
   const logout = (): void => {
     userStore.logout()
     toast.success('Logged out successfully')

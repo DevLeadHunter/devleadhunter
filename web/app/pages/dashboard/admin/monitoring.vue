@@ -1,6 +1,5 @@
 <template>
   <div class="space-y-6">
-    <!-- Header -->
     <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
       <div>
         <h1 class="text-xl font-semibold text-[var(--app-ink)]">Monitoring</h1>
@@ -21,7 +20,6 @@
       {{ error }}
     </div>
 
-    <!-- System health -->
     <div v-if="overview" class="grid grid-cols-2 gap-3 sm:grid-cols-4">
       <div class="rounded-lg border border-[var(--app-line)] bg-[var(--app-surface)] px-4 py-3">
         <p class="text-muted text-[10px] tracking-wide uppercase">Base de données</p>
@@ -54,7 +52,6 @@
       </div>
     </div>
 
-    <!-- Per-source health -->
     <section v-if="overview">
       <h2 class="mb-3 text-sm font-semibold text-[var(--app-ink)]">Santé par source</h2>
       <div
@@ -99,7 +96,6 @@
       </div>
     </section>
 
-    <!-- Incidents -->
     <section>
       <h2 class="mb-3 text-sm font-semibold text-[var(--app-ink)]">Journal des exécutions</h2>
       <div class="overflow-x-auto rounded-lg border border-[var(--app-line)]">
@@ -171,7 +167,6 @@
       </div>
     </section>
 
-    <!-- Captured-HTML slide-over -->
     <Teleport to="body">
       <Transition name="drawer-panel">
         <div
@@ -214,7 +209,7 @@ import { computed, onMounted, ref } from 'vue'
 import { useUserStore } from '~/stores/user'
 import { useToast } from '~/composables/useToast'
 import type { MonitoringOverview, ScraperIncident } from '~/services/adminMonitoringService'
-import { getMonitoringOverview, getScraperIncidents, getScraperIncidentHtml } from '~/services/adminMonitoringService'
+import { AdminMonitoringService } from '~/services/adminMonitoringService'
 
 definePageMeta({
   layout: 'dashboard',
@@ -222,7 +217,7 @@ definePageMeta({
 })
 
 /** State of the captured-HTML slide-over. */
-interface HtmlPanelState {
+type HtmlPanelState = {
   open: boolean
   loading: boolean
   source: string
@@ -328,7 +323,10 @@ async function load(): Promise<void> {
   isLoading.value = true
   error.value = null
   try {
-    const [overviewData, incidentsData] = await Promise.all([getMonitoringOverview(), getScraperIncidents(100)])
+    const [overviewData, incidentsData] = await Promise.all([
+      AdminMonitoringService.getMonitoringOverview(),
+      AdminMonitoringService.getScraperIncidents(100),
+    ])
     overview.value = overviewData
     incidents.value = incidentsData.items
   } catch (err) {
@@ -346,7 +344,7 @@ async function load(): Promise<void> {
 async function openHtml(incident: ScraperIncident): Promise<void> {
   htmlPanel.value = { open: true, loading: true, source: incident.source, content: '' }
   try {
-    htmlPanel.value.content = await getScraperIncidentHtml(incident.id)
+    htmlPanel.value.content = await AdminMonitoringService.getScraperIncidentHtml(incident.id)
   } catch (err) {
     htmlPanel.value.content = err instanceof Error ? err.message : 'Impossible de charger le HTML.'
   } finally {

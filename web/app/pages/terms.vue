@@ -2,7 +2,7 @@
   <LandingLegalArticle title-key="legal.terms.title" intro-key="legal.terms.intro" :section-keys="sectionKeys" />
 </template>
 
-<script setup lang="ts">
+<script lang="ts" setup>
 /**
  * Terms of service page — light editorial layout on the marketing theme.
  */

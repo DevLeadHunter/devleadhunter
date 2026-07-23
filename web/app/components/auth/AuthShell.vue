@@ -1,12 +1,9 @@
 <template>
   <div class="landing-theme relative min-h-screen">
-    <!-- Paper grain over the whole page (same treatment as the landing) -->
     <div class="landing-grain"></div>
 
     <div class="flex min-h-screen">
-      <!-- Editorial poster panel (paper, desktop only, right side) -->
       <aside class="relative hidden overflow-hidden lg:order-2 lg:flex lg:flex-1 lg:flex-col">
-        <!-- Monumental asterisk in ceremonial slow spin, sealed behind the words -->
         <span
           class="pointer-events-none absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 select-none"
           aria-hidden="true"
@@ -14,7 +11,6 @@
           <LandingAsterisk class="auth-spin-slow block text-[30rem] text-[#e8a33c]/[0.13] xl:text-[34rem]" />
         </span>
 
-        <!-- Stacked pipeline words, centered like a poster -->
         <div class="relative z-10 flex flex-1 items-center justify-center px-10 pt-8 text-center">
           <div>
             <h2
@@ -40,13 +36,11 @@
           </div>
         </div>
 
-        <!-- Trades ticker — ambient motion, edge to edge -->
         <div class="auth-rise relative z-10 pb-10" :style="{ animationDelay: '650ms' }">
           <LandingTradesTicker />
         </div>
       </aside>
 
-      <!-- Form column (raised paper, left side) -->
       <div class="relative flex w-full flex-col border-[#e3dccd] bg-[#fcfaf5] lg:order-1 lg:w-1/2 lg:border-r">
         <div class="flex items-center justify-between px-6 pt-6 md:px-10">
           <NuxtLink :to="localePath('/')" class="inline-flex items-center gap-2.5" aria-label="DevLeadHunter">
@@ -77,19 +71,13 @@
   </div>
 </template>
 
-<script setup lang="ts">
+<script lang="ts" setup>
 import type { ComputedRef, PropType } from 'vue'
 import { computed } from 'vue'
-import type { AuthShellMode } from '~/types/AuthShell'
+import type { AuthShellMode, AuthShellProps } from '~/types/AuthShell'
 
-/**
- * Split-screen shell for the auth pages (login / signup) — « l'affiche de
- * l'atelier ». Left (desktop only): an airy editorial poster on paper — the
- * three pipeline words stacked in Fraunces, a monumental amber asterisk in
- * ceremonial slow spin, the trades ticker as ambient motion. Right: raised
- * paper column hosting the form (slot). Mode drives the poster copy.
- */
-const props = defineProps({
+/** Split-screen auth layout (login/signup) with marketing poster. */
+const props: AuthShellProps = defineProps({
   mode: {
     type: String as PropType<AuthShellMode>,
     required: true,

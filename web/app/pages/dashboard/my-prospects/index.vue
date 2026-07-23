@@ -1,6 +1,5 @@
 <template>
   <div class="space-y-5">
-    <!-- Header -->
     <div class="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
       <div>
         <p class="app-label flex items-center gap-2">
@@ -38,7 +37,6 @@
             />
           </button>
 
-          <!-- Import dropdown -->
           <div v-if="showImportMenu" class="fixed inset-0 z-40" @click="showImportMenu = false"></div>
           <div
             v-if="showImportMenu"
@@ -86,7 +84,6 @@
       </div>
     </div>
 
-    <!-- Stats -->
     <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
       <UiStatCard label="Total Prospects" :value="totalProspects" icon="i-lucide-users" accent="neutral" />
       <UiStatCard label="Avec Email" :value="prospectsWithEmail" icon="i-lucide-mail" accent="emerald" />
@@ -94,7 +91,6 @@
       <UiStatCard label="Avec Téléphone" :value="prospectsWithPhone" icon="i-lucide-phone" accent="sky" />
     </div>
 
-    <!-- Filters -->
     <div class="app-card p-4">
       <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5">
         <div>
@@ -119,7 +115,6 @@
       </div>
     </div>
 
-    <!-- Contacted tabs -->
     <div class="flex items-center gap-1 border-b border-[var(--app-line)]">
       <button
         type="button"
@@ -159,18 +154,15 @@
       </button>
     </div>
 
-    <!-- Loader -->
     <div v-if="isLoading" class="flex items-center justify-center py-16">
       <UIcon name="i-lucide-loader-circle" class="h-8 w-8 animate-spin text-[var(--app-accent)]" />
     </div>
 
-    <!-- Error -->
     <div v-else-if="error" class="app-card border-[var(--app-red)]/40 bg-[var(--app-red-soft)] p-5">
       <p class="font-semibold text-[var(--app-red)]">Erreur</p>
       <p class="mt-1 text-sm text-[var(--app-ink-soft)]">{{ error }}</p>
     </div>
 
-    <!-- Empty State -->
     <div v-else-if="filteredProspects.length === 0" class="app-card px-6 py-12 text-center">
       <LandingAsterisk class="text-4xl text-[var(--app-accent)]" />
       <h3 class="font-display mt-5 text-2xl font-semibold text-[var(--app-ink)]">Aucun prospect trouvé</h3>
@@ -186,7 +178,6 @@
       </NuxtLink>
     </div>
 
-    <!-- Prospects Table -->
     <div v-else class="app-card overflow-hidden">
       <UiProspectTable
         :prospects="paginatedProspects"
@@ -197,7 +188,6 @@
         @toggle-select-all="toggleSelectAll"
       />
 
-      <!-- Pagination -->
       <div
         class="flex flex-col gap-3 border-t border-[var(--app-line)] bg-[var(--app-surface-2)]/50 px-4 py-3.5 sm:flex-row sm:items-center sm:justify-between sm:px-6"
       >
@@ -227,7 +217,6 @@
       </div>
     </div>
 
-    <!-- Quick-delete confirmation modal -->
     <UiConfirmModal
       ref="deleteConfirmModal"
       title="Supprimer le prospect"
@@ -237,7 +226,6 @@
       @confirm="confirmDeleteProspect"
     />
 
-    <!-- Bulk action bar (visible when prospects are selected) -->
     <Transition name="bulkbar">
       <div v-if="selectedProspects.length > 0" class="fixed inset-x-0 bottom-6 z-40 flex justify-center px-4">
         <div
@@ -280,7 +268,6 @@
       </div>
     </Transition>
 
-    <!-- Bulk: add to campaign -->
     <UiBulkCampaignModal
       :open="bulkCampaignOpen"
       :prospect-ids="selectedIds"
@@ -288,7 +275,6 @@
       @added="handleBulkAdded"
     />
 
-    <!-- Bulk: generate websites -->
     <UiBulkGenerateModal
       :open="bulkGenerateOpen"
       :prospect-ids="selectedIds"
@@ -302,9 +288,9 @@
 import { ref, computed, watch, onMounted } from 'vue'
 import type { Ref } from 'vue'
 import type { Prospect } from '~/types'
-import { createProspect, deleteProspect as deleteProspectApi, listProspects } from '~/services/prospectsService'
+import { ProspectsService } from '~/services/prospectsService'
 import { downloadProspectsJson, downloadProspectTemplateJson, parseProspectsJson } from '~/utils/prospectJson'
-import { runBulkEnrichment } from '~/services/enrichmentService'
+import { EnrichmentService } from '~/services/enrichmentService'
 import { useDrawerStackStore } from '~/stores/drawerStack'
 import type { BulkGenerateResult } from '~/services/demoSiteService'
 import { useToast } from '~/composables/useToast'
@@ -313,8 +299,6 @@ definePageMeta({
   layout: 'dashboard',
   middleware: ['auth'],
 })
-
-// ─── State ────────────────────────────────────────────────────────────────────
 
 const prospects: Ref<Prospect[]> = ref([])
 const isLoading: Ref<boolean> = ref(false)
@@ -347,8 +331,6 @@ const deleteConfirmModal: Ref<{ open: () => void; close: () => void } | null> = 
 const drawerStack = useDrawerStackStore()
 
 const toast = useToast()
-
-// ─── Computed ─────────────────────────────────────────────────────────────────
 
 const deleteConfirmMessage = computed(() => {
   if (!prospectToDelete.value) return 'Cette action est irréversible.'
@@ -415,8 +397,6 @@ const paginatedProspects = computed(() => {
   return filteredProspects.value.slice(start, start + pageSize)
 })
 
-// ─── Data loading ─────────────────────────────────────────────────────────────
-
 /**
  * Fetch prospects from the API.
  */
@@ -424,7 +404,7 @@ async function loadProspects(): Promise<void> {
   try {
     isLoading.value = true
     error.value = null
-    prospects.value = await listProspects()
+    prospects.value = await ProspectsService.listProspects()
   } catch (err: unknown) {
     error.value = err instanceof Error ? err.message : 'Erreur lors du chargement des prospects'
   } finally {
@@ -455,8 +435,6 @@ function clearFilters(): void {
 watch([activeTab, searchQuery, filterCity, filterCategory, filterWebsite], (): void => {
   currentPage.value = 1
 })
-
-// ─── Selection ──────────────────────────────────────────────────────────────
 
 /**
  * Toggle a single prospect in the selection.
@@ -489,8 +467,6 @@ function clearSelection(): void {
   selectedProspects.value = []
 }
 
-// ─── Bulk actions ─────────────────────────────────────────────────────────────
-
 /**
  * Campaign modal succeeded — toast and clear the selection.
  * @param payload - The add-to-campaign result.
@@ -522,7 +498,7 @@ async function bulkEnrich(): Promise<void> {
   if (bulkBusy.value || selectedIds.value.length === 0) return
   bulkBusy.value = true
   try {
-    const res = await runBulkEnrichment(selectedIds.value)
+    const res = await EnrichmentService.runBulkEnrichment(selectedIds.value)
     toast.success(`Enrichissement : ${res.succeeded} réussi(s), ${res.failed} échec(s)`)
     clearSelection()
   } catch (err: unknown) {
@@ -531,8 +507,6 @@ async function bulkEnrich(): Promise<void> {
     bulkBusy.value = false
   }
 }
-
-// ─── Drawer (persistent stack hosted by the layout) ──────────────────────────
 
 /** Open the detail drawer for a given prospect. */
 function openDrawer(prospect: Prospect): void {
@@ -545,8 +519,6 @@ function handleProspectUpdated(updated: Prospect): void {
   if (idx !== -1) prospects.value.splice(idx, 1, updated)
   else prospects.value.unshift(updated)
 }
-
-// ─── Import / export JSON ─────────────────────────────────────────────────────
 
 /** Hidden file input used by the « Importer » dropdown. */
 const importInput: Ref<HTMLInputElement | null> = ref(null)
@@ -619,7 +591,7 @@ async function handleImportFile(event: Event): Promise<void> {
     let failed = 0
     for (const item of valid) {
       try {
-        const prospect: Prospect = await createProspect({
+        const prospect: Prospect = await ProspectsService.createProspect({
           name: item.name,
           address: item.address || null,
           city: item.city || null,
@@ -670,8 +642,6 @@ watch(
   },
 )
 
-// ─── Quick-delete (table row icon) ────────────────────────────────────────────
-
 /**
  * Open the quick-delete confirmation modal for a prospect.
  */
@@ -687,7 +657,7 @@ async function confirmDeleteProspect(): Promise<void> {
   const prospect = prospectToDelete.value
   if (!prospect) return
   try {
-    await deleteProspectApi(prospect.id)
+    await ProspectsService.deleteProspect(prospect.id)
     handleProspectDeleted(prospect.id)
     toast.success(`Prospect « ${prospect.name} » supprimé`)
   } catch (err: unknown) {
@@ -696,8 +666,6 @@ async function confirmDeleteProspect(): Promise<void> {
     prospectToDelete.value = null
   }
 }
-
-// ─── Init ─────────────────────────────────────────────────────────────────────
 
 onMounted(async (): Promise<void> => {
   await loadProspects()

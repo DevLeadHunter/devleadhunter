@@ -50,17 +50,13 @@
   </div>
 </template>
 
-<script setup lang="ts">
+<script lang="ts" setup>
 import type { ComputedRef, PropType, Ref } from 'vue'
 import { computed, ref } from 'vue'
-import type { UiPasswordInputAppearance } from '~/types/UiPasswordInput'
+import type { UiPasswordInputAppearance, UiPasswordInputProps } from '~/types/UiPasswordInput'
 
-/**
- * Password input with a show/hide toggle.
- * Two appearances: 'app' (dashboard, `--app-*` themed) and 'landing'
- * (marketing/auth pages, fixed paper DA).
- */
-const props = defineProps({
+/** Password field with show/hide toggle; `app` or `landing` appearance. */
+const props: UiPasswordInputProps = defineProps({
   id: {
     type: String,
     required: true,

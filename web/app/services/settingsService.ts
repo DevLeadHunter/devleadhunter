@@ -2,7 +2,7 @@
  * Settings service — HTTP client for user application settings.
  * @module services/settingsService
  */
-import { api } from './api'
+import { ApiClient } from './api'
 
 // ---------------------------------------------------------------------------
 // Types
@@ -63,15 +63,15 @@ export type SendingIdentityResponse = {
 // ---------------------------------------------------------------------------
 
 /** HTTP client for the /settings API resource. */
-export const settingsService = {
+export class SettingsService {
   /**
    * Fetch the current user's Resend configuration.
    *
    * @returns Configuration summary (no raw credentials).
    */
-  async getResendConfig(): Promise<ResendConfigResponse> {
-    return api.get<ResendConfigResponse>('/api/v1/settings/resend')
-  },
+  static async getResendConfig(): Promise<ResendConfigResponse> {
+    return ApiClient.get<ResendConfigResponse>('/api/v1/settings/resend')
+  }
 
   /**
    * Create or replace the current user's Resend configuration.
@@ -80,18 +80,18 @@ export const settingsService = {
    * @param data - New Resend configuration payload.
    * @returns Updated configuration summary.
    */
-  async saveResendConfig(data: ResendConfigUpdate): Promise<ResendConfigResponse> {
-    return api.put<ResendConfigResponse>('/api/v1/settings/resend', data)
-  },
+  static async saveResendConfig(data: ResendConfigUpdate): Promise<ResendConfigResponse> {
+    return ApiClient.put<ResendConfigResponse>('/api/v1/settings/resend', data)
+  }
 
   /**
    * Fetch the user's active sending provider and each provider's readiness.
    *
    * @returns Sending-identity summary (no secrets).
    */
-  async getSendingIdentity(): Promise<SendingIdentityResponse> {
-    return api.get<SendingIdentityResponse>('/api/v1/settings/sending-identity')
-  },
+  static async getSendingIdentity(): Promise<SendingIdentityResponse> {
+    return ApiClient.get<SendingIdentityResponse>('/api/v1/settings/sending-identity')
+  }
 
   /**
    * Switch the user's active sending provider.
@@ -100,7 +100,7 @@ export const settingsService = {
    * @param provider - Target transport (``resend`` | ``gmail``).
    * @returns Updated sending-identity summary.
    */
-  async setSendingProvider(provider: SendingProvider): Promise<SendingIdentityResponse> {
-    return api.put<SendingIdentityResponse>('/api/v1/settings/sending-identity', { provider })
-  },
+  static async setSendingProvider(provider: SendingProvider): Promise<SendingIdentityResponse> {
+    return ApiClient.put<SendingIdentityResponse>('/api/v1/settings/sending-identity', { provider })
+  }
 }

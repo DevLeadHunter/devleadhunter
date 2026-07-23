@@ -38,20 +38,9 @@
 import type { Ref } from 'vue'
 import { ref, watch, onMounted, onBeforeUnmount } from 'vue'
 
-/**
- * Reusable French-city picker with type-to-search autosuggestion.
- *
- * A normal text input (same ``.input-field`` style as the rest of the app, with a
- * white border on hover) backed by a custom suggestion dropdown that queries the
- * official, free, key-less ``geo.api.gouv.fr`` communes API — so any real French
- * city is searchable. The ``v-model`` is the field text: picking a suggestion
- * fills it, erasing it resets the value (e.g. clears a filter). Reusable app-wide.
- */
+/** French city picker with geo.api.gouv.fr autosuggest; v-model is the field text. */
 const modelValue = defineModel<string>({ required: true })
 
-/**
- * Defines the component props.
- */
 defineProps({
   placeholder: {
     type: String,
@@ -60,7 +49,7 @@ defineProps({
 })
 
 /** A French commune as returned by geo.api.gouv.fr (only the fields we request). */
-interface Commune {
+type Commune = {
   nom: string
 }
 

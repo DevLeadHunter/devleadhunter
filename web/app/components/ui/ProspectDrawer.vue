@@ -1,14 +1,10 @@
 <template>
   <Teleport to="body">
-    <!-- Pas de backdrop : le drawer est non-modal pour laisser la navigation
-         (sidebar, pages) cliquable pendant qu'il est ouvert. -->
-    <!-- Slide-over panel -->
     <Transition name="drawer-panel">
       <div
         v-if="open && prospect"
         class="fixed top-0 right-0 z-50 flex h-dvh w-full max-w-[480px] flex-col border-l border-[var(--app-line)] bg-[var(--app-surface)] shadow-2xl"
       >
-        <!-- ───────────────────────── Header ───────────────────────── -->
         <div class="flex items-start gap-3 border-b border-[var(--app-line)] px-5 py-4">
           <button
             v-if="showBack"
@@ -19,7 +15,6 @@
             <UIcon name="i-lucide-chevron-left" class="h-4 w-4" />
           </button>
 
-          <!-- Business icon -->
           <div
             class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-[var(--app-line)] bg-[var(--app-surface-2)]"
           >
@@ -27,7 +22,6 @@
           </div>
 
           <div class="min-w-0 flex-1">
-            <!-- Badges -->
             <div class="mb-1 flex flex-wrap items-center gap-1.5">
               <span
                 class="inline-flex items-center rounded border border-[var(--app-line)] bg-[var(--app-surface-2)] px-2 py-0.5 text-[10px] font-medium text-[var(--app-ink-soft)]"
@@ -37,12 +31,10 @@
               <UiProspectSourceBadge :source="prospect.source" />
             </div>
 
-            <!-- Name -->
             <h2 class="truncate text-base leading-tight font-semibold text-[var(--app-ink)]">
               {{ prospect.name }}
             </h2>
 
-            <!-- Confidence dots -->
             <div class="mt-1.5 flex items-center gap-1">
               <span
                 v-for="i in 4"
@@ -56,7 +48,6 @@
             </div>
           </div>
 
-          <!-- Close button -->
           <button
             class="flex h-7 w-7 shrink-0 items-center justify-center rounded text-[var(--app-ink-soft)] transition-colors hover:bg-[var(--app-surface-2)] hover:text-[var(--app-ink)]"
             @click="$emit('close')"
@@ -65,11 +56,8 @@
           </button>
         </div>
 
-        <!-- ───────────────────────── Body ────────────────────────── -->
         <div class="flex-1 overflow-y-auto">
-          <!-- VIEW MODE -->
           <template v-if="!editMode">
-            <!-- Reservation (organization sharing) -->
             <div v-if="prospect.organization_id" class="px-5 pt-4">
               <div
                 v-if="isReservedByMe"
@@ -116,11 +104,9 @@
               </div>
             </div>
 
-            <!-- Contact -->
             <div class="space-y-3 px-5 py-4">
               <p class="text-[10px] font-semibold tracking-wider text-[var(--app-ink-soft)] uppercase">Contact</p>
 
-              <!-- Phone -->
               <div class="flex items-center gap-3">
                 <div class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[var(--app-surface-2)]">
                   <UIcon name="i-lucide-phone" class="h-4 w-4 text-[var(--app-ink-soft)]" />
@@ -142,7 +128,6 @@
                 </a>
               </div>
 
-              <!-- Email -->
               <div class="flex items-center gap-3">
                 <div class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[var(--app-surface-2)]">
                   <UIcon name="i-lucide-mail" class="h-4 w-4 text-[var(--app-ink-soft)]" />
@@ -164,7 +149,6 @@
                 </a>
               </div>
 
-              <!-- Website -->
               <div class="flex items-center gap-3">
                 <div class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[var(--app-surface-2)]">
                   <UIcon name="i-lucide-globe" class="h-4 w-4 text-[var(--app-ink-soft)]" />
@@ -189,10 +173,8 @@
               </div>
             </div>
 
-            <!-- Divider -->
             <div class="border-t border-[var(--app-surface-2)]"></div>
 
-            <!-- Location -->
             <div class="space-y-3 px-5 py-4">
               <p class="text-[10px] font-semibold tracking-wider text-[var(--app-ink-soft)] uppercase">Localisation</p>
               <div class="flex items-start gap-3">
@@ -210,10 +192,8 @@
               </div>
             </div>
 
-            <!-- Divider -->
             <div class="border-t border-[var(--app-surface-2)]"></div>
 
-            <!-- Meta -->
             <div class="px-5 py-4">
               <p class="mb-3 text-[10px] font-semibold tracking-wider text-[var(--app-ink-soft)] uppercase">
                 Informations
@@ -238,10 +218,8 @@
               </div>
             </div>
 
-            <!-- Divider -->
             <div class="border-t border-[var(--app-surface-2)]"></div>
 
-            <!-- Lighthouse — audit of the EXISTING website (redesign pitch) -->
             <div v-if="prospect.website" class="space-y-3 px-5 py-4">
               <div class="flex items-center justify-between gap-3">
                 <p class="text-[10px] font-semibold tracking-wider text-[var(--app-ink-soft)] uppercase">
@@ -305,16 +283,12 @@
               </p>
             </div>
 
-            <!-- Divider -->
             <div v-if="prospect.website" class="border-t border-[var(--app-surface-2)]"></div>
 
-            <!-- Enrichment -->
             <UiProspectEnrichment :prospect-id="prospect.id" :open="open" />
 
-            <!-- Divider -->
             <div class="border-t border-[var(--app-surface-2)]"></div>
 
-            <!-- Behaviour (demo tracking → scoring / timeline / AI) -->
             <UiProspectBehavior
               :prospect-id="prospect.id"
               :prospect-email="prospect.email ?? null"
@@ -323,7 +297,6 @@
             />
           </template>
 
-          <!-- EDIT MODE -->
           <form v-else id="prospect-edit-form" class="space-y-4 p-5" @submit.prevent="handleSave">
             <div>
               <label class="mb-1 block text-[10px] font-medium tracking-wider text-[var(--app-ink-soft)] uppercase">
@@ -378,9 +351,7 @@
           </form>
         </div>
 
-        <!-- ───────────────────────── Footer ─────────────────────── -->
         <div class="border-t border-[var(--app-line)] px-5 py-4">
-          <!-- Delete confirmation inline -->
           <div v-if="showDeleteConfirm" class="rounded-lg border border-[var(--app-red)]/40 bg-[var(--app-red)]/10 p-4">
             <p class="mb-0.5 text-sm font-medium text-[var(--app-ink)]">Supprimer ce prospect ?</p>
             <p class="mb-3 text-xs text-[var(--app-ink-soft)]">Cette action est irréversible.</p>
@@ -395,7 +366,6 @@
             </div>
           </div>
 
-          <!-- View mode actions -->
           <div v-else-if="!editMode" class="space-y-2">
             <button
               class="btn-secondary w-full"
@@ -435,7 +405,6 @@
             </button>
           </div>
 
-          <!-- Edit mode actions -->
           <div v-else class="flex gap-2">
             <button type="button" class="btn-secondary flex-1" :disabled="isSaving" @click="cancelEdit">Annuler</button>
             <button type="submit" form="prospect-edit-form" class="btn-primary flex-1" :disabled="isSaving">
@@ -449,32 +418,30 @@
   </Teleport>
 </template>
 
-<script setup lang="ts">
-import type { ComputedRef, Ref } from 'vue'
+<script lang="ts" setup>
+import type { ComputedRef, PropType, Ref } from 'vue'
 import { ref, computed, watch } from 'vue'
 import type { Prospect, ProspectUpdatePayload } from '~/types'
-import {
-  updateProspect,
-  deleteProspect as deleteProspectApi,
-  reserveProspect,
-  releaseProspect,
-  runLighthouseAudit,
-} from '~/services/prospectsService'
+import type { UiProspectDrawerProps } from '~/types/UiProspectDrawer'
+import { ProspectsService } from '~/services/prospectsService'
 import { useToast } from '~/composables/useToast'
 import { useUserStore } from '~/stores/user'
 
-// ─── Props & Emits ────────────────────────────────────────────────────────────
-
-interface Props {
-  /** Whether the drawer is visible */
-  open: boolean
-  /** Prospect to display — null means nothing is shown */
-  prospect: Prospect | null
-  /** Whether a previous drawer exists in the stack (shows the back button) */
-  showBack?: boolean
-}
-
-const props = defineProps<Props>()
+/** Prospect detail drawer with edit, lighthouse audit and quick actions. */
+const props: UiProspectDrawerProps = defineProps({
+  open: {
+    type: Boolean,
+    required: true,
+  },
+  prospect: {
+    type: Object as PropType<Prospect | null>,
+    required: true,
+  },
+  showBack: {
+    type: Boolean,
+    default: false,
+  },
+})
 
 const emit = defineEmits<{
   /** Close the drawer */
@@ -495,8 +462,6 @@ const emit = defineEmits<{
   toggleContacted: [prospect: Prospect]
 }>()
 
-// ─── State ────────────────────────────────────────────────────────────────────
-
 const toast = useToast()
 const userStore = useUserStore()
 
@@ -506,8 +471,6 @@ const isDeleting: Ref<boolean> = ref(false)
 const showDeleteConfirm: Ref<boolean> = ref(false)
 const isReserving: Ref<boolean> = ref(false)
 const isAuditing: Ref<boolean> = ref(false)
-
-// ─── Reservation & Lighthouse ─────────────────────────────────────────────────
 
 /** Current user id (0 while the store hydrates). */
 const currentUserId: ComputedRef<number> = computed((): number => userStore.user?.id ?? 0)
@@ -524,7 +487,7 @@ const isReservedByOther: ComputedRef<boolean> = computed(
     props.prospect?.reserved_by_user_id != null && props.prospect.reserved_by_user_id !== currentUserId.value,
 )
 
-interface LighthouseGauge {
+type LighthouseGauge = {
   label: string
   score: number | null
   color: string
@@ -558,7 +521,7 @@ async function handleReserve(): Promise<void> {
   if (!props.prospect) return
   isReserving.value = true
   try {
-    const updated: Prospect = await reserveProspect(props.prospect.id)
+    const updated: Prospect = await ProspectsService.reserveProspect(props.prospect.id)
     emit('updated', updated)
     toast.success('Prospect réservé — verrouillé pour les autres membres')
   } catch (err: unknown) {
@@ -576,7 +539,7 @@ async function handleRelease(): Promise<void> {
   if (!props.prospect) return
   isReserving.value = true
   try {
-    const updated: Prospect = await releaseProspect(props.prospect.id)
+    const updated: Prospect = await ProspectsService.releaseProspect(props.prospect.id)
     emit('updated', updated)
     toast.success('Prospect libéré')
   } catch (err: unknown) {
@@ -594,7 +557,7 @@ async function handleLighthouse(): Promise<void> {
   if (!props.prospect) return
   isAuditing.value = true
   try {
-    const updated: Prospect = await runLighthouseAudit(props.prospect.id)
+    const updated: Prospect = await ProspectsService.runLighthouseAudit(props.prospect.id)
     emit('updated', updated)
     toast.success('Audit Lighthouse terminé')
   } catch (err: unknown) {
@@ -604,7 +567,7 @@ async function handleLighthouse(): Promise<void> {
   }
 }
 
-interface EditForm {
+type EditForm = {
   name: string
   phone: string
   email: string
@@ -624,8 +587,6 @@ const editForm: Ref<EditForm> = ref({
   category: '',
 })
 
-// ─── Reset state when drawer closes or prospect changes ───────────────────────
-
 watch(
   () => [props.open, props.prospect?.id],
   ([open]) => {
@@ -638,8 +599,6 @@ watch(
     }
   },
 )
-
-// ─── Computed ─────────────────────────────────────────────────────────────────
 
 /** Confidence indicator dot colour */
 const confidenceColor = computed((): string => {
@@ -657,8 +616,6 @@ const confidenceColor = computed((): string => {
   }
 })
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
-
 /**
  * Format an ISO date string to a French locale date.
  * @param dateStr - ISO date string from the API.
@@ -671,8 +628,6 @@ function formatDate(dateStr: string): string {
     year: 'numeric',
   })
 }
-
-// ─── Edit mode ────────────────────────────────────────────────────────────────
 
 /**
  * Populate the edit form with the current prospect values and enter edit mode.
@@ -713,7 +668,7 @@ async function handleSave(): Promise<void> {
       city: editForm.value.city || null,
       category: editForm.value.category || undefined,
     }
-    const updated = await updateProspect(props.prospect.id, payload)
+    const updated = await ProspectsService.updateProspect(props.prospect.id, payload)
     emit('updated', updated)
     editMode.value = false
     toast.success('Prospect mis à jour')
@@ -724,8 +679,6 @@ async function handleSave(): Promise<void> {
   }
 }
 
-// ─── Delete ───────────────────────────────────────────────────────────────────
-
 /**
  * Delete the current prospect after the inline confirmation.
  * Emits `deleted` then `close`.
@@ -734,7 +687,7 @@ async function handleDelete(): Promise<void> {
   if (!props.prospect) return
   isDeleting.value = true
   try {
-    await deleteProspectApi(props.prospect.id)
+    await ProspectsService.deleteProspect(props.prospect.id)
     emit('deleted', props.prospect.id)
     emit('close')
     toast.success(`Prospect « ${props.prospect.name} » supprimé`)

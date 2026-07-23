@@ -2,16 +2,9 @@ import { defineStore } from 'pinia'
 import type { User, LoginCredentials, SignupData, ProfileUpdate } from '~/types'
 import type { Ref } from 'vue'
 import { ref, computed } from 'vue'
-import * as authService from '~/services/authService'
+import { AuthService } from '~/services/authService'
 
-/**
- * Pinia store for user authentication and profile management
- * @module stores/user
- */
-
-/**
- * User store definition
- */
+/** Pinia store for auth session, profile and onboarding flag. */
 export const useUserStore = defineStore('user', () => {
   // State
   const user: Ref<User | null> = ref(null)
@@ -38,13 +31,9 @@ export const useUserStore = defineStore('user', () => {
 
   /**
    * Login user with credentials
-   * @param {LoginCredentials} credentials - Login credentials
-   * @returns {Promise<void>} Promise that resolves when login is complete
-   * @throws {Error} If login fails
-   * @example
-   * ```typescript
-   * await userStore.login({ email: 'user@example.com', password: 'password' });
-   * ```
+   * @param credentials - Login credentials
+   * @returns Promise that resolves when login is complete
+   * @throws If login fails
    */
   async function login(credentials: LoginCredentials): Promise<void> {
     try {
@@ -52,11 +41,11 @@ export const useUserStore = defineStore('user', () => {
       error.value = null
 
       // Call auth service
-      const tokenResponse = await authService.login(credentials)
+      const tokenResponse = await AuthService.login(credentials)
       token.value = tokenResponse.access_token
 
       // Get user information
-      const userData = await authService.getCurrentUser(token.value)
+      const userData = await AuthService.getCurrentUser(token.value)
       user.value = userData
 
       // Store token and user in localStorage
@@ -74,17 +63,9 @@ export const useUserStore = defineStore('user', () => {
 
   /**
    * Signup new user
-   * @param {SignupData} data - Signup data
-   * @returns {Promise<void>} Promise that resolves when signup is complete
-   * @throws {Error} If signup fails
-   * @example
-   * ```typescript
-   * await userStore.signup({
-   *   name: 'John Doe',
-   *   email: 'john@example.com',
-   *   password: 'password'
-   * });
-   * ```
+   * @param data - Signup data
+   * @returns Promise that resolves when signup is complete
+   * @throws If signup fails
    */
   async function signup(data: SignupData): Promise<void> {
     try {
@@ -92,11 +73,11 @@ export const useUserStore = defineStore('user', () => {
       error.value = null
 
       // Call auth service to create user
-      const userData = await authService.signup(data)
+      const userData = await AuthService.signup(data)
       user.value = userData
 
       // Login the new user
-      const tokenResponse = await authService.login({
+      const tokenResponse = await AuthService.login({
         email: data.email,
         password: data.password,
       })
@@ -117,7 +98,6 @@ export const useUserStore = defineStore('user', () => {
 
   /**
    * Logout current user
-   * @returns {void}
    */
   function logout(): void {
     user.value = null
@@ -129,9 +109,9 @@ export const useUserStore = defineStore('user', () => {
 
   /**
    * Update the current user's profile (name/email) server-side and sync local state.
-   * @param {ProfileUpdate} data - Fields to update (name and/or email).
-   * @returns {Promise<void>} Promise that resolves when the update is persisted.
-   * @throws {Error} If not authenticated or the update fails (e.g. email taken).
+   * @param data - Fields to update (name and/or email).
+   * @returns Promise that resolves when the update is persisted.
+   * @throws If not authenticated or the update fails (e.g. email taken).
    */
   async function updateProfile(data: ProfileUpdate): Promise<void> {
     try {
@@ -143,7 +123,7 @@ export const useUserStore = defineStore('user', () => {
       }
 
       // Persist to the API — the server is the source of truth for the returned user.
-      const updatedUser: User = await authService.updateProfile(token.value, data)
+      const updatedUser: User = await AuthService.updateProfile(token.value, data)
       user.value = updatedUser
 
       if (import.meta.client) {
@@ -159,15 +139,15 @@ export const useUserStore = defineStore('user', () => {
 
   /**
    * Mark the post-signup setup wizard as completed and sync local state.
-   * @returns {Promise<void>} Promise that resolves once the flag is persisted.
-   * @throws {Error} If not authenticated or the request fails.
+   * @returns Promise that resolves once the flag is persisted.
+   * @throws If not authenticated or the request fails.
    */
   async function completeOnboarding(): Promise<void> {
     if (!token.value) {
       throw new Error('Not authenticated')
     }
 
-    const updatedUser: User = await authService.completeOnboarding(token.value)
+    const updatedUser: User = await AuthService.completeOnboarding(token.value)
     user.value = updatedUser
 
     if (import.meta.client) {
@@ -177,7 +157,6 @@ export const useUserStore = defineStore('user', () => {
 
   /**
    * Initialize user from localStorage
-   * @returns {void}
    */
   function initializeAuth(): void {
     if (import.meta.client) {
@@ -204,7 +183,7 @@ export const useUserStore = defineStore('user', () => {
    * Validate authentication by calling /me endpoint
    * Updates user data if token is valid, otherwise clears auth
    * Uses cache to avoid excessive API calls
-   * @returns {Promise<boolean>} True if authenticated, false otherwise
+   * @returns True if authenticated, false otherwise
    */
   async function validateAuth(): Promise<boolean> {
     if (typeof window === 'undefined') {
@@ -232,7 +211,7 @@ export const useUserStore = defineStore('user', () => {
       token.value = storedToken
 
       // Call /me to validate token and get current user data
-      const userData = await authService.getCurrentUser(storedToken)
+      const userData = await AuthService.getCurrentUser(storedToken)
 
       // Update user with fresh data from server
       user.value = userData
@@ -260,8 +239,8 @@ export const useUserStore = defineStore('user', () => {
   /**
    * Refresh user data from API, bypassing cache
    * Useful after operations that modify user data (e.g., credit purchase)
-   * @returns {Promise<void>} Promise that resolves when refresh is complete
-   * @throws {Error} If refresh fails
+   * @returns Promise that resolves when refresh is complete
+   * @throws If refresh fails
    */
   async function refreshUser(): Promise<void> {
     if (typeof window === 'undefined') {
@@ -280,7 +259,7 @@ export const useUserStore = defineStore('user', () => {
       token.value = storedToken
 
       // Call /me to get fresh user data from server
-      const userData = await authService.getCurrentUser(storedToken)
+      const userData = await AuthService.getCurrentUser(storedToken)
 
       // Update user with fresh data from server
       user.value = userData

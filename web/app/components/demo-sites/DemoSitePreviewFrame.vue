@@ -20,10 +20,7 @@
 import type { ComputedRef, PropType } from 'vue'
 import type { DemoSitePreviewFrameProps } from '~/types/DemoSitePreviewFrame'
 
-/**
- * Frame previewing a demo site by iframing the demo-host renderer — the real published
- * site when a ``slug`` is given, otherwise a placeholder render of the chosen template.
- */
+/** Iframe preview of a demo site or template placeholder. */
 const props: DemoSitePreviewFrameProps = defineProps({
   templateId: {
     type: String,
@@ -53,10 +50,7 @@ const props: DemoSitePreviewFrameProps = defineProps({
 
 const config = useRuntimeConfig()
 
-/**
- * Build the demo-host URL: the real published demo (by slug) or a placeholder template
- * preview (by template id, with the client's business name overlaid) before creation.
- */
+/** Demo-host iframe URL (published slug or placeholder template preview). */
 const previewSrc: ComputedRef<string> = computed((): string => {
   const base: string = String(config.public.demoHostBase).replace(/\/$/, '')
   if (props.slug) {

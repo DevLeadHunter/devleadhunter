@@ -13,7 +13,6 @@
     </div>
 
     <template v-else>
-      <!-- Header -->
       <div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div class="min-w-0">
           <p class="app-label flex items-center gap-2">
@@ -67,7 +66,6 @@
         </div>
       </div>
 
-      <!-- KPIs -->
       <div class="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
         <div v-for="kpi in kpis" :key="kpi.label" class="app-card p-3.5">
           <p class="app-label">{{ kpi.label }}</p>
@@ -79,7 +77,6 @@
         <UIcon name="i-lucide-info" class="h-3.5 w-3.5 shrink-0" />{{ run.note }}
       </p>
 
-      <!-- Review gate -->
       <div
         v-if="run.status === 'awaiting_review'"
         class="app-card border-[var(--app-blue)]/50 bg-[var(--app-blue-soft)] p-5"
@@ -102,9 +99,7 @@
         </div>
       </div>
 
-      <!-- Prospect list -->
       <div class="app-card overflow-hidden">
-        <!-- Toolbar -->
         <div class="flex flex-wrap items-center gap-2 border-b border-[var(--app-line)] px-4 py-3">
           <p class="text-sm font-medium text-[var(--app-ink)]">Prospects</p>
           <template v-if="selected.size > 0">
@@ -130,7 +125,6 @@
           </template>
         </div>
 
-        <!-- Rows -->
         <div class="divide-y divide-[var(--app-line-soft)]">
           <div
             v-for="item in sortedItems"
@@ -220,7 +214,6 @@
       </div>
     </template>
 
-    <!-- Email preview modal -->
     <Teleport to="body">
       <div
         v-if="previewOpen"
@@ -274,17 +267,12 @@ import type {
 } from '~/types/Automation'
 import type { DemoSiteTemplate } from '~/services/demoSiteService'
 import { useAutomationsStore } from '~/stores/automations'
-import {
-  excludeItems as excludeItemsSvc,
-  previewItemEmail,
-  reenrichItems as reenrichItemsSvc,
-  regenerateItems as regenerateItemsSvc,
-} from '~/services/automationsService'
-import { listDemoSiteTemplates } from '~/services/demoSiteService'
+import { AutomationsService } from '~/services/automationsService'
+import { DemoSiteService } from '~/services/demoSiteService'
 import { useToast } from '~/composables/useToast'
 
 /** A KPI tile. */
-interface Kpi {
+type Kpi = {
   label: string
   value: number
   class: string
@@ -473,19 +461,21 @@ async function runAction(fn: () => Promise<AutomationDetail>): Promise<void> {
 /** Regenerate selected items (optionally with the chosen template). */
 async function regenerate(): Promise<void> {
   const ids: number[] = Array.from(selected.value)
-  await runAction((): Promise<AutomationDetail> => regenerateItemsSvc(runId, ids, bulkTemplateId.value || null))
+  await runAction(
+    (): Promise<AutomationDetail> => AutomationsService.regenerateItems(runId, ids, bulkTemplateId.value || null),
+  )
 }
 
 /** Re-enrich selected items. */
 async function reenrich(): Promise<void> {
   const ids: number[] = Array.from(selected.value)
-  await runAction((): Promise<AutomationDetail> => reenrichItemsSvc(runId, ids))
+  await runAction((): Promise<AutomationDetail> => AutomationsService.reenrichItems(runId, ids))
 }
 
 /** Exclude selected items. */
 async function exclude(): Promise<void> {
   const ids: number[] = Array.from(selected.value)
-  await runAction((): Promise<AutomationDetail> => excludeItemsSvc(runId, ids))
+  await runAction((): Promise<AutomationDetail> => AutomationsService.excludeItems(runId, ids))
 }
 
 /** Cancel the automatisation. */
@@ -534,7 +524,7 @@ async function openPreview(itemId: number): Promise<void> {
   isPreviewing.value = true
   preview.value = null
   try {
-    preview.value = await previewItemEmail(runId, itemId, run.value.email_template_id_a)
+    preview.value = await AutomationsService.previewItemEmail(runId, itemId, run.value.email_template_id_a)
   } catch {
     toast.error("Impossible de générer l'aperçu")
     previewOpen.value = false
@@ -551,7 +541,7 @@ onMounted(async (): Promise<void> => {
     await navigateTo('/dashboard/automations')
     return
   }
-  demoTemplates.value = await listDemoSiteTemplates().catch((): DemoSiteTemplate[] => [])
+  demoTemplates.value = await DemoSiteService.listDemoSiteTemplates().catch((): DemoSiteTemplate[] => [])
   pollHandle.value = setInterval((): void => {
     if (store.hasActive) void store.refreshActive()
   }, 5000)

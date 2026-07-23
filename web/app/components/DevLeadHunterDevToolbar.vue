@@ -6,7 +6,6 @@
     :class="position === null ? 'right-4 bottom-4' : ''"
     :style="floatingStyle"
   >
-    <!-- Drag handle -->
     <button
       type="button"
       class="flex cursor-grab touch-none items-center gap-1 rounded-full py-1 pr-1 pl-2 text-amber-400 active:cursor-grabbing"
@@ -33,10 +32,9 @@
 <script lang="ts" setup>
 import type { CSSProperties, Ref } from 'vue'
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
-import { syncStorageFromProd } from '~/services/adminStorageService'
-
+import { AdminStorageService } from '~/services/adminStorageService'
 /** Persisted position of the floating dev toolbar. */
-interface ToolbarPosition {
+type ToolbarPosition = {
   left: number
   top: number
 }
@@ -147,7 +145,7 @@ async function onSyncDatabase(): Promise<void> {
     // vers des vidéos absentes du bucket dev.
     let storageMessage = ''
     try {
-      const storage = await syncStorageFromProd()
+      const storage = await AdminStorageService.syncStorageFromProd()
       storageMessage = ` · Stockage : ${storage.message}`
     } catch (storageError) {
       storageMessage = ` · Stockage NON synchronisé (${

@@ -1,6 +1,5 @@
 <template>
   <div class="space-y-5">
-    <!-- ══════════ Autorisation caméra ═══════════════════════════════════════ -->
     <section
       v-if="phase === 'permission'"
       class="flex flex-col items-center gap-5 rounded-xl border border-[var(--app-line)] bg-[var(--app-surface)] px-6 py-10 text-center"
@@ -32,9 +31,7 @@
       <p class="text-muted text-xs">Rien n'est enregistré tant que vous n'avez pas lancé une prise.</p>
     </section>
 
-    <!-- ══════════ Le studio ═════════════════════════════════════════════════ -->
     <template v-else>
-      <!-- Les trois prises, toujours visibles -->
       <ol class="grid grid-cols-3 gap-2">
         <li
           v-for="(segment, index) in script.segments.value"
@@ -57,10 +54,7 @@
         </li>
       </ol>
 
-      <!-- L'image -->
       <div class="relative overflow-hidden rounded-xl border border-[var(--app-line)] bg-black">
-        <!-- La prévisualisation reste montée (v-show) : remonter l'élément
-             perdrait le srcObject et rallumerait la caméra à chaque prise. -->
         <video
           v-show="phase !== 'review'"
           ref="previewRef"
@@ -79,8 +73,6 @@
           class="aspect-video w-full object-cover"
         />
 
-        <!-- Cadrage de la pastille ronde : exactement le carré central que le
-             montage découpe pour le picture-in-picture. -->
         <div
           v-if="showFramingGuide && phase !== 'review'"
           class="pointer-events-none absolute inset-0 flex items-center justify-center"
@@ -89,9 +81,6 @@
           <div class="aspect-square h-full rounded-full border-2 border-dashed border-white/70" />
         </div>
 
-        <!-- Le texte à lire, en surimpression sur l'image : on garde les yeux
-             sur l'objectif au lieu de les baisser sur un bloc sous la vidéo.
-             Tout le texte reste affiché, seul le repère avance. -->
         <UiTeleprompter
           v-if="isFilming"
           variant="overlay"
@@ -100,7 +89,6 @@
           :restart-token="restartToken"
         />
 
-        <!-- Décompte -->
         <div
           v-if="phase === 'countdown'"
           class="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-black/55"
@@ -109,7 +97,6 @@
           <span class="text-sm font-medium text-white/80">Respirez…</span>
         </div>
 
-        <!-- Témoin d'enregistrement -->
         <div
           v-if="phase === 'recording'"
           class="absolute top-3 left-3 flex items-center gap-2 rounded-full bg-black/65 px-3 py-1.5"
@@ -129,11 +116,9 @@
         </span>
       </div>
 
-      <!-- ── Réglages, avant de lancer ───────────────────────────────────── -->
       <template v-if="phase === 'setup'">
         <UiCallout v-if="recorder.error.value" variant="warning">{{ recorder.error.value }}</UiCallout>
 
-        <!-- Ce qu'on va tourner -->
         <div class="rounded-xl border border-[var(--app-line)] bg-[var(--app-surface)] px-4 py-3.5">
           <div class="flex items-start gap-3">
             <span class="app-badge shrink-0 font-medium">Prise {{ currentIndex + 1 }} / 3</span>
@@ -143,7 +128,6 @@
             </div>
           </div>
 
-          <!-- Le texte, modifiable -->
           <div class="mt-4 space-y-2">
             <div class="flex items-center justify-between gap-3">
               <label class="app-label" :for="`script-${currentSegment.id}`">Votre texte</label>
@@ -170,7 +154,6 @@
           </div>
         </div>
 
-        <!-- Caméra, micro, cadrage -->
         <UiCollapsibleCard icon="i-lucide-settings-2" title="Caméra, micro et cadrage" :default-open="!hasHeardSound">
           <div class="space-y-4 px-4 py-4">
             <div class="grid gap-3 sm:grid-cols-2">
@@ -202,7 +185,6 @@
               </div>
             </div>
 
-            <!-- Le VU-mètre : trois prises dans un micro muet, c'est l'abandon assuré -->
             <div>
               <div class="mb-1.5 flex items-center justify-between gap-3">
                 <span class="app-label">Niveau du micro</span>
@@ -262,7 +244,6 @@
         </p>
       </template>
 
-      <!-- ── Pendant la prise ────────────────────────────────────────────── -->
       <div v-else-if="isFilming" class="flex flex-col items-center gap-3">
         <div class="flex flex-wrap items-center justify-center gap-3">
           <button type="button" class="app-btn-secondary" :disabled="phase === 'countdown'" @click="restartTake">
@@ -277,7 +258,6 @@
         <p class="text-muted text-xs">Ratée ? « Réessayer » relance la prise depuis le début.</p>
       </div>
 
-      <!-- ── Relecture de la prise ───────────────────────────────────────── -->
       <template v-else-if="phase === 'review'">
         <UiCallout v-if="reviewWarning" variant="warning">{{ reviewWarning }}</UiCallout>
         <div class="flex flex-wrap items-center justify-center gap-3">
@@ -292,7 +272,6 @@
         </div>
       </template>
 
-      <!-- ── Les trois prises sont faites ────────────────────────────────── -->
       <template v-else-if="phase === 'ready'">
         <div class="rounded-xl border border-[var(--app-line)] bg-[var(--app-surface)] px-4 py-4">
           <div class="flex items-center gap-2">
@@ -343,24 +322,15 @@ import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue'
 import type { PresenterVideoInfo } from '~/services/presenterVideoService'
 import type { ProspectionScriptSegment } from '~/composables/useProspectionScript'
 import type { RecordedTake } from '~/composables/useWebcamRecorder'
-import type { KeptTake, RecorderPhase } from '~/types/UiPresenterVideoRecorder'
-import { uploadPresenterVideoSegments } from '~/services/presenterVideoService'
+import type { KeptTake, RecorderPhase, UiPresenterVideoRecorderProps } from '~/types/UiPresenterVideoRecorder'
+import { PresenterVideoService } from '~/services/presenterVideoService'
 import { useAuth } from '~/composables/useAuth'
 import { useProspectionScript } from '~/composables/useProspectionScript'
 import { useToast } from '~/composables/useToast'
 import { useWebcamRecorder } from '~/composables/useWebcamRecorder'
 
-/**
- * Records the presenter clip in three takes, teleprompter on screen.
- *
- * Splitting the recording is the whole point: asking someone who dislikes
- * being filmed to nail forty seconds in one run is where they give up. Each
- * take is a few seconds, retaken on its own, and its measured duration
- * becomes the exact intro/outro cut of the final montage.
- * Props are typed via
- * {@link import('~/types/UiPresenterVideoRecorder').UiPresenterVideoRecorderProps}.
- */
-const props = defineProps({
+/** Three-take presenter recorder with on-screen teleprompter for montage cuts. */
+const props: UiPresenterVideoRecorderProps = defineProps({
   autoGenerate: {
     type: Boolean,
     default: true,
@@ -573,14 +543,7 @@ async function finishTake(): Promise<void> {
   phase.value = 'review'
 }
 
-/**
- * Scrap the take in progress and film it again from the countdown.
- *
- * The point of the flow is that a fumble costs one take, not the session: this
- * is the mid-take escape hatch, so a missed word doesn't force a stop → review
- * → « Refaire » detour. The take is discarded (never sent to review) and the
- * same segment restarts, warm-up or not, exactly as it was.
- */
+/** Restart the current take from the countdown without entering review. */
 async function restartTake(): Promise<void> {
   const wasWarmUp: boolean = isWarmUp.value
   clearTimers()
@@ -664,7 +627,12 @@ async function sendTakes(): Promise<void> {
           type: kept.take.blob.type,
         }),
     )
-    const info: PresenterVideoInfo = await uploadPresenterVideoSegments(intro!, middle!, outro!, props.autoGenerate)
+    const info: PresenterVideoInfo = await PresenterVideoService.uploadPresenterVideoSegments(
+      intro!,
+      middle!,
+      outro!,
+      props.autoGenerate,
+    )
     releaseAllTakes()
     recorder.stopEverything()
     toast.success('Votre vidéo est prête — les prochains sites démo l’utiliseront automatiquement')

@@ -7,16 +7,7 @@ import type { Prospect } from '~/types'
 /** sessionStorage key persisting the drawer stack across page reloads. */
 const DRAWER_STACK_STORAGE_KEY = 'dlh-drawer-stack'
 
-/**
- * Pinia store driving the persistent right-side drawer stack.
- *
- * The stack survives page navigation because it is rendered once by
- * `UiDrawerStackHost` in the dashboard layout. Pages communicate with the
- * drawers through this store: they push entries to open drawers, and watch
- * the mutation/refresh counters to keep their local lists in sync with what
- * happens inside a drawer (edit, delete, email sent…).
- * @module stores/drawerStack
- */
+/** Pinia store driving the persistent right-side drawer stack (survives route changes via `UiDrawerStackHost`). */
 export const useDrawerStackStore = defineStore('drawerStack', () => {
   // State — restored from sessionStorage so an open drawer survives a reload.
   const stack: Ref<DrawerStackEntry[]> = ref([])
@@ -34,12 +25,10 @@ export const useDrawerStackStore = defineStore('drawerStack', () => {
   const emailTemplatesRefreshCounter: Ref<number> = ref(0)
 
   // Getters
-  /** Entry currently displayed (top of the stack), or null when closed. */
   const topEntry: ComputedRef<DrawerStackEntry | null> = computed(
     (): DrawerStackEntry | null => stack.value[stack.value.length - 1] ?? null,
   )
 
-  /** Whether a previous drawer exists below the top one (shows the back affordance). */
   const hasPrevious: ComputedRef<boolean> = computed((): boolean => stack.value.length > 1)
 
   /**

@@ -1,34 +1,13 @@
-/**
- * Prospect source options aligned with the backend ``Source`` enum
- * (``api/enums/source.py``) and the ``/api/v1/sources`` endpoint.
- * @module prospectSources
- */
+/** Prospect sources, kept in sync with the backend `Source` enum (`api/enums/source.py`). */
 import type { ProspectSource } from '~/types'
 
-/** Sentinel value for "all sources" in filter selects. */
-export const ALL_SOURCES_VALUE = 'all' as const
-
-/** A single selectable source option used in dropdowns and filter chips. */
 export type ProspectSourceOption = {
-  /** Source enum value sent to the API. */
-  value: ProspectSource | typeof ALL_SOURCES_VALUE | ''
-  /** French display label shown in the UI. */
+  value: ProspectSource | ''
   label: string
-  /** Short description of the source for tooltips / help text. */
   description?: string
 }
 
-/**
- * All prospect sources registered in the backend scraper service.
- *
- * Keep in sync with:
- * - ``api/enums/source.py``  (Python ``Source`` enum)
- * - ``api/schemas/sources.py``
- * @remarks
- * - ``auto``        launches OSM + Pages Jaunes in parallel then enriches emails — recommended default
- * - ``brightdata``  calls the BrightData HTTP API (no browser) — requires ``BRIGHTDATA_API_TOKEN``
- */
-export const PROSPECT_SOURCE_OPTIONS: ProspectSourceOption[] = [
+const PROSPECT_SOURCE_OPTIONS: ProspectSourceOption[] = [
   {
     value: 'auto',
     label: 'Auto (recommandé)',
@@ -56,40 +35,21 @@ export const PROSPECT_SOURCE_OPTIONS: ProspectSourceOption[] = [
   },
 ]
 
-/**
- * Options for the search-job form (empty string means "all sources — let the server decide").
- * @returns Array with a leading "all sources" sentinel followed by all individual sources.
- */
+/** Options of the search-job form, where the empty value lets the server pick the sources. */
 export const PROSPECT_SOURCE_SEARCH_OPTIONS: ProspectSourceOption[] = [
   { value: '', label: 'Toutes les sources' },
   ...PROSPECT_SOURCE_OPTIONS,
 ]
 
-/**
- * Options for the my-prospects filter panel (uses the explicit ``"all"`` enum value).
- * @returns Array with a leading "all sources" option followed by all individual sources.
- */
-export const PROSPECT_SOURCE_FILTER_OPTIONS: ProspectSourceOption[] = [
-  { value: ALL_SOURCES_VALUE, label: 'Toutes les sources' },
-  ...PROSPECT_SOURCE_OPTIONS,
-]
-
-/** Internal lookup map: source value → display label. */
 const SOURCE_LABEL_MAP: Record<string, string> = Object.fromEntries(
-  PROSPECT_SOURCE_OPTIONS.map((opt) => [opt.value, opt.label]),
+  PROSPECT_SOURCE_OPTIONS.map((option) => [option.value, option.label]),
 )
 
 /**
- * Format a source slug for display in tables and badges.
+ * Format a source slug for tables and badges.
  *
- * Falls back to the raw slug when the source is not in the registry,
- * so unknown future sources degrade gracefully.
- * @param {string} source - Backend source value (e.g. ``"auto"``, ``"pagesjaunes"``).
- * @returns {string} Human-readable label (e.g. ``"Auto (recommandé)"``).
- * @example
- * formatProspectSource('auto')        // → "Auto (recommandé)"
- * formatProspectSource('pagesjaunes') // → "Pages Jaunes"
- * formatProspectSource('unknown')     // → "unknown"
+ * @param source - Backend source value.
+ * @returns The display label, or the raw slug so an unknown future source degrades gracefully.
  */
 export function formatProspectSource(source: string): string {
   return SOURCE_LABEL_MAP[source] ?? source

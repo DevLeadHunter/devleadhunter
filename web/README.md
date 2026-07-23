@@ -9,33 +9,35 @@ Personal prospect research tool for freelance web developers. Built with Nuxt.js
 - 📧 Email Campaigns (create, manage, bulk send)
 - 👤 User Profile Management
 - 📱 Fully Responsive Design
-- 🌙 Dark Theme (GitHub-like)
+- 🎨 Light & dark "Atelier" theme (black & white brand)
 
 ## Tech Stack
 
 - **Framework**: Nuxt.js 4
 - **Language**: TypeScript (strict mode)
 - **State Management**: Pinia
-- **Styling**: TailwindCSS
+- **Styling**: TailwindCSS v4
 - **Icons**: Nuxt Icon
-- **Forms**: FormKit
+- **Desktop**: Tauri
 
 ## Project Structure
 
 ```
-/
-├── assets/
-│   └── css/          # Global styles and Tailwind
-├── components/
-│   └── ui/           # Reusable UI components
+app/
+├── assets/css/       # Design tokens (@theme) and global styles
+├── components/       # ui/, demo-sites/ and dashboard/ carry an auto-import prefix
 ├── composables/      # Reusable composables
+├── constants/        # Typed constant data
 ├── layouts/          # Layout components
 ├── middleware/       # Route middleware (auth)
 ├── pages/            # Application pages
-├── services/          # API services
+├── plugins/          # Nuxt plugins
+├── services/         # API service classes
 ├── stores/           # Pinia stores
-├── types/            # TypeScript types
-└── public/           # Static assets
+├── types/            # TypeScript types — one file per component
+└── utils/            # Pure helpers
+public/               # Static assets
+src-tauri/            # Desktop shell
 ```
 
 ## Getting Started
@@ -83,37 +85,25 @@ const myRef: Ref<string> = ref('')
 
 ### Styling
 
-- Uses TailwindCSS with custom dark theme
-- Colors inspired by GitHub dark theme
-- Custom utility classes in `assets/css/main.css`
+- TailwindCSS v4, with the design tokens declared in the `@theme` block of `app/assets/css/main.css`
+- Light and dark are both first-class: every surface must be checked in the two themes
 
 ### State Management
 
-Pinia stores are used for:
+Pinia stores in `app/stores/`:
 
 - `user` - Authentication and user data
-- `prospects` - Prospect search results
+- `prospectSearch` - Prospect search results and filters
 - `campaigns` - Email campaigns
+- `automations` - Automation rules and send policy
+- `coverage` - Coverage map zones
+- `drawerStack` - Stack of open drawers
 
 ### API Integration
 
-All API calls go through the services layer:
-
-- `/services/api.ts` - Base API client
-- `/services/emailService.ts` - Email sending
-
-Backend API endpoints (to be implemented):
-
-- `POST /api/auth/login` - User login
-- `POST /api/auth/signup` - User signup
-- `GET /api/auth/profile` - Get user profile
-- `PUT /api/auth/profile` - Update profile
-- `POST /api/prospects/search` - Search prospects
-- `GET /api/campaigns` - List campaigns
-- `POST /api/campaigns` - Create campaign
-- `PUT /api/campaigns/:id` - Update campaign
-- `POST /api/emails/send` - Send individual email
-- `POST /api/emails/bulk` - Send bulk emails
+Every call goes through a service class in `app/services/`, each wrapping `ApiClient`
+(`app/services/api.ts`) — no component calls `$fetch` directly. The backend is mounted
+under `/api/v1`; see `api/api/v1/routes/` for the authoritative endpoint list.
 
 ## Contributing
 
@@ -121,8 +111,8 @@ When contributing to this project, ensure:
 
 1. All code is strictly typed
 2. Add JSDoc comments to all functions, classes, and components
-3. Follow the existing code structure
-4. Maintain the dark theme aesthetic
+3. Follow [`STANDARDS_CODE_ET_ARCHITECTURE.md`](./STANDARDS_CODE_ET_ARCHITECTURE.md) — it is the source of truth
+4. `npm run lint` must pass (Prettier, ESLint and the typecheck)
 
 ## License
 

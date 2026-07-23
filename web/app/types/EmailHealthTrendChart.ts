@@ -7,7 +7,6 @@ export type EmailHealthChartSeries = {
   label: string
   tone: EmailHealthChartTone
   values: number[]
-  /** Draw a soft gradient area under the line. */
   area?: boolean
 }
 
@@ -20,10 +19,8 @@ export type EmailHealthChartThreshold = {
 
 /** Props of the smooth multi-series trend chart. */
 export type EmailHealthTrendChartProps = {
-  /** ISO dates, one per point (shared by every series). */
   labels: string[]
   series: EmailHealthChartSeries[]
   thresholds?: EmailHealthChartThreshold[]
-  /** Display unit appended to values ('' or '%'). */
   unit?: string
 }

@@ -73,8 +73,8 @@ web/
 
 | Dossier                 | Rôle                               | Contrainte                                                        |
 | ----------------------- | ---------------------------------- | ----------------------------------------------------------------- |
-| `components/ui/`        | UI transverse réutilisable         | Préfixe **`Ui`** obligatoire                                      |
-| `components/<domaine>/` | UI liée à un domaine métier        | Pas de préfixe `Ui`                                               |
+| `components/ui/`        | UI transverse réutilisable         | Référencé `<Ui…>` — préfixe injecté par `nuxt.config.ts`          |
+| `components/<domaine>/` | UI liée à un domaine métier        | Préfixe du dossier (`DemoSites`, `Dashboard`) ou aucun            |
 | `services/`             | Appels API, mapping                | **Aucun** `ref` / `computed`                                      |
 | `utils/`                | Logique pure                       | **Sans** Vue/Nuxt ; préférer une **classe** si ≥ 2 méthodes liées |
 | `types/`                | Types partagés                     | `type` par défaut ; `interface` seulement si `extends`            |
@@ -92,11 +92,15 @@ L'axe de rangement est **cohérent dans le repo** : `ui/` pour le transverse, so
 4. **Les systèmes génériques** (steppers, drawers, tabs) exposent des **slots** ; la page injecte le contenu.
 5. **Toute petite gestion / formulaire = drawer** sur la pile Pinia — jamais une page dédiée pour un CRUD léger.
 
-### Préfixe `Ui`
+### Préfixe `Ui` — injecté par Nuxt, pas écrit dans le nom de fichier
 
-- Fichier : `UiProspectDrawer.vue`, `UiEmailStatusBadge.vue`
+`nuxt.config.ts` déclare `{ path: '~/components/ui', prefix: 'Ui' }`. Le préfixe vient donc de l'auto-import : **ne pas le répéter dans le nom du fichier**, sinon le composant s'appellerait `<UiUiProspectDrawer />`.
+
+- Fichier : `app/components/ui/ProspectDrawer.vue`
 - Template : `<UiProspectDrawer />` (PascalCase)
-- Types : `app/types/UiProspectDrawer.ts` → `UiProspectDrawerProps`
+- Types : `app/types/UiProspectDrawer.ts` → `UiProspectDrawerProps` — **là, le préfixe s'écrit**, parce que `types/` est un dossier plat où `ProspectDrawer.ts` entrerait en collision.
+
+Même mécanique pour `components/demo-sites/` (`prefix: 'DemoSites'` → `<DemoSitesTemplatePicker />`) et `components/dashboard/` (`prefix: 'Dashboard'`). Les autres dossiers sont montés en `pathPrefix: false` : leur nom de fichier est le nom du composant.
 
 ---
 
@@ -199,9 +203,10 @@ function resolveCampaignName(id: string | number | null | undefined): string | u
 
 - `@typescript-eslint/no-explicit-any: error`
 - `vue/block-order: ['template', 'script', 'style']`
-- `jsdoc/require-jsdoc: error` sur `.ts` (hors `app/utils/**` exempté)
+- `jsdoc/require-jsdoc: error` sur `.ts` et `.vue` (hors `app/utils/**` exempté)
 - `unused-imports/no-unused-imports: error`
 - `vue/component-name-in-template-casing: PascalCase`
+- `mode: 'typescript'` + `require-param-type` / `require-returns-type` / `require-throws-type` **off partout** : ces règles réclameraient `@param {string}`, ce que le standard interdit. Un lint qui sort des warnings est un lint qu'on arrête de lire — la sortie doit rester vide.
 
 ### Pre-commit (racine)
 
@@ -248,9 +253,7 @@ export type UiMyComponentProps = {
 import type { PropType } from 'vue'
 import type { UiMyComponentProps, UiMyComponentVariant } from '~/types/UiMyComponent'
 
-/**
- * Defines the component props.
- */
+/** Labelled action button, styled by variant. */
 const props: UiMyComponentProps = defineProps({
   label: { type: String, required: true },
   variant: {
@@ -346,7 +349,8 @@ Types : `feat` | `fix` | `ci` | `docs` | `style` | `refactor` | `test` | `chore`
 | JSDoc EN sur chaque fonction                 | ✅ REQUIS   |
 | JSDoc sur `defineProps`                      | ✅ REQUIS   |
 | Type props dans `app/types/<Component>.ts`   | ✅ REQUIS   |
-| Préfixe `Ui` sur composants réutilisables    | ✅ REQUIS   |
+| Composant réutilisable rangé dans `ui/`      | ✅ REQUIS   |
+| Préfixe `Ui` répété dans le nom de fichier   | ❌ INTERDIT |
 | Tailwind pour le styling                     | ✅ REQUIS   |
 | Ordre SFC template → script → style          | ✅ REQUIS   |
 | Conventional commits                         | ✅ REQUIS   |

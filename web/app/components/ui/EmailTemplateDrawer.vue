@@ -1,14 +1,10 @@
 <template>
   <Teleport to="body">
-    <!-- Pas de backdrop : le drawer est non-modal pour laisser la navigation
-         (sidebar, pages) cliquable pendant qu'il est ouvert. -->
-    <!-- Slide-over panel -->
     <Transition name="drawer-panel">
       <div
         v-if="open"
         class="fixed top-0 right-0 z-50 flex h-dvh w-full max-w-[560px] flex-col border-l border-[var(--app-line)] bg-[var(--app-surface)] shadow-2xl"
       >
-        <!-- ───────────────────────── Header ───────────────────────── -->
         <div class="flex items-start gap-3 border-b border-[var(--app-line)] px-5 py-4">
           <button
             v-if="showBack"
@@ -43,14 +39,11 @@
           </button>
         </div>
 
-        <!-- ───────────────────────── Body ────────────────────────── -->
-
-        <!-- PREVIEW MODE -->
         <div v-if="mode === 'preview'" class="flex-1 overflow-y-auto px-5 py-4">
           <div v-if="isPreviewLoading" class="flex items-center justify-center py-16">
             <UIcon name="i-lucide-loader-circle" class="h-6 w-6 animate-spin text-[var(--app-faint)]" />
           </div>
-          <!-- L'email s'affiche sur fond blanc, comme dans un client mail. -->
+
           <div v-else class="rounded-lg border border-[var(--app-line)] bg-white p-6">
             <div class="mb-4 border-b border-neutral-200 pb-4">
               <p class="text-xs text-neutral-500">Sujet :</p>
@@ -61,14 +54,12 @@
           </div>
         </div>
 
-        <!-- CREATE / EDIT MODE -->
         <form
           v-else
           id="email-template-form"
           class="flex-1 space-y-8 overflow-y-auto px-5 py-6"
           @submit.prevent="handleSave"
         >
-          <!-- Nom + objet + message (flux serré, sans label de section) -->
           <div class="space-y-5">
             <div>
               <label class="mb-2 block text-sm font-medium text-[var(--app-ink)]">
@@ -106,7 +97,6 @@
                 Message <span class="text-[var(--app-red)]">*</span>
               </label>
 
-              <!-- Variable palette — above the message field, inserts into the focused field -->
               <div class="mb-2 rounded-xl border border-[var(--app-line)] bg-[var(--app-surface-2)]/50 p-3.5">
                 <div class="mb-3 flex items-center justify-between gap-2">
                   <p class="text-xs font-medium text-[var(--app-ink)]">Variables personnalisées</p>
@@ -140,7 +130,6 @@
             </div>
           </div>
 
-          <!-- Signature -->
           <section class="space-y-3">
             <p class="app-label">Signature</p>
             <div class="rounded-xl border border-[var(--app-line)] p-3.5">
@@ -156,7 +145,6 @@
                 />
               </div>
 
-              <!-- Selector (switch on + at least one signature) -->
               <div v-if="includeSignature && signatures.length" class="mt-3.5">
                 <select v-model="form.signature_id" class="input-field">
                   <option v-for="signature in signatures" :key="signature.id" :value="signature.id">
@@ -165,7 +153,6 @@
                 </select>
               </div>
 
-              <!-- Empty-state invite -->
               <div v-if="signatures.length === 0" class="mt-3.5">
                 <p class="text-muted mb-2.5 text-xs">Aucune signature configurée.</p>
                 <button type="button" class="btn-primary" @click="openSignaturesDrawer">
@@ -174,7 +161,6 @@
                 </button>
               </div>
 
-              <!-- Always-available manage link -->
               <button
                 v-else
                 type="button"
@@ -187,7 +173,6 @@
             </div>
           </section>
 
-          <!-- Statut (edit only) -->
           <section v-if="mode === 'edit'" class="space-y-3">
             <p class="app-label">Statut</p>
             <div class="flex items-center justify-between rounded-xl border border-[var(--app-line)] p-3.5">
@@ -200,7 +185,6 @@
           </section>
         </form>
 
-        <!-- ───────────────────────── Footer ─────────────────────── -->
         <div class="flex gap-2 border-t border-[var(--app-line)] px-5 py-4">
           <template v-if="mode === 'preview'">
             <button type="button" class="btn-secondary flex-1" @click="emit('close')">Fermer</button>
@@ -227,7 +211,6 @@
       </div>
     </Transition>
 
-    <!-- Inline `{`-autocomplete for the subject and body fields -->
     <UiVariableAutocomplete
       :open="subjectInsertion.open.value"
       :items="subjectInsertion.items.value"
@@ -251,16 +234,17 @@
 import type { ComputedRef, PropType, Ref } from 'vue'
 import type { EmailSignature, EmailTemplate } from '~/types'
 import type { EmailTemplateDrawerMode } from '~/types/DrawerStack'
+import type { UiEmailTemplateDrawerProps } from '~/types/UiEmailTemplateDrawer'
 import { computed, ref, watch } from 'vue'
-import { createEmailTemplate, previewEmailTemplate, updateEmailTemplate } from '~/services/emailTemplatesService'
-import { getEmailSignatures } from '~/services/emailSignaturesService'
+import { EmailTemplatesService } from '~/services/emailTemplatesService'
+import { EmailSignaturesService } from '~/services/emailSignaturesService'
 import { useVariableInsertion } from '~/composables/useVariableInsertion'
 import { EmailVariables } from '~/utils/emailVariables'
 import { useDrawerStackStore } from '~/stores/drawerStack'
 import { useToast } from '~/composables/useToast'
 
 /** Local shape of the template form. */
-interface EmailTemplateForm {
+type EmailTemplateForm = {
   name: string
   subject: string
   body_html: string
@@ -268,10 +252,8 @@ interface EmailTemplateForm {
   signature_id: number | null
 }
 
-/**
- * Defines the component props.
- */
-const props = defineProps({
+/** Drawer to create or edit an email template. */
+const props: UiEmailTemplateDrawerProps = defineProps({
   open: {
     type: Boolean,
     required: true,
@@ -391,7 +373,7 @@ function defaultSignatureId(): number | null {
  */
 async function loadSignatures(): Promise<void> {
   try {
-    signatures.value = await getEmailSignatures()
+    signatures.value = await EmailSignaturesService.getEmailSignatures()
   } catch {
     // Non-blocking: the signature section simply shows the empty state.
     signatures.value = []
@@ -434,7 +416,7 @@ async function handleSave(): Promise<void> {
   const signatureId: number | null = includeSignature.value ? form.value.signature_id : null
   try {
     if (props.mode === 'edit' && props.template) {
-      const updated: EmailTemplate = await updateEmailTemplate(props.template.id, {
+      const updated: EmailTemplate = await EmailTemplatesService.updateEmailTemplate(props.template.id, {
         name: form.value.name,
         subject: form.value.subject,
         body_html: form.value.body_html,
@@ -444,7 +426,7 @@ async function handleSave(): Promise<void> {
       toast.success('Modèle mis à jour')
       emit('saved', updated)
     } else {
-      const created: EmailTemplate = await createEmailTemplate({
+      const created: EmailTemplate = await EmailTemplatesService.createEmailTemplate({
         name: form.value.name,
         subject: form.value.subject,
         body_html: form.value.body_html,
@@ -468,7 +450,7 @@ async function loadPreview(): Promise<void> {
   if (!props.template) return
   isPreviewLoading.value = true
   try {
-    const preview: { subject: string; body_html: string } = await previewEmailTemplate(
+    const preview: { subject: string; body_html: string } = await EmailTemplatesService.previewEmailTemplate(
       props.template.id,
       EmailVariables.buildPreviewSampleVariables(),
     )
@@ -489,7 +471,11 @@ watch(includeSignature, (on: boolean): void => {
 })
 
 watch(
-  (): [boolean, EmailTemplateDrawerMode, number | undefined] => [props.open, props.mode, props.template?.id],
+  (): [boolean, EmailTemplateDrawerMode, number | undefined] => [
+    props.open,
+    props.mode ?? 'create',
+    props.template?.id,
+  ],
   ([open, mode]: [boolean, EmailTemplateDrawerMode, number | undefined]): void => {
     if (!open) return
     if (mode === 'preview') {

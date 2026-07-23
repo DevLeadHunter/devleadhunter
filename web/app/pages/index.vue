@@ -19,11 +19,11 @@
   </div>
 </template>
 
-<script setup lang="ts">
+<script lang="ts" setup>
 import type { CreditSettings } from '~/types'
 import type { Ref } from 'vue'
 import { ref, onMounted } from 'vue'
-import * as creditSettingsService from '~/services/creditSettingsService'
+import { CreditSettingsService } from '~/services/creditSettingsService'
 
 /**
  * Landing page — marketing presentation of DevLeadHunter.
@@ -51,7 +51,7 @@ const isLoading: Ref<boolean> = ref(true)
 async function loadCreditSettings(): Promise<void> {
   try {
     isLoading.value = true
-    creditSettings.value = await creditSettingsService.getCreditSettings()
+    creditSettings.value = await CreditSettingsService.getCreditSettings()
   } catch (error) {
     console.error('Failed to load credit settings:', error)
   } finally {

@@ -1,6 +1,5 @@
 <template>
   <div>
-    <!-- Header -->
     <div class="mb-5">
       <NuxtLink
         to="/dashboard/automations"
@@ -12,11 +11,9 @@
       <h1 class="app-page-title mt-3">Créer une automatisation</h1>
     </div>
 
-    <!-- Timeline (top, full width) -->
     <UiWizardStepper :model-value="currentStep" :steps="steps" class="mb-6" @update:model-value="goToStep" />
 
     <div class="min-w-0">
-      <!-- ══════════ Step 1 · Cible ══════════ -->
       <div v-if="currentStep === 1" key="step-1" class="wizard-step space-y-5">
         <div class="app-card space-y-5 p-5 md:p-6">
           <div>
@@ -41,7 +38,6 @@
           </div>
         </div>
 
-        <!-- Semi-auto: prospect selection -->
         <template v-if="form.mode === 'semi_auto'">
           <div class="app-card p-4">
             <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5">
@@ -129,7 +125,6 @@
           </div>
         </template>
 
-        <!-- Full-auto: query -->
         <div v-else class="app-card space-y-5 p-5 md:p-6">
           <div class="grid gap-5 md:grid-cols-2">
             <div>
@@ -159,7 +154,6 @@
         </div>
       </div>
 
-      <!-- ══════════ Step 2 · Site ══════════ -->
       <div v-else-if="currentStep === 2" key="step-2" class="wizard-step space-y-6">
         <div>
           <h2 class="text-base font-semibold text-[var(--app-ink)]">Template de site</h2>
@@ -175,7 +169,6 @@
         />
       </div>
 
-      <!-- ══════════ Step 3 · Emails ══════════ -->
       <div v-else-if="currentStep === 3" key="step-3" class="wizard-step app-card space-y-5 p-5 md:p-6">
         <div>
           <h2 class="text-base font-semibold text-[var(--app-ink)]">Démarchage</h2>
@@ -241,7 +234,6 @@
         </div>
       </div>
 
-      <!-- ══════════ Step 4 · Lancer ══════════ -->
       <div v-else key="step-4" class="wizard-step app-card space-y-5 p-5 md:p-6">
         <div>
           <h2 class="text-base font-semibold text-[var(--app-ink)]">Récapitulatif</h2>
@@ -266,7 +258,6 @@
         </p>
       </div>
 
-      <!-- Unified sticky nav — always reachable, even on a long prospect list -->
       <div
         class="sticky bottom-4 z-10 mt-5 flex items-center justify-between gap-3 rounded-full border border-[var(--app-line)] bg-[var(--app-surface)]/90 px-3 py-2 shadow-lg backdrop-blur"
       >
@@ -309,22 +300,22 @@ import type { Prospect } from '~/types'
 import type { TemplateSelectOption } from '~/types/TemplateSelect'
 import type { UiWizardStep } from '~/types/UiWizardStepper'
 import type { DemoSiteTemplate, DemoSiteTheme } from '~/services/demoSiteService'
-import { createAutomation, getUsedProspectIds } from '~/services/automationsService'
-import { deleteProspect as deleteProspectApi, listProspects } from '~/services/prospectsService'
-import { getEmailTemplates } from '~/services/emailTemplatesService'
-import { listDemoSiteTemplates } from '~/services/demoSiteService'
+import { AutomationsService } from '~/services/automationsService'
+import { ProspectsService } from '~/services/prospectsService'
+import { EmailTemplatesService } from '~/services/emailTemplatesService'
+import { DemoSiteService } from '~/services/demoSiteService'
 import { useDrawerStackStore } from '~/stores/drawerStack'
 import { useProspectSearchStore } from '~/stores/prospectSearch'
 import { useToast } from '~/composables/useToast'
 
 /** A recap row. */
-interface RecapItem {
+type RecapItem = {
   label: string
   value: string
 }
 
 /** Local wizard form. */
-interface TunnelForm {
+type TunnelForm = {
   name: string
   mode: AutomationMode
   templateId: string
@@ -382,7 +373,7 @@ const currentPage: Ref<number> = ref(1)
 const pageSize: number = 25
 
 /** Website filter options. */
-const websiteFilterOptions: ReadonlyArray<{ value: string; label: string }> = [
+const websiteFilterOptions: { value: string; label: string }[] = [
   { value: 'all', label: 'Tous' },
   { value: 'yes', label: 'Avec site' },
   { value: 'no', label: 'Sans site' },
@@ -402,6 +393,8 @@ const form: Ref<TunnelForm> = ref({
   targetDays: 10,
   onlyWithoutWebsite: true,
 })
+
+const { openCreate } = useEmailTemplateCreator(emailTemplates, reloadEmailTemplates)
 
 /** Prospects matching every filter. */
 const filteredProspects: ComputedRef<Prospect[]> = computed((): Prospect[] => {
@@ -553,7 +546,7 @@ function openProspectDrawer(prospect: Prospect): void {
  */
 async function handleDeleteProspect(prospect: Prospect): Promise<void> {
   try {
-    await deleteProspectApi(prospect.id)
+    await ProspectsService.deleteProspect(prospect.id)
     prospects.value = prospects.value.filter((p: Prospect): boolean => p.id !== prospect.id)
     selectedProspectIds.value = selectedProspectIds.value.filter((id: string): boolean => id !== String(prospect.id))
     toast.success(`Prospect « ${prospect.name} » supprimé`)
@@ -596,7 +589,7 @@ function resolvedName(): string {
 async function launch(): Promise<void> {
   isCreating.value = true
   try {
-    const detail = await createAutomation({
+    const detail = await AutomationsService.createAutomation({
       name: resolvedName(),
       mode: form.value.mode,
       prospect_ids:
@@ -644,12 +637,9 @@ function openSendPolicyDrawer(): void {
  * @returns A promise resolved once the templates are reloaded.
  */
 async function reloadEmailTemplates(): Promise<void> {
-  const emailList = await getEmailTemplates()
+  const emailList = await EmailTemplatesService.getEmailTemplates()
   emailTemplates.value = emailList.map((t): TemplateSelectOption => ({ id: t.id, name: t.name, subject: t.subject }))
 }
-
-/** Create-a-template flow shared by the A/B selectors (opens the drawer, auto-selects). */
-const { openCreate } = useEmailTemplateCreator(emailTemplates, reloadEmailTemplates)
 
 /**
  * Reload the selectable prospects (unused only), preserving the selection.
@@ -658,7 +648,10 @@ const { openCreate } = useEmailTemplateCreator(emailTemplates, reloadEmailTempla
 async function reloadProspects(): Promise<void> {
   isLoadingProspects.value = true
   try {
-    const [prospectList, usedIds] = await Promise.all([listProspects(), getUsedProspectIds()])
+    const [prospectList, usedIds] = await Promise.all([
+      ProspectsService.listProspects(),
+      AutomationsService.getUsedProspectIds(),
+    ])
     const used: Set<number> = new Set<number>(usedIds)
     prospects.value = prospectList.filter((p: Prospect): boolean => !used.has(p.id))
   } catch {
@@ -678,7 +671,7 @@ watch(
 
 onMounted(async (): Promise<void> => {
   try {
-    const [, demoList] = await Promise.all([reloadEmailTemplates(), listDemoSiteTemplates()])
+    const [, demoList] = await Promise.all([reloadEmailTemplates(), DemoSiteService.listDemoSiteTemplates()])
     templates.value = demoList
     const first: DemoSiteTemplate | undefined = demoList[0]
     if (first) {
@@ -691,7 +684,8 @@ onMounted(async (): Promise<void> => {
   await reloadProspects()
 
   // Pre-select a prospect passed via ?prospect= (single-site shortcut).
-  const raw: string | undefined = Array.isArray(route.query.prospect) ? route.query.prospect[0] : route.query.prospect
+  const rawQuery = Array.isArray(route.query.prospect) ? route.query.prospect[0] : route.query.prospect
+  const raw: string | undefined = typeof rawQuery === 'string' ? rawQuery : undefined
   if (raw && !Number.isNaN(Number(raw))) {
     selectedProspectIds.value = [raw]
   }

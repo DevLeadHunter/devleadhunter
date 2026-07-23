@@ -14,14 +14,11 @@
       Données riches (photos, avis, horaires, note) utilisées pour générer le site. Séparé de la recherche de prospects.
     </p>
 
-    <!-- Initial / empty state -->
     <div v-if="isLoading" class="flex justify-center py-4">
       <UIcon name="i-lucide-loader-circle" class="h-5 w-5 animate-spin text-[var(--app-faint)]" />
     </div>
 
     <template v-else>
-      <!-- Decision-maker contact (feeds the email greeting {salutation}) —
-           always available, even before the first enrichment run. -->
       <div class="rounded-lg border border-[var(--app-line)] bg-[var(--app-bg)] p-3">
         <div class="mb-2 flex items-center justify-between">
           <p
@@ -88,7 +85,6 @@
       </button>
 
       <template v-else>
-        <!-- Rating + reviews count + description -->
         <div class="grid grid-cols-2 gap-3">
           <div>
             <label class="mb-1 block text-[10px] text-[var(--app-ink-soft)]">Note (/5)</label>
@@ -104,7 +100,6 @@
           <textarea v-model="form.description" rows="2" class="input-field"></textarea>
         </div>
 
-        <!-- Photos -->
         <div>
           <label class="mb-1 block text-[10px] text-[var(--app-ink-soft)]">Photos ({{ form.photos.length }})</label>
           <div v-if="form.photos.length" class="mb-2 grid grid-cols-3 gap-2">
@@ -124,7 +119,6 @@
           </div>
         </div>
 
-        <!-- Services -->
         <div>
           <label class="mb-1 block text-[10px] text-[var(--app-ink-soft)]">Services</label>
           <div v-if="form.services.length" class="mb-2 flex flex-wrap gap-1.5">
@@ -150,7 +144,6 @@
           </div>
         </div>
 
-        <!-- Reviews (read-only, removable) -->
         <div v-if="form.reviews.length">
           <label class="mb-1 block text-[10px] text-[var(--app-ink-soft)]">Avis ({{ form.reviews.length }})</label>
           <div class="space-y-1.5">
@@ -170,7 +163,6 @@
           </div>
         </div>
 
-        <!-- Opening hours (read-only, removable) -->
         <div v-if="form.opening_hours.length">
           <label class="mb-1 block text-[10px] text-[var(--app-ink-soft)]">Horaires</label>
           <div class="space-y-1">
@@ -212,18 +204,11 @@
 import type { ComputedRef, PropType, Ref } from 'vue'
 import { ref, computed, watch } from 'vue'
 import type { EnrichmentOpeningHours, EnrichmentReview, ProspectEnrichment } from '~/services/enrichmentService'
-import {
-  getProspectEnrichment,
-  resolveProspectContact,
-  runProspectEnrichment,
-  updateProspectEnrichment,
-} from '~/services/enrichmentService'
+import { EnrichmentService } from '~/services/enrichmentService'
 import type { UiProspectEnrichmentProps } from '~/types/UiProspectEnrichment'
 import { useToast } from '~/composables/useToast'
 
-/**
- * Définit les props du composant UiProspectEnrichment.
- */
+/** Prospect data enrichment form and actions. */
 const props: UiProspectEnrichmentProps = defineProps({
   prospectId: {
     type: Number as PropType<number | null>,
@@ -245,7 +230,7 @@ const isResolving: Ref<boolean> = ref(false)
 const newPhotoUrl: Ref<string> = ref('')
 const newService: Ref<string> = ref('')
 
-interface EnrichmentForm {
+type EnrichmentForm = {
   rating: number | null
   reviews_count: number | null
   description: string
@@ -331,7 +316,7 @@ async function saveContactOnly(): Promise<void> {
   if (!props.prospectId) return
   isSaving.value = true
   try {
-    record.value = await updateProspectEnrichment(props.prospectId, {
+    record.value = await EnrichmentService.updateProspectEnrichment(props.prospectId, {
       contact_first_name: form.value.contact_first_name || null,
       contact_last_name: form.value.contact_last_name || null,
     })
@@ -349,7 +334,7 @@ async function resolveContact(): Promise<void> {
   if (!props.prospectId) return
   isResolving.value = true
   try {
-    record.value = await resolveProspectContact(props.prospectId)
+    record.value = await EnrichmentService.resolveProspectContact(props.prospectId)
     syncForm()
     toast.success(
       record.value?.contact_first_name || record.value?.contact_last_name
@@ -368,7 +353,7 @@ async function load(): Promise<void> {
   if (!props.prospectId) return
   isLoading.value = true
   try {
-    record.value = await getProspectEnrichment(props.prospectId)
+    record.value = await EnrichmentService.getProspectEnrichment(props.prospectId)
     syncForm()
   } finally {
     isLoading.value = false
@@ -380,7 +365,7 @@ async function run(): Promise<void> {
   if (!props.prospectId) return
   isRunning.value = true
   try {
-    record.value = await runProspectEnrichment(props.prospectId)
+    record.value = await EnrichmentService.runProspectEnrichment(props.prospectId)
     syncForm()
     toast.success('Données récupérées')
   } catch (err: unknown) {
@@ -401,7 +386,7 @@ async function save(): Promise<void> {
     const contactChanged: boolean =
       form.value.contact_first_name !== (record.value?.contact_first_name ?? '') ||
       form.value.contact_last_name !== (record.value?.contact_last_name ?? '')
-    record.value = await updateProspectEnrichment(props.prospectId, {
+    record.value = await EnrichmentService.updateProspectEnrichment(props.prospectId, {
       rating: form.value.rating,
       reviews_count: form.value.reviews_count,
       description: form.value.description || null,

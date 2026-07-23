@@ -1,3 +1,5 @@
+import { useToast } from '~/composables/useToast'
+
 /**
  * Copy text to the clipboard with toast feedback.
  */

@@ -1,6 +1,5 @@
 <template>
   <div>
-    <!-- ── Mobile : indicateur compact, jamais de scroll horizontal ───────── -->
     <div class="rounded-2xl border border-[var(--app-line)] bg-[var(--app-surface)] p-4 md:hidden">
       <div class="flex items-center gap-1.5">
         <span
@@ -17,7 +16,6 @@
       </p>
     </div>
 
-    <!-- ── Desktop : timeline, une colonne par étape ──────────────────────── -->
     <ol
       class="hidden rounded-2xl border border-[var(--app-line)] bg-[var(--app-surface)] p-2 md:flex md:items-stretch"
       aria-label="Progression"
@@ -37,7 +35,6 @@
           "
           @click="handleStepNavigate(step.id)"
         >
-          <!-- Pastille + traits de liaison, centrés d'eux-mêmes -->
           <span class="flex w-full items-center gap-2">
             <span
               class="h-px flex-1 rounded-full transition-colors"
@@ -56,7 +53,6 @@
             />
           </span>
 
-          <!-- Libellé : au large sous la pastille, il peut passer à la ligne -->
           <span class="mt-2.5 block px-2 text-center text-balance">
             <span
               class="block text-[13px] leading-snug font-semibold"
@@ -79,15 +75,7 @@ import type { ComputedRef, PropType } from 'vue'
 import { computed } from 'vue'
 import type { UiWizardStep, UiWizardStepperProps } from '~/types/UiWizardStepper'
 
-/**
- * Defines the component props.
- *
- * Step progress for the app's multi-step flows. Below `md` it collapses to a
- * compact « Étape 2 sur 4 » indicator (segments + current label) so nothing ever
- * scrolls sideways; from `md` up it renders the full timeline, one column per
- * step, with an animated green check on completed steps that can be clicked to
- * go back.
- */
+/** Multi-step wizard stepper; compact indicator on mobile. */
 const props: UiWizardStepperProps = defineProps({
   steps: {
     type: Array as PropType<UiWizardStep[]>,

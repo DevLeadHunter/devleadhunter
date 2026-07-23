@@ -64,9 +64,7 @@ const debounceDelayMs: number = 300
 const maxResults: number = 6
 const blurCloseDelayMs: number = 150
 
-/**
- * Définit les props du composant CityAutocompleteInput.
- */
+/** City autocomplete backed by geo.api.gouv.fr. */
 const props: CityAutocompleteInputProps = defineProps({
   modelValue: {
     type: String,

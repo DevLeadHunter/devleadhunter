@@ -1,5 +1,4 @@
 <template>
-  <!-- Act 1 — prospect card found by the scraper -->
   <div v-if="props.actIndex === 0" v-bind="$attrs" class="landing-card p-6 md:p-7">
     <p class="font-label text-[0.65rem] font-medium tracking-[0.18em] text-[#6b6355] uppercase">
       {{ $t('landing.story.visual.prospectLabel') }}
@@ -31,7 +30,6 @@
     </div>
   </div>
 
-  <!-- Act 2 — generated demo site in a browser frame -->
   <div v-else-if="props.actIndex === 1" v-bind="$attrs" class="landing-card overflow-hidden">
     <div class="flex items-center gap-2 border-b border-[#e3dccd] px-4 py-3">
       <span class="h-2.5 w-2.5 rounded-full bg-[#e3dccd]" aria-hidden="true"></span>
@@ -65,7 +63,6 @@
     </div>
   </div>
 
-  <!-- Act 3 — cold email with the personal demo link -->
   <div v-else-if="props.actIndex === 2" v-bind="$attrs" class="landing-card p-6 md:p-7">
     <p class="font-label text-[0.65rem] font-medium tracking-[0.18em] text-[#6b6355] uppercase">
       {{ $t('landing.story.visual.emailLabel') }}
@@ -88,7 +85,6 @@
     </p>
   </div>
 
-  <!-- Act 4 — Stripe payment received, site live -->
   <div v-else v-bind="$attrs" class="landing-card p-6 md:p-7">
     <p class="font-label text-[0.65rem] font-medium tracking-[0.18em] text-[#6b6355] uppercase">
       {{ $t('landing.story.visual.saleLabel') }}
@@ -123,9 +119,7 @@ import type { LandingStoryVisualProps, LandingStoryActIndex } from '~/types/Land
 // incohérent entre SSR et client → héritage explicite via v-bind="$attrs".
 defineOptions({ inheritAttrs: false })
 
-/**
- * Defines the component props.
- */
+/** Landing story act visual for the pipeline narrative section. */
 const props: LandingStoryVisualProps = defineProps({
   actIndex: {
     type: Number as PropType<LandingStoryActIndex>,

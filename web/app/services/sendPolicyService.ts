@@ -4,23 +4,25 @@
  */
 
 import type { SendPolicy } from '~/types/Automation'
-import { api } from './api'
+import { ApiClient } from './api'
 
 const BASE_URL: string = '/api/v1/send-policy'
 
-/**
- * Fetch the user's effective send policy (defaults when unset).
- * @returns The send policy.
- */
-export async function getSendPolicy(): Promise<SendPolicy> {
-  return api.get<SendPolicy>(BASE_URL)
-}
+export class SendPolicyService {
+  /**
+   * Fetch the user's effective send policy (defaults when unset).
+   * @returns The send policy.
+   */
+  static async getSendPolicy(): Promise<SendPolicy> {
+    return ApiClient.get<SendPolicy>(BASE_URL)
+  }
 
-/**
- * Create or update the user's send policy.
- * @param policy - The new policy values.
- * @returns The saved policy.
- */
-export async function updateSendPolicy(policy: SendPolicy): Promise<SendPolicy> {
-  return api.put<SendPolicy>(BASE_URL, policy)
+  /**
+   * Create or update the user's send policy.
+   * @param policy - The new policy values.
+   * @returns The saved policy.
+   */
+  static async updateSendPolicy(policy: SendPolicy): Promise<SendPolicy> {
+    return ApiClient.put<SendPolicy>(BASE_URL, policy)
+  }
 }

@@ -1,6 +1,5 @@
 <template>
   <div class="app-theme min-h-dvh" :data-theme="theme">
-    <!-- Slim shell: brand + theme switch only — nothing to click away from the setup -->
     <header class="border-b border-[var(--app-line)] bg-[var(--app-surface)]">
       <div class="mx-auto flex max-w-3xl items-center justify-between gap-4 px-4 py-3 sm:px-6">
         <div class="flex items-center gap-2.5">

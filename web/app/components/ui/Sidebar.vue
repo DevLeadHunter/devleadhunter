@@ -5,7 +5,6 @@
       isOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0',
     ]"
   >
-    <!-- Brand + module switcher -->
     <div class="border-b border-[var(--app-line)] px-4 pt-4 pb-3">
       <div class="flex items-center gap-2.5 px-1">
         <svg
@@ -23,7 +22,6 @@
         <span class="text-sm font-semibold tracking-tight text-[var(--app-ink)]">devleadhunter</span>
       </div>
 
-      <!-- Module switcher — the shell is built for three activatable modules -->
       <div class="relative mt-2.5">
         <div v-if="showModuleMenu" class="fixed inset-0 z-40" @click="showModuleMenu = false"></div>
         <button
@@ -61,7 +59,6 @@
       </div>
     </div>
 
-    <!-- Primary action -->
     <div class="px-4 pt-3">
       <NuxtLink to="/dashboard/automations/new" class="app-btn-primary h-8 min-h-8 w-full text-xs" @click="handleClick">
         <UIcon name="i-lucide-plus" class="h-3.5 w-3.5" />
@@ -69,7 +66,6 @@
       </NuxtLink>
     </div>
 
-    <!-- Command palette trigger -->
     <div class="px-4 pt-2">
       <button
         type="button"
@@ -88,9 +84,7 @@
       </button>
     </div>
 
-    <!-- Navigation -->
     <nav class="flex flex-1 flex-col overflow-y-auto px-4 py-3">
-      <!-- Paramètres sub-panel (replaces the main menu, Vercel-style) -->
       <template v-if="showSettingsPanel">
         <button
           type="button"
@@ -130,7 +124,6 @@
         </div>
       </template>
 
-      <!-- Main grouped menu -->
       <template v-else>
         <div v-for="group in navGroups" :key="group.heading ?? 'top'" class="mb-4 last:mb-0">
           <p v-if="group.heading" class="app-label mb-1.5 px-3 !text-[0.6rem]">{{ group.heading }}</p>
@@ -149,7 +142,6 @@
           </div>
         </div>
 
-        <!-- Réglages -->
         <div class="mb-4">
           <p class="app-label mb-1.5 px-3 !text-[0.6rem]">Réglages</p>
           <div class="space-y-0.5">
@@ -162,8 +154,6 @@
           </div>
         </div>
 
-        <!-- Credits — pinned at the very bottom of the menu (mt-auto; the nav
-             keeps its own bottom padding so the card never sticks to the edge) -->
         <NuxtLink
           v-if="!isMobile"
           to="/dashboard/buy-credits"
@@ -189,11 +179,9 @@
       </template>
     </nav>
 
-    <!-- Footer: user menu (Profil / Thème / Déconnexion) -->
     <div class="relative border-t border-[var(--app-line)] px-4 py-3">
       <div v-if="showUserMenu" class="fixed inset-0 z-40" @click="showUserMenu = false"></div>
 
-      <!-- Menu (opens above the user block) -->
       <div
         v-if="showUserMenu"
         class="app-card absolute inset-x-4 bottom-full z-50 mb-1.5 p-1 shadow-[var(--app-shadow-soft)]"
@@ -238,7 +226,6 @@
 
         <div class="my-1 border-t border-[var(--app-line)]"></div>
 
-        <!-- Lien vers l'app de bureau — inutile quand on est déjà dans le desktop. -->
         <NuxtLink
           v-if="!isDesktopApp"
           to="/downloads"
@@ -260,7 +247,6 @@
         </button>
       </div>
 
-      <!-- User block (menu trigger) -->
       <button
         class="group flex w-full cursor-pointer items-center gap-2.5 rounded-lg px-2 py-2 text-left transition-colors hover:bg-[var(--app-surface-2)]"
         :aria-expanded="showUserMenu"
@@ -281,7 +267,6 @@
     </div>
   </aside>
 
-  <!-- Overlay for mobile -->
   <div
     v-if="isOpen && isMobile"
     class="fixed inset-0 z-30 bg-[var(--app-overlay)] md:hidden"
@@ -289,7 +274,7 @@
   />
 </template>
 
-<script setup lang="ts">
+<script lang="ts" setup>
 import type { ComputedRef, Ref } from 'vue'
 import type { AppTheme } from '~/types/AppTheme'
 import type { DlhModuleEntry, UiSidebarGroup, UiSidebarProps } from '~/types/UiSidebar'
@@ -301,9 +286,7 @@ import { useCommandPalette } from '~/composables/useCommandPalette'
 import { useDrawerStackStore } from '~/stores/drawerStack'
 import { useToast } from '~/composables/useToast'
 
-/**
- * Defines the component props.
- */
+/** Dashboard sidebar shell with nav groups and user menu. */
 const props: UiSidebarProps = defineProps({
   isOpen: {
     type: Boolean,
@@ -358,29 +341,6 @@ const modules: DlhModuleEntry[] = [
   { key: 'freelance-missions', label: 'Missions freelance', icon: 'i-lucide-briefcase-business', locked: true },
 ]
 
-/** Label of the currently active module. */
-const activeModuleLabel: ComputedRef<string> = computed((): string => {
-  return modules.find((moduleEntry: DlhModuleEntry): boolean => !moduleEntry.locked)?.label ?? 'Sites web'
-})
-
-/**
- * Handle a click on a module entry: locked modules announce their arrival,
- * the active one simply closes the menu.
- * @param moduleEntry - The clicked module.
- */
-function handleModuleClick(moduleEntry: DlhModuleEntry): void {
-  showModuleMenu.value = false
-  if (moduleEntry.locked) {
-    toast.info(`Le module « ${moduleEntry.label} » arrive bientôt.`)
-  }
-}
-
-/**
- * Grouped navigation of the websites module. The funnel (prospects → sites →
- * campaigns → sales) lives in a single ordered « Prospection » group; secondary
- * screens (email templates, email health, support…) moved to the Paramètres
- * sub-panel to keep the main menu light.
- */
 const navGroups: UiSidebarGroup[] = [
   {
     heading: 'Pilotage',
@@ -401,6 +361,11 @@ const navGroups: UiSidebarGroup[] = [
     ],
   },
 ]
+
+/** Label of the currently active module. */
+const activeModuleLabel: ComputedRef<string> = computed((): string => {
+  return modules.find((moduleEntry: DlhModuleEntry): boolean => !moduleEntry.locked)?.label ?? 'Sites web'
+})
 
 /** User display name. */
 const userName: ComputedRef<string> = computed((): string => {
@@ -443,6 +408,17 @@ const creditDotColor: ComputedRef<string> = computed((): string => {
   if (credits === null || credits === 0 || credits <= 10) return 'var(--app-red)'
   return 'var(--app-green)'
 })
+
+/**
+ * Handle a click on a module entry: locked modules announce their arrival.
+ * @param moduleEntry - The clicked module.
+ */
+function handleModuleClick(moduleEntry: DlhModuleEntry): void {
+  showModuleMenu.value = false
+  if (moduleEntry.locked) {
+    toast.info(`Le module « ${moduleEntry.label} » arrive bientôt.`)
+  }
+}
 
 /**
  * Classes of a navigation row for a given active state.

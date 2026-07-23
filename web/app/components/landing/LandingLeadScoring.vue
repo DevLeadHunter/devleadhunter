@@ -2,7 +2,6 @@
   <section id="lead-scoring" class="px-5 py-24 md:px-8 md:py-36">
     <div class="mx-auto max-w-6xl">
       <div class="grid items-center gap-14 lg:grid-cols-[1.15fr_1fr] lg:gap-20">
-        <!-- Behavior card -->
         <div v-reveal="{ delay: 150 }" class="order-2 lg:order-1">
           <div class="landing-card landing-tilt mx-auto max-w-md p-6 md:p-7 lg:mx-0">
             <div class="flex items-start justify-between gap-4">
@@ -20,7 +19,6 @@
               {{ $t('landing.behavior.card.name') }}
             </p>
 
-            <!-- Behavior timeline -->
             <ol class="relative mt-6 space-y-4 border-t border-dashed border-[#e3dccd] pt-5">
               <li
                 v-for="eventKey in behaviorEventKeys"
@@ -32,7 +30,6 @@
               </li>
             </ol>
 
-            <!-- AI summary -->
             <div class="mt-6 rounded-xl border border-[#e3dccd] bg-[#f6f3ec] p-4">
               <p class="font-label text-[0.65rem] font-medium tracking-[0.18em] text-[#6b6355] uppercase">
                 <i class="fa-solid fa-wand-magic-sparkles mr-1 text-[0.6rem] text-[#e8a33c]" aria-hidden="true"></i>
@@ -45,7 +42,6 @@
           </div>
         </div>
 
-        <!-- Copy -->
         <div class="order-1 lg:order-2">
           <p v-reveal class="landing-eyebrow">{{ $t('landing.behavior.eyebrow') }}</p>
           <h2

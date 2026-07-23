@@ -1,6 +1,5 @@
 <template>
   <div class="relative">
-    <!-- Legend: each encoding is visually distinct so the reading is immediate -->
     <div class="mb-3 flex flex-wrap items-center gap-x-4 gap-y-1">
       <span class="flex items-center gap-1.5 text-xs text-[var(--app-ink-soft)]">
         <span class="h-3 w-2.5 rounded-[2px] border border-[var(--app-ink-soft)] bg-[var(--app-ink)]/15"></span>
@@ -23,7 +22,6 @@
 
     <div class="relative" @mouseleave="activeIndex = null">
       <svg :viewBox="`0 0 ${W} ${H}`" class="w-full overflow-visible">
-        <!-- Horizontal grid + value labels -->
         <g v-for="grid in gridLines" :key="grid.y">
           <line
             :x1="PAD_LEFT"
@@ -44,7 +42,6 @@
           </text>
         </g>
 
-        <!-- Daily bars: outlined ink column = sent, green filled portion = delivered -->
         <g v-for="(bar, index) in bars" :key="labels[index] ?? index">
           <rect
             v-if="bar.sentHeight > 0"
@@ -70,7 +67,6 @@
           />
         </g>
 
-        <!-- Opened: bold ink line with big dots — maximum contrast on both themes -->
         <path :d="openedPath" fill="none" stroke="var(--app-ink)" stroke-width="2.5" stroke-linecap="round" />
         <circle
           v-for="dot in openedDots"
@@ -83,7 +79,6 @@
           stroke-width="1.5"
         />
 
-        <!-- Hover guide -->
         <line
           v-if="active"
           :x1="active.center"
@@ -97,7 +92,6 @@
         />
       </svg>
 
-      <!-- Hover hit areas -->
       <div class="absolute inset-0 flex" :style="{ paddingLeft: `${(PAD_LEFT / W) * 100}%` }">
         <button
           v-for="(label, index) in labels"
@@ -111,7 +105,6 @@
         />
       </div>
 
-      <!-- Tooltip -->
       <div
         v-if="active"
         class="pointer-events-none absolute top-0 z-10 min-w-[140px] rounded-lg border border-[var(--app-line)] bg-[var(--app-surface)] px-3 py-2 shadow-xl"
@@ -140,7 +133,6 @@
       </div>
     </div>
 
-    <!-- X axis labels (sparse) -->
     <div
       class="mt-1.5 flex justify-between text-[10px] text-[var(--app-ink-soft)]"
       :style="{ paddingLeft: `${(PAD_LEFT / W) * 100}%` }"
@@ -157,11 +149,7 @@ import type { ComputedRef, PropType, Ref } from 'vue'
 import { computed, ref } from 'vue'
 import type { EmailHealthVolumeChartProps } from '~/types/EmailHealthVolumeChart'
 
-/**
- * Daily sending-volume chart designed for readability at any density:
- * outlined ink columns = sent, their green-filled portion = delivered (the
- * visible cap is exactly the non-delivered part), bold ink dotted line = opened.
- */
+/** Daily sent/delivered/opened volume chart. */
 const props: EmailHealthVolumeChartProps = defineProps({
   labels: {
     type: Array as PropType<string[]>,

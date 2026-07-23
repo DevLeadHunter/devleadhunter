@@ -54,7 +54,7 @@ import type { Ref } from 'vue'
 import { ref } from 'vue'
 
 /** One question/answer pair of the FAQ accordion. */
-interface LandingFaqEntry {
+type LandingFaqEntry = {
   /** i18n key of the question. */
   questionKey: string
   /** i18n key of the answer. */

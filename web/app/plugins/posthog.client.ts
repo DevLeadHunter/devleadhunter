@@ -31,8 +31,8 @@ export default defineNuxtPlugin((nuxtApp): void => {
 
   /**
    * Whether a route belongs to the public marketing surface (everything except the app).
-   * @param {string} path - Route path to test.
-   * @returns {boolean} True when the path is a marketing route.
+   * @param path - Route path to test.
+   * @returns True when the path is a marketing route.
    */
   function isMarketingRoute(path: string): boolean {
     return !path.startsWith('/dashboard')
@@ -40,8 +40,8 @@ export default defineNuxtPlugin((nuxtApp): void => {
 
   /**
    * Whether tracking may run right now (marketing route + granted consent).
-   * @param {string} path - Route path to test.
-   * @returns {boolean} True when an event may be captured.
+   * @param path - Route path to test.
+   * @returns True when an event may be captured.
    */
   function canTrack(path: string): boolean {
     return isMarketingRoute(path) && hasAnalyticsConsent.value
@@ -49,7 +49,7 @@ export default defineNuxtPlugin((nuxtApp): void => {
 
   /**
    * Lazily initialise PostHog on the first tracked interaction.
-   * @returns {Promise<PostHog>} The initialised PostHog instance.
+   * @returns The initialised PostHog instance.
    */
   async function ensureInstance(): Promise<PostHog> {
     if (instance) return instance
@@ -67,8 +67,8 @@ export default defineNuxtPlugin((nuxtApp): void => {
 
   /**
    * Capture a manual ``$pageview`` when tracking is allowed for the given route.
-   * @param {string} path - The route path being viewed.
-   * @returns {Promise<void>} Resolves once the pageview has been captured (or skipped).
+   * @param path - The route path being viewed.
+   * @returns Resolves once the pageview has been captured (or skipped).
    */
   async function trackPageview(path: string): Promise<void> {
     if (!canTrack(path)) return
@@ -90,9 +90,8 @@ export default defineNuxtPlugin((nuxtApp): void => {
 
   /**
    * Capture a marketing event (no-op on the app surface or without consent).
-   * @param {string} event - Event name (``site_*``).
-   * @param {Record<string, unknown>} [properties] - Optional event properties.
-   * @returns {void}
+   * @param event - Event name (``site_*``).
+   * @param [properties] - Optional event properties.
    */
   const siteTrack = (event: string, properties?: Record<string, unknown>): void => {
     if (!canTrack(router.currentRoute.value.path)) return

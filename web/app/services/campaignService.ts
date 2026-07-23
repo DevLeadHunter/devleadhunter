@@ -2,7 +2,7 @@
  * Campaign service — HTTP client for the /campaigns API routes.
  * @module services/campaignService
  */
-import { $api } from './api'
+import { ApiClient } from './api'
 import type { CampaignFollowUp, CampaignVariantStats } from '~/types'
 
 // ---------------------------------------------------------------------------
@@ -139,14 +139,14 @@ export type CampaignQueueResponse = {
 // Service
 // ---------------------------------------------------------------------------
 
-export const campaignService = {
+export class CampaignService {
   /**
    * Create a new campaign.
    * @param data - Campaign creation payload.
    */
-  async create(data: CampaignCreateData): Promise<CampaignDetailResponse> {
-    return $api<CampaignDetailResponse>('/campaigns', { method: 'POST', body: data })
-  },
+  static async create(data: CampaignCreateData): Promise<CampaignDetailResponse> {
+    return ApiClient.post<CampaignDetailResponse>('/api/v1/campaigns', data)
+  }
 
   /**
    * List campaigns with optional status filtering.
@@ -154,28 +154,28 @@ export const campaignService = {
    * @param limit  - Max records to return.
    * @param status - Optional status filter.
    */
-  async list(skip = 0, limit = 100, status?: CampaignStatus): Promise<CampaignListResponse> {
+  static async list(skip = 0, limit = 100, status?: CampaignStatus): Promise<CampaignListResponse> {
     const params = new URLSearchParams({ skip: skip.toString(), limit: limit.toString() })
     if (status) params.append('status', status)
-    return $api<CampaignListResponse>(`/campaigns?${params.toString()}`)
-  },
+    return ApiClient.get<CampaignListResponse>(`/api/v1/campaigns?${params.toString()}`)
+  }
 
   /**
    * Fetch a campaign by ID including prospects and follow-up sequence.
    * @param id - Campaign ID.
    */
-  async get(id: number): Promise<CampaignDetailResponse> {
-    return $api<CampaignDetailResponse>(`/campaigns/${id}`)
-  },
+  static async get(id: number): Promise<CampaignDetailResponse> {
+    return ApiClient.get<CampaignDetailResponse>(`/api/v1/campaigns/${id}`)
+  }
 
   /**
    * Update a campaign's name, description, or status.
    * @param id   - Campaign ID.
    * @param data - Fields to update.
    */
-  async update(id: number, data: CampaignUpdateData): Promise<CampaignDetailResponse> {
-    return $api<CampaignDetailResponse>(`/campaigns/${id}`, { method: 'PATCH', body: data })
-  },
+  static async update(id: number, data: CampaignUpdateData): Promise<CampaignDetailResponse> {
+    return ApiClient.patch<CampaignDetailResponse>(`/api/v1/campaigns/${id}`, data)
+  }
 
   /**
    * Update campaign send configuration (template, account, A/B, follow-ups).
@@ -183,51 +183,45 @@ export const campaignService = {
    * @param id       - Campaign ID.
    * @param settings - Configuration to update.
    */
-  async updateSettings(id: number, settings: CampaignSettingsData): Promise<CampaignDetailResponse> {
-    return $api<CampaignDetailResponse>(`/campaigns/${id}/settings`, {
-      method: 'PATCH',
-      body: settings,
-    })
-  },
+  static async updateSettings(id: number, settings: CampaignSettingsData): Promise<CampaignDetailResponse> {
+    return ApiClient.patch<CampaignDetailResponse>(`/api/v1/campaigns/${id}/settings`, settings)
+  }
 
   /**
    * Permanently delete a campaign.
    * @param id - Campaign ID.
    */
-  async delete(id: number): Promise<void> {
-    await $api(`/campaigns/${id}`, { method: 'DELETE' })
-  },
+  static async delete(id: number): Promise<void> {
+    await ApiClient.delete(`/api/v1/campaigns/${id}`)
+  }
 
   /**
    * Add prospects to a campaign.
    * @param campaignId  - Campaign ID.
    * @param prospectIds - IDs of prospects to add.
    */
-  async addProspects(campaignId: number, prospectIds: number[]): Promise<CampaignDetailResponse> {
-    return $api<CampaignDetailResponse>(`/campaigns/${campaignId}/prospects`, {
-      method: 'POST',
-      body: { prospect_ids: prospectIds },
+  static async addProspects(campaignId: number, prospectIds: number[]): Promise<CampaignDetailResponse> {
+    return ApiClient.post<CampaignDetailResponse>(`/api/v1/campaigns/${campaignId}/prospects`, {
+      prospect_ids: prospectIds,
     })
-  },
+  }
 
   /**
    * Remove a single prospect from a campaign.
    * @param campaignId - Campaign ID.
    * @param prospectId - Prospect ID to remove.
    */
-  async removeProspect(campaignId: number, prospectId: number): Promise<CampaignDetailResponse> {
-    return $api<CampaignDetailResponse>(`/campaigns/${campaignId}/prospects/${prospectId}`, {
-      method: 'DELETE',
-    })
-  },
+  static async removeProspect(campaignId: number, prospectId: number): Promise<CampaignDetailResponse> {
+    return ApiClient.delete<CampaignDetailResponse>(`/api/v1/campaigns/${campaignId}/prospects/${prospectId}`)
+  }
 
   /**
    * Fetch aggregated statistics for a campaign (includes A/B breakdown when applicable).
    * @param campaignId - Campaign ID.
    */
-  async getStats(campaignId: number): Promise<CampaignStats> {
-    return $api<CampaignStats>(`/campaigns/${campaignId}/stats`)
-  },
+  static async getStats(campaignId: number): Promise<CampaignStats> {
+    return ApiClient.get<CampaignStats>(`/api/v1/campaigns/${campaignId}/stats`)
+  }
 
   /**
    * Launch a campaign — populates the rate-limited send queue.
@@ -235,32 +229,25 @@ export const campaignService = {
    * @param campaignId - Campaign ID.
    * @param data       - Optional overrides for template, account, timing.
    */
-  async launch(campaignId: number, data: LaunchCampaignData = {}): Promise<LaunchCampaignResponse> {
-    return $api<LaunchCampaignResponse>(`/campaigns/${campaignId}/launch`, {
-      method: 'POST',
-      body: data,
-    })
-  },
+  static async launch(campaignId: number, data: LaunchCampaignData = {}): Promise<LaunchCampaignResponse> {
+    return ApiClient.post<LaunchCampaignResponse>(`/api/v1/campaigns/${campaignId}/launch`, data)
+  }
 
   /**
    * Pause a running campaign — cancels all pending queue items.
    * @param campaignId - Campaign ID.
    */
-  async pause(campaignId: number): Promise<{ success: boolean; cancelled: number }> {
-    return $api<{ success: boolean; cancelled: number }>(`/campaigns/${campaignId}/pause`, {
-      method: 'POST',
-    })
-  },
+  static async pause(campaignId: number): Promise<{ success: boolean; cancelled: number }> {
+    return ApiClient.post<{ success: boolean; cancelled: number }>(`/api/v1/campaigns/${campaignId}/pause`, {})
+  }
 
   /**
    * Resume a paused campaign — re-enqueues prospects not yet contacted.
    * @param campaignId - Campaign ID.
    */
-  async resume(campaignId: number): Promise<{ success: boolean; enqueued: number }> {
-    return $api<{ success: boolean; enqueued: number }>(`/campaigns/${campaignId}/resume`, {
-      method: 'POST',
-    })
-  },
+  static async resume(campaignId: number): Promise<{ success: boolean; enqueued: number }> {
+    return ApiClient.post<{ success: boolean; enqueued: number }>(`/api/v1/campaigns/${campaignId}/resume`, {})
+  }
 
   /**
    * Immediately dispatch a follow-up email to a prospect (bypass delay).
@@ -269,23 +256,23 @@ export const campaignService = {
    * @param prospectId - Prospect to target.
    * @param templateId - Template to use.
    */
-  async sendNow(
+  static async sendNow(
     campaignId: number,
     prospectId: number,
     templateId: number,
   ): Promise<{ success: boolean; email_log_id?: number; error?: string }> {
-    return $api(`/campaigns/${campaignId}/send-now`, {
-      method: 'POST',
-      body: { prospect_id: prospectId, template_id: templateId },
+    return ApiClient.post(`/api/v1/campaigns/${campaignId}/send-now`, {
+      prospect_id: prospectId,
+      template_id: templateId,
     })
-  },
+  }
 
   /**
    * Fetch the send queue for a campaign.
    * @param campaignId - Campaign ID.
    * @param params     - Optional filters and pagination.
    */
-  async getQueue(
+  static async getQueue(
     campaignId: number,
     params?: { status?: QueueItemStatus; limit?: number; offset?: number },
   ): Promise<CampaignQueueResponse> {
@@ -293,6 +280,6 @@ export const campaignService = {
     if (params?.status) qs.set('status', params.status)
     if (params?.limit !== undefined) qs.set('limit', String(params.limit))
     if (params?.offset !== undefined) qs.set('offset', String(params.offset))
-    return $api<CampaignQueueResponse>(`/campaigns/${campaignId}/queue?${qs.toString()}`)
-  },
+    return ApiClient.get<CampaignQueueResponse>(`/api/v1/campaigns/${campaignId}/queue?${qs.toString()}`)
+  }
 }

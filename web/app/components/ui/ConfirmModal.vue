@@ -7,15 +7,15 @@
       @click.self="handleCancel"
     >
       <div class="app-card mx-4 w-full max-w-md p-6 shadow-[var(--app-shadow-soft)]">
-        <h2 class="font-display mb-2 text-lg font-semibold text-[var(--app-ink)]">{{ title }}</h2>
-        <p class="mb-6 text-sm leading-relaxed text-[var(--app-ink-soft)]">{{ message }}</p>
+        <h2 class="font-display mb-2 text-lg font-semibold text-[var(--app-ink)]">{{ props.title }}</h2>
+        <p class="mb-6 text-sm leading-relaxed text-[var(--app-ink-soft)]">{{ props.message }}</p>
 
         <div class="flex gap-3">
           <button class="app-btn-secondary flex-1" @click="handleCancel">
-            {{ cancelText }}
+            {{ props.cancelText }}
           </button>
           <button class="app-btn-danger flex-1" @click="handleConfirm">
-            {{ confirmText }}
+            {{ props.confirmText }}
           </button>
         </div>
       </div>
@@ -23,14 +23,13 @@
   </Teleport>
 </template>
 
-<script setup lang="ts">
+<script lang="ts" setup>
 import type { Ref } from 'vue'
 import { ref } from 'vue'
+import type { UiConfirmModalProps } from '~/types/UiConfirmModal'
 
-/**
- * Defines the component props (interface exportée : ~/types/UiConfirmModal).
- */
-defineProps({
+/** Confirm/cancel dialog whose labels are all overridable. */
+const props: UiConfirmModalProps = defineProps({
   title: {
     type: String,
     default: 'Confirmer',

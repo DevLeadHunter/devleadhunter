@@ -1,6 +1,5 @@
 <template>
   <Teleport to="body">
-    <!-- Bottom-right toast stack — above the drawers (z-50). -->
     <div class="pointer-events-none fixed right-4 bottom-4 z-[70] flex w-[min(22rem,calc(100vw-2rem))] flex-col gap-2">
       <TransitionGroup name="toast">
         <div
@@ -39,7 +38,7 @@ import type { ToastItem, ToastType } from '~/composables/useToast'
 import { useToastHost } from '~/composables/useToast'
 
 /** Per-type icon tile styling (Atelier semantic tokens — theme-aware). */
-interface ToastStyle {
+type ToastStyle = {
   icon: string
   tileBg: string
   iconColor: string

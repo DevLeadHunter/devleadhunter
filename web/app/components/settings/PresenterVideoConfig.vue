@@ -3,7 +3,6 @@
     <UiLoader v-if="isLoading" />
 
     <template v-else>
-      <!-- ── Le clip ───────────────────────────────────────────────────────── -->
       <section class="space-y-3">
         <div class="flex items-center justify-between gap-3">
           <h2 class="text-sm font-semibold text-[var(--app-ink)]">Votre clip</h2>
@@ -12,8 +11,6 @@
             Prêt
           </span>
         </div>
-
-        <!-- Present: preview + a round red delete button top-right -->
         <div v-if="info?.has_video && previewUrl" class="relative">
           <video
             :src="previewUrl"
@@ -37,10 +34,7 @@
             />
           </button>
         </div>
-
-        <!-- Absent: on choisit d'abord comment obtenir le clip -->
         <template v-else>
-          <!-- Le choix, tant qu'aucune méthode n'est engagée -->
           <div v-if="captureMode === null" class="grid gap-3 sm:grid-cols-2">
             <button
               v-for="option in CAPTURE_OPTIONS"
@@ -59,16 +53,12 @@
               <span v-if="option.badge" class="app-badge app-badge--info mt-1 font-medium">{{ option.badge }}</span>
             </button>
           </div>
-
-          <!-- Enregistrement dans l'app -->
           <UiPresenterVideoRecorder
             v-else-if="captureMode === 'record'"
             :auto-generate="autoGenerate"
             @saved="handleRecorded"
             @cancel="captureMode = null"
           />
-
-          <!-- Import d'un fichier -->
           <div v-else class="space-y-3">
             <UiPresenterVideoDropzone
               :selected-file="selectedFile"
@@ -89,10 +79,7 @@
           </div>
         </template>
       </section>
-
-      <!-- ── Les trois cartes de réglages, puis « Enregistrer » tout en bas ── -->
       <div class="space-y-4">
-        <!-- Génération automatique (avec un clip en place) -->
         <div
           v-if="info?.has_video"
           class="flex items-center justify-between gap-4 rounded-xl border border-[var(--app-line)] bg-[var(--app-surface)] px-4 py-3.5"
@@ -108,8 +95,6 @@
           </div>
           <UiSwitch id="video-auto-generate" v-model="autoGenerate" />
         </div>
-
-        <!-- Découpage mesuré : rien à régler, les prises SONT les segments -->
         <div
           v-if="info?.has_video && isRecordedClip"
           class="flex items-start gap-3 rounded-xl border border-[var(--app-line)] bg-[var(--app-surface)] px-4 py-3.5"
@@ -126,8 +111,6 @@
             </p>
           </div>
         </div>
-
-        <!-- Découpage manuel (replié) — seulement pour un fichier importé -->
         <UiCollapsibleCard
           v-if="info?.has_video && !isRecordedClip"
           icon="i-lucide-scissors"
@@ -172,15 +155,12 @@
           </div>
         </UiCollapsibleCard>
 
-        <!-- ── Comment enregistrer votre clip (masqué pendant l'enregistrement,
-             où le prompteur affiche déjà le texte) ──────────────────────────── -->
         <UiCollapsibleCard
           v-if="captureMode !== 'record'"
           icon="i-lucide-clapperboard"
           title="Comment enregistrer votre clip"
         >
           <div class="space-y-6 px-4 py-5">
-            <!-- Les 3 étapes -->
             <ol class="space-y-4">
               <li v-for="(step, index) in workflowSteps" :key="step.title" class="flex items-start gap-3">
                 <span
@@ -194,8 +174,6 @@
                 </div>
               </li>
             </ol>
-
-            <!-- Le speech, mis en valeur dans un encart -->
             <div class="space-y-4 rounded-lg bg-[var(--app-bg)] p-4">
               <p class="text-[11px] font-semibold tracking-wide text-[var(--app-ink-soft)] uppercase">
                 Le speech à lire (~30 s)
@@ -214,8 +192,6 @@
                 </div>
               </div>
             </div>
-
-            <!-- Conseils de tournage -->
             <div class="space-y-3">
               <p class="text-[11px] font-semibold tracking-wide text-[var(--app-ink-soft)] uppercase">
                 Conseils de tournage
@@ -239,8 +215,6 @@
             </div>
           </div>
         </UiCollapsibleCard>
-
-        <!-- Enregistrer, tout en bas des trois cartes -->
         <div v-if="info?.has_video" class="flex justify-end">
           <button type="button" class="btn-primary" :disabled="isSavingSettings" @click="handleSaveSettings">
             <UIcon v-if="isSavingSettings" name="i-lucide-loader-circle" class="mr-1.5 h-4 w-4 animate-spin" />
@@ -248,8 +222,6 @@
           </button>
         </div>
       </div>
-
-      <!-- Le fichier réel, partagé par la dropzone -->
       <input
         ref="fileInputRef"
         type="file"
@@ -275,23 +247,12 @@ import type { ComputedRef, Ref } from 'vue'
 import type { PresenterVideoInfo } from '~/services/presenterVideoService'
 import type { ProspectionScriptSegment } from '~/composables/useProspectionScript'
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
-import {
-  deletePresenterVideo,
-  getPresenterVideo,
-  getPresenterVideoObjectUrl,
-  updatePresenterVideoSettings,
-  uploadPresenterVideo,
-} from '~/services/presenterVideoService'
+import { PresenterVideoService } from '~/services/presenterVideoService'
 import { buildDefaultScript } from '~/composables/useProspectionScript'
 import { useToast } from '~/composables/useToast'
 import { useAuth } from '~/composables/useAuth'
 
-/**
- * Self-contained presenter-video configuration.
- *
- * Loads, uploads, tunes and deletes the one webcam clip reused to build every
- * prospect video. Rendered as-is by the settings page and by the setup wizard.
- */
+/** Presenter video upload, tuning and deletion for prospect videos. */
 
 const emit = defineEmits<{
   /** A clip is now present (or no longer is) — the host can gate its own UI on it. */
@@ -335,7 +296,7 @@ const isDeleting: Ref<boolean> = ref(false)
 const isDragging: Ref<boolean> = ref(false)
 const selectedFile: Ref<File | null> = ref(null)
 const fileInputRef: Ref<HTMLInputElement | null> = ref(null)
-const deleteModalRef: Ref<{ open: () => void } | null> = ref<{ open: () => void } | null>(null)
+const deleteModalRef: Ref<{ open: () => void } | null> = ref(null)
 const introSeconds: Ref<number> = ref(4)
 const outroSeconds: Ref<number> = ref(5)
 const autoGenerate: Ref<boolean> = ref(true)
@@ -344,10 +305,7 @@ const captureMode: Ref<CaptureMode | null> = ref(null)
 /** Whether the stored clip was filmed in-app (its cut points are measured). */
 const isRecordedClip: ComputedRef<boolean> = computed((): boolean => info.value?.source === 'recorded')
 
-/**
- * Recommended speech, shared with the in-app teleprompter so the guide and the
- * prompter can never drift apart.
- */
+/** Speech segments aligned with the in-app teleprompter script. */
 const speechSegments: ComputedRef<Array<{ timing: string; role: string; text: string }>> = computed(
   (): Array<{ timing: string; role: string; text: string }> =>
     buildDefaultScript(user.value?.name ?? '').map(
@@ -414,10 +372,10 @@ function applyInfo(payload: PresenterVideoInfo): void {
 async function loadInfo(): Promise<void> {
   isLoading.value = true
   try {
-    applyInfo(await getPresenterVideo())
+    applyInfo(await PresenterVideoService.getPresenterVideo())
     releasePreview()
     if (info.value?.has_video) {
-      previewUrl.value = await getPresenterVideoObjectUrl()
+      previewUrl.value = await PresenterVideoService.getPresenterVideoObjectUrl()
     }
   } catch (err: unknown) {
     toast.error(err instanceof Error ? err.message : 'Impossible de charger le clip')
@@ -426,14 +384,7 @@ async function loadInfo(): Promise<void> {
   }
 }
 
-/**
- * Paint the clip's first frame so the presenter sees their own face at once.
- *
- * A ``<video>`` left to preload alone commonly shows a black box until it is
- * played; nudging ``currentTime`` forces the first decoded frame to render,
- * turning the player into a self-portrait the moment the page loads.
- * @param event - The ``loadeddata`` event of the preview video element.
- */
+/** Force the first decoded frame so the preview is not a black box on load. */
 function revealFirstFrame(event: Event): void {
   const video: HTMLVideoElement | null = event.target as HTMLVideoElement | null
   if (!video || video.currentTime > 0) return
@@ -461,7 +412,7 @@ async function handleRecorded(payload: PresenterVideoInfo): Promise<void> {
   applyInfo(payload)
   captureMode.value = null
   releasePreview()
-  previewUrl.value = await getPresenterVideoObjectUrl()
+  previewUrl.value = await PresenterVideoService.getPresenterVideoObjectUrl()
 }
 
 /**
@@ -496,12 +447,17 @@ async function handleUpload(): Promise<void> {
   isUploading.value = true
   try {
     applyInfo(
-      await uploadPresenterVideo(selectedFile.value, introSeconds.value, outroSeconds.value, autoGenerate.value),
+      await PresenterVideoService.uploadPresenterVideo(
+        selectedFile.value,
+        introSeconds.value,
+        outroSeconds.value,
+        autoGenerate.value,
+      ),
     )
     selectedFile.value = null
     if (fileInputRef.value) fileInputRef.value.value = ''
     releasePreview()
-    previewUrl.value = await getPresenterVideoObjectUrl()
+    previewUrl.value = await PresenterVideoService.getPresenterVideoObjectUrl()
     toast.success('Clip de présentation enregistré — les prochains sites généreront leur vidéo automatiquement')
   } catch (err: unknown) {
     toast.error(err instanceof Error ? err.message : "Échec de l'envoi du clip")
@@ -516,7 +472,13 @@ async function handleUpload(): Promise<void> {
 async function handleSaveSettings(): Promise<void> {
   isSavingSettings.value = true
   try {
-    applyInfo(await updatePresenterVideoSettings(introSeconds.value, outroSeconds.value, autoGenerate.value))
+    applyInfo(
+      await PresenterVideoService.updatePresenterVideoSettings(
+        introSeconds.value,
+        outroSeconds.value,
+        autoGenerate.value,
+      ),
+    )
     toast.success('Réglages enregistrés')
   } catch (err: unknown) {
     toast.error(err instanceof Error ? err.message : 'Échec de la mise à jour')
@@ -538,7 +500,7 @@ function askDeleteClip(): void {
 async function handleDeleteConfirmed(): Promise<void> {
   isDeleting.value = true
   try {
-    applyInfo(await deletePresenterVideo())
+    applyInfo(await PresenterVideoService.deletePresenterVideo())
     releasePreview()
     // Repartir du choix « filmer ici / importer » plutôt que de la méthode
     // utilisée la fois précédente.

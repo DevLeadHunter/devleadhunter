@@ -128,7 +128,7 @@ export function useVariableInsertion(
       return
     }
 
-    const query: string = match[1].toLowerCase()
+    const query: string = (match[1] ?? '').toLowerCase()
     queryStart = caret - match[0].length
     items.value = query
       ? EmailVariables.catalog.filter(

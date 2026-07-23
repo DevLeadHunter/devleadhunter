@@ -3,8 +3,8 @@
     <div
       :class="[
         'flex cursor-pointer flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed text-center transition-colors',
-        compact ? 'px-5 py-8' : 'px-6 py-14',
-        isDragging
+        props.compact ? 'px-5 py-8' : 'px-6 py-14',
+        props.isDragging
           ? 'border-[var(--app-ink)] bg-[var(--app-surface-2)]'
           : 'border-[var(--app-line)] hover:border-[var(--app-ink-soft)] hover:bg-[var(--app-surface-2)]',
       ]"
@@ -19,18 +19,20 @@
       <span
         :class="[
           'flex items-center justify-center rounded-full bg-[var(--app-surface-2)] text-[var(--app-ink-soft)]',
-          compact ? 'h-9 w-9' : 'h-12 w-12',
+          props.compact ? 'h-9 w-9' : 'h-12 w-12',
         ]"
       >
         <UIcon
-          :name="selectedFile ? 'i-lucide-file-video' : 'i-lucide-upload'"
-          :class="compact ? 'h-4 w-4' : 'h-5 w-5'"
+          :name="props.selectedFile ? 'i-lucide-file-video' : 'i-lucide-upload'"
+          :class="props.compact ? 'h-4 w-4' : 'h-5 w-5'"
         />
       </span>
 
-      <template v-if="selectedFile">
-        <p class="text-sm font-medium text-[var(--app-ink)]">{{ selectedFile.name }}</p>
-        <p class="text-muted text-xs">{{ formatFileSize(selectedFile.size) }} — cliquez pour changer de fichier</p>
+      <template v-if="props.selectedFile">
+        <p class="text-sm font-medium text-[var(--app-ink)]">{{ props.selectedFile.name }}</p>
+        <p class="text-muted text-xs">
+          {{ formatFileSize(props.selectedFile.size) }} — cliquez pour changer de fichier
+        </p>
       </template>
       <template v-else>
         <p class="text-sm font-medium text-[var(--app-ink)]">
@@ -56,13 +58,10 @@
 
 <script lang="ts" setup>
 import type { PropType } from 'vue'
+import type { UiPresenterVideoDropzoneProps } from '~/types/UiPresenterVideoDropzone'
 
-/**
- * Drag-and-drop area for the presenter clip. Presentational only: it owns no
- * state, emitting user intent (pick / drop / drag / upload) up to the page.
- * Props are typed via {@link import('~/types/UiPresenterVideoDropzone').UiPresenterVideoDropzoneProps}.
- */
-defineProps({
+/** Drag-and-drop zone for presenter video upload. */
+const props: UiPresenterVideoDropzoneProps = defineProps({
   selectedFile: {
     type: Object as PropType<File | null>,
     default: null,

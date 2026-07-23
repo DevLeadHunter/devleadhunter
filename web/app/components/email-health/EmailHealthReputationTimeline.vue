@@ -22,10 +22,7 @@
 import type { PropType } from 'vue'
 import type { ReputationTimelineDay } from '~/types/EmailHealthReputationTimeline'
 
-/**
- * Gmail Postmaster domain-reputation history: one colored square per day
- * (GitHub-contributions style), with a hover title and a legend.
- */
+/** Gmail Postmaster domain reputation heatmap. */
 defineProps({
   days: {
     type: Array as PropType<ReputationTimelineDay[]>,
@@ -34,7 +31,7 @@ defineProps({
 })
 
 /** Legend entries in reputation order. */
-const LEGEND: ReadonlyArray<{ label: string; color: string }> = [
+const LEGEND: { label: string; color: string }[] = [
   { label: 'Excellente', color: 'var(--app-green)' },
   { label: 'Moyenne', color: 'var(--app-accent)' },
   { label: 'Faible', color: '#c47a3d' },

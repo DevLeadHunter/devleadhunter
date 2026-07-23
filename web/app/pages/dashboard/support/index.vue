@@ -1,6 +1,5 @@
 <template>
   <div class="mx-auto max-w-3xl space-y-8">
-    <!-- Header — une ligne, l'action à droite -->
     <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
       <div>
         <h1 class="text-3xl font-bold text-[var(--app-ink)]">Support</h1>
@@ -23,7 +22,6 @@
       </div>
     </div>
 
-    <!-- Filtres : pilules nues, sans carte ni titre -->
     <div v-if="isAdmin" class="flex flex-wrap gap-2">
       <button
         v-for="filter in STATUS_FILTERS"
@@ -43,7 +41,6 @@
 
     <UiLoader v-if="isLoading" />
 
-    <!-- Liste -->
     <div v-else-if="filteredTickets.length" class="space-y-2">
       <NuxtLink
         v-for="ticket in filteredTickets"
@@ -75,7 +72,6 @@
       </NuxtLink>
     </div>
 
-    <!-- Vide -->
     <div
       v-else
       class="flex flex-col items-center gap-3 rounded-xl border border-[var(--app-line)] bg-[var(--app-surface)] px-6 py-14 text-center"
@@ -101,7 +97,7 @@ import type { SupportTicketStatus, SupportTicketSummary } from '~/types'
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useUserStore } from '~/stores/user'
 import { useToast } from '~/composables/useToast'
-import * as supportService from '~/services/supportService'
+import { SupportService } from '~/services/supportService'
 
 definePageMeta({ layout: 'dashboard', middleware: 'auth' })
 
@@ -217,7 +213,7 @@ async function loadTickets(): Promise<void> {
     isLoading.value = true
     const includeClosed = activeStatus.value === 'closed' || activeStatus.value === 'all'
     const status = activeStatus.value === 'all' ? undefined : (activeStatus.value as SupportTicketStatus)
-    tickets.value = await supportService.getTickets({ scope: scope.value, status, includeClosed })
+    tickets.value = await SupportService.getTickets({ scope: scope.value, status, includeClosed })
   } catch {
     toast.error('Impossible de charger les tickets pour le moment.')
   } finally {

@@ -237,7 +237,7 @@ const macDownloads: ComputedRef<DownloadItem[]> = computed((): DownloadItem[] =>
 })
 
 const releaseVersionLabel: ComputedRef<string> = computed((): string => {
-  const r: GithubRelease | null = release.value
+  const r: GithubRelease | null = release.value ?? null
   if (!r) {
     return ''
   }

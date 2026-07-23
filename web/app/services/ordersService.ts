@@ -1,4 +1,4 @@
-import { api } from './api'
+import { ApiClient } from './api'
 
 /** A commercial order (sale of a product to a client). */
 export type Order = {
@@ -60,90 +60,92 @@ export type OrderStats = {
   currency: string
 }
 
-/**
- * List the current user's orders.
- * @returns The order list response.
- */
-export async function listOrders(): Promise<OrderListResponse> {
-  return api.get<OrderListResponse>('/api/v1/orders')
-}
+export class OrdersService {
+  /**
+   * List the current user's orders.
+   * @returns The order list response.
+   */
+  static async listOrders(): Promise<OrderListResponse> {
+    return ApiClient.get<OrderListResponse>('/api/v1/orders')
+  }
 
-/**
- * Fetch commercial KPIs for the current user.
- * @returns Aggregated sales stats.
- */
-export async function getOrderStats(): Promise<OrderStats> {
-  return api.get<OrderStats>('/api/v1/orders/stats')
-}
+  /**
+   * Fetch commercial KPIs for the current user.
+   * @returns Aggregated sales stats.
+   */
+  static async getOrderStats(): Promise<OrderStats> {
+    return ApiClient.get<OrderStats>('/api/v1/orders/stats')
+  }
 
-/**
- * Create a manual order.
- * @param payload - Order creation fields.
- * @returns The created order.
- */
-export async function createOrder(payload: OrderCreatePayload): Promise<Order> {
-  return api.post<Order>('/api/v1/orders', payload)
-}
+  /**
+   * Create a manual order.
+   * @param payload - Order creation fields.
+   * @returns The created order.
+   */
+  static async createOrder(payload: OrderCreatePayload): Promise<Order> {
+    return ApiClient.post<Order>('/api/v1/orders', payload)
+  }
 
-/**
- * Update an order's editable fields.
- * @param orderId - Target order id.
- * @param payload - Fields to update.
- * @returns The updated order.
- */
-export async function updateOrder(orderId: number, payload: OrderUpdatePayload): Promise<Order> {
-  return api.patch<Order>(`/api/v1/orders/${orderId}`, payload)
-}
+  /**
+   * Update an order's editable fields.
+   * @param orderId - Target order id.
+   * @param payload - Fields to update.
+   * @returns The updated order.
+   */
+  static async updateOrder(orderId: number, payload: OrderUpdatePayload): Promise<Order> {
+    return ApiClient.patch<Order>(`/api/v1/orders/${orderId}`, payload)
+  }
 
-/**
- * Delete (cancel) an order.
- * @param orderId - Target order id.
- */
-export async function deleteOrder(orderId: number): Promise<void> {
-  await api.delete<unknown>(`/api/v1/orders/${orderId}`)
-}
+  /**
+   * Delete (cancel) an order.
+   * @param orderId - Target order id.
+   */
+  static async deleteOrder(orderId: number): Promise<void> {
+    await ApiClient.delete<unknown>(`/api/v1/orders/${orderId}`)
+  }
 
-/**
- * Generate (or refresh) the Stripe payment link for an order.
- * @param orderId - Target order id.
- * @returns The order with its payment URL set.
- */
-export async function createOrderPaymentLink(orderId: number): Promise<Order> {
-  return api.post<Order>(`/api/v1/orders/${orderId}/payment-link`, {})
-}
+  /**
+   * Generate (or refresh) the Stripe payment link for an order.
+   * @param orderId - Target order id.
+   * @returns The order with its payment URL set.
+   */
+  static async createOrderPaymentLink(orderId: number): Promise<Order> {
+    return ApiClient.post<Order>(`/api/v1/orders/${orderId}/payment-link`, {})
+  }
 
-/**
- * Render the payment-link email for review before sending.
- * @param orderId - Target order id.
- * @returns The rendered subject and HTML body.
- */
-export async function previewOrderPaymentEmail(orderId: number): Promise<OrderPaymentEmailPreview> {
-  return api.get<OrderPaymentEmailPreview>(`/api/v1/orders/${orderId}/payment-email/preview`)
-}
+  /**
+   * Render the payment-link email for review before sending.
+   * @param orderId - Target order id.
+   * @returns The rendered subject and HTML body.
+   */
+  static async previewOrderPaymentEmail(orderId: number): Promise<OrderPaymentEmailPreview> {
+    return ApiClient.get<OrderPaymentEmailPreview>(`/api/v1/orders/${orderId}/payment-email/preview`)
+  }
 
-/**
- * Send the payment-link email to the client.
- * @param orderId - Target order id.
- * @returns The updated order.
- */
-export async function sendOrderPaymentEmail(orderId: number): Promise<Order> {
-  return api.post<Order>(`/api/v1/orders/${orderId}/payment-email/send`, {})
-}
+  /**
+   * Send the payment-link email to the client.
+   * @param orderId - Target order id.
+   * @returns The updated order.
+   */
+  static async sendOrderPaymentEmail(orderId: number): Promise<Order> {
+    return ApiClient.post<Order>(`/api/v1/orders/${orderId}/payment-email/send`, {})
+  }
 
-/**
- * Manually mark an order as paid.
- * @param orderId - Target order id.
- * @returns The updated order.
- */
-export async function markOrderPaid(orderId: number): Promise<Order> {
-  return api.post<Order>(`/api/v1/orders/${orderId}/mark-paid`, {})
-}
+  /**
+   * Manually mark an order as paid.
+   * @param orderId - Target order id.
+   * @returns The updated order.
+   */
+  static async markOrderPaid(orderId: number): Promise<Order> {
+    return ApiClient.post<Order>(`/api/v1/orders/${orderId}/mark-paid`, {})
+  }
 
-/**
- * Put the sold site online (Vercel + domain) and hand over CMS access.
- * @param orderId - Target order id.
- * @returns The updated order.
- */
-export async function deployOrder(orderId: number): Promise<Order> {
-  return api.post<Order>(`/api/v1/orders/${orderId}/deploy`, {})
+  /**
+   * Put the sold site online (Vercel + domain) and hand over CMS access.
+   * @param orderId - Target order id.
+   * @returns The updated order.
+   */
+  static async deployOrder(orderId: number): Promise<Order> {
+    return ApiClient.post<Order>(`/api/v1/orders/${orderId}/deploy`, {})
+  }
 }

@@ -78,7 +78,7 @@
 <script lang="ts" setup>
 import type { Ref } from 'vue'
 import type { DemoSite, DemoSiteTemplate, DemoSiteTheme } from '~/services/demoSiteService'
-import { getDemoSite, listDemoSiteTemplates, regenerateDemoSite, updateDemoSite } from '~/services/demoSiteService'
+import { DemoSiteService } from '~/services/demoSiteService'
 
 definePageMeta({ layout: 'dashboard', middleware: 'auth' })
 
@@ -136,7 +136,7 @@ async function handleSave(): Promise<void> {
   isSaving.value = true
   saveMessage.value = null
   try {
-    const updatedSite = await updateDemoSite(demoSiteId, {
+    const updatedSite = await DemoSiteService.updateDemoSite(demoSiteId, {
       business_name: form.value.business_name.trim(),
       template_id: form.value.template_id,
       email: form.value.email.trim(),
@@ -162,7 +162,7 @@ async function handleRegenerate(): Promise<void> {
   isRegenerating.value = true
   saveMessage.value = null
   try {
-    const updatedSite = await regenerateDemoSite(demoSiteId)
+    const updatedSite = await DemoSiteService.regenerateDemoSite(demoSiteId)
     applySiteUpdate(updatedSite, updatedSite.verification_message ?? 'Site régénéré.')
   } catch (error) {
     saveMessage.value = error instanceof Error ? error.message : 'Échec de la régénération'
@@ -174,7 +174,10 @@ async function handleRegenerate(): Promise<void> {
 
 onMounted(async () => {
   try {
-    const [loadedSite, loadedTemplates] = await Promise.all([getDemoSite(demoSiteId), listDemoSiteTemplates()])
+    const [loadedSite, loadedTemplates] = await Promise.all([
+      DemoSiteService.getDemoSite(demoSiteId),
+      DemoSiteService.listDemoSiteTemplates(),
+    ])
     site.value = loadedSite
     templates.value = loadedTemplates
     form.value = {

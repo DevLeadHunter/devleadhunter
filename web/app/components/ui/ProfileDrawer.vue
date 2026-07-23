@@ -1,13 +1,10 @@
 <template>
   <Teleport to="body">
-    <!-- Pas de backdrop : drawer non-modal (navigation possible pendant qu'il
-         est ouvert), fermeture par X / Échap. -->
     <Transition name="drawer-panel">
       <div
         v-if="open"
         class="fixed top-0 right-0 z-50 flex h-dvh w-full max-w-[480px] flex-col border-l border-[var(--app-line)] bg-[var(--app-surface)] shadow-2xl"
       >
-        <!-- ───────────────────────── Header ───────────────────────── -->
         <div class="flex items-start gap-3 border-b border-[var(--app-line)] px-5 py-4">
           <button
             v-if="showBack"
@@ -37,7 +34,6 @@
           </button>
         </div>
 
-        <!-- ───────────────────────── Body ────────────────────────── -->
         <form id="profile-form" class="flex-1 space-y-4 overflow-y-auto px-5 py-4" @submit.prevent="handleSave">
           <div>
             <label class="text-muted mb-1.5 block text-xs font-medium" for="profile-name">Nom</label>
@@ -62,7 +58,6 @@
           </div>
         </form>
 
-        <!-- ───────────────────────── Footer ─────────────────────── -->
         <div class="flex gap-2 border-t border-[var(--app-line)] px-5 py-4">
           <button type="button" class="btn-secondary flex-1" :disabled="isSaving" @click="emit('close')">
             Annuler
@@ -84,20 +79,19 @@
 
 <script lang="ts" setup>
 import type { ComputedRef, Ref } from 'vue'
+import type { UiDrawerProps } from '~/types/UiDrawer'
 import { computed, ref, watch } from 'vue'
 import { useUserStore } from '~/stores/user'
 import { useToast } from '~/composables/useToast'
 
 /** Local shape of the profile form. */
-interface ProfileForm {
+type ProfileForm = {
   name: string
   email: string
 }
 
-/**
- * Defines the component props.
- */
-const props = defineProps({
+/** User profile and password drawer. */
+const props: UiDrawerProps = defineProps({
   open: {
     type: Boolean,
     required: true,

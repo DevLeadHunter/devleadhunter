@@ -1,6 +1,5 @@
 <template>
   <div>
-    <!-- Prospect detail -->
     <UiProspectDrawer
       :open="prospectEntry !== null"
       :prospect="prospectEntry?.prospect ?? null"
@@ -15,7 +14,6 @@
       @toggle-contacted="handleToggleContacted"
     />
 
-    <!-- Manual email composer -->
     <UiSendEmailDrawer
       :open="sendEmailEntry !== null"
       :prospect="sendEmailEntry?.prospect ?? null"
@@ -26,7 +24,6 @@
       @sent="handleEmailSent"
     />
 
-    <!-- Email log detail -->
     <UiEmailLogDrawer
       :open="emailLogEntry !== null"
       :log="emailLogEntry?.log ?? null"
@@ -37,7 +34,6 @@
       @resend="handleResendEmail"
     />
 
-    <!-- Email template create / edit / preview -->
     <UiEmailTemplateDrawer
       :open="emailTemplateEntry !== null"
       :mode="emailTemplateEntry?.mode ?? 'create'"
@@ -49,7 +45,6 @@
       @edit="handleTemplateEdit"
     />
 
-    <!-- Email signatures management -->
     <UiEmailSignaturesDrawer
       :open="emailSignaturesEntry !== null"
       :show-back="hasPrevious"
@@ -57,7 +52,6 @@
       @back="drawerStack.back()"
     />
 
-    <!-- User profile edit -->
     <UiProfileDrawer
       :open="profileEntry !== null"
       :show-back="hasPrevious"
@@ -65,7 +59,6 @@
       @back="drawerStack.back()"
     />
 
-    <!-- Organization (team) management -->
     <UiOrganizationDrawer
       :open="organizationEntry !== null"
       :show-back="hasPrevious"
@@ -73,7 +66,6 @@
       @back="drawerStack.back()"
     />
 
-    <!-- Campaign creation -->
     <UiCreateCampaignDrawer
       :open="createCampaignEntry !== null"
       :show-back="hasPrevious"
@@ -81,7 +73,6 @@
       @back="drawerStack.back()"
     />
 
-    <!-- Manual prospect creation -->
     <UiAddProspectDrawer
       :open="addProspectEntry !== null"
       :show-back="hasPrevious"
@@ -90,7 +81,6 @@
       @created="handleProspectCreated"
     />
 
-    <!-- Prospect search (scraping) -->
     <UiSearchProspectsDrawer
       :open="searchProspectsEntry !== null"
       :show-back="hasPrevious"
@@ -99,7 +89,6 @@
       @back="drawerStack.back()"
     />
 
-    <!-- Send policy (email cadence) -->
     <UiSendPolicyDrawer
       :open="sendPolicyEntry !== null"
       :show-back="hasPrevious"
@@ -107,7 +96,6 @@
       @back="drawerStack.back()"
     />
 
-    <!-- Coverage map: filters & zones -->
     <UiCoverageFiltersDrawer
       :open="coverageFiltersEntry !== null"
       :show-back="hasPrevious"
@@ -115,7 +103,6 @@
       @back="drawerStack.back()"
     />
 
-    <!-- Coverage map: zone prospects -->
     <UiCoverageProspectsDrawer
       :open="coverageProspectsEntry !== null"
       :show-back="hasPrevious"
@@ -146,8 +133,8 @@ import type {
 import type { EmailTemplate, Prospect } from '~/types'
 import { computed, onBeforeUnmount, onMounted } from 'vue'
 import { useDrawerStackStore } from '~/stores/drawerStack'
-import { updateProspect } from '~/services/prospectsService'
-import { createOrder } from '~/services/ordersService'
+import { ProspectsService } from '~/services/prospectsService'
+import { OrdersService } from '~/services/ordersService'
 import { useToast } from '~/composables/useToast'
 
 const drawerStack = useDrawerStackStore()
@@ -260,12 +247,7 @@ function handleProspectDeleted(prospectId: number): void {
   drawerStack.notifyProspectDeleted(prospectId)
 }
 
-/**
- * « Campagne » action — chain the prospect into the campaigns page. The
- * drawer stays open across the navigation (that's the whole point of the
- * persistent stack).
- * @param prospect - The prospect to add to a campaign.
- */
+/** Stack prospect into campaigns page (drawer stays open across navigation). */
 function handleAddToCampaign(prospect: Prospect): void {
   navigateTo(`/dashboard/campaigns?addProspect=${prospect.id}`)
 }
@@ -284,7 +266,7 @@ function handleSendEmail(prospect: Prospect): void {
  */
 async function handleMarkAsSold(prospect: Prospect): Promise<void> {
   try {
-    await createOrder({
+    await OrdersService.createOrder({
       product_type: 'website',
       prospect_id: prospect.id,
       business_name: prospect.name,
@@ -305,7 +287,7 @@ async function handleMarkAsSold(prospect: Prospect): Promise<void> {
 async function handleToggleContacted(prospect: Prospect): Promise<void> {
   const next: boolean = !prospect.contacted
   try {
-    const updated: Prospect = await updateProspect(prospect.id, { contacted: next })
+    const updated: Prospect = await ProspectsService.updateProspect(prospect.id, { contacted: next })
     drawerStack.notifyProspectUpdated(updated)
     toast.success(next ? `« ${prospect.name} » marqué comme contacté` : `« ${prospect.name} » remis en non contacté`)
   } catch (err: unknown) {
@@ -326,10 +308,7 @@ function htmlToPlainText(html: string | null | undefined): string {
   return (doc.body.textContent ?? '').replace(/\n{3,}/g, '\n\n').trim()
 }
 
-/**
- * « Renvoyer un email » from the log drawer — stack the composer prefilled
- * with the log's recipient, subject and body.
- */
+/** Stack email composer prefilled from the log row (resend). */
 function handleResendEmail(): void {
   const entry = emailLogEntry.value
   if (!entry) return
@@ -345,10 +324,7 @@ function handleResendEmail(): void {
   })
 }
 
-/**
- * Email sent from the composer — refresh the logs and go back to the
- * previous drawer when one exists (e.g. the prospect), else close.
- */
+/** Refresh logs after send; back or close the stack. */
 function handleEmailSent(): void {
   drawerStack.bumpEmailLogsRefresh()
   if (drawerStack.hasPrevious) {
@@ -358,10 +334,7 @@ function handleEmailSent(): void {
   }
 }
 
-/**
- * Template saved (created or edited) — refresh the templates page and go
- * back or close.
- */
+/** Refresh templates after save; back or close the stack. */
 function handleTemplateSaved(): void {
   drawerStack.bumpEmailTemplatesRefresh()
   if (drawerStack.hasPrevious) {

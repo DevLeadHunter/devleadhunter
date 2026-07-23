@@ -5,7 +5,6 @@
         v-if="open"
         class="fixed top-0 right-0 z-50 flex h-dvh w-full max-w-[460px] flex-col border-l border-[var(--app-line)] bg-[var(--app-surface)] shadow-2xl"
       >
-        <!-- Header -->
         <div class="flex items-start gap-3 border-b border-[var(--app-line)] px-5 py-4">
           <button
             v-if="showBack"
@@ -35,7 +34,6 @@
           </button>
         </div>
 
-        <!-- Body -->
         <div class="flex-1 overflow-y-auto px-5 py-3">
           <div v-if="isLoading" class="flex h-40 items-center justify-center">
             <UIcon name="i-lucide-loader-circle" class="h-6 w-6 animate-spin text-[var(--app-ink-soft)]" />
@@ -72,7 +70,7 @@
                     {{ zone?.kind === 'region' ? (row.city ?? '—') : (row.category ?? '—') }}
                   </p>
                 </div>
-                <!-- Status recap: demo chip, visible email counts, sold chip -->
+
                 <div class="flex shrink-0 items-center gap-2.5">
                   <span
                     v-if="row.has_demo"
@@ -124,7 +122,6 @@
           </p>
         </div>
 
-        <!-- Footer: relaunch a search in this zone -->
         <div class="border-t border-[var(--app-line)] px-5 py-3">
           <button type="button" class="btn-primary w-full text-sm" @click="prospectAgain">
             <UIcon name="i-lucide-search" class="mr-1.5 h-4 w-4" />
@@ -136,22 +133,19 @@
   </Teleport>
 </template>
 
-<script setup lang="ts">
+<script lang="ts" setup>
 import type { PropType, Ref } from 'vue'
 import { ref, watch } from 'vue'
 import type { CoverageProspectRow } from '~/services/dashboardService'
-import { getCoverageProspects } from '~/services/dashboardService'
-import { getProspect } from '~/services/prospectsService'
+import { DashboardService } from '~/services/dashboardService'
+import { ProspectsService } from '~/services/prospectsService'
 import { useCoverageStore } from '~/stores/coverage'
 import { useDrawerStackStore } from '~/stores/drawerStack'
 import type { CoverageZone } from '~/types/DrawerStack'
+import type { UiCoverageProspectsDrawerProps } from '~/types/UiCoverageProspectsDrawer'
 
-/**
- * Coverage zone drawer: airy prospect recap for a clicked map zone (city dot
- * or covered region) — demo / email engagement / sold at a glance, row click
- * opens the full prospect drawer, footer relaunches a search in the zone.
- */
-const props = defineProps({
+/** Drawer listing prospects for a clicked coverage zone. */
+const props: UiCoverageProspectsDrawerProps = defineProps({
   open: {
     type: Boolean,
     required: true,
@@ -196,7 +190,7 @@ async function loadZone(): Promise<void> {
     const [scopeName, memberId] = store.scope.startsWith('member:')
       ? (['member', Number(store.scope.slice('member:'.length))] as [string, number])
       : ([store.scope, undefined] as [string, undefined])
-    const data = await getCoverageProspects(zone.cities, scopeName, memberId, store.selectedCategories)
+    const data = await DashboardService.getCoverageProspects(zone.cities, scopeName, memberId, store.selectedCategories)
     rows.value = data.items
     total.value = data.total
   } catch {
@@ -213,7 +207,7 @@ async function loadZone(): Promise<void> {
  */
 async function openProspect(prospectId: number): Promise<void> {
   try {
-    const prospect = await getProspect(prospectId)
+    const prospect = await ProspectsService.getProspect(prospectId)
     drawerStack.push({ kind: 'prospect', prospect })
   } catch {
     // Row stays inert on fetch failure — the list itself already rendered.

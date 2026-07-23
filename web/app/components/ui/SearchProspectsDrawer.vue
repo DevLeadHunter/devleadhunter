@@ -5,7 +5,6 @@
         v-if="open"
         class="fixed top-0 right-0 z-50 flex h-dvh w-full max-w-[460px] flex-col border-l border-[var(--app-line)] bg-[var(--app-surface)] shadow-2xl"
       >
-        <!-- Header -->
         <div class="flex items-start gap-3 border-b border-[var(--app-line)] px-5 py-4">
           <button
             v-if="showBack"
@@ -32,7 +31,6 @@
           </button>
         </div>
 
-        <!-- Body -->
         <div class="flex-1 space-y-5 overflow-y-auto px-5 py-4">
           <form id="search-prospects-form" class="space-y-4" @submit.prevent="submit">
             <div>
@@ -113,7 +111,6 @@
             </div>
           </form>
 
-          <!-- Live status (compact) -->
           <div v-if="store.currentJob" class="rounded-xl border border-[var(--app-line)] bg-[var(--app-bg)] p-3.5">
             <div class="mb-1.5 flex items-center justify-between text-xs">
               <span class="font-medium text-[var(--app-ink)]">{{ statusLabel }}</span>
@@ -135,7 +132,6 @@
               {{ store.liveProgress.current_prospect }}
             </p>
 
-            <!-- Cancel a search launched by mistake -->
             <button
               v-if="store.isSearching"
               type="button"
@@ -160,7 +156,6 @@
             </NuxtLink>
           </div>
 
-          <!-- Comment ça marche (below the form) -->
           <div class="rounded-xl border border-[var(--app-line)] bg-[var(--app-bg)] p-4">
             <p class="app-label mb-3">Comment ça marche</p>
             <ol class="space-y-2.5">
@@ -182,7 +177,6 @@
           </div>
         </div>
 
-        <!-- Footer -->
         <div class="flex gap-2 border-t border-[var(--app-line)] px-5 py-4">
           <button type="button" class="app-btn-secondary flex-1" @click="emit('close')">Fermer</button>
           <button
@@ -212,7 +206,7 @@ import { useProspectSearchStore } from '~/stores/prospectSearch'
 import { useToast } from '~/composables/useToast'
 
 /** Local search form state. */
-interface SearchFormState {
+type SearchFormState = {
   category: string
   city: string
   maxResults: number
@@ -223,9 +217,7 @@ interface SearchFormState {
 
 const STORAGE_KEY: string = 'devleadhunter-search-form'
 
-/**
- * Defines the component props.
- */
+/** Drawer to configure and launch prospect scraping. */
 const props: SearchProspectsDrawerProps = defineProps({
   open: {
     type: Boolean,
@@ -266,7 +258,7 @@ const statusLabel: ComputedRef<string> = computed((): string => {
 })
 
 /** Quick-pick trades. */
-const QUICK_CATEGORIES: ReadonlyArray<string> = [
+const QUICK_CATEGORIES: string[] = [
   'Plombier',
   'Électricien',
   'Menuisier',
@@ -278,7 +270,7 @@ const QUICK_CATEGORIES: ReadonlyArray<string> = [
 ]
 
 /** "How it works" steps. */
-const SEARCH_STEPS: ReadonlyArray<string> = [
+const SEARCH_STEPS: string[] = [
   'Saisissez un métier et une ville, puis lancez la recherche.',
   'DevLeadHunter parcourt les sources et ajoute les artisans trouvés à vos prospects.',
   'Les nouveaux prospects sont disponibles dans vos listes et automatisations.',

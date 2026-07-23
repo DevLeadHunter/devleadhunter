@@ -11,10 +11,7 @@ export type EmailTemplateCreator = {
 }
 
 /**
- * Shared email-template creation flow for pages hosting one or more `UiTemplateSelect`.
- * Opens the creation drawer, reloads the caller's list when the store refresh counter
- * bumps, and auto-selects the new template via the optional assign callback.
- *
+ * Shared create flow for pages hosting `UiTemplateSelect` (drawer + reload + auto-select).
  * @param templates - Caller's reactive template list.
  * @param reload - Reloads that list in place after a template is saved.
  * @returns Handler to bind to `UiTemplateSelect`'s `@create`.
@@ -27,8 +24,7 @@ export function useEmailTemplateCreator<T extends IdentifiableTemplate>(
   const pendingAssign: Ref<((templateId: number) => void) | null> = ref(null)
 
   /**
-   * Open the creation drawer and remember which select should receive the new id.
-   *
+   * Open the creation drawer and optionally auto-select the new template id.
    * @param assign - Optional auto-select callback for the new template id.
    */
   function openCreate(assign?: (templateId: number) => void): void {

@@ -1,195 +1,140 @@
-/**
- * Base API service with common HTTP methods
- * @module services/api
- */
+type ApiQueryParams = Record<string, string | number | boolean | null | undefined>
 
 /**
- * Get the API base URL from runtime config
- * @returns {string} The API base URL
+ * HTTP client every service goes through: bearer token, JSON encoding, and error unwrapping.
+ *
+ * The API answers 204s and empty bodies on several routes, so every response is read as text
+ * first and only parsed when it carries something — `response.json()` would throw otherwise.
  */
-function getBaseUrl(): string {
-  const config = useRuntimeConfig()
-  return config.public.apiBase
-}
-
-/**
- * Make authenticated API request
- * @param endpoint - API endpoint
- * @param options - Fetch options
- * @returns Response data
- * @throws {Error} If request fails
- */
-async function request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
-  const userStore = useUserStore()
-
-  const headers: HeadersInit = {
-    'Content-Type': 'application/json',
-    ...(userStore.token && { Authorization: `Bearer ${userStore.token}` }),
-    ...options.headers,
+export class ApiClient {
+  /**
+   * Send a GET request.
+   *
+   * @param endpoint - Path starting with `/api/`.
+   * @param options - Optional query parameters; null and undefined values are dropped.
+   * @returns The parsed response body.
+   */
+  static get<T>(endpoint: string, options?: { params?: ApiQueryParams }): Promise<T> {
+    return this.request<T>(this.withQuery(endpoint, options?.params), { method: 'GET' })
   }
 
-  const response = await fetch(`${getBaseUrl()}${endpoint}`, {
-    ...options,
-    headers,
-  })
+  /**
+   * Send a POST request.
+   *
+   * @param endpoint - Path starting with `/api/`.
+   * @param data - Request body, JSON-encoded.
+   * @returns The parsed response body.
+   */
+  static post<T>(endpoint: string, data: unknown): Promise<T> {
+    return this.request<T>(endpoint, { method: 'POST', body: JSON.stringify(data) })
+  }
 
-  if (!response.ok) {
-    const errorText = await response.text().catch(() => '')
-    let errorMessage = `API request failed: ${response.statusText}`
+  /**
+   * Send a PUT request.
+   *
+   * @param endpoint - Path starting with `/api/`.
+   * @param data - Request body, JSON-encoded.
+   * @returns The parsed response body.
+   */
+  static put<T>(endpoint: string, data: unknown): Promise<T> {
+    return this.request<T>(endpoint, { method: 'PUT', body: JSON.stringify(data) })
+  }
 
-    // Try to parse error message from response
-    if (errorText) {
-      try {
-        const errorJson = JSON.parse(errorText)
-        errorMessage = errorJson.detail || errorJson.message || errorMessage
-      } catch {
-        errorMessage = errorText || errorMessage
+  /**
+   * Send a PATCH request.
+   *
+   * @param endpoint - Path starting with `/api/`.
+   * @param data - Request body, JSON-encoded.
+   * @returns The parsed response body.
+   */
+  static patch<T>(endpoint: string, data: unknown): Promise<T> {
+    return this.request<T>(endpoint, { method: 'PATCH', body: JSON.stringify(data) })
+  }
+
+  /**
+   * Send a DELETE request.
+   *
+   * @param endpoint - Path starting with `/api/`.
+   * @returns The parsed response body, or undefined when the route answers empty.
+   */
+  static delete<T>(endpoint: string): Promise<T> {
+    return this.request<T>(endpoint, { method: 'DELETE' })
+  }
+
+  /**
+   * Append a query string, skipping the parameters that carry no value.
+   *
+   * @param endpoint - Path to decorate.
+   * @param params - Query parameters.
+   * @returns The path, with its query string when at least one parameter survived.
+   */
+  private static withQuery(endpoint: string, params?: ApiQueryParams): string {
+    if (!params) {
+      return endpoint
+    }
+    const search = new URLSearchParams()
+    Object.entries(params).forEach(([key, value]): void => {
+      if (value !== null && value !== undefined) {
+        search.append(key, String(value))
       }
+    })
+    const queryString: string = search.toString()
+    return queryString ? `${endpoint}?${queryString}` : endpoint
+  }
+
+  /**
+   * Perform the authenticated request and unwrap the response.
+   *
+   * @param endpoint - Path starting with `/api/`.
+   * @param options - Fetch options; the auth and content-type headers are added here.
+   * @returns The parsed body, or undefined when the response has none.
+   * @throws Error carrying the API `detail` message when the status is not ok.
+   */
+  private static async request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
+    const userStore = useUserStore()
+    const config = useRuntimeConfig()
+
+    const response = await fetch(`${config.public.apiBase}${endpoint}`, {
+      ...options,
+      headers: {
+        'Content-Type': 'application/json',
+        ...(userStore.token && { Authorization: `Bearer ${userStore.token}` }),
+        ...options.headers,
+      },
+    })
+
+    if (!response.ok) {
+      throw new Error(await this.readErrorMessage(response))
     }
 
-    throw new Error(errorMessage)
-  }
-
-  // Check if response has content
-  const contentType = response.headers.get('content-type')
-  const contentLength = response.headers.get('content-length')
-
-  // For DELETE requests or responses with no content, return undefined
-  if (contentLength === '0' || (options.method === 'DELETE' && !contentType?.includes('application/json'))) {
-    // Try to get text to verify it's actually empty
-    const text = await response.text().catch(() => '')
-    if (!text || text.trim() === '') {
+    const text: string = await response.text()
+    if (!text.trim()) {
       return undefined as T
     }
-    // If there's unexpected content, try to parse it
     try {
       return JSON.parse(text)
     } catch {
-      return undefined as T
+      return text as T
     }
   }
 
-  // For normal responses, check if body exists before parsing
-  const text = await response.text()
-  if (!text || text.trim() === '') {
-    return undefined as T
-  }
-
-  try {
-    return JSON.parse(text)
-  } catch {
-    return text as T
-  }
-}
-
-/**
- * API service with common HTTP methods
- */
-export const api = {
   /**
-   * GET request
-   * @param endpoint - API endpoint
-   * @param options - Optional params
-   * @returns Response data
+   * Extract the most precise message a failed response offers.
+   *
+   * @param response - The failed response.
+   * @returns The API `detail` or `message` field, falling back to the status text.
    */
-  get<T>(
-    endpoint: string,
-    options?: { params?: Record<string, string | number | boolean | null | undefined> },
-  ): Promise<T> {
-    let url = endpoint
-    if (options?.params) {
-      const params = new URLSearchParams()
-      Object.entries(options.params).forEach(([key, value]) => {
-        if (value !== null && value !== undefined) {
-          params.append(key, String(value))
-        }
-      })
-      const queryString = params.toString()
-      if (queryString) {
-        url += `?${queryString}`
-      }
+  private static async readErrorMessage(response: Response): Promise<string> {
+    const fallback: string = `API request failed: ${response.statusText}`
+    const body: string = await response.text().catch((): string => '')
+    if (!body) {
+      return fallback
     }
-    return request<T>(url, { method: 'GET' })
-  },
-
-  /**
-   * POST request
-   * @param endpoint - API endpoint
-   * @param data - Request body
-   * @returns Response data
-   */
-  post<T>(endpoint: string, data: unknown): Promise<T> {
-    return request<T>(endpoint, {
-      method: 'POST',
-      body: JSON.stringify(data),
-    })
-  },
-
-  /**
-   * PUT request
-   * @param endpoint - API endpoint
-   * @param data - Request body
-   * @returns Response data
-   */
-  put<T>(endpoint: string, data: unknown): Promise<T> {
-    return request<T>(endpoint, {
-      method: 'PUT',
-      body: JSON.stringify(data),
-    })
-  },
-
-  /**
-   * PATCH request
-   * @param endpoint - API endpoint
-   * @param data - Request body
-   * @returns Response data
-   */
-  patch<T>(endpoint: string, data: unknown): Promise<T> {
-    return request<T>(endpoint, {
-      method: 'PATCH',
-      body: JSON.stringify(data),
-    })
-  },
-
-  /**
-   * DELETE request
-   * @param endpoint - API endpoint
-   * @returns Response data
-   */
-  delete<T>(endpoint: string): Promise<T> {
-    return request<T>(endpoint, { method: 'DELETE' })
-  },
-}
-
-type ApiFetchOptions = {
-  method?: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE'
-  body?: unknown
-}
-
-/**
- * ofetch-style helper used by legacy services (campaigns, etc.).
- * @param endpoint - Path relative to `/api/v1` (e.g. `/campaigns`).
- * @param options - HTTP method and optional JSON body.
- * @returns Parsed JSON response body.
- */
-export async function $api<T>(endpoint: string, options: ApiFetchOptions = {}): Promise<T> {
-  const path: string = endpoint.startsWith('/api/')
-    ? endpoint
-    : `/api/v1${endpoint.startsWith('/') ? endpoint : `/${endpoint}`}`
-  const method: ApiFetchOptions['method'] = options.method ?? 'GET'
-
-  switch (method) {
-    case 'GET':
-      return api.get<T>(path)
-    case 'POST':
-      return api.post<T>(path, options.body)
-    case 'PUT':
-      return api.put<T>(path, options.body)
-    case 'PATCH':
-      return api.patch<T>(path, options.body)
-    case 'DELETE':
-      return api.delete<T>(path)
-    default:
-      return api.get<T>(path)
+    try {
+      const parsed = JSON.parse(body)
+      return parsed.detail || parsed.message || fallback
+    } catch {
+      return body
+    }
   }
 }

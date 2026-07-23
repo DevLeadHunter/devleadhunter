@@ -1,3 +1,4 @@
+import type { DemoSiteTheme } from '~/services/demoSiteService'
 /**
  * Domain types for automatisations (the auto-chaining tunnel).
  * Mirrors the API schemas in ``api/schemas/acquisition.py``.
@@ -59,6 +60,7 @@ export type Automation = {
   auto_enrich: boolean
   auto_generate: boolean
   template_id: string | null
+  theme: DemoSiteTheme | null
   auto_campaign: boolean
   email_template_id_a: number | null
   email_template_id_b: number | null
@@ -98,6 +100,7 @@ export type AutomationCreatePayload = {
   auto_enrich: boolean
   auto_generate: boolean
   template_id: string | null
+  theme: DemoSiteTheme | null
   auto_campaign: boolean
   email_template_id_a: number | null
   email_template_id_b: number | null

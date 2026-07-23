@@ -1,14 +1,10 @@
 <template>
   <Teleport to="body">
-    <!-- Pas de backdrop : le drawer est non-modal pour laisser la navigation
-         (sidebar, pages) cliquable pendant qu'il est ouvert. -->
-    <!-- Slide-over panel -->
     <Transition name="drawer-panel">
       <div
         v-if="open"
         class="fixed top-0 right-0 z-50 flex h-dvh w-full max-w-[480px] flex-col border-l border-[var(--app-line)] bg-[var(--app-surface)] shadow-2xl"
       >
-        <!-- ───────────────────────── Header ───────────────────────── -->
         <div class="flex items-start gap-3 border-b border-[var(--app-line)] px-5 py-4">
           <button
             v-if="showBack"
@@ -41,7 +37,6 @@
           </button>
         </div>
 
-        <!-- ───────────────────────── Body ────────────────────────── -->
         <form id="send-email-form" class="flex-1 space-y-4 overflow-y-auto px-5 py-4" @submit.prevent="handleSend">
           <div>
             <label class="text-muted mb-1.5 block text-xs font-medium">
@@ -99,7 +94,6 @@
           </div>
         </form>
 
-        <!-- ───────────────────────── Footer ─────────────────────── -->
         <div class="flex gap-2 border-t border-[var(--app-line)] px-5 py-4">
           <button type="button" class="btn-secondary flex-1" :disabled="isSending" @click="emit('close')">
             Annuler
@@ -123,24 +117,23 @@
 import type { PropType, Ref } from 'vue'
 import type { EmailSignature, Prospect } from '~/types'
 import type { SendEmailPrefill } from '~/types/DrawerStack'
+import type { UiSendEmailDrawerProps } from '~/types/UiSendEmailDrawer'
 import { ref, watch } from 'vue'
-import { api } from '~/services/api'
-import { getEmailSignatures } from '~/services/emailSignaturesService'
+import { ApiClient } from '~/services/api'
+import { EmailSignaturesService } from '~/services/emailSignaturesService'
 import { useDrawerStackStore } from '~/stores/drawerStack'
 import { useToast } from '~/composables/useToast'
 
 /** Local shape of the manual send form. */
-interface SendEmailForm {
+type SendEmailForm = {
   recipient_email: string
   recipient_name: string
   subject: string
   body: string
 }
 
-/**
- * Defines the component props.
- */
-const props = defineProps({
+/** Drawer to compose and send a one-off email. */
+const props: UiSendEmailDrawerProps = defineProps({
   open: {
     type: Boolean,
     required: true,
@@ -199,7 +192,7 @@ const form: Ref<SendEmailForm> = ref({
  */
 async function loadSignatures(): Promise<void> {
   try {
-    signatures.value = await getEmailSignatures()
+    signatures.value = await EmailSignaturesService.getEmailSignatures()
   } catch {
     signatures.value = []
   }
@@ -224,7 +217,7 @@ function openSignaturesDrawer(): void {
 async function handleSend(): Promise<void> {
   isSending.value = true
   try {
-    await api.post('/api/v1/emails/quick-send', {
+    await ApiClient.post('/api/v1/emails/quick-send', {
       recipient_email: form.value.recipient_email,
       recipient_name: form.value.recipient_name || undefined,
       subject: form.value.subject,
@@ -241,7 +234,7 @@ async function handleSend(): Promise<void> {
 }
 
 watch(
-  (): [boolean, number | undefined, SendEmailPrefill | null] => [props.open, props.prospect?.id, props.prefill],
+  (): [boolean, number | undefined, SendEmailPrefill | null] => [props.open, props.prospect?.id, props.prefill ?? null],
   ([open]: [boolean, number | undefined, SendEmailPrefill | null]): void => {
     if (!open) return
     // Refresh signatures every time the composer is shown (e.g. after managing them).
