@@ -68,8 +68,6 @@ NUXT_PUBLIC_API_BASE=http://localhost:8000
 
 ## Development
 
-See [`docs/LOCAL_DEV.md`](./docs/LOCAL_DEV.md) for the full local setup (API, web, demo-host).
-
 ```bash
 # API
 cd api

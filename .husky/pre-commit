@@ -1,1 +1,2 @@
 npm --prefix web run lint
+npm --prefix demo-host run lint
