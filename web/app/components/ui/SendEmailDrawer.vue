@@ -1,14 +1,10 @@
 <template>
   <Teleport to="body">
-    <!-- Pas de backdrop : le drawer est non-modal pour laisser la navigation
-         (sidebar, pages) cliquable pendant qu'il est ouvert. -->
-    <!-- Slide-over panel -->
     <Transition name="drawer-panel">
       <div
         v-if="open"
         class="fixed top-0 right-0 z-50 flex h-dvh w-full max-w-[480px] flex-col border-l border-[var(--app-line)] bg-[var(--app-surface)] shadow-2xl"
       >
-        <!-- ───────────────────────── Header ───────────────────────── -->
         <div class="flex items-start gap-3 border-b border-[var(--app-line)] px-5 py-4">
           <button
             v-if="showBack"
@@ -41,7 +37,6 @@
           </button>
         </div>
 
-        <!-- ───────────────────────── Body ────────────────────────── -->
         <form id="send-email-form" class="flex-1 space-y-4 overflow-y-auto px-5 py-4" @submit.prevent="handleSend">
           <div>
             <label class="text-muted mb-1.5 block text-xs font-medium">
@@ -80,9 +75,25 @@
               placeholder="Bonjour,&#10;&#10;J'ai créé un site vitrine pour votre entreprise…"
             />
           </div>
+
+          <div>
+            <label class="text-muted mb-1.5 block text-xs font-medium">Signature</label>
+            <select v-model="signatureId" class="input-field">
+              <option :value="null">Aucune signature</option>
+              <option v-for="signature in signatures" :key="signature.id" :value="signature.id">
+                {{ signature.name }}{{ signature.is_default ? ' (par défaut)' : '' }}
+              </option>
+            </select>
+            <button
+              type="button"
+              class="mt-1.5 text-xs font-medium text-[var(--app-ink-soft)] underline decoration-[var(--app-line)] underline-offset-2 hover:text-[var(--app-ink)]"
+              @click="openSignaturesDrawer"
+            >
+              Gérer mes signatures
+            </button>
+          </div>
         </form>
 
-        <!-- ───────────────────────── Footer ─────────────────────── -->
         <div class="flex gap-2 border-t border-[var(--app-line)] px-5 py-4">
           <button type="button" class="btn-secondary flex-1" :disabled="isSending" @click="emit('close')">
             Annuler
@@ -103,25 +114,19 @@
 </template>
 
 <script lang="ts" setup>
-import type { PropType, Ref } from 'vue'
-import type { Prospect } from '~/types'
+import type { UseToastReturn } from '~/types/Composables'
+import type { SendEmailForm, UiSendEmailDrawerEmits, UiSendEmailDrawerProps } from '~/types/UiSendEmailDrawer'
+import type { EmitFn, PropType, Ref } from 'vue'
+import type { EmailSignature, Prospect } from '~/types'
 import type { SendEmailPrefill } from '~/types/DrawerStack'
 import { ref, watch } from 'vue'
-import { api } from '~/services/api'
+import { ApiClient } from '~/services/api'
+import { EmailSignaturesService } from '~/services/emailSignaturesService'
+import { useDrawerStackStore } from '~/stores/drawerStack'
 import { useToast } from '~/composables/useToast'
 
-/** Local shape of the manual send form. */
-interface SendEmailForm {
-  recipient_email: string
-  recipient_name: string
-  subject: string
-  body: string
-}
-
-/**
- * Defines the component props.
- */
-const props = defineProps({
+/** Drawer to compose and send a one-off email. */
+const props: UiSendEmailDrawerProps = defineProps({
   open: {
     type: Boolean,
     required: true,
@@ -140,27 +145,55 @@ const props = defineProps({
   },
 })
 
-const emit = defineEmits<{
-  /** Close every drawer. */
-  close: []
-  /** Go back to the previous drawer of the stack. */
-  back: []
-  /** The email was successfully dispatched. */
-  sent: []
-}>()
+const emit: EmitFn<UiSendEmailDrawerEmits> = defineEmits<UiSendEmailDrawerEmits>()
 
-const toast = useToast()
+const toast: UseToastReturn = useToast()
+
+/** Persistent drawer stack (to stack the signatures manager on top). */
+const drawerStack: ReturnType<typeof useDrawerStackStore> = useDrawerStackStore()
 
 /** Whether the quick-send request is in flight. */
-const isSending: Ref<boolean> = ref<boolean>(false)
+const isSending: Ref<boolean> = ref(false)
+
+/** The user's signatures (for the optional selector). */
+const signatures: Ref<EmailSignature[]> = ref([])
+
+/** Selected signature id (null = none). */
+const signatureId: Ref<number | null> = ref(null)
+
+/** Key of the recipient the form was last initialised for. */
+const lastInitKey: Ref<string> = ref('')
 
 /** Manual send form state. */
-const form: Ref<SendEmailForm> = ref<SendEmailForm>({
+const form: Ref<SendEmailForm> = ref({
   recipient_email: '',
   recipient_name: '',
   subject: '',
   body: '',
 })
+
+/**
+ * Load the user's signatures and default the selection to the default one.
+ * @returns A promise that resolves once loaded.
+ */
+async function loadSignatures(): Promise<void> {
+  try {
+    signatures.value = await EmailSignaturesService.getEmailSignatures()
+  } catch {
+    signatures.value = []
+  }
+  const stillValid: boolean = signatures.value.some((s: EmailSignature): boolean => s.id === signatureId.value)
+  if (!stillValid) {
+    const preferred: EmailSignature | undefined =
+      signatures.value.find((s: EmailSignature): boolean => s.is_default) ?? signatures.value[0]
+    signatureId.value = preferred?.id ?? null
+  }
+}
+
+/** Stack the signatures manager on top of this drawer. */
+function openSignaturesDrawer(): void {
+  drawerStack.push({ kind: 'email-signatures' })
+}
 
 /**
  * Send the email through the quick-send endpoint (uses the user's Resend
@@ -170,11 +203,12 @@ const form: Ref<SendEmailForm> = ref<SendEmailForm>({
 async function handleSend(): Promise<void> {
   isSending.value = true
   try {
-    await api.post('/api/v1/emails/quick-send', {
+    await ApiClient.post('/api/v1/emails/quick-send', {
       recipient_email: form.value.recipient_email,
       recipient_name: form.value.recipient_name || undefined,
       subject: form.value.subject,
       body_html: `<p>${form.value.body.replace(/\n/g, '<br>')}</p>`,
+      signature_id: signatureId.value ?? undefined,
     })
     toast.success('Email envoyé avec succès')
     emit('sent')
@@ -186,9 +220,17 @@ async function handleSend(): Promise<void> {
 }
 
 watch(
-  (): [boolean, number | undefined, SendEmailPrefill | null] => [props.open, props.prospect?.id, props.prefill],
+  (): [boolean, number | undefined, SendEmailPrefill | null] => [props.open, props.prospect?.id, props.prefill ?? null],
   ([open]: [boolean, number | undefined, SendEmailPrefill | null]): void => {
     if (!open) return
+    // Refresh signatures every time the composer is shown (e.g. after managing them).
+    void loadSignatures()
+    // Only when the recipient changes: returning from a stacked drawer must not wipe the draft.
+    const key: string = props.prefill
+      ? `prefill:${props.prefill.recipient_email}|${props.prefill.subject}`
+      : `prospect:${props.prospect?.id ?? 'blank'}`
+    if (key === lastInitKey.value) return
+    lastInitKey.value = key
     if (props.prefill) {
       form.value = { ...props.prefill }
       return

@@ -6,7 +6,6 @@
       config.text,
     ]"
   >
-    <!-- Real brand favicon (pagesjaunes, google, osm, yelp, brightdata) -->
     <img
       v-if="config.logoUrl"
       :src="config.logoUrl"
@@ -14,59 +13,29 @@
       class="h-3.5 w-3.5 shrink-0 object-contain"
       loading="lazy"
     />
-    <!-- Fallback icon for sources without a real website (auto, unknown) -->
+
     <UIcon v-else :name="config.icon" class="h-3.5 w-3.5 shrink-0" />
 
     {{ config.label }}
   </span>
 </template>
 
-<script setup lang="ts">
+<script lang="ts" setup>
+import type { ProspectSourcePresentation, UiProspectSourceBadgeProps } from '~/types/UiProspectSourceBadge'
+import type { ComputedRef, PropType } from 'vue'
 import { computed } from 'vue'
 import type { ProspectSource } from '~/types'
 
-// ─── Props ────────────────────────────────────────────────────────────────────
+/** Badge naming the acquisition source a prospect came from. */
+const props: UiProspectSourceBadgeProps = defineProps({
+  source: {
+    type: String as PropType<ProspectSource | string>,
+    required: true,
+  },
+})
 
-interface Props {
-  /** Source value from the backend Source enum */
-  source: ProspectSource | string
-}
-
-const props = defineProps<Props>()
-
-// ─── Per-source visual config ─────────────────────────────────────────────────
-
-interface SourceConfig {
-  /** Display label */
-  label: string
-  /**
-   * Remote favicon URL (Google's favicon service).
-   * Null for internal / synthetic sources that have no real website logo.
-   */
-  logoUrl: string | null
-  /** Lucide icon name used when logoUrl is null */
-  icon: string
-  /** Tailwind solid background class — full brand colour */
-  bg: string
-  /** Tailwind text class — chosen for contrast against the background */
-  text: string
-}
-
-/**
- * Visual configuration per source.
- *
- * Background colours are the official brand primaries:
- *   Pages Jaunes  #F7C500  (PJ yellow)
- *   Google        #4285F4  (Google blue)
- *   OpenStreetMap #73B73B  (OSM green)
- *   Yelp          #D32323  (Yelp red)
- *   BrightData    #0099E5  (BrightData cyan-blue)
- *   Auto          #7C3AED  (purple — composite source)
- *
- * Logos are loaded via Google's favicon service so they always match the
- * source's current brand icon without storing local assets.
- */
-const SOURCE_CONFIG: Record<string, SourceConfig> = {
+/** Per-source badge colours and favicon logos for prospect origin. */
+const SOURCE_CONFIG: Record<string, ProspectSourcePresentation> = {
   pagesjaunes: {
     label: 'Pages Jaunes',
     logoUrl: 'https://www.google.com/s2/favicons?domain=pagesjaunes.fr&sz=32',
@@ -82,9 +51,7 @@ const SOURCE_CONFIG: Record<string, SourceConfig> = {
     text: 'text-white',
   },
   osm: {
-    // OSM/Bright Data : favicon distant illisible à 14 px (logo détaillé fondu
-    // dans le fond) → icône lucide nette + couleur franche, au niveau des
-    // badges Pages Jaunes / Yelp.
+    // OSM/Bright Data : leur favicon distant est illisible à 14 px, d'où une icône locale.
     label: 'OpenStreetMap',
     logoUrl: null,
     icon: 'i-lucide-map-pinned',
@@ -122,7 +89,7 @@ const SOURCE_CONFIG: Record<string, SourceConfig> = {
 }
 
 /** Fallback for unknown / future sources */
-const FALLBACK: SourceConfig = {
+const FALLBACK: ProspectSourcePresentation = {
   label: '',
   logoUrl: null,
   icon: 'i-lucide-database',
@@ -130,7 +97,7 @@ const FALLBACK: SourceConfig = {
   text: 'text-white',
 }
 
-const config = computed((): SourceConfig => {
+const config: ComputedRef<ProspectSourcePresentation> = computed((): ProspectSourcePresentation => {
   return SOURCE_CONFIG[props.source] ?? { ...FALLBACK, label: props.source }
 })
 </script>

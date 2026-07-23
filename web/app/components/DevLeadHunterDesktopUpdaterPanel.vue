@@ -62,13 +62,14 @@
 </template>
 
 <script lang="ts" setup>
+import type { UseDesktopRuntimeReturn } from '~/types/Composables'
 import type { ComputedRef, Ref } from 'vue'
 import type { DownloadEvent, Update } from '@tauri-apps/plugin-updater'
 import type { DevLeadHunterUpdaterStatus } from '~/types/DevLeadHunterDesktopUpdaterPanel'
 import { check } from '@tauri-apps/plugin-updater'
 import { relaunch } from '@tauri-apps/plugin-process'
 
-const desktopRuntime = useDesktopRuntime()
+const desktopRuntime: UseDesktopRuntimeReturn = useDesktopRuntime()
 const isProdDesktop = desktopRuntime.isProdDesktop
 
 const visible: Ref<boolean> = ref(false)
@@ -201,9 +202,7 @@ async function restartApp(): Promise<void> {
  * Check for updates once per session and show the panel when available.
  */
 async function checkForUpdate(): Promise<void> {
-  // Only the packaged production desktop app self-updates. In local dev (`tauri:dev`)
-  // there is no updater endpoint/signature, so check() fails and shows a spurious
-  // "Update failed" panel — skip the updater entirely there (and in the browser).
+  // Dev has no updater endpoint, so checking there shows a spurious "Update failed" panel.
   if (!import.meta.client || !isProdDesktop.value) {
     return
   }

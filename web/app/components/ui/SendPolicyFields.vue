@@ -61,18 +61,12 @@
 </template>
 
 <script lang="ts" setup>
-import type { ComputedRef, PropType, WritableComputedRef } from 'vue'
+import type { ComputedRef, EmitFn, PropType, WritableComputedRef } from 'vue'
 import { computed } from 'vue'
 import type { SendPolicy } from '~/types/Automation'
-import type { UiSendPolicyFieldsProps } from '~/types/UiSendPolicyFields'
+import type { UiSendPolicyFieldsEmits, UiSendPolicyFieldsProps } from '~/types/UiSendPolicyFields'
 
-/**
- * Defines the component props.
- *
- * Pure form fields for the global sending cadence — no loading, no saving: the
- * host owns the policy and decides when to persist it. Shared by the send-policy
- * drawer and the setup wizard so both stay identical.
- */
+/** Send-policy form fields shared by the drawer and setup wizard. */
 const props: UiSendPolicyFieldsProps = defineProps({
   modelValue: {
     type: Object as PropType<SendPolicy>,
@@ -80,13 +74,10 @@ const props: UiSendPolicyFieldsProps = defineProps({
   },
 })
 
-const emit = defineEmits<{
-  /** The edited policy changed. */
-  'update:modelValue': [policy: SendPolicy]
-}>()
+const emit: EmitFn<UiSendPolicyFieldsEmits> = defineEmits<UiSendPolicyFieldsEmits>()
 
 /** Weekday labels (index 0 = Monday). */
-const DAY_LABELS: ReadonlyArray<string> = ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim']
+const DAY_LABELS: string[] = ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim']
 
 /** Maximum emails sent per day. */
 const dailyCap: WritableComputedRef<number> = computed({

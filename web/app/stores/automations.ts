@@ -6,28 +6,15 @@ import { computed, ref } from 'vue'
 import { defineStore } from 'pinia'
 
 import type { Automation, AutomationDetail } from '~/types/Automation'
-import {
-  approveAutomation,
-  cancelAutomation,
-  deleteAutomation,
-  getAutomation,
-  listAutomations,
-  pauseAutomation,
-  resumeAutomation,
-} from '~/services/automationsService'
-
+import { AutomationsService } from '~/services/automationsService'
 /** Statuses that mean the orchestrator is still working. */
-const ACTIVE_STATUSES: ReadonlyArray<string> = ['running', 'awaiting_review']
+const ACTIVE_STATUSES: string[] = ['running', 'awaiting_review']
 
 export const useAutomationsStore = defineStore('automations', () => {
-  /** All automatisations of the current user (summary view). */
-  const automations: Ref<Automation[]> = ref<Automation[]>([])
-  /** The currently opened automatisation (detail / validation). */
-  const current: Ref<AutomationDetail | null> = ref<AutomationDetail | null>(null)
-  /** Whether the list is loading. */
-  const isLoading: Ref<boolean> = ref<boolean>(false)
-  /** Last error message, if any. */
-  const error: Ref<string | null> = ref<string | null>(null)
+  const automations: Ref<Automation[]> = ref([])
+  const current: Ref<AutomationDetail | null> = ref(null)
+  const isLoading: Ref<boolean> = ref(false)
+  const error: Ref<string | null> = ref(null)
 
   /** Total number of automatisations. */
   const automationsCount: ComputedRef<number> = computed((): number => automations.value.length)
@@ -76,7 +63,7 @@ export const useAutomationsStore = defineStore('automations', () => {
     try {
       isLoading.value = true
       error.value = null
-      const response = await listAutomations()
+      const response = await AutomationsService.listAutomations()
       automations.value = response.sequences
     } catch (err: unknown) {
       error.value = err instanceof Error ? err.message : 'Échec du chargement des automatisations'
@@ -92,7 +79,7 @@ export const useAutomationsStore = defineStore('automations', () => {
    * @returns A promise resolved once loaded.
    */
   async function fetchOne(id: number): Promise<void> {
-    const detail = await getAutomation(id)
+    const detail = await AutomationsService.getAutomation(id)
     current.value = detail
     upsert(detail)
   }
@@ -103,7 +90,7 @@ export const useAutomationsStore = defineStore('automations', () => {
    */
   async function refreshActive(): Promise<void> {
     if (current.value !== null) {
-      applyDetail(await getAutomation(current.value.id))
+      applyDetail(await AutomationsService.getAutomation(current.value.id))
     } else {
       await fetchAll()
     }
@@ -120,7 +107,7 @@ export const useAutomationsStore = defineStore('automations', () => {
    * @returns A promise resolved once paused.
    */
   async function pause(id: number): Promise<void> {
-    applyDetail(await pauseAutomation(id))
+    applyDetail(await AutomationsService.pauseAutomation(id))
   }
 
   /**
@@ -129,7 +116,7 @@ export const useAutomationsStore = defineStore('automations', () => {
    * @returns A promise resolved once resumed.
    */
   async function resume(id: number): Promise<void> {
-    applyDetail(await resumeAutomation(id))
+    applyDetail(await AutomationsService.resumeAutomation(id))
   }
 
   /**
@@ -138,7 +125,7 @@ export const useAutomationsStore = defineStore('automations', () => {
    * @returns A promise resolved once cancelled.
    */
   async function cancel(id: number): Promise<void> {
-    applyDetail(await cancelAutomation(id))
+    applyDetail(await AutomationsService.cancelAutomation(id))
   }
 
   /**
@@ -147,7 +134,7 @@ export const useAutomationsStore = defineStore('automations', () => {
    * @returns A promise resolved once approved.
    */
   async function approve(id: number): Promise<void> {
-    applyDetail(await approveAutomation(id))
+    applyDetail(await AutomationsService.approveAutomation(id))
   }
 
   /**
@@ -156,7 +143,7 @@ export const useAutomationsStore = defineStore('automations', () => {
    * @returns A promise resolved once deleted.
    */
   async function remove(id: number): Promise<void> {
-    await deleteAutomation(id)
+    await AutomationsService.deleteAutomation(id)
     automations.value = automations.value.filter((a: Automation): boolean => a.id !== id)
     if (current.value !== null && current.value.id === id) {
       current.value = null

@@ -12,6 +12,7 @@ from models.support_message import SupportMessage
 from models.support_attachment import SupportAttachment
 from models.email_account import EmailAccount
 from models.email_template import EmailTemplate
+from models.email_signature import EmailSignature
 from models.email_log import EmailLog
 from models.prospect_db import ProspectDB
 from models.scraping_job import ScrapingJob
@@ -42,6 +43,7 @@ __all__ = [
     "SupportAttachment",
     "EmailAccount",
     "EmailTemplate",
+    "EmailSignature",
     "EmailLog",
     "ProspectDB",
     "ScrapingJob",

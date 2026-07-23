@@ -1,6 +1,0 @@
-[mcp_servers.brightdata]
-command = "npx"
-args = ["@brightdata/mcp"]
-
-[mcp_servers.brightdata.env]
-API_TOKEN = "8daca9ae-dcd4-4aec-b3f1-c8efb6db7098"

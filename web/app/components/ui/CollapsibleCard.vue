@@ -18,7 +18,6 @@
       />
     </button>
 
-    <!-- Smooth height reveal via animatable grid rows (0fr → 1fr), no layout jump -->
     <div
       class="grid transition-[grid-template-rows] duration-300 ease-out motion-reduce:transition-none"
       :class="isOpen ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]'"
@@ -32,25 +31,18 @@
   </div>
 </template>
 
-<script setup lang="ts">
+<script lang="ts" setup>
 import type { Ref } from 'vue'
+import type { UiCollapsibleCardProps } from '~/types/UiCollapsibleCard'
 import { ref } from 'vue'
 
-/**
- * A settings « card » that expands/collapses its content smoothly. Shares the
- * app's card chrome (solid surface, icon + bold title) and animates height with
- * an interpolatable grid instead of the native <details> snap.
- */
-const props = defineProps({
-  /** Lucide icon name shown before the title (e.g. ``i-lucide-scissors``). */
+/** Expandable settings card with smooth height animation. */
+const props: UiCollapsibleCardProps = defineProps({
   icon: { type: String, required: true },
-  /** Card title. */
   title: { type: String, required: true },
-  /** Optional muted suffix shown after the title (e.g. ``facultatif``). */
   suffix: { type: String, default: '' },
-  /** Whether the card starts expanded. */
   defaultOpen: { type: Boolean, default: false },
 })
 
-const isOpen: Ref<boolean> = ref<boolean>(props.defaultOpen)
+const isOpen: Ref<boolean> = ref(props.defaultOpen ?? false)
 </script>

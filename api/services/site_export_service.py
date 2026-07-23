@@ -79,8 +79,11 @@ class SiteExportService:
         """
         Build a standalone zip of the site's source with the client content baked in.
 
-        @param demo_site - The generated site to export (must have ``content_json``).
-        @returns ``(zip_bytes, filename)``.
+        Args:
+            demo_site: The generated site to export (must have ``content_json``).
+
+        Returns:
+            ``(zip_bytes, filename)``.
         @raises ValueError - Unknown template or missing content (client-facing 400).
         @raises httpx.HTTPError - GitHub tarball download failed (surfaced as 502).
         """

@@ -14,7 +14,7 @@ from typing import Any, Optional
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
 from fastapi.responses import FileResponse
-from pydantic import BaseModel, EmailStr, Field
+from pydantic import BaseModel, ConfigDict, EmailStr, Field
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -34,10 +34,6 @@ from services.sending_identity import (
 
 router = APIRouter(prefix="/settings", tags=["settings"])
 logger = logging.getLogger(__name__)
-
-# ---------------------------------------------------------------------------
-# Pydantic schemas (local — only used by this module)
-# ---------------------------------------------------------------------------
 
 
 class ResendConfigUpdate(BaseModel):
@@ -67,12 +63,7 @@ class ResendConfigResponse(BaseModel):
     from_email: str | None
     from_name: str | None
 
-    model_config = {"from_attributes": True}
-
-
-# ---------------------------------------------------------------------------
-# Helpers
-# ---------------------------------------------------------------------------
+    model_config = ConfigDict(from_attributes=True)
 
 
 def _get_or_none(db: Session, user_id: int) -> ResendConfig | None:
@@ -80,11 +71,6 @@ def _get_or_none(db: Session, user_id: int) -> ResendConfig | None:
     return db.execute(
         select(ResendConfig).where(ResendConfig.user_id == user_id)
     ).scalar_one_or_none()
-
-
-# ---------------------------------------------------------------------------
-# Routes
-# ---------------------------------------------------------------------------
 
 
 @router.get("/resend", response_model=ResendConfigResponse)
@@ -147,11 +133,6 @@ async def upsert_resend_config(
     }
 
 
-# ---------------------------------------------------------------------------
-# Sending identity (active email transport: Resend or Gmail)
-# ---------------------------------------------------------------------------
-
-
 class SendingIdentityResponse(BaseModel):
     """The user's active sending provider + per-provider readiness (no secrets)."""
 
@@ -197,11 +178,6 @@ async def update_sending_identity(
         "[Settings] Sending provider set to %s for user %d", payload.provider.value, current_user.id
     )
     return describe_sending_config(db, current_user.id)
-
-
-# ---------------------------------------------------------------------------
-# Presenter video (clip webcam générique des vidéos de prospection)
-# ---------------------------------------------------------------------------
 
 
 class PresenterVideoResponse(BaseModel):

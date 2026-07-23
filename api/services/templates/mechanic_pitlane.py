@@ -49,8 +49,11 @@ COMPONENT_SCHEMAS: list[dict[str, Any]] = []
 def default_subtitle(area: str) -> str:
     """Garage-aware default hero subtitle when the prospect has no description.
 
-    @param area - Service area / city label.
-    @returns A garage subtitle.
+    Args:
+        area: Service area / city label.
+
+    Returns:
+        A garage subtitle.
     """
     return (
         f"Entretien, diagnostic et réparations à {area} — "

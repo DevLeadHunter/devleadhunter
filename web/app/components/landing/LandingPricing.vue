@@ -18,7 +18,6 @@
         v-reveal="{ delay: 220 }"
         class="landing-card mx-auto mt-14 max-w-3xl overflow-hidden md:grid md:grid-cols-2"
       >
-        <!-- ROI pull-quote + CTA -->
         <div class="flex flex-col justify-between gap-10 p-8 md:border-r md:border-[#e3dccd] md:p-10">
           <blockquote class="font-display text-2xl leading-snug font-medium text-[#1b1813] italic md:text-[1.7rem]">
             «&nbsp;{{ $t('landing.pricing.roiNote') }}&nbsp;»
@@ -34,9 +33,7 @@
           </div>
         </div>
 
-        <!-- Credit stats -->
         <div class="bg-[#f6f3ec]/60 p-8 md:p-10">
-          <!-- Loading skeleton -->
           <div v-if="props.loading" class="space-y-6" aria-hidden="true">
             <div v-for="row in 4" :key="row" class="animate-pulse border-b border-dashed border-[#e3dccd] pb-5">
               <div class="h-7 w-16 rounded bg-[#e3dccd]"></div>
@@ -44,7 +41,6 @@
             </div>
           </div>
 
-          <!-- Stats -->
           <dl v-else-if="pricingStats.length > 0">
             <div
               v-for="(stat, index) in pricingStats"
@@ -59,7 +55,6 @@
             </div>
           </dl>
 
-          <!-- Load error -->
           <p v-else class="text-sm leading-relaxed text-[#6b6355]">
             {{ $t('landing.pricing.loadError') }}
           </p>
@@ -70,14 +65,12 @@
 </template>
 
 <script lang="ts" setup>
+import type { LandingPricingStat, LandingPricingProps } from '~/types/LandingPricing'
 import type { PropType, ComputedRef } from 'vue'
 import type { CreditSettings } from '~/types'
-import type { LandingPricingProps } from '~/types/LandingPricing'
 import { computed } from 'vue'
 
-/**
- * Defines the component props.
- */
+/** Landing pricing section with credit packs from settings. */
 const props: LandingPricingProps = defineProps({
   settings: {
     // Nullable: Vue rejects `null` on a required Object prop, so use a default instead.
@@ -91,16 +84,8 @@ const props: LandingPricingProps = defineProps({
 })
 
 const { locale } = useI18n()
-const localePath = useLocalePath()
+const localePath: ReturnType<typeof useLocalePath> = useLocalePath()
 const { track } = useSiteTracking()
-
-/** One credit metric displayed in the pricing card. */
-interface LandingPricingStat {
-  /** Formatted value (count or price). */
-  value: string
-  /** i18n key of the metric label. */
-  labelKey: string
-}
 
 /**
  * Format a price in EUR for the active locale.

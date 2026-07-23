@@ -18,7 +18,7 @@ from models.prospect_db import ProspectDB
 from models.prospect_enrichment import ProspectEnrichment
 from scrappers import scrape_signals
 from scrappers.enrichment_scraper import EnrichmentData, enrichment_scraper
-from services.enrichment_content import apply_to_content as _apply_to_content
+from services.enrichment_content import EnrichmentContentMapper
 from services.scraper_diagnostics_service import (
     STATUS_BLOCKED,
     STATUS_EMPTY,
@@ -301,7 +301,7 @@ class EnrichmentService:
         self, content_json: dict[str, Any], enrichment: Optional[dict[str, Any]]
     ) -> dict[str, Any]:
         """Merge enrichment data into a template's content_json (see enrichment_content)."""
-        return _apply_to_content(content_json, enrichment)
+        return EnrichmentContentMapper.apply_to_content(content_json, enrichment)
 
 
 enrichment_service = EnrichmentService()

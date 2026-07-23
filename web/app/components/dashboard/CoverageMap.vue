@@ -1,6 +1,5 @@
 <template>
   <div class="flex h-full min-h-0 flex-col gap-4">
-    <!-- Gamified counters -->
     <div class="grid grid-cols-3 gap-3">
       <div class="rounded-lg border border-[var(--app-line)] bg-[var(--app-bg)] px-3 py-2.5 text-center">
         <p class="text-xl font-bold text-[var(--app-ink)] tabular-nums">{{ coveredCityCount }}</p>
@@ -20,7 +19,6 @@
       </div>
     </div>
 
-    <!-- Territory progress -->
     <div>
       <div class="mb-1 flex items-center justify-between text-[11px]">
         <span class="text-muted">Territoire couvert</span>
@@ -34,12 +32,10 @@
       </div>
     </div>
 
-    <!-- Initial loading (until the first coverage load completes) -->
     <div v-if="!store.hasLoaded" class="flex h-72 items-center justify-center">
       <UIcon name="i-lucide-loader-circle" class="h-7 w-7 animate-spin text-[var(--app-ink-soft)]" />
     </div>
 
-    <!-- Empty -->
     <div
       v-else-if="store.coverage && store.coverage.cities.length === 0"
       class="flex h-72 flex-col items-center justify-center gap-3 text-center"
@@ -51,7 +47,6 @@
       <button type="button" class="btn-secondary text-xs" @click="openSearchDrawer">Trouver des prospects</button>
     </div>
 
-    <!-- Map (MapLibre GL + OpenFreeMap — free, key-less, unlimited) -->
     <div v-else-if="!isMapFailed" ref="mapWrap" class="coverage-map relative flex min-h-0 flex-1 flex-col">
       <div
         ref="mapContainer"
@@ -59,7 +54,6 @@
         :class="store.isLoading ? 'opacity-60' : 'opacity-100'"
       ></div>
 
-      <!-- Tooltip -->
       <div
         v-if="tip.show"
         class="pointer-events-none absolute z-10 -translate-x-1/2 -translate-y-[calc(100%+12px)] rounded-lg border border-[var(--app-line)] bg-[var(--app-surface)] px-2.5 py-1.5 text-xs shadow-lg"
@@ -69,7 +63,6 @@
         <p class="text-muted tabular-nums">{{ tip.sub }}</p>
       </div>
 
-      <!-- Legend + click hint -->
       <div class="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1.5">
         <span class="text-muted text-[10px] tracking-wide uppercase">Intensité</span>
         <span v-for="bucket in legend" :key="bucket.label" class="flex items-center gap-1.5">
@@ -86,7 +79,6 @@
       </div>
     </div>
 
-    <!-- Map unavailable (WebGL/network) — fall back to a ranked city list -->
     <div v-else class="space-y-2">
       <p class="text-muted text-xs">Carte indisponible — voici vos villes les plus prospectées :</p>
       <ul class="divide-y divide-[var(--app-line-soft)]">
@@ -104,6 +96,7 @@
 </template>
 
 <script lang="ts" setup>
+import type { CityFeatureProperties, CoverageTierColors } from '~/types/DashboardCoverageMap'
 import type { Feature, FeatureCollection, Point } from 'geojson'
 import type { ExpressionSpecification, GeoJSONSource, Map as MaplibreMap, MapMouseEvent } from 'maplibre-gl'
 import type { ComputedRef, Ref } from 'vue'
@@ -143,37 +136,20 @@ const MAP_MAX_BOUNDS: [[number, number], [number, number]] = [
   [16.5, 55.5],
 ]
 
-const REGIONS_SOURCE_ID = 'dlh-regions'
-const CITIES_SOURCE_ID = 'dlh-cities'
-const REGIONS_FILL_LAYER_ID = 'dlh-regions-fill'
-const REGIONS_LINE_LAYER_ID = 'dlh-regions-line'
-const CITIES_LAYER_ID = 'dlh-cities-dots'
-
-/** Properties carried by each city point feature. */
-interface CityFeatureProperties {
-  city: string
-  count: number
-  /** Precomputed circle radius in px (sqrt scale on the prospect count). */
-  radius: number
-}
-
-/** Choropleth washes drawn over the basemap (amber → green, Atelier palette). */
-interface CoverageTierColors {
-  none: string
-  low: string
-  medium: string
-  good: string
-  strong: string
-}
+const REGIONS_SOURCE_ID: string = 'dlh-regions'
+const CITIES_SOURCE_ID: string = 'dlh-cities'
+const REGIONS_FILL_LAYER_ID: string = 'dlh-regions-fill'
+const REGIONS_LINE_LAYER_ID: string = 'dlh-regions-line'
+const CITIES_LAYER_ID: string = 'dlh-cities-dots'
 
 const { theme } = useAppTheme()
-const store = useCoverageStore()
-const drawerStack = useDrawerStackStore()
+const store: ReturnType<typeof useCoverageStore> = useCoverageStore()
+const drawerStack: ReturnType<typeof useDrawerStackStore> = useDrawerStackStore()
 
 /** True when MapLibre could not start (WebGL unavailable, network down…). */
-const isMapFailed: Ref<boolean> = ref<boolean>(false)
+const isMapFailed: Ref<boolean> = ref(false)
 /** True once the overlay sources/layers exist on the current basemap style. */
-const isMapReady: Ref<boolean> = ref<boolean>(false)
+const isMapReady: Ref<boolean> = ref(false)
 
 const tip: Ref<{ show: boolean; x: number; y: number; title: string; sub: string }> = ref({
   show: false,
@@ -182,13 +158,11 @@ const tip: Ref<{ show: boolean; x: number; y: number; title: string; sub: string
   title: '',
   sub: '',
 })
-const mapWrap: Ref<HTMLElement | null> = ref<HTMLElement | null>(null)
-const mapContainer: Ref<HTMLElement | null> = ref<HTMLElement | null>(null)
+const mapWrap: Ref<HTMLElement | null> = ref(null)
+const mapContainer: Ref<HTMLElement | null> = ref(null)
 
 /** MapLibre instance — deliberately non-reactive (huge mutable object). */
 let mapInstance: MaplibreMap | null = null
-
-// ─── Aggregations (from the shared coverage store) ────────────────────────────
 
 /** Prospect total per region code (from geocoded cities). */
 const regionTotals: ComputedRef<Record<string, number>> = computed((): Record<string, number> => {
@@ -235,8 +209,6 @@ const legend: ComputedRef<Array<{ label: string; color: string }>> = computed(
     ]
   },
 )
-
-// ─── Choropleth colours ────────────────────────────────────────────────────────
 
 /**
  * Choropleth washes for a theme (semi-transparent so the basemap shows through).
@@ -287,8 +259,6 @@ function regionFillColor(): string | ExpressionSpecification {
   expression.push(colors.none)
   return expression as unknown as ExpressionSpecification
 }
-
-// ─── Map data ─────────────────────────────────────────────────────────────────
 
 /**
  * Build the GeoJSON collection of prospected cities (geocoded ones only).
@@ -366,8 +336,6 @@ function refreshMapData(): void {
   map.setPaintProperty(REGIONS_FILL_LAYER_ID, 'fill-color', regionFillColor())
 }
 
-// ─── Map lifecycle ────────────────────────────────────────────────────────────
-
 /**
  * Create the MapLibre map in the container (client-only, lazy-loaded chunk),
  * framed on metropolitan France with zoom + fullscreen controls.
@@ -414,8 +382,6 @@ async function initMap(): Promise<void> {
     isMapFailed.value = true
   }
 }
-
-// ─── Click → drawers (the map is the hub) ─────────────────────────────────────
 
 /**
  * Trade prefilled into search drawers when exactly one trade is selected.
@@ -472,8 +438,7 @@ async function onMapClick(event: MapMouseEvent): Promise<void> {
     return
   }
 
-  // Uncovered region: prefill a search with the commune under the cursor
-  // (clicking « Caen » prefills Caen), falling back to the region's biggest city.
+  // Falls back to the region's biggest city when the cursor is not over a commune.
   const commune = await reverseGeocodeCommune(event.lngLat.lng, event.lngLat.lat)
   const fallback: string | undefined = FRANCE_MAJOR_CITIES.find((c): boolean => c.region === code)?.name
   const city: string | undefined = commune?.name ?? fallback
@@ -487,8 +452,6 @@ async function onMapClick(event: MapMouseEvent): Promise<void> {
 function openSearchDrawer(): void {
   drawerStack.push({ kind: 'search-prospects', prefill: { ...categoryPrefill() } })
 }
-
-// ─── Tooltip ───────────────────────────────────────────────────────────────────
 
 /**
  * Show the tooltip for the topmost hovered feature (city dot, else region).
@@ -537,11 +500,7 @@ function hideTip(): void {
   tip.value.show = false
 }
 
-// ─── Reactivity ───────────────────────────────────────────────────────────────
-
-// The map branch renders only once data exists — init when its container
-// appears. If the branch was torn down (empty state) and re-rendered, the old
-// map instance points at a dead container: drop it and recreate.
+// After the empty state tore the branch down, the old instance points at a dead container.
 watch(mapContainer, (container: HTMLElement | null): void => {
   if (!container) return
   if (mapInstance && mapInstance.getContainer() !== container) {

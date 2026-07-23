@@ -1,13 +1,7 @@
 import type { EmailLog } from '~/types'
+import type { UiDrawerProps } from '~/types/UiDrawer'
 
-/**
- * Props for the EmailLogDrawer component.
- */
-export interface EmailLogDrawerProps {
-  /** Whether the drawer is visible. */
-  open: boolean
-  /** Email log entry to display, or ``null`` when nothing is selected. */
+export type EmailLogDrawerProps = UiDrawerProps & {
   log: EmailLog | null
-  /** Display name of the campaign the log belongs to (optional). */
   campaignName?: string
 }

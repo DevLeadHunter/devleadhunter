@@ -23,7 +23,6 @@
           </button>
         </div>
 
-        <!-- Result summary -->
         <div v-if="result" class="space-y-4">
           <div class="grid grid-cols-3 gap-2 text-center">
             <div class="rounded-lg border border-[var(--app-green)]/30 bg-[var(--app-green)]/10 px-2 py-3">
@@ -41,12 +40,11 @@
           </div>
           <p v-if="result.skipped_no_email.length" class="text-muted text-xs leading-relaxed">
             Ignorés (pas d'email) :
-            {{ result.skipped_no_email.map((s) => s.name || `#${s.id}`).join(', ') }}
+            {{ result.skipped_no_email.map((prospect) => prospect.name || `#${prospect.id}`).join(', ') }}
           </p>
           <button type="button" class="btn-primary w-full" @click="emit('close')">Fermer</button>
         </div>
 
-        <!-- Form -->
         <div v-else>
           <label class="text-muted mb-1.5 block text-xs font-medium" for="bulk-template-select">Template</label>
           <div v-if="loading" class="text-muted py-3 text-sm">
@@ -89,20 +87,15 @@
 </template>
 
 <script lang="ts" setup>
+import type { UseToastReturn } from '~/types/Composables'
 import type { PropType, Ref } from 'vue'
 import { ref, watch } from 'vue'
 import type { UiBulkGenerateModalProps } from '~/types/UiBulkGenerateModal'
-import {
-  createDemoSitesBulk,
-  listDemoSiteTemplates,
-  type BulkGenerateResult,
-  type DemoSiteTemplate,
-} from '~/services/demoSiteService'
+import type { BulkGenerateResult, DemoSiteTemplate } from '~/services/demoSiteService'
+import { DemoSiteService } from '~/services/demoSiteService'
 import { useToast } from '~/composables/useToast'
 
-/**
- * Defines the component props.
- */
+/** Modal to bulk-generate demo sites for selected prospects. */
 const props: UiBulkGenerateModalProps = defineProps({
   open: {
     type: Boolean,
@@ -114,33 +107,36 @@ const props: UiBulkGenerateModalProps = defineProps({
   },
 })
 
-const emit = defineEmits<{
+const emit: {
+  (e: 'close'): void
+  (e: 'generated', result: BulkGenerateResult): void
+} = defineEmits<{
   (e: 'close'): void
   (e: 'generated', result: BulkGenerateResult): void
 }>()
 
-const toast = useToast()
+const toast: UseToastReturn = useToast()
 
 /** Available demo-site templates. */
-const templates: Ref<DemoSiteTemplate[]> = ref<DemoSiteTemplate[]>([])
+const templates: Ref<DemoSiteTemplate[]> = ref([])
 
 /** Selected template id. */
-const selectedTemplateId: Ref<string> = ref<string>('')
+const selectedTemplateId: Ref<string> = ref('')
 
 /** Whether to send a CMS invite to each client immediately. */
-const inviteCms: Ref<boolean> = ref<boolean>(false)
+const inviteCms: Ref<boolean> = ref(false)
 
 /** Whether templates are loading. */
-const loading: Ref<boolean> = ref<boolean>(false)
+const loading: Ref<boolean> = ref(false)
 
 /** Whether a generation is in flight. */
-const submitting: Ref<boolean> = ref<boolean>(false)
+const submitting: Ref<boolean> = ref(false)
 
 /** Inline error message. */
-const error: Ref<string | null> = ref<string | null>(null)
+const error: Ref<string | null> = ref(null)
 
 /** Result of the last generation (null while the form is shown). */
-const result: Ref<BulkGenerateResult | null> = ref<BulkGenerateResult | null>(null)
+const result: Ref<BulkGenerateResult | null> = ref(null)
 
 /**
  * Load the demo-site templates and pre-select the first one.
@@ -148,7 +144,7 @@ const result: Ref<BulkGenerateResult | null> = ref<BulkGenerateResult | null>(nu
 async function loadTemplates(): Promise<void> {
   try {
     loading.value = true
-    templates.value = await listDemoSiteTemplates()
+    templates.value = await DemoSiteService.listDemoSiteTemplates()
     const first: DemoSiteTemplate | undefined = templates.value[0]
     if (first) selectedTemplateId.value = first.id
   } catch {
@@ -166,7 +162,7 @@ async function submit(): Promise<void> {
   error.value = null
   submitting.value = true
   try {
-    const res = await createDemoSitesBulk({
+    const res = await DemoSiteService.createDemoSitesBulk({
       prospect_ids: props.prospectIds,
       template_id: selectedTemplateId.value,
       invite_client_to_cms: inviteCms.value,

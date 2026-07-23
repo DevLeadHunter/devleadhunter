@@ -31,7 +31,7 @@ from schemas.support import (
     SupportTicketStatusUpdate,
     SupportTopicOption,
 )
-from services.auth_service import require_admin, require_auth, resolve_user_from_token
+from services.auth_service import AuthService, require_admin, require_auth
 from services.support_service import support_service
 from services.support_storage_service import support_storage_service
 
@@ -279,7 +279,7 @@ async def ticket_websocket(
 
     db: Session = SessionLocal()
     try:
-        user = resolve_user_from_token(token, db)
+        user = AuthService.resolve_user_from_token(token, db)
         ticket = support_service.get_ticket(db, ticket_id, user)
 
         await connection_manager.connect(ticket.id, websocket)
@@ -311,7 +311,7 @@ async def global_tickets_websocket(
     db: Session = SessionLocal()
     try:
         # Verify user authentication
-        user = resolve_user_from_token(token, db)
+        user = AuthService.resolve_user_from_token(token, db)
         
         await global_connection_manager.connect(websocket)
         try:

@@ -1,6 +1,5 @@
 <template>
   <Teleport to="body">
-    <!-- Bottom-right toast stack — above the drawers (z-50). -->
     <div class="pointer-events-none fixed right-4 bottom-4 z-[70] flex w-[min(22rem,calc(100vw-2rem))] flex-col gap-2">
       <TransitionGroup name="toast">
         <div
@@ -34,18 +33,12 @@
 </template>
 
 <script lang="ts" setup>
+import type { ToastToneClasses } from '~/types/UiToastHost'
 import { watch } from 'vue'
 import type { ToastItem, ToastType } from '~/composables/useToast'
 import { useToastHost } from '~/composables/useToast'
 
-/** Per-type icon tile styling (Atelier semantic tokens — theme-aware). */
-interface ToastStyle {
-  icon: string
-  tileBg: string
-  iconColor: string
-}
-
-const TOAST_STYLE: Record<ToastType, ToastStyle> = {
+const TOAST_STYLE: Record<ToastType, ToastToneClasses> = {
   success: { icon: 'i-lucide-check', tileBg: 'var(--app-green-soft)', iconColor: 'var(--app-green)' },
   error: { icon: 'i-lucide-circle-alert', tileBg: 'var(--app-red-soft)', iconColor: 'var(--app-red)' },
   warning: { icon: 'i-lucide-triangle-alert', tileBg: 'var(--app-accent-soft)', iconColor: 'var(--app-accent-ink)' },

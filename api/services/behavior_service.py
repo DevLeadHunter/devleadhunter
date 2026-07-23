@@ -201,10 +201,10 @@ class BehaviorService:
         base_body_html: str,
     ) -> dict[str, str]:
         """Draft a behaviour-personalised follow-up email for a prospect."""
-        from services.email_variables import resolved_contact
+        from services.email_variables import EmailVariables
 
         behavior = await self.get_behavior(db, user_id, prospect.id)
-        first_name, _last, _gender = resolved_contact(db, prospect.id)
+        first_name, _last, _gender = EmailVariables.resolved_contact(db, prospect.id)
         return await llm_service.draft_followup(
             business_name=prospect.name,
             first_name=first_name or "",

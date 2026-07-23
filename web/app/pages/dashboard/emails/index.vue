@@ -1,12 +1,15 @@
 <template>
   <div class="space-y-6">
-    <!-- Header -->
     <div class="flex items-center justify-between">
       <div>
         <h1 class="text-3xl font-bold text-[var(--app-ink)]">Suivi des emails</h1>
         <p class="text-muted mt-2 text-sm">Historique et statut de chaque email de prospection envoyé</p>
       </div>
       <div class="flex items-center gap-3">
+        <NuxtLink to="/dashboard/email-health" class="btn-secondary">
+          <UIcon name="i-lucide-heart-pulse" class="h-4 w-4" />
+          Santé email
+        </NuxtLink>
         <button
           :disabled="isLoading || isSyncing"
           class="btn-secondary disabled:cursor-not-allowed disabled:opacity-50"
@@ -34,7 +37,6 @@
       </div>
     </div>
 
-    <!-- Stats cards -->
     <div class="grid grid-cols-2 gap-4 md:grid-cols-6">
       <div class="card text-center">
         <p class="text-muted text-xs font-medium">Envoyés</p>
@@ -62,7 +64,6 @@
       </div>
     </div>
 
-    <!-- Filters -->
     <div class="card">
       <div class="grid grid-cols-1 gap-4 md:grid-cols-4">
         <div>
@@ -83,7 +84,6 @@
       </div>
     </div>
 
-    <!-- Error -->
     <div
       v-if="error"
       class="rounded-lg border border-[var(--app-red)] bg-[var(--app-surface)] p-4 text-[var(--app-red)]"
@@ -92,12 +92,10 @@
       <p class="text-muted mt-1 text-sm">{{ error }}</p>
     </div>
 
-    <!-- Loader -->
     <div v-else-if="isLoading" class="flex items-center justify-center py-12">
       <UIcon name="i-lucide-loader-circle" class="text-muted h-9 w-9 animate-spin" />
     </div>
 
-    <!-- Empty -->
     <div v-else-if="filteredLogs.length === 0" class="card px-6 py-12 text-center">
       <LandingAsterisk class="text-4xl text-[var(--app-accent)]" />
       <h3 class="font-display mt-5 text-2xl font-semibold text-[var(--app-ink)]">Aucun email trouvé</h3>
@@ -110,7 +108,6 @@
       </p>
     </div>
 
-    <!-- Table -->
     <div v-else class="card overflow-hidden">
       <table class="w-full border-collapse">
         <thead>
@@ -174,7 +171,6 @@
         </tbody>
       </table>
 
-      <!-- Pagination -->
       <div class="flex items-center justify-between border-t border-[var(--app-line)] px-6 py-4">
         <div class="text-muted text-sm">
           {{ (currentPage - 1) * pageSize + 1 }}–{{ Math.min(currentPage * pageSize, filteredLogs.length) }} sur
@@ -202,40 +198,41 @@
   </div>
 </template>
 
-<script setup lang="ts">
+<script lang="ts" setup>
+import type { UseToastReturn } from '~/types/Composables'
+import type { EngagementStep } from '~/types/EmailsListPage'
+import type { SelectFieldOption } from '~/types/SelectField'
+import type { ComputedRef, Ref } from 'vue'
 import { computed, onMounted, ref, watch } from 'vue'
 import type { EmailLog, EmailStats, EmailStatus } from '~/types'
 import { formatDate } from '~/utils/date'
-import { getEmailLogs, getEmailStats } from '~/services/emailCampaignsService'
-import { campaignService, type CampaignResponse } from '~/services/campaignService'
+import { EmailCampaignsService } from '~/services/emailCampaignsService'
+import type { CampaignResponse } from '~/services/campaignService'
+import { CampaignService } from '~/services/campaignService'
 import { useToast } from '~/composables/useToast'
 import { useDrawerStackStore } from '~/stores/drawerStack'
-import { api } from '~/services/api'
+import { ApiClient } from '~/services/api'
 
 definePageMeta({ layout: 'dashboard', middleware: ['auth'] })
 
-// ─── State ────────────────────────────────────────────────────────────────────
-
-const toast = useToast()
-const logs = ref<EmailLog[]>([])
-const campaigns = ref<CampaignResponse[]>([])
-
-// ─── Envoi manuel (drawer persistant hébergé par le layout) ──────────────────
+const toast: UseToastReturn = useToast()
+const logs: Ref<EmailLog[]> = ref([])
+const campaigns: Ref<CampaignResponse[]> = ref([])
 
 /** Persistent drawer stack (composer + email log detail live there). */
-const drawerStack = useDrawerStackStore()
+const drawerStack: ReturnType<typeof useDrawerStackStore> = useDrawerStackStore()
 
-const isSyncing = ref<boolean>(false)
-const isLoading = ref(false)
-const error = ref<string | null>(null)
-const searchQuery = ref('')
-const filterStatus = ref('all')
-const filterCampaignId = ref('all')
-const currentPage = ref(1)
-const pageSize = 50
+const isSyncing: Ref<boolean> = ref(false)
+const isLoading: Ref<boolean> = ref(false)
+const error: Ref<string | null> = ref(null)
+const searchQuery: Ref<string> = ref('')
+const filterStatus: Ref<string> = ref('all')
+const filterCampaignId: Ref<string> = ref('all')
+const currentPage: Ref<number> = ref(1)
+const pageSize: number = 50
 
 /** Full stats object — typed strictly as EmailStats so every field is present. */
-const stats = ref<EmailStats>({
+const stats: Ref<EmailStats> = ref({
   total_sent: 0,
   total_delivered: 0,
   total_opened: 0,
@@ -246,8 +243,6 @@ const stats = ref<EmailStats>({
   open_rate: 0,
   click_rate: 0,
 })
-
-// ─── Filter options ───────────────────────────────────────────────────────────
 
 const statusOptions = [
   { value: 'all', label: 'Tous' },
@@ -262,14 +257,12 @@ const statusOptions = [
   { value: 'complained', label: 'Spam' },
 ]
 
-const campaignOptions = computed(() => [
+const campaignOptions: ComputedRef<SelectFieldOption[]> = computed(() => [
   { value: 'all', label: 'Toutes les campagnes' },
-  ...campaigns.value.map((c) => ({ value: String(c.id), label: c.name })),
+  ...campaigns.value.map((campaign) => ({ value: String(campaign.id), label: campaign.name })),
 ])
 
-// ─── Computed ─────────────────────────────────────────────────────────────────
-
-const filteredLogs = computed((): EmailLog[] => {
+const filteredLogs: ComputedRef<EmailLog[]> = computed((): EmailLog[] => {
   let list = logs.value
 
   if (searchQuery.value) {
@@ -287,22 +280,21 @@ const filteredLogs = computed((): EmailLog[] => {
   }
 
   if (filterCampaignId.value !== 'all') {
-    // campaign_id on EmailLog is ``string | null`` from the backend; compare
-    // against the filter value (also a string) to avoid Number(null) → 0 bugs.
+    // Comparaison en chaîne : Number(null) vaudrait 0 et matcherait la première campagne.
     list = list.filter((l) => l.campaign_id != null && String(l.campaign_id) === filterCampaignId.value)
   }
 
   return list
 })
 
-const totalPages = computed((): number => Math.max(1, Math.ceil(filteredLogs.value.length / pageSize)))
+const totalPages: ComputedRef<number> = computed((): number =>
+  Math.max(1, Math.ceil(filteredLogs.value.length / pageSize)),
+)
 
-const paginatedLogs = computed((): EmailLog[] => {
+const paginatedLogs: ComputedRef<EmailLog[]> = computed((): EmailLog[] => {
   const start = (currentPage.value - 1) * pageSize
   return filteredLogs.value.slice(start, start + pageSize)
 })
-
-// ─── Helpers ──────────────────────────────────────────────────────────────────
 
 /**
  * Resolve a campaign display name from its ID.
@@ -311,16 +303,13 @@ const paginatedLogs = computed((): EmailLog[] => {
  */
 function resolveCampaignName(id: string | number | null | undefined): string | undefined {
   if (id == null) return undefined
-  const numericId = Number(id)
+  const numericId: number = Number(id)
   if (Number.isNaN(numericId)) return undefined
-  return campaigns.value.find((c) => c.id === numericId)?.name
+  return campaigns.value.find((campaign) => campaign.id === numericId)?.name
 }
 
 /**
- * Returns the list of status badges to display for a given email log.
- *
- * Shows the best positive state reached (based on event timestamps) plus any
- * negative events as additional badges (e.g. "Ouvert" + "Spam").
+ * Status badges for an email log (best positive state plus complaint if any).
  * @param log - The email log entry to evaluate.
  * @returns Ordered array of EmailStatus values to render as badges.
  */
@@ -341,25 +330,8 @@ function getEmailBadges(log: EmailLog): EmailStatus[] {
   return badges
 }
 
-/** A single engagement signal (delivered / opened / clicked) for the table. */
-interface EngagementStep {
-  /** Stable key. */
-  key: string
-  /** French label shown in the tooltip. */
-  label: string
-  /** Lucide icon name. */
-  icon: string
-  /** Event timestamp, or null/undefined when it hasn't happened. */
-  ts: string | null | undefined
-  /** Tailwind text colour applied when the signal is reached. */
-  color: string
-}
-
 /**
- * Build the engagement signals (delivered → opened → clicked) for a log row.
- *
- * These are the Resend-tracked events most useful at a glance for cold
- * outreach.  Each step lights up in colour once reached.
+ * Engagement signals (delivered → opened → clicked) for a log row.
  * @param log - The email log entry to evaluate.
  * @returns Ordered list of engagement steps.
  */
@@ -409,6 +381,7 @@ function lastActivityAt(log: EmailLog): string | null {
   return new Date(Math.max(...valid)).toISOString()
 }
 
+/** Reset filters and rewind pagination to page 1. */
 function clearFilters(): void {
   searchQuery.value = ''
   filterStatus.value = 'all'
@@ -416,20 +389,23 @@ function clearFilters(): void {
   currentPage.value = 1
 }
 
+/**
+ * Open the email log detail drawer for a row.
+ * @param log - Email log row to open.
+ */
 function openDrawer(log: EmailLog): void {
   drawerStack.push({ kind: 'email-log', log, campaignName: resolveCampaignName(log.campaign_id) })
 }
 
-// ─── Data loading ─────────────────────────────────────────────────────────────
-
+/** Fetch logs (limit 500), campaigns and stats in parallel. */
 async function loadLogs(): Promise<void> {
   isLoading.value = true
   error.value = null
   try {
     const [logsRes, campaignsRes, statsRes] = await Promise.all([
-      getEmailLogs({ limit: 500 }),
-      campaignService.list(0, 200),
-      getEmailStats(),
+      EmailCampaignsService.getEmailLogs({ limit: 500 }),
+      CampaignService.list(0, 200),
+      EmailCampaignsService.getEmailStats(),
     ])
     logs.value = logsRes.logs
     campaigns.value = campaignsRes.campaigns
@@ -457,7 +433,7 @@ watch(
 async function syncStatus(): Promise<void> {
   isSyncing.value = true
   try {
-    const result = await api.post<{ updated: number; checked: number; errors?: string[] }>(
+    const result = await ApiClient.post<{ updated: number; checked: number; errors?: string[] }>(
       '/api/v1/emails/sync-resend-status',
       {},
     )

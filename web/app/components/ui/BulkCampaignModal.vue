@@ -25,7 +25,6 @@
           </button>
         </div>
 
-        <!-- Mode toggle -->
         <div class="mb-4 grid grid-cols-2 gap-2">
           <button
             type="button"
@@ -53,7 +52,6 @@
           </button>
         </div>
 
-        <!-- Existing campaign -->
         <div v-if="mode === 'existing'">
           <label class="text-muted mb-1.5 block text-xs font-medium" for="bulk-campaign-select">Campagne</label>
           <div v-if="loading" class="text-muted py-3 text-sm">
@@ -68,7 +66,6 @@
           </select>
         </div>
 
-        <!-- New campaign -->
         <div v-else>
           <label class="text-muted mb-1.5 block text-xs font-medium" for="bulk-campaign-name">Nom de la campagne</label>
           <input
@@ -102,15 +99,15 @@
 </template>
 
 <script lang="ts" setup>
+import type { UseToastReturn } from '~/types/Composables'
 import type { ComputedRef, PropType, Ref } from 'vue'
 import { computed, ref, watch } from 'vue'
 import type { UiBulkCampaignModalProps } from '~/types/UiBulkCampaignModal'
-import { campaignService, type CampaignResponse } from '~/services/campaignService'
+import type { CampaignResponse } from '~/services/campaignService'
+import { CampaignService } from '~/services/campaignService'
 import { useToast } from '~/composables/useToast'
 
-/**
- * Defines the component props.
- */
+/** Modal to launch a bulk email campaign on selected prospects. */
 const props: UiBulkCampaignModalProps = defineProps({
   open: {
     type: Boolean,
@@ -122,33 +119,36 @@ const props: UiBulkCampaignModalProps = defineProps({
   },
 })
 
-const emit = defineEmits<{
+const emit: {
+  (e: 'close'): void
+  (e: 'added', payload: { campaignName: string; count: number }): void
+} = defineEmits<{
   (e: 'close'): void
   (e: 'added', payload: { campaignName: string; count: number }): void
 }>()
 
-const toast = useToast()
+const toast: UseToastReturn = useToast()
 
 /** Whether to add to an existing campaign or create a new one. */
-const mode: Ref<'existing' | 'new'> = ref<'existing' | 'new'>('existing')
+const mode: Ref<'existing' | 'new'> = ref('existing')
 
 /** Campaigns available to pick from. */
-const campaigns: Ref<CampaignResponse[]> = ref<CampaignResponse[]>([])
+const campaigns: Ref<CampaignResponse[]> = ref([])
 
 /** Selected existing campaign id. */
-const selectedCampaignId: Ref<number | null> = ref<number | null>(null)
+const selectedCampaignId: Ref<number | null> = ref(null)
 
 /** New campaign name (create mode). */
-const newName: Ref<string> = ref<string>('')
+const newName: Ref<string> = ref('')
 
 /** Whether the campaign list is loading. */
-const loading: Ref<boolean> = ref<boolean>(false)
+const loading: Ref<boolean> = ref(false)
 
 /** Whether a submit is in flight. */
-const submitting: Ref<boolean> = ref<boolean>(false)
+const submitting: Ref<boolean> = ref(false)
 
 /** Inline error message. */
-const error: Ref<string | null> = ref<string | null>(null)
+const error: Ref<string | null> = ref(null)
 
 /** Whether the form can be submitted. */
 const canSubmit: ComputedRef<boolean> = computed((): boolean => {
@@ -162,7 +162,7 @@ const canSubmit: ComputedRef<boolean> = computed((): boolean => {
 async function loadCampaigns(): Promise<void> {
   try {
     loading.value = true
-    const res = await campaignService.list(0, 100)
+    const res = await CampaignService.list(0, 100)
     campaigns.value = res.campaigns
     if (campaigns.value.length === 0) mode.value = 'new'
   } catch {
@@ -184,7 +184,7 @@ async function submit(): Promise<void> {
     let campaignName: string
 
     if (mode.value === 'new') {
-      const created = await campaignService.create({ name: newName.value.trim() })
+      const created = await CampaignService.create({ name: newName.value.trim() })
       campaignId = created.id
       campaignName = created.name
     } else {
@@ -192,7 +192,7 @@ async function submit(): Promise<void> {
       campaignName = campaigns.value.find((c: CampaignResponse): boolean => c.id === campaignId)?.name ?? 'campagne'
     }
 
-    await campaignService.addProspects(campaignId, props.prospectIds)
+    await CampaignService.addProspects(campaignId, props.prospectIds)
     emit('added', { campaignName, count: props.prospectIds.length })
     emit('close')
   } catch (err: unknown) {

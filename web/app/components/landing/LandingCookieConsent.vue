@@ -39,11 +39,11 @@
 import type { Ref } from 'vue'
 import { ref, onMounted } from 'vue'
 
-const localePath = useLocalePath()
+const localePath: ReturnType<typeof useLocalePath> = useLocalePath()
 const { needsChoice, accept, refuse } = useCookieConsent()
 
 /** Gate rendering to after client mount so the localStorage-based choice avoids an SSR flash. */
-const isMounted: Ref<boolean> = ref<boolean>(false)
+const isMounted: Ref<boolean> = ref(false)
 
 onMounted((): void => {
   isMounted.value = true

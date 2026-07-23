@@ -9,14 +9,12 @@
   </button>
 </template>
 
-<script setup lang="ts">
+<script lang="ts" setup>
 import type { ComputedRef, PropType } from 'vue'
 import type { DlhButtonProps, DlhButtonSize, DlhButtonType, DlhButtonVariant } from '~/types/DlhButton'
 import { computed } from 'vue'
 
-/**
- * Defines the component props.
- */
+/** Primary app button with variant and size. */
 const props: DlhButtonProps = defineProps({
   variant: {
     type: String as PropType<DlhButtonVariant>,

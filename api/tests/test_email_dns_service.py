@@ -20,8 +20,9 @@ def clear_cache() -> None:
 def _with_records(monkeypatch: pytest.MonkeyPatch, records: dict[str, list[str]]) -> None:
     """Serve *records* instead of real DNS lookups.
 
-    @param monkeypatch - Pytest patcher.
-    @param records - TXT values keyed by DNS name.
+    Args:
+        monkeypatch: Pytest patcher.
+        records: TXT values keyed by DNS name.
     """
     monkeypatch.setattr(dns_service, "_txt_records", lambda name: records.get(name, []))
 

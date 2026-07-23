@@ -1,6 +1,5 @@
 <template>
   <div class="space-y-6">
-    <!-- Header -->
     <div class="flex items-center justify-between">
       <div>
         <h1 class="text-3xl font-bold text-[var(--app-ink)]">Ventes</h1>
@@ -16,7 +15,6 @@
       </div>
     </div>
 
-    <!-- Stats -->
     <div class="grid grid-cols-1 gap-6 md:grid-cols-4">
       <div class="card">
         <p class="text-muted text-sm font-medium">Chiffre d'affaires</p>
@@ -36,7 +34,6 @@
       </div>
     </div>
 
-    <!-- Loader / empty / table -->
     <div v-if="isLoading" class="flex items-center justify-center py-12">
       <UIcon name="i-lucide-loader-circle" class="text-muted h-9 w-9 animate-spin" />
     </div>
@@ -106,10 +103,11 @@
 </template>
 
 <script lang="ts" setup>
+import type { UseToastReturn } from '~/types/Composables'
 import { ref, onMounted } from 'vue'
 import type { Ref } from 'vue'
 import type { Order, OrderStats } from '~/services/ordersService'
-import { createOrder, getOrderStats, listOrders } from '~/services/ordersService'
+import { OrdersService } from '~/services/ordersService'
 import { useToast } from '~/composables/useToast'
 
 definePageMeta({
@@ -117,15 +115,15 @@ definePageMeta({
   middleware: ['auth'],
 })
 
-const toast = useToast()
+const toast: UseToastReturn = useToast()
 
-const orders: Ref<Order[]> = ref<Order[]>([])
-const stats: Ref<OrderStats | null> = ref<OrderStats | null>(null)
+const orders: Ref<Order[]> = ref([])
+const stats: Ref<OrderStats | null> = ref(null)
 const isLoading: Ref<boolean> = ref(false)
 const isCreating: Ref<boolean> = ref(false)
 
 const drawerOpen: Ref<boolean> = ref(false)
-const drawerOrder: Ref<Order | null> = ref<Order | null>(null)
+const drawerOrder: Ref<Order | null> = ref(null)
 
 const STATUS_LABELS: Record<string, string> = {
   draft: 'Brouillon',
@@ -190,7 +188,7 @@ function statusClass(status: string): string {
 async function loadAll(): Promise<void> {
   isLoading.value = true
   try {
-    const [list, s] = await Promise.all([listOrders(), getOrderStats()])
+    const [list, s] = await Promise.all([OrdersService.listOrders(), OrdersService.getOrderStats()])
     orders.value = list.items
     stats.value = s
   } catch (err: unknown) {
@@ -204,7 +202,7 @@ async function loadAll(): Promise<void> {
 async function handleCreate(): Promise<void> {
   isCreating.value = true
   try {
-    const order = await createOrder({ product_type: 'website' })
+    const order = await OrdersService.createOrder({ product_type: 'website' })
     orders.value.unshift(order)
     openDrawer(order)
   } catch (err: unknown) {
@@ -237,7 +235,7 @@ function handleOrderDeleted(orderId: number): void {
 /** Refresh just the stats block. */
 async function refreshStats(): Promise<void> {
   try {
-    stats.value = await getOrderStats()
+    stats.value = await OrdersService.getOrderStats()
   } catch {
     // non-blocking
   }

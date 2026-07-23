@@ -7,20 +7,16 @@ import type { Ref } from 'vue'
 import { onBeforeUnmount, ref } from 'vue'
 
 /** A camera or microphone the user can pick. */
-export interface RecorderDevice {
+export type RecorderDevice = {
   deviceId: string
   label: string
 }
 
 /** One finished take, kept in memory until the three are sent. */
-export interface RecordedTake {
-  /** Raw recording, ready to be posted as a file. */
+export type RecordedTake = {
   blob: Blob
-  /** Object URL for the review player (revoked by {@link releaseTake}). */
   url: string
-  /** Measured client-side; the API re-measures with ffmpeg before storing. */
   durationSeconds: number
-  /** File extension matching the container the browser produced. */
   extension: string
 }
 
@@ -130,17 +126,17 @@ export function useWebcamRecorder(): {
   releaseTake: (take: RecordedTake) => void
   stopEverything: () => void
 } {
-  const stream: Ref<MediaStream | null> = ref<MediaStream | null>(null)
-  const isReady: Ref<boolean> = ref<boolean>(false)
-  const isRequesting: Ref<boolean> = ref<boolean>(false)
-  const isRecording: Ref<boolean> = ref<boolean>(false)
-  const error: Ref<string | null> = ref<string | null>(null)
-  const cameras: Ref<RecorderDevice[]> = ref<RecorderDevice[]>([])
-  const microphones: Ref<RecorderDevice[]> = ref<RecorderDevice[]>([])
-  const selectedCameraId: Ref<string> = ref<string>('')
-  const selectedMicrophoneId: Ref<string> = ref<string>('')
-  const audioLevel: Ref<number> = ref<number>(0)
-  const elapsedSeconds: Ref<number> = ref<number>(0)
+  const stream: Ref<MediaStream | null> = ref(null)
+  const isReady: Ref<boolean> = ref(false)
+  const isRequesting: Ref<boolean> = ref(false)
+  const isRecording: Ref<boolean> = ref(false)
+  const error: Ref<string | null> = ref(null)
+  const cameras: Ref<RecorderDevice[]> = ref([])
+  const microphones: Ref<RecorderDevice[]> = ref([])
+  const selectedCameraId: Ref<string> = ref('')
+  const selectedMicrophoneId: Ref<string> = ref('')
+  const audioLevel: Ref<number> = ref(0)
+  const elapsedSeconds: Ref<number> = ref(0)
 
   // Plumbing kept out of the reactive surface — none of it belongs in a template.
   let recorder: MediaRecorder | null = null
@@ -190,14 +186,12 @@ export function useWebcamRecorder(): {
     if (source.getAudioTracks().length === 0) return
     try {
       audioContext = new AudioContext()
-      // Un contexte créé hors interaction démarre « suspended » : sans ce
-      // resume, le VU-mètre resterait à zéro et ferait croire à un micro mort,
-      // exactement le problème qu'il est censé éviter.
+      // Un contexte créé hors interaction démarre « suspended » : le VU-mètre resterait à zéro.
       if (audioContext.state === 'suspended') void audioContext.resume().catch((): void => undefined)
       analyser = audioContext.createAnalyser()
       analyser.fftSize = 512
       audioContext.createMediaStreamSource(source).connect(analyser)
-      const samples: Uint8Array = new Uint8Array(analyser.frequencyBinCount)
+      const samples: Uint8Array<ArrayBuffer> = new Uint8Array(new ArrayBuffer(analyser.frequencyBinCount))
 
       const tick = (): void => {
         if (!analyser) return
@@ -259,7 +253,7 @@ export function useWebcamRecorder(): {
    * Open a stream for the given devices and wire the level meter to it.
    * @param cameraId - Camera device ID, or an empty string for the default.
    * @param microphoneId - Microphone device ID, or an empty string for the default.
-   * @throws {Error} With a user-facing message when capture is refused.
+   * @throws With a user-facing message when capture is refused.
    */
   async function openStream(cameraId: string, microphoneId: string): Promise<void> {
     const constraints: MediaStreamConstraints = {

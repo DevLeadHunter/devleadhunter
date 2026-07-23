@@ -306,9 +306,6 @@ class EmailScraper:
         finally:
             pass
 
-    # ------------------------------------------------------------------
-    # Social profile helpers
-    # ------------------------------------------------------------------
 
     # Spam domains that are never a real business contact email
     _SOCIAL_SPAM_DOMAINS: tuple[str, ...] = (

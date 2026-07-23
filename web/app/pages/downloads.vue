@@ -87,35 +87,14 @@
 </template>
 
 <script lang="ts" setup>
+import type { DesktopDownload, GithubRelease, ReleaseAsset } from '~/types/DownloadsPage'
 import type { ComputedRef } from 'vue'
 
 definePageMeta({
   layout: 'marketing',
 })
 
-type ReleaseAsset = {
-  id?: number
-  name: string
-  browser_download_url: string
-  size?: number
-}
-
-type GithubRelease = {
-  tag_name: string
-  name?: string
-  assets: ReleaseAsset[]
-}
-
-type DownloadItem = {
-  id: string
-  asset: ReleaseAsset
-  label: string
-  description: string
-  platform: 'windows' | 'macos'
-  sortKey: number
-}
-
-const runtime = useRuntimeConfig()
+const runtime: ReturnType<typeof useRuntimeConfig> = useRuntimeConfig()
 
 const repoSlug: ComputedRef<string> = computed(
   (): string => (runtime.public.githubRepo as string | undefined)?.trim() || 'DevLeadHunter/devleadhunter',
@@ -170,7 +149,7 @@ const {
  * @param asset - Release asset from the GitHub API.
  * @returns Parsed download row, or null when the extension is not supported.
  */
-function classifyAsset(asset: ReleaseAsset): DownloadItem | null {
+function classifyAsset(asset: ReleaseAsset): DesktopDownload | null {
   const n: string = asset.name
 
   if (/\.msi$/i.test(n)) {
@@ -216,28 +195,28 @@ function classifyAsset(asset: ReleaseAsset): DownloadItem | null {
  * @param items - Parsed download rows.
  * @returns Sorted copy of the input list.
  */
-function sortItems(items: DownloadItem[]): DownloadItem[] {
+function sortItems(items: DesktopDownload[]): DesktopDownload[] {
   return [...items].sort(
-    (a: DownloadItem, b: DownloadItem): number => a.sortKey - b.sortKey || a.label.localeCompare(b.label),
+    (a: DesktopDownload, b: DesktopDownload): number => a.sortKey - b.sortKey || a.label.localeCompare(b.label),
   )
 }
 
-const windowsDownloads: ComputedRef<DownloadItem[]> = computed((): DownloadItem[] => {
-  const items: DownloadItem[] = (release.value?.assets ?? [])
+const windowsDownloads: ComputedRef<DesktopDownload[]> = computed((): DesktopDownload[] => {
+  const items: DesktopDownload[] = (release.value?.assets ?? [])
     .map(classifyAsset)
-    .filter((x: DownloadItem | null): x is DownloadItem => Boolean(x && x.platform === 'windows'))
+    .filter((x: DesktopDownload | null): x is DesktopDownload => Boolean(x && x.platform === 'windows'))
   return sortItems(items)
 })
 
-const macDownloads: ComputedRef<DownloadItem[]> = computed((): DownloadItem[] => {
-  const items: DownloadItem[] = (release.value?.assets ?? [])
+const macDownloads: ComputedRef<DesktopDownload[]> = computed((): DesktopDownload[] => {
+  const items: DesktopDownload[] = (release.value?.assets ?? [])
     .map(classifyAsset)
-    .filter((x: DownloadItem | null): x is DownloadItem => Boolean(x && x.platform === 'macos'))
+    .filter((x: DesktopDownload | null): x is DesktopDownload => Boolean(x && x.platform === 'macos'))
   return sortItems(items)
 })
 
 const releaseVersionLabel: ComputedRef<string> = computed((): string => {
-  const r: GithubRelease | null = release.value
+  const r: GithubRelease | null = release.value ?? null
   if (!r) {
     return ''
   }

@@ -76,26 +76,35 @@
 </template>
 
 <script lang="ts" setup>
+import type { ComputedRef, Ref } from 'vue'
 import type { DemoSite, DemoSiteTemplate, DemoSiteTheme } from '~/services/demoSiteService'
-import { getDemoSite, listDemoSiteTemplates, regenerateDemoSite, updateDemoSite } from '~/services/demoSiteService'
+import { DemoSiteService } from '~/services/demoSiteService'
 
 definePageMeta({ layout: 'dashboard', middleware: 'auth' })
 
-const route = useRoute()
-const demoSiteId = Number(route.params.id)
+const route: ReturnType<typeof useRoute> = useRoute()
+const demoSiteId: number = Number(route.params.id)
 
-const site = ref<DemoSite | null>(null)
-const pending = ref(true)
-const loadError = ref<string | null>(null)
-const templates = ref<DemoSiteTemplate[]>([])
-const isSaving = ref(false)
-const isRegenerating = ref(false)
-const saveMessage = ref<string | null>(null)
-const saveSuccess = ref(false)
+const site: Ref<DemoSite | null> = ref(null)
+const pending: Ref<boolean> = ref(true)
+const loadError: Ref<string | null> = ref(null)
+const templates: Ref<DemoSiteTemplate[]> = ref([])
+const isSaving: Ref<boolean> = ref(false)
+const isRegenerating: Ref<boolean> = ref(false)
+const saveMessage: Ref<string | null> = ref(null)
+const saveSuccess: Ref<boolean> = ref(false)
 
 const defaultTheme: DemoSiteTheme = { primary: '#0284c7', secondary: '#0f172a', accent: '#f59e0b' }
 
-const form = ref({
+const form: Ref<{
+  business_name: string
+  template_id: string
+  phone: string
+  email: string
+  city: string
+  description: string
+  theme: DemoSiteTheme
+}> = ref({
   business_name: '',
   template_id: 'plumber-signature',
   phone: '',
@@ -105,23 +114,29 @@ const form = ref({
   theme: { ...defaultTheme },
 })
 
-const canSave = computed(() => {
+const canSave: ComputedRef<boolean> = computed(() => {
   const emailValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.value.email.trim())
   return form.value.business_name.trim().length >= 2 && emailValid
 })
 
+/**
+ * Apply a successful site update to local state and feedback banners.
+ */
 function applySiteUpdate(updatedSite: DemoSite, message: string): void {
   site.value = updatedSite
   saveMessage.value = message
   saveSuccess.value = updatedSite.status !== 'failed'
 }
 
+/**
+ * Persist form edits and regenerate the demo site.
+ */
 async function handleSave(): Promise<void> {
   if (!site.value || !canSave.value) return
   isSaving.value = true
   saveMessage.value = null
   try {
-    const updatedSite = await updateDemoSite(demoSiteId, {
+    const updatedSite = await DemoSiteService.updateDemoSite(demoSiteId, {
       business_name: form.value.business_name.trim(),
       template_id: form.value.template_id,
       email: form.value.email.trim(),
@@ -139,12 +154,15 @@ async function handleSave(): Promise<void> {
   }
 }
 
+/**
+ * Regenerate the demo site without changing form fields.
+ */
 async function handleRegenerate(): Promise<void> {
   if (!site.value) return
   isRegenerating.value = true
   saveMessage.value = null
   try {
-    const updatedSite = await regenerateDemoSite(demoSiteId)
+    const updatedSite = await DemoSiteService.regenerateDemoSite(demoSiteId)
     applySiteUpdate(updatedSite, updatedSite.verification_message ?? 'Site régénéré.')
   } catch (error) {
     saveMessage.value = error instanceof Error ? error.message : 'Échec de la régénération'
@@ -156,7 +174,10 @@ async function handleRegenerate(): Promise<void> {
 
 onMounted(async () => {
   try {
-    const [loadedSite, loadedTemplates] = await Promise.all([getDemoSite(demoSiteId), listDemoSiteTemplates()])
+    const [loadedSite, loadedTemplates] = await Promise.all([
+      DemoSiteService.getDemoSite(demoSiteId),
+      DemoSiteService.listDemoSiteTemplates(),
+    ])
     site.value = loadedSite
     templates.value = loadedTemplates
     form.value = {

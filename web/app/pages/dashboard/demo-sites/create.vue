@@ -3,13 +3,12 @@
 </template>
 
 <script lang="ts" setup>
-// « Créer un site » a été remplacé par le tunnel d'automatisation. On redirige
-// (en conservant un éventuel ?prospect=… pour pré-sélectionner le prospect).
+// Remplacée par le tunnel d'automatisation ; le ?prospect=… est conservé à la redirection.
 definePageMeta({
   layout: 'dashboard',
   middleware: 'auth',
 })
 
-const route = useRoute()
+const route: ReturnType<typeof useRoute> = useRoute()
 await navigateTo({ path: '/dashboard/automations/new', query: route.query })
 </script>

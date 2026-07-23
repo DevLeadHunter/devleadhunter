@@ -102,10 +102,11 @@ class ScraperDiagnosticsService:
     def source_health(self, db: Session) -> list[dict[str, object]]:
         """Summarise health per source over the last 24 h.
 
-        @param db - Database session.
-        @returns One entry per source seen recently: latest status, last-ok timestamp,
-            counts of runs/incidents in the last 24 h, and the id of the latest incident
-            with a captured HTML snapshot (for a one-click "view HTML").
+        Args:
+            db: Database session.
+
+        Returns:
+            One entry per source seen recently: latest status, last-ok timestamp, counts of runs/incidents in the last 24 h, and the id of the latest incident with a captured HTML snapshot (for a one-click "view HTML").
         """
         since = datetime.now(timezone.utc) - timedelta(hours=24)
         rows: list[ScraperDiagnostic] = (

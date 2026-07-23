@@ -2,22 +2,25 @@
 Search request and response models.
 """
 from typing import Optional, List
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 from .prospect import Prospect
 from enums.source import Source
 
 
 class ProspectSearchRequest(BaseModel):
-    """
-    Model for prospect search requests.
-    
-    Attributes:
-        category: Business category to search for
-        city: City to search in
-        source: Data source to search in (optional, default: all)
-        max_results: Maximum number of results to return
-    """
-    
+    """Model for prospect search requests."""
+
+    model_config = ConfigDict(
+        json_schema_extra={
+            "example": {
+                "category": "restaurant",
+                "city": "Paris",
+                "source": "google",
+                "max_results": 50,
+            }
+        }
+    )
+
     category: Optional[str] = Field(None, description="Business category")
     city: Optional[str] = Field(None, description="City name")
     source: Optional[Source] = Field(Source.ALL, description="Data source to search in")
@@ -26,17 +29,6 @@ class ProspectSearchRequest(BaseModel):
         True,
         description="When True, only return prospects without an existing website",
     )
-    
-    class Config:
-        """Pydantic configuration."""
-        json_schema_extra = {
-            "example": {
-                "category": "restaurant",
-                "city": "Paris",
-                "source": "google",
-                "max_results": 50
-            }
-        }
 
 
 class ProspectSearchResponse(BaseModel):

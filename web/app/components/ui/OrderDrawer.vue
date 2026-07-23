@@ -9,7 +9,6 @@
         v-if="open && order"
         class="fixed top-0 right-0 z-50 flex h-dvh w-full max-w-[480px] flex-col border-l border-[var(--app-line)] bg-[var(--app-surface)] shadow-2xl"
       >
-        <!-- Header -->
         <div class="flex items-start gap-3 border-b border-[var(--app-line)] px-5 py-4">
           <div
             class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-[var(--app-line)] bg-[var(--app-surface)]"
@@ -40,9 +39,7 @@
           </button>
         </div>
 
-        <!-- Body -->
         <div class="flex-1 overflow-y-auto">
-          <!-- VIEW MODE -->
           <template v-if="!editMode">
             <div class="space-y-3 px-5 py-4">
               <p class="text-[10px] font-semibold tracking-wider text-[var(--app-ink-soft)] uppercase">Client</p>
@@ -68,7 +65,6 @@
 
             <div class="border-t border-[var(--app-surface-2)]"></div>
 
-            <!-- Payment link -->
             <div class="space-y-2 px-5 py-4">
               <p class="text-[10px] font-semibold tracking-wider text-[var(--app-ink-soft)] uppercase">Paiement</p>
               <div v-if="order.stripe_payment_url" class="flex items-center gap-2">
@@ -90,7 +86,6 @@
               </p>
             </div>
 
-            <!-- Email preview -->
             <div v-if="emailPreview" class="border-t border-[var(--app-surface-2)] px-5 py-4">
               <p class="mb-2 text-[10px] font-semibold tracking-wider text-[var(--app-ink-soft)] uppercase">
                 Aperçu de l'email
@@ -115,7 +110,6 @@
             </div>
           </template>
 
-          <!-- EDIT MODE -->
           <form v-else id="order-edit-form" class="space-y-4 p-5" @submit.prevent="handleSave">
             <div>
               <label class="mb-1 block text-[10px] font-medium tracking-wider text-[var(--app-ink-soft)] uppercase"
@@ -158,7 +152,6 @@
           </form>
         </div>
 
-        <!-- Footer -->
         <div class="border-t border-[var(--app-line)] px-5 py-4">
           <div v-if="showDeleteConfirm" class="rounded-lg border border-[var(--app-red)]/40 bg-[var(--app-red)]/10 p-4">
             <p class="mb-0.5 text-sm font-medium text-[var(--app-ink)]">Supprimer cette vente ?</p>
@@ -220,24 +213,15 @@
 </template>
 
 <script lang="ts" setup>
-import type { ComputedRef, PropType, Ref } from 'vue'
+import type { UseToastReturn } from '~/types/Composables'
+import type { OrderEditForm, UiOrderDrawerEmits, UiOrderDrawerProps } from '~/types/UiOrderDrawer'
+import type { ComputedRef, EmitFn, PropType, Ref } from 'vue'
 import { ref, computed, watch } from 'vue'
 import type { Order, OrderPaymentEmailPreview } from '~/services/ordersService'
-import type { UiOrderDrawerProps } from '~/types/UiOrderDrawer'
-import {
-  createOrderPaymentLink,
-  deleteOrder as deleteOrderApi,
-  deployOrder,
-  markOrderPaid,
-  previewOrderPaymentEmail,
-  sendOrderPaymentEmail,
-  updateOrder,
-} from '~/services/ordersService'
+import { OrdersService } from '~/services/ordersService'
 import { useToast } from '~/composables/useToast'
 
-/**
- * Définit les props du composant UiOrderDrawer.
- */
+/** Order detail drawer for payment, deployment and client email. */
 const props: UiOrderDrawerProps = defineProps({
   open: {
     type: Boolean,
@@ -249,16 +233,9 @@ const props: UiOrderDrawerProps = defineProps({
   },
 })
 
-const emit = defineEmits<{
-  /** Close the drawer */
-  close: []
-  /** Order was updated (re-fetch in parent) */
-  updated: [order: Order]
-  /** Order was deleted */
-  deleted: [orderId: number]
-}>()
+const emit: EmitFn<UiOrderDrawerEmits> = defineEmits<UiOrderDrawerEmits>()
 
-const toast = useToast()
+const toast: UseToastReturn = useToast()
 
 const editMode: Ref<boolean> = ref(false)
 const isBusy: Ref<boolean> = ref(false)
@@ -266,16 +243,7 @@ const isSending: Ref<boolean> = ref(false)
 const showDeleteConfirm: Ref<boolean> = ref(false)
 const emailPreview: Ref<OrderPaymentEmailPreview | null> = ref(null)
 
-interface EditForm {
-  amount_euros: number
-  business_name: string
-  customer_email: string
-  domain: string
-  status: string
-  notes: string
-}
-
-const editForm: Ref<EditForm> = ref<EditForm>({
+const editForm: Ref<OrderEditForm> = ref({
   amount_euros: 0,
   business_name: '',
   customer_email: '',
@@ -294,7 +262,9 @@ const statusOptions: { value: string; label: string }[] = [
   { value: 'refunded', label: 'Remboursé' },
 ]
 
-const STATUS_LABELS: Record<string, string> = Object.fromEntries(statusOptions.map((s) => [s.value, s.label]))
+const STATUS_LABELS: Record<string, string> = Object.fromEntries(
+  statusOptions.map((option) => [option.value, option.label]),
+)
 const PRODUCT_LABELS: Record<string, string> = {
   website: 'Site web',
   apple_wallet: 'Carte Apple Wallet',
@@ -401,7 +371,7 @@ async function handleSave(): Promise<void> {
   const orderId = props.order.id
   await runAction(
     () =>
-      updateOrder(orderId, {
+      OrdersService.updateOrder(orderId, {
         amount_cents: Math.round(editForm.value.amount_euros * 100),
         business_name: editForm.value.business_name || null,
         customer_email: editForm.value.customer_email || null,
@@ -417,19 +387,19 @@ async function handleSave(): Promise<void> {
 /** Generate the Stripe payment link. */
 async function handleGenerateLink(): Promise<void> {
   if (!props.order) return
-  await runAction(() => createOrderPaymentLink(props.order!.id), 'Lien de paiement généré')
+  await runAction(() => OrdersService.createOrderPaymentLink(props.order!.id), 'Lien de paiement généré')
 }
 
 /** Mark the order as paid manually. */
 async function handleMarkPaid(): Promise<void> {
   if (!props.order) return
-  await runAction(() => markOrderPaid(props.order!.id), 'Vente marquée comme payée')
+  await runAction(() => OrdersService.markOrderPaid(props.order!.id), 'Vente marquée comme payée')
 }
 
 /** Put the sold site online (Vercel + domain) + hand over CMS access. */
 async function handleDeploy(): Promise<void> {
   if (!props.order) return
-  await runAction(() => deployOrder(props.order!.id), 'Mise en ligne lancée')
+  await runAction(() => OrdersService.deployOrder(props.order!.id), 'Mise en ligne lancée')
 }
 
 /** Load the payment-link email preview. */
@@ -437,7 +407,7 @@ async function loadEmailPreview(): Promise<void> {
   if (!props.order) return
   isBusy.value = true
   try {
-    emailPreview.value = await previewOrderPaymentEmail(props.order.id)
+    emailPreview.value = await OrdersService.previewOrderPaymentEmail(props.order.id)
   } catch (err: unknown) {
     toast.error(err instanceof Error ? err.message : "Impossible de charger l'aperçu")
   } finally {
@@ -450,7 +420,7 @@ async function handleSendEmail(): Promise<void> {
   if (!props.order) return
   isSending.value = true
   try {
-    const updated = await sendOrderPaymentEmail(props.order.id)
+    const updated = await OrdersService.sendOrderPaymentEmail(props.order.id)
     emit('updated', updated)
     emailPreview.value = null
     toast.success('Email envoyé au client')
@@ -466,7 +436,7 @@ async function handleDelete(): Promise<void> {
   if (!props.order) return
   isBusy.value = true
   try {
-    await deleteOrderApi(props.order.id)
+    await OrdersService.deleteOrder(props.order.id)
     emit('deleted', props.order.id)
     emit('close')
     toast.success('Vente supprimée')

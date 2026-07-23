@@ -3,7 +3,7 @@ Pydantic schemas for email templates.
 """
 from datetime import datetime
 from typing import Optional, List
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class EmailTemplateBase(BaseModel):
@@ -13,6 +13,7 @@ class EmailTemplateBase(BaseModel):
     body_html: str
     body_text: Optional[str] = None
     variables: Optional[List[str]] = None
+    signature_id: Optional[int] = None
 
 
 class EmailTemplateCreate(EmailTemplateBase):
@@ -29,10 +30,16 @@ class EmailTemplateUpdate(BaseModel):
     email_account_id: Optional[int] = None
     variables: Optional[List[str]] = None
     is_active: Optional[bool] = None
+    # ``signature_id`` is nullable on purpose: an explicit ``null`` detaches the
+    # signature (switch turned off), so it must be part of the update payload.
+    signature_id: Optional[int] = None
 
 
 class EmailTemplateResponse(BaseModel):
     """Schema for email template response."""
+
+    model_config = ConfigDict(from_attributes=True)
+
     id: int
     user_id: int
     email_account_id: Optional[int] = None
@@ -41,12 +48,10 @@ class EmailTemplateResponse(BaseModel):
     body_html: str
     body_text: Optional[str] = None
     variables: Optional[List[str]] = None
+    signature_id: Optional[int] = None
     is_active: bool
     created_at: datetime
     updated_at: Optional[datetime] = None
-    
-    class Config:
-        from_attributes = True
 
 
 class EmailTemplatePreviewRequest(BaseModel):

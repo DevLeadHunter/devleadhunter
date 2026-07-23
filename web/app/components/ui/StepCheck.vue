@@ -14,17 +14,7 @@
 </template>
 
 <script lang="ts" setup>
-/**
- * A small, satisfying check mark that pops and draws itself in on mount.
- *
- * Its resting state is fully visible — the entrance runs as CSS transitions
- * from ``@starting-style``, so any context that skips animations (occluded
- * tab, screenshot rendering, reduced motion) still shows the drawn check
- * instead of an empty circle. Sized and coloured by the parent
- * (``currentColor`` stroke) — e.g.
- * ``<UiStepCheck class="h-4 w-4 text-[var(--app-green)]" />``. Used to reward
- * a completed step in wizard/stepper flows.
- */
+/** Animated check mark for completed wizard steps; CSS starting-style fallback when motion is off. */
 </script>
 
 <style scoped>

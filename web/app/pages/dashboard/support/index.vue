@@ -1,6 +1,5 @@
 <template>
   <div class="mx-auto max-w-3xl space-y-8">
-    <!-- Header — une ligne, l'action à droite -->
     <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
       <div>
         <h1 class="text-3xl font-bold text-[var(--app-ink)]">Support</h1>
@@ -23,7 +22,6 @@
       </div>
     </div>
 
-    <!-- Filtres : pilules nues, sans carte ni titre -->
     <div v-if="isAdmin" class="flex flex-wrap gap-2">
       <button
         v-for="filter in STATUS_FILTERS"
@@ -43,7 +41,6 @@
 
     <UiLoader v-if="isLoading" />
 
-    <!-- Liste -->
     <div v-else-if="filteredTickets.length" class="space-y-2">
       <NuxtLink
         v-for="ticket in filteredTickets"
@@ -75,7 +72,6 @@
       </NuxtLink>
     </div>
 
-    <!-- Vide -->
     <div
       v-else
       class="flex flex-col items-center gap-3 rounded-xl border border-[var(--app-line)] bg-[var(--app-surface)] px-6 py-14 text-center"
@@ -96,12 +92,14 @@
 </template>
 
 <script lang="ts" setup>
+import type { UseToastReturn } from '~/types/Composables'
+import type { SupportWebsocketEvent } from '~/types/SupportListPage'
 import type { ComputedRef, Ref } from 'vue'
 import type { SupportTicketStatus, SupportTicketSummary } from '~/types'
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useUserStore } from '~/stores/user'
 import { useToast } from '~/composables/useToast'
-import * as supportService from '~/services/supportService'
+import { SupportService } from '~/services/supportService'
 
 definePageMeta({ layout: 'dashboard', middleware: 'auth' })
 
@@ -135,25 +133,25 @@ const TOPIC_LABELS: Record<string, string> = {
   other: 'Autre',
 }
 
-const toast = useToast()
-const userStore = useUserStore()
-const runtimeConfig = useRuntimeConfig()
+const toast: UseToastReturn = useToast()
+const userStore: ReturnType<typeof useUserStore> = useUserStore()
+const runtimeConfig: ReturnType<typeof useRuntimeConfig> = useRuntimeConfig()
 
-const tickets: Ref<SupportTicketSummary[]> = ref<SupportTicketSummary[]>([])
-const isLoading: Ref<boolean> = ref<boolean>(false)
-const websocketRef: Ref<WebSocket | null> = ref<WebSocket | null>(null)
+const tickets: Ref<SupportTicketSummary[]> = ref([])
+const isLoading: Ref<boolean> = ref(false)
+const websocketRef: Ref<WebSocket | null> = ref(null)
 
 const isAdmin: ComputedRef<boolean> = computed((): boolean => userStore.user?.role === 'ADMIN')
 const scope: ComputedRef<'all' | 'mine'> = computed((): 'all' | 'mine' => (isAdmin.value ? 'all' : 'mine'))
 
 // Les membres voient tous leurs tickets ; les admins arrivent sur la file ouverte.
-const activeStatus: Ref<string> = ref<string>(isAdmin.value ? 'open' : 'all')
+const activeStatus: Ref<string> = ref(isAdmin.value ? 'open' : 'all')
 
 /** Tickets sorted by latest activity, filtered by the active status. */
 const filteredTickets: ComputedRef<SupportTicketSummary[]> = computed((): SupportTicketSummary[] => {
   const sorted = tickets.value.slice().sort((a: SupportTicketSummary, b: SupportTicketSummary): number => {
-    const dateA = new Date(a.last_message_at || a.created_at).getTime()
-    const dateB = new Date(b.last_message_at || b.created_at).getTime()
+    const dateA: number = new Date(a.last_message_at || a.created_at).getTime()
+    const dateB: number = new Date(b.last_message_at || b.created_at).getTime()
     return dateB - dateA
   })
   if (activeStatus.value === 'all') return sorted
@@ -195,7 +193,7 @@ function statusBadgeClass(status: string): string {
  * @returns Relative label (e.g. « il y a 3 h »).
  */
 function formatRelative(value: string): string {
-  const date = new Date(value)
+  const date: Date = new Date(value)
   const diffMinutes = Math.floor((Date.now() - date.getTime()) / (1000 * 60))
   const diffHours = Math.floor(diffMinutes / 60)
   const diffDays = Math.floor(diffHours / 24)
@@ -217,7 +215,7 @@ async function loadTickets(): Promise<void> {
     isLoading.value = true
     const includeClosed = activeStatus.value === 'closed' || activeStatus.value === 'all'
     const status = activeStatus.value === 'all' ? undefined : (activeStatus.value as SupportTicketStatus)
-    tickets.value = await supportService.getTickets({ scope: scope.value, status, includeClosed })
+    tickets.value = await SupportService.getTickets({ scope: scope.value, status, includeClosed })
   } catch {
     toast.error('Impossible de charger les tickets pour le moment.')
   } finally {
@@ -232,12 +230,6 @@ async function loadTickets(): Promise<void> {
 function updateStatus(value: string): void {
   if (activeStatus.value === value) return
   activeStatus.value = value
-}
-
-/** Shape of the realtime events pushed on the tickets websocket. */
-type SupportWebsocketEvent = {
-  event?: string
-  data?: Record<string, unknown>
 }
 
 /**

@@ -6,41 +6,37 @@ import type {
   SupportTicketTopic,
   SupportMessage,
 } from '~/types'
-import { api } from './api'
+import { ApiClient } from './api'
 
-interface TicketFilters {
+type TicketFilters = {
   scope?: 'mine' | 'all'
   status?: SupportTicketStatus
   includeClosed?: boolean
 }
 
-interface CreateTicketPayload {
+type CreateTicketPayload = {
   subject: string
   topic: SupportTicketTopic
   message: string
   attachments?: File[]
 }
 
-interface PostMessagePayload {
+type PostMessagePayload = {
   message: string
   attachments?: File[]
 }
 
-const SUPPORT_BASE_URL = '/api/v1/support'
+const SUPPORT_BASE_URL: string = '/api/v1/support'
 
-/**
- *
- */
+/** Resolve the API base URL from runtime config. */
 function getApiUrl(): string {
-  const config = useRuntimeConfig()
+  const config: ReturnType<typeof useRuntimeConfig> = useRuntimeConfig()
   return config.public.apiBase
 }
 
-/**
- *
- */
+/** Build auth headers for raw `fetch` calls (multipart uploads). */
 function getAuthHeaders(): HeadersInit {
-  const userStore = useUserStore()
+  const userStore: ReturnType<typeof useUserStore> = useUserStore()
   const headers: HeadersInit = {}
   if (userStore.token) {
     headers.Authorization = `Bearer ${userStore.token}`
@@ -49,7 +45,11 @@ function getAuthHeaders(): HeadersInit {
 }
 
 /**
- *
+ * POST/PATCH multipart form data outside the shared JSON `api` client.
+ * @param endpoint - API path (e.g. `/api/v1/support/tickets`).
+ * @param formData - Multipart body.
+ * @param method - HTTP verb (defaults to POST).
+ * @returns Parsed JSON response.
  */
 async function fetchForm<T>(endpoint: string, formData: FormData, method: string = 'POST'): Promise<T> {
   const response = await fetch(`${getApiUrl()}${endpoint}`, {
@@ -69,7 +69,11 @@ async function fetchForm<T>(endpoint: string, formData: FormData, method: string
 }
 
 /**
- *
+ * PATCH/POST JSON outside the shared `api` client when custom headers are needed.
+ * @param endpoint - API path.
+ * @param data - JSON-serializable body.
+ * @param method - HTTP verb (defaults to PATCH).
+ * @returns Parsed JSON response.
  */
 async function fetchJson<T>(endpoint: string, data: unknown, method: string = 'PATCH'): Promise<T> {
   const response = await fetch(`${getApiUrl()}${endpoint}`, {
@@ -89,69 +93,81 @@ async function fetchJson<T>(endpoint: string, data: unknown, method: string = 'P
   return response.json() as Promise<T>
 }
 
-/**
- *
- */
-export async function getTopics(): Promise<SupportTopicOption[]> {
-  return api.get<SupportTopicOption[]>(`${SUPPORT_BASE_URL}/topics`)
-}
-
-/**
- *
- */
-export async function getTickets(filters: TicketFilters = {}): Promise<SupportTicketSummary[]> {
-  const params = new URLSearchParams()
-  params.set('scope', filters.scope || 'mine')
-  if (filters.status) {
-    params.set('status', filters.status)
-  }
-  if (filters.includeClosed) {
-    params.set('include_closed', 'true')
+export class SupportService {
+  /** List support topics for the ticket creation form. */
+  static async getTopics(): Promise<SupportTopicOption[]> {
+    return ApiClient.get<SupportTopicOption[]>(`${SUPPORT_BASE_URL}/topics`)
   }
 
-  return api.get<SupportTicketSummary[]>(`${SUPPORT_BASE_URL}/tickets?${params.toString()}`)
-}
+  /**
+   * List support tickets for the current user or the whole org (admin).
+   * @param filters - Scope, status and closed-ticket flags.
+   * @returns Ticket summaries.
+   */
+  static async getTickets(filters: TicketFilters = {}): Promise<SupportTicketSummary[]> {
+    const params = new URLSearchParams()
+    params.set('scope', filters.scope || 'mine')
+    if (filters.status) {
+      params.set('status', filters.status)
+    }
+    if (filters.includeClosed) {
+      params.set('include_closed', 'true')
+    }
 
-/**
- *
- */
-export async function createTicket(payload: CreateTicketPayload): Promise<SupportTicketDetail> {
-  const formData = new FormData()
-  formData.append('subject', payload.subject)
-  formData.append('topic', payload.topic)
-  formData.append('message', payload.message)
+    return ApiClient.get<SupportTicketSummary[]>(`${SUPPORT_BASE_URL}/tickets?${params.toString()}`)
+  }
 
-  payload.attachments?.forEach((file) => {
-    formData.append('attachments', file)
-  })
+  /**
+   * Open a new support ticket with an initial message and optional attachments.
+   * @param payload - Subject, topic, message and files.
+   * @returns The created ticket thread.
+   */
+  static async createTicket(payload: CreateTicketPayload): Promise<SupportTicketDetail> {
+    const formData = new FormData()
+    formData.append('subject', payload.subject)
+    formData.append('topic', payload.topic)
+    formData.append('message', payload.message)
 
-  return fetchForm<SupportTicketDetail>(`${SUPPORT_BASE_URL}/tickets`, formData, 'POST')
-}
+    payload.attachments?.forEach((file) => {
+      formData.append('attachments', file)
+    })
 
-/**
- *
- */
-export async function getTicket(ticketId: number): Promise<SupportTicketDetail> {
-  return api.get<SupportTicketDetail>(`${SUPPORT_BASE_URL}/tickets/${ticketId}`)
-}
+    return fetchForm<SupportTicketDetail>(`${SUPPORT_BASE_URL}/tickets`, formData, 'POST')
+  }
 
-/**
- *
- */
-export async function postMessage(ticketId: number, payload: PostMessagePayload): Promise<SupportMessage> {
-  const formData = new FormData()
-  formData.append('message', payload.message)
+  /**
+   * Load one ticket thread (messages + metadata).
+   * @param ticketId - Ticket identifier.
+   * @returns Full ticket detail.
+   */
+  static async getTicket(ticketId: number): Promise<SupportTicketDetail> {
+    return ApiClient.get<SupportTicketDetail>(`${SUPPORT_BASE_URL}/tickets/${ticketId}`)
+  }
 
-  payload.attachments?.forEach((file) => {
-    formData.append('attachments', file)
-  })
+  /**
+   * Post a reply on an existing ticket (multipart when attachments are present).
+   * @param ticketId - Ticket identifier.
+   * @param payload - Message body and optional files.
+   * @returns The persisted message.
+   */
+  static async postMessage(ticketId: number, payload: PostMessagePayload): Promise<SupportMessage> {
+    const formData = new FormData()
+    formData.append('message', payload.message)
 
-  return fetchForm<SupportMessage>(`${SUPPORT_BASE_URL}/tickets/${ticketId}/messages`, formData, 'POST')
-}
+    payload.attachments?.forEach((file) => {
+      formData.append('attachments', file)
+    })
 
-/**
- *
- */
-export async function updateTicketStatus(ticketId: number, status: SupportTicketStatus): Promise<SupportTicketSummary> {
-  return fetchJson<SupportTicketSummary>(`${SUPPORT_BASE_URL}/tickets/${ticketId}/status`, { status }, 'PATCH')
+    return fetchForm<SupportMessage>(`${SUPPORT_BASE_URL}/tickets/${ticketId}/messages`, formData, 'POST')
+  }
+
+  /**
+   * Update a ticket status (e.g. close/reopen).
+   * @param ticketId - Ticket identifier.
+   * @param status - New status value.
+   * @returns Updated ticket summary.
+   */
+  static async updateTicketStatus(ticketId: number, status: SupportTicketStatus): Promise<SupportTicketSummary> {
+    return fetchJson<SupportTicketSummary>(`${SUPPORT_BASE_URL}/tickets/${ticketId}/status`, { status }, 'PATCH')
+  }
 }

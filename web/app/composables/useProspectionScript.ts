@@ -10,20 +10,16 @@ import { ref } from 'vue'
 export type ProspectionScriptSegmentId = 'intro' | 'middle' | 'outro'
 
 /** One take: what is on screen, how long it should run, and what to say. */
-export interface ProspectionScriptSegment {
+export type ProspectionScriptSegment = {
   id: ProspectionScriptSegmentId
-  /** Short name shown on the stepper and on the take card. */
   title: string
-  /** What the prospect sees during this take — it sets the delivery. */
   staging: string
-  /** Suggested length in seconds. Guidance for the timer, never a cut-off. */
   targetSeconds: number
-  /** The words to read out loud. */
   text: string
 }
 
 /** localStorage key holding the user's edited script. */
-const SCRIPT_STORAGE_KEY = 'dlh-prospection-script'
+const SCRIPT_STORAGE_KEY: string = 'dlh-prospection-script'
 
 /**
  * Default script, written to be *spoken*: short sentences, one idea each, no
@@ -117,8 +113,8 @@ export function useProspectionScript(presenterName: string): {
   resetToDefault: () => void
 } {
   const defaults: ProspectionScriptSegment[] = buildDefaultScript(presenterName)
-  const segments: Ref<ProspectionScriptSegment[]> = ref<ProspectionScriptSegment[]>(defaults)
-  const isCustomised: Ref<boolean> = ref<boolean>(false)
+  const segments: Ref<ProspectionScriptSegment[]> = ref(defaults)
+  const isCustomised: Ref<boolean> = ref(false)
 
   /** Persist the current texts (only the texts — the staging is app-owned). */
   function persist(): void {

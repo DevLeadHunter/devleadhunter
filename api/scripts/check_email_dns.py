@@ -48,9 +48,12 @@ _LABELS: tuple[tuple[str, str], ...] = (
 def _print_check(label: str, check: dict[str, Any]) -> str:
     """Print one check and return its status.
 
-    @param label - Human-readable check name.
-    @param check - Payload from :class:`EmailDnsService`.
-    @returns The check status (``ok`` | ``warn`` | ``danger``).
+    Args:
+        label: Human-readable check name.
+        check: Payload from :class:`EmailDnsService`.
+
+    Returns:
+        The check status (``ok`` | ``warn`` | ``danger``).
     """
     status: str = str(check.get("status", "warn"))
     print(f"  {_ICONS.get(status, '[?]   ')} {label:<11} {check.get('detail', '')}")
@@ -63,8 +66,11 @@ def _print_check(label: str, check: dict[str, Any]) -> str:
 def main(domains: list[str]) -> int:
     """Audit every domain and report the worst status found.
 
-    @param domains - Domains to check.
-    @returns Process exit code (1 when at least one check failed).
+    Args:
+        domains: Domains to check.
+
+    Returns:
+        Process exit code (1 when at least one check failed).
     """
     failed: bool = False
     for domain in domains:

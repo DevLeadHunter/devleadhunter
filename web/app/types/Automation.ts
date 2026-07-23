@@ -1,3 +1,4 @@
+import type { DemoSiteTheme } from '~/services/demoSiteService'
 /**
  * Domain types for automatisations (the auto-chaining tunnel).
  * Mirrors the API schemas in ``api/schemas/acquisition.py``.
@@ -21,7 +22,7 @@ export type AutomationStep =
   | 'failed'
 
 /** Derived, always-fresh counters for an automatisation. */
-export interface AutomationStats {
+export type AutomationStats = {
   total: number
   by_step: Record<string, number>
   won: number
@@ -30,7 +31,7 @@ export interface AutomationStats {
 }
 
 /** One prospect flowing through an automatisation. */
-export interface AutomationItem {
+export type AutomationItem = {
   id: number
   prospect_id: number
   prospect_name: string | null
@@ -51,7 +52,7 @@ export interface AutomationItem {
 }
 
 /** Summary of an automatisation (list view). */
-export interface Automation {
+export type Automation = {
   id: number
   name: string
   status: AutomationStatus
@@ -59,6 +60,7 @@ export interface Automation {
   auto_enrich: boolean
   auto_generate: boolean
   template_id: string | null
+  theme: DemoSiteTheme | null
   auto_campaign: boolean
   email_template_id_a: number | null
   email_template_id_b: number | null
@@ -81,13 +83,13 @@ export interface AutomationDetail extends Automation {
 }
 
 /** A follow-up step configured on an automatisation's campaign. */
-export interface AutomationFollowUpInput {
+export type AutomationFollowUpInput = {
   template_id: number
   delay_days: number
 }
 
 /** Payload to create an automatisation (selection or full-auto query). */
-export interface AutomationCreatePayload {
+export type AutomationCreatePayload = {
   name: string
   mode: AutomationMode
   prospect_ids: number[]
@@ -98,6 +100,7 @@ export interface AutomationCreatePayload {
   auto_enrich: boolean
   auto_generate: boolean
   template_id: string | null
+  theme: DemoSiteTheme | null
   auto_campaign: boolean
   email_template_id_a: number | null
   email_template_id_b: number | null
@@ -106,19 +109,17 @@ export interface AutomationCreatePayload {
 }
 
 /** Paginated automatisation list (the API keeps the ``sequences`` key). */
-export interface AutomationListResponse {
+export type AutomationListResponse = {
   sequences: Automation[]
   total: number
 }
 
-/** A rendered email preview. */
-export interface EmailPreview {
+export type EmailPreview = {
   subject: string
   body_html: string
 }
 
-/** The user's global send policy. */
-export interface SendPolicy {
+export type SendPolicy = {
   daily_cap: number
   days_of_week: number[]
   window_start_hour: number

@@ -76,9 +76,6 @@ class ResolvedPolicy:
 class SendPolicyService:
     """Reads/writes the per-user send policy and schedules send slots."""
 
-    # -----------------------------------------------------------------------
-    # Persistence
-    # -----------------------------------------------------------------------
 
     def get_policy(self, db: Session, user_id: int) -> Optional[SendPolicy]:
         """Return the user's SendPolicy row, or None."""
@@ -130,9 +127,6 @@ class SendPolicyService:
         db.refresh(row)
         return row
 
-    # -----------------------------------------------------------------------
-    # Scheduling
-    # -----------------------------------------------------------------------
 
     def next_send_slots(
         self,

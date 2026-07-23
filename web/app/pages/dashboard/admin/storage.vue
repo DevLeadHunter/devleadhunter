@@ -1,6 +1,5 @@
 <template>
   <div class="mx-auto max-w-3xl space-y-8">
-    <!-- Header — le contexte tient dans le sous-titre, pas dans des cartes -->
     <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
       <div>
         <h1 class="text-3xl font-bold text-[var(--app-ink)]">Stockage</h1>
@@ -25,7 +24,6 @@
 
     <p v-if="error" class="text-sm text-[var(--app-red)]">{{ error }}</p>
 
-    <!-- Purge : proposée seulement quand il y a vraiment quelque chose à purger -->
     <div
       v-if="expiredCount > 0"
       class="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-[var(--app-line)] bg-[var(--app-surface)] px-4 py-3.5"
@@ -42,7 +40,6 @@
       <button type="button" class="btn-danger shrink-0 text-xs" :disabled="isActing" @click="askPurge">Purger</button>
     </div>
 
-    <!-- Filtres -->
     <div class="flex flex-wrap gap-2">
       <button
         v-for="filter in FILTERS"
@@ -62,7 +59,6 @@
 
     <UiLoader v-if="isLoading" />
 
-    <!-- Liste : la ligne s'ouvre au clic, seules 2 actions restent visibles -->
     <div v-else-if="listing && listing.items.length" class="space-y-2">
       <div
         v-for="item in listing.items"
@@ -111,7 +107,6 @@
           </div>
         </div>
 
-        <!-- Aperçu déplié : c'est ici que vivent la clé technique et le lien -->
         <div
           class="grid transition-[grid-template-rows] duration-300 ease-out motion-reduce:transition-none"
           :class="openKey === item.key ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]'"
@@ -148,7 +143,6 @@
       </div>
     </div>
 
-    <!-- Vide -->
     <div
       v-else-if="listing"
       class="flex flex-col items-center gap-3 rounded-xl border border-[var(--app-line)] bg-[var(--app-surface)] px-6 py-14 text-center"
@@ -162,7 +156,6 @@
       </p>
     </div>
 
-    <!-- Cohérence : repliée, avec un verdict lisible dès le titre -->
     <UiCollapsibleCard icon="i-lucide-stethoscope" title="Cohérence avec la base" :suffix="healthSuffix">
       <div class="space-y-4 px-4 py-4">
         <p v-if="!hasHealthIssues" class="text-muted text-xs leading-relaxed">
@@ -195,15 +188,11 @@
 </template>
 
 <script lang="ts" setup>
+import type { UseToastReturn } from '~/types/Composables'
 import type { ComputedRef, Ref } from 'vue'
 import type { StorageHealthResponse, StorageListResponse, StorageObject } from '~/services/adminStorageService'
 import { computed, onMounted, ref } from 'vue'
-import {
-  deleteStorageObject,
-  getStorageHealth,
-  getStorageObjects,
-  purgeExpiredStorage,
-} from '~/services/adminStorageService'
+import { AdminStorageService } from '~/services/adminStorageService'
 import { useToast } from '~/composables/useToast'
 
 definePageMeta({ layout: 'dashboard', middleware: ['auth'] })
@@ -238,19 +227,19 @@ const KIND_LABELS: Record<string, string> = {
   other: 'Fichier',
 }
 
-const toast = useToast()
+const toast: UseToastReturn = useToast()
 
-const listing: Ref<StorageListResponse | null> = ref<StorageListResponse | null>(null)
-const health: Ref<StorageHealthResponse | null> = ref<StorageHealthResponse | null>(null)
-const isLoading: Ref<boolean> = ref<boolean>(true)
-const isActing: Ref<boolean> = ref<boolean>(false)
-const error: Ref<string> = ref<string>('')
-const activePrefix: Ref<string> = ref<string>('')
-const openKey: Ref<string | null> = ref<string | null>(null)
-const pendingKey: Ref<string | null> = ref<string | null>(null)
-const confirmTitle: Ref<string> = ref<string>('')
-const confirmMessage: Ref<string> = ref<string>('')
-const confirmModal: Ref<{ open: () => void } | null> = ref<{ open: () => void } | null>(null)
+const listing: Ref<StorageListResponse | null> = ref(null)
+const health: Ref<StorageHealthResponse | null> = ref(null)
+const isLoading: Ref<boolean> = ref(true)
+const isActing: Ref<boolean> = ref(false)
+const error: Ref<string> = ref('')
+const activePrefix: Ref<string> = ref('')
+const openKey: Ref<string | null> = ref(null)
+const pendingKey: Ref<string | null> = ref(null)
+const confirmTitle: Ref<string> = ref('')
+const confirmMessage: Ref<string> = ref('')
+const confirmModal: Ref<{ open: () => void } | null> = ref(null)
 
 /** Number of objects past their TTL in the current listing. */
 const expiredCount: ComputedRef<number> = computed(
@@ -370,8 +359,8 @@ async function load(): Promise<void> {
   isLoading.value = true
   error.value = ''
   try {
-    listing.value = await getStorageObjects(activePrefix.value)
-    health.value = await getStorageHealth().catch((): StorageHealthResponse | null => null)
+    listing.value = await AdminStorageService.getStorageObjects(activePrefix.value)
+    health.value = await AdminStorageService.getStorageHealth().catch((): StorageHealthResponse | null => null)
   } catch (err: unknown) {
     error.value = err instanceof Error ? err.message : 'Impossible de charger le stockage'
   } finally {
@@ -440,7 +429,9 @@ function askPurge(): void {
 async function runConfirmed(): Promise<void> {
   isActing.value = true
   try {
-    const result = pendingKey.value ? await deleteStorageObject(pendingKey.value) : await purgeExpiredStorage()
+    const result = pendingKey.value
+      ? await AdminStorageService.deleteStorageObject(pendingKey.value)
+      : await AdminStorageService.purgeExpiredStorage()
     toast.success(result.message || 'Action effectuée')
     openKey.value = null
     await load()

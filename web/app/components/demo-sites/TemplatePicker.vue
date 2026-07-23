@@ -13,7 +13,6 @@
       ]"
       @click="selectTemplate(template)"
     >
-      <!-- Mini preview mockup -->
       <div class="relative h-44 overflow-hidden border-b border-[var(--app-line)]">
         <div
           class="absolute inset-0 transition-transform duration-500 group-hover:scale-105"
@@ -55,7 +54,6 @@
           </div>
         </div>
 
-        <!-- Color swatches -->
         <div class="mt-4 flex items-center gap-3">
           <span class="text-xs text-[var(--app-ink-soft)]">Couleurs</span>
           <div class="flex gap-2">
@@ -94,48 +92,67 @@
 </template>
 
 <script lang="ts" setup>
+import type { TemplatePickerEmits, TemplatePickerProps, TemplateThemeColorKey } from '~/types/TemplatePicker'
+import type { EmitFn, PropType, Ref } from 'vue'
 import type { DemoSiteTemplate, DemoSiteTheme } from '~/services/demoSiteService'
 
-const props = defineProps<{
-  templates: DemoSiteTemplate[]
-  modelValue: string
-  theme: DemoSiteTheme
-}>()
+/** Demo site template picker with live theme color editing. */
+const props: TemplatePickerProps = defineProps({
+  templates: {
+    type: Array as PropType<DemoSiteTemplate[]>,
+    required: true,
+  },
+  modelValue: {
+    type: String,
+    required: true,
+  },
+  theme: {
+    type: Object as PropType<DemoSiteTheme>,
+    required: true,
+  },
+})
 
-const emit = defineEmits<{
-  'update:modelValue': [value: string]
-  'update:theme': [value: DemoSiteTheme]
-}>()
+const emit: EmitFn<TemplatePickerEmits> = defineEmits<TemplatePickerEmits>()
 
-type ColorKey = keyof DemoSiteTheme
-
-const colorKeys: ColorKey[] = ['primary', 'secondary', 'accent']
-const colorLabels: Record<ColorKey, string> = {
+const colorKeys: TemplateThemeColorKey[] = ['primary', 'secondary', 'accent']
+const colorLabels: Record<TemplateThemeColorKey, string> = {
   primary: 'Principale',
   secondary: 'Fond',
   accent: 'Accent',
 }
 
-const colorInputRef = ref<HTMLInputElement | null>(null)
-const activeColorKey = ref<ColorKey>('primary')
+const colorInputRef: Ref<HTMLInputElement | null> = ref(null)
+const activeColorKey: Ref<TemplateThemeColorKey> = ref('primary')
 
+/**
+ * Build a CSS gradient preview from the template theme.
+ */
 function previewGradient(template: DemoSiteTemplate): string {
   const t = props.modelValue === template.id ? props.theme : template.default_theme
   return `linear-gradient(135deg, ${t.secondary} 0%, ${t.primary} 100%)`
 }
 
-function getThemeColor(template: DemoSiteTemplate, key: ColorKey): string {
+/**
+ * Resolve a theme color for the given template and key.
+ */
+function getThemeColor(template: DemoSiteTemplate, key: TemplateThemeColorKey): string {
   return props.modelValue === template.id ? props.theme[key] : template.default_theme[key]
 }
 
+/**
+ * Select a template and sync its default theme.
+ */
 function selectTemplate(template: DemoSiteTemplate): void {
   emit('update:modelValue', template.id)
   emit('update:theme', { ...template.default_theme })
 }
 
-function openColorPicker(templateId: string, colorKey: ColorKey): void {
+/**
+ * Open the native color picker for a template swatch.
+ */
+function openColorPicker(templateId: string, colorKey: TemplateThemeColorKey): void {
   if (props.modelValue !== templateId) {
-    const template = props.templates.find((t) => t.id === templateId)
+    const template = props.templates.find((template) => template.id === templateId)
     if (template) selectTemplate(template)
   }
   activeColorKey.value = colorKey
@@ -144,11 +161,17 @@ function openColorPicker(templateId: string, colorKey: ColorKey): void {
   })
 }
 
+/**
+ * Handle a color input change from the hidden picker.
+ */
 function onColorInput(event: Event): void {
   updateThemeColor(activeColorKey.value, (event.target as HTMLInputElement).value)
 }
 
-function updateThemeColor(key: ColorKey, value: string): void {
+/**
+ * Update a single theme color when the hex value is valid.
+ */
+function updateThemeColor(key: TemplateThemeColorKey, value: string): void {
   if (!/^#[0-9A-Fa-f]{6}$/.test(value)) return
   emit('update:theme', { ...props.theme, [key]: value })
 }

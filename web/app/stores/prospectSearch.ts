@@ -1,8 +1,5 @@
-/**
- * Shared prospect-search store — owns a scraping job's lifecycle so the search
- * form (a drawer) and the results (the search page or the automatisation tunnel)
- * all read the same state.
- */
+import type { UseScrapingJobStreamReturn } from '~/types/Composables'
+/** Shared prospect-search store — one scraping job lifecycle for drawer + results page. */
 import type { ComputedRef, Ref } from 'vue'
 import { computed, ref } from 'vue'
 import { defineStore } from 'pinia'
@@ -13,7 +10,7 @@ import type { ScrapingJobProgressState } from '~/composables/useScrapingJobStrea
 import type { Prospect } from '~/types'
 
 /** A scraping job as returned by the API. */
-export interface ScrapingJob {
+export type ScrapingJob = {
   id: string
   user_id: number
   status: 'pending' | 'running' | 'completed' | 'failed' | 'cancelled'
@@ -34,7 +31,7 @@ export interface ScrapingJob {
 }
 
 /** Parameters for starting a search. */
-export interface ProspectSearchParams {
+export type ProspectSearchParams = {
   category: string
   city: string
   maxResults: number
@@ -44,26 +41,19 @@ export interface ProspectSearchParams {
 }
 
 export const useProspectSearchStore = defineStore('prospectSearch', () => {
-  const config = useRuntimeConfig()
-  const userStore = useUserStore()
-  const stream = useScrapingJobStream()
+  const config: ReturnType<typeof useRuntimeConfig> = useRuntimeConfig()
+  const userStore: ReturnType<typeof useUserStore> = useUserStore()
+  const stream: UseScrapingJobStreamReturn = useScrapingJobStream()
 
-  /** The job currently displayed (running or last finished). */
-  const currentJob: Ref<ScrapingJob | null> = ref<ScrapingJob | null>(null)
-  /** The user's recent jobs. */
-  const recentJobs: Ref<ScrapingJob[]> = ref<ScrapingJob[]>([])
-  /** Whether a job is being started. */
-  const isStarting: Ref<boolean> = ref<boolean>(false)
-  /** Whether a cancellation request is in flight (until the job stops). */
-  const isCancelling: Ref<boolean> = ref<boolean>(false)
-  /** Whether a manual refresh is in flight. */
-  const isRefreshing: Ref<boolean> = ref<boolean>(false)
-  /** Bumped each time a job completes — watch it to react (e.g. refresh a list). */
-  const completedSignal: Ref<number> = ref<number>(0)
+  const currentJob: Ref<ScrapingJob | null> = ref(null)
+  const recentJobs: Ref<ScrapingJob[]> = ref([])
+  const isStarting: Ref<boolean> = ref(false)
+  const isCancelling: Ref<boolean> = ref(false)
+  const isRefreshing: Ref<boolean> = ref(false)
+  const completedSignal: Ref<number> = ref(0)
 
   let pollInterval: ReturnType<typeof setInterval> | null = null
 
-  /** Live progress (stream first, then the job snapshot). */
   const liveProgress: ComputedRef<ScrapingJobProgressState> = computed((): ScrapingJobProgressState => {
     if (stream.progress.value.total > 0 || stream.progress.value.current > 0) return stream.progress.value
     return currentJob.value?.progress ?? stream.progress.value
@@ -73,7 +63,6 @@ export const useProspectSearchStore = defineStore('prospectSearch', () => {
   const streamConnected: ComputedRef<boolean> = computed((): boolean => stream.isConnected.value)
   const streamSkipped: ComputedRef<number> = computed((): number => stream.skippedDuplicates.value)
 
-  /** Whether a search is currently running. */
   const isSearching: ComputedRef<boolean> = computed(
     (): boolean => currentJob.value?.status === 'running' || currentJob.value?.status === 'pending',
   )
@@ -156,7 +145,7 @@ export const useProspectSearchStore = defineStore('prospectSearch', () => {
       currentJob.value = response
       if (response.status === 'completed' || response.status === 'failed' || response.status === 'cancelled') {
         stopPolling()
-        if (response.status !== 'running' && response.status !== 'pending') isCancelling.value = false
+        isCancelling.value = false
         await loadRecent()
         if (response.status === 'completed' && !wasDone) completedSignal.value += 1
       }

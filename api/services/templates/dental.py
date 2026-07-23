@@ -47,8 +47,11 @@ COMPONENT_SCHEMAS: list[dict[str, Any]] = []
 def default_subtitle(area: str) -> str:
     """Dental-aware default hero subtitle when the prospect has no description.
 
-    @param area - Service area / city label.
-    @returns A dental clinic subtitle.
+    Args:
+        area: Service area / city label.
+
+    Returns:
+        A dental clinic subtitle.
     """
     return (
         f"Soins dentaires pour toute la famille à {area} — "

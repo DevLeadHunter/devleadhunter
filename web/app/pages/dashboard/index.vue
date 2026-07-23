@@ -1,6 +1,5 @@
 <template>
   <div class="space-y-8">
-    <!-- Header -->
     <div class="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
       <div>
         <p class="app-label flex items-center gap-2">
@@ -39,7 +38,6 @@
       </div>
     </div>
 
-    <!-- Loading skeleton -->
     <div v-if="isLoading && !stats" class="space-y-8">
       <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <div v-for="n in 4" :key="n" class="app-card h-28 animate-pulse"></div>
@@ -51,7 +49,6 @@
     </div>
 
     <template v-else-if="stats">
-      <!-- 1. Le pipeline — chaque étape est cliquable -->
       <section>
         <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <NuxtLink
@@ -75,9 +72,7 @@
         </div>
       </section>
 
-      <!-- 2. Leads chauds + actions rapides -->
       <section class="grid grid-cols-1 gap-6 lg:grid-cols-3">
-        <!-- Leads chauds — la partie actionnable -->
         <div class="app-card p-5 md:p-6 lg:col-span-2">
           <div class="mb-4 flex items-center justify-between">
             <h2 class="flex items-center gap-2 text-sm font-semibold text-[var(--app-ink)]">
@@ -115,7 +110,6 @@
                 </p>
               </div>
               <div class="flex shrink-0 items-center gap-2.5">
-                <!-- La barre disparaît sous lg : elle s'écrasait, le chiffre suffit -->
                 <div class="hidden h-1.5 w-16 overflow-hidden rounded-full bg-[var(--app-surface-2)] lg:block">
                   <div
                     class="h-full rounded-full bg-[var(--app-ink)]"
@@ -139,7 +133,6 @@
           </div>
         </div>
 
-        <!-- Actions rapides — la page sert aussi de rampe de lancement -->
         <div class="app-card p-4 md:p-5">
           <h2 class="mb-3 text-sm font-semibold text-[var(--app-ink)]">Actions rapides</h2>
           <div class="space-y-2">
@@ -181,7 +174,6 @@
         </div>
       </section>
 
-      <!-- 3. Activité email + tunnel de conversion -->
       <section class="grid grid-cols-1 gap-6 lg:grid-cols-2">
         <div class="app-card p-5 md:p-6">
           <div class="mb-4 flex items-center justify-between">
@@ -267,13 +259,14 @@
 </template>
 
 <script lang="ts" setup>
+import type { FunnelBarStage, PipelineTile } from '~/types/DashboardHomePage'
 import type { ComputedRef, Ref } from 'vue'
 import { computed, onMounted, ref } from 'vue'
 import type { DashboardStats, HotLead } from '~/services/dashboardService'
-import { getDashboardStats, getHotLeads } from '~/services/dashboardService'
+import { DashboardService } from '~/services/dashboardService'
 import type { EmailHealthTrendDay } from '~/services/emailHealthService'
-import { getEmailHealthTrends } from '~/services/emailHealthService'
-import { getProspect } from '~/services/prospectsService'
+import { EmailHealthService } from '~/services/emailHealthService'
+import { ProspectsService } from '~/services/prospectsService'
 import { useDrawerStackStore } from '~/stores/drawerStack'
 
 definePageMeta({
@@ -281,27 +274,8 @@ definePageMeta({
   middleware: ['auth'],
 })
 
-/** One clickable stage of the pipeline strip. */
-interface PipelineTile {
-  label: string
-  value: string
-  hint: string
-  icon: string
-  to: string
-  linkLabel: string
-}
-
-/** One bar of the compact conversion funnel. */
-interface FunnelBarStage {
-  label: string
-  value: number
-  widthPct: number
-  stepRate: number
-  color: string
-}
-
 /** Shortcuts of the quick-actions card (the search one opens a drawer instead). */
-const QUICK_LINKS: ReadonlyArray<{ to: string; label: string; hint: string; icon: string }> = [
+const QUICK_LINKS: { to: string; label: string; hint: string; icon: string }[] = [
   {
     to: '/dashboard/campaigns',
     label: 'Lancer une campagne',
@@ -318,21 +292,21 @@ const QUICK_LINKS: ReadonlyArray<{ to: string; label: string; hint: string; icon
 ]
 
 /** Period presets for the KPI filter (0 = all time, the default). */
-const PERIOD_PRESETS: ReadonlyArray<{ days: number; label: string }> = [
+const PERIOD_PRESETS: { days: number; label: string }[] = [
   { days: 0, label: 'Depuis toujours' },
   { days: 7, label: '7 j' },
   { days: 30, label: '30 j' },
   { days: 90, label: '3 mois' },
 ]
 
-const drawerStack = useDrawerStackStore()
+const drawerStack: ReturnType<typeof useDrawerStackStore> = useDrawerStackStore()
 
-const periodDays: Ref<number> = ref<number>(0)
-const stats: Ref<DashboardStats | null> = ref<DashboardStats | null>(null)
-const hotLeads: Ref<HotLead[]> = ref<HotLead[]>([])
-const trendDays: Ref<EmailHealthTrendDay[]> = ref<EmailHealthTrendDay[]>([])
-const isLoading: Ref<boolean> = ref<boolean>(false)
-const lastUpdated: Ref<string | null> = ref<string | null>(null)
+const periodDays: Ref<number> = ref(0)
+const stats: Ref<DashboardStats | null> = ref(null)
+const hotLeads: Ref<HotLead[]> = ref([])
+const trendDays: Ref<EmailHealthTrendDay[]> = ref([])
+const isLoading: Ref<boolean> = ref(false)
+const lastUpdated: Ref<string | null> = ref(null)
 
 /** Hot leads limited to the most relevant ones (the page stays breathable). */
 const displayedHotLeads: ComputedRef<HotLead[]> = computed((): HotLead[] => hotLeads.value.slice(0, 6))
@@ -496,7 +470,7 @@ async function changePeriod(days: number): Promise<void> {
  */
 async function openProspect(prospectId: number): Promise<void> {
   try {
-    const prospect = await getProspect(prospectId)
+    const prospect = await ProspectsService.getProspect(prospectId)
     drawerStack.push({ kind: 'prospect', prospect })
   } catch {
     navigateTo(`/dashboard/my-prospects?open=${prospectId}`)
@@ -511,9 +485,9 @@ async function load(): Promise<void> {
   isLoading.value = true
   try {
     const [statsData, leads, trends] = await Promise.all([
-      getDashboardStats(periodDays.value),
-      getHotLeads().catch((): { items: HotLead[] } => ({ items: [] })),
-      getEmailHealthTrends(30).catch((): { days: EmailHealthTrendDay[] } => ({ days: [] })),
+      DashboardService.getDashboardStats(periodDays.value),
+      DashboardService.getHotLeads().catch((): { items: HotLead[] } => ({ items: [] })),
+      EmailHealthService.getEmailHealthTrends(30).catch((): { days: EmailHealthTrendDay[] } => ({ days: [] })),
     ])
     stats.value = statsData
     hotLeads.value = leads.items

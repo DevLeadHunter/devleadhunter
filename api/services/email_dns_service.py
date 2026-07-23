@@ -60,7 +60,8 @@ def use_nameservers(nameservers: Optional[list[str]]) -> None:
     Blocklist queries are the exception to prefer the system resolver: Spamhaus
     mirrors refuse queries coming from large public resolvers.
 
-    @param nameservers - Resolver IPs, or ``None``.
+    Args:
+        nameservers: Resolver IPs, or ``None``.
     """
     global _NAMESERVERS
     _NAMESERVERS = nameservers
@@ -69,7 +70,8 @@ def use_nameservers(nameservers: Optional[list[str]]) -> None:
 def _resolver() -> dns.resolver.Resolver:
     """A resolver with tight timeouts (the page must never hang on DNS).
 
-    @returns A configured dnspython resolver.
+    Returns:
+        A configured dnspython resolver.
     """
     resolver = dns.resolver.Resolver()
     if _NAMESERVERS:
@@ -82,8 +84,11 @@ def _resolver() -> dns.resolver.Resolver:
 def _txt_records(name: str) -> list[str]:
     """All TXT strings published at ``name`` (empty on NXDOMAIN/timeouts).
 
-    @param name - DNS name to query.
-    @returns Decoded TXT values.
+    Args:
+        name: DNS name to query.
+
+    Returns:
+        Decoded TXT values.
     """
     try:
         answers = _resolver().resolve(name, "TXT")
@@ -99,8 +104,11 @@ def _txt_records(name: str) -> list[str]:
 def _parent_domains(name: str) -> list[str]:
     """Ancestors of *name*, closest first, down to the organizational domain.
 
-    @param name - A domain, possibly a sending subdomain.
-    @returns Parent domains (empty when *name* is already organizational).
+    Args:
+        name: A domain, possibly a sending subdomain.
+
+    Returns:
+        Parent domains (empty when *name* is already organizational).
     """
     labels = name.split(".")
     return [
@@ -116,8 +124,11 @@ def _is_dkim_key(record: str) -> bool:
     publishes a bare ``p=…``. Keying the detection on ``v=DKIM1`` alone would
     silently miss the very selector the campaigns are signed with.
 
-    @param record - Raw TXT value.
-    @returns ``True`` when the record carries a DKIM public key.
+    Args:
+        record: Raw TXT value.
+
+    Returns:
+        ``True`` when the record carries a DKIM public key.
     """
     normalized = record.lower().replace(" ", "")
     return "v=dkim1" in normalized or "k=rsa" in normalized or normalized.startswith("p=")
@@ -126,8 +137,11 @@ def _is_dkim_key(record: str) -> bool:
 def _dmarc_record(name: str) -> Optional[str]:
     """The DMARC TXT record published at ``_dmarc.<name>``, if any.
 
-    @param name - Domain to look up.
-    @returns The raw record, or ``None``.
+    Args:
+        name: Domain to look up.
+
+    Returns:
+        The raw record, or ``None``.
     """
     return next(
         (record for record in _txt_records(f"_dmarc.{name}") if record.lower().startswith("v=dmarc1")),
@@ -144,8 +158,11 @@ class EmailDnsService:
     def check_domain(self, domain: str) -> dict[str, Any]:
         """Run every DNS check for one domain (cached ~10 min).
 
-        @param domain - The sending domain (e.g. ``dibodev.fr``).
-        @returns SPF/DKIM/DMARC/MX/blocklist results with ok/warn/danger statuses.
+        Args:
+            domain: The sending domain (e.g. ``dibodev.fr``).
+
+        Returns:
+            SPF/DKIM/DMARC/MX/blocklist results with ok/warn/danger statuses.
         """
         domain = domain.strip().lower()
         cached = self._cache.get(domain)
@@ -170,8 +187,11 @@ class EmailDnsService:
     def _check_spf(self, domain: str) -> dict[str, Any]:
         """SPF record presence + policy strictness.
 
-        @param domain - Sending domain.
-        @returns Status, the raw record and advice.
+        Args:
+            domain: Sending domain.
+
+        Returns:
+            Status, the raw record and advice.
         """
         spf: Optional[str] = next(
             (record for record in _txt_records(domain) if record.lower().startswith("v=spf1")), None
@@ -200,8 +220,11 @@ class EmailDnsService:
     def _check_dkim(self, domain: str) -> dict[str, Any]:
         """Probe common DKIM selectors for a published public key.
 
-        @param domain - Sending domain.
-        @returns Status, the selectors found and advice.
+        Args:
+            domain: Sending domain.
+
+        Returns:
+            Status, the selectors found and advice.
         """
         found: list[str] = []
         for selector in _DKIM_SELECTORS:
@@ -232,8 +255,11 @@ class EmailDnsService:
         alone hides the classic trap of a parent in ``p=quarantine;sp=none``
         whose subdomain is in fact enforced by nothing.
 
-        @param domain - Sending domain.
-        @returns Status, effective policy, inheritance origin, rua and advice.
+        Args:
+            domain: Sending domain.
+
+        Returns:
+            Status, effective policy, inheritance origin, rua and advice.
         """
         dmarc: Optional[str] = _dmarc_record(domain)
         inherited_from: Optional[str] = None
@@ -303,8 +329,11 @@ class EmailDnsService:
     def _check_mx(self, domain: str) -> dict[str, Any]:
         """MX presence (a domain without MX looks disposable to filters).
 
-        @param domain - Sending domain.
-        @returns Status, hosts and advice.
+        Args:
+            domain: Sending domain.
+
+        Returns:
+            Status, hosts and advice.
         """
         try:
             answers = _resolver().resolve(domain, "MX")
@@ -334,8 +363,11 @@ class EmailDnsService:
     def _check_blocklists(self, domain: str) -> dict[str, Any]:
         """Query domain DNSBLs (Spamhaus DBL, SURBL).
 
-        @param domain - Sending domain.
-        @returns Per-list verdicts (`ok` / `listed` / `unknown`).
+        Args:
+            domain: Sending domain.
+
+        Returns:
+            Per-list verdicts (`ok` / `listed` / `unknown`).
         """
         lists: list[dict[str, str]] = []
         overall = "ok"

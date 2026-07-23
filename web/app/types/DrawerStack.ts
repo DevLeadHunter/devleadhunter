@@ -11,102 +11,82 @@ import type { SearchProspectsPrefill } from '~/types/SearchProspectsDrawer'
  * the top entry.
  */
 
-/** Prospect detail drawer entry. */
-export interface ProspectDrawerEntry {
+export type ProspectDrawerEntry = {
   kind: 'prospect'
-  /** Prospect displayed by the drawer. */
   prospect: Prospect
 }
 
 /** Prefilled values of the email composer (e.g. « Renvoyer » from a log). */
-export interface SendEmailPrefill {
+export type SendEmailPrefill = {
   recipient_email: string
   recipient_name: string
   subject: string
   body: string
 }
 
-/** Manual email composer drawer entry. */
-export interface SendEmailDrawerEntry {
+export type SendEmailDrawerEntry = {
   kind: 'send-email'
-  /** Prefilled recipient (null opens a blank composer). */
   prospect: Prospect | null
-  /** Explicit prefill overriding the prospect-derived values. */
   prefill?: SendEmailPrefill
 }
 
-/** Email log detail drawer entry. */
-export interface EmailLogDrawerEntry {
+export type EmailLogDrawerEntry = {
   kind: 'email-log'
-  /** Log displayed by the drawer. */
   log: EmailLog
-  /** Resolved campaign name (display only). */
   campaignName: string | undefined
 }
 
-/** Mode of the email template drawer. */
 export type EmailTemplateDrawerMode = 'create' | 'edit' | 'preview'
 
-/** Email template create/edit/preview drawer entry. */
-export interface EmailTemplateDrawerEntry {
+export type EmailTemplateDrawerEntry = {
   kind: 'email-template'
-  /** Drawer mode. */
   mode: EmailTemplateDrawerMode
-  /** Template being edited or previewed (null in create mode). */
   template: EmailTemplate | null
 }
 
-/** User profile edit drawer entry. */
-export interface ProfileDrawerEntry {
+export type EmailSignaturesDrawerEntry = {
+  kind: 'email-signatures'
+}
+
+export type ProfileDrawerEntry = {
   kind: 'profile'
 }
 
-/** Organization (team) management drawer entry. */
-export interface OrganizationDrawerEntry {
+export type OrganizationDrawerEntry = {
   kind: 'organization'
 }
 
-/** Campaign creation drawer entry. */
-export interface CreateCampaignDrawerEntry {
+export type CreateCampaignDrawerEntry = {
   kind: 'create-campaign'
 }
 
-/** Manual prospect creation drawer entry. */
-export interface AddProspectDrawerEntry {
+export type AddProspectDrawerEntry = {
   kind: 'add-prospect'
 }
 
-/** Prospect search (scraping) drawer entry. */
-export interface SearchProspectsDrawerEntry {
+export type SearchProspectsDrawerEntry = {
   kind: 'search-prospects'
-  /** Optional form prefill (e.g. « Prospecter » a suggested city on the coverage map). */
   prefill?: SearchProspectsPrefill
 }
 
-/** Send-policy (email cadence) drawer entry. */
-export interface SendPolicyDrawerEntry {
+export type SendPolicyDrawerEntry = {
   kind: 'send-policy'
 }
 
 /** A zone of the coverage map (one city, or a region's covered cities). */
-export interface CoverageZone {
-  /** Zone granularity. */
+export type CoverageZone = {
   kind: 'city' | 'region'
-  /** Display label (« Rennes », « Bretagne »). */
   label: string
-  /** Covered city names queried for the prospect list. */
   cities: string[]
-  /** City prefilled by the « Prospecter à nouveau ici » action. */
   prefillCity?: string
 }
 
 /** Coverage-map filters drawer entry (trades + zones to attack). */
-export interface CoverageFiltersDrawerEntry {
+export type CoverageFiltersDrawerEntry = {
   kind: 'coverage-filters'
 }
 
-/** Coverage-map zone prospects drawer entry. */
-export interface CoverageProspectsDrawerEntry {
+export type CoverageProspectsDrawerEntry = {
   kind: 'coverage-prospects'
   zone: CoverageZone
 }
@@ -117,6 +97,7 @@ export type DrawerStackEntry =
   | SendEmailDrawerEntry
   | EmailLogDrawerEntry
   | EmailTemplateDrawerEntry
+  | EmailSignaturesDrawerEntry
   | ProfileDrawerEntry
   | OrganizationDrawerEntry
   | CreateCampaignDrawerEntry

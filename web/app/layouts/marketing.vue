@@ -1,15 +1,12 @@
 <template>
   <div class="landing-theme font-body flex min-h-screen flex-col antialiased">
-    <!-- Paper grain overlay -->
     <div class="landing-grain" aria-hidden="true"></div>
 
-    <!-- Header -->
     <header
       class="sticky top-0 z-50 border-b transition-colors duration-300"
       :class="hasScrolled ? 'border-[#e3dccd] bg-[#f6f3ec]/90 backdrop-blur-md' : 'border-transparent bg-transparent'"
     >
       <nav class="mx-auto flex h-20 max-w-6xl items-center justify-between px-5 md:px-8">
-        <!-- Logo -->
         <NuxtLink :to="localePath('index')" class="group flex items-center gap-2.5">
           <svg
             class="h-5 w-5 fill-current text-[#1b1813] transition-colors group-hover:text-[#6b6355]"
@@ -26,7 +23,6 @@
           <span class="font-display text-lg font-semibold tracking-tight text-[#1b1813]">devleadhunter</span>
         </NuxtLink>
 
-        <!-- Desktop navigation -->
         <div class="hidden items-center gap-8 lg:flex">
           <a
             v-for="link in sectionLinks"
@@ -53,7 +49,6 @@
           </NuxtLink>
         </div>
 
-        <!-- Mobile menu button -->
         <button
           class="flex h-10 w-10 items-center justify-center text-[#1b1813] lg:hidden"
           :aria-label="isMobileMenuOpen ? 'Close menu' : 'Open menu'"
@@ -65,7 +60,6 @@
       </nav>
     </header>
 
-    <!-- Mobile full-screen menu -->
     <Transition name="menu-fade">
       <div v-if="isMobileMenuOpen" class="fixed inset-0 z-[60] flex flex-col bg-[#f6f3ec] lg:hidden">
         <div class="flex h-20 items-center justify-between border-b border-[#e3dccd] px-5">
@@ -106,16 +100,13 @@
       </div>
     </Transition>
 
-    <!-- Main content -->
     <main class="flex-1">
       <slot />
     </main>
 
-    <!-- Footer -->
     <footer class="border-t border-[#e3dccd]">
       <div class="mx-auto max-w-6xl px-5 py-16 md:px-8 md:py-20">
         <div class="grid grid-cols-2 gap-x-8 gap-y-12 md:grid-cols-5 md:gap-12">
-          <!-- Brand -->
           <div class="col-span-2 md:col-span-2">
             <div class="mb-5 flex items-center gap-2.5">
               <svg
@@ -137,7 +128,6 @@
             </p>
           </div>
 
-          <!-- Product links -->
           <div>
             <h3 class="landing-eyebrow mb-5 !text-[0.65rem]">{{ $t('footer.product') }}</h3>
             <ul class="space-y-3">
@@ -153,7 +143,6 @@
             </ul>
           </div>
 
-          <!-- Resources links -->
           <div>
             <h3 class="landing-eyebrow mb-5 !text-[0.65rem]">{{ $t('footer.resources') }}</h3>
             <ul class="space-y-3">
@@ -178,7 +167,6 @@
             </ul>
           </div>
 
-          <!-- Account links -->
           <div>
             <h3 class="landing-eyebrow mb-5 !text-[0.65rem]">{{ $t('footer.account') }}</h3>
             <ul class="space-y-3">
@@ -237,36 +225,27 @@
       </div>
     </footer>
 
-    <!-- GDPR cookie consent (marketing surface only) -->
     <LandingCookieConsent />
   </div>
 </template>
 
 <script lang="ts" setup>
+import type { LandingSectionLink } from '~/types/MarketingLayout'
 import type { Ref, ComputedRef } from 'vue'
 import type { LocaleObject } from '@nuxtjs/i18n'
 import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
 
 const { locale, locales, setLocale } = useI18n()
-const localePath = useLocalePath()
+const localePath: ReturnType<typeof useLocalePath> = useLocalePath()
 const { track } = useSiteTracking()
 
-// i18n SEO for every marketing page: canonical, hreflang alternates, and the correct
-// <html lang> per locale (without this, /fr pages inherit the default lang="en").
+// Sans ce bloc, les pages /fr héritent du lang="en" par défaut.
 const localeHead = useLocaleHead()
 useHead(() => ({
   htmlAttrs: localeHead.value.htmlAttrs,
   link: localeHead.value.link,
   meta: localeHead.value.meta,
 }))
-
-/** A navigation link that scrolls to an on-page landing section. */
-interface LandingSectionLink {
-  /** Anchor target (e.g. `#how-it-works`). */
-  target: string
-  /** i18n key for the link label. */
-  label: string
-}
 
 /** Section links shown in the desktop header and mobile menu. */
 const sectionLinks: LandingSectionLink[] = [
@@ -284,10 +263,10 @@ const footerProductLinks: LandingSectionLink[] = [
 ]
 
 /** Whether the mobile full-screen menu is open. */
-const isMobileMenuOpen: Ref<boolean> = ref<boolean>(false)
+const isMobileMenuOpen: Ref<boolean> = ref(false)
 
 /** Whether the page is scrolled past the top (drives the header backdrop). */
-const hasScrolled: Ref<boolean> = ref<boolean>(false)
+const hasScrolled: Ref<boolean> = ref(false)
 
 /** Current year for the copyright line. */
 const currentYear: ComputedRef<number> = computed((): number => new Date().getFullYear())

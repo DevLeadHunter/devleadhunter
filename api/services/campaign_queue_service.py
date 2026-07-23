@@ -16,8 +16,6 @@ from __future__ import annotations
 import logging
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
-from typing import TYPE_CHECKING
-
 from sqlalchemy import select, and_, func
 from sqlalchemy.orm import Session
 
@@ -29,24 +27,12 @@ from models.prospect_db import ProspectDB
 from models.email_template import EmailTemplate
 from models.demo_site import DemoSite
 from services.email_sending_service import EmailSendingService
+from services.email_variables import EmailVariables
 from services.unsubscribe_service import unsubscribe_service
 from enums.email_status import EmailStatus
 from enums.demo_site_status import DemoSiteStatus
 
-if TYPE_CHECKING:
-    pass
-
 logger = logging.getLogger(__name__)
-
-# ---------------------------------------------------------------------------
-# Personalisation variable keys used in cold-email templates.
-# ---------------------------------------------------------------------------
-# Variable keys live in services.email_variables (single source of truth for
-# {salutation}/{prenom}/{nom}/{entreprise}…) — only the demo-link and video
-# keys are needed here, for the « template uses {lien_demo}/{lien_video} » guards.
-_VAR_DEMO_LINK = "lien_demo"
-_VAR_VIDEO_LINK = "lien_video"
-_VAR_VIDEO_THUMBNAIL = "vignette_video"
 
 # Queue item status values
 _STATUS_PENDING  = "pending"
@@ -87,9 +73,6 @@ class CampaignQueueService:
     def __init__(self, db: Session) -> None:
         self.db = db
 
-    # -----------------------------------------------------------------------
-    # Enqueueing
-    # -----------------------------------------------------------------------
 
     def enqueue_campaign(
         self,
@@ -268,9 +251,6 @@ class CampaignQueueService:
         start = latest + delay if (latest is not None and latest > now) else now
         return [start + delay * i for i in range(count)]
 
-    # -----------------------------------------------------------------------
-    # Worker tick
-    # -----------------------------------------------------------------------
 
     async def process_next(self) -> bool:
         """
@@ -325,7 +305,7 @@ class CampaignQueueService:
         if template is None:
             return False
         haystack: str = f"{template.subject or ''} {template.body_html or ''}"
-        return f"{{{_VAR_DEMO_LINK}}}" in haystack
+        return f"{{{EmailVariables.DEMO_LINK}}}" in haystack
 
     @staticmethod
     def _template_uses_video(template: EmailTemplate | None) -> bool:
@@ -337,8 +317,8 @@ class CampaignQueueService:
             return False
         haystack: str = f"{template.subject or ''} {template.body_html or ''}"
         return (
-            f"{{{_VAR_VIDEO_LINK}}}" in haystack
-            or f"{{{_VAR_VIDEO_THUMBNAIL}}}" in haystack
+            f"{{{EmailVariables.VIDEO_LINK}}}" in haystack
+            or f"{{{EmailVariables.VIDEO_THUMBNAIL}}}" in haystack
         )
 
     def _active_demo_for_prospect(self, prospect_id: int, user_id: int) -> DemoSite | None:
@@ -377,8 +357,8 @@ class CampaignQueueService:
         The player-page link carries the A/B variant (``?v=A``) so PostHog can
         attribute the video view to the email variant, like ``{lien_demo}``.
 
-        @returns ``(player page URL, thumbnail URL)`` — both "" when the
-            prospect's active demo has no generated video.
+        Returns:
+            ``(player page URL, thumbnail URL)`` — both "" when the prospect's active demo has no generated video.
         """
         from services.demo_video_service import has_ready_video, public_thumbnail_url, video_page_url
 
@@ -453,9 +433,7 @@ class CampaignQueueService:
 
         # Build personalisation variables ({salutation}/{prenom}/{nom} come from
         # the resolved decision-maker — never the company name).
-        from services.email_variables import build_prospect_variables
-
-        variables: dict[str, str] = build_prospect_variables(
+        variables: dict[str, str] = EmailVariables.build_for_prospect(
             self.db, prospect, demo_link, video_link, video_thumbnail_url
         )
 
@@ -480,6 +458,13 @@ class CampaignQueueService:
                 body_html = personalized.get("body_html", body_html) or body_html
             except Exception as exc:  # noqa: BLE001 — never block a send on personalisation
                 logger.warning("[Queue] Behaviour personalisation failed for prospect %d: %s", prospect.id, exc)
+
+        # Append the signature LAST so it survives the LLM personalisation above.
+        from services.email_signatures import render_signature_html
+
+        body_html += render_signature_html(
+            self.db, template.signature_id, variables, user_id=item.user_id
+        )
 
         result: dict = await email_service.send_via_user_identity(
             user_id=item.user_id,
@@ -561,9 +546,6 @@ class CampaignQueueService:
             j1_item.prospect_id,
         )
 
-    # -----------------------------------------------------------------------
-    # Immediate send (bypass delay)
-    # -----------------------------------------------------------------------
 
     async def send_followup_now(
         self,
@@ -592,10 +574,8 @@ class CampaignQueueService:
         if not template:
             return {"success": False, "error": "Template introuvable"}
 
-        from services.email_variables import build_prospect_variables
-
         video_link, video_thumbnail_url = self._video_for_prospect(prospect_id, campaign.user_id, None)
-        variables: dict[str, str] = build_prospect_variables(
+        variables: dict[str, str] = EmailVariables.build_for_prospect(
             self.db,
             prospect,
             self._demo_link_for_prospect(prospect_id, campaign.user_id, None),
@@ -607,6 +587,12 @@ class CampaignQueueService:
         subject = email_service.replace_variables(template.subject, variables)
         body_html = email_service.replace_variables(template.body_html, variables)
 
+        from services.email_signatures import render_signature_html
+
+        body_html += render_signature_html(
+            self.db, template.signature_id, variables, user_id=campaign.user_id
+        )
+
         return await email_service.send_via_user_identity(
             user_id=campaign.user_id,
             recipient_email=prospect.email,
@@ -617,9 +603,6 @@ class CampaignQueueService:
             campaign_id=str(campaign.id),
         )
 
-    # -----------------------------------------------------------------------
-    # Queue management helpers
-    # -----------------------------------------------------------------------
 
     def cancel_campaign_queue(self, campaign_id: int) -> int:
         """

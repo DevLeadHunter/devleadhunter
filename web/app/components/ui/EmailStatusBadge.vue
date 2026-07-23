@@ -6,15 +6,11 @@
 </template>
 
 <script lang="ts" setup>
+import type { EmailStatusPresentation, EmailStatusBadgeProps } from '~/types/EmailStatusBadge'
 import type { ComputedRef, PropType } from 'vue'
 import type { EmailStatus } from '~/types'
-import type { EmailStatusBadgeProps } from '~/types/EmailStatusBadge'
 
-// ─── Props ────────────────────────────────────────────────────────────────────
-
-/**
- * Defines the component props.
- */
+/** Badge for a single email delivery status. */
 const props: EmailStatusBadgeProps = defineProps({
   status: {
     type: String as PropType<EmailStatus>,
@@ -22,29 +18,8 @@ const props: EmailStatusBadgeProps = defineProps({
   },
 })
 
-// ─── Visual config ────────────────────────────────────────────────────────────
-
-interface StatusConfig {
-  /** Human-readable French label. */
-  label: string
-  /** Lucide icon name. */
-  icon: string
-  /** app-badge variant modifier ('' = neutral). */
-  variant: string
-  /** Whether the icon should spin (in-progress states). */
-  spin?: boolean
-}
-
-/**
- * Visual configuration for every possible EmailStatus value. Each step of the
- * positive funnel gets its own colour family so a list of logs reads at a
- * glance: sent = info (blue), delivered = success (green), opened = engaged
- * (violet), clicked = strong (full ink). Transient states are progress
- * (amber), failures are danger (red). Using ``Record<EmailStatus,
- * StatusConfig>`` ensures a compile error if a new status is added without
- * updating this map.
- */
-const STATUS_CONFIG: Record<EmailStatus, StatusConfig> = {
+/** Per-status badge colours and icons for email delivery states. */
+const STATUS_CONFIG: Record<EmailStatus, EmailStatusPresentation> = {
   pending: { label: 'En attente', icon: 'i-lucide-clock', variant: '' },
   sending: { label: 'Envoi…', icon: 'i-lucide-loader-circle', variant: 'app-badge--progress', spin: true },
   scheduled: { label: 'Planifié', icon: 'i-lucide-calendar-clock', variant: 'app-badge--progress' },
@@ -63,7 +38,7 @@ const STATUS_CONFIG: Record<EmailStatus, StatusConfig> = {
   suppressed: { label: 'Supprimé', icon: 'i-lucide-circle-minus', variant: '' },
 }
 
-const config: ComputedRef<StatusConfig> = computed(
-  (): StatusConfig => STATUS_CONFIG[props.status] ?? STATUS_CONFIG.pending,
+const config: ComputedRef<EmailStatusPresentation> = computed(
+  (): EmailStatusPresentation => STATUS_CONFIG[props.status] ?? STATUS_CONFIG.pending,
 )
 </script>

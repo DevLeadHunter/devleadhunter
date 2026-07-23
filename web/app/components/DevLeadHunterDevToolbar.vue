@@ -6,7 +6,6 @@
     :class="position === null ? 'right-4 bottom-4' : ''"
     :style="floatingStyle"
   >
-    <!-- Drag handle -->
     <button
       type="button"
       class="flex cursor-grab touch-none items-center gap-1 rounded-full py-1 pr-1 pl-2 text-amber-400 active:cursor-grabbing"
@@ -31,26 +30,21 @@
 </template>
 
 <script lang="ts" setup>
+import type { ToolbarPosition } from '~/types/DevLeadHunterDevToolbar'
 import type { CSSProperties, Ref } from 'vue'
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
-import { syncStorageFromProd } from '~/services/adminStorageService'
-
-/** Persisted position of the floating dev toolbar. */
-interface ToolbarPosition {
-  left: number
-  top: number
-}
+import { AdminStorageService } from '~/services/adminStorageService'
 
 const STORAGE_KEY: string = 'dlh-devtoolbar-pos'
 
 const { isDesktopDev, syncDevDatabaseFromProd } = useDesktopRuntime()
-const toast = useToast()
+const toast: ReturnType<typeof useToast> = useToast()
 
-const isSyncing: Ref<boolean> = ref<boolean>(false)
+const isSyncing: Ref<boolean> = ref(false)
 /** Root element, used to measure the toolbar during a drag. */
-const rootEl: Ref<HTMLElement | null> = ref<HTMLElement | null>(null)
+const rootEl: Ref<HTMLElement | null> = ref(null)
 /** Current absolute position (null = default bottom-right). */
-const position: Ref<ToolbarPosition | null> = ref<ToolbarPosition | null>(null)
+const position: Ref<ToolbarPosition | null> = ref(null)
 
 // Drag bookkeeping.
 let dragPointerId: number | null = null
@@ -143,11 +137,10 @@ async function onSyncDatabase(): Promise<void> {
   isSyncing.value = true
   try {
     const message: string = await syncDevDatabaseFromProd()
-    // Le stockage suit la base : sans ça, les démos synchronisées pointeraient
-    // vers des vidéos absentes du bucket dev.
-    let storageMessage = ''
+    // Le stockage suit la base, sinon les démos pointent vers des vidéos absentes du bucket dev.
+    let storageMessage: string = ''
     try {
-      const storage = await syncStorageFromProd()
+      const storage = await AdminStorageService.syncStorageFromProd()
       storageMessage = ` · Stockage : ${storage.message}`
     } catch (storageError) {
       storageMessage = ` · Stockage NON synchronisé (${

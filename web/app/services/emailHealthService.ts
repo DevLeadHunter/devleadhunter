@@ -1,4 +1,4 @@
-import { api } from './api'
+import { ApiClient } from './api'
 
 /**
  * Email deliverability health service — feeds the « Santé email » page:
@@ -8,7 +8,7 @@ import { api } from './api'
  */
 
 /** Raw counters + derived rates over one window. */
-export interface EmailHealthStats {
+export type EmailHealthStats = {
   sent: number
   delivered: number
   opened: number
@@ -25,7 +25,7 @@ export interface EmailHealthStats {
 }
 
 /** A health signal with its ok/warn/danger status. */
-export interface EmailHealthSignal {
+export type EmailHealthSignal = {
   key: string
   label: string
   value: number
@@ -35,7 +35,7 @@ export interface EmailHealthSignal {
 }
 
 /** One sending account with its stats. */
-export interface EmailHealthAccount {
+export type EmailHealthAccount = {
   id: number
   email: string
   name: string
@@ -46,8 +46,7 @@ export interface EmailHealthAccount {
   stats: EmailHealthStats
 }
 
-/** The overview payload. */
-export interface EmailHealthOverview {
+export type EmailHealthOverview = {
   period_days: number
   totals: EmailHealthStats & { unsubscribed: number; unsubscribe_rate: number }
   signals: EmailHealthSignal[]
@@ -55,7 +54,7 @@ export interface EmailHealthOverview {
 }
 
 /** One daily point of the trend series. */
-export interface EmailHealthTrendDay {
+export type EmailHealthTrendDay = {
   date: string
   sent: number
   delivered: number
@@ -68,7 +67,7 @@ export interface EmailHealthTrendDay {
 }
 
 /** Deliverability per recipient mailbox provider. */
-export interface EmailHealthProvider {
+export type EmailHealthProvider = {
   provider: string
   label: string
   domains: string[]
@@ -86,7 +85,7 @@ export interface EmailHealthProvider {
 }
 
 /** One deliverability incident (bounce, complaint, suppression, failure). */
-export interface EmailHealthIncident {
+export type EmailHealthIncident = {
   id: number
   kind: 'bounced' | 'complained' | 'suppressed' | 'failed'
   recipient_email: string
@@ -97,15 +96,12 @@ export interface EmailHealthIncident {
 }
 
 /** One DNS check result (status + explanation). */
-export interface EmailDnsCheck {
+export type EmailDnsCheck = {
   status: 'ok' | 'warn' | 'danger'
   detail: string
   record?: string | null
-  /** Effective DMARC policy for this domain (``sp`` when inherited, else ``p``). */
   policy?: string | null
-  /** Raw ``sp=`` tag of the record, when present. */
   subdomain_policy?: string | null
-  /** Organizational domain the DMARC record was inherited from, when any. */
   inherited_from?: string | null
   rua?: string | null
   selectors?: string[]
@@ -114,7 +110,7 @@ export interface EmailDnsCheck {
 }
 
 /** DNS health for one sending domain. */
-export interface EmailDnsDomain {
+export type EmailDnsDomain = {
   domain: string
   spf: EmailDnsCheck
   dkim: EmailDnsCheck
@@ -124,7 +120,7 @@ export interface EmailDnsDomain {
 }
 
 /** One daily Gmail Postmaster stat. */
-export interface PostmasterDay {
+export type PostmasterDay = {
   date: string
   domain_reputation: string | null
   user_reported_spam_ratio: number | null
@@ -135,7 +131,7 @@ export interface PostmasterDay {
 }
 
 /** Gmail Postmaster payload for one domain. */
-export interface PostmasterDomain {
+export type PostmasterDomain = {
   configured: boolean
   domain: string
   reason?: string
@@ -145,7 +141,7 @@ export interface PostmasterDomain {
 }
 
 /** SpamAssassin verdict for a draft. */
-export interface SpamAssassinResult {
+export type SpamAssassinResult = {
   available: boolean
   error?: string
   score?: number
@@ -154,7 +150,7 @@ export interface SpamAssassinResult {
 }
 
 /** One local heuristic check on a draft. */
-export interface SpamLocalCheck {
+export type SpamLocalCheck = {
   key: string
   label: string
   status: 'ok' | 'warn' | 'danger'
@@ -162,103 +158,104 @@ export interface SpamLocalCheck {
 }
 
 /** The spam tester payload. */
-export interface SpamTestResult {
+export type SpamTestResult = {
   spamassassin: SpamAssassinResult
   checks: SpamLocalCheck[]
 }
 
 /** Anti-spam score of one email template (scored automatically, nothing sent). */
-export interface TemplateScore {
+export type TemplateScore = {
   id: number
   name: string
   subject: string
   group: 'initial' | 'follow_up'
   spamassassin: SpamAssassinResult
   checks: SpamLocalCheck[]
-  /** Checks that are not ok (the at-a-glance issue list). */
   issues: SpamLocalCheck[]
 }
 
 /** Template scores grouped by role. */
-export interface TemplateScoresResponse {
+export type TemplateScoresResponse = {
   initial: TemplateScore[]
   follow_up: TemplateScore[]
 }
 
-/**
- * Fetch the deliverability overview (totals, signals, per-account stats).
- * @param periodDays - Rolling window: 7, 30 or 90 days.
- * @returns The overview payload.
- */
-export async function getEmailHealthOverview(periodDays: number): Promise<EmailHealthOverview> {
-  return api.get<EmailHealthOverview>('/api/v1/email-health/overview', { params: { period_days: periodDays } })
-}
+export class EmailHealthService {
+  /**
+   * Fetch the deliverability overview (totals, signals, per-account stats).
+   * @param periodDays - Rolling window: 7, 30 or 90 days.
+   * @returns The overview payload.
+   */
+  static async getEmailHealthOverview(periodDays: number): Promise<EmailHealthOverview> {
+    return ApiClient.get<EmailHealthOverview>('/api/v1/email-health/overview', { params: { period_days: periodDays } })
+  }
 
-/**
- * Fetch the daily trend series (cohort by send day).
- * @param periodDays - Rolling window: 7, 30 or 90 days.
- * @returns The daily points.
- */
-export async function getEmailHealthTrends(periodDays: number): Promise<{ days: EmailHealthTrendDay[] }> {
-  return api.get<{ days: EmailHealthTrendDay[] }>('/api/v1/email-health/trends', {
-    params: { period_days: periodDays },
-  })
-}
+  /**
+   * Fetch the daily trend series (cohort by send day).
+   * @param periodDays - Rolling window: 7, 30 or 90 days.
+   * @returns The daily points.
+   */
+  static async getEmailHealthTrends(periodDays: number): Promise<{ days: EmailHealthTrendDay[] }> {
+    return ApiClient.get<{ days: EmailHealthTrendDay[] }>('/api/v1/email-health/trends', {
+      params: { period_days: periodDays },
+    })
+  }
 
-/**
- * Fetch the deliverability breakdown per recipient mailbox provider.
- * @param periodDays - Rolling window: 7, 30 or 90 days.
- * @returns The provider list, sorted by volume.
- */
-export async function getEmailHealthProviders(periodDays: number): Promise<{ providers: EmailHealthProvider[] }> {
-  return api.get<{ providers: EmailHealthProvider[] }>('/api/v1/email-health/providers', {
-    params: { period_days: periodDays },
-  })
-}
+  /**
+   * Fetch the deliverability breakdown per recipient mailbox provider.
+   * @param periodDays - Rolling window: 7, 30 or 90 days.
+   * @returns The provider list, sorted by volume.
+   */
+  static async getEmailHealthProviders(periodDays: number): Promise<{ providers: EmailHealthProvider[] }> {
+    return ApiClient.get<{ providers: EmailHealthProvider[] }>('/api/v1/email-health/providers', {
+      params: { period_days: periodDays },
+    })
+  }
 
-/**
- * Fetch the recent deliverability incidents.
- * @param limit - Maximum rows.
- * @returns The incident journal, most recent first.
- */
-export async function getEmailHealthIncidents(limit = 50): Promise<{ items: EmailHealthIncident[] }> {
-  return api.get<{ items: EmailHealthIncident[] }>('/api/v1/email-health/incidents', { params: { limit } })
-}
+  /**
+   * Fetch the recent deliverability incidents.
+   * @param limit - Maximum rows.
+   * @returns The incident journal, most recent first.
+   */
+  static async getEmailHealthIncidents(limit = 50): Promise<{ items: EmailHealthIncident[] }> {
+    return ApiClient.get<{ items: EmailHealthIncident[] }>('/api/v1/email-health/incidents', { params: { limit } })
+  }
 
-/**
- * Fetch the DNS authentication checks for every sending domain.
- * @returns SPF/DKIM/DMARC/MX/blocklists per domain.
- */
-export async function getEmailHealthDns(): Promise<{ domains: EmailDnsDomain[] }> {
-  return api.get<{ domains: EmailDnsDomain[] }>('/api/v1/email-health/dns')
-}
+  /**
+   * Fetch the DNS authentication checks for every sending domain.
+   * @returns SPF/DKIM/DMARC/MX/blocklists per domain.
+   */
+  static async getEmailHealthDns(): Promise<{ domains: EmailDnsDomain[] }> {
+    return ApiClient.get<{ domains: EmailDnsDomain[] }>('/api/v1/email-health/dns')
+  }
 
-/**
- * Fetch the Gmail Postmaster reputation for every sending domain.
- * @param periodDays - History depth.
- * @returns Per-domain reputation payloads (or the not-configured flag).
- */
-export async function getEmailHealthPostmaster(periodDays: number): Promise<{ domains: PostmasterDomain[] }> {
-  return api.get<{ domains: PostmasterDomain[] }>('/api/v1/email-health/postmaster', {
-    params: { period_days: periodDays },
-  })
-}
+  /**
+   * Fetch the Gmail Postmaster reputation for every sending domain.
+   * @param periodDays - History depth.
+   * @returns Per-domain reputation payloads (or the not-configured flag).
+   */
+  static async getEmailHealthPostmaster(periodDays: number): Promise<{ domains: PostmasterDomain[] }> {
+    return ApiClient.get<{ domains: PostmasterDomain[] }>('/api/v1/email-health/postmaster', {
+      params: { period_days: periodDays },
+    })
+  }
 
-/**
- * Score an email draft (SpamAssassin + local heuristics) before sending.
- * @param subject - Email subject.
- * @param bodyHtml - HTML body.
- * @returns The spam test verdicts.
- */
-export async function runEmailSpamTest(subject: string, bodyHtml: string): Promise<SpamTestResult> {
-  return api.post<SpamTestResult>('/api/v1/email-health/spam-test', { subject, body_html: bodyHtml })
-}
+  /**
+   * Score an email draft (SpamAssassin + local heuristics) before sending.
+   * @param subject - Email subject.
+   * @param bodyHtml - HTML body.
+   * @returns The spam test verdicts.
+   */
+  static async runEmailSpamTest(subject: string, bodyHtml: string): Promise<SpamTestResult> {
+    return ApiClient.post<SpamTestResult>('/api/v1/email-health/spam-test', { subject, body_html: bodyHtml })
+  }
 
-/**
- * Fetch the automatic anti-spam scores of every active email template.
- * Nothing is sent — templates are scored server-side (results cached 6 h).
- * @returns Scores grouped first-contact vs follow-up.
- */
-export async function getEmailTemplateScores(): Promise<TemplateScoresResponse> {
-  return api.get<TemplateScoresResponse>('/api/v1/email-health/template-scores')
+  /**
+   * Fetch the automatic anti-spam scores of every active email template.
+   * Nothing is sent — templates are scored server-side (results cached 6 h).
+   * @returns Scores grouped first-contact vs follow-up.
+   */
+  static async getEmailTemplateScores(): Promise<TemplateScoresResponse> {
+    return ApiClient.get<TemplateScoresResponse>('/api/v1/email-health/template-scores')
+  }
 }

@@ -3,7 +3,6 @@
     class="card group relative overflow-hidden transition-all duration-300 hover:border-[var(--app-ink-soft)] hover:shadow-lg hover:shadow-black/20"
   >
     <NuxtLink :to="`/dashboard/demo-sites/${site.id}`" class="block">
-      <!-- Preview header -->
       <div
         class="relative h-36 overflow-hidden border-b border-[var(--app-line)] transition-transform duration-500 group-hover:scale-[1.02]"
         :style="{ background: cardGradient }"
@@ -35,7 +34,10 @@
           </span>
         </div>
 
-        <p v-if="site.verification_message && !isDemoSiteReachable(site)" class="text-xs text-amber-300/90">
+        <p
+          v-if="site.verification_message && !DemoSiteService.isDemoSiteReachable(site)"
+          class="text-xs text-amber-300/90"
+        >
           {{ site.verification_message }}
         </p>
 
@@ -54,45 +56,48 @@
 </template>
 
 <script lang="ts" setup>
+import type { ComputedRef, EmitFn, PropType } from 'vue'
 import type { DemoSite } from '~/services/demoSiteService'
-import { getDemoSiteOpenUrl, isDemoSiteReachable } from '~/services/demoSiteService'
+import type { DemoSiteCardEmits, DemoSiteCardProps } from '~/types/DemoSiteCard'
+import { DemoSiteService } from '~/services/demoSiteService'
 
-const props = defineProps<{
-  site: DemoSite
-}>()
+/** Demo site summary card with copy and open shortcuts. */
+const props: DemoSiteCardProps = defineProps({
+  site: {
+    type: Object as PropType<DemoSite>,
+    required: true,
+  },
+})
 
-const emit = defineEmits<{
-  copy: [url: string]
-  open: [url: string]
-}>()
+const emit: EmitFn<DemoSiteCardEmits> = defineEmits<DemoSiteCardEmits>()
 
-const copied = ref(false)
+const copied: Ref<boolean> = ref(false)
 
-const openUrl = computed(() => getDemoSiteOpenUrl(props.site))
+const openUrl: ComputedRef<string | null> = computed(() => DemoSiteService.getDemoSiteOpenUrl(props.site))
 
-const cardGradient = computed(() => {
-  if (isDemoSiteReachable(props.site)) {
+const cardGradient: ComputedRef<string> = computed(() => {
+  if (DemoSiteService.isDemoSiteReachable(props.site)) {
     return 'linear-gradient(135deg, #0f172a 0%, #0284c7 100%)'
   }
   return 'linear-gradient(135deg, var(--app-surface-2) 0%, var(--app-line) 100%)'
 })
 
-const statusLabel = computed(() => {
-  if (isDemoSiteReachable(props.site)) return 'En ligne'
+const statusLabel: ComputedRef<string> = computed(() => {
+  if (DemoSiteService.isDemoSiteReachable(props.site)) return 'En ligne'
   if (props.site.status === 'unavailable') return 'Hors ligne'
   if (props.site.status === 'failed') return 'Échec'
   return props.site.status
 })
 
-const statusClass = computed(() => {
-  if (isDemoSiteReachable(props.site)) {
+const statusClass: ComputedRef<string> = computed(() => {
+  if (DemoSiteService.isDemoSiteReachable(props.site)) {
     return 'bg-[var(--app-green)]/20 text-[var(--app-green)]'
   }
   if (props.site.status === 'failed') return 'bg-red-500/20 text-red-300'
   return 'bg-amber-500/20 text-amber-300'
 })
 
-const templateLabel = computed(() => {
+const templateLabel: ComputedRef<string> = computed(() => {
   const labels: Record<string, string> = {
     'plumber-cuivre': 'Plombier Source',
     'electrician-lumen': 'Électricien Lumen',
@@ -100,10 +105,16 @@ const templateLabel = computed(() => {
   return labels[props.site.template_id] ?? props.site.template_id
 })
 
+/**
+ * Format an ISO date for display in the card.
+ */
 function formatDate(value: string): string {
   return new Date(value).toLocaleDateString('fr-FR', { dateStyle: 'medium' })
 }
 
+/**
+ * Copy the demo URL and show a short confirmation state.
+ */
 async function copyDemoUrl(url: string): Promise<void> {
   emit('copy', url)
   copied.value = true
@@ -112,6 +123,9 @@ async function copyDemoUrl(url: string): Promise<void> {
   }, 2000)
 }
 
+/**
+ * Open the demo URL in a new browser tab.
+ */
 async function openDemoUrl(url: string): Promise<void> {
   emit('open', url)
 }

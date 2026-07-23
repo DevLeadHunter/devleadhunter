@@ -1,13 +1,10 @@
 <template>
   <Teleport to="body">
-    <!-- Pas de backdrop : drawer non-modal (navigation possible pendant qu'il
-         est ouvert), fermeture par X / Échap. -->
     <Transition name="drawer-panel">
       <div
         v-if="open"
         class="fixed top-0 right-0 z-50 flex h-dvh w-full max-w-[480px] flex-col border-l border-[var(--app-line)] bg-[var(--app-surface)] shadow-2xl"
       >
-        <!-- ───────────────────────── Header ───────────────────────── -->
         <div class="flex items-start gap-3 border-b border-[var(--app-line)] px-5 py-4">
           <button
             v-if="showBack"
@@ -39,7 +36,6 @@
           </button>
         </div>
 
-        <!-- ───────────────────────── Body ────────────────────────── -->
         <form
           id="create-campaign-form"
           class="flex-1 space-y-5 overflow-y-auto px-5 py-4"
@@ -71,26 +67,14 @@
             ></textarea>
           </div>
 
-          <!-- ── Modèles d'email ─────────────────────────────────── -->
           <div class="space-y-3">
             <p class="text-muted text-[11px] font-medium tracking-wide uppercase">Modèles d'email</p>
 
-            <!-- Variante A -->
             <div>
-              <div class="mb-1.5 flex items-center justify-between">
-                <label class="text-muted text-xs font-medium">
-                  Variante A
-                  <span class="font-normal text-[var(--app-faint)]">— envoi initial</span>
-                </label>
-                <button
-                  type="button"
-                  class="flex items-center gap-1 text-[11px] text-[var(--app-ink-soft)] transition-colors hover:text-[var(--app-ink)]"
-                  @click="openCreateTemplate('a')"
-                >
-                  <UIcon name="i-lucide-plus" class="h-3 w-3" />
-                  Créer un modèle
-                </button>
-              </div>
+              <label class="text-muted mb-1.5 block text-xs font-medium">
+                Variante A
+                <span class="font-normal text-[var(--app-faint)]">— envoi initial</span>
+              </label>
               <div v-if="isLoadingTemplates" class="flex h-9 items-center gap-2 text-xs text-[var(--app-ink-soft)]">
                 <UIcon name="i-lucide-loader-circle" class="h-3.5 w-3.5 animate-spin" />
                 Chargement…
@@ -99,26 +83,17 @@
                 v-else
                 :model-value="form.templateIdA"
                 :templates="templates"
+                allow-create
                 @update:model-value="form.templateIdA = $event"
+                @create="openCreateTemplate('a')"
               />
             </div>
 
-            <!-- Variante B -->
             <div>
-              <div class="mb-1.5 flex items-center justify-between">
-                <label class="text-muted text-xs font-medium">
-                  Variante B
-                  <span class="font-normal text-[var(--app-faint)]">— test A/B, optionnel</span>
-                </label>
-                <button
-                  type="button"
-                  class="flex items-center gap-1 text-[11px] text-[var(--app-ink-soft)] transition-colors hover:text-[var(--app-ink)]"
-                  @click="openCreateTemplate('b')"
-                >
-                  <UIcon name="i-lucide-plus" class="h-3 w-3" />
-                  Créer un modèle
-                </button>
-              </div>
+              <label class="text-muted mb-1.5 block text-xs font-medium">
+                Variante B
+                <span class="font-normal text-[var(--app-faint)]">— test A/B, optionnel</span>
+              </label>
               <div v-if="isLoadingTemplates" class="flex h-9 items-center gap-2 text-xs text-[var(--app-ink-soft)]">
                 <UIcon name="i-lucide-loader-circle" class="h-3.5 w-3.5 animate-spin" />
                 Chargement…
@@ -127,13 +102,14 @@
                 v-else
                 :model-value="form.templateIdB"
                 :templates="templates"
+                allow-create
                 @update:model-value="form.templateIdB = $event"
+                @create="openCreateTemplate('b')"
               />
             </div>
           </div>
         </form>
 
-        <!-- ───────────────────────── Footer ─────────────────────── -->
         <div class="flex gap-2 border-t border-[var(--app-line)] px-5 py-4">
           <button type="button" class="btn-secondary flex-1" :disabled="isCreating" @click="emit('close')">
             Annuler
@@ -154,28 +130,19 @@
 </template>
 
 <script lang="ts" setup>
-import type { Ref } from 'vue'
+import type { UseToastReturn } from '~/types/Composables'
+import type { CreateCampaignForm, UiCreateCampaignDrawerEmits } from '~/types/UiCreateCampaignDrawer'
+import type { EmitFn, Ref } from 'vue'
 import { ref, watch } from 'vue'
 import type { EmailTemplate } from '~/types'
+import type { UiDrawerProps } from '~/types/UiDrawer'
 import { useCampaignsStore } from '~/stores/campaigns'
 import { useDrawerStackStore } from '~/stores/drawerStack'
 import { useToast } from '~/composables/useToast'
-import { getEmailTemplates } from '~/services/emailTemplatesService'
+import { EmailTemplatesService } from '~/services/emailTemplatesService'
 
-/** Local shape of the campaign creation form. */
-interface CreateCampaignForm {
-  name: string
-  description: string
-  /** Template ID for variant A (0 = none selected). */
-  templateIdA: number
-  /** Template ID for variant B / A/B test (0 = none). */
-  templateIdB: number
-}
-
-/**
- * Defines the component props.
- */
-const props = defineProps({
+/** Drawer to create an email campaign. */
+const props: UiDrawerProps = defineProps({
   open: {
     type: Boolean,
     required: true,
@@ -186,31 +153,26 @@ const props = defineProps({
   },
 })
 
-const emit = defineEmits<{
-  /** Close every drawer. */
-  close: []
-  /** Go back to the previous drawer of the stack. */
-  back: []
-}>()
+const emit: EmitFn<UiCreateCampaignDrawerEmits> = defineEmits<UiCreateCampaignDrawerEmits>()
 
-const campaignsStore = useCampaignsStore()
-const drawerStack = useDrawerStackStore()
-const toast = useToast()
+const campaignsStore: ReturnType<typeof useCampaignsStore> = useCampaignsStore()
+const drawerStack: ReturnType<typeof useDrawerStackStore> = useDrawerStackStore()
+const toast: UseToastReturn = useToast()
 
 /** Whether the create request is in flight. */
-const isCreating: Ref<boolean> = ref<boolean>(false)
+const isCreating: Ref<boolean> = ref(false)
 
 /** Whether the template list is being fetched. */
-const isLoadingTemplates: Ref<boolean> = ref<boolean>(false)
+const isLoadingTemplates: Ref<boolean> = ref(false)
 
 /** Available email templates for the select fields. */
-const templates: Ref<EmailTemplate[]> = ref<EmailTemplate[]>([])
+const templates: Ref<EmailTemplate[]> = ref([])
 
 /** Which template slot triggered the last "Créer un modèle" click. */
-const pendingTemplateSlot: Ref<'a' | 'b' | null> = ref<'a' | 'b' | null>(null)
+const pendingTemplateSlot: Ref<'a' | 'b' | null> = ref(null)
 
 /** Campaign creation form state. */
-const form: Ref<CreateCampaignForm> = ref<CreateCampaignForm>({
+const form: Ref<CreateCampaignForm> = ref({
   name: '',
   description: '',
   templateIdA: 0,
@@ -231,7 +193,7 @@ let stackLengthWhenHidden: number = 0
 async function loadTemplates(): Promise<void> {
   isLoadingTemplates.value = true
   try {
-    templates.value = await getEmailTemplates()
+    templates.value = await EmailTemplatesService.getEmailTemplates()
   } catch {
     // Non-critical — the selects will remain empty.
   } finally {
@@ -272,8 +234,7 @@ async function handleCreate(): Promise<void> {
   }
 }
 
-// Reset and reload only on fresh open (stack was empty before we were pushed),
-// NOT when returning from a nested drawer like the email-template creator.
+// Only on a fresh open: returning from a nested drawer must not reset the form.
 watch(
   (): boolean => props.open,
   (open: boolean): void => {
@@ -289,8 +250,7 @@ watch(
   },
 )
 
-// When a template is saved from the nested email-template drawer, refresh the
-// list and auto-select the new template in whichever slot triggered the action.
+// Auto-selects the new template in whichever slot opened the nested drawer.
 watch(
   (): number => drawerStack.emailTemplatesRefreshCounter,
   async (): Promise<void> => {

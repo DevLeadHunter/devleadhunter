@@ -2,7 +2,7 @@
 from datetime import datetime
 from typing import Any, Optional
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 
 class ProspectEnrichmentResponse(BaseModel):
@@ -45,7 +45,7 @@ class ProspectEnrichmentResponse(BaseModel):
         """A NULL social_links column from the DB is exposed as an empty dict."""
         return {} if value is None else value
 
-    model_config = {"from_attributes": True}
+    model_config = ConfigDict(from_attributes=True)
 
 
 class ProspectEnrichmentUpdate(BaseModel):

@@ -5,7 +5,6 @@
       isOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0',
     ]"
   >
-    <!-- Brand + module switcher -->
     <div class="border-b border-[var(--app-line)] px-4 pt-4 pb-3">
       <div class="flex items-center gap-2.5 px-1">
         <svg
@@ -23,7 +22,6 @@
         <span class="text-sm font-semibold tracking-tight text-[var(--app-ink)]">devleadhunter</span>
       </div>
 
-      <!-- Module switcher — the shell is built for three activatable modules -->
       <div class="relative mt-2.5">
         <div v-if="showModuleMenu" class="fixed inset-0 z-40" @click="showModuleMenu = false"></div>
         <button
@@ -61,7 +59,6 @@
       </div>
     </div>
 
-    <!-- Primary action -->
     <div class="px-4 pt-3">
       <NuxtLink to="/dashboard/automations/new" class="app-btn-primary h-8 min-h-8 w-full text-xs" @click="handleClick">
         <UIcon name="i-lucide-plus" class="h-3.5 w-3.5" />
@@ -69,7 +66,6 @@
       </NuxtLink>
     </div>
 
-    <!-- Command palette trigger -->
     <div class="px-4 pt-2">
       <button
         type="button"
@@ -88,75 +84,46 @@
       </button>
     </div>
 
-    <!-- Navigation -->
     <nav class="flex flex-1 flex-col overflow-y-auto px-4 py-3">
-      <!-- Administration sub-panel (replaces main menu, Vercel-style) -->
-      <template v-if="isAdmin && showAdminPanel">
+      <template v-if="showSettingsPanel">
         <button
           type="button"
           class="mb-3 flex w-full cursor-pointer items-center gap-2 rounded-lg px-2 py-2 text-sm font-semibold text-[var(--app-ink)] transition-colors hover:bg-[var(--app-surface-2)]"
-          @click="handleAdminBack"
+          @click="closeSettingsPanel"
         >
           <UIcon name="i-lucide-chevron-left" class="h-3.5 w-3.5 text-[var(--app-ink-soft)]" />
           <span>Menu principal</span>
         </button>
-        <div class="space-y-0.5">
-          <NuxtLink
-            v-for="link in adminLinks"
-            :key="link.to"
-            :to="link.to"
-            :class="navItemClass(isLinkActive(link.to))"
-            @click="handleClick"
-          >
-            <span :class="navBarClass(isLinkActive(link.to))"></span>
-            <UIcon v-if="link.icon.startsWith('i-')" :name="link.icon" class="h-4 w-4 shrink-0" />
-            <i v-else :class="link.icon" class="h-4 w-4 shrink-0"></i>
-            <span class="truncate">{{ link.label }}</span>
-          </NuxtLink>
+        <div v-for="group in settingsGroups" :key="group.heading" class="mb-4 last:mb-0">
+          <p class="app-label mb-1.5 px-3 !text-[0.6rem]">{{ group.heading }}</p>
+          <div class="space-y-0.5">
+            <template v-for="entry in group.entries" :key="entry.kind === 'link' ? entry.to : entry.action">
+              <NuxtLink
+                v-if="entry.kind === 'link'"
+                :to="entry.to"
+                :class="navItemClass(isSettingsLinkActive(entry.to))"
+                @click="handleClick"
+              >
+                <span :class="navBarClass(isSettingsLinkActive(entry.to))"></span>
+                <UIcon :name="entry.icon" class="h-4 w-4 shrink-0" />
+                <span class="truncate">{{ entry.label }}</span>
+              </NuxtLink>
+              <button
+                v-else
+                type="button"
+                class="w-full"
+                :class="navItemClass(false)"
+                @click="handleSettingsAction(entry.action)"
+              >
+                <span :class="navBarClass(false)"></span>
+                <UIcon :name="entry.icon" class="h-4 w-4 shrink-0" />
+                <span>{{ entry.label }}</span>
+              </button>
+            </template>
+          </div>
         </div>
       </template>
 
-      <!-- Paramètres sub-panel -->
-      <template v-else-if="showSettingsPanel">
-        <button
-          type="button"
-          class="mb-3 flex w-full cursor-pointer items-center gap-2 rounded-lg px-2 py-2 text-sm font-semibold text-[var(--app-ink)] transition-colors hover:bg-[var(--app-surface-2)]"
-          @click="showSettingsPanel = false"
-        >
-          <UIcon name="i-lucide-chevron-left" class="h-3.5 w-3.5 text-[var(--app-ink-soft)]" />
-          <span>Menu principal</span>
-        </button>
-        <NuxtLink to="/configuration" :class="navItemClass(isActive('/configuration'))" @click="handleClick">
-          <span :class="navBarClass(isActive('/configuration'))"></span>
-          <UIcon name="i-lucide-rocket" class="h-4 w-4 shrink-0" />
-          <span>Mise en route</span>
-        </NuxtLink>
-        <NuxtLink
-          to="/dashboard/settings/sending"
-          :class="navItemClass(isActive('/dashboard/settings/sending'))"
-          @click="handleClick"
-        >
-          <span :class="navBarClass(isActive('/dashboard/settings/sending'))"></span>
-          <UIcon name="i-lucide-mail-open" class="h-4 w-4 shrink-0" />
-          <span>Configuration d'envoi</span>
-        </NuxtLink>
-        <NuxtLink
-          to="/dashboard/settings/video"
-          :class="navItemClass(isActive('/dashboard/settings/video'))"
-          @click="handleClick"
-        >
-          <span :class="navBarClass(isActive('/dashboard/settings/video'))"></span>
-          <UIcon name="i-lucide-video" class="h-4 w-4 shrink-0" />
-          <span>Vidéo de prospection</span>
-        </NuxtLink>
-        <button type="button" class="w-full" :class="navItemClass(false)" @click="handleSendPolicyFromMenu">
-          <span :class="navBarClass(false)"></span>
-          <UIcon name="i-lucide-sliders-horizontal" class="h-4 w-4 shrink-0" />
-          <span>Réglages d'envoi</span>
-        </button>
-      </template>
-
-      <!-- Main grouped menu -->
       <template v-else>
         <div v-for="group in navGroups" :key="group.heading ?? 'top'" class="mb-4 last:mb-0">
           <p v-if="group.heading" class="app-label mb-1.5 px-3 !text-[0.6rem]">{{ group.heading }}</p>
@@ -175,41 +142,20 @@
           </div>
         </div>
 
-        <!-- Réglages (Paramètres + Administration) -->
         <div class="mb-4">
           <p class="app-label mb-1.5 px-3 !text-[0.6rem]">Réglages</p>
           <div class="space-y-0.5">
-            <button
-              type="button"
-              :class="navItemClass(showSettingsPanel)"
-              class="w-full"
-              @click="showSettingsPanel = true"
-            >
+            <button type="button" :class="navItemClass(false)" class="w-full" @click="openSettingsPanel">
               <span :class="navBarClass(false)"></span>
               <UIcon name="i-lucide-settings" class="h-4 w-4 shrink-0" />
               <span>Paramètres</span>
               <UIcon name="i-lucide-chevron-right" class="ml-auto h-3.5 w-3.5 opacity-50" />
             </button>
-
-            <button
-              v-if="isAdmin"
-              type="button"
-              :class="navItemClass(isAdminNavActive)"
-              class="w-full"
-              @click="handleAdminClick"
-            >
-              <span :class="navBarClass(isAdminNavActive)"></span>
-              <UIcon name="i-lucide-shield" class="h-4 w-4 shrink-0" />
-              <span>Administration</span>
-              <UIcon name="i-lucide-chevron-right" class="ml-auto h-3.5 w-3.5 opacity-50" />
-            </button>
           </div>
         </div>
 
-        <!-- Credits (admin only) — pinned at the very bottom of the menu (mt-auto;
-             the nav keeps its own bottom padding so the card never sticks to the edge) -->
         <NuxtLink
-          v-if="!isMobile && isAdmin"
+          v-if="!isMobile"
           to="/dashboard/buy-credits"
           class="group mt-auto flex items-center justify-between rounded-lg border border-[var(--app-line)] bg-[var(--app-bg)] px-3 py-2 transition-colors hover:border-[var(--app-ink-soft)]"
         >
@@ -233,11 +179,9 @@
       </template>
     </nav>
 
-    <!-- Footer: user menu (Profil / Thème / Déconnexion) -->
     <div class="relative border-t border-[var(--app-line)] px-4 py-3">
       <div v-if="showUserMenu" class="fixed inset-0 z-40" @click="showUserMenu = false"></div>
 
-      <!-- Menu (opens above the user block) -->
       <div
         v-if="showUserMenu"
         class="app-card absolute inset-x-4 bottom-full z-50 mb-1.5 p-1 shadow-[var(--app-shadow-soft)]"
@@ -282,7 +226,6 @@
 
         <div class="my-1 border-t border-[var(--app-line)]"></div>
 
-        <!-- Lien vers l'app de bureau — inutile quand on est déjà dans le desktop. -->
         <NuxtLink
           v-if="!isDesktopApp"
           to="/downloads"
@@ -304,7 +247,6 @@
         </button>
       </div>
 
-      <!-- User block (menu trigger) -->
       <button
         class="group flex w-full cursor-pointer items-center gap-2.5 rounded-lg px-2 py-2 text-left transition-colors hover:bg-[var(--app-surface-2)]"
         :aria-expanded="showUserMenu"
@@ -325,7 +267,6 @@
     </div>
   </aside>
 
-  <!-- Overlay for mobile -->
   <div
     v-if="isOpen && isMobile"
     class="fixed inset-0 z-30 bg-[var(--app-overlay)] md:hidden"
@@ -333,7 +274,8 @@
   />
 </template>
 
-<script setup lang="ts">
+<script lang="ts" setup>
+import type { UseToastReturn } from '~/types/Composables'
 import type { ComputedRef, Ref } from 'vue'
 import type { AppTheme } from '~/types/AppTheme'
 import type { DlhModuleEntry, UiSidebarGroup, UiSidebarProps } from '~/types/UiSidebar'
@@ -345,9 +287,7 @@ import { useCommandPalette } from '~/composables/useCommandPalette'
 import { useDrawerStackStore } from '~/stores/drawerStack'
 import { useToast } from '~/composables/useToast'
 
-/**
- * Defines the component props.
- */
+/** Dashboard sidebar shell with nav groups and user menu. */
 const props: UiSidebarProps = defineProps({
   isOpen: {
     type: Boolean,
@@ -359,14 +299,16 @@ const props: UiSidebarProps = defineProps({
   },
 })
 
-const emit = defineEmits<{
+const emit: {
+  (e: 'toggle'): void
+} = defineEmits<{
   (e: 'toggle'): void
 }>()
 
 /** User store instance. */
-const userStore = useUserStore()
+const userStore: ReturnType<typeof useUserStore> = useUserStore()
 
-const toast = useToast()
+const toast: UseToastReturn = useToast()
 
 const { logout } = useAuth()
 
@@ -376,35 +318,24 @@ const { theme, toggleTheme } = useAppTheme()
 const commandPalette = useCommandPalette()
 
 /** Persistent drawer stack — the profile entry opens from the user menu. */
-const drawerStack = useDrawerStackStore()
+const drawerStack: ReturnType<typeof useDrawerStackStore> = useDrawerStackStore()
 
 /** Tauri desktop detection → hide the "download the app" link when already in the desktop app. */
 const { isDesktopApp } = useDesktopRuntime()
 
 const {
-  isAdmin,
-  isAdminNavOpen,
-  isAdminNavActive,
-  isMobileAdminPanel,
-  adminLinks,
-  openAdminNav,
-  closeAdminNav,
-  isLinkActive,
-} = useAdminNav()
-
-/** Whether the Administration sub-panel replaces the main sidebar menu. */
-const showAdminPanel: ComputedRef<boolean> = computed((): boolean => {
-  return props.isMobile ? isMobileAdminPanel.value : isAdminNavOpen.value
-})
-
-/** Whether the Settings sub-panel is currently open. */
-const showSettingsPanel: Ref<boolean> = ref<boolean>(false)
+  showSettingsPanel,
+  settingsGroups,
+  openSettingsPanel,
+  closeSettingsPanel,
+  isLinkActive: isSettingsLinkActive,
+} = useSettingsNav()
 
 /** Whether the module switcher menu is open. */
-const showModuleMenu: Ref<boolean> = ref<boolean>(false)
+const showModuleMenu: Ref<boolean> = ref(false)
 
 /** Whether the user account menu (Profil / Thème / Déconnexion) is open. */
-const showUserMenu: Ref<boolean> = ref<boolean>(false)
+const showUserMenu: Ref<boolean> = ref(false)
 
 /** The three product modules of DevLeadHunter (only websites is live today). */
 const modules: DlhModuleEntry[] = [
@@ -413,69 +344,30 @@ const modules: DlhModuleEntry[] = [
   { key: 'freelance-missions', label: 'Missions freelance', icon: 'i-lucide-briefcase-business', locked: true },
 ]
 
+const navGroups: UiSidebarGroup[] = [
+  {
+    heading: 'Pilotage',
+    links: [
+      { to: '/dashboard', label: 'Tableau de bord', icon: 'i-lucide-layout-dashboard' },
+      { to: '/dashboard/automations', label: 'Automatisations', icon: 'i-lucide-workflow' },
+    ],
+  },
+  {
+    heading: 'Prospection',
+    links: [
+      { to: '/dashboard/my-prospects', label: 'Mes prospects', icon: 'i-lucide-users' },
+      { to: '/dashboard/coverage', label: 'Carte de prospection', icon: 'i-lucide-map' },
+      { to: '/dashboard/demo-sites', label: 'Sites démo', icon: 'i-lucide-app-window' },
+      { to: '/dashboard/campaigns', label: 'Campagnes', icon: 'i-lucide-megaphone' },
+      { to: '/dashboard/emails', label: 'Suivi des emails', icon: 'i-lucide-send' },
+      { to: '/dashboard/orders', label: 'Ventes', icon: 'i-lucide-banknote' },
+    ],
+  },
+]
+
 /** Label of the currently active module. */
 const activeModuleLabel: ComputedRef<string> = computed((): string => {
   return modules.find((moduleEntry: DlhModuleEntry): boolean => !moduleEntry.locked)?.label ?? 'Sites web'
-})
-
-/**
- * Handle a click on a module entry: locked modules announce their arrival,
- * the active one simply closes the menu.
- * @param moduleEntry - The clicked module.
- */
-function handleModuleClick(moduleEntry: DlhModuleEntry): void {
-  showModuleMenu.value = false
-  if (moduleEntry.locked) {
-    toast.info(`Le module « ${moduleEntry.label} » arrive bientôt.`)
-  }
-}
-
-/** Grouped navigation of the websites module. */
-const navGroups: ComputedRef<UiSidebarGroup[]> = computed((): UiSidebarGroup[] => {
-  const groups: UiSidebarGroup[] = [
-    {
-      heading: 'Pilotage',
-      links: [
-        { to: '/dashboard', label: 'Tableau de bord', icon: 'i-lucide-layout-dashboard' },
-        { to: '/dashboard/automations', label: 'Automatisations', icon: 'i-lucide-workflow' },
-      ],
-    },
-    {
-      heading: 'Prospection',
-      links: [
-        { to: '/dashboard/my-prospects', label: 'Mes prospects', icon: 'i-lucide-users' },
-        { to: '/dashboard/coverage', label: 'Carte de prospection', icon: 'i-lucide-map' },
-      ],
-    },
-    {
-      heading: 'Production',
-      links: [{ to: '/dashboard/demo-sites', label: 'Sites démo', icon: 'i-lucide-app-window' }],
-    },
-    {
-      heading: 'Campagnes',
-      links: [
-        { to: '/dashboard/campaigns', label: 'Campagnes', icon: 'i-lucide-megaphone' },
-        { to: '/dashboard/emails', label: 'Suivi des emails', icon: 'i-lucide-send' },
-        { to: '/dashboard/email-templates', label: "Modèles d'email", icon: 'i-lucide-layout-template' },
-        { to: '/dashboard/email-health', label: 'Santé email', icon: 'i-lucide-heart-pulse' },
-      ],
-    },
-    {
-      heading: 'Ventes',
-      links: [{ to: '/dashboard/orders', label: 'Ventes', icon: 'i-lucide-banknote' }],
-    },
-  ]
-
-  // Support stays available to regular users in the main menu (admins have it
-  // in the Administration panel).
-  if (!isAdmin.value) {
-    groups.push({
-      heading: 'Aide',
-      links: [{ to: '/dashboard/support', label: 'Support', icon: 'i-lucide-life-buoy' }],
-    })
-  }
-
-  return groups
 })
 
 /** User display name. */
@@ -521,6 +413,17 @@ const creditDotColor: ComputedRef<string> = computed((): string => {
 })
 
 /**
+ * Handle a click on a module entry: locked modules announce their arrival.
+ * @param moduleEntry - The clicked module.
+ */
+function handleModuleClick(moduleEntry: DlhModuleEntry): void {
+  showModuleMenu.value = false
+  if (moduleEntry.locked) {
+    toast.info(`Le module « ${moduleEntry.label} » arrive bientôt.`)
+  }
+}
+
+/**
  * Classes of a navigation row for a given active state.
  * @param active - Whether the row matches the current route.
  * @returns Tailwind classes for the row.
@@ -540,7 +443,7 @@ function navItemClass(active: boolean): string {
  * @returns Tailwind classes for the indicator.
  */
 function navBarClass(active: boolean): string {
-  const base = 'absolute top-1/2 left-1 h-4 w-0.5 -translate-y-1/2 rounded-full transition-colors'
+  const base: string = 'absolute top-1/2 left-1 h-4 w-0.5 -translate-y-1/2 rounded-full transition-colors'
   return active ? `${base} bg-[var(--app-accent)]` : `${base} bg-transparent`
 }
 
@@ -550,7 +453,7 @@ function navBarClass(active: boolean): string {
  * @returns Tailwind classes for the segment.
  */
 function themeButtonClass(value: AppTheme): string {
-  const base = 'flex h-6 w-6 cursor-pointer items-center justify-center rounded-full transition-colors'
+  const base: string = 'flex h-6 w-6 cursor-pointer items-center justify-center rounded-full transition-colors'
   if (theme.value === value) {
     return `${base} bg-[var(--app-ink)] text-[var(--app-surface)]`
   }
@@ -573,7 +476,7 @@ function setTheme(value: AppTheme): void {
  * @returns True if the route is active.
  */
 function isActive(path: string): boolean {
-  const route = useRoute()
+  const route: ReturnType<typeof useRoute> = useRoute()
   if (route.path === path) return true
   if (path !== '/dashboard' && route.path.startsWith(path + '/')) return true
   return false
@@ -589,17 +492,14 @@ function handleClick(): void {
 }
 
 /**
- * Close the Administration sub-panel and return to the main menu.
+ * Handle a settings sub-panel action entry (opens the matching drawer).
+ * @param action - The action key of the settings entry.
  */
-function handleAdminBack(): void {
-  closeAdminNav(props.isMobile)
-}
-
-/**
- * Open the Administration sub-panel inside the sidebar.
- */
-function handleAdminClick(): void {
-  openAdminNav(props.isMobile)
+function handleSettingsAction(action: 'send-policy'): void {
+  if (action === 'send-policy') {
+    drawerStack.push({ kind: 'send-policy' })
+  }
+  handleClick()
 }
 
 /**
@@ -617,14 +517,6 @@ function handleProfileFromMenu(): void {
 function handleOrganizationFromMenu(): void {
   showUserMenu.value = false
   drawerStack.push({ kind: 'organization' })
-  handleClick()
-}
-
-/**
- * Open the send-policy (email cadence) drawer from the Paramètres panel.
- */
-function handleSendPolicyFromMenu(): void {
-  drawerStack.push({ kind: 'send-policy' })
   handleClick()
 }
 

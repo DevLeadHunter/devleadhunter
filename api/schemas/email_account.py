@@ -3,7 +3,7 @@ Pydantic schemas for email accounts.
 """
 from datetime import datetime
 from typing import Optional
-from pydantic import BaseModel, EmailStr, Field
+from pydantic import BaseModel, ConfigDict, EmailStr, Field
 
 from enums.email_account_type import EmailAccountType
 
@@ -37,6 +37,9 @@ class EmailAccountUpdate(BaseModel):
 
 class EmailAccountResponse(BaseModel):
     """Schema for email account response."""
+
+    model_config = ConfigDict(from_attributes=True)
+
     id: int
     user_id: int
     email: str
@@ -56,9 +59,6 @@ class EmailAccountResponse(BaseModel):
     
     created_at: datetime
     updated_at: Optional[datetime] = None
-    
-    class Config:
-        from_attributes = True
 
 
 class GmailAuthUrlResponse(BaseModel):

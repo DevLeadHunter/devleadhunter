@@ -19,7 +19,7 @@ from schemas.email_account import (
     DNSVerificationResponse
 )
 from services.auth_service import get_current_user
-from services.dns_service import verify_domain_dns
+from services.dns_service import sending_domain_dns_service
 from services.gmail_oauth_service import GmailOAuthService
 from services.encryption_service import encryption_service
 from enums.email_account_type import EmailAccountType
@@ -152,8 +152,11 @@ async def get_gmail_auth_url(
 def _sending_settings_redirect(outcome: str) -> RedirectResponse:
     """Build a redirect back to the unified sending-config page with an outcome flag.
 
-    @param outcome - ``connected`` on success, otherwise an error slug.
-    @returns A 302 redirect to ``/dashboard/settings/sending?gmail=<outcome>``.
+    Args:
+        outcome: ``connected`` on success, otherwise an error slug.
+
+    Returns:
+        A 302 redirect to ``/dashboard/settings/sending?gmail=<outcome>``.
     """
     base = (getattr(settings, "frontend_url", "") or "http://localhost:3000").rstrip("/")
     return RedirectResponse(url=f"{base}/dashboard/settings/sending?gmail={outcome}")
@@ -262,7 +265,7 @@ async def verify_dns_records(
         )
     
     # Verify DNS (real SPF/DKIM lookups)
-    verification_result = await verify_domain_dns(account.domain)
+    verification_result = await sending_domain_dns_service.verify_domain(account.domain)
     
     # Update account verification status
     account.spf_verified = verification_result["spf_verified"]

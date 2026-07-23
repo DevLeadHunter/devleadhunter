@@ -23,12 +23,9 @@ export const FRANCE_REGIONS: Readonly<Record<string, string>> = {
 }
 
 /** A major French city suggested as a prospection target. */
-export interface FranceMajorCity {
-  /** Display name. */
+export type FranceMajorCity = {
   name: string
-  /** Department code (« 69 », « 2A »…). */
   dept: string
-  /** INSEE region code (keys of FRANCE_REGIONS). */
   region: string
 }
 
@@ -37,7 +34,7 @@ export interface FranceMajorCity {
  * « villes jamais prospectées » — ordered by rough population so the biggest
  * opportunities come first.
  */
-export const FRANCE_MAJOR_CITIES: ReadonlyArray<FranceMajorCity> = [
+export const FRANCE_MAJOR_CITIES: FranceMajorCity[] = [
   { name: 'Paris', dept: '75', region: '11' },
   { name: 'Marseille', dept: '13', region: '93' },
   { name: 'Lyon', dept: '69', region: '84' },

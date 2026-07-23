@@ -19,11 +19,11 @@
   </div>
 </template>
 
-<script setup lang="ts">
+<script lang="ts" setup>
 import type { CreditSettings } from '~/types'
 import type { Ref } from 'vue'
 import { ref, onMounted } from 'vue'
-import * as creditSettingsService from '~/services/creditSettingsService'
+import { CreditSettingsService } from '~/services/creditSettingsService'
 
 /**
  * Landing page — marketing presentation of DevLeadHunter.
@@ -40,10 +40,10 @@ const { t } = useI18n()
 const { track } = useSiteTracking()
 
 /** Credit settings fetched from the API (null while loading or on error). */
-const creditSettings: Ref<CreditSettings | null> = ref<CreditSettings | null>(null)
+const creditSettings: Ref<CreditSettings | null> = ref(null)
 
 /** Whether the credit settings request is in flight. */
-const isLoading: Ref<boolean> = ref<boolean>(true)
+const isLoading: Ref<boolean> = ref(true)
 
 /**
  * Load credit settings from the API for the pricing section.
@@ -51,7 +51,7 @@ const isLoading: Ref<boolean> = ref<boolean>(true)
 async function loadCreditSettings(): Promise<void> {
   try {
     isLoading.value = true
-    creditSettings.value = await creditSettingsService.getCreditSettings()
+    creditSettings.value = await CreditSettingsService.getCreditSettings()
   } catch (error) {
     console.error('Failed to load credit settings:', error)
   } finally {
@@ -66,7 +66,7 @@ async function loadCreditSettings(): Promise<void> {
 function scrollToSection(selector: string): void {
   const element: Element | null = document.querySelector(selector)
   if (element) {
-    const headerOffset = 80
+    const headerOffset: number = 80
     const elementPosition: number = element.getBoundingClientRect().top
     const offsetPosition: number = elementPosition + window.pageYOffset - headerOffset
     window.scrollTo({ top: offsetPosition, behavior: 'smooth' })
@@ -100,8 +100,6 @@ onMounted(async (): Promise<void> => {
   await loadCreditSettings()
 })
 
-// SEO meta — localized title/description, social cards and JSON-LD.
-// (canonical, hreflang alternates and <html lang> are set by the marketing layout)
 useHead(() => ({
   title: t('landing.seo.title'),
   meta: [

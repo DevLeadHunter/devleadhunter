@@ -1,9 +1,12 @@
 import type { EmailStatus } from '~/types'
 
-/**
- * Props for the EmailStatusBadge component.
- */
-export interface EmailStatusBadgeProps {
-  /** Email status value from the backend EmailStatus enum. */
+export type EmailStatusBadgeProps = {
   status: EmailStatus
+}
+
+export type EmailStatusPresentation = {
+  label: string
+  icon: string
+  variant: string
+  spin?: boolean
 }

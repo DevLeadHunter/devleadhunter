@@ -1,28 +1,19 @@
-import type { LoginCredentials, SignupData } from '~/types'
+import type { UseAuthReturn, UseToastReturn } from '~/types/Composables'
+import type { LoginCredentials, SignupPayload } from '~/types'
+import { useToast } from '~/composables/useToast'
 
 /**
- * Composable for authentication operations
- * @module composables/useAuth
+ * Auth facade over `useUserStore` — handles navigation and toasts after login/signup/logout.
+ * @returns Store-backed auth actions and reactive session state.
  */
-
-/**
- * Use authentication composable
- * @returns {object} Authentication methods and state
- * @example
- * ```typescript
- * const { login, signup, logout, isAuthenticated } = useAuth();
- * await login({ email: 'user@example.com', password: 'password' });
- * ```
- */
-export function useAuth() {
-  const userStore = useUserStore()
-  const router = useRouter()
-  const toast = useToast()
+export function useAuth(): UseAuthReturn {
+  const userStore: ReturnType<typeof useUserStore> = useUserStore()
+  const router: ReturnType<typeof useRouter> = useRouter()
+  const toast: UseToastReturn = useToast()
 
   /**
-   * Handle login
-   * @param {LoginCredentials} credentials - Login credentials
-   * @returns {Promise<void>} Promise that resolves when login is complete
+   * Log in and redirect to the dashboard.
+   * @param credentials - Email and password.
    */
   const login = async (credentials: LoginCredentials): Promise<void> => {
     try {
@@ -35,11 +26,10 @@ export function useAuth() {
   }
 
   /**
-   * Handle signup — a brand new account goes through the setup wizard first.
-   * @param {SignupData} data - Signup data
-   * @returns {Promise<void>} Promise that resolves when signup is complete
+   * Sign up and redirect to the setup wizard.
+   * @param data - Registration fields.
    */
-  const signup = async (data: SignupData): Promise<void> => {
+  const signup = async (data: SignupPayload): Promise<void> => {
     try {
       await userStore.signup(data)
       router.push('/configuration')
@@ -49,10 +39,7 @@ export function useAuth() {
     }
   }
 
-  /**
-   * Handle logout
-   * @returns {void}
-   */
+  /** Log out, toast, and redirect to the login page. */
   const logout = (): void => {
     userStore.logout()
     toast.success('Logged out successfully')

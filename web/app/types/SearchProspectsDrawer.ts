@@ -1,19 +1,20 @@
 /** Optional values pre-filled into the search form when the drawer opens. */
-export interface SearchProspectsPrefill {
-  /** Trade to search for. */
+export type SearchProspectsPrefill = {
   category?: string
-  /** City to search in. */
   city?: string
 }
 
-/**
- * Props for the UiSearchProspectsDrawer component.
- */
-export interface SearchProspectsDrawerProps {
-  /** Whether the drawer is open. */
+export type SearchProspectsDrawerProps = {
   open: boolean
-  /** Whether to show the "back" affordance (drawer stacked on another). */
   showBack: boolean
-  /** Values applied to the form on open (e.g. « Prospecter » from the coverage map). */
   prefill?: SearchProspectsPrefill | null
+}
+
+export type SearchFormState = {
+  category: string
+  city: string
+  maxResults: number
+  source: string
+  skipDuplicates: boolean
+  onlyWithoutWebsite: boolean
 }

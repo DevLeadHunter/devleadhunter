@@ -2,7 +2,6 @@
   <section id="desktop-app" class="px-5 py-24 md:px-8 md:py-36">
     <div class="mx-auto max-w-6xl">
       <div class="grid items-center gap-14 lg:grid-cols-[1fr_1.15fr] lg:gap-20">
-        <!-- Copy -->
         <div>
           <p v-reveal class="landing-eyebrow">{{ $t('landing.desktop.eyebrow') }}</p>
           <h2
@@ -40,12 +39,10 @@
           </div>
         </div>
 
-        <!-- Desktop app window mockup -->
         <div v-reveal="{ delay: 150 }" class="relative">
           <div
             class="landing-tilt overflow-hidden rounded-2xl border border-[#3a342b] bg-[#1b1813] shadow-[0_32px_64px_-32px_rgba(27,24,19,0.45)]"
           >
-            <!-- Window title bar -->
             <div class="flex items-center gap-2 border-b border-[#3a342b] px-4 py-3.5">
               <span class="h-3 w-3 rounded-full bg-[#e8a33c]/80" aria-hidden="true"></span>
               <span class="h-3 w-3 rounded-full bg-[#4a4438]" aria-hidden="true"></span>
@@ -55,9 +52,7 @@
               </span>
             </div>
 
-            <!-- App body: sidebar + content -->
             <div class="flex">
-              <!-- Sidebar rail -->
               <div class="hidden w-16 flex-col gap-4 border-r border-[#3a342b] p-4 sm:flex" aria-hidden="true">
                 <span class="h-7 w-7 rounded-lg bg-[#e8a33c]/25"></span>
                 <span class="mt-1 h-2.5 w-full rounded-full bg-[#3a342b]"></span>
@@ -66,9 +61,7 @@
                 <span class="h-2.5 w-full rounded-full bg-[#3a342b]"></span>
               </div>
 
-              <!-- Main content -->
               <div class="flex-1 p-6">
-                <!-- KPI row -->
                 <div class="grid grid-cols-3 gap-3">
                   <div
                     v-for="kpi in kpis"
@@ -84,11 +77,10 @@
                   </div>
                 </div>
 
-                <!-- Prospect list skeleton -->
                 <div class="mt-4 space-y-2.5" aria-hidden="true">
                   <div
-                    v-for="row in listRows"
-                    :key="row"
+                    v-for="rowIndex in MOCK_PROSPECT_ROW_COUNT"
+                    :key="rowIndex"
                     class="flex items-center gap-3 rounded-xl border border-[#3a342b] bg-[#262119] px-4 py-3"
                   >
                     <span class="h-7 w-7 shrink-0 rounded-full bg-[#3a342b]"></span>
@@ -103,7 +95,6 @@
             </div>
           </div>
 
-          <!-- Floating platform chip -->
           <p
             class="font-label absolute right-6 -bottom-5 inline-flex rotate-[2deg] items-center gap-2 rounded-full border border-[#e3dccd] bg-[#fcfaf5] px-4 py-2 text-xs text-[#1b1813] shadow-lg md:right-10"
           >
@@ -117,15 +108,9 @@
 </template>
 
 <script lang="ts" setup>
-/** A single KPI tile shown in the desktop app window mockup. */
-interface LandingDesktopKpi {
-  /** i18n key of the KPI label. */
-  labelKey: string
-  /** Decorative display value (aria-hidden, not localized). */
-  value: string
-}
+import type { LandingDesktopKpi } from '~/types/LandingDesktopApp'
 
-const localePath = useLocalePath()
+const localePath: ReturnType<typeof useLocalePath> = useLocalePath()
 const { track } = useSiteTracking()
 
 /** i18n keys of the three benefit bullets under the heading. */
@@ -138,6 +123,5 @@ const kpis: LandingDesktopKpi[] = [
   { labelKey: 'landing.desktop.window.kpiSales', value: '9' },
 ]
 
-/** Number of skeleton rows in the mocked prospect list. */
-const listRows: number[] = [1, 2, 3]
+const MOCK_PROSPECT_ROW_COUNT: number = 3
 </script>

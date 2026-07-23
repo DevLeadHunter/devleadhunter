@@ -15,7 +15,7 @@ from typing import Optional
 from fastapi import HTTPException, UploadFile, status
 
 from core.config import settings
-from services import r2_storage_service
+from services.r2_storage_service import r2_storage
 
 logger = logging.getLogger(__name__)
 
@@ -52,9 +52,14 @@ class SupportStorageService:
         """
         Persist an uploaded file on R2 and return its metadata.
 
-        @param file - Incoming upload (None is a no-op).
-        @returns Stored attachment metadata, or None when no file was given.
-        @throws HTTPException 400/413/500 on invalid format, size or storage failure.
+        Args:
+            file: Incoming upload (None is a no-op).
+
+        Returns:
+            Stored attachment metadata, or None when no file was given.
+
+        Raises:
+            HTTPException: 400/413/500 on invalid format, size or storage failure.
         """
         if file is None:
             return None
@@ -80,10 +85,10 @@ class SupportStorageService:
             )
 
         extension = self._extension_from_content_type(content_type, file.filename)
-        object_key = r2_storage_service.support_key(f"attachment{extension}")
+        object_key = r2_storage.support_key(f"attachment{extension}")
 
         try:
-            await r2_storage_service.upload_bytes_async(object_key, data, content_type)
+            await r2_storage.upload_bytes_async(object_key, data, content_type)
         except Exception as exc:  # noqa: BLE001 — surfaced as a readable API error
             logger.exception("[Support] R2 upload failed for key=%s", object_key)
             raise HTTPException(
@@ -102,8 +107,11 @@ class SupportStorageService:
         """
         Persist multiple uploaded files and return their metadata.
 
-        @param files - Incoming uploads.
-        @returns Metadata of every stored attachment.
+        Args:
+            files: Incoming uploads.
+
+        Returns:
+            Metadata of every stored attachment.
         """
         if not files:
             return []
@@ -119,10 +127,15 @@ class SupportStorageService:
         """
         Infer file extension.
 
-        @param content_type - MIME type of the upload.
-        @param filename - Original filename, used as a fallback.
-        @returns Extension including the leading dot.
-        @throws HTTPException 400 when it cannot be determined.
+        Args:
+            content_type: MIME type of the upload.
+            filename: Original filename, used as a fallback.
+
+        Returns:
+            Extension including the leading dot.
+
+        Raises:
+            HTTPException: 400 when it cannot be determined.
         """
         mapping = {
             "image/jpeg": ".jpg",

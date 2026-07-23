@@ -1,6 +1,5 @@
 <template>
   <div class="mx-auto max-w-3xl space-y-6">
-    <!-- Header : retour, sujet, méta compacte -->
     <div>
       <NuxtLink
         to="/dashboard/support"
@@ -40,7 +39,6 @@
     </div>
 
     <template v-else>
-      <!-- Demande initiale : repliée, elle n'écrase pas la conversation -->
       <UiCollapsibleCard icon="i-lucide-file-text" title="La demande initiale">
         <div class="space-y-4 px-4 py-4">
           <p class="text-sm leading-relaxed whitespace-pre-wrap text-[var(--app-ink)]">{{ ticket.description }}</p>
@@ -60,7 +58,6 @@
         </div>
       </UiCollapsibleCard>
 
-      <!-- Conversation -->
       <div class="space-y-5">
         <div v-for="message in ticket.messages" :key="message.id" class="space-y-1.5">
           <p :class="['text-muted flex items-center gap-2 text-xs', isMine(message) ? 'justify-end' : 'justify-start']">
@@ -99,7 +96,6 @@
         </div>
       </div>
 
-      <!-- Réponse -->
       <form class="space-y-3" @submit.prevent="sendMessage">
         <div class="relative">
           <textarea
@@ -161,13 +157,15 @@
 </template>
 
 <script lang="ts" setup>
+import type { UseToastReturn } from '~/types/Composables'
+import type { SupportWebsocketEvent } from '~/types/SupportTicketPage'
 import type { ComputedRef, Ref } from 'vue'
 import type { SupportMessage, SupportTicketDetail } from '~/types'
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { useUserStore } from '~/stores/user'
 import { useToast } from '~/composables/useToast'
-import * as supportService from '~/services/supportService'
+import { SupportService } from '~/services/supportService'
 
 definePageMeta({ layout: 'dashboard', middleware: 'auth' })
 
@@ -197,26 +195,20 @@ const ALLOWED_TYPES: string[] = ['image/png', 'image/jpeg', 'image/webp']
 /** Maximum attachment size, in bytes. */
 const MAX_ATTACHMENT_BYTES: number = 8 * 1024 * 1024
 
-/** Shape of the realtime events pushed on the support websockets. */
-type SupportWebsocketEvent = {
-  event?: string
-  data?: Record<string, unknown>
-}
+const route: ReturnType<typeof useRoute> = useRoute()
+const toast: UseToastReturn = useToast()
+const userStore: ReturnType<typeof useUserStore> = useUserStore()
+const runtimeConfig: ReturnType<typeof useRuntimeConfig> = useRuntimeConfig()
 
-const route = useRoute()
-const toast = useToast()
-const userStore = useUserStore()
-const runtimeConfig = useRuntimeConfig()
-
-const ticket: Ref<SupportTicketDetail | null> = ref<SupportTicketDetail | null>(null)
-const isLoading: Ref<boolean> = ref<boolean>(true)
-const isSending: Ref<boolean> = ref<boolean>(false)
-const messageInput: Ref<string> = ref<string>('')
-const composerFiles: Ref<File[]> = ref<File[]>([])
-const composerPreviews: Ref<Array<{ url: string; name: string }>> = ref<Array<{ url: string; name: string }>>([])
-const composerInput: Ref<HTMLInputElement | null> = ref<HTMLInputElement | null>(null)
-const websocketRef: Ref<WebSocket | null> = ref<WebSocket | null>(null)
-const globalWebsocketRef: Ref<WebSocket | null> = ref<WebSocket | null>(null)
+const ticket: Ref<SupportTicketDetail | null> = ref(null)
+const isLoading: Ref<boolean> = ref(true)
+const isSending: Ref<boolean> = ref(false)
+const messageInput: Ref<string> = ref('')
+const composerFiles: Ref<File[]> = ref([])
+const composerPreviews: Ref<Array<{ url: string; name: string }>> = ref([])
+const composerInput: Ref<HTMLInputElement | null> = ref(null)
+const websocketRef: Ref<WebSocket | null> = ref(null)
+const globalWebsocketRef: Ref<WebSocket | null> = ref(null)
 
 const ticketId: ComputedRef<number> = computed((): number => Number(route.params.id))
 
@@ -462,7 +454,7 @@ async function loadTicket(): Promise<void> {
   if (!ticketId.value) return
   try {
     isLoading.value = true
-    ticket.value = await supportService.getTicket(ticketId.value)
+    ticket.value = await SupportService.getTicket(ticketId.value)
     await nextTick()
     scrollToBottom()
     connectWebSocket()
@@ -481,7 +473,7 @@ async function sendMessage(): Promise<void> {
   if (!ticket.value || (!messageInput.value.trim() && composerFiles.value.length === 0)) return
   try {
     isSending.value = true
-    const message = await supportService.postMessage(ticket.value.id, {
+    const message = await SupportService.postMessage(ticket.value.id, {
       message: messageInput.value.trim() || ' ',
       attachments: composerFiles.value,
     })
@@ -510,7 +502,7 @@ function handleKeydown(event: KeyboardEvent): void {
 }
 
 watch(
-  (): string | string[] => route.params.id,
+  (): string | string[] => route.params.id ?? '',
   (): void => {
     disconnectWebSocket()
     ticket.value = null

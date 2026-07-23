@@ -1,14 +1,14 @@
-import { api } from '~/services/api'
+import { ApiClient } from '~/services/api'
 
-const BASE_URL = '/api/v1/demo-sites'
+const BASE_URL: string = '/api/v1/demo-sites'
 
-export interface DemoSiteTheme {
+export type DemoSiteTheme = {
   primary: string
   secondary: string
   accent: string
 }
 
-export interface DemoSiteTemplate {
+export type DemoSiteTemplate = {
   id: string
   name: string
   description: string
@@ -17,7 +17,7 @@ export interface DemoSiteTemplate {
   category?: string
 }
 
-export interface DemoSiteCreatePayload {
+export type DemoSiteCreatePayload = {
   business_name: string
   template_id: string
   email: string
@@ -29,7 +29,7 @@ export interface DemoSiteCreatePayload {
   prospect_id?: number
 }
 
-export interface DemoSitePreviewPayload {
+export type DemoSitePreviewPayload = {
   business_name: string
   template_id: string
   phone?: string
@@ -39,12 +39,12 @@ export interface DemoSitePreviewPayload {
   theme?: DemoSiteTheme
 }
 
-export interface DemoSitePreviewResult {
+export type DemoSitePreviewResult = {
   template_id: string
   content_json: Record<string, unknown>
 }
 
-export interface DemoSiteUpdatePayload {
+export type DemoSiteUpdatePayload = {
   business_name?: string
   template_id?: string
   email?: string
@@ -54,7 +54,7 @@ export interface DemoSiteUpdatePayload {
   theme?: DemoSiteTheme
 }
 
-export interface DemoSite {
+export type DemoSite = {
   id: number
   slug: string
   template_id: string
@@ -86,41 +86,13 @@ export interface DemoSite {
 /** Lifecycle of a demo site's prospection video (null = never generated). */
 export type DemoSiteVideoStatus = 'pending' | 'generating' | 'ready' | 'failed'
 
-export interface DemoSiteListResponse {
+export type DemoSiteListResponse = {
   items: DemoSite[]
   total: number
 }
 
-/**
- * Fetch templates available in the site builder stepper.
- */
-export async function listDemoSiteTemplates(): Promise<DemoSiteTemplate[]> {
-  return api.get<DemoSiteTemplate[]>(`${BASE_URL}/templates`)
-}
-
-/**
- * Build preview content without provisioning Storyblok/Vercel.
- */
-export async function previewDemoSite(payload: DemoSitePreviewPayload): Promise<DemoSitePreviewResult> {
-  return api.post<DemoSitePreviewResult>(`${BASE_URL}/preview`, payload)
-}
-
-/**
- * List demo sites created by the current user.
- */
-export async function listDemoSites(): Promise<DemoSiteListResponse> {
-  return api.get<DemoSiteListResponse>(BASE_URL)
-}
-
-/**
- * Create and provision a demo website.
- */
-export async function createDemoSite(payload: DemoSiteCreatePayload): Promise<DemoSite> {
-  return api.post<DemoSite>(BASE_URL, payload)
-}
-
 /** Payload to generate demo sites for several prospects with one template. */
-export interface BulkGeneratePayload {
+export type BulkGeneratePayload = {
   prospect_ids: number[]
   template_id: string
   theme?: DemoSiteTheme
@@ -128,7 +100,7 @@ export interface BulkGeneratePayload {
 }
 
 /** Per-prospect outcome of a bulk site generation. */
-export interface BulkGenerateItemResult {
+export type BulkGenerateItemResult = {
   prospect_id: number
   demo_site_id?: number
   slug?: string
@@ -137,7 +109,7 @@ export interface BulkGenerateItemResult {
 }
 
 /** Aggregated result of a bulk site generation. */
-export interface BulkGenerateResult {
+export type BulkGenerateResult = {
   results: BulkGenerateItemResult[]
   created: number
   failed: number
@@ -145,137 +117,167 @@ export interface BulkGenerateResult {
   total: number
 }
 
-/**
- * Generate demo sites for several prospects using the same template.
- * Prospects without an email are reported in ``skipped_no_email``.
- */
-export async function createDemoSitesBulk(payload: BulkGeneratePayload): Promise<BulkGenerateResult> {
-  return api.post<BulkGenerateResult>(`${BASE_URL}/bulk`, payload)
-}
+export class DemoSiteService {
+  /**
+   * Fetch templates available in the site builder stepper.
+   */
+  static async listDemoSiteTemplates(): Promise<DemoSiteTemplate[]> {
+    return ApiClient.get<DemoSiteTemplate[]>(`${BASE_URL}/templates`)
+  }
 
-/**
- * Fetch a single demo site by id.
- */
-export async function getDemoSite(demoSiteId: number): Promise<DemoSite> {
-  return api.get<DemoSite>(`${BASE_URL}/${demoSiteId}`)
-}
+  /**
+   * Build preview content without provisioning Storyblok/Vercel.
+   */
+  static async previewDemoSite(payload: DemoSitePreviewPayload): Promise<DemoSitePreviewResult> {
+    return ApiClient.post<DemoSitePreviewResult>(`${BASE_URL}/preview`, payload)
+  }
 
-/**
- * Re-run live URL verification for a demo site.
- */
-export async function verifyDemoSite(demoSiteId: number): Promise<DemoSite> {
-  return api.post<DemoSite>(`${BASE_URL}/${demoSiteId}/verify`, {})
-}
+  /**
+   * List demo sites created by the current user.
+   */
+  static async listDemoSites(): Promise<DemoSiteListResponse> {
+    return ApiClient.get<DemoSiteListResponse>(BASE_URL)
+  }
 
-/**
- * Update demo site fields and regenerate its content.
- */
-export async function updateDemoSite(demoSiteId: number, payload: DemoSiteUpdatePayload): Promise<DemoSite> {
-  return api.patch<DemoSite>(`${BASE_URL}/${demoSiteId}`, payload)
-}
+  /**
+   * Create and provision a demo website.
+   */
+  static async createDemoSite(payload: DemoSiteCreatePayload): Promise<DemoSite> {
+    return ApiClient.post<DemoSite>(BASE_URL, payload)
+  }
 
-/**
- * Rebuild demo site content from stored fields without changing them.
- */
-export async function regenerateDemoSite(demoSiteId: number): Promise<DemoSite> {
-  return api.post<DemoSite>(`${BASE_URL}/${demoSiteId}/regenerate`, {})
-}
+  /**
+   * Generate demo sites for several prospects using the same template.
+   * Prospects without an email are reported in ``skipped_no_email``.
+   */
+  static async createDemoSitesBulk(payload: BulkGeneratePayload): Promise<BulkGenerateResult> {
+    return ApiClient.post<BulkGenerateResult>(`${BASE_URL}/bulk`, payload)
+  }
 
-/**
- * Send a Storyblok CMS invitation to the demo site client.
- */
-export async function inviteDemoSiteClientToCms(demoSiteId: number): Promise<DemoSite> {
-  return api.post<DemoSite>(`${BASE_URL}/${demoSiteId}/invite-cms`, {})
-}
+  /**
+   * Fetch a single demo site by id.
+   */
+  static async getDemoSite(demoSiteId: number): Promise<DemoSite> {
+    return ApiClient.get<DemoSite>(`${BASE_URL}/${demoSiteId}`)
+  }
 
-/**
- * Delete a demo site owned by the current user.
- */
-export async function deleteDemoSite(demoSiteId: number): Promise<void> {
-  await api.delete(`${BASE_URL}/${demoSiteId}`)
-}
+  /**
+   * Re-run live URL verification for a demo site.
+   */
+  static async verifyDemoSite(demoSiteId: number): Promise<DemoSite> {
+    return ApiClient.post<DemoSite>(`${BASE_URL}/${demoSiteId}/verify`, {})
+  }
 
-/**
- * Start background generation of the prospection video (webcam + capture du site).
- * @param demoSiteId - Id of the demo site.
- * @returns The site with ``video_status`` set to ``pending``.
- */
-export async function generateDemoSiteVideo(demoSiteId: number): Promise<DemoSite> {
-  return api.post<DemoSite>(`${BASE_URL}/${demoSiteId}/video`, {})
-}
+  /**
+   * Update demo site fields and regenerate its content.
+   */
+  static async updateDemoSite(demoSiteId: number, payload: DemoSiteUpdatePayload): Promise<DemoSite> {
+    return ApiClient.patch<DemoSite>(`${BASE_URL}/${demoSiteId}`, payload)
+  }
 
-/**
- * Delete the generated prospection video and reset the site's video state.
- * @param demoSiteId - Id of the demo site.
- */
-export async function deleteDemoSiteVideo(demoSiteId: number): Promise<DemoSite> {
-  return api.delete<DemoSite>(`${BASE_URL}/${demoSiteId}/video`)
-}
+  /**
+   * Rebuild demo site content from stored fields without changing them.
+   */
+  static async regenerateDemoSite(demoSiteId: number): Promise<DemoSite> {
+    return ApiClient.post<DemoSite>(`${BASE_URL}/${demoSiteId}/regenerate`, {})
+  }
 
-/**
- * Download the generated site's source code as a standalone, runnable zip.
- *
- * Streams the authenticated binary response as a Blob and triggers a browser
- * download (the shared ``api`` client only handles JSON, so this fetches directly).
- * @param demoSiteId - Id of the demo site to export.
- * @param slug - Site slug, used to name the downloaded file.
- * @throws {Error} When the export request fails (message from the API when available).
- */
-export async function exportDemoSiteCode(demoSiteId: number, slug: string): Promise<void> {
-  const userStore = useUserStore()
-  const config = useRuntimeConfig()
-  const response = await fetch(`${config.public.apiBase}${BASE_URL}/${demoSiteId}/export`, {
-    headers: userStore.token ? { Authorization: `Bearer ${userStore.token}` } : {},
-  })
+  /**
+   * Send a Storyblok CMS invitation to the demo site client.
+   */
+  static async inviteDemoSiteClientToCms(demoSiteId: number): Promise<DemoSite> {
+    return ApiClient.post<DemoSite>(`${BASE_URL}/${demoSiteId}/invite-cms`, {})
+  }
 
-  if (!response.ok) {
-    const errorText = await response.text().catch(() => '')
-    let errorMessage = `Export échoué : ${response.statusText}`
-    if (errorText) {
-      try {
-        errorMessage = (JSON.parse(errorText).detail as string) || errorMessage
-      } catch {
-        errorMessage = errorText
+  /**
+   * Delete a demo site owned by the current user.
+   */
+  static async deleteDemoSite(demoSiteId: number): Promise<void> {
+    await ApiClient.delete(`${BASE_URL}/${demoSiteId}`)
+  }
+
+  /**
+   * Start background generation of the prospection video (webcam + capture du site).
+   * @param demoSiteId - Id of the demo site.
+   * @returns The site with ``video_status`` set to ``pending``.
+   */
+  static async generateDemoSiteVideo(demoSiteId: number): Promise<DemoSite> {
+    return ApiClient.post<DemoSite>(`${BASE_URL}/${demoSiteId}/video`, {})
+  }
+
+  /**
+   * Delete the generated prospection video and reset the site's video state.
+   * @param demoSiteId - Id of the demo site.
+   */
+  static async deleteDemoSiteVideo(demoSiteId: number): Promise<DemoSite> {
+    return ApiClient.delete<DemoSite>(`${BASE_URL}/${demoSiteId}/video`)
+  }
+
+  /**
+   * Download the generated site's source code as a standalone, runnable zip.
+   *
+   * Streams the authenticated binary response as a Blob and triggers a browser
+   * download (the shared ``api`` client only handles JSON, so this fetches directly).
+   * @param demoSiteId - Id of the demo site to export.
+   * @param slug - Site slug, used to name the downloaded file.
+   * @throws When the export request fails (message from the API when available).
+   */
+  static async exportDemoSiteCode(demoSiteId: number, slug: string): Promise<void> {
+    const userStore: ReturnType<typeof useUserStore> = useUserStore()
+    const config: ReturnType<typeof useRuntimeConfig> = useRuntimeConfig()
+    const response = await fetch(`${config.public.apiBase}${BASE_URL}/${demoSiteId}/export`, {
+      headers: userStore.token ? { Authorization: `Bearer ${userStore.token}` } : {},
+    })
+
+    if (!response.ok) {
+      const errorText = await response.text().catch(() => '')
+      let errorMessage: string = `Export échoué : ${response.statusText}`
+      if (errorText) {
+        try {
+          errorMessage = (JSON.parse(errorText).detail as string) || errorMessage
+        } catch {
+          errorMessage = errorText
+        }
       }
+      throw new Error(errorMessage)
     }
-    throw new Error(errorMessage)
+
+    const blob = await response.blob()
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = `${slug}-site.zip`
+    document.body.appendChild(link)
+    link.click()
+    link.remove()
+    URL.revokeObjectURL(url)
   }
 
-  const blob = await response.blob()
-  const url = URL.createObjectURL(blob)
-  const link = document.createElement('a')
-  link.href = url
-  link.download = `${slug}-site.zip`
-  document.body.appendChild(link)
-  link.click()
-  link.remove()
-  URL.revokeObjectURL(url)
-}
-
-/**
- * Compute days remaining before a demo site expires.
- */
-export function daysUntilExpiry(expiresAt: string): number {
-  const diff = new Date(expiresAt).getTime() - Date.now()
-  return Math.max(0, Math.ceil(diff / (1000 * 60 * 60 * 24)))
-}
-
-/**
- * Best URL to open/share for a demo site (prefers live local URL in dev).
- */
-export function getDemoSiteOpenUrl(site: DemoSite): string | null {
-  if (site.demo_url_live && site.demo_url) {
-    return site.demo_url
+  /**
+   * Compute days remaining before a demo site expires.
+   */
+  static daysUntilExpiry(expiresAt: string): number {
+    const diff: number = new Date(expiresAt).getTime() - Date.now()
+    return Math.max(0, Math.ceil(diff / (1000 * 60 * 60 * 24)))
   }
-  if (site.local_demo_url) {
-    return site.local_demo_url
-  }
-  return site.demo_url ?? null
-}
 
-/**
- * Whether the demo site is reachable (prod URL or local fallback).
- */
-export function isDemoSiteReachable(site: DemoSite): boolean {
-  return Boolean(site.demo_url_live || site.local_demo_url)
+  /**
+   * Best URL to open/share for a demo site (prefers live local URL in dev).
+   */
+  static getDemoSiteOpenUrl(site: DemoSite): string | null {
+    if (site.demo_url_live && site.demo_url) {
+      return site.demo_url
+    }
+    if (site.local_demo_url) {
+      return site.local_demo_url
+    }
+    return site.demo_url ?? null
+  }
+
+  /**
+   * Whether the demo site is reachable (prod URL or local fallback).
+   */
+  static isDemoSiteReachable(site: DemoSite): boolean {
+    return Boolean(site.demo_url_live || site.local_demo_url)
+  }
 }

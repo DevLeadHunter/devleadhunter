@@ -7,7 +7,7 @@
   </div>
 </template>
 
-<script setup lang="ts">
+<script lang="ts" setup>
 /**
  * Full-screen loader overlay themed by the app variables
  * (falls back to the legacy dark backdrop outside the dashboard shell).

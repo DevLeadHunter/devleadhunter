@@ -1,7 +1,8 @@
+import type { UseOpenExternalUrlReturn } from '~/types/Composables'
 /**
  * Open a URL in the system browser (Tauri) or a new tab (web).
  */
-export function useOpenExternalUrl() {
+export function useOpenExternalUrl(): UseOpenExternalUrlReturn {
   const { isDesktopApp } = useDesktopRuntime()
 
   /**

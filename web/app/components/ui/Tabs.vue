@@ -33,10 +33,7 @@ import type { ComputedRef, PropType } from 'vue'
 import { computed } from 'vue'
 import type { UiTab, UiTabsProps } from '~/types/UiTabs'
 
-/**
- * Full-width segmented tabs. Two-way bound via ``v-model``; provide a custom
- * per-tab glyph through the ``icon`` scoped slot (falls back to ``tab.icon``).
- */
+/** Segmented tabs; custom per-tab icon via scoped slot. */
 const props: UiTabsProps = defineProps({
   tabs: {
     type: Array as PropType<UiTab[]>,
@@ -48,7 +45,9 @@ const props: UiTabsProps = defineProps({
   },
 })
 
-const emit = defineEmits<{
+const emit: {
+  (e: 'update:modelValue', key: string): void
+} = defineEmits<{
   (e: 'update:modelValue', key: string): void
 }>()
 

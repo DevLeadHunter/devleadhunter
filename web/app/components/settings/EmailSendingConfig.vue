@@ -1,6 +1,5 @@
 <template>
   <div class="mx-auto max-w-2xl space-y-8">
-    <!-- Method chooser — one big tab per method, only the selected one is shown below -->
     <UiTabs v-model="viewProvider" :tabs="TABS">
       <template #icon="{ tab }">
         <UiGoogleLogo v-if="tab.key === 'gmail'" class="h-5 w-5" />
@@ -8,7 +7,6 @@
       </template>
     </UiTabs>
 
-    <!-- ── Domaine personnalisé (Resend) ─────────────────────────────────── -->
     <section v-if="viewProvider === 'resend'" class="space-y-6">
       <div class="space-y-3">
         <p class="text-muted text-sm leading-relaxed">
@@ -79,7 +77,6 @@
           <input v-model="resendForm.from_name" type="text" class="input-field" placeholder="Ex : Léo de Dibodev" />
         </div>
 
-        <!-- Advanced (optional) — kept out of the way to stay onboarding-friendly -->
         <details class="group rounded-lg border border-[var(--app-line)] bg-[var(--app-bg)]">
           <summary
             class="text-muted flex cursor-pointer items-center justify-between px-3 py-2.5 text-xs font-medium select-none hover:text-[var(--app-ink)]"
@@ -129,9 +126,7 @@
       </form>
     </section>
 
-    <!-- ── Gmail ─────────────────────────────────────────────────────────── -->
     <section v-else class="space-y-6">
-      <!-- Empty state: friendly one-click connect -->
       <div
         v-if="gmailAccounts.length === 0"
         class="flex flex-col items-center gap-4 rounded-xl border border-[var(--app-line)] bg-[var(--app-surface)] px-6 py-12 text-center"
@@ -149,7 +144,6 @@
         </button>
       </div>
 
-      <!-- Connected -->
       <div v-else class="space-y-4">
         <div v-if="activeProvider === 'gmail'">
           <span class="app-badge app-badge--success font-medium">
@@ -185,35 +179,32 @@
 </template>
 
 <script lang="ts" setup>
+import type { UseToastReturn } from '~/types/Composables'
 import type { ComputedRef, Ref } from 'vue'
 import type { EmailAccount } from '~/types'
 import type { SendingIdentityResponse, SendingProvider } from '~/services/settingsService'
 import type { UiTab } from '~/types/UiTabs'
 import { ref, computed, onMounted } from 'vue'
-import { settingsService } from '~/services/settingsService'
-import { getEmailAccounts, getGmailAuthUrl, deleteEmailAccount } from '~/services/emailAccountsService'
+import { SettingsService } from '~/services/settingsService'
+import { EmailAccountsService } from '~/services/emailAccountsService'
 import { useToast } from '~/composables/useToast'
 
-// ─── Composables ────────────────────────────────────────────────────────────
-
-const toast = useToast()
-const route = useRoute()
-const router = useRouter()
-
-// ─── State ──────────────────────────────────────────────────────────────────
+const toast: UseToastReturn = useToast()
+const route: ReturnType<typeof useRoute> = useRoute()
+const router: ReturnType<typeof useRouter> = useRouter()
 
 const TABS: UiTab[] = [
   { key: 'resend', label: 'Domaine personnalisé', hint: 'Votre adresse pro' },
   { key: 'gmail', label: 'Gmail', hint: 'Sans domaine, en un clic' },
 ]
 
-const identity: Ref<SendingIdentityResponse | null> = ref<SendingIdentityResponse | null>(null)
-const gmailAccounts: Ref<EmailAccount[]> = ref<EmailAccount[]>([])
-const viewProvider: Ref<SendingProvider> = ref<SendingProvider>('resend')
+const identity: Ref<SendingIdentityResponse | null> = ref(null)
+const gmailAccounts: Ref<EmailAccount[]> = ref([])
+const viewProvider: Ref<SendingProvider> = ref('resend')
 
-const isSavingResend: Ref<boolean> = ref<boolean>(false)
-const showApiKey: Ref<boolean> = ref<boolean>(false)
-const showWebhookSecret: Ref<boolean> = ref<boolean>(false)
+const isSavingResend: Ref<boolean> = ref(false)
+const showApiKey: Ref<boolean> = ref(false)
+const showWebhookSecret: Ref<boolean> = ref(false)
 
 const resendForm: Ref<{ api_key: string; webhook_secret: string; from_email: string; from_name: string }> = ref({
   api_key: '',
@@ -222,8 +213,6 @@ const resendForm: Ref<{ api_key: string; webhook_secret: string; from_email: str
   from_name: '',
 })
 
-// ─── Computed ───────────────────────────────────────────────────────────────
-
 /** The provider currently used to send (defaults to Resend before load). */
 const activeProvider: ComputedRef<SendingProvider> = computed(
   (): SendingProvider => identity.value?.provider ?? 'resend',
@@ -231,8 +220,6 @@ const activeProvider: ComputedRef<SendingProvider> = computed(
 
 /** Whether the Resend method is ready to send. */
 const isResendConfigured: ComputedRef<boolean> = computed((): boolean => Boolean(identity.value?.resend_configured))
-
-// ─── Methods ────────────────────────────────────────────────────────────────
 
 /**
  * Whether a given provider is configured and usable.
@@ -244,22 +231,21 @@ function isConfigured(provider: SendingProvider): boolean {
 }
 
 /**
- * Load the sending identity + connected Gmail accounts and open the tab of the
- * active method.
- * @returns A promise that resolves once loaded.
+ * Load sending identity and Gmail accounts; open the active provider tab.
+ * @returns A promise resolved once loaded.
  */
 async function loadAll(): Promise<void> {
   try {
     const [identityData, accounts] = await Promise.all([
-      settingsService.getSendingIdentity(),
-      getEmailAccounts().catch((): EmailAccount[] => []),
+      SettingsService.getSendingIdentity(),
+      EmailAccountsService.getEmailAccounts().catch((): EmailAccount[] => []),
     ])
     identity.value = identityData
     viewProvider.value = identityData.provider
     resendForm.value.from_email = identityData.resend_from_email ?? ''
     gmailAccounts.value = accounts.filter((a: EmailAccount): boolean => a.account_type === 'gmail_oauth')
     // Pre-fill the display name from the existing Resend config, if any.
-    const resend = await settingsService.getResendConfig().catch(() => null)
+    const resend = await SettingsService.getResendConfig().catch(() => null)
     resendForm.value.from_name = resend?.from_name ?? ''
   } catch {
     toast.error('Échec du chargement de la configuration d’envoi')
@@ -274,7 +260,7 @@ async function loadAll(): Promise<void> {
  */
 async function activate(provider: SendingProvider, silent = false): Promise<void> {
   try {
-    identity.value = await settingsService.setSendingProvider(provider)
+    identity.value = await SettingsService.setSendingProvider(provider)
     if (!silent) {
       toast.success(provider === 'gmail' ? 'Envoi via Gmail activé' : 'Envoi via votre domaine activé')
     }
@@ -302,7 +288,7 @@ async function maybeAutoActivate(justConfigured: SendingProvider): Promise<void>
 async function saveResend(): Promise<void> {
   isSavingResend.value = true
   try {
-    await settingsService.saveResendConfig({
+    await SettingsService.saveResendConfig({
       api_key: resendForm.value.api_key,
       webhook_secret: resendForm.value.webhook_secret || undefined,
       from_email: resendForm.value.from_email,
@@ -310,7 +296,7 @@ async function saveResend(): Promise<void> {
     })
     resendForm.value.api_key = ''
     resendForm.value.webhook_secret = ''
-    identity.value = await settingsService.getSendingIdentity()
+    identity.value = await SettingsService.getSendingIdentity()
     await maybeAutoActivate('resend')
     toast.success('Configuration enregistrée')
   } catch {
@@ -326,7 +312,7 @@ async function saveResend(): Promise<void> {
  */
 async function connectGmail(): Promise<void> {
   try {
-    const { auth_url } = await getGmailAuthUrl()
+    const { auth_url } = await EmailAccountsService.getGmailAuthUrl()
     window.location.href = auth_url
   } catch {
     toast.error('Échec de la connexion Gmail')
@@ -341,9 +327,9 @@ async function connectGmail(): Promise<void> {
 async function deleteGmailAccount(account: EmailAccount): Promise<void> {
   if (!confirm(`Déconnecter le compte ${account.email} ?`)) return
   try {
-    await deleteEmailAccount(account.id)
+    await EmailAccountsService.deleteEmailAccount(account.id)
     gmailAccounts.value = gmailAccounts.value.filter((a: EmailAccount): boolean => a.id !== account.id)
-    identity.value = await settingsService.getSendingIdentity()
+    identity.value = await SettingsService.getSendingIdentity()
     toast.success('Compte Gmail déconnecté')
   } catch {
     toast.error('Échec de la déconnexion')
@@ -351,9 +337,8 @@ async function deleteGmailAccount(account: EmailAccount): Promise<void> {
 }
 
 /**
- * Surface the Gmail OAuth callback outcome (``?gmail=connected|error``), refresh,
- * auto-activate on first connect, then strip the query param.
- * @returns A promise that resolves once handled.
+ * Surface Gmail OAuth callback (`?gmail=connected|error`), refresh and strip query.
+ * @returns A promise resolved once handled.
  */
 async function handleGmailCallbackFeedback(): Promise<void> {
   const flag: unknown = route.query.gmail
@@ -367,8 +352,6 @@ async function handleGmailCallbackFeedback(): Promise<void> {
   }
   await router.replace({ query: { ...route.query, gmail: undefined } })
 }
-
-// ─── Lifecycle ──────────────────────────────────────────────────────────────
 
 onMounted(async (): Promise<void> => {
   await loadAll()

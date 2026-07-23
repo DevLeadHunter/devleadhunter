@@ -1,7 +1,5 @@
 /**
- * Shared prospection-coverage store — owns the coverage data (scope + trade
- * filter + geocoded cities) so the coverage page, the map and the coverage
- * drawers (filters, zone prospects) all read the same state.
+ * Shared prospection-coverage store — scope, trade filter and geocoded cities for the map and drawers.
  */
 import type { ComputedRef, Ref } from 'vue'
 import { computed, ref } from 'vue'
@@ -9,7 +7,7 @@ import { defineStore } from 'pinia'
 import type { CityGeo } from '~/composables/useFranceGeo'
 import { geocodeCities, lookupCity } from '~/composables/useFranceGeo'
 import type { CoverageResponse } from '~/services/dashboardService'
-import { getCoverage } from '~/services/dashboardService'
+import { DashboardService } from '~/services/dashboardService'
 import type { FranceMajorCity } from '~/utils/franceTerritory'
 import { FRANCE_MAJOR_CITIES, FRANCE_REGIONS } from '~/utils/franceTerritory'
 
@@ -23,25 +21,13 @@ export function normalizeCityName(name: string): string {
 }
 
 export const useCoverageStore = defineStore('coverage', () => {
-  /** Coverage scope: 'me' | 'org' | 'member:{id}'. */
-  const scope: Ref<string> = ref<string>('me')
-
-  /** Selected trades — empty means « all trades » (no filter). */
-  const selectedCategories: Ref<string[]> = ref<string[]>([])
-
-  /** Last coverage response for the current scope + filter. */
-  const coverage: Ref<CoverageResponse | null> = ref<CoverageResponse | null>(null)
-
-  /** Geocoding results for the covered cities. */
-  const cityGeo: Ref<Record<string, CityGeo | null>> = ref<Record<string, CityGeo | null>>({})
-
-  const isLoading: Ref<boolean> = ref<boolean>(false)
-
-  /** True once the first load happened (gates « all done » empty states). */
-  const hasLoaded: Ref<boolean> = ref<boolean>(false)
-
-  /** Trades available in the scope — sticky so the filter UI never flickers. */
-  const availableCategories: Ref<string[]> = ref<string[]>([])
+  const scope: Ref<string> = ref('me')
+  const selectedCategories: Ref<string[]> = ref([])
+  const coverage: Ref<CoverageResponse | null> = ref(null)
+  const cityGeo: Ref<Record<string, CityGeo | null>> = ref({})
+  const isLoading: Ref<boolean> = ref(false)
+  const hasLoaded: Ref<boolean> = ref(false)
+  const availableCategories: Ref<string[]> = ref([])
 
   /**
    * Split the scope value into an API scope + optional member id.
@@ -61,7 +47,7 @@ export const useCoverageStore = defineStore('coverage', () => {
     isLoading.value = true
     try {
       const [scopeName, memberId] = parseScope(scope.value)
-      const data: CoverageResponse = await getCoverage(scopeName, memberId, selectedCategories.value)
+      const data: CoverageResponse = await DashboardService.getCoverage(scopeName, memberId, selectedCategories.value)
       coverage.value = data
       if (data.available_categories.length > 0) availableCategories.value = data.available_categories
       cityGeo.value = await geocodeCities(data.cities.map((c): string => c.city))
@@ -98,7 +84,6 @@ export const useCoverageStore = defineStore('coverage', () => {
     void load()
   }
 
-  /** INSEE region codes covered by at least one prospected city. */
   const coveredRegionCodes: ComputedRef<Set<string>> = computed((): Set<string> => {
     const covered = new Set<string>()
     for (const city of coverage.value?.cities ?? []) {
@@ -108,21 +93,18 @@ export const useCoverageStore = defineStore('coverage', () => {
     return covered
   })
 
-  /** Names of the metropolitan regions with zero prospected city. */
   const uncoveredRegions: ComputedRef<string[]> = computed((): string[] =>
     Object.entries(FRANCE_REGIONS)
       .filter(([code]): boolean => !coveredRegionCodes.value.has(code))
       .map(([, name]): string => name),
   )
 
-  /** Prospected city names, normalised. */
   const coveredCityNames: ComputedRef<Set<string>> = computed((): Set<string> => {
     const names = new Set<string>()
     for (const city of coverage.value?.cities ?? []) names.add(normalizeCityName(city.city))
     return names
   })
 
-  /** Major cities never prospected (biggest first), capped for the panels. */
   const suggestedCities: ComputedRef<FranceMajorCity[]> = computed((): FranceMajorCity[] =>
     FRANCE_MAJOR_CITIES.filter((city): boolean => !coveredCityNames.value.has(normalizeCityName(city.name))).slice(
       0,

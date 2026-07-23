@@ -1,51 +1,43 @@
 <template>
-  <div
-    class="rounded-xl border border-[var(--app-line)] bg-[var(--app-surface)] px-5 py-6 sm:px-8 sm:py-8"
-    role="region"
-    aria-label="Texte à lire"
-    @click="advance"
-  >
-    <p class="app-label mb-4 text-center">Lisez à voix haute</p>
+  <div :class="wrapperClass" role="region" aria-label="Texte à lire" @click="advance">
+    <div :class="innerClass">
+      <p v-if="variant === 'card'" class="app-label mb-4 text-center">Lisez à voix haute</p>
 
-    <!-- Colonne étroite : une ligne courte se lit d'un coup d'œil, là où un
-         paragraphe large fait balayer les yeux de gauche à droite. -->
-    <ol class="mx-auto flex max-w-[32ch] flex-col gap-3">
-      <li
-        v-for="(beat, index) in beats"
-        :key="`${index}-${beat}`"
-        class="flex gap-3 text-xl leading-relaxed transition-colors duration-300 sm:text-2xl"
-        :class="index === activeIndex ? 'font-medium text-[var(--app-ink)]' : 'text-[var(--app-faint)]'"
-      >
-        <span
-          class="mt-1.5 w-0.5 shrink-0 rounded-full transition-colors duration-300"
-          :class="index === activeIndex ? 'bg-[var(--app-accent)]' : 'bg-transparent'"
-          aria-hidden="true"
-        />
-        <span>{{ beat }}</span>
-      </li>
-    </ol>
+      <ol :class="listClass">
+        <li
+          v-for="(beat, index) in beats"
+          :key="`${index}-${beat}`"
+          class="flex gap-3 leading-relaxed transition-colors duration-300"
+          :class="[beatSizeClass, index === activeIndex ? activeBeatClass : inactiveBeatClass]"
+        >
+          <span
+            class="mt-1.5 w-0.5 shrink-0 rounded-full transition-colors duration-300"
+            :class="index === activeIndex ? 'bg-[var(--app-accent)]' : 'bg-transparent'"
+            aria-hidden="true"
+          />
+          <span>{{ beat }}</span>
+        </li>
+      </ol>
 
-    <p class="text-muted mt-6 text-center text-xs">
-      {{
-        isRunning ? 'La ligne avance toute seule — cliquez pour passer à la suivante' : 'Le repère suivra votre lecture'
-      }}
-    </p>
+      <p :class="hintClass">
+        {{
+          isRunning
+            ? 'La ligne avance toute seule — cliquez pour passer à la suivante'
+            : 'Le repère suivra votre lecture'
+        }}
+      </p>
+    </div>
   </div>
 </template>
 
 <script lang="ts" setup>
-import type { ComputedRef, Ref } from 'vue'
+import type { ComputedRef, PropType, Ref } from 'vue'
+import type { UiTeleprompterProps, UiTeleprompterVariant } from '~/types/UiTeleprompter'
 import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import { estimateBeatSeconds, splitIntoBeats } from '~/composables/useProspectionScript'
 
-/**
- * Teleprompter shown while a take is being recorded.
- *
- * Every beat stays on screen and only the highlight moves: nothing scrolls out
- * from under the reader, so falling behind costs a glance instead of a retake.
- * Props are typed via {@link import('~/types/UiTeleprompter').UiTeleprompterProps}.
- */
-const props = defineProps({
+/** Beat-by-beat teleprompter for video takes; `overlay` superposes the camera preview. */
+const props: UiTeleprompterProps = defineProps({
   text: {
     type: String,
     required: true,
@@ -58,17 +50,50 @@ const props = defineProps({
     type: Number,
     default: 0,
   },
+  variant: {
+    type: String as PropType<UiTeleprompterVariant>,
+    default: 'card',
+  },
 })
 
-const activeIndex: Ref<number> = ref<number>(0)
-
-/** The take split into the short lines the highlight walks through. */
+const activeIndex: Ref<number> = ref(0)
 const beats: ComputedRef<string[]> = computed((): string[] => splitIntoBeats(props.text))
 
-/** Handle of the auto-advance timer, if one is pending. */
+const wrapperClass: ComputedRef<string> = computed((): string =>
+  props.variant === 'overlay'
+    ? 'absolute inset-0 flex cursor-pointer flex-col overflow-y-auto bg-gradient-to-b from-black/75 via-black/40 to-black/75 px-6 pt-12 pb-6 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden'
+    : 'rounded-xl border border-[var(--app-line)] bg-[var(--app-surface)] px-5 py-6 sm:px-8 sm:py-8',
+)
+
+const innerClass: ComputedRef<string> = computed((): string =>
+  props.variant === 'overlay' ? 'my-auto flex w-full flex-col items-center gap-4' : '',
+)
+
+const listClass: ComputedRef<string> = computed((): string =>
+  props.variant === 'overlay' ? 'flex max-w-[60ch] flex-col gap-2.5' : 'mx-auto flex max-w-[32ch] flex-col gap-3',
+)
+
+const beatSizeClass: ComputedRef<string> = computed((): string =>
+  props.variant === 'overlay' ? 'text-base sm:text-lg' : 'text-xl sm:text-2xl',
+)
+
+const activeBeatClass: ComputedRef<string> = computed((): string =>
+  props.variant === 'overlay'
+    ? 'font-semibold text-white [text-shadow:0_1px_10px_rgba(0,0,0,0.85)]'
+    : 'font-medium text-[var(--app-ink)]',
+)
+
+const inactiveBeatClass: ComputedRef<string> = computed((): string =>
+  props.variant === 'overlay' ? 'text-white/45 [text-shadow:0_1px_10px_rgba(0,0,0,0.85)]' : 'text-[var(--app-faint)]',
+)
+
+const hintClass: ComputedRef<string> = computed((): string =>
+  props.variant === 'overlay' ? 'text-center text-xs text-white/65' : 'text-muted mt-6 text-center text-xs',
+)
+
 let advanceHandle: ReturnType<typeof setTimeout> | null = null
 
-/** Cancel any pending auto-advance. */
+/** Cancel a pending auto-advance timer. */
 function clearPendingAdvance(): void {
   if (advanceHandle !== null) {
     clearTimeout(advanceHandle)
@@ -76,7 +101,7 @@ function clearPendingAdvance(): void {
   }
 }
 
-/** Queue the move to the next beat, timed on how long the current one takes to say. */
+/** Queue the move to the next beat based on estimated speaking time. */
 function scheduleNextBeat(): void {
   clearPendingAdvance()
   if (!props.isRunning) return
@@ -91,7 +116,7 @@ function scheduleNextBeat(): void {
   )
 }
 
-/** Jump to the next beat right away (the reader is ahead of the timer). */
+/** Jump to the next beat immediately. */
 function advance(): void {
   if (!props.isRunning) return
   if (activeIndex.value < beats.value.length - 1) activeIndex.value += 1

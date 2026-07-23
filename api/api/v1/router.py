@@ -4,7 +4,7 @@ Main API v1 router.
 from fastapi import APIRouter
 from .routes import (
     health, prospects, auth, users, credit_settings, credits, payments,
-    accounting, support, email_accounts, email_templates, emails, scraping_jobs,
+    accounting, support, email_accounts, email_templates, email_signatures, emails, scraping_jobs,
     campaigns, unsubscribe, exports, interactions, demo_sites, sources, webhooks,
     enrichment, orders, dashboard, behavior, organizations,
     settings as settings_routes, admin_monitoring, admin_storyblok, admin_storage,
@@ -31,6 +31,7 @@ router.include_router(accounting.router)
 router.include_router(support.router)
 router.include_router(email_accounts.router)
 router.include_router(email_templates.router)
+router.include_router(email_signatures.router)
 router.include_router(emails.router)
 router.include_router(email_health.router)
 router.include_router(campaigns.router)

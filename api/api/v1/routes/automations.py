@@ -46,10 +46,6 @@ from services.organization_service import organization_service
 router = APIRouter(prefix="/automations", tags=["automations"])
 
 
-# ---------------------------------------------------------------------------
-# Response builders
-# ---------------------------------------------------------------------------
-
 def _run_note(run: AcquisitionRun) -> Optional[str]:
     """Surface the most relevant note from the run's stats (seed/campaign/pause)."""
     stats: dict = run.stats or {}
@@ -156,10 +152,6 @@ def _get_or_404(db: Session, run_id: int, user_id: int) -> AcquisitionRun:
     return run
 
 
-# ---------------------------------------------------------------------------
-# CRUD
-# ---------------------------------------------------------------------------
-
 @router.post("", response_model=SequenceDetailResponse, status_code=status.HTTP_201_CREATED)
 async def create_automation(
     payload: SequenceCreateRequest,
@@ -254,10 +246,6 @@ async def delete_automation(
     acquisition_service.delete(db, run)
 
 
-# ---------------------------------------------------------------------------
-# Lifecycle
-# ---------------------------------------------------------------------------
-
 @router.post("/{run_id}/pause", response_model=SequenceDetailResponse)
 async def pause_automation(
     run_id: int,
@@ -310,10 +298,6 @@ async def approve_automation(
     acquisition_service.approve_review(db, run)
     return _detail_response(db, run)
 
-
-# ---------------------------------------------------------------------------
-# Per-prospect corrections
-# ---------------------------------------------------------------------------
 
 @router.post("/{run_id}/assign-templates", response_model=SequenceDetailResponse)
 async def assign_templates(

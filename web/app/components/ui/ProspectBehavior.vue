@@ -16,18 +16,15 @@
     </div>
 
     <template v-else-if="behavior">
-      <!-- No tracking configured -->
       <p v-if="!behavior.tracking_configured" class="text-xs text-[var(--app-ink-soft)]">
         PostHog n'est pas configuré — le suivi comportemental est inactif.
       </p>
 
-      <!-- No data yet -->
       <p v-else-if="!behavior.has_data" class="text-xs text-[var(--app-ink-soft)]">
         Aucune activité détectée sur la démo pour l'instant.
       </p>
 
       <template v-else>
-        <!-- Score + signals -->
         <div class="flex items-center gap-3">
           <div class="text-2xl font-bold text-[var(--app-ink)]">
             {{ behavior.score }}<span class="text-sm text-[var(--app-ink-soft)]">/100</span>
@@ -40,7 +37,6 @@
           </div>
         </div>
 
-        <!-- Timeline -->
         <div v-if="behavior.timeline.length" class="space-y-1.5">
           <div
             v-for="(entry, i) in behavior.timeline.slice(0, 12)"
@@ -54,13 +50,11 @@
         </div>
       </template>
 
-      <!-- AI summary -->
       <div v-if="summary" class="rounded border border-[var(--app-line)] bg-[var(--app-surface)] p-3">
         <p class="mb-1 text-[10px] font-semibold tracking-wider text-[var(--app-ink-soft)] uppercase">Analyse IA</p>
         <p class="text-xs whitespace-pre-line text-[var(--app-ink)]">{{ summary }}</p>
       </div>
 
-      <!-- Personalized follow-up draft -->
       <div v-if="followup" class="space-y-2 rounded border border-[var(--app-line)] bg-[var(--app-surface)] p-3">
         <p class="text-[10px] font-semibold tracking-wider text-[var(--app-ink-soft)] uppercase">
           Relance personnalisée
@@ -79,7 +73,6 @@
         </button>
       </div>
 
-      <!-- Actions -->
       <div class="flex gap-2">
         <button class="btn-secondary flex-1 text-xs" :disabled="isSummarizing" @click="handleSummary">
           <UIcon
@@ -101,21 +94,15 @@
 </template>
 
 <script lang="ts" setup>
+import type { UseToastReturn } from '~/types/Composables'
 import type { ComputedRef, PropType, Ref } from 'vue'
 import { ref, computed, watch } from 'vue'
 import type { BehaviorSummary, PersonalizedFollowup, ProspectBehavior } from '~/services/behaviorService'
-import {
-  draftPersonalizedFollowup,
-  getProspectBehavior,
-  sendQuickEmail,
-  summarizeProspectBehavior,
-} from '~/services/behaviorService'
+import { BehaviorService } from '~/services/behaviorService'
 import type { UiProspectBehaviorProps } from '~/types/UiProspectBehavior'
 import { useToast } from '~/composables/useToast'
 
-/**
- * Définit les props du composant UiProspectBehavior.
- */
+/** Prospect engagement and follow-up behavior panel. */
 const props: UiProspectBehaviorProps = defineProps({
   prospectId: {
     type: Number as PropType<number | null>,
@@ -135,11 +122,11 @@ const props: UiProspectBehaviorProps = defineProps({
   },
 })
 
-const toast = useToast()
+const toast: UseToastReturn = useToast()
 
-const behavior: Ref<ProspectBehavior | null> = ref<ProspectBehavior | null>(null)
-const summary: Ref<string | null> = ref<string | null>(null)
-const followup: Ref<PersonalizedFollowup | null> = ref<PersonalizedFollowup | null>(null)
+const behavior: Ref<ProspectBehavior | null> = ref(null)
+const summary: Ref<string | null> = ref(null)
+const followup: Ref<PersonalizedFollowup | null> = ref(null)
 const isLoading: Ref<boolean> = ref(false)
 const isSummarizing: Ref<boolean> = ref(false)
 const isDrafting: Ref<boolean> = ref(false)
@@ -194,7 +181,7 @@ async function load(): Promise<void> {
   if (!props.prospectId) return
   isLoading.value = true
   try {
-    behavior.value = await getProspectBehavior(props.prospectId)
+    behavior.value = await BehaviorService.getProspectBehavior(props.prospectId)
   } catch {
     behavior.value = null
   } finally {
@@ -207,7 +194,7 @@ async function handleSummary(): Promise<void> {
   if (!props.prospectId) return
   isSummarizing.value = true
   try {
-    const result: BehaviorSummary = await summarizeProspectBehavior(props.prospectId)
+    const result: BehaviorSummary = await BehaviorService.summarizeProspectBehavior(props.prospectId)
     summary.value = result.summary
   } catch (err: unknown) {
     toast.error(err instanceof Error ? err.message : 'Échec du résumé')
@@ -221,7 +208,7 @@ async function handleDraft(): Promise<void> {
   if (!props.prospectId) return
   isDrafting.value = true
   try {
-    followup.value = await draftPersonalizedFollowup(props.prospectId)
+    followup.value = await BehaviorService.draftPersonalizedFollowup(props.prospectId)
   } catch (err: unknown) {
     toast.error(err instanceof Error ? err.message : 'Échec de la génération')
   } finally {
@@ -234,7 +221,7 @@ async function handleSendFollowup(): Promise<void> {
   if (!props.prospectId || !props.prospectEmail || !followup.value) return
   isSending.value = true
   try {
-    const result = await sendQuickEmail({
+    const result = await BehaviorService.sendQuickEmail({
       recipient_email: props.prospectEmail,
       recipient_name: props.prospectName,
       subject: followup.value.subject,

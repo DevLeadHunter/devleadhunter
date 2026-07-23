@@ -1,6 +1,5 @@
 <template>
   <div class="flex min-h-full flex-col gap-5">
-    <!-- Header: title + scope + filters -->
     <div class="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
       <div>
         <h1 class="text-xl font-semibold text-[var(--app-ink)]">Carte de prospection</h1>
@@ -10,7 +9,6 @@
       </div>
 
       <div class="flex shrink-0 flex-wrap items-center gap-2">
-        <!-- Scope (organization only) -->
         <select
           v-if="members.length > 0"
           v-model="store.scope"
@@ -25,7 +23,6 @@
           </option>
         </select>
 
-        <!-- Filters drawer trigger -->
         <button type="button" class="btn-primary relative h-9 text-xs" @click="openFiltersDrawer">
           <UIcon name="i-lucide-sliders-horizontal" class="mr-1.5 h-3.5 w-3.5" />
           Filtrer
@@ -39,7 +36,6 @@
       </div>
     </div>
 
-    <!-- Active trade pills (quick removal without opening the drawer) -->
     <div v-if="store.selectedCategories.length > 0" class="flex flex-wrap items-center gap-1.5">
       <span
         v-for="category in store.selectedCategories"
@@ -65,7 +61,6 @@
       </button>
     </div>
 
-    <!-- Counters + map, directly on the page (map stretches to the leftover height) -->
     <DashboardCoverageMap class="min-h-0 flex-1" />
   </div>
 </template>
@@ -89,8 +84,8 @@ definePageMeta({
 
 useSeoMeta({ title: 'Carte de prospection — DevLeadHunter' })
 
-const store = useCoverageStore()
-const drawerStack = useDrawerStackStore()
+const store: ReturnType<typeof useCoverageStore> = useCoverageStore()
+const drawerStack: ReturnType<typeof useDrawerStackStore> = useDrawerStackStore()
 
 /** Organization members selectable as scopes. */
 const members: ComputedRef<CoverageMember[]> = computed((): CoverageMember[] => store.coverage?.members ?? [])

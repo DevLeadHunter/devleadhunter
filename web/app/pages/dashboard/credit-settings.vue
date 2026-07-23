@@ -1,16 +1,12 @@
 <template>
   <div>
-    <!-- Header -->
     <div class="mb-6 flex items-center justify-between">
       <h1 class="text-xl font-semibold text-[var(--app-ink)]">Paramètres des crédits</h1>
     </div>
 
-    <!-- Credit Settings Form -->
     <div v-if="!isLoading && creditSettings" class="card">
       <form @submit.prevent="handleSubmit">
-        <!-- Grid Layout: 2 columns on desktop, 1 on mobile -->
         <div class="mb-6 grid grid-cols-1 gap-6 md:grid-cols-2">
-          <!-- Price per Credit -->
           <div>
             <label for="price-per-credit" class="mb-2 block text-sm font-medium text-[var(--app-ink)]">
               Prix par crédit (EUR)
@@ -31,7 +27,6 @@
             <p class="mt-1.5 text-xs text-[var(--app-ink-soft)]">Prix unitaire d'un crédit en euros</p>
           </div>
 
-          <!-- Credits per Search -->
           <div>
             <label for="credits-per-search" class="mb-2 block text-sm font-medium text-[var(--app-ink)]">
               Crédits par recherche
@@ -50,7 +45,6 @@
             </p>
           </div>
 
-          <!-- Credits per Result -->
           <div>
             <label for="credits-per-result" class="mb-2 block text-sm font-medium text-[var(--app-ink)]">
               Crédits par résultat
@@ -67,7 +61,6 @@
             <p class="mt-1.5 text-xs text-[var(--app-ink-soft)]">Nombre de crédits requis par prospect trouvé</p>
           </div>
 
-          <!-- Credits per Email -->
           <div>
             <label for="credits-per-email" class="mb-2 block text-sm font-medium text-[var(--app-ink)]">
               Crédits par email
@@ -84,7 +77,6 @@
             <p class="mt-1.5 text-xs text-[var(--app-ink-soft)]">Nombre de crédits requis pour envoyer un email</p>
           </div>
 
-          <!-- Free Credits on Signup -->
           <div>
             <label for="free-credits" class="mb-2 block text-sm font-medium text-[var(--app-ink)]">
               Crédits offerts à l'inscription
@@ -101,7 +93,6 @@
             <p class="mt-1.5 text-xs text-[var(--app-ink-soft)]">Nombre de crédits offerts à chaque nouvel inscrit</p>
           </div>
 
-          <!-- Minimum Credits Purchase -->
           <div>
             <label for="minimum-credits-purchase" class="mb-2 block text-sm font-medium text-[var(--app-ink)]">
               Achat minimum de crédits
@@ -119,7 +110,6 @@
           </div>
         </div>
 
-        <!-- Form Actions -->
         <div class="flex flex-col gap-3 border-t border-[var(--app-line)] pt-4 sm:flex-row sm:justify-end">
           <button type="button" class="btn-secondary flex-1 sm:flex-none" :disabled="isSaving" @click="resetForm">
             Réinitialiser
@@ -136,7 +126,6 @@
       </form>
     </div>
 
-    <!-- Loading State -->
     <div v-if="isLoading" class="card">
       <div class="animate-pulse space-y-4">
         <div class="h-4 w-3/4 rounded bg-[var(--app-surface-2)]"></div>
@@ -146,7 +135,6 @@
       </div>
     </div>
 
-    <!-- Error State -->
     <div v-if="error && !isLoading" class="card mt-6 border border-[var(--app-red)]/30 bg-[var(--app-red)]/10">
       <div class="flex items-center gap-2 text-[var(--app-red)]">
         <UIcon name="i-lucide-circle-alert" class="h-4 w-4 shrink-0" />
@@ -156,11 +144,12 @@
   </div>
 </template>
 
-<script setup lang="ts">
+<script lang="ts" setup>
+import type { UseToastReturn } from '~/types/Composables'
 import type { CreditSettings } from '~/types'
-import type { Ref } from 'vue'
+import type { ComputedRef, Ref } from 'vue'
 import { ref, computed, onMounted } from 'vue'
-import * as creditSettingsService from '~/services/creditSettingsService'
+import { CreditSettingsService } from '~/services/creditSettingsService'
 import { useToast } from '~/composables/useToast'
 
 /**
@@ -220,12 +209,12 @@ const originalForm: Ref<{
 /**
  * Toast composable
  */
-const toast = useToast()
+const toast: UseToastReturn = useToast()
 
 /**
  * Check if form has changes
  */
-const hasChanges = computed((): boolean => {
+const hasChanges: ComputedRef<boolean> = computed((): boolean => {
   return (
     form.value.price_per_credit !== originalForm.value.price_per_credit ||
     form.value.credits_per_search !== originalForm.value.credits_per_search ||
@@ -244,7 +233,7 @@ const loadCreditSettings = async (): Promise<void> => {
   try {
     isLoading.value = true
     error.value = null
-    creditSettings.value = await creditSettingsService.getCreditSettings()
+    creditSettings.value = await CreditSettingsService.getCreditSettings()
 
     // Update form with loaded values
     form.value = {
@@ -269,7 +258,6 @@ const loadCreditSettings = async (): Promise<void> => {
 
 /**
  * Reset form to original values
- * @returns {void}
  */
 const resetForm = (): void => {
   if (originalForm.value) {
@@ -310,7 +298,7 @@ const handleSubmit = async (): Promise<void> => {
     }
 
     // Update credit settings
-    const updated = await creditSettingsService.updateCreditSettings(updateData)
+    const updated = await CreditSettingsService.updateCreditSettings(updateData)
 
     // Update local state
     creditSettings.value = updated

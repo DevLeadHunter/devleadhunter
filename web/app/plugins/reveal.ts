@@ -3,8 +3,7 @@ import type { DirectiveBinding } from 'vue'
 /**
  * Per-element reveal options accepted by the `v-reveal` directive.
  */
-interface RevealOptions {
-  /** Delay before the entrance transition starts, in milliseconds. */
+type RevealOptions = {
   delay?: number
 }
 
@@ -13,8 +12,8 @@ const observers: WeakMap<HTMLElement, IntersectionObserver> = new WeakMap()
 
 /**
  * Resolve the reveal delay (ms) from a directive binding value.
- * @param {import('vue').DirectiveBinding<RevealOptions | number | undefined>} binding - Directive binding (`v-reveal="{ delay: 120 }"` or `v-reveal`).
- * @returns {number} Delay in milliseconds, defaulting to 0.
+ * @param binding - Directive binding (`v-reveal="{ delay: 120 }"` or `v-reveal`).
+ * @returns Delay in milliseconds, defaulting to 0.
  */
 function resolveDelay(binding: DirectiveBinding<RevealOptions | number | undefined>): number {
   const value: RevealOptions | number | undefined = binding.value
@@ -35,8 +34,8 @@ export default defineNuxtPlugin((nuxtApp): void => {
   nuxtApp.vueApp.directive('reveal', {
     /**
      * Arm the reveal effect once the element is mounted (client-side only).
-     * @param {HTMLElement} el - The element the directive is bound to.
-     * @param {import('vue').DirectiveBinding<RevealOptions | number | undefined>} binding - Directive binding carrying the optional delay.
+     * @param el - The element the directive is bound to.
+     * @param binding - Directive binding carrying the optional delay.
      */
     mounted(el: HTMLElement, binding: DirectiveBinding<RevealOptions | number | undefined>): void {
       const prefersReducedMotion: boolean = window.matchMedia('(prefers-reduced-motion: reduce)').matches
@@ -67,7 +66,7 @@ export default defineNuxtPlugin((nuxtApp): void => {
     },
     /**
      * Disconnect the IntersectionObserver when the element is removed.
-     * @param {HTMLElement} el - The element the directive was bound to.
+     * @param el - The element the directive was bound to.
      */
     unmounted(el: HTMLElement): void {
       const observer: IntersectionObserver | undefined = observers.get(el)

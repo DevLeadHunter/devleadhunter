@@ -1,14 +1,10 @@
 <template>
   <Teleport to="body">
-    <!-- Pas de backdrop : le drawer est non-modal pour laisser la navigation
-         (sidebar, pages) cliquable pendant qu'il est ouvert. -->
-    <!-- Panel -->
     <Transition name="drawer-panel">
       <div
         v-if="open && log"
         class="fixed top-0 right-0 z-50 flex h-dvh w-full max-w-[480px] flex-col border-l border-[var(--app-line)] bg-[var(--app-surface)] shadow-2xl"
       >
-        <!-- ───────────────────────── Header ───────────────────────── -->
         <div class="flex items-start gap-3 border-b border-[var(--app-line)] px-5 py-4">
           <button
             v-if="showBack"
@@ -44,9 +40,7 @@
           </button>
         </div>
 
-        <!-- ───────────────────────── Body ────────────────────────── -->
         <div class="flex-1 overflow-y-auto">
-          <!-- Subject card -->
           <div class="px-5 py-4">
             <div class="rounded-xl border border-[var(--app-line)] bg-[var(--app-surface-2)] p-4">
               <p class="mb-1 text-[10px] font-semibold tracking-wider text-[var(--app-ink-soft)] uppercase">Sujet</p>
@@ -54,16 +48,13 @@
             </div>
           </div>
 
-          <!-- Timeline -->
           <div class="px-5 pb-2">
             <p class="mb-4 text-[10px] font-semibold tracking-wider text-[var(--app-ink-soft)] uppercase">Suivi</p>
             <UTimeline :items="timelineItems" size="md" color="neutral" :ui="{ date: 'text-[var(--app-ink-soft)]' }" />
           </div>
 
-          <!-- Divider -->
           <div class="mx-5 border-t border-[var(--app-surface-2)]"></div>
 
-          <!-- Email content -->
           <div class="px-5 py-4">
             <p class="mb-3 text-[10px] font-semibold tracking-wider text-[var(--app-ink-soft)] uppercase">Contenu</p>
             <iframe
@@ -81,10 +72,8 @@
             </div>
           </div>
 
-          <!-- Divider -->
           <div class="mx-5 border-t border-[var(--app-surface-2)]"></div>
 
-          <!-- Technical details -->
           <div class="px-5 py-4">
             <p class="mb-3 text-[10px] font-semibold tracking-wider text-[var(--app-ink-soft)] uppercase">
               Détails techniques
@@ -129,7 +118,6 @@
               </div>
             </div>
 
-            <!-- Error -->
             <div
               v-if="log.error_message"
               class="mt-3 flex items-start gap-2 rounded-lg border border-[var(--app-red)]/30 bg-[var(--app-red)]/5 px-3 py-2"
@@ -140,7 +128,6 @@
           </div>
         </div>
 
-        <!-- ───────────────────────── Footer ─────────────────────── -->
         <div class="border-t border-[var(--app-line)] px-5 py-4">
           <button class="btn-primary w-full" @click="emit('resend')">
             <UIcon name="i-lucide-send" class="mr-1.5 h-4 w-4" />
@@ -156,16 +143,13 @@
 </template>
 
 <script lang="ts" setup>
-import type { ComputedRef, PropType } from 'vue'
+import type { EmailDeliveryStage, EmailTimelineEntry, UiEmailLogDrawerEmits } from '~/types/UiEmailLogDrawer'
+import type { ComputedRef, EmitFn, PropType } from 'vue'
 import type { EmailLog, EmailStatus } from '~/types'
 import type { EmailLogDrawerProps } from '~/types/EmailLogDrawer'
 import { formatDate } from '~/utils/date'
 
-// ─── Props & emits ────────────────────────────────────────────────────────────
-
-/**
- * Defines the component props.
- */
+/** Drawer showing email delivery timeline and events. */
 const props: EmailLogDrawerProps = defineProps({
   open: {
     type: Boolean,
@@ -185,16 +169,7 @@ const props: EmailLogDrawerProps = defineProps({
   },
 })
 
-const emit = defineEmits<{
-  /** Fired when the user dismisses the drawer. */
-  close: []
-  /** Go back to the previous drawer of the stack. */
-  back: []
-  /** Open the composer prefilled with this log's recipient/subject/body. */
-  resend: []
-}>()
-
-// ─── Status badges ────────────────────────────────────────────────────────────
+const emit: EmitFn<UiEmailLogDrawerEmits> = defineEmits<UiEmailLogDrawerEmits>()
 
 /**
  * Returns all status badges to display: best positive state + complaint if any.
@@ -215,8 +190,6 @@ const statusBadges: ComputedRef<EmailStatus[]> = computed((): EmailStatus[] => {
   return badges
 })
 
-// ─── Email body ───────────────────────────────────────────────────────────────
-
 /**
  * Strip ``<script>`` tags from the HTML body as a defence-in-depth measure
  * before rendering in the sandboxed iframe.
@@ -228,70 +201,21 @@ const sanitizedBodyHtml: ComputedRef<string | null> = computed((): string | null
   return html.replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
 })
 
-// ─── Timeline ─────────────────────────────────────────────────────────────────
-
-/** Per-stage visual configuration for the timeline indicator + connector. */
-interface StageStyle {
-  /** Tailwind classes for the colored indicator circle (reached state). */
-  indicator: string
-  /** Tailwind class for the connector line below a reached node. */
-  separator: string
-}
-
-/** A single definition for one possible email event stage. */
-interface StageDef {
-  /** Stable key used as the timeline item value. */
-  key: string
-  /** French label shown as the item title. */
-  label: string
-  /** Lucide icon name. */
-  icon: string
-  /** Timestamp for this stage, or null/undefined when it hasn't happened. */
-  ts: string | null | undefined
-  /** Visual style applied when the stage is reached. */
-  style: StageStyle
-  /** When false, the stage is only rendered if it actually occurred. */
-  alwaysShow: boolean
-}
-
-/** Shape of a Nuxt UI timeline item with per-item style overrides. */
-interface EmailTimelineItem {
-  value: string
-  title: string
-  description?: string
-  icon: string
-  ui: {
-    indicator: string
-    title: string
-    description: string
-    separator: string
-  }
-}
-
 /** Muted indicator style applied to stages that haven't occurred yet. */
 const MUTED_INDICATOR: string =
   'bg-[var(--app-surface)] text-[var(--app-faint)] ring-1 ring-inset ring-[var(--app-line)]'
 
-/**
- * Build the ordered list of timeline items for the Nuxt UI ``UTimeline``.
- *
- * Positive stages (sent → delivered → opened → clicked) are always shown,
- * dimmed when not yet reached, so the recipient's journey is visible at a
- * glance.  Negative stages (bounced, spam, failed) appear only when they
- * actually occurred.  Each item carries per-item ``ui`` overrides so every
- * stage gets its own colour.
- * @returns Array of timeline items consumable by ``UTimeline``.
- */
-const timelineItems: ComputedRef<EmailTimelineItem[]> = computed((): EmailTimelineItem[] => {
+/** Timeline items for UTimeline from the log's delivery events. */
+const timelineItems: ComputedRef<EmailTimelineEntry[]> = computed((): EmailTimelineEntry[] => {
   if (!props.log) return []
   const l: EmailLog = props.log
 
-  const stages: StageDef[] = [
+  const stages: EmailDeliveryStage[] = [
     {
       key: 'sent',
       label: 'Envoyé',
       icon: 'i-lucide-send',
-      ts: l.sent_at,
+      timestamp: l.sent_at,
       alwaysShow: true,
       style: {
         indicator: 'bg-[var(--app-blue-soft)] text-[var(--app-blue)] ring-1 ring-inset ring-[var(--app-blue)]/25',
@@ -302,7 +226,7 @@ const timelineItems: ComputedRef<EmailTimelineItem[]> = computed((): EmailTimeli
       key: 'delivered',
       label: 'Délivré',
       icon: 'i-lucide-circle-check',
-      ts: l.delivered_at,
+      timestamp: l.delivered_at,
       alwaysShow: true,
       style: {
         indicator: 'bg-[var(--app-green-soft)] text-[var(--app-green)] ring-1 ring-inset ring-[var(--app-green)]/25',
@@ -313,7 +237,7 @@ const timelineItems: ComputedRef<EmailTimelineItem[]> = computed((): EmailTimeli
       key: 'opened',
       label: 'Ouvert',
       icon: 'i-lucide-mail-open',
-      ts: l.opened_at,
+      timestamp: l.opened_at,
       alwaysShow: true,
       style: {
         indicator: 'bg-[var(--app-violet-soft)] text-[var(--app-violet)] ring-1 ring-inset ring-[var(--app-violet)]/25',
@@ -324,7 +248,7 @@ const timelineItems: ComputedRef<EmailTimelineItem[]> = computed((): EmailTimeli
       key: 'clicked',
       label: 'Cliqué',
       icon: 'i-lucide-mouse-pointer-click',
-      ts: l.clicked_at,
+      timestamp: l.clicked_at,
       alwaysShow: true,
       style: {
         indicator: 'bg-[var(--app-ink)] text-[var(--app-bg)] ring-1 ring-inset ring-[var(--app-ink)]/20',
@@ -335,7 +259,7 @@ const timelineItems: ComputedRef<EmailTimelineItem[]> = computed((): EmailTimeli
       key: 'bounced',
       label: 'Bounce',
       icon: 'i-lucide-undo-2',
-      ts: l.bounced_at,
+      timestamp: l.bounced_at,
       alwaysShow: false,
       style: {
         indicator: 'bg-[var(--app-red-soft)] text-[var(--app-red)] ring-1 ring-inset ring-[var(--app-red)]/25',
@@ -346,7 +270,7 @@ const timelineItems: ComputedRef<EmailTimelineItem[]> = computed((): EmailTimeli
       key: 'complained',
       label: 'Marqué comme spam',
       icon: 'i-lucide-octagon-alert',
-      ts: l.complained_at,
+      timestamp: l.complained_at,
       alwaysShow: false,
       style: {
         indicator: 'bg-[var(--app-red-soft)] text-[var(--app-red)] ring-1 ring-inset ring-[var(--app-red)]/25',
@@ -357,7 +281,7 @@ const timelineItems: ComputedRef<EmailTimelineItem[]> = computed((): EmailTimeli
       key: 'suppressed',
       label: 'Adresse supprimée (liste Resend)',
       icon: 'i-lucide-circle-minus',
-      ts: l.suppressed_at,
+      timestamp: l.suppressed_at,
       alwaysShow: false,
       style: {
         indicator: 'bg-[var(--app-surface-2)] text-[var(--app-ink-soft)] ring-1 ring-inset ring-[var(--app-line)]',
@@ -368,7 +292,7 @@ const timelineItems: ComputedRef<EmailTimelineItem[]> = computed((): EmailTimeli
       key: 'failed',
       label: "Échec d'envoi",
       icon: 'i-lucide-x',
-      ts: l.failed_at,
+      timestamp: l.failed_at,
       alwaysShow: false,
       style: {
         indicator: 'bg-[var(--app-red-soft)] text-[var(--app-red)] ring-1 ring-inset ring-[var(--app-red)]/25',
@@ -378,17 +302,17 @@ const timelineItems: ComputedRef<EmailTimelineItem[]> = computed((): EmailTimeli
   ]
 
   return stages
-    .filter((s: StageDef): boolean => s.alwaysShow || !!s.ts)
-    .map((s: StageDef): EmailTimelineItem => {
-      const reached: boolean = !!s.ts
+    .filter((stage: EmailDeliveryStage): boolean => stage.alwaysShow || !!stage.timestamp)
+    .map((stage: EmailDeliveryStage): EmailTimelineEntry => {
+      const reached: boolean = !!stage.timestamp
       return {
-        value: s.key,
-        title: s.label,
-        description: reached ? formatDate(s.ts) : 'En attente',
-        icon: s.icon,
+        value: stage.key,
+        title: stage.label,
+        description: reached ? formatDate(stage.timestamp) : 'En attente',
+        icon: stage.icon,
         ui: {
-          indicator: reached ? s.style.indicator : MUTED_INDICATOR,
-          separator: reached ? s.style.separator : 'bg-[var(--app-surface-2)]',
+          indicator: reached ? stage.style.indicator : MUTED_INDICATOR,
+          separator: reached ? stage.style.separator : 'bg-[var(--app-surface-2)]',
           title: reached ? 'text-[var(--app-ink)] text-sm font-medium' : 'text-[#4b5563] text-sm font-medium',
           description: reached ? 'text-[11px] text-[var(--app-ink-soft)]' : 'text-[11px] text-[var(--app-faint)]',
         },

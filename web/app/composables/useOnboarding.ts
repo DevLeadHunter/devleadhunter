@@ -4,7 +4,7 @@
  */
 
 /** localStorage key remembering that the user chose to configure later. */
-const ONBOARDING_POSTPONED_KEY = 'dlh-onboarding-postponed'
+const ONBOARDING_POSTPONED_KEY: string = 'dlh-onboarding-postponed'
 
 /**
  * Setup-wizard helpers shared by the wizard page and the auth middleware.

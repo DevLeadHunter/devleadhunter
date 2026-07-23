@@ -1,6 +1,5 @@
 <template>
   <div class="space-y-5">
-    <!-- Header -->
     <div class="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
       <div>
         <p class="app-label flex items-center gap-2">
@@ -18,7 +17,6 @@
       </NuxtLink>
     </div>
 
-    <!-- Awaiting-review banner -->
     <NuxtLink
       v-if="store.awaitingReviewCount > 0"
       :to="firstAwaitingReviewLink"
@@ -30,12 +28,10 @@
       </p>
     </NuxtLink>
 
-    <!-- Loading -->
     <div v-if="store.isLoading && store.automationsCount === 0" class="flex items-center justify-center py-16">
       <UIcon name="i-lucide-loader-circle" class="h-8 w-8 animate-spin text-[var(--app-accent)]" />
     </div>
 
-    <!-- Content -->
     <div v-else-if="store.automationsCount > 0" class="grid grid-cols-1 gap-4 lg:grid-cols-2 2xl:grid-cols-3">
       <NuxtLink
         v-for="auto in store.automations"
@@ -74,7 +70,6 @@
       </NuxtLink>
     </div>
 
-    <!-- Empty -->
     <div v-else class="app-card px-6 py-14 text-center">
       <LandingAsterisk class="text-4xl text-[var(--app-accent)]" />
       <h3 class="font-display mt-5 text-2xl font-semibold text-[var(--app-ink)]">Aucune automatisation</h3>
@@ -89,26 +84,21 @@
 </template>
 
 <script lang="ts" setup>
+import type { AutomationListKpi } from '~/types/AutomationsListPage'
 import type { ComputedRef, Ref } from 'vue'
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import type { Automation, AutomationStatus, AutomationStep } from '~/types/Automation'
 import { useAutomationsStore } from '~/stores/automations'
-
-/** A compact KPI tile. */
-interface Kpi {
-  label: string
-  value: number
-}
 
 definePageMeta({
   layout: 'dashboard',
   middleware: 'auth',
 })
 
-const store = useAutomationsStore()
+const store: ReturnType<typeof useAutomationsStore> = useAutomationsStore()
 
 /** Polling handle for live progress. */
-const pollHandle: Ref<ReturnType<typeof setInterval> | null> = ref<ReturnType<typeof setInterval> | null>(null)
+const pollHandle: Ref<ReturnType<typeof setInterval> | null> = ref(null)
 
 /** Link to the first automatisation awaiting review. */
 const firstAwaitingReviewLink: ComputedRef<string> = computed((): string => {
@@ -133,7 +123,7 @@ function stepCount(auto: Automation, steps: AutomationStep[]): number {
  * @param auto - The automatisation.
  * @returns Four tiles.
  */
-function listKpis(auto: Automation): Kpi[] {
+function listKpis(auto: Automation): AutomationListKpi[] {
   return [
     { label: 'Total', value: auto.stats.total },
     { label: 'Sites', value: stepCount(auto, ['generated', 'campaigning']) },

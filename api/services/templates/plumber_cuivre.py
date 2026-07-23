@@ -769,7 +769,6 @@ def build_content(
     }
 
 
-# ---------------------------------------------------------------------------
 # Phase 4b — flat SiteContent path
 #
 # The contract with the demo-host template layer (@devleadhunter/website-content):
@@ -779,7 +778,6 @@ def build_content(
 # whose SiteContent array is empty — so the variable fields it DOES consume
 # (services, faq, reviews, gallery, hours, about, palette…) must be provided here
 # for the rendered page to match the historical rich look.
-# ---------------------------------------------------------------------------
 
 # Short editorial default (used when the prospect has no enrichment description).
 _ABOUT_TEXT_SHORT: str = _ABOUT_TEXT
@@ -834,7 +832,8 @@ def build_site_content(
 
     Images stay plain external URLs (Google photos are never uploaded assets).
 
-    @returns A flat ``SiteContent`` object (see ``@devleadhunter/website-content``).
+    Returns:
+        A flat ``SiteContent`` object (see ``@devleadhunter/website-content``).
     """
     enrichment = enrichment or {}
 
@@ -1019,8 +1018,11 @@ def to_storyblok_site_content(site_content: dict[str, Any]) -> dict[str, Any]:
     expressed as a ``theme_palette`` blok so the Visual Editor edits it like the
     rich templates. Every field is editable in the Storyblok Visual Editor.
 
-    @param site_content - The flat ``SiteContent`` dict from ``build_site_content``.
-    @returns A ``site_content`` blok ready to drop into the page ``body``.
+    Args:
+        site_content: The flat ``SiteContent`` dict from ``build_site_content``.
+
+    Returns:
+        A ``site_content`` blok ready to drop into the page ``body``.
     """
     palette_raw = site_content.get("palette") or {}
     palette: dict[str, str] = palette_raw if isinstance(palette_raw, dict) else {}

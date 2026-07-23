@@ -1,9 +1,18 @@
-/**
- * Props du composant UiProspectEnrichment.
- */
-export interface UiProspectEnrichmentProps {
-  /** Identifiant du prospect dont on charge l'enrichissement. */
+import type { EnrichmentReview, EnrichmentOpeningHours } from '~/services/enrichmentService'
+
+export type UiProspectEnrichmentProps = {
   prospectId: number | null
-  /** Indique si le drawer parent est ouvert (déclencheur de chargement paresseux). */
   open: boolean
+}
+
+export type EnrichmentForm = {
+  rating: number | null
+  reviews_count: number | null
+  description: string
+  photos: string[]
+  services: string[]
+  reviews: EnrichmentReview[]
+  opening_hours: EnrichmentOpeningHours[]
+  contact_first_name: string
+  contact_last_name: string
 }

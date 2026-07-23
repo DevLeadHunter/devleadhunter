@@ -42,7 +42,7 @@ from enums.demo_site_status import DemoSiteStatus
 from enums.demo_video_status import DemoVideoStatus
 from models.demo_site import DemoSite
 from models.presenter_video import PresenterVideo
-from services import r2_storage_service
+from services.r2_storage_service import r2_storage
 
 logger = logging.getLogger(__name__)
 
@@ -72,12 +72,12 @@ _FONT_CANDIDATES: tuple[str, ...] = (
 
 def video_object_key(slug: str) -> str:
     """R2 key of a demo site's generated prospection video."""
-    return r2_storage_service.website_video_key(slug)
+    return r2_storage.website_video_key(slug)
 
 
 def thumbnail_object_key(slug: str) -> str:
     """R2 key of a demo site's email thumbnail."""
-    return r2_storage_service.website_thumbnail_key(slug)
+    return r2_storage.website_thumbnail_key(slug)
 
 
 def video_page_url(slug: str) -> str:
@@ -87,12 +87,12 @@ def video_page_url(slug: str) -> str:
 
 def public_video_file_url(slug: str) -> str:
     """Public R2 URL of the mp4 (served by Cloudflare, never by the API)."""
-    return r2_storage_service.public_url(video_object_key(slug))
+    return r2_storage.public_url(video_object_key(slug))
 
 
 def public_thumbnail_url(slug: str) -> str:
     """Public R2 URL of the email thumbnail (absolute — embedded in emails)."""
-    return r2_storage_service.public_url(thumbnail_object_key(slug))
+    return r2_storage.public_url(thumbnail_object_key(slug))
 
 
 def has_ready_video(site: DemoSite) -> bool:
@@ -109,7 +109,7 @@ def has_ready_video(site: DemoSite) -> bool:
 def delete_files_for_slug(slug: str) -> None:
     """Remove the generated video + thumbnail from R2 (best effort)."""
     try:
-        r2_storage_service.delete_many([video_object_key(slug), thumbnail_object_key(slug)])
+        r2_storage.delete_many([video_object_key(slug), thumbnail_object_key(slug)])
     except Exception:  # noqa: BLE001 — a storage hiccup must never block a deletion flow
         logger.warning("[Video] R2 cleanup failed for slug=%s", slug, exc_info=True)
 
@@ -125,11 +125,16 @@ class DemoVideoService:
         """
         Validate and start a background generation for a demo site.
 
-        @param db - Active database session (request-scoped).
-        @param site - Demo site owned by the user.
-        @param user_id - Owner (used to fetch the presenter clip).
-        @returns The site with ``video_status`` set to ``pending``.
-        @throws ValueError when the site or presenter clip is not ready.
+        Args:
+            db: Active database session (request-scoped).
+            site: Demo site owned by the user.
+            user_id: Owner (used to fetch the presenter clip).
+
+        Returns:
+            The site with ``video_status`` set to ``pending``.
+
+        Raises:
+            ValueError: when the site or presenter clip is not ready.
         """
         from services.presenter_video_service import presenter_video_service
 
@@ -170,7 +175,8 @@ class DemoVideoService:
         Fires only when the user has a presenter clip with ``auto_generate``
         enabled; never raises (a video failure must not fail site creation).
 
-        @returns True when a generation was started.
+        Returns:
+            True when a generation was started.
         """
         from services.presenter_video_service import presenter_video_service
 
@@ -257,9 +263,9 @@ class DemoVideoService:
         """First name of the resolved decision-maker (None when unknown)."""
         if not site.prospect_id:
             return None
-        from services.email_variables import resolved_contact
+        from services.email_variables import EmailVariables
 
-        first, _last, _gender = resolved_contact(db, site.prospect_id)
+        first, _last, _gender = EmailVariables.resolved_contact(db, site.prospect_id)
         return first or None
 
     # ------------------------------------------------------------------ #
@@ -274,18 +280,23 @@ class DemoVideoService:
         Clips live on R2 under ``videos/presenter/{user_id}.mp4``; rows written
         before the R2 migration still hold a local disk path and keep working.
 
-        @param presenter - The user's presenter clip row.
-        @param work_dir - Temp directory receiving the download.
-        @returns Path to a readable local file.
-        @throws DemoVideoGenerationError when the clip cannot be resolved.
+        Args:
+            presenter: The user's presenter clip row.
+            work_dir: Temp directory receiving the download.
+
+        Returns:
+            Path to a readable local file.
+
+        Raises:
+            DemoVideoGenerationError: when the clip cannot be resolved.
         """
         stored = str(presenter.file_path or "").strip()
         if not stored:
             raise DemoVideoGenerationError("Clip de présentation introuvable.")
 
-        if stored.startswith(r2_storage_service.VIDEOS_PRESENTER_PREFIX):
+        if stored.startswith(r2_storage.VIDEOS_PRESENTER_PREFIX):
             try:
-                return await r2_storage_service.download_to_path_async(stored, work_dir / "presenter.mp4")
+                return await r2_storage.download_to_path_async(stored, work_dir / "presenter.mp4")
             except Exception as exc:  # noqa: BLE001 — surfaced as a readable pipeline error
                 raise DemoVideoGenerationError(
                     "Clip de présentation illisible sur le stockage (R2)."
@@ -328,10 +339,10 @@ class DemoVideoService:
             self._build_thumbnail(screenshot_path, first_name, thumbnail_path)
 
             # Publication sur R2 : c'est Cloudflare qui sert, plus le VPS.
-            await r2_storage_service.upload_file_async(
+            await r2_storage.upload_file_async(
                 output_path, video_object_key(site.slug), "video/mp4"
             )
-            await r2_storage_service.upload_file_async(
+            await r2_storage.upload_file_async(
                 thumbnail_path, thumbnail_object_key(site.slug), "image/jpeg"
             )
         finally:
@@ -349,9 +360,11 @@ class DemoVideoService:
         ``NotImplementedError``. A plain thread has no event loop, so the
         sync API works everywhere.
 
-        @returns (capture webm path, offset of the scroll start inside the
-            recording in seconds, top-of-page screenshot path).
-        @throws DemoVideoGenerationError when the page cannot be captured.
+        Returns:
+            (capture webm path, offset of the scroll start inside the recording in seconds, top-of-page screenshot path).
+
+        Raises:
+            DemoVideoGenerationError: when the page cannot be captured.
         """
         return await asyncio.to_thread(self._capture_site_sync, url, scroll_seconds, work_dir)
 
@@ -581,7 +594,8 @@ class DemoVideoService:
         to a circular PiP bubble; the greeting pill fades in/out during the
         intro.
 
-        @throws DemoVideoGenerationError when ffmpeg fails.
+        Raises:
+            DemoVideoGenerationError: when ffmpeg fails.
         """
         duration = presenter.duration_seconds
         intro = presenter.intro_seconds

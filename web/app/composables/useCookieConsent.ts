@@ -1,17 +1,16 @@
 import type { ComputedRef, Ref } from 'vue'
 import { computed, ref } from 'vue'
 
-/** Persisted marketing-cookie consent choice. */
 export type CookieConsent = 'unknown' | 'accepted' | 'refused'
 
 /** localStorage key holding the visitor's choice. */
-const STORAGE_KEY = 'dlh_cookie_consent'
+const STORAGE_KEY: string = 'dlh_cookie_consent'
 
 /** Shared reactive consent state (module-level → one source of truth across the app). */
-const consentState: Ref<CookieConsent> = ref<CookieConsent>('unknown')
+const consentState: Ref<CookieConsent> = ref('unknown')
 
 /** Whether the stored choice has already been read from localStorage. */
-let hydrated = false
+let hydrated: boolean = false
 
 /**
  * Read the stored choice once, on the client.

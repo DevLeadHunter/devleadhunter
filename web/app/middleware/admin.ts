@@ -8,7 +8,7 @@ export default defineNuxtRouteMiddleware(async () => {
   /**
    * User store
    */
-  const userStore = useUserStore()
+  const userStore: ReturnType<typeof useUserStore> = useUserStore()
 
   /**
    * Check if we're on client side

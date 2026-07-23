@@ -7,7 +7,7 @@
       autocomplete="off"
       aria-autocomplete="list"
       :aria-expanded="open"
-      :placeholder="placeholder"
+      :placeholder="props.placeholder"
       class="input-field hover:border-[var(--app-ink)]"
       @focus="open = items.length > 0"
       @keydown="onKeydown"
@@ -35,41 +35,27 @@
 </template>
 
 <script lang="ts" setup>
+import type { Commune, UiCitySelectProps } from '~/types/UiCitySelect'
 import type { Ref } from 'vue'
 import { ref, watch, onMounted, onBeforeUnmount } from 'vue'
 
-/**
- * Reusable French-city picker with type-to-search autosuggestion.
- *
- * A normal text input (same ``.input-field`` style as the rest of the app, with a
- * white border on hover) backed by a custom suggestion dropdown that queries the
- * official, free, key-less ``geo.api.gouv.fr`` communes API — so any real French
- * city is searchable. The ``v-model`` is the field text: picking a suggestion
- * fills it, erasing it resets the value (e.g. clears a filter). Reusable app-wide.
- */
+/** French city picker with geo.api.gouv.fr autosuggest; v-model is the field text. */
 const modelValue = defineModel<string>({ required: true })
 
-/**
- * Defines the component props.
- */
-defineProps({
+/** Placeholder shown while the field is empty. */
+const props: UiCitySelectProps = defineProps({
   placeholder: {
     type: String,
     default: 'Rechercher une ville…',
   },
 })
 
-/** A French commune as returned by geo.api.gouv.fr (only the fields we request). */
-interface Commune {
-  nom: string
-}
-
-const items: Ref<string[]> = ref<string[]>([])
-const open: Ref<boolean> = ref<boolean>(false)
-const highlighted: Ref<number> = ref<number>(-1)
-const rootEl: Ref<HTMLElement | null> = ref<HTMLElement | null>(null)
+const items: Ref<string[]> = ref([])
+const open: Ref<boolean> = ref(false)
+const highlighted: Ref<number> = ref(-1)
+const rootEl: Ref<HTMLElement | null> = ref(null)
 let debounceId: ReturnType<typeof setTimeout> | null = null
-let justSelected = false
+let justSelected: boolean = false
 
 /**
  * Fetch matching French communes for a search term (sorted by population).

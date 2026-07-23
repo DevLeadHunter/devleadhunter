@@ -3,7 +3,7 @@ import { defineNuxtConfig } from 'nuxt/config'
 
 const isDesktopBuild: boolean = process.env.NUXT_DESKTOP_BUILD === '1'
 
-const siteUrl = 'https://devleadhunter.dibodev.fr'
+const siteUrl: string = 'https://devleadhunter.dibodev.fr'
 
 export default defineNuxtConfig({
   modules: [
@@ -159,14 +159,6 @@ export default defineNuxtConfig({
       posthogIngestionHost: process.env.NUXT_PUBLIC_POSTHOG_INGESTION_HOST || 'https://eu.i.posthog.com',
     },
   },
-
-  routeRules: !isDesktopBuild
-    ? {
-        '/dashboard/**': { robots: false },
-        '/login': { robots: false },
-        '/profile': { robots: false },
-      }
-    : undefined,
 
   compatibilityDate: '2024-07-11',
 

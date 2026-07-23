@@ -5,7 +5,6 @@
         v-if="open"
         class="fixed top-0 right-0 z-50 flex h-dvh w-full max-w-[460px] flex-col border-l border-[var(--app-line)] bg-[var(--app-surface)] shadow-2xl"
       >
-        <!-- Header -->
         <div class="flex items-start gap-3 border-b border-[var(--app-line)] px-5 py-4">
           <button
             v-if="showBack"
@@ -32,7 +31,6 @@
           </button>
         </div>
 
-        <!-- Body -->
         <div class="flex-1 overflow-y-auto px-5 py-4">
           <div v-if="isLoading" class="flex items-center justify-center py-16">
             <UIcon name="i-lucide-loader-circle" class="h-7 w-7 animate-spin text-[var(--app-accent)]" />
@@ -43,7 +41,6 @@
           </form>
         </div>
 
-        <!-- Footer -->
         <div class="flex gap-2 border-t border-[var(--app-line)] px-5 py-4">
           <button type="button" class="app-btn-secondary flex-1" @click="emit('close')">Fermer</button>
           <button
@@ -62,16 +59,16 @@
 </template>
 
 <script lang="ts" setup>
-import type { ComputedRef, Ref } from 'vue'
+import type { UiSendPolicyDrawerEmits } from '~/types/UiSendPolicyDrawer'
+import type { UseToastReturn } from '~/types/Composables'
+import type { ComputedRef, EmitFn, Ref } from 'vue'
 import { computed, ref, watch } from 'vue'
 import type { SendPolicyDrawerProps } from '~/types/SendPolicyDrawer'
 import type { SendPolicy } from '~/types/Automation'
-import { getSendPolicy, updateSendPolicy } from '~/services/sendPolicyService'
+import { SendPolicyService } from '~/services/sendPolicyService'
 import { useToast } from '~/composables/useToast'
 
-/**
- * Defines the component props.
- */
+/** Drawer to edit global sending cadence rules. */
 const props: SendPolicyDrawerProps = defineProps({
   open: {
     type: Boolean,
@@ -83,22 +80,17 @@ const props: SendPolicyDrawerProps = defineProps({
   },
 })
 
-const emit = defineEmits<{
-  /** Close every drawer. */
-  close: []
-  /** Go back to the previous drawer of the stack. */
-  back: []
-}>()
+const emit: EmitFn<UiSendPolicyDrawerEmits> = defineEmits<UiSendPolicyDrawerEmits>()
 
-const toast = useToast()
+const toast: UseToastReturn = useToast()
 
 /** Whether the policy is loading. */
-const isLoading: Ref<boolean> = ref<boolean>(true)
+const isLoading: Ref<boolean> = ref(true)
 /** Whether a save is in flight. */
-const isSaving: Ref<boolean> = ref<boolean>(false)
+const isSaving: Ref<boolean> = ref(false)
 
 /** The editable policy. */
-const form: Ref<SendPolicy> = ref<SendPolicy>({
+const form: Ref<SendPolicy> = ref({
   daily_cap: 20,
   days_of_week: [0, 1, 2, 3, 4],
   window_start_hour: 7,
@@ -118,7 +110,7 @@ const isWindowValid: ComputedRef<boolean> = computed(
 async function load(): Promise<void> {
   isLoading.value = true
   try {
-    form.value = await getSendPolicy()
+    form.value = await SendPolicyService.getSendPolicy()
   } catch {
     // Keep defaults on failure.
   } finally {
@@ -141,7 +133,7 @@ async function save(): Promise<void> {
   }
   isSaving.value = true
   try {
-    form.value = await updateSendPolicy(form.value)
+    form.value = await SendPolicyService.updateSendPolicy(form.value)
     toast.success("Réglages d'envoi enregistrés")
     emit('close')
   } catch (err: unknown) {

@@ -24,9 +24,7 @@
 import type { PropType } from 'vue'
 import type { LandingLegalArticleProps } from '~/types/LandingLegalArticle'
 
-/**
- * Defines the component props.
- */
+/** Legal article block with i18n title and body keys. */
 const props: LandingLegalArticleProps = defineProps({
   titleKey: {
     type: String,

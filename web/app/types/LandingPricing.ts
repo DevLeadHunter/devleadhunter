@@ -1,11 +1,12 @@
 import type { CreditSettings } from '~/types'
 
-/**
- * Props for the LandingPricing component.
- */
-export interface LandingPricingProps {
-  /** Credit settings fetched from the API, or null while loading/on error. */
+export type LandingPricingProps = {
   settings: CreditSettings | null
-  /** Whether the credit settings are still loading. */
   loading: boolean
+}
+
+/** One credit metric displayed in the pricing card. */
+export type LandingPricingStat = {
+  value: string
+  labelKey: string
 }

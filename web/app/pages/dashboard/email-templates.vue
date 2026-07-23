@@ -1,6 +1,5 @@
 <template>
   <div class="space-y-5">
-    <!-- Header -->
     <div class="flex flex-wrap items-center justify-between gap-3">
       <div>
         <h1 class="text-xl font-semibold text-[var(--app-ink)]">Modèles d'email</h1>
@@ -12,7 +11,6 @@
       </button>
     </div>
 
-    <!-- Toolbar -->
     <div class="flex flex-wrap items-center gap-3">
       <div class="relative w-full max-w-xs">
         <UIcon
@@ -29,7 +27,6 @@
       </p>
     </div>
 
-    <!-- Loading state -->
     <div v-if="isLoading" class="card">
       <div class="animate-pulse space-y-3">
         <div class="h-4 w-3/4 rounded bg-[var(--app-surface-2)]"></div>
@@ -37,7 +34,6 @@
       </div>
     </div>
 
-    <!-- Empty state -->
     <div v-else-if="emailTemplates.length === 0" class="card px-6 py-12 text-center">
       <LandingAsterisk class="text-4xl text-[var(--app-accent)]" />
       <h3 class="font-display mt-5 text-2xl font-semibold text-[var(--app-ink)]">Aucun modèle d'email</h3>
@@ -52,12 +48,10 @@
       </div>
     </div>
 
-    <!-- No search result -->
     <div v-else-if="filteredTemplates.length === 0" class="card px-6 py-10 text-center">
       <p class="text-muted text-sm">Aucun modèle ne correspond à « {{ searchQuery }} ».</p>
     </div>
 
-    <!-- Grouped list -->
     <template v-else>
       <section v-for="group in templateGroups" :key="group.key">
         <p class="app-label mb-2">{{ group.heading }} · {{ group.templates.length }}</p>
@@ -68,7 +62,6 @@
             class="group flex items-start gap-4 px-4 py-3 transition-colors hover:bg-[var(--app-surface-2)]/60"
             :class="template.is_active ? '' : 'opacity-70'"
           >
-            <!-- Identity -->
             <button type="button" class="min-w-0 flex-1 cursor-pointer text-left" @click="openPreviewDrawer(template)">
               <div class="flex flex-wrap items-center gap-2">
                 <h3
@@ -89,7 +82,6 @@
               </p>
             </button>
 
-            <!-- Actions -->
             <div class="flex shrink-0 items-center gap-1.5">
               <button
                 class="btn-secondary h-8 min-h-8 px-2.5 text-xs"
@@ -132,7 +124,6 @@
       </section>
     </template>
 
-    <!-- Confirm Delete Modal -->
     <UiConfirmModal
       ref="confirmModal"
       title="Supprimer le modèle"
@@ -144,16 +135,13 @@
   </div>
 </template>
 
-<script setup lang="ts">
+<script lang="ts" setup>
+import type { UseToastReturn } from '~/types/Composables'
+import type { TemplateGroup } from '~/types/EmailTemplatesPage'
 import type { ComputedRef, Ref } from 'vue'
 import type { EmailTemplate } from '~/types'
 import { computed, onMounted, ref, watch } from 'vue'
-import {
-  getEmailTemplates,
-  createEmailTemplate,
-  updateEmailTemplate,
-  deleteEmailTemplate,
-} from '~/services/emailTemplatesService'
+import { EmailTemplatesService } from '~/services/emailTemplatesService'
 import { useToast } from '~/composables/useToast'
 import { useDrawerStackStore } from '~/stores/drawerStack'
 
@@ -162,30 +150,16 @@ definePageMeta({
   middleware: 'auth',
 })
 
-/** One displayed group of templates. */
-interface TemplateGroup {
-  key: string
-  heading: string
-  templates: EmailTemplate[]
-}
-
-const toast = useToast()
+const toast: UseToastReturn = useToast()
 
 /** Persistent drawer stack (create/edit/preview live there). */
-const drawerStack = useDrawerStackStore()
+const drawerStack: ReturnType<typeof useDrawerStackStore> = useDrawerStackStore()
 
-// ─── State ────────────────────────────────────────────────────────────────────
-
-const emailTemplates: Ref<EmailTemplate[]> = ref<EmailTemplate[]>([])
-const isLoading: Ref<boolean> = ref<boolean>(false)
-const searchQuery: Ref<string> = ref<string>('')
-const templateToDelete: Ref<EmailTemplate | null> = ref<EmailTemplate | null>(null)
-const confirmModal: Ref<{ open: () => void; close: () => void } | null> = ref<{
-  open: () => void
-  close: () => void
-} | null>(null)
-
-// ─── Computed ─────────────────────────────────────────────────────────────────
+const emailTemplates: Ref<EmailTemplate[]> = ref([])
+const isLoading: Ref<boolean> = ref(false)
+const searchQuery: Ref<string> = ref('')
+const templateToDelete: Ref<EmailTemplate | null> = ref(null)
+const confirmModal: Ref<{ open: () => void; close: () => void } | null> = ref(null)
 
 /** Templates matching the search query (name or subject). */
 const filteredTemplates: ComputedRef<EmailTemplate[]> = computed((): EmailTemplate[] => {
@@ -216,8 +190,6 @@ const templateGroups: ComputedRef<TemplateGroup[]> = computed((): TemplateGroup[
   return groups
 })
 
-// ─── Data loading ─────────────────────────────────────────────────────────────
-
 /**
  * Load every template of the current user.
  * @returns A promise that resolves once the list is loaded.
@@ -225,7 +197,7 @@ const templateGroups: ComputedRef<TemplateGroup[]> = computed((): TemplateGroup[
 async function loadTemplates(): Promise<void> {
   try {
     isLoading.value = true
-    emailTemplates.value = await getEmailTemplates()
+    emailTemplates.value = await EmailTemplatesService.getEmailTemplates()
   } catch (err: unknown) {
     toast.error(err instanceof Error ? err.message : 'Erreur lors du chargement des modèles')
   } finally {
@@ -243,8 +215,6 @@ async function loadTemplates(): Promise<void> {
 function variablesLabel(template: EmailTemplate): string {
   return (template.variables ?? []).map((variableName: string): string => '{' + variableName + '}').join(' ')
 }
-
-// ─── Drawer openers ───────────────────────────────────────────────────────────
 
 /** Open the creation drawer. */
 function openCreateDrawer(): void {
@@ -267,18 +237,17 @@ function openPreviewDrawer(template: EmailTemplate): void {
   drawerStack.push({ kind: 'email-template', mode: 'preview', template })
 }
 
-// ─── Quick actions ────────────────────────────────────────────────────────────
-
 /**
  * Duplicate a template (suffixe « (copie) »), useful to iterate on a variant.
  * @param template - Template to duplicate.
  */
 async function duplicateTemplate(template: EmailTemplate): Promise<void> {
   try {
-    const copy: EmailTemplate = await createEmailTemplate({
+    const copy: EmailTemplate = await EmailTemplatesService.createEmailTemplate({
       name: `${template.name} (copie)`,
       subject: template.subject,
       body_html: template.body_html,
+      signature_id: template.signature_id ?? null,
     })
     emailTemplates.value.unshift(copy)
     toast.success(`Modèle « ${template.name} » dupliqué`)
@@ -293,7 +262,9 @@ async function duplicateTemplate(template: EmailTemplate): Promise<void> {
  */
 async function toggleTemplateActive(template: EmailTemplate): Promise<void> {
   try {
-    const updated: EmailTemplate = await updateEmailTemplate(template.id, { is_active: !template.is_active })
+    const updated: EmailTemplate = await EmailTemplatesService.updateEmailTemplate(template.id, {
+      is_active: !template.is_active,
+    })
     const index: number = emailTemplates.value.findIndex((t: EmailTemplate): boolean => t.id === updated.id)
     if (index !== -1) emailTemplates.value.splice(index, 1, updated)
     toast.success(updated.is_active ? `« ${updated.name} » activé` : `« ${updated.name} » désactivé`)
@@ -319,7 +290,7 @@ async function handleDeleteTemplate(): Promise<void> {
   const template: EmailTemplate | null = templateToDelete.value
   if (!template) return
   try {
-    await deleteEmailTemplate(template.id)
+    await EmailTemplatesService.deleteEmailTemplate(template.id)
     emailTemplates.value = emailTemplates.value.filter((t: EmailTemplate): boolean => t.id !== template.id)
     toast.success(`Modèle « ${template.name} » supprimé`)
   } catch (err: unknown) {
@@ -329,8 +300,6 @@ async function handleDeleteTemplate(): Promise<void> {
   }
 }
 
-// ─── Watchers ─────────────────────────────────────────────────────────────────
-
 // Créations/éditions faites dans le drawer (hébergé par le layout) → recharger.
 watch(
   (): number => drawerStack.emailTemplatesRefreshCounter,
@@ -338,8 +307,6 @@ watch(
     void loadTemplates()
   },
 )
-
-// ─── Init ─────────────────────────────────────────────────────────────────────
 
 onMounted(async (): Promise<void> => {
   await loadTemplates()

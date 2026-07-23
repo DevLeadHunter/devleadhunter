@@ -1,24 +1,14 @@
-/**
- * French geocoding helpers for the coverage map — city name → coordinates +
- * department/region codes, cached in localStorage. Data source: geo.api.gouv.fr
- * (public, key-less; the same API used by the city autocomplete).
- *
- * Region contours are NOT fetched here: the MapLibre map loads the france-geojson
- * dataset itself (its parser is immune to the `text/plain` content-type served by
- * raw.githubusercontent.com, which breaks `$fetch`'s JSON detection).
- */
+/** French geocoding for the coverage map (geo.api.gouv.fr, localStorage cache). Region contours are loaded by MapLibre, not here. */
 
 /** Geocoding result for one city. */
-export interface CityGeo {
+export type CityGeo = {
   lng: number
   lat: number
-  /** Department code (« 69 », « 2A »…). */
   dept: string
-  /** Region code. */
   region: string
 }
 
-const CITIES_CACHE_KEY = 'dlh-fr-cities-v2'
+const CITIES_CACHE_KEY: string = 'dlh-fr-cities-v2'
 
 /**
  * Read a JSON value from localStorage (null on any failure).
@@ -69,15 +59,15 @@ export async function geocodeCities(cities: string[]): Promise<Record<string, Ci
   const cache: Record<string, CityGeo | null> = readCache<Record<string, CityGeo | null>>(CITIES_CACHE_KEY) ?? {}
   const unique: string[] = [...new Set(cities.map(cityKey))].filter((key: string): boolean => !(key in cache))
 
-  interface Commune {
+  type Commune = {
     centre?: { coordinates?: [number, number] }
     codeDepartement?: string
     codeRegion?: string
   }
 
-  const CONCURRENCY = 6
-  let cursor = 0
-  let dirty = false
+  const CONCURRENCY: number = 6
+  let cursor: number = 0
+  let dirty: boolean = false
 
   /**
    * Drain the shared cursor, geocoding one city per iteration.
@@ -114,12 +104,9 @@ export function lookupCity(map: Record<string, CityGeo | null>, city: string): C
 }
 
 /** Commune resolved from a map click (reverse geocoding). */
-export interface ReverseGeocodedCommune {
-  /** Commune display name (« Caen »). */
+export type ReverseGeocodedCommune = {
   name: string
-  /** Department code. */
   dept: string
-  /** INSEE region code. */
   region: string
 }
 
@@ -132,7 +119,7 @@ export interface ReverseGeocodedCommune {
  * @returns The commune at this point, or null.
  */
 export async function reverseGeocodeCommune(lng: number, lat: number): Promise<ReverseGeocodedCommune | null> {
-  interface Commune {
+  type Commune = {
     nom?: string
     codeDepartement?: string
     codeRegion?: string

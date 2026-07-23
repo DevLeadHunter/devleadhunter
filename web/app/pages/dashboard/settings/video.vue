@@ -1,6 +1,5 @@
 <template>
   <div class="mx-auto max-w-2xl space-y-8">
-    <!-- Header — one calm line -->
     <div>
       <h1 class="text-3xl font-bold text-[var(--app-ink)]">Vidéo de prospection</h1>
       <p class="text-muted mt-2 text-sm leading-relaxed">

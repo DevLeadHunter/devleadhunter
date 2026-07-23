@@ -22,9 +22,7 @@ import type { ComputedRef, PropType } from 'vue'
 import { computed } from 'vue'
 import type { UiStatCardAccent, UiStatCardProps } from '~/types/UiStatCard'
 
-/**
- * Defines the component props.
- */
+/** KPI stat card for dashboard metric tiles. */
 const props: UiStatCardProps = defineProps({
   label: {
     type: String,
@@ -52,7 +50,7 @@ const tileBackground: ComputedRef<string> = computed((): string => {
     danger: 'var(--app-red-soft)',
     sky: 'var(--app-accent-soft)',
   }
-  return map[props.accent]
+  return map[props.accent ?? 'neutral']
 })
 
 /** Icon colour for the current accent (semantic app palette). */
@@ -63,6 +61,6 @@ const iconColor: ComputedRef<string> = computed((): string => {
     danger: 'var(--app-red)',
     sky: 'var(--app-accent-ink)',
   }
-  return map[props.accent]
+  return map[props.accent ?? 'neutral']
 })
 </script>

@@ -2,7 +2,6 @@
   <section id="delivered-site" class="px-5 py-24 md:px-8 md:py-36">
     <div class="mx-auto max-w-6xl">
       <div class="grid items-center gap-14 lg:grid-cols-[1fr_1.15fr] lg:gap-20">
-        <!-- Copy -->
         <div>
           <p v-reveal class="landing-eyebrow">{{ $t('landing.proof.eyebrow') }}</p>
           <h2
@@ -27,10 +26,8 @@
           </ul>
         </div>
 
-        <!-- Demo site mockup -->
         <div v-reveal="{ delay: 150 }" class="relative">
           <div class="landing-card landing-tilt overflow-hidden">
-            <!-- Browser chrome -->
             <div class="flex items-center gap-2 border-b border-[#e3dccd] px-5 py-3.5">
               <span class="h-2.5 w-2.5 rounded-full bg-[#e3dccd]" aria-hidden="true"></span>
               <span class="h-2.5 w-2.5 rounded-full bg-[#e3dccd]" aria-hidden="true"></span>
@@ -41,7 +38,7 @@
                 {{ $t('landing.story.visual.siteUrl') }}
               </span>
             </div>
-            <!-- Fake generated site -->
+
             <div class="p-7 md:p-9">
               <div class="flex items-center justify-between">
                 <p class="font-display text-lg font-semibold text-[#1b1813]">
@@ -81,7 +78,6 @@
             </div>
           </div>
 
-          <!-- Floating CMS chip -->
           <p
             class="font-label absolute -bottom-5 left-6 inline-flex rotate-[-2deg] items-center gap-2 rounded-full border border-[#e3dccd] bg-[#fcfaf5] px-4 py-2 text-xs text-[#1b1813] shadow-lg md:left-10"
           >

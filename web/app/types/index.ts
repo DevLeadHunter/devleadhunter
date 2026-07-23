@@ -1,96 +1,53 @@
-/**
- * Shared TypeScript types and interfaces for the application
- * @module types
- */
-
-/**
- * Business category for prospect search
- */
 export type BusinessCategory = 'restaurant' | 'plombier' | 'electricien' | 'coiffeur' | 'garage' | 'all'
 
-/**
- * Source of prospect data.
- *
- * Mirrors the backend ``Source`` enum in ``api/enums/source.py``.
- * - ``google``      — Google Maps / Google Business scraper
- * - ``pagesjaunes`` — Pages Jaunes directory scraper (Chrome / nodriver)
- * - ``yelp``        — Yelp platform scraper
- * - ``osm``         — OpenStreetMap / Overpass API (pure HTTP, fast)
- * - ``auto``        — Smart combo: OSM + Pages Jaunes in parallel, then email enrichment
- * - ``brightdata``  — BrightData HTTP API (Web Unlocker + SERP, no browser required)
- * - ``all``         — Sentinel value used in filter selects to mean "every source"
- */
+/** Mirrors the backend ``Source`` enum ; ``all`` is a filter-only sentinel, never stored. */
 export type ProspectSource = 'google' | 'pagesjaunes' | 'yelp' | 'osm' | 'auto' | 'brightdata' | 'manual' | 'all'
 
 /**
  * Prospect interface representing a business without website
  */
-export interface Prospect {
-  /** Unique identifier for the prospect */
+export type Prospect = {
   id: number
-  /** User ID who saved this prospect */
   user_id: number
-  /** Business name */
   name: string
-  /** Street address */
   address?: string
-  /** City */
   city?: string
-  /** Phone number */
   phone?: string
-  /** Email address (if available) */
   email?: string
-  /** Website URL (if available) */
   website?: string
-  /** Business category */
   category: string
-  /** Source of the prospect data */
   source: ProspectSource
-  /** Confidence score (1-4) */
   confidence: number
-  /** Whether this prospect has been contacted (auto on email send + manual toggle) */
   contacted: boolean
-  /** Timestamp of when prospect was found */
   created_at?: string
-  /** Organization the prospect is shared with (creator's org, null = personal) */
   organization_id?: number | null
-  /** Member currently reserving this prospect (null = free to take) */
   reserved_by_user_id?: number | null
-  /** Display name of the reserving member (resolved server-side) */
   reserved_by_name?: string | null
-  /** When the reservation was made */
   reserved_at?: string | null
-  /** Latest Lighthouse audit of the prospect's existing website */
   lighthouse_json?: ProspectLighthouseAudit | null
-  /** When the Lighthouse audit was run */
   lighthouse_at?: string | null
 }
 
 /**
  * Résultat d'un audit Lighthouse (PageSpeed Insights) du site existant d'un prospect.
  */
-export interface ProspectLighthouseAudit {
-  /** Scores 0-100 par catégorie (null si PSI n'a pas pu calculer) */
+export type ProspectLighthouseAudit = {
   scores: {
     performance: number | null
     accessibility: number | null
     bestPractices: number | null
     seo: number | null
   }
-  /** Au moins un score clé sous le seuil → argument refonte */
   is_improvable: boolean
-  /** Stratégie d'audit (mobile) */
   strategy: string
-  /** URL réellement analysée */
   final_url: string
-  /** Date ISO de l'audit */
   fetched_at: string
 }
 
 /**
  * Organisation (équipe) de l'utilisateur courant.
  */
-export interface Organization {
+export type Organization = {
   id: number
   name: string
   owner_user_id: number
@@ -101,7 +58,7 @@ export interface Organization {
 /**
  * Membre d'une organisation (identité résolue côté API).
  */
-export interface OrganizationMember {
+export type OrganizationMember = {
   user_id: number
   name: string
   email: string
@@ -112,7 +69,7 @@ export interface OrganizationMember {
 /**
  * Payload pour pré-remplir un prospect depuis Google Maps.
  */
-export interface ProspectEnrichPayload {
+export type ProspectEnrichPayload = {
   business_name?: string
   google_maps_url?: string
   city?: string
@@ -121,7 +78,7 @@ export interface ProspectEnrichPayload {
 /**
  * Suggestion d'entreprise retournée par la recherche Google Maps.
  */
-export interface ProspectSearchSuggestion {
+export type ProspectSearchSuggestion = {
   id: string
   label: string
   description?: string | null
@@ -131,7 +88,7 @@ export interface ProspectSearchSuggestion {
 /**
  * Payload pour rechercher des suggestions d'entreprises.
  */
-export interface ProspectSearchSuggestionsPayload {
+export type ProspectSearchSuggestionsPayload = {
   query: string
   city?: string
   max_results?: number
@@ -140,29 +97,21 @@ export interface ProspectSearchSuggestionsPayload {
 /**
  * Payload pour mettre à jour un prospect existant (tous les champs sont optionnels).
  */
-export interface ProspectUpdatePayload {
-  /** Business name */
+export type ProspectUpdatePayload = {
   name?: string
-  /** Street address */
   address?: string | null
-  /** City */
   city?: string | null
-  /** Phone number */
   phone?: string | null
-  /** Email address */
   email?: string | null
-  /** Website URL */
   website?: string | null
-  /** Business category */
   category?: string
-  /** Contacted status */
   contacted?: boolean
 }
 
 /**
  * Payload pour créer un prospect manuellement.
  */
-export interface ProspectCreatePayload {
+export type ProspectCreatePayload = {
   name: string
   address?: string | null
   city?: string | null
@@ -177,98 +126,43 @@ export interface ProspectCreatePayload {
 /**
  * Formulaire de saisie pour l'ajout manuel d'un prospect.
  */
-export interface ManualProspectAddForm {
+export type ManualProspectAddForm = {
   business_name: string
   google_maps_url: string
   city: string
 }
 
-/**
- * Search filters for prospect search
- */
-export interface ProspectSearchFilters {
-  /** Business category filter */
+export type ProspectSearchFilters = {
   category?: BusinessCategory
-  /** City filter */
   city?: string
-  /** Source filter */
   source?: ProspectSource
-  /** Maximum number of results */
   maxResults?: number
 }
 
-/**
- * Campaign interface for bulk email sending
- */
-export interface Campaign {
-  /** Unique identifier for the campaign */
-  id: string
-  /** Campaign name */
-  name: string
-  /** Campaign description */
-  description: string
-  /** List of prospect IDs in the campaign */
-  prospectIds: string[]
-  /** Campaign status */
-  status: 'draft' | 'active' | 'completed'
-  /** Timestamp of creation */
-  createdAt: string
-  /** Timestamp of last update */
-  updatedAt: string
-}
-
-/**
- * User role enumeration
- */
 export type UserRole = 'USER' | 'ADMIN'
 
-/**
- * User interface
- */
-export interface User {
-  /** Unique identifier for the user */
+export type User = {
   id: number
-  /** User name */
   name: string
-  /** User email */
   email: string
-  /** User role */
   role: UserRole
-  /** Whether user is active */
   is_active: boolean
-  /** Timestamp of account creation */
   created_at: string
-  /** Timestamp of last update */
   updated_at: string | null
-  /** Credit balance (-1 for unlimited/admin) */
   credit_balance?: number | null
-  /** Credits available (-1 for unlimited/admin) */
   credits_available?: number | null
-  /** Credits consumed */
   credits_consumed?: number | null
-  /** Whether the post-signup setup wizard (`/configuration`) has been completed */
   onboarding_completed?: boolean
 }
 
-/**
- * Login credentials
- */
-export interface LoginCredentials {
-  /** User email */
+export type LoginCredentials = {
   email: string
-  /** User password */
   password: string
 }
 
-/**
- * Signup data
- */
-export interface SignupData {
-  /** User name */
+export type SignupPayload = {
   name: string
-  /** User email */
   email: string
-  /** User password */
   password: string
 }
 
@@ -276,168 +170,77 @@ export interface SignupData {
  * Profile update payload (self-service `PATCH /auth/me`) — fields are optional so
  * the user can change name and/or email.
  */
-export interface ProfileUpdate {
-  /** New display name */
+export type ProfileUpdate = {
   name?: string
-  /** New login email */
   email?: string
 }
 
-/**
- * API Response wrapper
- */
-export interface ApiResponse<T> {
-  /** Response data */
+export type ApiResponse<T> = {
   data: T
-  /** Success status */
   success: boolean
-  /** Error message (if any) */
   message?: string
 }
 
-/**
- * Auth token response
- */
-export interface TokenResponse {
-  /** JWT access token */
+export type TokenResponse = {
   access_token: string
-  /** Token type */
   token_type: string
 }
 
-/**
- * Paginated response
- */
-export interface PaginatedResponse<T> {
-  /** List of items */
+export type PaginatedResponse<T> = {
   items: T[]
-  /** Total number of items */
   total: number
-  /** Current page */
   page: number
-  /** Items per page */
   perPage: number
-  /** Total number of pages */
   totalPages: number
-}
-
-/**
- * Email sending data
- */
-export interface EmailData {
-  /** Recipient email */
-  to: string
-  /** Email subject */
-  subject: string
-  /** Email body */
-  body: string
-  /** Prospect ID (optional) */
-  prospectId?: string
-}
-
-/**
- * Bulk email sending data
- */
-export interface BulkEmailData {
-  /** Campaign ID */
-  campaignId: string
-  /** Email subject */
-  subject: string
-  /** Email body */
-  body: string
 }
 
 /**
  * Credit settings interface for credit system configuration
  */
-export interface CreditSettings {
-  /** Unique identifier for the settings (always 1) */
+export type CreditSettings = {
   id: number
-  /** Price of one credit in EUR */
   price_per_credit: number
-  /** Number of credits required for a search operation */
   credits_per_search: number
-  /** Number of credits required per prospect found */
   credits_per_result: number
-  /** Number of credits required per email sent */
   credits_per_email: number
-  /** Number of free credits given on user registration */
   free_credits_on_signup: number
-  /** Minimum number of credits that can be purchased */
   minimum_credits_purchase: number
-  /** Timestamp when settings were created */
   created_at: string
-  /** Timestamp when settings were last updated */
   updated_at: string | null
 }
 
-/**
- * Checkout session creation request
- */
-export interface CheckoutSessionCreate {
-  /** Number of credits to purchase */
+export type CheckoutSessionCreate = {
   credits: number
-  /** URL to redirect after successful payment (optional) */
   success_url?: string
-  /** URL to redirect if payment is cancelled (optional) */
   cancel_url?: string
 }
 
-/**
- * Checkout session response
- */
-export interface CheckoutSessionResponse {
-  /** Stripe checkout session ID */
+export type CheckoutSessionResponse = {
   session_id: string
-  /** Stripe checkout session URL */
   url: string
-  /** Payment amount in cents */
   amount: number
-  /** Number of credits being purchased */
   credits: number
 }
 
-/**
- * Credit transaction type
- */
 export type CreditTransactionType = 'PURCHASE' | 'USAGE' | 'REFUND' | 'FREE_GIFT'
 
-/**
- * Credit transaction interface
- */
-export interface CreditTransaction {
-  /** Transaction unique identifier */
+export type CreditTransaction = {
   id: number
-  /** User ID who owns this transaction */
   user_id: number
-  /** Transaction type */
   transaction_type: CreditTransactionType
-  /** Number of credits (positive for additions, negative for usage) */
   amount: number
-  /** Description of the transaction */
   description: string
-  /** Optional JSON metadata */
   transaction_metadata?: string | null
-  /** Timestamp when transaction was created */
   created_at: string
 }
 
-/**
- * Credit balance response
- */
-export interface CreditBalanceResponse {
-  /** User ID */
+export type CreditBalanceResponse = {
   user_id: number
-  /** Current credit balance */
   balance: number
-  /** Whether user has unlimited credits (admin) */
   is_unlimited: boolean
 }
 
-/**
- * Stripe payment information
- */
-export interface StripePaymentInfo {
+export type StripePayment = {
   payment_intent_id?: string | null
   session_id?: string | null
   amount: number
@@ -459,25 +262,19 @@ export interface StripePaymentInfo {
   user_agent?: string | null
 }
 
-/**
- * Credit purchase transaction with payment details
- */
-export interface CreditPurchaseTransaction {
+export type CreditPurchaseTransaction = {
   transaction_id: number
   user_id: number
   user_name: string
   user_email: string
   credits_amount: number
   credits_available_date: string
-  payment_info?: StripePaymentInfo | null
+  payment_info?: StripePayment | null
   euros_amount?: number | null
   description: string
 }
 
-/**
- * Accounting summary
- */
-export interface AccountingSummary {
+export type AccountingSummary = {
   total_paid: number
   total_refunded: number
   total_stripe_fees: number
@@ -486,22 +283,13 @@ export interface AccountingSummary {
   available_balance?: number | null
 }
 
-/**
- * Accounting data response
- */
-export interface AccountingResponse {
+export type AccountingResponse = {
   summary: AccountingSummary
   transactions: CreditPurchaseTransaction[]
 }
 
-/**
- * Support ticket status values
- */
 export type SupportTicketStatus = 'open' | 'waiting_user' | 'waiting_support' | 'resolved' | 'closed'
 
-/**
- * Support ticket topics
- */
 export type SupportTicketTopic =
   | 'credits_billing'
   | 'missing_results'
@@ -514,16 +302,13 @@ export type SupportTicketTopic =
 /**
  * Support topic metadata for UI
  */
-export interface SupportTopicOption {
+export type SupportTopicOption = {
   value: SupportTicketTopic
   label: string
   description: string
 }
 
-/**
- * Support attachment metadata
- */
-export interface SupportAttachment {
+export type SupportAttachment = {
   id: number
   url: string
   original_filename: string
@@ -531,10 +316,7 @@ export interface SupportAttachment {
   created_at: string
 }
 
-/**
- * Support message
- */
-export interface SupportMessage {
+export type SupportMessage = {
   id: number
   ticket_id: number
   sender_id: number
@@ -545,10 +327,7 @@ export interface SupportMessage {
   created_at: string
 }
 
-/**
- * Support ticket summary
- */
-export interface SupportTicketSummary {
+export type SupportTicketSummary = {
   id: number
   user_id: number
   user_name: string
@@ -572,74 +351,64 @@ export interface SupportTicketDetail extends Omit<SupportTicketSummary, 'message
   messages: SupportMessage[]
 }
 
-/**
- * Email account type
- */
 export type EmailAccountType = 'custom_domain' | 'gmail_oauth' | 'resend'
 
-/**
- * Email account interface
- */
-export interface EmailAccount {
-  /** Unique identifier */
+export type EmailAccount = {
   id: number
-  /** User ID */
   user_id: number
-  /** Account type */
   account_type: EmailAccountType
-  /** Email address */
   email: string
-  /** Sender name */
   name: string
-  /** Whether account is verified */
   is_verified: boolean
-  /** Whether this is the default account */
   is_default: boolean
-  /** Whether account is active */
   is_active: boolean
-  /** Domain name (for custom_domain) */
   domain?: string | null
-  /** SPF verified status */
   spf_verified: boolean
-  /** DKIM verified status */
   dkim_verified: boolean
-  /** OAuth token expiration (for gmail_oauth) */
   oauth_token_expires_at?: string | null
-  /** Created timestamp */
   created_at: string
-  /** Updated timestamp */
   updated_at?: string | null
 }
 
-/**
- * Email template interface
- */
-export interface EmailTemplate {
-  /** Unique identifier */
+export type EmailTemplate = {
   id: number
-  /** User ID */
   user_id: number
-  /** Associated email account ID */
   email_account_id?: number | null
-  /** Template name */
   name: string
-  /** Email subject */
   subject: string
-  /** Email HTML body */
   body_html: string
-  /** List of variable names */
   variables?: string[]
-  /** Whether template is active */
+  signature_id?: number | null
   is_active: boolean
-  /** Created timestamp */
   created_at: string
-  /** Updated timestamp */
   updated_at?: string | null
 }
 
 /**
- * Email status
+ * Reusable email signature (sign-off block, HTML, paste-friendly from Gmail).
  */
+export type EmailSignature = {
+  id: number
+  user_id: number
+  name: string
+  content_html: string
+  is_default: boolean
+  created_at: string
+  updated_at?: string | null
+}
+
+export type EmailSignatureCreate = {
+  name: string
+  content_html: string
+  is_default?: boolean
+}
+
+export type EmailSignatureUpdate = {
+  name?: string
+  content_html?: string
+  is_default?: boolean
+}
+
 export type EmailStatus =
   | 'pending'
   | 'sending'
@@ -657,7 +426,7 @@ export type EmailStatus =
 /**
  * A follow-up step in a campaign email sequence.
  */
-export interface CampaignFollowUp {
+export type CampaignFollowUp = {
   id: number
   campaign_id: number
   template_id: number
@@ -671,7 +440,7 @@ export interface CampaignFollowUp {
 /**
  * A/B stats for one variant.
  */
-export interface CampaignVariantStats {
+export type CampaignVariantStats = {
   variant: 'A' | 'B'
   sent: number
   delivered: number
@@ -681,64 +450,34 @@ export interface CampaignVariantStats {
   click_rate: number
 }
 
-/**
- * Email log interface
- */
-export interface EmailLog {
-  /** Unique identifier */
+export type EmailLog = {
   id: number
-  /** User ID */
   user_id: number
-  /** Email account ID (null for direct resend_config sends) */
   email_account_id: number | null
-  /** Prospect ID */
   prospect_id?: string | null
-  /** Campaign ID */
   campaign_id?: string | null
-  /** Recipient email */
   recipient_email: string
-  /** Recipient name */
   recipient_name?: string | null
-  /** Email subject */
   subject: string
-  /** Email HTML body */
   body_html?: string | null
-  /** Email status */
   status: EmailStatus
-  /** Email provider */
   provider: string
-  /** Provider message ID */
   provider_message_id?: string | null
-  /** Sent timestamp */
   sent_at?: string | null
-  /** Delivered timestamp */
   delivered_at?: string | null
-  /** Opened timestamp */
   opened_at?: string | null
-  /** Clicked timestamp */
   clicked_at?: string | null
-  /** Bounced timestamp */
   bounced_at?: string | null
-  /** Spam-complaint timestamp */
   complained_at?: string | null
-  /** Suppressed timestamp (recipient on Resend suppression list) */
   suppressed_at?: string | null
-  /** Failed timestamp */
   failed_at?: string | null
-  /** A/B variant ('A' or 'B') */
   ab_variant?: string | null
-  /** Error message */
   error_message?: string | null
-  /** Created timestamp */
   created_at: string
-  /** Updated timestamp */
   updated_at?: string | null
 }
 
-/**
- * Email account creation request (custom domain)
- */
-export interface EmailAccountCreateCustomDomain {
+export type EmailAccountCreateCustomDomain = {
   email: string
   name: string
   domain: string
@@ -748,40 +487,33 @@ export interface EmailAccountCreateCustomDomain {
 /**
  * Email account creation request (Gmail OAuth)
  */
-export interface EmailAccountCreateGmail {
+export type EmailAccountCreateGmail = {
   email: string
   name: string
   oauth_code: string
   is_default?: boolean
 }
 
-/**
- * Email template creation request
- */
-export interface EmailTemplateCreate {
+export type EmailTemplateCreate = {
   name: string
   subject: string
   body_html: string
   email_account_id?: number
   variables?: string[]
+  signature_id?: number | null
 }
 
-/**
- * Email template update request
- */
-export interface EmailTemplateUpdate {
+export type EmailTemplateUpdate = {
   name?: string
   subject?: string
   body_html?: string
   email_account_id?: number
   variables?: string[]
   is_active?: boolean
+  signature_id?: number | null
 }
 
-/**
- * Send email request
- */
-export interface SendEmailRequest {
+export type SendEmailRequest = {
   email_account_id: number
   recipient_email: string
   recipient_name?: string
@@ -792,10 +524,7 @@ export interface SendEmailRequest {
   variables?: Record<string, string>
 }
 
-/**
- * Send campaign email request
- */
-export interface SendCampaignEmailRequest {
+export type SendCampaignEmailRequest = {
   email_account_id: number
   campaign_id: string
   template_id: number
@@ -803,10 +532,7 @@ export interface SendCampaignEmailRequest {
   variables_per_prospect?: Record<string, Record<string, string>>
 }
 
-/**
- * Email stats response
- */
-export interface EmailStats {
+export type EmailStats = {
   total_sent: number
   total_delivered: number
   total_opened: number
@@ -818,10 +544,7 @@ export interface EmailStats {
   click_rate: number
 }
 
-/**
- * DNS verification response
- */
-export interface DNSVerificationResponse {
+export type DNSVerificationResponse = {
   spf_verified: boolean
   dkim_verified: boolean
   is_verified: boolean

@@ -1,10 +1,4 @@
-"""
-Real SPF / DKIM DNS lookups for custom sending domains (provider-agnostic).
-
-Replaces the old Mailjet placeholder that always returned "not verified" with fake
-Mailjet-branded instructions. Uses dnspython to actually query the domain's DNS.
-Sending goes through Resend, so the guidance points to the provider's own domain setup.
-"""
+"""SPF / DKIM lookups for a user's custom sending domain (provider-agnostic)."""
 from __future__ import annotations
 
 import asyncio
@@ -15,71 +9,114 @@ import dns.resolver
 
 logger = logging.getLogger(__name__)
 
-# DKIM selectors to probe, covering the common providers (Resend/AWS SES, Google, generic).
-_DKIM_SELECTORS: tuple[str, ...] = (
-    "resend",
-    "resend2",
-    "google",
-    "default",
-    "s1",
-    "s2",
-    "k1",
-    "mail",
-    "dkim",
-    "selector1",
-    "selector2",
+DNS_TIMEOUT_SECONDS = 5.0
+
+DKIM_SETUP_INSTRUCTIONS = (
+    "Ajoutez les enregistrements SPF et DKIM de votre fournisseur d'envoi "
+    "(dans Resend : onglet Domains → votre domaine → enregistrements DNS à copier) "
+    "dans la zone DNS de votre domaine, puis relancez la vérification."
 )
 
 
-def _txt_records(name: str) -> list[str]:
-    """Return the TXT records at ``name`` (empty list on any DNS failure)."""
-    try:
-        answers = dns.resolver.resolve(name, "TXT", lifetime=5.0)
-    except Exception:  # noqa: BLE001 — any resolver error → treat as "no record"
-        return []
-    records: list[str] = []
-    for answer in answers:
-        strings = getattr(answer, "strings", None)
-        if strings:
-            records.append(
-                "".join(s.decode() if isinstance(s, bytes) else str(s) for s in strings)
-            )
-        else:
-            records.append(str(answer).strip('"'))
-    return records
-
-
-def _lookup(domain: str) -> dict[str, Any]:
-    """Blocking DNS lookups for SPF + DKIM presence (run off the event loop)."""
-    normalized = domain.strip().lower().lstrip("@")
-    spf_records = [txt for txt in _txt_records(normalized) if txt.lower().startswith("v=spf1")]
-    spf_verified = bool(spf_records)
-
-    dkim_verified = False
-    for selector in _DKIM_SELECTORS:
-        records = _txt_records(f"{selector}._domainkey.{normalized}")
-        if any(("v=dkim1" in r.lower()) or ("p=" in r.lower()) for r in records):
-            dkim_verified = True
-            break
-
-    return {
-        "spf_verified": spf_verified,
-        "dkim_verified": dkim_verified,
-        "spf_record": spf_records[0] if spf_records else None,
-        "dkim_instructions": (
-            "Ajoutez les enregistrements SPF et DKIM de votre fournisseur d'envoi "
-            "(dans Resend : onglet Domains → votre domaine → enregistrements DNS à copier) "
-            "dans la zone DNS de votre domaine, puis relancez la vérification."
-        ),
-    }
-
-
-async def verify_domain_dns(domain: str) -> dict[str, Any]:
-    """Verify a domain's SPF + DKIM records with real DNS lookups.
-
-    @param domain - The sending domain (e.g. ``exemple.fr``).
-    @returns ``{spf_verified, dkim_verified, spf_record, dkim_instructions}``.
+class SendingDomainDnsService:
     """
-    if not domain or not domain.strip():
-        return {"spf_verified": False, "dkim_verified": False, "spf_record": None, "dkim_instructions": ""}
-    return await asyncio.to_thread(_lookup, domain)
+    Checks that a sending domain actually publishes SPF and DKIM records.
+
+    Sending goes through Resend, so the guidance returned to the dashboard points at the
+    provider's own domain setup rather than at any hardcoded record.
+    """
+
+    # Selectors covering the common providers (Resend/AWS SES, Google, generic).
+    DKIM_SELECTORS: tuple[str, ...] = (
+        "resend",
+        "resend2",
+        "google",
+        "default",
+        "s1",
+        "s2",
+        "k1",
+        "mail",
+        "dkim",
+        "selector1",
+        "selector2",
+    )
+
+    async def verify_domain(self, domain: str) -> dict[str, Any]:
+        """
+        Verify a domain's SPF and DKIM records with real DNS lookups.
+
+        Args:
+            domain: The sending domain, for example `exemple.fr`.
+
+        Returns:
+            `{spf_verified, dkim_verified, spf_record, dkim_instructions}`, all falsy when the
+            domain is blank.
+        """
+        if not domain or not domain.strip():
+            return {
+                "spf_verified": False,
+                "dkim_verified": False,
+                "spf_record": None,
+                "dkim_instructions": "",
+            }
+        return await asyncio.to_thread(self._lookup, domain)
+
+    def _lookup(self, domain: str) -> dict[str, Any]:
+        """
+        Run the blocking SPF and DKIM lookups, off the event loop.
+
+        Args:
+            domain: The sending domain.
+
+        Returns:
+            The verification payload described in `verify_domain`.
+        """
+        normalized: str = domain.strip().lower().lstrip("@")
+        spf_records: list[str] = [
+            txt for txt in self._txt_records(normalized) if txt.lower().startswith("v=spf1")
+        ]
+
+        dkim_verified: bool = False
+        for selector in self.DKIM_SELECTORS:
+            records: list[str] = self._txt_records(f"{selector}._domainkey.{normalized}")
+            if any(("v=dkim1" in record.lower()) or ("p=" in record.lower()) for record in records):
+                dkim_verified = True
+                break
+
+        return {
+            "spf_verified": bool(spf_records),
+            "dkim_verified": dkim_verified,
+            "spf_record": spf_records[0] if spf_records else None,
+            "dkim_instructions": DKIM_SETUP_INSTRUCTIONS,
+        }
+
+    @staticmethod
+    def _txt_records(name: str) -> list[str]:
+        """
+        Read the TXT records published at a name.
+
+        Args:
+            name: Fully qualified DNS name.
+
+        Returns:
+            The record strings, empty on any resolver failure — an unreachable name is treated
+            exactly like a missing record.
+        """
+        try:
+            answers = dns.resolver.resolve(name, "TXT", lifetime=DNS_TIMEOUT_SECONDS)
+        except Exception:  # noqa: BLE001 — any resolver error means "no record"
+            return []
+
+        records: list[str] = []
+        for answer in answers:
+            strings = getattr(answer, "strings", None)
+            if strings:
+                records.append(
+                    "".join(s.decode() if isinstance(s, bytes) else str(s) for s in strings)
+                )
+            else:
+                records.append(str(answer).strip('"'))
+        return records
+
+
+sending_domain_dns_service = SendingDomainDnsService()

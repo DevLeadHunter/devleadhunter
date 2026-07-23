@@ -7,7 +7,6 @@
         @click.self="close()"
       >
         <div class="app-card w-full max-w-xl overflow-hidden p-0 shadow-[var(--app-shadow-soft)]">
-          <!-- Search input -->
           <div class="flex items-center gap-3 border-b border-[var(--app-line)] px-4 py-3">
             <UIcon name="i-lucide-search" class="h-4 w-4 shrink-0 text-[var(--app-faint)]" />
             <input
@@ -25,7 +24,6 @@
             </span>
           </div>
 
-          <!-- Results -->
           <div ref="resultsContainer" class="max-h-[50vh] overflow-y-auto p-1.5">
             <template v-for="group in visibleGroups" :key="group.key">
               <p class="app-label px-2.5 pt-2.5 pb-1 !text-[0.6rem]">{{ group.heading }}</p>
@@ -54,7 +52,6 @@
             </p>
           </div>
 
-          <!-- Footer hint -->
           <div class="text-muted flex items-center gap-3 border-t border-[var(--app-line)] px-4 py-2 text-[10px]">
             <span>↑↓ naviguer</span>
             <span>Entrée ouvrir</span>
@@ -70,53 +67,35 @@
 </template>
 
 <script lang="ts" setup>
+import type { CommandPaletteAction, CommandPaletteGroup } from '~/types/UiCommandPalette'
 import type { ComputedRef, Ref } from 'vue'
 import type { CampaignResponse } from '~/services/campaignService'
 import type { Prospect } from '~/types'
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
-import { campaignService } from '~/services/campaignService'
-import { listProspects } from '~/services/prospectsService'
+import { CampaignService } from '~/services/campaignService'
+import { ProspectsService } from '~/services/prospectsService'
 import { useAppTheme } from '~/composables/useAppTheme'
 import { useCommandPalette } from '~/composables/useCommandPalette'
 import { useDrawerStackStore } from '~/stores/drawerStack'
 
-/** One actionable row of the palette. */
-interface PaletteItem {
-  id: string
-  label: string
-  icon: string
-  meta?: string
-  /** Extra text matched by the search (city, email…). */
-  keywords?: string
-  run: () => void
-  flatIndex: number
-}
-
-/** One displayed group of palette rows. */
-interface PaletteGroup {
-  key: string
-  heading: string
-  items: PaletteItem[]
-}
-
 const { isOpen, close } = useCommandPalette()
 
-const drawerStack = useDrawerStackStore()
+const drawerStack: ReturnType<typeof useDrawerStackStore> = useDrawerStackStore()
 
 const { toggleTheme } = useAppTheme()
 
-const query: Ref<string> = ref<string>('')
-const activeIndex: Ref<number> = ref<number>(0)
-const searchInput: Ref<HTMLInputElement | null> = ref<HTMLInputElement | null>(null)
-const resultsContainer: Ref<HTMLDivElement | null> = ref<HTMLDivElement | null>(null)
+const query: Ref<string> = ref('')
+const activeIndex: Ref<number> = ref(0)
+const searchInput: Ref<HTMLInputElement | null> = ref(null)
+const resultsContainer: Ref<HTMLDivElement | null> = ref(null)
 
 /** Cached data sources (loaded on first open). */
-const prospects: Ref<Prospect[]> = ref<Prospect[]>([])
-const campaigns: Ref<CampaignResponse[]> = ref<CampaignResponse[]>([])
-const hasLoadedSources: Ref<boolean> = ref<boolean>(false)
+const prospects: Ref<Prospect[]> = ref([])
+const campaigns: Ref<CampaignResponse[]> = ref([])
+const hasLoadedSources: Ref<boolean> = ref(false)
 
 /** Static navigation entries. */
-const PAGES: ReadonlyArray<{ label: string; icon: string; to: string }> = [
+const PAGES: { label: string; icon: string; to: string }[] = [
   { label: 'Tableau de bord', icon: 'i-lucide-layout-dashboard', to: '/dashboard' },
   { label: 'Mes prospects', icon: 'i-lucide-users', to: '/dashboard/my-prospects' },
   { label: 'Carte de prospection', icon: 'i-lucide-map', to: '/dashboard/coverage' },
@@ -154,9 +133,9 @@ function matches(label: string, keywords = ''): boolean {
 }
 
 /** Groups currently displayed (filtered by the query, flat-indexed). */
-const visibleGroups: ComputedRef<PaletteGroup[]> = computed((): PaletteGroup[] => {
-  const groups: PaletteGroup[] = []
-  let flatIndex = 0
+const visibleGroups: ComputedRef<CommandPaletteGroup[]> = computed((): CommandPaletteGroup[] => {
+  const groups: CommandPaletteGroup[] = []
+  let flatIndex: number = 0
 
   /**
    * Append a group when it has matching items.
@@ -164,10 +143,14 @@ const visibleGroups: ComputedRef<PaletteGroup[]> = computed((): PaletteGroup[] =
    * @param heading - Visible group heading.
    * @param items - Candidate items (without flat index).
    */
-  function pushGroup(key: string, heading: string, items: Array<Omit<PaletteItem, 'flatIndex'>>): void {
-    const kept: PaletteItem[] = items
-      .filter((item: Omit<PaletteItem, 'flatIndex'>): boolean => !query.value || matches(item.label, item.keywords))
-      .map((item: Omit<PaletteItem, 'flatIndex'>): PaletteItem => ({ ...item, flatIndex: flatIndex++ }))
+  function pushGroup(key: string, heading: string, items: Array<Omit<CommandPaletteAction, 'flatIndex'>>): void {
+    const kept: CommandPaletteAction[] = items
+      .filter(
+        (item: Omit<CommandPaletteAction, 'flatIndex'>): boolean => !query.value || matches(item.label, item.keywords),
+      )
+      .map(
+        (item: Omit<CommandPaletteAction, 'flatIndex'>): CommandPaletteAction => ({ ...item, flatIndex: flatIndex++ }),
+      )
     if (kept.length) groups.push({ key, heading, items: kept })
   }
 
@@ -249,7 +232,7 @@ const visibleGroups: ComputedRef<PaletteGroup[]> = computed((): PaletteGroup[] =
   pushGroup(
     'pages',
     'Pages',
-    PAGES.map((page: { label: string; icon: string; to: string }): Omit<PaletteItem, 'flatIndex'> => {
+    PAGES.map((page: { label: string; icon: string; to: string }): Omit<CommandPaletteAction, 'flatIndex'> => {
       return {
         id: `page-${page.to}`,
         label: page.label,
@@ -265,7 +248,7 @@ const visibleGroups: ComputedRef<PaletteGroup[]> = computed((): PaletteGroup[] =
     pushGroup(
       'prospects',
       'Prospects',
-      prospects.value.slice(0, 400).map((prospect: Prospect): Omit<PaletteItem, 'flatIndex'> => {
+      prospects.value.slice(0, 400).map((prospect: Prospect): Omit<CommandPaletteAction, 'flatIndex'> => {
         return {
           id: `prospect-${prospect.id}`,
           label: prospect.name,
@@ -282,7 +265,7 @@ const visibleGroups: ComputedRef<PaletteGroup[]> = computed((): PaletteGroup[] =
     pushGroup(
       'campaigns',
       'Campagnes',
-      campaigns.value.map((campaign: CampaignResponse): Omit<PaletteItem, 'flatIndex'> => {
+      campaigns.value.map((campaign: CampaignResponse): Omit<CommandPaletteAction, 'flatIndex'> => {
         return {
           id: `campaign-${campaign.id}`,
           label: campaign.name,
@@ -298,7 +281,7 @@ const visibleGroups: ComputedRef<PaletteGroup[]> = computed((): PaletteGroup[] =
   }
 
   // Cap la longueur des groupes dynamiques pour rester lisible.
-  return groups.map((group: PaletteGroup): PaletteGroup => {
+  return groups.map((group: CommandPaletteGroup): CommandPaletteGroup => {
     if (group.key === 'prospects' || group.key === 'campaigns') {
       return { ...group, items: group.items.slice(0, 6) }
     }
@@ -307,8 +290,8 @@ const visibleGroups: ComputedRef<PaletteGroup[]> = computed((): PaletteGroup[] =
 })
 
 /** Flat list of displayed items (keyboard navigation target). */
-const flatItems: ComputedRef<PaletteItem[]> = computed((): PaletteItem[] => {
-  return visibleGroups.value.flatMap((group: PaletteGroup): PaletteItem[] => group.items)
+const flatItems: ComputedRef<CommandPaletteAction[]> = computed((): CommandPaletteAction[] => {
+  return visibleGroups.value.flatMap((group: CommandPaletteGroup): CommandPaletteAction[] => group.items)
 })
 
 /** Number of displayed results. */
@@ -318,7 +301,7 @@ const totalResults: ComputedRef<number> = computed((): number => flatItems.value
  * Execute an item then close the palette.
  * @param item - Selected palette row.
  */
-function runItem(item: PaletteItem): void {
+function runItem(item: CommandPaletteAction): void {
   close()
   item.run()
 }
@@ -331,8 +314,8 @@ async function loadSources(): Promise<void> {
   if (hasLoadedSources.value) return
   hasLoadedSources.value = true
   const [prospectsResult, campaignsResult] = await Promise.all([
-    listProspects().catch((): Prospect[] => []),
-    campaignService.list(0, 200).then(
+    ProspectsService.listProspects().catch((): Prospect[] => []),
+    CampaignService.list(0, 200).then(
       (response: { campaigns: CampaignResponse[] }): CampaignResponse[] => response.campaigns,
       (): CampaignResponse[] => [],
     ),
@@ -356,7 +339,7 @@ function handleInputKeydown(event: KeyboardEvent): void {
     scrollActiveIntoView()
   } else if (event.key === 'Enter') {
     event.preventDefault()
-    const item: PaletteItem | undefined = flatItems.value[activeIndex.value]
+    const item: CommandPaletteAction | undefined = flatItems.value[activeIndex.value]
     if (item) runItem(item)
   }
 }

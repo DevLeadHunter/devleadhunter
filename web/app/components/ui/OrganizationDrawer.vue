@@ -1,13 +1,10 @@
 <template>
   <Teleport to="body">
-    <!-- Pas de backdrop : drawer non-modal (navigation possible pendant qu'il
-         est ouvert), fermeture par X / Échap. -->
     <Transition name="drawer-panel">
       <div
         v-if="open"
         class="fixed top-0 right-0 z-50 flex h-dvh w-full max-w-[480px] flex-col border-l border-[var(--app-line)] bg-[var(--app-surface)] shadow-2xl"
       >
-        <!-- ───────────────────────── Header ───────────────────────── -->
         <div class="flex items-start gap-3 border-b border-[var(--app-line)] px-5 py-4">
           <button
             v-if="showBack"
@@ -45,15 +42,12 @@
           </button>
         </div>
 
-        <!-- ───────────────────────── Body ────────────────────────── -->
         <div class="flex-1 space-y-5 overflow-y-auto px-5 py-4">
-          <!-- Loading -->
           <div v-if="isLoading" class="animate-pulse space-y-3">
             <div class="h-4 w-3/4 rounded bg-[var(--app-surface-2)]"></div>
             <div class="h-4 w-full rounded bg-[var(--app-surface-2)]"></div>
           </div>
 
-          <!-- No organization yet : create -->
           <template v-else-if="organization === null">
             <p class="text-xs leading-relaxed text-[var(--app-ink-soft)]">
               Invitez d'autres comptes DevLeadHunter : les prospects deviennent communs, chacun garde son email d'envoi,
@@ -81,9 +75,7 @@
             </form>
           </template>
 
-          <!-- Organization -->
           <template v-else>
-            <!-- Members -->
             <div>
               <p class="mb-2 text-[10px] font-semibold tracking-wider text-[var(--app-ink-soft)] uppercase">Membres</p>
               <ul class="divide-y divide-[var(--app-line-soft)]">
@@ -116,7 +108,6 @@
               </ul>
             </div>
 
-            <!-- Invite -->
             <form class="space-y-2 border-t border-[var(--app-line-soft)] pt-4" @submit.prevent="handleInvite">
               <label class="text-muted block text-xs font-medium" for="org-invite-email">Inviter un membre</label>
               <div class="flex gap-2">
@@ -139,7 +130,6 @@
               <p class="text-[11px] text-[var(--app-faint)]">La personne doit déjà avoir un compte DevLeadHunter.</p>
             </form>
 
-            <!-- Danger zone -->
             <div class="space-y-2 border-t border-[var(--app-line-soft)] pt-4">
               <p class="text-xs leading-relaxed text-[var(--app-ink-soft)]">
                 <template v-if="isOwner">
@@ -159,23 +149,18 @@
 </template>
 
 <script lang="ts" setup>
-import type { ComputedRef, Ref } from 'vue'
+import type { UiOrganizationDrawerEmits } from '~/types/UiOrganizationDrawer'
+import type { UseToastReturn } from '~/types/Composables'
+import type { ComputedRef, EmitFn, Ref } from 'vue'
 import { computed, ref, watch } from 'vue'
 import type { Organization } from '~/types'
-import {
-  createOrganization,
-  deleteOrganization,
-  getMyOrganization,
-  inviteMember,
-  removeMember,
-} from '~/services/organizationsService'
+import type { UiDrawerProps } from '~/types/UiDrawer'
+import { OrganizationsService } from '~/services/organizationsService'
 import { useToast } from '~/composables/useToast'
 import { useUserStore } from '~/stores/user'
 
-/**
- * Defines the component props.
- */
-const props = defineProps({
+/** Organization profile and member invites drawer. */
+const props: UiDrawerProps = defineProps({
   open: {
     type: Boolean,
     required: true,
@@ -186,21 +171,16 @@ const props = defineProps({
   },
 })
 
-const emit = defineEmits<{
-  /** Close every drawer. */
-  close: []
-  /** Go back to the previous drawer of the stack. */
-  back: []
-}>()
+const emit: EmitFn<UiOrganizationDrawerEmits> = defineEmits<UiOrganizationDrawerEmits>()
 
-const toast = useToast()
-const userStore = useUserStore()
+const toast: UseToastReturn = useToast()
+const userStore: ReturnType<typeof useUserStore> = useUserStore()
 
-const organization: Ref<Organization | null> = ref<Organization | null>(null)
-const isLoading: Ref<boolean> = ref<boolean>(true)
-const isSubmitting: Ref<boolean> = ref<boolean>(false)
-const createName: Ref<string> = ref<string>('')
-const inviteEmail: Ref<string> = ref<string>('')
+const organization: Ref<Organization | null> = ref(null)
+const isLoading: Ref<boolean> = ref(true)
+const isSubmitting: Ref<boolean> = ref(false)
+const createName: Ref<string> = ref('')
+const inviteEmail: Ref<string> = ref('')
 
 /** Current user id (0 while the store hydrates). */
 const currentUserId: ComputedRef<number> = computed((): number => userStore.user?.id ?? 0)
@@ -230,7 +210,7 @@ function memberInitials(name: string): string {
 async function loadOrganization(): Promise<void> {
   isLoading.value = true
   try {
-    organization.value = await getMyOrganization()
+    organization.value = await OrganizationsService.getMyOrganization()
   } catch (err: unknown) {
     toast.error(err instanceof Error ? err.message : "Erreur lors du chargement de l'organisation")
   } finally {
@@ -245,7 +225,7 @@ async function loadOrganization(): Promise<void> {
 async function handleCreate(): Promise<void> {
   isSubmitting.value = true
   try {
-    organization.value = await createOrganization(createName.value.trim())
+    organization.value = await OrganizationsService.createOrganization(createName.value.trim())
     toast.success('Organisation créée — vos prospects sont maintenant partageables')
     createName.value = ''
   } catch (err: unknown) {
@@ -262,7 +242,7 @@ async function handleCreate(): Promise<void> {
 async function handleInvite(): Promise<void> {
   isSubmitting.value = true
   try {
-    organization.value = await inviteMember(inviteEmail.value.trim())
+    organization.value = await OrganizationsService.inviteMember(inviteEmail.value.trim())
     toast.success(`${inviteEmail.value.trim()} a rejoint l'organisation`)
     inviteEmail.value = ''
   } catch (err: unknown) {
@@ -284,7 +264,7 @@ async function handleRemove(memberUserId: number, memberName: string): Promise<v
   }
   isSubmitting.value = true
   try {
-    await removeMember(memberUserId)
+    await OrganizationsService.removeMember(memberUserId)
     await loadOrganization()
     toast.success(`${memberName} a été retiré`)
   } catch (err: unknown) {
@@ -309,9 +289,9 @@ async function handleLeaveOrDelete(): Promise<void> {
   isSubmitting.value = true
   try {
     if (wasOwner) {
-      await deleteOrganization()
+      await OrganizationsService.deleteOrganization()
     } else {
-      await removeMember(currentUserId.value)
+      await OrganizationsService.removeMember(currentUserId.value)
     }
     organization.value = null
     toast.success(wasOwner ? 'Organisation supprimée' : "Vous avez quitté l'organisation")

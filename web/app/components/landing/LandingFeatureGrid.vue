@@ -1,7 +1,5 @@
 <template>
-  <!-- Full-bleed ink band — the page's contrast moment -->
   <section id="features" class="relative overflow-hidden bg-[#1b1813] px-5 py-24 md:px-8 md:py-36">
-    <!-- Oversized asterisk watermark -->
     <LandingAsterisk
       class="pointer-events-none absolute -top-20 -right-16 rotate-12 text-[13rem] text-[#e8a33c]/[0.08]"
     />
@@ -36,16 +34,10 @@
 </template>
 
 <script lang="ts" setup>
-/** One capability shown in the feature grid. */
-interface LandingFeatureItem {
-  /** i18n key of the feature title. */
-  titleKey: string
-  /** i18n key of the feature description. */
-  descriptionKey: string
-}
+import type { LandingFeature } from '~/types/LandingFeatureGrid'
 
 /** The four capabilities highlighted under the deep-dive sections. */
-const features: LandingFeatureItem[] = [
+const features: LandingFeature[] = [
   {
     titleKey: 'landing.features.deliverability.title',
     descriptionKey: 'landing.features.deliverability.description',

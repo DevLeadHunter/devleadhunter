@@ -1,6 +1,5 @@
 <template>
   <div class="space-y-6">
-    <!-- Header -->
     <div class="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
       <div>
         <p class="app-label flex items-center gap-2">
@@ -18,7 +17,6 @@
       </button>
     </div>
 
-    <!-- Empty state (no job yet) -->
     <div v-if="!store.currentJob" class="app-card px-6 py-14 text-center">
       <LandingAsterisk class="text-4xl text-[var(--app-accent)]" />
       <h3 class="font-display mt-5 text-2xl font-semibold text-[var(--app-ink)]">Lancez une recherche</h3>
@@ -31,7 +29,6 @@
       </button>
     </div>
 
-    <!-- Job progress / results -->
     <div v-else class="app-card p-5 md:p-6">
       <div class="mb-6 flex items-center justify-between">
         <div>
@@ -60,7 +57,6 @@
         </div>
       </div>
 
-      <!-- Running -->
       <div v-if="store.isSearching" class="space-y-4">
         <div>
           <div class="mb-2 flex items-center justify-between text-sm">
@@ -107,7 +103,6 @@
         />
       </div>
 
-      <!-- Completed / cancelled — both keep the prospects already found -->
       <div
         v-else-if="store.currentJob.status === 'completed' || store.currentJob.status === 'cancelled'"
         class="space-y-4"
@@ -144,7 +139,6 @@
         </div>
       </div>
 
-      <!-- Failed -->
       <div
         v-else-if="store.currentJob.status === 'failed'"
         class="rounded-lg border border-[var(--app-red)] bg-[var(--app-surface)] p-4 text-[var(--app-red)]"
@@ -155,7 +149,6 @@
       </div>
     </div>
 
-    <!-- Recent jobs -->
     <div v-if="store.recentJobs.length > 0" class="app-card p-5 md:p-6">
       <h2 class="mb-4 text-sm font-semibold text-[var(--app-ink)]">Recherches récentes</h2>
       <div class="divide-y divide-[var(--app-line-soft)]">
@@ -188,27 +181,19 @@
 </template>
 
 <script lang="ts" setup>
+import type { CompletedStat } from '~/types/SearchProspectsPage'
 import type { ComputedRef } from 'vue'
 import { computed, onMounted } from 'vue'
 import { useProspectSearchStore } from '~/stores/prospectSearch'
 import { useDrawerStackStore } from '~/stores/drawerStack'
-
-/** A stat tile for the completed view. */
-interface CompletedStat {
-  label: string
-  value: number
-  icon: string
-  iconBg: string
-  iconColor: string
-}
 
 definePageMeta({
   layout: 'dashboard',
   middleware: ['auth'],
 })
 
-const store = useProspectSearchStore()
-const drawerStack = useDrawerStackStore()
+const store: ReturnType<typeof useProspectSearchStore> = useProspectSearchStore()
+const drawerStack: ReturnType<typeof useDrawerStackStore> = useDrawerStackStore()
 
 /** Stat tiles for a completed job. */
 const completedStats: ComputedRef<CompletedStat[]> = computed((): CompletedStat[] => {

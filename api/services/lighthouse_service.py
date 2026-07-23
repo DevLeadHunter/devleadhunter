@@ -44,11 +44,14 @@ class LighthouseService:
     async def audit_website(self, website: str) -> dict[str, Any]:
         """Audit a website (mobile strategy, 4 categories) and return the stored shape.
 
-        @param website - The prospect's website URL (scheme optional).
-        @returns ``{scores: {performance, accessibility, bestPractices, seo},
-            is_improvable, strategy, final_url, fetched_at}`` — scores are 0-100
-            integers, ``None`` when PSI could not compute a category.
-        @throws LighthouseAuditError - When PSI fails or returns no Lighthouse result.
+        Args:
+            website: The prospect's website URL (scheme optional).
+
+        Returns:
+            ``{scores: {performance, accessibility, bestPractices, seo}, is_improvable, strategy, final_url, fetched_at}`` — scores are 0-100 integers, ``None`` when PSI could not compute a category.
+
+        Raises:
+            LighthouseAuditError: When PSI fails or returns no Lighthouse result.
         """
         url = _normalize_url(website)
         params: list[tuple[str, str]] = [

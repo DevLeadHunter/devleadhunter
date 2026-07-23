@@ -419,9 +419,12 @@ class OrderService:
         serves a page (HTTP < 400) and the Storyblok CMS handover is real — a
         space exists and the invite was sent (not mock mode).
 
-        @param order - The paid order being fulfilled (provides the domain).
-        @param demo_site - The linked demo site (provides CMS state).
-        @returns Tuple of (delivered_ok, human-readable reason).
+        Args:
+            order: The paid order being fulfilled (provides the domain).
+            demo_site: The linked demo site (provides CMS state).
+
+        Returns:
+            Tuple of (delivered_ok, human-readable reason).
         """
         from services.demo_site_verification_service import demo_site_verification_service
 
@@ -485,8 +488,11 @@ class OrderService:
         Ids of website orders that were paid but never fully delivered and are still
         within the auto-retry budget (attempts + age). Consumed by the recovery loop.
 
-        @param db - Database session.
-        @returns The order ids to retry.
+        Args:
+            db: Database session.
+
+        Returns:
+            The order ids to retry.
         """
         cutoff: datetime = datetime.now(timezone.utc) - timedelta(days=FULFILMENT_MAX_AGE_DAYS)
         rows = (

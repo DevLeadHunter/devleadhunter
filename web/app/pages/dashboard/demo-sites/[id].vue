@@ -40,7 +40,6 @@
       </header>
 
       <div class="grid items-start gap-6 xl:grid-cols-[320px_1fr]">
-        <!-- Aside -->
         <aside class="card sticky top-6 space-y-6 p-5">
           <div>
             <h2 class="text-sm font-semibold tracking-wide text-[var(--app-ink)] uppercase">Résumé</h2>
@@ -137,18 +136,15 @@
               utilisable dans les emails via {vignette_video}.
             </p>
 
-            <!-- Génération en cours -->
             <div v-if="isVideoGenerating" class="mt-3 flex items-center gap-2 text-xs text-[var(--app-ink-soft)]">
               <UIcon name="i-lucide-loader-circle" class="h-4 w-4 animate-spin" />
               Génération en cours (capture + montage)…
             </div>
 
-            <!-- Échec -->
             <p v-else-if="site.video_status === 'failed'" class="mt-3 text-xs text-red-300">
               {{ site.video_error || 'La génération a échoué.' }}
             </p>
 
-            <!-- Prête : vignette + actions -->
             <template v-if="site.video_status === 'ready' && site.video_page_url">
               <button
                 type="button"
@@ -186,7 +182,6 @@
               </div>
             </template>
 
-            <!-- Jamais générée / échec : bouton de génération -->
             <button
               v-if="!isVideoGenerating && site.video_status !== 'ready'"
               type="button"
@@ -242,10 +237,9 @@
           </div>
         </aside>
 
-        <!-- Main -->
         <section class="space-y-6">
           <div
-            v-if="site.verification_message && !isDemoSiteReachable(site)"
+            v-if="site.verification_message && !DemoSiteService.isDemoSiteReachable(site)"
             class="card border-amber-500/30 bg-amber-500/10 p-4 text-sm text-amber-200"
           >
             {{ site.verification_message }}
@@ -304,47 +298,37 @@
 </template>
 
 <script lang="ts" setup>
+import type { UseToastReturn } from '~/types/Composables'
+import type { DemoSiteStat } from '~/types/DemoSiteDetailPage'
+import type { ComputedRef, Ref } from 'vue'
 import type { DemoSite } from '~/services/demoSiteService'
-import {
-  daysUntilExpiry,
-  deleteDemoSite,
-  deleteDemoSiteVideo,
-  exportDemoSiteCode,
-  generateDemoSiteVideo,
-  getDemoSite,
-  getDemoSiteOpenUrl,
-  inviteDemoSiteClientToCms,
-  isDemoSiteReachable,
-  previewDemoSite,
-  regenerateDemoSite,
-  verifyDemoSite,
-} from '~/services/demoSiteService'
+import { DemoSiteService } from '~/services/demoSiteService'
 import { useToast } from '~/composables/useToast'
 
 definePageMeta({ layout: 'dashboard', middleware: 'auth' })
 
-const route = useRoute()
-const demoSiteId = Number(route.params.id)
+const route: ReturnType<typeof useRoute> = useRoute()
+const demoSiteId: number = Number(route.params.id)
 const { copy, copied } = useCopyToClipboard()
 const { openExternalUrl } = useOpenExternalUrl()
-const toast = useToast()
+const toast: UseToastReturn = useToast()
 
-const site = ref<DemoSite | null>(null)
-const pending = ref(true)
-const loadError = ref<string | null>(null)
-const previewContent = ref<Record<string, unknown> | null>(null)
-const previewLoading = ref(false)
-const verifying = ref(false)
-const regenerating = ref(false)
-const deleting = ref(false)
-const inviting = ref(false)
-const exporting = ref(false)
-const generatingVideo = ref(false)
-const deletingVideo = ref(false)
-const deleteVideoModalRef = ref<{ open: () => void } | null>(null)
+const site: Ref<DemoSite | null> = ref(null)
+const pending: Ref<boolean> = ref(true)
+const loadError: Ref<string | null> = ref(null)
+const previewContent: Ref<Record<string, unknown> | null> = ref(null)
+const previewLoading: Ref<boolean> = ref(false)
+const verifying: Ref<boolean> = ref(false)
+const regenerating: Ref<boolean> = ref(false)
+const deleting: Ref<boolean> = ref(false)
+const inviting: Ref<boolean> = ref(false)
+const exporting: Ref<boolean> = ref(false)
+const generatingVideo: Ref<boolean> = ref(false)
+const deletingVideo: Ref<boolean> = ref(false)
+const deleteVideoModalRef: Ref<{ open: () => void } | null> = ref(null)
 let videoPollTimer: ReturnType<typeof setInterval> | null = null
 
-const templateLabel = computed(() => {
+const templateLabel: ComputedRef<string> = computed(() => {
   const labels: Record<string, string> = {
     'plumber-cuivre': 'Plombier Source',
     'electrician-lumen': 'Électricien Lumen',
@@ -352,29 +336,34 @@ const templateLabel = computed(() => {
   return labels[site.value?.template_id ?? ''] ?? site.value?.template_id ?? ''
 })
 
-const openUrl = computed(() => (site.value ? getDemoSiteOpenUrl(site.value) : null))
+const openUrl: ComputedRef<string | null> = computed(() =>
+  site.value ? DemoSiteService.getDemoSiteOpenUrl(site.value) : null,
+)
 
-const statusLabel = computed(() => {
+const statusLabel: ComputedRef<string> = computed(() => {
   if (!site.value) return ''
-  if (isDemoSiteReachable(site.value)) return 'En ligne'
+  if (DemoSiteService.isDemoSiteReachable(site.value)) return 'En ligne'
   if (site.value.status === 'failed') return 'Échec'
   if (site.value.status === 'unavailable') return 'Hors ligne'
   return site.value.status
 })
 
-const statusClass = computed(() => {
-  if (site.value && isDemoSiteReachable(site.value)) return 'bg-[var(--app-green)]/20 text-[var(--app-green)]'
+const statusClass: ComputedRef<string> = computed(() => {
+  if (site.value && DemoSiteService.isDemoSiteReachable(site.value))
+    return 'bg-[var(--app-green)]/20 text-[var(--app-green)]'
   if (site.value?.status === 'failed') return 'bg-red-500/20 text-red-300'
   return 'bg-amber-500/20 text-amber-300'
 })
 
-const daysLeft = computed(() => (site.value ? daysUntilExpiry(site.value.expires_at) : 0))
+const daysLeft: ComputedRef<number> = computed(() =>
+  site.value ? DemoSiteService.daysUntilExpiry(site.value.expires_at) : 0,
+)
 
-const isVideoGenerating = computed(
+const isVideoGenerating: ComputedRef<boolean> = computed(
   () => site.value?.video_status === 'pending' || site.value?.video_status === 'generating',
 )
 
-const videoStatusLabel = computed(() => {
+const videoStatusLabel: ComputedRef<string | null> = computed(() => {
   switch (site.value?.video_status) {
     case 'pending':
     case 'generating':
@@ -388,15 +377,15 @@ const videoStatusLabel = computed(() => {
   }
 })
 
-const videoStatusClass = computed(() => {
+const videoStatusClass: ComputedRef<string> = computed(() => {
   if (site.value?.video_status === 'ready') return 'bg-[var(--app-green)]/20 text-[var(--app-green)]'
   if (site.value?.video_status === 'failed') return 'bg-red-500/20 text-red-300'
   return 'bg-amber-500/20 text-amber-300'
 })
 
-const stats = computed(() => {
+const stats: ComputedRef<DemoSiteStat[]> = computed(() => {
   if (!site.value) return []
-  const urlLive = isDemoSiteReachable(site.value)
+  const urlLive = DemoSiteService.isDemoSiteReachable(site.value)
   return [
     {
       label: 'Statut URL',
@@ -421,15 +410,21 @@ const stats = computed(() => {
   ]
 })
 
+/**
+ * Format an ISO date for display on the detail page.
+ */
 function formatDate(value: string): string {
   return new Date(value).toLocaleDateString('fr-FR', { dateStyle: 'medium' })
 }
 
+/**
+ * Load the Storyblok preview payload for the current site.
+ */
 async function loadPreview(): Promise<void> {
   if (!site.value) return
   previewLoading.value = true
   try {
-    const result = await previewDemoSite({
+    const result = await DemoSiteService.previewDemoSite({
       business_name: site.value.business_name,
       template_id: site.value.template_id,
       email: site.value.email ?? undefined,
@@ -446,37 +441,52 @@ async function loadPreview(): Promise<void> {
   }
 }
 
+/**
+ * Open the live demo URL in a new browser tab.
+ */
 async function openDemoUrl(url: string): Promise<void> {
   await openExternalUrl(url)
 }
 
+/**
+ * Copy the live demo URL to the clipboard.
+ */
 async function copyDemoUrl(url: string): Promise<void> {
   await copy(url)
 }
 
+/**
+ * Verify that the deployed demo site is reachable.
+ */
 async function handleVerify(): Promise<void> {
   verifying.value = true
   try {
-    site.value = await verifyDemoSite(demoSiteId)
+    site.value = await DemoSiteService.verifyDemoSite(demoSiteId)
   } finally {
     verifying.value = false
   }
 }
 
+/**
+ * Regenerate the demo site content and refresh the preview.
+ */
 async function handleRegenerate(): Promise<void> {
   regenerating.value = true
   try {
-    site.value = await regenerateDemoSite(demoSiteId)
+    site.value = await DemoSiteService.regenerateDemoSite(demoSiteId)
     await loadPreview()
   } finally {
     regenerating.value = false
   }
 }
 
+/**
+ * Invite the client to the Storyblok CMS workspace.
+ */
 async function handleInvite(): Promise<void> {
   inviting.value = true
   try {
-    site.value = await inviteDemoSiteClientToCms(demoSiteId)
+    site.value = await DemoSiteService.inviteDemoSiteClientToCms(demoSiteId)
   } catch (error) {
     alert(error instanceof Error ? error.message : "Échec de l'invitation")
   } finally {
@@ -484,11 +494,14 @@ async function handleInvite(): Promise<void> {
   }
 }
 
+/**
+ * Export the demo site source code as a downloadable archive.
+ */
 async function handleExport(): Promise<void> {
   if (!site.value) return
   exporting.value = true
   try {
-    await exportDemoSiteCode(demoSiteId, site.value.slug)
+    await DemoSiteService.exportDemoSiteCode(demoSiteId, site.value.slug)
   } catch (error) {
     alert(error instanceof Error ? error.message : "Échec de l'export du code")
   } finally {
@@ -496,11 +509,14 @@ async function handleExport(): Promise<void> {
   }
 }
 
+/**
+ * Delete the demo site after user confirmation.
+ */
 async function handleDelete(): Promise<void> {
   if (!site.value || !confirm(`Supprimer le site "${site.value.business_name}" ?`)) return
   deleting.value = true
   try {
-    await deleteDemoSite(demoSiteId)
+    await DemoSiteService.deleteDemoSite(demoSiteId)
     await navigateTo('/dashboard/demo-sites')
   } finally {
     deleting.value = false
@@ -524,7 +540,7 @@ function startVideoPolling(): void {
   if (videoPollTimer !== null) return
   videoPollTimer = setInterval(async (): Promise<void> => {
     try {
-      site.value = await getDemoSite(demoSiteId)
+      site.value = await DemoSiteService.getDemoSite(demoSiteId)
     } catch {
       // Erreur transitoire : on retentera au prochain tick.
     }
@@ -538,7 +554,7 @@ function startVideoPolling(): void {
 async function handleGenerateVideo(): Promise<void> {
   generatingVideo.value = true
   try {
-    site.value = await generateDemoSiteVideo(demoSiteId)
+    site.value = await DemoSiteService.generateDemoSiteVideo(demoSiteId)
     startVideoPolling()
     toast.success('Génération de la vidéo lancée (capture + montage en tâche de fond)')
   } catch (error) {
@@ -561,7 +577,7 @@ function askDeleteVideo(): void {
 async function handleDeleteVideoConfirmed(): Promise<void> {
   deletingVideo.value = true
   try {
-    site.value = await deleteDemoSiteVideo(demoSiteId)
+    site.value = await DemoSiteService.deleteDemoSiteVideo(demoSiteId)
     toast.success('Vidéo supprimée')
   } catch (error) {
     toast.error(error instanceof Error ? error.message : 'Échec de la suppression de la vidéo')
@@ -580,7 +596,7 @@ async function openVideoPage(url: string): Promise<void> {
 
 onMounted(async () => {
   try {
-    site.value = await getDemoSite(demoSiteId)
+    site.value = await DemoSiteService.getDemoSite(demoSiteId)
     await loadPreview()
     if (isVideoGenerating.value) startVideoPolling()
   } catch (error) {

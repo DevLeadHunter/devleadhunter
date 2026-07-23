@@ -1,6 +1,5 @@
 <template>
   <div class="space-y-8">
-    <!-- Header -->
     <div class="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
       <div>
         <p class="app-label flex items-center gap-2">
@@ -44,7 +43,6 @@
       {{ loadError }}
     </div>
 
-    <!-- Aucun compte d'envoi : les sections domaine n'ont rien à analyser -->
     <div
       v-if="overview && overview.accounts.length === 0"
       class="app-card flex flex-wrap items-center justify-between gap-3 p-4"
@@ -59,7 +57,6 @@
       </NuxtLink>
     </div>
 
-    <!-- 1. Signaux de santé -->
     <section v-if="overview">
       <div class="mb-3 flex items-baseline justify-between">
         <h2 class="text-sm font-semibold text-[var(--app-ink)]">Signaux de santé</h2>
@@ -87,7 +84,6 @@
       </p>
     </section>
 
-    <!-- 2. Tendances -->
     <section v-if="trendDays.length > 0" class="grid grid-cols-1 gap-6 lg:grid-cols-2">
       <div class="app-card p-5">
         <h2 class="mb-4 text-sm font-semibold text-[var(--app-ink)]">Volume d'envoi</h2>
@@ -109,7 +105,6 @@
       </div>
     </section>
 
-    <!-- 3. Fournisseurs destinataires -->
     <section v-if="providers.length > 0" class="app-card p-5 md:p-6">
       <h2 class="text-sm font-semibold text-[var(--app-ink)]">Par fournisseur destinataire</h2>
       <p class="mt-1 mb-4 text-xs text-[var(--app-ink-soft)]">
@@ -150,13 +145,11 @@
       </div>
     </section>
 
-    <!-- 4. Réputation Gmail (Postmaster) -->
     <section v-for="postmaster in postmasterDomains" :key="postmaster.domain" class="app-card p-5 md:p-6">
       <h2 class="text-sm font-semibold text-[var(--app-ink)]">
         Réputation Gmail — <span class="font-mono text-[var(--app-accent-ink)]">{{ postmaster.domain }}</span>
       </h2>
 
-      <!-- Not configured: setup instructions -->
       <div v-if="!postmaster.configured" class="mt-3 rounded-xl border border-[var(--app-line)] bg-[var(--app-bg)] p-4">
         <p class="flex items-center gap-2 text-sm text-[var(--app-ink)]">
           <UIcon name="i-lucide-plug-zap" class="h-4 w-4 text-[var(--app-accent-ink)]" />
@@ -185,10 +178,8 @@
         </ol>
       </div>
 
-      <!-- Configured but errored -->
       <p v-else-if="postmaster.error" class="mt-3 text-sm text-[var(--app-red)]">{{ postmaster.error }}</p>
 
-      <!-- Data -->
       <div v-else class="mt-4 space-y-5">
         <div class="flex flex-wrap items-center gap-6">
           <div>
@@ -222,7 +213,6 @@
       </div>
     </section>
 
-    <!-- 6. Score anti-spam des modèles (automatique, rien n'est envoyé) -->
     <section class="app-card p-5 md:p-6">
       <div class="flex items-baseline justify-between gap-3">
         <h2 class="text-sm font-semibold text-[var(--app-ink)]">Score anti-spam de vos modèles</h2>
@@ -302,7 +292,6 @@
                   />
                 </button>
 
-                <!-- Détail du modèle -->
                 <div
                   v-if="expandedTemplateId === score.id"
                   class="border-t border-[var(--app-line-soft)] bg-[var(--app-bg)] px-4 py-3"
@@ -346,7 +335,6 @@
       </div>
     </section>
 
-    <!-- 7. Journal des incidents -->
     <section class="app-card p-5 md:p-6">
       <h2 class="mb-4 text-sm font-semibold text-[var(--app-ink)]">Journal des incidents</h2>
       <div v-if="incidents.length === 0" class="py-6 text-center text-sm text-[var(--app-ink-soft)]">
@@ -397,7 +385,6 @@
       </div>
     </section>
 
-    <!-- 8. Comptes d'envoi -->
     <section v-if="overview && overview.accounts.length > 0" class="app-card p-5 md:p-6">
       <h2 class="mb-4 text-sm font-semibold text-[var(--app-ink)]">Comptes d'envoi</h2>
       <div class="overflow-x-auto">
@@ -472,7 +459,6 @@
       </div>
     </section>
 
-    <!-- 8. Authentification du domaine — configuration DNS, à consulter rarement -->
     <section v-for="domain in dnsDomains" :key="domain.domain" class="app-card p-5 md:p-6">
       <div class="mb-4 flex items-center justify-between">
         <h2 class="text-sm font-semibold text-[var(--app-ink)]">
@@ -505,6 +491,7 @@
 </template>
 
 <script lang="ts" setup>
+import type { TemplateScoreGroup } from '~/types/EmailHealthPage'
 import type { ComputedRef, Ref } from 'vue'
 import { computed, onMounted, ref } from 'vue'
 import type {
@@ -518,15 +505,7 @@ import type {
   TemplateScore,
   TemplateScoresResponse,
 } from '~/services/emailHealthService'
-import {
-  getEmailHealthDns,
-  getEmailHealthIncidents,
-  getEmailHealthOverview,
-  getEmailHealthPostmaster,
-  getEmailHealthProviders,
-  getEmailHealthTrends,
-  getEmailTemplateScores,
-} from '~/services/emailHealthService'
+import { EmailHealthService } from '~/services/emailHealthService'
 import type { EmailHealthChartSeries, EmailHealthChartThreshold } from '~/types/EmailHealthTrendChart'
 
 definePageMeta({
@@ -534,17 +513,8 @@ definePageMeta({
   middleware: ['auth'],
 })
 
-/** One displayed group of template scores. */
-interface TemplateScoreGroup {
-  key: 'initial' | 'follow_up'
-  label: string
-  items: TemplateScore[]
-  /** Show the « Meilleur score » badge only when the scores actually differ. */
-  showBest: boolean
-}
-
 /** Supported rolling windows (days). */
-const PERIODS: ReadonlyArray<number> = [7, 30, 90]
+const PERIODS: number[] = [7, 30, 90]
 
 /** Threshold guides of the critical-rates chart. */
 const CRITICAL_THRESHOLDS: EmailHealthChartThreshold[] = [
@@ -552,19 +522,19 @@ const CRITICAL_THRESHOLDS: EmailHealthChartThreshold[] = [
   { value: 2, label: "Plafond sain d'emails rejetés (2 %)", tone: 'amber' },
 ]
 
-const period: Ref<number> = ref<number>(30)
-const isLoading: Ref<boolean> = ref<boolean>(false)
-const loadError: Ref<string | null> = ref<string | null>(null)
-const overview: Ref<EmailHealthOverview | null> = ref<EmailHealthOverview | null>(null)
-const trendDays: Ref<EmailHealthTrendDay[]> = ref<EmailHealthTrendDay[]>([])
-const providers: Ref<EmailHealthProvider[]> = ref<EmailHealthProvider[]>([])
-const incidents: Ref<EmailHealthIncident[]> = ref<EmailHealthIncident[]>([])
-const dnsDomains: Ref<EmailDnsDomain[]> = ref<EmailDnsDomain[]>([])
-const postmasterDomains: Ref<PostmasterDomain[]> = ref<PostmasterDomain[]>([])
+const period: Ref<number> = ref(30)
+const isLoading: Ref<boolean> = ref(false)
+const loadError: Ref<string | null> = ref(null)
+const overview: Ref<EmailHealthOverview | null> = ref(null)
+const trendDays: Ref<EmailHealthTrendDay[]> = ref([])
+const providers: Ref<EmailHealthProvider[]> = ref([])
+const incidents: Ref<EmailHealthIncident[]> = ref([])
+const dnsDomains: Ref<EmailDnsDomain[]> = ref([])
+const postmasterDomains: Ref<PostmasterDomain[]> = ref([])
 
-const templateScores: Ref<TemplateScoresResponse | null> = ref<TemplateScoresResponse | null>(null)
-const isScoringTemplates: Ref<boolean> = ref<boolean>(false)
-const expandedTemplateId: Ref<number | null> = ref<number | null>(null)
+const templateScores: Ref<TemplateScoresResponse | null> = ref(null)
+const isScoringTemplates: Ref<boolean> = ref(false)
+const expandedTemplateId: Ref<number | null> = ref(null)
 
 /** ISO dates of the trend series. */
 const trendLabels: ComputedRef<string[]> = computed((): string[] =>
@@ -1003,10 +973,10 @@ async function load(): Promise<void> {
   loadError.value = null
   try {
     const [overviewData, trendsData, providersData, incidentsData] = await Promise.all([
-      getEmailHealthOverview(period.value),
-      getEmailHealthTrends(period.value),
-      getEmailHealthProviders(period.value),
-      getEmailHealthIncidents(50),
+      EmailHealthService.getEmailHealthOverview(period.value),
+      EmailHealthService.getEmailHealthTrends(period.value),
+      EmailHealthService.getEmailHealthProviders(period.value),
+      EmailHealthService.getEmailHealthIncidents(50),
     ])
     overview.value = overviewData
     trendDays.value = trendsData.days
@@ -1018,15 +988,14 @@ async function load(): Promise<void> {
     isLoading.value = false
   }
 
-  // DNS + Postmaster are slower (network/API) — loaded separately so the core
-  // stats render first; failures degrade to empty sections, never a page error.
+  // Chargés à part : plus lents, et leur échec dégrade en section vide, jamais en erreur de page.
   try {
-    dnsDomains.value = (await getEmailHealthDns()).domains
+    dnsDomains.value = (await EmailHealthService.getEmailHealthDns()).domains
   } catch {
     dnsDomains.value = []
   }
   try {
-    postmasterDomains.value = (await getEmailHealthPostmaster(period.value)).domains
+    postmasterDomains.value = (await EmailHealthService.getEmailHealthPostmaster(period.value)).domains
   } catch {
     postmasterDomains.value = []
   }
@@ -1040,7 +1009,7 @@ async function load(): Promise<void> {
 async function loadTemplateScores(): Promise<void> {
   isScoringTemplates.value = true
   try {
-    templateScores.value = await getEmailTemplateScores()
+    templateScores.value = await EmailHealthService.getEmailTemplateScores()
   } catch {
     templateScores.value = { initial: [], follow_up: [] }
   } finally {

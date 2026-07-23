@@ -50,16 +50,9 @@
 </template>
 
 <script lang="ts" setup>
+import type { LandingFaqEntry } from '~/types/LandingFaq'
 import type { Ref } from 'vue'
 import { ref } from 'vue'
-
-/** One question/answer pair of the FAQ accordion. */
-interface LandingFaqEntry {
-  /** i18n key of the question. */
-  questionKey: string
-  /** i18n key of the answer. */
-  answerKey: string
-}
 
 /** FAQ entries (keys q1..q6 / a1..a6). */
 const faqEntries: LandingFaqEntry[] = Array.from(
@@ -71,7 +64,7 @@ const faqEntries: LandingFaqEntry[] = Array.from(
 )
 
 /** Index of the currently open entry (null when all are collapsed). */
-const openIndex: Ref<number | null> = ref<number | null>(0)
+const openIndex: Ref<number | null> = ref(0)
 
 const { track } = useSiteTracking()
 

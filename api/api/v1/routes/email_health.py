@@ -33,8 +33,11 @@ _ALLOWED_PERIODS: tuple[int, ...] = (7, 30, 90)
 def _validated_period(period_days: int) -> int:
     """Clamp the requested window to the supported presets.
 
-    @param period_days - Raw query value.
-    @returns A supported window (falls back to 30).
+    Args:
+        period_days: Raw query value.
+
+    Returns:
+        A supported window (falls back to 30).
     """
     return period_days if period_days in _ALLOWED_PERIODS else 30
 
@@ -42,8 +45,11 @@ def _validated_period(period_days: int) -> int:
 def _domain_of(address: Optional[str]) -> str:
     """Extract the domain part of an email address.
 
-    @param address - Full address, or already a bare domain.
-    @returns The lower-cased domain (empty when *address* is empty).
+    Args:
+        address: Full address, or already a bare domain.
+
+    Returns:
+        The lower-cased domain (empty when *address* is empty).
     """
     return (address or "").strip().lower().rpartition("@")[2]
 
@@ -56,9 +62,12 @@ def _user_domains(db: Session, user: User) -> list[str]:
     as ``mail.example.fr``) would otherwise never be checked — precisely the
     domain whose authentication matters most.
 
-    @param db - Database session.
-    @param user - Authenticated user.
-    @returns Lower-cased domains, deduplicated, sending domain first.
+    Args:
+        db: Database session.
+        user: Authenticated user.
+
+    Returns:
+        Lower-cased domains, deduplicated, sending domain first.
     """
     domains: list[str] = []
 
@@ -150,9 +159,12 @@ async def email_health_postmaster(
 def _follow_up_template_ids(db: Session, user_id: int) -> set[int]:
     """Template ids used as follow-ups in the user's campaigns.
 
-    @param db - Database session.
-    @param user_id - Campaign owner.
-    @returns Ids referenced by ``campaign_follow_ups`` or the legacy field.
+    Args:
+        db: Database session.
+        user_id: Campaign owner.
+
+    Returns:
+        Ids referenced by ``campaign_follow_ups`` or the legacy field.
     """
     ids: set[int] = set()
     rows = (
@@ -174,9 +186,12 @@ def _follow_up_template_ids(db: Session, user_id: int) -> set[int]:
 def _initial_template_ids(db: Session, user_id: int) -> set[int]:
     """Template ids used as initial (A/B) templates in the user's campaigns.
 
-    @param db - Database session.
-    @param user_id - Campaign owner.
-    @returns Ids referenced by ``template_id`` or ``ab_template_id_b``.
+    Args:
+        db: Database session.
+        user_id: Campaign owner.
+
+    Returns:
+        Ids referenced by ``template_id`` or ``ab_template_id_b``.
     """
     ids: set[int] = set()
     rows = (
@@ -197,10 +212,13 @@ def _template_group(template: EmailTemplate, initial_ids: set[int], follow_up_id
 
     Campaign usage wins (initial beats follow-up when both), then the name.
 
-    @param template - The template to classify.
-    @param initial_ids - Ids used as campaign initial templates.
-    @param follow_up_ids - Ids used as campaign follow-ups.
-    @returns ``initial`` or ``follow_up``.
+    Args:
+        template: The template to classify.
+        initial_ids: Ids used as campaign initial templates.
+        follow_up_ids: Ids used as campaign follow-ups.
+
+    Returns:
+        ``initial`` or ``follow_up``.
     """
     if template.id in initial_ids:
         return "initial"
@@ -244,8 +262,11 @@ async def email_health_template_scores(
     async def score(template: EmailTemplate) -> dict[str, Any]:
         """Score one template (bounded concurrency).
 
-        @param template - The template to score.
-        @returns Its scoring payload.
+        Args:
+            template: The template to score.
+
+        Returns:
+            Its scoring payload.
         """
         async with semaphore:
             result = await email_spam_test_service.test_cached(

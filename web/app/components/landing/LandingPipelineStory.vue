@@ -1,6 +1,5 @@
 <template>
   <section id="how-it-works" class="relative pt-28 md:pt-40">
-    <!-- Section header -->
     <div class="mx-auto max-w-6xl px-5 md:px-8">
       <p v-reveal class="landing-eyebrow">{{ $t('landing.story.eyebrow') }}</p>
       <h2
@@ -14,13 +13,10 @@
       </p>
     </div>
 
-    <!-- Desktop — sticky scroll narrative: the page pins while the acts advance.
-         Native position:sticky + scroll listener (no GSAP), so it works everywhere. -->
     <div ref="stickyWrapperRef" class="relative hidden h-[400vh] md:block">
       <div class="sticky top-0 flex h-screen items-center">
         <div class="mx-auto w-full max-w-6xl px-8">
           <div class="grid w-full grid-cols-2 items-center gap-12 xl:gap-20">
-            <!-- Acts -->
             <div class="relative pl-10">
               <div class="absolute top-2 bottom-2 left-0 w-px bg-[#e3dccd]" aria-hidden="true">
                 <div
@@ -51,7 +47,6 @@
               </ol>
             </div>
 
-            <!-- Visual stage -->
             <div class="relative h-[440px]">
               <div
                 v-for="act in storyActs"
@@ -67,7 +62,6 @@
       </div>
     </div>
 
-    <!-- Mobile — stacked acts -->
     <div class="mx-auto max-w-6xl space-y-16 px-5 pt-16 pb-24 md:hidden">
       <div v-for="act in storyActs" :key="act.actIndex" class="grid gap-8">
         <div v-reveal>
@@ -86,19 +80,9 @@
 </template>
 
 <script lang="ts" setup>
+import type { LandingStoryAct } from '~/types/LandingPipelineStory'
 import type { Ref } from 'vue'
-import type { LandingStoryActIndex } from '~/types/LandingStoryVisual'
 import { ref, onMounted, onBeforeUnmount } from 'vue'
-
-/** One act of the prospect journey shown in the scroll narrative. */
-interface LandingStoryAct {
-  /** Stable act index, also passed to the visual card. */
-  actIndex: LandingStoryActIndex
-  /** i18n key of the act verb (e.g. « Trouver »). */
-  verbKey: string
-  /** i18n key of the act description. */
-  descriptionKey: string
-}
 
 /** The four acts of the pipeline story. */
 const storyActs: LandingStoryAct[] = [
@@ -109,13 +93,13 @@ const storyActs: LandingStoryAct[] = [
 ]
 
 /** Tall wrapper whose scroll range drives the narrative (4 acts ≈ 75vh each). */
-const stickyWrapperRef: Ref<HTMLElement | null> = ref<HTMLElement | null>(null)
+const stickyWrapperRef: Ref<HTMLElement | null> = ref(null)
 
 /** Index of the act currently highlighted by the scroll position. */
-const activeActIndex: Ref<number> = ref<number>(0)
+const activeActIndex: Ref<number> = ref(0)
 
 /** Scroll progress through the narrative, from 0 to 1 (drives the rail fill). */
-const storyProgress: Ref<number> = ref<number>(0)
+const storyProgress: Ref<number> = ref(0)
 
 /**
  * Compute the transition classes of a stage card from its position relative

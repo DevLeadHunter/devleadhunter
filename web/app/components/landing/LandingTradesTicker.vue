@@ -1,6 +1,5 @@
 <template>
   <div class="relative overflow-hidden border-y border-[#e3dccd] py-3.5" :aria-label="t('landing.ticker.ariaLabel')">
-    <!-- Edge fade masks -->
     <div
       class="pointer-events-none absolute inset-y-0 left-0 z-10 w-16 bg-gradient-to-r from-[#f6f3ec] to-transparent md:w-32"
     ></div>

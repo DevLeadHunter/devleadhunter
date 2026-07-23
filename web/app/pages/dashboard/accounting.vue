@@ -1,11 +1,9 @@
 <template>
   <div>
-    <!-- Header -->
     <div class="mb-6 flex items-center justify-between">
       <h1 class="text-xl font-semibold text-[var(--app-ink)]">Accounting</h1>
     </div>
 
-    <!-- Loading State -->
     <div v-if="isLoading" class="space-y-6">
       <div class="card">
         <div class="animate-pulse space-y-4">
@@ -15,11 +13,8 @@
       </div>
     </div>
 
-    <!-- Content -->
     <div v-else class="space-y-6">
-      <!-- Financial Summary Cards - Qonto Style -->
       <div class="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <!-- Total Paid -->
         <div class="card">
           <div class="flex items-start justify-between">
             <div class="flex-1">
@@ -34,7 +29,6 @@
           </div>
         </div>
 
-        <!-- Net Total -->
         <div class="card">
           <div class="flex items-start justify-between">
             <div class="flex-1">
@@ -49,7 +43,6 @@
           </div>
         </div>
 
-        <!-- Stripe Fees -->
         <div class="card">
           <div class="flex items-start justify-between">
             <div class="flex-1">
@@ -64,7 +57,6 @@
           </div>
         </div>
 
-        <!-- Available Balance -->
         <div class="card">
           <div class="flex items-start justify-between">
             <div class="flex-1">
@@ -88,7 +80,6 @@
         </div>
       </div>
 
-      <!-- Additional Summary Info -->
       <div class="grid grid-cols-1 gap-4 md:grid-cols-3">
         <div class="card">
           <p class="mb-1 text-xs text-[var(--app-ink-soft)]">Total refunded</p>
@@ -110,7 +101,6 @@
         </div>
       </div>
 
-      <!-- Transactions Table - Qonto Style -->
       <div class="card overflow-hidden p-0">
         <div class="space-y-4 border-b border-[var(--app-line)] bg-[var(--app-bg)] px-2 py-4 sm:px-6">
           <div>
@@ -226,7 +216,6 @@
                 :key="getTransactionKey(transaction)"
                 class="border-b border-[var(--app-line)] transition-colors last:border-b-0 hover:bg-[var(--app-surface-2)]"
               >
-                <!-- Status -->
                 <td class="px-4 py-3">
                   <span
                     :class="[
@@ -238,7 +227,6 @@
                   </span>
                 </td>
 
-                <!-- Customer -->
                 <td class="px-4 py-3">
                   <div class="flex flex-col">
                     <span class="text-sm font-medium text-[var(--app-ink)]">{{ transaction.user_name }}</span>
@@ -246,23 +234,19 @@
                   </div>
                 </td>
 
-                <!-- Date -->
                 <td class="px-4 py-3 text-sm text-[var(--app-ink)]">
                   {{ formatDate(transaction.credits_available_date) }}
                 </td>
 
-                <!-- Credits -->
                 <td class="px-4 py-3 text-sm font-medium text-[var(--app-ink)]">
                   {{ transaction.credits_amount }}
                 </td>
 
-                <!-- Amount -->
                 <td class="px-4 py-3 text-sm font-medium text-[var(--app-ink)]">
                   <span v-if="transaction.payment_info"> €{{ formatCurrency(transaction.payment_info.amount) }} </span>
                   <span v-else class="text-[var(--app-ink-soft)]">N/A</span>
                 </td>
 
-                <!-- Stripe Fees -->
                 <td class="px-4 py-3 text-sm text-[var(--app-red)]">
                   <span v-if="transaction.payment_info?.application_fee_amount">
                     -€{{ formatCurrency(transaction.payment_info.application_fee_amount) }}
@@ -270,7 +254,6 @@
                   <span v-else class="text-[var(--app-ink-soft)]">N/A</span>
                 </td>
 
-                <!-- Net -->
                 <td class="px-4 py-3 text-sm font-medium text-[var(--app-ink)]">
                   <span v-if="transaction.payment_info?.net_amount">
                     €{{ formatCurrency(transaction.payment_info.net_amount) }}
@@ -278,12 +261,10 @@
                   <span v-else class="text-[var(--app-ink-soft)]">N/A</span>
                 </td>
 
-                <!-- Funds availability -->
                 <td class="px-4 py-3 text-sm text-[var(--app-ink)]">
                   {{ formatAvailability(transaction.payment_info) }}
                 </td>
 
-                <!-- Payment Method -->
                 <td class="px-4 py-3 text-sm text-[var(--app-ink)]">
                   <div class="flex flex-col">
                     <span class="font-medium text-[var(--app-ink)]">
@@ -295,7 +276,6 @@
                   </div>
                 </td>
 
-                <!-- Country -->
                 <td class="px-4 py-3 text-sm text-[var(--app-ink)]">
                   <span
                     v-if="transaction.payment_info?.customer_country"
@@ -307,17 +287,14 @@
                   <span v-else>N/A</span>
                 </td>
 
-                <!-- IP -->
                 <td class="px-4 py-3 font-mono text-sm text-[var(--app-ink-soft)]">
                   {{ transaction.payment_info?.ip_address || 'N/A' }}
                 </td>
 
-                <!-- Device -->
                 <td class="px-4 py-3 text-sm text-[var(--app-ink-soft)]">
                   {{ parseUserAgent(transaction.payment_info?.user_agent) }}
                 </td>
 
-                <!-- Details Button -->
                 <td class="px-4 py-3">
                   <button
                     class="text-xs font-medium text-[var(--app-accent-ink)] transition-colors hover:text-[var(--app-accent-ink)]"
@@ -331,14 +308,12 @@
           </table>
         </div>
 
-        <!-- Expanded Transaction Details -->
         <div v-for="transaction in displayedTransactions" :key="`details-${getTransactionKey(transaction)}`">
           <div
             v-if="expandedTransactions.has(getTransactionKey(transaction))"
             class="border-t border-[var(--app-line)] bg-[var(--app-bg)] px-6 py-4"
           >
             <div class="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
-              <!-- Payment Information -->
               <div v-if="transaction.payment_info">
                 <h3 class="mb-3 text-xs font-semibold text-[var(--app-ink-soft)] uppercase">Payment information</h3>
                 <div class="space-y-2">
@@ -381,7 +356,6 @@
                 </div>
               </div>
 
-              <!-- Financial Details -->
               <div v-if="transaction.payment_info">
                 <h3 class="mb-3 text-xs font-semibold text-[var(--app-ink-soft)] uppercase">Financial details</h3>
                 <div class="space-y-2">
@@ -427,7 +401,6 @@
                 </div>
               </div>
 
-              <!-- Transaction Details -->
               <div>
                 <h3 class="mb-3 text-xs font-semibold text-[var(--app-ink-soft)] uppercase">Transaction</h3>
                 <div class="space-y-2">
@@ -467,13 +440,11 @@
           </div>
         </div>
 
-        <!-- Empty State -->
         <div v-if="displayedTransactions.length === 0" class="px-6 py-12 text-center">
           <UIcon name="i-lucide-receipt" class="mb-3 h-12 w-12 text-[var(--app-ink-soft)]" />
           <p class="text-[var(--app-ink-soft)]">No transaction matches your filters</p>
         </div>
 
-        <!-- Pagination Controls -->
         <div
           v-if="showPagination"
           class="flex flex-col gap-3 border-t border-[var(--app-line)] bg-[var(--app-bg)] px-6 py-4 md:flex-row md:items-center md:justify-between"
@@ -513,7 +484,6 @@
       </div>
     </div>
 
-    <!-- Error State -->
     <div v-if="error && !isLoading" class="card mt-6 border border-[var(--app-red)]/30 bg-[var(--app-red)]/10">
       <div class="flex items-center gap-2 text-[var(--app-red)]">
         <UIcon name="i-lucide-triangle-alert" class="h-4 w-4" />
@@ -523,11 +493,11 @@
   </div>
 </template>
 
-<script setup lang="ts">
+<script lang="ts" setup>
 import type { AccountingResponse, CreditPurchaseTransaction } from '~/types'
-import type { Ref } from 'vue'
+import type { ComputedRef, Ref } from 'vue'
 import { ref, computed, onMounted, watch } from 'vue'
-import * as accountingService from '~/services/accountingService'
+import { AccountingService } from '~/services/accountingService'
 
 /**
  * Dashboard accounting page - Admin financial data (admin only)
@@ -576,7 +546,7 @@ const sortDirection: Ref<'asc' | 'desc'> = ref('desc')
 /**
  * Status options for filter dropdown
  */
-const statusOptions = computed(() => {
+const statusOptions: ComputedRef<string[]> = computed(() => {
   const statuses = new Set<string>()
   rawTransactions.value.forEach((transaction) => {
     const status = transaction.payment_info?.status
@@ -652,7 +622,7 @@ const displayedTransactions = computed<CreditPurchaseTransaction[]>(() => {
 
   const items = [...filteredTransactions.value]
   items.sort((a, b) => {
-    let compare = 0
+    let compare: number = 0
 
     switch (sortKey.value) {
       case 'date':
@@ -710,11 +680,13 @@ const pageSize: Ref<number> = ref(20)
 /**
  * Totals and derived pagination values
  */
-const totalTransactions = computed(() => accountingData.value?.summary?.total_transactions || 0)
-const totalPages = computed(() => Math.max(1, Math.ceil(totalTransactions.value / pageSize.value)))
-const showPagination = computed(() => totalTransactions.value > pageSize.value)
-const pageStart = computed(() => (totalTransactions.value === 0 ? 0 : (page.value - 1) * pageSize.value + 1))
-const pageEnd = computed(() => Math.min(page.value * pageSize.value, totalTransactions.value))
+const totalTransactions: ComputedRef<number> = computed(() => accountingData.value?.summary?.total_transactions || 0)
+const totalPages: ComputedRef<number> = computed(() => Math.max(1, Math.ceil(totalTransactions.value / pageSize.value)))
+const showPagination: ComputedRef<boolean> = computed(() => totalTransactions.value > pageSize.value)
+const pageStart: ComputedRef<number> = computed(() =>
+  totalTransactions.value === 0 ? 0 : (page.value - 1) * pageSize.value + 1,
+)
+const pageEnd: ComputedRef<number> = computed(() => Math.min(page.value * pageSize.value, totalTransactions.value))
 
 /**
  * Utility: coerce value to number
@@ -752,7 +724,7 @@ const getCountryFlag = (code?: string | null): string => {
   if (!code) return '🏳️'
   const upper = code.toUpperCase()
   if (upper.length !== 2) return upper
-  const OFFSET = 127397
+  const OFFSET: number = 127397
   return String.fromCodePoint(...upper.split('').map((char) => char.charCodeAt(0) + OFFSET))
 }
 
@@ -769,9 +741,9 @@ const formatPaymentDetails = (info?: CreditPurchaseTransaction['payment_info']):
  * Format date
  */
 const formatDate = (dateString: string): string => {
-  const date = new Date(dateString)
-  const day = String(date.getDate()).padStart(2, '0')
-  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const date: Date = new Date(dateString)
+  const day: string = String(date.getDate()).padStart(2, '0')
+  const month: string = String(date.getMonth() + 1).padStart(2, '0')
   const year = date.getFullYear()
   return `${day}/${month}/${year}`
 }
@@ -780,12 +752,12 @@ const formatDate = (dateString: string): string => {
  * Format date and time
  */
 const formatDateTime = (dateString: string): string => {
-  const date = new Date(dateString)
-  const day = String(date.getDate()).padStart(2, '0')
-  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const date: Date = new Date(dateString)
+  const day: string = String(date.getDate()).padStart(2, '0')
+  const month: string = String(date.getMonth() + 1).padStart(2, '0')
   const year = date.getFullYear()
-  const hours = String(date.getHours()).padStart(2, '0')
-  const minutes = String(date.getMinutes()).padStart(2, '0')
+  const hours: string = String(date.getHours()).padStart(2, '0')
+  const minutes: string = String(date.getMinutes()).padStart(2, '0')
   return `${day}/${month}/${year} ${hours}:${minutes}`
 }
 
@@ -916,7 +888,7 @@ const loadAccountingData = async (): Promise<void> => {
     error.value = null
     const skip = (page.value - 1) * pageSize.value
     const limit = pageSize.value
-    accountingData.value = await accountingService.getAccountingData(skip, limit)
+    accountingData.value = await AccountingService.getAccountingData(skip, limit)
     expandedTransactions.value.clear()
   } catch (err) {
     const errorMessage = err instanceof Error ? err.message : 'Failed to load accounting data'

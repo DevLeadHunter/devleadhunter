@@ -1,11 +1,7 @@
 import type { Ref } from 'vue'
 
 /**
- * Global open/close state of the Ctrl+K command palette.
- *
- * The palette component (mounted once in the dashboard layout) watches this
- * state; the sidebar trigger and the keyboard shortcut both drive it.
- *
+ * Global Ctrl+K command palette open/close state.
  * @returns Palette visibility ref plus open/close/toggle helpers.
  */
 export function useCommandPalette(): {
@@ -14,7 +10,7 @@ export function useCommandPalette(): {
   close: () => void
   toggle: () => void
 } {
-  const isOpen: Ref<boolean> = useState<boolean>('command-palette-open', (): boolean => false)
+  const isOpen: Ref<boolean> = useState('command-palette-open', (): boolean => false)
 
   /** Show the palette. */
   function open(): void {

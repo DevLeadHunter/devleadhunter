@@ -1,7 +1,7 @@
-import { api } from './api'
+import { ApiClient } from './api'
 
 /** Aggregated KPIs for the dashboard home page. */
-export interface DashboardStats {
+export type DashboardStats = {
   prospects_total: number
   demo_sites_active: number
   campaigns_active: number
@@ -18,7 +18,7 @@ export interface DashboardStats {
 }
 
 /** A hot/warm lead surfaced on the dashboard. */
-export interface HotLead {
+export type HotLead = {
   prospect_id: number
   name: string
   city: string | null
@@ -28,13 +28,12 @@ export interface HotLead {
   signals: Record<string, number | string | null>
 }
 
-/** Hot leads list response. */
-export interface HotLeadsResponse {
+export type HotLeadsResponse = {
   items: HotLead[]
 }
 
 /** Email activity counters for a single day. */
-export interface ActivityPoint {
+export type ActivityPoint = {
   date: string
   sent: number
   opened: number
@@ -42,78 +41,33 @@ export interface ActivityPoint {
 }
 
 /** Daily email activity series response. */
-export interface DashboardActivityResponse {
+export type DashboardActivityResponse = {
   days: ActivityPoint[]
 }
 
-/**
- * Fetch the dashboard home KPIs for the current user.
- * @param periodDays - Rolling window in days (0 = all time).
- * @returns Aggregated dashboard stats.
- */
-export async function getDashboardStats(periodDays: number = 0): Promise<DashboardStats> {
-  return api.get<DashboardStats>('/api/v1/dashboard/stats', { params: { period_days: periodDays } })
-}
-
-/**
- * Fetch the current user's hottest leads (demo + email engagement).
- * @returns The hot leads list.
- */
-export async function getHotLeads(): Promise<HotLeadsResponse> {
-  return api.get<HotLeadsResponse>('/api/v1/dashboard/hot-leads')
-}
-
-/**
- * Fetch the daily email activity series for the trend chart.
- * @param days - Number of days to look back (1-90).
- * @returns The daily activity series.
- */
-export async function getDashboardActivity(days: number = 14): Promise<DashboardActivityResponse> {
-  return api.get<DashboardActivityResponse>(`/api/v1/dashboard/activity?days=${days}`)
-}
-
 /** Prospect count for one city. */
-export interface CoverageCity {
+export type CoverageCity = {
   city: string
   count: number
 }
 
 /** An organization member selectable as a coverage scope. */
-export interface CoverageMember {
+export type CoverageMember = {
   user_id: number
   name: string
 }
 
 /** Prospection coverage aggregated by city. */
-export interface CoverageResponse {
+export type CoverageResponse = {
   scope: string
   cities: CoverageCity[]
   total_prospects: number
   members: CoverageMember[]
-  /** Distinct trades present in the scope (unfiltered) — feeds the trade selector. */
   available_categories: string[]
 }
 
-/**
- * Fetch the prospection coverage (prospect counts by city) for a scope.
- * @param scope - 'me' (my prospects), 'org' (whole organization), or 'member'.
- * @param memberId - Member user id when scope is 'member'.
- * @param categories - Optional trade filter (empty = all trades).
- * @returns The coverage aggregation + selectable members + available trades.
- */
-export async function getCoverage(
-  scope: string = 'me',
-  memberId?: number,
-  categories: string[] = [],
-): Promise<CoverageResponse> {
-  const params = new URLSearchParams({ scope })
-  if (memberId != null) params.set('member_id', String(memberId))
-  for (const category of categories) params.append('categories', category)
-  return api.get<CoverageResponse>(`/api/v1/dashboard/coverage?${params.toString()}`)
-}
-
 /** Light prospect recap for the coverage zone drawer. */
-export interface CoverageProspectRow {
+export type CoverageProspectRow = {
   id: number
   name: string
   city: string | null
@@ -125,29 +79,74 @@ export interface CoverageProspectRow {
   is_sold: boolean
 }
 
-/** Prospects of a coverage zone. */
-export interface CoverageProspectsResponse {
+export type CoverageProspectsResponse = {
   items: CoverageProspectRow[]
   total: number
 }
 
-/**
- * Fetch the prospects of a coverage zone (one city, or a region's cities).
- * @param cities - City names of the zone.
- * @param scope - 'me' | 'org' | 'member'.
- * @param memberId - Member user id when scope is 'member'.
- * @param categories - Optional trade filter (empty = all trades).
- * @returns Light prospect rows + real total.
- */
-export async function getCoverageProspects(
-  cities: string[],
-  scope: string = 'me',
-  memberId?: number,
-  categories: string[] = [],
-): Promise<CoverageProspectsResponse> {
-  const params = new URLSearchParams({ scope })
-  if (memberId != null) params.set('member_id', String(memberId))
-  for (const city of cities) params.append('cities', city)
-  for (const category of categories) params.append('categories', category)
-  return api.get<CoverageProspectsResponse>(`/api/v1/dashboard/coverage/prospects?${params.toString()}`)
+export class DashboardService {
+  /**
+   * Fetch the dashboard home KPIs for the current user.
+   * @param periodDays - Rolling window in days (0 = all time).
+   * @returns Aggregated dashboard stats.
+   */
+  static async getDashboardStats(periodDays: number = 0): Promise<DashboardStats> {
+    return ApiClient.get<DashboardStats>('/api/v1/dashboard/stats', { params: { period_days: periodDays } })
+  }
+
+  /**
+   * Fetch the current user's hottest leads (demo + email engagement).
+   * @returns The hot leads list.
+   */
+  static async getHotLeads(): Promise<HotLeadsResponse> {
+    return ApiClient.get<HotLeadsResponse>('/api/v1/dashboard/hot-leads')
+  }
+
+  /**
+   * Fetch the daily email activity series for the trend chart.
+   * @param days - Number of days to look back (1-90).
+   * @returns The daily activity series.
+   */
+  static async getDashboardActivity(days: number = 14): Promise<DashboardActivityResponse> {
+    return ApiClient.get<DashboardActivityResponse>(`/api/v1/dashboard/activity?days=${days}`)
+  }
+
+  /**
+   * Fetch the prospection coverage (prospect counts by city) for a scope.
+   * @param scope - 'me' (my prospects), 'org' (whole organization), or 'member'.
+   * @param memberId - Member user id when scope is 'member'.
+   * @param categories - Optional trade filter (empty = all trades).
+   * @returns The coverage aggregation + selectable members + available trades.
+   */
+  static async getCoverage(
+    scope: string = 'me',
+    memberId?: number,
+    categories: string[] = [],
+  ): Promise<CoverageResponse> {
+    const params = new URLSearchParams({ scope })
+    if (memberId != null) params.set('member_id', String(memberId))
+    for (const category of categories) params.append('categories', category)
+    return ApiClient.get<CoverageResponse>(`/api/v1/dashboard/coverage?${params.toString()}`)
+  }
+
+  /**
+   * Fetch the prospects of a coverage zone (one city, or a region's cities).
+   * @param cities - City names of the zone.
+   * @param scope - 'me' | 'org' | 'member'.
+   * @param memberId - Member user id when scope is 'member'.
+   * @param categories - Optional trade filter (empty = all trades).
+   * @returns Light prospect rows + real total.
+   */
+  static async getCoverageProspects(
+    cities: string[],
+    scope: string = 'me',
+    memberId?: number,
+    categories: string[] = [],
+  ): Promise<CoverageProspectsResponse> {
+    const params = new URLSearchParams({ scope })
+    if (memberId != null) params.set('member_id', String(memberId))
+    for (const city of cities) params.append('cities', city)
+    for (const category of categories) params.append('categories', category)
+    return ApiClient.get<CoverageProspectsResponse>(`/api/v1/dashboard/coverage/prospects?${params.toString()}`)
+  }
 }

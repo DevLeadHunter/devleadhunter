@@ -1,11 +1,9 @@
-/**
- * Props for the reusable `UiSendPolicyFields` component.
- * @module types/UiSendPolicyFields
- */
 import type { SendPolicy } from '~/types/Automation'
 
-/** Props of the `UiSendPolicyFields` component. */
-export interface UiSendPolicyFieldsProps {
-  /** The edited sending cadence (v-model). */
+export type UiSendPolicyFieldsProps = {
   modelValue: SendPolicy
+}
+
+export type UiSendPolicyFieldsEmits = {
+  'update:modelValue': [policy: SendPolicy]
 }

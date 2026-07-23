@@ -58,8 +58,11 @@ def parse_osm_opening_hours(spec: str) -> list[dict[str, str]]:
     ``24/7``); a rule it can't split is kept verbatim so nothing is lost. Not the full OSM
     spec (which is famously complex) — just enough for a website's hours section.
 
-    @param spec - Raw OSM ``opening_hours`` value.
-    @returns A list of ``{day, hours}`` (French day labels).
+    Args:
+        spec: Raw OSM ``opening_hours`` value.
+
+    Returns:
+        A list of ``{day, hours}`` (French day labels).
     """
     if not spec or not isinstance(spec, str):
         return []
@@ -177,11 +180,12 @@ def _best_match(results: list[dict[str, Any]], business_name: str) -> Optional[d
 async def enrich_from_osm(business_name: str, city: Optional[str]) -> dict[str, Any]:
     """Fetch complementary enrichment for one business from OpenStreetMap.
 
-    @param business_name - The business to look up.
-    @param city - City appended to the search query to disambiguate.
-    @returns A partial enrichment dict (only the fields OSM could resolve): any of
-        ``opening_hours``, ``social_links``, ``description``, ``email``, ``website``,
-        ``phone``. Empty dict when nothing is found or OSM is unreachable.
+    Args:
+        business_name: The business to look up.
+        city: City appended to the search query to disambiguate.
+
+    Returns:
+        A partial enrichment dict (only the fields OSM could resolve): any of ``opening_hours``, ``social_links``, ``description``, ``email``, ``website``, ``phone``. Empty dict when nothing is found or OSM is unreachable.
     """
     if not business_name or not business_name.strip():
         return {}

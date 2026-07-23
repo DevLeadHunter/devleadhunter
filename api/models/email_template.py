@@ -12,6 +12,7 @@ from core.database import Base
 if TYPE_CHECKING:
     from models.user import User
     from models.email_account import EmailAccount
+    from models.email_signature import EmailSignature
 
 
 class EmailTemplate(Base):
@@ -39,6 +40,11 @@ class EmailTemplate(Base):
         ForeignKey("email_accounts.id"),
         nullable=True
     )
+    # Optional signature appended to the rendered body at send time (opt-in switch).
+    signature_id: Mapped[Optional[int]] = mapped_column(
+        ForeignKey("email_signatures.id", ondelete="SET NULL"),
+        nullable=True
+    )
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     subject: Mapped[str] = mapped_column(String(500), nullable=False)
     body_html: Mapped[str] = mapped_column(Text, nullable=False)
@@ -56,7 +62,8 @@ class EmailTemplate(Base):
         "EmailAccount",
         back_populates="email_templates"
     )
-    
+    signature: Mapped[Optional["EmailSignature"]] = relationship("EmailSignature")
+
     def __repr__(self) -> str:
         """String representation of the email template."""
         return f"<EmailTemplate id={self.id} name={self.name}>"

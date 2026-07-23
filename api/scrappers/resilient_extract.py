@@ -67,8 +67,11 @@ def safe_email(value: Optional[str]) -> Optional[str]:
     regex/JSON-LD fallback would raise ``ValidationError`` for the WHOLE prospect.
     This gate keeps a bad email from poisoning an otherwise good record.
 
-    @param value - Candidate email (any source).
-    @returns The lower-cased email, or ``None`` when invalid/absent.
+    Args:
+        value: Candidate email (any source).
+
+    Returns:
+        The lower-cased email, or ``None`` when invalid/absent.
     """
     if not value or not isinstance(value, str):
         return None
@@ -80,8 +83,11 @@ def safe_email(value: Optional[str]) -> Optional[str]:
 def find_phone(text: Optional[str]) -> Optional[str]:
     """Extract the first plausible phone number from free text (markup-independent).
 
-    @param text - Any text that may contain a phone number.
-    @returns The matched phone (whitespace-normalised), or ``None``.
+    Args:
+        text: Any text that may contain a phone number.
+
+    Returns:
+        The matched phone (whitespace-normalised), or ``None``.
     """
     if not text or not isinstance(text, str):
         return None
@@ -151,11 +157,11 @@ def _parse_address(node: Any) -> dict[str, Optional[str]]:
 def parse_ld_json_blocks(blocks: Any) -> Optional[dict[str, Any]]:
     """Parse raw JSON-LD blocks and return the best business record found.
 
-    @param blocks - A list of raw JSON-LD strings and/or already-parsed dicts/lists
-        (e.g. from ``NodriverDom.evaluate_list`` or ``extract_ld_json_from_html``).
-    @returns A normalised dict — keys: ``name``, ``phone``, ``website``, ``email``,
-        ``street``, ``postal_code``, ``city``, ``category``, ``rating``,
-        ``reviews_count`` (each optional) — or ``None`` when no business is found.
+    Args:
+        blocks: A list of raw JSON-LD strings and/or already-parsed dicts/lists (e.g. from ``NodriverDom.evaluate_list`` or ``extract_ld_json_from_html``).
+
+    Returns:
+        A normalised dict — keys: ``name``, ``phone``, ``website``, ``email``, ``street``, ``postal_code``, ``city``, ``category``, ``rating``, ``reviews_count`` (each optional) — or ``None`` when no business is found.
     """
     if not blocks:
         return None
@@ -224,8 +230,11 @@ def extract_ld_json_from_html(html: Optional[str]) -> list[str]:
     Used by the HTTP/BeautifulSoup path (Pages Jaunes tier 1). Robust to attribute
     ordering and extra attributes on the script tag.
 
-    @param html - Full page HTML.
-    @returns A list of raw JSON-LD strings (possibly empty).
+    Args:
+        html: Full page HTML.
+
+    Returns:
+        A list of raw JSON-LD strings (possibly empty).
     """
     if not html or not isinstance(html, str):
         return []

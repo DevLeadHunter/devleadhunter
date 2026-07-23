@@ -1,15 +1,8 @@
-/**
- * Option d'un composant SelectField.
- */
-export interface SelectFieldOption {
+export type SelectFieldOption = {
   value: string
   label: string
 }
 
-/**
- * Props du composant SelectField.
- */
-export interface SelectFieldProps {
-  modelValue: string
+export type SelectFieldProps = {
   options: SelectFieldOption[]
 }

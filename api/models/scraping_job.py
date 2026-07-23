@@ -4,7 +4,7 @@ Scraping job models for managing async scraping tasks.
 from typing import Any, Optional, List
 from datetime import datetime
 from enum import Enum
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class JobStatus(str, Enum):
@@ -42,6 +42,32 @@ class ScrapingJobProgress(BaseModel):
 
 class ScrapingJob(BaseModel):
     """Complete scraping job model."""
+
+    model_config = ConfigDict(
+        json_schema_extra={
+            "example": {
+                "id": "job_123abc",
+                "user_id": 1,
+                "status": "running",
+                "category": "restaurant",
+                "city": "Paris",
+                "max_results": 50,
+                "source": "google",
+                "skip_duplicates": True,
+                "progress": {
+                    "current": 15,
+                    "total": 50,
+                    "percentage": 30.0,
+                    "current_prospect": "Le Bon Restaurant",
+                    "estimated_time_remaining": 120,
+                },
+                "results": [1, 2, 3],
+                "skipped_duplicates": 2,
+                "created_at": "2024-01-15T10:30:00Z",
+            }
+        }
+    )
+
     id: str = Field(..., description="Unique job identifier")
     user_id: int = Field(..., description="User ID who created the job")
     status: JobStatus = Field(JobStatus.PENDING, description="Current job status")
@@ -66,29 +92,4 @@ class ScrapingJob(BaseModel):
     created_at: datetime = Field(default_factory=datetime.utcnow, description="Creation timestamp")
     started_at: Optional[datetime] = Field(None, description="Start timestamp")
     completed_at: Optional[datetime] = Field(None, description="Completion timestamp")
-    
-    class Config:
-        """Pydantic configuration."""
-        json_schema_extra = {
-            "example": {
-                "id": "job_123abc",
-                "user_id": 1,
-                "status": "running",
-                "category": "restaurant",
-                "city": "Paris",
-                "max_results": 50,
-                "source": "google",
-                "skip_duplicates": True,
-                "progress": {
-                    "current": 15,
-                    "total": 50,
-                    "percentage": 30.0,
-                    "current_prospect": "Le Bon Restaurant",
-                    "estimated_time_remaining": 120
-                },
-                "results": [1, 2, 3],
-                "skipped_duplicates": 2,
-                "created_at": "2024-01-15T10:30:00Z"
-            }
-        }
 

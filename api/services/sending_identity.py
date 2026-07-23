@@ -58,9 +58,12 @@ class SendingIdentity:
 def get_active_provider(db: Session, user_id: int) -> str:
     """Return the user's active sending provider, defaulting to ``resend``.
 
-    @param db - Database session.
-    @param user_id - Owner of the sending identity.
-    @returns One of the :class:`SendingProvider` values.
+    Args:
+        db: Database session.
+        user_id: Owner of the sending identity.
+
+    Returns:
+        One of the :class:`SendingProvider` values.
     """
     user: User | None = db.get(User, user_id)
     raw: str = (getattr(user, "sending_provider", None) or SendingProvider.RESEND.value)
@@ -70,9 +73,10 @@ def get_active_provider(db: Session, user_id: int) -> str:
 def set_active_provider(db: Session, user_id: int, provider: str) -> None:
     """Persist the user's active sending provider.
 
-    @param db - Database session.
-    @param user_id - Owner of the sending identity.
-    @param provider - Target provider (``resend`` | ``gmail``).
+    Args:
+        db: Database session.
+        user_id: Owner of the sending identity.
+        provider: Target provider (``resend`` | ``gmail``).
     @raises ValueError - When *provider* is not a valid provider value.
     @raises SendingNotConfiguredError - When the chosen provider is not configured yet.
     """
@@ -93,9 +97,12 @@ def _default_gmail_account(db: Session, user_id: int) -> EmailAccount | None:
     Picks the user's active Gmail OAuth account, favouring ``is_default`` then
     the most recently created.
 
-    @param db - Database session.
-    @param user_id - Owner of the account.
-    @returns The chosen :class:`EmailAccount`, or ``None`` when none exists.
+    Args:
+        db: Database session.
+        user_id: Owner of the account.
+
+    Returns:
+        The chosen :class:`EmailAccount`, or ``None`` when none exists.
     """
     return db.execute(
         select(EmailAccount)
@@ -133,9 +140,12 @@ def _assert_provider_configured(db: Session, user_id: int, provider: str) -> Non
 def resolve_sending_identity(db: Session, user_id: int) -> SendingIdentity:
     """Resolve the user's active sending identity into concrete credentials.
 
-    @param db - Database session.
-    @param user_id - Owner of the sending identity.
-    @returns A ready-to-use :class:`SendingIdentity`.
+    Args:
+        db: Database session.
+        user_id: Owner of the sending identity.
+
+    Returns:
+        A ready-to-use :class:`SendingIdentity`.
     @raises SendingNotConfiguredError - When the active provider is not configured.
     """
     provider: str = get_active_provider(db, user_id)
@@ -170,9 +180,12 @@ def resolve_sending_identity(db: Session, user_id: int) -> SendingIdentity:
 def describe_sending_config(db: Session, user_id: int) -> dict[str, object]:
     """Summarise the user's sending setup for the settings UI (no secrets).
 
-    @param db - Database session.
-    @param user_id - Owner of the sending identity.
-    @returns A dict with the active provider and per-provider readiness flags.
+    Args:
+        db: Database session.
+        user_id: Owner of the sending identity.
+
+    Returns:
+        A dict with the active provider and per-provider readiness flags.
     """
     config = _resend_config(db, user_id)
     gmail = _default_gmail_account(db, user_id)
