@@ -1,7 +1,7 @@
 /**
  * Props for the UiBulkCampaignModal component.
  */
-export interface UiBulkCampaignModalProps {
+export type UiBulkCampaignModalProps = {
   /** Whether the modal is visible. */
   open: boolean
   /** IDs of the prospects to add to a campaign. */
@@ -11,7 +11,7 @@ export interface UiBulkCampaignModalProps {
 /**
  * Payload emitted once prospects have been added to a campaign.
  */
-export interface UiBulkCampaignModalAdded {
+export type UiBulkCampaignModalAdded = {
   /** Name of the campaign the prospects were added to. */
   campaignName: string
   /** Number of prospects submitted. */

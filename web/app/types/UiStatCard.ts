@@ -6,7 +6,7 @@ export type UiStatCardAccent = 'neutral' | 'emerald' | 'danger' | 'sky'
 /**
  * Props for the UiStatCard component (KPI tile).
  */
-export interface UiStatCardProps {
+export type UiStatCardProps = {
   /** Short metric label (e.g. "Total Prospects"). */
   label: string
   /** Metric value to display (rendered with tabular figures). */

@@ -91,7 +91,7 @@ defineEmits<{
   'update:modelValue': [value: string]
 }>()
 
-const showPassword: Ref<boolean> = ref<boolean>(false)
+const showPassword: Ref<boolean> = ref(false)
 
 /**
  * Input classes resolved from the appearance + error state.

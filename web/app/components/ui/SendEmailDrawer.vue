@@ -174,19 +174,19 @@ const toast = useToast()
 const drawerStack = useDrawerStackStore()
 
 /** Whether the quick-send request is in flight. */
-const isSending: Ref<boolean> = ref<boolean>(false)
+const isSending: Ref<boolean> = ref(false)
 
 /** The user's signatures (for the optional selector). */
-const signatures: Ref<EmailSignature[]> = ref<EmailSignature[]>([])
+const signatures: Ref<EmailSignature[]> = ref([])
 
 /** Selected signature id (null = none). */
-const signatureId: Ref<number | null> = ref<number | null>(null)
+const signatureId: Ref<number | null> = ref(null)
 
 /** Key of the recipient the form was last initialised for. */
-const lastInitKey: Ref<string> = ref<string>('')
+const lastInitKey: Ref<string> = ref('')
 
 /** Manual send form state. */
-const form: Ref<SendEmailForm> = ref<SendEmailForm>({
+const form: Ref<SendEmailForm> = ref({
   recipient_email: '',
   recipient_name: '',
   subject: '',

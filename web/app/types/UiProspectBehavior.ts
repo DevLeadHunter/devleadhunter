@@ -1,7 +1,7 @@
 /**
  * Props du composant UiProspectBehavior.
  */
-export interface UiProspectBehaviorProps {
+export type UiProspectBehaviorProps = {
   /** Identifiant du prospect. */
   prospectId: number | null
   /** Email du prospect (pour l'envoi de la relance personnalisée). */

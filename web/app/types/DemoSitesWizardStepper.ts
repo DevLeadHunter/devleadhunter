@@ -1,5 +1,5 @@
 /** One step of the website builder wizard. */
-export interface DemoSitesWizardStep {
+export type DemoSitesWizardStep = {
   /** 1-based step number. */
   id: number
   /** Visible label. */
@@ -12,7 +12,7 @@ export type DemoSitesWizardStepperOrientation = 'horizontal' | 'vertical'
 /**
  * Props for the DemoSitesWizardStepper component.
  */
-export interface DemoSitesWizardStepperProps {
+export type DemoSitesWizardStepperProps = {
   /** Ordered wizard steps. */
   steps: DemoSitesWizardStep[]
   /** Currently active step id. */

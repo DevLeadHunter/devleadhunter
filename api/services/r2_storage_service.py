@@ -5,7 +5,7 @@ Même comportement en local et en production : les deux parlent à R2, seuls le
 bucket et l'URL publique changent (résolus depuis ``ENV``). Remplace les anciens
 backends disque local / FTP.
 
-Arborescence (voir ``R2_STORAGE_PLAN.md``) :
+Arborescence (voir ``docs/R2_STORAGE_PLAN.md``) :
 
     videos/websites/{slug}.mp4               vidéo de prospection générée
     videos/presenter/{user_id}.mp4           clip webcam source (par user)

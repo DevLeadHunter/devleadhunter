@@ -10,7 +10,7 @@ import type { Ref } from 'vue'
 export type ToastType = 'success' | 'error' | 'info' | 'warning'
 
 /** One toast in the queue. */
-export interface ToastItem {
+export type ToastItem = {
   id: number
   message: string
   type: ToastType

@@ -9,7 +9,7 @@ import type { ProspectSource } from '~/types'
 export const ALL_SOURCES_VALUE = 'all' as const
 
 /** A single selectable source option used in dropdowns and filter chips. */
-export interface ProspectSourceOption {
+export type ProspectSourceOption = {
   /** Source enum value sent to the API. */
   value: ProspectSource | typeof ALL_SOURCES_VALUE | ''
   /** French display label shown in the UI. */

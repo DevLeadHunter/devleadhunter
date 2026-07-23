@@ -500,12 +500,12 @@ const emit = defineEmits<{
 const toast = useToast()
 const userStore = useUserStore()
 
-const editMode = ref(false)
-const isSaving = ref(false)
-const isDeleting = ref(false)
-const showDeleteConfirm = ref(false)
-const isReserving: Ref<boolean> = ref<boolean>(false)
-const isAuditing: Ref<boolean> = ref<boolean>(false)
+const editMode: Ref<boolean> = ref(false)
+const isSaving: Ref<boolean> = ref(false)
+const isDeleting: Ref<boolean> = ref(false)
+const showDeleteConfirm: Ref<boolean> = ref(false)
+const isReserving: Ref<boolean> = ref(false)
+const isAuditing: Ref<boolean> = ref(false)
 
 // ─── Reservation & Lighthouse ─────────────────────────────────────────────────
 
@@ -614,7 +614,7 @@ interface EditForm {
   category: string
 }
 
-const editForm = ref<EditForm>({
+const editForm: Ref<EditForm> = ref({
   name: '',
   phone: '',
   email: '',

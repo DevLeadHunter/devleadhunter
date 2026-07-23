@@ -67,10 +67,10 @@ const emit = defineEmits<{
   (e: 'select', suggestion: ProspectSearchSuggestion): void
 }>()
 
-const searchTerm: Ref<string> = ref<string>('')
-const suggestions: Ref<ProspectSearchSuggestion[]> = ref<ProspectSearchSuggestion[]>([])
-const isSearching: Ref<boolean> = ref<boolean>(false)
-const isOpen: Ref<boolean> = ref<boolean>(false)
+const searchTerm: Ref<string> = ref('')
+const suggestions: Ref<ProspectSearchSuggestion[]> = ref([])
+const isSearching: Ref<boolean> = ref(false)
+const isOpen: Ref<boolean> = ref(false)
 let searchRequestId: number = 0
 let blurTimeoutId: ReturnType<typeof setTimeout> | null = null
 

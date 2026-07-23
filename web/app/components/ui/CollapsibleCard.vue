@@ -52,5 +52,5 @@ const props = defineProps({
   defaultOpen: { type: Boolean, default: false },
 })
 
-const isOpen: Ref<boolean> = ref<boolean>(props.defaultOpen)
+const isOpen: Ref<boolean> = ref(props.defaultOpen)
 </script>

@@ -68,6 +68,7 @@
 
 <script setup lang="ts">
 import { nextTick, ref, watch } from 'vue'
+import type { Ref } from 'vue'
 import type { Prospect } from '~/types'
 import { formatProspectSource } from '~/constants/prospectSources'
 
@@ -77,8 +78,8 @@ const props = defineProps<{
   isRunning: boolean
 }>()
 
-const logsContainerRef = ref<HTMLElement | null>(null)
-const prospectsContainerRef = ref<HTMLElement | null>(null)
+const logsContainerRef: Ref<HTMLElement | null> = ref(null)
+const prospectsContainerRef: Ref<HTMLElement | null> = ref(null)
 
 watch(
   () => props.logs.length,

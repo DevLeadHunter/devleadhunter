@@ -207,13 +207,13 @@ const TABS: UiTab[] = [
   { key: 'gmail', label: 'Gmail', hint: 'Sans domaine, en un clic' },
 ]
 
-const identity: Ref<SendingIdentityResponse | null> = ref<SendingIdentityResponse | null>(null)
-const gmailAccounts: Ref<EmailAccount[]> = ref<EmailAccount[]>([])
-const viewProvider: Ref<SendingProvider> = ref<SendingProvider>('resend')
+const identity: Ref<SendingIdentityResponse | null> = ref(null)
+const gmailAccounts: Ref<EmailAccount[]> = ref([])
+const viewProvider: Ref<SendingProvider> = ref('resend')
 
-const isSavingResend: Ref<boolean> = ref<boolean>(false)
-const showApiKey: Ref<boolean> = ref<boolean>(false)
-const showWebhookSecret: Ref<boolean> = ref<boolean>(false)
+const isSavingResend: Ref<boolean> = ref(false)
+const showApiKey: Ref<boolean> = ref(false)
+const showWebhookSecret: Ref<boolean> = ref(false)
 
 const resendForm: Ref<{ api_key: string; webhook_secret: string; from_email: string; from_name: string }> = ref({
   api_key: '',

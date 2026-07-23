@@ -262,6 +262,9 @@ const whyItems = computed(() => {
   return Array.isArray(items) ? (items as Array<{ label?: string }>) : []
 })
 
+/**
+ * Map a service icon key to its emoji label.
+ */
 function serviceIcon(icon?: string): string {
   const icons: Record<string, string> = {
     emergency: '🚨',

@@ -13,7 +13,7 @@ import { api } from './api'
  * Raw credentials are never exposed — only boolean flags indicate whether
  * they are stored.
  */
-export interface ResendConfigResponse {
+export type ResendConfigResponse = {
   /** Whether an API key is currently stored for this user. */
   has_api_key: boolean
   /** Whether a webhook secret is currently stored for this user. */
@@ -27,7 +27,7 @@ export interface ResendConfigResponse {
 /**
  * Payload for creating or updating the Resend configuration.
  */
-export interface ResendConfigUpdate {
+export type ResendConfigUpdate = {
   /** Resend API key (``re_…``). */
   api_key: string
   /** Resend webhook signing secret (``whsec_…``). Optional. */
@@ -45,7 +45,7 @@ export type SendingProvider = 'resend' | 'gmail'
  * Summary of the user's sending setup (no secrets): the active provider plus
  * a readiness flag for each provider.
  */
-export interface SendingIdentityResponse {
+export type SendingIdentityResponse = {
   /** Currently active transport (``resend`` | ``gmail``). */
   provider: SendingProvider
   /** Whether the Resend config (API key + from address) is usable. */

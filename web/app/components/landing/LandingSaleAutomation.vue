@@ -97,10 +97,10 @@ const stepKeys: string[] = [
 ]
 
 /** Order card element, observed to start the animation when visible. */
-const orderCardRef: Ref<HTMLElement | null> = ref<HTMLElement | null>(null)
+const orderCardRef: Ref<HTMLElement | null> = ref(null)
 
 /** Number of completed steps (0 → stepKeys.length; the loop resets it). */
-const completedStepCount: Ref<number> = ref<number>(0)
+const completedStepCount: Ref<number> = ref(0)
 
 /** Pending timer of the animation loop. */
 let cycleTimer: ReturnType<typeof setTimeout> | null = null

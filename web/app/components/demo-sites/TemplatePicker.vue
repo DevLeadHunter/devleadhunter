@@ -94,6 +94,7 @@
 </template>
 
 <script lang="ts" setup>
+import type { Ref } from 'vue'
 import type { DemoSiteTemplate, DemoSiteTheme } from '~/services/demoSiteService'
 
 const props = defineProps<{
@@ -116,23 +117,35 @@ const colorLabels: Record<ColorKey, string> = {
   accent: 'Accent',
 }
 
-const colorInputRef = ref<HTMLInputElement | null>(null)
-const activeColorKey = ref<ColorKey>('primary')
+const colorInputRef: Ref<HTMLInputElement | null> = ref(null)
+const activeColorKey: Ref<ColorKey> = ref('primary')
 
+/**
+ * Build a CSS gradient preview from the template theme.
+ */
 function previewGradient(template: DemoSiteTemplate): string {
   const t = props.modelValue === template.id ? props.theme : template.default_theme
   return `linear-gradient(135deg, ${t.secondary} 0%, ${t.primary} 100%)`
 }
 
+/**
+ * Resolve a theme color for the given template and key.
+ */
 function getThemeColor(template: DemoSiteTemplate, key: ColorKey): string {
   return props.modelValue === template.id ? props.theme[key] : template.default_theme[key]
 }
 
+/**
+ * Select a template and sync its default theme.
+ */
 function selectTemplate(template: DemoSiteTemplate): void {
   emit('update:modelValue', template.id)
   emit('update:theme', { ...template.default_theme })
 }
 
+/**
+ * Open the native color picker for a template swatch.
+ */
 function openColorPicker(templateId: string, colorKey: ColorKey): void {
   if (props.modelValue !== templateId) {
     const template = props.templates.find((t) => t.id === templateId)
@@ -144,10 +157,16 @@ function openColorPicker(templateId: string, colorKey: ColorKey): void {
   })
 }
 
+/**
+ * Handle a color input change from the hidden picker.
+ */
 function onColorInput(event: Event): void {
   updateThemeColor(activeColorKey.value, (event.target as HTMLInputElement).value)
 }
 
+/**
+ * Update a single theme color when the hex value is valid.
+ */
 function updateThemeColor(key: ColorKey, value: string): void {
   if (!/^#[0-9A-Fa-f]{6}$/.test(value)) return
   emit('update:theme', { ...props.theme, [key]: value })

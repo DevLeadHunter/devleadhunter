@@ -316,18 +316,18 @@ definePageMeta({
 
 // ─── State ────────────────────────────────────────────────────────────────────
 
-const prospects = ref<Prospect[]>([])
-const isLoading = ref(false)
-const error = ref<string | null>(null)
-const selectedProspects = ref<string[]>([])
-const bulkCampaignOpen = ref(false)
-const bulkGenerateOpen = ref(false)
-const bulkBusy = ref(false)
-const searchQuery = ref('')
-const filterCategory = ref('')
-const filterCity = ref('')
-const filterWebsite = ref<'all' | 'yes' | 'no' | 'improvable'>('no')
-const activeTab = ref<'not_contacted' | 'contacted'>('not_contacted')
+const prospects: Ref<Prospect[]> = ref([])
+const isLoading: Ref<boolean> = ref(false)
+const error: Ref<string | null> = ref(null)
+const selectedProspects: Ref<string[]> = ref([])
+const bulkCampaignOpen: Ref<boolean> = ref(false)
+const bulkGenerateOpen: Ref<boolean> = ref(false)
+const bulkBusy: Ref<boolean> = ref(false)
+const searchQuery: Ref<string> = ref('')
+const filterCategory: Ref<string> = ref('')
+const filterCity: Ref<string> = ref('')
+const filterWebsite: Ref<'all' | 'yes' | 'no' | 'improvable'> = ref('no')
+const activeTab: Ref<'not_contacted' | 'contacted'> = ref('not_contacted')
 
 const websiteFilterOptions = [
   { value: 'all', label: 'Tous' },
@@ -335,12 +335,12 @@ const websiteFilterOptions = [
   { value: 'no', label: 'Non' },
   { value: 'improvable', label: 'Améliorable (audit)' },
 ]
-const currentPage = ref(1)
+const currentPage: Ref<number> = ref(1)
 const pageSize = 50
 
 // Quick-delete (from table row icon)
-const prospectToDelete = ref<Prospect | null>(null)
-const deleteConfirmModal = ref<{ open: () => void; close: () => void } | null>(null)
+const prospectToDelete: Ref<Prospect | null> = ref(null)
+const deleteConfirmModal: Ref<{ open: () => void; close: () => void } | null> = ref(null)
 
 // Detail drawer
 /** Persistent drawer stack (the prospect drawer is hosted by the layout). */
@@ -417,6 +417,9 @@ const paginatedProspects = computed(() => {
 
 // ─── Data loading ─────────────────────────────────────────────────────────────
 
+/**
+ * Fetch prospects from the API.
+ */
 async function loadProspects(): Promise<void> {
   try {
     isLoading.value = true
@@ -429,11 +432,17 @@ async function loadProspects(): Promise<void> {
   }
 }
 
+/**
+ * Reload prospects and reset pagination.
+ */
 function refreshProspects(): void {
   currentPage.value = 1
   loadProspects()
 }
 
+/**
+ * Reset all list filters to their defaults.
+ */
 function clearFilters(): void {
   searchQuery.value = ''
   filterCity.value = ''
@@ -540,13 +549,13 @@ function handleProspectUpdated(updated: Prospect): void {
 // ─── Import / export JSON ─────────────────────────────────────────────────────
 
 /** Hidden file input used by the « Importer » dropdown. */
-const importInput: Ref<HTMLInputElement | null> = ref<HTMLInputElement | null>(null)
+const importInput: Ref<HTMLInputElement | null> = ref(null)
 
 /** Whether a JSON import is currently running. */
-const isImporting: Ref<boolean> = ref<boolean>(false)
+const isImporting: Ref<boolean> = ref(false)
 
 /** Whether the « Importer » dropdown menu is open. */
-const showImportMenu: Ref<boolean> = ref<boolean>(false)
+const showImportMenu: Ref<boolean> = ref(false)
 
 /**
  * « Importer un fichier JSON » — close the menu and open the file picker.
@@ -663,11 +672,17 @@ watch(
 
 // ─── Quick-delete (table row icon) ────────────────────────────────────────────
 
+/**
+ * Open the quick-delete confirmation modal for a prospect.
+ */
 function handleDeleteProspect(prospect: Prospect): void {
   prospectToDelete.value = prospect
   deleteConfirmModal.value?.open()
 }
 
+/**
+ * Delete the prospect selected in the quick-delete modal.
+ */
 async function confirmDeleteProspect(): Promise<void> {
   const prospect = prospectToDelete.value
   if (!prospect) return

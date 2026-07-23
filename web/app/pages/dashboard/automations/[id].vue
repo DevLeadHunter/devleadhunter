@@ -302,19 +302,19 @@ const route = useRoute()
 /** The automatisation id from the route. */
 const runId: number = Number(route.params.id)
 /** Whether a lifecycle/correction action is in flight. */
-const isActing: Ref<boolean> = ref<boolean>(false)
+const isActing: Ref<boolean> = ref(false)
 /** Selected item ids for bulk actions. */
-const selected: Ref<Set<number>> = ref<Set<number>>(new Set<number>())
+const selected: Ref<Set<number>> = ref(new Set<number>())
 /** Demo templates (for the bulk template change). */
-const demoTemplates: Ref<DemoSiteTemplate[]> = ref<DemoSiteTemplate[]>([])
+const demoTemplates: Ref<DemoSiteTemplate[]> = ref([])
 /** Template chosen in the bulk toolbar (empty = keep current). */
-const bulkTemplateId: Ref<string> = ref<string>('')
+const bulkTemplateId: Ref<string> = ref('')
 /** Email preview modal state. */
-const previewOpen: Ref<boolean> = ref<boolean>(false)
-const isPreviewing: Ref<boolean> = ref<boolean>(false)
-const preview: Ref<EmailPreview | null> = ref<EmailPreview | null>(null)
+const previewOpen: Ref<boolean> = ref(false)
+const isPreviewing: Ref<boolean> = ref(false)
+const preview: Ref<EmailPreview | null> = ref(null)
 /** Polling handle. */
-const pollHandle: Ref<ReturnType<typeof setInterval> | null> = ref<ReturnType<typeof setInterval> | null>(null)
+const pollHandle: Ref<ReturnType<typeof setInterval> | null> = ref(null)
 
 /** The open automatisation. */
 const run: ComputedRef<AutomationDetail | null> = computed((): AutomationDetail | null => store.current)

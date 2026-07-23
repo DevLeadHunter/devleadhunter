@@ -24,24 +24,24 @@ export function normalizeCityName(name: string): string {
 
 export const useCoverageStore = defineStore('coverage', () => {
   /** Coverage scope: 'me' | 'org' | 'member:{id}'. */
-  const scope: Ref<string> = ref<string>('me')
+  const scope: Ref<string> = ref('me')
 
   /** Selected trades — empty means « all trades » (no filter). */
-  const selectedCategories: Ref<string[]> = ref<string[]>([])
+  const selectedCategories: Ref<string[]> = ref([])
 
   /** Last coverage response for the current scope + filter. */
-  const coverage: Ref<CoverageResponse | null> = ref<CoverageResponse | null>(null)
+  const coverage: Ref<CoverageResponse | null> = ref(null)
 
   /** Geocoding results for the covered cities. */
-  const cityGeo: Ref<Record<string, CityGeo | null>> = ref<Record<string, CityGeo | null>>({})
+  const cityGeo: Ref<Record<string, CityGeo | null>> = ref({})
 
-  const isLoading: Ref<boolean> = ref<boolean>(false)
+  const isLoading: Ref<boolean> = ref(false)
 
   /** True once the first load happened (gates « all done » empty states). */
-  const hasLoaded: Ref<boolean> = ref<boolean>(false)
+  const hasLoaded: Ref<boolean> = ref(false)
 
   /** Trades available in the scope — sticky so the filter UI never flickers. */
-  const availableCategories: Ref<string[]> = ref<string[]>([])
+  const availableCategories: Ref<string[]> = ref([])
 
   /**
    * Split the scope value into an API scope + optional member id.

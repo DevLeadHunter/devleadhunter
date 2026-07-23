@@ -10,7 +10,7 @@ import { api } from './api'
 export type StorageObjectKind = 'website_video' | 'website_thumbnail' | 'presenter' | 'support' | 'other'
 
 /** One object of the bucket, enriched with business context. */
-export interface StorageObject {
+export type StorageObject = {
   key: string
   kind: StorageObjectKind
   size: number
@@ -23,7 +23,7 @@ export interface StorageObject {
 }
 
 /** Bucket listing + totals. */
-export interface StorageListResponse {
+export type StorageListResponse = {
   bucket: string
   public_base_url: string
   items: StorageObject[]
@@ -32,14 +32,14 @@ export interface StorageListResponse {
 }
 
 /** R2 ↔ database consistency report. */
-export interface StorageHealthResponse {
+export type StorageHealthResponse = {
   orphan_objects: string[]
   missing_objects: string[]
   expired_objects: string[]
 }
 
 /** Result of a mutating action (delete / purge / sync). */
-export interface StorageActionResponse {
+export type StorageActionResponse = {
   deleted: number
   copied: number
   unchanged: number

@@ -315,13 +315,13 @@ const SENDING_POLL_INTERVAL_MS: number = 3000
 // ─── État ───────────────────────────────────────────────────────────────────
 
 /** Whether the wizard itself is shown (false = welcome screen). */
-const hasStarted: Ref<boolean> = ref<boolean>(false)
+const hasStarted: Ref<boolean> = ref(false)
 /** Current step (1-based). */
-const currentStep: Ref<number> = ref<number>(1)
+const currentStep: Ref<number> = ref(1)
 /** Sending identity, refreshed while the first step is open. */
-const identity: Ref<SendingIdentityResponse | null> = ref<SendingIdentityResponse | null>(null)
+const identity: Ref<SendingIdentityResponse | null> = ref(null)
 /** The edited sending cadence. */
-const policy: Ref<SendPolicy> = ref<SendPolicy>({
+const policy: Ref<SendPolicy> = ref({
   daily_cap: 20,
   days_of_week: [0, 1, 2, 3, 4],
   window_start_hour: 7,
@@ -329,17 +329,17 @@ const policy: Ref<SendPolicy> = ref<SendPolicy>({
   spacing_minutes: 20,
 })
 /** Serialized cadence as loaded, to avoid a pointless save. */
-const savedPolicy: Ref<string> = ref<string>('')
+const savedPolicy: Ref<string> = ref('')
 /** Whether the user opted into configuring a presenter video. */
-const wantsVideo: Ref<boolean> = ref<boolean>(false)
+const wantsVideo: Ref<boolean> = ref(false)
 /** Whether a presenter clip is actually stored. */
-const hasPresenterVideo: Ref<boolean> = ref<boolean>(false)
+const hasPresenterVideo: Ref<boolean> = ref(false)
 /** Whether the step transition is waiting on a save. */
-const isSavingStep: Ref<boolean> = ref<boolean>(false)
+const isSavingStep: Ref<boolean> = ref(false)
 /** Whether the wizard is being marked as completed. */
-const isFinishing: Ref<boolean> = ref<boolean>(false)
+const isFinishing: Ref<boolean> = ref(false)
 /** Handle of the sending-readiness poller. */
-const sendingPollHandle: Ref<ReturnType<typeof setInterval> | null> = ref<ReturnType<typeof setInterval> | null>(null)
+const sendingPollHandle: Ref<ReturnType<typeof setInterval> | null> = ref(null)
 
 // ─── Computed ───────────────────────────────────────────────────────────────
 

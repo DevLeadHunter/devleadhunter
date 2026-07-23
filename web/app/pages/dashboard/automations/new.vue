@@ -205,7 +205,9 @@
             <UiTemplateSelect
               :model-value="form.emailA"
               :templates="emailTemplates"
+              allow-create
               @update:model-value="form.emailA = $event"
+              @create="openCreate((id) => (form.emailA = id))"
             />
           </div>
           <div>
@@ -213,7 +215,9 @@
             <UiTemplateSelect
               :model-value="form.emailB"
               :templates="emailTemplates"
+              allow-create
               @update:model-value="form.emailB = $event"
+              @create="openCreate((id) => (form.emailB = id))"
             />
           </div>
         </div>
@@ -355,26 +359,26 @@ const steps: UiWizardStep[] = [
 ]
 
 /** Current step (1-based). */
-const currentStep: Ref<number> = ref<number>(1)
+const currentStep: Ref<number> = ref(1)
 /** Whether the create request is in flight. */
-const isCreating: Ref<boolean> = ref<boolean>(false)
+const isCreating: Ref<boolean> = ref(false)
 /** Whether prospects are loading. */
-const isLoadingProspects: Ref<boolean> = ref<boolean>(false)
+const isLoadingProspects: Ref<boolean> = ref(false)
 /** Selectable prospects (unused only). */
-const prospects: Ref<Prospect[]> = ref<Prospect[]>([])
+const prospects: Ref<Prospect[]> = ref([])
 /** Email templates for the A/B selectors. */
-const emailTemplates: Ref<TemplateSelectOption[]> = ref<TemplateSelectOption[]>([])
+const emailTemplates: Ref<TemplateSelectOption[]> = ref([])
 /** Demo-site templates. */
-const templates: Ref<DemoSiteTemplate[]> = ref<DemoSiteTemplate[]>([])
+const templates: Ref<DemoSiteTemplate[]> = ref([])
 /** Selected prospect ids (as strings, matching UiProspectTable). */
-const selectedProspectIds: Ref<string[]> = ref<string[]>([])
+const selectedProspectIds: Ref<string[]> = ref([])
 
 // Filters
-const searchQuery: Ref<string> = ref<string>('')
-const filterWebsite: Ref<'all' | 'yes' | 'no'> = ref<'all' | 'yes' | 'no'>('no')
-const filterCity: Ref<string> = ref<string>('')
-const filterCategory: Ref<string> = ref<string>('')
-const currentPage: Ref<number> = ref<number>(1)
+const searchQuery: Ref<string> = ref('')
+const filterWebsite: Ref<'all' | 'yes' | 'no'> = ref('no')
+const filterCity: Ref<string> = ref('')
+const filterCategory: Ref<string> = ref('')
+const currentPage: Ref<number> = ref(1)
 const pageSize: number = 25
 
 /** Website filter options. */
@@ -385,7 +389,7 @@ const websiteFilterOptions: ReadonlyArray<{ value: string; label: string }> = [
 ]
 
 /** Wizard state. */
-const form: Ref<TunnelForm> = ref<TunnelForm>({
+const form: Ref<TunnelForm> = ref({
   name: '',
   mode: 'semi_auto',
   templateId: '',
@@ -636,6 +640,18 @@ function openSendPolicyDrawer(): void {
 }
 
 /**
+ * Reload the email templates feeding the A/B selectors.
+ * @returns A promise resolved once the templates are reloaded.
+ */
+async function reloadEmailTemplates(): Promise<void> {
+  const emailList = await getEmailTemplates()
+  emailTemplates.value = emailList.map((t): TemplateSelectOption => ({ id: t.id, name: t.name, subject: t.subject }))
+}
+
+/** Create-a-template flow shared by the A/B selectors (opens the drawer, auto-selects). */
+const { openCreate } = useEmailTemplateCreator(emailTemplates, reloadEmailTemplates)
+
+/**
  * Reload the selectable prospects (unused only), preserving the selection.
  * @returns A promise resolved once reloaded.
  */
@@ -662,8 +678,7 @@ watch(
 
 onMounted(async (): Promise<void> => {
   try {
-    const [emailList, demoList] = await Promise.all([getEmailTemplates(), listDemoSiteTemplates()])
-    emailTemplates.value = emailList.map((t): TemplateSelectOption => ({ id: t.id, name: t.name, subject: t.subject }))
+    const [, demoList] = await Promise.all([reloadEmailTemplates(), listDemoSiteTemplates()])
     templates.value = demoList
     const first: DemoSiteTemplate | undefined = demoList[0]
     if (first) {

@@ -176,10 +176,10 @@ const drawerStack = useDrawerStackStore()
 
 // ─── State ────────────────────────────────────────────────────────────────────
 
-const emailTemplates: Ref<EmailTemplate[]> = ref<EmailTemplate[]>([])
-const isLoading: Ref<boolean> = ref<boolean>(false)
-const searchQuery: Ref<string> = ref<string>('')
-const templateToDelete: Ref<EmailTemplate | null> = ref<EmailTemplate | null>(null)
+const emailTemplates: Ref<EmailTemplate[]> = ref([])
+const isLoading: Ref<boolean> = ref(false)
+const searchQuery: Ref<string> = ref('')
+const templateToDelete: Ref<EmailTemplate | null> = ref(null)
 const confirmModal: Ref<{ open: () => void; close: () => void } | null> = ref<{
   open: () => void
   close: () => void

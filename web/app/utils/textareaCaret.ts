@@ -8,7 +8,7 @@
  */
 
 /** Caret offset within the field's content box. */
-export interface CaretCoordinates {
+export type CaretCoordinates = {
   /** Distance from the field's top (px), before scroll compensation. */
   top: number
   /** Distance from the field's left (px). */

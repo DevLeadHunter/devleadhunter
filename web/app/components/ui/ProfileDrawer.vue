@@ -120,10 +120,10 @@ const userStore = useUserStore()
 const toast = useToast()
 
 /** Whether the save request is in flight. */
-const isSaving: Ref<boolean> = ref<boolean>(false)
+const isSaving: Ref<boolean> = ref(false)
 
 /** Editable profile form state. */
-const form: Ref<ProfileForm> = ref<ProfileForm>({ name: '', email: '' })
+const form: Ref<ProfileForm> = ref({ name: '', email: '' })
 
 /** Initials shown in the header avatar. */
 const userInitials: ComputedRef<string> = computed((): string => {

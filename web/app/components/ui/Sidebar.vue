@@ -90,70 +90,44 @@
 
     <!-- Navigation -->
     <nav class="flex flex-1 flex-col overflow-y-auto px-4 py-3">
-      <!-- Administration sub-panel (replaces main menu, Vercel-style) -->
-      <template v-if="isAdmin && showAdminPanel">
+      <!-- Paramètres sub-panel (replaces the main menu, Vercel-style) -->
+      <template v-if="showSettingsPanel">
         <button
           type="button"
           class="mb-3 flex w-full cursor-pointer items-center gap-2 rounded-lg px-2 py-2 text-sm font-semibold text-[var(--app-ink)] transition-colors hover:bg-[var(--app-surface-2)]"
-          @click="handleAdminBack"
+          @click="closeSettingsPanel"
         >
           <UIcon name="i-lucide-chevron-left" class="h-3.5 w-3.5 text-[var(--app-ink-soft)]" />
           <span>Menu principal</span>
         </button>
-        <div class="space-y-0.5">
-          <NuxtLink
-            v-for="link in adminLinks"
-            :key="link.to"
-            :to="link.to"
-            :class="navItemClass(isLinkActive(link.to))"
-            @click="handleClick"
-          >
-            <span :class="navBarClass(isLinkActive(link.to))"></span>
-            <UIcon v-if="link.icon.startsWith('i-')" :name="link.icon" class="h-4 w-4 shrink-0" />
-            <i v-else :class="link.icon" class="h-4 w-4 shrink-0"></i>
-            <span class="truncate">{{ link.label }}</span>
-          </NuxtLink>
+        <div v-for="group in settingsGroups" :key="group.heading" class="mb-4 last:mb-0">
+          <p class="app-label mb-1.5 px-3 !text-[0.6rem]">{{ group.heading }}</p>
+          <div class="space-y-0.5">
+            <template v-for="entry in group.entries" :key="entry.kind === 'link' ? entry.to : entry.action">
+              <NuxtLink
+                v-if="entry.kind === 'link'"
+                :to="entry.to"
+                :class="navItemClass(isSettingsLinkActive(entry.to))"
+                @click="handleClick"
+              >
+                <span :class="navBarClass(isSettingsLinkActive(entry.to))"></span>
+                <UIcon :name="entry.icon" class="h-4 w-4 shrink-0" />
+                <span class="truncate">{{ entry.label }}</span>
+              </NuxtLink>
+              <button
+                v-else
+                type="button"
+                class="w-full"
+                :class="navItemClass(false)"
+                @click="handleSettingsAction(entry.action)"
+              >
+                <span :class="navBarClass(false)"></span>
+                <UIcon :name="entry.icon" class="h-4 w-4 shrink-0" />
+                <span>{{ entry.label }}</span>
+              </button>
+            </template>
+          </div>
         </div>
-      </template>
-
-      <!-- Paramètres sub-panel -->
-      <template v-else-if="showSettingsPanel">
-        <button
-          type="button"
-          class="mb-3 flex w-full cursor-pointer items-center gap-2 rounded-lg px-2 py-2 text-sm font-semibold text-[var(--app-ink)] transition-colors hover:bg-[var(--app-surface-2)]"
-          @click="showSettingsPanel = false"
-        >
-          <UIcon name="i-lucide-chevron-left" class="h-3.5 w-3.5 text-[var(--app-ink-soft)]" />
-          <span>Menu principal</span>
-        </button>
-        <NuxtLink to="/configuration" :class="navItemClass(isActive('/configuration'))" @click="handleClick">
-          <span :class="navBarClass(isActive('/configuration'))"></span>
-          <UIcon name="i-lucide-rocket" class="h-4 w-4 shrink-0" />
-          <span>Mise en route</span>
-        </NuxtLink>
-        <NuxtLink
-          to="/dashboard/settings/sending"
-          :class="navItemClass(isActive('/dashboard/settings/sending'))"
-          @click="handleClick"
-        >
-          <span :class="navBarClass(isActive('/dashboard/settings/sending'))"></span>
-          <UIcon name="i-lucide-mail-open" class="h-4 w-4 shrink-0" />
-          <span>Configuration d'envoi</span>
-        </NuxtLink>
-        <NuxtLink
-          to="/dashboard/settings/video"
-          :class="navItemClass(isActive('/dashboard/settings/video'))"
-          @click="handleClick"
-        >
-          <span :class="navBarClass(isActive('/dashboard/settings/video'))"></span>
-          <UIcon name="i-lucide-video" class="h-4 w-4 shrink-0" />
-          <span>Vidéo de prospection</span>
-        </NuxtLink>
-        <button type="button" class="w-full" :class="navItemClass(false)" @click="handleSendPolicyFromMenu">
-          <span :class="navBarClass(false)"></span>
-          <UIcon name="i-lucide-sliders-horizontal" class="h-4 w-4 shrink-0" />
-          <span>Réglages d'envoi</span>
-        </button>
       </template>
 
       <!-- Main grouped menu -->
@@ -175,41 +149,23 @@
           </div>
         </div>
 
-        <!-- Réglages (Paramètres + Administration) -->
+        <!-- Réglages -->
         <div class="mb-4">
           <p class="app-label mb-1.5 px-3 !text-[0.6rem]">Réglages</p>
           <div class="space-y-0.5">
-            <button
-              type="button"
-              :class="navItemClass(showSettingsPanel)"
-              class="w-full"
-              @click="showSettingsPanel = true"
-            >
+            <button type="button" :class="navItemClass(false)" class="w-full" @click="openSettingsPanel">
               <span :class="navBarClass(false)"></span>
               <UIcon name="i-lucide-settings" class="h-4 w-4 shrink-0" />
               <span>Paramètres</span>
               <UIcon name="i-lucide-chevron-right" class="ml-auto h-3.5 w-3.5 opacity-50" />
             </button>
-
-            <button
-              v-if="isAdmin"
-              type="button"
-              :class="navItemClass(isAdminNavActive)"
-              class="w-full"
-              @click="handleAdminClick"
-            >
-              <span :class="navBarClass(isAdminNavActive)"></span>
-              <UIcon name="i-lucide-shield" class="h-4 w-4 shrink-0" />
-              <span>Administration</span>
-              <UIcon name="i-lucide-chevron-right" class="ml-auto h-3.5 w-3.5 opacity-50" />
-            </button>
           </div>
         </div>
 
-        <!-- Credits (admin only) — pinned at the very bottom of the menu (mt-auto;
-             the nav keeps its own bottom padding so the card never sticks to the edge) -->
+        <!-- Credits — pinned at the very bottom of the menu (mt-auto; the nav
+             keeps its own bottom padding so the card never sticks to the edge) -->
         <NuxtLink
-          v-if="!isMobile && isAdmin"
+          v-if="!isMobile"
           to="/dashboard/buy-credits"
           class="group mt-auto flex items-center justify-between rounded-lg border border-[var(--app-line)] bg-[var(--app-bg)] px-3 py-2 transition-colors hover:border-[var(--app-ink-soft)]"
         >
@@ -382,29 +338,18 @@ const drawerStack = useDrawerStackStore()
 const { isDesktopApp } = useDesktopRuntime()
 
 const {
-  isAdmin,
-  isAdminNavOpen,
-  isAdminNavActive,
-  isMobileAdminPanel,
-  adminLinks,
-  openAdminNav,
-  closeAdminNav,
-  isLinkActive,
-} = useAdminNav()
-
-/** Whether the Administration sub-panel replaces the main sidebar menu. */
-const showAdminPanel: ComputedRef<boolean> = computed((): boolean => {
-  return props.isMobile ? isMobileAdminPanel.value : isAdminNavOpen.value
-})
-
-/** Whether the Settings sub-panel is currently open. */
-const showSettingsPanel: Ref<boolean> = ref<boolean>(false)
+  showSettingsPanel,
+  settingsGroups,
+  openSettingsPanel,
+  closeSettingsPanel,
+  isLinkActive: isSettingsLinkActive,
+} = useSettingsNav()
 
 /** Whether the module switcher menu is open. */
-const showModuleMenu: Ref<boolean> = ref<boolean>(false)
+const showModuleMenu: Ref<boolean> = ref(false)
 
 /** Whether the user account menu (Profil / Thème / Déconnexion) is open. */
-const showUserMenu: Ref<boolean> = ref<boolean>(false)
+const showUserMenu: Ref<boolean> = ref(false)
 
 /** The three product modules of DevLeadHunter (only websites is live today). */
 const modules: DlhModuleEntry[] = [
@@ -430,53 +375,32 @@ function handleModuleClick(moduleEntry: DlhModuleEntry): void {
   }
 }
 
-/** Grouped navigation of the websites module. */
-const navGroups: ComputedRef<UiSidebarGroup[]> = computed((): UiSidebarGroup[] => {
-  const groups: UiSidebarGroup[] = [
-    {
-      heading: 'Pilotage',
-      links: [
-        { to: '/dashboard', label: 'Tableau de bord', icon: 'i-lucide-layout-dashboard' },
-        { to: '/dashboard/automations', label: 'Automatisations', icon: 'i-lucide-workflow' },
-      ],
-    },
-    {
-      heading: 'Prospection',
-      links: [
-        { to: '/dashboard/my-prospects', label: 'Mes prospects', icon: 'i-lucide-users' },
-        { to: '/dashboard/coverage', label: 'Carte de prospection', icon: 'i-lucide-map' },
-      ],
-    },
-    {
-      heading: 'Production',
-      links: [{ to: '/dashboard/demo-sites', label: 'Sites démo', icon: 'i-lucide-app-window' }],
-    },
-    {
-      heading: 'Campagnes',
-      links: [
-        { to: '/dashboard/campaigns', label: 'Campagnes', icon: 'i-lucide-megaphone' },
-        { to: '/dashboard/emails', label: 'Suivi des emails', icon: 'i-lucide-send' },
-        { to: '/dashboard/email-templates', label: "Modèles d'email", icon: 'i-lucide-layout-template' },
-        { to: '/dashboard/email-health', label: 'Santé email', icon: 'i-lucide-heart-pulse' },
-      ],
-    },
-    {
-      heading: 'Ventes',
-      links: [{ to: '/dashboard/orders', label: 'Ventes', icon: 'i-lucide-banknote' }],
-    },
-  ]
-
-  // Support stays available to regular users in the main menu (admins have it
-  // in the Administration panel).
-  if (!isAdmin.value) {
-    groups.push({
-      heading: 'Aide',
-      links: [{ to: '/dashboard/support', label: 'Support', icon: 'i-lucide-life-buoy' }],
-    })
-  }
-
-  return groups
-})
+/**
+ * Grouped navigation of the websites module. The funnel (prospects → sites →
+ * campaigns → sales) lives in a single ordered « Prospection » group; secondary
+ * screens (email templates, email health, support…) moved to the Paramètres
+ * sub-panel to keep the main menu light.
+ */
+const navGroups: UiSidebarGroup[] = [
+  {
+    heading: 'Pilotage',
+    links: [
+      { to: '/dashboard', label: 'Tableau de bord', icon: 'i-lucide-layout-dashboard' },
+      { to: '/dashboard/automations', label: 'Automatisations', icon: 'i-lucide-workflow' },
+    ],
+  },
+  {
+    heading: 'Prospection',
+    links: [
+      { to: '/dashboard/my-prospects', label: 'Mes prospects', icon: 'i-lucide-users' },
+      { to: '/dashboard/coverage', label: 'Carte de prospection', icon: 'i-lucide-map' },
+      { to: '/dashboard/demo-sites', label: 'Sites démo', icon: 'i-lucide-app-window' },
+      { to: '/dashboard/campaigns', label: 'Campagnes', icon: 'i-lucide-megaphone' },
+      { to: '/dashboard/emails', label: 'Suivi des emails', icon: 'i-lucide-send' },
+      { to: '/dashboard/orders', label: 'Ventes', icon: 'i-lucide-banknote' },
+    ],
+  },
+]
 
 /** User display name. */
 const userName: ComputedRef<string> = computed((): string => {
@@ -589,17 +513,14 @@ function handleClick(): void {
 }
 
 /**
- * Close the Administration sub-panel and return to the main menu.
+ * Handle a settings sub-panel action entry (opens the matching drawer).
+ * @param action - The action key of the settings entry.
  */
-function handleAdminBack(): void {
-  closeAdminNav(props.isMobile)
-}
-
-/**
- * Open the Administration sub-panel inside the sidebar.
- */
-function handleAdminClick(): void {
-  openAdminNav(props.isMobile)
+function handleSettingsAction(action: 'send-policy'): void {
+  if (action === 'send-policy') {
+    drawerStack.push({ kind: 'send-policy' })
+  }
+  handleClick()
 }
 
 /**
@@ -617,14 +538,6 @@ function handleProfileFromMenu(): void {
 function handleOrganizationFromMenu(): void {
   showUserMenu.value = false
   drawerStack.push({ kind: 'organization' })
-  handleClick()
-}
-
-/**
- * Open the send-policy (email cadence) drawer from the Paramètres panel.
- */
-function handleSendPolicyFromMenu(): void {
-  drawerStack.push({ kind: 'send-policy' })
   handleClick()
 }
 

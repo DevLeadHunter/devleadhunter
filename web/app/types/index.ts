@@ -25,7 +25,7 @@ export type ProspectSource = 'google' | 'pagesjaunes' | 'yelp' | 'osm' | 'auto' 
 /**
  * Prospect interface representing a business without website
  */
-export interface Prospect {
+export type Prospect = {
   /** Unique identifier for the prospect */
   id: number
   /** User ID who saved this prospect */
@@ -69,7 +69,7 @@ export interface Prospect {
 /**
  * Résultat d'un audit Lighthouse (PageSpeed Insights) du site existant d'un prospect.
  */
-export interface ProspectLighthouseAudit {
+export type ProspectLighthouseAudit = {
   /** Scores 0-100 par catégorie (null si PSI n'a pas pu calculer) */
   scores: {
     performance: number | null
@@ -90,7 +90,7 @@ export interface ProspectLighthouseAudit {
 /**
  * Organisation (équipe) de l'utilisateur courant.
  */
-export interface Organization {
+export type Organization = {
   id: number
   name: string
   owner_user_id: number
@@ -101,7 +101,7 @@ export interface Organization {
 /**
  * Membre d'une organisation (identité résolue côté API).
  */
-export interface OrganizationMember {
+export type OrganizationMember = {
   user_id: number
   name: string
   email: string
@@ -112,7 +112,7 @@ export interface OrganizationMember {
 /**
  * Payload pour pré-remplir un prospect depuis Google Maps.
  */
-export interface ProspectEnrichPayload {
+export type ProspectEnrichPayload = {
   business_name?: string
   google_maps_url?: string
   city?: string
@@ -121,7 +121,7 @@ export interface ProspectEnrichPayload {
 /**
  * Suggestion d'entreprise retournée par la recherche Google Maps.
  */
-export interface ProspectSearchSuggestion {
+export type ProspectSearchSuggestion = {
   id: string
   label: string
   description?: string | null
@@ -131,7 +131,7 @@ export interface ProspectSearchSuggestion {
 /**
  * Payload pour rechercher des suggestions d'entreprises.
  */
-export interface ProspectSearchSuggestionsPayload {
+export type ProspectSearchSuggestionsPayload = {
   query: string
   city?: string
   max_results?: number
@@ -140,7 +140,7 @@ export interface ProspectSearchSuggestionsPayload {
 /**
  * Payload pour mettre à jour un prospect existant (tous les champs sont optionnels).
  */
-export interface ProspectUpdatePayload {
+export type ProspectUpdatePayload = {
   /** Business name */
   name?: string
   /** Street address */
@@ -162,7 +162,7 @@ export interface ProspectUpdatePayload {
 /**
  * Payload pour créer un prospect manuellement.
  */
-export interface ProspectCreatePayload {
+export type ProspectCreatePayload = {
   name: string
   address?: string | null
   city?: string | null
@@ -177,7 +177,7 @@ export interface ProspectCreatePayload {
 /**
  * Formulaire de saisie pour l'ajout manuel d'un prospect.
  */
-export interface ManualProspectAddForm {
+export type ManualProspectAddForm = {
   business_name: string
   google_maps_url: string
   city: string
@@ -186,7 +186,7 @@ export interface ManualProspectAddForm {
 /**
  * Search filters for prospect search
  */
-export interface ProspectSearchFilters {
+export type ProspectSearchFilters = {
   /** Business category filter */
   category?: BusinessCategory
   /** City filter */
@@ -200,7 +200,7 @@ export interface ProspectSearchFilters {
 /**
  * Campaign interface for bulk email sending
  */
-export interface Campaign {
+export type Campaign = {
   /** Unique identifier for the campaign */
   id: string
   /** Campaign name */
@@ -225,7 +225,7 @@ export type UserRole = 'USER' | 'ADMIN'
 /**
  * User interface
  */
-export interface User {
+export type User = {
   /** Unique identifier for the user */
   id: number
   /** User name */
@@ -253,7 +253,7 @@ export interface User {
 /**
  * Login credentials
  */
-export interface LoginCredentials {
+export type LoginCredentials = {
   /** User email */
   email: string
   /** User password */
@@ -263,7 +263,7 @@ export interface LoginCredentials {
 /**
  * Signup data
  */
-export interface SignupData {
+export type SignupData = {
   /** User name */
   name: string
   /** User email */
@@ -276,7 +276,7 @@ export interface SignupData {
  * Profile update payload (self-service `PATCH /auth/me`) — fields are optional so
  * the user can change name and/or email.
  */
-export interface ProfileUpdate {
+export type ProfileUpdate = {
   /** New display name */
   name?: string
   /** New login email */
@@ -286,7 +286,7 @@ export interface ProfileUpdate {
 /**
  * API Response wrapper
  */
-export interface ApiResponse<T> {
+export type ApiResponse<T> = {
   /** Response data */
   data: T
   /** Success status */
@@ -298,7 +298,7 @@ export interface ApiResponse<T> {
 /**
  * Auth token response
  */
-export interface TokenResponse {
+export type TokenResponse = {
   /** JWT access token */
   access_token: string
   /** Token type */
@@ -308,7 +308,7 @@ export interface TokenResponse {
 /**
  * Paginated response
  */
-export interface PaginatedResponse<T> {
+export type PaginatedResponse<T> = {
   /** List of items */
   items: T[]
   /** Total number of items */
@@ -324,7 +324,7 @@ export interface PaginatedResponse<T> {
 /**
  * Email sending data
  */
-export interface EmailData {
+export type EmailData = {
   /** Recipient email */
   to: string
   /** Email subject */
@@ -338,7 +338,7 @@ export interface EmailData {
 /**
  * Bulk email sending data
  */
-export interface BulkEmailData {
+export type BulkEmailData = {
   /** Campaign ID */
   campaignId: string
   /** Email subject */
@@ -350,7 +350,7 @@ export interface BulkEmailData {
 /**
  * Credit settings interface for credit system configuration
  */
-export interface CreditSettings {
+export type CreditSettings = {
   /** Unique identifier for the settings (always 1) */
   id: number
   /** Price of one credit in EUR */
@@ -374,7 +374,7 @@ export interface CreditSettings {
 /**
  * Checkout session creation request
  */
-export interface CheckoutSessionCreate {
+export type CheckoutSessionCreate = {
   /** Number of credits to purchase */
   credits: number
   /** URL to redirect after successful payment (optional) */
@@ -386,7 +386,7 @@ export interface CheckoutSessionCreate {
 /**
  * Checkout session response
  */
-export interface CheckoutSessionResponse {
+export type CheckoutSessionResponse = {
   /** Stripe checkout session ID */
   session_id: string
   /** Stripe checkout session URL */
@@ -405,7 +405,7 @@ export type CreditTransactionType = 'PURCHASE' | 'USAGE' | 'REFUND' | 'FREE_GIFT
 /**
  * Credit transaction interface
  */
-export interface CreditTransaction {
+export type CreditTransaction = {
   /** Transaction unique identifier */
   id: number
   /** User ID who owns this transaction */
@@ -425,7 +425,7 @@ export interface CreditTransaction {
 /**
  * Credit balance response
  */
-export interface CreditBalanceResponse {
+export type CreditBalanceResponse = {
   /** User ID */
   user_id: number
   /** Current credit balance */
@@ -437,7 +437,7 @@ export interface CreditBalanceResponse {
 /**
  * Stripe payment information
  */
-export interface StripePaymentInfo {
+export type StripePaymentInfo = {
   payment_intent_id?: string | null
   session_id?: string | null
   amount: number
@@ -462,7 +462,7 @@ export interface StripePaymentInfo {
 /**
  * Credit purchase transaction with payment details
  */
-export interface CreditPurchaseTransaction {
+export type CreditPurchaseTransaction = {
   transaction_id: number
   user_id: number
   user_name: string
@@ -477,7 +477,7 @@ export interface CreditPurchaseTransaction {
 /**
  * Accounting summary
  */
-export interface AccountingSummary {
+export type AccountingSummary = {
   total_paid: number
   total_refunded: number
   total_stripe_fees: number
@@ -489,7 +489,7 @@ export interface AccountingSummary {
 /**
  * Accounting data response
  */
-export interface AccountingResponse {
+export type AccountingResponse = {
   summary: AccountingSummary
   transactions: CreditPurchaseTransaction[]
 }
@@ -514,7 +514,7 @@ export type SupportTicketTopic =
 /**
  * Support topic metadata for UI
  */
-export interface SupportTopicOption {
+export type SupportTopicOption = {
   value: SupportTicketTopic
   label: string
   description: string
@@ -523,7 +523,7 @@ export interface SupportTopicOption {
 /**
  * Support attachment metadata
  */
-export interface SupportAttachment {
+export type SupportAttachment = {
   id: number
   url: string
   original_filename: string
@@ -534,7 +534,7 @@ export interface SupportAttachment {
 /**
  * Support message
  */
-export interface SupportMessage {
+export type SupportMessage = {
   id: number
   ticket_id: number
   sender_id: number
@@ -548,7 +548,7 @@ export interface SupportMessage {
 /**
  * Support ticket summary
  */
-export interface SupportTicketSummary {
+export type SupportTicketSummary = {
   id: number
   user_id: number
   user_name: string
@@ -580,7 +580,7 @@ export type EmailAccountType = 'custom_domain' | 'gmail_oauth' | 'resend'
 /**
  * Email account interface
  */
-export interface EmailAccount {
+export type EmailAccount = {
   /** Unique identifier */
   id: number
   /** User ID */
@@ -614,7 +614,7 @@ export interface EmailAccount {
 /**
  * Email template interface
  */
-export interface EmailTemplate {
+export type EmailTemplate = {
   /** Unique identifier */
   id: number
   /** User ID */
@@ -642,7 +642,7 @@ export interface EmailTemplate {
 /**
  * Reusable email signature (sign-off block, HTML, paste-friendly from Gmail).
  */
-export interface EmailSignature {
+export type EmailSignature = {
   /** Unique identifier */
   id: number
   /** Owner user ID */
@@ -662,7 +662,7 @@ export interface EmailSignature {
 /**
  * Email signature creation request
  */
-export interface EmailSignatureCreate {
+export type EmailSignatureCreate = {
   name: string
   content_html: string
   is_default?: boolean
@@ -671,7 +671,7 @@ export interface EmailSignatureCreate {
 /**
  * Email signature update request
  */
-export interface EmailSignatureUpdate {
+export type EmailSignatureUpdate = {
   name?: string
   content_html?: string
   is_default?: boolean
@@ -697,7 +697,7 @@ export type EmailStatus =
 /**
  * A follow-up step in a campaign email sequence.
  */
-export interface CampaignFollowUp {
+export type CampaignFollowUp = {
   id: number
   campaign_id: number
   template_id: number
@@ -711,7 +711,7 @@ export interface CampaignFollowUp {
 /**
  * A/B stats for one variant.
  */
-export interface CampaignVariantStats {
+export type CampaignVariantStats = {
   variant: 'A' | 'B'
   sent: number
   delivered: number
@@ -724,7 +724,7 @@ export interface CampaignVariantStats {
 /**
  * Email log interface
  */
-export interface EmailLog {
+export type EmailLog = {
   /** Unique identifier */
   id: number
   /** User ID */
@@ -778,7 +778,7 @@ export interface EmailLog {
 /**
  * Email account creation request (custom domain)
  */
-export interface EmailAccountCreateCustomDomain {
+export type EmailAccountCreateCustomDomain = {
   email: string
   name: string
   domain: string
@@ -788,7 +788,7 @@ export interface EmailAccountCreateCustomDomain {
 /**
  * Email account creation request (Gmail OAuth)
  */
-export interface EmailAccountCreateGmail {
+export type EmailAccountCreateGmail = {
   email: string
   name: string
   oauth_code: string
@@ -798,7 +798,7 @@ export interface EmailAccountCreateGmail {
 /**
  * Email template creation request
  */
-export interface EmailTemplateCreate {
+export type EmailTemplateCreate = {
   name: string
   subject: string
   body_html: string
@@ -810,7 +810,7 @@ export interface EmailTemplateCreate {
 /**
  * Email template update request
  */
-export interface EmailTemplateUpdate {
+export type EmailTemplateUpdate = {
   name?: string
   subject?: string
   body_html?: string
@@ -823,7 +823,7 @@ export interface EmailTemplateUpdate {
 /**
  * Send email request
  */
-export interface SendEmailRequest {
+export type SendEmailRequest = {
   email_account_id: number
   recipient_email: string
   recipient_name?: string
@@ -837,7 +837,7 @@ export interface SendEmailRequest {
 /**
  * Send campaign email request
  */
-export interface SendCampaignEmailRequest {
+export type SendCampaignEmailRequest = {
   email_account_id: number
   campaign_id: string
   template_id: number
@@ -848,7 +848,7 @@ export interface SendCampaignEmailRequest {
 /**
  * Email stats response
  */
-export interface EmailStats {
+export type EmailStats = {
   total_sent: number
   total_delivered: number
   total_opened: number
@@ -863,7 +863,7 @@ export interface EmailStats {
 /**
  * DNS verification response
  */
-export interface DNSVerificationResponse {
+export type DNSVerificationResponse = {
   spf_verified: boolean
   dkim_verified: boolean
   is_verified: boolean

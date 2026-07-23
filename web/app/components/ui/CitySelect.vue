@@ -64,10 +64,10 @@ interface Commune {
   nom: string
 }
 
-const items: Ref<string[]> = ref<string[]>([])
-const open: Ref<boolean> = ref<boolean>(false)
-const highlighted: Ref<number> = ref<number>(-1)
-const rootEl: Ref<HTMLElement | null> = ref<HTMLElement | null>(null)
+const items: Ref<string[]> = ref([])
+const open: Ref<boolean> = ref(false)
+const highlighted: Ref<number> = ref(-1)
+const rootEl: Ref<HTMLElement | null> = ref(null)
 let debounceId: ReturnType<typeof setTimeout> | null = null
 let justSelected = false
 

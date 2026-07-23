@@ -293,7 +293,7 @@ function defaultForm(): SearchFormState {
 }
 
 /** The editable form. */
-const form: Ref<SearchFormState> = ref<SearchFormState>(defaultForm())
+const form: Ref<SearchFormState> = ref(defaultForm())
 
 /** Load the persisted form (client only). */
 function loadForm(): void {

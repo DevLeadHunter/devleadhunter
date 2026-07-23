@@ -176,9 +176,9 @@ const emit = defineEmits<{
 const store = useCoverageStore()
 const drawerStack = useDrawerStackStore()
 
-const isLoading: Ref<boolean> = ref<boolean>(false)
-const rows: Ref<CoverageProspectRow[]> = ref<CoverageProspectRow[]>([])
-const total: Ref<number> = ref<number>(0)
+const isLoading: Ref<boolean> = ref(false)
+const rows: Ref<CoverageProspectRow[]> = ref([])
+const total: Ref<number> = ref(0)
 
 /**
  * Load the zone's prospects (same scope + trade filter as the map).

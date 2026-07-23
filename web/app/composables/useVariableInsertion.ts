@@ -10,17 +10,17 @@
 import type { Ref } from 'vue'
 import type { EmailVariable } from '~/utils/emailVariables'
 import { nextTick, ref } from 'vue'
-import { EMAIL_VARIABLES } from '~/utils/emailVariables'
+import { EmailVariables } from '~/utils/emailVariables'
 import { getCaretCoordinates } from '~/utils/textareaCaret'
 
 /** Viewport position (px) where the autocomplete dropdown is anchored. */
-export interface AutocompletePosition {
+export type AutocompletePosition = {
   top: number
   left: number
 }
 
 /** Reactive state + handlers returned by {@link useVariableInsertion}. */
-export interface VariableInsertion {
+export type VariableInsertion = {
   /** Whether the autocomplete dropdown is visible. */
   open: Ref<boolean>
   /** Variables matching the current `{query`. */
@@ -56,10 +56,10 @@ export function useVariableInsertion(
   getValue: () => string,
   setValue: (value: string) => void,
 ): VariableInsertion {
-  const open: Ref<boolean> = ref<boolean>(false)
-  const items: Ref<EmailVariable[]> = ref<EmailVariable[]>([])
-  const activeIndex: Ref<number> = ref<number>(0)
-  const position: Ref<AutocompletePosition> = ref<AutocompletePosition>({ top: 0, left: 0 })
+  const open: Ref<boolean> = ref(false)
+  const items: Ref<EmailVariable[]> = ref([])
+  const activeIndex: Ref<number> = ref(0)
+  const position: Ref<AutocompletePosition> = ref({ top: 0, left: 0 })
 
   /** Start index of the `{query` currently being completed (-1 when none). */
   let queryStart: number = -1
@@ -131,11 +131,11 @@ export function useVariableInsertion(
     const query: string = match[1].toLowerCase()
     queryStart = caret - match[0].length
     items.value = query
-      ? EMAIL_VARIABLES.filter(
+      ? EmailVariables.catalog.filter(
           (variable: EmailVariable): boolean =>
             variable.key.toLowerCase().includes(query) || variable.label.toLowerCase().includes(query),
         )
-      : [...EMAIL_VARIABLES]
+      : [...EmailVariables.catalog]
 
     if (items.value.length === 0) {
       close()

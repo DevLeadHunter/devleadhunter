@@ -2,7 +2,7 @@
 from datetime import datetime
 from typing import Optional
 
-from pydantic import BaseModel, EmailStr, Field
+from pydantic import BaseModel, ConfigDict, EmailStr, Field
 
 
 class DemoSiteTheme(BaseModel):
@@ -115,7 +115,7 @@ class DemoSiteResponse(BaseModel):
     video_page_url: Optional[str] = None
     video_thumbnail_url: Optional[str] = None
 
-    model_config = {"from_attributes": True}
+    model_config = ConfigDict(from_attributes=True)
 
 
 class DemoSitePublicResponse(BaseModel):
@@ -137,7 +137,7 @@ class DemoSitePublicResponse(BaseModel):
     video_url: Optional[str] = None
     video_thumbnail_url: Optional[str] = None
 
-    model_config = {"from_attributes": True}
+    model_config = ConfigDict(from_attributes=True)
 
 
 class DemoSiteListResponse(BaseModel):

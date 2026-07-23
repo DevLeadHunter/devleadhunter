@@ -208,16 +208,16 @@ const emit = defineEmits<{
 
 const toast = useToast()
 
-const businessSearchRef: Ref<BusinessSearchInputExpose | null> = ref<BusinessSearchInputExpose | null>(null)
-const isEnriching: Ref<boolean> = ref<boolean>(false)
-const isCreatingProspect: Ref<boolean> = ref<boolean>(false)
-const enrichError: Ref<string | null> = ref<string | null>(null)
-const addForm: Ref<AddProspectPrefillForm> = ref<AddProspectPrefillForm>({
+const businessSearchRef: Ref<BusinessSearchInputExpose | null> = ref(null)
+const isEnriching: Ref<boolean> = ref(false)
+const isCreatingProspect: Ref<boolean> = ref(false)
+const enrichError: Ref<string | null> = ref(null)
+const addForm: Ref<AddProspectPrefillForm> = ref({
   business_name: '',
   google_maps_url: '',
   city: '',
 })
-const prospectDraft: Ref<ProspectCreatePayload> = ref<ProspectCreatePayload>(createEmptyProspectDraft())
+const prospectDraft: Ref<ProspectCreatePayload> = ref(createEmptyProspectDraft())
 
 /** Whether the Google prefill can run (name or Maps link present). */
 const canEnrichProspect: ComputedRef<boolean> = computed((): boolean => {

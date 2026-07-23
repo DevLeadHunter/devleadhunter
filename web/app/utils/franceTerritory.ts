@@ -23,7 +23,7 @@ export const FRANCE_REGIONS: Readonly<Record<string, string>> = {
 }
 
 /** A major French city suggested as a prospection target. */
-export interface FranceMajorCity {
+export type FranceMajorCity = {
   /** Display name. */
   name: string
   /** Department code (« 69 », « 2A »…). */

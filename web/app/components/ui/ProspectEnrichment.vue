@@ -237,7 +237,7 @@ const props: UiProspectEnrichmentProps = defineProps({
 
 const toast = useToast()
 
-const record: Ref<ProspectEnrichment | null> = ref<ProspectEnrichment | null>(null)
+const record: Ref<ProspectEnrichment | null> = ref(null)
 const isLoading: Ref<boolean> = ref(false)
 const isRunning: Ref<boolean> = ref(false)
 const isSaving: Ref<boolean> = ref(false)
@@ -257,7 +257,7 @@ interface EnrichmentForm {
   contact_last_name: string
 }
 
-const form: Ref<EnrichmentForm> = ref<EnrichmentForm>({
+const form: Ref<EnrichmentForm> = ref({
   rating: null,
   reviews_count: null,
   description: '',

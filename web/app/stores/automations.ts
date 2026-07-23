@@ -21,13 +21,13 @@ const ACTIVE_STATUSES: ReadonlyArray<string> = ['running', 'awaiting_review']
 
 export const useAutomationsStore = defineStore('automations', () => {
   /** All automatisations of the current user (summary view). */
-  const automations: Ref<Automation[]> = ref<Automation[]>([])
+  const automations: Ref<Automation[]> = ref([])
   /** The currently opened automatisation (detail / validation). */
-  const current: Ref<AutomationDetail | null> = ref<AutomationDetail | null>(null)
+  const current: Ref<AutomationDetail | null> = ref(null)
   /** Whether the list is loading. */
-  const isLoading: Ref<boolean> = ref<boolean>(false)
+  const isLoading: Ref<boolean> = ref(false)
   /** Last error message, if any. */
-  const error: Ref<string | null> = ref<string | null>(null)
+  const error: Ref<string | null> = ref(null)
 
   /** Total number of automatisations. */
   const automationsCount: ComputedRef<number> = computed((): number => automations.value.length)

@@ -122,25 +122,25 @@ const emit = defineEmits<{
 const toast = useToast()
 
 /** Available demo-site templates. */
-const templates: Ref<DemoSiteTemplate[]> = ref<DemoSiteTemplate[]>([])
+const templates: Ref<DemoSiteTemplate[]> = ref([])
 
 /** Selected template id. */
-const selectedTemplateId: Ref<string> = ref<string>('')
+const selectedTemplateId: Ref<string> = ref('')
 
 /** Whether to send a CMS invite to each client immediately. */
-const inviteCms: Ref<boolean> = ref<boolean>(false)
+const inviteCms: Ref<boolean> = ref(false)
 
 /** Whether templates are loading. */
-const loading: Ref<boolean> = ref<boolean>(false)
+const loading: Ref<boolean> = ref(false)
 
 /** Whether a generation is in flight. */
-const submitting: Ref<boolean> = ref<boolean>(false)
+const submitting: Ref<boolean> = ref(false)
 
 /** Inline error message. */
-const error: Ref<string | null> = ref<string | null>(null)
+const error: Ref<string | null> = ref(null)
 
 /** Result of the last generation (null while the form is shown). */
-const result: Ref<BulkGenerateResult | null> = ref<BulkGenerateResult | null>(null)
+const result: Ref<BulkGenerateResult | null> = ref(null)
 
 /**
  * Load the demo-site templates and pre-select the first one.

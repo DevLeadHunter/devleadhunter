@@ -13,7 +13,7 @@ import type { ScrapingJobProgressState } from '~/composables/useScrapingJobStrea
 import type { Prospect } from '~/types'
 
 /** A scraping job as returned by the API. */
-export interface ScrapingJob {
+export type ScrapingJob = {
   id: string
   user_id: number
   status: 'pending' | 'running' | 'completed' | 'failed' | 'cancelled'
@@ -34,7 +34,7 @@ export interface ScrapingJob {
 }
 
 /** Parameters for starting a search. */
-export interface ProspectSearchParams {
+export type ProspectSearchParams = {
   category: string
   city: string
   maxResults: number
@@ -49,17 +49,17 @@ export const useProspectSearchStore = defineStore('prospectSearch', () => {
   const stream = useScrapingJobStream()
 
   /** The job currently displayed (running or last finished). */
-  const currentJob: Ref<ScrapingJob | null> = ref<ScrapingJob | null>(null)
+  const currentJob: Ref<ScrapingJob | null> = ref(null)
   /** The user's recent jobs. */
-  const recentJobs: Ref<ScrapingJob[]> = ref<ScrapingJob[]>([])
+  const recentJobs: Ref<ScrapingJob[]> = ref([])
   /** Whether a job is being started. */
-  const isStarting: Ref<boolean> = ref<boolean>(false)
+  const isStarting: Ref<boolean> = ref(false)
   /** Whether a cancellation request is in flight (until the job stops). */
-  const isCancelling: Ref<boolean> = ref<boolean>(false)
+  const isCancelling: Ref<boolean> = ref(false)
   /** Whether a manual refresh is in flight. */
-  const isRefreshing: Ref<boolean> = ref<boolean>(false)
+  const isRefreshing: Ref<boolean> = ref(false)
   /** Bumped each time a job completes — watch it to react (e.g. refresh a list). */
-  const completedSignal: Ref<number> = ref<number>(0)
+  const completedSignal: Ref<number> = ref(0)
 
   let pollInterval: ReturnType<typeof setInterval> | null = null
 

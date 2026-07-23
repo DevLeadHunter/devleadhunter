@@ -3,7 +3,7 @@ Pydantic schemas for email sending.
 """
 from datetime import datetime
 from typing import Any, Optional, List, Dict
-from pydantic import BaseModel, EmailStr, Field, field_validator
+from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
 
 from enums.email_status import EmailStatus
 
@@ -52,6 +52,9 @@ class SendCampaignEmailResponse(BaseModel):
 
 class EmailLogResponse(BaseModel):
     """Schema for email log response."""
+
+    model_config = ConfigDict(from_attributes=True)
+
     id: int
     user_id: int
     email_account_id: Optional[int] = None
@@ -87,9 +90,6 @@ class EmailLogResponse(BaseModel):
     def _coerce_id_to_str(cls, value: Any) -> Any:
         """DB stores these FK ids as integers; the API exposes them as strings."""
         return str(value) if value is not None else None
-
-    class Config:
-        from_attributes = True
 
 
 class EmailLogListResponse(BaseModel):

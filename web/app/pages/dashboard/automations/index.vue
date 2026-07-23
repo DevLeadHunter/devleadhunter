@@ -108,7 +108,7 @@ definePageMeta({
 const store = useAutomationsStore()
 
 /** Polling handle for live progress. */
-const pollHandle: Ref<ReturnType<typeof setInterval> | null> = ref<ReturnType<typeof setInterval> | null>(null)
+const pollHandle: Ref<ReturnType<typeof setInterval> | null> = ref(null)
 
 /** Link to the first automatisation awaiting review. */
 const firstAwaitingReviewLink: ComputedRef<string> = computed((): string => {

@@ -1,11 +1,11 @@
 /** One day of Gmail Postmaster domain reputation. */
-export interface ReputationTimelineDay {
+export type ReputationTimelineDay = {
   date: string
   /** Postmaster value: HIGH | MEDIUM | LOW | BAD (null = no data that day). */
   reputation: string | null
 }
 
 /** Props of the reputation timeline (one colored square per day). */
-export interface EmailHealthReputationTimelineProps {
+export type EmailHealthReputationTimelineProps = {
   days: ReputationTimelineDay[]
 }

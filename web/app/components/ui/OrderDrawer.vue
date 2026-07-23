@@ -275,7 +275,7 @@ interface EditForm {
   notes: string
 }
 
-const editForm: Ref<EditForm> = ref<EditForm>({
+const editForm: Ref<EditForm> = ref({
   amount_euros: 0,
   business_name: '',
   customer_email: '',

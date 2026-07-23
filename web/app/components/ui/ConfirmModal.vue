@@ -54,7 +54,7 @@ const emit = defineEmits<{
 }>()
 
 /** Whether the modal is visible. */
-const isOpen: Ref<boolean> = ref<boolean>(false)
+const isOpen: Ref<boolean> = ref(false)
 
 /**
  * Open the modal.

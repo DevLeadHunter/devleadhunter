@@ -4,7 +4,7 @@ export type LandingStoryActIndex = 0 | 1 | 2 | 3
 /**
  * Props for the LandingStoryVisual component.
  */
-export interface LandingStoryVisualProps {
+export type LandingStoryVisualProps = {
   /** Which act of the prospect journey this visual illustrates. */
   actIndex: LandingStoryActIndex
 }

@@ -139,15 +139,15 @@ const toast = useToast()
 const userStore = useUserStore()
 const runtimeConfig = useRuntimeConfig()
 
-const tickets: Ref<SupportTicketSummary[]> = ref<SupportTicketSummary[]>([])
-const isLoading: Ref<boolean> = ref<boolean>(false)
-const websocketRef: Ref<WebSocket | null> = ref<WebSocket | null>(null)
+const tickets: Ref<SupportTicketSummary[]> = ref([])
+const isLoading: Ref<boolean> = ref(false)
+const websocketRef: Ref<WebSocket | null> = ref(null)
 
 const isAdmin: ComputedRef<boolean> = computed((): boolean => userStore.user?.role === 'ADMIN')
 const scope: ComputedRef<'all' | 'mine'> = computed((): 'all' | 'mine' => (isAdmin.value ? 'all' : 'mine'))
 
 // Les membres voient tous leurs tickets ; les admins arrivent sur la file ouverte.
-const activeStatus: Ref<string> = ref<string>(isAdmin.value ? 'open' : 'all')
+const activeStatus: Ref<string> = ref(isAdmin.value ? 'open' : 'all')
 
 /** Tickets sorted by latest activity, filtered by the active status. */
 const filteredTickets: ComputedRef<SupportTicketSummary[]> = computed((): SupportTicketSummary[] => {

@@ -193,7 +193,7 @@ const PAD_TOP: number = 10
 const PAD_BOTTOM: number = 8
 
 /** Index of the hovered day (null = no hover). */
-const activeIndex: Ref<number | null> = ref<number | null>(null)
+const activeIndex: Ref<number | null> = ref(null)
 
 /** Y coordinate of the bars' baseline. */
 const baseline: number = H - PAD_BOTTOM

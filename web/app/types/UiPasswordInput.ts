@@ -6,7 +6,7 @@
 export type UiPasswordInputAppearance = 'app' | 'landing'
 
 /** Props for the UiPasswordInput component. */
-export interface UiPasswordInputProps {
+export type UiPasswordInputProps = {
   /** Id attribute forwarded to the native input (pairs with the label). */
   id: string
   /** Controlled value (v-model). */

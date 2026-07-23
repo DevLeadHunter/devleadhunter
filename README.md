@@ -16,13 +16,13 @@ reservations to avoid double outreach.
 .
 ├── web/         # Nuxt 4 dashboard (+ landing) — Tauri desktop shell
 ├── api/         # FastAPI backend (scraping, campaigns, Storyblok, Stripe, orgs)
-└── demo-host/   # Nuxt renderer for prospect demo sites (Vercel → demo.dibodev.fr)
-                 # pulls website templates as Nuxt layers from the DevLeadHunter org repos
+├── demo-host/   # Nuxt renderer for prospect demo sites (Vercel → demo.dibodev.fr)
+└── docs/        # Documentation produit & technique
 ```
 
 Website templates live in **separate GitHub repos** (`devleadhunter-template-<id>`),
 consumed by `demo-host` via `extends` pinned by tag — see
-[`TEMPLATES_ARCHITECTURE.md`](./TEMPLATES_ARCHITECTURE.md).
+[`docs/TEMPLATES_ARCHITECTURE.md`](./docs/TEMPLATES_ARCHITECTURE.md).
 
 ## Stack
 
@@ -54,7 +54,6 @@ npm install
 # Backend
 cd ../api
 pip install -r requirements.txt
-playwright install chromium
 ```
 
 ### Environment
@@ -68,6 +67,8 @@ NUXT_PUBLIC_API_BASE=http://localhost:8000
 `api/.env` — see `api/core/config.py` and `api/.env.example`.
 
 ## Development
+
+See [`docs/LOCAL_DEV.md`](./docs/LOCAL_DEV.md) for the full local setup (API, web, demo-host).
 
 ```bash
 # API
@@ -94,16 +95,13 @@ Desktop builds use `NUXT_DESKTOP_BUILD=1` (SSR off, static preset). The app talk
 
 CI release workflow: `.github/workflows/desktop-release.yml` (Windows + macOS, auto-updater).
 
-Required GitHub secrets (same pattern as GoupixDex):
-
-- `TAURI_UPDATER_PUBKEY`
-- `TAURI_SIGNING_PRIVATE_KEY`
-- `TAURI_SIGNING_PRIVATE_KEY_PASSWORD`
-- `NUXT_PUBLIC_API_BASE`
-
 ## Code quality
 
-Standards: [`STANDARDS_CODE_ET_ARCHITECTURE.md`](./STANDARDS_CODE_ET_ARCHITECTURE.md)
+| Module | Standards |
+| ------ | --------- |
+| Web | [`web/STANDARDS_CODE_ET_ARCHITECTURE.md`](./web/STANDARDS_CODE_ET_ARCHITECTURE.md) |
+| API | [`api/STANDARDS_CODE_ET_ARCHITECTURE.md`](./api/STANDARDS_CODE_ET_ARCHITECTURE.md) |
+| Demo host | [`demo-host/STANDARDS_CODE_ET_ARCHITECTURE.md`](./demo-host/STANDARDS_CODE_ET_ARCHITECTURE.md) |
 
 ```bash
 cd web

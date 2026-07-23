@@ -1,7 +1,7 @@
 import { api } from './api'
 
 /** A single timeline entry of demo behaviour. */
-export interface BehaviorTimelineEntry {
+export type BehaviorTimelineEntry = {
   type: string
   label: string
   timestamp: string | null
@@ -9,7 +9,7 @@ export interface BehaviorTimelineEntry {
 }
 
 /** Lead score + behaviour timeline for a prospect. */
-export interface ProspectBehavior {
+export type ProspectBehavior = {
   temperature: string
   score: number
   signals: Record<string, number | string | null>
@@ -19,18 +19,18 @@ export interface ProspectBehavior {
 }
 
 /** AI (or rule-based) behaviour summary. */
-export interface BehaviorSummary {
+export type BehaviorSummary = {
   summary: string
 }
 
 /** A behaviour-personalised follow-up draft. */
-export interface PersonalizedFollowup {
+export type PersonalizedFollowup = {
   subject: string
   body_html: string
 }
 
 /** Result of a one-off email send. */
-export interface QuickSendResult {
+export type QuickSendResult = {
   success: boolean
   email_log_id?: number
   message_id?: string

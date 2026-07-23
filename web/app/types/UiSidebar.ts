@@ -1,7 +1,7 @@
 /**
  * Props for the UiSidebar component.
  */
-export interface UiSidebarProps {
+export type UiSidebarProps = {
   /** Whether the sidebar is open (mobile off-canvas state). */
   isOpen: boolean
   /** Whether the viewport is mobile size. */
@@ -9,7 +9,7 @@ export interface UiSidebarProps {
 }
 
 /** One navigation entry of the dashboard sidebar. */
-export interface UiSidebarLink {
+export type UiSidebarLink = {
   /** Route path. */
   to: string
   /** Visible label. */
@@ -19,7 +19,7 @@ export interface UiSidebarLink {
 }
 
 /** A titled group of sidebar navigation entries. */
-export interface UiSidebarGroup {
+export type UiSidebarGroup = {
   /** Mono uppercase group heading (null for the ungrouped top section). */
   heading: string | null
   /** Links of the group. */
@@ -30,7 +30,7 @@ export interface UiSidebarGroup {
 export type DlhModuleKey = 'websites' | 'wallet-cards' | 'freelance-missions'
 
 /** One entry of the module switcher (the shell hosts three activatable modules). */
-export interface DlhModuleEntry {
+export type DlhModuleEntry = {
   /** Stable module identifier. */
   key: DlhModuleKey
   /** Visible label. */

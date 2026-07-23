@@ -51,21 +51,28 @@
 </template>
 
 <script lang="ts" setup>
+import type { Ref } from 'vue'
 import type { DemoSite } from '~/services/demoSiteService'
 import { listDemoSites } from '~/services/demoSiteService'
 
 definePageMeta({ layout: 'dashboard', middleware: 'auth' })
 
-const sites = ref<DemoSite[]>([])
-const pending = ref(true)
+const sites: Ref<DemoSite[]> = ref([])
+const pending: Ref<boolean> = ref(true)
 
 const { copy } = useCopyToClipboard()
 const { openExternalUrl } = useOpenExternalUrl()
 
+/**
+ * Open the demo URL in a new browser tab.
+ */
 async function openDemoUrl(url: string): Promise<void> {
   await openExternalUrl(url)
 }
 
+/**
+ * Copy the demo URL to the clipboard.
+ */
 async function copyDemoUrl(url: string): Promise<void> {
   await copy(url)
 }

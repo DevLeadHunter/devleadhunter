@@ -258,7 +258,7 @@ const progressBarRef: Ref<HTMLElement | null> = ref(null)
 /**
  * Tooltip position state
  */
-const tooltipPosition = ref<{ x: number; y: number } | null>(null)
+const tooltipPosition: Ref<{ x: number; y: number } | null> = ref(null)
 
 /**
  * User store instance
@@ -519,9 +519,15 @@ const chartOptions = {
       shadowBlur: 12,
       shadowColor: 'rgba(0, 0, 0, 0.3)',
       callbacks: {
+        /**
+         * Format the chart tooltip title from the hovered bar label.
+         */
         title: function (context: TooltipItem<'bar'>[]) {
           return context[0]?.label ?? ''
         },
+        /**
+         * Format the chart tooltip value as a credits count.
+         */
         label: function (context: TooltipItem<'bar'>) {
           return `${context.parsed.y} crédits utilisés`
         },
@@ -554,6 +560,9 @@ const chartOptions = {
         font: {
           size: 11,
         },
+        /**
+         * Format Y-axis tick labels for the credits chart.
+         */
         callback: function (value: string | number) {
           return value
         },

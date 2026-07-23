@@ -71,7 +71,7 @@ const faqEntries: LandingFaqEntry[] = Array.from(
 )
 
 /** Index of the currently open entry (null when all are collapsed). */
-const openIndex: Ref<number | null> = ref<number | null>(0)
+const openIndex: Ref<number | null> = ref(0)
 
 const { track } = useSiteTracking()
 

@@ -15,7 +15,7 @@ export type CampaignStatus = 'draft' | 'active' | 'completed' | 'paused' | 'canc
 /** Allowed queue item status values. */
 export type QueueItemStatus = 'pending' | 'sending' | 'sent' | 'skipped' | 'failed'
 
-export interface CampaignProspect {
+export type CampaignProspect = {
   id: number
   name: string
   email?: string | null
@@ -28,7 +28,7 @@ export interface CampaignProspect {
   ab_variant?: string | null
 }
 
-export interface CampaignResponse {
+export type CampaignResponse = {
   id: number
   user_id: number
   name: string
@@ -53,12 +53,12 @@ export interface CampaignDetailResponse extends CampaignResponse {
   follow_ups: CampaignFollowUp[]
 }
 
-export interface CampaignListResponse {
+export type CampaignListResponse = {
   campaigns: CampaignResponse[]
   total: number
 }
 
-export interface CampaignStats {
+export type CampaignStats = {
   campaign_id: number
   total_prospects: number
   total_emails_sent: number
@@ -74,7 +74,7 @@ export interface CampaignStats {
   ab_stats?: CampaignVariantStats[] | null
 }
 
-export interface CampaignCreateData {
+export type CampaignCreateData = {
   name: string
   description?: string
   status?: CampaignStatus
@@ -84,13 +84,13 @@ export interface CampaignCreateData {
   send_delay_minutes?: number
 }
 
-export interface CampaignUpdateData {
+export type CampaignUpdateData = {
   name?: string
   description?: string
   status?: CampaignStatus
 }
 
-export interface CampaignSettingsData {
+export type CampaignSettingsData = {
   template_id?: number | null
   ab_template_id_b?: number | null
   /** Explicitly turn A/B off (since null means "unchanged"). */
@@ -100,7 +100,7 @@ export interface CampaignSettingsData {
   follow_ups?: Array<{ template_id: number; delay_days: number; position: number }>
 }
 
-export interface LaunchCampaignData {
+export type LaunchCampaignData = {
   template_id?: number
   ab_template_id_b?: number
   follow_up_template_id?: number
@@ -108,7 +108,7 @@ export interface LaunchCampaignData {
   send_delay_minutes?: number
 }
 
-export interface LaunchCampaignResponse {
+export type LaunchCampaignResponse = {
   success: boolean
   enqueued: number
   /** Prospects skipped at launch because they lack an active demo site for {lien_demo}. */
@@ -117,7 +117,7 @@ export interface LaunchCampaignResponse {
 }
 
 /** A single item in the campaign send queue. */
-export interface CampaignQueueItem {
+export type CampaignQueueItem = {
   id: number
   queue_type: 'initial' | 'followup'
   status: QueueItemStatus
@@ -130,7 +130,7 @@ export interface CampaignQueueItem {
   email_log_id?: number | null
 }
 
-export interface CampaignQueueResponse {
+export type CampaignQueueResponse = {
   pending_count: number
   items: CampaignQueueItem[]
 }

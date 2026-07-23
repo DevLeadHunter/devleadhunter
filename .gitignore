@@ -1,5 +1,7 @@
-# IDE
+# IDE & AI tooling (local only)
 .idea/
+.claude/
+.codex/
 .vscode/
 *.swp
 *.swo

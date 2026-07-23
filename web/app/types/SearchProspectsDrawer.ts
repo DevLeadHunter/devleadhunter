@@ -1,5 +1,5 @@
 /** Optional values pre-filled into the search form when the drawer opens. */
-export interface SearchProspectsPrefill {
+export type SearchProspectsPrefill = {
   /** Trade to search for. */
   category?: string
   /** City to search in. */
@@ -9,7 +9,7 @@ export interface SearchProspectsPrefill {
 /**
  * Props for the UiSearchProspectsDrawer component.
  */
-export interface SearchProspectsDrawerProps {
+export type SearchProspectsDrawerProps = {
   /** Whether the drawer is open. */
   open: boolean
   /** Whether to show the "back" affordance (drawer stacked on another). */

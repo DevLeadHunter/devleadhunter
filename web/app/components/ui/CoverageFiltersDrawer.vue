@@ -194,7 +194,7 @@ const store = useCoverageStore()
 const drawerStack = useDrawerStackStore()
 
 /** Trade search query. */
-const tradeQuery: Ref<string> = ref<string>('')
+const tradeQuery: Ref<string> = ref('')
 
 /** Suggestions: available trades matching the query, not yet selected. */
 const tradeSuggestions: ComputedRef<string[]> = computed((): string[] => {

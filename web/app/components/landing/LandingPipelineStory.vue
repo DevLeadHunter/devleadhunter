@@ -109,13 +109,13 @@ const storyActs: LandingStoryAct[] = [
 ]
 
 /** Tall wrapper whose scroll range drives the narrative (4 acts ≈ 75vh each). */
-const stickyWrapperRef: Ref<HTMLElement | null> = ref<HTMLElement | null>(null)
+const stickyWrapperRef: Ref<HTMLElement | null> = ref(null)
 
 /** Index of the act currently highlighted by the scroll position. */
-const activeActIndex: Ref<number> = ref<number>(0)
+const activeActIndex: Ref<number> = ref(0)
 
 /** Scroll progress through the narrative, from 0 to 1 (drives the rail fill). */
-const storyProgress: Ref<number> = ref<number>(0)
+const storyProgress: Ref<number> = ref(0)
 
 /**
  * Compute the transition classes of a stage card from its position relative

@@ -552,19 +552,19 @@ const CRITICAL_THRESHOLDS: EmailHealthChartThreshold[] = [
   { value: 2, label: "Plafond sain d'emails rejetés (2 %)", tone: 'amber' },
 ]
 
-const period: Ref<number> = ref<number>(30)
-const isLoading: Ref<boolean> = ref<boolean>(false)
-const loadError: Ref<string | null> = ref<string | null>(null)
-const overview: Ref<EmailHealthOverview | null> = ref<EmailHealthOverview | null>(null)
-const trendDays: Ref<EmailHealthTrendDay[]> = ref<EmailHealthTrendDay[]>([])
-const providers: Ref<EmailHealthProvider[]> = ref<EmailHealthProvider[]>([])
-const incidents: Ref<EmailHealthIncident[]> = ref<EmailHealthIncident[]>([])
-const dnsDomains: Ref<EmailDnsDomain[]> = ref<EmailDnsDomain[]>([])
-const postmasterDomains: Ref<PostmasterDomain[]> = ref<PostmasterDomain[]>([])
+const period: Ref<number> = ref(30)
+const isLoading: Ref<boolean> = ref(false)
+const loadError: Ref<string | null> = ref(null)
+const overview: Ref<EmailHealthOverview | null> = ref(null)
+const trendDays: Ref<EmailHealthTrendDay[]> = ref([])
+const providers: Ref<EmailHealthProvider[]> = ref([])
+const incidents: Ref<EmailHealthIncident[]> = ref([])
+const dnsDomains: Ref<EmailDnsDomain[]> = ref([])
+const postmasterDomains: Ref<PostmasterDomain[]> = ref([])
 
-const templateScores: Ref<TemplateScoresResponse | null> = ref<TemplateScoresResponse | null>(null)
-const isScoringTemplates: Ref<boolean> = ref<boolean>(false)
-const expandedTemplateId: Ref<number | null> = ref<number | null>(null)
+const templateScores: Ref<TemplateScoresResponse | null> = ref(null)
+const isScoringTemplates: Ref<boolean> = ref(false)
+const expandedTemplateId: Ref<number | null> = ref(null)
 
 /** ISO dates of the trend series. */
 const trendLabels: ComputedRef<string[]> = computed((): string[] =>

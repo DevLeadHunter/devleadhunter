@@ -2,13 +2,13 @@ import { api } from '~/services/api'
 
 const BASE_URL = '/api/v1/demo-sites'
 
-export interface DemoSiteTheme {
+export type DemoSiteTheme = {
   primary: string
   secondary: string
   accent: string
 }
 
-export interface DemoSiteTemplate {
+export type DemoSiteTemplate = {
   id: string
   name: string
   description: string
@@ -17,7 +17,7 @@ export interface DemoSiteTemplate {
   category?: string
 }
 
-export interface DemoSiteCreatePayload {
+export type DemoSiteCreatePayload = {
   business_name: string
   template_id: string
   email: string
@@ -29,7 +29,7 @@ export interface DemoSiteCreatePayload {
   prospect_id?: number
 }
 
-export interface DemoSitePreviewPayload {
+export type DemoSitePreviewPayload = {
   business_name: string
   template_id: string
   phone?: string
@@ -39,12 +39,12 @@ export interface DemoSitePreviewPayload {
   theme?: DemoSiteTheme
 }
 
-export interface DemoSitePreviewResult {
+export type DemoSitePreviewResult = {
   template_id: string
   content_json: Record<string, unknown>
 }
 
-export interface DemoSiteUpdatePayload {
+export type DemoSiteUpdatePayload = {
   business_name?: string
   template_id?: string
   email?: string
@@ -54,7 +54,7 @@ export interface DemoSiteUpdatePayload {
   theme?: DemoSiteTheme
 }
 
-export interface DemoSite {
+export type DemoSite = {
   id: number
   slug: string
   template_id: string
@@ -86,7 +86,7 @@ export interface DemoSite {
 /** Lifecycle of a demo site's prospection video (null = never generated). */
 export type DemoSiteVideoStatus = 'pending' | 'generating' | 'ready' | 'failed'
 
-export interface DemoSiteListResponse {
+export type DemoSiteListResponse = {
   items: DemoSite[]
   total: number
 }
@@ -120,7 +120,7 @@ export async function createDemoSite(payload: DemoSiteCreatePayload): Promise<De
 }
 
 /** Payload to generate demo sites for several prospects with one template. */
-export interface BulkGeneratePayload {
+export type BulkGeneratePayload = {
   prospect_ids: number[]
   template_id: string
   theme?: DemoSiteTheme
@@ -128,7 +128,7 @@ export interface BulkGeneratePayload {
 }
 
 /** Per-prospect outcome of a bulk site generation. */
-export interface BulkGenerateItemResult {
+export type BulkGenerateItemResult = {
   prospect_id: number
   demo_site_id?: number
   slug?: string
@@ -137,7 +137,7 @@ export interface BulkGenerateItemResult {
 }
 
 /** Aggregated result of a bulk site generation. */
-export interface BulkGenerateResult {
+export type BulkGenerateResult = {
   results: BulkGenerateItemResult[]
   created: number
   failed: number

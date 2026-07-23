@@ -8,7 +8,7 @@
 > données** dès qu'elles tombent (PostHog + tracking Resend donnent open/clic/vente réels en quelques
 > semaines). Mettre à jour le « Journal de révisions » à chaque itération.
 >
-> **Source de vérité** : ce fichier (`BUSINESS_PLAN.md`, racine du repo). Une copie vit dans le skill
+> **Source de vérité** : ce fichier (`docs/BUSINESS_PLAN.md`). Une copie vit dans le skill
 > (`reference/business-plan.md`) — resynchroniser à chaque modif.
 
 ---

@@ -137,9 +137,9 @@ const props: UiProspectBehaviorProps = defineProps({
 
 const toast = useToast()
 
-const behavior: Ref<ProspectBehavior | null> = ref<ProspectBehavior | null>(null)
-const summary: Ref<string | null> = ref<string | null>(null)
-const followup: Ref<PersonalizedFollowup | null> = ref<PersonalizedFollowup | null>(null)
+const behavior: Ref<ProspectBehavior | null> = ref(null)
+const summary: Ref<string | null> = ref(null)
+const followup: Ref<PersonalizedFollowup | null> = ref(null)
 const isLoading: Ref<boolean> = ref(false)
 const isSummarizing: Ref<boolean> = ref(false)
 const isDrafting: Ref<boolean> = ref(false)

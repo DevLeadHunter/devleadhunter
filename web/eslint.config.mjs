@@ -61,7 +61,17 @@ export default withNuxt(
       },
     },
     rules: {
-      'jsdoc/require-jsdoc': 'off',
+      'jsdoc/require-jsdoc': [
+        'error',
+        {
+          require: {
+            FunctionDeclaration: true,
+            MethodDefinition: true,
+            ArrowFunctionExpression: false,
+            FunctionExpression: true,
+          },
+        },
+      ],
       'jsdoc/require-param': 'off',
       'jsdoc/require-returns': 'off',
       'jsdoc/require-param-description': 'off',

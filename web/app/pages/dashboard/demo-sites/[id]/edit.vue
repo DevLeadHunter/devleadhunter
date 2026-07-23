@@ -76,6 +76,7 @@
 </template>
 
 <script lang="ts" setup>
+import type { Ref } from 'vue'
 import type { DemoSite, DemoSiteTemplate, DemoSiteTheme } from '~/services/demoSiteService'
 import { getDemoSite, listDemoSiteTemplates, regenerateDemoSite, updateDemoSite } from '~/services/demoSiteService'
 
@@ -84,18 +85,26 @@ definePageMeta({ layout: 'dashboard', middleware: 'auth' })
 const route = useRoute()
 const demoSiteId = Number(route.params.id)
 
-const site = ref<DemoSite | null>(null)
-const pending = ref(true)
-const loadError = ref<string | null>(null)
-const templates = ref<DemoSiteTemplate[]>([])
-const isSaving = ref(false)
-const isRegenerating = ref(false)
-const saveMessage = ref<string | null>(null)
-const saveSuccess = ref(false)
+const site: Ref<DemoSite | null> = ref(null)
+const pending: Ref<boolean> = ref(true)
+const loadError: Ref<string | null> = ref(null)
+const templates: Ref<DemoSiteTemplate[]> = ref([])
+const isSaving: Ref<boolean> = ref(false)
+const isRegenerating: Ref<boolean> = ref(false)
+const saveMessage: Ref<string | null> = ref(null)
+const saveSuccess: Ref<boolean> = ref(false)
 
 const defaultTheme: DemoSiteTheme = { primary: '#0284c7', secondary: '#0f172a', accent: '#f59e0b' }
 
-const form = ref({
+const form: Ref<{
+  business_name: string
+  template_id: string
+  phone: string
+  email: string
+  city: string
+  description: string
+  theme: DemoSiteTheme
+}> = ref({
   business_name: '',
   template_id: 'plumber-signature',
   phone: '',
@@ -110,12 +119,18 @@ const canSave = computed(() => {
   return form.value.business_name.trim().length >= 2 && emailValid
 })
 
+/**
+ * Apply a successful site update to local state and feedback banners.
+ */
 function applySiteUpdate(updatedSite: DemoSite, message: string): void {
   site.value = updatedSite
   saveMessage.value = message
   saveSuccess.value = updatedSite.status !== 'failed'
 }
 
+/**
+ * Persist form edits and regenerate the demo site.
+ */
 async function handleSave(): Promise<void> {
   if (!site.value || !canSave.value) return
   isSaving.value = true
@@ -139,6 +154,9 @@ async function handleSave(): Promise<void> {
   }
 }
 
+/**
+ * Regenerate the demo site without changing form fields.
+ */
 async function handleRegenerate(): Promise<void> {
   if (!site.value) return
   isRegenerating.value = true

@@ -179,13 +179,23 @@
               >
                 <span class="rounded bg-[var(--app-accent-soft)] px-1.5 py-0.5 font-bold">A</span> Variante A
               </label>
-              <UiTemplateSelect v-model="settingsForm.template_id" :templates="templates" />
+              <UiTemplateSelect
+                v-model="settingsForm.template_id"
+                :templates="templates"
+                allow-create
+                @create="openCreate((id) => (settingsForm.template_id = id))"
+              />
             </div>
             <div v-if="settingsForm.enable_ab">
               <label class="mb-1.5 flex items-center gap-1.5 text-xs font-medium text-[var(--app-violet)]">
                 <span class="rounded bg-[var(--app-violet-soft)] px-1.5 py-0.5 font-bold">B</span> Variante B
               </label>
-              <UiTemplateSelect v-model="settingsForm.ab_template_id_b" :templates="templates" />
+              <UiTemplateSelect
+                v-model="settingsForm.ab_template_id_b"
+                :templates="templates"
+                allow-create
+                @create="openCreate((id) => (settingsForm.ab_template_id_b = id))"
+              />
             </div>
           </div>
 
@@ -248,7 +258,12 @@
                   />
                   <span>après l'envoi précédent</span>
                 </div>
-                <UiTemplateSelect v-model="fu.template_id" :templates="templates" />
+                <UiTemplateSelect
+                  v-model="fu.template_id"
+                  :templates="templates"
+                  allow-create
+                  @create="openCreate((id) => (fu.template_id = id))"
+                />
               </div>
               <button
                 class="absolute top-2 right-2 text-[var(--app-ink-soft)] transition-colors hover:text-[var(--app-red)]"
@@ -717,18 +732,18 @@ const QUEUE_STATUS_STYLE: Record<string, string> = {
 
 // ─── State ────────────────────────────────────────────────────────────────────
 
-const campaign: Ref<CampaignDetailResponse | null> = ref<CampaignDetailResponse | null>(null)
-const stats: Ref<CampaignStats | null> = ref<CampaignStats | null>(null)
-const queueData: Ref<CampaignQueueResponse | null> = ref<CampaignQueueResponse | null>(null)
-const allProspects: Ref<Prospect[]> = ref<Prospect[]>([])
-const templates: Ref<TemplateOption[]> = ref<TemplateOption[]>([])
-const isLoading: Ref<boolean> = ref<boolean>(false)
-const isSavingSettings: Ref<boolean> = ref<boolean>(false)
-const activeTab: Ref<string> = ref<string>('config')
-const showEditModal: Ref<boolean> = ref<boolean>(false)
-const showAddProspectsModal: Ref<boolean> = ref<boolean>(false)
-const selectedProspectIds: Ref<number[]> = ref<number[]>([])
-const prospectToRemoveId: Ref<number | null> = ref<number | null>(null)
+const campaign: Ref<CampaignDetailResponse | null> = ref(null)
+const stats: Ref<CampaignStats | null> = ref(null)
+const queueData: Ref<CampaignQueueResponse | null> = ref(null)
+const allProspects: Ref<Prospect[]> = ref([])
+const templates: Ref<TemplateOption[]> = ref([])
+const isLoading: Ref<boolean> = ref(false)
+const isSavingSettings: Ref<boolean> = ref(false)
+const activeTab: Ref<string> = ref('config')
+const showEditModal: Ref<boolean> = ref(false)
+const showAddProspectsModal: Ref<boolean> = ref(false)
+const selectedProspectIds: Ref<number[]> = ref([])
+const prospectToRemoveId: Ref<number | null> = ref(null)
 const removeProspectModal: Ref<{ open: () => void } | null> = ref(null)
 const confirmDeleteModal: Ref<{ open: () => void } | null> = ref(null)
 
@@ -853,6 +868,18 @@ async function loadAll(): Promise<void> {
     isLoading.value = false
   }
 }
+
+/**
+ * Reload only the email templates feeding the config/follow-up selects.
+ * @returns A promise resolved once the templates are reloaded.
+ */
+async function reloadTemplates(): Promise<void> {
+  const tpls = await api.get<TemplateOption[]>('/api/v1/email-templates').catch((): TemplateOption[] => [])
+  templates.value = Array.isArray(tpls) ? tpls : []
+}
+
+/** Create-a-template flow shared by the config/follow-up selects (opens the drawer, auto-selects). */
+const { openCreate } = useEmailTemplateCreator(templates, reloadTemplates)
 
 /**
  * Mirror persisted campaign config into the editable settings form.

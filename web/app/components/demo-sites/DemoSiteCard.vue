@@ -100,10 +100,16 @@ const templateLabel = computed(() => {
   return labels[props.site.template_id] ?? props.site.template_id
 })
 
+/**
+ * Format an ISO date for display in the card.
+ */
 function formatDate(value: string): string {
   return new Date(value).toLocaleDateString('fr-FR', { dateStyle: 'medium' })
 }
 
+/**
+ * Copy the demo URL and show a short confirmation state.
+ */
 async function copyDemoUrl(url: string): Promise<void> {
   emit('copy', url)
   copied.value = true
@@ -112,6 +118,9 @@ async function copyDemoUrl(url: string): Promise<void> {
   }, 2000)
 }
 
+/**
+ * Open the demo URL in a new browser tab.
+ */
 async function openDemoUrl(url: string): Promise<void> {
   emit('open', url)
 }

@@ -255,7 +255,7 @@ import { computed, ref, watch } from 'vue'
 import { createEmailTemplate, previewEmailTemplate, updateEmailTemplate } from '~/services/emailTemplatesService'
 import { getEmailSignatures } from '~/services/emailSignaturesService'
 import { useVariableInsertion } from '~/composables/useVariableInsertion'
-import { buildPreviewSampleVariables } from '~/utils/emailVariables'
+import { EmailVariables } from '~/utils/emailVariables'
 import { useDrawerStackStore } from '~/stores/drawerStack'
 import { useToast } from '~/composables/useToast'
 
@@ -307,25 +307,25 @@ const toast = useToast()
 const drawerStack = useDrawerStackStore()
 
 /** Whether a save request is in flight. */
-const isSaving: Ref<boolean> = ref<boolean>(false)
+const isSaving: Ref<boolean> = ref(false)
 
 /** Whether the preview render is loading. */
-const isPreviewLoading: Ref<boolean> = ref<boolean>(false)
+const isPreviewLoading: Ref<boolean> = ref(false)
 
 /** Rendered preview subject. */
-const previewSubject: Ref<string> = ref<string>('')
+const previewSubject: Ref<string> = ref('')
 
 /** Rendered preview HTML body. */
-const previewHtml: Ref<string> = ref<string>('')
+const previewHtml: Ref<string> = ref('')
 
 /** The user's signatures (for the selector + invite). */
-const signatures: Ref<EmailSignature[]> = ref<EmailSignature[]>([])
+const signatures: Ref<EmailSignature[]> = ref([])
 
 /** Whether the "include a signature" switch is on. */
-const includeSignature: Ref<boolean> = ref<boolean>(false)
+const includeSignature: Ref<boolean> = ref(false)
 
 /** Template form state (create/edit modes). */
-const form: Ref<EmailTemplateForm> = ref<EmailTemplateForm>({
+const form: Ref<EmailTemplateForm> = ref({
   name: '',
   subject: '',
   body_html: '',
@@ -334,10 +334,10 @@ const form: Ref<EmailTemplateForm> = ref<EmailTemplateForm>({
 })
 
 /** Subject input element (for cursor-aware variable insertion). */
-const subjectRef: Ref<HTMLInputElement | null> = ref<HTMLInputElement | null>(null)
+const subjectRef: Ref<HTMLInputElement | null> = ref(null)
 
 /** Body textarea element. */
-const bodyRef: Ref<HTMLTextAreaElement | null> = ref<HTMLTextAreaElement | null>(null)
+const bodyRef: Ref<HTMLTextAreaElement | null> = ref(null)
 
 /** Assisted insertion (chips + `{`-autocomplete) for the subject. */
 const subjectInsertion = useVariableInsertion(
@@ -358,10 +358,10 @@ const bodyInsertion = useVariableInsertion(
 )
 
 /** Field the single variable palette targets (last focused; defaults to body). */
-const activeField: Ref<'subject' | 'body'> = ref<'subject' | 'body'>('body')
+const activeField: Ref<'subject' | 'body'> = ref('body')
 
 /** Key of the entity the form was last initialised for (mode + template id). */
-const lastInitKey: Ref<string> = ref<string>('')
+const lastInitKey: Ref<string> = ref('')
 
 /** Drawer title matching the current mode. */
 const drawerTitle: ComputedRef<string> = computed((): string => {
@@ -470,7 +470,7 @@ async function loadPreview(): Promise<void> {
   try {
     const preview: { subject: string; body_html: string } = await previewEmailTemplate(
       props.template.id,
-      buildPreviewSampleVariables(),
+      EmailVariables.buildPreviewSampleVariables(),
     )
     previewSubject.value = preview.subject
     previewHtml.value = preview.body_html

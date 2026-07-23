@@ -2,7 +2,7 @@
 export type EmailHealthChartTone = 'green' | 'red' | 'amber' | 'blue' | 'ink'
 
 /** One plotted series. */
-export interface EmailHealthChartSeries {
+export type EmailHealthChartSeries = {
   key: string
   label: string
   tone: EmailHealthChartTone
@@ -12,14 +12,14 @@ export interface EmailHealthChartSeries {
 }
 
 /** A horizontal threshold guide (e.g. the 0.3 % Gmail complaint ceiling). */
-export interface EmailHealthChartThreshold {
+export type EmailHealthChartThreshold = {
   value: number
   label: string
   tone: EmailHealthChartTone
 }
 
 /** Props of the smooth multi-series trend chart. */
-export interface EmailHealthTrendChartProps {
+export type EmailHealthTrendChartProps = {
   /** ISO dates, one per point (shared by every series). */
   labels: string[]
   series: EmailHealthChartSeries[]

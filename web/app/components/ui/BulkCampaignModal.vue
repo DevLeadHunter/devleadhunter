@@ -130,25 +130,25 @@ const emit = defineEmits<{
 const toast = useToast()
 
 /** Whether to add to an existing campaign or create a new one. */
-const mode: Ref<'existing' | 'new'> = ref<'existing' | 'new'>('existing')
+const mode: Ref<'existing' | 'new'> = ref('existing')
 
 /** Campaigns available to pick from. */
-const campaigns: Ref<CampaignResponse[]> = ref<CampaignResponse[]>([])
+const campaigns: Ref<CampaignResponse[]> = ref([])
 
 /** Selected existing campaign id. */
-const selectedCampaignId: Ref<number | null> = ref<number | null>(null)
+const selectedCampaignId: Ref<number | null> = ref(null)
 
 /** New campaign name (create mode). */
-const newName: Ref<string> = ref<string>('')
+const newName: Ref<string> = ref('')
 
 /** Whether the campaign list is loading. */
-const loading: Ref<boolean> = ref<boolean>(false)
+const loading: Ref<boolean> = ref(false)
 
 /** Whether a submit is in flight. */
-const submitting: Ref<boolean> = ref<boolean>(false)
+const submitting: Ref<boolean> = ref(false)
 
 /** Inline error message. */
-const error: Ref<string | null> = ref<string | null>(null)
+const error: Ref<string | null> = ref(null)
 
 /** Whether the form can be submitted. */
 const canSubmit: ComputedRef<boolean> = computed((): boolean => {

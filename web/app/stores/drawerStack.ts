@@ -19,7 +19,7 @@ const DRAWER_STACK_STORAGE_KEY = 'dlh-drawer-stack'
  */
 export const useDrawerStackStore = defineStore('drawerStack', () => {
   // State — restored from sessionStorage so an open drawer survives a reload.
-  const stack: Ref<DrawerStackEntry[]> = ref<DrawerStackEntry[]>([])
+  const stack: Ref<DrawerStackEntry[]> = ref([])
   if (import.meta.client) {
     try {
       const raw: string | null = sessionStorage.getItem(DRAWER_STACK_STORAGE_KEY)
@@ -28,10 +28,10 @@ export const useDrawerStackStore = defineStore('drawerStack', () => {
       // État illisible → on repart d'une pile vide.
     }
   }
-  const lastProspectMutation: Ref<ProspectMutationNotice | null> = ref<ProspectMutationNotice | null>(null)
-  const prospectMutationCounter: Ref<number> = ref<number>(0)
-  const emailLogsRefreshCounter: Ref<number> = ref<number>(0)
-  const emailTemplatesRefreshCounter: Ref<number> = ref<number>(0)
+  const lastProspectMutation: Ref<ProspectMutationNotice | null> = ref(null)
+  const prospectMutationCounter: Ref<number> = ref(0)
+  const emailLogsRefreshCounter: Ref<number> = ref(0)
+  const emailTemplatesRefreshCounter: Ref<number> = ref(0)
 
   // Getters
   /** Entry currently displayed (top of the stack), or null when closed. */

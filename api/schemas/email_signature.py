@@ -3,7 +3,7 @@ Pydantic schemas for email signatures.
 """
 from datetime import datetime
 from typing import Optional
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class EmailSignatureBase(BaseModel):
@@ -27,6 +27,9 @@ class EmailSignatureUpdate(BaseModel):
 
 class EmailSignatureResponse(BaseModel):
     """Schema for an email signature response."""
+
+    model_config = ConfigDict(from_attributes=True)
+
     id: int
     user_id: int
     name: str
@@ -34,6 +37,3 @@ class EmailSignatureResponse(BaseModel):
     is_default: bool
     created_at: datetime
     updated_at: Optional[datetime] = None
-
-    class Config:
-        from_attributes = True

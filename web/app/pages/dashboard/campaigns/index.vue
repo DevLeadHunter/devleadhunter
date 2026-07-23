@@ -209,7 +209,7 @@ function openCreateDrawer(): void {
 }
 
 /** Per-campaign stats (null while loading or when the fetch failed). */
-const statsById: Ref<Record<number, CampaignStats | null>> = ref<Record<number, CampaignStats | null>>({})
+const statsById: Ref<Record<number, CampaignStats | null>> = ref({})
 
 // ─── Computed ─────────────────────────────────────────────────────────────────
 

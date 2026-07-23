@@ -8,7 +8,7 @@ import { api } from './api'
  */
 
 /** Raw counters + derived rates over one window. */
-export interface EmailHealthStats {
+export type EmailHealthStats = {
   sent: number
   delivered: number
   opened: number
@@ -25,7 +25,7 @@ export interface EmailHealthStats {
 }
 
 /** A health signal with its ok/warn/danger status. */
-export interface EmailHealthSignal {
+export type EmailHealthSignal = {
   key: string
   label: string
   value: number
@@ -35,7 +35,7 @@ export interface EmailHealthSignal {
 }
 
 /** One sending account with its stats. */
-export interface EmailHealthAccount {
+export type EmailHealthAccount = {
   id: number
   email: string
   name: string
@@ -47,7 +47,7 @@ export interface EmailHealthAccount {
 }
 
 /** The overview payload. */
-export interface EmailHealthOverview {
+export type EmailHealthOverview = {
   period_days: number
   totals: EmailHealthStats & { unsubscribed: number; unsubscribe_rate: number }
   signals: EmailHealthSignal[]
@@ -55,7 +55,7 @@ export interface EmailHealthOverview {
 }
 
 /** One daily point of the trend series. */
-export interface EmailHealthTrendDay {
+export type EmailHealthTrendDay = {
   date: string
   sent: number
   delivered: number
@@ -68,7 +68,7 @@ export interface EmailHealthTrendDay {
 }
 
 /** Deliverability per recipient mailbox provider. */
-export interface EmailHealthProvider {
+export type EmailHealthProvider = {
   provider: string
   label: string
   domains: string[]
@@ -86,7 +86,7 @@ export interface EmailHealthProvider {
 }
 
 /** One deliverability incident (bounce, complaint, suppression, failure). */
-export interface EmailHealthIncident {
+export type EmailHealthIncident = {
   id: number
   kind: 'bounced' | 'complained' | 'suppressed' | 'failed'
   recipient_email: string
@@ -97,7 +97,7 @@ export interface EmailHealthIncident {
 }
 
 /** One DNS check result (status + explanation). */
-export interface EmailDnsCheck {
+export type EmailDnsCheck = {
   status: 'ok' | 'warn' | 'danger'
   detail: string
   record?: string | null
@@ -114,7 +114,7 @@ export interface EmailDnsCheck {
 }
 
 /** DNS health for one sending domain. */
-export interface EmailDnsDomain {
+export type EmailDnsDomain = {
   domain: string
   spf: EmailDnsCheck
   dkim: EmailDnsCheck
@@ -124,7 +124,7 @@ export interface EmailDnsDomain {
 }
 
 /** One daily Gmail Postmaster stat. */
-export interface PostmasterDay {
+export type PostmasterDay = {
   date: string
   domain_reputation: string | null
   user_reported_spam_ratio: number | null
@@ -135,7 +135,7 @@ export interface PostmasterDay {
 }
 
 /** Gmail Postmaster payload for one domain. */
-export interface PostmasterDomain {
+export type PostmasterDomain = {
   configured: boolean
   domain: string
   reason?: string
@@ -145,7 +145,7 @@ export interface PostmasterDomain {
 }
 
 /** SpamAssassin verdict for a draft. */
-export interface SpamAssassinResult {
+export type SpamAssassinResult = {
   available: boolean
   error?: string
   score?: number
@@ -154,7 +154,7 @@ export interface SpamAssassinResult {
 }
 
 /** One local heuristic check on a draft. */
-export interface SpamLocalCheck {
+export type SpamLocalCheck = {
   key: string
   label: string
   status: 'ok' | 'warn' | 'danger'
@@ -162,13 +162,13 @@ export interface SpamLocalCheck {
 }
 
 /** The spam tester payload. */
-export interface SpamTestResult {
+export type SpamTestResult = {
   spamassassin: SpamAssassinResult
   checks: SpamLocalCheck[]
 }
 
 /** Anti-spam score of one email template (scored automatically, nothing sent). */
-export interface TemplateScore {
+export type TemplateScore = {
   id: number
   name: string
   subject: string
@@ -180,7 +180,7 @@ export interface TemplateScore {
 }
 
 /** Template scores grouped by role. */
-export interface TemplateScoresResponse {
+export type TemplateScoresResponse = {
   initial: TemplateScore[]
   follow_up: TemplateScore[]
 }

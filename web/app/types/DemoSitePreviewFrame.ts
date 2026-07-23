@@ -3,7 +3,7 @@
  * Either previews an existing published demo (by `slug`) or a template with
  * placeholder data (by `templateId`, before the demo is created).
  */
-export interface DemoSitePreviewFrameProps {
+export type DemoSitePreviewFrameProps = {
   /** Template id, used for the placeholder preview when no `slug` is given. */
   templateId: string
   /** Business name shown over the placeholder template (builder preview). */

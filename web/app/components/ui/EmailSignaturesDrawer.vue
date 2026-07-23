@@ -209,25 +209,25 @@ const emit = defineEmits<{
 const toast = useToast()
 
 /** Current internal view. */
-const view: Ref<SignaturesDrawerView> = ref<SignaturesDrawerView>('list')
+const view: Ref<SignaturesDrawerView> = ref('list')
 
 /** Loaded signatures. */
-const signatures: Ref<EmailSignature[]> = ref<EmailSignature[]>([])
+const signatures: Ref<EmailSignature[]> = ref([])
 
 /** Whether the list is loading. */
-const isLoading: Ref<boolean> = ref<boolean>(false)
+const isLoading: Ref<boolean> = ref(false)
 
 /** Whether a save request is in flight. */
-const isSaving: Ref<boolean> = ref<boolean>(false)
+const isSaving: Ref<boolean> = ref(false)
 
 /** Signature currently edited (null when creating a new one). */
-const editingSignature: Ref<EmailSignature | null> = ref<EmailSignature | null>(null)
+const editingSignature: Ref<EmailSignature | null> = ref(null)
 
 /** Editor form state. */
-const form: Ref<SignatureForm> = ref<SignatureForm>({ name: '', content_html: '', is_default: false })
+const form: Ref<SignatureForm> = ref({ name: '', content_html: '', is_default: false })
 
 /** Signature pending deletion. */
-const signatureToDelete: Ref<EmailSignature | null> = ref<EmailSignature | null>(null)
+const signatureToDelete: Ref<EmailSignature | null> = ref(null)
 
 /** Confirm modal handle. */
 const confirmModal: Ref<{ open: () => void; close: () => void } | null> = ref<{

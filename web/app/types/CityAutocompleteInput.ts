@@ -1,7 +1,7 @@
 /**
  * Suggestion de ville renvoyée par l'API geo.api.gouv.fr.
  */
-export interface CitySuggestion {
+export type CitySuggestion = {
   /** Code INSEE de la commune (identifiant unique). */
   code: string
   /** Nom de la commune. */
@@ -15,7 +15,7 @@ export interface CitySuggestion {
 /**
  * Props du composant CityAutocompleteInput.
  */
-export interface CityAutocompleteInputProps {
+export type CityAutocompleteInputProps = {
   /** Valeur du champ (v-model). */
   modelValue: string
   /** Placeholder de l'input. */

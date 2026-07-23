@@ -7,6 +7,10 @@
         <p class="text-muted mt-2 text-sm">Historique et statut de chaque email de prospection envoyé</p>
       </div>
       <div class="flex items-center gap-3">
+        <NuxtLink to="/dashboard/email-health" class="btn-secondary">
+          <UIcon name="i-lucide-heart-pulse" class="h-4 w-4" />
+          Santé email
+        </NuxtLink>
         <button
           :disabled="isLoading || isSyncing"
           class="btn-secondary disabled:cursor-not-allowed disabled:opacity-50"
@@ -202,7 +206,8 @@
   </div>
 </template>
 
-<script setup lang="ts">
+<script lang="ts" setup>
+import type { Ref } from 'vue'
 import { computed, onMounted, ref, watch } from 'vue'
 import type { EmailLog, EmailStats, EmailStatus } from '~/types'
 import { formatDate } from '~/utils/date'
@@ -217,25 +222,25 @@ definePageMeta({ layout: 'dashboard', middleware: ['auth'] })
 // ─── State ────────────────────────────────────────────────────────────────────
 
 const toast = useToast()
-const logs = ref<EmailLog[]>([])
-const campaigns = ref<CampaignResponse[]>([])
+const logs: Ref<EmailLog[]> = ref([])
+const campaigns: Ref<CampaignResponse[]> = ref([])
 
 // ─── Envoi manuel (drawer persistant hébergé par le layout) ──────────────────
 
 /** Persistent drawer stack (composer + email log detail live there). */
 const drawerStack = useDrawerStackStore()
 
-const isSyncing = ref<boolean>(false)
-const isLoading = ref(false)
-const error = ref<string | null>(null)
-const searchQuery = ref('')
-const filterStatus = ref('all')
-const filterCampaignId = ref('all')
-const currentPage = ref(1)
+const isSyncing: Ref<boolean> = ref(false)
+const isLoading: Ref<boolean> = ref(false)
+const error: Ref<string | null> = ref(null)
+const searchQuery: Ref<string> = ref('')
+const filterStatus: Ref<string> = ref('all')
+const filterCampaignId: Ref<string> = ref('all')
+const currentPage: Ref<number> = ref(1)
 const pageSize = 50
 
 /** Full stats object — typed strictly as EmailStats so every field is present. */
-const stats = ref<EmailStats>({
+const stats: Ref<EmailStats> = ref({
   total_sent: 0,
   total_delivered: 0,
   total_opened: 0,
@@ -409,6 +414,9 @@ function lastActivityAt(log: EmailLog): string | null {
   return new Date(Math.max(...valid)).toISOString()
 }
 
+/**
+ * Reset email log filters and pagination.
+ */
 function clearFilters(): void {
   searchQuery.value = ''
   filterStatus.value = 'all'
@@ -416,12 +424,18 @@ function clearFilters(): void {
   currentPage.value = 1
 }
 
+/**
+ * Open the email log detail drawer for a row.
+ */
 function openDrawer(log: EmailLog): void {
   drawerStack.push({ kind: 'email-log', log, campaignName: resolveCampaignName(log.campaign_id) })
 }
 
 // ─── Data loading ─────────────────────────────────────────────────────────────
 
+/**
+ * Load email logs, campaigns and aggregate stats.
+ */
 async function loadLogs(): Promise<void> {
   isLoading.value = true
   error.value = null

@@ -171,9 +171,9 @@ const store = useCoverageStore()
 const drawerStack = useDrawerStackStore()
 
 /** True when MapLibre could not start (WebGL unavailable, network down…). */
-const isMapFailed: Ref<boolean> = ref<boolean>(false)
+const isMapFailed: Ref<boolean> = ref(false)
 /** True once the overlay sources/layers exist on the current basemap style. */
-const isMapReady: Ref<boolean> = ref<boolean>(false)
+const isMapReady: Ref<boolean> = ref(false)
 
 const tip: Ref<{ show: boolean; x: number; y: number; title: string; sub: string }> = ref({
   show: false,
@@ -182,8 +182,8 @@ const tip: Ref<{ show: boolean; x: number; y: number; title: string; sub: string
   title: '',
   sub: '',
 })
-const mapWrap: Ref<HTMLElement | null> = ref<HTMLElement | null>(null)
-const mapContainer: Ref<HTMLElement | null> = ref<HTMLElement | null>(null)
+const mapWrap: Ref<HTMLElement | null> = ref(null)
+const mapContainer: Ref<HTMLElement | null> = ref(null)
 
 /** MapLibre instance — deliberately non-reactive (huge mutable object). */
 let mapInstance: MaplibreMap | null = null

@@ -1,20 +1,20 @@
 import { api } from './api'
 
 /** A single scraped review. */
-export interface EnrichmentReview {
+export type EnrichmentReview = {
   author?: string
   text?: string
   rating?: number | null
 }
 
 /** A single opening-hours row. */
-export interface EnrichmentOpeningHours {
+export type EnrichmentOpeningHours = {
   day?: string
   hours?: string
 }
 
 /** Rich enrichment data attached to a prospect. */
-export interface ProspectEnrichment {
+export type ProspectEnrichment = {
   id: number
   prospect_id: number
   status: string
@@ -42,7 +42,7 @@ export interface ProspectEnrichment {
 }
 
 /** Editable enrichment fields. */
-export interface ProspectEnrichmentUpdate {
+export type ProspectEnrichmentUpdate = {
   logo_url?: string | null
   rating?: number | null
   reviews_count?: number | null
@@ -88,14 +88,14 @@ export async function resolveProspectContact(prospectId: number): Promise<Prospe
 }
 
 /** Per-prospect outcome of a bulk enrichment run. */
-export interface BulkEnrichItemResult {
+export type BulkEnrichItemResult = {
   prospect_id: number
   status: string
   error?: string | null
 }
 
 /** Aggregated result of a bulk enrichment run. */
-export interface BulkEnrichResult {
+export type BulkEnrichResult = {
   results: BulkEnrichItemResult[]
   succeeded: number
   failed: number

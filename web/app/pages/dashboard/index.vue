@@ -327,12 +327,12 @@ const PERIOD_PRESETS: ReadonlyArray<{ days: number; label: string }> = [
 
 const drawerStack = useDrawerStackStore()
 
-const periodDays: Ref<number> = ref<number>(0)
-const stats: Ref<DashboardStats | null> = ref<DashboardStats | null>(null)
-const hotLeads: Ref<HotLead[]> = ref<HotLead[]>([])
-const trendDays: Ref<EmailHealthTrendDay[]> = ref<EmailHealthTrendDay[]>([])
-const isLoading: Ref<boolean> = ref<boolean>(false)
-const lastUpdated: Ref<string | null> = ref<string | null>(null)
+const periodDays: Ref<number> = ref(0)
+const stats: Ref<DashboardStats | null> = ref(null)
+const hotLeads: Ref<HotLead[]> = ref([])
+const trendDays: Ref<EmailHealthTrendDay[]> = ref([])
+const isLoading: Ref<boolean> = ref(false)
+const lastUpdated: Ref<string | null> = ref(null)
 
 /** Hot leads limited to the most relevant ones (the page stays breathable). */
 const displayedHotLeads: ComputedRef<HotLead[]> = computed((): HotLead[] => hotLeads.value.slice(0, 6))

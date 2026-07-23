@@ -119,13 +119,13 @@ definePageMeta({
 
 const toast = useToast()
 
-const orders: Ref<Order[]> = ref<Order[]>([])
-const stats: Ref<OrderStats | null> = ref<OrderStats | null>(null)
+const orders: Ref<Order[]> = ref([])
+const stats: Ref<OrderStats | null> = ref(null)
 const isLoading: Ref<boolean> = ref(false)
 const isCreating: Ref<boolean> = ref(false)
 
 const drawerOpen: Ref<boolean> = ref(false)
-const drawerOrder: Ref<Order | null> = ref<Order | null>(null)
+const drawerOrder: Ref<Order | null> = ref(null)
 
 const STATUS_LABELS: Record<string, string> = {
   draft: 'Brouillon',

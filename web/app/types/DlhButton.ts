@@ -10,7 +10,7 @@ export type DlhButtonType = 'button' | 'submit' | 'reset'
 /**
  * Props for the UiDlhButton component.
  */
-export interface DlhButtonProps {
+export type DlhButtonProps = {
   /** Visual variant. */
   variant?: DlhButtonVariant
   /** Button size. */

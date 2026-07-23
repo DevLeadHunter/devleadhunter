@@ -1,5 +1,5 @@
 /** Props of the daily sending-volume chart (bars + opened line). */
-export interface EmailHealthVolumeChartProps {
+export type EmailHealthVolumeChartProps = {
   /** ISO dates, one per day. */
   labels: string[]
   /** Emails sent per day (background bar). */

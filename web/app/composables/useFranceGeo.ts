@@ -9,7 +9,7 @@
  */
 
 /** Geocoding result for one city. */
-export interface CityGeo {
+export type CityGeo = {
   lng: number
   lat: number
   /** Department code (« 69 », « 2A »…). */
@@ -114,7 +114,7 @@ export function lookupCity(map: Record<string, CityGeo | null>, city: string): C
 }
 
 /** Commune resolved from a map click (reverse geocoding). */
-export interface ReverseGeocodedCommune {
+export type ReverseGeocodedCommune = {
   /** Commune display name (« Caen »). */
   name: string
   /** Department code. */

@@ -304,6 +304,7 @@
 </template>
 
 <script lang="ts" setup>
+import type { Ref } from 'vue'
 import type { DemoSite } from '~/services/demoSiteService'
 import {
   daysUntilExpiry,
@@ -329,19 +330,19 @@ const { copy, copied } = useCopyToClipboard()
 const { openExternalUrl } = useOpenExternalUrl()
 const toast = useToast()
 
-const site = ref<DemoSite | null>(null)
-const pending = ref(true)
-const loadError = ref<string | null>(null)
-const previewContent = ref<Record<string, unknown> | null>(null)
-const previewLoading = ref(false)
-const verifying = ref(false)
-const regenerating = ref(false)
-const deleting = ref(false)
-const inviting = ref(false)
-const exporting = ref(false)
-const generatingVideo = ref(false)
-const deletingVideo = ref(false)
-const deleteVideoModalRef = ref<{ open: () => void } | null>(null)
+const site: Ref<DemoSite | null> = ref(null)
+const pending: Ref<boolean> = ref(true)
+const loadError: Ref<string | null> = ref(null)
+const previewContent: Ref<Record<string, unknown> | null> = ref(null)
+const previewLoading: Ref<boolean> = ref(false)
+const verifying: Ref<boolean> = ref(false)
+const regenerating: Ref<boolean> = ref(false)
+const deleting: Ref<boolean> = ref(false)
+const inviting: Ref<boolean> = ref(false)
+const exporting: Ref<boolean> = ref(false)
+const generatingVideo: Ref<boolean> = ref(false)
+const deletingVideo: Ref<boolean> = ref(false)
+const deleteVideoModalRef: Ref<{ open: () => void } | null> = ref(null)
 let videoPollTimer: ReturnType<typeof setInterval> | null = null
 
 const templateLabel = computed(() => {
@@ -421,10 +422,16 @@ const stats = computed(() => {
   ]
 })
 
+/**
+ * Format an ISO date for display on the detail page.
+ */
 function formatDate(value: string): string {
   return new Date(value).toLocaleDateString('fr-FR', { dateStyle: 'medium' })
 }
 
+/**
+ * Load the Storyblok preview payload for the current site.
+ */
 async function loadPreview(): Promise<void> {
   if (!site.value) return
   previewLoading.value = true
@@ -446,14 +453,23 @@ async function loadPreview(): Promise<void> {
   }
 }
 
+/**
+ * Open the live demo URL in a new browser tab.
+ */
 async function openDemoUrl(url: string): Promise<void> {
   await openExternalUrl(url)
 }
 
+/**
+ * Copy the live demo URL to the clipboard.
+ */
 async function copyDemoUrl(url: string): Promise<void> {
   await copy(url)
 }
 
+/**
+ * Verify that the deployed demo site is reachable.
+ */
 async function handleVerify(): Promise<void> {
   verifying.value = true
   try {
@@ -463,6 +479,9 @@ async function handleVerify(): Promise<void> {
   }
 }
 
+/**
+ * Regenerate the demo site content and refresh the preview.
+ */
 async function handleRegenerate(): Promise<void> {
   regenerating.value = true
   try {
@@ -473,6 +492,9 @@ async function handleRegenerate(): Promise<void> {
   }
 }
 
+/**
+ * Invite the client to the Storyblok CMS workspace.
+ */
 async function handleInvite(): Promise<void> {
   inviting.value = true
   try {
@@ -484,6 +506,9 @@ async function handleInvite(): Promise<void> {
   }
 }
 
+/**
+ * Export the demo site source code as a downloadable archive.
+ */
 async function handleExport(): Promise<void> {
   if (!site.value) return
   exporting.value = true
@@ -496,6 +521,9 @@ async function handleExport(): Promise<void> {
   }
 }
 
+/**
+ * Delete the demo site after user confirmation.
+ */
 async function handleDelete(): Promise<void> {
   if (!site.value || !confirm(`Supprimer le site "${site.value.business_name}" ?`)) return
   deleting.value = true

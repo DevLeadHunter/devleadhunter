@@ -4,7 +4,7 @@
  */
 
 /** A single step of a wizard. */
-export interface UiWizardStep {
+export type UiWizardStep = {
   /** 1-based step number — also the v-model value of the stepper. */
   id: number
   /** Visible label. */
@@ -14,7 +14,7 @@ export interface UiWizardStep {
 }
 
 /** Props of the `UiWizardStepper` component. */
-export interface UiWizardStepperProps {
+export type UiWizardStepperProps = {
   /** Steps to render, left to right. */
   steps: UiWizardStep[]
   /** Current step id (v-model). */

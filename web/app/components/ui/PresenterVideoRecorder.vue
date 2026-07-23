@@ -57,14 +57,6 @@
         </li>
       </ol>
 
-      <!-- Le texte à lire, pendant la prise -->
-      <UiTeleprompter
-        v-if="isFilming"
-        :text="currentSegment.text"
-        :is-running="phase === 'recording'"
-        :restart-token="restartToken"
-      />
-
       <!-- L'image -->
       <div class="relative overflow-hidden rounded-xl border border-[var(--app-line)] bg-black">
         <!-- La prévisualisation reste montée (v-show) : remonter l'élément
@@ -96,6 +88,17 @@
         >
           <div class="aspect-square h-full rounded-full border-2 border-dashed border-white/70" />
         </div>
+
+        <!-- Le texte à lire, en surimpression sur l'image : on garde les yeux
+             sur l'objectif au lieu de les baisser sur un bloc sous la vidéo.
+             Tout le texte reste affiché, seul le repère avance. -->
+        <UiTeleprompter
+          v-if="isFilming"
+          variant="overlay"
+          :text="currentSegment.text"
+          :is-running="phase === 'recording'"
+          :restart-token="restartToken"
+        />
 
         <!-- Décompte -->
         <div
@@ -249,7 +252,7 @@
           <div class="flex items-center gap-3">
             <button type="button" class="app-btn-secondary" @click="cancelRecording">Annuler</button>
             <button type="button" class="app-btn-primary" @click="startTake(false)">
-              <UIcon name="i-lucide-circle-dot" class="h-3.5 w-3.5" />
+              <span class="h-2.5 w-2.5 animate-pulse rounded-full bg-[#e5484d]" aria-hidden="true" />
               {{ keptTakes[currentIndex] ? 'Refaire cette prise' : `Filmer « ${currentSegment.title} »` }}
             </button>
           </div>
@@ -261,11 +264,17 @@
 
       <!-- ── Pendant la prise ────────────────────────────────────────────── -->
       <div v-else-if="isFilming" class="flex flex-col items-center gap-3">
-        <button type="button" class="app-btn-primary px-6" :disabled="phase === 'countdown'" @click="finishTake">
-          <UIcon name="i-lucide-square" class="h-3.5 w-3.5" />
-          J'ai terminé
-        </button>
-        <p class="text-muted text-xs">Prenez votre temps : cette prise seule est à refaire si elle ne va pas.</p>
+        <div class="flex flex-wrap items-center justify-center gap-3">
+          <button type="button" class="app-btn-secondary" :disabled="phase === 'countdown'" @click="restartTake">
+            <UIcon name="i-lucide-rotate-ccw" class="h-3.5 w-3.5" />
+            Réessayer
+          </button>
+          <button type="button" class="app-btn-primary px-6" :disabled="phase === 'countdown'" @click="finishTake">
+            J'ai terminé
+            <UIcon name="i-lucide-arrow-right" class="h-3.5 w-3.5" />
+          </button>
+        </div>
+        <p class="text-muted text-xs">Ratée ? « Réessayer » relance la prise depuis le début.</p>
       </div>
 
       <!-- ── Relecture de la prise ───────────────────────────────────────── -->
@@ -277,8 +286,8 @@
             Refaire
           </button>
           <button type="button" class="app-btn-primary" :disabled="Boolean(reviewWarning)" @click="keepCurrentTake">
-            <UIcon name="i-lucide-check" class="h-3.5 w-3.5" />
             {{ currentIndex === script.segments.value.length - 1 ? 'Garder et terminer' : 'Garder et continuer' }}
+            <UIcon name="i-lucide-arrow-right" class="h-3.5 w-3.5" />
           </button>
         </div>
       </template>
@@ -316,7 +325,7 @@
               @click="sendTakes"
             >
               <UIcon
-                :name="isSending ? 'i-lucide-loader-circle' : 'i-lucide-upload'"
+                :name="isSending ? 'i-lucide-loader-circle' : 'i-lucide-check'"
                 :class="['h-3.5 w-3.5', isSending && 'animate-spin']"
               />
               {{ isSending ? 'Assemblage en cours…' : 'Enregistrer ma vidéo' }}
@@ -389,17 +398,17 @@ const { user } = useAuth()
 const recorder = useWebcamRecorder()
 const script = useProspectionScript(user.value?.name ?? '')
 
-const phase: Ref<RecorderPhase> = ref<RecorderPhase>('permission')
-const currentIndex: Ref<number> = ref<number>(0)
-const keptTakes: Ref<Array<KeptTake | null>> = ref<Array<KeptTake | null>>([null, null, null])
-const pendingTake: Ref<RecordedTake | null> = ref<RecordedTake | null>(null)
-const previewRef: Ref<HTMLVideoElement | null> = ref<HTMLVideoElement | null>(null)
-const countdown: Ref<number> = ref<number>(COUNTDOWN_FROM)
-const isWarmUp: Ref<boolean> = ref<boolean>(false)
-const isSending: Ref<boolean> = ref<boolean>(false)
-const showFramingGuide: Ref<boolean> = ref<boolean>(false)
-const hasHeardSound: Ref<boolean> = ref<boolean>(false)
-const restartToken: Ref<number> = ref<number>(0)
+const phase: Ref<RecorderPhase> = ref('permission')
+const currentIndex: Ref<number> = ref(0)
+const keptTakes: Ref<Array<KeptTake | null>> = ref([null, null, null])
+const pendingTake: Ref<RecordedTake | null> = ref(null)
+const previewRef: Ref<HTMLVideoElement | null> = ref(null)
+const countdown: Ref<number> = ref(COUNTDOWN_FROM)
+const isWarmUp: Ref<boolean> = ref(false)
+const isSending: Ref<boolean> = ref(false)
+const showFramingGuide: Ref<boolean> = ref(false)
+const hasHeardSound: Ref<boolean> = ref(false)
+const restartToken: Ref<number> = ref(0)
 
 /** Pending timers, cleared whenever the flow is interrupted. */
 let countdownHandle: ReturnType<typeof setInterval> | null = null
@@ -562,6 +571,24 @@ async function finishTake(): Promise<void> {
   }
   pendingTake.value = take
   phase.value = 'review'
+}
+
+/**
+ * Scrap the take in progress and film it again from the countdown.
+ *
+ * The point of the flow is that a fumble costs one take, not the session: this
+ * is the mid-take escape hatch, so a missed word doesn't force a stop → review
+ * → « Refaire » detour. The take is discarded (never sent to review) and the
+ * same segment restarts, warm-up or not, exactly as it was.
+ */
+async function restartTake(): Promise<void> {
+  const wasWarmUp: boolean = isWarmUp.value
+  clearTimers()
+  if (recorder.isRecording.value) {
+    const take: RecordedTake | null = await recorder.stopRecording()
+    if (take) recorder.releaseTake(take)
+  }
+  startTake(wasWarmUp)
 }
 
 /** Keep the reviewed take and go to the next one (or to the recap). */

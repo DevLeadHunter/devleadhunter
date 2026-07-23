@@ -1,7 +1,7 @@
 import { api } from './api'
 
 /** A commercial order (sale of a product to a client). */
-export interface Order {
+export type Order = {
   id: number
   product_type: string
   status: string
@@ -23,13 +23,13 @@ export interface Order {
 }
 
 /** Paginated list of orders. */
-export interface OrderListResponse {
+export type OrderListResponse = {
   items: Order[]
   total: number
 }
 
 /** Payload to create a manual order. */
-export interface OrderCreatePayload {
+export type OrderCreatePayload = {
   product_type?: string
   prospect_id?: number | null
   demo_site_id?: number | null
@@ -45,13 +45,13 @@ export interface OrderCreatePayload {
 export type OrderUpdatePayload = Partial<OrderCreatePayload> & { status?: string }
 
 /** Rendered payment-link email preview. */
-export interface OrderPaymentEmailPreview {
+export type OrderPaymentEmailPreview = {
   subject: string
   body_html: string
 }
 
 /** Commercial KPIs for the current user. */
-export interface OrderStats {
+export type OrderStats = {
   total_orders: number
   won_count: number
   pending_count: number

@@ -1,7 +1,7 @@
 /**
  * Props for the UiConfirmModal component.
  */
-export interface UiConfirmModalProps {
+export type UiConfirmModalProps = {
   /** Modal title. */
   title?: string
   /** Confirmation message. */

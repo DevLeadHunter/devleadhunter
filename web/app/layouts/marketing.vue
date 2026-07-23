@@ -284,10 +284,10 @@ const footerProductLinks: LandingSectionLink[] = [
 ]
 
 /** Whether the mobile full-screen menu is open. */
-const isMobileMenuOpen: Ref<boolean> = ref<boolean>(false)
+const isMobileMenuOpen: Ref<boolean> = ref(false)
 
 /** Whether the page is scrolled past the top (drives the header backdrop). */
-const hasScrolled: Ref<boolean> = ref<boolean>(false)
+const hasScrolled: Ref<boolean> = ref(false)
 
 /** Current year for the copyright line. */
 const currentYear: ComputedRef<number> = computed((): number => new Date().getFullYear())

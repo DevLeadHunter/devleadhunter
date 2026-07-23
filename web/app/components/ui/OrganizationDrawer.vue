@@ -196,11 +196,11 @@ const emit = defineEmits<{
 const toast = useToast()
 const userStore = useUserStore()
 
-const organization: Ref<Organization | null> = ref<Organization | null>(null)
-const isLoading: Ref<boolean> = ref<boolean>(true)
-const isSubmitting: Ref<boolean> = ref<boolean>(false)
-const createName: Ref<string> = ref<string>('')
-const inviteEmail: Ref<string> = ref<string>('')
+const organization: Ref<Organization | null> = ref(null)
+const isLoading: Ref<boolean> = ref(true)
+const isSubmitting: Ref<boolean> = ref(false)
+const createName: Ref<string> = ref('')
+const inviteEmail: Ref<string> = ref('')
 
 /** Current user id (0 while the store hydrates). */
 const currentUserId: ComputedRef<number> = computed((): number => userStore.user?.id ?? 0)

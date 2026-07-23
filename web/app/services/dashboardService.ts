@@ -1,7 +1,7 @@
 import { api } from './api'
 
 /** Aggregated KPIs for the dashboard home page. */
-export interface DashboardStats {
+export type DashboardStats = {
   prospects_total: number
   demo_sites_active: number
   campaigns_active: number
@@ -18,7 +18,7 @@ export interface DashboardStats {
 }
 
 /** A hot/warm lead surfaced on the dashboard. */
-export interface HotLead {
+export type HotLead = {
   prospect_id: number
   name: string
   city: string | null
@@ -29,12 +29,12 @@ export interface HotLead {
 }
 
 /** Hot leads list response. */
-export interface HotLeadsResponse {
+export type HotLeadsResponse = {
   items: HotLead[]
 }
 
 /** Email activity counters for a single day. */
-export interface ActivityPoint {
+export type ActivityPoint = {
   date: string
   sent: number
   opened: number
@@ -42,7 +42,7 @@ export interface ActivityPoint {
 }
 
 /** Daily email activity series response. */
-export interface DashboardActivityResponse {
+export type DashboardActivityResponse = {
   days: ActivityPoint[]
 }
 
@@ -73,19 +73,19 @@ export async function getDashboardActivity(days: number = 14): Promise<Dashboard
 }
 
 /** Prospect count for one city. */
-export interface CoverageCity {
+export type CoverageCity = {
   city: string
   count: number
 }
 
 /** An organization member selectable as a coverage scope. */
-export interface CoverageMember {
+export type CoverageMember = {
   user_id: number
   name: string
 }
 
 /** Prospection coverage aggregated by city. */
-export interface CoverageResponse {
+export type CoverageResponse = {
   scope: string
   cities: CoverageCity[]
   total_prospects: number
@@ -113,7 +113,7 @@ export async function getCoverage(
 }
 
 /** Light prospect recap for the coverage zone drawer. */
-export interface CoverageProspectRow {
+export type CoverageProspectRow = {
   id: number
   name: string
   city: string | null
@@ -126,7 +126,7 @@ export interface CoverageProspectRow {
 }
 
 /** Prospects of a coverage zone. */
-export interface CoverageProspectsResponse {
+export type CoverageProspectsResponse = {
   items: CoverageProspectRow[]
   total: number
 }

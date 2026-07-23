@@ -233,11 +233,11 @@ const userStore = useUserStore()
 const toast = useToast()
 const router = useRouter()
 
-const isLoading: Ref<boolean> = ref<boolean>(false)
-const error: Ref<string | null> = ref<string | null>(null)
-const overview: Ref<MonitoringOverview | null> = ref<MonitoringOverview | null>(null)
-const incidents: Ref<ScraperIncident[]> = ref<ScraperIncident[]>([])
-const htmlPanel: Ref<HtmlPanelState> = ref<HtmlPanelState>({
+const isLoading: Ref<boolean> = ref(false)
+const error: Ref<string | null> = ref(null)
+const overview: Ref<MonitoringOverview | null> = ref(null)
+const incidents: Ref<ScraperIncident[]> = ref([])
+const htmlPanel: Ref<HtmlPanelState> = ref({
   open: false,
   loading: false,
   source: '',

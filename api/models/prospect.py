@@ -3,7 +3,7 @@ Prospect data models.
 """
 from typing import Optional
 from datetime import datetime
-from pydantic import BaseModel, Field, EmailStr
+from pydantic import BaseModel, ConfigDict, Field, EmailStr
 from enums.source import Source
 
 
@@ -31,7 +31,13 @@ class ProspectBase(BaseModel):
     website: Optional[str] = Field(None, description="Website URL")
     category: str = Field(..., description="Business category")
     source: Source = Field(..., description="Data source identifier")
-    confidence: int = Field(..., ge=1, le=4, example=3, description="Confidence score 1-4")
+    confidence: int = Field(
+        ...,
+        ge=1,
+        le=4,
+        description="Confidence score 1-4",
+        json_schema_extra={"example": 3},
+    )
 
 
 class ProspectCreate(ProspectBase):
@@ -102,15 +108,28 @@ class ProspectUpdate(BaseModel):
 
 
 class Prospect(ProspectBase):
-    """
-    Complete prospect model with ID.
-    
-    Attributes:
-        id: Unique prospect identifier
-        user_id: ID of the user who saved this prospect
-        created_at: Timestamp when prospect was created
-    """
-    
+    """Complete prospect model with ID and ownership metadata."""
+
+    model_config = ConfigDict(
+        from_attributes=True,
+        json_schema_extra={
+            "example": {
+                "id": 123,
+                "name": "Le Bon Restaurant",
+                "address": "123 Rue de la Paix",
+                "city": "Paris",
+                "email": "contact@bonrestaurant.fr",
+                "website": "https://www.bonrestaurant.fr",
+                "category": "restaurant",
+                "source": "google",
+                "confidence": 3,
+                "phone": "+33123456789",
+                "user_id": 1,
+                "created_at": "2024-01-15T10:30:00Z",
+            }
+        },
+    )
+
     id: int = Field(..., description="Unique prospect identifier")
     user_id: int = Field(..., description="User ID who saved this prospect")
     contacted: bool = Field(False, description="Whether this prospect has been contacted")
@@ -129,23 +148,3 @@ class Prospect(ProspectBase):
         None, description="Latest Lighthouse audit of the prospect's existing website"
     )
     lighthouse_at: Optional[datetime] = Field(None, description="When the audit was run")
-    
-    class Config:
-        """Pydantic configuration."""
-        from_attributes = True
-        json_schema_extra = {
-            "example": {
-                "id": 123,
-                "name": "Le Bon Restaurant",
-                "address": "123 Rue de la Paix",
-                "city": "Paris",
-                "email": "contact@bonrestaurant.fr",
-                "website": "https://www.bonrestaurant.fr",
-                "category": "restaurant",
-                "source": "google",
-                "confidence": 3,
-                "phone": "+33123456789",
-                "user_id": 1,
-                "created_at": "2024-01-15T10:30:00Z"
-            }
-        }

@@ -2,7 +2,7 @@
 export type EmailHealthSignalStatus = 'ok' | 'warn' | 'danger'
 
 /** Props of one big health-signal tile (value + status + sparkline). */
-export interface EmailHealthSignalTileProps {
+export type EmailHealthSignalTileProps = {
   label: string
   /** Already-formatted value (e.g. "0,12"). */
   value: string

@@ -95,10 +95,10 @@ const emit = defineEmits<{
   select: [suggestion: CitySuggestion]
 }>()
 
-const suggestions: Ref<CitySuggestion[]> = ref<CitySuggestion[]>([])
-const isSearching: Ref<boolean> = ref<boolean>(false)
-const isOpen: Ref<boolean> = ref<boolean>(false)
-const activeIndex: Ref<number> = ref<number>(-1)
+const suggestions: Ref<CitySuggestion[]> = ref([])
+const isSearching: Ref<boolean> = ref(false)
+const isOpen: Ref<boolean> = ref(false)
+const activeIndex: Ref<number> = ref(-1)
 let searchRequestId: number = 0
 let blurTimeoutId: ReturnType<typeof setTimeout> | null = null
 

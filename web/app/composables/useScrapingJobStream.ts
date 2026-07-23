@@ -2,7 +2,7 @@ import { ref, type Ref } from 'vue'
 import { useRuntimeConfig } from '#app'
 import type { Prospect } from '~/types'
 
-export interface ScrapingJobProgressState {
+export type ScrapingJobProgressState = {
   current: number
   total: number
   percentage: number
@@ -24,7 +24,7 @@ export type ScrapingJobStreamEvent =
   | { type: 'cancelled'; summary: { added: number; skipped_duplicates: number } }
   | { type: 'error'; message: string }
 
-export interface ScrapingJobStreamHandlers {
+export type ScrapingJobStreamHandlers = {
   onDone?: (summary: { added: number; skipped_duplicates: number; status: string }) => void
   onCancelled?: (summary: { added: number; skipped_duplicates: number }) => void
   onError?: (message: string) => void

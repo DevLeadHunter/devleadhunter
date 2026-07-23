@@ -1,5 +1,17 @@
 <template>
   <div>
+    <!-- Create button (top) -->
+    <div v-if="showCreateTop" class="mb-1.5 flex justify-end">
+      <button
+        type="button"
+        class="flex items-center gap-1 text-[11px] font-medium text-[var(--app-ink-soft)] transition-colors hover:text-[var(--app-ink)]"
+        @click="emit('create')"
+      >
+        <UIcon name="i-lucide-plus" class="h-3 w-3" />
+        Nouveau modèle
+      </button>
+    </div>
+
     <div class="relative">
       <select :value="modelValue ?? 0" class="input-field appearance-none pr-9" @change="onChange">
         <option :value="0">— Sélectionner un template —</option>
@@ -16,14 +28,28 @@
       <UIcon name="i-lucide-mail" class="h-3 w-3 shrink-0" />
       <span class="truncate italic">Objet : {{ selected.subject }}</span>
     </p>
+
+    <!-- Create button (bottom) -->
+    <div v-if="showCreateBottom" class="mt-1.5 flex justify-end">
+      <button
+        type="button"
+        class="flex items-center gap-1 text-[11px] font-medium text-[var(--app-ink-soft)] transition-colors hover:text-[var(--app-ink)]"
+        @click="emit('create')"
+      >
+        <UIcon name="i-lucide-plus" class="h-3 w-3" />
+        Nouveau modèle
+      </button>
+    </div>
   </div>
 </template>
 
 <script lang="ts" setup>
 import type { ComputedRef, PropType } from 'vue'
-import type { TemplateSelectOption, TemplateSelectProps } from '~/types/TemplateSelect'
-
-// ─── Props & emits ────────────────────────────────────────────────────────────
+import type {
+  TemplateSelectCreateButtonPosition,
+  TemplateSelectOption,
+  TemplateSelectProps,
+} from '~/types/TemplateSelect'
 
 /**
  * Defines the component props.
@@ -37,27 +63,39 @@ const props: TemplateSelectProps = defineProps({
     type: Array as PropType<TemplateSelectOption[]>,
     required: true,
   },
+  allowCreate: {
+    type: Boolean,
+    default: false,
+  },
+  createButtonPosition: {
+    type: String as PropType<TemplateSelectCreateButtonPosition>,
+    default: 'top',
+  },
 })
 
 const emit = defineEmits<{
   /** Fired when the selection changes. ``0`` means "none". */
   (e: 'update:modelValue', value: number): void
+  /** Fired when the user asks to create a new template (parent opens the drawer). */
+  (e: 'create'): void
 }>()
 
-// ─── Computed ─────────────────────────────────────────────────────────────────
-
-/**
- * The currently-selected template object, or undefined when none is chosen.
- */
 const selected: ComputedRef<TemplateSelectOption | undefined> = computed((): TemplateSelectOption | undefined =>
   props.templates.find((t: TemplateSelectOption): boolean => t.id === props.modelValue),
 )
 
-// ─── Methods ──────────────────────────────────────────────────────────────────
+const showCreateTop: ComputedRef<boolean> = computed(
+  (): boolean => props.allowCreate && (props.createButtonPosition === 'top' || props.createButtonPosition === 'both'),
+)
+
+const showCreateBottom: ComputedRef<boolean> = computed(
+  (): boolean =>
+    props.allowCreate && (props.createButtonPosition === 'bottom' || props.createButtonPosition === 'both'),
+)
 
 /**
  * Emit the new numeric template ID on change.
- * @param event - The native select change event.
+ * @param event - Native select change event.
  */
 function onChange(event: Event): void {
   const value: number = Number((event.target as HTMLSelectElement).value)

@@ -19,8 +19,9 @@
             :src="previewUrl"
             controls
             playsinline
-            preload="metadata"
+            preload="auto"
             class="aspect-video w-full rounded-xl border border-[var(--app-line)] bg-black"
+            @loadeddata="revealFirstFrame"
           />
           <button
             type="button"
@@ -325,20 +326,20 @@ const RECORDING_TIPS: string[] = ['1080p suffit', 'Lumière face à vous', 'Rega
 const toast = useToast()
 const { user } = useAuth()
 
-const info: Ref<PresenterVideoInfo | null> = ref<PresenterVideoInfo | null>(null)
-const previewUrl: Ref<string | null> = ref<string | null>(null)
-const isLoading: Ref<boolean> = ref<boolean>(true)
-const isUploading: Ref<boolean> = ref<boolean>(false)
-const isSavingSettings: Ref<boolean> = ref<boolean>(false)
-const isDeleting: Ref<boolean> = ref<boolean>(false)
-const isDragging: Ref<boolean> = ref<boolean>(false)
-const selectedFile: Ref<File | null> = ref<File | null>(null)
-const fileInputRef: Ref<HTMLInputElement | null> = ref<HTMLInputElement | null>(null)
+const info: Ref<PresenterVideoInfo | null> = ref(null)
+const previewUrl: Ref<string | null> = ref(null)
+const isLoading: Ref<boolean> = ref(true)
+const isUploading: Ref<boolean> = ref(false)
+const isSavingSettings: Ref<boolean> = ref(false)
+const isDeleting: Ref<boolean> = ref(false)
+const isDragging: Ref<boolean> = ref(false)
+const selectedFile: Ref<File | null> = ref(null)
+const fileInputRef: Ref<HTMLInputElement | null> = ref(null)
 const deleteModalRef: Ref<{ open: () => void } | null> = ref<{ open: () => void } | null>(null)
-const introSeconds: Ref<number> = ref<number>(4)
-const outroSeconds: Ref<number> = ref<number>(5)
-const autoGenerate: Ref<boolean> = ref<boolean>(true)
-const captureMode: Ref<CaptureMode | null> = ref<CaptureMode | null>(null)
+const introSeconds: Ref<number> = ref(4)
+const outroSeconds: Ref<number> = ref(5)
+const autoGenerate: Ref<boolean> = ref(true)
+const captureMode: Ref<CaptureMode | null> = ref(null)
 
 /** Whether the stored clip was filmed in-app (its cut points are measured). */
 const isRecordedClip: ComputedRef<boolean> = computed((): boolean => info.value?.source === 'recorded')
@@ -422,6 +423,24 @@ async function loadInfo(): Promise<void> {
     toast.error(err instanceof Error ? err.message : 'Impossible de charger le clip')
   } finally {
     isLoading.value = false
+  }
+}
+
+/**
+ * Paint the clip's first frame so the presenter sees their own face at once.
+ *
+ * A ``<video>`` left to preload alone commonly shows a black box until it is
+ * played; nudging ``currentTime`` forces the first decoded frame to render,
+ * turning the player into a self-portrait the moment the page loads.
+ * @param event - The ``loadeddata`` event of the preview video element.
+ */
+function revealFirstFrame(event: Event): void {
+  const video: HTMLVideoElement | null = event.target as HTMLVideoElement | null
+  if (!video || video.currentTime > 0) return
+  try {
+    video.currentTime = Math.min(0.1, (video.duration || 1) / 2)
+  } catch {
+    // Some engines throw if the media is not seekable yet — safe to ignore.
   }
 }
 

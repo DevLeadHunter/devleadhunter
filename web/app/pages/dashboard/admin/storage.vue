@@ -240,16 +240,16 @@ const KIND_LABELS: Record<string, string> = {
 
 const toast = useToast()
 
-const listing: Ref<StorageListResponse | null> = ref<StorageListResponse | null>(null)
-const health: Ref<StorageHealthResponse | null> = ref<StorageHealthResponse | null>(null)
-const isLoading: Ref<boolean> = ref<boolean>(true)
-const isActing: Ref<boolean> = ref<boolean>(false)
-const error: Ref<string> = ref<string>('')
-const activePrefix: Ref<string> = ref<string>('')
-const openKey: Ref<string | null> = ref<string | null>(null)
-const pendingKey: Ref<string | null> = ref<string | null>(null)
-const confirmTitle: Ref<string> = ref<string>('')
-const confirmMessage: Ref<string> = ref<string>('')
+const listing: Ref<StorageListResponse | null> = ref(null)
+const health: Ref<StorageHealthResponse | null> = ref(null)
+const isLoading: Ref<boolean> = ref(true)
+const isActing: Ref<boolean> = ref(false)
+const error: Ref<string> = ref('')
+const activePrefix: Ref<string> = ref('')
+const openKey: Ref<string | null> = ref(null)
+const pendingKey: Ref<string | null> = ref(null)
+const confirmTitle: Ref<string> = ref('')
+const confirmMessage: Ref<string> = ref('')
 const confirmModal: Ref<{ open: () => void } | null> = ref<{ open: () => void } | null>(null)
 
 /** Number of objects past their TTL in the current listing. */

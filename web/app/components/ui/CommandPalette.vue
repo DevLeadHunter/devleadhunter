@@ -105,15 +105,15 @@ const drawerStack = useDrawerStackStore()
 
 const { toggleTheme } = useAppTheme()
 
-const query: Ref<string> = ref<string>('')
-const activeIndex: Ref<number> = ref<number>(0)
-const searchInput: Ref<HTMLInputElement | null> = ref<HTMLInputElement | null>(null)
-const resultsContainer: Ref<HTMLDivElement | null> = ref<HTMLDivElement | null>(null)
+const query: Ref<string> = ref('')
+const activeIndex: Ref<number> = ref(0)
+const searchInput: Ref<HTMLInputElement | null> = ref(null)
+const resultsContainer: Ref<HTMLDivElement | null> = ref(null)
 
 /** Cached data sources (loaded on first open). */
-const prospects: Ref<Prospect[]> = ref<Prospect[]>([])
-const campaigns: Ref<CampaignResponse[]> = ref<CampaignResponse[]>([])
-const hasLoadedSources: Ref<boolean> = ref<boolean>(false)
+const prospects: Ref<Prospect[]> = ref([])
+const campaigns: Ref<CampaignResponse[]> = ref([])
+const hasLoadedSources: Ref<boolean> = ref(false)
 
 /** Static navigation entries. */
 const PAGES: ReadonlyArray<{ label: string; icon: string; to: string }> = [

@@ -47,10 +47,10 @@ import { computed, nextTick, onMounted, ref, watch } from 'vue'
 const model = defineModel<string>({ default: '' })
 
 /** Whether the raw-HTML source textarea is shown instead of the rich editor. */
-const showSource: Ref<boolean> = ref<boolean>(false)
+const showSource: Ref<boolean> = ref(false)
 
 /** The contenteditable element. */
-const editableRef: Ref<HTMLDivElement | null> = ref<HTMLDivElement | null>(null)
+const editableRef: Ref<HTMLDivElement | null> = ref(null)
 
 /** Proxy so the source textarea edits the same model value. */
 const sourceProxy: ComputedRef<string> = computed({

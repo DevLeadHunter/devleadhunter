@@ -1,7 +1,7 @@
 /**
  * Option d'un composant SelectField.
  */
-export interface SelectFieldOption {
+export type SelectFieldOption = {
   value: string
   label: string
 }
@@ -9,7 +9,7 @@ export interface SelectFieldOption {
 /**
  * Props du composant SelectField.
  */
-export interface SelectFieldProps {
+export type SelectFieldProps = {
   modelValue: string
   options: SelectFieldOption[]
 }

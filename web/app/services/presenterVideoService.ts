@@ -6,7 +6,7 @@ const BASE_URL = '/api/v1/settings/presenter-video'
 export type PresenterVideoSource = 'upload' | 'recorded'
 
 /** Presenter clip state returned by the API (no file content). */
-export interface PresenterVideoInfo {
+export type PresenterVideoInfo = {
   has_video: boolean
   original_filename?: string | null
   duration_seconds?: number

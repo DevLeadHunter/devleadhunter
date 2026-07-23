@@ -199,7 +199,7 @@ const PAD_BOTTOM: number = 8
 const uid: string = useId()
 
 /** Index of the hovered point (null = no hover). */
-const activeIndex: Ref<number | null> = ref<number | null>(null)
+const activeIndex: Ref<number | null> = ref(null)
 
 /** Highest plotted value (series + thresholds), raised to a "nice" ceiling. */
 const maxValue: ComputedRef<number> = computed((): number => {

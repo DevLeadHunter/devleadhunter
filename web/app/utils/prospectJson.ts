@@ -6,7 +6,7 @@ import type { Prospect } from '~/types'
  */
 
 /** Shape of one prospect inside an import/export JSON file. */
-export interface ProspectJsonItem {
+export type ProspectJsonItem = {
   name: string
   address?: string
   city?: string
@@ -17,7 +17,7 @@ export interface ProspectJsonItem {
 }
 
 /** Result of parsing an import file: valid rows + human-readable row errors. */
-export interface ProspectJsonParseResult {
+export type ProspectJsonParseResult = {
   valid: ProspectJsonItem[]
   errors: string[]
 }

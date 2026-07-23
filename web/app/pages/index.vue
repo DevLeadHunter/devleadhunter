@@ -40,10 +40,10 @@ const { t } = useI18n()
 const { track } = useSiteTracking()
 
 /** Credit settings fetched from the API (null while loading or on error). */
-const creditSettings: Ref<CreditSettings | null> = ref<CreditSettings | null>(null)
+const creditSettings: Ref<CreditSettings | null> = ref(null)
 
 /** Whether the credit settings request is in flight. */
-const isLoading: Ref<boolean> = ref<boolean>(true)
+const isLoading: Ref<boolean> = ref(true)
 
 /**
  * Load credit settings from the API for the pricing section.

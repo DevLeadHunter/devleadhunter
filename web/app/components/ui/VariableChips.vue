@@ -31,7 +31,7 @@
 import type { Ref } from 'vue'
 import type { EmailVariable } from '~/utils/emailVariables'
 import { ref } from 'vue'
-import { EMAIL_VARIABLES } from '~/utils/emailVariables'
+import { EmailVariables } from '~/utils/emailVariables'
 
 const emit = defineEmits<{
   /** A variable chip was clicked — insert its token at the caret. */
@@ -39,13 +39,13 @@ const emit = defineEmits<{
 }>()
 
 /** The available variables rendered as chips. */
-const variables: EmailVariable[] = EMAIL_VARIABLES
+const variables: EmailVariable[] = EmailVariables.catalog
 
 /** Approximate tooltip width (matches `max-w-[260px]`) used to decide the flip. */
 const TOOLTIP_WIDTH = 264
 
 /** Per-chip tooltip alignment (`right` when it would overflow the viewport). */
-const alignByKey: Ref<Record<string, 'left' | 'right'>> = ref<Record<string, 'left' | 'right'>>({})
+const alignByKey: Ref<Record<string, 'left' | 'right'>> = ref({})
 
 /**
  * Decide whether a chip's tooltip should open left (default) or flip to the

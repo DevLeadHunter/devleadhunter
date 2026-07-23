@@ -7,13 +7,13 @@ import type { Ref } from 'vue'
 import { onBeforeUnmount, ref } from 'vue'
 
 /** A camera or microphone the user can pick. */
-export interface RecorderDevice {
+export type RecorderDevice = {
   deviceId: string
   label: string
 }
 
 /** One finished take, kept in memory until the three are sent. */
-export interface RecordedTake {
+export type RecordedTake = {
   /** Raw recording, ready to be posted as a file. */
   blob: Blob
   /** Object URL for the review player (revoked by {@link releaseTake}). */
@@ -130,17 +130,17 @@ export function useWebcamRecorder(): {
   releaseTake: (take: RecordedTake) => void
   stopEverything: () => void
 } {
-  const stream: Ref<MediaStream | null> = ref<MediaStream | null>(null)
-  const isReady: Ref<boolean> = ref<boolean>(false)
-  const isRequesting: Ref<boolean> = ref<boolean>(false)
-  const isRecording: Ref<boolean> = ref<boolean>(false)
-  const error: Ref<string | null> = ref<string | null>(null)
-  const cameras: Ref<RecorderDevice[]> = ref<RecorderDevice[]>([])
-  const microphones: Ref<RecorderDevice[]> = ref<RecorderDevice[]>([])
-  const selectedCameraId: Ref<string> = ref<string>('')
-  const selectedMicrophoneId: Ref<string> = ref<string>('')
-  const audioLevel: Ref<number> = ref<number>(0)
-  const elapsedSeconds: Ref<number> = ref<number>(0)
+  const stream: Ref<MediaStream | null> = ref(null)
+  const isReady: Ref<boolean> = ref(false)
+  const isRequesting: Ref<boolean> = ref(false)
+  const isRecording: Ref<boolean> = ref(false)
+  const error: Ref<string | null> = ref(null)
+  const cameras: Ref<RecorderDevice[]> = ref([])
+  const microphones: Ref<RecorderDevice[]> = ref([])
+  const selectedCameraId: Ref<string> = ref('')
+  const selectedMicrophoneId: Ref<string> = ref('')
+  const audioLevel: Ref<number> = ref(0)
+  const elapsedSeconds: Ref<number> = ref(0)
 
   // Plumbing kept out of the reactive surface — none of it belongs in a template.
   let recorder: MediaRecorder | null = null

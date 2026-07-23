@@ -89,16 +89,16 @@ import { useAppTheme } from '~/composables/useAppTheme'
 import { useDrawerStackStore } from '~/stores/drawerStack'
 
 /** Auth initialization state (boot loader overlay). */
-const isInitializing: Ref<boolean> = ref<boolean>(true)
+const isInitializing: Ref<boolean> = ref(true)
 
 /** Sidebar visibility (always open on desktop, toggled on mobile). */
-const isSidebarOpen: Ref<boolean> = ref<boolean>(false)
+const isSidebarOpen: Ref<boolean> = ref(false)
 
 /** Whether the viewport is below the md breakpoint. */
-const isMobile: Ref<boolean> = ref<boolean>(false)
+const isMobile: Ref<boolean> = ref(false)
 
 /** Credits popover visibility (mobile header). */
-const showCreditsPopover: Ref<boolean> = ref<boolean>(false)
+const showCreditsPopover: Ref<boolean> = ref(false)
 
 /** User store instance. */
 const userStore = useUserStore()

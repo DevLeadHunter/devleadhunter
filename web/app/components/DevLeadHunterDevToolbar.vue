@@ -46,11 +46,11 @@ const STORAGE_KEY: string = 'dlh-devtoolbar-pos'
 const { isDesktopDev, syncDevDatabaseFromProd } = useDesktopRuntime()
 const toast = useToast()
 
-const isSyncing: Ref<boolean> = ref<boolean>(false)
+const isSyncing: Ref<boolean> = ref(false)
 /** Root element, used to measure the toolbar during a drag. */
-const rootEl: Ref<HTMLElement | null> = ref<HTMLElement | null>(null)
+const rootEl: Ref<HTMLElement | null> = ref(null)
 /** Current absolute position (null = default bottom-right). */
-const position: Ref<ToolbarPosition | null> = ref<ToolbarPosition | null>(null)
+const position: Ref<ToolbarPosition | null> = ref(null)
 
 // Drag bookkeeping.
 let dragPointerId: number | null = null

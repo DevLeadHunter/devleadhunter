@@ -43,7 +43,7 @@ const localePath = useLocalePath()
 const { needsChoice, accept, refuse } = useCookieConsent()
 
 /** Gate rendering to after client mount so the localStorage-based choice avoids an SSR flash. */
-const isMounted: Ref<boolean> = ref<boolean>(false)
+const isMounted: Ref<boolean> = ref(false)
 
 onMounted((): void => {
   isMounted.value = true

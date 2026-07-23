@@ -77,20 +77,10 @@
 
             <!-- Variante A -->
             <div>
-              <div class="mb-1.5 flex items-center justify-between">
-                <label class="text-muted text-xs font-medium">
-                  Variante A
-                  <span class="font-normal text-[var(--app-faint)]">— envoi initial</span>
-                </label>
-                <button
-                  type="button"
-                  class="flex items-center gap-1 text-[11px] text-[var(--app-ink-soft)] transition-colors hover:text-[var(--app-ink)]"
-                  @click="openCreateTemplate('a')"
-                >
-                  <UIcon name="i-lucide-plus" class="h-3 w-3" />
-                  Créer un modèle
-                </button>
-              </div>
+              <label class="text-muted mb-1.5 block text-xs font-medium">
+                Variante A
+                <span class="font-normal text-[var(--app-faint)]">— envoi initial</span>
+              </label>
               <div v-if="isLoadingTemplates" class="flex h-9 items-center gap-2 text-xs text-[var(--app-ink-soft)]">
                 <UIcon name="i-lucide-loader-circle" class="h-3.5 w-3.5 animate-spin" />
                 Chargement…
@@ -99,26 +89,18 @@
                 v-else
                 :model-value="form.templateIdA"
                 :templates="templates"
+                allow-create
                 @update:model-value="form.templateIdA = $event"
+                @create="openCreateTemplate('a')"
               />
             </div>
 
             <!-- Variante B -->
             <div>
-              <div class="mb-1.5 flex items-center justify-between">
-                <label class="text-muted text-xs font-medium">
-                  Variante B
-                  <span class="font-normal text-[var(--app-faint)]">— test A/B, optionnel</span>
-                </label>
-                <button
-                  type="button"
-                  class="flex items-center gap-1 text-[11px] text-[var(--app-ink-soft)] transition-colors hover:text-[var(--app-ink)]"
-                  @click="openCreateTemplate('b')"
-                >
-                  <UIcon name="i-lucide-plus" class="h-3 w-3" />
-                  Créer un modèle
-                </button>
-              </div>
+              <label class="text-muted mb-1.5 block text-xs font-medium">
+                Variante B
+                <span class="font-normal text-[var(--app-faint)]">— test A/B, optionnel</span>
+              </label>
               <div v-if="isLoadingTemplates" class="flex h-9 items-center gap-2 text-xs text-[var(--app-ink-soft)]">
                 <UIcon name="i-lucide-loader-circle" class="h-3.5 w-3.5 animate-spin" />
                 Chargement…
@@ -127,7 +109,9 @@
                 v-else
                 :model-value="form.templateIdB"
                 :templates="templates"
+                allow-create
                 @update:model-value="form.templateIdB = $event"
+                @create="openCreateTemplate('b')"
               />
             </div>
           </div>
@@ -198,19 +182,19 @@ const drawerStack = useDrawerStackStore()
 const toast = useToast()
 
 /** Whether the create request is in flight. */
-const isCreating: Ref<boolean> = ref<boolean>(false)
+const isCreating: Ref<boolean> = ref(false)
 
 /** Whether the template list is being fetched. */
-const isLoadingTemplates: Ref<boolean> = ref<boolean>(false)
+const isLoadingTemplates: Ref<boolean> = ref(false)
 
 /** Available email templates for the select fields. */
-const templates: Ref<EmailTemplate[]> = ref<EmailTemplate[]>([])
+const templates: Ref<EmailTemplate[]> = ref([])
 
 /** Which template slot triggered the last "Créer un modèle" click. */
-const pendingTemplateSlot: Ref<'a' | 'b' | null> = ref<'a' | 'b' | null>(null)
+const pendingTemplateSlot: Ref<'a' | 'b' | null> = ref(null)
 
 /** Campaign creation form state. */
-const form: Ref<CreateCampaignForm> = ref<CreateCampaignForm>({
+const form: Ref<CreateCampaignForm> = ref({
   name: '',
   description: '',
   templateIdA: 0,

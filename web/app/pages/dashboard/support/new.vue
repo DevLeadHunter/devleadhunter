@@ -146,11 +146,11 @@ const MAX_ATTACHMENT_BYTES: number = 8 * 1024 * 1024
 const toast = useToast()
 const router = useRouter()
 
-const topics: Ref<SupportTopicOption[]> = ref<SupportTopicOption[]>([])
-const isSubmitting: Ref<boolean> = ref<boolean>(false)
-const attachments: Ref<File[]> = ref<File[]>([])
-const previews: Ref<Array<{ url: string; name: string }>> = ref<Array<{ url: string; name: string }>>([])
-const attachmentInput: Ref<HTMLInputElement | null> = ref<HTMLInputElement | null>(null)
+const topics: Ref<SupportTopicOption[]> = ref([])
+const isSubmitting: Ref<boolean> = ref(false)
+const attachments: Ref<File[]> = ref([])
+const previews: Ref<Array<{ url: string; name: string }>> = ref([])
+const attachmentInput: Ref<HTMLInputElement | null> = ref(null)
 
 const form = reactive<{ subject: string; topic: SupportTicketTopic | ''; message: string }>({
   subject: '',

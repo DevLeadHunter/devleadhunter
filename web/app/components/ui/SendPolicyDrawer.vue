@@ -93,12 +93,12 @@ const emit = defineEmits<{
 const toast = useToast()
 
 /** Whether the policy is loading. */
-const isLoading: Ref<boolean> = ref<boolean>(true)
+const isLoading: Ref<boolean> = ref(true)
 /** Whether a save is in flight. */
-const isSaving: Ref<boolean> = ref<boolean>(false)
+const isSaving: Ref<boolean> = ref(false)
 
 /** The editable policy. */
-const form: Ref<SendPolicy> = ref<SendPolicy>({
+const form: Ref<SendPolicy> = ref({
   daily_cap: 20,
   days_of_week: [0, 1, 2, 3, 4],
   window_start_hour: 7,

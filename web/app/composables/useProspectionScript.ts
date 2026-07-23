@@ -10,7 +10,7 @@ import { ref } from 'vue'
 export type ProspectionScriptSegmentId = 'intro' | 'middle' | 'outro'
 
 /** One take: what is on screen, how long it should run, and what to say. */
-export interface ProspectionScriptSegment {
+export type ProspectionScriptSegment = {
   id: ProspectionScriptSegmentId
   /** Short name shown on the stepper and on the take card. */
   title: string
@@ -117,8 +117,8 @@ export function useProspectionScript(presenterName: string): {
   resetToDefault: () => void
 } {
   const defaults: ProspectionScriptSegment[] = buildDefaultScript(presenterName)
-  const segments: Ref<ProspectionScriptSegment[]> = ref<ProspectionScriptSegment[]>(defaults)
-  const isCustomised: Ref<boolean> = ref<boolean>(false)
+  const segments: Ref<ProspectionScriptSegment[]> = ref(defaults)
+  const isCustomised: Ref<boolean> = ref(false)
 
   /** Persist the current texts (only the texts — the staging is app-owned). */
   function persist(): void {

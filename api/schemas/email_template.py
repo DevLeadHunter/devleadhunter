@@ -3,7 +3,7 @@ Pydantic schemas for email templates.
 """
 from datetime import datetime
 from typing import Optional, List
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class EmailTemplateBase(BaseModel):
@@ -37,6 +37,9 @@ class EmailTemplateUpdate(BaseModel):
 
 class EmailTemplateResponse(BaseModel):
     """Schema for email template response."""
+
+    model_config = ConfigDict(from_attributes=True)
+
     id: int
     user_id: int
     email_account_id: Optional[int] = None
@@ -49,9 +52,6 @@ class EmailTemplateResponse(BaseModel):
     is_active: bool
     created_at: datetime
     updated_at: Optional[datetime] = None
-    
-    class Config:
-        from_attributes = True
 
 
 class EmailTemplatePreviewRequest(BaseModel):

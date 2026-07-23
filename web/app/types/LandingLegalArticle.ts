@@ -1,7 +1,7 @@
 /**
  * Props for the LandingLegalArticle component.
  */
-export interface LandingLegalArticleProps {
+export type LandingLegalArticleProps = {
   /** i18n key of the article title (e.g. `legal.privacy.title`). */
   titleKey: string
   /** i18n key of the introduction paragraph. */

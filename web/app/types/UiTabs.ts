@@ -4,7 +4,7 @@
  */
 
 /** A single tab entry. */
-export interface UiTab {
+export type UiTab = {
   /** Stable key used as the v-model value. */
   key: string
   /** Visible label. */
@@ -16,7 +16,7 @@ export interface UiTab {
 }
 
 /** Props of the `UiTabs` component. */
-export interface UiTabsProps {
+export type UiTabsProps = {
   /** Tabs to render, left to right. */
   tabs: UiTab[]
   /** Currently selected tab key (v-model). */

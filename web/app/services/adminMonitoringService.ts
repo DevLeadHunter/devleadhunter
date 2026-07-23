@@ -7,7 +7,7 @@ import { api } from './api'
  */
 
 /** Health summary for one scraping source over the last 24 h. */
-export interface ScraperSourceHealth {
+export type ScraperSourceHealth = {
   source: string
   latest_status: string
   latest_at: string | null
@@ -18,14 +18,14 @@ export interface ScraperSourceHealth {
 }
 
 /** System + scraping health overview. */
-export interface MonitoringOverview {
+export type MonitoringOverview = {
   database: string
   diagnostics_total: number
   sources: ScraperSourceHealth[]
 }
 
 /** One recorded source-run outcome. */
-export interface ScraperIncident {
+export type ScraperIncident = {
   id: number
   source: string
   status: string
