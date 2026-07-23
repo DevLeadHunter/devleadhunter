@@ -154,8 +154,8 @@ definePageMeta({
   middleware: 'auth',
 })
 
-const campaignsStore = useCampaignsStore()
-const router = useRouter()
+const campaignsStore: ReturnType<typeof useCampaignsStore> = useCampaignsStore()
+const router: ReturnType<typeof useRouter> = useRouter()
 
 /** French labels for each campaign status value. */
 const CAMPAIGN_STATUS_LABELS: Record<CampaignStatus, string> = {
@@ -185,7 +185,7 @@ const STATUS_DOT: Record<CampaignStatus, string> = {
 }
 
 /** Persistent drawer stack — campaign creation opens as a drawer, not a modal. */
-const drawerStack = useDrawerStackStore()
+const drawerStack: ReturnType<typeof useDrawerStackStore> = useDrawerStackStore()
 
 /**
  * Open the campaign creation drawer.

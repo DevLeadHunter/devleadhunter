@@ -419,8 +419,14 @@
 </template>
 
 <script lang="ts" setup>
-import type { LighthouseGauge, ProspectEditForm, UiProspectDrawerProps } from '~/types/UiProspectDrawer'
-import type { ComputedRef, PropType, Ref } from 'vue'
+import type { UseToastReturn } from '~/types/Composables'
+import type {
+  LighthouseGauge,
+  ProspectEditForm,
+  UiProspectDrawerEmits,
+  UiProspectDrawerProps,
+} from '~/types/UiProspectDrawer'
+import type { ComputedRef, EmitFn, PropType, Ref } from 'vue'
 import { ref, computed, watch } from 'vue'
 import type { Prospect, ProspectUpdatePayload } from '~/types'
 import { ProspectsService } from '~/services/prospectsService'
@@ -443,27 +449,10 @@ const props: UiProspectDrawerProps = defineProps({
   },
 })
 
-const emit = defineEmits<{
-  /** Close the drawer */
-  close: []
-  /** Go back to the previous drawer of the stack */
-  back: []
-  /** Prospect was successfully updated */
-  updated: [prospect: Prospect]
-  /** Prospect was deleted */
-  deleted: [prospectId: number]
-  /** User clicked "Add to campaign" */
-  addToCampaign: [prospect: Prospect]
-  /** User clicked "Send email" */
-  sendEmail: [prospect: Prospect]
-  /** User clicked "Marquer comme vendu" */
-  markAsSold: [prospect: Prospect]
-  /** User toggled the contacted status */
-  toggleContacted: [prospect: Prospect]
-}>()
+const emit: EmitFn<UiProspectDrawerEmits> = defineEmits<UiProspectDrawerEmits>()
 
-const toast = useToast()
-const userStore = useUserStore()
+const toast: UseToastReturn = useToast()
+const userStore: ReturnType<typeof useUserStore> = useUserStore()
 
 const editMode: Ref<boolean> = ref(false)
 const isSaving: Ref<boolean> = ref(false)

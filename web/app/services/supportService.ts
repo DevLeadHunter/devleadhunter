@@ -26,17 +26,17 @@ type PostMessagePayload = {
   attachments?: File[]
 }
 
-const SUPPORT_BASE_URL = '/api/v1/support'
+const SUPPORT_BASE_URL: string = '/api/v1/support'
 
 /** Resolve the API base URL from runtime config. */
 function getApiUrl(): string {
-  const config = useRuntimeConfig()
+  const config: ReturnType<typeof useRuntimeConfig> = useRuntimeConfig()
   return config.public.apiBase
 }
 
 /** Build auth headers for raw `fetch` calls (multipart uploads). */
 function getAuthHeaders(): HeadersInit {
-  const userStore = useUserStore()
+  const userStore: ReturnType<typeof useUserStore> = useUserStore()
   const headers: HeadersInit = {}
   if (userStore.token) {
     headers.Authorization = `Bearer ${userStore.token}`

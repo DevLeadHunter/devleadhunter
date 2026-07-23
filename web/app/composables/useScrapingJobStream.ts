@@ -141,7 +141,7 @@ export function useScrapingJobStream(): UseScrapingJobStreamReturn {
     disconnect()
     handlers = streamHandlers
 
-    const config = useRuntimeConfig()
+    const config: ReturnType<typeof useRuntimeConfig> = useRuntimeConfig()
     try {
       const apiUrl = new URL(config.public.apiBase)
       apiUrl.protocol = apiUrl.protocol === 'https:' ? 'wss:' : 'ws:'

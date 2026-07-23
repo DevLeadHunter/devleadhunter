@@ -179,6 +179,7 @@
 </template>
 
 <script lang="ts" setup>
+import type { UseToastReturn } from '~/types/Composables'
 import type { ComputedRef, Ref } from 'vue'
 import type { EmailAccount } from '~/types'
 import type { SendingIdentityResponse, SendingProvider } from '~/services/settingsService'
@@ -188,9 +189,9 @@ import { SettingsService } from '~/services/settingsService'
 import { EmailAccountsService } from '~/services/emailAccountsService'
 import { useToast } from '~/composables/useToast'
 
-const toast = useToast()
-const route = useRoute()
-const router = useRouter()
+const toast: UseToastReturn = useToast()
+const route: ReturnType<typeof useRoute> = useRoute()
+const router: ReturnType<typeof useRouter> = useRouter()
 
 const TABS: UiTab[] = [
   { key: 'resend', label: 'Domaine personnalisé', hint: 'Votre adresse pro' },

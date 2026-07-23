@@ -84,7 +84,7 @@ const props: AuthShellProps = defineProps({
   },
 })
 
-const localePath = useLocalePath()
+const localePath: ReturnType<typeof useLocalePath> = useLocalePath()
 
 /**
  * i18n keys of the stacked poster words (signup: the pipeline; login: the

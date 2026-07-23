@@ -231,8 +231,13 @@
 </template>
 
 <script lang="ts" setup>
-import type { EmailTemplateForm, UiEmailTemplateDrawerProps } from '~/types/UiEmailTemplateDrawer'
-import type { ComputedRef, PropType, Ref } from 'vue'
+import type { UseToastReturn } from '~/types/Composables'
+import type {
+  EmailTemplateForm,
+  UiEmailTemplateDrawerEmits,
+  UiEmailTemplateDrawerProps,
+} from '~/types/UiEmailTemplateDrawer'
+import type { ComputedRef, EmitFn, PropType, Ref } from 'vue'
 import type { EmailSignature, EmailTemplate } from '~/types'
 import type { EmailTemplateDrawerMode } from '~/types/DrawerStack'
 import { computed, ref, watch } from 'vue'
@@ -263,21 +268,12 @@ const props: UiEmailTemplateDrawerProps = defineProps({
   },
 })
 
-const emit = defineEmits<{
-  /** Close every drawer. */
-  close: []
-  /** Go back to the previous drawer of the stack. */
-  back: []
-  /** The template was created or updated. */
-  saved: [template: EmailTemplate]
-  /** Switch from preview to edit for the given template. */
-  edit: [template: EmailTemplate]
-}>()
+const emit: EmitFn<UiEmailTemplateDrawerEmits> = defineEmits<UiEmailTemplateDrawerEmits>()
 
-const toast = useToast()
+const toast: UseToastReturn = useToast()
 
 /** Persistent drawer stack (used to stack the signatures manager on top). */
-const drawerStack = useDrawerStackStore()
+const drawerStack: ReturnType<typeof useDrawerStackStore> = useDrawerStackStore()
 
 /** Whether a save request is in flight. */
 const isSaving: Ref<boolean> = ref(false)

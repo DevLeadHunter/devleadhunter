@@ -94,7 +94,7 @@ definePageMeta({
   layout: 'marketing',
 })
 
-const runtime = useRuntimeConfig()
+const runtime: ReturnType<typeof useRuntimeConfig> = useRuntimeConfig()
 
 const repoSlug: ComputedRef<string> = computed(
   (): string => (runtime.public.githubRepo as string | undefined)?.trim() || 'DevLeadHunter/devleadhunter',

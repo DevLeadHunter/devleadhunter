@@ -239,7 +239,7 @@ const tooltipPosition: Ref<{ x: number; y: number } | null> = ref(null)
 /**
  * User store instance
  */
-const userStore = useUserStore()
+const userStore: ReturnType<typeof useUserStore> = useUserStore()
 
 /**
  * Loading state
@@ -422,7 +422,7 @@ const chartData: ComputedRef<CreditUsageChart | null> = computed(() => {
   transactions.value
     .filter((transaction) => transaction.amount < 0) // Only usage transactions
     .forEach((transaction) => {
-      const dateObj = new Date(transaction.created_at)
+      const dateObj: Date = new Date(transaction.created_at)
       const dateKey = dateObj.toLocaleDateString('fr-FR', {
         month: 'short',
         day: 'numeric',
@@ -573,8 +573,8 @@ const formatTransactionDescription = (transaction: CreditTransaction): string =>
  * Format transaction date to relative time
  */
 const formatTransactionDate = (dateString: string): string => {
-  const date = new Date(dateString)
-  const now = new Date()
+  const date: Date = new Date(dateString)
+  const now: Date = new Date()
   const diffMs = now.getTime() - date.getTime()
   const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24))
 

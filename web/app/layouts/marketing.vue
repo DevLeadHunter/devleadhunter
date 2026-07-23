@@ -236,7 +236,7 @@ import type { LocaleObject } from '@nuxtjs/i18n'
 import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
 
 const { locale, locales, setLocale } = useI18n()
-const localePath = useLocalePath()
+const localePath: ReturnType<typeof useLocalePath> = useLocalePath()
 const { track } = useSiteTracking()
 
 // Sans ce bloc, les pages /fr héritent du lang="en" par défaut.

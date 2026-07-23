@@ -120,17 +120,17 @@ const { track } = useSiteTracking()
  * i18n — script-side error messages + locale-aware links.
  */
 const { t } = useI18n()
-const localePath = useLocalePath()
+const localePath: ReturnType<typeof useLocalePath> = useLocalePath()
 
 /**
  * User store
  */
-const userStore = useUserStore()
+const userStore: ReturnType<typeof useUserStore> = useUserStore()
 
 /**
  * Router for navigation
  */
-const router = useRouter()
+const router: ReturnType<typeof useRouter> = useRouter()
 
 /**
  * Form state

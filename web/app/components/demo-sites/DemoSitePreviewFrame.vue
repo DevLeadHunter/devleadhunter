@@ -48,7 +48,7 @@ const props: DemoSitePreviewFrameProps = defineProps({
   },
 })
 
-const config = useRuntimeConfig()
+const config: ReturnType<typeof useRuntimeConfig> = useRuntimeConfig()
 
 /** Demo-host iframe URL (published slug or placeholder template preview). */
 const previewSrc: ComputedRef<string> = computed((): string => {

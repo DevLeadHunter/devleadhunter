@@ -92,8 +92,8 @@
 </template>
 
 <script lang="ts" setup>
-import type { TemplateThemeColorKey, TemplatePickerProps } from '~/types/TemplatePicker'
-import type { PropType, Ref } from 'vue'
+import type { TemplatePickerEmits, TemplatePickerProps, TemplateThemeColorKey } from '~/types/TemplatePicker'
+import type { EmitFn, PropType, Ref } from 'vue'
 import type { DemoSiteTemplate, DemoSiteTheme } from '~/services/demoSiteService'
 
 /** Demo site template picker with live theme color editing. */
@@ -112,10 +112,7 @@ const props: TemplatePickerProps = defineProps({
   },
 })
 
-const emit = defineEmits<{
-  'update:modelValue': [value: string]
-  'update:theme': [value: DemoSiteTheme]
-}>()
+const emit: EmitFn<TemplatePickerEmits> = defineEmits<TemplatePickerEmits>()
 
 const colorKeys: TemplateThemeColorKey[] = ['primary', 'secondary', 'accent']
 const colorLabels: Record<TemplateThemeColorKey, string> = {

@@ -19,7 +19,7 @@ export type ProspectionScriptSegment = {
 }
 
 /** localStorage key holding the user's edited script. */
-const SCRIPT_STORAGE_KEY = 'dlh-prospection-script'
+const SCRIPT_STORAGE_KEY: string = 'dlh-prospection-script'
 
 /**
  * Default script, written to be *spoken*: short sentences, one idea each, no

@@ -637,6 +637,7 @@
 </template>
 
 <script lang="ts" setup>
+import type { UseToastReturn } from '~/types/Composables'
 import type { TemplateOption } from '~/types/CampaignDetailPage'
 import { computed, onMounted, ref, watch } from 'vue'
 import type { ComputedRef, Ref } from 'vue'
@@ -651,9 +652,9 @@ import { useToast } from '~/composables/useToast'
 
 definePageMeta({ layout: 'dashboard', middleware: 'auth' })
 
-const router = useRouter()
-const route = useRoute()
-const toast = useToast()
+const router: ReturnType<typeof useRouter> = useRouter()
+const route: ReturnType<typeof useRoute> = useRoute()
+const toast: UseToastReturn = useToast()
 
 const TABS: { key: string; label: string; icon: string }[] = [
   { key: 'config', label: 'Configuration', icon: 'i-lucide-settings-2' },

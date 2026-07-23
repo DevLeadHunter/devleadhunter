@@ -66,7 +66,7 @@ async function loadCreditSettings(): Promise<void> {
 function scrollToSection(selector: string): void {
   const element: Element | null = document.querySelector(selector)
   if (element) {
-    const headerOffset = 80
+    const headerOffset: number = 80
     const elementPosition: number = element.getBoundingClientRect().top
     const offsetPosition: number = elementPosition + window.pageYOffset - headerOffset
     window.scrollTo({ top: offsetPosition, behavior: 'smooth' })

@@ -38,7 +38,7 @@ import { AdminStorageService } from '~/services/adminStorageService'
 const STORAGE_KEY: string = 'dlh-devtoolbar-pos'
 
 const { isDesktopDev, syncDevDatabaseFromProd } = useDesktopRuntime()
-const toast = useToast()
+const toast: ReturnType<typeof useToast> = useToast()
 
 const isSyncing: Ref<boolean> = ref(false)
 /** Root element, used to measure the toolbar during a drag. */
@@ -138,7 +138,7 @@ async function onSyncDatabase(): Promise<void> {
   try {
     const message: string = await syncDevDatabaseFromProd()
     // Le stockage suit la base, sinon les démos pointent vers des vidéos absentes du bucket dev.
-    let storageMessage = ''
+    let storageMessage: string = ''
     try {
       const storage = await AdminStorageService.syncStorageFromProd()
       storageMessage = ` · Stockage : ${storage.message}`

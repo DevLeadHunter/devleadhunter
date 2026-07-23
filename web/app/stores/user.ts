@@ -14,7 +14,7 @@ export const useUserStore = defineStore('user', () => {
   const lastValidationTime: Ref<number | null> = ref(null)
 
   // Cache validation for 30 seconds to avoid excessive API calls
-  const VALIDATION_CACHE_TIME = 30000
+  const VALIDATION_CACHE_TIME: number = 30000
 
   // Getters
   const isAuthenticated: ComputedRef<boolean> = computed(() => {

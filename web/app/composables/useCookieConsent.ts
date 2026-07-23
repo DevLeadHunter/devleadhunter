@@ -4,13 +4,13 @@ import { computed, ref } from 'vue'
 export type CookieConsent = 'unknown' | 'accepted' | 'refused'
 
 /** localStorage key holding the visitor's choice. */
-const STORAGE_KEY = 'dlh_cookie_consent'
+const STORAGE_KEY: string = 'dlh_cookie_consent'
 
 /** Shared reactive consent state (module-level → one source of truth across the app). */
 const consentState: Ref<CookieConsent> = ref('unknown')
 
 /** Whether the stored choice has already been read from localStorage. */
-let hydrated = false
+let hydrated: boolean = false
 
 /**
  * Read the stored choice once, on the client.

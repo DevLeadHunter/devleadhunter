@@ -204,6 +204,7 @@
 </template>
 
 <script lang="ts" setup>
+import type { UseToastReturn } from '~/types/Composables'
 import type { HtmlPanelState } from '~/types/AdminMonitoringPage'
 import type { ComputedRef, Ref } from 'vue'
 import { computed, onMounted, ref } from 'vue'
@@ -217,9 +218,9 @@ definePageMeta({
   middleware: ['auth'],
 })
 
-const userStore = useUserStore()
-const toast = useToast()
-const router = useRouter()
+const userStore: ReturnType<typeof useUserStore> = useUserStore()
+const toast: UseToastReturn = useToast()
+const router: ReturnType<typeof useRouter> = useRouter()
 
 const isLoading: Ref<boolean> = ref(false)
 const error: Ref<string | null> = ref(null)

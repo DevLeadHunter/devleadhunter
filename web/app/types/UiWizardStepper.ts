@@ -13,3 +13,7 @@ export type UiWizardStepperProps = {
   steps: UiWizardStep[]
   modelValue: number
 }
+
+export type UiWizardStepperEmits = {
+  'update:modelValue': [step: number]
+}

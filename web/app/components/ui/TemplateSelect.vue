@@ -52,7 +52,12 @@ const props: TemplateSelectProps = defineProps({
   },
 })
 
-const emit = defineEmits<{
+const emit: {
+  /** Fired when the selection changes. ``0`` means "none". */
+  (e: 'update:modelValue', value: number): void
+  /** Fired when the user asks to create a new template (parent opens the drawer). */
+  (e: 'create'): void
+} = defineEmits<{
   /** Fired when the selection changes. ``0`` means "none". */
   (e: 'update:modelValue', value: number): void
   /** Fired when the user asks to create a new template (parent opens the drawer). */

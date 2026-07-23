@@ -99,6 +99,7 @@
 </template>
 
 <script lang="ts" setup>
+import type { UseToastReturn } from '~/types/Composables'
 import type { ComputedRef, PropType, Ref } from 'vue'
 import { computed, ref, watch } from 'vue'
 import type { UiBulkCampaignModalProps } from '~/types/UiBulkCampaignModal'
@@ -118,12 +119,15 @@ const props: UiBulkCampaignModalProps = defineProps({
   },
 })
 
-const emit = defineEmits<{
+const emit: {
+  (e: 'close'): void
+  (e: 'added', payload: { campaignName: string; count: number }): void
+} = defineEmits<{
   (e: 'close'): void
   (e: 'added', payload: { campaignName: string; count: number }): void
 }>()
 
-const toast = useToast()
+const toast: UseToastReturn = useToast()
 
 /** Whether to add to an existing campaign or create a new one. */
 const mode: Ref<'existing' | 'new'> = ref('existing')

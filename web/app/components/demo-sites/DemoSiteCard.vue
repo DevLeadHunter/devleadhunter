@@ -56,9 +56,9 @@
 </template>
 
 <script lang="ts" setup>
-import type { ComputedRef, PropType } from 'vue'
+import type { ComputedRef, EmitFn, PropType } from 'vue'
 import type { DemoSite } from '~/services/demoSiteService'
-import type { DemoSiteCardProps } from '~/types/DemoSiteCard'
+import type { DemoSiteCardEmits, DemoSiteCardProps } from '~/types/DemoSiteCard'
 import { DemoSiteService } from '~/services/demoSiteService'
 
 /** Demo site summary card with copy and open shortcuts. */
@@ -69,10 +69,7 @@ const props: DemoSiteCardProps = defineProps({
   },
 })
 
-const emit = defineEmits<{
-  copy: [url: string]
-  open: [url: string]
-}>()
+const emit: EmitFn<DemoSiteCardEmits> = defineEmits<DemoSiteCardEmits>()
 
 const copied: Ref<boolean> = ref(false)
 

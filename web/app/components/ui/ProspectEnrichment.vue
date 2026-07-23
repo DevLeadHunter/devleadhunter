@@ -201,6 +201,7 @@
 </template>
 
 <script lang="ts" setup>
+import type { UseToastReturn } from '~/types/Composables'
 import type { EnrichmentForm, UiProspectEnrichmentProps } from '~/types/UiProspectEnrichment'
 import type { ComputedRef, PropType, Ref } from 'vue'
 import { ref, computed, watch } from 'vue'
@@ -220,7 +221,7 @@ const props: UiProspectEnrichmentProps = defineProps({
   },
 })
 
-const toast = useToast()
+const toast: UseToastReturn = useToast()
 
 const record: Ref<ProspectEnrichment | null> = ref(null)
 const isLoading: Ref<boolean> = ref(false)

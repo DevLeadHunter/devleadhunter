@@ -285,6 +285,7 @@
 </template>
 
 <script lang="ts" setup>
+import type { UseToastReturn } from '~/types/Composables'
 import type { UserRole, User } from '~/types'
 import type { ComputedRef, Ref } from 'vue'
 import { ref, computed, onMounted, onUnmounted } from 'vue'
@@ -341,7 +342,7 @@ const isDeleting: Ref<boolean> = ref(false)
 /**
  * Toast composable
  */
-const toast = useToast()
+const toast: UseToastReturn = useToast()
 
 /**
  * Filtered users based on search query

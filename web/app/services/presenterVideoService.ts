@@ -1,6 +1,6 @@
 import { ApiClient } from '~/services/api'
 
-const BASE_URL = '/api/v1/settings/presenter-video'
+const BASE_URL: string = '/api/v1/settings/presenter-video'
 
 /** How the stored clip was produced. */
 export type PresenterVideoSource = 'upload' | 'recorded'
@@ -29,8 +29,8 @@ export type PresenterVideo = {
  * @throws With the API message when the request fails.
  */
 async function putMultipart(path: string, formData: FormData): Promise<PresenterVideo> {
-  const userStore = useUserStore()
-  const config = useRuntimeConfig()
+  const userStore: ReturnType<typeof useUserStore> = useUserStore()
+  const config: ReturnType<typeof useRuntimeConfig> = useRuntimeConfig()
 
   const response = await fetch(`${config.public.apiBase}${BASE_URL}${path}`, {
     method: 'PUT',
@@ -40,7 +40,7 @@ async function putMultipart(path: string, formData: FormData): Promise<Presenter
 
   if (!response.ok) {
     const errorText = await response.text().catch((): string => '')
-    let errorMessage = `Upload échoué : ${response.statusText}`
+    let errorMessage: string = `Upload échoué : ${response.statusText}`
     if (errorText) {
       try {
         errorMessage = (JSON.parse(errorText).detail as string) || errorMessage
@@ -146,8 +146,8 @@ export class PresenterVideoService {
    * @returns An object URL (caller must ``URL.revokeObjectURL`` it), or null.
    */
   static async getPresenterVideoObjectUrl(): Promise<string | null> {
-    const userStore = useUserStore()
-    const config = useRuntimeConfig()
+    const userStore: ReturnType<typeof useUserStore> = useUserStore()
+    const config: ReturnType<typeof useRuntimeConfig> = useRuntimeConfig()
     const response = await fetch(`${config.public.apiBase}${BASE_URL}/file`, {
       headers: userStore.token ? { Authorization: `Bearer ${userStore.token}` } : {},
     })

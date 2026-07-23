@@ -84,7 +84,7 @@ const props: LandingPricingProps = defineProps({
 })
 
 const { locale } = useI18n()
-const localePath = useLocalePath()
+const localePath: ReturnType<typeof useLocalePath> = useLocalePath()
 const { track } = useSiteTracking()
 
 /**

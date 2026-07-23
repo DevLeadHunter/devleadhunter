@@ -91,8 +91,8 @@ export class ApiClient {
    * @throws Error carrying the API `detail` message when the status is not ok.
    */
   private static async request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
-    const userStore = useUserStore()
-    const config = useRuntimeConfig()
+    const userStore: ReturnType<typeof useUserStore> = useUserStore()
+    const config: ReturnType<typeof useRuntimeConfig> = useRuntimeConfig()
 
     const response = await fetch(`${config.public.apiBase}${endpoint}`, {
       ...options,

@@ -61,7 +61,9 @@ const props: BusinessSearchInputProps = defineProps({
   },
 })
 
-const emit = defineEmits<{
+const emit: {
+  (e: 'select', suggestion: ProspectSearchSuggestion): void
+} = defineEmits<{
   (e: 'select', suggestion: ProspectSearchSuggestion): void
 }>()
 

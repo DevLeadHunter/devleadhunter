@@ -1,4 +1,4 @@
-import type { UseAuthReturn } from '~/types/Composables'
+import type { UseAuthReturn, UseToastReturn } from '~/types/Composables'
 import type { LoginCredentials, SignupPayload } from '~/types'
 import { useToast } from '~/composables/useToast'
 
@@ -7,9 +7,9 @@ import { useToast } from '~/composables/useToast'
  * @returns Store-backed auth actions and reactive session state.
  */
 export function useAuth(): UseAuthReturn {
-  const userStore = useUserStore()
-  const router = useRouter()
-  const toast = useToast()
+  const userStore: ReturnType<typeof useUserStore> = useUserStore()
+  const router: ReturnType<typeof useRouter> = useRouter()
+  const toast: UseToastReturn = useToast()
 
   /**
    * Log in and redirect to the dashboard.

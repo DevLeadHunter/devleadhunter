@@ -317,6 +317,7 @@
 </template>
 
 <script lang="ts" setup>
+import type { UseToastReturn } from '~/types/Composables'
 import type { ComputedRef, Ref } from 'vue'
 import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue'
 import type { PresenterVideo } from '~/services/presenterVideoService'
@@ -337,7 +338,12 @@ const props: UiPresenterVideoRecorderProps = defineProps({
   },
 })
 
-const emit = defineEmits<{
+const emit: {
+  /** The clip was assembled and stored — carries the fresh API payload. */
+  (e: 'saved', info: PresenterVideo): void
+  /** The user backed out of recording. */
+  (e: 'cancel'): void
+} = defineEmits<{
   /** The clip was assembled and stored — carries the fresh API payload. */
   (e: 'saved', info: PresenterVideo): void
   /** The user backed out of recording. */
@@ -363,7 +369,7 @@ const MIN_MIDDLE_SECONDS: number = 6
 const MIN_TOTAL_SECONDS: number = 12
 const MAX_TOTAL_SECONDS: number = 90
 
-const toast = useToast()
+const toast: UseToastReturn = useToast()
 const { user } = useAuth()
 const recorder = useWebcamRecorder()
 const script = useProspectionScript(user.value?.name ?? '')

@@ -188,6 +188,7 @@
 </template>
 
 <script lang="ts" setup>
+import type { UseToastReturn } from '~/types/Composables'
 import type { ComputedRef, Ref } from 'vue'
 import type { StorageHealthResponse, StorageListResponse, StorageObject } from '~/services/adminStorageService'
 import { computed, onMounted, ref } from 'vue'
@@ -226,7 +227,7 @@ const KIND_LABELS: Record<string, string> = {
   other: 'Fichier',
 }
 
-const toast = useToast()
+const toast: UseToastReturn = useToast()
 
 const listing: Ref<StorageListResponse | null> = ref(null)
 const health: Ref<StorageHealthResponse | null> = ref(null)

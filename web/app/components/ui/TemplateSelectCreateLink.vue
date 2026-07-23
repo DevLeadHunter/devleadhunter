@@ -12,6 +12,8 @@
 </template>
 
 <script lang="ts" setup>
+import type { UiTemplateSelectCreateLinkEmits } from '~/types/UiTemplateSelectCreateLink'
+import type { EmitFn } from 'vue'
 /** Inline « create template » link for TemplateSelect. */
 defineProps({
   wrapperClass: {
@@ -20,7 +22,5 @@ defineProps({
   },
 })
 
-const emit = defineEmits<{
-  click: []
-}>()
+const emit: EmitFn<UiTemplateSelectCreateLinkEmits> = defineEmits<UiTemplateSelectCreateLinkEmits>()
 </script>

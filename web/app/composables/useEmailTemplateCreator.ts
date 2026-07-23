@@ -20,7 +20,7 @@ export function useEmailTemplateCreator<T extends IdentifiableTemplate>(
   templates: Ref<T[]>,
   reload: () => Promise<void>,
 ): EmailTemplateCreator {
-  const drawerStack = useDrawerStackStore()
+  const drawerStack: ReturnType<typeof useDrawerStackStore> = useDrawerStackStore()
   const pendingAssign: Ref<((templateId: number) => void) | null> = ref(null)
 
   /**

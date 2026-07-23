@@ -15,3 +15,10 @@ export type EmailTemplateForm = {
   is_active: boolean
   signature_id: number | null
 }
+
+export type UiEmailTemplateDrawerEmits = {
+  close: []
+  back: []
+  saved: [template: EmailTemplate]
+  edit: [template: EmailTemplate]
+}

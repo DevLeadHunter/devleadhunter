@@ -114,6 +114,7 @@
 </template>
 
 <script lang="ts" setup>
+import type { UseToastReturn } from '~/types/Composables'
 import type { ComputedRef } from 'vue'
 import type {
   AddProspectDrawerEntry,
@@ -137,9 +138,9 @@ import { ProspectsService } from '~/services/prospectsService'
 import { OrdersService } from '~/services/ordersService'
 import { useToast } from '~/composables/useToast'
 
-const drawerStack = useDrawerStackStore()
+const drawerStack: ReturnType<typeof useDrawerStackStore> = useDrawerStackStore()
 
-const toast = useToast()
+const toast: UseToastReturn = useToast()
 
 /** Top entry narrowed to the prospect drawer (null when another kind is on top). */
 const prospectEntry: ComputedRef<ProspectDrawerEntry | null> = computed((): ProspectDrawerEntry | null => {

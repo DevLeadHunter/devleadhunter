@@ -14,3 +14,9 @@ export type SendEmailForm = {
   subject: string
   body: string
 }
+
+export type UiSendEmailDrawerEmits = {
+  close: []
+  back: []
+  sent: []
+}

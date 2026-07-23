@@ -59,7 +59,9 @@
 </template>
 
 <script lang="ts" setup>
-import type { ComputedRef, Ref } from 'vue'
+import type { UiSendPolicyDrawerEmits } from '~/types/UiSendPolicyDrawer'
+import type { UseToastReturn } from '~/types/Composables'
+import type { ComputedRef, EmitFn, Ref } from 'vue'
 import { computed, ref, watch } from 'vue'
 import type { SendPolicyDrawerProps } from '~/types/SendPolicyDrawer'
 import type { SendPolicy } from '~/types/Automation'
@@ -78,14 +80,9 @@ const props: SendPolicyDrawerProps = defineProps({
   },
 })
 
-const emit = defineEmits<{
-  /** Close every drawer. */
-  close: []
-  /** Go back to the previous drawer of the stack. */
-  back: []
-}>()
+const emit: EmitFn<UiSendPolicyDrawerEmits> = defineEmits<UiSendPolicyDrawerEmits>()
 
-const toast = useToast()
+const toast: UseToastReturn = useToast()
 
 /** Whether the policy is loading. */
 const isLoading: Ref<boolean> = ref(true)

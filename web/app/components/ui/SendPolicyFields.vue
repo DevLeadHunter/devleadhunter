@@ -61,10 +61,10 @@
 </template>
 
 <script lang="ts" setup>
-import type { ComputedRef, PropType, WritableComputedRef } from 'vue'
+import type { ComputedRef, EmitFn, PropType, WritableComputedRef } from 'vue'
 import { computed } from 'vue'
 import type { SendPolicy } from '~/types/Automation'
-import type { UiSendPolicyFieldsProps } from '~/types/UiSendPolicyFields'
+import type { UiSendPolicyFieldsEmits, UiSendPolicyFieldsProps } from '~/types/UiSendPolicyFields'
 
 /** Send-policy form fields shared by the drawer and setup wizard. */
 const props: UiSendPolicyFieldsProps = defineProps({
@@ -74,10 +74,7 @@ const props: UiSendPolicyFieldsProps = defineProps({
   },
 })
 
-const emit = defineEmits<{
-  /** The edited policy changed. */
-  'update:modelValue': [policy: SendPolicy]
-}>()
+const emit: EmitFn<UiSendPolicyFieldsEmits> = defineEmits<UiSendPolicyFieldsEmits>()
 
 /** Weekday labels (index 0 = Monday). */
 const DAY_LABELS: string[] = ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim']

@@ -243,8 +243,9 @@
 </template>
 
 <script lang="ts" setup>
-import type { PresenterVideoCaptureMode } from '~/types/PresenterVideoConfig'
-import type { ComputedRef, Ref } from 'vue'
+import type { UseToastReturn } from '~/types/Composables'
+import type { PresenterVideoCaptureMode, PresenterVideoConfigEmits } from '~/types/PresenterVideoConfig'
+import type { ComputedRef, EmitFn, Ref } from 'vue'
 import type { PresenterVideo } from '~/services/presenterVideoService'
 import type { ProspectionScriptSegment } from '~/composables/useProspectionScript'
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
@@ -255,10 +256,7 @@ import { useAuth } from '~/composables/useAuth'
 
 /** Presenter video upload, tuning and deletion for prospect videos. */
 
-const emit = defineEmits<{
-  /** A clip is now present (or no longer is) — the host can gate its own UI on it. */
-  'has-video': [hasVideo: boolean]
-}>()
+const emit: EmitFn<PresenterVideoConfigEmits> = defineEmits<PresenterVideoConfigEmits>()
 
 /** The two ways in, offered side by side when no clip exists yet. */
 const CAPTURE_OPTIONS: Array<{
@@ -288,7 +286,7 @@ const CAPTURE_OPTIONS: Array<{
 /** Short recording tips rendered as pills. */
 const RECORDING_TIPS: string[] = ['1080p suffit', 'Lumière face à vous', 'Regardez l’objectif']
 
-const toast = useToast()
+const toast: UseToastReturn = useToast()
 const { user } = useAuth()
 
 const info: Ref<PresenterVideo | null> = ref(null)

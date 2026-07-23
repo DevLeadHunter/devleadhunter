@@ -110,7 +110,7 @@
 <script lang="ts" setup>
 import type { LandingDesktopKpi } from '~/types/LandingDesktopApp'
 
-const localePath = useLocalePath()
+const localePath: ReturnType<typeof useLocalePath> = useLocalePath()
 const { track } = useSiteTracking()
 
 /** i18n keys of the three benefit bullets under the heading. */

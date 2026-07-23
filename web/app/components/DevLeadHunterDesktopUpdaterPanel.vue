@@ -62,13 +62,14 @@
 </template>
 
 <script lang="ts" setup>
+import type { UseDesktopRuntimeReturn } from '~/types/Composables'
 import type { ComputedRef, Ref } from 'vue'
 import type { DownloadEvent, Update } from '@tauri-apps/plugin-updater'
 import type { DevLeadHunterUpdaterStatus } from '~/types/DevLeadHunterDesktopUpdaterPanel'
 import { check } from '@tauri-apps/plugin-updater'
 import { relaunch } from '@tauri-apps/plugin-process'
 
-const desktopRuntime = useDesktopRuntime()
+const desktopRuntime: UseDesktopRuntimeReturn = useDesktopRuntime()
 const isProdDesktop = desktopRuntime.isProdDesktop
 
 const visible: Ref<boolean> = ref(false)

@@ -26,21 +26,19 @@
 </template>
 
 <script lang="ts" setup>
-import type { Ref } from 'vue'
+import type { UiVariableChipsEmits } from '~/types/UiVariableChips'
+import type { EmitFn, Ref } from 'vue'
 import type { EmailVariable } from '~/utils/emailVariables'
 import { ref } from 'vue'
 import { EmailVariables } from '~/utils/emailVariables'
 
-const emit = defineEmits<{
-  /** A variable chip was clicked — insert its token at the caret. */
-  insert: [token: string]
-}>()
+const emit: EmitFn<UiVariableChipsEmits> = defineEmits<UiVariableChipsEmits>()
 
 /** The available variables rendered as chips. */
 const variables: EmailVariable[] = EmailVariables.catalog
 
 /** Approximate tooltip width (matches `max-w-[260px]`) used to decide the flip. */
-const TOOLTIP_WIDTH = 264
+const TOOLTIP_WIDTH: number = 264
 
 /** Per-chip tooltip alignment (`right` when it would overflow the viewport). */
 const alignByKey: Ref<Record<string, 'left' | 'right'>> = ref({})

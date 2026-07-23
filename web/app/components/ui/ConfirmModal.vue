@@ -48,7 +48,9 @@ const props: UiConfirmModalProps = defineProps({
   },
 })
 
-const emit = defineEmits<{
+const emit: {
+  (e: 'confirm' | 'cancel'): void
+} = defineEmits<{
   (e: 'confirm' | 'cancel'): void
 }>()
 

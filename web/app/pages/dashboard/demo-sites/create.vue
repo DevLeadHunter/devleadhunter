@@ -9,6 +9,6 @@ definePageMeta({
   middleware: 'auth',
 })
 
-const route = useRoute()
+const route: ReturnType<typeof useRoute> = useRoute()
 await navigateTo({ path: '/dashboard/automations/new', query: route.query })
 </script>

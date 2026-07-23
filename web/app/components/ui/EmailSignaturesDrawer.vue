@@ -159,8 +159,9 @@
 </template>
 
 <script lang="ts" setup>
-import type { SignatureForm, SignaturesDrawerView } from '~/types/UiEmailSignaturesDrawer'
-import type { ComputedRef, Ref } from 'vue'
+import type { UseToastReturn } from '~/types/Composables'
+import type { SignatureForm, SignaturesDrawerView, UiEmailSignaturesDrawerEmits } from '~/types/UiEmailSignaturesDrawer'
+import type { ComputedRef, EmitFn, Ref } from 'vue'
 import type { EmailSignature } from '~/types'
 import type { UiDrawerProps } from '~/types/UiDrawer'
 import { computed, ref, watch } from 'vue'
@@ -179,14 +180,9 @@ const props: UiDrawerProps = defineProps({
   },
 })
 
-const emit = defineEmits<{
-  /** Close every drawer. */
-  close: []
-  /** Go back to the previous drawer of the stack. */
-  back: []
-}>()
+const emit: EmitFn<UiEmailSignaturesDrawerEmits> = defineEmits<UiEmailSignaturesDrawerEmits>()
 
-const toast = useToast()
+const toast: UseToastReturn = useToast()
 
 /** Current internal view. */
 const view: Ref<SignaturesDrawerView> = ref('list')

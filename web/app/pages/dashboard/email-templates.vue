@@ -136,6 +136,7 @@
 </template>
 
 <script lang="ts" setup>
+import type { UseToastReturn } from '~/types/Composables'
 import type { TemplateGroup } from '~/types/EmailTemplatesPage'
 import type { ComputedRef, Ref } from 'vue'
 import type { EmailTemplate } from '~/types'
@@ -149,10 +150,10 @@ definePageMeta({
   middleware: 'auth',
 })
 
-const toast = useToast()
+const toast: UseToastReturn = useToast()
 
 /** Persistent drawer stack (create/edit/preview live there). */
-const drawerStack = useDrawerStackStore()
+const drawerStack: ReturnType<typeof useDrawerStackStore> = useDrawerStackStore()
 
 const emailTemplates: Ref<EmailTemplate[]> = ref([])
 const isLoading: Ref<boolean> = ref(false)

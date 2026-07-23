@@ -155,11 +155,11 @@
 </template>
 
 <script lang="ts" setup>
-import type { ComputedRef, Ref } from 'vue'
+import type { ComputedRef, EmitFn, Ref } from 'vue'
 import { computed, ref } from 'vue'
 import { normalizeCityName, useCoverageStore } from '~/stores/coverage'
 import { useDrawerStackStore } from '~/stores/drawerStack'
-import type { UiCoverageFiltersDrawerProps } from '~/types/UiCoverageFiltersDrawer'
+import type { UiCoverageFiltersDrawerEmits, UiCoverageFiltersDrawerProps } from '~/types/UiCoverageFiltersDrawer'
 import { FRANCE_REGIONS } from '~/utils/franceTerritory'
 
 /** Coverage map filters: trades, cities and uncovered regions. */
@@ -174,15 +174,10 @@ const props: UiCoverageFiltersDrawerProps = defineProps({
   },
 })
 
-const emit = defineEmits<{
-  /** Close every drawer. */
-  close: []
-  /** Go back to the previous drawer of the stack. */
-  back: []
-}>()
+const emit: EmitFn<UiCoverageFiltersDrawerEmits> = defineEmits<UiCoverageFiltersDrawerEmits>()
 
-const store = useCoverageStore()
-const drawerStack = useDrawerStackStore()
+const store: ReturnType<typeof useCoverageStore> = useCoverageStore()
+const drawerStack: ReturnType<typeof useDrawerStackStore> = useDrawerStackStore()
 
 /** Trade search query. */
 const tradeQuery: Ref<string> = ref('')

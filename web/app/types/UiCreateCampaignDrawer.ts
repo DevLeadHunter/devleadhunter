@@ -5,3 +5,8 @@ export type CreateCampaignForm = {
   templateIdA: number
   templateIdB: number
 }
+
+export type UiCreateCampaignDrawerEmits = {
+  close: []
+  back: []
+}

@@ -16,8 +16,8 @@ export type SettingsNav = {
  * @returns Panel state, admin-filtered groups, and route helpers.
  */
 export function useSettingsNav(): SettingsNav {
-  const route = useRoute()
-  const userStore = useUserStore()
+  const route: ReturnType<typeof useRoute> = useRoute()
+  const userStore: ReturnType<typeof useUserStore> = useUserStore()
 
   const isAdmin: ComputedRef<boolean> = computed((): boolean => userStore.user?.role === 'ADMIN')
   const showSettingsPanel: Ref<boolean> = useState('settings-nav-open', (): boolean => false)

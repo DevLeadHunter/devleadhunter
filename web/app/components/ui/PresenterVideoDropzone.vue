@@ -80,7 +80,11 @@ const props: UiPresenterVideoDropzoneProps = defineProps({
   },
 })
 
-const emit = defineEmits<{
+const emit: {
+  (e: 'pick' | 'upload'): void
+  (e: 'drop-file', file: File): void
+  (e: 'dragging', value: boolean): void
+} = defineEmits<{
   (e: 'pick' | 'upload'): void
   (e: 'drop-file', file: File): void
   (e: 'dragging', value: boolean): void

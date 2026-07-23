@@ -6,7 +6,7 @@ import { ApiClient } from './api'
  * @module services/creditTransactionService
  */
 
-const CREDITS_BASE_URL = '/api/v1/credits'
+const CREDITS_BASE_URL: string = '/api/v1/credits'
 
 export class CreditTransactionService {
   /**

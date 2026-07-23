@@ -5,13 +5,13 @@
  */
 
 /** Where a user who has not finished the setup wizard is nudged to. */
-const SETUP_ROUTE = '/configuration'
+const SETUP_ROUTE: string = '/configuration'
 
 export default defineNuxtRouteMiddleware(async (to) => {
   /**
    * User store
    */
-  const userStore = useUserStore()
+  const userStore: ReturnType<typeof useUserStore> = useUserStore()
 
   /**
    * Check if we're on client side

@@ -55,7 +55,7 @@ const open: Ref<boolean> = ref(false)
 const highlighted: Ref<number> = ref(-1)
 const rootEl: Ref<HTMLElement | null> = ref(null)
 let debounceId: ReturnType<typeof setTimeout> | null = null
-let justSelected = false
+let justSelected: boolean = false
 
 /**
  * Fetch matching French communes for a search term (sorted by population).

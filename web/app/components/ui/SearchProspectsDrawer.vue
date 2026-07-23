@@ -198,8 +198,10 @@
 </template>
 
 <script lang="ts" setup>
+import type { UiSearchProspectsDrawerEmits } from '~/types/UiSearchProspectsDrawer'
+import type { UseToastReturn } from '~/types/Composables'
 import type { SearchFormState, SearchProspectsDrawerProps, SearchProspectsPrefill } from '~/types/SearchProspectsDrawer'
-import type { ComputedRef, PropType, Ref } from 'vue'
+import type { ComputedRef, EmitFn, PropType, Ref } from 'vue'
 import { computed, ref, watch } from 'vue'
 import { PROSPECT_SOURCE_SEARCH_OPTIONS } from '~/constants/prospectSources'
 import { useProspectSearchStore } from '~/stores/prospectSearch'
@@ -223,15 +225,10 @@ const props: SearchProspectsDrawerProps = defineProps({
   },
 })
 
-const emit = defineEmits<{
-  /** Close every drawer. */
-  close: []
-  /** Go back to the previous drawer of the stack. */
-  back: []
-}>()
+const emit: EmitFn<UiSearchProspectsDrawerEmits> = defineEmits<UiSearchProspectsDrawerEmits>()
 
-const store = useProspectSearchStore()
-const toast = useToast()
+const store: ReturnType<typeof useProspectSearchStore> = useProspectSearchStore()
+const toast: UseToastReturn = useToast()
 
 /** Label of the live-status card, driven by the job status. */
 const statusLabel: ComputedRef<string> = computed((): string => {

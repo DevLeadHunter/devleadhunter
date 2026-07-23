@@ -93,13 +93,13 @@ const isMobile: Ref<boolean> = ref(false)
 const showCreditsPopover: Ref<boolean> = ref(false)
 
 /** User store instance. */
-const userStore = useUserStore()
+const userStore: ReturnType<typeof useUserStore> = useUserStore()
 
 /** Dashboard theme (light paper / dark warm ink). */
 const { theme, initTheme } = useAppTheme()
 
 /** Persistent drawer stack — drives the content push when a drawer is open. */
-const drawerStack = useDrawerStackStore()
+const drawerStack: ReturnType<typeof useDrawerStackStore> = useDrawerStackStore()
 
 // Authenticated app shell — never index dashboard pages (thin content behind auth).
 useSeoMeta({

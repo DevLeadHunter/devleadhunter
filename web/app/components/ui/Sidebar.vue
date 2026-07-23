@@ -275,6 +275,7 @@
 </template>
 
 <script lang="ts" setup>
+import type { UseToastReturn } from '~/types/Composables'
 import type { ComputedRef, Ref } from 'vue'
 import type { AppTheme } from '~/types/AppTheme'
 import type { DlhModuleEntry, UiSidebarGroup, UiSidebarProps } from '~/types/UiSidebar'
@@ -298,14 +299,16 @@ const props: UiSidebarProps = defineProps({
   },
 })
 
-const emit = defineEmits<{
+const emit: {
+  (e: 'toggle'): void
+} = defineEmits<{
   (e: 'toggle'): void
 }>()
 
 /** User store instance. */
-const userStore = useUserStore()
+const userStore: ReturnType<typeof useUserStore> = useUserStore()
 
-const toast = useToast()
+const toast: UseToastReturn = useToast()
 
 const { logout } = useAuth()
 
@@ -315,7 +318,7 @@ const { theme, toggleTheme } = useAppTheme()
 const commandPalette = useCommandPalette()
 
 /** Persistent drawer stack — the profile entry opens from the user menu. */
-const drawerStack = useDrawerStackStore()
+const drawerStack: ReturnType<typeof useDrawerStackStore> = useDrawerStackStore()
 
 /** Tauri desktop detection → hide the "download the app" link when already in the desktop app. */
 const { isDesktopApp } = useDesktopRuntime()
@@ -440,7 +443,7 @@ function navItemClass(active: boolean): string {
  * @returns Tailwind classes for the indicator.
  */
 function navBarClass(active: boolean): string {
-  const base = 'absolute top-1/2 left-1 h-4 w-0.5 -translate-y-1/2 rounded-full transition-colors'
+  const base: string = 'absolute top-1/2 left-1 h-4 w-0.5 -translate-y-1/2 rounded-full transition-colors'
   return active ? `${base} bg-[var(--app-accent)]` : `${base} bg-transparent`
 }
 
@@ -450,7 +453,7 @@ function navBarClass(active: boolean): string {
  * @returns Tailwind classes for the segment.
  */
 function themeButtonClass(value: AppTheme): string {
-  const base = 'flex h-6 w-6 cursor-pointer items-center justify-center rounded-full transition-colors'
+  const base: string = 'flex h-6 w-6 cursor-pointer items-center justify-center rounded-full transition-colors'
   if (theme.value === value) {
     return `${base} bg-[var(--app-ink)] text-[var(--app-surface)]`
   }
@@ -473,7 +476,7 @@ function setTheme(value: AppTheme): void {
  * @returns True if the route is active.
  */
 function isActive(path: string): boolean {
-  const route = useRoute()
+  const route: ReturnType<typeof useRoute> = useRoute()
   if (route.path === path) return true
   if (path !== '/dashboard' && route.path.startsWith(path + '/')) return true
   return false

@@ -92,6 +92,7 @@
 </template>
 
 <script lang="ts" setup>
+import type { UseToastReturn } from '~/types/Composables'
 import type { SupportWebsocketEvent } from '~/types/SupportListPage'
 import type { ComputedRef, Ref } from 'vue'
 import type { SupportTicketStatus, SupportTicketSummary } from '~/types'
@@ -132,9 +133,9 @@ const TOPIC_LABELS: Record<string, string> = {
   other: 'Autre',
 }
 
-const toast = useToast()
-const userStore = useUserStore()
-const runtimeConfig = useRuntimeConfig()
+const toast: UseToastReturn = useToast()
+const userStore: ReturnType<typeof useUserStore> = useUserStore()
+const runtimeConfig: ReturnType<typeof useRuntimeConfig> = useRuntimeConfig()
 
 const tickets: Ref<SupportTicketSummary[]> = ref([])
 const isLoading: Ref<boolean> = ref(false)
@@ -149,8 +150,8 @@ const activeStatus: Ref<string> = ref(isAdmin.value ? 'open' : 'all')
 /** Tickets sorted by latest activity, filtered by the active status. */
 const filteredTickets: ComputedRef<SupportTicketSummary[]> = computed((): SupportTicketSummary[] => {
   const sorted = tickets.value.slice().sort((a: SupportTicketSummary, b: SupportTicketSummary): number => {
-    const dateA = new Date(a.last_message_at || a.created_at).getTime()
-    const dateB = new Date(b.last_message_at || b.created_at).getTime()
+    const dateA: number = new Date(a.last_message_at || a.created_at).getTime()
+    const dateB: number = new Date(b.last_message_at || b.created_at).getTime()
     return dateB - dateA
   })
   if (activeStatus.value === 'all') return sorted
@@ -192,7 +193,7 @@ function statusBadgeClass(status: string): string {
  * @returns Relative label (e.g. « il y a 3 h »).
  */
 function formatRelative(value: string): string {
-  const date = new Date(value)
+  const date: Date = new Date(value)
   const diffMinutes = Math.floor((Date.now() - date.getTime()) / (1000 * 60))
   const diffHours = Math.floor(diffMinutes / 60)
   const diffDays = Math.floor(diffHours / 24)

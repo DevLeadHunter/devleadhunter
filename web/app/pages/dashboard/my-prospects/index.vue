@@ -285,6 +285,8 @@
 </template>
 
 <script lang="ts" setup>
+import type { LocationQueryValue } from 'vue-router'
+import type { UseToastReturn } from '~/types/Composables'
 import { ref, computed, watch, onMounted } from 'vue'
 import type { ComputedRef, Ref } from 'vue'
 import type { Prospect } from '~/types'
@@ -320,7 +322,7 @@ const websiteFilterOptions = [
   { value: 'improvable', label: 'Améliorable (audit)' },
 ]
 const currentPage: Ref<number> = ref(1)
-const pageSize = 50
+const pageSize: number = 50
 
 // Quick-delete (from table row icon)
 const prospectToDelete: Ref<Prospect | null> = ref(null)
@@ -328,9 +330,9 @@ const deleteConfirmModal: Ref<{ open: () => void; close: () => void } | null> = 
 
 // Detail drawer
 /** Persistent drawer stack (the prospect drawer is hosted by the layout). */
-const drawerStack = useDrawerStackStore()
+const drawerStack: ReturnType<typeof useDrawerStackStore> = useDrawerStackStore()
 
-const toast = useToast()
+const toast: UseToastReturn = useToast()
 
 const deleteConfirmMessage: ComputedRef<string> = computed(() => {
   if (!prospectToDelete.value) return 'Cette action est irréversible.'
@@ -451,7 +453,7 @@ watch([activeTab, searchQuery, filterCity, filterCategory, filterWebsite], (): v
  * @param prospect - The prospect whose checkbox was toggled.
  */
 function toggleSelect(prospect: Prospect): void {
-  const id = String(prospect.id)
+  const id: string = String(prospect.id)
   const index = selectedProspects.value.indexOf(id)
   if (index === -1) selectedProspects.value.push(id)
   else selectedProspects.value.splice(index, 1)
@@ -597,8 +599,8 @@ async function handleImportFile(event: Event): Promise<void> {
       return
     }
 
-    let created = 0
-    let failed = 0
+    let created: number = 0
+    let failed: number = 0
     for (const item of valid) {
       try {
         const prospect: Prospect = await ProspectsService.createProspect({
@@ -679,7 +681,7 @@ async function confirmDeleteProspect(): Promise<void> {
 onMounted(async (): Promise<void> => {
   await loadProspects()
   // Deep-link from the dashboard hot-leads widget: ?open=<prospectId> opens the drawer.
-  const openParam = useRoute().query.open
+  const openParam: LocationQueryValue | LocationQueryValue[] | undefined = useRoute().query.open
   const openId: number = Number(Array.isArray(openParam) ? openParam[0] : openParam)
   if (!Number.isNaN(openId) && openId > 0) {
     const target = prospects.value.find((prospect) => prospect.id === openId)

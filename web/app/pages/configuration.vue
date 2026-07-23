@@ -229,6 +229,7 @@
 </template>
 
 <script lang="ts" setup>
+import type { UseToastReturn } from '~/types/Composables'
 import type { ConfigurationChecklistRow, ConfigurationRecapRow } from '~/types/ConfigurationPage'
 import type { ComputedRef, Ref } from 'vue'
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
@@ -247,10 +248,10 @@ definePageMeta({ layout: 'onboarding', middleware: 'auth' })
 
 useSeoMeta({ title: 'Mise en route — DevLeadHunter' })
 
-const toast = useToast()
-const route = useRoute()
-const router = useRouter()
-const userStore = useUserStore()
+const toast: UseToastReturn = useToast()
+const route: ReturnType<typeof useRoute> = useRoute()
+const router: ReturnType<typeof useRouter> = useRouter()
+const userStore: ReturnType<typeof useUserStore> = useUserStore()
 const { postpone, clearPostponed } = useOnboarding()
 
 /** The wizard steps, in order. */

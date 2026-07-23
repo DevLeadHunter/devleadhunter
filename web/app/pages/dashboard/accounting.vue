@@ -622,7 +622,7 @@ const displayedTransactions = computed<CreditPurchaseTransaction[]>(() => {
 
   const items = [...filteredTransactions.value]
   items.sort((a, b) => {
-    let compare = 0
+    let compare: number = 0
 
     switch (sortKey.value) {
       case 'date':
@@ -724,7 +724,7 @@ const getCountryFlag = (code?: string | null): string => {
   if (!code) return '🏳️'
   const upper = code.toUpperCase()
   if (upper.length !== 2) return upper
-  const OFFSET = 127397
+  const OFFSET: number = 127397
   return String.fromCodePoint(...upper.split('').map((char) => char.charCodeAt(0) + OFFSET))
 }
 
@@ -741,9 +741,9 @@ const formatPaymentDetails = (info?: CreditPurchaseTransaction['payment_info']):
  * Format date
  */
 const formatDate = (dateString: string): string => {
-  const date = new Date(dateString)
-  const day = String(date.getDate()).padStart(2, '0')
-  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const date: Date = new Date(dateString)
+  const day: string = String(date.getDate()).padStart(2, '0')
+  const month: string = String(date.getMonth() + 1).padStart(2, '0')
   const year = date.getFullYear()
   return `${day}/${month}/${year}`
 }
@@ -752,12 +752,12 @@ const formatDate = (dateString: string): string => {
  * Format date and time
  */
 const formatDateTime = (dateString: string): string => {
-  const date = new Date(dateString)
-  const day = String(date.getDate()).padStart(2, '0')
-  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const date: Date = new Date(dateString)
+  const day: string = String(date.getDate()).padStart(2, '0')
+  const month: string = String(date.getMonth() + 1).padStart(2, '0')
   const year = date.getFullYear()
-  const hours = String(date.getHours()).padStart(2, '0')
-  const minutes = String(date.getMinutes()).padStart(2, '0')
+  const hours: string = String(date.getHours()).padStart(2, '0')
+  const minutes: string = String(date.getMinutes()).padStart(2, '0')
   return `${day}/${month}/${year} ${hours}:${minutes}`
 }
 

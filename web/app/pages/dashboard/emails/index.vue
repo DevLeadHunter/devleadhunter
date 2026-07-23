@@ -199,6 +199,7 @@
 </template>
 
 <script lang="ts" setup>
+import type { UseToastReturn } from '~/types/Composables'
 import type { EngagementStep } from '~/types/EmailsListPage'
 import type { SelectFieldOption } from '~/types/SelectField'
 import type { ComputedRef, Ref } from 'vue'
@@ -214,12 +215,12 @@ import { ApiClient } from '~/services/api'
 
 definePageMeta({ layout: 'dashboard', middleware: ['auth'] })
 
-const toast = useToast()
+const toast: UseToastReturn = useToast()
 const logs: Ref<EmailLog[]> = ref([])
 const campaigns: Ref<CampaignResponse[]> = ref([])
 
 /** Persistent drawer stack (composer + email log detail live there). */
-const drawerStack = useDrawerStackStore()
+const drawerStack: ReturnType<typeof useDrawerStackStore> = useDrawerStackStore()
 
 const isSyncing: Ref<boolean> = ref(false)
 const isLoading: Ref<boolean> = ref(false)
@@ -228,7 +229,7 @@ const searchQuery: Ref<string> = ref('')
 const filterStatus: Ref<string> = ref('all')
 const filterCampaignId: Ref<string> = ref('all')
 const currentPage: Ref<number> = ref(1)
-const pageSize = 50
+const pageSize: number = 50
 
 /** Full stats object — typed strictly as EmailStats so every field is present. */
 const stats: Ref<EmailStats> = ref({
@@ -302,7 +303,7 @@ const paginatedLogs: ComputedRef<EmailLog[]> = computed((): EmailLog[] => {
  */
 function resolveCampaignName(id: string | number | null | undefined): string | undefined {
   if (id == null) return undefined
-  const numericId = Number(id)
+  const numericId: number = Number(id)
   if (Number.isNaN(numericId)) return undefined
   return campaigns.value.find((campaign) => campaign.id === numericId)?.name
 }

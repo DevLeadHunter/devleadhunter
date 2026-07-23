@@ -29,6 +29,7 @@
 </template>
 
 <script lang="ts" setup>
+import type { UseToastReturn } from '~/types/Composables'
 import type { Ref } from 'vue'
 import { ref, computed, onMounted } from 'vue'
 import { useUserStore } from '~/stores/user'
@@ -45,12 +46,12 @@ definePageMeta({
 /**
  * User store
  */
-const userStore = useUserStore()
+const userStore: ReturnType<typeof useUserStore> = useUserStore()
 
 /**
  * Toast composable
  */
-const toast = useToast()
+const toast: UseToastReturn = useToast()
 
 /**
  * Form state

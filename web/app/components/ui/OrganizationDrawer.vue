@@ -149,7 +149,9 @@
 </template>
 
 <script lang="ts" setup>
-import type { ComputedRef, Ref } from 'vue'
+import type { UiOrganizationDrawerEmits } from '~/types/UiOrganizationDrawer'
+import type { UseToastReturn } from '~/types/Composables'
+import type { ComputedRef, EmitFn, Ref } from 'vue'
 import { computed, ref, watch } from 'vue'
 import type { Organization } from '~/types'
 import type { UiDrawerProps } from '~/types/UiDrawer'
@@ -169,15 +171,10 @@ const props: UiDrawerProps = defineProps({
   },
 })
 
-const emit = defineEmits<{
-  /** Close every drawer. */
-  close: []
-  /** Go back to the previous drawer of the stack. */
-  back: []
-}>()
+const emit: EmitFn<UiOrganizationDrawerEmits> = defineEmits<UiOrganizationDrawerEmits>()
 
-const toast = useToast()
-const userStore = useUserStore()
+const toast: UseToastReturn = useToast()
+const userStore: ReturnType<typeof useUserStore> = useUserStore()
 
 const organization: Ref<Organization | null> = ref(null)
 const isLoading: Ref<boolean> = ref(true)

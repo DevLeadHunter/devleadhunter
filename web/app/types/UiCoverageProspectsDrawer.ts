@@ -9,3 +9,8 @@ export type UiCoverageProspectsDrawerProps = {
   showBack: boolean
   zone: CoverageZone | null
 }
+
+export type UiCoverageProspectsDrawerEmits = {
+  close: []
+  back: []
+}

@@ -1,3 +1,4 @@
+import type { UseScrapingJobStreamReturn } from '~/types/Composables'
 /** Shared prospect-search store — one scraping job lifecycle for drawer + results page. */
 import type { ComputedRef, Ref } from 'vue'
 import { computed, ref } from 'vue'
@@ -40,9 +41,9 @@ export type ProspectSearchParams = {
 }
 
 export const useProspectSearchStore = defineStore('prospectSearch', () => {
-  const config = useRuntimeConfig()
-  const userStore = useUserStore()
-  const stream = useScrapingJobStream()
+  const config: ReturnType<typeof useRuntimeConfig> = useRuntimeConfig()
+  const userStore: ReturnType<typeof useUserStore> = useUserStore()
+  const stream: UseScrapingJobStreamReturn = useScrapingJobStream()
 
   const currentJob: Ref<ScrapingJob | null> = ref(null)
   const recentJobs: Ref<ScrapingJob[]> = ref([])

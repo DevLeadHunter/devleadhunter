@@ -192,8 +192,8 @@ definePageMeta({
   middleware: ['auth'],
 })
 
-const store = useProspectSearchStore()
-const drawerStack = useDrawerStackStore()
+const store: ReturnType<typeof useProspectSearchStore> = useProspectSearchStore()
+const drawerStack: ReturnType<typeof useDrawerStackStore> = useDrawerStackStore()
 
 /** Stat tiles for a completed job. */
 const completedStats: ComputedRef<CompletedStat[]> = computed((): CompletedStat[] => {

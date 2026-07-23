@@ -3,7 +3,7 @@ import type { AppTheme } from '~/types/AppTheme'
 import { watch } from 'vue'
 
 /** localStorage key persisting the dashboard theme choice. */
-const APP_THEME_STORAGE_KEY = 'dlh-app-theme'
+const APP_THEME_STORAGE_KEY: string = 'dlh-app-theme'
 
 /**
  * Dashboard theme state (light/dark) mirrored on `data-theme` and `<html class="dark">`.

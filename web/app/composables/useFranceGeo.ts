@@ -8,7 +8,7 @@ export type CityGeo = {
   region: string
 }
 
-const CITIES_CACHE_KEY = 'dlh-fr-cities-v2'
+const CITIES_CACHE_KEY: string = 'dlh-fr-cities-v2'
 
 /**
  * Read a JSON value from localStorage (null on any failure).
@@ -65,9 +65,9 @@ export async function geocodeCities(cities: string[]): Promise<Record<string, Ci
     codeRegion?: string
   }
 
-  const CONCURRENCY = 6
-  let cursor = 0
-  let dirty = false
+  const CONCURRENCY: number = 6
+  let cursor: number = 0
+  let dirty: boolean = false
 
   /**
    * Drain the shared cursor, geocoding one city per iteration.

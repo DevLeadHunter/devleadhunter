@@ -107,6 +107,7 @@
 </template>
 
 <script lang="ts" setup>
+import type { UseToastReturn } from '~/types/Composables'
 import type { CreditSettings } from '~/types'
 import type { ComputedRef, Ref } from 'vue'
 import { ref, computed, onMounted } from 'vue'
@@ -127,8 +128,8 @@ definePageMeta({
 /**
  * Route and router
  */
-const route = useRoute()
-const router = useRouter()
+const route: ReturnType<typeof useRoute> = useRoute()
+const router: ReturnType<typeof useRouter> = useRouter()
 
 /**
  * Credit settings state
@@ -146,12 +147,12 @@ const credits: Ref<number> = ref(100)
 /**
  * User store
  */
-const userStore = useUserStore()
+const userStore: ReturnType<typeof useUserStore> = useUserStore()
 
 /**
  * Toast composable
  */
-const toast = useToast()
+const toast: UseToastReturn = useToast()
 
 /**
  * Success/Cancel flags from URL params

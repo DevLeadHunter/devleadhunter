@@ -2,7 +2,7 @@ import type { User, LoginCredentials, SignupPayload, TokenResponse, ProfileUpdat
 
 /** Resolve the API base URL from runtime config. */
 function getApiUrl(): string {
-  const config = useRuntimeConfig()
+  const config: ReturnType<typeof useRuntimeConfig> = useRuntimeConfig()
   return config.public.apiBase
 }
 

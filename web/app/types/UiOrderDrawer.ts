@@ -13,3 +13,9 @@ export type OrderEditForm = {
   status: string
   notes: string
 }
+
+export type UiOrderDrawerEmits = {
+  close: []
+  updated: [order: Order]
+  deleted: [orderId: number]
+}

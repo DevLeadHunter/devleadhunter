@@ -7,3 +7,8 @@ export type SignatureForm = {
   content_html: string
   is_default: boolean
 }
+
+export type UiEmailSignaturesDrawerEmits = {
+  close: []
+  back: []
+}

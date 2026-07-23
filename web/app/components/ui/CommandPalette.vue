@@ -80,7 +80,7 @@ import { useDrawerStackStore } from '~/stores/drawerStack'
 
 const { isOpen, close } = useCommandPalette()
 
-const drawerStack = useDrawerStackStore()
+const drawerStack: ReturnType<typeof useDrawerStackStore> = useDrawerStackStore()
 
 const { toggleTheme } = useAppTheme()
 
@@ -135,7 +135,7 @@ function matches(label: string, keywords = ''): boolean {
 /** Groups currently displayed (filtered by the query, flat-indexed). */
 const visibleGroups: ComputedRef<CommandPaletteGroup[]> = computed((): CommandPaletteGroup[] => {
   const groups: CommandPaletteGroup[] = []
-  let flatIndex = 0
+  let flatIndex: number = 0
 
   /**
    * Append a group when it has matching items.

@@ -5,7 +5,7 @@
  * so the public landing page is preserved.
  */
 export default defineNuxtRouteMiddleware((): ReturnType<typeof navigateTo> | undefined => {
-  const config = useRuntimeConfig()
+  const config: ReturnType<typeof useRuntimeConfig> = useRuntimeConfig()
   if (config.public.isDesktop) {
     return navigateTo('/dashboard', { replace: true })
   }

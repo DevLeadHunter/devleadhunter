@@ -299,7 +299,7 @@ const PERIOD_PRESETS: { days: number; label: string }[] = [
   { days: 90, label: '3 mois' },
 ]
 
-const drawerStack = useDrawerStackStore()
+const drawerStack: ReturnType<typeof useDrawerStackStore> = useDrawerStackStore()
 
 const periodDays: Ref<number> = ref(0)
 const stats: Ref<DashboardStats | null> = ref(null)

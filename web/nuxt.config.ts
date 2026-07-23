@@ -3,7 +3,7 @@ import { defineNuxtConfig } from 'nuxt/config'
 
 const isDesktopBuild: boolean = process.env.NUXT_DESKTOP_BUILD === '1'
 
-const siteUrl = 'https://devleadhunter.dibodev.fr'
+const siteUrl: string = 'https://devleadhunter.dibodev.fr'
 
 export default defineNuxtConfig({
   modules: [

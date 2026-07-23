@@ -162,8 +162,9 @@
 </template>
 
 <script lang="ts" setup>
-import type { AddProspectPrefillForm } from '~/types/UiAddProspectDrawer'
-import type { ComputedRef, Ref } from 'vue'
+import type { UseToastReturn } from '~/types/Composables'
+import type { AddProspectPrefillForm, UiAddProspectDrawerEmits } from '~/types/UiAddProspectDrawer'
+import type { ComputedRef, EmitFn, Ref } from 'vue'
 import { computed, ref, watch } from 'vue'
 import type { Prospect, ProspectCreatePayload, ProspectSearchSuggestion } from '~/types'
 import type { BusinessSearchInputExpose } from '~/types/BusinessSearchInput'
@@ -183,16 +184,9 @@ const props: UiDrawerProps = defineProps({
   },
 })
 
-const emit = defineEmits<{
-  /** Close every drawer. */
-  close: []
-  /** Go back to the previous drawer of the stack. */
-  back: []
-  /** Prospect created — the host chains to its detail drawer. */
-  created: [prospect: Prospect]
-}>()
+const emit: EmitFn<UiAddProspectDrawerEmits> = defineEmits<UiAddProspectDrawerEmits>()
 
-const toast = useToast()
+const toast: UseToastReturn = useToast()
 
 const businessSearchRef: Ref<BusinessSearchInputExpose | null> = ref(null)
 const isEnriching: Ref<boolean> = ref(false)

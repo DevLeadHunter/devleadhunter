@@ -298,6 +298,7 @@
 </template>
 
 <script lang="ts" setup>
+import type { UseToastReturn } from '~/types/Composables'
 import type { DemoSiteStat } from '~/types/DemoSiteDetailPage'
 import type { ComputedRef, Ref } from 'vue'
 import type { DemoSite } from '~/services/demoSiteService'
@@ -306,11 +307,11 @@ import { useToast } from '~/composables/useToast'
 
 definePageMeta({ layout: 'dashboard', middleware: 'auth' })
 
-const route = useRoute()
-const demoSiteId = Number(route.params.id)
+const route: ReturnType<typeof useRoute> = useRoute()
+const demoSiteId: number = Number(route.params.id)
 const { copy, copied } = useCopyToClipboard()
 const { openExternalUrl } = useOpenExternalUrl()
-const toast = useToast()
+const toast: UseToastReturn = useToast()
 
 const site: Ref<DemoSite | null> = ref(null)
 const pending: Ref<boolean> = ref(true)

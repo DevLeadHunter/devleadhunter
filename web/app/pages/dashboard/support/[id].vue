@@ -157,6 +157,7 @@
 </template>
 
 <script lang="ts" setup>
+import type { UseToastReturn } from '~/types/Composables'
 import type { SupportWebsocketEvent } from '~/types/SupportTicketPage'
 import type { ComputedRef, Ref } from 'vue'
 import type { SupportMessage, SupportTicketDetail } from '~/types'
@@ -194,10 +195,10 @@ const ALLOWED_TYPES: string[] = ['image/png', 'image/jpeg', 'image/webp']
 /** Maximum attachment size, in bytes. */
 const MAX_ATTACHMENT_BYTES: number = 8 * 1024 * 1024
 
-const route = useRoute()
-const toast = useToast()
-const userStore = useUserStore()
-const runtimeConfig = useRuntimeConfig()
+const route: ReturnType<typeof useRoute> = useRoute()
+const toast: UseToastReturn = useToast()
+const userStore: ReturnType<typeof useUserStore> = useUserStore()
+const runtimeConfig: ReturnType<typeof useRuntimeConfig> = useRuntimeConfig()
 
 const ticket: Ref<SupportTicketDetail | null> = ref(null)
 const isLoading: Ref<boolean> = ref(true)

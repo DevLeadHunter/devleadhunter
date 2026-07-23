@@ -78,8 +78,9 @@
 </template>
 
 <script lang="ts" setup>
-import type { ProfileForm } from '~/types/UiProfileDrawer'
-import type { ComputedRef, Ref } from 'vue'
+import type { UseToastReturn } from '~/types/Composables'
+import type { ProfileForm, UiProfileDrawerEmits } from '~/types/UiProfileDrawer'
+import type { ComputedRef, EmitFn, Ref } from 'vue'
 import type { UiDrawerProps } from '~/types/UiDrawer'
 import { computed, ref, watch } from 'vue'
 import { useUserStore } from '~/stores/user'
@@ -97,16 +98,11 @@ const props: UiDrawerProps = defineProps({
   },
 })
 
-const emit = defineEmits<{
-  /** Close every drawer. */
-  close: []
-  /** Go back to the previous drawer of the stack. */
-  back: []
-}>()
+const emit: EmitFn<UiProfileDrawerEmits> = defineEmits<UiProfileDrawerEmits>()
 
-const userStore = useUserStore()
+const userStore: ReturnType<typeof useUserStore> = useUserStore()
 
-const toast = useToast()
+const toast: UseToastReturn = useToast()
 
 /** Whether the save request is in flight. */
 const isSaving: Ref<boolean> = ref(false)

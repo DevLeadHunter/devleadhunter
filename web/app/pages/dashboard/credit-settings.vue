@@ -145,6 +145,7 @@
 </template>
 
 <script lang="ts" setup>
+import type { UseToastReturn } from '~/types/Composables'
 import type { CreditSettings } from '~/types'
 import type { ComputedRef, Ref } from 'vue'
 import { ref, computed, onMounted } from 'vue'
@@ -208,7 +209,7 @@ const originalForm: Ref<{
 /**
  * Toast composable
  */
-const toast = useToast()
+const toast: UseToastReturn = useToast()
 
 /**
  * Check if form has changes

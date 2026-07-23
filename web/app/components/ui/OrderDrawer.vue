@@ -213,8 +213,9 @@
 </template>
 
 <script lang="ts" setup>
-import type { OrderEditForm, UiOrderDrawerProps } from '~/types/UiOrderDrawer'
-import type { ComputedRef, PropType, Ref } from 'vue'
+import type { UseToastReturn } from '~/types/Composables'
+import type { OrderEditForm, UiOrderDrawerEmits, UiOrderDrawerProps } from '~/types/UiOrderDrawer'
+import type { ComputedRef, EmitFn, PropType, Ref } from 'vue'
 import { ref, computed, watch } from 'vue'
 import type { Order, OrderPaymentEmailPreview } from '~/services/ordersService'
 import { OrdersService } from '~/services/ordersService'
@@ -232,16 +233,9 @@ const props: UiOrderDrawerProps = defineProps({
   },
 })
 
-const emit = defineEmits<{
-  /** Close the drawer */
-  close: []
-  /** Order was updated (re-fetch in parent) */
-  updated: [order: Order]
-  /** Order was deleted */
-  deleted: [orderId: number]
-}>()
+const emit: EmitFn<UiOrderDrawerEmits> = defineEmits<UiOrderDrawerEmits>()
 
-const toast = useToast()
+const toast: UseToastReturn = useToast()
 
 const editMode: Ref<boolean> = ref(false)
 const isBusy: Ref<boolean> = ref(false)

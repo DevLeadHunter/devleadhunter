@@ -114,8 +114,9 @@
 </template>
 
 <script lang="ts" setup>
-import type { SendEmailForm, UiSendEmailDrawerProps } from '~/types/UiSendEmailDrawer'
-import type { PropType, Ref } from 'vue'
+import type { UseToastReturn } from '~/types/Composables'
+import type { SendEmailForm, UiSendEmailDrawerEmits, UiSendEmailDrawerProps } from '~/types/UiSendEmailDrawer'
+import type { EmitFn, PropType, Ref } from 'vue'
 import type { EmailSignature, Prospect } from '~/types'
 import type { SendEmailPrefill } from '~/types/DrawerStack'
 import { ref, watch } from 'vue'
@@ -144,19 +145,12 @@ const props: UiSendEmailDrawerProps = defineProps({
   },
 })
 
-const emit = defineEmits<{
-  /** Close every drawer. */
-  close: []
-  /** Go back to the previous drawer of the stack. */
-  back: []
-  /** The email was successfully dispatched. */
-  sent: []
-}>()
+const emit: EmitFn<UiSendEmailDrawerEmits> = defineEmits<UiSendEmailDrawerEmits>()
 
-const toast = useToast()
+const toast: UseToastReturn = useToast()
 
 /** Persistent drawer stack (to stack the signatures manager on top). */
-const drawerStack = useDrawerStackStore()
+const drawerStack: ReturnType<typeof useDrawerStackStore> = useDrawerStackStore()
 
 /** Whether the quick-send request is in flight. */
 const isSending: Ref<boolean> = ref(false)

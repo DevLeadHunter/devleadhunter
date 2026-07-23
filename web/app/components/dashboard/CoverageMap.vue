@@ -136,15 +136,15 @@ const MAP_MAX_BOUNDS: [[number, number], [number, number]] = [
   [16.5, 55.5],
 ]
 
-const REGIONS_SOURCE_ID = 'dlh-regions'
-const CITIES_SOURCE_ID = 'dlh-cities'
-const REGIONS_FILL_LAYER_ID = 'dlh-regions-fill'
-const REGIONS_LINE_LAYER_ID = 'dlh-regions-line'
-const CITIES_LAYER_ID = 'dlh-cities-dots'
+const REGIONS_SOURCE_ID: string = 'dlh-regions'
+const CITIES_SOURCE_ID: string = 'dlh-cities'
+const REGIONS_FILL_LAYER_ID: string = 'dlh-regions-fill'
+const REGIONS_LINE_LAYER_ID: string = 'dlh-regions-line'
+const CITIES_LAYER_ID: string = 'dlh-cities-dots'
 
 const { theme } = useAppTheme()
-const store = useCoverageStore()
-const drawerStack = useDrawerStackStore()
+const store: ReturnType<typeof useCoverageStore> = useCoverageStore()
+const drawerStack: ReturnType<typeof useDrawerStackStore> = useDrawerStackStore()
 
 /** True when MapLibre could not start (WebGL unavailable, network down…). */
 const isMapFailed: Ref<boolean> = ref(false)

@@ -143,10 +143,10 @@
 </template>
 
 <script lang="ts" setup>
-import type { ComputedRef, PropType } from 'vue'
+import type { ComputedRef, EmitFn, PropType } from 'vue'
 import { computed } from 'vue'
 import type { Prospect } from '~/types'
-import type { UiProspectTableProps } from '~/types/UiProspectTable'
+import type { UiProspectTableEmits, UiProspectTableProps } from '~/types/UiProspectTable'
 import { useUserStore } from '~/stores/user'
 
 /** Paginated prospect rows with per-row and select-all checkboxes. */
@@ -161,18 +161,9 @@ const props: UiProspectTableProps = defineProps({
   },
 })
 
-const emit = defineEmits<{
-  /** Row name clicked — open the detail drawer */
-  viewProspect: [prospect: Prospect]
-  /** Quick-delete icon clicked */
-  deleteProspect: [prospect: Prospect]
-  /** Row checkbox toggled */
-  toggleSelect: [prospect: Prospect]
-  /** Header checkbox toggled — select/clear all rows on the current page */
-  toggleSelectAll: [checked: boolean]
-}>()
+const emit: EmitFn<UiProspectTableEmits> = defineEmits<UiProspectTableEmits>()
 
-const userStore = useUserStore()
+const userStore: ReturnType<typeof useUserStore> = useUserStore()
 
 /** Current user id (0 while the store hydrates). */
 const currentUserId: ComputedRef<number> = computed((): number => userStore.user?.id ?? 0)

@@ -21,3 +21,14 @@ export type ProspectEditForm = {
   city: string
   category: string
 }
+
+export type UiProspectDrawerEmits = {
+  close: []
+  back: []
+  updated: [prospect: Prospect]
+  deleted: [prospectId: number]
+  addToCampaign: [prospect: Prospect]
+  sendEmail: [prospect: Prospect]
+  markAsSold: [prospect: Prospect]
+  toggleContacted: [prospect: Prospect]
+}

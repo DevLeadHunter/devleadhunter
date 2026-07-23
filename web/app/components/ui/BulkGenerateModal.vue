@@ -87,6 +87,7 @@
 </template>
 
 <script lang="ts" setup>
+import type { UseToastReturn } from '~/types/Composables'
 import type { PropType, Ref } from 'vue'
 import { ref, watch } from 'vue'
 import type { UiBulkGenerateModalProps } from '~/types/UiBulkGenerateModal'
@@ -106,12 +107,15 @@ const props: UiBulkGenerateModalProps = defineProps({
   },
 })
 
-const emit = defineEmits<{
+const emit: {
+  (e: 'close'): void
+  (e: 'generated', result: BulkGenerateResult): void
+} = defineEmits<{
   (e: 'close'): void
   (e: 'generated', result: BulkGenerateResult): void
 }>()
 
-const toast = useToast()
+const toast: UseToastReturn = useToast()
 
 /** Available demo-site templates. */
 const templates: Ref<DemoSiteTemplate[]> = ref([])

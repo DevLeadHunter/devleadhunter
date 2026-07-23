@@ -82,8 +82,8 @@ import { DemoSiteService } from '~/services/demoSiteService'
 
 definePageMeta({ layout: 'dashboard', middleware: 'auth' })
 
-const route = useRoute()
-const demoSiteId = Number(route.params.id)
+const route: ReturnType<typeof useRoute> = useRoute()
+const demoSiteId: number = Number(route.params.id)
 
 const site: Ref<DemoSite | null> = ref(null)
 const pending: Ref<boolean> = ref(true)

@@ -94,6 +94,7 @@
 </template>
 
 <script lang="ts" setup>
+import type { UseToastReturn } from '~/types/Composables'
 import type { ComputedRef, PropType, Ref } from 'vue'
 import { ref, computed, watch } from 'vue'
 import type { BehaviorSummary, PersonalizedFollowup, ProspectBehavior } from '~/services/behaviorService'
@@ -121,7 +122,7 @@ const props: UiProspectBehaviorProps = defineProps({
   },
 })
 
-const toast = useToast()
+const toast: UseToastReturn = useToast()
 
 const behavior: Ref<ProspectBehavior | null> = ref(null)
 const summary: Ref<string | null> = ref(null)

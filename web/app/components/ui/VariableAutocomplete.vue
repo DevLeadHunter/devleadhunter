@@ -22,7 +22,8 @@
 </template>
 
 <script lang="ts" setup>
-import type { PropType } from 'vue'
+import type { UiVariableAutocompleteEmits } from '~/types/UiVariableAutocomplete'
+import type { EmitFn, PropType } from 'vue'
 import type { EmailVariable } from '~/utils/emailVariables'
 import type { AutocompletePosition } from '~/composables/useVariableInsertion'
 
@@ -46,10 +47,5 @@ defineProps({
   },
 })
 
-const emit = defineEmits<{
-  /** A variable was picked from the dropdown. */
-  select: [variable: EmailVariable]
-  /** The pointer moved onto an item (sync keyboard highlight). */
-  activate: [index: number]
-}>()
+const emit: EmitFn<UiVariableAutocompleteEmits> = defineEmits<UiVariableAutocompleteEmits>()
 </script>

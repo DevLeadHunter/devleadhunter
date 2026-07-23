@@ -84,8 +84,8 @@ definePageMeta({
 
 useSeoMeta({ title: 'Carte de prospection — DevLeadHunter' })
 
-const store = useCoverageStore()
-const drawerStack = useDrawerStackStore()
+const store: ReturnType<typeof useCoverageStore> = useCoverageStore()
+const drawerStack: ReturnType<typeof useDrawerStackStore> = useDrawerStackStore()
 
 /** Organization members selectable as scopes. */
 const members: ComputedRef<CoverageMember[]> = computed((): CoverageMember[] => store.coverage?.members ?? [])

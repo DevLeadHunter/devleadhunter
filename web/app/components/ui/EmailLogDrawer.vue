@@ -143,8 +143,8 @@
 </template>
 
 <script lang="ts" setup>
-import type { EmailDeliveryStage, EmailTimelineEntry } from '~/types/UiEmailLogDrawer'
-import type { ComputedRef, PropType } from 'vue'
+import type { EmailDeliveryStage, EmailTimelineEntry, UiEmailLogDrawerEmits } from '~/types/UiEmailLogDrawer'
+import type { ComputedRef, EmitFn, PropType } from 'vue'
 import type { EmailLog, EmailStatus } from '~/types'
 import type { EmailLogDrawerProps } from '~/types/EmailLogDrawer'
 import { formatDate } from '~/utils/date'
@@ -169,14 +169,7 @@ const props: EmailLogDrawerProps = defineProps({
   },
 })
 
-const emit = defineEmits<{
-  /** Fired when the user dismisses the drawer. */
-  close: []
-  /** Go back to the previous drawer of the stack. */
-  back: []
-  /** Open the composer prefilled with this log's recipient/subject/body. */
-  resend: []
-}>()
+const emit: EmitFn<UiEmailLogDrawerEmits> = defineEmits<UiEmailLogDrawerEmits>()
 
 /**
  * Returns all status badges to display: best positive state + complaint if any.

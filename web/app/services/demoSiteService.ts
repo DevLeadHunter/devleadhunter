@@ -1,6 +1,6 @@
 import { ApiClient } from '~/services/api'
 
-const BASE_URL = '/api/v1/demo-sites'
+const BASE_URL: string = '/api/v1/demo-sites'
 
 export type DemoSiteTheme = {
   primary: string
@@ -223,15 +223,15 @@ export class DemoSiteService {
    * @throws When the export request fails (message from the API when available).
    */
   static async exportDemoSiteCode(demoSiteId: number, slug: string): Promise<void> {
-    const userStore = useUserStore()
-    const config = useRuntimeConfig()
+    const userStore: ReturnType<typeof useUserStore> = useUserStore()
+    const config: ReturnType<typeof useRuntimeConfig> = useRuntimeConfig()
     const response = await fetch(`${config.public.apiBase}${BASE_URL}/${demoSiteId}/export`, {
       headers: userStore.token ? { Authorization: `Bearer ${userStore.token}` } : {},
     })
 
     if (!response.ok) {
       const errorText = await response.text().catch(() => '')
-      let errorMessage = `Export échoué : ${response.statusText}`
+      let errorMessage: string = `Export échoué : ${response.statusText}`
       if (errorText) {
         try {
           errorMessage = (JSON.parse(errorText).detail as string) || errorMessage
@@ -257,7 +257,7 @@ export class DemoSiteService {
    * Compute days remaining before a demo site expires.
    */
   static daysUntilExpiry(expiresAt: string): number {
-    const diff = new Date(expiresAt).getTime() - Date.now()
+    const diff: number = new Date(expiresAt).getTime() - Date.now()
     return Math.max(0, Math.ceil(diff / (1000 * 60 * 60 * 24)))
   }
 

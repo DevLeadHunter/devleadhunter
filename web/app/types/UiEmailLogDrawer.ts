@@ -27,3 +27,9 @@ export type EmailTimelineEntry = {
     separator: string
   }
 }
+
+export type UiEmailLogDrawerEmits = {
+  close: []
+  back: []
+  resend: []
+}

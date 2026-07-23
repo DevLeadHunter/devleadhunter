@@ -130,8 +130,9 @@
 </template>
 
 <script lang="ts" setup>
-import type { CreateCampaignForm } from '~/types/UiCreateCampaignDrawer'
-import type { Ref } from 'vue'
+import type { UseToastReturn } from '~/types/Composables'
+import type { CreateCampaignForm, UiCreateCampaignDrawerEmits } from '~/types/UiCreateCampaignDrawer'
+import type { EmitFn, Ref } from 'vue'
 import { ref, watch } from 'vue'
 import type { EmailTemplate } from '~/types'
 import type { UiDrawerProps } from '~/types/UiDrawer'
@@ -152,16 +153,11 @@ const props: UiDrawerProps = defineProps({
   },
 })
 
-const emit = defineEmits<{
-  /** Close every drawer. */
-  close: []
-  /** Go back to the previous drawer of the stack. */
-  back: []
-}>()
+const emit: EmitFn<UiCreateCampaignDrawerEmits> = defineEmits<UiCreateCampaignDrawerEmits>()
 
-const campaignsStore = useCampaignsStore()
-const drawerStack = useDrawerStackStore()
-const toast = useToast()
+const campaignsStore: ReturnType<typeof useCampaignsStore> = useCampaignsStore()
+const drawerStack: ReturnType<typeof useDrawerStackStore> = useDrawerStackStore()
+const toast: UseToastReturn = useToast()
 
 /** Whether the create request is in flight. */
 const isCreating: Ref<boolean> = ref(false)

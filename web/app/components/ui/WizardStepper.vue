@@ -71,9 +71,9 @@
 </template>
 
 <script lang="ts" setup>
-import type { ComputedRef, PropType } from 'vue'
+import type { ComputedRef, EmitFn, PropType } from 'vue'
 import { computed } from 'vue'
-import type { UiWizardStep, UiWizardStepperProps } from '~/types/UiWizardStepper'
+import type { UiWizardStep, UiWizardStepperEmits, UiWizardStepperProps } from '~/types/UiWizardStepper'
 
 /** Multi-step wizard stepper; compact indicator on mobile. */
 const props: UiWizardStepperProps = defineProps({
@@ -87,10 +87,7 @@ const props: UiWizardStepperProps = defineProps({
   },
 })
 
-const emit = defineEmits<{
-  /** A completed step was clicked — the parent should navigate back to it. */
-  'update:modelValue': [step: number]
-}>()
+const emit: EmitFn<UiWizardStepperEmits> = defineEmits<UiWizardStepperEmits>()
 
 /** The step currently being shown. */
 const activeStep: ComputedRef<UiWizardStep | undefined> = computed((): UiWizardStep | undefined =>

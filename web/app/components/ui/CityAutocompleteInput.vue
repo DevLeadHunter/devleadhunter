@@ -54,7 +54,8 @@
 </template>
 
 <script lang="ts" setup>
-import type { Ref } from 'vue'
+import type { UiCityAutocompleteInputEmits } from '~/types/UiCityAutocompleteInput'
+import type { EmitFn, Ref } from 'vue'
 import { ref } from 'vue'
 import { useDebounceFn } from '@vueuse/core'
 import type { CityAutocompleteInputProps, CitySuggestion } from '~/types/CityAutocompleteInput'
@@ -88,10 +89,7 @@ const props: CityAutocompleteInputProps = defineProps({
   },
 })
 
-const emit = defineEmits<{
-  'update:modelValue': [value: string]
-  select: [suggestion: CitySuggestion]
-}>()
+const emit: EmitFn<UiCityAutocompleteInputEmits> = defineEmits<UiCityAutocompleteInputEmits>()
 
 const suggestions: Ref<CitySuggestion[]> = ref([])
 const isSearching: Ref<boolean> = ref(false)

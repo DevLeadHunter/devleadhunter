@@ -15,7 +15,7 @@ import { watch } from 'vue'
  * key → no-op.
  */
 export default defineNuxtPlugin((nuxtApp): void => {
-  const config = useRuntimeConfig()
+  const config: ReturnType<typeof useRuntimeConfig> = useRuntimeConfig()
   const key: string = String(config.public.posthogProjectApiKey ?? '')
   const host: string = String(config.public.posthogIngestionHost ?? '')
 
@@ -25,7 +25,7 @@ export default defineNuxtPlugin((nuxtApp): void => {
     return
   }
 
-  const router = useRouter()
+  const router: ReturnType<typeof useRouter> = useRouter()
   const { hasAnalyticsConsent } = useCookieConsent()
   let instance: PostHog | null = null
 

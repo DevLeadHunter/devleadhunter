@@ -118,6 +118,7 @@
 </template>
 
 <script lang="ts" setup>
+import type { UseToastReturn } from '~/types/Composables'
 import type { Ref } from 'vue'
 import type { SupportTicketTopic, SupportTopicOption } from '~/types'
 import { onBeforeUnmount, onMounted, reactive, ref } from 'vue'
@@ -140,8 +141,8 @@ const ALLOWED_TYPES: string[] = ['image/png', 'image/jpeg', 'image/webp']
 /** Maximum attachment size, in bytes. */
 const MAX_ATTACHMENT_BYTES: number = 8 * 1024 * 1024
 
-const toast = useToast()
-const router = useRouter()
+const toast: UseToastReturn = useToast()
+const router: ReturnType<typeof useRouter> = useRouter()
 
 const topics: Ref<SupportTopicOption[]> = ref([])
 const isSubmitting: Ref<boolean> = ref(false)

@@ -103,6 +103,7 @@
 </template>
 
 <script lang="ts" setup>
+import type { UseToastReturn } from '~/types/Composables'
 import { ref, onMounted } from 'vue'
 import type { Ref } from 'vue'
 import type { Order, OrderStats } from '~/services/ordersService'
@@ -114,7 +115,7 @@ definePageMeta({
   middleware: ['auth'],
 })
 
-const toast = useToast()
+const toast: UseToastReturn = useToast()
 
 const orders: Ref<Order[]> = ref([])
 const stats: Ref<OrderStats | null> = ref(null)

@@ -134,7 +134,7 @@
 </template>
 
 <script lang="ts" setup>
-import type { PropType, Ref } from 'vue'
+import type { EmitFn, PropType, Ref } from 'vue'
 import { ref, watch } from 'vue'
 import type { CoverageProspectRow } from '~/services/dashboardService'
 import { DashboardService } from '~/services/dashboardService'
@@ -142,7 +142,7 @@ import { ProspectsService } from '~/services/prospectsService'
 import { useCoverageStore } from '~/stores/coverage'
 import { useDrawerStackStore } from '~/stores/drawerStack'
 import type { CoverageZone } from '~/types/DrawerStack'
-import type { UiCoverageProspectsDrawerProps } from '~/types/UiCoverageProspectsDrawer'
+import type { UiCoverageProspectsDrawerEmits, UiCoverageProspectsDrawerProps } from '~/types/UiCoverageProspectsDrawer'
 
 /** Drawer listing prospects for a clicked coverage zone. */
 const props: UiCoverageProspectsDrawerProps = defineProps({
@@ -160,15 +160,10 @@ const props: UiCoverageProspectsDrawerProps = defineProps({
   },
 })
 
-const emit = defineEmits<{
-  /** Close every drawer. */
-  close: []
-  /** Go back to the previous drawer of the stack. */
-  back: []
-}>()
+const emit: EmitFn<UiCoverageProspectsDrawerEmits> = defineEmits<UiCoverageProspectsDrawerEmits>()
 
-const store = useCoverageStore()
-const drawerStack = useDrawerStackStore()
+const store: ReturnType<typeof useCoverageStore> = useCoverageStore()
+const drawerStack: ReturnType<typeof useDrawerStackStore> = useDrawerStackStore()
 
 const isLoading: Ref<boolean> = ref(false)
 const rows: Ref<CoverageProspectRow[]> = ref([])

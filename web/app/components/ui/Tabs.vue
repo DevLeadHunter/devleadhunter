@@ -45,7 +45,9 @@ const props: UiTabsProps = defineProps({
   },
 })
 
-const emit = defineEmits<{
+const emit: {
+  (e: 'update:modelValue', key: string): void
+} = defineEmits<{
   (e: 'update:modelValue', key: string): void
 }>()
 

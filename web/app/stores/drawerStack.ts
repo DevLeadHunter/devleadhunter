@@ -5,7 +5,7 @@ import type { DrawerStackEntry, ProspectMutationNotice } from '~/types/DrawerSta
 import type { Prospect } from '~/types'
 
 /** sessionStorage key persisting the drawer stack across page reloads. */
-const DRAWER_STACK_STORAGE_KEY = 'dlh-drawer-stack'
+const DRAWER_STACK_STORAGE_KEY: string = 'dlh-drawer-stack'
 
 /** Pinia store driving the persistent right-side drawer stack (survives route changes via `UiDrawerStackHost`). */
 export const useDrawerStackStore = defineStore('drawerStack', () => {

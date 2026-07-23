@@ -256,6 +256,7 @@
 </template>
 
 <script lang="ts" setup>
+import type { UseToastReturn } from '~/types/Composables'
 import type { AutomationDetailKpi } from '~/types/AutomationDetailPage'
 import type { ComputedRef, Ref } from 'vue'
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
@@ -277,9 +278,9 @@ definePageMeta({
   middleware: 'auth',
 })
 
-const store = useAutomationsStore()
-const toast = useToast()
-const route = useRoute()
+const store: ReturnType<typeof useAutomationsStore> = useAutomationsStore()
+const toast: UseToastReturn = useToast()
+const route: ReturnType<typeof useRoute> = useRoute()
 
 /** The automatisation id from the route. */
 const runId: number = Number(route.params.id)

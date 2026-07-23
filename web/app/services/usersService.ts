@@ -1,7 +1,7 @@
 import type { User } from '~/types'
 import { ApiClient } from './api'
 
-const USERS_BASE_URL = '/api/v1/users'
+const USERS_BASE_URL: string = '/api/v1/users'
 
 export class UsersService {
   /**

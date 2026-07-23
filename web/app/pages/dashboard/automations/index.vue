@@ -95,7 +95,7 @@ definePageMeta({
   middleware: 'auth',
 })
 
-const store = useAutomationsStore()
+const store: ReturnType<typeof useAutomationsStore> = useAutomationsStore()
 
 /** Polling handle for live progress. */
 const pollHandle: Ref<ReturnType<typeof setInterval> | null> = ref(null)

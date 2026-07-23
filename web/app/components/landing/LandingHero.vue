@@ -60,11 +60,13 @@
 </template>
 
 <script lang="ts" setup>
-const emit = defineEmits<{
+const emit: {
+  (e: 'discover'): void
+} = defineEmits<{
   (e: 'discover'): void
 }>()
 
-const localePath = useLocalePath()
+const localePath: ReturnType<typeof useLocalePath> = useLocalePath()
 const { track } = useSiteTracking()
 
 /** i18n keys of the three trust markers under the CTAs. */
