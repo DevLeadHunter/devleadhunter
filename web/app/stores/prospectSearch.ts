@@ -40,6 +40,8 @@ export type ProspectSearchParams = {
   onlyWithoutWebsite: boolean
 }
 
+// Pinia ne fournit pas de type nommé pour un store : TypeScript l'élide, il est inécrivable.
+// eslint-disable-next-line @typescript-eslint/typedef
 export const useProspectSearchStore = defineStore('prospectSearch', () => {
   const config: ReturnType<typeof useRuntimeConfig> = useRuntimeConfig()
   const userStore: ReturnType<typeof useUserStore> = useUserStore()
@@ -137,7 +139,7 @@ export const useProspectSearchStore = defineStore('prospectSearch', () => {
     if (!currentJob.value) return
     try {
       isRefreshing.value = true
-      const response = await $fetch<ScrapingJob>(
+      const response: ScrapingJob = await $fetch<ScrapingJob>(
         `${config.public.apiBase}/api/v1/scraping-jobs/${currentJob.value.id}`,
         { method: 'GET', headers: authHeaders() },
       )
@@ -164,7 +166,7 @@ export const useProspectSearchStore = defineStore('prospectSearch', () => {
   async function startSearch(params: ProspectSearchParams): Promise<void> {
     isStarting.value = true
     try {
-      const response = await $fetch<ScrapingJob>(`${config.public.apiBase}/api/v1/scraping-jobs`, {
+      const response: ScrapingJob = await $fetch<ScrapingJob>(`${config.public.apiBase}/api/v1/scraping-jobs`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', ...authHeaders() },
         body: {
@@ -211,7 +213,7 @@ export const useProspectSearchStore = defineStore('prospectSearch', () => {
    * @returns A promise resolved once loaded.
    */
   async function loadJob(jobId: string): Promise<void> {
-    const response = await $fetch<ScrapingJob>(`${config.public.apiBase}/api/v1/scraping-jobs/${jobId}`, {
+    const response: ScrapingJob = await $fetch<ScrapingJob>(`${config.public.apiBase}/api/v1/scraping-jobs/${jobId}`, {
       method: 'GET',
       headers: authHeaders(),
     })
@@ -227,7 +229,7 @@ export const useProspectSearchStore = defineStore('prospectSearch', () => {
    */
   async function loadRecent(): Promise<void> {
     try {
-      const response = await $fetch<ScrapingJob[]>(`${config.public.apiBase}/api/v1/scraping-jobs`, {
+      const response: ScrapingJob[] = await $fetch<ScrapingJob[]>(`${config.public.apiBase}/api/v1/scraping-jobs`, {
         method: 'GET',
         headers: authHeaders(),
       })

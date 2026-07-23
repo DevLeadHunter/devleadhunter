@@ -107,6 +107,7 @@
 </template>
 
 <script lang="ts" setup>
+import type { CheckoutSessionResponse } from '~/types/index'
 import type { UseToastReturn } from '~/types/Composables'
 import type { CreditSettings } from '~/types'
 import type { ComputedRef, Ref } from 'vue'
@@ -179,13 +180,14 @@ const totalPrice: ComputedRef<number> = computed((): number => {
  * Load credit settings from API
  * @returns {Promise<void>}
  */
-const loadCreditSettings = async (): Promise<void> => {
+const loadCreditSettings: () => Promise<void> = async (): Promise<void> => {
   try {
     isLoading.value = true
     error.value = null
     creditSettings.value = await CreditSettingsService.getCreditSettings()
   } catch (err) {
-    const errorMessage = err instanceof Error ? err.message : 'Erreur lors du chargement des paramètres de crédits'
+    const errorMessage: string =
+      err instanceof Error ? err.message : 'Erreur lors du chargement des paramètres de crédits'
     error.value = errorMessage
     toast.error(errorMessage)
   } finally {
@@ -197,7 +199,7 @@ const loadCreditSettings = async (): Promise<void> => {
  * Load current user balance
  * @returns {Promise<void>}
  */
-const loadUserBalance = async (): Promise<void> => {
+const loadUserBalance: () => Promise<void> = async (): Promise<void> => {
   try {
     if (userStore.user) {
       // Get balance from user store or API
@@ -212,13 +214,13 @@ const loadUserBalance = async (): Promise<void> => {
  * Handle purchase form submission
  * @returns {Promise<void>}
  */
-const handlePurchase = async (): Promise<void> => {
+const handlePurchase: () => Promise<void> = async (): Promise<void> => {
   if (!creditSettings.value || credits.value <= 0) {
     return
   }
 
   // Validate minimum purchase amount
-  const minimum = creditSettings.value.minimum_credits_purchase
+  const minimum: number = creditSettings.value.minimum_credits_purchase
   if (credits.value < minimum) {
     toast.error(`Le minimum d'achat est de ${minimum} crédit${minimum !== 1 ? 's' : ''}.`)
     return
@@ -229,7 +231,7 @@ const handlePurchase = async (): Promise<void> => {
     error.value = null
 
     // Create checkout session
-    const session = await PaymentService.createCheckoutSession({
+    const session: CheckoutSessionResponse = await PaymentService.createCheckoutSession({
       credits: credits.value,
     })
 
@@ -245,7 +247,8 @@ const handlePurchase = async (): Promise<void> => {
       throw new Error('No checkout URL returned from server')
     }
   } catch (err) {
-    const errorMessage = err instanceof Error ? err.message : 'Erreur lors de la création de la session de paiement'
+    const errorMessage: string =
+      err instanceof Error ? err.message : 'Erreur lors de la création de la session de paiement'
     error.value = errorMessage
     toast.error(errorMessage)
     isProcessing.value = false
@@ -256,7 +259,7 @@ const handlePurchase = async (): Promise<void> => {
  * Check URL params for success/cancel
  * @returns {Promise<void>}
  */
-const checkUrlParams = async (): Promise<void> => {
+const checkUrlParams: () => Promise<void> = async (): Promise<void> => {
   if (route.query.success === 'true') {
     showSuccess.value = true
 
@@ -272,7 +275,8 @@ const checkUrlParams = async (): Promise<void> => {
     // If we have a session ID, verify the payment and ensure credits are added
     if (sessionId) {
       try {
-        const verification = await PaymentService.verifyCheckoutSession(sessionId)
+        const verification: { status: string; message: string; paid: boolean; credits_added?: number | undefined } =
+          await PaymentService.verifyCheckoutSession(sessionId)
         if (verification.paid && verification.status === 'success') {
           toast.success(
             `Paiement confirmé ! ${verification.credits_added || credits.value} crédit${(verification.credits_added || credits.value) !== 1 ? 's' : ''} ajouté${(verification.credits_added || credits.value) !== 1 ? 's' : ''}.`,

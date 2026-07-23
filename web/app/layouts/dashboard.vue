@@ -74,6 +74,7 @@
 </template>
 
 <script lang="ts" setup>
+import type { AppTheme } from '~/types/AppTheme'
 import type { ComputedRef, Ref } from 'vue'
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useUserStore } from '~/stores/user'
@@ -96,7 +97,8 @@ const showCreditsPopover: Ref<boolean> = ref(false)
 const userStore: ReturnType<typeof useUserStore> = useUserStore()
 
 /** Dashboard theme (light paper / dark warm ink). */
-const { theme, initTheme } = useAppTheme()
+const { theme, initTheme }: { theme: Ref<AppTheme, AppTheme>; initTheme: () => void; toggleTheme: () => void } =
+  useAppTheme()
 
 /** Persistent drawer stack — drives the content push when a drawer is open. */
 const drawerStack: ReturnType<typeof useDrawerStackStore> = useDrawerStackStore()
@@ -111,7 +113,7 @@ useSeoMeta({
  * Matches each drawer's width; only from lg up (below, the drawer overlays).
  */
 const drawerPushClass: ComputedRef<string> = computed((): string => {
-  const top = drawerStack.topEntry
+  const top: ReturnType<typeof useDrawerStackStore>['topEntry'] = drawerStack.topEntry
   if (!top) return ''
   return top.kind === 'email-template' ? 'lg:mr-[560px]' : 'lg:mr-[480px]'
 })

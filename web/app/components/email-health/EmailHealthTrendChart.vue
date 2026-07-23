@@ -266,14 +266,14 @@ function linePath(serie: EmailHealthChartSeries): string {
    * @param y - Raw control Y.
    * @returns Clamped Y.
    */
-  const clampY = (y: number): number => Math.max(PAD_TOP, Math.min(H - PAD_BOTTOM, y))
+  const clampY: (y: number) => number = (y: number): number => Math.max(PAD_TOP, Math.min(H - PAD_BOTTOM, y))
 
   let path: string = `M ${points[0]!.x} ${points[0]!.y}`
-  for (let index = 0; index < points.length - 1; index += 1) {
-    const previous = points[index - 1] ?? points[index]!
-    const current = points[index]!
-    const next = points[index + 1]!
-    const following = points[index + 2] ?? next
+  for (let index: number = 0; index < points.length - 1; index += 1) {
+    const previous: { x: number; y: number } = points[index - 1] ?? points[index]!
+    const current: { x: number; y: number } = points[index]!
+    const next: { x: number; y: number } = points[index + 1]!
+    const following: { x: number; y: number } = points[index + 2] ?? next
     const control1X: number = current.x + (next.x - previous.x) / 6
     const control1Y: number = clampY(current.y + (next.y - previous.y) / 6)
     const control2X: number = next.x - (following.x - current.x) / 6

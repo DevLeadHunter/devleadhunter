@@ -494,7 +494,7 @@
 </template>
 
 <script lang="ts" setup>
-import type { AccountingResponse, CreditPurchaseTransaction } from '~/types'
+import type { AccountingResponse, CreditPurchaseTransaction, StripePayment } from '~/types'
 import type { ComputedRef, Ref } from 'vue'
 import { ref, computed, onMounted, watch } from 'vue'
 import { AccountingService } from '~/services/accountingService'
@@ -530,7 +530,7 @@ const expandedTransactions: Ref<Set<string>> = ref(new Set())
 /**
  * Raw transactions (from API)
  */
-const rawTransactions = computed<CreditPurchaseTransaction[]>(() => {
+const rawTransactions: ComputedRef<CreditPurchaseTransaction[]> = computed<CreditPurchaseTransaction[]>(() => {
   return accountingData.value?.transactions || []
 })
 
@@ -547,9 +547,9 @@ const sortDirection: Ref<'asc' | 'desc'> = ref('desc')
  * Status options for filter dropdown
  */
 const statusOptions: ComputedRef<string[]> = computed(() => {
-  const statuses = new Set<string>()
-  rawTransactions.value.forEach((transaction) => {
-    const status = transaction.payment_info?.status
+  const statuses: Set<string> = new Set<string>()
+  rawTransactions.value.forEach((transaction: CreditPurchaseTransaction) => {
+    const status: string | undefined = transaction.payment_info?.status
     if (status) {
       statuses.add(status.toLowerCase())
     }
@@ -560,15 +560,15 @@ const statusOptions: ComputedRef<string[]> = computed(() => {
 /**
  * Filter transactions by status and search query
  */
-const filteredTransactions = computed<CreditPurchaseTransaction[]>(() => {
-  const query = searchQuery.value.trim().toLowerCase()
-  const status = statusFilter.value
+const filteredTransactions: ComputedRef<CreditPurchaseTransaction[]> = computed<CreditPurchaseTransaction[]>(() => {
+  const query: string = searchQuery.value.trim().toLowerCase()
+  const status: string = statusFilter.value
 
-  return rawTransactions.value.filter((transaction) => {
-    const paymentInfo = transaction.payment_info
-    const transactionStatus = paymentInfo?.status?.toLowerCase() || 'unknown'
+  return rawTransactions.value.filter((transaction: CreditPurchaseTransaction) => {
+    const paymentInfo: StripePayment | null | undefined = transaction.payment_info
+    const transactionStatus: string = paymentInfo?.status?.toLowerCase() || 'unknown'
 
-    const matchesStatus = !status || transactionStatus === status
+    const matchesStatus: boolean = !status || transactionStatus === status
     if (!matchesStatus) {
       return false
     }
@@ -577,7 +577,7 @@ const filteredTransactions = computed<CreditPurchaseTransaction[]>(() => {
       return true
     }
 
-    const haystack = [
+    const haystack: string = [
       transaction.user_name,
       transaction.user_email,
       transaction.description,
@@ -604,11 +604,14 @@ const filteredTransactions = computed<CreditPurchaseTransaction[]>(() => {
 /**
  * Sort filtered transactions
  */
-const displayedTransactions = computed<CreditPurchaseTransaction[]>(() => {
-  const direction = sortDirection.value === 'asc' ? 1 : -1
+const displayedTransactions: ComputedRef<CreditPurchaseTransaction[]> = computed<CreditPurchaseTransaction[]>(() => {
+  const direction: number = sortDirection.value === 'asc' ? 1 : -1
 
-  const getAmount = (transaction: CreditPurchaseTransaction, key: 'amount' | 'net' | 'fees'): number => {
-    const info = transaction.payment_info
+  const getAmount: (transaction: CreditPurchaseTransaction, key: 'amount' | 'net' | 'fees') => number = (
+    transaction: CreditPurchaseTransaction,
+    key: 'amount' | 'net' | 'fees',
+  ): number => {
+    const info: StripePayment | null | undefined = transaction.payment_info
     if (!info) return 0
     switch (key) {
       case 'amount':
@@ -620,8 +623,8 @@ const displayedTransactions = computed<CreditPurchaseTransaction[]>(() => {
     }
   }
 
-  const items = [...filteredTransactions.value]
-  items.sort((a, b) => {
+  const items: CreditPurchaseTransaction[] = [...filteredTransactions.value]
+  items.sort((a: CreditPurchaseTransaction, b: CreditPurchaseTransaction) => {
     let compare: number = 0
 
     switch (sortKey.value) {
@@ -650,10 +653,10 @@ const displayedTransactions = computed<CreditPurchaseTransaction[]>(() => {
         break
       case 'availability':
         {
-          const aTime = a.payment_info?.available_at
+          const aTime: number = a.payment_info?.available_at
             ? new Date(a.payment_info.available_at).getTime()
             : Number.MAX_SAFE_INTEGER
-          const bTime = b.payment_info?.available_at
+          const bTime: number = b.payment_info?.available_at
             ? new Date(b.payment_info.available_at).getTime()
             : Number.MAX_SAFE_INTEGER
           compare = aTime - bTime
@@ -691,27 +694,31 @@ const pageEnd: ComputedRef<number> = computed(() => Math.min(page.value * pageSi
 /**
  * Utility: coerce value to number
  */
-const toNumeric = (value: number | string | null | undefined): number => {
+const toNumeric: (value: number | string | null | undefined) => number = (
+  value: number | string | null | undefined,
+): number => {
   if (value === null || value === undefined) return 0
   if (typeof value === 'number') return value
-  const parsed = parseFloat(value)
+  const parsed: number = parseFloat(value)
   return Number.isFinite(parsed) ? parsed : 0
 }
 
 /**
  * Format currency
  */
-const formatCurrency = (amount: number | string | null | undefined): string => {
-  const numericAmount = toNumeric(amount)
+const formatCurrency: (amount: number | string | null | undefined) => string = (
+  amount: number | string | null | undefined,
+): string => {
+  const numericAmount: number = toNumeric(amount)
   return new Intl.NumberFormat('en-US', {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   }).format(numericAmount)
 }
 
-const regionDisplayNames = new Intl.DisplayNames(['en'], { type: 'region' })
+const regionDisplayNames: Intl.DisplayNames = new Intl.DisplayNames(['en'], { type: 'region' })
 
-const getCountryName = (code?: string | null): string => {
+const getCountryName: (code?: string | null) => string = (code?: string | null): string => {
   if (!code) return 'Unknown country'
   try {
     return regionDisplayNames.of(code.toUpperCase()) || code.toUpperCase()
@@ -720,42 +727,44 @@ const getCountryName = (code?: string | null): string => {
   }
 }
 
-const getCountryFlag = (code?: string | null): string => {
+const getCountryFlag: (code?: string | null) => string = (code?: string | null): string => {
   if (!code) return '🏳️'
-  const upper = code.toUpperCase()
+  const upper: string = code.toUpperCase()
   if (upper.length !== 2) return upper
   const OFFSET: number = 127397
-  return String.fromCodePoint(...upper.split('').map((char) => char.charCodeAt(0) + OFFSET))
+  return String.fromCodePoint(...upper.split('').map((char: string) => char.charCodeAt(0) + OFFSET))
 }
 
-const formatPaymentDetails = (info?: CreditPurchaseTransaction['payment_info']): string => {
+const formatPaymentDetails: (info?: CreditPurchaseTransaction['payment_info']) => string = (
+  info?: CreditPurchaseTransaction['payment_info'],
+): string => {
   if (!info) return 'N/A'
-  const type = info.payment_method_type ? info.payment_method_type.toUpperCase() : ''
-  const brand = info.payment_method_brand ? info.payment_method_brand.toUpperCase() : ''
-  const last4 = info.payment_method_last4 ? `•••• ${info.payment_method_last4}` : ''
-  const parts = [type, brand, last4].filter(Boolean)
+  const type: string = info.payment_method_type ? info.payment_method_type.toUpperCase() : ''
+  const brand: string = info.payment_method_brand ? info.payment_method_brand.toUpperCase() : ''
+  const last4: string = info.payment_method_last4 ? `•••• ${info.payment_method_last4}` : ''
+  const parts: string[] = [type, brand, last4].filter(Boolean)
   return parts.length ? parts.join(' ') : 'N/A'
 }
 
 /**
  * Format date
  */
-const formatDate = (dateString: string): string => {
+const formatDate: (dateString: string) => string = (dateString: string): string => {
   const date: Date = new Date(dateString)
   const day: string = String(date.getDate()).padStart(2, '0')
   const month: string = String(date.getMonth() + 1).padStart(2, '0')
-  const year = date.getFullYear()
+  const year: number = date.getFullYear()
   return `${day}/${month}/${year}`
 }
 
 /**
  * Format date and time
  */
-const formatDateTime = (dateString: string): string => {
+const formatDateTime: (dateString: string) => string = (dateString: string): string => {
   const date: Date = new Date(dateString)
   const day: string = String(date.getDate()).padStart(2, '0')
   const month: string = String(date.getMonth() + 1).padStart(2, '0')
-  const year = date.getFullYear()
+  const year: number = date.getFullYear()
   const hours: string = String(date.getHours()).padStart(2, '0')
   const minutes: string = String(date.getMinutes()).padStart(2, '0')
   return `${day}/${month}/${year} ${hours}:${minutes}`
@@ -764,8 +773,8 @@ const formatDateTime = (dateString: string): string => {
 /**
  * Get status class
  */
-const getStatusClass = (status: string): string => {
-  const normalized = status.toLowerCase()
+const getStatusClass: (status: string) => string = (status: string): string => {
+  const normalized: string = status.toLowerCase()
   if (['paid', 'complete', 'succeeded', 'processing', 'requires_capture'].includes(normalized)) {
     return 'bg-[var(--app-green)]/20 text-[var(--app-green)] border border-[var(--app-green)]/30'
   }
@@ -784,7 +793,7 @@ const getStatusClass = (status: string): string => {
 /**
  * Get status label
  */
-const getStatusLabel = (status: string): string => {
+const getStatusLabel: (status: string) => string = (status: string): string => {
   const labelMap: Record<string, string> = {
     paid: 'Paid',
     complete: 'Complete',
@@ -806,12 +815,14 @@ const getStatusLabel = (status: string): string => {
   return labelMap[status.toLowerCase()] || status
 }
 
-const formatAvailability = (info?: CreditPurchaseTransaction['payment_info']): string => {
+const formatAvailability: (info?: CreditPurchaseTransaction['payment_info']) => string = (
+  info?: CreditPurchaseTransaction['payment_info'],
+): string => {
   if (!info) return 'N/A'
   if (info.available_at) {
     return formatDateTime(info.available_at)
   }
-  const status = info.status?.toLowerCase() || 'unknown'
+  const status: string = info.status?.toLowerCase() || 'unknown'
   if (['succeeded', 'paid', 'complete', 'processing', 'requires_capture', 'pending'].includes(status)) {
     return 'Pending'
   }
@@ -827,7 +838,9 @@ const formatAvailability = (info?: CreditPurchaseTransaction['payment_info']): s
 /**
  * Parse user agent to get device/browser info
  */
-const parseUserAgent = (userAgent: string | null | undefined): string => {
+const parseUserAgent: (userAgent: string | null | undefined) => string = (
+  userAgent: string | null | undefined,
+): string => {
   if (!userAgent) return 'N/A'
 
   // Simple parsing for common browsers/devices
@@ -856,7 +869,9 @@ const parseUserAgent = (userAgent: string | null | undefined): string => {
 /**
  * Toggle transaction details
  */
-const getTransactionKey = (transaction: CreditPurchaseTransaction): string => {
+const getTransactionKey: (transaction: CreditPurchaseTransaction) => string = (
+  transaction: CreditPurchaseTransaction,
+): string => {
   return (
     transaction.payment_info?.payment_intent_id ||
     transaction.payment_info?.session_id ||
@@ -864,7 +879,7 @@ const getTransactionKey = (transaction: CreditPurchaseTransaction): string => {
   )
 }
 
-const toggleTransactionDetails = (transactionKey: string): void => {
+const toggleTransactionDetails: (transactionKey: string) => void = (transactionKey: string): void => {
   if (expandedTransactions.value.has(transactionKey)) {
     expandedTransactions.value.delete(transactionKey)
   } else {
@@ -875,23 +890,23 @@ const toggleTransactionDetails = (transactionKey: string): void => {
 /**
  * Toggle sort direction
  */
-const toggleSortDirection = (): void => {
+const toggleSortDirection: () => void = (): void => {
   sortDirection.value = sortDirection.value === 'asc' ? 'desc' : 'asc'
 }
 
 /**
  * Load accounting data
  */
-const loadAccountingData = async (): Promise<void> => {
+const loadAccountingData: () => Promise<void> = async (): Promise<void> => {
   try {
     isLoading.value = true
     error.value = null
-    const skip = (page.value - 1) * pageSize.value
-    const limit = pageSize.value
+    const skip: number = (page.value - 1) * pageSize.value
+    const limit: number = pageSize.value
     accountingData.value = await AccountingService.getAccountingData(skip, limit)
     expandedTransactions.value.clear()
   } catch (err) {
-    const errorMessage = err instanceof Error ? err.message : 'Failed to load accounting data'
+    const errorMessage: string = err instanceof Error ? err.message : 'Failed to load accounting data'
     error.value = errorMessage
     console.error('Failed to load accounting data:', err)
   } finally {
@@ -902,13 +917,13 @@ const loadAccountingData = async (): Promise<void> => {
 /**
  * Pagination handlers
  */
-const goToPrevPage = (): void => {
+const goToPrevPage: () => void = (): void => {
   if (page.value > 1) {
     page.value -= 1
   }
 }
 
-const goToNextPage = (): void => {
+const goToNextPage: () => void = (): void => {
   if (page.value < totalPages.value) {
     page.value += 1
   }

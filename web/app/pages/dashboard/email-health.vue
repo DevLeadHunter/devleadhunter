@@ -501,7 +501,9 @@ import type {
   EmailHealthOverview,
   EmailHealthProvider,
   EmailHealthTrendDay,
+  PostmasterDay,
   PostmasterDomain,
+  SpamLocalCheck,
   TemplateScore,
   TemplateScoresResponse,
 } from '~/services/emailHealthService'
@@ -577,7 +579,7 @@ const templateGroups: ComputedRef<TemplateScoreGroup[]> = computed((): TemplateS
    * @param items - Scores of one group.
    * @returns The sorted copy.
    */
-  const sorted = (items: TemplateScore[]): TemplateScore[] =>
+  const sorted: (items: TemplateScore[]) => TemplateScore[] = (items: TemplateScore[]): TemplateScore[] =>
     [...items].sort((a: TemplateScore, b: TemplateScore): number => {
       if (a.spamassassin.available !== b.spamassassin.available) return a.spamassassin.available ? -1 : 1
       return (a.spamassassin.score ?? 99) - (b.spamassassin.score ?? 99)
@@ -587,7 +589,7 @@ const templateGroups: ComputedRef<TemplateScoreGroup[]> = computed((): TemplateS
    * @param items - Scores of one group.
    * @returns True when a "best" actually exists.
    */
-  const hasDistinctScores = (items: TemplateScore[]): boolean => {
+  const hasDistinctScores: (items: TemplateScore[]) => boolean = (items: TemplateScore[]): boolean => {
     const values: number[] = items
       .filter((item: TemplateScore): boolean => item.spamassassin.available)
       .map((item: TemplateScore): number => item.spamassassin.score ?? 0)
@@ -609,7 +611,10 @@ const templateGroups: ComputedRef<TemplateScoreGroup[]> = computed((): TemplateS
  */
 function combinedStatus(score: TemplateScore): 'ok' | 'warn' | 'danger' {
   const rank: Record<string, number> = { ok: 0, warn: 1, danger: 2 }
-  const statuses: string[] = [score.spamassassin.status ?? 'ok', ...score.issues.map((issue): string => issue.status)]
+  const statuses: string[] = [
+    score.spamassassin.status ?? 'ok',
+    ...score.issues.map((issue: SpamLocalCheck): string => issue.status),
+  ]
   const worst: string = statuses.reduce(
     (acc: string, status: string): string => ((rank[status] ?? 0) > (rank[acc] ?? 0) ? status : acc),
     'ok',
@@ -636,8 +641,13 @@ function formatNote(score: number): string {
  */
 function topRulesFor(score: TemplateScore): { score: string | number | null; description: string | null }[] {
   return [...(score.spamassassin.rules ?? [])]
-    .filter((rule): boolean => Number(rule.score ?? 0) > 0)
-    .sort((a, b): number => Number(b.score ?? 0) - Number(a.score ?? 0))
+    .filter(
+      (rule: { score: string | number | null; description: string | null }): boolean => Number(rule.score ?? 0) > 0,
+    )
+    .sort(
+      (a: { score: string | number | null }, b: { score: string | number | null }): number =>
+        Number(b.score ?? 0) - Number(a.score ?? 0),
+    )
     .slice(0, 6)
 }
 
@@ -724,7 +734,11 @@ function dnsChecks(
    * @param check - Raw check payload.
    * @returns The card definition.
    */
-  const card = (
+  const card: (
+    key: string,
+    label: string,
+    check: EmailDnsCheck,
+  ) => { key: string; label: string; status: string; detail: string; record: string | null } = (
     key: string,
     label: string,
     check: EmailDnsCheck,
@@ -750,7 +764,7 @@ function dnsChecks(
  * @returns Label/value pairs.
  */
 function postmasterAuthRatios(postmaster: PostmasterDomain): { label: string; value: string }[] {
-  const latest = postmaster.latest
+  const latest: PostmasterDay | null | undefined = postmaster.latest
   if (!latest) return []
   const entries: { label: string; ratio: number | null }[] = [
     { label: 'SPF ok', ratio: latest.spf_success_ratio },
@@ -758,8 +772,8 @@ function postmasterAuthRatios(postmaster: PostmasterDomain): { label: string; va
     { label: 'DMARC ok', ratio: latest.dmarc_success_ratio },
   ]
   return entries
-    .filter((entry): boolean => entry.ratio !== null)
-    .map((entry): { label: string; value: string } => ({
+    .filter((entry: { label: string; ratio: number | null }): boolean => entry.ratio !== null)
+    .map((entry: { label: string; ratio: number | null }): { label: string; value: string } => ({
       label: entry.label,
       value: `${formatRate((entry.ratio ?? 0) * 100)} %`,
     }))
@@ -771,7 +785,7 @@ function postmasterAuthRatios(postmaster: PostmasterDomain): { label: string; va
  * @returns Date + reputation pairs.
  */
 function reputationDays(postmaster: PostmasterDomain): { date: string; reputation: string | null }[] {
-  return (postmaster.days ?? []).map((day): { date: string; reputation: string | null } => ({
+  return (postmaster.days ?? []).map((day: PostmasterDay): { date: string; reputation: string | null } => ({
     date: day.date,
     reputation: day.domain_reputation,
   }))
@@ -972,7 +986,12 @@ async function load(): Promise<void> {
   isLoading.value = true
   loadError.value = null
   try {
-    const [overviewData, trendsData, providersData, incidentsData] = await Promise.all([
+    const [overviewData, trendsData, providersData, incidentsData]: [
+      EmailHealthOverview,
+      { days: EmailHealthTrendDay[] },
+      { providers: EmailHealthProvider[] },
+      { items: EmailHealthIncident[] },
+    ] = await Promise.all([
       EmailHealthService.getEmailHealthOverview(period.value),
       EmailHealthService.getEmailHealthTrends(period.value),
       EmailHealthService.getEmailHealthProviders(period.value),

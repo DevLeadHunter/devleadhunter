@@ -22,7 +22,7 @@
 import type { ComputedRef } from 'vue'
 import { computed } from 'vue'
 
-const { t } = useI18n()
+const { t }: { t: (key: string, params?: Record<string, unknown>) => string } = useI18n()
 
 /** Number of trade examples available in the i18n ticker namespace. */
 const tickerItemCount: number = 8

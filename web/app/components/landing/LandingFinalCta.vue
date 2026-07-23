@@ -36,5 +36,6 @@
 
 <script lang="ts" setup>
 const localePath: ReturnType<typeof useLocalePath> = useLocalePath()
-const { track } = useSiteTracking()
+const { track }: { track: (event: string, properties?: Record<string, unknown> | undefined) => void } =
+  useSiteTracking()
 </script>

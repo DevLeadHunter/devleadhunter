@@ -1,3 +1,4 @@
+import type { RouteLocationNormalized } from 'vue-router'
 import type { PostHog } from 'posthog-js'
 import { watch } from 'vue'
 
@@ -14,6 +15,8 @@ import { watch } from 'vue'
  * cookies (see ``useCookieConsent``). Cookieless Umami runs independently. Empty
  * key → no-op.
  */
+// defineNuxtPlugin fournit déjà le type de `nuxtApp` ; le réécrire boucle sur lui-même.
+// eslint-disable-next-line @typescript-eslint/typedef
 export default defineNuxtPlugin((nuxtApp): void => {
   const config: ReturnType<typeof useRuntimeConfig> = useRuntimeConfig()
   const key: string = String(config.public.posthogProjectApiKey ?? '')
@@ -26,7 +29,15 @@ export default defineNuxtPlugin((nuxtApp): void => {
   }
 
   const router: ReturnType<typeof useRouter> = useRouter()
-  const { hasAnalyticsConsent } = useCookieConsent()
+  const {
+    hasAnalyticsConsent,
+  }: {
+    consent: Ref<CookieConsent, CookieConsent>
+    hasAnalyticsConsent: ComputedRef<boolean>
+    needsChoice: ComputedRef<boolean>
+    accept: () => void
+    refuse: () => void
+  } = useCookieConsent()
   let instance: PostHog | null = null
 
   /**
@@ -53,7 +64,10 @@ export default defineNuxtPlugin((nuxtApp): void => {
    */
   async function ensureInstance(): Promise<PostHog> {
     if (instance) return instance
-    const { default: posthog } = await import('posthog-js')
+    const {
+      default: posthog,
+    }: typeof import('C:/Users/leogu/Desktop/Projects/devleadhunter/web/node_modules/posthog-js/dist/module') =
+      await import('posthog-js')
     posthog.init(key, {
       api_host: host,
       capture_pageview: false,
@@ -79,7 +93,7 @@ export default defineNuxtPlugin((nuxtApp): void => {
   nuxtApp.hook('app:mounted', (): void => {
     void trackPageview(router.currentRoute.value.path)
   })
-  router.afterEach((to): void => {
+  router.afterEach((to: RouteLocationNormalized): void => {
     void trackPageview(to.path)
   })
 
@@ -93,7 +107,10 @@ export default defineNuxtPlugin((nuxtApp): void => {
    * @param event - Event name (``site_*``).
    * @param [properties] - Optional event properties.
    */
-  const siteTrack = (event: string, properties?: Record<string, unknown>): void => {
+  const siteTrack: (event: string, properties?: Record<string, unknown>) => void = (
+    event: string,
+    properties?: Record<string, unknown>,
+  ): void => {
     if (!canTrack(router.currentRoute.value.path)) return
     void ensureInstance().then((posthog: PostHog): void => {
       posthog.capture(event, properties)

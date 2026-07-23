@@ -263,7 +263,7 @@ const statusOptions: { value: string; label: string }[] = [
 ]
 
 const STATUS_LABELS: Record<string, string> = Object.fromEntries(
-  statusOptions.map((option) => [option.value, option.label]),
+  statusOptions.map((option: { value: string; label: string }) => [option.value, option.label]),
 )
 const PRODUCT_LABELS: Record<string, string> = {
   website: 'Site web',
@@ -279,7 +279,7 @@ const productLabel: ComputedRef<string> = computed(
 
 const amountLabel: ComputedRef<string> = computed((): string => {
   if (!props.order) return ''
-  const euros = props.order.amount_cents / 100
+  const euros: number = props.order.amount_cents / 100
   return `${euros % 1 === 0 ? euros.toFixed(0) : euros.toFixed(2)} €`
 })
 
@@ -301,7 +301,7 @@ const statusBadgeClass: ComputedRef<string> = computed((): string => {
 
 watch(
   () => [props.open, props.order?.id],
-  ([open]): void => {
+  ([open]: (boolean | number | undefined)[]): void => {
     if (!open) {
       setTimeout((): void => {
         editMode.value = false
@@ -355,7 +355,7 @@ async function runAction(fn: () => Promise<Order>, successMsg: string): Promise<
   if (!props.order) return
   isBusy.value = true
   try {
-    const updated = await fn()
+    const updated: Order = await fn()
     emit('updated', updated)
     toast.success(successMsg)
   } catch (err: unknown) {
@@ -368,7 +368,7 @@ async function runAction(fn: () => Promise<Order>, successMsg: string): Promise<
 /** Persist edited fields. */
 async function handleSave(): Promise<void> {
   if (!props.order) return
-  const orderId = props.order.id
+  const orderId: number = props.order.id
   await runAction(
     () =>
       OrdersService.updateOrder(orderId, {
@@ -420,7 +420,7 @@ async function handleSendEmail(): Promise<void> {
   if (!props.order) return
   isSending.value = true
   try {
-    const updated = await OrdersService.sendOrderPaymentEmail(props.order.id)
+    const updated: Order = await OrdersService.sendOrderPaymentEmail(props.order.id)
     emit('updated', updated)
     emailPreview.value = null
     toast.success('Email envoyé au client')

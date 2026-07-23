@@ -252,7 +252,8 @@ const toast: UseToastReturn = useToast()
 const route: ReturnType<typeof useRoute> = useRoute()
 const router: ReturnType<typeof useRouter> = useRouter()
 const userStore: ReturnType<typeof useUserStore> = useUserStore()
-const { postpone, clearPostponed } = useOnboarding()
+const { postpone, clearPostponed }: { isPostponed: () => boolean; postpone: () => void; clearPostponed: () => void } =
+  useOnboarding()
 
 /** The wizard steps, in order. */
 const STEPS: UiWizardStep[] = [

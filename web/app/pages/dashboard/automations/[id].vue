@@ -330,7 +330,7 @@ const kpis: ComputedRef<AutomationDetailKpi[]> = computed((): AutomationDetailKp
   const r: AutomationDetail | null = run.value
   if (r === null) return []
   const by: Record<string, number> = r.stats.by_step
-  const count = (steps: AutomationStep[]): number =>
+  const count: (steps: AutomationStep[]) => number = (steps: AutomationStep[]): number =>
     steps.reduce((s: number, k: AutomationStep): number => s + (by[k] ?? 0), 0)
   return [
     { label: 'Prospects', value: r.stats.total, class: 'text-[var(--app-ink)]' },

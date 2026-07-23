@@ -349,9 +349,9 @@ const toast: UseToastReturn = useToast()
  */
 const filteredUsers: ComputedRef<User[]> = computed(() => {
   if (!searchQuery.value) return users.value
-  const query = searchQuery.value.toLowerCase()
+  const query: string = searchQuery.value.toLowerCase()
   return users.value.filter(
-    (user) => user.name.toLowerCase().includes(query) || user.email.toLowerCase().includes(query),
+    (user: User) => user.name.toLowerCase().includes(query) || user.email.toLowerCase().includes(query),
   )
 })
 
@@ -360,8 +360,8 @@ const filteredUsers: ComputedRef<User[]> = computed(() => {
  * @param name - User name
  * @returns User initials
  */
-const getUserInitials = (name: string): string => {
-  const parts = name.split(' ')
+const getUserInitials: (name: string) => string = (name: string): string => {
+  const parts: string[] = name.split(' ')
   if (parts.length >= 2) {
     return `${parts[0]?.[0] ?? ''}${parts[1]?.[0] ?? ''}`.toUpperCase()
   }
@@ -373,7 +373,7 @@ const getUserInitials = (name: string): string => {
  * @param userId - User ID
  * @param event - Click event
  */
-const toggleUserMenu = (userId: number, event?: Event): void => {
+const toggleUserMenu: (userId: number, event?: Event) => void = (userId: number, event?: Event): void => {
   if (event) {
     event.stopPropagation()
   }
@@ -384,10 +384,10 @@ const toggleUserMenu = (userId: number, event?: Event): void => {
  * Close menu on outside click
  * @param event - Click event
  */
-const handleClickOutside = (event: Event): void => {
-  const target = event.target as HTMLElement
+const handleClickOutside: (event: Event) => void = (event: Event): void => {
+  const target: HTMLElement = event.target as HTMLElement
   // Check if click is outside all menu buttons and dropdowns
-  const isClickInsideMenu = target.closest('.user-menu-container')
+  const isClickInsideMenu: Element | null = target.closest('.user-menu-container')
   if (!isClickInsideMenu && openMenuId.value !== null) {
     openMenuId.value = null
   }
@@ -397,7 +397,7 @@ const handleClickOutside = (event: Event): void => {
  * Load users from API
  * @returns {Promise<void>}
  */
-const loadUsers = async (): Promise<void> => {
+const loadUsers: () => Promise<void> = async (): Promise<void> => {
   try {
     isLoading.value = true
     users.value = await UsersService.getAllUsers()
@@ -412,7 +412,7 @@ const loadUsers = async (): Promise<void> => {
  * Handle create user form submission
  * @returns {Promise<void>}
  */
-const handleCreateSubmit = async (): Promise<void> => {
+const handleCreateSubmit: () => Promise<void> = async (): Promise<void> => {
   try {
     isCreating.value = true
     await UsersService.createUser(createForm.value)
@@ -431,7 +431,7 @@ const handleCreateSubmit = async (): Promise<void> => {
  * Handle edit user
  * @param user - User to edit
  */
-const handleEdit = (user: User): void => {
+const handleEdit: (user: User) => void = (user: User): void => {
   editingUser.value = user
   editForm.value = {
     name: user.name,
@@ -445,7 +445,7 @@ const handleEdit = (user: User): void => {
  * Handle edit user form submission
  * @returns {Promise<void>}
  */
-const handleEditSubmit = async (): Promise<void> => {
+const handleEditSubmit: () => Promise<void> = async (): Promise<void> => {
   if (!editingUser.value) return
 
   try {
@@ -466,7 +466,7 @@ const handleEditSubmit = async (): Promise<void> => {
  * Handle delete user
  * @param user - User to delete
  */
-const handleDelete = (user: User): void => {
+const handleDelete: (user: User) => void = (user: User): void => {
   deletingUser.value = user
   openMenuId.value = null
   showDeleteModal.value = true
@@ -476,7 +476,7 @@ const handleDelete = (user: User): void => {
  * Confirm user deletion
  * @returns {Promise<void>}
  */
-const confirmDelete = async (): Promise<void> => {
+const confirmDelete: () => Promise<void> = async (): Promise<void> => {
   if (!deletingUser.value) return
 
   try {

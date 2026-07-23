@@ -51,8 +51,9 @@
 </template>
 
 <script lang="ts" setup>
+import type { UseCopyToClipboardReturn, UseOpenExternalUrlReturn } from '~/types/Composables'
 import type { Ref } from 'vue'
-import type { DemoSite } from '~/services/demoSiteService'
+import type { DemoSite, DemoSiteListResponse } from '~/services/demoSiteService'
 import { DemoSiteService } from '~/services/demoSiteService'
 
 definePageMeta({ layout: 'dashboard', middleware: 'auth' })
@@ -60,8 +61,8 @@ definePageMeta({ layout: 'dashboard', middleware: 'auth' })
 const sites: Ref<DemoSite[]> = ref([])
 const pending: Ref<boolean> = ref(true)
 
-const { copy } = useCopyToClipboard()
-const { openExternalUrl } = useOpenExternalUrl()
+const { copy }: UseCopyToClipboardReturn = useCopyToClipboard()
+const { openExternalUrl }: UseOpenExternalUrlReturn = useOpenExternalUrl()
 
 /**
  * Open the demo URL in a new browser tab.
@@ -79,7 +80,7 @@ async function copyDemoUrl(url: string): Promise<void> {
 
 onMounted(async () => {
   try {
-    const response = await DemoSiteService.listDemoSites()
+    const response: DemoSiteListResponse = await DemoSiteService.listDemoSites()
     sites.value = response.items
   } finally {
     pending.value = false

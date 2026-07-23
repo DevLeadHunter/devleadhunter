@@ -32,14 +32,14 @@ async function putMultipart(path: string, formData: FormData): Promise<Presenter
   const userStore: ReturnType<typeof useUserStore> = useUserStore()
   const config: ReturnType<typeof useRuntimeConfig> = useRuntimeConfig()
 
-  const response = await fetch(`${config.public.apiBase}${BASE_URL}${path}`, {
+  const response: Response = await fetch(`${config.public.apiBase}${BASE_URL}${path}`, {
     method: 'PUT',
     headers: userStore.token ? { Authorization: `Bearer ${userStore.token}` } : {},
     body: formData,
   })
 
   if (!response.ok) {
-    const errorText = await response.text().catch((): string => '')
+    const errorText: string = await response.text().catch((): string => '')
     let errorMessage: string = `Upload échoué : ${response.statusText}`
     if (errorText) {
       try {
@@ -81,7 +81,7 @@ export class PresenterVideoService {
     outroSeconds: number,
     autoGenerate: boolean,
   ): Promise<PresenterVideo> {
-    const formData = new FormData()
+    const formData: FormData = new FormData()
     formData.append('file', file)
     formData.append('intro_seconds', String(introSeconds))
     formData.append('outro_seconds', String(outroSeconds))
@@ -108,7 +108,7 @@ export class PresenterVideoService {
     outro: File,
     autoGenerate: boolean,
   ): Promise<PresenterVideo> {
-    const formData = new FormData()
+    const formData: FormData = new FormData()
     formData.append('intro', intro)
     formData.append('middle', middle)
     formData.append('outro', outro)
@@ -148,11 +148,11 @@ export class PresenterVideoService {
   static async getPresenterVideoObjectUrl(): Promise<string | null> {
     const userStore: ReturnType<typeof useUserStore> = useUserStore()
     const config: ReturnType<typeof useRuntimeConfig> = useRuntimeConfig()
-    const response = await fetch(`${config.public.apiBase}${BASE_URL}/file`, {
+    const response: Response = await fetch(`${config.public.apiBase}${BASE_URL}/file`, {
       headers: userStore.token ? { Authorization: `Bearer ${userStore.token}` } : {},
     })
     if (!response.ok) return null
-    const blob = await response.blob()
+    const blob: Blob = await response.blob()
     return URL.createObjectURL(blob)
   }
 }

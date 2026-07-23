@@ -15,7 +15,9 @@ export function useAuth(): UseAuthReturn {
    * Log in and redirect to the dashboard.
    * @param credentials - Email and password.
    */
-  const login = async (credentials: LoginCredentials): Promise<void> => {
+  const login: (credentials: LoginCredentials) => Promise<void> = async (
+    credentials: LoginCredentials,
+  ): Promise<void> => {
     try {
       await userStore.login(credentials)
       router.push('/dashboard')
@@ -29,7 +31,7 @@ export function useAuth(): UseAuthReturn {
    * Sign up and redirect to the setup wizard.
    * @param data - Registration fields.
    */
-  const signup = async (data: SignupPayload): Promise<void> => {
+  const signup: (data: SignupPayload) => Promise<void> = async (data: SignupPayload): Promise<void> => {
     try {
       await userStore.signup(data)
       router.push('/configuration')
@@ -40,7 +42,7 @@ export function useAuth(): UseAuthReturn {
   }
 
   /** Log out, toast, and redirect to the login page. */
-  const logout = (): void => {
+  const logout: () => void = (): void => {
     userStore.logout()
     toast.success('Logged out successfully')
     router.push('/login')

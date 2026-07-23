@@ -1,12 +1,3 @@
-export type CreditUsageChartDataset = {
-  label: string
-  data: number[]
-  backgroundColor: string
-  borderRadius: number
-  maxBarThickness: number
-}
+import type { ChartData } from 'chart.js'
 
-export type CreditUsageChart = {
-  labels: string[]
-  datasets: CreditUsageChartDataset[]
-}
+export type CreditUsageChart = ChartData<'bar', number[], string>

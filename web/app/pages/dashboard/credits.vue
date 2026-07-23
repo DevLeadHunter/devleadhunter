@@ -204,11 +204,12 @@
 </template>
 
 <script lang="ts" setup>
+import { Chart } from 'chart.js'
+import type { ChartConfiguration, ChartOptions, TooltipItem } from 'chart.js'
 import type { CreditUsageChart } from '~/types/CreditsPage'
 import type { CreditTransaction } from '~/types'
 import type { ComputedRef, Ref } from 'vue'
 import { ref, computed, onMounted, onBeforeUnmount, watch, nextTick } from 'vue'
-import { Chart, type ChartConfiguration, type TooltipItem } from 'chart.js'
 import { CreditTransactionService } from '~/services/creditTransactionService'
 import { useUserStore } from '~/stores/user'
 
@@ -259,23 +260,23 @@ const showProgressTooltip: Ref<boolean> = ref(false)
 /**
  * Update tooltip position based on progress bar position
  */
-const updateTooltipPosition = (): void => {
+const updateTooltipPosition: () => void = (): void => {
   if (!progressBarRef.value || typeof window === 'undefined') {
     tooltipPosition.value = null
     return
   }
 
-  const progressBar = progressBarRef.value.querySelector('.cursor-pointer')
+  const progressBar: Element | null = progressBarRef.value.querySelector('.cursor-pointer')
   if (!progressBar) return
 
-  const progressRect = progressBar.getBoundingClientRect()
-  const tooltipWidth = 288 // w-72 = 18rem = 288px
-  const margin = 8 // mt-2 = 8px
+  const progressRect: DOMRect = progressBar.getBoundingClientRect()
+  const tooltipWidth: number = 288 // w-72 = 18rem = 288px
+  const margin: number = 8 // mt-2 = 8px
 
   let tooltipX: number
 
   if (usedPercentage.value > 0) {
-    const usedFraction = usedPercentage.value / 100
+    const usedFraction: number = usedPercentage.value / 100
     tooltipX = progressRect.left + (progressRect.width * usedFraction) / 2
   } else {
     // Position at the center of the entire progress bar
@@ -291,7 +292,7 @@ const updateTooltipPosition = (): void => {
     tooltipX = window.innerWidth - tooltipWidth / 2 - 16 // 16px padding from edge
   }
 
-  const tooltipY = progressRect.bottom + margin
+  const tooltipY: number = progressRect.bottom + margin
 
   tooltipPosition.value = { x: tooltipX, y: tooltipY }
 }
@@ -299,7 +300,7 @@ const updateTooltipPosition = (): void => {
 /**
  * Handle tooltip enter
  */
-const handleTooltipEnter = (): void => {
+const handleTooltipEnter: () => void = (): void => {
   showProgressTooltip.value = true
   nextTick(() => {
     // Use requestAnimationFrame to ensure DOM is fully updated
@@ -314,7 +315,7 @@ const handleTooltipEnter = (): void => {
 /**
  * Handle tooltip leave
  */
-const handleTooltipLeave = (): void => {
+const handleTooltipLeave: () => void = (): void => {
   showProgressTooltip.value = false
   tooltipPosition.value = null
   window.removeEventListener('scroll', updateTooltipPosition, true)
@@ -325,8 +326,8 @@ const handleTooltipLeave = (): void => {
  * Total credits (current balance + used)
  */
 const totalCredits: ComputedRef<number> = computed(() => {
-  const balance = creditsRemaining.value
-  const used = creditsUsed.value
+  const balance: number = creditsRemaining.value
+  const used: number = creditsUsed.value
 
   if (balance === Infinity || balance === -1) {
     return balance
@@ -339,8 +340,10 @@ const totalCredits: ComputedRef<number> = computed(() => {
  * Credits used (sum of negative amounts)
  */
 const creditsUsed: ComputedRef<number> = computed(() => {
-  const used = Math.abs(
-    transactions.value.filter((transaction) => transaction.amount < 0).reduce((sum, t) => sum + t.amount, 0),
+  const used: number = Math.abs(
+    transactions.value
+      .filter((transaction: CreditTransaction) => transaction.amount < 0)
+      .reduce((sum: number, transaction: CreditTransaction) => sum + transaction.amount, 0),
   )
   return used
 })
@@ -349,7 +352,7 @@ const creditsUsed: ComputedRef<number> = computed(() => {
  * Credits remaining
  */
 const creditsRemaining: ComputedRef<number> = computed(() => {
-  const balance = userStore.user?.credits_available ?? userStore.user?.credit_balance
+  const balance: number | null | undefined = userStore.user?.credits_available ?? userStore.user?.credit_balance
   if (balance === null || balance === undefined) {
     return 0
   }
@@ -363,9 +366,9 @@ const creditsRemaining: ComputedRef<number> = computed(() => {
  * Used percentage
  */
 const usedPercentage: ComputedRef<number> = computed(() => {
-  const total = totalCredits.value
+  const total: number = totalCredits.value
   if (total === 0 || total === Infinity || total === -1) return 0
-  const used = creditsUsed.value
+  const used: number = creditsUsed.value
   if (used === 0) return 0
   return Math.min((used / total) * 100, 100)
 })
@@ -374,7 +377,7 @@ const usedPercentage: ComputedRef<number> = computed(() => {
  * Remaining percentage
  */
 const remainingPercentage: ComputedRef<number> = computed(() => {
-  const total = totalCredits.value
+  const total: number = totalCredits.value
   if (total === Infinity || total === -1) return 100
   return Math.max(100 - usedPercentage.value, 0)
 })
@@ -392,7 +395,7 @@ const lastUpdated: ComputedRef<string> = computed(() => {
       minute: '2-digit',
     })
   }
-  const lastTransaction = transactions.value[0]
+  const lastTransaction: CreditTransaction | undefined = transactions.value[0]
   if (!lastTransaction) return ''
   return new Date(lastTransaction.created_at).toLocaleDateString('fr-FR', {
     year: 'numeric',
@@ -420,10 +423,10 @@ const chartData: ComputedRef<CreditUsageChart | null> = computed(() => {
   const dailyUsage: Record<string, { count: number; date: Date }> = {}
 
   transactions.value
-    .filter((transaction) => transaction.amount < 0) // Only usage transactions
-    .forEach((transaction) => {
+    .filter((transaction: CreditTransaction) => transaction.amount < 0) // Only usage transactions
+    .forEach((transaction: CreditTransaction) => {
       const dateObj: Date = new Date(transaction.created_at)
-      const dateKey = dateObj.toLocaleDateString('fr-FR', {
+      const dateKey: string = dateObj.toLocaleDateString('fr-FR', {
         month: 'short',
         day: 'numeric',
       })
@@ -435,12 +438,15 @@ const chartData: ComputedRef<CreditUsageChart | null> = computed(() => {
     })
 
   // Sort by date (chronological order)
-  const sortedEntries = Object.entries(dailyUsage)
-    .sort(([, a], [, b]) => a.date.getTime() - b.date.getTime())
+  const sortedEntries: [string, { count: number; date: Date }][] = Object.entries(dailyUsage)
+    .sort(
+      ([, a]: [string, { count: number; date: Date }], [, b]: [string, { count: number; date: Date }]) =>
+        a.date.getTime() - b.date.getTime(),
+    )
     .slice(-30) // Last 30 days
 
-  const labels = sortedEntries.map(([dateKey]) => dateKey)
-  const data = sortedEntries.map(([, { count }]) => count)
+  const labels: string[] = sortedEntries.map(([dateKey]: [string, { count: number; date: Date }]) => dateKey)
+  const data: number[] = sortedEntries.map(([, { count }]: [string, { count: number; date: Date }]) => count)
 
   return {
     labels,
@@ -449,7 +455,6 @@ const chartData: ComputedRef<CreditUsageChart | null> = computed(() => {
         label: 'Crédits utilisés',
         data,
         backgroundColor: '#8d7bb8',
-        borderRadius: 4,
         maxBarThickness: 50,
       },
     ],
@@ -459,7 +464,7 @@ const chartData: ComputedRef<CreditUsageChart | null> = computed(() => {
 /**
  * Chart options
  */
-const chartOptions = {
+const chartOptions: ChartOptions<'bar'> = {
   responsive: true,
   maintainAspectRatio: false,
   plugins: {
@@ -471,45 +476,40 @@ const chartOptions = {
       titleColor: '#f9f9f9',
       titleFont: {
         size: 13,
-        weight: '500',
+        weight: 500,
       },
       bodyColor: '#8f887b',
       bodyFont: {
         size: 12,
-        weight: '400',
+        weight: 400,
       },
       borderColor: 'rgba(140, 132, 118, 0.35)',
       borderWidth: 1,
-      borderRadius: 8,
       padding: 16,
       displayColors: true,
       boxPadding: 6,
       boxWidth: 12,
       boxHeight: 12,
       usePointStyle: true,
-      shadowOffsetX: 0,
-      shadowOffsetY: 4,
-      shadowBlur: 12,
-      shadowColor: 'rgba(0, 0, 0, 0.3)',
       callbacks: {
         /**
          * Format the chart tooltip title from the hovered bar label.
          */
-        title: function (context: TooltipItem<'bar'>[]) {
+        title: function (context: TooltipItem<'bar'>[]): string {
           return context[0]?.label ?? ''
         },
         /**
          * Format the chart tooltip value as a credits count.
          */
-        label: function (context: TooltipItem<'bar'>) {
+        label: function (context: TooltipItem<'bar'>): string {
           return `${context.parsed.y} crédits utilisés`
         },
       },
     },
-    interaction: {
-      intersect: false,
-      mode: 'index',
-    },
+  },
+  interaction: {
+    intersect: false,
+    mode: 'index',
   },
   scales: {
     x: {
@@ -536,7 +536,7 @@ const chartOptions = {
         /**
          * Format Y-axis tick labels for the credits chart.
          */
-        callback: function (value: string | number) {
+        callback: function (value: string | number): string | number {
           return value
         },
       },
@@ -548,10 +548,12 @@ const chartOptions = {
 /**
  * Format transaction description
  */
-const formatTransactionDescription = (transaction: CreditTransaction): string => {
+const formatTransactionDescription: (transaction: CreditTransaction) => string = (
+  transaction: CreditTransaction,
+): string => {
   if (transaction.transaction_type === 'USAGE') {
     // Try to extract action from description
-    const desc = transaction.description.toLowerCase()
+    const desc: string = transaction.description.toLowerCase()
     if (desc.includes('search')) return 'Recherche de prospects'
     if (desc.includes('email') || desc.includes('campaign')) return 'Campagne email'
     if (desc.includes('prospect')) return 'Prospect trouvé'
@@ -572,11 +574,11 @@ const formatTransactionDescription = (transaction: CreditTransaction): string =>
 /**
  * Format transaction date to relative time
  */
-const formatTransactionDate = (dateString: string): string => {
+const formatTransactionDate: (dateString: string) => string = (dateString: string): string => {
   const date: Date = new Date(dateString)
   const now: Date = new Date()
-  const diffMs = now.getTime() - date.getTime()
-  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24))
+  const diffMs: number = now.getTime() - date.getTime()
+  const diffDays: number = Math.floor(diffMs / (1000 * 60 * 60 * 24))
 
   if (diffDays === 0) {
     return "Aujourd'hui"
@@ -585,7 +587,7 @@ const formatTransactionDate = (dateString: string): string => {
   } else if (diffDays < 7) {
     return `il y a ${diffDays} jours`
   } else if (diffDays < 30) {
-    const weeks = Math.floor(diffDays / 7)
+    const weeks: number = Math.floor(diffDays / 7)
     return `il y a ${weeks} semaine${weeks > 1 ? 's' : ''}`
   } else {
     return date.toLocaleDateString('fr-FR', {
@@ -599,10 +601,10 @@ const formatTransactionDate = (dateString: string): string => {
 /**
  * Load credit transactions
  */
-const loadTransactions = async (): Promise<void> => {
+const loadTransactions: () => Promise<void> = async (): Promise<void> => {
   try {
     isLoading.value = true
-    const data = await CreditTransactionService.getMyTransactions(0, 1000)
+    const data: CreditTransaction[] = await CreditTransactionService.getMyTransactions(0, 1000)
     transactions.value = data
   } catch (error) {
     console.error('Failed to load transactions:', error)
@@ -615,7 +617,7 @@ const loadTransactions = async (): Promise<void> => {
 /**
  * Initialize chart
  */
-const initChart = (): void => {
+const initChart: () => void = (): void => {
   if (typeof window === 'undefined' || !chartCanvasRef.value || !chartData.value) return
 
   // Destroy existing chart if it exists
@@ -660,7 +662,7 @@ onMounted(async () => {
   await loadTransactions()
   // Wait for next tick to ensure DOM is ready
   await nextTick()
-  await new Promise((resolve) => setTimeout(resolve, 100))
+  await new Promise((resolve: (value: unknown) => void) => setTimeout(resolve, 100))
   initChart()
 })
 

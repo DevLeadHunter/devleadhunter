@@ -1,3 +1,4 @@
+import type { TokenResponse } from '~/types/index'
 import { defineStore } from 'pinia'
 import type { User, LoginCredentials, SignupPayload, ProfileUpdate } from '~/types'
 import type { ComputedRef, Ref } from 'vue'
@@ -5,6 +6,8 @@ import { ref, computed } from 'vue'
 import { AuthService } from '~/services/authService'
 
 /** Pinia store for auth session, profile and onboarding flag. */
+// Pinia ne fournit pas de type nommé pour un store : TypeScript l'élide, il est inécrivable.
+// eslint-disable-next-line @typescript-eslint/typedef
 export const useUserStore = defineStore('user', () => {
   // State
   const user: Ref<User | null> = ref(null)
@@ -41,11 +44,11 @@ export const useUserStore = defineStore('user', () => {
       error.value = null
 
       // Call auth service
-      const tokenResponse = await AuthService.login(credentials)
+      const tokenResponse: TokenResponse = await AuthService.login(credentials)
       token.value = tokenResponse.access_token
 
       // Get user information
-      const userData = await AuthService.getCurrentUser(token.value)
+      const userData: User = await AuthService.getCurrentUser(token.value)
       user.value = userData
 
       // Store token and user in localStorage
@@ -73,11 +76,11 @@ export const useUserStore = defineStore('user', () => {
       error.value = null
 
       // Call auth service to create user
-      const userData = await AuthService.signup(data)
+      const userData: User = await AuthService.signup(data)
       user.value = userData
 
       // Login the new user
-      const tokenResponse = await AuthService.login({
+      const tokenResponse: TokenResponse = await AuthService.login({
         email: data.email,
         password: data.password,
       })
@@ -161,8 +164,8 @@ export const useUserStore = defineStore('user', () => {
   function initializeAuth(): void {
     if (import.meta.client) {
       try {
-        const storedToken = localStorage.getItem('token')
-        const storedUser = localStorage.getItem('user')
+        const storedToken: string | null = localStorage.getItem('token')
+        const storedUser: string | null = localStorage.getItem('user')
 
         if (storedToken && storedUser) {
           token.value = storedToken
@@ -190,7 +193,7 @@ export const useUserStore = defineStore('user', () => {
       return false
     }
 
-    const storedToken = localStorage.getItem('token')
+    const storedToken: string | null = localStorage.getItem('token')
 
     if (!storedToken) {
       token.value = null
@@ -200,7 +203,7 @@ export const useUserStore = defineStore('user', () => {
     }
 
     // Check if we have a recent validation (within cache time)
-    const now = Date.now()
+    const now: number = Date.now()
     if (lastValidationTime.value && now - lastValidationTime.value < VALIDATION_CACHE_TIME) {
       // Return cached authentication status
       return token.value !== null && user.value !== null
@@ -211,7 +214,7 @@ export const useUserStore = defineStore('user', () => {
       token.value = storedToken
 
       // Call /me to validate token and get current user data
-      const userData = await AuthService.getCurrentUser(storedToken)
+      const userData: User = await AuthService.getCurrentUser(storedToken)
 
       // Update user with fresh data from server
       user.value = userData
@@ -247,7 +250,7 @@ export const useUserStore = defineStore('user', () => {
       return
     }
 
-    const storedToken = localStorage.getItem('token')
+    const storedToken: string | null = localStorage.getItem('token')
 
     if (!storedToken) {
       return
@@ -259,7 +262,7 @@ export const useUserStore = defineStore('user', () => {
       token.value = storedToken
 
       // Call /me to get fresh user data from server
-      const userData = await AuthService.getCurrentUser(storedToken)
+      const userData: User = await AuthService.getCurrentUser(storedToken)
 
       // Update user with fresh data from server
       user.value = userData

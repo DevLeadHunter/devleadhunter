@@ -119,7 +119,7 @@ export function parseProspectsJson(text: string): ProspectJsonParseResult {
       errors.push(`Ligne ${index + 1} : entrée ignorée (objet attendu).`)
       return
     }
-    const record = entry as Record<string, unknown>
+    const record: Record<string, unknown> = entry as Record<string, unknown>
     const name: string = cleanString(record.name)
     if (!name || name.startsWith('Plomberie Dupont (exemple')) {
       // Empty rows and the untouched template example are silently skipped.

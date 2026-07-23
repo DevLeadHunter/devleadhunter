@@ -235,12 +235,15 @@ import type { Ref, ComputedRef } from 'vue'
 import type { LocaleObject } from '@nuxtjs/i18n'
 import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
 
+// Le type de retour de useI18n est élidé par TypeScript : inécrivable à la main.
+// eslint-disable-next-line @typescript-eslint/typedef
 const { locale, locales, setLocale } = useI18n()
 const localePath: ReturnType<typeof useLocalePath> = useLocalePath()
-const { track } = useSiteTracking()
+const { track }: { track: (event: string, properties?: Record<string, unknown> | undefined) => void } =
+  useSiteTracking()
 
 // Sans ce bloc, les pages /fr héritent du lang="en" par défaut.
-const localeHead = useLocaleHead()
+const localeHead: ReturnType<typeof useLocaleHead> = useLocaleHead()
 useHead(() => ({
   htmlAttrs: localeHead.value.htmlAttrs,
   link: localeHead.value.link,

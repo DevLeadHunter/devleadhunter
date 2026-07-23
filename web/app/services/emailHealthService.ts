@@ -217,7 +217,7 @@ export class EmailHealthService {
    * @param limit - Maximum rows.
    * @returns The incident journal, most recent first.
    */
-  static async getEmailHealthIncidents(limit = 50): Promise<{ items: EmailHealthIncident[] }> {
+  static async getEmailHealthIncidents(limit: number = 50): Promise<{ items: EmailHealthIncident[] }> {
     return ApiClient.get<{ items: EmailHealthIncident[] }>('/api/v1/email-health/incidents', { params: { limit } })
   }
 

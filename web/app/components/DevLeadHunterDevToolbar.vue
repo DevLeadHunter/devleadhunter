@@ -30,6 +30,8 @@
 </template>
 
 <script lang="ts" setup>
+import type { UseDesktopRuntimeReturn } from '~/types/Composables'
+import type { StorageActionResponse } from '~/services/adminStorageService'
 import type { ToolbarPosition } from '~/types/DevLeadHunterDevToolbar'
 import type { CSSProperties, Ref } from 'vue'
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
@@ -37,7 +39,7 @@ import { AdminStorageService } from '~/services/adminStorageService'
 
 const STORAGE_KEY: string = 'dlh-devtoolbar-pos'
 
-const { isDesktopDev, syncDevDatabaseFromProd } = useDesktopRuntime()
+const { isDesktopDev, syncDevDatabaseFromProd }: UseDesktopRuntimeReturn = useDesktopRuntime()
 const toast: ReturnType<typeof useToast> = useToast()
 
 const isSyncing: Ref<boolean> = ref(false)
@@ -140,7 +142,7 @@ async function onSyncDatabase(): Promise<void> {
     // Le stockage suit la base, sinon les démos pointent vers des vidéos absentes du bucket dev.
     let storageMessage: string = ''
     try {
-      const storage = await AdminStorageService.syncStorageFromProd()
+      const storage: StorageActionResponse = await AdminStorageService.syncStorageFromProd()
       storageMessage = ` · Stockage : ${storage.message}`
     } catch (storageError) {
       storageMessage = ` · Stockage NON synchronisé (${

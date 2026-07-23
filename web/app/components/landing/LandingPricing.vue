@@ -83,9 +83,12 @@ const props: LandingPricingProps = defineProps({
   },
 })
 
+// Le type de retour de useI18n est élidé par TypeScript : inécrivable à la main.
+// eslint-disable-next-line @typescript-eslint/typedef
 const { locale } = useI18n()
 const localePath: ReturnType<typeof useLocalePath> = useLocalePath()
-const { track } = useSiteTracking()
+const { track }: { track: (event: string, properties?: Record<string, unknown> | undefined) => void } =
+  useSiteTracking()
 
 /**
  * Format a price in EUR for the active locale.

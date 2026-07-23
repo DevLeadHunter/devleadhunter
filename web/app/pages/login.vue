@@ -70,6 +70,7 @@
 </template>
 
 <script lang="ts" setup>
+import type { UseAuthReturn } from '~/types/Composables'
 import type { Ref } from 'vue'
 import { ref, onMounted } from 'vue'
 import UiLoader from '~/components/ui/Loader.vue'
@@ -94,17 +95,18 @@ useSeoMeta({
 /**
  * Auth composable
  */
-const { login, isLoading, isAuthenticated } = useAuth()
+const { login, isLoading, isAuthenticated }: UseAuthReturn = useAuth()
 
 /**
  * Marketing-site tracking (records the login conversion).
  */
-const { track } = useSiteTracking()
+const { track }: { track: (event: string, properties?: Record<string, unknown> | undefined) => void } =
+  useSiteTracking()
 
 /**
  * i18n — script-side error messages + locale-aware links.
  */
-const { t } = useI18n()
+const { t }: { t: (key: string, params?: Record<string, unknown>) => string } = useI18n()
 const localePath: ReturnType<typeof useLocalePath> = useLocalePath()
 
 /**
@@ -144,7 +146,7 @@ onMounted(async () => {
   if (isAuthenticated.value) {
     isNavigating.value = true
     // Validate token before redirecting to avoid issues with expired tokens
-    const isValid = await userStore.validateAuth()
+    const isValid: boolean = await userStore.validateAuth()
     if (isValid) {
       router.push('/dashboard')
     } else {
@@ -159,8 +161,8 @@ onMounted(async () => {
  * @param email - Email to validate
  * @returns True if valid
  */
-const validateEmail = (email: string): boolean => {
-  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+const validateEmail: (email: string) => boolean = (email: string): boolean => {
+  const emailRegex: RegExp = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
   return emailRegex.test(email)
 }
 
@@ -168,7 +170,7 @@ const validateEmail = (email: string): boolean => {
  * Handle form submission
  * @returns {Promise<void>}
  */
-const handleSubmit = async (): Promise<void> => {
+const handleSubmit: () => Promise<void> = async (): Promise<void> => {
   // Reset errors
   emailError.value = ''
   passwordError.value = ''

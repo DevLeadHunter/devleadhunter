@@ -229,7 +229,7 @@ const hasChanges: ComputedRef<boolean> = computed((): boolean => {
  * Load credit settings from API
  * @returns {Promise<void>}
  */
-const loadCreditSettings = async (): Promise<void> => {
+const loadCreditSettings: () => Promise<void> = async (): Promise<void> => {
   try {
     isLoading.value = true
     error.value = null
@@ -248,7 +248,8 @@ const loadCreditSettings = async (): Promise<void> => {
     // Update original form for comparison
     originalForm.value = { ...form.value }
   } catch (err) {
-    const errorMessage = err instanceof Error ? err.message : 'Erreur lors du chargement des paramètres de crédits'
+    const errorMessage: string =
+      err instanceof Error ? err.message : 'Erreur lors du chargement des paramètres de crédits'
     error.value = errorMessage
     toast.error(errorMessage)
   } finally {
@@ -259,7 +260,7 @@ const loadCreditSettings = async (): Promise<void> => {
 /**
  * Reset form to original values
  */
-const resetForm = (): void => {
+const resetForm: () => void = (): void => {
   if (originalForm.value) {
     form.value = { ...originalForm.value }
   }
@@ -269,7 +270,7 @@ const resetForm = (): void => {
  * Handle form submission
  * @returns {Promise<void>}
  */
-const handleSubmit = async (): Promise<void> => {
+const handleSubmit: () => Promise<void> = async (): Promise<void> => {
   if (!creditSettings.value) return
 
   try {
@@ -298,7 +299,7 @@ const handleSubmit = async (): Promise<void> => {
     }
 
     // Update credit settings
-    const updated = await CreditSettingsService.updateCreditSettings(updateData)
+    const updated: CreditSettings = await CreditSettingsService.updateCreditSettings(updateData)
 
     // Update local state
     creditSettings.value = updated
@@ -314,7 +315,7 @@ const handleSubmit = async (): Promise<void> => {
 
     toast.success('Paramètres des crédits mis à jour')
   } catch (err) {
-    const errorMessage = err instanceof Error ? err.message : 'Erreur lors de la mise à jour des paramètres'
+    const errorMessage: string = err instanceof Error ? err.message : 'Erreur lors de la mise à jour des paramètres'
     error.value = errorMessage
     toast.error(errorMessage)
   } finally {

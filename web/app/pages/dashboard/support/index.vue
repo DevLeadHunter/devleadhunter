@@ -149,11 +149,13 @@ const activeStatus: Ref<string> = ref(isAdmin.value ? 'open' : 'all')
 
 /** Tickets sorted by latest activity, filtered by the active status. */
 const filteredTickets: ComputedRef<SupportTicketSummary[]> = computed((): SupportTicketSummary[] => {
-  const sorted = tickets.value.slice().sort((a: SupportTicketSummary, b: SupportTicketSummary): number => {
-    const dateA: number = new Date(a.last_message_at || a.created_at).getTime()
-    const dateB: number = new Date(b.last_message_at || b.created_at).getTime()
-    return dateB - dateA
-  })
+  const sorted: SupportTicketSummary[] = tickets.value
+    .slice()
+    .sort((a: SupportTicketSummary, b: SupportTicketSummary): number => {
+      const dateA: number = new Date(a.last_message_at || a.created_at).getTime()
+      const dateB: number = new Date(b.last_message_at || b.created_at).getTime()
+      return dateB - dateA
+    })
   if (activeStatus.value === 'all') return sorted
   return sorted.filter((ticket: SupportTicketSummary): boolean => ticket.status === activeStatus.value)
 })
@@ -194,9 +196,9 @@ function statusBadgeClass(status: string): string {
  */
 function formatRelative(value: string): string {
   const date: Date = new Date(value)
-  const diffMinutes = Math.floor((Date.now() - date.getTime()) / (1000 * 60))
-  const diffHours = Math.floor(diffMinutes / 60)
-  const diffDays = Math.floor(diffHours / 24)
+  const diffMinutes: number = Math.floor((Date.now() - date.getTime()) / (1000 * 60))
+  const diffHours: number = Math.floor(diffMinutes / 60)
+  const diffDays: number = Math.floor(diffHours / 24)
 
   if (diffMinutes < 1) return "À l'instant"
   if (diffMinutes < 60) return `il y a ${diffMinutes} min`
@@ -213,9 +215,14 @@ function formatRelative(value: string): string {
 async function loadTickets(): Promise<void> {
   try {
     isLoading.value = true
-    const includeClosed = activeStatus.value === 'closed' || activeStatus.value === 'all'
-    const status = activeStatus.value === 'all' ? undefined : (activeStatus.value as SupportTicketStatus)
-    tickets.value = await SupportService.getTickets({ scope: scope.value, status, includeClosed })
+    const includeClosed: boolean = activeStatus.value === 'closed' || activeStatus.value === 'all'
+    const status: string | undefined =
+      activeStatus.value === 'all' ? undefined : (activeStatus.value as SupportTicketStatus)
+    tickets.value = await SupportService.getTickets({
+      scope: scope.value,
+      status: status as SupportTicketStatus | undefined,
+      includeClosed,
+    })
   } catch {
     toast.error('Impossible de charger les tickets pour le moment.')
   } finally {
@@ -242,7 +249,7 @@ function handleWebsocketEvent(event: SupportWebsocketEvent): void {
   switch (event.event) {
     case 'ticket.created': {
       if (isAdmin.value) {
-        const author = event.data?.user_name
+        const author: unknown = event.data?.user_name
         if (author && author !== userStore.user?.name) {
           toast.info(`Nouveau ticket créé par ${String(author)}`)
         }
@@ -251,21 +258,26 @@ function handleWebsocketEvent(event: SupportWebsocketEvent): void {
       break
     }
     case 'ticket.updated': {
-      const existing = tickets.value.find((t: SupportTicketSummary): boolean => t.id === event.data?.id)
+      const existing: SupportTicketSummary | undefined = tickets.value.find(
+        (t: SupportTicketSummary): boolean => t.id === event.data?.id,
+      )
       if (existing) Object.assign(existing, event.data)
       else void loadTickets()
       break
     }
     case 'ticket.message': {
-      const senderId = event.data?._sender_id
-      const ticketUserId = event.data?.user_id
-      const currentUserId = userStore.user?.id
-      const shouldNotify =
-        senderId && currentUserId && senderId !== currentUserId && (ticketUserId === currentUserId || isAdmin.value)
+      const senderId: unknown = event.data?._sender_id
+      const ticketUserId: unknown = event.data?.user_id
+      const currentUserId: number | undefined = userStore.user?.id as number | undefined
+      const shouldNotify: boolean = Boolean(
+        senderId && currentUserId && senderId !== currentUserId && (ticketUserId === currentUserId || isAdmin.value),
+      )
       if (shouldNotify) {
         toast.info(`${String(event.data?._sender_name)} a répondu à « ${String(event.data?.subject || 'un ticket')} »`)
       }
-      const ticket = tickets.value.find((t: SupportTicketSummary): boolean => t.id === event.data?.id)
+      const ticket: SupportTicketSummary | undefined = tickets.value.find(
+        (t: SupportTicketSummary): boolean => t.id === event.data?.id,
+      )
       if (ticket) Object.assign(ticket, event.data)
       else void loadTickets()
       break
@@ -290,16 +302,16 @@ function disconnectWebSocket(): void {
  */
 function connectWebSocket(): void {
   disconnectWebSocket()
-  const token = userStore.token
+  const token: string | null = userStore.token
   if (!token) return
 
   try {
-    const apiUrl = new URL(runtimeConfig.public.apiBase)
+    const apiUrl: URL = new URL(runtimeConfig.public.apiBase)
     apiUrl.protocol = apiUrl.protocol === 'https:' ? 'wss:' : 'ws:'
     apiUrl.pathname = `${apiUrl.pathname.replace(/\/$/, '')}/api/v1/support/tickets/ws`
     apiUrl.searchParams.set('token', token)
 
-    const ws = new WebSocket(apiUrl.toString())
+    const ws: WebSocket = new WebSocket(apiUrl.toString())
     websocketRef.value = ws
 
     ws.onmessage = (event: MessageEvent): void => {

@@ -193,7 +193,7 @@ export function useWebcamRecorder(): {
       audioContext.createMediaStreamSource(source).connect(analyser)
       const samples: Uint8Array<ArrayBuffer> = new Uint8Array(new ArrayBuffer(analyser.frequencyBinCount))
 
-      const tick = (): void => {
+      const tick: () => void = (): void => {
         if (!analyser) return
         analyser.getByteTimeDomainData(samples)
         let peak: number = 0
@@ -364,7 +364,7 @@ export function useWebcamRecorder(): {
     const active: MediaRecorder | null = recorder
     if (!active || !isRecording.value) return Promise.resolve(null)
 
-    return new Promise<RecordedTake | null>((resolve): void => {
+    return new Promise<RecordedTake | null>((resolve: (take: RecordedTake | null) => void): void => {
       active.onstop = (): void => {
         if (timerHandle !== null) {
           clearInterval(timerHandle)

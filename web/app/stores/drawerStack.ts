@@ -8,6 +8,8 @@ import type { Prospect } from '~/types'
 const DRAWER_STACK_STORAGE_KEY: string = 'dlh-drawer-stack'
 
 /** Pinia store driving the persistent right-side drawer stack (survives route changes via `UiDrawerStackHost`). */
+// Pinia ne fournit pas de type nommé pour un store : TypeScript l'élide, il est inécrivable.
+// eslint-disable-next-line @typescript-eslint/typedef
 export const useDrawerStackStore = defineStore('drawerStack', () => {
   // State — restored from sessionStorage so an open drawer survives a reload.
   const stack: Ref<DrawerStackEntry[]> = ref([])

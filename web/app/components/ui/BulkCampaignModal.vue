@@ -103,7 +103,7 @@ import type { UseToastReturn } from '~/types/Composables'
 import type { ComputedRef, PropType, Ref } from 'vue'
 import { computed, ref, watch } from 'vue'
 import type { UiBulkCampaignModalProps } from '~/types/UiBulkCampaignModal'
-import type { CampaignResponse } from '~/services/campaignService'
+import type { CampaignDetailResponse, CampaignListResponse, CampaignResponse } from '~/services/campaignService'
 import { CampaignService } from '~/services/campaignService'
 import { useToast } from '~/composables/useToast'
 
@@ -162,7 +162,7 @@ const canSubmit: ComputedRef<boolean> = computed((): boolean => {
 async function loadCampaigns(): Promise<void> {
   try {
     loading.value = true
-    const res = await CampaignService.list(0, 100)
+    const res: CampaignListResponse = await CampaignService.list(0, 100)
     campaigns.value = res.campaigns
     if (campaigns.value.length === 0) mode.value = 'new'
   } catch {
@@ -184,7 +184,7 @@ async function submit(): Promise<void> {
     let campaignName: string
 
     if (mode.value === 'new') {
-      const created = await CampaignService.create({ name: newName.value.trim() })
+      const created: CampaignDetailResponse = await CampaignService.create({ name: newName.value.trim() })
       campaignId = created.id
       campaignName = created.name
     } else {

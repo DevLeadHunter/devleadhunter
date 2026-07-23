@@ -182,7 +182,7 @@
 import type { UseToastReturn } from '~/types/Composables'
 import type { ComputedRef, Ref } from 'vue'
 import type { EmailAccount } from '~/types'
-import type { SendingIdentityResponse, SendingProvider } from '~/services/settingsService'
+import type { ResendConfigResponse, SendingIdentityResponse, SendingProvider } from '~/services/settingsService'
 import type { UiTab } from '~/types/UiTabs'
 import { ref, computed, onMounted } from 'vue'
 import { SettingsService } from '~/services/settingsService'
@@ -236,7 +236,7 @@ function isConfigured(provider: SendingProvider): boolean {
  */
 async function loadAll(): Promise<void> {
   try {
-    const [identityData, accounts] = await Promise.all([
+    const [identityData, accounts]: [SendingIdentityResponse, EmailAccount[]] = await Promise.all([
       SettingsService.getSendingIdentity(),
       EmailAccountsService.getEmailAccounts().catch((): EmailAccount[] => []),
     ])
@@ -245,7 +245,7 @@ async function loadAll(): Promise<void> {
     resendForm.value.from_email = identityData.resend_from_email ?? ''
     gmailAccounts.value = accounts.filter((a: EmailAccount): boolean => a.account_type === 'gmail_oauth')
     // Pre-fill the display name from the existing Resend config, if any.
-    const resend = await SettingsService.getResendConfig().catch(() => null)
+    const resend: ResendConfigResponse | null = await SettingsService.getResendConfig().catch(() => null)
     resendForm.value.from_name = resend?.from_name ?? ''
   } catch {
     toast.error('Échec du chargement de la configuration d’envoi')
@@ -258,7 +258,7 @@ async function loadAll(): Promise<void> {
  * @param silent - When true, do not toast on success (used for auto-activation).
  * @returns A promise that resolves once the switch is attempted.
  */
-async function activate(provider: SendingProvider, silent = false): Promise<void> {
+async function activate(provider: SendingProvider, silent: boolean = false): Promise<void> {
   try {
     identity.value = await SettingsService.setSendingProvider(provider)
     if (!silent) {
@@ -312,7 +312,7 @@ async function saveResend(): Promise<void> {
  */
 async function connectGmail(): Promise<void> {
   try {
-    const { auth_url } = await EmailAccountsService.getGmailAuthUrl()
+    const { auth_url }: { auth_url: string; instructions: string } = await EmailAccountsService.getGmailAuthUrl()
     window.location.href = auth_url
   } catch {
     toast.error('Échec de la connexion Gmail')

@@ -317,7 +317,7 @@
 </template>
 
 <script lang="ts" setup>
-import type { UseToastReturn } from '~/types/Composables'
+import type { UseAuthReturn, UseToastReturn } from '~/types/Composables'
 import type { ComputedRef, Ref } from 'vue'
 import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue'
 import type { PresenterVideo } from '~/services/presenterVideoService'
@@ -370,9 +370,14 @@ const MIN_TOTAL_SECONDS: number = 12
 const MAX_TOTAL_SECONDS: number = 90
 
 const toast: UseToastReturn = useToast()
-const { user } = useAuth()
-const recorder = useWebcamRecorder()
-const script = useProspectionScript(user.value?.name ?? '')
+const { user }: UseAuthReturn = useAuth()
+const recorder: ReturnType<typeof useWebcamRecorder> = useWebcamRecorder()
+const script: {
+  segments: Ref<ProspectionScriptSegment[], ProspectionScriptSegment[]>
+  isCustomised: Ref<boolean, boolean>
+  updateSegmentText: (id: ProspectionScriptSegmentId, text: string) => void
+  resetToDefault: () => void
+} = useProspectionScript(user.value?.name ?? '')
 
 const phase: Ref<RecorderPhase> = ref('permission')
 const currentIndex: Ref<number> = ref(0)
@@ -626,7 +631,7 @@ async function sendTakes(): Promise<void> {
 
   isSending.value = true
   try {
-    const [intro, middle, outro] = takes.map(
+    const [intro, middle, outro]: File[] = takes.map(
       (kept: KeptTake, index: number): File =>
         new File([kept.take.blob], `${['intro', 'middle', 'outro'][index]}.${kept.take.extension}`, {
           type: kept.take.blob.type,

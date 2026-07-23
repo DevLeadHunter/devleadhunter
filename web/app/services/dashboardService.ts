@@ -123,7 +123,7 @@ export class DashboardService {
     memberId?: number,
     categories: string[] = [],
   ): Promise<CoverageResponse> {
-    const params = new URLSearchParams({ scope })
+    const params: URLSearchParams = new URLSearchParams({ scope })
     if (memberId != null) params.set('member_id', String(memberId))
     for (const category of categories) params.append('categories', category)
     return ApiClient.get<CoverageResponse>(`/api/v1/dashboard/coverage?${params.toString()}`)
@@ -143,7 +143,7 @@ export class DashboardService {
     memberId?: number,
     categories: string[] = [],
   ): Promise<CoverageProspectsResponse> {
-    const params = new URLSearchParams({ scope })
+    const params: URLSearchParams = new URLSearchParams({ scope })
     if (memberId != null) params.set('member_id', String(memberId))
     for (const city of cities) params.append('cities', city)
     for (const category of categories) params.append('categories', category)

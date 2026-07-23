@@ -111,7 +111,7 @@ const {
   pending,
   error,
   refresh,
-} = await useAsyncData(
+}: Awaited<ReturnType<typeof useAsyncData<GithubRelease | undefined>>> = await useAsyncData<GithubRelease>(
   'devleadhunter-desktop-github-release',
   async (): Promise<GithubRelease> => {
     const base: string = releasesBase.value

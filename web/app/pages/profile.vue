@@ -78,7 +78,7 @@ onMounted(() => {
  * Handle form submission
  * @returns {Promise<void>}
  */
-const handleSubmit = async (): Promise<void> => {
+const handleSubmit: () => Promise<void> = async (): Promise<void> => {
   try {
     await userStore.updateProfile({
       name: name.value,

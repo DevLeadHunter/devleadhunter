@@ -106,7 +106,7 @@
 import type { UseToastReturn } from '~/types/Composables'
 import { ref, onMounted } from 'vue'
 import type { Ref } from 'vue'
-import type { Order, OrderStats } from '~/services/ordersService'
+import type { Order, OrderListResponse, OrderStats } from '~/services/ordersService'
 import { OrdersService } from '~/services/ordersService'
 import { useToast } from '~/composables/useToast'
 
@@ -141,7 +141,7 @@ const STATUS_LABELS: Record<string, string> = {
  * @returns Formatted euro string.
  */
 function formatCents(cents: number): string {
-  const euros = cents / 100
+  const euros: number = cents / 100
   return `${euros % 1 === 0 ? euros.toFixed(0) : euros.toFixed(2)} €`
 }
 
@@ -188,7 +188,10 @@ function statusClass(status: string): string {
 async function loadAll(): Promise<void> {
   isLoading.value = true
   try {
-    const [list, s] = await Promise.all([OrdersService.listOrders(), OrdersService.getOrderStats()])
+    const [list, s]: [OrderListResponse, OrderStats] = await Promise.all([
+      OrdersService.listOrders(),
+      OrdersService.getOrderStats(),
+    ])
     orders.value = list.items
     stats.value = s
   } catch (err: unknown) {
@@ -202,7 +205,7 @@ async function loadAll(): Promise<void> {
 async function handleCreate(): Promise<void> {
   isCreating.value = true
   try {
-    const order = await OrdersService.createOrder({ product_type: 'website' })
+    const order: Order = await OrdersService.createOrder({ product_type: 'website' })
     orders.value.unshift(order)
     openDrawer(order)
   } catch (err: unknown) {
@@ -220,15 +223,15 @@ function openDrawer(order: Order): void {
 
 /** Patch the local list when an order is updated. */
 function handleOrderUpdated(updated: Order): void {
-  const idx = orders.value.findIndex((o) => o.id === updated.id)
-  if (idx !== -1) orders.value.splice(idx, 1, updated)
+  const index: number = orders.value.findIndex((o: Order) => o.id === updated.id)
+  if (index !== -1) orders.value.splice(index, 1, updated)
   drawerOrder.value = updated
   void refreshStats()
 }
 
 /** Remove a deleted order from the list. */
 function handleOrderDeleted(orderId: number): void {
-  orders.value = orders.value.filter((o) => o.id !== orderId)
+  orders.value = orders.value.filter((o: Order) => o.id !== orderId)
   void refreshStats()
 }
 

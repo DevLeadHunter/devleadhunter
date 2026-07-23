@@ -256,7 +256,7 @@ function statusBadgeClass(status: string): string {
  * @param includeTime - Whether to append hours and minutes.
  * @returns Localised date.
  */
-function formatDate(value: string | null | undefined, includeTime = false): string {
+function formatDate(value: string | null | undefined, includeTime: boolean = false): string {
   if (!value) return ''
   return new Date(value).toLocaleString('fr-FR', {
     year: 'numeric',
@@ -281,7 +281,7 @@ function scrollToBottom(): void {
  * @param event - Native change event of the file input.
  */
 function handleComposerAttachments(event: Event): void {
-  const input = event.target as HTMLInputElement
+  const input: HTMLInputElement = event.target as HTMLInputElement
   for (const file of Array.from(input.files ?? [])) {
     if (!ALLOWED_TYPES.includes(file.type)) {
       toast.error('Format non pris en charge. Utilisez PNG, JPG ou WEBP.')
@@ -302,7 +302,7 @@ function handleComposerAttachments(event: Event): void {
  * @param index - Position in the staged list.
  */
 function removeComposerAttachment(index: number): void {
-  const preview = composerPreviews.value[index]
+  const preview: { url: string; name: string } | undefined = composerPreviews.value[index]
   if (preview) URL.revokeObjectURL(preview.url)
   composerFiles.value.splice(index, 1)
   composerPreviews.value.splice(index, 1)
@@ -341,14 +341,14 @@ function handleWebsocketEvent(event: SupportWebsocketEvent): void {
  */
 function handleGlobalWebsocketEvent(event: SupportWebsocketEvent): void {
   if (!event?.event) return
-  const isAdmin = userStore.user?.role === 'ADMIN'
+  const isAdmin: boolean = userStore.user?.role === 'ADMIN'
 
   if (event.event === 'ticket.message') {
     // Déjà sur ce ticket : la conversation se met à jour, pas besoin de toast.
     if (event.data?.id && event.data.id === ticketId.value) return
-    const senderId = event.data?._sender_id
-    const currentUserId = userStore.user?.id
-    const shouldNotify =
+    const senderId: unknown = event.data?._sender_id
+    const currentUserId: number | undefined = userStore.user?.id
+    const shouldNotify: unknown =
       senderId && currentUserId && senderId !== currentUserId && (event.data?.user_id === currentUserId || isAdmin)
     if (shouldNotify) {
       toast.info(`${String(event.data?._sender_name)} a répondu à « ${String(event.data?.subject || 'un ticket')} »`)
@@ -357,7 +357,7 @@ function handleGlobalWebsocketEvent(event: SupportWebsocketEvent): void {
   }
 
   if (event.event === 'ticket.created' && isAdmin) {
-    const author = event.data?.user_name
+    const author: unknown = event.data?.user_name
     if (author && author !== userStore.user?.name) toast.info(`Nouveau ticket créé par ${String(author)}`)
   }
 }
@@ -389,7 +389,7 @@ function disconnectGlobalWebSocket(): void {
  * @returns The absolute ws/wss URL.
  */
 function buildSocketUrl(path: string, token: string): string {
-  const apiUrl = new URL(runtimeConfig.public.apiBase)
+  const apiUrl: URL = new URL(runtimeConfig.public.apiBase)
   apiUrl.protocol = apiUrl.protocol === 'https:' ? 'wss:' : 'ws:'
   apiUrl.pathname = `${apiUrl.pathname.replace(/\/$/, '')}/api/v1/support/${path}`
   apiUrl.searchParams.set('token', token)
@@ -401,10 +401,10 @@ function buildSocketUrl(path: string, token: string): string {
  */
 function connectWebSocket(): void {
   disconnectWebSocket()
-  const token = userStore.token
+  const token: string | null = userStore.token
   if (!token || !ticket.value) return
   try {
-    const ws = new WebSocket(buildSocketUrl(`tickets/${ticket.value.id}/ws`, token))
+    const ws: WebSocket = new WebSocket(buildSocketUrl(`tickets/${ticket.value.id}/ws`, token))
     websocketRef.value = ws
     ws.onmessage = (event: MessageEvent): void => {
       try {
@@ -426,10 +426,10 @@ function connectWebSocket(): void {
  */
 function connectGlobalWebSocket(): void {
   disconnectGlobalWebSocket()
-  const token = userStore.token
+  const token: string | null = userStore.token
   if (!token) return
   try {
-    const ws = new WebSocket(buildSocketUrl('tickets/ws', token))
+    const ws: WebSocket = new WebSocket(buildSocketUrl('tickets/ws', token))
     globalWebsocketRef.value = ws
     ws.onmessage = (event: MessageEvent): void => {
       try {
@@ -473,7 +473,7 @@ async function sendMessage(): Promise<void> {
   if (!ticket.value || (!messageInput.value.trim() && composerFiles.value.length === 0)) return
   try {
     isSending.value = true
-    const message = await SupportService.postMessage(ticket.value.id, {
+    const message: SupportMessage = await SupportService.postMessage(ticket.value.id, {
       message: messageInput.value.trim() || ' ',
       attachments: composerFiles.value,
     })

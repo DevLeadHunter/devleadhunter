@@ -96,9 +96,16 @@
 </template>
 
 <script lang="ts" setup>
+import type { CoverageCity } from '~/services/dashboardService'
 import type { CityFeatureProperties, CoverageTierColors } from '~/types/DashboardCoverageMap'
 import type { Feature, FeatureCollection, Point } from 'geojson'
-import type { ExpressionSpecification, GeoJSONSource, Map as MaplibreMap, MapMouseEvent } from 'maplibre-gl'
+import type {
+  ExpressionSpecification,
+  GeoJSONSource,
+  Map as MaplibreMap,
+  MapGeoJSONFeature,
+  MapMouseEvent,
+} from 'maplibre-gl'
 import type { ComputedRef, Ref } from 'vue'
 import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import 'maplibre-gl/dist/maplibre-gl.css'
@@ -115,7 +122,7 @@ import { FRANCE_MAJOR_CITIES, FRANCE_REGIONS } from '~/utils/franceTerritory'
  * dataset. Loaded directly by MapLibre (its parser ignores the `text/plain`
  * content-type served by raw.githubusercontent.com, which breaks `$fetch`).
  */
-const REGIONS_GEOJSON_URL =
+const REGIONS_GEOJSON_URL: string =
   'https://raw.githubusercontent.com/gregoiredavid/france-geojson/master/regions-version-simplifiee.geojson'
 
 /** OpenFreeMap basemap styles (free, no API key, no usage limit) per app theme. */
@@ -142,7 +149,7 @@ const REGIONS_FILL_LAYER_ID: string = 'dlh-regions-fill'
 const REGIONS_LINE_LAYER_ID: string = 'dlh-regions-line'
 const CITIES_LAYER_ID: string = 'dlh-cities-dots'
 
-const { theme } = useAppTheme()
+const { theme }: { theme: Ref<AppTheme, AppTheme>; initTheme: () => void; toggleTheme: () => void } = useAppTheme()
 const store: ReturnType<typeof useCoverageStore> = useCoverageStore()
 const drawerStack: ReturnType<typeof useDrawerStackStore> = useDrawerStackStore()
 
@@ -176,7 +183,7 @@ const regionTotals: ComputedRef<Record<string, number>> = computed((): Record<st
 
 /** Distinct department codes touched. */
 const deptSet: ComputedRef<Set<string>> = computed((): Set<string> => {
-  const set = new Set<string>()
+  const set: Set<string> = new Set<string>()
   for (const city of store.coverage?.cities ?? []) {
     const geo: CityGeo | null = lookupCity(store.cityGeo, city.city)
     if (geo && geo.dept) set.add(geo.dept)
@@ -187,7 +194,8 @@ const deptSet: ComputedRef<Set<string>> = computed((): Set<string> => {
 /** Cities successfully placed on the map. */
 const coveredCityCount: ComputedRef<number> = computed(
   (): number =>
-    (store.coverage?.cities ?? []).filter((c): boolean => lookupCity(store.cityGeo, c.city) !== null).length,
+    (store.coverage?.cities ?? []).filter((c: CoverageCity): boolean => lookupCity(store.cityGeo, c.city) !== null)
+      .length,
 )
 
 /** Number of regions with at least one prospect. */
@@ -345,7 +353,8 @@ async function initMap(): Promise<void> {
   const container: HTMLElement | null = mapContainer.value
   if (!container || mapInstance) return
   try {
-    const maplibregl = (await import('maplibre-gl')).default
+    const maplibregl: typeof import('C:/Users/leogu/Desktop/Projects/devleadhunter/web/node_modules/maplibre-gl/dist/maplibre-gl') =
+      (await import('maplibre-gl')).default
     const map: MaplibreMap = new maplibregl.Map({
       container,
       style: MAP_STYLES[theme.value],
@@ -403,10 +412,10 @@ function categoryPrefill(): { category?: string } {
 async function onMapClick(event: MapMouseEvent): Promise<void> {
   const map: MaplibreMap | null = mapInstance
   if (!map || !isMapReady.value) return
-  const features = map.queryRenderedFeatures(event.point, {
+  const features: MapGeoJSONFeature[] = map.queryRenderedFeatures(event.point, {
     layers: [CITIES_LAYER_ID, REGIONS_FILL_LAYER_ID],
   })
-  const feature = features[0]
+  const feature: MapGeoJSONFeature | undefined = features[0]
   if (!feature) return
 
   // ── City dot: prospected city → its prospect list ──
@@ -432,15 +441,17 @@ async function onMapClick(event: MapMouseEvent): Promise<void> {
         kind: 'region',
         label: regionLabel,
         cities: store.coveredCitiesOfRegion(code),
-        prefillCity: FRANCE_MAJOR_CITIES.find((c): boolean => c.region === code)?.name,
+        prefillCity: FRANCE_MAJOR_CITIES.find((c: FranceMajorCity): boolean => c.region === code)?.name,
       },
     })
     return
   }
 
   // Falls back to the region's biggest city when the cursor is not over a commune.
-  const commune = await reverseGeocodeCommune(event.lngLat.lng, event.lngLat.lat)
-  const fallback: string | undefined = FRANCE_MAJOR_CITIES.find((c): boolean => c.region === code)?.name
+  const commune: ReverseGeocodedCommune | null = await reverseGeocodeCommune(event.lngLat.lng, event.lngLat.lat)
+  const fallback: string | undefined = FRANCE_MAJOR_CITIES.find(
+    (c: FranceMajorCity): boolean => c.region === code,
+  )?.name
   const city: string | undefined = commune?.name ?? fallback
   drawerStack.push({
     kind: 'search-prospects',
@@ -460,16 +471,16 @@ function openSearchDrawer(): void {
 function onMapMouseMove(event: MapMouseEvent): void {
   const map: MaplibreMap | null = mapInstance
   if (!map || !isMapReady.value) return
-  const features = map.queryRenderedFeatures(event.point, {
+  const features: MapGeoJSONFeature[] = map.queryRenderedFeatures(event.point, {
     layers: [CITIES_LAYER_ID, REGIONS_FILL_LAYER_ID],
   })
-  const feature = features[0]
+  const feature: MapGeoJSONFeature | undefined = features[0]
   map.getCanvas().style.cursor = feature ? 'pointer' : ''
   if (!feature) {
     hideTip()
     return
   }
-  const { x, y } = event.point
+  const { x, y }: { x: number; y: number } = event.point
   if (feature.layer.id === CITIES_LAYER_ID) {
     const count: number = Number(feature.properties?.count ?? 0)
     tip.value = {

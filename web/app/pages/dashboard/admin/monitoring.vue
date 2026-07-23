@@ -210,7 +210,7 @@ import type { ComputedRef, Ref } from 'vue'
 import { computed, onMounted, ref } from 'vue'
 import { useUserStore } from '~/stores/user'
 import { useToast } from '~/composables/useToast'
-import type { MonitoringOverview, ScraperIncident } from '~/services/adminMonitoringService'
+import type { MonitoringOverview, ScraperIncident, ScraperSourceHealth } from '~/services/adminMonitoringService'
 import { AdminMonitoringService } from '~/services/adminMonitoringService'
 
 definePageMeta({
@@ -235,7 +235,7 @@ const htmlPanel: Ref<HtmlPanelState> = ref({
 
 /** Total incidents across all sources over the last 24 h. */
 const totalIncidents24h: ComputedRef<number> = computed((): number =>
-  (overview.value?.sources ?? []).reduce((sum: number, s): number => sum + s.incidents_24h, 0),
+  (overview.value?.sources ?? []).reduce((sum: number, s: ScraperSourceHealth): number => sum + s.incidents_24h, 0),
 )
 
 /**
@@ -317,7 +317,7 @@ async function load(): Promise<void> {
   isLoading.value = true
   error.value = null
   try {
-    const [overviewData, incidentsData] = await Promise.all([
+    const [overviewData, incidentsData]: [MonitoringOverview, { items: ScraperIncident[] }] = await Promise.all([
       AdminMonitoringService.getMonitoringOverview(),
       AdminMonitoringService.getScraperIncidents(100),
     ])

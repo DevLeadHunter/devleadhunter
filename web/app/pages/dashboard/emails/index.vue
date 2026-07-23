@@ -207,7 +207,7 @@ import { computed, onMounted, ref, watch } from 'vue'
 import type { EmailLog, EmailStats, EmailStatus } from '~/types'
 import { formatDate } from '~/utils/date'
 import { EmailCampaignsService } from '~/services/emailCampaignsService'
-import type { CampaignResponse } from '~/services/campaignService'
+import type { CampaignListResponse, CampaignResponse } from '~/services/campaignService'
 import { CampaignService } from '~/services/campaignService'
 import { useToast } from '~/composables/useToast'
 import { useDrawerStackStore } from '~/stores/drawerStack'
@@ -244,7 +244,7 @@ const stats: Ref<EmailStats> = ref({
   click_rate: 0,
 })
 
-const statusOptions = [
+const statusOptions: { value: string; label: string }[] = [
   { value: 'all', label: 'Tous' },
   { value: 'pending', label: 'En attente' },
   { value: 'sent', label: 'Envoyé' },
@@ -259,16 +259,16 @@ const statusOptions = [
 
 const campaignOptions: ComputedRef<SelectFieldOption[]> = computed(() => [
   { value: 'all', label: 'Toutes les campagnes' },
-  ...campaigns.value.map((campaign) => ({ value: String(campaign.id), label: campaign.name })),
+  ...campaigns.value.map((campaign: CampaignResponse) => ({ value: String(campaign.id), label: campaign.name })),
 ])
 
 const filteredLogs: ComputedRef<EmailLog[]> = computed((): EmailLog[] => {
-  let list = logs.value
+  let list: EmailLog[] = logs.value
 
   if (searchQuery.value) {
-    const q = searchQuery.value.toLowerCase()
+    const q: string = searchQuery.value.toLowerCase()
     list = list.filter(
-      (l) =>
+      (l: EmailLog) =>
         l.recipient_email.toLowerCase().includes(q) ||
         l.recipient_name?.toLowerCase().includes(q) ||
         l.subject.toLowerCase().includes(q),
@@ -276,12 +276,12 @@ const filteredLogs: ComputedRef<EmailLog[]> = computed((): EmailLog[] => {
   }
 
   if (filterStatus.value !== 'all') {
-    list = list.filter((l) => l.status === filterStatus.value)
+    list = list.filter((l: EmailLog) => l.status === filterStatus.value)
   }
 
   if (filterCampaignId.value !== 'all') {
     // Comparaison en chaîne : Number(null) vaudrait 0 et matcherait la première campagne.
-    list = list.filter((l) => l.campaign_id != null && String(l.campaign_id) === filterCampaignId.value)
+    list = list.filter((l: EmailLog) => l.campaign_id != null && String(l.campaign_id) === filterCampaignId.value)
   }
 
   return list
@@ -292,7 +292,7 @@ const totalPages: ComputedRef<number> = computed((): number =>
 )
 
 const paginatedLogs: ComputedRef<EmailLog[]> = computed((): EmailLog[] => {
-  const start = (currentPage.value - 1) * pageSize
+  const start: number = (currentPage.value - 1) * pageSize
   return filteredLogs.value.slice(start, start + pageSize)
 })
 
@@ -305,7 +305,7 @@ function resolveCampaignName(id: string | number | null | undefined): string | u
   if (id == null) return undefined
   const numericId: number = Number(id)
   if (Number.isNaN(numericId)) return undefined
-  return campaigns.value.find((campaign) => campaign.id === numericId)?.name
+  return campaigns.value.find((campaign: CampaignResponse) => campaign.id === numericId)?.name
 }
 
 /**
@@ -376,7 +376,9 @@ function lastActivityAt(log: EmailLog): string | null {
     log.complained_at,
     log.failed_at,
   ]
-  const valid: number[] = stamps.filter((s): s is string => !!s).map((s: string): number => new Date(s).getTime())
+  const valid: number[] = stamps
+    .filter((s: string | null | undefined): s is string => !!s)
+    .map((s: string): number => new Date(s).getTime())
   if (valid.length === 0) return null
   return new Date(Math.max(...valid)).toISOString()
 }
@@ -402,11 +404,12 @@ async function loadLogs(): Promise<void> {
   isLoading.value = true
   error.value = null
   try {
-    const [logsRes, campaignsRes, statsRes] = await Promise.all([
-      EmailCampaignsService.getEmailLogs({ limit: 500 }),
-      CampaignService.list(0, 200),
-      EmailCampaignsService.getEmailStats(),
-    ])
+    const [logsRes, campaignsRes, statsRes]: [{ total: number; logs: EmailLog[] }, CampaignListResponse, EmailStats] =
+      await Promise.all([
+        EmailCampaignsService.getEmailLogs({ limit: 500 }),
+        CampaignService.list(0, 200),
+        EmailCampaignsService.getEmailStats(),
+      ])
     logs.value = logsRes.logs
     campaigns.value = campaignsRes.campaigns
     stats.value = statsRes
@@ -433,10 +436,11 @@ watch(
 async function syncStatus(): Promise<void> {
   isSyncing.value = true
   try {
-    const result = await ApiClient.post<{ updated: number; checked: number; errors?: string[] }>(
-      '/api/v1/emails/sync-resend-status',
-      {},
-    )
+    const result: { updated: number; checked: number; errors?: string[] | undefined } = await ApiClient.post<{
+      updated: number
+      checked: number
+      errors?: string[]
+    }>('/api/v1/emails/sync-resend-status', {})
     if (result.updated > 0) {
       toast.success(`${result.updated} statut(s) mis à jour`)
       await loadLogs()

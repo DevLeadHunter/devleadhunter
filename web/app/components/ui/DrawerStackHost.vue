@@ -311,7 +311,7 @@ function htmlToPlainText(html: string | null | undefined): string {
 
 /** Stack email composer prefilled from the log row (resend). */
 function handleResendEmail(): void {
-  const entry = emailLogEntry.value
+  const entry: EmailLogDrawerEntry | null = emailLogEntry.value
   if (!entry) return
   drawerStack.push({
     kind: 'send-email',

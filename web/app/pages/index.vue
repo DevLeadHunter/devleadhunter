@@ -36,8 +36,9 @@ definePageMeta({
   middleware: ['desktop-redirect'],
 })
 
-const { t } = useI18n()
-const { track } = useSiteTracking()
+const { t }: { t: (key: string, params?: Record<string, unknown>) => string } = useI18n()
+const { track }: { track: (event: string, properties?: Record<string, unknown> | undefined) => void } =
+  useSiteTracking()
 
 /** Credit settings fetched from the API (null while loading or on error). */
 const creditSettings: Ref<CreditSettings | null> = ref(null)

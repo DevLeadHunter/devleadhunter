@@ -115,7 +115,7 @@ const form: Ref<{
 })
 
 const canSave: ComputedRef<boolean> = computed(() => {
-  const emailValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.value.email.trim())
+  const emailValid: boolean = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.value.email.trim())
   return form.value.business_name.trim().length >= 2 && emailValid
 })
 
@@ -136,7 +136,7 @@ async function handleSave(): Promise<void> {
   isSaving.value = true
   saveMessage.value = null
   try {
-    const updatedSite = await DemoSiteService.updateDemoSite(demoSiteId, {
+    const updatedSite: DemoSite = await DemoSiteService.updateDemoSite(demoSiteId, {
       business_name: form.value.business_name.trim(),
       template_id: form.value.template_id,
       email: form.value.email.trim(),
@@ -162,7 +162,7 @@ async function handleRegenerate(): Promise<void> {
   isRegenerating.value = true
   saveMessage.value = null
   try {
-    const updatedSite = await DemoSiteService.regenerateDemoSite(demoSiteId)
+    const updatedSite: DemoSite = await DemoSiteService.regenerateDemoSite(demoSiteId)
     applySiteUpdate(updatedSite, updatedSite.verification_message ?? 'Site régénéré.')
   } catch (error) {
     saveMessage.value = error instanceof Error ? error.message : 'Échec de la régénération'
@@ -174,7 +174,7 @@ async function handleRegenerate(): Promise<void> {
 
 onMounted(async () => {
   try {
-    const [loadedSite, loadedTemplates] = await Promise.all([
+    const [loadedSite, loadedTemplates]: [DemoSite, DemoSiteTemplate[]] = await Promise.all([
       DemoSiteService.getDemoSite(demoSiteId),
       DemoSiteService.listDemoSiteTemplates(),
     ])

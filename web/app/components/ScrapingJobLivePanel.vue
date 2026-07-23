@@ -94,7 +94,7 @@ watch(
   () => props.logs.length,
   async () => {
     await nextTick()
-    const el = logsContainerRef.value
+    const el: HTMLElement | null = logsContainerRef.value
     if (el) {
       el.scrollTop = el.scrollHeight
     }
@@ -105,7 +105,7 @@ watch(
   () => props.prospects.length,
   async () => {
     await nextTick()
-    const el = prospectsContainerRef.value
+    const el: HTMLElement | null = prospectsContainerRef.value
     if (el) {
       el.scrollTop = el.scrollHeight
     }

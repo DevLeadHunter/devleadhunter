@@ -53,7 +53,7 @@ export class AdminMonitoringService {
    * @param source - Optional source filter.
    * @returns The incident list.
    */
-  static async getScraperIncidents(limit = 100, source?: string): Promise<{ items: ScraperIncident[] }> {
+  static async getScraperIncidents(limit: number = 100, source?: string): Promise<{ items: ScraperIncident[] }> {
     return ApiClient.get<{ items: ScraperIncident[] }>('/api/v1/admin/monitoring/scrapers/incidents', {
       params: { limit, source: source ?? undefined },
     })

@@ -45,7 +45,7 @@ const TOAST_STYLE: Record<ToastType, ToastToneClasses> = {
   info: { icon: 'i-lucide-info', tileBg: 'var(--app-blue-soft)', iconColor: 'var(--app-blue)' },
 }
 
-const { toasts, dismiss } = useToastHost()
+const { toasts, dismiss }: { toasts: Ref<ToastItem[], ToastItem[]>; dismiss: (id: number) => void } = useToastHost()
 
 /** Toast ids whose auto-dismiss timer is already scheduled. */
 const scheduled: Set<number> = new Set()

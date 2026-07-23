@@ -181,6 +181,7 @@
 </template>
 
 <script lang="ts" setup>
+import type { ScrapingJob } from '~/stores/prospectSearch'
 import type { CompletedStat } from '~/types/SearchProspectsPage'
 import type { ComputedRef } from 'vue'
 import { computed, onMounted } from 'vue'
@@ -197,7 +198,7 @@ const drawerStack: ReturnType<typeof useDrawerStackStore> = useDrawerStackStore(
 
 /** Stat tiles for a completed job. */
 const completedStats: ComputedRef<CompletedStat[]> = computed((): CompletedStat[] => {
-  const job = store.currentJob
+  const job: ScrapingJob | null = store.currentJob
   if (job === null) return []
   return [
     {

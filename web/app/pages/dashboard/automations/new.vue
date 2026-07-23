@@ -293,6 +293,9 @@
 </template>
 
 <script lang="ts" setup>
+import type { LocationQueryValue } from 'vue-router'
+import type { EmailTemplate } from '~/types/index'
+import type { AutomationDetail } from '~/types/Automation'
 import type { UseToastReturn } from '~/types/Composables'
 import type { AutomationRecapRow, TunnelForm } from '~/types/AutomationCreatePage'
 import type { ComputedRef, Ref } from 'vue'
@@ -374,7 +377,7 @@ const form: Ref<TunnelForm> = ref({
   onlyWithoutWebsite: true,
 })
 
-const { openCreate } = useEmailTemplateCreator(emailTemplates, reloadEmailTemplates)
+const { openCreate }: EmailTemplateCreator = useEmailTemplateCreator(emailTemplates, reloadEmailTemplates)
 
 /** Prospects matching every filter. */
 const filteredProspects: ComputedRef<Prospect[]> = computed((): Prospect[] => {
@@ -569,7 +572,7 @@ function resolvedName(): string {
 async function launch(): Promise<void> {
   isCreating.value = true
   try {
-    const detail = await AutomationsService.createAutomation({
+    const detail: AutomationDetail = await AutomationsService.createAutomation({
       name: resolvedName(),
       mode: form.value.mode,
       prospect_ids:
@@ -617,8 +620,10 @@ function openSendPolicyDrawer(): void {
  * @returns A promise resolved once the templates are reloaded.
  */
 async function reloadEmailTemplates(): Promise<void> {
-  const emailList = await EmailTemplatesService.getEmailTemplates()
-  emailTemplates.value = emailList.map((t): TemplateSelectOption => ({ id: t.id, name: t.name, subject: t.subject }))
+  const emailList: EmailTemplate[] = await EmailTemplatesService.getEmailTemplates()
+  emailTemplates.value = emailList.map(
+    (t: EmailTemplate): TemplateSelectOption => ({ id: t.id, name: t.name, subject: t.subject }),
+  )
 }
 
 /**
@@ -628,7 +633,7 @@ async function reloadEmailTemplates(): Promise<void> {
 async function reloadProspects(): Promise<void> {
   isLoadingProspects.value = true
   try {
-    const [prospectList, usedIds] = await Promise.all([
+    const [prospectList, usedIds]: [Prospect[], number[]] = await Promise.all([
       ProspectsService.listProspects(),
       AutomationsService.getUsedProspectIds(),
     ])
@@ -651,7 +656,10 @@ watch(
 
 onMounted(async (): Promise<void> => {
   try {
-    const [, demoList] = await Promise.all([reloadEmailTemplates(), DemoSiteService.listDemoSiteTemplates()])
+    const [, demoList]: [unknown, DemoSiteTemplate[]] = await Promise.all([
+      reloadEmailTemplates(),
+      DemoSiteService.listDemoSiteTemplates(),
+    ])
     templates.value = demoList
     const first: DemoSiteTemplate | undefined = demoList[0]
     if (first) {
@@ -664,7 +672,9 @@ onMounted(async (): Promise<void> => {
   await reloadProspects()
 
   // Pre-select a prospect passed via ?prospect= (single-site shortcut).
-  const rawQuery = Array.isArray(route.query.prospect) ? route.query.prospect[0] : route.query.prospect
+  const rawQuery: LocationQueryValue | undefined = Array.isArray(route.query.prospect)
+    ? route.query.prospect[0]
+    : route.query.prospect
   const raw: string | undefined = typeof rawQuery === 'string' ? rawQuery : undefined
   if (raw && !Number.isNaN(Number(raw))) {
     selectedProspectIds.value = [raw]

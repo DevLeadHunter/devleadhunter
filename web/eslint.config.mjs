@@ -34,10 +34,20 @@ export default withNuxt(
       '@typescript-eslint/no-explicit-any': 'error',
       // A class of static methods is the house style for a cohesive helper set (see the standards).
       '@typescript-eslint/no-extraneous-class': 'off',
-      // Alignement B2B en cours : 617 violations `typedef` restent à annoter (105 fichiers).
-      // Les repasser en 'error' dès que le solde est à zéro, sinon le pre-commit bloque tout.
-      '@typescript-eslint/explicit-function-return-type': 'off',
-      '@typescript-eslint/typedef': 'off',
+      '@typescript-eslint/explicit-function-return-type': ['error'],
+      '@typescript-eslint/typedef': [
+        'error',
+        {
+          arrayDestructuring: true,
+          arrowParameter: true,
+          memberVariableDeclaration: true,
+          objectDestructuring: true,
+          parameter: true,
+          propertyDeclaration: true,
+          variableDeclaration: true,
+          variableDeclarationIgnoreFunction: false,
+        },
+      ],
       '@typescript-eslint/no-unused-vars': 'off',
       'unused-imports/no-unused-imports': 'error',
       'unused-imports/no-unused-vars': [

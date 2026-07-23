@@ -259,10 +259,11 @@
 </template>
 
 <script lang="ts" setup>
+import type { Prospect } from '~/types/index'
 import type { FunnelBarStage, PipelineTile } from '~/types/DashboardHomePage'
 import type { ComputedRef, Ref } from 'vue'
 import { computed, onMounted, ref } from 'vue'
-import type { DashboardStats, HotLead } from '~/services/dashboardService'
+import type { DashboardStats, HotLead, HotLeadsResponse } from '~/services/dashboardService'
 import { DashboardService } from '~/services/dashboardService'
 import type { EmailHealthTrendDay } from '~/services/emailHealthService'
 import { EmailHealthService } from '~/services/emailHealthService'
@@ -379,8 +380,11 @@ const funnelStages: ComputedRef<FunnelBarStage[]> = computed((): FunnelBarStage[
     { label: 'Emails cliqués', value: s.emails_clicked, color: 'var(--app-accent)' },
     { label: 'Ventes', value: s.sales_won, color: 'var(--app-green)' },
   ]
-  const max: number = Math.max(...raw.map((stage): number => stage.value), 1)
-  return raw.map((stage, index): FunnelBarStage => {
+  const max: number = Math.max(
+    ...raw.map((stage: { label: string; value: number; color: string }): number => stage.value),
+    1,
+  )
+  return raw.map((stage: { label: string; value: number; color: string }, index: number): FunnelBarStage => {
     const previous: number = index > 0 ? (raw[index - 1]?.value ?? 0) : 0
     return {
       ...stage,
@@ -470,7 +474,7 @@ async function changePeriod(days: number): Promise<void> {
  */
 async function openProspect(prospectId: number): Promise<void> {
   try {
-    const prospect = await ProspectsService.getProspect(prospectId)
+    const prospect: Prospect = await ProspectsService.getProspect(prospectId)
     drawerStack.push({ kind: 'prospect', prospect })
   } catch {
     navigateTo(`/dashboard/my-prospects?open=${prospectId}`)
@@ -484,7 +488,11 @@ async function openProspect(prospectId: number): Promise<void> {
 async function load(): Promise<void> {
   isLoading.value = true
   try {
-    const [statsData, leads, trends] = await Promise.all([
+    const [statsData, leads, trends]: [
+      DashboardStats,
+      HotLeadsResponse | { items: HotLead[] },
+      { days: EmailHealthTrendDay[] } | { days: EmailHealthTrendDay[] },
+    ] = await Promise.all([
       DashboardService.getDashboardStats(periodDays.value),
       DashboardService.getHotLeads().catch((): { items: HotLead[] } => ({ items: [] })),
       EmailHealthService.getEmailHealthTrends(30).catch((): { days: EmailHealthTrendDay[] } => ({ days: [] })),

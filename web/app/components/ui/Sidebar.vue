@@ -275,7 +275,7 @@
 </template>
 
 <script lang="ts" setup>
-import type { UseToastReturn } from '~/types/Composables'
+import type { UseAuthReturn, UseDesktopRuntimeReturn, UseToastReturn } from '~/types/Composables'
 import type { ComputedRef, Ref } from 'vue'
 import type { AppTheme } from '~/types/AppTheme'
 import type { DlhModuleEntry, UiSidebarGroup, UiSidebarProps } from '~/types/UiSidebar'
@@ -310,18 +310,20 @@ const userStore: ReturnType<typeof useUserStore> = useUserStore()
 
 const toast: UseToastReturn = useToast()
 
-const { logout } = useAuth()
+const { logout }: UseAuthReturn = useAuth()
 
-const { theme, toggleTheme } = useAppTheme()
+const { theme, toggleTheme }: { theme: Ref<AppTheme, AppTheme>; initTheme: () => void; toggleTheme: () => void } =
+  useAppTheme()
 
 /** Global Ctrl+K command palette (opened from the sidebar trigger). */
-const commandPalette = useCommandPalette()
+const commandPalette: { isOpen: Ref<boolean, boolean>; open: () => void; close: () => void; toggle: () => void } =
+  useCommandPalette()
 
 /** Persistent drawer stack — the profile entry opens from the user menu. */
 const drawerStack: ReturnType<typeof useDrawerStackStore> = useDrawerStackStore()
 
 /** Tauri desktop detection → hide the "download the app" link when already in the desktop app. */
-const { isDesktopApp } = useDesktopRuntime()
+const { isDesktopApp }: UseDesktopRuntimeReturn = useDesktopRuntime()
 
 const {
   showSettingsPanel,
@@ -329,7 +331,7 @@ const {
   openSettingsPanel,
   closeSettingsPanel,
   isLinkActive: isSettingsLinkActive,
-} = useSettingsNav()
+}: ReturnType<typeof useSettingsNav> = useSettingsNav()
 
 /** Whether the module switcher menu is open. */
 const showModuleMenu: Ref<boolean> = ref(false)
@@ -429,7 +431,7 @@ function handleModuleClick(moduleEntry: DlhModuleEntry): void {
  * @returns Tailwind classes for the row.
  */
 function navItemClass(active: boolean): string {
-  const base =
+  const base: string =
     'relative flex cursor-pointer items-center gap-2.5 rounded-lg py-1.5 pr-3 pl-4 text-sm font-medium transition-colors'
   if (active) {
     return `${base} bg-[var(--app-surface-2)] text-[var(--app-ink)]`

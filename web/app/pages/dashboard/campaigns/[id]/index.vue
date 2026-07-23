@@ -642,11 +642,17 @@ import type { TemplateOption } from '~/types/CampaignDetailPage'
 import { computed, onMounted, ref, watch } from 'vue'
 import type { ComputedRef, Ref } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
-import type { CampaignDetailResponse, CampaignQueueResponse, CampaignStats } from '~/services/campaignService'
+import type {
+  CampaignDetailResponse,
+  CampaignProspect,
+  CampaignQueueResponse,
+  CampaignStats,
+  LaunchCampaignResponse,
+} from '~/services/campaignService'
 import { CampaignService } from '~/services/campaignService'
 import { ProspectsService } from '~/services/prospectsService'
 import { ApiClient } from '~/services/api'
-import type { Prospect, CampaignVariantStats } from '~/types'
+import type { CampaignFollowUp, CampaignVariantStats, Prospect } from '~/types'
 import { formatDate } from '~/utils/date'
 import { useToast } from '~/composables/useToast'
 
@@ -732,13 +738,13 @@ const settingsForm: Ref<{
   follow_ups: [],
 })
 
-const { openCreate } = useEmailTemplateCreator(templates, reloadTemplates)
+const { openCreate }: EmailTemplateCreator = useEmailTemplateCreator(templates, reloadTemplates)
 
 const campaignId: ComputedRef<number> = computed((): number => Number(route.params.id))
 
 const availableProspects: ComputedRef<Prospect[]> = computed((): Prospect[] => {
   if (!campaign.value) return []
-  const existingIds: Set<number> = new Set(campaign.value.prospects.map((prospect) => prospect.id))
+  const existingIds: Set<number> = new Set(campaign.value.prospects.map((prospect: CampaignProspect) => prospect.id))
   return allProspects.value.filter((p: Prospect): boolean => !existingIds.has(p.id))
 })
 
@@ -747,7 +753,7 @@ const canLaunch: ComputedRef<boolean> = computed((): boolean => settingsForm.val
 /** Metric cards for the stats strip. */
 const metricCards: ComputedRef<Array<{ label: string; value: number | string; icon: string; color: string }>> =
   computed(() => {
-    const s = stats.value
+    const s: CampaignStats | null = stats.value
     if (!s) return []
     return [
       { label: 'Envoyés', value: s.total_emails_sent, icon: 'i-lucide-send', color: 'text-[var(--app-ink)]' },
@@ -765,23 +771,30 @@ const metricCards: ComputedRef<Array<{ label: string; value: number | string; ic
   })
 
 const hasSignificantDiff: ComputedRef<boolean> = computed((): boolean => {
-  const [first, second] = stats.value?.ab_stats ?? []
+  const [first, second]: CampaignVariantStats[] = stats.value?.ab_stats ?? []
   if (!first || !second) return false
   return Math.abs(first.open_rate - second.open_rate) >= 10
 })
 
 const winnerMessage: ComputedRef<string> = computed((): string => {
-  const [first, second] = stats.value?.ab_stats ?? []
+  const [first, second]: CampaignVariantStats[] = stats.value?.ab_stats ?? []
   if (!first || !second) return ''
-  const winner = first.open_rate > second.open_rate ? first : second
+  const winner: CampaignVariantStats = first.open_rate > second.open_rate ? first : second
   return `Variante ${winner.variant} en tête avec ${winner.open_rate}% d'ouverture.`
 })
 
 /** Detects whether the settings form differs from the persisted campaign. */
 const settingsDirty: ComputedRef<boolean> = computed((): boolean => {
   if (!campaign.value) return false
-  const c = campaign.value
-  const f = settingsForm.value
+  const c: CampaignDetailResponse = campaign.value
+  const f: {
+    template_id: number
+    ab_template_id_b: number
+    send_delay_minutes: number
+    enable_ab: boolean
+    behavior_personalized_followups: boolean
+    follow_ups: { template_id: number; delay_days: number }[]
+  } = settingsForm.value
   if (f.template_id !== (c.template_id ?? 0)) return true
   if (f.send_delay_minutes !== c.send_delay_minutes) return true
   if (f.behavior_personalized_followups !== c.behavior_personalized_followups) return true
@@ -789,7 +802,8 @@ const settingsDirty: ComputedRef<boolean> = computed((): boolean => {
   if (f.enable_ab && f.ab_template_id_b !== (c.ab_template_id_b ?? 0)) return true
   if (f.follow_ups.length !== c.follow_ups.length) return true
   return f.follow_ups.some(
-    (fu, i) => fu.template_id !== c.follow_ups[i]?.template_id || fu.delay_days !== c.follow_ups[i]?.delay_days,
+    (fu: { template_id: number; delay_days: number }, i: number) =>
+      fu.template_id !== c.follow_ups[i]?.template_id || fu.delay_days !== c.follow_ups[i]?.delay_days,
   )
 })
 
@@ -798,7 +812,7 @@ const settingsDirty: ComputedRef<boolean> = computed((): boolean => {
  * @param v - Variant stats to evaluate.
  */
 function isWinner(v: CampaignVariantStats): boolean {
-  const ab = stats.value?.ab_stats
+  const ab: CampaignVariantStats[] | null | undefined = stats.value?.ab_stats
   if (!ab || ab.length < 2 || !hasSignificantDiff.value) return false
   return ab.every(
     (other: CampaignVariantStats): boolean => other.variant === v.variant || v.open_rate > other.open_rate,
@@ -811,7 +825,13 @@ function isWinner(v: CampaignVariantStats): boolean {
 async function loadAll(): Promise<void> {
   isLoading.value = true
   try {
-    const [c, s, q, prospects, tpls] = await Promise.all([
+    const [c, s, q, prospects, tpls]: [
+      CampaignDetailResponse,
+      CampaignStats | null,
+      CampaignQueueResponse | null,
+      Prospect[],
+      TemplateOption[],
+    ] = await Promise.all([
       CampaignService.get(campaignId.value),
       CampaignService.getStats(campaignId.value).catch((): null => null),
       CampaignService.getQueue(campaignId.value, { limit: 100 }).catch((): null => null),
@@ -837,7 +857,9 @@ async function loadAll(): Promise<void> {
  * @returns A promise resolved once the templates are reloaded.
  */
 async function reloadTemplates(): Promise<void> {
-  const tpls = await ApiClient.get<TemplateOption[]>('/api/v1/email-templates').catch((): TemplateOption[] => [])
+  const tpls: TemplateOption[] = await ApiClient.get<TemplateOption[]>('/api/v1/email-templates').catch(
+    (): TemplateOption[] => [],
+  )
   templates.value = Array.isArray(tpls) ? tpls : []
 }
 
@@ -852,7 +874,10 @@ function syncSettingsForm(c: CampaignDetailResponse): void {
     send_delay_minutes: c.send_delay_minutes,
     enable_ab: !!c.ab_template_id_b,
     behavior_personalized_followups: c.behavior_personalized_followups,
-    follow_ups: c.follow_ups.map((fu) => ({ template_id: fu.template_id, delay_days: fu.delay_days })),
+    follow_ups: c.follow_ups.map((fu: CampaignFollowUp) => ({
+      template_id: fu.template_id,
+      delay_days: fu.delay_days,
+    })),
   }
 }
 
@@ -869,16 +894,27 @@ async function loadQueue(): Promise<void> {
 async function saveSettings(): Promise<void> {
   isSavingSettings.value = true
   try {
-    const f = settingsForm.value
-    const updated = await CampaignService.updateSettings(campaignId.value, {
+    const f: {
+      template_id: number
+      ab_template_id_b: number
+      send_delay_minutes: number
+      enable_ab: boolean
+      behavior_personalized_followups: boolean
+      follow_ups: { template_id: number; delay_days: number }[]
+    } = settingsForm.value
+    const updated: CampaignDetailResponse = await CampaignService.updateSettings(campaignId.value, {
       template_id: f.template_id > 0 ? f.template_id : undefined,
       ab_template_id_b: f.enable_ab && f.ab_template_id_b > 0 ? f.ab_template_id_b : undefined,
       disable_ab: !f.enable_ab,
       send_delay_minutes: f.send_delay_minutes,
       behavior_personalized_followups: f.behavior_personalized_followups,
       follow_ups: f.follow_ups
-        .filter((fu) => fu.template_id > 0)
-        .map((fu, i) => ({ template_id: fu.template_id, delay_days: fu.delay_days, position: i + 1 })),
+        .filter((fu: { template_id: number; delay_days: number }) => fu.template_id > 0)
+        .map((fu: { template_id: number; delay_days: number }, i: number) => ({
+          template_id: fu.template_id,
+          delay_days: fu.delay_days,
+          position: i + 1,
+        })),
     })
     campaign.value = updated
     syncSettingsForm(updated)
@@ -896,7 +932,7 @@ async function saveSettings(): Promise<void> {
 async function handleLaunch(): Promise<void> {
   try {
     if (settingsDirty.value) await saveSettings()
-    const result = await CampaignService.launch(campaignId.value)
+    const result: LaunchCampaignResponse = await CampaignService.launch(campaignId.value)
     toast.success(result.message)
     await loadAll()
   } catch (err: unknown) {
@@ -909,7 +945,7 @@ async function handleLaunch(): Promise<void> {
  */
 async function handlePause(): Promise<void> {
   try {
-    const result = await CampaignService.pause(campaignId.value)
+    const result: { success: boolean; cancelled: number } = await CampaignService.pause(campaignId.value)
     toast.success(`Campagne en pause — ${result.cancelled} email(s) annulé(s)`)
     await loadAll()
   } catch {
@@ -922,7 +958,7 @@ async function handlePause(): Promise<void> {
  */
 async function handleResume(): Promise<void> {
   try {
-    const result = await CampaignService.resume(campaignId.value)
+    const result: { success: boolean; enqueued: number } = await CampaignService.resume(campaignId.value)
     toast.success(`Campagne reprise — ${result.enqueued} email(s) planifié(s)`)
     await loadAll()
   } catch (err: unknown) {
@@ -935,7 +971,7 @@ async function handleResume(): Promise<void> {
  */
 async function handleUpdateCampaign(): Promise<void> {
   try {
-    const updated = await CampaignService.update(campaignId.value, {
+    const updated: CampaignDetailResponse = await CampaignService.update(campaignId.value, {
       name: editForm.value.name,
       description: editForm.value.description,
     })
@@ -1004,7 +1040,7 @@ async function handleRemoveProspect(): Promise<void> {
  * @param id - Prospect ID.
  */
 function toggleProspect(id: number): void {
-  const idx = selectedProspectIds.value.indexOf(id)
+  const idx: number = selectedProspectIds.value.indexOf(id)
   if (idx > -1) selectedProspectIds.value.splice(idx, 1)
   else selectedProspectIds.value.push(id)
 }
