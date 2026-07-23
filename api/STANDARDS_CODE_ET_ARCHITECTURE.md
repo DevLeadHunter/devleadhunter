@@ -107,6 +107,30 @@ Règles :
 - Ne pas éparpiller des fonctions module-level quand elles forment un ensemble.
 - Les méthodes async quand I/O (HTTP, DB async si un jour migration).
 - **Pas de logique métier dans les routes** au-delà de l'assemblage.
+- Un fichier qui ne contient **qu'une seule** fonction n'a pas besoin de classe.
+
+### Les deux seules exceptions au « tout en classe »
+
+**1. Dépendances FastAPI.** `Depends()` inspecte un callable simple ; les gardes d'auth restent donc des fonctions module-level qui **délèguent** à la classe :
+
+```python
+def require_admin(current_user: User = Depends(get_current_active_user)) -> User: ...
+def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)) -> User:
+    return AuthService.resolve_user_from_token(token, db)
+```
+
+**2. Workers de fond.** `asyncio.create_task()` reçoit la méthode du singleton, pas une fonction libre : `asyncio.create_task(email_queue_worker.run_forever())`.
+
+### Singleton de module
+
+Une classe porteuse d'état (client HTTP, cache, connexion) expose un singleton en bas de fichier — c'est ce que les appelants importent :
+
+```python
+r2_storage = R2StorageService()          # services/r2_storage_service.py
+email_queue_worker = EmailQueueWorker()  # services/email_queue_worker.py
+```
+
+Une classe **sans état** (`EmailVariables`, `AuthService`, `EnrichmentContentMapper`) n'a pas de singleton : on appelle directement `EmailVariables.build_for_prospect(...)`.
 
 ---
 
@@ -160,8 +184,10 @@ async def get_prospect(
 
 - Docstrings **en anglais** sur chaque **classe** et chaque **méthode publique**.
 - Format : une ligne de résumé + `Args:` / `Returns:` / `Raises:` si utile.
+- **Jamais de tags JSDoc** (`@param`, `@returns`, `@throws`) : c'est la syntaxe TypeScript, pas Python.
 - **Pas de docstring qui paraphrase** le nom de la méthode.
 - **Pas de commentaire** sur chaque ligne de logique évidente.
+- **Pas de bandeau de section** (`# ---- Helpers ----`) : si un fichier en a besoin, il mérite d'être découpé.
 - Les `#` inline sont réservés aux contraintes non évidentes (workaround, piège prod).
 
 ```python
@@ -212,6 +238,8 @@ def resolve_demo_slug(demo_site: DemoSite | None, email_log: EmailLog | None) ->
 | `dict` / `Any` non justifié dans les schémas | ❌ INTERDIT |
 | Secrets en dur dans le code | ❌ INTERDIT |
 | Fonctions éparses pour un domaine qui mérite une classe | 🟠 À refactorer |
+| Tags JSDoc (`@param`) dans une docstring Python | ❌ INTERDIT |
+| Docstring en français | ❌ INTERDIT |
 | Docstring sur classes et méthodes publiques | ✅ REQUIS |
 | Pydantic v2 pour les contrats API | ✅ REQUIS |
 | Enums dans `enums/` | ✅ REQUIS |

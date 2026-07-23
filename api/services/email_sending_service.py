@@ -88,12 +88,13 @@ class EmailSendingService:
         the same PostHog person as the demo capture. Best-effort: never raises,
         never blocks a send.
 
-        @param user_id - Owner of the send (scopes the demo-slug lookup).
-        @param prospect_id - Prospect id (string from the send API), for slug + props.
-        @param campaign_id - Campaign id (string), stamped on the event.
-        @param email_log_id - EmailLog row id, stamped on the event.
-        @param recipient_email - Recipient address, last-resort identity.
-        @param ab_variant - A/B variant ('A'/'B') when known, stamped on the event.
+        Args:
+            user_id: Owner of the send (scopes the demo-slug lookup).
+            prospect_id: Prospect id (string from the send API), for slug + props.
+            campaign_id: Campaign id (string), stamped on the event.
+            email_log_id: EmailLog row id, stamped on the event.
+            recipient_email: Recipient address, last-resort identity.
+            ab_variant: A/B variant ('A'/'B') when known, stamped on the event.
         """
         try:
             pid: Optional[int] = int(prospect_id) if prospect_id else None

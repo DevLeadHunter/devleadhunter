@@ -64,8 +64,11 @@ _PROVIDER_LABELS: dict[str, str] = {
 def _provider_for_domain(domain: str) -> str:
     """Map a recipient domain to a provider family key.
 
-    @param domain - Lower-cased recipient domain (part after ``@``).
-    @returns The family key, ``other`` when unknown.
+    Args:
+        domain: Lower-cased recipient domain (part after ``@``).
+
+    Returns:
+        The family key, ``other`` when unknown.
     """
     for family, domains in _PROVIDER_FAMILIES.items():
         if domain in domains:
@@ -76,9 +79,12 @@ def _provider_for_domain(domain: str) -> str:
 def _rate(numerator: int, denominator: int) -> float:
     """Percentage helper (0 when the denominator is 0).
 
-    @param numerator - Count of matching rows.
-    @param denominator - Base count.
-    @returns The percentage rounded to 2 decimals.
+    Args:
+        numerator: Count of matching rows.
+        denominator: Base count.
+
+    Returns:
+        The percentage rounded to 2 decimals.
     """
     if denominator <= 0:
         return 0.0
@@ -89,15 +95,18 @@ def _signal(key: str, label: str, value: float, ok_below: float, warn_below: flo
             unit: str = "%", hint: str = "") -> dict[str, Any]:
     """Build a health signal with its ok/warn/danger status.
 
-    @param key - Stable identifier.
-    @param label - French label shown in the UI.
-    @param value - Measured value.
-    @param ok_below - Value below which the signal is healthy (or above, when inverted).
-    @param warn_below - Value below which the signal is a warning (or above, when inverted).
-    @param invert - When True, higher is better (e.g. delivery rate).
-    @param unit - Display unit.
-    @param hint - Short explanation of the threshold.
-    @returns The signal payload.
+    Args:
+        key: Stable identifier.
+        label: French label shown in the UI.
+        value: Measured value.
+        ok_below: Value below which the signal is healthy (or above, when inverted).
+        warn_below: Value below which the signal is a warning (or above, when inverted).
+        invert: When True, higher is better (e.g. delivery rate).
+        unit: Display unit.
+        hint: Short explanation of the threshold.
+
+    Returns:
+        The signal payload.
     """
     if invert:
         status = "ok" if value >= ok_below else ("warn" if value >= warn_below else "danger")
@@ -116,10 +125,13 @@ class EmailHealthService:
     def overview(self, db: Session, user_id: int, period_days: int = 30) -> dict[str, Any]:
         """Global + per-account deliverability stats with health signals.
 
-        @param db - Database session.
-        @param user_id - Owner of the logs.
-        @param period_days - Rolling window (7/30/90).
-        @returns Totals, per-signal statuses and per-account stats.
+        Args:
+            db: Database session.
+            user_id: Owner of the logs.
+            period_days: Rolling window (7/30/90).
+
+        Returns:
+            Totals, per-signal statuses and per-account stats.
         """
         since = datetime.utcnow() - timedelta(days=period_days)
         totals = self._stats_for(db, user_id, since=since)
@@ -183,11 +195,14 @@ class EmailHealthService:
     ) -> dict[str, Any]:
         """Counters + rates over one window, optionally scoped to one account.
 
-        @param db - Database session.
-        @param user_id - Owner of the logs.
-        @param since - Window start (compared to ``sent_at``/``created_at``).
-        @param email_account_id - Restrict to a single sending account.
-        @returns Raw counters and derived percentage rates.
+        Args:
+            db: Database session.
+            user_id: Owner of the logs.
+            since: Window start (compared to ``sent_at``/``created_at``).
+            email_account_id: Restrict to a single sending account.
+
+        Returns:
+            Raw counters and derived percentage rates.
         """
         sent_marker = or_(EmailLog.sent_at.isnot(None), EmailLog.status.in_(_POST_SEND_STATUSES))
         delivered_marker = or_(
@@ -257,10 +272,13 @@ class EmailHealthService:
         Bounces/complaints are attributed to the day the email was SENT, so a
         rising complaint curve reads as "the sends of that day caused it".
 
-        @param db - Database session.
-        @param user_id - Owner of the logs.
-        @param period_days - Rolling window (7/30/90).
-        @returns One point per day: counts + derived rates.
+        Args:
+            db: Database session.
+            user_id: Owner of the logs.
+            period_days: Rolling window (7/30/90).
+
+        Returns:
+            One point per day: counts + derived rates.
         """
         since = datetime.utcnow() - timedelta(days=period_days)
         day = func.date(func.coalesce(EmailLog.sent_at, EmailLog.created_at))
@@ -372,10 +390,13 @@ class EmailHealthService:
         is very likely spam-foldering us — no external tool can tell us that
         for Orange/Free/SFR, but our own logs can.
 
-        @param db - Database session.
-        @param user_id - Owner of the logs.
-        @param period_days - Rolling window.
-        @returns One entry per provider family, sorted by volume.
+        Args:
+            db: Database session.
+            user_id: Owner of the logs.
+            period_days: Rolling window.
+
+        Returns:
+            One entry per provider family, sorted by volume.
         """
         since = datetime.utcnow() - timedelta(days=period_days)
         domain_expr = func.lower(func.substring_index(EmailLog.recipient_email, "@", -1))
@@ -505,10 +526,13 @@ class EmailHealthService:
     def incidents(self, db: Session, user_id: int, limit: int = 50) -> dict[str, Any]:
         """Recent deliverability incidents (bounces, complaints, suppressions, failures).
 
-        @param db - Database session.
-        @param user_id - Owner of the logs.
-        @param limit - Max rows.
-        @returns The incident journal, most recent first.
+        Args:
+            db: Database session.
+            user_id: Owner of the logs.
+            limit: Max rows.
+
+        Returns:
+            The incident journal, most recent first.
         """
         incident_statuses = (
             EmailStatus.BOUNCED.value,

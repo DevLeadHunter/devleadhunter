@@ -134,7 +134,7 @@ class Settings(BaseSettings):
     )
 
     # Cloudflare R2 (S3-compatible) — backend de stockage UNIQUE (local ET prod).
-    # Voir docs/R2_STORAGE_PLAN.md. Le bucket et l'URL publique sont résolus selon `env`.
+    # Le bucket et l'URL publique sont résolus selon `env`.
     r2_account_id: Optional[str] = Field(default=None, alias="R2_ACCOUNT_ID")
     r2_access_key_id: Optional[str] = Field(default=None, alias="R2_ACCESS_KEY_ID")
     r2_secret_access_key: Optional[str] = Field(default=None, alias="R2_SECRET_ACCESS_KEY")

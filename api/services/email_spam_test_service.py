@@ -53,8 +53,11 @@ _SPAMMY_WORDS: tuple[str, ...] = (
 def _strip_html(html: str) -> str:
     """Plain-text version of an HTML body (rough, good enough for ratios).
 
-    @param html - HTML source.
-    @returns Visible text.
+    Args:
+        html: HTML source.
+
+    Returns:
+        Visible text.
     """
     text = re.sub(r"<(script|style)[^>]*>.*?</\1>", " ", html, flags=re.S | re.I)
     text = re.sub(r"<[^>]+>", " ", text)
@@ -70,11 +73,14 @@ class EmailSpamTestService:
     async def test_cached(self, *, subject: str, body_html: str, from_email: str, to_email: str) -> dict[str, Any]:
         """Same as :meth:`test`, memoized on the content hash (TTL 6 h).
 
-        @param subject - Email subject.
-        @param body_html - HTML body.
-        @param from_email - Sender address.
-        @param to_email - Recipient address for the envelope.
-        @returns The (possibly cached) verdicts.
+        Args:
+            subject: Email subject.
+            body_html: HTML body.
+            from_email: Sender address.
+            to_email: Recipient address for the envelope.
+
+        Returns:
+            The (possibly cached) verdicts.
         """
         key = hashlib.sha1(f"{from_email}\x00{subject}\x00{body_html}".encode("utf-8")).hexdigest()
         cached = self._cache.get(key)
@@ -90,11 +96,14 @@ class EmailSpamTestService:
     async def test(self, *, subject: str, body_html: str, from_email: str, to_email: str) -> dict[str, Any]:
         """Run SpamAssassin + local heuristics on a draft.
 
-        @param subject - Email subject.
-        @param body_html - HTML body (template variables may remain — scored as-is).
-        @param from_email - Sender address (used in the MIME envelope).
-        @param to_email - Any recipient address for the envelope.
-        @returns SpamAssassin verdict (or its error) + the local checklist.
+        Args:
+            subject: Email subject.
+            body_html: HTML body (template variables may remain — scored as-is).
+            from_email: Sender address (used in the MIME envelope).
+            to_email: Any recipient address for the envelope.
+
+        Returns:
+            SpamAssassin verdict (or its error) + the local checklist.
         """
         spamassassin = await self._spamassassin(subject, body_html, from_email, to_email)
         checks = self._local_checks(subject, body_html)
@@ -105,11 +114,14 @@ class EmailSpamTestService:
     ) -> dict[str, Any]:
         """POST the raw MIME to Postmark SpamCheck.
 
-        @param subject - Email subject.
-        @param body_html - HTML body.
-        @param from_email - Sender.
-        @param to_email - Recipient.
-        @returns ``score``/``rules`` on success, ``error`` otherwise.
+        Args:
+            subject: Email subject.
+            body_html: HTML body.
+            from_email: Sender.
+            to_email: Recipient.
+
+        Returns:
+            ``score``/``rules`` on success, ``error`` otherwise.
         """
         message = MIMEMultipart("alternative")
         message["Subject"] = subject
@@ -161,9 +173,12 @@ class EmailSpamTestService:
     def _local_checks(self, subject: str, body_html: str) -> list[dict[str, Any]]:
         """French-cold-email heuristics (each check → ok/warn/danger + advice).
 
-        @param subject - Email subject.
-        @param body_html - HTML body.
-        @returns The checklist for the UI.
+        Args:
+            subject: Email subject.
+            body_html: HTML body.
+
+        Returns:
+            The checklist for the UI.
         """
         checks: list[dict[str, Any]] = []
         text = _strip_html(body_html)

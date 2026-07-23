@@ -48,8 +48,11 @@ COMPONENT_SCHEMAS: list[dict[str, Any]] = []
 def default_subtitle(area: str) -> str:
     """Food-truck-aware default hero subtitle when the prospect has no description.
 
-    @param area - Service area / city label.
-    @returns A food-truck subtitle.
+    Args:
+        area: Service area / city label.
+
+    Returns:
+        A food-truck subtitle.
     """
     return (
         f"Street food maison à {area} — burgers, wings et classics "

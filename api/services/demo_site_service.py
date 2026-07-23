@@ -314,11 +314,13 @@ class DemoSiteService:
         """
         Create and provision a demo site for the authenticated user.
 
-        @param db - SQLAlchemy session.
-        @param user - Owner account.
-        @param prospect_id - Optional source prospect; its enrichment data (run on
-            demand here if missing) is merged into the generated site content.
-        @returns Persisted demo site record in ACTIVE or FAILED status.
+        Args:
+            db: SQLAlchemy session.
+            user: Owner account.
+            prospect_id: Optional source prospect; its enrichment data (run on demand here if missing) is merged into the generated site content.
+
+        Returns:
+            Persisted demo site record in ACTIVE or FAILED status.
         """
         if not email or not email.strip():
             raise ValueError("Client email is required for the demo site record.")
@@ -561,7 +563,8 @@ class DemoSiteService:
         """
         Mark expired demo sites and delete their Storyblok spaces.
 
-        @returns Number of sites cleaned up.
+        Returns:
+            Number of sites cleaned up.
         """
         now: datetime = datetime.now(timezone.utc)
         due_sites: list[DemoSite] = (

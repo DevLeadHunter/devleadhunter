@@ -20,7 +20,7 @@ from core.database import get_db
 from models.demo_site import DemoSite
 from models.prospect_db import ProspectDB
 from models.user import User
-from services import r2_storage_service
+from services.r2_storage_service import r2_storage
 from services.auth_service import require_admin
 
 logger = logging.getLogger(__name__)
@@ -74,13 +74,13 @@ class StorageActionResponse(BaseModel):
 
 def _classify(key: str) -> str:
     """Map an object key to a human category."""
-    if key.startswith(r2_storage_service.VIDEOS_WEBSITES_PREFIX):
+    if key.startswith(r2_storage.VIDEOS_WEBSITES_PREFIX):
         return "website_video"
-    if key.startswith(r2_storage_service.IMAGES_WEBSITES_PREFIX):
+    if key.startswith(r2_storage.IMAGES_WEBSITES_PREFIX):
         return "website_thumbnail"
-    if key.startswith(r2_storage_service.VIDEOS_PRESENTER_PREFIX):
+    if key.startswith(r2_storage.VIDEOS_PRESENTER_PREFIX):
         return "presenter"
-    if key.startswith(r2_storage_service.IMAGES_SUPPORT_PREFIX):
+    if key.startswith(r2_storage.IMAGES_SUPPORT_PREFIX):
         return "support"
     return "other"
 
@@ -94,7 +94,7 @@ def _slug_from_key(key: str) -> Optional[str]:
 
 def _ensure_configured() -> None:
     """Fail with a readable 503 when R2 is not configured."""
-    if not r2_storage_service.is_configured():
+    if not r2_storage.is_configured():
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail="Stockage R2 non configuré (voir R2_* dans api/.env).",
@@ -110,8 +110,11 @@ async def list_storage_objects(
     """
     List the bucket objects, newest first, with expiry and prospect context.
 
-    @param prefix - Optional key prefix filter (e.g. ``videos/websites/``).
-    @returns The bucket listing.
+    Args:
+        prefix: Optional key prefix filter (e.g. ``videos/websites/``).
+
+    Returns:
+        The bucket listing.
     """
     _ensure_configured()
     raw = await _list_async(prefix)
@@ -147,7 +150,7 @@ async def list_storage_objects(
                 kind=kind,
                 size=entry["size"],
                 last_modified=entry["last_modified"],
-                url=r2_storage_service.public_url(key),
+                url=r2_storage.public_url(key),
                 slug=slug,
                 prospect_name=names_by_slug.get(slug or ""),
                 expires_in_days=expires_in,
@@ -157,7 +160,7 @@ async def list_storage_objects(
 
     items.sort(key=lambda o: o.last_modified or datetime.min.replace(tzinfo=timezone.utc), reverse=True)
     return StorageListResponse(
-        bucket=r2_storage_service.bucket_name(),
+        bucket=r2_storage.bucket_name(),
         public_base_url=settings.r2_public_base_url or "",
         items=items,
         total=len(items),
@@ -173,12 +176,13 @@ async def storage_health(
     """
     Report R2 ↔ DB inconsistencies — the proof that the 14-day cleanup works.
 
-    @returns Orphan objects, missing objects and expired leftovers.
+    Returns:
+        Orphan objects, missing objects and expired leftovers.
     """
     _ensure_configured()
     from enums.demo_video_status import DemoVideoStatus
 
-    objects = await _list_async(r2_storage_service.VIDEOS_WEBSITES_PREFIX)
+    objects = await _list_async(r2_storage.VIDEOS_WEBSITES_PREFIX)
     keys = {item["key"] for item in objects}
 
     ready_slugs = {
@@ -188,7 +192,7 @@ async def storage_health(
         .all()
         if slug
     }
-    expected = {r2_storage_service.website_video_key(slug) for slug in ready_slugs}
+    expected = {r2_storage.website_video_key(slug) for slug in ready_slugs}
 
     now = datetime.now(timezone.utc)
     expired = [
@@ -212,13 +216,16 @@ async def delete_storage_object(
     """
     Delete one object from the bucket.
 
-    @param key - Full object key (query param so slashes need no escaping).
-    @returns How many objects were removed.
+    Args:
+        key: Full object key (query param so slashes need no escaping).
+
+    Returns:
+        How many objects were removed.
     """
     _ensure_configured()
     if not key.strip():
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Clé manquante.")
-    await r2_storage_service.delete_async(key)
+    await r2_storage.delete_async(key)
     return StorageActionResponse(deleted=1, message=f"{key} supprimé.")
 
 
@@ -229,14 +236,15 @@ async def purge_expired_objects(
     """
     Delete every demo deliverable older than the TTL (video + thumbnail).
 
-    @returns How many objects were removed.
+    Returns:
+        How many objects were removed.
     """
     _ensure_configured()
     now = datetime.now(timezone.utc)
     stale: list[str] = []
     for prefix in (
-        r2_storage_service.VIDEOS_WEBSITES_PREFIX,
-        r2_storage_service.IMAGES_WEBSITES_PREFIX,
+        r2_storage.VIDEOS_WEBSITES_PREFIX,
+        r2_storage.IMAGES_WEBSITES_PREFIX,
     ):
         for item in await _list_async(prefix):
             if item["last_modified"] and item["last_modified"] + timedelta(days=OBJECT_TTL_DAYS) <= now:
@@ -245,7 +253,7 @@ async def purge_expired_objects(
     if stale:
         import asyncio
 
-        await asyncio.to_thread(r2_storage_service.delete_many, stale)
+        await asyncio.to_thread(r2_storage.delete_many, stale)
     return StorageActionResponse(deleted=len(stale), message=f"{len(stale)} objet(s) expiré(s) supprimé(s).")
 
 
@@ -260,8 +268,11 @@ async def sync_from_prod(
     nothing transits through the API), deletes what disappeared upstream, and
     leaves identical objects untouched.
 
-    @returns Copied / deleted / unchanged counts.
-    @throws HTTPException 403 when called on a production instance.
+    Returns:
+        Copied / deleted / unchanged counts.
+
+    Raises:
+        HTTPException: 403 when called on a production instance.
     """
     _ensure_configured()
     if settings.is_production:
@@ -272,16 +283,16 @@ async def sync_from_prod(
 
     import asyncio
 
-    source_bucket = r2_storage_service.prod_bucket_name()
-    target_bucket = r2_storage_service.bucket_name()
+    source_bucket = r2_storage.prod_bucket_name()
+    target_bucket = r2_storage.bucket_name()
     if source_bucket == target_bucket:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Les buckets dev et prod sont identiques : synchronisation annulée.",
         )
 
-    source = {i["key"]: i for i in await asyncio.to_thread(r2_storage_service.list_objects, "", bucket=source_bucket)}
-    target = {i["key"]: i for i in await asyncio.to_thread(r2_storage_service.list_objects, "")}
+    source = {i["key"]: i for i in await asyncio.to_thread(r2_storage.list_objects, "", bucket=source_bucket)}
+    target = {i["key"]: i for i in await asyncio.to_thread(r2_storage.list_objects, "")}
 
     to_copy = [
         key
@@ -291,9 +302,9 @@ async def sync_from_prod(
     to_delete = [key for key in target if key not in source]
 
     for key in to_copy:
-        await asyncio.to_thread(r2_storage_service.copy_from_bucket, source_bucket, key)
+        await asyncio.to_thread(r2_storage.copy_from_bucket, source_bucket, key)
     if to_delete:
-        await asyncio.to_thread(r2_storage_service.delete_many, to_delete)
+        await asyncio.to_thread(r2_storage.delete_many, to_delete)
 
     unchanged = len(source) - len(to_copy)
     logger.info("[Storage] sync prod->dev: %d copied, %d deleted", len(to_copy), len(to_delete))
@@ -309,4 +320,4 @@ async def _list_async(prefix: str) -> list[dict[str, Any]]:
     """Run the blocking listing in a worker thread."""
     import asyncio
 
-    return await asyncio.to_thread(r2_storage_service.list_objects, prefix)
+    return await asyncio.to_thread(r2_storage.list_objects, prefix)

@@ -1,0 +1,1 @@
+> **Canonical standards** : see [`STANDARDS_CODE_ET_ARCHITECTURE.md`](./STANDARDS_CODE_ET_ARCHITECTURE.md).

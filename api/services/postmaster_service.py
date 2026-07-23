@@ -48,7 +48,8 @@ class PostmasterService:
         ``credentials/google-postmaster.json`` works regardless of the current
         working directory the server was launched from.
 
-        @returns The absolute path when the file exists on disk.
+        Returns:
+            The absolute path when the file exists on disk.
         """
         path = settings.google_postmaster_credentials_file
         if not path:
@@ -64,7 +65,8 @@ class PostmasterService:
     def is_configured(self) -> bool:
         """Whether credentials are available via inline JSON or a key file.
 
-        @returns True when the service can authenticate against the API.
+        Returns:
+            True when the service can authenticate against the API.
         """
         return bool(settings.google_postmaster_credentials_json) or self.credentials_file is not None
 
@@ -75,7 +77,8 @@ class PostmasterService:
         it (the deploy-safe form: a single line, no quotes/newlines to escape
         through the CI heredoc → ``.env`` → dotenv chain).
 
-        @returns The parsed credentials dict, or None when no inline JSON is set.
+        Returns:
+            The parsed credentials dict, or None when no inline JSON is set.
         @raises ValueError - When the inline value is set but cannot be decoded.
         """
         raw = settings.google_postmaster_credentials_json
@@ -92,9 +95,12 @@ class PostmasterService:
     def domain_stats(self, domain: str, days: int = 30) -> dict[str, Any]:
         """Fetch Gmail reputation + spam-rate history for a domain.
 
-        @param domain - The sending domain (must be verified in Postmaster Tools).
-        @param days - History depth (Postmaster keeps ~120 days).
-        @returns ``configured`` flag, then reputation/spam series when available.
+        Args:
+            domain: The sending domain (must be verified in Postmaster Tools).
+            days: History depth (Postmaster keeps ~120 days).
+
+        Returns:
+            ``configured`` flag, then reputation/spam series when available.
         """
         if not self.is_configured:
             return {"configured": False, "domain": domain, "reason": "missing_credentials"}
@@ -119,9 +125,12 @@ class PostmasterService:
     def _fetch(self, domain: str, days: int) -> dict[str, Any]:
         """Call the API (import here so the app boots without the lib configured).
 
-        @param domain - Verified domain.
-        @param days - History depth.
-        @returns Parsed daily stats.
+        Args:
+            domain: Verified domain.
+            days: History depth.
+
+        Returns:
+            Parsed daily stats.
         """
         from google.oauth2 import service_account  # local import: optional feature
         from googleapiclient.discovery import build
@@ -195,8 +204,11 @@ class PostmasterService:
     def _friendly_error(exc: Exception) -> str:
         """Translate common API failures into actionable French messages.
 
-        @param exc - Raised exception.
-        @returns A short explanation for the UI.
+        Args:
+            exc: Raised exception.
+
+        Returns:
+            A short explanation for the UI.
         """
         text = str(exc)
         if "403" in text or "permission" in text.lower():

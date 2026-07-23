@@ -54,7 +54,8 @@ class ScraperService:
         A specific request runs first, then the rest of the failover chain (so a blocked
         primary still cascades). ``all``/unset runs the whole failover chain.
 
-        @returns ``(candidates, is_specific)``.
+        Returns:
+            ``(candidates, is_specific)``.
         """
         by_source: dict[str, BaseScraper] = {}
         for scraper in self._scrapers:
@@ -89,9 +90,8 @@ class ScraperService:
     ) -> tuple[List[ProspectCreate], str, Optional[str], Optional[str]]:
         """Run one scraper and classify the outcome.
 
-        @returns ``(results, status, error_message, html_snapshot)`` where status is one
-            of ok / empty / blocked / timeout / error. A block is surfaced via
-            :mod:`scrappers.scrape_signals` (captcha/anti-bot HTML captured by the scraper).
+        Returns:
+            ``(results, status, error_message, html_snapshot)`` where status is one of ok / empty / blocked / timeout / error. A block is surfaced via :mod:`scrappers.scrape_signals` (captcha/anti-bot HTML captured by the scraper).
         """
         source = scraper.source.value
         scrape_signals.clear(source)

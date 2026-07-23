@@ -24,7 +24,7 @@ from schemas.support import (
     SupportTicketSummaryResponse,
     SupportTopicOption,
 )
-from services import r2_storage_service
+from services.r2_storage_service import r2_storage
 from services.support_storage_service import StoredAttachment
 
 
@@ -386,8 +386,11 @@ class SupportService:
         Attachments live on Cloudflare R2 and are served straight from its
         public URL — identical in local and production.
 
-        @param path - Stored object key (or an already absolute URL).
-        @returns Absolute URL, or None when there is no attachment.
+        Args:
+            path: Stored object key (or an already absolute URL).
+
+        Returns:
+            Absolute URL, or None when there is no attachment.
         """
         if not path:
             return None
@@ -395,7 +398,7 @@ class SupportService:
         if path.lower().startswith(("http://", "https://")):
             return path
 
-        return r2_storage_service.public_url(path.lstrip("/"))
+        return r2_storage.public_url(path.lstrip("/"))
 
 
 support_service = SupportService()

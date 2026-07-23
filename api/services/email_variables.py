@@ -1,14 +1,4 @@
-"""Shared email personalisation variables for a prospect.
-
-Single source of truth for {salutation} / {prenom} / {nom} / {entreprise}… —
-used by the campaign queue (dispatch + preview) and the behaviour follow-up so
-every send resolves the SAME trusted contact.
-
-The old behaviour ({prenom} = first word of the COMPANY name → « Bonjour
-Plomberie, ») is gone: {prenom}/{nom} come from the decision-maker resolution
-stored on the enrichment, and are EMPTY when unknown. {salutation} always
-renders a clean greeting (« Bonjour » at worst).
-"""
+"""Single source of truth for the personalisation variables of cold emails."""
 from __future__ import annotations
 
 from typing import Optional
@@ -20,86 +10,119 @@ from models.prospect_db import ProspectDB
 from models.prospect_enrichment import ProspectEnrichment
 from services.decision_maker import build_greeting
 
-# Personalisation variable keys used in cold-email templates.
-VAR_SALUTATION = "salutation"
-VAR_FIRST_NAME = "prenom"
-VAR_LAST_NAME = "nom"
-VAR_COMPANY = "entreprise"
-VAR_CITY = "ville"
-VAR_EMAIL = "email"
-VAR_PHONE = "phone"
-VAR_METIER = "metier"
-VAR_DEMO_LINK = "lien_demo"
-# Prospection video: {lien_video} = URL of the tracked player page,
-# {vignette_video} = full clickable thumbnail HTML block (image → player page).
-VAR_VIDEO_LINK = "lien_video"
-VAR_VIDEO_THUMBNAIL = "vignette_video"
 
-
-def build_video_thumbnail_html(video_link: str, thumbnail_url: str) -> str:
+class EmailVariables:
     """
-    Build the email-safe clickable thumbnail block for ``{vignette_video}``.
+    Resolves the `{salutation}` / `{prenom}` / `{nom}` / `{entreprise}`… substitution map.
 
-    Emails cannot embed a playable video — the proven pattern is a
-    personalised thumbnail (his site + play button) linking to the player
-    page. Inline styles only (email clients strip stylesheets).
-
-    @param video_link - Player page URL (demo host ``/v/{slug}``).
-    @param thumbnail_url - Absolute public URL of the personalised JPEG.
-    @returns The HTML block, or an empty string when either URL is missing.
+    Used by the campaign queue (dispatch and preview) and by the behaviour follow-up, so every
+    send resolves the SAME trusted contact. `{prenom}` and `{nom}` come from the decision-maker
+    resolution stored on the enrichment and stay EMPTY when unknown — never a word of the company
+    name, which used to produce greetings like "Bonjour Plomberie,".
     """
-    if not video_link or not thumbnail_url:
-        return ""
-    return (
-        f'<p style="margin:16px 0;"><a href="{video_link}" target="_blank">'
-        f'<img src="{thumbnail_url}" alt="Votre site en vidéo" width="480" '
-        f'style="display:block;width:100%;max-width:480px;border-radius:12px;border:0;" />'
-        f"</a></p>"
-    )
 
+    SALUTATION = "salutation"
+    FIRST_NAME = "prenom"
+    LAST_NAME = "nom"
+    COMPANY = "entreprise"
+    CITY = "ville"
+    EMAIL = "email"
+    PHONE = "phone"
+    TRADE = "metier"
+    DEMO_LINK = "lien_demo"
+    VIDEO_LINK = "lien_video"
+    VIDEO_THUMBNAIL = "vignette_video"
 
-def resolved_contact(
-    db: Session, prospect_id: int
-) -> tuple[Optional[str], Optional[str], Optional[str]]:
-    """Return the trusted (first, last, gender) for a prospect, or Nones.
+    @staticmethod
+    def build_video_thumbnail_html(video_link: str, thumbnail_url: str) -> str:
+        """
+        Build the email-safe clickable thumbnail block for `{vignette_video}`.
 
-    Only names the resolver (or a manual edit) stored on the enrichment are
-    returned — the confidence threshold was applied at write time.
-    """
-    enrichment: Optional[ProspectEnrichment] = db.execute(
-        select(ProspectEnrichment).where(ProspectEnrichment.prospect_id == prospect_id)
-    ).scalar_one_or_none()
-    if enrichment is None:
-        return None, None, None
-    return enrichment.contact_first_name, enrichment.contact_last_name, enrichment.contact_gender
+        Emails cannot embed a playable video, so the proven pattern is a personalised thumbnail
+        (his site plus a play button) linking to the player page. Inline styles only, since email
+        clients strip stylesheets.
 
+        Args:
+            video_link: Player page URL on the demo host (`/v/{slug}`).
+            thumbnail_url: Absolute public URL of the personalised JPEG.
 
-def build_prospect_variables(
-    db: Session,
-    prospect: ProspectDB,
-    demo_link: str = "",
-    video_link: str = "",
-    video_thumbnail_url: str = "",
-) -> dict[str, str]:
-    """Build the full substitution map for a prospect's emails.
+        Returns:
+            The HTML block, or an empty string when either URL is missing.
+        """
+        if not video_link or not thumbnail_url:
+            return ""
+        return (
+            f'<p style="margin:16px 0;"><a href="{video_link}" target="_blank">'
+            f'<img src="{thumbnail_url}" alt="Votre site en vidéo" width="480" '
+            f'style="display:block;width:100%;max-width:480px;border-radius:12px;border:0;" />'
+            f"</a></p>"
+        )
 
-    {salutation} is always safe (« Bonjour » / « Bonjour Léo » / « Bonjour
-    M. Guillaume ») ; {prenom} and {nom} are empty strings when unknown —
-    never a company word. {lien_video}/{vignette_video} are empty when the
-    prospect has no generated prospection video (the queue guards prevent
-    sending a template that needs them in that case).
-    """
-    first, last, gender = resolved_contact(db, prospect.id)
-    return {
-        VAR_SALUTATION: build_greeting(first, last, gender),
-        VAR_FIRST_NAME: first or "",
-        VAR_LAST_NAME: last or "",
-        VAR_COMPANY: prospect.name or "",
-        VAR_CITY: prospect.city or "",
-        VAR_EMAIL: prospect.email or "",
-        VAR_PHONE: prospect.phone or "",
-        VAR_METIER: prospect.category or "",
-        VAR_DEMO_LINK: demo_link,
-        VAR_VIDEO_LINK: video_link,
-        VAR_VIDEO_THUMBNAIL: build_video_thumbnail_html(video_link, video_thumbnail_url),
-    }
+    @staticmethod
+    def resolved_contact(
+        db: Session, prospect_id: int
+    ) -> tuple[Optional[str], Optional[str], Optional[str]]:
+        """
+        Read the trusted decision-maker identity stored on the enrichment.
+
+        Only names written by the resolver or a manual edit are returned — the confidence
+        threshold was already applied at write time.
+
+        Args:
+            db: Active database session.
+            prospect_id: Prospect the enrichment belongs to.
+
+        Returns:
+            The (first name, last name, gender) triple, each None when unknown.
+        """
+        enrichment: Optional[ProspectEnrichment] = db.execute(
+            select(ProspectEnrichment).where(ProspectEnrichment.prospect_id == prospect_id)
+        ).scalar_one_or_none()
+        if enrichment is None:
+            return None, None, None
+        return (
+            enrichment.contact_first_name,
+            enrichment.contact_last_name,
+            enrichment.contact_gender,
+        )
+
+    @classmethod
+    def build_for_prospect(
+        cls,
+        db: Session,
+        prospect: ProspectDB,
+        demo_link: str = "",
+        video_link: str = "",
+        video_thumbnail_url: str = "",
+    ) -> dict[str, str]:
+        """
+        Build the full substitution map for a prospect's emails.
+
+        `{salutation}` is always safe ("Bonjour" / "Bonjour Léo" / "Bonjour M. Guillaume"), while
+        `{prenom}` and `{nom}` are empty when unknown. The video variables stay empty when the
+        prospect has no generated clip — the queue guards prevent sending a template needing them.
+
+        Args:
+            db: Active database session.
+            prospect: Prospect being emailed.
+            demo_link: URL of his generated demo site.
+            video_link: URL of the tracked video player page.
+            video_thumbnail_url: Absolute URL of the personalised thumbnail.
+
+        Returns:
+            The variable name to value map, ready for template substitution.
+        """
+        first, last, gender = cls.resolved_contact(db, prospect.id)
+        return {
+            cls.SALUTATION: build_greeting(first, last, gender),
+            cls.FIRST_NAME: first or "",
+            cls.LAST_NAME: last or "",
+            cls.COMPANY: prospect.name or "",
+            cls.CITY: prospect.city or "",
+            cls.EMAIL: prospect.email or "",
+            cls.PHONE: prospect.phone or "",
+            cls.TRADE: prospect.category or "",
+            cls.DEMO_LINK: demo_link,
+            cls.VIDEO_LINK: video_link,
+            cls.VIDEO_THUMBNAIL: cls.build_video_thumbnail_html(video_link, video_thumbnail_url),
+        }

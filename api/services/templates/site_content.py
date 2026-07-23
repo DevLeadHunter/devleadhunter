@@ -80,7 +80,8 @@ def map_prospect_and_enrichment(
     ``reviews`` (``[{text, author, rating}]``) → reviews; ``opening_hours`` → openingHours;
     ``description`` → about (falls back to ``about_default``). Images stay plain external URLs.
 
-    @returns The common SiteContent fields (no ``services`` / ``faq`` — those are per-template).
+    Returns:
+        The common SiteContent fields (no ``services`` / ``faq`` — those are per-template).
     """
     enrichment = enrichment or {}
 
@@ -224,8 +225,11 @@ def to_storyblok_site_content(site_content: dict[str, Any]) -> dict[str, Any]:
     the palette becomes a ``theme_palette`` blok. Every field is editable in the Visual Editor.
     Template-agnostic (the SiteContent shape is shared).
 
-    @param site_content - The flat ``SiteContent`` dict from a template's ``build_site_content``.
-    @returns A ``site_content`` blok ready to drop into the page ``body``.
+    Args:
+        site_content: The flat ``SiteContent`` dict from a template's ``build_site_content``.
+
+    Returns:
+        A ``site_content`` blok ready to drop into the page ``body``.
     """
     palette_raw = site_content.get("palette") or {}
     palette: dict[str, Any] = palette_raw if isinstance(palette_raw, dict) else {}
@@ -309,8 +313,11 @@ def find_site_content_blok(raw: dict[str, Any]) -> Optional[dict[str, Any]]:
     Handles both shapes: page-wrapped (``{component: 'page', body: [site_content]}``)
     and the bare ``site_content`` blok itself.
 
-    @param raw - The story content (from the CDN API or content_json).
-    @returns The ``site_content`` blok, or None when absent.
+    Args:
+        raw: The story content (from the CDN API or content_json).
+
+    Returns:
+        The ``site_content`` blok, or None when absent.
     """
     if raw.get("component") == "site_content":
         return raw
@@ -329,8 +336,11 @@ def from_storyblok_site_content(raw: dict[str, Any]) -> Optional[dict[str, Any]]
     blok, images stay plain URL strings. Used by the Storyblok publish webhook to
     sync client edits into ``demo_site.content_json`` (what the public site renders).
 
-    @param raw - The story ``content`` object fetched from the Storyblok CDN API.
-    @returns A flat ``SiteContent`` dict, or None when no ``site_content`` blok exists.
+    Args:
+        raw: The story ``content`` object fetched from the Storyblok CDN API.
+
+    Returns:
+        A flat ``SiteContent`` dict, or None when no ``site_content`` blok exists.
     """
     blok = find_site_content_blok(raw)
     if blok is None:

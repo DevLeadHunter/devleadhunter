@@ -22,7 +22,7 @@ from sqlalchemy.orm import Session
 
 from core.config import settings
 from models.presenter_video import PresenterVideo
-from services import r2_storage_service
+from services.r2_storage_service import r2_storage
 
 logger = logging.getLogger(__name__)
 
@@ -123,8 +123,11 @@ async def probe_media_duration(file_path: str) -> float:
     SelectorEventLoop on Windows, where asyncio subprocess support raises
     ``NotImplementedError``.
 
-    @param file_path - Absolute or repo-relative media path.
-    @returns Duration in seconds (0.0 when it cannot be determined).
+    Args:
+        file_path: Absolute or repo-relative media path.
+
+    Returns:
+        Duration in seconds (0.0 when it cannot be determined).
     """
     duration = await asyncio.to_thread(_probe_media_duration_sync, file_path)
     if duration > 0:
@@ -154,8 +157,11 @@ async def has_audio_stream(file_path: str) -> bool:
     silent segment (mic muted or grabbed by another app mid-take) would fail
     the whole render with an opaque ffmpeg error instead of a clear message.
 
-    @param file_path - Absolute or repo-relative media path.
-    @returns True when ffmpeg reports at least one audio stream.
+    Args:
+        file_path: Absolute or repo-relative media path.
+
+    Returns:
+        True when ffmpeg reports at least one audio stream.
     """
     return await asyncio.to_thread(_has_audio_stream_sync, file_path)
 
@@ -181,14 +187,19 @@ class PresenterVideoService:
         """
         Persist the uploaded presenter clip (replaces any previous one).
 
-        @param db - Active database session.
-        @param user_id - Owner of the clip.
-        @param file - Uploaded video file (mp4 / webm / mov / mkv).
-        @param intro_seconds - Full-screen webcam seconds at the start.
-        @param outro_seconds - Full-screen webcam seconds at the end.
-        @param auto_generate - Auto-generate the video for every new demo site.
-        @returns The up-to-date ``PresenterVideo`` row.
-        @throws HTTPException 400/413 on invalid format, size or duration.
+        Args:
+            db: Active database session.
+            user_id: Owner of the clip.
+            file: Uploaded video file (mp4 / webm / mov / mkv).
+            intro_seconds: Full-screen webcam seconds at the start.
+            outro_seconds: Full-screen webcam seconds at the end.
+            auto_generate: Auto-generate the video for every new demo site.
+
+        Returns:
+            The up-to-date ``PresenterVideo`` row.
+
+        Raises:
+            HTTPException: 400/413 on invalid format, size or duration.
         """
         extension = self._resolve_extension(file)
 
@@ -265,14 +276,19 @@ class PresenterVideoService:
         us WebM, and the takes are levelled with ``loudnorm`` so the two cuts
         are not audible).
 
-        @param db - Active database session.
-        @param user_id - Owner of the clip.
-        @param intro - Full-screen greeting take.
-        @param middle - Take played over the prospect's scrolling site.
-        @param outro - Full-screen call-to-action take.
-        @param auto_generate - Auto-generate the video for every new demo site.
-        @returns The up-to-date ``PresenterVideo`` row.
-        @throws HTTPException 400/413 on invalid format, size or duration.
+        Args:
+            db: Active database session.
+            user_id: Owner of the clip.
+            intro: Full-screen greeting take.
+            middle: Take played over the prospect's scrolling site.
+            outro: Full-screen call-to-action take.
+            auto_generate: Auto-generate the video for every new demo site.
+
+        Returns:
+            The up-to-date ``PresenterVideo`` row.
+
+        Raises:
+            HTTPException: 400/413 on invalid format, size or duration.
         """
         uploads = (intro, middle, outro)
         labels = ("intro", "milieu", "outro")
@@ -392,14 +408,19 @@ class PresenterVideoService:
         """
         Push the normalised clip to R2 and return its object key.
 
-        @param user_id - Owner of the clip.
-        @param local_path - Normalised MP4 to upload.
-        @returns The R2 key stored on the row (``videos/presenter/{user_id}.mp4``).
-        @throws HTTPException 500 when the storage rejects the upload.
+        Args:
+            user_id: Owner of the clip.
+            local_path: Normalised MP4 to upload.
+
+        Returns:
+            The R2 key stored on the row (``videos/presenter/{user_id}.mp4``).
+
+        Raises:
+            HTTPException: 500 when the storage rejects the upload.
         """
-        key = r2_storage_service.presenter_key(user_id)
+        key = r2_storage.presenter_key(user_id)
         try:
-            await r2_storage_service.upload_file_async(local_path, key, "video/mp4")
+            await r2_storage.upload_file_async(local_path, key, "video/mp4")
         except Exception as exc:  # noqa: BLE001 — surfaced as a readable API error
             logger.exception("[Presenter] R2 upload failed for user=%s", user_id)
             raise HTTPException(
@@ -418,9 +439,12 @@ class PresenterVideoService:
         a fraction of the storage. The audio track is optional here — the
         upload path does not require one.
 
-        @param source_path - Raw uploaded clip.
-        @param output_path - Destination MP4.
-        @throws HTTPException 400 when ffmpeg is missing or fails.
+        Args:
+            source_path: Raw uploaded clip.
+            output_path: Destination MP4.
+
+        Raises:
+            HTTPException: 400 when ffmpeg is missing or fails.
         """
         command = [
             settings.ffmpeg_path,
@@ -499,9 +523,12 @@ class PresenterVideoService:
         stream copy would not. ``loudnorm`` runs once on the joined audio so a
         take recorded slightly louder than the others does not betray the cut.
 
-        @param segment_paths - Takes, in playback order.
-        @param output_path - Destination MP4.
-        @throws HTTPException 400 when ffmpeg is missing or fails.
+        Args:
+            segment_paths: Takes, in playback order.
+            output_path: Destination MP4.
+
+        Raises:
+            HTTPException: 400 when ffmpeg is missing or fails.
         """
         count = len(segment_paths)
         chains: list[str] = []
@@ -588,9 +615,14 @@ class PresenterVideoService:
         """
         Map an upload to a container extension ffmpeg can read.
 
-        @param file - Incoming video upload.
-        @returns The matching extension (e.g. ``.webm``).
-        @throws HTTPException 400 when the container is not supported.
+        Args:
+            file: Incoming video upload.
+
+        Returns:
+            The matching extension (e.g. ``.webm``).
+
+        Raises:
+            HTTPException: 400 when the container is not supported.
         """
         content_type = (file.content_type or "").lower().split(";")[0].strip()
         extension = _ALLOWED_EXTENSIONS.get(content_type)
@@ -630,8 +662,8 @@ class PresenterVideoService:
             return False
         stored = str(record.file_path or "")
         try:
-            if stored.startswith(r2_storage_service.VIDEOS_PRESENTER_PREFIX):
-                r2_storage_service.delete(stored)
+            if stored.startswith(r2_storage.VIDEOS_PRESENTER_PREFIX):
+                r2_storage.delete(stored)
             elif stored:
                 # Ligne écrite avant la migration R2 : fichier encore sur disque.
                 Path(stored).unlink(missing_ok=True)

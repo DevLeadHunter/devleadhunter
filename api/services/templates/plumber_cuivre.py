@@ -834,7 +834,8 @@ def build_site_content(
 
     Images stay plain external URLs (Google photos are never uploaded assets).
 
-    @returns A flat ``SiteContent`` object (see ``@devleadhunter/website-content``).
+    Returns:
+        A flat ``SiteContent`` object (see ``@devleadhunter/website-content``).
     """
     enrichment = enrichment or {}
 
@@ -1019,8 +1020,11 @@ def to_storyblok_site_content(site_content: dict[str, Any]) -> dict[str, Any]:
     expressed as a ``theme_palette`` blok so the Visual Editor edits it like the
     rich templates. Every field is editable in the Storyblok Visual Editor.
 
-    @param site_content - The flat ``SiteContent`` dict from ``build_site_content``.
-    @returns A ``site_content`` blok ready to drop into the page ``body``.
+    Args:
+        site_content: The flat ``SiteContent`` dict from ``build_site_content``.
+
+    Returns:
+        A ``site_content`` blok ready to drop into the page ``body``.
     """
     palette_raw = site_content.get("palette") or {}
     palette: dict[str, str] = palette_raw if isinstance(palette_raw, dict) else {}

@@ -52,8 +52,11 @@ COMPONENT_SCHEMAS: list[dict[str, Any]] = []
 def default_subtitle(area: str) -> str:
     """Trade-neutral default hero subtitle when the prospect has no description.
 
-    @param area - Service area / city label.
-    @returns A generic artisan subtitle (any trade).
+    Args:
+        area: Service area / city label.
+
+    Returns:
+        A generic artisan subtitle (any trade).
     """
     return f"Artisan de confiance à {area} — un travail soigné, un devis clair, un interlocuteur unique."
 

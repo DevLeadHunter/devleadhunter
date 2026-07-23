@@ -1,21 +1,12 @@
-"""
-Rate limiting configuration for API endpoints.
+"""Shared rate limiter instance.
+
+Every module decorating an endpoint with ``@limiter.limit(...)`` must import this
+instance rather than build its own: slowapi enforces limits against the storage of
+the instance the decorator came from, so a second ``Limiter`` would silently keep
+its own counters. ``main.py`` also publishes it as ``app.state.limiter``, which the
+``RateLimitExceeded`` handler reads to inject the ``Retry-After`` headers.
 """
 from slowapi import Limiter
 from slowapi.util import get_remote_address
 
-# Initialize limiter with default limits
-limiter = Limiter(
-    key_func=get_remote_address,
-    default_limits=["200/minute"],  # 200 requests per minute per IP
-    storage_uri="memory://"  # Use in-memory storage (for production, use Redis)
-)
-
-# Custom rate limits for different endpoint types
-RATE_LIMITS = {
-    "auth": "10/minute",  # Login/signup attempts
-    "search": "20/minute",  # Prospect search operations
-    "email": "100/hour",  # Email sending
-    "general": "200/minute",  # General API requests
-}
-
+limiter = Limiter(key_func=get_remote_address, storage_uri="memory://")

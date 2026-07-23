@@ -6,25 +6,16 @@ from datetime import timedelta
 from fastapi import APIRouter, Depends, HTTPException, status, Request
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
-from slowapi import Limiter
-from slowapi.util import get_remote_address
 
 from core.config import settings
 from core.database import get_db
+from core.rate_limiter import limiter
 from schemas.user import UserCreate, UserResponse, UserUpdate, Token, UserLogin
-from services.auth_service import (
-    authenticate_user,
-    create_access_token,
-    get_current_active_user,
-    get_password_hash,
-    get_user_by_email,
-    get_user_by_id
-)
+from services.auth_service import AuthService, get_current_active_user
 from services.credit_service import credit_service
 from models.user import User
 
 router = APIRouter(prefix="/auth", tags=["authentication"])
-limiter = Limiter(key_func=get_remote_address)
 
 
 def _build_user_response(db: Session, user: User) -> UserResponse:
@@ -78,7 +69,7 @@ async def signup(
         HTTPException: If email already exists
     """
     # Check if user already exists
-    existing_user = get_user_by_email(db, user_data.email)
+    existing_user = AuthService.get_user_by_email(db, user_data.email)
     if existing_user:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -86,7 +77,7 @@ async def signup(
         )
     
     # Create new user
-    hashed_password = get_password_hash(user_data.password)
+    hashed_password = AuthService.hash_password(user_data.password)
     db_user = User(
         name=user_data.name,
         email=user_data.email,
@@ -121,7 +112,7 @@ async def login(
     Raises:
         HTTPException: If credentials are invalid
     """
-    user = authenticate_user(db, user_credentials.email, user_credentials.password)
+    user = AuthService.authenticate_user(db, user_credentials.email, user_credentials.password)
     if not user:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -130,7 +121,7 @@ async def login(
         )
     
     access_token_expires = timedelta(minutes=settings.access_token_expire_minutes)
-    access_token = create_access_token(
+    access_token = AuthService.create_access_token(
         data={"sub": user.email},
         expires_delta=access_token_expires
     )
@@ -182,7 +173,7 @@ async def update_current_user_info(
         HTTPException: If the new email is already registered to another account.
     """
     if user_data.email and user_data.email != current_user.email:
-        existing_user = get_user_by_email(db, user_data.email)
+        existing_user = AuthService.get_user_by_email(db, user_data.email)
         if existing_user:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,

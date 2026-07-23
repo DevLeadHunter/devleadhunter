@@ -29,10 +29,13 @@ class DemoIdentityResolver:
         """
         Return the prospect's most recent non-deleted demo slug (PostHog identity).
 
-        @param db - Active database session.
-        @param user_id - Owner of the demo site (scoping — never leak another user's data).
-        @param prospect_id - Prospect whose demo slug we want (None → no slug).
-        @returns The newest live demo slug for the prospect, or None when absent.
+        Args:
+            db: Active database session.
+            user_id: Owner of the demo site (scoping — never leak another user's data).
+            prospect_id: Prospect whose demo slug we want (None → no slug).
+
+        Returns:
+            The newest live demo slug for the prospect, or None when absent.
         """
         if not prospect_id:
             return None
@@ -60,10 +63,13 @@ class DemoIdentityResolver:
         id, then the recipient address, so an event is never dropped for lack of a
         slug (a prospect without a demo yet still gets a coherent timeline).
 
-        @param demo_slug - The prospect's demo slug, when it has a live demo.
-        @param prospect_id - Prospect id, used for the fallback identity.
-        @param recipient_email - Recipient address, last-resort identity.
-        @returns A non-empty distinct id.
+        Args:
+            demo_slug: The prospect's demo slug, when it has a live demo.
+            prospect_id: Prospect id, used for the fallback identity.
+            recipient_email: Recipient address, last-resort identity.
+
+        Returns:
+            A non-empty distinct id.
         """
         if demo_slug:
             return demo_slug

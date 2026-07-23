@@ -31,9 +31,10 @@ _blocks: dict[str, BlockInfo] = {}
 def note_block(source: str, *, reason: str, html: Optional[str] = None) -> None:
     """Flag that ``source`` was blocked on its last run (consumed by the orchestrator).
 
-    @param source - Source value (e.g. ``"google"``, ``"pagesjaunes"``).
-    @param reason - Short human cause (``"captcha"``, ``"no feed"``, ``"all tiers blocked"``).
-    @param html - Optional page HTML captured at the moment of the block (truncated).
+    Args:
+        source: Source value (e.g. ``"google"``, ``"pagesjaunes"``).
+        reason: Short human cause (``"captcha"``, ``"no feed"``, ``"all tiers blocked"``).
+        html: Optional page HTML captured at the moment of the block (truncated).
     """
     snapshot = html[:_MAX_HTML_CHARS] if isinstance(html, str) and html else None
     with _lock:

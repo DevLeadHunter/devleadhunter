@@ -24,9 +24,10 @@ router = APIRouter(prefix="/email-signatures", tags=["email-signatures"])
 def _clear_other_defaults(db: Session, user_id: int, keep_id: int | None = None) -> None:
     """Unset ``is_default`` on every other signature of the user.
 
-    @param db - Database session.
-    @param user_id - Owner whose signatures are updated.
-    @param keep_id - Signature id to leave untouched (the new default).
+    Args:
+        db: Database session.
+        user_id: Owner whose signatures are updated.
+        keep_id: Signature id to leave untouched (the new default).
     """
     stmt = update(EmailSignature).where(EmailSignature.user_id == user_id)
     if keep_id is not None:

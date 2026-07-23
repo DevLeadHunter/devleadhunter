@@ -34,28 +34,25 @@ _configure_logging()
 from fastapi import FastAPI, Request, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
-from slowapi import Limiter, _rate_limit_exceeded_handler
-from slowapi.util import get_remote_address
+from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 from api.v1.router import router as api_router
 from core.config import settings
+from core.rate_limiter import limiter
 from services.scraper_service import scraper_service
 from scrappers.google_scraper import GoogleScraper
 from scrappers.pagesjaunes_scraper import PagesJaunesScraper
 from scrappers.osm_scraper import OSMScraper
 from scrappers.auto_scraper import AutoScraper
 from scrappers.brightdata_scraper import BrightDataScraper
-from services.acquisition_orchestrator import run_acquisition_loop
+from services.acquisition_orchestrator import acquisition_orchestrator
 from services.demo_site_cleanup_service import run_demo_site_cleanup_loop
-from services.email_queue_worker import run_queue_worker
+from services.email_queue_worker import email_queue_worker
 from services.order_fulfillment_recovery_service import run_order_fulfillment_recovery_loop
 from core.win32_asyncio import ensure_proactor_event_loop
 
 ensure_proactor_event_loop()
 
-
-# Initialize rate limiter
-limiter = Limiter(key_func=get_remote_address, default_limits=["200/minute"])
 
 # Initialize FastAPI app
 app = FastAPI(
@@ -144,9 +141,9 @@ async def startup_event() -> None:
     import asyncio
 
     asyncio.create_task(run_demo_site_cleanup_loop())
-    asyncio.create_task(run_queue_worker())
+    asyncio.create_task(email_queue_worker.run_forever())
     asyncio.create_task(run_order_fulfillment_recovery_loop())
-    asyncio.create_task(run_acquisition_loop())
+    asyncio.create_task(acquisition_orchestrator.run_forever())
     asyncio.create_task(_warmup_maps_autocomplete())
 
 

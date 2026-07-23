@@ -118,8 +118,11 @@ class NodriverDom:
         rotated obfuscated class falls through to a still-valid alternate instead of
         yielding an empty field.
 
-        @param selectors - Selectors tried in order (most specific/current first).
-        @returns The first non-empty text, or ``None``.
+        Args:
+            selectors: Selectors tried in order (most specific/current first).
+
+        Returns:
+            The first non-empty text, or ``None``.
         """
         for selector in selectors:
             value = await NodriverDom.inner_text(tab, selector)

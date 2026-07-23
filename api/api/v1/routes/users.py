@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 
 from core.database import get_db
 from schemas.user import UserCreate, UserResponse, UserUpdate
-from services.auth_service import require_admin, get_password_hash
+from services.auth_service import AuthService, require_admin
 from services.credit_service import credit_service, TransactionType
 from models.user import User
 from models.credit_settings import CreditSettings
@@ -136,7 +136,7 @@ async def create_user(
         )
     
     # Create new user
-    hashed_password = get_password_hash(user_data.password)
+    hashed_password = AuthService.hash_password(user_data.password)
     db_user = User(
         name=user_data.name,
         email=user_data.email,

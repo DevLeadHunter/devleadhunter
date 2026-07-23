@@ -67,8 +67,11 @@ _SAMPLE_VARIABLES: dict[str, str] = {
 def _render(content: str) -> str:
     """Replace every ``{variable}`` by its sample value.
 
-    @param content - Raw template subject or body.
-    @returns The rendered content.
+    Args:
+        content: Raw template subject or body.
+
+    Returns:
+        The rendered content.
     """
     for name, value in _SAMPLE_VARIABLES.items():
         content = content.replace("{" + name + "}", value)
@@ -78,9 +81,12 @@ def _render(content: str) -> str:
 def _pick_template(db, template_id: Optional[int]) -> EmailTemplate:
     """Return the requested template, or the first active one.
 
-    @param db - Database session.
-    @param template_id - Explicit id, or ``None`` to auto-pick.
-    @returns The chosen template.
+    Args:
+        db: Database session.
+        template_id: Explicit id, or ``None`` to auto-pick.
+
+    Returns:
+        The chosen template.
     @raises SystemExit - When no template matches.
     """
     query = db.query(EmailTemplate).filter(EmailTemplate.is_active.is_(True))
@@ -103,12 +109,15 @@ async def _run(
 ) -> int:
     """Render a real template and send it to *recipient*.
 
-    @param recipient - The mail-tester disposable address.
-    @param template_id - Template to use, or ``None`` for the first active one.
-    @param list_only - Only list the templates, send nothing.
-    @param dry_run - Build the message and stop before sending.
-    @param base_url_override - Base URL of the unsubscribe link (defaults to settings).
-    @returns Process exit code.
+    Args:
+        recipient: The mail-tester disposable address.
+        template_id: Template to use, or ``None`` for the first active one.
+        list_only: Only list the templates, send nothing.
+        dry_run: Build the message and stop before sending.
+        base_url_override: Base URL of the unsubscribe link (defaults to settings).
+
+    Returns:
+        Process exit code.
     """
     db = SessionLocal()
     try:

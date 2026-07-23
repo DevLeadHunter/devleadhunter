@@ -17,7 +17,7 @@ from sqlalchemy.orm import Session
 from core.database import SessionLocal, get_db
 from models.scraping_job import ScrapingJob, ScrapingJobCreate
 from models.user import User
-from services.auth_service import require_auth, resolve_user_from_token
+from services.auth_service import AuthService, require_auth
 from services.scraping_job_service import scraping_job_service
 from services.scraping_job_stream_hub import scraping_job_stream_hub
 
@@ -235,7 +235,7 @@ async def scraping_job_websocket(
 
     db: Session = SessionLocal()
     try:
-        user = resolve_user_from_token(token, db)
+        user = AuthService.resolve_user_from_token(token, db)
         job = scraping_job_service.get_job(job_id)
         if not job or job.user_id != user.id:
             await websocket.close(code=status.WS_1008_POLICY_VIOLATION)

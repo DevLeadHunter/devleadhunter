@@ -23,14 +23,14 @@ def render_signature_html(
 ) -> str:
     """Return the signature HTML block to append to an email body.
 
-    @param db - Database session.
-    @param signature_id - Signature to render (None → no signature).
-    @param variables - Optional substitution map (same keys as the body); a
-        signature rarely uses prospect variables but stays consistent if it does.
-    @param user_id - When provided, guards the lookup to that owner (defense in
-        depth — the id comes from a user-scoped template).
-    @returns The HTML block prefixed with a spacing wrapper, or "" when there is
-        no usable signature.
+    Args:
+        db: Database session.
+        signature_id: Signature to render (None → no signature).
+        variables: Optional substitution map (same keys as the body); a signature rarely uses prospect variables but stays consistent if it does.
+        user_id: When provided, guards the lookup to that owner (defense in depth — the id comes from a user-scoped template).
+
+    Returns:
+        The HTML block prefixed with a spacing wrapper, or "" when there is no usable signature.
     """
     if not signature_id:
         return ""

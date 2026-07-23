@@ -96,11 +96,12 @@ def _has_any_activity(signals: BehaviorSignals) -> bool:
 def score_from_signals(signals: BehaviorSignals, site_improvable: bool = False) -> BehaviorScore:
     """Compute temperature + 0–100 score from a signals structure (demo + email).
 
-    @param signals - Aggregated demo + email signals.
-    @param site_improvable - Lighthouse verdict on the prospect's EXISTING website
-        (True = weak site → redesign opportunity). Adds a score bonus once the
-        prospect shows any engagement; never creates activity by itself.
-    @returns Temperature, 0–100 score, signals and the opportunity flag.
+    Args:
+        signals: Aggregated demo + email signals.
+        site_improvable: Lighthouse verdict on the prospect's EXISTING website (True = weak site → redesign opportunity). Adds a score bonus once the prospect shows any engagement; never creates activity by itself.
+
+    Returns:
+        Temperature, 0–100 score, signals and the opportunity flag.
     """
     if not _has_any_activity(signals):
         # No engagement: the weak-website opportunity is surfaced via the flag
@@ -169,10 +170,13 @@ def compute(
     """
     Compute a lead score from raw demo events + optional email engagement.
 
-    @param events - List of ``{"event", "timestamp", "properties"}`` items.
-    @param email - Optional ``{"sent", "opened", "clicked"}`` counts.
-    @param site_improvable - Lighthouse verdict on the prospect's existing website.
-    @returns Temperature, a 0–100 score and the underlying signals.
+    Args:
+        events: List of ``{"event", "timestamp", "properties"}`` items.
+        email: Optional ``{"sent", "opened", "clicked"}`` counts.
+        site_improvable: Lighthouse verdict on the prospect's existing website.
+
+    Returns:
+        Temperature, a 0–100 score and the underlying signals.
     """
     signals = empty_signals()
     sessions: set[str] = set()

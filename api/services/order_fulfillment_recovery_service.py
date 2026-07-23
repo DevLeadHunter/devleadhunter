@@ -21,7 +21,8 @@ async def run_order_fulfillment_recovery_loop(interval_seconds: int = 600) -> No
     """
     Periodically retry website orders that were paid but never fully delivered.
 
-    @param interval_seconds - Delay between recovery passes (default 10 min).
+    Args:
+        interval_seconds: Delay between recovery passes (default 10 min).
     """
     while True:
         db = SessionLocal()

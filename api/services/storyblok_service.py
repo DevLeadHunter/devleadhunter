@@ -18,7 +18,7 @@ from typing import Any, Optional
 import httpx
 
 from core.config import settings
-from services.enrichment_content import apply_to_content as apply_enrichment_to_content
+from services.enrichment_content import EnrichmentContentMapper
 from services.templates import registry as template_registry
 from services.templates.site_content import SITE_CONTENT_SCHEMAS
 
@@ -103,15 +103,18 @@ class StoryblokService:
         """
         Build the default Storyblok story payload for a template.
 
-        @param business_name - Client business display name.
-        @param phone - Contact phone number.
-        @param email - Contact email address.
-        @param city - Service area / city.
-        @param description - Short business description.
-        @param template_id - Selected template identifier.
-        @param theme - Optional color palette (primary, secondary, accent).
-        @param enrichment - Optional rich data merged into the content (photos, reviews…).
-        @returns Storyblok-compatible content object.
+        Args:
+            business_name: Client business display name.
+            phone: Contact phone number.
+            email: Contact email address.
+            city: Service area / city.
+            description: Short business description.
+            template_id: Selected template identifier.
+            theme: Optional color palette (primary, secondary, accent).
+            enrichment: Optional rich data merged into the content (photos, reviews…).
+
+        Returns:
+            Storyblok-compatible content object.
         """
         area: str = city or "votre secteur"
         subtitle: str = description or template_registry.default_subtitle(template_id, area)
@@ -144,7 +147,7 @@ class StoryblokService:
             subtitle=subtitle,
             palette=palette,
         )
-        return apply_enrichment_to_content(content, enrichment)
+        return EnrichmentContentMapper.apply_to_content(content, enrichment)
 
     @staticmethod
     def _is_flat_site_content(content_json: dict[str, Any]) -> bool:
@@ -737,8 +740,11 @@ class StoryblokService:
         always re-fetched from Storyblok (source of truth) with the space's own
         public token.
 
-        @param public_token - The space's public (published-only) token.
-        @returns The story ``content`` dict, or None when unavailable.
+        Args:
+            public_token: The space's public (published-only) token.
+
+        Returns:
+            The story ``content`` dict, or None when unavailable.
         """
         # follow_redirects: the EU CDN host 301-redirects; without this the webhook
         # re-fetch would silently fail and client edits would never sync back.

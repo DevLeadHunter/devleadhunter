@@ -45,8 +45,8 @@ class VercelService:
         """
         Attach a domain to the production project.
 
-        @returns Vercel API response (includes verification records when the
-            domain is not yet verified). Raises on HTTP error.
+        Returns:
+            Vercel API response (includes verification records when the domain is not yet verified). Raises on HTTP error.
         """
         if not self.is_configured or not self._project_id:
             raise ValueError("Vercel n'est pas configuré (VERCEL_TOKEN / VERCEL_DEMO_HOST_PROJECT_ID).")
