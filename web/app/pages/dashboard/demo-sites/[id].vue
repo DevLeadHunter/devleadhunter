@@ -298,7 +298,8 @@
 </template>
 
 <script lang="ts" setup>
-import type { Ref } from 'vue'
+import type { DemoSiteStat } from '~/types/DemoSiteDetailPage'
+import type { ComputedRef, Ref } from 'vue'
 import type { DemoSite } from '~/services/demoSiteService'
 import { DemoSiteService } from '~/services/demoSiteService'
 import { useToast } from '~/composables/useToast'
@@ -326,7 +327,7 @@ const deletingVideo: Ref<boolean> = ref(false)
 const deleteVideoModalRef: Ref<{ open: () => void } | null> = ref(null)
 let videoPollTimer: ReturnType<typeof setInterval> | null = null
 
-const templateLabel = computed(() => {
+const templateLabel: ComputedRef<string> = computed(() => {
   const labels: Record<string, string> = {
     'plumber-cuivre': 'Plombier Source',
     'electrician-lumen': 'Électricien Lumen',
@@ -334,9 +335,11 @@ const templateLabel = computed(() => {
   return labels[site.value?.template_id ?? ''] ?? site.value?.template_id ?? ''
 })
 
-const openUrl = computed(() => (site.value ? DemoSiteService.getDemoSiteOpenUrl(site.value) : null))
+const openUrl: ComputedRef<string | null> = computed(() =>
+  site.value ? DemoSiteService.getDemoSiteOpenUrl(site.value) : null,
+)
 
-const statusLabel = computed(() => {
+const statusLabel: ComputedRef<string> = computed(() => {
   if (!site.value) return ''
   if (DemoSiteService.isDemoSiteReachable(site.value)) return 'En ligne'
   if (site.value.status === 'failed') return 'Échec'
@@ -344,20 +347,22 @@ const statusLabel = computed(() => {
   return site.value.status
 })
 
-const statusClass = computed(() => {
+const statusClass: ComputedRef<string> = computed(() => {
   if (site.value && DemoSiteService.isDemoSiteReachable(site.value))
     return 'bg-[var(--app-green)]/20 text-[var(--app-green)]'
   if (site.value?.status === 'failed') return 'bg-red-500/20 text-red-300'
   return 'bg-amber-500/20 text-amber-300'
 })
 
-const daysLeft = computed(() => (site.value ? DemoSiteService.daysUntilExpiry(site.value.expires_at) : 0))
+const daysLeft: ComputedRef<number> = computed(() =>
+  site.value ? DemoSiteService.daysUntilExpiry(site.value.expires_at) : 0,
+)
 
-const isVideoGenerating = computed(
+const isVideoGenerating: ComputedRef<boolean> = computed(
   () => site.value?.video_status === 'pending' || site.value?.video_status === 'generating',
 )
 
-const videoStatusLabel = computed(() => {
+const videoStatusLabel: ComputedRef<string | null> = computed(() => {
   switch (site.value?.video_status) {
     case 'pending':
     case 'generating':
@@ -371,13 +376,13 @@ const videoStatusLabel = computed(() => {
   }
 })
 
-const videoStatusClass = computed(() => {
+const videoStatusClass: ComputedRef<string> = computed(() => {
   if (site.value?.video_status === 'ready') return 'bg-[var(--app-green)]/20 text-[var(--app-green)]'
   if (site.value?.video_status === 'failed') return 'bg-red-500/20 text-red-300'
   return 'bg-amber-500/20 text-amber-300'
 })
 
-const stats = computed(() => {
+const stats: ComputedRef<DemoSiteStat[]> = computed(() => {
   if (!site.value) return []
   const urlLive = DemoSiteService.isDemoSiteReachable(site.value)
   return [

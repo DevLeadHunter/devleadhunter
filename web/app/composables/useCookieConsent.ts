@@ -1,7 +1,6 @@
 import type { ComputedRef, Ref } from 'vue'
 import { computed, ref } from 'vue'
 
-/** Persisted marketing-cookie consent choice. */
 export type CookieConsent = 'unknown' | 'accepted' | 'refused'
 
 /** localStorage key holding the visitor's choice. */

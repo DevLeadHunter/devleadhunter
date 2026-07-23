@@ -46,7 +46,6 @@ export type EmailHealthAccount = {
   stats: EmailHealthStats
 }
 
-/** The overview payload. */
 export type EmailHealthOverview = {
   period_days: number
   totals: EmailHealthStats & { unsubscribed: number; unsubscribe_rate: number }
@@ -101,11 +100,8 @@ export type EmailDnsCheck = {
   status: 'ok' | 'warn' | 'danger'
   detail: string
   record?: string | null
-  /** Effective DMARC policy for this domain (``sp`` when inherited, else ``p``). */
   policy?: string | null
-  /** Raw ``sp=`` tag of the record, when present. */
   subdomain_policy?: string | null
-  /** Organizational domain the DMARC record was inherited from, when any. */
   inherited_from?: string | null
   rua?: string | null
   selectors?: string[]
@@ -175,7 +171,6 @@ export type TemplateScore = {
   group: 'initial' | 'follow_up'
   spamassassin: SpamAssassinResult
   checks: SpamLocalCheck[]
-  /** Checks that are not ok (the at-a-glance issue list). */
   issues: SpamLocalCheck[]
 }
 

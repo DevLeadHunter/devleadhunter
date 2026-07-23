@@ -136,6 +136,7 @@
 </template>
 
 <script lang="ts" setup>
+import type { TemplateGroup } from '~/types/EmailTemplatesPage'
 import type { ComputedRef, Ref } from 'vue'
 import type { EmailTemplate } from '~/types'
 import { computed, onMounted, ref, watch } from 'vue'
@@ -147,13 +148,6 @@ definePageMeta({
   layout: 'dashboard',
   middleware: 'auth',
 })
-
-/** One displayed group of templates. */
-type TemplateGroup = {
-  key: string
-  heading: string
-  templates: EmailTemplate[]
-}
 
 const toast = useToast()
 

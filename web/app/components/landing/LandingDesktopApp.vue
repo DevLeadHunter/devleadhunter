@@ -79,8 +79,8 @@
 
                 <div class="mt-4 space-y-2.5" aria-hidden="true">
                   <div
-                    v-for="row in listRows"
-                    :key="row"
+                    v-for="rowIndex in MOCK_PROSPECT_ROW_COUNT"
+                    :key="rowIndex"
                     class="flex items-center gap-3 rounded-xl border border-[#3a342b] bg-[#262119] px-4 py-3"
                   >
                     <span class="h-7 w-7 shrink-0 rounded-full bg-[#3a342b]"></span>
@@ -108,13 +108,7 @@
 </template>
 
 <script lang="ts" setup>
-/** A single KPI tile shown in the desktop app window mockup. */
-type LandingDesktopKpi = {
-  /** i18n key of the KPI label. */
-  labelKey: string
-  /** Decorative display value (aria-hidden, not localized). */
-  value: string
-}
+import type { LandingDesktopKpi } from '~/types/LandingDesktopApp'
 
 const localePath = useLocalePath()
 const { track } = useSiteTracking()
@@ -129,6 +123,5 @@ const kpis: LandingDesktopKpi[] = [
   { labelKey: 'landing.desktop.window.kpiSales', value: '9' },
 ]
 
-/** Number of skeleton rows in the mocked prospect list. */
-const listRows: number[] = [1, 2, 3]
+const MOCK_PROSPECT_ROW_COUNT: number = 3
 </script>

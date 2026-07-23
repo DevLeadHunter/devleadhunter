@@ -76,7 +76,7 @@
 </template>
 
 <script lang="ts" setup>
-import type { Ref } from 'vue'
+import type { ComputedRef, Ref } from 'vue'
 import type { DemoSite, DemoSiteTemplate, DemoSiteTheme } from '~/services/demoSiteService'
 import { DemoSiteService } from '~/services/demoSiteService'
 
@@ -114,7 +114,7 @@ const form: Ref<{
   theme: { ...defaultTheme },
 })
 
-const canSave = computed(() => {
+const canSave: ComputedRef<boolean> = computed(() => {
   const emailValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.value.email.trim())
   return form.value.business_name.trim().length >= 2 && emailValid
 })

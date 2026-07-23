@@ -6,8 +6,7 @@
 </template>
 
 <script lang="ts" setup>
-// Harnais DEV uniquement (`/preview-layers?t=<template_id>`) : rejoue le chemin de prod avec des
-// SiteContents figés, pour valider un layer sans dépendre de l'API. Ne jamais servir en démo réelle.
+// Harnais DEV uniquement : rejoue le chemin de prod sans l'API. Jamais servi en démo réelle.
 import type { ComputedRef } from 'vue'
 import type { DemoSitePublic } from '~/types/demoSite'
 import previewLayers from '~/utils/previewLayers.json'

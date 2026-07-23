@@ -108,7 +108,7 @@
 
 <script lang="ts" setup>
 import type { CreditSettings } from '~/types'
-import type { Ref } from 'vue'
+import type { ComputedRef, Ref } from 'vue'
 import { ref, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { CreditSettingsService } from '~/services/creditSettingsService'
@@ -167,7 +167,7 @@ const currentBalance: Ref<number | null> = ref(null)
 /**
  * Calculate total price
  */
-const totalPrice = computed((): number => {
+const totalPrice: ComputedRef<number> = computed((): number => {
   if (!creditSettings.value || credits.value <= 0) {
     return 0
   }

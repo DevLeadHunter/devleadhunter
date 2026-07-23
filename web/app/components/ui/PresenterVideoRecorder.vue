@@ -319,7 +319,7 @@
 <script lang="ts" setup>
 import type { ComputedRef, Ref } from 'vue'
 import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue'
-import type { PresenterVideoInfo } from '~/services/presenterVideoService'
+import type { PresenterVideo } from '~/services/presenterVideoService'
 import type { ProspectionScriptSegment } from '~/composables/useProspectionScript'
 import type { RecordedTake } from '~/composables/useWebcamRecorder'
 import type { KeptTake, RecorderPhase, UiPresenterVideoRecorderProps } from '~/types/UiPresenterVideoRecorder'
@@ -339,7 +339,7 @@ const props: UiPresenterVideoRecorderProps = defineProps({
 
 const emit = defineEmits<{
   /** The clip was assembled and stored — carries the fresh API payload. */
-  (e: 'saved', info: PresenterVideoInfo): void
+  (e: 'saved', info: PresenterVideo): void
   /** The user backed out of recording. */
   (e: 'cancel'): void
 }>()
@@ -514,8 +514,7 @@ function startTake(warmUp: boolean): void {
       return
     }
     phase.value = 'recording'
-    // Le prompteur démarre après le début de capture : la première syllabe
-    // n'est jamais rognée.
+    // Le prompteur démarre après la capture, sinon la première syllabe est rognée.
     restartToken.value += 1
     leadInHandle = setTimeout((): void => {
       restartToken.value += 1
@@ -627,7 +626,7 @@ async function sendTakes(): Promise<void> {
           type: kept.take.blob.type,
         }),
     )
-    const info: PresenterVideoInfo = await PresenterVideoService.uploadPresenterVideoSegments(
+    const info: PresenterVideo = await PresenterVideoService.uploadPresenterVideoSegments(
       intro!,
       middle!,
       outro!,

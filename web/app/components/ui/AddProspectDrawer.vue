@@ -162,6 +162,7 @@
 </template>
 
 <script lang="ts" setup>
+import type { AddProspectPrefillForm } from '~/types/UiAddProspectDrawer'
 import type { ComputedRef, Ref } from 'vue'
 import { computed, ref, watch } from 'vue'
 import type { Prospect, ProspectCreatePayload, ProspectSearchSuggestion } from '~/types'
@@ -169,13 +170,6 @@ import type { BusinessSearchInputExpose } from '~/types/BusinessSearchInput'
 import type { UiDrawerProps } from '~/types/UiDrawer'
 import { ProspectsService } from '~/services/prospectsService'
 import { useToast } from '~/composables/useToast'
-
-/** Local shape of the Google prefill form. */
-type AddProspectPrefillForm = {
-  business_name: string
-  google_maps_url: string
-  city: string
-}
 
 /** Drawer to add a prospect manually. */
 const props: UiDrawerProps = defineProps({

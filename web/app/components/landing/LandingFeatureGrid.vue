@@ -34,16 +34,10 @@
 </template>
 
 <script lang="ts" setup>
-/** One capability shown in the feature grid. */
-type LandingFeatureItem = {
-  /** i18n key of the feature title. */
-  titleKey: string
-  /** i18n key of the feature description. */
-  descriptionKey: string
-}
+import type { LandingFeature } from '~/types/LandingFeatureGrid'
 
 /** The four capabilities highlighted under the deep-dive sections. */
-const features: LandingFeatureItem[] = [
+const features: LandingFeature[] = [
   {
     titleKey: 'landing.features.deliverability.title',
     descriptionKey: 'landing.features.deliverability.description',

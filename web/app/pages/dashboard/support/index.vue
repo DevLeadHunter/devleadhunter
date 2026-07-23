@@ -92,6 +92,7 @@
 </template>
 
 <script lang="ts" setup>
+import type { SupportWebsocketEvent } from '~/types/SupportListPage'
 import type { ComputedRef, Ref } from 'vue'
 import type { SupportTicketStatus, SupportTicketSummary } from '~/types'
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
@@ -228,12 +229,6 @@ async function loadTickets(): Promise<void> {
 function updateStatus(value: string): void {
   if (activeStatus.value === value) return
   activeStatus.value = value
-}
-
-/** Shape of the realtime events pushed on the tickets websocket. */
-type SupportWebsocketEvent = {
-  event?: string
-  data?: Record<string, unknown>
 }
 
 /**

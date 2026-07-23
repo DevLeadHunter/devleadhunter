@@ -286,7 +286,7 @@
 
 <script lang="ts" setup>
 import { ref, computed, watch, onMounted } from 'vue'
-import type { Ref } from 'vue'
+import type { ComputedRef, Ref } from 'vue'
 import type { Prospect } from '~/types'
 import { ProspectsService } from '~/services/prospectsService'
 import { downloadProspectsJson, downloadProspectTemplateJson, parseProspectsJson } from '~/utils/prospectJson'
@@ -332,7 +332,7 @@ const drawerStack = useDrawerStackStore()
 
 const toast = useToast()
 
-const deleteConfirmMessage = computed(() => {
+const deleteConfirmMessage: ComputedRef<string> = computed(() => {
   if (!prospectToDelete.value) return 'Cette action est irréversible.'
   return `Supprimer définitivement « ${prospectToDelete.value.name} » ? Cette action est irréversible.`
 })
@@ -341,58 +341,68 @@ const selectedIds = computed<number[]>(() =>
   selectedProspects.value.map((id) => Number(id)).filter((n) => !Number.isNaN(n)),
 )
 
-const totalProspects = computed(() => prospects.value.length)
-const prospectsWithEmail = computed(() => prospects.value.filter((p) => p.email).length)
-const prospectsWithoutWebsite = computed(() => prospects.value.filter((p) => !p.website).length)
-const prospectsWithPhone = computed(() => prospects.value.filter((p) => p.phone).length)
+const totalProspects: ComputedRef<number> = computed(() => prospects.value.length)
+const prospectsWithEmail: ComputedRef<number> = computed(
+  () => prospects.value.filter((prospect) => prospect.email).length,
+)
+const prospectsWithoutWebsite: ComputedRef<number> = computed(
+  () => prospects.value.filter((prospect) => !prospect.website).length,
+)
+const prospectsWithPhone: ComputedRef<number> = computed(
+  () => prospects.value.filter((prospect) => prospect.phone).length,
+)
 
 /** Prospects matching every filter EXCEPT the contacted tab (drives the tab counts). */
-const baseFiltered = computed(() => {
+const baseFiltered: ComputedRef<Prospect[]> = computed(() => {
   let filtered = prospects.value
 
   if (searchQuery.value) {
     const query = searchQuery.value.toLowerCase()
     filtered = filtered.filter(
-      (p) =>
-        p.name.toLowerCase().includes(query) ||
-        p.city?.toLowerCase().includes(query) ||
-        p.email?.toLowerCase().includes(query) ||
-        p.phone?.toLowerCase().includes(query),
+      (prospect) =>
+        prospect.name.toLowerCase().includes(query) ||
+        prospect.city?.toLowerCase().includes(query) ||
+        prospect.email?.toLowerCase().includes(query) ||
+        prospect.phone?.toLowerCase().includes(query),
     )
   }
 
   if (filterCity.value) {
     const city = filterCity.value.toLowerCase()
-    filtered = filtered.filter((p) => p.city?.toLowerCase().includes(city))
+    filtered = filtered.filter((prospect) => prospect.city?.toLowerCase().includes(city))
   }
 
   if (filterCategory.value) {
     const cat = filterCategory.value.toLowerCase()
-    filtered = filtered.filter((p) => p.category.toLowerCase().includes(cat))
+    filtered = filtered.filter((prospect) => prospect.category.toLowerCase().includes(cat))
   }
 
   if (filterWebsite.value === 'yes') {
-    filtered = filtered.filter((p) => !!p.website)
+    filtered = filtered.filter((prospect) => !!prospect.website)
   } else if (filterWebsite.value === 'no') {
-    filtered = filtered.filter((p) => !p.website)
+    filtered = filtered.filter((prospect) => !prospect.website)
   } else if (filterWebsite.value === 'improvable') {
     // Site existant jugé faible par l'audit Lighthouse → cible refonte.
-    filtered = filtered.filter((p) => !!p.website && p.lighthouse_json?.is_improvable === true)
+    filtered = filtered.filter((prospect) => !!prospect.website && prospect.lighthouse_json?.is_improvable === true)
   }
 
   return filtered
 })
 
-const notContactedCount = computed(() => baseFiltered.value.filter((p) => !p.contacted).length)
-const contactedCount = computed(() => baseFiltered.value.filter((p) => p.contacted).length)
-
-const filteredProspects = computed(() =>
-  baseFiltered.value.filter((p) => (activeTab.value === 'contacted' ? p.contacted : !p.contacted)),
+const notContactedCount: ComputedRef<number> = computed(
+  () => baseFiltered.value.filter((prospect) => !prospect.contacted).length,
+)
+const contactedCount: ComputedRef<number> = computed(
+  () => baseFiltered.value.filter((prospect) => prospect.contacted).length,
 )
 
-const totalPages = computed(() => Math.ceil(filteredProspects.value.length / pageSize))
+const filteredProspects: ComputedRef<Prospect[]> = computed(() =>
+  baseFiltered.value.filter((prospect) => (activeTab.value === 'contacted' ? prospect.contacted : !prospect.contacted)),
+)
 
-const paginatedProspects = computed(() => {
+const totalPages: ComputedRef<number> = computed(() => Math.ceil(filteredProspects.value.length / pageSize))
+
+const paginatedProspects: ComputedRef<Prospect[]> = computed(() => {
   const start = (currentPage.value - 1) * pageSize
   return filteredProspects.value.slice(start, start + pageSize)
 })
@@ -442,9 +452,9 @@ watch([activeTab, searchQuery, filterCity, filterCategory, filterWebsite], (): v
  */
 function toggleSelect(prospect: Prospect): void {
   const id = String(prospect.id)
-  const idx = selectedProspects.value.indexOf(id)
-  if (idx === -1) selectedProspects.value.push(id)
-  else selectedProspects.value.splice(idx, 1)
+  const index = selectedProspects.value.indexOf(id)
+  if (index === -1) selectedProspects.value.push(id)
+  else selectedProspects.value.splice(index, 1)
 }
 
 /**
@@ -452,7 +462,7 @@ function toggleSelect(prospect: Prospect): void {
  * @param checked - True to add the page's prospects, false to remove them.
  */
 function toggleSelectAll(checked: boolean): void {
-  const pageIds = paginatedProspects.value.map((p) => String(p.id))
+  const pageIds = paginatedProspects.value.map((prospect) => String(prospect.id))
   if (checked) {
     const set = new Set([...selectedProspects.value, ...pageIds])
     selectedProspects.value = Array.from(set)
@@ -515,8 +525,8 @@ function openDrawer(prospect: Prospect): void {
 
 /** Drawer notified 'updated' — patch the local list, or insert a freshly created prospect. */
 function handleProspectUpdated(updated: Prospect): void {
-  const idx = prospects.value.findIndex((p) => p.id === updated.id)
-  if (idx !== -1) prospects.value.splice(idx, 1, updated)
+  const index = prospects.value.findIndex((prospect) => prospect.id === updated.id)
+  if (index !== -1) prospects.value.splice(index, 1, updated)
   else prospects.value.unshift(updated)
 }
 
@@ -626,12 +636,11 @@ async function handleImportFile(event: Event): Promise<void> {
 
 /** Drawer notified 'deleted' — remove from local list. */
 function handleProspectDeleted(prospectId: number): void {
-  prospects.value = prospects.value.filter((p) => p.id !== prospectId)
+  prospects.value = prospects.value.filter((prospect) => prospect.id !== prospectId)
   selectedProspects.value = selectedProspects.value.filter((id) => id !== String(prospectId))
 }
 
-// Mutations done inside the drawer (edit, delete, contacted…) are broadcast
-// through the store — keep the local list in sync.
+// Les mutations du drawer transitent par le store : on resynchronise la liste locale.
 watch(
   (): number => drawerStack.prospectMutationCounter,
   (): void => {
@@ -673,7 +682,7 @@ onMounted(async (): Promise<void> => {
   const openParam = useRoute().query.open
   const openId: number = Number(Array.isArray(openParam) ? openParam[0] : openParam)
   if (!Number.isNaN(openId) && openId > 0) {
-    const target = prospects.value.find((p) => p.id === openId)
+    const target = prospects.value.find((prospect) => prospect.id === openId)
     if (target) openDrawer(target)
   }
 })

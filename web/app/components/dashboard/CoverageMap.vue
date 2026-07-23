@@ -96,6 +96,7 @@
 </template>
 
 <script lang="ts" setup>
+import type { CityFeatureProperties, CoverageTierColors } from '~/types/DashboardCoverageMap'
 import type { Feature, FeatureCollection, Point } from 'geojson'
 import type { ExpressionSpecification, GeoJSONSource, Map as MaplibreMap, MapMouseEvent } from 'maplibre-gl'
 import type { ComputedRef, Ref } from 'vue'
@@ -140,23 +141,6 @@ const CITIES_SOURCE_ID = 'dlh-cities'
 const REGIONS_FILL_LAYER_ID = 'dlh-regions-fill'
 const REGIONS_LINE_LAYER_ID = 'dlh-regions-line'
 const CITIES_LAYER_ID = 'dlh-cities-dots'
-
-/** Properties carried by each city point feature. */
-type CityFeatureProperties = {
-  city: string
-  count: number
-  /** Precomputed circle radius in px (sqrt scale on the prospect count). */
-  radius: number
-}
-
-/** Choropleth washes drawn over the basemap (amber → green, Atelier palette). */
-type CoverageTierColors = {
-  none: string
-  low: string
-  medium: string
-  good: string
-  strong: string
-}
 
 const { theme } = useAppTheme()
 const store = useCoverageStore()
@@ -454,8 +438,7 @@ async function onMapClick(event: MapMouseEvent): Promise<void> {
     return
   }
 
-  // Uncovered region: prefill a search with the commune under the cursor
-  // (clicking « Caen » prefills Caen), falling back to the region's biggest city.
+  // Falls back to the region's biggest city when the cursor is not over a commune.
   const commune = await reverseGeocodeCommune(event.lngLat.lng, event.lngLat.lat)
   const fallback: string | undefined = FRANCE_MAJOR_CITIES.find((c): boolean => c.region === code)?.name
   const city: string | undefined = commune?.name ?? fallback
@@ -517,9 +500,7 @@ function hideTip(): void {
   tip.value.show = false
 }
 
-// The map branch renders only once data exists — init when its container
-// appears. If the branch was torn down (empty state) and re-rendered, the old
-// map instance points at a dead container: drop it and recreate.
+// After the empty state tore the branch down, the old instance points at a dead container.
 watch(mapContainer, (container: HTMLElement | null): void => {
   if (!container) return
   if (mapInstance && mapInstance.getContainer() !== container) {

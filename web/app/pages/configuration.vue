@@ -229,11 +229,12 @@
 </template>
 
 <script lang="ts" setup>
+import type { ConfigurationChecklistRow, ConfigurationRecapRow } from '~/types/ConfigurationPage'
 import type { ComputedRef, Ref } from 'vue'
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import type { SendPolicy } from '~/types/Automation'
 import type { SendingIdentityResponse, SendingProvider } from '~/services/settingsService'
-import type { PresenterVideoInfo } from '~/services/presenterVideoService'
+import type { PresenterVideo } from '~/services/presenterVideoService'
 import type { UiWizardStep } from '~/types/UiWizardStepper'
 import { SettingsService } from '~/services/settingsService'
 import { PresenterVideoService } from '~/services/presenterVideoService'
@@ -241,21 +242,6 @@ import { SendPolicyService } from '~/services/sendPolicyService'
 import { useOnboarding } from '~/composables/useOnboarding'
 import { useToast } from '~/composables/useToast'
 import { useUserStore } from '~/stores/user'
-
-/** A row of the « c'est prêt » recap. */
-type RecapItem = {
-  label: string
-  value: string
-  done: boolean
-}
-
-/** A row of the welcome screen checklist. */
-type IntroItem = {
-  icon: string
-  title: string
-  detail: string
-  required: boolean
-}
 
 definePageMeta({ layout: 'onboarding', middleware: 'auth' })
 
@@ -276,7 +262,7 @@ const STEPS: UiWizardStep[] = [
 ]
 
 /** What the welcome screen promises, in the order it is configured. */
-const INTRO_ITEMS: IntroItem[] = [
+const INTRO_ITEMS: ConfigurationChecklistRow[] = [
   {
     icon: 'i-lucide-mail-open',
     title: "Votre méthode d'envoi",
@@ -357,7 +343,7 @@ const sendingSummary: ComputedRef<string> = computed((): string => {
 })
 
 /** The recap rows of the final step. */
-const recapItems: ComputedRef<RecapItem[]> = computed((): RecapItem[] => {
+const recapItems: ComputedRef<ConfigurationRecapRow[]> = computed((): ConfigurationRecapRow[] => {
   const days: number = policy.value.days_of_week.length
   return [
     { label: "Méthode d'envoi", value: sendingSummary.value, done: isSendingReady.value },
@@ -529,10 +515,9 @@ onMounted(async (): Promise<void> => {
       .catch((): void => {
         savedPolicy.value = ''
       }),
-    // An existing clip means the video step opens on its configuration, not on
-    // the « do you want one? » question.
+    // Un clip existant ouvre l'étape vidéo sur sa configuration, pas sur la question.
     PresenterVideoService.getPresenterVideo()
-      .then((video: PresenterVideoInfo): void => {
+      .then((video: PresenterVideo): void => {
         hasPresenterVideo.value = video.has_video
         if (video.has_video) wantsVideo.value = true
       })

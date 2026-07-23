@@ -80,19 +80,9 @@
 </template>
 
 <script lang="ts" setup>
+import type { LandingStoryAct } from '~/types/LandingPipelineStory'
 import type { Ref } from 'vue'
-import type { LandingStoryActIndex } from '~/types/LandingStoryVisual'
 import { ref, onMounted, onBeforeUnmount } from 'vue'
-
-/** One act of the prospect journey shown in the scroll narrative. */
-type LandingStoryAct = {
-  /** Stable act index, also passed to the visual card. */
-  actIndex: LandingStoryActIndex
-  /** i18n key of the act verb (e.g. « Trouver »). */
-  verbKey: string
-  /** i18n key of the act description. */
-  descriptionKey: string
-}
 
 /** The four acts of the pipeline story. */
 const storyActs: LandingStoryAct[] = [

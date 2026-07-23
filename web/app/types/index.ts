@@ -1,24 +1,6 @@
-/**
- * Shared TypeScript types and interfaces for the application
- */
-
-/**
- * Business category for prospect search
- */
 export type BusinessCategory = 'restaurant' | 'plombier' | 'electricien' | 'coiffeur' | 'garage' | 'all'
 
-/**
- * Source of prospect data.
- *
- * Mirrors the backend ``Source`` enum in ``api/enums/source.py``.
- * - ``google``      — Google Maps / Google Business scraper
- * - ``pagesjaunes`` — Pages Jaunes directory scraper (Chrome / nodriver)
- * - ``yelp``        — Yelp platform scraper
- * - ``osm``         — OpenStreetMap / Overpass API (pure HTTP, fast)
- * - ``auto``        — Smart combo: OSM + Pages Jaunes in parallel, then email enrichment
- * - ``brightdata``  — BrightData HTTP API (Web Unlocker + SERP, no browser required)
- * - ``all``         — Sentinel value used in filter selects to mean "every source"
- */
+/** Mirrors the backend ``Source`` enum ; ``all`` is a filter-only sentinel, never stored. */
 export type ProspectSource = 'google' | 'pagesjaunes' | 'yelp' | 'osm' | 'auto' | 'brightdata' | 'manual' | 'all'
 
 /**
@@ -150,9 +132,6 @@ export type ManualProspectAddForm = {
   city: string
 }
 
-/**
- * Search filters for prospect search
- */
 export type ProspectSearchFilters = {
   category?: BusinessCategory
   city?: string
@@ -160,27 +139,8 @@ export type ProspectSearchFilters = {
   maxResults?: number
 }
 
-/**
- * Campaign interface for bulk email sending
- */
-export type Campaign = {
-  id: string
-  name: string
-  description: string
-  prospectIds: string[]
-  status: 'draft' | 'active' | 'completed'
-  createdAt: string
-  updatedAt: string
-}
-
-/**
- * User role enumeration
- */
 export type UserRole = 'USER' | 'ADMIN'
 
-/**
- * User interface
- */
 export type User = {
   id: number
   name: string
@@ -195,18 +155,12 @@ export type User = {
   onboarding_completed?: boolean
 }
 
-/**
- * Login credentials
- */
 export type LoginCredentials = {
   email: string
   password: string
 }
 
-/**
- * Signup data
- */
-export type SignupData = {
+export type SignupPayload = {
   name: string
   email: string
   password: string
@@ -221,26 +175,17 @@ export type ProfileUpdate = {
   email?: string
 }
 
-/**
- * API Response wrapper
- */
 export type ApiResponse<T> = {
   data: T
   success: boolean
   message?: string
 }
 
-/**
- * Auth token response
- */
 export type TokenResponse = {
   access_token: string
   token_type: string
 }
 
-/**
- * Paginated response
- */
 export type PaginatedResponse<T> = {
   items: T[]
   total: number
@@ -264,18 +209,12 @@ export type CreditSettings = {
   updated_at: string | null
 }
 
-/**
- * Checkout session creation request
- */
 export type CheckoutSessionCreate = {
   credits: number
   success_url?: string
   cancel_url?: string
 }
 
-/**
- * Checkout session response
- */
 export type CheckoutSessionResponse = {
   session_id: string
   url: string
@@ -283,14 +222,8 @@ export type CheckoutSessionResponse = {
   credits: number
 }
 
-/**
- * Credit transaction type
- */
 export type CreditTransactionType = 'PURCHASE' | 'USAGE' | 'REFUND' | 'FREE_GIFT'
 
-/**
- * Credit transaction interface
- */
 export type CreditTransaction = {
   id: number
   user_id: number
@@ -301,19 +234,13 @@ export type CreditTransaction = {
   created_at: string
 }
 
-/**
- * Credit balance response
- */
 export type CreditBalanceResponse = {
   user_id: number
   balance: number
   is_unlimited: boolean
 }
 
-/**
- * Stripe payment information
- */
-export type StripePaymentInfo = {
+export type StripePayment = {
   payment_intent_id?: string | null
   session_id?: string | null
   amount: number
@@ -335,9 +262,6 @@ export type StripePaymentInfo = {
   user_agent?: string | null
 }
 
-/**
- * Credit purchase transaction with payment details
- */
 export type CreditPurchaseTransaction = {
   transaction_id: number
   user_id: number
@@ -345,14 +269,11 @@ export type CreditPurchaseTransaction = {
   user_email: string
   credits_amount: number
   credits_available_date: string
-  payment_info?: StripePaymentInfo | null
+  payment_info?: StripePayment | null
   euros_amount?: number | null
   description: string
 }
 
-/**
- * Accounting summary
- */
 export type AccountingSummary = {
   total_paid: number
   total_refunded: number
@@ -362,22 +283,13 @@ export type AccountingSummary = {
   available_balance?: number | null
 }
 
-/**
- * Accounting data response
- */
 export type AccountingResponse = {
   summary: AccountingSummary
   transactions: CreditPurchaseTransaction[]
 }
 
-/**
- * Support ticket status values
- */
 export type SupportTicketStatus = 'open' | 'waiting_user' | 'waiting_support' | 'resolved' | 'closed'
 
-/**
- * Support ticket topics
- */
 export type SupportTicketTopic =
   | 'credits_billing'
   | 'missing_results'
@@ -396,9 +308,6 @@ export type SupportTopicOption = {
   description: string
 }
 
-/**
- * Support attachment metadata
- */
 export type SupportAttachment = {
   id: number
   url: string
@@ -407,9 +316,6 @@ export type SupportAttachment = {
   created_at: string
 }
 
-/**
- * Support message
- */
 export type SupportMessage = {
   id: number
   ticket_id: number
@@ -421,9 +327,6 @@ export type SupportMessage = {
   created_at: string
 }
 
-/**
- * Support ticket summary
- */
 export type SupportTicketSummary = {
   id: number
   user_id: number
@@ -448,14 +351,8 @@ export interface SupportTicketDetail extends Omit<SupportTicketSummary, 'message
   messages: SupportMessage[]
 }
 
-/**
- * Email account type
- */
 export type EmailAccountType = 'custom_domain' | 'gmail_oauth' | 'resend'
 
-/**
- * Email account interface
- */
 export type EmailAccount = {
   id: number
   user_id: number
@@ -473,9 +370,6 @@ export type EmailAccount = {
   updated_at?: string | null
 }
 
-/**
- * Email template interface
- */
 export type EmailTemplate = {
   id: number
   user_id: number
@@ -503,27 +397,18 @@ export type EmailSignature = {
   updated_at?: string | null
 }
 
-/**
- * Email signature creation request
- */
 export type EmailSignatureCreate = {
   name: string
   content_html: string
   is_default?: boolean
 }
 
-/**
- * Email signature update request
- */
 export type EmailSignatureUpdate = {
   name?: string
   content_html?: string
   is_default?: boolean
 }
 
-/**
- * Email status
- */
 export type EmailStatus =
   | 'pending'
   | 'sending'
@@ -565,9 +450,6 @@ export type CampaignVariantStats = {
   click_rate: number
 }
 
-/**
- * Email log interface
- */
 export type EmailLog = {
   id: number
   user_id: number
@@ -595,9 +477,6 @@ export type EmailLog = {
   updated_at?: string | null
 }
 
-/**
- * Email account creation request (custom domain)
- */
 export type EmailAccountCreateCustomDomain = {
   email: string
   name: string
@@ -615,9 +494,6 @@ export type EmailAccountCreateGmail = {
   is_default?: boolean
 }
 
-/**
- * Email template creation request
- */
 export type EmailTemplateCreate = {
   name: string
   subject: string
@@ -627,9 +503,6 @@ export type EmailTemplateCreate = {
   signature_id?: number | null
 }
 
-/**
- * Email template update request
- */
 export type EmailTemplateUpdate = {
   name?: string
   subject?: string
@@ -640,9 +513,6 @@ export type EmailTemplateUpdate = {
   signature_id?: number | null
 }
 
-/**
- * Send email request
- */
 export type SendEmailRequest = {
   email_account_id: number
   recipient_email: string
@@ -654,9 +524,6 @@ export type SendEmailRequest = {
   variables?: Record<string, string>
 }
 
-/**
- * Send campaign email request
- */
 export type SendCampaignEmailRequest = {
   email_account_id: number
   campaign_id: string
@@ -665,9 +532,6 @@ export type SendCampaignEmailRequest = {
   variables_per_prospect?: Record<string, Record<string, string>>
 }
 
-/**
- * Email stats response
- */
 export type EmailStats = {
   total_sent: number
   total_delivered: number
@@ -680,9 +544,6 @@ export type EmailStats = {
   click_rate: number
 }
 
-/**
- * DNS verification response
- */
 export type DNSVerificationResponse = {
   spf_verified: boolean
   dkim_verified: boolean

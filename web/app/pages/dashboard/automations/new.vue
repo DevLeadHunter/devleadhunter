@@ -293,9 +293,9 @@
 </template>
 
 <script lang="ts" setup>
+import type { AutomationRecapRow, TunnelForm } from '~/types/AutomationCreatePage'
 import type { ComputedRef, Ref } from 'vue'
 import { computed, onMounted, ref, watch } from 'vue'
-import type { AutomationMode } from '~/types/Automation'
 import type { Prospect } from '~/types'
 import type { TemplateSelectOption } from '~/types/TemplateSelect'
 import type { UiWizardStep } from '~/types/UiWizardStepper'
@@ -307,27 +307,6 @@ import { DemoSiteService } from '~/services/demoSiteService'
 import { useDrawerStackStore } from '~/stores/drawerStack'
 import { useProspectSearchStore } from '~/stores/prospectSearch'
 import { useToast } from '~/composables/useToast'
-
-/** A recap row. */
-type RecapItem = {
-  label: string
-  value: string
-}
-
-/** Local wizard form. */
-type TunnelForm = {
-  name: string
-  mode: AutomationMode
-  templateId: string
-  theme: DemoSiteTheme
-  autoCampaign: boolean
-  emailA: number
-  emailB: number
-  metiers: string
-  villes: string
-  targetDays: number
-  onlyWithoutWebsite: boolean
-}
 
 definePageMeta({
   layout: 'dashboard',
@@ -439,7 +418,7 @@ const selectedTemplateName: ComputedRef<string> = computed(
 )
 
 /** Recap rows. */
-const recapItems: ComputedRef<RecapItem[]> = computed((): RecapItem[] => {
+const recapItems: ComputedRef<AutomationRecapRow[]> = computed((): AutomationRecapRow[] => {
   const target: string =
     form.value.mode === 'full_auto'
       ? `${form.value.metiers || '—'} · ${form.value.villes || '—'} · ${form.value.targetDays} j`

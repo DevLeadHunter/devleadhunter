@@ -201,11 +201,11 @@
 </template>
 
 <script lang="ts" setup>
+import type { EnrichmentForm, UiProspectEnrichmentProps } from '~/types/UiProspectEnrichment'
 import type { ComputedRef, PropType, Ref } from 'vue'
 import { ref, computed, watch } from 'vue'
-import type { EnrichmentOpeningHours, EnrichmentReview, ProspectEnrichment } from '~/services/enrichmentService'
+import type { ProspectEnrichment } from '~/services/enrichmentService'
 import { EnrichmentService } from '~/services/enrichmentService'
-import type { UiProspectEnrichmentProps } from '~/types/UiProspectEnrichment'
 import { useToast } from '~/composables/useToast'
 
 /** Prospect data enrichment form and actions. */
@@ -229,18 +229,6 @@ const isSaving: Ref<boolean> = ref(false)
 const isResolving: Ref<boolean> = ref(false)
 const newPhotoUrl: Ref<string> = ref('')
 const newService: Ref<string> = ref('')
-
-type EnrichmentForm = {
-  rating: number | null
-  reviews_count: number | null
-  description: string
-  photos: string[]
-  services: string[]
-  reviews: EnrichmentReview[]
-  opening_hours: EnrichmentOpeningHours[]
-  contact_first_name: string
-  contact_last_name: string
-}
 
 const form: Ref<EnrichmentForm> = ref({
   rating: null,
@@ -380,9 +368,7 @@ async function save(): Promise<void> {
   if (!props.prospectId) return
   isSaving.value = true
   try {
-    // Contact fields are sent ONLY when actually changed: a manual contact
-    // edit locks the automatic resolution (contact_name_manual), so untouched
-    // values must not flip that lock.
+    // Sent only when changed: an untouched value must not flip the contact_name_manual lock.
     const contactChanged: boolean =
       form.value.contact_first_name !== (record.value?.contact_first_name ?? '') ||
       form.value.contact_last_name !== (record.value?.contact_last_name ?? '')

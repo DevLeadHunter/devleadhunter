@@ -6,14 +6,13 @@ const BASE_URL = '/api/v1/settings/presenter-video'
 export type PresenterVideoSource = 'upload' | 'recorded'
 
 /** Presenter clip state returned by the API (no file content). */
-export type PresenterVideoInfo = {
+export type PresenterVideo = {
   has_video: boolean
   original_filename?: string | null
   duration_seconds?: number
   intro_seconds?: number
   outro_seconds?: number
   auto_generate?: boolean
-  /** ``recorded`` when filmed in-app: the segments are measured, not guessed. */
   source?: PresenterVideoSource
   updated_at?: string | null
 }
@@ -29,7 +28,7 @@ export type PresenterVideoInfo = {
  * @returns The stored clip metadata.
  * @throws With the API message when the request fails.
  */
-async function putMultipart(path: string, formData: FormData): Promise<PresenterVideoInfo> {
+async function putMultipart(path: string, formData: FormData): Promise<PresenterVideo> {
   const userStore = useUserStore()
   const config = useRuntimeConfig()
 
@@ -52,7 +51,7 @@ async function putMultipart(path: string, formData: FormData): Promise<Presenter
     throw new Error(errorMessage)
   }
 
-  return (await response.json()) as PresenterVideoInfo
+  return (await response.json()) as PresenterVideo
 }
 
 export class PresenterVideoService {
@@ -60,8 +59,8 @@ export class PresenterVideoService {
    * Fetch the current user's presenter clip metadata.
    * @returns Clip state (``has_video: false`` when none was uploaded).
    */
-  static async getPresenterVideo(): Promise<PresenterVideoInfo> {
-    return ApiClient.get<PresenterVideoInfo>(BASE_URL)
+  static async getPresenterVideo(): Promise<PresenterVideo> {
+    return ApiClient.get<PresenterVideo>(BASE_URL)
   }
 
   /**
@@ -81,7 +80,7 @@ export class PresenterVideoService {
     introSeconds: number,
     outroSeconds: number,
     autoGenerate: boolean,
-  ): Promise<PresenterVideoInfo> {
+  ): Promise<PresenterVideo> {
     const formData = new FormData()
     formData.append('file', file)
     formData.append('intro_seconds', String(introSeconds))
@@ -108,7 +107,7 @@ export class PresenterVideoService {
     middle: File,
     outro: File,
     autoGenerate: boolean,
-  ): Promise<PresenterVideoInfo> {
+  ): Promise<PresenterVideo> {
     const formData = new FormData()
     formData.append('intro', intro)
     formData.append('middle', middle)
@@ -127,8 +126,8 @@ export class PresenterVideoService {
     introSeconds: number,
     outroSeconds: number,
     autoGenerate: boolean,
-  ): Promise<PresenterVideoInfo> {
-    return ApiClient.patch<PresenterVideoInfo>(BASE_URL, {
+  ): Promise<PresenterVideo> {
+    return ApiClient.patch<PresenterVideo>(BASE_URL, {
       intro_seconds: introSeconds,
       outro_seconds: outroSeconds,
       auto_generate: autoGenerate,
@@ -138,8 +137,8 @@ export class PresenterVideoService {
   /**
    * Delete the presenter clip (file + record).
    */
-  static async deletePresenterVideo(): Promise<PresenterVideoInfo> {
-    return ApiClient.delete<PresenterVideoInfo>(BASE_URL)
+  static async deletePresenterVideo(): Promise<PresenterVideo> {
+    return ApiClient.delete<PresenterVideo>(BASE_URL)
   }
 
   /**

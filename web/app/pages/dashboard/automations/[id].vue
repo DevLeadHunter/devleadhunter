@@ -256,6 +256,7 @@
 </template>
 
 <script lang="ts" setup>
+import type { AutomationDetailKpi } from '~/types/AutomationDetailPage'
 import type { ComputedRef, Ref } from 'vue'
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import type {
@@ -270,13 +271,6 @@ import { useAutomationsStore } from '~/stores/automations'
 import { AutomationsService } from '~/services/automationsService'
 import { DemoSiteService } from '~/services/demoSiteService'
 import { useToast } from '~/composables/useToast'
-
-/** A KPI tile. */
-type Kpi = {
-  label: string
-  value: number
-  class: string
-}
 
 definePageMeta({
   layout: 'dashboard',
@@ -331,7 +325,7 @@ const isTerminal: ComputedRef<boolean> = computed(
 )
 
 /** KPI tiles. */
-const kpis: ComputedRef<Kpi[]> = computed((): Kpi[] => {
+const kpis: ComputedRef<AutomationDetailKpi[]> = computed((): AutomationDetailKpi[] => {
   const r: AutomationDetail | null = run.value
   if (r === null) return []
   const by: Record<string, number> = r.stats.by_step

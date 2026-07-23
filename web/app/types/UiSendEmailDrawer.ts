@@ -6,3 +6,11 @@ export type UiSendEmailDrawerProps = UiDrawerProps & {
   prospect?: Prospect | null
   prefill?: SendEmailPrefill | null
 }
+
+/** Local shape of the manual send form. */
+export type SendEmailForm = {
+  recipient_email: string
+  recipient_name: string
+  subject: string
+  body: string
+}

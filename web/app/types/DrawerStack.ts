@@ -11,7 +11,6 @@ import type { SearchProspectsPrefill } from '~/types/SearchProspectsDrawer'
  * the top entry.
  */
 
-/** Prospect detail drawer entry. */
 export type ProspectDrawerEntry = {
   kind: 'prospect'
   prospect: Prospect
@@ -25,62 +24,51 @@ export type SendEmailPrefill = {
   body: string
 }
 
-/** Manual email composer drawer entry. */
 export type SendEmailDrawerEntry = {
   kind: 'send-email'
   prospect: Prospect | null
   prefill?: SendEmailPrefill
 }
 
-/** Email log detail drawer entry. */
 export type EmailLogDrawerEntry = {
   kind: 'email-log'
   log: EmailLog
   campaignName: string | undefined
 }
 
-/** Mode of the email template drawer. */
 export type EmailTemplateDrawerMode = 'create' | 'edit' | 'preview'
 
-/** Email template create/edit/preview drawer entry. */
 export type EmailTemplateDrawerEntry = {
   kind: 'email-template'
   mode: EmailTemplateDrawerMode
   template: EmailTemplate | null
 }
 
-/** Email signatures management drawer entry. */
 export type EmailSignaturesDrawerEntry = {
   kind: 'email-signatures'
 }
 
-/** User profile edit drawer entry. */
 export type ProfileDrawerEntry = {
   kind: 'profile'
 }
 
-/** Organization (team) management drawer entry. */
 export type OrganizationDrawerEntry = {
   kind: 'organization'
 }
 
-/** Campaign creation drawer entry. */
 export type CreateCampaignDrawerEntry = {
   kind: 'create-campaign'
 }
 
-/** Manual prospect creation drawer entry. */
 export type AddProspectDrawerEntry = {
   kind: 'add-prospect'
 }
 
-/** Prospect search (scraping) drawer entry. */
 export type SearchProspectsDrawerEntry = {
   kind: 'search-prospects'
   prefill?: SearchProspectsPrefill
 }
 
-/** Send-policy (email cadence) drawer entry. */
 export type SendPolicyDrawerEntry = {
   kind: 'send-policy'
 }
@@ -98,7 +86,6 @@ export type CoverageFiltersDrawerEntry = {
   kind: 'coverage-filters'
 }
 
-/** Coverage-map zone prospects drawer entry. */
 export type CoverageProspectsDrawerEntry = {
   kind: 'coverage-prospects'
   zone: CoverageZone

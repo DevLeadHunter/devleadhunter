@@ -23,7 +23,6 @@ export type BehaviorSummary = {
   summary: string
 }
 
-/** A behaviour-personalised follow-up draft. */
 export type PersonalizedFollowup = {
   subject: string
   body_html: string

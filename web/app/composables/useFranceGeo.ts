@@ -105,11 +105,8 @@ export function lookupCity(map: Record<string, CityGeo | null>, city: string): C
 
 /** Commune resolved from a map click (reverse geocoding). */
 export type ReverseGeocodedCommune = {
-  /** Commune display name (« Caen »). */
   name: string
-  /** Department code. */
   dept: string
-  /** INSEE region code. */
   region: string
 }
 

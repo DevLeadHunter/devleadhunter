@@ -1,7 +1,5 @@
-/** Visual variant of a DlhButton. */
 export type DlhButtonVariant = 'primary' | 'secondary' | 'danger'
 
-/** Size of a DlhButton. */
 export type DlhButtonSize = 'md' | 'lg'
 
 /** Native button type of a DlhButton. */

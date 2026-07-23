@@ -28,7 +28,6 @@ export type HotLead = {
   signals: Record<string, number | string | null>
 }
 
-/** Hot leads list response. */
 export type HotLeadsResponse = {
   items: HotLead[]
 }
@@ -64,7 +63,6 @@ export type CoverageResponse = {
   cities: CoverageCity[]
   total_prospects: number
   members: CoverageMember[]
-  /** Distinct trades present in the scope (unfiltered) — feeds the trade selector. */
   available_categories: string[]
 }
 
@@ -81,7 +79,6 @@ export type CoverageProspectRow = {
   is_sold: boolean
 }
 
-/** Prospects of a coverage zone. */
 export type CoverageProspectsResponse = {
   items: CoverageProspectRow[]
   total: number

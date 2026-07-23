@@ -71,11 +71,9 @@
 </template>
 
 <script lang="ts" setup>
+import type { LandingSaleStepState } from '~/types/LandingSaleAutomation'
 import type { Ref } from 'vue'
 import { ref, onMounted, onBeforeUnmount } from 'vue'
-
-/** Visual state of one fulfilment step row. */
-type LandingSaleStepState = 'done' | 'active' | 'pending'
 
 /** i18n keys of the four sale bullets. */
 const bulletKeys: string[] = [

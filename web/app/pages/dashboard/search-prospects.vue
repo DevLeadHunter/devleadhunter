@@ -181,19 +181,11 @@
 </template>
 
 <script lang="ts" setup>
+import type { CompletedStat } from '~/types/SearchProspectsPage'
 import type { ComputedRef } from 'vue'
 import { computed, onMounted } from 'vue'
 import { useProspectSearchStore } from '~/stores/prospectSearch'
 import { useDrawerStackStore } from '~/stores/drawerStack'
-
-/** A stat tile for the completed view. */
-type CompletedStat = {
-  label: string
-  value: number
-  icon: string
-  iconBg: string
-  iconColor: string
-}
 
 definePageMeta({
   layout: 'dashboard',

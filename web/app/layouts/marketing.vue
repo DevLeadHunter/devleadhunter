@@ -230,6 +230,7 @@
 </template>
 
 <script lang="ts" setup>
+import type { LandingSectionLink } from '~/types/MarketingLayout'
 import type { Ref, ComputedRef } from 'vue'
 import type { LocaleObject } from '@nuxtjs/i18n'
 import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
@@ -238,22 +239,13 @@ const { locale, locales, setLocale } = useI18n()
 const localePath = useLocalePath()
 const { track } = useSiteTracking()
 
-// i18n SEO for every marketing page: canonical, hreflang alternates, and the correct
-// <html lang> per locale (without this, /fr pages inherit the default lang="en").
+// Sans ce bloc, les pages /fr héritent du lang="en" par défaut.
 const localeHead = useLocaleHead()
 useHead(() => ({
   htmlAttrs: localeHead.value.htmlAttrs,
   link: localeHead.value.link,
   meta: localeHead.value.meta,
 }))
-
-/** A navigation link that scrolls to an on-page landing section. */
-type LandingSectionLink = {
-  /** Anchor target (e.g. `#how-it-works`). */
-  target: string
-  /** i18n key for the link label. */
-  label: string
-}
 
 /** Section links shown in the desktop header and mobile menu. */
 const sectionLinks: LandingSectionLink[] = [

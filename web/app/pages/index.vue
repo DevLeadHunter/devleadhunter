@@ -100,8 +100,6 @@ onMounted(async (): Promise<void> => {
   await loadCreditSettings()
 })
 
-// SEO meta — localized title/description, social cards and JSON-LD.
-// (canonical, hreflang alternates and <html lang> are set by the marketing layout)
 useHead(() => ({
   title: t('landing.seo.title'),
   meta: [

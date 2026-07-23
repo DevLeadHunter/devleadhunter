@@ -114,23 +114,15 @@
 </template>
 
 <script lang="ts" setup>
+import type { SendEmailForm, UiSendEmailDrawerProps } from '~/types/UiSendEmailDrawer'
 import type { PropType, Ref } from 'vue'
 import type { EmailSignature, Prospect } from '~/types'
 import type { SendEmailPrefill } from '~/types/DrawerStack'
-import type { UiSendEmailDrawerProps } from '~/types/UiSendEmailDrawer'
 import { ref, watch } from 'vue'
 import { ApiClient } from '~/services/api'
 import { EmailSignaturesService } from '~/services/emailSignaturesService'
 import { useDrawerStackStore } from '~/stores/drawerStack'
 import { useToast } from '~/composables/useToast'
-
-/** Local shape of the manual send form. */
-type SendEmailForm = {
-  recipient_email: string
-  recipient_name: string
-  subject: string
-  body: string
-}
 
 /** Drawer to compose and send a one-off email. */
 const props: UiSendEmailDrawerProps = defineProps({
@@ -239,8 +231,7 @@ watch(
     if (!open) return
     // Refresh signatures every time the composer is shown (e.g. after managing them).
     void loadSignatures()
-    // Only (re)initialise the form when the recipient changes — returning from
-    // the stacked signatures drawer must NOT wipe a message being written.
+    // Only when the recipient changes: returning from a stacked drawer must not wipe the draft.
     const key: string = props.prefill
       ? `prefill:${props.prefill.recipient_email}|${props.prefill.subject}`
       : `prospect:${props.prospect?.id ?? 'blank'}`

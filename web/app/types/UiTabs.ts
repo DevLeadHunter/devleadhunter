@@ -2,7 +2,6 @@
  * Props & item types for the reusable `UiTabs` component.
  */
 
-/** A single tab entry. */
 export type UiTab = {
   key: string
   label: string

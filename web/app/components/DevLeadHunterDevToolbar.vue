@@ -30,14 +30,10 @@
 </template>
 
 <script lang="ts" setup>
+import type { ToolbarPosition } from '~/types/DevLeadHunterDevToolbar'
 import type { CSSProperties, Ref } from 'vue'
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { AdminStorageService } from '~/services/adminStorageService'
-/** Persisted position of the floating dev toolbar. */
-type ToolbarPosition = {
-  left: number
-  top: number
-}
 
 const STORAGE_KEY: string = 'dlh-devtoolbar-pos'
 
@@ -141,8 +137,7 @@ async function onSyncDatabase(): Promise<void> {
   isSyncing.value = true
   try {
     const message: string = await syncDevDatabaseFromProd()
-    // Le stockage suit la base : sans ça, les démos synchronisées pointeraient
-    // vers des vidéos absentes du bucket dev.
+    // Le stockage suit la base, sinon les démos pointent vers des vidéos absentes du bucket dev.
     let storageMessage = ''
     try {
       const storage = await AdminStorageService.syncStorageFromProd()

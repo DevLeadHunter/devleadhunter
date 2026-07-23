@@ -5,14 +5,8 @@
 import { ApiClient } from './api'
 import type { CampaignFollowUp, CampaignVariantStats } from '~/types'
 
-// ---------------------------------------------------------------------------
-// Types
-// ---------------------------------------------------------------------------
-
-/** Allowed campaign status values. */
 export type CampaignStatus = 'draft' | 'active' | 'completed' | 'paused' | 'cancelled'
 
-/** Allowed queue item status values. */
 export type QueueItemStatus = 'pending' | 'sending' | 'sent' | 'skipped' | 'failed'
 
 export type CampaignProspect = {
@@ -24,7 +18,6 @@ export type CampaignProspect = {
   category: string
   source: string
   confidence: number
-  /** A/B variant assigned at enqueue time (null before launch). */
   ab_variant?: string | null
 }
 
@@ -34,13 +27,10 @@ export type CampaignResponse = {
   name: string
   description?: string | null
   status: CampaignStatus
-  /** J1 template ID (variant A). */
   template_id?: number | null
-  /** J1 template ID for variant B (A/B testing). */
   ab_template_id_b?: number | null
   send_delay_minutes: number
   follow_up_delay_days: number
-  /** Personalise follow-up bodies from demo behaviour (additive). */
   behavior_personalized_followups: boolean
   started_at?: string | null
   created_at: string
@@ -70,11 +60,10 @@ export type CampaignStats = {
   delivery_rate: number
   open_rate: number
   click_rate: number
-  /** Populated only when the campaign has an A/B template. */
   ab_stats?: CampaignVariantStats[] | null
 }
 
-export type CampaignCreateData = {
+export type CampaignCreatePayload = {
   name: string
   description?: string
   status?: CampaignStatus
@@ -84,23 +73,22 @@ export type CampaignCreateData = {
   send_delay_minutes?: number
 }
 
-export type CampaignUpdateData = {
+export type CampaignUpdatePayload = {
   name?: string
   description?: string
   status?: CampaignStatus
 }
 
-export type CampaignSettingsData = {
+export type CampaignSettingsPayload = {
   template_id?: number | null
   ab_template_id_b?: number | null
-  /** Explicitly turn A/B off (since null means "unchanged"). */
   disable_ab?: boolean
   send_delay_minutes?: number
   behavior_personalized_followups?: boolean
   follow_ups?: Array<{ template_id: number; delay_days: number; position: number }>
 }
 
-export type LaunchCampaignData = {
+export type CampaignLaunchPayload = {
   template_id?: number
   ab_template_id_b?: number
   follow_up_template_id?: number
@@ -111,7 +99,6 @@ export type LaunchCampaignData = {
 export type LaunchCampaignResponse = {
   success: boolean
   enqueued: number
-  /** Prospects skipped at launch because they lack an active demo site for {lien_demo}. */
   skipped_no_demo?: Array<{ id: number; name: string }>
   message: string
 }
@@ -135,16 +122,12 @@ export type CampaignQueueResponse = {
   items: CampaignQueueItem[]
 }
 
-// ---------------------------------------------------------------------------
-// Service
-// ---------------------------------------------------------------------------
-
 export class CampaignService {
   /**
    * Create a new campaign.
    * @param data - Campaign creation payload.
    */
-  static async create(data: CampaignCreateData): Promise<CampaignDetailResponse> {
+  static async create(data: CampaignCreatePayload): Promise<CampaignDetailResponse> {
     return ApiClient.post<CampaignDetailResponse>('/api/v1/campaigns', data)
   }
 
@@ -173,7 +156,7 @@ export class CampaignService {
    * @param id   - Campaign ID.
    * @param data - Fields to update.
    */
-  static async update(id: number, data: CampaignUpdateData): Promise<CampaignDetailResponse> {
+  static async update(id: number, data: CampaignUpdatePayload): Promise<CampaignDetailResponse> {
     return ApiClient.patch<CampaignDetailResponse>(`/api/v1/campaigns/${id}`, data)
   }
 
@@ -183,7 +166,7 @@ export class CampaignService {
    * @param id       - Campaign ID.
    * @param settings - Configuration to update.
    */
-  static async updateSettings(id: number, settings: CampaignSettingsData): Promise<CampaignDetailResponse> {
+  static async updateSettings(id: number, settings: CampaignSettingsPayload): Promise<CampaignDetailResponse> {
     return ApiClient.patch<CampaignDetailResponse>(`/api/v1/campaigns/${id}/settings`, settings)
   }
 
@@ -229,7 +212,7 @@ export class CampaignService {
    * @param campaignId - Campaign ID.
    * @param data       - Optional overrides for template, account, timing.
    */
-  static async launch(campaignId: number, data: LaunchCampaignData = {}): Promise<LaunchCampaignResponse> {
+  static async launch(campaignId: number, data: CampaignLaunchPayload = {}): Promise<LaunchCampaignResponse> {
     return ApiClient.post<LaunchCampaignResponse>(`/api/v1/campaigns/${campaignId}/launch`, data)
   }
 

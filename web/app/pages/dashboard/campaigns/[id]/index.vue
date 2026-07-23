@@ -637,6 +637,7 @@
 </template>
 
 <script lang="ts" setup>
+import type { TemplateOption } from '~/types/CampaignDetailPage'
 import { computed, onMounted, ref, watch } from 'vue'
 import type { ComputedRef, Ref } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
@@ -649,13 +650,6 @@ import { formatDate } from '~/utils/date'
 import { useToast } from '~/composables/useToast'
 
 definePageMeta({ layout: 'dashboard', middleware: 'auth' })
-
-/** Lightweight template shape used by the selects. */
-type TemplateOption = {
-  id: number
-  name: string
-  subject: string
-}
 
 const router = useRouter()
 const route = useRoute()
@@ -743,7 +737,7 @@ const campaignId: ComputedRef<number> = computed((): number => Number(route.para
 
 const availableProspects: ComputedRef<Prospect[]> = computed((): Prospect[] => {
   if (!campaign.value) return []
-  const existingIds: Set<number> = new Set(campaign.value.prospects.map((p) => p.id))
+  const existingIds: Set<number> = new Set(campaign.value.prospects.map((prospect) => prospect.id))
   return allProspects.value.filter((p: Prospect): boolean => !existingIds.has(p.id))
 })
 

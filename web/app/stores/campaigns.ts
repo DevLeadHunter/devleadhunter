@@ -1,13 +1,13 @@
 import { defineStore } from 'pinia'
-import type { Ref } from 'vue'
+import type { ComputedRef, Ref } from 'vue'
 import { ref, computed } from 'vue'
 import type {
-  CampaignCreateData,
+  CampaignCreatePayload,
   CampaignDetailResponse,
   CampaignResponse,
   CampaignStats,
   CampaignStatus,
-  CampaignUpdateData,
+  CampaignUpdatePayload,
 } from '~/services/campaignService'
 import { CampaignService } from '~/services/campaignService'
 /** Pinia store for campaign CRUD and prospect membership. */
@@ -20,13 +20,19 @@ export const useCampaignsStore = defineStore('campaigns', () => {
   const error: Ref<string | null> = ref(null)
 
   // Getters
-  const campaignsCount = computed(() => campaigns.value.length)
+  const campaignsCount: ComputedRef<number> = computed(() => campaigns.value.length)
 
-  const activeCampaigns = computed(() => campaigns.value.filter((c) => c.status === 'active'))
+  const activeCampaigns: ComputedRef<CampaignResponse[]> = computed(() =>
+    campaigns.value.filter((campaign) => campaign.status === 'active'),
+  )
 
-  const completedCampaigns = computed(() => campaigns.value.filter((c) => c.status === 'completed'))
+  const completedCampaigns: ComputedRef<CampaignResponse[]> = computed(() =>
+    campaigns.value.filter((campaign) => campaign.status === 'completed'),
+  )
 
-  const draftCampaigns = computed(() => campaigns.value.filter((c) => c.status === 'draft'))
+  const draftCampaigns: ComputedRef<CampaignResponse[]> = computed(() =>
+    campaigns.value.filter((campaign) => campaign.status === 'draft'),
+  )
 
   /**
    * Fetch all campaigns for the user
@@ -99,7 +105,7 @@ export const useCampaignsStore = defineStore('campaigns', () => {
    * @returns Created campaign
    * @throws If creation fails
    */
-  async function createCampaign(data: CampaignCreateData): Promise<CampaignDetailResponse> {
+  async function createCampaign(data: CampaignCreatePayload): Promise<CampaignDetailResponse> {
     try {
       isLoading.value = true
       error.value = null
@@ -128,7 +134,7 @@ export const useCampaignsStore = defineStore('campaigns', () => {
    * @returns Updated campaign
    * @throws If update fails
    */
-  async function updateCampaign(id: number, data: CampaignUpdateData): Promise<CampaignResponse> {
+  async function updateCampaign(id: number, data: CampaignUpdatePayload): Promise<CampaignResponse> {
     try {
       isLoading.value = true
       error.value = null
@@ -136,7 +142,7 @@ export const useCampaignsStore = defineStore('campaigns', () => {
       const campaign = await CampaignService.update(id, data)
 
       // Update in campaigns list
-      const index = campaigns.value.findIndex((c) => c.id === id)
+      const index = campaigns.value.findIndex((campaign) => campaign.id === id)
       if (index !== -1) {
         campaigns.value[index] = campaign
       }
@@ -172,7 +178,7 @@ export const useCampaignsStore = defineStore('campaigns', () => {
       await CampaignService.delete(id)
 
       // Remove from campaigns list
-      campaigns.value = campaigns.value.filter((c) => c.id !== id)
+      campaigns.value = campaigns.value.filter((campaign) => campaign.id !== id)
 
       // Clear current campaign if it's the one being deleted
       if (currentCampaign.value?.id === id) {
@@ -204,7 +210,7 @@ export const useCampaignsStore = defineStore('campaigns', () => {
       currentCampaign.value = campaign
 
       // Update in campaigns list
-      const index = campaigns.value.findIndex((c) => c.id === campaignId)
+      const index = campaigns.value.findIndex((campaign) => campaign.id === campaignId)
       if (index !== -1) {
         campaigns.value.splice(index, 1, { ...campaign })
       }
@@ -234,7 +240,7 @@ export const useCampaignsStore = defineStore('campaigns', () => {
       currentCampaign.value = campaign
 
       // Update in campaigns list
-      const index = campaigns.value.findIndex((c) => c.id === campaignId)
+      const index = campaigns.value.findIndex((campaign) => campaign.id === campaignId)
       if (index !== -1) {
         campaigns.value.splice(index, 1, { ...campaign })
       }
@@ -252,7 +258,7 @@ export const useCampaignsStore = defineStore('campaigns', () => {
    * @returns The campaign or undefined if not found
    */
   function getCampaignById(id: number): CampaignResponse | undefined {
-    return campaigns.value.find((c) => c.id === id)
+    return campaigns.value.find((campaign) => campaign.id === id)
   }
 
   return {

@@ -78,17 +78,12 @@
 </template>
 
 <script lang="ts" setup>
+import type { ProfileForm } from '~/types/UiProfileDrawer'
 import type { ComputedRef, Ref } from 'vue'
 import type { UiDrawerProps } from '~/types/UiDrawer'
 import { computed, ref, watch } from 'vue'
 import { useUserStore } from '~/stores/user'
 import { useToast } from '~/composables/useToast'
-
-/** Local shape of the profile form. */
-type ProfileForm = {
-  name: string
-  email: string
-}
 
 /** User profile and password drawer. */
 const props: UiDrawerProps = defineProps({

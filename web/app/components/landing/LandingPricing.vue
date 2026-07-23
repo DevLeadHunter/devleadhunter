@@ -65,9 +65,9 @@
 </template>
 
 <script lang="ts" setup>
+import type { LandingPricingStat, LandingPricingProps } from '~/types/LandingPricing'
 import type { PropType, ComputedRef } from 'vue'
 import type { CreditSettings } from '~/types'
-import type { LandingPricingProps } from '~/types/LandingPricing'
 import { computed } from 'vue'
 
 /** Landing pricing section with credit packs from settings. */
@@ -86,14 +86,6 @@ const props: LandingPricingProps = defineProps({
 const { locale } = useI18n()
 const localePath = useLocalePath()
 const { track } = useSiteTracking()
-
-/** One credit metric displayed in the pricing card. */
-type LandingPricingStat = {
-  /** Formatted value (count or price). */
-  value: string
-  /** i18n key of the metric label. */
-  labelKey: string
-}
 
 /**
  * Format a price in EUR for the active locale.

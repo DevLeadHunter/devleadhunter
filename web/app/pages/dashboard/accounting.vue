@@ -495,7 +495,7 @@
 
 <script lang="ts" setup>
 import type { AccountingResponse, CreditPurchaseTransaction } from '~/types'
-import type { Ref } from 'vue'
+import type { ComputedRef, Ref } from 'vue'
 import { ref, computed, onMounted, watch } from 'vue'
 import { AccountingService } from '~/services/accountingService'
 
@@ -546,7 +546,7 @@ const sortDirection: Ref<'asc' | 'desc'> = ref('desc')
 /**
  * Status options for filter dropdown
  */
-const statusOptions = computed(() => {
+const statusOptions: ComputedRef<string[]> = computed(() => {
   const statuses = new Set<string>()
   rawTransactions.value.forEach((transaction) => {
     const status = transaction.payment_info?.status
@@ -680,11 +680,13 @@ const pageSize: Ref<number> = ref(20)
 /**
  * Totals and derived pagination values
  */
-const totalTransactions = computed(() => accountingData.value?.summary?.total_transactions || 0)
-const totalPages = computed(() => Math.max(1, Math.ceil(totalTransactions.value / pageSize.value)))
-const showPagination = computed(() => totalTransactions.value > pageSize.value)
-const pageStart = computed(() => (totalTransactions.value === 0 ? 0 : (page.value - 1) * pageSize.value + 1))
-const pageEnd = computed(() => Math.min(page.value * pageSize.value, totalTransactions.value))
+const totalTransactions: ComputedRef<number> = computed(() => accountingData.value?.summary?.total_transactions || 0)
+const totalPages: ComputedRef<number> = computed(() => Math.max(1, Math.ceil(totalTransactions.value / pageSize.value)))
+const showPagination: ComputedRef<boolean> = computed(() => totalTransactions.value > pageSize.value)
+const pageStart: ComputedRef<number> = computed(() =>
+  totalTransactions.value === 0 ? 0 : (page.value - 1) * pageSize.value + 1,
+)
+const pageEnd: ComputedRef<number> = computed(() => Math.min(page.value * pageSize.value, totalTransactions.value))
 
 /**
  * Utility: coerce value to number

@@ -21,10 +21,10 @@
 </template>
 
 <script lang="ts" setup>
-import type { PropType } from 'vue'
+import type { ProspectSourcePresentation, UiProspectSourceBadgeProps } from '~/types/UiProspectSourceBadge'
+import type { ComputedRef, PropType } from 'vue'
 import { computed } from 'vue'
 import type { ProspectSource } from '~/types'
-import type { UiProspectSourceBadgeProps } from '~/types/UiProspectSourceBadge'
 
 /** Badge naming the acquisition source a prospect came from. */
 const props: UiProspectSourceBadgeProps = defineProps({
@@ -34,16 +34,8 @@ const props: UiProspectSourceBadgeProps = defineProps({
   },
 })
 
-type SourceConfig = {
-  label: string
-  logoUrl: string | null
-  icon: string
-  bg: string
-  text: string
-}
-
 /** Per-source badge colours and favicon logos for prospect origin. */
-const SOURCE_CONFIG: Record<string, SourceConfig> = {
+const SOURCE_CONFIG: Record<string, ProspectSourcePresentation> = {
   pagesjaunes: {
     label: 'Pages Jaunes',
     logoUrl: 'https://www.google.com/s2/favicons?domain=pagesjaunes.fr&sz=32',
@@ -59,9 +51,7 @@ const SOURCE_CONFIG: Record<string, SourceConfig> = {
     text: 'text-white',
   },
   osm: {
-    // OSM/Bright Data : favicon distant illisible à 14 px (logo détaillé fondu
-    // dans le fond) → icône lucide nette + couleur franche, au niveau des
-    // badges Pages Jaunes / Yelp.
+    // OSM/Bright Data : leur favicon distant est illisible à 14 px, d'où une icône locale.
     label: 'OpenStreetMap',
     logoUrl: null,
     icon: 'i-lucide-map-pinned',
@@ -99,7 +89,7 @@ const SOURCE_CONFIG: Record<string, SourceConfig> = {
 }
 
 /** Fallback for unknown / future sources */
-const FALLBACK: SourceConfig = {
+const FALLBACK: ProspectSourcePresentation = {
   label: '',
   logoUrl: null,
   icon: 'i-lucide-database',
@@ -107,7 +97,7 @@ const FALLBACK: SourceConfig = {
   text: 'text-white',
 }
 
-const config = computed((): SourceConfig => {
+const config: ComputedRef<ProspectSourcePresentation> = computed((): ProspectSourcePresentation => {
   return SOURCE_CONFIG[props.source] ?? { ...FALLBACK, label: props.source }
 })
 </script>

@@ -11,16 +11,9 @@
 </template>
 
 <script lang="ts" setup>
+import type { CalloutToneClasses, UiCalloutProps, UiCalloutVariant } from '~/types/UiCallout'
 import type { ComputedRef, PropType } from 'vue'
 import { computed } from 'vue'
-import type { UiCalloutProps, UiCalloutVariant } from '~/types/UiCallout'
-
-type CalloutStyle = {
-  icon: string
-  accent: string
-  bg: string
-  border: string
-}
 
 /** Inline callout notice with semantic variant styling. */
 const props: UiCalloutProps = defineProps({
@@ -35,7 +28,7 @@ const props: UiCalloutProps = defineProps({
 })
 
 /** Per-variant colour tokens (theme-aware via CSS variables). */
-const STYLES: Record<UiCalloutVariant, CalloutStyle> = {
+const STYLES: Record<UiCalloutVariant, CalloutToneClasses> = {
   info: {
     icon: 'i-lucide-info',
     accent: 'var(--app-blue)',
@@ -63,5 +56,5 @@ const STYLES: Record<UiCalloutVariant, CalloutStyle> = {
 }
 
 /** Resolved style for the current variant. */
-const style: ComputedRef<CalloutStyle> = computed((): CalloutStyle => STYLES[props.variant ?? 'info'])
+const style: ComputedRef<CalloutToneClasses> = computed((): CalloutToneClasses => STYLES[props.variant ?? 'info'])
 </script>

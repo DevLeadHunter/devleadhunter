@@ -4,6 +4,5 @@ export type SelectFieldOption = {
 }
 
 export type SelectFieldProps = {
-  modelValue: string
   options: SelectFieldOption[]
 }

@@ -199,7 +199,9 @@
 </template>
 
 <script lang="ts" setup>
-import type { Ref } from 'vue'
+import type { EngagementStep } from '~/types/EmailsListPage'
+import type { SelectFieldOption } from '~/types/SelectField'
+import type { ComputedRef, Ref } from 'vue'
 import { computed, onMounted, ref, watch } from 'vue'
 import type { EmailLog, EmailStats, EmailStatus } from '~/types'
 import { formatDate } from '~/utils/date'
@@ -254,12 +256,12 @@ const statusOptions = [
   { value: 'complained', label: 'Spam' },
 ]
 
-const campaignOptions = computed(() => [
+const campaignOptions: ComputedRef<SelectFieldOption[]> = computed(() => [
   { value: 'all', label: 'Toutes les campagnes' },
-  ...campaigns.value.map((c) => ({ value: String(c.id), label: c.name })),
+  ...campaigns.value.map((campaign) => ({ value: String(campaign.id), label: campaign.name })),
 ])
 
-const filteredLogs = computed((): EmailLog[] => {
+const filteredLogs: ComputedRef<EmailLog[]> = computed((): EmailLog[] => {
   let list = logs.value
 
   if (searchQuery.value) {
@@ -277,17 +279,18 @@ const filteredLogs = computed((): EmailLog[] => {
   }
 
   if (filterCampaignId.value !== 'all') {
-    // campaign_id on EmailLog is ``string | null`` from the backend; compare
-    // against the filter value (also a string) to avoid Number(null) → 0 bugs.
+    // Comparaison en chaîne : Number(null) vaudrait 0 et matcherait la première campagne.
     list = list.filter((l) => l.campaign_id != null && String(l.campaign_id) === filterCampaignId.value)
   }
 
   return list
 })
 
-const totalPages = computed((): number => Math.max(1, Math.ceil(filteredLogs.value.length / pageSize)))
+const totalPages: ComputedRef<number> = computed((): number =>
+  Math.max(1, Math.ceil(filteredLogs.value.length / pageSize)),
+)
 
-const paginatedLogs = computed((): EmailLog[] => {
+const paginatedLogs: ComputedRef<EmailLog[]> = computed((): EmailLog[] => {
   const start = (currentPage.value - 1) * pageSize
   return filteredLogs.value.slice(start, start + pageSize)
 })
@@ -301,7 +304,7 @@ function resolveCampaignName(id: string | number | null | undefined): string | u
   if (id == null) return undefined
   const numericId = Number(id)
   if (Number.isNaN(numericId)) return undefined
-  return campaigns.value.find((c) => c.id === numericId)?.name
+  return campaigns.value.find((campaign) => campaign.id === numericId)?.name
 }
 
 /**
@@ -324,15 +327,6 @@ function getEmailBadges(log: EmailLog): EmailStatus[] {
   }
 
   return badges
-}
-
-/** A single engagement signal (delivered / opened / clicked) for the table. */
-type EngagementStep = {
-  key: string
-  label: string
-  icon: string
-  ts: string | null | undefined
-  color: string
 }
 
 /**

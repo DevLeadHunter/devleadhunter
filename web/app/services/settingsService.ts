@@ -4,23 +4,15 @@
  */
 import { ApiClient } from './api'
 
-// ---------------------------------------------------------------------------
-// Types
-// ---------------------------------------------------------------------------
-
 /**
  * Resend configuration as returned by the API.
  * Raw credentials are never exposed — only boolean flags indicate whether
  * they are stored.
  */
 export type ResendConfigResponse = {
-  /** Whether an API key is currently stored for this user. */
   has_api_key: boolean
-  /** Whether a webhook secret is currently stored for this user. */
   has_webhook_secret: boolean
-  /** Verified sender address (e.g. ``leo@mail.dibodev.fr``). */
   from_email: string | null
-  /** Sender display name shown to recipients. */
   from_name: string | null
 }
 
@@ -28,13 +20,9 @@ export type ResendConfigResponse = {
  * Payload for creating or updating the Resend configuration.
  */
 export type ResendConfigUpdate = {
-  /** Resend API key (``re_…``). */
   api_key: string
-  /** Resend webhook signing secret (``whsec_…``). Optional. */
   webhook_secret?: string
-  /** Verified sender address. */
   from_email: string
-  /** Sender display name. */
   from_name?: string
 }
 
@@ -46,21 +34,12 @@ export type SendingProvider = 'resend' | 'gmail'
  * a readiness flag for each provider.
  */
 export type SendingIdentityResponse = {
-  /** Currently active transport (``resend`` | ``gmail``). */
   provider: SendingProvider
-  /** Whether the Resend config (API key + from address) is usable. */
   resend_configured: boolean
-  /** Verified Resend sender address, when configured. */
   resend_from_email: string | null
-  /** Whether a Gmail account is connected and usable. */
   gmail_configured: boolean
-  /** Connected Gmail address, when present. */
   gmail_email: string | null
 }
-
-// ---------------------------------------------------------------------------
-// Service
-// ---------------------------------------------------------------------------
 
 /** HTTP client for the /settings API resource. */
 export class SettingsService {

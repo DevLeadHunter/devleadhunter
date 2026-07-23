@@ -14,13 +14,9 @@ export type RecorderDevice = {
 
 /** One finished take, kept in memory until the three are sent. */
 export type RecordedTake = {
-  /** Raw recording, ready to be posted as a file. */
   blob: Blob
-  /** Object URL for the review player (revoked by {@link releaseTake}). */
   url: string
-  /** Measured client-side; the API re-measures with ffmpeg before storing. */
   durationSeconds: number
-  /** File extension matching the container the browser produced. */
   extension: string
 }
 
@@ -190,9 +186,7 @@ export function useWebcamRecorder(): {
     if (source.getAudioTracks().length === 0) return
     try {
       audioContext = new AudioContext()
-      // Un contexte créé hors interaction démarre « suspended » : sans ce
-      // resume, le VU-mètre resterait à zéro et ferait croire à un micro mort,
-      // exactement le problème qu'il est censé éviter.
+      // Un contexte créé hors interaction démarre « suspended » : le VU-mètre resterait à zéro.
       if (audioContext.state === 'suspended') void audioContext.resume().catch((): void => undefined)
       analyser = audioContext.createAnalyser()
       analyser.fftSize = 512

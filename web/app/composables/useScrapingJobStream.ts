@@ -1,3 +1,4 @@
+import type { UseScrapingJobStreamReturn } from '~/types/Composables'
 import { ref, type Ref } from 'vue'
 import { useRuntimeConfig } from '#app'
 import type { Prospect } from '~/types'
@@ -24,6 +25,13 @@ export type ScrapingJobStreamEvent =
   | { type: 'cancelled'; summary: { added: number; skipped_duplicates: number } }
   | { type: 'error'; message: string }
 
+export type ScrapingJobHydrationPayload = {
+  logs?: string[]
+  live_prospects?: Prospect[]
+  progress?: ScrapingJobProgressState
+  skipped_duplicates?: number
+}
+
 export type ScrapingJobStreamHandlers = {
   onDone?: (summary: { added: number; skipped_duplicates: number; status: string }) => void
   onCancelled?: (summary: { added: number; skipped_duplicates: number }) => void
@@ -41,12 +49,12 @@ const defaultProgress = (): ScrapingJobProgressState => ({
 /**
  *
  */
-export function useScrapingJobStream() {
+export function useScrapingJobStream(): UseScrapingJobStreamReturn {
   const logs: Ref<string[]> = ref([])
   const prospects: Ref<Prospect[]> = ref([])
   const progress: Ref<ScrapingJobProgressState> = ref(defaultProgress())
-  const isConnected = ref(false)
-  const skippedDuplicates = ref(0)
+  const isConnected: Ref<boolean> = ref(false)
+  const skippedDuplicates: Ref<number> = ref(0)
 
   let websocket: WebSocket | null = null
   let handlers: ScrapingJobStreamHandlers = {}
@@ -111,21 +119,14 @@ export function useScrapingJobStream() {
   /**
    *
    */
-  function hydrateFromJob(job: {
-    logs?: string[]
-    live_prospects?: Prospect[]
-    progress?: ScrapingJobProgressState
-    skipped_duplicates?: number
-  }): void {
+  function hydrateFromJob(job: ScrapingJobHydrationPayload): void {
     logs.value = [...(job.logs ?? [])]
     prospects.value = [...(job.live_prospects ?? [])]
     progress.value = job.progress ? { ...job.progress } : defaultProgress()
     skippedDuplicates.value = job.skipped_duplicates ?? 0
   }
 
-  /**
-   *
-   */
+  /** Clear logs, prospects, progress and counters back to their initial state. */
   function reset(): void {
     logs.value = []
     prospects.value = []

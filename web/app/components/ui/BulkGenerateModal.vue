@@ -40,7 +40,7 @@
           </div>
           <p v-if="result.skipped_no_email.length" class="text-muted text-xs leading-relaxed">
             Ignorés (pas d'email) :
-            {{ result.skipped_no_email.map((s) => s.name || `#${s.id}`).join(', ') }}
+            {{ result.skipped_no_email.map((prospect) => prospect.name || `#${prospect.id}`).join(', ') }}
           </p>
           <button type="button" class="btn-primary w-full" @click="emit('close')">Fermer</button>
         </div>

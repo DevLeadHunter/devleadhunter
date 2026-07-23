@@ -198,22 +198,12 @@
 </template>
 
 <script lang="ts" setup>
+import type { SearchFormState, SearchProspectsDrawerProps, SearchProspectsPrefill } from '~/types/SearchProspectsDrawer'
 import type { ComputedRef, PropType, Ref } from 'vue'
 import { computed, ref, watch } from 'vue'
-import type { SearchProspectsDrawerProps, SearchProspectsPrefill } from '~/types/SearchProspectsDrawer'
 import { PROSPECT_SOURCE_SEARCH_OPTIONS } from '~/constants/prospectSources'
 import { useProspectSearchStore } from '~/stores/prospectSearch'
 import { useToast } from '~/composables/useToast'
-
-/** Local search form state. */
-type SearchFormState = {
-  category: string
-  city: string
-  maxResults: number
-  source: string
-  skipDuplicates: boolean
-  onlyWithoutWebsite: boolean
-}
 
 const STORAGE_KEY: string = 'devleadhunter-search-form'
 
@@ -322,8 +312,7 @@ async function submit(): Promise<void> {
   }
 }
 
-// Load the saved form each time the drawer opens, then apply the host prefill
-// (e.g. « Prospecter » a suggested city from the coverage map) on top of it.
+// Le préremplissage de l'hôte s'applique par-dessus le formulaire sauvegardé.
 watch(
   (): boolean => props.open,
   (open: boolean): void => {
@@ -335,9 +324,7 @@ watch(
   { immediate: true },
 )
 
-// A new prefill while the drawer is already open (e.g. clicking another city on
-// the coverage map) must update the form too — the stack replaces the entry
-// without closing the drawer, so the `open` watcher never re-fires.
+// La pile remplace l'entrée sans fermer le drawer : le watcher `open` ne se redéclenche pas.
 watch(
   (): SearchProspectsPrefill | null => props.prefill ?? null,
   (prefill: SearchProspectsPrefill | null): void => {

@@ -1,9 +1,10 @@
+import type { UseCopyToClipboardReturn } from '~/types/Composables'
 import { useToast } from '~/composables/useToast'
 
 /**
  * Copy text to the clipboard with toast feedback.
  */
-export function useCopyToClipboard() {
+export function useCopyToClipboard(): UseCopyToClipboardReturn {
   const toast = useToast()
   const copied: Ref<boolean> = ref(false)
 

@@ -157,6 +157,7 @@
 </template>
 
 <script lang="ts" setup>
+import type { SupportWebsocketEvent } from '~/types/SupportTicketPage'
 import type { ComputedRef, Ref } from 'vue'
 import type { SupportMessage, SupportTicketDetail } from '~/types'
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
@@ -192,12 +193,6 @@ const ALLOWED_TYPES: string[] = ['image/png', 'image/jpeg', 'image/webp']
 
 /** Maximum attachment size, in bytes. */
 const MAX_ATTACHMENT_BYTES: number = 8 * 1024 * 1024
-
-/** Shape of the realtime events pushed on the support websockets. */
-type SupportWebsocketEvent = {
-  event?: string
-  data?: Record<string, unknown>
-}
 
 const route = useRoute()
 const toast = useToast()

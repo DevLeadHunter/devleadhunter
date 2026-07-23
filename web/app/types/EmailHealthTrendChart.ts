@@ -1,7 +1,6 @@
 /** Color tones resolved to Atelier CSS variables inside the chart. */
 export type EmailHealthChartTone = 'green' | 'red' | 'amber' | 'blue' | 'ink'
 
-/** One plotted series. */
 export type EmailHealthChartSeries = {
   key: string
   label: string

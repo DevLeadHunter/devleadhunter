@@ -419,10 +419,10 @@
 </template>
 
 <script lang="ts" setup>
+import type { LighthouseGauge, ProspectEditForm, UiProspectDrawerProps } from '~/types/UiProspectDrawer'
 import type { ComputedRef, PropType, Ref } from 'vue'
 import { ref, computed, watch } from 'vue'
 import type { Prospect, ProspectUpdatePayload } from '~/types'
-import type { UiProspectDrawerProps } from '~/types/UiProspectDrawer'
 import { ProspectsService } from '~/services/prospectsService'
 import { useToast } from '~/composables/useToast'
 import { useUserStore } from '~/stores/user'
@@ -486,12 +486,6 @@ const isReservedByOther: ComputedRef<boolean> = computed(
   (): boolean =>
     props.prospect?.reserved_by_user_id != null && props.prospect.reserved_by_user_id !== currentUserId.value,
 )
-
-type LighthouseGauge = {
-  label: string
-  score: number | null
-  color: string
-}
 
 /** The four Lighthouse category gauges (red < 50, amber < 90, green otherwise). */
 const lighthouseGauges: ComputedRef<LighthouseGauge[]> = computed((): LighthouseGauge[] => {
@@ -567,17 +561,7 @@ async function handleLighthouse(): Promise<void> {
   }
 }
 
-type EditForm = {
-  name: string
-  phone: string
-  email: string
-  website: string
-  address: string
-  city: string
-  category: string
-}
-
-const editForm: Ref<EditForm> = ref({
+const editForm: Ref<ProspectEditForm> = ref({
   name: '',
   phone: '',
   email: '',
@@ -601,7 +585,7 @@ watch(
 )
 
 /** Confidence indicator dot colour */
-const confidenceColor = computed((): string => {
+const confidenceColor: ComputedRef<string> = computed((): string => {
   switch (props.prospect?.confidence) {
     case 1:
       return 'bg-[var(--app-red)]'

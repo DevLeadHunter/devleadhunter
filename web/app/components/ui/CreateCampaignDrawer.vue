@@ -130,6 +130,7 @@
 </template>
 
 <script lang="ts" setup>
+import type { CreateCampaignForm } from '~/types/UiCreateCampaignDrawer'
 import type { Ref } from 'vue'
 import { ref, watch } from 'vue'
 import type { EmailTemplate } from '~/types'
@@ -138,15 +139,6 @@ import { useCampaignsStore } from '~/stores/campaigns'
 import { useDrawerStackStore } from '~/stores/drawerStack'
 import { useToast } from '~/composables/useToast'
 import { EmailTemplatesService } from '~/services/emailTemplatesService'
-/** Local shape of the campaign creation form. */
-type CreateCampaignForm = {
-  name: string
-  description: string
-  /** Template ID for variant A (0 = none selected). */
-  templateIdA: number
-  /** Template ID for variant B / A/B test (0 = none). */
-  templateIdB: number
-}
 
 /** Drawer to create an email campaign. */
 const props: UiDrawerProps = defineProps({
@@ -246,8 +238,7 @@ async function handleCreate(): Promise<void> {
   }
 }
 
-// Reset and reload only on fresh open (stack was empty before we were pushed),
-// NOT when returning from a nested drawer like the email-template creator.
+// Only on a fresh open: returning from a nested drawer must not reset the form.
 watch(
   (): boolean => props.open,
   (open: boolean): void => {
@@ -263,8 +254,7 @@ watch(
   },
 )
 
-// When a template is saved from the nested email-template drawer, refresh the
-// list and auto-select the new template in whichever slot triggered the action.
+// Auto-selects the new template in whichever slot opened the nested drawer.
 watch(
   (): number => drawerStack.emailTemplatesRefreshCounter,
   async (): Promise<void> => {

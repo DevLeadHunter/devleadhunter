@@ -243,8 +243,9 @@
 </template>
 
 <script lang="ts" setup>
+import type { PresenterVideoCaptureMode } from '~/types/PresenterVideoConfig'
 import type { ComputedRef, Ref } from 'vue'
-import type { PresenterVideoInfo } from '~/services/presenterVideoService'
+import type { PresenterVideo } from '~/services/presenterVideoService'
 import type { ProspectionScriptSegment } from '~/composables/useProspectionScript'
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { PresenterVideoService } from '~/services/presenterVideoService'
@@ -259,11 +260,14 @@ const emit = defineEmits<{
   'has-video': [hasVideo: boolean]
 }>()
 
-/** How the user can obtain the clip. */
-type CaptureMode = 'record' | 'import'
-
 /** The two ways in, offered side by side when no clip exists yet. */
-const CAPTURE_OPTIONS: Array<{ mode: CaptureMode; icon: string; title: string; detail: string; badge: string }> = [
+const CAPTURE_OPTIONS: Array<{
+  mode: PresenterVideoCaptureMode
+  icon: string
+  title: string
+  detail: string
+  badge: string
+}> = [
   {
     mode: 'record',
     icon: 'i-lucide-video',
@@ -287,7 +291,7 @@ const RECORDING_TIPS: string[] = ['1080p suffit', 'Lumière face à vous', 'Rega
 const toast = useToast()
 const { user } = useAuth()
 
-const info: Ref<PresenterVideoInfo | null> = ref(null)
+const info: Ref<PresenterVideo | null> = ref(null)
 const previewUrl: Ref<string | null> = ref(null)
 const isLoading: Ref<boolean> = ref(true)
 const isUploading: Ref<boolean> = ref(false)
@@ -300,7 +304,7 @@ const deleteModalRef: Ref<{ open: () => void } | null> = ref(null)
 const introSeconds: Ref<number> = ref(4)
 const outroSeconds: Ref<number> = ref(5)
 const autoGenerate: Ref<boolean> = ref(true)
-const captureMode: Ref<CaptureMode | null> = ref(null)
+const captureMode: Ref<PresenterVideoCaptureMode | null> = ref(null)
 
 /** Whether the stored clip was filmed in-app (its cut points are measured). */
 const isRecordedClip: ComputedRef<boolean> = computed((): boolean => info.value?.source === 'recorded')
@@ -359,7 +363,7 @@ function releasePreview(): void {
  * Sync the local form state from a fresh API payload.
  * @param payload - Clip metadata returned by the API.
  */
-function applyInfo(payload: PresenterVideoInfo): void {
+function applyInfo(payload: PresenterVideo): void {
   info.value = payload
   introSeconds.value = payload.intro_seconds ?? 4
   outroSeconds.value = payload.outro_seconds ?? 5
@@ -408,7 +412,7 @@ function formatSegment(seconds: number): string {
  * Adopt the clip just assembled from the three in-app takes.
  * @param payload - Fresh clip metadata returned by the API.
  */
-async function handleRecorded(payload: PresenterVideoInfo): Promise<void> {
+async function handleRecorded(payload: PresenterVideo): Promise<void> {
   applyInfo(payload)
   captureMode.value = null
   releasePreview()
@@ -502,8 +506,7 @@ async function handleDeleteConfirmed(): Promise<void> {
   try {
     applyInfo(await PresenterVideoService.deletePresenterVideo())
     releasePreview()
-    // Repartir du choix « filmer ici / importer » plutôt que de la méthode
-    // utilisée la fois précédente.
+    // Repartir du choix, pas de la méthode utilisée la fois précédente.
     captureMode.value = null
     toast.success('Clip supprimé')
   } catch (err: unknown) {

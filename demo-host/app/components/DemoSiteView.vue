@@ -4,8 +4,7 @@
 
 <script lang="ts" setup>
 import type { Component, ComputedRef, PropType, Ref } from 'vue'
-// The component OBJECT is passed to `<component :is>`, never a name string: Nuxt auto-imported
-// components are not resolvable by runtime name and would render blank in prod on a green build.
+// L'objet composant, jamais son nom : un nom en chaîne rend vide en prod sur un build vert.
 import {
   LazyArtisanEditoRoot,
   LazyPlumberSignatureRoot,

@@ -122,8 +122,7 @@ function onInput(): void {
   if (editableRef.value) model.value = editableRef.value.innerHTML
 }
 
-// Sync external changes (opening the editor for another signature, source edits)
-// into the contenteditable — but never while the user is typing in it.
+// Jamais pendant la frappe : réécrire le contenteditable déplacerait le curseur.
 watch(
   (): [string, boolean] => [model.value, showSource.value],
   (): void => {

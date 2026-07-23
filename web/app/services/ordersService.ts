@@ -28,7 +28,6 @@ export type OrderListResponse = {
   total: number
 }
 
-/** Payload to create a manual order. */
 export type OrderCreatePayload = {
   product_type?: string
   prospect_id?: number | null
@@ -44,7 +43,6 @@ export type OrderCreatePayload = {
 /** Partial update of an order. */
 export type OrderUpdatePayload = Partial<OrderCreatePayload> & { status?: string }
 
-/** Rendered payment-link email preview. */
 export type OrderPaymentEmailPreview = {
   subject: string
   body_html: string

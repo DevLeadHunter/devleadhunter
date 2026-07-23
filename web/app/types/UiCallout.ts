@@ -8,3 +8,10 @@ export type UiCalloutProps = {
   variant?: UiCalloutVariant
   icon?: string
 }
+
+export type CalloutToneClasses = {
+  icon: string
+  accent: string
+  bg: string
+  border: string
+}

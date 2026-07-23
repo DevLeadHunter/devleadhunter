@@ -286,7 +286,7 @@
 
 <script lang="ts" setup>
 import type { UserRole, User } from '~/types'
-import type { Ref } from 'vue'
+import type { ComputedRef, Ref } from 'vue'
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { UsersService } from '~/services/usersService'
 import { useToast } from '~/composables/useToast'
@@ -346,7 +346,7 @@ const toast = useToast()
 /**
  * Filtered users based on search query
  */
-const filteredUsers = computed(() => {
+const filteredUsers: ComputedRef<User[]> = computed(() => {
   if (!searchQuery.value) return users.value
   const query = searchQuery.value.toLowerCase()
   return users.value.filter(

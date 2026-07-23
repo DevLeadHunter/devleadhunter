@@ -201,9 +201,7 @@ async function restartApp(): Promise<void> {
  * Check for updates once per session and show the panel when available.
  */
 async function checkForUpdate(): Promise<void> {
-  // Only the packaged production desktop app self-updates. In local dev (`tauri:dev`)
-  // there is no updater endpoint/signature, so check() fails and shows a spurious
-  // "Update failed" panel — skip the updater entirely there (and in the browser).
+  // Dev has no updater endpoint, so checking there shows a spurious "Update failed" panel.
   if (!import.meta.client || !isProdDesktop.value) {
     return
   }

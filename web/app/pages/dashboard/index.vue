@@ -259,6 +259,7 @@
 </template>
 
 <script lang="ts" setup>
+import type { FunnelBarStage, PipelineTile } from '~/types/DashboardHomePage'
 import type { ComputedRef, Ref } from 'vue'
 import { computed, onMounted, ref } from 'vue'
 import type { DashboardStats, HotLead } from '~/services/dashboardService'
@@ -272,25 +273,6 @@ definePageMeta({
   layout: 'dashboard',
   middleware: ['auth'],
 })
-
-/** One clickable stage of the pipeline strip. */
-type PipelineTile = {
-  label: string
-  value: string
-  hint: string
-  icon: string
-  to: string
-  linkLabel: string
-}
-
-/** One bar of the compact conversion funnel. */
-type FunnelBarStage = {
-  label: string
-  value: number
-  widthPct: number
-  stepRate: number
-  color: string
-}
 
 /** Shortcuts of the quick-actions card (the search one opens a drawer instead). */
 const QUICK_LINKS: { to: string; label: string; hint: string; icon: string }[] = [

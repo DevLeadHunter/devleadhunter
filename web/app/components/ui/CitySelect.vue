@@ -7,7 +7,7 @@
       autocomplete="off"
       aria-autocomplete="list"
       :aria-expanded="open"
-      :placeholder="placeholder"
+      :placeholder="props.placeholder"
       class="input-field hover:border-[var(--app-ink)]"
       @focus="open = items.length > 0"
       @keydown="onKeydown"
@@ -35,23 +35,20 @@
 </template>
 
 <script lang="ts" setup>
+import type { Commune, UiCitySelectProps } from '~/types/UiCitySelect'
 import type { Ref } from 'vue'
 import { ref, watch, onMounted, onBeforeUnmount } from 'vue'
 
 /** French city picker with geo.api.gouv.fr autosuggest; v-model is the field text. */
 const modelValue = defineModel<string>({ required: true })
 
-defineProps({
+/** Placeholder shown while the field is empty. */
+const props: UiCitySelectProps = defineProps({
   placeholder: {
     type: String,
     default: 'Rechercher une ville…',
   },
 })
-
-/** A French commune as returned by geo.api.gouv.fr (only the fields we request). */
-type Commune = {
-  nom: string
-}
 
 const items: Ref<string[]> = ref([])
 const open: Ref<boolean> = ref(false)

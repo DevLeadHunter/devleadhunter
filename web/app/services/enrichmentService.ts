@@ -28,7 +28,6 @@ export type ProspectEnrichment = {
   opening_hours: EnrichmentOpeningHours[]
   services: string[]
   social_links: Record<string, string>
-  /** Decision-maker contact (resolved by the cascade, or set manually). */
   contact_first_name: string | null
   contact_last_name: string | null
   contact_gender: string | null
@@ -41,7 +40,6 @@ export type ProspectEnrichment = {
   updated_at: string | null
 }
 
-/** Editable enrichment fields. */
 export type ProspectEnrichmentUpdate = {
   logo_url?: string | null
   rating?: number | null

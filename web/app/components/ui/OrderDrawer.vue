@@ -213,10 +213,10 @@
 </template>
 
 <script lang="ts" setup>
+import type { OrderEditForm, UiOrderDrawerProps } from '~/types/UiOrderDrawer'
 import type { ComputedRef, PropType, Ref } from 'vue'
 import { ref, computed, watch } from 'vue'
 import type { Order, OrderPaymentEmailPreview } from '~/services/ordersService'
-import type { UiOrderDrawerProps } from '~/types/UiOrderDrawer'
 import { OrdersService } from '~/services/ordersService'
 import { useToast } from '~/composables/useToast'
 
@@ -249,16 +249,7 @@ const isSending: Ref<boolean> = ref(false)
 const showDeleteConfirm: Ref<boolean> = ref(false)
 const emailPreview: Ref<OrderPaymentEmailPreview | null> = ref(null)
 
-type EditForm = {
-  amount_euros: number
-  business_name: string
-  customer_email: string
-  domain: string
-  status: string
-  notes: string
-}
-
-const editForm: Ref<EditForm> = ref({
+const editForm: Ref<OrderEditForm> = ref({
   amount_euros: 0,
   business_name: '',
   customer_email: '',
@@ -277,7 +268,9 @@ const statusOptions: { value: string; label: string }[] = [
   { value: 'refunded', label: 'Remboursé' },
 ]
 
-const STATUS_LABELS: Record<string, string> = Object.fromEntries(statusOptions.map((s) => [s.value, s.label]))
+const STATUS_LABELS: Record<string, string> = Object.fromEntries(
+  statusOptions.map((option) => [option.value, option.label]),
+)
 const PRODUCT_LABELS: Record<string, string> = {
   website: 'Site web',
   apple_wallet: 'Carte Apple Wallet',

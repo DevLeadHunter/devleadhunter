@@ -1,4 +1,4 @@
-import type { User, LoginCredentials, SignupData, TokenResponse, ProfileUpdate } from '~/types'
+import type { User, LoginCredentials, SignupPayload, TokenResponse, ProfileUpdate } from '~/types'
 
 /** Resolve the API base URL from runtime config. */
 function getApiUrl(): string {
@@ -36,7 +36,7 @@ export class AuthService {
    * @returns Created user
    * @throws If signup fails
    */
-  static async signup(data: SignupData): Promise<User> {
+  static async signup(data: SignupPayload): Promise<User> {
     const response = await fetch(`${getApiUrl()}/api/v1/auth/signup`, {
       method: 'POST',
       headers: {

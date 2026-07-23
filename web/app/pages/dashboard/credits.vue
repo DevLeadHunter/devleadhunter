@@ -204,8 +204,9 @@
 </template>
 
 <script lang="ts" setup>
+import type { CreditUsageChart } from '~/types/CreditsPage'
 import type { CreditTransaction } from '~/types'
-import type { Ref } from 'vue'
+import type { ComputedRef, Ref } from 'vue'
 import { ref, computed, onMounted, onBeforeUnmount, watch, nextTick } from 'vue'
 import { Chart, type ChartConfiguration, type TooltipItem } from 'chart.js'
 import { CreditTransactionService } from '~/services/creditTransactionService'
@@ -271,13 +272,9 @@ const updateTooltipPosition = (): void => {
   const tooltipWidth = 288 // w-72 = 18rem = 288px
   const margin = 8 // mt-2 = 8px
 
-  // Calculate position based on used percentage
-  // usedPercentage is 0-100, so divide by 100 to get fraction
   let tooltipX: number
 
   if (usedPercentage.value > 0) {
-    // Position at the center of the blue bar (used portion)
-    // Convert percentage to fraction (0-1) and calculate center of used portion
     const usedFraction = usedPercentage.value / 100
     tooltipX = progressRect.left + (progressRect.width * usedFraction) / 2
   } else {
@@ -285,8 +282,6 @@ const updateTooltipPosition = (): void => {
     tooltipX = progressRect.left + progressRect.width / 2
   }
 
-  // Ensure tooltip doesn't go off-screen
-  // Check left boundary
   if (tooltipX - tooltipWidth / 2 < 0) {
     tooltipX = tooltipWidth / 2 + 16 // 16px padding from edge
   }
@@ -329,7 +324,7 @@ const handleTooltipLeave = (): void => {
 /**
  * Total credits (current balance + used)
  */
-const totalCredits = computed(() => {
+const totalCredits: ComputedRef<number> = computed(() => {
   const balance = creditsRemaining.value
   const used = creditsUsed.value
 
@@ -343,15 +338,17 @@ const totalCredits = computed(() => {
 /**
  * Credits used (sum of negative amounts)
  */
-const creditsUsed = computed(() => {
-  const used = Math.abs(transactions.value.filter((t) => t.amount < 0).reduce((sum, t) => sum + t.amount, 0))
+const creditsUsed: ComputedRef<number> = computed(() => {
+  const used = Math.abs(
+    transactions.value.filter((transaction) => transaction.amount < 0).reduce((sum, t) => sum + t.amount, 0),
+  )
   return used
 })
 
 /**
  * Credits remaining
  */
-const creditsRemaining = computed(() => {
+const creditsRemaining: ComputedRef<number> = computed(() => {
   const balance = userStore.user?.credits_available ?? userStore.user?.credit_balance
   if (balance === null || balance === undefined) {
     return 0
@@ -365,7 +362,7 @@ const creditsRemaining = computed(() => {
 /**
  * Used percentage
  */
-const usedPercentage = computed(() => {
+const usedPercentage: ComputedRef<number> = computed(() => {
   const total = totalCredits.value
   if (total === 0 || total === Infinity || total === -1) return 0
   const used = creditsUsed.value
@@ -376,7 +373,7 @@ const usedPercentage = computed(() => {
 /**
  * Remaining percentage
  */
-const remainingPercentage = computed(() => {
+const remainingPercentage: ComputedRef<number> = computed(() => {
   const total = totalCredits.value
   if (total === Infinity || total === -1) return 100
   return Math.max(100 - usedPercentage.value, 0)
@@ -385,7 +382,7 @@ const remainingPercentage = computed(() => {
 /**
  * Last updated timestamp
  */
-const lastUpdated = computed(() => {
+const lastUpdated: ComputedRef<string> = computed(() => {
   if (transactions.value.length === 0) {
     return new Date().toLocaleDateString('fr-FR', {
       year: 'numeric',
@@ -409,21 +406,21 @@ const lastUpdated = computed(() => {
 /**
  * Recent transactions (last 10)
  */
-const recentTransactions = computed(() => {
+const recentTransactions: ComputedRef<CreditTransaction[]> = computed(() => {
   return transactions.value.slice(0, 10)
 })
 
 /**
  * Chart data - Group transactions by day
  */
-const chartData = computed(() => {
+const chartData: ComputedRef<CreditUsageChart | null> = computed(() => {
   if (transactions.value.length === 0) return null
 
   // Group by date and sum negative amounts (usage)
   const dailyUsage: Record<string, { count: number; date: Date }> = {}
 
   transactions.value
-    .filter((t) => t.amount < 0) // Only usage transactions
+    .filter((transaction) => transaction.amount < 0) // Only usage transactions
     .forEach((transaction) => {
       const dateObj = new Date(transaction.created_at)
       const dateKey = dateObj.toLocaleDateString('fr-FR', {

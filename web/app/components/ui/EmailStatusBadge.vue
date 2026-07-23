@@ -6,9 +6,9 @@
 </template>
 
 <script lang="ts" setup>
+import type { EmailStatusPresentation, EmailStatusBadgeProps } from '~/types/EmailStatusBadge'
 import type { ComputedRef, PropType } from 'vue'
 import type { EmailStatus } from '~/types'
-import type { EmailStatusBadgeProps } from '~/types/EmailStatusBadge'
 
 /** Badge for a single email delivery status. */
 const props: EmailStatusBadgeProps = defineProps({
@@ -18,15 +18,8 @@ const props: EmailStatusBadgeProps = defineProps({
   },
 })
 
-type StatusConfig = {
-  label: string
-  icon: string
-  variant: string
-  spin?: boolean
-}
-
 /** Per-status badge colours and icons for email delivery states. */
-const STATUS_CONFIG: Record<EmailStatus, StatusConfig> = {
+const STATUS_CONFIG: Record<EmailStatus, EmailStatusPresentation> = {
   pending: { label: 'En attente', icon: 'i-lucide-clock', variant: '' },
   sending: { label: 'Envoi…', icon: 'i-lucide-loader-circle', variant: 'app-badge--progress', spin: true },
   scheduled: { label: 'Planifié', icon: 'i-lucide-calendar-clock', variant: 'app-badge--progress' },
@@ -45,7 +38,7 @@ const STATUS_CONFIG: Record<EmailStatus, StatusConfig> = {
   suppressed: { label: 'Supprimé', icon: 'i-lucide-circle-minus', variant: '' },
 }
 
-const config: ComputedRef<StatusConfig> = computed(
-  (): StatusConfig => STATUS_CONFIG[props.status] ?? STATUS_CONFIG.pending,
+const config: ComputedRef<EmailStatusPresentation> = computed(
+  (): EmailStatusPresentation => STATUS_CONFIG[props.status] ?? STATUS_CONFIG.pending,
 )
 </script>

@@ -491,6 +491,7 @@
 </template>
 
 <script lang="ts" setup>
+import type { TemplateScoreGroup } from '~/types/EmailHealthPage'
 import type { ComputedRef, Ref } from 'vue'
 import { computed, onMounted, ref } from 'vue'
 import type {
@@ -511,15 +512,6 @@ definePageMeta({
   layout: 'dashboard',
   middleware: ['auth'],
 })
-
-/** One displayed group of template scores. */
-type TemplateScoreGroup = {
-  key: 'initial' | 'follow_up'
-  label: string
-  items: TemplateScore[]
-  /** Show the « Meilleur score » badge only when the scores actually differ. */
-  showBest: boolean
-}
 
 /** Supported rolling windows (days). */
 const PERIODS: number[] = [7, 30, 90]
@@ -996,8 +988,7 @@ async function load(): Promise<void> {
     isLoading.value = false
   }
 
-  // DNS + Postmaster are slower (network/API) — loaded separately so the core
-  // stats render first; failures degrade to empty sections, never a page error.
+  // Chargés à part : plus lents, et leur échec dégrade en section vide, jamais en erreur de page.
   try {
     dnsDomains.value = (await EmailHealthService.getEmailHealthDns()).domains
   } catch {

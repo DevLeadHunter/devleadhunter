@@ -143,6 +143,7 @@
 </template>
 
 <script lang="ts" setup>
+import type { EmailDeliveryStage, EmailTimelineEntry } from '~/types/UiEmailLogDrawer'
 import type { ComputedRef, PropType } from 'vue'
 import type { EmailLog, EmailStatus } from '~/types'
 import type { EmailLogDrawerProps } from '~/types/EmailLogDrawer'
@@ -207,51 +208,21 @@ const sanitizedBodyHtml: ComputedRef<string | null> = computed((): string | null
   return html.replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
 })
 
-/** Per-stage visual configuration for the timeline indicator + connector. */
-type StageStyle = {
-  indicator: string
-  separator: string
-}
-
-/** A single definition for one possible email event stage. */
-type StageDef = {
-  key: string
-  label: string
-  icon: string
-  ts: string | null | undefined
-  style: StageStyle
-  alwaysShow: boolean
-}
-
-/** Shape of a Nuxt UI timeline item with per-item style overrides. */
-type EmailTimelineItem = {
-  value: string
-  title: string
-  description?: string
-  icon: string
-  ui: {
-    indicator: string
-    title: string
-    description: string
-    separator: string
-  }
-}
-
 /** Muted indicator style applied to stages that haven't occurred yet. */
 const MUTED_INDICATOR: string =
   'bg-[var(--app-surface)] text-[var(--app-faint)] ring-1 ring-inset ring-[var(--app-line)]'
 
 /** Timeline items for UTimeline from the log's delivery events. */
-const timelineItems: ComputedRef<EmailTimelineItem[]> = computed((): EmailTimelineItem[] => {
+const timelineItems: ComputedRef<EmailTimelineEntry[]> = computed((): EmailTimelineEntry[] => {
   if (!props.log) return []
   const l: EmailLog = props.log
 
-  const stages: StageDef[] = [
+  const stages: EmailDeliveryStage[] = [
     {
       key: 'sent',
       label: 'Envoyé',
       icon: 'i-lucide-send',
-      ts: l.sent_at,
+      timestamp: l.sent_at,
       alwaysShow: true,
       style: {
         indicator: 'bg-[var(--app-blue-soft)] text-[var(--app-blue)] ring-1 ring-inset ring-[var(--app-blue)]/25',
@@ -262,7 +233,7 @@ const timelineItems: ComputedRef<EmailTimelineItem[]> = computed((): EmailTimeli
       key: 'delivered',
       label: 'Délivré',
       icon: 'i-lucide-circle-check',
-      ts: l.delivered_at,
+      timestamp: l.delivered_at,
       alwaysShow: true,
       style: {
         indicator: 'bg-[var(--app-green-soft)] text-[var(--app-green)] ring-1 ring-inset ring-[var(--app-green)]/25',
@@ -273,7 +244,7 @@ const timelineItems: ComputedRef<EmailTimelineItem[]> = computed((): EmailTimeli
       key: 'opened',
       label: 'Ouvert',
       icon: 'i-lucide-mail-open',
-      ts: l.opened_at,
+      timestamp: l.opened_at,
       alwaysShow: true,
       style: {
         indicator: 'bg-[var(--app-violet-soft)] text-[var(--app-violet)] ring-1 ring-inset ring-[var(--app-violet)]/25',
@@ -284,7 +255,7 @@ const timelineItems: ComputedRef<EmailTimelineItem[]> = computed((): EmailTimeli
       key: 'clicked',
       label: 'Cliqué',
       icon: 'i-lucide-mouse-pointer-click',
-      ts: l.clicked_at,
+      timestamp: l.clicked_at,
       alwaysShow: true,
       style: {
         indicator: 'bg-[var(--app-ink)] text-[var(--app-bg)] ring-1 ring-inset ring-[var(--app-ink)]/20',
@@ -295,7 +266,7 @@ const timelineItems: ComputedRef<EmailTimelineItem[]> = computed((): EmailTimeli
       key: 'bounced',
       label: 'Bounce',
       icon: 'i-lucide-undo-2',
-      ts: l.bounced_at,
+      timestamp: l.bounced_at,
       alwaysShow: false,
       style: {
         indicator: 'bg-[var(--app-red-soft)] text-[var(--app-red)] ring-1 ring-inset ring-[var(--app-red)]/25',
@@ -306,7 +277,7 @@ const timelineItems: ComputedRef<EmailTimelineItem[]> = computed((): EmailTimeli
       key: 'complained',
       label: 'Marqué comme spam',
       icon: 'i-lucide-octagon-alert',
-      ts: l.complained_at,
+      timestamp: l.complained_at,
       alwaysShow: false,
       style: {
         indicator: 'bg-[var(--app-red-soft)] text-[var(--app-red)] ring-1 ring-inset ring-[var(--app-red)]/25',
@@ -317,7 +288,7 @@ const timelineItems: ComputedRef<EmailTimelineItem[]> = computed((): EmailTimeli
       key: 'suppressed',
       label: 'Adresse supprimée (liste Resend)',
       icon: 'i-lucide-circle-minus',
-      ts: l.suppressed_at,
+      timestamp: l.suppressed_at,
       alwaysShow: false,
       style: {
         indicator: 'bg-[var(--app-surface-2)] text-[var(--app-ink-soft)] ring-1 ring-inset ring-[var(--app-line)]',
@@ -328,7 +299,7 @@ const timelineItems: ComputedRef<EmailTimelineItem[]> = computed((): EmailTimeli
       key: 'failed',
       label: "Échec d'envoi",
       icon: 'i-lucide-x',
-      ts: l.failed_at,
+      timestamp: l.failed_at,
       alwaysShow: false,
       style: {
         indicator: 'bg-[var(--app-red-soft)] text-[var(--app-red)] ring-1 ring-inset ring-[var(--app-red)]/25',
@@ -338,17 +309,17 @@ const timelineItems: ComputedRef<EmailTimelineItem[]> = computed((): EmailTimeli
   ]
 
   return stages
-    .filter((s: StageDef): boolean => s.alwaysShow || !!s.ts)
-    .map((s: StageDef): EmailTimelineItem => {
-      const reached: boolean = !!s.ts
+    .filter((stage: EmailDeliveryStage): boolean => stage.alwaysShow || !!stage.timestamp)
+    .map((stage: EmailDeliveryStage): EmailTimelineEntry => {
+      const reached: boolean = !!stage.timestamp
       return {
-        value: s.key,
-        title: s.label,
-        description: reached ? formatDate(s.ts) : 'En attente',
-        icon: s.icon,
+        value: stage.key,
+        title: stage.label,
+        description: reached ? formatDate(stage.timestamp) : 'En attente',
+        icon: stage.icon,
         ui: {
-          indicator: reached ? s.style.indicator : MUTED_INDICATOR,
-          separator: reached ? s.style.separator : 'bg-[var(--app-surface-2)]',
+          indicator: reached ? stage.style.indicator : MUTED_INDICATOR,
+          separator: reached ? stage.style.separator : 'bg-[var(--app-surface-2)]',
           title: reached ? 'text-[var(--app-ink)] text-sm font-medium' : 'text-[#4b5563] text-sm font-medium',
           description: reached ? 'text-[11px] text-[var(--app-ink-soft)]' : 'text-[11px] text-[var(--app-faint)]',
         },

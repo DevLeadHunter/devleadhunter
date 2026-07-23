@@ -114,13 +114,11 @@ export type AutomationListResponse = {
   total: number
 }
 
-/** A rendered email preview. */
 export type EmailPreview = {
   subject: string
   body_html: string
 }
 
-/** The user's global send policy. */
 export type SendPolicy = {
   daily_cap: number
   days_of_week: number[]

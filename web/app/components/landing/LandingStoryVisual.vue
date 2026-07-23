@@ -115,8 +115,7 @@
 import type { PropType } from 'vue'
 import type { LandingStoryVisualProps, LandingStoryActIndex } from '~/types/LandingStoryVisual'
 
-// Les commentaires entre les branches racines v-if rendent l'héritage d'attributs
-// incohérent entre SSR et client → héritage explicite via v-bind="$attrs".
+// Un commentaire entre deux racines v-if désynchronise l'héritage d'attributs SSR/client.
 defineOptions({ inheritAttrs: false })
 
 /** Landing story act visual for the pipeline narrative section. */

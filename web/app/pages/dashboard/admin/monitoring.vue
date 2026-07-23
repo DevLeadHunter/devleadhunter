@@ -204,6 +204,7 @@
 </template>
 
 <script lang="ts" setup>
+import type { HtmlPanelState } from '~/types/AdminMonitoringPage'
 import type { ComputedRef, Ref } from 'vue'
 import { computed, onMounted, ref } from 'vue'
 import { useUserStore } from '~/stores/user'
@@ -215,14 +216,6 @@ definePageMeta({
   layout: 'dashboard',
   middleware: ['auth'],
 })
-
-/** State of the captured-HTML slide-over. */
-type HtmlPanelState = {
-  open: boolean
-  loading: boolean
-  source: string
-  content: string
-}
 
 const userStore = useUserStore()
 const toast = useToast()

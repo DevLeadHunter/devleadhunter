@@ -159,22 +159,13 @@
 </template>
 
 <script lang="ts" setup>
+import type { SignatureForm, SignaturesDrawerView } from '~/types/UiEmailSignaturesDrawer'
 import type { ComputedRef, Ref } from 'vue'
 import type { EmailSignature } from '~/types'
 import type { UiDrawerProps } from '~/types/UiDrawer'
 import { computed, ref, watch } from 'vue'
 import { EmailSignaturesService } from '~/services/emailSignaturesService'
 import { useToast } from '~/composables/useToast'
-
-/** Internal view of the drawer (list of signatures vs single-signature editor). */
-type SignaturesDrawerView = 'list' | 'editor'
-
-/** Local shape of the signature editor form. */
-type SignatureForm = {
-  name: string
-  content_html: string
-  is_default: boolean
-}
 
 /** Drawer to manage rich HTML email signatures. */
 const props: UiDrawerProps = defineProps({

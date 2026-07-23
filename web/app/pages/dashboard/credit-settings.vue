@@ -146,7 +146,7 @@
 
 <script lang="ts" setup>
 import type { CreditSettings } from '~/types'
-import type { Ref } from 'vue'
+import type { ComputedRef, Ref } from 'vue'
 import { ref, computed, onMounted } from 'vue'
 import { CreditSettingsService } from '~/services/creditSettingsService'
 import { useToast } from '~/composables/useToast'
@@ -213,7 +213,7 @@ const toast = useToast()
 /**
  * Check if form has changes
  */
-const hasChanges = computed((): boolean => {
+const hasChanges: ComputedRef<boolean> = computed((): boolean => {
   return (
     form.value.price_per_credit !== originalForm.value.price_per_credit ||
     form.value.credits_per_search !== originalForm.value.credits_per_search ||

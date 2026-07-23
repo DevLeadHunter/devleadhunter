@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia'
-import type { User, LoginCredentials, SignupData, ProfileUpdate } from '~/types'
-import type { Ref } from 'vue'
+import type { User, LoginCredentials, SignupPayload, ProfileUpdate } from '~/types'
+import type { ComputedRef, Ref } from 'vue'
 import { ref, computed } from 'vue'
 import { AuthService } from '~/services/authService'
 
@@ -17,15 +17,15 @@ export const useUserStore = defineStore('user', () => {
   const VALIDATION_CACHE_TIME = 30000
 
   // Getters
-  const isAuthenticated = computed(() => {
+  const isAuthenticated: ComputedRef<boolean> = computed(() => {
     return user.value !== null && token.value !== null
   })
 
-  const userName = computed(() => {
+  const userName: ComputedRef<string> = computed(() => {
     return user.value?.name ?? ''
   })
 
-  const userEmail = computed(() => {
+  const userEmail: ComputedRef<string> = computed(() => {
     return user.value?.email ?? ''
   })
 
@@ -67,7 +67,7 @@ export const useUserStore = defineStore('user', () => {
    * @returns Promise that resolves when signup is complete
    * @throws If signup fails
    */
-  async function signup(data: SignupData): Promise<void> {
+  async function signup(data: SignupPayload): Promise<void> {
     try {
       isLoading.value = true
       error.value = null

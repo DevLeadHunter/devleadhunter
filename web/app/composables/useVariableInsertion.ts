@@ -21,23 +21,14 @@ export type AutocompletePosition = {
 
 /** Reactive state + handlers returned by {@link useVariableInsertion}. */
 export type VariableInsertion = {
-  /** Whether the autocomplete dropdown is visible. */
   open: Ref<boolean>
-  /** Variables matching the current `{query`. */
   items: Ref<EmailVariable[]>
-  /** Index of the highlighted item in {@link items}. */
   activeIndex: Ref<number>
-  /** Viewport anchor of the dropdown. */
   position: Ref<AutocompletePosition>
-  /** Insert a full token (e.g. `{prenom}`) at the caret. */
   insertToken: (token: string) => void
-  /** Complete the current `{query` with a chosen variable. */
   selectVariable: (variable: EmailVariable) => void
-  /** `@input` handler — detects `{query` before the caret. */
   onInput: () => void
-  /** `@keydown` handler — navigates/accepts/closes when open. */
   onKeydown: (event: KeyboardEvent) => void
-  /** `@blur` handler — closes the dropdown (deferred so clicks land). */
   onBlur: () => void
 }
 

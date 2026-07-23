@@ -1,3 +1,4 @@
+import type { UseToastReturn } from '~/types/Composables'
 import type { Ref } from 'vue'
 
 /** Toast queue shared between `useToast` callers and `UiToastHost`. */
@@ -10,7 +11,6 @@ export type ToastItem = {
   id: number
   message: string
   type: ToastType
-  /** Auto-dismiss delay in ms. */
   duration: number
 }
 
@@ -33,7 +33,7 @@ function useToastQueue(): Ref<ToastItem[]> {
  * Toast notification API (kept stable: `success` / `error` / `info` / `warning`).
  * @returns Toast methods.
  */
-export function useToast() {
+export function useToast(): UseToastReturn {
   const queue: Ref<ToastItem[]> = useToastQueue()
 
   /**

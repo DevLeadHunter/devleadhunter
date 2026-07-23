@@ -24,11 +24,8 @@ export const FRANCE_REGIONS: Readonly<Record<string, string>> = {
 
 /** A major French city suggested as a prospection target. */
 export type FranceMajorCity = {
-  /** Display name. */
   name: string
-  /** Department code (« 69 », « 2A »…). */
   dept: string
-  /** INSEE region code (keys of FRANCE_REGIONS). */
   region: string
 }
 

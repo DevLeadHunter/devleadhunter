@@ -84,16 +84,11 @@
 </template>
 
 <script lang="ts" setup>
+import type { AutomationListKpi } from '~/types/AutomationsListPage'
 import type { ComputedRef, Ref } from 'vue'
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import type { Automation, AutomationStatus, AutomationStep } from '~/types/Automation'
 import { useAutomationsStore } from '~/stores/automations'
-
-/** A compact KPI tile. */
-type Kpi = {
-  label: string
-  value: number
-}
 
 definePageMeta({
   layout: 'dashboard',
@@ -128,7 +123,7 @@ function stepCount(auto: Automation, steps: AutomationStep[]): number {
  * @param auto - The automatisation.
  * @returns Four tiles.
  */
-function listKpis(auto: Automation): Kpi[] {
+function listKpis(auto: Automation): AutomationListKpi[] {
   return [
     { label: 'Total', value: auto.stats.total },
     { label: 'Sites', value: stepCount(auto, ['generated', 'campaigning']) },

@@ -4,7 +4,6 @@ import type { DirectiveBinding } from 'vue'
  * Per-element reveal options accepted by the `v-reveal` directive.
  */
 type RevealOptions = {
-  /** Delay before the entrance transition starts, in milliseconds. */
   delay?: number
 }
 

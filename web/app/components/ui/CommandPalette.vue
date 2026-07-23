@@ -67,6 +67,7 @@
 </template>
 
 <script lang="ts" setup>
+import type { CommandPaletteAction, CommandPaletteGroup } from '~/types/UiCommandPalette'
 import type { ComputedRef, Ref } from 'vue'
 import type { CampaignResponse } from '~/services/campaignService'
 import type { Prospect } from '~/types'
@@ -76,24 +77,6 @@ import { ProspectsService } from '~/services/prospectsService'
 import { useAppTheme } from '~/composables/useAppTheme'
 import { useCommandPalette } from '~/composables/useCommandPalette'
 import { useDrawerStackStore } from '~/stores/drawerStack'
-
-/** One actionable row of the palette. */
-type PaletteItem = {
-  id: string
-  label: string
-  icon: string
-  meta?: string
-  keywords?: string
-  run: () => void
-  flatIndex: number
-}
-
-/** One displayed group of palette rows. */
-type PaletteGroup = {
-  key: string
-  heading: string
-  items: PaletteItem[]
-}
 
 const { isOpen, close } = useCommandPalette()
 
@@ -150,8 +133,8 @@ function matches(label: string, keywords = ''): boolean {
 }
 
 /** Groups currently displayed (filtered by the query, flat-indexed). */
-const visibleGroups: ComputedRef<PaletteGroup[]> = computed((): PaletteGroup[] => {
-  const groups: PaletteGroup[] = []
+const visibleGroups: ComputedRef<CommandPaletteGroup[]> = computed((): CommandPaletteGroup[] => {
+  const groups: CommandPaletteGroup[] = []
   let flatIndex = 0
 
   /**
@@ -160,10 +143,14 @@ const visibleGroups: ComputedRef<PaletteGroup[]> = computed((): PaletteGroup[] =
    * @param heading - Visible group heading.
    * @param items - Candidate items (without flat index).
    */
-  function pushGroup(key: string, heading: string, items: Array<Omit<PaletteItem, 'flatIndex'>>): void {
-    const kept: PaletteItem[] = items
-      .filter((item: Omit<PaletteItem, 'flatIndex'>): boolean => !query.value || matches(item.label, item.keywords))
-      .map((item: Omit<PaletteItem, 'flatIndex'>): PaletteItem => ({ ...item, flatIndex: flatIndex++ }))
+  function pushGroup(key: string, heading: string, items: Array<Omit<CommandPaletteAction, 'flatIndex'>>): void {
+    const kept: CommandPaletteAction[] = items
+      .filter(
+        (item: Omit<CommandPaletteAction, 'flatIndex'>): boolean => !query.value || matches(item.label, item.keywords),
+      )
+      .map(
+        (item: Omit<CommandPaletteAction, 'flatIndex'>): CommandPaletteAction => ({ ...item, flatIndex: flatIndex++ }),
+      )
     if (kept.length) groups.push({ key, heading, items: kept })
   }
 
@@ -245,7 +232,7 @@ const visibleGroups: ComputedRef<PaletteGroup[]> = computed((): PaletteGroup[] =
   pushGroup(
     'pages',
     'Pages',
-    PAGES.map((page: { label: string; icon: string; to: string }): Omit<PaletteItem, 'flatIndex'> => {
+    PAGES.map((page: { label: string; icon: string; to: string }): Omit<CommandPaletteAction, 'flatIndex'> => {
       return {
         id: `page-${page.to}`,
         label: page.label,
@@ -261,7 +248,7 @@ const visibleGroups: ComputedRef<PaletteGroup[]> = computed((): PaletteGroup[] =
     pushGroup(
       'prospects',
       'Prospects',
-      prospects.value.slice(0, 400).map((prospect: Prospect): Omit<PaletteItem, 'flatIndex'> => {
+      prospects.value.slice(0, 400).map((prospect: Prospect): Omit<CommandPaletteAction, 'flatIndex'> => {
         return {
           id: `prospect-${prospect.id}`,
           label: prospect.name,
@@ -278,7 +265,7 @@ const visibleGroups: ComputedRef<PaletteGroup[]> = computed((): PaletteGroup[] =
     pushGroup(
       'campaigns',
       'Campagnes',
-      campaigns.value.map((campaign: CampaignResponse): Omit<PaletteItem, 'flatIndex'> => {
+      campaigns.value.map((campaign: CampaignResponse): Omit<CommandPaletteAction, 'flatIndex'> => {
         return {
           id: `campaign-${campaign.id}`,
           label: campaign.name,
@@ -294,7 +281,7 @@ const visibleGroups: ComputedRef<PaletteGroup[]> = computed((): PaletteGroup[] =
   }
 
   // Cap la longueur des groupes dynamiques pour rester lisible.
-  return groups.map((group: PaletteGroup): PaletteGroup => {
+  return groups.map((group: CommandPaletteGroup): CommandPaletteGroup => {
     if (group.key === 'prospects' || group.key === 'campaigns') {
       return { ...group, items: group.items.slice(0, 6) }
     }
@@ -303,8 +290,8 @@ const visibleGroups: ComputedRef<PaletteGroup[]> = computed((): PaletteGroup[] =
 })
 
 /** Flat list of displayed items (keyboard navigation target). */
-const flatItems: ComputedRef<PaletteItem[]> = computed((): PaletteItem[] => {
-  return visibleGroups.value.flatMap((group: PaletteGroup): PaletteItem[] => group.items)
+const flatItems: ComputedRef<CommandPaletteAction[]> = computed((): CommandPaletteAction[] => {
+  return visibleGroups.value.flatMap((group: CommandPaletteGroup): CommandPaletteAction[] => group.items)
 })
 
 /** Number of displayed results. */
@@ -314,7 +301,7 @@ const totalResults: ComputedRef<number> = computed((): number => flatItems.value
  * Execute an item then close the palette.
  * @param item - Selected palette row.
  */
-function runItem(item: PaletteItem): void {
+function runItem(item: CommandPaletteAction): void {
   close()
   item.run()
 }
@@ -352,7 +339,7 @@ function handleInputKeydown(event: KeyboardEvent): void {
     scrollActiveIntoView()
   } else if (event.key === 'Enter') {
     event.preventDefault()
-    const item: PaletteItem | undefined = flatItems.value[activeIndex.value]
+    const item: CommandPaletteAction | undefined = flatItems.value[activeIndex.value]
     if (item) runItem(item)
   }
 }

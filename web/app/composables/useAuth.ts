@@ -1,11 +1,12 @@
-import type { LoginCredentials, SignupData } from '~/types'
+import type { UseAuthReturn } from '~/types/Composables'
+import type { LoginCredentials, SignupPayload } from '~/types'
 import { useToast } from '~/composables/useToast'
 
 /**
  * Auth facade over `useUserStore` — handles navigation and toasts after login/signup/logout.
  * @returns Store-backed auth actions and reactive session state.
  */
-export function useAuth() {
+export function useAuth(): UseAuthReturn {
   const userStore = useUserStore()
   const router = useRouter()
   const toast = useToast()
@@ -28,7 +29,7 @@ export function useAuth() {
    * Sign up and redirect to the setup wizard.
    * @param data - Registration fields.
    */
-  const signup = async (data: SignupData): Promise<void> => {
+  const signup = async (data: SignupPayload): Promise<void> => {
     try {
       await userStore.signup(data)
       router.push('/configuration')

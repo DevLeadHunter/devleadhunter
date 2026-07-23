@@ -9,11 +9,8 @@
 
 /** Caret offset within the field's content box. */
 export type CaretCoordinates = {
-  /** Distance from the field's top (px), before scroll compensation. */
   top: number
-  /** Distance from the field's left (px). */
   left: number
-  /** Line height at the caret (px). */
   height: number
 }
 

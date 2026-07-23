@@ -92,9 +92,9 @@
 </template>
 
 <script lang="ts" setup>
+import type { TemplateThemeColorKey, TemplatePickerProps } from '~/types/TemplatePicker'
 import type { PropType, Ref } from 'vue'
 import type { DemoSiteTemplate, DemoSiteTheme } from '~/services/demoSiteService'
-import type { TemplatePickerProps } from '~/types/TemplatePicker'
 
 /** Demo site template picker with live theme color editing. */
 const props: TemplatePickerProps = defineProps({
@@ -117,17 +117,15 @@ const emit = defineEmits<{
   'update:theme': [value: DemoSiteTheme]
 }>()
 
-type ColorKey = keyof DemoSiteTheme
-
-const colorKeys: ColorKey[] = ['primary', 'secondary', 'accent']
-const colorLabels: Record<ColorKey, string> = {
+const colorKeys: TemplateThemeColorKey[] = ['primary', 'secondary', 'accent']
+const colorLabels: Record<TemplateThemeColorKey, string> = {
   primary: 'Principale',
   secondary: 'Fond',
   accent: 'Accent',
 }
 
 const colorInputRef: Ref<HTMLInputElement | null> = ref(null)
-const activeColorKey: Ref<ColorKey> = ref('primary')
+const activeColorKey: Ref<TemplateThemeColorKey> = ref('primary')
 
 /**
  * Build a CSS gradient preview from the template theme.
@@ -140,7 +138,7 @@ function previewGradient(template: DemoSiteTemplate): string {
 /**
  * Resolve a theme color for the given template and key.
  */
-function getThemeColor(template: DemoSiteTemplate, key: ColorKey): string {
+function getThemeColor(template: DemoSiteTemplate, key: TemplateThemeColorKey): string {
   return props.modelValue === template.id ? props.theme[key] : template.default_theme[key]
 }
 
@@ -155,9 +153,9 @@ function selectTemplate(template: DemoSiteTemplate): void {
 /**
  * Open the native color picker for a template swatch.
  */
-function openColorPicker(templateId: string, colorKey: ColorKey): void {
+function openColorPicker(templateId: string, colorKey: TemplateThemeColorKey): void {
   if (props.modelValue !== templateId) {
-    const template = props.templates.find((t) => t.id === templateId)
+    const template = props.templates.find((template) => template.id === templateId)
     if (template) selectTemplate(template)
   }
   activeColorKey.value = colorKey
@@ -176,7 +174,7 @@ function onColorInput(event: Event): void {
 /**
  * Update a single theme color when the hex value is valid.
  */
-function updateThemeColor(key: ColorKey, value: string): void {
+function updateThemeColor(key: TemplateThemeColorKey, value: string): void {
   if (!/^#[0-9A-Fa-f]{6}$/.test(value)) return
   emit('update:theme', { ...props.theme, [key]: value })
 }

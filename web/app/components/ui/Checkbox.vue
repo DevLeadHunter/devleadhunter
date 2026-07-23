@@ -13,6 +13,7 @@
 <script lang="ts" setup>
 import type { UiCheckboxProps } from '~/types/UiCheckbox'
 
+/** Labelled checkbox bound through `v-model`. */
 const props: UiCheckboxProps = defineProps({
   id: {
     type: String,

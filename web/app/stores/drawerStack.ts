@@ -113,8 +113,7 @@ export const useDrawerStackStore = defineStore('drawerStack', () => {
   )
 
   return {
-    // skipHydrate : l'état SSR (toujours vide) ne doit pas écraser la pile
-    // restaurée depuis sessionStorage au boot client.
+    // skipHydrate : l'état SSR, toujours vide, écraserait la pile restaurée du sessionStorage.
     stack: skipHydrate(stack),
     lastProspectMutation,
     prospectMutationCounter,

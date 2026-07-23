@@ -231,10 +231,10 @@
 </template>
 
 <script lang="ts" setup>
+import type { EmailTemplateForm, UiEmailTemplateDrawerProps } from '~/types/UiEmailTemplateDrawer'
 import type { ComputedRef, PropType, Ref } from 'vue'
 import type { EmailSignature, EmailTemplate } from '~/types'
 import type { EmailTemplateDrawerMode } from '~/types/DrawerStack'
-import type { UiEmailTemplateDrawerProps } from '~/types/UiEmailTemplateDrawer'
 import { computed, ref, watch } from 'vue'
 import { EmailTemplatesService } from '~/services/emailTemplatesService'
 import { EmailSignaturesService } from '~/services/emailSignaturesService'
@@ -242,15 +242,6 @@ import { useVariableInsertion } from '~/composables/useVariableInsertion'
 import { EmailVariables } from '~/utils/emailVariables'
 import { useDrawerStackStore } from '~/stores/drawerStack'
 import { useToast } from '~/composables/useToast'
-
-/** Local shape of the template form. */
-type EmailTemplateForm = {
-  name: string
-  subject: string
-  body_html: string
-  is_active: boolean
-  signature_id: number | null
-}
 
 /** Drawer to create or edit an email template. */
 const props: UiEmailTemplateDrawerProps = defineProps({
@@ -486,8 +477,7 @@ watch(
     }
     // Refresh signatures every time the editor is shown (e.g. after managing them).
     void loadSignatures()
-    // Only (re)initialise the form when the target template changes — returning
-    // from the stacked signatures drawer must NOT wipe unsaved edits.
+    // Only when the target changes: returning from the signatures drawer must not wipe edits.
     const key: string = `${mode}:${props.template?.id ?? 'new'}`
     if (key === lastInitKey.value) return
     lastInitKey.value = key

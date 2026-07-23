@@ -2,7 +2,6 @@
  * Props & item types for the reusable `UiWizardStepper` component.
  */
 
-/** A single step of a wizard. */
 export type UiWizardStep = {
   id: number
   label: string

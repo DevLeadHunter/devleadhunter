@@ -1,3 +1,4 @@
+import type { UseDesktopRuntimeReturn } from '~/types/Composables'
 import type { ComputedRef } from 'vue'
 
 /**
@@ -7,7 +8,7 @@ import type { ComputedRef } from 'vue'
  *
  * @returns Desktop + environment detection helpers and the DB-sync trigger.
  */
-export function useDesktopRuntime() {
+export function useDesktopRuntime(): UseDesktopRuntimeReturn {
   const isDesktopApp: ComputedRef<boolean> = computed((): boolean => {
     if (!import.meta.client) {
       return false
@@ -19,17 +20,12 @@ export function useDesktopRuntime() {
     return Boolean(w.__TAURI__ || w.__TAURI_INTERNALS__)
   })
 
-  // True under the Nuxt dev server (`npm run dev` OR `tauri:dev`), false in any
-  // generated/packaged output (prod web, packaged desktop). Vite inlines this at
-  // build time, so it reliably separates local development from production.
+  // Inlined by Vite at build time: false in every generated output, web or packaged desktop.
   const isLocalDev: boolean = import.meta.dev
 
-  // "Local desktop dev only" — the canonical gate for dev-only desktop UI (e.g. the
-  // DB-sync button), mirroring GoupixDex's `import.meta.dev && isDesktopApp`.
   const isDesktopDev: ComputedRef<boolean> = computed((): boolean => isLocalDev && isDesktopApp.value)
 
-  // Only the packaged production desktop app should self-update (dev has no valid
-  // updater endpoint/signature, so a check there just fails with a spurious panel).
+  // Dev has no valid updater endpoint, so checking there opens a panel on a failure.
   const isProdDesktop: ComputedRef<boolean> = computed((): boolean => isDesktopApp.value && !isLocalDev)
 
   /**

@@ -12,13 +12,9 @@ export type ProspectionScriptSegmentId = 'intro' | 'middle' | 'outro'
 /** One take: what is on screen, how long it should run, and what to say. */
 export type ProspectionScriptSegment = {
   id: ProspectionScriptSegmentId
-  /** Short name shown on the stepper and on the take card. */
   title: string
-  /** What the prospect sees during this take — it sets the delivery. */
   staging: string
-  /** Suggested length in seconds. Guidance for the timer, never a cut-off. */
   targetSeconds: number
-  /** The words to read out loud. */
   text: string
 }
 

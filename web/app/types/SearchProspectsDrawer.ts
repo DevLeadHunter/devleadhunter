@@ -9,3 +9,12 @@ export type SearchProspectsDrawerProps = {
   showBack: boolean
   prefill?: SearchProspectsPrefill | null
 }
+
+export type SearchFormState = {
+  category: string
+  city: string
+  maxResults: number
+  source: string
+  skipDuplicates: boolean
+  onlyWithoutWebsite: boolean
+}

@@ -1,7 +1,7 @@
 <template>
   <USelectMenu
     v-model="modelValue"
-    :items="options"
+    :items="props.options"
     value-key="value"
     label-key="label"
     class="w-full"
@@ -11,11 +11,12 @@
 
 <script lang="ts" setup>
 import type { PropType } from 'vue'
-import type { SelectFieldOption } from '~/types/SelectField'
+import type { SelectFieldOption, SelectFieldProps } from '~/types/SelectField'
 
 const modelValue = defineModel<string>({ required: true })
 
-defineProps({
+/** Native select whose entries come from a typed option list. */
+const props: SelectFieldProps = defineProps({
   options: {
     type: Array as PropType<SelectFieldOption[]>,
     required: true,
