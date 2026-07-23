@@ -14,6 +14,7 @@
 - [Commentaires & JSDoc](#commentaires--jsdoc)
 - [Tracking PostHog](#tracking-posthog)
 - [Conventions Vue](#conventions-vue)
+- [Outillage](#outillage)
 - [Règles hard](#règles-hard)
 
 ---
@@ -49,18 +50,26 @@ Chaque template vit dans **son propre repo GitHub** (`devleadhunter-template-<id
 demo-host/
 ├── app/
 │   ├── components/
-│   │   └── DemoSiteView.vue      # Dispatch template_id → layer root
+│   │   └── DemoSiteView.vue                  # Dispatch template_id → layer root
 │   ├── composables/
-│   │   ├── useDemoTracking.ts    # PostHog surface=demo
+│   │   ├── useDemoTracking.ts                # PostHog surface=demo
 │   │   └── useDemoVideoTracking.ts
 │   ├── pages/
-│   │   ├── [slug].vue            # Démo TTL
-│   │   ├── index.vue             # Site vendu (host → slug)
-│   │   └── v/[slug].vue          # Player vidéo prospection
+│   │   ├── [slug].vue                        # Démo TTL
+│   │   ├── index.vue                         # Site vendu (host → slug)
+│   │   ├── preview-layers.vue                # Harnais DEV — layers sur SiteContents figés
+│   │   └── v/[slug].vue                      # Player vidéo prospection
+│   ├── types/                                # Un fichier par composant/contrat
 │   └── utils/
-├── nuxt.config.ts                # extends: un entry par template (tag pinné)
+│       ├── DemoVideoEngagementTracker.ts     # Classe — tracking du player
+│       └── StoryblokSiteContentBridge.ts     # Classe — bloks Storyblok → SiteContent plat
+├── eslint.config.mjs
+├── prettier.config.js
+├── nuxt.config.ts                            # extends: un entry par template (tag pinné)
 └── STANDARDS_CODE_ET_ARCHITECTURE.md
 ```
+
+Un ensemble cohérent de helpers se range dans une **classe à méthodes statiques** nommée comme son fichier (`StoryblokSiteContentBridge`), pas en fonctions module éparses. Une classe qui porte un état de session s'instancie (`new DemoVideoEngagementTracker(player, capture).start()`).
 
 ### Responsabilités
 
@@ -127,18 +136,35 @@ Mêmes règles que `web/STANDARDS_CODE_ET_ARCHITECTURE.md` :
 - Composition API uniquement
 - Nommage PascalCase pour les composants locaux (`DemoSiteView.vue`)
 - Les composants de template suivent la convention de leur layer (pas de préfixe `Ui` imposé côté layer)
+- Props via `defineProps({…})` runtime + type exporté depuis `app/types/<Composant>.ts`, JSDoc au-dessus (même profil que `web/`)
+
+---
+
+## Outillage
+
+```sh
+npm --prefix demo-host run lint       # prettier → eslint → vue-tsc
+npm --prefix demo-host run lint:fix
+```
+
+Les trois passent avant tout commit — le hook `.husky/pre-commit` lance `web` **et** `demo-host`.
+
+Config alignée sur `web/` : `@typescript-eslint/no-explicit-any: error`, `vue/block-order`, `jsdoc/require-jsdoc`, `unused-imports`, Prettier en règle ESLint. Les tags de type JSDoc (`require-param-type`…) sont **off partout** : le typage vient de TypeScript. `no-extraneous-class` est **off** — une classe de méthodes statiques est le style maison.
 
 ---
 
 ## Règles hard
 
-| Règle                                   | Statut      |
-| --------------------------------------- | ----------- |
-| Logique métier dashboard dans demo-host | ❌ INTERDIT |
-| Appels API authentifiés / privés        | ❌ INTERDIT |
-| Code React / JSX dans les layers        | ❌ INTERDIT |
-| `any`                                   | ❌ INTERDIT |
-| Image statique manquante (casse build)  | ❌ INTERDIT |
-| JSDoc EN sur fonctions                  | ✅ REQUIS   |
-| Rendu depuis `content_json` public      | ✅ REQUIS   |
-| Dispatch centralisé via `DemoSiteView`  | ✅ REQUIS   |
+| Règle                                      | Statut      |
+| ------------------------------------------ | ----------- |
+| Logique métier dashboard dans demo-host    | ❌ INTERDIT |
+| Appels API authentifiés / privés           | ❌ INTERDIT |
+| Code React / JSX dans les layers           | ❌ INTERDIT |
+| `any`                                      | ❌ INTERDIT |
+| Image statique manquante (casse build)     | ❌ INTERDIT |
+| Commentaire par propriété de type          | ❌ INTERDIT |
+| Commentaire de plus de 2 lignes hors JSDoc | ❌ INTERDIT |
+| Commit sans `npm run lint` qui passe       | ❌ INTERDIT |
+| JSDoc EN sur fonctions et méthodes         | ✅ REQUIS   |
+| Rendu depuis `content_json` public         | ✅ REQUIS   |
+| Dispatch centralisé via `DemoSiteView`     | ✅ REQUIS   |

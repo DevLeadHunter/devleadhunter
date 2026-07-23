@@ -99,7 +99,7 @@ export function useDemoTracking(): { init: (slug: string, status: string, varian
         } else if (href.startsWith('mailto:')) {
           posthog.capture('demo_contact_click', { href, section })
         } else if (/^https?:\/\//i.test(href) && !href.includes(window.location.host)) {
-          let host = ''
+          let host: string
           try {
             host = new URL(href).host
           } catch {
@@ -108,7 +108,12 @@ export function useDemoTracking(): { init: (slug: string, status: string, varian
           posthog.capture('demo_outbound_click', { href, host, section })
         } else {
           const label = (anchor ?? button ?? target).textContent?.trim().slice(0, 80) ?? ''
-          posthog.capture('demo_cta_click', { label, href, section, tag: (anchor ?? button)?.tagName.toLowerCase() ?? '' })
+          posthog.capture('demo_cta_click', {
+            label,
+            href,
+            section,
+            tag: (anchor ?? button)?.tagName.toLowerCase() ?? '',
+          })
         }
         markEngaged('click')
       },

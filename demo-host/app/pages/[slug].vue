@@ -18,7 +18,11 @@ const route = useRoute()
 const config = useRuntimeConfig()
 const slug: ComputedRef<string> = computed((): string => String(route.params.slug ?? ''))
 
-const { data: site, pending, error } = await useAsyncData(
+const {
+  data: site,
+  pending,
+  error,
+} = await useAsyncData(
   () => `demo-site-${slug.value}`,
   async (): Promise<DemoSitePublic> => {
     return await $fetch<DemoSitePublic>(`${config.public.apiBase}/api/v1/demo-sites/public/${slug.value}`)

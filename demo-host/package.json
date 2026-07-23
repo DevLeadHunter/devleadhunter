@@ -7,7 +7,14 @@
     "build": "nuxt build",
     "generate": "nuxt generate",
     "preview": "nuxt preview",
-    "postinstall": "nuxt prepare"
+    "postinstall": "nuxt prepare",
+    "lint:prettier": "prettier --check .",
+    "lint:prettier:fix": "prettier --write .",
+    "lint:eslint": "eslint .",
+    "lint:eslint:fix": "eslint . --fix",
+    "lint:ts": "node scripts/typecheck.mjs",
+    "lint": "npm run lint:prettier && npm run lint:eslint && npm run lint:ts",
+    "lint:fix": "npm run lint:prettier:fix && npm run lint:eslint:fix"
   },
   "dependencies": {
     "@devleadhunter/website-content": "github:DevLeadHunter/devleadhunter-website-content#v1.4.0",
@@ -19,8 +26,22 @@
     "vue": "^3.5.34"
   },
   "devDependencies": {
+    "@nuxt/eslint": "^1.16.0",
     "@tailwindcss/vite": "^4.3.0",
+    "@types/node": "^25.9.5",
+    "@typescript-eslint/eslint-plugin": "^8.65.0",
+    "@typescript-eslint/parser": "^8.65.0",
+    "eslint": "^10.7.0",
+    "eslint-config-prettier": "^10.1.8",
+    "eslint-plugin-jsdoc": "^62.9.0",
+    "eslint-plugin-prettier": "^5.5.6",
+    "eslint-plugin-unused-imports": "^4.4.1",
+    "eslint-plugin-vue": "^10.10.0",
+    "prettier": "^3.9.6",
+    "prettier-plugin-tailwindcss": "^0.7.4",
     "tailwindcss": "^4.3.0",
-    "typescript": "^5.9.3"
+    "typescript": "^5.9.3",
+    "vue-eslint-parser": "^10.4.1",
+    "vue-tsc": "^3.3.8"
   }
 }

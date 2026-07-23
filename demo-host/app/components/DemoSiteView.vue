@@ -1,20 +1,11 @@
 <template>
-  <!--
-    Each template renders from its own extends'd layer (a typed SiteContent). demo-host resolves
-    the content (flat content_json or Storyblok-native `site_content`) to a SiteContent and passes
-    it to the layer root. The legacy in-repo templates were removed once the migration completed.
-  -->
-  <component
-    v-if="migratedRoot && isSiteContent"
-    :is="migratedRoot"
-    :content="resolvedSiteContent" />
+  <component :is="templateRoot" v-if="templateRoot && hasRenderableContent" :content="siteContent" />
 </template>
 
 <script lang="ts" setup>
 import type { Component, ComputedRef, PropType, Ref } from 'vue'
-// Migrated layer roots (one per extends'd template). `Lazy*` = async → code-split, so a demo
-// only loads its own template's chunk. We pass the component OBJECT (not a string name): a
-// runtime string name isn't resolvable via `<component :is>` for Nuxt auto-imported components.
+// The component OBJECT is passed to `<component :is>`, never a name string: Nuxt auto-imported
+// components are not resolvable by runtime name and would render blank in prod on a green build.
 import {
   LazyArtisanEditoRoot,
   LazyPlumberSignatureRoot,
@@ -26,22 +17,27 @@ import {
   LazyFoodRoot,
   LazyBarberRoot,
 } from '#components'
-import { fetchStoryblokDraftContent, isStoryblokVisualEditor, useStoryblokBridge } from '~/composables/useStoryblokPreview'
+import {
+  fetchStoryblokDraftContent,
+  isStoryblokVisualEditor,
+  useStoryblokBridge,
+} from '~/composables/useStoryblokPreview'
+import type { DemoSiteViewProps } from '~/types/DemoSiteView'
 import type { DemoSitePublic } from '~/types/demoSite'
 import type { SiteContent } from '@devleadhunter/website-content'
 
-const props = defineProps({
+/**
+ * Defines the component props.
+ */
+const props: DemoSiteViewProps = defineProps({
   site: {
     type: Object as PropType<DemoSitePublic>,
     required: true,
   },
 })
 
-const route = useRoute()
-const isVisualEditor: ComputedRef<boolean> = computed((): boolean => isStoryblokVisualEditor(route.query))
-
-/** template_id → the extends'd layer root component (async → each renders as its own chunk). */
-const MIGRATED_ROOTS: Record<string, Component> = {
+/** `Lazy*` roots keep each template in its own chunk, so a demo only downloads its own. */
+const TEMPLATE_ROOTS: Record<string, Component> = {
   'artisan-edito': LazyArtisanEditoRoot,
   'plumber-signature': LazyPlumberSignatureRoot,
   'plumber-atelier': LazyPlumberAtelierRoot,
@@ -52,6 +48,11 @@ const MIGRATED_ROOTS: Record<string, Component> = {
   food: LazyFoodRoot,
   barber: LazyBarberRoot,
 }
+
+const route = useRoute()
+const { init: initDemoTracking } = useDemoTracking()
+
+const isVisualEditor: ComputedRef<boolean> = computed((): boolean => isStoryblokVisualEditor(route.query))
 
 const { data: storyblokDraftContent } = useAsyncData(
   () => `storyblok-draft-${props.site.slug}-${isVisualEditor.value}`,
@@ -64,11 +65,11 @@ const { data: storyblokDraftContent } = useAsyncData(
   { watch: [isVisualEditor] },
 )
 
-const liveContent: Ref<Record<string, unknown>> = ref({})
+const liveEditorContent: Ref<Record<string, unknown>> = ref({})
 
-const renderContent: ComputedRef<Record<string, unknown>> = computed((): Record<string, unknown> => {
-  if (Object.keys(liveContent.value).length > 0) {
-    return liveContent.value
+const resolvedContent: ComputedRef<Record<string, unknown>> = computed((): Record<string, unknown> => {
+  if (Object.keys(liveEditorContent.value).length > 0) {
+    return liveEditorContent.value
   }
   if (storyblokDraftContent.value) {
     return storyblokDraftContent.value
@@ -76,36 +77,33 @@ const renderContent: ComputedRef<Record<string, unknown>> = computed((): Record<
   return (props.site.content_json as Record<string, unknown>) ?? {}
 })
 
-/** True when the resolved content is a SiteContent — flat (content_json) or Storyblok-native `site_content`. */
-const isSiteContent: ComputedRef<boolean> = computed((): boolean => {
-  const content: Record<string, unknown> = renderContent.value
-  return ('businessName' in content && !('body' in content)) || isStoryblokSiteContent(content)
-})
-
-/** The extends'd root component for this template, or null for an unknown template_id. */
-const migratedRoot: ComputedRef<Component | null> = computed(
-  (): Component | null => MIGRATED_ROOTS[props.site.template_id] ?? null,
+const isFlatSiteContent: ComputedRef<boolean> = computed(
+  (): boolean => 'businessName' in resolvedContent.value && !('body' in resolvedContent.value),
 )
 
-/** Resolve the SiteContent from either the flat shape (pass-through) or Storyblok-native (flatten). */
-const resolvedSiteContent: ComputedRef<SiteContent> = computed((): SiteContent => {
-  const content: Record<string, unknown> = renderContent.value
-  if ('businessName' in content && !('body' in content)) {
-    return content as SiteContent
+const hasRenderableContent: ComputedRef<boolean> = computed(
+  (): boolean => isFlatSiteContent.value || StoryblokSiteContentBridge.isStoryblokSiteContent(resolvedContent.value),
+)
+
+const templateRoot: ComputedRef<Component | null> = computed(
+  (): Component | null => TEMPLATE_ROOTS[props.site.template_id] ?? null,
+)
+
+const siteContent: ComputedRef<SiteContent> = computed((): SiteContent => {
+  if (isFlatSiteContent.value) {
+    return resolvedContent.value as SiteContent
   }
-  return storyblokSiteContentToSiteContent(content)
+  return StoryblokSiteContentBridge.toSiteContent(resolvedContent.value)
 })
 
 watch(storyblokDraftContent, (): void => {
-  liveContent.value = {}
+  liveEditorContent.value = {}
 })
 
 useStoryblokBridge(isVisualEditor, (content: Record<string, unknown>): void => {
-  liveContent.value = content
+  liveEditorContent.value = content
 })
 
-// Behavioural tracking — only for live demos (status='active'); never on a delivered site.
-const { init: initDemoTracking } = useDemoTracking()
 onMounted((): void => {
   const variant: string | null = typeof route.query.v === 'string' ? route.query.v : null
   void initDemoTracking(props.site.slug, props.site.status, variant)

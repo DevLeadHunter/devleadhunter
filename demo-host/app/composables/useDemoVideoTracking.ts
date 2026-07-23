@@ -1,40 +1,20 @@
 import type { PostHog } from 'posthog-js'
+import type { DemoVideoEventCapture } from '~/types/demoVideoTracking'
+
+let initialized: boolean = false
+let instance: PostHog | null = null
 
 /**
  * PostHog tracking for the prospection-video player page (/v/{slug}).
  *
- * Same identity contract as `useDemoTracking`: `distinct_id` = demo slug,
- * super properties `surface: 'demo'` + `demo_slug` (+ `ab_variant` when the
- * email link carried `?v=`), so video events land on the SAME PostHog person
- * as the email + demo events and feed the email → vidéo → démo funnel.
+ * `distinct_id` is the demo slug, like `useDemoTracking`, so video events land on the SAME
+ * person as the email and demo events and feed the email → vidéo → démo funnel.
  *
- * Events captured (read back by the API's lead scoring / timeline):
- *   - $pageview                                  — the thumbnail click itself
- *   - demo_video_play      { }                   — first play press
- *   - demo_video_resume    { percent }           — play after a pause
- *   - demo_video_pause     { percent }           — pause (not the natural end)
- *   - demo_video_replay    { count }             — restarted from the beginning
- *   - demo_video_progress  { percent }           — 25/50/75 % thresholds
- *   - demo_video_complete  { }                   — watched ≥95 %
- *   - demo_video_watch_time{ seconds, percent }  — real watched seconds (flushed)
- *   - demo_video_seek      { from_percent, to_percent, direction }
- *   - demo_video_fullscreen{ entered }           — entered/left fullscreen
- *   - demo_video_mute      { muted }             — muted/unmuted
- *   - demo_video_cta_click { href }              — « Découvrir le site » click
- *
- * Session replay is enabled (like the demo) to see exactly what the prospect
- * does on the page; text inputs are masked as a precaution.
- */
-let initialized = false
-let instance: PostHog | null = null
-
-/**
- * Composable exposing the video-page tracking initialiser and capture helper.
  * @returns `init` (call once with the slug) and `capture` (no-op until init).
  */
 export function useDemoVideoTracking(): {
   init: (slug: string, variant: string | null) => Promise<void>
-  capture: (event: string, properties?: Record<string, unknown>) => void
+  capture: DemoVideoEventCapture
 } {
   const config = useRuntimeConfig()
 
@@ -45,8 +25,8 @@ export function useDemoVideoTracking(): {
    */
   async function init(slug: string, variant: string | null): Promise<void> {
     if (!import.meta.client || initialized) return
-    const key = String(config.public.posthogProjectApiKey ?? '')
-    const host = String(config.public.posthogIngestionHost ?? '')
+    const key: string = String(config.public.posthogProjectApiKey ?? '')
+    const host: string = String(config.public.posthogIngestionHost ?? '')
     if (!key) return
 
     const { default: posthog } = await import('posthog-js')
@@ -57,8 +37,7 @@ export function useDemoVideoTracking(): {
       autocapture: false,
       persistence: 'memory',
       bootstrap: { distinctID: slug, isIdentifiedID: true },
-      // Session replay activé (comme la démo) pour voir ce que fait le prospect
-      // sur la page vidéo ; on masque les champs de saisie par précaution.
+      // Session replay activé comme sur la démo ; les champs de saisie sont masqués par précaution.
       disable_session_recording: false,
       session_recording: {
         maskAllInputs: true,
@@ -70,11 +49,11 @@ export function useDemoVideoTracking(): {
   }
 
   /**
-   * Capture a video event (silently ignored before init / without a key).
-   * @param event - Event name (demo_video_*).
+   * Capture a video event, silently ignored before init or without a PostHog key.
+   * @param event - Event name.
    * @param properties - Optional event properties.
    */
-  function capture(event: string, properties?: Record<string, unknown>): void {
+  const capture: DemoVideoEventCapture = (event, properties): void => {
     instance?.capture(event, properties)
   }
 

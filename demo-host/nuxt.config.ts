@@ -2,6 +2,7 @@ import tailwindcss from '@tailwindcss/vite'
 
 export default defineNuxtConfig({
   ssr: true,
+  modules: ['@nuxt/eslint'],
 
   // Website templates consumed as Nuxt layers from GitHub (public repos, no token),
   // pinned by tag. Each exposes one root component + relative-only sections.
