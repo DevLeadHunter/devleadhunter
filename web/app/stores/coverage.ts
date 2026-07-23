@@ -6,7 +6,7 @@ import { computed, ref } from 'vue'
 import { defineStore } from 'pinia'
 import type { CityGeo } from '~/composables/useFranceGeo'
 import { geocodeCities, lookupCity } from '~/composables/useFranceGeo'
-import type { CoverageResponse } from '~/services/dashboardService'
+import type { CoverageCity, CoverageResponse } from '~/services/dashboardService'
 import { DashboardService } from '~/services/dashboardService'
 import type { FranceMajorCity } from '~/utils/franceTerritory'
 import { FRANCE_MAJOR_CITIES, FRANCE_REGIONS } from '~/utils/franceTerritory'
@@ -20,6 +20,8 @@ export function normalizeCityName(name: string): string {
   return name.trim().toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '')
 }
 
+// Pinia ne fournit pas de type nommé pour un store : TypeScript l'élide, il est inécrivable.
+// eslint-disable-next-line @typescript-eslint/typedef
 export const useCoverageStore = defineStore('coverage', () => {
   const scope: Ref<string> = ref('me')
   const selectedCategories: Ref<string[]> = ref([])
@@ -46,11 +48,11 @@ export const useCoverageStore = defineStore('coverage', () => {
   async function load(): Promise<void> {
     isLoading.value = true
     try {
-      const [scopeName, memberId] = parseScope(scope.value)
+      const [scopeName, memberId]: [string, number | undefined] = parseScope(scope.value)
       const data: CoverageResponse = await DashboardService.getCoverage(scopeName, memberId, selectedCategories.value)
       coverage.value = data
       if (data.available_categories.length > 0) availableCategories.value = data.available_categories
-      cityGeo.value = await geocodeCities(data.cities.map((c): string => c.city))
+      cityGeo.value = await geocodeCities(data.cities.map((city: CoverageCity): string => city.city))
     } catch {
       coverage.value = {
         scope: scope.value,
@@ -85,7 +87,7 @@ export const useCoverageStore = defineStore('coverage', () => {
   }
 
   const coveredRegionCodes: ComputedRef<Set<string>> = computed((): Set<string> => {
-    const covered = new Set<string>()
+    const covered: Set<string> = new Set<string>()
     for (const city of coverage.value?.cities ?? []) {
       const geo: CityGeo | null = lookupCity(cityGeo.value, city.city)
       if (geo && geo.region) covered.add(geo.region)
@@ -95,21 +97,20 @@ export const useCoverageStore = defineStore('coverage', () => {
 
   const uncoveredRegions: ComputedRef<string[]> = computed((): string[] =>
     Object.entries(FRANCE_REGIONS)
-      .filter(([code]): boolean => !coveredRegionCodes.value.has(code))
-      .map(([, name]): string => name),
+      .filter(([code]: [string, string]): boolean => !coveredRegionCodes.value.has(code))
+      .map(([, name]: [string, string]): string => name),
   )
 
   const coveredCityNames: ComputedRef<Set<string>> = computed((): Set<string> => {
-    const names = new Set<string>()
+    const names: Set<string> = new Set<string>()
     for (const city of coverage.value?.cities ?? []) names.add(normalizeCityName(city.city))
     return names
   })
 
   const suggestedCities: ComputedRef<FranceMajorCity[]> = computed((): FranceMajorCity[] =>
-    FRANCE_MAJOR_CITIES.filter((city): boolean => !coveredCityNames.value.has(normalizeCityName(city.name))).slice(
-      0,
-      10,
-    ),
+    FRANCE_MAJOR_CITIES.filter(
+      (city: FranceMajorCity): boolean => !coveredCityNames.value.has(normalizeCityName(city.name)),
+    ).slice(0, 10),
   )
 
   /**

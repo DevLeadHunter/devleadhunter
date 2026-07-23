@@ -132,7 +132,7 @@ export function useProspectionScript(presenterName: string): {
     try {
       const parsed: unknown = JSON.parse(raw)
       if (typeof parsed !== 'object' || parsed === null) return
-      const saved = parsed as Record<string, unknown>
+      const saved: Record<string, unknown> = parsed as Record<string, unknown>
       let touched: boolean = false
       segments.value = segments.value.map((segment: ProspectionScriptSegment): ProspectionScriptSegment => {
         const text: unknown = saved[segment.id]

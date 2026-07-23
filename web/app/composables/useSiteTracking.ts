@@ -1,3 +1,4 @@
+import type { NuxtApp } from '#app'
 /**
  * Marketing-site analytics helper (PostHog, ``surface: 'marketing'``).
  *
@@ -9,7 +10,7 @@
 export function useSiteTracking(): {
   track: (event: string, properties?: Record<string, unknown>) => void
 } {
-  const { $siteTrack } = useNuxtApp()
+  const { $siteTrack }: NuxtApp = useNuxtApp()
 
   /**
    * Fire a marketing-site event.

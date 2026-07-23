@@ -14,7 +14,7 @@ export class AuthService {
    * @throws If login fails
    */
   static async login(credentials: LoginCredentials): Promise<TokenResponse> {
-    const response = await fetch(`${getApiUrl()}/api/v1/auth/login`, {
+    const response: Response = await fetch(`${getApiUrl()}/api/v1/auth/login`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -23,7 +23,7 @@ export class AuthService {
     })
 
     if (!response.ok) {
-      const error = await response.json().catch(() => ({ detail: 'Login failed' }))
+      const error: { detail: string } = await response.json().catch(() => ({ detail: 'Login failed' }))
       throw new Error(error.detail || 'Login failed')
     }
 
@@ -37,7 +37,7 @@ export class AuthService {
    * @throws If signup fails
    */
   static async signup(data: SignupPayload): Promise<User> {
-    const response = await fetch(`${getApiUrl()}/api/v1/auth/signup`, {
+    const response: Response = await fetch(`${getApiUrl()}/api/v1/auth/signup`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -46,7 +46,7 @@ export class AuthService {
     })
 
     if (!response.ok) {
-      const error = await response.json().catch(() => ({ detail: 'Signup failed' }))
+      const error: { detail: string } = await response.json().catch(() => ({ detail: 'Signup failed' }))
       throw new Error(error.detail || 'Signup failed')
     }
 
@@ -60,7 +60,7 @@ export class AuthService {
    * @throws If request fails
    */
   static async getCurrentUser(token: string): Promise<User> {
-    const response = await fetch(`${getApiUrl()}/api/v1/auth/me`, {
+    const response: Response = await fetch(`${getApiUrl()}/api/v1/auth/me`, {
       method: 'GET',
       headers: {
         Authorization: `Bearer ${token}`,
@@ -82,7 +82,7 @@ export class AuthService {
    * @throws If the request fails.
    */
   static async completeOnboarding(token: string): Promise<User> {
-    const response = await fetch(`${getApiUrl()}/api/v1/auth/me/complete-onboarding`, {
+    const response: Response = await fetch(`${getApiUrl()}/api/v1/auth/me/complete-onboarding`, {
       method: 'POST',
       headers: {
         Authorization: `Bearer ${token}`,
@@ -91,7 +91,7 @@ export class AuthService {
     })
 
     if (!response.ok) {
-      const error = await response.json().catch(() => ({ detail: 'Onboarding completion failed' }))
+      const error: { detail: string } = await response.json().catch(() => ({ detail: 'Onboarding completion failed' }))
       throw new Error(error.detail || 'Onboarding completion failed')
     }
 
@@ -106,7 +106,7 @@ export class AuthService {
    * @throws If the update fails (e.g. email already registered).
    */
   static async updateProfile(token: string, data: ProfileUpdate): Promise<User> {
-    const response = await fetch(`${getApiUrl()}/api/v1/auth/me`, {
+    const response: Response = await fetch(`${getApiUrl()}/api/v1/auth/me`, {
       method: 'PATCH',
       headers: {
         Authorization: `Bearer ${token}`,
@@ -116,7 +116,7 @@ export class AuthService {
     })
 
     if (!response.ok) {
-      const error = await response.json().catch(() => ({ detail: 'Profile update failed' }))
+      const error: { detail: string } = await response.json().catch(() => ({ detail: 'Profile update failed' }))
       throw new Error(error.detail || 'Profile update failed')
     }
 

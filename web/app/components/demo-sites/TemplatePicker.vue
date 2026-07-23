@@ -128,7 +128,7 @@ const activeColorKey: Ref<TemplateThemeColorKey> = ref('primary')
  * Build a CSS gradient preview from the template theme.
  */
 function previewGradient(template: DemoSiteTemplate): string {
-  const t = props.modelValue === template.id ? props.theme : template.default_theme
+  const t: DemoSiteTheme = props.modelValue === template.id ? props.theme : template.default_theme
   return `linear-gradient(135deg, ${t.secondary} 0%, ${t.primary} 100%)`
 }
 
@@ -152,7 +152,9 @@ function selectTemplate(template: DemoSiteTemplate): void {
  */
 function openColorPicker(templateId: string, colorKey: TemplateThemeColorKey): void {
   if (props.modelValue !== templateId) {
-    const template = props.templates.find((template) => template.id === templateId)
+    const template: DemoSiteTemplate | undefined = props.templates.find(
+      (template: DemoSiteTemplate) => template.id === templateId,
+    )
     if (template) selectTemplate(template)
   }
   activeColorKey.value = colorKey

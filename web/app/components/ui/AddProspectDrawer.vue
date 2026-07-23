@@ -256,7 +256,7 @@ async function handleEnrichProspect(): Promise<void> {
   isEnriching.value = true
   enrichError.value = null
   try {
-    const result = await ProspectsService.enrichProspect({
+    const result: ProspectCreatePayload = await ProspectsService.enrichProspect({
       business_name: addForm.value.business_name.trim() || undefined,
       google_maps_url: addForm.value.google_maps_url.trim() || undefined,
       city: addForm.value.city.trim() || undefined,

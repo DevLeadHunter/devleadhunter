@@ -45,7 +45,9 @@ export class AutomationsService {
    * @returns The claimed prospect ids.
    */
   static async getUsedProspectIds(): Promise<number[]> {
-    const response = await ApiClient.get<{ prospect_ids: number[] }>(`${BASE_URL}/used-prospects`)
+    const response: { prospect_ids: number[] } = await ApiClient.get<{ prospect_ids: number[] }>(
+      `${BASE_URL}/used-prospects`,
+    )
     return response.prospect_ids
   }
 

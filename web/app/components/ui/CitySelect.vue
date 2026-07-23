@@ -36,11 +36,12 @@
 
 <script lang="ts" setup>
 import type { Commune, UiCitySelectProps } from '~/types/UiCitySelect'
-import type { Ref } from 'vue'
+import type { ModelRef, Ref } from 'vue'
 import { ref, watch, onMounted, onBeforeUnmount } from 'vue'
 
 /** French city picker with geo.api.gouv.fr autosuggest; v-model is the field text. */
-const modelValue = defineModel<string>({ required: true })
+const modelValue: Ref<string, string> & [ModelRef<string, string, string, string>, Record<string, true | undefined>] =
+  defineModel<string>({ required: true })
 
 /** Placeholder shown while the field is empty. */
 const props: UiCitySelectProps = defineProps({

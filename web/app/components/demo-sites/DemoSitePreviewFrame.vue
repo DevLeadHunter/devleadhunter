@@ -56,7 +56,7 @@ const previewSrc: ComputedRef<string> = computed((): string => {
   if (props.slug) {
     return `${base}/${props.slug}`
   }
-  const params = new URLSearchParams({ t: props.templateId })
+  const params: URLSearchParams = new URLSearchParams({ t: props.templateId })
   if (props.businessName) {
     params.set('business', props.businessName)
   }

@@ -1,3 +1,4 @@
+import type { RouteLocationNormalized } from 'vue-router'
 /**
  * Authentication middleware
  * Protects routes that require authentication
@@ -7,7 +8,7 @@
 /** Where a user who has not finished the setup wizard is nudged to. */
 const SETUP_ROUTE: string = '/configuration'
 
-export default defineNuxtRouteMiddleware(async (to) => {
+export default defineNuxtRouteMiddleware(async (to: RouteLocationNormalized) => {
   /**
    * User store
    */
@@ -29,7 +30,7 @@ export default defineNuxtRouteMiddleware(async (to) => {
      * Validate authentication by calling /me endpoint
      * This ensures the token is still valid and updates user data
      */
-    const isValid = await userStore.validateAuth()
+    const isValid: boolean = await userStore.validateAuth()
 
     if (!isValid) {
       return navigateTo('/login')
@@ -40,8 +41,9 @@ export default defineNuxtRouteMiddleware(async (to) => {
      * explicitly chose to configure later. The query is carried over so an OAuth
      * redirect (e.g. `?gmail=connected`) is still surfaced on the wizard.
      */
-    const { isPostponed } = useOnboarding()
-    const needsSetup = userStore.user?.onboarding_completed === false && !isPostponed()
+    const { isPostponed }: { isPostponed: () => boolean; postpone: () => void; clearPostponed: () => void } =
+      useOnboarding()
+    const needsSetup: boolean = userStore.user?.onboarding_completed === false && !isPostponed()
 
     if (needsSetup && to.path !== SETUP_ROUTE && to.path.startsWith('/dashboard')) {
       return navigateTo({ path: SETUP_ROUTE, query: to.query })

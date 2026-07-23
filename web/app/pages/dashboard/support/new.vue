@@ -118,6 +118,7 @@
 </template>
 
 <script lang="ts" setup>
+import type { SupportTicketDetail } from '~/types/index'
 import type { UseToastReturn } from '~/types/Composables'
 import type { Ref } from 'vue'
 import type { SupportTicketTopic, SupportTopicOption } from '~/types'
@@ -150,7 +151,11 @@ const attachments: Ref<File[]> = ref([])
 const previews: Ref<Array<{ url: string; name: string }>> = ref([])
 const attachmentInput: Ref<HTMLInputElement | null> = ref(null)
 
-const form = reactive<{ subject: string; topic: SupportTicketTopic | ''; message: string }>({
+const form: { subject: string; topic: '' | SupportTicketTopic; message: string } = reactive<{
+  subject: string
+  topic: SupportTicketTopic | ''
+  message: string
+}>({
   subject: '',
   topic: '',
   message: '',
@@ -161,7 +166,7 @@ const form = reactive<{ subject: string; topic: SupportTicketTopic | ''; message
  * @param event - Native change event of the file input.
  */
 function handleAttachments(event: Event): void {
-  const input = event.target as HTMLInputElement
+  const input: HTMLInputElement = event.target as HTMLInputElement
   for (const file of Array.from(input.files ?? [])) {
     if (!ALLOWED_TYPES.includes(file.type)) {
       toast.error('Format non pris en charge. Utilisez PNG, JPG ou WEBP.')
@@ -182,7 +187,7 @@ function handleAttachments(event: Event): void {
  * @param index - Position in the staged list.
  */
 function removeAttachment(index: number): void {
-  const preview = previews.value[index]
+  const preview: { url: string; name: string } | undefined = previews.value[index]
   if (preview) URL.revokeObjectURL(preview.url)
   attachments.value.splice(index, 1)
   previews.value.splice(index, 1)
@@ -211,7 +216,7 @@ async function handleSubmit(): Promise<void> {
   }
   try {
     isSubmitting.value = true
-    const ticket = await SupportService.createTicket({
+    const ticket: SupportTicketDetail = await SupportService.createTicket({
       subject: form.subject,
       topic: form.topic,
       message: form.message,

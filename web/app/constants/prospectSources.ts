@@ -42,7 +42,7 @@ export const PROSPECT_SOURCE_SEARCH_OPTIONS: ProspectSourceOption[] = [
 ]
 
 const SOURCE_LABEL_MAP: Record<string, string> = Object.fromEntries(
-  PROSPECT_SOURCE_OPTIONS.map((option) => [option.value, option.label]),
+  PROSPECT_SOURCE_OPTIONS.map((option: ProspectSourceOption) => [option.value, option.label]),
 )
 
 /**

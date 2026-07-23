@@ -38,11 +38,12 @@
 </template>
 
 <script lang="ts" setup>
-import type { ComputedRef, Ref } from 'vue'
+import type { ComputedRef, ModelRef, Ref } from 'vue'
 import { computed, nextTick, onMounted, ref, watch } from 'vue'
 
 /** Two-way bound signature HTML. */
-const model = defineModel<string>({ default: '' })
+const model: Ref<string, string> & [ModelRef<string, string, string, string>, Record<string, true | undefined>] =
+  defineModel<string>({ default: '' })
 
 /** Whether the raw-HTML source textarea is shown instead of the rich editor. */
 const showSource: Ref<boolean> = ref(false)
@@ -127,7 +128,7 @@ watch(
   (): [string, boolean] => [model.value, showSource.value],
   (): void => {
     void nextTick((): void => {
-      const editable = editableRef.value
+      const editable: HTMLDivElement | null = editableRef.value
       if (!editable || showSource.value) return
       if (document.activeElement === editable) return
       if (editable.innerHTML !== model.value) editable.innerHTML = model.value

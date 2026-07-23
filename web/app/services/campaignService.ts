@@ -137,8 +137,8 @@ export class CampaignService {
    * @param limit  - Max records to return.
    * @param status - Optional status filter.
    */
-  static async list(skip = 0, limit = 100, status?: CampaignStatus): Promise<CampaignListResponse> {
-    const params = new URLSearchParams({ skip: skip.toString(), limit: limit.toString() })
+  static async list(skip: number = 0, limit: number = 100, status?: CampaignStatus): Promise<CampaignListResponse> {
+    const params: URLSearchParams = new URLSearchParams({ skip: skip.toString(), limit: limit.toString() })
     if (status) params.append('status', status)
     return ApiClient.get<CampaignListResponse>(`/api/v1/campaigns?${params.toString()}`)
   }
@@ -259,7 +259,7 @@ export class CampaignService {
     campaignId: number,
     params?: { status?: QueueItemStatus; limit?: number; offset?: number },
   ): Promise<CampaignQueueResponse> {
-    const qs = new URLSearchParams()
+    const qs: URLSearchParams = new URLSearchParams()
     if (params?.status) qs.set('status', params.status)
     if (params?.limit !== undefined) qs.set('limit', String(params.limit))
     if (params?.offset !== undefined) qs.set('offset', String(params.offset))

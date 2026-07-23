@@ -72,8 +72,8 @@ export class ApiClient {
     if (!params) {
       return endpoint
     }
-    const search = new URLSearchParams()
-    Object.entries(params).forEach(([key, value]): void => {
+    const search: URLSearchParams = new URLSearchParams()
+    Object.entries(params).forEach(([key, value]: [string, unknown]): void => {
       if (value !== null && value !== undefined) {
         search.append(key, String(value))
       }
@@ -94,7 +94,7 @@ export class ApiClient {
     const userStore: ReturnType<typeof useUserStore> = useUserStore()
     const config: ReturnType<typeof useRuntimeConfig> = useRuntimeConfig()
 
-    const response = await fetch(`${config.public.apiBase}${endpoint}`, {
+    const response: Response = await fetch(`${config.public.apiBase}${endpoint}`, {
       ...options,
       headers: {
         'Content-Type': 'application/json',
@@ -131,7 +131,7 @@ export class ApiClient {
       return fallback
     }
     try {
-      const parsed = JSON.parse(body)
+      const parsed: { detail?: string; message?: string } = JSON.parse(body)
       return parsed.detail || parsed.message || fallback
     } catch {
       return body

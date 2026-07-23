@@ -41,6 +41,7 @@
 </template>
 
 <script lang="ts" setup>
+import type { UseDebounceFnReturn } from '@vueuse/core'
 import type { Ref } from 'vue'
 import { ref, watch } from 'vue'
 import { useDebounceFn } from '@vueuse/core'
@@ -79,41 +80,44 @@ let blurTimeoutId: ReturnType<typeof setTimeout> | null = null
  * @param query - Texte saisi par l'utilisateur.
  * @returns Une promesse résolue une fois la recherche terminée ou annulée.
  */
-const fetchSuggestions = useDebounceFn(async (query: string): Promise<void> => {
-  const trimmedQuery: string = query.trim()
-  if (trimmedQuery.length < minQueryLength) {
-    suggestions.value = []
-    isOpen.value = false
-    return
-  }
-
-  const requestId: number = ++searchRequestId
-  isSearching.value = true
-  isOpen.value = true
-
-  try {
-    const results: ProspectSearchSuggestion[] = await ProspectsService.searchProspectSuggestions({
-      query: trimmedQuery,
-      city: props.city?.trim() || undefined,
-      max_results: maxResults,
-    })
-    if (requestId !== searchRequestId) {
+const fetchSuggestions: UseDebounceFnReturn<(query: string) => Promise<void>> = useDebounceFn(
+  async (query: string): Promise<void> => {
+    const trimmedQuery: string = query.trim()
+    if (trimmedQuery.length < minQueryLength) {
+      suggestions.value = []
+      isOpen.value = false
       return
     }
-    suggestions.value = results
+
+    const requestId: number = ++searchRequestId
+    isSearching.value = true
     isOpen.value = true
-  } catch {
-    if (requestId !== searchRequestId) {
-      return
+
+    try {
+      const results: ProspectSearchSuggestion[] = await ProspectsService.searchProspectSuggestions({
+        query: trimmedQuery,
+        city: props.city?.trim() || undefined,
+        max_results: maxResults,
+      })
+      if (requestId !== searchRequestId) {
+        return
+      }
+      suggestions.value = results
+      isOpen.value = true
+    } catch {
+      if (requestId !== searchRequestId) {
+        return
+      }
+      suggestions.value = []
+      isOpen.value = true
+    } finally {
+      if (requestId === searchRequestId) {
+        isSearching.value = false
+      }
     }
-    suggestions.value = []
-    isOpen.value = true
-  } finally {
-    if (requestId === searchRequestId) {
-      isSearching.value = false
-    }
-  }
-}, debounceDelayMs)
+  },
+  debounceDelayMs,
+)
 
 watch(searchTerm, (value: string): void => {
   const trimmedQuery: string = value.trim()

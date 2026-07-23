@@ -61,7 +61,7 @@ export function useVariableInsertion(
    */
   function setCaret(index: number): void {
     void nextTick((): void => {
-      const field = fieldRef.value
+      const field: HTMLInputElement | HTMLTextAreaElement | null = fieldRef.value
       if (!field) return
       field.focus()
       field.setSelectionRange(index, index)
@@ -80,7 +80,7 @@ export function useVariableInsertion(
    * @param token - The placeholder to insert (e.g. `{lien_demo}`).
    */
   function insertToken(token: string): void {
-    const field = fieldRef.value
+    const field: HTMLInputElement | HTMLTextAreaElement | null = fieldRef.value
     const value: string = getValue()
     const start: number = field?.selectionStart ?? value.length
     const end: number = field?.selectionEnd ?? value.length
@@ -94,9 +94,9 @@ export function useVariableInsertion(
    * @param caretIndex - Caret index to measure.
    */
   function updatePosition(caretIndex: number): void {
-    const field = fieldRef.value
+    const field: HTMLInputElement | HTMLTextAreaElement | null = fieldRef.value
     if (!field) return
-    const caret = getCaretCoordinates(field, caretIndex)
+    const caret: CaretCoordinates = getCaretCoordinates(field, caretIndex)
     const rect: DOMRect = field.getBoundingClientRect()
     position.value = {
       top: rect.top + caret.top - field.scrollTop + caret.height,
@@ -108,7 +108,7 @@ export function useVariableInsertion(
    * Detect a `{query` immediately before the caret and open/refresh the list.
    */
   function onInput(): void {
-    const field = fieldRef.value
+    const field: HTMLInputElement | HTMLTextAreaElement | null = fieldRef.value
     if (!field) return
     const caret: number = field.selectionStart ?? 0
     const beforeCaret: string = field.value.slice(0, caret)
@@ -143,7 +143,7 @@ export function useVariableInsertion(
    * @param variable - The variable to insert.
    */
   function selectVariable(variable: EmailVariable): void {
-    const field = fieldRef.value
+    const field: HTMLInputElement | HTMLTextAreaElement | null = fieldRef.value
     const value: string = getValue()
     const caret: number = field?.selectionStart ?? value.length
     const start: number = queryStart >= 0 ? queryStart : caret

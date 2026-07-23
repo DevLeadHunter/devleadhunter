@@ -13,7 +13,7 @@ export function useDesktopRuntime(): UseDesktopRuntimeReturn {
     if (!import.meta.client) {
       return false
     }
-    const w = window as Window & {
+    const w: Window & { __TAURI__?: unknown; __TAURI_INTERNALS__?: unknown } = window as Window & {
       __TAURI__?: unknown
       __TAURI_INTERNALS__?: unknown
     }
@@ -39,7 +39,10 @@ export function useDesktopRuntime(): UseDesktopRuntimeReturn {
     if (!import.meta.client || !isDesktopDev.value) {
       throw new Error("La synchro DB n'est disponible que dans l'app desktop, en dev local.")
     }
-    const { invoke } = await import('@tauri-apps/api/core')
+    const {
+      invoke,
+    }: typeof import('C:/Users/leogu/Desktop/Projects/devleadhunter/web/node_modules/@tauri-apps/api/core') =
+      await import('@tauri-apps/api/core')
     return invoke<string>('sync_dev_database_from_prod')
   }
 

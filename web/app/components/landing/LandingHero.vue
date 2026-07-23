@@ -67,7 +67,8 @@ const emit: {
 }>()
 
 const localePath: ReturnType<typeof useLocalePath> = useLocalePath()
-const { track } = useSiteTracking()
+const { track }: { track: (event: string, properties?: Record<string, unknown> | undefined) => void } =
+  useSiteTracking()
 
 /** i18n keys of the three trust markers under the CTAs. */
 const trustKeys: string[] = ['landing.hero.trust1', 'landing.hero.trust2', 'landing.hero.trust3']

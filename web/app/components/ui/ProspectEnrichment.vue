@@ -286,7 +286,7 @@ const statusClass: ComputedRef<string> = computed((): string => {
 
 /** Copy the loaded record into the editable form. */
 function syncForm(): void {
-  const r = record.value
+  const r: ProspectEnrichment | null = record.value
   form.value = {
     rating: r?.rating ?? null,
     reviews_count: r?.reviews_count ?? null,
@@ -399,7 +399,7 @@ async function save(): Promise<void> {
 
 /** Add a photo URL to the list. */
 function addPhoto(): void {
-  const url = newPhotoUrl.value.trim()
+  const url: string = newPhotoUrl.value.trim()
   if (url) {
     form.value.photos.push(url)
     newPhotoUrl.value = ''
@@ -413,7 +413,7 @@ function removePhoto(index: number): void {
 
 /** Add a service to the list. */
 function addService(): void {
-  const svc = newService.value.trim()
+  const svc: string = newService.value.trim()
   if (svc) {
     form.value.services.push(svc)
     newService.value = ''
@@ -437,7 +437,7 @@ function removeHours(index: number): void {
 
 watch(
   (): [boolean, number | null] => [props.open, props.prospectId],
-  ([open, pid]): void => {
+  ([open, pid]: [boolean, number | null]): void => {
     if (open && pid) {
       void load()
     }

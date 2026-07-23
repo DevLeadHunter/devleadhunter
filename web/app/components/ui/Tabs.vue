@@ -64,7 +64,7 @@ const gridStyle: ComputedRef<Record<string, string>> = computed(
  * @returns The Tailwind class string for the button.
  */
 function tabClass(active: boolean): string {
-  const base =
+  const base: string =
     'flex cursor-pointer items-center gap-3 rounded-xl border px-4 py-3 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--app-ink-soft)]'
   return active
     ? `${base} border-[var(--app-ink)] bg-[var(--app-ink)] text-[var(--app-surface)]`

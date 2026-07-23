@@ -478,8 +478,10 @@ const isReservedByOther: ComputedRef<boolean> = computed(
 
 /** The four Lighthouse category gauges (red < 50, amber < 90, green otherwise). */
 const lighthouseGauges: ComputedRef<LighthouseGauge[]> = computed((): LighthouseGauge[] => {
-  const scores = props.prospect?.lighthouse_json?.scores
-  const colorOf = (score: number | null): string => {
+  const scores:
+    | { performance: number | null; accessibility: number | null; bestPractices: number | null; seo: number | null }
+    | undefined = props.prospect?.lighthouse_json?.scores
+  const colorOf: (score: number | null) => string = (score: number | null): string => {
     if (score === null) return 'var(--app-faint)'
     if (score < 50) return 'var(--app-red)'
     if (score < 90) return 'var(--app-accent)'
@@ -562,7 +564,7 @@ const editForm: Ref<ProspectEditForm> = ref({
 
 watch(
   () => [props.open, props.prospect?.id],
-  ([open]) => {
+  ([open]: (boolean | number | undefined)[]) => {
     if (!open) {
       // Give the closing animation time to complete before resetting
       setTimeout(() => {
@@ -641,7 +643,7 @@ async function handleSave(): Promise<void> {
       city: editForm.value.city || null,
       category: editForm.value.category || undefined,
     }
-    const updated = await ProspectsService.updateProspect(props.prospect.id, payload)
+    const updated: Prospect = await ProspectsService.updateProspect(props.prospect.id, payload)
     emit('updated', updated)
     editMode.value = false
     toast.success('Prospect mis à jour')

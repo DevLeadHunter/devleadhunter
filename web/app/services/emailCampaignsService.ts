@@ -42,7 +42,7 @@ export class EmailCampaignsService {
    */
   static async getEmailStats(campaignId?: string): Promise<EmailStats> {
     try {
-      const params = campaignId ? { campaign_id: campaignId } : undefined
+      const params: { campaign_id: string } | undefined = campaignId ? { campaign_id: campaignId } : undefined
       return await ApiClient.get<EmailStats>('/api/v1/emails/stats', { params })
     } catch (error) {
       console.error('Failed to get email stats:', error)

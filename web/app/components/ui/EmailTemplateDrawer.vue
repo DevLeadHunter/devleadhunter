@@ -309,7 +309,7 @@ const subjectRef: Ref<HTMLInputElement | null> = ref(null)
 const bodyRef: Ref<HTMLTextAreaElement | null> = ref(null)
 
 /** Assisted insertion (chips + `{`-autocomplete) for the subject. */
-const subjectInsertion = useVariableInsertion(
+const subjectInsertion: VariableInsertion = useVariableInsertion(
   subjectRef,
   (): string => form.value.subject,
   (value: string): void => {
@@ -318,7 +318,7 @@ const subjectInsertion = useVariableInsertion(
 )
 
 /** Assisted insertion for the body. */
-const bodyInsertion = useVariableInsertion(
+const bodyInsertion: VariableInsertion = useVariableInsertion(
   bodyRef,
   (): string => form.value.body_html,
   (value: string): void => {

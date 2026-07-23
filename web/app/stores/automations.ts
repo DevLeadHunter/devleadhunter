@@ -5,11 +5,13 @@ import type { ComputedRef, Ref } from 'vue'
 import { computed, ref } from 'vue'
 import { defineStore } from 'pinia'
 
-import type { Automation, AutomationDetail } from '~/types/Automation'
+import type { Automation, AutomationDetail, AutomationListResponse } from '~/types/Automation'
 import { AutomationsService } from '~/services/automationsService'
 /** Statuses that mean the orchestrator is still working. */
 const ACTIVE_STATUSES: string[] = ['running', 'awaiting_review']
 
+// Pinia ne fournit pas de type nommé pour un store : TypeScript l'élide, il est inécrivable.
+// eslint-disable-next-line @typescript-eslint/typedef
 export const useAutomationsStore = defineStore('automations', () => {
   const automations: Ref<Automation[]> = ref([])
   const current: Ref<AutomationDetail | null> = ref(null)
@@ -63,7 +65,7 @@ export const useAutomationsStore = defineStore('automations', () => {
     try {
       isLoading.value = true
       error.value = null
-      const response = await AutomationsService.listAutomations()
+      const response: AutomationListResponse = await AutomationsService.listAutomations()
       automations.value = response.sequences
     } catch (err: unknown) {
       error.value = err instanceof Error ? err.message : 'Échec du chargement des automatisations'
@@ -79,7 +81,7 @@ export const useAutomationsStore = defineStore('automations', () => {
    * @returns A promise resolved once loaded.
    */
   async function fetchOne(id: number): Promise<void> {
-    const detail = await AutomationsService.getAutomation(id)
+    const detail: AutomationDetail = await AutomationsService.getAutomation(id)
     current.value = detail
     upsert(detail)
   }

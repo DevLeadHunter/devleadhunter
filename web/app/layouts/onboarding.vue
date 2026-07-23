@@ -44,7 +44,11 @@ import { useAppTheme } from '~/composables/useAppTheme'
  * the dashboard chrome, so nothing competes with the steps being configured.
  */
 
-const { theme, initTheme, toggleTheme } = useAppTheme()
+const {
+  theme,
+  initTheme,
+  toggleTheme,
+}: { theme: Ref<AppTheme, AppTheme>; initTheme: () => void; toggleTheme: () => void } = useAppTheme()
 
 /**
  * Classes of a theme-switch segment button.

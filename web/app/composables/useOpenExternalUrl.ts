@@ -1,9 +1,9 @@
-import type { UseOpenExternalUrlReturn } from '~/types/Composables'
+import type { UseDesktopRuntimeReturn, UseOpenExternalUrlReturn } from '~/types/Composables'
 /**
  * Open a URL in the system browser (Tauri) or a new tab (web).
  */
 export function useOpenExternalUrl(): UseOpenExternalUrlReturn {
-  const { isDesktopApp } = useDesktopRuntime()
+  const { isDesktopApp }: UseDesktopRuntimeReturn = useDesktopRuntime()
 
   /**
    * Open an external URL outside the desktop WebView when needed.
@@ -14,7 +14,10 @@ export function useOpenExternalUrl(): UseOpenExternalUrlReturn {
     }
 
     if (isDesktopApp.value) {
-      const { open } = await import('@tauri-apps/plugin-shell')
+      const {
+        open,
+      }: typeof import('C:/Users/leogu/Desktop/Projects/devleadhunter/web/node_modules/@tauri-apps/plugin-shell/dist-js/index') =
+        await import('@tauri-apps/plugin-shell')
       await open(url)
       return
     }

@@ -38,7 +38,7 @@ export type ScrapingJobStreamHandlers = {
   onError?: (message: string) => void
 }
 
-const defaultProgress = (): ScrapingJobProgressState => ({
+const defaultProgress: () => ScrapingJobProgressState = (): ScrapingJobProgressState => ({
   current: 0,
   total: 0,
   percentage: 0,
@@ -73,7 +73,7 @@ export function useScrapingJobStream(): UseScrapingJobStreamReturn {
    *
    */
   function appendProspect(prospect: Prospect): void {
-    if (prospects.value.some((item) => item.id === prospect.id)) {
+    if (prospects.value.some((item: Prospect) => item.id === prospect.id)) {
       return
     }
     prospects.value.push(prospect)
@@ -143,34 +143,34 @@ export function useScrapingJobStream(): UseScrapingJobStreamReturn {
 
     const config: ReturnType<typeof useRuntimeConfig> = useRuntimeConfig()
     try {
-      const apiUrl = new URL(config.public.apiBase)
+      const apiUrl: URL = new URL(config.public.apiBase)
       apiUrl.protocol = apiUrl.protocol === 'https:' ? 'wss:' : 'ws:'
-      const basePath = apiUrl.pathname.replace(/\/$/, '')
+      const basePath: string = apiUrl.pathname.replace(/\/$/, '')
       apiUrl.pathname = `${basePath}/api/v1/scraping-jobs/${jobId}/ws`
       apiUrl.searchParams.set('token', token)
 
-      const ws = new WebSocket(apiUrl.toString())
+      const ws: WebSocket = new WebSocket(apiUrl.toString())
       websocket = ws
 
-      ws.onopen = () => {
+      ws.onopen = (): void => {
         isConnected.value = true
       }
 
-      ws.onmessage = (event) => {
+      ws.onmessage = (event: MessageEvent<string>): void => {
         try {
-          const payload = JSON.parse(event.data) as ScrapingJobStreamEvent
+          const payload: ScrapingJobStreamEvent = JSON.parse(event.data) as ScrapingJobStreamEvent
           handleEvent(payload)
         } catch (error) {
           console.warn('Invalid scraping job websocket event', error)
         }
       }
 
-      ws.onclose = () => {
+      ws.onclose = (): void => {
         isConnected.value = false
         websocket = null
       }
 
-      ws.onerror = () => {
+      ws.onerror = (): void => {
         isConnected.value = false
       }
     } catch (error) {

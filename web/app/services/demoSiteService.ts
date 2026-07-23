@@ -225,12 +225,12 @@ export class DemoSiteService {
   static async exportDemoSiteCode(demoSiteId: number, slug: string): Promise<void> {
     const userStore: ReturnType<typeof useUserStore> = useUserStore()
     const config: ReturnType<typeof useRuntimeConfig> = useRuntimeConfig()
-    const response = await fetch(`${config.public.apiBase}${BASE_URL}/${demoSiteId}/export`, {
+    const response: Response = await fetch(`${config.public.apiBase}${BASE_URL}/${demoSiteId}/export`, {
       headers: userStore.token ? { Authorization: `Bearer ${userStore.token}` } : {},
     })
 
     if (!response.ok) {
-      const errorText = await response.text().catch(() => '')
+      const errorText: string = await response.text().catch(() => '')
       let errorMessage: string = `Export échoué : ${response.statusText}`
       if (errorText) {
         try {
@@ -242,9 +242,9 @@ export class DemoSiteService {
       throw new Error(errorMessage)
     }
 
-    const blob = await response.blob()
-    const url = URL.createObjectURL(blob)
-    const link = document.createElement('a')
+    const blob: Blob = await response.blob()
+    const url: string = URL.createObjectURL(blob)
+    const link: HTMLAnchorElement = document.createElement('a')
     link.href = url
     link.download = `${slug}-site.zip`
     document.body.appendChild(link)

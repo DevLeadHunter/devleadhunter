@@ -30,6 +30,8 @@ function resolveDelay(binding: DirectiveBinding<RevealOptions | number | undefin
  * but its logic only runs client-side (the `mounted` hook never fires on the
  * server). When the user prefers reduced motion, it is a no-op.
  */
+// defineNuxtPlugin fournit déjà le type de `nuxtApp` ; le réécrire boucle sur lui-même.
+// eslint-disable-next-line @typescript-eslint/typedef
 export default defineNuxtPlugin((nuxtApp): void => {
   nuxtApp.vueApp.directive('reveal', {
     /**

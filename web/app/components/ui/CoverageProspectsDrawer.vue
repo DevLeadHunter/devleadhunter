@@ -134,9 +134,10 @@
 </template>
 
 <script lang="ts" setup>
+import type { Prospect } from '~/types/index'
 import type { EmitFn, PropType, Ref } from 'vue'
 import { ref, watch } from 'vue'
-import type { CoverageProspectRow } from '~/services/dashboardService'
+import type { CoverageProspectRow, CoverageProspectsResponse } from '~/services/dashboardService'
 import { DashboardService } from '~/services/dashboardService'
 import { ProspectsService } from '~/services/prospectsService'
 import { useCoverageStore } from '~/stores/coverage'
@@ -182,10 +183,15 @@ async function loadZone(): Promise<void> {
   }
   isLoading.value = true
   try {
-    const [scopeName, memberId] = store.scope.startsWith('member:')
+    const [scopeName, memberId]: [string, number] | [string, undefined] = store.scope.startsWith('member:')
       ? (['member', Number(store.scope.slice('member:'.length))] as [string, number])
       : ([store.scope, undefined] as [string, undefined])
-    const data = await DashboardService.getCoverageProspects(zone.cities, scopeName, memberId, store.selectedCategories)
+    const data: CoverageProspectsResponse = await DashboardService.getCoverageProspects(
+      zone.cities,
+      scopeName,
+      memberId,
+      store.selectedCategories,
+    )
     rows.value = data.items
     total.value = data.total
   } catch {
@@ -202,7 +208,7 @@ async function loadZone(): Promise<void> {
  */
 async function openProspect(prospectId: number): Promise<void> {
   try {
-    const prospect = await ProspectsService.getProspect(prospectId)
+    const prospect: Prospect = await ProspectsService.getProspect(prospectId)
     drawerStack.push({ kind: 'prospect', prospect })
   } catch {
     // Row stays inert on fetch failure — the list itself already rendered.

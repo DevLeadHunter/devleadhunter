@@ -97,7 +97,12 @@
 import type { UseToastReturn } from '~/types/Composables'
 import type { ComputedRef, PropType, Ref } from 'vue'
 import { ref, computed, watch } from 'vue'
-import type { BehaviorSummary, PersonalizedFollowup, ProspectBehavior } from '~/services/behaviorService'
+import type {
+  BehaviorSummary,
+  PersonalizedFollowup,
+  ProspectBehavior,
+  QuickSendResult,
+} from '~/services/behaviorService'
 import { BehaviorService } from '~/services/behaviorService'
 import type { UiProspectBehaviorProps } from '~/types/UiProspectBehavior'
 import { useToast } from '~/composables/useToast'
@@ -162,7 +167,7 @@ const temperatureClass: ComputedRef<string> = computed((): string => {
  * @returns The numeric value (0 when absent).
  */
 function signalNumber(key: string): number {
-  const value = behavior.value?.signals?.[key]
+  const value: string | number | null | undefined = behavior.value?.signals?.[key]
   return typeof value === 'number' ? value : 0
 }
 
@@ -221,7 +226,7 @@ async function handleSendFollowup(): Promise<void> {
   if (!props.prospectId || !props.prospectEmail || !followup.value) return
   isSending.value = true
   try {
-    const result = await BehaviorService.sendQuickEmail({
+    const result: QuickSendResult = await BehaviorService.sendQuickEmail({
       recipient_email: props.prospectEmail,
       recipient_name: props.prospectName,
       subject: followup.value.subject,
@@ -243,7 +248,7 @@ async function handleSendFollowup(): Promise<void> {
 
 watch(
   (): [boolean, number | null] => [props.open, props.prospectId],
-  ([open, pid]): void => {
+  ([open, pid]: [boolean, number | null]): void => {
     if (open && pid) {
       summary.value = null
       followup.value = null

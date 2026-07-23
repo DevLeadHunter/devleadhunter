@@ -243,7 +243,7 @@
 </template>
 
 <script lang="ts" setup>
-import type { UseToastReturn } from '~/types/Composables'
+import type { UseAuthReturn, UseToastReturn } from '~/types/Composables'
 import type { PresenterVideoCaptureMode, PresenterVideoConfigEmits } from '~/types/PresenterVideoConfig'
 import type { ComputedRef, EmitFn, Ref } from 'vue'
 import type { PresenterVideo } from '~/services/presenterVideoService'
@@ -287,7 +287,7 @@ const CAPTURE_OPTIONS: Array<{
 const RECORDING_TIPS: string[] = ['1080p suffit', 'Lumière face à vous', 'Regardez l’objectif']
 
 const toast: UseToastReturn = useToast()
-const { user } = useAuth()
+const { user }: UseAuthReturn = useAuth()
 
 const info: Ref<PresenterVideo | null> = ref(null)
 const previewUrl: Ref<string | null> = ref(null)
@@ -429,7 +429,7 @@ function openFilePicker(): void {
  * @param event - Native change event of the file input.
  */
 function handleFileSelected(event: Event): void {
-  const input = event.target as HTMLInputElement | null
+  const input: HTMLInputElement | null = event.target as HTMLInputElement | null
   selectedFile.value = input?.files?.[0] ?? null
 }
 

@@ -26,7 +26,7 @@ export default defineNuxtRouteMiddleware(async () => {
      * Validate authentication by calling /me endpoint
      * This ensures the token is still valid and updates user data
      */
-    const isValid = await userStore.validateAuth()
+    const isValid: boolean = await userStore.validateAuth()
 
     if (!isValid) {
       return navigateTo('/login')

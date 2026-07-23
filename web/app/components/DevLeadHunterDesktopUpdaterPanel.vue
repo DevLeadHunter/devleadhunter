@@ -70,7 +70,7 @@ import { check } from '@tauri-apps/plugin-updater'
 import { relaunch } from '@tauri-apps/plugin-process'
 
 const desktopRuntime: UseDesktopRuntimeReturn = useDesktopRuntime()
-const isProdDesktop = desktopRuntime.isProdDesktop
+const isProdDesktop: ComputedRef<boolean> = desktopRuntime.isProdDesktop
 
 const visible: Ref<boolean> = ref(false)
 const status: Ref<DevLeadHunterUpdaterStatus> = ref('idle')

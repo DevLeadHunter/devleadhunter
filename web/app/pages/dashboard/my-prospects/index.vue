@@ -285,6 +285,8 @@
 </template>
 
 <script lang="ts" setup>
+import type { ProspectMutationNotice } from '~/types/DrawerStack'
+import type { BulkEnrichResult } from '~/services/enrichmentService'
 import type { LocationQueryValue } from 'vue-router'
 import type { UseToastReturn } from '~/types/Composables'
 import { ref, computed, watch, onMounted } from 'vue'
@@ -315,7 +317,7 @@ const filterCity: Ref<string> = ref('')
 const filterWebsite: Ref<'all' | 'yes' | 'no' | 'improvable'> = ref('no')
 const activeTab: Ref<'not_contacted' | 'contacted'> = ref('not_contacted')
 
-const websiteFilterOptions = [
+const websiteFilterOptions: { value: string; label: string }[] = [
   { value: 'all', label: 'Tous' },
   { value: 'yes', label: 'Oui' },
   { value: 'no', label: 'Non' },
@@ -339,29 +341,29 @@ const deleteConfirmMessage: ComputedRef<string> = computed(() => {
   return `Supprimer définitivement « ${prospectToDelete.value.name} » ? Cette action est irréversible.`
 })
 
-const selectedIds = computed<number[]>(() =>
-  selectedProspects.value.map((id) => Number(id)).filter((n) => !Number.isNaN(n)),
+const selectedIds: ComputedRef<number[]> = computed<number[]>(() =>
+  selectedProspects.value.map((id: string) => Number(id)).filter((n: number) => !Number.isNaN(n)),
 )
 
 const totalProspects: ComputedRef<number> = computed(() => prospects.value.length)
 const prospectsWithEmail: ComputedRef<number> = computed(
-  () => prospects.value.filter((prospect) => prospect.email).length,
+  () => prospects.value.filter((prospect: Prospect) => prospect.email).length,
 )
 const prospectsWithoutWebsite: ComputedRef<number> = computed(
-  () => prospects.value.filter((prospect) => !prospect.website).length,
+  () => prospects.value.filter((prospect: Prospect) => !prospect.website).length,
 )
 const prospectsWithPhone: ComputedRef<number> = computed(
-  () => prospects.value.filter((prospect) => prospect.phone).length,
+  () => prospects.value.filter((prospect: Prospect) => prospect.phone).length,
 )
 
 /** Prospects matching every filter EXCEPT the contacted tab (drives the tab counts). */
 const baseFiltered: ComputedRef<Prospect[]> = computed(() => {
-  let filtered = prospects.value
+  let filtered: Prospect[] = prospects.value
 
   if (searchQuery.value) {
-    const query = searchQuery.value.toLowerCase()
+    const query: string = searchQuery.value.toLowerCase()
     filtered = filtered.filter(
-      (prospect) =>
+      (prospect: Prospect) =>
         prospect.name.toLowerCase().includes(query) ||
         prospect.city?.toLowerCase().includes(query) ||
         prospect.email?.toLowerCase().includes(query) ||
@@ -370,42 +372,46 @@ const baseFiltered: ComputedRef<Prospect[]> = computed(() => {
   }
 
   if (filterCity.value) {
-    const city = filterCity.value.toLowerCase()
-    filtered = filtered.filter((prospect) => prospect.city?.toLowerCase().includes(city))
+    const city: string = filterCity.value.toLowerCase()
+    filtered = filtered.filter((prospect: Prospect) => prospect.city?.toLowerCase().includes(city))
   }
 
   if (filterCategory.value) {
-    const cat = filterCategory.value.toLowerCase()
-    filtered = filtered.filter((prospect) => prospect.category.toLowerCase().includes(cat))
+    const cat: string = filterCategory.value.toLowerCase()
+    filtered = filtered.filter((prospect: Prospect) => prospect.category.toLowerCase().includes(cat))
   }
 
   if (filterWebsite.value === 'yes') {
-    filtered = filtered.filter((prospect) => !!prospect.website)
+    filtered = filtered.filter((prospect: Prospect) => !!prospect.website)
   } else if (filterWebsite.value === 'no') {
-    filtered = filtered.filter((prospect) => !prospect.website)
+    filtered = filtered.filter((prospect: Prospect) => !prospect.website)
   } else if (filterWebsite.value === 'improvable') {
     // Site existant jugé faible par l'audit Lighthouse → cible refonte.
-    filtered = filtered.filter((prospect) => !!prospect.website && prospect.lighthouse_json?.is_improvable === true)
+    filtered = filtered.filter(
+      (prospect: Prospect) => !!prospect.website && prospect.lighthouse_json?.is_improvable === true,
+    )
   }
 
   return filtered
 })
 
 const notContactedCount: ComputedRef<number> = computed(
-  () => baseFiltered.value.filter((prospect) => !prospect.contacted).length,
+  () => baseFiltered.value.filter((prospect: Prospect) => !prospect.contacted).length,
 )
 const contactedCount: ComputedRef<number> = computed(
-  () => baseFiltered.value.filter((prospect) => prospect.contacted).length,
+  () => baseFiltered.value.filter((prospect: Prospect) => prospect.contacted).length,
 )
 
 const filteredProspects: ComputedRef<Prospect[]> = computed(() =>
-  baseFiltered.value.filter((prospect) => (activeTab.value === 'contacted' ? prospect.contacted : !prospect.contacted)),
+  baseFiltered.value.filter((prospect: Prospect) =>
+    activeTab.value === 'contacted' ? prospect.contacted : !prospect.contacted,
+  ),
 )
 
 const totalPages: ComputedRef<number> = computed(() => Math.ceil(filteredProspects.value.length / pageSize))
 
 const paginatedProspects: ComputedRef<Prospect[]> = computed(() => {
-  const start = (currentPage.value - 1) * pageSize
+  const start: number = (currentPage.value - 1) * pageSize
   return filteredProspects.value.slice(start, start + pageSize)
 })
 
@@ -454,7 +460,7 @@ watch([activeTab, searchQuery, filterCity, filterCategory, filterWebsite], (): v
  */
 function toggleSelect(prospect: Prospect): void {
   const id: string = String(prospect.id)
-  const index = selectedProspects.value.indexOf(id)
+  const index: number = selectedProspects.value.indexOf(id)
   if (index === -1) selectedProspects.value.push(id)
   else selectedProspects.value.splice(index, 1)
 }
@@ -464,13 +470,13 @@ function toggleSelect(prospect: Prospect): void {
  * @param checked - True to add the page's prospects, false to remove them.
  */
 function toggleSelectAll(checked: boolean): void {
-  const pageIds = paginatedProspects.value.map((prospect) => String(prospect.id))
+  const pageIds: string[] = paginatedProspects.value.map((prospect: Prospect) => String(prospect.id))
   if (checked) {
-    const set = new Set([...selectedProspects.value, ...pageIds])
+    const set: Set<string> = new Set([...selectedProspects.value, ...pageIds])
     selectedProspects.value = Array.from(set)
   } else {
-    const pageSet = new Set(pageIds)
-    selectedProspects.value = selectedProspects.value.filter((id) => !pageSet.has(id))
+    const pageSet: Set<string> = new Set(pageIds)
+    selectedProspects.value = selectedProspects.value.filter((id: string) => !pageSet.has(id))
   }
 }
 
@@ -510,7 +516,7 @@ async function bulkEnrich(): Promise<void> {
   if (bulkBusy.value || selectedIds.value.length === 0) return
   bulkBusy.value = true
   try {
-    const res = await EnrichmentService.runBulkEnrichment(selectedIds.value)
+    const res: BulkEnrichResult = await EnrichmentService.runBulkEnrichment(selectedIds.value)
     toast.success(`Enrichissement : ${res.succeeded} réussi(s), ${res.failed} échec(s)`)
     clearSelection()
   } catch (err: unknown) {
@@ -527,7 +533,7 @@ function openDrawer(prospect: Prospect): void {
 
 /** Drawer notified 'updated' — patch the local list, or insert a freshly created prospect. */
 function handleProspectUpdated(updated: Prospect): void {
-  const index = prospects.value.findIndex((prospect) => prospect.id === updated.id)
+  const index: number = prospects.value.findIndex((prospect: Prospect) => prospect.id === updated.id)
   if (index !== -1) prospects.value.splice(index, 1, updated)
   else prospects.value.unshift(updated)
 }
@@ -586,14 +592,14 @@ function exportSelected(): void {
  * @returns A promise resolved once the import completes.
  */
 async function handleImportFile(event: Event): Promise<void> {
-  const input = event.target as HTMLInputElement
+  const input: HTMLInputElement = event.target as HTMLInputElement
   const file: File | undefined = input.files?.[0]
   input.value = ''
   if (!file) return
 
   isImporting.value = true
   try {
-    const { valid, errors } = parseProspectsJson(await file.text())
+    const { valid, errors }: ProspectJsonParseResult = parseProspectsJson(await file.text())
     if (valid.length === 0) {
       toast.error(errors[0] ?? 'Aucun prospect valide dans ce fichier — utilisez le modèle JSON.')
       return
@@ -638,15 +644,15 @@ async function handleImportFile(event: Event): Promise<void> {
 
 /** Drawer notified 'deleted' — remove from local list. */
 function handleProspectDeleted(prospectId: number): void {
-  prospects.value = prospects.value.filter((prospect) => prospect.id !== prospectId)
-  selectedProspects.value = selectedProspects.value.filter((id) => id !== String(prospectId))
+  prospects.value = prospects.value.filter((prospect: Prospect) => prospect.id !== prospectId)
+  selectedProspects.value = selectedProspects.value.filter((id: string) => id !== String(prospectId))
 }
 
 // Les mutations du drawer transitent par le store : on resynchronise la liste locale.
 watch(
   (): number => drawerStack.prospectMutationCounter,
   (): void => {
-    const mutation = drawerStack.lastProspectMutation
+    const mutation: ProspectMutationNotice | null = drawerStack.lastProspectMutation
     if (!mutation) return
     if (mutation.type === 'updated') handleProspectUpdated(mutation.prospect)
     else handleProspectDeleted(mutation.prospectId)
@@ -665,7 +671,7 @@ function handleDeleteProspect(prospect: Prospect): void {
  * Delete the prospect selected in the quick-delete modal.
  */
 async function confirmDeleteProspect(): Promise<void> {
-  const prospect = prospectToDelete.value
+  const prospect: Prospect | null = prospectToDelete.value
   if (!prospect) return
   try {
     await ProspectsService.deleteProspect(prospect.id)
@@ -684,7 +690,7 @@ onMounted(async (): Promise<void> => {
   const openParam: LocationQueryValue | LocationQueryValue[] | undefined = useRoute().query.open
   const openId: number = Number(Array.isArray(openParam) ? openParam[0] : openParam)
   if (!Number.isNaN(openId) && openId > 0) {
-    const target = prospects.value.find((prospect) => prospect.id === openId)
+    const target: Prospect | undefined = prospects.value.find((prospect: Prospect) => prospect.id === openId)
     if (target) openDrawer(target)
   }
 })

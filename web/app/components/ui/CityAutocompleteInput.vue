@@ -54,6 +54,7 @@
 </template>
 
 <script lang="ts" setup>
+import type { UseDebounceFnReturn } from '@vueuse/core'
 import type { UiCityAutocompleteInputEmits } from '~/types/UiCityAutocompleteInput'
 import type { EmitFn, Ref } from 'vue'
 import { ref } from 'vue'
@@ -104,43 +105,46 @@ let blurTimeoutId: ReturnType<typeof setTimeout> | null = null
  * @param query - Début du nom de ville saisi.
  * @returns Une promesse résolue une fois les suggestions mises à jour.
  */
-const fetchSuggestions = useDebounceFn(async (query: string): Promise<void> => {
-  const trimmedQuery: string = query.trim()
-  if (trimmedQuery.length < minQueryLength) {
-    suggestions.value = []
-    isOpen.value = false
-    return
-  }
-
-  const requestId: number = ++searchRequestId
-  isSearching.value = true
-  isOpen.value = true
-
-  try {
-    const results: CitySuggestion[] = await $fetch<CitySuggestion[]>('https://geo.api.gouv.fr/communes', {
-      query: {
-        nom: trimmedQuery,
-        fields: 'nom,codesPostaux,codeDepartement',
-        boost: 'population',
-        limit: maxResults,
-      },
-    })
-    if (requestId !== searchRequestId) {
+const fetchSuggestions: UseDebounceFnReturn<(query: string) => Promise<void>> = useDebounceFn(
+  async (query: string): Promise<void> => {
+    const trimmedQuery: string = query.trim()
+    if (trimmedQuery.length < minQueryLength) {
+      suggestions.value = []
+      isOpen.value = false
       return
     }
-    suggestions.value = results
-  } catch {
-    if (requestId !== searchRequestId) {
-      return
+
+    const requestId: number = ++searchRequestId
+    isSearching.value = true
+    isOpen.value = true
+
+    try {
+      const results: CitySuggestion[] = await $fetch<CitySuggestion[]>('https://geo.api.gouv.fr/communes', {
+        query: {
+          nom: trimmedQuery,
+          fields: 'nom,codesPostaux,codeDepartement',
+          boost: 'population',
+          limit: maxResults,
+        },
+      })
+      if (requestId !== searchRequestId) {
+        return
+      }
+      suggestions.value = results
+    } catch {
+      if (requestId !== searchRequestId) {
+        return
+      }
+      suggestions.value = []
+    } finally {
+      if (requestId === searchRequestId) {
+        isSearching.value = false
+        activeIndex.value = -1
+      }
     }
-    suggestions.value = []
-  } finally {
-    if (requestId === searchRequestId) {
-      isSearching.value = false
-      activeIndex.value = -1
-    }
-  }
-}, debounceDelayMs)
+  },
+  debounceDelayMs,
+)
 
 /**
  * Propage la saisie au v-model et déclenche la recherche de suggestions.

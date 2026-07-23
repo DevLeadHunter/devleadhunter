@@ -81,11 +81,11 @@ const sparklinePath: ComputedRef<string> = computed((): string => {
     y: 2 + (SPARK_H - 4) * (1 - value / max),
   }))
   let path: string = `M ${points[0]!.x} ${points[0]!.y}`
-  for (let index = 0; index < points.length - 1; index += 1) {
-    const previous = points[index - 1] ?? points[index]!
-    const current = points[index]!
-    const next = points[index + 1]!
-    const following = points[index + 2] ?? next
+  for (let index: number = 0; index < points.length - 1; index += 1) {
+    const previous: { x: number; y: number } = points[index - 1] ?? points[index]!
+    const current: { x: number; y: number } = points[index]!
+    const next: { x: number; y: number } = points[index + 1]!
+    const following: { x: number; y: number } = points[index + 2] ?? next
     path += ` C ${current.x + (next.x - previous.x) / 6} ${current.y + (next.y - previous.y) / 6}`
     path += ` ${next.x - (following.x - current.x) / 6} ${next.y - (following.y - current.y) / 6}`
     path += ` ${next.x} ${next.y}`

@@ -298,10 +298,10 @@
 </template>
 
 <script lang="ts" setup>
-import type { UseToastReturn } from '~/types/Composables'
+import type { UseCopyToClipboardReturn, UseOpenExternalUrlReturn, UseToastReturn } from '~/types/Composables'
 import type { DemoSiteStat } from '~/types/DemoSiteDetailPage'
 import type { ComputedRef, Ref } from 'vue'
-import type { DemoSite } from '~/services/demoSiteService'
+import type { DemoSite, DemoSitePreviewResult } from '~/services/demoSiteService'
 import { DemoSiteService } from '~/services/demoSiteService'
 import { useToast } from '~/composables/useToast'
 
@@ -309,8 +309,8 @@ definePageMeta({ layout: 'dashboard', middleware: 'auth' })
 
 const route: ReturnType<typeof useRoute> = useRoute()
 const demoSiteId: number = Number(route.params.id)
-const { copy, copied } = useCopyToClipboard()
-const { openExternalUrl } = useOpenExternalUrl()
+const { copy, copied }: UseCopyToClipboardReturn = useCopyToClipboard()
+const { openExternalUrl }: UseOpenExternalUrlReturn = useOpenExternalUrl()
 const toast: UseToastReturn = useToast()
 
 const site: Ref<DemoSite | null> = ref(null)
@@ -385,7 +385,7 @@ const videoStatusClass: ComputedRef<string> = computed(() => {
 
 const stats: ComputedRef<DemoSiteStat[]> = computed(() => {
   if (!site.value) return []
-  const urlLive = DemoSiteService.isDemoSiteReachable(site.value)
+  const urlLive: boolean = DemoSiteService.isDemoSiteReachable(site.value)
   return [
     {
       label: 'Statut URL',
@@ -424,7 +424,7 @@ async function loadPreview(): Promise<void> {
   if (!site.value) return
   previewLoading.value = true
   try {
-    const result = await DemoSiteService.previewDemoSite({
+    const result: DemoSitePreviewResult = await DemoSiteService.previewDemoSite({
       business_name: site.value.business_name,
       template_id: site.value.template_id,
       email: site.value.email ?? undefined,

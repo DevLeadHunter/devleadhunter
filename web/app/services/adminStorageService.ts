@@ -52,7 +52,7 @@ export class AdminStorageService {
    * @param prefix - Optional key prefix filter (e.g. ``videos/websites/``).
    * @returns The bucket listing with totals.
    */
-  static async getStorageObjects(prefix = ''): Promise<StorageListResponse> {
+  static async getStorageObjects(prefix: string = ''): Promise<StorageListResponse> {
     return ApiClient.get<StorageListResponse>('/api/v1/admin/storage', { params: { prefix } })
   }
 

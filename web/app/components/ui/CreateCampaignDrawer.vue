@@ -255,7 +255,7 @@ watch(
   (): number => drawerStack.emailTemplatesRefreshCounter,
   async (): Promise<void> => {
     if (!props.open) return
-    const prevIds = new Set<number>(templates.value.map((t: EmailTemplate): number => t.id))
+    const prevIds: Set<number> = new Set<number>(templates.value.map((t: EmailTemplate): number => t.id))
     await loadTemplates()
     if (pendingTemplateSlot.value !== null) {
       const newTemplate: EmailTemplate | undefined = templates.value.find(

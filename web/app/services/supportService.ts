@@ -52,7 +52,7 @@ function getAuthHeaders(): HeadersInit {
  * @returns Parsed JSON response.
  */
 async function fetchForm<T>(endpoint: string, formData: FormData, method: string = 'POST'): Promise<T> {
-  const response = await fetch(`${getApiUrl()}${endpoint}`, {
+  const response: Response = await fetch(`${getApiUrl()}${endpoint}`, {
     method,
     headers: {
       ...getAuthHeaders(),
@@ -61,7 +61,7 @@ async function fetchForm<T>(endpoint: string, formData: FormData, method: string
   })
 
   if (!response.ok) {
-    const errorText = await response.text().catch(() => '')
+    const errorText: string = await response.text().catch(() => '')
     throw new Error(errorText || `API request failed (${response.status})`)
   }
 
@@ -76,7 +76,7 @@ async function fetchForm<T>(endpoint: string, formData: FormData, method: string
  * @returns Parsed JSON response.
  */
 async function fetchJson<T>(endpoint: string, data: unknown, method: string = 'PATCH'): Promise<T> {
-  const response = await fetch(`${getApiUrl()}${endpoint}`, {
+  const response: Response = await fetch(`${getApiUrl()}${endpoint}`, {
     method,
     headers: {
       'Content-Type': 'application/json',
@@ -86,7 +86,7 @@ async function fetchJson<T>(endpoint: string, data: unknown, method: string = 'P
   })
 
   if (!response.ok) {
-    const errorText = await response.text().catch(() => '')
+    const errorText: string = await response.text().catch(() => '')
     throw new Error(errorText || `API request failed (${response.status})`)
   }
 
@@ -105,7 +105,7 @@ export class SupportService {
    * @returns Ticket summaries.
    */
   static async getTickets(filters: TicketFilters = {}): Promise<SupportTicketSummary[]> {
-    const params = new URLSearchParams()
+    const params: URLSearchParams = new URLSearchParams()
     params.set('scope', filters.scope || 'mine')
     if (filters.status) {
       params.set('status', filters.status)
@@ -123,12 +123,12 @@ export class SupportService {
    * @returns The created ticket thread.
    */
   static async createTicket(payload: CreateTicketPayload): Promise<SupportTicketDetail> {
-    const formData = new FormData()
+    const formData: FormData = new FormData()
     formData.append('subject', payload.subject)
     formData.append('topic', payload.topic)
     formData.append('message', payload.message)
 
-    payload.attachments?.forEach((file) => {
+    payload.attachments?.forEach((file: File) => {
       formData.append('attachments', file)
     })
 
@@ -151,10 +151,10 @@ export class SupportService {
    * @returns The persisted message.
    */
   static async postMessage(ticketId: number, payload: PostMessagePayload): Promise<SupportMessage> {
-    const formData = new FormData()
+    const formData: FormData = new FormData()
     formData.append('message', payload.message)
 
-    payload.attachments?.forEach((file) => {
+    payload.attachments?.forEach((file: File) => {
       formData.append('attachments', file)
     })
 

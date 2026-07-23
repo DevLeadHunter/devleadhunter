@@ -41,11 +41,14 @@ export function useToast(): UseToastReturn {
    * @param message - Text shown to the user.
    * @param options - Type + auto-dismiss duration.
    */
-  const showToast = (message: string, options: ToastOptions = {}): void => {
+  const showToast: (message: string, options?: ToastOptions) => void = (
+    message: string,
+    options: ToastOptions = {},
+  ): void => {
     if (import.meta.server || !import.meta.client) {
       return
     }
-    const { type = 'info', duration = 3500 } = options
+    const { type = 'info', duration = 3500 }: ToastOptions = options
     queue.value = [...queue.value, { id: nextToastId++, message, type, duration }]
   }
 

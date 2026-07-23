@@ -162,7 +162,7 @@ async function submit(): Promise<void> {
   error.value = null
   submitting.value = true
   try {
-    const res = await DemoSiteService.createDemoSitesBulk({
+    const res: BulkGenerateResult = await DemoSiteService.createDemoSitesBulk({
       prospect_ids: props.prospectIds,
       template_id: selectedTemplateId.value,
       invite_client_to_cms: inviteCms.value,

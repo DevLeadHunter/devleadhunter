@@ -190,7 +190,12 @@
 <script lang="ts" setup>
 import type { UseToastReturn } from '~/types/Composables'
 import type { ComputedRef, Ref } from 'vue'
-import type { StorageHealthResponse, StorageListResponse, StorageObject } from '~/services/adminStorageService'
+import type {
+  StorageActionResponse,
+  StorageHealthResponse,
+  StorageListResponse,
+  StorageObject,
+} from '~/services/adminStorageService'
 import { computed, onMounted, ref } from 'vue'
 import { AdminStorageService } from '~/services/adminStorageService'
 import { useToast } from '~/composables/useToast'
@@ -275,7 +280,7 @@ const hasHealthIssues: ComputedRef<boolean> = computed((): boolean =>
 /** Short verdict shown next to the health card title. */
 const healthSuffix: ComputedRef<string> = computed((): string => {
   if (!health.value) return ''
-  const total = healthGroups.value.reduce(
+  const total: number = healthGroups.value.reduce(
     (sum: number, group: { keys: string[] }): number => sum + group.keys.length,
     0,
   )
@@ -429,7 +434,7 @@ function askPurge(): void {
 async function runConfirmed(): Promise<void> {
   isActing.value = true
   try {
-    const result = pendingKey.value
+    const result: StorageActionResponse = pendingKey.value
       ? await AdminStorageService.deleteStorageObject(pendingKey.value)
       : await AdminStorageService.purgeExpiredStorage()
     toast.success(result.message || 'Action effectuée')

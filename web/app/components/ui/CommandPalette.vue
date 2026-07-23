@@ -67,6 +67,7 @@
 </template>
 
 <script lang="ts" setup>
+import type { AppTheme } from '~/types/AppTheme'
 import type { CommandPaletteAction, CommandPaletteGroup } from '~/types/UiCommandPalette'
 import type { ComputedRef, Ref } from 'vue'
 import type { CampaignResponse } from '~/services/campaignService'
@@ -78,11 +79,13 @@ import { useAppTheme } from '~/composables/useAppTheme'
 import { useCommandPalette } from '~/composables/useCommandPalette'
 import { useDrawerStackStore } from '~/stores/drawerStack'
 
-const { isOpen, close } = useCommandPalette()
+const { isOpen, close }: { isOpen: Ref<boolean, boolean>; open: () => void; close: () => void; toggle: () => void } =
+  useCommandPalette()
 
 const drawerStack: ReturnType<typeof useDrawerStackStore> = useDrawerStackStore()
 
-const { toggleTheme } = useAppTheme()
+const { toggleTheme }: { theme: Ref<AppTheme, AppTheme>; initTheme: () => void; toggleTheme: () => void } =
+  useAppTheme()
 
 const query: Ref<string> = ref('')
 const activeIndex: Ref<number> = ref(0)
@@ -124,7 +127,7 @@ function normalize(value: string): string {
  * @param keywords - Extra searchable text.
  * @returns True when every query word is found.
  */
-function matches(label: string, keywords = ''): boolean {
+function matches(label: string, keywords: string = ''): boolean {
   const haystack: string = normalize(`${label} ${keywords}`)
   return normalize(query.value)
     .split(/\s+/)
@@ -313,7 +316,7 @@ function runItem(item: CommandPaletteAction): void {
 async function loadSources(): Promise<void> {
   if (hasLoadedSources.value) return
   hasLoadedSources.value = true
-  const [prospectsResult, campaignsResult] = await Promise.all([
+  const [prospectsResult, campaignsResult]: [Prospect[], CampaignResponse[]] = await Promise.all([
     ProspectsService.listProspects().catch((): Prospect[] => []),
     CampaignService.list(0, 200).then(
       (response: { campaigns: CampaignResponse[] }): CampaignResponse[] => response.campaigns,

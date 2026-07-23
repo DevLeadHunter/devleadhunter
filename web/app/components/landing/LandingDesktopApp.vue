@@ -111,7 +111,8 @@
 import type { LandingDesktopKpi } from '~/types/LandingDesktopApp'
 
 const localePath: ReturnType<typeof useLocalePath> = useLocalePath()
-const { track } = useSiteTracking()
+const { track }: { track: (event: string, properties?: Record<string, unknown> | undefined) => void } =
+  useSiteTracking()
 
 /** i18n keys of the three benefit bullets under the heading. */
 const bulletKeys: string[] = ['landing.desktop.bullet1', 'landing.desktop.bullet2', 'landing.desktop.bullet3']
