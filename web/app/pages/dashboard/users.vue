@@ -137,10 +137,7 @@
       </div>
     </div>
 
-    <div v-else-if="filteredUsers.length === 0" class="card px-6 py-12 text-center">
-      <LandingAsterisk class="text-4xl text-[var(--app-accent)]" />
-      <h3 class="font-display mt-5 text-2xl font-semibold text-[var(--app-ink)]">Aucun utilisateur trouvé</h3>
-    </div>
+    <UiEmptyState v-else-if="filteredUsers.length === 0" title="Aucun utilisateur trouvé" />
 
     <div
       v-if="showCreateModal"

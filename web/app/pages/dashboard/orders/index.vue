@@ -38,13 +38,11 @@
       <UIcon name="i-lucide-loader-circle" class="text-muted h-9 w-9 animate-spin" />
     </div>
 
-    <div v-else-if="orders.length === 0" class="card px-6 py-12 text-center">
-      <LandingAsterisk class="text-4xl text-[var(--app-accent)]" />
-      <h3 class="font-display mt-5 text-2xl font-semibold text-[var(--app-ink)]">Aucune vente</h3>
-      <p class="mx-auto mt-2 max-w-sm text-sm leading-relaxed text-[var(--app-ink-soft)]">
-        Marquez un prospect comme vendu, ou créez une vente manuellement.
-      </p>
-    </div>
+    <UiEmptyState
+      v-else-if="orders.length === 0"
+      title="Aucune vente"
+      description="Marquez un prospect comme vendu, ou créez une vente manuellement."
+    />
 
     <div v-else class="card overflow-hidden p-0">
       <table class="w-full border-collapse">
