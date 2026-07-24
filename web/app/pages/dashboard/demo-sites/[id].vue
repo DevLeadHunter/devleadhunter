@@ -74,7 +74,7 @@
               </div>
               <div class="flex justify-between gap-3">
                 <dt class="text-[var(--app-ink-soft)]">Créé le</dt>
-                <dd class="text-right text-[var(--app-ink)]">{{ formatDate(site.created_at) }}</dd>
+                <dd class="text-right text-[var(--app-ink)]">{{ formatNumericDate(site.created_at) }}</dd>
               </div>
             </dl>
           </div>
@@ -298,6 +298,7 @@
 </template>
 
 <script lang="ts" setup>
+import { formatNumericDate } from '~/utils/date'
 import type { UseCopyToClipboardReturn, UseOpenExternalUrlReturn, UseToastReturn } from '~/types/Composables'
 import type { DemoSiteStat } from '~/types/DemoSiteDetailPage'
 import type { ComputedRef, Ref } from 'vue'
@@ -409,13 +410,6 @@ const stats: ComputedRef<DemoSiteStat[]> = computed(() => {
     },
   ]
 })
-
-/**
- * Format an ISO date for display on the detail page.
- */
-function formatDate(value: string): string {
-  return new Date(value).toLocaleDateString('fr-FR', { dateStyle: 'medium' })
-}
 
 /**
  * Load the Storyblok preview payload for the current site.

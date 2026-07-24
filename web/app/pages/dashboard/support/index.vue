@@ -65,8 +65,10 @@
               </span>
             </p>
           </div>
-          <span :class="['app-badge shrink-0 font-medium', statusBadgeClass(ticket.status)]">
-            {{ statusLabel(ticket.status) }}
+          <span
+            :class="['app-badge shrink-0 font-medium', SUPPORT_STATUS_PRESENTATION[ticket.status]?.badgeClass ?? '']"
+          >
+            {{ SUPPORT_STATUS_PRESENTATION[ticket.status]?.label ?? ticket.status }}
           </span>
         </div>
       </NuxtLink>
@@ -92,6 +94,7 @@
 </template>
 
 <script lang="ts" setup>
+import { SUPPORT_STATUS_PRESENTATION } from '~/constants/supportStatus'
 import type { UseToastReturn } from '~/types/Composables'
 import type { SupportWebsocketEvent } from '~/types/SupportListPage'
 import type { ComputedRef, Ref } from 'vue'
@@ -114,14 +117,6 @@ const STATUS_FILTERS: Array<{ value: string; label: string }> = [
 ]
 
 /** Human labels for ticket statuses. */
-const STATUS_LABELS: Record<string, string> = {
-  open: 'Ouvert',
-  waiting_support: 'Attente support',
-  waiting_user: 'Attente client',
-  resolved: 'Résolu',
-  closed: 'Fermé',
-}
-
 /** Human labels for ticket topics. */
 const TOPIC_LABELS: Record<string, string> = {
   credits_billing: 'Crédits & facturation',
@@ -167,26 +162,6 @@ const filteredTickets: ComputedRef<SupportTicketSummary[]> = computed((): Suppor
  */
 function topicLabel(topic: SupportTicketSummary['topic']): string {
   return TOPIC_LABELS[topic] ?? 'Support'
-}
-
-/**
- * Human label for a ticket status.
- * @param status - Raw status value.
- * @returns Localised label.
- */
-function statusLabel(status: string): string {
-  return STATUS_LABELS[status] ?? status
-}
-
-/**
- * Badge modifier for a status — reuses the app badge family (no ad-hoc colours).
- * @param status - Raw status value.
- * @returns The modifier class, or an empty string for the neutral badge.
- */
-function statusBadgeClass(status: string): string {
-  if (status === 'resolved') return 'app-badge--success'
-  if (status === 'open' || status === 'waiting_support') return 'app-badge--progress'
-  return ''
 }
 
 /**

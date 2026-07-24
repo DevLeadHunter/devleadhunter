@@ -106,7 +106,8 @@
                   {{ lead.name }}
                 </p>
                 <p class="truncate text-[11px] text-[var(--app-ink-soft)]">
-                  {{ lead.city || '—' }}<span v-if="lead.last_seen"> · vu {{ formatDate(lead.last_seen) }}</span>
+                  {{ lead.city || '—'
+                  }}<span v-if="lead.last_seen"> · vu {{ formatShortMonthDayTime(lead.last_seen) }}</span>
                 </p>
               </div>
               <div class="flex shrink-0 items-center gap-2.5">
@@ -259,6 +260,7 @@
 </template>
 
 <script lang="ts" setup>
+import { formatShortMonthDayTime } from '~/utils/date'
 import type { Prospect } from '~/types/index'
 import type { FunnelBarStage, PipelineTile } from '~/types/DashboardHomePage'
 import type { ComputedRef, Ref } from 'vue'
@@ -440,15 +442,6 @@ function formatInt(value: number): string {
 function formatCents(cents: number): string {
   const euros: number = cents / 100
   return `${euros.toLocaleString('fr-FR', { maximumFractionDigits: euros % 1 === 0 ? 0 : 2 })} €`
-}
-
-/**
- * Format an ISO timestamp to a short French date-time.
- * @param iso - ISO timestamp.
- * @returns Human-readable date-time.
- */
-function formatDate(iso: string): string {
-  return new Date(iso).toLocaleString('fr-FR', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })
 }
 
 /** Open the prospect-search drawer (same entry point as the search page). */

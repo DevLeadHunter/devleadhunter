@@ -89,7 +89,9 @@
             </div>
             <div class="flex justify-between">
               <dt>Dernier OK</dt>
-              <dd class="text-[var(--app-ink)] tabular-nums">{{ s.last_ok_at ? formatDate(s.last_ok_at) : '—' }}</dd>
+              <dd class="text-[var(--app-ink)] tabular-nums">
+                {{ s.last_ok_at ? formatNumericDayMonthTime(s.last_ok_at) : '—' }}
+              </dd>
             </div>
           </dl>
         </div>
@@ -120,7 +122,7 @@
               class="border-b border-[var(--app-line-soft)] last:border-b-0"
             >
               <td class="text-muted px-3 py-2 whitespace-nowrap tabular-nums">
-                {{ incident.created_at ? formatDate(incident.created_at) : '—' }}
+                {{ incident.created_at ? formatNumericDayMonthTime(incident.created_at) : '—' }}
               </td>
               <td class="px-3 py-2 font-medium text-[var(--app-ink)]">{{ sourceLabel(incident.source) }}</td>
               <td class="px-3 py-2">
@@ -204,6 +206,7 @@
 </template>
 
 <script lang="ts" setup>
+import { formatNumericDayMonthTime } from '~/utils/date'
 import type { UseToastReturn } from '~/types/Composables'
 import type { HtmlPanelState } from '~/types/AdminMonitoringPage'
 import type { ComputedRef, Ref } from 'vue'
@@ -293,20 +296,6 @@ function sourceLabel(source: string): string {
     decision_maker: 'Nom du décisionnaire',
   }
   return labels[source] ?? source.charAt(0).toUpperCase() + source.slice(1)
-}
-
-/**
- * Format an ISO timestamp for display.
- * @param iso - ISO 8601 string.
- * @returns A locale date-time string.
- */
-function formatDate(iso: string): string {
-  return new Date(iso).toLocaleString('fr-FR', {
-    day: '2-digit',
-    month: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-  })
 }
 
 /**

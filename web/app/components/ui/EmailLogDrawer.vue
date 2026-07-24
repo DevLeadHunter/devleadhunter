@@ -105,7 +105,7 @@
                   <UIcon name="i-lucide-calendar-plus" class="h-3.5 w-3.5" />
                   Créé le
                 </span>
-                <span class="text-xs text-[var(--app-ink)]">{{ formatDate(log.created_at) }}</span>
+                <span class="text-xs text-[var(--app-ink)]">{{ formatCompactDateTime(log.created_at) }}</span>
               </div>
               <div v-if="log.provider_message_id" class="flex items-start justify-between gap-3">
                 <span class="flex shrink-0 items-center gap-2 text-xs text-[var(--app-ink-soft)]">
@@ -147,7 +147,7 @@ import type { EmailDeliveryStage, EmailTimelineEntry, UiEmailLogDrawerEmits } fr
 import type { ComputedRef, EmitFn, PropType } from 'vue'
 import type { EmailLog, EmailStatus } from '~/types'
 import type { EmailLogDrawerProps } from '~/types/EmailLogDrawer'
-import { formatDate } from '~/utils/date'
+import { formatCompactDateTime } from '~/utils/date'
 
 /** Drawer showing email delivery timeline and events. */
 const props: EmailLogDrawerProps = defineProps({
@@ -308,7 +308,7 @@ const timelineItems: ComputedRef<EmailTimelineEntry[]> = computed((): EmailTimel
       return {
         value: stage.key,
         title: stage.label,
-        description: reached ? formatDate(stage.timestamp) : 'En attente',
+        description: reached ? formatCompactDateTime(stage.timestamp) : 'En attente',
         icon: stage.icon,
         ui: {
           indicator: reached ? stage.style.indicator : MUTED_INDICATOR,

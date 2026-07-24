@@ -532,7 +532,7 @@
                     >{{ item.ab_variant }}</span
                   >
                 </td>
-                <td class="text-muted px-3 py-2.5 text-sm">{{ formatDate(item.scheduled_at) }}</td>
+                <td class="text-muted px-3 py-2.5 text-sm">{{ formatCompactDateTime(item.scheduled_at) }}</td>
                 <td class="px-3 py-2.5">
                   <span
                     :class="[
@@ -653,7 +653,7 @@ import { CampaignService } from '~/services/campaignService'
 import { ProspectsService } from '~/services/prospectsService'
 import { ApiClient } from '~/services/api'
 import type { CampaignFollowUp, CampaignVariantStats, Prospect } from '~/types'
-import { formatDate } from '~/utils/date'
+import { formatCompactDateTime } from '~/utils/date'
 import { useToast } from '~/composables/useToast'
 
 definePageMeta({ layout: 'dashboard', middleware: 'auth' })

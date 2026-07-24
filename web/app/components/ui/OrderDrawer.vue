@@ -79,10 +79,10 @@
               </div>
               <p v-else class="text-sm text-[var(--app-faint)]">Aucun lien de paiement généré.</p>
               <p v-if="order.payment_link_sent_at" class="text-[10px] text-[var(--app-ink-soft)]">
-                Email envoyé le {{ formatDate(order.payment_link_sent_at) }}
+                Email envoyé le {{ formatShortMonthDateTime(order.payment_link_sent_at) }}
               </p>
               <p v-if="order.paid_at" class="text-[10px] text-[var(--app-green)]">
-                Payé le {{ formatDate(order.paid_at) }}
+                Payé le {{ formatShortMonthDateTime(order.paid_at) }}
               </p>
             </div>
 
@@ -213,6 +213,7 @@
 </template>
 
 <script lang="ts" setup>
+import { formatShortMonthDateTime } from '~/utils/date'
 import type { UseToastReturn } from '~/types/Composables'
 import type { OrderEditForm, UiOrderDrawerEmits, UiOrderDrawerProps } from '~/types/UiOrderDrawer'
 import type { ComputedRef, EmitFn, PropType, Ref } from 'vue'
@@ -313,21 +314,6 @@ watch(
     }
   },
 )
-
-/**
- * Format an ISO date string to a French locale date-time.
- * @param dateStr - ISO date string from the API.
- * @returns Human-readable date.
- */
-function formatDate(dateStr: string): string {
-  return new Date(dateStr).toLocaleString('fr-FR', {
-    day: 'numeric',
-    month: 'short',
-    year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  })
-}
 
 /** Copy the Stripe payment URL to the clipboard. */
 async function copyLink(): Promise<void> {

@@ -359,7 +359,7 @@
               class="border-b border-[var(--app-line-soft)] last:border-b-0"
             >
               <td class="py-2 pr-3 whitespace-nowrap text-[var(--app-ink-soft)] tabular-nums">
-                {{ formatDateTime(incident.at) }}
+                {{ formatNumericDayMonthTime(incident.at) || '—' }}
               </td>
               <td class="py-2 pr-3">
                 <span
@@ -491,6 +491,7 @@
 </template>
 
 <script lang="ts" setup>
+import { formatNumericDayMonthTime } from '~/utils/date'
 import type { TemplateScoreGroup } from '~/types/EmailHealthPage'
 import type { ComputedRef, Ref } from 'vue'
 import { computed, onMounted, ref } from 'vue'
@@ -955,16 +956,6 @@ function formatInt(value: number): string {
  */
 function formatRate(value: number): string {
   return value.toLocaleString('fr-FR', { maximumFractionDigits: 2 })
-}
-
-/**
- * Format an ISO timestamp for the incident journal.
- * @param iso - ISO 8601 string or null.
- * @returns Localized date-time or a dash.
- */
-function formatDateTime(iso: string | null): string {
-  if (!iso) return '—'
-  return new Date(iso).toLocaleString('fr-FR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })
 }
 
 /**

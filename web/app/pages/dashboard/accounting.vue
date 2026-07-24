@@ -235,7 +235,7 @@
                 </td>
 
                 <td class="px-4 py-3 text-sm text-[var(--app-ink)]">
-                  {{ formatDate(transaction.credits_available_date) }}
+                  {{ formatNumericDate(transaction.credits_available_date) }}
                 </td>
 
                 <td class="px-4 py-3 text-sm font-medium text-[var(--app-ink)]">
@@ -332,7 +332,7 @@
                   <div class="flex justify-between text-sm">
                     <span class="text-[var(--app-ink-soft)]">Payment date:</span>
                     <span class="font-medium text-[var(--app-ink)]">
-                      {{ formatDateTime(transaction.payment_info.payment_date) }}
+                      {{ formatNumericDateTime(transaction.payment_info.payment_date) }}
                     </span>
                   </div>
                   <div v-if="transaction.payment_info.customer_country" class="flex justify-between text-sm">
@@ -395,7 +395,7 @@
                   <div v-if="transaction.payment_info.refund_date" class="flex justify-between text-sm">
                     <span class="text-[var(--app-ink-soft)]">Refund date:</span>
                     <span class="font-medium text-[var(--app-ink)]">
-                      {{ formatDateTime(transaction.payment_info.refund_date) }}
+                      {{ formatNumericDateTime(transaction.payment_info.refund_date) }}
                     </span>
                   </div>
                 </div>
@@ -425,7 +425,7 @@
                   <div class="flex justify-between text-sm">
                     <span class="text-[var(--app-ink-soft)]">Credits available at:</span>
                     <span class="font-medium text-[var(--app-ink)]">
-                      {{ formatDateTime(transaction.credits_available_date) }}
+                      {{ formatNumericDateTime(transaction.credits_available_date) }}
                     </span>
                   </div>
                   <div class="flex justify-between text-sm">
@@ -494,6 +494,7 @@
 </template>
 
 <script lang="ts" setup>
+import { formatNumericDate, formatNumericDateTime } from '~/utils/date'
 import type { AccountingResponse, CreditPurchaseTransaction, StripePayment } from '~/types'
 import type { ComputedRef, Ref } from 'vue'
 import { ref, computed, onMounted, watch } from 'vue'
@@ -747,30 +748,6 @@ const formatPaymentDetails: (info?: CreditPurchaseTransaction['payment_info']) =
 }
 
 /**
- * Format date
- */
-const formatDate: (dateString: string) => string = (dateString: string): string => {
-  const date: Date = new Date(dateString)
-  const day: string = String(date.getDate()).padStart(2, '0')
-  const month: string = String(date.getMonth() + 1).padStart(2, '0')
-  const year: number = date.getFullYear()
-  return `${day}/${month}/${year}`
-}
-
-/**
- * Format date and time
- */
-const formatDateTime: (dateString: string) => string = (dateString: string): string => {
-  const date: Date = new Date(dateString)
-  const day: string = String(date.getDate()).padStart(2, '0')
-  const month: string = String(date.getMonth() + 1).padStart(2, '0')
-  const year: number = date.getFullYear()
-  const hours: string = String(date.getHours()).padStart(2, '0')
-  const minutes: string = String(date.getMinutes()).padStart(2, '0')
-  return `${day}/${month}/${year} ${hours}:${minutes}`
-}
-
-/**
  * Get status class
  */
 const getStatusClass: (status: string) => string = (status: string): string => {
@@ -820,7 +797,7 @@ const formatAvailability: (info?: CreditPurchaseTransaction['payment_info']) => 
 ): string => {
   if (!info) return 'N/A'
   if (info.available_at) {
-    return formatDateTime(info.available_at)
+    return formatNumericDateTime(info.available_at)
   }
   const status: string = info.status?.toLowerCase() || 'unknown'
   if (['succeeded', 'paid', 'complete', 'processing', 'requires_capture', 'pending'].includes(status)) {

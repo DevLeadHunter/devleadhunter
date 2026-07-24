@@ -78,7 +78,8 @@
             <span class="min-w-0 flex-1">
               <span class="block truncate text-sm font-medium text-[var(--app-ink)]">{{ displayName(item) }}</span>
               <span class="text-muted block truncate text-xs">
-                {{ kindLabel(item.kind) }} · {{ formatSize(item.size) }} · {{ formatDate(item.last_modified) }}
+                {{ kindLabel(item.kind) }} · {{ formatSize(item.size) }} ·
+                {{ formatShortMonthDate(item.last_modified) }}
                 <template v-if="item.is_expired"> · <span class="text-[var(--app-red)]">expiré</span></template>
                 <template v-else-if="item.expires_in_days !== null">
                   · expire dans {{ item.expires_in_days }} j
@@ -188,6 +189,7 @@
 </template>
 
 <script lang="ts" setup>
+import { formatShortMonthDate } from '~/utils/date'
 import type { UseToastReturn } from '~/types/Composables'
 import type { ComputedRef, Ref } from 'vue'
 import type {
@@ -344,16 +346,6 @@ function formatSize(bytes: number): string {
   if (bytes >= 1024 * 1024) return `${(bytes / (1024 * 1024)).toFixed(1)} Mo`
   if (bytes >= 1024) return `${Math.round(bytes / 1024)} Ko`
   return `${bytes} o`
-}
-
-/**
- * Format an ISO date for display.
- * @param value - ISO timestamp or null.
- * @returns Localised date, or a dash.
- */
-function formatDate(value: string | null): string {
-  if (!value) return '—'
-  return new Date(value).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' })
 }
 
 /**
