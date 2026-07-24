@@ -6,11 +6,11 @@ if it crashes / is blocked / returns nothing, the orchestrator cascades to the n
 sources in :data:`_FAILOVER_ORDER` until it gets results. Every source run is classified
 (ok / empty / blocked / timeout / error) and recorded for the admin monitoring page.
 """
+
 from __future__ import annotations
 
-import asyncio
-from typing import Callable, List, Optional
 import logging
+from collections.abc import Callable
 
 from models.prospect import ProspectCreate
 from scrappers import scrape_signals
@@ -37,7 +37,7 @@ class ScraperService:
     """Service for coordinating web scraping operations."""
 
     def __init__(self) -> None:
-        self._scrapers: List[BaseScraper] = []
+        self._scrapers: list[BaseScraper] = []
         self._is_active = False
 
     async def add_scraper(self, scraper: BaseScraper) -> None:
@@ -48,7 +48,7 @@ class ScraperService:
         if scraper in self._scrapers:
             self._scrapers.remove(scraper)
 
-    def _ordered_candidates(self, source_filter: Optional[str]) -> tuple[List[BaseScraper], bool]:
+    def _ordered_candidates(self, source_filter: str | None) -> tuple[list[BaseScraper], bool]:
         """Build the ordered list of scrapers to try, plus whether a source was requested.
 
         A specific request runs first, then the rest of the failover chain (so a blocked
@@ -68,7 +68,7 @@ class ScraperService:
         else:
             ordered_names = list(_FAILOVER_ORDER)
 
-        candidates: List[BaseScraper] = []
+        candidates: list[BaseScraper] = []
         seen: set[str] = set()
         for name in ordered_names:
             scraper = by_source.get(name)
@@ -85,9 +85,9 @@ class ScraperService:
         max_results: int,
         *,
         only_without_website: bool,
-        progress: Optional[ScrapeProgressReporter],
-        should_stop: Optional[Callable[[], bool]],
-    ) -> tuple[List[ProspectCreate], str, Optional[str], Optional[str]]:
+        progress: ScrapeProgressReporter | None,
+        should_stop: Callable[[], bool] | None,
+    ) -> tuple[list[ProspectCreate], str, str | None, str | None]:
         """Run one scraper and classify the outcome.
 
         Returns:
@@ -96,9 +96,9 @@ class ScraperService:
         source = scraper.source.value
         scrape_signals.clear(source)
         status: str = STATUS_OK
-        error_message: Optional[str] = None
-        html_snapshot: Optional[str] = None
-        results: List[ProspectCreate] = []
+        error_message: str | None = None
+        html_snapshot: str | None = None
+        results: list[ProspectCreate] = []
 
         try:
             results = await scraper.scrape(
@@ -109,10 +109,10 @@ class ScraperService:
                 progress=progress,
                 should_stop=should_stop,
             )
-        except asyncio.TimeoutError as exc:
+        except TimeoutError as exc:
             status, error_message = STATUS_TIMEOUT, (str(exc) or "timeout")
             logger.warning("Scraper %s timed out", scraper.__class__.__name__)
-        except Exception as exc:  # noqa: BLE001 — classify, don't abort the cascade
+        except Exception as exc:
             status, error_message = STATUS_ERROR, str(exc)
             logger.error("Scraper %s failed: %s", scraper.__class__.__name__, exc, exc_info=True)
 
@@ -137,13 +137,13 @@ class ScraperService:
         category: str,
         city: str,
         max_results: int = 50,
-        source_filter: Optional[str] = None,
+        source_filter: str | None = None,
         *,
         only_without_website: bool = True,
-        progress: Optional[ScrapeProgressReporter] = None,
-        should_stop: Optional[Callable[[], bool]] = None,
-        user_id: Optional[int] = None,
-    ) -> List[ProspectCreate]:
+        progress: ScrapeProgressReporter | None = None,
+        should_stop: Callable[[], bool] | None = None,
+        user_id: int | None = None,
+    ) -> list[ProspectCreate]:
         """Run scrapers with automatic failover and stream/record progress."""
         logger.info(
             "[ScraperService] scrape_all category=%s city=%s max=%s source=%s",
@@ -164,7 +164,7 @@ class ScraperService:
             logger.warning("No candidate scraper for source=%s; using all registered", source_filter)
             candidates, is_specific = list(self._scrapers), False
 
-        all_prospects: List[ProspectCreate] = []
+        all_prospects: list[ProspectCreate] = []
         seen: set[tuple[str, str]] = set()
 
         for scraper in candidates:

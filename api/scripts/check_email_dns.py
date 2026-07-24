@@ -18,6 +18,7 @@ listing.
 
 Exit code is 1 as soon as one check is in ``danger``, so it can gate a script.
 """
+
 from __future__ import annotations
 
 import os
@@ -26,7 +27,7 @@ from typing import Any
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from services.email_dns_service import email_dns_service, use_nameservers  # noqa: E402
+from services.email_dns_service import email_dns_service, use_nameservers
 
 _DEFAULT_DOMAINS: tuple[str, ...] = ("mail.dibodev.fr", "dibodev.fr")
 

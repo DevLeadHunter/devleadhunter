@@ -9,10 +9,11 @@ Industry thresholds (2024 Gmail/Yahoo sender requirements):
 - complaint (spam) rate: keep < 0.1 %, hard ceiling 0.3 %
 - bounce rate: healthy < 2 %, degraded >= 5 %
 """
+
 from __future__ import annotations
 
 from datetime import datetime, timedelta
-from typing import Any, Optional
+from typing import Any
 
 from sqlalchemy import case, func, or_
 from sqlalchemy.orm import Session
@@ -91,8 +92,17 @@ def _rate(numerator: int, denominator: int) -> float:
     return round(numerator * 100.0 / denominator, 2)
 
 
-def _signal(key: str, label: str, value: float, ok_below: float, warn_below: float, *, invert: bool = False,
-            unit: str = "%", hint: str = "") -> dict[str, Any]:
+def _signal(
+    key: str,
+    label: str,
+    value: float,
+    ok_below: float,
+    warn_below: float,
+    *,
+    invert: bool = False,
+    unit: str = "%",
+    hint: str = "",
+) -> dict[str, Any]:
     """Build a health signal with its ok/warn/danger status.
 
     Args:
@@ -147,19 +157,36 @@ class EmailHealthService:
 
         signals = [
             _signal(
-                "complaint_rate", "Signalés comme spam", totals["complaint_rate"], 0.1, 0.3,
+                "complaint_rate",
+                "Signalés comme spam",
+                totals["complaint_rate"],
+                0.1,
+                0.3,
                 hint="Au-delà de 0,3 %, Gmail et Yahoo vous rangent direct en spam.",
             ),
             _signal(
-                "bounce_rate", "Emails rejetés", totals["bounce_rate"], 2.0, 5.0,
+                "bounce_rate",
+                "Emails rejetés",
+                totals["bounce_rate"],
+                2.0,
+                5.0,
                 hint="Adresses invalides ou boîtes pleines. À nettoyer au-delà de 2 %.",
             ),
             _signal(
-                "delivery_rate", "Bien arrivés", totals["delivery_rate"], 95.0, 90.0, invert=True,
+                "delivery_rate",
+                "Bien arrivés",
+                totals["delivery_rate"],
+                95.0,
+                90.0,
+                invert=True,
                 hint="Emails acceptés par le destinataire. Visez 95 % ou plus.",
             ),
             _signal(
-                "unsubscribe_rate", "Désinscriptions", totals["unsubscribe_rate"], 0.5, 2.0,
+                "unsubscribe_rate",
+                "Désinscriptions",
+                totals["unsubscribe_rate"],
+                0.5,
+                2.0,
                 hint="Au-delà de 0,5 %, revoyez le message ou le ciblage.",
             ),
         ]
@@ -191,7 +218,7 @@ class EmailHealthService:
         user_id: int,
         *,
         since: datetime,
-        email_account_id: Optional[int] = None,
+        email_account_id: int | None = None,
     ) -> dict[str, Any]:
         """Counters + rates over one window, optionally scoped to one account.
 
@@ -207,9 +234,7 @@ class EmailHealthService:
         sent_marker = or_(EmailLog.sent_at.isnot(None), EmailLog.status.in_(_POST_SEND_STATUSES))
         delivered_marker = or_(
             EmailLog.delivered_at.isnot(None),
-            EmailLog.status.in_(
-                (EmailStatus.DELIVERED.value, EmailStatus.OPENED.value, EmailStatus.CLICKED.value)
-            ),
+            EmailLog.status.in_((EmailStatus.DELIVERED.value, EmailStatus.OPENED.value, EmailStatus.CLICKED.value)),
         )
         opened_marker = or_(
             EmailLog.opened_at.isnot(None),
@@ -217,12 +242,8 @@ class EmailHealthService:
         )
         clicked_marker = or_(EmailLog.clicked_at.isnot(None), EmailLog.status == EmailStatus.CLICKED.value)
         bounced_marker = or_(EmailLog.bounced_at.isnot(None), EmailLog.status == EmailStatus.BOUNCED.value)
-        complained_marker = or_(
-            EmailLog.complained_at.isnot(None), EmailLog.status == EmailStatus.COMPLAINED.value
-        )
-        suppressed_marker = or_(
-            EmailLog.suppressed_at.isnot(None), EmailLog.status == EmailStatus.SUPPRESSED.value
-        )
+        complained_marker = or_(EmailLog.complained_at.isnot(None), EmailLog.status == EmailStatus.COMPLAINED.value)
+        suppressed_marker = or_(EmailLog.suppressed_at.isnot(None), EmailLog.status == EmailStatus.SUPPRESSED.value)
         failed_marker = or_(EmailLog.failed_at.isnot(None), EmailLog.status == EmailStatus.FAILED.value)
 
         query = db.query(
@@ -242,9 +263,7 @@ class EmailHealthService:
             query = query.filter(EmailLog.email_account_id == email_account_id)
 
         row = query.one()
-        sent, delivered, opened, clicked, bounced, complained, suppressed, failed = (
-            int(value or 0) for value in row
-        )
+        sent, delivered, opened, clicked, bounced, complained, suppressed, failed = (int(value or 0) for value in row)
 
         return {
             "sent": sent,
@@ -552,13 +571,15 @@ class EmailHealthService:
                     EmailLog.failed_at.isnot(None),
                 ),
             )
-            .order_by(func.coalesce(
-                EmailLog.bounced_at,
-                EmailLog.complained_at,
-                EmailLog.suppressed_at,
-                EmailLog.failed_at,
-                EmailLog.created_at,
-            ).desc())
+            .order_by(
+                func.coalesce(
+                    EmailLog.bounced_at,
+                    EmailLog.complained_at,
+                    EmailLog.suppressed_at,
+                    EmailLog.failed_at,
+                    EmailLog.created_at,
+                ).desc()
+            )
             .limit(limit)
             .all()
         )

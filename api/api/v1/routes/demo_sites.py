@@ -1,15 +1,17 @@
 """Demo site routes for the website builder tunnel."""
+
 import logging
-from typing import Any, List
+from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Response, status
-from fastapi.responses import FileResponse, RedirectResponse
+from fastapi.responses import RedirectResponse
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
 from core.config import settings
 from core.database import get_db
 from enums.demo_site_status import DemoSiteStatus
+from enums.demo_video_status import DemoVideoStatus
 from models.prospect_db import ProspectDB
 from models.user import User
 from schemas.demo_site import (
@@ -23,7 +25,6 @@ from schemas.demo_site import (
     DemoSiteTheme,
     DemoSiteUpdateRequest,
 )
-from enums.demo_video_status import DemoVideoStatus
 from services.auth_service import get_current_active_user
 from services.demo_site_service import demo_site_service
 from services.demo_video_service import (
@@ -68,8 +69,8 @@ def _serialize_demo_site(site) -> DemoSiteResponse:
     return DemoSiteResponse(**payload)
 
 
-@router.get("/templates", response_model=List[DemoSiteTemplateResponse])
-async def list_demo_templates() -> List[DemoSiteTemplateResponse]:
+@router.get("/templates", response_model=list[DemoSiteTemplateResponse])
+async def list_demo_templates() -> list[DemoSiteTemplateResponse]:
     """List templates available in the site builder stepper."""
     return [DemoSiteTemplateResponse(**template) for template in demo_site_service.list_templates()]
 
@@ -226,9 +227,7 @@ async def create_demo_sites_bulk(
 
     for prospect_id in payload.prospect_ids:
         prospect: ProspectDB | None = (
-            db.query(ProspectDB)
-            .filter(ProspectDB.id == prospect_id, ProspectDB.user_id == current_user.id)
-            .first()
+            db.query(ProspectDB).filter(ProspectDB.id == prospect_id, ProspectDB.user_id == current_user.id).first()
         )
         if not prospect:
             results.append({"prospect_id": prospect_id, "status": "failed", "error": "Prospect introuvable"})
@@ -252,14 +251,16 @@ async def create_demo_sites_bulk(
                 theme=theme_dict,
                 prospect_id=prospect.id,
             )
-            results.append({
-                "prospect_id": prospect_id,
-                "demo_site_id": site.id,
-                "slug": site.slug,
-                "status": site.status,
-            })
+            results.append(
+                {
+                    "prospect_id": prospect_id,
+                    "demo_site_id": site.id,
+                    "slug": site.slug,
+                    "status": site.status,
+                }
+            )
             created += 1
-        except Exception as exc:  # noqa: BLE001 — report per item, never fail the whole batch
+        except Exception as exc:
             results.append({"prospect_id": prospect_id, "status": "failed", "error": str(exc)})
             failed += 1
 
@@ -320,7 +321,7 @@ async def export_demo_site_code(
         data, filename = await site_export_service.build_export(site)
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
-    except Exception as exc:  # noqa: BLE001 — network / GitHub tarball failure
+    except Exception as exc:
         logger.exception("Site code export failed for slug=%s", site.slug)
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY,

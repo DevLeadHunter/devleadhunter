@@ -1,12 +1,13 @@
 """Cloudflare R2 object storage (S3-compatible) — the single storage backend."""
+
 from __future__ import annotations
 
 import asyncio
 import mimetypes
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 try:
     import boto3
@@ -16,7 +17,7 @@ except ImportError as _boto_import_error:  # pragma: no cover
     boto3 = None  # type: ignore[assignment]
     Config = None  # type: ignore[assignment, misc]
     ClientError = Exception  # type: ignore[assignment, misc]
-    _BOTO_IMPORT_ERROR: Optional[ImportError] = _boto_import_error
+    _BOTO_IMPORT_ERROR: ImportError | None = _boto_import_error
 else:
     _BOTO_IMPORT_ERROR = None
 
@@ -75,8 +76,7 @@ class R2StorageService:
         """
         if boto3 is None:
             raise RuntimeError(
-                "Le package `boto3` est absent. Installez-le avec `pip install boto3` "
-                "ou reconstruisez le venv."
+                "Le package `boto3` est absent. Installez-le avec `pip install boto3` ou reconstruisez le venv."
             ) from _BOTO_IMPORT_ERROR
         if not self.is_configured():
             raise RuntimeError(
@@ -155,7 +155,7 @@ class R2StorageService:
         return f"{cls.VIDEOS_PRESENTER_PREFIX}/{user_id}.mp4"
 
     @classmethod
-    def support_key(cls, original_filename: Optional[str]) -> str:
+    def support_key(cls, original_filename: str | None) -> str:
         """
         Build the key of a support ticket attachment, filed by year and month.
 
@@ -168,7 +168,7 @@ class R2StorageService:
         extension: str = Path(original_filename or "file").suffix or ".png"
         if not extension.startswith("."):
             extension = f".{extension}"
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         return f"{cls.IMAGES_SUPPORT_PREFIX}/{now:%Y/%m}/{uuid.uuid4().hex}{extension}"
 
     @staticmethod
@@ -190,7 +190,7 @@ class R2StorageService:
             raise RuntimeError("R2_PUBLIC_BASE_URL_DEV / _PROD manquant")
         return f"{base}/{key.lstrip('/')}"
 
-    def upload_file(self, local_path: Path | str, key: str, content_type: Optional[str] = None) -> str:
+    def upload_file(self, local_path: Path | str, key: str, content_type: str | None = None) -> str:
         """
         Upload a local file, overwriting the key when it already exists.
 
@@ -216,7 +216,7 @@ class R2StorageService:
         )
         return self.public_url(key)
 
-    def upload_bytes(self, key: str, data: bytes, content_type: Optional[str] = None) -> str:
+    def upload_bytes(self, key: str, data: bytes, content_type: str | None = None) -> str:
         """
         Upload raw bytes, overwriting the key when it already exists.
 
@@ -301,7 +301,7 @@ class R2StorageService:
                 Delete={"Objects": [{"Key": key} for key in chunk], "Quiet": True},
             )
 
-    def list_objects(self, prefix: str = "", *, bucket: Optional[str] = None) -> list[dict[str, Any]]:
+    def list_objects(self, prefix: str = "", *, bucket: str | None = None) -> list[dict[str, Any]]:
         """
         List the objects under a prefix, following pagination to the end.
 
@@ -315,7 +315,7 @@ class R2StorageService:
         client = self._client_or_fail()
         target: str = bucket or self.bucket_name()
         results: list[dict[str, Any]] = []
-        token: Optional[str] = None
+        token: str | None = None
         while True:
             kwargs: dict[str, Any] = {"Bucket": target, "Prefix": prefix}
             if token:
@@ -355,9 +355,7 @@ class R2StorageService:
             CopySource={"Bucket": source_bucket, "Key": key},
         )
 
-    async def upload_file_async(
-        self, local_path: Path | str, key: str, content_type: Optional[str] = None
-    ) -> str:
+    async def upload_file_async(self, local_path: Path | str, key: str, content_type: str | None = None) -> str:
         """
         Upload a local file without blocking the event loop.
 
@@ -371,9 +369,7 @@ class R2StorageService:
         """
         return await asyncio.to_thread(self.upload_file, local_path, key, content_type)
 
-    async def upload_bytes_async(
-        self, key: str, data: bytes, content_type: Optional[str] = None
-    ) -> str:
+    async def upload_bytes_async(self, key: str, data: bytes, content_type: str | None = None) -> str:
         """
         Upload raw bytes without blocking the event loop.
 
@@ -437,7 +433,7 @@ class R2StorageService:
         return self._client
 
     @staticmethod
-    def _guess_content_type(filename: Optional[str], fallback: str = DEFAULT_CONTENT_TYPE) -> str:
+    def _guess_content_type(filename: str | None, fallback: str = DEFAULT_CONTENT_TYPE) -> str:
         """
         Guess a MIME type from a file name or an object key.
 

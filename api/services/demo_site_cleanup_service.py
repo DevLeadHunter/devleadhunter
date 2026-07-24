@@ -1,4 +1,5 @@
 """Background cleanup for expired demo websites."""
+
 from __future__ import annotations
 
 import asyncio
@@ -27,7 +28,7 @@ class DemoSiteCleanupRunner:
                 cleaned: int = await demo_site_service.expire_due_sites(db)
                 if cleaned:
                     logger.info("Expired demo sites cleaned: %s", cleaned)
-            except Exception as exc:  # noqa: BLE001
+            except Exception as exc:
                 logger.exception("Demo site cleanup failed: %s", exc)
             finally:
                 db.close()

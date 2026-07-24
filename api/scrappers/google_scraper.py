@@ -1,25 +1,27 @@
 """
 Google Maps scraper for fetching business prospects (nodriver).
 """
+
 from __future__ import annotations
 
-from dataclasses import dataclass
-from typing import Callable, Coroutine, List, Optional, TypeVar
-from urllib.parse import quote
 import asyncio
 import logging
 import re
+from collections.abc import Callable
+from dataclasses import dataclass
 from time import monotonic
+from typing import TypeVar
+from urllib.parse import quote
 
 from enums.source import Source
 from models.prospect import ProspectCreate, ProspectSearchSuggestion
-from services.validation_service import validation_service
-from services.scrape_progress import ScrapeProgressReporter
+from scrappers import scrape_signals
 from scrappers.nodriver_browser import NODRIVER_AVAILABLE, NodriverBrowser, NodriverScraperMixin
 from scrappers.nodriver_dom import NodriverDom
 from scrappers.nodriver_executor import run_nodriver_task
 from scrappers.resilient_extract import find_phone, parse_ld_json_blocks
-from scrappers import scrape_signals
+from services.scrape_progress import ScrapeProgressReporter
+from services.validation_service import validation_service
 
 from .base_scraper import BaseScraper
 from .email_scraper import email_scraper
@@ -43,7 +45,7 @@ class _MapsSuggestionSession:
 _maps_suggestion_session: _MapsSuggestionSession | None = None
 
 
-def _suggestion_cache_key(query: str, city: Optional[str], max_results: int) -> str:
+def _suggestion_cache_key(query: str, city: str | None, max_results: int) -> str:
     return f"{query.strip().lower()}|{(city or '').strip().lower()}|{max_results}"
 
 
@@ -129,7 +131,7 @@ class GoogleScraper(NodriverScraperMixin, BaseScraper):
                 await asyncio.sleep(0.5)
                 return True
             return False
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             logger.error("Error accepting cookies: %s", exc)
             return False
 
@@ -151,12 +153,12 @@ class GoogleScraper(NodriverScraperMixin, BaseScraper):
                 await asyncio.sleep(0.5)
                 return True
             return False
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             logger.error("Error accepting web modal: %s", exc)
             return False
 
     @staticmethod
-    def build_query(category: Optional[str], city: Optional[str]) -> str:
+    def build_query(category: str | None, city: str | None) -> str:
         """Build a URL-encoded Google Maps search query."""
         parts: list[str] = []
         if category:
@@ -216,7 +218,7 @@ class GoogleScraper(NodriverScraperMixin, BaseScraper):
         return lowered not in {"résultats", "results", "resultats"}
 
     @staticmethod
-    def build_business_query(business_name: str, city: Optional[str] = None) -> str:
+    def build_business_query(business_name: str, city: str | None = None) -> str:
         """Build a Google Maps search query for a business name."""
         parts: list[str] = [business_name.strip()]
         if city and city.strip():
@@ -228,9 +230,7 @@ class GoogleScraper(NodriverScraperMixin, BaseScraper):
         await self.accept_cookies(tab)
         await self.accept_web_modal(tab)
 
-    async def _navigate_to_maps_url(
-        self, tab: object, url: str, *, place_timeout_s: float = 20.0
-    ) -> str:
+    async def _navigate_to_maps_url(self, tab: object, url: str, *, place_timeout_s: float = 20.0) -> str:
         """Open a Google Maps URL and wait until the place panel is ready."""
         logger.info("Navigating to Google Maps URL: %s", url)
         try:
@@ -263,7 +263,7 @@ class GoogleScraper(NodriverScraperMixin, BaseScraper):
         *,
         default_category: str = "Entreprise",
         item_timeout_s: float = 5.0,
-    ) -> Optional[dict[str, Optional[str]]]:
+    ) -> dict[str, str | None] | None:
         """Extract business details from the currently open Google Maps place panel.
 
         Resilient to Google's obfuscated-class churn: each field tries its current
@@ -277,30 +277,49 @@ class GoogleScraper(NodriverScraperMixin, BaseScraper):
 
             # Layer 1 — current selector, then semantic / data-* alternates.
             name = await NodriverDom.inner_text_chain(tab, ["h1", "[role='main'] h1"])
-            address = await NodriverDom.inner_text_chain(tab, [
-                "[data-item-id='address']",
-                "button[data-item-id='address']",
-                "[data-item-id^='address']",
-                "button[aria-label*='Adresse']",
-                "button[aria-label*='Address']",
-            ]) or ""
-            phone = await NodriverDom.inner_text_chain(tab, [
-                "[data-item-id='phone']",
-                "[data-item-id^='phone']",
-                "button[aria-label*='Téléphone']",
-                "button[aria-label*='Phone']",
-            ])
-            website = await NodriverDom.get_attribute_chain(tab, [
-                "a[data-item-id='authority']",
-                "a[data-item-id^='authority']",
-                "a[aria-label*='site Web']",
-                "a[aria-label*='website']",
-            ], "href")
-            category = await NodriverDom.inner_text_chain(tab, [
-                "button[data-value='Main category']",
-                "button[jsaction*='category']",
-                "[data-item-id='category']",
-            ]) or default_category
+            address = (
+                await NodriverDom.inner_text_chain(
+                    tab,
+                    [
+                        "[data-item-id='address']",
+                        "button[data-item-id='address']",
+                        "[data-item-id^='address']",
+                        "button[aria-label*='Adresse']",
+                        "button[aria-label*='Address']",
+                    ],
+                )
+                or ""
+            )
+            phone = await NodriverDom.inner_text_chain(
+                tab,
+                [
+                    "[data-item-id='phone']",
+                    "[data-item-id^='phone']",
+                    "button[aria-label*='Téléphone']",
+                    "button[aria-label*='Phone']",
+                ],
+            )
+            website = await NodriverDom.get_attribute_chain(
+                tab,
+                [
+                    "a[data-item-id='authority']",
+                    "a[data-item-id^='authority']",
+                    "a[aria-label*='site Web']",
+                    "a[aria-label*='website']",
+                ],
+                "href",
+            )
+            category = (
+                await NodriverDom.inner_text_chain(
+                    tab,
+                    [
+                        "button[data-value='Main category']",
+                        "button[jsaction*='category']",
+                        "[data-item-id='category']",
+                    ],
+                )
+                or default_category
+            )
 
             # Layer 2 — JSON-LD fallback for anything still missing.
             if not (name and phone and address and website):
@@ -333,11 +352,11 @@ class GoogleScraper(NodriverScraperMixin, BaseScraper):
                 "website": website,
                 "category": category.strip(),
             }
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             logger.error("Failed to extract Google Maps place details: %s", exc)
             return None
 
-    async def _build_prospect_from_details(self, details: dict[str, Optional[str]]) -> ProspectCreate:
+    async def _build_prospect_from_details(self, details: dict[str, str | None]) -> ProspectCreate:
         """Build a ProspectCreate object from extracted Maps details."""
         name = details["name"] or "Entreprise"
         address = details.get("address") or ""
@@ -352,10 +371,10 @@ class GoogleScraper(NodriverScraperMixin, BaseScraper):
             website=website,
         )
 
-        email: Optional[str] = None
+        email: str | None = None
         try:
             email = await email_scraper.find_email(name, city)
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             logger.debug("Could not find email for %s: %s", name, exc)
 
         return ProspectCreate(
@@ -370,7 +389,7 @@ class GoogleScraper(NodriverScraperMixin, BaseScraper):
             confidence=confidence,
         )
 
-    async def scrape_place_url(self, url: str) -> Optional[ProspectCreate]:
+    async def scrape_place_url(self, url: str) -> ProspectCreate | None:
         """Scrape a single Google Maps place from a direct business URL."""
         if not NODRIVER_AVAILABLE:
             logger.warning("nodriver not available, cannot enrich from Google Maps URL")
@@ -382,12 +401,12 @@ class GoogleScraper(NodriverScraperMixin, BaseScraper):
 
         scraper = GoogleScraper()
 
-        async def task() -> Optional[ProspectCreate]:
+        async def task() -> ProspectCreate | None:
             return await scraper._scrape_place_url_nodriver(normalized_url)
 
         return await run_nodriver_task(task, timeout=120)
 
-    async def _scrape_place_url_nodriver(self, normalized_url: str) -> Optional[ProspectCreate]:
+    async def _scrape_place_url_nodriver(self, normalized_url: str) -> ProspectCreate | None:
         """nodriver implementation for scraping a Google Maps place URL."""
         await self.start()
         try:
@@ -405,7 +424,7 @@ class GoogleScraper(NodriverScraperMixin, BaseScraper):
             await self.close()
 
     @staticmethod
-    def _parse_suggestion_label(raw_label: str) -> tuple[str, Optional[str]]:
+    def _parse_suggestion_label(raw_label: str) -> tuple[str, str | None]:
         """Split a Google Maps aria-label into business name and address."""
         cleaned = " ".join(raw_label.split())
         if not cleaned:
@@ -429,7 +448,7 @@ class GoogleScraper(NodriverScraperMixin, BaseScraper):
         *,
         label: str,
         google_maps_url: str,
-        description: Optional[str] = None,
+        description: str | None = None,
     ) -> ProspectSearchSuggestion:
         """Build a typed Google Maps search suggestion."""
         return ProspectSearchSuggestion(
@@ -442,7 +461,7 @@ class GoogleScraper(NodriverScraperMixin, BaseScraper):
     async def search_business_suggestions(
         self,
         query: str,
-        city: Optional[str] = None,
+        city: str | None = None,
         max_results: int = 8,
     ) -> list[ProspectSearchSuggestion]:
         """Search Google Maps and return lightweight business suggestions."""
@@ -457,16 +476,14 @@ class GoogleScraper(NodriverScraperMixin, BaseScraper):
         scraper = GoogleScraper()
 
         async def task() -> list[ProspectSearchSuggestion]:
-            return await scraper._search_business_suggestions_nodriver(
-                cleaned_query, city, max_results
-            )
+            return await scraper._search_business_suggestions_nodriver(cleaned_query, city, max_results)
 
         return await run_nodriver_task(task, timeout=120)
 
     async def _search_business_suggestions_nodriver(
         self,
         cleaned_query: str,
-        city: Optional[str],
+        city: str | None,
         max_results: int,
     ) -> list[ProspectSearchSuggestion]:
         """nodriver implementation for Google Maps business suggestions."""
@@ -488,9 +505,7 @@ class GoogleScraper(NodriverScraperMixin, BaseScraper):
             await NodriverDom.navigate(tab, url, sleep_s=0.8)
 
             if not await NodriverDom.wait_for_selector(tab, "div[role='feed']", timeout_s=6.0):
-                single = await self._extract_current_place(
-                    tab, default_category="Entreprise", item_timeout_s=3.0
-                )
+                single = await self._extract_current_place(tab, default_category="Entreprise", item_timeout_s=3.0)
                 if single and single.get("name"):
                     maps_url = NodriverDom.tab_url(tab)
                     suggestions = [
@@ -545,8 +560,8 @@ class GoogleScraper(NodriverScraperMixin, BaseScraper):
     async def scrape_by_business_name(
         self,
         business_name: str,
-        city: Optional[str] = None,
-    ) -> Optional[ProspectCreate]:
+        city: str | None = None,
+    ) -> ProspectCreate | None:
         """Find a business on Google Maps by name and scrape its public details."""
         if not NODRIVER_AVAILABLE:
             logger.warning("nodriver not available, cannot enrich from business name")
@@ -558,7 +573,7 @@ class GoogleScraper(NodriverScraperMixin, BaseScraper):
 
         scraper = GoogleScraper()
 
-        async def task() -> Optional[ProspectCreate]:
+        async def task() -> ProspectCreate | None:
             return await scraper._scrape_by_business_name_nodriver(cleaned_name, city)
 
         return await run_nodriver_task(task, timeout=120)
@@ -566,8 +581,8 @@ class GoogleScraper(NodriverScraperMixin, BaseScraper):
     async def _scrape_by_business_name_nodriver(
         self,
         cleaned_name: str,
-        city: Optional[str],
-    ) -> Optional[ProspectCreate]:
+        city: str | None,
+    ) -> ProspectCreate | None:
         """nodriver implementation for enriching a prospect by business name."""
         await self.start()
         try:
@@ -579,9 +594,7 @@ class GoogleScraper(NodriverScraperMixin, BaseScraper):
                 await NodriverDom.navigate(tab, url, sleep_s=1.0)
                 await self._prepare_maps_tab(tab)
 
-                details = await self._extract_current_place(
-                    tab, default_category="Entreprise", item_timeout_s=4.0
-                )
+                details = await self._extract_current_place(tab, default_category="Entreprise", item_timeout_s=4.0)
                 if details and details.get("name"):
                     return await self._build_prospect_from_details(details)
 
@@ -605,9 +618,7 @@ class GoogleScraper(NodriverScraperMixin, BaseScraper):
                     return None
 
                 await asyncio.sleep(1.0)
-                details = await self._extract_current_place(
-                    tab, default_category="Entreprise", item_timeout_s=8.0
-                )
+                details = await self._extract_current_place(tab, default_category="Entreprise", item_timeout_s=8.0)
                 if not details or not details.get("name"):
                     return None
                 return await self._build_prospect_from_details(details)
@@ -624,9 +635,9 @@ class GoogleScraper(NodriverScraperMixin, BaseScraper):
         max_results: int = 50,
         *,
         only_without_website: bool = True,
-        progress: Optional[ScrapeProgressReporter] = None,
-        should_stop: Optional[Callable[[], bool]] = None,
-    ) -> List[ProspectCreate]:
+        progress: ScrapeProgressReporter | None = None,
+        should_stop: Callable[[], bool] | None = None,
+    ) -> list[ProspectCreate]:
         """
         Scrape prospects from Google Maps.
 
@@ -642,10 +653,8 @@ class GoogleScraper(NodriverScraperMixin, BaseScraper):
             logger.warning("nodriver not available, returning empty results")
             return []
 
-        async def task() -> List[ProspectCreate]:
-            return await self._scrape_nodriver(
-                category, city, max_results, only_without_website, progress, should_stop
-            )
+        async def task() -> list[ProspectCreate]:
+            return await self._scrape_nodriver(category, city, max_results, only_without_website, progress, should_stop)
 
         return await run_nodriver_task(task, timeout=600)
 
@@ -655,9 +664,9 @@ class GoogleScraper(NodriverScraperMixin, BaseScraper):
         city: str,
         max_results: int,
         only_without_website: bool,
-        progress: Optional[ScrapeProgressReporter],
-        should_stop: Optional[Callable[[], bool]],
-    ) -> List[ProspectCreate]:
+        progress: ScrapeProgressReporter | None,
+        should_stop: Callable[[], bool] | None,
+    ) -> list[ProspectCreate]:
         """nodriver bulk scrape implementation."""
         await self.start()
         try:
@@ -677,9 +686,7 @@ class GoogleScraper(NodriverScraperMixin, BaseScraper):
                         "Maps feed not found (url=%s) — trying single-place panel",
                         NodriverDom.tab_url(tab),
                     )
-                    single = await self._extract_current_place(
-                        tab, default_category=category, item_timeout_s=4.0
-                    )
+                    single = await self._extract_current_place(tab, default_category=category, item_timeout_s=4.0)
                     if single and single.get("name") and self._is_valid_place_name(single["name"]):
                         if only_without_website and single.get("website"):
                             return []
@@ -689,10 +696,8 @@ class GoogleScraper(NodriverScraperMixin, BaseScraper):
                         return [prospect]
                     logger.error("No feed and no single place — page may be blocked or consent pending")
                     try:
-                        page_html = await NodriverDom.evaluate(
-                            tab, "document.documentElement.outerHTML", by_value=True
-                        )
-                    except Exception:  # noqa: BLE001
+                        page_html = await NodriverDom.evaluate(tab, "document.documentElement.outerHTML", by_value=True)
+                    except Exception:
                         page_html = None
                     scrape_signals.note_block(
                         self.source.value,
@@ -742,9 +747,7 @@ class GoogleScraper(NodriverScraperMixin, BaseScraper):
                     place_url = self._normalize_maps_href(href)
                     await NodriverDom.navigate(tab, place_url, sleep_s=0.35)
 
-                    details = await self._extract_current_place(
-                        tab, default_category=category, item_timeout_s=3.0
-                    )
+                    details = await self._extract_current_place(tab, default_category=category, item_timeout_s=3.0)
                     if not details or not details.get("name"):
                         continue
                     if not self._is_valid_place_name(details["name"]):
@@ -766,10 +769,10 @@ class GoogleScraper(NodriverScraperMixin, BaseScraper):
                         website=website,
                     )
 
-                    email: Optional[str] = None
+                    email: str | None = None
                     try:
                         email = await email_scraper.find_email(name, city_name)
-                    except Exception as exc:  # noqa: BLE001
+                    except Exception as exc:
                         logger.debug("Could not find email: %s", exc)
 
                     prospects.append(
@@ -790,7 +793,7 @@ class GoogleScraper(NodriverScraperMixin, BaseScraper):
 
                 logger.info("Scraping complete: %s prospects found", len(prospects))
                 return prospects
-            except Exception as exc:  # noqa: BLE001
+            except Exception as exc:
                 logger.error("Error in Google scraping: %s", exc)
                 return []
         finally:

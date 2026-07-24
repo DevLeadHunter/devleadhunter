@@ -1,8 +1,9 @@
 """Shared types of the decision-maker resolution cascade."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Any, Optional, Protocol, runtime_checkable
+from typing import Any, Protocol, runtime_checkable
 
 
 @dataclass
@@ -13,9 +14,9 @@ class NameCandidate:
     global threshold; anything below falls back to the neutral greeting.
     """
 
-    first: Optional[str] = None
-    last: Optional[str] = None
-    gender: Optional[str] = None  # 'M' | 'F' | None
+    first: str | None = None
+    last: str | None = None
+    gender: str | None = None  # 'M' | 'F' | None
     source: str = ""
     confidence: float = 0.0
     raw: dict[str, Any] = field(default_factory=dict)
@@ -41,14 +42,14 @@ class ResolutionContext:
     """
 
     company_name: str
-    city: Optional[str] = None
-    postal_code: Optional[str] = None
-    website: Optional[str] = None
-    phone: Optional[str] = None
+    city: str | None = None
+    postal_code: str | None = None
+    website: str | None = None
+    phone: str | None = None
     # Free text already scraped (reviews owner replies, description…) — fuels
     # the extraction strategies without any new network call.
     owner_responses: list[str] = field(default_factory=list)
-    description: Optional[str] = None
+    description: str | None = None
 
 
 @runtime_checkable

@@ -1,8 +1,9 @@
 """
 Pydantic schemas for support tickets and conversations.
 """
+
+from collections.abc import Sequence
 from datetime import datetime
-from typing import Optional, Sequence
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -57,9 +58,9 @@ class SupportTicketUpdate(BaseModel):
     Payload for updating a support ticket.
     """
 
-    topic: Optional[SupportTicketTopic] = None
-    subject: Optional[str] = Field(None, min_length=4, max_length=255)
-    status: Optional[SupportTicketStatus] = None
+    topic: SupportTicketTopic | None = None
+    subject: str | None = Field(None, min_length=4, max_length=255)
+    status: SupportTicketStatus | None = None
 
 
 class SupportMessageCreate(BaseModel):
@@ -102,9 +103,9 @@ class SupportTicketBaseResponse(BaseModel):
     description: str
     status: SupportTicketStatus
     created_at: datetime
-    updated_at: Optional[datetime] = None
-    last_message_at: Optional[datetime] = None
-    closed_at: Optional[datetime] = None
+    updated_at: datetime | None = None
+    last_message_at: datetime | None = None
+    closed_at: datetime | None = None
 
 
 class SupportTicketResponse(SupportTicketBaseResponse):
@@ -131,5 +132,3 @@ class SupportTicketDetailResponse(SupportTicketBaseResponse):
 
     attachments: Sequence[SupportAttachmentResponse]
     messages: Sequence[SupportMessageResponse]
-
-

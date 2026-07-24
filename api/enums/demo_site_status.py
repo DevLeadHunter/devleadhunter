@@ -1,4 +1,5 @@
 """Demo site lifecycle statuses."""
+
 from enum import Enum
 
 

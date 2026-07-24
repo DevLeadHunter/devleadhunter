@@ -9,6 +9,7 @@ Configure in your Resend dashboard:
 Resend signs each request with a ``svix-signature`` header.
 Set RESEND_WEBHOOK_SECRET in your .env to enable signature verification.
 """
+
 from __future__ import annotations
 
 import base64
@@ -16,7 +17,7 @@ import hashlib
 import hmac
 import json
 import logging
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 from fastapi import APIRouter, Depends, Header, HTTPException, Request, status
@@ -41,30 +42,30 @@ logger = logging.getLogger(__name__)
 # Complete map of all Resend email webhook event types → EmailStatus.
 # Sources: https://resend.com/docs/dashboard/webhooks/event-types
 _EVENT_STATUS_MAP: dict[str, str] = {
-    "email.scheduled":        EmailStatus.SCHEDULED.value,
-    "email.sent":             EmailStatus.SENT.value,
-    "email.delivered":        EmailStatus.DELIVERED.value,
+    "email.scheduled": EmailStatus.SCHEDULED.value,
+    "email.sent": EmailStatus.SENT.value,
+    "email.delivered": EmailStatus.DELIVERED.value,
     "email.delivery_delayed": EmailStatus.DELIVERY_DELAYED.value,
-    "email.opened":           EmailStatus.OPENED.value,
-    "email.clicked":          EmailStatus.CLICKED.value,
-    "email.bounced":          EmailStatus.BOUNCED.value,
-    "email.complained":       EmailStatus.COMPLAINED.value,
-    "email.failed":           EmailStatus.FAILED.value,
-    "email.suppressed":       EmailStatus.SUPPRESSED.value,
+    "email.opened": EmailStatus.OPENED.value,
+    "email.clicked": EmailStatus.CLICKED.value,
+    "email.bounced": EmailStatus.BOUNCED.value,
+    "email.complained": EmailStatus.COMPLAINED.value,
+    "email.failed": EmailStatus.FAILED.value,
+    "email.suppressed": EmailStatus.SUPPRESSED.value,
     # email.received is for Resend inbound inbox — not relevant here.
 }
 
 # Maps each event type to the EmailLog timestamp column it populates.
 _EVENT_TIMESTAMP_MAP: dict[str, str] = {
-    "email.sent":             "sent_at",
-    "email.delivered":        "delivered_at",
+    "email.sent": "sent_at",
+    "email.delivered": "delivered_at",
     "email.delivery_delayed": "delivered_at",
-    "email.opened":           "opened_at",
-    "email.clicked":          "clicked_at",
-    "email.bounced":          "bounced_at",
-    "email.complained":       "complained_at",
-    "email.failed":           "failed_at",
-    "email.suppressed":       "suppressed_at",
+    "email.opened": "opened_at",
+    "email.clicked": "clicked_at",
+    "email.bounced": "bounced_at",
+    "email.complained": "complained_at",
+    "email.failed": "failed_at",
+    "email.suppressed": "suppressed_at",
     # email.scheduled has no dedicated timestamp column.
 }
 
@@ -72,18 +73,18 @@ _EVENT_TIMESTAMP_MAP: dict[str, str] = {
 # webhook deliveries.  Equal-rank statuses do NOT overwrite each other
 # (strict ``>`` comparison).
 _STATUS_RANK: dict[str, int] = {
-    EmailStatus.PENDING.value:          0,
-    EmailStatus.SENDING.value:          1,
-    EmailStatus.SCHEDULED.value:        1,
-    EmailStatus.SENT.value:             2,
+    EmailStatus.PENDING.value: 0,
+    EmailStatus.SENDING.value: 1,
+    EmailStatus.SCHEDULED.value: 1,
+    EmailStatus.SENT.value: 2,
     EmailStatus.DELIVERY_DELAYED.value: 3,
-    EmailStatus.DELIVERED.value:        4,
-    EmailStatus.OPENED.value:           5,
-    EmailStatus.CLICKED.value:          6,
-    EmailStatus.BOUNCED.value:          7,
-    EmailStatus.COMPLAINED.value:       7,
-    EmailStatus.FAILED.value:           7,
-    EmailStatus.SUPPRESSED.value:       7,
+    EmailStatus.DELIVERED.value: 4,
+    EmailStatus.OPENED.value: 5,
+    EmailStatus.CLICKED.value: 6,
+    EmailStatus.BOUNCED.value: 7,
+    EmailStatus.COMPLAINED.value: 7,
+    EmailStatus.FAILED.value: 7,
+    EmailStatus.SUPPRESSED.value: 7,
 }
 
 
@@ -122,7 +123,7 @@ def _verify_signature(
     raw_secret: str = secret.removeprefix("whsec_")
     try:
         key: bytes = base64.b64decode(raw_secret)
-    except Exception:  # noqa: BLE001
+    except Exception:
         key = raw_secret.encode()
 
     expected_digest: bytes = hmac.new(key, signed_content, hashlib.sha256).digest()
@@ -196,9 +197,7 @@ async def resend_webhook(
             raw_id = tag.get("value")
             if raw_id:
                 try:
-                    email_log = db.execute(
-                        select(EmailLog).where(EmailLog.id == int(raw_id))
-                    ).scalar_one_or_none()
+                    email_log = db.execute(select(EmailLog).where(EmailLog.id == int(raw_id))).scalar_one_or_none()
                 except (ValueError, TypeError):
                     logger.warning("[Webhook] Non-integer email_log_id tag value: %r", raw_id)
             break
@@ -221,7 +220,7 @@ async def resend_webhook(
 
     new_status: str = _EVENT_STATUS_MAP[event_type]
     ts_col: str | None = _EVENT_TIMESTAMP_MAP.get(event_type)
-    now: datetime = datetime.now(timezone.utc).replace(tzinfo=None)  # naive UTC to match DB columns
+    now: datetime = datetime.now(UTC).replace(tzinfo=None)  # naive UTC to match DB columns
 
     current_rank: int = _STATUS_RANK.get(email_log.status, 0)
     new_rank: int = _STATUS_RANK.get(new_status, 0)

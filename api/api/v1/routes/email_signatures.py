@@ -1,20 +1,19 @@
 """
 Email signature routes — CRUD for a user's reusable email signatures.
 """
-from typing import List
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import select, update
 from sqlalchemy.orm import Session
 
 from core.database import get_db
-from models.user import User
 from models.email_signature import EmailSignature
 from models.email_template import EmailTemplate
+from models.user import User
 from schemas.email_signature import (
     EmailSignatureCreate,
-    EmailSignatureUpdate,
     EmailSignatureResponse,
+    EmailSignatureUpdate,
 )
 from services.auth_service import get_current_user
 
@@ -35,11 +34,11 @@ def _clear_other_defaults(db: Session, user_id: int, keep_id: int | None = None)
     db.execute(stmt.values(is_default=False))
 
 
-@router.get("", response_model=List[EmailSignatureResponse])
+@router.get("", response_model=list[EmailSignatureResponse])
 async def get_email_signatures(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
-) -> List[EmailSignature]:
+) -> list[EmailSignature]:
     """Return every signature of the current user (default first, then newest)."""
     stmt = (
         select(EmailSignature)
@@ -57,9 +56,7 @@ async def create_email_signature(
 ) -> EmailSignature:
     """Create a signature. The first signature of a user becomes the default."""
     existing_count: int = len(
-        db.execute(
-            select(EmailSignature.id).where(EmailSignature.user_id == current_user.id)
-        ).scalars().all()
+        db.execute(select(EmailSignature.id).where(EmailSignature.user_id == current_user.id)).scalars().all()
     )
     is_default: bool = payload.is_default or existing_count == 0
 
@@ -130,11 +127,7 @@ async def delete_email_signature(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Signature not found")
 
     # Detach from templates first (no hard DB FK cascade on existing databases).
-    db.execute(
-        update(EmailTemplate)
-        .where(EmailTemplate.signature_id == signature_id)
-        .values(signature_id=None)
-    )
+    db.execute(update(EmailTemplate).where(EmailTemplate.signature_id == signature_id).values(signature_id=None))
     db.delete(signature)
     db.commit()
     return None

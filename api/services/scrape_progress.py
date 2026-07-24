@@ -4,10 +4,12 @@ Progress reporting during scraper runs (logs + prospects found).
 When nodriver runs on a dedicated thread loop (Windows), handlers are marshalled
 back to the uvicorn loop so WebSocket broadcasts work in real time.
 """
+
 from __future__ import annotations
 
 import asyncio
-from typing import Awaitable, Callable, Optional, TypeVar
+from collections.abc import Awaitable, Callable
+from typing import TypeVar
 
 from models.prospect import ProspectCreate
 
@@ -23,9 +25,9 @@ class ScrapeProgressReporter:
     def __init__(
         self,
         *,
-        on_log: Optional[LogHandler] = None,
-        on_prospect: Optional[ProspectHandler] = None,
-        main_loop: Optional[asyncio.AbstractEventLoop] = None,
+        on_log: LogHandler | None = None,
+        on_prospect: ProspectHandler | None = None,
+        main_loop: asyncio.AbstractEventLoop | None = None,
     ) -> None:
         self._on_log = on_log
         self._on_prospect = on_prospect

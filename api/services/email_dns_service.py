@@ -13,11 +13,12 @@ Honest limits, surfaced in the payloads:
   up to the last two labels (correct for ``mail.dibodev.fr``, imprecise for
   multi-label suffixes like ``.co.uk``).
 """
+
 from __future__ import annotations
 
 import logging
 import time
-from typing import Any, Optional
+from typing import Any
 
 import dns.resolver
 
@@ -51,10 +52,10 @@ _MIN_ORGANIZATIONAL_LABELS: int = 2
 # Overrides the system resolver when set. A local/ISP resolver caches negative
 # answers, so a freshly published record can look missing for hours — a false
 # alarm right when a zone has just been edited.
-_NAMESERVERS: Optional[list[str]] = None
+_NAMESERVERS: list[str] | None = None
 
 
-def use_nameservers(nameservers: Optional[list[str]]) -> None:
+def use_nameservers(nameservers: list[str] | None) -> None:
     """Force every lookup through *nameservers* (``None`` restores the system ones).
 
     Blocklist queries are the exception to prefer the system resolver: Spamhaus
@@ -97,7 +98,7 @@ def _txt_records(name: str) -> list[str]:
             joined = b"".join(part for part in answer.strings).decode("utf-8", errors="replace")
             records.append(joined)
         return records
-    except Exception:  # noqa: BLE001 — NXDOMAIN, timeout… all mean "no record"
+    except Exception:
         return []
 
 
@@ -111,10 +112,7 @@ def _parent_domains(name: str) -> list[str]:
         Parent domains (empty when *name* is already organizational).
     """
     labels = name.split(".")
-    return [
-        ".".join(labels[index:])
-        for index in range(1, len(labels) - _MIN_ORGANIZATIONAL_LABELS + 1)
-    ]
+    return [".".join(labels[index:]) for index in range(1, len(labels) - _MIN_ORGANIZATIONAL_LABELS + 1)]
 
 
 def _is_dkim_key(record: str) -> bool:
@@ -134,7 +132,7 @@ def _is_dkim_key(record: str) -> bool:
     return "v=dkim1" in normalized or "k=rsa" in normalized or normalized.startswith("p=")
 
 
-def _dmarc_record(name: str) -> Optional[str]:
+def _dmarc_record(name: str) -> str | None:
     """The DMARC TXT record published at ``_dmarc.<name>``, if any.
 
     Args:
@@ -193,9 +191,7 @@ class EmailDnsService:
         Returns:
             Status, the raw record and advice.
         """
-        spf: Optional[str] = next(
-            (record for record in _txt_records(domain) if record.lower().startswith("v=spf1")), None
-        )
+        spf: str | None = next((record for record in _txt_records(domain) if record.lower().startswith("v=spf1")), None)
         if spf is None:
             return {
                 "status": "danger",
@@ -261,8 +257,8 @@ class EmailDnsService:
         Returns:
             Status, effective policy, inheritance origin, rua and advice.
         """
-        dmarc: Optional[str] = _dmarc_record(domain)
-        inherited_from: Optional[str] = None
+        dmarc: str | None = _dmarc_record(domain)
+        inherited_from: str | None = None
         if dmarc is None:
             for parent in _parent_domains(domain):
                 dmarc = _dmarc_record(parent)
@@ -339,7 +335,7 @@ class EmailDnsService:
             answers = _resolver().resolve(domain, "MX")
             hosts = sorted(str(answer.exchange).rstrip(".") for answer in answers)
             return {"status": "ok", "hosts": hosts, "detail": "Le domaine sait recevoir des réponses."}
-        except Exception:  # noqa: BLE001
+        except Exception:
             pass
         # No MX: RFC 5321 falls back to the A record, so replies may still be
         # delivered — but only if that host accepts mail for this domain.
@@ -353,7 +349,7 @@ class EmailDnsService:
                     "Vérifiez qu'une réponse vous parvient vraiment, sinon vous perdrez des leads en silence."
                 ),
             }
-        except Exception:  # noqa: BLE001
+        except Exception:
             return {
                 "status": "danger",
                 "hosts": [],
@@ -384,7 +380,7 @@ class EmailDnsService:
                 overall = "danger"
             except dns.resolver.NXDOMAIN:
                 lists.append({"list": blocklist, "status": "ok"})
-            except Exception:  # noqa: BLE001 — timeout/refused → unknown, not listed
+            except Exception:
                 lists.append({"list": blocklist, "status": "unknown"})
         detail = (
             "Domaine absent des blocklists interrogées."

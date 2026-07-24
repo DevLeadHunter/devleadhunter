@@ -6,6 +6,7 @@ A background worker processes ``pending`` rows in ``scheduled_at`` order,
 respecting the per-campaign ``send_delay_minutes`` rate limit that is baked
 into the row timestamps at enqueue time.
 """
+
 from __future__ import annotations
 
 from datetime import datetime

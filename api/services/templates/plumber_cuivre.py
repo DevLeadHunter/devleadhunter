@@ -16,10 +16,11 @@ Enrichment (photos / reviews / rating / opening hours) is injected by
 
 Rendering component (Nuxt): demo-host/app/components/templates/plumber-cuivre/.
 """
+
 from __future__ import annotations
 
 import uuid
-from typing import Any, Optional
+from typing import Any
 
 TEMPLATE_ID: str = "plumber-cuivre"
 
@@ -337,10 +338,7 @@ def default_subtitle(area: str) -> str:
 _SERVICE_ITEMS: list[dict[str, str]] = [
     {
         "label": "Dépannage & recherche de fuite",
-        "description": (
-            "Fuites visibles ou cachées : détection précise, réparation "
-            "durable, dégâts limités."
-        ),
+        "description": ("Fuites visibles ou cachées : détection précise, réparation durable, dégâts limités."),
     },
     {
         "label": "Débouchage de canalisations",
@@ -352,30 +350,24 @@ _SERVICE_ITEMS: list[dict[str, str]] = [
     {
         "label": "Chauffe-eau & ballon",
         "description": (
-            "Remplacement, entretien et réglage — de l'électrique au "
-            "thermodynamique, dimensionné pour votre foyer."
+            "Remplacement, entretien et réglage — de l'électrique au thermodynamique, dimensionné pour votre foyer."
         ),
     },
     {
         "label": "Chauffage & radiateurs",
         "description": (
-            "Purge, équilibrage, remplacement de radiateurs et "
-            "raccordements — pour un hiver sans mauvaise surprise."
+            "Purge, équilibrage, remplacement de radiateurs et raccordements — pour un hiver sans mauvaise surprise."
         ),
     },
     {
         "label": "Salle de bain clé en main",
         "description": (
-            "De la dépose à la pose finale : douche, baignoire, meubles — "
-            "coordonné avec les bons corps de métier."
+            "De la dépose à la pose finale : douche, baignoire, meubles — coordonné avec les bons corps de métier."
         ),
     },
     {
         "label": "Robinetterie & sanitaires",
-        "description": (
-            "Pose et remplacement de robinets, WC, éviers — des marques "
-            "fiables, posées dans les règles."
-        ),
+        "description": ("Pose et remplacement de robinets, WC, éviers — des marques fiables, posées dans les règles."),
     },
     {
         "label": "Cuisine & électroménager",
@@ -387,8 +379,7 @@ _SERVICE_ITEMS: list[dict[str, str]] = [
     {
         "label": "Entretien & mise en conformité",
         "description": (
-            "Adoucisseur, groupe de sécurité, arrivées d'eau : une "
-            "installation saine, durable et aux normes."
+            "Adoucisseur, groupe de sécurité, arrivées d'eau : une installation saine, durable et aux normes."
         ),
     },
 ]
@@ -474,9 +465,9 @@ _ABOUT_TEXT: str = (
 def build_content(
     *,
     business_name: str,
-    phone: Optional[str],
-    email: Optional[str],
-    city: Optional[str],
+    phone: str | None,
+    email: str | None,
+    city: str | None,
     area: str,
     subtitle: str,
     palette: dict[str, str],
@@ -656,9 +647,7 @@ def build_content(
                 "_uid": "cuivre-gallery-1",
                 "component": "cuivre_gallery",
                 "heading": "Nos chantiers récents",
-                "subheading": (
-                    "Salles de bain, chaufferies, cuisines : un aperçu de nos derniers chantiers."
-                ),
+                "subheading": ("Salles de bain, chaufferies, cuisines : un aperçu de nos derniers chantiers."),
                 # Filled by enrichment (Google photos). Hidden by the renderer when empty.
                 "items": [],
             },
@@ -673,8 +662,7 @@ def build_content(
                         "component": "cuivre_process_item",
                         "title": "Vous appelez",
                         "description": (
-                            "On qualifie votre besoin et, en urgence, on vous donne les "
-                            "premiers gestes au téléphone."
+                            "On qualifie votre besoin et, en urgence, on vous donne les premiers gestes au téléphone."
                         ),
                     },
                     {
@@ -682,18 +670,14 @@ def build_content(
                         "component": "cuivre_process_item",
                         "title": "Visite & devis",
                         "description": (
-                            "On se déplace, on constate, et vous recevez un devis clair, "
-                            "gratuit et détaillé."
+                            "On se déplace, on constate, et vous recevez un devis clair, gratuit et détaillé."
                         ),
                     },
                     {
                         "_uid": "cuivre-p-2",
                         "component": "cuivre_process_item",
                         "title": "Intervention",
-                        "description": (
-                            "Travail soigné, matériel de qualité, étanchéité testée avant "
-                            "de refermer."
-                        ),
+                        "description": ("Travail soigné, matériel de qualité, étanchéité testée avant de refermer."),
                     },
                     {
                         "_uid": "cuivre-p-3",
@@ -715,8 +699,7 @@ def build_content(
                 "component": "cuivre_brands",
                 "heading": "Du matériel qui dure",
                 "subheading": (
-                    "Des marques couramment posées et garanties — choisies pour leur "
-                    "fiabilité, pas pour la marge."
+                    "Des marques couramment posées et garanties — choisies pour leur fiabilité, pas pour la marge."
                 ),
                 "items": [
                     {"_uid": "cuivre-b-0", "component": "cuivre_brand_item", "label": "Grohe"},
@@ -809,13 +792,13 @@ _EDITORIAL_DEFAULTS: dict[str, Any] = {
 def build_site_content(
     *,
     business_name: str,
-    phone: Optional[str],
-    email: Optional[str],
-    city: Optional[str],
+    phone: str | None,
+    email: str | None,
+    city: str | None,
     area: str,
     subtitle: str,
     palette: dict[str, str],
-    enrichment: Optional[dict[str, Any]] = None,
+    enrichment: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Build the FLAT ``SiteContent`` dict for the 'plumber-cuivre' template.
 
@@ -840,7 +823,7 @@ def build_site_content(
     photos: list[str] = [p for p in enrichment.get("photos", []) if isinstance(p, str) and p.strip()]
     raw_reviews: list[dict] = [r for r in enrichment.get("reviews", []) if isinstance(r, dict)]
     raw_hours: list[dict] = [h for h in enrichment.get("opening_hours", []) if isinstance(h, dict)]
-    description: Optional[str] = enrichment.get("description")
+    description: str | None = enrichment.get("description")
 
     hero_image: str = photos[0] if len(photos) > 0 else ""
     about_image: str = photos[1] if len(photos) > 1 else ""
@@ -893,15 +876,9 @@ def build_site_content(
             "secondary": palette.get("secondary", ""),
             "accent": palette.get("accent", ""),
         },
-        "services": [
-            {"title": item["label"], "description": item["description"]}
-            for item in _SERVICE_ITEMS
-        ],
+        "services": [{"title": item["label"], "description": item["description"]} for item in _SERVICE_ITEMS],
         "reviews": reviews,
-        "faq": [
-            {"question": item["question"], "answer": item["answer"]}
-            for item in _FAQ_ITEMS
-        ],
+        "faq": [{"question": item["question"], "answer": item["answer"]} for item in _FAQ_ITEMS],
         "openingHours": opening_hours,
         # Pre-fill editorial copy (client edits his real texts in the CMS).
         **_EDITORIAL_DEFAULTS,

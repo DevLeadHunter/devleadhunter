@@ -11,9 +11,10 @@ Exposes the stable names consumed by the shared services (see ``registry``):
 - ``build_site_content``  → flat ``SiteContent`` builder
 - ``BODY_COMPONENTS`` / ``COMPONENT_SCHEMAS`` → none beyond the shared base
 """
+
 from __future__ import annotations
 
-from typing import Any, Optional
+from typing import Any
 
 from services.templates.site_content import (  # noqa: F401 — re-exported for the registry
     SITE_CONTENT_SCHEMAS,
@@ -53,10 +54,7 @@ def default_subtitle(area: str) -> str:
     Returns:
         A dental clinic subtitle.
     """
-    return (
-        f"Soins dentaires pour toute la famille à {area} — "
-        "prévention, esthétique et urgences."
-    )
+    return f"Soins dentaires pour toute la famille à {area} — prévention, esthétique et urgences."
 
 
 _SITE_ABOUT_DEFAULT: str = (
@@ -71,22 +69,19 @@ DENTAL_SERVICES: list[dict[str, str]] = [
     {
         "title": "Dentisterie générale",
         "description": (
-            "Contrôles, détartrage, soins cariés et suivi préventif pour toute "
-            "la famille, du plus jeune au plus âgé."
+            "Contrôles, détartrage, soins cariés et suivi préventif pour toute la famille, du plus jeune au plus âgé."
         ),
     },
     {
         "title": "Esthétique du sourire",
         "description": (
-            "Blanchiment, facettes, couronnes et aligners : des résultats "
-            "naturels pour sourire en confiance."
+            "Blanchiment, facettes, couronnes et aligners : des résultats naturels pour sourire en confiance."
         ),
     },
     {
         "title": "Urgences dentaires",
         "description": (
-            "Douleur, dent cassée ou abcès : contactez-nous rapidement, "
-            "nous organisons un créneau prioritaire."
+            "Douleur, dent cassée ou abcès : contactez-nous rapidement, nous organisons un créneau prioritaire."
         ),
     },
 ]
@@ -95,22 +90,17 @@ DENTAL_FAQ: list[dict[str, str]] = [
     {
         "question": "Faut-il prendre rendez-vous ?",
         "answer": (
-            "Oui, de préférence. Appelez ou utilisez le formulaire : nous "
-            "confirmons le créneau sous 24 h ouvrées."
+            "Oui, de préférence. Appelez ou utilisez le formulaire : nous confirmons le créneau sous 24 h ouvrées."
         ),
     },
     {
         "question": "Acceptez-vous les nouveaux patients ?",
-        "answer": (
-            "Oui. Nous accueillons les nouveaux patients pour un bilan complet "
-            "et un plan de soins adapté."
-        ),
+        "answer": ("Oui. Nous accueillons les nouveaux patients pour un bilan complet et un plan de soins adapté."),
     },
     {
         "question": "Quelles mutuelles acceptez-vous ?",
         "answer": (
-            "Nous travaillons avec la plupart des complémentaires. Apportez "
-            "votre carte mutuelle à la première visite."
+            "Nous travaillons avec la plupart des complémentaires. Apportez votre carte mutuelle à la première visite."
         ),
     },
     {
@@ -150,13 +140,13 @@ _EDITORIAL_DEFAULTS: dict[str, Any] = {
 def build_site_content(
     *,
     business_name: str,
-    phone: Optional[str],
-    email: Optional[str],
-    city: Optional[str],
+    phone: str | None,
+    email: str | None,
+    city: str | None,
     area: str,
     subtitle: str,
     palette: dict[str, str],
-    enrichment: Optional[dict[str, Any]] = None,
+    enrichment: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Build the flat ``SiteContent`` for this template (Phase 4b).
 

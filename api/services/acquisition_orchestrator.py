@@ -1,10 +1,10 @@
 """Acquisition orchestrator — the background engine that auto-chains the tunnel."""
+
 from __future__ import annotations
 
 import asyncio
 import logging
-from datetime import datetime, timezone
-from typing import List, Optional
+from datetime import UTC, datetime
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -34,8 +34,7 @@ class AcquisitionOrchestrator:
 
     def _utcnow(self) -> datetime:
         """Return the current UTC time as a timezone-naive datetime (DB-compatible)."""
-        return datetime.now(timezone.utc).replace(tzinfo=None)
-
+        return datetime.now(UTC).replace(tzinfo=None)
 
     # Loop
 
@@ -45,10 +44,9 @@ class AcquisitionOrchestrator:
         while True:
             try:
                 await self._tick()
-            except Exception as exc:  # noqa: BLE001 — never let one tick kill the loop
+            except Exception as exc:
                 logger.error("[Acquisition] Unhandled error in tick: %s", exc, exc_info=True)
             await asyncio.sleep(self.TICK_INTERVAL_SECONDS)
-
 
     async def _tick(self) -> None:
         """Process every running sequence within a per-tick advance budget."""
@@ -58,12 +56,8 @@ class AcquisitionOrchestrator:
 
         db: Session = SessionLocal()
         try:
-            runs: List[AcquisitionRun] = list(
-                db.execute(
-                    select(AcquisitionRun).where(
-                        AcquisitionRun.status == AcquisitionRunStatus.RUNNING.value
-                    )
-                )
+            runs: list[AcquisitionRun] = list(
+                db.execute(select(AcquisitionRun).where(AcquisitionRun.status == AcquisitionRunStatus.RUNNING.value))
                 .scalars()
                 .all()
             )
@@ -77,12 +71,11 @@ class AcquisitionOrchestrator:
                 try:
                     used: int = await self._advance_run(db, run, budget)
                     budget -= used
-                except Exception as exc:  # noqa: BLE001 — isolate a bad run
+                except Exception as exc:
                     logger.error("[Acquisition] Run %d failed this tick: %s", run.id, exc, exc_info=True)
                     db.rollback()
         finally:
             db.close()
-
 
     # Run-level orchestration
 
@@ -98,7 +91,7 @@ class AcquisitionOrchestrator:
         from services.acquisition_service import acquisition_service
         from services.credit_service import CreditService
 
-        user: Optional[User] = db.get(User, run.user_id)
+        user: User | None = db.get(User, run.user_id)
         if user is None:
             run.status = AcquisitionRunStatus.FAILED.value
             self._merge_stats(run, {"error": "utilisateur introuvable"})
@@ -111,7 +104,7 @@ class AcquisitionOrchestrator:
             db.refresh(run)
 
         active_steps: set[str] = self._active_steps(run)
-        active_items: List = [i for i in run.items if i.step in active_steps]
+        active_items: list = [i for i in run.items if i.step in active_steps]
 
         # --- Credit guardrails (only matter while there's costly work left) -----
         if active_items:
@@ -123,7 +116,7 @@ class AcquisitionOrchestrator:
                 logger.info("[Acquisition] Run %d paused — no credits", run.id)
                 return 0
             if run.max_credits is not None:
-                baseline: Optional[int] = (run.stats or {}).get("credits_at_start")
+                baseline: int | None = (run.stats or {}).get("credits_at_start")
                 if baseline is not None:
                     spent: int = CreditService.get_user_credits_consumed(db, run.user_id) - baseline
                     if spent >= run.max_credits:
@@ -143,12 +136,9 @@ class AcquisitionOrchestrator:
 
         # --- Reconcile run status after the generation phase --------------------
         if not any(i.step in self._active_steps(run) for i in run.items):
-            generated: List = [i for i in run.items if i.step == AcquisitionItemStep.GENERATED.value]
+            generated: list = [i for i in run.items if i.step == AcquisitionItemStep.GENERATED.value]
             if run.auto_campaign and generated:
-                if (
-                    run.mode == "semi_auto"
-                    and run.review_approved_at is None
-                ):
+                if run.mode == "semi_auto" and run.review_approved_at is None:
                     if run.status != AcquisitionRunStatus.AWAITING_REVIEW.value:
                         run.status = AcquisitionRunStatus.AWAITING_REVIEW.value
                         logger.info("[Acquisition] Run %d awaiting review (%d site(s))", run.id, len(generated))
@@ -161,7 +151,6 @@ class AcquisitionOrchestrator:
         self._merge_stats(run, acquisition_service.build_stats(db, run))
         db.commit()
         return used
-
 
     def _seed_full_auto(self, db: Session, run) -> None:
         """
@@ -206,16 +195,16 @@ class AcquisitionOrchestrator:
         note: dict[str, object] = {"t0_seeded": True, "target_prospects": target}
         if len(candidate_ids) < target:
             note["seed_note"] = (
-                f"{len(candidate_ids)}/{target} prospects disponibles — "
-                "lance une recherche pour compléter la cible."
+                f"{len(candidate_ids)}/{target} prospects disponibles — lance une recherche pour compléter la cible."
             )
         self._merge_stats(run, note)
         db.commit()
         logger.info(
             "[Acquisition] Run %d full-auto seeded %d/%d prospect(s)",
-            run.id, len(candidate_ids), target,
+            run.id,
+            len(candidate_ids),
+            target,
         )
-
 
     def _score_item(self, db: Session, run, item, prospect) -> None:
         """
@@ -228,7 +217,7 @@ class AcquisitionOrchestrator:
         enrichment = None
         try:
             enrichment = enrichment_service.get_for_prospect(db, run.user_id, prospect.id)
-        except Exception:  # noqa: BLE001 — scoring must never break generation
+        except Exception:
             enrichment = None
 
         score: int = 0
@@ -263,7 +252,6 @@ class AcquisitionOrchestrator:
         item.quality_score = min(score, 100)
         item.quality_flags = flags or None
 
-
     def _active_steps(self, run) -> set[str]:
         """
         Return the item steps that still need enrich/generate work for this run's
@@ -282,7 +270,6 @@ class AcquisitionOrchestrator:
             steps.add(AcquisitionItemStep.ENRICHED.value)
         return steps
 
-
     # Item-level transitions
 
     async def _advance_item(self, db: Session, run, item, user) -> None:
@@ -290,7 +277,7 @@ class AcquisitionOrchestrator:
         from enums.acquisition import AcquisitionItemStep
         from models.prospect_db import ProspectDB
 
-        prospect: Optional[ProspectDB] = db.get(ProspectDB, item.prospect_id)
+        prospect: ProspectDB | None = db.get(ProspectDB, item.prospect_id)
         if prospect is None:
             self._fail(db, item, "prospect introuvable")
             return
@@ -314,7 +301,6 @@ class AcquisitionOrchestrator:
             elif step == AcquisitionItemStep.GENERATING.value:
                 await self._do_generate(db, run, item, user, prospect)
 
-
     async def _do_enrich(self, db: Session, run, item, user, prospect) -> None:
         """FOUND → ENRICHED (running enrichment when ``auto_enrich``)."""
         from enums.acquisition import AcquisitionItemStep
@@ -328,16 +314,15 @@ class AcquisitionOrchestrator:
         db.commit()
         try:
             enrichment = await enrichment_service.ensure_enriched(db, run.user_id, prospect)
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             self._retry_or_fail(db, item, f"enrichissement: {exc}")
             return
 
         # Poor enrichment still advances (the site will just be sparser) but is flagged.
-        reason: Optional[str] = None
+        reason: str | None = None
         if enrichment is None or not self._enrichment_has_signal(enrichment):
             reason = "enrichissement pauvre"
         self._set_step(db, item, AcquisitionItemStep.ENRICHED.value, reason)
-
 
     async def _do_generate(self, db: Session, run, item, user, prospect) -> None:
         """ENRICHED → GENERATED (provisioning a demo site when ``auto_generate``)."""
@@ -375,21 +360,20 @@ class AcquisitionOrchestrator:
             # Deterministic rejection (e.g. missing email) — don't retry.
             self._skip(db, item, f"génération impossible: {exc}")
             return
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             self._retry_or_fail(db, item, f"génération: {exc}")
             return
 
         item.demo_site_id = site.id
         self._score_item(db, run, item, prospect)
-        reason: Optional[str] = None
+        reason: str | None = None
         if item.quality_flags:
             reason = "à vérifier : " + ", ".join(item.quality_flags[:2])
         self._set_step(db, item, AcquisitionItemStep.GENERATED.value, reason)
 
-
     # Campaign batch (run-level, on approval or full-auto)
 
-    async def _launch_campaign(self, db: Session, run, user, generated: List) -> None:
+    async def _launch_campaign(self, db: Session, run, user, generated: list) -> None:
         """
         Create (or reuse) the run's campaign, add the eligible prospects, and launch
         it once — reusing the exact campaign create → add-prospects → enqueue flow the
@@ -410,9 +394,9 @@ class AcquisitionOrchestrator:
 
         # Eligible = generated items whose prospect is owned by this user (outreach
         # uses the user's own identity), has an email, and isn't locked by a peer.
-        eligible: List = []
+        eligible: list = []
         for item in generated:
-            prospect: Optional[ProspectDB] = db.get(ProspectDB, item.prospect_id)
+            prospect: ProspectDB | None = db.get(ProspectDB, item.prospect_id)
             if prospect is None:
                 self._skip(db, item, "prospect introuvable")
                 continue
@@ -434,7 +418,7 @@ class AcquisitionOrchestrator:
         # Daily email cap: only the first N are enqueued now; the overflow is skipped
         # with a visible reason (no silent truncation).
         if run.daily_email_cap is not None and len(eligible) > run.daily_email_cap:
-            for item in eligible[run.daily_email_cap:]:
+            for item in eligible[run.daily_email_cap :]:
                 self._skip(db, item, "plafond quotidien atteint")
             eligible = eligible[: run.daily_email_cap]
 
@@ -444,7 +428,7 @@ class AcquisitionOrchestrator:
             self._merge_stats(run, {"campaign_note": "aucun modèle d'email — démarchage manuel requis"})
             return
 
-        prospect_ids: List[int] = [item.prospect_id for item in eligible]
+        prospect_ids: list[int] = [item.prospect_id for item in eligible]
 
         campaign = campaign_service.create_campaign(
             db,
@@ -466,10 +450,7 @@ class AcquisitionOrchestrator:
         run.campaign_id = campaign.id
 
         has_resend: bool = (
-            db.execute(
-                select(ResendConfig).where(ResendConfig.user_id == run.user_id)
-            ).scalar_one_or_none()
-            is not None
+            db.execute(select(ResendConfig).where(ResendConfig.user_id == run.user_id)).scalar_one_or_none() is not None
         ) and self._resend_has_key(db, run.user_id)
 
         if not has_resend:
@@ -503,11 +484,13 @@ class AcquisitionOrchestrator:
         self._merge_stats(run, {"campaign_note": f"{result.enqueued} email(s) en file"})
         logger.info(
             "[Acquisition] Run %d launched campaign %d — %d enqueued, %d skipped",
-            run.id, campaign.id, result.enqueued, len(skipped_ids),
+            run.id,
+            campaign.id,
+            result.enqueued,
+            len(skipped_ids),
         )
 
-
-    def _create_follow_ups(self, db: Session, campaign_id: int, follow_ups: Optional[list]) -> None:
+    def _create_follow_ups(self, db: Session, campaign_id: int, follow_ups: list | None) -> None:
         """Create CampaignFollowUp rows from a run's ``follow_ups`` config, if any."""
         if not follow_ups:
             return
@@ -527,18 +510,16 @@ class AcquisitionOrchestrator:
             )
         db.commit()
 
-
     # Small helpers
 
     def _resend_has_key(self, db: Session, user_id: int) -> bool:
         """Return True when the user's ResendConfig actually carries an API key."""
         from models.resend_config import ResendConfig
 
-        cfg: Optional[ResendConfig] = db.execute(
+        cfg: ResendConfig | None = db.execute(
             select(ResendConfig).where(ResendConfig.user_id == user_id)
         ).scalar_one_or_none()
         return cfg is not None and bool(cfg.api_key)
-
 
     def _enrichment_has_signal(self, enrichment) -> bool:
         """
@@ -552,15 +533,13 @@ class AcquisitionOrchestrator:
                 return True
         return False
 
-
-    def _set_step(self, db: Session, item, step: str, reason: Optional[str] = None) -> None:
+    def _set_step(self, db: Session, item, step: str, reason: str | None = None) -> None:
         """Move an item to ``step`` (clearing transient error), commit."""
         item.step = step
         item.step_reason = reason
         if reason is None:
             item.last_error = None
         db.commit()
-
 
     def _skip(self, db: Session, item, reason: str) -> None:
         """Terminal skip with a reason (not an error)."""
@@ -570,7 +549,6 @@ class AcquisitionOrchestrator:
         item.step_reason = reason
         db.commit()
 
-
     def _fail(self, db: Session, item, reason: str) -> None:
         """Terminal failure with a reason."""
         from enums.acquisition import AcquisitionItemStep
@@ -579,7 +557,6 @@ class AcquisitionOrchestrator:
         item.step_reason = reason
         item.last_error = reason
         db.commit()
-
 
     def _retry_or_fail(self, db: Session, item, error: str) -> None:
         """
@@ -602,9 +579,9 @@ class AcquisitionOrchestrator:
             item.step_reason = f"nouvelle tentative ({item.attempts})"
         db.commit()
 
-
     def _merge_stats(self, run, patch: dict) -> None:
         """Merge ``patch`` into the run's JSON stats, preserving existing keys."""
         run.stats = {**(run.stats or {}), **patch}
+
 
 acquisition_orchestrator = AcquisitionOrchestrator()

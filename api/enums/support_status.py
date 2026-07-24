@@ -1,6 +1,7 @@
 """
 Support ticket status enumeration.
 """
+
 from enum import Enum
 
 
@@ -17,5 +18,3 @@ class SupportTicketStatus(str, Enum):
 
 
 __all__ = ["SupportTicketStatus"]
-
-

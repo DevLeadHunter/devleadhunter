@@ -1,4 +1,5 @@
 """SPF / DKIM lookups for a user's custom sending domain (provider-agnostic)."""
+
 from __future__ import annotations
 
 import asyncio
@@ -72,9 +73,7 @@ class SendingDomainDnsService:
             The verification payload described in `verify_domain`.
         """
         normalized: str = domain.strip().lower().lstrip("@")
-        spf_records: list[str] = [
-            txt for txt in self._txt_records(normalized) if txt.lower().startswith("v=spf1")
-        ]
+        spf_records: list[str] = [txt for txt in self._txt_records(normalized) if txt.lower().startswith("v=spf1")]
 
         dkim_verified: bool = False
         for selector in self.DKIM_SELECTORS:
@@ -104,16 +103,14 @@ class SendingDomainDnsService:
         """
         try:
             answers = dns.resolver.resolve(name, "TXT", lifetime=DNS_TIMEOUT_SECONDS)
-        except Exception:  # noqa: BLE001 — any resolver error means "no record"
+        except Exception:
             return []
 
         records: list[str] = []
         for answer in answers:
             strings = getattr(answer, "strings", None)
             if strings:
-                records.append(
-                    "".join(s.decode() if isinstance(s, bytes) else str(s) for s in strings)
-                )
+                records.append("".join(s.decode() if isinstance(s, bytes) else str(s) for s in strings))
             else:
                 records.append(str(answer).strip('"'))
         return records

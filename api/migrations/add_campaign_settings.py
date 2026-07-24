@@ -8,26 +8,30 @@ launch time.
 Run with:
     python migrations/add_campaign_settings.py
 """
+
 from __future__ import annotations
 
-import sys
 import os
+import sys
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from sqlalchemy import text
+
 from core.database import engine
 
 
 def run_migration() -> None:
     print("Running migration: add_campaign_settings")
     with engine.connect() as conn:
-        conn.execute(text(
-            "ALTER TABLE campaigns "
-            "ADD COLUMN IF NOT EXISTS template_id INT NULL, "
-            "ADD COLUMN IF NOT EXISTS email_account_id INT NULL, "
-            "ADD COLUMN IF NOT EXISTS ab_template_id_b INT NULL"
-        ))
+        conn.execute(
+            text(
+                "ALTER TABLE campaigns "
+                "ADD COLUMN IF NOT EXISTS template_id INT NULL, "
+                "ADD COLUMN IF NOT EXISTS email_account_id INT NULL, "
+                "ADD COLUMN IF NOT EXISTS ab_template_id_b INT NULL"
+            )
+        )
         conn.commit()
     print("  + campaigns.template_id")
     print("  + campaigns.email_account_id")

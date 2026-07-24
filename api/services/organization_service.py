@@ -12,11 +12,11 @@ Business rules (validated by Léo, 2026-07-10):
 - Reservation = anti double-outreach: while a member holds a prospect, other
   members see it locked and API actions on it are refused for them.
 """
+
 from __future__ import annotations
 
 import logging
-from datetime import datetime, timezone
-from typing import Optional
+from datetime import UTC, datetime
 
 from sqlalchemy import select, update
 from sqlalchemy.orm import Session
@@ -44,20 +44,18 @@ class OrganizationService:
 
     # ── Lookups ────────────────────────────────────────────────────────────
 
-    def get_membership(self, db: Session, user_id: int) -> Optional[OrganizationMember]:
+    def get_membership(self, db: Session, user_id: int) -> OrganizationMember | None:
         """Return the user's membership row, or None when not in any org."""
-        return db.execute(
-            select(OrganizationMember).where(OrganizationMember.user_id == user_id)
-        ).scalar_one_or_none()
+        return db.execute(select(OrganizationMember).where(OrganizationMember.user_id == user_id)).scalar_one_or_none()
 
-    def get_user_organization(self, db: Session, user_id: int) -> Optional[Organization]:
+    def get_user_organization(self, db: Session, user_id: int) -> Organization | None:
         """Return the organization the user belongs to, or None."""
         membership = self.get_membership(db, user_id)
         if membership is None:
             return None
         return db.get(Organization, membership.organization_id)
 
-    def user_org_id(self, db: Session, user_id: int) -> Optional[int]:
+    def user_org_id(self, db: Session, user_id: int) -> int | None:
         """Return the user's organization id, or None (fast scope helper)."""
         membership = self.get_membership(db, user_id)
         return membership.organization_id if membership else None
@@ -77,11 +75,7 @@ class OrganizationService:
         db.add(organization)
         db.flush()
 
-        db.add(
-            OrganizationMember(
-                organization_id=organization.id, user_id=user.id, role=OWNER_ROLE
-            )
-        )
+        db.add(OrganizationMember(organization_id=organization.id, user_id=user.id, role=OWNER_ROLE))
         self._share_user_prospects(db, user.id, organization.id)
         db.commit()
         db.refresh(organization)
@@ -121,9 +115,7 @@ class OrganizationService:
         if organization is None:
             raise OrganizationError("Créez d'abord une organisation.", 400)
 
-        invitee = db.execute(
-            select(User).where(User.email == email.strip().lower())
-        ).scalar_one_or_none()
+        invitee = db.execute(select(User).where(User.email == email.strip().lower())).scalar_one_or_none()
         if invitee is None:
             raise OrganizationError(
                 "Aucun compte DevLeadHunter avec cet email — la personne doit d'abord s'inscrire.",
@@ -132,9 +124,7 @@ class OrganizationService:
         if self.get_membership(db, invitee.id) is not None:
             raise OrganizationError("Cet utilisateur appartient déjà à une organisation.", 400)
 
-        membership = OrganizationMember(
-            organization_id=organization.id, user_id=invitee.id, role=MEMBER_ROLE
-        )
+        membership = OrganizationMember(organization_id=organization.id, user_id=invitee.id, role=MEMBER_ROLE)
         db.add(membership)
         self._share_user_prospects(db, invitee.id, organization.id)
         db.commit()
@@ -164,9 +154,7 @@ class OrganizationService:
         if member_user_id != actor_id and not is_owner:
             raise OrganizationError("Seul le propriétaire peut retirer un autre membre.", 403)
         if member_user_id == organization.owner_user_id:
-            raise OrganizationError(
-                "Le propriétaire ne peut pas quitter — supprimez l'organisation.", 400
-            )
+            raise OrganizationError("Le propriétaire ne peut pas quitter — supprimez l'organisation.", 400)
 
         membership = db.execute(
             select(OrganizationMember).where(
@@ -178,11 +166,7 @@ class OrganizationService:
             raise OrganizationError("Ce membre n'appartient pas à votre organisation.", 404)
 
         # The member's own prospects become personal again…
-        db.execute(
-            update(ProspectDB)
-            .where(ProspectDB.user_id == member_user_id)
-            .values(organization_id=None)
-        )
+        db.execute(update(ProspectDB).where(ProspectDB.user_id == member_user_id).values(organization_id=None))
         # …and every reservation they held in the org is released.
         db.execute(
             update(ProspectDB)
@@ -210,7 +194,7 @@ class OrganizationService:
             raise OrganizationError("Ce prospect est déjà réservé par un autre membre.", 409)
 
         prospect.reserved_by_user_id = user_id
-        prospect.reserved_at = datetime.now(timezone.utc)
+        prospect.reserved_at = datetime.now(UTC)
         db.commit()
         db.refresh(prospect)
         return prospect
@@ -227,9 +211,7 @@ class OrganizationService:
         if prospect.reserved_by_user_id != user_id:
             organization = self.get_user_organization(db, user_id)
             if organization is None or organization.owner_user_id != user_id:
-                raise OrganizationError(
-                    "Seul le membre qui a réservé (ou le propriétaire) peut libérer.", 403
-                )
+                raise OrganizationError("Seul le membre qui a réservé (ou le propriétaire) peut libérer.", 403)
 
         prospect.reserved_by_user_id = None
         prospect.reserved_at = None
@@ -244,9 +226,7 @@ class OrganizationService:
             OrganizationError: When the prospect is reserved by another member.
         """
         if prospect.reserved_by_user_id not in (None, user_id):
-            raise OrganizationError(
-                "Ce prospect est réservé par un autre membre de votre organisation.", 403
-            )
+            raise OrganizationError("Ce prospect est réservé par un autre membre de votre organisation.", 403)
 
     # ── Internals ──────────────────────────────────────────────────────────
 
@@ -261,11 +241,7 @@ class OrganizationService:
     @staticmethod
     def _share_user_prospects(db: Session, user_id: int, organization_id: int) -> None:
         """Tag every prospect owned by the user with the organization."""
-        db.execute(
-            update(ProspectDB)
-            .where(ProspectDB.user_id == user_id)
-            .values(organization_id=organization_id)
-        )
+        db.execute(update(ProspectDB).where(ProspectDB.user_id == user_id).values(organization_id=organization_id))
 
     @staticmethod
     def _unshare_org_prospects(db: Session, organization_id: int) -> None:

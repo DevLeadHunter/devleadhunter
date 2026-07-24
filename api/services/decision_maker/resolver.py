@@ -1,10 +1,10 @@
 """Multi-strategy decision-maker resolver (the cascade orchestrator)."""
+
 from __future__ import annotations
 
 import asyncio
 import logging
 import re
-from typing import Optional
 
 from services.decision_maker.strategies import (
     LegalMentionsStrategy,
@@ -30,7 +30,7 @@ _POSTAL_CODE_RE = re.compile(r"\b(\d{5})\b")
 class DecisionMakerResolver:
     """Runs every strategy, merges candidates, applies the confidence rules."""
 
-    def __init__(self, strategies: Optional[list[NameStrategy]] = None) -> None:
+    def __init__(self, strategies: list[NameStrategy] | None = None) -> None:
         """Wire the default cascade (order is cosmetic — they run in parallel)."""
         self.strategies: list[NameStrategy] = strategies or [
             RegistreGouvStrategy(),
@@ -40,7 +40,7 @@ class DecisionMakerResolver:
             LlmAggregateStrategy(),
         ]
 
-    async def resolve(self, context: ResolutionContext) -> Optional[NameCandidate]:
+    async def resolve(self, context: ResolutionContext) -> NameCandidate | None:
         """Return the best trusted candidate, or None (→ neutral greeting)."""
         results = await asyncio.gather(
             *(strategy.resolve(context) for strategy in self.strategies),
@@ -54,7 +54,7 @@ class DecisionMakerResolver:
             candidates.extend(c for c in result if c.has_name)
         return self.pick_best(candidates)
 
-    def pick_best(self, candidates: list[NameCandidate]) -> Optional[NameCandidate]:
+    def pick_best(self, candidates: list[NameCandidate]) -> NameCandidate | None:
         """Merge candidates and apply agreement boost + threshold (pure)."""
         if not candidates:
             return None
@@ -96,17 +96,13 @@ class DecisionMakerResolver:
 
         # Unresolvable disagreement at the top: two different identities with
         # the same winning confidence → trust neither (golden rule).
-        rivals = [
-            c
-            for c in boosted
-            if c.confidence == best.confidence and c.identity_key() != best.identity_key()
-        ]
+        rivals = [c for c in boosted if c.confidence == best.confidence and c.identity_key() != best.identity_key()]
         if rivals:
             return None
         return best
 
 
-def context_from_prospect(prospect, enrichment=None) -> ResolutionContext:  # noqa: ANN001
+def context_from_prospect(prospect, enrichment=None) -> ResolutionContext:
     """Build the strategy input from a prospect row (+ optional enrichment).
 
     Source-agnostic on purpose: only persisted prospect/enrichment data is
@@ -114,7 +110,7 @@ def context_from_prospect(prospect, enrichment=None) -> ResolutionContext:  # no
     """
     postal_match = _POSTAL_CODE_RE.search(prospect.address or "")
     owner_responses: list[str] = []
-    description: Optional[str] = None
+    description: str | None = None
     if enrichment is not None:
         description = enrichment.description
         for review in enrichment.reviews or []:

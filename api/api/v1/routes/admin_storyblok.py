@@ -6,6 +6,7 @@ they pick up new fields (e.g. ``social``) and updated FR labels — the "re-sync
 command" the audit flagged as missing. The upsert lives in ``storyblok_service``;
 these endpoints just expose it to an admin.
 """
+
 from typing import Any
 
 from fastapi import APIRouter, Depends

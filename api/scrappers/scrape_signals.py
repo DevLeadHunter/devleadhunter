@@ -8,17 +8,18 @@ calls :func:`note_block` with the captured HTML; the orchestrator consumes it wi
 :func:`pop_block` right after the scrape to classify the outcome and keep the HTML
 snapshot for the admin monitoring page (reactive capture — no proactive probing).
 """
+
 from __future__ import annotations
 
 import threading
-from typing import Optional, TypedDict
+from typing import TypedDict
 
 
 class BlockInfo(TypedDict):
     """A recorded block signal for one source."""
 
     reason: str
-    html: Optional[str]
+    html: str | None
 
 
 # Cap the captured HTML so a diagnostic row stays reasonable in size.
@@ -28,7 +29,7 @@ _lock = threading.Lock()
 _blocks: dict[str, BlockInfo] = {}
 
 
-def note_block(source: str, *, reason: str, html: Optional[str] = None) -> None:
+def note_block(source: str, *, reason: str, html: str | None = None) -> None:
     """Flag that ``source`` was blocked on its last run (consumed by the orchestrator).
 
     Args:
@@ -41,7 +42,7 @@ def note_block(source: str, *, reason: str, html: Optional[str] = None) -> None:
         _blocks[source] = {"reason": reason, "html": snapshot}
 
 
-def pop_block(source: str) -> Optional[BlockInfo]:
+def pop_block(source: str) -> BlockInfo | None:
     """Return and clear the pending block signal for ``source`` (``None`` if none)."""
     with _lock:
         return _blocks.pop(source, None)

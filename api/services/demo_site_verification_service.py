@@ -5,7 +5,6 @@ from __future__ import annotations
 import asyncio
 import logging
 from dataclasses import dataclass
-from typing import Optional
 
 import httpx
 from sqlalchemy.orm import Session
@@ -22,7 +21,7 @@ class DemoSiteVerificationResult:
 
     public_api_ok: bool
     demo_url_live: bool
-    local_demo_url: Optional[str]
+    local_demo_url: str | None
     local_demo_url_live: bool
     message: str
 
@@ -37,7 +36,7 @@ class DemoSiteVerificationService:
             async with httpx.AsyncClient(timeout=10.0, follow_redirects=True) as client:
                 response = await client.get(url)
                 return response.status_code < 400
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             logger.info("Demo URL check failed for %s: %s", url, exc)
             return False
 
@@ -89,9 +88,7 @@ class DemoSiteVerificationService:
             f"http://127.0.0.1:{settings.port}{settings.api_prefix}/demo-sites/public/{slug}",
         ]
         if settings.is_production:
-            internal_url: str = (
-                f"http://127.0.0.1:{settings.port}{settings.api_prefix}/demo-sites/public/{slug}"
-            )
+            internal_url: str = f"http://127.0.0.1:{settings.port}{settings.api_prefix}/demo-sites/public/{slug}"
             if internal_url not in urls:
                 urls.append(internal_url)
         deduped: list[str] = []
@@ -184,8 +181,7 @@ class DemoSiteVerificationService:
                 local_demo_url=local_demo_url,
                 local_demo_url_live=False,
                 message=(
-                    f"Local demo-host is not reachable at {demo_url}. "
-                    "Run: cd demo-host && npm run dev (port 3001)."
+                    f"Local demo-host is not reachable at {demo_url}. Run: cd demo-host && npm run dev (port 3001)."
                 ),
             )
 

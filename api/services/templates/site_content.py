@@ -17,15 +17,19 @@ A template's own ``build_site_content`` calls ``map_prospect_and_enrichment`` an
 editorial ``services`` / ``faq`` (design copy, per trade). The demo-host layer supplies the
 remaining boilerplate (section headings, etc.).
 """
+
 from __future__ import annotations
 
 import uuid
-from typing import Any, Optional
+from typing import Any
 
 # Generic, per-trade editorial defaults. A template's build_site_content may pass these
 # (or its own) so the services/FAQ sections render and stay editable in Storyblok.
 PLUMBER_SERVICES: list[dict[str, str]] = [
-    {"title": "Dépannage & urgences", "description": "Fuite, engorgement, panne de chauffe-eau : intervention rapide 7j/7."},
+    {
+        "title": "Dépannage & urgences",
+        "description": "Fuite, engorgement, panne de chauffe-eau : intervention rapide 7j/7.",
+    },
     {"title": "Recherche de fuite", "description": "Détection précise sans casse inutile, puis réparation durable."},
     {"title": "Installation sanitaire", "description": "Salle de bain, cuisine, WC : pose complète et soignée."},
     {"title": "Chauffe-eau & chauffage", "description": "Installation, remplacement et entretien de vos équipements."},
@@ -33,26 +37,71 @@ PLUMBER_SERVICES: list[dict[str, str]] = [
     {"title": "Débouchage de canalisation", "description": "Curage et débouchage rapide, sans dégât."},
 ]
 PLUMBER_FAQ: list[dict[str, str]] = [
-    {"question": "Intervenez-vous en urgence le week-end ?", "answer": "Oui, nous intervenons 7j/7 pour les urgences. Appelez, on vous rappelle rapidement."},
-    {"question": "Le devis est-il gratuit ?", "answer": "Le devis est toujours gratuit et sans engagement, remis avant toute intervention."},
-    {"question": "Quelles zones couvrez-vous ?", "answer": "Votre ville et les communes voisines. Appelez pour vérifier, nous nous déplaçons souvent au-delà."},
-    {"question": "Quels moyens de paiement acceptez-vous ?", "answer": "Carte bancaire, chèque et virement, avec facture détaillée."},
-    {"question": "Proposez-vous une garantie sur vos travaux ?", "answer": "Oui, nos installations sont couvertes par la garantie décennale."},
+    {
+        "question": "Intervenez-vous en urgence le week-end ?",
+        "answer": "Oui, nous intervenons 7j/7 pour les urgences. Appelez, on vous rappelle rapidement.",
+    },
+    {
+        "question": "Le devis est-il gratuit ?",
+        "answer": "Le devis est toujours gratuit et sans engagement, remis avant toute intervention.",
+    },
+    {
+        "question": "Quelles zones couvrez-vous ?",
+        "answer": "Votre ville et les communes voisines. Appelez pour vérifier, nous nous déplaçons souvent au-delà.",
+    },
+    {
+        "question": "Quels moyens de paiement acceptez-vous ?",
+        "answer": "Carte bancaire, chèque et virement, avec facture détaillée.",
+    },
+    {
+        "question": "Proposez-vous une garantie sur vos travaux ?",
+        "answer": "Oui, nos installations sont couvertes par la garantie décennale.",
+    },
 ]
 ELECTRICIAN_SERVICES: list[dict[str, str]] = [
-    {"title": "Dépannage électrique", "description": "Panne, court-circuit, disjoncteur qui saute : diagnostic et remise en service rapides."},
-    {"title": "Mise aux normes", "description": "Remise à niveau de votre installation (NF C 15-100) et attestation Consuel."},
-    {"title": "Tableau électrique", "description": "Remplacement et modernisation de votre tableau et de vos protections."},
-    {"title": "Installation & rénovation", "description": "Neuf ou rénovation : réseau complet, prises, points lumineux."},
-    {"title": "Éclairage & domotique", "description": "Éclairage intérieur/extérieur, interrupteurs connectés, domotique."},
+    {
+        "title": "Dépannage électrique",
+        "description": "Panne, court-circuit, disjoncteur qui saute : diagnostic et remise en service rapides.",
+    },
+    {
+        "title": "Mise aux normes",
+        "description": "Remise à niveau de votre installation (NF C 15-100) et attestation Consuel.",
+    },
+    {
+        "title": "Tableau électrique",
+        "description": "Remplacement et modernisation de votre tableau et de vos protections.",
+    },
+    {
+        "title": "Installation & rénovation",
+        "description": "Neuf ou rénovation : réseau complet, prises, points lumineux.",
+    },
+    {
+        "title": "Éclairage & domotique",
+        "description": "Éclairage intérieur/extérieur, interrupteurs connectés, domotique.",
+    },
     {"title": "Borne de recharge", "description": "Installation de bornes de recharge pour véhicule électrique."},
 ]
 ELECTRICIAN_FAQ: list[dict[str, str]] = [
-    {"question": "Intervenez-vous en urgence ?", "answer": "Oui, pour toute panne électrique nous intervenons au plus vite, 7j/7."},
-    {"question": "Le devis est-il gratuit ?", "answer": "Le devis est gratuit et sans engagement, remis avant les travaux."},
-    {"question": "Délivrez-vous une attestation Consuel ?", "answer": "Oui, pour toute installation neuve ou mise aux normes soumise au Consuel."},
-    {"question": "Quelles zones couvrez-vous ?", "answer": "Votre ville et ses alentours. Appelez pour vérifier votre commune."},
-    {"question": "Vos travaux sont-ils garantis ?", "answer": "Oui, nos installations sont conformes et couvertes par la garantie décennale."},
+    {
+        "question": "Intervenez-vous en urgence ?",
+        "answer": "Oui, pour toute panne électrique nous intervenons au plus vite, 7j/7.",
+    },
+    {
+        "question": "Le devis est-il gratuit ?",
+        "answer": "Le devis est gratuit et sans engagement, remis avant les travaux.",
+    },
+    {
+        "question": "Délivrez-vous une attestation Consuel ?",
+        "answer": "Oui, pour toute installation neuve ou mise aux normes soumise au Consuel.",
+    },
+    {
+        "question": "Quelles zones couvrez-vous ?",
+        "answer": "Votre ville et ses alentours. Appelez pour vérifier votre commune.",
+    },
+    {
+        "question": "Vos travaux sont-ils garantis ?",
+        "answer": "Oui, nos installations sont conformes et couvertes par la garantie décennale.",
+    },
 ]
 
 
@@ -64,13 +113,13 @@ def _uid() -> str:
 def map_prospect_and_enrichment(
     *,
     business_name: str,
-    phone: Optional[str],
-    email: Optional[str],
-    city: Optional[str],
+    phone: str | None,
+    email: str | None,
+    city: str | None,
     area: str,
     subtitle: str,
     palette: dict[str, str],
-    enrichment: Optional[dict[str, Any]] = None,
+    enrichment: dict[str, Any] | None = None,
     about_default: str = "",
 ) -> dict[str, Any]:
     """Map prospect fields + enrichment into the common (non-editorial) ``SiteContent`` fields.
@@ -161,16 +210,60 @@ SITE_CONTENT_SCHEMAS: list[dict[str, Any]] = [
             "phone": {"type": "text", "pos": 1, "display_name": "Téléphone"},
             "email": {"type": "text", "pos": 2, "display_name": "Email de contact"},
             "city": {"type": "text", "pos": 3, "display_name": "Ville"},
-            "area": {"type": "text", "pos": 4, "display_name": "Secteur d'intervention", "description": "Ex : « Lyon et ses alentours »"},
+            "area": {
+                "type": "text",
+                "pos": 4,
+                "display_name": "Secteur d'intervention",
+                "description": "Ex : « Lyon et ses alentours »",
+            },
             # ── Textes principaux ─────────────────────────────────────────
-            "subtitle": {"type": "textarea", "pos": 5, "display_name": "Phrase d'accroche", "description": "Le texte principal en haut du site"},
-            "about": {"type": "textarea", "pos": 6, "display_name": "À propos", "description": "Votre histoire, votre façon de travailler"},
+            "subtitle": {
+                "type": "textarea",
+                "pos": 5,
+                "display_name": "Phrase d'accroche",
+                "description": "Le texte principal en haut du site",
+            },
+            "about": {
+                "type": "textarea",
+                "pos": 6,
+                "display_name": "À propos",
+                "description": "Votre histoire, votre façon de travailler",
+            },
             # ── Copie éditoriale (vide = texte par défaut du site) ────────
-            "heroBadge": {"type": "text", "pos": 7, "display_name": "Badge d'en-tête", "description": "Petit libellé au-dessus du titre (ex : « Artisan plombier »)"},
-            "heroPoints": {"type": "bloks", "pos": 8, "display_name": "Points forts d'en-tête", "description": "3 arguments courts sous l'accroche", "restrict_components": True, "component_whitelist": ["site_content_hero_point"]},
-            "ctaCallLabel": {"type": "text", "pos": 9, "display_name": "Bouton « appeler »", "description": "Texte du bouton d'appel"},
-            "ctaQuoteLabel": {"type": "text", "pos": 10, "display_name": "Bouton « devis »", "description": "Texte du bouton de demande de devis"},
-            "trustItems": {"type": "bloks", "pos": 11, "display_name": "Repères de confiance", "description": "Chiffres/garanties affichés sous l'en-tête (ex : 7j/7, Devis 0 €)", "restrict_components": True, "component_whitelist": ["site_content_trust_item"]},
+            "heroBadge": {
+                "type": "text",
+                "pos": 7,
+                "display_name": "Badge d'en-tête",
+                "description": "Petit libellé au-dessus du titre (ex : « Artisan plombier »)",
+            },
+            "heroPoints": {
+                "type": "bloks",
+                "pos": 8,
+                "display_name": "Points forts d'en-tête",
+                "description": "3 arguments courts sous l'accroche",
+                "restrict_components": True,
+                "component_whitelist": ["site_content_hero_point"],
+            },
+            "ctaCallLabel": {
+                "type": "text",
+                "pos": 9,
+                "display_name": "Bouton « appeler »",
+                "description": "Texte du bouton d'appel",
+            },
+            "ctaQuoteLabel": {
+                "type": "text",
+                "pos": 10,
+                "display_name": "Bouton « devis »",
+                "description": "Texte du bouton de demande de devis",
+            },
+            "trustItems": {
+                "type": "bloks",
+                "pos": 11,
+                "display_name": "Repères de confiance",
+                "description": "Chiffres/garanties affichés sous l'en-tête (ex : 7j/7, Devis 0 €)",
+                "restrict_components": True,
+                "component_whitelist": ["site_content_trust_item"],
+            },
             "servicesHeading": {"type": "text", "pos": 12, "display_name": "Titre de la section Services"},
             "galleryHeading": {"type": "text", "pos": 13, "display_name": "Titre de la section Photos"},
             "reviewsHeading": {"type": "text", "pos": 14, "display_name": "Titre de la section Avis"},
@@ -178,30 +271,153 @@ SITE_CONTENT_SCHEMAS: list[dict[str, Any]] = [
             "aboutHeading": {"type": "text", "pos": 16, "display_name": "Titre de la section À propos"},
             "contactHeading": {"type": "text", "pos": 17, "display_name": "Titre de la section Contact"},
             # ── Médias ────────────────────────────────────────────────────
-            "logo": {"type": "text", "pos": 18, "display_name": "Logo (URL)", "description": "Logo de l'entreprise — utilisé comme favicon du site"},
+            "logo": {
+                "type": "text",
+                "pos": 18,
+                "display_name": "Logo (URL)",
+                "description": "Logo de l'entreprise — utilisé comme favicon du site",
+            },
             "heroImage": {"type": "text", "pos": 19, "display_name": "Photo principale (URL)"},
             "aboutImage": {"type": "text", "pos": 20, "display_name": "Photo « à propos » (URL)"},
-            "gallery": {"type": "bloks", "pos": 21, "display_name": "Galerie photos", "restrict_components": True, "component_whitelist": ["site_content_gallery_item"]},
-            "beforeAfter": {"type": "bloks", "pos": 22, "display_name": "Réalisations avant/après", "description": "Paires de photos avant travaux / après travaux", "restrict_components": True, "component_whitelist": ["site_content_before_after"]},
+            "gallery": {
+                "type": "bloks",
+                "pos": 21,
+                "display_name": "Galerie photos",
+                "restrict_components": True,
+                "component_whitelist": ["site_content_gallery_item"],
+            },
+            "beforeAfter": {
+                "type": "bloks",
+                "pos": 22,
+                "display_name": "Réalisations avant/après",
+                "description": "Paires de photos avant travaux / après travaux",
+                "restrict_components": True,
+                "component_whitelist": ["site_content_before_after"],
+            },
             # ── Contenu structuré ─────────────────────────────────────────
-            "services": {"type": "bloks", "pos": 23, "display_name": "Services", "restrict_components": True, "component_whitelist": ["site_content_service"]},
-            "reviews": {"type": "bloks", "pos": 24, "display_name": "Avis clients", "restrict_components": True, "component_whitelist": ["site_content_review"]},
-            "faq": {"type": "bloks", "pos": 25, "display_name": "Questions fréquentes", "restrict_components": True, "component_whitelist": ["site_content_faq"]},
-            "openingHours": {"type": "bloks", "pos": 26, "display_name": "Horaires d'ouverture", "restrict_components": True, "component_whitelist": ["site_content_hours"]},
-            "social": {"type": "bloks", "pos": 27, "display_name": "Réseaux sociaux", "description": "Liens Facebook, Instagram… affichés en pied de page", "restrict_components": True, "component_whitelist": ["site_content_social"]},
+            "services": {
+                "type": "bloks",
+                "pos": 23,
+                "display_name": "Services",
+                "restrict_components": True,
+                "component_whitelist": ["site_content_service"],
+            },
+            "reviews": {
+                "type": "bloks",
+                "pos": 24,
+                "display_name": "Avis clients",
+                "restrict_components": True,
+                "component_whitelist": ["site_content_review"],
+            },
+            "faq": {
+                "type": "bloks",
+                "pos": 25,
+                "display_name": "Questions fréquentes",
+                "restrict_components": True,
+                "component_whitelist": ["site_content_faq"],
+            },
+            "openingHours": {
+                "type": "bloks",
+                "pos": 26,
+                "display_name": "Horaires d'ouverture",
+                "restrict_components": True,
+                "component_whitelist": ["site_content_hours"],
+            },
+            "social": {
+                "type": "bloks",
+                "pos": 27,
+                "display_name": "Réseaux sociaux",
+                "description": "Liens Facebook, Instagram… affichés en pied de page",
+                "restrict_components": True,
+                "component_whitelist": ["site_content_social"],
+            },
             # ── Design ────────────────────────────────────────────────────
-            "palette": {"type": "blok", "pos": 28, "display_name": "Couleurs du site", "restrict_components": True, "component_whitelist": ["theme_palette"], "maximum": 1},
+            "palette": {
+                "type": "blok",
+                "pos": 28,
+                "display_name": "Couleurs du site",
+                "restrict_components": True,
+                "component_whitelist": ["theme_palette"],
+                "maximum": 1,
+            },
         },
     },
-    {"name": "site_content_social", "display_name": "Réseau social", "schema": {"network": {"type": "text", "pos": 0, "display_name": "Réseau", "description": "facebook, instagram, linkedin, tiktok, youtube, twitter"}, "url": {"type": "text", "pos": 1, "display_name": "URL du profil"}}},
-    {"name": "site_content_service", "display_name": "Service", "schema": {"title": {"type": "text", "pos": 0, "display_name": "Titre"}, "description": {"type": "textarea", "pos": 1, "display_name": "Description"}}},
-    {"name": "site_content_review", "display_name": "Avis client", "schema": {"author": {"type": "text", "pos": 0, "display_name": "Auteur"}, "rating": {"type": "number", "pos": 1, "display_name": "Note (0-5)"}, "text": {"type": "textarea", "pos": 2, "display_name": "Texte de l'avis"}}},
-    {"name": "site_content_faq", "display_name": "Question fréquente", "schema": {"question": {"type": "text", "pos": 0, "display_name": "Question"}, "answer": {"type": "textarea", "pos": 1, "display_name": "Réponse"}}},
-    {"name": "site_content_hours", "display_name": "Horaire", "schema": {"day": {"type": "text", "pos": 0, "display_name": "Jour(s)"}, "hours": {"type": "text", "pos": 1, "display_name": "Heures"}}},
-    {"name": "site_content_gallery_item", "display_name": "Photo de galerie", "schema": {"url": {"type": "text", "pos": 0, "display_name": "URL de la photo"}, "alt": {"type": "text", "pos": 1, "display_name": "Description (référencement)"}}},
-    {"name": "site_content_before_after", "display_name": "Avant / après", "schema": {"before": {"type": "text", "pos": 0, "display_name": "Photo avant (URL)"}, "after": {"type": "text", "pos": 1, "display_name": "Photo après (URL)"}, "label": {"type": "text", "pos": 2, "display_name": "Légende"}}},
-    {"name": "site_content_hero_point", "display_name": "Point fort", "schema": {"text": {"type": "text", "pos": 0, "display_name": "Texte"}}},
-    {"name": "site_content_trust_item", "display_name": "Repère de confiance", "schema": {"value": {"type": "text", "pos": 0, "display_name": "Chiffre / valeur"}, "label": {"type": "text", "pos": 1, "display_name": "Libellé"}}},
+    {
+        "name": "site_content_social",
+        "display_name": "Réseau social",
+        "schema": {
+            "network": {
+                "type": "text",
+                "pos": 0,
+                "display_name": "Réseau",
+                "description": "facebook, instagram, linkedin, tiktok, youtube, twitter",
+            },
+            "url": {"type": "text", "pos": 1, "display_name": "URL du profil"},
+        },
+    },
+    {
+        "name": "site_content_service",
+        "display_name": "Service",
+        "schema": {
+            "title": {"type": "text", "pos": 0, "display_name": "Titre"},
+            "description": {"type": "textarea", "pos": 1, "display_name": "Description"},
+        },
+    },
+    {
+        "name": "site_content_review",
+        "display_name": "Avis client",
+        "schema": {
+            "author": {"type": "text", "pos": 0, "display_name": "Auteur"},
+            "rating": {"type": "number", "pos": 1, "display_name": "Note (0-5)"},
+            "text": {"type": "textarea", "pos": 2, "display_name": "Texte de l'avis"},
+        },
+    },
+    {
+        "name": "site_content_faq",
+        "display_name": "Question fréquente",
+        "schema": {
+            "question": {"type": "text", "pos": 0, "display_name": "Question"},
+            "answer": {"type": "textarea", "pos": 1, "display_name": "Réponse"},
+        },
+    },
+    {
+        "name": "site_content_hours",
+        "display_name": "Horaire",
+        "schema": {
+            "day": {"type": "text", "pos": 0, "display_name": "Jour(s)"},
+            "hours": {"type": "text", "pos": 1, "display_name": "Heures"},
+        },
+    },
+    {
+        "name": "site_content_gallery_item",
+        "display_name": "Photo de galerie",
+        "schema": {
+            "url": {"type": "text", "pos": 0, "display_name": "URL de la photo"},
+            "alt": {"type": "text", "pos": 1, "display_name": "Description (référencement)"},
+        },
+    },
+    {
+        "name": "site_content_before_after",
+        "display_name": "Avant / après",
+        "schema": {
+            "before": {"type": "text", "pos": 0, "display_name": "Photo avant (URL)"},
+            "after": {"type": "text", "pos": 1, "display_name": "Photo après (URL)"},
+            "label": {"type": "text", "pos": 2, "display_name": "Légende"},
+        },
+    },
+    {
+        "name": "site_content_hero_point",
+        "display_name": "Point fort",
+        "schema": {"text": {"type": "text", "pos": 0, "display_name": "Texte"}},
+    },
+    {
+        "name": "site_content_trust_item",
+        "display_name": "Repère de confiance",
+        "schema": {
+            "value": {"type": "text", "pos": 0, "display_name": "Chiffre / valeur"},
+            "label": {"type": "text", "pos": 1, "display_name": "Libellé"},
+        },
+    },
 ]
 
 
@@ -307,7 +523,7 @@ def _single_blok(value: Any) -> dict[str, Any]:
     return {}
 
 
-def find_site_content_blok(raw: dict[str, Any]) -> Optional[dict[str, Any]]:
+def find_site_content_blok(raw: dict[str, Any]) -> dict[str, Any] | None:
     """Locate the ``site_content`` blok inside a resolved story content object.
 
     Handles both shapes: page-wrapped (``{component: 'page', body: [site_content]}``)
@@ -327,7 +543,7 @@ def find_site_content_blok(raw: dict[str, Any]) -> Optional[dict[str, Any]]:
     return None
 
 
-def from_storyblok_site_content(raw: dict[str, Any]) -> Optional[dict[str, Any]]:
+def from_storyblok_site_content(raw: dict[str, Any]) -> dict[str, Any] | None:
     """Flatten a published Storyblok story back into the flat ``SiteContent`` shape.
 
     Inverse of ``to_storyblok_site_content`` and Python mirror of demo-host's
@@ -368,9 +584,7 @@ def from_storyblok_site_content(raw: dict[str, Any]) -> Optional[dict[str, Any]]
         "about": _clean_str(blok.get("about")),
         "heroBadge": _clean_str(blok.get("heroBadge")),
         "heroPoints": [
-            _clean_str(item.get("text"))
-            for item in _blok_list(blok.get("heroPoints"))
-            if _clean_str(item.get("text"))
+            _clean_str(item.get("text")) for item in _blok_list(blok.get("heroPoints")) if _clean_str(item.get("text"))
         ],
         "ctaCallLabel": _clean_str(blok.get("ctaCallLabel")),
         "ctaQuoteLabel": _clean_str(blok.get("ctaQuoteLabel")),

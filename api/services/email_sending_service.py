@@ -1,23 +1,24 @@
 """
 Email sending service - orchestrates sending via Resend or Gmail.
 """
+
 import logging
-from typing import Optional, Dict
 from datetime import datetime
+
 from sqlalchemy.orm import Session
 
+from core.config import settings
+from enums.email_status import EmailStatus
+from enums.sending_provider import SendingProvider
 from models.email_account import EmailAccount
 from models.email_log import EmailLog
 from services.demo_identity import posthog_distinct_id, resolve_demo_slug
+from services.encryption_service import encryption_service
 from services.gmail_oauth_service import GmailOAuthService
 from services.posthog_service import posthog_service
 from services.resend_service import ResendService
-from services.unsubscribe_service import unsubscribe_service
-from services.encryption_service import encryption_service
 from services.sending_identity import SendingIdentity, resolve_sending_identity
-from enums.sending_provider import SendingProvider
-from enums.email_status import EmailStatus
-from core.config import settings
+from services.unsubscribe_service import unsubscribe_service
 
 logger = logging.getLogger(__name__)
 
@@ -26,7 +27,7 @@ class EmailSendingService:
     """
     Service for orchestrating email sending via different providers.
     """
-    
+
     def __init__(self, db: Session):
         """Initialize email sending service."""
         self.db = db
@@ -47,7 +48,7 @@ class EmailSendingService:
             return redirect, f"[DEV→{recipient_email}] {subject}"
         return recipient_email, subject
 
-    def _mark_prospect_contacted(self, prospect_id: Optional[str]) -> None:
+    def _mark_prospect_contacted(self, prospect_id: str | None) -> None:
         """
         Flag a prospect as contacted after a successful send (idempotent).
 
@@ -59,24 +60,22 @@ class EmailSendingService:
         try:
             from models.prospect_db import ProspectDB
 
-            prospect = (
-                self.db.query(ProspectDB).filter(ProspectDB.id == int(prospect_id)).first()
-            )
+            prospect = self.db.query(ProspectDB).filter(ProspectDB.id == int(prospect_id)).first()
             if prospect and not prospect.contacted:
                 prospect.contacted = True
                 self.db.commit()
-        except Exception as exc:  # noqa: BLE001 — never block a send on bookkeeping
+        except Exception as exc:
             logger.warning("Could not mark prospect %s as contacted: %s", prospect_id, exc)
 
     async def _capture_email_sent(
         self,
         *,
         user_id: int,
-        prospect_id: Optional[str],
-        campaign_id: Optional[str],
+        prospect_id: str | None,
+        campaign_id: str | None,
         email_log_id: int,
         recipient_email: str,
-        ab_variant: Optional[str] = None,
+        ab_variant: str | None = None,
     ) -> None:
         """
         Mirror a successful send into PostHog as an ``email_sent`` event.
@@ -97,8 +96,8 @@ class EmailSendingService:
             ab_variant: A/B variant ('A'/'B') when known, stamped on the event.
         """
         try:
-            pid: Optional[int] = int(prospect_id) if prospect_id else None
-            demo_slug: Optional[str] = resolve_demo_slug(self.db, user_id, pid)
+            pid: int | None = int(prospect_id) if prospect_id else None
+            demo_slug: str | None = resolve_demo_slug(self.db, user_id, pid)
             await posthog_service.capture(
                 distinct_id=posthog_distinct_id(demo_slug, pid, recipient_email),
                 event="email_sent",
@@ -111,11 +110,11 @@ class EmailSendingService:
                     "$lib": "devleadhunter-api",
                 },
             )
-        except Exception as exc:  # noqa: BLE001 — tracking must never break a send
+        except Exception as exc:
             logger.warning("PostHog email_sent capture failed (log=%s): %s", email_log_id, exc)
 
     @staticmethod
-    def _unsubscribe_headers(unsubscribe_link: str) -> Dict[str, str]:
+    def _unsubscribe_headers(unsubscribe_link: str) -> dict[str, str]:
         """RFC 8058 one-click unsubscribe headers (Gmail/Yahoo bulk-sender requirement).
 
         Args:
@@ -135,20 +134,19 @@ class EmailSendingService:
         recipient_email: str,
         subject: str,
         body_html: str,
-        recipient_name: Optional[str] = None,
-        body_text: Optional[str] = None,
-        unsubscribe_link: Optional[str] = None,
-    ) -> Dict:
+        recipient_name: str | None = None,
+        body_text: str | None = None,
+        unsubscribe_link: str | None = None,
+    ) -> dict:
         """Send email via Gmail OAuth."""
         # Decrypt access token
         try:
             access_token = encryption_service.decrypt(email_account.oauth_access_token)
         except Exception as e:
-            raise Exception(f"Failed to decrypt access token: {str(e)}")
-        
+            raise Exception(f"Failed to decrypt access token: {e!s}")
+
         # Check if token needs refresh
-        if email_account.oauth_token_expires_at and \
-           email_account.oauth_token_expires_at < datetime.utcnow():
+        if email_account.oauth_token_expires_at and email_account.oauth_token_expires_at < datetime.utcnow():
             # Refresh token
             try:
                 refresh_token = encryption_service.decrypt(email_account.oauth_refresh_token)
@@ -158,8 +156,8 @@ class EmailSendingService:
                 self.db.commit()
                 access_token = tokens["access_token"]
             except Exception as e:
-                raise Exception(f"Failed to refresh Gmail token: {str(e)}")
-        
+                raise Exception(f"Failed to refresh Gmail token: {e!s}")
+
         return await self.gmail_service.send_email(
             access_token=access_token,
             from_email=email_account.email,
@@ -170,18 +168,18 @@ class EmailSendingService:
             text_body=body_text,
             extra_headers=self._unsubscribe_headers(unsubscribe_link) if unsubscribe_link else None,
         )
-    
+
     async def send_via_user_identity(
         self,
         user_id: int,
         recipient_email: str,
         subject: str,
         body_html: str,
-        recipient_name: Optional[str] = None,
-        prospect_id: Optional[str] = None,
-        campaign_id: Optional[str] = None,
-        ab_variant: Optional[str] = None,
-    ) -> Dict:
+        recipient_name: str | None = None,
+        prospect_id: str | None = None,
+        campaign_id: str | None = None,
+        ab_variant: str | None = None,
+    ) -> dict:
         """
         Send an email via the user's active sending identity (Resend or Gmail).
 
@@ -289,7 +287,7 @@ class EmailSendingService:
                 "email_log_id": email_log.id,
                 "message_id": result.get("message_id"),
             }
-        except Exception as e:  # noqa: BLE001
+        except Exception as e:
             email_log.status = EmailStatus.FAILED.value
             email_log.error_message = str(e)
             email_log.failed_at = datetime.utcnow()
@@ -302,4 +300,3 @@ class EmailSendingService:
         for key, value in variables.items():
             text = text.replace(f"{{{key}}}", str(value))
         return text
-

@@ -8,14 +8,16 @@ Changes:
 Run with:
     python migrations/add_campaign_queue.py
 """
+
 from __future__ import annotations
 
-import sys
 import os
+import sys
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from sqlalchemy import text
+
 from core.database import engine
 
 
@@ -32,12 +34,14 @@ def run_migration() -> None:
             "started_at            DATETIME NULL",
         ):
             col_name = col_def.split()[0]
-            exists = conn.execute(text(
-                "SELECT COUNT(*) FROM information_schema.columns "
-                "WHERE table_schema = DATABASE() "
-                "AND table_name = 'campaigns' "
-                f"AND column_name = '{col_name}'"
-            )).scalar()
+            exists = conn.execute(
+                text(
+                    "SELECT COUNT(*) FROM information_schema.columns "
+                    "WHERE table_schema = DATABASE() "
+                    "AND table_name = 'campaigns' "
+                    f"AND column_name = '{col_name}'"
+                )
+            ).scalar()
             if not exists:
                 conn.execute(text(f"ALTER TABLE campaigns ADD COLUMN {col_def}"))
                 print(f"  + campaigns.{col_name}")
@@ -45,7 +49,8 @@ def run_migration() -> None:
                 print(f"  ~ campaigns.{col_name} already exists")
 
         # ── email_queue table ─────────────────────────────────────────────────
-        conn.execute(text("""
+        conn.execute(
+            text("""
             CREATE TABLE IF NOT EXISTS email_queue (
                 id              INT          NOT NULL AUTO_INCREMENT PRIMARY KEY,
                 user_id         INT          NOT NULL,
@@ -75,7 +80,8 @@ def run_migration() -> None:
                 FOREIGN KEY (email_account_id) REFERENCES email_accounts(id)   ON DELETE RESTRICT,
                 FOREIGN KEY (email_log_id)     REFERENCES email_logs(id)       ON DELETE SET NULL
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
-        """))
+        """)
+        )
         print("  + email_queue table")
 
         conn.commit()

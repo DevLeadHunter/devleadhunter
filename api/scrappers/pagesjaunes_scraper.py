@@ -10,29 +10,35 @@ Each tier is tried in order; the first one that returns results is used.
 A tier is skipped when Pages Jaunes clearly blocks it (bot-detection, missing
 DOM structure that requires JS, etc.).
 """
+
 from __future__ import annotations
 
-from typing import Callable, List, Optional
-from urllib.parse import urljoin
 import asyncio
 import base64
 import json
 import logging
 import re
+from collections.abc import Callable
+from urllib.parse import urljoin
 
 import aiohttp
 from bs4 import BeautifulSoup
 
 from enums.source import Source
 from models.prospect import ProspectCreate
-from services.address_service import address_service
-from services.validation_service import validation_service
-from services.scrape_progress import ScrapeProgressReporter
-from scrappers.nodriver_browser import NODRIVER_AVAILABLE, NodriverBrowser, NodriverScraperMixin, resolve_scraper_headless
+from scrappers import scrape_signals
+from scrappers.nodriver_browser import (
+    NODRIVER_AVAILABLE,
+    NodriverBrowser,
+    NodriverScraperMixin,
+    resolve_scraper_headless,
+)
 from scrappers.nodriver_dom import NodriverDom
 from scrappers.nodriver_executor import run_nodriver_task
 from scrappers.resilient_extract import extract_ld_json_from_html, parse_ld_json_blocks
-from scrappers import scrape_signals
+from services.address_service import address_service
+from services.scrape_progress import ScrapeProgressReporter
+from services.validation_service import validation_service
 
 from .base_scraper import BaseScraper
 from .email_scraper import email_scraper
@@ -127,7 +133,7 @@ class PagesJaunesScraper(NodriverScraperMixin, BaseScraper):
                         logger.info("Cookie consent accepted (iframe select)")
                         await asyncio.sleep(0.3)
                         return
-                except Exception:  # noqa: BLE001
+                except Exception:
                     continue
 
             iframe_js = """
@@ -163,7 +169,7 @@ class PagesJaunesScraper(NodriverScraperMixin, BaseScraper):
             if await NodriverDom.click_first_matching(tab, selectors):
                 logger.info("Cookie consent accepted")
                 await asyncio.sleep(0.1)
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             logger.debug("Could not handle cookie consent: %s", exc)
 
     async def _wait_for_results(self, tab: object, *, timeout_s: float = 20.0) -> int:
@@ -218,7 +224,7 @@ class PagesJaunesScraper(NodriverScraperMixin, BaseScraper):
         *,
         search_city: str,
         only_without_website: bool = True,
-    ) -> Optional[ProspectCreate]:
+    ) -> ProspectCreate | None:
         """
         Extract prospect details from a detail page.
 
@@ -282,7 +288,7 @@ class PagesJaunesScraper(NodriverScraperMixin, BaseScraper):
             # JSON-LD fallback: Pages Jaunes ships schema.org LocalBusiness data for SEO,
             # far more stable than its rotating CSS classes. Parsed once, used only to fill
             # the fields the selectors above could not find.
-            business_ld: Optional[dict] = None
+            business_ld: dict | None = None
             if not (phone and address):
                 business_ld = parse_ld_json_blocks(await NodriverDom.ld_json_blocks(tab))
                 if business_ld:
@@ -293,11 +299,11 @@ class PagesJaunesScraper(NodriverScraperMixin, BaseScraper):
             if address:
                 address = address_service.remove_city_and_postal_code(address, city)
 
-            website: Optional[str] = None
+            website: str | None = None
             # Transient: Facebook / Instagram URL found on the PJ profile.
             # Many businesses list their FB/IG page instead of a real website.
             # We never store this in the DB but carry it through email enrichment.
-            social_url: Optional[str] = None
+            social_url: str | None = None
             for selector in (".MINISITE.pj-link", ".SITE_EXTERNE.pj-link"):
                 href = await NodriverDom.get_attribute(tab, selector, "href")
                 if not href or href == "#" or not href.startswith("http"):
@@ -307,7 +313,7 @@ class PagesJaunesScraper(NodriverScraperMixin, BaseScraper):
                             data = json.loads(data_pjlb.replace("&quot;", '"'))
                             encoded_url = data.get("url", "")
                             href = base64.b64decode(encoded_url).decode("utf-8")
-                        except Exception as exc:  # noqa: BLE001
+                        except Exception as exc:
                             logger.debug("Could not decode data-pjlb: %s", exc)
                 if not href:
                     continue
@@ -317,9 +323,7 @@ class PagesJaunesScraper(NodriverScraperMixin, BaseScraper):
                 # Not a valid business website — detect social profile URLs so we
                 # can skip the Google search for the Facebook/Instagram page later.
                 href_low = href.lower()
-                if social_url is None and (
-                    "facebook.com/" in href_low or "instagram.com/" in href_low
-                ):
+                if social_url is None and ("facebook.com/" in href_low or "instagram.com/" in href_low):
                     social_url = href
                     logger.debug("[PJ] Social URL captured for '%s': %s", name, href)
 
@@ -335,10 +339,10 @@ class PagesJaunesScraper(NodriverScraperMixin, BaseScraper):
                 logger.info("Prospect %s has a website, skipping", name)
                 return None
 
-            email: Optional[str] = None
+            email: str | None = None
             try:
                 email = await email_scraper.find_email(name, city)
-            except Exception as exc:  # noqa: BLE001
+            except Exception as exc:
                 logger.debug("Could not find email: %s", exc)
 
             confidence = validation_service.calculate_confidence_score(
@@ -360,7 +364,7 @@ class PagesJaunesScraper(NodriverScraperMixin, BaseScraper):
                 confidence=min(confidence, 4),
                 social_url=social_url,
             )
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             logger.error("Error extracting prospect details: %s", exc)
             return None
 
@@ -383,7 +387,7 @@ class PagesJaunesScraper(NodriverScraperMixin, BaseScraper):
             "403 forbidden",
             "challenge-platform",
             "bot detection",
-            "veuillez patienter",   # Cloudflare "please wait"
+            "veuillez patienter",  # Cloudflare "please wait"
             "ddos-guard",
         )
         if any(m in low for m in blocking_markers):
@@ -400,7 +404,7 @@ class PagesJaunesScraper(NodriverScraperMixin, BaseScraper):
         url: str,
         *,
         session: aiohttp.ClientSession,
-    ) -> Optional[str]:
+    ) -> str | None:
         """
         GET *url* with browser-like headers.
 
@@ -419,11 +423,11 @@ class PagesJaunesScraper(NodriverScraperMixin, BaseScraper):
                     return None
                 html = await resp.text()
                 return html
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             logger.info("[PJ-HTTP] Request failed for %s: %s", url, exc)
             return None
 
-    def _http_parse_listing(self, html: str) -> Optional[list[str]]:
+    def _http_parse_listing(self, html: str) -> list[str] | None:
         """
         Parse a Pages Jaunes listing page and extract detail-page hrefs.
 
@@ -435,9 +439,7 @@ class PagesJaunesScraper(NodriverScraperMixin, BaseScraper):
         if self._pj_is_blocked(html):
             logger.info("[PJ-HTTP] Listing page blocked or empty (captcha / JS-gate)")
             # Flag for the orchestrator (consumed only if the whole cascade yields nothing).
-            scrape_signals.note_block(
-                self.source.value, reason="http tier blocked (captcha/JS-gate)", html=html
-            )
+            scrape_signals.note_block(self.source.value, reason="http tier blocked (captcha/JS-gate)", html=html)
             return None
 
         soup = BeautifulSoup(html, "html.parser")
@@ -471,7 +473,7 @@ class PagesJaunesScraper(NodriverScraperMixin, BaseScraper):
                     if clean not in seen:
                         seen.add(clean)
                         urls.append(clean)
-            except Exception:  # noqa: BLE001
+            except Exception:
                 continue
 
         if not urls:
@@ -489,7 +491,7 @@ class PagesJaunesScraper(NodriverScraperMixin, BaseScraper):
         *,
         search_city: str,
         only_without_website: bool,
-    ) -> Optional[ProspectCreate]:
+    ) -> ProspectCreate | None:
         """
         Parse a Pages Jaunes business detail page fetched via plain HTTP.
 
@@ -516,7 +518,7 @@ class PagesJaunesScraper(NodriverScraperMixin, BaseScraper):
         category = ", ".join(cats[:2]) if cats else "Inconnu"
 
         # -- Phone --
-        phone: Optional[str] = None
+        phone: str | None = None
         for sel in ("span.coord-numero.noTrad", "span.coord-numero", ".num-container span"):
             el = soup.select_one(sel)
             if el:
@@ -532,7 +534,7 @@ class PagesJaunesScraper(NodriverScraperMixin, BaseScraper):
                     break
 
         # -- Address --
-        address: Optional[str] = None
+        address: str | None = None
         for sel in (
             "a.black-icon.teaser-item span.noTrad",
             ".address.streetAddress",
@@ -558,8 +560,8 @@ class PagesJaunesScraper(NodriverScraperMixin, BaseScraper):
             address = address_service.remove_city_and_postal_code(address, city)
 
         # -- Website & social URL --
-        website: Optional[str] = None
-        social_url: Optional[str] = None
+        website: str | None = None
+        social_url: str | None = None
         for sel in (".MINISITE.pj-link", ".SITE_EXTERNE.pj-link", "a.MINISITE", "a.SITE_EXTERNE"):
             el = soup.select_one(sel)
             if not el:
@@ -572,7 +574,7 @@ class PagesJaunesScraper(NodriverScraperMixin, BaseScraper):
                         data = json.loads(raw_attr)
                         encoded = data.get("url", "")
                         href = base64.b64decode(encoded).decode("utf-8")
-                    except Exception:  # noqa: BLE001
+                    except Exception:
                         pass
             if not href or not href.startswith("http"):
                 continue
@@ -580,9 +582,7 @@ class PagesJaunesScraper(NodriverScraperMixin, BaseScraper):
                 website = href
                 break
             href_low = href.lower()
-            if social_url is None and (
-                "facebook.com/" in href_low or "instagram.com/" in href_low
-            ):
+            if social_url is None and ("facebook.com/" in href_low or "instagram.com/" in href_low):
                 social_url = href
                 logger.debug("[PJ-HTTP] Social URL for '%s': %s", name, href)
 
@@ -608,7 +608,7 @@ class PagesJaunesScraper(NodriverScraperMixin, BaseScraper):
             address=address,
             city=city,
             phone=phone,
-            email=None,           # email enrichment happens in auto_scraper
+            email=None,  # email enrichment happens in auto_scraper
             website=website,
             category=category,
             source=Source.PAGESJAUNES,
@@ -622,9 +622,9 @@ class PagesJaunesScraper(NodriverScraperMixin, BaseScraper):
         city: str,
         max_results: int,
         only_without_website: bool,
-        progress: Optional[ScrapeProgressReporter],
-        should_stop: Optional[Callable[[], bool]],
-    ) -> Optional[List[ProspectCreate]]:
+        progress: ScrapeProgressReporter | None,
+        should_stop: Callable[[], bool] | None,
+    ) -> list[ProspectCreate] | None:
         """
         Tier-1: attempt a pure HTTP scrape of Pages Jaunes (no Chrome).
 
@@ -701,9 +701,9 @@ class PagesJaunesScraper(NodriverScraperMixin, BaseScraper):
         city: str,
         max_results: int,
         only_without_website: bool,
-        progress: Optional[ScrapeProgressReporter],
-        should_stop: Optional[Callable[[], bool]],
-    ) -> Optional[List[ProspectCreate]]:
+        progress: ScrapeProgressReporter | None,
+        should_stop: Callable[[], bool] | None,
+    ) -> list[ProspectCreate] | None:
         """
         Tier-2: attempt a headless-Chrome scrape of Pages Jaunes.
 
@@ -731,19 +731,17 @@ class PagesJaunesScraper(NodriverScraperMixin, BaseScraper):
             # can confirm — it will also return [] quickly if the search is truly
             # empty (the "no results" heading appears immediately in visible mode).
             if not result:
-                logger.info(
-                    "[PJ-headless] 0 results — could be blocked, falling through to visible Chrome"
-                )
+                logger.info("[PJ-headless] 0 results — could be blocked, falling through to visible Chrome")
                 return None
             return result
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             logger.warning("[PJ-headless] Headless Chrome tier failed: %s", exc)
             return None
         finally:
             # _scrape_nodriver already called close() — make sure and restore
             try:
                 await self._nodriver.close()
-            except Exception:  # noqa: BLE001
+            except Exception:
                 pass
             self._nodriver = original_nodriver
 
@@ -756,9 +754,9 @@ class PagesJaunesScraper(NodriverScraperMixin, BaseScraper):
         max_results: int = 50,
         *,
         only_without_website: bool = True,
-        progress: Optional[ScrapeProgressReporter] = None,
-        should_stop: Optional[Callable[[], bool]] = None,
-    ) -> List[ProspectCreate]:
+        progress: ScrapeProgressReporter | None = None,
+        should_stop: Callable[[], bool] | None = None,
+    ) -> list[ProspectCreate]:
         """
         Scrape prospects from Pages Jaunes using a three-tier cascade:
 
@@ -776,9 +774,7 @@ class PagesJaunesScraper(NodriverScraperMixin, BaseScraper):
             tiers are blocked).
         """
         # ── Tier 1: pure HTTP ─────────────────────────────────────────────────
-        http_result = await self._try_http(
-            category, city, max_results, only_without_website, progress, should_stop
-        )
+        http_result = await self._try_http(category, city, max_results, only_without_website, progress, should_stop)
         if http_result is not None:
             logger.info("[PJ] HTTP tier succeeded — skipping Chrome")
             return http_result
@@ -804,9 +800,7 @@ class PagesJaunesScraper(NodriverScraperMixin, BaseScraper):
         if progress:
             await progress.log("Pages Jaunes — fallback Chrome visible…")
         return await run_nodriver_task(
-            lambda: self._scrape_nodriver(
-                category, city, max_results, only_without_website, progress, should_stop
-            ),
+            lambda: self._scrape_nodriver(category, city, max_results, only_without_website, progress, should_stop),
             timeout=600,
         )
 
@@ -816,9 +810,9 @@ class PagesJaunesScraper(NodriverScraperMixin, BaseScraper):
         city: str,
         max_results: int,
         only_without_website: bool,
-        progress: Optional[ScrapeProgressReporter],
-        should_stop: Optional[Callable[[], bool]],
-    ) -> List[ProspectCreate]:
+        progress: ScrapeProgressReporter | None,
+        should_stop: Callable[[], bool] | None,
+    ) -> list[ProspectCreate]:
         """nodriver bulk scrape for Pages Jaunes."""
         logger.info(
             "[PagesJaunes] Starting scrape category=%s city=%s max=%s",
@@ -894,7 +888,7 @@ class PagesJaunesScraper(NodriverScraperMixin, BaseScraper):
                             await progress.prospect(prospect)
                     processed += 1
                     await asyncio.sleep(0.2)
-                except Exception as exc:  # noqa: BLE001
+                except Exception as exc:
                     logger.error("Error processing card %s: %s", i, exc)
 
             logger.info(
@@ -903,7 +897,7 @@ class PagesJaunesScraper(NodriverScraperMixin, BaseScraper):
                 processed,
             )
             return prospects
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             logger.error("Error in Pages Jaunes scraping: %s", exc, exc_info=True)
             return []
         finally:

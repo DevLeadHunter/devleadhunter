@@ -1,8 +1,8 @@
 """Pydantic schemas for the organizations API."""
+
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Optional
 
 from pydantic import BaseModel, EmailStr, Field
 
@@ -26,7 +26,7 @@ class OrganizationMemberResponse(BaseModel):
     name: str = Field(..., description="Member display name")
     email: str = Field(..., description="Member account email")
     role: str = Field(..., description="owner or member")
-    joined_at: Optional[datetime] = Field(None, description="When the user joined")
+    joined_at: datetime | None = Field(None, description="When the user joined")
 
 
 class OrganizationResponse(BaseModel):
@@ -35,7 +35,5 @@ class OrganizationResponse(BaseModel):
     id: int = Field(..., description="Organization id")
     name: str = Field(..., description="Organization display name")
     owner_user_id: int = Field(..., description="Owner user id")
-    created_at: Optional[datetime] = Field(None, description="Creation timestamp")
-    members: list[OrganizationMemberResponse] = Field(
-        default_factory=list, description="All members, owner included"
-    )
+    created_at: datetime | None = Field(None, description="Creation timestamp")
+    members: list[OrganizationMemberResponse] = Field(default_factory=list, description="All members, owner included")

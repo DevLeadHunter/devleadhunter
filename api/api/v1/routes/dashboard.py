@@ -1,6 +1,7 @@
 """Dashboard home KPIs aggregated for the current user."""
+
 import logging
-from datetime import date, datetime, timedelta, timezone
+from datetime import UTC, date, datetime, timedelta
 
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy import Select, func, select
@@ -8,14 +9,14 @@ from sqlalchemy.orm import Session
 
 from core.database import get_db
 from enums.demo_site_status import DemoSiteStatus
+from enums.order_status import WON_STATUSES
 from models.campaign import Campaign, CampaignStatus
 from models.demo_site import DemoSite
 from models.email_log import EmailLog
+from models.order import Order
 from models.organization import OrganizationMember
 from models.prospect_db import ProspectDB
 from models.user import User
-from enums.order_status import WON_STATUSES
-from models.order import Order
 from schemas.dashboard import (
     ActivityPoint,
     CoverageCity,
@@ -56,11 +57,7 @@ async def dashboard_stats(
     always reflect right now.
     """
     uid = current_user.id
-    since = (
-        datetime.now(timezone.utc).replace(tzinfo=None) - timedelta(days=period_days)
-        if period_days > 0
-        else None
-    )
+    since = datetime.now(UTC).replace(tzinfo=None) - timedelta(days=period_days) if period_days > 0 else None
 
     prospects_stmt = select(ProspectDB.id).where(ProspectDB.user_id == uid)
     if since is not None:
@@ -69,15 +66,11 @@ async def dashboard_stats(
 
     demo_sites_active = _count(
         db,
-        select(DemoSite.id).where(
-            DemoSite.user_id == uid, DemoSite.status == DemoSiteStatus.ACTIVE.value
-        ),
+        select(DemoSite.id).where(DemoSite.user_id == uid, DemoSite.status == DemoSiteStatus.ACTIVE.value),
     )
     campaigns_active = _count(
         db,
-        select(Campaign.id).where(
-            Campaign.user_id == uid, Campaign.status == CampaignStatus.ACTIVE.value
-        ),
+        select(Campaign.id).where(Campaign.user_id == uid, Campaign.status == CampaignStatus.ACTIVE.value),
     )
 
     def _email_count(column) -> int:
@@ -117,9 +110,7 @@ def _daily_counts(db: Session, uid: int, column, since: date) -> dict[str, int]:
     """Return a {YYYY-MM-DD: count} map of rows whose ``column`` day is >= ``since``."""
     day = func.date(column)
     rows = db.execute(
-        select(day, func.count())
-        .where(EmailLog.user_id == uid, column.isnot(None), day >= since)
-        .group_by(day)
+        select(day, func.count()).where(EmailLog.user_id == uid, column.isnot(None), day >= since).group_by(day)
     ).all()
     return {str(d): int(c or 0) for d, c in rows}
 
@@ -132,7 +123,7 @@ async def dashboard_activity(
 ) -> DashboardActivityResponse:
     """Return the daily email activity (sent/opened/clicked) over the last ``days`` days."""
     uid = current_user.id
-    today = datetime.now(timezone.utc).date()
+    today = datetime.now(UTC).date()
     start = today - timedelta(days=days - 1)
 
     sent = _daily_counts(db, uid, EmailLog.sent_at, start)
@@ -179,13 +170,13 @@ async def dashboard_hot_leads(
             )
             for lead in leads
         ]
-    except Exception:  # noqa: BLE001
+    except Exception:
         logger.exception("hot-leads aggregation failed for user %s", current_user.id)
         return HotLeadsResponse(items=[])
     return HotLeadsResponse(items=items)
 
 
-def _apply_coverage_scope(stmt, scope: str, member_id, uid: int, org_id):  # noqa: ANN001, ANN201
+def _apply_coverage_scope(stmt, scope: str, member_id, uid: int, org_id):
     """Restrict a prospect select to the coverage scope (me / org / member).
 
     Shared by the coverage aggregation and the zone-prospects listing so both
@@ -230,7 +221,7 @@ async def dashboard_coverage(
     uid = current_user.id
     org_id = organization_service.user_org_id(db, uid)
 
-    def scope_filter(stmt):  # noqa: ANN001, ANN202 — SQLAlchemy Select passthrough
+    def scope_filter(stmt):
         """Apply the resolved scope restriction to a prospect select."""
         return _apply_coverage_scope(stmt, scope, member_id, uid, org_id)
 
@@ -263,9 +254,7 @@ async def dashboard_coverage(
         .where(cat_col.isnot(None), cat_col != "")
         .group_by(func.lower(cat_col))
     )
-    available_categories = sorted(
-        (str(row.category) for row in db.execute(cat_stmt).all()), key=str.lower
-    )
+    available_categories = sorted((str(row.category) for row in db.execute(cat_stmt).all()), key=str.lower)
 
     members: list[CoverageMember] = []
     if org_id is not None:

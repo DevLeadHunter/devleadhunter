@@ -1,4 +1,5 @@
 """Lifecycle status of a sale / order."""
+
 from enum import Enum
 
 

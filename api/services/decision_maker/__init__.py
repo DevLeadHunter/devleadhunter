@@ -11,6 +11,7 @@ Public surface:
 Golden rule everywhere: a WRONG name is worse than NO name — below the
 confidence threshold we fall back to a plain « Bonjour ».
 """
+
 from services.decision_maker.greeting import build_greeting
 from services.decision_maker.resolver import decision_maker_resolver
 

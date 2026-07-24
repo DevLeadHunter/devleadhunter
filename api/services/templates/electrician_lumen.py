@@ -14,9 +14,10 @@ Enrichment (photos / reviews / rating / opening hours) is injected by
 
 Rendering component (Nuxt): demo-host/app/components/templates/electrician-lumen/.
 """
+
 from __future__ import annotations
 
-from typing import Any, Optional
+from typing import Any
 
 TEMPLATE_ID: str = "electrician-lumen"
 
@@ -289,9 +290,9 @@ def default_subtitle(area: str) -> str:
 def build_content(
     *,
     business_name: str,
-    phone: Optional[str],
-    email: Optional[str],
-    city: Optional[str],
+    phone: str | None,
+    email: str | None,
+    city: str | None,
     area: str,
     subtitle: str,
     palette: dict[str, str],
@@ -450,8 +451,7 @@ def build_content(
                         "component": "lumen_service_item",
                         "label": "Interphone & courants faibles",
                         "description": (
-                            "Interphone, visiophone, réseau et TV : des équipements bien "
-                            "intégrés, réglés et fiables."
+                            "Interphone, visiophone, réseau et TV : des équipements bien intégrés, réglés et fiables."
                         ),
                         "icon": "interphone",
                     },
@@ -498,9 +498,7 @@ def build_content(
                 "_uid": "lumen-gallery-1",
                 "component": "lumen_gallery",
                 "heading": "Nos chantiers récents",
-                "subheading": (
-                    "Tableaux, rénovations, éclairages : un aperçu de ce qu'on fait de nos journées."
-                ),
+                "subheading": ("Tableaux, rénovations, éclairages : un aperçu de ce qu'on fait de nos journées."),
                 # Filled by enrichment (Google photos). Hidden by the renderer when empty.
                 "items": [],
             },
@@ -610,9 +608,7 @@ def build_content(
                 "_uid": "lumen-contact-1",
                 "component": "lumen_contact",
                 "heading": "Parlons de votre projet",
-                "subheading": (
-                    "Décrivez votre besoin — vous recevez une réponse rapide et un devis gratuit."
-                ),
+                "subheading": ("Décrivez votre besoin — vous recevez une réponse rapide et un devis gratuit."),
                 "phone": phone or "",
                 "email": email or "",
                 "city": city_label,
@@ -664,13 +660,13 @@ _EDITORIAL_DEFAULTS: dict[str, Any] = {
 def build_site_content(
     *,
     business_name: str,
-    phone: Optional[str],
-    email: Optional[str],
-    city: Optional[str],
+    phone: str | None,
+    email: str | None,
+    city: str | None,
     area: str,
     subtitle: str,
     palette: dict[str, str],
-    enrichment: Optional[dict[str, Any]] = None,
+    enrichment: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Build the flat ``SiteContent`` for this template (Phase 4b).
 

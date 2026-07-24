@@ -4,9 +4,10 @@ Feeds the « Santé email » page: sending stats with thresholds, daily trends,
 per-provider breakdown, incident journal, DNS authentication checks, Gmail
 Postmaster reputation and the pre-send spam tester.
 """
+
 import asyncio
 import re
-from typing import Any, Optional
+from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel, Field
@@ -42,7 +43,7 @@ def _validated_period(period_days: int) -> int:
     return period_days if period_days in _ALLOWED_PERIODS else 30
 
 
-def _domain_of(address: Optional[str]) -> str:
+def _domain_of(address: str | None) -> str:
     """Extract the domain part of an email address.
 
     Args:
@@ -194,11 +195,7 @@ def _initial_template_ids(db: Session, user_id: int) -> set[int]:
         Ids referenced by ``template_id`` or ``ab_template_id_b``.
     """
     ids: set[int] = set()
-    rows = (
-        db.query(Campaign.template_id, Campaign.ab_template_id_b)
-        .filter(Campaign.user_id == user_id)
-        .all()
-    )
+    rows = db.query(Campaign.template_id, Campaign.ab_template_id_b).filter(Campaign.user_id == user_id).all()
     for template_id, ab_template_id in rows:
         if template_id is not None:
             ids.add(int(template_id))

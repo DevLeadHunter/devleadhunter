@@ -17,28 +17,28 @@ Usage::
     python scripts/send_mail_tester.py --list          # show available templates
     python scripts/send_mail_tester.py test-abc@srv1.mail-tester.com --base-url https://x.fr
 """
+
 from __future__ import annotations
 
 import argparse
 import asyncio
 import os
 import sys
-from typing import Optional
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-import importlib  # noqa: E402
-import pkgutil  # noqa: E402
+import importlib
+import pkgutil
 
-import models  # noqa: E402
-from core.config import settings  # noqa: E402
-from core.database import SessionLocal  # noqa: E402
-from models.email_template import EmailTemplate  # noqa: E402
-from models.user import User  # noqa: E402
-from services.email_sending_service import EmailSendingService  # noqa: E402
-from services.resend_service import ResendService  # noqa: E402
-from services.sending_identity import SendingIdentity, resolve_sending_identity  # noqa: E402
-from services.unsubscribe_service import unsubscribe_service  # noqa: E402
+import models
+from core.config import settings
+from core.database import SessionLocal
+from models.email_template import EmailTemplate
+from models.user import User
+from services.email_sending_service import EmailSendingService
+from services.resend_service import ResendService
+from services.sending_identity import SendingIdentity, resolve_sending_identity
+from services.unsubscribe_service import unsubscribe_service
 
 # SQLAlchemy resolves relationships by class name: every model must be imported
 # before the first query, or the mappers fail to configure.
@@ -78,7 +78,7 @@ def _render(content: str) -> str:
     return content
 
 
-def _pick_template(db, template_id: Optional[int]) -> EmailTemplate:
+def _pick_template(db, template_id: int | None) -> EmailTemplate:
     """Return the requested template, or the first active one.
 
     Args:
@@ -102,10 +102,10 @@ def _pick_template(db, template_id: Optional[int]) -> EmailTemplate:
 
 async def _run(
     recipient: str,
-    template_id: Optional[int],
+    template_id: int | None,
     list_only: bool,
     dry_run: bool,
-    base_url_override: Optional[str],
+    base_url_override: str | None,
 ) -> int:
     """Render a real template and send it to *recipient*.
 
@@ -134,9 +134,7 @@ async def _run(
         template = _pick_template(db, template_id)
         identity: SendingIdentity = resolve_sending_identity(db, user.id)
         if identity.provider != "resend":
-            raise SystemExit(
-                f"Fournisseur actif = {identity.provider}. Ce test cible le chemin Resend."
-            )
+            raise SystemExit(f"Fournisseur actif = {identity.provider}. Ce test cible le chemin Resend.")
 
         subject = _render(template.subject)
         body_html = _render(template.body_html)
@@ -189,14 +187,8 @@ if __name__ == "__main__":
     parser.add_argument("--template-id", type=int, default=None, help="Modèle à envoyer")
     parser.add_argument("--list", action="store_true", help="Lister les modèles et quitter")
     parser.add_argument("--dry-run", action="store_true", help="Construire le message sans l'envoyer")
-    parser.add_argument(
-        "--base-url", default=None, help="Base URL du lien de désinscription (défaut : FRONTEND_URL)"
-    )
+    parser.add_argument("--base-url", default=None, help="Base URL du lien de désinscription (défaut : FRONTEND_URL)")
     args = parser.parse_args()
     if not args.recipient and not args.list:
         parser.error("Fournissez l'adresse mail-tester, ou --list.")
-    raise SystemExit(
-        asyncio.run(
-            _run(args.recipient or "", args.template_id, args.list, args.dry_run, args.base_url)
-        )
-    )
+    raise SystemExit(asyncio.run(_run(args.recipient or "", args.template_id, args.list, args.dry_run, args.base_url)))

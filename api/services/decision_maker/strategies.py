@@ -5,11 +5,12 @@ discovered the prospect), best-effort (network/parse failures return an empty
 list, never raise) and returns scored NameCandidate objects. The resolver
 merges them and applies the confidence threshold.
 """
+
 from __future__ import annotations
 
 import logging
 import re
-from typing import Any, Optional
+from typing import Any
 
 import httpx
 
@@ -54,14 +55,12 @@ class RegistreGouvStrategy:
                 response = await client.get(_RECHERCHE_ENTREPRISES_URL, params=params)
                 response.raise_for_status()
                 payload: dict[str, Any] = response.json()
-        except Exception as exc:  # noqa: BLE001 — best-effort source
+        except Exception as exc:
             logger.warning("registre_gouv lookup failed for %r: %s", query, exc)
             return []
         return self.parse_results(payload.get("results") or [], context)
 
-    def parse_results(
-        self, results: list[dict[str, Any]], context: ResolutionContext
-    ) -> list[NameCandidate]:
+    def parse_results(self, results: list[dict[str, Any]], context: ResolutionContext) -> list[NameCandidate]:
         """Score the registry matches (pure — unit-testable on fixtures)."""
         candidates: list[NameCandidate] = []
         for result in results[:5]:
@@ -85,9 +84,7 @@ class RegistreGouvStrategy:
                     first = title_case_name(dirigeants[0].get("prenoms")) or first
                     last = title_case_name(dirigeants[0].get("nom")) or last
                 if first or last:
-                    candidates.append(
-                        self._candidate(first, last, min(0.95, base + 0.25), result)
-                    )
+                    candidates.append(self._candidate(first, last, min(0.95, base + 0.25), result))
                 continue
 
             if len(dirigeants) == 1:
@@ -125,8 +122,8 @@ class RegistreGouvStrategy:
 
     def _candidate(
         self,
-        first: Optional[str],
-        last: Optional[str],
+        first: str | None,
+        last: str | None,
         confidence: float,
         result: dict[str, Any],
     ) -> NameCandidate:
@@ -183,27 +180,19 @@ class PappersStrategy:
                 response = await client.get(_PAPPERS_URL, params=params)
                 response.raise_for_status()
                 payload: dict[str, Any] = response.json()
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             logger.warning("pappers lookup failed for %r: %s", query, exc)
             return []
         return self.parse_results(payload.get("resultats") or [], context)
 
-    def parse_results(
-        self, results: list[dict[str, Any]], context: ResolutionContext
-    ) -> list[NameCandidate]:
+    def parse_results(self, results: list[dict[str, Any]], context: ResolutionContext) -> list[NameCandidate]:
         """Score Pappers matches (pure — unit-testable on fixtures)."""
         candidates: list[NameCandidate] = []
         for result in results[:3]:
-            similarity = company_similarity(
-                context.company_name, str(result.get("nom_entreprise") or "")
-            )
+            similarity = company_similarity(context.company_name, str(result.get("nom_entreprise") or ""))
             if similarity < _MIN_COMPANY_SIMILARITY:
                 continue
-            representants = [
-                r
-                for r in (result.get("representants") or [])
-                if r.get("personne_morale") is not True
-            ]
+            representants = [r for r in (result.get("representants") or []) if r.get("personne_morale") is not True]
             if not representants:
                 continue
             lead = representants[0]
@@ -299,18 +288,16 @@ class LegalMentionsStrategy:
             async with httpx.AsyncClient(
                 timeout=10.0, follow_redirects=True, headers={"User-Agent": "Mozilla/5.0"}
             ) as client:
-                for path in ("",) + _LEGAL_PATHS:
+                for path in ("", *_LEGAL_PATHS):
                     try:
                         response = await client.get(f"{base}{path}")
-                        if response.status_code == 200 and "text/html" in response.headers.get(
-                            "content-type", ""
-                        ):
+                        if response.status_code == 200 and "text/html" in response.headers.get("content-type", ""):
                             texts.append(response.text[:200_000])
-                    except Exception:  # noqa: BLE001 — per-page best effort
+                    except Exception:
                         continue
                     if len(texts) >= 3:
                         break
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             logger.warning("legal_mentions fetch failed for %r: %s", website, exc)
             return []
         return self.parse_pages(texts)
@@ -357,21 +344,17 @@ class LlmAggregateStrategy:
         """Ask the LLM for the most likely owner name, with a mandatory quote."""
         from services.llm_service import llm_service
 
-        corpus = "\n".join(
-            [context.description or ""] + context.owner_responses
-        ).strip()
+        corpus = "\n".join([context.description or "", *context.owner_responses]).strip()
         if not corpus or not llm_service.is_configured:
             return []
         prompt = (
-            "Texte public à propos de l'entreprise « {name} » :\n---\n{corpus}\n---\n"
+            f"Texte public à propos de l'entreprise « {context.company_name} » :\n---\n{corpus[:4000]}\n---\n"
             "Si (et seulement si) ce texte nomme la personne qui dirige l'entreprise, réponds sur "
             "EXACTEMENT trois lignes :\nPRENOM: <prénom ou vide>\nNOM: <nom ou vide>\n"
             "CITATION: <l'extrait exact du texte qui contient ce nom>\n"
             "Si aucun nom de personne n'apparaît, réponds uniquement : AUCUN"
-        ).format(name=context.company_name, corpus=corpus[:4000])
-        answer = await llm_service._chat(  # noqa: SLF001 — thin internal client
-            [{"role": "user", "content": prompt}], max_tokens=120
         )
+        answer = await llm_service._chat([{"role": "user", "content": prompt}], max_tokens=120)
         if not answer or "AUCUN" in answer.upper()[:12]:
             return []
         return self.parse_answer(answer, corpus)

@@ -126,7 +126,7 @@ def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(
 Une classe porteuse d'état (client HTTP, cache, connexion) expose un singleton en bas de fichier — c'est ce que les appelants importent :
 
 ```python
-r2_storage = R2StorageService()          # services/r2_storage_service.py
+r2_storage = R2StorageService()  # services/r2_storage_service.py
 email_queue_worker = EmailQueueWorker()  # services/email_queue_worker.py
 ```
 

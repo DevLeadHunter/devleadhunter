@@ -3,6 +3,7 @@
 Pure-Python, no network, no DB — runnable with ``python -m pytest tests/test_resilient_extract.py``
 from the ``api`` directory, or directly with ``python tests/test_resilient_extract.py``.
 """
+
 from __future__ import annotations
 
 import os
@@ -10,7 +11,7 @@ import sys
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from scrappers.resilient_extract import (  # noqa: E402
+from scrappers.resilient_extract import (
     extract_ld_json_from_html,
     find_phone,
     first_nonempty,
@@ -61,7 +62,7 @@ def test_parse_ld_json_description() -> None:
 
 
 def test_parse_ld_json_graph_container() -> None:
-    payload = '{"@context":"https://schema.org","@graph":[{"@type":"WebSite","name":"x"},%s]}' % _PLUMBER_LD.strip()
+    payload = f'{{"@context":"https://schema.org","@graph":[{{"@type":"WebSite","name":"x"}},{_PLUMBER_LD.strip()}]}}'
     biz = parse_ld_json_blocks([payload])
     assert biz is not None and biz["name"] == "Plomberie Dupont"
 
@@ -94,7 +95,7 @@ def test_extract_ld_json_from_html() -> None:
         "<html><head>"
         '<script type="application/ld+json">' + _PLUMBER_LD + "</script>"
         '<script type="text/javascript">var x = 1;</script>'
-        "<script type='application/ld+json' data-x=\"y\">{\"@type\":\"Store\",\"name\":\"S\"}</script>"
+        '<script type=\'application/ld+json\' data-x="y">{"@type":"Store","name":"S"}</script>'
         "</head></html>"
     )
     blocks = extract_ld_json_from_html(html)

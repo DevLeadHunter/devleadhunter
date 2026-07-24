@@ -11,7 +11,6 @@
  */
 import concurrently from 'concurrently'
 
-// eslint-disable-next-line @typescript-eslint/typedef
 const { result } = concurrently(
   [
     {

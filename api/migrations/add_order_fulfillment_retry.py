@@ -34,19 +34,9 @@ def run_migration() -> None:
     """Add ``fulfillment_attempts`` and ``fulfillment_last_error`` if missing (idempotent)."""
     with engine.connect() as conn:
         if not _column_exists(conn, "fulfillment_attempts"):
-            conn.execute(
-                text(
-                    "ALTER TABLE orders "
-                    "ADD COLUMN fulfillment_attempts INT NOT NULL DEFAULT 0"
-                )
-            )
+            conn.execute(text("ALTER TABLE orders ADD COLUMN fulfillment_attempts INT NOT NULL DEFAULT 0"))
         if not _column_exists(conn, "fulfillment_last_error"):
-            conn.execute(
-                text(
-                    "ALTER TABLE orders "
-                    "ADD COLUMN fulfillment_last_error VARCHAR(500) NULL"
-                )
-            )
+            conn.execute(text("ALTER TABLE orders ADD COLUMN fulfillment_last_error VARCHAR(500) NULL"))
         conn.commit()
 
 

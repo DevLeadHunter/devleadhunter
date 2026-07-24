@@ -1,4 +1,5 @@
 """Background worker that drives the cold-email send queue."""
+
 from __future__ import annotations
 
 import asyncio
@@ -29,7 +30,7 @@ class EmailQueueWorker:
         while True:
             try:
                 await self.run_tick()
-            except Exception as exc:  # noqa: BLE001
+            except Exception as exc:
                 logger.error("[QueueWorker] Unhandled error in tick: %s", exc, exc_info=True)
             await asyncio.sleep(self.TICK_INTERVAL_SECONDS)
 

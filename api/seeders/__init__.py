@@ -1,4 +1,3 @@
 """
 Seeders for database initialization.
 """
-

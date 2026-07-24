@@ -11,6 +11,7 @@ There are exactly two real transports (see ``EmailSendingService``):
 A user has exactly ONE active sending identity at a time, stored on
 ``users.sending_provider``.
 """
+
 from enum import Enum
 
 

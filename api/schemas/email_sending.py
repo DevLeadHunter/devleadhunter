@@ -1,8 +1,10 @@
 """
 Pydantic schemas for email sending.
 """
+
 from datetime import datetime
-from typing import Any, Optional, List, Dict
+from typing import Any
+
 from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
 
 from enums.email_status import EmailStatus
@@ -10,44 +12,47 @@ from enums.email_status import EmailStatus
 
 class SendEmailRequest(BaseModel):
     """Schema for sending a single email."""
+
     email_account_id: int
     recipient_email: EmailStr
-    recipient_name: Optional[str] = None
+    recipient_name: str | None = None
     subject: str = Field(..., max_length=500)
     body_html: str
-    prospect_id: Optional[str] = None
-    template_id: Optional[int] = None
-    variables: Optional[Dict[str, str]] = None
+    prospect_id: str | None = None
+    template_id: int | None = None
+    variables: dict[str, str] | None = None
 
 
 class SendCampaignEmailRequest(BaseModel):
     """Schema for sending campaign emails."""
+
     email_account_id: int
     campaign_id: str
     template_id: int
-    prospect_ids: List[str] = Field(..., min_length=1)
-    variables_per_prospect: Optional[Dict[str, Dict[str, str]]] = Field(
-        None,
-        description="Map of prospect_id to variable values"
+    prospect_ids: list[str] = Field(..., min_length=1)
+    variables_per_prospect: dict[str, dict[str, str]] | None = Field(
+        None, description="Map of prospect_id to variable values"
     )
 
 
 class SendEmailResponse(BaseModel):
     """Schema for send email response."""
+
     success: bool
-    message_id: Optional[str] = None
+    message_id: str | None = None
     email_log_id: int
-    error: Optional[str] = None
+    error: str | None = None
 
 
 class SendCampaignEmailResponse(BaseModel):
     """Schema for send campaign email response."""
+
     success: bool
     total_emails: int
     sent_count: int
     failed_count: int
-    email_log_ids: List[int]
-    errors: Optional[List[str]] = None
+    email_log_ids: list[int]
+    errors: list[str] | None = None
 
 
 class EmailLogResponse(BaseModel):
@@ -57,33 +62,33 @@ class EmailLogResponse(BaseModel):
 
     id: int
     user_id: int
-    email_account_id: Optional[int] = None
-    prospect_id: Optional[str] = None
-    campaign_id: Optional[str] = None
-    
+    email_account_id: int | None = None
+    prospect_id: str | None = None
+    campaign_id: str | None = None
+
     recipient_email: str
-    recipient_name: Optional[str] = None
+    recipient_name: str | None = None
     subject: str
-    body_html: Optional[str] = None
+    body_html: str | None = None
 
     status: EmailStatus
     provider: str
-    provider_message_id: Optional[str] = None
-    ab_variant: Optional[str] = None
-    
-    sent_at: Optional[datetime] = None
-    delivered_at: Optional[datetime] = None
-    opened_at: Optional[datetime] = None
-    clicked_at: Optional[datetime] = None
-    bounced_at: Optional[datetime] = None
-    complained_at: Optional[datetime] = None
-    suppressed_at: Optional[datetime] = None
-    failed_at: Optional[datetime] = None
-    
-    error_message: Optional[str] = None
-    
+    provider_message_id: str | None = None
+    ab_variant: str | None = None
+
+    sent_at: datetime | None = None
+    delivered_at: datetime | None = None
+    opened_at: datetime | None = None
+    clicked_at: datetime | None = None
+    bounced_at: datetime | None = None
+    complained_at: datetime | None = None
+    suppressed_at: datetime | None = None
+    failed_at: datetime | None = None
+
+    error_message: str | None = None
+
     created_at: datetime
-    updated_at: Optional[datetime] = None
+    updated_at: datetime | None = None
 
     @field_validator("prospect_id", "campaign_id", mode="before")
     @classmethod
@@ -94,12 +99,14 @@ class EmailLogResponse(BaseModel):
 
 class EmailLogListResponse(BaseModel):
     """Schema for email log list response."""
+
     total: int
-    logs: List[EmailLogResponse]
+    logs: list[EmailLogResponse]
 
 
 class EmailStatsResponse(BaseModel):
     """Schema for email statistics response."""
+
     total_sent: int
     total_delivered: int
     total_opened: int
@@ -109,4 +116,3 @@ class EmailStatsResponse(BaseModel):
     delivery_rate: float
     open_rate: float
     click_rate: float
-

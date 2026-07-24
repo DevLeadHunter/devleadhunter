@@ -23,6 +23,7 @@ and served straight from Cloudflare — the VPS never streams a byte. The player
 page lives on the demo host at ``/v/{slug}`` (PostHog-tracked, same identity as
 the demo).
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -31,9 +32,8 @@ import shutil
 import subprocess
 import tempfile
 import time
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
-from typing import Optional
 
 from sqlalchemy.orm import Session
 
@@ -63,7 +63,7 @@ _PIP_SIZE = 260
 _PIP_MARGIN = 24
 
 _FONT_CANDIDATES: tuple[str, ...] = (
-    "C:/Windows/Fonts/seguisb.ttf",   # Segoe UI Semibold
+    "C:/Windows/Fonts/seguisb.ttf",  # Segoe UI Semibold
     "C:/Windows/Fonts/segoeui.ttf",
     "C:/Windows/Fonts/arialbd.ttf",
     "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
@@ -110,7 +110,7 @@ def delete_files_for_slug(slug: str) -> None:
     """Remove the generated video + thumbnail from R2 (best effort)."""
     try:
         r2_storage.delete_many([video_object_key(slug), thumbnail_object_key(slug)])
-    except Exception:  # noqa: BLE001 — a storage hiccup must never block a deletion flow
+    except Exception:
         logger.warning("[Video] R2 cleanup failed for slug=%s", slug, exc_info=True)
 
 
@@ -190,7 +190,7 @@ class DemoVideoService:
         except ValueError as exc:
             logger.info("Auto video generation skipped for slug=%s: %s", site.slug, exc)
             return False
-        except Exception:  # noqa: BLE001 — jamais bloquer la création du site
+        except Exception:
             logger.exception("Auto video generation hook failed for slug=%s", site.slug)
             return False
 
@@ -216,7 +216,7 @@ class DemoVideoService:
         async with _generation_semaphore:
             db: Session = SessionLocal()
             try:
-                site: Optional[DemoSite] = db.query(DemoSite).filter(DemoSite.id == demo_site_id).first()
+                site: DemoSite | None = db.query(DemoSite).filter(DemoSite.id == demo_site_id).first()
                 if site is None:
                     return
                 presenter = presenter_video_service.get_for_user(db, user_id)
@@ -241,7 +241,7 @@ class DemoVideoService:
                     db.commit()
                     logger.warning("Video generation failed for slug=%s: %s", site.slug, exc)
                     return
-                except Exception as exc:  # noqa: BLE001 — surface any pipeline crash on the record
+                except Exception as exc:
                     site.video_status = DemoVideoStatus.FAILED.value
                     site.video_error = f"Erreur inattendue : {exc}"[:1000]
                     db.commit()
@@ -252,14 +252,14 @@ class DemoVideoService:
 
                 site.video_status = DemoVideoStatus.READY.value
                 site.video_error = None
-                site.video_generated_at = datetime.now(timezone.utc)
+                site.video_generated_at = datetime.now(UTC)
                 db.commit()
                 logger.info("Prospection video ready for slug=%s", site.slug)
             finally:
                 db.close()
 
     @staticmethod
-    def _resolve_first_name(db: Session, site: DemoSite) -> Optional[str]:
+    def _resolve_first_name(db: Session, site: DemoSite) -> str | None:
         """First name of the resolved decision-maker (None when unknown)."""
         if not site.prospect_id:
             return None
@@ -297,10 +297,8 @@ class DemoVideoService:
         if stored.startswith(r2_storage.VIDEOS_PRESENTER_PREFIX):
             try:
                 return await r2_storage.download_to_path_async(stored, work_dir / "presenter.mp4")
-            except Exception as exc:  # noqa: BLE001 — surfaced as a readable pipeline error
-                raise DemoVideoGenerationError(
-                    "Clip de présentation illisible sur le stockage (R2)."
-                ) from exc
+            except Exception as exc:
+                raise DemoVideoGenerationError("Clip de présentation illisible sur le stockage (R2).") from exc
 
         legacy = Path(stored)
         if legacy.is_file():
@@ -312,7 +310,7 @@ class DemoVideoService:
         site: DemoSite,
         presenter: PresenterVideo,
         presenter_path: Path,
-        first_name: Optional[str],
+        first_name: str | None,
     ) -> None:
         """Capture the site, compose the video, build the thumbnail, publish to R2."""
         scroll_seconds = presenter.duration_seconds - presenter.intro_seconds - presenter.outro_seconds
@@ -339,18 +337,12 @@ class DemoVideoService:
             self._build_thumbnail(screenshot_path, first_name, thumbnail_path)
 
             # Publication sur R2 : c'est Cloudflare qui sert, plus le VPS.
-            await r2_storage.upload_file_async(
-                output_path, video_object_key(site.slug), "video/mp4"
-            )
-            await r2_storage.upload_file_async(
-                thumbnail_path, thumbnail_object_key(site.slug), "image/jpeg"
-            )
+            await r2_storage.upload_file_async(output_path, video_object_key(site.slug), "video/mp4")
+            await r2_storage.upload_file_async(thumbnail_path, thumbnail_object_key(site.slug), "image/jpeg")
         finally:
             shutil.rmtree(work_dir, ignore_errors=True)
 
-    async def _capture_site(
-        self, url: str, scroll_seconds: float, work_dir: Path
-    ) -> tuple[Path, float, Path]:
+    async def _capture_site(self, url: str, scroll_seconds: float, work_dir: Path) -> tuple[Path, float, Path]:
         """
         Record the demo site scrolling smoothly for ``scroll_seconds``.
 
@@ -391,7 +383,7 @@ class DemoVideoService:
 
                 try:
                     page.goto(url, wait_until="networkidle", timeout=45000)
-                except Exception:  # noqa: BLE001 — networkidle peut ne jamais arriver (analytics…)
+                except Exception:
                     page.goto(url, wait_until="load", timeout=45000)
                 page.wait_for_timeout(1200)
 
@@ -452,7 +444,7 @@ class DemoVideoService:
                 capture_path = Path(video.path())
         except DemoVideoGenerationError:
             raise
-        except Exception as exc:  # noqa: BLE001 — navigation/record errors become a clean message
+        except Exception as exc:
             raise DemoVideoGenerationError(f"Échec de la capture du site ({url}) : {exc}") from exc
 
         if not capture_path.is_file():
@@ -470,7 +462,7 @@ class DemoVideoService:
                 continue
         return ImageFont.load_default(size=size)
 
-    def _build_greeting_overlay(self, first_name: Optional[str], work_dir: Path) -> Path:
+    def _build_greeting_overlay(self, first_name: str | None, work_dir: Path) -> Path:
         """
         Render the transparent intro overlay: « Bonjour {Prénom} » in a pill.
 
@@ -520,7 +512,7 @@ class DemoVideoService:
         mask.save(path)
         return path
 
-    def _build_thumbnail(self, screenshot_path: Path, first_name: Optional[str], output_path: Path) -> None:
+    def _build_thumbnail(self, screenshot_path: Path, first_name: str | None, output_path: Path) -> None:
         """
         Build the personalised email thumbnail: site screenshot, slight
         darkening, centered play button, « Bonjour {Prénom} » pill.

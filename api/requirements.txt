@@ -33,3 +33,5 @@ pillow>=10.0.0
 
 # Stockage objet Cloudflare R2 (S3-compatible) : vidéos, vignettes, pièces jointes.
 boto3>=1.34.0
+# Outillage de dev : linter + formateur, joué par le hook pre-commit.
+ruff==0.16.0

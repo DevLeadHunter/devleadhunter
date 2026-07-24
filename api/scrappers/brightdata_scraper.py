@@ -12,6 +12,7 @@ Strategy
    b. ``"{name}" "{city}" email``— city-scoped search
    c. ``{name} {city} contact email`` — broad fallback
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -20,7 +21,7 @@ import json
 import logging
 import re
 import unicodedata
-from typing import Callable, List, Optional
+from collections.abc import Callable
 from urllib.parse import quote_plus, urljoin
 
 import aiohttp
@@ -151,7 +152,7 @@ def _normalize_phone(phone: str) -> str:
     if digits.startswith("33") and len(digits) == 11:
         digits = "0" + digits[2:]
     if len(digits) == 10:
-        return " ".join(digits[i: i + 2] for i in range(0, 10, 2))
+        return " ".join(digits[i : i + 2] for i in range(0, 10, 2))
     return phone.strip()
 
 
@@ -188,7 +189,6 @@ class BrightDataScraper(BaseScraper):
         self._token: str = self._load_token()
         self._zone: str = self._load_zone()
 
-
     @staticmethod
     def _load_token() -> str:
         """
@@ -201,7 +201,7 @@ class BrightDataScraper(BaseScraper):
             from core.config import settings  # local import — avoids circular deps
 
             return settings.brightdata_api_token or ""
-        except Exception:  # noqa: BLE001
+        except Exception:
             import os
 
             return os.environ.get("BRIGHTDATA_API_TOKEN", "")
@@ -218,13 +218,12 @@ class BrightDataScraper(BaseScraper):
             from core.config import settings
 
             return settings.brightdata_zone or "mcp_unlocker"
-        except Exception:  # noqa: BLE001
+        except Exception:
             import os
 
             return os.environ.get("BRIGHTDATA_ZONE", "mcp_unlocker")
 
-
-    async def _fetch(self, url: str, *, zone: Optional[str] = None) -> str:
+    async def _fetch(self, url: str, *, zone: str | None = None) -> str:
         """
         Fetch *url* via the BrightData Web Unlocker API and return raw HTML.
 
@@ -244,8 +243,9 @@ class BrightDataScraper(BaseScraper):
             "url": url,
             "format": "raw",
         }
-        async with aiohttp.ClientSession() as session:
-            async with session.post(
+        async with (
+            aiohttp.ClientSession() as session,
+            session.post(
                 _BRIGHTDATA_REQUEST_URL,
                 json=payload,
                 headers={
@@ -253,10 +253,10 @@ class BrightDataScraper(BaseScraper):
                     "Content-Type": "application/json",
                 },
                 timeout=aiohttp.ClientTimeout(total=90),
-            ) as resp:
-                resp.raise_for_status()
-                return await resp.text()
-
+            ) as resp,
+        ):
+            resp.raise_for_status()
+            return await resp.text()
 
     async def _scrape_pj_listing(
         self,
@@ -282,7 +282,7 @@ class BrightDataScraper(BaseScraper):
         logger.info("[BrightData] Fetching PJ listing: %s", listing_url)
         try:
             html = await self._fetch(listing_url)
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             logger.error("[BrightData] PJ listing fetch failed: %s", exc)
             return []
 
@@ -317,7 +317,7 @@ class BrightDataScraper(BaseScraper):
                         urls.append(clean)
                         if len(urls) >= max_count:
                             return urls
-            except Exception:  # noqa: BLE001
+            except Exception:
                 continue
 
         logger.info(
@@ -328,13 +328,12 @@ class BrightDataScraper(BaseScraper):
         )
         return urls
 
-
     async def _scrape_pj_detail(
         self,
         url: str,
         category: str,
         city: str,
-    ) -> Optional[ProspectCreate]:
+    ) -> ProspectCreate | None:
         """
         Fetch and parse a PagesJaunes detail page.
 
@@ -349,7 +348,7 @@ class BrightDataScraper(BaseScraper):
         """
         try:
             html = await self._fetch(url)
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             logger.debug("[BrightData] Detail fetch failed (%s): %s", url, exc)
             return None
 
@@ -415,7 +414,7 @@ class BrightDataScraper(BaseScraper):
                 from services.address_service import address_service
 
                 address = address_service.remove_city_and_postal_code(address, city_found)
-            except Exception:  # noqa: BLE001
+            except Exception:
                 pass
 
         # -- Website and social URL --
@@ -423,7 +422,7 @@ class BrightDataScraper(BaseScraper):
         # We capture that separately as a transient social_url so email enrichment
         # can navigate directly to the profile instead of searching Google for it.
         website = ""
-        social_url: Optional[str] = None
+        social_url: str | None = None
         for sel in (".MINISITE.pj-link", ".SITE_EXTERNE.pj-link", "a.MINISITE", "a.SITE_EXTERNE"):
             el = soup.select_one(sel)
             if not el:
@@ -437,7 +436,7 @@ class BrightDataScraper(BaseScraper):
                         data = json.loads(raw_attr)
                         encoded = data.get("url", "")
                         href = base64.b64decode(encoded).decode("utf-8")
-                    except Exception:  # noqa: BLE001
+                    except Exception:
                         pass
             if not href or not href.startswith("http"):
                 continue
@@ -449,12 +448,10 @@ class BrightDataScraper(BaseScraper):
                     break
                 # Not a valid business website — save social profile URL for email enrichment
                 href_low = href.lower()
-                if social_url is None and (
-                    "facebook.com/" in href_low or "instagram.com/" in href_low
-                ):
+                if social_url is None and ("facebook.com/" in href_low or "instagram.com/" in href_low):
                     social_url = href
                     logger.debug("[BrightData] Social URL for '%s': %s", name, href)
-            except Exception:  # noqa: BLE001
+            except Exception:
                 website = href
                 break
 
@@ -478,8 +475,7 @@ class BrightDataScraper(BaseScraper):
             social_url=social_url,
         )
 
-
-    async def _fetch_social_email(self, social_url: str, name: str) -> Optional[str]:
+    async def _fetch_social_email(self, social_url: str, name: str) -> str | None:
         """
         Extract an email address from a Facebook or Instagram profile via BrightData.
 
@@ -510,7 +506,7 @@ class BrightDataScraper(BaseScraper):
                     emails[0],
                 )
                 return emails[0]
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             logger.debug(
                 "[BrightData] Social profile fetch failed (%s) for '%s': %s",
                 social_url,
@@ -522,11 +518,11 @@ class BrightDataScraper(BaseScraper):
     async def _serp_email(
         self,
         name: str,
-        phone: Optional[str],
+        phone: str | None,
         city: str,
         *,
-        social_url: Optional[str] = None,
-    ) -> Optional[str]:
+        social_url: str | None = None,
+    ) -> str | None:
         """
         Search Google (via BrightData) for a business email address.
 
@@ -567,10 +563,7 @@ class BrightDataScraper(BaseScraper):
 
         for query in queries:
             try:
-                search_url = (
-                    f"https://www.google.com/search"
-                    f"?q={quote_plus(query)}&gl=fr&hl=fr&num=10"
-                )
+                search_url = f"https://www.google.com/search?q={quote_plus(query)}&gl=fr&hl=fr&num=10"
                 html = await self._fetch(search_url)
                 emails = _extract_valid_emails(html)
                 if emails:
@@ -582,11 +575,10 @@ class BrightDataScraper(BaseScraper):
                     )
                     return emails[0]
                 await asyncio.sleep(0.3)
-            except Exception as exc:  # noqa: BLE001
+            except Exception as exc:
                 logger.debug("[BrightData] SERP email query '%s' failed: %s", query, exc)
 
         return None
-
 
     async def scrape(
         self,
@@ -595,9 +587,9 @@ class BrightDataScraper(BaseScraper):
         max_results: int = 50,
         *,
         only_without_website: bool = True,
-        progress: Optional[ScrapeProgressReporter] = None,
-        should_stop: Optional[Callable[[], bool]] = None,
-    ) -> List[ProspectCreate]:
+        progress: ScrapeProgressReporter | None = None,
+        should_stop: Callable[[], bool] | None = None,
+    ) -> list[ProspectCreate]:
         """
         Scrape prospects for *category* + *city* using the BrightData HTTP API.
 
@@ -629,31 +621,24 @@ class BrightDataScraper(BaseScraper):
 
             if not self._token:
                 logger.warning(
-                    "[BrightData] No API token configured — "
-                    "set BRIGHTDATA_API_TOKEN in .env to enable this scraper"
+                    "[BrightData] No API token configured — set BRIGHTDATA_API_TOKEN in .env to enable this scraper"
                 )
                 return []
 
             if progress:
-                await progress.log(
-                    f"BrightData — récupération des fiches PagesJaunes ({category} / {city})…"
-                )
+                await progress.log(f"BrightData — récupération des fiches PagesJaunes ({category} / {city})…")
 
             fetch_max = max(max_results * 4, 20)
             detail_urls = await self._scrape_pj_listing(category, city, fetch_max)
 
             if not detail_urls:
-                logger.warning(
-                    "[BrightData] No detail URLs found for %s / %s", category, city
-                )
+                logger.warning("[BrightData] No detail URLs found for %s / %s", category, city)
                 if progress:
                     await progress.log("BrightData — aucun résultat trouvé sur PagesJaunes.")
                 return []
 
             if progress:
-                await progress.log(
-                    f"BrightData — {len(detail_urls)} fiche(s) trouvée(s), analyse en cours…"
-                )
+                await progress.log(f"BrightData — {len(detail_urls)} fiche(s) trouvée(s), analyse en cours…")
 
             candidates: list[ProspectCreate] = []
             for i, url in enumerate(detail_urls):
@@ -682,9 +667,7 @@ class BrightDataScraper(BaseScraper):
             logger.info("[BrightData] %d candidates after website filter", len(candidates))
 
             if progress:
-                await progress.log(
-                    f"BrightData — enrichissement des emails ({len(candidates)} prospect(s))…"
-                )
+                await progress.log(f"BrightData — enrichissement des emails ({len(candidates)} prospect(s))…")
 
             enriched: list[ProspectCreate] = []
             for prospect in candidates:
@@ -722,7 +705,7 @@ class BrightDataScraper(BaseScraper):
             logger.info("[BrightData] Final: %d prospects returned", len(enriched))
             return enriched[:max_results]
 
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             logger.error("[BrightData] Unexpected error: %s", exc, exc_info=True)
             return []
 

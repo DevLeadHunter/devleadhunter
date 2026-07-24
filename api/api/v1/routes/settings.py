@@ -6,15 +6,16 @@ Exposes the Resend email configuration (GET + PUT) and the presenter
 The Resend API key and webhook secret are encrypted at rest and never
 returned in plain text to the frontend.
 """
+
 from __future__ import annotations
 
 import logging
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
 from fastapi.responses import FileResponse
-from pydantic import BaseModel, ConfigDict, EmailStr, Field
+from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -68,9 +69,7 @@ class ResendConfigResponse(BaseModel):
 
 def _get_or_none(db: Session, user_id: int) -> ResendConfig | None:
     """Return the ResendConfig row for *user_id*, or ``None`` if absent."""
-    return db.execute(
-        select(ResendConfig).where(ResendConfig.user_id == user_id)
-    ).scalar_one_or_none()
+    return db.execute(select(ResendConfig).where(ResendConfig.user_id == user_id)).scalar_one_or_none()
 
 
 @router.get("/resend", response_model=ResendConfigResponse)
@@ -86,10 +85,10 @@ async def get_resend_config(
     """
     config: ResendConfig | None = _get_or_none(db, current_user.id)
     return {
-        "has_api_key":        config is not None and bool(config.api_key),
+        "has_api_key": config is not None and bool(config.api_key),
         "has_webhook_secret": config is not None and bool(config.webhook_secret),
-        "from_email":         config.from_email if config else None,
-        "from_name":          config.from_name if config else None,
+        "from_email": config.from_email if config else None,
+        "from_name": config.from_name if config else None,
     }
 
 
@@ -107,9 +106,7 @@ async def upsert_resend_config(
     """
     encrypted_api_key: str = encryption_service.encrypt(payload.api_key)
     encrypted_secret: str | None = (
-        encryption_service.encrypt(payload.webhook_secret)
-        if payload.webhook_secret
-        else None
+        encryption_service.encrypt(payload.webhook_secret) if payload.webhook_secret else None
     )
 
     config: ResendConfig | None = _get_or_none(db, current_user.id)
@@ -117,19 +114,19 @@ async def upsert_resend_config(
         config = ResendConfig(user_id=current_user.id)
         db.add(config)
 
-    config.api_key        = encrypted_api_key
+    config.api_key = encrypted_api_key
     config.webhook_secret = encrypted_secret
-    config.from_email     = payload.from_email
-    config.from_name      = payload.from_name
+    config.from_email = payload.from_email
+    config.from_name = payload.from_name
     db.commit()
 
     logger.info("[Settings] ResendConfig upserted for user %d", current_user.id)
 
     return {
-        "has_api_key":        True,
+        "has_api_key": True,
         "has_webhook_secret": encrypted_secret is not None,
-        "from_email":         config.from_email,
-        "from_name":          config.from_name,
+        "from_email": config.from_email,
+        "from_name": config.from_name,
     }
 
 
@@ -174,9 +171,7 @@ async def update_sending_identity(
         set_active_provider(db, current_user.id, payload.provider.value)
     except SendingNotConfiguredError as exc:
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc))
-    logger.info(
-        "[Settings] Sending provider set to %s for user %d", payload.provider.value, current_user.id
-    )
+    logger.info("[Settings] Sending provider set to %s for user %d", payload.provider.value, current_user.id)
     return describe_sending_config(db, current_user.id)
 
 
@@ -184,14 +179,14 @@ class PresenterVideoResponse(BaseModel):
     """Presenter clip state returned to the frontend (no file content)."""
 
     has_video: bool
-    original_filename: Optional[str] = None
+    original_filename: str | None = None
     duration_seconds: float = 0.0
     intro_seconds: float = 4.0
     outro_seconds: float = 5.0
     auto_generate: bool = True
     # « upload » (fichier importé) ou « recorded » (filmé dans l'app).
     source: str = "upload"
-    updated_at: Optional[str] = None
+    updated_at: str | None = None
 
 
 class PresenterVideoSettingsUpdate(BaseModel):

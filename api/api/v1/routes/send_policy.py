@@ -3,9 +3,8 @@ Send policy routes — the user's global cold-email cadence (Paramètres → Env
 
 Governs the whole email queue: daily cap, allowed weekdays and hours, spacing.
 """
-from __future__ import annotations
 
-from typing import List
+from __future__ import annotations
 
 from fastapi import APIRouter, Depends
 from pydantic import BaseModel, Field
@@ -23,7 +22,7 @@ class SendPolicyResponse(BaseModel):
     """Effective send policy (a saved row, or the defaults)."""
 
     daily_cap: int
-    days_of_week: List[int]
+    days_of_week: list[int]
     window_start_hour: int
     window_end_hour: int
     spacing_minutes: int
@@ -33,7 +32,7 @@ class SendPolicyUpdate(BaseModel):
     """Payload to update the send policy."""
 
     daily_cap: int = Field(..., ge=1, le=500)
-    days_of_week: List[int] = Field(..., min_length=1)
+    days_of_week: list[int] = Field(..., min_length=1)
     window_start_hour: int = Field(..., ge=0, le=23)
     window_end_hour: int = Field(..., ge=1, le=24)
     spacing_minutes: int = Field(..., ge=1, le=1440)

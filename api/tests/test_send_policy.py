@@ -4,6 +4,8 @@ Unit tests for the send-policy slot scheduler.
 These assert structural invariants (window, weekdays, spacing, daily cap) in
 policy-local time, so they hold whether or not the timezone database is present.
 """
+
+import itertools
 from datetime import datetime
 
 from services.send_policy_service import ResolvedPolicy, _to_local, send_policy_service
@@ -59,7 +61,7 @@ def test_spacing_within_day() -> None:
     """Two slots on the same local day are at least ``spacing_minutes`` apart."""
     policy = _policy()
     slots = send_policy_service.next_send_slots(policy, 10)
-    for earlier, later in zip(slots, slots[1:]):
+    for earlier, later in itertools.pairwise(slots):
         le, ll = _local(earlier), _local(later)
         if le.date() == ll.date():
             assert (ll - le).total_seconds() >= policy.spacing_minutes * 60 - 1
@@ -70,7 +72,5 @@ def test_seed_counts_pushes_to_next_day() -> None:
     policy = ResolvedPolicy(3, [0, 1, 2, 3, 4], 7, 18, 20)
     start = datetime(2026, 7, 13, 6, 0, 0)  # Monday, before the window (UTC)
     first_local_day = _to_local(start).date()
-    slots = send_policy_service.next_send_slots(
-        policy, 3, start_utc=start, seed_counts={first_local_day: 3}
-    )
+    slots = send_policy_service.next_send_slots(policy, 3, start_utc=start, seed_counts={first_local_day: 3})
     assert all(_local(s).date() != first_local_day for s in slots)

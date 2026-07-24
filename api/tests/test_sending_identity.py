@@ -6,6 +6,7 @@ query helpers (``_resend_config`` / ``_default_gmail_account``) and
 ``get_active_provider`` are stubbed, so the tests assert the routing decision
 without a database — matching the pure-logic style of the rest of the suite.
 """
+
 from types import SimpleNamespace
 
 import pytest

@@ -14,19 +14,19 @@ Three layers, from most to least stable:
 Nothing here touches the network or a specific backend, so it is fully unit-testable
 and shared by BOTH the nodriver path and the BeautifulSoup/HTTP path.
 """
+
 from __future__ import annotations
 
 import json
 import logging
 import re
-from typing import Any, Optional
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
 # JS that returns the raw text of every JSON-LD block — run via NodriverDom.evaluate_list.
 LD_JSON_JS: str = (
-    "Array.from(document.querySelectorAll('script[type=\"application/ld+json\"]'))"
-    ".map(s => s.textContent || '')"
+    "Array.from(document.querySelectorAll('script[type=\"application/ld+json\"]')).map(s => s.textContent || '')"
 )
 
 # schema.org @types we treat as a business record (LocalBusiness has ~100 subtypes;
@@ -34,23 +34,38 @@ LD_JSON_JS: str = (
 _BUSINESS_TYPES: frozenset[str] = frozenset(
     t.lower()
     for t in (
-        "LocalBusiness", "Organization", "Store", "ProfessionalService",
-        "Plumber", "Electrician", "HomeAndConstructionBusiness", "GeneralContractor",
-        "AutoRepair", "HVACBusiness", "Locksmith", "RoofingContractor", "Painter",
-        "MovingCompany", "Restaurant", "HairSalon", "BeautySalon", "Dentist",
-        "MedicalBusiness", "LegalService", "FinancialService", "Corporation",
+        "LocalBusiness",
+        "Organization",
+        "Store",
+        "ProfessionalService",
+        "Plumber",
+        "Electrician",
+        "HomeAndConstructionBusiness",
+        "GeneralContractor",
+        "AutoRepair",
+        "HVACBusiness",
+        "Locksmith",
+        "RoofingContractor",
+        "Painter",
+        "MovingCompany",
+        "Restaurant",
+        "HairSalon",
+        "BeautySalon",
+        "Dentist",
+        "MedicalBusiness",
+        "LegalService",
+        "FinancialService",
+        "Corporation",
     )
 )
 
 # Loose but conservative French / international phone matcher (kept to plausible
 # lengths so we do not grab SIREN numbers or prices).
-_PHONE_RE: re.Pattern[str] = re.compile(
-    r"(?:(?:\+|00)\d{1,3}[\s.\-]?)?(?:\(?\d\)?[\s.\-]?){9,13}\d"
-)
+_PHONE_RE: re.Pattern[str] = re.compile(r"(?:(?:\+|00)\d{1,3}[\s.\-]?)?(?:\(?\d\)?[\s.\-]?){9,13}\d")
 _EMAIL_RE: re.Pattern[str] = re.compile(r"[A-Za-z0-9._%+\-]+@[A-Za-z0-9.\-]+\.[A-Za-z]{2,}")
 
 
-def first_nonempty(*values: Optional[str]) -> Optional[str]:
+def first_nonempty(*values: str | None) -> str | None:
     """Return the first stripped, non-empty string among ``values`` (else ``None``)."""
     for value in values:
         if isinstance(value, str):
@@ -60,7 +75,7 @@ def first_nonempty(*values: Optional[str]) -> Optional[str]:
     return None
 
 
-def safe_email(value: Optional[str]) -> Optional[str]:
+def safe_email(value: str | None) -> str | None:
     """Return ``value`` only if it is a syntactically valid email.
 
     ``ProspectCreate.email`` is a Pydantic ``EmailStr`` — a malformed value from a
@@ -80,7 +95,7 @@ def safe_email(value: Optional[str]) -> Optional[str]:
     return candidate.lower() if match else None
 
 
-def find_phone(text: Optional[str]) -> Optional[str]:
+def find_phone(text: str | None) -> str | None:
     """Extract the first plausible phone number from free text (markup-independent).
 
     Args:
@@ -122,13 +137,10 @@ def _type_matches_business(obj: dict[str, Any]) -> bool:
     """True when the object's ``@type`` looks like a business/organization."""
     raw_type = obj.get("@type")
     types = raw_type if isinstance(raw_type, list) else [raw_type]
-    for t in types:
-        if isinstance(t, str) and t.lower() in _BUSINESS_TYPES:
-            return True
-    return False
+    return any(isinstance(t, str) and t.lower() in _BUSINESS_TYPES for t in types)
 
 
-def _stringify(value: Any) -> Optional[str]:
+def _stringify(value: Any) -> str | None:
     """Coerce a JSON-LD scalar/list to a clean string (first item of a list)."""
     if isinstance(value, str):
         return value.strip() or None
@@ -139,7 +151,7 @@ def _stringify(value: Any) -> Optional[str]:
     return None
 
 
-def _parse_address(node: Any) -> dict[str, Optional[str]]:
+def _parse_address(node: Any) -> dict[str, str | None]:
     """Normalise a schema.org ``address`` (PostalAddress dict or plain string)."""
     if isinstance(node, str):
         return {"street": node.strip() or None, "postal_code": None, "city": None}
@@ -154,7 +166,7 @@ def _parse_address(node: Any) -> dict[str, Optional[str]]:
     return {"street": None, "postal_code": None, "city": None}
 
 
-def parse_ld_json_blocks(blocks: Any) -> Optional[dict[str, Any]]:
+def parse_ld_json_blocks(blocks: Any) -> dict[str, Any] | None:
     """Parse raw JSON-LD blocks and return the best business record found.
 
     Args:
@@ -191,8 +203,8 @@ def parse_ld_json_blocks(blocks: Any) -> Optional[dict[str, Any]]:
 
     address = _parse_address(business.get("address"))
     rating_node = business.get("aggregateRating")
-    rating: Optional[float] = None
-    reviews_count: Optional[int] = None
+    rating: float | None = None
+    reviews_count: int | None = None
     if isinstance(rating_node, dict):
         try:
             rating_val = _stringify(rating_node.get("ratingValue"))
@@ -224,7 +236,7 @@ def parse_ld_json_blocks(blocks: Any) -> Optional[dict[str, Any]]:
     }
 
 
-def extract_ld_json_from_html(html: Optional[str]) -> list[str]:
+def extract_ld_json_from_html(html: str | None) -> list[str]:
     """Return the raw text of every ``<script type="application/ld+json">`` in HTML.
 
     Used by the HTTP/BeautifulSoup path (Pages Jaunes tier 1). Robust to attribute

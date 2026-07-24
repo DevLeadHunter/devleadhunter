@@ -10,9 +10,8 @@ This module is the single source of truth for that mapping so the send path
 (``email_sending_service``) and the Resend webhook (``webhooks``) always agree
 on which ``distinct_id`` an email event carries.
 """
-from __future__ import annotations
 
-from typing import Optional
+from __future__ import annotations
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -25,7 +24,7 @@ class DemoIdentityResolver:
     """Resolves PostHog distinct IDs from demo slugs and prospect metadata."""
 
     @staticmethod
-    def resolve_demo_slug(db: Session, user_id: int, prospect_id: Optional[int]) -> Optional[str]:
+    def resolve_demo_slug(db: Session, user_id: int, prospect_id: int | None) -> str | None:
         """
         Return the prospect's most recent non-deleted demo slug (PostHog identity).
 
@@ -52,9 +51,7 @@ class DemoIdentityResolver:
         return site.slug if site else None
 
     @staticmethod
-    def posthog_distinct_id(
-        demo_slug: Optional[str], prospect_id: Optional[int], recipient_email: str = ""
-    ) -> str:
+    def posthog_distinct_id(demo_slug: str | None, prospect_id: int | None, recipient_email: str = "") -> str:
         """
         Resolve the PostHog ``distinct_id`` for an email event.
 
@@ -78,13 +75,11 @@ class DemoIdentityResolver:
         return f"email_{recipient_email}"
 
 
-def resolve_demo_slug(db: Session, user_id: int, prospect_id: Optional[int]) -> Optional[str]:
+def resolve_demo_slug(db: Session, user_id: int, prospect_id: int | None) -> str | None:
     """Backward-compatible wrapper around ``DemoIdentityResolver.resolve_demo_slug``."""
     return DemoIdentityResolver.resolve_demo_slug(db, user_id, prospect_id)
 
 
-def posthog_distinct_id(
-    demo_slug: Optional[str], prospect_id: Optional[int], recipient_email: str = ""
-) -> str:
+def posthog_distinct_id(demo_slug: str | None, prospect_id: int | None, recipient_email: str = "") -> str:
     """Backward-compatible wrapper around ``DemoIdentityResolver.posthog_distinct_id``."""
     return DemoIdentityResolver.posthog_distinct_id(demo_slug, prospect_id, recipient_email)

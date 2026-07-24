@@ -1,7 +1,7 @@
 """
 Health check models.
 """
-from typing import Dict
+
 from pydantic import BaseModel, ConfigDict, Field
 
 
@@ -25,5 +25,4 @@ class HealthStatus(BaseModel):
     status: str = Field(..., description="Overall status")
     version: str = Field(..., description="API version")
     timestamp: str = Field(..., description="Current timestamp")
-    services: Dict[str, str] = Field(default_factory=dict, description="Service statuses")
-
+    services: dict[str, str] = Field(default_factory=dict, description="Service statuses")

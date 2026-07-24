@@ -6,12 +6,12 @@ tables (create a run from selected prospects, pause/resume/cancel, approve the
 review gate, reject a single site, compute live stats).  The step-by-step
 execution is done by :mod:`services.acquisition_orchestrator`.
 """
+
 from __future__ import annotations
 
 import logging
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
-from typing import List, Optional
+from datetime import UTC, datetime
 
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
@@ -34,7 +34,7 @@ logger = logging.getLogger(__name__)
 
 def _utcnow() -> datetime:
     """Return the current UTC time as a timezone-naive datetime (DB-compatible)."""
-    return datetime.now(timezone.utc).replace(tzinfo=None)
+    return datetime.now(UTC).replace(tzinfo=None)
 
 
 @dataclass
@@ -58,33 +58,32 @@ class CreateSequenceInput:
     """
 
     name: str
-    prospect_ids: List[int] = field(default_factory=list)
+    prospect_ids: list[int] = field(default_factory=list)
     mode: str = AcquisitionRunMode.SEMI_AUTO.value
     auto_enrich: bool = True
     auto_generate: bool = True
-    template_id: Optional[str] = None
-    theme: Optional[dict] = None
+    template_id: str | None = None
+    theme: dict | None = None
     auto_campaign: bool = True
-    email_template_id_a: Optional[int] = None
-    email_template_id_b: Optional[int] = None
+    email_template_id_a: int | None = None
+    email_template_id_b: int | None = None
     send_delay_minutes: int = 20
-    follow_ups: List[SequenceFollowUp] = field(default_factory=list)
+    follow_ups: list[SequenceFollowUp] = field(default_factory=list)
     # Full-auto query target.
-    search_metiers: List[str] = field(default_factory=list)
-    search_villes: List[str] = field(default_factory=list)
-    target_days: Optional[int] = None
+    search_metiers: list[str] = field(default_factory=list)
+    search_villes: list[str] = field(default_factory=list)
+    target_days: int | None = None
     only_without_website: bool = True
 
 
 class AcquisitionService:
     """Business operations for acquisition sequences."""
 
-
     def create_from_prospects(
         self,
         db: Session,
         user_id: int,
-        organization_id: Optional[int],
+        organization_id: int | None,
         payload: CreateSequenceInput,
     ) -> AcquisitionRun:
         """
@@ -107,9 +106,7 @@ class AcquisitionService:
         Returns:
             The persisted :class:`AcquisitionRun` (with its items).
         """
-        visible_ids: set[int] = self._visible_prospect_ids(
-            db, user_id, organization_id, payload.prospect_ids
-        )
+        visible_ids: set[int] = self._visible_prospect_ids(db, user_id, organization_id, payload.prospect_ids)
         used_ids: set[int] = self.used_prospect_ids(db, user_id)
 
         has_query: bool = bool(payload.search_metiers and payload.search_villes and payload.target_days)
@@ -128,10 +125,7 @@ class AcquisitionService:
             email_template_id_a=payload.email_template_id_a,
             email_template_id_b=payload.email_template_id_b,
             send_delay_minutes=max(payload.send_delay_minutes, 1),
-            follow_ups=[
-                {"template_id": fu.template_id, "delay_days": fu.delay_days}
-                for fu in payload.follow_ups
-            ]
+            follow_ups=[{"template_id": fu.template_id, "delay_days": fu.delay_days} for fu in payload.follow_ups]
             or None,
             search_metiers=payload.search_metiers or None,
             search_villes=payload.search_villes or None,
@@ -143,9 +137,7 @@ class AcquisitionService:
         db.flush()  # assign run.id
 
         # Selection: preserve order, drop invisible or already-used prospects.
-        ordered: List[int] = [
-            pid for pid in payload.prospect_ids if pid in visible_ids and pid not in used_ids
-        ]
+        ordered: list[int] = [pid for pid in payload.prospect_ids if pid in visible_ids and pid not in used_ids]
         for prospect_id in ordered:
             db.add(
                 AcquisitionRunItem(
@@ -156,16 +148,16 @@ class AcquisitionService:
                 )
             )
 
-        run.status = (
-            AcquisitionRunStatus.RUNNING.value
-            if (ordered or has_query)
-            else AcquisitionRunStatus.DRAFT.value
-        )
+        run.status = AcquisitionRunStatus.RUNNING.value if (ordered or has_query) else AcquisitionRunStatus.DRAFT.value
         db.commit()
         db.refresh(run)
         logger.info(
             "[Acquisition] Created run %d for user %d — %d item(s), query=%s, mode=%s",
-            run.id, user_id, len(ordered), has_query, run.mode,
+            run.id,
+            user_id,
+            len(ordered),
+            has_query,
+            run.mode,
         )
         return run
 
@@ -183,9 +175,7 @@ class AcquisitionService:
             .where(
                 AcquisitionRun.user_id == user_id,
                 AcquisitionRun.status != AcquisitionRunStatus.CANCELLED.value,
-                AcquisitionRunItem.step.notin_(
-                    [AcquisitionItemStep.SKIPPED.value, AcquisitionItemStep.FAILED.value]
-                ),
+                AcquisitionRunItem.step.notin_([AcquisitionItemStep.SKIPPED.value, AcquisitionItemStep.FAILED.value]),
             )
         ).all()
         return {row[0] for row in rows}
@@ -194,14 +184,14 @@ class AcquisitionService:
         self,
         db: Session,
         user_id: int,
-        organization_id: Optional[int],
+        organization_id: int | None,
         *,
-        metiers: List[str],
-        villes: List[str],
+        metiers: list[str],
+        villes: list[str],
         only_without_website: bool,
         exclude_ids: set[int],
         limit: int,
-    ) -> List[int]:
+    ) -> list[int]:
         """
         Return up to ``limit`` unused prospect ids matching the métier + ville
         target (case-insensitive, lenient substring match), preferring those
@@ -217,7 +207,7 @@ class AcquisitionService:
 
         metiers_lc: list[str] = [m.strip().lower() for m in metiers if m.strip()]
         villes_lc: list[str] = [v.strip().lower() for v in villes if v.strip()]
-        picked: List[int] = []
+        picked: list[int] = []
         for pid, category, city, website in candidates:
             if pid in exclude_ids:
                 continue
@@ -238,27 +228,22 @@ class AcquisitionService:
     def _visible_prospect_ids(
         db: Session,
         user_id: int,
-        organization_id: Optional[int],
-        prospect_ids: List[int],
+        organization_id: int | None,
+        prospect_ids: list[int],
     ) -> set[int]:
         """Return the subset of ``prospect_ids`` the user is allowed to act on."""
         if not prospect_ids:
             return set()
         rows = db.execute(
-            select(ProspectDB.id, ProspectDB.user_id, ProspectDB.organization_id).where(
-                ProspectDB.id.in_(prospect_ids)
-            )
+            select(ProspectDB.id, ProspectDB.user_id, ProspectDB.organization_id).where(ProspectDB.id.in_(prospect_ids))
         ).all()
         visible: set[int] = set()
         for pid, owner_id, org_id in rows:
-            if owner_id == user_id:
-                visible.add(pid)
-            elif organization_id is not None and org_id == organization_id:
+            if owner_id == user_id or (organization_id is not None and org_id == organization_id):
                 visible.add(pid)
         return visible
 
-
-    def list_for_user(self, db: Session, user_id: int) -> List[AcquisitionRun]:
+    def list_for_user(self, db: Session, user_id: int) -> list[AcquisitionRun]:
         """Return the user's sequences, newest first."""
         return list(
             db.execute(
@@ -270,15 +255,12 @@ class AcquisitionService:
             .all()
         )
 
-    def get_for_user(
-        self, db: Session, user_id: int, run_id: int
-    ) -> Optional[AcquisitionRun]:
+    def get_for_user(self, db: Session, user_id: int, run_id: int) -> AcquisitionRun | None:
         """Return one sequence owned by the user, or None."""
-        run: Optional[AcquisitionRun] = db.get(AcquisitionRun, run_id)
+        run: AcquisitionRun | None = db.get(AcquisitionRun, run_id)
         if run is None or run.user_id != user_id:
             return None
         return run
-
 
     def pause(self, db: Session, run: AcquisitionRun) -> AcquisitionRun:
         """Pause a running sequence (safe: nothing destructive)."""
@@ -322,14 +304,12 @@ class AcquisitionService:
             db.refresh(run)
         return run
 
-    def reject_item(
-        self, db: Session, run: AcquisitionRun, item_id: int
-    ) -> Optional[AcquisitionRunItem]:
+    def reject_item(self, db: Session, run: AcquisitionRun, item_id: int) -> AcquisitionRunItem | None:
         """
         Reject a single generated site during review — it will not be campaigned.
         Returns the updated item, or None if it doesn't belong to the run.
         """
-        item: Optional[AcquisitionRunItem] = db.get(AcquisitionRunItem, item_id)
+        item: AcquisitionRunItem | None = db.get(AcquisitionRunItem, item_id)
         if item is None or item.run_id != run.id:
             return None
         item.step = AcquisitionItemStep.SKIPPED.value
@@ -343,13 +323,12 @@ class AcquisitionService:
         db.delete(run)
         db.commit()
 
-
     def assign_templates(
         self,
         db: Session,
         run: AcquisitionRun,
-        template_id: Optional[str],
-        item_ids: Optional[List[int]] = None,
+        template_id: str | None,
+        item_ids: list[int] | None = None,
     ) -> None:
         """
         Set the demo-site template on items (all pre-generation ones, or the
@@ -371,8 +350,8 @@ class AcquisitionService:
         self,
         db: Session,
         run: AcquisitionRun,
-        item_ids: List[int],
-        template_id: Optional[str] = None,
+        item_ids: list[int],
+        template_id: str | None = None,
     ) -> None:
         """
         Re-generate the sites of the given items (optionally with a new template)
@@ -393,7 +372,7 @@ class AcquisitionService:
             changed = True
         self._reactivate(db, run, changed)
 
-    def reenrich_items(self, db: Session, run: AcquisitionRun, item_ids: List[int]) -> None:
+    def reenrich_items(self, db: Session, run: AcquisitionRun, item_ids: list[int]) -> None:
         """Re-enrich then re-generate the given items (reset to ``found``)."""
         changed: bool = False
         wanted: set[int] = set(item_ids)
@@ -405,7 +384,7 @@ class AcquisitionService:
             changed = True
         self._reactivate(db, run, changed)
 
-    def exclude_items(self, db: Session, run: AcquisitionRun, item_ids: List[int]) -> None:
+    def exclude_items(self, db: Session, run: AcquisitionRun, item_ids: list[int]) -> None:
         """Exclude items from the automatisation (frees their prospects)."""
         wanted: set[int] = set(item_ids)
         for item in run.items:
@@ -423,9 +402,7 @@ class AcquisitionService:
             run.status = AcquisitionRunStatus.RUNNING.value
         db.commit()
 
-    def preview_email(
-        self, db: Session, run: AcquisitionRun, item_id: int, template_id: int
-    ) -> Optional[dict]:
+    def preview_email(self, db: Session, run: AcquisitionRun, item_id: int, template_id: int) -> dict | None:
         """
         Render the real email for one item (subject + body) with its demo link —
         exactly what will be sent. Returns None if the item/template is missing.
@@ -435,21 +412,21 @@ class AcquisitionService:
         from models.prospect_db import ProspectDB
         from services.email_sending_service import EmailSendingService
 
-        item: Optional[AcquisitionRunItem] = db.get(AcquisitionRunItem, item_id)
+        item: AcquisitionRunItem | None = db.get(AcquisitionRunItem, item_id)
         if item is None or item.run_id != run.id:
             return None
-        prospect: Optional[ProspectDB] = db.get(ProspectDB, item.prospect_id)
-        template: Optional[EmailTemplate] = db.get(EmailTemplate, template_id)
+        prospect: ProspectDB | None = db.get(ProspectDB, item.prospect_id)
+        template: EmailTemplate | None = db.get(EmailTemplate, template_id)
         if prospect is None or template is None:
             return None
 
         demo_url: str = ""
         if item.demo_site_id is not None:
-            site: Optional[DemoSite] = db.get(DemoSite, item.demo_site_id)
+            site: DemoSite | None = db.get(DemoSite, item.demo_site_id)
             if site is not None and site.demo_url:
                 demo_url = site.demo_url
 
-        name_parts: List[str] = (prospect.name or "").split()
+        name_parts: list[str] = (prospect.name or "").split()
         variables: dict[str, str] = {
             "prenom": name_parts[0] if name_parts else "",
             "entreprise": prospect.name or "",
@@ -465,7 +442,6 @@ class AcquisitionService:
             "body_html": service.replace_variables(template.body_html, variables),
         }
 
-
     def build_stats(self, db: Session, run: AcquisitionRun) -> dict:
         """
         Compute live stats for a run: item counts per step plus a won/emails
@@ -475,7 +451,7 @@ class AcquisitionService:
             ``{"total", "by_step", "won", "emails_sent", "credits_spent"}``.
         """
         by_step: dict[str, int] = {}
-        prospect_ids: List[int] = []
+        prospect_ids: list[int] = []
         for item in run.items:
             by_step[item.step] = by_step.get(item.step, 0) + 1
             prospect_ids.append(item.prospect_id)
@@ -497,19 +473,15 @@ class AcquisitionService:
         if run.campaign_id is not None:
             emails_sent = (
                 db.execute(
-                    select(func.count()).select_from(EmailLog).where(
-                        EmailLog.campaign_id == run.campaign_id
-                    )
+                    select(func.count()).select_from(EmailLog).where(EmailLog.campaign_id == run.campaign_id)
                 ).scalar()
                 or 0
             )
 
         credits_spent: int = 0
-        baseline: Optional[int] = (run.stats or {}).get("credits_at_start")
+        baseline: int | None = (run.stats or {}).get("credits_at_start")
         if baseline is not None:
-            credits_spent = max(
-                0, CreditService.get_user_credits_consumed(db, run.user_id) - baseline
-            )
+            credits_spent = max(0, CreditService.get_user_credits_consumed(db, run.user_id) - baseline)
 
         return {
             "total": len(run.items),

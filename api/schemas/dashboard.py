@@ -1,5 +1,6 @@
 """Pydantic schemas for the dashboard home KPIs."""
-from typing import Any, Optional
+
+from typing import Any
 
 from pydantic import BaseModel, Field
 
@@ -27,10 +28,10 @@ class HotLeadResponse(BaseModel):
 
     prospect_id: int
     name: str
-    city: Optional[str] = None
+    city: str | None = None
     temperature: str
     score: int
-    last_seen: Optional[str] = None
+    last_seen: str | None = None
     signals: dict[str, Any] = Field(default_factory=dict)
 
 
@@ -74,8 +75,8 @@ class CoverageProspectRow(BaseModel):
 
     id: int
     name: str
-    city: Optional[str] = None
-    category: Optional[str] = None
+    city: str | None = None
+    category: str | None = None
     has_demo: bool = False
     emails_sent: int = 0
     emails_opened: int = 0

@@ -7,10 +7,11 @@ engagement, computes a combined lead score + timeline, and (optionally) an AI
 summary / personalised follow-up. Read paths degrade gracefully when PostHog /
 Groq are not configured.
 """
+
 from __future__ import annotations
 
 from collections import defaultdict
-from typing import Any, Optional
+from typing import Any
 
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
@@ -86,11 +87,7 @@ class BehaviorService:
 
     def _email_engagement(self, db: Session, user_id: int, prospect_id: int) -> dict[str, Any]:
         """Return email engagement counts + timeline entries for a prospect."""
-        logs = (
-            db.query(EmailLog)
-            .filter(EmailLog.user_id == user_id, EmailLog.prospect_id == prospect_id)
-            .all()
-        )
+        logs = db.query(EmailLog).filter(EmailLog.user_id == user_id, EmailLog.prospect_id == prospect_id).all()
         sent = opened = clicked = 0
         timeline: list[dict[str, Any]] = []
         for log in logs:
@@ -105,9 +102,7 @@ class BehaviorService:
                 timeline.append(self._email_entry("email_clicked", log.clicked_at))
         return {"sent": sent, "opened": opened, "clicked": clicked, "timeline": timeline}
 
-    def _email_engagement_bulk(
-        self, db: Session, user_id: int, prospect_ids: list[int]
-    ) -> dict[int, dict[str, int]]:
+    def _email_engagement_bulk(self, db: Session, user_id: int, prospect_ids: list[int]) -> dict[int, dict[str, int]]:
         """Return email engagement counts per prospect (one grouped query)."""
         if not prospect_ids:
             return {}
@@ -132,7 +127,12 @@ class BehaviorService:
     def _email_entry(event_type: str, when: Any) -> dict[str, Any]:
         """Build a timeline entry for an email event."""
         ts = when.isoformat() if hasattr(when, "isoformat") else str(when)
-        return {"type": event_type, "label": _EVENT_LABELS.get(event_type, event_type), "timestamp": ts, "properties": {}}
+        return {
+            "type": event_type,
+            "label": _EVENT_LABELS.get(event_type, event_type),
+            "timestamp": ts,
+            "properties": {},
+        }
 
     # ------------------------------------------------------------------ #
     # Timeline
@@ -242,11 +242,7 @@ class BehaviorService:
         prospect_ids = list(pid_to_slugs.keys())
         email_by_pid = self._email_engagement_bulk(db, user_id, prospect_ids)
 
-        prospects = (
-            db.query(ProspectDB)
-            .filter(ProspectDB.id.in_(prospect_ids), ProspectDB.user_id == user_id)
-            .all()
-        )
+        prospects = db.query(ProspectDB).filter(ProspectDB.id.in_(prospect_ids), ProspectDB.user_id == user_id).all()
         prospect_by_id = {p.id: p for p in prospects}
 
         leads: list[dict[str, Any]] = []

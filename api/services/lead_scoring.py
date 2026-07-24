@@ -5,9 +5,10 @@ No I/O — takes raw events (from PostHog) and/or aggregated counts plus email
 engagement, and returns structured signals + a hot/warm/cold temperature.
 Kept dependency-free so it is trivially testable.
 """
+
 from __future__ import annotations
 
-from typing import Any, Optional, TypedDict
+from typing import Any, TypedDict
 
 
 class BehaviorSignals(TypedDict):
@@ -31,7 +32,7 @@ class BehaviorSignals(TypedDict):
     emails_sent: int
     emails_opened: int
     emails_clicked: int
-    last_seen: Optional[str]
+    last_seen: str | None
 
 
 class BehaviorScore(TypedDict):
@@ -140,9 +141,7 @@ def score_from_signals(signals: BehaviorSignals, site_improvable: bool = False) 
         score += 10
     score = min(score, 100)
 
-    strong_intent = (
-        signals["phone_clicks"] > 0 or signals["contact_clicks"] > 0 or signals["emails_clicked"] > 0
-    )
+    strong_intent = signals["phone_clicks"] > 0 or signals["contact_clicks"] > 0 or signals["emails_clicked"] > 0
     if strong_intent or score >= 60:
         temperature = "hot"
     elif score >= 25:
@@ -153,7 +152,7 @@ def score_from_signals(signals: BehaviorSignals, site_improvable: bool = False) 
     return {"temperature": temperature, "score": score, "signals": signals, "site_improvable": site_improvable}
 
 
-def _apply_email(signals: BehaviorSignals, email: Optional[dict[str, Any]]) -> None:
+def _apply_email(signals: BehaviorSignals, email: dict[str, Any] | None) -> None:
     """Fold email engagement counts into a signals structure."""
     if not email:
         return
@@ -164,7 +163,7 @@ def _apply_email(signals: BehaviorSignals, email: Optional[dict[str, Any]]) -> N
 
 def compute(
     events: list[dict[str, Any]],
-    email: Optional[dict[str, Any]] = None,
+    email: dict[str, Any] | None = None,
     site_improvable: bool = False,
 ) -> BehaviorScore:
     """
@@ -251,9 +250,7 @@ def compute(
     return score_from_signals(signals, site_improvable=site_improvable)
 
 
-def build_signals_from_aggregate(
-    aggregate: dict[str, Any], email: Optional[dict[str, Any]] = None
-) -> BehaviorSignals:
+def build_signals_from_aggregate(aggregate: dict[str, Any], email: dict[str, Any] | None = None) -> BehaviorSignals:
     """
     Build a signals structure from PostHog aggregate counts + email engagement.
 

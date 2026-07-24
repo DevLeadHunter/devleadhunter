@@ -53,12 +53,17 @@
 </template>
 
 <script lang="ts" setup>
+import type { DemoVideoEventCapture } from '~/types/demoVideoTracking'
 import type { ComputedRef, Ref } from 'vue'
 import type { DemoSitePublic } from '~/types/demoSite'
 
-const route = useRoute()
-const config = useRuntimeConfig()
-const { init: initVideoTracking, capture } = useDemoVideoTracking()
+const route: ReturnType<typeof useRoute> = useRoute()
+const config: ReturnType<typeof useRuntimeConfig> = useRuntimeConfig()
+const {
+  init: initVideoTracking,
+  capture,
+}: { init: (slug: string, variant: string | null) => Promise<void>; capture: DemoVideoEventCapture } =
+  useDemoVideoTracking()
 
 const playerRef: Ref<HTMLVideoElement | null> = ref(null)
 
@@ -75,7 +80,7 @@ const {
   data: site,
   pending,
   error,
-} = await useAsyncData(
+}: Awaited<ReturnType<typeof useAsyncData<DemoSitePublic | undefined>>> = await useAsyncData<DemoSitePublic>(
   () => `demo-video-${slug.value}`,
   async (): Promise<DemoSitePublic> => {
     return await $fetch<DemoSitePublic>(`${config.public.apiBase}/api/v1/demo-sites/public/${slug.value}`)

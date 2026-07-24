@@ -28,7 +28,7 @@ _ROOT = Path(__file__).resolve().parent.parent
 if str(_ROOT) not in sys.path:
     sys.path.insert(0, str(_ROOT))
 
-from core.database import engine  # noqa: E402
+from core.database import engine
 
 _VARIABLE_RE = re.compile(r"\{([a-zA-Z_][a-zA-Z0-9_]*)\}")
 
@@ -52,10 +52,7 @@ def run_migration() -> None:
                 continue
             variables = sorted(set(_VARIABLE_RE.findall(replacement + str(row.body_html or ""))))
             conn.execute(
-                text(
-                    "UPDATE email_templates SET subject = :subject, variables = :variables "
-                    "WHERE id = :id"
-                ),
+                text("UPDATE email_templates SET subject = :subject, variables = :variables WHERE id = :id"),
                 {"subject": replacement, "variables": json.dumps(variables), "id": row.id},
             )
             updated += 1

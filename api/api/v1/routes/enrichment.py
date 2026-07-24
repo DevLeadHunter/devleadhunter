@@ -1,4 +1,5 @@
 """Prospect enrichment routes — on-demand rich data for site generation."""
+
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -93,11 +94,13 @@ async def run_bulk_enrichment(
             succeeded += 1
         else:
             failed += 1
-        results.append({
-            "prospect_id": prospect_id,
-            "status": record.status,
-            "error": record.error_message,
-        })
+        results.append(
+            {
+                "prospect_id": prospect_id,
+                "status": record.status,
+                "error": record.error_message,
+            }
+        )
 
     return {
         "results": results,

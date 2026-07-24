@@ -14,15 +14,15 @@
 import type { ComputedRef } from 'vue'
 import type { DemoSitePublic } from '~/types/demoSite'
 
-const route = useRoute()
-const config = useRuntimeConfig()
+const route: ReturnType<typeof useRoute> = useRoute()
+const config: ReturnType<typeof useRuntimeConfig> = useRuntimeConfig()
 const slug: ComputedRef<string> = computed((): string => String(route.params.slug ?? ''))
 
 const {
   data: site,
   pending,
   error,
-} = await useAsyncData(
+}: Awaited<ReturnType<typeof useAsyncData<DemoSitePublic | undefined>>> = await useAsyncData<DemoSitePublic>(
   () => `demo-site-${slug.value}`,
   async (): Promise<DemoSitePublic> => {
     return await $fetch<DemoSitePublic>(`${config.public.apiBase}/api/v1/demo-sites/public/${slug.value}`)

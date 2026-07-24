@@ -1,12 +1,12 @@
 """
 Email scraper using Google search to find contact emails (nodriver).
 """
+
 from __future__ import annotations
 
 import asyncio
 import logging
 import re
-from typing import Optional
 from urllib.parse import quote_plus
 
 from scrappers.nodriver_browser import NODRIVER_AVAILABLE, NodriverBrowser
@@ -27,9 +27,7 @@ class EmailScraper:
     def __init__(self) -> None:
         # Ephemeral profile: avoids locking the main scraper's Chrome profile.
         self._browser = NodriverBrowser(ephemeral=True)
-        self.email_pattern = re.compile(
-            r"\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b"
-        )
+        self.email_pattern = re.compile(r"\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b")
 
     @property
     def browser(self) -> object | None:
@@ -90,12 +88,10 @@ class EmailScraper:
             if clicked:
                 logger.info("Google cookies accepted")
                 await asyncio.sleep(0.5)
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             logger.debug("Could not handle Google cookie consent: %s", exc)
 
-    async def search_google_page(
-        self, tab: object, query: str, page_number: int = 0
-    ) -> Optional[str]:
+    async def search_google_page(self, tab: object, query: str, page_number: int = 0) -> str | None:
         """
         Search Google on a specific results page and extract the first valid email.
 
@@ -112,9 +108,7 @@ class EmailScraper:
                 search_url = f"https://www.google.com/search?q={quote_plus(query)}"
             else:
                 start_param = page_number * 10
-                search_url = (
-                    f"https://www.google.com/search?q={quote_plus(query)}&start={start_param}"
-                )
+                search_url = f"https://www.google.com/search?q={quote_plus(query)}&start={start_param}"
 
             await NodriverDom.navigate(tab, search_url, sleep_s=0.5)
 
@@ -128,31 +122,55 @@ class EmailScraper:
             if emails:
                 spam_domains = [
                     # Generic / placeholder
-                    "example.com", "test.com", "domain.com", "yoursite.com",
+                    "example.com",
+                    "test.com",
+                    "domain.com",
+                    "yoursite.com",
                     # Big platforms
-                    "google.com", "gstatic.com", "facebook.com",
-                    "instagram.com", "twitter.com", "linkedin.com",
-                    "youtube.com", "tiktok.com",
+                    "google.com",
+                    "gstatic.com",
+                    "facebook.com",
+                    "instagram.com",
+                    "twitter.com",
+                    "linkedin.com",
+                    "youtube.com",
+                    "tiktok.com",
                     # Review / aggregator sites
-                    "eldo.com", "avis-verifies.com", "trustpilot.com",
-                    "tripadvisor.com", "tripadvisor.fr",
-                    "yelp.com", "yelp.fr",
+                    "eldo.com",
+                    "avis-verifies.com",
+                    "trustpilot.com",
+                    "tripadvisor.com",
+                    "tripadvisor.fr",
+                    "yelp.com",
+                    "yelp.fr",
                     # Generic artisan / professional directories
-                    "plombiers.com", "electriciens.com", "artisans.com",
-                    "pagesjaunes.fr", "pages-jaunes.fr",
-                    "annuaire.com", "annuaires.com",
-                    "kompass.com", "societe.com", "verif.com",
+                    "plombiers.com",
+                    "electriciens.com",
+                    "artisans.com",
+                    "pagesjaunes.fr",
+                    "pages-jaunes.fr",
+                    "annuaire.com",
+                    "annuaires.com",
+                    "kompass.com",
+                    "societe.com",
+                    "verif.com",
                     "infogreffe.fr",
                     # Genealogy / off-topic sites that appear in broad searches
-                    "geneafrance.com", "geneanet.org", "filae.com",
+                    "geneafrance.com",
+                    "geneanet.org",
+                    "filae.com",
                 ]
                 # Reject HTML-encoding artifacts (e.g. "u003e" = ">") and
                 # generic role addresses from directories that are never the
                 # actual business contact
                 spam_prefixes = (
-                    "u003", "u0022",  # HTML entity remnants
-                    "noreply", "no-reply", "donotreply",
-                    "service-avis", "avis@",
+                    "u003",
+                    "u0022",  # HTML entity remnants
+                    "noreply",
+                    "no-reply",
+                    "donotreply",
+                    "service-avis",
+                    "avis@",
                     "mairie",  # city-hall addresses (mairie@ville.fr etc.)
                 )
 
@@ -161,9 +179,7 @@ class EmailScraper:
                     if any(sp in low for sp in spam_domains):
                         return False
                     local = low.split("@")[0]
-                    if any(local.startswith(pfx) for pfx in spam_prefixes):
-                        return False
-                    return True
+                    return not any(local.startswith(pfx) for pfx in spam_prefixes)
 
                 filtered = [e for e in emails if _is_valid(e)]
                 if filtered:
@@ -175,15 +191,11 @@ class EmailScraper:
                     )
                     return filtered[0]
             return None
-        except Exception as exc:  # noqa: BLE001
-            logger.debug(
-                "Error searching Google page %s for '%s': %s", page_number + 1, query, exc
-            )
+        except Exception as exc:
+            logger.debug("Error searching Google page %s for '%s': %s", page_number + 1, query, exc)
             return None
 
-    async def search_google_multiple_pages(
-        self, tab: object, query: str, max_pages: int = 3
-    ) -> Optional[str]:
+    async def search_google_multiple_pages(self, tab: object, query: str, max_pages: int = 3) -> str | None:
         """
         Search Google across multiple pages until an email is found.
 
@@ -203,7 +215,7 @@ class EmailScraper:
                 await asyncio.sleep(0.5)
         return None
 
-    async def _find_email_nodriver(self, name: str, city: str) -> Optional[str]:
+    async def _find_email_nodriver(self, name: str, city: str) -> str | None:
         """Internal nodriver implementation for email lookup."""
         if not NODRIVER_AVAILABLE:
             return None
@@ -227,9 +239,9 @@ class EmailScraper:
         self,
         name: str,
         city: str,
-        phone: Optional[str] = None,
-        social_url: Optional[str] = None,
-    ) -> Optional[str]:
+        phone: str | None = None,
+        social_url: str | None = None,
+    ) -> str | None:
         """
         Smart email lookup with tiered query strategy (always enabled).
 
@@ -273,9 +285,7 @@ class EmailScraper:
                     # International +33… → 0…
                     digits_only = "0" + digits_only[2:]
                 if len(digits_only) == 10:
-                    phone_formatted = " ".join(
-                        digits_only[i: i + 2] for i in range(0, 10, 2)
-                    )
+                    phone_formatted = " ".join(digits_only[i : i + 2] for i in range(0, 10, 2))
                 else:
                     phone_formatted = phone.strip()
                 query1 = f'"{name}" "{phone_formatted}"'
@@ -306,17 +316,30 @@ class EmailScraper:
         finally:
             pass
 
-
     # Spam domains that are never a real business contact email
     _SOCIAL_SPAM_DOMAINS: tuple[str, ...] = (
-        "example.com", "test.com", "google.com", "gstatic.com",
-        "facebook.com", "instagram.com", "twitter.com", "linkedin.com",
-        "pagesjaunes.fr", "yelp.com", "tripadvisor.com",
-        "geneafrance.com", "geneanet.org",
+        "example.com",
+        "test.com",
+        "google.com",
+        "gstatic.com",
+        "facebook.com",
+        "instagram.com",
+        "twitter.com",
+        "linkedin.com",
+        "pagesjaunes.fr",
+        "yelp.com",
+        "tripadvisor.com",
+        "geneafrance.com",
+        "geneanet.org",
     )
     _SOCIAL_SPAM_PREFIXES: tuple[str, ...] = (
-        "u003", "u0022", "noreply", "no-reply", "donotreply",
-        "service-avis", "mairie",
+        "u003",
+        "u0022",
+        "noreply",
+        "no-reply",
+        "donotreply",
+        "service-avis",
+        "mairie",
     )
 
     def _is_valid_social_email(self, addr: str) -> bool:
@@ -332,16 +355,14 @@ class EmailScraper:
         low = addr.lower()
         if any(sp in low for sp in self._SOCIAL_SPAM_DOMAINS):
             return False
-        return not any(
-            low.split("@")[0].startswith(pfx) for pfx in self._SOCIAL_SPAM_PREFIXES
-        )
+        return not any(low.split("@")[0].startswith(pfx) for pfx in self._SOCIAL_SPAM_PREFIXES)
 
     async def _scrape_social_profile_nodriver(
         self,
         tab: object,
         social_url: str,
         name: str,
-    ) -> Optional[str]:
+    ) -> str | None:
         """
         Navigate directly to a Facebook or Instagram profile and extract an email.
 
@@ -376,7 +397,7 @@ class EmailScraper:
                     filtered[0],
                 )
                 return filtered[0]
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             logger.debug(
                 "Could not scrape social profile %s for '%s': %s",
                 social_url,
@@ -390,8 +411,8 @@ class EmailScraper:
         tab: object,
         name: str,
         city: str,
-        phone: Optional[str] = None,
-    ) -> Optional[str]:
+        phone: str | None = None,
+    ) -> str | None:
         """
         Search Google for a business social profile and extract an email from it.
 
@@ -415,20 +436,17 @@ class EmailScraper:
             if digits.startswith("33") and len(digits) == 11:
                 digits = "0" + digits[2:]
             if len(digits) == 10:
-                phone_fmt = " ".join(digits[i: i + 2] for i in range(0, 10, 2))
+                phone_fmt = " ".join(digits[i : i + 2] for i in range(0, 10, 2))
                 query = f'"{name}" "{phone_fmt}" facebook OR instagram'
             else:
                 query = f'"{name}" "{city}" facebook OR instagram'
         else:
             query = f'"{name}" "{city}" facebook OR instagram'
 
-        search_url = (
-            f"https://www.google.com/search"
-            f"?q={quote_plus(query)}&gl=fr&hl=fr"
-        )
+        search_url = f"https://www.google.com/search?q={quote_plus(query)}&gl=fr&hl=fr"
         try:
             await NodriverDom.navigate(tab, search_url, sleep_s=0.5)
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             logger.debug("Social P4 navigate failed: %s", exc)
             return None
 
@@ -460,15 +478,12 @@ class EmailScraper:
         try:
             # evaluate_list wraps the JS in JSON.stringify so arrays come back as Python lists
             raw_links: list[str] = await NodriverDom.evaluate_list(tab, _js_collect_links)
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             logger.debug("Social P4 link extraction failed: %s", exc)
             return None
 
         # Keep only genuine profile URLs (path segment of at least 3 non-special chars)
-        profile_urls = [
-            link for link in raw_links
-            if re.search(r"(facebook\.com|instagram\.com)/[^/?#]{3,}", link)
-        ]
+        profile_urls = [link for link in raw_links if re.search(r"(facebook\.com|instagram\.com)/[^/?#]{3,}", link)]
 
         for profile_url in profile_urls[:2]:
             found = await self._scrape_social_profile_nodriver(tab, profile_url, name)
@@ -481,9 +496,9 @@ class EmailScraper:
         self,
         name: str,
         city: str,
-        phone: Optional[str] = None,
-        social_url: Optional[str] = None,
-    ) -> Optional[str]:
+        phone: str | None = None,
+        social_url: str | None = None,
+    ) -> str | None:
         """
         Find email with smart query prioritisation.
 
@@ -511,11 +526,11 @@ class EmailScraper:
                 lambda: self._find_email_smart_nodriver(name, city, phone, social_url),
                 timeout=120,
             )
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             logger.error("Error in smart email scraper: %s", exc)
             return None
 
-    async def find_email(self, name: str, city: str) -> Optional[str]:
+    async def find_email(self, name: str, city: str) -> str | None:
         """
         Find an email address for a business via Google search.
 
@@ -531,7 +546,7 @@ class EmailScraper:
                 lambda: self._find_email_nodriver(name, city),
                 timeout=120,
             )
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             logger.error("Error in email scraper: %s", exc)
             return None
 

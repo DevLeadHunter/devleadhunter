@@ -1,21 +1,48 @@
 """
 Main API v1 router.
 """
+
 from fastapi import APIRouter
+
 from .routes import (
-    health, prospects, auth, users, credit_settings, credits, payments,
-    accounting, support, email_accounts, email_templates, email_signatures, emails, scraping_jobs,
-    campaigns, unsubscribe, exports, interactions, demo_sites, sources, webhooks,
-    enrichment, orders, dashboard, behavior, organizations,
-    settings as settings_routes, admin_monitoring, admin_storyblok, admin_storage,
-    automations, send_policy, email_health,
+    accounting,
+    admin_monitoring,
+    admin_storage,
+    admin_storyblok,
+    auth,
+    automations,
+    behavior,
+    campaigns,
+    credit_settings,
+    credits,
+    dashboard,
+    demo_sites,
+    email_accounts,
+    email_health,
+    email_signatures,
+    email_templates,
+    emails,
+    enrichment,
+    exports,
+    health,
+    interactions,
+    orders,
+    organizations,
+    payments,
+    prospects,
+    scraping_jobs,
+    send_policy,
+    sources,
+    support,
+    unsubscribe,
+    users,
+    webhooks,
+)
+from .routes import (
+    settings as settings_routes,
 )
 
-
-router = APIRouter(
-    prefix="",
-    tags=["v1"]
-)
+router = APIRouter(prefix="", tags=["v1"])
 
 
 # Include all route modules
@@ -52,4 +79,3 @@ router.include_router(admin_monitoring.router)
 router.include_router(admin_storyblok.router)
 router.include_router(automations.router)
 router.include_router(send_policy.router)
-

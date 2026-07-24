@@ -5,6 +5,7 @@ recorded in-app with the teleprompter (three takes concatenated here). The
 clip is the generic voice/webcam track (« Bonjour, moi c'est Léo… ») reused
 by every generated prospection video — see ``demo_video_service``.
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -14,7 +15,6 @@ import shutil
 import subprocess
 import tempfile
 from pathlib import Path
-from typing import Optional
 
 from fastapi import HTTPException, UploadFile, status
 from sqlalchemy import select
@@ -169,11 +169,9 @@ async def has_audio_stream(file_path: str) -> bool:
 class PresenterVideoService:
     """CRUD for the per-user presenter clip (file on disk + DB row)."""
 
-    def get_for_user(self, db: Session, user_id: int) -> Optional[PresenterVideo]:
+    def get_for_user(self, db: Session, user_id: int) -> PresenterVideo | None:
         """Return the user's presenter clip row, or None."""
-        return db.execute(
-            select(PresenterVideo).where(PresenterVideo.user_id == user_id)
-        ).scalar_one_or_none()
+        return db.execute(select(PresenterVideo).where(PresenterVideo.user_id == user_id)).scalar_one_or_none()
 
     async def store_upload(
         self,
@@ -421,7 +419,7 @@ class PresenterVideoService:
         key = r2_storage.presenter_key(user_id)
         try:
             await r2_storage.upload_file_async(local_path, key, "video/mp4")
-        except Exception as exc:  # noqa: BLE001 — surfaced as a readable API error
+        except Exception as exc:
             logger.exception("[Presenter] R2 upload failed for user=%s", user_id)
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -667,7 +665,7 @@ class PresenterVideoService:
             elif stored:
                 # Ligne écrite avant la migration R2 : fichier encore sur disque.
                 Path(stored).unlink(missing_ok=True)
-        except Exception:  # noqa: BLE001 — never block the delete on storage
+        except Exception:
             logger.warning("[Presenter] clip cleanup failed for user=%s", user_id, exc_info=True)
         db.delete(record)
         db.commit()

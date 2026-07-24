@@ -12,13 +12,14 @@ Strategy
    Phone-based queries (validated with BrightData) hit guide-artisan.fr, annuaires RGE,
    initiative-broceliande.bzh in the first result page.
 """
+
 from __future__ import annotations
 
 import asyncio
 import logging
 import re
 import unicodedata
-from typing import Callable, List, Optional
+from collections.abc import Callable
 
 from enums.source import Source
 from models.prospect import ProspectCreate
@@ -47,7 +48,6 @@ class AutoScraper(BaseScraper):
         self._osm = OSMScraper()
         self._pj = PagesJaunesScraper()
 
-
     @staticmethod
     def _normalize_name(name: str) -> str:
         """Return a canonical key for deduplication (accent-free, lowercase, no punct)."""
@@ -66,9 +66,9 @@ class AutoScraper(BaseScraper):
         city: str,
         max_results: int,
         only_without_website: bool,
-        progress: Optional[ScrapeProgressReporter],
-        should_stop: Optional[Callable[[], bool]],
-    ) -> List[ProspectCreate]:
+        progress: ScrapeProgressReporter | None,
+        should_stop: Callable[[], bool] | None,
+    ) -> list[ProspectCreate]:
         """Run OSMScraper, swallowing any exception so gather() always gets a list."""
         try:
             return await self._osm.scrape(
@@ -79,7 +79,7 @@ class AutoScraper(BaseScraper):
                 progress=None,  # progress reported by AutoScraper directly
                 should_stop=should_stop,
             )
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             logger.error("[Auto] OSM scraper failed: %s", exc)
             return []
 
@@ -89,9 +89,9 @@ class AutoScraper(BaseScraper):
         city: str,
         max_results: int,
         only_without_website: bool,
-        progress: Optional[ScrapeProgressReporter],
-        should_stop: Optional[Callable[[], bool]],
-    ) -> List[ProspectCreate]:
+        progress: ScrapeProgressReporter | None,
+        should_stop: Callable[[], bool] | None,
+    ) -> list[ProspectCreate]:
         """Run PagesJaunesScraper, swallowing any exception."""
         try:
             return await self._pj.scrape(
@@ -102,7 +102,7 @@ class AutoScraper(BaseScraper):
                 progress=None,
                 should_stop=should_stop,
             )
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             logger.error("[Auto] PagesJaunes scraper failed: %s", exc)
             return []
 
@@ -133,10 +133,9 @@ class AutoScraper(BaseScraper):
                 )
                 data["confidence"] = max(1, min(confidence, 4))
                 return ProspectCreate(**data)
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             logger.debug("[Auto] Email enrichment failed for %s: %s", prospect.name, exc)
         return prospect
-
 
     async def scrape(
         self,
@@ -145,9 +144,9 @@ class AutoScraper(BaseScraper):
         max_results: int = 50,
         *,
         only_without_website: bool = True,
-        progress: Optional[ScrapeProgressReporter] = None,
-        should_stop: Optional[Callable[[], bool]] = None,
-    ) -> List[ProspectCreate]:
+        progress: ScrapeProgressReporter | None = None,
+        should_stop: Callable[[], bool] | None = None,
+    ) -> list[ProspectCreate]:
         """
         Scrape prospects using OSM + Pages Jaunes in parallel then enrich emails.
 
@@ -187,9 +186,7 @@ class AutoScraper(BaseScraper):
             logger.info("[Auto] Phase 1 done — OSM: %s  PagesJaunes: %s", osm_count, pj_count)
 
             if progress:
-                await progress.log(
-                    f"Auto — OSM : {osm_count} résultat(s) · Pages Jaunes : {pj_count} résultat(s)"
-                )
+                await progress.log(f"Auto — OSM : {osm_count} résultat(s) · Pages Jaunes : {pj_count} résultat(s)")
 
             # Phase 2: merge + deduplicate
             # PagesJaunes results take priority (richer data: address, phone)
@@ -213,9 +210,7 @@ class AutoScraper(BaseScraper):
                 return []
 
             if progress:
-                await progress.log(
-                    f"Auto — enrichissement des emails ({len(merged)} prospect(s))…"
-                )
+                await progress.log(f"Auto — enrichissement des emails ({len(merged)} prospect(s))…")
 
             enriched: list[ProspectCreate] = []
             for prospect in merged:
@@ -233,7 +228,7 @@ class AutoScraper(BaseScraper):
             logger.info("[Auto] Final: %s prospects returned", len(enriched))
             return enriched[:max_results]
 
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             logger.error("[Auto] Unexpected error: %s", exc, exc_info=True)
             return []
 

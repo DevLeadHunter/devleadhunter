@@ -7,15 +7,16 @@ Idempotent:
   * full-auto target columns on ``acquisition_runs``.
 Each ALTER is guarded with an INFORMATION_SCHEMA check so re-running is a no-op.
 """
+
 import os
 import sys
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
-from sqlalchemy import text  # noqa: E402
+from sqlalchemy import text
 
-from core.database import engine  # noqa: E402
-from models.send_policy import SendPolicy  # noqa: E402
+from core.database import engine
+from models.send_policy import SendPolicy
 
 # (table, column, DDL type) for each column to add if missing.
 _COLUMNS: list[tuple[str, str, str]] = [
@@ -44,10 +45,7 @@ def _column_exists(conn, table: str, column: str) -> bool:
 def _table_exists(conn, table: str) -> bool:
     """Return True when ``table`` exists in the current schema."""
     result = conn.execute(
-        text(
-            "SELECT COUNT(*) FROM INFORMATION_SCHEMA.TABLES "
-            "WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = :t"
-        ),
+        text("SELECT COUNT(*) FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = :t"),
         {"t": table},
     ).scalar()
     return bool(result)

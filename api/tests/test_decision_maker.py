@@ -3,6 +3,7 @@ Unit tests for the decision-maker name cascade — greeting rules, name
 normalisation, registry parsing and the resolver's confidence/agreement logic.
 All offline: strategy parsers are exercised on fixtures, never the network.
 """
+
 from services.decision_maker.greeting import build_greeting
 from services.decision_maker.normalize import (
     company_similarity,
@@ -18,7 +19,6 @@ from services.decision_maker.strategies import (
     RegistreGouvStrategy,
 )
 from services.decision_maker.types import NameCandidate, ResolutionContext
-
 
 # ── Greeting rules (Léo's decisions) ─────────────────────────────────────────
 
@@ -120,7 +120,14 @@ def test_registre_multi_dirigeants_scores_below_solo() -> None:
         "siege": {"code_postal": "35000", "libelle_commune": "RENNES"},
     }
     solo = RegistreGouvStrategy().parse_results(
-        [{**base, "dirigeants": [{"nom": "DUBOIS", "prenoms": "Michel", "qualite": "Gérant", "type_dirigeant": "personne physique"}]}],
+        [
+            {
+                **base,
+                "dirigeants": [
+                    {"nom": "DUBOIS", "prenoms": "Michel", "qualite": "Gérant", "type_dirigeant": "personne physique"}
+                ],
+            }
+        ],
         _context(),
     )
     multi = RegistreGouvStrategy().parse_results(
