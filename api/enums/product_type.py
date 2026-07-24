@@ -1,4 +1,5 @@
 """Product types sold through DevLeadHunter (multi-product from day one)."""
+
 from enum import Enum
 
 

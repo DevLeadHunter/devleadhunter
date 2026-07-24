@@ -1,4 +1,5 @@
 """Status of the generated prospection video attached to a demo site."""
+
 from enum import Enum
 
 

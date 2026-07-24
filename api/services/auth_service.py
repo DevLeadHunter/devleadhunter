@@ -1,18 +1,18 @@
 """Authentication: password hashing, JWT tokens, and the FastAPI auth dependencies."""
+
 from datetime import datetime, timedelta
-from typing import Optional
 
 import bcrypt
-from jose import JWTError, jwt
-from sqlalchemy.orm import Session
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
+from jose import JWTError, jwt
+from sqlalchemy.orm import Session
 
 from core.config import settings
 from core.database import get_db
+from enums.user_role import UserRole
 from models.user import User
 from schemas.user import TokenData
-from enums.user_role import UserRole
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl=f"{settings.api_prefix}/auth/login")
 
@@ -51,7 +51,7 @@ class AuthService:
         return bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
 
     @staticmethod
-    def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -> str:
+    def create_access_token(data: dict, expires_delta: timedelta | None = None) -> str:
         """
         Issue a signed JWT access token.
 
@@ -63,14 +63,12 @@ class AuthService:
             The encoded token.
         """
         to_encode = data.copy()
-        expire = datetime.utcnow() + (
-            expires_delta or timedelta(minutes=settings.access_token_expire_minutes)
-        )
+        expire = datetime.utcnow() + (expires_delta or timedelta(minutes=settings.access_token_expire_minutes))
         to_encode.update({"exp": expire})
         return jwt.encode(to_encode, settings.secret_key, algorithm=settings.algorithm)
 
     @staticmethod
-    def get_user_by_email(db: Session, email: str) -> Optional[User]:
+    def get_user_by_email(db: Session, email: str) -> User | None:
         """
         Look a user up by email.
 
@@ -84,7 +82,7 @@ class AuthService:
         return db.query(User).filter(User.email == email).first()
 
     @staticmethod
-    def get_user_by_id(db: Session, user_id: int) -> Optional[User]:
+    def get_user_by_id(db: Session, user_id: int) -> User | None:
         """
         Look a user up by primary key.
 
@@ -98,7 +96,7 @@ class AuthService:
         return db.query(User).filter(User.id == user_id).first()
 
     @classmethod
-    def authenticate_user(cls, db: Session, email: str, password: str) -> Optional[User]:
+    def authenticate_user(cls, db: Session, email: str, password: str) -> User | None:
         """
         Authenticate a login attempt.
 

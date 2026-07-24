@@ -8,6 +8,7 @@ so no hard DB cascade is required here.
 Run with:
     python migrations/add_email_signatures.py
 """
+
 from __future__ import annotations
 
 import sys
@@ -20,7 +21,7 @@ if str(_ROOT) not in sys.path:
     sys.path.insert(0, str(_ROOT))
 
 from core.database import engine
-from models.email_signature import EmailSignature  # noqa: F401 — ensures table metadata loaded
+from models.email_signature import EmailSignature
 
 
 def _column_exists(conn, table_name: str, column_name: str) -> bool:

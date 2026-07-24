@@ -6,10 +6,11 @@ behaviour-based personalised follow-up. Every method degrades gracefully to a
 rule-based output when ``GROQ_API_KEY`` is not configured, so the product works
 without the LLM and lights up automatically once a key is provided.
 """
+
 from __future__ import annotations
 
 import logging
-from typing import Any, Optional
+from typing import Any
 
 import httpx
 
@@ -28,7 +29,7 @@ class LLMService:
         """True when a Groq API key is available."""
         return bool(settings.groq_api_key)
 
-    async def _chat(self, messages: list[dict[str, str]], *, max_tokens: int = 600) -> Optional[str]:
+    async def _chat(self, messages: list[dict[str, str]], *, max_tokens: int = 600) -> str | None:
         """Call Groq chat completions. Returns the text, or None on failure."""
         if not self.is_configured:
             return None
@@ -47,13 +48,11 @@ class LLMService:
                 response.raise_for_status()
                 data: dict[str, Any] = response.json()
                 return data["choices"][0]["message"]["content"].strip()
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             logger.warning("Groq call failed: %s", exc)
             return None
 
-    async def summarize_behavior(
-        self, *, business_name: str, temperature: str, signals: dict[str, Any]
-    ) -> str:
+    async def summarize_behavior(self, *, business_name: str, temperature: str, signals: dict[str, Any]) -> str:
         """Produce a short behavioural read + relance advice for a prospect."""
         prompt = (
             "Tu es l'assistant commercial de Léo (Dibodev), qui vend des sites web aux artisans. "

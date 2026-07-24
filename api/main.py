@@ -1,7 +1,9 @@
 """
 Main FastAPI application entry point.
 """
+
 import logging
+
 
 def _configure_logging() -> None:
     """Configure app log levels without overriding uvicorn reload workers."""
@@ -9,25 +11,25 @@ def _configure_logging() -> None:
     if not root.handlers:
         logging.basicConfig(
             level=logging.WARNING,
-            format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+            format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
         )
 
     # SQLAlchemy logs all SQL queries at INFO level - reduce to ERROR
-    sqlalchemy_engine_logger = logging.getLogger('sqlalchemy.engine')
+    sqlalchemy_engine_logger = logging.getLogger("sqlalchemy.engine")
     sqlalchemy_engine_logger.setLevel(logging.ERROR)
     sqlalchemy_engine_logger.propagate = False
 
-    sqlalchemy_pool_logger = logging.getLogger('sqlalchemy.pool')
+    sqlalchemy_pool_logger = logging.getLogger("sqlalchemy.pool")
     sqlalchemy_pool_logger.setLevel(logging.ERROR)
     sqlalchemy_pool_logger.propagate = False
 
-    sqlalchemy_dialects_logger = logging.getLogger('sqlalchemy.dialects')
+    sqlalchemy_dialects_logger = logging.getLogger("sqlalchemy.dialects")
     sqlalchemy_dialects_logger.setLevel(logging.ERROR)
     sqlalchemy_dialects_logger.propagate = False
 
-    logging.getLogger('stripe').setLevel(logging.WARNING)
-    logging.getLogger('uvicorn.access').setLevel(logging.WARNING)
-    logging.getLogger('uvicorn.error').setLevel(logging.WARNING)
+    logging.getLogger("stripe").setLevel(logging.WARNING)
+    logging.getLogger("uvicorn.access").setLevel(logging.WARNING)
+    logging.getLogger("uvicorn.error").setLevel(logging.WARNING)
 
 
 _configure_logging()
@@ -36,20 +38,21 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
+
 from api.v1.router import router as api_router
 from core.config import settings
 from core.rate_limiter import limiter
-from services.scraper_service import scraper_service
-from scrappers.google_scraper import GoogleScraper
-from scrappers.pagesjaunes_scraper import PagesJaunesScraper
-from scrappers.osm_scraper import OSMScraper
+from core.win32_asyncio import ensure_proactor_event_loop
 from scrappers.auto_scraper import AutoScraper
 from scrappers.brightdata_scraper import BrightDataScraper
+from scrappers.google_scraper import GoogleScraper
+from scrappers.osm_scraper import OSMScraper
+from scrappers.pagesjaunes_scraper import PagesJaunesScraper
 from services.acquisition_orchestrator import acquisition_orchestrator
 from services.demo_site_cleanup_service import run_demo_site_cleanup_loop
 from services.email_queue_worker import email_queue_worker
 from services.order_fulfillment_recovery_service import run_order_fulfillment_recovery_loop
-from core.win32_asyncio import ensure_proactor_event_loop
+from services.scraper_service import scraper_service
 
 ensure_proactor_event_loop()
 
@@ -61,7 +64,7 @@ app = FastAPI(
     version="Hunter",
     docs_url="/docs",
     redoc_url="/redoc",
-    openapi_url="/openapi.json"
+    openapi_url="/openapi.json",
 )
 
 # Add rate limiter to app state
@@ -94,9 +97,7 @@ async def unhandled_exception_handler(request: Request, exc: Exception) -> JSONR
     Returns:
         A JSON 500 response with CORS headers when the Origin is allowed.
     """
-    logging.getLogger(__name__).exception(
-        "Unhandled error on %s %s", request.method, request.url.path
-    )
+    logging.getLogger(__name__).exception("Unhandled error on %s %s", request.method, request.url.path)
     headers: dict = {}
     origin = request.headers.get("origin")
     if origin and origin in settings.allowed_cors_origins:
@@ -118,14 +119,14 @@ app.include_router(api_router, prefix=settings.api_prefix)
 async def startup_event() -> None:
     """
     Initialize services on application startup.
-    
+
     This function runs when the FastAPI application starts.
     It sets up scrapers and other services.
     """
     # Register scrapers
     google_scraper = GoogleScraper()
     await scraper_service.add_scraper(google_scraper)
-    
+
     pagesjaunes_scraper = PagesJaunesScraper()
     await scraper_service.add_scraper(pagesjaunes_scraper)
 
@@ -152,9 +153,9 @@ async def _warmup_maps_autocomplete() -> None:
     try:
         if not settings.scraper_warmup_maps:
             return
+        from scrappers.google_scraper import warmup_maps_suggestion_session
         from scrappers.nodriver_browser import NODRIVER_AVAILABLE
         from scrappers.nodriver_executor import run_nodriver_task
-        from scrappers.google_scraper import warmup_maps_suggestion_session
 
         if not NODRIVER_AVAILABLE:
             return
@@ -168,7 +169,7 @@ async def _warmup_maps_autocomplete() -> None:
 async def shutdown_event() -> None:
     """
     Cleanup on application shutdown.
-    
+
     This function runs when the FastAPI application shuts down.
     It performs cleanup tasks.
     """
@@ -179,7 +180,7 @@ async def shutdown_event() -> None:
 async def root() -> dict:
     """
     Root endpoint.
-    
+
     Returns:
         Welcome message and API information
     """
@@ -187,18 +188,18 @@ async def root() -> dict:
         "message": "Welcome to Prospect Tool API",
         "version": "Hunter",
         "docs": "/docs",
-        "health": f"{settings.api_prefix}/health"
+        "health": f"{settings.api_prefix}/health",
     }
 
 
 if __name__ == "__main__":
     import uvicorn
+
     uvicorn.run(
         "main:app",
         host=settings.host,
         port=settings.port,
         reload=settings.debug,
         log_level="warning",  # Reduce uvicorn logs to warnings only
-        access_log=False  # Disable HTTP access logs
+        access_log=False,  # Disable HTTP access logs
     )
-

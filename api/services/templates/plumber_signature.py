@@ -12,9 +12,10 @@ The shared services only reference the stable names below:
 
 Rendering component (Nuxt): demo-host/app/components/templates/plumber-signature/.
 """
+
 from __future__ import annotations
 
-from typing import Any, Optional
+from typing import Any
 
 TEMPLATE_ID: str = "plumber-signature"
 
@@ -201,9 +202,9 @@ COMPONENT_SCHEMAS: list[dict[str, Any]] = [
 def build_content(
     *,
     business_name: str,
-    phone: Optional[str],
-    email: Optional[str],
-    city: Optional[str],
+    phone: str | None,
+    email: str | None,
+    city: str | None,
     area: str,
     subtitle: str,
     palette: dict[str, str],
@@ -215,26 +216,74 @@ def build_content(
     ba_before: str = f"{u}1604709177225-055f99402ea3"
     ba_after: str = f"{u}1584622650111-993a426fbf0a"
     gallery: list[dict[str, str]] = [
-        {"image": f"{u}1584622650111-993a426fbf0a", "caption": "Rénovation complète de salle de bain", "location": area},
+        {
+            "image": f"{u}1584622650111-993a426fbf0a",
+            "caption": "Rénovation complète de salle de bain",
+            "location": area,
+        },
         {"image": f"{u}1604709177225-055f99402ea3", "caption": "Création d'une salle d'eau", "location": area},
         {"image": f"{u}1600585152220-90363fe7e115", "caption": "Remplacement d'évier et mitigeur", "location": area},
         {"image": f"{u}1556909211-36987daf7b4d", "caption": "Robinetterie et plan de travail", "location": area},
-        {"image": f"{u}1600566753086-00f18fb6b3ea", "caption": "Réfection de réseau après dégât des eaux", "location": area},
+        {
+            "image": f"{u}1600566753086-00f18fb6b3ea",
+            "caption": "Réfection de réseau après dégât des eaux",
+            "location": area,
+        },
         {"image": f"{u}1635274605638-d44babc08a4f", "caption": "Aménagement et sanitaires", "location": area},
     ]
     services: list[dict[str, str]] = [
-        {"label": "Dépannage d'urgence", "description": "Fuite, canalisation bouchée ou chauffe-eau en panne — on intervient vite, 7 j/7.", "icon": "emergency"},
-        {"label": "Recherche de fuite", "description": "Diagnostic précis sans casse inutile, grâce à des outils de détection professionnels.", "icon": "leak"},
-        {"label": "Rénovation salle de bain", "description": "Douche, robinetterie, WC et sanitaires posés proprement, du devis à la finition.", "icon": "bath"},
-        {"label": "Chauffe-eau & chaudière", "description": "Entretien, remplacement et mise aux normes de vos équipements d'eau chaude.", "icon": "heater"},
-        {"label": "Débouchage canalisations", "description": "Évacuations et colonnes dégagées durablement, sans abîmer vos installations.", "icon": "drain"},
-        {"label": "Installation sanitaire", "description": "Pose de robinetterie, WC, lavabos et raccordements neufs aux normes.", "icon": "install"},
+        {
+            "label": "Dépannage d'urgence",
+            "description": "Fuite, canalisation bouchée ou chauffe-eau en panne — on intervient vite, 7 j/7.",
+            "icon": "emergency",
+        },
+        {
+            "label": "Recherche de fuite",
+            "description": "Diagnostic précis sans casse inutile, grâce à des outils de détection professionnels.",
+            "icon": "leak",
+        },
+        {
+            "label": "Rénovation salle de bain",
+            "description": "Douche, robinetterie, WC et sanitaires posés proprement, du devis à la finition.",
+            "icon": "bath",
+        },
+        {
+            "label": "Chauffe-eau & chaudière",
+            "description": "Entretien, remplacement et mise aux normes de vos équipements d'eau chaude.",
+            "icon": "heater",
+        },
+        {
+            "label": "Débouchage canalisations",
+            "description": "Évacuations et colonnes dégagées durablement, sans abîmer vos installations.",
+            "icon": "drain",
+        },
+        {
+            "label": "Installation sanitaire",
+            "description": "Pose de robinetterie, WC, lavabos et raccordements neufs aux normes.",
+            "icon": "install",
+        },
     ]
     steps: list[dict[str, str]] = [
-        {"title": "Votre appel", "description": "On échange sur votre problème et on évalue l'urgence.", "icon": "phone"},
-        {"title": "Le diagnostic", "description": "On identifie précisément la panne, sans casse inutile.", "icon": "search"},
-        {"title": "Le devis", "description": "Un prix clair et détaillé, validé avant toute intervention.", "icon": "doc"},
-        {"title": "L'intervention", "description": "On répare proprement et on vérifie tout avant de partir.", "icon": "install"},
+        {
+            "title": "Votre appel",
+            "description": "On échange sur votre problème et on évalue l'urgence.",
+            "icon": "phone",
+        },
+        {
+            "title": "Le diagnostic",
+            "description": "On identifie précisément la panne, sans casse inutile.",
+            "icon": "search",
+        },
+        {
+            "title": "Le devis",
+            "description": "Un prix clair et détaillé, validé avant toute intervention.",
+            "icon": "doc",
+        },
+        {
+            "title": "L'intervention",
+            "description": "On répare proprement et on vérifie tout avant de partir.",
+            "icon": "install",
+        },
     ]
     trust_stats: list[dict[str, str]] = [
         {"value": "4,9/5", "label": "Avis Google"},
@@ -249,16 +298,46 @@ def build_content(
         {"label": "Conseil honnête", "description": "On répare ce qui doit l'être, rien de plus.", "icon": "hand"},
     ]
     testimonials: list[dict[str, Any]] = [
-        {"quote": "Fuite réparée le soir même, proprement et efficacement. Je recommande sans hésiter.", "author": "Sophie M.", "location": area, "rating": 5},
-        {"quote": "Devis clair, intervention rapide et tarif respecté. Un vrai professionnel.", "author": "Karim B.", "location": area, "rating": 5},
-        {"quote": "Rénovation de notre salle de bain impeccable, dans les délais annoncés.", "author": "Laurent D.", "location": area, "rating": 5},
+        {
+            "quote": "Fuite réparée le soir même, proprement et efficacement. Je recommande sans hésiter.",
+            "author": "Sophie M.",
+            "location": area,
+            "rating": 5,
+        },
+        {
+            "quote": "Devis clair, intervention rapide et tarif respecté. Un vrai professionnel.",
+            "author": "Karim B.",
+            "location": area,
+            "rating": 5,
+        },
+        {
+            "quote": "Rénovation de notre salle de bain impeccable, dans les délais annoncés.",
+            "author": "Laurent D.",
+            "location": area,
+            "rating": 5,
+        },
     ]
     faqs: list[dict[str, str]] = [
-        {"question": "Intervenez-vous en urgence le week-end ?", "answer": "Oui. Nous assurons un dépannage 24 h/24 et 7 j/7 pour les urgences : fuite, dégât des eaux, absence d'eau chaude. Un seul numéro, à toute heure."},
-        {"question": "Le devis est-il vraiment gratuit ?", "answer": "Toujours. Nous évaluons votre besoin et vous communiquons un prix clair et détaillé avant toute intervention, sans engagement."},
-        {"question": "Dans quelles zones intervenez-vous ?", "answer": f"Nous intervenons à {area} et dans les communes alentour. Appelez-nous pour vérifier votre secteur."},
-        {"question": "Combien de temps pour une intervention ?", "answer": "En urgence, nous visons une intervention en moins de deux heures. Pour les travaux planifiés, nous convenons ensemble d'un créneau qui vous arrange."},
-        {"question": "Vos travaux sont-ils garantis ?", "answer": "Oui. Nos interventions et les équipements posés sont garantis, et nous restons votre interlocuteur après le chantier."},
+        {
+            "question": "Intervenez-vous en urgence le week-end ?",
+            "answer": "Oui. Nous assurons un dépannage 24 h/24 et 7 j/7 pour les urgences : fuite, dégât des eaux, absence d'eau chaude. Un seul numéro, à toute heure.",
+        },
+        {
+            "question": "Le devis est-il vraiment gratuit ?",
+            "answer": "Toujours. Nous évaluons votre besoin et vous communiquons un prix clair et détaillé avant toute intervention, sans engagement.",
+        },
+        {
+            "question": "Dans quelles zones intervenez-vous ?",
+            "answer": f"Nous intervenons à {area} et dans les communes alentour. Appelez-nous pour vérifier votre secteur.",
+        },
+        {
+            "question": "Combien de temps pour une intervention ?",
+            "answer": "En urgence, nous visons une intervention en moins de deux heures. Pour les travaux planifiés, nous convenons ensemble d'un créneau qui vous arrange.",
+        },
+        {
+            "question": "Vos travaux sont-ils garantis ?",
+            "answer": "Oui. Nos interventions et les équipements posés sont garantis, et nous restons votre interlocuteur après le chantier.",
+        },
     ]
     paragraphs: list[str] = [
         f"Depuis plus de quinze ans, {business_name} intervient chez les particuliers et les professionnels de {area}. "
@@ -415,13 +494,13 @@ _EDITORIAL_DEFAULTS: dict[str, Any] = {
 def build_site_content(
     *,
     business_name: str,
-    phone: Optional[str],
-    email: Optional[str],
-    city: Optional[str],
+    phone: str | None,
+    email: str | None,
+    city: str | None,
     area: str,
     subtitle: str,
     palette: dict[str, str],
-    enrichment: Optional[dict[str, Any]] = None,
+    enrichment: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Build the flat ``SiteContent`` for this template (Phase 4b).
 

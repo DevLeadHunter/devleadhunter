@@ -1,4 +1,5 @@
 """Order / sales routes — available to every authenticated user."""
+
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
@@ -121,7 +122,7 @@ async def create_order_payment_link(
         order = order_service.create_payment_link(db, order)
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=str(exc)) from exc
     return OrderResponse.model_validate(order)
 

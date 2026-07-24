@@ -62,7 +62,7 @@ export class StoryblokSiteContentBridge {
     if (raw?.component === 'site_content') {
       return raw
     }
-    return this.readBlokList(raw.body).find((blok): boolean => blok?.component === 'site_content')
+    return this.readBlokList(raw.body).find((blok: Blok): boolean => blok?.component === 'site_content')
   }
 
   /**
@@ -98,16 +98,16 @@ export class StoryblokSiteContentBridge {
       about: this.readString(blok.about),
       heroBadge: this.readString(blok.heroBadge),
       heroPoints: this.readBlokList(blok.heroPoints)
-        .map((item): string | undefined => this.readString(item.text))
-        .filter((text): text is string => Boolean(text)),
+        .map((item: Blok): string | undefined => this.readString(item.text))
+        .filter((text: string | undefined): text is string => Boolean(text)),
       ctaCallLabel: this.readString(blok.ctaCallLabel),
       ctaQuoteLabel: this.readString(blok.ctaQuoteLabel),
       trustItems: this.readBlokList(blok.trustItems)
-        .map((item): { value?: string; label?: string } => ({
+        .map((item: Blok): { value?: string; label?: string } => ({
           value: this.readString(item.value),
           label: this.readString(item.label),
         }))
-        .filter((item): boolean => Boolean(item.value) || Boolean(item.label)),
+        .filter((item: Blok): boolean => Boolean(item.value) || Boolean(item.label)),
       servicesHeading: this.readString(blok.servicesHeading),
       galleryHeading: this.readString(blok.galleryHeading),
       reviewsHeading: this.readString(blok.reviewsHeading),
@@ -123,43 +123,45 @@ export class StoryblokSiteContentBridge {
         accent: this.readString(palette.accent),
       },
       gallery: this.readBlokList(blok.gallery)
-        .map((item): { url?: string; alt?: string } => ({
+        .map((item: Blok): { url?: string; alt?: string } => ({
           url: this.readString(item.url),
           alt: this.readString(item.alt),
         }))
-        .filter((image): boolean => Boolean(image.url)),
-      services: this.readBlokList(blok.services).map((item): { title?: string; description?: string } => ({
+        .filter((image: Blok): boolean => Boolean(image.url)),
+      services: this.readBlokList(blok.services).map((item: Blok): { title?: string; description?: string } => ({
         title: this.readString(item.title),
         description: this.readString(item.description),
       })),
-      reviews: this.readBlokList(blok.reviews).map((item): { author?: string; rating?: number; text?: string } => ({
-        author: this.readString(item.author),
-        rating: typeof item.rating === 'number' ? item.rating : undefined,
-        text: this.readString(item.text),
-      })),
-      faq: this.readBlokList(blok.faq).map((item): { question?: string; answer?: string } => ({
+      reviews: this.readBlokList(blok.reviews).map(
+        (item: Blok): { author?: string; rating?: number; text?: string } => ({
+          author: this.readString(item.author),
+          rating: typeof item.rating === 'number' ? item.rating : undefined,
+          text: this.readString(item.text),
+        }),
+      ),
+      faq: this.readBlokList(blok.faq).map((item: Blok): { question?: string; answer?: string } => ({
         question: this.readString(item.question),
         answer: this.readString(item.answer),
       })),
       openingHours: this.readBlokList(blok.openingHours)
-        .map((item): { day?: string; hours?: string } => ({
+        .map((item: Blok): { day?: string; hours?: string } => ({
           day: this.readString(item.day),
           hours: this.readString(item.hours),
         }))
-        .filter((entry): boolean => Boolean(entry.day) || Boolean(entry.hours)),
+        .filter((entry: Blok): boolean => Boolean(entry.day) || Boolean(entry.hours)),
       beforeAfter: this.readBlokList(blok.beforeAfter)
-        .map((item): { before?: string; after?: string; label?: string } => ({
+        .map((item: Blok): { before?: string; after?: string; label?: string } => ({
           before: this.readString(item.before),
           after: this.readString(item.after),
           label: this.readString(item.label),
         }))
-        .filter((pair): boolean => Boolean(pair.before) || Boolean(pair.after)),
+        .filter((pair: Blok): boolean => Boolean(pair.before) || Boolean(pair.after)),
       social: this.readBlokList(blok.social)
-        .map((item): { network?: string; url?: string } => ({
+        .map((item: Blok): { network?: string; url?: string } => ({
           network: this.readString(item.network),
           url: this.readString(item.url),
         }))
-        .filter((link): boolean => Boolean(link.url)),
+        .filter((link: Blok): boolean => Boolean(link.url)),
     }
   }
 }

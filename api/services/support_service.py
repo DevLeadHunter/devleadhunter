@@ -1,15 +1,16 @@
 """
 Support ticket business logic service.
 """
+
 from __future__ import annotations
 
+from collections.abc import Sequence
 from datetime import datetime
-from typing import List, Optional, Sequence
+from typing import ClassVar
 
 from fastapi import HTTPException, status
-from sqlalchemy.orm import Session, joinedload, selectinload, load_only
+from sqlalchemy.orm import Session, joinedload, selectinload
 
-from core.config import settings
 from enums.support_status import SupportTicketStatus
 from enums.support_topic import SupportTicketTopic
 from enums.user_role import UserRole
@@ -33,38 +34,20 @@ class SupportService:
     Encapsulates support ticket operations.
     """
 
-    TOPIC_LABELS = {
+    TOPIC_LABELS: ClassVar[dict[SupportTicketTopic, tuple[str, str]]] = {
         SupportTicketTopic.CREDITS_BILLING: (
             "Credits & billing",
-            "Unexpected charge or missing credits after an action."
+            "Unexpected charge or missing credits after an action.",
         ),
-        SupportTicketTopic.MISSING_RESULTS: (
-            "Missing results",
-            "Search returned fewer results than expected."
-        ),
-        SupportTicketTopic.BUG_REPORT: (
-            "Bug or anomaly",
-            "Something is not working as intended."
-        ),
-        SupportTicketTopic.REFUND_CREDITS: (
-            "Credit refund",
-            "Request a refund in credits after an issue."
-        ),
-        SupportTicketTopic.REFUND_PAYMENT: (
-            "Payment refund",
-            "Request a card/Stripe payment refund."
-        ),
-        SupportTicketTopic.FEATURE_REQUEST: (
-            "Feature request",
-            "Share an idea to improve the experience."
-        ),
-        SupportTicketTopic.OTHER: (
-            "Something else",
-            "Any other support need."
-        ),
+        SupportTicketTopic.MISSING_RESULTS: ("Missing results", "Search returned fewer results than expected."),
+        SupportTicketTopic.BUG_REPORT: ("Bug or anomaly", "Something is not working as intended."),
+        SupportTicketTopic.REFUND_CREDITS: ("Credit refund", "Request a refund in credits after an issue."),
+        SupportTicketTopic.REFUND_PAYMENT: ("Payment refund", "Request a card/Stripe payment refund."),
+        SupportTicketTopic.FEATURE_REQUEST: ("Feature request", "Share an idea to improve the experience."),
+        SupportTicketTopic.OTHER: ("Something else", "Any other support need."),
     }
 
-    def list_topics(self) -> List[SupportTopicOption]:
+    def list_topics(self) -> list[SupportTopicOption]:
         """
         Return available support topics.
         """
@@ -80,7 +63,7 @@ class SupportService:
         subject: str,
         topic: SupportTicketTopic,
         message: str,
-        attachments: Optional[List[StoredAttachment]] = None,
+        attachments: list[StoredAttachment] | None = None,
     ) -> SupportTicket:
         """
         Create a new ticket with an initial message.
@@ -127,9 +110,9 @@ class SupportService:
         current_user: User,
         *,
         scope: str = "mine",
-        status_filter: Optional[SupportTicketStatus] = None,
+        status_filter: SupportTicketStatus | None = None,
         include_closed: bool = False,
-    ) -> List[SupportTicket]:
+    ) -> list[SupportTicket]:
         """
         Retrieve tickets for the current user or all (admin).
         """
@@ -151,6 +134,7 @@ class SupportService:
 
         # MariaDB doesn't support NULLS LAST, so we use CASE to handle NULL values
         from sqlalchemy import case
+
         query = query.order_by(
             case((SupportTicket.last_message_at.is_(None), 1), else_=0),
             SupportTicket.last_message_at.desc(),
@@ -174,24 +158,18 @@ class SupportService:
                 joinedload(SupportTicket.user),
                 joinedload(SupportTicket.assigned_admin),
                 selectinload(SupportTicket.attachments),
-                selectinload(SupportTicket.messages)
-                .joinedload(SupportMessage.sender),
-                selectinload(SupportTicket.messages)
-                .selectinload(SupportMessage.attachments),
+                selectinload(SupportTicket.messages).joinedload(SupportMessage.sender),
+                selectinload(SupportTicket.messages).selectinload(SupportMessage.attachments),
             )
             .filter(SupportTicket.id == ticket_id)
             .first()
         )
         if ticket is None:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="Ticket not found."
-            )
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Ticket not found.")
 
         if current_user.role != UserRole.ADMIN.value and ticket.user_id != current_user.id:
             raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="You are not allowed to access this ticket."
+                status_code=status.HTTP_403_FORBIDDEN, detail="You are not allowed to access this ticket."
             )
 
         return ticket
@@ -202,15 +180,14 @@ class SupportService:
         ticket: SupportTicket,
         sender: User,
         content: str,
-        attachments: Optional[List[StoredAttachment]] = None,
+        attachments: list[StoredAttachment] | None = None,
     ) -> SupportMessage:
         """
         Append a message to the conversation.
         """
         if ticket.status == SupportTicketStatus.CLOSED.value:
             raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="This ticket is closed. Please create a new ticket."
+                status_code=status.HTTP_400_BAD_REQUEST, detail="This ticket is closed. Please create a new ticket."
             )
 
         now = datetime.utcnow()
@@ -303,8 +280,7 @@ class SupportService:
         Serialize a ticket with conversation.
         """
         messages = [
-            self.to_message_response(message)
-            for message in sorted(ticket.messages, key=lambda msg: msg.created_at)
+            self.to_message_response(message) for message in sorted(ticket.messages, key=lambda msg: msg.created_at)
         ]
         return SupportTicketDetailResponse(
             id=ticket.id,
@@ -354,7 +330,7 @@ class SupportService:
         self,
         db: Session,
         ticket: SupportTicket,
-        message: Optional[SupportMessage],
+        message: SupportMessage | None,
         stored_attachments: Sequence[StoredAttachment],
     ) -> None:
         """
@@ -379,7 +355,7 @@ class SupportService:
                 message.attachments.append(attachment)
         db.flush()
 
-    def _build_attachment_url(self, path: Optional[str]) -> Optional[str]:
+    def _build_attachment_url(self, path: str | None) -> str | None:
         """
         Build a publicly accessible URL for an attachment.
 
@@ -402,5 +378,3 @@ class SupportService:
 
 
 support_service = SupportService()
-
-

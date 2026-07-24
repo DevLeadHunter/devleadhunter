@@ -14,6 +14,7 @@ real content, and zip it. ``npm install && npm run dev`` runs it as-is.
 Scope (MVP): ZIP download only, and a pure code-recovery fork — the live site keeps
 running on demo-host; this bundle is a working copy. Image URLs stay remote.
 """
+
 from __future__ import annotations
 
 import io
@@ -21,7 +22,7 @@ import json
 import logging
 import tarfile
 import zipfile
-from typing import Any, Optional
+from typing import Any
 
 import httpx
 
@@ -87,11 +88,11 @@ class SiteExportService:
         @raises ValueError - Unknown template or missing content (client-facing 400).
         @raises httpx.HTTPError - GitHub tarball download failed (surfaced as 502).
         """
-        content: Optional[dict[str, Any]] = demo_site.content_json if isinstance(demo_site.content_json, dict) else None
+        content: dict[str, Any] | None = demo_site.content_json if isinstance(demo_site.content_json, dict) else None
         if not content:
             raise ValueError("Ce site n'a pas encore de contenu généré — rien à exporter.")
 
-        repo_tag: Optional[tuple[str, str]] = get_template_repo(demo_site.template_id)
+        repo_tag: tuple[str, str] | None = get_template_repo(demo_site.template_id)
         if not repo_tag:
             raise ValueError(f"Template inconnue pour l'export : {demo_site.template_id}")
         repo, tag = repo_tag

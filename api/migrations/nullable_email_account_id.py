@@ -7,24 +7,23 @@ can still be logged without a FK violation.
 Run with:
     python migrations/nullable_email_account_id.py
 """
+
 from __future__ import annotations
 
-import sys
 import os
+import sys
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from sqlalchemy import text
+
 from core.database import engine
 
 
 def run_migration() -> None:
     print("Running migration: nullable_email_account_id")
     with engine.connect() as conn:
-        conn.execute(text(
-            "ALTER TABLE email_logs "
-            "MODIFY COLUMN email_account_id INT NULL"
-        ))
+        conn.execute(text("ALTER TABLE email_logs MODIFY COLUMN email_account_id INT NULL"))
         conn.commit()
     print("  ~ email_logs.email_account_id: NULL now allowed")
     print("Migration completed successfully.")

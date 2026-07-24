@@ -11,16 +11,13 @@
 The returned string never ends with punctuation — templates add their own
 comma (« {salutation}, »).
 """
-from __future__ import annotations
 
-from typing import Optional
+from __future__ import annotations
 
 from services.decision_maker.normalize import title_case_name
 
 
-def build_greeting(
-    first_name: Optional[str], last_name: Optional[str], gender: Optional[str]
-) -> str:
+def build_greeting(first_name: str | None, last_name: str | None, gender: str | None) -> str:
     """Build the salutation line for a (possibly partial) resolved contact.
 
     Args:

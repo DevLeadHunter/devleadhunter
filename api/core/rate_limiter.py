@@ -6,6 +6,7 @@ the instance the decorator came from, so a second ``Limiter`` would silently kee
 its own counters. ``main.py`` also publishes it as ``app.state.limiter``, which the
 ``RateLimitExceeded`` handler reads to inject the ``Retry-After`` headers.
 """
+
 from slowapi import Limiter
 from slowapi.util import get_remote_address
 

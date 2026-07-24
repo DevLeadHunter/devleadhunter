@@ -5,11 +5,11 @@ the captured HTML. The admin monitoring page reads :meth:`recent`, :meth:`source
 and :meth:`get`. Writes open their own short-lived session (the orchestrator does not
 thread a DB session through), and never raise into the scraping flow.
 """
+
 from __future__ import annotations
 
 import logging
-from datetime import datetime, timedelta, timezone
-from typing import Optional
+from datetime import UTC, datetime, timedelta
 
 from sqlalchemy import func
 from sqlalchemy.orm import Session
@@ -41,13 +41,13 @@ class ScraperDiagnosticsService:
         *,
         source: str,
         status: str,
-        category: Optional[str] = None,
-        city: Optional[str] = None,
+        category: str | None = None,
+        city: str | None = None,
         results_count: int = 0,
-        expected_count: Optional[int] = None,
-        error_message: Optional[str] = None,
-        html_snapshot: Optional[str] = None,
-        user_id: Optional[int] = None,
+        expected_count: int | None = None,
+        error_message: str | None = None,
+        html_snapshot: str | None = None,
+        user_id: int | None = None,
     ) -> None:
         """Persist one source-run outcome (best-effort — never raises).
 
@@ -69,7 +69,7 @@ class ScraperDiagnosticsService:
             db.add(row)
             db.commit()
             self._prune(db)
-        except Exception as exc:  # noqa: BLE001 — diagnostics must never break scraping
+        except Exception as exc:
             logger.warning("Failed to record scraper diagnostic (%s/%s): %s", source, status, exc)
             db.rollback()
         finally:
@@ -77,25 +77,21 @@ class ScraperDiagnosticsService:
 
     def _prune(self, db: Session) -> None:
         """Delete diagnostics older than the retention window (keeps the table bounded)."""
-        cutoff = datetime.now(timezone.utc) - timedelta(days=_RETENTION_DAYS)
+        cutoff = datetime.now(UTC) - timedelta(days=_RETENTION_DAYS)
         try:
-            db.query(ScraperDiagnostic).filter(ScraperDiagnostic.created_at < cutoff).delete(
-                synchronize_session=False
-            )
+            db.query(ScraperDiagnostic).filter(ScraperDiagnostic.created_at < cutoff).delete(synchronize_session=False)
             db.commit()
-        except Exception:  # noqa: BLE001
+        except Exception:
             db.rollback()
 
-    def recent(
-        self, db: Session, *, limit: int = 100, source: Optional[str] = None
-    ) -> list[ScraperDiagnostic]:
+    def recent(self, db: Session, *, limit: int = 100, source: str | None = None) -> list[ScraperDiagnostic]:
         """Return the most recent diagnostics (optionally filtered by source)."""
         query = db.query(ScraperDiagnostic)
         if source:
             query = query.filter(ScraperDiagnostic.source == source)
         return query.order_by(ScraperDiagnostic.created_at.desc()).limit(limit).all()
 
-    def get(self, db: Session, diagnostic_id: int) -> Optional[ScraperDiagnostic]:
+    def get(self, db: Session, diagnostic_id: int) -> ScraperDiagnostic | None:
         """Fetch a single diagnostic (used to view its captured HTML)."""
         return db.query(ScraperDiagnostic).filter(ScraperDiagnostic.id == diagnostic_id).first()
 
@@ -108,7 +104,7 @@ class ScraperDiagnosticsService:
         Returns:
             One entry per source seen recently: latest status, last-ok timestamp, counts of runs/incidents in the last 24 h, and the id of the latest incident with a captured HTML snapshot (for a one-click "view HTML").
         """
-        since = datetime.now(timezone.utc) - timedelta(hours=24)
+        since = datetime.now(UTC) - timedelta(hours=24)
         rows: list[ScraperDiagnostic] = (
             db.query(ScraperDiagnostic)
             .filter(ScraperDiagnostic.created_at >= since)

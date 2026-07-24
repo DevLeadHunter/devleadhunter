@@ -1,4 +1,5 @@
 """Prospect behaviour routes — lead scoring, timeline, AI summary, personalised relance."""
+
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
@@ -26,11 +27,7 @@ _DEFAULT_BASE_BODY = (
 
 def _get_prospect(db: Session, user_id: int, prospect_id: int) -> ProspectDB:
     """Fetch a prospect owned by the user, or 404."""
-    prospect = (
-        db.query(ProspectDB)
-        .filter(ProspectDB.id == prospect_id, ProspectDB.user_id == user_id)
-        .first()
-    )
+    prospect = db.query(ProspectDB).filter(ProspectDB.id == prospect_id, ProspectDB.user_id == user_id).first()
     if not prospect:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Prospect not found")
     return prospect

@@ -1,6 +1,7 @@
 """
 Prospect data source metadata endpoints.
 """
+
 from __future__ import annotations
 
 from fastapi import APIRouter

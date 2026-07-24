@@ -6,10 +6,11 @@ project and (optionally) trigger a rebuild via a Vercel Deploy Hook. The domain
 must already exist on the Vercel account/team — automatic domain *purchase* at a
 registrar is out of scope.
 """
+
 from __future__ import annotations
 
 import logging
-from typing import Any, Optional
+from typing import Any
 
 import httpx
 from sqlalchemy.orm import Session
@@ -24,10 +25,10 @@ class VercelService:
     """Thin client over the Vercel REST API for domain attachment + deploys."""
 
     def __init__(self) -> None:
-        self._token: Optional[str] = settings.vercel_token
-        self._team_id: Optional[str] = settings.vercel_team_id
-        self._project_id: Optional[str] = settings.vercel_demo_host_project_id
-        self._deploy_hook_url: Optional[str] = settings.vercel_deploy_hook_url
+        self._token: str | None = settings.vercel_token
+        self._team_id: str | None = settings.vercel_team_id
+        self._project_id: str | None = settings.vercel_demo_host_project_id
+        self._deploy_hook_url: str | None = settings.vercel_deploy_hook_url
         self._base_url: str = "https://api.vercel.com"
 
     @property
@@ -64,7 +65,7 @@ class VercelService:
             response.raise_for_status()
             return response.json()
 
-    async def trigger_deploy(self) -> Optional[str]:
+    async def trigger_deploy(self) -> str | None:
         """Trigger a production rebuild via the configured Deploy Hook. Returns a job id."""
         if not self._deploy_hook_url:
             return None
@@ -75,12 +76,10 @@ class VercelService:
                 data = response.json()
                 job = data.get("job") if isinstance(data, dict) else None
                 return str(job.get("id")) if isinstance(job, dict) and job.get("id") else None
-            except Exception:  # noqa: BLE001
+            except Exception:
                 return None
 
-    async def deploy_demo_site(
-        self, db: Session, demo_site: DemoSite, *, domain: Optional[str] = None
-    ) -> DemoSite:
+    async def deploy_demo_site(self, db: Session, demo_site: DemoSite, *, domain: str | None = None) -> DemoSite:
         """
         Put a demo site live in production.
 
@@ -94,16 +93,16 @@ class VercelService:
         if self.is_configured and target_domain and self._project_id:
             try:
                 await self.attach_domain(target_domain)
-            except Exception:  # noqa: BLE001
+            except Exception:
                 logger.exception("Vercel domain attach failed for %s", target_domain)
                 raise
         elif not self.is_configured:
             logger.warning("Vercel not configured — recording prod URL only for slug=%s", demo_site.slug)
 
-        deployment_id: Optional[str] = None
+        deployment_id: str | None = None
         try:
             deployment_id = await self.trigger_deploy()
-        except Exception:  # noqa: BLE001
+        except Exception:
             logger.warning("Vercel deploy hook failed for slug=%s", demo_site.slug, exc_info=True)
 
         if deployment_id:

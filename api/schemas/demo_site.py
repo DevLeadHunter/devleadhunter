@@ -1,6 +1,6 @@
 """Pydantic schemas for demo site generation."""
+
 from datetime import datetime
-from typing import Optional
 
 from pydantic import BaseModel, ConfigDict, EmailStr, Field
 
@@ -18,16 +18,16 @@ class DemoSiteCreateRequest(BaseModel):
 
     business_name: str = Field(..., min_length=2, max_length=255)
     template_id: str = Field(default="plumber-signature", max_length=64)
-    phone: Optional[str] = Field(default=None, max_length=64)
+    phone: str | None = Field(default=None, max_length=64)
     email: EmailStr
     invite_client_to_cms: bool = Field(
         default=False,
         description="When true, Storyblok sends a CMS invitation email to the client immediately.",
     )
-    city: Optional[str] = Field(default=None, max_length=128)
-    description: Optional[str] = Field(default=None, max_length=2000)
-    theme: Optional[DemoSiteTheme] = None
-    prospect_id: Optional[int] = Field(
+    city: str | None = Field(default=None, max_length=128)
+    description: str | None = Field(default=None, max_length=2000)
+    theme: DemoSiteTheme | None = None
+    prospect_id: int | None = Field(
         default=None,
         description="Optional saved prospect used to pre-fill business fields on the client.",
     )
@@ -38,11 +38,11 @@ class DemoSitePreviewRequest(BaseModel):
 
     business_name: str = Field(..., min_length=2, max_length=255)
     template_id: str = Field(default="plumber-signature", max_length=64)
-    phone: Optional[str] = Field(default=None, max_length=64)
-    email: Optional[EmailStr] = None
-    city: Optional[str] = Field(default=None, max_length=128)
-    description: Optional[str] = Field(default=None, max_length=2000)
-    theme: Optional[DemoSiteTheme] = None
+    phone: str | None = Field(default=None, max_length=64)
+    email: EmailStr | None = None
+    city: str | None = Field(default=None, max_length=128)
+    description: str | None = Field(default=None, max_length=2000)
+    theme: DemoSiteTheme | None = None
 
 
 class DemoSitePreviewResponse(BaseModel):
@@ -55,13 +55,13 @@ class DemoSitePreviewResponse(BaseModel):
 class DemoSiteUpdateRequest(BaseModel):
     """Partial update payload for an existing demo site."""
 
-    business_name: Optional[str] = Field(default=None, min_length=2, max_length=255)
-    template_id: Optional[str] = Field(default=None, max_length=64)
-    phone: Optional[str] = Field(default=None, max_length=64)
-    email: Optional[EmailStr] = None
-    city: Optional[str] = Field(default=None, max_length=128)
-    description: Optional[str] = Field(default=None, max_length=2000)
-    theme: Optional[DemoSiteTheme] = None
+    business_name: str | None = Field(default=None, min_length=2, max_length=255)
+    template_id: str | None = Field(default=None, max_length=64)
+    phone: str | None = Field(default=None, max_length=64)
+    email: EmailStr | None = None
+    city: str | None = Field(default=None, max_length=128)
+    description: str | None = Field(default=None, max_length=2000)
+    theme: DemoSiteTheme | None = None
 
 
 class DemoSiteTemplateTheme(BaseModel):
@@ -78,7 +78,7 @@ class DemoSiteTemplateResponse(BaseModel):
     id: str
     name: str
     description: str
-    preview_image_url: Optional[str] = None
+    preview_image_url: str | None = None
     default_theme: DemoSiteTemplateTheme
     category: str = "artisan"
 
@@ -90,30 +90,30 @@ class DemoSiteResponse(BaseModel):
     slug: str
     template_id: str
     business_name: str
-    phone: Optional[str] = None
-    email: Optional[str] = None
-    city: Optional[str] = None
-    description: Optional[str] = None
+    phone: str | None = None
+    email: str | None = None
+    city: str | None = None
+    description: str | None = None
     status: str
-    demo_url: Optional[str] = None
+    demo_url: str | None = None
     demo_url_live: bool = False
-    local_demo_url: Optional[str] = None
-    verification_message: Optional[str] = None
-    storyblok_editor_url: Optional[str] = None
-    storyblok_login_email: Optional[str] = None
-    storyblok_login_password: Optional[str] = None
+    local_demo_url: str | None = None
+    verification_message: str | None = None
+    storyblok_editor_url: str | None = None
+    storyblok_login_email: str | None = None
+    storyblok_login_password: str | None = None
     storyblok_invite_sent: bool = False
     expires_at: datetime
     created_at: datetime
-    error_message: Optional[str] = None
-    theme: Optional[DemoSiteTheme] = None
+    error_message: str | None = None
+    theme: DemoSiteTheme | None = None
     # Prospection video (webcam + capture du site du prospect).
-    video_status: Optional[str] = None
-    video_error: Optional[str] = None
-    video_generated_at: Optional[datetime] = None
+    video_status: str | None = None
+    video_error: str | None = None
+    video_generated_at: datetime | None = None
     # Injected by the route when the video is ready (not model columns).
-    video_page_url: Optional[str] = None
-    video_thumbnail_url: Optional[str] = None
+    video_page_url: str | None = None
+    video_thumbnail_url: str | None = None
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -124,18 +124,18 @@ class DemoSitePublicResponse(BaseModel):
     slug: str
     business_name: str
     template_id: str
-    storyblok_space_id: Optional[int] = None
-    storyblok_public_token: Optional[str] = None
-    storyblok_preview_token: Optional[str] = None
-    storyblok_region: Optional[str] = None
-    content_json: Optional[dict] = None
+    storyblok_space_id: int | None = None
+    storyblok_public_token: str | None = None
+    storyblok_preview_token: str | None = None
+    storyblok_region: str | None = None
+    content_json: dict | None = None
     status: str
     expires_at: datetime
     # True when a prospection video is generated for this demo (player at /v/{slug}).
     video_available: bool = False
     # Public R2 URLs consumed by the player page (empty when no video).
-    video_url: Optional[str] = None
-    video_thumbnail_url: Optional[str] = None
+    video_url: str | None = None
+    video_thumbnail_url: str | None = None
 
     model_config = ConfigDict(from_attributes=True)
 

@@ -1,4 +1,5 @@
 """Pydantic schemas for prospect behaviour (demo tracking)."""
+
 from typing import Any
 
 from pydantic import BaseModel, Field

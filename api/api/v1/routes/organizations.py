@@ -4,6 +4,7 @@ Organization routes — team workspace with a shared prospect list.
 Only prospects are shared across an organization; campaigns, demo sites,
 emails and credits stay personal to each member.
 """
+
 from __future__ import annotations
 
 from fastapi import APIRouter, Depends, HTTPException, status

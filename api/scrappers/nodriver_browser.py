@@ -1,6 +1,7 @@
 """
 Shared nodriver browser session management for scrapers.
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -9,7 +10,7 @@ import os
 import subprocess
 import sys
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -79,7 +80,7 @@ def resolve_scraper_headless() -> bool:
         from core.config import settings
 
         return settings.scraper_browser_headless
-    except Exception:  # noqa: BLE001
+    except Exception:
         return _env_bool("SCRAPER_BROWSER_HEADLESS", default=False)
 
 
@@ -89,11 +90,11 @@ def should_keep_browser_open() -> bool:
         from core.config import settings
 
         return settings.scraper_browser_keep_open
-    except Exception:  # noqa: BLE001
+    except Exception:
         return _env_bool("SCRAPER_BROWSER_KEEP_OPEN", default=False)
 
 
-def resolve_scraper_user_data_dir(*, ephemeral: bool = False) -> Optional[str]:
+def resolve_scraper_user_data_dir(*, ephemeral: bool = False) -> str | None:
     """
     Persistent Chrome profile directory.
 
@@ -108,7 +109,7 @@ def resolve_scraper_user_data_dir(*, ephemeral: bool = False) -> Optional[str]:
 
         if settings.scraper_user_data_dir:
             return settings.scraper_user_data_dir.strip()
-    except Exception:  # noqa: BLE001
+    except Exception:
         pass
 
     explicit = (os.environ.get("SCRAPER_USER_DATA_DIR") or "").strip()
@@ -124,7 +125,7 @@ async def activate_tab(tab: Any) -> None:
     """Bring the scraping tab to the foreground (visible Chrome)."""
     try:
         await tab.activate()
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         logger.debug("tab.activate failed: %s", exc)
 
 
@@ -136,23 +137,23 @@ class NodriverBrowser:
     so the main scraper profile is not locked by two Chrome processes.
     """
 
-    def __init__(self, *, headless: Optional[bool] = None, ephemeral: bool = False) -> None:
+    def __init__(self, *, headless: bool | None = None, ephemeral: bool = False) -> None:
         self.headless = resolve_scraper_headless() if headless is None else headless
         self.ephemeral = ephemeral
         self._browser: Any = None
 
-    def _chrome_executable(self) -> Optional[str]:
+    def _chrome_executable(self) -> str | None:
         chrome_executable = (os.environ.get("SCRAPER_CHROME_EXECUTABLE") or "").strip() or None
         try:
             from core.config import settings
 
             if settings.scraper_chrome_executable:
                 chrome_executable = settings.scraper_chrome_executable.strip()
-        except Exception:  # noqa: BLE001
+        except Exception:
             pass
         return chrome_executable
 
-    def _start_kwargs(self, user_data_dir: Optional[str]) -> dict[str, Any]:
+    def _start_kwargs(self, user_data_dir: str | None) -> dict[str, Any]:
         kwargs: dict[str, Any] = {
             "headless": self.headless,
             "browser_args": build_browser_args(headless=self.headless),
@@ -169,16 +170,14 @@ class NodriverBrowser:
     async def ensure_browser(self) -> Any:
         """Start Chrome if not already running."""
         if not NODRIVER_AVAILABLE:
-            raise RuntimeError(
-                "nodriver is not installed. Install it with: pip install nodriver"
-            )
+            raise RuntimeError("nodriver is not installed. Install it with: pip install nodriver")
 
         browser = self._browser
         if browser is not None and not getattr(browser, "stopped", False):
             return browser
 
         primary_profile = resolve_scraper_user_data_dir(ephemeral=self.ephemeral)
-        attempts: list[Optional[str]] = [primary_profile]
+        attempts: list[str | None] = [primary_profile]
         if primary_profile and not self.ephemeral:
             attempts.append(None)
 
@@ -203,11 +202,10 @@ class NodriverBrowser:
                 self._browser = None
 
         raise RuntimeError(
-            "Failed to start Chrome via nodriver. "
-            "Close any leftover Chrome window, or set SCRAPER_CHROME_EXECUTABLE."
+            "Failed to start Chrome via nodriver. Close any leftover Chrome window, or set SCRAPER_CHROME_EXECUTABLE."
         ) from last_exc
 
-    async def get_tab(self, url: Optional[str] = None) -> Any:
+    async def get_tab(self, url: str | None = None) -> Any:
         """Open a tab, optionally navigating to ``url``."""
         browser = await self.ensure_browser()
         if url:
@@ -227,7 +225,7 @@ class NodriverBrowser:
     async def _apply_stealth(tab: Any) -> None:
         try:
             await tab.evaluate(STEALTH_INIT_SCRIPT, return_by_value=False)
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             logger.debug("Stealth init script failed: %s", exc)
 
     async def close(self) -> None:
@@ -237,9 +235,7 @@ class NodriverBrowser:
             return
 
         if should_keep_browser_open() and not self.ephemeral:
-            logger.info(
-                "SCRAPER_BROWSER_KEEP_OPEN=1 — Chrome left open for manual inspection"
-            )
+            logger.info("SCRAPER_BROWSER_KEEP_OPEN=1 — Chrome left open for manual inspection")
             self._browser = None
             return
 
@@ -249,24 +245,24 @@ class NodriverBrowser:
                 from core.config import settings
 
                 pause_s = float(settings.scraper_browser_close_delay_sec)
-            except Exception:  # noqa: BLE001
+            except Exception:
                 pause_s = float(os.environ.get("SCRAPER_BROWSER_CLOSE_DELAY_SEC", "2.5"))
             if pause_s > 0:
                 await asyncio.sleep(pause_s)
 
-        pid: Optional[int] = None
+        pid: int | None = None
         try:
             proc = getattr(browser, "_process", None)
             if proc is not None:
                 pid = getattr(proc, "pid", None)
-        except Exception:  # noqa: BLE001
+        except Exception:
             pid = None
 
         try:
             if not getattr(browser, "stopped", True):
                 await asyncio.sleep(0.3)
                 browser.stop()
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             logger.warning("nodriver browser.stop() failed: %s", exc)
         finally:
             self._browser = None
@@ -279,7 +275,7 @@ class NodriverBrowser:
                     timeout=12,
                     check=False,
                 )
-            except Exception as exc:  # noqa: BLE001
+            except Exception as exc:
                 logger.debug("taskkill after nodriver stop: %s", exc)
 
 

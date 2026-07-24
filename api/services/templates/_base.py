@@ -6,17 +6,18 @@ build their content_json through :func:`build_base_page`. Each template module
 provides its own service list, trust stats and selling points, keeping the page
 structure consistent while leaving the editorial content per template.
 """
+
 from __future__ import annotations
 
-from typing import Any, Optional
+from typing import Any
 
 
 def build_base_page(
     *,
     business_name: str,
-    phone: Optional[str],
-    email: Optional[str],
-    city: Optional[str],
+    phone: str | None,
+    email: str | None,
+    city: str | None,
     area: str,
     subtitle: str,
     palette: dict[str, str],
@@ -43,28 +44,21 @@ def build_base_page(
                 "_uid": "trust-1",
                 "component": "trust",
                 "heading": "La confiance de nos clients",
-                "items": [
-                    {"_uid": f"t-{i}", "component": "trust_item", **item}
-                    for i, item in enumerate(trust_stats)
-                ],
+                "items": [{"_uid": f"t-{i}", "component": "trust_item", **item} for i, item in enumerate(trust_stats)],
             },
             {
                 "_uid": "services-1",
                 "component": "services",
                 "heading": "Nos services",
                 "subheading": f"Des solutions complètes pour particuliers et professionnels à {area}.",
-                "items": [
-                    {"_uid": f"s-{i}", "component": "service_item", **item}
-                    for i, item in enumerate(services)
-                ],
+                "items": [{"_uid": f"s-{i}", "component": "service_item", **item} for i, item in enumerate(services)],
             },
             {
                 "_uid": "why-1",
                 "component": "why_us",
                 "heading": "Pourquoi nous choisir ?",
                 "items": [
-                    {"_uid": f"w-{i}", "component": "why_item", "label": label}
-                    for i, label in enumerate(why_us)
+                    {"_uid": f"w-{i}", "component": "why_item", "label": label} for i, label in enumerate(why_us)
                 ],
             },
             {

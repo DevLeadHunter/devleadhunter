@@ -5,6 +5,7 @@ Each row defines one relance: which template to use and how many days after the
 *previous* send (J1 or prior follow-up) it should be dispatched.  The worker
 creates EmailQueue rows from this list after each successful J1 send.
 """
+
 from __future__ import annotations
 
 from datetime import datetime
@@ -55,6 +56,5 @@ class CampaignFollowUp(Base):
 
     def __repr__(self) -> str:
         return (
-            f"<CampaignFollowUp id={self.id} campaign={self.campaign_id} "
-            f"pos={self.position} delay={self.delay_days}d>"
+            f"<CampaignFollowUp id={self.id} campaign={self.campaign_id} pos={self.position} delay={self.delay_days}d>"
         )

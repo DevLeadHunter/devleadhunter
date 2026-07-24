@@ -5,19 +5,23 @@ Covers the end-of-tunnel: create a sale (manual for now), generate a Stripe
 payment link, email it to the client (with preview), mark it paid (manually or
 via the Stripe webhook), then fulfil it (deploy to prod + hand over CMS access).
 """
+
 from __future__ import annotations
 
 import logging
-from datetime import datetime, timedelta, timezone
-from typing import Any, Optional
+from datetime import UTC, datetime, timedelta
+from typing import TYPE_CHECKING, Any
 
 from sqlalchemy.orm import Session
 
-from enums.order_status import OrderStatus, WON_STATUSES
+from enums.order_status import WON_STATUSES, OrderStatus
 from enums.product_type import PRODUCT_DEFAULT_AMOUNT_CENTS, PRODUCT_LABELS, ProductType
 from models.order import Order
 from models.prospect_db import ProspectDB
 from models.user import User
+
+if TYPE_CHECKING:
+    from models.demo_site import DemoSite
 
 logger = logging.getLogger(__name__)
 
@@ -60,26 +64,22 @@ class OrderService:
             .all()
         )
 
-    def get_for_user(self, db: Session, user_id: int, order_id: int) -> Optional[Order]:
+    def get_for_user(self, db: Session, user_id: int, order_id: int) -> Order | None:
         """Fetch a user's order by id."""
         return (
-            db.query(Order)
-            .filter(Order.id == order_id, Order.user_id == user_id, Order.deleted_at.is_(None))
-            .first()
+            db.query(Order).filter(Order.id == order_id, Order.user_id == user_id, Order.deleted_at.is_(None)).first()
         )
 
-    def get_by_id(self, db: Session, order_id: int) -> Optional[Order]:
+    def get_by_id(self, db: Session, order_id: int) -> Order | None:
         """Fetch an order by id (used by webhook / fulfilment)."""
         return db.query(Order).filter(Order.id == order_id, Order.deleted_at.is_(None)).first()
 
-    def get_by_payment_link_id(self, db: Session, payment_link_id: str) -> Optional[Order]:
+    def get_by_payment_link_id(self, db: Session, payment_link_id: str) -> Order | None:
         """Resolve an order from a Stripe payment link id."""
         if not payment_link_id:
             return None
         return (
-            db.query(Order)
-            .filter(Order.stripe_payment_link_id == payment_link_id, Order.deleted_at.is_(None))
-            .first()
+            db.query(Order).filter(Order.stripe_payment_link_id == payment_link_id, Order.deleted_at.is_(None)).first()
         )
 
     # ------------------------------------------------------------------ #
@@ -92,28 +92,24 @@ class OrderService:
         *,
         user_id: int,
         product_type: str = ProductType.WEBSITE.value,
-        prospect_id: Optional[int] = None,
-        demo_site_id: Optional[int] = None,
-        amount_cents: Optional[int] = None,
-        business_name: Optional[str] = None,
-        customer_name: Optional[str] = None,
-        customer_email: Optional[str] = None,
-        domain: Optional[str] = None,
-        notes: Optional[str] = None,
+        prospect_id: int | None = None,
+        demo_site_id: int | None = None,
+        amount_cents: int | None = None,
+        business_name: str | None = None,
+        customer_name: str | None = None,
+        customer_email: str | None = None,
+        domain: str | None = None,
+        notes: str | None = None,
     ) -> Order:
         """Create a manual order, pre-filling client info from the prospect when given."""
         if prospect_id and (not business_name or not customer_email):
-            prospect = (
-                db.query(ProspectDB)
-                .filter(ProspectDB.id == prospect_id, ProspectDB.user_id == user_id)
-                .first()
-            )
+            prospect = db.query(ProspectDB).filter(ProspectDB.id == prospect_id, ProspectDB.user_id == user_id).first()
             if prospect:
                 business_name = business_name or prospect.name
                 customer_email = customer_email or prospect.email
 
-        resolved_amount = amount_cents if amount_cents is not None else PRODUCT_DEFAULT_AMOUNT_CENTS.get(
-            product_type, 50000
+        resolved_amount = (
+            amount_cents if amount_cents is not None else PRODUCT_DEFAULT_AMOUNT_CENTS.get(product_type, 50000)
         )
 
         order = Order(
@@ -165,9 +161,9 @@ class OrderService:
                 service = get_stripe_service()
                 if service:
                     service.deactivate_payment_link(order.stripe_payment_link_id)
-            except Exception:  # noqa: BLE001
+            except Exception:
                 logger.warning("Failed to deactivate payment link for order %s", order.id)
-        order.deleted_at = datetime.now(timezone.utc)
+        order.deleted_at = datetime.now(UTC)
         order.status = OrderStatus.CANCELLED.value
         db.commit()
 
@@ -236,9 +232,7 @@ class OrderService:
         """.strip()
         return {"subject": subject, "body_html": body_html}
 
-    async def send_payment_email(
-        self, db: Session, user: User, order: Order
-    ) -> dict[str, Any]:
+    async def send_payment_email(self, db: Session, user: User, order: Order) -> dict[str, Any]:
         """Send the payment-link email to the client via the user's active sending identity."""
         if not order.customer_email:
             raise ValueError("Aucune adresse email client sur la commande.")
@@ -258,7 +252,7 @@ class OrderService:
             prospect_id=str(order.prospect_id) if order.prospect_id else None,
         )
         if result.get("success"):
-            order.payment_link_sent_at = datetime.now(timezone.utc)
+            order.payment_link_sent_at = datetime.now(UTC)
             if order.status == OrderStatus.DRAFT.value:
                 order.status = OrderStatus.PAYMENT_PENDING.value
             db.commit()
@@ -274,13 +268,13 @@ class OrderService:
         db: Session,
         order: Order,
         *,
-        stripe_session_id: Optional[str] = None,
-        stripe_payment_intent_id: Optional[str] = None,
+        stripe_session_id: str | None = None,
+        stripe_payment_intent_id: str | None = None,
     ) -> Order:
         """Mark an order as paid (manual or webhook). Idempotent."""
         if order.paid_at:
             return order
-        order.paid_at = datetime.now(timezone.utc)
+        order.paid_at = datetime.now(UTC)
         order.status = OrderStatus.PAID.value
         if stripe_session_id:
             order.stripe_session_id = stripe_session_id
@@ -295,7 +289,7 @@ class OrderService:
         if order.status == OrderStatus.REFUNDED.value:
             return order
         order.status = OrderStatus.REFUNDED.value
-        order.refunded_at = datetime.now(timezone.utc)
+        order.refunded_at = datetime.now(UTC)
         db.commit()
         db.refresh(order)
         return order
@@ -314,15 +308,13 @@ class OrderService:
         if not order:
             return
 
-        slug: Optional[str] = None
+        slug: str | None = None
         if order.demo_site_id:
             from models.demo_site import DemoSite
 
             site = db.query(DemoSite).filter(DemoSite.id == order.demo_site_id).first()
             slug = site.slug if site else None
-        distinct_id = slug or (
-            f"prospect_{order.prospect_id}" if order.prospect_id else f"order_{order.id}"
-        )
+        distinct_id = slug or (f"prospect_{order.prospect_id}" if order.prospect_id else f"order_{order.id}")
         await posthog_service.capture(
             distinct_id=distinct_id,
             event="sale",
@@ -336,7 +328,7 @@ class OrderService:
             },
         )
 
-    def get_by_payment_intent_id(self, db: Session, payment_intent_id: str) -> Optional[Order]:
+    def get_by_payment_intent_id(self, db: Session, payment_intent_id: str) -> Order | None:
         """Resolve an order from a Stripe payment intent id."""
         if not payment_intent_id:
             return None
@@ -346,7 +338,7 @@ class OrderService:
             .first()
         )
 
-    def try_mark_paid_from_event(self, db: Session, event: dict[str, Any]) -> Optional[int]:
+    def try_mark_paid_from_event(self, db: Session, event: dict[str, Any]) -> int | None:
         """
         If a Stripe event is an order payment, mark the order paid and return its id.
 
@@ -360,7 +352,7 @@ class OrderService:
             return None
 
         metadata = session.get("metadata", {}) or {}
-        order: Optional[Order] = None
+        order: Order | None = None
         if metadata.get("type") == "order" and metadata.get("order_id"):
             order = self.get_by_id(db, int(metadata["order_id"]))
         if order is None:
@@ -382,7 +374,7 @@ class OrderService:
         )
         return order.id
 
-    def try_handle_refund_from_event(self, db: Session, event: dict[str, Any]) -> Optional[int]:
+    def try_handle_refund_from_event(self, db: Session, event: dict[str, Any]) -> int | None:
         """
         If a Stripe event is a refund, mark the matching order refunded.
 
@@ -411,7 +403,7 @@ class OrderService:
         self.mark_refunded(db, order)
         return order.id
 
-    async def _verify_delivery(self, order: Order, demo_site: "DemoSite") -> tuple[bool, str]:
+    async def _verify_delivery(self, order: Order, demo_site: DemoSite) -> tuple[bool, str]:
         """
         Verify the client truly has a working site on their domain AND CMS access.
 
@@ -474,7 +466,7 @@ class OrderService:
 
             try:
                 await self.fulfill_order(db, order)
-            except Exception as exc:  # noqa: BLE001
+            except Exception as exc:
                 logger.exception("Order fulfilment attempt failed for order_id=%s", order_id)
                 order = self.get_by_id(db, order_id)
                 if order is not None:
@@ -494,7 +486,7 @@ class OrderService:
         Returns:
             The order ids to retry.
         """
-        cutoff: datetime = datetime.now(timezone.utc) - timedelta(days=FULFILMENT_MAX_AGE_DAYS)
+        cutoff: datetime = datetime.now(UTC) - timedelta(days=FULFILMENT_MAX_AGE_DAYS)
         rows = (
             db.query(Order.id)
             .filter(
@@ -518,9 +510,7 @@ class OrderService:
             return order
 
         demo_site = (
-            db.query(DemoSite)
-            .filter(DemoSite.id == order.demo_site_id, DemoSite.user_id == order.user_id)
-            .first()
+            db.query(DemoSite).filter(DemoSite.id == order.demo_site_id, DemoSite.user_id == order.user_id).first()
         )
         if not demo_site:
             return order
@@ -533,7 +523,7 @@ class OrderService:
             from services.vercel_service import vercel_service
 
             await vercel_service.deploy_demo_site(db, demo_site, domain=order.domain)
-        except Exception:  # noqa: BLE001
+        except Exception:
             logger.exception("Vercel deployment failed for order_id=%s", order.id)
 
         # 2) Take the demo offline (demo.dibodev.fr 404) and promote the site to
@@ -541,14 +531,14 @@ class OrderService:
         if order.domain:
             try:
                 await demo_site_service.mark_delivered(db, demo_site, order.domain)
-            except Exception:  # noqa: BLE001
+            except Exception:
                 logger.warning("mark_delivered failed for order_id=%s", order.id, exc_info=True)
 
         # 3) Hand over CMS access (Storyblok invite) now that the sale is closed.
         try:
             if not demo_site.storyblok_invite_sent:
                 await demo_site_service.invite_client_to_cms(db, demo_site)
-        except Exception:  # noqa: BLE001
+        except Exception:
             logger.warning("Storyblok handover failed for order_id=%s", order.id, exc_info=True)
 
         db.refresh(demo_site)
@@ -561,7 +551,7 @@ class OrderService:
         demo_site.verification_message = message
         if delivered_ok:
             order.status = OrderStatus.DELIVERED.value
-            order.delivered_at = datetime.now(timezone.utc)
+            order.delivered_at = datetime.now(UTC)
         else:
             order.status = OrderStatus.DEPLOYING.value
             logger.warning("Order %s kept in DEPLOYING — %s", order.id, message)
@@ -573,9 +563,7 @@ class OrderService:
     # Commercial tracking
     # ------------------------------------------------------------------ #
 
-    def stats_for_user(
-        self, db: Session, user_id: int, since: Optional[datetime] = None
-    ) -> dict[str, Any]:
+    def stats_for_user(self, db: Session, user_id: int, since: datetime | None = None) -> dict[str, Any]:
         """Aggregate sales KPIs for a user (counts + revenue).
 
         Args:

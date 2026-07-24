@@ -1,6 +1,7 @@
 """
 Health check routes.
 """
+
 import logging
 from datetime import datetime
 
@@ -12,20 +13,16 @@ from core.config import settings
 from core.database import get_db
 from models.health import HealthStatus
 
-
 logger = logging.getLogger(__name__)
 
-router = APIRouter(
-    prefix="/health",
-    tags=["health"]
-)
+router = APIRouter(prefix="/health", tags=["health"])
 
 
 @router.get(
     "",
     response_model=HealthStatus,
     summary="Health check endpoint",
-    description="Check the health status of the API and its database (usable for uptime monitoring)."
+    description="Check the health status of the API and its database (usable for uptime monitoring).",
 )
 async def health_check(
     response: Response,
@@ -52,7 +49,7 @@ async def health_check(
     try:
         db.execute(text("SELECT 1"))
         services["database"] = "healthy"
-    except Exception as exc:  # noqa: BLE001 — any DB error means the service is down
+    except Exception as exc:
         logger.warning("Health check DB probe failed: %s", exc)
         services["database"] = "unhealthy"
         overall_status = "unhealthy"

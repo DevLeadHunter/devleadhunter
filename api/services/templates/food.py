@@ -11,9 +11,10 @@ Exposes the stable names consumed by the shared services (see ``registry``):
 - ``build_site_content``  → flat ``SiteContent`` builder
 - ``BODY_COMPONENTS`` / ``COMPONENT_SCHEMAS`` → none beyond the shared base
 """
+
 from __future__ import annotations
 
-from typing import Any, Optional
+from typing import Any
 
 from services.templates.site_content import (  # noqa: F401 — re-exported for the registry
     SITE_CONTENT_SCHEMAS,
@@ -54,10 +55,7 @@ def default_subtitle(area: str) -> str:
     Returns:
         A food-truck subtitle.
     """
-    return (
-        f"Street food maison à {area} — burgers, wings et classics "
-        "préparés à la minute, sur place ou à emporter."
-    )
+    return f"Street food maison à {area} — burgers, wings et classics préparés à la minute, sur place ou à emporter."
 
 
 _SITE_ABOUT_DEFAULT: str = (
@@ -71,15 +69,11 @@ _SITE_ABOUT_DEFAULT: str = (
 FOOD_SERVICES: list[dict[str, str]] = [
     {
         "title": "Burger dinde, œuf & fromage",
-        "description": (
-            "Pain brioché, dinde grillée, œuf coulant, cheddar et sauce maison. — 12 €"
-        ),
+        "description": ("Pain brioché, dinde grillée, œuf coulant, cheddar et sauce maison. — 12 €"),
     },
     {
         "title": "Hot wings & frites",
-        "description": (
-            "Ailes marinées, sauce piquante et frites croustillantes. — 11 €"
-        ),
+        "description": ("Ailes marinées, sauce piquante et frites croustillantes. — 11 €"),
     },
     {
         "title": "Duo hot-dog & soda",
@@ -87,9 +81,7 @@ FOOD_SERVICES: list[dict[str, str]] = [
     },
     {
         "title": "Soda float glacé",
-        "description": (
-            "Boisson gazeuse et boule de glace vanille — le classique. — 6 €"
-        ),
+        "description": ("Boisson gazeuse et boule de glace vanille — le classique. — 6 €"),
     },
 ]
 
@@ -110,9 +102,7 @@ FOOD_FAQ: list[dict[str, str]] = [
     },
     {
         "question": "Proposez-vous des options végétariennes ?",
-        "answer": (
-            "Oui, un burger veggie et des sides (frites, salade) sont toujours au menu."
-        ),
+        "answer": ("Oui, un burger veggie et des sides (frites, salade) sont toujours au menu."),
     },
     {
         "question": "Quels moyens de paiement acceptez-vous ?",
@@ -143,13 +133,13 @@ _EDITORIAL_DEFAULTS: dict[str, Any] = {
 def build_site_content(
     *,
     business_name: str,
-    phone: Optional[str],
-    email: Optional[str],
-    city: Optional[str],
+    phone: str | None,
+    email: str | None,
+    city: str | None,
     area: str,
     subtitle: str,
     palette: dict[str, str],
-    enrichment: Optional[dict[str, Any]] = None,
+    enrichment: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Build the flat ``SiteContent`` for this template (Phase 4b).
 

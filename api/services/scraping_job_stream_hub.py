@@ -1,6 +1,7 @@
 """
 WebSocket hub for live scraping job progress (logs + prospects).
 """
+
 from __future__ import annotations
 
 import logging
@@ -45,7 +46,7 @@ class ScrapingJobStreamHub:
         for websocket in list(self._connections.get(job_id, set())):
             try:
                 await websocket.send_json(event)
-            except Exception as exc:  # noqa: BLE001
+            except Exception as exc:
                 logger.debug("WS send failed for job %s: %s", job_id, exc)
                 stale.append(websocket)
         for websocket in stale:

@@ -4,11 +4,11 @@ Registries return names in UPPERCASE (« GUILLAUME Léo ») and websites in any
 casing — everything is normalised to a clean title-case before storage, with
 French particles kept lowercase (« de », « le »…).
 """
+
 from __future__ import annotations
 
 import re
 import unicodedata
-from typing import Optional
 
 # Lowercase particles kept as-is inside a title-cased name.
 _PARTICLES: frozenset[str] = frozenset({"de", "du", "des", "le", "la", "les", "d'", "l'", "van", "von", "da", "di"})
@@ -16,9 +16,26 @@ _PARTICLES: frozenset[str] = frozenset({"de", "du", "des", "le", "la", "les", "d
 # Legal-form / company suffixes stripped when comparing company names.
 _COMPANY_NOISE: frozenset[str] = frozenset(
     {
-        "sarl", "sas", "sasu", "eurl", "sci", "sa", "snc", "ei", "eirl",
-        "entreprise", "ets", "etablissements", "societe", "société", "auto",
-        "ste", "monsieur", "madame", "m", "mme",
+        "sarl",
+        "sas",
+        "sasu",
+        "eurl",
+        "sci",
+        "sa",
+        "snc",
+        "ei",
+        "eirl",
+        "entreprise",
+        "ets",
+        "etablissements",
+        "societe",
+        "société",
+        "auto",
+        "ste",
+        "monsieur",
+        "madame",
+        "m",
+        "mme",
     }
 )
 
@@ -26,30 +43,186 @@ _COMPANY_NOISE: frozenset[str] = frozenset(
 # « Bonjour M./Mme {Nom} » case (last name without first name). Deliberately
 # conservative: an unknown first name yields no gender, hence a neutral greeting.
 _MALE_FIRST_NAMES: frozenset[str] = frozenset(
-    """
-    jean pierre michel andre philippe rene louis alain jacques bernard marcel
-    daniel roger robert paul claude christian henri georges nicolas patrick
-    antoine francois pascal eric david olivier stephane laurent frederic
-    sebastien christophe thierry vincent julien alexandre thomas maxime romain
-    kevin florian anthony jeremy mathieu guillaume benjamin lucas hugo leo theo
-    nathan enzo louis gabriel raphael arthur jules adam liam noe sacha eliott
-    marc luc yves gerard serge gilles bruno didier joel francis dominique remy
-    fabrice gregory cedric ludovic damien aurelien quentin clement valentin
-    baptiste martin simon victor axel mohamed karim mehdi rachid samir yanis
-    geoffrey gregoire tanguy erwan loic mickael jonathan dylan bastien alexis
-    """.split()
+    [
+        "jean",
+        "pierre",
+        "michel",
+        "andre",
+        "philippe",
+        "rene",
+        "louis",
+        "alain",
+        "jacques",
+        "bernard",
+        "marcel",
+        "daniel",
+        "roger",
+        "robert",
+        "paul",
+        "claude",
+        "christian",
+        "henri",
+        "georges",
+        "nicolas",
+        "patrick",
+        "antoine",
+        "francois",
+        "pascal",
+        "eric",
+        "david",
+        "olivier",
+        "stephane",
+        "laurent",
+        "frederic",
+        "sebastien",
+        "christophe",
+        "thierry",
+        "vincent",
+        "julien",
+        "alexandre",
+        "thomas",
+        "maxime",
+        "romain",
+        "kevin",
+        "florian",
+        "anthony",
+        "jeremy",
+        "mathieu",
+        "guillaume",
+        "benjamin",
+        "lucas",
+        "hugo",
+        "leo",
+        "theo",
+        "nathan",
+        "enzo",
+        "louis",
+        "gabriel",
+        "raphael",
+        "arthur",
+        "jules",
+        "adam",
+        "liam",
+        "noe",
+        "sacha",
+        "eliott",
+        "marc",
+        "luc",
+        "yves",
+        "gerard",
+        "serge",
+        "gilles",
+        "bruno",
+        "didier",
+        "joel",
+        "francis",
+        "dominique",
+        "remy",
+        "fabrice",
+        "gregory",
+        "cedric",
+        "ludovic",
+        "damien",
+        "aurelien",
+        "quentin",
+        "clement",
+        "valentin",
+        "baptiste",
+        "martin",
+        "simon",
+        "victor",
+        "axel",
+        "mohamed",
+        "karim",
+        "mehdi",
+        "rachid",
+        "samir",
+        "yanis",
+        "geoffrey",
+        "gregoire",
+        "tanguy",
+        "erwan",
+        "loic",
+        "mickael",
+        "jonathan",
+        "dylan",
+        "bastien",
+        "alexis",
+    ]
 )
 
 _FEMALE_FIRST_NAMES: frozenset[str] = frozenset(
-    """
-    marie jeanne francoise monique catherine nathalie isabelle sylvie anne
-    martine jacqueline christiane nicole helene laurence sandrine valerie
-    celine karine stephanie sophie aurelie julie camille emilie laura manon
-    lea chloe emma sarah pauline mathilde lucie marion elodie audrey melanie
-    delphine severine virginie patricia veronique brigitte danielle josiane
-    yvette madeleine therese suzanne charlotte juliette louise alice clara
-    ines jade lina mila rose eva anna lou zoe nadia samira fatima leila amina
-    """.split()
+    [
+        "marie",
+        "jeanne",
+        "francoise",
+        "monique",
+        "catherine",
+        "nathalie",
+        "isabelle",
+        "sylvie",
+        "anne",
+        "martine",
+        "jacqueline",
+        "christiane",
+        "nicole",
+        "helene",
+        "laurence",
+        "sandrine",
+        "valerie",
+        "celine",
+        "karine",
+        "stephanie",
+        "sophie",
+        "aurelie",
+        "julie",
+        "camille",
+        "emilie",
+        "laura",
+        "manon",
+        "lea",
+        "chloe",
+        "emma",
+        "sarah",
+        "pauline",
+        "mathilde",
+        "lucie",
+        "marion",
+        "elodie",
+        "audrey",
+        "melanie",
+        "delphine",
+        "severine",
+        "virginie",
+        "patricia",
+        "veronique",
+        "brigitte",
+        "danielle",
+        "josiane",
+        "yvette",
+        "madeleine",
+        "therese",
+        "suzanne",
+        "charlotte",
+        "juliette",
+        "louise",
+        "alice",
+        "clara",
+        "ines",
+        "jade",
+        "lina",
+        "mila",
+        "rose",
+        "eva",
+        "anna",
+        "lou",
+        "zoe",
+        "nadia",
+        "samira",
+        "fatima",
+        "leila",
+        "amina",
+    ]
 )
 
 
@@ -60,7 +233,7 @@ def fold(value: str) -> str:
     return text.strip().lower()
 
 
-def title_case_name(value: Optional[str]) -> Optional[str]:
+def title_case_name(value: str | None) -> str | None:
     """Normalise a person-name fragment to clean title-case.
 
     Handles UPPERCASE registry output, hyphenated names (« jean-pierre » →
@@ -85,7 +258,7 @@ def title_case_name(value: Optional[str]) -> Optional[str]:
     return " ".join(words) or None
 
 
-def infer_gender(first_name: Optional[str]) -> Optional[str]:
+def infer_gender(first_name: str | None) -> str | None:
     """Best-effort gender from a French first name ('M' / 'F' / None).
 
     Only the FIRST token is considered (« Jean-Pierre » → « jean »… actually
@@ -117,7 +290,7 @@ def company_similarity(a: str, b: str) -> float:
     return len(ta & tb) / len(ta | tb)
 
 
-def split_registry_full_name(full_name: str) -> tuple[Optional[str], Optional[str]]:
+def split_registry_full_name(full_name: str) -> tuple[str | None, str | None]:
     """Split a registry « NOM Prenom » (EI denomination) into (first, last).
 
     French registries write the LAST name in uppercase followed by the first

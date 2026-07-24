@@ -32,6 +32,20 @@ export default withNuxt(
       'jsdoc/reject-any-type': 'off',
       'jsdoc/tag-lines': 'off',
       '@typescript-eslint/no-explicit-any': 'error',
+      '@typescript-eslint/explicit-function-return-type': ['error'],
+      '@typescript-eslint/typedef': [
+        'error',
+        {
+          arrayDestructuring: true,
+          arrowParameter: true,
+          memberVariableDeclaration: true,
+          objectDestructuring: true,
+          parameter: true,
+          propertyDeclaration: true,
+          variableDeclaration: true,
+          variableDeclarationIgnoreFunction: false,
+        },
+      ],
       '@typescript-eslint/no-unused-vars': 'off',
       // A class of static methods is the house style for a cohesive helper set (see the standards).
       '@typescript-eslint/no-extraneous-class': 'off',
@@ -72,6 +86,14 @@ export default withNuxt(
       'jsdoc/require-returns': 'off',
       'jsdoc/require-param-description': 'off',
       'jsdoc/require-returns-description': 'off',
+    },
+  },
+  {
+    // Scripts d'outillage en JavaScript : une annotation de type y est un péché de syntaxe.
+    files: ['**/*.mjs', '**/*.js'],
+    rules: {
+      '@typescript-eslint/typedef': 'off',
+      '@typescript-eslint/explicit-function-return-type': 'off',
     },
   },
   eslintConfigPrettier,

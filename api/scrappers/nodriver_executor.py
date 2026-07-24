@@ -8,12 +8,14 @@ to this singleton thread loop.
 Progress / WebSocket callbacks must run on the **uvicorn** loop — see
 ``ScrapeProgressReporter`` which marshals handlers back to the main loop.
 """
+
 from __future__ import annotations
 
 import asyncio
 import sys
 import threading
-from typing import Any, Callable, Coroutine, TypeVar
+from collections.abc import Callable, Coroutine
+from typing import Any, TypeVar
 
 T = TypeVar("T")
 
@@ -75,7 +77,7 @@ def _running_loop() -> asyncio.AbstractEventLoop | None:
         return None
 
 
-async def run_nodriver_task(task: Callable[[], Coroutine[Any, Any, T]], *, timeout: float = 600) -> T:
+async def run_nodriver_task[T](task: Callable[[], Coroutine[Any, Any, T]], *, timeout: float = 600) -> T:
     """
     Run nodriver coroutine work on the dedicated loop when required.
 

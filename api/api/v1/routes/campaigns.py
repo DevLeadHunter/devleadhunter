@@ -1,10 +1,11 @@
 """
 Campaign routes for API v1.
 """
+
 from __future__ import annotations
 
-from datetime import datetime, timezone
-from typing import Any, Optional
+from datetime import UTC, datetime
+from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel
@@ -14,7 +15,6 @@ from sqlalchemy.orm import Session
 from core.database import get_db
 from models.campaign import CampaignStatus
 from models.campaign_follow_up import CampaignFollowUp
-from models.email_queue import EmailQueue
 from models.user import User
 from schemas.campaign import (
     CampaignCreate,
@@ -39,15 +39,17 @@ router = APIRouter(prefix="/campaigns", tags=["campaigns"])
 
 class LaunchCampaignRequest(BaseModel):
     """Payload for POST /campaigns/{id}/launch."""
-    template_id: Optional[int] = None
-    ab_template_id_b: Optional[int] = None
-    follow_up_template_id: Optional[int] = None
+
+    template_id: int | None = None
+    ab_template_id_b: int | None = None
+    follow_up_template_id: int | None = None
     follow_up_delay_days: int = 5
     send_delay_minutes: int = 20
 
 
 class SendNowRequest(BaseModel):
     """Payload for POST /campaigns/{id}/send-now."""
+
     prospect_id: int
     template_id: int
 
@@ -55,9 +57,8 @@ class SendNowRequest(BaseModel):
 def _has_resend_config(db: Session, user_id: int) -> bool:
     """Return True when the user has a Resend API key configured."""
     from models.resend_config import ResendConfig
-    config = db.execute(
-        select(ResendConfig).where(ResendConfig.user_id == user_id)
-    ).scalar_one_or_none()
+
+    config = db.execute(select(ResendConfig).where(ResendConfig.user_id == user_id)).scalar_one_or_none()
     return config is not None and bool(config.api_key)
 
 
@@ -129,7 +130,7 @@ async def create_campaign(
 async def list_campaigns(
     skip: int = Query(0, ge=0),
     limit: int = Query(100, ge=1, le=1000),
-    status: Optional[str] = Query(None),
+    status: str | None = Query(None),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
@@ -225,16 +226,16 @@ async def update_campaign_settings(
 
     if settings.follow_ups is not None:
         # Replace the entire follow-up sequence.
-        db.execute(
-            delete(CampaignFollowUp).where(CampaignFollowUp.campaign_id == campaign_id)
-        )
+        db.execute(delete(CampaignFollowUp).where(CampaignFollowUp.campaign_id == campaign_id))
         for i, fu in enumerate(settings.follow_ups, start=1):
-            db.add(CampaignFollowUp(
-                campaign_id=campaign_id,
-                template_id=fu.template_id,
-                delay_days=fu.delay_days,
-                position=i,
-            ))
+            db.add(
+                CampaignFollowUp(
+                    campaign_id=campaign_id,
+                    template_id=fu.template_id,
+                    delay_days=fu.delay_days,
+                    position=i,
+                )
+            )
 
     db.commit()
     db.refresh(campaign)
@@ -249,9 +250,7 @@ async def add_prospects_to_campaign(
     db: Session = Depends(get_db),
 ):
     """Add prospects to a campaign."""
-    campaign = campaign_service.add_prospects_to_campaign(
-        db, campaign_id, current_user.id, data.prospect_ids
-    )
+    campaign = campaign_service.add_prospects_to_campaign(db, campaign_id, current_user.id, data.prospect_ids)
     if not campaign:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Campaign not found")
     return _detail_response(campaign)
@@ -265,9 +264,7 @@ async def remove_prospect_from_campaign(
     db: Session = Depends(get_db),
 ):
     """Remove a prospect from a campaign."""
-    campaign = campaign_service.remove_prospect_from_campaign(
-        db, campaign_id, current_user.id, prospect_id
-    )
+    campaign = campaign_service.remove_prospect_from_campaign(db, campaign_id, current_user.id, prospect_id)
     if not campaign:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Campaign not found")
     return _detail_response(campaign)
@@ -284,11 +281,12 @@ async def add_follow_up(
     _get_or_404(db, campaign_id, current_user.id)
 
     # Auto-set position to last + 1 if not supplied or already taken.
-    max_pos: int = db.execute(
-        select(func.max(CampaignFollowUp.position)).where(
-            CampaignFollowUp.campaign_id == campaign_id
-        )
-    ).scalar() or 0
+    max_pos: int = (
+        db.execute(
+            select(func.max(CampaignFollowUp.position)).where(CampaignFollowUp.campaign_id == campaign_id)
+        ).scalar()
+        or 0
+    )
 
     fu = CampaignFollowUp(
         campaign_id=campaign_id,
@@ -407,7 +405,7 @@ async def launch_campaign(
         campaign.follow_up_template_id = launch_data.follow_up_template_id
         campaign.follow_up_delay_days = launch_data.follow_up_delay_days
     campaign.status = CampaignStatus.ACTIVE.value
-    campaign.started_at = datetime.now(timezone.utc).replace(tzinfo=None)
+    campaign.started_at = datetime.now(UTC).replace(tzinfo=None)
     db.commit()
 
     queue_service = CampaignQueueService(db)
@@ -542,16 +540,16 @@ async def get_campaign_queue(
         "pending_count": pending,
         "items": [
             {
-                "id":               i.id,
-                "queue_type":       i.queue_type,
-                "status":           i.status,
-                "scheduled_at":     i.scheduled_at.isoformat(),
-                "prospect_id":      i.prospect_id,
-                "prospect_name":    i.prospect.name if i.prospect else None,
-                "prospect_email":   i.prospect.email if i.prospect else None,
-                "ab_variant":       i.ab_variant,
-                "follow_up_index":  i.follow_up_index,
-                "email_log_id":     i.email_log_id,
+                "id": i.id,
+                "queue_type": i.queue_type,
+                "status": i.status,
+                "scheduled_at": i.scheduled_at.isoformat(),
+                "prospect_id": i.prospect_id,
+                "prospect_name": i.prospect.name if i.prospect else None,
+                "prospect_email": i.prospect.email if i.prospect else None,
+                "ab_variant": i.ab_variant,
+                "follow_up_index": i.follow_up_index,
+                "email_log_id": i.email_log_id,
             }
             for i in items
         ],

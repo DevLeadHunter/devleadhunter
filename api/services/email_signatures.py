@@ -5,9 +5,8 @@ helper resolves it to an HTML block appended to the already-rendered body, so
 the switch "Inclure une signature" behaves identically for campaigns,
 follow-ups, the preview and the one-off composer.
 """
-from __future__ import annotations
 
-from typing import Optional
+from __future__ import annotations
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -17,9 +16,9 @@ from models.email_signature import EmailSignature
 
 def render_signature_html(
     db: Session,
-    signature_id: Optional[int],
-    variables: Optional[dict[str, str]] = None,
-    user_id: Optional[int] = None,
+    signature_id: int | None,
+    variables: dict[str, str] | None = None,
+    user_id: int | None = None,
 ) -> str:
     """Return the signature HTML block to append to an email body.
 
@@ -38,7 +37,7 @@ def render_signature_html(
     stmt = select(EmailSignature).where(EmailSignature.id == signature_id)
     if user_id is not None:
         stmt = stmt.where(EmailSignature.user_id == user_id)
-    signature: Optional[EmailSignature] = db.execute(stmt).scalar_one_or_none()
+    signature: EmailSignature | None = db.execute(stmt).scalar_one_or_none()
 
     if signature is None or not signature.content_html:
         return ""

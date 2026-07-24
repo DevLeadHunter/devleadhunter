@@ -15,6 +15,7 @@ Free Google API. Setup (one-time, manual):
 When neither is configured the service reports ``configured: False`` and the
 UI shows the setup card instead of data.
 """
+
 from __future__ import annotations
 
 import base64
@@ -24,7 +25,7 @@ import logging
 import os
 import time
 from datetime import datetime, timedelta
-from typing import Any, Optional
+from typing import Any
 
 from core.config import settings
 
@@ -41,7 +42,7 @@ class PostmasterService:
         self._cache: dict[str, tuple[float, dict[str, Any]]] = {}
 
     @property
-    def credentials_file(self) -> Optional[str]:
+    def credentials_file(self) -> str | None:
         """Path to the service-account JSON key file (None = not set/found).
 
         A relative path is resolved against the ``api/`` root, so a value like
@@ -70,7 +71,7 @@ class PostmasterService:
         """
         return bool(settings.google_postmaster_credentials_json) or self.credentials_file is not None
 
-    def _service_account_info(self) -> Optional[dict[str, Any]]:
+    def _service_account_info(self) -> dict[str, Any] | None:
         """Parse the inline service-account JSON (raw or base64), when set.
 
         Accepts the key file's contents pasted directly, or a base64 encoding of
@@ -112,7 +113,7 @@ class PostmasterService:
 
         try:
             result = self._fetch(domain, days)
-        except Exception as exc:  # noqa: BLE001 — surfaced as a friendly error, never a 500
+        except Exception as exc:
             logger.warning("Postmaster fetch failed for %s: %s", domain, exc)
             result = {
                 "configured": True,
@@ -140,9 +141,7 @@ class PostmasterService:
         if info is not None:
             credentials = service_account.Credentials.from_service_account_info(info, scopes=[_SCOPE])
         else:
-            credentials = service_account.Credentials.from_service_account_file(
-                self.credentials_file, scopes=[_SCOPE]
-            )
+            credentials = service_account.Credentials.from_service_account_file(self.credentials_file, scopes=[_SCOPE])
         client = build("gmailpostmastertools", "v1", credentials=credentials, cache_discovery=False)
 
         # Bounded range (start + end): Postmaster's freshest data is ~2 days old.

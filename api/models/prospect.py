@@ -1,16 +1,18 @@
 """
 Prospect data models.
 """
-from typing import Optional
+
 from datetime import datetime
-from pydantic import BaseModel, ConfigDict, Field, EmailStr
+
+from pydantic import BaseModel, ConfigDict, EmailStr, Field
+
 from enums.source import Source
 
 
 class ProspectBase(BaseModel):
     """
     Base prospect model with common fields.
-    
+
     Attributes:
         name: Business name (required)
         address: Street address (optional)
@@ -22,13 +24,13 @@ class ProspectBase(BaseModel):
         source: Data source identifier (required)
         confidence: Confidence score between 1 and 4 (required)
     """
-    
+
     name: str = Field(..., min_length=1, description="Business name")
-    address: Optional[str] = Field(None, description="Street address")
-    city: Optional[str] = Field(None, description="City name")
-    phone: Optional[str] = Field(None, description="Phone number")
-    email: Optional[EmailStr] = Field(None, description="Email address")
-    website: Optional[str] = Field(None, description="Website URL")
+    address: str | None = Field(None, description="Street address")
+    city: str | None = Field(None, description="City name")
+    phone: str | None = Field(None, description="Phone number")
+    email: EmailStr | None = Field(None, description="Email address")
+    website: str | None = Field(None, description="Website URL")
     category: str = Field(..., description="Business category")
     source: Source = Field(..., description="Data source identifier")
     confidence: int = Field(
@@ -54,7 +56,7 @@ class ProspectCreate(ProspectBase):
     unknown ones.
     """
 
-    social_url: Optional[str] = Field(
+    social_url: str | None = Field(
         None,
         description=(
             "Transient: Facebook / Instagram profile URL extracted from PagesJaunes. "
@@ -66,16 +68,16 @@ class ProspectCreate(ProspectBase):
 class ProspectEnrichRequest(BaseModel):
     """Request payload to pre-fill a prospect from Google Maps."""
 
-    business_name: Optional[str] = Field(None, max_length=255, description="Business name")
-    google_maps_url: Optional[str] = Field(None, max_length=2048, description="Google Maps place URL")
-    city: Optional[str] = Field(None, max_length=128, description="City hint for business name search")
+    business_name: str | None = Field(None, max_length=255, description="Business name")
+    google_maps_url: str | None = Field(None, max_length=2048, description="Google Maps place URL")
+    city: str | None = Field(None, max_length=128, description="City hint for business name search")
 
 
 class ProspectSearchSuggestionsRequest(BaseModel):
     """Request payload to search businesses on Google Maps."""
 
     query: str = Field(..., min_length=2, max_length=255, description="Business name search query")
-    city: Optional[str] = Field(None, max_length=128, description="City hint")
+    city: str | None = Field(None, max_length=128, description="City hint")
     max_results: int = Field(default=8, ge=1, le=15, description="Maximum suggestions to return")
 
 
@@ -84,27 +86,27 @@ class ProspectSearchSuggestion(BaseModel):
 
     id: str = Field(..., description="Unique suggestion id (Google Maps URL)")
     label: str = Field(..., description="Business display name")
-    description: Optional[str] = Field(None, description="Address or secondary line")
+    description: str | None = Field(None, description="Address or secondary line")
     google_maps_url: str = Field(..., description="Google Maps place URL")
 
 
 class ProspectUpdate(BaseModel):
     """
     Model for updating an existing prospect.
-    
+
     All fields are optional to allow partial updates.
     """
-    
-    name: Optional[str] = Field(None, description="Business name")
-    address: Optional[str] = Field(None, description="Street address")
-    city: Optional[str] = Field(None, description="City name")
-    phone: Optional[str] = Field(None, description="Phone number")
-    email: Optional[EmailStr] = Field(None, description="Email address")
-    website: Optional[str] = Field(None, description="Website URL")
-    category: Optional[str] = Field(None, description="Business category")
-    source: Optional[Source] = Field(None, description="Data source identifier")
-    confidence: Optional[int] = Field(None, ge=1, le=4, description="Confidence score 1-4")
-    contacted: Optional[bool] = Field(None, description="Whether this prospect has been contacted")
+
+    name: str | None = Field(None, description="Business name")
+    address: str | None = Field(None, description="Street address")
+    city: str | None = Field(None, description="City name")
+    phone: str | None = Field(None, description="Phone number")
+    email: EmailStr | None = Field(None, description="Email address")
+    website: str | None = Field(None, description="Website URL")
+    category: str | None = Field(None, description="Business category")
+    source: Source | None = Field(None, description="Data source identifier")
+    confidence: int | None = Field(None, ge=1, le=4, description="Confidence score 1-4")
+    contacted: bool | None = Field(None, description="Whether this prospect has been contacted")
 
 
 class Prospect(ProspectBase):
@@ -133,18 +135,12 @@ class Prospect(ProspectBase):
     id: int = Field(..., description="Unique prospect identifier")
     user_id: int = Field(..., description="User ID who saved this prospect")
     contacted: bool = Field(False, description="Whether this prospect has been contacted")
-    created_at: Optional[datetime] = Field(None, description="Timestamp when created")
-    organization_id: Optional[int] = Field(
-        None, description="Organization the prospect is shared with (creator's org)"
-    )
-    reserved_by_user_id: Optional[int] = Field(
-        None, description="Member currently reserving this prospect (None = free)"
-    )
-    reserved_by_name: Optional[str] = Field(
+    created_at: datetime | None = Field(None, description="Timestamp when created")
+    organization_id: int | None = Field(None, description="Organization the prospect is shared with (creator's org)")
+    reserved_by_user_id: int | None = Field(None, description="Member currently reserving this prospect (None = free)")
+    reserved_by_name: str | None = Field(
         None, description="Display name of the reserving member (resolved server-side)"
     )
-    reserved_at: Optional[datetime] = Field(None, description="When the reservation was made")
-    lighthouse_json: Optional[dict] = Field(
-        None, description="Latest Lighthouse audit of the prospect's existing website"
-    )
-    lighthouse_at: Optional[datetime] = Field(None, description="When the audit was run")
+    reserved_at: datetime | None = Field(None, description="When the reservation was made")
+    lighthouse_json: dict | None = Field(None, description="Latest Lighthouse audit of the prospect's existing website")
+    lighthouse_at: datetime | None = Field(None, description="When the audit was run")

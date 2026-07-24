@@ -3,12 +3,13 @@ DOM helper utilities for nodriver tabs.
 
 Provides Playwright-like selectors on top of nodriver CDP evaluate/select APIs.
 """
+
 from __future__ import annotations
 
 import asyncio
 import json
 import logging
-from typing import Any, Optional
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -45,9 +46,7 @@ class NodriverDom:
         deadline = asyncio.get_running_loop().time() + timeout_s
         sel_json = json.dumps(selector)
         while asyncio.get_running_loop().time() < deadline:
-            found = await NodriverDom.evaluate(
-                tab, f"!!document.querySelector({sel_json})", by_value=True
-            )
+            found = await NodriverDom.evaluate(tab, f"!!document.querySelector({sel_json})", by_value=True)
             if found is True:
                 return True
             await asyncio.sleep(0.15)
@@ -57,16 +56,14 @@ class NodriverDom:
     async def query_count(tab: Any, selector: str) -> int:
         """Count elements matching ``selector``."""
         sel_json = json.dumps(selector)
-        raw = await NodriverDom.evaluate(
-            tab, f"document.querySelectorAll({sel_json}).length", by_value=True
-        )
+        raw = await NodriverDom.evaluate(tab, f"document.querySelectorAll({sel_json}).length", by_value=True)
         try:
             return int(raw or 0)
         except (TypeError, ValueError):
             return 0
 
     @staticmethod
-    async def inner_text(tab: Any, selector: str, *, index: int = 0) -> Optional[str]:
+    async def inner_text(tab: Any, selector: str, *, index: int = 0) -> str | None:
         """Return trimmed innerText/textContent for the nth matching element."""
         sel_json = json.dumps(selector)
         js = f"""
@@ -81,7 +78,7 @@ class NodriverDom:
         return raw if isinstance(raw, str) and raw else None
 
     @staticmethod
-    async def inner_html(tab: Any, selector: str, *, index: int = 0) -> Optional[str]:
+    async def inner_html(tab: Any, selector: str, *, index: int = 0) -> str | None:
         """Return innerHTML for the nth matching element."""
         sel_json = json.dumps(selector)
         js = f"""
@@ -111,7 +108,7 @@ class NodriverDom:
         return [str(x) for x in NodriverDom._coerce_to_list(raw) if x]
 
     @staticmethod
-    async def inner_text_chain(tab: Any, selectors: list[str]) -> Optional[str]:
+    async def inner_text_chain(tab: Any, selectors: list[str]) -> str | None:
         """Return the innerText of the first selector in the chain that matches.
 
         Resilience helper: pass ``[current_selector, alternate1, alternate2, …]`` so a
@@ -131,9 +128,7 @@ class NodriverDom:
         return None
 
     @staticmethod
-    async def get_attribute_chain(
-        tab: Any, selectors: list[str], attr: str
-    ) -> Optional[str]:
+    async def get_attribute_chain(tab: Any, selectors: list[str], attr: str) -> str | None:
         """Return ``attr`` of the first selector in the chain that matches (non-empty)."""
         for selector in selectors:
             value = await NodriverDom.get_attribute(tab, selector, attr)
@@ -155,9 +150,7 @@ class NodriverDom:
         return [str(x) for x in raw if x]
 
     @staticmethod
-    async def get_attribute(
-        tab: Any, selector: str, attr: str, *, index: int = 0
-    ) -> Optional[str]:
+    async def get_attribute(tab: Any, selector: str, attr: str, *, index: int = 0) -> str | None:
         """Return an attribute value for the nth matching element."""
         sel_json = json.dumps(selector)
         attr_json = json.dumps(attr)
@@ -181,7 +174,7 @@ class NodriverDom:
                 if element:
                     await element.click()
                     return True
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             logger.debug("nodriver select/click failed (%s): %s", selector, exc)
 
         sel_json = json.dumps(selector)

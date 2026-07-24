@@ -7,6 +7,7 @@ them encrypted in the ``resend_config`` table for the admin user.
 
 Safe to re-run: existing rows are updated in place.
 """
+
 from __future__ import annotations
 
 import logging
@@ -22,6 +23,7 @@ def seed_resend_config() -> None:
     doesn't block CI or fresh installs without Resend credentials).
     """
     from sqlalchemy import select
+
     from core.config import settings
     from core.database import get_db, init_db
     from models.resend_config import ResendConfig
@@ -38,9 +40,7 @@ def seed_resend_config() -> None:
             return
 
         # Locate the admin user
-        admin: User | None = db.execute(
-            select(User).where(User.email == settings.admin_email)
-        ).scalar_one_or_none()
+        admin: User | None = db.execute(select(User).where(User.email == settings.admin_email)).scalar_one_or_none()
 
         if admin is None:
             print(f"[SKIP] Admin user {settings.admin_email!r} not found — run user seeder first")
@@ -62,13 +62,14 @@ def seed_resend_config() -> None:
 
         # from_email / from_name can be set via optional env vars
         import os
-        config.from_email = os.environ.get("RESEND_FROM_EMAIL", f"leo@mail.dibodev.fr")
-        config.from_name  = os.environ.get("RESEND_FROM_NAME", admin.name)
+
+        config.from_email = os.environ.get("RESEND_FROM_EMAIL", "leo@mail.dibodev.fr")
+        config.from_name = os.environ.get("RESEND_FROM_NAME", admin.name)
 
         db.commit()
         print(f"[OK] ResendConfig seeded for admin user {settings.admin_email!r}")
 
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         print(f"[ERROR] ResendConfig seeder failed: {exc}")
         db.rollback()
     finally:

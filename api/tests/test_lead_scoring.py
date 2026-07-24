@@ -2,6 +2,7 @@
 Unit tests for the demo-behaviour lead scoring — focused on the newer signals
 (section views, outbound clicks) added for richer demo-link tracking.
 """
+
 from services import lead_scoring as ls
 
 
@@ -76,42 +77,46 @@ def test_video_engagement_raises_the_score() -> None:
 
 def test_video_only_activity_gets_a_temperature() -> None:
     """A prospect who only watched the video is not left as 'unknown'."""
-    result = ls.compute([
-        {"event": "demo_video_play", "timestamp": "t", "properties": {}},
-        {"event": "demo_video_watch_time", "timestamp": "t", "properties": {"seconds": 30}},
-    ])
+    result = ls.compute(
+        [
+            {"event": "demo_video_play", "timestamp": "t", "properties": {}},
+            {"event": "demo_video_watch_time", "timestamp": "t", "properties": {"seconds": 30}},
+        ]
+    )
     assert result["temperature"] != "unknown"
 
 
 def test_video_watch_time_keeps_the_max() -> None:
     """Cumulative watch-time events keep the largest value, not the sum."""
-    result = ls.compute([
-        _pageview(),
-        {"event": "demo_video_watch_time", "timestamp": "t", "properties": {"seconds": 10}},
-        {"event": "demo_video_watch_time", "timestamp": "t", "properties": {"seconds": 25}},
-        {"event": "demo_video_watch_time", "timestamp": "t", "properties": {"seconds": 18}},
-    ])
+    result = ls.compute(
+        [
+            _pageview(),
+            {"event": "demo_video_watch_time", "timestamp": "t", "properties": {"seconds": 10}},
+            {"event": "demo_video_watch_time", "timestamp": "t", "properties": {"seconds": 25}},
+            {"event": "demo_video_watch_time", "timestamp": "t", "properties": {"seconds": 18}},
+        ]
+    )
     assert result["signals"]["video_watch_seconds"] == 25
 
 
 def test_non_scored_video_events_do_not_change_score() -> None:
     """pause / seek / mute / resume are timeline color, not scoring signals."""
     scored = ls.compute([_pageview(), {"event": "demo_video_play", "timestamp": "t", "properties": {}}])
-    with_noise = ls.compute([
-        _pageview(),
-        {"event": "demo_video_play", "timestamp": "t", "properties": {}},
-        {"event": "demo_video_pause", "timestamp": "t", "properties": {"percent": 40}},
-        {"event": "demo_video_seek", "timestamp": "t", "properties": {"direction": "backward"}},
-        {"event": "demo_video_mute", "timestamp": "t", "properties": {"muted": True}},
-        {"event": "demo_video_resume", "timestamp": "t", "properties": {"percent": 40}},
-    ])
+    with_noise = ls.compute(
+        [
+            _pageview(),
+            {"event": "demo_video_play", "timestamp": "t", "properties": {}},
+            {"event": "demo_video_pause", "timestamp": "t", "properties": {"percent": 40}},
+            {"event": "demo_video_seek", "timestamp": "t", "properties": {"direction": "backward"}},
+            {"event": "demo_video_mute", "timestamp": "t", "properties": {"muted": True}},
+            {"event": "demo_video_resume", "timestamp": "t", "properties": {"percent": 40}},
+        ]
+    )
     assert with_noise["score"] == scored["score"]
 
 
 def test_aggregate_maps_new_keys() -> None:
     """The hot-leads aggregate path carries the new signals through."""
-    signals = ls.build_signals_from_aggregate(
-        {"pageviews": 3, "visits": 1, "sections_viewed": 4, "outbound_clicks": 2}
-    )
+    signals = ls.build_signals_from_aggregate({"pageviews": 3, "visits": 1, "sections_viewed": 4, "outbound_clicks": 2})
     assert signals["sections_viewed"] == 4
     assert signals["outbound_clicks"] == 2

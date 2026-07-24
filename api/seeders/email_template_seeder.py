@@ -23,11 +23,11 @@ so this only APPENDS new templates (never overwrites manual edits). The one-time
 fix of an already-seeded body (variant B's English CTA) lives in the
 ``add_email_template_sort_order`` migration.
 """
+
 from __future__ import annotations
 
 import json
 import re
-
 
 # Template definitions.
 #   sort_order: higher = pinned higher in the app list (0 = normal).
@@ -258,6 +258,7 @@ def seed_email_templates() -> None:
     untouched so the seeder is safe to re-run (only new templates are added).
     """
     from sqlalchemy import select
+
     from core.config import settings
     from core.database import get_db, init_db
     from models.email_template import EmailTemplate
@@ -267,9 +268,7 @@ def seed_email_templates() -> None:
     db = next(get_db())
 
     try:
-        admin: User | None = db.execute(
-            select(User).where(User.email == settings.admin_email)
-        ).scalar_one_or_none()
+        admin: User | None = db.execute(select(User).where(User.email == settings.admin_email)).scalar_one_or_none()
 
         if admin is None:
             print(f"[SKIP] Admin user {settings.admin_email!r} not found — run user seeder first")
@@ -290,22 +289,24 @@ def seed_email_templates() -> None:
                 continue
 
             variables = _extract_variables(subject, body_html)
-            db.add(EmailTemplate(
-                user_id=admin.id,
-                email_account_id=None,
-                name=name,
-                subject=subject,
-                body_html=body_html,
-                variables=json.dumps(variables),
-                is_active=True,
-                sort_order=int(tpl["sort_order"]),
-            ))
+            db.add(
+                EmailTemplate(
+                    user_id=admin.id,
+                    email_account_id=None,
+                    name=name,
+                    subject=subject,
+                    body_html=body_html,
+                    variables=json.dumps(variables),
+                    is_active=True,
+                    sort_order=int(tpl["sort_order"]),
+                )
+            )
             created += 1
 
         db.commit()
         print(f"[OK] Email templates seeded — {created} created, {len(_TEMPLATES) - created} already present")
 
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         print(f"[ERROR] Email template seeder failed: {exc}")
         db.rollback()
     finally:

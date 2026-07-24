@@ -7,6 +7,7 @@ token before acting, which prevents a stranger from unsubscribing arbitrary
 prospects by guessing the URL (unsubscribe-bombing). The e-mail is HTML-escaped
 before being rendered, closing the reflected-XSS hole.
 """
+
 from html import escape
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
@@ -15,7 +16,6 @@ from sqlalchemy.orm import Session
 
 from core.database import get_db
 from services.unsubscribe_service import unsubscribe_service
-
 
 router = APIRouter(prefix="/unsubscribe", tags=["unsubscribe"])
 
@@ -104,17 +104,13 @@ def _invalid_link_page() -> str:
     )
 
 
-@router.get(
-    "",
-    response_class=HTMLResponse,
-    summary="Unsubscribe from emails"
-)
+@router.get("", response_class=HTMLResponse, summary="Unsubscribe from emails")
 async def unsubscribe_get(
     email: str = Query(..., description="Email address to unsubscribe"),
     token: str = Query("", description="Per-email signature that authorizes the request"),
     prospect_id: int = Query(None, description="Prospect ID (optional)"),
     reason: str = Query(None, description="Reason for unsubscribing (optional)"),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ):
     """
     Unsubscribe an email address from all future emails.
@@ -125,12 +121,7 @@ async def unsubscribe_get(
     if not unsubscribe_service.verify_token(email, token):
         return HTMLResponse(content=_invalid_link_page(), status_code=400)
 
-    unsubscribe_service.unsubscribe(
-        db=db,
-        email=email,
-        prospect_id=prospect_id,
-        reason=reason
-    )
+    unsubscribe_service.unsubscribe(db=db, email=email, prospect_id=prospect_id, reason=reason)
 
     safe_email = escape(email)
     body_html = (
@@ -143,16 +134,13 @@ async def unsubscribe_get(
     return HTMLResponse(content=_page(title="Désabonnement confirmé", icon="✅", body_html=body_html))
 
 
-@router.post(
-    "",
-    summary="Unsubscribe from emails (POST)"
-)
+@router.post("", summary="Unsubscribe from emails (POST)")
 async def unsubscribe_post(
     email: str = Query(..., description="Email address to unsubscribe"),
     token: str = Query("", description="Per-email signature that authorizes the request"),
     prospect_id: int = Query(None, description="Prospect ID (optional)"),
     reason: str = Query(None, description="Reason for unsubscribing (optional)"),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ):
     """
     Unsubscribe an email address from all future emails (POST — RFC 8058 one-click).
@@ -165,15 +153,10 @@ async def unsubscribe_post(
             detail="Invalid or missing unsubscribe token",
         )
 
-    unsubscribe_record = unsubscribe_service.unsubscribe(
-        db=db,
-        email=email,
-        prospect_id=prospect_id,
-        reason=reason
-    )
+    unsubscribe_record = unsubscribe_service.unsubscribe(db=db, email=email, prospect_id=prospect_id, reason=reason)
 
     return {
         "success": True,
         "message": f"Email {email} has been unsubscribed",
-        "unsubscribed_at": unsubscribe_record.created_at.isoformat()
+        "unsubscribed_at": unsubscribe_record.created_at.isoformat(),
     }

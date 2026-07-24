@@ -1,10 +1,11 @@
 """
 Support attachment model.
 """
+
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Optional, TYPE_CHECKING
+from typing import TYPE_CHECKING
 
 from sqlalchemy import ForeignKey, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -13,8 +14,8 @@ from sqlalchemy.sql import func
 from core.database import Base
 
 if TYPE_CHECKING:
-    from models.support_ticket import SupportTicket
     from models.support_message import SupportMessage
+    from models.support_ticket import SupportTicket
 
 
 class SupportAttachment(Base):
@@ -26,7 +27,7 @@ class SupportAttachment(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True, index=True)
     ticket_id: Mapped[int] = mapped_column(ForeignKey("support_tickets.id"), nullable=False, index=True)
-    message_id: Mapped[Optional[int]] = mapped_column(
+    message_id: Mapped[int | None] = mapped_column(
         ForeignKey("support_messages.id"),
         nullable=True,
         index=True,
@@ -37,11 +38,11 @@ class SupportAttachment(Base):
     content_type: Mapped[str] = mapped_column(String(128), nullable=False)
     created_at: Mapped[datetime] = mapped_column(server_default=func.now(), nullable=False, index=True)
 
-    ticket: Mapped["SupportTicket"] = relationship(
+    ticket: Mapped[SupportTicket] = relationship(
         "SupportTicket",
         back_populates="attachments",
     )
-    message: Mapped[Optional["SupportMessage"]] = relationship(
+    message: Mapped[SupportMessage | None] = relationship(
         "SupportMessage",
         back_populates="attachments",
     )
@@ -51,5 +52,3 @@ class SupportAttachment(Base):
             f"<SupportAttachment id={self.id} ticket_id={self.ticket_id} "
             f"message_id={self.message_id} object_key={self.object_key!r}>"
         )
-
-

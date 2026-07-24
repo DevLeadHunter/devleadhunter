@@ -4,6 +4,7 @@ The trap this guards against: a parent in ``p=quarantine;sp=none`` looks healthy
 when only ``p`` is read, while the subdomain actually used to send outreach is
 enforced by nothing.
 """
+
 from typing import Any
 
 import pytest

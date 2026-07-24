@@ -4,11 +4,12 @@ Pure mapping of enrichment data into a template's content_json.
 Kept dependency-free (no scrapers, no DB) so it can be imported by
 ``storyblok_service`` without pulling the heavy scraper import chain.
 """
+
 from __future__ import annotations
 
 import copy
 from dataclasses import dataclass
-from typing import Any, Optional
+from typing import Any
 
 MAX_GALLERY_PHOTOS = 8
 MAX_REVIEWS = 6
@@ -33,7 +34,7 @@ class TemplateBlokNames:
     review_item: str
     contact: str
     uid_prefix: str
-    about: Optional[str] = None
+    about: str | None = None
     carries_location: bool = False
     rates_first_trust_item: bool = False
 
@@ -84,7 +85,7 @@ class EnrichmentContentMapper:
     """
 
     @staticmethod
-    def format_rating(rating: Optional[float]) -> Optional[str]:
+    def format_rating(rating: float | None) -> str | None:
         """
         Format a numeric rating the French way.
 
@@ -102,7 +103,7 @@ class EnrichmentContentMapper:
             return None
 
     @staticmethod
-    def format_hours(hours: Optional[list]) -> Optional[str]:
+    def format_hours(hours: list | None) -> str | None:
         """
         Flatten structured opening hours into the one-line string the contact blok displays.
 
@@ -122,9 +123,7 @@ class EnrichmentContentMapper:
         return " · ".join(parts) if parts else None
 
     @classmethod
-    def apply_to_content(
-        cls, content_json: dict[str, Any], enrichment: Optional[dict[str, Any]]
-    ) -> dict[str, Any]:
+    def apply_to_content(cls, content_json: dict[str, Any], enrichment: dict[str, Any] | None) -> dict[str, Any]:
         """
         Merge enrichment data into a template's content_json.
 
@@ -148,14 +147,14 @@ class EnrichmentContentMapper:
 
         photos: list[str] = [p for p in enrichment.get("photos", []) if isinstance(p, str)]
         reviews: list[dict] = [r for r in enrichment.get("reviews", []) if isinstance(r, dict)]
-        rating_label: Optional[str] = cls.format_rating(enrichment.get("rating"))
-        hours_label: Optional[str] = cls.format_hours(enrichment.get("opening_hours"))
+        rating_label: str | None = cls.format_rating(enrichment.get("rating"))
+        hours_label: str | None = cls.format_hours(enrichment.get("opening_hours"))
 
         for blok in body:
             if not isinstance(blok, dict):
                 continue
             component = blok.get("component")
-            family: Optional[TemplateBlokNames] = next(
+            family: TemplateBlokNames | None = next(
                 (f for f in BLOK_FAMILIES if component in cls._known_components(f)), None
             )
             if family is None:
@@ -279,9 +278,7 @@ class EnrichmentContentMapper:
                 "quote": quote,
                 "author": str(review.get("author", "Client")).strip() or "Client",
                 "rating": (
-                    int(review["rating"])
-                    if isinstance(review.get("rating"), (int, float))
-                    else DEFAULT_REVIEW_RATING
+                    int(review["rating"]) if isinstance(review.get("rating"), (int, float)) else DEFAULT_REVIEW_RATING
                 ),
             }
             if family.carries_location:

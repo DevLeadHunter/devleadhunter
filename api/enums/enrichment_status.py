@@ -1,4 +1,5 @@
 """Lifecycle status for prospect enrichment data."""
+
 from enum import Enum
 
 

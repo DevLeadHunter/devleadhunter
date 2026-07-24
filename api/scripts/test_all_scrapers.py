@@ -1,4 +1,5 @@
 """Run each registered scraper and print up to 3 prospects (smoke test)."""
+
 from __future__ import annotations
 
 import asyncio
@@ -28,10 +29,7 @@ async def run_one(name: str, scraper, category: str, city: str) -> None:
         )
         print(f"OK — {len(results)} prospect(s)")
         for i, p in enumerate(results[:MAX_RESULTS], 1):
-            print(
-                f"  {i}. {p.name} | {p.phone or '-'} | {p.city} | "
-                f"web={bool(p.website)} | src={p.source}"
-            )
+            print(f"  {i}. {p.name} | {p.phone or '-'} | {p.city} | web={bool(p.website)} | src={p.source}")
         if len(results) < MAX_RESULTS:
             print(f"  (only {len(results)} returned — may be filter: no website)")
     except Exception as exc:

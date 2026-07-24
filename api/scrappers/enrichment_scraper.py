@@ -10,21 +10,21 @@ The DOM selectors target Google Maps place panels and are best-effort: every
 extraction step is isolated so a partial failure still returns whatever data
 could be gathered. Selectors may need tuning over time against live Maps.
 """
+
 from __future__ import annotations
 
 import json
 import logging
 from dataclasses import dataclass, field
-from typing import Any, Optional
-from urllib.parse import quote
+from typing import Any
 
+from scrappers import scrape_signals
 from scrappers.google_scraper import GoogleScraper
 from scrappers.nodriver_browser import NODRIVER_AVAILABLE, NodriverBrowser
 from scrappers.nodriver_dom import NodriverDom
 from scrappers.nodriver_executor import run_nodriver_task
 from scrappers.osm_enrichment import enrich_from_osm
 from scrappers.resilient_extract import parse_ld_json_blocks
-from scrappers import scrape_signals
 
 logger = logging.getLogger(__name__)
 
@@ -34,10 +34,10 @@ class EnrichmentData:
     """Structured rich data gathered for a prospect."""
 
     source: str = "google"
-    logo_url: Optional[str] = None
-    rating: Optional[float] = None
-    reviews_count: Optional[int] = None
-    description: Optional[str] = None
+    logo_url: str | None = None
+    rating: float | None = None
+    reviews_count: int | None = None
+    description: str | None = None
     photos: list[str] = field(default_factory=list)
     reviews: list[dict[str, Any]] = field(default_factory=list)
     opening_hours: list[dict[str, str]] = field(default_factory=list)
@@ -185,8 +185,8 @@ class EnrichmentScraper:
         self,
         *,
         business_name: str,
-        city: Optional[str] = None,
-        google_maps_url: Optional[str] = None,
+        city: str | None = None,
+        google_maps_url: str | None = None,
     ) -> EnrichmentData:
         """Fetch enrichment for a business: Google Maps (rich) + OpenStreetMap (stable gap-filler).
 
@@ -208,7 +208,7 @@ class EnrichmentScraper:
         # Complementary OpenStreetMap enrichment (plain HTTP, no browser, never blocked).
         try:
             osm = await enrich_from_osm(business_name, city)
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             logger.info("OSM enrichment failed for %s: %s", business_name, exc)
             osm = {}
         self._merge_osm(data, osm)
@@ -231,8 +231,8 @@ class EnrichmentScraper:
     async def _enrich_nodriver(
         self,
         business_name: str,
-        city: Optional[str],
-        google_maps_url: Optional[str],
+        city: str | None,
+        google_maps_url: str | None,
     ) -> EnrichmentData:
         """nodriver implementation: open the place panel and extract rich data."""
         browser = NodriverBrowser(ephemeral=True)
@@ -265,10 +265,8 @@ class EnrichmentScraper:
             if not await NodriverDom.wait_for_selector(tab, "h1", timeout_s=12.0):
                 logger.info("Enrichment: place panel not found for %s", business_name)
                 try:
-                    page_html = await NodriverDom.evaluate(
-                        tab, "document.documentElement.outerHTML", by_value=True
-                    )
-                except Exception:  # noqa: BLE001
+                    page_html = await NodriverDom.evaluate(tab, "document.documentElement.outerHTML", by_value=True)
+                except Exception:
                     page_html = None
                 scrape_signals.note_block(
                     "enrichment",
@@ -280,13 +278,13 @@ class EnrichmentScraper:
             # Best-effort: try to reveal the full opening-hours table.
             try:
                 await NodriverDom.click_by_text(tab, "button", "horaires")
-            except Exception:  # noqa: BLE001
+            except Exception:
                 pass
 
             raw = await NodriverDom.evaluate(tab, f"JSON.stringify({_EXTRACT_JS})", by_value=True)
             data = json.loads(raw) if isinstance(raw, str) else {}
             return self._build_from_raw(data)
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             logger.warning("Enrichment scrape failed for %s: %s", business_name, exc)
             return EnrichmentData()
         finally:
@@ -302,13 +300,13 @@ class EnrichmentScraper:
         if not isinstance(data, dict):
             return EnrichmentData()
 
-        def _as_float(value: Any) -> Optional[float]:
+        def _as_float(value: Any) -> float | None:
             try:
                 return float(value) if value is not None else None
             except (TypeError, ValueError):
                 return None
 
-        def _as_int(value: Any) -> Optional[int]:
+        def _as_int(value: Any) -> int | None:
             try:
                 return int(value) if value is not None else None
             except (TypeError, ValueError):
@@ -317,11 +315,7 @@ class EnrichmentScraper:
         photos = [str(p) for p in data.get("photos", []) if isinstance(p, str)]
         reviews = [r for r in data.get("reviews", []) if isinstance(r, dict)]
         hours = [h for h in data.get("opening_hours", []) if isinstance(h, dict)]
-        social = {
-            str(k): str(v)
-            for k, v in (data.get("social") or {}).items()
-            if isinstance(v, str) and v.strip()
-        }
+        social = {str(k): str(v) for k, v in (data.get("social") or {}).items() if isinstance(v, str) and v.strip()}
 
         # JSON-LD fallback (Google Maps place pages sometimes ship schema.org data).
         business = parse_ld_json_blocks(data.get("ld"))
@@ -334,9 +328,7 @@ class EnrichmentScraper:
         if reviews_count is None and business:
             reviews_count = _as_int(business.get("reviews_count"))
 
-        dom_description = (
-            str(data["description"]).strip() if data.get("description") else None
-        ) or None
+        dom_description = (str(data["description"]).strip() if data.get("description") else None) or None
         description = dom_description
         if business and business.get("description"):
             # Prefer a JSON-LD description over the generic meta description fallback.

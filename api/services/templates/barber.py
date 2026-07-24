@@ -11,9 +11,10 @@ Exposes the stable names consumed by the shared services (see ``registry``):
 - ``build_site_content``  → flat ``SiteContent`` builder
 - ``BODY_COMPONENTS`` / ``COMPONENT_SCHEMAS`` → none beyond the shared base
 """
+
 from __future__ import annotations
 
-from typing import Any, Optional
+from typing import Any
 
 from services.templates.site_content import (  # noqa: F401 — re-exported for the registry
     SITE_CONTENT_SCHEMAS,
@@ -54,10 +55,7 @@ def default_subtitle(area: str) -> str:
     Returns:
         A barber subtitle.
     """
-    return (
-        f"Coupe, barbe et soins pour hommes à {area} — "
-        "un salon de quartier, sur rendez-vous."
-    )
+    return f"Coupe, barbe et soins pour hommes à {area} — un salon de quartier, sur rendez-vous."
 
 
 _SITE_ABOUT_DEFAULT: str = (
@@ -71,58 +69,38 @@ _SITE_ABOUT_DEFAULT: str = (
 BARBER_SERVICES: list[dict[str, str]] = [
     {
         "title": "Coupe homme",
-        "description": (
-            "Shampooing, coupe aux ciseaux ou tondeuse, séchage et conseils "
-            "d'entretien. — 32 €"
-        ),
+        "description": ("Shampooing, coupe aux ciseaux ou tondeuse, séchage et conseils d'entretien. — 32 €"),
     },
     {
         "title": "Coupe enfant (-12 ans)",
-        "description": (
-            "Coupe adaptée aux plus jeunes, en douceur et sans stress. — 22 €"
-        ),
+        "description": ("Coupe adaptée aux plus jeunes, en douceur et sans stress. — 22 €"),
     },
     {
         "title": "Taille de barbe",
-        "description": (
-            "Contour, volume et finition rasoir — barbe nette et structurée. — 18 €"
-        ),
+        "description": ("Contour, volume et finition rasoir — barbe nette et structurée. — 18 €"),
     },
     {
         "title": "Rasage traditionnel",
-        "description": (
-            "Serviette chaude, mousse, rasoir droit et after-shave. — 28 €"
-        ),
+        "description": ("Serviette chaude, mousse, rasoir droit et after-shave. — 28 €"),
     },
     {
         "title": "Coupe + barbe",
-        "description": (
-            "Le duo signature : coupe complète et entretien de barbe. — 45 €"
-        ),
+        "description": ("Le duo signature : coupe complète et entretien de barbe. — 45 €"),
     },
     {
         "title": "Soin cuir chevelu",
-        "description": (
-            "Massage, masque hydratant et finition adaptée à votre cuir "
-            "chevelu. — 15 €"
-        ),
+        "description": ("Massage, masque hydratant et finition adaptée à votre cuir chevelu. — 15 €"),
     },
 ]
 
 BARBER_FAQ: list[dict[str, str]] = [
     {
         "question": "Faut-il prendre rendez-vous ?",
-        "answer": (
-            "Oui, de préférence. Appelez ou utilisez le formulaire : nous "
-            "confirmons le créneau rapidement."
-        ),
+        "answer": ("Oui, de préférence. Appelez ou utilisez le formulaire : nous confirmons le créneau rapidement."),
     },
     {
         "question": "Proposez-vous coupe + barbe ?",
-        "answer": (
-            "Oui — le duo coupe et entretien de barbe est notre formule "
-            "la plus demandée."
-        ),
+        "answer": ("Oui — le duo coupe et entretien de barbe est notre formule la plus demandée."),
     },
     {
         "question": "Quels moyens de paiement acceptez-vous ?",
@@ -130,9 +108,7 @@ BARBER_FAQ: list[dict[str, str]] = [
     },
     {
         "question": "Acceptez-vous les enfants ?",
-        "answer": (
-            "Oui, nous proposons une coupe adaptée aux moins de 12 ans."
-        ),
+        "answer": ("Oui, nous proposons une coupe adaptée aux moins de 12 ans."),
     },
 ]
 
@@ -159,13 +135,13 @@ _EDITORIAL_DEFAULTS: dict[str, Any] = {
 def build_site_content(
     *,
     business_name: str,
-    phone: Optional[str],
-    email: Optional[str],
-    city: Optional[str],
+    phone: str | None,
+    email: str | None,
+    city: str | None,
     area: str,
     subtitle: str,
     palette: dict[str, str],
-    enrichment: Optional[dict[str, Any]] = None,
+    enrichment: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Build the flat ``SiteContent`` for this template (Phase 4b).
 

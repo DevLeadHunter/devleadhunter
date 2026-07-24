@@ -4,10 +4,11 @@ Migration: create the ``resend_config`` table.
 Run with:
     python migrations/add_resend_config.py
 """
+
 from __future__ import annotations
 
-import sys
 import os
+import sys
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 

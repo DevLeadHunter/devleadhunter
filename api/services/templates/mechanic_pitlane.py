@@ -11,9 +11,10 @@ Exposes the stable names consumed by the shared services (see ``registry``):
 - ``build_site_content``  → flat ``SiteContent`` builder
 - ``BODY_COMPONENTS`` / ``COMPONENT_SCHEMAS`` → none beyond the shared base
 """
+
 from __future__ import annotations
 
-from typing import Any, Optional
+from typing import Any
 
 from services.templates.site_content import (  # noqa: F401 — re-exported for the registry
     SITE_CONTENT_SCHEMAS,
@@ -55,10 +56,7 @@ def default_subtitle(area: str) -> str:
     Returns:
         A garage subtitle.
     """
-    return (
-        f"Entretien, diagnostic et réparations à {area} — "
-        "un atelier de confiance, devis avant intervention."
-    )
+    return f"Entretien, diagnostic et réparations à {area} — un atelier de confiance, devis avant intervention."
 
 
 _SITE_ABOUT_DEFAULT: str = (
@@ -87,8 +85,7 @@ MECHANIC_SERVICES: list[dict[str, str]] = [
     {
         "title": "Freinage & trains roulants",
         "description": (
-            "Plaquettes, disques, amortisseurs, silentblocs, géométrie : "
-            "sécurité et tenue de route remises en état."
+            "Plaquettes, disques, amortisseurs, silentblocs, géométrie : sécurité et tenue de route remises en état."
         ),
     },
     {
@@ -108,8 +105,7 @@ MECHANIC_SERVICES: list[dict[str, str]] = [
     {
         "title": "Carrosserie légère",
         "description": (
-            "Rayures, chocs de parking, pare-chocs : remises en état propres "
-            "pour un véhicule présentable."
+            "Rayures, chocs de parking, pare-chocs : remises en état propres pour un véhicule présentable."
         ),
     },
 ]
@@ -139,8 +135,7 @@ MECHANIC_FAQ: list[dict[str, str]] = [
     {
         "question": "Puis-je laisser la voiture la journée ?",
         "answer": (
-            "Oui. Indiquez-nous à la prise de rendez-vous si vous avez besoin "
-            "d'un créneau de restitution précis."
+            "Oui. Indiquez-nous à la prise de rendez-vous si vous avez besoin d'un créneau de restitution précis."
         ),
     },
 ]
@@ -170,13 +165,13 @@ _EDITORIAL_DEFAULTS: dict[str, Any] = {
 def build_site_content(
     *,
     business_name: str,
-    phone: Optional[str],
-    email: Optional[str],
-    city: Optional[str],
+    phone: str | None,
+    email: str | None,
+    city: str | None,
     area: str,
     subtitle: str,
     palette: dict[str, str],
-    enrichment: Optional[dict[str, Any]] = None,
+    enrichment: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Build the flat ``SiteContent`` for this template (Phase 4b).
 

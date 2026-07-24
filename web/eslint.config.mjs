@@ -107,5 +107,13 @@ export default withNuxt(
       'jsdoc/require-returns-description': 'off',
     },
   },
+  {
+    // Scripts d'outillage en JavaScript : une annotation de type y est un péché de syntaxe.
+    files: ['**/*.mjs', '**/*.js'],
+    rules: {
+      '@typescript-eslint/typedef': 'off',
+      '@typescript-eslint/explicit-function-return-type': 'off',
+    },
+  },
   eslintConfigPrettier,
 )

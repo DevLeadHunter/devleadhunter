@@ -5,11 +5,12 @@ Backs the dashboard « Stockage » page: list every object with its expiry
 countdown, play/copy its public URL, delete it, purge expired ones, spot
 R2 ↔ DB inconsistencies, and (in dev only) pull the prod bucket down.
 """
+
 from __future__ import annotations
 
 import logging
-from datetime import datetime, timedelta, timezone
-from typing import Any, Optional
+from datetime import UTC, datetime, timedelta
+from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel
@@ -20,8 +21,8 @@ from core.database import get_db
 from models.demo_site import DemoSite
 from models.prospect_db import ProspectDB
 from models.user import User
-from services.r2_storage_service import r2_storage
 from services.auth_service import require_admin
+from services.r2_storage_service import r2_storage
 
 logger = logging.getLogger(__name__)
 
@@ -37,11 +38,11 @@ class StorageObject(BaseModel):
     key: str
     kind: str  # website_video | website_thumbnail | presenter | support | other
     size: int
-    last_modified: Optional[datetime] = None
+    last_modified: datetime | None = None
     url: str
-    slug: Optional[str] = None
-    prospect_name: Optional[str] = None
-    expires_in_days: Optional[int] = None
+    slug: str | None = None
+    prospect_name: str | None = None
+    expires_in_days: int | None = None
     is_expired: bool = False
 
 
@@ -85,7 +86,7 @@ def _classify(key: str) -> str:
     return "other"
 
 
-def _slug_from_key(key: str) -> Optional[str]:
+def _slug_from_key(key: str) -> str | None:
     """Extract the demo slug carried by a website video/thumbnail key."""
     if _classify(key) not in ("website_video", "website_thumbnail"):
         return None
@@ -130,13 +131,13 @@ async def list_storage_objects(
         )
         names_by_slug = {slug: name for slug, name in rows if name}
 
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     items: list[StorageObject] = []
     for entry in raw:
         key = entry["key"]
         kind = _classify(key)
         slug = _slug_from_key(key)
-        expires_in: Optional[int] = None
+        expires_in: int | None = None
         is_expired = False
         # Seuls les livrables liés à une démo expirent ; le clip presenter et
         # les pièces jointes support sont permanents.
@@ -158,7 +159,7 @@ async def list_storage_objects(
             )
         )
 
-    items.sort(key=lambda o: o.last_modified or datetime.min.replace(tzinfo=timezone.utc), reverse=True)
+    items.sort(key=lambda o: o.last_modified or datetime.min.replace(tzinfo=UTC), reverse=True)
     return StorageListResponse(
         bucket=r2_storage.bucket_name(),
         public_base_url=settings.r2_public_base_url or "",
@@ -187,14 +188,12 @@ async def storage_health(
 
     ready_slugs = {
         slug
-        for (slug,) in db.query(DemoSite.slug)
-        .filter(DemoSite.video_status == DemoVideoStatus.READY.value)
-        .all()
+        for (slug,) in db.query(DemoSite.slug).filter(DemoSite.video_status == DemoVideoStatus.READY.value).all()
         if slug
     }
     expected = {r2_storage.website_video_key(slug) for slug in ready_slugs}
 
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     expired = [
         item["key"]
         for item in objects
@@ -240,7 +239,7 @@ async def purge_expired_objects(
         How many objects were removed.
     """
     _ensure_configured()
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     stale: list[str] = []
     for prefix in (
         r2_storage.VIDEOS_WEBSITES_PREFIX,
@@ -294,11 +293,7 @@ async def sync_from_prod(
     source = {i["key"]: i for i in await asyncio.to_thread(r2_storage.list_objects, "", bucket=source_bucket)}
     target = {i["key"]: i for i in await asyncio.to_thread(r2_storage.list_objects, "")}
 
-    to_copy = [
-        key
-        for key, item in source.items()
-        if key not in target or target[key]["etag"] != item["etag"]
-    ]
+    to_copy = [key for key, item in source.items() if key not in target or target[key]["etag"] != item["etag"]]
     to_delete = [key for key in target if key not in source]
 
     for key in to_copy:

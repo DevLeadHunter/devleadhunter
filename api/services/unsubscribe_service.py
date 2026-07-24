@@ -1,10 +1,11 @@
 """
 Unsubscribe service for managing email unsubscriptions (RGPD compliance).
 """
+
 import hashlib
 import hmac
-from typing import Optional
 from urllib.parse import quote
+
 from sqlalchemy.orm import Session
 
 from core.config import settings
@@ -35,7 +36,7 @@ class UnsubscribeService:
         message: bytes = _normalize_email(email).encode()
         return hmac.new(settings.secret_key.encode(), message, hashlib.sha256).hexdigest()
 
-    def verify_token(self, email: str, token: Optional[str]) -> bool:
+    def verify_token(self, email: str, token: str | None) -> bool:
         """Constant-time check that ``token`` matches ``email``.
 
         Args:
@@ -49,104 +50,89 @@ class UnsubscribeService:
             return False
         return hmac.compare_digest(token, self.generate_token(email))
 
-
     def is_unsubscribed(self, db: Session, email: str) -> bool:
         """
         Check if an email address is unsubscribed.
-        
+
         Args:
             db: Database session
             email: Email address to check
-            
+
         Returns:
             True if unsubscribed, False otherwise
         """
-        unsubscribe = db.query(EmailUnsubscribe).filter(
-            EmailUnsubscribe.email == email.lower()
-        ).first()
-        
+        unsubscribe = db.query(EmailUnsubscribe).filter(EmailUnsubscribe.email == email.lower()).first()
+
         return unsubscribe is not None
-    
+
     def unsubscribe(
         self,
         db: Session,
         email: str,
-        prospect_id: Optional[int] = None,
-        user_id: Optional[int] = None,
-        reason: Optional[str] = None
+        prospect_id: int | None = None,
+        user_id: int | None = None,
+        reason: str | None = None,
     ) -> EmailUnsubscribe:
         """
         Unsubscribe an email address.
-        
+
         Args:
             db: Database session
             email: Email address to unsubscribe
             prospect_id: Optional prospect ID
             user_id: Optional user ID
             reason: Optional reason for unsubscribing
-            
+
         Returns:
             Created or existing unsubscribe record
         """
         # Check if already unsubscribed
-        existing = db.query(EmailUnsubscribe).filter(
-            EmailUnsubscribe.email == email.lower()
-        ).first()
-        
+        existing = db.query(EmailUnsubscribe).filter(EmailUnsubscribe.email == email.lower()).first()
+
         if existing:
             return existing
-        
+
         # Create new unsubscribe record
-        unsubscribe = EmailUnsubscribe(
-            email=email.lower(),
-            prospect_id=prospect_id,
-            user_id=user_id,
-            reason=reason
-        )
-        
+        unsubscribe = EmailUnsubscribe(email=email.lower(), prospect_id=prospect_id, user_id=user_id, reason=reason)
+
         db.add(unsubscribe)
         db.commit()
         db.refresh(unsubscribe)
-        
+
         return unsubscribe
-    
+
     def resubscribe(self, db: Session, email: str) -> bool:
         """
         Resubscribe an email address (remove from unsubscribe list).
-        
+
         Args:
             db: Database session
             email: Email address to resubscribe
-            
+
         Returns:
             True if resubscribed, False if not found
         """
-        unsubscribe = db.query(EmailUnsubscribe).filter(
-            EmailUnsubscribe.email == email.lower()
-        ).first()
-        
+        unsubscribe = db.query(EmailUnsubscribe).filter(EmailUnsubscribe.email == email.lower()).first()
+
         if not unsubscribe:
             return False
-        
+
         db.delete(unsubscribe)
         db.commit()
-        
+
         return True
-    
+
     def generate_unsubscribe_link(
-        self,
-        email: str,
-        prospect_id: Optional[int] = None,
-        base_url: str = "http://localhost:8000"
+        self, email: str, prospect_id: int | None = None, base_url: str = "http://localhost:8000"
     ) -> str:
         """
         Generate an unsubscribe link for an email.
-        
+
         Args:
             email: Email address
             prospect_id: Optional prospect ID
             base_url: Base URL of the application
-            
+
         Returns:
             Unsubscribe link URL, signed with a per-email token so it cannot be
             forged for another address.
@@ -159,15 +145,15 @@ class UnsubscribeService:
             link += f"&prospect_id={prospect_id}"
 
         return link
-    
+
     def add_unsubscribe_footer(self, html_body: str, unsubscribe_link: str) -> str:
         """
         Add unsubscribe footer to email HTML body.
-        
+
         Args:
             html_body: Original HTML body
             unsubscribe_link: Unsubscribe link URL
-            
+
         Returns:
             HTML body with unsubscribe footer
         """
@@ -183,17 +169,16 @@ class UnsubscribeService:
     </p>
 </div>
 """
-        
+
         # Try to insert before closing </body> tag
-        if '</body>' in html_body:
-            html_body = html_body.replace('</body>', f'{footer}</body>')
+        if "</body>" in html_body:
+            html_body = html_body.replace("</body>", f"{footer}</body>")
         else:
             # If no </body> tag, append to end
             html_body += footer
-        
+
         return html_body
 
 
 # Singleton instance
 unsubscribe_service = UnsubscribeService()
-

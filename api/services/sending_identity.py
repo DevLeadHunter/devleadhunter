@@ -11,10 +11,10 @@ the settings routes.
 Keeping this logic in one place means every send path (campaign queue,
 follow-ups, orders, quick-send) routes through the same provider decision.
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Optional
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -51,8 +51,8 @@ class SendingIdentity:
     provider: str
     from_email: str
     from_name: str
-    resend_api_key: Optional[str] = None
-    gmail_account: Optional[EmailAccount] = None
+    resend_api_key: str | None = None
+    gmail_account: EmailAccount | None = None
 
 
 def get_active_provider(db: Session, user_id: int) -> str:
@@ -66,7 +66,7 @@ def get_active_provider(db: Session, user_id: int) -> str:
         One of the :class:`SendingProvider` values.
     """
     user: User | None = db.get(User, user_id)
-    raw: str = (getattr(user, "sending_provider", None) or SendingProvider.RESEND.value)
+    raw: str = getattr(user, "sending_provider", None) or SendingProvider.RESEND.value
     return raw if raw in _VALID_PROVIDERS else SendingProvider.RESEND.value
 
 
@@ -104,37 +104,35 @@ def _default_gmail_account(db: Session, user_id: int) -> EmailAccount | None:
     Returns:
         The chosen :class:`EmailAccount`, or ``None`` when none exists.
     """
-    return db.execute(
-        select(EmailAccount)
-        .where(
-            EmailAccount.user_id == user_id,
-            EmailAccount.account_type == EmailAccountType.GMAIL_OAUTH.value,
-            EmailAccount.is_active.is_(True),
+    return (
+        db.execute(
+            select(EmailAccount)
+            .where(
+                EmailAccount.user_id == user_id,
+                EmailAccount.account_type == EmailAccountType.GMAIL_OAUTH.value,
+                EmailAccount.is_active.is_(True),
+            )
+            .order_by(EmailAccount.is_default.desc(), EmailAccount.id.desc())
         )
-        .order_by(EmailAccount.is_default.desc(), EmailAccount.id.desc())
-    ).scalars().first()
+        .scalars()
+        .first()
+    )
 
 
 def _resend_config(db: Session, user_id: int) -> ResendConfig | None:
     """Return the user's ResendConfig row, or ``None`` when absent."""
-    return db.execute(
-        select(ResendConfig).where(ResendConfig.user_id == user_id)
-    ).scalar_one_or_none()
+    return db.execute(select(ResendConfig).where(ResendConfig.user_id == user_id)).scalar_one_or_none()
 
 
 def _assert_provider_configured(db: Session, user_id: int, provider: str) -> None:
     """Raise :class:`SendingNotConfiguredError` if *provider* is not usable."""
     if provider == SendingProvider.GMAIL.value:
         if _default_gmail_account(db, user_id) is None:
-            raise SendingNotConfiguredError(
-                "Aucun compte Gmail connecté — Paramètres → Configuration d'envoi"
-            )
+            raise SendingNotConfiguredError("Aucun compte Gmail connecté — Paramètres → Configuration d'envoi")
         return
     config = _resend_config(db, user_id)
     if config is None or not config.api_key:
-        raise SendingNotConfiguredError(
-            "Resend non configuré — Paramètres → Configuration d'envoi"
-        )
+        raise SendingNotConfiguredError("Resend non configuré — Paramètres → Configuration d'envoi")
 
 
 def resolve_sending_identity(db: Session, user_id: int) -> SendingIdentity:
@@ -153,9 +151,7 @@ def resolve_sending_identity(db: Session, user_id: int) -> SendingIdentity:
     if provider == SendingProvider.GMAIL.value:
         account = _default_gmail_account(db, user_id)
         if account is None:
-            raise SendingNotConfiguredError(
-                "Aucun compte Gmail connecté — Paramètres → Configuration d'envoi"
-            )
+            raise SendingNotConfiguredError("Aucun compte Gmail connecté — Paramètres → Configuration d'envoi")
         return SendingIdentity(
             provider=SendingProvider.GMAIL.value,
             from_email=account.email,
@@ -166,9 +162,7 @@ def resolve_sending_identity(db: Session, user_id: int) -> SendingIdentity:
     # Default: Resend (covers plain Resend and custom-domain-on-Resend).
     config = _resend_config(db, user_id)
     if config is None or not config.api_key:
-        raise SendingNotConfiguredError(
-            "Resend non configuré — Paramètres → Configuration d'envoi"
-        )
+        raise SendingNotConfiguredError("Resend non configuré — Paramètres → Configuration d'envoi")
     return SendingIdentity(
         provider=SendingProvider.RESEND.value,
         from_email=config.from_email,

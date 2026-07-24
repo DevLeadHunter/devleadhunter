@@ -1,5 +1,5 @@
 import type { PostHog } from 'posthog-js'
-import type { DemoVideoEventCapture } from '~/types/demoVideoTracking'
+import type { DemoVideoEvent, DemoVideoEventCapture } from '~/types/demoVideoTracking'
 
 let initialized: boolean = false
 let instance: PostHog | null = null
@@ -16,7 +16,7 @@ export function useDemoVideoTracking(): {
   init: (slug: string, variant: string | null) => Promise<void>
   capture: DemoVideoEventCapture
 } {
-  const config = useRuntimeConfig()
+  const config: ReturnType<typeof useRuntimeConfig> = useRuntimeConfig()
 
   /**
    * Initialise PostHog for the player page (no-op when the key is missing).
@@ -29,7 +29,10 @@ export function useDemoVideoTracking(): {
     const host: string = String(config.public.posthogIngestionHost ?? '')
     if (!key) return
 
-    const { default: posthog } = await import('posthog-js')
+    const {
+      default: posthog,
+    }: typeof import('C:/Users/leogu/Desktop/Projects/devleadhunter/demo-host/node_modules/posthog-js/dist/module') =
+      await import('posthog-js')
     posthog.init(key, {
       api_host: host,
       capture_pageview: true,
@@ -53,7 +56,7 @@ export function useDemoVideoTracking(): {
    * @param event - Event name.
    * @param properties - Optional event properties.
    */
-  const capture: DemoVideoEventCapture = (event, properties): void => {
+  const capture: DemoVideoEventCapture = (event: DemoVideoEvent, properties?: Record<string, unknown>): void => {
     instance?.capture(event, properties)
   }
 

@@ -1,16 +1,20 @@
 """
 OpenStreetMap (Nominatim) scraper for fetching business prospects.
 """
-from typing import Callable, List, Optional
+
 import asyncio
 import logging
 import re
+from collections.abc import Callable
+
 import aiohttp
-from models.prospect import ProspectCreate
+
 from enums.source import Source
-from services.validation_service import validation_service
+from models.prospect import ProspectCreate
 from services.address_service import address_service
 from services.scrape_progress import ScrapeProgressReporter
+from services.validation_service import validation_service
+
 from .base_scraper import BaseScraper
 from .email_scraper import email_scraper
 
@@ -20,71 +24,68 @@ logger = logging.getLogger(__name__)
 class OSMScraper(BaseScraper):
     """
     OpenStreetMap scraper for extracting business prospect data.
-    
+
     This scraper uses the Nominatim API to search for businesses
     and extract information including name, address, phone, and category.
     Only businesses without websites are targeted.
     """
-    
+
     def __init__(self):
         """Initialize the OSM scraper."""
         super().__init__(source=Source.OSM)
         self.base_url = "https://nominatim.openstreetmap.org"
         self.overpass_url = "https://overpass-api.de/api/interpreter"
-        self.session: Optional[aiohttp.ClientSession] = None
-    
+        self.session: aiohttp.ClientSession | None = None
+
     async def ensure_session(self) -> None:
         """Ensure HTTP session is initialized."""
         if not self.session:
             self.session = aiohttp.ClientSession(
-                headers={
-                    "User-Agent": "DevLeadHunter/1.0 (Prospect Tool)",
-                    "Accept": "application/json"
-                }
+                headers={"User-Agent": "DevLeadHunter/1.0 (Prospect Tool)", "Accept": "application/json"}
             )
-    
+
     async def close(self) -> None:
         """Close HTTP session and cleanup resources."""
         if self.session:
             await self.session.close()
             self.session = None
-        
+
         # Also close email scraper browser
         if email_scraper.browser:
             await email_scraper.close()
-    
+
     @staticmethod
     def extract_city(address: str) -> str:
         """
         Extract city from full address.
-        
+
         Args:
             address: Full address string
-            
+
         Returns:
             Extracted city name
         """
         if not address:
             return "Inconnue"
-        
+
         # Chercher un code postal français (5 chiffres consécutifs)
-        postal_code_pattern = r'\b(\d{5})\s+(.+)$'
+        postal_code_pattern = r"\b(\d{5})\s+(.+)$"
         match = re.search(postal_code_pattern, address)
-        
+
         if match:
             city = match.group(2).strip()
             return city
-        
+
         # Fallback: prendre après la virgule ou le dernier élément
-        if ',' in address:
-            parts = [p.strip() for p in address.split(',')]
+        if "," in address:
+            parts = [p.strip() for p in address.split(",")]
             return parts[-1]
-        
+
         parts = address.split()
         if len(parts) >= 2:
             return parts[-1]
         return "Inconnue"
-    
+
     def build_overpass_query(self, category: str, city: str) -> str:
         """
         Build Overpass API query for searching businesses in a city admin area.
@@ -121,9 +122,7 @@ class OSMScraper(BaseScraper):
         out skel qt;
         """
 
-    def build_overpass_radius_query(
-        self, category: str, *, lat: float, lon: float, radius_m: int = 20000
-    ) -> str:
+    def build_overpass_radius_query(self, category: str, *, lat: float, lon: float, radius_m: int = 20000) -> str:
         """Build Overpass query around coordinates when admin-area search is sparse."""
         category_tags = {
             "restaurant": ["amenity=restaurant"],
@@ -153,7 +152,7 @@ class OSMScraper(BaseScraper):
         out skel qt;
         """
 
-    async def geocode_city(self, city: str) -> Optional[tuple[float, float]]:
+    async def geocode_city(self, city: str) -> tuple[float, float] | None:
         """Resolve city center coordinates via Nominatim."""
         await self.ensure_session()
         params = {"q": city, "format": "json", "limit": 1, "countrycodes": "fr"}
@@ -204,16 +203,16 @@ class OSMScraper(BaseScraper):
                     }
                 )
             return businesses
-    
-    async def search_overpass(self, category: str, city: str, max_results: int) -> List[dict]:
+
+    async def search_overpass(self, category: str, city: str, max_results: int) -> list[dict]:
         """
         Search for businesses using Overpass API.
-        
+
         Args:
             category: Business category
             city: City name
             max_results: Maximum number of results
-            
+
         Returns:
             List of business data dictionaries
         """
@@ -238,91 +237,83 @@ class OSMScraper(BaseScraper):
                 _merge(radius_results)
 
             if len(businesses) < max_results * 3:
-                area_results = await self._run_overpass_query(
-                    self.build_overpass_query(category, city)
-                )
+                area_results = await self._run_overpass_query(self.build_overpass_query(category, city))
                 _merge(area_results)
 
             logger.info("Found %s businesses from Overpass API", len(businesses))
             return businesses
-        
-        except asyncio.TimeoutError:
+
+        except TimeoutError:
             logger.error("Overpass API timeout")
             return []
         except Exception as e:
             logger.error(f"Error querying Overpass API: {e}")
             return []
-    
+
     async def extract_prospect_from_osm_data(
         self,
         business: dict,
         city_search: str,
         *,
         only_without_website: bool = True,
-    ) -> Optional[ProspectCreate]:
+    ) -> ProspectCreate | None:
         """
         Extract prospect details from OSM business data.
-        
+
         Args:
             business: Business data from OSM/Overpass
             city_search: City searched for
-            
+
         Returns:
             ProspectCreate object or None if extraction fails
         """
         try:
             tags = business.get("tags", {})
-            
+
             # Extract name
             name = tags.get("name")
             if not name:
                 return None
-            
+
             # Extract category
-            category = (
-                tags.get("amenity") or 
-                tags.get("shop") or 
-                tags.get("craft") or 
-                tags.get("cuisine") or
-                "Inconnu"
-            )
-            
+            category = tags.get("amenity") or tags.get("shop") or tags.get("craft") or tags.get("cuisine") or "Inconnu"
+
             # Extract phone
             phone = tags.get("phone") or tags.get("contact:phone")
-            
+
             # Extract address components
             street = tags.get("addr:street", "")
             housenumber = tags.get("addr:housenumber", "")
             postcode = tags.get("addr:postcode", "")
             city_tag = tags.get("addr:city", city_search)
-            
+
             # Build address
             address_parts = []
             if housenumber:
                 address_parts.append(housenumber)
             if street:
                 address_parts.append(street)
-            
+
             address = " ".join(address_parts) if address_parts else None
             full_address = f"{address} {postcode} {city_tag}" if address else None
-            
+
             # Extract city
             city = city_tag if city_tag else city_search
-            
+
             # Clean address
             if address:
                 address = address_service.remove_city_and_postal_code(address, city)
-            
+
             # Extract website
             website = tags.get("website") or tags.get("contact:website")
             if website and not validation_service.is_valid_website(website):
                 website = None
-            
+
             # Only return prospect if no website
             if only_without_website and website:
                 logger.info(f"Prospect {name} has a website, skipping")
                 return None
-            
+
             # Try to find email
             email = tags.get("email") or tags.get("contact:email")
             if not email:
@@ -332,15 +323,12 @@ class OSMScraper(BaseScraper):
                         logger.info(f"Found email for {name}: {email}")
                 except Exception as e:
                     logger.debug(f"Could not find email: {e}")
-            
+
             # Calculate confidence
             confidence = validation_service.calculate_confidence_score(
-                phone=phone,
-                address=address,
-                email=email,
-                website=website
+                phone=phone, address=address, email=email, website=website
             )
-            
+
             prospect = ProspectCreate(
                 name=name.strip(),
                 address=address,
@@ -350,16 +338,16 @@ class OSMScraper(BaseScraper):
                 website=website,
                 category=category,
                 source=Source.OSM,
-                confidence=min(confidence, 4)
+                confidence=min(confidence, 4),
             )
-            
+
             logger.info(f"Extracted: {prospect}")
             return prospect
-        
+
         except Exception as e:
             logger.error(f"Error extracting prospect from OSM data: {e}")
             return None
-    
+
     async def scrape(
         self,
         category: str,
@@ -367,24 +355,24 @@ class OSMScraper(BaseScraper):
         max_results: int = 50,
         *,
         only_without_website: bool = True,
-        progress: Optional[ScrapeProgressReporter] = None,
-        should_stop: Optional[Callable[[], bool]] = None,
-    ) -> List[ProspectCreate]:
+        progress: ScrapeProgressReporter | None = None,
+        should_stop: Callable[[], bool] | None = None,
+    ) -> list[ProspectCreate]:
         """
         Scrape prospects from OpenStreetMap.
-        
+
         Args:
             category: Business category to search for
             city: City to search in
             max_results: Maximum number of results to return
-            
+
         Returns:
             List of ProspectCreate objects without websites
         """
         logger.info(f"[OSM] Starting scrape for category={category}, city={city}, max_results={max_results}")
-        
+
         await self.start()
-        
+
         try:
             await self.ensure_session()
             if progress:
@@ -392,11 +380,11 @@ class OSMScraper(BaseScraper):
 
             # Search using Overpass API
             businesses = await self.search_overpass(category, city, max_results)
-            
+
             if not businesses:
                 logger.info("No results found on OpenStreetMap")
                 return []
-            
+
             prospects = []
             if progress:
                 await progress.log(f"OpenStreetMap — {len(businesses)} résultat(s) à traiter")
@@ -407,7 +395,7 @@ class OSMScraper(BaseScraper):
                     break
                 if len(prospects) >= max_results:
                     break
-                
+
                 try:
                     prospect = await self.extract_prospect_from_osm_data(
                         business,
@@ -418,22 +406,21 @@ class OSMScraper(BaseScraper):
                         prospects.append(prospect)
                         if progress:
                             await progress.prospect(prospect)
-                    
+
                     # Rate limiting
                     await asyncio.sleep(0.1)
-                
+
                 except Exception as e:
                     logger.error(f"Error processing business: {e}")
                     continue
-            
+
             logger.info(f"OSM scraping complete: {len(prospects)} prospects without websites")
             return prospects
-        
+
         except Exception as e:
             logger.error(f"Error in OSM scraping: {e}", exc_info=True)
             return []
-        
+
         finally:
             await self.stop()
             await self.close()
-

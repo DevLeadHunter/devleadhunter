@@ -6,7 +6,8 @@ health, incidents, and the HTML captured when a source was blocked) plus a live 
 probe — so an admin can see "Google broke" and grab the new markup, without any
 proactive probing. All endpoints require an admin (``require_admin``).
 """
-from typing import Any, Optional
+
+from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 from sqlalchemy import text
@@ -29,7 +30,7 @@ async def monitoring_overview(
     database_healthy = True
     try:
         db.execute(text("SELECT 1"))
-    except Exception:  # noqa: BLE001
+    except Exception:
         database_healthy = False
 
     return {
@@ -42,7 +43,7 @@ async def monitoring_overview(
 @router.get("/scrapers/incidents")
 async def scraper_incidents(
     limit: int = Query(100, ge=1, le=500),
-    source: Optional[str] = Query(None, description="Filter by source value"),
+    source: str | None = Query(None, description="Filter by source value"),
     current_user: User = Depends(require_admin),
     db: Session = Depends(get_db),
 ) -> dict[str, Any]:
@@ -82,7 +83,5 @@ async def scraper_incident_html(
     if row is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Diagnostic not found")
     if not row.html_snapshot:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="No HTML captured for this incident"
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="No HTML captured for this incident")
     return Response(content=row.html_snapshot, media_type="text/plain; charset=utf-8")

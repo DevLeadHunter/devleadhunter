@@ -56,7 +56,9 @@ export async function fetchStoryblokDraftContent(
   region?: string | null,
 ): Promise<Record<string, unknown> | null> {
   const base: string = storyblokCdnBase(region)
-  const response = await $fetch<{ story?: { content?: Record<string, unknown> } }>(`${base}/v2/cdn/stories/home`, {
+  const response: { story?: { content?: Record<string, unknown> | undefined } | undefined } = await $fetch<{
+    story?: { content?: Record<string, unknown> }
+  }>(`${base}/v2/cdn/stories/home`, {
     query: {
       token,
       version: 'draft',
@@ -93,12 +95,12 @@ export function useStoryblokBridge(
       return
     }
 
-    const initBridge = (): void => {
+    const initBridge: () => void = (): void => {
       if (!window.StoryblokBridge) {
         return
       }
 
-      const bridge = new window.StoryblokBridge()
+      const bridge: StoryblokBridgeInstance = new window.StoryblokBridge()
       bridge.on(['input', 'published', 'change'], (event: StoryblokBridgeEvent): void => {
         if (event.story?.content) {
           onContentChange(event.story.content)
@@ -111,7 +113,7 @@ export function useStoryblokBridge(
       return
     }
 
-    const script = document.querySelector('script[src*="storyblok-v2-latest.js"]')
+    const script: Element | null = document.querySelector('script[src*="storyblok-v2-latest.js"]')
     if (script) {
       script.addEventListener('load', initBridge, { once: true })
     }

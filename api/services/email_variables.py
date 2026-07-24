@@ -1,7 +1,6 @@
 """Single source of truth for the personalisation variables of cold emails."""
-from __future__ import annotations
 
-from typing import Optional
+from __future__ import annotations
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -59,9 +58,7 @@ class EmailVariables:
         )
 
     @staticmethod
-    def resolved_contact(
-        db: Session, prospect_id: int
-    ) -> tuple[Optional[str], Optional[str], Optional[str]]:
+    def resolved_contact(db: Session, prospect_id: int) -> tuple[str | None, str | None, str | None]:
         """
         Read the trusted decision-maker identity stored on the enrichment.
 
@@ -75,7 +72,7 @@ class EmailVariables:
         Returns:
             The (first name, last name, gender) triple, each None when unknown.
         """
-        enrichment: Optional[ProspectEnrichment] = db.execute(
+        enrichment: ProspectEnrichment | None = db.execute(
             select(ProspectEnrichment).where(ProspectEnrichment.prospect_id == prospect_id)
         ).scalar_one_or_none()
         if enrichment is None:

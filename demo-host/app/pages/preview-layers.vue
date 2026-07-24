@@ -19,7 +19,7 @@ const PREVIEW_SITE_CONTENTS: Record<string, Record<string, unknown>> = previewLa
   Record<string, unknown>
 >
 
-const route = useRoute()
+const route: ReturnType<typeof useRoute> = useRoute()
 
 const templateId: ComputedRef<string> = computed((): string =>
   typeof route.query.t === 'string' ? route.query.t : DEFAULT_TEMPLATE_ID,

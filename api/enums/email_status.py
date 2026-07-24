@@ -1,13 +1,14 @@
 """
 Email status enumeration.
 """
+
 from enum import Enum
 
 
 class EmailStatus(str, Enum):
     """
     Email status enumeration.
-    
+
     Attributes:
         PENDING: Email is queued for sending
         SENDING: Email is being sent
@@ -19,6 +20,7 @@ class EmailStatus(str, Enum):
         FAILED: Email sending failed
         COMPLAINED: Recipient marked as spam
     """
+
     PENDING = "pending"
     SENDING = "sending"
     SCHEDULED = "scheduled"
@@ -31,4 +33,3 @@ class EmailStatus(str, Enum):
     FAILED = "failed"
     COMPLAINED = "complained"
     SUPPRESSED = "suppressed"
-

@@ -6,6 +6,7 @@ Keep in sync with:
 - ``web/app/types/index.ts``           (TypeScript ``ProspectSource`` type)
 - ``web/app/constants/prospectSources.ts``  (UI display options)
 """
+
 from __future__ import annotations
 
 from enums.source import Source

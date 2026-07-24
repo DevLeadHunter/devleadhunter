@@ -8,9 +8,8 @@ a ``template_id`` to the template's GitHub repo and the tag currently deployed b
 ⚠️ Keep this in sync with ``demo-host/nuxt.config.ts`` whenever a template tag is
 bumped — the export must pin the exact version that renders the live site.
 """
-from __future__ import annotations
 
-from typing import Optional
+from __future__ import annotations
 
 GITHUB_ORG = "DevLeadHunter"
 
@@ -28,7 +27,7 @@ TEMPLATE_REPOS: dict[str, tuple[str, str]] = {
 }
 
 
-def get_template_repo(template_id: str) -> Optional[tuple[str, str]]:
+def get_template_repo(template_id: str) -> tuple[str, str] | None:
     """Return ``(repo, tag)`` for a ``template_id``, or ``None`` when unknown."""
     return TEMPLATE_REPOS.get(template_id)
 

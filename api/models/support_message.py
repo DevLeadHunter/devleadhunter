@@ -1,10 +1,11 @@
 """
 Support message model.
 """
+
 from __future__ import annotations
 
 from datetime import datetime
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING
 
 from sqlalchemy import ForeignKey, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -13,9 +14,9 @@ from sqlalchemy.sql import func
 from core.database import Base
 
 if TYPE_CHECKING:
-    from models.user import User
-    from models.support_ticket import SupportTicket
     from models.support_attachment import SupportAttachment
+    from models.support_ticket import SupportTicket
+    from models.user import User
 
 
 class SupportMessage(Base):
@@ -32,16 +33,16 @@ class SupportMessage(Base):
     content: Mapped[str] = mapped_column(Text, nullable=False)
     created_at: Mapped[datetime] = mapped_column(server_default=func.now(), nullable=False, index=True)
 
-    ticket: Mapped["SupportTicket"] = relationship(
+    ticket: Mapped[SupportTicket] = relationship(
         "SupportTicket",
         back_populates="messages",
     )
-    sender: Mapped["User"] = relationship(
+    sender: Mapped[User] = relationship(
         "User",
         back_populates="support_messages",
         foreign_keys=[sender_id],
     )
-    attachments: Mapped[list["SupportAttachment"]] = relationship(
+    attachments: Mapped[list[SupportAttachment]] = relationship(
         "SupportAttachment",
         back_populates="message",
         cascade="all, delete-orphan",
@@ -50,9 +51,4 @@ class SupportMessage(Base):
 
     def __repr__(self) -> str:
         """Readable representation."""
-        return (
-            f"<SupportMessage id={self.id} ticket_id={self.ticket_id} "
-            f"sender_id={self.sender_id}>"
-        )
-
-
+        return f"<SupportMessage id={self.id} ticket_id={self.ticket_id} sender_id={self.sender_id}>"

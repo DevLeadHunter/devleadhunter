@@ -10,12 +10,12 @@ weekdays and hour window, spaced by ``spacing_minutes`` and capped at
 Window hours are interpreted in **Europe/Paris** when the timezone database is
 available (correct for Léo), and degrade to naive server time otherwise.
 """
+
 from __future__ import annotations
 
-from datetime import date, datetime, timedelta, timezone
-from typing import Optional
+from datetime import UTC, date, datetime, timedelta
 
-from sqlalchemy import func, select
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from models.send_policy import (
@@ -30,28 +30,28 @@ from models.send_policy import (
 try:  # Timezone-aware window when tzdata is present.
     from zoneinfo import ZoneInfo
 
-    _POLICY_TZ: Optional[ZoneInfo] = ZoneInfo("Europe/Paris")
-except Exception:  # noqa: BLE001 — no tzdata → treat naive datetimes as local
+    _POLICY_TZ: ZoneInfo | None = ZoneInfo("Europe/Paris")
+except Exception:
     _POLICY_TZ = None
 
 
 def _utcnow() -> datetime:
     """Current UTC time as a timezone-naive datetime (DB-compatible)."""
-    return datetime.now(timezone.utc).replace(tzinfo=None)
+    return datetime.now(UTC).replace(tzinfo=None)
 
 
 def _to_local(dt_utc_naive: datetime) -> datetime:
     """Convert a naive-UTC datetime to naive local (policy) time."""
     if _POLICY_TZ is None:
         return dt_utc_naive
-    return dt_utc_naive.replace(tzinfo=timezone.utc).astimezone(_POLICY_TZ).replace(tzinfo=None)
+    return dt_utc_naive.replace(tzinfo=UTC).astimezone(_POLICY_TZ).replace(tzinfo=None)
 
 
 def _to_utc(dt_local_naive: datetime) -> datetime:
     """Convert a naive local (policy) datetime back to naive-UTC."""
     if _POLICY_TZ is None:
         return dt_local_naive
-    return dt_local_naive.replace(tzinfo=_POLICY_TZ).astimezone(timezone.utc).replace(tzinfo=None)
+    return dt_local_naive.replace(tzinfo=_POLICY_TZ).astimezone(UTC).replace(tzinfo=None)
 
 
 class ResolvedPolicy:
@@ -76,16 +76,13 @@ class ResolvedPolicy:
 class SendPolicyService:
     """Reads/writes the per-user send policy and schedules send slots."""
 
-
-    def get_policy(self, db: Session, user_id: int) -> Optional[SendPolicy]:
+    def get_policy(self, db: Session, user_id: int) -> SendPolicy | None:
         """Return the user's SendPolicy row, or None."""
-        return db.execute(
-            select(SendPolicy).where(SendPolicy.user_id == user_id)
-        ).scalar_one_or_none()
+        return db.execute(select(SendPolicy).where(SendPolicy.user_id == user_id)).scalar_one_or_none()
 
     def resolve(self, db: Session, user_id: int) -> ResolvedPolicy:
         """Return the effective policy values (row when set, else defaults)."""
-        row: Optional[SendPolicy] = self.get_policy(db, user_id)
+        row: SendPolicy | None = self.get_policy(db, user_id)
         if row is None:
             return ResolvedPolicy(
                 DEFAULT_DAILY_CAP,
@@ -114,7 +111,7 @@ class SendPolicyService:
         spacing_minutes: int,
     ) -> SendPolicy:
         """Create or update the user's send policy."""
-        row: Optional[SendPolicy] = self.get_policy(db, user_id)
+        row: SendPolicy | None = self.get_policy(db, user_id)
         if row is None:
             row = SendPolicy(user_id=user_id)
             db.add(row)
@@ -127,14 +124,13 @@ class SendPolicyService:
         db.refresh(row)
         return row
 
-
     def next_send_slots(
         self,
         policy: ResolvedPolicy,
         count: int,
         *,
-        start_utc: Optional[datetime] = None,
-        seed_counts: Optional[dict[date, int]] = None,
+        start_utc: datetime | None = None,
+        seed_counts: dict[date, int] | None = None,
     ) -> list[datetime]:
         """
         Produce ``count`` naive-UTC send datetimes respecting the policy.

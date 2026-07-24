@@ -9,10 +9,10 @@ OWN sending identity / Resend config).
 A user belongs to at most ONE organization (UNIQUE constraint on ``user_id`` in
 ``organization_members``) — keeps scoping rules simple and leak-proof.
 """
+
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Optional
 
 from sqlalchemy import ForeignKey, String, UniqueConstraint, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -34,13 +34,11 @@ class Organization(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True, index=True, autoincrement=True)
     name: Mapped[str] = mapped_column(String(255), nullable=False)
-    owner_user_id: Mapped[int] = mapped_column(
-        ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
-    )
+    owner_user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
     created_at: Mapped[datetime] = mapped_column(server_default=func.now(), nullable=False)
-    updated_at: Mapped[Optional[datetime]] = mapped_column(onupdate=func.now(), nullable=True)
+    updated_at: Mapped[datetime | None] = mapped_column(onupdate=func.now(), nullable=True)
 
-    members: Mapped[list["OrganizationMember"]] = relationship(
+    members: Mapped[list[OrganizationMember]] = relationship(
         back_populates="organization",
         cascade="all, delete-orphan",
     )
@@ -63,10 +61,8 @@ class OrganizationMember(Base):
     organization_id: Mapped[int] = mapped_column(
         ForeignKey("organizations.id", ondelete="CASCADE"), nullable=False, index=True
     )
-    user_id: Mapped[int] = mapped_column(
-        ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
-    )
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
     role: Mapped[str] = mapped_column(String(20), nullable=False, default="member")
     created_at: Mapped[datetime] = mapped_column(server_default=func.now(), nullable=False)
 
-    organization: Mapped["Organization"] = relationship(back_populates="members")
+    organization: Mapped[Organization] = relationship(back_populates="members")

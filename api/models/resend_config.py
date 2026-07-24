@@ -5,12 +5,12 @@ The API key and webhook secret are stored encrypted (Fernet symmetric
 encryption via EncryptionService) so they are never readable in plain text
 from the database.
 """
+
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Optional
 
-from sqlalchemy import String, Text, ForeignKey
+from sqlalchemy import ForeignKey, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.sql import func
 

@@ -1,23 +1,23 @@
 """
 Scraping job service for managing async scraping tasks.
 """
+
 from __future__ import annotations
 
 import asyncio
-import time
-import threading
-from datetime import datetime
-from typing import Dict, Optional, List
-from uuid import uuid4
 import logging
+import threading
+import time
+from datetime import datetime
+from uuid import uuid4
 
 from core.database import SessionLocal
-from models.scraping_job import ScrapingJob, ScrapingJobCreate, JobStatus
-from models.prospect import ProspectCreate, Prospect
-from services.scraper_service import scraper_service
-from services.prospect_service import prospect_service
+from models.prospect import Prospect, ProspectCreate
+from models.scraping_job import JobStatus, ScrapingJob, ScrapingJobCreate
 from services.organization_service import organization_service
+from services.prospect_service import prospect_service
 from services.scrape_progress import ScrapeProgressReporter
+from services.scraper_service import scraper_service
 from services.scraping_job_stream_hub import scraping_job_stream_hub
 
 logger = logging.getLogger(__name__)
@@ -29,11 +29,11 @@ class ScrapingJobService:
     """Service for managing scraping jobs with live WebSocket progress."""
 
     def __init__(self) -> None:
-        self._jobs: Dict[str, ScrapingJob] = {}
-        self._running_tasks: Dict[str, asyncio.Task] = {}
+        self._jobs: dict[str, ScrapingJob] = {}
+        self._running_tasks: dict[str, asyncio.Task] = {}
         # Per-job cooperative cancellation flags. A threading.Event is used
         # because should_stop() is polled from the scraper (nodriver) thread.
-        self._cancel_events: Dict[str, threading.Event] = {}
+        self._cancel_events: dict[str, threading.Event] = {}
 
     def create_job(self, user_id: int, job_data: ScrapingJobCreate) -> ScrapingJob:
         job_id = f"job_{uuid4().hex[:12]}"
@@ -52,10 +52,10 @@ class ScrapingJobService:
         logger.info("Created job %s for user %s", job_id, user_id)
         return job
 
-    def get_job(self, job_id: str) -> Optional[ScrapingJob]:
+    def get_job(self, job_id: str) -> ScrapingJob | None:
         return self._jobs.get(job_id)
 
-    def get_user_jobs(self, user_id: int) -> List[ScrapingJob]:
+    def get_user_jobs(self, user_id: int) -> list[ScrapingJob]:
         return [job for job in self._jobs.values() if job.user_id == user_id]
 
     async def _append_log(self, job: ScrapingJob, message: str) -> None:
@@ -139,7 +139,7 @@ class ScrapingJobService:
                     user_id=job.user_id,
                     organization_id=organization_service.user_org_id(db, job.user_id),
                 )
-            except Exception as exc:  # noqa: BLE001
+            except Exception as exc:
                 logger.error("Job %s: failed to save %s: %s", job_id, prospect_data.name, exc)
                 await self._append_log(job, f"Erreur enregistrement {prospect_data.name}: {exc}")
                 return
@@ -153,9 +153,7 @@ class ScrapingJobService:
             elapsed = time.time() - start_time
             if saved_count > 0:
                 avg = elapsed / saved_count
-                job.progress.estimated_time_remaining = int(
-                    avg * max(job.max_results - saved_count, 0)
-                )
+                job.progress.estimated_time_remaining = int(avg * max(job.max_results - saved_count, 0))
 
             prospect_payload = Prospect.model_validate(created).model_dump(mode="json")
             job.live_prospects.append(prospect_payload)

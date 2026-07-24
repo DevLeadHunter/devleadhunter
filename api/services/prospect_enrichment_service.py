@@ -1,8 +1,8 @@
 """Prospect enrichment from Google Maps."""
+
 from __future__ import annotations
 
 import logging
-from typing import Optional
 
 from models.prospect import ProspectCreate, ProspectSearchSuggestion
 from scrappers.google_scraper import GoogleScraper
@@ -19,8 +19,7 @@ def format_scraper_error_message(exc: Exception) -> str:
         return "nodriver n'est pas installé. Dans le dossier api : pip install nodriver"
     if "failed to start chrome" in raw_message.lower():
         return (
-            "Chrome n'a pas pu démarrer via nodriver. "
-            "Installez Google Chrome ou définissez SCRAPER_CHROME_EXECUTABLE."
+            "Chrome n'a pas pu démarrer via nodriver. Installez Google Chrome ou définissez SCRAPER_CHROME_EXECUTABLE."
         )
     if isinstance(exc, NotImplementedError) or exc.__class__.__name__ == "NotImplementedError":
         return (
@@ -40,24 +39,24 @@ class ProspectEnrichmentService:
     async def enrich_from_google(
         self,
         *,
-        business_name: Optional[str] = None,
-        google_maps_url: Optional[str] = None,
-        city: Optional[str] = None,
+        business_name: str | None = None,
+        google_maps_url: str | None = None,
+        city: str | None = None,
     ) -> ProspectCreate:
         """
         Fetch prospect details from Google Maps using a place URL and/or business name.
 
         When both are provided, the Google Maps URL takes precedence.
         """
-        cleaned_name: Optional[str] = business_name.strip() if business_name and business_name.strip() else None
-        cleaned_url: Optional[str] = google_maps_url.strip() if google_maps_url and google_maps_url.strip() else None
-        cleaned_city: Optional[str] = city.strip() if city and city.strip() else None
+        cleaned_name: str | None = business_name.strip() if business_name and business_name.strip() else None
+        cleaned_url: str | None = google_maps_url.strip() if google_maps_url and google_maps_url.strip() else None
+        cleaned_city: str | None = city.strip() if city and city.strip() else None
 
         if not cleaned_name and not cleaned_url:
             raise ValueError("Provide a business name and/or a Google Maps link.")
 
         scraper = GoogleScraper()
-        prospect: Optional[ProspectCreate] = None
+        prospect: ProspectCreate | None = None
 
         try:
             if cleaned_url:
@@ -66,14 +65,12 @@ class ProspectEnrichmentService:
                 prospect = await scraper.scrape_by_business_name(cleaned_name, cleaned_city)
         except ValueError:
             raise
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             logger.exception("Google Maps enrichment failed")
             raise ValueError(f"Google Maps enrichment failed: {format_scraper_error_message(exc)}") from exc
 
         if not prospect:
-            raise ValueError(
-                "No business found on Google Maps. Check the company name, city, or Google link."
-            )
+            raise ValueError("No business found on Google Maps. Check the company name, city, or Google link.")
 
         return prospect
 
@@ -81,7 +78,7 @@ class ProspectEnrichmentService:
         self,
         *,
         query: str,
-        city: Optional[str] = None,
+        city: str | None = None,
         max_results: int = 8,
     ) -> list[ProspectSearchSuggestion]:
         """Return Google Maps business suggestions for autocomplete."""
@@ -96,7 +93,7 @@ class ProspectEnrichmentService:
                 city,
                 max_results=max_results,
             )
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             logger.exception("Google Maps suggestion search failed")
             raise ValueError(f"Google Maps search failed: {format_scraper_error_message(exc)}") from exc
 

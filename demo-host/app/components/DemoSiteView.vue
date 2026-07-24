@@ -48,12 +48,13 @@ const TEMPLATE_ROOTS: Record<string, Component> = {
   barber: LazyBarberRoot,
 }
 
-const route = useRoute()
-const { init: initDemoTracking } = useDemoTracking()
+const route: ReturnType<typeof useRoute> = useRoute()
+const { init: initDemoTracking }: { init: (slug: string, status: string, variant: string | null) => Promise<void> } =
+  useDemoTracking()
 
 const isVisualEditor: ComputedRef<boolean> = computed((): boolean => isStoryblokVisualEditor(route.query))
 
-const { data: storyblokDraftContent } = useAsyncData(
+const { data: storyblokDraftContent }: ReturnType<typeof useAsyncData<Record<string, unknown> | null>> = useAsyncData(
   () => `storyblok-draft-${props.site.slug}-${isVisualEditor.value}`,
   async (): Promise<Record<string, unknown> | null> => {
     if (!isVisualEditor.value || !props.site.storyblok_preview_token) {

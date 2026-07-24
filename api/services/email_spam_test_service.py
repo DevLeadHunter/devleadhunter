@@ -9,6 +9,7 @@ Two complementary layers:
 Used by the "Tester un email" panel of the email-health page BEFORE launching
 a campaign.
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -38,15 +39,39 @@ _CACHE_TTL_SECONDS: float = 6 * 3600.0
 # iCloud mailbox (2026-07-19): same body, « votre fiche » delivered, « votre
 # fiche google » bounced. In the BODY the same brand is harmless.
 _BRANDS_BANNED_IN_SUBJECT: tuple[str, ...] = (
-    "google", "apple", "microsoft", "amazon", "facebook", "instagram", "linkedin",
-    "paypal", "stripe", "netflix", "orange", "sfr", "free", "bouygues",
+    "google",
+    "apple",
+    "microsoft",
+    "amazon",
+    "facebook",
+    "instagram",
+    "linkedin",
+    "paypal",
+    "stripe",
+    "netflix",
+    "orange",
+    "sfr",
+    "free",
+    "bouygues",
 )
 
 # French cold-email vocabulary that reliably trips content filters.
 _SPAMMY_WORDS: tuple[str, ...] = (
-    "gratuit", "urgent", "cliquez ici", "offre exceptionnelle", "promotion",
-    "gagnez", "félicitations", "100%", "garanti", "sans engagement",
-    "dernière chance", "profitez", "incroyable", "miracle", "argent facile",
+    "gratuit",
+    "urgent",
+    "cliquez ici",
+    "offre exceptionnelle",
+    "promotion",
+    "gagnez",
+    "félicitations",
+    "100%",
+    "garanti",
+    "sans engagement",
+    "dernière chance",
+    "profitez",
+    "incroyable",
+    "miracle",
+    "argent facile",
 )
 
 
@@ -82,7 +107,7 @@ class EmailSpamTestService:
         Returns:
             The (possibly cached) verdicts.
         """
-        key = hashlib.sha1(f"{from_email}\x00{subject}\x00{body_html}".encode("utf-8")).hexdigest()
+        key = hashlib.sha1(f"{from_email}\x00{subject}\x00{body_html}".encode()).hexdigest()
         cached = self._cache.get(key)
         if cached and (time.monotonic() - cached[0]) < _CACHE_TTL_SECONDS:
             return cached[1]
@@ -109,9 +134,7 @@ class EmailSpamTestService:
         checks = self._local_checks(subject, body_html)
         return {"spamassassin": spamassassin, "checks": checks}
 
-    async def _spamassassin(
-        self, subject: str, body_html: str, from_email: str, to_email: str
-    ) -> dict[str, Any]:
+    async def _spamassassin(self, subject: str, body_html: str, from_email: str, to_email: str) -> dict[str, Any]:
         """POST the raw MIME to Postmark SpamCheck.
 
         Args:
@@ -148,7 +171,7 @@ class EmailSpamTestService:
                     response.raise_for_status()
                     payload = response.json()
                 break
-            except Exception as exc:  # noqa: BLE001 — the tester must degrade gracefully
+            except Exception as exc:
                 logger.warning("SpamCheck call failed (attempt %d): %s", attempt + 1, exc)
                 if attempt == 0:
                     await asyncio.sleep(1.5)
@@ -185,9 +208,7 @@ class EmailSpamTestService:
         lowered_all = f"{subject} {text}".lower()
 
         # 1. Unsubscribe link (RGPD + Gmail/Yahoo requirement).
-        has_unsubscribe = bool(
-            re.search(r"d[ée]sinscri|unsubscribe|\{\{?\s*unsubscribe", body_html, flags=re.I)
-        )
+        has_unsubscribe = bool(re.search(r"d[ée]sinscri|unsubscribe|\{\{?\s*unsubscribe", body_html, flags=re.I))
         checks.append(
             {
                 "key": "unsubscribe",
@@ -219,7 +240,9 @@ class EmailSpamTestService:
                 "key": "subject",
                 "label": "Objet",
                 "status": "warn" if shouty else "ok",
-                "detail": "MAJUSCULES/exclamations excessives — signal spam classique." if shouty else "Sobre, rien à signaler.",
+                "detail": "MAJUSCULES/exclamations excessives — signal spam classique."
+                if shouty
+                else "Sobre, rien à signaler.",
             }
         )
 
