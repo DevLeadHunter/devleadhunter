@@ -21,7 +21,9 @@
           </p>
           <div class="mt-2 flex flex-wrap items-center gap-2.5">
             <h1 class="app-page-title">{{ run.name }}</h1>
-            <span class="app-badge" :class="statusBadgeClass(run.status)">{{ statusLabel(run.status) }}</span>
+            <span class="app-badge" :class="AUTOMATION_STATUS_PRESENTATION[run.status].badgeClass">{{
+              AUTOMATION_STATUS_PRESENTATION[run.status].label
+            }}</span>
           </div>
           <p class="mt-1.5 text-sm text-[var(--app-ink-soft)]">
             {{ run.stats.total }} prospect(s)
@@ -256,17 +258,12 @@
 </template>
 
 <script lang="ts" setup>
+import { AUTOMATION_STATUS_PRESENTATION } from '~/constants/automationStatus'
 import type { UseToastReturn } from '~/types/Composables'
 import type { AutomationDetailKpi } from '~/types/AutomationDetailPage'
 import type { ComputedRef, Ref } from 'vue'
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
-import type {
-  AutomationDetail,
-  AutomationItem,
-  AutomationStatus,
-  AutomationStep,
-  EmailPreview,
-} from '~/types/Automation'
+import type { AutomationDetail, AutomationItem, AutomationStep, EmailPreview } from '~/types/Automation'
 import type { DemoSiteTemplate } from '~/services/demoSiteService'
 import { useAutomationsStore } from '~/stores/automations'
 import { AutomationsService } from '~/services/automationsService'
@@ -345,42 +342,6 @@ const kpis: ComputedRef<AutomationDetailKpi[]> = computed((): AutomationDetailKp
     { label: 'Vendus', value: r.stats.won, class: 'text-[var(--app-green)]' },
   ]
 })
-
-/**
- * Label for a status.
- * @param status - The status.
- * @returns French label.
- */
-function statusLabel(status: AutomationStatus): string {
-  const labels: Record<AutomationStatus, string> = {
-    draft: 'Brouillon',
-    running: 'En cours',
-    paused: 'En pause',
-    awaiting_review: 'À valider',
-    completed: 'Terminée',
-    cancelled: 'Annulée',
-    failed: 'Échec',
-  }
-  return labels[status]
-}
-
-/**
- * Badge class for a status.
- * @param status - The status.
- * @returns The ``app-badge--*`` modifier.
- */
-function statusBadgeClass(status: AutomationStatus): string {
-  const classes: Record<AutomationStatus, string> = {
-    draft: '',
-    running: 'app-badge--progress',
-    paused: '',
-    awaiting_review: 'app-badge--info',
-    completed: 'app-badge--success',
-    cancelled: 'app-badge--danger',
-    failed: 'app-badge--danger',
-  }
-  return classes[status]
-}
 
 /**
  * Label for an item step.

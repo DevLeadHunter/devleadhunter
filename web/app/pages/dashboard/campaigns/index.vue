@@ -69,7 +69,7 @@
           </div>
 
           <p class="text-muted -mt-2 truncate text-xs">
-            {{ campaign.description || `Créée le ${formatDate(campaign.created_at)}` }}
+            {{ campaign.description || `Créée le ${formatLongMonthDate(campaign.created_at)}` }}
           </p>
 
           <div class="grid grid-cols-3 gap-3 rounded-lg bg-[var(--app-bg)] p-3">
@@ -141,6 +141,7 @@
 </template>
 
 <script lang="ts" setup>
+import { formatLongMonthDate } from '~/utils/date'
 import { computed, onMounted, ref, watch } from 'vue'
 import type { ComputedRef, Ref } from 'vue'
 import { useRouter } from 'vue-router'
@@ -243,15 +244,6 @@ async function loadStats(): Promise<void> {
   const map: Record<number, CampaignStats | null> = {}
   for (const result of results) map[result.id] = result.stats
   statsById.value = map
-}
-
-/**
- * Format an ISO date string to a short French date.
- * @param dateStr - ISO date string from the API.
- * @returns Human-readable date (e.g. "1 juin 2026").
- */
-function formatDate(dateStr: string): string {
-  return new Date(dateStr).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })
 }
 
 // Recharger les stats quand la liste change (création, fetch initial…).

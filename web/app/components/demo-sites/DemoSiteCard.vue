@@ -26,7 +26,7 @@
         <div class="flex items-center justify-between text-xs text-[var(--app-ink-soft)]">
           <span class="flex items-center gap-1.5">
             <UIcon name="i-lucide-clock" class="h-3.5 w-3.5" />
-            Expire {{ formatDate(site.expires_at) }}
+            Expire {{ formatNumericDate(site.expires_at) }}
           </span>
           <span v-if="site.city" class="flex items-center gap-1.5">
             <UIcon name="i-lucide-map-pin" class="h-3.5 w-3.5" />
@@ -56,6 +56,7 @@
 </template>
 
 <script lang="ts" setup>
+import { formatNumericDate } from '~/utils/date'
 import type { ComputedRef, EmitFn, PropType } from 'vue'
 import type { DemoSite } from '~/services/demoSiteService'
 import type { DemoSiteCardEmits, DemoSiteCardProps } from '~/types/DemoSiteCard'
@@ -104,13 +105,6 @@ const templateLabel: ComputedRef<string> = computed(() => {
   }
   return labels[props.site.template_id] ?? props.site.template_id
 })
-
-/**
- * Format an ISO date for display in the card.
- */
-function formatDate(value: string): string {
-  return new Date(value).toLocaleDateString('fr-FR', { dateStyle: 'medium' })
-}
 
 /**
  * Copy the demo URL and show a short confirmation state.

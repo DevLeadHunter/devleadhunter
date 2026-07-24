@@ -209,7 +209,7 @@
                 </div>
                 <div v-if="prospect.created_at">
                   <p class="text-[10px] text-[var(--app-ink-soft)]">Ajouté le</p>
-                  <p class="mt-0.5 text-sm text-[var(--app-ink)]">{{ formatDate(prospect.created_at) }}</p>
+                  <p class="mt-0.5 text-sm text-[var(--app-ink)]">{{ formatLongMonthDate(prospect.created_at) }}</p>
                 </div>
                 <div>
                   <p class="text-[10px] text-[var(--app-ink-soft)]">ID</p>
@@ -274,7 +274,7 @@
                   </span>
                 </div>
                 <p v-if="prospect.lighthouse_at" class="text-[10px] text-[var(--app-faint)]">
-                  Audité le {{ formatDate(prospect.lighthouse_at) }} · mobile
+                  Audité le {{ formatLongMonthDate(prospect.lighthouse_at) }} · mobile
                 </p>
               </template>
 
@@ -419,6 +419,7 @@
 </template>
 
 <script lang="ts" setup>
+import { formatLongMonthDate } from '~/utils/date'
 import type { UseToastReturn } from '~/types/Composables'
 import type {
   LighthouseGauge,
@@ -590,19 +591,6 @@ const confidenceColor: ComputedRef<string> = computed((): string => {
       return 'bg-[var(--app-ink-soft)]'
   }
 })
-
-/**
- * Format an ISO date string to a French locale date.
- * @param dateStr - ISO date string from the API.
- * @returns Human-readable date (e.g. "1 juin 2026").
- */
-function formatDate(dateStr: string): string {
-  return new Date(dateStr).toLocaleDateString('fr-FR', {
-    day: 'numeric',
-    month: 'long',
-    year: 'numeric',
-  })
-}
 
 /**
  * Populate the edit form with the current prospect values and enter edit mode.

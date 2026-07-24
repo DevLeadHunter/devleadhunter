@@ -86,7 +86,7 @@
                 {{ statusLabel(order.status) }}
               </span>
             </td>
-            <td class="px-4 py-3 text-xs text-[var(--app-ink-soft)]">{{ formatDate(order.created_at) }}</td>
+            <td class="px-4 py-3 text-xs text-[var(--app-ink-soft)]">{{ formatShortMonthDate(order.created_at) }}</td>
           </tr>
         </tbody>
       </table>
@@ -103,6 +103,7 @@
 </template>
 
 <script lang="ts" setup>
+import { formatShortMonthDate } from '~/utils/date'
 import type { UseToastReturn } from '~/types/Composables'
 import { ref, onMounted } from 'vue'
 import type { Ref } from 'vue'
@@ -143,15 +144,6 @@ const STATUS_LABELS: Record<string, string> = {
 function formatCents(cents: number): string {
   const euros: number = cents / 100
   return `${euros % 1 === 0 ? euros.toFixed(0) : euros.toFixed(2)} €`
-}
-
-/**
- * Format an ISO date string to a short French date.
- * @param dateStr - ISO date string.
- * @returns Human-readable date.
- */
-function formatDate(dateStr: string): string {
-  return new Date(dateStr).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' })
 }
 
 /**

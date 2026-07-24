@@ -43,10 +43,13 @@
           <div class="min-w-0">
             <p class="truncate font-semibold text-[var(--app-ink)]">{{ auto.name }}</p>
             <p class="mt-0.5 text-[11px] text-[var(--app-ink-soft)]">
-              {{ auto.mode === 'full_auto' ? 'Full-auto' : 'Semi-auto' }} · {{ formatDate(auto.created_at) }}
+              {{ auto.mode === 'full_auto' ? 'Full-auto' : 'Semi-auto' }} ·
+              {{ formatDayAndShortMonth(auto.created_at) }}
             </p>
           </div>
-          <span class="app-badge shrink-0" :class="statusBadgeClass(auto.status)">{{ statusLabel(auto.status) }}</span>
+          <span class="app-badge shrink-0" :class="AUTOMATION_STATUS_PRESENTATION[auto.status].badgeClass">{{
+            AUTOMATION_STATUS_PRESENTATION[auto.status].label
+          }}</span>
         </div>
 
         <div class="grid grid-cols-4 gap-2">
@@ -84,10 +87,12 @@
 </template>
 
 <script lang="ts" setup>
+import { AUTOMATION_STATUS_PRESENTATION } from '~/constants/automationStatus'
+import { formatDayAndShortMonth } from '~/utils/date'
 import type { AutomationListKpi } from '~/types/AutomationsListPage'
 import type { ComputedRef, Ref } from 'vue'
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
-import type { Automation, AutomationStatus, AutomationStep } from '~/types/Automation'
+import type { Automation, AutomationStep } from '~/types/Automation'
 import { useAutomationsStore } from '~/stores/automations'
 
 definePageMeta({
@@ -130,51 +135,6 @@ function listKpis(auto: Automation): AutomationListKpi[] {
     { label: 'Emails', value: auto.stats.emails_sent },
     { label: 'Vendus', value: auto.stats.won },
   ]
-}
-
-/**
- * Label for a status.
- * @param status - The status.
- * @returns French label.
- */
-function statusLabel(status: AutomationStatus): string {
-  const labels: Record<AutomationStatus, string> = {
-    draft: 'Brouillon',
-    running: 'En cours',
-    paused: 'En pause',
-    awaiting_review: 'À valider',
-    completed: 'Terminée',
-    cancelled: 'Annulée',
-    failed: 'Échec',
-  }
-  return labels[status]
-}
-
-/**
- * Badge class for a status.
- * @param status - The status.
- * @returns The ``app-badge--*`` modifier.
- */
-function statusBadgeClass(status: AutomationStatus): string {
-  const classes: Record<AutomationStatus, string> = {
-    draft: '',
-    running: 'app-badge--progress',
-    paused: '',
-    awaiting_review: 'app-badge--info',
-    completed: 'app-badge--success',
-    cancelled: 'app-badge--danger',
-    failed: 'app-badge--danger',
-  }
-  return classes[status]
-}
-
-/**
- * Format an ISO date as a short French date.
- * @param iso - ISO date string.
- * @returns The formatted date.
- */
-function formatDate(iso: string): string {
-  return new Date(iso).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short' })
 }
 
 onMounted(async (): Promise<void> => {

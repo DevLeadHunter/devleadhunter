@@ -149,7 +149,7 @@
                 <span
                   v-for="step in getEngagement(log)"
                   :key="step.key"
-                  :title="step.ts ? `${step.label} — ${formatDate(step.ts)}` : `${step.label} : pas encore`"
+                  :title="step.ts ? `${step.label} — ${formatCompactDateTime(step.ts)}` : `${step.label} : pas encore`"
                   class="flex h-6 w-6 items-center justify-center rounded-md"
                   :class="step.ts ? 'bg-[var(--app-surface)]' : 'bg-transparent'"
                 >
@@ -162,9 +162,9 @@
               </div>
             </td>
             <td class="px-3 py-2.5 text-sm">
-              <div class="text-[var(--app-ink)]">{{ log.sent_at ? formatDate(log.sent_at) : '—' }}</div>
+              <div class="text-[var(--app-ink)]">{{ log.sent_at ? formatCompactDateTime(log.sent_at) : '—' }}</div>
               <div v-if="lastActivityAt(log) && lastActivityAt(log) !== log.sent_at" class="text-muted mt-0.5 text-xs">
-                Activité : {{ formatDate(lastActivityAt(log)) }}
+                Activité : {{ formatCompactDateTime(lastActivityAt(log)) }}
               </div>
             </td>
           </tr>
@@ -205,7 +205,7 @@ import type { SelectFieldOption } from '~/types/SelectField'
 import type { ComputedRef, Ref } from 'vue'
 import { computed, onMounted, ref, watch } from 'vue'
 import type { EmailLog, EmailStats, EmailStatus } from '~/types'
-import { formatDate } from '~/utils/date'
+import { formatCompactDateTime } from '~/utils/date'
 import { EmailCampaignsService } from '~/services/emailCampaignsService'
 import type { CampaignListResponse, CampaignResponse } from '~/services/campaignService'
 import { CampaignService } from '~/services/campaignService'

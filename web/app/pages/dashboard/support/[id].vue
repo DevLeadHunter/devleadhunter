@@ -13,8 +13,11 @@
         <h1 class="min-w-0 text-2xl font-bold break-words text-[var(--app-ink)]">
           {{ ticket?.subject || 'Chargement…' }}
         </h1>
-        <span v-if="ticket" :class="['app-badge shrink-0 font-medium', statusBadgeClass(ticket.status)]">
-          {{ statusLabel(ticket.status) }}
+        <span
+          v-if="ticket"
+          :class="['app-badge shrink-0 font-medium', SUPPORT_STATUS_PRESENTATION[ticket.status]?.badgeClass ?? '']"
+        >
+          {{ SUPPORT_STATUS_PRESENTATION[ticket.status]?.label ?? ticket.status }}
         </span>
       </div>
 
@@ -25,7 +28,7 @@
         <span aria-hidden="true">·</span>
         <span>{{ ticket.user_name }}</span>
         <span aria-hidden="true">·</span>
-        <span>ouvert le {{ formatDate(ticket.created_at) }}</span>
+        <span>ouvert le {{ formatShortMonthDate(ticket.created_at) }}</span>
       </p>
     </div>
 
@@ -62,7 +65,7 @@
         <div v-for="message in ticket.messages" :key="message.id" class="space-y-1.5">
           <p :class="['text-muted flex items-center gap-2 text-xs', isMine(message) ? 'justify-end' : 'justify-start']">
             <span class="font-medium text-[var(--app-ink)]">{{ message.sender_name }}</span>
-            <span>{{ formatDate(message.created_at, true) }}</span>
+            <span>{{ formatShortMonthDateTime(message.created_at) }}</span>
           </p>
 
           <div :class="['flex', isMine(message) ? 'justify-end' : 'justify-start']">
@@ -157,6 +160,8 @@
 </template>
 
 <script lang="ts" setup>
+import { SUPPORT_STATUS_PRESENTATION } from '~/constants/supportStatus'
+import { formatShortMonthDate, formatShortMonthDateTime } from '~/utils/date'
 import type { UseToastReturn } from '~/types/Composables'
 import type { SupportWebsocketEvent } from '~/types/SupportTicketPage'
 import type { ComputedRef, Ref } from 'vue'
@@ -170,14 +175,6 @@ import { SupportService } from '~/services/supportService'
 definePageMeta({ layout: 'dashboard', middleware: 'auth' })
 
 /** Human labels for ticket statuses. */
-const STATUS_LABELS: Record<string, string> = {
-  open: 'Ouvert',
-  waiting_support: 'Attente support',
-  waiting_user: 'Attente client',
-  resolved: 'Résolu',
-  closed: 'Fermé',
-}
-
 /** Human labels for ticket topics. */
 const TOPIC_LABELS: Record<string, string> = {
   credits_billing: 'Crédits & facturation',
@@ -228,43 +225,6 @@ function isMine(message: SupportMessage): boolean {
  */
 function topicLabel(topic: SupportTicketDetail['topic']): string {
   return TOPIC_LABELS[topic] ?? topic
-}
-
-/**
- * Human label for a ticket status.
- * @param status - Raw status value.
- * @returns Localised label.
- */
-function statusLabel(status: string): string {
-  return STATUS_LABELS[status] ?? status
-}
-
-/**
- * Badge modifier for a status — reuses the app badge family (no ad-hoc colours).
- * @param status - Raw status value.
- * @returns The modifier class, or an empty string for the neutral badge.
- */
-function statusBadgeClass(status: string): string {
-  if (status === 'resolved') return 'app-badge--success'
-  if (status === 'open' || status === 'waiting_support') return 'app-badge--progress'
-  return ''
-}
-
-/**
- * Format a timestamp for display.
- * @param value - ISO timestamp.
- * @param includeTime - Whether to append hours and minutes.
- * @returns Localised date.
- */
-function formatDate(value: string | null | undefined, includeTime: boolean = false): string {
-  if (!value) return ''
-  return new Date(value).toLocaleString('fr-FR', {
-    year: 'numeric',
-    month: 'short',
-    day: 'numeric',
-    hour: includeTime ? '2-digit' : undefined,
-    minute: includeTime ? '2-digit' : undefined,
-  })
 }
 
 /**
