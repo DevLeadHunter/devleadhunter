@@ -399,6 +399,17 @@
         </section>
       </div>
     </template>
+
+    <UiVideoGenerationModal
+      :open="videoProgress.isOpen.value"
+      title="Génération de la vidéo"
+      :steps="videoProgress.steps.value"
+      :log-lines="videoProgress.logLines.value"
+      :elapsed-seconds="videoProgress.elapsedSeconds.value"
+      :error-message="videoProgress.errorMessage.value"
+      :is-running="videoProgress.isRunning.value"
+      @close="videoProgress.close()"
+    />
   </div>
 </template>
 
@@ -420,6 +431,8 @@ import type {
 import { DEFAULT_DEMO_SITE_THEME, DemoSiteService } from '~/services/demoSiteService'
 import { StoryblokSidecarService } from '~/services/storyblokSidecarService'
 import { useToast } from '~/composables/useToast'
+import type { UseVideoGenerationProgressReturn } from '~/composables/useVideoGenerationProgress'
+import { useVideoGenerationProgress } from '~/composables/useVideoGenerationProgress'
 
 definePageMeta({ layout: 'dashboard', middleware: 'auth' })
 
@@ -428,6 +441,7 @@ const demoSiteId: number = Number(route.params.id)
 const { copy, copied }: UseCopyToClipboardReturn = useCopyToClipboard()
 const { openExternalUrl }: UseOpenExternalUrlReturn = useOpenExternalUrl()
 const toast: UseToastReturn = useToast()
+const videoProgress: UseVideoGenerationProgressReturn = useVideoGenerationProgress()
 
 /** Tabs of the sticky side panel: the site's summary/actions, and its visual configuration. */
 const asideTabs: UiTab[] = [
@@ -866,30 +880,41 @@ async function runDesktopFullBuild(): Promise<Awaited<ReturnType<typeof Storyblo
  */
 async function handleGenerateVideo(): Promise<void> {
   generatingVideo.value = true
+  const slug: string = site.value?.slug ?? ''
   try {
     // Desktop: build the ENTIRE video locally (capture + montage) with the bundled
-    // ffmpeg — the VPS is never involved. If the Storyblok session expired, open the
-    // sign-in window, wait, then retry automatically. Any local failure (or the web
-    // build, which has no sidecar) falls back to the server-side generation.
+    // ffmpeg — the VPS is never involved. The modal follows the sidecar's phases so
+    // the wait is never opaque. If the Storyblok session expired, open the sign-in
+    // window, wait, then retry automatically. Any local failure (or the web build,
+    // which has no sidecar) falls back to the server-side generation.
+    videoProgress.start(slug, 'Publication de la vidéo')
     let build: Awaited<ReturnType<typeof StoryblokSidecarService.buildFullVideo>> = await runDesktopFullBuild()
 
     if (build.status === 'needs_login') {
+      videoProgress.close()
       const connected: boolean = await waitForStoryblokConnection()
       if (!connected) {
         toast.error('Storyblok non reconnecté — génération annulée. Reconnecte-toi puis relance.')
         return
       }
       toast.success('Storyblok reconnecté — reprise de la génération…')
+      videoProgress.start(slug, 'Publication de la vidéo')
       build = await runDesktopFullBuild()
     }
 
     if (build.status === 'done') {
+      videoProgress.finish()
       site.value = await DemoSiteService.getDemoSite(demoSiteId)
+      videoProgress.close()
       toast.success('Vidéo générée sur votre ordinateur ✓')
       return
     }
-    if (build.status === 'failed' && build.message) {
-      toast.error(`Génération locale échouée : ${build.message} — bascule sur le serveur.`)
+    if (build.status === 'unavailable') {
+      videoProgress.close()
+    } else if (build.status === 'failed') {
+      // Keep the modal open with the error + logs, and narrate the server fallback in it.
+      videoProgress.fail(build.message ?? 'Échec de la génération locale.')
+      videoProgress.note('Bascule sur le serveur…')
     }
 
     // 'unavailable' (web) or 'failed' → server-side generation (memory-guarded). Best-effort
@@ -901,9 +926,12 @@ async function handleGenerateVideo(): Promise<void> {
     }
     site.value = await DemoSiteService.generateDemoSiteVideo(demoSiteId)
     startVideoPolling()
+    videoProgress.note('Montage lancé sur le serveur — suivi sur la carte « Vidéo de prospection ».')
     toast.success('Génération de la vidéo lancée (montage en tâche de fond)')
   } catch (error) {
-    toast.error(error instanceof Error ? error.message : 'Échec du lancement de la génération')
+    const message: string = error instanceof Error ? error.message : 'Échec du lancement de la génération'
+    videoProgress.fail(message)
+    toast.error(message)
   } finally {
     generatingVideo.value = false
   }

@@ -24,6 +24,7 @@ import os
 import shutil
 import subprocess
 import tempfile
+from collections.abc import Callable
 from pathlib import Path
 from urllib.parse import parse_qsl, urlencode, urlparse, urlunparse
 
@@ -132,11 +133,14 @@ class StoryblokEditorClipService:
         out_width: int = 1280,
         out_height: int = 720,
         fps: int = 30,
+        on_progress: Callable[[str], None] | None = None,
     ) -> Path:
         """Render the background clip to ``output_path`` and return it.
 
         Either ``seed`` (a machine session to inject) or ``user_data_dir`` (a
         dedicated persistent profile) must let us reach the authenticated editor.
+        ``on_progress`` (when given) is called with the phase starting:
+        ``site_capture`` / ``editor_capture`` / ``background_assemble``.
 
         Raises:
             StoryblokEditorClipError: when Playwright is missing or the editor
@@ -149,10 +153,16 @@ class StoryblokEditorClipService:
 
         work_dir = Path(tempfile.mkdtemp(prefix="sb-editor-clip-"))
         try:
+            if on_progress:
+                on_progress("site_capture")
             site_clip = self._render_site_segment(demo_url, site_seconds, hold_seconds, fps, work_dir, executable_path)
+            if on_progress:
+                on_progress("editor_capture")
             editor_clip = self._record_editor_segment(
                 space_id, story_id, seed, user_data_dir, fps, work_dir, executable_path, accroche
             )
+            if on_progress:
+                on_progress("background_assemble")
             return self._concat(site_clip, editor_clip, output_path, out_width, out_height, fps, total_seconds)
         finally:
             shutil.rmtree(work_dir, ignore_errors=True)
