@@ -24,6 +24,7 @@ class UserBase(BaseModel):
     email: EmailStr = Field(..., description="User's email address")
     role: UserRole = Field(default=UserRole.USER, description="User role")
     company_name: str | None = Field(None, max_length=255, description="Optional business name")
+    company_website_url: str | None = Field(None, max_length=500, description="Optional business website URL")
 
 
 class UserSignup(BaseModel):
@@ -62,6 +63,7 @@ class UserUpdate(BaseModel):
     email: EmailStr | None = Field(None, description="User's email address")
     site_sale_price_cents: int | None = Field(None, ge=0, description="Website sale price in cents (default 500 €)")
     company_name: str | None = Field(None, max_length=255, description="Optional business name")
+    company_website_url: str | None = Field(None, max_length=500, description="Optional business website URL")
 
 
 class AdminUserUpdate(UserUpdate):

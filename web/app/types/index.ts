@@ -175,6 +175,7 @@ export type User = {
   email: string
   role: UserRole
   company_name?: string | null
+  company_website_url?: string | null
   is_active: boolean
   created_at: string
   updated_at: string | null
@@ -204,6 +205,7 @@ export type ProfileUpdate = {
   name?: string
   email?: string
   company_name?: string | null
+  company_website_url?: string | null
   site_sale_price_cents?: number
 }
 

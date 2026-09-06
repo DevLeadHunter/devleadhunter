@@ -62,6 +62,9 @@ class User(Base):
     # new orders, and the sale drawer.
     site_sale_price_cents: Mapped[int] = mapped_column(default=50000, nullable=False)
     company_name: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    # Optional public website of the user's business — linked from the prospection
+    # video page signature (« Site réalisé par {company_name} »).
+    company_website_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
     # Gmail Postmaster Tools OAuth — per-user read access to Gmail-side reputation.
     postmaster_google_email: Mapped[str | None] = mapped_column(String(255), nullable=True)
     postmaster_oauth_refresh_token: Mapped[str | None] = mapped_column(Text, nullable=True)

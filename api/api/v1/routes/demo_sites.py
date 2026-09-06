@@ -168,6 +168,10 @@ async def get_public_demo_site(
         # URLs R2 : le lecteur charge la vidéo depuis Cloudflare, pas depuis l'API.
         payload["video_url"] = public_video_file_url(site.slug)
         payload["video_thumbnail_url"] = public_thumbnail_url(site.slug)
+    if site.user is not None:
+        payload["owner_name"] = site.user.name
+        payload["owner_company_name"] = site.user.company_name
+        payload["owner_company_website_url"] = site.user.company_website_url
     return DemoSitePublicResponse(**payload)
 
 

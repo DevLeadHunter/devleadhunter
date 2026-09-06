@@ -85,6 +85,22 @@
               Utilisé dans les suggestions IA et comme nom affiché dans la configuration d'envoi.
             </p>
           </div>
+
+          <div>
+            <label class="text-muted mb-1.5 block text-xs font-medium" for="profile-company-website">
+              Site web de l'entreprise <span class="text-[var(--app-ink-soft)]">(facultatif)</span>
+            </label>
+            <input
+              id="profile-company-website"
+              v-model="form.company_website_url"
+              type="url"
+              class="input-field"
+              placeholder="Ex : https://dibodev.fr"
+            />
+            <p class="text-muted mt-1.5 text-xs">
+              Lien de la signature « Site réalisé par… » affichée sur vos pages vidéo de prospection.
+            </p>
+          </div>
         </form>
 
         <div class="flex gap-2 border-t border-[var(--app-line)] px-5 py-4">
@@ -137,7 +153,7 @@ const toast: UseToastReturn = useToast()
 const isSaving: Ref<boolean> = ref(false)
 
 /** Editable profile form state. */
-const form: Ref<ProfileForm> = ref({ name: '', email: '', company_name: '' })
+const form: Ref<ProfileForm> = ref({ name: '', email: '', company_name: '', company_website_url: '' })
 
 /** Initials shown in the header avatar. */
 const userInitials: ComputedRef<string> = computed((): string => {
@@ -161,6 +177,7 @@ async function handleSave(): Promise<void> {
       name: form.value.name,
       email: form.value.email,
       company_name: form.value.company_name.trim() || null,
+      company_website_url: form.value.company_website_url.trim() || null,
     })
     toast.success('Profil mis à jour')
     emit('close')
@@ -179,6 +196,7 @@ watch(
         name: userStore.user?.name ?? '',
         email: userStore.user?.email ?? '',
         company_name: userStore.user?.company_name ?? '',
+        company_website_url: userStore.user?.company_website_url ?? '',
       }
     }
   },

@@ -202,6 +202,8 @@ async def update_current_user_info(
         current_user.site_sale_price_cents = user_data.site_sale_price_cents
     if user_data.company_name is not None:
         current_user.company_name = user_data.company_name.strip() or None
+    if user_data.company_website_url is not None:
+        current_user.company_website_url = user_data.company_website_url.strip() or None
 
     db.commit()
     db.refresh(current_user)

@@ -11,5 +11,6 @@ export type DemoVideoEvent =
   | 'demo_video_fullscreen'
   | 'demo_video_mute'
   | 'demo_video_cta_click'
+  | 'demo_video_endcard_shown'
 
 export type DemoVideoEventCapture = (event: DemoVideoEvent, properties?: Record<string, unknown>) => void
