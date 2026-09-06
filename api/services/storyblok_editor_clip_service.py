@@ -442,14 +442,28 @@ class StoryblokEditorClipService:
         return output_path
 
     def _probe_duration(self, path: Path) -> float:
-        """Return the media duration in seconds (0.0 when it cannot be read)."""
+        """Return the media duration in seconds (0.0 when it cannot be read).
+
+        Raises:
+            StoryblokEditorClipError: when no ffprobe executable exists — a silent
+                0.0 there would pad the background to the wrong length.
+        """
         ffmpeg = Path(self._ffmpeg)
         probe = str(ffmpeg.with_name(ffmpeg.name.replace("ffmpeg", "ffprobe"))) if ffmpeg.name else "ffprobe"
-        result = subprocess.run(
-            [probe, "-v", "error", "-show_entries", "format=duration", "-of", "default=nw=1:nk=1", str(path)],
-            capture_output=True,
-            text=True,
-        )
+        # The frozen sidecar bundles ffprobe next to ffmpeg; when the derived path
+        # does not exist (dev machine, partial bundle), fall back to the PATH one.
+        if probe != "ffprobe" and not Path(probe).is_file():
+            probe = "ffprobe"
+        try:
+            result = subprocess.run(
+                [probe, "-v", "error", "-show_entries", "format=duration", "-of", "default=nw=1:nk=1", str(path)],
+                capture_output=True,
+                text=True,
+            )
+        except FileNotFoundError as exc:
+            raise StoryblokEditorClipError(
+                "ffprobe introuvable à côté de ffmpeg — impossible de caler la durée du fond."
+            ) from exc
         try:
             return float(result.stdout.strip())
         except (TypeError, ValueError):

@@ -85,16 +85,18 @@ def main() -> None:
         str(API_DIR / "scraper_sidecar.py"),
     ]
 
-    # Bundle a static ffmpeg so desktop video generation is plug-and-play (a user never
-    # installs it). The workflow downloads it and points FFMPEG_BUNDLE_PATH here; it lands
-    # at the frozen root (sys._MEIPASS/ffmpeg.exe), which the sidecar resolves at runtime.
-    ffmpeg_bundle = os.environ.get("FFMPEG_BUNDLE_PATH", "").strip()
-    if ffmpeg_bundle and Path(ffmpeg_bundle).is_file():
-        separator = ";" if sys.platform == "win32" else ":"
-        command[-1:-1] = ["--add-binary", f"{ffmpeg_bundle}{separator}."]
-        print(f"Bundling ffmpeg: {ffmpeg_bundle}")
-    else:
-        print("FFMPEG_BUNDLE_PATH unset/missing — sidecar relies on PATH ffmpeg (not plug-and-play).")
+    # Bundle a static ffmpeg AND ffprobe so desktop video generation is plug-and-play
+    # (a user never installs them). The workflow downloads them and points the env vars
+    # here; both land at the frozen root (sys._MEIPASS/), where the sidecar resolves
+    # ffmpeg and the clip service derives ffprobe from it.
+    separator = ";" if sys.platform == "win32" else ":"
+    for env_name, label in (("FFMPEG_BUNDLE_PATH", "ffmpeg"), ("FFPROBE_BUNDLE_PATH", "ffprobe")):
+        bundle = os.environ.get(env_name, "").strip()
+        if bundle and Path(bundle).is_file():
+            command[-1:-1] = ["--add-binary", f"{bundle}{separator}."]
+            print(f"Bundling {label}: {bundle}")
+        else:
+            print(f"{env_name} unset/missing — sidecar relies on PATH {label} (not plug-and-play).")
 
     subprocess.run(command, check=True, cwd=API_DIR)
 
