@@ -67,11 +67,16 @@ export type PreviewVideoResult = {
 export type VideoBuildProgress = {
   step: string
   message: string
+  /** Machine-readable failure cause on step "error" (e.g. `needs_login`). */
+  reason: string | null
   /** Unix seconds of the last phase change — lets pollers ignore a previous build's entry. */
   updatedAt: number
 }
 
 const UNKNOWN_SESSION: StoryblokSessionInfo = { state: 'unknown', source: null, loginWindowOpen: false }
+
+/** Ceiling for a detached local build — capture + montage can take several minutes. */
+const BUILD_WAIT_LIMIT_MS: number = 20 * 60 * 1000
 
 export class StoryblokSidecarService {
   /**
@@ -145,14 +150,13 @@ export class StoryblokSidecarService {
    * @returns The build outcome.
    */
   static async buildFullVideo(demoSiteId: number): Promise<FullVideoBuildResult> {
-    const build: { status: FullVideoBuildStatus; response?: Response; message?: string } =
+    const build: { status: FullVideoBuildStatus; blob?: Blob; message?: string } =
       await StoryblokSidecarService.requestFullBuild(demoSiteId, {})
-    if (build.status !== 'done' || !build.response) {
+    if (build.status !== 'done' || !build.blob) {
       return { status: build.status, message: build.message }
     }
     try {
-      const bundle: Blob = await build.response.blob()
-      await DemoSiteService.uploadFinalVideo(demoSiteId, bundle)
+      await DemoSiteService.uploadFinalVideo(demoSiteId, build.blob)
     } catch (error) {
       return { status: 'failed', message: error instanceof Error ? error.message : 'Envoi de la vidéo échoué.' }
     }
@@ -170,19 +174,12 @@ export class StoryblokSidecarService {
    * @returns The rendered mp4, or why it could not be produced.
    */
   static async buildPreviewVideo(demoSiteId: number, overrides: PreviewTimingOverrides): Promise<PreviewVideoResult> {
-    const build: { status: FullVideoBuildStatus; response?: Response; message?: string } =
+    const build: { status: FullVideoBuildStatus; blob?: Blob; message?: string } =
       await StoryblokSidecarService.requestFullBuild(demoSiteId, { ...overrides, preview: true })
-    if (build.status !== 'done' || !build.response) {
+    if (build.status !== 'done' || !build.blob) {
       return { status: build.status, message: build.message }
     }
-    try {
-      return { status: 'done', video: await build.response.blob() }
-    } catch (error) {
-      return {
-        status: 'failed',
-        message: error instanceof Error ? error.message : "Lecture de l'aperçu impossible.",
-      }
-    }
+    return { status: 'done', video: build.blob }
   }
 
   /**
@@ -199,8 +196,14 @@ export class StoryblokSidecarService {
         { headers: { 'X-Sidecar-Token': info.token } },
       )
       if (!response.ok) return null
-      const body: { step?: string; message?: string; updated_at?: number } = await response.json()
-      return { step: body.step ?? 'unknown', message: body.message ?? '', updatedAt: body.updated_at ?? 0 }
+      const body: { step?: string; message?: string; reason?: string | null; updated_at?: number } =
+        await response.json()
+      return {
+        step: body.step ?? 'unknown',
+        message: body.message ?? '',
+        reason: body.reason ?? null,
+        updatedAt: body.updated_at ?? 0,
+      }
     } catch {
       return null
     }
@@ -211,14 +214,16 @@ export class StoryblokSidecarService {
    *
    * Shared by the real generation and the calibration preview; ``payloadExtras``
    * is merged over the API context (e.g. timing overrides, the preview flag).
+   * The build is DETACHED sidecar-side (a single multi-minute response gets
+   * killed by the webview): start it, poll its progress, then fetch the file.
    * @param demoSiteId - The demo site to render.
    * @param payloadExtras - Fields merged over the context before sending.
-   * @returns The raw successful response, or the failure status.
+   * @returns The produced file, or the failure status.
    */
   private static async requestFullBuild(
     demoSiteId: number,
     payloadExtras: Record<string, unknown>,
-  ): Promise<{ status: FullVideoBuildStatus; response?: Response; message?: string }> {
+  ): Promise<{ status: FullVideoBuildStatus; blob?: Blob; message?: string }> {
     const info: Awaited<ReturnType<typeof getScraperSidecarInfo>> = await getScraperSidecarInfo()
     if (!info) return { status: 'unavailable' }
 
@@ -235,9 +240,9 @@ export class StoryblokSidecarService {
     formData.append('payload', JSON.stringify({ ...context, ...payloadExtras }))
     formData.append('presenter', presenter, 'presenter.mp4')
 
-    let response: Response
+    let startResponse: Response
     try {
-      response = await fetch(`http://127.0.0.1:${info.port}/video/build-full`, {
+      startResponse = await fetch(`http://127.0.0.1:${info.port}/video/build-full`, {
         method: 'POST',
         headers: { 'X-Sidecar-Token': info.token },
         body: formData,
@@ -246,17 +251,54 @@ export class StoryblokSidecarService {
       return { status: 'failed', message: 'Le générateur local ne répond pas.' }
     }
 
-    if (response.status === 409) {
-      const reason: string | null = await response
+    if (startResponse.status === 409) {
+      const reason: string | null = await startResponse
         .json()
         .then((body: { reason?: string }): string | null => body?.reason ?? null)
         .catch((): null => null)
       return { status: reason === 'needs_login' ? 'needs_login' : 'failed' }
     }
-    if (!response.ok) {
-      return { status: 'failed', message: await StoryblokSidecarService.readSidecarError(response) }
+    if (!startResponse.ok) {
+      return { status: 'failed', message: await StoryblokSidecarService.readSidecarError(startResponse) }
     }
-    return { status: 'done', response }
+
+    // The build runs detached — follow it through the progress endpoint.
+    const startedAtMs: number = Date.now()
+    const deadlineMs: number = startedAtMs + BUILD_WAIT_LIMIT_MS
+    while (Date.now() < deadlineMs) {
+      await new Promise<void>((resolve: () => void): void => {
+        window.setTimeout(resolve, 2000)
+      })
+      const progress: VideoBuildProgress | null = await StoryblokSidecarService.getVideoBuildProgress(context.slug)
+      if (!progress || progress.updatedAt * 1000 < startedAtMs - 2000) continue
+      if (progress.step === 'error') {
+        if (progress.reason === 'needs_login') return { status: 'needs_login' }
+        return { status: 'failed', message: progress.message || 'Échec de la génération locale.' }
+      }
+      if (progress.step === 'done') {
+        let resultResponse: Response
+        try {
+          resultResponse = await fetch(
+            `http://127.0.0.1:${info.port}/video/build-result?slug=${encodeURIComponent(context.slug)}`,
+            { headers: { 'X-Sidecar-Token': info.token } },
+          )
+        } catch {
+          return { status: 'failed', message: 'Résultat de la génération inaccessible.' }
+        }
+        if (!resultResponse.ok) {
+          return { status: 'failed', message: await StoryblokSidecarService.readSidecarError(resultResponse) }
+        }
+        try {
+          return { status: 'done', blob: await resultResponse.blob() }
+        } catch (error) {
+          return {
+            status: 'failed',
+            message: error instanceof Error ? error.message : 'Lecture du résultat impossible.',
+          }
+        }
+      }
+    }
+    return { status: 'failed', message: 'Génération trop longue — réessayez.' }
   }
 
   /**
