@@ -10,4 +10,7 @@ export type DemoSitePublic = {
   video_available?: boolean
   video_url?: string | null
   video_thumbnail_url?: string | null
+  owner_name?: string | null
+  owner_company_name?: string | null
+  owner_company_website_url?: string | null
 }

@@ -170,6 +170,10 @@ class DemoSitePublicResponse(BaseModel):
     # Public R2 URLs consumed by the player page (empty when no video).
     video_url: str | None = None
     video_thumbnail_url: str | None = None
+    # Owner identity for the video-page signature (« Site réalisé par … »).
+    owner_name: str | None = None
+    owner_company_name: str | None = None
+    owner_company_website_url: str | None = None
 
     model_config = ConfigDict(from_attributes=True)
 

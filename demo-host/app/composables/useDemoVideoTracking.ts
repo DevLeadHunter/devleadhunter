@@ -11,6 +11,14 @@ let beaconBase: string = ''
 const VIDEO_BEACON_EVENTS: Set<string> = new Set(['demo_video_play', 'demo_video_complete', 'demo_video_replay'])
 
 /**
+ * First-party proxy path for PostHog, same as `useDemoTracking` — a branded path
+ * that stays off the adblock/ETP lists (never a bare ingestion host).
+ */
+const POSTHOG_PROXY_PATH: string = '/dibodev/events'
+/** PostHog EU UI host (toolbar / replay links only, never an ingestion target). */
+const POSTHOG_UI_HOST: string = 'https://eu.posthog.com'
+
+/**
  * PostHog tracking for the prospection-video player page (/v/{slug}).
  *
  * `distinct_id` is the demo slug, like `useDemoTracking`, so video events land on the SAME
@@ -35,7 +43,6 @@ export function useDemoVideoTracking(): {
     // The owner's own visit (?internal=1 / ?_edit=1) must not track or notify.
     if (DemoBeaconUtils.isInternalVisit()) return
     const key: string = String(config.public.posthogProjectApiKey ?? '')
-    const host: string = String(config.public.posthogIngestionHost ?? '')
     if (!key) return
 
     const {
@@ -43,7 +50,10 @@ export function useDemoVideoTracking(): {
     }: typeof import('C:/Users/leogu/Desktop/Projects/devleadhunter/demo-host/node_modules/posthog-js/dist/module') =
       await import('posthog-js')
     posthog.init(key, {
-      api_host: host,
+      // First-party proxy — the old `posthogIngestionHost` key was never declared in
+      // demo-host's runtimeConfig, so video events went to an empty host and were lost.
+      api_host: POSTHOG_PROXY_PATH,
+      ui_host: POSTHOG_UI_HOST,
       capture_pageview: true,
       capture_pageleave: true,
       autocapture: false,
