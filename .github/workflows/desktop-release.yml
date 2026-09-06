@@ -63,18 +63,22 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt pyinstaller
-          # Bundle a STATIC ffmpeg so desktop video generation is plug-and-play (the
-          # user never installs ffmpeg). BtbN builds are a single self-contained exe.
+          # Bundle a STATIC ffmpeg AND ffprobe so desktop video generation is
+          # plug-and-play (the user never installs them). BtbN builds are
+          # self-contained exes; ffprobe measures durations during the assemble step.
           try {
             $url = "https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/ffmpeg-master-latest-win64-gpl.zip"
             Invoke-WebRequest -Uri $url -OutFile ffmpeg.zip
             Expand-Archive -Path ffmpeg.zip -DestinationPath ffmpeg_dl -Force
             $ff = (Get-ChildItem -Path ffmpeg_dl -Recurse -Filter ffmpeg.exe | Select-Object -First 1).FullName
+            $fp = (Get-ChildItem -Path ffmpeg_dl -Recurse -Filter ffprobe.exe | Select-Object -First 1).FullName
           } catch {
-            Write-Host "ffmpeg download failed, falling back to PATH ffmpeg: $_"
+            Write-Host "ffmpeg download failed, falling back to PATH binaries: $_"
             $ff = (Get-Command ffmpeg -ErrorAction SilentlyContinue).Source
+            $fp = (Get-Command ffprobe -ErrorAction SilentlyContinue).Source
           }
           if ($ff) { $env:FFMPEG_BUNDLE_PATH = $ff; Write-Host "Bundling ffmpeg: $ff" } else { Write-Host "No ffmpeg to bundle" }
+          if ($fp) { $env:FFPROBE_BUNDLE_PATH = $fp; Write-Host "Bundling ffprobe: $fp" } else { Write-Host "No ffprobe to bundle" }
           python build_scraper_sidecar.py
 
       # Version + updater injectés avant le build (signature des artefacts).
