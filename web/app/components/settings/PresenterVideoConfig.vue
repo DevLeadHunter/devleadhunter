@@ -265,12 +265,14 @@
             </div>
             <video
               v-if="previewVideoUrl"
+              ref="previewPlayerRef"
               :key="previewVideoUrl"
               :src="previewVideoUrl"
               controls
-              preload="none"
+              preload="auto"
               playsinline
               class="aspect-video w-full rounded-xl border border-[var(--app-line)] bg-black"
+              @loadeddata="revealFirstFrame"
             />
           </div>
         </section>
@@ -359,6 +361,17 @@
       cancel-text="Annuler"
       @confirm="handleDeleteConfirmed"
     />
+
+    <UiVideoGenerationModal
+      :open="videoProgress.isOpen.value"
+      title="Aperçu de calibration"
+      :steps="videoProgress.steps.value"
+      :log-lines="videoProgress.logLines.value"
+      :elapsed-seconds="videoProgress.elapsedSeconds.value"
+      :error-message="videoProgress.errorMessage.value"
+      :is-running="videoProgress.isRunning.value"
+      @close="videoProgress.close()"
+    />
   </div>
 </template>
 
@@ -376,11 +389,13 @@ import type { PreviewVideoResult } from '~/services/storyblokSidecarService'
 import type { SelectFieldOption } from '~/types/SelectField'
 import type { ProspectionScriptSegment } from '~/composables/useProspectionScript'
 import type { UseVideoCompressionReturn, VideoCompressionResult } from '~/composables/useVideoCompression'
-import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { PresenterVideoService } from '~/services/presenterVideoService'
 import { DemoSiteService } from '~/services/demoSiteService'
 import { StoryblokSidecarService } from '~/services/storyblokSidecarService'
 import { getScraperSidecarInfo } from '~/services/scraperSidecarService'
+import type { UseVideoGenerationProgressReturn } from '~/composables/useVideoGenerationProgress'
+import { useVideoGenerationProgress } from '~/composables/useVideoGenerationProgress'
 import { buildDefaultScript } from '~/composables/useProspectionScript'
 import { PRESENTER_VIDEO_MAX_BYTES, useVideoCompression } from '~/composables/useVideoCompression'
 import { useToast } from '~/composables/useToast'
@@ -429,6 +444,7 @@ const STORYBLOK_COMFORT_SECONDS: number = 10
 
 const toast: UseToastReturn = useToast()
 const { user }: UseAuthReturn = useAuth()
+const videoProgress: UseVideoGenerationProgressReturn = useVideoGenerationProgress()
 const { isCompressing, compressionProgress, compressPresenterClip }: UseVideoCompressionReturn = useVideoCompression()
 
 const info: Ref<PresenterVideo | null> = ref(null)
@@ -452,8 +468,11 @@ const isDesktopApp: Ref<boolean> = ref(false)
 
 /** Demo site used as the calibration example, as a select value. */
 const previewSiteId: Ref<string> = ref('')
-const previewSiteOptions: Ref<SelectFieldOption[]> = ref([])
+const previewSites: Ref<DemoSite[]> = ref([])
 const isBuildingPreview: Ref<boolean> = ref(false)
+
+/** The calibration preview <video>, scrolled into view once the render lands. */
+const previewPlayerRef: Ref<HTMLVideoElement | null> = ref(null)
 
 /** Object URL of the locally rendered calibration example. */
 const previewVideoUrl: Ref<string | null> = ref(null)
@@ -585,6 +604,13 @@ const timelineSegments: ComputedRef<PresenterVideoTimelineSegment[]> = computed(
     }),
   )
 })
+
+/** Select options for the calibration example, from the loaded demo sites. */
+const previewSiteOptions: ComputedRef<SelectFieldOption[]> = computed((): SelectFieldOption[] =>
+  previewSites.value.map(
+    (site: DemoSite): SelectFieldOption => ({ value: String(site.id), label: site.business_name }),
+  ),
+)
 
 /** Spoken description of the timeline for assistive tech. */
 const timelineAriaLabel: ComputedRef<string> = computed((): string =>
@@ -828,11 +854,9 @@ async function handleSaveSettings(): Promise<void> {
 async function loadPreviewSites(): Promise<void> {
   try {
     const response: DemoSiteListResponse = await DemoSiteService.listDemoSites()
-    previewSiteOptions.value = response.items
-      .filter((site: DemoSite): boolean => Boolean(site.demo_url))
-      .map((site: DemoSite): SelectFieldOption => ({ value: String(site.id), label: site.business_name }))
-    if (!previewSiteId.value && previewSiteOptions.value.length > 0) {
-      previewSiteId.value = previewSiteOptions.value[0]!.value
+    previewSites.value = response.items.filter((site: DemoSite): boolean => Boolean(site.demo_url))
+    if (!previewSiteId.value && previewSites.value.length > 0) {
+      previewSiteId.value = String(previewSites.value[0]!.id)
     }
   } catch {
     // Pas bloquant : le sélecteur reste vide et le bouton d'aperçu désactivé.
@@ -855,7 +879,11 @@ function releaseCalibrationPreview(): void {
  */
 async function handleGeneratePreview(): Promise<void> {
   if (!previewSiteId.value) return
+  const chosenSite: DemoSite | undefined = previewSites.value.find(
+    (candidate: DemoSite): boolean => String(candidate.id) === previewSiteId.value,
+  )
   isBuildingPreview.value = true
+  videoProgress.start(chosenSite?.slug ?? '', "Récupération de l'aperçu")
   try {
     const result: PreviewVideoResult = await StoryblokSidecarService.buildPreviewVideo(Number(previewSiteId.value), {
       presenter_intro: introSeconds.value,
@@ -864,20 +892,31 @@ async function handleGeneratePreview(): Promise<void> {
       total_seconds: middleSeconds.value,
     })
     if (result.status === 'done' && result.video) {
+      videoProgress.finish()
       releaseCalibrationPreview()
       previewVideoUrl.value = URL.createObjectURL(result.video)
+      videoProgress.close()
       toast.success('Aperçu prêt — rien n’a été publié')
+      await nextTick()
+      previewPlayerRef.value?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
       return
     }
     if (result.status === 'needs_login') {
+      videoProgress.close()
       toast.error('Session Storyblok expirée — reconnectez-vous via la carte « Connexion Storyblok ».')
       return
     }
     if (result.status === 'unavailable') {
+      videoProgress.close()
       toast.error("Disponible uniquement dans l'application desktop.")
       return
     }
+    videoProgress.fail(result.message ?? "Échec de la génération de l'aperçu.")
     toast.error(result.message ?? "Échec de la génération de l'aperçu.")
+  } catch (error) {
+    const message: string = error instanceof Error ? error.message : "Échec de la génération de l'aperçu."
+    videoProgress.fail(message)
+    toast.error(message)
   } finally {
     isBuildingPreview.value = false
   }

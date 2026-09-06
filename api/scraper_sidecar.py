@@ -22,6 +22,7 @@ import multiprocessing
 import os
 import shutil
 import sys
+import time
 
 import uvicorn
 from fastapi import Depends, FastAPI, File, Form, Header, HTTPException, UploadFile, status
@@ -63,6 +64,28 @@ def _resolve_bundled_ffmpeg() -> str:
 # service and the montage both honour it), so the bundled binary is used when frozen.
 _FFMPEG_PATH = _resolve_bundled_ffmpeg()
 os.environ["FFMPEG_PATH"] = _FFMPEG_PATH
+
+# Current phase of each local video build, keyed by demo-site slug — polled by the
+# app's progress modal so long builds stop looking frozen.
+_VIDEO_BUILD_PROGRESS: dict[str, dict[str, object]] = {}
+
+_VIDEO_BUILD_STEP_MESSAGES: dict[str, str] = {
+    "preparing": "Préparation (clip présentateur, session Storyblok)…",
+    "site_capture": "Capture du site (défilement)…",
+    "editor_capture": "Séquence éditeur Storyblok…",
+    "background_assemble": "Assemblage du fond…",
+    "montage": "Montage final (webcam + habillage)…",
+    "done": "Vidéo prête.",
+}
+
+
+def _set_video_build_progress(slug: str, step: str, message: str | None = None) -> None:
+    """Record the current phase of a local video build (read by /video/build-progress)."""
+    _VIDEO_BUILD_PROGRESS[slug] = {
+        "step": step,
+        "message": message if message is not None else _VIDEO_BUILD_STEP_MESSAGES.get(step, step),
+        "updated_at": time.time(),
+    }
 
 
 class SidecarEnrichmentRequest(BaseModel):
@@ -424,6 +447,12 @@ async def storyblok_background_clip(request: StoryblokBackgroundClipRequest) -> 
     )
 
 
+@app.get("/video/build-progress", dependencies=[Depends(require_sidecar_token)])
+async def video_build_progress(slug: str) -> dict[str, object]:
+    """Current phase of a local video build, for the app's progress modal."""
+    return _VIDEO_BUILD_PROGRESS.get(slug, {"step": "unknown", "message": "", "updated_at": 0})
+
+
 @app.post("/video/build-full", dependencies=[Depends(require_sidecar_token)])
 async def video_build_full(payload: str = Form(...), presenter: UploadFile = File(...)) -> object:
     """
@@ -454,6 +483,7 @@ async def video_build_full(payload: str = Form(...), presenter: UploadFile = Fil
 
     slug = str(data["slug"])
     total_seconds = float(data["total_seconds"])
+    _set_video_build_progress(slug, "preparing")
     work_dir = Path(tempfile.mkdtemp(prefix=f"video-full-{slug}-"))
     background_path = work_dir / "background.mp4"
     presenter_path = work_dir / "presenter.mp4"
@@ -481,7 +511,9 @@ async def video_build_full(payload: str = Form(...), presenter: UploadFile = Fil
             out_width=int(data.get("out_width", 1280)),
             out_height=int(data.get("out_height", 720)),
             fps=int(data.get("fps", 30)),
+            on_progress=lambda step: _set_video_build_progress(slug, step),
         )
+        _set_video_build_progress(slug, "montage")
         await asyncio.to_thread(video_montage.extract_first_frame, _FFMPEG_PATH, background_path, screenshot_path)
         await asyncio.to_thread(
             video_montage.compose_final,
@@ -508,12 +540,16 @@ async def video_build_full(payload: str = Form(...), presenter: UploadFile = Fil
         shutil.rmtree(work_dir, ignore_errors=True)
         message = str(exc)
         if message.startswith("needs_login:"):
+            _set_video_build_progress(slug, "error", "Session Storyblok expirée — reconnexion nécessaire.")
             return JSONResponse({"skipped": True, "reason": "needs_login"}, status_code=status.HTTP_409_CONFLICT)
+        _set_video_build_progress(slug, "error", message)
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=message) from exc
     except video_montage.VideoMontageError as exc:
         shutil.rmtree(work_dir, ignore_errors=True)
+        _set_video_build_progress(slug, "error", str(exc))
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
 
+    _set_video_build_progress(slug, "done")
     if bool(data.get("preview")):
         return FileResponse(
             output_video,

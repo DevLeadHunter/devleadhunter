@@ -190,6 +190,9 @@ class PresenterVideoResponse(BaseModel):
     duration_seconds: float = 0.0
     intro_seconds: float = 4.0
     outro_seconds: float = 5.0
+    # User-chosen site-scroll length; None = automatic split. Without this field the
+    # response_model STRIPS the value and the UI falls back to the automatic split.
+    site_seconds: float | None = None
     auto_generate: bool = True
     # « upload » (fichier importé) ou « recorded » (filmé dans l'app).
     source: str = "upload"

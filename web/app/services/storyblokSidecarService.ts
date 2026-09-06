@@ -63,6 +63,14 @@ export type PreviewVideoResult = {
   message?: string
 }
 
+/** Current phase of a local video build, as reported by the sidecar. */
+export type VideoBuildProgress = {
+  step: string
+  message: string
+  /** Unix seconds of the last phase change — lets pollers ignore a previous build's entry. */
+  updatedAt: number
+}
+
 const UNKNOWN_SESSION: StoryblokSessionInfo = { state: 'unknown', source: null, loginWindowOpen: false }
 
 export class StoryblokSidecarService {
@@ -167,7 +175,35 @@ export class StoryblokSidecarService {
     if (build.status !== 'done' || !build.response) {
       return { status: build.status, message: build.message }
     }
-    return { status: 'done', video: await build.response.blob() }
+    try {
+      return { status: 'done', video: await build.response.blob() }
+    } catch (error) {
+      return {
+        status: 'failed',
+        message: error instanceof Error ? error.message : "Lecture de l'aperçu impossible.",
+      }
+    }
+  }
+
+  /**
+   * Current phase of a local video build for a site (polled by the progress modal).
+   * @param slug - Slug of the demo site being rendered.
+   * @returns The reported phase, or null outside the desktop app / when unreachable.
+   */
+  static async getVideoBuildProgress(slug: string): Promise<VideoBuildProgress | null> {
+    const info: Awaited<ReturnType<typeof getScraperSidecarInfo>> = await getScraperSidecarInfo()
+    if (!info) return null
+    try {
+      const response: Response = await fetch(
+        `http://127.0.0.1:${info.port}/video/build-progress?slug=${encodeURIComponent(slug)}`,
+        { headers: { 'X-Sidecar-Token': info.token } },
+      )
+      if (!response.ok) return null
+      const body: { step?: string; message?: string; updated_at?: number } = await response.json()
+      return { step: body.step ?? 'unknown', message: body.message ?? '', updatedAt: body.updated_at ?? 0 }
+    } catch {
+      return null
+    }
   }
 
   /**
