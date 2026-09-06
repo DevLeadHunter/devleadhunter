@@ -23,6 +23,7 @@ import os
 import shutil
 import sys
 import time
+from pathlib import Path
 
 import uvicorn
 from fastapi import Depends, FastAPI, File, Form, Header, HTTPException, UploadFile, status
@@ -79,13 +80,31 @@ _VIDEO_BUILD_STEP_MESSAGES: dict[str, str] = {
 }
 
 
-def _set_video_build_progress(slug: str, step: str, message: str | None = None) -> None:
+def _set_video_build_progress(slug: str, step: str, message: str | None = None, reason: str | None = None) -> None:
     """Record the current phase of a local video build (read by /video/build-progress)."""
     _VIDEO_BUILD_PROGRESS[slug] = {
         "step": step,
         "message": message if message is not None else _VIDEO_BUILD_STEP_MESSAGES.get(step, step),
+        "reason": reason,
         "updated_at": time.time(),
     }
+
+
+# Finished builds waiting to be fetched via /video/build-result, keyed by slug.
+# The webview kills a single multi-minute HTTP response (surfacing as a CORS error),
+# so builds run detached: POST starts them, the app polls progress, then fetches this.
+_VIDEO_BUILD_RESULTS: dict[str, dict[str, object]] = {}
+
+# Strong references to running build tasks — asyncio only keeps weak ones, and a
+# garbage-collected task dies silently mid-build.
+_VIDEO_BUILD_TASKS: set[asyncio.Task] = set()
+
+
+def _discard_video_build_result(slug: str) -> None:
+    """Drop a previous build's result (and its files) before starting a new one."""
+    entry = _VIDEO_BUILD_RESULTS.pop(slug, None)
+    if entry is not None:
+        shutil.rmtree(str(entry["work_dir"]), ignore_errors=True)
 
 
 class SidecarEnrichmentRequest(BaseModel):
@@ -456,24 +475,20 @@ async def video_build_progress(slug: str) -> dict[str, object]:
 @app.post("/video/build-full", dependencies=[Depends(require_sidecar_token)])
 async def video_build_full(payload: str = Form(...), presenter: UploadFile = File(...)) -> object:
     """
-    Produce the COMPLETE prospection video on the desktop (capture + montage).
+    START the complete desktop video build (capture + montage) and return at once.
 
-    Captures the background (site scroll + Storyblok editor) with the owner's session,
-    then montages it with the uploaded presenter clip (webcam PiP, greeting, thumbnail)
-    using the bundled ffmpeg — the VPS is never involved. Returns a zip
-    (``video.mp4`` + ``thumbnail.jpg``); ``409 {reason: needs_login}`` when the Storyblok
-    session is missing so the caller prompts a reconnect.
+    A single multi-minute HTTP response gets killed by the webview (it surfaces as a
+    CORS error while the build is still running), so the build is detached: this
+    returns ``{"started": true}`` immediately, the app polls ``/video/build-progress``
+    until ``done``/``error``, then fetches the file from ``/video/build-result``.
+    ``409 {reason: needs_login}`` when the Storyblok session is missing.
     """
     import json
     import tempfile
-    import zipfile
     from pathlib import Path
 
-    from fastapi.responses import FileResponse, JSONResponse
-    from starlette.background import BackgroundTask
+    from fastapi.responses import JSONResponse
 
-    from services import video_montage
-    from services.storyblok_editor_clip_service import StoryblokEditorClipError, storyblok_editor_clip_service
     from services.storyblok_session_service import storyblok_session_service
 
     data = json.loads(payload)
@@ -482,19 +497,46 @@ async def video_build_full(payload: str = Form(...), presenter: UploadFile = Fil
         return JSONResponse({"skipped": True, "reason": "needs_login"}, status_code=status.HTTP_409_CONFLICT)
 
     slug = str(data["slug"])
-    total_seconds = float(data["total_seconds"])
+    _discard_video_build_result(slug)
     _set_video_build_progress(slug, "preparing")
     work_dir = Path(tempfile.mkdtemp(prefix=f"video-full-{slug}-"))
+    presenter_path = work_dir / "presenter.mp4"
+    # The upload's temp file dies with this request — materialise it before detaching.
+    presenter_path.write_bytes(await presenter.read())
+
+    task = asyncio.create_task(_run_video_build(data, slug, seed, user_data_dir, work_dir))
+    _VIDEO_BUILD_TASKS.add(task)
+    task.add_done_callback(_VIDEO_BUILD_TASKS.discard)
+    return {"started": True, "slug": slug}
+
+
+async def _run_video_build(
+    data: dict,
+    slug: str,
+    seed: object,
+    user_data_dir: str | None,
+    work_dir: Path,
+) -> None:
+    """
+    Detached build: capture the background, montage, store the result for pickup.
+
+    Progress goes to ``_VIDEO_BUILD_PROGRESS`` (polled by the app's modal) and the
+    finished file to ``_VIDEO_BUILD_RESULTS`` (served once by /video/build-result).
+    """
+    import zipfile
+
+    from services import video_montage
+    from services.storyblok_editor_clip_service import StoryblokEditorClipError, storyblok_editor_clip_service
+
     background_path = work_dir / "background.mp4"
     presenter_path = work_dir / "presenter.mp4"
     screenshot_path = work_dir / "top.png"
     output_video = work_dir / "video.mp4"
     output_thumb = work_dir / "thumbnail.jpg"
     bundle_path = work_dir / f"{slug}-video.zip"
+    preview = bool(data.get("preview"))
+    total_seconds = float(data["total_seconds"])
     try:
-        with open(presenter_path, "wb") as buffer:
-            shutil.copyfileobj(presenter.file, buffer)
-
         await asyncio.to_thread(
             storyblok_editor_clip_service.build_background,
             demo_url=data["demo_url"],
@@ -530,38 +572,56 @@ async def video_build_full(payload: str = Form(...), presenter: UploadFile = Fil
             output_video=output_video,
             output_thumbnail=output_thumb,
         )
-        # preview=true → the caller only wants to WATCH the result (timing calibration):
-        # return the mp4 alone, nothing gets uploaded or published.
-        if not bool(data.get("preview")):
+        if preview:
+            _VIDEO_BUILD_RESULTS[slug] = {
+                "path": output_video,
+                "media_type": "video/mp4",
+                "filename": f"{slug}-preview.mp4",
+                "work_dir": work_dir,
+            }
+        else:
             with zipfile.ZipFile(bundle_path, "w", zipfile.ZIP_STORED) as archive:
                 archive.write(output_video, "video.mp4")
                 archive.write(output_thumb, "thumbnail.jpg")
+            _VIDEO_BUILD_RESULTS[slug] = {
+                "path": bundle_path,
+                "media_type": "application/zip",
+                "filename": f"{slug}-video.zip",
+                "work_dir": work_dir,
+            }
+        _set_video_build_progress(slug, "done")
     except StoryblokEditorClipError as exc:
         shutil.rmtree(work_dir, ignore_errors=True)
         message = str(exc)
         if message.startswith("needs_login:"):
-            _set_video_build_progress(slug, "error", "Session Storyblok expirée — reconnexion nécessaire.")
-            return JSONResponse({"skipped": True, "reason": "needs_login"}, status_code=status.HTTP_409_CONFLICT)
-        _set_video_build_progress(slug, "error", message)
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=message) from exc
+            _set_video_build_progress(
+                slug, "error", "Session Storyblok expirée — reconnexion nécessaire.", reason="needs_login"
+            )
+        else:
+            _set_video_build_progress(slug, "error", message)
     except video_montage.VideoMontageError as exc:
         shutil.rmtree(work_dir, ignore_errors=True)
         _set_video_build_progress(slug, "error", str(exc))
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+    except Exception as exc:  # a detached task must never die silently
+        shutil.rmtree(work_dir, ignore_errors=True)
+        logger.exception("Video build crashed for slug=%s", slug)
+        _set_video_build_progress(slug, "error", f"Erreur inattendue : {exc}")
 
-    _set_video_build_progress(slug, "done")
-    if bool(data.get("preview")):
-        return FileResponse(
-            output_video,
-            media_type="video/mp4",
-            filename=f"{slug}-preview.mp4",
-            background=BackgroundTask(shutil.rmtree, work_dir, ignore_errors=True),
-        )
+
+@app.get("/video/build-result", dependencies=[Depends(require_sidecar_token)])
+async def video_build_result(slug: str) -> object:
+    """Serve (once) the file produced by a finished build, then clean it up."""
+    from fastapi.responses import FileResponse
+    from starlette.background import BackgroundTask
+
+    entry = _VIDEO_BUILD_RESULTS.pop(slug, None)
+    if entry is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Aucun résultat de build pour ce site.")
     return FileResponse(
-        bundle_path,
-        media_type="application/zip",
-        filename=f"{slug}-video.zip",
-        background=BackgroundTask(shutil.rmtree, work_dir, ignore_errors=True),
+        str(entry["path"]),
+        media_type=str(entry["media_type"]),
+        filename=str(entry["filename"]),
+        background=BackgroundTask(shutil.rmtree, str(entry["work_dir"]), ignore_errors=True),
     )
 
 
