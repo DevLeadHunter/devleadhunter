@@ -469,9 +469,11 @@ onMounted(async (): Promise<void> => {
   transition: opacity 0.25s;
 }
 
+/* 14.4% = the circle baked into the thumbnail (184/1280) — the button covers it exactly. */
 .video-page__play {
-  width: 78px;
-  height: 78px;
+  width: 14.4%;
+  min-width: 52px;
+  aspect-ratio: 1;
   border-radius: 999px;
   background: var(--vp-ink);
   color: var(--vp-paper);
@@ -488,9 +490,16 @@ onMounted(async (): Promise<void> => {
 /* The glyph sits 1.5 viewBox units right of center — the optical nudge a play triangle needs. */
 .video-page__play svg {
   display: block;
+  width: 56%;
+  height: auto;
 }
 
 .video-page__play-label {
+  position: absolute;
+  top: calc(62.8% + 12px);
+  left: 50%;
+  transform: translateX(-50%);
+  white-space: nowrap;
   font-size: 13px;
   font-weight: 500;
   color: var(--vp-paper);
