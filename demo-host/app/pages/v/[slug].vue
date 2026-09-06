@@ -37,8 +37,17 @@
             @click="startPlayback"
           >
             <span class="video-page__play video-page__pulse">
-              <svg width="28" height="28" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-                <path d="M8.5 5.9v12.2c0 1.2 1.3 1.9 2.3 1.3l9.6-6.1c.9-.6.9-2 0-2.6l-9.6-6.1c-1-.6-2.3.1-2.3 1.3z" />
+              <svg
+                width="34"
+                height="34"
+                viewBox="0 0 24 24"
+                fill="currentColor"
+                stroke="currentColor"
+                stroke-width="2.5"
+                stroke-linejoin="round"
+                aria-hidden="true"
+              >
+                <polygon points="8 5 19 12 8 19" />
               </svg>
             </span>
             <span class="video-page__play-label">Lancer la visite{{ playLabelDurationSuffix }}</span>
@@ -476,8 +485,9 @@ onMounted(async (): Promise<void> => {
   transform: scale(1.07);
 }
 
+/* The glyph sits 1.5 viewBox units right of center — the optical nudge a play triangle needs. */
 .video-page__play svg {
-  margin-left: 4px;
+  display: block;
 }
 
 .video-page__play-label {
