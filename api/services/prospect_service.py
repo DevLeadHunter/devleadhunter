@@ -445,9 +445,14 @@ class ProspectService:
                 value = value.value if hasattr(value, "value") else str(value)
             setattr(db_prospect, field, value)
 
-        # Editing the primary email through the regular update keeps the multi-email list in sync.
+        # Editing the primary email through the regular update keeps the multi-email list in sync,
+        # and clears a « email injoignable » flag: the operator just fixed the address by hand.
         if update_dict.get("email"):
             sync_prospect_emails(db_prospect, primary=update_dict["email"])
+            if db_prospect.email_undeliverable:
+                db_prospect.email_undeliverable = False
+                db_prospect.email_undeliverable_at = None
+                db_prospect.email_undeliverable_reason = None
 
         db.commit()
         db.refresh(db_prospect)

@@ -30,6 +30,7 @@ from enums.demo_site_status import DemoSiteStatus
 from enums.email_status import EmailStatus
 from models.demo_site import DemoSite
 from models.email_log import EmailLog
+from models.prospect_db import ProspectDB
 from models.resend_config import ResendConfig
 from services import reply_capture_service
 from services.activity_log_service import CATEGORY_DEMO_SITE, STATUS_INFO, activity_log_service
@@ -506,6 +507,14 @@ async def resend_webhook(
         # A hard bounce on the primary email → re-route to the prospect's next email (multi-email fallback).
         if new_status == EmailStatus.BOUNCED.value:
             bounce_fallback_service.handle_bounce(db, email_log)
+
+        # A delivery on any address clears a stale « email injoignable » flag (a fallback
+        # or a hand-fixed address finally landed) — the prospect is reachable by email again.
+        if new_status == EmailStatus.DELIVERED.value and email_log.prospect_id:
+            prospect_row = db.get(ProspectDB, email_log.prospect_id)
+            if prospect_row is not None and prospect_row.email_undeliverable:
+                bounce_fallback_service.clear_undeliverable(db, prospect_row)
+                db.commit()
 
         # Mirror the event into the PostHog event stream so it can be combined with
         # demo events in funnels. distinct_id = the prospect's demo slug → same person

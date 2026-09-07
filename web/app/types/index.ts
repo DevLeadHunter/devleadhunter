@@ -51,6 +51,9 @@ export type Prospect = {
   do_not_contact?: boolean
   do_not_contact_reason?: string | null
   do_not_contact_at?: string | null
+  email_undeliverable?: boolean
+  email_undeliverable_at?: string | null
+  email_undeliverable_reason?: string | null
 }
 
 /**

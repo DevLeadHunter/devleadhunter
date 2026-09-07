@@ -4,6 +4,10 @@ When a campaign email hard-bounces on a prospect's primary address, we don't wan
 if they have another (not-yet-tried) email, promote it to primary and re-queue the same campaign email
 to it, scheduled on a normal send slot. Always 1-to-1 — never a multi-recipient send. It stops on its
 own once every email has been tried, and never re-sends when a message already reached the prospect.
+
+When every address has bounced with no delivery, the prospect's email is a dead end: we flag it
+``email_undeliverable`` so the operator sees it and can recover the prospect into an SMS campaign,
+rather than silently keeping a « contacté » prospect who never received anything.
 """
 
 from __future__ import annotations
@@ -56,8 +60,6 @@ class BounceFallbackService:
         if prospect is None:
             return
         emails = list(prospect.emails or ([prospect.email] if prospect.email else []))
-        if len(emails) < 2:
-            return
 
         history = db.execute(
             select(EmailLog.recipient_email, EmailLog.status).where(
@@ -70,6 +72,9 @@ class BounceFallbackService:
         tried_lower = {(recipient or "").strip().lower() for recipient, _ in history if recipient}
         fallback = next_fallback_email(emails, tried_lower)
         if fallback is None:
+            # Every address bounced with no delivery — the email is a dead end. Flag it so the
+            # prospect surfaces for SMS recovery instead of staying a silent « contacté ».
+            self._mark_undeliverable(db, prospect, email_log.error_message)
             return
 
         sync_prospect_emails(prospect, primary=fallback)
@@ -103,6 +108,28 @@ class BounceFallbackService:
             prospect.id,
             email_log.recipient_email,
         )
+
+    @staticmethod
+    def _mark_undeliverable(db: Session, prospect: ProspectDB, reason: str | None) -> None:
+        """Flag the prospect's email as a dead end (idempotent). Never touches ``contacted``."""
+        if prospect.email_undeliverable:
+            return
+        prospect.email_undeliverable = True
+        prospect.email_undeliverable_at = datetime.now(UTC).replace(tzinfo=None)
+        prospect.email_undeliverable_reason = (reason or "").strip()[:500] or None
+        db.add(prospect)
+        db.commit()
+        logger.info("Prospect %s flagged email_undeliverable after every address bounced", prospect.id)
+
+    @staticmethod
+    def clear_undeliverable(db: Session, prospect: ProspectDB) -> None:
+        """Lift the dead-email flag (a later delivery succeeded, or the email was fixed by hand)."""
+        if not prospect.email_undeliverable:
+            return
+        prospect.email_undeliverable = False
+        prospect.email_undeliverable_at = None
+        prospect.email_undeliverable_reason = None
+        db.add(prospect)
 
     @staticmethod
     def _next_slot(db: Session, user_id: int) -> datetime:
