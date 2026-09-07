@@ -261,11 +261,16 @@ function onFieldInput(): void {
 
 /** Reduce the card back to the pill — the banner is never fully closed, only collapsed. */
 function collapse(): void {
+  const withMessage: boolean = hasMessage()
   captureDemoEvent('demo_cta_banner_collapse', {
     from_state: state.value,
-    had_message: hasMessage(),
+    had_message: withMessage,
     open_seconds: openSeconds(),
   })
+  // Notify only when they wrote something then backed out — a real « almost-lead » signal.
+  if (withMessage) {
+    DemoBeaconUtils.send(apiBase.value, props.site.slug, 'demo_cta_banner_collapse', { seconds: openSeconds() })
+  }
   state.value = 'collapsed'
 }
 

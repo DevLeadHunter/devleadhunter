@@ -142,7 +142,13 @@ export function useDemoTracking(): {
           posthog.capture('demo_outbound_click', { href, host, section })
           DemoBeaconUtils.send(apiBase, slug, 'demo_outbound_click', { host })
         } else {
-          const label: string = (anchor ?? button ?? target).textContent?.trim().slice(0, 80) ?? ''
+          const clicked: HTMLElement = anchor ?? button ?? target
+          const label: string = (
+            clicked.textContent?.trim() ||
+            clicked.getAttribute('aria-label') ||
+            clicked.getAttribute('title') ||
+            ''
+          ).slice(0, 80)
           posthog.capture('demo_cta_click', {
             label,
             href,

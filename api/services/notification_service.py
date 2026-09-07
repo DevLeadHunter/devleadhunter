@@ -79,6 +79,7 @@ _DEMO_EVENT_NOTIFS: dict[str, tuple[str, str, str]] = {
     "demo_lead": ("🙋", "success", "Est intéressé par son site !"),
     "demo_cta_banner_open": ("🖐️", "success", "A ouvert le formulaire « Ce site vous plaît ? »"),
     "demo_cta_banner_field_focus": ("✍️", "success", "Écrit un message dans le formulaire…"),
+    "demo_cta_banner_collapse": ("🤔", "info", "A écrit un message puis a réduit le formulaire sans l'envoyer"),
     "demo_cta_banner_abandoned": ("🕓", "info", "A ouvert le formulaire mais est reparti sans envoyer"),
     "demo_engaged": ("🔥", "success", "Visite qualifiée — prospect engagé"),
     "demo_cta_click": ("👉", "success", "A cliqué « {label} »"),
@@ -205,12 +206,17 @@ class NotificationService:
             return
         emoji, level, body_template = mapping
         prospect_name = self._resolve_prospect_name(db, prospect_id, fallback_name)
-        body = body_template.format(
-            label=label or "",
-            host=host or "",
-            seconds=seconds if seconds is not None else 0,
-            max_scroll=max_scroll if max_scroll is not None else 0,
-        )
+        # A CTA with no readable text (icon-only button) has an empty label — never render
+        # « » : fall back to a generic body so the notification stays legible.
+        if event_name == "demo_cta_click" and not (label or "").strip():
+            body = "A cliqué un bouton du site"
+        else:
+            body = body_template.format(
+                label=label or "",
+                host=host or "",
+                seconds=seconds if seconds is not None else 0,
+                max_scroll=max_scroll if max_scroll is not None else 0,
+            )
         if event_name == "demo_lead" and (message or "").strip():
             excerpt = message.strip()[:160]
             body = f"{body} « {excerpt} »"
