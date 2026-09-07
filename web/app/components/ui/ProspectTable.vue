@@ -1,6 +1,6 @@
 <template>
   <div class="overflow-hidden">
-    <BaseTable>
+    <BaseTable :animate-row-moves="reorderable">
       <template #head>
         <BaseTableTh v-if="reorderable" sr-only>Réordonner</BaseTableTh>
         <BaseTableTh v-if="!hideSelection" class="w-12">
@@ -26,35 +26,59 @@
       </template>
 
       <BaseTableTr
-        v-for="(prospect, index) in prospects"
+        v-for="(prospect, index) in displayedProspects"
         :key="prospect.id"
         :class="[
           isSelected(prospect) ? 'bg-[var(--app-accent-soft)] hover:bg-[var(--app-accent-soft)]' : '',
           isLockedForMe(prospect)
             ? 'bg-[var(--app-surface-2)]/40 hover:bg-[var(--app-surface-2)]/40'
             : 'cursor-pointer',
-          reorderable && dragIndex === index ? 'opacity-50' : '',
-          reorderable && dropIndex === index && dragIndex !== index
-            ? 'bg-[var(--app-accent-soft)] hover:bg-[var(--app-accent-soft)]'
-            : '',
+          isBeingDragged(prospect) ? 'bg-[var(--app-accent-soft)] opacity-40 hover:bg-[var(--app-accent-soft)]' : '',
         ]"
         @click="onRowClick(prospect, $event)"
         @dragover="onRowDragOver($event, index)"
-        @dragleave="onRowDragLeave(index)"
-        @drop="onRowDrop($event, index)"
+        @drop="onRowDrop"
       >
-        <BaseTableTd v-if="reorderable" class="w-8 pr-0">
-          <button
-            type="button"
-            class="cursor-grab text-[var(--app-faint)] transition-colors hover:text-[var(--app-ink)] active:cursor-grabbing"
-            aria-label="Glisser pour réordonner l'envoi"
-            title="Glisser pour changer le jour d'envoi"
-            draggable="true"
-            @dragstart="onDragStart(index)"
-            @dragend="onDragEnd"
-          >
-            <UIcon name="i-lucide-grip-vertical" class="h-4 w-4" />
-          </button>
+        <BaseTableTd v-if="reorderable" class="pr-0 whitespace-nowrap">
+          <div class="flex items-center">
+            <button
+              type="button"
+              class="flex h-7 w-7 cursor-grab items-center justify-center rounded text-[var(--app-faint)] transition-colors hover:text-[var(--app-ink)] focus-visible:text-[var(--app-ink)] active:cursor-grabbing"
+              aria-label="Glisser pour changer le jour d'envoi (flèches haut et bas au clavier)"
+              title="Glisser pour changer le jour d'envoi"
+              draggable="true"
+              @dragstart="onDragStart($event, index)"
+              @dragend="onDragEnd"
+              @keydown.up.prevent="moveRow(index, index - 1)"
+              @keydown.down.prevent="moveRow(index, index + 1)"
+            >
+              <UIcon name="i-lucide-grip-vertical" class="h-4 w-4" />
+            </button>
+            <span
+              class="flex items-center opacity-0 transition-opacity group-focus-within:opacity-100 group-hover:opacity-100"
+            >
+              <button
+                type="button"
+                class="flex h-7 w-5 items-center justify-center rounded text-[var(--app-faint)] transition-colors hover:text-[var(--app-ink)] disabled:cursor-default disabled:opacity-30"
+                aria-label="Monter (envoyé plus tôt)"
+                title="Monter"
+                :disabled="index === 0"
+                @click="moveRow(index, index - 1)"
+              >
+                <UIcon name="i-lucide-chevron-up" class="h-3.5 w-3.5" />
+              </button>
+              <button
+                type="button"
+                class="flex h-7 w-5 items-center justify-center rounded text-[var(--app-faint)] transition-colors hover:text-[var(--app-ink)] disabled:cursor-default disabled:opacity-30"
+                aria-label="Descendre (envoyé plus tard)"
+                title="Descendre"
+                :disabled="index === displayedProspects.length - 1"
+                @click="moveRow(index, index + 1)"
+              >
+                <UIcon name="i-lucide-chevron-down" class="h-3.5 w-3.5" />
+              </button>
+            </span>
+          </div>
         </BaseTableTd>
 
         <BaseTableTd v-if="!hideSelection">
@@ -303,11 +327,14 @@ const emit: EmitFn<UiProspectTableEmits> = defineEmits<UiProspectTableEmits>()
 
 const userStore: ReturnType<typeof useUserStore> = useUserStore()
 
-/** Index of the row currently being dragged, or null when no drag is in progress. */
-const dragIndex: Ref<number | null> = ref(null)
+/** Id of the prospect being dragged, or null when no drag is in progress. */
+const draggedProspectId: Ref<number | null> = ref(null)
 
-/** Index of the row the drag is hovering over, for the drop-target highlight. */
-const dropIndex: Ref<number | null> = ref(null)
+/** Live order shown during a drag — the dragged row moves as the pointer crosses rows; null otherwise. */
+const draftOrder: Ref<Prospect[] | null> = ref(null)
+
+/** Rows to render: the live draft while dragging, the prop order otherwise. */
+const displayedProspects: ComputedRef<Prospect[]> = computed((): Prospect[] => draftOrder.value ?? props.prospects)
 
 /** Current user id (0 while the store hydrates). */
 const currentUserId: ComputedRef<number> = computed((): number => userStore.user?.id ?? 0)
@@ -384,57 +411,95 @@ function onRowClick(prospect: Prospect, event: MouseEvent): void {
 }
 
 /**
- * Start dragging the row at a given index (from its drag handle).
- * @param index - Row index being dragged.
+ * Whether this row is the one being dragged — it stays in the table as the landing placeholder.
+ * @param prospect - Row to test.
+ * @returns True while this prospect is being dragged.
  */
-function onDragStart(index: number): void {
-  dragIndex.value = index
+function isBeingDragged(prospect: Prospect): boolean {
+  return draggedProspectId.value === prospect.id
 }
 
 /**
- * Allow dropping onto a row and mark it as the current drop target.
- * @param event - The native dragover event.
- * @param index - Index of the row being hovered.
+ * Move one row to another index and emit the prospects' new order (buttons and keyboard fallback).
+ * @param from - Current row index.
+ * @param to - Target row index.
  */
-function onRowDragOver(event: DragEvent, index: number): void {
-  if (!props.reorderable || dragIndex.value === null) return
-  event.preventDefault()
-  dropIndex.value = index
-}
-
-/**
- * Clear the drop-target highlight when the drag leaves a row.
- * @param index - Index of the row being left.
- */
-function onRowDragLeave(index: number): void {
-  if (dropIndex.value === index) dropIndex.value = null
-}
-
-/**
- * Drop the dragged row onto the target and emit the prospects' new order.
- * @param event - The native drop event.
- * @param index - Index of the drop-target row.
- */
-function onRowDrop(event: DragEvent, index: number): void {
-  if (!props.reorderable || dragIndex.value === null) return
-  event.preventDefault()
-  const from: number = dragIndex.value
-  dragIndex.value = null
-  dropIndex.value = null
-  if (from === index) return
+function moveRow(from: number, to: number): void {
+  if (from === to || to < 0 || to >= props.prospects.length) return
   const next: Prospect[] = [...props.prospects]
   const moved: Prospect | undefined = next.splice(from, 1)[0]
   if (moved === undefined) return
-  next.splice(index, 0, moved)
+  next.splice(to, 0, moved)
   emit(
     'reorder',
     next.map((prospect: Prospect): number => prospect.id),
   )
 }
 
-/** Clear the drag state when the drag ends anywhere. */
+/**
+ * Start dragging a row: snapshot the order for the live preview and lift the whole row as the drag image.
+ * @param event - The native dragstart event, fired on the grip handle.
+ * @param index - Index of the row being dragged.
+ */
+function onDragStart(event: DragEvent, index: number): void {
+  const prospect: Prospect | undefined = props.prospects[index]
+  if (!prospect) return
+  draggedProspectId.value = prospect.id
+  draftOrder.value = [...props.prospects]
+  const handle: HTMLElement | null = event.currentTarget instanceof HTMLElement ? event.currentTarget : null
+  const row: HTMLElement | null = handle?.closest('tr') ?? null
+  if (!event.dataTransfer) return
+  event.dataTransfer.effectAllowed = 'move'
+  event.dataTransfer.setData('text/plain', String(prospect.id))
+  if (row) {
+    const bounds: DOMRect = row.getBoundingClientRect()
+    event.dataTransfer.setDragImage(row, event.clientX - bounds.left, event.clientY - bounds.top)
+  }
+}
+
+/**
+ * Slide the dragged row into the hovered slot so the table previews the landing position live.
+ * @param event - The native dragover event.
+ * @param index - Index of the hovered row in the live order.
+ */
+function onRowDragOver(event: DragEvent, index: number): void {
+  const order: Prospect[] | null = draftOrder.value
+  if (!props.reorderable || order === null) return
+  event.preventDefault()
+  if (event.dataTransfer) event.dataTransfer.dropEffect = 'move'
+  const from: number = order.findIndex((prospect: Prospect): boolean => prospect.id === draggedProspectId.value)
+  if (from === -1 || from === index) return
+  const next: Prospect[] = [...order]
+  const moved: Prospect | undefined = next.splice(from, 1)[0]
+  if (moved === undefined) return
+  next.splice(index, 0, moved)
+  draftOrder.value = next
+}
+
+/**
+ * Commit the previewed order when the row is released over the table.
+ * @param event - The native drop event.
+ */
+function onRowDrop(event: DragEvent): void {
+  const order: Prospect[] | null = draftOrder.value
+  if (!props.reorderable || order === null) return
+  event.preventDefault()
+  const changed: boolean = order.some(
+    (prospect: Prospect, position: number): boolean => prospect.id !== props.prospects[position]?.id,
+  )
+  if (changed) {
+    emit(
+      'reorder',
+      order.map((prospect: Prospect): number => prospect.id),
+    )
+  }
+  draggedProspectId.value = null
+  draftOrder.value = null
+}
+
+/** Cancel the preview when the drag ends without a drop on the table — the rows snap back. */
 function onDragEnd(): void {
-  dragIndex.value = null
-  dropIndex.value = null
+  draggedProspectId.value = null
+  draftOrder.value = null
 }
 </script>
