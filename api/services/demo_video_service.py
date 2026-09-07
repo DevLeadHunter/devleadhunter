@@ -131,6 +131,36 @@ def delete_files_for_slug(slug: str) -> None:
         logger.warning("[Video] R2 cleanup failed for slug=%s", slug, exc_info=True)
 
 
+def reenqueue_campaigns_after_video_ready(db: Session, prospect_id: int | None, user_id: int) -> None:
+    """
+    Best-effort: pull a prospect into its active campaigns once its prospection video is ready.
+
+    A prospect skipped at campaign launch for lacking a video gets no queue row and nothing
+    reconsiders it — the send queue is built once. When the video finishes the prospect can finally
+    be emailed, so we re-run the per-prospect enqueue here. Never raises: a queue hiccup must not
+    undo a finished video.
+
+    Args:
+        db: Active database session.
+        prospect_id: The prospect whose video just became ready (None for a site with no prospect).
+        user_id: Owner of the prospect's campaigns.
+    """
+    if not prospect_id:
+        return
+    try:
+        from services.campaign_queue_service import CampaignQueueService
+
+        added: int = CampaignQueueService(db).enqueue_ready_prospect(prospect_id, user_id)
+        if added:
+            logger.info(
+                "[Video] Video ready for prospect %d — auto-enqueued into %d active campaign send(s)",
+                prospect_id,
+                added,
+            )
+    except Exception:
+        logger.warning("[Video] Auto re-enqueue after video ready failed for prospect %s", prospect_id, exc_info=True)
+
+
 class DemoVideoGenerationError(Exception):
     """Raised when a step of the video pipeline fails (message shown in-app)."""
 
@@ -300,6 +330,7 @@ class DemoVideoService:
                 site.video_generated_at = datetime.now(UTC)
                 db.commit()
                 logger.info("Prospection video ready for slug=%s", site.slug)
+                reenqueue_campaigns_after_video_ready(db, site.prospect_id, user_id)
             finally:
                 db.close()
 

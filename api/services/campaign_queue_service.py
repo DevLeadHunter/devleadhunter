@@ -23,7 +23,7 @@ from sqlalchemy import and_, case, func, or_, select
 from sqlalchemy.orm import Session, joinedload
 
 from enums.demo_site_status import DemoSiteStatus
-from models.campaign import Campaign, CampaignStatus
+from models.campaign import Campaign, CampaignStatus, campaign_prospects
 from models.campaign_follow_up import CampaignFollowUp
 from models.demo_site import DemoSite
 from models.email_log import EmailLog
@@ -199,25 +199,18 @@ class CampaignQueueService:
                 uses_demo = uses_demo_a
                 uses_video = uses_video_a
 
-            # Guard: never enqueue an email that would ship an empty {lien_demo}.
-            if uses_demo and not self._demo_link_for_prospect(prospect.id, campaign.user_id, variant):
+            # Guards: no empty {lien_demo}, and no video-only template without a ready video.
+            skip_kind = self._send_guard_skip(
+                prospect.id, campaign.user_id, variant, uses_demo, uses_video, campaign.include_video
+            )
+            if skip_kind == "demo":
                 logger.info("[Queue] Skipping prospect %d — no active demo site for {lien_demo}", prospect.id)
                 result.skipped_no_demo.append({"id": prospect.id, "name": prospect.name or ""})
                 continue
-
-            # Guard: a video-only template (no {lien_demo} fallback) still needs a
-            # ready video and the campaign's video toggle on, else the email has no
-            # content. A combo template ({lien_demo} + {vignette_video}) is never
-            # skipped here — it degrades to the demo link when the video is missing
-            # or the toggle is off (handled at dispatch).
-            if uses_video and not uses_demo:
-                has_video = campaign.include_video and bool(
-                    self._video_for_prospect(prospect.id, campaign.user_id, variant)[0]
-                )
-                if not has_video:
-                    logger.info("[Queue] Skipping prospect %d — video-only template, no video ready", prospect.id)
-                    result.skipped_no_video.append({"id": prospect.id, "name": prospect.name or ""})
-                    continue
+            if skip_kind == "video":
+                logger.info("[Queue] Skipping prospect %d — video-only template, no video ready", prospect.id)
+                result.skipped_no_video.append({"id": prospect.id, "name": prospect.name or ""})
+                continue
 
             to_enqueue.append((prospect.id, tpl_id, variant))
 
@@ -251,6 +244,138 @@ class CampaignQueueService:
             len(result.skipped_no_demo),
         )
         return result
+
+    def enqueue_ready_prospect(self, prospect_id: int, user_id: int) -> int:
+        """
+        Add a now-sendable prospect to the send queue of each ACTIVE campaign it belongs to.
+
+        The queue is built once, at launch: a prospect skipped then for lacking a demo site or a
+        prospection video gets **no** queue row, and nothing reconsiders it. Called when that
+        prospect's prospection video becomes ready, this re-applies the launch guards (demo link and
+        video) for this one prospect and appends a J1 send wherever it now qualifies. A prospect that
+        already has an initial row (of any status) is left untouched — a sent, pending, failed or
+        manually cancelled send is never resurrected — and other prospects are not re-evaluated.
+
+        Args:
+            prospect_id: The prospect that just became sendable.
+            user_id: Owner of the prospect and its campaigns.
+
+        Returns:
+            The number of J1 items added across the prospect's active campaigns.
+        """
+        campaigns: list[Campaign] = list(
+            self.db.execute(
+                select(Campaign)
+                .join(campaign_prospects, campaign_prospects.c.campaign_id == Campaign.id)
+                .where(
+                    campaign_prospects.c.prospect_id == prospect_id,
+                    Campaign.user_id == user_id,
+                    Campaign.status == CampaignStatus.ACTIVE.value,
+                )
+            )
+            .scalars()
+            .all()
+        )
+        added: int = 0
+        for campaign in campaigns:
+            if self._enqueue_single_ready_prospect(campaign, prospect_id):
+                added += 1
+        return added
+
+    def _enqueue_single_ready_prospect(self, campaign: Campaign, prospect_id: int) -> bool:
+        """
+        Append one pending J1 send for a now-ready prospect in one active campaign, if it qualifies.
+
+        No-op (returns False) when: the campaign is SMS (its queue lifecycle is demo-based, filled at
+        launch/resume, not video-driven); the prospect already has an initial row in this campaign
+        (any status); it is not part of the campaign; it unsubscribed or is « ne plus contacter »; the
+        A/B template is missing; or it still fails the demo/video guard. The A/B variant is taken from
+        the prospect's position, exactly as at launch, so the split stays consistent. The send is
+        appended after the campaign's last pending slot, honouring the send policy.
+
+        Args:
+            campaign: An active campaign the prospect belongs to.
+            prospect_id: The prospect to (maybe) enqueue.
+
+        Returns:
+            True when a pending J1 row was created.
+        """
+        if campaign.channel == "sms":
+            return False
+
+        # An initial row of any status means this prospect was already decided for this campaign.
+        existing: int | None = self.db.execute(
+            select(EmailQueue.id)
+            .where(
+                EmailQueue.campaign_id == campaign.id,
+                EmailQueue.prospect_id == prospect_id,
+                EmailQueue.queue_type == "initial",
+            )
+            .limit(1)
+        ).scalar_one_or_none()
+        if existing is not None:
+            return False
+
+        located: tuple[int, ProspectDB] | None = next(
+            ((index, prospect) for index, prospect in enumerate(campaign.prospects) if prospect.id == prospect_id),
+            None,
+        )
+        if located is None:
+            return False
+        index, prospect = located
+
+        if not prospect.email or unsubscribe_service.is_unsubscribed(self.db, prospect.email):
+            return False
+        if prospect.do_not_contact:
+            return False
+
+        # A/B variant is assigned by position, identically to the bulk enqueue.
+        if campaign.ab_template_id_b is not None:
+            variant: str | None = "A" if index % 2 == 0 else "B"
+            template_id: int | None = campaign.template_id if variant == "A" else campaign.ab_template_id_b
+        else:
+            variant = None
+            template_id = campaign.template_id
+        if not template_id:
+            return False
+
+        template: EmailTemplate | None = self.db.get(EmailTemplate, template_id)
+        skip_kind: str | None = self._send_guard_skip(
+            prospect_id,
+            campaign.user_id,
+            variant,
+            self._template_uses_demo_link(template),
+            self._template_uses_video(template),
+            campaign.include_video,
+        )
+        if skip_kind is not None:
+            return False
+
+        now = _utcnow()
+        latest: datetime | None = self.db.execute(
+            select(func.max(EmailQueue.scheduled_at)).where(
+                EmailQueue.campaign_id == campaign.id,
+                EmailQueue.status == _STATUS_PENDING,
+            )
+        ).scalar()
+        slot: datetime = self._schedule_slots(campaign, 1, now, latest)[0]
+        self.db.add(
+            EmailQueue(
+                user_id=campaign.user_id,
+                campaign_id=campaign.id,
+                prospect_id=prospect_id,
+                template_id=template_id,
+                email_account_id=None,
+                queue_type="initial",
+                ab_variant=variant,
+                follow_up_index=0,
+                scheduled_at=slot,
+                status=_STATUS_PENDING,
+            )
+        )
+        self.db.commit()
+        logger.info("[Queue] Auto-enqueued now-ready prospect %d into active campaign %d", prospect_id, campaign.id)
+        return True
 
     def _schedule_slots(
         self,
@@ -654,6 +779,44 @@ class CampaignQueueService:
         if variant:
             url = append_query_param(url, "v", variant)
         return url, public_thumbnail_url(site.slug)
+
+    def _send_guard_skip(
+        self,
+        prospect_id: int,
+        user_id: int,
+        variant: str | None,
+        uses_demo: bool,
+        uses_video: bool,
+        include_video: bool,
+    ) -> str | None:
+        """
+        Return why a prospect can't receive the initial email yet, or None when it can.
+
+        Two launch guards, shared by the bulk enqueue and the single-prospect re-enqueue:
+          - ``"demo"``: the template ships ``{lien_demo}`` but the prospect has no active demo site.
+          - ``"video"``: a video-only template (no ``{lien_demo}`` fallback) has no ready video, or the
+            campaign's video toggle is off — the email would have no content. A combo template
+            (``{lien_demo}`` + ``{vignette_video}``) is never blocked here: it degrades to the demo
+            link at dispatch when the video is missing.
+
+        Args:
+            prospect_id: Prospect being evaluated.
+            user_id: Owner of the prospect's demo/video.
+            variant: A/B variant assigned to this prospect (None outside A/B).
+            uses_demo: Whether the assigned template references ``{lien_demo}``.
+            uses_video: Whether it references ``{lien_video}``/``{vignette_video}``.
+            include_video: The campaign's video toggle.
+
+        Returns:
+            ``"demo"``, ``"video"``, or None when the prospect can be enqueued.
+        """
+        if uses_demo and not self._demo_link_for_prospect(prospect_id, user_id, variant):
+            return "demo"
+        if uses_video and not uses_demo:
+            has_video: bool = include_video and bool(self._video_for_prospect(prospect_id, user_id, variant)[0])
+            if not has_video:
+                return "video"
+        return None
 
     async def _dispatch(self, item: EmailQueue) -> None:
         """
