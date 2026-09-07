@@ -81,6 +81,12 @@ export type SmsStats = {
   cost_cents: number
 }
 
+/** The platform smsmode account's remaining credit balance (admin-only). */
+export type SmsCredit = {
+  configured: boolean
+  credits: number | null
+}
+
 /** Payload to send one free-text SMS (manual composer / self-test). */
 export type SmsManualSendPayload = {
   to: string
@@ -179,6 +185,14 @@ export class SmsService {
    */
   static async getStats(): Promise<SmsStats> {
     return ApiClient.get<SmsStats>('/api/v1/sms/stats')
+  }
+
+  /**
+   * Fetch the platform smsmode account's remaining credit balance (admin-only).
+   * @returns The remaining credits (null when unreadable) and whether smsmode is configured.
+   */
+  static async getCredit(): Promise<SmsCredit> {
+    return ApiClient.get<SmsCredit>('/api/v1/sms/credit')
   }
 
   /**

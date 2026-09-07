@@ -86,6 +86,46 @@ class TestSmsModeProvider:
         provider._api_key = ""
         assert provider.is_configured is False
 
+    @pytest.mark.asyncio
+    async def test_credit_balance_parses_bare_number(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        captured: dict = {}
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            captured["url"] = str(request.url)
+            captured["headers"] = dict(request.headers)
+            return httpx.Response(200, text="152.5")
+
+        transport = httpx.MockTransport(handler)
+        original = httpx.AsyncClient
+        monkeypatch.setattr(httpx, "AsyncClient", lambda *a, **k: original(*a, **{**k, "transport": transport}))
+
+        provider = SmsModeProvider()
+        provider._api_key = "test-key"
+        balance = await provider.get_credit_balance()
+
+        assert balance == 152.5
+        assert captured["headers"]["x-api-key"] == "test-key"
+        assert "accessToken=test-key" in captured["url"]
+
+    @pytest.mark.asyncio
+    async def test_credit_balance_none_on_http_error(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        transport = httpx.MockTransport(lambda req: httpx.Response(401, text="unauthorized"))
+        original = httpx.AsyncClient
+        monkeypatch.setattr(httpx, "AsyncClient", lambda *a, **k: original(*a, **{**k, "transport": transport}))
+        provider = SmsModeProvider()
+        provider._api_key = "test-key"
+        assert await provider.get_credit_balance() is None
+
+    @pytest.mark.asyncio
+    async def test_credit_balance_none_without_key(self) -> None:
+        provider = SmsModeProvider()
+        provider._api_key = ""
+        assert await provider.get_credit_balance() is None
+
+    def test_parse_credit_handles_status_prefix_and_comma(self) -> None:
+        assert SmsModeProvider._parse_credit("0 | 42,75") == 42.75
+        assert SmsModeProvider._parse_credit("bad") is None
+
 
 class TestComposeBody:
     def test_relance_body_recalls_the_email_with_link_signature_and_stop(self) -> None:

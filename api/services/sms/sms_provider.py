@@ -38,6 +38,16 @@ class SmsProvider(ABC):
         raise NotImplementedError
 
     @abstractmethod
+    async def get_credit_balance(self) -> float | None:
+        """Read the platform account's remaining credit balance.
+
+        Returns:
+            The remaining credits, or ``None`` when the provider is not
+            configured or the balance could not be read (never raises).
+        """
+        raise NotImplementedError
+
+    @abstractmethod
     async def send(
         self,
         *,
