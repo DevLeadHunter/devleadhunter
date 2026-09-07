@@ -43,7 +43,8 @@ class EmailVariables:
 
         Emails cannot embed a playable video, so the proven pattern is a personalised thumbnail
         (his site plus a play button) linking to the player page. Inline styles only, since email
-        clients strip stylesheets.
+        clients strip stylesheets. A small text link follows the image: clients that block remote
+        images (Outlook, some Orange) would otherwise leave a video-only email with no way in.
 
         Args:
             video_link: Player page URL on the demo host (`/v/{slug}`).
@@ -54,11 +55,15 @@ class EmailVariables:
         """
         if not video_link or not thumbnail_url:
             return ""
+        label: str = EmailVariables._demo_link_label(video_link)
         return (
-            f'<p style="margin:16px 0;"><a href="{video_link}" target="_blank">'
+            f'<p style="margin:16px 0 6px;"><a href="{video_link}" target="_blank">'
             f'<img src="{thumbnail_url}" alt="Votre site en vidéo" width="480" '
             f'style="display:block;width:100%;max-width:480px;border-radius:12px;border:0;" />'
             f"</a></p>"
+            f'<p style="margin:0 0 16px;font-size:13px;color:#555;">La vidéo : '
+            f'<a href="{video_link}" target="_blank" rel="noopener noreferrer" '
+            f'style="color:#111;text-decoration:underline;">{label}</a></p>'
         )
 
     @staticmethod
