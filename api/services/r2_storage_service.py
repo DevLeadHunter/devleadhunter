@@ -46,7 +46,7 @@ class R2StorageService:
     VIDEOS_WEBSITES_PREFIX = "videos/websites"
     VIDEOS_PRESENTER_PREFIX = "videos/presenter"
     IMAGES_WEBSITES_PREFIX = "images/websites"
-    IMAGES_PRESENTER_PREFIX = "images/presenter"
+    IMAGES_PROFILE_PREFIX = "images/profile"
     IMAGES_SUPPORT_PREFIX = "images/support"
     IMAGES_PROSPECTS_PREFIX = "images/prospects"
 
@@ -174,9 +174,9 @@ class R2StorageService:
         return f"{cls.VIDEOS_PRESENTER_PREFIX}/{user_id}.mp4"
 
     @classmethod
-    def presenter_photo_key(cls, user_id: int) -> str:
+    def profile_photo_key(cls, user_id: int) -> str:
         """
-        Build the key of a user's presenter photo (bubble on email thumbnails).
+        Build the key of a user's profile photo (bubble on email thumbnails).
 
         Args:
             user_id: Owner of the photo.
@@ -184,7 +184,7 @@ class R2StorageService:
         Returns:
             The object key.
         """
-        return f"{cls.IMAGES_PRESENTER_PREFIX}/{user_id}.jpg"
+        return f"{cls.IMAGES_PROFILE_PREFIX}/{user_id}.jpg"
 
     @classmethod
     def support_key(cls, original_filename: str | None) -> str:

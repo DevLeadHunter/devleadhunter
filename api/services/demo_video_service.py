@@ -353,7 +353,7 @@ class DemoVideoService:
     @staticmethod
     async def _resolve_presenter_photo(db: Session, user_id: int, work_dir: Path) -> Path | None:
         """
-        Materialise the presenter photo (thumbnail bubble) as a local file.
+        Materialise the user's profile photo (thumbnail bubble) as a local file.
 
         The photo is optional and must never fail a generation: any resolution
         problem just means a thumbnail without the bubble.
@@ -369,7 +369,7 @@ class DemoVideoService:
         from models.user import User
 
         user = db.query(User).filter(User.id == user_id).first()
-        stored = str(user.presenter_photo_path or "").strip() if user else ""
+        stored = str(user.profile_photo_path or "").strip() if user else ""
         if not stored:
             return None
         try:

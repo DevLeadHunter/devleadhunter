@@ -1,7 +1,6 @@
 import { ApiClient } from '~/services/api'
 
 const BASE_URL: string = '/api/v1/settings/presenter-video'
-const PHOTO_BASE_URL: string = '/api/v1/settings/presenter-photo'
 
 /**
  * Above this weight, a network-level failure is almost always the reverse proxy
@@ -24,11 +23,6 @@ export type PresenterVideo = {
   auto_generate?: boolean
   source?: PresenterVideoSource
   updated_at?: string | null
-}
-
-/** Presenter photo state returned by the API (bubble on video thumbnails). */
-export type PresenterPhoto = {
-  has_photo: boolean
 }
 
 /**
@@ -215,56 +209,5 @@ export class PresenterVideoService {
     if (!response.ok) return null
     const blob: Blob = await response.blob()
     return URL.createObjectURL(blob)
-  }
-
-  /**
-   * Fetch the presenter photo state (bubble on video thumbnails).
-   * @returns Photo state (``has_photo: false`` when none was uploaded).
-   */
-  static async getPresenterPhoto(): Promise<PresenterPhoto> {
-    return ApiClient.get<PresenterPhoto>(PHOTO_BASE_URL)
-  }
-
-  /**
-   * Upload (or replace) the presenter photo drawn on video thumbnails.
-   * @param file - Portrait image (JPEG / PNG / WebP).
-   * @returns The stored photo state.
-   * @throws When the upload fails (message from the API when available).
-   */
-  static async uploadPresenterPhoto(file: File): Promise<PresenterPhoto> {
-    const formData: FormData = new FormData()
-    formData.append('file', file)
-    return putMultipart<PresenterPhoto>(PHOTO_BASE_URL, formData, file.size)
-  }
-
-  /**
-   * Delete the presenter photo (file + record).
-   * @returns The cleared photo state.
-   */
-  static async deletePresenterPhoto(): Promise<PresenterPhoto> {
-    return ApiClient.delete<PresenterPhoto>(PHOTO_BASE_URL)
-  }
-
-  /**
-   * Fetch the user's own presenter photo as a blob (sidecar build + preview).
-   * @returns The image blob, or null when no photo is stored.
-   */
-  static async fetchPresenterPhotoBlob(): Promise<Blob | null> {
-    const userStore: ReturnType<typeof useUserStore> = useUserStore()
-    const config: ReturnType<typeof useRuntimeConfig> = useRuntimeConfig()
-    const response: Response = await fetch(`${config.public.apiBase}${PHOTO_BASE_URL}/file`, {
-      headers: userStore.token ? { Authorization: `Bearer ${userStore.token}` } : {},
-    })
-    if (!response.ok) return null
-    return response.blob()
-  }
-
-  /**
-   * Fetch the presenter photo as a blob URL for the settings preview.
-   * @returns An object URL (caller must ``URL.revokeObjectURL`` it), or null.
-   */
-  static async getPresenterPhotoObjectUrl(): Promise<string | null> {
-    const blob: Blob | null = await PresenterVideoService.fetchPresenterPhotoBlob()
-    return blob ? URL.createObjectURL(blob) : null
   }
 }

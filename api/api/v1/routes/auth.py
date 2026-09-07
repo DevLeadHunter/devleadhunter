@@ -2,10 +2,12 @@
 Authentication routes for user signup and login.
 """
 
+import asyncio
 from datetime import timedelta
 from typing import Any
 
-from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi import APIRouter, Depends, File, HTTPException, Request, UploadFile, status
+from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 
 from core.config import settings
@@ -14,10 +16,12 @@ from core.rate_limiter import limiter
 from enums.user_role import UserRole
 from models.credit_settings import CreditSettings
 from models.user import User
-from schemas.user import Token, UserLogin, UserResponse, UserSignup, UserUpdate
+from schemas.user import ProfilePhotoResponse, Token, UserLogin, UserResponse, UserSignup, UserUpdate
 from services.activity_log_service import CATEGORY_AUTH, STATUS_INFO, activity_log_service
 from services.auth_service import AuthService, get_current_active_user
 from services.credit_service import TransactionType, credit_service
+from services.profile_photo_service import profile_photo_service
+from services.r2_storage_service import r2_storage
 
 router = APIRouter(prefix="/auth", tags=["authentication"])
 
@@ -209,6 +213,53 @@ async def update_current_user_info(
     db.refresh(current_user)
 
     return _build_user_response(db, current_user)
+
+
+@router.get("/me/photo", response_model=ProfilePhotoResponse)
+async def get_profile_photo(
+    current_user: User = Depends(get_current_active_user),
+) -> Any:
+    """Return whether the current user has a profile photo."""
+    return {"has_photo": bool(current_user.profile_photo_path)}
+
+
+@router.put("/me/photo", response_model=ProfilePhotoResponse)
+async def upload_profile_photo(
+    file: UploadFile = File(...),
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db),
+) -> Any:
+    """Upload (or replace) the profile photo (today: the video-thumbnail bubble)."""
+    await profile_photo_service.store_photo(db, current_user, file)
+    return {"has_photo": True}
+
+
+@router.delete("/me/photo", response_model=ProfilePhotoResponse)
+async def delete_profile_photo(
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db),
+) -> Any:
+    """Delete the profile photo (file + user column)."""
+    profile_photo_service.delete_photo(db, current_user)
+    return {"has_photo": False}
+
+
+@router.get("/me/photo/file")
+async def stream_profile_photo_file(
+    current_user: User = Depends(get_current_active_user),
+) -> StreamingResponse:
+    """Stream the user's own profile photo from R2 (profile preview + desktop build)."""
+    stored = str(current_user.profile_photo_path or "")
+    if not stored:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Aucune photo de profil.")
+    try:
+        body, content_type, size = await asyncio.to_thread(r2_storage.open_stream, stored)
+    except Exception as error:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Le fichier de la photo est introuvable."
+        ) from error
+    headers = {"Content-Length": str(size)} if size else None
+    return StreamingResponse(body.iter_chunks(), media_type=content_type, headers=headers)
 
 
 @router.post("/me/complete-onboarding", response_model=UserResponse)

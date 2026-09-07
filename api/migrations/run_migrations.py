@@ -126,6 +126,7 @@ MIGRATION_MODULES: list[tuple[str, str]] = [
     ("add_presenter_video_site_seconds", "migrations.add_presenter_video_site_seconds"),
     ("add_user_company_website_url", "migrations.add_user_company_website_url"),
     ("add_user_presenter_photo", "migrations.add_user_presenter_photo"),
+    ("rename_presenter_photo_to_profile_photo", "migrations.rename_presenter_photo_to_profile_photo"),
 ]
 
 # Modules of this package that are not migrations and must not be registered.

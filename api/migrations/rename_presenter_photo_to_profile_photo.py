@@ -1,8 +1,8 @@
-"""Add ``presenter_photo_path`` to users (photo bubble on video thumbnails).
+"""Rename ``users.presenter_photo_path`` to ``profile_photo_path``.
 
-R2 key of the presenter photo drawn as a round bubble on the prospection-video
-email thumbnail — a human face is the strongest inbox trust cue. Nullable, no
-backfill needed.
+The photo is a profile-level asset (today the thumbnail bubble, reusable
+elsewhere later) — the column must not carry its first use as a name. Data is
+preserved; a fresh install already gets ``profile_photo_path`` from the model.
 """
 
 from __future__ import annotations
@@ -37,14 +37,12 @@ def _column_exists(conn, column_name: str) -> bool:
 
 def run_migration() -> None:
     with engine.connect() as conn:
-        # Superseded by ``rename_presenter_photo_to_profile_photo`` — on a fresh
-        # install the model already creates ``profile_photo_path``, add nothing.
-        if not _column_exists(conn, "presenter_photo_path") and not _column_exists(conn, "profile_photo_path"):
+        if _column_exists(conn, "presenter_photo_path") and not _column_exists(conn, "profile_photo_path"):
             conn.execute(
                 text(
                     """
                     ALTER TABLE users
-                    ADD COLUMN presenter_photo_path VARCHAR(512) NULL
+                    CHANGE COLUMN presenter_photo_path profile_photo_path VARCHAR(512) NULL
                     """
                 )
             )
@@ -53,4 +51,4 @@ def run_migration() -> None:
 
 if __name__ == "__main__":
     run_migration()
-    print("users.presenter_photo_path ensured.")
+    print("users.profile_photo_path ensured.")

@@ -15,7 +15,14 @@
             <UIcon name="i-lucide-chevron-left" class="h-4 w-4" />
           </button>
 
+          <img
+            v-if="photoPreviewUrl"
+            :src="photoPreviewUrl"
+            alt="Photo de profil"
+            class="h-10 w-10 shrink-0 rounded-full border border-[var(--app-line)] object-cover"
+          />
           <span
+            v-else
             class="font-label flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[var(--app-ink)] text-xs font-semibold text-[var(--app-surface)]"
           >
             {{ userInitials }}
@@ -35,6 +42,64 @@
         </div>
 
         <form id="profile-form" class="flex-1 space-y-4 overflow-y-auto px-5 py-4" @submit.prevent="handleSave">
+          <div>
+            <span class="text-muted mb-1.5 block text-xs font-medium">
+              Photo de profil <span class="text-[var(--app-ink-soft)]">(facultatif)</span>
+            </span>
+            <div class="flex items-center gap-3">
+              <img
+                v-if="photoPreviewUrl"
+                :src="photoPreviewUrl"
+                alt="Photo de profil"
+                class="h-14 w-14 shrink-0 rounded-full border border-[var(--app-line)] object-cover"
+              />
+              <span
+                v-else
+                class="flex h-14 w-14 shrink-0 items-center justify-center rounded-full border border-dashed border-[var(--app-line)] bg-[var(--app-surface-2)]"
+              >
+                <UIcon name="i-lucide-user" class="h-5 w-5 text-[var(--app-ink-soft)]" />
+              </span>
+              <div class="flex flex-wrap items-center gap-2">
+                <button
+                  type="button"
+                  class="app-btn-secondary h-8 px-3 text-xs disabled:opacity-50"
+                  :disabled="isUploadingPhoto"
+                  @click="openPhotoPicker"
+                >
+                  <UIcon
+                    :name="isUploadingPhoto ? 'i-lucide-loader-circle' : 'i-lucide-upload'"
+                    :class="['h-3.5 w-3.5', isUploadingPhoto && 'animate-spin']"
+                  />
+                  {{ hasProfilePhoto ? 'Remplacer' : 'Ajouter une photo' }}
+                </button>
+                <button
+                  v-if="hasProfilePhoto"
+                  type="button"
+                  class="btn-danger h-8 px-3 text-xs disabled:opacity-50"
+                  :disabled="isDeletingPhoto"
+                  @click="removeProfilePhoto"
+                >
+                  <UIcon
+                    :name="isDeletingPhoto ? 'i-lucide-loader-circle' : 'i-lucide-trash-2'"
+                    :class="['h-3.5 w-3.5', isDeletingPhoto && 'animate-spin']"
+                  />
+                  Retirer
+                </button>
+              </div>
+            </div>
+            <input
+              ref="photoInputRef"
+              type="file"
+              accept="image/jpeg,image/png,image/webp"
+              class="hidden"
+              @change="handlePhotoSelected"
+            />
+            <p class="text-muted mt-1.5 text-xs">
+              Affichée en bulle sur la miniature de vos vidéos de prospection — un visage met en confiance et incite au
+              clic.
+            </p>
+          </div>
+
           <div>
             <label class="text-muted mb-1.5 block text-xs font-medium" for="profile-name">Nom</label>
             <input
@@ -125,9 +190,11 @@
 <script lang="ts" setup>
 import type { UseToastReturn } from '~/types/Composables'
 import type { ProfileForm, UiProfileDrawerEmits } from '~/types/UiProfileDrawer'
+import type { ProfilePhoto } from '~/services/profilePhotoService'
 import type { ComputedRef, EmitFn, Ref } from 'vue'
 import type { UiDrawerProps } from '~/types/UiDrawer'
-import { computed, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, ref, watch } from 'vue'
+import { ProfilePhotoService } from '~/services/profilePhotoService'
 import { useUserStore } from '~/stores/user'
 import { useToast } from '~/composables/useToast'
 
@@ -155,6 +222,13 @@ const isSaving: Ref<boolean> = ref(false)
 /** Editable profile form state. */
 const form: Ref<ProfileForm> = ref({ name: '', email: '', company_name: '', company_website_url: '' })
 
+/** Profile photo state + round preview. */
+const hasProfilePhoto: Ref<boolean> = ref(false)
+const photoPreviewUrl: Ref<string | null> = ref(null)
+const isUploadingPhoto: Ref<boolean> = ref(false)
+const isDeletingPhoto: Ref<boolean> = ref(false)
+const photoInputRef: Ref<HTMLInputElement | null> = ref(null)
+
 /** Initials shown in the header avatar. */
 const userInitials: ComputedRef<string> = computed((): string => {
   const name: string = userStore.userName || ''
@@ -165,6 +239,79 @@ const userInitials: ComputedRef<string> = computed((): string => {
   }
   return name.substring(0, 2).toUpperCase()
 })
+
+/**
+ * Load the profile photo state + its round preview from the API.
+ * @returns A promise that resolves once the photo state is loaded.
+ */
+async function loadProfilePhoto(): Promise<void> {
+  try {
+    const photo: ProfilePhoto = await ProfilePhotoService.getProfilePhoto()
+    hasProfilePhoto.value = photo.has_photo
+    releasePhotoPreview()
+    if (photo.has_photo) {
+      photoPreviewUrl.value = await ProfilePhotoService.getProfilePhotoObjectUrl()
+    }
+  } catch {
+    // La photo est un bonus : son échec de chargement ne bloque pas le drawer.
+    hasProfilePhoto.value = false
+  }
+}
+
+/**
+ * Open the hidden photo file input.
+ */
+function openPhotoPicker(): void {
+  photoInputRef.value?.click()
+}
+
+/**
+ * Upload the picked portrait and refresh the preview.
+ * @param event - Native change event of the photo input.
+ * @returns A promise that resolves once the upload finishes.
+ */
+async function handlePhotoSelected(event: Event): Promise<void> {
+  const input: HTMLInputElement | null = event.target as HTMLInputElement | null
+  const file: File | null = input?.files?.[0] ?? null
+  if (input) input.value = ''
+  if (!file) return
+  isUploadingPhoto.value = true
+  try {
+    await ProfilePhotoService.uploadProfilePhoto(file)
+    await loadProfilePhoto()
+    toast.success('Photo enregistrée')
+  } catch (err: unknown) {
+    toast.error(err instanceof Error ? err.message : "Impossible d'enregistrer la photo")
+  } finally {
+    isUploadingPhoto.value = false
+  }
+}
+
+/**
+ * Delete the profile photo and clear its preview.
+ * @returns A promise that resolves once the deletion finishes.
+ */
+async function removeProfilePhoto(): Promise<void> {
+  isDeletingPhoto.value = true
+  try {
+    await ProfilePhotoService.deleteProfilePhoto()
+    hasProfilePhoto.value = false
+    releasePhotoPreview()
+    toast.success('Photo retirée')
+  } catch (err: unknown) {
+    toast.error(err instanceof Error ? err.message : 'Impossible de retirer la photo')
+  } finally {
+    isDeletingPhoto.value = false
+  }
+}
+
+/**
+ * Revoke the photo preview object URL.
+ */
+function releasePhotoPreview(): void {
+  if (photoPreviewUrl.value) URL.revokeObjectURL(photoPreviewUrl.value)
+  photoPreviewUrl.value = null
+}
 
 /**
  * Persist the edited profile.
@@ -198,10 +345,15 @@ watch(
         company_name: userStore.user?.company_name ?? '',
         company_website_url: userStore.user?.company_website_url ?? '',
       }
+      loadProfilePhoto()
     }
   },
   { immediate: true },
 )
+
+onBeforeUnmount((): void => {
+  releasePhotoPreview()
+})
 </script>
 
 <style scoped>
