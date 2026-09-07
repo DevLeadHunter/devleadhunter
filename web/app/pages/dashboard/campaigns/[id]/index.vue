@@ -468,7 +468,7 @@
           <p class="text-muted mx-auto mt-1 max-w-sm text-sm">
             Active l'A/B test dans la configuration pour comparer deux variantes en temps réel.
           </p>
-          <button class="btn-secondary mt-4" @click="activeTab = 'config'">
+          <button class="btn-secondary mx-auto mt-4" @click="activeTab = 'config'">
             <UIcon name="i-lucide-settings-2" class="mr-1.5 h-4 w-4" />Configurer
           </button>
         </div>
