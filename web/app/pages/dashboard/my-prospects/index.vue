@@ -111,7 +111,7 @@
         </div>
       </div>
 
-      <div class="grid grid-cols-2 gap-4 @4xl:grid-cols-5">
+      <div class="grid grid-cols-2 gap-4 @4xl:grid-cols-6">
         <div>
           <label class="app-label mb-1.5 block">Site web</label>
           <UiSelectField v-model="filterWebsite" :options="websiteFilterOptions" />
@@ -127,6 +127,10 @@
         <div>
           <label class="app-label mb-1.5 block">Température</label>
           <UiSelectField v-model="filterTemperature" :options="temperatureFilterOptions" />
+        </div>
+        <div>
+          <label class="app-label mb-1.5 block">Email</label>
+          <UiSelectField v-model="filterEmail" :options="emailFilterOptions" />
         </div>
         <div class="flex items-end">
           <button class="app-btn-secondary w-full" @click="clearFilters">Réinitialiser</button>
@@ -426,6 +430,7 @@ const {
   filterCity,
   filterWebsite,
   filterTemperature,
+  filterEmail,
   activeTab,
   clearFilters: resetFilters,
 }: ReturnType<typeof useMyProspectsFilters> = useMyProspectsFilters()
@@ -442,6 +447,10 @@ const temperatureFilterOptions: { value: string; label: string }[] = [
   { value: 'hot', label: 'Chaud' },
   { value: 'warm', label: 'Tiède' },
   { value: 'cold', label: 'Froid' },
+]
+const emailFilterOptions: { value: string; label: string }[] = [
+  { value: 'all', label: 'Tous' },
+  { value: 'undeliverable', label: 'Injoignable (bounce)' },
 ]
 const temperatureByPid: Ref<Record<number, string>> = ref({})
 const currentPage: Ref<number> = ref(1)
@@ -536,6 +545,11 @@ const baseFiltered: ComputedRef<Prospect[]> = computed(() => {
     filtered = filtered.filter((prospect: Prospect) => temperatureByPid.value[prospect.id] === filterTemperature.value)
   }
 
+  // « Injoignable » = email mort (bounce sans adresse de repli) → à récupérer en campagne SMS.
+  if (filterEmail.value === 'undeliverable') {
+    filtered = filtered.filter((prospect: Prospect) => prospect.email_undeliverable === true)
+  }
+
   return filtered
 })
 
@@ -619,7 +633,7 @@ function clearFilters(): void {
 }
 
 // Reset to the first page whenever the active filter set or tab changes.
-watch([activeTab, searchQuery, filterCity, filterCategory, filterWebsite], (): void => {
+watch([activeTab, searchQuery, filterCity, filterCategory, filterWebsite, filterTemperature, filterEmail], (): void => {
   currentPage.value = 1
 })
 

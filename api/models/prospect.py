@@ -207,3 +207,9 @@ class Prospect(ProspectBase):
         None, description="Optional note on why contact was stopped (shown on the held-back queue lines)"
     )
     do_not_contact_at: datetime | None = Field(None, description="When « ne plus contacter » was set")
+    email_undeliverable: bool = Field(
+        False,
+        description="The campaign email bounced with no other address to try — recover the prospect via SMS",
+    )
+    email_undeliverable_at: datetime | None = Field(None, description="When the email was flagged undeliverable")
+    email_undeliverable_reason: str | None = Field(None, description="The bounce reason reported by the provider")

@@ -151,6 +151,13 @@
               />
             </div>
 
+            <div v-if="prospect.email_undeliverable" class="px-5 pt-4">
+              <UiProspectEmailUndeliverableBanner
+                :reason="prospect.email_undeliverable_reason ?? null"
+                :phone="prospect.phone ?? null"
+              />
+            </div>
+
             <div class="space-y-3 px-5 py-4">
               <p class="text-[10px] font-semibold tracking-wider text-[var(--app-ink-soft)] uppercase">Contact</p>
 

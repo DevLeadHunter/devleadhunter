@@ -101,6 +101,12 @@
                 class="h-3.5 w-3.5 shrink-0 text-[var(--app-red)]"
                 title="Ne plus contacter — exclu des campagnes et des SMS"
               />
+              <UIcon
+                v-if="prospect.email_undeliverable"
+                name="i-lucide-mail-x"
+                class="h-3.5 w-3.5 shrink-0 text-[var(--app-red)]"
+                title="Email injoignable (bounce) — récupérable en campagne SMS"
+              />
             </span>
           </button>
         </BaseTableTd>
@@ -148,7 +154,15 @@
         </BaseTableTd>
 
         <BaseTableTd label="Contacté">
-          <span v-if="prospect.contacted" class="app-badge app-badge--success">
+          <span
+            v-if="prospect.email_undeliverable"
+            class="app-badge app-badge--danger"
+            title="Email injoignable (bounce) — récupérable en campagne SMS"
+          >
+            <UIcon name="i-lucide-mail-x" class="h-3 w-3" />
+            Email KO
+          </span>
+          <span v-else-if="prospect.contacted" class="app-badge app-badge--success">
             <UIcon name="i-lucide-circle-check" class="h-3 w-3" />
             Oui
           </span>

@@ -64,6 +64,14 @@ class ProspectDB(Base):
     do_not_contact: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default="0", index=True)
     do_not_contact_reason: Mapped[str | None] = mapped_column(String(500), nullable=True)
     do_not_contact_at: Mapped[datetime | None] = mapped_column(nullable=True)
+    # Email dead-end: the campaign email bounced and no other address could be tried. The prospect
+    # stays « contacté » (we DID attempt) but is flagged so the operator can recover it into an SMS
+    # campaign. Cleared on the next successful delivery or when the email is edited by hand.
+    email_undeliverable: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=False, server_default="0", index=True
+    )
+    email_undeliverable_at: Mapped[datetime | None] = mapped_column(nullable=True)
+    email_undeliverable_reason: Mapped[str | None] = mapped_column(String(500), nullable=True)
     user_id: Mapped[int] = mapped_column(Integer, nullable=False, index=True)
     # Team sharing: set while the creator belongs to an organization → the prospect
     # is visible to every member. Cleared when the creator leaves the org.
