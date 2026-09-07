@@ -28,6 +28,11 @@ _CAMPAIGN_STATUS_VERBS: dict[str, str] = {
 }
 
 
+def _is_active(campaign: Campaign) -> bool:
+    """Return True when the campaign is running (SQLEnum may load a member, so compare on the value)."""
+    return getattr(campaign.status, "value", campaign.status) == CampaignStatus.ACTIVE.value
+
+
 class CampaignService:
     """Service for campaign management."""
 
@@ -272,6 +277,19 @@ class CampaignService:
         db.commit()
         db.refresh(campaign)
 
+        # On a launched campaign, materialise the new prospects into the send queue so they actually
+        # go out; enqueue is re-entrant (already-queued prospects are skipped) and appends them after
+        # the current pending slots, i.e. last — matching their position.
+        if _is_active(campaign) and (campaign.channel == "sms" or campaign.template_id is not None):
+            from services.campaign_queue_service import CampaignQueueService
+
+            CampaignQueueService(db).enqueue_campaign(
+                campaign,
+                template_id=campaign.template_id,
+                ab_template_id_b=campaign.ab_template_id_b,
+            )
+            db.refresh(campaign)
+
         return campaign
 
     def remove_prospect_from_campaign(
@@ -293,6 +311,14 @@ class CampaignService:
         if not campaign:
             return None
 
+        from services.campaign_queue_service import CampaignQueueService
+
+        queue_service = CampaignQueueService(db)
+        active: bool = _is_active(campaign)
+        # On a launched campaign, cancel the prospect's pending send first so it never goes out.
+        if active:
+            queue_service.cancel_prospect_pending(campaign_id, prospect_id, "Retiré de la campagne")
+
         # Find and remove prospect
         for i, prospect in enumerate(campaign.prospects):
             if prospect.id == prospect_id:
@@ -301,6 +327,64 @@ class CampaignService:
 
         db.commit()
         db.refresh(campaign)
+
+        # Re-date the remaining pending sends so the freed day is filled (the group after moves up).
+        if active:
+            queue_service.reschedule_pending_initial(campaign)
+            db.refresh(campaign)
+
+        return campaign
+
+    def reorder_prospects(
+        self, db: Session, campaign_id: int, user_id: int, ordered_prospect_ids: list[int]
+    ) -> Campaign | None:
+        """
+        Set the campaign's prospect send order, then re-date the pending queue to match.
+
+        ``ordered_prospect_ids`` must be exactly the campaign's current prospects, in their new order
+        (as produced by the drag & drop table). Positions are rewritten 0-based in that order; on a
+        launched campaign the pending J1s are re-paired to the send slots so the order drives the day.
+
+        Args:
+            db: Database session.
+            campaign_id: Campaign to reorder.
+            user_id: Owner of the campaign.
+            ordered_prospect_ids: The campaign's prospect ids in their new send order.
+
+        Returns:
+            The updated campaign, or None when it is not found.
+
+        Raises:
+            HTTPException: 422 when the ids don't match the campaign's prospects exactly.
+        """
+        campaign = self.get_campaign(db, campaign_id, user_id)
+        if not campaign:
+            return None
+
+        current_ids: set[int] = {prospect.id for prospect in campaign.prospects}
+        if len(ordered_prospect_ids) != len(current_ids) or set(ordered_prospect_ids) != current_ids:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail="L'ordre fourni ne correspond pas aux prospects de la campagne",
+            )
+
+        for position, prospect_id in enumerate(ordered_prospect_ids):
+            db.execute(
+                campaign_prospects.update()
+                .where(
+                    campaign_prospects.c.campaign_id == campaign_id,
+                    campaign_prospects.c.prospect_id == prospect_id,
+                )
+                .values(position=position)
+            )
+        db.commit()
+        db.refresh(campaign)
+
+        if _is_active(campaign):
+            from services.campaign_queue_service import CampaignQueueService
+
+            CampaignQueueService(db).reschedule_pending_initial(campaign)
+            db.refresh(campaign)
 
         return campaign
 

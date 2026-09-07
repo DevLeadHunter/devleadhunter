@@ -259,6 +259,17 @@ export class CampaignService {
   }
 
   /**
+   * Set the campaign's prospect send order (drag & drop) and re-date the pending queue to match.
+   * @param campaignId  - Campaign ID.
+   * @param prospectIds - The campaign's prospect ids in their new send order (the full set).
+   */
+  static async reorderProspects(campaignId: number, prospectIds: number[]): Promise<CampaignDetailResponse> {
+    return ApiClient.patch<CampaignDetailResponse>(`/api/v1/campaigns/${campaignId}/prospects/reorder`, {
+      prospect_ids: prospectIds,
+    })
+  }
+
+  /**
    * Fetch aggregated statistics for a campaign (includes A/B breakdown when applicable).
    * @param campaignId - Campaign ID.
    */

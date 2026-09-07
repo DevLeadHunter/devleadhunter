@@ -586,8 +586,10 @@
               :show-ab-variant="!!campaign.ab_template_id_b"
               :ab-variants="campaignAbVariants"
               row-action="remove"
+              reorderable
               @view-prospect="openProspectDrawer"
               @remove-prospect="startRemoveProspectFromRow"
+              @reorder="handleReorderProspects"
               @toggle-select="toggleCampaignProspectSelect"
               @toggle-select-all="toggleCampaignProspectSelectAll"
             />
@@ -1430,11 +1432,38 @@ async function handleRemoveProspect(): Promise<void> {
   if (!prospectToRemoveId.value) return
   try {
     campaign.value = await CampaignService.removeProspect(campaignId.value, prospectToRemoveId.value)
+    // The removal cancels the prospect's pending send and re-dates the rest, so refresh the queue.
+    await loadQueue()
     toast.success('Prospect retiré')
   } catch {
     toast.error('Erreur lors du retrait')
   } finally {
     prospectToRemoveId.value = null
+  }
+}
+
+/**
+ * Persist a drag & drop reorder of the campaign's prospects, then refresh the queue.
+ * The list reorders optimistically; on a launched campaign the backend re-dates the pending
+ * sends to the new order, so the queue is reloaded to show the new send days at once.
+ * @param orderedProspectIds - The campaign's prospect ids in their new send order.
+ */
+async function handleReorderProspects(orderedProspectIds: number[]): Promise<void> {
+  const current: CampaignDetailResponse | null = campaign.value
+  if (!current) return
+  const byId: Map<number, CampaignProspect> = new Map(
+    current.prospects.map((prospect: CampaignProspect): [number, CampaignProspect] => [prospect.id, prospect]),
+  )
+  const reordered: CampaignProspect[] = orderedProspectIds
+    .map((id: number): CampaignProspect | undefined => byId.get(id))
+    .filter((prospect: CampaignProspect | undefined): prospect is CampaignProspect => prospect !== undefined)
+  campaign.value = { ...current, prospects: reordered }
+  try {
+    campaign.value = await CampaignService.reorderProspects(campaignId.value, orderedProspectIds)
+    await loadQueue()
+  } catch {
+    toast.error('Impossible de réordonner les prospects')
+    await loadAll()
   }
 }
 

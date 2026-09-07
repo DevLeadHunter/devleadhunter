@@ -2,6 +2,7 @@
   <div class="overflow-hidden">
     <BaseTable>
       <template #head>
+        <BaseTableTh v-if="reorderable" sr-only>Réordonner</BaseTableTh>
         <BaseTableTh v-if="!hideSelection" class="w-12">
           <input
             type="checkbox"
@@ -25,16 +26,37 @@
       </template>
 
       <BaseTableTr
-        v-for="prospect in prospects"
+        v-for="(prospect, index) in prospects"
         :key="prospect.id"
         :class="[
           isSelected(prospect) ? 'bg-[var(--app-accent-soft)] hover:bg-[var(--app-accent-soft)]' : '',
           isLockedForMe(prospect)
             ? 'bg-[var(--app-surface-2)]/40 hover:bg-[var(--app-surface-2)]/40'
             : 'cursor-pointer',
+          reorderable && dragIndex === index ? 'opacity-50' : '',
+          reorderable && dropIndex === index && dragIndex !== index
+            ? 'bg-[var(--app-accent-soft)] hover:bg-[var(--app-accent-soft)]'
+            : '',
         ]"
         @click="onRowClick(prospect, $event)"
+        @dragover="onRowDragOver($event, index)"
+        @dragleave="onRowDragLeave(index)"
+        @drop="onRowDrop($event, index)"
       >
+        <BaseTableTd v-if="reorderable" class="w-8 pr-0">
+          <button
+            type="button"
+            class="cursor-grab text-[var(--app-faint)] transition-colors hover:text-[var(--app-ink)] active:cursor-grabbing"
+            aria-label="Glisser pour réordonner l'envoi"
+            title="Glisser pour changer le jour d'envoi"
+            draggable="true"
+            @dragstart="onDragStart(index)"
+            @dragend="onDragEnd"
+          >
+            <UIcon name="i-lucide-grip-vertical" class="h-4 w-4" />
+          </button>
+        </BaseTableTd>
+
         <BaseTableTd v-if="!hideSelection">
           <input
             type="checkbox"
@@ -235,8 +257,8 @@
 </template>
 
 <script lang="ts" setup>
-import type { ComputedRef, EmitFn, PropType } from 'vue'
-import { computed } from 'vue'
+import type { ComputedRef, EmitFn, PropType, Ref } from 'vue'
+import { computed, ref } from 'vue'
 import type { Prospect } from '~/types'
 import type { UiProspectTableEmits, UiProspectTableProps } from '~/types/UiProspectTable'
 import { useUserStore } from '~/stores/user'
@@ -271,11 +293,21 @@ const props: UiProspectTableProps = defineProps({
     type: Boolean,
     default: false,
   },
+  reorderable: {
+    type: Boolean,
+    default: false,
+  },
 })
 
 const emit: EmitFn<UiProspectTableEmits> = defineEmits<UiProspectTableEmits>()
 
 const userStore: ReturnType<typeof useUserStore> = useUserStore()
+
+/** Index of the row currently being dragged, or null when no drag is in progress. */
+const dragIndex: Ref<number | null> = ref(null)
+
+/** Index of the row the drag is hovering over, for the drop-target highlight. */
+const dropIndex: Ref<number | null> = ref(null)
 
 /** Current user id (0 while the store hydrates). */
 const currentUserId: ComputedRef<number> = computed((): number => userStore.user?.id ?? 0)
@@ -349,5 +381,60 @@ function onRowClick(prospect: Prospect, event: MouseEvent): void {
   const target: HTMLElement | null = event.target instanceof HTMLElement ? event.target : null
   if (target?.closest('button, a, input, label, select, textarea')) return
   emit('viewProspect', prospect)
+}
+
+/**
+ * Start dragging the row at a given index (from its drag handle).
+ * @param index - Row index being dragged.
+ */
+function onDragStart(index: number): void {
+  dragIndex.value = index
+}
+
+/**
+ * Allow dropping onto a row and mark it as the current drop target.
+ * @param event - The native dragover event.
+ * @param index - Index of the row being hovered.
+ */
+function onRowDragOver(event: DragEvent, index: number): void {
+  if (!props.reorderable || dragIndex.value === null) return
+  event.preventDefault()
+  dropIndex.value = index
+}
+
+/**
+ * Clear the drop-target highlight when the drag leaves a row.
+ * @param index - Index of the row being left.
+ */
+function onRowDragLeave(index: number): void {
+  if (dropIndex.value === index) dropIndex.value = null
+}
+
+/**
+ * Drop the dragged row onto the target and emit the prospects' new order.
+ * @param event - The native drop event.
+ * @param index - Index of the drop-target row.
+ */
+function onRowDrop(event: DragEvent, index: number): void {
+  if (!props.reorderable || dragIndex.value === null) return
+  event.preventDefault()
+  const from: number = dragIndex.value
+  dragIndex.value = null
+  dropIndex.value = null
+  if (from === index) return
+  const next: Prospect[] = [...props.prospects]
+  const moved: Prospect | undefined = next.splice(from, 1)[0]
+  if (moved === undefined) return
+  next.splice(index, 0, moved)
+  emit(
+    'reorder',
+    next.map((prospect: Prospect): number => prospect.id),
+  )
+}
+
+/** Clear the drag state when the drag ends anywhere. */
+function onDragEnd(): void {
+  dragIndex.value = null
+  dropIndex.value = null
 }
 </script>

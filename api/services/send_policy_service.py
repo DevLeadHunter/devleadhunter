@@ -324,5 +324,29 @@ class SendPolicyService:
             counts[day] = counts.get(day, 0) + 1
         return counts
 
+    def sent_campaign_counts_by_day(self, db: Session, campaign_id: int) -> dict[date, int]:
+        """Count a campaign's already-gone J1 items grouped by local send day (follow-ups excluded).
+
+        A J1 that already left (sent, or in flight) consumes its day against the per-campaign cap, so
+        re-dating the remaining pending J1s must not drop another send on a day this campaign already
+        used — e.g. today is full for a 1/day campaign once its first email has gone out.
+        """
+        from models.email_queue import EmailQueue
+
+        rows = db.execute(
+            select(EmailQueue.scheduled_at).where(
+                EmailQueue.campaign_id == campaign_id,
+                EmailQueue.status.in_(("sent", "sending")),
+                EmailQueue.queue_type == "initial",
+            )
+        ).all()
+        counts: dict[date, int] = {}
+        for (scheduled_at,) in rows:
+            if scheduled_at is None:
+                continue
+            day: date = _to_local(scheduled_at).date()
+            counts[day] = counts.get(day, 0) + 1
+        return counts
+
 
 send_policy_service = SendPolicyService()

@@ -40,6 +40,7 @@ from services.demo_video_service import (
     has_ready_video,
     public_thumbnail_url,
     public_video_file_url,
+    reenqueue_campaigns_after_video_ready,
     thumbnail_object_key,
     video_object_key,
     video_page_url,
@@ -629,6 +630,7 @@ async def upload_demo_site_video_final(
         site.video_generated_at = datetime.now(UTC)
         db.commit()
         db.refresh(site)
+        reenqueue_campaigns_after_video_ready(db, site.prospect_id, site.user_id)
     finally:
         shutil.rmtree(work_dir, ignore_errors=True)
     return _serialize_demo_site(site)

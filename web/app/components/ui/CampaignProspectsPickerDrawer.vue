@@ -59,6 +59,13 @@
               <input v-model="query" type="text" placeholder="Rechercher un prospect…" class="app-input w-full pl-9" />
             </div>
 
+            <UiSelectField
+              v-if="showCategoryFilter"
+              v-model="categoryFilter"
+              :options="categoryOptions"
+              placeholder="Tous les métiers"
+            />
+
             <div class="flex items-center justify-between text-xs">
               <button
                 type="button"
@@ -73,7 +80,7 @@
             </div>
 
             <p v-if="filteredProspects.length === 0" class="text-muted py-8 text-center text-sm">
-              Aucun prospect ne correspond à « {{ query }} ».
+              Aucun prospect ne correspond à votre recherche.
             </p>
 
             <div v-else class="space-y-1">
@@ -131,6 +138,7 @@ import type {
 import type { ComputedRef, EmitFn, PropType, Ref } from 'vue'
 import { computed, ref, watch } from 'vue'
 import type { Prospect } from '~/types'
+import type { SelectFieldOption } from '~/types/SelectField'
 import { CampaignService } from '~/services/campaignService'
 import { ProspectsService } from '~/services/prospectsService'
 import { useToast } from '~/composables/useToast'
@@ -162,6 +170,7 @@ const toast: UseToastReturn = useToast()
 const allProspects: Ref<Prospect[]> = ref([])
 const selectedIds: Ref<number[]> = ref([])
 const query: Ref<string> = ref('')
+const categoryFilter: Ref<string> = ref('')
 const isLoading: Ref<boolean> = ref(false)
 const isSubmitting: Ref<boolean> = ref(false)
 
@@ -171,11 +180,32 @@ const availableProspects: ComputedRef<Prospect[]> = computed((): Prospect[] => {
   return allProspects.value.filter((prospect: Prospect): boolean => !taken.has(prospect.id))
 })
 
-/** Available prospects narrowed by the search query (name, city or trade). */
+/** Trade options for the filter, derived from the trades actually present in the pool. */
+const categoryOptions: ComputedRef<SelectFieldOption<string>[]> = computed((): SelectFieldOption<string>[] => {
+  const distinct: Set<string> = new Set()
+  for (const prospect of availableProspects.value) {
+    const category: string = prospect.category?.trim() ?? ''
+    if (category) distinct.add(category)
+  }
+  const sorted: string[] = [...distinct].sort((first: string, second: string): number =>
+    first.localeCompare(second, 'fr'),
+  )
+  return [
+    { label: 'Tous les métiers', value: '' },
+    ...sorted.map((category: string): SelectFieldOption<string> => ({ label: category, value: category })),
+  ]
+})
+
+/** Show the trade filter only when the pool spans more than one trade. */
+const showCategoryFilter: ComputedRef<boolean> = computed((): boolean => categoryOptions.value.length > 2)
+
+/** Available prospects narrowed by the trade filter, then the search query (name, city or trade). */
 const filteredProspects: ComputedRef<Prospect[]> = computed((): Prospect[] => {
   const needle: string = query.value.trim().toLowerCase()
-  if (!needle) return availableProspects.value
+  const category: string = categoryFilter.value
   return availableProspects.value.filter((prospect: Prospect): boolean => {
+    if (category && prospect.category !== category) return false
+    if (!needle) return true
     const haystack: string = `${prospect.name} ${prospect.city ?? ''} ${prospect.category}`.toLowerCase()
     return haystack.includes(needle)
   })
@@ -268,6 +298,7 @@ watch(
     if (!open) return
     selectedIds.value = []
     query.value = ''
+    categoryFilter.value = ''
     void loadProspects()
   },
 )

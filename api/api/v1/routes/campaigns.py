@@ -26,6 +26,7 @@ from schemas.campaign import (
     CampaignForecastResponse,
     CampaignListResponse,
     CampaignProspectAdd,
+    CampaignProspectReorder,
     CampaignProspectResponse,
     CampaignResponse,
     CampaignSettingsUpdate,
@@ -343,6 +344,20 @@ async def add_prospects_to_campaign(
 ):
     """Add prospects to a campaign."""
     campaign = campaign_service.add_prospects_to_campaign(db, campaign_id, current_user.id, data.prospect_ids)
+    if not campaign:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Campaign not found")
+    return _detail_response(db, campaign)
+
+
+@router.patch("/{campaign_id}/prospects/reorder", response_model=CampaignDetailResponse)
+async def reorder_campaign_prospects(
+    campaign_id: int,
+    data: CampaignProspectReorder,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> CampaignDetailResponse:
+    """Set the campaign's prospect send order (drag & drop) and re-date the pending queue to match."""
+    campaign = campaign_service.reorder_prospects(db, campaign_id, current_user.id, data.prospect_ids)
     if not campaign:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Campaign not found")
     return _detail_response(db, campaign)

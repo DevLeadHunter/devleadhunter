@@ -105,6 +105,16 @@ class CampaignProspectRemove(BaseModel):
     prospect_id: int
 
 
+class CampaignProspectReorder(BaseModel):
+    """Schema for reordering a campaign's prospects (drag & drop).
+
+    ``prospect_ids`` is the full set of the campaign's current prospects, in their new send order.
+    The queue pairs ascending send slots to prospects in this order, so the order drives the day.
+    """
+
+    prospect_ids: list[int] = Field(..., min_length=1)
+
+
 class CampaignVariantStats(BaseModel):
     """Stats broken down for a single A/B variant."""
 
