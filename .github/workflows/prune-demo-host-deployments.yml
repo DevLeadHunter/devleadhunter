@@ -69,10 +69,25 @@ jobs:
             exit 0
           fi
 
-          echo "$del" | jq -r '.[].uid' | while read -r uid; do
+          deleted=0
+          echo "$del" | jq -r '.[].uid' > /tmp/uids
+          while read -r uid; do
             [ -z "$uid" ] && continue
-            code=$(curl -s -o /dev/null -w "%{http_code}" -X DELETE "${auth[@]}" "$api/v13/deployments/$uid?teamId=$TEAM_ID")
-            echo "deleted $uid -> HTTP $code"
-            sleep 0.3
-          done
-          echo "Done. Deleted $del_count deployments (kept newest $KEEP)."
+            attempt=1
+            while :; do
+              code=$(curl -s -o /dev/null -w "%{http_code}" -X DELETE "${auth[@]}" "$api/v13/deployments/$uid?teamId=$TEAM_ID")
+              # Vercel rate-limits DELETEs (429); back off and retry rather than skipping.
+              if [ "$code" = "429" ] && [ "$attempt" -le 6 ]; then
+                wait=$((attempt * 5))
+                echo "rate-limited on $uid (attempt $attempt) -> waiting ${wait}s"
+                sleep "$wait"
+                attempt=$((attempt + 1))
+                continue
+              fi
+              echo "deleted $uid -> HTTP $code"
+              [ "$code" = "200" ] && deleted=$((deleted + 1))
+              break
+            done
+            sleep 1
+          done < /tmp/uids
+          echo "Done. Deleted $deleted / $del_count candidates (kept newest $KEEP)."
