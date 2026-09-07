@@ -4,8 +4,8 @@
     <button v-if="state === 'collapsed'" type="button" class="dlh-pill dlh-celebrate" @click="open">
       <svg
         class="dlh-icon"
-        width="14"
-        height="14"
+        width="15"
+        height="15"
         viewBox="0 0 24 24"
         fill="none"
         stroke="#e8a33c"
@@ -15,11 +15,14 @@
       >
         <path d="M12 2v20M2 12h20M4.9 4.9l14.2 14.2M19.1 4.9L4.9 19.1" />
       </svg>
-      <span class="dlh-pill__label">Ce site vous plaît ?</span>
+      <span class="dlh-pill__text">
+        <span class="dlh-pill__label">Ce site vous plaît ?</span>
+        <span class="dlh-pill__hint">Laissez-moi un mot</span>
+      </span>
       <svg
-        class="dlh-icon"
-        width="15"
-        height="15"
+        class="dlh-pill__chevron"
+        width="16"
+        height="16"
         viewBox="0 0 24 24"
         fill="none"
         stroke="#6b6558"
@@ -30,21 +33,6 @@
       >
         <path d="M6 14l6-6 6 6" />
       </svg>
-      <span class="dlh-pill__sep"></span>
-      <span class="dlh-pill__close" role="button" aria-label="Masquer" @click.stop="dismiss">
-        <svg
-          width="14"
-          height="14"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="#a09a8c"
-          stroke-width="2"
-          stroke-linecap="round"
-          aria-hidden="true"
-        >
-          <path d="M6 6l12 12M18 6L6 18" />
-        </svg>
-      </span>
     </button>
 
     <!-- Expanded card (bottom sheet on mobile) — message only: the visit came from an
@@ -68,7 +56,7 @@
           </svg>
           <span class="dlh-card__label">Votre démo — {{ businessName }}</span>
         </div>
-        <button type="button" class="dlh-card__close" aria-label="Fermer" @click="dismiss">
+        <button type="button" class="dlh-card__close" aria-label="Réduire" @click="collapse">
           <svg
             width="16"
             height="16"
@@ -77,9 +65,10 @@
             stroke="#a09a8c"
             stroke-width="2"
             stroke-linecap="round"
+            stroke-linejoin="round"
             aria-hidden="true"
           >
-            <path d="M6 6l12 12M18 6L6 18" />
+            <path d="M6 10l6 6 6-6" />
           </svg>
         </button>
       </div>
@@ -135,7 +124,7 @@
         </span>
         <div class="dlh-success__title">Merci, c'est envoyé !</div>
         <div class="dlh-success__sub">Votre message est bien parti — vous serez recontacté très vite.</div>
-        <button type="button" class="dlh-success__back" @click="dismiss">Continuer à explorer le site</button>
+        <button type="button" class="dlh-success__back" @click="collapse">Continuer à explorer le site</button>
       </div>
     </div>
   </div>
@@ -176,7 +165,6 @@ const state: Ref<DemoCtaBannerState> = ref('collapsed')
 const message: Ref<string> = ref('')
 const isSending: Ref<boolean> = ref(false)
 const hasError: Ref<boolean> = ref(false)
-const isDismissed: Ref<boolean> = ref(false)
 /** Client-only flag: the guards (iframe, internal visit) need `window`. */
 const isClientReady: Ref<boolean> = ref(false)
 
@@ -185,17 +173,18 @@ const shownAt: Ref<number> = ref(0)
 const openedAt: Ref<number> = ref(0)
 /** One-shot guards so a repeated action counts and notifies once, not on every toggle. */
 const hasTrackedShown: Ref<boolean> = ref(false)
+const hasOpened: Ref<boolean> = ref(false)
 const hasBeaconedOpen: Ref<boolean> = ref(false)
 const hasTrackedFocus: Ref<boolean> = ref(false)
 const hasTrackedInput: Ref<boolean> = ref(false)
-/** Set once the interaction ends (sent or closed) so pagehide never double-counts an abandon. */
+/** Set once the message is sent, so pagehide never double-counts an abandon. */
 const isResolved: Ref<boolean> = ref(false)
 
 const businessName: ComputedRef<string> = computed((): string => props.site.business_name || 'votre entreprise')
 
 /** Whether the banner renders at all — live demos, real prospect visits only. */
 const isVisible: ComputedRef<boolean> = computed((): boolean => {
-  if (!isClientReady.value || isDismissed.value) return false
+  if (!isClientReady.value) return false
   if (props.site.status !== 'active') return false
   if (DemoBeaconUtils.isInternalVisit()) return false
   // Embedded rendering = the dashboard's scaled card preview, never a prospect.
@@ -227,12 +216,32 @@ function trackShown(): void {
 function open(): void {
   state.value = 'open'
   openedAt.value = Date.now()
+  hasOpened.value = true
   captureDemoEvent('demo_cta_banner_open', {
     seconds_to_open: shownAt.value ? Math.round((Date.now() - shownAt.value) / 1000) : 0,
   })
   if (hasBeaconedOpen.value) return
   hasBeaconedOpen.value = true
   DemoBeaconUtils.send(apiBase.value, props.site.slug, 'demo_cta_banner_open')
+}
+
+/** Reveal the card by itself once the prospect reaches the end — no beacon (we opened it, not them). */
+function autoOpen(): void {
+  if (hasOpened.value || state.value !== 'collapsed') return
+  hasOpened.value = true
+  state.value = 'open'
+  openedAt.value = Date.now()
+  captureDemoEvent('demo_cta_banner_auto_open', {
+    seconds_to_open: shownAt.value ? Math.round((Date.now() - shownAt.value) / 1000) : 0,
+  })
+}
+
+/** End-of-page detector: when a scrollable demo is read to the bottom, reveal the form once. */
+function onScroll(): void {
+  if (!isVisible.value || hasOpened.value || state.value !== 'collapsed') return
+  const scrollable: number = document.documentElement.scrollHeight - window.innerHeight
+  if (scrollable <= 200) return
+  if (window.scrollY + window.innerHeight >= document.documentElement.scrollHeight - 40) autoOpen()
 }
 
 /** The prospect focused the message field — about to write (tracked + notified once). */
@@ -250,17 +259,14 @@ function onFieldInput(): void {
   captureDemoEvent('demo_cta_banner_input')
 }
 
-/** Hide the banner for this view (collapsed ×, success « continuer », card ×). */
-function dismiss(): void {
-  if (!isResolved.value) {
-    isResolved.value = true
-    captureDemoEvent('demo_cta_banner_dismiss', {
-      from_state: state.value,
-      had_message: hasMessage(),
-      open_seconds: openSeconds(),
-    })
-  }
-  isDismissed.value = true
+/** Reduce the card back to the pill — the banner is never fully closed, only collapsed. */
+function collapse(): void {
+  captureDemoEvent('demo_cta_banner_collapse', {
+    from_state: state.value,
+    had_message: hasMessage(),
+    open_seconds: openSeconds(),
+  })
+  state.value = 'collapsed'
 }
 
 /** Beacon the lead (message optional — the click alone is the signal) and track the outcome. */
@@ -315,10 +321,12 @@ watch(isVisible, (visible: boolean): void => {
 onMounted((): void => {
   isClientReady.value = true
   window.addEventListener('pagehide', onPageHide)
+  window.addEventListener('scroll', onScroll, { passive: true })
 })
 
 onUnmounted((): void => {
   window.removeEventListener('pagehide', onPageHide)
+  window.removeEventListener('scroll', onScroll)
 })
 </script>
 
@@ -355,6 +363,14 @@ onUnmounted((): void => {
   --dlh-pulse: rgba(29, 26, 20, 0.3);
 }
 
+.dlh-pill__text {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  align-items: flex-start;
+  line-height: 1.2;
+}
+
 .dlh-pill__label {
   font-size: 14px;
   font-weight: 600;
@@ -362,23 +378,15 @@ onUnmounted((): void => {
   white-space: nowrap;
 }
 
-.dlh-pill__sep {
-  width: 1px;
-  height: 20px;
-  background: #e1dbcc;
+.dlh-pill__hint {
+  font-size: 11px;
+  color: #6b6558;
+  white-space: nowrap;
 }
 
-.dlh-pill__close {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 24px;
-  height: 24px;
-  border-radius: 999px;
-}
-
-.dlh-pill__close:hover {
-  background: #efe9db;
+.dlh-pill__chevron {
+  flex-shrink: 0;
+  margin-left: auto;
 }
 
 .dlh-icon {
@@ -659,7 +667,6 @@ onUnmounted((): void => {
 
   .dlh-pill {
     width: 100%;
-    justify-content: space-between;
   }
 
   .dlh-card {
