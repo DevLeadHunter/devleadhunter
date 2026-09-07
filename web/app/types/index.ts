@@ -130,6 +130,7 @@ export type ProspectUpdatePayload = {
   email?: string | null
   website?: string | null
   facebook_url?: string | null
+  google_maps_url?: string | null
   category?: string
   contacted?: boolean
 }

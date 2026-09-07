@@ -19,6 +19,16 @@
       @send-sms="handleSendSms"
       @mark-as-sold="handleMarkAsSold"
       @toggle-contacted="handleToggleContacted"
+      @open-settings="handleOpenProspectSettings"
+    />
+
+    <UiProspectSettingsDrawer
+      :open="prospectSettingsEntry !== null"
+      :prospect="prospectSettingsEntry?.prospect ?? null"
+      :show-back="hasPrevious"
+      @close="drawerStack.closeAll()"
+      @back="drawerStack.back()"
+      @updated="handleProspectUpdated"
     />
 
     <UiSendEmailDrawer
@@ -218,6 +228,7 @@ import type {
   ProfileDrawerEntry,
   DrawerBrowseDirection,
   ProspectDrawerEntry,
+  ProspectSettingsDrawerEntry,
   SearchProspectsDrawerEntry,
   SendEmailDrawerEntry,
   SendSmsDrawerEntry,
@@ -250,6 +261,21 @@ const prospectDrawer: Ref<{ editMode: boolean } | null> = ref(null)
 const prospectEntry: ComputedRef<ProspectDrawerEntry | null> = computed((): ProspectDrawerEntry | null => {
   return drawerStack.topEntry?.kind === 'prospect' ? drawerStack.topEntry : null
 })
+
+/** Top entry narrowed to the prospect settings sub-drawer. */
+const prospectSettingsEntry: ComputedRef<ProspectSettingsDrawerEntry | null> = computed(
+  (): ProspectSettingsDrawerEntry | null => {
+    return drawerStack.topEntry?.kind === 'prospect-settings' ? drawerStack.topEntry : null
+  },
+)
+
+/**
+ * Open the settings sub-drawer stacked over the prospect detail drawer.
+ * @param prospect - The prospect whose settings are edited.
+ */
+function handleOpenProspectSettings(prospect: Prospect): void {
+  drawerStack.push({ kind: 'prospect-settings', prospect })
+}
 
 /** Top entry narrowed to the send-email drawer. */
 const sendEmailEntry: ComputedRef<SendEmailDrawerEntry | null> = computed((): SendEmailDrawerEntry | null => {

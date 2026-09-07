@@ -129,6 +129,7 @@ class ProspectUpdate(BaseModel):
     website: str | None = Field(None, description="Website URL")
     website_status: WebsiteStatus | None = Field(None, description="Liveness of the website URL")
     facebook_url: str | None = Field(None, max_length=2048, description="Facebook page URL")
+    google_maps_url: str | None = Field(None, max_length=2048, description="Google Maps place URL")
     category: str | None = Field(None, description="Business category")
     source: Source | None = Field(None, description="Data source identifier")
     confidence: int | None = Field(None, ge=1, le=4, description="Confidence score 1-4")

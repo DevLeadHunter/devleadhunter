@@ -95,6 +95,9 @@ export const useDrawerStackStore = defineStore('drawerStack', () => {
       if (entry.kind === 'prospect' && entry.prospect.id === prospect.id) {
         return { ...entry, prospect }
       }
+      if (entry.kind === 'prospect-settings' && entry.prospect.id === prospect.id) {
+        return { ...entry, prospect }
+      }
       if (entry.kind === 'send-email' && entry.prospect?.id === prospect.id) {
         return { ...entry, prospect }
       }
