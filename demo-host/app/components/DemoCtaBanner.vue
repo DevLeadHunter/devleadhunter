@@ -1,7 +1,7 @@
 <template>
   <div v-if="isVisible" data-dlh-cta-banner class="dlh-banner" :class="state === 'collapsed' ? '' : 'dlh-banner--open'">
     <!-- Collapsed pill — the discreet entry point, never covering the template's own CTAs. -->
-    <button v-if="state === 'collapsed'" type="button" class="dlh-pill dlh-celebrate" @click="state = 'open'">
+    <button v-if="state === 'collapsed'" type="button" class="dlh-pill dlh-celebrate" @click="open">
       <svg
         class="dlh-icon"
         width="14"
@@ -97,6 +97,8 @@
           placeholder="Votre message (optionnel) — ex. « Intéressé, rappelez-moi »"
           maxlength="1000"
           :disabled="isSending"
+          @focus="onFieldFocus"
+          @input="onFieldInput"
         ></textarea>
         <button type="button" class="dlh-card__submit dlh-celebrate" :disabled="isSending" @click="submit">
           {{ isSending ? 'Envoi…' : 'Je suis intéressé' }}
@@ -143,6 +145,7 @@
 import type { ComputedRef, PropType, Ref } from 'vue'
 import type { DemoCtaBannerProps, DemoCtaBannerState } from '~/types/DemoCtaBanner'
 import type { DemoSitePublic } from '~/types/demoSite'
+import { captureDemoEvent } from '~/composables/useDemoTracking'
 import { DemoBeaconUtils } from '~/utils/DemoBeaconUtils'
 
 /**
@@ -177,6 +180,17 @@ const isDismissed: Ref<boolean> = ref(false)
 /** Client-only flag: the guards (iframe, internal visit) need `window`. */
 const isClientReady: Ref<boolean> = ref(false)
 
+/** Epoch ms when the pill first appeared / when the card was opened — for dwell timing. */
+const shownAt: Ref<number> = ref(0)
+const openedAt: Ref<number> = ref(0)
+/** One-shot guards so a repeated action counts and notifies once, not on every toggle. */
+const hasTrackedShown: Ref<boolean> = ref(false)
+const hasBeaconedOpen: Ref<boolean> = ref(false)
+const hasTrackedFocus: Ref<boolean> = ref(false)
+const hasTrackedInput: Ref<boolean> = ref(false)
+/** Set once the interaction ends (sent or closed) so pagehide never double-counts an abandon. */
+const isResolved: Ref<boolean> = ref(false)
+
 const businessName: ComputedRef<string> = computed((): string => props.site.business_name || 'votre entreprise')
 
 /** Whether the banner renders at all — live demos, real prospect visits only. */
@@ -189,38 +203,122 @@ const isVisible: ComputedRef<boolean> = computed((): boolean => {
   return true
 })
 
+const apiBase: ComputedRef<string> = computed((): string => String(config.public.apiBase ?? ''))
+
+/** Seconds the card has been open (0 before it opens). */
+function openSeconds(): number {
+  return openedAt.value ? Math.round((Date.now() - openedAt.value) / 1000) : 0
+}
+
+/** Whether the prospect has typed anything into the message field. */
+function hasMessage(): boolean {
+  return message.value.trim().length > 0
+}
+
+/** Track the funnel denominator once, when the pill first appears to a prospect. */
+function trackShown(): void {
+  if (hasTrackedShown.value) return
+  hasTrackedShown.value = true
+  shownAt.value = Date.now()
+  captureDemoEvent('demo_cta_banner_shown')
+}
+
+/** Open the card from the collapsed pill — the primary intent signal (tracked + notified once). */
+function open(): void {
+  state.value = 'open'
+  openedAt.value = Date.now()
+  captureDemoEvent('demo_cta_banner_open', {
+    seconds_to_open: shownAt.value ? Math.round((Date.now() - shownAt.value) / 1000) : 0,
+  })
+  if (hasBeaconedOpen.value) return
+  hasBeaconedOpen.value = true
+  DemoBeaconUtils.send(apiBase.value, props.site.slug, 'demo_cta_banner_open')
+}
+
+/** The prospect focused the message field — about to write (tracked + notified once). */
+function onFieldFocus(): void {
+  if (hasTrackedFocus.value) return
+  hasTrackedFocus.value = true
+  captureDemoEvent('demo_cta_banner_field_focus')
+  DemoBeaconUtils.send(apiBase.value, props.site.slug, 'demo_cta_banner_field_focus')
+}
+
+/** First keystroke in the message field (PostHog only — the focus already notified). */
+function onFieldInput(): void {
+  if (hasTrackedInput.value) return
+  hasTrackedInput.value = true
+  captureDemoEvent('demo_cta_banner_input')
+}
+
 /** Hide the banner for this view (collapsed ×, success « continuer », card ×). */
 function dismiss(): void {
+  if (!isResolved.value) {
+    isResolved.value = true
+    captureDemoEvent('demo_cta_banner_dismiss', {
+      from_state: state.value,
+      had_message: hasMessage(),
+      open_seconds: openSeconds(),
+    })
+  }
   isDismissed.value = true
 }
 
-/** Beacon the lead (message optional — the click alone is the signal). */
+/** Beacon the lead (message optional — the click alone is the signal) and track the outcome. */
 async function submit(): Promise<void> {
   if (isSending.value) return
   isSending.value = true
   hasError.value = false
+  const withMessage: boolean = hasMessage()
+  const messageLength: number = message.value.trim().length
+  captureDemoEvent('demo_cta_banner_submit', { has_message: withMessage, message_length: messageLength })
   try {
-    const apiBase: string = String(config.public.apiBase ?? '')
-    const response: Response = await fetch(`${apiBase}/api/v1/demo-events`, {
+    const channel: string = DemoBeaconUtils.channelFromQuery(new URLSearchParams(window.location.search).get('src'))
+    const response: Response = await fetch(`${apiBase.value}/api/v1/demo-events`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         demo_slug: props.site.slug,
         event: 'demo_lead',
         message: message.value.trim() || null,
+        seconds: openSeconds(),
+        channel,
       }),
     })
     if (!response.ok) throw new Error(`demo_lead beacon failed (${response.status})`)
+    isResolved.value = true
     state.value = 'sent'
+    captureDemoEvent('demo_cta_banner_submitted', {
+      has_message: withMessage,
+      message_length: messageLength,
+      open_seconds: openSeconds(),
+    })
   } catch {
     hasError.value = true
+    captureDemoEvent('demo_cta_banner_error')
   } finally {
     isSending.value = false
   }
 }
 
+/** On tab close, flag a prospect who opened the form but left without sending. */
+function onPageHide(): void {
+  if (state.value !== 'open' || isResolved.value) return
+  isResolved.value = true
+  captureDemoEvent('demo_cta_banner_abandoned', { had_message: hasMessage(), open_seconds: openSeconds() })
+  DemoBeaconUtils.send(apiBase.value, props.site.slug, 'demo_cta_banner_abandoned', { seconds: openSeconds() })
+}
+
+watch(isVisible, (visible: boolean): void => {
+  if (visible) trackShown()
+})
+
 onMounted((): void => {
   isClientReady.value = true
+  window.addEventListener('pagehide', onPageHide)
+})
+
+onUnmounted((): void => {
+  window.removeEventListener('pagehide', onPageHide)
 })
 </script>
 

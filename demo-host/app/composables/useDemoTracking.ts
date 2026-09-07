@@ -26,6 +26,18 @@ import { DemoBeaconUtils } from '~/utils/DemoBeaconUtils'
  */
 let initialized: boolean = false
 
+/** Shared PostHog instance, set once a live demo initialises tracking. */
+let demoPosthog: PostHog | null = null
+
+/**
+ * Capture a demo event on the shared PostHog instance (no-op until a live demo initialised it).
+ * @param event - Event name (kept in the ``demo_*`` namespace the API reads).
+ * @param props - Optional event properties.
+ */
+export function captureDemoEvent(event: string, props: Record<string, unknown> = {}): void {
+  demoPosthog?.capture(event, props)
+}
+
 /** A qualified visit needs at least this many engaged seconds… */
 const ENGAGED_SECONDS_THRESHOLD: number = 20
 /** …or this much scroll depth (%). */
@@ -252,6 +264,7 @@ export function useDemoTracking(): {
     })
     // Ne jamais renommer : les noms demo_* sont lus côté API.
     posthog.register({ surface: 'demo', demo_slug: slug, channel, ...(variant ? { ab_variant: variant } : {}) })
+    demoPosthog = posthog
     initialized = true
     const apiBase: string = String(config.public.apiBase ?? '')
     DemoBeaconUtils.send(apiBase, slug, 'demo_opened')
