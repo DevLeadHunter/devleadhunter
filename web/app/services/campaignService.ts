@@ -24,6 +24,12 @@ export type CampaignProspect = {
   ab_variant?: string | null
 }
 
+/** A campaign a prospect already belongs to — shown as a badge in the add-prospects picker. */
+export type CampaignProspectMembership = {
+  id: number
+  name: string
+}
+
 export type CampaignResponse = {
   id: number
   user_id: number
@@ -267,6 +273,17 @@ export class CampaignService {
     return ApiClient.patch<CampaignDetailResponse>(`/api/v1/campaigns/${campaignId}/prospects/reorder`, {
       prospect_ids: prospectIds,
     })
+  }
+
+  /**
+   * Fetch, per prospect, the user's campaigns it already belongs to (add-prospects picker badges).
+   * @returns A map of prospect id to the campaigns that already contain it.
+   */
+  static async getProspectMemberships(): Promise<Record<number, CampaignProspectMembership[]>> {
+    const response: { memberships: Record<number, CampaignProspectMembership[]> } = await ApiClient.get<{
+      memberships: Record<number, CampaignProspectMembership[]>
+    }>('/api/v1/campaigns/prospect-memberships')
+    return response.memberships
   }
 
   /**

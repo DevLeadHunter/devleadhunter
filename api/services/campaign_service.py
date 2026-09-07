@@ -388,6 +388,33 @@ class CampaignService:
 
         return campaign
 
+    def get_prospect_campaign_memberships(self, db: Session, user_id: int) -> dict[int, list[dict[str, object]]]:
+        """
+        Map each of the user's prospects to the campaigns it already belongs to (id + name).
+
+        Feeds the "already in a campaign" badges of the add-prospects picker. One join over
+        ``campaign_prospects`` × ``campaigns``, scoped to the user; a prospect in no campaign is
+        simply absent from the map.
+
+        Args:
+            db: Database session.
+            user_id: Owner of the campaigns.
+
+        Returns:
+            ``{prospect_id: [{"id": campaign_id, "name": campaign_name}, …]}``.
+        """
+        rows = (
+            db.query(campaign_prospects.c.prospect_id, Campaign.id, Campaign.name)
+            .join(Campaign, Campaign.id == campaign_prospects.c.campaign_id)
+            .filter(Campaign.user_id == user_id)
+            .order_by(campaign_prospects.c.prospect_id, Campaign.name)
+            .all()
+        )
+        memberships: dict[int, list[dict[str, object]]] = {}
+        for prospect_id, campaign_id, campaign_name in rows:
+            memberships.setdefault(prospect_id, []).append({"id": campaign_id, "name": campaign_name})
+        return memberships
+
     def get_campaign_stats(self, db: Session, campaign_id: int, user_id: int) -> CampaignStats | None:
         """
         Get statistics for a campaign.

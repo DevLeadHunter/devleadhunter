@@ -99,6 +99,28 @@
                   <p v-if="prospectLocationLabel(prospect)" class="text-muted truncate text-xs">
                     {{ prospectLocationLabel(prospect) }}
                   </p>
+                  <div
+                    v-if="prospect.contacted || membershipsFor(prospect.id).length > 0"
+                    class="mt-1 flex flex-wrap items-center gap-1"
+                  >
+                    <span
+                      v-if="prospect.contacted"
+                      class="app-badge app-badge--success"
+                      title="Déjà contacté par email"
+                    >
+                      <UIcon name="i-lucide-circle-check" class="h-3 w-3" />
+                      Contacté
+                    </span>
+                    <span
+                      v-for="membership in membershipsFor(prospect.id)"
+                      :key="membership.id"
+                      class="app-badge app-badge--info"
+                      :title="`Déjà dans la campagne « ${membership.name} »`"
+                    >
+                      <UIcon name="i-lucide-megaphone" class="h-3 w-3" />
+                      {{ membership.name }}
+                    </span>
+                  </div>
                 </div>
               </div>
             </div>
@@ -139,6 +161,7 @@ import type { ComputedRef, EmitFn, PropType, Ref } from 'vue'
 import { computed, ref, watch } from 'vue'
 import type { Prospect } from '~/types'
 import type { SelectFieldOption } from '~/types/SelectField'
+import type { CampaignProspectMembership } from '~/services/campaignService'
 import { CampaignService } from '~/services/campaignService'
 import { ProspectsService } from '~/services/prospectsService'
 import { useToast } from '~/composables/useToast'
@@ -168,6 +191,7 @@ const emit: EmitFn<UiCampaignProspectsPickerDrawerEmits> = defineEmits<UiCampaig
 const toast: UseToastReturn = useToast()
 
 const allProspects: Ref<Prospect[]> = ref([])
+const memberships: Ref<Record<number, CampaignProspectMembership[]>> = ref({})
 const selectedIds: Ref<number[]> = ref([])
 const query: Ref<string> = ref('')
 const categoryFilter: Ref<string> = ref('')
@@ -236,6 +260,15 @@ function prospectLocationLabel(prospect: Prospect): string {
 }
 
 /**
+ * Campaigns a prospect already belongs to, for the picker badges.
+ * @param prospectId - Prospect to look up.
+ * @returns The campaigns already containing this prospect, or an empty list.
+ */
+function membershipsFor(prospectId: number): CampaignProspectMembership[] {
+  return memberships.value[prospectId] ?? []
+}
+
+/**
  * Fetch the user's prospects to populate the picker.
  * @returns A promise resolved once the prospects are loaded.
  */
@@ -248,6 +281,18 @@ async function loadProspects(): Promise<void> {
     allProspects.value = []
   } finally {
     isLoading.value = false
+  }
+}
+
+/**
+ * Fetch the prospect→campaigns map so the picker can flag prospects already in a campaign.
+ * @returns A promise resolved once the memberships are loaded (best-effort — badges just hide on failure).
+ */
+async function loadMemberships(): Promise<void> {
+  try {
+    memberships.value = await CampaignService.getProspectMemberships()
+  } catch {
+    memberships.value = {}
   }
 }
 
@@ -300,6 +345,7 @@ watch(
     query.value = ''
     categoryFilter.value = ''
     void loadProspects()
+    void loadMemberships()
   },
 )
 </script>

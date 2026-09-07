@@ -244,6 +244,19 @@ async def get_campaign_forecast(
     )
 
 
+@router.get("/prospect-memberships")
+async def get_prospect_campaign_memberships(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> dict[str, Any]:
+    """Return, per prospect, the user's campaigns it already belongs to (add-prospects picker badges).
+
+    Declared before ``/{campaign_id}`` so the literal path is not captured by the id param.
+    """
+    memberships = campaign_service.get_prospect_campaign_memberships(db, current_user.id)
+    return {"memberships": memberships}
+
+
 @router.get("/{campaign_id}", response_model=CampaignDetailResponse)
 async def get_campaign(
     campaign_id: int,
