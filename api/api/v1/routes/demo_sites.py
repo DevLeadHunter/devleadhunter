@@ -34,7 +34,7 @@ from schemas.demo_site import (
 )
 from services.auth_service import get_current_active_user
 from services.brand_color_service import brand_color_service
-from services.demo_site_service import demo_site_service
+from services.demo_site_service import demo_site_service, reenqueue_campaigns_after_demo_ready
 from services.demo_video_service import (
     demo_video_service,
     has_ready_video,
@@ -245,6 +245,7 @@ async def create_demo_site(
         )
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+    reenqueue_campaigns_after_demo_ready(db, site.prospect_id, site.user_id)
     return _serialize_demo_site(site)
 
 
@@ -309,6 +310,7 @@ async def create_demo_sites_bulk(
                 }
             )
             created += 1
+            reenqueue_campaigns_after_demo_ready(db, site.prospect_id, site.user_id)
         except Exception as exc:
             results.append({"prospect_id": prospect_id, "status": "failed", "error": str(exc)})
             failed += 1
@@ -452,6 +454,7 @@ async def regenerate_demo_site(
     """Rebuild demo site content from stored fields without changing them."""
     site = _get_editable_demo_site(db, current_user.id, demo_site_id)
     site = await demo_site_service.regenerate_demo_site(db, site)
+    reenqueue_campaigns_after_demo_ready(db, site.prospect_id, site.user_id)
     return _serialize_demo_site(site, include_brand_color=True)
 
 

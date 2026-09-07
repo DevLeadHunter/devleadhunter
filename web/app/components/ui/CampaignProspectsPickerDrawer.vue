@@ -161,7 +161,12 @@ import type { ComputedRef, EmitFn, PropType, Ref } from 'vue'
 import { computed, ref, watch } from 'vue'
 import type { Prospect } from '~/types'
 import type { SelectFieldOption } from '~/types/SelectField'
-import type { CampaignProspectMembership } from '~/services/campaignService'
+import type {
+  CampaignDetailResponse,
+  CampaignEnqueueOutcome,
+  CampaignProspectMembership,
+  CampaignSkippedProspect,
+} from '~/services/campaignService'
 import { CampaignService } from '~/services/campaignService'
 import { ProspectsService } from '~/services/prospectsService'
 import { useToast } from '~/composables/useToast'
@@ -327,14 +332,44 @@ async function submit(): Promise<void> {
   isSubmitting.value = true
   try {
     const count: number = selectedIds.value.length
-    await CampaignService.addProspects(props.campaignId, selectedIds.value)
+    const updated: CampaignDetailResponse = await CampaignService.addProspects(props.campaignId, selectedIds.value)
     toast.success(`${count} prospect${count !== 1 ? 's' : ''} ajouté${count !== 1 ? 's' : ''}`)
+    warnAboutProspectsLeftOutOfQueue(updated.enqueue_outcome ?? null)
     emit('added')
   } catch {
     toast.error("Erreur lors de l'ajout des prospects")
   } finally {
     isSubmitting.value = false
   }
+}
+
+/**
+ * Warn when newcomers joined a launched campaign but not its send queue yet (no live demo / no video).
+ * @param outcome - Enqueue outcome returned by the add call, or null when the campaign is not launched.
+ */
+function warnAboutProspectsLeftOutOfQueue(outcome: CampaignEnqueueOutcome | null): void {
+  if (!outcome) return
+  if (outcome.skipped_no_demo.length > 0) {
+    const several: boolean = outcome.skipped_no_demo.length > 1
+    toast.warning(
+      `Pas encore en file d'attente (pas de site démo actif) : ${skippedProspectNames(outcome.skipped_no_demo)}. ` +
+        `Génère ${several ? 'leurs démos : ils rejoindront' : 'sa démo : il rejoindra'} la file à ${several ? 'leur' : 'sa'} position.`,
+    )
+  }
+  if (outcome.skipped_no_video.length > 0) {
+    toast.warning(
+      `Pas encore en file d'attente (pas de vidéo prête) : ${skippedProspectNames(outcome.skipped_no_video)}.`,
+    )
+  }
+}
+
+/**
+ * Comma-separated names of prospects left out of the queue, for the warning toasts.
+ * @param prospects - The skipped prospects.
+ * @returns Their names joined by commas.
+ */
+function skippedProspectNames(prospects: CampaignSkippedProspect[]): string {
+  return prospects.map((prospect: CampaignSkippedProspect): string => prospect.name).join(', ')
 }
 
 watch(

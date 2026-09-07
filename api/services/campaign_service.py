@@ -2,6 +2,10 @@
 Campaign service for managing email campaigns.
 """
 
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
 from fastapi import HTTPException, status
 from sqlalchemy import func as sa_func
 from sqlalchemy.orm import Session, joinedload
@@ -17,6 +21,9 @@ from schemas.campaign import (
 )
 from services.activity_log_service import CATEGORY_CAMPAIGN, STATUS_INFO, activity_log_service
 from services.email_log_stats import aggregate_email_log_counts, compute_engagement_rates
+
+if TYPE_CHECKING:
+    from services.campaign_queue_service import EnqueueResult
 
 # Campaign status → French verb for the activity feed.
 _CAMPAIGN_STATUS_VERBS: dict[str, str] = {
@@ -227,7 +234,7 @@ class CampaignService:
 
     def add_prospects_to_campaign(
         self, db: Session, campaign_id: int, user_id: int, prospect_ids: list[int]
-    ) -> Campaign | None:
+    ) -> tuple[Campaign | None, EnqueueResult | None]:
         """
         Add prospects to a campaign.
 
@@ -238,14 +245,16 @@ class CampaignService:
             prospect_ids: List of prospect IDs to add
 
         Returns:
-            Updated campaign if found, None otherwise
+            ``(campaign, enqueue_result)`` — the updated campaign (None when not found) and, on a
+            launched campaign, the outcome of pushing the newcomers into the send queue (including who
+            was left out for a missing demo or video); None when nothing was enqueued.
 
         Raises:
             HTTPException: If prospects not found or not owned by user
         """
         campaign = self.get_campaign(db, campaign_id, user_id)
         if not campaign:
-            return None
+            return None, None
 
         # Get prospects
         prospects = db.query(ProspectDB).filter(ProspectDB.id.in_(prospect_ids), ProspectDB.user_id == user_id).all()
@@ -279,18 +288,20 @@ class CampaignService:
 
         # On a launched campaign, materialise the new prospects into the send queue so they actually
         # go out; enqueue is re-entrant (already-queued prospects are skipped) and appends them after
-        # the current pending slots, i.e. last — matching their position.
+        # the current pending slots, i.e. last — matching their position. A newcomer without a live
+        # demo (or ready video) is left out and reported, so the UI can say why it is not in the queue.
+        enqueue_result: EnqueueResult | None = None
         if _is_active(campaign) and (campaign.channel == "sms" or campaign.template_id is not None):
             from services.campaign_queue_service import CampaignQueueService
 
-            CampaignQueueService(db).enqueue_campaign(
+            enqueue_result = CampaignQueueService(db).enqueue_campaign(
                 campaign,
                 template_id=campaign.template_id,
                 ab_template_id_b=campaign.ab_template_id_b,
             )
             db.refresh(campaign)
 
-        return campaign
+        return campaign, enqueue_result
 
     def remove_prospect_from_campaign(
         self, db: Session, campaign_id: int, user_id: int, prospect_id: int

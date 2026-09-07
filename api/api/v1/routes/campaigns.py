@@ -20,6 +20,7 @@ from models.user import User
 from schemas.campaign import (
     CampaignCreate,
     CampaignDetailResponse,
+    CampaignEnqueueOutcome,
     CampaignFollowUpCreate,
     CampaignFollowUpResponse,
     CampaignFollowUpUpdate,
@@ -30,6 +31,7 @@ from schemas.campaign import (
     CampaignProspectResponse,
     CampaignResponse,
     CampaignSettingsUpdate,
+    CampaignSkippedProspect,
     CampaignStats,
     CampaignUpdate,
 )
@@ -102,8 +104,10 @@ def _ab_variants_by_prospect(db: Session, campaign_id: int) -> dict[int, str | N
     return dict(rows)
 
 
-def _detail_response(db: Session, campaign) -> CampaignDetailResponse:
-    """Build a CampaignDetailResponse from a Campaign ORM object."""
+def _detail_response(
+    db: Session, campaign, enqueue_outcome: CampaignEnqueueOutcome | None = None
+) -> CampaignDetailResponse:
+    """Build a CampaignDetailResponse from a Campaign ORM object (``enqueue_outcome`` only after an add)."""
     ab_variants = _ab_variants_by_prospect(db, campaign.id)
     return CampaignDetailResponse(
         id=campaign.id,
@@ -125,6 +129,7 @@ def _detail_response(db: Session, campaign) -> CampaignDetailResponse:
         updated_at=campaign.updated_at,
         prospects_count=len(campaign.prospects),
         supports_ready_backfill=CampaignQueueService(db).supports_ready_backfill(campaign),
+        enqueue_outcome=enqueue_outcome,
         prospects=[
             CampaignProspectResponse(
                 id=prospect.id,
@@ -356,11 +361,26 @@ async def add_prospects_to_campaign(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    """Add prospects to a campaign."""
-    campaign = campaign_service.add_prospects_to_campaign(db, campaign_id, current_user.id, data.prospect_ids)
+    """Add prospects to a campaign; on a launched one, also report who could not join the send queue yet."""
+    campaign, enqueue_result = campaign_service.add_prospects_to_campaign(
+        db, campaign_id, current_user.id, data.prospect_ids
+    )
     if not campaign:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Campaign not found")
-    return _detail_response(db, campaign)
+    outcome: CampaignEnqueueOutcome | None = None
+    if enqueue_result is not None:
+        outcome = CampaignEnqueueOutcome(
+            enqueued=enqueue_result.enqueued,
+            skipped_no_demo=[
+                CampaignSkippedProspect(id=int(entry["id"]), name=str(entry["name"]))
+                for entry in enqueue_result.skipped_no_demo
+            ],
+            skipped_no_video=[
+                CampaignSkippedProspect(id=int(entry["id"]), name=str(entry["name"]))
+                for entry in enqueue_result.skipped_no_video
+            ],
+        )
+    return _detail_response(db, campaign, enqueue_outcome=outcome)
 
 
 @router.patch("/{campaign_id}/prospects/reorder", response_model=CampaignDetailResponse)
@@ -793,7 +813,8 @@ async def backfill_ready_prospects(
     Manual backfill for prospects skipped at launch (no demo/video then) whose media is now ready: the
     video-ready auto-enqueue only fires the moment a video finishes, so this catches up prospects that
     were already ready. Reuses the per-prospect guard, so already-queued/sent/cancelled prospects are
-    left untouched and each added send takes the next available slot.
+    left untouched; the pending sends are then re-dated to the table order, so each newcomer takes the
+    day its position says rather than the queue's tail.
     """
     campaign = _get_or_404(db, campaign_id, current_user.id)
     current_status = getattr(campaign.status, "value", campaign.status)

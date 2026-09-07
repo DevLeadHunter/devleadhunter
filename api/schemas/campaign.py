@@ -195,6 +195,23 @@ class CampaignResponse(CampaignBase):
     model_config = ConfigDict(from_attributes=True)
 
 
+class CampaignSkippedProspect(BaseModel):
+    """A prospect left out of the send queue, with the name to show in the warning."""
+
+    id: int
+    name: str
+
+
+class CampaignEnqueueOutcome(BaseModel):
+    """What pushing newly added prospects into a launched campaign's send queue did."""
+
+    enqueued: int = 0
+    # Left out because their J1 template ships {lien_demo} and they have no active demo site yet.
+    skipped_no_demo: list[CampaignSkippedProspect] = Field(default_factory=list)
+    # Left out because their template is video-only and no prospection video is ready yet.
+    skipped_no_video: list[CampaignSkippedProspect] = Field(default_factory=list)
+
+
 class CampaignDetailResponse(CampaignResponse):
     """Full campaign response with prospects and follow-up sequence."""
 
@@ -202,6 +219,8 @@ class CampaignDetailResponse(CampaignResponse):
     follow_ups: list[CampaignFollowUpResponse] = Field(default_factory=list)
     # True when the "add ready prospects" backfill can add sends here (email campaign using a demo/video link).
     supports_ready_backfill: bool = False
+    # Only set by POST /{id}/prospects on a launched campaign: who joined the queue and who was left out.
+    enqueue_outcome: CampaignEnqueueOutcome | None = None
 
     model_config = ConfigDict(from_attributes=True)
 

@@ -89,6 +89,7 @@ def test_enqueue_ready_prospect_calls_single_per_active_campaign(monkeypatch):
     campaigns = [_campaign(id=1), _campaign(id=2)]
     db = _FakeDB(results=[_Result(all_rows=campaigns)])
     seen: list[tuple[int, int]] = []
+    rescheduled: list[int] = []
 
     # Only campaign 1 "adds" a row, so the total added count must be 1.
     monkeypatch.setattr(
@@ -96,11 +97,18 @@ def test_enqueue_ready_prospect_calls_single_per_active_campaign(monkeypatch):
         "_enqueue_single_ready_prospect",
         lambda self, campaign, prospect_id: seen.append((campaign.id, prospect_id)) or campaign.id == 1,
     )
+    monkeypatch.setattr(
+        cqs.CampaignQueueService,
+        "reschedule_pending_initial",
+        lambda self, campaign: rescheduled.append(campaign.id) or 0,
+    )
 
     added = CampaignQueueService(db).enqueue_ready_prospect(prospect_id=99, user_id=7)
 
     assert seen == [(1, 99), (2, 99)]
     assert added == 1
+    # Only the campaign that gained a send is re-dated to its table order.
+    assert rescheduled == [1]
 
 
 def test_single_ready_prospect_skips_sms_campaign():
@@ -203,14 +211,35 @@ def test_backfill_ready_prospects_counts_each_added(monkeypatch):
     # The manual backfill runs the per-prospect enqueue for every prospect and counts the ones added.
     campaign = _campaign(prospects=[_prospect(1), _prospect(2), _prospect(3)])
     seen: list[int] = []
+    rescheduled: list[int] = []
 
     def fake_single(self, camp, prospect_id):
         seen.append(prospect_id)
         return prospect_id in (1, 3)
 
     monkeypatch.setattr(cqs.CampaignQueueService, "_enqueue_single_ready_prospect", fake_single)
+    monkeypatch.setattr(
+        cqs.CampaignQueueService, "reschedule_pending_initial", lambda self, camp: rescheduled.append(camp.id) or 0
+    )
 
     added = CampaignQueueService(_FakeDB()).backfill_ready_prospects(campaign)
 
     assert seen == [1, 2, 3]
     assert added == 2
+    # One re-dating pass once the newcomers are in, so they take their positions' days, not the tail.
+    assert rescheduled == [campaign.id]
+
+
+def test_backfill_ready_prospects_does_not_reschedule_when_nothing_added(monkeypatch):
+    campaign = _campaign(prospects=[_prospect(1), _prospect(2)])
+    rescheduled: list[int] = []
+
+    monkeypatch.setattr(cqs.CampaignQueueService, "_enqueue_single_ready_prospect", lambda self, camp, pid: False)
+    monkeypatch.setattr(
+        cqs.CampaignQueueService, "reschedule_pending_initial", lambda self, camp: rescheduled.append(camp.id) or 0
+    )
+
+    added = CampaignQueueService(_FakeDB()).backfill_ready_prospects(campaign)
+
+    assert added == 0
+    assert rescheduled == []

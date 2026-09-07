@@ -280,6 +280,8 @@ class CampaignQueueService:
         for campaign in campaigns:
             if self._enqueue_single_ready_prospect(campaign, prospect_id):
                 added += 1
+                # The new send landed on the last slot: re-date the pending J1s so it takes its position's day.
+                self.reschedule_pending_initial(campaign)
         return added
 
     def backfill_ready_prospects(self, campaign: Campaign) -> int:
@@ -301,6 +303,9 @@ class CampaignQueueService:
         for prospect in campaign.prospects:
             if self._enqueue_single_ready_prospect(campaign, prospect.id):
                 added += 1
+        if added:
+            # Newcomers were appended last: re-date the pending J1s so each takes its position's day.
+            self.reschedule_pending_initial(campaign)
         return added
 
     def supports_ready_backfill(self, campaign: Campaign) -> bool:

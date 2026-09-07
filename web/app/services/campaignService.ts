@@ -30,6 +30,19 @@ export type CampaignProspectMembership = {
   name: string
 }
 
+/** A prospect left out of the send queue when added to a launched campaign, with the name to show. */
+export type CampaignSkippedProspect = {
+  id: number
+  name: string
+}
+
+/** What pushing newly added prospects into a launched campaign's send queue did (POST …/prospects only). */
+export type CampaignEnqueueOutcome = {
+  enqueued: number
+  skipped_no_demo: CampaignSkippedProspect[]
+  skipped_no_video: CampaignSkippedProspect[]
+}
+
 export type CampaignResponse = {
   id: number
   user_id: number
@@ -63,6 +76,8 @@ export interface CampaignDetailResponse extends CampaignResponse {
   follow_ups: CampaignFollowUp[]
   /** True when "add ready prospects" can add sends here (active email campaign using a demo/video link). */
   supports_ready_backfill?: boolean
+  /** Only after adding prospects to a launched campaign: who joined the queue and who was left out. */
+  enqueue_outcome?: CampaignEnqueueOutcome | null
 }
 
 export type CampaignListResponse = {
