@@ -179,10 +179,10 @@ const credit: Ref<SmsCredit | null> = ref(null)
 /** Whether the current user may see the shared smsmode credit balance. */
 const canSeeCredit: ComputedRef<boolean> = computed((): boolean => isPlatformAdmin(userStore.user?.role))
 
-/** The credit card value: the balance, or « — » while unknown/unreadable. */
+/** The credit card value in euros (same format as « Coût estimé »), or « — » while unknown. */
 const creditLabel: ComputedRef<string> = computed((): string => {
   const value: number | null | undefined = credit.value?.credits
-  return typeof value === 'number' ? value.toLocaleString('fr-FR') : '—'
+  return formatEuros(typeof value === 'number' ? Math.round(value * 100) : null)
 })
 
 /**
