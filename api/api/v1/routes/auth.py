@@ -47,6 +47,7 @@ def _build_user_response(db: Session, user: User) -> UserResponse:
         email=user.email,
         role=user.role,
         company_name=user.company_name,
+        company_website_url=user.company_website_url,
         is_active=user.is_active,
         created_at=user.created_at,
         updated_at=user.updated_at,
