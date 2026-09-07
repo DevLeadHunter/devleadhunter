@@ -65,7 +65,15 @@ class SmsModeProvider(SmsProvider):
         if response.status_code >= 400:
             logger.error("[smsmode] %s reading credit balance: %s", response.status_code, response.text[:300])
             return None
-        return self._parse_credit(response.text)
+        balance = self._parse_credit(response.text)
+        if balance is None:
+            logger.warning(
+                "[smsmode] unreadable credit balance from %s (status %s): %r",
+                self._credit_url,
+                response.status_code,
+                response.text[:200],
+            )
+        return balance
 
     @staticmethod
     def _parse_credit(raw: str) -> float | None:
@@ -85,7 +93,6 @@ class SmsModeProvider(SmsProvider):
         try:
             return float(token)
         except ValueError:
-            logger.warning("[smsmode] unparseable credit balance response: %s", raw[:120])
             return None
 
     async def send(
