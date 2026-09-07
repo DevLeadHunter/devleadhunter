@@ -22,7 +22,6 @@ from sqlalchemy.orm import Session
 
 from core.config import settings
 from models.presenter_video import PresenterVideo
-from models.user import User
 from services.r2_storage_service import r2_storage
 
 logger = logging.getLogger(__name__)
@@ -34,12 +33,6 @@ _ALLOWED_EXTENSIONS: dict[str, str] = {
     "video/quicktime": ".mov",
     "video/x-matroska": ".mkv",
 }
-
-# Photo présentateur (bulle sur les vignettes) : formats image et poids max.
-_ALLOWED_PHOTO_CONTENT_TYPES: set[str] = {"image/jpeg", "image/png", "image/webp"}
-_MAX_PHOTO_BYTES: int = 15 * 1024 * 1024
-# Stockée en carré normalisé : le montage n'a plus qu'à masquer en cercle.
-_PHOTO_STORED_SIDE_PX: int = 800
 
 _DURATION_RE = re.compile(r"Duration:\s*(\d+):(\d{2}):(\d{2})\.(\d+)")
 # Dernière ligne de progression d'un décodage complet (`-f null -`), utilisée
@@ -700,100 +693,6 @@ class PresenterVideoService:
         db.commit()
         db.refresh(record)
         return record
-
-    async def store_photo(self, db: Session, user: User, file: UploadFile) -> str:
-        """
-        Persist the presenter photo (replaces any previous one).
-
-        The photo is normalised at upload — EXIF-rotated, center-cropped square,
-        resized — so the thumbnail montage only has to mask it into a circle.
-
-        Args:
-            db: Active database session.
-            user: Owner of the photo.
-            file: Uploaded image (JPEG / PNG / WebP).
-
-        Returns:
-            The R2 key stored on the user row.
-
-        Raises:
-            HTTPException: 400/413 on invalid format, size or unreadable image.
-        """
-        from io import BytesIO
-
-        from PIL import Image, ImageOps, UnidentifiedImageError
-
-        content_type = (file.content_type or "").lower().split(";")[0].strip()
-        if content_type not in _ALLOWED_PHOTO_CONTENT_TYPES:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Format d'image non supporté. Formats acceptés : JPEG, PNG, WebP.",
-            )
-        data = await file.read()
-        if not data:
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Fichier image vide.")
-        if len(data) > _MAX_PHOTO_BYTES:
-            raise HTTPException(
-                status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
-                detail=f"La photo dépasse {_MAX_PHOTO_BYTES // (1024 * 1024)} MB.",
-            )
-
-        try:
-            photo = ImageOps.exif_transpose(Image.open(BytesIO(data))).convert("RGB")
-        except (UnidentifiedImageError, OSError) as exc:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Impossible de lire cette image (fichier corrompu ?).",
-            ) from exc
-
-        side = min(photo.size)
-        left = (photo.width - side) // 2
-        top = (photo.height - side) // 2
-        photo = photo.crop((left, top, left + side, top + side))
-        if side > _PHOTO_STORED_SIDE_PX:
-            photo = photo.resize((_PHOTO_STORED_SIDE_PX, _PHOTO_STORED_SIDE_PX), Image.LANCZOS)
-
-        work_dir = Path(tempfile.mkdtemp(prefix=f"presenter-photo-{user.id}-"))
-        try:
-            local_path = work_dir / "presenter-photo.jpg"
-            photo.save(local_path, format="JPEG", quality=88)
-            key = r2_storage.presenter_photo_key(user.id)
-            try:
-                await r2_storage.upload_file_async(local_path, key, "image/jpeg")
-            except Exception as exc:
-                logger.exception("[Presenter] photo R2 upload failed for user=%s", user.id)
-                raise HTTPException(
-                    status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                    detail="Impossible d'enregistrer la photo sur le stockage. Réessayez.",
-                ) from exc
-        finally:
-            shutil.rmtree(work_dir, ignore_errors=True)
-
-        user.presenter_photo_path = key
-        db.commit()
-        return key
-
-    def delete_photo(self, db: Session, user: User) -> bool:
-        """
-        Delete the presenter photo (object + user column). Returns True if one existed.
-
-        Args:
-            db: Active database session.
-            user: Owner of the photo.
-
-        Returns:
-            Whether a photo was actually removed.
-        """
-        stored = str(user.presenter_photo_path or "")
-        if not stored:
-            return False
-        try:
-            r2_storage.delete(stored)
-        except Exception:
-            logger.warning("[Presenter] photo cleanup failed for user=%s", user.id, exc_info=True)
-        user.presenter_photo_path = None
-        db.commit()
-        return True
 
     def delete_for_user(self, db: Session, user_id: int) -> bool:
         """Delete the user's presenter clip (object + row). Returns True if one existed."""

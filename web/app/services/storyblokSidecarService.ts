@@ -12,7 +12,7 @@
  * @module services/storyblokSidecarService
  */
 import { DemoSiteService } from '~/services/demoSiteService'
-import { PresenterVideoService } from '~/services/presenterVideoService'
+import { ProfilePhotoService } from '~/services/profilePhotoService'
 import { getScraperSidecarInfo } from '~/services/scraperSidecarService'
 
 /** Connection state of the Storyblok owner session used for the editor sequence. */
@@ -239,7 +239,7 @@ export class StoryblokSidecarService {
     // La photo est optionnelle : son absence (ou une erreur) ne bloque jamais le build.
     let presenterPhoto: Blob | null = null
     try {
-      presenterPhoto = await PresenterVideoService.fetchPresenterPhotoBlob()
+      presenterPhoto = await ProfilePhotoService.fetchProfilePhotoBlob()
     } catch {
       presenterPhoto = null
     }

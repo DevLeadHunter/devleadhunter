@@ -49,6 +49,12 @@ class UserCreate(UserBase):
     password: str = Field(..., min_length=6, max_length=100, description="User's password")
 
 
+class ProfilePhotoResponse(BaseModel):
+    """Profile photo state returned to the frontend (no file content)."""
+
+    has_photo: bool
+
+
 class UserUpdate(BaseModel):
     """
     Schema for updating user information.

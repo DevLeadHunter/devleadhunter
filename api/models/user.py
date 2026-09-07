@@ -65,8 +65,9 @@ class User(Base):
     # Optional public website of the user's business — linked from the prospection
     # video page signature (« Site réalisé par {company_name} »).
     company_website_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
-    # R2 key of the presenter photo shown as a round bubble on video thumbnails.
-    presenter_photo_path: Mapped[str | None] = mapped_column(String(512), nullable=True)
+    # R2 key of the profile photo — today the round bubble on video thumbnails,
+    # reusable wherever the user's face is worth showing.
+    profile_photo_path: Mapped[str | None] = mapped_column(String(512), nullable=True)
     # Gmail Postmaster Tools OAuth — per-user read access to Gmail-side reputation.
     postmaster_google_email: Mapped[str | None] = mapped_column(String(255), nullable=True)
     postmaster_oauth_refresh_token: Mapped[str | None] = mapped_column(Text, nullable=True)
