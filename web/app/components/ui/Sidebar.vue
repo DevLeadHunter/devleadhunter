@@ -251,7 +251,14 @@
         aria-label="Ouvrir le menu du compte"
         @click.stop="showUserMenu = !showUserMenu"
       >
+        <img
+          v-if="profilePhotoObjectUrl"
+          :src="profilePhotoObjectUrl"
+          alt="Photo de profil"
+          class="h-8 w-8 shrink-0 rounded-full border border-[var(--app-line)] object-cover"
+        />
         <span
+          v-else
           class="font-label flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[var(--app-ink)] text-[0.65rem] font-semibold text-[var(--app-surface)]"
         >
           {{ userInitials }}
@@ -276,7 +283,7 @@
 </template>
 
 <script lang="ts" setup>
-import type { UseAuthReturn, UseDesktopRuntimeReturn, UseToastReturn } from '~/types/Composables'
+import type { UseAuthReturn, UseDesktopRuntimeReturn, UseProfilePhotoReturn, UseToastReturn } from '~/types/Composables'
 import type { ComputedRef, Ref } from 'vue'
 import type { AppTheme } from '~/types/AppTheme'
 import type { DlhModuleEntry, UiSidebarGroup, UiSidebarLink, UiSidebarProps } from '~/types/UiSidebar'
@@ -288,6 +295,7 @@ import { useCommandPalette } from '~/composables/useCommandPalette'
 import { useDrawerStackStore } from '~/stores/drawerStack'
 import { useToast } from '~/composables/useToast'
 import { useHorizontalSwipe } from '~/composables/useHorizontalSwipe'
+import { useProfilePhoto } from '~/composables/useProfilePhoto'
 
 /** Dashboard sidebar shell with nav groups and user menu. */
 const props: UiSidebarProps = defineProps({
@@ -330,7 +338,11 @@ const { isDesktopApp }: UseDesktopRuntimeReturn = useDesktopRuntime()
 /** Desktop build version — shown under the account so anyone can tell which build runs. */
 const appVersion: Ref<string> = ref('')
 
+/** Round profile photo shown instead of the letter avatar when one exists. */
+const { profilePhotoObjectUrl, ensureProfilePhotoLoaded }: UseProfilePhotoReturn = useProfilePhoto()
+
 onMounted(async (): Promise<void> => {
+  await ensureProfilePhotoLoaded()
   if (!isDesktopApp.value) return
   try {
     const { getVersion }: { getVersion: () => Promise<string> } = await import('@tauri-apps/api/app')

@@ -47,6 +47,13 @@ export type UseOpenExternalUrlReturn = {
   openExternalUrl: (url: string) => Promise<void>
 }
 
+export type UseProfilePhotoReturn = {
+  hasProfilePhoto: Ref<boolean>
+  profilePhotoObjectUrl: Ref<string | null>
+  ensureProfilePhotoLoaded: () => Promise<void>
+  refreshProfilePhoto: () => Promise<void>
+}
+
 export type UseScrapingJobStreamReturn = {
   logs: Ref<string[]>
   prospects: Ref<Prospect[]>

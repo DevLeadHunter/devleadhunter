@@ -16,8 +16,8 @@
           </button>
 
           <img
-            v-if="photoPreviewUrl"
-            :src="photoPreviewUrl"
+            v-if="profilePhotoObjectUrl"
+            :src="profilePhotoObjectUrl"
             alt="Photo de profil"
             class="h-10 w-10 shrink-0 rounded-full border border-[var(--app-line)] object-cover"
           />
@@ -48,8 +48,8 @@
             </span>
             <div class="flex items-center gap-3">
               <img
-                v-if="photoPreviewUrl"
-                :src="photoPreviewUrl"
+                v-if="profilePhotoObjectUrl"
+                :src="profilePhotoObjectUrl"
                 alt="Photo de profil"
                 class="h-14 w-14 shrink-0 rounded-full border border-[var(--app-line)] object-cover"
               />
@@ -188,14 +188,14 @@
 </template>
 
 <script lang="ts" setup>
-import type { UseToastReturn } from '~/types/Composables'
+import type { UseProfilePhotoReturn, UseToastReturn } from '~/types/Composables'
 import type { ProfileForm, UiProfileDrawerEmits } from '~/types/UiProfileDrawer'
-import type { ProfilePhoto } from '~/services/profilePhotoService'
 import type { ComputedRef, EmitFn, Ref } from 'vue'
 import type { UiDrawerProps } from '~/types/UiDrawer'
-import { computed, onBeforeUnmount, ref, watch } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { ProfilePhotoService } from '~/services/profilePhotoService'
 import { useUserStore } from '~/stores/user'
+import { useProfilePhoto } from '~/composables/useProfilePhoto'
 import { useToast } from '~/composables/useToast'
 
 /** User profile and password drawer. */
@@ -222,9 +222,10 @@ const isSaving: Ref<boolean> = ref(false)
 /** Editable profile form state. */
 const form: Ref<ProfileForm> = ref({ name: '', email: '', company_name: '', company_website_url: '' })
 
-/** Profile photo state + round preview. */
-const hasProfilePhoto: Ref<boolean> = ref(false)
-const photoPreviewUrl: Ref<string | null> = ref(null)
+/** Shared profile photo state (also feeds the sidebar avatar). */
+const { hasProfilePhoto, profilePhotoObjectUrl, ensureProfilePhotoLoaded, refreshProfilePhoto }: UseProfilePhotoReturn =
+  useProfilePhoto()
+
 const isUploadingPhoto: Ref<boolean> = ref(false)
 const isDeletingPhoto: Ref<boolean> = ref(false)
 const photoInputRef: Ref<HTMLInputElement | null> = ref(null)
@@ -239,24 +240,6 @@ const userInitials: ComputedRef<string> = computed((): string => {
   }
   return name.substring(0, 2).toUpperCase()
 })
-
-/**
- * Load the profile photo state + its round preview from the API.
- * @returns A promise that resolves once the photo state is loaded.
- */
-async function loadProfilePhoto(): Promise<void> {
-  try {
-    const photo: ProfilePhoto = await ProfilePhotoService.getProfilePhoto()
-    hasProfilePhoto.value = photo.has_photo
-    releasePhotoPreview()
-    if (photo.has_photo) {
-      photoPreviewUrl.value = await ProfilePhotoService.getProfilePhotoObjectUrl()
-    }
-  } catch {
-    // La photo est un bonus : son échec de chargement ne bloque pas le drawer.
-    hasProfilePhoto.value = false
-  }
-}
 
 /**
  * Open the hidden photo file input.
@@ -278,7 +261,7 @@ async function handlePhotoSelected(event: Event): Promise<void> {
   isUploadingPhoto.value = true
   try {
     await ProfilePhotoService.uploadProfilePhoto(file)
-    await loadProfilePhoto()
+    await refreshProfilePhoto()
     toast.success('Photo enregistrée')
   } catch (err: unknown) {
     toast.error(err instanceof Error ? err.message : "Impossible d'enregistrer la photo")
@@ -295,22 +278,13 @@ async function removeProfilePhoto(): Promise<void> {
   isDeletingPhoto.value = true
   try {
     await ProfilePhotoService.deleteProfilePhoto()
-    hasProfilePhoto.value = false
-    releasePhotoPreview()
+    await refreshProfilePhoto()
     toast.success('Photo retirée')
   } catch (err: unknown) {
     toast.error(err instanceof Error ? err.message : 'Impossible de retirer la photo')
   } finally {
     isDeletingPhoto.value = false
   }
-}
-
-/**
- * Revoke the photo preview object URL.
- */
-function releasePhotoPreview(): void {
-  if (photoPreviewUrl.value) URL.revokeObjectURL(photoPreviewUrl.value)
-  photoPreviewUrl.value = null
 }
 
 /**
@@ -345,15 +319,11 @@ watch(
         company_name: userStore.user?.company_name ?? '',
         company_website_url: userStore.user?.company_website_url ?? '',
       }
-      loadProfilePhoto()
+      ensureProfilePhotoLoaded()
     }
   },
   { immediate: true },
 )
-
-onBeforeUnmount((): void => {
-  releasePhotoPreview()
-})
 </script>
 
 <style scoped>
