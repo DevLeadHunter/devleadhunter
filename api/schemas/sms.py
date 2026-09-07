@@ -124,6 +124,13 @@ class SmsBulkSendResponse(BaseModel):
     skipped: int
 
 
+class SmsCreditResponse(BaseModel):
+    """The platform smsmode account's remaining credit balance (admin-only)."""
+
+    configured: bool = Field(default=False, description="Whether the smsmode key is set")
+    credits: float | None = Field(default=None, description="Remaining credits, or null when unreadable")
+
+
 class SmsDlrCallback(BaseModel):
     """smsmode delivery-receipt callback (subset we use)."""
 

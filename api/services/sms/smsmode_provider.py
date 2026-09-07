@@ -23,9 +23,10 @@ class SmsModeProvider(SmsProvider):
     """Send SMS through the smsmode REST v1 API (single platform account)."""
 
     def __init__(self) -> None:
-        """Load the platform API key and base URL from settings."""
+        """Load the platform API key and base URLs from settings."""
         self._api_key: str = settings.smsmode_api_key
         self._base_url: str = settings.smsmode_base_url
+        self._credit_url: str = settings.smsmode_credit_url
 
     @property
     def is_configured(self) -> bool:
@@ -35,6 +36,57 @@ class SmsModeProvider(SmsProvider):
             ``True`` when a non-empty key is configured.
         """
         return bool(self._api_key)
+
+    async def get_credit_balance(self) -> float | None:
+        """Read the smsmode account's remaining credit balance.
+
+        Calls the smsmode HTTP API ``credit.do`` endpoint, which answers with the
+        remaining credits as a bare number. The key is sent both as the REST
+        ``X-Api-Key`` header (what our account uses) and as the legacy
+        ``accessToken`` query param, so the same key works whichever the endpoint
+        expects. Any transport, HTTP or parse error yields ``None`` — the balance
+        is an admin convenience, never worth surfacing an exception for.
+
+        Returns:
+            The remaining credits, or ``None`` when unconfigured or unreadable.
+        """
+        if not self.is_configured:
+            return None
+        try:
+            async with httpx.AsyncClient(timeout=httpx.Timeout(15.0)) as client:
+                response = await client.get(
+                    self._credit_url,
+                    params={"accessToken": self._api_key},
+                    headers={"X-Api-Key": self._api_key, "Accept": "text/plain"},
+                )
+        except httpx.HTTPError as exc:
+            logger.error("[smsmode] transport error reading credit balance: %s", exc)
+            return None
+        if response.status_code >= 400:
+            logger.error("[smsmode] %s reading credit balance: %s", response.status_code, response.text[:300])
+            return None
+        return self._parse_credit(response.text)
+
+    @staticmethod
+    def _parse_credit(raw: str) -> float | None:
+        """Extract the credit number from a ``credit.do`` response.
+
+        The endpoint returns a bare number (e.g. ``"123"`` or ``"123.5"``); some
+        variants prefix a status as ``"code | value"``. We take the last token and
+        read it as a float, tolerating a comma decimal separator.
+
+        Args:
+            raw: The raw response body.
+
+        Returns:
+            The parsed balance, or ``None`` when no number can be read.
+        """
+        token = raw.strip().split("|")[-1].strip().replace(",", ".")
+        try:
+            return float(token)
+        except ValueError:
+            logger.warning("[smsmode] unparseable credit balance response: %s", raw[:120])
+            return None
 
     async def send(
         self,

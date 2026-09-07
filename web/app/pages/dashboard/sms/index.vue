@@ -38,7 +38,7 @@
       </div>
     </div>
 
-    <div class="grid grid-cols-2 gap-3 @sm:grid-cols-4">
+    <div :class="['grid grid-cols-2 gap-3', canSeeCredit ? '@sm:grid-cols-5' : '@sm:grid-cols-4']">
       <div class="card text-center">
         <p class="text-muted text-xs font-medium">Envoyés</p>
         <p class="mt-1 text-2xl font-bold text-[var(--app-ink)]">{{ stats.sent }}</p>
@@ -54,6 +54,14 @@
       <div class="card text-center" title="Estimation : segments facturés × tarif smsmode par segment">
         <p class="text-muted text-xs font-medium">Coût estimé</p>
         <p class="mt-1 text-2xl font-bold text-[var(--app-ink)]">{{ formatEuros(stats.cost_cents) }}</p>
+      </div>
+      <div
+        v-if="canSeeCredit"
+        class="card text-center"
+        title="Solde de crédits restant sur le compte smsmode (compte plateforme partagé)"
+      >
+        <p class="text-muted text-xs font-medium">Crédits restants</p>
+        <p class="mt-1 text-2xl font-bold text-[var(--app-ink)]">{{ creditLabel }}</p>
       </div>
     </div>
 
@@ -135,19 +143,22 @@
 </template>
 
 <script lang="ts" setup>
-import type { Ref } from 'vue'
-import { onMounted, ref, watch } from 'vue'
-import type { SmsMessage, SmsMessagesResponse, SmsStats } from '~/services/smsService'
+import type { ComputedRef, Ref } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
+import type { SmsCredit, SmsMessage, SmsMessagesResponse, SmsStats } from '~/services/smsService'
 import { SmsService } from '~/services/smsService'
 import { SMS_STATUS_BADGE_CLASS, SMS_STATUS_LABELS } from '~/constants/smsStatus'
 import { formatEuros } from '~/utils/currency'
 import { formatCompactDateTime } from '~/utils/date'
+import { isPlatformAdmin } from '~/utils/userRoles'
 import { useDrawerStackStore } from '~/stores/drawerStack'
 
 definePageMeta({ layout: 'dashboard', middleware: ['auth'] })
 
 /** Persistent drawer stack (the SMS composer lives there). */
 const drawerStack: ReturnType<typeof useDrawerStackStore> = useDrawerStackStore()
+/** Current user — the smsmode balance is an account-level fact, admins only. */
+const userStore: ReturnType<typeof useUserStore> = useUserStore()
 
 const messages: Ref<SmsMessage[]> = ref([])
 const isLoading: Ref<boolean> = ref(false)
@@ -162,12 +173,37 @@ const stats: Ref<SmsStats> = ref({
   cost_cents: 0,
 })
 
+/** The platform smsmode balance, once fetched (admin-only, null when unreadable). */
+const credit: Ref<SmsCredit | null> = ref(null)
+
+/** Whether the current user may see the shared smsmode credit balance. */
+const canSeeCredit: ComputedRef<boolean> = computed((): boolean => isPlatformAdmin(userStore.user?.role))
+
+/** The credit card value: the balance, or « — » while unknown/unreadable. */
+const creditLabel: ComputedRef<string> = computed((): string => {
+  const value: number | null | undefined = credit.value?.credits
+  return typeof value === 'number' ? value.toLocaleString('fr-FR') : '—'
+})
+
 /**
  * Open the SMS detail drawer for a row.
  * @param message - The SMS to display.
  */
 function openDrawer(message: SmsMessage): void {
   drawerStack.push({ kind: 'sms-log', message })
+}
+
+/**
+ * Fetch the shared smsmode credit balance (admins only).
+ * Non-fatal: a failed read leaves the card on « — » and never blocks the page.
+ */
+async function loadCredit(): Promise<void> {
+  if (!canSeeCredit.value) return
+  try {
+    credit.value = await SmsService.getCredit()
+  } catch {
+    credit.value = null
+  }
 }
 
 /** Fetch the SMS history and stats. */
@@ -186,6 +222,7 @@ async function loadAll(): Promise<void> {
   } finally {
     isLoading.value = false
   }
+  void loadCredit()
 }
 
 // A SMS sent from the composer refreshes the list.

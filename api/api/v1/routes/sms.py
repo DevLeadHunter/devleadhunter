@@ -29,6 +29,7 @@ from schemas.sms import (
     SmsBulkSendResponse,
     SmsConfigResponse,
     SmsConfigUpdate,
+    SmsCreditResponse,
     SmsManualSendRequest,
     SmsMessageResponse,
     SmsMessagesResponse,
@@ -38,7 +39,7 @@ from schemas.sms import (
     SmsTemplatePreviewResponse,
     SmsTemplateResponse,
 )
-from services.auth_service import get_current_user
+from services.auth_service import get_current_user, require_admin
 from services.demo_site_service import demo_site_service
 from services.demo_video_service import has_ready_video, video_page_url
 from services.notification_service import notification_service
@@ -53,6 +54,7 @@ from services.sms.dlr import (
 from services.sms.gsm_segments import segment_count
 from services.sms.mo import mo_is_stop, mo_origin_message_id, mo_ref_client, mo_sender_number
 from services.sms.phone_normalizer import to_e164_fr
+from services.sms.smsmode_provider import smsmode_provider
 from services.sms.templates import (
     DEFAULT_FIRST_CONTACT_KEY,
     DEFAULT_FOLLOW_UP_KEY,
@@ -229,6 +231,18 @@ async def list_messages(
 async def get_stats(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)) -> SmsStatsResponse:
     """Return aggregate counters of the current user's SMS channel."""
     return SmsStatsResponse(**sms_service.stats(db, current_user.id))
+
+
+@router.get("/credit", response_model=SmsCreditResponse)
+async def get_credit(_admin: User = Depends(require_admin)) -> SmsCreditResponse:
+    """Return the platform smsmode account's remaining credit balance.
+
+    Account-level (single shared smsmode account), so restricted to admins. Never
+    raises: an unreadable balance comes back as ``credits=null``.
+    """
+    configured = smsmode_provider.is_configured
+    credits = await smsmode_provider.get_credit_balance() if configured else None
+    return SmsCreditResponse(configured=configured, credits=credits)
 
 
 @router.get("/templates", response_model=list[SmsTemplateResponse])

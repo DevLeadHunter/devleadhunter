@@ -344,6 +344,11 @@ class Settings(BaseSettings):
         alias="SMSMODE_BASE_URL",
         description="smsmode REST v1 messages endpoint",
     )
+    smsmode_credit_url: str = Field(
+        default="https://rest.smsmode.com/http/1.6/credit.do",
+        alias="SMSMODE_CREDIT_URL",
+        description="smsmode HTTP API endpoint returning the account's remaining credit balance",
+    )
     smsmode_price_per_segment_eur: float = Field(
         default=0.061,
         alias="SMSMODE_PRICE_PER_SEGMENT_EUR",
