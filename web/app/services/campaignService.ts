@@ -46,6 +46,10 @@ export type CampaignResponse = {
   prospects_count: number
   /** Earliest still-pending send in the queue (naive UTC), or null when nothing is queued. */
   next_send_at?: string | null
+  /** First scheduled send across the queue (naive UTC), or null before launch. */
+  first_send_at?: string | null
+  /** Last scheduled send across the queue (naive UTC), or null before launch. */
+  last_send_at?: string | null
 }
 
 export interface CampaignDetailResponse extends CampaignResponse {

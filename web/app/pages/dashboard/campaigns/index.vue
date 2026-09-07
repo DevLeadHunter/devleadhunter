@@ -415,7 +415,7 @@ import type {
   CampaignStatus,
 } from '~/services/campaignService'
 import type { UiFilterTab } from '~/types/UiFilterTabs'
-import type { PeriodValue } from '~/types/UiPeriodFilter'
+import type { PeriodPreset, PeriodValue } from '~/types/UiPeriodFilter'
 import type { UseToastReturn } from '~/types/Composables'
 
 definePageMeta({
@@ -630,30 +630,51 @@ const averageOpenRate: ComputedRef<number | null> = computed((): number | null =
 })
 
 /**
- * Whether a campaign's creation date falls inside the active period filter.
+ * Return the Monday 00:00 of the week containing `date` (local time).
+ * @param date - Any date in the target week.
+ * @returns Midnight on that week's Monday.
+ */
+function startOfWeek(date: Date): Date {
+  const mondayOffset: number = (date.getDay() + 6) % 7
+  return new Date(date.getFullYear(), date.getMonth(), date.getDate() - mondayOffset, 0, 0, 0, 0)
+}
+
+/**
+ * Whether a campaign's send window (not its creation date) overlaps the active period filter.
  * @param campaign - The campaign to test.
  * @returns True when the campaign passes the period filter.
  */
 function matchesPeriod(campaign: CampaignResponse): boolean {
   if (period.value.preset === 'all') return true
-  const created: Date = parseApiDate(campaign.created_at)
   const now: Date = new Date()
-  if (period.value.preset === 'month') {
-    return created.getMonth() === now.getMonth() && created.getFullYear() === now.getFullYear()
-  }
-  if (period.value.preset === '30d') {
-    const cutoff: Date = new Date(now)
-    cutoff.setDate(cutoff.getDate() - 30)
-    return created >= cutoff
-  }
-  if (period.value.preset === 'custom' && period.value.start && period.value.end) {
+  let start: Date
+  let end: Date
+  if (period.value.preset === 'week') {
+    start = startOfWeek(now)
+    end = new Date(start)
+    end.setDate(end.getDate() + 6)
+    end.setHours(23, 59, 59, 999)
+  } else if (period.value.preset === 'month') {
+    start = new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0, 0)
+    end = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999)
+  } else if (period.value.preset === '30d') {
+    start = new Date(now)
+    start.setDate(start.getDate() - 30)
+    end = now
+  } else if (period.value.preset === 'custom' && period.value.start && period.value.end) {
     const startParts: string[] = period.value.start.split('-')
     const endParts: string[] = period.value.end.split('-')
-    const start: Date = new Date(Number(startParts[0]), Number(startParts[1]) - 1, Number(startParts[2]), 0, 0, 0, 0)
-    const end: Date = new Date(Number(endParts[0]), Number(endParts[1]) - 1, Number(endParts[2]), 23, 59, 59, 999)
-    return created >= start && created <= end
+    start = new Date(Number(startParts[0]), Number(startParts[1]) - 1, Number(startParts[2]), 0, 0, 0, 0)
+    end = new Date(Number(endParts[0]), Number(endParts[1]) - 1, Number(endParts[2]), 23, 59, 59, 999)
+  } else {
+    return true
   }
-  return true
+  // Fenêtre d'envoi réelle ; avant lancement (file vide) on retombe sur la date de création.
+  const windowStart: Date = campaign.first_send_at
+    ? parseApiDate(campaign.first_send_at)
+    : parseApiDate(campaign.created_at)
+  const windowEnd: Date = campaign.last_send_at ? parseApiDate(campaign.last_send_at) : windowStart
+  return windowStart <= end && windowEnd >= start
 }
 
 /**
@@ -854,6 +875,39 @@ async function loadStats(): Promise<void> {
   statsById.value = map
 }
 
+/** localStorage key persisting the campaigns period filter across visits. */
+const PERIOD_STORAGE_KEY: string = 'dlh:campaigns:period'
+
+/** Every valid period preset, used to validate a persisted value. */
+const PERIOD_PRESETS: PeriodPreset[] = ['all', 'week', 'month', '30d', 'custom']
+
+/**
+ * Restore the persisted period filter from localStorage (client only).
+ * @returns The stored period, or null when nothing valid is stored.
+ */
+function loadStoredPeriod(): PeriodValue | null {
+  if (import.meta.server) return null
+  const raw: string | null = localStorage.getItem(PERIOD_STORAGE_KEY)
+  if (!raw) return null
+  try {
+    const parsed: PeriodValue = JSON.parse(raw) as PeriodValue
+    if (!PERIOD_PRESETS.includes(parsed.preset)) return null
+    if (parsed.preset === 'custom' && (!parsed.start || !parsed.end)) return null
+    return { preset: parsed.preset, start: parsed.start ?? null, end: parsed.end ?? null }
+  } catch {
+    return null
+  }
+}
+
+/**
+ * Persist the active period filter to localStorage (client only).
+ * @param value - The period to store.
+ */
+function storePeriod(value: PeriodValue): void {
+  if (import.meta.server) return
+  localStorage.setItem(PERIOD_STORAGE_KEY, JSON.stringify(value))
+}
+
 /**
  * Read the initial filter state from the URL query so a refresh or back navigation restores the view.
  * @returns Whether the URL pinned an explicit status tab.
@@ -867,11 +921,14 @@ function initFiltersFromQuery(): boolean {
     sortKey.value = query.sort as CampaignSortKey
   }
   if (typeof query.period === 'string') {
-    if (query.period === 'month' || query.period === '30d') {
+    if (query.period === 'week' || query.period === 'month' || query.period === '30d') {
       period.value = { preset: query.period, start: null, end: null }
     } else if (query.period === 'custom' && typeof query.from === 'string' && typeof query.to === 'string') {
       period.value = { preset: 'custom', start: query.from, end: query.to }
     }
+  } else {
+    const storedPeriod: PeriodValue | null = loadStoredPeriod()
+    if (storedPeriod) period.value = storedPeriod
   }
   const tabKeys: StatusTabKey[] = Object.keys(TAB_LABELS) as StatusTabKey[]
   if (typeof query.status === 'string' && tabKeys.includes(query.status as StatusTabKey)) {
@@ -907,6 +964,15 @@ watch(
       }
     }
     void router.replace({ query })
+  },
+  { deep: true },
+)
+
+// Garder la période choisie d'une visite à l'autre : le filtre ne se réinitialise plus.
+watch(
+  period,
+  (value: PeriodValue): void => {
+    storePeriod(value)
   },
   { deep: true },
 )

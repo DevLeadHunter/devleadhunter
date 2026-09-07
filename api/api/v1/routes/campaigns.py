@@ -184,6 +184,9 @@ async def list_campaigns(
     campaigns, total = campaign_service.list_campaigns(db, current_user.id, skip, limit, status)
     queue_service = CampaignQueueService(db)
     next_send_at_by_campaign = queue_service.next_send_at_by_campaign([c.id for c in campaigns])
+    send_window_by_campaign = queue_service.send_window_by_campaign([c.id for c in campaigns])
+    first_send_by_campaign = {campaign_id: window[0] for campaign_id, window in send_window_by_campaign.items()}
+    last_send_by_campaign = {campaign_id: window[1] for campaign_id, window in send_window_by_campaign.items()}
     return CampaignListResponse(
         campaigns=[
             CampaignResponse(
@@ -206,6 +209,8 @@ async def list_campaigns(
                 updated_at=c.updated_at,
                 prospects_count=len(c.prospects),
                 next_send_at=next_send_at_by_campaign.get(c.id),
+                first_send_at=first_send_by_campaign.get(c.id),
+                last_send_at=last_send_by_campaign.get(c.id),
             )
             for c in campaigns
         ],

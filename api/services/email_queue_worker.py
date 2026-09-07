@@ -83,6 +83,12 @@ class EmailQueueWorker:
                 sent_count += 1
             if sent_count:
                 logger.info("[QueueWorker] Sent %d email(s) this tick", sent_count)
+            try:
+                service.complete_drained_campaigns()
+            except Exception as exc:
+                # Completion is bookkeeping: its failure must never stop the send loop.
+                logger.error("[QueueWorker] Campaign completion sweep failed: %s", exc, exc_info=True)
+                db.rollback()
         finally:
             db.close()
 

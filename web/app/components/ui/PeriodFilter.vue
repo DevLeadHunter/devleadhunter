@@ -120,6 +120,7 @@ const modelValue: ModelRef<PeriodValue> = defineModel<PeriodValue>({ required: t
 /** Presets offered above the custom-range calendar. */
 const PRESETS: { key: PeriodPreset; label: string }[] = [
   { key: 'all', label: 'Toute période' },
+  { key: 'week', label: 'Cette semaine' },
   { key: 'month', label: 'Ce mois-ci' },
   { key: '30d', label: '30 derniers jours' },
 ]
