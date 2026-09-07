@@ -124,6 +124,7 @@ def _detail_response(db: Session, campaign) -> CampaignDetailResponse:
         created_at=campaign.created_at,
         updated_at=campaign.updated_at,
         prospects_count=len(campaign.prospects),
+        supports_ready_backfill=CampaignQueueService(db).supports_ready_backfill(campaign),
         prospects=[
             CampaignProspectResponse(
                 id=prospect.id,
@@ -778,6 +779,36 @@ async def resend_queue_item(
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc)) from exc
     return {"success": True, "id": item.id, "status": item.status, "scheduled_at": item.scheduled_at.isoformat()}
+
+
+@router.post("/{campaign_id}/backfill-ready")
+async def backfill_ready_prospects(
+    campaign_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> dict[str, Any]:
+    """
+    Add every now-ready prospect of an active campaign to its send queue.
+
+    Manual backfill for prospects skipped at launch (no demo/video then) whose media is now ready: the
+    video-ready auto-enqueue only fires the moment a video finishes, so this catches up prospects that
+    were already ready. Reuses the per-prospect guard, so already-queued/sent/cancelled prospects are
+    left untouched and each added send takes the next available slot.
+    """
+    campaign = _get_or_404(db, campaign_id, current_user.id)
+    current_status = getattr(campaign.status, "value", campaign.status)
+    if current_status != CampaignStatus.ACTIVE.value:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="La campagne doit être active pour ajouter des prospects prêts.",
+        )
+    if not _has_resend_config(db, current_user.id):
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="Configuration Resend manquante — Paramètres → Configuration Resend",
+        )
+    added = CampaignQueueService(db).backfill_ready_prospects(campaign)
+    return {"success": True, "enqueued": added}
 
 
 @router.get("/{campaign_id}/stats", response_model=CampaignStats)

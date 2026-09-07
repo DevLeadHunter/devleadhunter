@@ -282,6 +282,55 @@ class CampaignQueueService:
                 added += 1
         return added
 
+    def backfill_ready_prospects(self, campaign: Campaign) -> int:
+        """
+        Enqueue every now-ready prospect of one campaign that has no send yet — the manual backfill.
+
+        The manual counterpart to the video-ready auto-enqueue: for a launched campaign, adds a J1 for
+        each prospect whose demo/video is ready but who was skipped at launch (or added afterwards). It
+        reuses the same per-prospect guard, so a prospect already sent, pending, failed or manually
+        cancelled is left untouched, and prospects still lacking a demo/video are skipped again.
+
+        Args:
+            campaign: The campaign whose ready prospects should be pulled into the queue.
+
+        Returns:
+            The number of J1 items added.
+        """
+        added: int = 0
+        for prospect in campaign.prospects:
+            if self._enqueue_single_ready_prospect(campaign, prospect.id):
+                added += 1
+        return added
+
+    def supports_ready_backfill(self, campaign: Campaign) -> bool:
+        """
+        Whether the ready-prospect backfill can add sends to this campaign.
+
+        True only for an email campaign whose J1 template ships ``{lien_demo}`` or
+        ``{lien_video}``/``{vignette_video}`` — the only case a prospect can be left out of the queue
+        at launch for a missing demo/video. Drives the "add ready prospects" button, hidden on SMS or
+        plain-text campaigns it cannot affect.
+
+        Args:
+            campaign: The campaign to inspect.
+
+        Returns:
+            True when the campaign's templates use a demo/video link.
+        """
+        if campaign.channel != "email":
+            return False
+        template_a: EmailTemplate | None = (
+            self.db.get(EmailTemplate, campaign.template_id) if campaign.template_id else None
+        )
+        template_b: EmailTemplate | None = (
+            self.db.get(EmailTemplate, campaign.ab_template_id_b) if campaign.ab_template_id_b else None
+        )
+        return any(
+            self._template_uses_demo_link(template) or self._template_uses_video(template)
+            for template in (template_a, template_b)
+        )
+
     def _enqueue_single_ready_prospect(self, campaign: Campaign, prospect_id: int) -> bool:
         """
         Append one pending J1 send for a now-ready prospect in one active campaign, if it qualifies.
@@ -290,8 +339,9 @@ class CampaignQueueService:
         launch/resume, not video-driven); the prospect already has an initial row in this campaign
         (any status); it is not part of the campaign; it unsubscribed or is « ne plus contacter »; the
         A/B template is missing; or it still fails the demo/video guard. The A/B variant is taken from
-        the prospect's position, exactly as at launch, so the split stays consistent. The send is
-        appended after the campaign's last pending slot, honouring the send policy.
+        the prospect's position, exactly as at launch, so the split stays consistent. The send takes
+        the next available slot after the last pending J1 (never behind a scheduled follow-up),
+        honouring the send policy.
 
         Args:
             campaign: An active campaign the prospect belongs to.
@@ -352,10 +402,13 @@ class CampaignQueueService:
             return False
 
         now = _utcnow()
+        # Append after the last pending J1 only — never behind a scheduled follow-up (which sits days
+        # out), so a newly-ready prospect takes the next available send slot instead of the queue's tail.
         latest: datetime | None = self.db.execute(
             select(func.max(EmailQueue.scheduled_at)).where(
                 EmailQueue.campaign_id == campaign.id,
                 EmailQueue.status == _STATUS_PENDING,
+                EmailQueue.queue_type == "initial",
             )
         ).scalar()
         slot: datetime = self._schedule_slots(campaign, 1, now, latest)[0]

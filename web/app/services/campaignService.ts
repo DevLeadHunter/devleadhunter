@@ -61,6 +61,8 @@ export type CampaignResponse = {
 export interface CampaignDetailResponse extends CampaignResponse {
   prospects: CampaignProspect[]
   follow_ups: CampaignFollowUp[]
+  /** True when "add ready prospects" can add sends here (active email campaign using a demo/video link). */
+  supports_ready_backfill?: boolean
 }
 
 export type CampaignListResponse = {
@@ -361,6 +363,17 @@ export class CampaignService {
     queueId: number,
   ): Promise<{ success: boolean; id: number; status: QueueItemStatus; scheduled_at?: string }> {
     return ApiClient.post(`/api/v1/campaigns/${campaignId}/queue/${queueId}/resend`, {})
+  }
+
+  /**
+   * Add the campaign's now-ready prospects (demo/video ready) to its send queue.
+   * The manual backfill for prospects skipped at launch whose media is now ready; only affects an
+   * active campaign whose templates use a demo/video link.
+   * @param campaignId - Campaign ID.
+   * @returns The number of prospects enqueued.
+   */
+  static async backfillReady(campaignId: number): Promise<{ success: boolean; enqueued: number }> {
+    return ApiClient.post(`/api/v1/campaigns/${campaignId}/backfill-ready`, {})
   }
 
   /**

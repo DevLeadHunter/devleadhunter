@@ -197,3 +197,20 @@ def test_send_guard_skip_matrix(monkeypatch):
     assert service._send_guard_skip(1, 7, None, uses_demo=False, uses_video=True, include_video=False) == "video"
     # Plain template (no demo, no video) is always allowed.
     assert service._send_guard_skip(1, 7, None, uses_demo=False, uses_video=False, include_video=True) is None
+
+
+def test_backfill_ready_prospects_counts_each_added(monkeypatch):
+    # The manual backfill runs the per-prospect enqueue for every prospect and counts the ones added.
+    campaign = _campaign(prospects=[_prospect(1), _prospect(2), _prospect(3)])
+    seen: list[int] = []
+
+    def fake_single(self, camp, prospect_id):
+        seen.append(prospect_id)
+        return prospect_id in (1, 3)
+
+    monkeypatch.setattr(cqs.CampaignQueueService, "_enqueue_single_ready_prospect", fake_single)
+
+    added = CampaignQueueService(_FakeDB()).backfill_ready_prospects(campaign)
+
+    assert seen == [1, 2, 3]
+    assert added == 2

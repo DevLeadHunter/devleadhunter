@@ -614,11 +614,26 @@
       </div>
 
       <div v-if="activeTab === 'queue'" class="space-y-4">
-        <p class="text-muted text-sm">
-          <span class="font-semibold text-[var(--app-accent-ink)]">{{ queueData?.pending_count ?? 0 }}</span>
-          {{ isSms ? 'SMS' : (queueData?.pending_count ?? 0) !== 1 ? 'emails' : 'email' }}
-          en attente
-        </p>
+        <div class="flex flex-wrap items-center justify-between gap-3">
+          <p class="text-muted text-sm">
+            <span class="font-semibold text-[var(--app-accent-ink)]">{{ queueData?.pending_count ?? 0 }}</span>
+            {{ isSms ? 'SMS' : (queueData?.pending_count ?? 0) !== 1 ? 'emails' : 'email' }}
+            en attente
+          </p>
+          <button
+            v-if="canBackfillReady"
+            class="btn-secondary"
+            :disabled="isBackfilling"
+            title="Ajoute à la file les prospects dont la vidéo/démo est prête mais qui n'y sont pas encore (planifiés au prochain créneau d'envoi)."
+            @click="handleBackfillReady"
+          >
+            <UIcon
+              :name="isBackfilling ? 'i-lucide-rotate-cw' : 'i-lucide-user-plus'"
+              :class="['mr-1.5 h-4 w-4', { 'animate-spin': isBackfilling }]"
+            />
+            Ajouter les prospects prêts
+          </button>
+        </div>
 
         <div
           v-if="!queueData || queueData.items.length === 0"
@@ -846,6 +861,7 @@ const queueActionItem: Ref<CampaignQueueItem | null> = ref(null)
 const cancelQueueModal: Ref<{ open: () => void } | null> = ref(null)
 const resendQueueModal: Ref<{ open: () => void } | null> = ref(null)
 const isRefreshing: Ref<boolean> = ref(false)
+const isBackfilling: Ref<boolean> = ref(false)
 const autoRefreshTimer: Ref<ReturnType<typeof setInterval> | null> = ref(null)
 /** SMS sender config — loaded only for SMS campaigns, drives the launch precondition + config panel. */
 const smsConfig: Ref<SmsConfig | null> = ref(null)
@@ -982,6 +998,9 @@ const launchDisabledReason: ComputedRef<string> = computed((): string =>
 )
 
 const isCampaignActive: ComputedRef<boolean> = computed((): boolean => campaign.value?.status === 'active')
+const canBackfillReady: ComputedRef<boolean> = computed(
+  (): boolean => campaign.value?.status === 'active' && Boolean(campaign.value?.supports_ready_backfill),
+)
 
 /** Metric cards for the stats strip. */
 const metricCards: ComputedRef<Array<{ label: string; value: number | string; icon: string; color: string }>> =
@@ -1516,6 +1535,27 @@ async function handleResendQueueItem(): Promise<void> {
     toast.error("Impossible de renvoyer l'email")
   } finally {
     queueActionItem.value = null
+  }
+}
+
+/**
+ * Add the campaign's now-ready prospects (demo/video ready) to the send queue, then refresh the queue.
+ */
+async function handleBackfillReady(): Promise<void> {
+  if (isBackfilling.value) return
+  isBackfilling.value = true
+  try {
+    const result: { success: boolean; enqueued: number } = await CampaignService.backfillReady(campaignId.value)
+    toast.success(
+      result.enqueued > 0
+        ? `${result.enqueued} prospect${result.enqueued > 1 ? 's' : ''} ajouté${result.enqueued > 1 ? 's' : ''} à la file`
+        : 'Aucun prospect à ajouter — tous déjà en file ou pas encore prêts',
+    )
+    await loadQueue()
+  } catch {
+    toast.error("Impossible d'ajouter les prospects prêts")
+  } finally {
+    isBackfilling.value = false
   }
 }
 

@@ -200,6 +200,8 @@ class CampaignDetailResponse(CampaignResponse):
 
     prospects: list[CampaignProspectResponse] = Field(default_factory=list)
     follow_ups: list[CampaignFollowUpResponse] = Field(default_factory=list)
+    # True when the "add ready prospects" backfill can add sends here (email campaign using a demo/video link).
+    supports_ready_backfill: bool = False
 
     model_config = ConfigDict(from_attributes=True)
 
