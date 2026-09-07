@@ -21,6 +21,12 @@ export type ProspectDrawerEntry = {
   startInEdit?: boolean
 }
 
+/** Prospect settings sub-drawer (source URLs + « ne plus contacter »), stacked over the detail drawer. */
+export type ProspectSettingsDrawerEntry = {
+  kind: 'prospect-settings'
+  prospect: Prospect
+}
+
 /** Step taken by the prospect drawer inside the list it browses. */
 export type DrawerBrowseDirection = 'previous' | 'next'
 
@@ -159,6 +165,7 @@ export type CoverageProspectsDrawerEntry = {
 /** One entry of the persistent drawer stack. */
 export type DrawerStackEntry =
   | ProspectDrawerEntry
+  | ProspectSettingsDrawerEntry
   | SendEmailDrawerEntry
   | SendSmsDrawerEntry
   | EmailLogDrawerEntry

@@ -60,6 +60,15 @@
             </button>
             <button
               v-if="!editMode"
+              class="flex h-7 w-7 items-center justify-center rounded text-[var(--app-ink-soft)] transition-colors hover:bg-[var(--app-surface-2)] hover:text-[var(--app-ink)]"
+              title="Réglages du prospect"
+              aria-label="Réglages du prospect"
+              @click="emit('openSettings', prospect)"
+            >
+              <UIcon name="i-lucide-settings" class="h-4 w-4" />
+            </button>
+            <button
+              v-if="!editMode"
               class="flex h-7 w-7 items-center justify-center rounded text-[var(--app-ink-soft)] transition-colors hover:bg-[var(--app-red-soft)] hover:text-[var(--app-red)]"
               title="Supprimer ce prospect"
               aria-label="Supprimer ce prospect"
@@ -135,31 +144,11 @@
             </div>
 
             <div v-if="prospect.do_not_contact" class="px-5 pt-4">
-              <div
-                class="flex items-start justify-between gap-3 rounded-lg border border-[var(--app-red)]/40 bg-[var(--app-red-soft)] px-3 py-2.5"
-              >
-                <span class="flex items-start gap-2 text-xs font-medium text-[var(--app-red)]">
-                  <UIcon name="i-lucide-ban" class="mt-0.5 h-3.5 w-3.5 shrink-0" />
-                  <span>
-                    Ne plus contacter — exclu des campagnes et des SMS.
-                    <span
-                      v-if="prospect.do_not_contact_reason"
-                      class="mt-0.5 block font-normal text-[var(--app-ink-soft)]"
-                    >
-                      « {{ prospect.do_not_contact_reason }} »
-                    </span>
-                  </span>
-                </span>
-                <button
-                  type="button"
-                  class="btn-secondary shrink-0 text-xs"
-                  :disabled="isTogglingContact"
-                  @click="handleResumeContact"
-                >
-                  <UIcon v-if="isTogglingContact" name="i-lucide-loader-circle" class="h-3.5 w-3.5 animate-spin" />
-                  Réactiver
-                </button>
-              </div>
+              <UiProspectDoNotContactBanner
+                :reason="prospect.do_not_contact_reason ?? null"
+                :is-toggling="isTogglingContact"
+                @resume="handleResumeContact"
+              />
             </div>
 
             <div class="space-y-3 px-5 py-4">
@@ -527,46 +516,6 @@
             <button v-else class="btn-primary w-full" :disabled="isLoadingDemoSite" @click="generateDemoSite">
               <UIcon name="i-lucide-wand-sparkles" class="mr-1.5 h-4 w-4" />Générer un site démo
             </button>
-
-            <div v-if="!prospect.do_not_contact" class="pt-1">
-              <div v-if="showStopForm" class="space-y-2 rounded-lg border border-[var(--app-line)] p-3">
-                <label class="block text-xs font-medium text-[var(--app-ink-soft)]">Raison (optionnel)</label>
-                <textarea
-                  v-model="stopReason"
-                  rows="2"
-                  class="input-field text-sm"
-                  placeholder="Ex. m'a dit au téléphone qu'il n'est pas intéressé"
-                />
-                <div class="flex gap-2">
-                  <button
-                    type="button"
-                    class="btn-secondary flex-1"
-                    :disabled="isTogglingContact"
-                    @click="closeStopForm"
-                  >
-                    Annuler
-                  </button>
-                  <button
-                    type="button"
-                    class="btn-danger flex-1"
-                    :disabled="isTogglingContact"
-                    @click="handleStopContact"
-                  >
-                    <UIcon v-if="isTogglingContact" name="i-lucide-loader-circle" class="mr-1.5 h-4 w-4 animate-spin" />
-                    Ne plus contacter
-                  </button>
-                </div>
-              </div>
-              <button
-                v-else
-                type="button"
-                class="flex w-full items-center justify-center gap-1 py-1 text-xs text-[var(--app-faint)] transition-colors hover:text-[var(--app-red)]"
-                @click="showStopForm = true"
-              >
-                <UIcon name="i-lucide-ban" class="h-3.5 w-3.5" />
-                Ne plus contacter ce prospect
-              </button>
-            </div>
           </div>
 
           <div v-else class="flex gap-2">
@@ -655,8 +604,6 @@ const isLoadingDemoSite: Ref<boolean> = ref(false)
 const demoSite: Ref<DemoSite | null> = ref(null)
 const deleteConfirmModal: Ref<{ open: () => void } | null> = ref(null)
 const isTogglingContact: Ref<boolean> = ref(false)
-const showStopForm: Ref<boolean> = ref(false)
-const stopReason: Ref<string> = ref('')
 
 // Exposed to the drawer host so it can suspend the swipe-to-next gesture while an edit is in progress.
 defineExpose({ editMode })
@@ -796,38 +743,6 @@ async function handleLighthouse(): Promise<void> {
     toast.error(err instanceof Error ? err.message : "L'audit a échoué")
   } finally {
     isAuditing.value = false
-  }
-}
-
-/**
- * Close the « ne plus contacter » reason form and reset its note.
- * @returns {void}
- */
-function closeStopForm(): void {
-  showStopForm.value = false
-  stopReason.value = ''
-}
-
-/**
- * Mark the prospect « ne plus contacter » — blocks all outreach and holds back its pending sends.
- * @returns A promise resolved once the flag is set.
- */
-async function handleStopContact(): Promise<void> {
-  if (!props.prospect || isTogglingContact.value) return
-  isTogglingContact.value = true
-  try {
-    const updated: Prospect = await ProspectsService.setDoNotContact(
-      props.prospect.id,
-      true,
-      stopReason.value.trim() || null,
-    )
-    emit('updated', updated)
-    closeStopForm()
-    toast.success('Prospect marqué « ne plus contacter » — exclu des campagnes et des SMS')
-  } catch (err: unknown) {
-    toast.error(err instanceof Error ? err.message : 'Action impossible')
-  } finally {
-    isTogglingContact.value = false
   }
 }
 
