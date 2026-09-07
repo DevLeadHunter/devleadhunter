@@ -601,12 +601,13 @@ onMounted(async (): Promise<void> => {
   transform: translateX(3px);
 }
 
+/* Same layout on every viewport: full-width pill, note centered below. */
 .video-page__cta-row {
   margin-top: clamp(26px, 4vh, 38px);
   display: flex;
-  align-items: center;
-  gap: 18px;
-  flex-wrap: wrap;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 14px;
   transition:
     opacity 0.35s,
     visibility 0.35s;
@@ -623,6 +624,7 @@ onMounted(async (): Promise<void> => {
   margin: 0;
   font-size: 13.5px;
   color: var(--vp-ink-dim);
+  text-align: center;
 }
 
 /* ── Owner signature ───────────────────────────────────────────────────── */
@@ -728,19 +730,6 @@ onMounted(async (): Promise<void> => {
   }
   .video-page__pulse::after {
     display: none;
-  }
-}
-
-@media (max-width: 560px) {
-  .video-page__cta-row {
-    flex-direction: column;
-    align-items: stretch;
-  }
-  .video-page__cta-row .video-page__cta {
-    width: 100%;
-  }
-  .video-page__cta-note {
-    text-align: center;
   }
 }
 </style>
