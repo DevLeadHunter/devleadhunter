@@ -22,6 +22,15 @@ FPS = 30
 PIP_SIZE = 260
 PIP_MARGIN = 24
 
+# Presenter photo bubble on the email thumbnail (bottom-left, light ring).
+PHOTO_BUBBLE_SIZE = 200
+PHOTO_BUBBLE_MARGIN = 36
+PHOTO_BUBBLE_RING = 7
+# The source portrait is moody/dark: lift it so both eyes read at inbox size.
+PHOTO_BRIGHTNESS_LIFT = 1.12
+# Supersampling factor for a clean circle edge on the bubble mask.
+_PHOTO_MASK_SUPERSAMPLE = 4
+
 # ffmpeg thread cap: on the small fallback VPS, letting x264 grab every core
 # spikes memory and strangles the single-worker API.
 FFMPEG_THREADS = "2"
@@ -109,18 +118,70 @@ def build_circle_mask(work_dir: Path) -> Path:
     return path
 
 
-def build_thumbnail(screenshot_path: Path, first_name: str | None, output_path: Path) -> None:
+def _paste_presenter_photo_bubble(overlay, draw, photo_path: Path, thumb_h: int) -> None:
+    """
+    Draw the presenter photo as a round bubble with a light ring, bottom-left.
+
+    A human face is the strongest trust cue in the inbox; the bubble mirrors the
+    webcam PiP the prospect will see in the video itself. An unreadable photo is
+    skipped silently — it must never fail a whole video generation.
+
+    Args:
+        overlay: RGBA overlay layer of the thumbnail (mutated in place).
+        draw: Draw handle bound to that overlay.
+        photo_path: Normalised square portrait (see presenter photo upload).
+        thumb_h: Thumbnail height, to anchor the bubble at the bottom.
+    """
+    from PIL import Image, ImageDraw, ImageEnhance, ImageOps
+
+    try:
+        photo = ImageOps.exif_transpose(Image.open(photo_path)).convert("RGB")
+    except OSError:
+        return
+
+    side = min(photo.size)
+    left = (photo.width - side) // 2
+    top = (photo.height - side) // 2
+    photo = photo.crop((left, top, left + side, top + side))
+
+    supersampled = PHOTO_BUBBLE_SIZE * _PHOTO_MASK_SUPERSAMPLE
+    photo = photo.resize((supersampled, supersampled), Image.LANCZOS)
+    photo = ImageEnhance.Brightness(photo).enhance(PHOTO_BRIGHTNESS_LIFT)
+    mask = Image.new("L", (supersampled, supersampled), 0)
+    ImageDraw.Draw(mask).ellipse((0, 0, supersampled, supersampled), fill=255)
+    bubble = Image.new("RGBA", (supersampled, supersampled), (0, 0, 0, 0))
+    bubble.paste(photo, (0, 0), mask)
+    bubble = bubble.resize((PHOTO_BUBBLE_SIZE, PHOTO_BUBBLE_SIZE), Image.LANCZOS)
+
+    x0 = PHOTO_BUBBLE_MARGIN
+    y0 = thumb_h - PHOTO_BUBBLE_MARGIN - PHOTO_BUBBLE_SIZE
+    ring = PHOTO_BUBBLE_RING
+    draw.ellipse(
+        (x0 - ring, y0 - ring, x0 + PHOTO_BUBBLE_SIZE + ring, y0 + PHOTO_BUBBLE_SIZE + ring),
+        fill=(255, 255, 255, 235),
+    )
+    overlay.paste(bubble, (x0, y0), bubble)
+
+
+def build_thumbnail(
+    screenshot_path: Path,
+    first_name: str | None,
+    output_path: Path,
+    presenter_photo_path: Path | None = None,
+) -> None:
     """
     Build the personalised email thumbnail: site screenshot, slight darkening,
-    centered play button, « Bonjour {Prénom} » pill.
+    centered play button, « Bonjour {Prénom} » pill, presenter photo bubble.
 
     The thumbnail is THE click lever in the inbox — it must read as a video
-    (play button) and as personal (his site + his first name).
+    (play button), as personal (his site + his first name) and as human (the
+    presenter's face).
 
     Args:
         screenshot_path: Top-of-site screenshot used as the poster.
         first_name: The prospect's first name, or None.
         output_path: JPEG destination.
+        presenter_photo_path: Optional square portrait for the bubble.
     """
     from PIL import Image, ImageDraw, ImageEnhance
 
@@ -164,6 +225,9 @@ def build_thumbnail(screenshot_path: Path, first_name: str | None, output_path: 
         font=font,
         fill=(17, 17, 17, 255),
     )
+
+    if presenter_photo_path is not None and presenter_photo_path.is_file():
+        _paste_presenter_photo_bubble(overlay, draw, presenter_photo_path, thumb_h)
 
     composed = Image.alpha_composite(image.convert("RGBA"), overlay).convert("RGB")
     output_path.parent.mkdir(parents=True, exist_ok=True)
@@ -324,6 +388,7 @@ def compose_final(
     screenshot_path: Path,
     output_video: Path,
     output_thumbnail: Path,
+    presenter_photo_path: Path | None = None,
 ) -> None:
     """
     Full montage from primitives: greeting + mask, ffmpeg compose, thumbnail.
@@ -350,4 +415,4 @@ def compose_final(
         mask_path=mask_path,
         output_path=output_video,
     )
-    build_thumbnail(screenshot_path, first_name, output_thumbnail)
+    build_thumbnail(screenshot_path, first_name, output_thumbnail, presenter_photo_path)

@@ -308,6 +308,61 @@ async def delete_presenter_video(
     return {"has_video": False}
 
 
+class PresenterPhotoResponse(BaseModel):
+    """Presenter photo state returned to the frontend (no file content)."""
+
+    has_photo: bool
+
+
+@router.get("/presenter-photo", response_model=PresenterPhotoResponse)
+async def get_presenter_photo(
+    current_user: User = Depends(get_current_user),
+) -> dict[str, Any]:
+    """Return whether the current user has a presenter photo (thumbnail bubble)."""
+    return {"has_photo": bool(current_user.presenter_photo_path)}
+
+
+@router.put("/presenter-photo", response_model=PresenterPhotoResponse)
+async def upload_presenter_photo(
+    file: UploadFile = File(...),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> dict[str, Any]:
+    """Upload (or replace) the photo drawn as a bubble on video thumbnails."""
+    await presenter_video_service.store_photo(db, current_user, file)
+    logger.info("[Settings] Presenter photo uploaded for user %d", current_user.id)
+    return {"has_photo": True}
+
+
+@router.delete("/presenter-photo", response_model=PresenterPhotoResponse)
+async def delete_presenter_photo(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> dict[str, Any]:
+    """Delete the presenter photo (file + user column)."""
+    presenter_video_service.delete_photo(db, current_user)
+    return {"has_photo": False}
+
+
+@router.get("/presenter-photo/file")
+async def stream_presenter_photo_file(
+    current_user: User = Depends(get_current_user),
+) -> StreamingResponse:
+    """Stream the user's own presenter photo from R2 (settings preview + desktop build)."""
+    stored = str(current_user.presenter_photo_path or "")
+    if not stored:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Aucune photo de présentation.")
+    try:
+        body, content_type, size = await asyncio.to_thread(r2_storage.open_stream, stored)
+    except Exception as error:
+        logger.warning("[Presenter] photo introuvable sur R2 pour user=%s: %s", current_user.id, error)
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Le fichier de la photo est introuvable."
+        ) from error
+    headers = {"Content-Length": str(size)} if size else None
+    return StreamingResponse(body.iter_chunks(), media_type=content_type, headers=headers)
+
+
 @router.get("/presenter-video/file")
 async def stream_presenter_video_file(
     current_user: User = Depends(get_current_user),

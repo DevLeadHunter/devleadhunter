@@ -473,7 +473,11 @@ async def video_build_progress(slug: str) -> dict[str, object]:
 
 
 @app.post("/video/build-full", dependencies=[Depends(require_sidecar_token)])
-async def video_build_full(payload: str = Form(...), presenter: UploadFile = File(...)) -> object:
+async def video_build_full(
+    payload: str = Form(...),
+    presenter: UploadFile = File(...),
+    presenter_photo: UploadFile | None = File(default=None),
+) -> object:
     """
     START the complete desktop video build (capture + montage) and return at once.
 
@@ -503,8 +507,14 @@ async def video_build_full(payload: str = Form(...), presenter: UploadFile = Fil
     presenter_path = work_dir / "presenter.mp4"
     # The upload's temp file dies with this request — materialise it before detaching.
     presenter_path.write_bytes(await presenter.read())
+    presenter_photo_path: Path | None = None
+    if presenter_photo is not None:
+        photo_bytes = await presenter_photo.read()
+        if photo_bytes:
+            presenter_photo_path = work_dir / "presenter-photo.jpg"
+            presenter_photo_path.write_bytes(photo_bytes)
 
-    task = asyncio.create_task(_run_video_build(data, slug, seed, user_data_dir, work_dir))
+    task = asyncio.create_task(_run_video_build(data, slug, seed, user_data_dir, work_dir, presenter_photo_path))
     _VIDEO_BUILD_TASKS.add(task)
     task.add_done_callback(_VIDEO_BUILD_TASKS.discard)
     return {"started": True, "slug": slug}
@@ -516,6 +526,7 @@ async def _run_video_build(
     seed: object,
     user_data_dir: str | None,
     work_dir: Path,
+    presenter_photo_path: Path | None = None,
 ) -> None:
     """
     Detached build: capture the background, montage, store the result for pickup.
@@ -571,6 +582,7 @@ async def _run_video_build(
             screenshot_path=screenshot_path,
             output_video=output_video,
             output_thumbnail=output_thumb,
+            presenter_photo_path=presenter_photo_path,
         )
         if preview:
             _VIDEO_BUILD_RESULTS[slug] = {

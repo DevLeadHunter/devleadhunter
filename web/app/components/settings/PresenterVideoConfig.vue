@@ -119,6 +119,67 @@
       </section>
       <div class="space-y-4">
         <div
+          class="flex items-start justify-between gap-4 rounded-xl border border-[var(--app-line)] bg-[var(--app-surface)] px-4 py-3.5"
+        >
+          <div class="flex min-w-0 items-start gap-3">
+            <UIcon name="i-lucide-circle-user-round" class="mt-0.5 h-4 w-4 shrink-0 text-[var(--app-ink)]" />
+            <div class="min-w-0">
+              <p class="text-sm font-semibold text-[var(--app-ink)]">Votre photo sur la miniature</p>
+              <p class="text-muted mt-0.5 text-xs leading-relaxed">
+                Affichée en bulle ronde sur la vignette envoyée par email — un visage met en confiance et incite au
+                clic.
+              </p>
+              <div class="mt-2.5 flex flex-wrap items-center gap-2">
+                <button
+                  type="button"
+                  class="app-btn-secondary h-8 px-3 text-xs disabled:opacity-50"
+                  :disabled="isUploadingPhoto"
+                  @click="openPhotoPicker"
+                >
+                  <UIcon
+                    :name="isUploadingPhoto ? 'i-lucide-loader-circle' : 'i-lucide-upload'"
+                    :class="['h-3.5 w-3.5', isUploadingPhoto && 'animate-spin']"
+                  />
+                  {{ hasPresenterPhoto ? 'Remplacer la photo' : 'Ajouter une photo' }}
+                </button>
+                <button
+                  v-if="hasPresenterPhoto"
+                  type="button"
+                  class="btn-danger h-8 px-3 text-xs disabled:opacity-50"
+                  :disabled="isDeletingPhoto"
+                  @click="removePresenterPhoto"
+                >
+                  <UIcon
+                    :name="isDeletingPhoto ? 'i-lucide-loader-circle' : 'i-lucide-trash-2'"
+                    :class="['h-3.5 w-3.5', isDeletingPhoto && 'animate-spin']"
+                  />
+                  Retirer
+                </button>
+              </div>
+              <input
+                ref="photoInputRef"
+                type="file"
+                accept="image/jpeg,image/png,image/webp"
+                class="hidden"
+                @change="handlePhotoSelected"
+              />
+            </div>
+          </div>
+          <img
+            v-if="photoPreviewUrl"
+            :src="photoPreviewUrl"
+            alt="Photo du présentateur"
+            class="h-16 w-16 shrink-0 rounded-full border border-[var(--app-line)] object-cover"
+          />
+          <span
+            v-else
+            class="flex h-16 w-16 shrink-0 items-center justify-center rounded-full border border-dashed border-[var(--app-line)] bg-[var(--app-surface-2)]"
+          >
+            <UIcon name="i-lucide-user" class="h-5 w-5 text-[var(--app-ink-soft)]" />
+          </span>
+        </div>
+
+        <div
           v-if="info?.has_video"
           class="flex items-center justify-between gap-4 rounded-xl border border-[var(--app-line)] bg-[var(--app-surface)] px-4 py-3.5"
         >
@@ -383,7 +444,7 @@ import type {
   PresenterVideoTimelineSegment,
 } from '~/types/PresenterVideoConfig'
 import type { ComputedRef, EmitFn, Ref } from 'vue'
-import type { PresenterVideo } from '~/services/presenterVideoService'
+import type { PresenterPhoto, PresenterVideo } from '~/services/presenterVideoService'
 import type { DemoSite, DemoSiteListResponse } from '~/services/demoSiteService'
 import type { PreviewVideoResult } from '~/services/storyblokSidecarService'
 import type { SelectFieldOption } from '~/types/SelectField'
@@ -488,6 +549,13 @@ const clipSizeErrorMessage: Ref<string | null> = ref(null)
 
 /** Whether the capture UI is shown on purpose while a clip already exists. */
 const isReplacingClip: Ref<boolean> = ref(false)
+
+/** Presenter photo (thumbnail bubble) state + preview. */
+const hasPresenterPhoto: Ref<boolean> = ref(false)
+const photoPreviewUrl: Ref<string | null> = ref(null)
+const isUploadingPhoto: Ref<boolean> = ref(false)
+const isDeletingPhoto: Ref<boolean> = ref(false)
+const photoInputRef: Ref<HTMLInputElement | null> = ref(null)
 
 /** Whether the stored clip is registered but its file cannot be fetched. */
 const isClipFileMissing: Ref<boolean> = ref(false)
@@ -673,6 +741,76 @@ async function loadInfo(): Promise<void> {
   } finally {
     isLoading.value = false
   }
+}
+
+/**
+ * Load the presenter photo state + its preview blob from the API.
+ */
+async function loadPresenterPhoto(): Promise<void> {
+  try {
+    const photo: PresenterPhoto = await PresenterVideoService.getPresenterPhoto()
+    hasPresenterPhoto.value = photo.has_photo
+    releasePhotoPreview()
+    if (photo.has_photo) {
+      photoPreviewUrl.value = await PresenterVideoService.getPresenterPhotoObjectUrl()
+    }
+  } catch {
+    // La photo est un bonus : son échec de chargement ne bloque pas la page.
+    hasPresenterPhoto.value = false
+  }
+}
+
+/**
+ * Open the hidden photo file input.
+ */
+function openPhotoPicker(): void {
+  photoInputRef.value?.click()
+}
+
+/**
+ * Upload the picked portrait and refresh the bubble preview.
+ * @param event - Native change event of the photo input.
+ */
+async function handlePhotoSelected(event: Event): Promise<void> {
+  const input: HTMLInputElement | null = event.target as HTMLInputElement | null
+  const file: File | null = input?.files?.[0] ?? null
+  if (input) input.value = ''
+  if (!file) return
+  isUploadingPhoto.value = true
+  try {
+    await PresenterVideoService.uploadPresenterPhoto(file)
+    await loadPresenterPhoto()
+    toast.success('Photo enregistrée — elle apparaîtra sur les prochaines miniatures')
+  } catch (err: unknown) {
+    toast.error(err instanceof Error ? err.message : "Impossible d'enregistrer la photo")
+  } finally {
+    isUploadingPhoto.value = false
+  }
+}
+
+/**
+ * Delete the presenter photo and clear its preview.
+ */
+async function removePresenterPhoto(): Promise<void> {
+  isDeletingPhoto.value = true
+  try {
+    await PresenterVideoService.deletePresenterPhoto()
+    hasPresenterPhoto.value = false
+    releasePhotoPreview()
+    toast.success('Photo retirée')
+  } catch (err: unknown) {
+    toast.error(err instanceof Error ? err.message : 'Impossible de retirer la photo')
+  } finally {
+    isDeletingPhoto.value = false
+  }
+}
+
+/**
+ * Revoke the photo preview object URL.
+ */
+function releasePhotoPreview(): void {
+  if (photoPreviewUrl.value) URL.revokeObjectURL(photoPreviewUrl.value)
+  photoPreviewUrl.value = null
 }
 
 /** Force the first decoded frame so the preview is not a black box on load. */
@@ -965,6 +1103,7 @@ watch(middleSeconds, (middle: number): void => {
 
 onMounted(async (): Promise<void> => {
   await loadInfo()
+  await loadPresenterPhoto()
   isDesktopApp.value = (await getScraperSidecarInfo()) !== null
   if (isDesktopApp.value) await loadPreviewSites()
 })
@@ -973,5 +1112,6 @@ onBeforeUnmount((): void => {
   releasePreview()
   releasePickedClipPreview()
   releaseCalibrationPreview()
+  releasePhotoPreview()
 })
 </script>
