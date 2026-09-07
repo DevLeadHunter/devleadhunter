@@ -19,7 +19,7 @@ import logging
 from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
 
-from sqlalchemy import and_, func, or_, select
+from sqlalchemy import and_, case, func, or_, select
 from sqlalchemy.orm import Session, joinedload
 
 from enums.demo_site_status import DemoSiteStatus
@@ -30,6 +30,7 @@ from models.email_log import EmailLog
 from models.email_queue import EmailQueue
 from models.email_template import EmailTemplate
 from models.prospect_db import ProspectDB
+from services.activity_log_service import CATEGORY_CAMPAIGN, STATUS_INFO, activity_log_service
 from services.email_sending_service import EmailSendingService
 from services.email_variables import EmailVariables
 from services.pricing_service import PricingService
@@ -1092,6 +1093,64 @@ class CampaignQueueService:
             or 0
         )
 
+    def complete_drained_campaigns(self) -> list[int]:
+        """
+        Flip every ACTIVE campaign whose send queue has fully drained to COMPLETED.
+
+        A campaign is finished once it has at least one queued send and none left
+        ``pending`` or ``sending`` — every J1 and every follow-up has reached a
+        terminal state (sent, failed, or skipped). Only ACTIVE campaigns are swept,
+        so a paused campaign (whose pending rows were cancelled) never reads as
+        completed, and an already-completed one is never touched again. Runs once
+        per worker tick, so it also finishes campaigns that drained through a manual
+        cancel, a reply, or an expired-demo skip rather than a final send — and
+        back-fills campaigns that finished before this sweep existed.
+
+        Returns:
+            The ids of the campaigns marked completed this pass.
+        """
+        remaining = func.sum(case((EmailQueue.status.in_((_STATUS_PENDING, _STATUS_SENDING)), 1), else_=0))
+        drained_ids: list[int] = [
+            campaign_id
+            for (campaign_id,) in self.db.execute(
+                select(EmailQueue.campaign_id)
+                .join(Campaign, Campaign.id == EmailQueue.campaign_id)
+                .where(Campaign.status == CampaignStatus.ACTIVE.value)
+                .group_by(EmailQueue.campaign_id)
+                .having(remaining == 0)
+            ).all()
+        ]
+        if not drained_ids:
+            return []
+
+        campaigns: list[Campaign] = list(
+            self.db.execute(
+                select(Campaign).where(
+                    Campaign.id.in_(drained_ids),
+                    Campaign.status == CampaignStatus.ACTIVE.value,
+                )
+            ).scalars()
+        )
+        if not campaigns:
+            return []
+
+        for campaign in campaigns:
+            campaign.status = CampaignStatus.COMPLETED.value
+        self.db.commit()
+
+        for campaign in campaigns:
+            activity_log_service.record(
+                category=CATEGORY_CAMPAIGN,
+                action="campaign_completed",
+                status=STATUS_INFO,
+                title=f"Campagne terminée · {campaign.name}",
+                user_id=campaign.user_id,
+                entity_type="campaign",
+                entity_id=campaign.id,
+            )
+        logger.info("[Queue] Marked %d campaign(s) completed", len(campaigns))
+        return [campaign.id for campaign in campaigns]
+
     def next_send_at_by_campaign(self, campaign_ids: list[int]) -> dict[int, datetime]:
         """
         Return the earliest still-pending send time per campaign.
@@ -1117,6 +1176,37 @@ class CampaignQueueService:
             .group_by(EmailQueue.campaign_id)
         ).all()
         return {campaign_id: scheduled_at for campaign_id, scheduled_at in rows if scheduled_at is not None}
+
+    def send_window_by_campaign(self, campaign_ids: list[int]) -> dict[int, tuple[datetime, datetime]]:
+        """
+        Return each campaign's send-activity span — first to last scheduled send.
+
+        Spans every queued row (sent, pending, and skipped alike), so the window
+        covers the whole run from the first J1 to the last follow-up regardless of
+        what has already gone out. One grouped query, so the list view can slice
+        campaigns by when they actually send — not by when they were created —
+        without an N+1. Campaigns with an empty queue are absent from the map.
+
+        Args:
+            campaign_ids: Campaigns to look up.
+
+        Returns:
+            Mapping of campaign id → ``(first_scheduled_at, last_scheduled_at)``.
+        """
+        if not campaign_ids:
+            return {}
+        rows = self.db.execute(
+            select(
+                EmailQueue.campaign_id,
+                func.min(EmailQueue.scheduled_at),
+                func.max(EmailQueue.scheduled_at),
+            )
+            .where(EmailQueue.campaign_id.in_(campaign_ids))
+            .group_by(EmailQueue.campaign_id)
+        ).all()
+        return {
+            campaign_id: (first, last) for campaign_id, first, last in rows if first is not None and last is not None
+        }
 
     def count_upcoming_sends(self, user_id: int, *, days: int = 7) -> int:
         """

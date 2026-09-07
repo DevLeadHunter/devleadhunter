@@ -177,6 +177,10 @@ class CampaignResponse(CampaignBase):
     prospects_count: int = 0
     # Earliest still-pending send in the queue, or None when nothing is queued.
     next_send_at: datetime | None = None
+    # Send-activity window — first and last scheduled send across the queue (any status),
+    # both None before launch. Lets the list view slice campaigns by when they actually run.
+    first_send_at: datetime | None = None
+    last_send_at: datetime | None = None
 
     model_config = ConfigDict(from_attributes=True)
 

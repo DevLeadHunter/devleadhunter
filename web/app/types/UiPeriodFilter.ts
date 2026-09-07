@@ -1,11 +1,11 @@
 /**
  * Types of the `UiPeriodFilter` component — a period picker (presets + a custom
- * date range) used to slice a list by creation date. Kept domain-agnostic so it
- * can filter any dated list, not just campaigns.
+ * date range) used to slice a list by date. Kept domain-agnostic so it can filter
+ * any dated list, not just campaigns.
  */
 
 /** Which period is selected. `custom` carries an explicit `start`/`end` range. */
-export type PeriodPreset = 'all' | 'month' | '30d' | 'custom'
+export type PeriodPreset = 'all' | 'week' | 'month' | '30d' | 'custom'
 
 /**
  * The selected period. `start`/`end` are `YYYY-MM-DD` local dates, only set when
