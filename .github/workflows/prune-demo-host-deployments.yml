@@ -1,0 +1,78 @@
+name: 🧹 Prune old demo-host Vercel deployments (manual)
+
+# The demo-host (Vercel project "devleadhunter") keeps the build output of every
+# deployment forever, which saturates the Hobby "Deployment Storage" quota (10 GB).
+# This keeps only the newest N deployments and deletes older ones. It NEVER touches
+# generated demo sites: those live in the API/DB and are served on the fly by the
+# current production deployment, which is always protected here.
+
+on:
+  workflow_dispatch:
+    inputs:
+      keep:
+        description: "Number of most-recent deployments to keep"
+        type: number
+        default: 15
+      dry_run:
+        description: "Dry run (list what would be deleted, delete nothing)"
+        type: boolean
+        default: true
+
+jobs:
+  prune:
+    runs-on: ubuntu-latest
+    env:
+      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+      TEAM_ID: ${{ secrets.VERCEL_ORG_ID }}
+      PROJECT_ID: ${{ secrets.VERCEL_DEMO_HOST_PROJECT_ID }}
+      KEEP: ${{ inputs.keep }}
+      DRY_RUN: ${{ inputs.dry_run }}
+    steps:
+      - name: Prune deployments (keep newest)
+        run: |
+          set -euo pipefail
+          api="https://api.vercel.com"
+          auth=(-H "Authorization: Bearer $VERCEL_TOKEN")
+
+          echo "Project: $PROJECT_ID  Team: $TEAM_ID  Keep newest: $KEEP  Dry-run: $DRY_RUN"
+
+          # The current production deployment must never be deleted (it serves the live sites).
+          prod_id=$(curl -s "${auth[@]}" "$api/v9/projects/$PROJECT_ID?teamId=$TEAM_ID" | jq -r '.targets.production.id // empty')
+          echo "Current production deployment (protected): ${prod_id:-none}"
+
+          # Collect every deployment of the project (paginated).
+          tmp=$(mktemp)
+          next=""
+          while :; do
+            url="$api/v6/deployments?projectId=$PROJECT_ID&teamId=$TEAM_ID&limit=100"
+            [ -n "$next" ] && url="$url&until=$next"
+            resp=$(curl -s "${auth[@]}" "$url")
+            echo "$resp" | jq -c '.deployments[] | {uid: .uid, created: (.created // .createdAt), state: .state, url: .url}' >> "$tmp"
+            next=$(echo "$resp" | jq -r '.pagination.next // empty')
+            [ -z "$next" ] && break
+          done
+
+          total=$(wc -l < "$tmp" | tr -d ' ')
+          echo "Total deployments found: $total"
+
+          # Newest first, drop the newest $KEEP, then drop the protected production id → deletion list.
+          del=$(jq -s --argjson keep "$KEEP" --arg prod "$prod_id" \
+            'sort_by(.created) | reverse | .[$keep:] | map(select(.uid != $prod))' "$tmp")
+          del_count=$(echo "$del" | jq 'length')
+
+          echo "Keeping newest $KEEP → deletion candidates: $del_count"
+          echo "----- candidates (oldest first) -----"
+          echo "$del" | jq -r 'sort_by(.created) | .[] | "\(.uid)  \((.created/1000)|todate)  state=\(.state)  \(.url)"'
+
+          if [ "$DRY_RUN" = "true" ]; then
+            echo "DRY RUN — nothing was deleted."
+            exit 0
+          fi
+
+          echo "$del" | jq -r '.[].uid' | while read -r uid; do
+            [ -z "$uid" ] && continue
+            code=$(curl -s -o /dev/null -w "%{http_code}" -X DELETE "${auth[@]}" "$api/v13/deployments/$uid?teamId=$TEAM_ID")
+            echo "deleted $uid -> HTTP $code"
+            sleep 0.3
+          done
+          echo "Done. Deleted $del_count deployments (kept newest $KEEP)."
