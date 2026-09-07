@@ -475,8 +475,11 @@ class StoryblokEditorClipService:
         return ["-c:v", "libx264", "-pix_fmt", "yuv420p", "-crf", "20", "-r", str(fps)]
 
     def _run_ffmpeg(self, args: list[str]) -> None:
-        """Run ffmpeg with ``-y``, raising a clear error on failure."""
-        result = subprocess.run([self._ffmpeg, "-y", *args], capture_output=True, text=True)
+        """Run ffmpeg with ``-y`` at background priority, raising a clear error on failure."""
+        from services.video_montage import as_background_priority_process
+
+        command, run_kwargs = as_background_priority_process([self._ffmpeg, "-y", *args])
+        result = subprocess.run(command, capture_output=True, text=True, **run_kwargs)
         if result.returncode != 0:
             raise StoryblokEditorClipError(f"ffmpeg a échoué : {result.stderr[-400:]}")
 

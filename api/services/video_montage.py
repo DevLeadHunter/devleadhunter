@@ -10,6 +10,8 @@ path). The capture (Playwright) and the orchestration (status, R2) live elsewher
 
 from __future__ import annotations
 
+import os
+import shutil
 import subprocess
 from pathlib import Path
 
@@ -34,6 +36,28 @@ _PHOTO_MASK_SUPERSAMPLE = 4
 # ffmpeg thread cap: on the small fallback VPS, letting x264 grab every core
 # spikes memory and strangles the single-worker API.
 FFMPEG_THREADS = "2"
+# Desktop value: "0" lets ffmpeg size itself on the machine's cores, and the
+# below-normal process priority keeps the PC responsive while it encodes.
+FFMPEG_THREADS_AUTO = "0"
+
+
+def as_background_priority_process(command: list[str]) -> tuple[list[str], dict[str, int]]:
+    """
+    Make an ffmpeg command run as a polite background task (Steam-shader style):
+    it uses every idle core but yields instantly to whatever the user is doing.
+
+    Args:
+        command: The ffmpeg command line.
+
+    Returns:
+        The (possibly prefixed) command and the extra ``subprocess.run`` kwargs.
+    """
+    if os.name == "nt":
+        return command, {"creationflags": subprocess.BELOW_NORMAL_PRIORITY_CLASS}
+    if shutil.which("nice"):
+        return ["nice", "-n", "10", *command], {}
+    return command, {}
+
 
 _FONT_CANDIDATES: tuple[str, ...] = (
     "C:/Windows/Fonts/seguisb.ttf",  # Segoe UI Semibold
@@ -234,9 +258,9 @@ def build_thumbnail(
     composed.save(output_path, format="JPEG", quality=85)
 
 
-def extract_first_frame(ffmpeg_path: str, video_path: Path, output_path: Path) -> None:
+def extract_first_frame(ffmpeg_path: str, video_path: Path, output_path: Path, threads: str = FFMPEG_THREADS) -> None:
     """Grab the first frame of a video (top of the site) for the email thumbnail poster."""
-    subprocess.run(
+    command, run_kwargs = as_background_priority_process(
         [
             ffmpeg_path,
             "-y",
@@ -244,17 +268,21 @@ def extract_first_frame(ffmpeg_path: str, video_path: Path, output_path: Path) -
             "-loglevel",
             "error",
             "-threads",
-            FFMPEG_THREADS,
+            threads,
             "-i",
             str(video_path),
             "-frames:v",
             "1",
             str(output_path),
-        ],
+        ]
+    )
+    subprocess.run(
+        command,
         stdout=subprocess.DEVNULL,
         stderr=subprocess.DEVNULL,
         timeout=60,
         check=False,
+        **run_kwargs,
     )
 
 
@@ -271,13 +299,15 @@ def compose(
     greeting_path: Path,
     mask_path: Path,
     output_path: Path,
+    threads: str = FFMPEG_THREADS,
 ) -> None:
     """
     Single-pass ffmpeg composition.
 
     Base = presenter clip (full canvas, carries the audio). The site capture
     covers it between intro and D-outro, with the webcam shrunk to a circular PiP
-    bubble; the greeting pill fades in/out during the intro.
+    bubble; the greeting pill fades in/out during the intro. ``threads`` keeps the
+    VPS cap by default; the desktop passes ``FFMPEG_THREADS_AUTO``.
 
     Raises:
         VideoMontageError: when ffmpeg is missing, times out, or fails.
@@ -312,7 +342,7 @@ def compose(
         "-loglevel",
         "error",
         "-threads",
-        FFMPEG_THREADS,
+        threads,
         "-i",
         str(presenter_path),
         "-ss",
@@ -360,8 +390,9 @@ def compose(
         str(output_path),
     ]
 
+    command, run_kwargs = as_background_priority_process(command)
     try:
-        result = subprocess.run(command, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE, timeout=600)
+        result = subprocess.run(command, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE, timeout=600, **run_kwargs)
     except FileNotFoundError as exc:
         raise VideoMontageError(f"ffmpeg introuvable ({ffmpeg_path}). Installez-le ou configurez FFMPEG_PATH.") from exc
     except subprocess.TimeoutExpired as exc:
@@ -389,6 +420,7 @@ def compose_final(
     output_video: Path,
     output_thumbnail: Path,
     presenter_photo_path: Path | None = None,
+    threads: str = FFMPEG_THREADS,
 ) -> None:
     """
     Full montage from primitives: greeting + mask, ffmpeg compose, thumbnail.
@@ -414,5 +446,6 @@ def compose_final(
         greeting_path=greeting_path,
         mask_path=mask_path,
         output_path=output_video,
+        threads=threads,
     )
     build_thumbnail(screenshot_path, first_name, output_thumbnail, presenter_photo_path)

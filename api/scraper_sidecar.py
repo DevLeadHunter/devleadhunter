@@ -567,7 +567,13 @@ async def _run_video_build(
             on_progress=lambda step: _set_video_build_progress(slug, step),
         )
         _set_video_build_progress(slug, "montage")
-        await asyncio.to_thread(video_montage.extract_first_frame, _FFMPEG_PATH, background_path, screenshot_path)
+        await asyncio.to_thread(
+            video_montage.extract_first_frame,
+            _FFMPEG_PATH,
+            background_path,
+            screenshot_path,
+            video_montage.FFMPEG_THREADS_AUTO,
+        )
         await asyncio.to_thread(
             video_montage.compose_final,
             ffmpeg_path=_FFMPEG_PATH,
@@ -583,6 +589,8 @@ async def _run_video_build(
             output_video=output_video,
             output_thumbnail=output_thumb,
             presenter_photo_path=presenter_photo_path,
+            # Desktop: let ffmpeg use every idle core (the below-normal priority keeps the PC responsive).
+            threads=video_montage.FFMPEG_THREADS_AUTO,
         )
         if preview:
             _VIDEO_BUILD_RESULTS[slug] = {
