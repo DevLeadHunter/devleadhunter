@@ -94,7 +94,7 @@ def test_enqueue_ready_prospect_calls_single_per_active_campaign(monkeypatch):
     monkeypatch.setattr(
         cqs.CampaignQueueService,
         "_enqueue_single_ready_prospect",
-        lambda self, campaign, prospect_id: (seen.append((campaign.id, prospect_id)) or campaign.id == 1),
+        lambda self, campaign, prospect_id: seen.append((campaign.id, prospect_id)) or campaign.id == 1,
     )
 
     added = CampaignQueueService(db).enqueue_ready_prospect(prospect_id=99, user_id=7)

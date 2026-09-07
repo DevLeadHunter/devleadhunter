@@ -251,8 +251,8 @@ class CampaignQueueService:
 
         The queue is built once, at launch: a prospect skipped then for lacking a demo site or a
         prospection video gets **no** queue row, and nothing reconsiders it. Called when that
-        prospect's video becomes ready (or its demo goes active), this re-applies the launch guards
-        for this one prospect and appends a J1 send wherever it now qualifies. A prospect that
+        prospect's prospection video becomes ready, this re-applies the launch guards (demo link and
+        video) for this one prospect and appends a J1 send wherever it now qualifies. A prospect that
         already has an initial row (of any status) is left untouched — a sent, pending, failed or
         manually cancelled send is never resurrected — and other prospects are not re-evaluated.
 
