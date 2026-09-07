@@ -12,6 +12,7 @@
  * @module services/storyblokSidecarService
  */
 import { DemoSiteService } from '~/services/demoSiteService'
+import { PresenterVideoService } from '~/services/presenterVideoService'
 import { getScraperSidecarInfo } from '~/services/scraperSidecarService'
 
 /** Connection state of the Storyblok owner session used for the editor sequence. */
@@ -235,10 +236,20 @@ export class StoryblokSidecarService {
     } catch (error) {
       return { status: 'failed', message: error instanceof Error ? error.message : 'Contexte vidéo indisponible.' }
     }
+    // La photo est optionnelle : son absence (ou une erreur) ne bloque jamais le build.
+    let presenterPhoto: Blob | null = null
+    try {
+      presenterPhoto = await PresenterVideoService.fetchPresenterPhotoBlob()
+    } catch {
+      presenterPhoto = null
+    }
 
     const formData: FormData = new FormData()
     formData.append('payload', JSON.stringify({ ...context, ...payloadExtras }))
     formData.append('presenter', presenter, 'presenter.mp4')
+    if (presenterPhoto) {
+      formData.append('presenter_photo', presenterPhoto, 'presenter-photo.jpg')
+    }
 
     let startResponse: Response
     try {

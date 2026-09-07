@@ -1,6 +1,7 @@
 import { ApiClient } from '~/services/api'
 
 const BASE_URL: string = '/api/v1/settings/presenter-video'
+const PHOTO_BASE_URL: string = '/api/v1/settings/presenter-photo'
 
 /**
  * Above this weight, a network-level failure is almost always the reverse proxy
@@ -25,25 +26,30 @@ export type PresenterVideo = {
   updated_at?: string | null
 }
 
+/** Presenter photo state returned by the API (bubble on video thumbnails). */
+export type PresenterPhoto = {
+  has_photo: boolean
+}
+
 /**
- * Post a multipart request to the presenter-video API and parse its answer.
+ * Post a multipart request to the presenter media API and parse its answer.
  *
  * The shared ``api`` client only speaks JSON, so the multipart calls go
  * through ``fetch`` directly and share their error handling here.
  *
- * @param path - Path appended to the presenter-video base URL.
+ * @param path - Full API path (clip or photo endpoint).
  * @param formData - The multipart body.
  * @param payloadBytes - Weight being sent, quoted back when the upload is refused.
- * @returns The stored clip metadata.
+ * @returns The parsed API response.
  * @throws With the API message when the request fails.
  */
-async function putMultipart(path: string, formData: FormData, payloadBytes: number): Promise<PresenterVideo> {
+async function putMultipart<TResponse>(path: string, formData: FormData, payloadBytes: number): Promise<TResponse> {
   const userStore: ReturnType<typeof useUserStore> = useUserStore()
   const config: ReturnType<typeof useRuntimeConfig> = useRuntimeConfig()
 
   let response: Response
   try {
-    response = await fetch(`${config.public.apiBase}${BASE_URL}${path}`, {
+    response = await fetch(`${config.public.apiBase}${path}`, {
       method: 'PUT',
       headers: userStore.token ? { Authorization: `Bearer ${userStore.token}` } : {},
       body: formData,
@@ -57,20 +63,26 @@ async function putMultipart(path: string, formData: FormData, payloadBytes: numb
   if (!response.ok) {
     const errorText: string = await response.text().catch((): string => '')
     let errorMessage: string = `Upload échoué : ${response.statusText}`
+    let hasApiDetail: boolean = false
     if (errorText) {
       try {
-        errorMessage = (JSON.parse(errorText).detail as string) || errorMessage
+        const detail: string = JSON.parse(errorText).detail as string
+        if (detail) {
+          errorMessage = detail
+          hasApiDetail = true
+        }
       } catch {
         errorMessage = errorText
       }
     }
-    if (response.status === 413) {
-      errorMessage = `Vidéo trop lourde pour le serveur (${formatMegabytes(payloadBytes)}). Ré-exportez-la en 720p, ou raccourcissez-la.`
+    // Un 413 sans détail vient du reverse proxy (l'API explique toujours les siens).
+    if (response.status === 413 && !hasApiDetail) {
+      errorMessage = `Fichier trop lourd pour le serveur (${formatMegabytes(payloadBytes)}). Allégez-le puis réessayez.`
     }
     throw new Error(errorMessage)
   }
 
-  return (await response.json()) as PresenterVideo
+  return (await response.json()) as TResponse
 }
 
 /**
@@ -132,7 +144,7 @@ export class PresenterVideoService {
     formData.append('intro_seconds', String(introSeconds))
     formData.append('outro_seconds', String(outroSeconds))
     formData.append('auto_generate', String(autoGenerate))
-    return putMultipart('', formData, file.size)
+    return putMultipart<PresenterVideo>(BASE_URL, formData, file.size)
   }
 
   /**
@@ -159,7 +171,7 @@ export class PresenterVideoService {
     formData.append('middle', middle)
     formData.append('outro', outro)
     formData.append('auto_generate', String(autoGenerate))
-    return putMultipart('/segments', formData, intro.size + middle.size + outro.size)
+    return putMultipart<PresenterVideo>(`${BASE_URL}/segments`, formData, intro.size + middle.size + outro.size)
   }
 
   /**
@@ -203,5 +215,56 @@ export class PresenterVideoService {
     if (!response.ok) return null
     const blob: Blob = await response.blob()
     return URL.createObjectURL(blob)
+  }
+
+  /**
+   * Fetch the presenter photo state (bubble on video thumbnails).
+   * @returns Photo state (``has_photo: false`` when none was uploaded).
+   */
+  static async getPresenterPhoto(): Promise<PresenterPhoto> {
+    return ApiClient.get<PresenterPhoto>(PHOTO_BASE_URL)
+  }
+
+  /**
+   * Upload (or replace) the presenter photo drawn on video thumbnails.
+   * @param file - Portrait image (JPEG / PNG / WebP).
+   * @returns The stored photo state.
+   * @throws When the upload fails (message from the API when available).
+   */
+  static async uploadPresenterPhoto(file: File): Promise<PresenterPhoto> {
+    const formData: FormData = new FormData()
+    formData.append('file', file)
+    return putMultipart<PresenterPhoto>(PHOTO_BASE_URL, formData, file.size)
+  }
+
+  /**
+   * Delete the presenter photo (file + record).
+   * @returns The cleared photo state.
+   */
+  static async deletePresenterPhoto(): Promise<PresenterPhoto> {
+    return ApiClient.delete<PresenterPhoto>(PHOTO_BASE_URL)
+  }
+
+  /**
+   * Fetch the user's own presenter photo as a blob (sidecar build + preview).
+   * @returns The image blob, or null when no photo is stored.
+   */
+  static async fetchPresenterPhotoBlob(): Promise<Blob | null> {
+    const userStore: ReturnType<typeof useUserStore> = useUserStore()
+    const config: ReturnType<typeof useRuntimeConfig> = useRuntimeConfig()
+    const response: Response = await fetch(`${config.public.apiBase}${PHOTO_BASE_URL}/file`, {
+      headers: userStore.token ? { Authorization: `Bearer ${userStore.token}` } : {},
+    })
+    if (!response.ok) return null
+    return response.blob()
+  }
+
+  /**
+   * Fetch the presenter photo as a blob URL for the settings preview.
+   * @returns An object URL (caller must ``URL.revokeObjectURL`` it), or null.
+   */
+  static async getPresenterPhotoObjectUrl(): Promise<string | null> {
+    const blob: Blob | null = await PresenterVideoService.fetchPresenterPhotoBlob()
+    return blob ? URL.createObjectURL(blob) : null
   }
 }

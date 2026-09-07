@@ -278,7 +278,8 @@ class DemoVideoService:
                 source_dir = Path(tempfile.mkdtemp(prefix=f"presenter-src-{user_id}-"))
                 try:
                     presenter_path = await self._resolve_presenter_file(presenter, source_dir)
-                    await self._generate(site, presenter, presenter_path, first_name)
+                    photo_path = await self._resolve_presenter_photo(db, user_id, source_dir)
+                    await self._generate(site, presenter, presenter_path, first_name, photo_path)
                 except DemoVideoGenerationError as exc:
                     site.video_status = DemoVideoStatus.FAILED.value
                     site.video_error = str(exc)[:1000]
@@ -349,12 +350,41 @@ class DemoVideoService:
             return legacy
         raise DemoVideoGenerationError("Clip de présentation introuvable.")
 
+    @staticmethod
+    async def _resolve_presenter_photo(db: Session, user_id: int, work_dir: Path) -> Path | None:
+        """
+        Materialise the presenter photo (thumbnail bubble) as a local file.
+
+        The photo is optional and must never fail a generation: any resolution
+        problem just means a thumbnail without the bubble.
+
+        Args:
+            db: Active database session.
+            user_id: Owner of the photo.
+            work_dir: Temp directory receiving the download.
+
+        Returns:
+            Path to a readable local file, or None when the user has no photo.
+        """
+        from models.user import User
+
+        user = db.query(User).filter(User.id == user_id).first()
+        stored = str(user.presenter_photo_path or "").strip() if user else ""
+        if not stored:
+            return None
+        try:
+            return await r2_storage.download_to_path_async(stored, work_dir / "presenter-photo.jpg")
+        except Exception:
+            logger.warning("Presenter photo unavailable for user=%s — thumbnail without bubble", user_id)
+            return None
+
     async def _generate(
         self,
         site: DemoSite,
         presenter: PresenterVideo,
         presenter_path: Path,
         first_name: str | None,
+        presenter_photo_path: Path | None,
     ) -> None:
         """Capture the site, compose the video, build the thumbnail, publish to R2."""
         scroll_seconds = presenter.duration_seconds - presenter.intro_seconds - presenter.outro_seconds
@@ -392,6 +422,7 @@ class DemoVideoService:
                     screenshot_path=screenshot_path,
                     output_video=output_path,
                     output_thumbnail=thumbnail_path,
+                    presenter_photo_path=presenter_photo_path,
                 )
             except video_montage.VideoMontageError as exc:
                 raise DemoVideoGenerationError(str(exc)) from exc
