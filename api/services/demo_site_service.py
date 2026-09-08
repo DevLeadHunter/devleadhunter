@@ -56,6 +56,35 @@ _PENDING_TTL_EXPIRES: datetime = datetime(2099, 12, 31, 23, 59, 59, tzinfo=UTC)
 AVAILABLE_TEMPLATES: list[dict[str, object]] = template_registry.AVAILABLE_TEMPLATES
 
 
+def reenqueue_campaigns_after_demo_ready(db: Session, prospect_id: int | None, user_id: int) -> None:
+    """
+    Best-effort: pull a prospect into its active campaigns once its demo site is live.
+
+    A prospect added to a launched campaign before its demo existed gets no queue row (the J1 would
+    ship an empty ``{lien_demo}``), and nothing reconsiders it. When the demo goes live the prospect
+    can finally be emailed, so the per-prospect enqueue re-runs here and the pending sends are re-dated
+    to the table order. Mirrors ``reenqueue_campaigns_after_video_ready``. Never raises: a queue hiccup
+    must not undo a generated site.
+
+    Args:
+        db: Active database session.
+        prospect_id: The prospect whose demo just became live (None for a site with no prospect).
+        user_id: Owner of the prospect's campaigns.
+    """
+    if not prospect_id:
+        return
+    try:
+        from services.campaign_queue_service import CampaignQueueService
+
+        added: int = CampaignQueueService(db).enqueue_ready_prospect(prospect_id, user_id)
+        if added:
+            logger.info(
+                "[Demo] Demo live for prospect %d — auto-enqueued into %d active campaign send(s)", prospect_id, added
+            )
+    except Exception:
+        logger.warning("[Demo] Auto re-enqueue after demo ready failed for prospect %s", prospect_id, exc_info=True)
+
+
 class DemoSiteService:
     """Orchestrates demo site creation, listing, and cleanup."""
 

@@ -23,7 +23,7 @@ from sqlalchemy import and_, case, func, or_, select
 from sqlalchemy.orm import Session, joinedload
 
 from enums.demo_site_status import DemoSiteStatus
-from models.campaign import Campaign, CampaignStatus
+from models.campaign import Campaign, CampaignStatus, campaign_prospects
 from models.campaign_follow_up import CampaignFollowUp
 from models.demo_site import DemoSite
 from models.email_log import EmailLog
@@ -199,25 +199,18 @@ class CampaignQueueService:
                 uses_demo = uses_demo_a
                 uses_video = uses_video_a
 
-            # Guard: never enqueue an email that would ship an empty {lien_demo}.
-            if uses_demo and not self._demo_link_for_prospect(prospect.id, campaign.user_id, variant):
+            # Guards: no empty {lien_demo}, and no video-only template without a ready video.
+            skip_kind = self._send_guard_skip(
+                prospect.id, campaign.user_id, variant, uses_demo, uses_video, campaign.include_video
+            )
+            if skip_kind == "demo":
                 logger.info("[Queue] Skipping prospect %d — no active demo site for {lien_demo}", prospect.id)
                 result.skipped_no_demo.append({"id": prospect.id, "name": prospect.name or ""})
                 continue
-
-            # Guard: a video-only template (no {lien_demo} fallback) still needs a
-            # ready video and the campaign's video toggle on, else the email has no
-            # content. A combo template ({lien_demo} + {vignette_video}) is never
-            # skipped here — it degrades to the demo link when the video is missing
-            # or the toggle is off (handled at dispatch).
-            if uses_video and not uses_demo:
-                has_video = campaign.include_video and bool(
-                    self._video_for_prospect(prospect.id, campaign.user_id, variant)[0]
-                )
-                if not has_video:
-                    logger.info("[Queue] Skipping prospect %d — video-only template, no video ready", prospect.id)
-                    result.skipped_no_video.append({"id": prospect.id, "name": prospect.name or ""})
-                    continue
+            if skip_kind == "video":
+                logger.info("[Queue] Skipping prospect %d — video-only template, no video ready", prospect.id)
+                result.skipped_no_video.append({"id": prospect.id, "name": prospect.name or ""})
+                continue
 
             to_enqueue.append((prospect.id, tpl_id, variant))
 
@@ -251,6 +244,196 @@ class CampaignQueueService:
             len(result.skipped_no_demo),
         )
         return result
+
+    def enqueue_ready_prospect(self, prospect_id: int, user_id: int) -> int:
+        """
+        Add a now-sendable prospect to the send queue of each ACTIVE campaign it belongs to.
+
+        The queue is built once, at launch: a prospect skipped then for lacking a demo site or a
+        prospection video gets **no** queue row, and nothing reconsiders it. Called when that
+        prospect's prospection video becomes ready, this re-applies the launch guards (demo link and
+        video) for this one prospect and appends a J1 send wherever it now qualifies. A prospect that
+        already has an initial row (of any status) is left untouched — a sent, pending, failed or
+        manually cancelled send is never resurrected — and other prospects are not re-evaluated.
+
+        Args:
+            prospect_id: The prospect that just became sendable.
+            user_id: Owner of the prospect and its campaigns.
+
+        Returns:
+            The number of J1 items added across the prospect's active campaigns.
+        """
+        campaigns: list[Campaign] = list(
+            self.db.execute(
+                select(Campaign)
+                .join(campaign_prospects, campaign_prospects.c.campaign_id == Campaign.id)
+                .where(
+                    campaign_prospects.c.prospect_id == prospect_id,
+                    Campaign.user_id == user_id,
+                    Campaign.status == CampaignStatus.ACTIVE.value,
+                )
+            )
+            .scalars()
+            .all()
+        )
+        added: int = 0
+        for campaign in campaigns:
+            if self._enqueue_single_ready_prospect(campaign, prospect_id):
+                added += 1
+                # The new send landed on the last slot: re-date the pending J1s so it takes its position's day.
+                self.reschedule_pending_initial(campaign)
+        return added
+
+    def backfill_ready_prospects(self, campaign: Campaign) -> int:
+        """
+        Enqueue every now-ready prospect of one campaign that has no send yet — the manual backfill.
+
+        The manual counterpart to the video-ready auto-enqueue: for a launched campaign, adds a J1 for
+        each prospect whose demo/video is ready but who was skipped at launch (or added afterwards). It
+        reuses the same per-prospect guard, so a prospect already sent, pending, failed or manually
+        cancelled is left untouched, and prospects still lacking a demo/video are skipped again.
+
+        Args:
+            campaign: The campaign whose ready prospects should be pulled into the queue.
+
+        Returns:
+            The number of J1 items added.
+        """
+        added: int = 0
+        for prospect in campaign.prospects:
+            if self._enqueue_single_ready_prospect(campaign, prospect.id):
+                added += 1
+        if added:
+            # Newcomers were appended last: re-date the pending J1s so each takes its position's day.
+            self.reschedule_pending_initial(campaign)
+        return added
+
+    def supports_ready_backfill(self, campaign: Campaign) -> bool:
+        """
+        Whether the ready-prospect backfill can add sends to this campaign.
+
+        True only for an email campaign whose J1 template ships ``{lien_demo}`` or
+        ``{lien_video}``/``{vignette_video}`` — the only case a prospect can be left out of the queue
+        at launch for a missing demo/video. Drives the "add ready prospects" button, hidden on SMS or
+        plain-text campaigns it cannot affect.
+
+        Args:
+            campaign: The campaign to inspect.
+
+        Returns:
+            True when the campaign's templates use a demo/video link.
+        """
+        if campaign.channel != "email":
+            return False
+        template_a: EmailTemplate | None = (
+            self.db.get(EmailTemplate, campaign.template_id) if campaign.template_id else None
+        )
+        template_b: EmailTemplate | None = (
+            self.db.get(EmailTemplate, campaign.ab_template_id_b) if campaign.ab_template_id_b else None
+        )
+        return any(
+            self._template_uses_demo_link(template) or self._template_uses_video(template)
+            for template in (template_a, template_b)
+        )
+
+    def _enqueue_single_ready_prospect(self, campaign: Campaign, prospect_id: int) -> bool:
+        """
+        Append one pending J1 send for a now-ready prospect in one active campaign, if it qualifies.
+
+        No-op (returns False) when: the campaign is SMS (its queue lifecycle is demo-based, filled at
+        launch/resume, not video-driven); the prospect already has an initial row in this campaign
+        (any status); it is not part of the campaign; it unsubscribed or is « ne plus contacter »; the
+        A/B template is missing; or it still fails the demo/video guard. The A/B variant is taken from
+        the prospect's position, exactly as at launch, so the split stays consistent. The send takes
+        the next available slot after the last pending J1 (never behind a scheduled follow-up),
+        honouring the send policy.
+
+        Args:
+            campaign: An active campaign the prospect belongs to.
+            prospect_id: The prospect to (maybe) enqueue.
+
+        Returns:
+            True when a pending J1 row was created.
+        """
+        if campaign.channel == "sms":
+            return False
+
+        # An initial row of any status means this prospect was already decided for this campaign.
+        existing: int | None = self.db.execute(
+            select(EmailQueue.id)
+            .where(
+                EmailQueue.campaign_id == campaign.id,
+                EmailQueue.prospect_id == prospect_id,
+                EmailQueue.queue_type == "initial",
+            )
+            .limit(1)
+        ).scalar_one_or_none()
+        if existing is not None:
+            return False
+
+        located: tuple[int, ProspectDB] | None = next(
+            ((index, prospect) for index, prospect in enumerate(campaign.prospects) if prospect.id == prospect_id),
+            None,
+        )
+        if located is None:
+            return False
+        index, prospect = located
+
+        if not prospect.email or unsubscribe_service.is_unsubscribed(self.db, prospect.email):
+            return False
+        if prospect.do_not_contact:
+            return False
+
+        # A/B variant is assigned by position, identically to the bulk enqueue.
+        if campaign.ab_template_id_b is not None:
+            variant: str | None = "A" if index % 2 == 0 else "B"
+            template_id: int | None = campaign.template_id if variant == "A" else campaign.ab_template_id_b
+        else:
+            variant = None
+            template_id = campaign.template_id
+        if not template_id:
+            return False
+
+        template: EmailTemplate | None = self.db.get(EmailTemplate, template_id)
+        skip_kind: str | None = self._send_guard_skip(
+            prospect_id,
+            campaign.user_id,
+            variant,
+            self._template_uses_demo_link(template),
+            self._template_uses_video(template),
+            campaign.include_video,
+        )
+        if skip_kind is not None:
+            return False
+
+        now = _utcnow()
+        # Append after the last pending J1 only — never behind a scheduled follow-up (which sits days
+        # out), so a newly-ready prospect takes the next available send slot instead of the queue's tail.
+        latest: datetime | None = self.db.execute(
+            select(func.max(EmailQueue.scheduled_at)).where(
+                EmailQueue.campaign_id == campaign.id,
+                EmailQueue.status == _STATUS_PENDING,
+                EmailQueue.queue_type == "initial",
+            )
+        ).scalar()
+        slot: datetime = self._schedule_slots(campaign, 1, now, latest)[0]
+        self.db.add(
+            EmailQueue(
+                user_id=campaign.user_id,
+                campaign_id=campaign.id,
+                prospect_id=prospect_id,
+                template_id=template_id,
+                email_account_id=None,
+                queue_type="initial",
+                ab_variant=variant,
+                follow_up_index=0,
+                scheduled_at=slot,
+                status=_STATUS_PENDING,
+            )
+        )
+        self.db.commit()
+        logger.info("[Queue] Auto-enqueued now-ready prospect %d into active campaign %d", prospect_id, campaign.id)
+        return True
 
     def _schedule_slots(
         self,
@@ -301,6 +484,98 @@ class CampaignQueueService:
         delay = timedelta(minutes=max(campaign.send_delay_minutes, 1))
         start = latest + delay if (latest is not None and latest > now) else now
         return [start + delay * i for i in range(count)]
+
+    def reschedule_pending_initial(self, campaign: Campaign) -> int:
+        """Re-date the campaign's pending J1 sends to follow the current prospect order.
+
+        The queue is materialised at launch — each J1 carries a fixed ``scheduled_at`` — so once the
+        operator reorders, adds, or removes a prospect on a launched campaign, the pending J1s must be
+        re-paired to the send slots in ``campaign_prospects.position`` order (the order the launch
+        used). Sends already gone keep their day and still consume it; only pending J1s move, onto the
+        same policy cadence. Follow-ups are scheduled off their own J1 at dispatch, so they are left
+        untouched.
+
+        Args:
+            campaign: The launched campaign whose pending J1s should be re-dated.
+
+        Returns:
+            The number of pending J1 items re-dated.
+        """
+        pending_by_prospect: dict[int, EmailQueue] = {
+            item.prospect_id: item
+            for item in self.db.execute(
+                select(EmailQueue).where(
+                    EmailQueue.campaign_id == campaign.id,
+                    EmailQueue.queue_type == "initial",
+                    EmailQueue.status == _STATUS_PENDING,
+                )
+            ).scalars()
+        }
+        if not pending_by_prospect:
+            return 0
+
+        # campaign.prospects is ordered by position, so this is the new send order.
+        ordered: list[EmailQueue] = [
+            pending_by_prospect[prospect.id] for prospect in campaign.prospects if prospect.id in pending_by_prospect
+        ]
+        slots: list[datetime] = self._reschedule_slots(campaign, ordered)
+        for item, slot in zip(ordered, slots):
+            item.scheduled_at = slot
+        self.db.commit()
+        logger.info("[Queue] Re-dated %d pending J1 item(s) for campaign %d", len(ordered), campaign.id)
+        return len(ordered)
+
+    def _reschedule_slots(self, campaign: Campaign, pending_items: list[EmailQueue]) -> list[datetime]:
+        """
+        Compute fresh send slots for the campaign's pending J1s, in their new order.
+
+        Same policy/legacy split as the launch scheduler, but the campaign's own pending J1s (the rows
+        being moved) are removed from the per-day usage and occupied instants so they don't block
+        themselves, and the days its sent J1s already used are seeded so the per-campaign cap still
+        holds (today is full once one J1 has left).
+
+        Args:
+            campaign: The campaign being rescheduled.
+            pending_items: The pending J1 rows about to be re-dated (in their new order).
+
+        Returns:
+            One ascending naive-UTC slot per pending item.
+        """
+        count: int = len(pending_items)
+        if count == 0:
+            return []
+
+        now: datetime = _utcnow()
+
+        from services.send_policy_service import send_policy_service
+
+        policy_row = send_policy_service.get_policy(self.db, campaign.user_id)
+        if policy_row is None and campaign.max_emails_per_day is None:
+            # Legacy spacing: no window/cap, just the campaign's fixed gap from now.
+            delay: timedelta = timedelta(minutes=max(campaign.send_delay_minutes, 1))
+            return [now + delay * index for index in range(count)]
+
+        resolved = send_policy_service.resolve(self.db, campaign.user_id)
+        seed_counts, occupied = send_policy_service.pending_schedule(self.db, campaign.user_id)
+        # Drop this campaign's own pending J1s from the global seeds — we're re-dating exactly them.
+        for day, used in send_policy_service.pending_campaign_counts_by_day(self.db, campaign.id).items():
+            remaining: int = seed_counts.get(day, 0) - used
+            if remaining > 0:
+                seed_counts[day] = remaining
+            else:
+                seed_counts.pop(day, None)
+        for item in pending_items:
+            occupied.discard(item.scheduled_at)
+
+        return send_policy_service.next_send_slots(
+            resolved,
+            count,
+            start_utc=now,
+            seed_counts=seed_counts,
+            occupied=occupied,
+            per_campaign_cap=campaign.max_emails_per_day,
+            campaign_seed_counts=send_policy_service.sent_campaign_counts_by_day(self.db, campaign.id),
+        )
 
     def _enqueue_sms(self, campaign: Campaign) -> EnqueueResult:
         """Enqueue cold-SMS items for an SMS-channel campaign (reuses the email queue + scheduler).
@@ -654,6 +929,44 @@ class CampaignQueueService:
         if variant:
             url = append_query_param(url, "v", variant)
         return url, public_thumbnail_url(site.slug)
+
+    def _send_guard_skip(
+        self,
+        prospect_id: int,
+        user_id: int,
+        variant: str | None,
+        uses_demo: bool,
+        uses_video: bool,
+        include_video: bool,
+    ) -> str | None:
+        """
+        Return why a prospect can't receive the initial email yet, or None when it can.
+
+        Two launch guards, shared by the bulk enqueue and the single-prospect re-enqueue:
+          - ``"demo"``: the template ships ``{lien_demo}`` but the prospect has no active demo site.
+          - ``"video"``: a video-only template (no ``{lien_demo}`` fallback) has no ready video, or the
+            campaign's video toggle is off — the email would have no content. A combo template
+            (``{lien_demo}`` + ``{vignette_video}``) is never blocked here: it degrades to the demo
+            link at dispatch when the video is missing.
+
+        Args:
+            prospect_id: Prospect being evaluated.
+            user_id: Owner of the prospect's demo/video.
+            variant: A/B variant assigned to this prospect (None outside A/B).
+            uses_demo: Whether the assigned template references ``{lien_demo}``.
+            uses_video: Whether it references ``{lien_video}``/``{vignette_video}``.
+            include_video: The campaign's video toggle.
+
+        Returns:
+            ``"demo"``, ``"video"``, or None when the prospect can be enqueued.
+        """
+        if uses_demo and not self._demo_link_for_prospect(prospect_id, user_id, variant):
+            return "demo"
+        if uses_video and not uses_demo:
+            has_video: bool = include_video and bool(self._video_for_prospect(prospect_id, user_id, variant)[0])
+            if not has_video:
+                return "video"
+        return None
 
     async def _dispatch(self, item: EmailQueue) -> None:
         """
@@ -1057,6 +1370,43 @@ class CampaignQueueService:
         if items:
             self.db.commit()
             logger.info("[Queue] Held back %d pending item(s) for do-not-contact prospect %d", len(items), prospect_id)
+        return len(items)
+
+    def cancel_prospect_pending(self, campaign_id: int, prospect_id: int, reason: str) -> int:
+        """Skip every pending queue item of one prospect within one campaign (removed from it).
+
+        Marked ``skipped`` with a reason rather than deleted, so the campaign's queue tab keeps the
+        trace of a send that was planned but held back; sent/failed rows are left untouched. Called
+        when a prospect is removed from a launched campaign so their email never goes out.
+
+        Args:
+            campaign_id: The campaign the prospect is being removed from.
+            prospect_id: The prospect whose pending sends are cancelled.
+            reason: Skip label shown on the queue tab.
+
+        Returns:
+            The number of pending items skipped.
+        """
+        items: list[EmailQueue] = list(
+            self.db.execute(
+                select(EmailQueue).where(
+                    EmailQueue.campaign_id == campaign_id,
+                    EmailQueue.prospect_id == prospect_id,
+                    EmailQueue.status == _STATUS_PENDING,
+                )
+            ).scalars()
+        )
+        for item in items:
+            item.status = _STATUS_SKIPPED
+            item.skip_reason = reason[:160]
+        if items:
+            self.db.commit()
+            logger.info(
+                "[Queue] Cancelled %d pending item(s) for prospect %d removed from campaign %d",
+                len(items),
+                prospect_id,
+                campaign_id,
+            )
         return len(items)
 
     def requeue_item(self, item: EmailQueue) -> None:

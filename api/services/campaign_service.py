@@ -2,6 +2,10 @@
 Campaign service for managing email campaigns.
 """
 
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
 from fastapi import HTTPException, status
 from sqlalchemy import func as sa_func
 from sqlalchemy.orm import Session, joinedload
@@ -18,6 +22,9 @@ from schemas.campaign import (
 from services.activity_log_service import CATEGORY_CAMPAIGN, STATUS_INFO, activity_log_service
 from services.email_log_stats import aggregate_email_log_counts, compute_engagement_rates
 
+if TYPE_CHECKING:
+    from services.campaign_queue_service import EnqueueResult
+
 # Campaign status → French verb for the activity feed.
 _CAMPAIGN_STATUS_VERBS: dict[str, str] = {
     CampaignStatus.ACTIVE.value: "activée",
@@ -26,6 +33,11 @@ _CAMPAIGN_STATUS_VERBS: dict[str, str] = {
     CampaignStatus.CANCELLED.value: "annulée",
     CampaignStatus.DRAFT.value: "repassée en brouillon",
 }
+
+
+def _is_active(campaign: Campaign) -> bool:
+    """Return True when the campaign is running (SQLEnum may load a member, so compare on the value)."""
+    return getattr(campaign.status, "value", campaign.status) == CampaignStatus.ACTIVE.value
 
 
 class CampaignService:
@@ -222,7 +234,7 @@ class CampaignService:
 
     def add_prospects_to_campaign(
         self, db: Session, campaign_id: int, user_id: int, prospect_ids: list[int]
-    ) -> Campaign | None:
+    ) -> tuple[Campaign | None, EnqueueResult | None]:
         """
         Add prospects to a campaign.
 
@@ -233,14 +245,16 @@ class CampaignService:
             prospect_ids: List of prospect IDs to add
 
         Returns:
-            Updated campaign if found, None otherwise
+            ``(campaign, enqueue_result)`` — the updated campaign (None when not found) and, on a
+            launched campaign, the outcome of pushing the newcomers into the send queue (including who
+            was left out for a missing demo or video); None when nothing was enqueued.
 
         Raises:
             HTTPException: If prospects not found or not owned by user
         """
         campaign = self.get_campaign(db, campaign_id, user_id)
         if not campaign:
-            return None
+            return None, None
 
         # Get prospects
         prospects = db.query(ProspectDB).filter(ProspectDB.id.in_(prospect_ids), ProspectDB.user_id == user_id).all()
@@ -272,7 +286,22 @@ class CampaignService:
         db.commit()
         db.refresh(campaign)
 
-        return campaign
+        # On a launched campaign, materialise the new prospects into the send queue so they actually
+        # go out; enqueue is re-entrant (already-queued prospects are skipped) and appends them after
+        # the current pending slots, i.e. last — matching their position. A newcomer without a live
+        # demo (or ready video) is left out and reported, so the UI can say why it is not in the queue.
+        enqueue_result: EnqueueResult | None = None
+        if _is_active(campaign) and (campaign.channel == "sms" or campaign.template_id is not None):
+            from services.campaign_queue_service import CampaignQueueService
+
+            enqueue_result = CampaignQueueService(db).enqueue_campaign(
+                campaign,
+                template_id=campaign.template_id,
+                ab_template_id_b=campaign.ab_template_id_b,
+            )
+            db.refresh(campaign)
+
+        return campaign, enqueue_result
 
     def remove_prospect_from_campaign(
         self, db: Session, campaign_id: int, user_id: int, prospect_id: int
@@ -293,6 +322,14 @@ class CampaignService:
         if not campaign:
             return None
 
+        from services.campaign_queue_service import CampaignQueueService
+
+        queue_service = CampaignQueueService(db)
+        active: bool = _is_active(campaign)
+        # On a launched campaign, cancel the prospect's pending send first so it never goes out.
+        if active:
+            queue_service.cancel_prospect_pending(campaign_id, prospect_id, "Retiré de la campagne")
+
         # Find and remove prospect
         for i, prospect in enumerate(campaign.prospects):
             if prospect.id == prospect_id:
@@ -302,7 +339,92 @@ class CampaignService:
         db.commit()
         db.refresh(campaign)
 
+        # Re-date the remaining pending sends so the freed day is filled (the group after moves up).
+        if active:
+            queue_service.reschedule_pending_initial(campaign)
+            db.refresh(campaign)
+
         return campaign
+
+    def reorder_prospects(
+        self, db: Session, campaign_id: int, user_id: int, ordered_prospect_ids: list[int]
+    ) -> Campaign | None:
+        """
+        Set the campaign's prospect send order, then re-date the pending queue to match.
+
+        ``ordered_prospect_ids`` must be exactly the campaign's current prospects, in their new order
+        (as produced by the drag & drop table). Positions are rewritten 0-based in that order; on a
+        launched campaign the pending J1s are re-paired to the send slots so the order drives the day.
+
+        Args:
+            db: Database session.
+            campaign_id: Campaign to reorder.
+            user_id: Owner of the campaign.
+            ordered_prospect_ids: The campaign's prospect ids in their new send order.
+
+        Returns:
+            The updated campaign, or None when it is not found.
+
+        Raises:
+            HTTPException: 422 when the ids don't match the campaign's prospects exactly.
+        """
+        campaign = self.get_campaign(db, campaign_id, user_id)
+        if not campaign:
+            return None
+
+        current_ids: set[int] = {prospect.id for prospect in campaign.prospects}
+        if len(ordered_prospect_ids) != len(current_ids) or set(ordered_prospect_ids) != current_ids:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail="L'ordre fourni ne correspond pas aux prospects de la campagne",
+            )
+
+        for position, prospect_id in enumerate(ordered_prospect_ids):
+            db.execute(
+                campaign_prospects.update()
+                .where(
+                    campaign_prospects.c.campaign_id == campaign_id,
+                    campaign_prospects.c.prospect_id == prospect_id,
+                )
+                .values(position=position)
+            )
+        db.commit()
+        db.refresh(campaign)
+
+        if _is_active(campaign):
+            from services.campaign_queue_service import CampaignQueueService
+
+            CampaignQueueService(db).reschedule_pending_initial(campaign)
+            db.refresh(campaign)
+
+        return campaign
+
+    def get_prospect_campaign_memberships(self, db: Session, user_id: int) -> dict[int, list[dict[str, object]]]:
+        """
+        Map each of the user's prospects to the campaigns it already belongs to (id + name).
+
+        Feeds the "already in a campaign" badges of the add-prospects picker. One join over
+        ``campaign_prospects`` × ``campaigns``, scoped to the user; a prospect in no campaign is
+        simply absent from the map.
+
+        Args:
+            db: Database session.
+            user_id: Owner of the campaigns.
+
+        Returns:
+            ``{prospect_id: [{"id": campaign_id, "name": campaign_name}, …]}``.
+        """
+        rows = (
+            db.query(campaign_prospects.c.prospect_id, Campaign.id, Campaign.name)
+            .join(Campaign, Campaign.id == campaign_prospects.c.campaign_id)
+            .filter(Campaign.user_id == user_id)
+            .order_by(campaign_prospects.c.prospect_id, Campaign.name)
+            .all()
+        )
+        memberships: dict[int, list[dict[str, object]]] = {}
+        for prospect_id, campaign_id, campaign_name in rows:
+            memberships.setdefault(prospect_id, []).append({"id": campaign_id, "name": campaign_name})
+        return memberships
 
     def get_campaign_stats(self, db: Session, campaign_id: int, user_id: int) -> CampaignStats | None:
         """

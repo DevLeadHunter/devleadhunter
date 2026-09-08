@@ -14,6 +14,8 @@ export type UiProspectTableProps = {
   rowAction?: UiProspectTableRowAction
   /** Hide the selection checkbox column. */
   hideSelection?: boolean
+  /** Show a drag handle on each row and let the user reorder rows by drag & drop. */
+  reorderable?: boolean
 }
 
 export type UiProspectTableEmits = {
@@ -23,4 +25,19 @@ export type UiProspectTableEmits = {
   removeProspect: [prospect: Prospect]
   toggleSelect: [prospect: Prospect]
   toggleSelectAll: [checked: boolean]
+  /** The user dropped a row into a new position — carries every prospect id in the new order. */
+  reorder: [orderedProspectIds: number[]]
+}
+
+/** One pointer-drag of a row: the row grabbed, its pointer, where it was grabbed, and the floating ghost. */
+export type UiProspectTableDragSession = {
+  prospect: Prospect
+  pointerId: number
+  startClientY: number
+  grabOffsetY: number
+  rowLeft: number
+  rowWidth: number
+  table: HTMLTableElement
+  ghost: HTMLElement | null
+  active: boolean
 }

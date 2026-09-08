@@ -24,6 +24,25 @@ export type CampaignProspect = {
   ab_variant?: string | null
 }
 
+/** A campaign a prospect already belongs to — shown as a badge in the add-prospects picker. */
+export type CampaignProspectMembership = {
+  id: number
+  name: string
+}
+
+/** A prospect left out of the send queue when added to a launched campaign, with the name to show. */
+export type CampaignSkippedProspect = {
+  id: number
+  name: string
+}
+
+/** What pushing newly added prospects into a launched campaign's send queue did (POST …/prospects only). */
+export type CampaignEnqueueOutcome = {
+  enqueued: number
+  skipped_no_demo: CampaignSkippedProspect[]
+  skipped_no_video: CampaignSkippedProspect[]
+}
+
 export type CampaignResponse = {
   id: number
   user_id: number
@@ -55,6 +74,10 @@ export type CampaignResponse = {
 export interface CampaignDetailResponse extends CampaignResponse {
   prospects: CampaignProspect[]
   follow_ups: CampaignFollowUp[]
+  /** True when "add ready prospects" can add sends here (active email campaign using a demo/video link). */
+  supports_ready_backfill?: boolean
+  /** Only after adding prospects to a launched campaign: who joined the queue and who was left out. */
+  enqueue_outcome?: CampaignEnqueueOutcome | null
 }
 
 export type CampaignListResponse = {
@@ -259,6 +282,28 @@ export class CampaignService {
   }
 
   /**
+   * Set the campaign's prospect send order (drag & drop) and re-date the pending queue to match.
+   * @param campaignId  - Campaign ID.
+   * @param prospectIds - The campaign's prospect ids in their new send order (the full set).
+   */
+  static async reorderProspects(campaignId: number, prospectIds: number[]): Promise<CampaignDetailResponse> {
+    return ApiClient.patch<CampaignDetailResponse>(`/api/v1/campaigns/${campaignId}/prospects/reorder`, {
+      prospect_ids: prospectIds,
+    })
+  }
+
+  /**
+   * Fetch, per prospect, the user's campaigns it already belongs to (add-prospects picker badges).
+   * @returns A map of prospect id to the campaigns that already contain it.
+   */
+  static async getProspectMemberships(): Promise<Record<number, CampaignProspectMembership[]>> {
+    const response: { memberships: Record<number, CampaignProspectMembership[]> } = await ApiClient.get<{
+      memberships: Record<number, CampaignProspectMembership[]>
+    }>('/api/v1/campaigns/prospect-memberships')
+    return response.memberships
+  }
+
+  /**
    * Fetch aggregated statistics for a campaign (includes A/B breakdown when applicable).
    * @param campaignId - Campaign ID.
    */
@@ -333,6 +378,17 @@ export class CampaignService {
     queueId: number,
   ): Promise<{ success: boolean; id: number; status: QueueItemStatus; scheduled_at?: string }> {
     return ApiClient.post(`/api/v1/campaigns/${campaignId}/queue/${queueId}/resend`, {})
+  }
+
+  /**
+   * Add the campaign's now-ready prospects (demo/video ready) to its send queue.
+   * The manual backfill for prospects skipped at launch whose media is now ready; only affects an
+   * active campaign whose templates use a demo/video link.
+   * @param campaignId - Campaign ID.
+   * @returns The number of prospects enqueued.
+   */
+  static async backfillReady(campaignId: number): Promise<{ success: boolean; enqueued: number }> {
+    return ApiClient.post(`/api/v1/campaigns/${campaignId}/backfill-ready`, {})
   }
 
   /**

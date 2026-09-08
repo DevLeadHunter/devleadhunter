@@ -105,6 +105,16 @@ class CampaignProspectRemove(BaseModel):
     prospect_id: int
 
 
+class CampaignProspectReorder(BaseModel):
+    """Schema for reordering a campaign's prospects (drag & drop).
+
+    ``prospect_ids`` is the full set of the campaign's current prospects, in their new send order.
+    The queue pairs ascending send slots to prospects in this order, so the order drives the day.
+    """
+
+    prospect_ids: list[int] = Field(..., min_length=1)
+
+
 class CampaignVariantStats(BaseModel):
     """Stats broken down for a single A/B variant."""
 
@@ -185,11 +195,32 @@ class CampaignResponse(CampaignBase):
     model_config = ConfigDict(from_attributes=True)
 
 
+class CampaignSkippedProspect(BaseModel):
+    """A prospect left out of the send queue, with the name to show in the warning."""
+
+    id: int
+    name: str
+
+
+class CampaignEnqueueOutcome(BaseModel):
+    """What pushing newly added prospects into a launched campaign's send queue did."""
+
+    enqueued: int = 0
+    # Left out because their J1 template ships {lien_demo} and they have no active demo site yet.
+    skipped_no_demo: list[CampaignSkippedProspect] = Field(default_factory=list)
+    # Left out because their template is video-only and no prospection video is ready yet.
+    skipped_no_video: list[CampaignSkippedProspect] = Field(default_factory=list)
+
+
 class CampaignDetailResponse(CampaignResponse):
     """Full campaign response with prospects and follow-up sequence."""
 
     prospects: list[CampaignProspectResponse] = Field(default_factory=list)
     follow_ups: list[CampaignFollowUpResponse] = Field(default_factory=list)
+    # True when the "add ready prospects" backfill can add sends here (email campaign using a demo/video link).
+    supports_ready_backfill: bool = False
+    # Only set by POST /{id}/prospects on a launched campaign: who joined the queue and who was left out.
+    enqueue_outcome: CampaignEnqueueOutcome | None = None
 
     model_config = ConfigDict(from_attributes=True)
 

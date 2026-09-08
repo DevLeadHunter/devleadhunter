@@ -6,7 +6,10 @@
           <slot name="head" />
         </tr>
       </thead>
-      <tbody>
+      <TransitionGroup v-if="props.animateRowMoves" tag="tbody" move-class="transition-transform duration-200 ease-out">
+        <slot />
+      </TransitionGroup>
+      <tbody v-else>
         <slot />
       </tbody>
     </table>
@@ -22,6 +25,10 @@ const props: BaseTableProps = defineProps({
   minWidth: {
     type: String,
     default: '720px',
+  },
+  animateRowMoves: {
+    type: Boolean,
+    default: false,
   },
 })
 

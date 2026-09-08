@@ -1,7 +1,8 @@
 <template>
   <div class="overflow-hidden">
-    <BaseTable>
+    <BaseTable :animate-row-moves="reorderable">
       <template #head>
+        <BaseTableTh v-if="reorderable" sr-only>Réordonner</BaseTableTh>
         <BaseTableTh v-if="!hideSelection" class="w-12">
           <input
             type="checkbox"
@@ -25,16 +26,33 @@
       </template>
 
       <BaseTableTr
-        v-for="prospect in prospects"
+        v-for="prospect in displayedProspects"
         :key="prospect.id"
+        :data-prospect-id="prospect.id"
         :class="[
           isSelected(prospect) ? 'bg-[var(--app-accent-soft)] hover:bg-[var(--app-accent-soft)]' : '',
           isLockedForMe(prospect)
             ? 'bg-[var(--app-surface-2)]/40 hover:bg-[var(--app-surface-2)]/40'
             : 'cursor-pointer',
+          isBeingDragged(prospect) ? 'bg-[var(--app-accent-soft)] opacity-50 hover:bg-[var(--app-accent-soft)]' : '',
         ]"
         @click="onRowClick(prospect, $event)"
       >
+        <BaseTableTd v-if="reorderable" class="w-10 pr-0">
+          <button
+            type="button"
+            class="flex h-7 w-7 cursor-grab touch-none items-center justify-center rounded text-[var(--app-faint)] transition-colors hover:text-[var(--app-ink)] active:cursor-grabbing"
+            aria-label="Glisser pour changer le jour d'envoi"
+            title="Glisser pour changer le jour d'envoi"
+            @pointerdown="onHandlePointerDown($event, prospect)"
+            @pointermove="onHandlePointerMove"
+            @pointerup="onHandlePointerUp"
+            @pointercancel="cancelDrag"
+          >
+            <UIcon name="i-lucide-grip-vertical" class="h-4 w-4" />
+          </button>
+        </BaseTableTd>
+
         <BaseTableTd v-if="!hideSelection">
           <input
             type="checkbox"
@@ -235,11 +253,17 @@
 </template>
 
 <script lang="ts" setup>
-import type { ComputedRef, EmitFn, PropType } from 'vue'
-import { computed } from 'vue'
+import type { ComputedRef, EmitFn, PropType, Ref } from 'vue'
+import { computed, onBeforeUnmount, ref } from 'vue'
 import type { Prospect } from '~/types'
-import type { UiProspectTableEmits, UiProspectTableProps } from '~/types/UiProspectTable'
+import type { UiProspectTableDragSession, UiProspectTableEmits, UiProspectTableProps } from '~/types/UiProspectTable'
 import { useUserStore } from '~/stores/user'
+
+/** Pointer travel before a press on the grip turns into a drag, so a plain click goes through. */
+const DRAG_START_THRESHOLD_PX: number = 4
+
+/** Dead zone around a row's midpoint so a still hand does not flip the order back and forth. */
+const DRAG_MIDPOINT_TOLERANCE_PX: number = 4
 
 /** Paginated prospect rows with per-row and select-all checkboxes. */
 const props: UiProspectTableProps = defineProps({
@@ -271,11 +295,27 @@ const props: UiProspectTableProps = defineProps({
     type: Boolean,
     default: false,
   },
+  reorderable: {
+    type: Boolean,
+    default: false,
+  },
 })
 
 const emit: EmitFn<UiProspectTableEmits> = defineEmits<UiProspectTableEmits>()
 
 const userStore: ReturnType<typeof useUserStore> = useUserStore()
+
+/** Id of the prospect being dragged, or null when no drag is in progress. */
+const draggedProspectId: Ref<number | null> = ref(null)
+
+/** Live order shown during a drag — the dragged row moves as the pointer crosses rows; null otherwise. */
+const draftOrder: Ref<Prospect[] | null> = ref(null)
+
+/** Rows to render: the live draft while dragging, the prop order otherwise. */
+const displayedProspects: ComputedRef<Prospect[]> = computed((): Prospect[] => draftOrder.value ?? props.prospects)
+
+/** The pointer-drag in progress — transient DOM session, deliberately not reactive — or null. */
+let dragSession: UiProspectTableDragSession | null = null
 
 /** Current user id (0 while the store hydrates). */
 const currentUserId: ComputedRef<number> = computed((): number => userStore.user?.id ?? 0)
@@ -350,4 +390,203 @@ function onRowClick(prospect: Prospect, event: MouseEvent): void {
   if (target?.closest('button, a, input, label, select, textarea')) return
   emit('viewProspect', prospect)
 }
+
+/**
+ * Whether this row is the one being dragged — it stays in the table as the landing placeholder.
+ * @param prospect - Row to test.
+ * @returns True while this prospect is being dragged.
+ */
+function isBeingDragged(prospect: Prospect): boolean {
+  return draggedProspectId.value === prospect.id
+}
+
+/**
+ * Arm a drag from a row's grip; it only becomes a drag once the pointer travels a few pixels.
+ * @param event - The native pointerdown event on the grip.
+ * @param prospect - The row's prospect.
+ */
+function onHandlePointerDown(event: PointerEvent, prospect: Prospect): void {
+  if (!props.reorderable || event.button !== 0) return
+  const handle: HTMLElement | null = event.currentTarget instanceof HTMLElement ? event.currentTarget : null
+  const row: HTMLTableRowElement | null = handle?.closest('tr') ?? null
+  const table: HTMLTableElement | null = row?.closest('table') ?? null
+  if (!handle || !row || !table) return
+  event.preventDefault()
+  handle.setPointerCapture(event.pointerId)
+  const rowBounds: DOMRect = row.getBoundingClientRect()
+  dragSession = {
+    prospect,
+    pointerId: event.pointerId,
+    startClientY: event.clientY,
+    grabOffsetY: event.clientY - rowBounds.top,
+    rowLeft: rowBounds.left,
+    rowWidth: rowBounds.width,
+    table,
+    ghost: null,
+    active: false,
+  }
+}
+
+/**
+ * Follow the pointer: start the drag past the threshold, then move the ghost and the live order.
+ * @param event - The native pointermove event, captured by the grip.
+ */
+function onHandlePointerMove(event: PointerEvent): void {
+  const session: UiProspectTableDragSession | null = dragSession
+  if (!session || event.pointerId !== session.pointerId) return
+  if (!session.active) {
+    if (Math.abs(event.clientY - session.startClientY) < DRAG_START_THRESHOLD_PX) return
+    beginDrag(session)
+  }
+  positionRowGhost(session, event.clientY)
+  moveDraggedRowTowards(session, event.clientY)
+}
+
+/**
+ * Release: commit the previewed order; a press without travel is a plain click and does nothing.
+ * @param event - The native pointerup event.
+ */
+function onHandlePointerUp(event: PointerEvent): void {
+  const session: UiProspectTableDragSession | null = dragSession
+  if (!session || event.pointerId !== session.pointerId) return
+  if (session.active) commitDrag()
+  else dragSession = null
+}
+
+/**
+ * Turn the armed press into a drag: snapshot the order, lift a ghost of the row, lock the page cursor.
+ * @param session - The armed drag session.
+ */
+function beginDrag(session: UiProspectTableDragSession): void {
+  const row: HTMLTableRowElement | null = session.table.querySelector(`tr[data-prospect-id="${session.prospect.id}"]`)
+  session.active = true
+  draggedProspectId.value = session.prospect.id
+  draftOrder.value = [...props.prospects]
+  if (row) session.ghost = createRowGhost(row, session.rowWidth)
+  document.body.style.cursor = 'grabbing'
+  document.body.style.userSelect = 'none'
+  window.addEventListener('keydown', onDragKeydown)
+}
+
+/**
+ * Build the floating copy of the row that follows the pointer — opaque, bordered and shadowed, with the
+ * live column widths so it looks lifted straight out of the table.
+ * @param row - The table row being dragged.
+ * @param width - The row's on-screen width.
+ * @returns The ghost element, appended to the document body.
+ */
+function createRowGhost(row: HTMLTableRowElement, width: number): HTMLElement {
+  const clone: HTMLTableRowElement = row.cloneNode(true) as HTMLTableRowElement
+  clone.className = ''
+  clone.removeAttribute('style')
+  const originalCells: Element[] = Array.from(row.children)
+  Array.from(clone.children).forEach((cell: Element, index: number): void => {
+    const original: Element | undefined = originalCells[index]
+    if (cell instanceof HTMLElement && original) cell.style.width = `${original.getBoundingClientRect().width}px`
+  })
+  const table: HTMLTableElement = document.createElement('table')
+  table.className = 'w-full border-collapse'
+  table.style.tableLayout = 'fixed'
+  const body: HTMLTableSectionElement = document.createElement('tbody')
+  body.appendChild(clone)
+  table.appendChild(body)
+  const ghost: HTMLDivElement = document.createElement('div')
+  ghost.className =
+    'pointer-events-none fixed top-0 left-0 z-[120] overflow-hidden rounded-xl border border-[var(--app-line)] bg-[var(--app-surface)] shadow-2xl'
+  ghost.style.width = `${width}px`
+  ghost.appendChild(table)
+  document.body.appendChild(ghost)
+  return ghost
+}
+
+/**
+ * Keep the ghost under the pointer, sliding vertically along the table so it stays column-aligned.
+ * @param session - The active drag session.
+ * @param clientY - Current pointer Y in viewport coordinates.
+ */
+function positionRowGhost(session: UiProspectTableDragSession, clientY: number): void {
+  if (!session.ghost) return
+  session.ghost.style.transform = `translate3d(${session.rowLeft}px, ${clientY - session.grabOffsetY}px, 0)`
+}
+
+/**
+ * Slide the dragged row into the slot under the pointer. Rows are located by their layout position
+ * (``offsetTop``), which ignores the slide animation, so the order never oscillates mid-transition.
+ * @param session - The active drag session.
+ * @param clientY - Current pointer Y in viewport coordinates.
+ */
+function moveDraggedRowTowards(session: UiProspectTableDragSession, clientY: number): void {
+  const order: Prospect[] | null = draftOrder.value
+  if (!order) return
+  const from: number = order.findIndex((prospect: Prospect): boolean => prospect.id === session.prospect.id)
+  const rows: HTMLTableRowElement[] = Array.from(session.table.tBodies[0]?.rows ?? [])
+  if (from === -1 || rows.length !== order.length) return
+  const pointerY: number = clientY - session.table.getBoundingClientRect().top
+  let target: number = from
+  for (let index: number = 0; index < from; index++) {
+    const row: HTMLTableRowElement | undefined = rows[index]
+    if (row && pointerY < row.offsetTop + row.offsetHeight / 2 - DRAG_MIDPOINT_TOLERANCE_PX) {
+      target = index
+      break
+    }
+  }
+  if (target === from) {
+    for (let index: number = rows.length - 1; index > from; index--) {
+      const row: HTMLTableRowElement | undefined = rows[index]
+      if (row && pointerY > row.offsetTop + row.offsetHeight / 2 + DRAG_MIDPOINT_TOLERANCE_PX) {
+        target = index
+        break
+      }
+    }
+  }
+  if (target === from) return
+  const next: Prospect[] = [...order]
+  const moved: Prospect | undefined = next.splice(from, 1)[0]
+  if (moved === undefined) return
+  next.splice(target, 0, moved)
+  draftOrder.value = next
+}
+
+/** Apply the previewed order when it changed, then tear the drag down. */
+function commitDrag(): void {
+  const order: Prospect[] | null = draftOrder.value
+  const changed: boolean =
+    order !== null &&
+    order.some((prospect: Prospect, position: number): boolean => prospect.id !== props.prospects[position]?.id)
+  if (order && changed) {
+    emit(
+      'reorder',
+      order.map((prospect: Prospect): number => prospect.id),
+    )
+  }
+  endDrag()
+}
+
+/** Abandon the drag — the rows snap back to the saved order. */
+function cancelDrag(): void {
+  endDrag()
+}
+
+/** Remove the ghost, restore the page cursor and forget the session; the draft order is dropped. */
+function endDrag(): void {
+  dragSession?.ghost?.remove()
+  dragSession = null
+  draggedProspectId.value = null
+  draftOrder.value = null
+  document.body.style.cursor = ''
+  document.body.style.userSelect = ''
+  window.removeEventListener('keydown', onDragKeydown)
+}
+
+/**
+ * Escape cancels the drag in progress.
+ * @param event - The native keydown event.
+ */
+function onDragKeydown(event: KeyboardEvent): void {
+  if (event.key === 'Escape') cancelDrag()
+}
+
+onBeforeUnmount((): void => {
+  endDrag()
+})
 </script>

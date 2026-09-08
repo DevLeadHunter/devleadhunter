@@ -586,8 +586,10 @@
               :show-ab-variant="!!campaign.ab_template_id_b"
               :ab-variants="campaignAbVariants"
               row-action="remove"
+              reorderable
               @view-prospect="openProspectDrawer"
               @remove-prospect="startRemoveProspectFromRow"
+              @reorder="handleReorderProspects"
               @toggle-select="toggleCampaignProspectSelect"
               @toggle-select-all="toggleCampaignProspectSelectAll"
             />
@@ -612,11 +614,26 @@
       </div>
 
       <div v-if="activeTab === 'queue'" class="space-y-4">
-        <p class="text-muted text-sm">
-          <span class="font-semibold text-[var(--app-accent-ink)]">{{ queueData?.pending_count ?? 0 }}</span>
-          {{ isSms ? 'SMS' : (queueData?.pending_count ?? 0) !== 1 ? 'emails' : 'email' }}
-          en attente
-        </p>
+        <div class="flex flex-wrap items-center justify-between gap-3">
+          <p class="text-muted text-sm">
+            <span class="font-semibold text-[var(--app-accent-ink)]">{{ queueData?.pending_count ?? 0 }}</span>
+            {{ isSms ? 'SMS' : (queueData?.pending_count ?? 0) !== 1 ? 'emails' : 'email' }}
+            en attente
+          </p>
+          <button
+            v-if="canBackfillReady"
+            class="btn-secondary"
+            :disabled="isBackfilling"
+            title="Ajoute à la file les prospects dont la vidéo/démo est prête mais qui n'y sont pas encore (planifiés au prochain créneau d'envoi)."
+            @click="handleBackfillReady"
+          >
+            <UIcon
+              :name="isBackfilling ? 'i-lucide-rotate-cw' : 'i-lucide-user-plus'"
+              :class="['mr-1.5 h-4 w-4', { 'animate-spin': isBackfilling }]"
+            />
+            Ajouter les prospects prêts
+          </button>
+        </div>
 
         <div
           v-if="!queueData || queueData.items.length === 0"
@@ -844,6 +861,7 @@ const queueActionItem: Ref<CampaignQueueItem | null> = ref(null)
 const cancelQueueModal: Ref<{ open: () => void } | null> = ref(null)
 const resendQueueModal: Ref<{ open: () => void } | null> = ref(null)
 const isRefreshing: Ref<boolean> = ref(false)
+const isBackfilling: Ref<boolean> = ref(false)
 const autoRefreshTimer: Ref<ReturnType<typeof setInterval> | null> = ref(null)
 /** SMS sender config — loaded only for SMS campaigns, drives the launch precondition + config panel. */
 const smsConfig: Ref<SmsConfig | null> = ref(null)
@@ -980,6 +998,9 @@ const launchDisabledReason: ComputedRef<string> = computed((): string =>
 )
 
 const isCampaignActive: ComputedRef<boolean> = computed((): boolean => campaign.value?.status === 'active')
+const canBackfillReady: ComputedRef<boolean> = computed(
+  (): boolean => campaign.value?.status === 'active' && Boolean(campaign.value?.supports_ready_backfill),
+)
 
 /** Metric cards for the stats strip. */
 const metricCards: ComputedRef<Array<{ label: string; value: number | string; icon: string; color: string }>> =
@@ -1430,11 +1451,38 @@ async function handleRemoveProspect(): Promise<void> {
   if (!prospectToRemoveId.value) return
   try {
     campaign.value = await CampaignService.removeProspect(campaignId.value, prospectToRemoveId.value)
+    // The removal cancels the prospect's pending send and re-dates the rest, so refresh the queue.
+    await loadQueue()
     toast.success('Prospect retiré')
   } catch {
     toast.error('Erreur lors du retrait')
   } finally {
     prospectToRemoveId.value = null
+  }
+}
+
+/**
+ * Persist a drag & drop reorder of the campaign's prospects, then refresh the queue.
+ * The list reorders optimistically; on a launched campaign the backend re-dates the pending
+ * sends to the new order, so the queue is reloaded to show the new send days at once.
+ * @param orderedProspectIds - The campaign's prospect ids in their new send order.
+ */
+async function handleReorderProspects(orderedProspectIds: number[]): Promise<void> {
+  const current: CampaignDetailResponse | null = campaign.value
+  if (!current) return
+  const byId: Map<number, CampaignProspect> = new Map(
+    current.prospects.map((prospect: CampaignProspect): [number, CampaignProspect] => [prospect.id, prospect]),
+  )
+  const reordered: CampaignProspect[] = orderedProspectIds
+    .map((id: number): CampaignProspect | undefined => byId.get(id))
+    .filter((prospect: CampaignProspect | undefined): prospect is CampaignProspect => prospect !== undefined)
+  campaign.value = { ...current, prospects: reordered }
+  try {
+    campaign.value = await CampaignService.reorderProspects(campaignId.value, orderedProspectIds)
+    await loadQueue()
+  } catch {
+    toast.error('Impossible de réordonner les prospects')
+    await loadAll()
   }
 }
 
@@ -1487,6 +1535,27 @@ async function handleResendQueueItem(): Promise<void> {
     toast.error("Impossible de renvoyer l'email")
   } finally {
     queueActionItem.value = null
+  }
+}
+
+/**
+ * Add the campaign's now-ready prospects (demo/video ready) to the send queue, then refresh the queue.
+ */
+async function handleBackfillReady(): Promise<void> {
+  if (isBackfilling.value) return
+  isBackfilling.value = true
+  try {
+    const result: { success: boolean; enqueued: number } = await CampaignService.backfillReady(campaignId.value)
+    toast.success(
+      result.enqueued > 0
+        ? `${result.enqueued} prospect${result.enqueued > 1 ? 's' : ''} ajouté${result.enqueued > 1 ? 's' : ''} à la file`
+        : 'Aucun prospect à ajouter — tous déjà en file ou pas encore prêts',
+    )
+    await loadQueue()
+  } catch {
+    toast.error("Impossible d'ajouter les prospects prêts")
+  } finally {
+    isBackfilling.value = false
   }
 }
 

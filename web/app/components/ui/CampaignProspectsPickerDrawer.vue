@@ -59,6 +59,13 @@
               <input v-model="query" type="text" placeholder="Rechercher un prospect…" class="app-input w-full pl-9" />
             </div>
 
+            <UiSelectField
+              v-if="showCategoryFilter"
+              v-model="categoryFilter"
+              :options="categoryOptions"
+              placeholder="Tous les métiers"
+            />
+
             <div class="flex items-center justify-between text-xs">
               <button
                 type="button"
@@ -73,7 +80,7 @@
             </div>
 
             <p v-if="filteredProspects.length === 0" class="text-muted py-8 text-center text-sm">
-              Aucun prospect ne correspond à « {{ query }} ».
+              Aucun prospect ne correspond à votre recherche.
             </p>
 
             <div v-else class="space-y-1">
@@ -92,6 +99,28 @@
                   <p v-if="prospectLocationLabel(prospect)" class="text-muted truncate text-xs">
                     {{ prospectLocationLabel(prospect) }}
                   </p>
+                  <div
+                    v-if="prospect.contacted || membershipsFor(prospect.id).length > 0"
+                    class="mt-1 flex flex-wrap items-center gap-1"
+                  >
+                    <span
+                      v-if="prospect.contacted"
+                      class="app-badge app-badge--success"
+                      title="Déjà contacté par email"
+                    >
+                      <UIcon name="i-lucide-circle-check" class="h-3 w-3" />
+                      Contacté
+                    </span>
+                    <span
+                      v-for="membership in membershipsFor(prospect.id)"
+                      :key="membership.id"
+                      class="app-badge app-badge--info"
+                      :title="`Déjà dans la campagne « ${membership.name} »`"
+                    >
+                      <UIcon name="i-lucide-megaphone" class="h-3 w-3" />
+                      {{ membership.name }}
+                    </span>
+                  </div>
                 </div>
               </div>
             </div>
@@ -131,6 +160,13 @@ import type {
 import type { ComputedRef, EmitFn, PropType, Ref } from 'vue'
 import { computed, ref, watch } from 'vue'
 import type { Prospect } from '~/types'
+import type { SelectFieldOption } from '~/types/SelectField'
+import type {
+  CampaignDetailResponse,
+  CampaignEnqueueOutcome,
+  CampaignProspectMembership,
+  CampaignSkippedProspect,
+} from '~/services/campaignService'
 import { CampaignService } from '~/services/campaignService'
 import { ProspectsService } from '~/services/prospectsService'
 import { useToast } from '~/composables/useToast'
@@ -160,8 +196,10 @@ const emit: EmitFn<UiCampaignProspectsPickerDrawerEmits> = defineEmits<UiCampaig
 const toast: UseToastReturn = useToast()
 
 const allProspects: Ref<Prospect[]> = ref([])
+const memberships: Ref<Record<number, CampaignProspectMembership[]>> = ref({})
 const selectedIds: Ref<number[]> = ref([])
 const query: Ref<string> = ref('')
+const categoryFilter: Ref<string> = ref('')
 const isLoading: Ref<boolean> = ref(false)
 const isSubmitting: Ref<boolean> = ref(false)
 
@@ -171,11 +209,32 @@ const availableProspects: ComputedRef<Prospect[]> = computed((): Prospect[] => {
   return allProspects.value.filter((prospect: Prospect): boolean => !taken.has(prospect.id))
 })
 
-/** Available prospects narrowed by the search query (name, city or trade). */
+/** Trade options for the filter, derived from the trades actually present in the pool. */
+const categoryOptions: ComputedRef<SelectFieldOption<string>[]> = computed((): SelectFieldOption<string>[] => {
+  const distinct: Set<string> = new Set()
+  for (const prospect of availableProspects.value) {
+    const category: string = prospect.category?.trim() ?? ''
+    if (category) distinct.add(category)
+  }
+  const sorted: string[] = [...distinct].sort((first: string, second: string): number =>
+    first.localeCompare(second, 'fr'),
+  )
+  return [
+    { label: 'Tous les métiers', value: '' },
+    ...sorted.map((category: string): SelectFieldOption<string> => ({ label: category, value: category })),
+  ]
+})
+
+/** Show the trade filter only when the pool spans more than one trade. */
+const showCategoryFilter: ComputedRef<boolean> = computed((): boolean => categoryOptions.value.length > 2)
+
+/** Available prospects narrowed by the trade filter, then the search query (name, city or trade). */
 const filteredProspects: ComputedRef<Prospect[]> = computed((): Prospect[] => {
   const needle: string = query.value.trim().toLowerCase()
-  if (!needle) return availableProspects.value
+  const category: string = categoryFilter.value
   return availableProspects.value.filter((prospect: Prospect): boolean => {
+    if (category && prospect.category !== category) return false
+    if (!needle) return true
     const haystack: string = `${prospect.name} ${prospect.city ?? ''} ${prospect.category}`.toLowerCase()
     return haystack.includes(needle)
   })
@@ -206,6 +265,15 @@ function prospectLocationLabel(prospect: Prospect): string {
 }
 
 /**
+ * Campaigns a prospect already belongs to, for the picker badges.
+ * @param prospectId - Prospect to look up.
+ * @returns The campaigns already containing this prospect, or an empty list.
+ */
+function membershipsFor(prospectId: number): CampaignProspectMembership[] {
+  return memberships.value[prospectId] ?? []
+}
+
+/**
  * Fetch the user's prospects to populate the picker.
  * @returns A promise resolved once the prospects are loaded.
  */
@@ -218,6 +286,18 @@ async function loadProspects(): Promise<void> {
     allProspects.value = []
   } finally {
     isLoading.value = false
+  }
+}
+
+/**
+ * Fetch the prospect→campaigns map so the picker can flag prospects already in a campaign.
+ * @returns A promise resolved once the memberships are loaded (best-effort — badges just hide on failure).
+ */
+async function loadMemberships(): Promise<void> {
+  try {
+    memberships.value = await CampaignService.getProspectMemberships()
+  } catch {
+    memberships.value = {}
   }
 }
 
@@ -252,8 +332,9 @@ async function submit(): Promise<void> {
   isSubmitting.value = true
   try {
     const count: number = selectedIds.value.length
-    await CampaignService.addProspects(props.campaignId, selectedIds.value)
+    const updated: CampaignDetailResponse = await CampaignService.addProspects(props.campaignId, selectedIds.value)
     toast.success(`${count} prospect${count !== 1 ? 's' : ''} ajouté${count !== 1 ? 's' : ''}`)
+    warnAboutProspectsLeftOutOfQueue(updated.enqueue_outcome ?? null)
     emit('added')
   } catch {
     toast.error("Erreur lors de l'ajout des prospects")
@@ -262,13 +343,44 @@ async function submit(): Promise<void> {
   }
 }
 
+/**
+ * Warn when newcomers joined a launched campaign but not its send queue yet (no live demo / no video).
+ * @param outcome - Enqueue outcome returned by the add call, or null when the campaign is not launched.
+ */
+function warnAboutProspectsLeftOutOfQueue(outcome: CampaignEnqueueOutcome | null): void {
+  if (!outcome) return
+  if (outcome.skipped_no_demo.length > 0) {
+    const several: boolean = outcome.skipped_no_demo.length > 1
+    toast.warning(
+      `Pas encore en file d'attente (pas de site démo actif) : ${skippedProspectNames(outcome.skipped_no_demo)}. ` +
+        `Génère ${several ? 'leurs démos : ils rejoindront' : 'sa démo : il rejoindra'} la file à ${several ? 'leur' : 'sa'} position.`,
+    )
+  }
+  if (outcome.skipped_no_video.length > 0) {
+    toast.warning(
+      `Pas encore en file d'attente (pas de vidéo prête) : ${skippedProspectNames(outcome.skipped_no_video)}.`,
+    )
+  }
+}
+
+/**
+ * Comma-separated names of prospects left out of the queue, for the warning toasts.
+ * @param prospects - The skipped prospects.
+ * @returns Their names joined by commas.
+ */
+function skippedProspectNames(prospects: CampaignSkippedProspect[]): string {
+  return prospects.map((prospect: CampaignSkippedProspect): string => prospect.name).join(', ')
+}
+
 watch(
   (): boolean => props.open,
   (open: boolean): void => {
     if (!open) return
     selectedIds.value = []
     query.value = ''
+    categoryFilter.value = ''
     void loadProspects()
+    void loadMemberships()
   },
 )
 </script>
