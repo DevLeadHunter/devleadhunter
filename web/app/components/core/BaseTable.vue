@@ -6,7 +6,11 @@
           <slot name="head" />
         </tr>
       </thead>
-      <TransitionGroup v-if="props.animateRowMoves" tag="tbody" move-class="transition-transform duration-200 ease-out">
+      <TransitionGroup
+        v-if="props.animateRowMoves"
+        tag="tbody"
+        move-class="transition-transform duration-200 ease-out motion-reduce:transition-none"
+      >
         <slot />
       </TransitionGroup>
       <tbody v-else>

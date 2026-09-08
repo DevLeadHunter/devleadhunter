@@ -8,31 +8,40 @@
       </p>
     </div>
 
-    <ul v-if="order.length" class="space-y-2" aria-label="Photos placées sur le site">
+    <TransitionGroup
+      v-if="displayedOrder.length"
+      ref="placementListRef"
+      tag="ul"
+      move-class="transition-transform duration-200 ease-out motion-reduce:transition-none"
+      class="relative space-y-2"
+      aria-label="Photos placées sur le site"
+    >
       <li
-        v-for="(url, i) in order"
+        v-for="(url, i) in displayedOrder"
         :key="url"
+        :data-reorder-key="url"
         :class="[
-          'flex items-center gap-2 rounded-xl border border-[var(--app-line)] bg-[var(--app-bg)] p-2 transition-opacity',
-          dragIndex === i ? 'opacity-50' : 'opacity-100',
+          'flex items-center gap-2 rounded-xl border border-[var(--app-line)] bg-[var(--app-bg)] p-2',
+          draggedUrl === url ? 'drag-reorder-slot' : '',
         ]"
-        @dragover.prevent
-        @drop.prevent="onDrop(i)"
       >
         <button
           type="button"
-          class="cursor-grab text-[var(--app-ink-soft)] active:cursor-grabbing"
+          class="cursor-grab touch-none text-[var(--app-ink-soft)] active:cursor-grabbing"
           aria-label="Déplacer la photo"
-          draggable="true"
-          @dragstart="onDragStart(i)"
-          @dragend="onDragEnd"
+          @pointerdown="placementDrag.onGripPointerDown($event, url)"
         >
           <UIcon name="i-lucide-grip-vertical" class="h-4 w-4" />
         </button>
 
         <img :src="url" :alt="`Photo ${i + 1}`" class="h-12 w-16 shrink-0 rounded-lg object-cover" draggable="false" />
 
-        <span :class="['rounded-full px-1.5 py-0.5 text-[9px] font-bold uppercase', slotBadgeClass(i)]">
+        <span
+          :class="[
+            'drag-reorder-slot-label rounded-full px-1.5 py-0.5 text-[9px] font-bold uppercase',
+            slotBadgeClass(i),
+          ]"
+        >
           {{ slotLabel(i) }}
         </span>
 
@@ -59,7 +68,7 @@
             type="button"
             class="rounded-md p-1 text-[var(--app-ink-soft)] hover:text-[var(--app-ink)] disabled:opacity-30"
             aria-label="Descendre"
-            :disabled="i === order.length - 1"
+            :disabled="i === displayedOrder.length - 1"
             @click="move(i, i + 1)"
           >
             <UIcon name="i-lucide-arrow-down" class="h-4 w-4" />
@@ -74,7 +83,7 @@
           </button>
         </div>
       </li>
-    </ul>
+    </TransitionGroup>
 
     <p v-else class="rounded-xl border border-dashed border-[var(--app-line)] p-4 text-xs text-[var(--app-ink-soft)]">
       Aucune photo placée : le site utilise ses images par défaut. Ajoutez-en depuis « Non utilisées ».
@@ -109,8 +118,11 @@
 </template>
 
 <script lang="ts" setup>
+import type { UseDragToReorderReturn } from '~/types/Composables'
 import type { ImageSlotsEmits, ImageSlotsProps } from '~/types/ImageSlots'
-import type { ComputedRef, EmitFn, PropType, Ref } from 'vue'
+import type { ComponentPublicInstance, ComputedRef, EmitFn, PropType, Ref } from 'vue'
+import { computed, onBeforeUnmount, ref } from 'vue'
+import { useDragToReorder } from '~/composables/useDragToReorder'
 
 /**
  * Controlled editor placing the prospect's photos into the site's hero / about / gallery slots.
@@ -130,11 +142,42 @@ const props: ImageSlotsProps = defineProps({
 
 const emit: EmitFn<ImageSlotsEmits> = defineEmits<ImageSlotsEmits>()
 
-const dragIndex: Ref<number | null> = ref(null)
+const placementDrag: UseDragToReorderReturn<string> = useDragToReorder({
+  axis: 'vertical',
+  getContainer: placementListElement,
+  getOrder: (): string[] => displayedOrder.value,
+  keyOf: (url: string): string => url,
+  setDraftOrder: (order: string[] | null): void => {
+    draftOrder.value = order
+  },
+  setDraggedKey: (url: string | null): void => {
+    draggedUrl.value = url
+  },
+  onCommit: (order: string[]): void => emit('update:order', order),
+  liftScale: 1.015,
+})
+
+const placementListRef: Ref<ComponentPublicInstance | null> = ref(null)
+
+/** URL of the photo being dragged, kept until its ghost has landed; null otherwise. */
+const draggedUrl: Ref<string | null> = ref(null)
+
+const draftOrder: Ref<string[] | null> = ref(null)
+
+const displayedOrder: ComputedRef<string[]> = computed((): string[] => draftOrder.value ?? props.order)
 
 const unused: ComputedRef<string[]> = computed((): string[] =>
   props.pool.filter((url: string): boolean => !props.order.includes(url)),
 )
+
+/**
+ * The rendered placement list, which is the offsetParent of its rows.
+ * @returns The `<ul>` element, or null before it is rendered.
+ */
+function placementListElement(): HTMLElement | null {
+  const element: unknown = placementListRef.value?.$el
+  return element instanceof HTMLElement ? element : null
+}
 
 /**
  * Destination label for a photo at a given placement index.
@@ -197,27 +240,7 @@ function add(url: string): void {
   emit('update:order', [...props.order, url])
 }
 
-/**
- * Start dragging a placed photo.
- * @param index - Index being dragged.
- */
-function onDragStart(index: number): void {
-  dragIndex.value = index
-}
-
-/**
- * Reorder the dragged photo onto the drop target row.
- * @param index - Drop target index.
- */
-function onDrop(index: number): void {
-  if (dragIndex.value !== null && dragIndex.value !== index) {
-    move(dragIndex.value, index)
-  }
-  dragIndex.value = null
-}
-
-/** Clear the drag state when the drag ends anywhere. */
-function onDragEnd(): void {
-  dragIndex.value = null
-}
+onBeforeUnmount((): void => {
+  placementDrag.cancelDrag()
+})
 </script>

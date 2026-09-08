@@ -226,30 +226,29 @@
             Les premières photos sont les plus visibles sur le site. Glissez la poignée ou utilisez les flèches pour
             réordonner.
           </p>
-          <div
-            v-if="form.photos.length"
-            class="mb-2 grid grid-cols-3 gap-2"
+          <TransitionGroup
+            v-if="displayedPhotos.length"
+            ref="photoGridRef"
+            tag="div"
+            move-class="transition-transform duration-200 ease-out motion-reduce:transition-none"
+            class="relative mb-2 grid grid-cols-3 gap-2"
             role="list"
             aria-label="Photos du prospect, ordonnées pour le site"
           >
             <div
-              v-for="(photo, i) in form.photos"
-              :key="`${photo}-${i}`"
+              v-for="(photo, i) in displayedPhotos"
+              :key="photo"
+              :data-reorder-key="photo"
               role="listitem"
               :class="[
-                'group relative rounded border bg-[var(--app-surface)] transition-[border-color,box-shadow,opacity] duration-200 ease-out',
-                photoDropTargetIndex === i
-                  ? 'border-[var(--app-accent)] shadow-[0_0_0_1px_var(--app-accent)]'
-                  : i === 0
-                    ? 'border-[var(--app-accent)]'
-                    : i === 1
-                      ? 'border-[var(--app-accent)]/50'
-                      : 'border-[var(--app-line)]',
-                photoDragIndex === i ? 'opacity-50' : 'opacity-100',
+                'group relative rounded border bg-[var(--app-surface)] transition-colors duration-200 ease-out',
+                i === 0
+                  ? 'border-[var(--app-accent)]'
+                  : i === 1
+                    ? 'border-[var(--app-accent)]/50'
+                    : 'border-[var(--app-line)]',
+                draggedPhotoUrl === photo ? 'drag-reorder-slot' : '',
               ]"
-              @dragover.prevent="onPhotoDragOver($event, i)"
-              @dragleave="onPhotoDragLeave(i)"
-              @drop.prevent="onPhotoDrop(i)"
             >
               <img
                 :src="photo"
@@ -263,20 +262,18 @@
                 @click="lightboxIndex = i"
               />
               <span
-                class="pointer-events-none absolute top-1 left-1 flex h-5 min-w-5 items-center justify-center rounded bg-[var(--app-overlay)] px-1 text-[10px] font-semibold text-white tabular-nums"
+                class="drag-reorder-slot-label pointer-events-none absolute top-1 left-1 flex h-5 min-w-5 items-center justify-center rounded bg-[var(--app-overlay)] px-1 text-[10px] font-semibold text-white tabular-nums"
                 aria-hidden="true"
               >
                 {{ i + 1 }}
               </span>
               <div
-                class="absolute top-1 right-1 flex h-7 w-7 cursor-grab items-center justify-center rounded bg-[var(--app-overlay)] text-white opacity-100 transition-opacity duration-150 active:cursor-grabbing md:opacity-0 md:group-hover:opacity-100 md:focus-visible:opacity-100"
+                class="absolute top-1 right-1 flex h-7 w-7 cursor-grab touch-none items-center justify-center rounded bg-[var(--app-overlay)] text-white opacity-100 transition-opacity duration-150 active:cursor-grabbing md:opacity-0 md:group-hover:opacity-100 md:focus-visible:opacity-100"
                 role="button"
                 tabindex="0"
                 :aria-label="`Déplacer la photo ${i + 1}`"
                 title="Glisser pour réordonner"
-                draggable="true"
-                @dragstart="onPhotoDragStart($event, i)"
-                @dragend="onPhotoDragEnd"
+                @pointerdown="photoDrag.onGripPointerDown($event, photo)"
               >
                 <UIcon name="i-lucide-grip-vertical" class="h-3.5 w-3.5" />
               </div>
@@ -295,7 +292,7 @@
                   <button
                     type="button"
                     class="flex h-7 w-7 cursor-pointer items-center justify-center rounded text-[var(--app-ink-soft)] transition-colors duration-150 hover:bg-[var(--app-bg)] hover:text-[var(--app-ink)] disabled:cursor-not-allowed disabled:opacity-35"
-                    :disabled="i >= form.photos.length - 1"
+                    :disabled="i >= displayedPhotos.length - 1"
                     :aria-label="`Descendre la photo ${i + 1}`"
                     title="Descendre"
                     @click="movePhoto(i, i + 1)"
@@ -326,7 +323,7 @@
                 </div>
               </div>
             </div>
-          </div>
+          </TransitionGroup>
           <div class="flex gap-2">
             <input v-model="newPhotoUrl" type="url" class="input-field flex-1 text-xs" placeholder="URL d'une photo" />
             <button class="btn-secondary px-3 text-xs" @click="addPhoto">Ajouter</button>
@@ -429,12 +426,13 @@
 </template>
 
 <script lang="ts" setup>
-import type { UseToastReturn } from '~/types/Composables'
+import type { UseDragToReorderReturn, UseToastReturn } from '~/types/Composables'
 import type { EnrichmentForm, UiProspectEnrichmentProps } from '~/types/UiProspectEnrichment'
-import type { ComputedRef, PropType, Ref } from 'vue'
-import { ref, computed, watch } from 'vue'
+import type { ComponentPublicInstance, ComputedRef, PropType, Ref } from 'vue'
 import type { EnrichmentOpeningHours, ProspectEnrichment } from '~/services/enrichmentService'
+import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import { EnrichmentService } from '~/services/enrichmentService'
+import { useDragToReorder } from '~/composables/useDragToReorder'
 import { useToast } from '~/composables/useToast'
 
 /** Prospect data enrichment form and actions. */
@@ -467,6 +465,24 @@ const props: UiProspectEnrichmentProps = defineProps({
 
 const toast: UseToastReturn = useToast()
 
+const photoDrag: UseDragToReorderReturn<string> = useDragToReorder({
+  axis: 'grid',
+  getContainer: photoGridElement,
+  getOrder: (): string[] => displayedPhotos.value,
+  keyOf: (photo: string): string => photo,
+  setDraftOrder: (order: string[] | null): void => {
+    photosDraft.value = order
+  },
+  setDraggedKey: (photo: string | null): void => {
+    draggedPhotoUrl.value = photo
+  },
+  onCommit: (order: string[]): void => {
+    form.value.photos = order
+  },
+  liftScale: 1.04,
+  morphGhostToSlot: morphPhotoGhostHeight,
+})
+
 const record: Ref<ProspectEnrichment | null> = ref(null)
 const isLoading: Ref<boolean> = ref(false)
 const isRunning: Ref<boolean> = ref(false)
@@ -477,10 +493,10 @@ const newPhotoUrl: Ref<string> = ref('')
 /** Index of the photo shown fullscreen in the lightbox, or null when closed. */
 const lightboxIndex: Ref<number | null> = ref(null)
 const newService: Ref<string> = ref('')
-/** Index of the photo currently dragged from the grip handle, or null. */
-const photoDragIndex: Ref<number | null> = ref(null)
-/** Index of the photo currently highlighted as a drop target, or null. */
-const photoDropTargetIndex: Ref<number | null> = ref(null)
+const photoGridRef: Ref<ComponentPublicInstance | null> = ref(null)
+/** URL of the photo being dragged, kept until its ghost has landed; null otherwise. */
+const draggedPhotoUrl: Ref<string | null> = ref(null)
+const photosDraft: Ref<string[] | null> = ref(null)
 /** True once the logo URL fails to load, so the broken-image preview is hidden. */
 const hasLogoPreviewError: Ref<boolean> = ref(false)
 
@@ -565,6 +581,8 @@ const statusClass: ComputedRef<string> = computed((): string => {
       return 'border border-[var(--app-line)] bg-[var(--app-surface)] text-[var(--app-ink-soft)]'
   }
 })
+
+const displayedPhotos: ComputedRef<string[]> = computed((): string[] => photosDraft.value ?? form.value.photos)
 
 /** Copy the loaded record into the editable form. */
 function syncForm(): void {
@@ -720,13 +738,12 @@ async function save(): Promise<void> {
   }
 }
 
-/** Add a photo URL to the list. */
+/** Add a photo URL to the list; a URL already listed is left alone so every tile keeps a unique key. */
 function addPhoto(): void {
   const url: string = newPhotoUrl.value.trim()
-  if (url) {
-    form.value.photos.push(url)
-    newPhotoUrl.value = ''
-  }
+  if (!url || form.value.photos.includes(url)) return
+  form.value.photos.push(url)
+  newPhotoUrl.value = ''
 }
 
 /** Remove a photo by index. */
@@ -751,41 +768,33 @@ function movePhotoToFront(index: number): void {
   movePhoto(index, 0)
 }
 
-/** Start dragging a photo from its grip handle. */
-function onPhotoDragStart(event: DragEvent, index: number): void {
-  photoDragIndex.value = index
-  photoDropTargetIndex.value = null
-  if (event.dataTransfer) {
-    event.dataTransfer.effectAllowed = 'move'
-    event.dataTransfer.setData('text/plain', String(index))
-  }
+/**
+ * The rendered photo grid, which is the offsetParent of its tiles.
+ * @returns The grid element, or null before it is rendered.
+ */
+function photoGridElement(): HTMLElement | null {
+  const element: unknown = photoGridRef.value?.$el
+  return element instanceof HTMLElement ? element : null
 }
 
-/** Highlight the drop target while dragging over a photo tile. */
-function onPhotoDragOver(event: DragEvent, index: number): void {
-  if (photoDragIndex.value === null || photoDragIndex.value === index) return
-  if (event.dataTransfer) event.dataTransfer.dropEffect = 'move'
-  photoDropTargetIndex.value = index
-}
-
-/** Clear drop highlight when leaving a tile (ignore child leave flicker). */
-function onPhotoDragLeave(index: number): void {
-  if (photoDropTargetIndex.value === index) photoDropTargetIndex.value = null
-}
-
-/** Drop the dragged photo onto the target index. */
-function onPhotoDrop(targetIndex: number): void {
-  const fromIndex: number | null = photoDragIndex.value
-  photoDragIndex.value = null
-  photoDropTargetIndex.value = null
-  if (fromIndex === null) return
-  movePhoto(fromIndex, targetIndex)
-}
-
-/** Reset drag state if the drag is cancelled. */
-function onPhotoDragEnd(): void {
-  photoDragIndex.value = null
-  photoDropTargetIndex.value = null
+/**
+ * Tiles are taller in the first two slots, so the landing ghost morphs its image to the height of the slot it lands in.
+ * @param ghostCard - The lifted copy of the tile.
+ * @param slotElement - The tile left in the grid as the landing slot.
+ * @param durationMs - Landing duration.
+ * @param easing - Landing easing.
+ */
+function morphPhotoGhostHeight(
+  ghostCard: HTMLElement,
+  slotElement: HTMLElement,
+  durationMs: number,
+  easing: string,
+): void {
+  const ghostImage: HTMLElement | null = ghostCard.querySelector('img')
+  const slotImage: HTMLElement | null = slotElement.querySelector('img')
+  if (!ghostImage || !slotImage || ghostImage.offsetHeight === slotImage.offsetHeight) return
+  const keyframes: Keyframe[] = [{ height: `${ghostImage.offsetHeight}px` }, { height: `${slotImage.offsetHeight}px` }]
+  ghostImage.animate(keyframes, { duration: durationMs, easing, fill: 'forwards' })
 }
 
 /** Add a service to the list. */
@@ -850,4 +859,8 @@ watch(
     hasLogoPreviewError.value = false
   },
 )
+
+onBeforeUnmount((): void => {
+  photoDrag.cancelDrag()
+})
 </script>

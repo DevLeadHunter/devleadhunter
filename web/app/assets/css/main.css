@@ -255,6 +255,7 @@
   --app-btn-bg: #1d1a14;
   --app-btn-text: #fbf9f3;
   --app-shadow-soft: 0 10px 30px -18px rgba(29, 26, 20, 0.35);
+  --app-shadow-lift: 0 24px 56px rgba(29, 26, 20, 0.18), 0 2px 8px rgba(29, 26, 20, 0.08);
 }
 
 /* Dark « charbon neutre » — logiciel, ni GitHub bleu-gris ni brun.
@@ -285,6 +286,7 @@ html.dark {
   --app-btn-bg: #f0efeb;
   --app-btn-text: #131312;
   --app-shadow-soft: 0 10px 30px -18px rgba(0, 0, 0, 0.65);
+  --app-shadow-lift: 0 24px 56px rgba(0, 0, 0, 0.65), 0 2px 8px rgba(0, 0, 0, 0.4);
 }
 
 /* Tokens Nuxt UI (--ui-*) remappés sur les tokens Atelier : les classes de
@@ -602,6 +604,45 @@ html {
     text-align: left;
     white-space: nowrap;
   }
+}
+
+/* Drag to reorder (`useDragToReorder`): the held page, the dragged item's slot and the lifted copy under the pointer. */
+body.is-drag-reordering,
+body.is-drag-reordering * {
+  cursor: grabbing;
+  user-select: none;
+}
+
+.drag-reorder-slot {
+  @apply outline-1 -outline-offset-4 outline-dashed;
+  border-color: transparent;
+  background-color: var(--app-surface-2);
+  outline-color: var(--app-faint);
+}
+
+.drag-reorder-slot > :not(.drag-reorder-slot-label) {
+  visibility: hidden;
+}
+
+.drag-reorder-ghost {
+  @apply pointer-events-none fixed top-0 left-0 will-change-transform;
+  z-index: 120;
+}
+
+.drag-reorder-ghost__card {
+  @apply overflow-hidden;
+  box-shadow: var(--app-shadow-lift);
+  transform: scale(var(--drag-reorder-lift, 1.01));
+}
+
+.drag-reorder-ghost__card--card {
+  @apply border;
+  border-color: var(--app-line);
+  background-color: var(--app-surface);
+}
+
+.drag-reorder-ghost__card table {
+  @apply w-full table-fixed border-collapse;
 }
 
 /* ============================================================

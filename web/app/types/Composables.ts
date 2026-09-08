@@ -92,3 +92,51 @@ export type HorizontalSwipeOptions = {
 export type UseHorizontalSwipeReturn = {
   isSwiping: Ref<boolean>
 }
+
+export type DragToReorderAxis = 'vertical' | 'grid'
+
+export type DragToReorderGhostFrame = 'card' | 'none'
+
+/** The container must be the offsetParent of its `data-reorder-key` items (`relative`, or the `<table>` for rows). */
+export type DragToReorderOptions<T> = {
+  axis: DragToReorderAxis
+  getContainer: () => HTMLElement | null
+  getOrder: () => T[]
+  keyOf: (item: T) => string
+  setDraftOrder: (order: T[] | null) => void
+  setDraggedKey: (key: string | null) => void
+  onCommit: (order: T[]) => void
+  onCancel?: () => void
+  liftScale?: number
+  ghostFrame?: DragToReorderGhostFrame
+  morphGhostToSlot?: (ghostCard: HTMLElement, slotElement: HTMLElement, durationMs: number, easing: string) => void
+}
+
+export type DragToReorderSession<T> = {
+  item: T
+  key: string
+  pointerId: number
+  startClientX: number
+  startClientY: number
+  lastClientX: number
+  lastClientY: number
+  grabOffsetX: number
+  grabOffsetY: number
+  itemLeft: number
+  itemWidth: number
+  ghost: HTMLElement | null
+  ghostInnerLeft: number
+  ghostInnerTop: number
+  isActive: boolean
+  autoscrollFrame: number
+  scrollParent: HTMLElement | null
+}
+
+export type DragToReorderLanding = {
+  finish: () => void
+}
+
+export type UseDragToReorderReturn<T> = {
+  onGripPointerDown: (event: PointerEvent, item: T) => void
+  cancelDrag: () => Promise<void>
+}
