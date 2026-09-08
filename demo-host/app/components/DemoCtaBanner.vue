@@ -83,7 +83,7 @@
         <textarea
           v-model="message"
           class="dlh-card__textarea"
-          placeholder="Votre message (optionnel) — ex. « Intéressé, rappelez-moi »"
+          placeholder="Votre message (optionnel)"
           maxlength="1000"
           :disabled="isSending"
           @focus="onFieldFocus"
