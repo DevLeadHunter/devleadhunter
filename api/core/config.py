@@ -538,6 +538,8 @@ class Settings(BaseSettings):
         # Add production frontend origins if in production
         if self.env.lower() == "production":
             production_origins = [
+                "https://devleadhunter.fr",
+                "https://www.devleadhunter.fr",
                 "https://devleadhunter.dibodev.fr",
                 "https://www.devleadhunter.dibodev.fr",
                 "https://demo.dibodev.fr",

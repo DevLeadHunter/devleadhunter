@@ -140,8 +140,8 @@ useHead(() => ({
         '@context': 'https://schema.org',
         '@type': 'Organization',
         name: 'DevLeadHunter',
-        url: 'https://devleadhunter.dibodev.fr',
-        logo: 'https://devleadhunter.dibodev.fr/favicon.svg',
+        url: 'https://devleadhunter.fr',
+        logo: 'https://devleadhunter.fr/favicon.svg',
         founder: {
           '@type': 'Person',
           name: 'Léo Guillaume',
@@ -155,7 +155,7 @@ useHead(() => ({
         '@context': 'https://schema.org',
         '@type': 'WebSite',
         name: 'DevLeadHunter',
-        url: 'https://devleadhunter.dibodev.fr',
+        url: 'https://devleadhunter.fr',
         inLanguage: ['en-US', 'fr-FR'],
         publisher: {
           '@type': 'Organization',

@@ -6,7 +6,7 @@ const isDesktopBuild: boolean = process.env.NUXT_DESKTOP_BUILD === '1'
 // Dedicated build dir for `scripts/typecheck.mjs`: the running dev server owns `.nuxt`.
 const typecheckBuildDirectory: string | undefined = process.env.NUXT_TYPECHECK_BUILD_DIR
 
-const siteUrl: string = 'https://devleadhunter.dibodev.fr'
+const siteUrl: string = 'https://devleadhunter.fr'
 
 export default defineNuxtConfig({
   ...(typecheckBuildDirectory ? { buildDir: typecheckBuildDirectory } : {}),
@@ -73,12 +73,12 @@ export default defineNuxtConfig({
         { property: 'og:site_name', content: 'DevLeadHunter' },
         { property: 'og:locale', content: 'en_US' },
         // Social preview card (generated in the landing "Atelier" DA)
-        { property: 'og:image', content: 'https://devleadhunter.dibodev.fr/og-image.png' },
+        { property: 'og:image', content: 'https://devleadhunter.fr/og-image.png' },
         { property: 'og:image:width', content: '1200' },
         { property: 'og:image:height', content: '630' },
         { property: 'og:image:type', content: 'image/png' },
         { name: 'twitter:card', content: 'summary_large_image' },
-        { name: 'twitter:image', content: 'https://devleadhunter.dibodev.fr/og-image.png' },
+        { name: 'twitter:image', content: 'https://devleadhunter.fr/og-image.png' },
         { name: 'twitter:site', content: '@devleadhunter' },
         { name: 'theme-color', content: '#f4f1e9' },
         // PWA — installable dashboard on the iPhone/Android home screen (standalone).

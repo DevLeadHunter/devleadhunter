@@ -46,7 +46,7 @@ from services.unsubscribe_service import unsubscribe_service
 for _module in pkgutil.iter_modules(models.__path__):
     importlib.import_module(f"models.{_module.name}")
 
-_PRODUCTION_FRONTEND_URL: str = "https://devleadhunter.dibodev.fr"
+_PRODUCTION_FRONTEND_URL: str = "https://devleadhunter.fr"
 
 # Realistic stand-ins: a template rendered with empty variables would score the
 # emptiness, not the copy.

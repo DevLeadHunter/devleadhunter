@@ -50,7 +50,7 @@ export default defineNuxtConfig({
         // (web + Tauri desktop) so the builder can iframe live template previews.
         'Content-Security-Policy':
           "frame-ancestors 'self' https://app.storyblok.com https://*.storyblok.com " +
-          'https://devleadhunter.dibodev.fr http://localhost:3000 http://localhost:1420 ' +
+          'https://devleadhunter.fr https://devleadhunter.dibodev.fr http://localhost:3000 http://localhost:1420 ' +
           'http://tauri.localhost https://tauri.localhost',
       },
     },
