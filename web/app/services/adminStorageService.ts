@@ -10,9 +10,11 @@ import { ApiClient } from './api'
 export type StorageObjectKind =
   | 'website_video'
   | 'website_thumbnail'
+  | 'website_background'
   | 'presenter'
   | 'support'
   | 'prospect_photo'
+  | 'manual'
   | 'other'
 
 /** One object of the bucket, enriched with business context. */
@@ -26,6 +28,7 @@ export type StorageObject = {
   prospect_name: string | null
   expires_in_days: number | null
   is_expired: boolean
+  ttl_pending: boolean
 }
 
 /** Bucket listing + totals. */
@@ -35,6 +38,16 @@ export type StorageListResponse = {
   items: StorageObject[]
   total: number
   total_size: number
+  ttl_days: number
+}
+
+/** Result of a manual upload / URL import — the caller pastes ``url`` where it is needed. */
+export type StorageUploadResponse = {
+  key: string
+  url: string
+  kind: StorageObjectKind
+  size: number
+  message: string
 }
 
 /** R2 ↔ database consistency report. */
@@ -89,11 +102,52 @@ export class AdminStorageService {
   }
 
   /**
-   * Delete every demo deliverable past its 14-day TTL.
+   * Delete every demo deliverable whose demo has expired or vanished.
    * @returns The action result.
    */
   static async purgeExpiredStorage(): Promise<StorageActionResponse> {
     return ApiClient.post<StorageActionResponse>('/api/v1/admin/storage/purge-expired', {})
+  }
+
+  /**
+   * Import a remote file (e.g. an expiring Facebook ``fbcdn`` image) onto R2.
+   * @param url - Source URL to download and rehost.
+   * @returns The stored object, whose ``url`` is the permanent R2 link.
+   */
+  static async importFromUrl(url: string): Promise<StorageUploadResponse> {
+    return ApiClient.post<StorageUploadResponse>('/api/v1/admin/storage/import-url', { url })
+  }
+
+  /**
+   * Upload a hand-picked file to R2.
+   *
+   * Sends multipart form-data directly (the shared ``api`` client only handles JSON bodies).
+   * @param file - Image or PDF to store.
+   * @returns The stored object, whose ``url`` is the permanent R2 link.
+   * @throws When the upload fails (message from the API when available).
+   */
+  static async uploadFile(file: File): Promise<StorageUploadResponse> {
+    const userStore: ReturnType<typeof useUserStore> = useUserStore()
+    const config: ReturnType<typeof useRuntimeConfig> = useRuntimeConfig()
+    const formData: FormData = new FormData()
+    formData.append('file', file)
+
+    const response: Response = await fetch(`${config.public.apiBase}/api/v1/admin/storage/upload`, {
+      method: 'POST',
+      headers: userStore.token ? { Authorization: `Bearer ${userStore.token}` } : {},
+      body: formData,
+    })
+    if (!response.ok) {
+      const errorText: string = await response.text().catch((): string => '')
+      let errorMessage: string = `Upload échoué : ${response.statusText}`
+      try {
+        errorMessage = (JSON.parse(errorText).detail as string) || errorMessage
+      } catch {
+        if (errorText) errorMessage = errorText
+      }
+      throw new Error(errorMessage)
+    }
+    return (await response.json()) as StorageUploadResponse
   }
 
   /**

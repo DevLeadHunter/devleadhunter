@@ -36,7 +36,7 @@
         <UIcon name="i-lucide-circle-alert" class="mt-0.5 h-4 w-4 shrink-0 text-[var(--app-red)]" />
         <div class="min-w-0">
           <p class="text-sm font-semibold text-[var(--app-ink)]">
-            {{ expiredCount }} fichier{{ expiredCount > 1 ? 's' : '' }} au-delà de {{ TTL_DAYS }} jours
+            {{ expiredCount }} fichier{{ expiredCount > 1 ? 's' : '' }} expiré{{ expiredCount > 1 ? 's' : '' }}
           </p>
           <p class="text-xs leading-relaxed text-[var(--app-ink-soft)]">
             Le nettoyage automatique aurait dû les supprimer.
@@ -46,6 +46,78 @@
       <button type="button" class="app-btn-danger h-9 shrink-0 px-4 text-xs" :disabled="isActing" @click="askPurge">
         Purger
       </button>
+    </div>
+
+    <div class="app-card space-y-3 p-4">
+      <div class="flex flex-wrap items-center justify-between gap-3">
+        <div class="flex items-center gap-2">
+          <UIcon name="i-lucide-upload" class="h-4 w-4 text-[var(--app-ink-soft)]" />
+          <span class="text-sm font-semibold text-[var(--app-ink)]">Importer un fichier</span>
+        </div>
+        <div class="flex rounded-full border border-[var(--app-line)] p-0.5">
+          <button
+            v-for="mode in IMPORT_MODES"
+            :key="mode.value"
+            type="button"
+            :class="[
+              'cursor-pointer rounded-full px-3 py-1 text-xs transition-colors',
+              importMode === mode.value
+                ? 'bg-[var(--app-ink)] text-[var(--app-surface)]'
+                : 'text-[var(--app-ink-soft)] hover:text-[var(--app-ink)]',
+            ]"
+            @click="importMode = mode.value"
+          >
+            {{ mode.label }}
+          </button>
+        </div>
+      </div>
+
+      <div v-if="importMode === 'file'" class="flex flex-wrap items-center gap-3">
+        <input ref="fileInput" type="file" accept="image/*,application/pdf" class="hidden" @change="onFilePicked" />
+        <button
+          type="button"
+          class="app-btn-secondary h-9 px-4 text-xs"
+          :disabled="isImporting"
+          @click="fileInput?.click()"
+        >
+          <UIcon
+            :name="isImporting ? 'i-lucide-loader-circle' : 'i-lucide-folder-open'"
+            :class="['h-3.5 w-3.5', isImporting && 'animate-spin']"
+          />
+          Choisir un fichier
+        </button>
+        <span class="text-xs text-[var(--app-ink-soft)]">JPEG, PNG, WebP, GIF, AVIF ou PDF · 15 Mo max</span>
+      </div>
+
+      <form v-else class="flex flex-wrap items-center gap-2" @submit.prevent="submitUrlImport">
+        <input
+          v-model="importUrl"
+          type="url"
+          inputmode="url"
+          placeholder="Colle une URL d'image (ex. lien Facebook fbcdn…)"
+          class="app-input min-w-0 flex-1 text-sm"
+          :disabled="isImporting"
+        />
+        <button type="submit" class="app-btn-primary h-9 px-4 text-xs" :disabled="isImporting || !importUrl.trim()">
+          <UIcon
+            :name="isImporting ? 'i-lucide-loader-circle' : 'i-lucide-download'"
+            :class="['h-3.5 w-3.5', isImporting && 'animate-spin']"
+          />
+          Importer
+        </button>
+      </form>
+
+      <div
+        v-if="importedUrl"
+        class="flex flex-wrap items-center gap-2 rounded-lg border border-[var(--app-line)] bg-[var(--app-surface-2)] px-3 py-2"
+      >
+        <UIcon name="i-lucide-circle-check" class="h-4 w-4 shrink-0 text-[var(--app-green)]" />
+        <span class="min-w-0 flex-1 truncate font-mono text-xs text-[var(--app-ink)]">{{ importedUrl }}</span>
+        <button type="button" class="app-btn-secondary h-8 px-2.5 text-xs" @click="copyLink(importedUrl)">
+          <UIcon name="i-lucide-link" class="h-3.5 w-3.5" />
+          Copier
+        </button>
+      </div>
     </div>
 
     <div class="flex flex-wrap gap-2">
@@ -120,6 +192,9 @@
                 {{ kindLabel(item.kind) }} · {{ formatSize(item.size) }} ·
                 {{ formatShortMonthDate(item.last_modified) }}
                 <template v-if="item.is_expired"> · <span class="text-[var(--app-red)]">expiré</span></template>
+                <template v-else-if="item.ttl_pending">
+                  · <span class="text-[var(--app-accent-ink)]">en attente d'envoi</span>
+                </template>
                 <template v-else-if="item.expires_in_days !== null">
                   · expire dans {{ item.expires_in_days }} j
                 </template>
@@ -189,7 +264,7 @@
     <UiCollapsibleCard icon="i-lucide-stethoscope" title="Cohérence avec la base" :suffix="healthSuffix">
       <div class="space-y-4 px-4 py-4">
         <p v-if="!hasHealthIssues" class="text-xs leading-relaxed text-[var(--app-ink-soft)]">
-          Chaque vidéo marquée « prête » a bien son fichier, et rien ne traîne au-delà de {{ TTL_DAYS }} jours.
+          Chaque vidéo marquée « prête » a bien son fichier, et rien ne traîne au-delà de {{ ttlDays }} jours.
         </p>
         <div v-for="group in healthGroups" v-else :key="group.label">
           <template v-if="group.keys.length">
@@ -262,6 +337,7 @@ import type {
   StorageHealthResponse,
   StorageListResponse,
   StorageObject,
+  StorageUploadResponse,
 } from '~/services/adminStorageService'
 import { computed, onMounted, ref } from 'vue'
 import { AdminStorageService } from '~/services/adminStorageService'
@@ -269,11 +345,20 @@ import { useToast } from '~/composables/useToast'
 
 definePageMeta({ layout: 'dashboard', middleware: ['auth', 'admin'] })
 
-/** Demo deliverables TTL, mirrored from the API. */
-const TTL_DAYS: number = 14
-
 /** Key prefix of the rehosted prospect photos (the only category with an orphan-purge action). */
 const PROSPECT_PHOTOS_PREFIX: string = 'images/prospects/'
+
+/** Image extensions that can be previewed inline (used for hand-uploaded files). */
+const IMAGE_EXTENSIONS: string[] = ['.jpg', '.jpeg', '.png', '.webp', '.gif', '.avif', '.svg']
+
+/** Video extensions that can be played inline. */
+const VIDEO_EXTENSIONS: string[] = ['.mp4', '.webm', '.mov']
+
+/** The two ways to bring a file into the bucket by hand. */
+const IMPORT_MODES: Array<{ value: 'file' | 'url'; label: string }> = [
+  { value: 'file', label: 'Fichier' },
+  { value: 'url', label: 'Depuis une URL' },
+]
 
 /** Prefix filters shown as pills. */
 const FILTERS: Array<{ label: string; prefix: string }> = [
@@ -283,15 +368,18 @@ const FILTERS: Array<{ label: string; prefix: string }> = [
   { label: 'Clips webcam', prefix: 'videos/presenter/' },
   { label: 'Photos prospects', prefix: PROSPECT_PHOTOS_PREFIX },
   { label: 'Support', prefix: 'images/support/' },
+  { label: 'Imports manuels', prefix: 'uploads/manual/' },
 ]
 
 /** Icon per object category. */
 const KIND_ICONS: Record<string, string> = {
   website_video: 'i-lucide-video',
   website_thumbnail: 'i-lucide-image',
+  website_background: 'i-lucide-film',
   presenter: 'i-lucide-webcam',
   support: 'i-lucide-paperclip',
   prospect_photo: 'i-lucide-image',
+  manual: 'i-lucide-upload',
   other: 'i-lucide-file',
 }
 
@@ -299,9 +387,11 @@ const KIND_ICONS: Record<string, string> = {
 const KIND_LABELS: Record<string, string> = {
   website_video: 'Vidéo',
   website_thumbnail: 'Vignette',
+  website_background: 'Fond de montage',
   presenter: 'Clip webcam',
   support: 'Pièce jointe',
   prospect_photo: 'Photo prospect',
+  manual: 'Import manuel',
   other: 'Fichier',
 }
 
@@ -320,6 +410,15 @@ const selectedKeys: Ref<string[]> = ref([])
 const confirmTitle: Ref<string> = ref('')
 const confirmMessage: Ref<string> = ref('')
 const confirmModal: Ref<{ open: () => void } | null> = ref(null)
+
+const importMode: Ref<'file' | 'url'> = ref('file')
+const importUrl: Ref<string> = ref('')
+const isImporting: Ref<boolean> = ref(false)
+const importedUrl: Ref<string> = ref('')
+const fileInput: Ref<HTMLInputElement | null> = ref(null)
+
+/** Demo TTL in days, read from the API so the page never drifts from the real cleanup window. */
+const ttlDays: ComputedRef<number> = computed((): number => listing.value?.ttl_days ?? 21)
 
 /** Number of objects past their TTL in the current listing. */
 const expiredCount: ComputedRef<number> = computed(
@@ -356,8 +455,8 @@ const healthGroups: ComputedRef<Array<{ label: string; hint: string; keys: strin
       keys: health.value?.missing_objects ?? [],
     },
     {
-      label: `Au-delà de ${TTL_DAYS} jours`,
-      hint: 'Auraient dû être purgés automatiquement.',
+      label: 'Expirés',
+      hint: 'Démo expirée ou supprimée — auraient dû être purgés automatiquement.',
       keys: health.value?.expired_objects ?? [],
     },
   ],
@@ -408,21 +507,33 @@ function displayName(item: StorageObject): string {
 }
 
 /**
+ * Lower-cased file extension of an object key, dot included (e.g. ``.jpg``).
+ * @param key - Object key.
+ * @returns The extension, or an empty string when the key has none.
+ */
+function keyExtension(key: string): string {
+  const match: RegExpMatchArray | null = key.toLowerCase().match(/\.[a-z0-9]+$/)
+  return match ? match[0] : ''
+}
+
+/**
  * Whether an object can be played inline.
  * @param item - Storage object.
- * @returns True for videos.
+ * @returns True for demo/presenter videos and for hand-uploaded video files.
  */
 function isVideo(item: StorageObject): boolean {
-  return item.kind === 'website_video' || item.kind === 'presenter'
+  if (item.kind === 'website_video' || item.kind === 'website_background' || item.kind === 'presenter') return true
+  return item.kind === 'manual' && VIDEO_EXTENSIONS.includes(keyExtension(item.key))
 }
 
 /**
  * Whether an object can be shown as an image.
  * @param item - Storage object.
- * @returns True for thumbnails, support attachments and rehosted prospect photos.
+ * @returns True for thumbnails, support attachments, rehosted prospect photos and hand-uploaded images.
  */
 function isImage(item: StorageObject): boolean {
-  return item.kind === 'website_thumbnail' || item.kind === 'support' || item.kind === 'prospect_photo'
+  if (item.kind === 'website_thumbnail' || item.kind === 'support' || item.kind === 'prospect_photo') return true
+  return item.kind === 'manual' && IMAGE_EXTENSIONS.includes(keyExtension(item.key))
 }
 
 /**
@@ -524,6 +635,53 @@ async function copyLink(url: string): Promise<void> {
 }
 
 /**
+ * Run a manual import, surface its permanent R2 URL and refresh the listing.
+ * @param action - The storage-service call performing the upload / URL import.
+ * @returns A promise resolving once the import finished (success or failure).
+ */
+async function runImport(action: () => Promise<StorageUploadResponse>): Promise<void> {
+  isImporting.value = true
+  importedUrl.value = ''
+  try {
+    const result: StorageUploadResponse = await action()
+    importedUrl.value = result.url
+    toast.success('Fichier importé')
+    await load()
+  } catch (err: unknown) {
+    toast.error(err instanceof Error ? err.message : "Échec de l'import")
+  } finally {
+    isImporting.value = false
+  }
+}
+
+/**
+ * Upload the file the user just picked, then reset the input so the same file can be re-picked.
+ * @param event - The file input change event.
+ * @returns A promise resolving once the upload finished.
+ */
+async function onFilePicked(event: Event): Promise<void> {
+  const input: HTMLInputElement = event.target as HTMLInputElement
+  const file: File | undefined = input.files?.[0]
+  input.value = ''
+  if (!file) return
+  await runImport((): Promise<StorageUploadResponse> => AdminStorageService.uploadFile(file))
+}
+
+/**
+ * Import the pasted URL onto R2 (e.g. an expiring Facebook photo), then clear the field.
+ * @returns A promise resolving once the import finished.
+ */
+async function submitUrlImport(): Promise<void> {
+  const url: string = importUrl.value.trim()
+  if (!url) return
+  await runImport(async (): Promise<StorageUploadResponse> => {
+    const result: StorageUploadResponse = await AdminStorageService.importFromUrl(url)
+    importUrl.value = ''
+    return result
+  })
+}
+
+/**
  * Ask confirmation before deleting one object.
  * @param item - Object to delete.
  */
@@ -553,7 +711,7 @@ function askPurge(): void {
   pendingAction.value = 'purge-expired'
   pendingKey.value = null
   confirmTitle.value = 'Purger les fichiers expirés'
-  confirmMessage.value = `Supprimer les ${expiredCount.value} fichier(s) de plus de ${TTL_DAYS} jours ?`
+  confirmMessage.value = `Supprimer les ${expiredCount.value} fichier(s) expiré(s) ?`
   confirmModal.value?.open()
 }
 

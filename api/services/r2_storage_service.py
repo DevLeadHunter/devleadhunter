@@ -39,6 +39,7 @@ class R2StorageService:
         images/websites/{slug}.jpg               email thumbnail ({vignette_video})
         images/support/{yyyy}/{mm}/{uuid}.{ext}  support ticket attachments
         images/prospects/{prospect_id}/{hash}.jpg   rehosted enrichment photos (Facebook/Google)
+        uploads/manual/{yyyy}/{mm}/{uuid}.{ext}  files uploaded by hand from the storage page
 
     boto3 calls block, so async callers must go through the `*_async` methods.
     """
@@ -49,6 +50,7 @@ class R2StorageService:
     IMAGES_PROFILE_PREFIX = "images/profile"
     IMAGES_SUPPORT_PREFIX = "images/support"
     IMAGES_PROSPECTS_PREFIX = "images/prospects"
+    MANUAL_UPLOADS_PREFIX = "uploads/manual"
 
     def __init__(self) -> None:
         self._client: Any = None
@@ -202,6 +204,21 @@ class R2StorageService:
             extension = f".{extension}"
         now = datetime.now(UTC)
         return f"{cls.IMAGES_SUPPORT_PREFIX}/{now:%Y/%m}/{uuid.uuid4().hex}{extension}"
+
+    @classmethod
+    def manual_upload_key(cls, extension: str) -> str:
+        """
+        Build the key of a hand-uploaded file, filed by year and month.
+
+        Args:
+            extension: File extension, with or without its leading dot (e.g. ``.jpg`` or ``jpg``).
+
+        Returns:
+            A unique object key under the manual-uploads prefix.
+        """
+        ext: str = extension if extension.startswith(".") else f".{extension}"
+        now = datetime.now(UTC)
+        return f"{cls.MANUAL_UPLOADS_PREFIX}/{now:%Y/%m}/{uuid.uuid4().hex}{ext}"
 
     @classmethod
     def prospect_photos_prefix(cls, prospect_id: int) -> str:
