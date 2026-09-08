@@ -23,6 +23,7 @@ import { DemoBeaconUtils } from '~/utils/DemoBeaconUtils'
  *   - demo_engaged        { reason, engaged_seconds, max_scroll } — fired once when the
  *                            visit becomes "qualified" (a warm-lead signal to query on)
  *   - demo_time_on_page   { seconds, max_scroll }  — engaged (visible) time on exit
+ *   - demo_returned       { engaged_seconds }      — came back to the tab/app after leaving
  */
 let initialized: boolean = false
 
@@ -93,6 +94,8 @@ export function useDemoTracking(): {
     let maxDepth: number = 0
     let engagedSeconds: number = 0
     let lastSentSeconds: number = 0
+    let lastBeaconedSeconds: number = 0
+    let hasLeftPage: boolean = false
     let interacted: boolean = false
     let engagedFired: boolean = false
 
@@ -209,22 +212,35 @@ export function useDemoTracking(): {
       }
     }, 1000)
 
-    /** Send the engaged-time event (deduped: only when it grew since last send). */
+    /** Push the engaged-time event to PostHog (deduped: only when it grew since last send). */
     const sendTime: () => void = (): void => {
       if (engagedSeconds <= lastSentSeconds) return
       lastSentSeconds = engagedSeconds
       posthog.capture('demo_time_on_page', { seconds: engagedSeconds, max_scroll: maxDepth })
     }
 
+    /** Beacon the end-of-visit summary to the API (owner push), deduped so one exit notifies only once. */
+    const beaconLeave: () => void = (): void => {
+      sendTime()
+      if (engagedSeconds <= lastBeaconedSeconds) return
+      lastBeaconedSeconds = engagedSeconds
+      DemoBeaconUtils.send(apiBase, slug, 'demo_time_on_page', { seconds: engagedSeconds, max_scroll: maxDepth })
+    }
+
+    // iOS Safari rarely fires pagehide on exit, so hidden is the only reliable leave signal there.
     document.addEventListener('visibilitychange', (): void => {
-      if (document.visibilityState === 'hidden') sendTime()
+      if (document.visibilityState === 'hidden') {
+        hasLeftPage = true
+        beaconLeave()
+      } else if (hasLeftPage) {
+        hasLeftPage = false
+        posthog.capture('demo_returned', { engaged_seconds: engagedSeconds })
+        DemoBeaconUtils.send(apiBase, slug, 'demo_returned')
+      }
     })
     window.addEventListener('pagehide', (): void => {
       window.clearInterval(ticker)
-      sendTime()
-      if (engagedSeconds > 0) {
-        DemoBeaconUtils.send(apiBase, slug, 'demo_time_on_page', { seconds: engagedSeconds, max_scroll: maxDepth })
-      }
+      beaconLeave()
     })
   }
 

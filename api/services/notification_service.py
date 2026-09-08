@@ -87,6 +87,7 @@ _DEMO_EVENT_NOTIFS: dict[str, tuple[str, str, str]] = {
     "demo_contact_click": ("✉️", "success", "A cliqué ton mail de contact"),
     "demo_outbound_click": ("🔗", "info", "A cliqué un lien externe : {host}"),
     "demo_time_on_page": ("👀", "info", "Visite : {seconds}s · {max_scroll}% lu"),
+    "demo_returned": ("↩️", "success", "Est revenu sur sa démo"),
     "demo_video_opened": ("🎬", "success", "A ouvert ta vidéo"),
     "demo_video_play": ("▶️", "success", "Lance ta vidéo"),
     "demo_video_complete": ("✅", "success", "A vu ta vidéo en entier"),
