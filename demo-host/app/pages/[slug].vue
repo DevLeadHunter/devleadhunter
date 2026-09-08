@@ -42,6 +42,23 @@ useSeoMeta({
 })
 
 /**
+ * Re-derive food's gallery-seeded section photos from a reordered gallery, mirroring the API's
+ * generation seeding (`_seed_photo_slots`): the about-collage sides and the featured-review photo
+ * come from the real gallery, so a live reorder must move them too — not just the collage centre
+ * (`aboutImage`). Food is the only template whose `images` map is photo-derived; the others use fixed
+ * decorative section images that the order must never touch.
+ * @param content - The live-preview content being assembled (mutated in place).
+ * @param gallery - The reordered gallery URLs (the photos after hero and about).
+ */
+function reseedFoodSectionPhotos(content: Record<string, unknown>, gallery: string[]): void {
+  const images: Record<string, string> = {}
+  if (gallery[0]) images.aboutCollageLeft = gallery[0]
+  if (gallery[1]) images.aboutCollageRight = gallery[1]
+  if (gallery[2]) images.testimonial = gallery[2]
+  content.images = images
+}
+
+/**
  * The published site with the dashboard's live-edit overrides merged in (template, palette,
  * photo order) — what an instant editor preview renders. Null outside live-edit mode or before
  * any override arrives, so the regular published rendering is untouched.
@@ -59,7 +76,11 @@ const previewedSite: ComputedRef<DemoSitePublic | null> = computed((): DemoSiteP
     // Same slot mapping as generation: [0] → hero, [1] → about, [2:] → gallery.
     content.heroImage = photos[0] ?? ''
     content.aboutImage = photos[1] ?? ''
-    content.gallery = photos.slice(2).map((url: string): { url: string; alt: string } => ({ url, alt: '' }))
+    const gallery: string[] = photos.slice(2)
+    content.gallery = gallery.map((url: string): { url: string; alt: string } => ({ url, alt: '' }))
+    if ((templateId ?? published.template_id) === 'food') {
+      reseedFoodSectionPhotos(content, gallery)
+    }
   }
   return {
     ...published,
