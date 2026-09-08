@@ -28,3 +28,16 @@ export type UiProspectTableEmits = {
   /** The user dropped a row into a new position — carries every prospect id in the new order. */
   reorder: [orderedProspectIds: number[]]
 }
+
+/** One pointer-drag of a row: the row grabbed, its pointer, where it was grabbed, and the floating ghost. */
+export type UiProspectTableDragSession = {
+  prospect: Prospect
+  pointerId: number
+  startClientY: number
+  grabOffsetY: number
+  rowLeft: number
+  rowWidth: number
+  table: HTMLTableElement
+  ghost: HTMLElement | null
+  active: boolean
+}
