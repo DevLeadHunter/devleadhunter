@@ -17,6 +17,7 @@ from services.decision_maker.strategies import (
     LlmAggregateStrategy,
     OwnerResponseStrategy,
     RegistreGouvStrategy,
+    WebRegistryStrategy,
 )
 from services.decision_maker.types import NameCandidate, NameResolution, ResolutionContext
 
@@ -395,3 +396,63 @@ def test_owner_response_signature_detection() -> None:
     assert len(candidates) == 1
     assert candidates[0].first == "Michel"
     assert candidates[0].confidence >= 0.7
+
+
+def test_web_registry_extracts_legal_name_sharing_a_token() -> None:
+    """Only all-caps runs sharing a token with the trade name survive (city dropped)."""
+    html = (
+        "<h3>Société GERMAIN SECOMAN</h3>"
+        "<span>279 RUE DE GUETTELOUP, 72100 LE MANS</span>"
+        "<p>Germain Paysagiste &amp; Élagage à Le Mans</p>"
+    )
+    names = WebRegistryStrategy(client=object()).extract_company_names(html, "Germain Paysagiste Élagage Espaces Verts")
+    assert "GERMAIN SECOMAN" in names
+    assert "LE MANS" not in names
+    assert not any("GUETTELOUP" in name for name in names)
+
+
+def test_web_registry_recovers_legal_name_then_delegates_to_registry() -> None:
+    """SERP → recovered legal name → registry sub-lookup, retagged as web-sourced."""
+    import asyncio
+
+    class StubClient:
+        is_configured = True
+
+        async def google(self, query: str, *, num: int = 20) -> str:
+            return "<h3>Société GERMAIN SECOMAN</h3><span>72100 LE MANS</span>"
+
+    class StubRegistry:
+        def __init__(self) -> None:
+            self.calls: list[ResolutionContext] = []
+
+        async def resolve(self, context: ResolutionContext) -> list[NameCandidate]:
+            self.calls.append(context)
+            if context.company_name != "GERMAIN SECOMAN":
+                return []
+            return [
+                NameCandidate(
+                    first="Germain",
+                    last="Secoman",
+                    source="registre_gouv",
+                    confidence=0.95,
+                    primary=True,
+                    geo_confirmed=True,
+                    evidence_group="registry",
+                    provenance="Registre officiel (SIRENE) : SECOMAN GERMAIN, SIREN 431285493 — localisation confirmée",
+                )
+            ]
+
+    registry = StubRegistry()
+    strategy = WebRegistryStrategy(registry=registry, client=StubClient())
+    context = ResolutionContext(company_name="Germain Paysagiste", city="Le Mans", postal_code="72000")
+
+    resolved = asyncio.run(strategy.resolve(context))
+
+    assert len(resolved) == 1
+    candidate = resolved[0]
+    assert (candidate.first, candidate.last) == ("Germain", "Secoman")
+    assert candidate.source == "web_registry"
+    assert candidate.primary and candidate.geo_confirmed
+    assert candidate.provenance.startswith("Recherche web →")
+    # The registry was queried with the RECOVERED legal name and without the strict postal filter.
+    assert any(call.company_name == "GERMAIN SECOMAN" and call.postal_code is None for call in registry.calls)

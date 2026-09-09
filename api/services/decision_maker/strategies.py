@@ -8,8 +8,11 @@ merges them and applies the confidence threshold.
 
 from __future__ import annotations
 
+import asyncio
 import logging
 import re
+from dataclasses import replace
+from html import unescape
 from typing import Any
 
 import httpx
@@ -17,6 +20,8 @@ import httpx
 from core.config import settings
 from services.decision_maker.normalize import (
     company_similarity,
+    company_tokens,
+    fold,
     infer_gender,
     split_registry_full_name,
     title_case_name,
@@ -269,6 +274,126 @@ class PappersStrategy:
         if not context.postal_code or len(siege_postal) != 5:
             return False
         return siege_postal[:2] == context.postal_code[:2]
+
+
+class WebRegistryStrategy:
+    """Tier 1ter — recover the hidden legal name via a web search, then resolve
+    its director through the official registry.
+
+    The registry can't be matched on the prospect's TRADE name when it differs
+    from the registered one (« Germain Paysagiste » → « SECOMAN GERMAIN »). A web
+    search on « enseigne + ville » surfaces that legal name the way directories
+    print it, which is handed back to :class:`RegistreGouvStrategy` — this time it
+    matches, and the SIRENE dirigeant comes out reliably. HTTP-only (Bright Data
+    Web Unlocker), so it runs on the datacenter VPS as well as the desktop.
+
+    Clean no-op when Bright Data is not configured.
+    """
+
+    name = "web_registry"
+
+    #: Cap on legal-name candidates handed to the registry (keeps the fan-out sane).
+    _MAX_LEGAL_NAMES = 6
+
+    #: An all-caps run of 2..4 words — how a directory prints a raison sociale.
+    #: Explicit uppercase set (a Latin-1 range would also swallow accented
+    #: LOWERCASE), no digits (so it stops at the street number after the name).
+    _UPPER = "A-ZÀÂÄÇÉÈÊËÎÏÔÖÙÛÜŸ"
+    _CAPS_NAME_RE = re.compile(rf"[{_UPPER}][{_UPPER}&'’\-]*(?:\s+[{_UPPER}&'’\-]+){{1,3}}")
+
+    def __init__(self, registry: RegistreGouvStrategy | None = None, client: Any | None = None) -> None:
+        """Wire the registry delegate and the Bright Data client (both injectable for tests)."""
+        self._registry = registry or RegistreGouvStrategy()
+        if client is not None:
+            self._client = client
+        else:
+            from scrappers.brightdata_client import BrightDataClient
+
+            self._client = BrightDataClient()
+
+    async def resolve(self, context: ResolutionContext) -> list[NameCandidate]:
+        """Search the web for the legal name(s), then resolve each via the registry."""
+        enseigne = (context.company_name or "").strip()
+        if not enseigne or not getattr(self._client, "is_configured", False):
+            return []
+        # A long exact trade name makes Google over-filter (« Germain Paysagiste
+        # Élagage Espaces Verts » returns nothing); the first couple of words +
+        # city mirror a human search and recall the directory listings.
+        query_terms = " ".join(enseigne.split()[:2])
+        query = f"{query_terms} {context.city or ''}".strip()
+        try:
+            html = await self._client.google(query, num=20)
+        except Exception as exc:
+            logger.warning("web_registry SERP failed for %r: %s", query, exc)
+            return []
+        legal_names = self.extract_company_names(html, enseigne)
+        if not legal_names:
+            return []
+        # The geo-scoped web query already located the business, so the registry
+        # sub-lookup drops the strict postal filter (a Le Mans artisan can be
+        # registered in 72100 while the prospect address reads 72000) and
+        # geo-confirms on the city instead. Each sub-context carries the RECOVERED
+        # legal name, so the registry's own similarity check compares
+        # legal-name↔registry, not the unmatchable trade name.
+        subs = [replace(context, company_name=name, postal_code=None) for name in legal_names]
+        results = await asyncio.gather(*(self._registry.resolve(sub) for sub in subs), return_exceptions=True)
+        candidates: list[NameCandidate] = []
+        for result in results:
+            if isinstance(result, BaseException):
+                logger.warning("web_registry registry sub-lookup raised: %s", result)
+                continue
+            candidates.extend(result)
+        return self._retag(candidates)
+
+    def extract_company_names(self, html: str, enseigne: str) -> list[str]:
+        """Pull raison-sociale candidates from a SERP (pure — testable on fixtures).
+
+        Keeps the all-caps runs that share a significant token with the trade
+        name (the artisan's own name is almost always in both), which filters out
+        the city and generic UI words, and returns the longest spelling of each.
+        """
+        text = unescape(re.sub(r"<[^>]+>", " ", html or ""))
+        enseigne_tokens = company_tokens(enseigne)
+        if not enseigne_tokens:
+            return []
+        found: dict[str, str] = {}
+        for match in self._CAPS_NAME_RE.finditer(text):
+            # Drop single-letter words (initials / SERP artefacts like a trailing « P »).
+            words = [word for word in re.split(r"\s+", match.group(0)) if len(word) > 1]
+            candidate = " ".join(words).strip(" -'’&")
+            if len(words) < 2 or not (company_tokens(candidate) & enseigne_tokens):
+                continue
+            key = fold(candidate)
+            if key not in found or len(candidate) > len(found[key]):
+                found[key] = candidate
+        return sorted(found.values(), key=len, reverse=True)[: self._MAX_LEGAL_NAMES]
+
+    @staticmethod
+    def _retag(candidates: list[NameCandidate]) -> list[NameCandidate]:
+        """Re-label the registry hits as web-sourced, deduped by identity."""
+        best_by_identity: dict[str, NameCandidate] = {}
+        for candidate in candidates:
+            if not candidate.has_name:
+                continue
+            key = candidate.identity_key()
+            current = best_by_identity.get(key)
+            if current is None or candidate.confidence > current.confidence:
+                best_by_identity[key] = candidate
+        return [
+            NameCandidate(
+                first=candidate.first,
+                last=candidate.last,
+                gender=candidate.gender,
+                source="web_registry",
+                confidence=candidate.confidence,
+                primary=candidate.primary,
+                geo_confirmed=candidate.geo_confirmed,
+                evidence_group=candidate.evidence_group,
+                provenance=f"Recherche web → {candidate.provenance}",
+                raw=candidate.raw,
+            )
+            for candidate in best_by_identity.values()
+        ]
 
 
 # « Réponse du propriétaire » signatures: a line/dash followed by a short name.

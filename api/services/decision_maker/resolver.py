@@ -13,6 +13,7 @@ from services.decision_maker.strategies import (
     OwnerResponseStrategy,
     PappersStrategy,
     RegistreGouvStrategy,
+    WebRegistryStrategy,
 )
 from services.decision_maker.types import NameCandidate, NameResolution, NameStrategy, ResolutionContext
 
@@ -42,6 +43,7 @@ class DecisionMakerResolver:
         self.strategies: list[NameStrategy] = strategies or [
             RegistreGouvStrategy(),
             PappersStrategy(),
+            WebRegistryStrategy(),
             OwnerResponseStrategy(),
             LegalMentionsStrategy(),
             LlmAggregateStrategy(),
