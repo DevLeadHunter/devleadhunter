@@ -110,7 +110,7 @@ def _serialize_demo_site(site, *, include_brand_color: bool = False) -> DemoSite
             payload["brand_color"] = brand_color_service.extract_brand_color(logo)
     if has_ready_video(site):
         payload["video_page_url"] = video_page_url(site.slug)
-        payload["video_thumbnail_url"] = public_thumbnail_url(site.slug)
+        payload["video_thumbnail_url"] = public_thumbnail_url(site.slug, site.video_generated_at)
     return DemoSiteResponse(**payload)
 
 
@@ -171,7 +171,7 @@ async def get_public_demo_site(
     if payload["video_available"]:
         # URLs R2 : le lecteur charge la vidéo depuis Cloudflare, pas depuis l'API.
         payload["video_url"] = public_video_file_url(site.slug)
-        payload["video_thumbnail_url"] = public_thumbnail_url(site.slug)
+        payload["video_thumbnail_url"] = public_thumbnail_url(site.slug, site.video_generated_at)
     if site.user is not None:
         payload["owner_name"] = site.user.name
         payload["owner_company_name"] = site.user.company_name
@@ -205,7 +205,9 @@ async def serve_public_demo_video_thumbnail(
     site = demo_site_service.get_public_by_slug(db, slug)
     if not site or not has_ready_video(site):
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Thumbnail not found")
-    return RedirectResponse(url=public_thumbnail_url(site.slug), status_code=status.HTTP_302_FOUND)
+    return RedirectResponse(
+        url=public_thumbnail_url(site.slug, site.video_generated_at), status_code=status.HTTP_302_FOUND
+    )
 
 
 @router.get("", response_model=DemoSiteListResponse)

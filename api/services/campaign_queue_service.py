@@ -928,7 +928,7 @@ class CampaignQueueService:
         url: str = append_query_param(video_page_url(site.slug), "src", CHANNEL_EMAIL)
         if variant:
             url = append_query_param(url, "v", variant)
-        return url, public_thumbnail_url(site.slug)
+        return url, public_thumbnail_url(site.slug, site.video_generated_at)
 
     def _send_guard_skip(
         self,

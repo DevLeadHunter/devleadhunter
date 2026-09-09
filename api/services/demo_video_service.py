@@ -105,9 +105,17 @@ def public_video_file_url(slug: str) -> str:
     return r2_storage.public_url(video_object_key(slug))
 
 
-def public_thumbnail_url(slug: str) -> str:
-    """Public R2 URL of the email thumbnail (absolute — embedded in emails)."""
-    return r2_storage.public_url(thumbnail_object_key(slug))
+def public_thumbnail_url(slug: str, generated_at: datetime | None = None) -> str:
+    """Public R2 URL of the email thumbnail (absolute — embedded in emails).
+
+    The R2 key never changes for a site, so a regenerated thumbnail kept showing the previous
+    image from the browser cache: the generation instant is appended as a version query so every
+    regeneration yields a new URL.
+    """
+    url = r2_storage.public_url(thumbnail_object_key(slug))
+    if generated_at is None:
+        return url
+    return f"{url}?v={int(generated_at.timestamp())}"
 
 
 def has_ready_video(site: DemoSite) -> bool:
