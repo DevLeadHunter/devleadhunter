@@ -129,7 +129,7 @@ Utilisez les cartes de test Stripe :
 
 ### 2. En Production
 
-1. Allez sur https://devleadhunter.dibodev.fr
+1. Allez sur https://devleadhunter.fr
 2. Connectez-vous
 3. Allez sur **Acheter des crédits**
 4. Sélectionnez un montant et testez avec une vraie carte (mode test ou production)
