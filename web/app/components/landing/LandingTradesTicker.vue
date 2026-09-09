@@ -1,5 +1,8 @@
 <template>
-  <div class="relative overflow-hidden border-y border-[#e3dccd] py-3.5" :aria-label="t('landing.ticker.ariaLabel')">
+  <div
+    class="relative overflow-hidden border-y border-[#e3dccd] py-3.5"
+    :aria-label="t(`${props.keyPrefix}.ariaLabel`)"
+  >
     <div
       class="pointer-events-none absolute inset-y-0 left-0 z-10 w-16 bg-gradient-to-r from-[#f6f3ec] to-transparent md:w-32"
     ></div>
@@ -19,16 +22,27 @@
 </template>
 
 <script lang="ts" setup>
+import type { LandingTradesTickerProps } from '~/types/LandingTradesTicker'
 import type { ComputedRef } from 'vue'
 import { computed } from 'vue'
 
-const { t }: { t: (key: string, params?: Record<string, unknown>) => string } = useI18n()
+const props: LandingTradesTickerProps = defineProps({
+  keyPrefix: {
+    type: String,
+    default: 'landing.ticker',
+  },
+  itemCount: {
+    type: Number,
+    default: 8,
+  },
+})
 
-/** Number of trade examples available in the i18n ticker namespace. */
-const tickerItemCount: number = 8
+const { t }: { t: (key: string, params?: Record<string, unknown>) => string } = useI18n()
 
 /** Trade · city examples scrolled in the infinite ticker. */
 const tickerItems: ComputedRef<string[]> = computed((): string[] =>
-  Array.from({ length: tickerItemCount }, (_: unknown, index: number): string => t(`landing.ticker.item${index + 1}`)),
+  Array.from({ length: props.itemCount }, (_: unknown, index: number): string =>
+    t(`${props.keyPrefix}.item${index + 1}`),
+  ),
 )
 </script>
