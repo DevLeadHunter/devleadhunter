@@ -37,17 +37,78 @@ PHOTO_KINDS: frozenset[str] = frozenset(
 )
 CARD_WORTHY_KINDS: frozenset[str] = frozenset({PHOTO_KIND_DISH, PHOTO_KIND_DRINK})
 
+# Bump when the labelling prompt changes materially: stored labels with an older version are
+# re-labelled at the next use instead of living forever with the old reading.
+PHOTO_LABEL_VERSION = 2
+
+# Wordings the model uses instead of the canonical kinds (French, synonyms): mapped, never dropped.
+# Ordered from the most specific to the most generic wording, because a wording that is not an
+# exact key is matched by substring in this order (« food truck exterior » must read as truck).
+_KIND_SYNONYMS: dict[str, str] = {
+    "camion": PHOTO_KIND_TRUCK,
+    "truck": PHOTO_KIND_TRUCK,
+    "van": PHOTO_KIND_TRUCK,
+    "exterior": PHOTO_KIND_TRUCK,
+    "storefront": PHOTO_KIND_TRUCK,
+    "facade": PHOTO_KIND_TRUCK,
+    "façade": PHOTO_KIND_TRUCK,
+    "menuboard": PHOTO_KIND_MENU_BOARD,
+    "menu board": PHOTO_KIND_MENU_BOARD,
+    "menu": PHOTO_KIND_MENU_BOARD,
+    "board": PHOTO_KIND_MENU_BOARD,
+    "carte": PHOTO_KIND_MENU_BOARD,
+    "ardoise": PHOTO_KIND_MENU_BOARD,
+    "logo": PHOTO_KIND_LOGO_OR_FLYER,
+    "flyer": PHOTO_KIND_LOGO_OR_FLYER,
+    "affiche": PHOTO_KIND_LOGO_OR_FLYER,
+    "poster": PHOTO_KIND_LOGO_OR_FLYER,
+    "text": PHOTO_KIND_LOGO_OR_FLYER,
+    "intérieur": PHOTO_KIND_INTERIOR,
+    "interieur": PHOTO_KIND_INTERIOR,
+    "kitchen": PHOTO_KIND_INTERIOR,
+    "cuisine": PHOTO_KIND_INTERIOR,
+    "personnes": PHOTO_KIND_PEOPLE,
+    "team": PHOTO_KIND_PEOPLE,
+    "équipe": PHOTO_KIND_PEOPLE,
+    "staff": PHOTO_KIND_PEOPLE,
+    "événement": PHOTO_KIND_EVENT,
+    "evenement": PHOTO_KIND_EVENT,
+    "boisson": PHOTO_KIND_DRINK,
+    "beverage": PHOTO_KIND_DRINK,
+    "plat": PHOTO_KIND_DISH,
+    "meal": PHOTO_KIND_DISH,
+    "dessert": PHOTO_KIND_DISH,
+    "nourriture": PHOTO_KIND_DISH,
+    "food": PHOTO_KIND_DISH,
+    "autre": PHOTO_KIND_OTHER,
+}
+
 _MAX_DESCRIPTION_CHARS = 140
 _MAX_DISHES_PER_PHOTO = 24
 _MAX_DISH_CHARS = 60
+
+
+def canonical_kind(raw_kind: Any) -> str | None:
+    """The canonical kind for a model wording (``dish``, ``plat``, ``menu board``…), or None when empty."""
+    kind = str(raw_kind or "").strip().lower().replace("_", " ").replace("-", " ")
+    if not kind:
+        return None
+    if kind.replace(" ", "_") in PHOTO_KINDS:
+        return kind.replace(" ", "_")
+    if kind in _KIND_SYNONYMS:
+        return _KIND_SYNONYMS[kind]
+    for synonym, canonical in _KIND_SYNONYMS.items():
+        if synonym in kind:
+            return canonical
+    return PHOTO_KIND_OTHER
 
 
 def normalize_label(raw: Any) -> dict[str, Any] | None:
     """Coerce a raw model entry (or stored label) into the canonical label shape, or None when unusable."""
     if not isinstance(raw, dict):
         return None
-    kind = str(raw.get("kind", "")).strip().lower()
-    if kind not in PHOTO_KINDS:
+    kind = canonical_kind(raw.get("kind"))
+    if kind is None:
         return None
     description = str(raw.get("description", "") or "").strip()[:_MAX_DESCRIPTION_CHARS]
     dishes_raw = raw.get("dishes")
@@ -63,7 +124,22 @@ def normalize_label(raw: Any) -> dict[str, Any] | None:
         appeal = int(raw.get("appeal", 0))
     except (TypeError, ValueError):
         appeal = 0
-    return {"kind": kind, "description": description, "dishes": dishes, "appeal": max(0, min(5, appeal))}
+    try:
+        version = int(raw.get("version", PHOTO_LABEL_VERSION))
+    except (TypeError, ValueError):
+        version = PHOTO_LABEL_VERSION
+    return {
+        "kind": kind,
+        "description": description,
+        "dishes": dishes,
+        "appeal": max(0, min(5, appeal)),
+        "version": version,
+    }
+
+
+def is_current_label(label: dict[str, Any] | None) -> bool:
+    """Whether a stored label was produced by the current prompt (older ones are re-labelled on use)."""
+    return isinstance(label, dict) and int(label.get("version", 0)) == PHOTO_LABEL_VERSION
 
 
 def is_card_worthy(label: dict[str, Any] | None) -> bool:
@@ -80,13 +156,13 @@ def is_unfit_for_card(label: dict[str, Any] | None) -> bool:
 
 
 def labels_for_urls(photo_labels: Any, urls: list[str]) -> dict[str, dict[str, Any]]:
-    """The stored labels restricted (and normalised) to the given URLs."""
+    """The stored labels restricted (and normalised) to the given URLs; labels of an older prompt version are skipped."""
     if not isinstance(photo_labels, dict):
         return {}
     result: dict[str, dict[str, Any]] = {}
     for url in urls:
         label = normalize_label(photo_labels.get(url))
-        if label is not None:
+        if label is not None and is_current_label(label):
             result[url] = label
     return result
 

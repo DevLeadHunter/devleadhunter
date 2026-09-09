@@ -56,10 +56,19 @@
         Suggestion IA indisponible : aucune clé Groq n'est configurée sur le serveur. Les cartes restent éditables à la
         main.
       </UiCallout>
-      <p v-else-if="analysisSummary" class="mt-3 text-[11px] leading-relaxed text-[var(--app-ink-soft)]">
-        <UIcon name="i-lucide-scan-search" class="mr-1 inline-block h-3 w-3 align-[-2px]" />
-        {{ analysisSummary }}
-      </p>
+      <template v-else-if="analysisSummary">
+        <p class="mt-3 text-[11px] leading-relaxed text-[var(--app-ink-soft)]">
+          <UIcon name="i-lucide-scan-search" class="mr-1 inline-block h-3 w-3 align-[-2px]" />
+          {{ analysisSummary }}
+        </p>
+        <UiCallout v-if="pendingLabelsCount > 0" variant="warning" class="mt-2">
+          {{ pendingLabelsCount }} photo{{ pendingLabelsCount > 1 ? 's' : '' }} n'{{
+            pendingLabelsCount > 1 ? 'ont' : 'a'
+          }}
+          pas pu être analysée{{ pendingLabelsCount > 1 ? 's' : '' }} cette fois (limite de débit de l'IA) : relancez
+          pour les traiter, les photos déjà lues sont conservées.
+        </UiCallout>
+      </template>
 
       <button
         type="button"
@@ -71,7 +80,7 @@
         {{ suggestButtonLabel }}
       </button>
       <p
-        v-if="pendingLabelsCount > 0 && !suggesting && aiAvailable"
+        v-if="pendingLabelsCount > 0 && !suggesting && aiAvailable && !analysisSummary"
         class="mt-2 text-[10px] text-[var(--app-ink-soft)]"
       >
         {{ pendingLabelsCount }} photo{{ pendingLabelsCount > 1 ? 's' : '' }} pas encore analysée{{
@@ -86,7 +95,7 @@
       ref="cardListRef"
       tag="ul"
       move-class="transition-transform duration-200 ease-out motion-reduce:transition-none"
-      class="relative space-y-2"
+      class="relative space-y-3"
       :aria-label="`Cartes de la section ${config.heading}`"
     >
       <li
@@ -94,88 +103,27 @@
         :key="card.key"
         :data-reorder-key="card.key"
         :class="[
-          'rounded-xl border border-[var(--app-line)] bg-[var(--app-bg)] p-2',
+          'space-y-2 rounded-xl border border-[var(--app-line)] bg-[var(--app-bg)] p-3',
           draggedCardKey === card.key ? 'drag-reorder-slot' : '',
         ]"
       >
-        <div class="flex items-start gap-2">
+        <div class="flex items-center gap-2">
           <button
             type="button"
-            class="mt-1 cursor-grab touch-none text-[var(--app-ink-soft)] active:cursor-grabbing"
+            class="cursor-grab touch-none text-[var(--app-ink-soft)] active:cursor-grabbing"
             :aria-label="`Déplacer la carte ${index + 1}`"
             @pointerdown="cardDrag.onGripPointerDown($event, card)"
           >
             <UIcon name="i-lucide-grip-vertical" class="h-4 w-4" />
           </button>
-
-          <button
-            type="button"
-            class="group relative h-16 w-16 shrink-0 overflow-hidden rounded-lg border transition-colors"
-            :class="
-              openPhotoPickerCardKey === card.key
-                ? 'border-[var(--app-ink)]'
-                : 'border-[var(--app-line)] hover:border-[var(--app-ink-soft)]'
-            "
-            :title="card.image ? 'Changer la photo' : 'Choisir une photo'"
-            :aria-label="
-              card.image ? `Changer la photo de la carte ${index + 1}` : `Choisir la photo de la carte ${index + 1}`
-            "
-            :aria-expanded="openPhotoPickerCardKey === card.key"
-            @click="togglePhotoPicker(card.key)"
+          <span
+            class="drag-reorder-slot-label text-[10px] font-semibold tracking-wide text-[var(--app-ink-soft)] uppercase"
           >
-            <img v-if="card.image" :src="card.image" alt="" class="h-full w-full object-cover" draggable="false" />
-            <span
-              v-else
-              class="flex h-full w-full items-center justify-center bg-[var(--app-surface)] text-[var(--app-ink-soft)]"
-            >
-              <UIcon name="i-lucide-image-plus" class="h-5 w-5" />
-            </span>
-            <span
-              v-if="card.image"
-              class="drag-reorder-slot-label pointer-events-none absolute right-0.5 bottom-0.5 left-0.5 truncate rounded bg-[var(--app-overlay)] px-1 py-px text-center text-[8px] font-semibold text-white"
-            >
-              {{ PhotoLabels.label(photoKindForUrl(card.image)) }}
-            </span>
-          </button>
-
-          <div class="min-w-0 flex-1 space-y-1.5">
-            <input
-              :value="card.title"
-              type="text"
-              class="input-field h-8 text-xs font-medium"
-              placeholder="Nom du plat"
-              maxlength="80"
-              :aria-label="`Titre de la carte ${index + 1}`"
-              @input="updateCard(card.key, { title: ($event.target as HTMLInputElement).value })"
-            />
-            <textarea
-              :value="card.description"
-              class="input-field min-h-[3.25rem] resize-none text-xs leading-relaxed"
-              rows="2"
-              maxlength="240"
-              placeholder="Une phrase appétissante (optionnel)"
-              :aria-label="`Description de la carte ${index + 1}`"
-              @input="updateCard(card.key, { description: ($event.target as HTMLTextAreaElement).value })"
-            />
-            <div class="flex items-center justify-between gap-2 text-[10px] text-[var(--app-ink-soft)]">
-              <span v-if="card.reason" class="flex min-w-0 items-center gap-1 italic" :title="card.reason">
-                <UIcon name="i-lucide-sparkles" class="h-3 w-3 shrink-0" />
-                <span class="truncate">{{ card.reason }}</span>
-              </span>
-              <span v-else />
-              <span
-                class="shrink-0 tabular-nums"
-                :class="card.description.length > DESCRIPTION_SOFT_LIMIT ? 'text-[var(--app-accent-ink)]' : ''"
-                :title="`${DESCRIPTION_SOFT_LIMIT} caractères conseillés`"
-              >
-                {{ card.description.length }}/{{ DESCRIPTION_SOFT_LIMIT }}
-              </span>
-            </div>
-          </div>
-
+            Carte {{ index + 1 }}
+          </span>
           <button
             type="button"
-            class="rounded-md p-1 text-[var(--app-ink-soft)] hover:text-[var(--app-red)]"
+            class="ml-auto rounded-md p-1 text-[var(--app-ink-soft)] hover:text-[var(--app-red)]"
             aria-label="Retirer la carte"
             @click="removeCard(card.key)"
           >
@@ -183,7 +131,46 @@
           </button>
         </div>
 
-        <div v-if="openPhotoPickerCardKey === card.key" class="mt-2 border-t border-[var(--app-line)] pt-2">
+        <button
+          type="button"
+          class="group relative block h-28 w-full overflow-hidden rounded-lg border transition-colors"
+          :class="
+            openPhotoPickerCardKey === card.key
+              ? 'border-[var(--app-ink)]'
+              : 'border-[var(--app-line)] hover:border-[var(--app-ink-soft)]'
+          "
+          :aria-label="
+            card.image ? `Changer la photo de la carte ${index + 1}` : `Choisir la photo de la carte ${index + 1}`
+          "
+          :aria-expanded="openPhotoPickerCardKey === card.key"
+          @click="togglePhotoPicker(card.key)"
+        >
+          <img v-if="card.image" :src="card.image" alt="" class="h-full w-full object-cover" draggable="false" />
+          <span
+            v-else
+            class="flex h-full w-full flex-col items-center justify-center gap-1 bg-[var(--app-surface)] text-[11px] text-[var(--app-ink-soft)]"
+          >
+            <UIcon name="i-lucide-image-plus" class="h-5 w-5" />
+            Choisir une photo
+          </span>
+          <span
+            v-if="card.image"
+            class="pointer-events-none absolute bottom-1.5 left-1.5 rounded bg-[var(--app-overlay)] px-1.5 py-0.5 text-[9px] font-semibold text-white"
+          >
+            {{ PhotoLabels.label(photoKindForUrl(card.image)) }}
+          </span>
+          <span
+            v-if="card.image"
+            class="pointer-events-none absolute inset-0 flex items-center justify-center bg-black/45 text-[11px] font-medium text-white opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100"
+          >
+            Changer la photo
+          </span>
+        </button>
+
+        <div
+          v-if="openPhotoPickerCardKey === card.key"
+          class="rounded-lg border border-[var(--app-line)] bg-[var(--app-surface)] p-2"
+        >
           <p class="mb-1.5 text-[10px] font-semibold tracking-wide text-[var(--app-ink-soft)] uppercase">
             Photo de la carte
           </p>
@@ -249,6 +236,39 @@
           <p class="mt-1.5 text-[10px] leading-relaxed text-[var(--app-ink-soft)]">
             Les plats sont en premier. Les photos estompées (camion, menu, flyer…) sont déconseillées sur une carte.
           </p>
+        </div>
+
+        <input
+          :value="card.title"
+          type="text"
+          class="input-field"
+          placeholder="Nom du plat"
+          maxlength="80"
+          :aria-label="`Titre de la carte ${index + 1}`"
+          @input="updateCard(card.key, { title: ($event.target as HTMLInputElement).value })"
+        />
+        <textarea
+          :value="card.description"
+          class="input-field field-sizing-content min-h-16 resize-none leading-relaxed"
+          rows="2"
+          maxlength="240"
+          placeholder="Une phrase appétissante (optionnel)"
+          :aria-label="`Description de la carte ${index + 1}`"
+          @input="updateCard(card.key, { description: ($event.target as HTMLTextAreaElement).value })"
+        />
+        <div class="flex items-start justify-between gap-2 text-[10px] text-[var(--app-ink-soft)]">
+          <span v-if="card.reason" class="flex min-w-0 items-start gap-1 italic">
+            <UIcon name="i-lucide-sparkles" class="mt-0.5 h-3 w-3 shrink-0" />
+            <span class="leading-relaxed">{{ card.reason }}</span>
+          </span>
+          <span v-else />
+          <span
+            class="shrink-0 tabular-nums"
+            :class="card.description.length > DESCRIPTION_SOFT_LIMIT ? 'text-[var(--app-accent-ink)]' : ''"
+            :title="`${DESCRIPTION_SOFT_LIMIT} caractères conseillés`"
+          >
+            {{ card.description.length }}/{{ DESCRIPTION_SOFT_LIMIT }}
+          </span>
         </div>
       </li>
     </TransitionGroup>
@@ -430,7 +450,7 @@ const analysisSummary: ComputedRef<string> = computed((): string => {
   const analysis: DemoSiteServiceCardsAnalysis | null | undefined = props.analysis
   if (!analysis) return ''
   const parts: string[] = [
-    `${analysis.photos_total} photo${analysis.photos_total > 1 ? 's' : ''} analysée${analysis.photos_total > 1 ? 's' : ''}`,
+    `${analysis.photos_labelled}/${analysis.photos_total} photo${analysis.photos_total > 1 ? 's' : ''} analysée${analysis.photos_total > 1 ? 's' : ''}`,
     `${analysis.dish_photos} plat${analysis.dish_photos > 1 ? 's' : ''} en photo`,
   ]
   if (analysis.menu_boards > 0) {

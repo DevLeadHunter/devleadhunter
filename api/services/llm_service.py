@@ -9,6 +9,7 @@ without the LLM and lights up automatically once a key is provided.
 
 from __future__ import annotations
 
+import asyncio
 import json
 import logging
 import re
@@ -33,6 +34,8 @@ _VISION_MODEL_CANDIDATES: tuple[str, ...] = (
     "qwen/qwen3.8-27b",
 )
 _VISION_MODEL_CACHE_SECONDS = 3600.0
+_RATE_LIMIT_MAX_RETRIES = 3
+_RATE_LIMIT_MAX_DELAY_SECONDS = 12.0
 _JSON_FENCE_RE = re.compile(r"^```(?:json)?\s*|\s*```$", re.IGNORECASE)
 # gpt-oss / qwen3 models reason before answering, and the reasoning tokens count against
 # ``max_tokens`` — a tiny budget (e.g. 10 for a one-word verdict) is entirely consumed by
@@ -104,22 +107,50 @@ class LLMService:
             payload["reasoning_effort"] = "low"
         try:
             async with httpx.AsyncClient(timeout=timeout) as client:
-                response = await client.post(_GROQ_URL, headers=self._headers(), json=payload)
-                # A model that rejects ``reasoning_effort`` (not every qwen/gpt-oss variant takes it)
-                # answers 400: retry once without the knob rather than failing the whole call.
-                if (
-                    response.status_code == 400
-                    and "reasoning" in response.text.lower()
-                    and "reasoning_effort" in payload
-                ):
-                    payload.pop("reasoning_effort")
-                    response = await client.post(_GROQ_URL, headers=self._headers(), json=payload)
-                response.raise_for_status()
+                response = await self._post_with_retries(client, payload)
                 data: dict[str, Any] = response.json()
                 return data["choices"][0]["message"]["content"].strip()
+        except httpx.HTTPStatusError as exc:
+            logger.warning(
+                "Groq call failed (%s): HTTP %s %s", chosen_model, exc.response.status_code, exc.response.text[:300]
+            )
+            return None
         except Exception as exc:
             logger.warning("Groq call failed (%s): %s", chosen_model, exc)
             return None
+
+    async def _post_with_retries(self, client: httpx.AsyncClient, payload: dict[str, Any]) -> httpx.Response:
+        """POST a completion, waiting out rate limits and dropping ``reasoning_effort`` when the model rejects it.
+
+        A 429 is retried after the ``retry-after`` delay (capped, a few attempts): the vision batches
+        of the photo labelling hit the tokens-per-minute cap of the account and were silently lost.
+        A 400 while ``reasoning_effort`` is set is retried once without it (not every qwen / gpt-oss
+        variant accepts the knob). Any other error is raised as ``HTTPStatusError``.
+        """
+        attempt = 0
+        while True:
+            response = await client.post(_GROQ_URL, headers=self._headers(), json=payload)
+            if response.status_code == 400 and "reasoning_effort" in payload:
+                payload.pop("reasoning_effort")
+                continue
+            if response.status_code == 429 and attempt < _RATE_LIMIT_MAX_RETRIES:
+                attempt += 1
+                delay = self._retry_delay_seconds(response, attempt)
+                logger.info("Groq rate limited (%s): retry %s in %.1fs", payload.get("model"), attempt, delay)
+                await asyncio.sleep(delay)
+                continue
+            response.raise_for_status()
+            return response
+
+    @staticmethod
+    def _retry_delay_seconds(response: httpx.Response, attempt: int) -> float:
+        """Delay before retrying a rate-limited call: the server's ``retry-after`` when given, else backoff."""
+        header = response.headers.get("retry-after", "")
+        try:
+            delay = float(header)
+        except ValueError:
+            delay = float(2**attempt)
+        return max(1.0, min(delay, _RATE_LIMIT_MAX_DELAY_SECONDS))
 
     async def complete_json(
         self,

@@ -453,6 +453,7 @@ import type { ComputedRef, Ref } from 'vue'
 import type {
   DemoSite,
   DemoSiteImages,
+  DemoSitePhotoLabel,
   DemoSiteServiceCard,
   DemoSiteServiceCards,
   DemoSiteServiceCardsAnalysis,
@@ -838,7 +839,11 @@ async function suggestServiceCards(): Promise<void> {
   try {
     const suggestion: DemoSiteServiceCardsSuggestionResult =
       await DemoSiteService.suggestDemoSiteServiceCards(demoSiteId)
-    serviceCards.value = { ...serviceCards.value, pool: suggestion.pool, labels_pending: 0 }
+    serviceCards.value = {
+      ...serviceCards.value,
+      pool: suggestion.pool,
+      labels_pending: suggestion.pool.filter((photo: DemoSitePhotoLabel): boolean => photo.kind === 'unknown').length,
+    }
     serviceCardsAnalysis.value = suggestion.analysis
     if (suggestion.cards.length === 0) {
       serviceCardsSuggestionError.value =
