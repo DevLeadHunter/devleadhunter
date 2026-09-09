@@ -34,6 +34,13 @@
             {{ $t(link.label) }}
           </a>
           <NuxtLink
+            :to="localePath('/apple-wallet')"
+            class="text-sm font-medium text-[#6b6355] transition-colors hover:text-[#1b1813]"
+            @click="track('site_nav_click', { target: 'apple_wallet' })"
+          >
+            {{ $t('nav.wallet') }}
+          </NuxtLink>
+          <NuxtLink
             :to="localePath('/downloads')"
             class="text-sm font-medium text-[#6b6355] transition-colors hover:text-[#1b1813]"
             @click="track('site_download_click', { location: 'nav' })"
@@ -84,9 +91,17 @@
             {{ $t(link.label) }}
           </a>
           <NuxtLink
-            :to="localePath('/downloads')"
+            :to="localePath('/apple-wallet')"
             class="menu-item font-display text-4xl font-semibold text-[#1b1813] transition-colors hover:text-[#6b6355]"
             :style="{ transitionDelay: `${sectionLinks.length * 40}ms` }"
+            @click="onMobileWallet"
+          >
+            {{ $t('nav.wallet') }}
+          </NuxtLink>
+          <NuxtLink
+            :to="localePath('/downloads')"
+            class="menu-item font-display text-4xl font-semibold text-[#1b1813] transition-colors hover:text-[#6b6355]"
+            :style="{ transitionDelay: `${(sectionLinks.length + 1) * 40}ms` }"
             @click="onMobileDownload"
           >
             {{ $t('nav.downloads') }}
@@ -139,6 +154,15 @@
                 >
                   {{ $t(link.label) }}
                 </a>
+              </li>
+              <li>
+                <NuxtLink
+                  :to="localePath('/apple-wallet')"
+                  class="text-sm text-[#6b6355] transition-colors hover:text-[#1b1813]"
+                  @click="track('site_nav_click', { target: 'apple_wallet', location: 'footer' })"
+                >
+                  {{ $t('footer.links.wallet') }}
+                </NuxtLink>
               </li>
             </ul>
           </div>
@@ -241,6 +265,7 @@ const { locale, locales, setLocale } = useI18n()
 const localePath: ReturnType<typeof useLocalePath> = useLocalePath()
 const { track }: { track: (event: string, properties?: Record<string, unknown> | undefined) => void } =
   useSiteTracking()
+const scrollToSection: (selector: string) => void = useScrollToSection()
 
 // Sans ce bloc, les pages /fr héritent du lang="en" par défaut.
 const localeHead: ReturnType<typeof useLocaleHead> = useLocaleHead()
@@ -322,6 +347,14 @@ function handleMobileSection(selector: string): void {
 }
 
 /**
+ * Track the mobile-menu loyalty-cards link, then close the menu.
+ */
+function onMobileWallet(): void {
+  track('site_nav_click', { target: 'apple_wallet', location: 'mobile_menu' })
+  closeMobileMenu()
+}
+
+/**
  * Track the mobile-menu download link, then close the menu.
  */
 function onMobileDownload(): void {
@@ -335,20 +368,6 @@ function onMobileDownload(): void {
 function onMobileSignup(): void {
   track('site_cta_click', { location: 'mobile_menu', label: 'signup' })
   closeMobileMenu()
-}
-
-/**
- * Smooth-scroll to a landing section, accounting for the sticky header height.
- * @param selector - CSS selector of the target section.
- */
-function scrollToSection(selector: string): void {
-  const element: Element | null = document.querySelector(selector)
-  if (element) {
-    const headerOffset: number = 80
-    const elementPosition: number = element.getBoundingClientRect().top
-    const offsetPosition: number = elementPosition + window.pageYOffset - headerOffset
-    window.scrollTo({ top: offsetPosition, behavior: 'smooth' })
-  }
 }
 
 /**
