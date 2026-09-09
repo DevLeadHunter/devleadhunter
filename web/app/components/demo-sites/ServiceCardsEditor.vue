@@ -131,41 +131,53 @@
           </button>
         </div>
 
-        <button
-          type="button"
-          class="group relative block h-28 w-full overflow-hidden rounded-lg border transition-colors"
-          :class="
-            openPhotoPickerCardKey === card.key
-              ? 'border-[var(--app-ink)]'
-              : 'border-[var(--app-line)] hover:border-[var(--app-ink-soft)]'
-          "
-          :aria-label="
-            card.image ? `Changer la photo de la carte ${index + 1}` : `Choisir la photo de la carte ${index + 1}`
-          "
-          :aria-expanded="openPhotoPickerCardKey === card.key"
-          @click="togglePhotoPicker(card.key)"
-        >
-          <img v-if="card.image" :src="card.image" alt="" class="h-full w-full object-cover" draggable="false" />
-          <span
-            v-else
-            class="flex h-full w-full flex-col items-center justify-center gap-1 bg-[var(--app-surface)] text-[11px] text-[var(--app-ink-soft)]"
+        <div class="relative">
+          <button
+            type="button"
+            class="group relative block h-28 w-full overflow-hidden rounded-lg border transition-colors"
+            :class="
+              openPhotoPickerCardKey === card.key
+                ? 'border-[var(--app-ink)]'
+                : 'border-[var(--app-line)] hover:border-[var(--app-ink-soft)]'
+            "
+            :aria-label="
+              card.image ? `Changer la photo de la carte ${index + 1}` : `Choisir la photo de la carte ${index + 1}`
+            "
+            :aria-expanded="openPhotoPickerCardKey === card.key"
+            @click="togglePhotoPicker(card.key)"
           >
-            <UIcon name="i-lucide-image-plus" class="h-5 w-5" />
-            Choisir une photo
-          </span>
-          <span
+            <img v-if="card.image" :src="card.image" alt="" class="h-full w-full object-cover" draggable="false" />
+            <span
+              v-else
+              class="flex h-full w-full flex-col items-center justify-center gap-1 bg-[var(--app-surface)] text-[11px] text-[var(--app-ink-soft)]"
+            >
+              <UIcon name="i-lucide-image-plus" class="h-5 w-5" />
+              Choisir une photo
+            </span>
+            <span
+              v-if="card.image"
+              class="pointer-events-none absolute bottom-1.5 left-1.5 rounded bg-[var(--app-overlay)] px-1.5 py-0.5 text-[9px] font-semibold text-white"
+            >
+              {{ PhotoLabels.label(photoKindForUrl(card.image)) }}
+            </span>
+            <span
+              v-if="card.image"
+              class="pointer-events-none absolute inset-0 flex items-center justify-center bg-black/45 text-[11px] font-medium text-white opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100"
+            >
+              Changer la photo
+            </span>
+          </button>
+          <button
             v-if="card.image"
-            class="pointer-events-none absolute bottom-1.5 left-1.5 rounded bg-[var(--app-overlay)] px-1.5 py-0.5 text-[9px] font-semibold text-white"
+            type="button"
+            class="absolute top-1.5 right-1.5 flex h-7 w-7 cursor-zoom-in items-center justify-center rounded-md bg-[var(--app-overlay)] text-white transition-colors hover:bg-black/70"
+            title="Voir en grand"
+            :aria-label="`Voir la photo de la carte ${index + 1} en grand`"
+            @click.stop="openLightbox(card.image)"
           >
-            {{ PhotoLabels.label(photoKindForUrl(card.image)) }}
-          </span>
-          <span
-            v-if="card.image"
-            class="pointer-events-none absolute inset-0 flex items-center justify-center bg-black/45 text-[11px] font-medium text-white opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100"
-          >
-            Changer la photo
-          </span>
-        </button>
+            <UIcon name="i-lucide-maximize-2" class="h-3.5 w-3.5" />
+          </button>
+        </div>
 
         <div
           v-if="openPhotoPickerCardKey === card.key"
@@ -180,41 +192,50 @@
             role="listbox"
             aria-label="Photos du prospect"
           >
-            <button
-              v-for="photo in pickerPhotos"
-              :key="photo.url"
-              type="button"
-              role="option"
-              class="group relative aspect-square overflow-hidden rounded-lg border transition-colors"
-              :class="
-                photo.url === card.image
-                  ? 'border-[var(--app-ink)] ring-2 ring-[var(--app-ink)]'
-                  : 'border-[var(--app-line)] hover:border-[var(--app-ink-soft)]'
-              "
-              :aria-selected="photo.url === card.image"
-              :title="photo.description || PhotoLabels.label(photo.kind)"
-              @click="selectPhoto(card.key, photo.url)"
-            >
-              <img
-                :src="photo.url"
-                alt=""
-                class="h-full w-full object-cover transition-opacity"
-                :class="isUnfitForCard(photo) ? 'opacity-40 group-hover:opacity-70' : ''"
-                draggable="false"
-              />
-              <span
-                class="pointer-events-none absolute right-0.5 bottom-0.5 left-0.5 truncate rounded bg-[var(--app-overlay)] px-1 py-px text-center text-[8px] font-semibold text-white"
+            <div v-for="photo in pickerPhotos" :key="photo.url" class="group relative">
+              <button
+                type="button"
+                role="option"
+                class="relative block aspect-square w-full overflow-hidden rounded-lg border transition-colors"
+                :class="
+                  photo.url === card.image
+                    ? 'border-[var(--app-ink)] ring-2 ring-[var(--app-ink)]'
+                    : 'border-[var(--app-line)] hover:border-[var(--app-ink-soft)]'
+                "
+                :aria-selected="photo.url === card.image"
+                :title="photo.description || PhotoLabels.label(photo.kind)"
+                @click="selectPhoto(card.key, photo.url)"
               >
-                {{ PhotoLabels.label(photo.kind) }}
-              </span>
-              <span
-                v-if="isUsedByAnotherCard(photo.url, card.key)"
-                class="absolute top-0.5 right-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-[var(--app-overlay)] text-white"
-                title="Déjà sur une autre carte"
+                <img
+                  :src="photo.url"
+                  alt=""
+                  class="h-full w-full object-cover transition-opacity"
+                  :class="isUnfitForCard(photo) ? 'opacity-40 group-hover:opacity-70' : ''"
+                  draggable="false"
+                />
+                <span
+                  class="pointer-events-none absolute right-0.5 bottom-0.5 left-0.5 truncate rounded bg-[var(--app-overlay)] px-1 py-px text-center text-[8px] font-semibold text-white"
+                >
+                  {{ PhotoLabels.label(photo.kind) }}
+                </span>
+                <span
+                  v-if="isUsedByAnotherCard(photo.url, card.key)"
+                  class="absolute top-0.5 right-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-[var(--app-overlay)] text-white"
+                  title="Déjà sur une autre carte"
+                >
+                  <UIcon name="i-lucide-check" class="h-2.5 w-2.5" />
+                </span>
+              </button>
+              <button
+                type="button"
+                class="absolute top-0.5 left-0.5 flex h-4 w-4 cursor-zoom-in items-center justify-center rounded bg-[var(--app-overlay)] text-white opacity-0 transition-opacity group-hover:opacity-100 focus-visible:opacity-100"
+                title="Voir en grand"
+                aria-label="Voir la photo en grand"
+                @click.stop="openLightbox(photo.url)"
               >
-                <UIcon name="i-lucide-check" class="h-2.5 w-2.5" />
-              </span>
-            </button>
+                <UIcon name="i-lucide-maximize-2" class="h-2.5 w-2.5" />
+              </button>
+            </div>
             <button
               type="button"
               role="option"
@@ -307,6 +328,8 @@
       <UIcon name="i-lucide-lock-keyhole" class="mr-1 inline-block h-3 w-3 align-[-2px]" />
       {{ overrideSourceLabel }}
     </p>
+
+    <UiImageLightbox v-model="lightboxIndex" :photos="lightboxPhotos" />
   </div>
 </template>
 
@@ -404,6 +427,8 @@ const cardListRef: Ref<ComponentPublicInstance | null> = ref(null)
 const draggedCardKey: Ref<string | null> = ref(null)
 const draftOrder: Ref<ServiceCardDraft[] | null> = ref(null)
 const openPhotoPickerCardKey: Ref<string | null> = ref(null)
+/** Index of the photo shown fullscreen in the lightbox, or null when closed. */
+const lightboxIndex: Ref<number | null> = ref(null)
 const suggestionProgressStep: Ref<number> = ref(0)
 let suggestionProgressTimer: ReturnType<typeof setInterval> | null = null
 
@@ -435,6 +460,10 @@ const pickerPhotos: ComputedRef<DemoSitePhotoLabel[]> = computed((): DemoSitePho
     if (rankA !== rankB) return rankA - rankB
     return b.appeal - a.appeal
   }),
+)
+
+const lightboxPhotos: ComputedRef<string[]> = computed((): string[] =>
+  pickerPhotos.value.map((photo: DemoSitePhotoLabel): string => photo.url),
 )
 
 const suggestionProgressLabel: ComputedRef<string> = computed(
@@ -564,6 +593,15 @@ function removeCard(cardKey: string): void {
     'update:cards',
     props.cards.filter((card: ServiceCardDraft): boolean => card.key !== cardKey),
   )
+}
+
+/**
+ * Open the fullscreen lightbox on a pool photo (paging through the whole pool, dishes first).
+ * @param url - Photo URL to show.
+ */
+function openLightbox(url: string): void {
+  const index: number = lightboxPhotos.value.indexOf(url)
+  lightboxIndex.value = index >= 0 ? index : null
 }
 
 /**

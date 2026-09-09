@@ -34,7 +34,15 @@
           <UIcon name="i-lucide-grip-vertical" class="h-4 w-4" />
         </button>
 
-        <img :src="url" :alt="`Photo ${i + 1}`" class="h-12 w-16 shrink-0 rounded-lg object-cover" draggable="false" />
+        <button
+          type="button"
+          class="shrink-0 cursor-zoom-in overflow-hidden rounded-lg"
+          title="Voir en grand"
+          :aria-label="`Voir la photo ${i + 1} en grand`"
+          @click="openLightbox(url)"
+        >
+          <img :src="url" :alt="`Photo ${i + 1}`" class="h-12 w-16 object-cover" draggable="false" />
+        </button>
 
         <span
           :class="[
@@ -92,28 +100,38 @@
     <div v-if="unused.length" class="space-y-2 border-t border-[var(--app-line)] pt-4">
       <p class="text-xs font-semibold text-[var(--app-ink-soft)]">Non utilisées ({{ unused.length }})</p>
       <div class="flex flex-wrap gap-2">
-        <button
+        <div
           v-for="url in unused"
           :key="url"
-          type="button"
           class="group relative overflow-hidden rounded-lg border border-[var(--app-line)]"
-          title="Ajouter au site"
-          @click="add(url)"
         >
-          <img
-            :src="url"
-            alt="Photo non utilisée"
-            class="h-14 w-20 object-cover opacity-70 transition-opacity group-hover:opacity-100"
-            draggable="false"
-          />
-          <span
-            class="absolute inset-0 flex items-center justify-center bg-black/40 text-white opacity-0 transition-opacity group-hover:opacity-100"
+          <button type="button" class="block" title="Ajouter au site" @click="add(url)">
+            <img
+              :src="url"
+              alt="Photo non utilisée"
+              class="h-14 w-20 object-cover opacity-70 transition-opacity group-hover:opacity-100"
+              draggable="false"
+            />
+            <span
+              class="absolute inset-0 flex items-center justify-center bg-black/40 text-white opacity-0 transition-opacity group-hover:opacity-100"
+            >
+              <UIcon name="i-lucide-plus" class="h-5 w-5" />
+            </span>
+          </button>
+          <button
+            type="button"
+            class="absolute top-0.5 right-0.5 flex h-5 w-5 cursor-zoom-in items-center justify-center rounded bg-[var(--app-overlay)] text-white opacity-0 transition-opacity group-hover:opacity-100 focus-visible:opacity-100"
+            title="Voir en grand"
+            aria-label="Voir la photo en grand"
+            @click.stop="openLightbox(url)"
           >
-            <UIcon name="i-lucide-plus" class="h-5 w-5" />
-          </span>
-        </button>
+            <UIcon name="i-lucide-maximize-2" class="h-3 w-3" />
+          </button>
+        </div>
       </div>
     </div>
+
+    <UiImageLightbox v-model="lightboxIndex" :photos="lightboxPhotos" />
   </div>
 </template>
 
@@ -163,12 +181,17 @@ const placementListRef: Ref<ComponentPublicInstance | null> = ref(null)
 const draggedUrl: Ref<string | null> = ref(null)
 
 const draftOrder: Ref<string[] | null> = ref(null)
+/** Index of the photo shown fullscreen in the lightbox, or null when closed. */
+const lightboxIndex: Ref<number | null> = ref(null)
 
 const displayedOrder: ComputedRef<string[]> = computed((): string[] => draftOrder.value ?? props.order)
 
 const unused: ComputedRef<string[]> = computed((): string[] =>
   props.pool.filter((url: string): boolean => !props.order.includes(url)),
 )
+
+/** Every photo the lightbox can page through: the placed ones in site order, then the unused ones. */
+const lightboxPhotos: ComputedRef<string[]> = computed((): string[] => [...displayedOrder.value, ...unused.value])
 
 /**
  * The rendered placement list, which is the offsetParent of its rows.
@@ -238,6 +261,15 @@ function removeAt(index: number): void {
 function add(url: string): void {
   if (props.order.includes(url)) return
   emit('update:order', [...props.order, url])
+}
+
+/**
+ * Open the fullscreen lightbox on a photo.
+ * @param url - Photo URL to show.
+ */
+function openLightbox(url: string): void {
+  const index: number = lightboxPhotos.value.indexOf(url)
+  lightboxIndex.value = index >= 0 ? index : null
 }
 
 onBeforeUnmount((): void => {
