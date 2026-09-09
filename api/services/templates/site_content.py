@@ -25,7 +25,13 @@ import uuid
 from datetime import datetime
 from typing import Any
 
+from services.photo_labels import labels_for_urls, rank_card_photos
 from services.validation_service import validation_service
+
+# Operator-curated service cards (``DemoSite.section_overrides["services"]``): shape limits.
+MAX_SERVICE_CARDS = 12
+MAX_SERVICE_CARD_TITLE_CHARS = 80
+MAX_SERVICE_CARD_DESCRIPTION_CHARS = 240
 
 # Generic, per-trade editorial defaults. A template's build_site_content may pass these
 # (or its own) so the services/FAQ sections render and stay editable in Storyblok.
@@ -318,6 +324,105 @@ def resolve_trade_services(scraped_names: Any, defaults: list[dict[str, str]]) -
         {"title": service.get("title", ""), "description": without_price(service.get("description", ""))}
         for service in defaults
     ]
+
+
+def clean_service_cards(
+    cards: Any,
+    *,
+    allowed_images: list[str] | None = None,
+    max_cards: int = MAX_SERVICE_CARDS,
+) -> list[dict[str, str]]:
+    """Validate operator-curated service cards into ``{"title", "description", "image"}`` rows.
+
+    A card without a title is dropped; texts are trimmed and capped; when ``allowed_images`` is
+    given, an image outside that pool is cleared (never a URL the site can't vouch for).
+
+    Args:
+        cards: Raw cards (API payload or stored override).
+        allowed_images: The site's photo pool; None skips the image check (already-cleaned data).
+        max_cards: Hard cap on the number of cards kept.
+
+    Returns:
+        The clean cards, in order.
+    """
+    if not isinstance(cards, list):
+        return []
+    allowed: set[str] | None = set(allowed_images) if allowed_images is not None else None
+    cleaned: list[dict[str, str]] = []
+    for entry in cards:
+        if not isinstance(entry, dict):
+            continue
+        title = " ".join(str(entry.get("title", "") or "").split()).strip()[:MAX_SERVICE_CARD_TITLE_CHARS]
+        if not title:
+            continue
+        description = " ".join(str(entry.get("description", "") or "").split()).strip()
+        image = str(entry.get("image", "") or "").strip()
+        if allowed is not None and image not in allowed:
+            image = ""
+        cleaned.append(
+            {"title": title, "description": description[:MAX_SERVICE_CARD_DESCRIPTION_CHARS], "image": image}
+        )
+        if len(cleaned) >= max_cards:
+            break
+    return cleaned
+
+
+def fill_missing_card_images(site_content: dict[str, Any], enrichment: dict[str, Any] | None) -> None:
+    """Give every service card without a photo the best unused real photo of the site.
+
+    Candidates are the gallery photos, then the hero / about photos; the vision labels rank the
+    dishes first and keep the truck, menu boards and flyers off the cards. Without labels the
+    gallery order is used as before. The layer would otherwise fall back to ``gallery[index]``
+    (position only) — which is how the truck ended up under a dish title.
+    """
+    services = site_content.get("services")
+    if not isinstance(services, list) or not services:
+        return
+    gallery = [
+        photo["url"]
+        for photo in site_content.get("gallery", [])
+        if isinstance(photo, dict) and isinstance(photo.get("url"), str) and photo["url"].strip()
+    ]
+    extra = [
+        url for url in (site_content.get("heroImage"), site_content.get("aboutImage")) if isinstance(url, str) and url
+    ]
+    labels = labels_for_urls((enrichment or {}).get("photo_labels"), gallery + extra)
+    used = {
+        card["image"]
+        for card in services
+        if isinstance(card, dict) and isinstance(card.get("image"), str) and card["image"].strip()
+    }
+    # Without any label, stay position-based on the gallery (legacy behaviour, hero/about untouched).
+    candidates = (
+        rank_card_photos(gallery + extra, labels, exclude=used) if labels else [u for u in gallery if u not in used]
+    )
+    for card in services:
+        if not isinstance(card, dict) or (isinstance(card.get("image"), str) and card["image"].strip()):
+            continue
+        if not candidates:
+            break
+        card["image"] = candidates.pop(0)
+
+
+def apply_section_overrides(
+    site_content: dict[str, Any],
+    overrides: Any,
+    enrichment: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    """Replace generated sections with the operator's curated ones (``DemoSite.section_overrides``).
+
+    Currently ``services``: the curated cards replace the generated menu / prestations wholesale
+    (title, description, photo); cards saved without a photo get the best unused real photo.
+    The override lives on the demo site, so it survives every regeneration — a colour tweak no
+    longer wipes the specialties typed by hand.
+    """
+    if not isinstance(overrides, dict):
+        return site_content
+    cards = clean_service_cards(overrides.get("services"))
+    if cards:
+        site_content["services"] = cards
+        fill_missing_card_images(site_content, enrichment)
+    return site_content
 
 
 def fixed_trade_services(defaults: list[dict[str, str]]) -> list[dict[str, str]]:

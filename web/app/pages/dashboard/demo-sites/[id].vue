@@ -17,8 +17,9 @@
           </button>
           <button
             type="button"
-            class="btn-primary inline-flex items-center gap-2"
-            :disabled="saving"
+            class="btn-primary inline-flex items-center gap-2 disabled:cursor-not-allowed disabled:opacity-50"
+            :disabled="saving || !canSavePendingChanges"
+            :title="!canSavePendingChanges ? serviceCardsValidationMessage : undefined"
             @click="savePendingChanges"
           >
             <UIcon name="i-lucide-save" class="h-4 w-4" />
@@ -326,6 +327,33 @@
             >
               Aucune photo exploitable pour ce prospect : le site garde les images par défaut du template.
             </p>
+
+            <div v-if="serviceCards && isServiceCardsEditorVisible" class="border-t border-[var(--app-line)] pt-4">
+              <DemoSitesServiceCardsEditor
+                :cards="serviceCardsDraft"
+                :pool="serviceCards.pool"
+                :config="serviceCards.config"
+                :ai-available="serviceCards.ai_available"
+                :suggesting="suggestingServiceCards"
+                :suggestion-error="serviceCardsSuggestionError"
+                :analysis="serviceCardsAnalysis"
+                :override-active="serviceCards.override_active"
+                :override-source="serviceCards.override_source"
+                :labels-pending="serviceCards.labels_pending"
+                @update:cards="onServiceCardsChange"
+                @suggest="suggestServiceCards"
+                @reset="resetServiceCardsModalRef?.open()"
+              />
+            </div>
+
+            <UiConfirmModal
+              ref="resetServiceCardsModalRef"
+              title="Revenir aux cartes automatiques"
+              message="Les cartes personnalisées seront supprimées et le site régénéré avec les cartes automatiques. Continuer ?"
+              confirm-text="Revenir"
+              cancel-text="Annuler"
+              @confirm="restoreGeneratedServiceCards"
+            />
           </template>
         </aside>
 
@@ -383,6 +411,7 @@
                 :show-colors="false"
                 :preview-photos="previewPhotos"
                 :preview-theme="previewTheme"
+                :preview-services="previewServices"
                 templates-below-preview
                 @update:theme="selectedTheme = $event"
                 @update:use-brand-color="selectedUseBrandColor = $event"
@@ -417,12 +446,17 @@
 import { formatNumericDate } from '~/utils/date'
 import type { UseCopyToClipboardReturn, UseOpenExternalUrlReturn, UseToastReturn } from '~/types/Composables'
 import type { DemoSiteStat } from '~/types/DemoSiteDetailPage'
+import type { ServiceCardDraft } from '~/types/ServiceCardsEditor'
 import type { UiTab } from '~/types/UiTabs'
 import type { TemplateThemeColorKey } from '~/types/TemplatePicker'
 import type { ComputedRef, Ref } from 'vue'
 import type {
   DemoSite,
   DemoSiteImages,
+  DemoSiteServiceCard,
+  DemoSiteServiceCards,
+  DemoSiteServiceCardsAnalysis,
+  DemoSiteServiceCardsSuggestionResult,
   DemoSiteTemplate,
   DemoSiteTheme,
   DemoSiteUpdatePayload,
@@ -433,6 +467,7 @@ import { StoryblokSidecarService } from '~/services/storyblokSidecarService'
 import { useToast } from '~/composables/useToast'
 import type { UseVideoGenerationProgressReturn } from '~/composables/useVideoGenerationProgress'
 import { useVideoGenerationProgress } from '~/composables/useVideoGenerationProgress'
+import { ServiceCards } from '~/utils/serviceCards'
 
 definePageMeta({ layout: 'dashboard', middleware: 'auth' })
 
@@ -462,6 +497,15 @@ const selectedUseBrandColor: Ref<boolean> = ref(true)
 /** Candidate photo placement (hero/about/gallery), edited live and saved with the other changes. */
 const imagesOrder: Ref<string[]> = ref([])
 const siteImages: Ref<DemoSiteImages | null> = ref(null)
+const serviceCards: Ref<DemoSiteServiceCards | null> = ref(null)
+/** Candidate cards, edited live and saved with the other changes. */
+const serviceCardsDraft: Ref<ServiceCardDraft[]> = ref([])
+/** True while the draft is exactly the last AI suggestion (saved as source « ai »). */
+const serviceCardsDraftFromAi: Ref<boolean> = ref(false)
+const suggestingServiceCards: Ref<boolean> = ref(false)
+const serviceCardsSuggestionError: Ref<string | null> = ref(null)
+const serviceCardsAnalysis: Ref<DemoSiteServiceCardsAnalysis | null> = ref(null)
+const resetServiceCardsModalRef: Ref<{ open: () => void } | null> = ref(null)
 const saving: Ref<boolean> = ref(false)
 /** Bumped after a save to force the live preview iframe to reload the published content. */
 const previewReloadNonce: Ref<number> = ref(0)
@@ -538,15 +582,60 @@ const imagesChanged: ComputedRef<boolean> = computed((): boolean => {
   return imagesOrder.value.join('\n') !== siteImages.value.order.join('\n')
 })
 
+/** Whether the section cards editor applies: the template declares editable cards (published and picked). */
+const isServiceCardsEditorVisible: ComputedRef<boolean> = computed((): boolean => {
+  if (!serviceCards.value?.config.enabled) return false
+  const picked: DemoSiteTemplate | null = selectedTemplate.value
+  return picked ? Boolean(picked.service_cards?.enabled) : true
+})
+
+const serviceCardsChanged: ComputedRef<boolean> = computed((): boolean => {
+  if (!serviceCards.value || !isServiceCardsEditorVisible.value) return false
+  return ServiceCards.signature(serviceCardsDraft.value) !== ServiceCards.signature(serviceCards.value.cards)
+})
+
+/** Why the pending cards cannot be saved yet (empty when they can). */
+const serviceCardsValidationMessage: ComputedRef<string> = computed((): string => {
+  if (!serviceCardsChanged.value || !serviceCards.value) return ''
+  const minimum: number = serviceCards.value.config.min_cards
+  if (serviceCardsDraft.value.length === 0) {
+    return 'Ajoutez des cartes, ou revenez aux cartes automatiques depuis le bloc Spécialités.'
+  }
+  if (serviceCardsDraft.value.length < minimum) return `Au moins ${minimum} cartes sont nécessaires.`
+  if (serviceCardsDraft.value.some((card: ServiceCardDraft): boolean => card.title.trim().length === 0)) {
+    return 'Chaque carte doit avoir un titre.'
+  }
+  return ''
+})
+
 /** Any pending edit → the Annuler / Sauvegarder pair shows up top right. */
 const hasPendingChanges: ComputedRef<boolean> = computed(
-  (): boolean => templateChanged.value || themeChanged.value || brandSourceChanged.value || imagesChanged.value,
+  (): boolean =>
+    templateChanged.value ||
+    themeChanged.value ||
+    brandSourceChanged.value ||
+    imagesChanged.value ||
+    serviceCardsChanged.value,
+)
+
+/** Pending edits that are complete enough to publish (the cards editor can block a save). */
+const canSavePendingChanges: ComputedRef<boolean> = computed(
+  (): boolean => hasPendingChanges.value && serviceCardsValidationMessage.value === '',
 )
 
 /** Candidate placement pushed live into the preview — only when it differs from the published one. */
 const previewPhotos: ComputedRef<string[] | null> = computed((): string[] | null =>
   imagesChanged.value ? imagesOrder.value : null,
 )
+
+/** Candidate section cards pushed live into the preview — only titled ones, only when edited. */
+const previewServices: ComputedRef<DemoSiteServiceCard[] | null> = computed((): DemoSiteServiceCard[] | null => {
+  if (!serviceCardsChanged.value) return null
+  const cards: DemoSiteServiceCard[] = ServiceCards.toPayload(serviceCardsDraft.value).filter(
+    (card: DemoSiteServiceCard): boolean => card.title.length > 0,
+  )
+  return cards.length > 0 ? cards : null
+})
 
 /** Candidate colours pushed live into the preview — only when a colour or template edit is pending. */
 const previewTheme: ComputedRef<DemoSiteTheme | null> = computed((): DemoSiteTheme | null =>
@@ -650,7 +739,28 @@ function onImageOrderChange(next: string[]): void {
 }
 
 /**
- * Drop every pending edit: back to the published template, colours and photo placement.
+ * Apply an edited card list while keeping the panel steady; any manual gesture ends the untouched AI suggestion.
+ * @param next - The edited cards.
+ */
+function onServiceCardsChange(next: ServiceCardDraft[]): void {
+  const scrollTop: number = asideRef.value?.scrollTop ?? 0
+  serviceCardsDraft.value = next
+  serviceCardsDraftFromAi.value = false
+  nextTick((): void => {
+    if (asideRef.value) asideRef.value.scrollTop = scrollTop
+  })
+}
+
+/**
+ * Put the draft back on the published cards.
+ */
+function resetServiceCardsDraft(): void {
+  serviceCardsDraft.value = ServiceCards.toDrafts(serviceCards.value?.cards ?? [])
+  serviceCardsDraftFromAi.value = false
+}
+
+/**
+ * Drop every pending edit: back to the published template, colours, photo placement and cards.
  */
 function resetPendingChanges(): void {
   if (!site.value) return
@@ -658,15 +768,16 @@ function resetPendingChanges(): void {
   selectedTheme.value = { ...(site.value.theme ?? DEFAULT_DEMO_SITE_THEME) }
   selectedUseBrandColor.value = site.value.use_brand_color ?? true
   imagesOrder.value = [...(siteImages.value?.order ?? [])]
+  resetServiceCardsDraft()
 }
 
 /**
- * Save every pending edit (template, colours, photo placement) in ONE call — the API regenerates
- * the published site once — then reload the preview on the fresh content.
+ * Save every pending edit (template, colours, photo placement, section cards) in ONE call — the
+ * API regenerates the published site once — then reload the preview on the fresh content.
  * @returns A promise resolved once the site has been regenerated.
  */
 async function savePendingChanges(): Promise<void> {
-  if (!site.value || !hasPendingChanges.value) return
+  if (!site.value || !canSavePendingChanges.value) return
   saving.value = true
   try {
     const payload: DemoSiteUpdatePayload = {}
@@ -678,8 +789,12 @@ async function savePendingChanges(): Promise<void> {
     if (imagesChanged.value) {
       payload.image_order = [...imagesOrder.value]
     }
+    if (serviceCardsChanged.value) {
+      payload.services = ServiceCards.toPayload(serviceCardsDraft.value)
+      payload.services_source = serviceCardsDraftFromAi.value ? 'ai' : 'manual'
+    }
     site.value = await DemoSiteService.updateDemoSite(demoSiteId, payload)
-    await loadImages()
+    await Promise.all([loadImages(), loadServiceCards()])
     resetPendingChanges()
     previewReloadNonce.value += 1
     toast.success('Changements sauvegardés, site mis à jour')
@@ -699,6 +814,66 @@ async function loadImages(): Promise<void> {
     siteImages.value = await DemoSiteService.getDemoSiteImages(demoSiteId)
   } catch {
     siteImages.value = null
+  }
+}
+
+/**
+ * Load the section cards, their curation state and the labelled photo pool; silent on failure (editor hidden).
+ */
+async function loadServiceCards(): Promise<void> {
+  try {
+    serviceCards.value = await DemoSiteService.getDemoSiteServiceCards(demoSiteId)
+  } catch {
+    serviceCards.value = null
+  }
+}
+
+/**
+ * Ask the AI to compose the section cards; the result replaces the draft, previewed live and saved with the other edits.
+ */
+async function suggestServiceCards(): Promise<void> {
+  if (!serviceCards.value || suggestingServiceCards.value) return
+  suggestingServiceCards.value = true
+  serviceCardsSuggestionError.value = null
+  try {
+    const suggestion: DemoSiteServiceCardsSuggestionResult =
+      await DemoSiteService.suggestDemoSiteServiceCards(demoSiteId)
+    serviceCards.value = { ...serviceCards.value, pool: suggestion.pool, labels_pending: 0 }
+    serviceCardsAnalysis.value = suggestion.analysis
+    if (suggestion.cards.length === 0) {
+      serviceCardsSuggestionError.value =
+        "L'IA n'a rien pu proposer : pas assez d'indices (photos de plats, menus, avis) pour ce prospect."
+      return
+    }
+    serviceCardsDraft.value = ServiceCards.toDrafts(suggestion.cards)
+    serviceCardsDraftFromAi.value = true
+    toast.success(
+      `${suggestion.cards.length} carte${suggestion.cards.length > 1 ? 's' : ''} proposée${suggestion.cards.length > 1 ? 's' : ''} : vérifiez, ajustez, puis sauvegardez`,
+    )
+  } catch (error) {
+    serviceCardsSuggestionError.value = error instanceof Error ? error.message : 'Échec de la suggestion'
+  } finally {
+    suggestingServiceCards.value = false
+  }
+}
+
+/**
+ * Drop the saved curation: the site is regenerated right away with its automatic cards.
+ */
+async function restoreGeneratedServiceCards(): Promise<void> {
+  if (!site.value) return
+  saving.value = true
+  try {
+    site.value = await DemoSiteService.updateDemoSite(demoSiteId, { services: [] })
+    await loadServiceCards()
+    resetServiceCardsDraft()
+    serviceCardsAnalysis.value = null
+    previewReloadNonce.value += 1
+    toast.success('Cartes automatiques restaurées, site mis à jour')
+  } catch (error) {
+    toast.error(error instanceof Error ? error.message : 'Échec de la restauration')
+  } finally {
+    saving.value = false
   }
 }
 
@@ -1013,8 +1188,8 @@ onMounted(async () => {
   } finally {
     loadingTemplates.value = false
   }
-  await loadImages()
-  // Second sync now that the photo pool is known (imagesOrder starts on the published placement).
+  await Promise.all([loadImages(), loadServiceCards()])
+  // Second sync now that the photo pool and the cards are known (drafts start on the published state).
   resetPendingChanges()
 })
 

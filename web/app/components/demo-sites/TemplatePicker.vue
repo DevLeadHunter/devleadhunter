@@ -177,7 +177,7 @@ import type {
   TemplateThemeColorKey,
 } from '~/types/TemplatePicker'
 import type { ComputedRef, EmitFn, PropType, Ref } from 'vue'
-import type { DemoSiteTemplate, DemoSiteTheme } from '~/services/demoSiteService'
+import type { DemoSiteServiceCard, DemoSiteTemplate, DemoSiteTheme } from '~/services/demoSiteService'
 import { isTemplateRecommendedFor, sortTemplatesByRecommendation } from '~/utils/templateRecommendation'
 
 /** Template picker: compact list, real screenshot, live iframe preview with theme colors applied. */
@@ -236,6 +236,11 @@ const props: TemplatePickerProps = defineProps({
   // Candidate colours pushed live into the published-site preview (null = keep the published palette).
   previewTheme: {
     type: Object as PropType<DemoSiteTheme | null>,
+    default: null,
+  },
+  // Candidate section cards pushed live into the published-site preview (null = keep the published cards).
+  previewServices: {
+    type: Array as PropType<DemoSiteServiceCard[] | null>,
     default: null,
   },
 })
@@ -391,6 +396,9 @@ function postPreviewOverrides(): void {
       // perfectly reconstruct it, and repainting an untouched site would be a lie.
       palette: props.previewTheme ? { ...props.previewTheme } : null,
       photos: props.previewPhotos ? [...props.previewPhotos] : null,
+      services: props.previewServices
+        ? props.previewServices.map((card: DemoSiteServiceCard): DemoSiteServiceCard => ({ ...card }))
+        : null,
     },
     origin,
   )
@@ -497,6 +505,8 @@ watch(
 watch((): string[] | null => props.previewPhotos ?? null, schedulePreviewMessage, { deep: true })
 
 watch((): DemoSiteTheme | null => props.previewTheme ?? null, schedulePreviewMessage, { deep: true })
+
+watch((): DemoSiteServiceCard[] | null => props.previewServices ?? null, schedulePreviewMessage, { deep: true })
 
 watch((): string | null => props.publishedSiteUrl ?? null, applyLivePreviewUrl)
 

@@ -28,6 +28,8 @@ from schemas.demo_site import (
     DemoSitePreviewResponse,
     DemoSitePublicResponse,
     DemoSiteResponse,
+    DemoSiteServiceCardsResponse,
+    DemoSiteServiceCardsSuggestionResponse,
     DemoSiteTemplateResponse,
     DemoSiteTheme,
     DemoSiteUpdateRequest,
@@ -48,6 +50,7 @@ from services.demo_video_service import (
 from services.email_variables import EmailVariables
 from services.presenter_video_service import presenter_video_service
 from services.r2_storage_service import r2_storage
+from services.service_card_suggestion_service import ServiceCardsUnavailableError
 from services.site_export_service import site_export_service
 from services.sms.phone_normalizer import is_mobile_fr
 from services.storyblok_service import storyblok_service
@@ -483,6 +486,40 @@ async def update_demo_site_images(
     site = _get_editable_demo_site(db, current_user.id, demo_site_id)
     site = await demo_site_service.set_site_images(db, site, payload.order)
     return _serialize_demo_site(site, include_brand_color=True)
+
+
+@router.get("/{demo_site_id}/service-cards", response_model=DemoSiteServiceCardsResponse)
+async def get_demo_site_service_cards(
+    demo_site_id: int,
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db),
+) -> DemoSiteServiceCardsResponse:
+    """The editable section cards (food « Nos spécialités »), their curation state and the labelled photo pool."""
+    site = demo_site_service.get_for_user(db, current_user.id, demo_site_id)
+    if not site:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Demo site not found")
+    return DemoSiteServiceCardsResponse(**demo_site_service.get_service_cards(db, site))
+
+
+@router.post("/{demo_site_id}/service-cards/suggest", response_model=DemoSiteServiceCardsSuggestionResponse)
+async def suggest_demo_site_service_cards(
+    demo_site_id: int,
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db),
+) -> DemoSiteServiceCardsSuggestionResponse:
+    """Compose the section cards with the AI (the pool photos are labelled first).
+
+    Nothing is saved here: the dashboard previews the cards live, lets the operator edit them, and
+    saves them with the other pending edits through the PATCH (``services``).
+    """
+    site = _get_editable_demo_site(db, current_user.id, demo_site_id)
+    try:
+        result = await demo_site_service.suggest_service_cards(db, site)
+    except ServiceCardsUnavailableError as exc:
+        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(exc)) from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+    return DemoSiteServiceCardsSuggestionResponse(**result)
 
 
 @router.post("/{demo_site_id}/video", response_model=DemoSiteResponse, status_code=status.HTTP_202_ACCEPTED)

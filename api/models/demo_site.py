@@ -62,6 +62,11 @@ class DemoSite(Base):
     # and this snapshot is genuinely new (auto-appended); one in the snapshot but not the order was
     # removed on purpose (kept hidden). NULL until the first save after this column shipped.
     image_pool_snapshot: Mapped[list | None] = mapped_column(JSON, nullable=True)
+    # Operator-curated section content that must survive every regeneration, like ``image_order``
+    # does for photos: ``{"services": [{"title", "description", "image"}], "services_source":
+    # "manual" | "ai" | "ai_auto"}``. Without it the specialties typed by hand were wiped by the next
+    # colour tweak (a regeneration rebuilds the story from enrichment). NULL = generated as usual.
+    section_overrides: Mapped[dict | None] = mapped_column(JSON, nullable=True)
     # Whether the action colour is pulled from the prospect's logo (True) or kept as the template
     # default (False). Default True — the logo colour is used when a usable one exists.
     use_brand_color: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)

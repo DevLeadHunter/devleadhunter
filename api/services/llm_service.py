@@ -9,7 +9,10 @@ without the LLM and lights up automatically once a key is provided.
 
 from __future__ import annotations
 
+import json
 import logging
+import re
+import time
 from typing import Any
 
 import httpx
@@ -19,6 +22,18 @@ from core.config import settings
 logger = logging.getLogger(__name__)
 
 _GROQ_URL = "https://api.groq.com/openai/v1/chat/completions"
+_GROQ_MODELS_URL = "https://api.groq.com/openai/v1/models"
+# Known Groq vision models, most preferred first. The configured ``GROQ_VISION_MODEL`` is tried
+# ahead of these; whichever is listed by the account's live ``/models`` endpoint wins, so a
+# decommissioned id degrades to the next one instead of killing photo labelling.
+_VISION_MODEL_CANDIDATES: tuple[str, ...] = (
+    "qwen/qwen3.6-27b",
+    "meta-llama/llama-4-scout-17b-16e-instruct",
+    "meta-llama/llama-4-maverick-17b-128e-instruct",
+    "qwen/qwen3.8-27b",
+)
+_VISION_MODEL_CACHE_SECONDS = 3600.0
+_JSON_FENCE_RE = re.compile(r"^```(?:json)?\s*|\s*```$", re.IGNORECASE)
 # gpt-oss / qwen3 models reason before answering, and the reasoning tokens count against
 # ``max_tokens`` — a tiny budget (e.g. 10 for a one-word verdict) is entirely consumed by
 # reasoning, leaving the content empty. Force a low reasoning effort and a floor that leaves
@@ -44,39 +59,147 @@ def _format_sender_identity(*, sender_name: str, company_name: str | None) -> st
 class LLMService:
     """Thin Groq client with rule-based fallbacks."""
 
+    def __init__(self) -> None:
+        # (resolved_at, model id or None) — the vision model verified against the live model list.
+        self._vision_model_cache: tuple[float, str | None] | None = None
+
     @property
     def is_configured(self) -> bool:
         """True when a Groq API key is available."""
         return bool(settings.groq_api_key)
 
     async def _chat(
-        self, messages: list[dict[str, str]], *, max_tokens: int = 600, temperature: float = 0.6
+        self,
+        messages: list[dict[str, Any]],
+        *,
+        max_tokens: int = 600,
+        temperature: float = 0.6,
+        model: str | None = None,
+        json_mode: bool = False,
+        timeout: float = 40.0,
     ) -> str | None:
-        """Call Groq chat completions. Returns the text, or None on failure."""
+        """Call Groq chat completions. Returns the text, or None on failure.
+
+        Args:
+            messages: OpenAI-style messages; ``content`` may be a string or a list of parts
+                (``text`` / ``image_url``) for vision models.
+            max_tokens: Answer budget (floored so reasoning models keep room for the content).
+            temperature: Sampling temperature.
+            model: Model id override (default: ``settings.groq_model``).
+            json_mode: Ask for a JSON object answer (``response_format``).
+            timeout: HTTP timeout in seconds.
+        """
         if not self.is_configured:
             return None
-        model = settings.groq_model
+        chosen_model = model or settings.groq_model
         payload: dict[str, Any] = {
-            "model": model,
+            "model": chosen_model,
             "messages": messages,
             "temperature": temperature,
             "max_tokens": max(max_tokens, _MIN_MAX_TOKENS),
         }
-        if _uses_reasoning(model):
+        if json_mode:
+            payload["response_format"] = {"type": "json_object"}
+        if _uses_reasoning(chosen_model):
             payload["reasoning_effort"] = "low"
         try:
-            async with httpx.AsyncClient(timeout=40.0) as client:
-                response = await client.post(
-                    _GROQ_URL,
-                    headers={"Authorization": f"Bearer {settings.groq_api_key}"},
-                    json=payload,
-                )
+            async with httpx.AsyncClient(timeout=timeout) as client:
+                response = await client.post(_GROQ_URL, headers=self._headers(), json=payload)
+                # A model that rejects ``reasoning_effort`` (not every qwen/gpt-oss variant takes it)
+                # answers 400: retry once without the knob rather than failing the whole call.
+                if (
+                    response.status_code == 400
+                    and "reasoning" in response.text.lower()
+                    and "reasoning_effort" in payload
+                ):
+                    payload.pop("reasoning_effort")
+                    response = await client.post(_GROQ_URL, headers=self._headers(), json=payload)
                 response.raise_for_status()
                 data: dict[str, Any] = response.json()
                 return data["choices"][0]["message"]["content"].strip()
         except Exception as exc:
-            logger.warning("Groq call failed: %s", exc)
+            logger.warning("Groq call failed (%s): %s", chosen_model, exc)
             return None
+
+    async def complete_json(
+        self,
+        messages: list[dict[str, Any]],
+        *,
+        max_tokens: int = 900,
+        temperature: float = 0.2,
+        model: str | None = None,
+        timeout: float = 60.0,
+    ) -> dict[str, Any] | None:
+        """Chat completion in JSON mode, parsed into a dict.
+
+        Returns None when Groq is off, the call failed, or the answer is not a JSON object —
+        callers always keep a rule-based path.
+        """
+        text = await self._chat(
+            messages, max_tokens=max_tokens, temperature=temperature, model=model, json_mode=True, timeout=timeout
+        )
+        return self._parse_json_object(text)
+
+    async def resolve_vision_model(self) -> str | None:
+        """The vision model to use: the configured one when the account lists it, else the first known one.
+
+        The live ``/models`` list is consulted at most once an hour; when it cannot be read the
+        configured id is trusted as-is. None when Groq is not configured or no candidate exists.
+        """
+        if not self.is_configured:
+            return None
+        now = time.monotonic()
+        if self._vision_model_cache and now - self._vision_model_cache[0] < _VISION_MODEL_CACHE_SECONDS:
+            return self._vision_model_cache[1]
+        preferred = (settings.groq_vision_model or "").strip()
+        candidates: list[str] = [preferred] if preferred else []
+        candidates.extend(candidate for candidate in _VISION_MODEL_CANDIDATES if candidate not in candidates)
+        available = await self._list_model_ids()
+        resolved: str | None
+        if available is None:
+            resolved = candidates[0] if candidates else None
+        else:
+            resolved = next((candidate for candidate in candidates if candidate in available), None)
+            if resolved is None:
+                logger.warning("No known Groq vision model available (tried %s)", ", ".join(candidates))
+        self._vision_model_cache = (now, resolved)
+        return resolved
+
+    async def _list_model_ids(self) -> set[str] | None:
+        """Model ids the account can use, or None when the list could not be read."""
+        try:
+            async with httpx.AsyncClient(timeout=15.0) as client:
+                response = await client.get(_GROQ_MODELS_URL, headers=self._headers())
+                response.raise_for_status()
+                data: dict[str, Any] = response.json()
+                return {str(item.get("id", "")) for item in data.get("data", []) if isinstance(item, dict)}
+        except Exception as exc:
+            logger.warning("Groq model list unavailable: %s", exc)
+            return None
+
+    @staticmethod
+    def _headers() -> dict[str, str]:
+        """Authorization header for the Groq API."""
+        return {"Authorization": f"Bearer {settings.groq_api_key}"}
+
+    @staticmethod
+    def _parse_json_object(text: str | None) -> dict[str, Any] | None:
+        """Parse a model answer as a JSON object, tolerating code fences and leading prose."""
+        if not text:
+            return None
+        cleaned = _JSON_FENCE_RE.sub("", text.strip())
+        try:
+            parsed = json.loads(cleaned)
+        except ValueError:
+            start = cleaned.find("{")
+            end = cleaned.rfind("}")
+            if start == -1 or end <= start:
+                return None
+            try:
+                parsed = json.loads(cleaned[start : end + 1])
+            except ValueError:
+                return None
+        return parsed if isinstance(parsed, dict) else None
 
     async def classify_reply_intent(self, reply_text: str) -> str | None:
         """

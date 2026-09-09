@@ -13,7 +13,7 @@
 
 <script lang="ts" setup>
 import type { ComputedRef, Ref } from 'vue'
-import type { DemoPreviewOverrides } from '~/composables/useDemoPreviewOverrides'
+import type { DemoPreviewOverrides, DemoPreviewServiceCard } from '~/composables/useDemoPreviewOverrides'
 import type { DemoSitePublic } from '~/types/demoSite'
 
 const route: ReturnType<typeof useRoute> = useRoute()
@@ -60,14 +60,14 @@ function reseedFoodSectionPhotos(content: Record<string, unknown>, gallery: stri
 
 /**
  * The published site with the dashboard's live-edit overrides merged in (template, palette,
- * photo order) — what an instant editor preview renders. Null outside live-edit mode or before
- * any override arrives, so the regular published rendering is untouched.
+ * photo order, curated section cards) — what an instant editor preview renders. Null outside
+ * live-edit mode or before any override arrives, so the regular published rendering is untouched.
  */
 const previewedSite: ComputedRef<DemoSitePublic | null> = computed((): DemoSitePublic | null => {
   const published: DemoSitePublic | null | undefined = site.value
   if (!published || !isLiveEditPreview.value) return null
-  const { templateId, palette, photos }: DemoPreviewOverrides = overrides.value
-  if (!templateId && !palette && !photos) return null
+  const { templateId, palette, photos, services }: DemoPreviewOverrides = overrides.value
+  if (!templateId && !palette && !photos && !services) return null
   const content: Record<string, unknown> = { ...((published.content_json ?? {}) as Record<string, unknown>) }
   if (palette) {
     content.palette = { ...((content.palette as Record<string, unknown>) ?? {}), ...palette }
@@ -81,6 +81,12 @@ const previewedSite: ComputedRef<DemoSitePublic | null> = computed((): DemoSiteP
     if ((templateId ?? published.template_id) === 'food') {
       reseedFoodSectionPhotos(content, gallery)
     }
+  }
+  if (services && services.length > 0) {
+    // The curated cards replace the generated section wholesale, exactly as the API does on save.
+    content.services = services.map(
+      (card: DemoPreviewServiceCard): { title: string; description: string; image: string } => ({ ...card }),
+    )
   }
   return {
     ...published,

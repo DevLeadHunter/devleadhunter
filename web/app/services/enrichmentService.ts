@@ -26,6 +26,13 @@ export type ContactNameCandidate = {
   provenance: string
 }
 
+export type EnrichmentPhotoLabel = {
+  kind: string
+  description: string
+  dishes: string[]
+  appeal: number
+}
+
 /** Rich enrichment data attached to a prospect. */
 export type ProspectEnrichment = {
   id: number
@@ -41,6 +48,7 @@ export type ProspectEnrichment = {
   opening_hours: EnrichmentOpeningHours[]
   services: string[]
   social_links: Record<string, string>
+  photo_labels: Record<string, EnrichmentPhotoLabel>
   contact_first_name: string | null
   contact_last_name: string | null
   contact_gender: string | null

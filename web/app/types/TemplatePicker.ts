@@ -1,4 +1,4 @@
-import type { DemoSiteTemplate, DemoSiteTheme } from '~/services/demoSiteService'
+import type { DemoSiteServiceCard, DemoSiteTemplate, DemoSiteTheme } from '~/services/demoSiteService'
 
 export type TemplatePickerProps = {
   templates: DemoSiteTemplate[]
@@ -19,6 +19,8 @@ export type TemplatePickerProps = {
   previewPhotos?: string[] | null
   /** Candidate colours pushed live into the published-site preview. Null = published palette. */
   previewTheme?: DemoSiteTheme | null
+  /** Candidate section cards (food « Nos spécialités ») pushed live into the preview. Null = published cards. */
+  previewServices?: DemoSiteServiceCard[] | null
 }
 
 export type TemplateThemeColorKey = keyof DemoSiteTheme

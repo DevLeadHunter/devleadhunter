@@ -37,6 +37,13 @@ from services.demo_site_verification_service import (
     demo_site_verification_service,
 )
 from services.enrichment_service import enrichment_service
+from services.photo_labeling_service import photo_labeling_service
+from services.photo_labels import is_card_worthy, labels_for_urls
+from services.service_card_suggestion_service import (
+    ServiceCardsConfig,
+    ServiceCardsUnavailableError,
+    service_card_suggestion_service,
+)
 from services.sms.phone_normalizer import is_mobile_fr, to_e164_fr
 from services.storyblok_service import (
     StoryblokProvisionError,
@@ -44,9 +51,20 @@ from services.storyblok_service import (
     storyblok_service,
 )
 from services.templates import registry as template_registry
-from services.templates.site_content import from_storyblok_site_content, usable_site_photos
+from services.templates.site_content import (
+    apply_section_overrides,
+    clean_service_cards,
+    from_storyblok_site_content,
+    usable_site_photos,
+)
 
 logger = logging.getLogger(__name__)
+
+# Provenance values accepted for saved section cards (``section_overrides["services_source"]``).
+_SERVICE_CARD_SOURCES: frozenset[str] = frozenset({"manual", "ai", "ai_auto"})
+# Budget for composing the cards with the AI at creation (photo labelling + writing) before the
+# generated cards are kept instead — a bulk generation must stay bounded.
+_AUTO_SERVICE_CARDS_TIMEOUT_SECONDS = 120.0
 
 _storyblok_swap_locks: dict[int, asyncio.Lock] = {}
 
@@ -226,7 +244,7 @@ class DemoSiteService:
         palette = self._apply_brand_color(
             palette, demo_site.template_id, enrichment, use_brand_color=demo_site.use_brand_color
         )
-        return storyblok_service.build_content_json(
+        content: dict = storyblok_service.build_content_json(
             business_name=demo_site.business_name,
             phone=demo_site.phone,
             email=demo_site.email,
@@ -236,6 +254,9 @@ class DemoSiteService:
             theme=palette,
             enrichment=enrichment,
         )
+        # Curated cards (food specialties) replace the generated ones on EVERY rebuild — a colour
+        # tweak must never wipe them again.
+        return apply_section_overrides(content, demo_site.section_overrides, enrichment)
 
     @staticmethod
     def _apply_brand_color(
@@ -397,16 +418,32 @@ class DemoSiteService:
         theme: dict[str, str] | None = None,
         use_brand_color: bool | None = None,
         image_order: list[str] | None = None,
+        services: list[dict] | None = None,
+        services_source: str | None = None,
     ) -> DemoSite:
         """Update demo site fields and regenerate its published content.
 
         ``image_order`` uses the same semantics as :meth:`set_site_images` (cleaned against the
         pool, default order stored as NULL) so one PATCH can save every pending edit — template,
-        colours and photo placement — with a single regeneration.
+        colours, photo placement and curated cards — with a single regeneration. ``services``
+        replaces the curated section cards (``[]`` drops the curation, back to generated cards).
         """
         pending_theme = theme
         if use_brand_color is not None:
             demo_site.use_brand_color = use_brand_color
+        if services is not None:
+            overrides: dict = dict(demo_site.section_overrides) if isinstance(demo_site.section_overrides, dict) else {}
+            if not services:
+                overrides.pop("services", None)
+                overrides.pop("services_source", None)
+            else:
+                pool, _enrichment = self._photo_pool_with_enrichment(db, demo_site)
+                cards = clean_service_cards(services, allowed_images=pool)
+                if not cards:
+                    raise ValueError("Aucune carte valide : chaque carte doit avoir un titre.")
+                overrides["services"] = cards
+                overrides["services_source"] = services_source if services_source in _SERVICE_CARD_SOURCES else "manual"
+            demo_site.section_overrides = overrides or None
         if image_order is not None:
             pool: list[str] = usable_site_photos(self._enrichment_dict_for_site(db, demo_site))
             cleaned: list[str] = self._clean_image_order(image_order, pool)
@@ -435,6 +472,124 @@ class DemoSiteService:
             demo_site.content_json = existing_content
 
         return await self.regenerate_demo_site(db, demo_site)
+
+    # ------------------------------------------------------------------ #
+    # Editable section cards (food « Nos spécialités »)
+    # ------------------------------------------------------------------ #
+
+    @staticmethod
+    def _service_cards_config(demo_site: DemoSite) -> ServiceCardsConfig:
+        """The cards-section constraints declared by the site's template (disabled when none)."""
+        return ServiceCardsConfig.from_meta(template_registry.service_cards_meta(demo_site.template_id))
+
+    def _photo_pool_with_enrichment(self, db: Session, demo_site: DemoSite) -> tuple[list[str], dict]:
+        """The site's photo pool in site order (placed photos first, unused ones after) and its enrichment."""
+        enrichment = self._enrichment_dict_for_site(db, demo_site) or {}
+        pool: list[str] = usable_site_photos(enrichment)
+        order: list[str] = self._effective_photos(pool, demo_site.image_order, demo_site.image_pool_snapshot)
+        return order + [url for url in pool if url not in order], enrichment
+
+    @staticmethod
+    def _labelled_pool_entries(pool: list[str], labels: dict[str, dict]) -> list[dict]:
+        """Pool photos with their label, for the cards editor's photo picker."""
+        entries: list[dict] = []
+        for url in pool:
+            label = labels.get(url)
+            entries.append(
+                {
+                    "url": url,
+                    "kind": str(label.get("kind", "unknown")) if label else "unknown",
+                    "description": str(label.get("description", "")) if label else "",
+                    "dishes": list(label.get("dishes", [])) if label else [],
+                    "appeal": int(label.get("appeal", 0)) if label else 0,
+                    "card_worthy": is_card_worthy(label),
+                }
+            )
+        return entries
+
+    def get_service_cards(self, db: Session, demo_site: DemoSite) -> dict:
+        """The section's published cards, curation state, labelled photo pool and AI availability."""
+        config = self._service_cards_config(demo_site)
+        content = demo_site.content_json if isinstance(demo_site.content_json, dict) else {}
+        overrides = demo_site.section_overrides if isinstance(demo_site.section_overrides, dict) else {}
+        override_cards = clean_service_cards(overrides.get("services"))
+        pool, enrichment = self._photo_pool_with_enrichment(db, demo_site)
+        labels = labels_for_urls(enrichment.get("photo_labels"), pool)
+        return {
+            "cards": clean_service_cards(content.get("services")),
+            "override_active": bool(override_cards),
+            "override_source": str(overrides.get("services_source") or "manual") if override_cards else None,
+            "pool": self._labelled_pool_entries(pool, labels),
+            "ai_available": service_card_suggestion_service.is_available,
+            "labels_pending": sum(1 for url in pool if url not in labels),
+            "config": config.as_dict(),
+        }
+
+    async def suggest_service_cards(self, db: Session, demo_site: DemoSite) -> dict:
+        """Compose the section cards with the AI: label the pool photos, then write the cards.
+
+        Raises:
+            ValueError: The template has no editable cards section.
+            ServiceCardsUnavailableError: No Groq key on the server.
+        """
+        config = self._service_cards_config(demo_site)
+        if not config.enabled:
+            raise ValueError("Ce template n'a pas de section de cartes éditable.")
+        if not service_card_suggestion_service.is_available:
+            raise ServiceCardsUnavailableError(
+                "Suggestion IA indisponible : aucune clé Groq n'est configurée sur le serveur."
+            )
+        pool, enrichment = self._photo_pool_with_enrichment(db, demo_site)
+        record = (
+            enrichment_service.get_for_prospect(db, demo_site.user_id, demo_site.prospect_id)
+            if demo_site.prospect_id
+            else None
+        )
+        labels = await photo_labeling_service.ensure_labels(db, record, pool) if record is not None else {}
+        prospect = (
+            enrichment_service.get_prospect_for_user(db, demo_site.user_id, demo_site.prospect_id)
+            if demo_site.prospect_id
+            else None
+        )
+        result = await service_card_suggestion_service.suggest(
+            business_name=demo_site.business_name,
+            city=demo_site.city or getattr(prospect, "city", None),
+            category=getattr(prospect, "category", None),
+            enrichment=enrichment,
+            pool=pool,
+            labels=labels,
+            config=config,
+        )
+        return {"cards": result.cards, "analysis": result.analysis, "pool": self._labelled_pool_entries(pool, labels)}
+
+    async def _seed_auto_service_cards(self, db: Session, demo_site: DemoSite, enrichment: dict | None) -> None:
+        """At creation, compose the cards with the AI (best-effort, bounded) and store them as the curation.
+
+        Kept only when the AI reaches the template's minimum: fewer cards would make a thinner menu
+        than the generated one. Any failure or timeout silently keeps the generated cards (the
+        label-aware seeding still keeps the truck off them).
+        """
+        config = self._service_cards_config(demo_site)
+        if not config.enabled or not enrichment or not service_card_suggestion_service.is_available:
+            return
+        try:
+            suggestion = await asyncio.wait_for(
+                self.suggest_service_cards(db, demo_site), timeout=_AUTO_SERVICE_CARDS_TIMEOUT_SECONDS
+            )
+        except Exception as exc:
+            logger.warning("Automatic service cards skipped for slug=%s: %s", demo_site.slug, exc)
+            return
+        cards = clean_service_cards(suggestion.get("cards"))
+        if len(cards) < config.min_cards:
+            logger.info(
+                "Automatic service cards too few for slug=%s (%s): generated cards kept", demo_site.slug, len(cards)
+            )
+            return
+        overrides: dict = dict(demo_site.section_overrides) if isinstance(demo_site.section_overrides, dict) else {}
+        overrides["services"] = cards
+        overrides["services_source"] = "ai_auto"
+        demo_site.section_overrides = overrides
+        db.commit()
 
     def get_site_images(self, db: Session, demo_site: DemoSite) -> dict[str, list[str]]:
         """Return the site's photo pool and its current placement order.
@@ -638,6 +793,9 @@ class DemoSiteService:
         db.refresh(demo_site)
 
         enrichment_dict: dict | None = await self._resolve_enrichment_for_creation(db, user.id, prospect_id)
+        # Food-type templates: compose the « Nos spécialités » cards with the AI right away (best-effort,
+        # bounded), so even a bulk-generated site never shows the truck under a dish title.
+        await self._seed_auto_service_cards(db, demo_site, enrichment_dict)
         # Personalise the action colour from the prospect's logo at first generation, not only on regenerate.
         palette: dict[str, str] = self._apply_brand_color(
             theme or self._default_theme_for_template(template_id), template_id, enrichment_dict
@@ -657,6 +815,7 @@ class DemoSiteService:
                 invite_client=invite_client_to_cms,
                 theme=palette,
                 enrichment=enrichment_dict,
+                section_overrides=demo_site.section_overrides,
             )
 
             demo_site.storyblok_space_id = provision.space_id

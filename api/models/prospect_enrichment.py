@@ -82,6 +82,11 @@ class ProspectEnrichment(Base):
     opening_hours: Mapped[list | None] = mapped_column(JSON, nullable=True)
     services: Mapped[list | None] = mapped_column(JSON, nullable=True)
     social_links: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+    # What each photo shows, read once by the vision model and keyed by photo URL:
+    # ``{url: {"kind": "dish" | "truck" | "menu_board" | …, "description", "dishes", "appeal"}}``.
+    # Lets site generation and the specialties editor pick real dish photos (never the truck on a
+    # menu card) and read the dishes off photographed menu boards. NULL until first labelled.
+    photo_labels: Mapped[dict | None] = mapped_column(JSON, nullable=True)
 
     error_message: Mapped[str | None] = mapped_column(Text, nullable=True)
     enriched_at: Mapped[datetime | None] = mapped_column(nullable=True)

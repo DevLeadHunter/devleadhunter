@@ -8,10 +8,18 @@ import type { ComputedRef, Ref } from 'vue'
  * overrides into the rendered content. Nothing is persisted here — saving still goes through the
  * API, which regenerates the published content.
  */
+/** One curated card of the editable section (food « Nos spécialités »): title, blurb, photo. */
+export type DemoPreviewServiceCard = {
+  title: string
+  description: string
+  image: string
+}
+
 export type DemoPreviewOverrides = {
   templateId: string | null
   palette: Record<string, string> | null
   photos: string[] | null
+  services: DemoPreviewServiceCard[] | null
 }
 
 /** Palette keys the dashboard can override — mirrors the theme contract used at generation. */
@@ -21,6 +29,9 @@ const PALETTE_KEYS: string[] = ['primary', 'secondary', 'accent']
 const MAX_PHOTOS: number = 30
 const MAX_PHOTO_LENGTH: number = 2_000_000
 const MAX_TEMPLATE_ID_LENGTH: number = 64
+const MAX_SERVICE_CARDS: number = 12
+const MAX_SERVICE_TITLE_LENGTH: number = 120
+const MAX_SERVICE_DESCRIPTION_LENGTH: number = 400
 
 /**
  * Validate and extract a template id from a raw message value.
@@ -68,6 +79,30 @@ function sanitizePhotos(raw: unknown): string[] | null {
 }
 
 /**
+ * Validate and extract the curated section cards from a raw message value.
+ * @param raw - Untrusted `services` field of the message.
+ * @returns The cards with a non-empty title (texts capped, image an https/data URL or empty), or null when absent.
+ */
+function sanitizeServiceCards(raw: unknown): DemoPreviewServiceCard[] | null {
+  if (!Array.isArray(raw)) return null
+  const cards: DemoPreviewServiceCard[] = []
+  for (const item of raw) {
+    if (cards.length >= MAX_SERVICE_CARDS) break
+    if (typeof item !== 'object' || item === null) continue
+    const source: Record<string, unknown> = item as Record<string, unknown>
+    const title: string = typeof source.title === 'string' ? source.title.trim().slice(0, MAX_SERVICE_TITLE_LENGTH) : ''
+    if (!title) continue
+    const description: string =
+      typeof source.description === 'string' ? source.description.trim().slice(0, MAX_SERVICE_DESCRIPTION_LENGTH) : ''
+    const rawImage: string = typeof source.image === 'string' ? source.image.trim() : ''
+    const image: string =
+      rawImage.length <= MAX_PHOTO_LENGTH && /^(https?:\/\/|data:image\/)/.test(rawImage) ? rawImage : ''
+    cards.push({ title, description, image })
+  }
+  return cards
+}
+
+/**
  * Listen for the dashboard's live-edit messages and expose the current overrides.
  *
  * Origins are deliberately not filtered: the dashboard runs from several origins (Tauri shell,
@@ -81,6 +116,7 @@ export function useDemoPreviewOverrides(enabled: ComputedRef<boolean>): { overri
     templateId: null,
     palette: null,
     photos: null,
+    services: null,
   })
 
   /**
@@ -97,6 +133,7 @@ export function useDemoPreviewOverrides(enabled: ComputedRef<boolean>): { overri
       templateId: sanitizeTemplateId(message.templateId),
       palette: sanitizePalette(message.palette),
       photos: sanitizePhotos(message.photos),
+      services: sanitizeServiceCards(message.services),
     }
   }
 

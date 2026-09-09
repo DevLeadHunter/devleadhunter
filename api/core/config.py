@@ -245,6 +245,14 @@ class Settings(BaseSettings):
         alias="GROQ_MODEL",
         description="Groq model id used for completions (llama-3.3-70b-versatile was decommissioned 2026-06-17)",
     )
+    # Vision model (photo labelling). Only a preference: the service checks it against the account's
+    # live model list and falls back to the next known vision model, so a decommission never leaves
+    # the feature silently dead again.
+    groq_vision_model: str = Field(
+        default="qwen/qwen3.6-27b",
+        alias="GROQ_VISION_MODEL",
+        description="Preferred Groq vision model id for photo labelling (verified against the live model list)",
+    )
 
     # Fallback .fr first-year price (HT, EUR) shown before purchase when the live OVH public
     # catalog is unreachable. The catalog (services/domain/ovh_catalog.py) is the source of truth.

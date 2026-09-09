@@ -267,6 +267,13 @@
               >
                 {{ i + 1 }}
               </span>
+              <span
+                v-if="photoKindChip(photo)"
+                class="drag-reorder-slot-label pointer-events-none absolute top-1 left-7 flex h-5 items-center rounded bg-[var(--app-overlay)] px-1 text-[9px] font-semibold text-white"
+                :title="record?.photo_labels?.[photo]?.description || undefined"
+              >
+                {{ photoKindChip(photo) }}
+              </span>
               <div
                 class="absolute top-1 right-1 flex h-7 w-7 cursor-grab touch-none items-center justify-center rounded bg-[var(--app-overlay)] text-white opacity-100 transition-opacity duration-150 active:cursor-grabbing md:opacity-0 md:group-hover:opacity-100 md:focus-visible:opacity-100"
                 role="button"
@@ -434,6 +441,7 @@ import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import { EnrichmentService } from '~/services/enrichmentService'
 import { useDragToReorder } from '~/composables/useDragToReorder'
 import { useToast } from '~/composables/useToast'
+import { PhotoLabels } from '~/utils/photoLabels'
 
 /** Prospect data enrichment form and actions. */
 const props: UiProspectEnrichmentProps = defineProps({
@@ -744,6 +752,16 @@ function addPhoto(): void {
   if (!url || form.value.photos.includes(url)) return
   form.value.photos.push(url)
   newPhotoUrl.value = ''
+}
+
+/**
+ * Chip label of what the vision pass saw on a photo (plat, camion, menu…).
+ * @param photo - Photo URL.
+ * @returns The label, or '' when the photo is not analysed.
+ */
+function photoKindChip(photo: string): string {
+  const kind: string | undefined = record.value?.photo_labels?.[photo]?.kind
+  return kind && kind !== 'unknown' ? PhotoLabels.label(kind) : ''
 }
 
 /** Remove a photo by index. */

@@ -52,6 +52,67 @@ export type DemoSiteTemplate = {
   color_roles?: Partial<Record<ColorRole, keyof DemoSiteTheme>>
   /** Palette key driving the action colour (== color_roles.action). */
   brand_color_key?: keyof DemoSiteTheme
+  service_cards?: DemoSiteServiceCardsConfig | null
+}
+
+/** ``image`` is a photo URL of the site's pool, or '' (the site then falls back to a real gallery photo). */
+export type DemoSiteServiceCard = {
+  title: string
+  description: string
+  image: string
+}
+
+export type DemoSiteServiceCardsConfig = {
+  enabled: boolean
+  heading: string
+  subject: string
+  min_cards: number
+  max_cards: number
+  with_images: boolean
+}
+
+/** ``kind`` stays `unknown` until the photo is analysed; ``card_worthy`` = a dish or a drink. */
+export type DemoSitePhotoLabel = {
+  url: string
+  kind: string
+  description: string
+  dishes: string[]
+  appeal: number
+  card_worthy: boolean
+}
+
+export type DemoSiteServiceCardsSource = 'manual' | 'ai' | 'ai_auto'
+
+export type DemoSiteServiceCards = {
+  cards: DemoSiteServiceCard[]
+  override_active: boolean
+  override_source: DemoSiteServiceCardsSource | null
+  pool: DemoSitePhotoLabel[]
+  ai_available: boolean
+  labels_pending: number
+  config: DemoSiteServiceCardsConfig
+}
+
+/** ``photo_index`` is the 1-based position of the card's photo in the pool, null without a photo. */
+export type DemoSiteServiceCardSuggestion = DemoSiteServiceCard & {
+  reason: string
+  photo_index: number | null
+}
+
+export type DemoSiteServiceCardsAnalysis = {
+  photos_total: number
+  photos_labelled: number
+  dish_photos: number
+  menu_boards: number
+  menu_dishes: number
+  reviews_used: number
+  model: string
+}
+
+export type DemoSiteServiceCardsSuggestionResult = {
+  cards: DemoSiteServiceCardSuggestion[]
+  pool: DemoSitePhotoLabel[]
+  analysis: DemoSiteServiceCardsAnalysis
 }
 
 export type DemoSiteCreatePayload = {
@@ -93,6 +154,9 @@ export type DemoSiteUpdatePayload = {
   use_brand_color?: boolean
   /** Curated photo placement ([0]→hero, [1]→about, [2:]→gallery), saved with the other edits in one regeneration. */
   image_order?: string[]
+  /** Curated section cards; `[]` drops the curation (back to the generated cards). */
+  services?: DemoSiteServiceCard[]
+  services_source?: 'manual' | 'ai'
 }
 
 /** The site's photo pool and its current placement: order[0]→hero, order[1]→about, order[2:]→gallery. */
@@ -247,6 +311,24 @@ export class DemoSiteService {
    */
   static async updateDemoSite(demoSiteId: number, payload: DemoSiteUpdatePayload): Promise<DemoSite> {
     return ApiClient.patch<DemoSite>(`${BASE_URL}/${demoSiteId}`, payload)
+  }
+
+  /**
+   * Fetch the editable section cards (food « Nos spécialités »), their curation state and the labelled photo pool.
+   * @param demoSiteId - Id of the demo site.
+   * @returns The section state.
+   */
+  static async getDemoSiteServiceCards(demoSiteId: number): Promise<DemoSiteServiceCards> {
+    return ApiClient.get<DemoSiteServiceCards>(`${BASE_URL}/${demoSiteId}/service-cards`)
+  }
+
+  /**
+   * Ask the AI to compose the section cards from the prospect's photos, menus and reviews (nothing is saved).
+   * @param demoSiteId - Id of the demo site.
+   * @returns The suggested cards, the refreshed photo pool and the analysis summary.
+   */
+  static async suggestDemoSiteServiceCards(demoSiteId: number): Promise<DemoSiteServiceCardsSuggestionResult> {
+    return ApiClient.post<DemoSiteServiceCardsSuggestionResult>(`${BASE_URL}/${demoSiteId}/service-cards/suggest`, {})
   }
 
   /**

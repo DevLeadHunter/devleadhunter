@@ -26,6 +26,7 @@ from scrappers.enrichment_scraper import EnrichmentData, _dedupe_reviews, enrich
 from scrappers.google_scraper import GoogleScraper
 from services.decision_maker.types import NameCandidate, NameResolution
 from services.enrichment_content import EnrichmentContentMapper
+from services.photo_labeling_service import photo_labeling_service, should_label_for_category
 from services.prospect_emails import sync_prospect_emails
 from services.prospect_photo_storage_service import prospect_photo_storage
 from services.scraper_diagnostics_service import (
@@ -311,6 +312,11 @@ class EnrichmentService:
             self._record_diagnostic(prospect, None, error=str(exc))
 
         db.commit()
+
+        # Photo labelling (vision, best-effort, in the background) for food trades, so site generation
+        # and the specialties editor know which photos show a dish. Other trades label on demand.
+        if record.status == EnrichmentStatus.COMPLETED.value and should_label_for_category(prospect.category):
+            photo_labeling_service.schedule(prospect.id)
 
         # Decision-maker name resolution (best-effort, never blocks enrichment).
         await self._resolve_contact(db, prospect, record)
@@ -723,6 +729,9 @@ class EnrichmentService:
             record.logo_url = await prospect_photo_storage.rehost_one(record.prospect_id, record.logo_url)
         db.commit()
         db.refresh(record)
+        # Labels are keyed by URL: the rehosted photos need theirs again (only when already labelled).
+        if record.photo_labels:
+            photo_labeling_service.schedule(record.prospect_id)
         return record
 
     def update(self, db: Session, record: ProspectEnrichment, updates: dict[str, Any]) -> ProspectEnrichment:
@@ -767,6 +776,7 @@ class EnrichmentService:
             "opening_hours": record.opening_hours or [],
             "services": record.services or [],
             "social_links": record.social_links or {},
+            "photo_labels": record.photo_labels or {},
         }
 
     def apply_to_content(self, content_json: dict[str, Any], enrichment: dict[str, Any] | None) -> dict[str, Any]:

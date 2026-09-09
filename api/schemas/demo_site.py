@@ -1,6 +1,7 @@
 """Pydantic schemas for demo site generation."""
 
 from datetime import datetime
+from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, EmailStr, Field
 
@@ -52,6 +53,15 @@ class DemoSitePreviewResponse(BaseModel):
     content_json: dict
 
 
+class DemoSiteServiceCard(BaseModel):
+    """One card of the editable section (a dish of the food menu): title, blurb, photo of the pool."""
+
+    title: str = Field(..., min_length=1, max_length=80)
+    description: str = Field(default="", max_length=240)
+    # A photo URL of the site's pool, or "" (the site then falls back to a real gallery photo).
+    image: str = Field(default="", max_length=2000)
+
+
 class DemoSiteUpdateRequest(BaseModel):
     """Partial update payload for an existing demo site."""
 
@@ -67,6 +77,76 @@ class DemoSiteUpdateRequest(BaseModel):
     # Curated photo placement ([0]→hero, [1]→about, [2:]→gallery), saved with the other
     # pending edits so one PATCH regenerates the site once.
     image_order: list[str] | None = None
+    # Curated section cards (food « Nos spécialités »): replaces the generated cards and survives
+    # regenerations. ``[]`` clears the curation (back to the generated cards); omitted = untouched.
+    services: list[DemoSiteServiceCard] | None = Field(default=None, max_length=12)
+    # Where the saved cards come from (display only): manual edits, or an AI suggestion kept as-is.
+    services_source: Literal["manual", "ai"] | None = None
+
+
+class DemoSiteServiceCardsConfig(BaseModel):
+    """Section constraints declared by the template (``TEMPLATE_META['service_cards']``)."""
+
+    enabled: bool = False
+    heading: str = "Prestations"
+    subject: str = "prestations"
+    min_cards: int = 4
+    max_cards: int = 6
+    with_images: bool = True
+
+
+class DemoSitePhotoLabel(BaseModel):
+    """A pool photo with what the vision pass saw on it (``kind`` is ``unknown`` until analysed)."""
+
+    url: str
+    kind: str = "unknown"
+    description: str = ""
+    dishes: list[str] = Field(default_factory=list)
+    appeal: int = 0
+    # Whether the photo may illustrate a card (a dish or a drink).
+    card_worthy: bool = False
+
+
+class DemoSiteServiceCardsResponse(BaseModel):
+    """The section's current cards, the curation state, the photo pool and the AI availability."""
+
+    cards: list[DemoSiteServiceCard]
+    # True when the published cards come from a saved curation (survives regenerations).
+    override_active: bool = False
+    # manual / ai / ai_auto when a curation is active.
+    override_source: str | None = None
+    pool: list[DemoSitePhotoLabel]
+    ai_available: bool = False
+    # Pool photos not analysed yet (labelled on the next suggestion).
+    labels_pending: int = 0
+    config: DemoSiteServiceCardsConfig
+
+
+class DemoSiteServiceCardSuggestion(DemoSiteServiceCard):
+    """A suggested card, with the AI's justification and the 1-based pool index of its photo."""
+
+    reason: str = ""
+    photo_index: int | None = None
+
+
+class DemoSiteServiceCardsAnalysis(BaseModel):
+    """What the suggestion had to work with (shown under the AI button)."""
+
+    photos_total: int = 0
+    photos_labelled: int = 0
+    dish_photos: int = 0
+    menu_boards: int = 0
+    menu_dishes: int = 0
+    reviews_used: int = 0
+    model: str = ""
+
+
+class DemoSiteServiceCardsSuggestionResponse(BaseModel):
+    """AI-composed cards for the section, plus the refreshed photo pool (labels included)."""
+
+    cards: list[DemoSiteServiceCardSuggestion]
+    pool: list[DemoSitePhotoLabel]
+    analysis: DemoSiteServiceCardsAnalysis
 
 
 class DemoSiteImagesResponse(BaseModel):
@@ -104,6 +184,8 @@ class DemoSiteTemplateResponse(BaseModel):
     color_roles: dict[str, str] = {}
     # Palette key driving the action colour (== color_roles["action"]).
     brand_color_key: str = "primary"
+    # Editable-cards section (food « Nos spécialités »); None/disabled hides the cards editor.
+    service_cards: DemoSiteServiceCardsConfig | None = None
 
 
 class DemoSiteResponse(BaseModel):

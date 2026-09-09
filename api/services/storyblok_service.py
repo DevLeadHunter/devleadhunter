@@ -27,7 +27,7 @@ from core.config import settings
 from services.enrichment_content import EnrichmentContentMapper
 from services.templates import registry as template_registry
 from services.templates.default_images import apply_default_images
-from services.templates.site_content import SECTION_COMPONENT_NAMES, SITE_CONTENT_SCHEMAS
+from services.templates.site_content import SECTION_COMPONENT_NAMES, SITE_CONTENT_SCHEMAS, apply_section_overrides
 
 logger = logging.getLogger(__name__)
 
@@ -691,12 +691,14 @@ class StoryblokService:
         invite_client: bool = False,
         theme: dict[str, str] | None = None,
         enrichment: dict[str, Any] | None = None,
+        section_overrides: dict[str, Any] | None = None,
     ) -> StoryblokProvisionResult:
         """
         Create a Storyblok space and seed the home story.
 
         When ``invite_client`` is True, Storyblok sends a collaborator invite to
         ``collaborator_email``. Falls back to mock mode when credentials are missing.
+        ``section_overrides`` (curated cards) replace the generated sections, as on regeneration.
         """
         content_json: dict[str, Any] = self.build_content_json(
             business_name=business_name,
@@ -708,6 +710,7 @@ class StoryblokService:
             theme=theme,
             enrichment=enrichment,
         )
+        apply_section_overrides(content_json, section_overrides, enrichment)
 
         return await self.provision_space_with_content(
             business_name=business_name,

@@ -22,6 +22,8 @@ class ProspectEnrichmentResponse(BaseModel):
     opening_hours: list[dict[str, Any]] = Field(default_factory=list)
     services: list[str] = Field(default_factory=list)
     social_links: dict[str, Any] = Field(default_factory=dict)
+    # Vision labels keyed by photo URL: {"kind", "description", "dishes", "appeal"} (empty until labelled).
+    photo_labels: dict[str, Any] = Field(default_factory=dict)
     # Decision-maker contact (resolved by the cascade, or set manually).
     contact_first_name: str | None = None
     contact_last_name: str | None = None
@@ -59,10 +61,10 @@ class ProspectEnrichmentResponse(BaseModel):
         """NULL collection columns from the DB are exposed as empty lists."""
         return [] if value is None else value
 
-    @field_validator("social_links", mode="before")
+    @field_validator("social_links", "photo_labels", mode="before")
     @classmethod
     def _none_to_empty_dict(cls, value: Any) -> Any:
-        """A NULL social_links column from the DB is exposed as an empty dict."""
+        """A NULL dict column from the DB is exposed as an empty dict."""
         return {} if value is None else value
 
     model_config = ConfigDict(from_attributes=True)

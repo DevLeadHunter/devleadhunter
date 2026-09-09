@@ -104,6 +104,17 @@ def brand_color_key(template_id: str) -> str:
     return key if key in ("primary", "secondary", "accent") else "primary"
 
 
+def service_cards_meta(template_id: str) -> dict[str, Any] | None:
+    """The template's editable-cards section declaration (``TEMPLATE_META['service_cards']``), or None.
+
+    Food declares its « Nos spécialités » menu (4 to 6 dish cards with photos); templates with a
+    fixed prestations grid declare nothing, so the dashboard hides the cards editor for them.
+    """
+    meta = getattr(get_module(template_id), "TEMPLATE_META", {}) or {}
+    raw = meta.get("service_cards")
+    return raw if isinstance(raw, dict) else None
+
+
 def color_roles(template_id: str) -> dict[str, str]:
     """Return the template's canonical colour roles → palette key (``{"action": "primary", …}``).
 

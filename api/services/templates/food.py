@@ -19,6 +19,7 @@ from typing import Any
 from services.templates.site_content import (  # noqa: F401 — re-exported for the registry
     SITE_CONTENT_SCHEMAS,
     extract_specialty,
+    fill_missing_card_images,
     format_rating_value,
     format_review_count,
     map_prospect_and_enrichment,
@@ -47,6 +48,17 @@ TEMPLATE_META: dict[str, object] = {
     # Canonical colour roles → palette key (audit 2026-08-17). Only these roles are editable;
     # keys not listed here don't visibly theme this layer, so the editor hides them.
     "color_roles": {"action": "primary", "fond": "secondary"},
+    # The « Nos spécialités » menu is editable from the dashboard (cards with a real dish photo,
+    # composed by the AI from the photos, menus and reviews, or typed by hand). A food truck's menu
+    # is its identity, so it is the one section worth curating per prospect.
+    "service_cards": {
+        "enabled": True,
+        "heading": "Nos spécialités",
+        "subject": "plats",
+        "min_cards": 4,
+        "max_cards": 6,
+        "with_images": True,
+    },
 }
 
 # Shared base bloks only (flat SiteContent).
@@ -215,30 +227,27 @@ def build_site_content(
     site["faq"] = FOOD_FAQ
     site.update(_EDITORIAL_DEFAULTS)
     _apply_real_food_stats(site, enrichment)
-    _seed_photo_slots(site)
+    _seed_photo_slots(site, enrichment)
     return site
 
 
-def _seed_photo_slots(site: dict[str, Any]) -> None:
+def _seed_photo_slots(site: dict[str, Any], enrichment: dict[str, Any] | None = None) -> None:
     """Fill the menu / collage / testimonial photo slots from the prospect's REAL photos.
 
     ``gallery`` holds the prospect's real photos (``photos[2:]``). We seed one per menu item plus the
     about-collage side vignettes and the featured-review photo from that pool — never a generic stock
-    dish (a burger under « tacos » gives away the template). A slot with no real photo is left empty:
-    the layer then falls back to another real prospect photo (hero / about), never a typed dish. The
-    collage CENTRE stays ``aboutImage`` and the hero stays ``heroImage`` — both already editable.
+    dish (a burger under « tacos » gives away the template). Menu cards take the photos the vision
+    labels call dishes (best first), never the truck or a menu board; without labels the gallery order
+    is used as before. A slot with no real photo is left empty: the layer then falls back to another
+    real prospect photo (hero / about), never a typed dish. The collage CENTRE stays ``aboutImage``
+    and the hero stays ``heroImage`` — both already editable.
     """
     gallery_photos: list[str] = [
         photo["url"]
         for photo in site.get("gallery", [])
         if isinstance(photo, dict) and isinstance(photo.get("url"), str) and photo["url"].strip()
     ]
-    for index, service in enumerate(site.get("services", [])):
-        if not isinstance(service, dict):
-            continue
-        has_image: bool = isinstance(service.get("image"), str) and bool(service["image"].strip())
-        if not has_image and index < len(gallery_photos):
-            service["image"] = gallery_photos[index]
+    fill_missing_card_images(site, enrichment)
     images: dict[str, str] = {}
     if len(gallery_photos) >= 1:
         images["aboutCollageLeft"] = gallery_photos[0]
