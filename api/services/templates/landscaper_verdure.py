@@ -40,12 +40,14 @@ TEMPLATE_META: dict[str, object] = {
     "trades": ["paysagiste", "jardinier", "fleuriste", "paysagisme", "espaces verts", "elagage", "landscaper"],
     "default_theme": {
         "primary": "#2d746d",
-        "secondary": "#003f2e",
+        "secondary": "#f5f6ef",
         "accent": "#bcff83",
     },
-    # Canonical colour roles → palette key (audit 2026-08-17). Only these roles are editable;
+    # Canonical colour roles → palette key (revu 2026-09-09). Only these roles are editable;
     # keys not listed here don't visibly theme this layer, so the editor hides them.
-    "color_roles": {"action": "primary", "fond": "secondary"},
+    "color_roles": {"action": "primary", "fond": "secondary", "secondaire": "accent"},
+    # Action colour = primary, so the prospect's logo colour lands on the buttons.
+    "brand_color_key": "primary",
 }
 
 # Shared base bloks only (flat SiteContent).
