@@ -11,6 +11,7 @@ from __future__ import annotations
 import asyncio
 import logging
 import re
+from dataclasses import replace
 from datetime import UTC, datetime
 from typing import Any
 
@@ -24,6 +25,7 @@ from models.prospect_enrichment import ProspectEnrichment
 from scrappers import scrape_signals
 from scrappers.enrichment_scraper import EnrichmentData, _dedupe_reviews, enrichment_scraper
 from scrappers.google_scraper import GoogleScraper
+from services.decision_maker.activity import activity_consistency
 from services.decision_maker.types import NameCandidate, NameResolution
 from services.enrichment_content import EnrichmentContentMapper
 from services.photo_labeling_service import photo_labeling_service, should_label_for_category
@@ -36,6 +38,7 @@ from services.scraper_diagnostics_service import (
     STATUS_OK,
     scraper_diagnostics_service,
 )
+from services.trade_normalizer import TradeNormalizer
 from services.validation_service import validation_service
 
 logger = logging.getLogger(__name__)
@@ -397,16 +400,35 @@ class EnrichmentService:
             # Shared entity check: the registry match and the Maps place must
             # designate the same business — a conflict blocks automatic use.
             status_to_apply = resolution.status
-            check_status, check_detail = self._identity_check(record, resolution.candidate)
+            candidate = resolution.candidate
+            check_status, check_detail = self._identity_check(record, candidate)
             record.identity_check_status = check_status
             record.identity_check_detail = check_detail
             if status_to_apply == NameResolution.AUTO and check_status == IdentityCheckStatus.CONFLICT.value:
                 status_to_apply = NameResolution.PROPOSED
 
-            if status_to_apply == NameResolution.AUTO and resolution.candidate is not None:
-                self._store_trusted_contact(record, resolution.candidate)
-            elif status_to_apply == NameResolution.PROPOSED and resolution.candidate is not None:
-                self._store_proposed_contact(record, resolution.candidate)
+            # Activity check: a same-département homonym clears the identity check
+            # (same postal zone) yet can still be the wrong person when its
+            # registered activity is unrelated to the prospect's trade. A positive
+            # mismatch demotes to « à confirmer » and records why in the provenance.
+            if status_to_apply == NameResolution.AUTO and candidate is not None:
+                activity_ok, activity_detail = self._activity_check(prospect, candidate)
+                if activity_ok is False:
+                    status_to_apply = NameResolution.PROPOSED
+                    if activity_detail:
+                        candidate = replace(
+                            candidate,
+                            provenance=(
+                                f"{candidate.provenance} — {activity_detail}"
+                                if candidate.provenance
+                                else activity_detail
+                            ),
+                        )
+
+            if status_to_apply == NameResolution.AUTO and candidate is not None:
+                self._store_trusted_contact(record, candidate)
+            elif status_to_apply == NameResolution.PROPOSED and candidate is not None:
+                self._store_proposed_contact(record, candidate)
             else:
                 self._clear_machine_contact(record)
                 # The cascade no longer backs the pending proposal — withdraw it
@@ -416,11 +438,11 @@ class EnrichmentService:
             db.commit()
             scraper_diagnostics_service.record(
                 source="decision_maker",
-                status=STATUS_OK if resolution.candidate is not None else STATUS_EMPTY,
+                status=STATUS_OK if candidate is not None else STATUS_EMPTY,
                 category=prospect.category,
                 city=prospect.city,
-                results_count=1 if resolution.candidate is not None else 0,
-                error_message=self._resolution_outcome_detail(status_to_apply, resolution.candidate),
+                results_count=1 if candidate is not None else 0,
+                error_message=self._resolution_outcome_detail(status_to_apply, candidate),
                 html_snapshot=None,
                 user_id=prospect.user_id,
             )
@@ -635,6 +657,41 @@ class EnrichmentService:
             f"Le registre (CP {siege_postal}) et la fiche Google Maps (CP {place_postal}) "
             "ne désignent probablement pas la même entreprise — homonyme possible",
         )
+
+    @staticmethod
+    def _activity_check(prospect: ProspectDB, candidate: NameCandidate | None) -> tuple[bool | None, str | None]:
+        """Cross-check the registry match's declared activity against the trade.
+
+        A same-département homonym passes :meth:`_identity_check` (same postal
+        zone) yet can still be the WRONG person when its registered activity is
+        unrelated to the prospect's trade — « Mayer Paysagiste » (landscaper)
+        resolved to a company registered for industrial cleaning. Only a POSITIVE
+        mismatch demotes; an unmapped trade or a source without a NAF code stays
+        neutral (golden rule — never block on what we cannot judge).
+
+        Args:
+            prospect: The prospect being resolved (its ``category`` is the trade).
+            candidate: The best candidate, or None.
+
+        Returns:
+            The (activity coherent?, French detail) pair: (None, None) when it
+            cannot be judged, (True, None) when coherent, (False, detail) on a
+            mismatch — the detail is appended to the drawer provenance.
+        """
+        if candidate is None or not candidate.primary:
+            return None, None
+        naf = str(candidate.raw.get("activite") or "") or None
+        trade = TradeNormalizer.normalize(prospect.category)
+        coherent = activity_consistency(trade, naf)
+        if coherent is not False:
+            return coherent, None
+        label = str(candidate.raw.get("activite_label") or "").strip()
+        declared = f"« {label} » (NAF {naf})" if label else f"NAF {naf}"
+        detail = (
+            f"Activité déclarée au registre {declared} sans rapport avec le métier "
+            f"« {trade} » du prospect — homonyme probable, à vérifier"
+        )
+        return False, detail
 
     @staticmethod
     def _anchored_on_exact_listing(prospect: ProspectDB, data: EnrichmentData) -> bool:

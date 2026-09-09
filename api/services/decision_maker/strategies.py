@@ -166,6 +166,18 @@ class RegistreGouvStrategy:
                 "siren": result.get("siren"),
                 "nom_complet": result.get("nom_complet"),
                 "siege_postal_code": str((result.get("siege") or {}).get("code_postal") or "") or None,
+                # Declared main activity (NAF) — the activity guard compares it to
+                # the prospect's trade to catch a same-town homonym in another line
+                # of work (« Mayer Paysagiste » → a cleaning company).
+                "activite": str((result.get("siege") or {}).get("activite_principale") or "") or None,
+                "activite_label": (
+                    str(
+                        result.get("libelle_activite_principale")
+                        or (result.get("siege") or {}).get("libelle_activite_principale")
+                        or ""
+                    )
+                    or None
+                ),
             },
         )
 
@@ -261,6 +273,11 @@ class PappersStrategy:
                     raw={
                         "siren": result.get("siren"),
                         "siege_postal_code": str((result.get("siege") or {}).get("code_postal") or "") or None,
+                        # Declared activity (NAF) for the activity guard — same role as
+                        # the registre_gouv candidate; best-effort across Pappers shapes.
+                        "activite": (
+                            str(result.get("code_naf") or (result.get("siege") or {}).get("code_naf") or "") or None
+                        ),
                     },
                 )
             )

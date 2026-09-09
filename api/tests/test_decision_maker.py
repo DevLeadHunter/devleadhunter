@@ -4,6 +4,7 @@ normalisation, registry parsing and the resolver's confidence/agreement logic.
 All offline: strategy parsers are exercised on fixtures, never the network.
 """
 
+from services.decision_maker.activity import activity_consistency
 from services.decision_maker.greeting import build_greeting
 from services.decision_maker.normalize import (
     company_similarity,
@@ -200,6 +201,42 @@ def test_registre_rejects_unrelated_company() -> None:
         }
     ]
     assert RegistreGouvStrategy().parse_results(results, _context()) == []
+
+
+# ── Activity coherence guard (trade ↔ NAF) ───────────────────────────────────
+
+
+def test_activity_consistency_flags_a_trade_mismatch() -> None:
+    """The Mayer case: a landscaper resolved to an industrial-cleaning company."""
+    assert activity_consistency("paysagiste", "81.22Z") is False  # nettoyage industriel
+    assert activity_consistency("paysagiste", "81.30Z") is True  # aménagement paysager
+    assert activity_consistency("garagiste", "45.20A") is True
+    assert activity_consistency("coiffeur", "96.02B") is True
+
+
+def test_activity_consistency_is_neutral_when_it_cannot_judge() -> None:
+    """Unmapped trade or missing NAF → None (never demote on a blind spot)."""
+    assert activity_consistency(None, "81.30Z") is None
+    assert activity_consistency("paysagiste", None) is None
+    assert activity_consistency("météorologue", "81.30Z") is None  # trade not modelled
+
+
+def test_registry_candidate_carries_the_declared_activity() -> None:
+    """The NAF code rides on the candidate's raw so the activity guard can read it."""
+    results = [
+        {
+            "nom_complet": "DUBOIS Michel (PLOMBERIE DUBOIS)",
+            "nom_raison_sociale": "PLOMBERIE DUBOIS",
+            "nature_juridique": "1000",
+            "siren": "123456789",
+            "siege": {"code_postal": "35000", "libelle_commune": "RENNES", "activite_principale": "43.22Z"},
+            "dirigeants": [
+                {"nom": "DUBOIS", "prenoms": "Michel", "qualite": "", "type_dirigeant": "personne physique"}
+            ],
+        }
+    ]
+    candidates = RegistreGouvStrategy().parse_results(results, _context())
+    assert candidates[0].raw["activite"] == "43.22Z"
 
 
 # ── Signal extraction ────────────────────────────────────────────────────────
