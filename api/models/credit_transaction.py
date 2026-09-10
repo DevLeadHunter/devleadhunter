@@ -7,7 +7,6 @@ from typing import TYPE_CHECKING
 
 from sqlalchemy import ForeignKey, Integer, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
-from sqlalchemy.sql import func
 
 from core.database import Base
 
@@ -61,7 +60,7 @@ class CreditTransaction(Base):
     transaction_metadata: Mapped[str | None] = mapped_column(
         String(1000), nullable=True, comment="Optional JSON metadata for additional transaction information"
     )
-    created_at: Mapped[datetime] = mapped_column(server_default=func.now(), nullable=False, index=True)
+    created_at: Mapped[datetime] = mapped_column(default=datetime.utcnow, nullable=False, index=True)
 
     # Relationship to User
     user: Mapped["User"] = relationship("User", back_populates="credit_transactions")

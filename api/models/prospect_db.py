@@ -7,7 +7,6 @@ from typing import TYPE_CHECKING
 
 from sqlalchemy import JSON, Boolean, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
-from sqlalchemy.sql import func
 
 from core.database import Base
 
@@ -84,8 +83,8 @@ class ProspectDB(Base):
     # feeds the "site améliorable → proposer une refonte" pitch.
     lighthouse_json: Mapped[dict | None] = mapped_column(JSON, nullable=True)
     lighthouse_at: Mapped[datetime | None] = mapped_column(nullable=True)
-    created_at: Mapped[datetime] = mapped_column(server_default=func.now(), nullable=False)
-    updated_at: Mapped[datetime | None] = mapped_column(onupdate=func.now(), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(default=datetime.utcnow, nullable=False)
+    updated_at: Mapped[datetime | None] = mapped_column(onupdate=datetime.utcnow, nullable=True)
 
     # Relationships
     campaigns: Mapped[list["Campaign"]] = relationship(

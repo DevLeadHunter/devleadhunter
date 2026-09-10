@@ -12,7 +12,6 @@ from datetime import datetime
 
 from sqlalchemy import Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
-from sqlalchemy.sql import func
 
 from core.database import Base
 
@@ -49,4 +48,4 @@ class ActivityLog(Base):
     detail: Mapped[str | None] = mapped_column(Text, nullable=True)
     entity_type: Mapped[str | None] = mapped_column(String(32), nullable=True)
     entity_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
-    created_at: Mapped[datetime] = mapped_column(server_default=func.now(), nullable=False, index=True)
+    created_at: Mapped[datetime] = mapped_column(default=datetime.utcnow, nullable=False, index=True)

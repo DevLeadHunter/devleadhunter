@@ -13,7 +13,6 @@ from typing import TYPE_CHECKING
 
 from sqlalchemy import ForeignKey, Integer
 from sqlalchemy.orm import Mapped, mapped_column, relationship
-from sqlalchemy.sql import func
 
 from core.database import Base
 
@@ -49,7 +48,7 @@ class CampaignFollowUp(Base):
     )
     delay_days: Mapped[int] = mapped_column(Integer, nullable=False, default=5)
     position: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
-    created_at: Mapped[datetime] = mapped_column(server_default=func.now(), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(default=datetime.utcnow, nullable=False)
 
     campaign: Mapped[Campaign] = relationship("Campaign", back_populates="follow_ups")
     template: Mapped[EmailTemplate] = relationship("EmailTemplate")

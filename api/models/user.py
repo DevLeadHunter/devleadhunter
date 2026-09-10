@@ -7,7 +7,6 @@ from typing import TYPE_CHECKING
 
 from sqlalchemy import DateTime, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
-from sqlalchemy.sql import func
 
 from core.database import Base
 from enums.sending_provider import SendingProvider
@@ -73,8 +72,8 @@ class User(Base):
     postmaster_oauth_refresh_token: Mapped[str | None] = mapped_column(Text, nullable=True)
     postmaster_oauth_access_token: Mapped[str | None] = mapped_column(Text, nullable=True)
     postmaster_oauth_token_expires_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
-    created_at: Mapped[datetime] = mapped_column(server_default=func.now(), nullable=False)
-    updated_at: Mapped[datetime | None] = mapped_column(onupdate=func.now(), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(default=datetime.utcnow, nullable=False)
+    updated_at: Mapped[datetime | None] = mapped_column(onupdate=datetime.utcnow, nullable=True)
 
     # Relationship to credit transactions
     credit_transactions: Mapped[list["CreditTransaction"]] = relationship(

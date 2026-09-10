@@ -9,7 +9,6 @@ from typing import TYPE_CHECKING
 from sqlalchemy import Column, DateTime, ForeignKey, Integer, String, Table, Text
 from sqlalchemy import Enum as SQLEnum
 from sqlalchemy.orm import Mapped, mapped_column, relationship
-from sqlalchemy.sql import func
 
 from core.database import Base
 
@@ -36,7 +35,7 @@ campaign_prospects = Table(
     Base.metadata,
     Column("campaign_id", Integer, ForeignKey("campaigns.id", ondelete="CASCADE"), primary_key=True),
     Column("prospect_id", Integer, ForeignKey("prospects.id", ondelete="CASCADE"), primary_key=True),
-    Column("added_at", DateTime, nullable=False, server_default=func.now()),
+    Column("added_at", DateTime, nullable=False, default=datetime.utcnow),
     # Explicit send order within the campaign (0-based, set from the order prospects are added).
     # The queue pairs ascending time-slots to prospects in this order, so with max_emails_per_day=1
     # the operator fully controls which group goes on which day (1 métier/jour). Bulk inserts share
@@ -104,8 +103,8 @@ class Campaign(Base):
     max_emails_per_day: Mapped[int | None] = mapped_column(Integer, nullable=True)
     started_at: Mapped[datetime | None] = mapped_column(nullable=True)
 
-    created_at: Mapped[datetime] = mapped_column(server_default=func.now(), nullable=False)
-    updated_at: Mapped[datetime | None] = mapped_column(onupdate=func.now(), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(default=datetime.utcnow, nullable=False)
+    updated_at: Mapped[datetime | None] = mapped_column(onupdate=datetime.utcnow, nullable=True)
 
     # Relationships
     user: Mapped["User"] = relationship("User", back_populates="campaigns")

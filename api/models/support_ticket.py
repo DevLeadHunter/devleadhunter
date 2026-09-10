@@ -9,7 +9,6 @@ from typing import TYPE_CHECKING
 
 from sqlalchemy import ForeignKey, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
-from sqlalchemy.sql import func
 
 from core.database import Base
 from enums.support_status import SupportTicketStatus
@@ -35,8 +34,8 @@ class SupportTicket(Base):
     subject: Mapped[str] = mapped_column(String(255), nullable=False)
     description: Mapped[str] = mapped_column(Text, nullable=False)
     status: Mapped[str] = mapped_column(String(32), default=SupportTicketStatus.OPEN.value, nullable=False, index=True)
-    created_at: Mapped[datetime] = mapped_column(server_default=func.now(), nullable=False)
-    updated_at: Mapped[datetime | None] = mapped_column(onupdate=func.now(), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(default=datetime.utcnow, nullable=False)
+    updated_at: Mapped[datetime | None] = mapped_column(onupdate=datetime.utcnow, nullable=True)
     closed_at: Mapped[datetime | None] = mapped_column(nullable=True)
     last_message_at: Mapped[datetime | None] = mapped_column(nullable=True, index=True)
 

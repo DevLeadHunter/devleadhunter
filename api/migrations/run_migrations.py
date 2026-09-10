@@ -131,6 +131,7 @@ MIGRATION_MODULES: list[tuple[str, str]] = [
     ("add_enrichment_photo_labels", "migrations.add_enrichment_photo_labels"),
     ("add_demo_site_section_overrides", "migrations.add_demo_site_section_overrides"),
     ("fix_sms_created_at_utc", "migrations.fix_sms_created_at_utc"),
+    ("fix_server_time_columns_utc", "migrations.fix_server_time_columns_utc"),
 ]
 
 # Modules of this package that are not migrations and must not be registered.

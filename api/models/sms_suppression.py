@@ -4,7 +4,6 @@ from datetime import datetime
 
 from sqlalchemy import Integer, String, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column
-from sqlalchemy.sql import func
 
 from core.database import Base
 
@@ -30,4 +29,4 @@ class SmsSuppression(Base):
     user_id: Mapped[int] = mapped_column(Integer, nullable=False, index=True)
     phone_e164: Mapped[str] = mapped_column(String(20), nullable=False)
     reason: Mapped[str] = mapped_column(String(16), nullable=False, default="stop")
-    created_at: Mapped[datetime] = mapped_column(server_default=func.now(), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(default=datetime.utcnow, nullable=False)

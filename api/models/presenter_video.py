@@ -9,7 +9,6 @@ from datetime import datetime
 
 from sqlalchemy import Boolean, Float, ForeignKey, String
 from sqlalchemy.orm import Mapped, mapped_column
-from sqlalchemy.sql import func
 
 from core.database import Base
 
@@ -36,8 +35,8 @@ class PresenterVideo(Base):
     # « upload » (fichier importé, découpage saisi à la main) ou « recorded »
     # (trois prises filmées dans l'app : les segments sont mesurés, pas devinés).
     source: Mapped[str] = mapped_column(String(16), nullable=False, default="upload")
-    created_at: Mapped[datetime] = mapped_column(server_default=func.now(), nullable=False)
-    updated_at: Mapped[datetime | None] = mapped_column(onupdate=func.now(), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(default=datetime.utcnow, nullable=False)
+    updated_at: Mapped[datetime | None] = mapped_column(onupdate=datetime.utcnow, nullable=True)
 
     def __repr__(self) -> str:
         return f"<PresenterVideo id={self.id} user_id={self.user_id} duration={self.duration_seconds}s>"

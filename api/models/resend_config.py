@@ -12,7 +12,6 @@ from datetime import datetime
 
 from sqlalchemy import ForeignKey, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
-from sqlalchemy.sql import func
 
 from core.database import Base
 
@@ -46,8 +45,8 @@ class ResendConfig(Base):
     webhook_secret: Mapped[str | None] = mapped_column(Text, nullable=True)
     from_email: Mapped[str] = mapped_column(String(255), nullable=False)
     from_name: Mapped[str | None] = mapped_column(String(255), nullable=True)
-    created_at: Mapped[datetime] = mapped_column(server_default=func.now(), nullable=False)
-    updated_at: Mapped[datetime | None] = mapped_column(onupdate=func.now(), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(default=datetime.utcnow, nullable=False)
+    updated_at: Mapped[datetime | None] = mapped_column(onupdate=datetime.utcnow, nullable=True)
 
     user = relationship("User")
 

@@ -6,7 +6,6 @@ from datetime import datetime
 
 from sqlalchemy import ForeignKey, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
-from sqlalchemy.sql import func
 
 from core.database import Base
 
@@ -33,7 +32,7 @@ class ProspectInteraction(Base):
     interaction_type: Mapped[str] = mapped_column(String(50), nullable=False, index=True)
     description: Mapped[str] = mapped_column(Text, nullable=False)
     interaction_metadata: Mapped[str | None] = mapped_column(Text, nullable=True)  # JSON string
-    created_at: Mapped[datetime] = mapped_column(server_default=func.now(), nullable=False, index=True)
+    created_at: Mapped[datetime] = mapped_column(default=datetime.utcnow, nullable=False, index=True)
 
     def __repr__(self) -> str:
         """String representation of the interaction."""

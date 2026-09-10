@@ -6,7 +6,6 @@ from datetime import datetime
 
 from sqlalchemy import Integer, String, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column
-from sqlalchemy.sql import func
 
 from core.database import Base
 
@@ -35,4 +34,4 @@ class FacebookPageExclusion(Base):
     user_id: Mapped[int] = mapped_column(Integer, nullable=False, index=True)
     page_url: Mapped[str] = mapped_column(String(512), nullable=False)
     reason: Mapped[str] = mapped_column(String(32), nullable=False)
-    created_at: Mapped[datetime] = mapped_column(server_default=func.now(), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(default=datetime.utcnow, nullable=False)

@@ -12,7 +12,6 @@ from typing import TYPE_CHECKING
 
 from sqlalchemy import JSON, Boolean, Integer, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
-from sqlalchemy.sql import func
 
 from core.database import Base
 from enums.acquisition import AcquisitionRunMode, AcquisitionRunStatus
@@ -68,8 +67,8 @@ class AcquisitionRun(Base):
     campaign_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
     review_approved_at: Mapped[datetime | None] = mapped_column(nullable=True)
     stats: Mapped[dict | None] = mapped_column(JSON, nullable=True)
-    created_at: Mapped[datetime] = mapped_column(server_default=func.now(), nullable=False)
-    updated_at: Mapped[datetime | None] = mapped_column(onupdate=func.now(), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(default=datetime.utcnow, nullable=False)
+    updated_at: Mapped[datetime | None] = mapped_column(onupdate=datetime.utcnow, nullable=True)
 
     items: Mapped[list["AcquisitionRunItem"]] = relationship(
         "AcquisitionRunItem",

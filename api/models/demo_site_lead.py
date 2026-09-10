@@ -6,7 +6,6 @@ from datetime import datetime
 
 from sqlalchemy import Integer, Text
 from sqlalchemy.orm import Mapped, mapped_column
-from sqlalchemy.sql import func
 
 from core.database import Base
 
@@ -33,4 +32,4 @@ class DemoSiteLead(Base):
     prospect_id: Mapped[int | None] = mapped_column(Integer, nullable=True, index=True)
     demo_site_id: Mapped[int] = mapped_column(Integer, nullable=False, index=True)
     message: Mapped[str | None] = mapped_column(Text, nullable=True)
-    created_at: Mapped[datetime] = mapped_column(server_default=func.now(), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(default=datetime.utcnow, nullable=False)

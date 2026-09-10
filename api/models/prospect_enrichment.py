@@ -9,7 +9,6 @@ from datetime import datetime
 
 from sqlalchemy import JSON, Boolean, Float, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
-from sqlalchemy.sql import func
 
 from core.database import Base
 from enums.enrichment_status import EnrichmentStatus
@@ -90,8 +89,8 @@ class ProspectEnrichment(Base):
 
     error_message: Mapped[str | None] = mapped_column(Text, nullable=True)
     enriched_at: Mapped[datetime | None] = mapped_column(nullable=True)
-    created_at: Mapped[datetime] = mapped_column(server_default=func.now(), nullable=False)
-    updated_at: Mapped[datetime | None] = mapped_column(onupdate=func.now(), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(default=datetime.utcnow, nullable=False)
+    updated_at: Mapped[datetime | None] = mapped_column(onupdate=datetime.utcnow, nullable=True)
 
     def __repr__(self) -> str:
         return f"<ProspectEnrichment id={self.id} prospect_id={self.prospect_id} status={self.status}>"

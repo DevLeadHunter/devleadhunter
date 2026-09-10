@@ -14,7 +14,6 @@ from typing import TYPE_CHECKING
 
 from sqlalchemy import DateTime, ForeignKey, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
-from sqlalchemy.sql import func
 
 from core.database import Base
 
@@ -88,8 +87,8 @@ class EmailQueue(Base):
     status: Mapped[str] = mapped_column(String(20), nullable=False, default="pending", index=True)
     # Why a row was skipped, shown on the campaign page (empty for every other status).
     skip_reason: Mapped[str | None] = mapped_column(String(160), nullable=True)
-    created_at: Mapped[datetime] = mapped_column(server_default=func.now(), nullable=False)
-    updated_at: Mapped[datetime | None] = mapped_column(onupdate=func.now(), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(default=datetime.utcnow, nullable=False)
+    updated_at: Mapped[datetime | None] = mapped_column(onupdate=datetime.utcnow, nullable=True)
 
     # Relationships — loaded lazily; the worker reads many rows per tick.
     user: Mapped[User] = relationship("User")

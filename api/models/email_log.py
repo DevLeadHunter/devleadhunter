@@ -7,7 +7,6 @@ from typing import TYPE_CHECKING, Optional
 
 from sqlalchemy import Boolean, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
-from sqlalchemy.sql import func
 
 from core.database import Base
 from enums.email_status import EmailStatus
@@ -104,8 +103,8 @@ class EmailLog(Base):
     error_message: Mapped[str | None] = mapped_column(Text, nullable=True)
     extra_metadata: Mapped[str | None] = mapped_column(Text, nullable=True)  # JSON string
 
-    created_at: Mapped[datetime] = mapped_column(server_default=func.now(), nullable=False)
-    updated_at: Mapped[datetime | None] = mapped_column(onupdate=func.now(), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(default=datetime.utcnow, nullable=False)
+    updated_at: Mapped[datetime | None] = mapped_column(onupdate=datetime.utcnow, nullable=True)
 
     # Relationships
     user: Mapped["User"] = relationship("User", back_populates="email_logs")

@@ -10,7 +10,6 @@ from datetime import datetime
 from sqlalchemy import Integer, String, Text
 from sqlalchemy.dialects.mysql import MEDIUMTEXT
 from sqlalchemy.orm import Mapped, mapped_column
-from sqlalchemy.sql import func
 
 from core.database import Base
 
@@ -41,7 +40,7 @@ class ScraperDiagnostic(Base):
     # Who triggered the run (nullable — background/system runs have none).
     user_id: Mapped[int | None] = mapped_column(Integer, nullable=True, index=True)
 
-    created_at: Mapped[datetime] = mapped_column(server_default=func.now(), nullable=False, index=True)
+    created_at: Mapped[datetime] = mapped_column(default=datetime.utcnow, nullable=False, index=True)
 
     def __repr__(self) -> str:
         return f"<ScraperDiagnostic id={self.id} source={self.source} status={self.status} n={self.results_count}>"

@@ -11,7 +11,6 @@ from datetime import datetime
 
 from sqlalchemy import JSON, Integer
 from sqlalchemy.orm import Mapped, mapped_column
-from sqlalchemy.sql import func
 
 from core.database import Base
 
@@ -47,8 +46,8 @@ class SendPolicy(Base):
     follow_up_delay_days: Mapped[int] = mapped_column(
         Integer, nullable=False, default=DEFAULT_FOLLOW_UP_DELAY_DAYS, server_default="5"
     )
-    created_at: Mapped[datetime] = mapped_column(server_default=func.now(), nullable=False)
-    updated_at: Mapped[datetime | None] = mapped_column(onupdate=func.now(), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(default=datetime.utcnow, nullable=False)
+    updated_at: Mapped[datetime | None] = mapped_column(onupdate=datetime.utcnow, nullable=True)
 
     def __repr__(self) -> str:
         """String representation of the policy."""

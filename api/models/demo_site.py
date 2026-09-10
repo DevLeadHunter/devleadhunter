@@ -5,7 +5,6 @@ from typing import TYPE_CHECKING
 
 from sqlalchemy import JSON, BigInteger, Boolean, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
-from sqlalchemy.sql import func
 
 from core.database import Base
 from enums.demo_site_status import DemoSiteStatus
@@ -90,8 +89,8 @@ class DemoSite(Base):
     # yet reviewed; cleared whenever the site content is rebuilt so a stale review never lingers.
     site_reviewed_at: Mapped[datetime | None] = mapped_column(nullable=True)
     expires_at: Mapped[datetime] = mapped_column(nullable=False, index=True)
-    created_at: Mapped[datetime] = mapped_column(server_default=func.now(), nullable=False)
-    updated_at: Mapped[datetime | None] = mapped_column(onupdate=func.now(), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(default=datetime.utcnow, nullable=False)
+    updated_at: Mapped[datetime | None] = mapped_column(onupdate=datetime.utcnow, nullable=True)
     deleted_at: Mapped[datetime | None] = mapped_column(nullable=True)
 
     user: Mapped["User"] = relationship("User", back_populates="demo_sites")
