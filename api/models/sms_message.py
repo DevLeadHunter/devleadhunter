@@ -4,7 +4,6 @@ from datetime import datetime
 
 from sqlalchemy import Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
-from sqlalchemy.sql import func
 
 from core.database import Base
 
@@ -45,5 +44,6 @@ class SmsMessage(Base):
     price_cents: Mapped[int | None] = mapped_column(Integer, nullable=True)
     segments: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
     error: Mapped[str | None] = mapped_column(Text, nullable=True)
-    created_at: Mapped[datetime] = mapped_column(server_default=func.now(), nullable=False, index=True)
+    # UTC (Python-side), like delivered_at — the MySQL clock is not UTC in prod.
+    created_at: Mapped[datetime] = mapped_column(default=datetime.utcnow, nullable=False, index=True)
     delivered_at: Mapped[datetime | None] = mapped_column(nullable=True)

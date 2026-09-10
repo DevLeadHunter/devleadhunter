@@ -41,7 +41,7 @@
             <span :class="['app-badge', SMS_STATUS_BADGE_CLASS[sms.status] ?? '']">
               {{ SMS_STATUS_LABELS[sms.status] ?? sms.status }}
             </span>
-            <span v-if="sms.status_detail" class="text-xs text-[var(--app-red)]">{{ sms.status_detail }}</span>
+            <span v-if="sms.status_detail" class="text-xs text-[var(--app-ink-soft)]">{{ sms.status_detail }}</span>
           </div>
 
           <div
