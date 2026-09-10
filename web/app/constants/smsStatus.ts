@@ -15,3 +15,18 @@ export const SMS_STATUS_BADGE_CLASS: Record<SmsStatus, string> = {
   delivered: 'app-badge--success',
   failed: 'app-badge--danger',
 }
+
+/** Human label for the known smsmode delivery-detail tokens. */
+const SMS_STATUS_DETAIL_LABELS: Record<string, string> = {
+  DELIVERED_TO_NETWORK: 'Remis au réseau opérateur',
+  DELIVERED_TO_HANDSET: 'Reçu sur le téléphone',
+}
+
+/**
+ * Human label for an SMS delivery detail.
+ * @param detail - The raw status detail from the provider delivery receipt.
+ * @returns The French label when the token is known, the raw detail otherwise.
+ */
+export function smsStatusDetailLabel(detail: string): string {
+  return SMS_STATUS_DETAIL_LABELS[detail] ?? detail
+}

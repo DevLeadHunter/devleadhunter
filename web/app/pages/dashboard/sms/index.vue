@@ -125,7 +125,7 @@
                   v-if="message.status === 'failed' && (message.status_detail || message.error)"
                   class="mt-1 text-[11px] text-[var(--app-red)]"
                 >
-                  {{ message.status_detail || message.error }}
+                  {{ message.status_detail ? smsStatusDetailLabel(message.status_detail) : message.error }}
                 </p>
               </td>
               <td data-label="SMS" class="text-muted px-3 py-2.5 text-sm tabular-nums">
@@ -147,7 +147,7 @@ import type { ComputedRef, Ref } from 'vue'
 import { computed, onMounted, ref, watch } from 'vue'
 import type { SmsCredit, SmsMessage, SmsMessagesResponse, SmsStats } from '~/services/smsService'
 import { SmsService } from '~/services/smsService'
-import { SMS_STATUS_BADGE_CLASS, SMS_STATUS_LABELS } from '~/constants/smsStatus'
+import { SMS_STATUS_BADGE_CLASS, SMS_STATUS_LABELS, smsStatusDetailLabel } from '~/constants/smsStatus'
 import { formatEuros } from '~/utils/currency'
 import { formatCompactDateTime } from '~/utils/date'
 import { isPlatformAdmin } from '~/utils/userRoles'

@@ -41,7 +41,15 @@
             <span :class="['app-badge', SMS_STATUS_BADGE_CLASS[sms.status] ?? '']">
               {{ SMS_STATUS_LABELS[sms.status] ?? sms.status }}
             </span>
-            <span v-if="sms.status_detail" class="text-xs text-[var(--app-ink-soft)]">{{ sms.status_detail }}</span>
+            <span
+              v-if="sms.status_detail"
+              :class="[
+                'text-xs',
+                sms.status === 'delivered' ? 'text-[var(--app-green)]' : 'text-[var(--app-ink-soft)]',
+              ]"
+            >
+              {{ smsStatusDetailLabel(sms.status_detail) }}
+            </span>
           </div>
 
           <div
@@ -49,7 +57,9 @@
             class="rounded-lg border border-[var(--app-red)]/30 bg-[var(--app-red-soft)] p-3 text-xs text-[var(--app-ink)]"
           >
             <p class="font-semibold text-[var(--app-red)]">SMS non délivré</p>
-            <p class="mt-1 [overflow-wrap:anywhere] break-words">{{ sms.status_detail || sms.error || '—' }}</p>
+            <p class="mt-1 [overflow-wrap:anywhere] break-words">
+              {{ sms.status_detail ? smsStatusDetailLabel(sms.status_detail) : sms.error || '—' }}
+            </p>
           </div>
 
           <div>
@@ -105,7 +115,7 @@ import type { UiSmsLogDrawerEmits, UiSmsLogDrawerProps } from '~/types/UiSmsLogD
 import type { ComputedRef, EmitFn, PropType } from 'vue'
 import type { SmsMessage } from '~/services/smsService'
 import { computed } from 'vue'
-import { SMS_STATUS_BADGE_CLASS, SMS_STATUS_LABELS } from '~/constants/smsStatus'
+import { SMS_STATUS_BADGE_CLASS, SMS_STATUS_LABELS, smsStatusDetailLabel } from '~/constants/smsStatus'
 import { formatEuros } from '~/utils/currency'
 import { parseApiDate } from '~/utils/date'
 
