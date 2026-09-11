@@ -1717,4 +1717,10 @@ class CampaignQueueService:
                     "site_reviewed_at": site.site_reviewed_at.isoformat() if site and site.site_reviewed_at else None,
                 }
             )
+
+        # The opt-in SMS automations (relance J+30 + cold) have no queue rows — project them into the same forecast.
+        from services.sms_automation_service import sms_automation_service
+
+        forecast.extend(sms_automation_service.forecast_rows(self.db, user_id, start, end))
+        forecast.sort(key=lambda row: str(row["scheduled_at"]))
         return forecast

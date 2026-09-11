@@ -165,7 +165,7 @@
         <div v-else class="card overflow-hidden">
           <div
             v-for="item in day.items"
-            :key="item.queue_id"
+            :key="item.rowKey"
             :class="[
               'flex flex-wrap items-center gap-x-4 gap-y-2 px-4 py-3 transition-colors first:border-t-0',
               'border-t border-[var(--app-line-soft)]',
@@ -173,7 +173,7 @@
               item.reviewed ? 'opacity-60' : '',
             ]"
           >
-            <span class="font-label w-12 shrink-0 text-sm font-medium text-[var(--app-ink)] tabular-nums">
+            <span class="font-label w-14 shrink-0 text-sm font-medium text-[var(--app-ink)] tabular-nums">
               {{ item.timeLabel }}
             </span>
 
@@ -183,6 +183,15 @@
                   item.prospect_name || `#${item.prospect_id}`
                 }}</span>
                 <span
+                  v-if="item.isAutoSms"
+                  class="font-label inline-flex shrink-0 items-center gap-1 rounded bg-[var(--app-violet-soft)] px-1.5 py-0.5 text-[10px] font-bold text-[var(--app-violet)]"
+                  title="Envoi automatique SMS — heure estimée (fenêtre légale, 3 par passe, plafond quotidien)"
+                >
+                  <UIcon name="i-lucide-message-square-text" class="h-3 w-3" />
+                  {{ item.queue_type === 'sms_relance' ? 'SMS J+30 auto' : 'SMS 1er contact auto' }}
+                </span>
+                <span
+                  v-else
                   :class="[
                     'app-badge !py-0.5',
                     item.queue_type === 'initial' ? 'app-badge--info' : 'app-badge--progress',
@@ -286,10 +295,12 @@ import type { UseToastReturn } from '~/types/Composables'
 
 /** A forecast item enriched with display fields and its live review state. */
 type ForecastRow = CampaignForecastItem & {
+  rowKey: string
   timeLabel: string
   metaLine: string
   isWarning: boolean
   isSent: boolean
+  isAutoSms: boolean
   reviewed: boolean
 }
 
@@ -437,12 +448,20 @@ function toRow(item: CampaignForecastItem): ForecastRow {
   const metaParts: string[] = []
   if (item.prospect_city) metaParts.push(item.prospect_city)
   if (item.prospect_category) metaParts.push(item.prospect_category)
+  const isAutoSms: boolean = item.queue_type === 'sms_relance' || item.queue_type === 'sms_cold'
+  const time: string = parseApiDate(item.scheduled_at).toLocaleTimeString(LOCALE, {
+    hour: '2-digit',
+    minute: '2-digit',
+  })
   return {
     ...item,
-    timeLabel: parseApiDate(item.scheduled_at).toLocaleTimeString(LOCALE, { hour: '2-digit', minute: '2-digit' }),
+    rowKey: item.queue_id !== null ? `q-${item.queue_id}` : `sms-${item.queue_type}-${item.prospect_id}`,
+    // An automated SMS has no queue row: its pass time is an estimate, flagged as such.
+    timeLabel: isAutoSms ? `~${time}` : time,
     metaLine: metaParts.join(' · '),
     isWarning: item.status === 'skipped',
     isSent: item.status === 'sent',
+    isAutoSms,
     reviewed: item.site_reviewed_at !== null && item.site_reviewed_at !== undefined,
   }
 }

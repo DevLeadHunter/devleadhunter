@@ -237,18 +237,23 @@ class CampaignListResponse(BaseModel):
 
 
 class CampaignForecastItem(BaseModel):
-    """One scheduled send in the week-ahead forecast, across all campaigns."""
+    """One scheduled send in the week-ahead forecast, across all campaigns.
 
-    queue_id: int
+    Rows come from the campaign queue, plus the projected automated SMS (relance
+    J+30 / cold) — those have no queue row: ``queue_id`` and ``campaign_id`` are
+    ``None`` and ``scheduled_at`` is an estimate of the worker's next passes.
+    """
+
+    queue_id: int | None = None
     scheduled_at: datetime
-    campaign_id: int
+    campaign_id: int | None = None
     campaign_name: str
     prospect_id: int
     prospect_name: str | None = None
     prospect_email: str | None = None
     prospect_city: str | None = None
     prospect_category: str = ""
-    # "initial" (J1) or "followup".
+    # "initial" (J1), "followup", or the automated SMS projections "sms_relance" / "sms_cold".
     queue_type: str
     follow_up_index: int = 0
     ab_variant: str | None = None

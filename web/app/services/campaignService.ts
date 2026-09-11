@@ -177,16 +177,17 @@ export type ForecastLinkKind = 'website'
 
 /** One scheduled send in the week-ahead forecast, across all campaigns. */
 export type CampaignForecastItem = {
-  queue_id: number
+  /** Null for a projected automated SMS (no queue row behind it). */
+  queue_id: number | null
   scheduled_at: string
-  campaign_id: number
+  campaign_id: number | null
   campaign_name: string
   prospect_id: number
   prospect_name?: string | null
   prospect_email?: string | null
   prospect_city?: string | null
   prospect_category: string
-  queue_type: 'initial' | 'followup'
+  queue_type: 'initial' | 'followup' | 'sms_relance' | 'sms_cold'
   follow_up_index: number
   ab_variant?: string | null
   /** 'pending' for an upcoming send; 'skipped' (with skip_reason) for one that will not go out. */
