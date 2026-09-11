@@ -302,3 +302,43 @@ def test_build_from_raw_does_not_duplicate_reviews_across_dom_and_relay() -> Non
     # First-seen is the Relay body (no « Plats excellents » DOM chrome).
     assert "Copieux et délicieux" in fox["text"]
     assert "Plats excellents" not in fox["text"]
+
+
+def test_build_from_raw_captures_page_harvested_email() -> None:
+    """A contact email harvested from the page reaches EnrichmentData even when the main text has none.
+
+    Regression: Garage Direct AUTO showed « direct-auto-21@outlook.fr » in a Coordonnées row rendered
+    outside div[role="main"], so the about_text scan (main only) missed it. The page JS now harvests
+    the email into dom["emails"], independent of where it renders.
+    """
+    dom = {
+        "place_title": "Garage Direct AUTO",
+        "about_text": "Garage Direct AUTO\nRecommandé par 100 % (12 avis)",
+        "intro_text": "",
+        "og_description": None,
+        "embedded_texts": [],
+        "social": {},
+        "website": None,
+        "profile_photo": None,
+        "emails": ["direct-auto-21@outlook.fr"],
+    }
+    data = FacebookEnrichmentScraper._build_from_raw(dom, "", None, [])
+    assert data.emails == ["direct-auto-21@outlook.fr"]
+
+
+def test_build_from_raw_ranks_harvested_email_before_body_text() -> None:
+    """The harvested contact email outranks one found in the page text — it becomes the send address."""
+    dom = {
+        "place_title": "Garage Direct AUTO",
+        "about_text": "Ancien contact : vieux-contact@orange.fr",
+        "intro_text": "",
+        "og_description": None,
+        "embedded_texts": [],
+        "social": {},
+        "website": None,
+        "profile_photo": None,
+        "emails": ["direct-auto-21@outlook.fr"],
+    }
+    data = FacebookEnrichmentScraper._build_from_raw(dom, "", None, [])
+    assert data.emails[0] == "direct-auto-21@outlook.fr"
+    assert "vieux-contact@orange.fr" in data.emails

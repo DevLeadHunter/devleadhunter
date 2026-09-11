@@ -185,7 +185,7 @@ _FB_PAGE_JS = r"""
 (() => {
     const out = {
         place_title: null, intro_text: '', about_text: '', og_description: null,
-        embedded_texts: [], social: {}, website: null, profile_photo: null
+        embedded_texts: [], social: {}, website: null, profile_photo: null, emails: []
     };
     const txt = (el) => (el ? (el.innerText || el.textContent || '').trim() : '');
     try { out.place_title = txt(document.querySelector('h1')) || null; } catch (e) {}
@@ -267,6 +267,33 @@ _FB_PAGE_JS = r"""
             const isProfilePath = /\/t39\.30808-1\//.test(src);
             const namesPage = title && label.includes(title);
             if (isProfilePath || namesPage) { out.profile_photo = src; break; }
+        }
+    } catch (e) {}
+    // The contact email often renders in a « Coordonnées » row (icon + <span>) OUTSIDE div[role="main"],
+    // so about_text (main only) misses it — harvest it from the whole page below. Order by confidence:
+    // mailto and visible text first (one becomes the prospect's send address), the JSON contact keys last.
+    try {
+        const seenEmail = new Set();
+        const pushEmail = (raw) => {
+            const email = (raw || '').trim().replace(/[.,;>)\]]+$/, '').toLowerCase();
+            if (!/^[^@\s]+@[^@\s]+\.[^@\s]{2,}$/.test(email) || seenEmail.has(email)) return;
+            seenEmail.add(email);
+            out.emails.push(email);
+        };
+        for (const a of document.querySelectorAll('a[href^="mailto:"], a[href^="MAILTO:"]')) {
+            pushEmail((a.getAttribute('href') || '').slice(7).split('?')[0]);
+        }
+        const bodyText = document.body ? (document.body.innerText || '') : '';
+        const textRe = /[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/g;
+        let textMatch;
+        while ((textMatch = textRe.exec(bodyText))) pushEmail(textMatch[0]);
+        const html = document.documentElement ? (document.documentElement.innerHTML || '') : '';
+        const jsonRe = /"(?:email|email_address|contact_email|public_email)"\s*:\s*"([^"]+@[^"]+?)"/gi;
+        let jsonMatch;
+        while ((jsonMatch = jsonRe.exec(html))) {
+            let decoded = jsonMatch[1];
+            try { decoded = JSON.parse('"' + jsonMatch[1] + '"'); } catch (e) {}
+            pushEmail(decoded);
         }
     } catch (e) {}
     return out;
@@ -1144,7 +1171,11 @@ class FacebookEnrichmentScraper:
             _parse_reviews_from_embedded_texts(embedded_texts or []),
             _parse_reviews(reviews_text),
         )
-        emails = _extract_emails(intro_text, about_text, "\n".join(page_embedded))
+        # Page-harvested emails rank first, so the best contact becomes emails[0] — the prospect's send address.
+        page_emails = [
+            str(item).strip() for item in (dom.get("emails") or []) if isinstance(item, str) and item.strip()
+        ]
+        emails = _extract_emails("\n".join(page_emails), intro_text, about_text, "\n".join(page_embedded))
         logo_url = str(dom["profile_photo"]).strip() if dom.get("profile_photo") else None
         return EnrichmentData(
             source="facebook",

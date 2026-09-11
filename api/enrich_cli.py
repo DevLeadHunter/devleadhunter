@@ -149,8 +149,14 @@ async def _scrape(prospect: dict[str, object]) -> EnrichmentData:
 
 
 def _is_meaningful(data: EnrichmentData) -> bool:
-    """True when the scrape found something — so a blocked/empty run never overwrites good data."""
-    return bool(data.photos or data.reviews or data.opening_hours or data.description or data.rating is not None)
+    """True when the scrape found something — so a blocked/empty run never overwrites good data.
+
+    An email counts on its own (a Facebook page may yield only a contact email); this mirrors the
+    server-side ``EnrichmentService._facebook_scrape_is_empty`` guard, which already counts emails.
+    """
+    return bool(
+        data.photos or data.reviews or data.opening_hours or data.description or data.rating is not None or data.emails
+    )
 
 
 async def _persist(client: httpx.AsyncClient, prospect_id: int, data: EnrichmentData) -> str:
