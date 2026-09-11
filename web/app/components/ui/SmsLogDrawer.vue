@@ -97,6 +97,11 @@
               <dd class="font-label text-xs text-[var(--app-ink-soft)]">dlh-{{ sms.id }}</dd>
             </div>
           </dl>
+
+          <div v-if="sms.prospect_id">
+            <p class="app-label mb-1.5 !text-[0.6rem]">Conversation</p>
+            <UiSmsConversation :prospect-id="sms.prospect_id" :default-number="sms.to_e164" />
+          </div>
         </div>
 
         <div class="border-t border-[var(--app-line)] px-5 py-4">

@@ -4,6 +4,7 @@ Email sending routes for sending individual and campaign emails.
 
 from __future__ import annotations
 
+import logging
 from datetime import UTC
 from typing import Any
 
@@ -26,9 +27,12 @@ from schemas.email_sending import (
     SendEmailResponse,
 )
 from services.auth_service import get_current_user
+from services.campaign_queue_service import CampaignQueueService
 from services.conversation_service import conversation_service
 from services.email_log_stats import aggregate_email_log_counts, compute_engagement_rates
 from services.email_sending_service import EmailSendingService
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/emails", tags=["emails"])
 
@@ -224,7 +228,7 @@ async def quick_send_email(
     body_html = payload.body_html + render_signature_html(db, payload.signature_id, user_id=current_user.id)
 
     sending = EmailSendingService(db)
-    return await sending.send_via_user_identity(
+    result = await sending.send_via_user_identity(
         user_id=current_user.id,
         recipient_email=payload.recipient_email,
         subject=payload.subject,
@@ -233,6 +237,15 @@ async def quick_send_email(
         prospect_id=payload.prospect_id,
         campaign_id=payload.campaign_id,
     )
+    # A manual contact supersedes the campaigns: hold back every pending send of this prospect.
+    if result.get("success") and payload.prospect_id:
+        try:
+            CampaignQueueService(db).skip_pending_for_prospect(
+                int(payload.prospect_id), label="Contacté manuellement (email)"
+            )
+        except Exception:
+            logger.warning("Could not hold back campaign sends for prospect %s", payload.prospect_id, exc_info=True)
+    return result
 
 
 @router.get("/logs", response_model=EmailLogListResponse)

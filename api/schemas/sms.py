@@ -106,6 +106,45 @@ class SmsMessagesResponse(BaseModel):
     messages: list[SmsMessageResponse]
 
 
+class SmsReplyCreateRequest(BaseModel):
+    """Payload to consign an SMS reply received on the operator's phone."""
+
+    prospect_id: int | None = Field(default=None, description="Prospect the reply belongs to")
+    from_number: str = Field(min_length=1, description="Number the prospect wrote from, any French format")
+    body: str = Field(min_length=1, max_length=2000, description="Message text as received")
+    received_at: datetime | None = Field(default=None, description="When the reply arrived (defaults to now)")
+
+
+class SmsReplyResponse(BaseModel):
+    """One consigned SMS reply."""
+
+    id: int
+    prospect_id: int | None = None
+    from_number: str
+    body: str
+    received_at: datetime
+    created_at: datetime
+
+
+class SmsThreadItemResponse(BaseModel):
+    """One entry of a prospect's SMS thread — a sent SMS or a consigned reply."""
+
+    kind: str = Field(description="'sent' (our SMS) or 'received' (consigned reply)")
+    id: int
+    body: str
+    at: datetime = Field(description="Send time for 'sent', reception time for 'received'")
+    number: str = Field(description="Recipient number for 'sent', sender number for 'received'")
+    status: str | None = Field(default=None, description="Delivery status, 'sent' entries only")
+    status_detail: str | None = None
+
+
+class SmsThreadResponse(BaseModel):
+    """A prospect's full SMS thread, oldest first."""
+
+    prospect_id: int
+    items: list[SmsThreadItemResponse]
+
+
 class SmsStatsResponse(BaseModel):
     """Aggregate counters of the SMS channel."""
 

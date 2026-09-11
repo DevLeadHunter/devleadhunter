@@ -148,6 +148,18 @@ class ProspectEmailsUpdate(BaseModel):
     )
 
 
+class ProspectPhonesUpdate(BaseModel):
+    """Replace a prospect's full ordered phone list (first entry = primary).
+
+    The client sends the whole list, so this single payload covers reorder, add and remove.
+    """
+
+    phones: list[str] = Field(
+        default_factory=list,
+        description="Ordered numbers; the first one becomes the primary shown in the table and used for SMS.",
+    )
+
+
 class Prospect(ProspectBase):
     """Complete prospect model with ID and ownership metadata."""
 
@@ -175,6 +187,10 @@ class Prospect(ProspectBase):
     emails: list[str] | None = Field(
         None,
         description="All known emails, ordered; emails[0] is the primary (mirrors the `email` field).",
+    )
+    phones: list[str] | None = Field(
+        None,
+        description="All known numbers, ordered; phones[0] is the primary (mirrors the `phone` field).",
     )
     user_id: int = Field(..., description="User ID who saved this prospect")
     contacted: bool = Field(False, description="Whether this prospect has been contacted")

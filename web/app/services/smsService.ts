@@ -95,6 +95,41 @@ export type SmsManualSendPayload = {
   recipient_name?: string | null
 }
 
+/** Payload to consign an SMS reply received on the operator's phone. */
+export type SmsReplyCreatePayload = {
+  prospect_id: number | null
+  from_number: string
+  body: string
+  received_at?: string | null
+}
+
+/** One consigned SMS reply. */
+export type SmsReply = {
+  id: number
+  prospect_id: number | null
+  from_number: string
+  body: string
+  received_at: string
+  created_at: string
+}
+
+/** One entry of a prospect's SMS thread — a sent SMS or a consigned reply. */
+export type SmsThreadItem = {
+  kind: 'sent' | 'received'
+  id: number
+  body: string
+  at: string
+  number: string
+  status: SmsStatus | null
+  status_detail: string | null
+}
+
+/** A prospect's full SMS thread, oldest first. */
+export type SmsThread = {
+  prospect_id: number
+  items: SmsThreadItem[]
+}
+
 /** Which touch of the SMS sequence a library template is written for. */
 export type SmsTemplateCategory = 'first_contact' | 'follow_up'
 
@@ -202,6 +237,33 @@ export class SmsService {
    */
   static async sendManual(payload: SmsManualSendPayload): Promise<SmsSendResult> {
     return ApiClient.post<SmsSendResult>('/api/v1/sms/send', payload)
+  }
+
+  /**
+   * Consign an SMS reply received on the operator's phone (manual entry — the sender is one-way).
+   * @param payload - Prospect, number the prospect wrote from, message, and optional reception time.
+   * @returns The persisted reply.
+   */
+  static async createReply(payload: SmsReplyCreatePayload): Promise<SmsReply> {
+    return ApiClient.post<SmsReply>('/api/v1/sms/replies', payload)
+  }
+
+  /**
+   * Delete one consigned reply (typo repair).
+   * @param replyId - The reply id.
+   * @returns A promise resolved once deleted.
+   */
+  static async deleteReply(replyId: number): Promise<void> {
+    await ApiClient.delete(`/api/v1/sms/replies/${replyId}`)
+  }
+
+  /**
+   * Fetch a prospect's SMS conversation — sent SMS and consigned replies, oldest first.
+   * @param prospectId - The prospect id.
+   * @returns The thread.
+   */
+  static async getThread(prospectId: number): Promise<SmsThread> {
+    return ApiClient.get<SmsThread>(`/api/v1/sms/thread/${prospectId}`)
   }
 
   /**

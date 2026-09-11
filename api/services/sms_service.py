@@ -11,6 +11,7 @@ mandatory « STOP au 36180 » opt-out mention.
 from __future__ import annotations
 
 import logging
+from datetime import datetime
 
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
@@ -20,10 +21,12 @@ from enums.sms_status import SmsStatus
 from models.prospect_db import ProspectDB
 from models.sms_config import SmsConfig
 from models.sms_message import SmsMessage
+from models.sms_reply import SmsReply
 from models.sms_suppression import SmsSuppression
 from services.activity_log_service import CATEGORY_SMS, STATUS_WARNING, activity_log_service
 from services.notification_service import notification_service
 from services.pricing_service import PricingService
+from services.prospect_phones import sync_prospect_phones
 from services.sms.gsm_segments import segment_count, to_gsm7
 from services.sms.phone_normalizer import is_mobile_fr, to_e164_fr
 from services.sms.pricing import estimate_price_cents
@@ -307,7 +310,11 @@ class SmsService:
             status=SmsStatus.PENDING.value,
             segments=segments,
         )
-        return await self._send_and_log(db, message=message)
+        outcome = await self._send_and_log(db, message=message)
+        # A manual contact supersedes the campaigns: nothing automated may double it.
+        if outcome.sent and prospect_id is not None:
+            self._hold_back_campaign_sends(db, prospect_id, label="Contacté manuellement (SMS)")
+        return outcome
 
     async def _send_and_log(self, db: Session, *, message: SmsMessage) -> SmsSendOutcome:
         """Persist the row, hand it to the provider, record the outcome, notify.
@@ -348,8 +355,41 @@ class SmsService:
             message.error = result.error
         db.commit()
         db.refresh(message)
+        if result.success and message.prospect_id is not None:
+            self._mark_prospect_contacted(db, message.prospect_id)
         await self._notify_send(db, message, success=result.success)
         return SmsSendOutcome(sent=result.success, reason=result.error, message=message)
+
+    def _mark_prospect_contacted(self, db: Session, prospect_id: int) -> None:
+        """Flag the prospect as contacted after a successful send — mirrors the email path (best-effort).
+
+        Args:
+            db: Active database session.
+            prospect_id: The prospect who just received an SMS.
+        """
+        try:
+            prospect = db.query(ProspectDB).filter(ProspectDB.id == prospect_id).first()
+            if prospect is not None and not prospect.contacted:
+                prospect.contacted = True
+                db.commit()
+        except Exception as exc:
+            logger.warning("Could not mark prospect %s as contacted: %s", prospect_id, exc)
+
+    def _hold_back_campaign_sends(self, db: Session, prospect_id: int, *, label: str) -> None:
+        """Skip the prospect's pending campaign sends (initials + follow-ups) after a manual contact (best-effort).
+
+        Args:
+            db: Active database session.
+            prospect_id: The prospect whose queued sends must not double the manual one.
+            label: Skip reason shown on the campaign queue tab.
+        """
+        try:
+            # Local import: campaign_queue_service dispatches through this service (cycle otherwise).
+            from services.campaign_queue_service import CampaignQueueService
+
+            CampaignQueueService(db).skip_pending_for_prospect(prospect_id, label=label)
+        except Exception as exc:
+            logger.warning("Could not hold back campaign sends for prospect %s: %s", prospect_id, exc)
 
     async def _notify_send(self, db: Session, message: SmsMessage, *, success: bool) -> None:
         """Raise the send/failure notification for a just-sent SMS (best-effort).
@@ -366,6 +406,107 @@ class SmsService:
             prospect_id=message.prospect_id,
             fallback_name=message.recipient_name or message.to_e164,
         )
+
+    def record_reply(
+        self,
+        db: Session,
+        *,
+        user_id: int,
+        prospect_id: int | None,
+        from_raw: str,
+        body: str,
+        received_at: datetime | None = None,
+    ) -> SmsReply:
+        """Consign an SMS reply received on the operator's own phone (the sender is one-way).
+
+        A reply is a definitive human signal: the prospect becomes contacted, his pending
+        campaign sends are held back, and an unknown number is folded into his phone list
+        (after the existing ones — never promoted to primary).
+
+        Args:
+            db: Active database session.
+            user_id: Owner consigning the reply.
+            prospect_id: Prospect the reply belongs to (``None`` for a bare number).
+            from_raw: Number the prospect wrote from, any French format.
+            body: Message text as received.
+            received_at: When the reply arrived (defaults to now, UTC).
+
+        Returns:
+            The persisted reply row.
+
+        Raises:
+            ValueError: On an unparseable number, an empty body, or an unknown prospect.
+        """
+        from_e164 = to_e164_fr(from_raw)
+        if not from_e164:
+            raise ValueError("Numéro invalide : un numéro français est requis")
+        text = (body or "").strip()
+        if not text:
+            raise ValueError("Message vide")
+        prospect: ProspectDB | None = None
+        if prospect_id is not None:
+            prospect = db.query(ProspectDB).filter(ProspectDB.id == prospect_id, ProspectDB.user_id == user_id).first()
+            if prospect is None:
+                raise ValueError("Prospect introuvable")
+        reply = SmsReply(
+            user_id=user_id,
+            prospect_id=prospect_id,
+            from_number=from_e164,
+            body=text,
+            received_at=received_at or datetime.utcnow(),
+        )
+        db.add(reply)
+        if prospect is not None:
+            prospect.contacted = True
+            sync_prospect_phones(prospect, add=[from_e164])
+        db.commit()
+        db.refresh(reply)
+        if prospect_id is not None:
+            self._hold_back_campaign_sends(db, prospect_id, label="Le prospect a répondu (SMS)")
+        return reply
+
+    def list_thread(self, db: Session, user_id: int, prospect_id: int) -> tuple[list[SmsMessage], list[SmsReply]]:
+        """Return a prospect's SMS thread material — sent messages and consigned replies, oldest first.
+
+        Args:
+            db: Active database session.
+            user_id: Owner.
+            prospect_id: The prospect whose thread is displayed.
+
+        Returns:
+            ``(sent, replies)`` lists, each ordered oldest-first.
+        """
+        sent = (
+            db.query(SmsMessage)
+            .filter(SmsMessage.user_id == user_id, SmsMessage.prospect_id == prospect_id)
+            .order_by(SmsMessage.created_at.asc())
+            .all()
+        )
+        replies = (
+            db.query(SmsReply)
+            .filter(SmsReply.user_id == user_id, SmsReply.prospect_id == prospect_id)
+            .order_by(SmsReply.received_at.asc())
+            .all()
+        )
+        return sent, replies
+
+    def delete_reply(self, db: Session, user_id: int, reply_id: int) -> bool:
+        """Delete one consigned reply (typo repair).
+
+        Args:
+            db: Active database session.
+            user_id: Owner.
+            reply_id: The reply row to delete.
+
+        Returns:
+            ``True`` when a row was deleted, ``False`` when none matched.
+        """
+        reply = db.query(SmsReply).filter(SmsReply.id == reply_id, SmsReply.user_id == user_id).first()
+        if reply is None:
+            return False
+        db.delete(reply)
+        db.commit()
+        return True
 
     def list_messages(self, db: Session, user_id: int, *, limit: int = 500) -> list[tuple[SmsMessage, str | None]]:
         """Return the user's sent SMS (newest first) with the prospect name resolved.

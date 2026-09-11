@@ -133,6 +133,8 @@ MIGRATION_MODULES: list[tuple[str, str]] = [
     ("fix_sms_created_at_utc", "migrations.fix_sms_created_at_utc"),
     ("fix_server_time_columns_utc", "migrations.fix_server_time_columns_utc"),
     ("add_user_public_contacts", "migrations.add_user_public_contacts"),
+    ("add_prospect_phones", "migrations.add_prospect_phones"),
+    ("backfill_sms_contacted", "migrations.backfill_sms_contacted"),
 ]
 
 # Modules of this package that are not migrations and must not be registered.

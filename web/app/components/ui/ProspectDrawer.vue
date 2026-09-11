@@ -161,19 +161,16 @@
             <div class="space-y-3 px-5 py-4">
               <p class="text-[10px] font-semibold tracking-wider text-[var(--app-ink-soft)] uppercase">Contact</p>
 
-              <div class="flex items-center gap-3">
+              <div class="flex items-start gap-3">
                 <div class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[var(--app-surface-2)]">
                   <UIcon name="i-lucide-phone" class="h-4 w-4 text-[var(--app-ink-soft)]" />
                 </div>
                 <div class="min-w-0 flex-1">
-                  <p class="text-[10px] text-[var(--app-ink-soft)]">Téléphone</p>
-                  <p
-                    v-if="prospect.phone"
-                    class="text-sm font-medium whitespace-nowrap text-[var(--app-ink)] tabular-nums"
-                  >
-                    {{ prospect.phone }}
-                  </p>
-                  <p v-else class="text-sm text-[var(--app-faint)]">—</p>
+                  <UiProspectPhones
+                    :prospect="prospect"
+                    :editable="canEditContactDetails"
+                    @updated="$emit('updated', $event)"
+                  />
                   <span
                     v-if="prospect.sms_opted_out"
                     class="app-badge app-badge--danger mt-1"
@@ -183,14 +180,6 @@
                     STOP SMS
                   </span>
                 </div>
-                <a
-                  v-if="prospect.phone"
-                  :href="`tel:${prospect.phone}`"
-                  class="flex h-7 w-7 items-center justify-center rounded text-[var(--app-ink-soft)] transition-colors hover:bg-[var(--app-surface-2)] hover:text-[var(--app-accent-ink)]"
-                  title="Appeler"
-                >
-                  <UIcon name="i-lucide-external-link" class="h-3.5 w-3.5" />
-                </a>
               </div>
 
               <div class="flex items-start gap-3">
@@ -200,7 +189,7 @@
                 <div class="min-w-0 flex-1">
                   <UiProspectEmails
                     :prospect="prospect"
-                    :editable="canEditEmails"
+                    :editable="canEditContactDetails"
                     @updated="$emit('updated', $event)"
                   />
                   <span
@@ -282,6 +271,15 @@
                   <UIcon name="i-lucide-unlink" class="h-3.5 w-3.5" />
                 </button>
               </div>
+            </div>
+
+            <div class="border-t border-[var(--app-surface-2)]"></div>
+
+            <div class="space-y-3 px-5 py-4">
+              <p class="text-[10px] font-semibold tracking-wider text-[var(--app-ink-soft)] uppercase">
+                Conversation SMS
+              </p>
+              <UiSmsConversation :prospect-id="prospect.id" :default-number="prospect.phone ?? ''" />
             </div>
 
             <div class="border-t border-[var(--app-surface-2)]"></div>
@@ -634,8 +632,8 @@ const isReservedByOther: ComputedRef<boolean> = computed(
     props.prospect?.reserved_by_user_id != null && props.prospect.reserved_by_user_id !== currentUserId.value,
 )
 
-/** Emails stay editable unless another member currently holds the prospect. */
-const canEditEmails: ComputedRef<boolean> = computed((): boolean => !isReservedByOther.value)
+/** Contact details (emails, phones) stay editable unless another member currently holds the prospect. */
+const canEditContactDetails: ComputedRef<boolean> = computed((): boolean => !isReservedByOther.value)
 
 /** The four Lighthouse category gauges (red < 50, amber < 90, green otherwise). */
 const lighthouseGauges: ComputedRef<LighthouseGauge[]> = computed((): LighthouseGauge[] => {

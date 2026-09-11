@@ -30,6 +30,7 @@ from models.email_log import EmailLog
 from models.email_queue import EmailQueue
 from models.email_template import EmailTemplate
 from models.prospect_db import ProspectDB
+from models.sms_reply import SmsReply
 from services.activity_log_service import CATEGORY_CAMPAIGN, STATUS_INFO, activity_log_service
 from services.email_sending_service import EmailSendingService
 from services.email_variables import EmailVariables
@@ -801,9 +802,9 @@ class CampaignQueueService:
             prospect_id: The prospect to check.
 
         Returns:
-            ``True`` when at least one send carries a ``replied_at`` timestamp.
+            ``True`` when a send carries a ``replied_at`` timestamp, or an SMS reply was consigned.
         """
-        return (
+        emailed_back = (
             self.db.execute(
                 select(EmailLog.id)
                 .where(
@@ -812,6 +813,15 @@ class CampaignQueueService:
                     EmailLog.replied_at.isnot(None),
                 )
                 .limit(1)
+            ).scalar_one_or_none()
+            is not None
+        )
+        if emailed_back:
+            return True
+        # An SMS reply is consigned by hand (one-way sender) — a human signal just as definitive.
+        return (
+            self.db.execute(
+                select(SmsReply.id).where(SmsReply.user_id == user_id, SmsReply.prospect_id == prospect_id).limit(1)
             ).scalar_one_or_none()
             is not None
         )
@@ -1344,21 +1354,25 @@ class CampaignQueueService:
         self.db.commit()
         logger.info("[Queue] Item %d cancelled manually", item.id)
 
-    def skip_pending_for_prospect(self, prospect_id: int, reason: str | None = None) -> int:
-        """Hold back every pending queue item of a prospect just marked « ne plus contacter ».
+    def skip_pending_for_prospect(
+        self, prospect_id: int, reason: str | None = None, *, label: str | None = None
+    ) -> int:
+        """Hold back every pending queue item of a prospect (initials AND follow-ups, email AND SMS).
 
         The rows are marked ``skipped`` with a stop reason instead of being deleted, so the
         campaign page keeps showing the line as *planned but held back* — the trace the operator
-        wants. Called by :meth:`ProspectService.set_do_not_contact` when the flag is turned on.
+        wants. Called on « ne plus contacter » (default label), on a manual send from the tracking
+        pages, and when an SMS reply is consigned.
 
         Args:
             prospect_id: The prospect whose pending sends are cancelled.
             reason: Optional operator note appended to the stop label.
+            label: Stop label shown on the queue tab; defaults to the do-not-contact one.
 
         Returns:
             The number of queue items held back.
         """
-        label = _DO_NOT_CONTACT_SKIP_REASON + (f" — {reason}" if reason else "")
+        label = (label or _DO_NOT_CONTACT_SKIP_REASON) + (f" — {reason}" if reason else "")
         items = (
             self.db.query(EmailQueue)
             .filter(EmailQueue.prospect_id == prospect_id, EmailQueue.status == _STATUS_PENDING)

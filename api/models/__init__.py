@@ -31,6 +31,7 @@ from models.search import ProspectSearchRequest, ProspectSearchResponse
 from models.send_policy import SendPolicy
 from models.sms_config import SmsConfig
 from models.sms_message import SmsMessage
+from models.sms_reply import SmsReply
 from models.sms_suppression import SmsSuppression
 from models.support_attachment import SupportAttachment
 from models.support_message import SupportMessage
@@ -67,6 +68,7 @@ __all__ = [
     "SendPolicy",
     "SmsConfig",
     "SmsMessage",
+    "SmsReply",
     "SmsSuppression",
     "SupportAttachment",
     "SupportMessage",

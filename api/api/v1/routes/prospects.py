@@ -17,6 +17,7 @@ from models.prospect import (
     ProspectCreate,
     ProspectEmailsUpdate,
     ProspectEnrichRequest,
+    ProspectPhonesUpdate,
     ProspectSearchSuggestion,
     ProspectSearchSuggestionsRequest,
     ProspectUpdate,
@@ -32,6 +33,7 @@ from services.lighthouse_service import LighthouseAuditError, lighthouse_service
 from services.organization_service import OrganizationError, organization_service
 from services.prospect_emails import set_prospect_emails
 from services.prospect_enrichment_service import prospect_enrichment_service
+from services.prospect_phones import set_prospect_phones
 from services.prospect_service import prospect_service
 from services.scraper_service import scraper_service
 
@@ -457,6 +459,42 @@ async def update_prospect_emails(
     _assert_not_reserved_by_other(db, current_user, row)
 
     set_prospect_emails(row, list(payload.emails))
+    db.add(row)
+    db.commit()
+    db.refresh(row)
+    return prospect_service._to_models_with_reservers(db, [row])[0]
+
+
+@router.put(
+    "/{prospect_id}/phones",
+    response_model=Prospect,
+    summary="Replace a prospect's phone list",
+    description="Set the full ordered phone list (first = primary). Covers reorder, add and remove.",
+)
+async def update_prospect_phones(
+    prospect_id: int,
+    payload: ProspectPhonesUpdate,
+    current_user: User = Depends(require_auth),
+    db: Session = Depends(get_db),
+) -> Prospect:
+    """Replace a prospect's ordered phone list; ``phones[0]`` becomes the primary.
+
+    Args:
+        prospect_id: Prospect to edit.
+        payload: The new ordered phone list.
+        current_user: Authenticated caller.
+        db: Database session.
+
+    Returns:
+        The updated prospect.
+
+    Raises:
+        HTTPException: 404 when not visible, 403 when reserved by another member.
+    """
+    row = _get_visible_db_prospect(db, prospect_id, current_user)
+    _assert_not_reserved_by_other(db, current_user, row)
+
+    set_prospect_phones(row, list(payload.phones))
     db.add(row)
     db.commit()
     db.refresh(row)

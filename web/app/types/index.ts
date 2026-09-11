@@ -28,6 +28,7 @@ export type Prospect = {
   address?: string
   city?: string
   phone?: string
+  phones?: string[] | null
   email?: string
   emails?: string[] | null
   website?: string

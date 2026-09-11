@@ -41,6 +41,8 @@ class ProspectDB(Base):
     address: Mapped[str | None] = mapped_column(Text, nullable=True)
     city: Mapped[str | None] = mapped_column(String(255), nullable=True, index=True)
     phone: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    # All known phone numbers, best-first; ``phone`` above stays synced to ``phones[0]`` (the primary).
+    phones: Mapped[list[str] | None] = mapped_column(JSON, nullable=True)
     email: Mapped[str | None] = mapped_column(String(255), nullable=True)
     # All known emails, best-first; ``email`` above stays synced to ``emails[0]`` (the primary).
     emails: Mapped[list[str] | None] = mapped_column(JSON, nullable=True)

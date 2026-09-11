@@ -194,6 +194,17 @@ export class ProspectsService {
   }
 
   /**
+   * Remplace la liste ordonnée des numéros d'un prospect (le premier devient le principal).
+   * Couvre en un seul appel le réordonnancement, l'ajout et la suppression.
+   * @param prospectId - Identifiant du prospect.
+   * @param phones - Liste ordonnée des numéros ; le premier est le principal.
+   * @returns Le prospect mis à jour.
+   */
+  static async updateProspectPhones(prospectId: number, phones: string[]): Promise<Prospect> {
+    return ApiClient.put<Prospect>(`${BASE_URL}/${prospectId}/phones`, { phones })
+  }
+
+  /**
    *
    */
   static async deleteProspect(prospectId: number): Promise<void> {

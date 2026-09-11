@@ -34,10 +34,14 @@ from schemas.sms import (
     SmsMessageResponse,
     SmsMessagesResponse,
     SmsRelanceCandidateResponse,
+    SmsReplyCreateRequest,
+    SmsReplyResponse,
     SmsSendResponse,
     SmsStatsResponse,
     SmsTemplatePreviewResponse,
     SmsTemplateResponse,
+    SmsThreadItemResponse,
+    SmsThreadResponse,
 )
 from services.auth_service import get_current_user, require_admin
 from services.demo_site_service import demo_site_service
@@ -225,6 +229,78 @@ async def list_messages(
         for message, prospect_name in rows
     ]
     return SmsMessagesResponse(total=len(messages), messages=messages)
+
+
+@router.post("/replies", response_model=SmsReplyResponse, status_code=status.HTTP_201_CREATED)
+async def create_sms_reply(
+    payload: SmsReplyCreateRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> SmsReplyResponse:
+    """Consign an SMS reply received on the operator's phone (manual entry — the sender is one-way)."""
+    try:
+        reply = sms_service.record_reply(
+            db,
+            user_id=current_user.id,
+            prospect_id=payload.prospect_id,
+            from_raw=payload.from_number,
+            body=payload.body,
+            received_at=payload.received_at,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+    return SmsReplyResponse(
+        id=reply.id,
+        prospect_id=reply.prospect_id,
+        from_number=reply.from_number,
+        body=reply.body,
+        received_at=reply.received_at,
+        created_at=reply.created_at,
+    )
+
+
+@router.delete("/replies/{reply_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_sms_reply(
+    reply_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> None:
+    """Delete one consigned reply (typo repair)."""
+    if not sms_service.delete_reply(db, current_user.id, reply_id):
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Réponse introuvable.")
+
+
+@router.get("/thread/{prospect_id}", response_model=SmsThreadResponse)
+async def get_sms_thread(
+    prospect_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> SmsThreadResponse:
+    """Return a prospect's SMS conversation — sent SMS and consigned replies, oldest first."""
+    sent, replies = sms_service.list_thread(db, current_user.id, prospect_id)
+    items = [
+        SmsThreadItemResponse(
+            kind="sent",
+            id=message.id,
+            body=message.body,
+            at=message.created_at,
+            number=message.to_e164,
+            status=message.status,
+            status_detail=message.status_detail,
+        )
+        for message in sent
+    ] + [
+        SmsThreadItemResponse(
+            kind="received",
+            id=reply.id,
+            body=reply.body,
+            at=reply.received_at,
+            number=reply.from_number,
+        )
+        for reply in replies
+    ]
+    items.sort(key=lambda item: item.at)
+    return SmsThreadResponse(prospect_id=prospect_id, items=items)
 
 
 @router.get("/stats", response_model=SmsStatsResponse)
