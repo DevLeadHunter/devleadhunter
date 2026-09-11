@@ -20,6 +20,7 @@ from sqlalchemy.orm import Session
 from core.config import settings
 from core.database import SessionLocal
 from enums.demo_site_status import DemoSiteStatus
+from enums.sms_status import SmsStatus
 from enums.user_role import is_platform_admin
 from models.demo_site import DemoSite
 from models.email_log import EmailLog
@@ -27,6 +28,7 @@ from models.notification import Notification
 from models.order import Order
 from models.prospect_db import ProspectDB
 from models.push_subscription import PushSubscription
+from models.sms_message import SmsMessage
 from models.user import User
 from services import push_service
 from services.activity_log_service import (
@@ -386,6 +388,21 @@ class NotificationService:
                 clicked = (
                     db.query(EmailLog).filter(EmailLog.user_id == user_id, EmailLog.clicked_at >= day_start).count()
                 )
+                # Sent SMS = reached the provider today (SENT/DELIVERED); excludes stuck PENDING and failed rows.
+                sms_sent = (
+                    db.query(SmsMessage)
+                    .filter(
+                        SmsMessage.user_id == user_id,
+                        SmsMessage.created_at >= day_start,
+                        SmsMessage.status.in_([SmsStatus.SENT.value, SmsStatus.DELIVERED.value]),
+                    )
+                    .count()
+                )
+                sms_delivered = (
+                    db.query(SmsMessage)
+                    .filter(SmsMessage.user_id == user_id, SmsMessage.delivered_at >= day_start)
+                    .count()
+                )
                 sales = (
                     db.query(Order)
                     .filter(Order.user_id == user_id, Order.paid_at >= day_start, Order.deleted_at.is_(None))
@@ -404,6 +421,7 @@ class NotificationService:
                 visits = await posthog_service.count_demo_visits_since(slugs, day_start)
                 body = (
                     f"{sent} mails · {delivered} livrés · {opened} ouverts · {clicked} clics · "
+                    f"{sms_sent} SMS ({sms_delivered} livrés) · "
                     f"{visits['pageviews']} visites ({visits['engaged']} qualifiées) · {sales} vente(s)"
                 )
                 await self._dispatch(
