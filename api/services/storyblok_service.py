@@ -547,17 +547,19 @@ class StoryblokService:
         async with httpx.AsyncClient(timeout=60.0) as client:
             await self._configure_preview_url(client, space_id, preview_url)
 
-    async def resync_components(self, space_id: int) -> None:
+    async def resync_components(self, space_id: int, template_id: str | None = None) -> None:
         """Re-sync (upsert) the blok schemas of an EXISTING space.
 
         Propagates new fields (e.g. ``social``) and updated FR labels to
         already-provisioned spaces — the audit's missing "re-sync command".
-        Idempotent; no-op in mock mode.
+        ``template_id`` uses that template's own schema (per-template ``SECTION_FIELDS``
+        overrides included, e.g. landscaper's editable hero title); ``None`` falls back to
+        the shared default schema. Idempotent; no-op in mock mode.
         """
         if not self.is_configured or not space_id:
             return
         async with httpx.AsyncClient(timeout=60.0) as client:
-            await self._ensure_template_components(client, space_id)
+            await self._ensure_template_components(client, space_id, template_id)
 
     async def invite_collaborator(self, space_id: int, collaborator_email: str) -> None:
         """Invite a client as Storyblok space admin. Storyblok sends the invitation email."""

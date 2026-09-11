@@ -25,10 +25,18 @@ router = APIRouter(prefix="/admin/storyblok", tags=["admin-storyblok"])
 async def resync_space(
     space_id: int,
     current_user: User = Depends(require_admin),
+    db: Session = Depends(get_db),
 ) -> dict[str, Any]:
-    """Re-sync (upsert) the blok schemas of one existing Storyblok space."""
-    await storyblok_service.resync_components(space_id)
-    return {"space_id": space_id, "resynced": True}
+    """Re-sync (upsert) one existing Storyblok space using ITS template's schema (overrides included)."""
+    template_id: str | None = (
+        db.query(DemoSite.template_id)
+        .filter(DemoSite.storyblok_space_id == space_id)
+        .order_by(DemoSite.id.desc())
+        .limit(1)
+        .scalar()
+    )
+    await storyblok_service.resync_components(space_id, template_id)
+    return {"space_id": space_id, "resynced": True, "template_id": template_id}
 
 
 @router.post("/resync-all")
@@ -36,15 +44,16 @@ async def resync_all(
     current_user: User = Depends(require_admin),
     db: Session = Depends(get_db),
 ) -> dict[str, Any]:
-    """Re-sync every provisioned Storyblok space (all demo sites carrying a space id)."""
-    space_ids: list[int] = [
-        int(row[0])
-        for row in db.query(DemoSite.storyblok_space_id)
+    """Re-sync every provisioned Storyblok space, each with its own template's schema."""
+    template_by_space: dict[int, str | None] = {}
+    for space_id, template_id in (
+        db.query(DemoSite.storyblok_space_id, DemoSite.template_id)
         .filter(DemoSite.storyblok_space_id.isnot(None))
-        .distinct()
+        .order_by(DemoSite.id.desc())
         .all()
-        if row[0]
-    ]
-    for space_id in space_ids:
-        await storyblok_service.resync_components(space_id)
-    return {"resynced_spaces": len(space_ids), "space_ids": space_ids}
+    ):
+        if space_id and int(space_id) not in template_by_space:
+            template_by_space[int(space_id)] = template_id
+    for space_id, template_id in template_by_space.items():
+        await storyblok_service.resync_components(space_id, template_id)
+    return {"resynced_spaces": len(template_by_space), "space_ids": list(template_by_space)}
