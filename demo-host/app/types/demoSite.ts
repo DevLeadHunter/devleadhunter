@@ -13,4 +13,7 @@ export type DemoSitePublic = {
   owner_name?: string | null
   owner_company_name?: string | null
   owner_company_website_url?: string | null
+  owner_profile_photo_url?: string | null
+  owner_contact_phone?: string | null
+  owner_contact_email?: string | null
 }

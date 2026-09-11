@@ -180,6 +180,8 @@ export type User = {
   role: UserRole
   company_name?: string | null
   company_website_url?: string | null
+  contact_phone?: string | null
+  contact_email?: string | null
   is_active: boolean
   created_at: string
   updated_at: string | null
@@ -210,6 +212,8 @@ export type ProfileUpdate = {
   email?: string
   company_name?: string | null
   company_website_url?: string | null
+  contact_phone?: string | null
+  contact_email?: string | null
   site_sale_price_cents?: number
 }
 

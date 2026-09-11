@@ -48,6 +48,8 @@ def _build_user_response(db: Session, user: User) -> UserResponse:
         role=user.role,
         company_name=user.company_name,
         company_website_url=user.company_website_url,
+        contact_phone=user.contact_phone,
+        contact_email=user.contact_email,
         is_active=user.is_active,
         created_at=user.created_at,
         updated_at=user.updated_at,
@@ -209,6 +211,10 @@ async def update_current_user_info(
         current_user.company_name = user_data.company_name.strip() or None
     if user_data.company_website_url is not None:
         current_user.company_website_url = user_data.company_website_url.strip() or None
+    if user_data.contact_phone is not None:
+        current_user.contact_phone = user_data.contact_phone.strip() or None
+    if user_data.contact_email is not None:
+        current_user.contact_email = user_data.contact_email.strip() or None
 
     db.commit()
     db.refresh(current_user)

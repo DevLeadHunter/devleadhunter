@@ -120,6 +120,9 @@
         <p class="video-page__cta-note">Déjà en ligne — parcourez-le vous-même.</p>
       </div>
 
+      <!-- « Ce site vous plaît ? » pill — video variant: manual open only, no pulse, wider on desktop. -->
+      <DemoCtaBanner :site="site" :is-video-page-variant="true" />
+
       <p v-if="hasOwnerSignature" class="video-page__signature">
         Site réalisé pour {{ shortBusinessName }} par
         <a
@@ -329,6 +332,8 @@ onMounted(async (): Promise<void> => {
   --vp-ink: #17130d;
   --vp-ink-dim: #6d665b;
   --vp-line: rgba(23, 19, 13, 0.14);
+  /* The stage halo (inset -9%) bled past narrow viewports (X scroll) — clip where it is transparent anyway. */
+  overflow-x: clip;
   min-height: 100vh;
   display: flex;
   flex-direction: column;

@@ -256,6 +256,10 @@ class DemoSitePublicResponse(BaseModel):
     owner_name: str | None = None
     owner_company_name: str | None = None
     owner_company_website_url: str | None = None
+    # Owner contact card for the banner (photo bubble + direct chips), each field hidden when empty.
+    owner_profile_photo_url: str | None = None
+    owner_contact_phone: str | None = None
+    owner_contact_email: str | None = None
 
     model_config = ConfigDict(from_attributes=True)
 

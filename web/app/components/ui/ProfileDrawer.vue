@@ -166,6 +166,38 @@
               Lien de la signature « Site réalisé par… » affichée sur vos pages vidéo de prospection.
             </p>
           </div>
+
+          <div>
+            <label class="text-muted mb-1.5 block text-xs font-medium" for="profile-contact-phone">
+              Téléphone affiché <span class="text-[var(--app-ink-soft)]">(facultatif)</span>
+            </label>
+            <input
+              id="profile-contact-phone"
+              v-model="form.contact_phone"
+              type="tel"
+              class="input-field"
+              placeholder="Ex : 06 42 19 38 12"
+            />
+            <p class="text-muted mt-1.5 text-xs">
+              Affiché sur le menu « Ce site vous plaît ? » des démos et pages vidéo — masqué si vide.
+            </p>
+          </div>
+
+          <div>
+            <label class="text-muted mb-1.5 block text-xs font-medium" for="profile-contact-email">
+              Email affiché <span class="text-[var(--app-ink-soft)]">(facultatif)</span>
+            </label>
+            <input
+              id="profile-contact-email"
+              v-model="form.contact_email"
+              type="email"
+              class="input-field"
+              placeholder="Ex : contact@dibodev.fr"
+            />
+            <p class="text-muted mt-1.5 text-xs">
+              Email public de contact, distinct de votre email de connexion — masqué si vide.
+            </p>
+          </div>
         </form>
 
         <div class="flex gap-2 border-t border-[var(--app-line)] px-5 py-4">
@@ -220,7 +252,14 @@ const toast: UseToastReturn = useToast()
 const isSaving: Ref<boolean> = ref(false)
 
 /** Editable profile form state. */
-const form: Ref<ProfileForm> = ref({ name: '', email: '', company_name: '', company_website_url: '' })
+const form: Ref<ProfileForm> = ref({
+  name: '',
+  email: '',
+  company_name: '',
+  company_website_url: '',
+  contact_phone: '',
+  contact_email: '',
+})
 
 /** Shared profile photo state (also feeds the sidebar avatar). */
 const { hasProfilePhoto, profilePhotoObjectUrl, ensureProfilePhotoLoaded, refreshProfilePhoto }: UseProfilePhotoReturn =
@@ -299,6 +338,9 @@ async function handleSave(): Promise<void> {
       email: form.value.email,
       company_name: form.value.company_name.trim() || null,
       company_website_url: form.value.company_website_url.trim() || null,
+      // Sent as '' (never null) so emptying a field clears it server-side — the API skips null, maps '' to NULL.
+      contact_phone: form.value.contact_phone.trim(),
+      contact_email: form.value.contact_email.trim(),
     })
     toast.success('Profil mis à jour')
     emit('close')
@@ -318,6 +360,8 @@ watch(
         email: userStore.user?.email ?? '',
         company_name: userStore.user?.company_name ?? '',
         company_website_url: userStore.user?.company_website_url ?? '',
+        contact_phone: userStore.user?.contact_phone ?? '',
+        contact_email: userStore.user?.contact_email ?? '',
       }
       ensureProfilePhotoLoaded()
     }

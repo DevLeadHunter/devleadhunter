@@ -1,8 +1,16 @@
 <template>
   <div v-if="isVisible" data-dlh-cta-banner class="dlh-banner" :class="state === 'collapsed' ? '' : 'dlh-banner--open'">
     <!-- Collapsed pill — the discreet entry point, never covering the template's own CTAs. -->
-    <button v-if="state === 'collapsed'" type="button" class="dlh-pill dlh-celebrate" @click="open">
+    <button
+      v-if="state === 'collapsed'"
+      type="button"
+      class="dlh-pill"
+      :class="{ 'dlh-celebrate': !isVideoPageVariant, 'dlh-pill--wide': isVideoPageVariant }"
+      @click="open"
+    >
+      <img v-if="ownerPhotoUrl" class="dlh-avatar dlh-avatar--pill" :src="ownerPhotoUrl" alt="" />
       <svg
+        v-else
         class="dlh-icon"
         width="15"
         height="15"
@@ -75,7 +83,13 @@
 
       <template v-if="state === 'open'">
         <div class="dlh-card__intro">
-          <div class="dlh-card__title">Ce site vous plaît ?</div>
+          <div class="dlh-card__introrow">
+            <img v-if="ownerPhotoUrl" class="dlh-avatar dlh-avatar--card" :src="ownerPhotoUrl" alt="" />
+            <div>
+              <div class="dlh-card__title">Ce site vous plaît ?</div>
+              <div v-if="ownerNameLabel" class="dlh-card__who">{{ ownerNameLabel }} · développeur web</div>
+            </div>
+          </div>
           <div class="dlh-card__sub">
             Cette démo a été préparée pour vous. Laissez un message, vous serez recontacté très vite.
           </div>
@@ -107,6 +121,55 @@
           </svg>
         </button>
         <div v-if="hasError" class="dlh-card__error">L'envoi a échoué — réessayez dans un instant.</div>
+
+        <!-- Direct-contact chips — quiet escape hatch under the primary form; each hidden when unset. -->
+        <div v-if="hasOwnerContact" class="dlh-card__contacts">
+          <a
+            v-if="ownerContactPhone"
+            class="dlh-contact-chip"
+            :href="ownerPhoneHref"
+            @click="trackOwnerContactClick('phone')"
+          >
+            <svg
+              width="12"
+              height="12"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2.2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              aria-hidden="true"
+            >
+              <path
+                d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6A19.79 19.79 0 0 1 2.12 4.18 2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.13.96.36 1.9.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.91.34 1.85.57 2.81.7A2 2 0 0 1 22 16.92z"
+              />
+            </svg>
+            {{ ownerContactPhone }}
+          </a>
+          <a
+            v-if="ownerContactEmail"
+            class="dlh-contact-chip"
+            :href="ownerEmailHref"
+            @click="trackOwnerContactClick('email')"
+          >
+            <svg
+              width="12"
+              height="12"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2.2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              aria-hidden="true"
+            >
+              <rect x="2" y="4" width="20" height="16" rx="2" />
+              <path d="m22 7-10 5L2 7" />
+            </svg>
+            {{ ownerContactEmail }}
+          </a>
+        </div>
       </template>
 
       <div v-else class="dlh-success">
@@ -138,7 +201,8 @@ import { captureDemoEvent } from '~/composables/useDemoTracking'
 import { DemoBeaconUtils } from '~/utils/DemoBeaconUtils'
 
 /**
- * « Ce site vous plaît ? » lead banner overlaid on live demo pages.
+ * « Ce site vous plaît ? » lead banner overlaid on live demo pages and, via
+ * ``isVideoPageVariant``, on the prospection-video page (/v/{slug}).
  *
  * The demo used to be a dead end: a prospect reading it had no way to raise
  * their hand towards the DevLeadHunter user who sent it. The banner fixes that
@@ -156,6 +220,11 @@ const props: DemoCtaBannerProps = defineProps({
   site: {
     type: Object as PropType<DemoSitePublic>,
     required: true,
+  },
+  /** Video-page placement: no scroll auto-reveal, no pill pulse, wider pill. */
+  isVideoPageVariant: {
+    type: Boolean,
+    default: false,
   },
 })
 
@@ -181,6 +250,25 @@ const hasTrackedInput: Ref<boolean> = ref(false)
 const isResolved: Ref<boolean> = ref(false)
 
 const businessName: ComputedRef<string> = computed((): string => props.site.business_name || 'votre entreprise')
+
+const ownerPhotoUrl: ComputedRef<string> = computed((): string => (props.site.owner_profile_photo_url ?? '').trim())
+
+const ownerNameLabel: ComputedRef<string> = computed((): string => (props.site.owner_name ?? '').trim())
+
+const ownerContactPhone: ComputedRef<string> = computed((): string => (props.site.owner_contact_phone ?? '').trim())
+
+const ownerContactEmail: ComputedRef<string> = computed((): string => (props.site.owner_contact_email ?? '').trim())
+
+/** tel: link of the owner's phone — digits (and +) only, so « 06 42 19 38 12 » dials. */
+const ownerPhoneHref: ComputedRef<string> = computed(
+  (): string => `tel:${ownerContactPhone.value.replace(/[^+\d]/g, '')}`,
+)
+
+const ownerEmailHref: ComputedRef<string> = computed((): string => `mailto:${ownerContactEmail.value}`)
+
+const hasOwnerContact: ComputedRef<boolean> = computed(
+  (): boolean => Boolean(ownerContactPhone.value) || Boolean(ownerContactEmail.value),
+)
 
 /** Whether the banner renders at all — live demos, real prospect visits only. */
 const isVisible: ComputedRef<boolean> = computed((): boolean => {
@@ -311,6 +399,17 @@ async function submit(): Promise<void> {
   }
 }
 
+/**
+ * Track a contact chip click — video page only; the demo page's global tel:/mailto: listener already beacons these.
+ * @param kind - Which chip was clicked.
+ */
+function trackOwnerContactClick(kind: 'phone' | 'email'): void {
+  if (!props.isVideoPageVariant) return
+  const event: string = kind === 'phone' ? 'demo_phone_click' : 'demo_contact_click'
+  captureDemoEvent(event, { source: 'cta_banner' })
+  DemoBeaconUtils.send(apiBase.value, props.site.slug, event)
+}
+
 /** On tab close, flag a prospect who opened the form but left without sending. */
 function onPageHide(): void {
   if (state.value !== 'open' || isResolved.value) return
@@ -326,7 +425,8 @@ watch(isVisible, (visible: boolean): void => {
 onMounted((): void => {
   isClientReady.value = true
   window.addEventListener('pagehide', onPageHide)
-  window.addEventListener('scroll', onScroll, { passive: true })
+  // No end-of-page auto-reveal on the short video page: its form only opens on an explicit click.
+  if (!props.isVideoPageVariant) window.addEventListener('scroll', onScroll, { passive: true })
 })
 
 onUnmounted((): void => {
@@ -533,6 +633,77 @@ onUnmounted((): void => {
 .dlh-card__error {
   font-size: 12px;
   color: #b3423a;
+}
+
+/* ── Owner contact card: photo bubble, name line, direct chips ──────────── */
+.dlh-avatar {
+  flex-shrink: 0;
+  border: 1px solid #e1dbcc;
+  border-radius: 999px;
+  object-fit: cover;
+}
+
+.dlh-avatar--pill {
+  width: 36px;
+  height: 36px;
+  margin-left: -6px;
+}
+
+.dlh-avatar--card {
+  width: 44px;
+  height: 44px;
+}
+
+.dlh-card__introrow {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.dlh-card__who {
+  margin-top: 2px;
+  font-size: 12.5px;
+  color: #6b6558;
+}
+
+.dlh-card__contacts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+/* Same quiet vocabulary as the success back button — never a rival of the primary action. */
+.dlh-contact-chip {
+  display: inline-flex;
+  flex: 1;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  height: 40px;
+  min-width: 140px;
+  border: 1px solid #e1dbcc;
+  border-radius: 10px;
+  font-size: 12.5px;
+  font-weight: 500;
+  color: #1d1a14;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.dlh-contact-chip:hover {
+  background: #efe9db;
+}
+
+.dlh-contact-chip svg {
+  flex-shrink: 0;
+  color: #6b6558;
+}
+
+/* Video page: cream-on-cream ground — width gives the pill the presence the pulse gives on demos. */
+@media (min-width: 641px) {
+  .dlh-pill--wide {
+    min-width: 300px;
+  }
 }
 
 /* ── Success state ──────────────────────────────────────────────────────── */

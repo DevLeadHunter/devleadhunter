@@ -176,6 +176,11 @@ async def get_public_demo_site(
         payload["owner_name"] = site.user.name
         payload["owner_company_name"] = site.user.company_name
         payload["owner_company_website_url"] = site.user.company_website_url
+        payload["owner_contact_phone"] = site.user.contact_phone
+        payload["owner_contact_email"] = site.user.contact_email
+        # Guarded on the R2 public base so a dev setup without R2 never 500s here.
+        if site.user.profile_photo_path and (settings.r2_public_base_url or "").strip():
+            payload["owner_profile_photo_url"] = r2_storage.public_url(site.user.profile_photo_path)
     return DemoSitePublicResponse(**payload)
 
 
