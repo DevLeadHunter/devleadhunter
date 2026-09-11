@@ -650,6 +650,11 @@ def map_prospect_and_enrichment(
 
 # Field schema per flat ``SiteContent`` key (``pos`` is assigned within each section below).
 FIELD_SCHEMAS: dict[str, dict[str, Any]] = {
+    "heroTitle": {
+        "type": "text",
+        "display_name": "Titre principal",
+        "description": "Le grand titre en haut du site",
+    },
     "heroBadge": {
         "type": "text",
         "display_name": "Badge d'en-tête",
@@ -953,15 +958,20 @@ _ITEM_BLOK_SCHEMAS: list[dict[str, Any]] = [
 
 def build_content_schemas(
     extra_section_images: dict[str, list[dict[str, str]]] | None = None,
+    section_field_overrides: dict[str, list[str]] | None = None,
 ) -> list[dict[str, Any]]:
     """Build the Storyblok component schemas for a template.
 
     ``extra_section_images`` maps a section suffix to the one-off image fields the template adds to
     that section (each ``{"field", "label"}``); ``None`` yields the shared schema unchanged.
+    ``section_field_overrides`` maps a section suffix to the exact field-key list that template edits,
+    replacing the shared default — how a template exposes a field the default hides (e.g. ``heroTitle``)
+    or drops shared fields it never renders. ``None`` keeps every section's default fields.
     """
     extra = extra_section_images or {}
+    overrides = section_field_overrides or {}
     sections: list[dict[str, Any]] = [
-        _section_component(suffix, display_name, field_keys, extra.get(suffix))
+        _section_component(suffix, display_name, overrides.get(suffix, field_keys), extra.get(suffix))
         for suffix, display_name, field_keys in SECTION_DEFINITIONS
     ]
     return sections + _ITEM_BLOK_SCHEMAS
@@ -1017,6 +1027,7 @@ def _content_field_values(site_content: dict[str, Any]) -> dict[str, Any]:
         "area": site_content.get("area", ""),
         "subtitle": site_content.get("subtitle", ""),
         "about": site_content.get("about", ""),
+        "heroTitle": site_content.get("heroTitle", ""),
         "heroBadge": site_content.get("heroBadge", ""),
         "heroPoints": [
             {"_uid": _uid(), "component": "site_content_hero_point", "text": str(point)}
@@ -1110,6 +1121,7 @@ def to_storyblok_site_content(
     site_content: dict[str, Any],
     sections: list[str] | None = None,
     extra_section_images: dict[str, list[dict[str, str]]] | None = None,
+    section_field_overrides: dict[str, list[str]] | None = None,
 ) -> list[dict[str, Any]]:
     """Project a flat ``SiteContent`` into the Storyblok page ``body`` — a list of SECTION bloks.
 
@@ -1128,6 +1140,7 @@ def to_storyblok_site_content(
     """
     allowed: set[str] | None = set(sections) if sections is not None else None
     extra: dict[str, list[dict[str, str]]] = extra_section_images or {}
+    overrides: dict[str, list[str]] = section_field_overrides or {}
     raw_images = site_content.get("images")
     images: dict[str, Any] = raw_images if isinstance(raw_images, dict) else {}
     values = _content_field_values(site_content)
@@ -1136,7 +1149,7 @@ def to_storyblok_site_content(
         if allowed is not None and suffix not in allowed:
             continue
         section: dict[str, Any] = {"_uid": _uid(), "component": f"section_{suffix}"}
-        for key in field_keys:
+        for key in overrides.get(suffix, field_keys):
             section[key] = values[key]
         # This template's one-off image slots for this section (empty for most): pushed as asset
         # fields so the client edits them; the bridge flattens them back into ``SiteContent.images``.
@@ -1246,6 +1259,7 @@ def from_storyblok_site_content(raw: dict[str, Any]) -> dict[str, Any] | None:
         "area": _clean_str(blok.get("area")),
         "subtitle": _clean_str(blok.get("subtitle")),
         "about": _clean_str(blok.get("about")),
+        "heroTitle": _clean_str(blok.get("heroTitle")),
         "heroBadge": _clean_str(blok.get("heroBadge")),
         "heroPoints": [
             _clean_str(item.get("text")) for item in _blok_list(blok.get("heroPoints")) if _clean_str(item.get("text"))

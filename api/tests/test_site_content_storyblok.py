@@ -70,6 +70,39 @@ def test_used_sections_drop_unrendered_sections() -> None:
     assert [blok["component"] for blok in body] == ["section_hero", "section_gallery", "section_contact"]
 
 
+def test_section_field_overrides_swap_hero_fields() -> None:
+    """A per-section override exposes a field the default hides (heroTitle) and drops shared ones."""
+    body = sc.to_storyblok_site_content(
+        {"heroTitle": "Élagage à Angers", "subtitle": "Taille et abattage", "heroBadge": "IGNORÉ"},
+        ["hero"],
+        None,
+        {"hero": ["heroTitle", "subtitle", "heroImage", "ctaCallLabel", "ctaQuoteLabel"]},
+    )
+    hero = _section(body, "hero")
+
+    assert hero["heroTitle"] == "Élagage à Angers"
+    assert "heroBadge" not in hero
+    assert "heroPoints" not in hero
+
+
+def test_build_content_schemas_honours_field_overrides() -> None:
+    """The Storyblok section schema reflects the per-template field override (order = editor pos)."""
+    schemas = sc.build_content_schemas(None, {"hero": ["heroTitle", "subtitle"]})
+    hero = next(component for component in schemas if component["name"] == "section_hero")
+
+    assert set(hero["schema"]) == {"heroTitle", "subtitle"}
+    assert hero["schema"]["heroTitle"]["pos"] == 0
+
+
+def test_hero_title_round_trips() -> None:
+    """The new ``heroTitle`` flows back out of a published Storyblok hero section."""
+    flat = sc.from_storyblok_site_content(
+        {"component": "page", "body": [{"component": "section_hero", "heroTitle": "Élagueur à Angers"}]}
+    )
+
+    assert flat["heroTitle"] == "Élagueur à Angers"
+
+
 def test_review_rating_is_pushed_as_string() -> None:
     """Storyblok ``number`` fields validate against strings — an int rating fails save/publish."""
     body = sc.to_storyblok_site_content(

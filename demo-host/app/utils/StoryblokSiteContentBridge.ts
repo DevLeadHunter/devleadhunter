@@ -204,6 +204,7 @@ export class StoryblokSiteContentBridge {
       area: this.readString(blok.area),
       subtitle: this.readString(blok.subtitle),
       about: this.readString(blok.about),
+      heroTitle: this.readString(blok.heroTitle),
       heroBadge: this.readString(blok.heroBadge),
       heroPoints: this.readBlokList(blok.heroPoints)
         .map((item: Blok): string | undefined => this.readString(item.text))

@@ -66,6 +66,14 @@ EXTRA_SECTION_IMAGES: dict[str, list[dict[str, str]]] = {
     "contact": [{"field": "ctaBackground", "label": "Image de fond de la bannière contact"}],
 }
 
+# Per-section field overrides (see registry.to_storyblok_site_content). The hero swaps the shared
+# default for landscaper's own set: it EXPOSES ``heroTitle`` (the editable H1) and DROPS the two fields
+# this layer never renders — ``heroBadge`` (the hero shows a decorative SVG, not the text) and
+# ``heroPoints``. ``ctaCallLabel`` stays: it powers the contact banner's « Être rappelé » button.
+SECTION_FIELDS: dict[str, list[str]] = {
+    "hero": ["heroTitle", "subtitle", "heroImage", "ctaCallLabel", "ctaQuoteLabel"],
+}
+
 
 def default_subtitle(area: str) -> str:
     """Landscaper-aware default hero subtitle when the prospect has no description.
@@ -150,6 +158,7 @@ VERDURE_FAQ: list[dict[str, str]] = [
 # (devleadhunter-template-landscaper-verdure app/types/verdure.ts fallbacks).
 # ``aboutHeading`` is left out on purpose: empty, the layer derives it from the name.
 _EDITORIAL_DEFAULTS: dict[str, Any] = {
+    "heroTitle": "Des extérieurs pensés, plantés et entretenus",
     "ctaCallLabel": "Être rappelé",
     "ctaQuoteLabel": "Demander un devis gratuit",
     "servicesHeading": "Un seul artisan pour tout votre extérieur",

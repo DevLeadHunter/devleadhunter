@@ -192,12 +192,14 @@ def to_storyblok_site_content(template_id: str, site_content: dict[str, Any]) ->
     """Project a flat ``SiteContent`` into the template's Storyblok page ``body`` (list of section bloks).
 
     A template may declare ``USED_SECTIONS`` (the sections it actually renders) so its client editor
-    shows no dead sections; a template without it gets every section.
+    shows no dead sections, and ``SECTION_FIELDS`` (per-section field-key overrides) to expose or hide
+    specific fields; a template without them gets every section with its default fields.
     """
     module = get_module(template_id)
     used_sections: list[str] | None = getattr(module, "USED_SECTIONS", None)
     extra_section_images: dict[str, list[dict[str, str]]] | None = getattr(module, "EXTRA_SECTION_IMAGES", None)
-    return module.to_storyblok_site_content(site_content, used_sections, extra_section_images)
+    section_field_overrides: dict[str, list[str]] | None = getattr(module, "SECTION_FIELDS", None)
+    return module.to_storyblok_site_content(site_content, used_sections, extra_section_images, section_field_overrides)
 
 
 def content_schemas(template_id: str) -> list[dict[str, Any]]:
@@ -208,10 +210,10 @@ def content_schemas(template_id: str) -> list[dict[str, Any]]:
     """
     from services.templates.site_content import build_content_schemas
 
-    extra_section_images: dict[str, list[dict[str, str]]] | None = getattr(
-        get_module(template_id), "EXTRA_SECTION_IMAGES", None
-    )
-    return build_content_schemas(extra_section_images)
+    module = get_module(template_id)
+    extra_section_images: dict[str, list[dict[str, str]]] | None = getattr(module, "EXTRA_SECTION_IMAGES", None)
+    section_field_overrides: dict[str, list[str]] | None = getattr(module, "SECTION_FIELDS", None)
+    return build_content_schemas(extra_section_images, section_field_overrides)
 
 
 def body_components() -> list[str]:
