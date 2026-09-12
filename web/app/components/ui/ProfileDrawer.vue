@@ -146,9 +146,6 @@
               class="input-field"
               placeholder="Ex : Dibodev"
             />
-            <p class="text-muted mt-1.5 text-xs">
-              Utilisé dans les suggestions IA et comme nom affiché dans la configuration d'envoi.
-            </p>
           </div>
 
           <div>
@@ -178,9 +175,6 @@
               class="input-field"
               placeholder="Ex : 06 42 19 38 12"
             />
-            <p class="text-muted mt-1.5 text-xs">
-              Affiché sur le menu « Ce site vous plaît ? » des démos et pages vidéo — masqué si vide.
-            </p>
           </div>
 
           <div>
@@ -194,9 +188,6 @@
               class="input-field"
               placeholder="Ex : contact@dibodev.fr"
             />
-            <p class="text-muted mt-1.5 text-xs">
-              Email public de contact, distinct de votre email de connexion — masqué si vide.
-            </p>
           </div>
         </form>
 
