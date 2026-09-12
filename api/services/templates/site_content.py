@@ -752,6 +752,21 @@ FIELD_SCHEMAS: dict[str, dict[str, Any]] = {
         "component_whitelist": ["site_content_before_after"],
     },
     "contactHeading": {"type": "text", "display_name": "Titre de la section"},
+    "contactLead": {
+        "type": "textarea",
+        "display_name": "Description de la section",
+        "description": "Le paragraphe sous le titre de la section contact",
+    },
+    "ctaTitle": {
+        "type": "text",
+        "display_name": "Titre de la bannière",
+        "description": "Le grand titre du bandeau au-dessus du contact",
+    },
+    "ctaLead": {
+        "type": "textarea",
+        "display_name": "Texte de la bannière",
+        "description": "Le paragraphe du bandeau au-dessus du contact",
+    },
     "businessName": {"type": "text", "display_name": "Nom de l'entreprise"},
     "phone": {"type": "text", "display_name": "Téléphone"},
     "email": {"type": "text", "display_name": "Email de contact"},
@@ -786,6 +801,11 @@ FIELD_SCHEMAS: dict[str, dict[str, Any]] = {
         "component_whitelist": ["site_content_team_member"],
     },
     "portfolioHeading": {"type": "text", "display_name": "Titre de la section"},
+    "portfolioLead": {
+        "type": "textarea",
+        "display_name": "Description de la section",
+        "description": "Le paragraphe sous le titre de la section réalisations",
+    },
     "portfolio": {
         "type": "bloks",
         "display_name": "Réalisations",
@@ -1084,6 +1104,9 @@ def _content_field_values(site_content: dict[str, Any]) -> dict[str, Any]:
         "faqHeading": site_content.get("faqHeading", ""),
         "aboutHeading": site_content.get("aboutHeading", ""),
         "contactHeading": site_content.get("contactHeading", ""),
+        "contactLead": site_content.get("contactLead", ""),
+        "ctaTitle": site_content.get("ctaTitle", ""),
+        "ctaLead": site_content.get("ctaLead", ""),
         "logo": _asset(site_content.get("logo", "")),
         "heroImage": _asset(site_content.get("heroImage", "")),
         "aboutImage": _asset(site_content.get("aboutImage", "")),
@@ -1117,6 +1140,7 @@ def _content_field_values(site_content: dict[str, Any]) -> dict[str, Any]:
             if isinstance(item, dict)
         ],
         "portfolioHeading": site_content.get("portfolioHeading", ""),
+        "portfolioLead": site_content.get("portfolioLead", ""),
         "portfolio": [
             {
                 "_uid": _uid(),
@@ -1325,6 +1349,9 @@ def from_storyblok_site_content(raw: dict[str, Any]) -> dict[str, Any] | None:
         "faqHeading": _clean_str(blok.get("faqHeading")),
         "aboutHeading": _clean_str(blok.get("aboutHeading")),
         "contactHeading": _clean_str(blok.get("contactHeading")),
+        "contactLead": _clean_str(blok.get("contactLead")),
+        "ctaTitle": _clean_str(blok.get("ctaTitle")),
+        "ctaLead": _clean_str(blok.get("ctaLead")),
         "logo": _asset_url(blok.get("logo")),
         "heroImage": _asset_url(blok.get("heroImage")),
         "aboutImage": _asset_url(blok.get("aboutImage")),
@@ -1358,6 +1385,7 @@ def from_storyblok_site_content(raw: dict[str, Any]) -> dict[str, Any] | None:
             if _asset_url(item.get("photo")) or _clean_str(item.get("name"))
         ],
         "portfolioHeading": _clean_str(blok.get("portfolioHeading")),
+        "portfolioLead": _clean_str(blok.get("portfolioLead")),
         "portfolio": [
             {
                 "image": _asset_url(item.get("image")),

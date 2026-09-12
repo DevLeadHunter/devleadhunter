@@ -89,9 +89,15 @@ SECTION_FIELDS: dict[str, list[str]] = {
     "hero": ["heroTitle", "subtitle", "heroImage", "ctaQuoteLabel"],
     # Services: add the section intro paragraph (``servicesLead``) on top of the shared title + cards.
     "services": ["servicesHeading", "servicesLead", "services"],
-    # Contact: the shared default fields + the relabelled banner button (``ctaCallLabel``, see below).
+    # Réalisations: add the section intro paragraph (``portfolioLead``) on top of the shared title + cards.
+    "portfolio": ["portfolioHeading", "portfolioLead", "portfolio"],
+    # Contact: the shared default fields + the editable section intro (``contactLead``), the CTA banner
+    # copy (``ctaTitle``/``ctaLead``) and the relabelled banner button (``ctaCallLabel``, see below).
     "contact": [
         "contactHeading",
+        "contactLead",
+        "ctaTitle",
+        "ctaLead",
         "ctaCallLabel",
         "businessName",
         "phone",
@@ -209,6 +215,18 @@ _EDITORIAL_DEFAULTS: dict[str, Any] = {
     "stepsHeading": "Comment ça se passe ?",
     "reviewsHeading": "Ils nous ont fait confiance",
     "portfolioHeading": "Nos derniers chantiers",
+    "portfolioLead": (
+        "Chaque chantier est mené avec le même soin, qu'il s'agisse d'une création complète ou d'un entretien régulier."
+    ),
+    "contactLead": (
+        "Appelez-nous, écrivez-nous ou laissez vos coordonnées : nous revenons vers vous sous 48 h "
+        "avec un premier avis et un rendez-vous de visite."
+    ),
+    "ctaTitle": "Parlons de votre jardin",
+    "ctaLead": (
+        "Un projet d'aménagement ou besoin d'un entretien régulier ? Décrivez-nous votre extérieur, "
+        "nous revenons vers vous sous 48 h."
+    ),
     "faqHeading": "Vos questions, nos réponses",
 }
 
