@@ -142,6 +142,22 @@ _EDITORIAL_DEFAULTS: dict[str, Any] = {
     "contactHeading": "Parlons de votre projet",
 }
 
+# Sections this template renders — pinned to its full shared set so the opt-in ``method`` section
+# never leaks in as a dead section. Identical to the previous implicit (USED_SECTIONS-less) behaviour.
+USED_SECTIONS: list[str] = [
+    "hero",
+    "trust",
+    "about",
+    "services",
+    "gallery",
+    "reviews",
+    "faq",
+    "beforeAfter",
+    "team",
+    "portfolio",
+    "contact",
+]
+
 
 def build_site_content(
     *,

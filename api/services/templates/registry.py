@@ -213,7 +213,8 @@ def content_schemas(template_id: str) -> list[dict[str, Any]]:
     module = get_module(template_id)
     extra_section_images: dict[str, list[dict[str, str]]] | None = getattr(module, "EXTRA_SECTION_IMAGES", None)
     section_field_overrides: dict[str, list[str]] | None = getattr(module, "SECTION_FIELDS", None)
-    return build_content_schemas(extra_section_images, section_field_overrides)
+    field_schema_overrides: dict[str, dict[str, Any]] | None = getattr(module, "FIELD_SCHEMA_OVERRIDES", None)
+    return build_content_schemas(extra_section_images, section_field_overrides, field_schema_overrides)
 
 
 def body_components() -> list[str]:

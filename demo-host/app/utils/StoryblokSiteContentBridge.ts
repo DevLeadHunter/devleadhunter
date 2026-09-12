@@ -218,6 +218,8 @@ export class StoryblokSiteContentBridge {
         }))
         .filter((item: Blok): boolean => Boolean(item.value) || Boolean(item.label)),
       servicesHeading: this.readString(blok.servicesHeading),
+      servicesLead: this.readString(blok.servicesLead),
+      stepsHeading: this.readString(blok.stepsHeading),
       galleryHeading: this.readString(blok.galleryHeading),
       reviewsHeading: this.readString(blok.reviewsHeading),
       faqHeading: this.readString(blok.faqHeading),
@@ -257,6 +259,12 @@ export class StoryblokSiteContentBridge {
         question: this.readString(item.question),
         answer: this.readString(item.answer),
       })),
+      steps: this.readBlokList(blok.steps)
+        .map((item: Blok): { title?: string; description?: string } => ({
+          title: this.readString(item.title),
+          description: this.readString(item.description),
+        }))
+        .filter((step: Blok): boolean => Boolean(step.title) || Boolean(step.description)),
       openingHours: this.readBlokList(blok.openingHours)
         .map((item: Blok): { day?: string; hours?: string } => ({
           day: this.readString(item.day),

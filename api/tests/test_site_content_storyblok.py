@@ -103,6 +103,58 @@ def test_hero_title_round_trips() -> None:
     assert flat["heroTitle"] == "Élagueur à Angers"
 
 
+def test_steps_round_trip() -> None:
+    """The « méthode » steps project into a ``section_method`` blok and flatten back."""
+    body = sc.to_storyblok_site_content(
+        {"stepsHeading": "Comment ça se passe ?", "steps": [{"title": "Visite", "description": "On vient voir."}]},
+        ["method"],
+    )
+    method = _section(body, "method")
+
+    assert method["stepsHeading"] == "Comment ça se passe ?"
+    assert method["steps"][0]["title"] == "Visite"
+    assert method["steps"][0]["component"] == "site_content_step"
+
+    flat = sc.from_storyblok_site_content({"component": "page", "body": body})
+    assert flat["stepsHeading"] == "Comment ça se passe ?"
+    assert flat["steps"] == [{"title": "Visite", "description": "On vient voir."}]
+
+
+def test_services_lead_round_trips() -> None:
+    """The services section intro paragraph flows back out of a published story."""
+    flat = sc.from_storyblok_site_content(
+        {"component": "page", "body": [{"component": "section_services", "servicesLead": "Un seul artisan."}]}
+    )
+
+    assert flat["servicesLead"] == "Un seul artisan."
+
+
+def test_field_schema_override_relabels_without_mutating_shared() -> None:
+    """A per-template field override relabels a field for that template, never the shared schema."""
+    schemas = sc.build_content_schemas(
+        None,
+        {"contact": ["ctaCallLabel"]},
+        {"ctaCallLabel": {"display_name": "Bouton de la bannière contact"}},
+    )
+    contact = next(component for component in schemas if component["name"] == "section_contact")
+
+    assert contact["schema"]["ctaCallLabel"]["display_name"] == "Bouton de la bannière contact"
+    # The module-level shared schema is left untouched for every other template.
+    assert sc.FIELD_SCHEMAS["ctaCallLabel"]["display_name"] == "Bouton « appeler »"
+
+
+def test_landscaper_schema_reflects_its_overrides() -> None:
+    """The landscaper template exposes servicesLead + steps and relabels/moves ctaCallLabel to contact."""
+    from services.templates import registry
+
+    by_name = {component["name"]: component for component in registry.content_schemas("landscaper-verdure")}
+
+    assert "servicesLead" in by_name["section_services"]["schema"]
+    assert "steps" in by_name["section_method"]["schema"]
+    assert "ctaCallLabel" not in by_name["section_hero"]["schema"]
+    assert by_name["section_contact"]["schema"]["ctaCallLabel"]["display_name"] == "Bouton de la bannière contact"
+
+
 def test_review_rating_is_pushed_as_string() -> None:
     """Storyblok ``number`` fields validate against strings — an int rating fails save/publish."""
     body = sc.to_storyblok_site_content(

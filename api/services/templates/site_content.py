@@ -704,11 +704,24 @@ FIELD_SCHEMAS: dict[str, dict[str, Any]] = {
         "display_name": "Photo « à propos »",
     },
     "servicesHeading": {"type": "text", "display_name": "Titre de la section"},
+    "servicesLead": {
+        "type": "textarea",
+        "display_name": "Description de la section",
+        "description": "Le paragraphe sous le titre de la section services",
+    },
     "services": {
         "type": "bloks",
         "display_name": "Services",
         "restrict_components": True,
         "component_whitelist": ["site_content_service"],
+    },
+    "stepsHeading": {"type": "text", "display_name": "Titre de la section"},
+    "steps": {
+        "type": "bloks",
+        "display_name": "Étapes",
+        "description": "Les étapes de votre déroulé (visite, devis, réalisation…)",
+        "restrict_components": True,
+        "component_whitelist": ["site_content_step"],
     },
     "galleryHeading": {"type": "text", "display_name": "Titre de la section"},
     "gallery": {
@@ -796,6 +809,9 @@ SECTION_DEFINITIONS: list[tuple[str, str, list[str]]] = [
     ("trust", "Repères de confiance", ["trustItems"]),
     ("about", "À propos", ["aboutHeading", "about", "aboutImage"]),
     ("services", "Services", ["servicesHeading", "services"]),
+    # ``method`` is opt-in: no template renders it by default, so only a template whose USED_SECTIONS
+    # lists "method" (landscaper) surfaces it — every other template drops it (no dead section).
+    ("method", "Notre méthode", ["stepsHeading", "steps"]),
     ("gallery", "Photos", ["galleryHeading", "gallery"]),
     ("reviews", "Avis clients", ["reviewsHeading", "reviews"]),
     ("faq", "Questions fréquentes", ["faqHeading", "faq"]),
@@ -814,15 +830,25 @@ SECTION_COMPONENT_NAMES: list[str] = [f"section_{suffix}" for suffix, _, _ in SE
 
 
 def _section_component(
-    suffix: str, display_name: str, field_keys: list[str], extra_images: list[dict[str, str]] | None = None
+    suffix: str,
+    display_name: str,
+    field_keys: list[str],
+    extra_images: list[dict[str, str]] | None = None,
+    field_overrides: dict[str, dict[str, Any]] | None = None,
 ) -> dict[str, Any]:
     """Build a ``section_*`` component schema from its field keys, assigning each a ``pos``.
 
     ``extra_images`` appends this template's one-off image fields (asset), each
     ``{"field": <SiteContent.images key>, "label": <FR label>}`` — grouped in the section the photo
     actually appears in, and flattened back into ``SiteContent.images`` by the bridge.
+    ``field_overrides`` patches a field's shared schema for THIS template (keyed by field key), so a
+    template can relabel a shared field it repurposes (e.g. landscaper's ``ctaCallLabel`` drives the
+    contact banner's « Être rappelé » button, not a generic « appeler » button).
     """
-    schema: dict[str, Any] = {key: {**FIELD_SCHEMAS[key], "pos": index} for index, key in enumerate(field_keys)}
+    overrides: dict[str, dict[str, Any]] = field_overrides or {}
+    schema: dict[str, Any] = {
+        key: {**FIELD_SCHEMAS[key], **overrides.get(key, {}), "pos": index} for index, key in enumerate(field_keys)
+    }
     for offset, extra in enumerate(extra_images or []):
         schema[extra["field"]] = {
             "type": "asset",
@@ -912,6 +938,14 @@ _ITEM_BLOK_SCHEMAS: list[dict[str, Any]] = [
         },
     },
     {
+        "name": "site_content_step",
+        "display_name": "Étape",
+        "schema": {
+            "title": {"type": "text", "pos": 0, "display_name": "Titre de l'étape"},
+            "description": {"type": "textarea", "pos": 1, "display_name": "Description"},
+        },
+    },
+    {
         "name": "site_content_hours",
         "display_name": "Horaire",
         "schema": {
@@ -959,6 +993,7 @@ _ITEM_BLOK_SCHEMAS: list[dict[str, Any]] = [
 def build_content_schemas(
     extra_section_images: dict[str, list[dict[str, str]]] | None = None,
     section_field_overrides: dict[str, list[str]] | None = None,
+    field_schema_overrides: dict[str, dict[str, Any]] | None = None,
 ) -> list[dict[str, Any]]:
     """Build the Storyblok component schemas for a template.
 
@@ -967,11 +1002,14 @@ def build_content_schemas(
     ``section_field_overrides`` maps a section suffix to the exact field-key list that template edits,
     replacing the shared default — how a template exposes a field the default hides (e.g. ``heroTitle``)
     or drops shared fields it never renders. ``None`` keeps every section's default fields.
+    ``field_schema_overrides`` patches a shared field's schema (label/description) for this template,
+    keyed by field key — how a template relabels a field it repurposes. ``None`` keeps every label.
     """
     extra = extra_section_images or {}
     overrides = section_field_overrides or {}
+    field_overrides = field_schema_overrides or {}
     sections: list[dict[str, Any]] = [
-        _section_component(suffix, display_name, overrides.get(suffix, field_keys), extra.get(suffix))
+        _section_component(suffix, display_name, overrides.get(suffix, field_keys), extra.get(suffix), field_overrides)
         for suffix, display_name, field_keys in SECTION_DEFINITIONS
     ]
     return sections + _ITEM_BLOK_SCHEMAS
@@ -1038,6 +1076,9 @@ def _content_field_values(site_content: dict[str, Any]) -> dict[str, Any]:
         "ctaQuoteLabel": site_content.get("ctaQuoteLabel", ""),
         "trustItems": _items_to_bloks(site_content.get("trustItems"), "site_content_trust_item", ("value", "label")),
         "servicesHeading": site_content.get("servicesHeading", ""),
+        "servicesLead": site_content.get("servicesLead", ""),
+        "stepsHeading": site_content.get("stepsHeading", ""),
+        "steps": _items_to_bloks(site_content.get("steps"), "site_content_step", ("title", "description")),
         "galleryHeading": site_content.get("galleryHeading", ""),
         "reviewsHeading": site_content.get("reviewsHeading", ""),
         "faqHeading": site_content.get("faqHeading", ""),
@@ -1272,6 +1313,13 @@ def from_storyblok_site_content(raw: dict[str, Any]) -> dict[str, Any] | None:
             if _clean_str(item.get("value")) or _clean_str(item.get("label"))
         ],
         "servicesHeading": _clean_str(blok.get("servicesHeading")),
+        "servicesLead": _clean_str(blok.get("servicesLead")),
+        "stepsHeading": _clean_str(blok.get("stepsHeading")),
+        "steps": [
+            {"title": _clean_str(item.get("title")), "description": _clean_str(item.get("description"))}
+            for item in _blok_list(blok.get("steps"))
+            if _clean_str(item.get("title")) or _clean_str(item.get("description"))
+        ],
         "galleryHeading": _clean_str(blok.get("galleryHeading")),
         "reviewsHeading": _clean_str(blok.get("reviewsHeading")),
         "faqHeading": _clean_str(blok.get("faqHeading")),
