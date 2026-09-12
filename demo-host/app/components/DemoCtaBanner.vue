@@ -5,7 +5,7 @@
       v-if="state === 'collapsed'"
       type="button"
       class="dlh-pill"
-      :class="{ 'dlh-celebrate': !isVideoPageVariant, 'dlh-pill--wide': isVideoPageVariant }"
+      :class="{ 'dlh-celebrate': !isVideoPageVariant }"
       @click="open"
     >
       <img v-if="ownerPhotoUrl" class="dlh-avatar dlh-avatar--pill" :src="ownerPhotoUrl" alt="" />
@@ -699,9 +699,9 @@ onUnmounted((): void => {
   color: #6b6558;
 }
 
-/* Video page: cream-on-cream ground — width gives the pill the presence the pulse gives on demos. */
+/* Desktop: one pill width shared by the demo overlay and the video page. */
 @media (min-width: 641px) {
-  .dlh-pill--wide {
+  .dlh-pill {
     min-width: 300px;
   }
 }
