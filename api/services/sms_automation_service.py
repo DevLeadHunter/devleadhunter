@@ -95,10 +95,11 @@ class SmsAutomationService:
     def forecast_rows(self, db: Session, user_id: int, start: datetime, end: datetime) -> list[dict[str, object]]:
         """Project the upcoming automated SMS (relance + cold) as campaign-forecast rows.
 
-        The automations have no queue: candidates are computed live and sent by the
-        30-minute passes, capped per day, inside the legal window. This replays that
-        scheduling from now on so the forecast shows who should be texted when —
-        estimated times, not queue rows (a send that happened leaves the projection).
+        The automations have no queue: the worker sends by 30-minute passes, capped per
+        day, inside the legal window. This replays that throttle forward in time and
+        forward-dates each relance to its first-email-plus-delay day — so a prospect
+        emailed recently already shows on the day it will be texted, not only once due.
+        Estimated times, not queue rows (a send that happened leaves the projection).
 
         Args:
             db: Active database session.
@@ -117,14 +118,10 @@ class SmsAutomationService:
         if not (config.auto_relance_enabled or config.cold_sms_enabled):
             return []
 
-        end_paris = _utc_to_paris_naive(end)
-        slots = self._projected_slots(db, user_id, end_paris)
-        if not slots:
-            return []
-        candidates = self._gather(db, config, len(slots))
+        scheduled = self._schedule_projection(db, config, _utc_to_paris_naive(end))
 
         rows: list[dict[str, object]] = []
-        for candidate, slot_paris in zip(candidates, slots, strict=False):
+        for slot_paris, candidate in scheduled:
             scheduled_utc = _paris_to_utc_naive(slot_paris)
             if not (start <= scheduled_utc < end):
                 continue
@@ -153,26 +150,57 @@ class SmsAutomationService:
             )
         return rows
 
-    def _projected_slots(self, db: Session, user_id: int, end_paris: datetime) -> list[datetime]:
-        """Paris-time slots the next automated passes will fill, from now until *end_paris*.
+    def _projection_entries(self, db: Session, config: SmsConfig) -> list[tuple[datetime, SmsRelanceCandidate]]:
+        """Each SMS to project, paired with the earliest Paris time it may legally go out.
 
-        Replays the worker's own throttles: sends only inside the legal window, at most
-        ``sms_auto_per_run`` per 30-minute pass, at most ``sms_auto_daily_cap`` per day
-        (today's cap already consumed by whatever was sent since midnight).
+        A relance is planned for ``first email + delay`` — future-dated as the email ages
+        in, so the forecast shows it before it is due. A cold SMS is planned from now (it
+        is the first touch). Sorted soonest first, relance before cold on ties.
 
         Args:
             db: Active database session.
-            user_id: Owner (for today's already-sent count).
-            end_paris: Projection horizon (naive Europe/Paris).
+            config: The user's SMS configuration.
 
         Returns:
-            One slot per projected SMS, oldest first (several SMS share a pass time).
+            ``(earliest Paris time, candidate)`` pairs, soonest first.
         """
-        slots: list[datetime] = []
+        now = now_in_paris()
+        delay = timedelta(days=config.auto_relance_after_days)
+        entries: list[tuple[datetime, SmsRelanceCandidate]] = []
+        if config.auto_relance_enabled:
+            for candidate in sms_relance_service.find_relance_projection_candidates(db, config.user_id):
+                eligible = _utc_to_paris_naive(candidate.emailed_at + delay) if candidate.emailed_at else now
+                entries.append((max(now, eligible), candidate))
+        if config.cold_sms_enabled:
+            for candidate in sms_relance_service.find_cold_candidates(db, config.user_id, limit=_MAX_PROJECTED_SLOTS):
+                entries.append((now, candidate))
+        entries.sort(key=lambda entry: (entry[0], entry[1].cold))
+        return entries
+
+    def _schedule_projection(
+        self, db: Session, config: SmsConfig, end_paris: datetime
+    ) -> list[tuple[datetime, SmsRelanceCandidate]]:
+        """Assign each planned SMS to the next legal pass at or after its earliest time.
+
+        Replays the worker's throttle forward in time: only inside the legal window, at
+        most ``sms_auto_per_run`` per 30-minute pass and ``sms_auto_daily_cap`` per day
+        (today's cap already consumed by whatever was sent since midnight). Dead time
+        before the soonest planned SMS is skipped so a horizon weeks away stays cheap.
+
+        Args:
+            db: Active database session.
+            config: The user's SMS configuration.
+            end_paris: Projection horizon (naive Europe/Paris, exclusive).
+
+        Returns:
+            ``(slot Paris time, candidate)`` pairs, at most one per candidate.
+        """
+        remaining = self._projection_entries(db, config)
+        assigned: list[tuple[datetime, SmsRelanceCandidate]] = []
         cursor = next_send_slot(now_in_paris())
-        daily_used = self._sent_today(db, user_id)
+        daily_used = self._sent_today(db, config.user_id)
         current_date = cursor.date()
-        while cursor < end_paris and len(slots) < _MAX_PROJECTED_SLOTS:
+        while remaining and cursor < end_paris and len(assigned) < _MAX_PROJECTED_SLOTS:
             if cursor.date() != current_date:
                 current_date = cursor.date()
                 daily_used = 0
@@ -182,13 +210,22 @@ class SmsAutomationService:
             if not is_within_window(cursor):
                 cursor = next_send_slot(cursor)
                 continue
-            for _ in range(settings.sms_auto_per_run):
-                if daily_used >= settings.sms_auto_daily_cap or len(slots) >= _MAX_PROJECTED_SLOTS:
-                    break
-                slots.append(cursor)
-                daily_used += 1
+            if remaining[0][0] > cursor:
+                cursor = next_send_slot(remaining[0][0])
+                continue
+            sent_this_pass = 0
+            carried_over: list[tuple[datetime, SmsRelanceCandidate]] = []
+            for earliest, candidate in remaining:
+                has_room = sent_this_pass < settings.sms_auto_per_run and daily_used < settings.sms_auto_daily_cap
+                if has_room and earliest <= cursor:
+                    assigned.append((cursor, candidate))
+                    sent_this_pass += 1
+                    daily_used += 1
+                else:
+                    carried_over.append((earliest, candidate))
+            remaining = carried_over
             cursor = cursor + _PASS_INTERVAL
-        return slots
+        return assigned
 
     async def run_pass(self, db: Session) -> int:
         """Send one throttled batch of automated SMS across all opted-in users.

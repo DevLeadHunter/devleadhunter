@@ -68,7 +68,10 @@ class SmsRelanceService:
         after_days: int = DEFAULT_RELANCE_AFTER_DAYS,
         limit: int = 50,
     ) -> list[SmsRelanceCandidate]:
-        """Return the user's prospects eligible for an SMS relance (emailed, no reaction).
+        """Return the user's prospects already due for an SMS relance (emailed, no reaction).
+
+        Used by the worker to actually send: only prospects whose first email is older
+        than *after_days* qualify.
 
         Args:
             db: Active database session.
@@ -80,18 +83,55 @@ class SmsRelanceService:
             Eligible candidates, oldest email first.
         """
         cutoff = datetime.utcnow() - timedelta(days=after_days)
-        # Emails sent before the cutoff that got NO human reaction.
+        return self._collect_relance(db, user_id, cutoff=cutoff, limit=limit)
+
+    def find_relance_projection_candidates(
+        self, db: Session, user_id: int, *, limit: int = 500
+    ) -> list[SmsRelanceCandidate]:
+        """Return every relance-destined prospect regardless of email age, for the forecast.
+
+        Unlike :meth:`find_candidates`, there is no age cutoff: a prospect emailed
+        recently is returned too, carrying its first-email date so the forecast can
+        place the SMS at ``emailed_at + delay`` — the send that is *planned*, not yet due.
+
+        Args:
+            db: Active database session.
+            user_id: Owner.
+            limit: Max candidates to return.
+
+        Returns:
+            Relance-destined candidates, oldest email first.
+        """
+        return self._collect_relance(db, user_id, cutoff=None, limit=limit)
+
+    def _collect_relance(
+        self, db: Session, user_id: int, *, cutoff: datetime | None, limit: int
+    ) -> list[SmsRelanceCandidate]:
+        """Select prospects with an unanswered email, a mobile, a demo, never texted.
+
+        Args:
+            db: Active database session.
+            user_id: Owner.
+            cutoff: When set, keep only emails sent at or before it (worker path); when
+                ``None``, keep every age (forecast projection path).
+            limit: Max candidates to return.
+
+        Returns:
+            Matching candidates, oldest email first.
+        """
+        conditions = [
+            EmailLog.user_id == user_id,
+            EmailLog.prospect_id.isnot(None),
+            EmailLog.sent_at.isnot(None),
+            EmailLog.opened_at.is_(None),
+            EmailLog.clicked_at.is_(None),
+            EmailLog.replied_at.is_(None),
+        ]
+        if cutoff is not None:
+            conditions.append(EmailLog.sent_at <= cutoff)
         unreacted = (
             select(EmailLog.prospect_id, func.min(EmailLog.sent_at).label("emailed_at"))
-            .where(
-                EmailLog.user_id == user_id,
-                EmailLog.prospect_id.isnot(None),
-                EmailLog.sent_at.isnot(None),
-                EmailLog.sent_at <= cutoff,
-                EmailLog.opened_at.is_(None),
-                EmailLog.clicked_at.is_(None),
-                EmailLog.replied_at.is_(None),
-            )
+            .where(*conditions)
             .group_by(EmailLog.prospect_id)
             .subquery()
         )
