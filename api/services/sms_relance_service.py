@@ -137,7 +137,12 @@ class SmsRelanceService:
             .group_by(EmailLog.prospect_id)
             .subquery()
         )
-        already_texted = select(SmsMessage.prospect_id).where(SmsMessage.user_id == user_id).subquery()
+        # NULL prospect ids (self-test SMS) would void this NOT IN filter entirely — SQL NULL semantics.
+        already_texted = (
+            select(SmsMessage.prospect_id)
+            .where(SmsMessage.user_id == user_id, SmsMessage.prospect_id.isnot(None))
+            .subquery()
+        )
 
         rows = db.execute(
             select(ProspectDB, unreacted.c.emailed_at)
@@ -171,7 +176,12 @@ class SmsRelanceService:
         Returns:
             Eligible cold candidates.
         """
-        already_texted = select(SmsMessage.prospect_id).where(SmsMessage.user_id == user_id).subquery()
+        # NULL prospect ids (self-test SMS) would void this NOT IN filter entirely — SQL NULL semantics.
+        already_texted = (
+            select(SmsMessage.prospect_id)
+            .where(SmsMessage.user_id == user_id, SmsMessage.prospect_id.isnot(None))
+            .subquery()
+        )
         rows = db.execute(
             select(ProspectDB)
             .where(
