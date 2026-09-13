@@ -10,7 +10,7 @@ account is a single platform account. The DLR and STOP callbacks are public
 from __future__ import annotations
 
 import logging
-from datetime import datetime
+from datetime import UTC, datetime
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy.orm import Session
@@ -21,11 +21,14 @@ from enums.demo_site_status import DemoSiteStatus
 from enums.sms_status import SmsStatus
 from enums.sms_template_category import SmsTemplateCategory
 from models.prospect_db import ProspectDB
+from models.sms_auto_queue import SmsAutoQueue
 from models.sms_config import SmsConfig
 from models.sms_message import SmsMessage
 from models.user import User
 from schemas.sms import (
     SmsAutomationUpdate,
+    SmsAutoQueueActionResponse,
+    SmsAutoQueueRescheduleRequest,
     SmsBulkSendResponse,
     SmsConfigResponse,
     SmsConfigUpdate,
@@ -58,6 +61,13 @@ from services.sms.dlr import (
 from services.sms.gsm_segments import segment_count
 from services.sms.mo import mo_is_stop, mo_origin_message_id, mo_ref_client, mo_sender_number
 from services.sms.phone_normalizer import to_e164_fr
+from services.sms.send_window import (
+    is_within_window,
+    next_send_slot,
+    now_in_paris,
+    paris_to_utc_naive,
+    utc_to_paris_naive,
+)
 from services.sms.smsmode_provider import smsmode_provider
 from services.sms.templates import (
     DEFAULT_FIRST_CONTACT_KEY,
@@ -200,6 +210,78 @@ async def send_relance_bulk(
         if await sms_relance_service.send_relance(db, current_user.id, candidate):
             sent += 1
     return SmsBulkSendResponse(sent=sent, skipped=len(candidates) - sent)
+
+
+def _get_own_auto_queue_row(db: Session, row_id: int, user_id: int) -> SmsAutoQueue:
+    """Fetch one planned automated SMS owned by *user_id*, or raise a 404.
+
+    Args:
+        db: Active database session.
+        row_id: Planned-SMS row id.
+        user_id: The requesting operator.
+
+    Returns:
+        The owned row.
+
+    Raises:
+        HTTPException: 404 when the row does not exist or belongs to someone else.
+    """
+    row = db.query(SmsAutoQueue).filter(SmsAutoQueue.id == row_id, SmsAutoQueue.user_id == user_id).first()
+    if row is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Envoi SMS planifié {row_id} introuvable")
+    return row
+
+
+@router.post("/auto-queue/{row_id}/cancel", response_model=SmsAutoQueueActionResponse)
+async def cancel_auto_sms(
+    row_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> SmsAutoQueueActionResponse:
+    """Cancel one planned automated SMS (pending rows only)."""
+    row = _get_own_auto_queue_row(db, row_id, current_user.id)
+    if row.status != "pending":
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Seul un envoi en attente peut être annulé.")
+    row.status = "cancelled"
+    row.skip_reason = "Annulé manuellement"
+    db.commit()
+    db.refresh(row)
+    return SmsAutoQueueActionResponse(id=row.id, status=row.status, scheduled_at=row.scheduled_at)
+
+
+@router.post("/auto-queue/{row_id}/reschedule", response_model=SmsAutoQueueActionResponse)
+async def reschedule_auto_sms(
+    row_id: int,
+    request: SmsAutoQueueRescheduleRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> SmsAutoQueueActionResponse:
+    """Move one planned automated SMS to a new slot (also revives a skipped row).
+
+    The requested time is snapped forward to the next legal window when it falls
+    outside it (nights, Sundays, public holidays), and must land in the future.
+    """
+    row = _get_own_auto_queue_row(db, row_id, current_user.id)
+    if row.status not in ("pending", "skipped"):
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT, detail="Seul un envoi en attente ou sauté peut être déplacé."
+        )
+    moment = request.scheduled_at
+    if moment.tzinfo is not None:
+        moment = moment.astimezone(UTC).replace(tzinfo=None)
+    paris = utc_to_paris_naive(moment)
+    if not is_within_window(paris):
+        paris = next_send_slot(paris)
+    if paris <= now_in_paris():
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="La nouvelle date doit être dans le futur."
+        )
+    row.scheduled_at = paris_to_utc_naive(paris)
+    row.status = "pending"
+    row.skip_reason = None
+    db.commit()
+    db.refresh(row)
+    return SmsAutoQueueActionResponse(id=row.id, status=row.status, scheduled_at=row.scheduled_at)
 
 
 @router.get("/messages", response_model=SmsMessagesResponse)

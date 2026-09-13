@@ -1,62 +1,58 @@
-"""Background worker for the opt-in SMS automations (auto-relance + cold SMS).
+"""Planned automated SMS (auto-relance J+30 + cold): planner, dispatcher, forecast.
 
-Off by default: a user turns each automation on in Paramètres → Relance SMS. On each
-pass, for every user who enabled one, it sends a throttled batch — always inside the
-legal window, capped per pass and per day (warm-up), never texting a prospect twice.
-Relance (emailed, no reaction) is preferred; cold (mobile, no email) fills the rest.
+Off by default: a user turns each automation on in Paramètres → Relance SMS. Every
+upcoming send is MATERIALISED as an :class:`SmsAutoQueue` row with an exact slot —
+the forecast shows real times and the operator can cancel or reschedule any pending
+row. On each pass the worker revalidates pending rows (eligibility can be lost),
+plans the newly eligible prospects, then sends what is due — always inside the legal
+window, capped per pass and per day, never texting a prospect twice.
 """
 
 from __future__ import annotations
 
 import asyncio
 import logging
-from datetime import UTC, datetime, timedelta
+from datetime import date, datetime, timedelta
 
-from sqlalchemy import func, or_
+from sqlalchemy import or_
 from sqlalchemy.orm import Session
 
 from core.config import settings
 from core.database import SessionLocal
+from models.email_log import EmailLog
+from models.prospect_db import ProspectDB
+from models.sms_auto_queue import SmsAutoQueue
 from models.sms_config import SmsConfig
 from models.sms_message import SmsMessage
-from services.sms.send_window import is_within_window, next_send_slot, now_in_paris
+from services.demo_site_service import demo_site_service
+from services.sms.phone_normalizer import is_mobile_fr, to_e164_fr
+from services.sms.send_window import (
+    is_within_window,
+    next_send_slot,
+    now_in_paris,
+    paris_to_utc_naive,
+    utc_to_paris_naive,
+)
 from services.sms.smsmode_provider import smsmode_provider
 from services.sms_config_service import sms_config_service
 from services.sms_relance_service import SmsRelanceCandidate, sms_relance_service
 from services.sms_service import sms_service
+from services.tracking_links import sms_tracked_link
 
 logger = logging.getLogger(__name__)
-
-try:
-    from zoneinfo import ZoneInfo
-
-    _PARIS_TZ: ZoneInfo | None = ZoneInfo("Europe/Paris")
-except Exception:  # pragma: no cover - tzdata missing on the host
-    _PARIS_TZ = None
 
 # Cadence of the background passes — keep in sync with ``run_loop``'s default interval.
 _PASS_INTERVAL: timedelta = timedelta(minutes=30)
 
-# Hard stop of the forecast projection, whatever the window (guards a runaway loop).
-_MAX_PROJECTED_SLOTS: int = 500
+# Hard stop of the planner, whatever the horizon (guards a runaway loop).
+_MAX_PLANNED: int = 500
 
-
-def _paris_to_utc_naive(moment: datetime) -> datetime:
-    """Convert a naive Europe/Paris datetime to naive UTC (identity when tzdata is unavailable)."""
-    if _PARIS_TZ is None:
-        return moment
-    return moment.replace(tzinfo=_PARIS_TZ).astimezone(UTC).replace(tzinfo=None)
-
-
-def _utc_to_paris_naive(moment: datetime) -> datetime:
-    """Convert a naive UTC datetime to naive Europe/Paris (identity when tzdata is unavailable)."""
-    if _PARIS_TZ is None:
-        return moment
-    return moment.replace(tzinfo=UTC).astimezone(_PARIS_TZ).replace(tzinfo=None)
+# How far ahead the planner materialises rows (a relance is known ~delay days early).
+_PLAN_HORIZON_DAYS: int = 60
 
 
 class SmsAutomationService:
-    """Send the opt-in automated SMS (auto-relance + cold), throttled and legal."""
+    """Plan, revalidate and send the opt-in automated SMS, throttled and legal."""
 
     def enabled_configs(self, db: Session) -> list[SmsConfig]:
         """Configs of users who enabled any SMS automation (with a sender, provider ready)."""
@@ -75,31 +71,254 @@ class SmsAutomationService:
         """Number of SMS (any source) the user sent since midnight UTC — the daily-cap base."""
         day_start = datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
         return int(
-            db.query(func.count(SmsMessage.id))
-            .filter(SmsMessage.user_id == user_id, SmsMessage.created_at >= day_start)
-            .scalar()
+            db.query(SmsMessage.id).filter(SmsMessage.user_id == user_id, SmsMessage.created_at >= day_start).count()
             or 0
         )
 
-    def _gather(self, db: Session, config: SmsConfig, budget: int) -> list[SmsRelanceCandidate]:
-        """Collect up to *budget* candidates for a user: relance first, then cold to fill."""
-        candidates: list[SmsRelanceCandidate] = []
-        if config.auto_relance_enabled:
-            candidates += sms_relance_service.find_candidates(
-                db, config.user_id, after_days=config.auto_relance_after_days, limit=budget
+    def _kind_enabled(self, config: SmsConfig, kind: str) -> bool:
+        """Whether the automation behind *kind* is currently switched on."""
+        return bool(config.auto_relance_enabled if kind == "relance" else config.cold_sms_enabled)
+
+    def _ineligibility_reason(self, db: Session, user_id: int, prospect: ProspectDB | None, kind: str) -> str | None:
+        """Why a planned SMS may no longer go out to *prospect*, or ``None`` when still fine.
+
+        Args:
+            db: Active database session.
+            user_id: Owner of the automation.
+            prospect: The recipient (``None`` when deleted since planning).
+            kind: ``relance`` or ``cold``.
+
+        Returns:
+            A short French reason shown on the forecast row, or ``None``.
+        """
+        if prospect is None:
+            return "Prospect introuvable"
+        if db.query(SmsMessage.id).filter(SmsMessage.user_id == user_id, SmsMessage.prospect_id == prospect.id).first():
+            return "Déjà SMSé"
+        if prospect.do_not_contact:
+            return "Ne plus contacter"
+        if prospect.sms_auto_excluded:
+            return "SMS automatiques coupés pour ce prospect"
+        if kind == "cold" and prospect.contacted:
+            return "Déjà contacté (le 1er contact SMS ne part jamais)"
+        if not is_mobile_fr(prospect.phone):
+            return "Numéro non mobile"
+        to_e164 = to_e164_fr(prospect.phone)
+        if to_e164 and sms_service.is_suppressed(db, user_id, to_e164):
+            return "STOP reçu sur ce numéro"
+        if kind == "relance" and (
+            db.query(EmailLog.id)
+            .filter(
+                EmailLog.user_id == user_id,
+                EmailLog.prospect_id == prospect.id,
+                EmailLog.replied_at.isnot(None),
             )
-        if config.cold_sms_enabled and len(candidates) < budget:
-            candidates += sms_relance_service.find_cold_candidates(db, config.user_id, limit=budget - len(candidates))
-        return candidates[:budget]
+            .first()
+        ):
+            return "A répondu à l'email"
+        if sms_relance_service.demo_for_prospect(db, user_id, prospect.id) is None:
+            return "Démo injoignable"
+        return None
+
+    def revalidate(self, db: Session) -> None:
+        """Sweep pending rows: eligibility lost → skipped, automation switched off → cancelled."""
+        pending = db.query(SmsAutoQueue).filter(SmsAutoQueue.status == "pending").all()
+        if not pending:
+            return
+        configs: dict[int, SmsConfig | None] = {}
+        changed = False
+        for row in pending:
+            if row.user_id not in configs:
+                configs[row.user_id] = sms_config_service.get(db, row.user_id)
+            config = configs[row.user_id]
+            if config is None or not config.sender or not self._kind_enabled(config, row.kind):
+                row.status = "cancelled"
+                row.skip_reason = "Automatisation désactivée"
+                changed = True
+                continue
+            prospect = db.query(ProspectDB).filter(ProspectDB.id == row.prospect_id).first()
+            reason = self._ineligibility_reason(db, row.user_id, prospect, row.kind)
+            if reason:
+                row.status = "skipped"
+                row.skip_reason = reason
+                changed = True
+        if changed:
+            db.commit()
+
+    def plan(self, db: Session) -> None:
+        """Materialise a pending row, with its exact slot, for every newly eligible prospect."""
+        for config in self.enabled_configs(db):
+            if config.auto_relance_enabled or config.cold_sms_enabled:
+                self._plan_user(db, config)
+
+    def _plan_user(self, db: Session, config: SmsConfig) -> None:
+        """Plan the user's unplanned candidates around the slots already taken."""
+        engaged = {
+            prospect_id
+            for (prospect_id,) in db.query(SmsAutoQueue.prospect_id)
+            .filter(SmsAutoQueue.user_id == config.user_id, SmsAutoQueue.status.in_(("pending", "sent")))
+            .all()
+        }
+        now = now_in_paris()
+        delay = timedelta(days=config.auto_relance_after_days)
+        entries: list[tuple[datetime, SmsRelanceCandidate]] = []
+        if config.auto_relance_enabled:
+            for candidate in sms_relance_service.find_relance_projection_candidates(db, config.user_id):
+                if candidate.prospect.id in engaged:
+                    continue
+                eligible = utc_to_paris_naive(candidate.emailed_at + delay) if candidate.emailed_at else now
+                entries.append((max(now, eligible), candidate))
+        if config.cold_sms_enabled:
+            for candidate in sms_relance_service.find_cold_candidates(db, config.user_id, limit=_MAX_PLANNED):
+                if candidate.prospect.id in engaged:
+                    continue
+                entries.append((now, candidate))
+        if not entries:
+            return
+        entries.sort(key=lambda entry: (entry[0], entry[1].cold))
+
+        slot_used: dict[datetime, int] = {}
+        day_used: dict[date, int] = {}
+        existing = (
+            db.query(SmsAutoQueue.scheduled_at)
+            .filter(SmsAutoQueue.user_id == config.user_id, SmsAutoQueue.status == "pending")
+            .all()
+        )
+        for (scheduled_at,) in existing:
+            paris = utc_to_paris_naive(scheduled_at)
+            slot_used[paris] = slot_used.get(paris, 0) + 1
+            day_used[paris.date()] = day_used.get(paris.date(), 0) + 1
+        today = now.date()
+        day_used[today] = day_used.get(today, 0) + self._sent_today(db, config.user_id)
+
+        slots = self._assign_slots(
+            [entry[0] for entry in entries],
+            slot_used=slot_used,
+            day_used=day_used,
+            end_paris=now + timedelta(days=_PLAN_HORIZON_DAYS),
+        )
+        for (_, candidate), slot_paris in zip(entries, slots, strict=False):
+            db.add(
+                SmsAutoQueue(
+                    user_id=config.user_id,
+                    prospect_id=candidate.prospect.id,
+                    demo_site_id=candidate.demo_site.id,
+                    kind="cold" if candidate.cold else "relance",
+                    status="pending",
+                    scheduled_at=paris_to_utc_naive(slot_paris),
+                    emailed_at=candidate.emailed_at,
+                )
+            )
+        db.commit()
+
+    def _assign_slots(
+        self,
+        earliest_list: list[datetime],
+        *,
+        slot_used: dict[datetime, int],
+        day_used: dict[date, int],
+        end_paris: datetime,
+    ) -> list[datetime]:
+        """Assign each entry the first legal pass at/after its earliest time, capacity aware.
+
+        Replays the worker's throttle forward: legal window only, at most
+        ``sms_auto_per_run`` per 30-minute pass and ``sms_auto_daily_cap`` per day —
+        counting the slots already taken by previously planned rows and today's real
+        sends. Dead time before the soonest entry is skipped so a far horizon stays cheap.
+
+        Args:
+            earliest_list: Earliest legal Paris time per entry, sorted ascending.
+            slot_used: Pass slot → how many planned sends already sit on it.
+            day_used: Paris date → sends already planned (or made today) that day.
+            end_paris: Planning horizon (naive Europe/Paris, exclusive).
+
+        Returns:
+            One Paris slot per assigned entry, aligned with ``earliest_list`` (may be shorter).
+        """
+        slot_used = dict(slot_used)
+        day_used = dict(day_used)
+        assigned: list[datetime] = []
+        cursor = next_send_slot(now_in_paris())
+        index = 0
+        while index < len(earliest_list) and cursor < end_paris and len(assigned) < _MAX_PLANNED:
+            if day_used.get(cursor.date(), 0) >= settings.sms_auto_daily_cap:
+                cursor = next_send_slot(datetime.combine(cursor.date() + timedelta(days=1), datetime.min.time()))
+                continue
+            if not is_within_window(cursor):
+                cursor = next_send_slot(cursor)
+                continue
+            if earliest_list[index] > cursor:
+                cursor = next_send_slot(earliest_list[index])
+                continue
+            room = settings.sms_auto_per_run - slot_used.get(cursor, 0)
+            while (
+                index < len(earliest_list)
+                and room > 0
+                and day_used.get(cursor.date(), 0) < settings.sms_auto_daily_cap
+                and earliest_list[index] <= cursor
+                and len(assigned) < _MAX_PLANNED
+            ):
+                assigned.append(cursor)
+                slot_used[cursor] = slot_used.get(cursor, 0) + 1
+                day_used[cursor.date()] = day_used.get(cursor.date(), 0) + 1
+                room -= 1
+                index += 1
+            cursor = cursor + _PASS_INTERVAL
+        return assigned
+
+    async def _send_due(self, db: Session) -> int:
+        """Send the pending rows whose slot has passed, within the per-pass and daily caps."""
+        total = 0
+        now_utc = datetime.utcnow()
+        for config in self.enabled_configs(db):
+            budget = min(
+                settings.sms_auto_per_run, max(0, settings.sms_auto_daily_cap - self._sent_today(db, config.user_id))
+            )
+            if budget <= 0:
+                continue
+            due = (
+                db.query(SmsAutoQueue)
+                .filter(
+                    SmsAutoQueue.user_id == config.user_id,
+                    SmsAutoQueue.status == "pending",
+                    SmsAutoQueue.scheduled_at <= now_utc,
+                )
+                .order_by(SmsAutoQueue.scheduled_at.asc())
+                .all()
+            )
+            sent_for_user = 0
+            for row in due:
+                if sent_for_user >= budget:
+                    break
+                prospect = db.query(ProspectDB).filter(ProspectDB.id == row.prospect_id).first()
+                reason = self._ineligibility_reason(db, config.user_id, prospect, row.kind)
+                candidate = None
+                if reason is None and prospect is not None:
+                    candidate = sms_relance_service.candidate_for(
+                        db, config.user_id, prospect, emailed_at=row.emailed_at, cold=row.kind == "cold"
+                    )
+                if candidate is None:
+                    row.status = "skipped"
+                    row.skip_reason = reason or "Non éligible"
+                    continue
+                try:
+                    sent = await sms_relance_service.send_relance(db, config.user_id, candidate)
+                except Exception as exc:
+                    logger.warning("Auto-SMS failed for prospect %s: %s", row.prospect_id, exc)
+                    sent = False
+                if sent:
+                    row.status = "sent"
+                    row.sent_at = datetime.utcnow()
+                    sent_for_user += 1
+                    total += 1
+                else:
+                    row.status = "skipped"
+                    row.skip_reason = "Échec d'envoi SMS"
+            db.commit()
+        return total
 
     def forecast_rows(self, db: Session, user_id: int, start: datetime, end: datetime) -> list[dict[str, object]]:
-        """Project the upcoming automated SMS (relance + cold) as campaign-forecast rows.
-
-        The automations have no queue: the worker sends by 30-minute passes, capped per
-        day, inside the legal window. This replays that throttle forward in time and
-        forward-dates each relance to its first-email-plus-delay day — so a prospect
-        emailed recently already shows on the day it will be texted, not only once due.
-        Estimated times, not queue rows (a send that happened leaves the projection).
+        """The planned automated SMS of the window, as campaign-forecast rows with exact times.
 
         Args:
             db: Active database session.
@@ -108,127 +327,58 @@ class SmsAutomationService:
             end: Window end (naive UTC, exclusive).
 
         Returns:
-            Forecast rows in the same dict shape as the campaign queue's.
+            Forecast rows in the same dict shape as the campaign queue's — pending rows
+            with their exact slot, skipped ones with their reason, sent ones as a trace.
         """
-        if not smsmode_provider.is_configured:
+        rows = (
+            db.query(SmsAutoQueue)
+            .filter(
+                SmsAutoQueue.user_id == user_id,
+                SmsAutoQueue.scheduled_at >= start,
+                SmsAutoQueue.scheduled_at < end,
+                SmsAutoQueue.status.in_(("pending", "sent", "skipped")),
+            )
+            .order_by(SmsAutoQueue.scheduled_at.asc())
+            .all()
+        )
+        if not rows:
             return []
-        config = sms_config_service.get(db, user_id)
-        if config is None or not config.sender:
-            return []
-        if not (config.auto_relance_enabled or config.cold_sms_enabled):
-            return []
-
-        scheduled = self._schedule_projection(db, config, _utc_to_paris_naive(end))
-
-        rows: list[dict[str, object]] = []
-        for slot_paris, candidate in scheduled:
-            scheduled_utc = _paris_to_utc_naive(slot_paris)
-            if not (start <= scheduled_utc < end):
-                continue
-            site = candidate.demo_site
-            rows.append(
+        prospects = {
+            prospect.id: prospect
+            for prospect in db.query(ProspectDB).filter(ProspectDB.id.in_({row.prospect_id for row in rows})).all()
+        }
+        out: list[dict[str, object]] = []
+        for row in rows:
+            prospect = prospects.get(row.prospect_id)
+            site = sms_relance_service.demo_for_prospect(db, user_id, row.prospect_id)
+            link = sms_tracked_link(demo_site_service.demo_url_for_slug(site.slug)) if site else None
+            out.append(
                 {
                     "queue_id": None,
-                    "scheduled_at": scheduled_utc.isoformat(),
+                    "sms_queue_id": row.id,
+                    "scheduled_at": row.scheduled_at.isoformat(),
                     "campaign_id": None,
-                    "campaign_name": "Cold SMS auto" if candidate.cold else "Relance SMS auto",
-                    "prospect_id": candidate.prospect.id,
-                    "prospect_name": candidate.prospect.name,
-                    "prospect_email": candidate.prospect.email,
-                    "prospect_city": candidate.prospect.city,
-                    "prospect_category": candidate.prospect.category or "",
-                    "queue_type": "sms_cold" if candidate.cold else "sms_relance",
+                    "campaign_name": "Relance SMS auto" if row.kind == "relance" else "Cold SMS auto",
+                    "prospect_id": row.prospect_id,
+                    "prospect_name": prospect.name if prospect else None,
+                    "prospect_email": prospect.email if prospect else None,
+                    "prospect_city": prospect.city if prospect else None,
+                    "prospect_category": (prospect.category or "") if prospect else "",
+                    "queue_type": "sms_relance" if row.kind == "relance" else "sms_cold",
                     "follow_up_index": 0,
                     "ab_variant": None,
-                    "status": "pending",
-                    "skip_reason": None,
-                    "link": candidate.demo_url or None,
-                    "link_kind": "website" if candidate.demo_url else None,
-                    "demo_site_id": site.id,
-                    "site_reviewed_at": site.site_reviewed_at.isoformat() if site.site_reviewed_at else None,
+                    "status": row.status,
+                    "skip_reason": row.skip_reason,
+                    "link": link,
+                    "link_kind": "website" if link else None,
+                    "demo_site_id": site.id if site else row.demo_site_id,
+                    "site_reviewed_at": site.site_reviewed_at.isoformat() if site and site.site_reviewed_at else None,
                 }
             )
-        return rows
-
-    def _projection_entries(self, db: Session, config: SmsConfig) -> list[tuple[datetime, SmsRelanceCandidate]]:
-        """Each SMS to project, paired with the earliest Paris time it may legally go out.
-
-        A relance is planned for ``first email + delay`` — future-dated as the email ages
-        in, so the forecast shows it before it is due. A cold SMS is planned from now (it
-        is the first touch). Sorted soonest first, relance before cold on ties.
-
-        Args:
-            db: Active database session.
-            config: The user's SMS configuration.
-
-        Returns:
-            ``(earliest Paris time, candidate)`` pairs, soonest first.
-        """
-        now = now_in_paris()
-        delay = timedelta(days=config.auto_relance_after_days)
-        entries: list[tuple[datetime, SmsRelanceCandidate]] = []
-        if config.auto_relance_enabled:
-            for candidate in sms_relance_service.find_relance_projection_candidates(db, config.user_id):
-                eligible = _utc_to_paris_naive(candidate.emailed_at + delay) if candidate.emailed_at else now
-                entries.append((max(now, eligible), candidate))
-        if config.cold_sms_enabled:
-            for candidate in sms_relance_service.find_cold_candidates(db, config.user_id, limit=_MAX_PROJECTED_SLOTS):
-                entries.append((now, candidate))
-        entries.sort(key=lambda entry: (entry[0], entry[1].cold))
-        return entries
-
-    def _schedule_projection(
-        self, db: Session, config: SmsConfig, end_paris: datetime
-    ) -> list[tuple[datetime, SmsRelanceCandidate]]:
-        """Assign each planned SMS to the next legal pass at or after its earliest time.
-
-        Replays the worker's throttle forward in time: only inside the legal window, at
-        most ``sms_auto_per_run`` per 30-minute pass and ``sms_auto_daily_cap`` per day
-        (today's cap already consumed by whatever was sent since midnight). Dead time
-        before the soonest planned SMS is skipped so a horizon weeks away stays cheap.
-
-        Args:
-            db: Active database session.
-            config: The user's SMS configuration.
-            end_paris: Projection horizon (naive Europe/Paris, exclusive).
-
-        Returns:
-            ``(slot Paris time, candidate)`` pairs, at most one per candidate.
-        """
-        remaining = self._projection_entries(db, config)
-        assigned: list[tuple[datetime, SmsRelanceCandidate]] = []
-        cursor = next_send_slot(now_in_paris())
-        daily_used = self._sent_today(db, config.user_id)
-        current_date = cursor.date()
-        while remaining and cursor < end_paris and len(assigned) < _MAX_PROJECTED_SLOTS:
-            if cursor.date() != current_date:
-                current_date = cursor.date()
-                daily_used = 0
-            if daily_used >= settings.sms_auto_daily_cap:
-                cursor = next_send_slot(datetime.combine(current_date + timedelta(days=1), datetime.min.time()))
-                continue
-            if not is_within_window(cursor):
-                cursor = next_send_slot(cursor)
-                continue
-            if remaining[0][0] > cursor:
-                cursor = next_send_slot(remaining[0][0])
-                continue
-            sent_this_pass = 0
-            carried_over: list[tuple[datetime, SmsRelanceCandidate]] = []
-            for earliest, candidate in remaining:
-                has_room = sent_this_pass < settings.sms_auto_per_run and daily_used < settings.sms_auto_daily_cap
-                if has_room and earliest <= cursor:
-                    assigned.append((cursor, candidate))
-                    sent_this_pass += 1
-                    daily_used += 1
-                else:
-                    carried_over.append((earliest, candidate))
-            remaining = carried_over
-            cursor = cursor + _PASS_INTERVAL
-        return assigned
+        return out
 
     async def run_pass(self, db: Session) -> int:
-        """Send one throttled batch of automated SMS across all opted-in users.
+        """Revalidate, plan, then send the due automated SMS across all opted-in users.
 
         Args:
             db: Active database session.
@@ -236,24 +386,14 @@ class SmsAutomationService:
         Returns:
             The number of SMS sent in this pass.
         """
-        # Outside the legal window nothing goes out — wait silently for the next window.
+        if not smsmode_provider.is_configured:
+            return 0
+        self.revalidate(db)
+        self.plan(db)
+        # Outside the legal window nothing goes out — the plan stays visible, sends wait.
         if sms_service.legal_window_refusal() is not None:
             return 0
-
-        total_sent = 0
-        for config in self.enabled_configs(db):
-            budget = min(
-                settings.sms_auto_per_run, max(0, settings.sms_auto_daily_cap - self._sent_today(db, config.user_id))
-            )
-            if budget <= 0:
-                continue
-            for candidate in self._gather(db, config, budget):
-                try:
-                    if await sms_relance_service.send_relance(db, config.user_id, candidate):
-                        total_sent += 1
-                except Exception as exc:
-                    logger.warning("Auto-SMS failed for prospect %s: %s", candidate.prospect.id, exc)
-        return total_sent
+        return await self._send_due(db)
 
     async def run_loop(self, interval_seconds: int = 1800) -> None:
         """Run an automated-SMS pass on a periodic loop (legal window + caps enforced per pass)."""

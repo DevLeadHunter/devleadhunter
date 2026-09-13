@@ -19,6 +19,34 @@ except Exception:
     _PARIS_TZ = None
 
 
+def paris_to_utc_naive(moment: datetime) -> datetime:
+    """Convert a naive Europe/Paris datetime to naive UTC (identity when tzdata is unavailable).
+
+    Args:
+        moment: A naive local (Paris) datetime.
+
+    Returns:
+        The same instant as a naive UTC datetime — the API's storage convention.
+    """
+    if _PARIS_TZ is None:
+        return moment
+    return moment.replace(tzinfo=_PARIS_TZ).astimezone(UTC).replace(tzinfo=None)
+
+
+def utc_to_paris_naive(moment: datetime) -> datetime:
+    """Convert a naive UTC datetime to naive Europe/Paris (identity when tzdata is unavailable).
+
+    Args:
+        moment: A naive UTC datetime.
+
+    Returns:
+        The same instant as a naive local (Paris) datetime, for window checks.
+    """
+    if _PARIS_TZ is None:
+        return moment
+    return moment.replace(tzinfo=UTC).astimezone(_PARIS_TZ).replace(tzinfo=None)
+
+
 def now_in_paris() -> datetime:
     """Current Europe/Paris local time, as a naive datetime for the window check.
 

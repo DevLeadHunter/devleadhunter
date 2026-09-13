@@ -65,9 +65,9 @@ class ProspectDB(Base):
     do_not_contact: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default="0", index=True)
     do_not_contact_reason: Mapped[str | None] = mapped_column(String(500), nullable=True)
     do_not_contact_at: Mapped[datetime | None] = mapped_column(nullable=True)
-    # Operator opt-out for the J+30 SMS relance of THIS prospect only (already handled by hand).
-    # Drops it from the relance selection (worker + forecast); cold SMS and email are untouched.
-    sms_relance_excluded: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default="0")
+    # Operator opt-out for the automated SMS of THIS prospect only (already handled by hand).
+    # Drops it from the auto relance AND auto cold selections; campaigns and email are untouched.
+    sms_auto_excluded: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default="0")
     # Email dead-end: the campaign email bounced and no other address could be tried. The prospect
     # stays « contacté » (we DID attempt) but is flagged so the operator can recover it into an SMS
     # campaign. Cleared on the next successful delivery or when the email is edited by hand.

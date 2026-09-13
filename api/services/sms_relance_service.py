@@ -5,7 +5,8 @@ The SMS pushes a prospect back to their demo site. Two selections:
   never texted, and was not opted out of the relance. More natural than a cold SMS.
   Opens and clicks do NOT bar a relance — they are too noisy (bot prefetch, the
   operator's own demo visits) to read as a real reaction.
-- **Cold**: a prospect with a mobile but NO email — the SMS is the first touch.
+- **Cold**: a prospect with a mobile but NO email — the SMS is the first touch, so a
+  prospect already contacted (any channel, manual included) is never selected.
 
 A prospect's demo may have gone dormant (EXPIRED) since its 21-day TTL lapsed; the send
 revives it (from ``content_json``, no re-scrape) and restarts a fresh 21-day TTL, so the
@@ -188,6 +189,7 @@ class SmsRelanceService:
                 ProspectDB.user_id == user_id,
                 ProspectDB.phone.isnot(None),
                 or_(ProspectDB.email.is_(None), ProspectDB.email == ""),
+                ProspectDB.contacted.is_(False),
                 ProspectDB.id.notin_(select(already_texted.c.prospect_id)),
             )
             .order_by(ProspectDB.created_at.asc())
@@ -211,9 +213,12 @@ class SmsRelanceService:
             return None
         if prospect.do_not_contact:
             return None
-        # Per-prospect opt-out of the J+30 relance only (the operator handled it by hand);
-        # cold SMS is a different automation and stays allowed.
-        if not cold and prospect.sms_relance_excluded:
+        # Per-prospect opt-out of every automated SMS (the operator handles it by hand).
+        if prospect.sms_auto_excluded:
+            return None
+        # A cold SMS is a FIRST touch: a prospect already contacted (any channel, manual
+        # included) must never receive one — the operator owns that conversation.
+        if cold and prospect.contacted:
             return None
         to_e164 = to_e164_fr(prospect.phone)
         if to_e164 and sms_service.is_suppressed(db, user_id, to_e164):
@@ -225,6 +230,23 @@ class SmsRelanceService:
         return SmsRelanceCandidate(
             prospect=prospect, demo_site=site, demo_url=demo_url, emailed_at=emailed_at, cold=cold
         )
+
+    def candidate_for(
+        self, db: Session, user_id: int, prospect: ProspectDB, *, emailed_at: datetime | None, cold: bool
+    ) -> SmsRelanceCandidate | None:
+        """Re-check one prospect right before a planned send (same gates as the selection).
+
+        Args:
+            db: Active database session.
+            user_id: Owner.
+            prospect: The recipient to re-verify.
+            emailed_at: First-email date anchoring a relance (``None`` for cold).
+            cold: Whether the planned SMS is a cold first contact.
+
+        Returns:
+            A sendable candidate, or ``None`` when eligibility was lost since planning.
+        """
+        return self._build_candidate(db, user_id, prospect, emailed_at=emailed_at, cold=cold)
 
     def demo_for_prospect(self, db: Session, user_id: int, prospect_id: int) -> DemoSite | None:
         """The prospect's newest reachable demo (ACTIVE, else dormant EXPIRED), or ``None``."""

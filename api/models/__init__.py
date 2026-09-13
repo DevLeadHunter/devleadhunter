@@ -29,6 +29,7 @@ from models.push_subscription import PushSubscription
 from models.scraping_job import ScrapingJob
 from models.search import ProspectSearchRequest, ProspectSearchResponse
 from models.send_policy import SendPolicy
+from models.sms_auto_queue import SmsAutoQueue
 from models.sms_config import SmsConfig
 from models.sms_message import SmsMessage
 from models.sms_reply import SmsReply
@@ -66,6 +67,7 @@ __all__ = [
     "PushSubscription",
     "ScrapingJob",
     "SendPolicy",
+    "SmsAutoQueue",
     "SmsConfig",
     "SmsMessage",
     "SmsReply",

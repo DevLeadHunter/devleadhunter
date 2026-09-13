@@ -185,7 +185,7 @@
                 <span
                   v-if="item.isAutoSms"
                   class="font-label inline-flex shrink-0 items-center gap-1 rounded bg-[var(--app-violet-soft)] px-1.5 py-0.5 text-[10px] font-bold text-[var(--app-violet)]"
-                  title="Envoi automatique SMS — heure estimée (fenêtre légale, 3 par passe, plafond quotidien)"
+                  title="Envoi SMS automatique planifié — annulable et déplaçable (fenêtre légale, 3 par passe de 30 min, plafond quotidien)"
                 >
                   <UIcon name="i-lucide-message-square-text" class="h-3 w-3" />
                   {{ item.queue_type === 'sms_relance' ? 'SMS J+30 auto' : 'SMS 1er contact auto' }}
@@ -218,9 +218,17 @@
             </div>
 
             <!-- Envoi bloqué (site expiré, etc.) -->
-            <div v-if="item.isWarning" class="flex items-center gap-1.5 text-xs font-medium text-[var(--app-red)]">
+            <div v-if="item.isWarning" class="flex items-center gap-2 text-xs font-medium text-[var(--app-red)]">
               <UIcon name="i-lucide-triangle-alert" class="h-3.5 w-3.5 shrink-0" />
               {{ item.skip_reason }} — non envoyé
+              <button
+                v-if="item.isAutoSms && item.sms_queue_id"
+                type="button"
+                class="app-btn-secondary h-7 shrink-0 px-2 text-[11px]"
+                @click="openReschedule(item)"
+              >
+                Replanifier
+              </button>
             </div>
 
             <!-- Lien du site + case vérifié -->
@@ -275,19 +283,69 @@
                 />
               </button>
 
+              <template v-if="item.isAutoSms && !item.isSent">
+                <button
+                  v-if="item.sms_queue_id"
+                  type="button"
+                  title="Déplacer cet envoi à une autre date"
+                  class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-[var(--app-line)] bg-[var(--app-surface)] text-[var(--app-ink-soft)] transition-colors hover:border-[var(--app-ink-soft)] hover:text-[var(--app-ink)]"
+                  @click="openReschedule(item)"
+                >
+                  <UIcon name="i-lucide-calendar-clock" class="h-4 w-4" />
+                </button>
+
+                <button
+                  v-if="item.sms_queue_id"
+                  type="button"
+                  :disabled="pendingCancelIds.has(item.sms_queue_id)"
+                  title="Annuler cet envoi planifié"
+                  class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-[var(--app-line)] bg-[var(--app-surface)] text-[var(--app-ink-soft)] transition-colors hover:border-[var(--app-red)] hover:text-[var(--app-red)] disabled:opacity-50"
+                  @click="cancelAutoSms(item)"
+                >
+                  <UIcon
+                    :name="pendingCancelIds.has(item.sms_queue_id) ? 'i-lucide-loader-circle' : 'i-lucide-x'"
+                    :class="['h-4 w-4', { 'animate-spin': pendingCancelIds.has(item.sms_queue_id) }]"
+                  />
+                </button>
+
+                <button
+                  type="button"
+                  :disabled="pendingExcludeIds.has(item.prospect_id)"
+                  title="Ne plus jamais envoyer de SMS automatique à ce prospect"
+                  class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-[var(--app-line)] bg-[var(--app-surface)] text-[var(--app-ink-soft)] transition-colors hover:border-[var(--app-red)] hover:text-[var(--app-red)] disabled:opacity-50"
+                  @click="excludeAutoSms(item)"
+                >
+                  <UIcon
+                    :name="pendingExcludeIds.has(item.prospect_id) ? 'i-lucide-loader-circle' : 'i-lucide-bell-off'"
+                    :class="['h-4 w-4', { 'animate-spin': pendingExcludeIds.has(item.prospect_id) }]"
+                  />
+                </button>
+              </template>
+            </div>
+
+            <!-- Déplacement d'un envoi SMS planifié : date + heure exactes, recalées serveur si hors fenêtre. -->
+            <div v-if="rescheduleTargetKey === item.rowKey" class="flex w-full flex-wrap items-center gap-2 pt-1">
+              <span class="font-label text-xs text-[var(--app-ink-soft)]">Nouvelle date :</span>
+              <input v-model="rescheduleValue" type="datetime-local" class="input-field h-8 w-auto text-xs" />
               <button
-                v-if="item.queue_type === 'sms_relance'"
                 type="button"
-                :disabled="pendingIgnoreIds.has(item.prospect_id)"
-                title="Ne plus relancer ce prospect par SMS"
-                class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-[var(--app-line)] bg-[var(--app-surface)] text-[var(--app-ink-soft)] transition-colors hover:border-[var(--app-red)] hover:text-[var(--app-red)] disabled:opacity-50"
-                @click="ignoreSmsRelance(item)"
+                class="app-btn-primary h-8 px-3 text-xs"
+                :disabled="isRescheduling || !rescheduleValue"
+                @click="confirmReschedule(item)"
               >
-                <UIcon
-                  :name="pendingIgnoreIds.has(item.prospect_id) ? 'i-lucide-loader-circle' : 'i-lucide-bell-off'"
-                  :class="['h-4 w-4', { 'animate-spin': pendingIgnoreIds.has(item.prospect_id) }]"
-                />
+                {{ isRescheduling ? 'Déplacement…' : 'Confirmer' }}
               </button>
+              <button
+                type="button"
+                class="app-btn-secondary h-8 px-3 text-xs"
+                :disabled="isRescheduling"
+                @click="closeReschedule"
+              >
+                Annuler
+              </button>
+              <span class="text-[11px] text-[var(--app-faint)]">
+                Hors fenêtre légale, l'envoi est recalé au prochain créneau autorisé.
+              </span>
             </div>
           </div>
         </div>
@@ -304,6 +362,8 @@ import type { CampaignForecastItem, CampaignForecastResponse } from '~/services/
 import { DemoSiteService } from '~/services/demoSiteService'
 import type { DemoSite } from '~/services/demoSiteService'
 import { ProspectsService } from '~/services/prospectsService'
+import { SmsService } from '~/services/smsService'
+import type { SmsAutoQueueAction } from '~/services/smsService'
 import { parseApiDate } from '~/utils/date'
 import { useToast } from '~/composables/useToast'
 import type { UseToastReturn } from '~/types/Composables'
@@ -341,8 +401,15 @@ const items: Ref<CampaignForecastItem[]> = ref([])
 const isLoading: Ref<boolean> = ref(false)
 /** Demo-site ids whose review toggle is in flight (to disable the button meanwhile). */
 const pendingReviewIds: Ref<Set<number>> = ref(new Set<number>())
-/** Prospect ids whose « ne plus relancer par SMS » action is in flight. */
-const pendingIgnoreIds: Ref<Set<number>> = ref(new Set<number>())
+/** Prospect ids whose « couper les SMS automatiques » action is in flight. */
+const pendingExcludeIds: Ref<Set<number>> = ref(new Set<number>())
+/** Planned-SMS row ids whose cancellation is in flight. */
+const pendingCancelIds: Ref<Set<number>> = ref(new Set<number>())
+/** Row key whose inline « déplacer » editor is open (null = none). */
+const rescheduleTargetKey: Ref<string | null> = ref(null)
+/** Value of the reschedule datetime-local input. */
+const rescheduleValue: Ref<string> = ref('')
+const isRescheduling: Ref<boolean> = ref(false)
 
 /** Whether the viewed week is the one containing today. */
 const isCurrentWeek: ComputedRef<boolean> = computed(
@@ -472,9 +539,8 @@ function toRow(item: CampaignForecastItem): ForecastRow {
   })
   return {
     ...item,
-    rowKey: item.queue_id !== null ? `q-${item.queue_id}` : `sms-${item.queue_type}-${item.prospect_id}`,
-    // An automated SMS has no queue row: its pass time is an estimate, flagged as such.
-    timeLabel: isAutoSms ? `~${time}` : time,
+    rowKey: item.queue_id !== null ? `q-${item.queue_id}` : `s-${item.sms_queue_id ?? item.prospect_id}`,
+    timeLabel: time,
     metaLine: metaParts.join(' · '),
     isWarning: item.status === 'skipped',
     isSent: item.status === 'sent',
@@ -587,26 +653,99 @@ async function toggleReview(row: ForecastRow): Promise<void> {
 }
 
 /**
- * Opt a prospect out of the J+30 SMS relance and drop its projected rows from the view.
- * @param row - The SMS-relance row whose prospect is being excluded.
+ * Cut every automated SMS for a row's prospect, then reload so its rows show as held back.
+ * @param row - The planned-SMS row whose prospect is being excluded.
  * @returns A promise resolved once the exclusion is persisted.
  */
-async function ignoreSmsRelance(row: ForecastRow): Promise<void> {
+async function excludeAutoSms(row: ForecastRow): Promise<void> {
   const prospectId: number = row.prospect_id
-  if (pendingIgnoreIds.value.has(prospectId)) return
-  pendingIgnoreIds.value = new Set(pendingIgnoreIds.value).add(prospectId)
+  if (pendingExcludeIds.value.has(prospectId)) return
+  pendingExcludeIds.value = new Set(pendingExcludeIds.value).add(prospectId)
   try {
-    await ProspectsService.setSmsRelanceExcluded(prospectId, true)
-    items.value = items.value.filter(
-      (item: CampaignForecastItem): boolean => !(item.prospect_id === prospectId && item.queue_type === 'sms_relance'),
-    )
-    toast.success('Prospect exclu de la relance SMS')
+    await ProspectsService.setSmsAutoExcluded(prospectId, true)
+    toast.success('SMS automatiques coupés pour ce prospect')
+    await load()
   } catch {
-    toast.error("Impossible d'exclure ce prospect de la relance SMS")
+    toast.error('Impossible de couper les SMS automatiques de ce prospect')
   } finally {
-    const next: Set<number> = new Set(pendingIgnoreIds.value)
+    const next: Set<number> = new Set(pendingExcludeIds.value)
     next.delete(prospectId)
-    pendingIgnoreIds.value = next
+    pendingExcludeIds.value = next
+  }
+}
+
+/**
+ * Cancel one planned automated SMS, then reload the week.
+ * @param row - The planned-SMS row to cancel.
+ * @returns A promise resolved once the cancellation is persisted.
+ */
+async function cancelAutoSms(row: ForecastRow): Promise<void> {
+  const rowId: number | null | undefined = row.sms_queue_id
+  if (rowId === null || rowId === undefined || pendingCancelIds.value.has(rowId)) return
+  pendingCancelIds.value = new Set(pendingCancelIds.value).add(rowId)
+  try {
+    await SmsService.cancelAutoQueue(rowId)
+    toast.success('Envoi SMS annulé')
+    await load()
+  } catch {
+    toast.error("Impossible d'annuler cet envoi")
+  } finally {
+    const next: Set<number> = new Set(pendingCancelIds.value)
+    next.delete(rowId)
+    pendingCancelIds.value = next
+  }
+}
+
+/**
+ * `YYYY-MM-DDTHH:mm` local value for a datetime-local input.
+ * @param moment - The date to format.
+ * @returns The input-ready local value.
+ */
+function toDatetimeLocalValue(moment: Date): string {
+  const pad: (value: number) => string = (value: number): string => String(value).padStart(2, '0')
+  return `${moment.getFullYear()}-${pad(moment.getMonth() + 1)}-${pad(moment.getDate())}T${pad(moment.getHours())}:${pad(moment.getMinutes())}`
+}
+
+/**
+ * Open the inline « déplacer » editor for a row, prefilled with its current slot.
+ * @param row - The planned-SMS row to move.
+ */
+function openReschedule(row: ForecastRow): void {
+  rescheduleTargetKey.value = row.rowKey
+  rescheduleValue.value = toDatetimeLocalValue(parseApiDate(row.scheduled_at))
+}
+
+/** Close the inline « déplacer » editor without saving. */
+function closeReschedule(): void {
+  rescheduleTargetKey.value = null
+  rescheduleValue.value = ''
+}
+
+/**
+ * Persist the new slot of a planned SMS (snapped server-side to the legal window), then reload.
+ * @param row - The planned-SMS row being moved.
+ * @returns A promise resolved once the new slot is saved.
+ */
+async function confirmReschedule(row: ForecastRow): Promise<void> {
+  const rowId: number | null | undefined = row.sms_queue_id
+  if (rowId === null || rowId === undefined || isRescheduling.value || !rescheduleValue.value) return
+  isRescheduling.value = true
+  try {
+    const result: SmsAutoQueueAction = await SmsService.rescheduleAutoQueue(
+      rowId,
+      new Date(rescheduleValue.value).toISOString(),
+    )
+    const retained: string = parseApiDate(result.scheduled_at).toLocaleString(LOCALE, {
+      dateStyle: 'long',
+      timeStyle: 'short',
+    })
+    toast.success(`Envoi déplacé au ${retained}`)
+    closeReschedule()
+    await load()
+  } catch {
+    toast.error('Impossible de déplacer cet envoi (la date doit être dans le futur)')
+  } finally {
+    isRescheduling.value = false
   }
 }
 

@@ -182,3 +182,17 @@ class SmsDlrCallback(BaseModel):
         value: str | None = None
 
     status: Status | None = None
+
+
+class SmsAutoQueueRescheduleRequest(BaseModel):
+    """Payload for POST /sms/auto-queue/{id}/reschedule."""
+
+    scheduled_at: datetime = Field(..., description="New send time; snapped to the next legal slot when outside it")
+
+
+class SmsAutoQueueActionResponse(BaseModel):
+    """State of a planned automated SMS after a cancel or reschedule."""
+
+    id: int
+    status: str
+    scheduled_at: datetime

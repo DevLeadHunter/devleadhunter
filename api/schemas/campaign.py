@@ -239,12 +239,13 @@ class CampaignListResponse(BaseModel):
 class CampaignForecastItem(BaseModel):
     """One scheduled send in the week-ahead forecast, across all campaigns.
 
-    Rows come from the campaign queue, plus the projected automated SMS (relance
-    J+30 / cold) — those have no queue row: ``queue_id`` and ``campaign_id`` are
-    ``None`` and ``scheduled_at`` is an estimate of the worker's next passes.
+    Rows come from the campaign queue, plus the planned automated SMS (relance
+    J+30 / cold) — those carry ``sms_queue_id`` instead of ``queue_id`` and their
+    ``scheduled_at`` is the exact planned slot (cancellable / reschedulable).
     """
 
     queue_id: int | None = None
+    sms_queue_id: int | None = None
     scheduled_at: datetime
     campaign_id: int | None = None
     campaign_name: str

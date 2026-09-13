@@ -306,10 +306,10 @@ class DoNotContactRequest(BaseModel):
     reason: str | None = Field(None, max_length=500, description="Optional note on why contact is stopped")
 
 
-class SmsRelanceExclusionRequest(BaseModel):
-    """Payload for POST /prospects/{id}/sms-relance-exclusion."""
+class SmsAutoExclusionRequest(BaseModel):
+    """Payload for POST /prospects/{id}/sms-auto-exclusion."""
 
-    excluded: bool = Field(..., description="True to skip this prospect's J+30 SMS relance, False to re-allow it")
+    excluded: bool = Field(..., description="True to skip every automated SMS for this prospect, False to re-allow")
 
 
 @router.post(
@@ -610,25 +610,25 @@ async def set_prospect_do_not_contact(
 
 
 @router.post(
-    "/{prospect_id}/sms-relance-exclusion",
+    "/{prospect_id}/sms-auto-exclusion",
     response_model=Prospect,
-    summary="Exclude or re-include a prospect in the J+30 SMS relance",
-    description="Opt one prospect out of the automatic J+30 SMS relance (or back in) — cold SMS and email stay.",
+    summary="Exclude or re-include a prospect in the automated SMS",
+    description="Opt one prospect out of every automated SMS (relance J+30 and cold) — campaigns and email stay.",
 )
-async def set_prospect_sms_relance_exclusion(
+async def set_prospect_sms_auto_exclusion(
     prospect_id: int,
-    request: SmsRelanceExclusionRequest,
+    request: SmsAutoExclusionRequest,
     current_user: User = Depends(require_auth),
     db: Session = Depends(get_db),
 ) -> Prospect:
-    """Exclude (or re-include) a prospect from the J+30 SMS relance.
+    """Exclude (or re-include) a prospect from every automated SMS.
 
     Raises:
         HTTPException: 404 when not visible, 403 when reserved by another member.
     """
     row = _get_visible_db_prospect(db, prospect_id, current_user)
     _assert_not_reserved_by_other(db, current_user, row)
-    prospect = await prospect_service.set_sms_relance_excluded(
+    prospect = await prospect_service.set_sms_auto_excluded(
         db, prospect_id, user_id=current_user.id, excluded=request.excluded
     )
     if not prospect:

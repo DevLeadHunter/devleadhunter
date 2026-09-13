@@ -31,8 +31,10 @@ jobs:
             from core.database import SessionLocal
             from models.email_log import EmailLog
             from models.prospect_db import ProspectDB
+            from models.sms_auto_queue import SmsAutoQueue
             from models.sms_config import SmsConfig
             from models.sms_message import SmsMessage
+            from services.sms.send_window import utc_to_paris_naive
             from services.sms.phone_normalizer import is_mobile_fr, to_e164_fr
             from services.sms.smsmode_provider import smsmode_provider
             from services.sms_relance_service import sms_relance_service
@@ -90,9 +92,22 @@ jobs:
                         cand = sms_relance_service._build_candidate(db, uid, p, emailed_at=None, cold=False)
                         print(
                             f"    #{p.id} {p.name} ☎{p.phone} e164={e164!r} texted={p.id in texted} "
-                            f"dnc={p.do_not_contact} excl={p.sms_relance_excluded} supp={is_supp(p)} "
+                            f"dnc={p.do_not_contact} excl={p.sms_auto_excluded} supp={is_supp(p)} "
                             f"demo={'yes' if demo else 'NO'} build={'OK' if cand else 'None'}"
                         )
+
+                    planned = (
+                        db.query(SmsAutoQueue)
+                        .filter(SmsAutoQueue.user_id == uid)
+                        .order_by(SmsAutoQueue.scheduled_at.asc())
+                        .all()
+                    )
+                    print(f"\n  --- planned auto-SMS queue: {len(planned)} row(s) ---")
+                    for row in planned[:50]:
+                        who = db.query(ProspectDB).filter(ProspectDB.id == row.prospect_id).first()
+                        paris = utc_to_paris_naive(row.scheduled_at)
+                        label = who.name if who else f"prospect {row.prospect_id}"
+                        print(f"    [{row.status}] {row.kind:7s} {paris:%a %d/%m %H:%M} Paris — {label} {row.skip_reason or ''}")
             finally:
                 db.close()
             PY

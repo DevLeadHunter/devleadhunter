@@ -151,14 +151,14 @@ export class ProspectsService {
   }
 
   /**
-   * Exclude (or re-include) a prospect from the automatic J+30 SMS relance only.
-   * Cold SMS and email are untouched.
+   * Exclude (or re-include) a prospect from every automated SMS (relance J+30 and cold).
+   * Campaigns, manual sends and email are untouched.
    * @param prospectId - Identifiant du prospect.
-   * @param excluded - true pour ne plus le relancer par SMS, false pour ré-autoriser.
+   * @param excluded - true pour couper les SMS automatiques, false pour ré-autoriser.
    * @returns Le prospect mis à jour.
    */
-  static async setSmsRelanceExcluded(prospectId: number, excluded: boolean): Promise<Prospect> {
-    return ApiClient.post<Prospect>(`${BASE_URL}/${prospectId}/sms-relance-exclusion`, { excluded })
+  static async setSmsAutoExcluded(prospectId: number, excluded: boolean): Promise<Prospect> {
+    return ApiClient.post<Prospect>(`${BASE_URL}/${prospectId}/sms-auto-exclusion`, { excluded })
   }
 
   /**

@@ -514,19 +514,19 @@ class ProspectService:
         self._set_opt_out_flags(prospect, db_prospect, self._resolve_opt_outs(db, [db_prospect]))
         return prospect
 
-    async def set_sms_relance_excluded(
+    async def set_sms_auto_excluded(
         self, db: Session, prospect_id: int, *, user_id: int, excluded: bool
     ) -> Prospect | None:
-        """Opt a prospect out of (or back into) the J+30 SMS relance only.
+        """Opt a prospect out of (or back into) every automated SMS (relance J+30 and cold).
 
-        Narrower than « ne plus contacter »: it drops the prospect from the SMS relance
-        selection (worker + forecast) while leaving cold SMS and email untouched.
+        Narrower than « ne plus contacter »: it drops the prospect from the automated SMS
+        selections while leaving campaigns, manual sends and email untouched.
 
         Args:
             db: Active database session.
             prospect_id: The prospect to flag.
             user_id: The operator making the decision (for the activity log).
-            excluded: ``True`` to skip the relance, ``False`` to re-allow it.
+            excluded: ``True`` to skip every automated SMS, ``False`` to re-allow them.
 
         Returns:
             The updated prospect, or ``None`` when it does not exist.
@@ -535,18 +535,30 @@ class ProspectService:
         if db_prospect is None:
             return None
 
-        db_prospect.sms_relance_excluded = excluded
+        db_prospect.sms_auto_excluded = excluded
+        if excluded:
+            from models.sms_auto_queue import SmsAutoQueue
+
+            # Hold back the planned rows right away — the forecast must not keep showing them as upcoming.
+            pending_rows = (
+                db.query(SmsAutoQueue)
+                .filter(SmsAutoQueue.prospect_id == prospect_id, SmsAutoQueue.status == "pending")
+                .all()
+            )
+            for pending_row in pending_rows:
+                pending_row.status = "skipped"
+                pending_row.skip_reason = "SMS automatiques coupés pour ce prospect"
         db.commit()
         db.refresh(db_prospect)
 
         activity_log_service.record(
             category=CATEGORY_PROSPECT,
-            action="prospect_sms_relance_excluded" if excluded else "prospect_sms_relance_reenabled",
+            action="prospect_sms_auto_excluded" if excluded else "prospect_sms_auto_reenabled",
             status=STATUS_WARNING if excluded else STATUS_INFO,
             title=(
-                f"Relance SMS exclue · {db_prospect.name}"
+                f"SMS automatiques coupés · {db_prospect.name}"
                 if excluded
-                else f"Relance SMS ré-autorisée · {db_prospect.name}"
+                else f"SMS automatiques ré-autorisés · {db_prospect.name}"
             ),
             user_id=user_id,
             entity_type="prospect",

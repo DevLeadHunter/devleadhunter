@@ -121,17 +121,17 @@
 
             <div class="mt-4 flex items-start justify-between gap-3 border-t border-[var(--app-line-soft)] pt-4">
               <div class="min-w-0 flex-1">
-                <p class="text-sm font-medium text-[var(--app-ink)]">Relance SMS J+30</p>
+                <p class="text-sm font-medium text-[var(--app-ink)]">SMS automatiques</p>
                 <p class="mt-0.5 text-xs text-[var(--app-ink-soft)]">
-                  Relancer ce prospect par SMS 30 jours après l'email s'il n'a pas répondu. Coupez-la pour ne jamais le
-                  relancer par SMS, sans bloquer les autres canaux.
+                  Autoriser la relance J+30 et le 1er contact automatiques par SMS pour ce prospect. Coupez pour ne
+                  jamais lui envoyer de SMS automatique, sans bloquer les autres canaux.
                 </p>
               </div>
               <UiSwitch
-                id="prospect-sms-relance"
-                :model-value="!(prospect.sms_relance_excluded ?? false)"
-                :disabled="isTogglingRelance"
-                @update:model-value="onToggleSmsRelance"
+                id="prospect-sms-auto"
+                :model-value="!(prospect.sms_auto_excluded ?? false)"
+                :disabled="isTogglingSmsAuto"
+                @update:model-value="onToggleSmsAuto"
               />
             </div>
           </div>
@@ -189,7 +189,7 @@ const toast: UseToastReturn = useToast()
 
 const isSaving: Ref<boolean> = ref(false)
 const isTogglingContact: Ref<boolean> = ref(false)
-const isTogglingRelance: Ref<boolean> = ref(false)
+const isTogglingSmsAuto: Ref<boolean> = ref(false)
 const showStopForm: Ref<boolean> = ref(false)
 const stopReason: Ref<string> = ref('')
 
@@ -268,21 +268,21 @@ async function handleResumeContact(): Promise<void> {
 }
 
 /**
- * Toggle the prospect's inclusion in the J+30 SMS relance (immediate, like « ne plus contacter »).
- * @param enabled - true to keep relancing this prospect by SMS, false to opt it out.
+ * Toggle the prospect's inclusion in the automated SMS (immediate, like « ne plus contacter »).
+ * @param enabled - true to keep the automated SMS for this prospect, false to opt it out.
  * @returns A promise resolved once the flag is persisted.
  */
-async function onToggleSmsRelance(enabled: boolean): Promise<void> {
-  if (!props.prospect || isTogglingRelance.value) return
-  isTogglingRelance.value = true
+async function onToggleSmsAuto(enabled: boolean): Promise<void> {
+  if (!props.prospect || isTogglingSmsAuto.value) return
+  isTogglingSmsAuto.value = true
   try {
-    const updated: Prospect = await ProspectsService.setSmsRelanceExcluded(props.prospect.id, !enabled)
+    const updated: Prospect = await ProspectsService.setSmsAutoExcluded(props.prospect.id, !enabled)
     emit('updated', updated)
-    toast.success(enabled ? 'Relance SMS ré-activée pour ce prospect' : 'Relance SMS coupée pour ce prospect')
+    toast.success(enabled ? 'SMS automatiques ré-activés pour ce prospect' : 'SMS automatiques coupés pour ce prospect')
   } catch (err: unknown) {
     toast.error(err instanceof Error ? err.message : 'Action impossible')
   } finally {
-    isTogglingRelance.value = false
+    isTogglingSmsAuto.value = false
   }
 }
 

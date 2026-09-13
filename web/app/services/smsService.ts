@@ -133,6 +133,12 @@ export type SmsThread = {
 /** Which touch of the SMS sequence a library template is written for. */
 export type SmsTemplateCategory = 'first_contact' | 'follow_up'
 
+export type SmsAutoQueueAction = {
+  id: number
+  status: string
+  scheduled_at: string
+}
+
 /** One template of the SMS library (defined in the API, one angle per message). */
 export type SmsTemplate = {
   key: string
@@ -284,5 +290,26 @@ export class SmsService {
    */
   static async previewTemplate(key: string, prospectId: number): Promise<SmsTemplatePreview> {
     return ApiClient.get<SmsTemplatePreview>(`/api/v1/sms/templates/${key}/preview?prospect_id=${prospectId}`)
+  }
+
+  /**
+   * Cancel one planned automated SMS (pending rows only).
+   * @param rowId - The planned-SMS row id.
+   * @returns The row's state after the cancellation.
+   */
+  static async cancelAutoQueue(rowId: number): Promise<SmsAutoQueueAction> {
+    return ApiClient.post<SmsAutoQueueAction>(`/api/v1/sms/auto-queue/${rowId}/cancel`, {})
+  }
+
+  /**
+   * Move one planned automated SMS to a new slot — snapped server-side to the legal window.
+   * @param rowId - The planned-SMS row id.
+   * @param scheduledAtIso - The requested send time, as an ISO string (UTC).
+   * @returns The row's state, carrying the actually retained slot.
+   */
+  static async rescheduleAutoQueue(rowId: number, scheduledAtIso: string): Promise<SmsAutoQueueAction> {
+    return ApiClient.post<SmsAutoQueueAction>(`/api/v1/sms/auto-queue/${rowId}/reschedule`, {
+      scheduled_at: scheduledAtIso,
+    })
   }
 }

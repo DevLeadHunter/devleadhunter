@@ -223,8 +223,8 @@ class Prospect(ProspectBase):
         None, description="Optional note on why contact was stopped (shown on the held-back queue lines)"
     )
     do_not_contact_at: datetime | None = Field(None, description="When « ne plus contacter » was set")
-    sms_relance_excluded: bool = Field(
-        False, description="Operator opted this prospect out of the J+30 SMS relance (worker + forecast)"
+    sms_auto_excluded: bool = Field(
+        False, description="Operator opted this prospect out of every automated SMS (relance J+30 and cold)"
     )
     email_undeliverable: bool = Field(
         False,

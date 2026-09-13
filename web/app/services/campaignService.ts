@@ -177,8 +177,10 @@ export type ForecastLinkKind = 'website'
 
 /** One scheduled send in the week-ahead forecast, across all campaigns. */
 export type CampaignForecastItem = {
-  /** Null for a projected automated SMS (no queue row behind it). */
+  /** Null for a planned automated SMS — its row lives in the SMS auto queue instead. */
   queue_id: number | null
+  /** Planned automated SMS row id — the handle to cancel or reschedule it. */
+  sms_queue_id?: number | null
   scheduled_at: string
   campaign_id: number | null
   campaign_name: string
