@@ -186,10 +186,12 @@ class SmsAutomationService:
                 db, config.user_id, enabled=True, template_key=config.relance_template_key
             )
             self._link_orphan_relances(db, config.user_id, relance_campaign)
+        # ANY existing row blocks a re-plan, whatever its status: a cancelled or skipped send
+        # must never sneak back by itself — only the operator's « Replanifier » revives it.
         engaged = {
             prospect_id
             for (prospect_id,) in db.query(SmsAutoQueue.prospect_id)
-            .filter(SmsAutoQueue.user_id == config.user_id, SmsAutoQueue.status.in_(("pending", "sent")))
+            .filter(SmsAutoQueue.user_id == config.user_id)
             .all()
         }
         now = now_in_paris()

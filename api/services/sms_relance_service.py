@@ -144,6 +144,17 @@ class SmsRelanceService:
             .where(SmsMessage.user_id == user_id, SmsMessage.prospect_id.isnot(None))
             .subquery()
         )
+        # A reply on ANY email disqualifies the prospect — the operator owns that conversation.
+        # (Without this, another still-unanswered email of the same prospect kept re-selecting him.)
+        replied = (
+            select(EmailLog.prospect_id)
+            .where(
+                EmailLog.user_id == user_id,
+                EmailLog.prospect_id.isnot(None),
+                EmailLog.replied_at.isnot(None),
+            )
+            .subquery()
+        )
 
         rows = db.execute(
             select(ProspectDB, unreacted.c.emailed_at)
@@ -152,6 +163,7 @@ class SmsRelanceService:
                 ProspectDB.user_id == user_id,
                 ProspectDB.phone.isnot(None),
                 ProspectDB.id.notin_(select(already_texted.c.prospect_id)),
+                ProspectDB.id.notin_(select(replied.c.prospect_id)),
             )
             .order_by(unreacted.c.emailed_at.asc())
             .limit(limit * 3)  # over-fetch: mobile/demo/suppression filters trim below
