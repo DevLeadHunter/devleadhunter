@@ -274,6 +274,20 @@
                   ]"
                 />
               </button>
+
+              <button
+                v-if="item.queue_type === 'sms_relance'"
+                type="button"
+                :disabled="pendingIgnoreIds.has(item.prospect_id)"
+                title="Ne plus relancer ce prospect par SMS"
+                class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-[var(--app-line)] bg-[var(--app-surface)] text-[var(--app-ink-soft)] transition-colors hover:border-[var(--app-red)] hover:text-[var(--app-red)] disabled:opacity-50"
+                @click="ignoreSmsRelance(item)"
+              >
+                <UIcon
+                  :name="pendingIgnoreIds.has(item.prospect_id) ? 'i-lucide-loader-circle' : 'i-lucide-bell-off'"
+                  :class="['h-4 w-4', { 'animate-spin': pendingIgnoreIds.has(item.prospect_id) }]"
+                />
+              </button>
             </div>
           </div>
         </div>
@@ -289,6 +303,7 @@ import { CampaignService } from '~/services/campaignService'
 import type { CampaignForecastItem, CampaignForecastResponse } from '~/services/campaignService'
 import { DemoSiteService } from '~/services/demoSiteService'
 import type { DemoSite } from '~/services/demoSiteService'
+import { ProspectsService } from '~/services/prospectsService'
 import { parseApiDate } from '~/utils/date'
 import { useToast } from '~/composables/useToast'
 import type { UseToastReturn } from '~/types/Composables'
@@ -326,6 +341,8 @@ const items: Ref<CampaignForecastItem[]> = ref([])
 const isLoading: Ref<boolean> = ref(false)
 /** Demo-site ids whose review toggle is in flight (to disable the button meanwhile). */
 const pendingReviewIds: Ref<Set<number>> = ref(new Set<number>())
+/** Prospect ids whose « ne plus relancer par SMS » action is in flight. */
+const pendingIgnoreIds: Ref<Set<number>> = ref(new Set<number>())
 
 /** Whether the viewed week is the one containing today. */
 const isCurrentWeek: ComputedRef<boolean> = computed(
@@ -566,6 +583,30 @@ async function toggleReview(row: ForecastRow): Promise<void> {
     const next: Set<number> = new Set(pendingReviewIds.value)
     next.delete(siteId)
     pendingReviewIds.value = next
+  }
+}
+
+/**
+ * Opt a prospect out of the J+30 SMS relance and drop its projected rows from the view.
+ * @param row - The SMS-relance row whose prospect is being excluded.
+ * @returns A promise resolved once the exclusion is persisted.
+ */
+async function ignoreSmsRelance(row: ForecastRow): Promise<void> {
+  const prospectId: number = row.prospect_id
+  if (pendingIgnoreIds.value.has(prospectId)) return
+  pendingIgnoreIds.value = new Set(pendingIgnoreIds.value).add(prospectId)
+  try {
+    await ProspectsService.setSmsRelanceExcluded(prospectId, true)
+    items.value = items.value.filter(
+      (item: CampaignForecastItem): boolean => !(item.prospect_id === prospectId && item.queue_type === 'sms_relance'),
+    )
+    toast.success('Prospect exclu de la relance SMS')
+  } catch {
+    toast.error("Impossible d'exclure ce prospect de la relance SMS")
+  } finally {
+    const next: Set<number> = new Set(pendingIgnoreIds.value)
+    next.delete(prospectId)
+    pendingIgnoreIds.value = next
   }
 }
 

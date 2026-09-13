@@ -4,7 +4,7 @@
       <p class="app-label">Réglages</p>
       <h1 class="app-page-title">Relance SMS</h1>
       <p class="text-muted mt-1 text-sm">
-        Relancez par SMS les prospects qui n'ont pas réagi à votre email — un rappel vers leur site de démonstration.
+        Relancez par SMS les prospects qui n'ont pas répondu à votre email — un rappel vers leur site de démonstration.
         L'envoi respecte les horaires légaux (lun–ven 8h–20h, sam 10h–19h, jamais dimanche ni jour férié), n'inclut que
         les mobiles 06/07, et porte toujours la mention STOP.
       </p>
@@ -58,8 +58,8 @@
         <div class="min-w-0 flex-1">
           <p class="text-sm font-medium text-[var(--app-ink)]">Relance SMS automatique</p>
           <p class="mt-0.5 text-xs text-[var(--app-ink-soft)]">
-            Relance par SMS les prospects emailés il y a {{ autoRelanceAfterDays }} jours sans aucune réaction. Leur
-            site de démonstration est réveillé et repart pour 21 jours.
+            Relance par SMS les prospects emailés il y a {{ autoRelanceAfterDays }} jours sans réponse (une ouverture ou
+            un clic ne les exclut pas). Leur site de démonstration est réveillé et repart pour 21 jours.
           </p>
         </div>
         <UiSwitch id="sms-auto-relance" :model-value="autoRelanceEnabled" @update:model-value="onToggleAutoRelance" />
@@ -96,7 +96,7 @@
         <div>
           <h2 class="text-sm font-semibold text-[var(--app-ink)]">Prospects à relancer</h2>
           <p class="mt-1 text-xs text-[var(--app-ink-soft)]">
-            Emailés il y a plus de 30 jours, sans ouverture ni clic ni réponse, avec un mobile et une démo active.
+            Emailés il y a plus de 30 jours, sans réponse, avec un mobile et une démo active.
           </p>
         </div>
         <button

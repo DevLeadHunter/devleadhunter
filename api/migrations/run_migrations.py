@@ -135,6 +135,7 @@ MIGRATION_MODULES: list[tuple[str, str]] = [
     ("add_user_public_contacts", "migrations.add_user_public_contacts"),
     ("add_prospect_phones", "migrations.add_prospect_phones"),
     ("backfill_sms_contacted", "migrations.backfill_sms_contacted"),
+    ("add_prospect_sms_relance_excluded", "migrations.add_prospect_sms_relance_excluded"),
 ]
 
 # Modules of this package that are not migrations and must not be registered.

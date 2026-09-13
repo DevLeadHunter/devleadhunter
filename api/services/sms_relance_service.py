@@ -1,8 +1,10 @@
 """Find prospects to SMS (relance or cold) and send, reviving the demo if dormant.
 
 The SMS pushes a prospect back to their demo site. Two selections:
-- **Relance**: a prospect emailed a while ago who did NOT react (no human open, click
-  or reply), owns a mobile, was never texted or opted out. More natural than a cold SMS.
+- **Relance**: a prospect emailed a while ago who did NOT reply, owns a mobile, was
+  never texted, and was not opted out of the relance. More natural than a cold SMS.
+  Opens and clicks do NOT bar a relance — they are too noisy (bot prefetch, the
+  operator's own demo visits) to read as a real reaction.
 - **Cold**: a prospect with a mobile but NO email — the SMS is the first touch.
 
 A prospect's demo may have gone dormant (EXPIRED) since its 21-day TTL lapsed; the send
@@ -123,8 +125,8 @@ class SmsRelanceService:
             EmailLog.user_id == user_id,
             EmailLog.prospect_id.isnot(None),
             EmailLog.sent_at.isnot(None),
-            EmailLog.opened_at.is_(None),
-            EmailLog.clicked_at.is_(None),
+            # Only a real reply bars a relance — opens/clicks are too noisy (bot prefetch,
+            # the operator's own demo visits) to read as a reaction that should cancel it.
             EmailLog.replied_at.is_(None),
         ]
         if cutoff is not None:
@@ -198,6 +200,10 @@ class SmsRelanceService:
         if not is_mobile_fr(prospect.phone):
             return None
         if prospect.do_not_contact:
+            return None
+        # Per-prospect opt-out of the J+30 relance only (the operator handled it by hand);
+        # cold SMS is a different automation and stays allowed.
+        if not cold and prospect.sms_relance_excluded:
             return None
         to_e164 = to_e164_fr(prospect.phone)
         if to_e164 and sms_service.is_suppressed(db, user_id, to_e164):

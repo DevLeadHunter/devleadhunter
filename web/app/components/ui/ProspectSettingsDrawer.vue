@@ -118,6 +118,22 @@
               <UIcon name="i-lucide-ban" class="mr-1.5 h-4 w-4" />
               Ne plus contacter ce prospect
             </button>
+
+            <div class="mt-4 flex items-start justify-between gap-3 border-t border-[var(--app-line-soft)] pt-4">
+              <div class="min-w-0 flex-1">
+                <p class="text-sm font-medium text-[var(--app-ink)]">Relance SMS J+30</p>
+                <p class="mt-0.5 text-xs text-[var(--app-ink-soft)]">
+                  Relancer ce prospect par SMS 30 jours après l'email s'il n'a pas répondu. Coupez-la pour ne jamais le
+                  relancer par SMS, sans bloquer les autres canaux.
+                </p>
+              </div>
+              <UiSwitch
+                id="prospect-sms-relance"
+                :model-value="!(prospect.sms_relance_excluded ?? false)"
+                :disabled="isTogglingRelance"
+                @update:model-value="onToggleSmsRelance"
+              />
+            </div>
           </div>
         </form>
 
@@ -173,6 +189,7 @@ const toast: UseToastReturn = useToast()
 
 const isSaving: Ref<boolean> = ref(false)
 const isTogglingContact: Ref<boolean> = ref(false)
+const isTogglingRelance: Ref<boolean> = ref(false)
 const showStopForm: Ref<boolean> = ref(false)
 const stopReason: Ref<string> = ref('')
 
@@ -247,6 +264,25 @@ async function handleResumeContact(): Promise<void> {
     toast.error(err instanceof Error ? err.message : 'Action impossible')
   } finally {
     isTogglingContact.value = false
+  }
+}
+
+/**
+ * Toggle the prospect's inclusion in the J+30 SMS relance (immediate, like « ne plus contacter »).
+ * @param enabled - true to keep relancing this prospect by SMS, false to opt it out.
+ * @returns A promise resolved once the flag is persisted.
+ */
+async function onToggleSmsRelance(enabled: boolean): Promise<void> {
+  if (!props.prospect || isTogglingRelance.value) return
+  isTogglingRelance.value = true
+  try {
+    const updated: Prospect = await ProspectsService.setSmsRelanceExcluded(props.prospect.id, !enabled)
+    emit('updated', updated)
+    toast.success(enabled ? 'Relance SMS ré-activée pour ce prospect' : 'Relance SMS coupée pour ce prospect')
+  } catch (err: unknown) {
+    toast.error(err instanceof Error ? err.message : 'Action impossible')
+  } finally {
+    isTogglingRelance.value = false
   }
 }
 

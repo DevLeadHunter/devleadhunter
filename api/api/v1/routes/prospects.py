@@ -306,6 +306,12 @@ class DoNotContactRequest(BaseModel):
     reason: str | None = Field(None, max_length=500, description="Optional note on why contact is stopped")
 
 
+class SmsRelanceExclusionRequest(BaseModel):
+    """Payload for POST /prospects/{id}/sms-relance-exclusion."""
+
+    excluded: bool = Field(..., description="True to skip this prospect's J+30 SMS relance, False to re-allow it")
+
+
 @router.post(
     "/facebook-exclusions",
     summary="Exclude a Facebook page from future discoveries",
@@ -597,6 +603,33 @@ async def set_prospect_do_not_contact(
     _assert_not_reserved_by_other(db, current_user, row)
     prospect = await prospect_service.set_do_not_contact(
         db, prospect_id, user_id=current_user.id, enabled=request.enabled, reason=request.reason
+    )
+    if not prospect:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Prospect {prospect_id} not found")
+    return prospect
+
+
+@router.post(
+    "/{prospect_id}/sms-relance-exclusion",
+    response_model=Prospect,
+    summary="Exclude or re-include a prospect in the J+30 SMS relance",
+    description="Opt one prospect out of the automatic J+30 SMS relance (or back in) — cold SMS and email stay.",
+)
+async def set_prospect_sms_relance_exclusion(
+    prospect_id: int,
+    request: SmsRelanceExclusionRequest,
+    current_user: User = Depends(require_auth),
+    db: Session = Depends(get_db),
+) -> Prospect:
+    """Exclude (or re-include) a prospect from the J+30 SMS relance.
+
+    Raises:
+        HTTPException: 404 when not visible, 403 when reserved by another member.
+    """
+    row = _get_visible_db_prospect(db, prospect_id, current_user)
+    _assert_not_reserved_by_other(db, current_user, row)
+    prospect = await prospect_service.set_sms_relance_excluded(
+        db, prospect_id, user_id=current_user.id, excluded=request.excluded
     )
     if not prospect:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Prospect {prospect_id} not found")
