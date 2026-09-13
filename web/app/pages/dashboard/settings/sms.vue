@@ -128,6 +128,10 @@
           Rendu pour chaque prospect (salutation, lien de sa démo, votre prénom). Utilisé par « Relancer », « Tout
           relancer » et la relance automatique. Un seul SMS par prospect.
         </p>
+        <p v-if="relanceTemplateFallbackName" class="mt-1 text-[11px] text-[var(--app-ink-soft)]">
+          <UIcon name="i-lucide-video-off" class="mr-0.5 inline-block h-3 w-3 align-[-2px]" />
+          Prospect sans vidéo générée : le modèle « {{ relanceTemplateFallbackName }} » (lien du site) part à la place.
+        </p>
       </div>
 
       <div v-if="isLoadingCandidates" class="mt-4 flex justify-center py-6">
@@ -223,6 +227,18 @@ const relanceTemplatePreview: ComputedRef<string> = computed((): string => {
   )
   if (!template) return ''
   return `${SmsVariables.renderWithSampleValues(template.body, SmsVariables.firstNameOf(user.value?.name))} STOP au 36180`
+})
+
+/** Name of the template sent instead when a prospect has no generated video (video templates only). */
+const relanceTemplateFallbackName: ComputedRef<string> = computed((): string => {
+  const template: SmsTemplate | undefined = relanceTemplates.value.find(
+    (candidate: SmsTemplate): boolean => candidate.key === relanceTemplateKey.value,
+  )
+  if (!template?.fallback_key) return ''
+  const fallback: SmsTemplate | undefined = relanceTemplates.value.find(
+    (candidate: SmsTemplate): boolean => candidate.key === template.fallback_key,
+  )
+  return fallback?.name ?? ''
 })
 
 /**

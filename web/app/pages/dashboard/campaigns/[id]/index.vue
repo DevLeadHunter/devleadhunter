@@ -289,6 +289,10 @@
                   par prospect, sans A/B ni relance.`
             }}
           </p>
+          <p v-if="smsTemplateFallbackName" class="text-muted mt-1 text-[11px] leading-relaxed">
+            <UIcon name="i-lucide-video-off" class="mr-0.5 inline-block h-3 w-3 align-[-2px]" />
+            Prospect sans vidéo générée : le modèle « {{ smsTemplateFallbackName }} » (lien du site) part à la place.
+          </p>
         </section>
 
         <section v-if="!isSms" class="rounded-xl border border-[var(--app-line)] bg-[var(--app-surface)] p-5">
@@ -959,6 +963,16 @@ const smsTemplateOptions: ComputedRef<SelectFieldOption<string>[]> = computed(()
     }),
   ),
 )
+
+/** Name of the template sent instead when a prospect has no generated video (video templates only). */
+const smsTemplateFallbackName: ComputedRef<string> = computed((): string => {
+  const fallbackKey: string | null = smsTemplate.value?.fallback_key ?? null
+  if (!fallbackKey) return ''
+  const fallback: SmsTemplate | undefined = smsTemplates.value.find(
+    (template: SmsTemplate): boolean => template.key === fallbackKey,
+  )
+  return fallback?.name ?? ''
+})
 
 /** The real SMS of the first prospect when rendered, else the template with sample values. */
 const smsPreview: ComputedRef<string> = computed((): string => {

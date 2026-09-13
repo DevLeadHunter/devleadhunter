@@ -147,6 +147,8 @@ export type SmsTemplate = {
   body: string
   variables: string[]
   is_default: boolean
+  /** Template rendered instead when the prospect has no generated video (video templates only). */
+  fallback_key: string | null
 }
 
 /** A library template rendered for one prospect (STOP mention excluded, appended at send). */

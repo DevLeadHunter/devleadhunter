@@ -417,6 +417,7 @@ async def list_templates(
             body=template.body,
             variables=template.variables,
             is_default=template.key == DEFAULT_FIRST_CONTACT_KEY,
+            fallback_key=template.fallback_key,
         )
         for template in list_sms_templates(category)
     ]

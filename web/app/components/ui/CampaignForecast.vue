@@ -96,7 +96,7 @@
         :class="[
           'rounded-xl border p-2.5 text-center transition-all hover:-translate-y-0.5',
           day.isToday ? 'border-[var(--app-ink)] shadow-[var(--app-shadow-soft)]' : 'border-[var(--app-line)]',
-          day.items.length === 0 ? 'opacity-55' : '',
+          day.items.length === 0 && !isSmsDragActive ? 'opacity-55' : '',
           dropTargetKey === day.key ? 'border-[var(--app-accent)] !opacity-100 ring-2 ring-[var(--app-accent)]' : '',
           'bg-[var(--app-surface)]',
         ]"
@@ -161,17 +161,27 @@
           </div>
         </div>
 
-        <!-- Jour sans envoi -->
+        <!-- Jour sans envoi — cible de drop d'un SMS planifié comme la pastille du haut -->
         <div
           v-if="day.items.length === 0"
-          class="flex items-center gap-2.5 rounded-xl border border-dashed border-[var(--app-line)] px-4 py-3.5 text-sm text-[var(--app-faint)]"
+          :data-forecast-drop-day="day.key"
+          :class="[
+            'flex items-center gap-2.5 rounded-xl border border-dashed px-4 py-3.5 text-sm transition-colors',
+            dropTargetKey === day.key
+              ? 'border-[var(--app-accent)] bg-[var(--app-accent-soft)] text-[var(--app-accent-ink)]'
+              : 'border-[var(--app-line)] text-[var(--app-faint)]',
+          ]"
         >
-          <UIcon name="i-lucide-minus-circle" class="h-4 w-4" />
-          Aucun envoi programmé
+          <UIcon :name="isSmsDragActive ? 'i-lucide-calendar-plus' : 'i-lucide-minus-circle'" class="h-4 w-4" />
+          {{ isSmsDragActive ? 'Déposer ici pour déplacer cet envoi' : 'Aucun envoi programmé' }}
         </div>
 
-        <!-- Lignes du jour -->
-        <div v-else class="card overflow-hidden">
+        <!-- Lignes du jour — la carte entière accepte aussi le drop (un jour peut cumuler les envois) -->
+        <div
+          v-else
+          :data-forecast-drop-day="day.key"
+          :class="['card overflow-hidden', dropTargetKey === day.key ? 'ring-2 ring-[var(--app-accent)]' : '']"
+        >
           <div
             v-for="item in day.items"
             :key="item.rowKey"
@@ -778,6 +788,9 @@ const SMS_DRAG_START_THRESHOLD_PX: number = 4
 /** Drop target under the pointer while dragging a planned SMS (day key or next-week), for the highlight. */
 const dropTargetKey: Ref<string | null> = ref(null)
 
+/** Whether a planned SMS is being dragged — day bodies then advertise themselves as drop zones. */
+const isSmsDragActive: Ref<boolean> = ref(false)
+
 let smsDrag: ForecastSmsDragSession | null = null
 
 /**
@@ -842,11 +855,14 @@ function onSmsGripPointerDown(event: PointerEvent, item: ForecastRow): void {
  */
 function beginSmsDrag(session: ForecastSmsDragSession): void {
   session.isActive = true
+  isSmsDragActive.value = true
   const bounds: DOMRect = session.rowElement.getBoundingClientRect()
   const clone: HTMLElement = session.rowElement.cloneNode(true) as HTMLElement
   clone.removeAttribute('data-forecast-row')
   const card: HTMLDivElement = document.createElement('div')
   card.className = 'drag-reorder-ghost__card drag-reorder-ghost__card--card'
+  // Same rounding as the shared engine's card frame (`CARD_FRAME_BORDER_RADIUS`) — the row is square.
+  card.style.borderRadius = '0.75rem'
   card.appendChild(clone)
   const ghost: HTMLDivElement = document.createElement('div')
   ghost.className = 'drag-reorder-ghost'
@@ -872,7 +888,9 @@ function onSmsDragMove(event: PointerEvent): void {
   if (session.ghost) {
     session.ghost.style.transform = `translate3d(${event.clientX - session.grabOffsetX}px, ${event.clientY - session.grabOffsetY}px, 0)`
   }
-  dropTargetKey.value = dropKeyAtPointer(event.clientX, event.clientY)
+  const target: string | null = dropKeyAtPointer(event.clientX, event.clientY)
+  // The row's own day is a no-op drop: don't advertise it as a target.
+  dropTargetKey.value = target === dateKey(parseApiDate(session.item.scheduled_at)) ? null : target
 }
 
 /**
@@ -932,6 +950,7 @@ function teardownSmsDrag(): void {
   const session: ForecastSmsDragSession | null = smsDrag
   smsDrag = null
   dropTargetKey.value = null
+  isSmsDragActive.value = false
   document.body.classList.remove('is-drag-reordering')
   session?.ghost?.remove()
   window.removeEventListener('pointermove', onSmsDragMove)

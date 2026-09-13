@@ -9,6 +9,7 @@ from services.sms.templates import (
     find_sms_template,
     list_sms_templates,
     render_sms_template,
+    resolve_sms_template,
 )
 from services.sms_config_service import SmsConfigService
 from services.sms_service import sms_service
@@ -56,6 +57,35 @@ class TestLibraryIntegrity:
         assert template.variables == ["salutation", "entreprise", "lien_video", "signature"]
         assert template.uses("lien_video")
         assert not template.uses("lien_demo")
+
+    def test_every_video_template_declares_a_valid_fallback(self) -> None:
+        # A video body with no generated video would render an empty link: unacceptable in a sent SMS.
+        for template in SMS_TEMPLATE_LIBRARY:
+            if not template.uses("lien_video"):
+                continue
+            assert template.fallback_key is not None, template.key
+            fallback = find_sms_template(template.fallback_key)
+            assert fallback is not None, template.key
+            assert fallback.category is template.category, template.key
+            assert not fallback.uses("lien_video"), template.key
+
+
+class TestResolveFallback:
+    def test_video_template_with_a_ready_video_is_kept(self) -> None:
+        template = find_sms_template("offre-a-vie-video")
+        assert template is not None
+        assert resolve_sms_template(template, video_ready=True) is template
+
+    def test_video_template_without_a_video_falls_back_to_its_demo_sibling(self) -> None:
+        template = find_sms_template("offre-a-vie-video")
+        assert template is not None
+        resolved = resolve_sms_template(template, video_ready=False)
+        assert resolved.key == "offre-a-vie"
+
+    def test_demo_link_template_never_falls_back(self) -> None:
+        template = find_sms_template("offre-a-vie")
+        assert template is not None
+        assert resolve_sms_template(template, video_ready=False) is template
 
 
 class TestRender:

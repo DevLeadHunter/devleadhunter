@@ -39,6 +39,7 @@ from services.sms.templates import (
     SmsTemplate,
     find_sms_template,
     render_sms_template,
+    resolve_sms_template,
 )
 from services.sms_variables import SmsVariables
 
@@ -209,6 +210,8 @@ class SmsService:
         template = find_sms_template(template_key or default_key)
         if template is None:
             return SmsSendOutcome(sent=False, reason="Modèle SMS introuvable")
+        # A video template with no generated video falls back to its demo-link sibling.
+        template = resolve_sms_template(template, video_ready=bool(video_url))
         variables = SmsVariables.build_for_prospect(
             db,
             user_id=user_id,

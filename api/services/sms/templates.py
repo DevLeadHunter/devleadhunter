@@ -33,12 +33,18 @@ DEFAULT_FOLLOW_UP_KEY: str = "rappel-court"
 
 @dataclass(frozen=True, slots=True)
 class SmsTemplate:
-    """One library template: a stable key, a display name, its touch and its body."""
+    """One library template: a stable key, a display name, its touch and its body.
+
+    A template built around ``{lien_video}`` names a ``fallback_key``: the template
+    actually rendered for a prospect whose video is not generated (a video body with
+    an empty link would send a broken message).
+    """
 
     key: str
     name: str
     category: SmsTemplateCategory
     body: str
+    fallback_key: str | None = None
 
     @property
     def variables(self) -> list[str]:
@@ -96,6 +102,7 @@ SMS_TEMPLATE_LIBRARY: list[SmsTemplate] = [
         name="Vidéo - je vous montre",
         category=SmsTemplateCategory.FIRST_CONTACT,
         body="{salutation}, j'ai préparé un site pour {entreprise}. En 30 s de vidéo : {lien_video} {signature}",
+        fallback_key="direct",
     ),
     SmsTemplate(
         key="site-en-panne",
@@ -127,6 +134,16 @@ SMS_TEMPLATE_LIBRARY: list[SmsTemplate] = [
             "{salutation}, votre site envoyé par email : {lien_demo} "
             "{prix} une fois, sans abonnement, et il est à vous. {signature}"
         ),
+    ),
+    SmsTemplate(
+        key="offre-a-vie-video",
+        name="Offre à vie - vidéo",
+        category=SmsTemplateCategory.FOLLOW_UP,
+        body=(
+            "{salutation}, votre site envoyé par email, en vidéo : {lien_video} "
+            "{prix} une fois, sans abonnement, à vie. {signature}"
+        ),
+        fallback_key="offre-a-vie",
     ),
     SmsTemplate(
         key="autonomie",
@@ -188,6 +205,22 @@ def find_sms_template(key: str) -> SmsTemplate | None:
         The template, or ``None`` when unknown.
     """
     return next((template for template in SMS_TEMPLATE_LIBRARY if template.key == key), None)
+
+
+def resolve_sms_template(template: SmsTemplate, *, video_ready: bool) -> SmsTemplate:
+    """The template to actually render: its fallback when it links a video the prospect lacks.
+
+    Args:
+        template: The template the user picked.
+        video_ready: Whether the prospect's prospection video is generated.
+
+    Returns:
+        *template* itself, or its declared fallback when the body needs ``{lien_video}``
+        and no video exists (the original when no fallback is declared).
+    """
+    if video_ready or not template.uses("lien_video") or template.fallback_key is None:
+        return template
+    return find_sms_template(template.fallback_key) or template
 
 
 def render_sms_template(body: str, variables: dict[str, str]) -> str:

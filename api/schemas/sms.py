@@ -62,6 +62,9 @@ class SmsTemplateResponse(BaseModel):
     body: str
     variables: list[str]
     is_default: bool = Field(default=False, description="Template the automated first contact sends")
+    fallback_key: str | None = Field(
+        default=None, description="Template rendered instead when the prospect has no generated video"
+    )
 
 
 class SmsTemplatePreviewResponse(BaseModel):

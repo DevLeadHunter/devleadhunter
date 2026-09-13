@@ -27,6 +27,7 @@ from models.email_log import EmailLog
 from models.prospect_db import ProspectDB
 from models.sms_message import SmsMessage
 from services.demo_site_service import demo_site_service
+from services.demo_video_service import has_ready_video, video_page_url
 from services.sms.phone_normalizer import is_mobile_fr, to_e164_fr
 from services.sms_config_service import sms_config_service
 from services.sms_service import sms_service
@@ -293,6 +294,10 @@ class SmsRelanceService:
             return False
         if candidate.demo_site.status == DemoSiteStatus.EXPIRED.value:
             await demo_site_service.revive_demo_site(db, candidate.demo_site)
+        # Only the video templates render it; without a generated video they fall back to their demo-link sibling.
+        video_url = (
+            sms_tracked_link(video_page_url(candidate.demo_site.slug)) if has_ready_video(candidate.demo_site) else ""
+        )
         outcome = await sms_service.send_to_prospect(
             db,
             user_id=user_id,
@@ -301,6 +306,7 @@ class SmsRelanceService:
             demo_url=candidate.demo_url,
             cold=candidate.cold,
             template_key=template_key,
+            video_url=video_url,
         )
         if outcome.sent:
             # A fresh 21-day TTL from the SMS send — the prospect gets a live link again.
