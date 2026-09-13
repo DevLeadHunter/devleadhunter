@@ -72,7 +72,7 @@ jobs:
                     has_phone = [p for p in prospects if (p.phone or "").strip()]
                     mobile = [p for p in has_phone if is_mobile_fr(p.phone)]
                     never_texted = [p for p in mobile if p.id not in texted]
-                    not_blocked = [p for p in never_texted if not p.do_not_contact and not p.sms_relance_excluded]
+                    not_blocked = [p for p in never_texted if not p.do_not_contact and not p.sms_auto_excluded]
                     not_supp = [p for p in not_blocked if not is_supp(p)]
                     reachable = [p for p in not_supp if sms_relance_service.demo_for_prospect(db, uid, p.id) is not None]
 
