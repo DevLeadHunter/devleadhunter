@@ -1,0 +1,94 @@
+name: 🔎 Debug SMS relance funnel (manual, read-only)
+
+on:
+  workflow_dispatch:
+
+jobs:
+  funnel:
+    runs-on: ubuntu-latest
+    steps:
+      - name: 📉 Print the J+30 SMS relance eligibility funnel (SSH)
+        uses: appleboy/ssh-action@v0.1.6
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          port: ${{ secrets.SSH_PORT }}
+          username: ${{ secrets.SSH_USERNAME }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script: |
+            cd /var/www/api.devleadhunter.dibodev.fr/html/api
+            ../.venv/bin/python - <<'PY'
+            import importlib
+            import pkgutil
+
+            import models
+            from sqlalchemy import select
+            from sqlalchemy.orm import configure_mappers
+
+            for _m in pkgutil.iter_modules(models.__path__):
+                importlib.import_module(f"models.{_m.name}")
+            configure_mappers()
+
+            from core.database import SessionLocal
+            from models.email_log import EmailLog
+            from models.prospect_db import ProspectDB
+            from models.sms_config import SmsConfig
+            from models.sms_message import SmsMessage
+            from services.sms.phone_normalizer import is_mobile_fr
+            from services.sms.smsmode_provider import smsmode_provider
+            from services.sms_relance_service import sms_relance_service
+
+            db = SessionLocal()
+            print("smsmode configured (SMSMODE_API_KEY present):", smsmode_provider.is_configured)
+            try:
+                configs = db.query(SmsConfig).all()
+                if not configs:
+                    print("No SmsConfig row at all.")
+                for cfg in configs:
+                    uid = cfg.user_id
+                    print(f"\n=== user {uid} — sender={cfg.sender!r} auto_relance={cfg.auto_relance_enabled} "
+                          f"cold={cfg.cold_sms_enabled} after_days={cfg.auto_relance_after_days} ===")
+
+                    unreplied = db.execute(
+                        select(EmailLog.prospect_id)
+                        .where(
+                            EmailLog.user_id == uid,
+                            EmailLog.prospect_id.isnot(None),
+                            EmailLog.sent_at.isnot(None),
+                            EmailLog.replied_at.is_(None),
+                        )
+                        .group_by(EmailLog.prospect_id)
+                    ).all()
+                    ids = {r[0] for r in unreplied}
+                    prospects = db.query(ProspectDB).filter(ProspectDB.id.in_(ids)).all() if ids else []
+                    texted = {r[0] for r in db.execute(select(SmsMessage.prospect_id).where(SmsMessage.user_id == uid)).all()}
+
+                    has_phone = [p for p in prospects if (p.phone or "").strip()]
+                    mobile = [p for p in has_phone if is_mobile_fr(p.phone)]
+                    never_texted = [p for p in mobile if p.id not in texted]
+                    not_blocked = [p for p in never_texted if not p.do_not_contact and not p.sms_relance_excluded]
+                    reachable = [p for p in not_blocked if sms_relance_service.demo_for_prospect(db, uid, p.id) is not None]
+
+                    print(f"  emailed & no reply : {len(ids)}")
+                    print(f"  + has a phone      : {len(has_phone)}")
+                    print(f"  + mobile 06/07     : {len(mobile)}")
+                    print(f"  + never SMSed      : {len(never_texted)}")
+                    print(f"  + not blocked      : {len(not_blocked)}")
+                    print(f"  + reachable demo   : {len(reachable)}  <= final relance pool")
+                    print(f"  find_relance_projection_candidates() : {len(sms_relance_service.find_relance_projection_candidates(db, uid, limit=2000))}")
+
+                    for p in has_phone[:15]:
+                        tags = []
+                        if not is_mobile_fr(p.phone):
+                            tags.append("FIXE")
+                        if p.id in texted:
+                            tags.append("déjà SMSé")
+                        if p.do_not_contact:
+                            tags.append("ne-plus-contacter")
+                        if p.sms_relance_excluded:
+                            tags.append("relance exclue")
+                        if sms_relance_service.demo_for_prospect(db, uid, p.id) is None:
+                            tags.append("pas de démo joignable")
+                        print(f"    #{p.id} {p.name} [{p.city or '?'}] ☎{p.phone}  {'OK' if not tags else ' / '.join(tags)}")
+            finally:
+                db.close()
+            PY
