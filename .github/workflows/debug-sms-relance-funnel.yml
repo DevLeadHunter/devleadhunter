@@ -33,9 +33,10 @@ jobs:
             from models.prospect_db import ProspectDB
             from models.sms_config import SmsConfig
             from models.sms_message import SmsMessage
-            from services.sms.phone_normalizer import is_mobile_fr
+            from services.sms.phone_normalizer import is_mobile_fr, to_e164_fr
             from services.sms.smsmode_provider import smsmode_provider
             from services.sms_relance_service import sms_relance_service
+            from services.sms_service import sms_service
 
             db = SessionLocal()
             print("smsmode configured (SMSMODE_API_KEY present):", smsmode_provider.is_configured)
@@ -62,33 +63,36 @@ jobs:
                     prospects = db.query(ProspectDB).filter(ProspectDB.id.in_(ids)).all() if ids else []
                     texted = {r[0] for r in db.execute(select(SmsMessage.prospect_id).where(SmsMessage.user_id == uid)).all()}
 
+                    def is_supp(p):
+                        e = to_e164_fr(p.phone)
+                        return bool(e and sms_service.is_suppressed(db, uid, e))
+
                     has_phone = [p for p in prospects if (p.phone or "").strip()]
                     mobile = [p for p in has_phone if is_mobile_fr(p.phone)]
                     never_texted = [p for p in mobile if p.id not in texted]
                     not_blocked = [p for p in never_texted if not p.do_not_contact and not p.sms_relance_excluded]
-                    reachable = [p for p in not_blocked if sms_relance_service.demo_for_prospect(db, uid, p.id) is not None]
+                    not_supp = [p for p in not_blocked if not is_supp(p)]
+                    reachable = [p for p in not_supp if sms_relance_service.demo_for_prospect(db, uid, p.id) is not None]
 
                     print(f"  emailed & no reply : {len(ids)}")
                     print(f"  + has a phone      : {len(has_phone)}")
                     print(f"  + mobile 06/07     : {len(mobile)}")
                     print(f"  + never SMSed      : {len(never_texted)}")
                     print(f"  + not blocked      : {len(not_blocked)}")
-                    print(f"  + reachable demo   : {len(reachable)}  <= final relance pool")
-                    print(f"  find_relance_projection_candidates() : {len(sms_relance_service.find_relance_projection_candidates(db, uid, limit=2000))}")
+                    print(f"  + not suppressed   : {len(not_supp)}")
+                    print(f"  + reachable demo   : {len(reachable)}  <= manual final")
+                    projection = sms_relance_service.find_relance_projection_candidates(db, uid, limit=2000)
+                    print(f"  find_relance_projection_candidates() : {len(projection)}  <= real finder")
 
-                    for p in has_phone[:15]:
-                        tags = []
-                        if not is_mobile_fr(p.phone):
-                            tags.append("FIXE")
-                        if p.id in texted:
-                            tags.append("déjà SMSé")
-                        if p.do_not_contact:
-                            tags.append("ne-plus-contacter")
-                        if p.sms_relance_excluded:
-                            tags.append("relance exclue")
-                        if sms_relance_service.demo_for_prospect(db, uid, p.id) is None:
-                            tags.append("pas de démo joignable")
-                        print(f"    #{p.id} {p.name} [{p.city or '?'}] ☎{p.phone}  {'OK' if not tags else ' / '.join(tags)}")
+                    for p in mobile:
+                        e164 = to_e164_fr(p.phone)
+                        demo = sms_relance_service.demo_for_prospect(db, uid, p.id)
+                        cand = sms_relance_service._build_candidate(db, uid, p, emailed_at=None, cold=False)
+                        print(
+                            f"    #{p.id} {p.name} ☎{p.phone} e164={e164!r} texted={p.id in texted} "
+                            f"dnc={p.do_not_contact} excl={p.sms_relance_excluded} supp={is_supp(p)} "
+                            f"demo={'yes' if demo else 'NO'} build={'OK' if cand else 'None'}"
+                        )
             finally:
                 db.close()
             PY
