@@ -1,7 +1,7 @@
 import type { Prospect } from '~/types'
 
 /** Last-column action rendered for each row. */
-export type UiProspectTableRowAction = 'delete' | 'remove'
+export type UiProspectTableRowAction = 'delete' | 'remove' | 'none'
 
 export type UiProspectTableProps = {
   prospects: Prospect[]

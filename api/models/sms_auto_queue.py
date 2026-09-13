@@ -38,6 +38,8 @@ class SmsAutoQueue(Base):
     user_id: Mapped[int] = mapped_column(Integer, nullable=False, index=True)
     prospect_id: Mapped[int] = mapped_column(Integer, nullable=False, index=True)
     demo_site_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    # The per-user « Relances SMS J+30 » system campaign a relance row belongs to (NULL for cold).
+    campaign_id: Mapped[int | None] = mapped_column(Integer, nullable=True, index=True)
     kind: Mapped[str] = mapped_column(String(16), nullable=False)
     status: Mapped[str] = mapped_column(String(16), nullable=False, default="pending", index=True)
     scheduled_at: Mapped[datetime] = mapped_column(nullable=False, index=True)

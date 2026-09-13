@@ -262,13 +262,16 @@ class SmsRelanceService:
             .first()
         )
 
-    async def send_relance(self, db: Session, user_id: int, candidate: SmsRelanceCandidate) -> bool:
+    async def send_relance(
+        self, db: Session, user_id: int, candidate: SmsRelanceCandidate, *, template_key: str | None = None
+    ) -> bool:
         """Send one SMS (relance or cold) — revive a dormant demo first, then restart its TTL.
 
         Args:
             db: Active database session.
             user_id: Sender.
             candidate: The eligible candidate.
+            template_key: Library template to render; ``None`` = the configured default.
 
         Returns:
             ``True`` when the SMS was accepted by the provider.
@@ -285,6 +288,7 @@ class SmsRelanceService:
             config=config,
             demo_url=candidate.demo_url,
             cold=candidate.cold,
+            template_key=template_key,
         )
         if outcome.sent:
             # A fresh 21-day TTL from the SMS send — the prospect gets a live link again.

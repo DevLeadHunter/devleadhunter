@@ -281,7 +281,7 @@ const props: UiProspectTableProps = defineProps({
     default: () => ({}),
   },
   rowAction: {
-    type: String as PropType<'delete' | 'remove'>,
+    type: String as PropType<'delete' | 'remove' | 'none'>,
     default: 'delete',
   },
   hideSelection: {

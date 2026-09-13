@@ -75,6 +75,9 @@ class Campaign(Base):
     # SMS campaigns only: the first-contact library template rendered at send time. NULL = the default
     # first-contact template. (Email campaigns use ``template_id``/``ab_template_id_b`` instead.)
     sms_template_key: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    # Product-managed campaigns: "sms_auto_relance" is the per-user always-alive campaign gathering
+    # every planned J+30 SMS relance (prospects and queue feed themselves). NULL = operator campaign.
+    system_kind: Mapped[str | None] = mapped_column(String(32), nullable=True, index=True)
     # Campaign configuration — stored here so the detail page can edit anytime.
     template_id: Mapped[int | None] = mapped_column(
         ForeignKey("email_templates.id", ondelete="SET NULL"), nullable=True

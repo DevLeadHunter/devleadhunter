@@ -108,6 +108,20 @@ jobs:
                         paris = utc_to_paris_naive(row.scheduled_at)
                         label = who.name if who else f"prospect {row.prospect_id}"
                         print(f"    [{row.status}] {row.kind:7s} {paris:%a %d/%m %H:%M} Paris — {label} {row.skip_reason or ''}")
+
+                    from services.sms_auto_campaign_service import sms_auto_campaign_service
+
+                    system_campaign = sms_auto_campaign_service.get(db, uid)
+                    if system_campaign is None:
+                        print("\n  --- system campaign: none ---")
+                    else:
+                        linked = sum(1 for row in planned if row.campaign_id == system_campaign.id)
+                        print(
+                            f"\n  --- system campaign #{system_campaign.id} « {system_campaign.name} » "
+                            f"status={getattr(system_campaign.status, 'value', system_campaign.status)} "
+                            f"template={system_campaign.sms_template_key!r} "
+                            f"prospects={len(system_campaign.prospects)} linked_rows={linked} ---"
+                        )
             finally:
                 db.close()
             PY

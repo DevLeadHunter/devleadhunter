@@ -44,6 +44,13 @@
                 <UIcon :name="isSms ? 'i-lucide-message-square-text' : 'i-lucide-mail'" class="h-3 w-3" />
                 {{ isSms ? 'SMS' : 'Email' }}
               </span>
+              <span
+                v-if="isAutoRelanceCampaign"
+                class="inline-flex items-center gap-1 rounded-full bg-[var(--app-violet-soft)] px-2 py-0.5 text-[10px] font-semibold text-[var(--app-violet)]"
+                title="Campagne gérée automatiquement : les prospects J+30 y entrent tout seuls."
+              >
+                <UIcon name="i-lucide-sparkles" class="h-3 w-3" /> Auto
+              </span>
             </div>
             <p v-if="campaign.description" class="text-muted mt-0.5 max-w-xl truncate text-sm">
               {{ campaign.description }}
@@ -59,7 +66,7 @@
             <UIcon name="i-lucide-play" class="mr-1.5 h-4 w-4" />Reprendre
           </button>
           <button
-            v-if="campaign.status === 'draft' || campaign.status === 'paused'"
+            v-if="(campaign.status === 'draft' || campaign.status === 'paused') && !isAutoRelanceCampaign"
             :disabled="!canLaunch"
             class="btn-primary disabled:cursor-not-allowed disabled:opacity-40"
             :title="canLaunch ? '' : launchDisabledReason"
@@ -77,6 +84,7 @@
             <UIcon name="i-lucide-rotate-cw" :class="['h-4 w-4', { 'animate-spin': isRefreshing }]" />
           </button>
           <button
+            v-if="!isAutoRelanceCampaign"
             class="flex h-10 w-10 items-center justify-center rounded-lg border border-[var(--app-line)] text-[var(--app-ink-soft)] transition-colors hover:bg-[var(--app-surface)] hover:text-[var(--app-ink)]"
             title="Modifier"
             @click="openEditDrawer"
@@ -84,6 +92,7 @@
             <UIcon name="i-lucide-pencil" class="h-4 w-4" />
           </button>
           <button
+            v-if="!isAutoRelanceCampaign"
             class="flex h-10 w-10 items-center justify-center rounded-lg border border-[var(--app-red)]/40 text-[var(--app-red)] transition-colors hover:bg-[var(--app-red)]/10"
             title="Supprimer"
             @click="confirmDeleteModal?.open()"
@@ -92,6 +101,15 @@
           </button>
         </div>
       </div>
+
+      <UiCallout v-if="isAutoRelanceCampaign" variant="info">
+        Cette campagne se remplit toute seule : chaque prospect emailé sans réponse y entre avec son SMS planifié à
+        <strong class="font-medium text-[var(--app-ink)]">email + 30 jours</strong>. Annulez, déplacez ou excluez un
+        envoi depuis le
+        <NuxtLink to="/dashboard/campaigns?view=forecast" class="font-medium underline">prévisionnel</NuxtLink> ; le
+        bouton Pause coupe l'automatisation (même interrupteur que
+        <NuxtLink to="/dashboard/settings/sms" class="font-medium underline">Paramètres → Relance SMS</NuxtLink>).
+      </UiCallout>
 
       <div
         v-if="metricCards.length"
@@ -261,9 +279,15 @@
             <p class="text-sm leading-relaxed whitespace-pre-line text-[var(--app-ink)]">{{ smsPreview }}</p>
           </div>
           <p class="text-muted mt-2 text-[11px] leading-relaxed">
-            Modèle « {{ smsTemplate?.name ?? 'Direct' }} » de la bibliothèque SMS, rendu pour chaque prospect
-            (salutation, nom de l'entreprise, lien de sa démo, votre prénom et la mention « STOP »). Un seul SMS par
-            prospect, sans A/B ni relance.
+            {{
+              isAutoRelanceCampaign
+                ? `Modèle de relance « ${smsTemplate?.name ?? 'Rappel court'} » de la bibliothèque SMS, rendu pour
+                  chaque prospect (salutation, lien de sa démo, votre prénom et la mention « STOP »). Un seul SMS par
+                  prospect — le même réglage que Paramètres → Relance SMS.`
+                : `Modèle « ${smsTemplate?.name ?? 'Direct'} » de la bibliothèque SMS, rendu pour chaque prospect
+                  (salutation, nom de l'entreprise, lien de sa démo, votre prénom et la mention « STOP »). Un seul SMS
+                  par prospect, sans A/B ni relance.`
+            }}
           </p>
         </section>
 
@@ -574,7 +598,7 @@
             <p class="text-muted text-sm">
               {{ campaign.prospects.length }} prospect{{ campaign.prospects.length !== 1 ? 's' : '' }}
             </p>
-            <button class="btn-secondary" @click="openAddProspectsDrawer">
+            <button v-if="!isAutoRelanceCampaign" class="btn-secondary" @click="openAddProspectsDrawer">
               <UIcon name="i-lucide-user-plus" class="mr-1.5 h-4 w-4" />Ajouter
             </button>
           </div>
@@ -585,8 +609,8 @@
               :selected-prospects="campaignSelectedProspects"
               :show-ab-variant="!!campaign.ab_template_id_b"
               :ab-variants="campaignAbVariants"
-              row-action="remove"
-              reorderable
+              :row-action="isAutoRelanceCampaign ? 'none' : 'remove'"
+              :reorderable="!isAutoRelanceCampaign"
               @view-prospect="openProspectDrawer"
               @remove-prospect="startRemoveProspectFromRow"
               @reorder="handleReorderProspects"
@@ -605,9 +629,13 @@
           </span>
           <p class="text-sm font-semibold text-[var(--app-ink)]">Aucun prospect dans cette campagne</p>
           <p class="text-muted mx-auto mt-1 max-w-xs text-sm">
-            Ajoutez des prospects pour programmer les premiers envois de cette campagne.
+            {{
+              isAutoRelanceCampaign
+                ? 'Les prospects emailés sans réponse y entreront automatiquement à leur J+30.'
+                : 'Ajoutez des prospects pour programmer les premiers envois de cette campagne.'
+            }}
           </p>
-          <button class="btn-primary mt-5" @click="openAddProspectsDrawer">
+          <button v-if="!isAutoRelanceCampaign" class="btn-primary mt-5" @click="openAddProspectsDrawer">
             <UIcon name="i-lucide-user-plus" class="mr-1.5 h-4 w-4" />Ajouter des prospects
           </button>
         </div>
@@ -833,6 +861,7 @@ const QUEUE_STATUS_LABELS: Record<string, string> = {
   sending: 'En cours',
   sent: 'Envoyé',
   skipped: 'Ignoré',
+  cancelled: 'Annulé',
   failed: 'Échoué',
 }
 const QUEUE_STATUS_BADGE_CLASS: Record<string, string> = {
@@ -840,6 +869,7 @@ const QUEUE_STATUS_BADGE_CLASS: Record<string, string> = {
   sending: 'app-badge--progress',
   sent: 'app-badge--success',
   skipped: '',
+  cancelled: 'app-badge--danger',
   failed: 'app-badge--danger',
 }
 
@@ -909,6 +939,11 @@ const campaignId: ComputedRef<number> = computed((): number => Number(route.para
 
 /** True for an SMS-channel campaign — swaps the email-only UI (template/A-B/video/follow-ups/stats) for SMS. */
 const isSms: ComputedRef<boolean> = computed((): boolean => campaign.value?.channel === 'sms')
+
+/** Product-managed « Relances SMS J+30 » campaign: it feeds itself, so management controls hide. */
+const isAutoRelanceCampaign: ComputedRef<boolean> = computed(
+  (): boolean => campaign.value?.system_kind === 'sms_auto_relance',
+)
 
 /** SMS campaigns can launch only once a sender is configured and the provider is ready. */
 const smsReady: ComputedRef<boolean> = computed(
@@ -1114,7 +1149,10 @@ function isWinner(v: CampaignVariantStats): boolean {
  * @returns A promise that resolves once the preview is set.
  */
 async function loadSmsPreview(detail: CampaignDetailResponse): Promise<void> {
-  smsTemplates.value = await SmsService.listTemplates('first_contact').catch((): SmsTemplate[] => [])
+  // The J+30 system campaign sends follow-ups; every other SMS campaign is a first contact.
+  smsTemplates.value = await SmsService.listTemplates(
+    detail.system_kind === 'sms_auto_relance' ? 'follow_up' : 'first_contact',
+  ).catch((): SmsTemplate[] => [])
   const fallback: SmsTemplate | null =
     smsTemplates.value.find((template: SmsTemplate): boolean => template.is_default) ?? smsTemplates.value[0] ?? null
   // Honour the campaign's chosen template; fall back to the library default.

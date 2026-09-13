@@ -113,6 +113,13 @@ class SmsConfigService:
             config.relance_template_key = relance_template_key
         db.commit()
         db.refresh(config)
+
+        # Local import: the system-campaign service is fed by this config, never the reverse.
+        from services.sms_auto_campaign_service import sms_auto_campaign_service
+
+        sms_auto_campaign_service.sync_automation(
+            db, user_id, enabled=auto_relance_enabled, template_key=config.relance_template_key
+        )
         return config
 
 

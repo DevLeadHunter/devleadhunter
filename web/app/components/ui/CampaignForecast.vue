@@ -37,8 +37,15 @@
           <span class="min-w-[190px] text-center text-sm font-semibold text-[var(--app-ink)]">{{ weekLabel }}</span>
           <button
             type="button"
-            class="flex h-9 w-9 items-center justify-center rounded-lg border border-[var(--app-line)] text-[var(--app-ink-soft)] transition-colors hover:border-[var(--app-ink-soft)] hover:bg-[var(--app-surface-2)] hover:text-[var(--app-ink)]"
+            data-forecast-drop-next
+            :class="[
+              'flex h-9 w-9 items-center justify-center rounded-lg border text-[var(--app-ink-soft)] transition-colors hover:border-[var(--app-ink-soft)] hover:bg-[var(--app-surface-2)] hover:text-[var(--app-ink)]',
+              dropTargetKey === NEXT_WEEK_DROP_KEY
+                ? 'border-[var(--app-accent)] ring-2 ring-[var(--app-accent)]'
+                : 'border-[var(--app-line)]',
+            ]"
             aria-label="Semaine suivante"
+            title="Semaine suivante — déposez-y un SMS pour le décaler de 7 jours"
             @click="shiftWeek(1)"
           >
             <UIcon name="i-lucide-chevron-right" class="h-4 w-4" />
@@ -85,10 +92,12 @@
         v-for="day in days"
         :key="`pill-${day.key}`"
         type="button"
+        :data-forecast-drop-day="day.key"
         :class="[
           'rounded-xl border p-2.5 text-center transition-all hover:-translate-y-0.5',
           day.isToday ? 'border-[var(--app-ink)] shadow-[var(--app-shadow-soft)]' : 'border-[var(--app-line)]',
           day.items.length === 0 ? 'opacity-55' : '',
+          dropTargetKey === day.key ? 'border-[var(--app-accent)] !opacity-100 ring-2 ring-[var(--app-accent)]' : '',
           'bg-[var(--app-surface)]',
         ]"
         @click="scrollToDay(day.key)"
@@ -166,6 +175,7 @@
           <div
             v-for="item in day.items"
             :key="item.rowKey"
+            :data-forecast-row="item.rowKey"
             :class="[
               'flex flex-wrap items-center gap-x-4 gap-y-2 px-4 py-3 transition-colors first:border-t-0',
               'border-t border-[var(--app-line-soft)]',
@@ -173,6 +183,16 @@
               item.reviewed ? 'opacity-60' : '',
             ]"
           >
+            <button
+              v-if="item.isAutoSms && item.sms_queue_id && !item.isWarning && !item.isSent"
+              type="button"
+              class="-ml-1.5 flex h-8 w-5 shrink-0 cursor-grab touch-none items-center justify-center rounded text-[var(--app-faint)] transition-colors hover:text-[var(--app-ink)]"
+              title="Glisser sur un jour de la semaine (ou « Semaine suivante ») pour déplacer cet envoi"
+              @pointerdown="onSmsGripPointerDown($event, item)"
+            >
+              <UIcon name="i-lucide-grip-vertical" class="h-4 w-4" />
+            </button>
+
             <span class="font-label w-14 shrink-0 text-sm font-medium text-[var(--app-ink)] tabular-nums">
               {{ item.timeLabel }}
             </span>
@@ -325,7 +345,6 @@
 
             <!-- Déplacement d'un envoi SMS planifié : date + heure exactes, recalées serveur si hors fenêtre. -->
             <div v-if="rescheduleTargetKey === item.rowKey" class="flex w-full flex-wrap items-center gap-2 pt-1">
-              <span class="font-label text-xs text-[var(--app-ink-soft)]">Nouvelle date :</span>
               <input v-model="rescheduleValue" type="datetime-local" class="input-field h-8 w-auto text-xs" />
               <button
                 type="button"
@@ -355,8 +374,9 @@
 </template>
 
 <script lang="ts" setup>
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, onUnmounted, ref } from 'vue'
 import type { ComputedRef, Ref } from 'vue'
+import type { ForecastSmsDragSession } from '~/types/UiCampaignForecast'
 import { CampaignService } from '~/services/campaignService'
 import type { CampaignForecastItem, CampaignForecastResponse } from '~/services/campaignService'
 import { DemoSiteService } from '~/services/demoSiteService'
@@ -749,7 +769,182 @@ async function confirmReschedule(row: ForecastRow): Promise<void> {
   }
 }
 
+/** Drop key of the « Semaine suivante » chevron: same weekday and time, seven days later. */
+const NEXT_WEEK_DROP_KEY: string = 'next-week'
+
+/** Pointer travel before a press on the grip turns into a drag, so a plain click goes through. */
+const SMS_DRAG_START_THRESHOLD_PX: number = 4
+
+/** Drop target under the pointer while dragging a planned SMS (day key or next-week), for the highlight. */
+const dropTargetKey: Ref<string | null> = ref(null)
+
+let smsDrag: ForecastSmsDragSession | null = null
+
+/**
+ * Whether a viewport point falls inside a rectangle.
+ * @param rect - The rectangle.
+ * @param clientX - Viewport x.
+ * @param clientY - Viewport y.
+ * @returns True when the point is inside.
+ */
+function rectContains(rect: DOMRect, clientX: number, clientY: number): boolean {
+  return clientX >= rect.left && clientX <= rect.right && clientY >= rect.top && clientY <= rect.bottom
+}
+
+/**
+ * The drop target under the pointer: a day pill's key, the next-week chevron, or null.
+ * @param clientX - Viewport x.
+ * @param clientY - Viewport y.
+ * @returns The drop key, or null away from every target.
+ */
+function dropKeyAtPointer(clientX: number, clientY: number): string | null {
+  const nextButton: HTMLElement | null = document.querySelector('[data-forecast-drop-next]')
+  if (nextButton && rectContains(nextButton.getBoundingClientRect(), clientX, clientY)) return NEXT_WEEK_DROP_KEY
+  const pills: HTMLElement[] = Array.from(document.querySelectorAll<HTMLElement>('[data-forecast-drop-day]'))
+  for (const pill of pills) {
+    if (rectContains(pill.getBoundingClientRect(), clientX, clientY)) return pill.getAttribute('data-forecast-drop-day')
+  }
+  return null
+}
+
+/**
+ * Arm a drag of a planned SMS row from its grip; the drag starts past the travel threshold.
+ * @param event - The native pointerdown event on the grip.
+ * @param item - The planned-SMS row the grip belongs to.
+ */
+function onSmsGripPointerDown(event: PointerEvent, item: ForecastRow): void {
+  if (event.button !== 0 || smsDrag) return
+  const grip: HTMLElement | null = event.currentTarget instanceof HTMLElement ? event.currentTarget : null
+  const rowElement: HTMLElement | null = grip?.closest('[data-forecast-row]') ?? null
+  if (!rowElement) return
+  event.preventDefault()
+  const bounds: DOMRect = rowElement.getBoundingClientRect()
+  smsDrag = {
+    item,
+    rowElement,
+    pointerId: event.pointerId,
+    startClientX: event.clientX,
+    startClientY: event.clientY,
+    grabOffsetX: event.clientX - bounds.left,
+    grabOffsetY: event.clientY - bounds.top,
+    ghost: null,
+    isActive: false,
+  }
+  window.addEventListener('pointermove', onSmsDragMove)
+  window.addEventListener('pointerup', onSmsDragUp)
+  window.addEventListener('pointercancel', cancelSmsDrag)
+  window.addEventListener('keydown', onSmsDragKeydown)
+}
+
+/**
+ * Lift a ghost copy of the row (same look as the shared drag engine) and lock the page cursor.
+ * @param session - The armed drag session.
+ */
+function beginSmsDrag(session: ForecastSmsDragSession): void {
+  session.isActive = true
+  const bounds: DOMRect = session.rowElement.getBoundingClientRect()
+  const clone: HTMLElement = session.rowElement.cloneNode(true) as HTMLElement
+  clone.removeAttribute('data-forecast-row')
+  const card: HTMLDivElement = document.createElement('div')
+  card.className = 'drag-reorder-ghost__card drag-reorder-ghost__card--card'
+  card.appendChild(clone)
+  const ghost: HTMLDivElement = document.createElement('div')
+  ghost.className = 'drag-reorder-ghost'
+  ghost.style.width = `${bounds.width}px`
+  ghost.appendChild(card)
+  document.body.appendChild(ghost)
+  document.body.classList.add('is-drag-reordering')
+  session.ghost = ghost
+}
+
+/**
+ * Follow the pointer: start the drag past the threshold, move the ghost, highlight the target.
+ * @param event - The native pointermove event.
+ */
+function onSmsDragMove(event: PointerEvent): void {
+  const session: ForecastSmsDragSession | null = smsDrag
+  if (!session || event.pointerId !== session.pointerId) return
+  if (!session.isActive) {
+    const travel: number = Math.hypot(event.clientX - session.startClientX, event.clientY - session.startClientY)
+    if (travel < SMS_DRAG_START_THRESHOLD_PX) return
+    beginSmsDrag(session)
+  }
+  if (session.ghost) {
+    session.ghost.style.transform = `translate3d(${event.clientX - session.grabOffsetX}px, ${event.clientY - session.grabOffsetY}px, 0)`
+  }
+  dropTargetKey.value = dropKeyAtPointer(event.clientX, event.clientY)
+}
+
+/**
+ * Release: reschedule onto the dropped day (same time of day) or +7 days on « Semaine suivante ».
+ * @param event - The native pointerup event.
+ * @returns A promise resolved once the reschedule (if any) is persisted.
+ */
+async function onSmsDragUp(event: PointerEvent): Promise<void> {
+  const session: ForecastSmsDragSession | null = smsDrag
+  if (!session || event.pointerId !== session.pointerId) return
+  const target: string | null = session.isActive ? dropTargetKey.value : null
+  const item: CampaignForecastItem = session.item
+  teardownSmsDrag()
+  const rowId: number | null | undefined = item.sms_queue_id
+  if (!target || rowId === null || rowId === undefined) return
+  const current: Date = parseApiDate(item.scheduled_at)
+  const moved: Date = new Date(current)
+  if (target === NEXT_WEEK_DROP_KEY) {
+    moved.setDate(moved.getDate() + 7)
+  } else {
+    if (target === dateKey(current)) return
+    const parts: number[] = target.split('-').map(Number)
+    moved.setFullYear(
+      parts[0] ?? current.getFullYear(),
+      (parts[1] ?? current.getMonth() + 1) - 1,
+      parts[2] ?? current.getDate(),
+    )
+  }
+  try {
+    const result: SmsAutoQueueAction = await SmsService.rescheduleAutoQueue(rowId, moved.toISOString())
+    const retained: string = parseApiDate(result.scheduled_at).toLocaleString(LOCALE, {
+      dateStyle: 'long',
+      timeStyle: 'short',
+    })
+    toast.success(`Envoi déplacé au ${retained}`)
+    await load()
+  } catch {
+    toast.error('Impossible de déplacer cet envoi (la date doit être dans le futur)')
+  }
+}
+
+/**
+ * Escape cancels the drag in progress.
+ * @param event - The native keydown event.
+ */
+function onSmsDragKeydown(event: KeyboardEvent): void {
+  if (event.key === 'Escape') cancelSmsDrag()
+}
+
+/** Abort the drag (Escape, pointer cancel, unmount) without rescheduling anything. */
+function cancelSmsDrag(): void {
+  teardownSmsDrag()
+}
+
+/** Remove the ghost and the listeners, and clear the target highlight. */
+function teardownSmsDrag(): void {
+  const session: ForecastSmsDragSession | null = smsDrag
+  smsDrag = null
+  dropTargetKey.value = null
+  document.body.classList.remove('is-drag-reordering')
+  session?.ghost?.remove()
+  window.removeEventListener('pointermove', onSmsDragMove)
+  window.removeEventListener('pointerup', onSmsDragUp)
+  window.removeEventListener('pointercancel', cancelSmsDrag)
+  window.removeEventListener('keydown', onSmsDragKeydown)
+}
+
 onMounted((): void => {
   void load()
+})
+
+onUnmounted((): void => {
+  cancelSmsDrag()
 })
 </script>

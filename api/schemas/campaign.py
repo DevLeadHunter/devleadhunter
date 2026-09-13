@@ -176,6 +176,8 @@ class CampaignResponse(CampaignBase):
     template_id: int | None = None
     ab_template_id_b: int | None = None
     sms_template_key: str | None = None
+    # "sms_auto_relance" marks the product-managed J+30 campaign; None = operator campaign.
+    system_kind: str | None = None
     send_delay_minutes: int = 20
     follow_up_delay_days: int = 5
     behavior_personalized_followups: bool = False

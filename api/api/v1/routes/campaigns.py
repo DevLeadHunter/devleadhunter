@@ -16,6 +16,8 @@ from core.database import get_db
 from models.campaign import CampaignStatus
 from models.campaign_follow_up import CampaignFollowUp
 from models.email_queue import EmailQueue
+from models.prospect_db import ProspectDB
+from models.sms_auto_queue import SmsAutoQueue
 from models.user import User
 from schemas.campaign import (
     CampaignCreate,
@@ -38,6 +40,8 @@ from schemas.campaign import (
 from services.auth_service import get_current_user
 from services.campaign_queue_service import CampaignQueueService
 from services.campaign_service import campaign_service
+from services.sms.send_window import next_send_slot, now_in_paris, paris_to_utc_naive
+from services.sms_auto_campaign_service import SMS_AUTO_RELANCE_KIND
 
 router = APIRouter(prefix="/campaigns", tags=["campaigns"])
 
@@ -117,6 +121,7 @@ def _detail_response(
         status=campaign.status,
         channel=campaign.channel,
         sms_template_key=campaign.sms_template_key,
+        system_kind=campaign.system_kind,
         template_id=campaign.template_id,
         ab_template_id_b=campaign.ab_template_id_b,
         send_delay_minutes=campaign.send_delay_minutes,
@@ -168,6 +173,26 @@ def _get_or_404(db: Session, campaign_id: int, user_id: int):
     return campaign
 
 
+def _is_system_auto_relance(campaign) -> bool:
+    """Whether *campaign* is the product-managed « Relances SMS J+30 » campaign."""
+    return campaign.system_kind == SMS_AUTO_RELANCE_KIND
+
+
+def _refuse_system_management() -> None:
+    """Refuse an operator mutation on a system campaign — it feeds and manages itself.
+
+    Raises:
+        HTTPException: Always, with a 409 explaining where the campaign is piloted.
+    """
+    raise HTTPException(
+        status_code=status.HTTP_409_CONFLICT,
+        detail=(
+            "Campagne gérée automatiquement — pilotez ses envois depuis le prévisionnel "
+            "et son automatisation dans Paramètres → Relance SMS."
+        ),
+    )
+
+
 @router.post("", response_model=CampaignDetailResponse, status_code=status.HTTP_201_CREATED)
 async def create_campaign(
     campaign_data: CampaignCreate,
@@ -194,6 +219,18 @@ async def list_campaigns(
     send_window_by_campaign = queue_service.send_window_by_campaign([c.id for c in campaigns])
     first_send_by_campaign = {campaign_id: window[0] for campaign_id, window in send_window_by_campaign.items()}
     last_send_by_campaign = {campaign_id: window[1] for campaign_id, window in send_window_by_campaign.items()}
+    # System campaigns have no EmailQueue rows: their next send lives in the planned SMS queue.
+    for campaign in campaigns:
+        if campaign.system_kind != SMS_AUTO_RELANCE_KIND:
+            continue
+        first_planned = (
+            db.query(SmsAutoQueue.scheduled_at)
+            .filter(SmsAutoQueue.campaign_id == campaign.id, SmsAutoQueue.status == "pending")
+            .order_by(SmsAutoQueue.scheduled_at.asc())
+            .first()
+        )
+        if first_planned:
+            next_send_at_by_campaign[campaign.id] = first_planned[0]
     return CampaignListResponse(
         campaigns=[
             CampaignResponse(
@@ -204,6 +241,7 @@ async def list_campaigns(
                 status=c.status,
                 channel=c.channel,
                 sms_template_key=c.sms_template_key,
+                system_kind=c.system_kind,
                 template_id=c.template_id,
                 ab_template_id_b=c.ab_template_id_b,
                 send_delay_minutes=c.send_delay_minutes,
@@ -282,6 +320,8 @@ async def update_campaign(
     db: Session = Depends(get_db),
 ):
     """Update a campaign's name, description, or status."""
+    if _is_system_auto_relance(_get_or_404(db, campaign_id, current_user.id)):
+        _refuse_system_management()
     campaign = campaign_service.update_campaign(db, campaign_id, current_user.id, campaign_data)
     if not campaign:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Campaign not found")
@@ -295,6 +335,8 @@ async def delete_campaign(
     db: Session = Depends(get_db),
 ):
     """Permanently delete a campaign and its queue items."""
+    if _is_system_auto_relance(_get_or_404(db, campaign_id, current_user.id)):
+        _refuse_system_management()
     deleted = campaign_service.delete_campaign(db, campaign_id, current_user.id)
     if not deleted:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Campaign not found")
@@ -320,6 +362,21 @@ async def update_campaign_settings(
     if settings.template_id is not None:
         campaign.template_id = settings.template_id
     if settings.sms_template_key is not None:
+        if _is_system_auto_relance(campaign):
+            from enums.sms_template_category import SmsTemplateCategory
+            from services.sms.templates import find_sms_template
+            from services.sms_config_service import sms_config_service
+
+            template = find_sms_template(settings.sms_template_key)
+            if template is None or template.category is not SmsTemplateCategory.FOLLOW_UP:
+                raise HTTPException(
+                    status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                    detail="Modèle inconnu : la campagne J+30 utilise un modèle de relance de la bibliothèque.",
+                )
+            # The campaign and Paramètres → Relance SMS drive the same content: keep one truth.
+            config = sms_config_service.get(db, current_user.id)
+            if config is not None:
+                config.relance_template_key = settings.sms_template_key
         campaign.sms_template_key = settings.sms_template_key
     if settings.disable_ab:
         campaign.ab_template_id_b = None
@@ -362,6 +419,8 @@ async def add_prospects_to_campaign(
     db: Session = Depends(get_db),
 ):
     """Add prospects to a campaign; on a launched one, also report who could not join the send queue yet."""
+    if _is_system_auto_relance(_get_or_404(db, campaign_id, current_user.id)):
+        _refuse_system_management()
     campaign, enqueue_result = campaign_service.add_prospects_to_campaign(
         db, campaign_id, current_user.id, data.prospect_ids
     )
@@ -391,6 +450,8 @@ async def reorder_campaign_prospects(
     db: Session = Depends(get_db),
 ) -> CampaignDetailResponse:
     """Set the campaign's prospect send order (drag & drop) and re-date the pending queue to match."""
+    if _is_system_auto_relance(_get_or_404(db, campaign_id, current_user.id)):
+        _refuse_system_management()
     campaign = campaign_service.reorder_prospects(db, campaign_id, current_user.id, data.prospect_ids)
     if not campaign:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Campaign not found")
@@ -405,6 +466,8 @@ async def remove_prospect_from_campaign(
     db: Session = Depends(get_db),
 ):
     """Remove a prospect from a campaign."""
+    if _is_system_auto_relance(_get_or_404(db, campaign_id, current_user.id)):
+        _refuse_system_management()
     campaign = campaign_service.remove_prospect_from_campaign(db, campaign_id, current_user.id, prospect_id)
     if not campaign:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Campaign not found")
@@ -520,6 +583,8 @@ async def launch_campaign(
     the campaign (or the request) provides ``ab_template_id_b``.
     """
     campaign = _get_or_404(db, campaign_id, current_user.id)
+    if _is_system_auto_relance(campaign):
+        _refuse_system_management()
 
     # SMS campaigns reuse the same queue/scheduler but need an SMS sender, not Resend or a template.
     if campaign.channel == "sms":
@@ -604,6 +669,32 @@ async def pause_campaign(
 ) -> dict[str, Any]:
     """Pause a running campaign — pending emails are cancelled."""
     campaign = _get_or_404(db, campaign_id, current_user.id)
+
+    # The J+30 system campaign IS the auto-relance: pausing it flips the Paramètres toggle
+    # and holds back the planned rows right away.
+    if _is_system_auto_relance(campaign):
+        from services.sms_config_service import sms_config_service
+
+        config = sms_config_service.get(db, current_user.id)
+        if config is not None:
+            sms_config_service.set_automation(
+                db,
+                current_user.id,
+                cold_sms_enabled=bool(config.cold_sms_enabled),
+                auto_relance_enabled=False,
+                auto_relance_after_days=config.auto_relance_after_days,
+            )
+        pending_rows = (
+            db.query(SmsAutoQueue)
+            .filter(SmsAutoQueue.campaign_id == campaign.id, SmsAutoQueue.status == "pending")
+            .all()
+        )
+        for row in pending_rows:
+            row.status = "cancelled"
+            row.skip_reason = "Automatisation désactivée"
+        db.commit()
+        return {"success": True, "cancelled": len(pending_rows)}
+
     campaign.status = CampaignStatus.PAUSED.value
     db.commit()
 
@@ -625,6 +716,28 @@ async def resume_campaign(
     while a prospect already sent a J1 is never re-added.
     """
     campaign = _get_or_404(db, campaign_id, current_user.id)
+
+    # The J+30 system campaign IS the auto-relance: resuming it flips the toggle back on
+    # and replans immediately so the queue reappears without waiting for a worker pass.
+    if _is_system_auto_relance(campaign):
+        from services.sms_automation_service import sms_automation_service
+        from services.sms_config_service import sms_config_service
+
+        config = sms_config_service.get(db, current_user.id)
+        if config is None or not config.sender:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail="Configurez un expéditeur SMS (Paramètres → Relance SMS) avant de relancer cette campagne.",
+            )
+        sms_config_service.set_automation(
+            db,
+            current_user.id,
+            cold_sms_enabled=bool(config.cold_sms_enabled),
+            auto_relance_enabled=True,
+            auto_relance_after_days=config.auto_relance_after_days,
+        )
+        sms_automation_service.plan(db)
+        return {"success": True}
 
     # SQLEnum loads status as a CampaignStatus member, so compare on its value, not the member.
     current_status = getattr(campaign.status, "value", campaign.status)
@@ -721,6 +834,47 @@ async def get_campaign_queue(
     """Return queue items for a campaign ordered by scheduled_at."""
     campaign = _get_or_404(db, campaign_id, current_user.id)
 
+    # The J+30 system campaign's queue lives in the planned SMS rows, served in the same shape.
+    if _is_system_auto_relance(campaign):
+        base = db.query(SmsAutoQueue).filter(SmsAutoQueue.campaign_id == campaign.id)
+        if queue_status:
+            base = base.filter(SmsAutoQueue.status == queue_status)
+        rows = base.order_by(SmsAutoQueue.scheduled_at.asc()).offset(offset).limit(limit).all()
+        pending_planned = (
+            db.query(SmsAutoQueue.id)
+            .filter(SmsAutoQueue.campaign_id == campaign.id, SmsAutoQueue.status == "pending")
+            .count()
+        )
+        prospect_ids = {row.prospect_id for row in rows}
+        prospects_by_id = (
+            {p.id: p for p in db.query(ProspectDB).filter(ProspectDB.id.in_(prospect_ids)).all()}
+            if prospect_ids
+            else {}
+        )
+        return {
+            "pending_count": pending_planned,
+            "items": [
+                {
+                    "id": row.id,
+                    "queue_type": "followup",
+                    "status": row.status,
+                    "scheduled_at": row.scheduled_at.isoformat(),
+                    "prospect_id": row.prospect_id,
+                    "prospect_name": (
+                        prospects_by_id[row.prospect_id].name if row.prospect_id in prospects_by_id else None
+                    ),
+                    "prospect_email": (
+                        prospects_by_id[row.prospect_id].email if row.prospect_id in prospects_by_id else None
+                    ),
+                    "ab_variant": None,
+                    "follow_up_index": 1,
+                    "email_log_id": None,
+                    "skip_reason": row.skip_reason,
+                }
+                for row in rows
+            ],
+        }
+
     queue_service = CampaignQueueService(db)
     items = queue_service.get_queue_items(campaign_id, status=queue_status, limit=limit, offset=offset)
     pending = queue_service.get_pending_count(campaign_id)
@@ -759,7 +913,21 @@ async def cancel_queue_item(
     The row is marked ``skipped`` with a manual reason and can be re-sent later
     via the resend endpoint.
     """
-    _get_or_404(db, campaign_id, current_user.id)
+    campaign = _get_or_404(db, campaign_id, current_user.id)
+
+    if _is_system_auto_relance(campaign):
+        planned: SmsAutoQueue | None = db.get(SmsAutoQueue, queue_id)
+        if planned is None or planned.campaign_id != campaign.id:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Élément de file introuvable")
+        if planned.status != "pending":
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Seul un envoi en attente peut être annulé."
+            )
+        planned.status = "cancelled"
+        planned.skip_reason = "Annulé manuellement"
+        db.commit()
+        return {"success": True, "id": planned.id, "status": planned.status}
+
     item: EmailQueue | None = db.get(EmailQueue, queue_id)
     if item is None or item.campaign_id != campaign_id:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Élément de file introuvable")
@@ -784,7 +952,28 @@ async def resend_queue_item(
     Used to send a follow-up that had been skipped — cancelled by hand, or by an
     earlier auto-skip rule.
     """
-    _get_or_404(db, campaign_id, current_user.id)
+    campaign = _get_or_404(db, campaign_id, current_user.id)
+
+    if _is_system_auto_relance(campaign):
+        planned: SmsAutoQueue | None = db.get(SmsAutoQueue, queue_id)
+        if planned is None or planned.campaign_id != campaign.id:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Élément de file introuvable")
+        if planned.status not in ("skipped", "cancelled"):
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail="Seul un envoi sauté ou annulé peut être replanifié.",
+            )
+        planned.scheduled_at = paris_to_utc_naive(next_send_slot(now_in_paris()))
+        planned.status = "pending"
+        planned.skip_reason = None
+        db.commit()
+        return {
+            "success": True,
+            "id": planned.id,
+            "status": planned.status,
+            "scheduled_at": planned.scheduled_at.isoformat(),
+        }
+
     if not _has_resend_config(db, current_user.id):
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,

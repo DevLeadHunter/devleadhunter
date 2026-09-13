@@ -54,6 +54,8 @@ export type CampaignResponse = {
   ab_template_id_b?: number | null
   /** SMS campaigns only: chosen first-contact library template key (null = default). */
   sms_template_key?: string | null
+  /** "sms_auto_relance" marks the product-managed J+30 campaign; null = operator campaign. */
+  system_kind?: string | null
   send_delay_minutes: number
   follow_up_delay_days: number
   behavior_personalized_followups: boolean

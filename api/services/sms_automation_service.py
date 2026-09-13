@@ -19,6 +19,7 @@ from sqlalchemy.orm import Session
 
 from core.config import settings
 from core.database import SessionLocal
+from models.campaign import Campaign
 from models.email_log import EmailLog
 from models.prospect_db import ProspectDB
 from models.sms_auto_queue import SmsAutoQueue
@@ -34,6 +35,7 @@ from services.sms.send_window import (
     utc_to_paris_naive,
 )
 from services.sms.smsmode_provider import smsmode_provider
+from services.sms_auto_campaign_service import sms_auto_campaign_service
 from services.sms_config_service import sms_config_service
 from services.sms_relance_service import SmsRelanceCandidate, sms_relance_service
 from services.sms_service import sms_service
@@ -151,8 +153,39 @@ class SmsAutomationService:
             if config.auto_relance_enabled or config.cold_sms_enabled:
                 self._plan_user(db, config)
 
+    def _link_orphan_relances(self, db: Session, user_id: int, campaign: Campaign) -> None:
+        """Attach pending relance rows planned before the system campaign existed — no-op afterwards.
+
+        Args:
+            db: Active database session.
+            user_id: Owner.
+            campaign: The user's J+30 system campaign.
+        """
+        orphans = (
+            db.query(SmsAutoQueue)
+            .filter(
+                SmsAutoQueue.user_id == user_id,
+                SmsAutoQueue.kind == "relance",
+                SmsAutoQueue.status == "pending",
+                SmsAutoQueue.campaign_id.is_(None),
+            )
+            .all()
+        )
+        if not orphans:
+            return
+        for row in orphans:
+            row.campaign_id = campaign.id
+            sms_auto_campaign_service.attach_prospect(db, campaign, row.prospect_id)
+        db.commit()
+
     def _plan_user(self, db: Session, config: SmsConfig) -> None:
         """Plan the user's unplanned candidates around the slots already taken."""
+        relance_campaign: Campaign | None = None
+        if config.auto_relance_enabled:
+            relance_campaign = sms_auto_campaign_service.ensure(
+                db, config.user_id, enabled=True, template_key=config.relance_template_key
+            )
+            self._link_orphan_relances(db, config.user_id, relance_campaign)
         engaged = {
             prospect_id
             for (prospect_id,) in db.query(SmsAutoQueue.prospect_id)
@@ -198,17 +231,21 @@ class SmsAutomationService:
             end_paris=now + timedelta(days=_PLAN_HORIZON_DAYS),
         )
         for (_, candidate), slot_paris in zip(entries, slots, strict=False):
+            belongs_to_campaign = relance_campaign is not None and not candidate.cold
             db.add(
                 SmsAutoQueue(
                     user_id=config.user_id,
                     prospect_id=candidate.prospect.id,
                     demo_site_id=candidate.demo_site.id,
+                    campaign_id=relance_campaign.id if belongs_to_campaign and relance_campaign else None,
                     kind="cold" if candidate.cold else "relance",
                     status="pending",
                     scheduled_at=paris_to_utc_naive(slot_paris),
                     emailed_at=candidate.emailed_at,
                 )
             )
+            if belongs_to_campaign and relance_campaign:
+                sms_auto_campaign_service.attach_prospect(db, relance_campaign, candidate.prospect.id)
         db.commit()
 
     def _assign_slots(
@@ -276,6 +313,7 @@ class SmsAutomationService:
             )
             if budget <= 0:
                 continue
+            relance_campaign = sms_auto_campaign_service.get(db, config.user_id)
             due = (
                 db.query(SmsAutoQueue)
                 .filter(
@@ -301,8 +339,15 @@ class SmsAutomationService:
                     row.status = "skipped"
                     row.skip_reason = reason or "Non éligible"
                     continue
+                template_key = (
+                    relance_campaign.sms_template_key
+                    if relance_campaign is not None and row.campaign_id == relance_campaign.id
+                    else None
+                )
                 try:
-                    sent = await sms_relance_service.send_relance(db, config.user_id, candidate)
+                    sent = await sms_relance_service.send_relance(
+                        db, config.user_id, candidate, template_key=template_key
+                    )
                 except Exception as exc:
                     logger.warning("Auto-SMS failed for prospect %s: %s", row.prospect_id, exc)
                     sent = False
@@ -347,18 +392,24 @@ class SmsAutomationService:
             prospect.id: prospect
             for prospect in db.query(ProspectDB).filter(ProspectDB.id.in_({row.prospect_id for row in rows})).all()
         }
+        system_campaign = sms_auto_campaign_service.get(db, user_id)
         out: list[dict[str, object]] = []
         for row in rows:
             prospect = prospects.get(row.prospect_id)
             site = sms_relance_service.demo_for_prospect(db, user_id, row.prospect_id)
             link = sms_tracked_link(demo_site_service.demo_url_for_slug(site.slug)) if site else None
+            is_campaign_row = system_campaign is not None and row.campaign_id == system_campaign.id
             out.append(
                 {
                     "queue_id": None,
                     "sms_queue_id": row.id,
                     "scheduled_at": row.scheduled_at.isoformat(),
-                    "campaign_id": None,
-                    "campaign_name": "Relance SMS auto" if row.kind == "relance" else "Cold SMS auto",
+                    "campaign_id": row.campaign_id if is_campaign_row else None,
+                    "campaign_name": (
+                        system_campaign.name
+                        if is_campaign_row and system_campaign
+                        else ("Relance SMS auto" if row.kind == "relance" else "Cold SMS auto")
+                    ),
                     "prospect_id": row.prospect_id,
                     "prospect_name": prospect.name if prospect else None,
                     "prospect_email": prospect.email if prospect else None,
