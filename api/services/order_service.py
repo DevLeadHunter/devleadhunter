@@ -1110,19 +1110,15 @@ class OrderService:
             except Exception:
                 logger.warning("mark_delivered failed for order_id=%s", order.id, exc_info=True)
 
-        # 3) Hand over CMS access (Storyblok invite) now that the sale is closed.
-        try:
-            if not demo_site.storyblok_invite_sent:
-                await demo_site_service.invite_client_to_cms(db, demo_site)
-        except Exception:
-            logger.warning("Storyblok handover failed for order_id=%s", order.id, exc_info=True)
+        # 3) CMS access is handed over MANUALLY (« Inviter le client au CMS » on the site
+        #    page): the operator announces it first and controls its timing — never auto-sent.
+        #    The sale drawer keeps warning until the invite is sent (cms_handover_warning).
 
         db.refresh(demo_site)
 
         # 4) Only declare the order delivered once the client truly has a working
-        #    site on their domain AND real CMS access. Otherwise keep it DEPLOYING
-        #    with a reason — the operator fixes DNS/CMS and re-runs
-        #    POST /orders/{id}/deploy to re-verify.
+        #    site on their domain. Otherwise keep it DEPLOYING with a reason — the
+        #    operator fixes DNS and re-runs POST /orders/{id}/deploy to re-verify.
         delivered_ok, message = await self._verify_delivery(order, demo_site)
         demo_site.verification_message = message
         if delivered_ok:
