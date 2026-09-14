@@ -657,12 +657,27 @@ class DemoSiteService:
         extras: list[str] = [url for url in pool if url not in decided]
         return order + extras
 
+    def _prospect_primary_email(self, db: Session, demo_site: DemoSite) -> str | None:
+        """Current primary email of the site's prospect, or ``None``.
+
+        The site's own ``email`` is frozen at generation — a prospect sourced without an
+        email (SMS-only) who gives one later only has it on his prospect row.
+        """
+        if not demo_site.prospect_id:
+            return None
+        prospect = db.query(ProspectDB).filter(ProspectDB.id == demo_site.prospect_id).first()
+        email = (prospect.email or "").strip() if prospect else ""
+        return email or None
+
     async def invite_client_to_cms(self, db: Session, demo_site: DemoSite) -> DemoSite:
         """Send a Storyblok CMS invitation to the demo site client email."""
         if demo_site.storyblok_invite_sent:
             raise ValueError("The client has already been invited to Storyblok.")
 
-        email: str | None = demo_site.email or demo_site.storyblok_login_email
+        # The provisioning-generated login email is a last resort — a real client address first.
+        email: str | None = (
+            demo_site.email or self._prospect_primary_email(db, demo_site) or demo_site.storyblok_login_email
+        )
         if not email or not email.strip():
             raise ValueError("Client email is required to send a Storyblok invitation.")
 

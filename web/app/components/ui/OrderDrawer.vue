@@ -117,7 +117,7 @@
               </p>
             </div>
 
-            <div v-if="order.status === 'paid'" class="border-t border-[var(--app-surface-2)] px-5 py-4">
+            <div v-if="canGoLive" class="border-t border-[var(--app-surface-2)] px-5 py-4">
               <div class="mb-1 flex items-center justify-between">
                 <p class="text-[10px] font-semibold tracking-wider text-[var(--app-ink-soft)] uppercase">
                   Mise en ligne du site
@@ -136,9 +136,7 @@
                   Suggérer
                 </button>
               </div>
-              <p class="mb-2 text-[11px] text-[var(--app-ink-soft)]">
-                Le client a payé — choisis son nom de domaine et mets son site en ligne.
-              </p>
+              <p class="mb-2 text-[11px] text-[var(--app-ink-soft)]">{{ goLiveHint }}</p>
               <input
                 v-model="goLiveDomain"
                 type="text"
@@ -555,6 +553,21 @@ watch(
       }, 250)
     }
   },
+)
+
+// Sale statuses offering the go-live block: paid, but also unpaid — the operator delivers before invoicing.
+const GO_LIVE_STATUSES: string[] = ['draft', 'payment_pending', 'paid']
+
+/** Whether the go-live block (domain purchase + deploy) is offered for this sale. */
+const canGoLive: ComputedRef<boolean> = computed((): boolean =>
+  Boolean(props.order && GO_LIVE_STATUSES.includes(props.order.status)),
+)
+
+/** Go-live helper line — tells whether the client already paid (delivery can precede the invoice). */
+const goLiveHint: ComputedRef<string> = computed((): string =>
+  props.order?.status === 'paid'
+    ? 'Le client a payé — choisis son nom de domaine et mets son site en ligne.'
+    : "Choisis son nom de domaine et mets son site en ligne — le paiement n'est pas encore encaissé (livraison avant facturation).",
 )
 
 // Seed the go-live domain from the order (and reset it when the drawer switches order).
