@@ -22,7 +22,13 @@ from enums.product_type import PRODUCT_DEFAULT_AMOUNT_CENTS, PRODUCT_LABELS, Pro
 from models.order import Order
 from models.prospect_db import ProspectDB
 from models.user import User
-from services.activity_log_service import CATEGORY_SALE, STATUS_INFO, STATUS_WARNING, activity_log_service
+from services.activity_log_service import (
+    CATEGORY_SALE,
+    STATUS_INFO,
+    STATUS_SUCCESS,
+    STATUS_WARNING,
+    activity_log_service,
+)
 from services.decision_maker.normalize import title_case_name
 from services.pricing_service import PricingService
 
@@ -45,6 +51,22 @@ _TERMINAL_STATUSES: tuple[str, ...] = (
     OrderStatus.CANCELLED.value,
 )
 _FRENCH_ZIP_PATTERN: re.Pattern[str] = re.compile(r"\b(\d{5})\b")
+
+# OVH statuses meaning the registrar is still processing the domain order — waiting on
+# OVH is not a delivery failure, so these keep the fulfilment retry budget intact.
+_OVH_PENDING_STATUSES: tuple[str, ...] = ("checking", "delivering")
+# OVH statuses needing the operator (payment refused, documents, cancellation).
+_OVH_BLOCKED_STATUSES: tuple[str, ...] = ("notPaid", "documentsRequested", "cancelling", "cancelled")
+# OVH order status → operator-facing wording (raw status shown when unknown).
+OVH_STATUS_LABELS: dict[str, str] = {
+    "checking": "paiement en cours de validation",
+    "delivering": "commande validée, domaine en cours de livraison",
+    "delivered": "commande livrée, domaine enregistré",
+    "notPaid": "en attente de paiement (à régler dans le manager OVH)",
+    "documentsRequested": "justificatifs demandés par OVH",
+    "cancelling": "commande en cours d'annulation",
+    "cancelled": "commande annulée",
+}
 
 
 def _format_business_name_for_display(name: str) -> str:
@@ -947,6 +969,58 @@ class OrderService:
         self.mark_refunded(db, order)
         return order.id
 
+    async def _sync_ovh_order_status(self, db: Session, order: Order) -> None:
+        """Refresh the sale's OVH order status; log + push each transition (best-effort).
+
+        A still-processing OVH order also resets the fulfilment retry budget: waiting for
+        the registrar is not a delivery failure and must not exhaust the recovery loop.
+
+        Args:
+            db: Database session.
+            order: The sale being fulfilled (carries ``ovh_order_id``).
+        """
+        if not order.ovh_order_id or order.ovh_order_status == "delivered":
+            return
+        from services.domain.ovh_provider import ovh_domain_provider
+
+        status = await ovh_domain_provider.order_status(order.ovh_order_id)
+        if status is None:
+            return
+        if status in _OVH_PENDING_STATUSES:
+            order.fulfillment_attempts = 0
+        changed = status != order.ovh_order_status
+        order.ovh_order_status = status
+        db.commit()
+        if not changed:
+            return
+
+        label = OVH_STATUS_LABELS.get(status, status)
+        if status == "delivered":
+            level, log_status = "success", STATUS_SUCCESS
+        elif status in _OVH_BLOCKED_STATUSES:
+            level, log_status = "warning", STATUS_WARNING
+        else:
+            level, log_status = "info", STATUS_INFO
+        activity_log_service.record(
+            category=CATEGORY_SALE,
+            action="ovh_order_status",
+            status=log_status,
+            title=f"Commande OVH · {order.domain or order.business_name} — {label}",
+            user_id=order.user_id,
+            entity_type="order",
+            entity_id=order.id,
+        )
+        from services.notification_service import notification_service
+
+        await notification_service.notify_go_live_step(
+            user_id=order.user_id,
+            title=f"🧾 {order.domain or 'Commande OVH'}",
+            body=f"Commande OVH : {label}",
+            level=level,
+            order_id=order.id,
+            tag=f"ovh-order-{order.id}",
+        )
+
     async def _verify_delivery(self, order: Order, demo_site: DemoSite) -> tuple[bool, str]:
         """
         Verify the client truly has a working site on their domain.
@@ -968,6 +1042,10 @@ class OrderService:
         if not order.domain:
             return False, "Livraison incomplète : aucun domaine défini"
         if not await demo_site_verification_service.check_domain_live(order.domain):
+            # Name the real blocking step when the registrar has not delivered the domain yet.
+            if order.ovh_order_status and order.ovh_order_status != "delivered":
+                label = OVH_STATUS_LABELS.get(order.ovh_order_status, order.ovh_order_status)
+                return False, f"Commande OVH : {label} — le domaine n'est pas encore actif"
             return False, f"Livraison incomplète : le domaine {order.domain} ne répond pas encore (DNS/Vercel)"
 
         cms_ready: bool = bool(demo_site.storyblok_space_id) and bool(demo_site.storyblok_invite_sent)
@@ -1078,6 +1156,15 @@ class OrderService:
         if not demo_site:
             return order
 
+        # A manual re-deploy of an already-delivered sale must not re-announce the delivery.
+        was_delivered = order.status == OrderStatus.DELIVERED.value
+
+        # Follow the registrar order behind the domain purchase (status change → log + push).
+        try:
+            await self._sync_ovh_order_status(db, order)
+        except Exception:
+            logger.warning("OVH order status sync failed for order_id=%s", order.id, exc_info=True)
+
         order.status = OrderStatus.DEPLOYING.value
         db.commit()
 
@@ -1124,6 +1211,20 @@ class OrderService:
         if delivered_ok:
             order.status = OrderStatus.DELIVERED.value
             order.delivered_at = datetime.now(UTC)
+            if not was_delivered:
+                try:
+                    from services.notification_service import notification_service
+
+                    await notification_service.notify_go_live_step(
+                        user_id=order.user_id,
+                        title=f"🚀 {order.business_name or order.domain}",
+                        body=f"Site en ligne sur {order.domain} — vente livrée",
+                        level="success",
+                        order_id=order.id,
+                        tag=f"go-live-{order.domain}",
+                    )
+                except Exception:
+                    logger.warning("Delivered notification failed for order_id=%s", order.id, exc_info=True)
         else:
             order.status = OrderStatus.DEPLOYING.value
             logger.warning("Order %s kept in DEPLOYING — %s", order.id, message)

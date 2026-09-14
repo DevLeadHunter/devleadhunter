@@ -103,6 +103,9 @@ class OrderResponse(BaseModel):
     invoice_number: str | None = None
     domain: str | None = None
     notes: str | None = None
+    # Registrar order behind the go-live domain purchase (raw OVH status, labelled client-side).
+    ovh_order_id: int | None = None
+    ovh_order_status: str | None = None
     payment_link_sent_at: datetime | None = None
     paid_at: datetime | None = None
     delivered_at: datetime | None = None

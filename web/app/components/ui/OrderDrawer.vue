@@ -266,6 +266,9 @@
                 <span class="text-[var(--app-ink-soft)]">
                   Domaine <span class="font-medium text-[var(--app-ink)]">{{ order.domain }}</span> acheté — mise en
                   ligne en cours (propagation DNS, quelques minutes). Suivi dans Paramètres → Monitoring.
+                  <span v-if="ovhOrderStatusLabel" class="mt-1 block">
+                    Commande OVH : <span class="font-medium text-[var(--app-ink)]">{{ ovhOrderStatusLabel }}</span>
+                  </span>
                 </span>
               </div>
             </div>
@@ -554,6 +557,24 @@ watch(
     }
   },
 )
+
+// OVH order status → operator wording (mirrors the API's OVH_STATUS_LABELS; raw status when unknown).
+const OVH_ORDER_STATUS_LABELS: Record<string, string> = {
+  checking: 'paiement en cours de validation',
+  delivering: 'commande validée, domaine en cours de livraison',
+  delivered: 'commande livrée, domaine enregistré',
+  notPaid: 'en attente de paiement (à régler dans le manager OVH)',
+  documentsRequested: 'justificatifs demandés par OVH',
+  cancelling: 'commande en cours d’annulation',
+  cancelled: 'commande annulée',
+}
+
+/** Operator wording of the sale's OVH order status, empty when none is tracked. */
+const ovhOrderStatusLabel: ComputedRef<string> = computed((): string => {
+  const status: string | null = props.order?.ovh_order_status ?? null
+  if (!status) return ''
+  return OVH_ORDER_STATUS_LABELS[status] ?? status
+})
 
 // Sale statuses offering the go-live block: paid, but also unpaid — the operator delivers before invoicing.
 const GO_LIVE_STATUSES: string[] = ['draft', 'payment_pending', 'paid']

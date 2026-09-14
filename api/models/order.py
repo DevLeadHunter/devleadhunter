@@ -2,7 +2,7 @@
 
 from datetime import datetime
 
-from sqlalchemy import Integer, String, Text
+from sqlalchemy import BigInteger, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from core.database import Base
@@ -61,6 +61,12 @@ class Order(Base):
     # Deployment / delivery
     domain: Mapped[str | None] = mapped_column(String(255), nullable=True)
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+    # OVH registrar order behind the go-live domain purchase: its id and last-seen
+    # status (checking/delivering/delivered/notPaid…), so the operator follows the
+    # registration from the sale drawer instead of the OVH manager.
+    ovh_order_id: Mapped[int | None] = mapped_column(BigInteger, nullable=True)
+    ovh_order_status: Mapped[str | None] = mapped_column(String(32), nullable=True)
 
     payment_link_sent_at: Mapped[datetime | None] = mapped_column(nullable=True)
     paid_at: Mapped[datetime | None] = mapped_column(nullable=True)

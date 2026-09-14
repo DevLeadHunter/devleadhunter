@@ -187,6 +187,25 @@ class OvhDomainProvider:
                 {"label": label, "value": value},
             )
 
+    async def order_status(self, order_id: int) -> str | None:
+        """Current OVH status of an order (``checking``/``delivering``/``delivered``/``notPaid``…).
+
+        Args:
+            order_id: The OVH order id returned at checkout.
+
+        Returns:
+            The raw status string, or ``None`` when unconfigured or the read fails (best-effort).
+        """
+        if not self.is_configured:
+            return None
+        try:
+            async with httpx.AsyncClient(timeout=_TIMEOUT_SECONDS) as client:
+                status = await self._request(client, "GET", f"/me/order/{order_id}/status")
+        except (httpx.HTTPError, DomainProviderError) as exc:
+            logger.warning("OVH order status read failed for %s: %s", order_id, exc)
+            return None
+        return status if isinstance(status, str) else None
+
     async def zone_ready(self, domain: str) -> bool:
         """Whether the domain's DNS zone exists yet (OVH creates it once the order is active).
 

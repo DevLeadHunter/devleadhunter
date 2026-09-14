@@ -336,6 +336,33 @@ class NotificationService:
             tag=f"sale-{order_id}",
         )
 
+    async def notify_go_live_step(
+        self,
+        *,
+        user_id: int,
+        title: str,
+        body: str,
+        level: str = "info",
+        order_id: int | None = None,
+        tag: str | None = None,
+    ) -> None:
+        """
+        Push one step of a sale's go-live pipeline (domain ordered, DNS live, site delivered…).
+
+        Push-only on purpose: the go-live pipeline already writes its own activity-log
+        entries at each step, so this must not double-log them.
+
+        Args:
+            user_id: Operator to notify.
+            title: Notification title (emoji + domain/prospect).
+            body: The step, in plain words.
+            level: ``info`` / ``success`` / ``warning`` / ``error``.
+            order_id: Sale to open when the notification is tapped, when known.
+            tag: Optional tag to collapse successive updates of the same step.
+        """
+        url = f"{_ORDERS_URL}?open={order_id}" if order_id is not None else _ORDERS_URL
+        await self._dispatch(user_id=user_id, category="sale", level=level, title=title, body=body, url=url, tag=tag)
+
     async def notify_error(self, *, context: str, message: str, tag: str | None = None) -> None:
         """
         Raise a system-error notification for every active admin.

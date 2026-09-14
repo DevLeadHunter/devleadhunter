@@ -19,6 +19,7 @@ from services.activity_log_service import (
     activity_log_service,
 )
 from services.domain.ovh_provider import DomainProviderError, ovh_domain_provider
+from services.notification_service import notification_service
 
 logger = logging.getLogger(__name__)
 
@@ -55,6 +56,13 @@ class DomainProvisionService:
             user_id=user_id,
             entity_type="domain",
         )
+        if user_id is not None:
+            await notification_service.notify_go_live_step(
+                user_id=user_id,
+                title=f"🌐 {domain}",
+                body="Domaine commandé chez OVH — mise en ligne en cours",
+                tag=f"go-live-{domain}",
+            )
         task = asyncio.create_task(self._finalize(domain, user_id))
         self._tasks.add(task)
         task.add_done_callback(self._tasks.discard)
@@ -84,6 +92,14 @@ class DomainProvisionService:
                         user_id=user_id,
                         entity_type="domain",
                     )
+                    if user_id is not None:
+                        await notification_service.notify_go_live_step(
+                            user_id=user_id,
+                            title=f"🌐 {domain}",
+                            body="DNS pointés vers le site — accessible dans quelques minutes (SSL en cours)",
+                            level="success",
+                            tag=f"go-live-{domain}",
+                        )
                     return
             activity_log_service.record(
                 category=CATEGORY_SALE,
@@ -93,6 +109,14 @@ class DomainProvisionService:
                 user_id=user_id,
                 entity_type="domain",
             )
+            if user_id is not None:
+                await notification_service.notify_go_live_step(
+                    user_id=user_id,
+                    title=f"⏳ {domain}",
+                    body="OVH n'a pas fini de livrer le domaine — l'outil re-pointera les DNS automatiquement",
+                    level="warning",
+                    tag=f"go-live-{domain}",
+                )
         except DomainProviderError as exc:
             logger.warning("Domain provision failed for %s: %s", domain, exc)
             activity_log_service.record(
@@ -104,6 +128,14 @@ class DomainProvisionService:
                 user_id=user_id,
                 entity_type="domain",
             )
+            if user_id is not None:
+                await notification_service.notify_go_live_step(
+                    user_id=user_id,
+                    title=f"❌ {domain}",
+                    body=f"Échec de la mise en ligne du domaine : {str(exc)[:140]}",
+                    level="error",
+                    tag=f"go-live-{domain}",
+                )
 
 
 domain_provision_service = DomainProvisionService()

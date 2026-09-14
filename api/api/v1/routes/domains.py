@@ -199,6 +199,12 @@ async def provision_domain(
 
     # Deploy the sale's linked demo onto the freshly-ordered domain (best-effort — DNS lands in the background).
     if sale is not None:
+        # Keep the registrar order on the sale so the fulfilment loop can follow its status.
+        ovh_order_id = ovh_order.get("orderId")
+        if isinstance(ovh_order_id, int):
+            sale.ovh_order_id = ovh_order_id
+            sale.ovh_order_status = None
+            db.commit()
         try:
             await order_service.fulfill_order(db, sale)
         except Exception:

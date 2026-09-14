@@ -25,6 +25,9 @@ export type Order = {
   invoice_number: string | null
   domain: string | null
   notes: string | null
+  /** OVH order behind the go-live domain purchase (raw status, labelled by the drawer). */
+  ovh_order_id: number | null
+  ovh_order_status: string | null
   payment_link_sent_at: string | null
   paid_at: string | null
   delivered_at: string | null
