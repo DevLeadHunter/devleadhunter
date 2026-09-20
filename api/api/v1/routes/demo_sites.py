@@ -49,10 +49,10 @@ from services.demo_video_service import (
 )
 from services.email_variables import EmailVariables
 from services.presenter_video_service import presenter_video_service
+from services.prospect_phones import first_mobile_e164
 from services.r2_storage_service import r2_storage
 from services.service_card_suggestion_service import ServiceCardsUnavailableError
 from services.site_export_service import site_export_service
-from services.sms.phone_normalizer import is_mobile_fr
 from services.storyblok_service import storyblok_service
 from services.templates.registry import default_subtitle
 
@@ -293,7 +293,7 @@ async def create_demo_sites_bulk(
         # Generate for anyone reachable — by email, or by SMS (a mobile 06/07 for a cold SMS).
         # Only a prospect with neither is skipped (there is no way to send them the link).
         has_email = bool(prospect.email and prospect.email.strip())
-        if not has_email and not is_mobile_fr(prospect.phone):
+        if not has_email and first_mobile_e164(prospect) is None:
             skipped_no_email.append({"id": prospect_id, "name": prospect.name or ""})
             continue
 

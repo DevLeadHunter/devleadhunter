@@ -68,3 +68,33 @@ def test_a_clean_prospect_stays_a_cold_candidate(monkeypatch):
 
     assert candidate is not None
     assert candidate.cold is True
+
+
+def test_a_landline_only_prospect_is_not_a_candidate(monkeypatch):
+    _allow_reachable(monkeypatch)
+
+    candidate = sms_relance_service._build_candidate(
+        None,
+        user_id=1,
+        prospect=_prospect(phone="01 42 68 53 00", phones=["01 42 68 53 00"]),
+        emailed_at=None,
+        cold=False,
+    )
+
+    assert candidate is None
+
+
+def test_a_mobile_behind_a_landline_primary_makes_a_candidate(monkeypatch):
+    _allow_reachable(monkeypatch)
+
+    # The mobile found for a prospect is added after his business landline (kept as primary);
+    # the relance must still pick him up — the whole point of the multi-phone list.
+    candidate = sms_relance_service._build_candidate(
+        None,
+        user_id=1,
+        prospect=_prospect(phone="01 42 68 53 00", phones=["01 42 68 53 00", "07 49 43 28 84"]),
+        emailed_at=None,
+        cold=False,
+    )
+
+    assert candidate is not None

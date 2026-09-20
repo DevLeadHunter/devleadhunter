@@ -26,7 +26,7 @@ from models.sms_auto_queue import SmsAutoQueue
 from models.sms_config import SmsConfig
 from models.sms_message import SmsMessage
 from services.demo_site_service import demo_site_service
-from services.sms.phone_normalizer import is_mobile_fr, to_e164_fr
+from services.prospect_phones import first_mobile_e164
 from services.sms.send_window import (
     is_within_window,
     next_send_slot,
@@ -103,10 +103,10 @@ class SmsAutomationService:
             return "SMS automatiques coupés pour ce prospect"
         if kind == "cold" and prospect.contacted:
             return "Déjà contacté (le 1er contact SMS ne part jamais)"
-        if not is_mobile_fr(prospect.phone):
+        to_e164 = first_mobile_e164(prospect)
+        if to_e164 is None:
             return "Numéro non mobile"
-        to_e164 = to_e164_fr(prospect.phone)
-        if to_e164 and sms_service.is_suppressed(db, user_id, to_e164):
+        if sms_service.is_suppressed(db, user_id, to_e164):
             return "STOP reçu sur ce numéro"
         if kind == "relance" and (
             db.query(EmailLog.id)

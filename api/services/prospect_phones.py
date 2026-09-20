@@ -1,16 +1,18 @@
 """Multi-phone helpers for a prospect.
 
 A prospect can hold several numbers (Maps, Facebook, a reply from another mobile…). ``phones[0]``
-is the primary — the one shown in the table and used to send SMS — and ``prospect.phone`` is
-always kept in sync with it. Mirrors :mod:`services.prospect_emails`, with an E.164 dedupe key so
-« 06 42 19 38 12 » and « +33642193812 » count as one number.
+is the primary — the one shown in the table — and ``prospect.phone`` is always kept in sync with
+it. The primary may be a business landline, so SMS does NOT target it blindly: it targets the first
+*mobile* (06/07) found across the whole list (see :func:`first_mobile_e164`). Mirrors
+:mod:`services.prospect_emails`, with an E.164 dedupe key so « 06 42 19 38 12 » and « +33642193812 »
+count as one number.
 """
 
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from services.sms.phone_normalizer import to_e164_fr
+from services.sms.phone_normalizer import is_mobile_fr, to_e164_fr
 
 if TYPE_CHECKING:
     from models.prospect_db import ProspectDB
@@ -81,3 +83,37 @@ def sync_prospect_phones(
     phones = dedupe_phones(combined)
     prospect.phones = phones
     prospect.phone = phones[0] if phones else None
+
+
+def iter_phones(prospect: ProspectDB) -> list[str]:
+    """Return the prospect's known numbers, primary first, falling back to the single ``phone``.
+
+    Args:
+        prospect: The prospect to read (``phones`` may be absent on legacy rows).
+
+    Returns:
+        The stored ``phones`` (blanks dropped), or ``[phone]`` when only the legacy field is set.
+    """
+    raw = getattr(prospect, "phones", None) or []
+    phones = [phone for phone in raw if isinstance(phone, str) and phone.strip()]
+    if not phones and prospect.phone:
+        phones = [prospect.phone]
+    return phones
+
+
+def first_mobile_e164(prospect: ProspectDB) -> str | None:
+    """Return the E.164 of the prospect's first mobile (06/07) across ALL its numbers, else ``None``.
+
+    A text SMS only reaches a mobile, so every SMS path (relance, cold, campaign) targets the first
+    mobile in the list — the display primary is often a business landline we deliberately keep.
+
+    Args:
+        prospect: The prospect to read.
+
+    Returns:
+        The first mobile as ``+336…``/``+337…``, or ``None`` when no number is a French mobile.
+    """
+    for phone in iter_phones(prospect):
+        if is_mobile_fr(phone):
+            return to_e164_fr(phone)
+    return None

@@ -51,6 +51,7 @@ from services.demo_site_service import demo_site_service
 from services.demo_video_service import has_ready_video, video_page_url
 from services.notification_service import notification_service
 from services.pricing_service import PricingService
+from services.prospect_phones import first_mobile_e164
 from services.sms.dlr import (
     classify_dlr,
     dlr_message_id,
@@ -162,7 +163,8 @@ async def list_relance_candidates(
             prospect_id=candidate.prospect.id,
             name=candidate.prospect.name,
             city=candidate.prospect.city,
-            phone=candidate.prospect.phone,
+            # Show the mobile the SMS will actually reach, not the (possibly landline) display primary.
+            phone=first_mobile_e164(candidate.prospect) or candidate.prospect.phone,
             demo_url=candidate.demo_url,
             emailed_at=candidate.emailed_at,
         )

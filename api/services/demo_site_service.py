@@ -39,12 +39,12 @@ from services.demo_site_verification_service import (
 from services.enrichment_service import enrichment_service
 from services.photo_labeling_service import photo_labeling_service
 from services.photo_labels import is_card_worthy, labels_for_urls
+from services.prospect_phones import first_mobile_e164
 from services.service_card_suggestion_service import (
     ServiceCardsConfig,
     ServiceCardsUnavailableError,
     service_card_suggestion_service,
 )
-from services.sms.phone_normalizer import is_mobile_fr, to_e164_fr
 from services.storyblok_service import (
     StoryblokProvisionError,
     StoryblokProvisionResult,
@@ -1409,12 +1409,13 @@ class DemoSiteService:
         if not site.prospect_id:
             return False
         prospect = db.query(ProspectDB).filter(ProspectDB.id == site.prospect_id).first()
-        if prospect is None or not prospect.phone or not is_mobile_fr(prospect.phone):
+        if prospect is None or prospect.do_not_contact:
             return False
-        if prospect.do_not_contact:
+        # A mobile anywhere in the list keeps the demo revivable for a later SMS relance.
+        phone_e164 = first_mobile_e164(prospect)
+        if phone_e164 is None:
             return False
-        phone_e164 = to_e164_fr(prospect.phone)
-        if phone_e164 and (
+        if (
             db.query(SmsSuppression.id)
             .filter(SmsSuppression.user_id == site.user_id, SmsSuppression.phone_e164 == phone_e164)
             .first()

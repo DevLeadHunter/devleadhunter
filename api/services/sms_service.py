@@ -26,7 +26,7 @@ from models.sms_suppression import SmsSuppression
 from services.activity_log_service import CATEGORY_SMS, STATUS_WARNING, activity_log_service
 from services.notification_service import notification_service
 from services.pricing_service import PricingService
-from services.prospect_phones import sync_prospect_phones
+from services.prospect_phones import first_mobile_e164, sync_prospect_phones
 from services.sms.gsm_segments import segment_count, to_gsm7
 from services.sms.phone_normalizer import is_mobile_fr, to_e164_fr
 from services.sms.pricing import estimate_price_cents
@@ -200,8 +200,8 @@ class SmsService:
             self.log_window_block(user_id, prospect_id=prospect.id, detail=refusal)
             return SmsSendOutcome(sent=False, reason=refusal)
 
-        to_e164 = to_e164_fr(prospect.phone)
-        if not to_e164 or not is_mobile_fr(prospect.phone):
+        to_e164 = first_mobile_e164(prospect)
+        if not to_e164:
             return SmsSendOutcome(sent=False, reason="Pas de mobile 06/07 pour ce prospect")
         if self.is_suppressed(db, user_id, to_e164):
             return SmsSendOutcome(sent=False, reason="Numéro désinscrit (STOP)")

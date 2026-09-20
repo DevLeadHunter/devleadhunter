@@ -35,7 +35,7 @@
           <span
             v-if="index === 0"
             class="inline-flex shrink-0 items-center gap-1 rounded bg-[var(--app-accent-soft)] px-1.5 py-0.5 text-[9px] font-semibold text-[var(--app-accent-ink)]"
-            title="Numéro principal — celui affiché dans la table et utilisé pour les SMS"
+            title="Numéro principal — celui affiché dans la table"
           >
             <UIcon name="i-lucide-star" class="h-2.5 w-2.5" />
             Principal

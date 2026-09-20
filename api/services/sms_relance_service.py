@@ -28,7 +28,7 @@ from models.prospect_db import ProspectDB
 from models.sms_message import SmsMessage
 from services.demo_site_service import demo_site_service
 from services.demo_video_service import has_ready_video, video_page_url
-from services.sms.phone_normalizer import is_mobile_fr, to_e164_fr
+from services.prospect_phones import first_mobile_e164
 from services.sms_config_service import sms_config_service
 from services.sms_service import sms_service
 from services.tracking_links import sms_tracked_link
@@ -222,7 +222,9 @@ class SmsRelanceService:
         self, db: Session, user_id: int, prospect: ProspectDB, *, emailed_at: datetime | None, cold: bool
     ) -> SmsRelanceCandidate | None:
         """Turn a prospect into a candidate when it is SMS-reachable with a demo, else ``None``."""
-        if not is_mobile_fr(prospect.phone):
+        # The mobile can sit anywhere in the list (the primary is often a business landline).
+        to_e164 = first_mobile_e164(prospect)
+        if to_e164 is None:
             return None
         if prospect.do_not_contact:
             return None
@@ -233,8 +235,7 @@ class SmsRelanceService:
         # included) must never receive one — the operator owns that conversation.
         if cold and prospect.contacted:
             return None
-        to_e164 = to_e164_fr(prospect.phone)
-        if to_e164 and sms_service.is_suppressed(db, user_id, to_e164):
+        if sms_service.is_suppressed(db, user_id, to_e164):
             return None
         site = self.demo_for_prospect(db, user_id, prospect.id)
         if site is None:

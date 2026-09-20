@@ -587,7 +587,7 @@ class CampaignQueueService:
         through :meth:`_dispatch_sms`. Prospects are iterated in ``campaign.prospects`` order (explicit
         ``position``), so with ``max_emails_per_day=1`` the send is one group per day.
         """
-        from services.sms.phone_normalizer import is_mobile_fr, to_e164_fr
+        from services.prospect_phones import first_mobile_e164
         from services.sms_service import sms_service
 
         now = _utcnow()
@@ -615,10 +615,10 @@ class CampaignQueueService:
                 continue
             if prospect.do_not_contact:
                 continue
-            if not is_mobile_fr(prospect.phone):
-                continue  # not SMS-reachable — no 06/07 mobile
-            to_e164 = to_e164_fr(prospect.phone)
-            if to_e164 and sms_service.is_suppressed(self.db, campaign.user_id, to_e164):
+            to_e164 = first_mobile_e164(prospect)
+            if to_e164 is None:
+                continue  # not SMS-reachable — no 06/07 mobile anywhere in the list
+            if sms_service.is_suppressed(self.db, campaign.user_id, to_e164):
                 continue
             if not self._active_demo_for_prospect(prospect.id, campaign.user_id):
                 result.skipped_no_demo.append({"id": prospect.id, "name": prospect.name or ""})
