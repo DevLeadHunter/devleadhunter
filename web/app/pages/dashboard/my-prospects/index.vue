@@ -9,18 +9,22 @@
         <h1 class="app-page-title mt-2">Mes prospects</h1>
         <p class="mt-1.5 text-sm text-[var(--app-ink-soft)]">Tous vos prospects sauvegardés depuis vos recherches</p>
       </div>
-      <div class="flex w-full flex-wrap items-center gap-2 sm:gap-3 @2xl:w-auto @2xl:justify-end">
+      <div
+        class="flex w-full flex-col gap-2 @2xl:w-auto @2xl:flex-row @2xl:flex-wrap @2xl:items-center @2xl:justify-end @2xl:gap-3"
+      >
         <NuxtLink
           to="/dashboard/search-prospects"
-          class="app-btn-primary h-9 shrink-0 px-4 text-xs whitespace-nowrap @2xl:order-2"
+          class="app-btn-primary h-11 w-full px-4 text-sm whitespace-nowrap @2xl:order-2 @2xl:h-9 @2xl:w-auto @2xl:text-xs"
         >
           <UIcon name="i-lucide-search" class="h-3.5 w-3.5" />
           Nouvelle recherche
         </NuxtLink>
-        <div class="flex flex-wrap items-center gap-2 sm:gap-3 @2xl:order-1">
+        <div
+          class="grid w-full grid-cols-2 gap-2 @2xl:order-1 @2xl:flex @2xl:w-auto @2xl:flex-wrap @2xl:items-center @2xl:gap-3"
+        >
           <button
             :disabled="isLoading"
-            class="app-btn-secondary h-9 shrink-0 px-4 text-xs whitespace-nowrap disabled:cursor-not-allowed disabled:opacity-50"
+            class="app-btn-secondary h-11 w-full px-4 text-sm whitespace-nowrap disabled:cursor-not-allowed disabled:opacity-50 @2xl:h-9 @2xl:w-auto @2xl:text-xs"
             @click="refreshProspects"
           >
             <UIcon name="i-lucide-refresh-cw" class="h-3.5 w-3.5" />
@@ -29,7 +33,7 @@
           <div class="relative shrink-0">
             <button
               type="button"
-              class="app-btn-secondary h-9 px-4 text-xs whitespace-nowrap disabled:cursor-not-allowed disabled:opacity-50"
+              class="app-btn-secondary h-11 w-full px-4 text-sm whitespace-nowrap disabled:cursor-not-allowed disabled:opacity-50 @2xl:h-9 @2xl:w-auto @2xl:text-xs"
               :disabled="isImporting"
               :aria-expanded="showImportMenu"
               @click.stop="showImportMenu = !showImportMenu"
@@ -77,7 +81,7 @@
           />
           <button
             type="button"
-            class="app-btn-secondary h-9 shrink-0 px-4 text-xs whitespace-nowrap"
+            class="app-btn-secondary col-span-2 h-11 w-full px-4 text-sm whitespace-nowrap @2xl:col-auto @2xl:h-9 @2xl:w-auto @2xl:text-xs"
             @click="openAddProspectDrawer"
           >
             <UIcon name="i-lucide-user-plus" class="h-3.5 w-3.5" />
@@ -138,10 +142,10 @@
       </div>
     </div>
 
-    <div class="flex flex-wrap items-center gap-1 border-b border-[var(--app-line)]">
+    <div class="no-scrollbar flex items-center gap-1 overflow-x-auto border-b border-[var(--app-line)]">
       <button
         type="button"
-        class="relative cursor-pointer px-4 py-2.5 text-sm font-medium transition-colors"
+        class="relative flex flex-1 items-center justify-center px-4 py-2.5 text-sm font-medium whitespace-nowrap transition-colors @2xl:flex-none"
         :class="
           activeTab === 'not_contacted'
             ? 'text-[var(--app-ink)]'
@@ -160,7 +164,7 @@
       </button>
       <button
         type="button"
-        class="relative cursor-pointer px-4 py-2.5 text-sm font-medium transition-colors"
+        class="relative flex flex-1 items-center justify-center px-4 py-2.5 text-sm font-medium whitespace-nowrap transition-colors @2xl:flex-none"
         :class="
           activeTab === 'contacted' ? 'text-[var(--app-ink)]' : 'text-[var(--app-ink-soft)] hover:text-[var(--app-ink)]'
         "
@@ -175,18 +179,6 @@
           class="absolute inset-x-3 -bottom-px h-0.5 rounded-full bg-[var(--app-accent)]"
         ></span>
       </button>
-
-      <p v-if="hasNarrowingFilters" class="ml-auto flex items-center gap-2 pr-1 text-xs text-[var(--app-ink-soft)]">
-        <UIcon name="i-lucide-filter" class="h-3 w-3" />
-        {{ baseFiltered.length }} sur {{ totalProspects }} prospects
-        <button
-          type="button"
-          class="cursor-pointer font-medium underline underline-offset-2 hover:text-[var(--app-ink)]"
-          @click="clearFilters"
-        >
-          Tout afficher
-        </button>
-      </p>
     </div>
 
     <div v-if="isLoading" class="flex items-center justify-center py-16">
@@ -552,11 +544,6 @@ const baseFiltered: ComputedRef<Prospect[]> = computed(() => {
 
   return filtered
 })
-
-/** Whether the filters hide part of the prospects — the tab counters only cover what is left. */
-const hasNarrowingFilters: ComputedRef<boolean> = computed(
-  (): boolean => baseFiltered.value.length !== prospects.value.length,
-)
 
 const notContactedCount: ComputedRef<number> = computed(
   () => baseFiltered.value.filter((prospect: Prospect) => !prospect.contacted).length,

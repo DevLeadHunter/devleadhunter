@@ -118,15 +118,17 @@
                 {{ message.body }}
               </td>
               <td data-label="Statut" class="px-3 py-2.5">
-                <span :class="['app-badge', SMS_STATUS_BADGE_CLASS[message.status] ?? '']">
-                  {{ SMS_STATUS_LABELS[message.status] ?? message.status }}
-                </span>
-                <p
-                  v-if="message.status === 'failed' && (message.status_detail || message.error)"
-                  class="mt-1 text-[11px] text-[var(--app-red)]"
-                >
-                  {{ message.status_detail ? smsStatusDetailLabel(message.status_detail) : message.error }}
-                </p>
+                <div class="min-w-0">
+                  <span :class="['app-badge', SMS_STATUS_BADGE_CLASS[message.status] ?? '']">
+                    {{ SMS_STATUS_LABELS[message.status] ?? message.status }}
+                  </span>
+                  <p
+                    v-if="message.status === 'failed' && (message.status_detail || message.error)"
+                    class="mt-1 text-[11px] break-words text-[var(--app-red)]"
+                  >
+                    {{ message.status_detail ? smsStatusDetailLabel(message.status_detail) : message.error }}
+                  </p>
+                </div>
               </td>
               <td data-label="SMS" class="text-muted px-3 py-2.5 text-sm tabular-nums">
                 {{ message.segments }}

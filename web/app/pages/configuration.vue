@@ -214,7 +214,7 @@
 
       <div v-if="currentStep < STEPS.length" class="mx-auto max-w-2xl">
         <div
-          class="sticky bottom-4 z-10 mt-8 flex items-center justify-between gap-3 rounded-full border border-[var(--app-line)] bg-[var(--app-surface)]/90 px-3 py-2 shadow-lg backdrop-blur"
+          class="sticky bottom-[calc(1rem+env(safe-area-inset-bottom))] z-10 mt-8 flex items-center justify-between gap-3 rounded-full border border-[var(--app-line)] bg-[var(--app-surface)]/90 px-3 py-2 shadow-lg backdrop-blur"
         >
           <button v-if="currentStep > 1" type="button" class="app-btn-secondary" @click="goToStep(currentStep - 1)">
             <UIcon name="i-lucide-arrow-left" class="h-3.5 w-3.5" />

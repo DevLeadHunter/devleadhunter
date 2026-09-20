@@ -130,12 +130,12 @@
       </div>
 
       <div class="border-b border-[var(--app-line)]">
-        <nav class="flex gap-1">
+        <nav class="no-scrollbar flex gap-1 overflow-x-auto">
           <button
             v-for="tab in visibleTabs"
             :key="tab.key"
             :class="[
-              '-mb-px flex items-center gap-2 border-b-2 px-3 pt-1 pb-2.5 text-sm font-medium transition-colors',
+              '-mb-px flex flex-1 items-center justify-center gap-2 border-b-2 px-3 pt-1 pb-2.5 text-sm font-medium whitespace-nowrap transition-colors @2xl:flex-none @2xl:justify-start',
               activeTab === tab.key
                 ? 'border-[var(--app-ink)] text-[var(--app-ink)]'
                 : 'border-transparent text-[var(--app-ink-soft)] hover:text-[var(--app-ink)]',

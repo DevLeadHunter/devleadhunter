@@ -606,6 +606,15 @@ html {
   }
 }
 
+/* Hide the scrollbar on horizontal scroll strips (tab bars, chip rows). */
+.no-scrollbar {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
 /* Drag to reorder (`useDragToReorder`): the held page, the dragged item's slot and the lifted copy under the pointer. */
 body.is-drag-reordering,
 body.is-drag-reordering * {

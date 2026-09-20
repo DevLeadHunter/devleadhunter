@@ -2,7 +2,7 @@
   <div class="app-card group p-4 transition-colors duration-200 hover:border-[var(--app-ink-soft)]">
     <div class="flex items-start justify-between gap-3">
       <div class="min-w-0">
-        <p class="app-label truncate">{{ label }}</p>
+        <p class="app-label line-clamp-2">{{ label }}</p>
         <p class="font-display mt-1.5 text-xl font-semibold text-[var(--app-ink)] tabular-nums sm:text-2xl">
           {{ value }}
         </p>

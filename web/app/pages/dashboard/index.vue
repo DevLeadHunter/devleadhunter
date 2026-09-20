@@ -11,13 +11,13 @@
           Votre activité en un coup d'œil, de la prospection à la vente.
         </p>
       </div>
-      <div class="flex flex-wrap items-center gap-2">
-        <div class="flex overflow-hidden rounded-lg border border-[var(--app-line)]">
+      <div class="flex flex-col items-stretch gap-2 @2xl:flex-row @2xl:flex-wrap @2xl:items-center">
+        <div class="flex w-full overflow-hidden rounded-lg border border-[var(--app-line)] @2xl:w-auto">
           <button
             v-for="preset in PERIOD_PRESETS"
             :key="preset.days"
             type="button"
-            class="cursor-pointer px-2.5 py-1.5 text-xs font-medium whitespace-nowrap transition-colors"
+            class="flex-1 cursor-pointer px-2.5 py-2.5 text-sm font-medium whitespace-nowrap transition-colors @2xl:flex-none @2xl:py-1.5 @2xl:text-xs"
             :class="
               periodDays === preset.days
                 ? 'bg-[var(--app-ink)] text-[var(--app-surface)]'
@@ -28,11 +28,19 @@
             {{ preset.label }}
           </button>
         </div>
-        <button type="button" class="app-btn-secondary h-8 px-3 text-xs" :disabled="isLoading" @click="load">
-          <UIcon name="i-lucide-rotate-cw" :class="['h-3.5 w-3.5', isLoading && 'animate-spin']" />
+        <button
+          type="button"
+          class="app-btn-secondary h-11 w-full text-sm @2xl:h-8 @2xl:w-auto @2xl:px-3 @2xl:text-xs"
+          :disabled="isLoading"
+          @click="load"
+        >
+          <UIcon name="i-lucide-rotate-cw" :class="['h-4 w-4 @2xl:h-3.5 @2xl:w-3.5', isLoading && 'animate-spin']" />
           Actualiser
         </button>
-        <span v-if="lastUpdated" class="w-full text-xs text-[var(--app-ink-soft)] sm:w-auto">
+        <span
+          v-if="lastUpdated"
+          class="w-full text-center text-xs text-[var(--app-ink-soft)] @2xl:w-auto @2xl:text-left"
+        >
           Mis à jour à {{ lastUpdated }}
         </span>
       </div>

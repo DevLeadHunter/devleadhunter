@@ -324,7 +324,7 @@
       </div>
 
       <div
-        class="sticky bottom-4 z-10 mt-5 flex items-center justify-between gap-3 rounded-full border border-[var(--app-line)] bg-[var(--app-surface)]/90 px-3 py-2 shadow-lg backdrop-blur"
+        class="sticky bottom-[calc(1rem+env(safe-area-inset-bottom))] z-10 mt-5 flex items-center justify-between gap-3 rounded-full border border-[var(--app-line)] bg-[var(--app-surface)]/90 px-3 py-2 shadow-lg backdrop-blur"
       >
         <button
           v-if="currentStep > 1"
