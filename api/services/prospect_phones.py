@@ -63,6 +63,21 @@ def set_prospect_phones(prospect: ProspectDB, phones: list[object]) -> list[str]
     return cleaned
 
 
+def _promote_first_mobile(phones: list[str]) -> list[str]:
+    """Move the first mobile (06/07) to the front so it becomes the primary, keeping the rest in order.
+
+    Args:
+        phones: The deduped, ordered numbers.
+
+    Returns:
+        The list with its first mobile at index 0, or the list unchanged when none is a mobile.
+    """
+    for index, phone in enumerate(phones):
+        if is_mobile_fr(phone):
+            return phones if index == 0 else [phone, *phones[:index], *phones[index + 1 :]]
+    return phones
+
+
 def sync_prospect_phones(
     prospect: ProspectDB,
     *,
@@ -71,9 +86,13 @@ def sync_prospect_phones(
 ) -> None:
     """Rebuild the prospect's phone list (deduped) and keep ``phone`` synced to ``phones[0]``.
 
+    On the discovery path (no forced ``primary``), a mobile takes the primary slot: SMS is the
+    only channel a mobile unlocks, so a freshly found mobile outranks a business landline. A
+    forced ``primary`` is always honoured (the human's explicit choice in the drawer wins).
+
     Args:
         prospect: The prospect to update in place.
-        add: Newly discovered numbers to fold in (after the current ones — never promoted to primary).
+        add: Newly discovered numbers to fold in (after the current ones).
         primary: A number to force to the front (e.g. the human's chosen primary).
     """
     current: list[object] = list(prospect.phones or [])
@@ -81,6 +100,8 @@ def sync_prospect_phones(
         current = [prospect.phone]
     combined: list[object] = ([primary] if primary else []) + current + list(add or [])
     phones = dedupe_phones(combined)
+    if primary is None:
+        phones = _promote_first_mobile(phones)
     prospect.phones = phones
     prospect.phone = phones[0] if phones else None
 

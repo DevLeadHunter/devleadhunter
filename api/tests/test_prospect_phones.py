@@ -6,7 +6,7 @@ landline), so :func:`first_mobile_e164` scans the whole list and returns the fir
 
 from types import SimpleNamespace
 
-from services.prospect_phones import dedupe_phones, first_mobile_e164, iter_phones
+from services.prospect_phones import dedupe_phones, first_mobile_e164, iter_phones, sync_prospect_phones
 
 
 def _prospect(**overrides: object) -> SimpleNamespace:
@@ -58,3 +58,27 @@ class TestFirstMobileE164:
 
     def test_none_without_any_number(self) -> None:
         assert first_mobile_e164(_prospect()) is None
+
+
+class TestSyncPromotesMobile:
+    def test_a_discovered_mobile_becomes_primary_and_demotes_the_landline(self) -> None:
+        prospect = _prospect(phone="01 42 68 53 00", phones=["01 42 68 53 00"])
+        sync_prospect_phones(prospect, add=["07 49 43 28 84"])
+        assert prospect.phones == ["07 49 43 28 84", "01 42 68 53 00"]
+        assert prospect.phone == "07 49 43 28 84"
+
+    def test_an_existing_primary_mobile_is_kept(self) -> None:
+        prospect = _prospect(phone="06 12 34 56 78", phones=["06 12 34 56 78"])
+        sync_prospect_phones(prospect, add=["01 42 68 53 00"])
+        assert prospect.phones[0] == "06 12 34 56 78"
+
+    def test_a_forced_primary_wins_over_a_mobile(self) -> None:
+        # The human explicitly chose a primary in the drawer — never override it, even for a mobile.
+        prospect = _prospect(phone="06 12 34 56 78", phones=["06 12 34 56 78"])
+        sync_prospect_phones(prospect, primary="01 42 68 53 00")
+        assert prospect.phone == "01 42 68 53 00"
+
+    def test_a_landline_only_prospect_keeps_its_landline_primary(self) -> None:
+        prospect = _prospect(phone="01 42 68 53 00", phones=["01 42 68 53 00"])
+        sync_prospect_phones(prospect, add=["04 78 00 00 00"])
+        assert prospect.phone == "01 42 68 53 00"
