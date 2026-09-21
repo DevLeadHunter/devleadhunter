@@ -1,3 +1,5 @@
+import type { ProspectCountry } from '~/types'
+
 /** Optional values pre-filled into the search form when the drawer opens. */
 export type SearchProspectsPrefill = {
   category?: string
@@ -13,6 +15,7 @@ export type SearchProspectsDrawerProps = {
 export type SearchFormState = {
   category: string
   city: string
+  country: ProspectCountry
   maxResults: number
   source: string
   skipDuplicates: boolean

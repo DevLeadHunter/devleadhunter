@@ -766,6 +766,7 @@ class PagesJaunesScraper(NodriverScraperMixin, BaseScraper):
         city: str,
         max_results: int = 50,
         *,
+        country: str = "FR",
         only_without_website: bool = True,
         progress: ScrapeProgressReporter | None = None,
         should_stop: Callable[[], bool] | None = None,
@@ -781,11 +782,15 @@ class PagesJaunesScraper(NodriverScraperMixin, BaseScraper):
             category: Business category to search for.
             city: City to search in.
             max_results: Maximum number of results to return.
+            country: Search country — Pages Jaunes only covers France.
 
         Returns:
             List of prospects (empty list if the search has no results or all
             tiers are blocked).
         """
+        if country != "FR":
+            logger.info("[PJ] Skipping — pagesjaunes.fr is a French directory (country=%s)", country)
+            return []
         # ── Tier 1: pure HTTP ─────────────────────────────────────────────────
         http_result = await self._try_http(category, city, max_results, only_without_website, progress, should_stop)
         if http_result is not None:

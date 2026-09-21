@@ -519,6 +519,7 @@ class BrightDataScraper(BaseScraper):
         city: str,
         max_results: int = 50,
         *,
+        country: str = "FR",
         only_without_website: bool = True,
         progress: ScrapeProgressReporter | None = None,
         should_stop: Callable[[], bool] | None = None,
@@ -530,6 +531,7 @@ class BrightDataScraper(BaseScraper):
             category: Business category (``"plombier"``, ``"electricien"``, …).
             city: City to search in (French city name, e.g. ``"Bédée"``).
             max_results: Maximum number of prospects to return.
+            country: Search country — this source reads pagesjaunes.fr, France only.
             only_without_website: When ``True``, skip prospects that have a website.
             progress: Optional SSE reporter for streaming progress events.
             should_stop: Optional callable; when it returns ``True`` the scrape
@@ -539,6 +541,9 @@ class BrightDataScraper(BaseScraper):
             List of :class:`ProspectCreate` instances, email-enriched where
             possible, capped at *max_results*.
         """
+        if country != "FR":
+            logger.info("[BrightData] Skipping — the unlocker reads pagesjaunes.fr (country=%s)", country)
+            return []
         logger.info(
             "[BrightData] Starting scrape category=%s city=%s max=%s",
             category,

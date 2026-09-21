@@ -291,6 +291,7 @@ class ProspectService:
             name=prospect.name,
             address=prospect.address,
             city=prospect.city,
+            country=(prospect.country or "FR").upper(),
             phone=prospect.phone,
             email=prospect.email,
             emails=[prospect.email] if prospect.email else None,

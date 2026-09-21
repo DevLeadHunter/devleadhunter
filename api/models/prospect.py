@@ -29,6 +29,12 @@ class ProspectBase(BaseModel):
     name: str = Field(..., min_length=1, description="Business name")
     address: str | None = Field(None, description="Street address")
     city: str | None = Field(None, description="City name")
+    country: str = Field(
+        "FR",
+        min_length=2,
+        max_length=2,
+        description="ISO 3166-1 alpha-2 country code (FR, CH, BE…) — drives search geo and phone/registry rules",
+    )
     phone: str | None = Field(None, description="Phone number")
     email: EmailStr | None = Field(None, description="Email address")
     website: str | None = Field(None, description="Website URL")
@@ -124,6 +130,7 @@ class ProspectUpdate(BaseModel):
     name: str | None = Field(None, description="Business name")
     address: str | None = Field(None, description="Street address")
     city: str | None = Field(None, description="City name")
+    country: str | None = Field(None, min_length=2, max_length=2, description="ISO 3166-1 alpha-2 country code")
     phone: str | None = Field(None, description="Phone number")
     email: EmailStr | None = Field(None, description="Email address")
     website: str | None = Field(None, description="Website URL")

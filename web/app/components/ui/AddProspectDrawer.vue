@@ -144,6 +144,18 @@
               </div>
             </div>
             <div>
+              <label class="text-muted mb-1.5 block text-xs font-medium" for="draft-country">Pays</label>
+              <select id="draft-country" v-model="draftCountry" class="input-field">
+                <option
+                  v-for="countryOption in ProspectCountries.catalog"
+                  :key="countryOption.code"
+                  :value="countryOption.code"
+                >
+                  {{ countryOption.flag }} {{ countryOption.label }}
+                </option>
+              </select>
+            </div>
+            <div>
               <label class="text-muted mb-1.5 block text-xs font-medium" for="draft-email">Email</label>
               <input
                 id="draft-email"
@@ -221,7 +233,8 @@ import type { AddProspectPrefillForm, UiAddProspectDrawerEmits } from '~/types/U
 import type { AddressSuggestion } from '~/types/AddressAutocompleteInput'
 import type { ComputedRef, EmitFn, Ref } from 'vue'
 import { computed, ref, watch } from 'vue'
-import type { Prospect, ProspectCreatePayload, ProspectSearchSuggestion } from '~/types'
+import type { Prospect, ProspectCountry, ProspectCreatePayload, ProspectSearchSuggestion } from '~/types'
+import { ProspectCountries } from '~/utils/prospectCountries'
 import type { BusinessSearchInputExpose } from '~/types/BusinessSearchInput'
 import type { UiDrawerProps } from '~/types/UiDrawer'
 import type { ScraperChromeState } from '~/services/scraperSidecarService'
@@ -264,6 +277,14 @@ const draftCity: WritableComputedRef<string> = computed({
   },
 })
 
+/** The country field is optional on the payload but the select binds a concrete code. */
+const draftCountry: WritableComputedRef<ProspectCountry> = computed({
+  get: (): ProspectCountry => prospectDraft.value.country ?? 'FR',
+  set: (value: ProspectCountry): void => {
+    prospectDraft.value.country = value
+  },
+})
+
 /** The address field is nullable on the payload but the autocomplete binds a plain string. */
 const draftAddress: WritableComputedRef<string> = computed({
   get: (): string => prospectDraft.value.address ?? '',
@@ -291,6 +312,7 @@ function createEmptyProspectDraft(): ProspectCreatePayload {
     name: '',
     address: '',
     city: '',
+    country: 'FR',
     phone: '',
     email: '',
     website: '',
@@ -388,6 +410,7 @@ async function handleCreateProspect(): Promise<void> {
       name: prospectDraft.value.name.trim(),
       address: prospectDraft.value.address?.trim() || null,
       city: prospectDraft.value.city?.trim() || null,
+      country: prospectDraft.value.country ?? 'FR',
       phone: prospectDraft.value.phone?.trim() || null,
       email: prospectDraft.value.email?.trim() || null,
       website: prospectDraft.value.website?.trim() || null,

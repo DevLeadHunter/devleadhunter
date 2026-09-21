@@ -213,7 +213,7 @@ _EDITORIAL_DEFAULTS: dict[str, Any] = {
     "trustItems": [
         {"value": "7j/7", "label": "Dépannage & urgences"},
         {"value": "Garantie décennale", "label": "Travaux assurés"},
-        {"value": "Devis 0 €", "label": "Sans engagement"},
+        {"value": "Devis gratuit", "label": "Sans engagement"},
         {"value": "Artisan local", "label": "Proche de chez vous"},
     ],
     "servicesHeading": "Nos services",

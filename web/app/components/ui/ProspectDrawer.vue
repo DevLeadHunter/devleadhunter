@@ -292,9 +292,10 @@
                 </div>
                 <div>
                   <p class="text-[10px] text-[var(--app-ink-soft)]">Adresse</p>
-                  <div v-if="prospect.address || prospect.city" class="mt-0.5">
+                  <div v-if="prospect.address || prospect.city || countrySuffix" class="mt-0.5">
                     <p v-if="prospect.address" class="text-sm text-[var(--app-ink)]">{{ prospect.address }}</p>
                     <p v-if="prospect.city" class="text-sm text-[var(--app-ink-soft)]">{{ prospect.city }}</p>
+                    <p v-if="countrySuffix" class="text-sm text-[var(--app-ink-soft)]">{{ countrySuffix }}</p>
                   </div>
                   <p v-else class="text-sm text-[var(--app-faint)]">—</p>
                 </div>
@@ -479,6 +480,21 @@
                 <input v-model="editForm.category" type="text" class="input-field" placeholder="plombier" />
               </div>
             </div>
+
+            <div>
+              <label class="mb-1 block text-[10px] font-medium tracking-wider text-[var(--app-ink-soft)] uppercase">
+                Pays
+              </label>
+              <select v-model="editForm.country" class="input-field">
+                <option
+                  v-for="countryOption in ProspectCountries.catalog"
+                  :key="countryOption.code"
+                  :value="countryOption.code"
+                >
+                  {{ countryOption.flag }} {{ countryOption.label }}
+                </option>
+              </select>
+            </div>
           </form>
         </div>
 
@@ -547,6 +563,7 @@
 
 <script lang="ts" setup>
 import { formatLongMonthDate } from '~/utils/date'
+import { ProspectCountries } from '~/utils/prospectCountries'
 import type { UseToastReturn } from '~/types/Composables'
 import type {
   LighthouseGauge,
@@ -776,8 +793,12 @@ const editForm: Ref<ProspectEditForm> = ref({
   website: '',
   address: '',
   city: '',
+  country: 'FR',
   category: '',
 })
+
+/** Country line shown under the city — empty for France so French cards keep their layout. */
+const countrySuffix: ComputedRef<string> = computed((): string => ProspectCountries.suffix(props.prospect?.country))
 
 watch(
   () => [props.open, props.prospect?.id],
@@ -823,6 +844,7 @@ function startEdit(): void {
     website: props.prospect.website ?? '',
     address: props.prospect.address ?? '',
     city: props.prospect.city ?? '',
+    country: props.prospect.country ?? 'FR',
     category: props.prospect.category,
   }
   editMode.value = true
@@ -856,6 +878,7 @@ async function handleSave(): Promise<void> {
       website: editForm.value.website || null,
       address: editForm.value.address || null,
       city: editForm.value.city || null,
+      country: editForm.value.country,
       category: editForm.value.category || undefined,
     }
     const updated: Prospect = await ProspectsService.updateProspect(props.prospect.id, payload)

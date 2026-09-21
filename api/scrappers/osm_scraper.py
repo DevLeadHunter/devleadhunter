@@ -154,10 +154,10 @@ class OSMScraper(BaseScraper):
         out skel qt;
         """
 
-    async def geocode_city(self, city: str) -> tuple[float, float] | None:
-        """Resolve city center coordinates via Nominatim."""
+    async def geocode_city(self, city: str, country: str = "FR") -> tuple[float, float] | None:
+        """Resolve city center coordinates via Nominatim, restricted to the search country."""
         await self.ensure_session()
-        params = {"q": city, "format": "json", "limit": 1, "countrycodes": "fr"}
+        params = {"q": city, "format": "json", "limit": 1, "countrycodes": country.lower()}
         async with self.session.get(
             f"{self.base_url}/search",
             params=params,
@@ -206,7 +206,7 @@ class OSMScraper(BaseScraper):
                 )
             return businesses
 
-    async def search_overpass(self, category: str, city: str, max_results: int) -> list[dict]:
+    async def search_overpass(self, category: str, city: str, max_results: int, country: str = "FR") -> list[dict]:
         """
         Search for businesses using Overpass API.
 
@@ -214,6 +214,7 @@ class OSMScraper(BaseScraper):
             category: Business category
             city: City name
             max_results: Maximum number of results
+            country: Search country, forwarded to the geocoding
 
         Returns:
             List of business data dictionaries
@@ -230,7 +231,7 @@ class OSMScraper(BaseScraper):
                     seen.add(key)
                     businesses.append(item)
 
-            coords = await self.geocode_city(city)
+            coords = await self.geocode_city(city, country)
             if coords:
                 lat, lon = coords
                 radius_results = await self._run_overpass_query(
@@ -364,6 +365,7 @@ class OSMScraper(BaseScraper):
         city: str,
         max_results: int = 50,
         *,
+        country: str = "FR",
         only_without_website: bool = True,
         progress: ScrapeProgressReporter | None = None,
         should_stop: Callable[[], bool] | None = None,
@@ -375,6 +377,7 @@ class OSMScraper(BaseScraper):
             category: Business category to search for
             city: City to search in
             max_results: Maximum number of results to return
+            country: Search country — restricts the Nominatim geocoding (homonym cities abroad)
 
         Returns:
             List of ProspectCreate objects without websites
@@ -389,7 +392,7 @@ class OSMScraper(BaseScraper):
                 await progress.log("OpenStreetMap — recherche des entreprises…")
 
             # Search using Overpass API
-            businesses = await self.search_overpass(category, city, max_results)
+            businesses = await self.search_overpass(category, city, max_results, country=country)
 
             if not businesses:
                 logger.info("No results found on OpenStreetMap")

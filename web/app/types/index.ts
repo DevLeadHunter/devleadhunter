@@ -18,6 +18,9 @@ export type ProspectWebsiteStatus = 'live' | 'dead' | 'placeholder'
 /** Website filter values — `yes`/`no` reason in "working website" : a dead or directory site counts as none. */
 export type ProspectWebsiteFilter = 'all' | 'yes' | 'no' | 'dead' | 'improvable'
 
+/** Countries the prospection pipeline supports (ISO 3166-1 alpha-2). */
+export type ProspectCountry = 'FR' | 'CH' | 'BE'
+
 /**
  * Prospect interface representing a business without website
  */
@@ -27,6 +30,7 @@ export type Prospect = {
   name: string
   address?: string
   city?: string
+  country?: ProspectCountry
   phone?: string
   phones?: string[] | null
   email?: string
@@ -131,6 +135,7 @@ export type ProspectUpdatePayload = {
   name?: string
   address?: string | null
   city?: string | null
+  country?: ProspectCountry
   phone?: string | null
   email?: string | null
   website?: string | null
@@ -147,6 +152,7 @@ export type ProspectCreatePayload = {
   name: string
   address?: string | null
   city?: string | null
+  country?: ProspectCountry
   phone?: string | null
   email?: string | null
   website?: string | null

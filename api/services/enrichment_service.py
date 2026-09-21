@@ -388,6 +388,9 @@ class EnrichmentService:
             ContactNameStatus.CONFIRMED.value,
         ):
             return
+        # The cascade reads FRENCH registries (SIRENE, Pappers): outside France it can only produce a French homonym.
+        if (prospect.country or "FR") != "FR":
+            return
         try:
             from services.decision_maker.resolver import (
                 context_from_prospect,

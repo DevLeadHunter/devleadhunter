@@ -74,6 +74,22 @@
             </div>
 
             <div>
+              <label for="sp-country" class="app-label mb-1.5 block">Pays</label>
+              <select id="sp-country" v-model="form.country" class="app-input w-full">
+                <option
+                  v-for="countryOption in ProspectCountries.catalog"
+                  :key="countryOption.code"
+                  :value="countryOption.code"
+                >
+                  {{ countryOption.flag }} {{ countryOption.label }}
+                </option>
+              </select>
+              <p v-if="form.country !== 'FR'" class="text-muted mt-1 text-[10px] leading-relaxed">
+                Hors France, la recherche passe par Google Maps, OpenStreetMap et Facebook (Pages Jaunes est ignoré).
+              </p>
+            </div>
+
+            <div>
               <label for="sp-max" class="app-label mb-1.5 block">Nombre maximum de résultats</label>
               <input
                 id="sp-max"
@@ -200,6 +216,7 @@ import type { SearchFormState, SearchProspectsDrawerProps, SearchProspectsPrefil
 import type { ComputedRef, EmitFn, PropType, Ref } from 'vue'
 import { computed, ref, watch } from 'vue'
 import { PROSPECT_SOURCE_SEARCH_OPTIONS } from '~/constants/prospectSources'
+import { ProspectCountries } from '~/utils/prospectCountries'
 import { useProspectSearchStore } from '~/stores/prospectSearch'
 import { useToast } from '~/composables/useToast'
 
@@ -268,7 +285,15 @@ const SEARCH_STEPS: string[] = [
  * @returns A fresh form.
  */
 function defaultForm(): SearchFormState {
-  return { category: '', city: '', maxResults: 50, source: '', skipDuplicates: true, onlyWithoutWebsite: true }
+  return {
+    category: '',
+    city: '',
+    country: 'FR',
+    maxResults: 50,
+    source: '',
+    skipDuplicates: true,
+    onlyWithoutWebsite: true,
+  }
 }
 
 /** The editable form. */
@@ -299,6 +324,7 @@ async function submit(): Promise<void> {
     await store.startSearch({
       category: form.value.category.trim(),
       city: form.value.city.trim(),
+      country: form.value.country,
       maxResults: form.value.maxResults,
       source: form.value.source,
       skipDuplicates: form.value.skipDuplicates,

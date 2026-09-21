@@ -650,11 +650,12 @@ _EDITORIAL_DEFAULTS: dict[str, Any] = {
     "heroPoints": ["Devis gratuit", "Intervention rapide", "Travail garanti"],
     "ctaCallLabel": "Appeler maintenant",
     "ctaQuoteLabel": "Demander un devis",
+    # Country-neutral claims: NF C 15-100 or garantie décennale read false on a Swiss or Belgian site.
     "trustItems": [
         {"value": "7j/7", "label": "Dépannage & urgences"},
-        {"value": "NF C 15-100", "label": "Installations aux normes"},
-        {"value": "Garantie décennale", "label": "Travaux assurés"},
-        {"value": "Devis 0 €", "label": "Sans engagement"},
+        {"value": "100% conforme", "label": "Installations aux normes"},
+        {"value": "Travail garanti", "label": "Interventions assurées"},
+        {"value": "Devis gratuit", "label": "Sans engagement"},
     ],
     "servicesHeading": "Nos services",
     "galleryHeading": "Nos chantiers récents",

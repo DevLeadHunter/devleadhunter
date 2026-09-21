@@ -39,6 +39,7 @@ class BaseScraper(ABC):
         city: str,
         max_results: int = 50,
         *,
+        country: str = "FR",
         only_without_website: bool = True,
         progress: Optional["ScrapeProgressReporter"] = None,
         should_stop: Callable[[], bool] | None = None,
@@ -50,6 +51,8 @@ class BaseScraper(ABC):
             category: Business category to search for
             city: City to search in
             max_results: Maximum number of results to return
+            country: ISO alpha-2 country of the search (FR, CH, BE) — disambiguates the
+                     city in queries; France-only sources return nothing for other countries
             only_without_website: When True, skip prospects that already have a website
 
         Returns:

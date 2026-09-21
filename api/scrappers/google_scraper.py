@@ -13,6 +13,7 @@ from time import monotonic
 from typing import TypeVar
 from urllib.parse import quote
 
+from enums.country import country_label
 from enums.source import Source
 from enums.website_status import WebsiteStatus
 from models.prospect import ProspectCreate, ProspectSearchSuggestion
@@ -178,13 +179,16 @@ class GoogleScraper(NodriverScraperMixin, BaseScraper):
             return False
 
     @staticmethod
-    def build_query(category: str | None, city: str | None) -> str:
-        """Build a URL-encoded Google Maps search query."""
+    def build_query(category: str | None, city: str | None, country: str = "FR") -> str:
+        """Build a URL-encoded Google Maps search query, disambiguated outside France."""
         parts: list[str] = []
         if category:
             parts.append(category)
         if city:
             parts.append(f"à {city}")
+        if country != "FR":
+            # Homonym cities exist across the border (Mons, Fribourg…): the country pins Maps.
+            parts.append(country_label(country))
         query = " ".join(parts).strip()
         return quote(query) if query else "entreprises"
 
@@ -675,6 +679,7 @@ class GoogleScraper(NodriverScraperMixin, BaseScraper):
         city: str,
         max_results: int = 50,
         *,
+        country: str = "FR",
         only_without_website: bool = True,
         progress: ScrapeProgressReporter | None = None,
         should_stop: Callable[[], bool] | None = None,
@@ -686,6 +691,7 @@ class GoogleScraper(NodriverScraperMixin, BaseScraper):
             category: Business category to search for.
             city: City to search in.
             max_results: Maximum number of results to return.
+            country: Search country — appended to the Maps query outside France.
 
         Returns:
             List of ProspectCreate objects.
@@ -695,7 +701,9 @@ class GoogleScraper(NodriverScraperMixin, BaseScraper):
             return []
 
         async def task() -> list[ProspectCreate]:
-            return await self._scrape_nodriver(category, city, max_results, only_without_website, progress, should_stop)
+            return await self._scrape_nodriver(
+                category, city, country, max_results, only_without_website, progress, should_stop
+            )
 
         return await run_nodriver_task(task, timeout=600)
 
@@ -703,6 +711,7 @@ class GoogleScraper(NodriverScraperMixin, BaseScraper):
         self,
         category: str,
         city: str,
+        country: str,
         max_results: int,
         only_without_website: bool,
         progress: ScrapeProgressReporter | None,
@@ -715,7 +724,7 @@ class GoogleScraper(NodriverScraperMixin, BaseScraper):
             try:
                 if progress:
                     await progress.log("Google Maps — chargement de la recherche…")
-                query = self.build_query(category, city)
+                query = self.build_query(category, city, country)
                 url = f"https://www.google.com/maps/search/{query}"
                 logger.info("Scraping: %s", url)
                 await NodriverDom.navigate(tab, url, sleep_s=0.6)

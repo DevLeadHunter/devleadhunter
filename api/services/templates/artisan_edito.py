@@ -130,7 +130,7 @@ _EDITORIAL_DEFAULTS: dict[str, Any] = {
     "ctaQuoteLabel": "Demander un devis",
     "trustItems": [
         {"value": "Réactif", "label": "Réponse rapide"},
-        {"value": "Devis 0 €", "label": "Sans engagement"},
+        {"value": "Devis gratuit", "label": "Sans engagement"},
         {"value": "Local", "label": "Près de chez vous"},
         {"value": "Garanti", "label": "Travail assuré"},
     ],

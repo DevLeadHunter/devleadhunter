@@ -7,7 +7,7 @@ import { useRuntimeConfig } from '#app'
 import { useUserStore } from '~/stores/user'
 import { useScrapingJobStream } from '~/composables/useScrapingJobStream'
 import type { ScrapingJobProgressState } from '~/composables/useScrapingJobStream'
-import type { Prospect } from '~/types'
+import type { Prospect, ProspectCountry } from '~/types'
 import { EnrichmentService } from '~/services/enrichmentService'
 import type { ProspectEnrichment } from '~/services/enrichmentService'
 import { ProspectsService } from '~/services/prospectsService'
@@ -21,6 +21,7 @@ export type ScrapingJob = {
   status: 'pending' | 'running' | 'completed' | 'failed' | 'cancelled'
   category: string | null
   city: string | null
+  country: ProspectCountry
   max_results: number
   source: string | null
   skip_duplicates: boolean
@@ -42,6 +43,7 @@ export type ScrapingJob = {
 export type ProspectSearchParams = {
   category: string
   city: string
+  country: ProspectCountry
   maxResults: number
   source: string
   skipDuplicates: boolean
@@ -405,6 +407,7 @@ export const useProspectSearchStore = defineStore('prospectSearch', () => {
       const next: ScrapingJob = await launchJob({
         category: job.category,
         city: job.city,
+        country: job.country,
         max_results: state.needed - state.kept,
         source: 'facebook',
         skip_duplicates: job.skip_duplicates,
@@ -480,6 +483,7 @@ export const useProspectSearchStore = defineStore('prospectSearch', () => {
       await launchJob({
         category: params.category || null,
         city: params.city || null,
+        country: params.country,
         max_results: params.maxResults,
         source: params.source || null,
         skip_duplicates: params.skipDuplicates,

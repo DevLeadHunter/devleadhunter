@@ -275,7 +275,7 @@ def _real_trust_items(enrichment: dict[str, Any] | None) -> list[dict[str, str]]
     if count:
         items.append({"value": count, "label": "avis clients"})
     for badge in (
-        {"value": "Devis 0 €", "label": "Sans engagement"},
+        {"value": "Devis gratuit", "label": "Sans engagement"},
         {"value": "Sur mesure", "label": "Chaque jardin est unique"},
         {"value": "Local", "label": "Proche de chez vous"},
     ):

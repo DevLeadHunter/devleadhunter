@@ -108,34 +108,37 @@ class BrightDataClient:
             resp.raise_for_status()
             return await resp.text()
 
-    async def google(self, query: str, *, num: int = 20, start: int = 0) -> str:
-        """Fetch a Google results page for *query* (French locale).
+    async def google(self, query: str, *, num: int = 20, start: int = 0, country: str = "FR") -> str:
+        """Fetch a Google results page for *query* (French language, country-ranked).
 
         Args:
             query: Raw search query (e.g. ``site:facebook.com "food truck" "Nantes"``).
             num: Number of results requested.
             start: Result offset — ``num`` per page, so page N is ``start=N*num``.
+            country: Ranking country (``gl=``) — a Swiss search ranked with ``gl=fr``
+                     buries the Swiss pages under French ones.
 
         Returns:
             Raw HTML of the Google SERP.
         """
-        url = f"https://www.google.com/search?q={quote_plus(query)}&gl=fr&hl=fr&num={num}"
+        url = f"https://www.google.com/search?q={quote_plus(query)}&gl={country.lower()}&hl=fr&num={num}"
         if start > 0:
             url += f"&start={start}"
         return await self.fetch(url)
 
-    async def bing(self, query: str, *, count: int = 20, first: int = 1) -> str:
-        """Fetch a Bing results page for *query* (French locale).
+    async def bing(self, query: str, *, count: int = 20, first: int = 1, country: str = "FR") -> str:
+        """Fetch a Bing results page for *query* (French language, country-ranked).
 
         Args:
             query: Raw search query.
             count: Number of results requested.
             first: 1-based offset of the first result — page N is ``first=N*count+1``.
+            country: Ranking country (``cc=``).
 
         Returns:
             Raw HTML of the Bing SERP.
         """
-        url = f"https://www.bing.com/search?q={quote_plus(query)}&cc=FR&setlang=fr&count={count}"
+        url = f"https://www.bing.com/search?q={quote_plus(query)}&cc={country.upper()}&setlang=fr&count={count}"
         if first > 1:
             url += f"&first={first}"
         return await self.fetch(url)

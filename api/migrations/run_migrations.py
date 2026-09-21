@@ -141,6 +141,7 @@ MIGRATION_MODULES: list[tuple[str, str]] = [
     ("add_sms_auto_relance_campaign", "migrations.add_sms_auto_relance_campaign"),
     ("purge_duplicate_sms_auto_rows", "migrations.purge_duplicate_sms_auto_rows"),
     ("add_order_ovh_tracking", "migrations.add_order_ovh_tracking"),
+    ("add_prospect_country", "migrations.add_prospect_country"),
 ]
 
 # Modules of this package that are not migrations and must not be registered.

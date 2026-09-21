@@ -40,6 +40,8 @@ class ProspectDB(Base):
     name: Mapped[str] = mapped_column(String(500), nullable=False, index=True)
     address: Mapped[str | None] = mapped_column(Text, nullable=True)
     city: Mapped[str | None] = mapped_column(String(255), nullable=True, index=True)
+    # ISO 3166-1 alpha-2 (FR, CH, BE…) — drives search geo, phone rules and registry lookups.
+    country: Mapped[str] = mapped_column(String(2), nullable=False, default="FR", server_default="FR", index=True)
     phone: Mapped[str | None] = mapped_column(String(50), nullable=True)
     # All known phone numbers, best-first; ``phone`` above stays synced to ``phones[0]`` (the primary).
     phones: Mapped[list[str] | None] = mapped_column(JSON, nullable=True)

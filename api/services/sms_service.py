@@ -195,6 +195,11 @@ class SmsService:
             return SmsSendOutcome(sent=False, reason="Expéditeur SMS non configuré")
         if not self._provider.is_configured:
             return SmsSendOutcome(sent=False, reason="smsmode non configuré")
+        # France only: a Swiss 079 without prefix normalizes into a VALID +337 mobile — the SMS would reach a stranger.
+        if (prospect.country or "FR") != "FR":
+            return SmsSendOutcome(
+                sent=False, reason="SMS réservé aux prospects français (numérotation et STOP français)"
+            )
         refusal = self.legal_window_refusal()
         if refusal:
             self.log_window_block(user_id, prospect_id=prospect.id, detail=refusal)

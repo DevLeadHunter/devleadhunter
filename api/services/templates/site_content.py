@@ -75,7 +75,7 @@ ELECTRICIAN_SERVICES: list[dict[str, str]] = [
     },
     {
         "title": "Mise aux normes",
-        "description": "Remise à niveau de votre installation (NF C 15-100) et attestation Consuel.",
+        "description": "Remise à niveau complète de votre installation, aux normes en vigueur, attestation à l'appui.",
     },
     {
         "title": "Tableau électrique",
@@ -101,8 +101,8 @@ ELECTRICIAN_FAQ: list[dict[str, str]] = [
         "answer": "Le devis est gratuit et sans engagement, remis avant les travaux.",
     },
     {
-        "question": "Délivrez-vous une attestation Consuel ?",
-        "answer": "Oui, pour toute installation neuve ou mise aux normes soumise au Consuel.",
+        "question": "Délivrez-vous une attestation de conformité ?",
+        "answer": "Oui, chaque installation neuve ou mise aux normes est livrée avec son attestation.",
     },
     {
         "question": "Quelles zones couvrez-vous ?",
@@ -110,7 +110,7 @@ ELECTRICIAN_FAQ: list[dict[str, str]] = [
     },
     {
         "question": "Vos travaux sont-ils garantis ?",
-        "answer": "Oui, nos installations sont conformes et couvertes par la garantie décennale.",
+        "answer": "Oui, nos installations sont conformes et couvertes par notre assurance professionnelle.",
     },
 ]
 

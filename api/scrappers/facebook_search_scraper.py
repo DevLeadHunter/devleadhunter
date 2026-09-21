@@ -30,6 +30,7 @@ from urllib.parse import parse_qs, unquote, urlparse
 
 from bs4 import BeautifulSoup, Tag
 
+from enums.country import country_label
 from enums.source import Source
 from models.prospect import ProspectCreate
 from services.scrape_progress import ScrapeProgressReporter
@@ -309,43 +310,47 @@ class FacebookSearchScraper(BaseScraper):
         super().__init__(source=Source.FACEBOOK)
         self._client = BrightDataClient()
 
-    def _queries(self, category: str, city: str) -> list[str]:
+    def _queries(self, category: str, city: str, country: str = "FR") -> list[str]:
         """Build the SERP queries, precise first then looser for recall.
 
         Args:
             category: Business category (e.g. ``"food truck"``).
             city: City to search in.
+            country: Search country — its name joins the loose queries so homonym
+                     cities abroad do not pollute the results.
 
         Returns:
             Ordered list of search queries.
         """
+        label = "" if country == "FR" else f" {country_label(country)}"
         return [
             f'site:facebook.com "{category}" "{city}"',
-            f"site:facebook.com {category} {city}",
+            f"site:facebook.com {category} {city}{label}",
             # Pages whose snippet surfaces a gmail address — exactly the segment the
             # match filter keeps (email required), so this variant boosts usable recall.
-            f'site:facebook.com {category} {city} "gmail.com"',
+            f'site:facebook.com {category} {city}{label} "gmail.com"',
         ]
 
     # SERP pages fetched per engine × query (20 results each). Deeper pages are only
     # paid for while shallower ones still yield unseen Facebook pages.
     _PAGES_PER_QUERY: int = 3
 
-    async def _fetch_serp(self, engine: str, query: str, page: int) -> str | None:
+    async def _fetch_serp(self, engine: str, query: str, page: int, country: str = "FR") -> str | None:
         """Fetch one SERP page from *engine*, returning ``None`` on failure.
 
         Args:
             engine: ``"google"`` or ``"bing"``.
             query: The search query.
             page: 0-based SERP page (20 results per page).
+            country: Ranking country forwarded to the SERP client.
 
         Returns:
             Raw SERP HTML, or ``None`` when the fetch failed.
         """
         try:
             if engine == "google":
-                return await self._client.google(query, start=page * 20)
-            return await self._client.bing(query, first=page * 20 + 1)
+                return await self._client.google(query, start=page * 20, country=country)
+            return await self._client.bing(query, first=page * 20 + 1, country=country)
         except Exception as exc:
             # Warning, not debug: with a bad token / Bright Data outage EVERY fetch lands
             # here and the run would otherwise look like a plain "0 results".
@@ -358,6 +363,7 @@ class FacebookSearchScraper(BaseScraper):
         city: str,
         max_results: int = 50,
         *,
+        country: str = "FR",
         only_without_website: bool = True,
         progress: ScrapeProgressReporter | None = None,
         should_stop: Callable[[], bool] | None = None,
@@ -399,7 +405,7 @@ class FacebookSearchScraper(BaseScraper):
             if progress:
                 await progress.log(f"Facebook — recherche de pages ({category} / {city})…")
 
-            queries = self._queries(category, city)
+            queries = self._queries(category, city, country)
             emitted: set[str] = set()  # canonical urls already emitted to the caller
             prospects: list[ProspectCreate] = []
             attempts = failures = 0
@@ -423,7 +429,7 @@ class FacebookSearchScraper(BaseScraper):
                             await progress.log(
                                 f"Facebook — {engine_label} : requête {query_index}/{len(queries)}, page {page + 1}…"
                             )
-                        html = await self._fetch_serp(engine, query, page)
+                        html = await self._fetch_serp(engine, query, page, country)
                         if html is None:
                             failures += 1
                             break  # deeper pages of a failing engine/query would fail too

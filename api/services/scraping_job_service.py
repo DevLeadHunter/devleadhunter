@@ -12,6 +12,7 @@ from datetime import datetime
 from uuid import uuid4
 
 from core.database import SessionLocal
+from enums.country import normalize_country
 from models.prospect import Prospect, ProspectCreate
 from models.scraping_job import JobStatus, ScrapingJob, ScrapingJobCreate
 from services.enrichment_service import enrichment_service
@@ -45,6 +46,7 @@ class ScrapingJobService:
             status=JobStatus.PENDING,
             category=job_data.category,
             city=job_data.city,
+            country=normalize_country(job_data.country),
             max_results=job_data.max_results,
             source=job_data.source,
             skip_duplicates=job_data.skip_duplicates,
@@ -117,6 +119,9 @@ class ScrapingJobService:
                 if stop_scraping or cancel_event.is_set() or saved_count >= save_cap:
                     stop_scraping = True
                     return
+
+            # Stamped at the single save chokepoint so no scraper has to carry the field itself.
+            prospect_data.country = job.country
 
             key = (prospect_data.name.lower(), (prospect_data.city or "").lower())
             if key in seen_keys:
@@ -241,6 +246,7 @@ class ScrapingJobService:
                 category=job.category or "",
                 city=job.city or "",
                 max_results=save_cap,
+                country=job.country,
                 source_filter=job.source,
                 only_without_website=job.only_without_website,
                 progress=progress,

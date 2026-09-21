@@ -65,6 +65,7 @@ class AutoScraper(BaseScraper):
         self,
         category: str,
         city: str,
+        country: str,
         max_results: int,
         only_without_website: bool,
         progress: ScrapeProgressReporter | None,
@@ -76,6 +77,7 @@ class AutoScraper(BaseScraper):
                 category,
                 city,
                 max_results,
+                country=country,
                 only_without_website=only_without_website,
                 progress=None,  # progress reported by AutoScraper directly
                 should_stop=should_stop,
@@ -88,6 +90,7 @@ class AutoScraper(BaseScraper):
         self,
         category: str,
         city: str,
+        country: str,
         max_results: int,
         only_without_website: bool,
         progress: ScrapeProgressReporter | None,
@@ -99,6 +102,7 @@ class AutoScraper(BaseScraper):
                 category,
                 city,
                 max_results,
+                country=country,
                 only_without_website=only_without_website,
                 progress=None,
                 should_stop=should_stop,
@@ -145,6 +149,7 @@ class AutoScraper(BaseScraper):
         city: str,
         max_results: int = 50,
         *,
+        country: str = "FR",
         only_without_website: bool = True,
         progress: ScrapeProgressReporter | None = None,
         should_stop: Callable[[], bool] | None = None,
@@ -179,8 +184,8 @@ class AutoScraper(BaseScraper):
             fetch_max = max(max_results * 4, 20)
 
             osm_results, pj_results = await asyncio.gather(
-                self._run_osm(category, city, fetch_max, only_without_website, progress, should_stop),
-                self._run_pj(category, city, fetch_max, only_without_website, progress, should_stop),
+                self._run_osm(category, city, country, fetch_max, only_without_website, progress, should_stop),
+                self._run_pj(category, city, country, fetch_max, only_without_website, progress, should_stop),
             )
 
             osm_count = len(osm_results)

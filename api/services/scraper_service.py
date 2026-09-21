@@ -39,6 +39,10 @@ _FAILOVER_ORDER: tuple[str, ...] = ("google", "pagesjaunes", "brightdata", "osm"
 # Google / Pages Jaunes would return prospects outside the requested segment.
 _ISOLATED_SOURCES: frozenset[str] = frozenset({"facebook"})
 
+# Sources that only cover France (pagesjaunes.fr and the unlocker that reads it):
+# a CH/BE search never cascades into them.
+_FRANCE_ONLY_SOURCES: frozenset[str] = frozenset({"pagesjaunes", "brightdata"})
+
 
 class ScraperService:
     """Service for coordinating web scraping operations."""
@@ -55,12 +59,14 @@ class ScraperService:
         if scraper in self._scrapers:
             self._scrapers.remove(scraper)
 
-    def _ordered_candidates(self, source_filter: str | None) -> tuple[list[BaseScraper], bool]:
+    def _ordered_candidates(self, source_filter: str | None, country: str = "FR") -> tuple[list[BaseScraper], bool]:
         """Build the ordered list of scrapers to try, plus whether a source was requested.
 
         A specific request runs first, then the rest of the failover chain (so a blocked
         primary still cascades) — except for :data:`_ISOLATED_SOURCES`, which run alone.
-        ``all``/unset runs the whole failover chain.
+        ``all``/unset runs the whole failover chain. Outside France the France-only
+        sources (Pages Jaunes and its Bright Data unlocker) leave the chain entirely:
+        cascading into them would burn a failover turn on a guaranteed empty.
 
         Returns:
             ``(candidates, is_specific)``.
@@ -69,15 +75,16 @@ class ScraperService:
         for scraper in self._scrapers:
             by_source.setdefault(scraper.source.value, scraper)
 
+        failover = [n for n in _FAILOVER_ORDER if country == "FR" or n not in _FRANCE_ONLY_SOURCES]
         is_specific = bool(source_filter and source_filter.lower() != "all")
         if is_specific:
             requested = source_filter.lower()  # type: ignore[union-attr]
             if requested in _ISOLATED_SOURCES:
                 ordered_names = [requested]
             else:
-                ordered_names = [requested] + [n for n in _FAILOVER_ORDER if n != requested]
+                ordered_names = [requested] + [n for n in failover if n != requested]
         else:
-            ordered_names = list(_FAILOVER_ORDER)
+            ordered_names = list(failover)
 
         candidates: list[BaseScraper] = []
         seen: set[str] = set()
@@ -95,6 +102,7 @@ class ScraperService:
         city: str,
         max_results: int,
         *,
+        country: str,
         only_without_website: bool,
         progress: ScrapeProgressReporter | None,
         should_stop: Callable[[], bool] | None,
@@ -116,6 +124,7 @@ class ScraperService:
                 category,
                 city,
                 max_results,
+                country=country,
                 only_without_website=only_without_website,
                 progress=progress,
                 should_stop=should_stop,
@@ -150,6 +159,7 @@ class ScraperService:
         max_results: int = 50,
         source_filter: str | None = None,
         *,
+        country: str = "FR",
         only_without_website: bool = True,
         progress: ScrapeProgressReporter | None = None,
         should_stop: Callable[[], bool] | None = None,
@@ -157,9 +167,10 @@ class ScraperService:
     ) -> list[ProspectCreate]:
         """Run scrapers with automatic failover and stream/record progress."""
         logger.info(
-            "[ScraperService] scrape_all category=%s city=%s max=%s source=%s",
+            "[ScraperService] scrape_all category=%s city=%s country=%s max=%s source=%s",
             category,
             city,
+            country,
             max_results,
             source_filter,
         )
@@ -169,7 +180,7 @@ class ScraperService:
                 await progress.log("Aucun scraper enregistré.")
             return []
 
-        candidates, is_specific = self._ordered_candidates(source_filter)
+        candidates, is_specific = self._ordered_candidates(source_filter, country)
         if not candidates:
             # Unknown source or none matched the failover order — try everything registered.
             logger.warning("No candidate scraper for source=%s; using all registered", source_filter)
@@ -191,6 +202,7 @@ class ScraperService:
                 category,
                 city,
                 max_results,
+                country=country,
                 only_without_website=only_without_website,
                 progress=progress,
                 should_stop=should_stop,

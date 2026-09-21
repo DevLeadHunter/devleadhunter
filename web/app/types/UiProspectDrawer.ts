@@ -1,4 +1,4 @@
-import type { Prospect } from '~/types'
+import type { Prospect, ProspectCountry } from '~/types'
 
 export type UiProspectDrawerProps = {
   open: boolean
@@ -23,6 +23,7 @@ export type ProspectEditForm = {
   website: string
   address: string
   city: string
+  country: ProspectCountry
   category: string
 }
 

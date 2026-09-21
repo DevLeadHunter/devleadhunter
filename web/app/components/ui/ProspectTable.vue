@@ -126,7 +126,16 @@
           </button>
         </BaseTableTd>
 
-        <BaseTableTd label="Ville" class="text-sm text-[var(--app-ink-soft)]">{{ prospect.city || '—' }}</BaseTableTd>
+        <BaseTableTd label="Ville" class="text-sm text-[var(--app-ink-soft)]">
+          <span
+            v-if="prospect.country && prospect.country !== 'FR'"
+            :title="ProspectCountries.option(prospect.country).label"
+            class="mr-1"
+          >
+            {{ ProspectCountries.option(prospect.country).flag }}
+          </span>
+          {{ prospect.city || '—' }}
+        </BaseTableTd>
 
         <BaseTableTd
           label="Téléphone"
@@ -257,6 +266,7 @@ import type { UiProspectTableEmits, UiProspectTableProps } from '~/types/UiProsp
 import { computed, onBeforeUnmount, ref } from 'vue'
 import { useDragToReorder } from '~/composables/useDragToReorder'
 import { useUserStore } from '~/stores/user'
+import { ProspectCountries } from '~/utils/prospectCountries'
 
 /** Paginated prospect rows with per-row and select-all checkboxes. */
 const props: UiProspectTableProps = defineProps({
