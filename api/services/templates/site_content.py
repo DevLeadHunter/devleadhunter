@@ -190,6 +190,11 @@ def format_review_count(count: Any) -> str | None:
 
 _RATING_VALUE_RE = re.compile(r"^\d(?:[.,]\d)?\s*/\s*5$")
 
+# Below this real Google rating, trust badges fall back to neutral claims instead of showcasing it
+# (a 2,7/5 renders as « 54 % de clients satisfaits » — an anti-sale on the prospect's own demo).
+# 3.5 keeps the explicit decision to display Barbershop63's 3,9.
+TRUST_RATING_FLOOR: float = 3.5
+
 
 def apply_real_rating_trust(site: dict[str, Any], enrichment: dict[str, Any] | None) -> None:
     """Overwrite the placeholder rating repère with the prospect's real Google rating + review count.
@@ -243,10 +248,14 @@ def apply_real_trust_stats(site: dict[str, Any], enrichment: dict[str, Any] | No
     an "experience" badge shows the real years in business (from a "depuis 20xx" mention), or the real
     review count when the founding year is unknown; a "rating/avis" badge shows the real rating + count.
     Without any real figure the badge is replaced by a neutral claim — a fabricated "4,9/5" reads as a
-    lie to a prospect who knows his own (absent or lower) rating. Mutates ``site`` in place.
+    lie to a prospect who knows his own (absent or lower) rating. A real rating below
+    ``TRUST_RATING_FLOOR`` is also demoted to the neutral claim: a truthful « 54 % de clients
+    satisfaits » banner is an anti-sale, and hiding it is not lying. Mutates ``site`` in place.
     """
     enr = enrichment or {}
     rating = enr.get("rating")
+    if isinstance(rating, (int, float)) and 0 < rating < TRUST_RATING_FLOOR:
+        rating = None
     satisfaction = round(float(rating) / 5 * 100) if isinstance(rating, (int, float)) and rating > 0 else None
     rating_value = format_rating_value(rating)
     count_value = format_review_count(enr.get("reviews_count"))

@@ -67,6 +67,17 @@ def test_electrician_lumen_rating_slot_uses_real_rating_or_neutral_claim() -> No
     assert ("Devis gratuit", "Sans engagement") in without_rating
 
 
+def test_low_rating_falls_back_to_neutral_claims() -> None:
+    """A real rating under the floor (3,5) must not be showcased — « 54 % satisfaits » is an anti-sale."""
+    barber = _trust_for_template("barber", {"rating": 2.7, "reviews_count": 7})
+    values = [value for value, _ in barber]
+    assert "54%" not in values and "2,7/5" not in values
+    lumen = _trust_for_template("electrician-lumen", {"rating": 3.0, "reviews_count": 4})
+    assert ("Devis gratuit", "Sans engagement") in lumen
+    food = _trust_for_template("food", {"rating": 2.9, "reviews_count": 12})
+    assert all("2,9" not in value for value, _ in food)
+
+
 def test_food_stats_use_real_figures_or_neutral_claims() -> None:
     """Food's "4,9/5" and "12K+ Instagram" placeholders must never survive without real figures."""
     with_rating = _trust_for_template("food", {"rating": 4.6, "reviews_count": 9})

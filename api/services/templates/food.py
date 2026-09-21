@@ -18,6 +18,7 @@ from typing import Any
 
 from services.templates.site_content import (  # noqa: F401 — re-exported for the registry
     SITE_CONTENT_SCHEMAS,
+    TRUST_RATING_FLOOR,
     extract_specialty,
     fill_missing_card_images,
     format_rating_value,
@@ -176,7 +177,10 @@ def _apply_real_food_stats(site: dict[str, Any], enrichment: dict[str, Any] | No
     rating or follower count reads as a lie to a prospect who knows his own numbers.
     """
     enr = enrichment or {}
-    rating_value = format_rating_value(enr.get("rating"))
+    raw_rating = enr.get("rating")
+    if isinstance(raw_rating, (int, float)) and 0 < raw_rating < TRUST_RATING_FLOOR:
+        raw_rating = None
+    rating_value = format_rating_value(raw_rating)
     count_value = format_review_count(enr.get("reviews_count"))
     stats = site.get("trustItems")
     if not isinstance(stats, list):
