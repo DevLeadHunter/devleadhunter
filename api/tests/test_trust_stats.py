@@ -8,9 +8,9 @@ from services.templates import registry
 from services.templates.site_content import apply_real_trust_stats
 
 
-def _barber_trust(enrichment: dict) -> list[tuple[str, str]]:
+def _trust_for_template(template_id: str, enrichment: dict) -> list[tuple[str, str]]:
     site = registry.build_site_content(
-        template_id="barber",
+        template_id=template_id,
         business_name="X",
         phone="0",
         email="x@y.fr",
@@ -21,6 +21,10 @@ def _barber_trust(enrichment: dict) -> list[tuple[str, str]]:
         enrichment=enrichment,
     )
     return [(item["value"], item["label"]) for item in site["trustItems"]]
+
+
+def _barber_trust(enrichment: dict) -> list[tuple[str, str]]:
+    return _trust_for_template("barber", enrichment)
 
 
 def test_satisfaction_is_derived_from_the_real_rating() -> None:
@@ -51,21 +55,6 @@ def test_apply_real_trust_stats_does_not_mutate_input_items() -> None:
     apply_real_trust_stats(site, {"rating": 4.6})
     assert original == [{"value": "98%", "label": "Clients satisfaits"}]
     assert site["trustItems"][0]["value"] == "92%"
-
-
-def _trust_for_template(template_id: str, enrichment: dict) -> list[tuple[str, str]]:
-    site = registry.build_site_content(
-        template_id=template_id,
-        business_name="X",
-        phone="0",
-        email="x@y.fr",
-        city="Mons",
-        area="Mons",
-        subtitle="",
-        palette={"primary": "#000", "secondary": "#111", "accent": "#222"},
-        enrichment=enrichment,
-    )
-    return [(item["value"], item["label"]) for item in site["trustItems"]]
 
 
 def test_electrician_lumen_rating_slot_uses_real_rating_or_neutral_claim() -> None:
