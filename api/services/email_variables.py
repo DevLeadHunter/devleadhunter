@@ -2,9 +2,13 @@
 
 from __future__ import annotations
 
+from datetime import UTC, datetime, timedelta
+
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from core.config import settings
+from models.demo_site import DemoSite
 from models.prospect_db import ProspectDB
 from models.prospect_enrichment import ProspectEnrichment
 from services.decision_maker import build_greeting
@@ -35,6 +39,22 @@ class EmailVariables:
     VIDEO_THUMBNAIL = "vignette_video"
     OLD_WEBSITE = "ancien_site"
     PRICE = "prix"
+    EXPIRY_DATE = "date_expiration"
+
+    _FRENCH_MONTHS: tuple[str, ...] = (
+        "janvier",
+        "février",
+        "mars",
+        "avril",
+        "mai",
+        "juin",
+        "juillet",
+        "août",
+        "septembre",
+        "octobre",
+        "novembre",
+        "décembre",
+    )
 
     @staticmethod
     def build_video_thumbnail_html(video_link: str, thumbnail_url: str) -> str:
@@ -110,6 +130,62 @@ class EmailVariables:
                 break
         cleaned = cleaned.split("?", 1)[0].split("#", 1)[0]
         return cleaned.rstrip("/")
+
+    @staticmethod
+    def format_expiry_date(moment: datetime) -> str:
+        """
+        Format a datetime as the French day-month date shown to the prospect.
+
+        Args:
+            moment: The demo expiry instant.
+
+        Returns:
+            The date as "12 octobre" — month names are hardcoded because the
+            server locale is not French.
+        """
+        return f"{moment.day} {EmailVariables._FRENCH_MONTHS[moment.month - 1]}"
+
+    @staticmethod
+    def _demo_slug(demo_link: str) -> str:
+        """
+        Extract the demo site slug (first path segment) from a demo URL.
+
+        Args:
+            demo_link: The prospect's demo URL, possibly carrying tracking queries.
+
+        Returns:
+            The slug, or "" when the URL has no path.
+        """
+        label: str = EmailVariables._demo_link_label(demo_link)
+        if "/" not in label:
+            return ""
+        return label.split("/", 1)[1].split("/", 1)[0]
+
+    @classmethod
+    def resolve_expiry_date(cls, db: Session, demo_link: str) -> str:
+        """
+        Resolve `{date_expiration}`: the day the linked demo goes offline.
+
+        The demo is looked up by the slug of the link actually rendered in the email, so the
+        announced date always matches the site the prospect will visit.
+
+        Args:
+            db: Active database session.
+            demo_link: The `{lien_demo}` URL of this send, or "" when the prospect has none.
+
+        Returns:
+            The French expiry date ("12 octobre"), or "" without a resolvable demo.
+        """
+        slug: str = cls._demo_slug(demo_link)
+        if not slug:
+            return ""
+        site: DemoSite | None = db.execute(select(DemoSite).where(DemoSite.slug == slug)).scalar_one_or_none()
+        if site is None:
+            return ""
+        # TTL not started: expires_at still holds the 2099 sentinel — this very send starts the clock.
+        if site.demo_link_sent_at is None or site.expires_at is None:
+            return cls.format_expiry_date(datetime.now(UTC) + timedelta(days=settings.demo_site_ttl_days))
+        return cls.format_expiry_date(site.expires_at)
 
     @staticmethod
     def display_website(url: str | None) -> str:
@@ -203,4 +279,5 @@ class EmailVariables:
             cls.VIDEO_THUMBNAIL: cls.build_video_thumbnail_html(video_link, video_thumbnail_url),
             cls.OLD_WEBSITE: cls.display_website(prospect.website),
             cls.PRICE: PricingService.format_price(sale_price_cents) if sale_price_cents is not None else "",
+            cls.EXPIRY_DATE: cls.resolve_expiry_date(db, demo_link),
         }

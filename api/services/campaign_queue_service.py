@@ -868,18 +868,19 @@ class CampaignQueueService:
     @staticmethod
     def _template_uses_demo_link(template: EmailTemplate | None) -> bool:
         """
-        Return True when a template references the ``{lien_demo}`` placeholder.
+        Return True when a template references ``{lien_demo}`` or ``{date_expiration}``
+        (the expiry date is read from the demo, so both need an active demo site).
 
         Args:
             template: Template to inspect (subject + HTML body), or None.
 
         Returns:
-            True if the rendered email would contain the demo link placeholder.
+            True if the rendered email would depend on the prospect's demo.
         """
         if template is None:
             return False
         haystack: str = f"{template.subject or ''} {template.body_html or ''}"
-        return f"{{{EmailVariables.DEMO_LINK}}}" in haystack
+        return f"{{{EmailVariables.DEMO_LINK}}}" in haystack or f"{{{EmailVariables.EXPIRY_DATE}}}" in haystack
 
     @staticmethod
     def _template_uses_video(template: EmailTemplate | None) -> bool:

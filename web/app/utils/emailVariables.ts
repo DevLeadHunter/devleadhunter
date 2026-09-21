@@ -105,6 +105,14 @@ export class EmailVariables {
       description: 'Prix de vente configuré, rendu « 500 € ». Vide dans un premier email — à réserver aux relances.',
       example: '500 €',
     },
+    {
+      key: 'date_expiration',
+      token: '{date_expiration}',
+      label: 'Date d’expiration',
+      description:
+        'Date à laquelle la démo du prospect sera retirée (TTL réel). Nécessite une démo active, comme {lien_demo}.',
+      example: '12 octobre',
+    },
   ]
 
   /**
