@@ -40,6 +40,8 @@ from services.enrichment_service import enrichment_service
 from services.photo_labeling_service import photo_labeling_service
 from services.photo_labels import is_card_worthy, labels_for_urls
 from services.prospect_phones import first_mobile_e164
+from services.prospect_photo_storage_service import prospect_photo_storage
+from services.r2_storage_service import r2_storage
 from services.service_card_suggestion_service import (
     ServiceCardsConfig,
     ServiceCardsUnavailableError,
@@ -59,6 +61,10 @@ from services.templates.site_content import (
 )
 
 logger = logging.getLogger(__name__)
+
+# Bound concurrent image downloads when moving a demo's content images to permanent R2 (a gallery
+# can hold ~20), so a restore never opens dozens of connections at once.
+_CONTENT_IMAGE_REHOST_CONCURRENCY = 4
 
 # Provenance values accepted for saved section cards (``section_overrides["services_source"]``).
 _SERVICE_CARD_SOURCES: frozenset[str] = frozenset({"manual", "ai", "ai_auto"})
@@ -1364,6 +1370,69 @@ class DemoSiteService:
         demo_site.video_error = None
         demo_site.video_generated_at = None
 
+    async def persist_content_images_to_r2(self, demo_site: DemoSite) -> int:
+        """Copy a demo's fragile content images (Storyblok/Google/Facebook) onto permanent R2, in place.
+
+        The published ``content_json`` stays byte-identical — same texts, same image order, same hero —
+        and only each fragile image URL is swapped for a permanent R2 copy of the SAME bytes. So a demo
+        revived for a J+30 relance shows exactly what the prospect first saw, without depending on a
+        Storyblok space that expiry has since deleted, or a Google link that has rotted. Best-effort: a
+        download/upload failure keeps the original URL, and this never commits (the caller does).
+
+        Args:
+            demo_site: The demo whose stored content images are moved to R2.
+
+        Returns:
+            The number of image URLs moved to R2 (0 when nothing was fragile or R2 is unconfigured).
+        """
+        prospect_id: int | None = getattr(demo_site, "prospect_id", None)
+        content = demo_site.content_json
+        if not prospect_id or not isinstance(content, dict) or not content or not r2_storage.is_configured():
+            return 0
+
+        fragile: list[str] = []
+        seen: set[str] = set()
+
+        def _collect(node: object) -> None:
+            if isinstance(node, str):
+                if node not in seen and prospect_photo_storage.is_fragile_image_url(node):
+                    seen.add(node)
+                    fragile.append(node)
+            elif isinstance(node, dict):
+                for value in node.values():
+                    _collect(value)
+            elif isinstance(node, list):
+                for value in node:
+                    _collect(value)
+
+        _collect(content)
+        if not fragile:
+            return 0
+
+        semaphore = asyncio.Semaphore(_CONTENT_IMAGE_REHOST_CONCURRENCY)
+
+        async def _rehost(url: str) -> tuple[str, str]:
+            async with semaphore:
+                return url, await prospect_photo_storage.rehost_remote_image(prospect_id, url)
+
+        results = await asyncio.gather(*(_rehost(url) for url in fragile))
+        mapping: dict[str, str] = {old: new for old, new in results if new != old}
+        if not mapping:
+            return 0
+
+        def _rewrite(node: object) -> object:
+            if isinstance(node, str):
+                return mapping.get(node, node)
+            if isinstance(node, dict):
+                return {key: _rewrite(value) for key, value in node.items()}
+            if isinstance(node, list):
+                return [_rewrite(value) for value in node]
+            return node
+
+        demo_site.content_json = _rewrite(content)
+        logger.info("Rehosted %d content image(s) to R2 for slug=%s", len(mapping), demo_site.slug)
+        return len(mapping)
+
     async def revive_demo_site(self, db: Session, site: DemoSite) -> DemoSite:
         """Wake a dormant (EXPIRED) demo so an SMS relance can push it again.
 
@@ -1382,6 +1451,13 @@ class DemoSiteService:
             return site
         if not site.content_json:
             site.content_json = self._build_content_for_site(db, site)
+        # Make the served images permanent before the relance goes out: the Storyblok space was freed at
+        # expiry, so any Storyblok/Google URL still frozen in the content is on borrowed time. Best-effort
+        # — a hiccup here must never stop the relance.
+        try:
+            await self.persist_content_images_to_r2(site)
+        except Exception:
+            logger.warning("Content image persistence on revive failed for slug=%s", site.slug, exc_info=True)
         site.demo_url = site.demo_url or self.demo_url_for_slug(site.slug)
         site.vercel_deployment_url = site.demo_url
         site.error_message = None
@@ -1464,6 +1540,15 @@ class DemoSiteService:
 
         cleaned: int = 0
         for site in due_sites:
+            keep_dormant: bool = self._should_keep_dormant(db, site)
+            # A dormant demo will be revived for an SMS relance, so copy its images onto permanent R2 now,
+            # while the Storyblok space still serves them (it is deleted just below). Best-effort — a
+            # hiccup here must never block the cleanup.
+            if keep_dormant:
+                try:
+                    await self.persist_content_images_to_r2(site)
+                except Exception:
+                    logger.warning("Content image persistence on expiry failed for slug=%s", site.slug, exc_info=True)
             # The Storyblok space is only needed at sale, never for a dormant/dead demo.
             try:
                 await storyblok_service.delete_demo_space(
@@ -1480,7 +1565,7 @@ class DemoSiteService:
             site.storyblok_editor_url = None
             self._purge_demo_video(site)
 
-            if self._should_keep_dormant(db, site):
+            if keep_dormant:
                 # Dormant: keep content_json so an auto-relance can revive it instantly.
                 site.status = DemoSiteStatus.EXPIRED.value
             else:

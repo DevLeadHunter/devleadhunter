@@ -24,6 +24,7 @@ import re
 
 import httpx
 
+from core.config import settings
 from services.r2_storage_service import r2_storage
 
 logger = logging.getLogger(__name__)
@@ -54,6 +55,12 @@ _EXTENSION_BY_MIME: dict[str, str] = {
     "image/gif": ".gif",
     "image/avif": ".avif",
 }
+
+# Hosts whose image URLs die on us: a Storyblok asset vanishes when its space is deleted (demo
+# expiry), a Google photo link rots after a few weeks, a Facebook-CDN URL is signed and expires.
+# These are the ones worth copying onto permanent R2 so a revived J+30 demo keeps its exact images.
+_FRAGILE_IMAGE_HOSTS: tuple[str, ...] = ("storyblok.com", "googleusercontent.com", "ggpht.com", "fbcdn", "scontent")
+_IMAGE_EXTENSION_RE = re.compile(r"\.(?:jpe?g|png|webp|avif|gif)$", re.IGNORECASE)
 
 
 class ProspectPhotoStorageService:
@@ -153,6 +160,102 @@ class ProspectPhotoStorageService:
         except Exception as exc:  # storage hiccup must never fail the enrichment
             logger.warning("Prospect photo rehost failed for prospect_id=%s (%s): %s", prospect_id, key, exc)
             return photo
+
+    @classmethod
+    def is_fragile_image_url(cls, url: object) -> bool:
+        """Whether a URL points to an image on a host that expires or gets deleted.
+
+        True for a Storyblok asset (dies with its space), a Google photo (rots after weeks), a
+        Facebook-CDN URL (signed, expires) or any ``http(s)`` URL ending in an image extension.
+        False for a URL already on our R2 (permanent), a ``data:`` URI, or a non-image link.
+
+        Args:
+            url: A candidate value from a site's content.
+
+        Returns:
+            Whether the URL is a remote image worth copying to permanent R2.
+        """
+        if not isinstance(url, str):
+            return False
+        stripped = url.strip()
+        lowered = stripped.lower()
+        if not lowered.startswith(("http://", "https://")):
+            return False
+        base = (settings.r2_public_base_url or "").strip()
+        if base and stripped.startswith(base):
+            return False
+        if any(host in lowered for host in _FRAGILE_IMAGE_HOSTS):
+            return True
+        path = lowered.split("?", 1)[0].split("#", 1)[0]
+        return bool(_IMAGE_EXTENSION_RE.search(path))
+
+    async def _download_remote_image(self, url: str) -> tuple[bytes, str, str] | None:
+        """Download any remote image (Storyblok, Google, Facebook, …) into bytes for rehosting, or None.
+
+        Unlike :meth:`_download_fb_image` (Facebook only), this fetches any ``http(s)`` image so a demo's
+        published content images can be moved to R2. Returns None on any failure (dead link, non-image,
+        oversized) so rehosting degrades to keeping the original URL.
+
+        Args:
+            url: A candidate image URL.
+
+        Returns:
+            A ``(bytes, content_type, extension)`` tuple, or None.
+        """
+        if not isinstance(url, str) or not url.lower().startswith(("http://", "https://")):
+            return None
+        headers = dict(_DOWNLOAD_HEADERS)
+        if not self._is_fb_cdn(url):
+            # The Facebook referer only helps fbcdn; drop it elsewhere so no host refuses it.
+            headers.pop("Referer", None)
+        try:
+            async with httpx.AsyncClient(
+                timeout=httpx.Timeout(_DOWNLOAD_TIMEOUT_SECONDS),
+                headers=headers,
+                follow_redirects=True,
+            ) as client:
+                response = await client.get(url)
+        except httpx.HTTPError:
+            return None
+        if response.status_code != 200:
+            return None
+        data = response.content
+        if not data or len(data) > _MAX_PHOTO_BYTES:
+            return None
+        content_type = (response.headers.get("content-type") or "").split(";")[0].strip().lower()
+        if content_type and not content_type.startswith("image/"):
+            return None
+        content_type = content_type or "image/jpeg"
+        return data, content_type, _EXTENSION_BY_MIME.get(content_type, ".jpg")
+
+    async def rehost_remote_image(self, prospect_id: int, url: str) -> str:
+        """Copy a fragile remote image onto permanent R2, else return it unchanged.
+
+        The bytes are downloaded and re-uploaded as-is, so the image is pixel-identical — only its URL
+        changes (fragile host → permanent R2). Anything not fragile (already on R2, a ``data:`` URI, a
+        non-image link) is returned untouched. Best-effort: any download/upload failure returns the
+        original URL so a restore never breaks over a hiccup.
+
+        Args:
+            prospect_id: Owner prospect — folders the object and scopes later cleanup.
+            url: A content image URL.
+
+        Returns:
+            The permanent R2 URL when the image could be rehosted, otherwise the original URL.
+        """
+        if not r2_storage.is_configured() or not self.is_fragile_image_url(url):
+            return url
+        decoded = await self._download_remote_image(url)
+        if decoded is None:
+            return url
+        data, content_type, extension = decoded
+        digest = hashlib.sha1(data).hexdigest()[:16]
+        key = r2_storage.prospect_photo_key(prospect_id, digest, extension)
+        try:
+            return await r2_storage.upload_bytes_async(key, data, content_type)
+        except Exception as exc:  # storage hiccup must never fail the restore
+            logger.warning("Content image rehost failed for prospect_id=%s (%s): %s", prospect_id, key, exc)
+            return url
 
     async def rehost_photos(self, prospect_id: int, photos: list[str]) -> list[str]:
         """Rehost every captured data-URI photo of a prospect to R2, preserving order.

@@ -468,6 +468,27 @@ async def regenerate_demo_site(
     return _serialize_demo_site(site, include_brand_color=True)
 
 
+@router.post("/{demo_site_id}/restore-images", response_model=DemoSiteResponse)
+async def restore_demo_site_images(
+    demo_site_id: int,
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db),
+) -> DemoSiteResponse:
+    """Move a demo's fragile content images (Storyblok/Google/Facebook) onto permanent R2, in place.
+
+    Keeps the published site byte-identical — same texts, same photos, same order — so a dormant demo
+    revived for a J+30 relance shows exactly what the prospect first saw, without depending on a
+    Storyblok space that expiry has since deleted. Works on any status (an expired demo included).
+    """
+    site = demo_site_service.get_for_user(db, current_user.id, demo_site_id)
+    if not site:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Demo site not found")
+    await demo_site_service.persist_content_images_to_r2(site)
+    db.commit()
+    db.refresh(site)
+    return _serialize_demo_site(site)
+
+
 @router.get("/{demo_site_id}/images", response_model=DemoSiteImagesResponse)
 async def get_demo_site_images(
     demo_site_id: int,
