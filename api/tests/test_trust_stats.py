@@ -38,10 +38,10 @@ def test_experience_uses_real_year_else_review_count() -> None:
     assert _barber_trust({"rating": 4.9, "reviews_count": 128})[1] == ("128", "avis Google")
 
 
-def test_defaults_kept_without_enrichment_and_no_state_leak() -> None:
-    """With no enrichment the template defaults show; a prior enriched call must not leak into it."""
+def test_fabricated_defaults_replaced_by_neutral_claims_and_no_state_leak() -> None:
+    """Without real figures the fabricated stats become neutral claims; a prior enriched call must not leak."""
     _barber_trust({"rating": 4.7, "reviews_count": 200})  # would mutate shared defaults if buggy
-    assert _barber_trust({}) == [("98%", "Clients satisfaits"), ("10+", "Années d'expérience")]
+    assert _barber_trust({}) == [("Sur mesure", "Travail soigné"), ("Réactif", "Réponse rapide")]
 
 
 def test_apply_real_trust_stats_does_not_mutate_input_items() -> None:

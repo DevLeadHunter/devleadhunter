@@ -181,7 +181,7 @@ _EDITORIAL_DEFAULTS: dict[str, Any] = {
     "trustItems": [
         {"value": "4,9/5", "label": "Avis clients"},
         {"value": "RDV", "label": "Sur rendez-vous"},
-        {"value": "12 mois", "label": "Garantie pièces"},
+        {"value": "Pièces", "label": "Garantie fabricant"},
         {"value": "Local", "label": "Atelier de proximité"},
     ],
     "servicesHeading": "Nos prestations",

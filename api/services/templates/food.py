@@ -139,7 +139,7 @@ FOOD_FAQ: list[dict[str, str]] = [
     },
     {
         "question": "Proposez-vous des options végétariennes ?",
-        "answer": ("Oui, un burger veggie et des sides (frites, salade) sont toujours au menu."),
+        "answer": ("Oui, il y a toujours au moins une option végétarienne à la carte."),
     },
     {
         "question": "Quels moyens de paiement acceptez-vous ?",
@@ -163,7 +163,7 @@ _EDITORIAL_DEFAULTS: dict[str, Any] = {
     "reviewsHeading": "Ce qu’ils en disent",
     "faqHeading": "Questions fréquentes",
     "aboutHeading": "Notre histoire gourmande",
-    "contactHeading": "Réserver une table",
+    "contactHeading": "Nous trouver",
 }
 
 

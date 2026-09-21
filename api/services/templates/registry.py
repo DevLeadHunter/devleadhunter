@@ -21,6 +21,7 @@ Adding a new template = create the module + append it to ``TEMPLATE_MODULES``.
 
 from __future__ import annotations
 
+import re
 from typing import Any
 
 from services.templates import (
@@ -63,6 +64,12 @@ def get_module(template_id: str) -> Any:
     return TEMPLATES_BY_ID.get(template_id, artisan_edito)
 
 
+def _fix_city_contraction(subtitle: str) -> str:
+    """Apply the French contraction « à Le/Les X » → « au/aux X » the f-string builders miss."""
+    subtitle = re.sub(r"\bà Le (?=[A-ZÀ-Ý])", "au ", subtitle)
+    return re.sub(r"\bà Les (?=[A-ZÀ-Ý])", "aux ", subtitle)
+
+
 def default_subtitle(template_id: str, area: str) -> str:
     """Trade-aware default subtitle when the prospect has no description.
 
@@ -71,8 +78,8 @@ def default_subtitle(template_id: str, area: str) -> str:
     """
     builder = getattr(get_module(template_id), "default_subtitle", None)
     if callable(builder):
-        return str(builder(area))
-    return f"Plombier professionnel — dépannage rapide à {area}"
+        return _fix_city_contraction(str(builder(area)))
+    return _fix_city_contraction(f"Plombier professionnel — dépannage rapide à {area}")
 
 
 def default_theme(template_id: str) -> dict[str, str]:

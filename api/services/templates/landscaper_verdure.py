@@ -34,7 +34,7 @@ TEMPLATE_META: dict[str, object] = {
     "description": (
         "Vitrine one-page paysagiste / verdure « Eco Landscaping » : hero plein cadre, "
         "grille de prestations à encoches, pourquoi nous choisir, méthode en trois "
-        "étapes, réalisations, FAQ (crédit d'impôt inclus) et bandeau contact. "
+        "étapes, réalisations, FAQ et bandeau contact. "
         "Fond vert d'eau, encre sapin, lime en accent."
     ),
     "preview_image_url": None,
@@ -191,11 +191,10 @@ VERDURE_FAQ: list[dict[str, str]] = [
         ),
     },
     {
-        "question": "Puis-je bénéficier du crédit d'impôt pour l'entretien de jardin ?",
+        "question": "Proposez-vous des contrats d'entretien à l'année ?",
         "answer": (
-            "Oui, les prestations d'entretien courant (tonte, taille de haies…) ouvrent droit au crédit "
-            "d'impôt services à la personne de 50 % dans la limite du plafond en vigueur. Nous vous "
-            "fournissons l'attestation."
+            "Oui, ponctuel ou à l'année selon vos besoins : on définit ensemble la formule "
+            "qui convient à votre jardin et son budget."
         ),
     },
 ]
