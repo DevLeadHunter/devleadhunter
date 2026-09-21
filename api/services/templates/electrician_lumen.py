@@ -595,8 +595,8 @@ def build_content(
                         "component": "lumen_faq_item",
                         "question": "Vos travaux sont-ils garantis ?",
                         "answer": (
-                            "Oui. Les travaux sont couverts par la garantie décennale et une "
-                            "assurance responsabilité civile professionnelle. Les équipements "
+                            "Oui. Les travaux sont garantis et couverts par notre assurance "
+                            "responsabilité civile professionnelle. Les équipements "
                             "posés conservent leur garantie fabricant."
                         ),
                     },

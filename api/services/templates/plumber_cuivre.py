@@ -151,8 +151,8 @@ _FAQ_ITEMS: list[dict[str, str]] = [
     {
         "question": "Vos travaux sont-ils garantis ?",
         "answer": (
-            "Oui. Les travaux sont couverts par la garantie décennale et une "
-            "assurance responsabilité civile professionnelle ; le matériel "
+            "Oui. Les travaux sont garantis et couverts par notre assurance "
+            "responsabilité civile professionnelle ; le matériel "
             "posé conserve sa garantie fabricant."
         ),
     },
@@ -167,7 +167,7 @@ _FAQ_ITEMS: list[dict[str, str]] = [
     {
         "question": "Quels moyens de paiement acceptez-vous ?",
         "answer": (
-            "Carte, virement ou chèque, avec une facture détaillée remise "
+            "Carte, espèces ou virement, avec une facture détaillée remise "
             "après chaque intervention. Pour les gros chantiers, un "
             "échéancier peut être convenu au devis."
         ),
@@ -212,7 +212,7 @@ _EDITORIAL_DEFAULTS: dict[str, Any] = {
     "ctaQuoteLabel": "Demander un devis",
     "trustItems": [
         {"value": "7j/7", "label": "Dépannage & urgences"},
-        {"value": "Garantie décennale", "label": "Travaux assurés"},
+        {"value": "Travail garanti", "label": "Interventions assurées"},
         {"value": "Devis gratuit", "label": "Sans engagement"},
         {"value": "Artisan local", "label": "Proche de chez vous"},
     ],

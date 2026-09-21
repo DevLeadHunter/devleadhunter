@@ -61,11 +61,11 @@ PLUMBER_FAQ: list[dict[str, str]] = [
     },
     {
         "question": "Quels moyens de paiement acceptez-vous ?",
-        "answer": "Carte bancaire, chèque et virement, avec facture détaillée.",
+        "answer": "Carte, espèces et virement, avec facture détaillée.",
     },
     {
         "question": "Proposez-vous une garantie sur vos travaux ?",
-        "answer": "Oui, nos installations sont couvertes par la garantie décennale.",
+        "answer": "Oui, nos installations sont garanties et couvertes par notre assurance professionnelle.",
     },
 ]
 ELECTRICIAN_SERVICES: list[dict[str, str]] = [

@@ -112,7 +112,7 @@ GENERIC_FAQ: list[dict[str, str]] = [
     },
     {
         "question": "Quels moyens de paiement acceptez-vous ?",
-        "answer": "Carte, chèque et virement, avec une facture détaillée.",
+        "answer": "Carte, espèces et virement, avec une facture détaillée.",
     },
     {
         "question": "Vos travaux sont-ils garantis ?",
