@@ -51,3 +51,37 @@ def test_apply_real_trust_stats_does_not_mutate_input_items() -> None:
     apply_real_trust_stats(site, {"rating": 4.6})
     assert original == [{"value": "98%", "label": "Clients satisfaits"}]
     assert site["trustItems"][0]["value"] == "92%"
+
+
+def _trust_for_template(template_id: str, enrichment: dict) -> list[tuple[str, str]]:
+    site = registry.build_site_content(
+        template_id=template_id,
+        business_name="X",
+        phone="0",
+        email="x@y.fr",
+        city="Mons",
+        area="Mons",
+        subtitle="",
+        palette={"primary": "#000", "secondary": "#111", "accent": "#222"},
+        enrichment=enrichment,
+    )
+    return [(item["value"], item["label"]) for item in site["trustItems"]]
+
+
+def test_electrician_lumen_rating_slot_uses_real_rating_or_neutral_claim() -> None:
+    """Lumen's "4,9/5 Avis clients" placeholder must become the real rating, or a neutral claim without one."""
+    with_rating = _trust_for_template("electrician-lumen", {"rating": 5.0, "reviews_count": 12})
+    assert ("5,0/5", "12 avis") in with_rating
+    without_rating = _trust_for_template("electrician-lumen", {})
+    values = [value for value, _ in without_rating]
+    assert "4,9/5" not in values
+    assert ("Devis gratuit", "Sans engagement") in without_rating
+
+
+def test_food_stats_use_real_figures_or_neutral_claims() -> None:
+    """Food's "4,9/5" and "12K+ Instagram" placeholders must never survive without real figures."""
+    with_rating = _trust_for_template("food", {"rating": 4.6, "reviews_count": 9})
+    assert with_rating[:2] == [("4,6/5", "Avis Google"), ("9", "Avis clients")]
+    without_rating = _trust_for_template("food", {})
+    values = [value for value, _ in without_rating]
+    assert "4,9/5" not in values and "12K+" not in values

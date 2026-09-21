@@ -631,6 +631,7 @@ from .site_content import (  # noqa: E402, F401
     ELECTRICIAN_FAQ,
     ELECTRICIAN_SERVICES,
     SITE_CONTENT_SCHEMAS,
+    apply_real_trust_stats,
     fixed_trade_services,
     map_prospect_and_enrichment,
     to_storyblok_site_content,
@@ -700,4 +701,5 @@ def build_site_content(
     site["faq"] = ELECTRICIAN_FAQ
     # Pre-fill editorial copy (client edits his real texts in the CMS).
     site.update(_EDITORIAL_DEFAULTS)
+    apply_real_trust_stats(site, enrichment)
     return site

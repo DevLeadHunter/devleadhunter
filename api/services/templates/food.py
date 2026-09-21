@@ -172,7 +172,8 @@ def _apply_real_food_stats(site: dict[str, Any], enrichment: dict[str, Any] | No
 
     The template ships a "4,9/5" placeholder and a fabricated "12K+ / Sur Instagram"; a real
     review count (e.g. 2 227) is both truthful and a stronger proof point than an invented follower
-    number. Each stat falls back to its editorial default when the matching figure is missing.
+    number. Without a real figure the stat becomes a neutral, always-true claim — a fabricated
+    rating or follower count reads as a lie to a prospect who knows his own numbers.
     """
     enr = enrichment or {}
     rating_value = format_rating_value(enr.get("rating"))
@@ -182,10 +183,18 @@ def _apply_real_food_stats(site: dict[str, Any], enrichment: dict[str, Any] | No
         return
     # Copy so the shared, module-level ``_EDITORIAL_DEFAULTS`` is never mutated across generations.
     stats = [dict(item) if isinstance(item, dict) else item for item in stats]
-    if rating_value and len(stats) >= 1:
-        stats[0] = {"value": rating_value, "label": "Avis Google"}
-    if count_value and len(stats) >= 2:
-        stats[1] = {"value": count_value, "label": "Avis clients"}
+    if len(stats) >= 1:
+        stats[0] = (
+            {"value": rating_value, "label": "Avis Google"}
+            if rating_value
+            else {"value": "Maison", "label": "Cuisine faite main"}
+        )
+    if len(stats) >= 2:
+        stats[1] = (
+            {"value": count_value, "label": "Avis clients"}
+            if count_value
+            else {"value": "Frais", "label": "Produits de saison"}
+        )
     site["trustItems"] = stats
 
 
