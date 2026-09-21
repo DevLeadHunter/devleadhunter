@@ -62,8 +62,7 @@ from services.templates.site_content import (
 
 logger = logging.getLogger(__name__)
 
-# Bound concurrent image downloads when moving a demo's content images to permanent R2 (a gallery
-# can hold ~20), so a restore never opens dozens of connections at once.
+# Bound concurrent downloads when moving a demo's content images to R2 (a gallery can hold ~20).
 _CONTENT_IMAGE_REHOST_CONCURRENCY = 4
 
 # Provenance values accepted for saved section cards (``section_overrides["services_source"]``).

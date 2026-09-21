@@ -56,9 +56,8 @@ _EXTENSION_BY_MIME: dict[str, str] = {
     "image/avif": ".avif",
 }
 
-# Hosts whose image URLs die on us: a Storyblok asset vanishes when its space is deleted (demo
-# expiry), a Google photo link rots after a few weeks, a Facebook-CDN URL is signed and expires.
-# These are the ones worth copying onto permanent R2 so a revived J+30 demo keeps its exact images.
+# Hosts whose image URLs die: a Storyblok asset vanishes when its space is deleted, a Google photo
+# rots after weeks, a Facebook-CDN URL is signed and expires — worth copying onto permanent R2.
 _FRAGILE_IMAGE_HOSTS: tuple[str, ...] = ("storyblok.com", "googleusercontent.com", "ggpht.com", "fbcdn", "scontent")
 _IMAGE_EXTENSION_RE = re.compile(r"\.(?:jpe?g|png|webp|avif|gif)$", re.IGNORECASE)
 
@@ -99,9 +98,9 @@ class ProspectPhotoStorageService:
     async def _download_fb_image(self, url: str) -> tuple[bytes, str, str] | None:
         """Download a live fbcdn/scontent photo into bytes for rehosting, or None.
 
-        Only the expiring Facebook CDN is fetched — a Google photo (already durable) is left as its own
-        URL. Returns None on any failure (dead/expired link, non-image, oversized) so rehosting degrades
-        to keeping the original value.
+        The enrichment path only rehosts the expiring Facebook CDN; a Google photo is left as its own
+        URL here (the content-restore path handles those). Returns None on any failure so rehosting
+        degrades to keeping the original value.
 
         Args:
             url: A candidate photo URL.
@@ -111,25 +110,7 @@ class ProspectPhotoStorageService:
         """
         if not isinstance(url, str) or not self._is_fb_cdn(url):
             return None
-        try:
-            async with httpx.AsyncClient(
-                timeout=httpx.Timeout(_DOWNLOAD_TIMEOUT_SECONDS),
-                headers=_DOWNLOAD_HEADERS,
-                follow_redirects=True,
-            ) as client:
-                response = await client.get(url)
-        except httpx.HTTPError:
-            return None
-        if response.status_code != 200:
-            return None
-        data = response.content
-        if not data or len(data) > _MAX_PHOTO_BYTES:
-            return None
-        content_type = (response.headers.get("content-type") or "").split(";")[0].strip().lower()
-        if content_type and not content_type.startswith("image/"):
-            return None
-        content_type = content_type or "image/jpeg"
-        return data, content_type, _EXTENSION_BY_MIME.get(content_type, ".jpg")
+        return await self._download_remote_image(url)
 
     async def rehost_one(self, prospect_id: int, photo: str) -> str:
         """Move a single photo to permanent R2 storage, else return it unchanged.
