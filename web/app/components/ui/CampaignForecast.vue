@@ -187,11 +187,12 @@
             :key="item.rowKey"
             :data-forecast-row="item.rowKey"
             :class="[
-              'flex flex-wrap items-center gap-x-4 gap-y-2 px-4 py-3 transition-colors first:border-t-0',
-              'border-t border-[var(--app-line-soft)]',
+              'flex flex-wrap items-center gap-x-4 gap-y-2 border-l-[3px] px-4 py-3 transition-colors first:border-t-0',
+              'border-t border-t-[var(--app-line-soft)]',
               item.isWarning ? 'bg-[var(--app-red-soft)]' : 'hover:bg-[var(--app-surface-2)]',
               item.reviewed ? 'opacity-60' : '',
             ]"
+            :style="{ borderLeftColor: item.campaignColor.strong }"
           >
             <button
               v-if="item.isAutoSms && item.sms_queue_id && !item.isWarning && !item.isSent"
@@ -241,10 +242,19 @@
                   {{ item.ab_variant }}
                 </span>
               </div>
-              <p class="font-label mt-0.5 truncate text-[11.5px] text-[var(--app-ink-soft)]">
-                <template v-if="item.metaLine">{{ item.metaLine }} · </template>
-                <span class="text-[var(--app-faint)]">{{ item.campaign_name }}</span>
-              </p>
+              <div class="mt-1 flex min-w-0 items-center gap-2">
+                <span
+                  class="font-label inline-flex max-w-[180px] shrink-0 items-center gap-1.5 truncate rounded px-1.5 py-0.5 text-[10px] font-bold whitespace-nowrap"
+                  :style="{ backgroundColor: item.campaignColor.soft, color: item.campaignColor.strong }"
+                  :title="item.campaign_name"
+                >
+                  <UIcon name="i-lucide-megaphone" class="h-3 w-3 shrink-0" />
+                  <span class="truncate">{{ item.campaignShort }}</span>
+                </span>
+                <span v-if="item.metaLine" class="font-label truncate text-[11.5px] text-[var(--app-ink-soft)]">
+                  {{ item.metaLine }}
+                </span>
+              </div>
             </div>
 
             <!-- Envoi bloqué (site expiré, etc.) -->
@@ -398,11 +408,19 @@ import { parseApiDate } from '~/utils/date'
 import { useToast } from '~/composables/useToast'
 import type { UseToastReturn } from '~/types/Composables'
 
+/** The two CSS variables that theme one campaign's identity (left stripe + badge). */
+type CampaignBadgeColor = {
+  soft: string
+  strong: string
+}
+
 /** A forecast item enriched with display fields and its live review state. */
 type ForecastRow = CampaignForecastItem & {
   rowKey: string
   timeLabel: string
   metaLine: string
+  campaignShort: string
+  campaignColor: CampaignBadgeColor
   isWarning: boolean
   isSent: boolean
   isAutoSms: boolean
@@ -554,6 +572,38 @@ function dateKey(date: Date): string {
 }
 
 /**
+ * Stable per-campaign identity colors (existing theme tokens only; red stays reserved for warnings).
+ * Two campaigns may share a hue once more than four run at once — the badge label disambiguates.
+ */
+const CAMPAIGN_BADGE_COLORS: CampaignBadgeColor[] = [
+  { soft: 'var(--app-accent-soft)', strong: 'var(--app-accent-ink)' },
+  { soft: 'var(--app-blue-soft)', strong: 'var(--app-blue)' },
+  { soft: 'var(--app-violet-soft)', strong: 'var(--app-violet)' },
+  { soft: 'var(--app-green-soft)', strong: 'var(--app-green)' },
+]
+
+/**
+ * The identity color of a campaign, stable across reloads (derived from its id).
+ * @param campaignId - The campaign id, or null for orphan rows.
+ * @returns The soft/strong CSS variable pair to theme that campaign's stripe and badge.
+ */
+function campaignBadgeColor(campaignId: number | null): CampaignBadgeColor {
+  const index: number = campaignId === null ? 0 : Math.abs(campaignId) % CAMPAIGN_BADGE_COLORS.length
+  return CAMPAIGN_BADGE_COLORS[index] ?? (CAMPAIGN_BADGE_COLORS[0] as CampaignBadgeColor)
+}
+
+/**
+ * Compact campaign label for the row badge: drops the « Vague N — » prefix and any parenthesis.
+ * @param name - Full campaign name.
+ * @returns The short label (falls back to the full name when the pattern doesn't apply).
+ */
+function shortCampaignName(name: string): string {
+  const withoutPrefix: string = name.replace(/^vague\s*\d+\s*[—–-]\s*/i, '')
+  const withoutParens: string = (withoutPrefix.split('(')[0] ?? withoutPrefix).trim()
+  return withoutParens || name
+}
+
+/**
  * Enrich a raw forecast item with the fields the row template needs.
  * @param item - Raw forecast item from the API.
  * @returns A display-ready row.
@@ -572,6 +622,8 @@ function toRow(item: CampaignForecastItem): ForecastRow {
     rowKey: item.queue_id !== null ? `q-${item.queue_id}` : `s-${item.sms_queue_id ?? item.prospect_id}`,
     timeLabel: time,
     metaLine: metaParts.join(' · '),
+    campaignShort: shortCampaignName(item.campaign_name),
+    campaignColor: campaignBadgeColor(item.campaign_id),
     isWarning: item.status === 'skipped',
     isSent: item.status === 'sent',
     isAutoSms,
