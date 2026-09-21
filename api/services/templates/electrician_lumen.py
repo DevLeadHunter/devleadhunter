@@ -651,11 +651,13 @@ _EDITORIAL_DEFAULTS: dict[str, Any] = {
     "ctaCallLabel": "Appeler maintenant",
     "ctaQuoteLabel": "Demander un devis",
     # Country-neutral claims: NF C 15-100 or garantie décennale read false on a Swiss or Belgian site.
+    # The "avis" slot is a placeholder: apply_real_trust_stats swaps in the REAL Google rating when
+    # one exists, and a neutral "Devis gratuit" claim otherwise — never a fabricated figure.
     "trustItems": [
         {"value": "7j/7", "label": "Dépannage & urgences"},
-        {"value": "100% conforme", "label": "Installations aux normes"},
+        {"value": "4,9/5", "label": "Avis clients"},
         {"value": "Travail garanti", "label": "Interventions assurées"},
-        {"value": "Devis gratuit", "label": "Sans engagement"},
+        {"value": "100% conforme", "label": "Installations aux normes"},
     ],
     "servicesHeading": "Nos services",
     "galleryHeading": "Nos chantiers récents",
