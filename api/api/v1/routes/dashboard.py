@@ -20,6 +20,7 @@ from models.user import User
 from schemas.dashboard import (
     ActivityPoint,
     CoverageCity,
+    CoverageCountry,
     CoverageMember,
     CoverageProspectPoint,
     CoverageProspectRow,
@@ -269,6 +270,20 @@ async def dashboard_coverage(
     )
     available_categories = sorted((str(row.category) for row in db.execute(cat_stmt).all()), key=str.lower)
 
+    # Prospect count per country, for the country-level choropleth (BE/CH/LU shown as coloured blocks).
+    country_col = func.upper(func.trim(ProspectDB.country))
+    country_stmt = scope_filter(
+        select(country_col.label("country"), func.count().label("count")).where(
+            country_col.isnot(None), country_col != ""
+        )
+    )
+    if wanted:
+        country_stmt = country_stmt.where(func.lower(func.trim(ProspectDB.category)).in_(wanted))
+    country_stmt = country_stmt.group_by(country_col).order_by(func.count().desc())
+    countries = [
+        CoverageCountry(country=str(row.country), count=int(row.count)) for row in db.execute(country_stmt).all()
+    ]
+
     members: list[CoverageMember] = []
     if org_id is not None:
         org = organization_service.get_user_organization(db, uid)
@@ -286,6 +301,7 @@ async def dashboard_coverage(
         cities=cities,
         points=points,
         total_prospects=total,
+        countries=countries,
         members=members,
         available_categories=available_categories,
     )

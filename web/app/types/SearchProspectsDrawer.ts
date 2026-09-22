@@ -4,6 +4,7 @@ import type { ProspectCountry } from '~/types'
 export type SearchProspectsPrefill = {
   category?: string
   city?: string
+  country?: ProspectCountry
 }
 
 export type SearchProspectsDrawerProps = {

@@ -51,6 +51,12 @@ export type CoverageCity = {
   count: number
 }
 
+/** Prospect count for one country (coverage choropleth). */
+export type CoverageCountry = {
+  country: string
+  count: number
+}
+
 /** An organization member selectable as a coverage scope. */
 export type CoverageMember = {
   user_id: number
@@ -71,6 +77,7 @@ export type CoverageResponse = {
   cities: CoverageCity[]
   points: CoverageProspectPoint[]
   total_prospects: number
+  countries: CoverageCountry[]
   members: CoverageMember[]
   available_categories: string[]
 }

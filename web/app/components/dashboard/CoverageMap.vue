@@ -112,7 +112,7 @@ import 'maplibre-gl/dist/maplibre-gl.css'
 import type { AddressGeo, CityGeo } from '~/composables/useFranceGeo'
 import { addressKey, lookupCity, reverseGeocodeCommune } from '~/composables/useFranceGeo'
 import { useAppTheme } from '~/composables/useAppTheme'
-import type { Prospect } from '~/types'
+import type { Prospect, ProspectCountry } from '~/types'
 import { ProspectsService } from '~/services/prospectsService'
 import { useCoverageStore } from '~/stores/coverage'
 import { useDrawerStackStore } from '~/stores/drawerStack'
@@ -152,6 +152,21 @@ const REGIONS_LINE_LAYER_ID: string = 'dlh-regions-line'
 const CITIES_LAYER_ID: string = 'dlh-cities-dots'
 const PROSPECTS_SOURCE_ID: string = 'dlh-prospects'
 const PROSPECTS_LAYER_ID: string = 'dlh-prospects-dots'
+const COUNTRIES_SOURCE_ID: string = 'dlh-countries'
+const COUNTRIES_FILL_LAYER_ID: string = 'dlh-countries-fill'
+const COUNTRIES_LINE_LAYER_ID: string = 'dlh-countries-line'
+
+/** Foreign-country contours (FR + BE/CH/LU), served locally, matched on the ISO alpha-2 `code`. */
+const COUNTRIES_GEOJSON_URL: string = '/countries-eu.geojson'
+
+/** Framing that fits France plus Belgium, Switzerland and Luxembourg. */
+const EUROPE_BOUNDS: [[number, number], [number, number]] = [
+  [-5.6, 41.2],
+  [10.6, 51.6],
+]
+
+/** French display names of the foreign countries shown as coloured blocks. */
+const COUNTRY_LABELS: Record<string, string> = { FR: 'France', BE: 'Belgique', CH: 'Suisse', LU: 'Luxembourg' }
 
 /** Zoom at which the city aggregate hands over to the per-prospect points. */
 const PROSPECT_DETAIL_ZOOM: number = 11
@@ -190,6 +205,19 @@ const regionTotals: ComputedRef<Record<string, number>> = computed((): Record<st
   }
   return totals
 })
+
+/** Prospect total per foreign country code (FR keeps its detailed regional choropleth). */
+const countryTotals: ComputedRef<Record<string, number>> = computed((): Record<string, number> => {
+  const totals: Record<string, number> = {}
+  for (const entry of store.coverage?.countries ?? []) {
+    const code: string = entry.country.toUpperCase()
+    if (code && code !== 'FR') totals[code] = entry.count
+  }
+  return totals
+})
+
+/** True when there is at least one prospect outside France (drives the Europe framing). */
+const hasForeignProspects: ComputedRef<boolean> = computed((): boolean => Object.keys(countryTotals.value).length > 0)
 
 /** Distinct department codes touched. */
 const deptSet: ComputedRef<Set<string>> = computed((): Set<string> => {
@@ -279,6 +307,25 @@ function regionFillColor(): string | ExpressionSpecification {
 }
 
 /**
+ * Build the data-driven fill colour for the foreign-country layer: a `match` on the
+ * country `code`, one colour per covered country (France is excluded — it has its regions).
+ * @returns The MapLibre paint value (plain colour when no foreign country is covered).
+ */
+function countryFillColor(): string | ExpressionSpecification {
+  const totals: Record<string, number> = countryTotals.value
+  const codes: string[] = Object.keys(totals)
+  const colors: CoverageTierColors = tierColors(theme.value)
+  if (codes.length === 0) return colors.none
+  const max: number = Math.max(1, ...Object.values(totals))
+  const expression: unknown[] = ['match', ['get', 'code']]
+  for (const code of codes) {
+    expression.push(code, colorForRatio((totals[code] ?? 0) / max, theme.value))
+  }
+  expression.push(colors.none)
+  return expression as unknown as ExpressionSpecification
+}
+
+/**
  * Build the GeoJSON collection of prospected cities (geocoded ones only).
  * @returns A point collection with count + precomputed radius per city.
  */
@@ -334,6 +381,26 @@ function addMapOverlays(): void {
   const map: MaplibreMap | null = mapInstance
   if (!map || map.getSource(REGIONS_SOURCE_ID)) return
   const dark: boolean = theme.value === 'dark'
+
+  // Foreign-country blocks first, so France's detailed regions paint on top of them.
+  map.addSource(COUNTRIES_SOURCE_ID, { type: 'geojson', data: COUNTRIES_GEOJSON_URL })
+  map.addLayer({
+    id: COUNTRIES_FILL_LAYER_ID,
+    type: 'fill',
+    source: COUNTRIES_SOURCE_ID,
+    filter: ['!=', ['get', 'code'], 'FR'],
+    paint: { 'fill-color': countryFillColor() },
+  })
+  map.addLayer({
+    id: COUNTRIES_LINE_LAYER_ID,
+    type: 'line',
+    source: COUNTRIES_SOURCE_ID,
+    filter: ['!=', ['get', 'code'], 'FR'],
+    paint: {
+      'line-color': dark ? 'rgba(240, 239, 235, 0.22)' : 'rgba(29, 26, 20, 0.22)',
+      'line-width': 1,
+    },
+  })
 
   map.addSource(REGIONS_SOURCE_ID, { type: 'geojson', data: REGIONS_GEOJSON_URL })
   map.addSource(CITIES_SOURCE_ID, { type: 'geojson', data: buildCitiesCollection() })
@@ -401,6 +468,7 @@ function refreshMapData(): void {
   const prospectSource: GeoJSONSource | undefined = map.getSource(PROSPECTS_SOURCE_ID) as GeoJSONSource | undefined
   prospectSource?.setData(buildProspectsCollection())
   map.setPaintProperty(REGIONS_FILL_LAYER_ID, 'fill-color', regionFillColor())
+  map.setPaintProperty(COUNTRIES_FILL_LAYER_ID, 'fill-color', countryFillColor())
 }
 
 /**
@@ -417,7 +485,7 @@ async function initMap(): Promise<void> {
     const map: MaplibreMap = new maplibregl.Map({
       container,
       style: MAP_STYLES[theme.value],
-      bounds: FRANCE_BOUNDS,
+      bounds: hasForeignProspects.value ? EUROPE_BOUNDS : FRANCE_BOUNDS,
       fitBoundsOptions: { padding: 24 },
       maxBounds: MAP_MAX_BOUNDS,
       minZoom: 4,
@@ -487,7 +555,7 @@ async function onMapClick(event: MapMouseEvent): Promise<void> {
   const map: MaplibreMap | null = mapInstance
   if (!map || !isMapReady.value) return
   const features: MapGeoJSONFeature[] = map.queryRenderedFeatures(event.point, {
-    layers: [PROSPECTS_LAYER_ID, CITIES_LAYER_ID, REGIONS_FILL_LAYER_ID],
+    layers: [PROSPECTS_LAYER_ID, CITIES_LAYER_ID, REGIONS_FILL_LAYER_ID, COUNTRIES_FILL_LAYER_ID],
   })
   const feature: MapGeoJSONFeature | undefined = features[0]
   if (!feature) return
@@ -505,6 +573,16 @@ async function onMapClick(event: MapMouseEvent): Promise<void> {
     drawerStack.push({
       kind: 'coverage-prospects',
       zone: { kind: 'city', label: city, cities: [city], prefillCity: city },
+    })
+    return
+  }
+
+  // ── Foreign country block: launch a search in that country ──
+  if (feature.layer.id === COUNTRIES_FILL_LAYER_ID) {
+    const countryCode: string = String(feature.properties?.code ?? '')
+    drawerStack.push({
+      kind: 'search-prospects',
+      prefill: { ...(countryCode ? { country: countryCode as ProspectCountry } : {}), ...categoryPrefill() },
     })
     return
   }
@@ -552,7 +630,7 @@ function onMapMouseMove(event: MapMouseEvent): void {
   const map: MaplibreMap | null = mapInstance
   if (!map || !isMapReady.value) return
   const features: MapGeoJSONFeature[] = map.queryRenderedFeatures(event.point, {
-    layers: [PROSPECTS_LAYER_ID, CITIES_LAYER_ID, REGIONS_FILL_LAYER_ID],
+    layers: [PROSPECTS_LAYER_ID, CITIES_LAYER_ID, REGIONS_FILL_LAYER_ID, COUNTRIES_FILL_LAYER_ID],
   })
   const feature: MapGeoJSONFeature | undefined = features[0]
   map.getCanvas().style.cursor = feature ? 'pointer' : ''
@@ -580,6 +658,19 @@ function onMapMouseMove(event: MapMouseEvent): void {
       y,
       title: String(feature.properties?.city ?? ''),
       sub: `${count} prospect${count > 1 ? 's' : ''} — cliquer pour voir`,
+    }
+  } else if (feature.layer.id === COUNTRIES_FILL_LAYER_ID) {
+    const code: string = String(feature.properties?.code ?? '')
+    const total: number = countryTotals.value[code] ?? 0
+    tip.value = {
+      show: true,
+      x,
+      y,
+      title: COUNTRY_LABELS[code] ?? code,
+      sub:
+        total > 0
+          ? `${total} prospect${total > 1 ? 's' : ''} — cliquer pour voir`
+          : 'Non prospecté — cliquer pour attaquer',
     }
   } else {
     const code: string = String(feature.properties?.code ?? '')

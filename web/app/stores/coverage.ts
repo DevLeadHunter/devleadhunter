@@ -67,6 +67,7 @@ export const useCoverageStore = defineStore('coverage', () => {
         cities: [],
         points: [],
         total_prospects: 0,
+        countries: [],
         members: coverage.value?.members ?? [],
         available_categories: availableCategories.value,
       }

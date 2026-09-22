@@ -343,6 +343,7 @@ watch(
     loadForm()
     if (props.prefill?.category) form.value.category = props.prefill.category
     if (props.prefill?.city) form.value.city = props.prefill.city
+    if (props.prefill?.country) form.value.country = props.prefill.country
   },
   { immediate: true },
 )
@@ -354,6 +355,7 @@ watch(
     if (!props.open || !prefill) return
     if (prefill.category) form.value.category = prefill.category
     if (prefill.city) form.value.city = prefill.city
+    if (prefill.country) form.value.country = prefill.country
   },
   { deep: true },
 )

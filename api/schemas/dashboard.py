@@ -63,6 +63,13 @@ class CoverageCity(BaseModel):
     count: int
 
 
+class CoverageCountry(BaseModel):
+    """Prospect count for one country (coverage map choropleth)."""
+
+    country: str
+    count: int
+
+
 class CoverageProspectPoint(BaseModel):
     """One prospect of the map, placed at its own address once geocoded."""
 
@@ -108,6 +115,8 @@ class CoverageResponse(BaseModel):
     # Un point par prospect, pour l'affichage rue par rue au zoom.
     points: list[CoverageProspectPoint] = Field(default_factory=list)
     total_prospects: int
+    # Prospect count per country (ISO alpha-2), for the country-level choropleth.
+    countries: list[CoverageCountry] = Field(default_factory=list)
     # Populated only when the user belongs to an organization (scope selector).
     members: list[CoverageMember] = Field(default_factory=list)
     # Distinct trades (ProspectDB.category) present in the SCOPE, ignoring the
