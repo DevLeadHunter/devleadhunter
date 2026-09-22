@@ -13,6 +13,7 @@ from enums.sending_provider import SendingProvider
 from enums.user_role import UserRole
 
 if TYPE_CHECKING:
+    from models.ai_assistant import AiAssistant
     from models.campaign import Campaign
     from models.credit_transaction import CreditTransaction
     from models.demo_site import DemoSite
@@ -106,6 +107,11 @@ class User(Base):
     campaigns: Mapped[list["Campaign"]] = relationship("Campaign", back_populates="user", cascade="all, delete-orphan")
     demo_sites: Mapped[list["DemoSite"]] = relationship(
         "DemoSite",
+        back_populates="user",
+        cascade="all, delete-orphan",
+    )
+    ai_assistants: Mapped[list["AiAssistant"]] = relationship(
+        "AiAssistant",
         back_populates="user",
         cascade="all, delete-orphan",
     )
