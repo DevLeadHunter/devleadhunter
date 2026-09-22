@@ -330,6 +330,31 @@
 
             <div class="border-t border-[var(--app-surface-2)]"></div>
 
+            <div class="space-y-3 px-5 py-4">
+              <div class="flex items-center justify-between gap-3">
+                <p class="text-[10px] font-semibold tracking-wider text-[var(--app-ink-soft)] uppercase">
+                  Assistant IA
+                </p>
+                <button
+                  type="button"
+                  class="btn-secondary text-xs"
+                  :disabled="isGeneratingAssistant"
+                  @click="handleGenerateAssistant"
+                >
+                  <UIcon
+                    :name="isGeneratingAssistant ? 'i-lucide-loader-circle' : 'i-lucide-bot'"
+                    :class="['h-3.5 w-3.5', isGeneratingAssistant && 'animate-spin']"
+                  />
+                  {{ isGeneratingAssistant ? 'Génération…' : 'Générer' }}
+                </button>
+              </div>
+              <p class="text-xs leading-relaxed text-[var(--app-ink-soft)]">
+                Assistant multilingue branché sur les données de ce prospect, à tester sur sa page démo.
+              </p>
+            </div>
+
+            <div class="border-t border-[var(--app-surface-2)]"></div>
+
             <div v-if="prospect.website" class="space-y-3 px-5 py-4">
               <div class="flex items-center justify-between gap-3">
                 <p class="text-[10px] font-semibold tracking-wider text-[var(--app-ink-soft)] uppercase">
@@ -575,7 +600,9 @@ import type { AddressSuggestion } from '~/types/AddressAutocompleteInput'
 import type { ComputedRef, EmitFn, PropType, Ref } from 'vue'
 import { ref, computed, watch } from 'vue'
 import type { Prospect, ProspectUpdatePayload } from '~/types'
+import type { AiAssistantSummary } from '~/types/AiAssistant'
 import type { DemoSite, DemoSiteListResponse } from '~/services/demoSiteService'
+import { AiAssistantService } from '~/services/aiAssistantService'
 import { DemoSiteService } from '~/services/demoSiteService'
 import { ProspectsService } from '~/services/prospectsService'
 import { useToast } from '~/composables/useToast'
@@ -622,6 +649,7 @@ const editMode: Ref<boolean> = ref(false)
 const isSaving: Ref<boolean> = ref(false)
 const isReserving: Ref<boolean> = ref(false)
 const isAuditing: Ref<boolean> = ref(false)
+const isGeneratingAssistant: Ref<boolean> = ref(false)
 const isLoadingDemoSite: Ref<boolean> = ref(false)
 const demoSite: Ref<DemoSite | null> = ref(null)
 const deleteConfirmModal: Ref<{ open: () => void } | null> = ref(null)
@@ -765,6 +793,24 @@ async function handleLighthouse(): Promise<void> {
     toast.error(err instanceof Error ? err.message : "L'audit a échoué")
   } finally {
     isAuditing.value = false
+  }
+}
+
+/**
+ * Generate an AI assistant for this prospect and surface its demo link.
+ *
+ * @returns A promise resolved once the assistant is generated.
+ */
+async function handleGenerateAssistant(): Promise<void> {
+  if (!props.prospect || isGeneratingAssistant.value) return
+  isGeneratingAssistant.value = true
+  try {
+    const assistant: AiAssistantSummary = await AiAssistantService.create(props.prospect.id)
+    toast.success(`Assistant généré — ${assistant.demo_url}`)
+  } catch (err: unknown) {
+    toast.error(err instanceof Error ? err.message : 'La génération a échoué')
+  } finally {
+    isGeneratingAssistant.value = false
   }
 }
 
