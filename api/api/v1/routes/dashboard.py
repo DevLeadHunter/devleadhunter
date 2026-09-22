@@ -216,7 +216,8 @@ async def dashboard_coverage(
     distinct trades present in the SCOPE (ignoring the filter) so the frontend
     can build its trade selector from real values only.
 
-    Cities are grouped case-insensitively; empty cities are excluded. The
+    Cities are grouped case-insensitively by (city, country) so foreign homonyms
+    (Fribourg FR vs CH) stay distinct for geocoding; empty cities are excluded. The
     ``members`` list is filled only when the user belongs to an organization, so
     the frontend can offer a scope selector.
     """
@@ -234,8 +235,12 @@ async def dashboard_coverage(
         resolved_scope = "me"
 
     city_col = func.trim(ProspectDB.city)
+    # ISO alpha-2 country (upper), defaulting legacy null/empty rows to FR. Cities are grouped
+    # by (city, country) so a foreign homonym (Fribourg CH) stays separate from the French one.
+    country_norm = func.upper(func.coalesce(func.nullif(func.trim(ProspectDB.country), ""), "FR"))
     stmt = select(
         func.min(city_col).label("city"),
+        country_norm.label("country"),
         func.count().label("count"),
     ).where(city_col.isnot(None), city_col != "")
     stmt = scope_filter(stmt)
@@ -244,20 +249,22 @@ async def dashboard_coverage(
     if wanted:
         stmt = stmt.where(func.lower(func.trim(ProspectDB.category)).in_(wanted))
 
-    stmt = stmt.group_by(func.lower(city_col)).order_by(func.count().desc())
+    stmt = stmt.group_by(func.lower(city_col), country_norm).order_by(func.count().desc())
     rows = db.execute(stmt).all()
-    cities = [CoverageCity(city=str(row.city), count=int(row.count)) for row in rows]
+    cities = [CoverageCity(city=str(row.city), count=int(row.count), country=str(row.country)) for row in rows]
     total = sum(c.count for c in cities)
 
     # Les mêmes prospects, un par un : le front les géocode à l'adresse pour le zoom rue.
-    point_stmt = select(ProspectDB.id, ProspectDB.name, ProspectDB.address, city_col.label("city")).where(
-        city_col.isnot(None), city_col != ""
-    )
+    point_stmt = select(
+        ProspectDB.id, ProspectDB.name, ProspectDB.address, city_col.label("city"), country_norm.label("country")
+    ).where(city_col.isnot(None), city_col != "")
     point_stmt = scope_filter(point_stmt)
     if wanted:
         point_stmt = point_stmt.where(func.lower(func.trim(ProspectDB.category)).in_(wanted))
     points = [
-        CoverageProspectPoint(id=int(row.id), name=str(row.name), address=row.address, city=str(row.city))
+        CoverageProspectPoint(
+            id=int(row.id), name=str(row.name), address=row.address, city=str(row.city), country=str(row.country)
+        )
         for row in db.execute(point_stmt).all()
     ]
 
@@ -271,15 +278,10 @@ async def dashboard_coverage(
     available_categories = sorted((str(row.category) for row in db.execute(cat_stmt).all()), key=str.lower)
 
     # Prospect count per country, for the country-level choropleth (BE/CH/LU shown as coloured blocks).
-    country_col = func.upper(func.trim(ProspectDB.country))
-    country_stmt = scope_filter(
-        select(country_col.label("country"), func.count().label("count")).where(
-            country_col.isnot(None), country_col != ""
-        )
-    )
+    country_stmt = scope_filter(select(country_norm.label("country"), func.count().label("count")))
     if wanted:
         country_stmt = country_stmt.where(func.lower(func.trim(ProspectDB.category)).in_(wanted))
-    country_stmt = country_stmt.group_by(country_col).order_by(func.count().desc())
+    country_stmt = country_stmt.group_by(country_norm).order_by(func.count().desc())
     countries = [
         CoverageCountry(country=str(row.country), count=int(row.count)) for row in db.execute(country_stmt).all()
     ]

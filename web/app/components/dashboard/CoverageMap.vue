@@ -200,7 +200,7 @@ let mapInstance: MaplibreMap | null = null
 const regionTotals: ComputedRef<Record<string, number>> = computed((): Record<string, number> => {
   const totals: Record<string, number> = {}
   for (const city of store.coverage?.cities ?? []) {
-    const geo: CityGeo | null = lookupCity(store.cityGeo, city.city)
+    const geo: CityGeo | null = lookupCity(store.cityGeo, city.city, city.country)
     if (geo && geo.region) totals[geo.region] = (totals[geo.region] ?? 0) + city.count
   }
   return totals
@@ -223,7 +223,7 @@ const hasForeignProspects: ComputedRef<boolean> = computed((): boolean => Object
 const deptSet: ComputedRef<Set<string>> = computed((): Set<string> => {
   const set: Set<string> = new Set<string>()
   for (const city of store.coverage?.cities ?? []) {
-    const geo: CityGeo | null = lookupCity(store.cityGeo, city.city)
+    const geo: CityGeo | null = lookupCity(store.cityGeo, city.city, city.country)
     if (geo && geo.dept) set.add(geo.dept)
   }
   return set
@@ -232,8 +232,9 @@ const deptSet: ComputedRef<Set<string>> = computed((): Set<string> => {
 /** Cities successfully placed on the map. */
 const coveredCityCount: ComputedRef<number> = computed(
   (): number =>
-    (store.coverage?.cities ?? []).filter((c: CoverageCity): boolean => lookupCity(store.cityGeo, c.city) !== null)
-      .length,
+    (store.coverage?.cities ?? []).filter(
+      (c: CoverageCity): boolean => lookupCity(store.cityGeo, c.city, c.country) !== null,
+    ).length,
 )
 
 /** Number of regions with at least one prospect. */
@@ -332,7 +333,7 @@ function countryFillColor(): string | ExpressionSpecification {
 function buildCitiesCollection(): FeatureCollection<Point, CityFeatureProperties> {
   const features: Array<Feature<Point, CityFeatureProperties>> = []
   for (const city of store.coverage?.cities ?? []) {
-    const geo: CityGeo | null = lookupCity(store.cityGeo, city.city)
+    const geo: CityGeo | null = lookupCity(store.cityGeo, city.city, city.country)
     if (!geo) continue
     features.push({
       type: 'Feature',
@@ -355,8 +356,8 @@ function buildCitiesCollection(): FeatureCollection<Point, CityFeatureProperties
 function buildProspectsCollection(): FeatureCollection<Point, ProspectFeatureProperties> {
   const features: Array<Feature<Point, ProspectFeatureProperties>> = []
   for (const point of store.coverage?.points ?? []) {
-    const precise: AddressGeo | null = store.addressGeo[addressKey(point.address, point.city)] ?? null
-    const fallback: CityGeo | null = lookupCity(store.cityGeo, point.city)
+    const precise: AddressGeo | null = store.addressGeo[addressKey(point.address, point.city, point.country)] ?? null
+    const fallback: CityGeo | null = lookupCity(store.cityGeo, point.city, point.country)
     const position: AddressGeo | CityGeo | null = precise ?? fallback
     if (!position) continue
     features.push({

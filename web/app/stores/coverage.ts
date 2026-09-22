@@ -4,7 +4,7 @@
 import type { ComputedRef, Ref } from 'vue'
 import { computed, ref } from 'vue'
 import { defineStore } from 'pinia'
-import type { AddressGeo, CityGeo } from '~/composables/useFranceGeo'
+import type { AddressGeo, CityGeo, GeocodableCity } from '~/composables/useFranceGeo'
 import { geocodeAddresses, geocodeCities, lookupCity } from '~/composables/useFranceGeo'
 import type { CoverageCity, CoverageResponse } from '~/services/dashboardService'
 import { DashboardService } from '~/services/dashboardService'
@@ -53,7 +53,9 @@ export const useCoverageStore = defineStore('coverage', () => {
       const data: CoverageResponse = await DashboardService.getCoverage(scopeName, memberId, selectedCategories.value)
       coverage.value = data
       if (data.available_categories.length > 0) availableCategories.value = data.available_categories
-      cityGeo.value = await geocodeCities(data.cities.map((city: CoverageCity): string => city.city))
+      cityGeo.value = await geocodeCities(
+        data.cities.map((city: CoverageCity): GeocodableCity => ({ city: city.city, country: city.country })),
+      )
       // Le géocodage rue n'est PAS attendu : la carte s'affiche sur les villes, puis se repeint quand
       // les adresses arrivent. Un échec laisse simplement les points au centre-ville.
       void geocodeAddresses(data.points, cityGeo.value)
@@ -99,7 +101,7 @@ export const useCoverageStore = defineStore('coverage', () => {
   const coveredRegionCodes: ComputedRef<Set<string>> = computed((): Set<string> => {
     const covered: Set<string> = new Set<string>()
     for (const city of coverage.value?.cities ?? []) {
-      const geo: CityGeo | null = lookupCity(cityGeo.value, city.city)
+      const geo: CityGeo | null = lookupCity(cityGeo.value, city.city, city.country)
       if (geo && geo.region) covered.add(geo.region)
     }
     return covered
@@ -131,7 +133,7 @@ export const useCoverageStore = defineStore('coverage', () => {
   function coveredCitiesOfRegion(regionCode: string): string[] {
     const cities: string[] = []
     for (const city of coverage.value?.cities ?? []) {
-      const geo: CityGeo | null = lookupCity(cityGeo.value, city.city)
+      const geo: CityGeo | null = lookupCity(cityGeo.value, city.city, city.country)
       if (geo && geo.region === regionCode) cities.push(city.city)
     }
     return cities

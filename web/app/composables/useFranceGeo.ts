@@ -1,6 +1,11 @@
-/** French geocoding for the coverage map (geo.api.gouv.fr, localStorage cache). Region contours are loaded by MapLibre, not here. */
+/** Geocoding for the coverage map: France via geo.api.gouv.fr, Belgium/Switzerland/Luxembourg via Photon (OSM), localStorage cache. Region contours are loaded by MapLibre, not here. */
 
-/** Geocoding result for one city — `insee` is the commune code address lookups are restricted to. */
+import { ProspectCountries } from '~/utils/prospectCountries'
+
+/**
+ * Geocoding result for one city. `insee`/`dept`/`region` are France-only (empty for
+ * foreign cities): they feed the department/region stats and the BAN street lookup.
+ */
 export type CityGeo = {
   lng: number
   lat: number
@@ -9,7 +14,7 @@ export type CityGeo = {
   region: string
 }
 
-const CITIES_CACHE_KEY: string = 'dlh-fr-cities-v4'
+const CITIES_CACHE_KEY: string = 'dlh-cities-v5'
 
 /** Parallel requests allowed against the public geocoding APIs. */
 const GEOCODING_CONCURRENCY: number = 6
@@ -53,6 +58,26 @@ function cityKey(city: string): string {
 }
 
 /**
+ * Normalise a country to an ISO alpha-2 code (upper), defaulting blanks to « FR ».
+ * @param country - Raw country value.
+ * @returns The 2-letter country code.
+ */
+function normalizeCountryCode(country: string | null | undefined): string {
+  const code: string = (country ?? '').trim().toUpperCase()
+  return code || 'FR'
+}
+
+/**
+ * Build the cache/lookup key of a city, scoped by country so cross-border homonyms (Fribourg FR vs CH) never collide.
+ * @param city - Raw city name.
+ * @param country - Raw country value.
+ * @returns The composite key « <cc>:<city> ».
+ */
+function cityCountryKey(city: string, country: string): string {
+  return `${normalizeCountryCode(country).toLowerCase()}:${cityKey(city)}`
+}
+
+/**
  * Run one geocoding task per item, never more than `GEOCODING_CONCURRENCY` at a time.
  * @param items - Items to process, in order.
  * @param resolveOne - Task run for a single item; it is expected to swallow its own failures.
@@ -76,16 +101,18 @@ async function runBoundedGeocoding<T>(items: T[], resolveOne: (item: T) => Promi
   )
 }
 
-/**
- * Geocode a batch of city names to coordinates + department/region codes, cached; unknown cities resolve to null.
- * @param cities - City names to resolve.
- * @returns A map of normalised city key → geo (or null).
- */
-export async function geocodeCities(cities: string[]): Promise<Record<string, CityGeo | null>> {
-  const cache: Record<string, CityGeo | null> = readCache<Record<string, CityGeo | null>>(CITIES_CACHE_KEY) ?? {}
-  const unique: string[] = [...new Set(cities.map(cityKey))].filter((key: string): boolean => !(key in cache))
-  if (unique.length === 0) return cache
+/** One city to geocode: its name plus the country that disambiguates it. */
+export type GeocodableCity = {
+  city: string
+  country: string
+}
 
+/**
+ * Geocode one French commune through geo.api.gouv.fr (name search, population boost).
+ * @param city - Raw city name.
+ * @returns The commune centre with its INSEE/department/region codes, or null.
+ */
+async function geocodeFrenchCity(city: string): Promise<CityGeo | null> {
   type Commune = {
     code?: string
     nom?: string
@@ -93,38 +120,101 @@ export async function geocodeCities(cities: string[]): Promise<Record<string, Ci
     codeDepartement?: string
     codeRegion?: string
   }
-
-  await runBoundedGeocoding(unique, async (key: string): Promise<void> => {
-    try {
-      const results: Commune[] = await $fetch<Commune[]>('https://geo.api.gouv.fr/communes', {
-        query: { nom: key, fields: 'code,nom,centre,codeDepartement,codeRegion', boost: 'population', limit: 5 },
-      })
-      // « Betton » remontait Betton-Bettonet (306 hab., Savoie) : le nom exact prime sur le score flou.
-      const exact: Commune | undefined = results.find((commune: Commune): boolean => cityKey(commune.nom ?? '') === key)
-      const top: Commune | undefined = exact ?? results[0]
-      const coords: [number, number] | undefined = top?.centre?.coordinates
-      cache[key] =
-        top && coords
-          ? {
-              lng: coords[0],
-              lat: coords[1],
-              insee: top.code ?? '',
-              dept: top.codeDepartement ?? '',
-              region: top.codeRegion ?? '',
-            }
-          : null
-    } catch {
-      cache[key] = null
+  const key: string = cityKey(city)
+  try {
+    const results: Commune[] = await $fetch<Commune[]>('https://geo.api.gouv.fr/communes', {
+      query: { nom: key, fields: 'code,nom,centre,codeDepartement,codeRegion', boost: 'population', limit: 5 },
+    })
+    // « Betton » remontait Betton-Bettonet (306 hab., Savoie) : le nom exact prime sur le score flou.
+    const exact: Commune | undefined = results.find((commune: Commune): boolean => cityKey(commune.nom ?? '') === key)
+    const top: Commune | undefined = exact ?? results[0]
+    const coords: [number, number] | undefined = top?.centre?.coordinates
+    if (!top || !coords) return null
+    return {
+      lng: coords[0],
+      lat: coords[1],
+      insee: top.code ?? '',
+      dept: top.codeDepartement ?? '',
+      region: top.codeRegion ?? '',
     }
+  } catch {
+    return null
+  }
+}
+
+/** Public multi-country geocoder (Komoot/OSM), used for cities outside France. */
+const PHOTON_URL: string = 'https://photon.komoot.io/api/'
+
+/** One Photon result — only the fields the city lookup needs. */
+type PhotonFeature = {
+  geometry?: { coordinates?: [number, number] }
+  properties?: { name?: string; countrycode?: string }
+}
+
+/**
+ * Geocode a city outside France through Photon, filtered to the requested country so a homonym elsewhere is never placed.
+ * @param city - Raw city name.
+ * @param countryCode - ISO alpha-2 country code (upper, e.g. « CH »).
+ * @returns The city centre (no INSEE/region, which are France-only), or null.
+ */
+async function geocodeForeignCity(city: string, countryCode: string): Promise<CityGeo | null> {
+  try {
+    const label: string = ProspectCountries.option(countryCode).label
+    const response: { features?: PhotonFeature[] } = await $fetch<{ features?: PhotonFeature[] }>(PHOTON_URL, {
+      query: { q: `${city}, ${label}`, limit: 5, lang: 'fr' },
+    })
+    const inCountry: PhotonFeature[] = (response.features ?? []).filter(
+      (feature: PhotonFeature): boolean => (feature.properties?.countrycode ?? '').toUpperCase() === countryCode,
+    )
+    if (inCountry.length === 0) return null
+    const wanted: string = cityKey(city)
+    const exact: PhotonFeature | undefined = inCountry.find(
+      (feature: PhotonFeature): boolean => cityKey(feature.properties?.name ?? '') === wanted,
+    )
+    const coords: [number, number] | undefined = (exact ?? inCountry[0])?.geometry?.coordinates
+    if (!coords) return null
+    return { lng: coords[0], lat: coords[1], insee: '', dept: '', region: '' }
+  } catch {
+    return null
+  }
+}
+
+/**
+ * Geocode a batch of cities, routing each to its country's geocoder; cached, unknown cities resolve to null.
+ * @param cities - City + country pairs to resolve.
+ * @returns A map of « <cc>:<city> » key → geo (or null).
+ */
+export async function geocodeCities(cities: GeocodableCity[]): Promise<Record<string, CityGeo | null>> {
+  const cache: Record<string, CityGeo | null> = readCache<Record<string, CityGeo | null>>(CITIES_CACHE_KEY) ?? {}
+  const seen: Set<string> = new Set<string>()
+  const pending: GeocodableCity[] = []
+  for (const entry of cities) {
+    const key: string = cityCountryKey(entry.city, entry.country)
+    if (key in cache || seen.has(key)) continue
+    seen.add(key)
+    pending.push(entry)
+  }
+  if (pending.length === 0) return cache
+
+  await runBoundedGeocoding(pending, async (entry: GeocodableCity): Promise<void> => {
+    const code: string = normalizeCountryCode(entry.country)
+    cache[cityCountryKey(entry.city, entry.country)] =
+      code === 'FR' ? await geocodeFrenchCity(entry.city) : await geocodeForeignCity(entry.city, code)
   })
 
   writeCache(CITIES_CACHE_KEY, cache)
   return cache
 }
 
-/** Look up a city in a resolved geocoding map. */
-export function lookupCity(map: Record<string, CityGeo | null>, city: string): CityGeo | null {
-  return map[cityKey(city)] ?? null
+/**
+ * Look up a city in a resolved geocoding map.
+ * @param map - The map returned by `geocodeCities`.
+ * @param city - Raw city name.
+ * @param country - Raw country value (routed to the same key as geocoding).
+ * @returns The geo, or null when absent/unresolved.
+ */
+export function lookupCity(map: Record<string, CityGeo | null>, city: string, country: string): CityGeo | null {
+  return map[cityCountryKey(city, country)] ?? null
 }
 
 /** Coordinates of one prospect address. */
@@ -133,10 +223,11 @@ export type AddressGeo = {
   lat: number
 }
 
-/** One prospect to place on the map: its street line (may be empty) and the city it belongs to. */
+/** One prospect to place on the map: its street line (may be empty), plus the city and country it belongs to. */
 export type GeocodableAddress = {
   address: string | null
   city: string
+  country: string
 }
 
 /** One BAN lookup: the free-text query plus the commune it must stay inside. */
@@ -152,13 +243,14 @@ const ADDRESSES_CACHE_KEY: string = 'dlh-fr-addresses-v1'
 const MIN_ADDRESS_SCORE: number = 0.4
 
 /**
- * Build the cache key of a street address (address + city, normalised).
+ * Build the cache key of a street address (country + address + city, normalised).
  * @param address - Street part, may be empty.
  * @param city - City the prospect belongs to.
+ * @param country - Country the prospect belongs to (keeps cross-border homonyms apart).
  * @returns The normalised key.
  */
-export function addressKey(address: string | null | undefined, city: string): string {
-  return cityKey(`${address ?? ''} ${city}`)
+export function addressKey(address: string | null | undefined, city: string, country: string): string {
+  return `${normalizeCountryCode(country).toLowerCase()}:${cityKey(`${address ?? ''} ${city}`)}`
 }
 
 /**
@@ -179,10 +271,10 @@ export async function geocodeAddresses(
     const street: string = (entry.address ?? '').trim()
     // Sans rue, le BAN renverrait le centre commune : autant laisser le repli ville s'en charger.
     if (!street) continue
-    const insee: string = lookupCity(cities, entry.city)?.insee ?? ''
-    // Commune inconnue : impossible de borner la recherche, donc pas de position de rue.
+    const insee: string = lookupCity(cities, entry.city, entry.country)?.insee ?? ''
+    // Commune inconnue (ou ville hors France, sans INSEE) : pas de position de rue, on garde le repli ville.
     if (!insee) continue
-    const key: string = addressKey(street, entry.city)
+    const key: string = addressKey(street, entry.city, entry.country)
     if (key in cache || pending.has(key)) continue
     pending.set(key, { key, query: `${street} ${entry.city}`.trim(), insee })
   }

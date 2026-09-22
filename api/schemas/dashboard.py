@@ -61,6 +61,8 @@ class CoverageCity(BaseModel):
 
     city: str
     count: int
+    # ISO alpha-2 country of the city, so homonyms (Fribourg FR vs CH) geocode apart.
+    country: str = "FR"
 
 
 class CoverageCountry(BaseModel):
@@ -77,6 +79,8 @@ class CoverageProspectPoint(BaseModel):
     name: str
     address: str | None = None
     city: str
+    # ISO alpha-2 country, routing the point to the right geocoder (FR street vs foreign city centre).
+    country: str = "FR"
 
 
 class CoverageMember(BaseModel):

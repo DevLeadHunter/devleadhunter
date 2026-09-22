@@ -49,6 +49,7 @@ export type DashboardActivityResponse = {
 export type CoverageCity = {
   city: string
   count: number
+  country: string
 }
 
 /** Prospect count for one country (coverage choropleth). */
@@ -69,6 +70,7 @@ export type CoverageProspectPoint = {
   name: string
   address: string | null
   city: string
+  country: string
 }
 
 /** Prospection coverage aggregated by city. */
