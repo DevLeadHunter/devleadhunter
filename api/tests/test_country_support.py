@@ -26,6 +26,7 @@ def test_normalize_country_defaults_unknown_codes_to_france() -> None:
     """Only supported alpha-2 codes survive; anything else falls back to FR."""
     assert normalize_country("ch") == "CH"
     assert normalize_country(" be ") == "BE"
+    assert normalize_country("lu") == "LU"
     assert normalize_country("XX") == "FR"
     assert normalize_country(None) == "FR"
 
@@ -34,6 +35,7 @@ def test_country_label_names_the_country_in_french() -> None:
     """Labels feed search queries ("plombier à Mons Belgique")."""
     assert country_label("CH") == "Suisse"
     assert country_label("BE") == "Belgique"
+    assert country_label("LU") == "Luxembourg"
 
 
 def test_failover_chain_drops_french_directories_outside_france() -> None:

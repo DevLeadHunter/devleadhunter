@@ -6,6 +6,7 @@ SUPPORTED_COUNTRIES: dict[str, str] = {
     "FR": "France",
     "CH": "Suisse",
     "BE": "Belgique",
+    "LU": "Luxembourg",
 }
 
 DEFAULT_COUNTRY: str = "FR"

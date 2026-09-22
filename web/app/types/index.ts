@@ -19,7 +19,7 @@ export type ProspectWebsiteStatus = 'live' | 'dead' | 'placeholder'
 export type ProspectWebsiteFilter = 'all' | 'yes' | 'no' | 'dead' | 'improvable'
 
 /** Countries the prospection pipeline supports (ISO 3166-1 alpha-2). */
-export type ProspectCountry = 'FR' | 'CH' | 'BE'
+export type ProspectCountry = 'FR' | 'CH' | 'BE' | 'LU'
 
 /**
  * Prospect interface representing a business without website

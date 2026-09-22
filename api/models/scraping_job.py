@@ -26,7 +26,7 @@ class ScrapingJobCreate(BaseModel):
 
     category: str | None = Field(None, description="Business category")
     city: str | None = Field(None, description="City name")
-    country: str = Field("FR", min_length=2, max_length=2, description="ISO alpha-2 search country (FR, CH, BE)")
+    country: str = Field("FR", min_length=2, max_length=2, description="ISO alpha-2 search country (FR, CH, BE, LU)")
     max_results: int = Field(50, description="Maximum results to fetch")
     source: str | None = Field(None, description="Source filter (google, pagesjaunes, etc.)")
     skip_duplicates: bool = Field(True, description="Skip duplicate prospects")
@@ -82,7 +82,7 @@ class ScrapingJob(BaseModel):
     status: JobStatus = Field(JobStatus.PENDING, description="Current job status")
     category: str | None = Field(None, description="Business category")
     city: str | None = Field(None, description="City name")
-    country: str = Field("FR", description="ISO alpha-2 search country (FR, CH, BE)")
+    country: str = Field("FR", description="ISO alpha-2 search country (FR, CH, BE, LU)")
     max_results: int = Field(50, description="Maximum results to fetch")
     source: str | None = Field(None, description="Source filter")
     skip_duplicates: bool = Field(True, description="Skip duplicate prospects")
