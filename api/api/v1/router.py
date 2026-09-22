@@ -9,6 +9,7 @@ from .routes import (
     admin_monitoring,
     admin_storage,
     admin_storyblok,
+    ai_assistants,
     auth,
     automations,
     behavior,
@@ -73,6 +74,7 @@ router.include_router(interactions.router)
 router.include_router(notifications.router)
 router.include_router(demo_events.router)
 router.include_router(demo_sites.router)
+router.include_router(ai_assistants.router)
 router.include_router(domains.router)
 router.include_router(enrichment.router)
 router.include_router(orders.router)
