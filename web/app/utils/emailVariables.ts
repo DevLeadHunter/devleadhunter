@@ -77,6 +77,13 @@ export class EmailVariables {
       example: 'https://demo.dibodev.fr/le-gourmet',
     },
     {
+      key: 'lien_assistant',
+      token: '{lien_assistant}',
+      label: 'Lien assistant IA',
+      description: 'Lien tracké vers la démo de l’assistant IA du prospect (vide sans assistant généré).',
+      example: 'https://demo.dibodev.fr/a/le-gourmet',
+    },
+    {
       key: 'lien_video',
       token: '{lien_video}',
       label: 'Lien vidéo',

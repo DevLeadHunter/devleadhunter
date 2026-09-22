@@ -8,6 +8,8 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from core.config import settings
+from enums.ai_assistant_status import AiAssistantStatus
+from models.ai_assistant import AiAssistant
 from models.demo_site import DemoSite
 from models.prospect_db import ProspectDB
 from models.prospect_enrichment import ProspectEnrichment
@@ -35,6 +37,7 @@ class EmailVariables:
     PHONE = "phone"
     TRADE = "metier"
     DEMO_LINK = "lien_demo"
+    ASSISTANT_LINK = "lien_assistant"
     VIDEO_LINK = "lien_video"
     VIDEO_THUMBNAIL = "vignette_video"
     OLD_WEBSITE = "ancien_site"
@@ -187,6 +190,35 @@ class EmailVariables:
             return cls.format_expiry_date(datetime.now(UTC) + timedelta(days=settings.demo_site_ttl_days))
         return cls.format_expiry_date(site.expires_at)
 
+    @classmethod
+    def resolve_assistant_link(cls, db: Session, prospect_id: int) -> str:
+        """
+        Resolve `{lien_assistant}`: a trackable link to the prospect's AI assistant demo.
+
+        Rendered as a real anchor (like `{lien_demo}`) so the click is tracked; empty when the
+        prospect has no active assistant, so a template using it simply renders nothing there.
+
+        Args:
+            db: Active database session.
+            prospect_id: Prospect the assistant belongs to.
+
+        Returns:
+            The inline anchor HTML, or "" when the prospect has no active assistant.
+        """
+        assistant: AiAssistant | None = (
+            db.execute(
+                select(AiAssistant)
+                .where(AiAssistant.prospect_id == prospect_id, AiAssistant.status == AiAssistantStatus.ACTIVE.value)
+                .order_by(AiAssistant.created_at.desc())
+            )
+            .scalars()
+            .first()
+        )
+        if assistant is None:
+            return ""
+        base: str = settings.demo_host_base_url.rstrip("/")
+        return cls.build_demo_link_html(f"{base}/a/{assistant.slug}")
+
     @staticmethod
     def display_website(url: str | None) -> str:
         """
@@ -275,6 +307,7 @@ class EmailVariables:
             cls.PHONE: prospect.phone or "",
             cls.TRADE: TradeNormalizer.normalize(prospect.category),
             cls.DEMO_LINK: cls.build_demo_link_html(demo_link),
+            cls.ASSISTANT_LINK: cls.resolve_assistant_link(db, prospect.id),
             cls.VIDEO_LINK: video_link,
             cls.VIDEO_THUMBNAIL: cls.build_video_thumbnail_html(video_link, video_thumbnail_url),
             cls.OLD_WEBSITE: cls.display_website(prospect.website),
