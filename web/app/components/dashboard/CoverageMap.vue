@@ -1,33 +1,50 @@
 <template>
   <div class="flex h-full min-h-0 flex-col gap-4">
+    <div v-if="availableCountries.length > 1" class="flex flex-wrap gap-1.5">
+      <button
+        v-for="option in availableCountries"
+        :key="option.code"
+        type="button"
+        class="flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs transition-colors"
+        :class="
+          option.code === selectedCountry
+            ? 'border-[var(--app-ink)] bg-[var(--app-ink)] text-[var(--app-bg)]'
+            : 'border-[var(--app-line)] text-[var(--app-ink-soft)] hover:border-[var(--app-ink-soft)]'
+        "
+        @click="selectCountry(option.code)"
+      >
+        <span>{{ option.flag }}</span>
+        <span>{{ option.label }}</span>
+      </button>
+    </div>
+
     <div class="grid grid-cols-3 gap-3">
       <div class="rounded-lg border border-[var(--app-line)] bg-[var(--app-bg)] px-3 py-2.5 text-center">
-        <p class="text-xl font-bold text-[var(--app-ink)] tabular-nums">{{ coveredCityCount }}</p>
+        <p class="text-xl font-bold text-[var(--app-ink)] tabular-nums">{{ selectedCountryCityCount }}</p>
         <p class="text-muted text-[10px] tracking-wide uppercase">Villes</p>
       </div>
       <div class="rounded-lg border border-[var(--app-line)] bg-[var(--app-bg)] px-3 py-2.5 text-center">
         <p class="text-xl font-bold text-[var(--app-green)] tabular-nums">
-          {{ deptSet.size }}<span class="text-[var(--app-faint)]"> / 96</span>
+          {{ selectedCountryRegionsCovered
+          }}<span class="text-[var(--app-faint)]"> / {{ selectedCountryRegionsTotal }}</span>
         </p>
-        <p class="text-muted text-[10px] tracking-wide uppercase">Départements</p>
+        <p class="text-muted text-[10px] tracking-wide uppercase">{{ selectedCountryRegionLabel }}</p>
       </div>
       <div class="rounded-lg border border-[var(--app-line)] bg-[var(--app-bg)] px-3 py-2.5 text-center">
-        <p class="text-xl font-bold text-[var(--app-ink)] tabular-nums">
-          {{ coveredRegionCount }}<span class="text-[var(--app-faint)]"> / 13</span>
-        </p>
-        <p class="text-muted text-[10px] tracking-wide uppercase">Régions</p>
+        <p class="text-xl font-bold text-[var(--app-ink)] tabular-nums">{{ selectedCountryProspectCount }}</p>
+        <p class="text-muted text-[10px] tracking-wide uppercase">Prospects</p>
       </div>
     </div>
 
     <div>
       <div class="mb-1 flex items-center justify-between text-[11px]">
         <span class="text-muted">Territoire couvert</span>
-        <span class="font-semibold text-[var(--app-green)] tabular-nums">{{ territoryPercent }} %</span>
+        <span class="font-semibold text-[var(--app-green)] tabular-nums">{{ selectedCountryTerritoryPercent }} %</span>
       </div>
       <div class="h-1.5 overflow-hidden rounded-full bg-[var(--app-surface-2)]">
         <div
           class="h-full rounded-full bg-[var(--app-green)] transition-all duration-700"
-          :style="{ width: `${territoryPercent}%` }"
+          :style="{ width: `${selectedCountryTerritoryPercent}%` }"
         ></div>
       </div>
     </div>
@@ -118,8 +135,10 @@ import { useCoverageStore } from '~/stores/coverage'
 import { useDrawerStackStore } from '~/stores/drawerStack'
 import type { AppTheme } from '~/types/AppTheme'
 import type { ForeignRegionCollection, ForeignRegionProperties } from '~/utils/foreignRegions'
-import { fetchForeignRegions, foreignRegionAt } from '~/utils/foreignRegions'
+import { countryBounds, countryRegionCount, fetchForeignRegions, foreignRegionAt } from '~/utils/foreignRegions'
 import { FRANCE_MAJOR_CITIES, FRANCE_REGIONS } from '~/utils/franceTerritory'
+import type { ProspectCountryOption } from '~/utils/prospectCountries'
+import { ProspectCountries } from '~/utils/prospectCountries'
 
 /**
  * Metropolitan region contours (simplified, ~220 KB) — the france-geojson reference
@@ -167,6 +186,9 @@ const EUROPE_BOUNDS: [[number, number], [number, number]] = [
   [10.6, 51.6],
 ]
 
+/** Label of the top administrative division per country (the coverage stat + choropleth level). */
+const REGION_LABELS: Record<string, string> = { FR: 'Régions', CH: 'Cantons', BE: 'Provinces', LU: 'Districts' }
+
 /** Zoom at which the city aggregate hands over to the per-prospect points. */
 const PROSPECT_DETAIL_ZOOM: number = 11
 
@@ -208,6 +230,16 @@ const regionTotals: ComputedRef<Record<string, number>> = computed((): Record<st
 /** Belgium/Switzerland/Luxembourg region contours, loaded once for the choropleth + point-in-region totals. */
 const foreignRegions: Ref<ForeignRegionCollection | null> = ref(null)
 
+/** Country whose regions + stats the top cards currently show (driven by the selector). */
+const selectedCountry: Ref<ProspectCountry> = ref('FR')
+
+/** Countries with at least one prospect, as selectable options (API order = most prospected first). */
+const availableCountries: ComputedRef<ProspectCountryOption[]> = computed((): ProspectCountryOption[] =>
+  (store.coverage?.countries ?? [])
+    .filter((entry: CoverageCountry): boolean => entry.count > 0)
+    .map((entry: CoverageCountry): ProspectCountryOption => ProspectCountries.option(entry.country)),
+)
+
 /** True when there is at least one prospect outside France (drives the Europe framing). */
 const hasForeignProspects: ComputedRef<boolean> = computed((): boolean =>
   (store.coverage?.countries ?? []).some(
@@ -230,29 +262,47 @@ const foreignRegionTotals: ComputedRef<Record<string, number>> = computed((): Re
   return totals
 })
 
-/** Distinct department codes touched. */
-const deptSet: ComputedRef<Set<string>> = computed((): Set<string> => {
-  const set: Set<string> = new Set<string>()
-  for (const city of store.coverage?.cities ?? []) {
-    const geo: CityGeo | null = lookupCity(store.cityGeo, city.city, city.country)
-    if (geo && geo.dept) set.add(geo.dept)
-  }
-  return set
-})
-
-/** Cities successfully placed on the map. */
-const coveredCityCount: ComputedRef<number> = computed(
+/** Cities successfully placed on the map for the selected country. */
+const selectedCountryCityCount: ComputedRef<number> = computed(
   (): number =>
     (store.coverage?.cities ?? []).filter(
-      (c: CoverageCity): boolean => lookupCity(store.cityGeo, c.city, c.country) !== null,
+      (c: CoverageCity): boolean =>
+        c.country.toUpperCase() === selectedCountry.value && lookupCity(store.cityGeo, c.city, c.country) !== null,
     ).length,
 )
 
-/** Number of regions with at least one prospect. */
-const coveredRegionCount: ComputedRef<number> = computed((): number => Object.keys(regionTotals.value).length)
+/** Total prospects of the selected country (from the coverage aggregation). */
+const selectedCountryProspectCount: ComputedRef<number> = computed(
+  (): number =>
+    (store.coverage?.countries ?? []).find(
+      (entry: CoverageCountry): boolean => entry.country.toUpperCase() === selectedCountry.value,
+    )?.count ?? 0,
+)
 
-/** Share of departments touched (gamified « territory »). */
-const territoryPercent: ComputedRef<number> = computed((): number => Math.round((deptSet.value.size / 96) * 100))
+/** Label of the selected country's top administrative division (Régions/Cantons/Provinces/Districts). */
+const selectedCountryRegionLabel: ComputedRef<string> = computed(
+  (): string => REGION_LABELS[selectedCountry.value] ?? 'Régions',
+)
+
+/** Number of the selected country's regions holding at least one prospect. */
+const selectedCountryRegionsCovered: ComputedRef<number> = computed((): number => {
+  if (selectedCountry.value === 'FR') return Object.keys(regionTotals.value).length
+  const prefix: string = `${selectedCountry.value}-`
+  return Object.keys(foreignRegionTotals.value).filter((code: string): boolean => code.startsWith(prefix)).length
+})
+
+/** Total number of regions the selected country is divided into. */
+const selectedCountryRegionsTotal: ComputedRef<number> = computed((): number => {
+  if (selectedCountry.value === 'FR') return Object.keys(FRANCE_REGIONS).length
+  const regions: ForeignRegionCollection | null = foreignRegions.value
+  return regions ? countryRegionCount(regions, selectedCountry.value) : 0
+})
+
+/** Share of the selected country's regions touched (gamified « territory »). */
+const selectedCountryTerritoryPercent: ComputedRef<number> = computed((): number => {
+  const total: number = selectedCountryRegionsTotal.value
+  return total > 0 ? Math.round((selectedCountryRegionsCovered.value / total) * 100) : 0
+})
 
 /** Legend buckets matching `colorForRatio` for the current theme. */
 const legend: ComputedRef<Array<{ label: string; color: string }>> = computed(
@@ -614,6 +664,27 @@ function openSearchDrawer(): void {
 }
 
 /**
+ * Frame the map on a country from its region bounding box (France uses a fixed box).
+ * @param code - The country to zoom onto.
+ */
+function frameCountry(code: ProspectCountry): void {
+  const map: MaplibreMap | null = mapInstance
+  if (!map || !isMapReady.value) return
+  const bounds: [[number, number], [number, number]] | null =
+    code === 'FR' ? FRANCE_BOUNDS : foreignRegions.value ? countryBounds(foreignRegions.value, code) : null
+  if (bounds) map.fitBounds(bounds, { padding: 30, duration: 600 })
+}
+
+/**
+ * Select a country: switch the stat cards to it and zoom the map onto it.
+ * @param code - The country picked in the selector.
+ */
+function selectCountry(code: ProspectCountry): void {
+  selectedCountry.value = code
+  frameCountry(code)
+}
+
+/**
  * Show the tooltip for the topmost hovered feature (city dot, else region).
  * @param event - MapLibre mouse event (point is container-relative).
  */
@@ -708,6 +779,18 @@ watch(
     refreshMapData()
   },
   { deep: false },
+)
+
+// Keep the selector on a country that actually has prospects (defaults to the most prospected).
+watch(
+  availableCountries,
+  (options: ProspectCountryOption[]): void => {
+    if (options.length === 0) return
+    if (!options.some((option: ProspectCountryOption): boolean => option.code === selectedCountry.value)) {
+      selectedCountry.value = options[0]?.code ?? 'FR'
+    }
+  },
+  { immediate: true },
 )
 
 // Basemap follows the app theme; overlays are re-added after the style swap.

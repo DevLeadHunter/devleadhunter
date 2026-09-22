@@ -1,6 +1,6 @@
 /** Canton/province choropleth for Belgium, Switzerland and Luxembourg: static contours + point-in-region lookup. */
 
-import type { FeatureCollection, MultiPolygon, Polygon } from 'geojson'
+import type { Feature, FeatureCollection, MultiPolygon, Polygon } from 'geojson'
 
 /** Properties carried by each foreign region feature (ISO 3166-2 code, display name, ISO alpha-2 country). */
 export type ForeignRegionProperties = {
@@ -87,4 +87,61 @@ export function foreignRegionAt(
     if (hit) return feature.properties
   }
   return null
+}
+
+/**
+ * Count the regions (cantons/provinces/districts) a country is divided into.
+ * @param collection - The region contours from `fetchForeignRegions`.
+ * @param country - ISO alpha-2 country code (e.g. « CH »).
+ * @returns The number of regions belonging to that country.
+ */
+export function countryRegionCount(collection: ForeignRegionCollection, country: string): number {
+  return collection.features.filter(
+    (feature: Feature<Polygon | MultiPolygon, ForeignRegionProperties>): boolean =>
+      feature.properties.country === country,
+  ).length
+}
+
+/**
+ * Bounding box of a country, from its region contours, for map framing.
+ * @param collection - The region contours from `fetchForeignRegions`.
+ * @param country - ISO alpha-2 country code (e.g. « BE »).
+ * @returns The [[minLng, minLat], [maxLng, maxLat]] box, or null when the country is absent.
+ */
+export function countryBounds(
+  collection: ForeignRegionCollection,
+  country: string,
+): [[number, number], [number, number]] | null {
+  let minLng: number = Infinity
+  let minLat: number = Infinity
+  let maxLng: number = -Infinity
+  let maxLat: number = -Infinity
+  let found: boolean = false
+
+  /**
+   * Walk a nested coordinate array down to its [lng, lat] leaves, growing the box.
+   * @param node - A coordinate, ring, polygon or multipolygon array.
+   */
+  function scan(node: unknown): void {
+    if (Array.isArray(node) && typeof node[0] === 'number' && typeof node[1] === 'number') {
+      minLng = Math.min(minLng, node[0])
+      maxLng = Math.max(maxLng, node[0])
+      minLat = Math.min(minLat, node[1])
+      maxLat = Math.max(maxLat, node[1])
+      return
+    }
+    if (Array.isArray(node)) for (const child of node) scan(child)
+  }
+
+  for (const feature of collection.features) {
+    if (feature.properties.country !== country) continue
+    found = true
+    scan(feature.geometry.coordinates)
+  }
+  return found
+    ? [
+        [minLng, minLat],
+        [maxLng, maxLat],
+      ]
+    : null
 }
