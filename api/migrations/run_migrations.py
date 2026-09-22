@@ -143,6 +143,7 @@ MIGRATION_MODULES: list[tuple[str, str]] = [
     ("add_order_ovh_tracking", "migrations.add_order_ovh_tracking"),
     ("add_prospect_country", "migrations.add_prospect_country"),
     ("add_ai_assistants_table", "migrations.add_ai_assistants_table"),
+    ("add_ai_assistant_leads_table", "migrations.add_ai_assistant_leads_table"),
 ]
 
 # Modules of this package that are not migrations and must not be registered.
