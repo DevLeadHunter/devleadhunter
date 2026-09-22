@@ -54,7 +54,10 @@
               {{ moduleEntry.label }}
             </span>
             <UIcon v-if="moduleEntry.locked" name="i-lucide-lock" class="h-3 w-3 opacity-70" />
-            <span v-else class="h-1.5 w-1.5 rounded-full bg-[var(--app-accent)]"></span>
+            <span
+              v-else-if="moduleEntry.key === moduleStore.activeKey"
+              class="h-1.5 w-1.5 rounded-full bg-[var(--app-accent)]"
+            ></span>
           </button>
         </div>
       </div>
@@ -78,10 +81,14 @@
       </button>
     </div>
 
-    <div class="px-4 pt-2">
-      <NuxtLink to="/dashboard/automations/new" class="app-btn-primary h-8 min-h-8 w-full text-xs" @click="handleClick">
-        <UIcon name="i-lucide-plus" class="h-3.5 w-3.5" />
-        Créer une automatisation
+    <div v-if="activeModule.primaryCta" class="px-4 pt-2">
+      <NuxtLink
+        :to="activeModule.primaryCta.to"
+        class="app-btn-primary h-8 min-h-8 w-full text-xs"
+        @click="handleClick"
+      >
+        <UIcon :name="activeModule.primaryCta.icon" class="h-3.5 w-3.5" />
+        {{ activeModule.primaryCta.label }}
       </NuxtLink>
     </div>
 
@@ -286,8 +293,10 @@
 import type { UseAuthReturn, UseDesktopRuntimeReturn, UseProfilePhotoReturn, UseToastReturn } from '~/types/Composables'
 import type { ComputedRef, Ref } from 'vue'
 import type { AppTheme } from '~/types/AppTheme'
-import type { DlhModuleEntry, UiSidebarGroup, UiSidebarLink, UiSidebarProps } from '~/types/UiSidebar'
+import type { DlhModule, UiSidebarGroup, UiSidebarLink, UiSidebarProps } from '~/types/UiSidebar'
 import { ref, computed, onMounted } from 'vue'
+import { DASHBOARD_MODULES } from '~/utils/dashboardModules'
+import { useModuleStore } from '~/stores/moduleStore'
 import { useUserStore } from '~/stores/user'
 import { useAuth } from '~/composables/useAuth'
 import { useAppTheme } from '~/composables/useAppTheme'
@@ -342,6 +351,7 @@ const appVersion: Ref<string> = ref('')
 const { profilePhotoObjectUrl, ensureProfilePhotoLoaded }: UseProfilePhotoReturn = useProfilePhoto()
 
 onMounted(async (): Promise<void> => {
+  moduleStore.initFromStorage()
   await ensureProfilePhotoLoaded()
   if (!isDesktopApp.value) return
   try {
@@ -378,39 +388,20 @@ useHorizontalSwipe(sidebarPanel, {
   onSwipeLeft: (): void => emit('toggle'),
 })
 
-/** The three product modules of DevLeadHunter (only websites is live today). */
-const modules: DlhModuleEntry[] = [
-  { key: 'websites', label: 'Sites web', icon: 'i-lucide-globe', locked: false },
-  { key: 'wallet-cards', label: 'Cartes Apple Wallet', icon: 'i-lucide-wallet-cards', locked: true },
-  { key: 'freelance-missions', label: 'Missions freelance', icon: 'i-lucide-briefcase-business', locked: true },
-]
+/** Product modules of the shell, for the top-left switcher. */
+const modules: DlhModule[] = DASHBOARD_MODULES
 
-const navGroups: UiSidebarGroup[] = [
-  {
-    heading: 'Pilotage',
-    links: [
-      { to: '/dashboard', label: 'Tableau de bord', icon: 'i-lucide-layout-dashboard' },
-      { to: '/dashboard/automations', label: 'Automatisations', icon: 'i-lucide-workflow' },
-    ],
-  },
-  {
-    heading: 'Prospection',
-    links: [
-      { to: '/dashboard/my-prospects', label: 'Mes prospects', icon: 'i-lucide-users' },
-      { to: '/dashboard/coverage', label: 'Carte de prospection', icon: 'i-lucide-map' },
-      { to: '/dashboard/demo-sites', label: 'Sites démo', icon: 'i-lucide-app-window' },
-      { to: '/dashboard/ai-assistants', label: 'Assistants IA', icon: 'i-lucide-bot' },
-      { to: '/dashboard/campaigns', label: 'Campagnes', icon: 'i-lucide-megaphone' },
-      { to: '/dashboard/emails', label: 'Suivi des emails', icon: 'i-lucide-send' },
-      { to: '/dashboard/sms', label: 'Suivi des SMS', icon: 'i-lucide-message-square-text' },
-      { to: '/dashboard/orders', label: 'Ventes', icon: 'i-lucide-banknote' },
-    ],
-  },
-]
+/** Active module store — drives which navigation the sidebar shows. */
+const moduleStore: ReturnType<typeof useModuleStore> = useModuleStore()
 
-/** Every navigable path of the main menu, used to elect the single highlighted row. */
-const navPaths: string[] = navGroups.flatMap((group: UiSidebarGroup): string[] =>
-  group.links.map((link: UiSidebarLink): string => link.to),
+/** Navigation groups of the active module (swaps when the module changes). */
+const navGroups: ComputedRef<UiSidebarGroup[]> = computed((): UiSidebarGroup[] => moduleStore.activeModule.navGroups)
+
+/** Every navigable path of the active module, used to elect the single highlighted row. */
+const navPaths: ComputedRef<string[]> = computed((): string[] =>
+  navGroups.value.flatMap((group: UiSidebarGroup): string[] =>
+    group.links.map((link: UiSidebarLink): string => link.to),
+  ),
 )
 
 /**
@@ -423,7 +414,7 @@ const activeNavPath: ComputedRef<string | null> = computed((): string | null => 
     return route.query.from === 'sites' ? '/dashboard/demo-sites' : '/dashboard/automations'
   }
   // Longest match wins, so a sub-route never lights up its parent section too.
-  return navPaths.reduce((best: string | null, candidate: string): string | null => {
+  return navPaths.value.reduce((best: string | null, candidate: string): string | null => {
     const matches: boolean =
       route.path === candidate || (candidate !== '/dashboard' && route.path.startsWith(candidate + '/'))
     if (!matches) return best
@@ -431,10 +422,11 @@ const activeNavPath: ComputedRef<string | null> = computed((): string | null => 
   }, null)
 })
 
+/** The active module (drives the switcher label and the primary CTA). */
+const activeModule: ComputedRef<DlhModule> = computed((): DlhModule => moduleStore.activeModule)
+
 /** Label of the currently active module. */
-const activeModuleLabel: ComputedRef<string> = computed((): string => {
-  return modules.find((moduleEntry: DlhModuleEntry): boolean => !moduleEntry.locked)?.label ?? 'Sites web'
-})
+const activeModuleLabel: ComputedRef<string> = computed((): string => activeModule.value.label)
 
 /** User display name. */
 const userName: ComputedRef<string> = computed((): string => {
@@ -479,14 +471,22 @@ const creditDotColor: ComputedRef<string> = computed((): string => {
 })
 
 /**
- * Handle a click on a module entry: locked modules announce their arrival.
+ * Handle a click on a module entry: switch to an unlocked module, announce a locked one.
  * @param moduleEntry - The clicked module.
  */
-function handleModuleClick(moduleEntry: DlhModuleEntry): void {
+function handleModuleClick(moduleEntry: DlhModule): void {
   showModuleMenu.value = false
   if (moduleEntry.locked) {
     toast.info(`Le module « ${moduleEntry.label} » arrive bientôt.`)
+    return
   }
+  if (moduleEntry.key === moduleStore.activeKey) {
+    handleClick()
+    return
+  }
+  moduleStore.setModule(moduleEntry.key)
+  void navigateTo(moduleEntry.home)
+  handleClick()
 }
 
 /**
