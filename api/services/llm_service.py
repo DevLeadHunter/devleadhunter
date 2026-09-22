@@ -171,6 +171,17 @@ class LLMService:
         )
         return self._parse_json_object(text)
 
+    async def chat(
+        self,
+        messages: list[dict[str, Any]],
+        *,
+        max_tokens: int = 500,
+        temperature: float = 0.5,
+        timeout: float = 40.0,
+    ) -> str | None:
+        """Plain chat completion returning the assistant's reply text, or None on failure / no key."""
+        return await self._chat(messages, max_tokens=max_tokens, temperature=temperature, timeout=timeout)
+
     async def resolve_vision_model(self) -> str | None:
         """The vision model to use: the configured one when the account lists it, else the first known one.
 
