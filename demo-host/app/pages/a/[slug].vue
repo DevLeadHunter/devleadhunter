@@ -20,8 +20,10 @@
 
 <script lang="ts" setup>
 import type { ComputedRef } from 'vue'
-import { computed } from 'vue'
+import { computed, onMounted } from 'vue'
 import type { AiAssistantConfig } from '~/types/AiAssistant'
+import { DemoBeaconUtils } from '~/utils/DemoBeaconUtils'
+import { useDemoTracking } from '~/composables/useDemoTracking'
 
 const route: ReturnType<typeof useRoute> = useRoute()
 const config: ReturnType<typeof useRuntimeConfig> = useRuntimeConfig()
@@ -38,6 +40,14 @@ const { data: assistant, pending }: Awaited<ReturnType<typeof useAsyncData<AiAss
       }
     },
   )
+
+const { init: initTracking }: ReturnType<typeof useDemoTracking> = useDemoTracking()
+
+onMounted((): void => {
+  const current: AiAssistantConfig | null | undefined = assistant.value
+  if (!current) return
+  void initTracking(current.slug, current.status, null, DemoBeaconUtils.channelFromQuery(route.query.src))
+})
 
 useHead({
   title: computed((): string => assistant.value?.business_name ?? 'Assistant'),
