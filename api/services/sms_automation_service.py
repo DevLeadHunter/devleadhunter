@@ -25,6 +25,7 @@ from models.prospect_db import ProspectDB
 from models.sms_auto_queue import SmsAutoQueue
 from models.sms_config import SmsConfig
 from models.sms_message import SmsMessage
+from services.contact_lock_service import MODULE_WEBSITES, contact_lock_service
 from services.demo_site_service import demo_site_service
 from services.prospect_phones import first_mobile_e164
 from services.sms.send_window import (
@@ -99,6 +100,8 @@ class SmsAutomationService:
             return "Déjà SMSé"
         if prospect.do_not_contact:
             return "Ne plus contacter"
+        if contact_lock_service.is_locked_for_module(prospect, MODULE_WEBSITES, datetime.utcnow()):
+            return "Réservé par un autre module"
         if prospect.sms_auto_excluded:
             return "SMS automatiques coupés pour ce prospect"
         if kind == "cold" and prospect.contacted:
@@ -356,6 +359,7 @@ class SmsAutomationService:
                 if sent:
                     row.status = "sent"
                     row.sent_at = datetime.utcnow()
+                    contact_lock_service.record_contact(prospect, MODULE_WEBSITES, datetime.utcnow())
                     sent_for_user += 1
                     total += 1
                 else:
