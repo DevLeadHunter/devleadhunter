@@ -111,8 +111,8 @@ export class PresenterVideoService {
    * Fetch the current user's presenter clip metadata.
    * @returns Clip state (``has_video: false`` when none was uploaded).
    */
-  static async getPresenterVideo(): Promise<PresenterVideo> {
-    return ApiClient.get<PresenterVideo>(BASE_URL)
+  static async getPresenterVideo(module: string = 'websites'): Promise<PresenterVideo> {
+    return ApiClient.get<PresenterVideo>(`${BASE_URL}?module=${module}`)
   }
 
   /**
@@ -132,13 +132,14 @@ export class PresenterVideoService {
     introSeconds: number,
     outroSeconds: number,
     autoGenerate: boolean,
+    module: string = 'websites',
   ): Promise<PresenterVideo> {
     const formData: FormData = new FormData()
     formData.append('file', file)
     formData.append('intro_seconds', String(introSeconds))
     formData.append('outro_seconds', String(outroSeconds))
     formData.append('auto_generate', String(autoGenerate))
-    return putMultipart<PresenterVideo>(BASE_URL, formData, file.size)
+    return putMultipart<PresenterVideo>(`${BASE_URL}?module=${module}`, formData, file.size)
   }
 
   /**
@@ -159,13 +160,18 @@ export class PresenterVideoService {
     middle: File,
     outro: File,
     autoGenerate: boolean,
+    module: string = 'websites',
   ): Promise<PresenterVideo> {
     const formData: FormData = new FormData()
     formData.append('intro', intro)
     formData.append('middle', middle)
     formData.append('outro', outro)
     formData.append('auto_generate', String(autoGenerate))
-    return putMultipart<PresenterVideo>(`${BASE_URL}/segments`, formData, intro.size + middle.size + outro.size)
+    return putMultipart<PresenterVideo>(
+      `${BASE_URL}/segments?module=${module}`,
+      formData,
+      intro.size + middle.size + outro.size,
+    )
   }
 
   /**
@@ -180,8 +186,9 @@ export class PresenterVideoService {
     outroSeconds: number,
     autoGenerate: boolean,
     siteSeconds: number | null = null,
+    module: string = 'websites',
   ): Promise<PresenterVideo> {
-    return ApiClient.patch<PresenterVideo>(BASE_URL, {
+    return ApiClient.patch<PresenterVideo>(`${BASE_URL}?module=${module}`, {
       intro_seconds: introSeconds,
       outro_seconds: outroSeconds,
       site_seconds: siteSeconds,
@@ -190,20 +197,21 @@ export class PresenterVideoService {
   }
 
   /**
-   * Delete the presenter clip (file + record).
+   * Delete the presenter clip (file + record) for a module.
+   * @param module - The sellable module the clip belongs to.
    */
-  static async deletePresenterVideo(): Promise<PresenterVideo> {
-    return ApiClient.delete<PresenterVideo>(BASE_URL)
+  static async deletePresenterVideo(module: string = 'websites'): Promise<PresenterVideo> {
+    return ApiClient.delete<PresenterVideo>(`${BASE_URL}?module=${module}`)
   }
 
   /**
    * Fetch the user's own clip as a blob URL for the in-app preview player.
    * @returns An object URL (caller must ``URL.revokeObjectURL`` it), or null.
    */
-  static async getPresenterVideoObjectUrl(): Promise<string | null> {
+  static async getPresenterVideoObjectUrl(module: string = 'websites'): Promise<string | null> {
     const userStore: ReturnType<typeof useUserStore> = useUserStore()
     const config: ReturnType<typeof useRuntimeConfig> = useRuntimeConfig()
-    const response: Response = await fetch(`${config.public.apiBase}${BASE_URL}/file`, {
+    const response: Response = await fetch(`${config.public.apiBase}${BASE_URL}/file?module=${module}`, {
       headers: userStore.token ? { Authorization: `Bearer ${userStore.token}` } : {},
     })
     if (!response.ok) return null

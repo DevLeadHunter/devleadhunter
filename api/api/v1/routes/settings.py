@@ -230,11 +230,12 @@ def _serialize_presenter(record: PresenterVideo | None) -> dict[str, Any]:
 
 @router.get("/presenter-video", response_model=PresenterVideoResponse)
 async def get_presenter_video(
+    module: str = "websites",
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> dict[str, Any]:
-    """Return the current user's presenter clip metadata."""
-    return _serialize_presenter(presenter_video_service.get_for_user(db, current_user.id))
+    """Return the current user's presenter clip metadata for a module ('websites' by default)."""
+    return _serialize_presenter(presenter_video_service.get_for_user(db, current_user.id, module))
 
 
 @router.put("/presenter-video", response_model=PresenterVideoResponse)
@@ -243,12 +244,13 @@ async def upload_presenter_video(
     intro_seconds: float = Form(default=4.0, ge=0, le=30),
     outro_seconds: float = Form(default=5.0, ge=0, le=30),
     auto_generate: bool = Form(default=True),
+    module: str = "websites",
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> dict[str, Any]:
-    """Upload (or replace) the presenter clip used by prospection videos."""
+    """Upload (or replace) the presenter clip used by prospection videos for a module."""
     record = await presenter_video_service.store_upload(
-        db, current_user.id, file, intro_seconds, outro_seconds, auto_generate
+        db, current_user.id, file, intro_seconds, outro_seconds, auto_generate, module
     )
     logger.info("[Settings] Presenter clip uploaded for user %d (%.1fs)", current_user.id, record.duration_seconds)
     return _serialize_presenter(record)
@@ -260,12 +262,13 @@ async def upload_presenter_video_segments(
     middle: UploadFile = File(...),
     outro: UploadFile = File(...),
     auto_generate: bool = Form(default=True),
+    module: str = "websites",
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> dict[str, Any]:
-    """Assemble the three takes recorded in-app into the presenter clip."""
+    """Assemble the three takes recorded in-app into the presenter clip for a module."""
     record = await presenter_video_service.store_recorded_segments(
-        db, current_user.id, intro, middle, outro, auto_generate
+        db, current_user.id, intro, middle, outro, auto_generate, module
     )
     logger.info(
         "[Settings] Presenter clip recorded in-app for user %d (%.1fs — intro %.1fs / outro %.1fs)",
@@ -280,11 +283,12 @@ async def upload_presenter_video_segments(
 @router.patch("/presenter-video", response_model=PresenterVideoResponse)
 async def update_presenter_video_settings(
     payload: PresenterVideoSettingsUpdate,
+    module: str = "websites",
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> dict[str, Any]:
-    """Adjust intro/outro segments + auto-generation of the existing clip."""
-    record = presenter_video_service.get_for_user(db, current_user.id)
+    """Adjust intro/outro segments + auto-generation of the existing clip for a module."""
+    record = presenter_video_service.get_for_user(db, current_user.id, module)
     if record is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Aucun clip de présentation.")
     record = presenter_video_service.update_settings(
@@ -300,21 +304,23 @@ async def update_presenter_video_settings(
 
 @router.delete("/presenter-video", response_model=PresenterVideoResponse)
 async def delete_presenter_video(
+    module: str = "websites",
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> dict[str, Any]:
-    """Delete the presenter clip (file + record)."""
-    presenter_video_service.delete_for_user(db, current_user.id)
+    """Delete the presenter clip (file + record) for a module."""
+    presenter_video_service.delete_for_user(db, current_user.id, module)
     return {"has_video": False}
 
 
 @router.get("/presenter-video/file")
 async def stream_presenter_video_file(
+    module: str = "websites",
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> StreamingResponse:
-    """Stream the user's own presenter clip from R2 (in-app preview player)."""
-    record = presenter_video_service.get_for_user(db, current_user.id)
+    """Stream the user's own presenter clip for a module from R2 (in-app preview player)."""
+    record = presenter_video_service.get_for_user(db, current_user.id, module)
     if record is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Aucun clip de présentation.")
     try:
