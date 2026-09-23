@@ -51,7 +51,7 @@ MIN_SEGMENT_SECONDS = 1.0
 MAX_SEGMENT_SECONDS = 60.0
 
 # La prise du milieu porte le défilement du site : elle doit couvrir au moins
-# ``demo_video_service._MIN_SCROLL_SECONDS``, sinon chaque génération échouera.
+# ``video_pipeline.MIN_SCROLL_SECONDS``, sinon chaque génération échouera.
 MIN_MIDDLE_SECONDS = 6.0
 
 # Canvas de sortie du clip enregistré, aligné sur celui du montage final

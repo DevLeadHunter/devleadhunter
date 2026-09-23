@@ -43,46 +43,20 @@ from enums.demo_site_status import DemoSiteStatus
 from enums.demo_video_status import DemoVideoStatus
 from models.demo_site import DemoSite
 from models.presenter_video import PresenterVideo
-from services import video_montage
+from services import video_montage, video_pipeline
 from services.r2_storage_service import r2_storage
+from services.video_pipeline import VideoGenerationError as DemoVideoGenerationError
 
 logger = logging.getLogger(__name__)
 
-# Un seul rendu à la fois : Playwright + ffmpeg sont lourds pour la machine
-# qui héberge aussi les scrapers.
-_generation_semaphore = asyncio.Semaphore(1)
-
-# Durée minimale du segment « site qui défile » pour que la capture ait un sens.
-_MIN_SCROLL_SECONDS = 6.0
-
-# Garde-fou mémoire du fallback serveur : capturer le site en headless (Chromium)
-# puis monter avec ffmpeg dépasse facilement le plafond du service sur un VPS chargé.
-# En dessous de ce seuil de mémoire disponible, on refuse proprement plutôt que de
-# laisser l'OOM killer emporter toute l'API.
-_MIN_FREE_MEMORY_MB_FOR_CAPTURE = 1200.0
-
-# The ffmpeg montage is lighter than a headless capture, but it still OOM-killed the
-# whole API on a starved box. Refuse it (fail clean) below this floor — this covers
-# the desktop path too, where the montage is the only server-side step.
-_MIN_FREE_MEMORY_MB_FOR_MONTAGE = 500.0
-
-
-def _available_memory_mb() -> float | None:
-    """
-    Available system memory in MB, read from Linux ``/proc/meminfo``.
-
-    Returns:
-        The available memory in MB, or None when it cannot be read (e.g. on a
-        non-Linux host, where the server-side capture never runs anyway).
-    """
-    try:
-        with open("/proc/meminfo", encoding="ascii") as meminfo:
-            for line in meminfo:
-                if line.startswith("MemAvailable:"):
-                    return int(line.split()[1]) / 1024
-    except (OSError, ValueError):
-        return None
-    return None
+# Shared pipeline primitives (see :mod:`services.video_pipeline`). Kept as module-level aliases so the
+# guards below read them by module-global lookup — the reliability tests monkeypatch
+# ``_available_memory_mb`` on this module, and the site + assistant share one render semaphore.
+_generation_semaphore = video_pipeline.generation_semaphore
+_MIN_SCROLL_SECONDS = video_pipeline.MIN_SCROLL_SECONDS
+_MIN_FREE_MEMORY_MB_FOR_CAPTURE = video_pipeline.MIN_FREE_MEMORY_MB_FOR_CAPTURE
+_MIN_FREE_MEMORY_MB_FOR_MONTAGE = video_pipeline.MIN_FREE_MEMORY_MB_FOR_MONTAGE
+_available_memory_mb = video_pipeline.available_memory_mb
 
 
 def video_object_key(slug: str) -> str:
@@ -167,10 +141,6 @@ def reenqueue_campaigns_after_video_ready(db: Session, prospect_id: int | None, 
             )
     except Exception:
         logger.warning("[Video] Auto re-enqueue after video ready failed for prospect %s", prospect_id, exc_info=True)
-
-
-class DemoVideoGenerationError(Exception):
-    """Raised when a step of the video pipeline fails (message shown in-app)."""
 
 
 class DemoVideoService:
@@ -311,12 +281,12 @@ class DemoVideoService:
                 site.video_status = DemoVideoStatus.GENERATING.value
                 db.commit()
 
-                first_name = self._resolve_first_name(db, site)
+                first_name = video_pipeline.resolve_first_name(db, site.prospect_id)
                 # Le clip source vit sur R2 : on le matérialise en temp pour ffmpeg.
                 source_dir = Path(tempfile.mkdtemp(prefix=f"presenter-src-{user_id}-"))
                 try:
-                    presenter_path = await self._resolve_presenter_file(presenter, source_dir)
-                    photo_path = await self._resolve_presenter_photo(db, user_id, source_dir)
+                    presenter_path = await video_pipeline.resolve_presenter_file(presenter, source_dir)
+                    photo_path = await video_pipeline.resolve_presenter_photo(db, user_id, source_dir)
                     await self._generate(site, presenter, presenter_path, first_name, photo_path)
                 except DemoVideoGenerationError as exc:
                     site.video_status = DemoVideoStatus.FAILED.value
@@ -342,80 +312,9 @@ class DemoVideoService:
             finally:
                 db.close()
 
-    @staticmethod
-    def _resolve_first_name(db: Session, site: DemoSite) -> str | None:
-        """First name of the resolved decision-maker (None when unknown)."""
-        if not site.prospect_id:
-            return None
-        from services.email_variables import EmailVariables
-
-        first, _last, _gender = EmailVariables.resolved_contact(db, site.prospect_id)
-        return first or None
-
     # ------------------------------------------------------------------ #
     # Pipeline steps
     # ------------------------------------------------------------------ #
-
-    @staticmethod
-    async def _resolve_presenter_file(presenter: PresenterVideo, work_dir: Path) -> Path:
-        """
-        Materialise the presenter clip as a local file for ffmpeg.
-
-        Clips live on R2 under ``videos/presenter/{user_id}.mp4``; rows written
-        before the R2 migration still hold a local disk path and keep working.
-
-        Args:
-            presenter: The user's presenter clip row.
-            work_dir: Temp directory receiving the download.
-
-        Returns:
-            Path to a readable local file.
-
-        Raises:
-            DemoVideoGenerationError: when the clip cannot be resolved.
-        """
-        stored = str(presenter.file_path or "").strip()
-        if not stored:
-            raise DemoVideoGenerationError("Clip de présentation introuvable.")
-
-        if stored.startswith(r2_storage.VIDEOS_PRESENTER_PREFIX):
-            try:
-                return await r2_storage.download_to_path_async(stored, work_dir / "presenter.mp4")
-            except Exception as exc:
-                raise DemoVideoGenerationError("Clip de présentation illisible sur le stockage (R2).") from exc
-
-        legacy = Path(stored)
-        if legacy.is_file():
-            return legacy
-        raise DemoVideoGenerationError("Clip de présentation introuvable.")
-
-    @staticmethod
-    async def _resolve_presenter_photo(db: Session, user_id: int, work_dir: Path) -> Path | None:
-        """
-        Materialise the user's profile photo (thumbnail bubble) as a local file.
-
-        The photo is optional and must never fail a generation: any resolution
-        problem just means a thumbnail without the bubble.
-
-        Args:
-            db: Active database session.
-            user_id: Owner of the photo.
-            work_dir: Temp directory receiving the download.
-
-        Returns:
-            Path to a readable local file, or None when the user has no photo.
-        """
-        from models.user import User
-
-        user = db.query(User).filter(User.id == user_id).first()
-        stored = str(user.profile_photo_path or "").strip() if user else ""
-        if not stored:
-            return None
-        try:
-            return await r2_storage.download_to_path_async(stored, work_dir / "presenter-photo.jpg")
-        except Exception:
-            logger.warning("Presenter photo unavailable for user=%s — thumbnail without bubble", user_id)
-            return None
 
     async def _generate(
         self,
