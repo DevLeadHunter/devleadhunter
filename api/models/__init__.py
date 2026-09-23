@@ -6,7 +6,9 @@ from models.acquisition_run import AcquisitionRun
 from models.acquisition_run_item import AcquisitionRunItem
 from models.ai_assistant import AiAssistant
 from models.ai_assistant_lead import AiAssistantLead
+from models.ai_assistant_subscription import AiAssistantSubscription
 from models.campaign import Campaign, CampaignStatus
+from models.campaign_follow_up import CampaignFollowUp
 from models.credit_settings import CreditSettings
 from models.credit_transaction import CreditTransaction
 from models.demo_site import DemoSite
@@ -46,7 +48,9 @@ __all__ = [
     "AcquisitionRunItem",
     "AiAssistant",
     "AiAssistantLead",
+    "AiAssistantSubscription",
     "Campaign",
+    "CampaignFollowUp",
     "CampaignStatus",
     "CreditSettings",
     "CreditTransaction",

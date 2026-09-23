@@ -141,6 +141,18 @@ async def stripe_webhook(
         if refunded_order_id is not None:
             return {"status": "success", "message": "Order refund processed"}
 
+        # AI-assistant subscription? Activate the local row on checkout, sync status on lifecycle events.
+        from services.assistant_subscription_service import assistant_subscription_service
+
+        event_type = event.get("type", "")
+        event_obj = (event.get("data") or {}).get("object") or {}
+        if event_type == "checkout.session.completed" and event_obj.get("mode") == "subscription":
+            assistant_subscription_service.activate_from_session(db, event_obj)
+            return {"status": "success", "message": "Assistant subscription activated"}
+        if event_type in ("customer.subscription.updated", "customer.subscription.deleted"):
+            assistant_subscription_service.update_from_stripe_subscription(db, event_obj)
+            return {"status": "success", "message": "Assistant subscription synced"}
+
         # Otherwise fall back to the credits purchase handler.
         success = payment_service.handle_webhook_event(db, event)
 
