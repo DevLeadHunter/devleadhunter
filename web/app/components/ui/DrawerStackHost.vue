@@ -188,6 +188,15 @@
       @finalize="handleFinalizeSale"
     />
 
+    <UiSubscriptionDrawer
+      :open="assistantSubscriptionEntry !== null"
+      :subscription="assistantSubscriptionEntry?.subscription ?? null"
+      :show-back="hasPrevious"
+      @close="drawerStack.closeAll()"
+      @back="drawerStack.back()"
+      @updated="drawerStack.notifySubscriptionUpdated"
+    />
+
     <UiFinalizeSaleDrawer
       :open="finalizeSaleEntry !== null"
       :order="finalizeSaleEntry?.order ?? null"
@@ -214,6 +223,7 @@ import type { UseToastReturn } from '~/types/Composables'
 import type { ComputedRef, Ref } from 'vue'
 import type {
   AddProspectDrawerEntry,
+  AssistantSubscriptionDrawerEntry,
   CampaignProspectsPickerDrawerEntry,
   CoverageFiltersDrawerEntry,
   CoverageProspectsDrawerEntry,
@@ -386,6 +396,12 @@ const coverageFiltersEntry: ComputedRef<CoverageFiltersDrawerEntry | null> = com
 const orderEntry: ComputedRef<OrderDrawerEntry | null> = computed((): OrderDrawerEntry | null => {
   return drawerStack.topEntry?.kind === 'order' ? drawerStack.topEntry : null
 })
+
+/** Top entry narrowed to the assistant-subscription drawer. */
+const assistantSubscriptionEntry: ComputedRef<AssistantSubscriptionDrawerEntry | null> = computed(
+  (): AssistantSubscriptionDrawerEntry | null =>
+    drawerStack.topEntry?.kind === 'assistant-subscription' ? drawerStack.topEntry : null,
+)
 
 /** Top entry narrowed to the sale finalization drawer. */
 const finalizeSaleEntry: ComputedRef<FinalizeSaleDrawerEntry | null> = computed((): FinalizeSaleDrawerEntry | null => {

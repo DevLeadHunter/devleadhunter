@@ -29,7 +29,8 @@ const WEBSITES_NAV: UiSidebarGroup[] = [
 /**
  * The AI-assistant module navigation: the same prospection base, but the deliverable is an
  * embedded receptionist (« Assistants IA ») instead of a demo site — so « Sites démo » and
- * the site automation tunnel drop out, and the assistants + their captured leads come in.
+ * the site automation tunnel drop out, the assistants + their captured leads come in, and the
+ * one-off « Ventes » becomes the recurring « Abonnements ».
  */
 const AI_ASSISTANT_NAV: UiSidebarGroup[] = [
   {
@@ -45,7 +46,7 @@ const AI_ASSISTANT_NAV: UiSidebarGroup[] = [
       { to: '/dashboard/campaigns', label: 'Campagnes', icon: 'i-lucide-megaphone' },
       { to: '/dashboard/emails', label: 'Suivi des emails', icon: 'i-lucide-send' },
       { to: '/dashboard/sms', label: 'Suivi des SMS', icon: 'i-lucide-message-square-text' },
-      { to: '/dashboard/orders', label: 'Ventes', icon: 'i-lucide-banknote' },
+      { to: '/dashboard/subscriptions', label: 'Abonnements', icon: 'i-lucide-repeat' },
     ],
   },
 ]

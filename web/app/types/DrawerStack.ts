@@ -1,4 +1,5 @@
 import type { EmailLog, EmailTemplate, Prospect, User } from '~/types'
+import type { AssistantSubscription } from '~/types/AiAssistant'
 import type { Order } from '~/services/ordersService'
 import type { SmsMessage } from '~/services/smsService'
 import type { SearchProspectsPrefill } from '~/types/SearchProspectsDrawer'
@@ -144,6 +145,12 @@ export type FinalizeSaleDrawerEntry = {
   order: Order
 }
 
+/** A sold-assistant subscription's detail drawer (view + cancel/refund). */
+export type AssistantSubscriptionDrawerEntry = {
+  kind: 'assistant-subscription'
+  subscription: AssistantSubscription
+}
+
 /** A zone of the coverage map (one city, or a region's covered cities). */
 export type CoverageZone = {
   kind: 'city' | 'region'
@@ -184,6 +191,7 @@ export type DrawerStackEntry =
   | CoverageProspectsDrawerEntry
   | OrderDrawerEntry
   | FinalizeSaleDrawerEntry
+  | AssistantSubscriptionDrawerEntry
   | UserFormDrawerEntry
 
 /** Cross-page notice describing the latest prospect mutation done from a drawer. */
@@ -191,3 +199,6 @@ export type ProspectMutationNotice = { type: 'updated'; prospect: Prospect } | {
 
 /** Cross-page notice describing the latest order mutation done from a drawer. */
 export type OrderMutationNotice = { type: 'updated'; order: Order } | { type: 'deleted'; orderId: number }
+
+/** Cross-page notice describing the latest assistant-subscription mutation done from a drawer. */
+export type AssistantSubscriptionMutationNotice = { type: 'updated'; subscription: AssistantSubscription }
