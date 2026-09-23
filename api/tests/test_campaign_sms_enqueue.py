@@ -52,7 +52,14 @@ class _FakeDB:
 
 
 def _prospect(pid: int, phone: str, dnc: bool = False):
-    return SimpleNamespace(id=pid, phone=phone, name=f"Prospect {pid}", do_not_contact=dnc)
+    return SimpleNamespace(
+        id=pid,
+        phone=phone,
+        name=f"Prospect {pid}",
+        do_not_contact=dnc,
+        contacted_by_module=None,
+        contacted_by_module_at=None,
+    )
 
 
 def test_enqueue_sms_creates_templateless_rows_in_order(monkeypatch):
@@ -81,7 +88,7 @@ def test_enqueue_sms_creates_templateless_rows_in_order(monkeypatch):
         _prospect(3, "06 98 76 54 32"),  # mobile but NO demo → skipped_no_demo
         _prospect(40, "07 11 22 33 44"),  # mobile + demo → enqueued (2nd)
     ]
-    campaign = SimpleNamespace(id=1, user_id=7, channel="sms", prospects=prospects)
+    campaign = SimpleNamespace(id=1, user_id=7, channel="sms", sms_template_key=None, prospects=prospects)
 
     result = svc._enqueue_sms(campaign)
 

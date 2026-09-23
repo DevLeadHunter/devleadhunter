@@ -438,6 +438,10 @@ async def add_prospects_to_campaign(
                 CampaignSkippedProspect(id=int(entry["id"]), name=str(entry["name"]))
                 for entry in enqueue_result.skipped_no_video
             ],
+            skipped_locked=[
+                CampaignSkippedProspect(id=int(entry["id"]), name=str(entry["name"]))
+                for entry in enqueue_result.skipped_locked
+            ],
         )
     return _detail_response(db, campaign, enqueue_outcome=outcome)
 
@@ -603,11 +607,14 @@ async def launch_campaign(
         message = f"{result.enqueued} SMS mis en file"
         if result.skipped_no_demo:
             message += f" · {len(result.skipped_no_demo)} prospect(s) ignoré(s) faute de site de démo"
+        if result.skipped_locked:
+            message += f" · {len(result.skipped_locked)} prospect(s) réservé(s) par un autre module"
         return {
             "success": True,
             "enqueued": result.enqueued,
             "skipped_no_demo": result.skipped_no_demo,
             "skipped_no_video": [],
+            "skipped_locked": result.skipped_locked,
             "message": message,
         }
 
@@ -652,11 +659,14 @@ async def launch_campaign(
         message += f" · {len(result.skipped_no_demo)} prospect(s) ignoré(s) faute de site de démo"
     if result.skipped_no_video:
         message += f" · {len(result.skipped_no_video)} prospect(s) ignoré(s) faute de vidéo de prospection"
+    if result.skipped_locked:
+        message += f" · {len(result.skipped_locked)} prospect(s) réservé(s) par un autre module"
     return {
         "success": True,
         "enqueued": result.enqueued,
         "skipped_no_demo": result.skipped_no_demo,
         "skipped_no_video": result.skipped_no_video,
+        "skipped_locked": result.skipped_locked,
         "message": message,
     }
 

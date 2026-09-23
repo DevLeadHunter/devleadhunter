@@ -212,6 +212,8 @@ class CampaignEnqueueOutcome(BaseModel):
     skipped_no_demo: list[CampaignSkippedProspect] = Field(default_factory=list)
     # Left out because their template is video-only and no prospection video is ready yet.
     skipped_no_video: list[CampaignSkippedProspect] = Field(default_factory=list)
+    # Left out because another sellable module contacted them inside the cross-module lock window.
+    skipped_locked: list[CampaignSkippedProspect] = Field(default_factory=list)
 
 
 class CampaignDetailResponse(CampaignResponse):

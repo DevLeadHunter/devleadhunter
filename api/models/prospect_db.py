@@ -67,6 +67,11 @@ class ProspectDB(Base):
     do_not_contact: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default="0", index=True)
     do_not_contact_reason: Mapped[str | None] = mapped_column(String(500), nullable=True)
     do_not_contact_at: Mapped[datetime | None] = mapped_column(nullable=True)
+
+    # Cross-module contact lock: which sellable module last engaged this prospect, and when. While
+    # the lock window holds, the other module skips him so he is never approached twice at once.
+    contacted_by_module: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    contacted_by_module_at: Mapped[datetime | None] = mapped_column(nullable=True)
     # Operator opt-out for the automated SMS of THIS prospect only (already handled by hand).
     # Drops it from the auto relance AND auto cold selections; campaigns and email are untouched.
     sms_auto_excluded: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default="0")

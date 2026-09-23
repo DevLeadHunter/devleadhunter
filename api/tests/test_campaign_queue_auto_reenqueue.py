@@ -66,7 +66,14 @@ class _FakeDB:
 
 
 def _prospect(pid: int, email: str = "a@b.fr", dnc: bool = False):
-    return SimpleNamespace(id=pid, email=email, do_not_contact=dnc, name=f"Prospect {pid}")
+    return SimpleNamespace(
+        id=pid,
+        email=email,
+        do_not_contact=dnc,
+        name=f"Prospect {pid}",
+        contacted_by_module=None,
+        contacted_by_module_at=None,
+    )
 
 
 def _campaign(**overrides):

@@ -32,6 +32,7 @@ from models.email_template import EmailTemplate
 from models.prospect_db import ProspectDB
 from models.sms_reply import SmsReply
 from services.activity_log_service import CATEGORY_CAMPAIGN, STATUS_INFO, activity_log_service
+from services.contact_lock_service import MODULE_AI_ASSISTANT, MODULE_WEBSITES, contact_lock_service
 from services.email_sending_service import EmailSendingService
 from services.email_variables import EmailVariables
 from services.pricing_service import PricingService
@@ -53,6 +54,9 @@ _MANUAL_CANCEL_REASON = "Annulé manuellement"
 # Reason stamped on a row held back because the prospect was marked « ne plus contacter ».
 _DO_NOT_CONTACT_SKIP_REASON = "Ne plus contacter"
 
+# Reason stamped when a prospect is reserved by another sellable module (cross-module lock).
+_CROSS_MODULE_SKIP_REASON = "Réservé par un autre module"
+
 
 @dataclass
 class EnqueueResult:
@@ -67,11 +71,14 @@ class EnqueueResult:
         skipped_no_video: Prospects skipped because their template uses
                           ``{lien_video}``/``{vignette_video}`` but their demo
                           has no generated prospection video.
+        skipped_locked:   Prospects skipped because another sellable module
+                          contacted them inside the cross-module lock window.
     """
 
     enqueued: int = 0
     skipped_no_demo: list[dict[str, object]] = field(default_factory=list)
     skipped_no_video: list[dict[str, object]] = field(default_factory=list)
+    skipped_locked: list[dict[str, object]] = field(default_factory=list)
 
 
 def _utcnow() -> datetime:
@@ -152,6 +159,7 @@ class CampaignQueueService:
         uses_demo_b: bool = self._template_uses_demo_link(template_b)
         uses_video_a: bool = self._template_uses_video(template_a)
         uses_video_b: bool = self._template_uses_video(template_b)
+        module: str = self._campaign_module([template_a, template_b])
 
         # Append after the last pending slot so re-launching is safe.
         latest: datetime | None = self.db.execute(
@@ -188,6 +196,10 @@ class CampaignQueueService:
             if prospect.do_not_contact:
                 logger.debug("[Queue] Skipping do-not-contact prospect %d", prospect.id)
                 continue
+            if contact_lock_service.is_locked_for_module(prospect, module, now):
+                logger.info("[Queue] Skipping prospect %d — reserved by another module", prospect.id)
+                result.skipped_locked.append({"id": prospect.id, "name": prospect.name or ""})
+                continue
 
             if is_ab:
                 variant = "A" if idx % 2 == 0 else "B"
@@ -213,6 +225,7 @@ class CampaignQueueService:
                 result.skipped_no_video.append({"id": prospect.id, "name": prospect.name or ""})
                 continue
 
+            contact_lock_service.record_contact(prospect, module, now)
             to_enqueue.append((prospect.id, tpl_id, variant))
 
         # --- Compute send slots (global send policy, or legacy spacing) ------
@@ -408,6 +421,9 @@ class CampaignQueueService:
             return False
 
         now = _utcnow()
+        module: str = self._campaign_module([template])
+        if contact_lock_service.is_locked_for_module(prospect, module, now):
+            return False
         # Append after the last pending J1 only — never behind a scheduled follow-up (which sits days
         # out), so a newly-ready prospect takes the next available send slot instead of the queue's tail.
         latest: datetime | None = self.db.execute(
@@ -418,6 +434,7 @@ class CampaignQueueService:
             )
         ).scalar()
         slot: datetime = self._schedule_slots(campaign, 1, now, latest)[0]
+        contact_lock_service.record_contact(prospect, module, now)
         self.db.add(
             EmailQueue(
                 user_id=campaign.user_id,
@@ -588,9 +605,14 @@ class CampaignQueueService:
         ``position``), so with ``max_emails_per_day=1`` the send is one group per day.
         """
         from services.prospect_phones import first_mobile_e164
+        from services.sms.templates import find_sms_template
         from services.sms_service import sms_service
 
         now = _utcnow()
+        sms_template = find_sms_template(campaign.sms_template_key or "")
+        module: str = (
+            MODULE_AI_ASSISTANT if sms_template is not None and sms_template.uses("lien_assistant") else MODULE_WEBSITES
+        )
         latest: datetime | None = self.db.execute(
             select(func.max(EmailQueue.scheduled_at)).where(
                 EmailQueue.campaign_id == campaign.id,
@@ -615,14 +637,24 @@ class CampaignQueueService:
                 continue
             if prospect.do_not_contact:
                 continue
+            if contact_lock_service.is_locked_for_module(prospect, module, now):
+                result.skipped_locked.append({"id": prospect.id, "name": prospect.name or ""})
+                continue
             to_e164 = first_mobile_e164(prospect)
             if to_e164 is None:
                 continue  # not SMS-reachable — no 06/07 mobile anywhere in the list
             if sms_service.is_suppressed(self.db, campaign.user_id, to_e164):
                 continue
-            if not self._active_demo_for_prospect(prospect.id, campaign.user_id):
+            # The linked offer must exist: a demo for a website SMS, an assistant for an assistant SMS.
+            has_offer: bool = (
+                self._has_active_assistant(prospect.id, campaign.user_id)
+                if module == MODULE_AI_ASSISTANT
+                else self._active_demo_for_prospect(prospect.id, campaign.user_id) is not None
+            )
+            if not has_offer:
                 result.skipped_no_demo.append({"id": prospect.id, "name": prospect.name or ""})
                 continue
+            contact_lock_service.record_contact(prospect, module, now)
             to_enqueue.append(prospect.id)
 
         slots: list[datetime] = self._schedule_slots(campaign, len(to_enqueue), now, latest)
@@ -893,6 +925,30 @@ class CampaignQueueService:
         haystack: str = f"{template.subject or ''} {template.body_html or ''}"
         return f"{{{EmailVariables.VIDEO_LINK}}}" in haystack or f"{{{EmailVariables.VIDEO_THUMBNAIL}}}" in haystack
 
+    @staticmethod
+    def _template_uses_assistant_link(template: EmailTemplate | None) -> bool:
+        """Return True when a template references ``{lien_assistant}`` (an AI-assistant offer)."""
+        if template is None:
+            return False
+        haystack: str = f"{template.subject or ''} {template.body_html or ''}"
+        return f"{{{EmailVariables.ASSISTANT_LINK}}}" in haystack
+
+    def _campaign_module(self, templates: list[EmailTemplate | None]) -> str:
+        """The sellable module a campaign belongs to, read from its templates.
+
+        A campaign that links the assistant belongs to the AI-assistant module; anything else is
+        a website campaign. This drives the cross-module contact lock.
+
+        Args:
+            templates: The campaign's templates (A, B, follow-ups…), any of which may be None.
+
+        Returns:
+            ``MODULE_AI_ASSISTANT`` when any template links the assistant, else ``MODULE_WEBSITES``.
+        """
+        if any(self._template_uses_assistant_link(template) for template in templates):
+            return MODULE_AI_ASSISTANT
+        return MODULE_WEBSITES
+
     def _active_demo_for_prospect(self, prospect_id: int, user_id: int) -> DemoSite | None:
         """Latest ACTIVE demo site of a prospect (or None)."""
         return self.db.execute(
@@ -905,6 +961,25 @@ class CampaignQueueService:
             .order_by(DemoSite.created_at.desc())
             .limit(1)
         ).scalar_one_or_none()
+
+    def _has_active_assistant(self, prospect_id: int, user_id: int) -> bool:
+        """Whether the prospect has an active AI assistant (source of the SMS ``{lien_assistant}``)."""
+        from enums.ai_assistant_status import AiAssistantStatus
+        from models.ai_assistant import AiAssistant
+
+        return (
+            self.db.execute(
+                select(AiAssistant.id)
+                .where(
+                    AiAssistant.prospect_id == prospect_id,
+                    AiAssistant.user_id == user_id,
+                    AiAssistant.status == AiAssistantStatus.ACTIVE.value,
+                    AiAssistant.deleted_at.is_(None),
+                )
+                .limit(1)
+            ).scalar_one_or_none()
+            is not None
+        )
 
     def _demo_link_for_prospect(self, prospect_id: int, user_id: int, variant: str | None) -> str:
         """
