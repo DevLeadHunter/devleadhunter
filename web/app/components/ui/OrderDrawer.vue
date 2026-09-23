@@ -521,7 +521,8 @@ const paymentUrl: ComputedRef<string> = computed(
 const amountLabel: ComputedRef<string> = computed((): string => {
   if (!props.order) return ''
   const euros: number = props.order.amount_cents / 100
-  return `${euros % 1 === 0 ? euros.toFixed(0) : euros.toFixed(2)} €`
+  const amount: string = euros % 1 === 0 ? euros.toFixed(0) : euros.toFixed(2).replace('.', ',')
+  return `${amount} €`
 })
 
 const refundMessage: ComputedRef<string> = computed(

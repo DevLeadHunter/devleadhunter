@@ -62,12 +62,20 @@
           <div class="mb-2 flex items-center justify-between">
             <span class="text-sm text-[var(--app-ink-soft)]">Prix par crédit :</span>
             <span class="text-sm font-medium text-[var(--app-ink)]"
-              >{{ creditSettings.price_per_credit.toFixed(2) }} €</span
+              >{{
+                creditSettings.price_per_credit.toLocaleString('fr-FR', {
+                  minimumFractionDigits: 2,
+                  maximumFractionDigits: 2,
+                })
+              }}
+              €</span
             >
           </div>
           <div class="flex items-center justify-between border-t border-[var(--app-line)] pt-2">
             <span class="text-base font-semibold text-[var(--app-ink)]">Total :</span>
-            <span class="text-lg font-bold text-[var(--app-ink)]">{{ totalPrice.toFixed(2) }} €</span>
+            <span class="text-lg font-bold text-[var(--app-ink)]"
+              >{{ totalPrice.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) }} €</span
+            >
           </div>
         </div>
 
