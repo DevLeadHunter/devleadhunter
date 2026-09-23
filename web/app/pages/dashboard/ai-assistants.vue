@@ -17,6 +17,21 @@
     </div>
 
     <template v-else>
+      <div class="grid grid-cols-3 gap-3">
+        <div class="rounded-lg border border-[var(--app-line)] bg-[var(--app-bg)] px-3 py-2.5 text-center">
+          <p class="text-xl font-bold text-[var(--app-ink)] tabular-nums">{{ activeAssistantCount }}</p>
+          <p class="text-muted text-[10px] tracking-wide uppercase">Assistants actifs</p>
+        </div>
+        <div class="rounded-lg border border-[var(--app-line)] bg-[var(--app-bg)] px-3 py-2.5 text-center">
+          <p class="text-xl font-bold text-[var(--app-green)] tabular-nums">{{ leads.length }}</p>
+          <p class="text-muted text-[10px] tracking-wide uppercase">Contacts captés</p>
+        </div>
+        <div class="rounded-lg border border-[var(--app-line)] bg-[var(--app-bg)] px-3 py-2.5 text-center">
+          <p class="text-xl font-bold text-[var(--app-ink)] tabular-nums">{{ latestLeadLabel }}</p>
+          <p class="text-muted text-[10px] tracking-wide uppercase">Dernier contact</p>
+        </div>
+      </div>
+
       <section class="flex flex-col gap-3">
         <div class="flex items-center justify-between">
           <h2 class="text-sm font-semibold text-[var(--app-ink)]">Mes assistants</h2>
@@ -218,8 +233,8 @@
 </template>
 
 <script lang="ts" setup>
-import type { Ref } from 'vue'
-import { onMounted, ref } from 'vue'
+import type { ComputedRef, Ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { AiAssistantService } from '~/services/aiAssistantService'
 import type {
   AiAssistantEditForm,
@@ -272,6 +287,17 @@ const LANGUAGE_OPTIONS: { code: string; label: string }[] = [
   { code: 'it', label: 'Italiano' },
   { code: 'es', label: 'Español' },
 ]
+
+/** Assistants currently live (the headline module KPI). */
+const activeAssistantCount: ComputedRef<number> = computed(
+  (): number => assistants.value.filter((item: AiAssistantSummary): boolean => item.status === 'active').length,
+)
+
+/** Short date of the most recent captured contact, or an em dash when none. */
+const latestLeadLabel: ComputedRef<string> = computed((): string => {
+  const latest: AiAssistantLead | undefined = leads.value[0]
+  return latest ? formatDate(latest.created_at) : '—'
+})
 
 /**
  * Append the internal marker so opening a demo from the dashboard never pollutes its analytics.
