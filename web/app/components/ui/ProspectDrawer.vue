@@ -158,6 +158,18 @@
               />
             </div>
 
+            <div v-if="contactLock" class="px-5 pt-4">
+              <div
+                class="flex items-start gap-2.5 rounded-lg border border-[var(--app-line)] bg-[var(--app-surface-2)] px-3 py-2.5"
+              >
+                <UIcon name="i-lucide-lock" class="mt-0.5 h-4 w-4 shrink-0 text-[var(--app-ink-soft)]" />
+                <p class="text-xs leading-relaxed text-[var(--app-ink-soft)]">
+                  Réservé par le module <strong class="text-[var(--app-ink)]">{{ contactLock.label }}</strong> — libre
+                  le {{ contactLock.until }}. Il ne sera pas contacté par ce module d'ici là.
+                </p>
+              </div>
+            </div>
+
             <div class="space-y-3 px-5 py-4">
               <p class="text-[10px] font-semibold tracking-wider text-[var(--app-ink-soft)] uppercase">Contact</p>
 
@@ -619,7 +631,7 @@
 </template>
 
 <script lang="ts" setup>
-import { formatLongMonthDate } from '~/utils/date'
+import { formatLongMonthDate, parseApiDate } from '~/utils/date'
 import { ProspectCountries } from '~/utils/prospectCountries'
 import type { UseToastReturn } from '~/types/Composables'
 import type {
@@ -681,6 +693,20 @@ const moduleStore: ReturnType<typeof useModuleStore> = useModuleStore()
 
 /** True when the AI-assistant module is active — the drawer then leads with the assistant deliverable. */
 const isAssistantModule: ComputedRef<boolean> = computed((): boolean => moduleStore.activeKey === 'ai-assistant')
+
+/** The cross-module lock blocking the ACTIVE module, or null when this module may contact the prospect. */
+const contactLock: ComputedRef<{ label: string; until: string } | null> = computed(
+  (): { label: string; until: string } | null => {
+    const lockedUntil: string | null | undefined = props.prospect?.contact_locked_until
+    const lockingModule: string | null | undefined = props.prospect?.contacted_by_module
+    if (!lockedUntil || !lockingModule || lockingModule === moduleStore.activeKey) return null
+    if (parseApiDate(lockedUntil).getTime() <= Date.now()) return null
+    return {
+      label: props.prospect?.contacted_by_module_label ?? lockingModule,
+      until: formatLongMonthDate(lockedUntil),
+    }
+  },
+)
 
 const editMode: Ref<boolean> = ref(false)
 const isSaving: Ref<boolean> = ref(false)

@@ -60,6 +60,10 @@ export type Prospect = {
   email_undeliverable?: boolean
   email_undeliverable_at?: string | null
   email_undeliverable_reason?: string | null
+  contacted_by_module?: string | null
+  contacted_by_module_at?: string | null
+  contacted_by_module_label?: string | null
+  contact_locked_until?: string | null
 }
 
 /**

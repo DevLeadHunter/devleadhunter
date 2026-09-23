@@ -2,12 +2,13 @@
 Prospect data models.
 """
 
-from datetime import datetime
+from datetime import datetime, timedelta
 
-from pydantic import BaseModel, ConfigDict, EmailStr, Field
+from pydantic import BaseModel, ConfigDict, EmailStr, Field, computed_field
 
 from enums.source import Source
 from enums.website_status import WebsiteStatus
+from services.contact_lock_service import LOCK_DAYS, contact_lock_service
 
 
 class ProspectBase(BaseModel):
@@ -239,3 +240,21 @@ class Prospect(ProspectBase):
     )
     email_undeliverable_at: datetime | None = Field(None, description="When the email was flagged undeliverable")
     email_undeliverable_reason: str | None = Field(None, description="The bounce reason reported by the provider")
+    contacted_by_module: str | None = Field(
+        None, description="Sellable module that last engaged this prospect (cross-module contact lock)"
+    )
+    contacted_by_module_at: datetime | None = Field(None, description="When that module engaged him")
+
+    @computed_field  # type: ignore[prop-decorator]
+    @property
+    def contact_locked_until(self) -> datetime | None:
+        """When the cross-module contact lock lifts, or ``None`` when the prospect is not locked."""
+        if not self.contacted_by_module or self.contacted_by_module_at is None:
+            return None
+        return self.contacted_by_module_at + timedelta(days=LOCK_DAYS)
+
+    @computed_field  # type: ignore[prop-decorator]
+    @property
+    def contacted_by_module_label(self) -> str | None:
+        """Human label of the locking module ('Sites web' / 'Assistant IA'), or ``None`` when unlocked."""
+        return contact_lock_service.module_label(self.contacted_by_module) if self.contacted_by_module else None
