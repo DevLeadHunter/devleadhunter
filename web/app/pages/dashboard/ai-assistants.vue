@@ -168,6 +168,15 @@
             <div class="flex shrink-0 items-center gap-3 text-xs">
               <span class="text-[var(--app-ink-soft)]">{{ lead.business_name }}</span>
               <span class="text-[var(--app-faint)] tabular-nums">{{ formatDate(lead.created_at) }}</span>
+              <button
+                v-if="lead.prospect_id !== null"
+                type="button"
+                class="text-muted flex h-7 w-7 cursor-pointer items-center justify-center rounded-md transition-colors hover:bg-[var(--app-surface-2)] hover:text-[var(--app-ink)]"
+                :aria-label="`Ouvrir le prospect ${lead.business_name}`"
+                @click="openLeadProspect(lead)"
+              >
+                <UIcon name="i-lucide-arrow-up-right" class="h-4 w-4" />
+              </button>
             </div>
           </li>
         </ul>
@@ -256,6 +265,7 @@
 import type { ComputedRef, Ref } from 'vue'
 import { computed, onMounted, ref } from 'vue'
 import { AiAssistantService } from '~/services/aiAssistantService'
+import { ProspectsService } from '~/services/prospectsService'
 import type {
   AiAssistantEditForm,
   AiAssistantLead,
@@ -264,8 +274,10 @@ import type {
   AiAssistantSummary,
   AiAssistantUpdatePayload,
 } from '~/types/AiAssistant'
+import type { Prospect } from '~/types'
 import type { UseToastReturn } from '~/types/Composables'
 import { useToast } from '~/composables/useToast'
+import { useDrawerStackStore } from '~/stores/drawerStack'
 import { parseApiDate } from '~/utils/date'
 
 /**
@@ -280,6 +292,7 @@ definePageMeta({
 useSeoMeta({ title: 'Assistants IA — DevLeadHunter' })
 
 const toast: UseToastReturn = useToast()
+const drawerStack: ReturnType<typeof useDrawerStackStore> = useDrawerStackStore()
 
 const assistants: Ref<AiAssistantSummary[]> = ref([])
 const leads: Ref<AiAssistantLead[]> = ref([])
@@ -343,6 +356,21 @@ function leadCountFor(assistantId: number): number {
  */
 function demoUrlWithInternal(demoUrl: string): string {
   return demoUrl.includes('?') ? `${demoUrl}&internal=1` : `${demoUrl}?internal=1`
+}
+
+/**
+ * Open a captured lead's prospect in the shared drawer, to act on it (call, add to a campaign…).
+ * @param lead - The captured lead.
+ * @returns A promise resolved once the prospect drawer is pushed.
+ */
+async function openLeadProspect(lead: AiAssistantLead): Promise<void> {
+  if (lead.prospect_id === null) return
+  try {
+    const prospect: Prospect = await ProspectsService.getProspect(lead.prospect_id)
+    drawerStack.push({ kind: 'prospect', prospect })
+  } catch {
+    toast.error('Prospect introuvable.')
+  }
 }
 
 /**
