@@ -24,6 +24,9 @@ Website templates live in **separate GitHub repos** (`devleadhunter-template-<id
 consumed by `demo-host` via `extends` pinned by tag — see
 [`docs/TEMPLATES_ARCHITECTURE.md`](./docs/TEMPLATES_ARCHITECTURE.md).
 
+The second sellable product, the per-prospect multilingual **AI assistant**, is documented in
+[`docs/ASSISTANT_MODULE.md`](./docs/ASSISTANT_MODULE.md).
+
 ## Stack
 
 | Layer    | Technology                            |
