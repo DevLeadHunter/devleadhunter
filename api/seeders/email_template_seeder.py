@@ -16,7 +16,7 @@ CTA, ≤ 4 lines). Rules baked in:
     video as its only door and is meant for phase 2.
 
 Variables: {salutation} {prenom} {nom} {entreprise} {ville} {metier} {lien_demo}
-{lien_video} {vignette_video} {ancien_site} {prix}.
+{lien_assistant} {lien_video} {vignette_video} {ancien_site} {prix}.
 
 ``sort_order`` (higher = pinned) marks the recommended templates at the top of the list.
 
@@ -196,6 +196,57 @@ EMAIL_TEMPLATE_LIBRARY: list[dict[str, object]] = [
             "<p>{prix} une fois, sans abonnement. Je bascule votre nom de domaine dessus et vous gardez "
             "la main sur tout le contenu.</p>"
             "<p>Ça vous intéresse ?</p>"
+        ),
+    },
+    {
+        "name": "Assistant IA - réponses 24/7",
+        "category": _FIRST,
+        "sort_order": 10,
+        "subject": "Vos clients écrivent, personne ne répond",
+        "body_html": (
+            "<p>{salutation},</p>"
+            "<p>Beaucoup de gens cherchent un {metier} à {ville} le soir ou le week-end, quand le téléphone "
+            "ne répond plus. Ces demandes-là, vous ne les voyez jamais passer.</p>"
+            "<p>J'ai préparé pour {entreprise} un assistant qui répond à leur place, note qui vous contacte et "
+            "vous transmet le message. Vous pouvez l'essayer ici : {lien_assistant}</p>"
+        ),
+    },
+    {
+        "name": "Assistant IA - multilingue",
+        "category": _FIRST,
+        "sort_order": 11,
+        "subject": "Répondre à vos clients dans leur langue",
+        "body_html": (
+            "<p>{salutation},</p>"
+            "<p>À {ville}, une partie de vos visiteurs écrivent en allemand ou en anglais, et beaucoup "
+            "repartent s'ils ne sont pas compris tout de suite.</p>"
+            "<p>J'ai monté pour {entreprise} un assistant qui répond dans la langue du visiteur, 24h/24, et "
+            "récupère ses coordonnées. La démo est déjà en ligne : {lien_assistant}</p>"
+        ),
+    },
+    {
+        "name": "Assistant IA - demandes captées",
+        "category": _FIRST,
+        "sort_order": 12,
+        "subject": "Un assistant qui capte vos demandes",
+        "body_html": (
+            "<p>{salutation},</p>"
+            "<p>Sur le site d'un {metier}, la plupart des visiteurs partent sans laisser de message. C'est "
+            "autant de clients que vous ne rappellerez jamais.</p>"
+            "<p>J'ai créé pour {entreprise} un assistant qui les accueille, répond à leurs questions et note "
+            "leurs coordonnées, avec des données hébergées en Europe. Essayez-le : {lien_assistant}</p>"
+        ),
+    },
+    {
+        "name": "Assistant IA - relance",
+        "category": _FOLLOW,
+        "sort_order": 10,
+        "subject": "L'assistant de {entreprise} tourne toujours",
+        "body_html": (
+            "<p>{salutation},</p>"
+            "<p>Je reviens vers vous : l'assistant que j'ai préparé pour {entreprise} est toujours en ligne. "
+            "Vous pouvez le tester ici : {lien_assistant}</p>"
+            "<p>Si ça vous parle, je vous montre comment l'installer sur votre site en cinq minutes.</p>"
         ),
     },
 ]

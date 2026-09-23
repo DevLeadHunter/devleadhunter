@@ -61,6 +61,8 @@ def init_db():
     """
     from models.acquisition_run import AcquisitionRun  # noqa: F401
     from models.acquisition_run_item import AcquisitionRunItem  # noqa: F401
+    from models.ai_assistant import AiAssistant  # noqa: F401
+    from models.ai_assistant_lead import AiAssistantLead  # noqa: F401
     from models.campaign import Campaign  # noqa: F401
     from models.campaign_follow_up import CampaignFollowUp  # noqa: F401
     from models.credit_settings import CreditSettings  # noqa: F401

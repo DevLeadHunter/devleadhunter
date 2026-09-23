@@ -4,6 +4,8 @@ Models package for Prospect Tool API.
 
 from models.acquisition_run import AcquisitionRun
 from models.acquisition_run_item import AcquisitionRunItem
+from models.ai_assistant import AiAssistant
+from models.ai_assistant_lead import AiAssistantLead
 from models.campaign import Campaign, CampaignStatus
 from models.credit_settings import CreditSettings
 from models.credit_transaction import CreditTransaction
@@ -42,6 +44,8 @@ from models.user import User
 __all__ = [
     "AcquisitionRun",
     "AcquisitionRunItem",
+    "AiAssistant",
+    "AiAssistantLead",
     "Campaign",
     "CampaignStatus",
     "CreditSettings",
