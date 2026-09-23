@@ -1,78 +1,76 @@
 <template>
-  <div class="a-page" :style="accentStyle">
-    <div v-if="pending" class="a-message">Chargement…</div>
-    <div v-else-if="!assistant" class="a-message a-message--error">Assistant introuvable ou inactif.</div>
-    <template v-else>
-      <header class="a-top">
-        <div class="a-logo">{{ assistant.business_name }}</div>
-        <span class="a-live"><span class="a-live__dot" />En ligne</span>
-      </header>
-      <main class="a-hero">
-        <p class="a-eyebrow">Assistant en ligne</p>
-        <h1>{{ assistant.business_name }}</h1>
-        <p class="a-lead">
-          Posez votre question à {{ assistant.assistant_name }}, en bas à droite. Réponse immédiate, 24h/24.
-        </p>
+  <div v-if="pending" class="ia ia--message" :style="accentStyle">Chargement…</div>
+  <div v-else-if="!assistant" class="ia ia--message ia--error" :style="accentStyle">
+    Assistant introuvable ou inactif.
+  </div>
+  <div v-else class="ia" :style="accentStyle">
+    <header class="ia__top">
+      <span class="ia__logo">{{ shortBusinessName }}</span>
+      <span class="ia__live"><span class="ia__live-dot" />En ligne</span>
+    </header>
 
-        <ul class="a-values">
-          <li class="a-value">
-            <span class="a-value__icon" aria-hidden="true">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6">
-                <circle cx="12" cy="12" r="9" />
-                <path d="M12 7v5l3 2" stroke-linecap="round" stroke-linejoin="round" />
-              </svg>
-            </span>
-            <div>
-              <p class="a-value__title">Disponible 24h/24</p>
-              <p class="a-value__text">
-                {{ assistant.assistant_name }} répond en quelques secondes, jour et nuit, même quand c'est fermé.
-              </p>
-            </div>
-          </li>
-          <li class="a-value">
-            <span class="a-value__icon" aria-hidden="true">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6">
-                <circle cx="12" cy="12" r="9" />
-                <path d="M3 12h18M12 3c2.5 2.5 2.5 15 0 18M12 3c-2.5 2.5-2.5 15 0 18" stroke-linecap="round" />
-              </svg>
-            </span>
-            <div>
-              <p class="a-value__title">Dans la langue du visiteur</p>
-              <p class="a-value__text">Il détecte la langue et répond en {{ languagesLabel }}.</p>
-            </div>
-          </li>
-          <li class="a-value">
-            <span class="a-value__icon" aria-hidden="true">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6">
-                <path
-                  d="M20 8v6a2 2 0 0 1-2 2H8l-4 3V6a2 2 0 0 1 2-2h8"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                />
-                <path d="M17 3v5M19.5 5.5h-5" stroke-linecap="round" />
-              </svg>
-            </span>
-            <div>
-              <p class="a-value__title">Capte vos clients</p>
-              <p class="a-value__text">Il note leurs coordonnées et leur besoin, et vous les recevez aussitôt.</p>
-            </div>
-          </li>
-        </ul>
+    <main class="ia__hero">
+      <div class="ia__halo" aria-hidden="true" />
+      <p class="ia__kicker">Assistant en ligne</p>
+      <h1 class="ia__title">{{ shortBusinessName }}<span class="ia__dot">.</span></h1>
+      <p class="ia__lede">
+        Posez votre question à <em>{{ assistant.assistant_name }}</em
+        >, en bas à droite. Réponse immédiate, 24&nbsp;h/24.
+      </p>
 
-        <p class="a-cue">Essayez : posez-lui une question, en bas à droite →</p>
-      </main>
-      <AssistantChat :config="assistant" />
-      <AssistantContactBanner
-        :slug="assistant.slug"
-        :business-name="assistant.business_name"
-        :owner-name="assistant.owner_name ?? null"
-        :owner-photo-url="assistant.owner_profile_photo_url ?? null"
-        :owner-phone="assistant.owner_contact_phone ?? null"
-        :owner-email="assistant.owner_contact_email ?? null"
-        :status="assistant.status"
-        :accent-color="assistant.accent_color"
-      />
-    </template>
+      <ul class="ia__values">
+        <li class="ia__value">
+          <span class="ia__value-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6">
+              <circle cx="12" cy="12" r="9" />
+              <path d="M12 7v5l3 2" stroke-linecap="round" stroke-linejoin="round" />
+            </svg>
+          </span>
+          <p class="ia__value-title">Disponible 24&nbsp;h/24</p>
+          <p class="ia__value-text">
+            {{ assistant.assistant_name }} répond en quelques secondes, jour et nuit, même quand c'est fermé.
+          </p>
+        </li>
+        <li class="ia__value">
+          <span class="ia__value-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6">
+              <circle cx="12" cy="12" r="9" />
+              <path d="M3 12h18M12 3c2.5 2.5 2.5 15 0 18M12 3c-2.5 2.5-2.5 15 0 18" stroke-linecap="round" />
+            </svg>
+          </span>
+          <p class="ia__value-title">Dans la langue du visiteur</p>
+          <p class="ia__value-text">Il détecte la langue et répond en {{ languagesLabel }}.</p>
+        </li>
+        <li class="ia__value">
+          <span class="ia__value-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6">
+              <path d="M20 8v6a2 2 0 0 1-2 2H8l-4 3V6a2 2 0 0 1 2-2h8" stroke-linecap="round" stroke-linejoin="round" />
+              <path d="M17 3v5M19.5 5.5h-5" stroke-linecap="round" />
+            </svg>
+          </span>
+          <p class="ia__value-title">Capte vos clients</p>
+          <p class="ia__value-text">Il note leurs coordonnées et leur besoin, et vous les recevez aussitôt.</p>
+        </li>
+      </ul>
+
+      <p class="ia__cue">Essayez : posez-lui une question, en bas à droite →</p>
+
+      <p v-if="ownerNameLabel" class="ia__signature">
+        Assistant réalisé pour {{ shortBusinessName }} par {{ ownerNameLabel }}, développeur web
+      </p>
+    </main>
+
+    <AssistantChat :config="assistant" />
+    <AssistantContactBanner
+      :slug="assistant.slug"
+      :business-name="assistant.business_name"
+      :owner-name="assistant.owner_name ?? null"
+      :owner-photo-url="assistant.owner_profile_photo_url ?? null"
+      :owner-phone="assistant.owner_contact_phone ?? null"
+      :owner-email="assistant.owner_contact_email ?? null"
+      :status="assistant.status"
+      :accent-color="assistant.accent_color"
+    />
   </div>
 </template>
 
@@ -118,6 +116,15 @@ const languagesLabel: ComputedRef<string> = computed((): string => {
   return `${names.slice(0, -1).join(', ')} et ${names[names.length - 1]}`
 })
 
+/** Short business name: the part before the descriptive « - » of the Maps listing. */
+const shortBusinessName: ComputedRef<string> = computed((): string => {
+  const name: string = assistant.value?.business_name ?? ''
+  return name.split(/\s+[-–—]\s+/)[0]?.trim() || name
+})
+
+/** Owner name for the signature line (empty when the owner set no name). */
+const ownerNameLabel: ComputedRef<string> = computed((): string => (assistant.value?.owner_name ?? '').trim())
+
 /** Bind the business's own accent colour to the page (falls back to the editorial gold). */
 const accentStyle: ComputedRef<Record<string, string>> = computed((): Record<string, string> => ({
   '--a-accent': assistant.value?.accent_color || '#a9793f',
@@ -136,157 +143,266 @@ useHead({
   link: [
     {
       rel: 'stylesheet',
-      href: 'https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600&family=Inter:wght@400;500;600&display=swap',
+      href: 'https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,600;1,9..144,400&family=Inter:wght@400;500;600&display=swap',
     },
   ],
 })
 </script>
 
 <style scoped>
-.a-page {
+.ia {
+  --ia-paper: #f7f3ec;
+  --ia-ink: #17130d;
+  --ia-ink-dim: #6d665b;
+  --ia-line: rgba(23, 19, 13, 0.12);
+  --ia-card: #fffdf9;
+  overflow-x: clip;
   min-height: 100dvh;
-  background: #f7f3ec;
-  color: #17130d;
-  font-family: 'Inter', system-ui, sans-serif;
   display: flex;
   flex-direction: column;
+  background: var(--ia-paper);
+  color: var(--ia-ink);
+  font-family: Inter, system-ui, sans-serif;
 }
-.a-message {
-  margin: auto;
-  color: #6d665b;
-  font-size: 0.95rem;
+
+.ia--message {
+  align-items: center;
+  justify-content: center;
+  font-size: 15px;
+  color: var(--ia-ink-dim);
 }
-.a-message--error {
+
+.ia--error {
   color: #9f3a2f;
 }
-.a-top {
+
+/* ── Top bar ────────────────────────────────────────────────────────────── */
+.ia__top {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 16px;
-  border-bottom: 1px solid rgba(23, 19, 13, 0.07);
-  padding: 22px 24px;
+  border-bottom: 1px solid var(--ia-line);
+  padding: 20px 24px;
 }
-.a-logo {
-  font-family: 'Fraunces', Georgia, serif;
+
+.ia__logo {
+  font-family: Fraunces, Georgia, serif;
   font-size: 1.4rem;
   font-weight: 600;
+  letter-spacing: -0.01em;
 }
-.a-live {
+
+.ia__live {
   display: inline-flex;
   align-items: center;
   gap: 7px;
   font-size: 0.75rem;
   font-weight: 500;
-  color: #6d665b;
+  color: var(--ia-ink-dim);
   white-space: nowrap;
 }
-.a-live__dot {
+
+.ia__live-dot {
   width: 7px;
   height: 7px;
   border-radius: 50%;
   background: var(--a-accent);
-  box-shadow: 0 0 0 0 var(--a-accent);
-  animation: a-pulse 2.4s ease-out infinite;
+  animation: ia-pulse 2.4s ease-out infinite;
 }
-@keyframes a-pulse {
+
+@keyframes ia-pulse {
   0% {
     box-shadow: 0 0 0 0 color-mix(in srgb, var(--a-accent) 45%, transparent);
   }
   70% {
     box-shadow: 0 0 0 7px transparent;
   }
-  100% {
-    box-shadow: 0 0 0 0 transparent;
-  }
 }
-.a-hero {
+
+/* ── Hero ───────────────────────────────────────────────────────────────── */
+.ia__hero {
+  position: relative;
   flex: 1;
   display: flex;
   flex-direction: column;
   justify-content: center;
-  max-width: 720px;
   width: 100%;
+  max-width: 760px;
   margin: 0 auto;
-  padding: 72px 24px;
+  padding: clamp(48px, 9vh, 104px) 24px 48px;
 }
-.a-eyebrow {
+
+.ia__halo {
+  position: absolute;
+  top: 8%;
+  left: -10%;
+  width: 60%;
+  height: 55%;
+  background: radial-gradient(closest-side, color-mix(in srgb, var(--a-accent) 15%, transparent), transparent 72%);
+  pointer-events: none;
+  z-index: 0;
+}
+
+.ia__hero > :not(.ia__halo) {
+  position: relative;
+  z-index: 1;
+}
+
+.ia__kicker {
   margin: 0;
-  font-size: 0.72rem;
-  letter-spacing: 0.2em;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 11.5px;
+  font-weight: 600;
+  letter-spacing: 0.24em;
   text-transform: uppercase;
-  color: #a9793f;
+  color: var(--ia-ink-dim);
 }
-.a-hero h1 {
-  font-family: 'Fraunces', Georgia, serif;
-  font-weight: 500;
-  font-size: clamp(2.4rem, 6vw, 3.8rem);
-  line-height: 1.04;
-  margin: 16px 0 18px;
+
+.ia__kicker::before {
+  content: '';
+  width: 26px;
+  height: 2px;
+  background: var(--a-accent);
+}
+
+.ia__title {
+  margin: 20px 0 0;
+  font-family: Fraunces, Georgia, serif;
+  font-weight: 600;
+  font-size: clamp(38px, 7vw, 64px);
+  line-height: 1.02;
+  letter-spacing: -0.02em;
   text-wrap: balance;
 }
-.a-lead {
-  margin: 0;
-  font-size: 1.06rem;
-  color: #6d665b;
-  max-width: 46ch;
+
+.ia__dot {
+  color: var(--a-accent);
 }
-.a-values {
+
+.ia__lede {
+  margin: 20px 0 0;
+  max-width: 48ch;
+  font-size: clamp(15px, 2.2vw, 17px);
+  line-height: 1.6;
+  color: var(--ia-ink-dim);
+}
+
+.ia__lede em {
+  font-style: normal;
+  font-weight: 600;
+  color: var(--ia-ink);
+}
+
+/* ── Value cards ────────────────────────────────────────────────────────── */
+.ia__values {
   list-style: none;
-  margin: 44px 0 0;
+  margin: clamp(36px, 6vh, 52px) 0 0;
   padding: 0;
   display: grid;
-  gap: 22px 32px;
+  gap: 14px;
   grid-template-columns: repeat(3, minmax(0, 1fr));
 }
-.a-value {
-  display: flex;
-  gap: 12px;
-  align-items: flex-start;
+
+.ia__value {
+  border: 1px solid var(--ia-line);
+  border-radius: 16px;
+  background: var(--ia-card);
+  padding: 18px;
+  box-shadow: 0 12px 30px -24px rgba(23, 19, 13, 0.4);
 }
-.a-value__icon {
-  flex-shrink: 0;
+
+.ia__value-icon {
   display: grid;
   place-items: center;
-  width: 38px;
-  height: 38px;
-  border-radius: 11px;
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
   color: var(--a-accent);
-  background: color-mix(in srgb, var(--a-accent) 12%, #fff);
+  background: color-mix(in srgb, var(--a-accent) 13%, #fff);
 }
-.a-value__icon svg {
-  width: 20px;
-  height: 20px;
+
+.ia__value-icon svg {
+  width: 21px;
+  height: 21px;
 }
-.a-value__title {
-  margin: 2px 0 4px;
-  font-size: 0.92rem;
+
+.ia__value-title {
+  margin: 14px 0 5px;
+  font-size: 0.95rem;
   font-weight: 600;
-  color: #17130d;
+  color: var(--ia-ink);
 }
-.a-value__text {
+
+.ia__value-text {
   margin: 0;
   font-size: 0.86rem;
   line-height: 1.5;
-  color: #6d665b;
+  color: var(--ia-ink-dim);
 }
-.a-cue {
-  margin: 40px 0 0;
-  font-size: 0.9rem;
+
+.ia__cue {
+  margin: clamp(30px, 5vh, 44px) 0 0;
+  font-size: 0.92rem;
   font-weight: 500;
   color: var(--a-accent);
 }
+
+.ia__signature {
+  margin: clamp(36px, 7vh, 64px) 0 0;
+  font-size: 12.5px;
+  color: var(--ia-ink-dim);
+}
+
+/* ── Entrance animation ─────────────────────────────────────────────────── */
+@media (prefers-reduced-motion: no-preference) {
+  .ia__kicker,
+  .ia__title,
+  .ia__lede,
+  .ia__values,
+  .ia__cue,
+  .ia__signature {
+    animation-name: ia-rise;
+    animation-duration: 0.55s;
+    animation-timing-function: cubic-bezier(0.2, 0.7, 0.3, 1);
+    animation-fill-mode: both;
+  }
+  .ia__title {
+    animation-delay: 0.05s;
+  }
+  .ia__lede {
+    animation-delay: 0.1s;
+  }
+  .ia__values {
+    animation-delay: 0.16s;
+  }
+  .ia__cue {
+    animation-delay: 0.24s;
+  }
+  .ia__signature {
+    animation-delay: 0.3s;
+  }
+}
+
+@keyframes ia-rise {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
 @media (max-width: 640px) {
-  .a-hero {
-    padding: 40px 24px 132px;
+  .ia__hero {
+    padding: 36px 22px 136px;
   }
-  .a-values {
+  .ia__values {
     grid-template-columns: 1fr;
-    gap: 18px;
-    margin-top: 32px;
-  }
-  .a-cue {
-    margin-top: 28px;
   }
 }
 </style>
