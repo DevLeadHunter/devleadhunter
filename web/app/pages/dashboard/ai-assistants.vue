@@ -100,6 +100,19 @@
                 Personnaliser
               </button>
               <button
+                type="button"
+                class="btn-secondary h-8 text-xs"
+                :disabled="regeneratingId === assistant.id"
+                @click="regenerateAssistant(assistant)"
+              >
+                <UIcon
+                  :name="regeneratingId === assistant.id ? 'i-lucide-loader-circle' : 'i-lucide-refresh-cw'"
+                  class="mr-1.5 h-3.5 w-3.5"
+                  :class="{ 'animate-spin': regeneratingId === assistant.id }"
+                />
+                Régénérer
+              </button>
+              <button
                 v-if="confirmingId !== assistant.id"
                 type="button"
                 class="text-muted ml-auto flex h-8 cursor-pointer items-center gap-1 rounded-lg px-2 text-xs transition-colors hover:text-[var(--app-red)]"
@@ -272,6 +285,7 @@ const assistants: Ref<AiAssistantSummary[]> = ref([])
 const leads: Ref<AiAssistantLead[]> = ref([])
 const isLoading: Ref<boolean> = ref(true)
 const confirmingId: Ref<number | null> = ref(null)
+const regeneratingId: Ref<number | null> = ref(null)
 
 /** The assistant being customized (null = the modal is closed). */
 const editing: Ref<AiAssistantSummary | null> = ref(null)
@@ -367,6 +381,27 @@ async function removeAssistant(assistant: AiAssistantSummary): Promise<void> {
     toast.success('Assistant supprimé.')
   } catch {
     toast.error("Suppression impossible pour l'instant.")
+  }
+}
+
+/**
+ * Rebuild an assistant's knowledge from its prospect's latest data, keeping its branding and link.
+ * @param assistant - The assistant to regenerate.
+ * @returns A promise resolved once regenerated and the card refreshed.
+ */
+async function regenerateAssistant(assistant: AiAssistantSummary): Promise<void> {
+  if (regeneratingId.value !== null) return
+  regeneratingId.value = assistant.id
+  try {
+    const updated: AiAssistantSummary = await AiAssistantService.regenerate(assistant.id)
+    assistants.value = assistants.value.map(
+      (item: AiAssistantSummary): AiAssistantSummary => (item.id === updated.id ? updated : item),
+    )
+    toast.success('Assistant régénéré depuis les dernières données du prospect.')
+  } catch {
+    toast.error('Régénération impossible pour le moment.')
+  } finally {
+    regeneratingId.value = null
   }
 }
 
