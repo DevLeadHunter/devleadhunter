@@ -28,6 +28,7 @@ class SmsVariables:
     DEMO_LINK = "lien_demo"
     ASSISTANT_LINK = "lien_assistant"
     VIDEO_LINK = "lien_video"
+    ASSISTANT_VIDEO_LINK = "lien_video_assistant"
     OLD_WEBSITE = "ancien_site"
     PRICE = "prix"
     SIGNATURE = "signature"
@@ -98,6 +99,7 @@ class SmsVariables:
             cls.DEMO_LINK: cls.as_sms_link(demo_url),
             cls.ASSISTANT_LINK: cls.as_sms_link(EmailVariables.resolve_assistant_url(db, prospect.id)),
             cls.VIDEO_LINK: cls.as_sms_link(video_url),
+            cls.ASSISTANT_VIDEO_LINK: cls.as_sms_link(EmailVariables.resolve_assistant_video(db, prospect.id)[0]),
             cls.OLD_WEBSITE: EmailVariables.display_website(prospect.website),
             cls.PRICE: PricingService.format_price(sale_price_cents) if sale_price_cents is not None else "",
             cls.SIGNATURE: cls.signature_for(user.name if user else None),

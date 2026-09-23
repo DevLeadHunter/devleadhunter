@@ -40,6 +40,8 @@ class EmailVariables:
     ASSISTANT_LINK = "lien_assistant"
     VIDEO_LINK = "lien_video"
     VIDEO_THUMBNAIL = "vignette_video"
+    ASSISTANT_VIDEO_LINK = "lien_video_assistant"
+    ASSISTANT_VIDEO_THUMBNAIL = "vignette_video_assistant"
     OLD_WEBSITE = "ancien_site"
     PRICE = "prix"
     EXPIRY_DATE = "date_expiration"
@@ -237,6 +239,38 @@ class EmailVariables:
         url: str = cls.resolve_assistant_url(db, prospect_id)
         return cls.build_demo_link_html(url) if url else ""
 
+    @classmethod
+    def resolve_assistant_video(cls, db: Session, prospect_id: int) -> tuple[str, str]:
+        """
+        Resolve the prospect's assistant prospection video: (player page URL, thumbnail URL).
+
+        Empty strings when the prospect has no active assistant or its video is not ready — a
+        template using ``{lien_video_assistant}`` / ``{vignette_video_assistant}`` then renders
+        nothing there (the campaign guards prevent sending a video-only template with no video).
+
+        Args:
+            db: Active database session.
+            prospect_id: Prospect the assistant belongs to.
+
+        Returns:
+            The (video page URL, thumbnail URL) pair, or ("", "").
+        """
+        from enums.demo_video_status import DemoVideoStatus
+        from services.assistant_video_service import public_thumbnail_url, video_page_url
+
+        assistant: AiAssistant | None = (
+            db.execute(
+                select(AiAssistant)
+                .where(AiAssistant.prospect_id == prospect_id, AiAssistant.status == AiAssistantStatus.ACTIVE.value)
+                .order_by(AiAssistant.created_at.desc())
+            )
+            .scalars()
+            .first()
+        )
+        if assistant is None or assistant.video_status != DemoVideoStatus.READY.value:
+            return "", ""
+        return video_page_url(assistant.slug), public_thumbnail_url(assistant.slug, assistant.video_generated_at)
+
     @staticmethod
     def display_website(url: str | None) -> str:
         """
@@ -315,6 +349,7 @@ class EmailVariables:
             The variable name to value map, ready for template substitution.
         """
         first, last, gender = cls.resolved_contact(db, prospect.id)
+        assistant_video_link, assistant_video_thumbnail = cls.resolve_assistant_video(db, prospect.id)
         return {
             cls.SALUTATION: build_greeting(first, last, gender),
             cls.FIRST_NAME: first or "",
@@ -328,6 +363,10 @@ class EmailVariables:
             cls.ASSISTANT_LINK: cls.resolve_assistant_link(db, prospect.id),
             cls.VIDEO_LINK: video_link,
             cls.VIDEO_THUMBNAIL: cls.build_video_thumbnail_html(video_link, video_thumbnail_url),
+            cls.ASSISTANT_VIDEO_LINK: assistant_video_link,
+            cls.ASSISTANT_VIDEO_THUMBNAIL: cls.build_video_thumbnail_html(
+                assistant_video_link, assistant_video_thumbnail
+            ),
             cls.OLD_WEBSITE: cls.display_website(prospect.website),
             cls.PRICE: PricingService.format_price(sale_price_cents) if sale_price_cents is not None else "",
             cls.EXPIRY_DATE: cls.resolve_expiry_date(db, demo_link),

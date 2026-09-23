@@ -98,6 +98,20 @@ export class EmailVariables {
       example: '[vignette cliquable de la vidéo]',
     },
     {
+      key: 'lien_video_assistant',
+      token: '{lien_video_assistant}',
+      label: 'Lien vidéo assistant',
+      description: 'URL de la page vidéo de l’assistant IA (vide sans vidéo assistant générée).',
+      example: 'https://demo.dibodev.fr/va/le-gourmet',
+    },
+    {
+      key: 'vignette_video_assistant',
+      token: '{vignette_video_assistant}',
+      label: 'Vignette vidéo assistant',
+      description: 'Bloc image cliquable de la vidéo de l’assistant IA (HTML prêt à coller, renvoie au player).',
+      example: '[vignette cliquable de la vidéo assistant]',
+    },
+    {
       key: 'ancien_site',
       token: '{ancien_site}',
       label: 'Ancien site',

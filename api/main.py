@@ -167,6 +167,7 @@ async def startup_event() -> None:
     # deploy) orphans any site left mid-render — request_generation then refuses to
     # restart it and the dashboard polls it forever. Reset those to failed at boot.
     from core.database import SessionLocal
+    from services.assistant_video_service import assistant_video_service
     from services.demo_video_service import demo_video_service
 
     reconcile_db = SessionLocal()
@@ -174,6 +175,11 @@ async def startup_event() -> None:
         reset = demo_video_service.reconcile_orphaned(reconcile_db)
         if reset:
             logging.getLogger(__name__).info("Reset %d orphaned demo video generation(s) at startup", reset)
+        reset_assistant = assistant_video_service.reconcile_orphaned(reconcile_db)
+        if reset_assistant:
+            logging.getLogger(__name__).info(
+                "Reset %d orphaned assistant video generation(s) at startup", reset_assistant
+            )
     finally:
         reconcile_db.close()
 
