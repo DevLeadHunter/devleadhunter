@@ -335,7 +335,18 @@
                 <p class="text-[10px] font-semibold tracking-wider text-[var(--app-ink-soft)] uppercase">
                   Assistant IA
                 </p>
+                <a
+                  v-if="prospectAssistant"
+                  :href="assistantDemoUrl"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  class="btn-secondary text-xs"
+                >
+                  <UIcon name="i-lucide-external-link" class="h-3.5 w-3.5" />
+                  Ouvrir
+                </a>
                 <button
+                  v-else
                   type="button"
                   class="btn-secondary text-xs"
                   :disabled="isGeneratingAssistant"
@@ -550,8 +561,17 @@
                 <span class="truncate">Vendu</span>
               </button>
             </div>
+            <a
+              v-if="isAssistantModule && prospectAssistant"
+              :href="assistantDemoUrl"
+              target="_blank"
+              rel="noopener noreferrer"
+              class="btn-primary w-full"
+            >
+              <UIcon name="i-lucide-external-link" class="mr-1.5 h-4 w-4" />Ouvrir l'assistant
+            </a>
             <button
-              v-if="isAssistantModule"
+              v-else-if="isAssistantModule"
               class="btn-primary w-full"
               :disabled="isGeneratingAssistant"
               @click="handleGenerateAssistant"
@@ -667,6 +687,7 @@ const isSaving: Ref<boolean> = ref(false)
 const isReserving: Ref<boolean> = ref(false)
 const isAuditing: Ref<boolean> = ref(false)
 const isGeneratingAssistant: Ref<boolean> = ref(false)
+const prospectAssistant: Ref<AiAssistantSummary | null> = ref(null)
 const isLoadingDemoSite: Ref<boolean> = ref(false)
 const demoSite: Ref<DemoSite | null> = ref(null)
 const deleteConfirmModal: Ref<{ open: () => void } | null> = ref(null)
@@ -734,6 +755,20 @@ async function loadDemoSite(): Promise<void> {
     // Non-critical — the footer falls back to the generation call to action.
   } finally {
     isLoadingDemoSite.value = false
+  }
+}
+
+/**
+ * Find the AI assistant already generated for this prospect, if any.
+ * @returns A promise resolved once the lookup completes.
+ */
+async function loadProspectAssistant(): Promise<void> {
+  if (!props.prospect) return
+  prospectAssistant.value = null
+  try {
+    prospectAssistant.value = await AiAssistantService.getForProspect(props.prospect.id)
+  } catch {
+    // Non-critical — the footer falls back to the generation call to action.
   }
 }
 
@@ -823,7 +858,8 @@ async function handleGenerateAssistant(): Promise<void> {
   isGeneratingAssistant.value = true
   try {
     const assistant: AiAssistantSummary = await AiAssistantService.create(props.prospect.id)
-    toast.success(`Assistant généré — ${assistant.demo_url}`)
+    prospectAssistant.value = assistant
+    toast.success('Assistant IA généré — prêt à tester et à envoyer.')
   } catch (err: unknown) {
     toast.error(err instanceof Error ? err.message : 'La génération a échoué')
   } finally {
@@ -863,6 +899,13 @@ const editForm: Ref<ProspectEditForm> = ref({
 /** Country line shown under the city — empty for France so French cards keep their layout. */
 const countrySuffix: ComputedRef<string> = computed((): string => ProspectCountries.suffix(props.prospect?.country))
 
+/** The prospect's assistant demo URL, marked internal so previewing it never pollutes its analytics. */
+const assistantDemoUrl: ComputedRef<string> = computed((): string => {
+  const url: string = prospectAssistant.value?.demo_url ?? ''
+  if (!url) return ''
+  return url.includes('?') ? `${url}&internal=1` : `${url}?internal=1`
+})
+
 watch(
   () => [props.open, props.prospect?.id],
   ([open]: (boolean | number | undefined)[]) => {
@@ -875,6 +918,7 @@ watch(
     }
     if (props.startInEdit) startEdit()
     void loadDemoSite()
+    void loadProspectAssistant()
   },
   { immediate: true },
 )
