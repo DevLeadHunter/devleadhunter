@@ -75,6 +75,8 @@ _VIDEO_BUILD_STEP_MESSAGES: dict[str, str] = {
     "site_capture": "Capture du site (défilement)…",
     "editor_capture": "Séquence éditeur Storyblok…",
     "background_assemble": "Assemblage du fond…",
+    "widget_capture": "Capture de l'assistant (réponse en direct)…",
+    "widget_assemble": "Assemblage de la séquence assistant…",
     "montage": "Montage final (webcam + habillage)…",
     "done": "Vidéo prête.",
 }
@@ -625,6 +627,123 @@ async def _run_video_build(
     except Exception as exc:  # a detached task must never die silently
         shutil.rmtree(work_dir, ignore_errors=True)
         logger.exception("Video build crashed for slug=%s", slug)
+        _set_video_build_progress(slug, "error", f"Erreur inattendue : {exc}")
+
+
+@app.post("/video/build-assistant-full", dependencies=[Depends(require_sidecar_token)])
+async def video_build_assistant_full(
+    payload: str = Form(...),
+    presenter: UploadFile = File(...),
+    presenter_photo: UploadFile | None = File(default=None),
+) -> object:
+    """
+    START the complete desktop assistant-video build (widget capture + montage) and return at once.
+
+    Same detached contract as ``/video/build-full`` (a single multi-minute response gets killed by the
+    webview): returns ``{"started": true}``, the app polls ``/video/build-progress`` until
+    ``done``/``error``, then fetches the file from ``/video/build-result``. Unlike the site build there
+    is no Storyblok session to resolve — the assistant widget is public, so this never needs a login.
+    """
+    import json
+    import tempfile
+    from pathlib import Path
+
+    data = json.loads(payload)
+    slug = str(data["slug"])
+    _discard_video_build_result(slug)
+    _set_video_build_progress(slug, "preparing")
+    work_dir = Path(tempfile.mkdtemp(prefix=f"assistant-video-full-{slug}-"))
+    presenter_path = work_dir / "presenter.mp4"
+    # The upload's temp file dies with this request — materialise it before detaching.
+    presenter_path.write_bytes(await presenter.read())
+    presenter_photo_path: Path | None = None
+    if presenter_photo is not None:
+        photo_bytes = await presenter_photo.read()
+        if photo_bytes:
+            presenter_photo_path = work_dir / "presenter-photo.jpg"
+            presenter_photo_path.write_bytes(photo_bytes)
+
+    task = asyncio.create_task(_run_assistant_video_build(data, slug, work_dir, presenter_photo_path))
+    _VIDEO_BUILD_TASKS.add(task)
+    task.add_done_callback(_VIDEO_BUILD_TASKS.discard)
+    return {"started": True, "slug": slug}
+
+
+async def _run_assistant_video_build(
+    data: dict,
+    slug: str,
+    work_dir: Path,
+    presenter_photo_path: Path | None = None,
+) -> None:
+    """
+    Detached build: capture the widget answering, montage, store the result for pickup.
+
+    Progress goes to ``_VIDEO_BUILD_PROGRESS`` (polled by the app's modal) and the finished zip
+    (``video.mp4`` + ``thumbnail.jpg``) to ``_VIDEO_BUILD_RESULTS`` (served once by /video/build-result).
+    """
+    import zipfile
+
+    from services import video_montage
+    from services.assistant_widget_clip_service import AssistantWidgetClipError, assistant_widget_clip_service
+
+    middle_path = work_dir / "widget.mp4"
+    presenter_path = work_dir / "presenter.mp4"
+    screenshot_path = work_dir / "top.png"
+    output_video = work_dir / "video.mp4"
+    output_thumb = work_dir / "thumbnail.jpg"
+    bundle_path = work_dir / f"{slug}-video.zip"
+    total_seconds = float(data["total_seconds"])
+    try:
+        await asyncio.to_thread(
+            assistant_widget_clip_service.build_widget_clip,
+            demo_url=data["demo_url"],
+            output_path=middle_path,
+            screenshot_path=screenshot_path,
+            executable_path=_chrome_path or find_installed_chrome(),
+            total_seconds=total_seconds,
+            out_width=int(data.get("out_width", 1280)),
+            out_height=int(data.get("out_height", 720)),
+            fps=int(data.get("fps", 30)),
+            on_progress=lambda step: _set_video_build_progress(slug, step),
+        )
+        _set_video_build_progress(slug, "montage")
+        await asyncio.to_thread(
+            video_montage.compose_final,
+            ffmpeg_path=_FFMPEG_PATH,
+            presenter_duration=float(data["presenter_duration"]),
+            presenter_intro=float(data["presenter_intro"]),
+            presenter_outro=float(data["presenter_outro"]),
+            presenter_path=presenter_path,
+            capture_path=middle_path,
+            scroll_offset=0.0,
+            scroll_seconds=total_seconds,
+            first_name=data.get("first_name") or None,
+            screenshot_path=screenshot_path,
+            output_video=output_video,
+            output_thumbnail=output_thumb,
+            presenter_photo_path=presenter_photo_path,
+            # Desktop: let ffmpeg use every idle core (the below-normal priority keeps the PC responsive).
+            threads=video_montage.FFMPEG_THREADS_AUTO,
+        )
+        with zipfile.ZipFile(bundle_path, "w", zipfile.ZIP_STORED) as archive:
+            archive.write(output_video, "video.mp4")
+            archive.write(output_thumb, "thumbnail.jpg")
+        _VIDEO_BUILD_RESULTS[slug] = {
+            "path": bundle_path,
+            "media_type": "application/zip",
+            "filename": f"{slug}-video.zip",
+            "work_dir": work_dir,
+        }
+        _set_video_build_progress(slug, "done")
+    except AssistantWidgetClipError as exc:
+        shutil.rmtree(work_dir, ignore_errors=True)
+        _set_video_build_progress(slug, "error", str(exc))
+    except video_montage.VideoMontageError as exc:
+        shutil.rmtree(work_dir, ignore_errors=True)
+        _set_video_build_progress(slug, "error", str(exc))
+    except Exception as exc:  # a detached task must never die silently
+        shutil.rmtree(work_dir, ignore_errors=True)
+        logger.exception("Assistant video build crashed for slug=%s", slug)
         _set_video_build_progress(slug, "error", f"Erreur inattendue : {exc}")
 
 

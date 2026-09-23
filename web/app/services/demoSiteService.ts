@@ -434,13 +434,15 @@ export class DemoSiteService {
    *
    * The clip is stored on R2 and streamed by an authed endpoint; the sidecar has
    * no auth, so the app fetches it and forwards the bytes.
+   * @param module - Which presenter clip to fetch (`websites` by default, `ai-assistant` for the assistant video).
    * @returns The presenter mp4 blob.
    * @throws When no presenter clip is available.
    */
-  static async fetchPresenterVideoFile(): Promise<Blob> {
+  static async fetchPresenterVideoFile(module: string = 'websites'): Promise<Blob> {
     const userStore: ReturnType<typeof useUserStore> = useUserStore()
     const config: ReturnType<typeof useRuntimeConfig> = useRuntimeConfig()
-    const response: Response = await fetch(`${config.public.apiBase}/api/v1/settings/presenter-video/file`, {
+    const query: string = `?module=${encodeURIComponent(module)}`
+    const response: Response = await fetch(`${config.public.apiBase}/api/v1/settings/presenter-video/file${query}`, {
       headers: userStore.token ? { Authorization: `Bearer ${userStore.token}` } : {},
     })
     if (!response.ok) {

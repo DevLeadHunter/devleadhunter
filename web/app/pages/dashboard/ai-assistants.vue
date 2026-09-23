@@ -330,6 +330,7 @@
 import type { ComputedRef, Ref } from 'vue'
 import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { AiAssistantService } from '~/services/aiAssistantService'
+import { AssistantSidecarService } from '~/services/assistantSidecarService'
 import { ProspectsService } from '~/services/prospectsService'
 import type {
   AiAssistantEditForm,
@@ -536,10 +537,23 @@ async function generateVideo(assistant: AiAssistantSummary): Promise<void> {
   if (videoBusyId.value !== null) return
   videoBusyId.value = assistant.id
   try {
+    // Desktop-first (like the site video): build the whole clip on the user's PC — the sidecar records
+    // the widget answering and montages it with the bundled ffmpeg, sparing the shared VPS. Off the
+    // desktop (web build) or on any local failure, fall back to the server-side generation.
+    const build: Awaited<ReturnType<typeof AssistantSidecarService.buildFullVideo>> =
+      await AssistantSidecarService.buildFullVideo(assistant.id)
+    if (build.status === 'done' && build.assistant) {
+      patchAssistant(build.assistant)
+      toast.success('Vidéo générée sur votre ordinateur ✓')
+      return
+    }
+    if (build.status === 'failed') {
+      toast.info('Génération locale indisponible — bascule sur le serveur…')
+    }
+
+    // 'unavailable' (web build, no sidecar) or 'failed' → server-side generation (memory-guarded).
     const updated: AiAssistantSummary = await AiAssistantService.generateVideo(assistant.id)
-    assistants.value = assistants.value.map(
-      (item: AiAssistantSummary): AiAssistantSummary => (item.id === updated.id ? updated : item),
-    )
+    patchAssistant(updated)
     toast.success('Génération de la vidéo lancée.')
     startVideoPolling()
   } catch {
@@ -547,6 +561,16 @@ async function generateVideo(assistant: AiAssistantSummary): Promise<void> {
   } finally {
     videoBusyId.value = null
   }
+}
+
+/**
+ * Replace one assistant in the list with an updated copy (in place).
+ * @param updated - The assistant whose card should reflect the new state.
+ */
+function patchAssistant(updated: AiAssistantSummary): void {
+  assistants.value = assistants.value.map(
+    (item: AiAssistantSummary): AiAssistantSummary => (item.id === updated.id ? updated : item),
+  )
 }
 
 /**
