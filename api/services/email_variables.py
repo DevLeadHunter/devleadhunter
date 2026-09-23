@@ -44,6 +44,7 @@ class EmailVariables:
     ASSISTANT_VIDEO_THUMBNAIL = "vignette_video_assistant"
     OLD_WEBSITE = "ancien_site"
     PRICE = "prix"
+    PRICE_ASSISTANT = "prix_assistant"
     EXPIRY_DATE = "date_expiration"
 
     _FRENCH_MONTHS: tuple[str, ...] = (
@@ -330,6 +331,7 @@ class EmailVariables:
         video_link: str = "",
         video_thumbnail_url: str = "",
         sale_price_cents: int | None = None,
+        assistant_monthly_price_cents: int | None = None,
     ) -> dict[str, str]:
         """
         Build the full substitution map for a prospect's emails.
@@ -370,5 +372,10 @@ class EmailVariables:
             ),
             cls.OLD_WEBSITE: cls.display_website(prospect.website),
             cls.PRICE: PricingService.format_price(sale_price_cents) if sale_price_cents is not None else "",
+            cls.PRICE_ASSISTANT: (
+                PricingService.format_price(assistant_monthly_price_cents)
+                if assistant_monthly_price_cents is not None
+                else ""
+            ),
             cls.EXPIRY_DATE: cls.resolve_expiry_date(db, demo_link),
         }

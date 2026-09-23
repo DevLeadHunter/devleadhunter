@@ -32,6 +32,7 @@ from models.email_template import EmailTemplate
 from models.prospect_db import ProspectDB
 from models.sms_reply import SmsReply
 from services.activity_log_service import CATEGORY_CAMPAIGN, STATUS_INFO, activity_log_service
+from services.assistant_pricing_service import AssistantPricingService
 from services.contact_lock_service import MODULE_AI_ASSISTANT, MODULE_WEBSITES, contact_lock_service
 from services.email_sending_service import EmailSendingService
 from services.email_variables import EmailVariables
@@ -1144,7 +1145,13 @@ class CampaignQueueService:
         # the resolved decision-maker — never the company name).
         sale_price_cents: int = PricingService.sale_price_cents(self.db, item.user_id)
         variables: dict[str, str] = EmailVariables.build_for_prospect(
-            self.db, prospect, demo_link, video_link, video_thumbnail_url, sale_price_cents=sale_price_cents
+            self.db,
+            prospect,
+            demo_link,
+            video_link,
+            video_thumbnail_url,
+            sale_price_cents=sale_price_cents,
+            assistant_monthly_price_cents=AssistantPricingService.monthly_price_cents(self.db, item.user_id),
         )
 
         email_service = EmailSendingService(self.db)
@@ -1365,6 +1372,7 @@ class CampaignQueueService:
             video_link,
             video_thumbnail_url,
             sale_price_cents=PricingService.sale_price_cents(self.db, campaign.user_id),
+            assistant_monthly_price_cents=AssistantPricingService.monthly_price_cents(self.db, campaign.user_id),
         )
 
         email_service = EmailSendingService(self.db)

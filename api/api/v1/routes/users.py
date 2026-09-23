@@ -34,6 +34,8 @@ def _serialize_user(db: Session, user: User) -> UserResponse:
         updated_at=user.updated_at,
         onboarding_completed=user.onboarding_completed,
         site_sale_price_cents=user.site_sale_price_cents,
+        assistant_monthly_price_cents=user.assistant_monthly_price_cents,
+        assistant_annual_free_months=user.assistant_annual_free_months,
         credit_balance=balance,
         credits_available=balance,
         credits_consumed=credit_service.get_user_credits_consumed(db, user.id),

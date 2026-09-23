@@ -202,6 +202,8 @@ export type User = {
   credits_consumed?: number | null
   onboarding_completed?: boolean
   site_sale_price_cents?: number
+  assistant_monthly_price_cents?: number
+  assistant_annual_free_months?: number
 }
 
 export type LoginCredentials = {
@@ -227,6 +229,8 @@ export type ProfileUpdate = {
   contact_phone?: string | null
   contact_email?: string | null
   site_sale_price_cents?: number
+  assistant_monthly_price_cents?: number
+  assistant_annual_free_months?: number
 }
 
 export type ApiResponse<T> = {

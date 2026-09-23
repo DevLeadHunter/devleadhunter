@@ -149,6 +149,8 @@ MIGRATION_MODULES: list[tuple[str, str]] = [
     ("add_presenter_video_module", "migrations.add_presenter_video_module"),
     ("seed_assistant_email_templates", "migrations.seed_assistant_email_templates"),
     ("seed_assistant_franc_email_template", "migrations.seed_assistant_franc_email_template"),
+    ("add_user_assistant_pricing", "migrations.add_user_assistant_pricing"),
+    ("fix_assistant_franc_price_variable", "migrations.fix_assistant_franc_price_variable"),
 ]
 
 # Modules of this package that are not migrations and must not be registered.

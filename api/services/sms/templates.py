@@ -211,7 +211,7 @@ SMS_TEMPLATE_LIBRARY: list[SmsTemplate] = [
         key="assistant-prix-cash",
         name="Assistant IA - le prix cash",
         category=SmsTemplateCategory.FOLLOW_UP,
-        body="{salutation}, l'assistant envoyé par email est prêt : {lien_assistant} {prix}, sans engagement. {signature}",
+        body="{salutation}, l'assistant envoyé par email est prêt : {lien_assistant} {prix_assistant}/mois, sans engagement. {signature}",
     ),
 ]
 

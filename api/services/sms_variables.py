@@ -12,6 +12,7 @@ from sqlalchemy.orm import Session
 
 from models.prospect_db import ProspectDB
 from models.user import User
+from services.assistant_pricing_service import AssistantPricingService
 from services.decision_maker.greeting import build_greeting
 from services.email_variables import EmailVariables
 from services.pricing_service import PricingService
@@ -31,6 +32,7 @@ class SmsVariables:
     ASSISTANT_VIDEO_LINK = "lien_video_assistant"
     OLD_WEBSITE = "ancien_site"
     PRICE = "prix"
+    PRICE_ASSISTANT = "prix_assistant"
     SIGNATURE = "signature"
 
     @staticmethod
@@ -102,5 +104,9 @@ class SmsVariables:
             cls.ASSISTANT_VIDEO_LINK: cls.as_sms_link(EmailVariables.resolve_assistant_video(db, prospect.id)[0]),
             cls.OLD_WEBSITE: EmailVariables.display_website(prospect.website),
             cls.PRICE: PricingService.format_price(sale_price_cents) if sale_price_cents is not None else "",
+            # Resolved from user_id (the assistant monthly price is per-user, like {prix}).
+            cls.PRICE_ASSISTANT: AssistantPricingService.format_price(
+                AssistantPricingService.monthly_price_cents(db, user_id)
+            ),
             cls.SIGNATURE: cls.signature_for(user.name if user else None),
         }

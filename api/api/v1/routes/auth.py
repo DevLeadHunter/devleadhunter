@@ -55,6 +55,8 @@ def _build_user_response(db: Session, user: User) -> UserResponse:
         updated_at=user.updated_at,
         onboarding_completed=user.onboarding_completed,
         site_sale_price_cents=user.site_sale_price_cents,
+        assistant_monthly_price_cents=user.assistant_monthly_price_cents,
+        assistant_annual_free_months=user.assistant_annual_free_months,
         credit_balance=balance,
         credits_available=balance,
         credits_consumed=credit_service.get_user_credits_consumed(db, user.id),
@@ -207,6 +209,10 @@ async def update_current_user_info(
         current_user.email = user_data.email
     if user_data.site_sale_price_cents is not None:
         current_user.site_sale_price_cents = user_data.site_sale_price_cents
+    if user_data.assistant_monthly_price_cents is not None:
+        current_user.assistant_monthly_price_cents = user_data.assistant_monthly_price_cents
+    if user_data.assistant_annual_free_months is not None:
+        current_user.assistant_annual_free_months = user_data.assistant_annual_free_months
     if user_data.company_name is not None:
         current_user.company_name = user_data.company_name.strip() or None
     if user_data.company_website_url is not None:

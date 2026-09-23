@@ -70,6 +70,12 @@ class UserUpdate(BaseModel):
     name: str | None = Field(None, min_length=1, max_length=255, description="User's full name")
     email: EmailStr | None = Field(None, description="User's email address")
     site_sale_price_cents: int | None = Field(None, ge=0, description="Website sale price in cents (default 500 €)")
+    assistant_monthly_price_cents: int | None = Field(
+        None, ge=0, description="AI-assistant monthly subscription price in cents (default 29 €)"
+    )
+    assistant_annual_free_months: int | None = Field(
+        None, ge=0, le=11, description="Months offered on the assistant annual plan (default 2 → 290 €/an)"
+    )
     company_name: str | None = Field(None, max_length=255, description="Optional business name")
     company_website_url: str | None = Field(None, max_length=500, description="Optional business website URL")
     contact_phone: str | None = Field(None, max_length=30, description="Optional public phone (demo contact banner)")
@@ -108,6 +114,12 @@ class UserResponse(UserBase):
         default=False, description="Whether the post-signup setup wizard (/configuration) has been completed"
     )
     site_sale_price_cents: int = Field(default=50000, description="Website sale price in cents (default 500 €)")
+    assistant_monthly_price_cents: int = Field(
+        default=2900, description="AI-assistant monthly subscription price in cents (default 29 €)"
+    )
+    assistant_annual_free_months: int = Field(
+        default=2, description="Months offered on the assistant annual plan (default 2 → 290 €/an)"
+    )
     credit_balance: int | None = Field(
         None, description="Current credit balance. -1 indicates unlimited credits (admin)"
     )

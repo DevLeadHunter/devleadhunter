@@ -257,8 +257,8 @@ EMAIL_TEMPLATE_LIBRARY: list[dict[str, object]] = [
         "body_html": (
             "<p>{salutation},</p>"
             "<p>L'assistant que j'ai préparé pour {entreprise} tourne toujours : {lien_assistant}</p>"
-            "<p>Je vous donne le tarif sans tourner autour : {prix}, installation sur votre site comprise, "
-            "sans engagement. Vous l'arrêtez quand vous voulez, il n'y a rien à signer.</p>"
+            "<p>Je vous donne le tarif sans tourner autour : {prix_assistant}/mois, installation sur votre site "
+            "comprise, sans engagement. Vous l'arrêtez quand vous voulez, il n'y a rien à signer.</p>"
             "<p>Je vous le mets en place cette semaine ?</p>"
         ),
     },
