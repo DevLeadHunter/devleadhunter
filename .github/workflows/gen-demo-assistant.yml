@@ -35,20 +35,28 @@ jobs:
 
             db = SessionLocal()
             try:
-                site = db.query(DemoSite).filter(DemoSite.slug == "debiolle-patrick").first()
-                if site is None:
-                    print("NO DEMO SITE debiolle-patrick on prod"); raise SystemExit(0)
-                prospect = db.query(ProspectDB).filter(ProspectDB.id == site.prospect_id).first()
-                if prospect is None:
-                    print("NO PROSPECT for the demo site"); raise SystemExit(0)
+                # Already got one from a previous run? Reuse it (idempotent, no duplicate).
+                existing_any = db.query(AiAssistant).filter(AiAssistant.deleted_at.is_(None)).first()
+                if existing_any is not None:
+                    print("ALREADY EXISTS", existing_any.slug, "|", existing_any.business_name)
+                    raise SystemExit(0)
 
-                existing = (
-                    db.query(AiAssistant)
-                    .filter(AiAssistant.prospect_id == prospect.id, AiAssistant.deleted_at.is_(None))
-                    .first()
-                )
-                if existing is not None:
-                    print("ALREADY EXISTS", existing.slug); raise SystemExit(0)
+                # Pick the first active demo site with a real prospect and >= 3 services.
+                site = None
+                prospect = None
+                for candidate in db.query(DemoSite).all():
+                    c = candidate.content_json or {}
+                    svc = [s.get("title") for s in (c.get("services") or []) if isinstance(s, dict) and s.get("title")]
+                    if len(svc) < 3 or candidate.prospect_id is None:
+                        continue
+                    p = db.query(ProspectDB).filter(ProspectDB.id == candidate.prospect_id).first()
+                    if p is None:
+                        continue
+                    site, prospect = candidate, p
+                    break
+                if site is None or prospect is None:
+                    print("NO SUITABLE DEMO SITE on prod")
+                    raise SystemExit(0)
 
                 content = site.content_json or {}
                 services = [s.get("title") for s in (content.get("services") or []) if isinstance(s, dict) and s.get("title")]
@@ -89,7 +97,7 @@ jobs:
                     logo_url=content.get("logo"),
                     enrichment=enrichment,
                 )
-                print("CREATED", assistant.slug, "services:", len(services))
+                print("CREATED", assistant.slug, "|", assistant.business_name, "| services:", len(services))
             finally:
                 db.close()
             PY
