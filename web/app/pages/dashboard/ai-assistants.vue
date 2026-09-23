@@ -38,11 +38,15 @@
           <span class="text-muted text-xs tabular-nums">{{ assistants.length }}</span>
         </div>
 
-        <div v-if="assistants.length === 0" class="app-card flex flex-col items-center gap-3 px-6 py-10 text-center">
+        <div v-if="assistants.length === 0" class="app-card flex flex-col items-center gap-4 px-6 py-10 text-center">
           <UIcon name="i-lucide-bot" class="h-8 w-8 text-[var(--app-faint)]" />
           <p class="text-muted max-w-sm text-sm leading-relaxed">
             Aucun assistant généré. Ouvrez un prospect et cliquez « Générer un assistant IA » pour créer sa démo.
           </p>
+          <NuxtLink to="/dashboard/my-prospects" class="btn-secondary h-9 text-xs">
+            <UIcon name="i-lucide-users" class="mr-1.5 h-4 w-4" />
+            Voir mes prospects
+          </NuxtLink>
         </div>
 
         <div v-else class="grid gap-3 @2xl:grid-cols-2">
