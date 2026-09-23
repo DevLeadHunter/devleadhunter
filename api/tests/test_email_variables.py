@@ -109,3 +109,15 @@ def test_resolve_assistant_link_renders_anchor_for_active_assistant() -> None:
 def test_resolve_assistant_link_empty_without_assistant() -> None:
     """`{lien_assistant}` is empty when the prospect has no active assistant."""
     assert EmailVariables.resolve_assistant_link(_FakeAssistantDB(None), 1) == ""
+
+
+def test_resolve_assistant_url_is_the_bare_demo_url() -> None:
+    """The shared resolver returns the raw `/a/<slug>` URL (no anchor), for SMS to strip its scheme."""
+    url = EmailVariables.resolve_assistant_url(_FakeAssistantDB(SimpleNamespace(slug="agence-immo")), 1)
+    assert url.endswith("/a/agence-immo")
+    assert "<a " not in url
+
+
+def test_resolve_assistant_url_empty_without_assistant() -> None:
+    """The shared resolver is empty when the prospect has no active assistant."""
+    assert EmailVariables.resolve_assistant_url(_FakeAssistantDB(None), 1) == ""

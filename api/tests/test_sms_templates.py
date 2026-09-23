@@ -22,6 +22,7 @@ _TYPICAL_VARIABLES: dict[str, str] = {
     "ville": "Poitiers",
     "metier": "garagiste",
     "lien_demo": "demo.dibodev.fr/s/garage-martin-auto",
+    "lien_assistant": "demo.dibodev.fr/a/garage-martin-auto",
     "lien_video": "demo.dibodev.fr/s/v/garage-martin-auto",
     "ancien_site": "garage-martin.fr",
     "prix": "500 €",
@@ -162,3 +163,35 @@ class TestSmsVariables:
         assert SmsVariables.signature_for(" Marie ") == "Marie"
         assert SmsVariables.signature_for("") == ""
         assert SmsVariables.signature_for(None) == ""
+
+
+class TestAssistantTemplates:
+    """The AI-assistant SMS family links `{lien_assistant}`, not the website demo."""
+
+    _KEYS = ("assistant-24-7", "assistant-langues", "assistant-demandes", "assistant-relance")
+
+    def test_assistant_templates_exist_and_link_the_assistant(self) -> None:
+        for key in self._KEYS:
+            template = find_sms_template(key)
+            assert template is not None, key
+            assert template.uses("lien_assistant"), key
+            assert not template.uses("lien_demo"), key
+
+    def test_assistant_first_contacts_do_not_claim_a_prior_email(self) -> None:
+        for key in ("assistant-24-7", "assistant-langues", "assistant-demandes"):
+            template = find_sms_template(key)
+            assert template is not None and template.category is SmsTemplateCategory.FIRST_CONTACT
+            assert "email" not in template.body, key
+
+    def test_assistant_relance_is_a_follow_up_recalling_the_email(self) -> None:
+        template = find_sms_template("assistant-relance")
+        assert template is not None
+        assert template.category is SmsTemplateCategory.FOLLOW_UP
+        assert "email" in template.body
+
+    def test_assistant_template_renders_the_assistant_link(self) -> None:
+        template = find_sms_template("assistant-24-7")
+        assert template is not None
+        body = render_sms_template(template.body, _TYPICAL_VARIABLES)
+        assert "demo.dibodev.fr/a/garage-martin-auto" in body
+        assert "demo.dibodev.fr/s/" not in body

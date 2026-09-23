@@ -10,8 +10,8 @@ name. Trust rules baked in: an action at the first person (« j'ai préparé »)
 taken from the matching email, no imperative (« voici », « cliquez »), no urgency.
 The mandatory STOP mention is appended at send time, never written here.
 
-Variables: {salutation} {entreprise} {ville} {metier} {lien_demo} {lien_video}
-{ancien_site} {prix} {signature}.
+Variables: {salutation} {entreprise} {ville} {metier} {lien_demo} {lien_assistant}
+{lien_video} {ancien_site} {prix} {signature}.
 """
 
 from __future__ import annotations
@@ -116,6 +116,27 @@ SMS_TEMPLATE_LIBRARY: list[SmsTemplate] = [
         category=SmsTemplateCategory.FIRST_CONTACT,
         body="{salutation}, j'ai modernisé le site de {entreprise}, comparez avec l'actuel : {lien_demo} {signature}",
     ),
+    # ── Module Assistant IA — premier contact ────────────────────────────────
+    SmsTemplate(
+        key="assistant-24-7",
+        name="Assistant IA - répond 24/7",
+        category=SmsTemplateCategory.FIRST_CONTACT,
+        body="{salutation}, j'ai préparé un assistant qui répond à vos clients 24h/24 : {lien_assistant} {signature}",
+    ),
+    SmsTemplate(
+        key="assistant-langues",
+        name="Assistant IA - dans leur langue",
+        category=SmsTemplateCategory.FIRST_CONTACT,
+        body=(
+            "{salutation}, votre nouvel assistant répond à vos clients dans leur langue : {lien_assistant} {signature}"
+        ),
+    ),
+    SmsTemplate(
+        key="assistant-demandes",
+        name="Assistant IA - demandes captées",
+        category=SmsTemplateCategory.FIRST_CONTACT,
+        body="{salutation}, mon assistant capte les demandes de vos clients, même la nuit : {lien_assistant} {signature}",
+    ),
     # ── Relance J+30 (email resté sans réaction) ─────────────────────────────
     SmsTemplate(
         key="rappel-court",
@@ -176,6 +197,14 @@ SMS_TEMPLATE_LIBRARY: list[SmsTemplate] = [
         body=(
             "{salutation}, la version modernisée de votre site, envoyée par email, est en ligne : "
             "{lien_demo} {signature}"
+        ),
+    ),
+    SmsTemplate(
+        key="assistant-relance",
+        name="Assistant IA - relance",
+        category=SmsTemplateCategory.FOLLOW_UP,
+        body=(
+            "{salutation}, l'assistant IA envoyé par email répond toujours à vos clients : {lien_assistant} {signature}"
         ),
     ),
 ]

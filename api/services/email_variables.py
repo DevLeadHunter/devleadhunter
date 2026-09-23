@@ -191,6 +191,35 @@ class EmailVariables:
         return cls.format_expiry_date(site.expires_at)
 
     @classmethod
+    def resolve_assistant_url(cls, db: Session, prospect_id: int) -> str:
+        """
+        The public URL of the prospect's active AI assistant demo, or "" when he has none.
+
+        Single source of truth shared by `{lien_assistant}` in email (wrapped in a tracked
+        anchor) and in SMS (rendered as a bare link): both link to the same assistant.
+
+        Args:
+            db: Active database session.
+            prospect_id: Prospect the assistant belongs to.
+
+        Returns:
+            The full `<demo-host>/a/<slug>` URL, or "" when the prospect has no active assistant.
+        """
+        assistant: AiAssistant | None = (
+            db.execute(
+                select(AiAssistant)
+                .where(AiAssistant.prospect_id == prospect_id, AiAssistant.status == AiAssistantStatus.ACTIVE.value)
+                .order_by(AiAssistant.created_at.desc())
+            )
+            .scalars()
+            .first()
+        )
+        if assistant is None:
+            return ""
+        base: str = settings.demo_host_base_url.rstrip("/")
+        return f"{base}/a/{assistant.slug}"
+
+    @classmethod
     def resolve_assistant_link(cls, db: Session, prospect_id: int) -> str:
         """
         Resolve `{lien_assistant}`: a trackable link to the prospect's AI assistant demo.
@@ -205,19 +234,8 @@ class EmailVariables:
         Returns:
             The inline anchor HTML, or "" when the prospect has no active assistant.
         """
-        assistant: AiAssistant | None = (
-            db.execute(
-                select(AiAssistant)
-                .where(AiAssistant.prospect_id == prospect_id, AiAssistant.status == AiAssistantStatus.ACTIVE.value)
-                .order_by(AiAssistant.created_at.desc())
-            )
-            .scalars()
-            .first()
-        )
-        if assistant is None:
-            return ""
-        base: str = settings.demo_host_base_url.rstrip("/")
-        return cls.build_demo_link_html(f"{base}/a/{assistant.slug}")
+        url: str = cls.resolve_assistant_url(db, prospect_id)
+        return cls.build_demo_link_html(url) if url else ""
 
     @staticmethod
     def display_website(url: str | None) -> str:
