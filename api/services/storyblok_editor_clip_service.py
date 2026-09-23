@@ -471,8 +471,10 @@ class StoryblokEditorClipService:
 
     @staticmethod
     def _enc(fps: int) -> list[str]:
-        """Shared x264 encode flags."""
-        return ["-c:v", "libx264", "-pix_fmt", "yuv420p", "-crf", "20", "-r", str(fps)]
+        """Shared x264 encode flags (see :func:`services.video_montage.x264_encode_flags`)."""
+        from services.video_montage import x264_encode_flags
+
+        return x264_encode_flags(fps)
 
     def _run_ffmpeg(self, args: list[str]) -> None:
         """Run ffmpeg with ``-y`` at background priority, raising a clear error on failure."""

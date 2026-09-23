@@ -522,6 +522,61 @@ async def video_build_full(
     return {"started": True, "slug": slug}
 
 
+async def _compose_desktop_montage(
+    *,
+    data: dict,
+    presenter_path: Path,
+    capture_path: Path,
+    screenshot_path: Path,
+    output_video: Path,
+    output_thumb: Path,
+    presenter_photo_path: Path | None,
+    thumbnail_label: str,
+) -> None:
+    """Run the shared ffmpeg montage for a desktop build (site or assistant), off the event loop.
+
+    Both builds compose the same way — presenter clip + captured middle segment + « Bonjour {Prénom} »
+    — and differ only in the captured ``capture_path`` and the email ``thumbnail_label``.
+    """
+    from services import video_montage
+
+    await asyncio.to_thread(
+        video_montage.compose_final,
+        ffmpeg_path=_FFMPEG_PATH,
+        presenter_duration=float(data["presenter_duration"]),
+        presenter_intro=float(data["presenter_intro"]),
+        presenter_outro=float(data["presenter_outro"]),
+        presenter_path=presenter_path,
+        capture_path=capture_path,
+        scroll_offset=0.0,
+        scroll_seconds=float(data["total_seconds"]),
+        first_name=data.get("first_name") or None,
+        screenshot_path=screenshot_path,
+        output_video=output_video,
+        output_thumbnail=output_thumb,
+        presenter_photo_path=presenter_photo_path,
+        # Desktop: let ffmpeg use every idle core (the below-normal priority keeps the PC responsive).
+        threads=video_montage.FFMPEG_THREADS_AUTO,
+        thumbnail_label=thumbnail_label,
+    )
+
+
+def _store_video_bundle(slug: str, work_dir: Path, output_video: Path, output_thumb: Path) -> None:
+    """Zip the finished video + thumbnail and register it for pickup by /video/build-result."""
+    import zipfile
+
+    bundle_path = work_dir / f"{slug}-video.zip"
+    with zipfile.ZipFile(bundle_path, "w", zipfile.ZIP_STORED) as archive:
+        archive.write(output_video, "video.mp4")
+        archive.write(output_thumb, "thumbnail.jpg")
+    _VIDEO_BUILD_RESULTS[slug] = {
+        "path": bundle_path,
+        "media_type": "application/zip",
+        "filename": f"{slug}-video.zip",
+        "work_dir": work_dir,
+    }
+
+
 async def _run_video_build(
     data: dict,
     slug: str,
@@ -536,8 +591,6 @@ async def _run_video_build(
     Progress goes to ``_VIDEO_BUILD_PROGRESS`` (polled by the app's modal) and the
     finished file to ``_VIDEO_BUILD_RESULTS`` (served once by /video/build-result).
     """
-    import zipfile
-
     from services import video_montage
     from services.storyblok_editor_clip_service import StoryblokEditorClipError, storyblok_editor_clip_service
 
@@ -546,7 +599,6 @@ async def _run_video_build(
     screenshot_path = work_dir / "top.png"
     output_video = work_dir / "video.mp4"
     output_thumb = work_dir / "thumbnail.jpg"
-    bundle_path = work_dir / f"{slug}-video.zip"
     preview = bool(data.get("preview"))
     total_seconds = float(data["total_seconds"])
     try:
@@ -576,23 +628,15 @@ async def _run_video_build(
             screenshot_path,
             video_montage.FFMPEG_THREADS_AUTO,
         )
-        await asyncio.to_thread(
-            video_montage.compose_final,
-            ffmpeg_path=_FFMPEG_PATH,
-            presenter_duration=float(data["presenter_duration"]),
-            presenter_intro=float(data["presenter_intro"]),
-            presenter_outro=float(data["presenter_outro"]),
+        await _compose_desktop_montage(
+            data=data,
             presenter_path=presenter_path,
             capture_path=background_path,
-            scroll_offset=0.0,
-            scroll_seconds=total_seconds,
-            first_name=data.get("first_name") or None,
             screenshot_path=screenshot_path,
             output_video=output_video,
-            output_thumbnail=output_thumb,
+            output_thumb=output_thumb,
             presenter_photo_path=presenter_photo_path,
-            # Desktop: let ffmpeg use every idle core (the below-normal priority keeps the PC responsive).
-            threads=video_montage.FFMPEG_THREADS_AUTO,
+            thumbnail_label=video_montage.THUMBNAIL_LABEL_SITE,
         )
         if preview:
             _VIDEO_BUILD_RESULTS[slug] = {
@@ -602,15 +646,7 @@ async def _run_video_build(
                 "work_dir": work_dir,
             }
         else:
-            with zipfile.ZipFile(bundle_path, "w", zipfile.ZIP_STORED) as archive:
-                archive.write(output_video, "video.mp4")
-                archive.write(output_thumb, "thumbnail.jpg")
-            _VIDEO_BUILD_RESULTS[slug] = {
-                "path": bundle_path,
-                "media_type": "application/zip",
-                "filename": f"{slug}-video.zip",
-                "work_dir": work_dir,
-            }
+            _store_video_bundle(slug, work_dir, output_video, output_thumb)
         _set_video_build_progress(slug, "done")
     except StoryblokEditorClipError as exc:
         shutil.rmtree(work_dir, ignore_errors=True)
@@ -681,8 +717,6 @@ async def _run_assistant_video_build(
     Progress goes to ``_VIDEO_BUILD_PROGRESS`` (polled by the app's modal) and the finished zip
     (``video.mp4`` + ``thumbnail.jpg``) to ``_VIDEO_BUILD_RESULTS`` (served once by /video/build-result).
     """
-    import zipfile
-
     from services import video_montage
     from services.assistant_widget_clip_service import AssistantWidgetClipError, assistant_widget_clip_service
 
@@ -691,7 +725,6 @@ async def _run_assistant_video_build(
     screenshot_path = work_dir / "top.png"
     output_video = work_dir / "video.mp4"
     output_thumb = work_dir / "thumbnail.jpg"
-    bundle_path = work_dir / f"{slug}-video.zip"
     total_seconds = float(data["total_seconds"])
     try:
         await asyncio.to_thread(
@@ -707,34 +740,17 @@ async def _run_assistant_video_build(
             on_progress=lambda step: _set_video_build_progress(slug, step),
         )
         _set_video_build_progress(slug, "montage")
-        await asyncio.to_thread(
-            video_montage.compose_final,
-            ffmpeg_path=_FFMPEG_PATH,
-            presenter_duration=float(data["presenter_duration"]),
-            presenter_intro=float(data["presenter_intro"]),
-            presenter_outro=float(data["presenter_outro"]),
+        await _compose_desktop_montage(
+            data=data,
             presenter_path=presenter_path,
             capture_path=middle_path,
-            scroll_offset=0.0,
-            scroll_seconds=total_seconds,
-            first_name=data.get("first_name") or None,
             screenshot_path=screenshot_path,
             output_video=output_video,
-            output_thumbnail=output_thumb,
+            output_thumb=output_thumb,
             presenter_photo_path=presenter_photo_path,
-            # Desktop: let ffmpeg use every idle core (the below-normal priority keeps the PC responsive).
-            threads=video_montage.FFMPEG_THREADS_AUTO,
             thumbnail_label=video_montage.THUMBNAIL_LABEL_ASSISTANT,
         )
-        with zipfile.ZipFile(bundle_path, "w", zipfile.ZIP_STORED) as archive:
-            archive.write(output_video, "video.mp4")
-            archive.write(output_thumb, "thumbnail.jpg")
-        _VIDEO_BUILD_RESULTS[slug] = {
-            "path": bundle_path,
-            "media_type": "application/zip",
-            "filename": f"{slug}-video.zip",
-            "work_dir": work_dir,
-        }
+        _store_video_bundle(slug, work_dir, output_video, output_thumb)
         _set_video_build_progress(slug, "done")
     except AssistantWidgetClipError as exc:
         shutil.rmtree(work_dir, ignore_errors=True)

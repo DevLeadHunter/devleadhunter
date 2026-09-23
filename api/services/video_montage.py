@@ -64,6 +64,11 @@ def as_background_priority_process(command: list[str]) -> tuple[list[str], dict[
     return command, {}
 
 
+def x264_encode_flags(fps: int) -> list[str]:
+    """Shared x264 flags for assembling a frame sequence into an mp4 (site + assistant captures)."""
+    return ["-c:v", "libx264", "-pix_fmt", "yuv420p", "-crf", "20", "-r", str(fps)]
+
+
 _FONT_CANDIDATES: tuple[str, ...] = (
     "C:/Windows/Fonts/seguisb.ttf",  # Segoe UI Semibold
     "C:/Windows/Fonts/segoeui.ttf",

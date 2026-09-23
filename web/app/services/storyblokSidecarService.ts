@@ -14,6 +14,13 @@
 import { DemoSiteService } from '~/services/demoSiteService'
 import { ProfilePhotoService } from '~/services/profilePhotoService'
 import { getScraperSidecarInfo } from '~/services/scraperSidecarService'
+import {
+  fetchBuildProgress,
+  pollAndFetchBuild,
+  readSidecarError,
+  type SidecarBuildOutcome,
+  type VideoBuildProgress,
+} from '~/services/sidecarVideoBuild'
 
 /** Connection state of the Storyblok owner session used for the editor sequence. */
 export type StoryblokSessionState = 'ready' | 'needs_login' | 'busy' | 'unknown'
@@ -64,20 +71,10 @@ export type PreviewVideoResult = {
   message?: string
 }
 
-/** Current phase of a local video build, as reported by the sidecar. */
-export type VideoBuildProgress = {
-  step: string
-  message: string
-  /** Machine-readable failure cause on step "error" (e.g. `needs_login`). */
-  reason: string | null
-  /** Unix seconds of the last phase change — lets pollers ignore a previous build's entry. */
-  updatedAt: number
-}
+/** Re-exported for callers that import the progress shape from this service. */
+export type { VideoBuildProgress }
 
 const UNKNOWN_SESSION: StoryblokSessionInfo = { state: 'unknown', source: null, loginWindowOpen: false }
-
-/** Ceiling for a detached local build — capture + montage can take several minutes. */
-const BUILD_WAIT_LIMIT_MS: number = 20 * 60 * 1000
 
 export class StoryblokSidecarService {
   /**
@@ -191,23 +188,7 @@ export class StoryblokSidecarService {
   static async getVideoBuildProgress(slug: string): Promise<VideoBuildProgress | null> {
     const info: Awaited<ReturnType<typeof getScraperSidecarInfo>> = await getScraperSidecarInfo()
     if (!info) return null
-    try {
-      const response: Response = await fetch(
-        `http://127.0.0.1:${info.port}/video/build-progress?slug=${encodeURIComponent(slug)}`,
-        { headers: { 'X-Sidecar-Token': info.token } },
-      )
-      if (!response.ok) return null
-      const body: { step?: string; message?: string; reason?: string | null; updated_at?: number } =
-        await response.json()
-      return {
-        step: body.step ?? 'unknown',
-        message: body.message ?? '',
-        reason: body.reason ?? null,
-        updatedAt: body.updated_at ?? 0,
-      }
-    } catch {
-      return null
-    }
+    return fetchBuildProgress(info.port, info.token, slug)
   }
 
   /**
@@ -270,46 +251,16 @@ export class StoryblokSidecarService {
       return { status: reason === 'needs_login' ? 'needs_login' : 'failed' }
     }
     if (!startResponse.ok) {
-      return { status: 'failed', message: await StoryblokSidecarService.readSidecarError(startResponse) }
+      return { status: 'failed', message: await readSidecarError(startResponse) }
     }
 
-    // The build runs detached — follow it through the progress endpoint.
-    const startedAtMs: number = Date.now()
-    const deadlineMs: number = startedAtMs + BUILD_WAIT_LIMIT_MS
-    while (Date.now() < deadlineMs) {
-      await new Promise<void>((resolve: () => void): void => {
-        window.setTimeout(resolve, 2000)
-      })
-      const progress: VideoBuildProgress | null = await StoryblokSidecarService.getVideoBuildProgress(context.slug)
-      if (!progress || progress.updatedAt * 1000 < startedAtMs - 2000) continue
-      if (progress.step === 'error') {
-        if (progress.reason === 'needs_login') return { status: 'needs_login' }
-        return { status: 'failed', message: progress.message || 'Échec de la génération locale.' }
-      }
-      if (progress.step === 'done') {
-        let resultResponse: Response
-        try {
-          resultResponse = await fetch(
-            `http://127.0.0.1:${info.port}/video/build-result?slug=${encodeURIComponent(context.slug)}`,
-            { headers: { 'X-Sidecar-Token': info.token } },
-          )
-        } catch {
-          return { status: 'failed', message: 'Résultat de la génération inaccessible.' }
-        }
-        if (!resultResponse.ok) {
-          return { status: 'failed', message: await StoryblokSidecarService.readSidecarError(resultResponse) }
-        }
-        try {
-          return { status: 'done', blob: await resultResponse.blob() }
-        } catch (error) {
-          return {
-            status: 'failed',
-            message: error instanceof Error ? error.message : 'Lecture du résultat impossible.',
-          }
-        }
-      }
-    }
-    return { status: 'failed', message: 'Génération trop longue — réessayez.' }
+    // The build runs detached — follow it through the shared poll/fetch helper. A mid-build Storyblok
+    // expiry surfaces as an error with reason=needs_login → prompt a reconnect instead of a plain fail.
+    const outcome: SidecarBuildOutcome = await pollAndFetchBuild(info.port, info.token, context.slug, Date.now())
+    if (outcome.kind === 'done') return { status: 'done', blob: outcome.blob }
+    if (outcome.kind === 'timeout') return { status: 'failed', message: 'Génération trop longue — réessayez.' }
+    if (outcome.reason === 'needs_login') return { status: 'needs_login' }
+    return { status: 'failed', message: outcome.message }
   }
 
   /**
@@ -350,25 +301,10 @@ export class StoryblokSidecarService {
       return reason === 'needs_login' ? 'needs_login' : 'skipped'
     }
     // Any other failure is surfaced so the cause (session, capture, upload) is visible.
-    if (!response.ok) throw new Error(await StoryblokSidecarService.readSidecarError(response))
+    if (!response.ok) throw new Error(await readSidecarError(response))
 
     const clip: Blob = await response.blob()
     await DemoSiteService.uploadVideoBackground(demoSiteId, clip)
     return 'uploaded'
-  }
-
-  /**
-   * Extract the most precise message a failed sidecar response offers.
-   * @param response - The failed response.
-   * @returns The sidecar `detail` field, or the raw body / status text.
-   */
-  private static async readSidecarError(response: Response): Promise<string> {
-    const raw: string = await response.text().catch((): string => '')
-    if (!raw) return `Séquence Storyblok : erreur ${response.status}`
-    try {
-      return (JSON.parse(raw).detail as string) || raw
-    } catch {
-      return raw
-    }
   }
 }
