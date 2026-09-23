@@ -202,6 +202,32 @@
                 </span>
               </template>
             </div>
+
+            <div class="flex flex-wrap items-center gap-2 border-t border-[var(--app-line-soft)] pt-3">
+              <span class="text-muted text-[10px] font-semibold tracking-wide uppercase">Abonnement</span>
+              <button
+                type="button"
+                class="btn-secondary h-8 text-xs"
+                :disabled="subscriptionBusyId === assistant.id"
+                @click="copySubscriptionLink(assistant, 'month')"
+              >
+                <UIcon
+                  :name="subscriptionBusyId === assistant.id ? 'i-lucide-loader-circle' : 'i-lucide-link'"
+                  class="mr-1.5 h-3.5 w-3.5"
+                  :class="{ 'animate-spin': subscriptionBusyId === assistant.id }"
+                />
+                Lien mensuel
+              </button>
+              <button
+                type="button"
+                class="btn-secondary h-8 text-xs"
+                :disabled="subscriptionBusyId === assistant.id"
+                @click="copySubscriptionLink(assistant, 'year')"
+              >
+                <UIcon name="i-lucide-link" class="mr-1.5 h-3.5 w-3.5" />
+                Lien annuel
+              </button>
+            </div>
           </article>
         </div>
       </section>
@@ -367,6 +393,7 @@ const confirmingId: Ref<number | null> = ref(null)
 const regeneratingId: Ref<number | null> = ref(null)
 const videoBusyId: Ref<number | null> = ref(null)
 const videoPollTimer: Ref<ReturnType<typeof setInterval> | null> = ref(null)
+const subscriptionBusyId: Ref<number | null> = ref(null)
 
 /** The assistant being customized (null = the modal is closed). */
 const editing: Ref<AiAssistantSummary | null> = ref(null)
@@ -585,6 +612,26 @@ async function copyVideoLink(assistant: AiAssistantSummary): Promise<void> {
     toast.success('Lien vidéo copié.')
   } catch {
     toast.error('Copie impossible depuis ce navigateur.')
+  }
+}
+
+/**
+ * Generate a Stripe subscription checkout link and copy it, to send to the client.
+ * @param assistant - The assistant being sold.
+ * @param interval - `month` (mensuel) or `year` (annuel).
+ * @returns A promise resolved once the link is generated and copied.
+ */
+async function copySubscriptionLink(assistant: AiAssistantSummary, interval: 'month' | 'year'): Promise<void> {
+  if (subscriptionBusyId.value !== null) return
+  subscriptionBusyId.value = assistant.id
+  try {
+    const { url }: { url: string } = await AiAssistantService.createSubscriptionCheckout(assistant.id, interval)
+    await navigator.clipboard.writeText(url)
+    toast.success(`Lien d'abonnement ${interval === 'year' ? 'annuel' : 'mensuel'} copié — envoyez-le au client.`)
+  } catch {
+    toast.error('Génération du lien impossible (Stripe configuré ?).')
+  } finally {
+    subscriptionBusyId.value = null
   }
 }
 
