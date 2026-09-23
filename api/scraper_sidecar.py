@@ -724,6 +724,7 @@ async def _run_assistant_video_build(
             presenter_photo_path=presenter_photo_path,
             # Desktop: let ffmpeg use every idle core (the below-normal priority keeps the PC responsive).
             threads=video_montage.FFMPEG_THREADS_AUTO,
+            thumbnail_label=video_montage.THUMBNAIL_LABEL_ASSISTANT,
         )
         with zipfile.ZipFile(bundle_path, "w", zipfile.ZIP_STORED) as archive:
             archive.write(output_video, "video.mp4")

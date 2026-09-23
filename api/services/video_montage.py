@@ -20,6 +20,11 @@ WIDTH = 1280
 HEIGHT = 720
 FPS = 30
 
+# Email-thumbnail pill label, per module (« Bonjour {Prénom} — {label} »). The montage is shared, so
+# each caller passes its own; the default keeps the site wording for callers that don't.
+THUMBNAIL_LABEL_SITE = "votre site en vidéo"
+THUMBNAIL_LABEL_ASSISTANT = "votre assistant en vidéo"
+
 # Webcam picture-in-picture bubble during the site segment.
 PIP_SIZE = 260
 PIP_MARGIN = 24
@@ -192,6 +197,7 @@ def build_thumbnail(
     first_name: str | None,
     output_path: Path,
     presenter_photo_path: Path | None = None,
+    thumbnail_label: str = THUMBNAIL_LABEL_SITE,
 ) -> None:
     """
     Build the personalised email thumbnail: site screenshot, slight darkening,
@@ -231,7 +237,7 @@ def build_thumbnail(
     )
 
     # Greeting pill, top-left.
-    text = f"Bonjour {first_name} — votre site en vidéo" if first_name else "Votre site en vidéo"
+    text = f"Bonjour {first_name} — {thumbnail_label}" if first_name else thumbnail_label.capitalize()
     font = _load_font(44)
     text_box = draw.textbbox((0, 0), text, font=font)
     text_w = text_box[2] - text_box[0]
@@ -421,12 +427,14 @@ def compose_final(
     output_thumbnail: Path,
     presenter_photo_path: Path | None = None,
     threads: str = FFMPEG_THREADS,
+    thumbnail_label: str = THUMBNAIL_LABEL_SITE,
 ) -> None:
     """
     Full montage from primitives: greeting + mask, ffmpeg compose, thumbnail.
 
     Blocking (ffmpeg + Pillow) — callers run it in a worker thread. Reused by the
     VPS and the desktop sidecar, which passes its own bundled ``ffmpeg_path``.
+    ``thumbnail_label`` sets the email pill wording per module (site vs assistant).
 
     Raises:
         VideoMontageError: when a step fails.
@@ -448,4 +456,4 @@ def compose_final(
         output_path=output_video,
         threads=threads,
     )
-    build_thumbnail(screenshot_path, first_name, output_thumbnail, presenter_photo_path)
+    build_thumbnail(screenshot_path, first_name, output_thumbnail, presenter_photo_path, thumbnail_label)

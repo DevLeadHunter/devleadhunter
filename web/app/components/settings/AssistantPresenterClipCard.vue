@@ -49,6 +49,22 @@
         </label>
       </div>
 
+      <div
+        v-if="clip.has_video"
+        class="flex items-center justify-between gap-3 rounded-lg border border-[var(--app-line)] bg-[var(--app-bg)] px-3 py-2.5"
+      >
+        <div class="min-w-0">
+          <p class="text-sm font-medium text-[var(--app-ink)]">Génération automatique</p>
+          <p class="text-muted text-xs">Chaque nouvel assistant génère sa vidéo tout seul.</p>
+        </div>
+        <UiSwitch
+          id="assistant-video-auto-generate"
+          :model-value="autoGenerate"
+          :disabled="isSaving"
+          @update:model-value="onToggleAutoGenerate"
+        />
+      </div>
+
       <div class="flex flex-wrap items-center gap-2">
         <input
           ref="fileInput"
@@ -93,6 +109,7 @@ const isLoading: Ref<boolean> = ref(true)
 const isSaving: Ref<boolean> = ref(false)
 const introSeconds: Ref<number> = ref(4)
 const outroSeconds: Ref<number> = ref(5)
+const autoGenerate: Ref<boolean> = ref(false)
 const selectedFile: Ref<File | null> = ref(null)
 const fileInput: Ref<HTMLInputElement | null> = ref(null)
 
@@ -104,6 +121,34 @@ function applyClip(loaded: PresenterVideo): void {
   clip.value = loaded
   if (typeof loaded.intro_seconds === 'number') introSeconds.value = loaded.intro_seconds
   if (typeof loaded.outro_seconds === 'number') outroSeconds.value = loaded.outro_seconds
+  if (typeof loaded.auto_generate === 'boolean') autoGenerate.value = loaded.auto_generate
+}
+
+/**
+ * Persist the auto-generation toggle for the existing clip.
+ * @param value - Whether every new assistant should generate its video automatically.
+ * @returns A promise resolved once the setting is saved.
+ */
+async function onToggleAutoGenerate(value: boolean): Promise<void> {
+  autoGenerate.value = value
+  if (isSaving.value) return
+  isSaving.value = true
+  try {
+    applyClip(
+      await PresenterVideoService.updatePresenterVideoSettings(
+        introSeconds.value,
+        outroSeconds.value,
+        value,
+        null,
+        CLIP_MODULE,
+      ),
+    )
+  } catch {
+    autoGenerate.value = !value
+    toast.error('Réglage impossible pour le moment.')
+  } finally {
+    isSaving.value = false
+  }
 }
 
 /**
@@ -129,7 +174,7 @@ async function uploadClip(): Promise<void> {
         file,
         introSeconds.value,
         outroSeconds.value,
-        false,
+        autoGenerate.value,
         CLIP_MODULE,
       ),
     )
