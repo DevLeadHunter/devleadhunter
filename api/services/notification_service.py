@@ -32,6 +32,7 @@ from models.sms_message import SmsMessage
 from models.user import User
 from services import push_service
 from services.activity_log_service import (
+    CATEGORY_ASSISTANT,
     CATEGORY_DEMO,
     CATEGORY_EMAIL,
     CATEGORY_SALE,
@@ -360,7 +361,7 @@ class NotificationService:
         prospect_name = self._resolve_prospect_name(db, prospect_id, fallback_name)
         summary = need.strip() or "Demande de rappel"
         activity_log_service.record(
-            category=CATEGORY_DEMO,
+            category=CATEGORY_ASSISTANT,
             action="assistant_lead",
             status=STATUS_SUCCESS,
             title=f"{prospect_name} · Lead via l'assistant IA",
@@ -370,7 +371,7 @@ class NotificationService:
         )
         await self._dispatch(
             user_id=user_id,
-            category="demo",
+            category="assistant",
             level="success",
             title=f"🙋 {lead_name}",
             body=f"Lead via l'assistant de {prospect_name} — {summary}",
@@ -403,7 +404,7 @@ class NotificationService:
         prospect_name = self._resolve_prospect_name(db, prospect_id, fallback_name)
         summary = message.strip() or "veut être recontacté"
         activity_log_service.record(
-            category=CATEGORY_DEMO,
+            category=CATEGORY_ASSISTANT,
             action="assistant_interest",
             status=STATUS_SUCCESS,
             title=f"{prospect_name} · Intéressé par l'assistant IA",
@@ -414,7 +415,7 @@ class NotificationService:
         )
         await self._dispatch(
             user_id=user_id,
-            category="demo",
+            category="assistant",
             level="success",
             title=f"🔥 {prospect_name} veut son assistant",
             body=f"Depuis la page de l'assistant — {summary}",

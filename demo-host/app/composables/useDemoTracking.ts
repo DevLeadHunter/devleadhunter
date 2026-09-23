@@ -58,7 +58,7 @@ const POSTHOG_UI_HOST: string = 'https://eu.posthog.com'
  * @returns An object with the ``init`` method.
  */
 export function useDemoTracking(): {
-  init: (slug: string, status: string, variant: string | null, channel: string) => Promise<void>
+  init: (slug: string, status: string, variant: string | null, channel: string, surface?: string) => Promise<void>
 } {
   const config: ReturnType<typeof useRuntimeConfig> = useRuntimeConfig()
 
@@ -250,8 +250,15 @@ export function useDemoTracking(): {
    * @param status - Demo site status; tracking runs only when 'active'.
    * @param variant - Optional A/B variant from the email link.
    * @param channel - Marketing channel that brought the visit ('email' / 'sms' / 'direct').
+   * @param surface - PostHog surface separating modules in one project ('demo' = site, 'assistant' = IA).
    */
-  async function init(slug: string, status: string, variant: string | null, channel: string): Promise<void> {
+  async function init(
+    slug: string,
+    status: string,
+    variant: string | null,
+    channel: string,
+    surface: string = 'demo',
+  ): Promise<void> {
     if (!import.meta.client || initialized) return
     // The owner's own visit (?internal=1 / ?_edit=1) must not track or notify.
     if (DemoBeaconUtils.isInternalVisit()) return
@@ -284,8 +291,9 @@ export function useDemoTracking(): {
         maskAllInputs: true,
       },
     })
-    // Ne jamais renommer : les noms demo_* sont lus côté API.
-    posthog.register({ surface: 'demo', demo_slug: slug, channel, ...(variant ? { ab_variant: variant } : {}) })
+    // `surface` sépare les modules dans le MÊME projet PostHog ('demo' = site, 'assistant' = module IA) ;
+    // ne jamais renommer les noms demo_*/le super property demo_slug, lus côté API.
+    posthog.register({ surface, demo_slug: slug, channel, ...(variant ? { ab_variant: variant } : {}) })
     demoPosthog = posthog
     initialized = true
     const apiBase: string = String(config.public.apiBase ?? '')

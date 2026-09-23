@@ -28,6 +28,7 @@ logger = logging.getLogger(__name__)
 CATEGORY_EMAIL: str = "email"
 CATEGORY_SMS: str = "sms"
 CATEGORY_DEMO: str = "demo"
+CATEGORY_ASSISTANT: str = "assistant"
 CATEGORY_SALE: str = "sale"
 CATEGORY_PROSPECT: str = "prospect"
 CATEGORY_DEMO_SITE: str = "demo_site"
