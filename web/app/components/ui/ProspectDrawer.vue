@@ -328,9 +328,9 @@
               </div>
             </div>
 
-            <div class="border-t border-[var(--app-surface-2)]"></div>
+            <div v-if="!isAssistantModule" class="border-t border-[var(--app-surface-2)]"></div>
 
-            <div class="space-y-3 px-5 py-4">
+            <div v-if="!isAssistantModule" class="space-y-3 px-5 py-4">
               <div class="flex items-center justify-between gap-3">
                 <p class="text-[10px] font-semibold tracking-wider text-[var(--app-ink-soft)] uppercase">
                   Assistant IA
@@ -550,8 +550,20 @@
                 <span class="truncate">Vendu</span>
               </button>
             </div>
+            <button
+              v-if="isAssistantModule"
+              class="btn-primary w-full"
+              :disabled="isGeneratingAssistant"
+              @click="handleGenerateAssistant"
+            >
+              <UIcon
+                :name="isGeneratingAssistant ? 'i-lucide-loader-circle' : 'i-lucide-bot'"
+                :class="['mr-1.5 h-4 w-4', isGeneratingAssistant && 'animate-spin']"
+              />
+              {{ isGeneratingAssistant ? 'Génération…' : 'Générer un assistant IA' }}
+            </button>
             <a
-              v-if="demoSite?.demo_url"
+              v-else-if="demoSite?.demo_url"
               :href="DemoSiteService.withInternalFlag(demoSite.demo_url) ?? undefined"
               target="_blank"
               rel="noopener noreferrer"
@@ -607,6 +619,7 @@ import { DemoSiteService } from '~/services/demoSiteService'
 import { ProspectsService } from '~/services/prospectsService'
 import { useToast } from '~/composables/useToast'
 import { useUserStore } from '~/stores/user'
+import { useModuleStore } from '~/stores/moduleStore'
 
 /** Prospect detail drawer with edit, lighthouse audit and quick actions. */
 const props: UiProspectDrawerProps = defineProps({
@@ -644,6 +657,10 @@ const emit: EmitFn<UiProspectDrawerEmits> = defineEmits<UiProspectDrawerEmits>()
 
 const toast: UseToastReturn = useToast()
 const userStore: ReturnType<typeof useUserStore> = useUserStore()
+const moduleStore: ReturnType<typeof useModuleStore> = useModuleStore()
+
+/** True when the AI-assistant module is active — the drawer then leads with the assistant deliverable. */
+const isAssistantModule: ComputedRef<boolean> = computed((): boolean => moduleStore.activeKey === 'ai-assistant')
 
 const editMode: Ref<boolean> = ref(false)
 const isSaving: Ref<boolean> = ref(false)
