@@ -249,6 +249,19 @@ EMAIL_TEMPLATE_LIBRARY: list[dict[str, object]] = [
             "<p>Si ça vous parle, je vous montre comment l'installer sur votre site en cinq minutes.</p>"
         ),
     },
+    {
+        "name": "Assistant IA - le prix cash",
+        "category": _FOLLOW,
+        "sort_order": 13,
+        "subject": "Le prix de l'assistant, sans détour",
+        "body_html": (
+            "<p>{salutation},</p>"
+            "<p>L'assistant que j'ai préparé pour {entreprise} tourne toujours : {lien_assistant}</p>"
+            "<p>Je vous donne le tarif sans tourner autour : {prix}, installation sur votre site comprise, "
+            "sans engagement. Vous l'arrêtez quand vous voulez, il n'y a rien à signer.</p>"
+            "<p>Je vous le mets en place cette semaine ?</p>"
+        ),
+    },
 ]
 
 

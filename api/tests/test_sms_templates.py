@@ -168,7 +168,7 @@ class TestSmsVariables:
 class TestAssistantTemplates:
     """The AI-assistant SMS family links `{lien_assistant}`, not the website demo."""
 
-    _KEYS = ("assistant-24-7", "assistant-langues", "assistant-demandes", "assistant-relance")
+    _KEYS = ("assistant-24-7", "assistant-langues", "assistant-demandes", "assistant-relance", "assistant-prix-cash")
 
     def test_assistant_templates_exist_and_link_the_assistant(self) -> None:
         for key in self._KEYS:
