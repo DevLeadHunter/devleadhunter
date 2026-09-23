@@ -73,6 +73,10 @@
                 <UIcon name="i-lucide-code" class="mr-1.5 h-3.5 w-3.5" />
                 Copier le script
               </button>
+              <button type="button" class="btn-secondary h-8 text-xs" @click="openEdit(assistant)">
+                <UIcon name="i-lucide-pencil" class="mr-1.5 h-3.5 w-3.5" />
+                Personnaliser
+              </button>
               <button
                 v-if="confirmingId !== assistant.id"
                 type="button"
@@ -134,6 +138,82 @@
         </ul>
       </section>
     </template>
+
+    <div
+      v-if="editing"
+      class="fixed inset-0 z-50 flex items-center justify-center bg-[var(--app-overlay)] p-4"
+      @click.self="closeEdit"
+    >
+      <div class="app-card max-h-[90vh] w-full max-w-md overflow-y-auto p-5">
+        <div class="mb-4 flex items-center justify-between">
+          <h3 class="text-sm font-semibold text-[var(--app-ink)]">Personnaliser l'assistant</h3>
+          <button
+            type="button"
+            class="text-muted cursor-pointer transition-colors hover:text-[var(--app-ink)]"
+            aria-label="Fermer"
+            @click="closeEdit"
+          >
+            <UIcon name="i-lucide-x" class="h-4 w-4" />
+          </button>
+        </div>
+
+        <div class="flex flex-col gap-3">
+          <label class="flex flex-col gap-1">
+            <span class="app-label !text-[0.6rem]">Entreprise affichée</span>
+            <input v-model="editForm.business_name" type="text" class="app-input" />
+          </label>
+          <label class="flex flex-col gap-1">
+            <span class="app-label !text-[0.6rem]">Nom de l'assistant</span>
+            <input v-model="editForm.assistant_name" type="text" class="app-input" placeholder="Sofia" />
+          </label>
+          <label class="flex flex-col gap-1">
+            <span class="app-label !text-[0.6rem]">Ton</span>
+            <input v-model="editForm.tone" type="text" class="app-input" placeholder="professionnel et chaleureux" />
+          </label>
+
+          <div class="flex flex-col gap-1.5">
+            <span class="app-label !text-[0.6rem]">Langues</span>
+            <div class="flex flex-wrap gap-1.5">
+              <button
+                v-for="language in LANGUAGE_OPTIONS"
+                :key="language.code"
+                type="button"
+                class="cursor-pointer rounded-full border px-2.5 py-1 text-xs transition-colors"
+                :class="
+                  editForm.languages.includes(language.code)
+                    ? 'border-[var(--app-ink)] bg-[var(--app-ink)] text-[var(--app-bg)]'
+                    : 'border-[var(--app-line)] text-[var(--app-ink-soft)] hover:border-[var(--app-ink-soft)]'
+                "
+                @click="toggleLanguage(language.code)"
+              >
+                {{ language.label }}
+              </button>
+            </div>
+          </div>
+
+          <div class="flex items-center justify-between gap-3">
+            <span class="app-label !text-[0.6rem]">Couleur d'accent</span>
+            <div class="flex items-center gap-2">
+              <input
+                v-model="editForm.accent_color"
+                type="color"
+                class="h-8 w-10 cursor-pointer rounded border border-[var(--app-line)] bg-transparent"
+                aria-label="Choisir la couleur d'accent"
+              />
+              <input v-model="editForm.accent_color" type="text" class="app-input w-28" placeholder="#c8862f" />
+            </div>
+          </div>
+        </div>
+
+        <div class="mt-5 flex gap-2">
+          <button type="button" class="btn-secondary flex-1" @click="closeEdit">Annuler</button>
+          <button type="button" class="btn-primary flex-1" :disabled="isSaving" @click="saveEdit">
+            <UIcon v-if="isSaving" name="i-lucide-loader-circle" class="mr-1.5 h-4 w-4 animate-spin" />
+            Enregistrer
+          </button>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -142,10 +222,12 @@ import type { Ref } from 'vue'
 import { onMounted, ref } from 'vue'
 import { AiAssistantService } from '~/services/aiAssistantService'
 import type {
+  AiAssistantEditForm,
   AiAssistantLead,
   AiAssistantLeadsResponse,
   AiAssistantListResponse,
   AiAssistantSummary,
+  AiAssistantUpdatePayload,
 } from '~/types/AiAssistant'
 import type { UseToastReturn } from '~/types/Composables'
 import { useToast } from '~/composables/useToast'
@@ -168,6 +250,28 @@ const assistants: Ref<AiAssistantSummary[]> = ref([])
 const leads: Ref<AiAssistantLead[]> = ref([])
 const isLoading: Ref<boolean> = ref(true)
 const confirmingId: Ref<number | null> = ref(null)
+
+/** The assistant being customized (null = the modal is closed). */
+const editing: Ref<AiAssistantSummary | null> = ref(null)
+const editForm: Ref<AiAssistantEditForm> = ref({
+  assistant_name: '',
+  business_name: '',
+  tone: '',
+  accent_color: '',
+  languages: [],
+})
+const isSaving: Ref<boolean> = ref(false)
+
+/** Languages a customer can offer, in the order they matter for the target markets. */
+const LANGUAGE_OPTIONS: { code: string; label: string }[] = [
+  { code: 'fr', label: 'Français' },
+  { code: 'nl', label: 'Nederlands' },
+  { code: 'de', label: 'Deutsch' },
+  { code: 'en', label: 'English' },
+  { code: 'lu', label: 'Lëtzebuergesch' },
+  { code: 'it', label: 'Italiano' },
+  { code: 'es', label: 'Español' },
+]
 
 /**
  * Append the internal marker so opening a demo from the dashboard never pollutes its analytics.
@@ -214,6 +318,66 @@ async function removeAssistant(assistant: AiAssistantSummary): Promise<void> {
     toast.success('Assistant supprimé.')
   } catch {
     toast.error("Suppression impossible pour l'instant.")
+  }
+}
+
+/**
+ * Open the customization modal, prefilled from the assistant.
+ * @param assistant - The assistant to edit.
+ */
+function openEdit(assistant: AiAssistantSummary): void {
+  editing.value = assistant
+  editForm.value = {
+    assistant_name: assistant.assistant_name,
+    business_name: assistant.business_name,
+    tone: assistant.tone ?? '',
+    accent_color: assistant.accent_color ?? '',
+    languages: [...assistant.languages],
+  }
+}
+
+/** Close the customization modal without saving. */
+function closeEdit(): void {
+  editing.value = null
+}
+
+/**
+ * Toggle a language in the edit form.
+ * @param code - The language code to toggle.
+ */
+function toggleLanguage(code: string): void {
+  const languages: string[] = editForm.value.languages
+  editForm.value.languages = languages.includes(code)
+    ? languages.filter((item: string): boolean => item !== code)
+    : [...languages, code]
+}
+
+/**
+ * Persist the customization and refresh the edited card.
+ * @returns A promise resolved once saved.
+ */
+async function saveEdit(): Promise<void> {
+  const target: AiAssistantSummary | null = editing.value
+  if (!target || isSaving.value) return
+  isSaving.value = true
+  try {
+    const payload: AiAssistantUpdatePayload = {
+      assistant_name: editForm.value.assistant_name,
+      business_name: editForm.value.business_name,
+      tone: editForm.value.tone,
+      accent_color: editForm.value.accent_color,
+      languages: editForm.value.languages,
+    }
+    const updated: AiAssistantSummary = await AiAssistantService.update(target.id, payload)
+    assistants.value = assistants.value.map(
+      (item: AiAssistantSummary): AiAssistantSummary => (item.id === updated.id ? updated : item),
+    )
+    editing.value = null
+    toast.success('Assistant personnalisé.')
+  } catch {
+    toast.error('Enregistrement impossible pour le moment.')
+  } finally {
+    isSaving.value = false
   }
 }
 
