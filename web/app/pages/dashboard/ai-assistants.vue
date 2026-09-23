@@ -141,6 +141,67 @@
             >
               {{ assistant.embed_snippet }}
             </code>
+
+            <div class="flex flex-wrap items-center gap-2 border-t border-[var(--app-line-soft)] pt-3">
+              <span class="text-muted text-[10px] font-semibold tracking-wide uppercase">Vidéo</span>
+              <template v-if="assistant.video_status === 'ready'">
+                <a
+                  :href="assistant.video_page_url ?? '#'"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  class="btn-secondary h-8 text-xs"
+                >
+                  <UIcon name="i-lucide-play" class="mr-1.5 h-3.5 w-3.5" />
+                  Voir la vidéo
+                </a>
+                <button type="button" class="btn-secondary h-8 text-xs" @click="copyVideoLink(assistant)">
+                  <UIcon name="i-lucide-link" class="mr-1.5 h-3.5 w-3.5" />
+                  Copier le lien
+                </button>
+                <button
+                  type="button"
+                  class="text-muted ml-auto flex h-8 cursor-pointer items-center gap-1 rounded-lg px-2 text-xs transition-colors hover:text-[var(--app-ink)]"
+                  :disabled="videoBusyId === assistant.id"
+                  @click="generateVideo(assistant)"
+                >
+                  <UIcon
+                    :name="videoBusyId === assistant.id ? 'i-lucide-loader-circle' : 'i-lucide-refresh-cw'"
+                    class="h-3.5 w-3.5"
+                    :class="{ 'animate-spin': videoBusyId === assistant.id }"
+                  />
+                  Régénérer
+                </button>
+              </template>
+              <span
+                v-else-if="assistant.video_status === 'pending' || assistant.video_status === 'generating'"
+                class="text-muted inline-flex items-center gap-1.5 text-xs"
+              >
+                <UIcon name="i-lucide-loader-circle" class="h-3.5 w-3.5 animate-spin" />
+                Génération en cours…
+              </span>
+              <template v-else>
+                <button
+                  type="button"
+                  class="btn-secondary h-8 text-xs"
+                  :disabled="videoBusyId === assistant.id"
+                  @click="generateVideo(assistant)"
+                >
+                  <UIcon
+                    :name="videoBusyId === assistant.id ? 'i-lucide-loader-circle' : 'i-lucide-clapperboard'"
+                    class="mr-1.5 h-3.5 w-3.5"
+                    :class="{ 'animate-spin': videoBusyId === assistant.id }"
+                  />
+                  Générer la vidéo
+                </button>
+                <span
+                  v-if="assistant.video_status === 'failed'"
+                  class="text-[11px] text-[var(--app-red)]"
+                  :title="assistant.video_error ?? ''"
+                >
+                  échec — réessayer
+                </span>
+              </template>
+            </div>
           </article>
         </div>
       </section>
@@ -267,7 +328,7 @@
 
 <script lang="ts" setup>
 import type { ComputedRef, Ref } from 'vue'
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { AiAssistantService } from '~/services/aiAssistantService'
 import { ProspectsService } from '~/services/prospectsService'
 import type {
@@ -303,6 +364,8 @@ const leads: Ref<AiAssistantLead[]> = ref([])
 const isLoading: Ref<boolean> = ref(true)
 const confirmingId: Ref<number | null> = ref(null)
 const regeneratingId: Ref<number | null> = ref(null)
+const videoBusyId: Ref<number | null> = ref(null)
+const videoPollTimer: Ref<ReturnType<typeof setInterval> | null> = ref(null)
 
 /** The assistant being customized (null = the modal is closed). */
 const editing: Ref<AiAssistantSummary | null> = ref(null)
@@ -437,6 +500,70 @@ async function regenerateAssistant(assistant: AiAssistantSummary): Promise<void>
   }
 }
 
+/** Whether any assistant is mid-generation, which keeps the list polling. */
+const hasGeneratingVideo: ComputedRef<boolean> = computed((): boolean =>
+  assistants.value.some(
+    (item: AiAssistantSummary): boolean => item.video_status === 'pending' || item.video_status === 'generating',
+  ),
+)
+
+/** Poll the list every few seconds while a video is generating, then stop. */
+function startVideoPolling(): void {
+  if (videoPollTimer.value !== null) return
+  videoPollTimer.value = setInterval((): void => {
+    if (!hasGeneratingVideo.value) {
+      stopVideoPolling()
+      return
+    }
+    void loadData()
+  }, 5000)
+}
+
+/** Stop the video-generation poll. */
+function stopVideoPolling(): void {
+  if (videoPollTimer.value !== null) {
+    clearInterval(videoPollTimer.value)
+    videoPollTimer.value = null
+  }
+}
+
+/**
+ * Start (or restart) generating the assistant's prospection video.
+ * @param assistant - The assistant to make a video for.
+ * @returns A promise resolved once the generation is requested.
+ */
+async function generateVideo(assistant: AiAssistantSummary): Promise<void> {
+  if (videoBusyId.value !== null) return
+  videoBusyId.value = assistant.id
+  try {
+    const updated: AiAssistantSummary = await AiAssistantService.generateVideo(assistant.id)
+    assistants.value = assistants.value.map(
+      (item: AiAssistantSummary): AiAssistantSummary => (item.id === updated.id ? updated : item),
+    )
+    toast.success('Génération de la vidéo lancée.')
+    startVideoPolling()
+  } catch {
+    toast.error("Vidéo impossible — enregistrez d'abord votre clip webcam « assistant » dans les paramètres.")
+  } finally {
+    videoBusyId.value = null
+  }
+}
+
+/**
+ * Copy an assistant's video page link to the clipboard.
+ * @param assistant - The assistant whose video link to copy.
+ * @returns A promise resolved once the copy is attempted.
+ */
+async function copyVideoLink(assistant: AiAssistantSummary): Promise<void> {
+  if (!assistant.video_page_url) return
+  try {
+    await navigator.clipboard.writeText(assistant.video_page_url)
+    toast.success('Lien vidéo copié.')
+  } catch {
+    toast.error('Copie impossible depuis ce navigateur.')
+  }
+}
+
 /**
  * Open the customization modal, prefilled from the assistant.
  * @param assistant - The assistant to edit.
@@ -517,7 +644,12 @@ async function loadData(): Promise<void> {
   }
 }
 
-onMounted((): void => {
-  void loadData()
+onMounted(async (): Promise<void> => {
+  await loadData()
+  if (hasGeneratingVideo.value) startVideoPolling()
+})
+
+onUnmounted((): void => {
+  stopVideoPolling()
 })
 </script>
