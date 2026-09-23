@@ -145,6 +145,7 @@ MIGRATION_MODULES: list[tuple[str, str]] = [
     ("add_ai_assistants_table", "migrations.add_ai_assistants_table"),
     ("add_ai_assistant_leads_table", "migrations.add_ai_assistant_leads_table"),
     ("add_prospect_contact_lock", "migrations.add_prospect_contact_lock"),
+    ("add_ai_assistant_video", "migrations.add_ai_assistant_video"),
     ("seed_assistant_email_templates", "migrations.seed_assistant_email_templates"),
     ("seed_assistant_franc_email_template", "migrations.seed_assistant_franc_email_template"),
 ]

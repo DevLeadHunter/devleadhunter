@@ -45,8 +45,10 @@ class R2StorageService:
     """
 
     VIDEOS_WEBSITES_PREFIX = "videos/websites"
+    VIDEOS_ASSISTANT_PREFIX = "videos/assistant"
     VIDEOS_PRESENTER_PREFIX = "videos/presenter"
     IMAGES_WEBSITES_PREFIX = "images/websites"
+    IMAGES_ASSISTANT_PREFIX = "images/assistant"
     IMAGES_PROFILE_PREFIX = "images/profile"
     IMAGES_SUPPORT_PREFIX = "images/support"
     IMAGES_PROSPECTS_PREFIX = "images/prospects"
@@ -163,17 +165,38 @@ class R2StorageService:
         return f"{cls.IMAGES_WEBSITES_PREFIX}/{slug}.jpg"
 
     @classmethod
-    def presenter_key(cls, user_id: int) -> str:
+    def assistant_video_key(cls, slug: str) -> str:
+        """Build the key of an assistant's prospection video."""
+        return f"{cls.VIDEOS_ASSISTANT_PREFIX}/{slug}.mp4"
+
+    @classmethod
+    def assistant_background_key(cls, slug: str) -> str:
+        """Build the key of an assistant's video *background* (the recorded widget answering)."""
+        return f"{cls.VIDEOS_ASSISTANT_PREFIX}/{slug}-background.mp4"
+
+    @classmethod
+    def assistant_thumbnail_key(cls, slug: str) -> str:
+        """Build the key of an assistant's email thumbnail."""
+        return f"{cls.IMAGES_ASSISTANT_PREFIX}/{slug}.jpg"
+
+    @classmethod
+    def presenter_key(cls, user_id: int, module: str = "websites") -> str:
         """
-        Build the key of a user's source webcam clip.
+        Build the key of a user's source webcam clip for a sellable module.
+
+        The website clip keeps its historic key (``videos/presenter/{user_id}.mp4``) so existing
+        clips never move; other modules get a suffixed key.
 
         Args:
             user_id: Owner of the clip.
+            module: The sellable module the clip belongs to (``websites`` / ``ai-assistant``).
 
         Returns:
             The object key.
         """
-        return f"{cls.VIDEOS_PRESENTER_PREFIX}/{user_id}.mp4"
+        if module == "websites":
+            return f"{cls.VIDEOS_PRESENTER_PREFIX}/{user_id}.mp4"
+        return f"{cls.VIDEOS_PRESENTER_PREFIX}/{user_id}-{module}.mp4"
 
     @classmethod
     def profile_photo_key(cls, user_id: int) -> str:
