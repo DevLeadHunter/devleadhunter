@@ -204,9 +204,11 @@ async def has_audio_stream(file_path: str) -> bool:
 class PresenterVideoService:
     """CRUD for the per-user presenter clip (file on disk + DB row)."""
 
-    def get_for_user(self, db: Session, user_id: int) -> PresenterVideo | None:
-        """Return the user's presenter clip row, or None."""
-        return db.execute(select(PresenterVideo).where(PresenterVideo.user_id == user_id)).scalar_one_or_none()
+    def get_for_user(self, db: Session, user_id: int, module: str = "websites") -> PresenterVideo | None:
+        """Return the user's presenter clip row for a module ('websites' by default), or None."""
+        return db.execute(
+            select(PresenterVideo).where(PresenterVideo.user_id == user_id, PresenterVideo.module == module)
+        ).scalar_one_or_none()
 
     async def store_upload(
         self,
@@ -216,6 +218,7 @@ class PresenterVideoService:
         intro_seconds: float,
         outro_seconds: float,
         auto_generate: bool = True,
+        module: str = "websites",
     ) -> PresenterVideo:
         """
         Persist the uploaded presenter clip (replaces any previous one).
@@ -271,13 +274,13 @@ class PresenterVideoService:
             # rendu plus fiable et stockage divisé par 10 à 20.
             normalized_path = work_dir / "presenter.mp4"
             await self._normalize_clip(source_path, normalized_path)
-            object_key = await self._publish(user_id, normalized_path)
+            object_key = await self._publish(user_id, normalized_path, module)
         finally:
             shutil.rmtree(work_dir, ignore_errors=True)
 
-        record = self.get_for_user(db, user_id)
+        record = self.get_for_user(db, user_id, module)
         if record is None:
-            record = PresenterVideo(user_id=user_id, file_path=object_key)
+            record = PresenterVideo(user_id=user_id, module=module, file_path=object_key)
             db.add(record)
         record.file_path = object_key
         record.original_filename = file.filename or f"presenter{extension}"
@@ -298,6 +301,7 @@ class PresenterVideoService:
         middle: UploadFile,
         outro: UploadFile,
         auto_generate: bool = True,
+        module: str = "websites",
     ) -> PresenterVideo:
         """
         Assemble the three in-app takes into the single presenter clip.
@@ -417,13 +421,13 @@ class PresenterVideoService:
                 logger.warning("[Presenter] temp dir not fully cleaned: %s", work_dir)
 
         try:
-            object_key = await self._publish(user_id, target_path)
+            object_key = await self._publish(user_id, target_path, module)
         finally:
             shutil.rmtree(out_dir, ignore_errors=True)
 
-        record = self.get_for_user(db, user_id)
+        record = self.get_for_user(db, user_id, module)
         if record is None:
-            record = PresenterVideo(user_id=user_id, file_path=object_key)
+            record = PresenterVideo(user_id=user_id, module=module, file_path=object_key)
             db.add(record)
         record.file_path = object_key
         record.original_filename = "enregistrement-devleadhunter.mp4"
@@ -437,21 +441,22 @@ class PresenterVideoService:
         return record
 
     @staticmethod
-    async def _publish(user_id: int, local_path: Path) -> str:
+    async def _publish(user_id: int, local_path: Path, module: str = "websites") -> str:
         """
         Push the normalised clip to R2 and return its object key.
 
         Args:
             user_id: Owner of the clip.
             local_path: Normalised MP4 to upload.
+            module: The sellable module the clip belongs to (drives the object key).
 
         Returns:
-            The R2 key stored on the row (``videos/presenter/{user_id}.mp4``).
+            The R2 key stored on the row (``videos/presenter/{user_id}.mp4`` for websites).
 
         Raises:
             HTTPException: 500 when the storage rejects the upload.
         """
-        key = r2_storage.presenter_key(user_id)
+        key = r2_storage.presenter_key(user_id, module)
         try:
             await r2_storage.upload_file_async(local_path, key, "video/mp4")
         except Exception as exc:
@@ -694,9 +699,9 @@ class PresenterVideoService:
         db.refresh(record)
         return record
 
-    def delete_for_user(self, db: Session, user_id: int) -> bool:
-        """Delete the user's presenter clip (object + row). Returns True if one existed."""
-        record = self.get_for_user(db, user_id)
+    def delete_for_user(self, db: Session, user_id: int, module: str = "websites") -> bool:
+        """Delete the user's presenter clip for a module (object + row). Returns True if one existed."""
+        record = self.get_for_user(db, user_id, module)
         if record is None:
             return False
         stored = str(record.file_path or "")

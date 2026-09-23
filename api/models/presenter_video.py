@@ -1,25 +1,30 @@
-"""Presenter (webcam) source clip uploaded once per user.
+"""Presenter (webcam) source clip uploaded once per user per sellable module.
 
 This is the generic « Léo parle à la caméra » recording reused for every
 prospection video: intro full-screen, then shrunk to a picture-in-picture
-bubble while the prospect's generated site scrolls behind.
+bubble while the prospect's generated site (or assistant) plays behind. Each
+module carries its own clip, because the speech differs (a site pitch is not an
+assistant pitch) — see ``module``.
 """
 
 from datetime import datetime
 
-from sqlalchemy import Boolean, Float, ForeignKey, String
+from sqlalchemy import Boolean, Float, ForeignKey, String, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column
 
 from core.database import Base
 
 
 class PresenterVideo(Base):
-    """One presenter clip per user (upload replaces the previous one)."""
+    """One presenter clip per user per module (upload replaces the previous one for that module)."""
 
     __tablename__ = "presenter_videos"
+    __table_args__ = (UniqueConstraint("user_id", "module", name="uq_presenter_user_module"),)
 
     id: Mapped[int] = mapped_column(primary_key=True, index=True)
-    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), nullable=False, unique=True, index=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), nullable=False, index=True)
+    # The sellable module this clip belongs to ('websites' / 'ai-assistant').
+    module: Mapped[str] = mapped_column(String(32), nullable=False, default="websites", server_default="websites")
     file_path: Mapped[str] = mapped_column(String(512), nullable=False)
     original_filename: Mapped[str | None] = mapped_column(String(255), nullable=True)
     duration_seconds: Mapped[float] = mapped_column(Float, nullable=False, default=0.0)
