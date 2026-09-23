@@ -46,7 +46,7 @@
         </div>
 
         <div v-else class="grid gap-3 @2xl:grid-cols-2">
-          <article v-for="assistant in assistants" :key="assistant.id" class="app-card flex flex-col gap-3 p-4">
+          <article v-for="assistant in assistants" :key="assistant.id" class="app-card flex min-w-0 flex-col gap-3 p-4">
             <div class="flex items-start justify-between gap-3">
               <div class="min-w-0">
                 <p class="truncate text-sm font-semibold text-[var(--app-ink)]">{{ assistant.business_name }}</p>
