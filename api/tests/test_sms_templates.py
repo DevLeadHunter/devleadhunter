@@ -22,7 +22,7 @@ _TYPICAL_VARIABLES: dict[str, str] = {
     "ville": "Poitiers",
     "metier": "garagiste",
     "lien_demo": "demo.dibodev.fr/s/garage-martin-auto",
-    "lien_assistant": "demo.dibodev.fr/a/garage-martin-auto",
+    "lien_assistant": "demo.dibodev.fr/ia/garage-martin-auto",
     "lien_video": "demo.dibodev.fr/s/v/garage-martin-auto",
     "ancien_site": "garage-martin.fr",
     "prix": "500 €",
@@ -193,5 +193,5 @@ class TestAssistantTemplates:
         template = find_sms_template("assistant-24-7")
         assert template is not None
         body = render_sms_template(template.body, _TYPICAL_VARIABLES)
-        assert "demo.dibodev.fr/a/garage-martin-auto" in body
+        assert "demo.dibodev.fr/ia/garage-martin-auto" in body
         assert "demo.dibodev.fr/s/" not in body

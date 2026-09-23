@@ -102,7 +102,7 @@ def test_resolve_assistant_link_renders_anchor_for_active_assistant() -> None:
     """`{lien_assistant}` renders a real anchor to the assistant's demo page."""
     html = EmailVariables.resolve_assistant_link(_FakeAssistantDB(SimpleNamespace(slug="agence-immo")), 1)
     assert html.startswith("<a ")
-    assert "/a/agence-immo" in html
+    assert "/ia/agence-immo" in html
     assert html.endswith("</a>")
 
 
@@ -112,9 +112,9 @@ def test_resolve_assistant_link_empty_without_assistant() -> None:
 
 
 def test_resolve_assistant_url_is_the_bare_demo_url() -> None:
-    """The shared resolver returns the raw `/a/<slug>` URL (no anchor), for SMS to strip its scheme."""
+    """The shared resolver returns the raw `/ia/<slug>` URL (no anchor), for SMS to strip its scheme."""
     url = EmailVariables.resolve_assistant_url(_FakeAssistantDB(SimpleNamespace(slug="agence-immo")), 1)
-    assert url.endswith("/a/agence-immo")
+    assert url.endswith("/ia/agence-immo")
     assert "<a " not in url
 
 

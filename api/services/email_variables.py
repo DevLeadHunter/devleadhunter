@@ -220,7 +220,7 @@ class EmailVariables:
         if assistant is None:
             return ""
         base: str = settings.demo_host_base_url.rstrip("/")
-        return f"{base}/a/{assistant.slug}"
+        return f"{base}/ia/{assistant.slug}"
 
     @classmethod
     def resolve_assistant_link(cls, db: Session, prospect_id: int) -> str:
