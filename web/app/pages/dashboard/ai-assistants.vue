@@ -205,6 +205,13 @@
 
             <div class="flex flex-wrap items-center gap-2 border-t border-[var(--app-line-soft)] pt-3">
               <span class="text-muted text-[10px] font-semibold tracking-wide uppercase">Abonnement</span>
+              <span
+                v-if="assistant.subscription_status === 'active'"
+                class="inline-flex items-center gap-1 rounded-full border border-[var(--app-green)] px-2 py-0.5 text-[10px] font-medium text-[var(--app-green)]"
+              >
+                <UIcon name="i-lucide-check" class="h-3 w-3" />
+                Abonné · {{ subscriptionLabel(assistant) }}
+              </span>
               <button
                 type="button"
                 class="btn-secondary h-8 text-xs"
@@ -633,6 +640,17 @@ async function copySubscriptionLink(assistant: AiAssistantSummary, interval: 'mo
   } finally {
     subscriptionBusyId.value = null
   }
+}
+
+/**
+ * Human label for an assistant's active subscription (e.g. « 29 €/mois »).
+ * @param assistant - The subscribed assistant.
+ * @returns The formatted price + interval, or an empty string when there is none.
+ */
+function subscriptionLabel(assistant: AiAssistantSummary): string {
+  if (assistant.subscription_amount_cents == null) return ''
+  const euros: number = Math.round(assistant.subscription_amount_cents / 100)
+  return `${euros} €/${assistant.subscription_interval === 'year' ? 'an' : 'mois'}`
 }
 
 /**

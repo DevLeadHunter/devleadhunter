@@ -337,6 +337,48 @@ class NotificationService:
             tag=f"sale-{order_id}",
         )
 
+    async def notify_assistant_subscription(
+        self,
+        db: Session,
+        *,
+        user_id: int,
+        prospect_id: int | None,
+        fallback_name: str,
+        amount_cents: int,
+        interval: str,
+    ) -> None:
+        """
+        Raise a notification when a client subscribes to their AI assistant — the sale's final step.
+
+        Args:
+            db: Active database session (to resolve the prospect's name).
+            user_id: Owner of the assistant — the notification recipient.
+            prospect_id: Prospect the assistant was sold to, when known.
+            fallback_name: Name shown when the prospect can't be resolved.
+            amount_cents: The locked subscription amount in cents.
+            interval: ``"month"`` or ``"year"``.
+        """
+        prospect_name = self._resolve_prospect_name(db, prospect_id, fallback_name)
+        plan = f"{self._format_amount(amount_cents, 'eur')}{'/an' if interval == 'year' else '/mois'}"
+        activity_log_service.record(
+            category=CATEGORY_ASSISTANT,
+            action="assistant_subscribed",
+            status=STATUS_SUCCESS,
+            title=f"{prospect_name} · Abonné à l'assistant {plan}",
+            user_id=user_id,
+            entity_type="prospect",
+            entity_id=prospect_id,
+        )
+        await self._dispatch(
+            user_id=user_id,
+            category="assistant",
+            level="success",
+            title=f"🎉 {prospect_name}",
+            body=f"S'est abonné à son assistant — {plan}",
+            url=f"{_PROSPECTS_URL}?open={prospect_id}" if prospect_id else _DASHBOARD_URL,
+            tag=f"assistant-sub-{prospect_id}" if prospect_id else None,
+        )
+
     async def notify_assistant_lead(
         self,
         db: Session,

@@ -147,7 +147,18 @@ async def stripe_webhook(
         event_type = event.get("type", "")
         event_obj = (event.get("data") or {}).get("object") or {}
         if event_type == "checkout.session.completed" and event_obj.get("mode") == "subscription":
-            assistant_subscription_service.activate_from_session(db, event_obj)
+            activated = assistant_subscription_service.activate_from_session(db, event_obj)
+            if activated is not None:
+                from services.notification_service import notification_service
+
+                await notification_service.notify_assistant_subscription(
+                    db,
+                    user_id=activated.user_id,
+                    prospect_id=activated.prospect_id,
+                    fallback_name=activated.client_name or "Un client",
+                    amount_cents=activated.amount_cents,
+                    interval=activated.interval,
+                )
             return {"status": "success", "message": "Assistant subscription activated"}
         if event_type in ("customer.subscription.updated", "customer.subscription.deleted"):
             assistant_subscription_service.update_from_stripe_subscription(db, event_obj)
