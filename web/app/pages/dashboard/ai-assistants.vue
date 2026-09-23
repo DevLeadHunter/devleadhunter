@@ -64,13 +64,20 @@
               </span>
             </div>
 
-            <div class="flex flex-wrap gap-1">
+            <div class="flex flex-wrap items-center gap-1">
               <span
                 v-for="language in assistant.languages"
                 :key="language"
                 class="rounded border border-[var(--app-line)] px-1.5 py-0.5 text-[10px] tracking-wide text-[var(--app-ink-soft)] uppercase"
               >
                 {{ language }}
+              </span>
+              <span
+                v-if="leadCountFor(assistant.id) > 0"
+                class="ml-auto inline-flex items-center gap-1 text-[11px] font-medium text-[var(--app-green)] tabular-nums"
+              >
+                <UIcon name="i-lucide-user-plus" class="h-3 w-3" />
+                {{ leadCountFor(assistant.id) }} capté{{ leadCountFor(assistant.id) > 1 ? 's' : '' }}
               </span>
             </div>
 
@@ -298,6 +305,22 @@ const latestLeadLabel: ComputedRef<string> = computed((): string => {
   const latest: AiAssistantLead | undefined = leads.value[0]
   return latest ? formatDate(latest.created_at) : '—'
 })
+
+/** Captured-contact count per assistant, to show conversion at a glance. */
+const leadCountByAssistant: ComputedRef<Record<number, number>> = computed((): Record<number, number> => {
+  const counts: Record<number, number> = {}
+  for (const lead of leads.value) counts[lead.assistant_id] = (counts[lead.assistant_id] ?? 0) + 1
+  return counts
+})
+
+/**
+ * Captured-contact count for a single assistant, safe for template use.
+ * @param assistantId - The assistant's id.
+ * @returns The number of leads captured, or 0 when none.
+ */
+function leadCountFor(assistantId: number): number {
+  return leadCountByAssistant.value[assistantId] ?? 0
+}
 
 /**
  * Append the internal marker so opening a demo from the dashboard never pollutes its analytics.
