@@ -86,3 +86,26 @@ def test_template_using_expiry_date_requires_demo() -> None:
         subject="Dernier rappel", body_html="Votre site reste en ligne jusqu'au {date_expiration}."
     )
     assert CampaignQueueService._template_uses_demo_link(template) is True
+
+
+class _FakeAssistantDB:
+    """Fake session whose ``execute().scalars().first()`` returns a canned assistant."""
+
+    def __init__(self, assistant: object | None) -> None:
+        self._assistant = assistant
+
+    def execute(self, *args: object, **kwargs: object) -> SimpleNamespace:
+        return SimpleNamespace(scalars=lambda: SimpleNamespace(first=lambda: self._assistant))
+
+
+def test_resolve_assistant_link_renders_anchor_for_active_assistant() -> None:
+    """`{lien_assistant}` renders a real anchor to the assistant's demo page."""
+    html = EmailVariables.resolve_assistant_link(_FakeAssistantDB(SimpleNamespace(slug="agence-immo")), 1)
+    assert html.startswith("<a ")
+    assert "/a/agence-immo" in html
+    assert html.endswith("</a>")
+
+
+def test_resolve_assistant_link_empty_without_assistant() -> None:
+    """`{lien_assistant}` is empty when the prospect has no active assistant."""
+    assert EmailVariables.resolve_assistant_link(_FakeAssistantDB(None), 1) == ""
