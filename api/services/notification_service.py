@@ -378,6 +378,50 @@ class NotificationService:
             tag=f"assistant-lead-{prospect_id}" if prospect_id else None,
         )
 
+    async def notify_assistant_interest(
+        self,
+        db: Session,
+        *,
+        user_id: int,
+        prospect_id: int | None,
+        fallback_name: str,
+        message: str,
+    ) -> None:
+        """
+        Raise a notification when a prospect raises their hand on their assistant sales page.
+
+        This is the business owner asking to be contacted — the strongest buy signal for the
+        AI-assistant module, distinct from a customer lead captured inside the widget.
+
+        Args:
+            db: Active database session (to resolve the prospect's name).
+            user_id: Owner of the assistant — the notification recipient.
+            prospect_id: Prospect the assistant was generated for, when known.
+            fallback_name: Name shown when the prospect can't be resolved.
+            message: The prospect's optional message (may be empty).
+        """
+        prospect_name = self._resolve_prospect_name(db, prospect_id, fallback_name)
+        summary = message.strip() or "veut être recontacté"
+        activity_log_service.record(
+            category=CATEGORY_DEMO,
+            action="assistant_interest",
+            status=STATUS_SUCCESS,
+            title=f"{prospect_name} · Intéressé par l'assistant IA",
+            detail=message.strip() or None,
+            user_id=user_id,
+            entity_type="prospect",
+            entity_id=prospect_id,
+        )
+        await self._dispatch(
+            user_id=user_id,
+            category="demo",
+            level="success",
+            title=f"🔥 {prospect_name} veut son assistant",
+            body=f"Depuis la page de l'assistant — {summary}",
+            url=f"{_PROSPECTS_URL}?open={prospect_id}" if prospect_id else _DASHBOARD_URL,
+            tag=f"assistant-interest-{prospect_id}" if prospect_id else None,
+        )
+
     async def notify_go_live_step(
         self,
         *,

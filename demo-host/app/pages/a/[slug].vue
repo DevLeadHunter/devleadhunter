@@ -62,6 +62,16 @@
         <p class="a-cue">Essayez : posez-lui une question, en bas à droite →</p>
       </main>
       <AssistantChat :config="assistant" />
+      <AssistantContactBanner
+        :slug="assistant.slug"
+        :business-name="assistant.business_name"
+        :owner-name="assistant.owner_name ?? null"
+        :owner-photo-url="assistant.owner_profile_photo_url ?? null"
+        :owner-phone="assistant.owner_contact_phone ?? null"
+        :owner-email="assistant.owner_contact_email ?? null"
+        :status="assistant.status"
+        :accent-color="assistant.accent_color"
+      />
     </template>
   </div>
 </template>
