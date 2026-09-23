@@ -205,10 +205,10 @@ EMAIL_TEMPLATE_LIBRARY: list[dict[str, object]] = [
         "subject": "Vos clients écrivent, personne ne répond",
         "body_html": (
             "<p>{salutation},</p>"
-            "<p>Beaucoup de gens cherchent un {metier} à {ville} le soir ou le week-end, quand le téléphone "
-            "ne répond plus. Ces demandes-là, vous ne les voyez jamais passer.</p>"
-            "<p>J'ai préparé pour {entreprise} un assistant qui répond à leur place, note qui vous contacte et "
-            "vous transmet le message. Vous pouvez l'essayer ici : {lien_assistant}</p>"
+            "<p>J'ai mis en place pour {entreprise} un assistant qui répond tout seul à vos clients 24h/24, "
+            "même le soir et le week-end, et vous transmet leurs coordonnées : {lien_assistant}</p>"
+            "<p>{prix_assistant}/mois, installé sur votre site, sans engagement.</p>"
+            "<p>On le met en place ?</p>"
         ),
     },
     {
@@ -218,10 +218,10 @@ EMAIL_TEMPLATE_LIBRARY: list[dict[str, object]] = [
         "subject": "Répondre à vos clients dans leur langue",
         "body_html": (
             "<p>{salutation},</p>"
-            "<p>À {ville}, une partie de vos visiteurs écrivent en allemand ou en anglais, et beaucoup "
-            "repartent s'ils ne sont pas compris tout de suite.</p>"
-            "<p>J'ai monté pour {entreprise} un assistant qui répond dans la langue du visiteur, 24h/24, et "
-            "récupère ses coordonnées. La démo est déjà en ligne : {lien_assistant}</p>"
+            "<p>J'ai mis en place pour {entreprise} un assistant qui répond tout seul à vos clients dans "
+            "leur langue, 24h/24, et récupère leurs coordonnées : {lien_assistant}</p>"
+            "<p>{prix_assistant}/mois, installé sur votre site, sans engagement.</p>"
+            "<p>Ça vous intéresse ?</p>"
         ),
     },
     {
@@ -231,10 +231,11 @@ EMAIL_TEMPLATE_LIBRARY: list[dict[str, object]] = [
         "subject": "Un assistant qui capte vos demandes",
         "body_html": (
             "<p>{salutation},</p>"
-            "<p>Sur le site d'un {metier}, la plupart des visiteurs partent sans laisser de message. C'est "
-            "autant de clients que vous ne rappellerez jamais.</p>"
-            "<p>J'ai créé pour {entreprise} un assistant qui les accueille, répond à leurs questions et note "
-            "leurs coordonnées, avec des données hébergées en Europe. Essayez-le : {lien_assistant}</p>"
+            "<p>La plupart des visiteurs d'un {metier} repartent sans laisser de message. J'ai mis en place "
+            "pour {entreprise} un assistant qui les accueille, répond tout seul et note leurs coordonnées : "
+            "{lien_assistant}</p>"
+            "<p>{prix_assistant}/mois, installé sur votre site, sans engagement.</p>"
+            "<p>Je vous le mets en place ?</p>"
         ),
     },
     {
@@ -244,9 +245,10 @@ EMAIL_TEMPLATE_LIBRARY: list[dict[str, object]] = [
         "subject": "L'assistant de {entreprise} tourne toujours",
         "body_html": (
             "<p>{salutation},</p>"
-            "<p>Je reviens vers vous : l'assistant que j'ai préparé pour {entreprise} est toujours en ligne. "
-            "Vous pouvez le tester ici : {lien_assistant}</p>"
-            "<p>Si ça vous parle, je vous montre comment l'installer sur votre site en cinq minutes.</p>"
+            "<p>L'assistant de {entreprise} tourne toujours : il répond tout seul à vos clients 24h/24 et "
+            "note leurs coordonnées : {lien_assistant}</p>"
+            "<p>{prix_assistant}/mois, installation comprise, sans engagement.</p>"
+            "<p>Je vous le mets en place cette semaine ?</p>"
         ),
     },
     {
@@ -256,10 +258,11 @@ EMAIL_TEMPLATE_LIBRARY: list[dict[str, object]] = [
         "subject": "Le prix de l'assistant, sans détour",
         "body_html": (
             "<p>{salutation},</p>"
-            "<p>L'assistant que j'ai préparé pour {entreprise} tourne toujours : {lien_assistant}</p>"
-            "<p>Je vous donne le tarif sans tourner autour : {prix_assistant}/mois, installation sur votre site "
-            "comprise, sans engagement. Vous l'arrêtez quand vous voulez, il n'y a rien à signer.</p>"
-            "<p>Je vous le mets en place cette semaine ?</p>"
+            "<p>L'assistant que j'ai préparé pour {entreprise} répond tout seul à vos clients 24h/24 : "
+            "{lien_assistant}</p>"
+            "<p>Le tarif sans détour : {prix_assistant}/mois, installation comprise, sans engagement — vous "
+            "l'arrêtez quand vous voulez.</p>"
+            "<p>Je vous le mets en place ?</p>"
         ),
     },
 ]
