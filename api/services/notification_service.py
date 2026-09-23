@@ -101,6 +101,11 @@ _DEMO_EVENT_NOTIFS: dict[str, tuple[str, str, str]] = {
 # (so the push and the activity log say « via SMS » / « via Email »); 'direct' shows nothing.
 _DEMO_CHANNEL_LABELS: dict[str, str] = {"sms": "SMS", "email": "Email"}
 
+# Which product a notification belongs to, shown first in the body so it is legible at a glance
+# on a phone (the two modules — websites and AI assistants — otherwise look identical in a push).
+_MODULE_TAG_SITE = "🌐 Site web"
+_MODULE_TAG_ASSISTANT = "🤖 Assistant IA"
+
 # SMS lifecycle event → (emoji, level, body). Same title convention as emails.
 _SMS_EVENT_NOTIFS: dict[str, tuple[str, str, str]] = {
     "sms_sent": ("📱", "info", "SMS envoyé"),
@@ -241,7 +246,7 @@ class NotificationService:
             category="demo",
             level=level,
             title=f"{emoji} {prospect_name}",
-            body=body,
+            body=f"{_MODULE_TAG_SITE} · {body}",
             url=self._prospect_url(prospect_id),
         )
 
@@ -332,7 +337,7 @@ class NotificationService:
             category="sale",
             level="success",
             title=f"💰 {prospect_name}",
-            body=f"A payé {amount}",
+            body=f"{_MODULE_TAG_SITE} · A payé {amount}",
             url=f"{_ORDERS_URL}?open={order_id}",
             tag=f"sale-{order_id}",
         )
@@ -374,7 +379,7 @@ class NotificationService:
             category="assistant",
             level="success",
             title=f"🎉 {prospect_name}",
-            body=f"S'est abonné à son assistant — {plan}",
+            body=f"{_MODULE_TAG_ASSISTANT} · S'est abonné — {plan}",
             url=f"{_PROSPECTS_URL}?open={prospect_id}" if prospect_id else _DASHBOARD_URL,
             tag=f"assistant-sub-{prospect_id}" if prospect_id else None,
         )
@@ -416,7 +421,7 @@ class NotificationService:
             category="assistant",
             level="success",
             title=f"🙋 {lead_name}",
-            body=f"Lead via l'assistant de {prospect_name} — {summary}",
+            body=f"{_MODULE_TAG_ASSISTANT} · Nouveau lead de {prospect_name} — {summary}",
             url=f"{_PROSPECTS_URL}?open={prospect_id}" if prospect_id else _DASHBOARD_URL,
             tag=f"assistant-lead-{prospect_id}" if prospect_id else None,
         )
@@ -460,7 +465,7 @@ class NotificationService:
             category="assistant",
             level="success",
             title=f"🔥 {prospect_name} veut son assistant",
-            body=f"Depuis la page de l'assistant — {summary}",
+            body=f"{_MODULE_TAG_ASSISTANT} · Depuis la page démo — {summary}",
             url=f"{_PROSPECTS_URL}?open={prospect_id}" if prospect_id else _DASHBOARD_URL,
             tag=f"assistant-interest-{prospect_id}" if prospect_id else None,
         )
@@ -490,7 +495,15 @@ class NotificationService:
             tag: Optional tag to collapse successive updates of the same step.
         """
         url = f"{_ORDERS_URL}?open={order_id}" if order_id is not None else _ORDERS_URL
-        await self._dispatch(user_id=user_id, category="sale", level=level, title=title, body=body, url=url, tag=tag)
+        await self._dispatch(
+            user_id=user_id,
+            category="sale",
+            level=level,
+            title=title,
+            body=f"{_MODULE_TAG_SITE} · {body}",
+            url=url,
+            tag=tag,
+        )
 
     async def notify_error(self, *, context: str, message: str, tag: str | None = None) -> None:
         """
