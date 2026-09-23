@@ -246,7 +246,8 @@ class EmailVariables:
 
         Empty strings when the prospect has no active assistant or its video is not ready — a
         template using ``{lien_video_assistant}`` / ``{vignette_video_assistant}`` then renders
-        nothing there (the campaign guards prevent sending a video-only template with no video).
+        nothing there and degrades to the live ``{lien_assistant}`` CTA (the assistant video is a
+        bonus, never a send blocker — same graceful degradation as ``{lien_assistant}`` in email).
 
         Args:
             db: Active database session.
