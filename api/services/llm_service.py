@@ -14,6 +14,7 @@ import json
 import logging
 import re
 import time
+from dataclasses import dataclass
 from typing import Any
 
 import httpx
@@ -50,6 +51,17 @@ def _uses_reasoning(model: str) -> bool:
     """Whether the model id is a reasoning model that needs ``reasoning_effort``."""
     lowered = model.lower()
     return any(hint in lowered for hint in _REASONING_MODEL_HINTS)
+
+
+@dataclass(frozen=True)
+class LlmCompletion:
+    """A model answer with what it cost: the text, the model, the tokens and how long it took."""
+
+    text: str
+    model: str
+    prompt_tokens: int | None
+    completion_tokens: int | None
+    latency_ms: int
 
 
 def _format_sender_identity(*, sender_name: str, company_name: str | None) -> str:
@@ -92,6 +104,35 @@ class LLMService:
             json_mode: Ask for a JSON object answer (``response_format``).
             timeout: HTTP timeout in seconds.
         """
+        completion = await self.complete(
+            messages, max_tokens=max_tokens, temperature=temperature, model=model, json_mode=json_mode, timeout=timeout
+        )
+        return completion.text if completion else None
+
+    async def complete(
+        self,
+        messages: list[dict[str, Any]],
+        *,
+        max_tokens: int = 600,
+        temperature: float = 0.6,
+        model: str | None = None,
+        json_mode: bool = False,
+        timeout: float = 40.0,
+    ) -> LlmCompletion | None:
+        """
+        Call Groq chat completions and keep the usage figures (tokens, latency).
+
+        Args:
+            messages: OpenAI-style messages (see ``_chat``).
+            max_tokens: Answer budget (floored so reasoning models keep room for the content).
+            temperature: Sampling temperature.
+            model: Model id override (default: ``settings.groq_model``).
+            json_mode: Ask for a JSON object answer (``response_format``).
+            timeout: HTTP timeout in seconds.
+
+        Returns:
+            The completion, or None when Groq is off or the call failed.
+        """
         if not self.is_configured:
             return None
         chosen_model = model or settings.groq_model
@@ -105,11 +146,19 @@ class LLMService:
             payload["response_format"] = {"type": "json_object"}
         if _uses_reasoning(chosen_model):
             payload["reasoning_effort"] = "low"
+        started = time.monotonic()
         try:
             async with httpx.AsyncClient(timeout=timeout) as client:
                 response = await self._post_with_retries(client, payload)
                 data: dict[str, Any] = response.json()
-                return data["choices"][0]["message"]["content"].strip()
+                usage: dict[str, Any] = data.get("usage") or {}
+                return LlmCompletion(
+                    text=data["choices"][0]["message"]["content"].strip(),
+                    model=str(data.get("model") or chosen_model),
+                    prompt_tokens=usage.get("prompt_tokens"),
+                    completion_tokens=usage.get("completion_tokens"),
+                    latency_ms=int((time.monotonic() - started) * 1000),
+                )
         except httpx.HTTPStatusError as exc:
             logger.warning(
                 "Groq call failed (%s): HTTP %s %s", chosen_model, exc.response.status_code, exc.response.text[:300]
@@ -169,7 +218,7 @@ class LLMService:
         text = await self._chat(
             messages, max_tokens=max_tokens, temperature=temperature, model=model, json_mode=True, timeout=timeout
         )
-        return self._parse_json_object(text)
+        return self.parse_json_object(text)
 
     async def chat(
         self,
@@ -225,8 +274,16 @@ class LLMService:
         return {"Authorization": f"Bearer {settings.groq_api_key}"}
 
     @staticmethod
-    def _parse_json_object(text: str | None) -> dict[str, Any] | None:
-        """Parse a model answer as a JSON object, tolerating code fences and leading prose."""
+    def parse_json_object(text: str | None) -> dict[str, Any] | None:
+        """
+        Parse a model answer as a JSON object, tolerating code fences and leading prose.
+
+        Args:
+            text: The model's answer.
+
+        Returns:
+            The object, or None when the answer holds none.
+        """
         if not text:
             return None
         cleaned = _JSON_FENCE_RE.sub("", text.strip())

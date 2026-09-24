@@ -254,6 +254,29 @@ class Settings(BaseSettings):
         description="Preferred Groq vision model id for photo labelling (verified against the live model list)",
     )
 
+    # Mistral (La Plateforme) — the AI assistant module's chat, quote photos and request analysis.
+    # Without a key those calls stay on Groq; an assistant flagged « EU only » then gets no model answer.
+    mistral_api_key: str | None = Field(
+        default=None,
+        alias="MISTRAL_API_KEY",
+        description="Mistral La Plateforme API key, used first by the AI assistant module (Groq is the fallback)",
+    )
+    mistral_chat_model: str = Field(
+        default="mistral-small-latest",
+        alias="MISTRAL_CHAT_MODEL",
+        description="Mistral model answering the assistant visitors and analysing their requests",
+    )
+    mistral_vision_model: str = Field(
+        default="mistral-small-latest",
+        alias="MISTRAL_VISION_MODEL",
+        description="Mistral multimodal model describing the quote photos (Mistral Small reads images)",
+    )
+    # Estimated prices, in EUR per million tokens, to log the cost of each assistant model call.
+    mistral_eur_per_mtok_in: float = Field(default=0.1, alias="MISTRAL_EUR_PER_MTOK_IN")
+    mistral_eur_per_mtok_out: float = Field(default=0.3, alias="MISTRAL_EUR_PER_MTOK_OUT")
+    groq_eur_per_mtok_in: float = Field(default=0.15, alias="GROQ_EUR_PER_MTOK_IN")
+    groq_eur_per_mtok_out: float = Field(default=0.75, alias="GROQ_EUR_PER_MTOK_OUT")
+
     # Fallback .fr first-year price (HT, EUR) shown before purchase when the live OVH public
     # catalog is unreachable. The catalog (services/domain/ovh_catalog.py) is the source of truth.
     domain_fr_price_eur: float = Field(

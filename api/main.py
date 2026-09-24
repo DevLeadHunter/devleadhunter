@@ -29,6 +29,8 @@ def _configure_logging() -> None:
     sqlalchemy_dialects_logger.propagate = False
 
     logging.getLogger("stripe").setLevel(logging.WARNING)
+    # The per-call provider / latency / cost line of the AI assistant's models (INFO, above the root level).
+    logging.getLogger("services.ai_assistant.llm_router").setLevel(logging.INFO)
     logging.getLogger("uvicorn.access").setLevel(logging.WARNING)
     logging.getLogger("uvicorn.error").setLevel(logging.WARNING)
 

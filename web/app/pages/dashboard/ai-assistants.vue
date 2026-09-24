@@ -495,6 +495,14 @@
               label="Email de résumé (toutes les demandes)"
             />
           </div>
+
+          <div class="flex flex-col gap-1.5 border-t border-[var(--app-line-soft)] pt-3">
+            <UiSwitch id="assistant-eu-only" v-model="editForm.eu_only" label="IA en Europe uniquement (Mistral)" />
+            <span class="text-muted text-xs leading-relaxed">
+              Les échanges de cet assistant ne partent jamais chez un autre fournisseur, même en cas de panne de Mistral
+              (l'assistant propose alors de laisser ses coordonnées).
+            </span>
+          </div>
         </div>
 
         <div class="mt-5 flex gap-2">
@@ -575,6 +583,7 @@ const editForm: Ref<AiAssistantEditForm> = ref({
   alert_sms_types: [],
   alert_quiet_start_hour: 22,
   alert_quiet_end_hour: 8,
+  eu_only: false,
 })
 const isSaving: Ref<boolean> = ref(false)
 
@@ -595,6 +604,9 @@ const REQUEST_TYPE_BADGES: Record<AiAssistantRequestType, string> = {
   urgent: 'app-badge--danger',
   other: '',
 }
+
+/** Starts of the API refusals worth showing as they are when saving the customization. */
+const SAVE_REFUSALS: string[] = ["Numéro d'alerte", '« EU only »']
 
 /** Request types the owner can have texted at once, the ones that cannot wait first. */
 const ALERT_TYPE_OPTIONS: { value: AiAssistantRequestType; label: string }[] = [
@@ -947,6 +959,7 @@ function openEdit(assistant: AiAssistantSummary): void {
     alert_sms_types: [...assistant.alerts.sms_types],
     alert_quiet_start_hour: assistant.alerts.quiet_start_hour,
     alert_quiet_end_hour: assistant.alerts.quiet_end_hour,
+    eu_only: assistant.eu_only,
   }
 }
 
@@ -1015,6 +1028,7 @@ async function saveEdit(): Promise<void> {
       accent_color: editForm.value.accent_color,
       languages: editForm.value.languages,
       ...changedAlertFields(target.alerts, editForm.value),
+      ...(editForm.value.eu_only !== target.eu_only ? { eu_only: editForm.value.eu_only } : {}),
     }
     const updated: AiAssistantSummary = await AiAssistantService.update(target.id, payload)
     assistants.value = assistants.value.map(
@@ -1023,9 +1037,10 @@ async function saveEdit(): Promise<void> {
     editing.value = null
     toast.success('Assistant personnalisé.')
   } catch (error: unknown) {
-    // The API explains an alert number it cannot text; anything else stays generic.
+    // The API explains what it refused (alert number, « EU only » without Mistral); anything else stays generic.
     const detail: string = error instanceof Error ? error.message : ''
-    toast.error(detail.startsWith("Numéro d'alerte") ? detail : 'Enregistrement impossible pour le moment.')
+    const explained: boolean = SAVE_REFUSALS.some((prefix: string): boolean => detail.startsWith(prefix))
+    toast.error(explained ? detail : 'Enregistrement impossible pour le moment.')
   } finally {
     isSaving.value = false
   }
