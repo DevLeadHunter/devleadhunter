@@ -48,12 +48,31 @@
                   id="sp-category"
                   v-model="form.category"
                   type="text"
-                  placeholder="Plombier, électricien…"
+                  :placeholder="isAssistantModule ? 'Couvreur, carrosserie…' : 'Plombier, électricien…'"
                   required
                   class="app-input w-full pl-9"
                 />
               </div>
-              <div class="mt-2 flex flex-wrap gap-1.5">
+              <div v-if="isAssistantModule && wavePresets.length > 0" class="mt-2 space-y-1.5">
+                <div v-for="preset in wavePresets" :key="preset.wave" class="flex flex-wrap items-center gap-1.5">
+                  <span
+                    class="font-label w-14 shrink-0 text-[10px] tracking-wide text-[var(--app-faint)] uppercase"
+                    :title="preset.labels.join(', ')"
+                  >
+                    Vague {{ preset.wave }}
+                  </span>
+                  <button
+                    v-for="term in preset.searchTerms"
+                    :key="term"
+                    type="button"
+                    class="cursor-pointer rounded-full border border-[var(--app-line)] bg-[var(--app-bg)] px-2.5 py-1 text-xs text-[var(--app-ink-soft)] transition-colors hover:border-[var(--app-ink-soft)] hover:text-[var(--app-ink)]"
+                    @click="form.category = term"
+                  >
+                    {{ term }}
+                  </button>
+                </div>
+              </div>
+              <div v-else class="mt-2 flex flex-wrap gap-1.5">
                 <button
                   v-for="quick in QUICK_CATEGORIES"
                   :key="quick"
@@ -112,8 +131,16 @@
               <UiCheckbox
                 id="sp-only-without-website"
                 v-model="form.onlyWithoutWebsite"
-                label="Uniquement les prospects sans site web (recommandé)"
+                :label="
+                  isAssistantModule
+                    ? 'Uniquement les prospects sans site web'
+                    : 'Uniquement les prospects sans site web (recommandé)'
+                "
               />
+              <p v-if="isAssistantModule && !form.onlyWithoutWebsite" class="text-muted text-[10px] leading-relaxed">
+                La réceptionniste vit sur sa propre page : avec ou sans site, un pro qui reçoit des demandes est une
+                cible.
+              </p>
               <UiCheckbox
                 id="sp-skip-duplicates"
                 v-model="form.skipDuplicates"
@@ -213,10 +240,13 @@
 import type { UiSearchProspectsDrawerEmits } from '~/types/UiSearchProspectsDrawer'
 import type { UseToastReturn } from '~/types/Composables'
 import type { SearchFormState, SearchProspectsDrawerProps, SearchProspectsPrefill } from '~/types/SearchProspectsDrawer'
+import type { SourcingVertical, SourcingWavePreset } from '~/types/Sourcing'
 import type { ComputedRef, EmitFn, PropType, Ref } from 'vue'
 import { computed, ref, watch } from 'vue'
 import { PROSPECT_SOURCE_SEARCH_OPTIONS } from '~/constants/prospectSources'
 import { ProspectCountries } from '~/utils/prospectCountries'
+import { SourcingService } from '~/services/sourcingService'
+import { useModuleStore } from '~/stores/moduleStore'
 import { useProspectSearchStore } from '~/stores/prospectSearch'
 import { useToast } from '~/composables/useToast'
 
@@ -241,7 +271,31 @@ const props: SearchProspectsDrawerProps = defineProps({
 const emit: EmitFn<UiSearchProspectsDrawerEmits> = defineEmits<UiSearchProspectsDrawerEmits>()
 
 const store: ReturnType<typeof useProspectSearchStore> = useProspectSearchStore()
+const moduleStore: ReturnType<typeof useModuleStore> = useModuleStore()
 const toast: UseToastReturn = useToast()
+
+/** Target verticals of the Réceptionniste IA, fetched once when the drawer first opens. */
+const verticals: Ref<SourcingVertical[]> = ref([])
+
+const isAssistantModule: ComputedRef<boolean> = computed((): boolean => moduleStore.activeKey === 'ai-assistant')
+
+/** The verticals' search terms grouped by prospection wave, wave 1 first. */
+const wavePresets: ComputedRef<SourcingWavePreset[]> = computed((): SourcingWavePreset[] => {
+  const byWave: Map<number, SourcingWavePreset> = new Map()
+  for (const vertical of verticals.value) {
+    const preset: SourcingWavePreset = byWave.get(vertical.wave) ?? {
+      wave: vertical.wave,
+      labels: [],
+      searchTerms: [],
+    }
+    preset.labels.push(vertical.label)
+    preset.searchTerms.push(...vertical.search_terms)
+    byWave.set(vertical.wave, preset)
+  }
+  return [...byWave.values()].sort(
+    (left: SourcingWavePreset, right: SourcingWavePreset): number => left.wave - right.wave,
+  )
+})
 
 /** Label of the live-status card, driven by the job status. */
 const statusLabel: ComputedRef<string> = computed((): string => {
@@ -281,7 +335,8 @@ const SEARCH_STEPS: string[] = [
 ]
 
 /**
- * Default form state.
+ * Default form state. The Réceptionniste IA targets pros with or without a site, so its
+ * searches keep both; the site module keeps looking for pros without one.
  * @returns A fresh form.
  */
 function defaultForm(): SearchFormState {
@@ -292,18 +347,27 @@ function defaultForm(): SearchFormState {
     maxResults: 50,
     source: '',
     skipDuplicates: true,
-    onlyWithoutWebsite: true,
+    onlyWithoutWebsite: !isAssistantModule.value,
   }
 }
 
 /** The editable form. */
 const form: Ref<SearchFormState> = ref(defaultForm())
 
+/**
+ * Storage key of the persisted form — one per module, so each keeps its own defaults.
+ * @returns The key of the active module's form.
+ */
+function formStorageKey(): string {
+  return isAssistantModule.value ? `${STORAGE_KEY}:ai-assistant` : STORAGE_KEY
+}
+
 /** Load the persisted form (client only). */
 function loadForm(): void {
   if (import.meta.server) return
+  form.value = defaultForm()
   try {
-    const raw: string | null = localStorage.getItem(STORAGE_KEY)
+    const raw: string | null = localStorage.getItem(formStorageKey())
     if (raw) {
       form.value = { ...defaultForm(), ...(JSON.parse(raw) as Partial<SearchFormState>) }
     }
@@ -313,12 +377,26 @@ function loadForm(): void {
 }
 
 /**
+ * Fetch the target verticals once, in the Réceptionniste IA module only (best-effort:
+ * the generic quick picks stay available when the list cannot be loaded).
+ * @returns A promise resolved once the verticals are loaded or the attempt failed.
+ */
+async function loadVerticals(): Promise<void> {
+  if (!isAssistantModule.value || verticals.value.length > 0) return
+  try {
+    verticals.value = await SourcingService.listVerticals()
+  } catch {
+    verticals.value = []
+  }
+}
+
+/**
  * Start the search via the shared store.
  * @returns A promise resolved once the job starts.
  */
 async function submit(): Promise<void> {
   if (import.meta.client) {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(form.value))
+    localStorage.setItem(formStorageKey(), JSON.stringify(form.value))
   }
   try {
     await store.startSearch({
@@ -341,6 +419,7 @@ watch(
   (open: boolean): void => {
     if (!open) return
     loadForm()
+    loadVerticals()
     if (props.prefill?.category) form.value.category = props.prefill.category
     if (props.prefill?.city) form.value.city = props.prefill.city
     if (props.prefill?.country) form.value.country = props.prefill.country
