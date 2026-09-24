@@ -8,7 +8,7 @@
       <h1 class="app-page-title mt-2">Assistants IA</h1>
       <p class="text-muted mt-1 max-w-2xl text-sm leading-relaxed">
         Les réceptionnistes IA générés pour vos prospects : lien de démo à envoyer, script à coller sur leur site, et
-        les contacts captés 24h/24.
+        les demandes captées 24h/24.
       </p>
     </div>
 
@@ -23,12 +23,12 @@
           <p class="text-muted text-[10px] tracking-wide uppercase">Assistants actifs</p>
         </div>
         <div class="rounded-lg border border-[var(--app-line)] bg-[var(--app-bg)] px-3 py-2.5 text-center">
-          <p class="text-xl font-bold text-[var(--app-green)] tabular-nums">{{ leads.length }}</p>
-          <p class="text-muted text-[10px] tracking-wide uppercase">Contacts captés</p>
+          <p class="text-xl font-bold text-[var(--app-ink)] tabular-nums">{{ pendingRequestCount }}</p>
+          <p class="text-muted text-[10px] tracking-wide uppercase">Demandes à traiter</p>
         </div>
         <div class="rounded-lg border border-[var(--app-line)] bg-[var(--app-bg)] px-3 py-2.5 text-center">
-          <p class="text-xl font-bold text-[var(--app-ink)] tabular-nums">{{ latestLeadLabel }}</p>
-          <p class="text-muted text-[10px] tracking-wide uppercase">Dernier contact</p>
+          <p class="text-xl font-bold text-[var(--app-ink)] tabular-nums">{{ latestRequestLabel }}</p>
+          <p class="text-muted text-[10px] tracking-wide uppercase">Dernière demande</p>
         </div>
       </div>
 
@@ -80,16 +80,25 @@
                 {{ language }}
               </span>
               <span
-                v-if="leadCountFor(assistant.id) > 0"
+                v-if="assistant.requests_30d > 0"
                 class="ml-auto inline-flex items-center gap-1 text-[11px] font-medium text-[var(--app-green)] tabular-nums"
+                :title="requestCountsTitle(assistant)"
               >
-                <UIcon name="i-lucide-user-plus" class="h-3 w-3" />
-                {{ leadCountFor(assistant.id) }} capté{{ leadCountFor(assistant.id) > 1 ? 's' : '' }}
+                <UIcon name="i-lucide-inbox" class="h-3 w-3" />
+                {{ assistant.requests_7d }} dem. / 7 j · {{ assistant.requests_30d }} / 30 j
+              </span>
+              <span
+                v-if="assistant.requests_outside_hours_pct !== null"
+                class="inline-flex items-center gap-1 text-[11px] font-medium text-[var(--app-ink-soft)] tabular-nums"
+                title="Part des demandes des 30 derniers jours arrivées en dehors des horaires d'ouverture"
+              >
+                <UIcon name="i-lucide-moon" class="h-3 w-3" />
+                {{ assistant.requests_outside_hours_pct }} % hors horaires
               </span>
               <span
                 v-if="assistant.conversations_7d > 0"
                 class="inline-flex items-center gap-1 text-[11px] font-medium text-[var(--app-ink-soft)] tabular-nums"
-                :class="{ 'ml-auto': leadCountFor(assistant.id) === 0 }"
+                :class="{ 'ml-auto': assistant.requests_30d === 0 }"
               >
                 <UIcon name="i-lucide-messages-square" class="h-3 w-3" />
                 {{ assistant.conversations_7d }} conv. / 7 j
@@ -255,41 +264,91 @@
       </section>
 
       <section class="flex flex-col gap-3">
-        <div class="flex items-center justify-between">
-          <h2 class="text-sm font-semibold text-[var(--app-ink)]">Contacts captés</h2>
-          <span class="text-muted text-xs tabular-nums">{{ leads.length }}</span>
+        <div class="flex flex-wrap items-center justify-between gap-2">
+          <h2 class="text-sm font-semibold text-[var(--app-ink)]">Demandes</h2>
+          <UiFilterTabs v-model="requestFilter" :tabs="requestFilterTabs" />
         </div>
 
-        <div v-if="leads.length === 0" class="app-card px-6 py-8 text-center">
+        <div v-if="visibleRequests.length === 0" class="app-card px-6 py-8 text-center">
           <p class="text-muted text-sm leading-relaxed">
-            Aucun contact capté pour le moment. Chaque visiteur qui laisse ses coordonnées dans un assistant apparaît
-            ici.
+            {{
+              requestFilter === 'new'
+                ? 'Aucune demande à traiter. Chaque visiteur qui laisse ses coordonnées dans un assistant apparaît ici.'
+                : 'Aucune demande pour le moment. Chaque visiteur qui laisse ses coordonnées dans un assistant apparaît ici.'
+            }}
           </p>
         </div>
 
         <ul v-else class="app-card divide-y divide-[var(--app-line-soft)] overflow-hidden">
-          <li
-            v-for="lead in leads"
-            :key="lead.id"
-            class="flex flex-col gap-1 px-4 py-3 @xl:flex-row @xl:items-center @xl:gap-4"
-          >
-            <div class="min-w-0 flex-1">
-              <p class="text-sm font-medium text-[var(--app-ink)]">{{ lead.name }}</p>
-              <p class="text-muted truncate text-xs">{{ lead.contact }}</p>
+          <li v-for="request in visibleRequests" :key="request.id" class="flex flex-col gap-2 px-4 py-3">
+            <div class="flex flex-wrap items-center gap-1.5">
+              <span class="app-badge" :class="REQUEST_TYPE_BADGES[request.type]">
+                {{ REQUEST_TYPE_LABELS[request.type] }}
+              </span>
+              <span v-if="request.received_outside_hours" class="app-badge">
+                <UIcon name="i-lucide-moon" class="h-3 w-3" />
+                Hors horaires
+              </span>
+              <span v-if="request.photo_urls.length > 0" class="app-badge">
+                <UIcon name="i-lucide-camera" class="h-3 w-3" />
+                {{ request.photo_urls.length }} photo{{ request.photo_urls.length > 1 ? 's' : '' }}
+              </span>
+              <span v-if="request.is_test" class="app-badge" title="Laissée depuis une visite interne (?internal=1)">
+                Test
+              </span>
+              <span v-if="request.status === 'handled'" class="app-badge app-badge--success">Traitée</span>
+              <span v-else-if="request.status === 'dropped'" class="app-badge">Sans suite</span>
+              <span class="text-muted ml-auto text-xs tabular-nums">
+                {{ request.business_name }} · {{ formatDateTime(request.created_at) }}
+              </span>
             </div>
-            <p v-if="lead.need" class="text-muted min-w-0 flex-1 truncate text-xs @xl:text-sm">« {{ lead.need }} »</p>
-            <div class="flex shrink-0 items-center gap-3 text-xs">
-              <span class="text-[var(--app-ink-soft)]">{{ lead.business_name }}</span>
-              <span class="text-[var(--app-faint)] tabular-nums">{{ formatDate(lead.created_at) }}</span>
-              <button
-                v-if="lead.prospect_id !== null"
-                type="button"
-                class="text-muted flex h-7 w-7 cursor-pointer items-center justify-center rounded-md transition-colors hover:bg-[var(--app-surface-2)] hover:text-[var(--app-ink)]"
-                :aria-label="`Ouvrir le prospect ${lead.business_name}`"
-                @click="openLeadProspect(lead)"
-              >
-                <UIcon name="i-lucide-arrow-up-right" class="h-4 w-4" />
-              </button>
+            <div class="flex flex-col gap-2 @xl:flex-row @xl:items-start @xl:gap-4">
+              <div class="min-w-0 shrink-0 @xl:w-48">
+                <p class="truncate text-sm font-medium text-[var(--app-ink)]">{{ request.name }}</p>
+                <p class="text-muted truncate text-xs">{{ request.contact }}</p>
+              </div>
+              <p class="min-w-0 flex-1 text-xs leading-relaxed text-[var(--app-ink-soft)] @xl:text-sm">
+                {{ request.need_summary || request.need || 'Demande de rappel, sans détail.' }}
+              </p>
+              <div class="flex shrink-0 items-center gap-2">
+                <template v-if="request.status === 'new'">
+                  <button
+                    type="button"
+                    class="btn-secondary h-8 text-xs"
+                    :disabled="requestBusyId === request.id"
+                    @click="setRequestStatus(request, 'handled')"
+                  >
+                    <UIcon name="i-lucide-check" class="mr-1 h-3.5 w-3.5" />
+                    Marquer traitée
+                  </button>
+                  <button
+                    type="button"
+                    class="text-muted h-8 cursor-pointer px-1 text-xs transition-colors hover:text-[var(--app-ink)]"
+                    :disabled="requestBusyId === request.id"
+                    @click="setRequestStatus(request, 'dropped')"
+                  >
+                    Sans suite
+                  </button>
+                </template>
+                <button
+                  v-else
+                  type="button"
+                  class="text-muted h-8 cursor-pointer px-1 text-xs transition-colors hover:text-[var(--app-ink)]"
+                  :disabled="requestBusyId === request.id"
+                  @click="setRequestStatus(request, 'new')"
+                >
+                  Rouvrir
+                </button>
+                <button
+                  v-if="request.prospect_id !== null"
+                  type="button"
+                  class="text-muted flex h-7 w-7 cursor-pointer items-center justify-center rounded-md transition-colors hover:bg-[var(--app-surface-2)] hover:text-[var(--app-ink)]"
+                  :aria-label="`Ouvrir le prospect ${request.business_name}`"
+                  @click="openRequestProspect(request)"
+                >
+                  <UIcon name="i-lucide-arrow-up-right" class="h-4 w-4" />
+                </button>
+              </div>
             </div>
           </li>
         </ul>
@@ -382,12 +441,15 @@ import { AssistantSidecarService } from '~/services/assistantSidecarService'
 import { ProspectsService } from '~/services/prospectsService'
 import type {
   AiAssistantEditForm,
-  AiAssistantLead,
-  AiAssistantLeadsResponse,
   AiAssistantListResponse,
+  AiAssistantRequestItem,
+  AiAssistantRequestsResponse,
+  AiAssistantRequestStatus,
+  AiAssistantRequestType,
   AiAssistantSummary,
   AiAssistantUpdatePayload,
 } from '~/types/AiAssistant'
+import type { UiFilterTab } from '~/types/UiFilterTabs'
 import type { Prospect } from '~/types'
 import type { UseToastReturn } from '~/types/Composables'
 import { useToast } from '~/composables/useToast'
@@ -396,7 +458,7 @@ import { daysUntil, parseApiDate } from '~/utils/date'
 
 /**
  * Management page for the AI assistant module: the generated assistants (demo link + embed
- * snippet) and the leads their visitors left. Generation itself happens from a prospect.
+ * snippet) and the requests their visitors left. Generation itself happens from a prospect.
  */
 definePageMeta({
   layout: 'dashboard',
@@ -409,7 +471,11 @@ const toast: UseToastReturn = useToast()
 const drawerStack: ReturnType<typeof useDrawerStackStore> = useDrawerStackStore()
 
 const assistants: Ref<AiAssistantSummary[]> = ref([])
-const leads: Ref<AiAssistantLead[]> = ref([])
+const requests: Ref<AiAssistantRequestItem[]> = ref([])
+/** Real requests still waiting for handling (tests excluded), as counted by the API. */
+const pendingRequestCount: Ref<number> = ref(0)
+const requestFilter: Ref<string> = ref('new')
+const requestBusyId: Ref<number | null> = ref(null)
 const isLoading: Ref<boolean> = ref(true)
 const confirmingId: Ref<number | null> = ref(null)
 const regeneratingId: Ref<number | null> = ref(null)
@@ -428,9 +494,25 @@ const editForm: Ref<AiAssistantEditForm> = ref({
 })
 const isSaving: Ref<boolean> = ref(false)
 
-/** Languages a customer can offer, in the order they matter for the target markets. */
 const STATUS_LABELS: Record<string, string> = { active: 'Actif', expired: 'Expiré', delivered: 'Vendu' }
 
+const REQUEST_TYPE_LABELS: Record<AiAssistantRequestType, string> = {
+  question: 'Question',
+  quote: 'Devis',
+  appointment: 'Rendez-vous',
+  urgent: 'Urgence',
+  other: 'Demande',
+}
+
+const REQUEST_TYPE_BADGES: Record<AiAssistantRequestType, string> = {
+  question: '',
+  quote: 'app-badge--progress',
+  appointment: 'app-badge--info',
+  urgent: 'app-badge--danger',
+  other: '',
+}
+
+/** Languages a customer can offer, in the order they matter for the target markets. */
 const LANGUAGE_OPTIONS: { code: string; label: string }[] = [
   { code: 'fr', label: 'Français' },
   { code: 'nl', label: 'Nederlands' },
@@ -446,26 +528,35 @@ const activeAssistantCount: ComputedRef<number> = computed(
   (): number => assistants.value.filter((item: AiAssistantSummary): boolean => item.status === 'active').length,
 )
 
-/** Short date of the most recent captured contact, or an em dash when none. */
-const latestLeadLabel: ComputedRef<string> = computed((): string => {
-  const latest: AiAssistantLead | undefined = leads.value[0]
+/** Short date of the most recent request, or an em dash when none. */
+const latestRequestLabel: ComputedRef<string> = computed((): string => {
+  const latest: AiAssistantRequestItem | undefined = requests.value.find(
+    (request: AiAssistantRequestItem): boolean => !request.is_test,
+  )
   return latest ? formatDate(latest.created_at) : '—'
 })
 
-/** Captured-contact count per assistant, to show conversion at a glance. */
-const leadCountByAssistant: ComputedRef<Record<number, number>> = computed((): Record<number, number> => {
-  const counts: Record<number, number> = {}
-  for (const lead of leads.value) counts[lead.assistant_id] = (counts[lead.assistant_id] ?? 0) + 1
-  return counts
-})
+/** Requests still waiting for the owner (tests left from internal visits only show under « Toutes »). */
+const pendingRequests: ComputedRef<AiAssistantRequestItem[]> = computed((): AiAssistantRequestItem[] =>
+  requests.value.filter((request: AiAssistantRequestItem): boolean => request.status === 'new' && !request.is_test),
+)
+
+const requestFilterTabs: ComputedRef<UiFilterTab[]> = computed((): UiFilterTab[] => [
+  { key: 'new', label: 'À traiter', count: pendingRequests.value.length },
+  { key: 'all', label: 'Toutes', count: requests.value.length },
+])
+
+const visibleRequests: ComputedRef<AiAssistantRequestItem[]> = computed((): AiAssistantRequestItem[] =>
+  requestFilter.value === 'new' ? pendingRequests.value : requests.value,
+)
 
 /**
- * Captured-contact count for a single assistant, safe for template use.
- * @param assistantId - The assistant's id.
- * @returns The number of leads captured, or 0 when none.
+ * Tooltip detailing an assistant's request counts.
+ * @param assistant - The assistant.
+ * @returns A one-line explanation of the 7 / 30 day counts.
  */
-function leadCountFor(assistantId: number): number {
-  return leadCountByAssistant.value[assistantId] ?? 0
+function requestCountsTitle(assistant: AiAssistantSummary): string {
+  return `${assistant.requests_7d} demande(s) sur 7 jours, ${assistant.requests_30d} sur 30 jours (tests exclus)`
 }
 
 /**
@@ -486,18 +577,57 @@ function openConversations(assistant: AiAssistantSummary): void {
 }
 
 /**
- * Open a captured lead's prospect in the shared drawer, to act on it (call, add to a campaign…).
- * @param lead - The captured lead.
+ * Open a request's prospect in the shared drawer, to act on it (call, add to a campaign…).
+ * @param request - The request.
  * @returns A promise resolved once the prospect drawer is pushed.
  */
-async function openLeadProspect(lead: AiAssistantLead): Promise<void> {
-  if (lead.prospect_id === null) return
+async function openRequestProspect(request: AiAssistantRequestItem): Promise<void> {
+  if (request.prospect_id === null) return
   try {
-    const prospect: Prospect = await ProspectsService.getProspect(lead.prospect_id)
+    const prospect: Prospect = await ProspectsService.getProspect(request.prospect_id)
     drawerStack.push({ kind: 'prospect', prospect })
   } catch {
     toast.error('Prospect introuvable.')
   }
+}
+
+/**
+ * Move a request to another status (handled, dropped, or back to new) and refresh its row.
+ * @param request - The request to update.
+ * @param status - Its new status.
+ * @returns A promise resolved once the update is saved.
+ */
+async function setRequestStatus(request: AiAssistantRequestItem, status: AiAssistantRequestStatus): Promise<void> {
+  requestBusyId.value = request.id
+  try {
+    const updated: AiAssistantRequestItem = await AiAssistantService.updateRequest(request.id, { status })
+    requests.value = requests.value.map(
+      (item: AiAssistantRequestItem): AiAssistantRequestItem => (item.id === updated.id ? updated : item),
+    )
+    if (!request.is_test) {
+      const wasPending: boolean = request.status === 'new'
+      const isPending: boolean = updated.status === 'new'
+      pendingRequestCount.value += Number(isPending) - Number(wasPending)
+    }
+  } catch {
+    toast.error('Mise à jour de la demande impossible.')
+  } finally {
+    requestBusyId.value = null
+  }
+}
+
+/**
+ * Format an API timestamp as a short local date and time.
+ * @param iso - The API date string (UTC, naive).
+ * @returns The localised « jour mois, HH:MM » label.
+ */
+function formatDateTime(iso: string): string {
+  return parseApiDate(iso).toLocaleString('fr-FR', {
+    day: 'numeric',
+    month: 'short',
+    hour: '2-digit',
+    minute: '2-digit',
+  })
 }
 
 /**
@@ -761,18 +891,19 @@ async function saveEdit(): Promise<void> {
 }
 
 /**
- * Load the assistants and their captured leads.
+ * Load the assistants and the requests their visitors left.
  * @returns A promise resolved once both are loaded.
  */
 async function loadData(): Promise<void> {
   isLoading.value = true
   try {
-    const [assistantList, leadList]: [AiAssistantListResponse, AiAssistantLeadsResponse] = await Promise.all([
+    const [assistantList, requestList]: [AiAssistantListResponse, AiAssistantRequestsResponse] = await Promise.all([
       AiAssistantService.list(),
-      AiAssistantService.listLeads(),
+      AiAssistantService.listRequests(),
     ])
     assistants.value = assistantList.assistants
-    leads.value = leadList.leads
+    requests.value = requestList.requests
+    pendingRequestCount.value = requestList.pending_count
   } catch {
     toast.error('Chargement des assistants impossible.')
   } finally {

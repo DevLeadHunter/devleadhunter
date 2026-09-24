@@ -393,6 +393,8 @@ class NotificationService:
         fallback_name: str,
         lead_name: str,
         need: str,
+        request_label: str | None = None,
+        received_outside_hours: bool | None = None,
     ) -> None:
         """
         Raise a notification when a visitor leaves their details through an AI assistant.
@@ -404,24 +406,28 @@ class NotificationService:
             fallback_name: Name shown when the prospect can't be resolved.
             lead_name: Name the visitor gave.
             need: What the visitor is after (may be empty).
+            request_label: The request type in French (« Demande de devis »…), when typed.
+            received_outside_hours: True when it came in while the business was closed.
         """
         prospect_name = self._resolve_prospect_name(db, prospect_id, fallback_name)
         summary = need.strip() or "Demande de rappel"
+        label = request_label or "Nouvelle demande"
         activity_log_service.record(
             category=CATEGORY_ASSISTANT,
             action="assistant_lead",
             status=STATUS_SUCCESS,
-            title=f"{prospect_name} · Lead via l'assistant IA",
+            title=f"{prospect_name} · {label} via l'assistant IA",
             user_id=user_id,
             entity_type="prospect",
             entity_id=prospect_id,
         )
+        outside_hours = " (hors horaires)" if received_outside_hours else ""
         await self._dispatch(
             user_id=user_id,
             category="assistant",
             level="success",
             title=f"🙋 {lead_name}",
-            body=f"{_MODULE_TAG_ASSISTANT} · Nouveau lead de {prospect_name} — {summary}",
+            body=f"{_MODULE_TAG_ASSISTANT} · {label}{outside_hours} pour {prospect_name} — {summary}",
             url=f"{_PROSPECTS_URL}?open={prospect_id}" if prospect_id else _DASHBOARD_URL,
             tag=f"assistant-lead-{prospect_id}" if prospect_id else None,
         )

@@ -11,7 +11,8 @@ falls back to a lightly cleaned form (or a neutral "professionnel") otherwise.
 from __future__ import annotations
 
 import re
-import unicodedata
+
+from services.text_normalizer import TextNormalizer
 
 # First matching keyword wins, so keep the most specific terms first. Keys are
 # matched as substrings on the accent-stripped, lower-cased category, so
@@ -61,8 +62,7 @@ class TradeNormalizer:
     @staticmethod
     def _strip_accents(value: str) -> str:
         """Lower-case ``value`` and drop diacritics, for accent-insensitive matching."""
-        decomposed = unicodedata.normalize("NFD", value.lower())
-        return "".join(char for char in decomposed if unicodedata.category(char) != "Mn")
+        return TextNormalizer.fold(value)
 
     @classmethod
     def normalize(cls, category: str | None) -> str:
