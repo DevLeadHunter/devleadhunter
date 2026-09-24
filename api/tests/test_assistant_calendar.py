@@ -27,6 +27,7 @@ import api.v1.routes.ai_assistants as routes
 import migrations.add_ai_assistant_calendars_tables as calendars_migration
 import models
 import services.ai_assistant.appointment_notices as notices_module
+import services.ai_assistant.calendar_access as access_module
 import services.ai_assistant.calendar_service as calendar_module
 import services.ai_assistant.client_space_service as client_space_module
 import services.ai_assistant.google_calendar_client as google_module
@@ -48,12 +49,10 @@ from schemas.ai_assistant import AiAssistantBookingChoice, AiAssistantLeadReques
 from schemas.ai_assistant_client_space import AiAssistantClientCalendarUpdate
 from services.ai_assistant.appointment_notices import AppointmentTexts, BusinessCard, ai_assistant_appointment_notices
 from services.ai_assistant.assistant_service import ai_assistant_service
-from services.ai_assistant.calendar_service import (
-    AiAssistantCalendarService,
-    AiAssistantCalendarState,
-    CalendarSettings,
-    SlotTakenError,
-)
+from services.ai_assistant.calendar_booking import AiAssistantCalendarBooking, SlotTakenError
+from services.ai_assistant.calendar_service import AiAssistantCalendarService, AiAssistantCalendarState
+from services.ai_assistant.calendar_settings import CalendarSettings
+from services.ai_assistant.calendar_slot_grid import AiAssistantCalendarSlotGrid
 from services.ai_assistant.chat_service import AiAssistantChatService
 from services.ai_assistant.client_links import AiAssistantClientLinks
 from services.ai_assistant.google_calendar_client import (
@@ -226,7 +225,7 @@ def fresh_state(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(client_routes, "assistant_client_limiter", SlidingWindowRateLimiter(120, 300))
     monkeypatch.setattr(routes, "assistant_chat_limiter", SlidingWindowRateLimiter(30, 300))
     monkeypatch.setattr(routes, "assistant_lead_limiter", SlidingWindowRateLimiter(8, 300))
-    monkeypatch.setattr(calendar_module.ai_assistant_calendar_service, "_busy_cache", {})
+    monkeypatch.setattr(access_module.ai_assistant_calendar_access, "_busy_cache", {})
 
 
 def _assistant(db: Session, *, status: str = "delivered", hours: list[dict[str, str]] | None = _WEEK) -> AiAssistant:
@@ -505,7 +504,7 @@ def _starts(page: Any) -> list[datetime]:
 def test_the_first_free_slot_of_each_half_day_after_the_notice_and_within_the_hours() -> None:
     busy = [BusyPeriod(start=_utc(_paris(22, 14)), end=_utc(_paris(22, 15, 30)))]
 
-    page = AiAssistantCalendarService.compute_slots(
+    page = AiAssistantCalendarSlotGrid.compute_slots(
         opening_hours=_WEEK, busy=busy, settings=_settings(), now=_MONDAY_10H, after=None, count=3
     )
 
@@ -515,7 +514,7 @@ def test_the_first_free_slot_of_each_half_day_after_the_notice_and_within_the_ho
 
 
 def test_the_next_page_starts_at_the_half_day_after_the_last_slot_shown() -> None:
-    page = AiAssistantCalendarService.compute_slots(
+    page = AiAssistantCalendarSlotGrid.compute_slots(
         opening_hours=_WEEK, busy=[], settings=_settings(), now=_MONDAY_10H, after=_paris(23, 8), count=3
     )
 
@@ -525,7 +524,7 @@ def test_the_next_page_starts_at_the_half_day_after_the_last_slot_shown() -> Non
 def test_a_slot_never_runs_over_a_closing_time_nor_into_the_weekend() -> None:
     friday_afternoon = datetime(2026, 9, 25, 16, 45, tzinfo=_PARIS)
 
-    page = AiAssistantCalendarService.compute_slots(
+    page = AiAssistantCalendarSlotGrid.compute_slots(
         opening_hours=_WEEK,
         busy=[],
         settings=_settings(duration_minutes=90, min_notice_hours=0),
@@ -539,7 +538,7 @@ def test_a_slot_never_runs_over_a_closing_time_nor_into_the_weekend() -> None:
 
 
 def test_unknown_hours_offer_the_weekday_office_hours() -> None:
-    page = AiAssistantCalendarService.compute_slots(
+    page = AiAssistantCalendarSlotGrid.compute_slots(
         opening_hours=None, busy=[], settings=_settings(min_notice_hours=0), now=_MONDAY_10H, after=None, count=3
     )
 
@@ -555,7 +554,7 @@ def test_a_booking_creates_the_event_and_the_appointment(db: Session, google: _F
     request = _request(db, assistant)
 
     appointment = asyncio.run(
-        AiAssistantCalendarService().book(
+        AiAssistantCalendarBooking().book(
             db,
             assistant,
             calendar,
@@ -583,7 +582,7 @@ def test_a_booking_checks_the_slot_and_the_kind_again(db: Session, google: _Fake
     assistant = _assistant(db)
     calendar = _calendar(db, assistant, appointment_types_json=["Révision"])
     request = _request(db, assistant)
-    service = AiAssistantCalendarService()
+    service = AiAssistantCalendarBooking()
 
     def book(start: datetime, type_label: str | None = "Révision") -> AiAssistantAppointment:
         return asyncio.run(
@@ -619,7 +618,7 @@ def test_one_request_books_one_appointment_and_two_visitors_never_share_a_slot(
     calendar = _calendar(db, assistant)
     first_request = _request(db, assistant)
     second_request = _request(db, assistant, session_id="session-2", name="Marc Petit")
-    service = AiAssistantCalendarService()
+    service = AiAssistantCalendarBooking()
 
     def book(request: AiAssistantRequest, start: datetime) -> AiAssistantAppointment:
         return asyncio.run(
@@ -655,7 +654,7 @@ def test_a_booking_the_agenda_refuses_falls_back_on_the_half_day_and_flags_the_a
     google.failure = GoogleCalendarError("Google Agenda a refusé l'appel (401)", needs_reconnect=True, status_code=401)
 
     outcome = asyncio.run(
-        AiAssistantCalendarService().book_request(
+        AiAssistantCalendarBooking().book_request(
             db, assistant, request, start=_paris(24, 14), type_label=None, now=_MONDAY_10H
         )
     )
@@ -665,24 +664,24 @@ def test_a_booking_the_agenda_refuses_falls_back_on_the_half_day_and_flags_the_a
     assert request.appointment_slots_json == [{"date": "2026-09-24", "period": "afternoon"}]
     db.refresh(calendar)
     assert calendar.status == AssistantCalendarStatus.ERROR.value
-    assert AiAssistantCalendarService().usable_calendar(db, assistant) is None
+    assert access_module.ai_assistant_calendar_access.usable_calendar(db, assistant) is None
 
 
 def test_the_reminder_leaves_the_day_before_within_the_day_or_not_at_all() -> None:
     booked_monday = _utc(_MONDAY_10H)
 
-    assert AiAssistantCalendarService.reminder_due_at(_utc(_paris(24, 8)), booked_at=booked_monday) == _utc(
+    assert AiAssistantCalendarBooking.reminder_due_at(_utc(_paris(24, 8)), booked_at=booked_monday) == _utc(
         _paris(23, 9)
     )
-    assert AiAssistantCalendarService.reminder_due_at(_utc(_paris(24, 21)), booked_at=booked_monday) == _utc(
+    assert AiAssistantCalendarBooking.reminder_due_at(_utc(_paris(24, 21)), booked_at=booked_monday) == _utc(
         _paris(23, 19)
     )
-    assert AiAssistantCalendarService.reminder_due_at(_utc(_paris(22, 11)), booked_at=booked_monday) is None
+    assert AiAssistantCalendarBooking.reminder_due_at(_utc(_paris(22, 11)), booked_at=booked_monday) is None
 
 
 def test_the_visitor_is_told_on_the_channel_they_left(db: Session, google: _FakeGoogle) -> None:
     assistant = _assistant(db)
-    service = AiAssistantCalendarService()
+    service = AiAssistantCalendarBooking()
 
     assert service.visitor_channels(db, assistant, " 06 11 22 33 44 ") == ("+33611223344", None)
     assert service.visitor_channels(db, assistant, "Julie.Roux@Example.fr") == (None, "julie.roux@example.fr")
@@ -856,7 +855,7 @@ def test_the_slots_route_offers_the_agenda_or_falls_back_on_half_days(
 
     offer = asyncio.run(routes.get_assistant_appointment_slots(assistant.slug, _VISITOR, after=None, db=db))
     google.failure = GoogleCalendarError("Google Agenda injoignable")
-    calendar_module.ai_assistant_calendar_service._busy_cache.clear()
+    access_module.ai_assistant_calendar_access._busy_cache.clear()
     fallback = asyncio.run(routes.get_assistant_appointment_slots(assistant.slug, _VISITOR, after=None, db=db))
 
     assert offer.mode is AssistantBookingMode.CALENDAR
@@ -1054,7 +1053,7 @@ def _book(
     db: Session, assistant: AiAssistant, calendar: AiAssistantCalendar, request: AiAssistantRequest, start: datetime
 ) -> AiAssistantAppointment:
     return asyncio.run(
-        AiAssistantCalendarService().book(
+        AiAssistantCalendarBooking().book(
             db,
             assistant,
             calendar,
@@ -1077,21 +1076,21 @@ def test_a_lost_insert_answer_is_retried_with_the_same_event_id(db: Session, goo
     appointment = _book(db, assistant, calendar, request, _paris(22, 10))
 
     assert google.insert_calls == 2
-    assert appointment.google_event_id == AiAssistantCalendarService._event_id(request.id, _utc(_paris(22, 10)))
+    assert appointment.google_event_id == AiAssistantCalendarBooking._event_id(request.id, _utc(_paris(22, 10)))
     assert db.query(AiAssistantAppointment).count() == 1
 
 
 def test_a_taken_slot_empties_the_free_busy_cache(db: Session, google: _FakeGoogle) -> None:
     assistant = _assistant(db)
     calendar = _calendar(db, assistant)
-    service = calendar_module.ai_assistant_calendar_service
-    asyncio.run(service.free_slots(db, assistant, calendar, now=_MONDAY_10H))
-    assert calendar.id in service._busy_cache
+    access = access_module.ai_assistant_calendar_access
+    asyncio.run(calendar_module.ai_assistant_calendar_service.free_slots(db, assistant, calendar, now=_MONDAY_10H))
+    assert calendar.id in access._busy_cache
     google.busy = [BusyPeriod(start=_utc(_paris(22, 10)), end=_utc(_paris(22, 11)))]
 
     with pytest.raises(SlotTakenError):
         asyncio.run(
-            service.book(
+            AiAssistantCalendarBooking().book(
                 db,
                 assistant,
                 calendar,
@@ -1104,7 +1103,7 @@ def test_a_taken_slot_empties_the_free_busy_cache(db: Session, google: _FakeGoog
             )
         )
 
-    assert calendar.id not in service._busy_cache
+    assert calendar.id not in access._busy_cache
 
 
 def test_a_refused_insert_is_kept_as_the_agendas_last_problem(db: Session, google: _FakeGoogle) -> None:
@@ -1128,8 +1127,8 @@ def test_a_day_of_bookings_is_capped_and_the_rest_become_wishes(
 ) -> None:
     assistant = _assistant(db)
     _calendar(db, assistant)
-    monkeypatch.setattr(AiAssistantCalendarService, "MAX_BOOKINGS_PER_DAY", 1)
-    service = AiAssistantCalendarService()
+    monkeypatch.setattr(AiAssistantCalendarBooking, "MAX_BOOKINGS_PER_DAY", 1)
+    service = AiAssistantCalendarBooking()
 
     first = asyncio.run(
         service.book_request(
@@ -1148,7 +1147,7 @@ def test_a_day_of_bookings_is_capped_and_the_rest_become_wishes(
 
 def test_only_mobiles_of_the_served_countries_are_texted(db: Session, google: _FakeGoogle) -> None:
     assistant = _assistant(db)
-    service = AiAssistantCalendarService()
+    service = AiAssistantCalendarBooking()
 
     assert service.visitor_channels(db, assistant, "+32 470 12 34 56") == ("+32470123456", None)
     assert service.visitor_channels(db, assistant, "+44 7700 900123") == (None, None)
