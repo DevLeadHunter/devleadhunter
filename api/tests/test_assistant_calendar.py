@@ -713,12 +713,26 @@ def test_the_confirmation_and_the_reminder_fit_one_sms_in_every_language() -> No
         card=card, start_local=_paris(24, 14), type_label="Révision", language="fr"
     ) == (
         "Garage Morel & Fils Carrosserie : votre rendez-vous du jeu. 24/09 à 14:00 (Révision) est confirmé. "
-        "Empêché ? Appelez le +33 3 83 12 34 56."
+        "Empeché ? Appelez le +33 3 83 12 34 56."
     )
     assert "Ihr Termin am Do. 24.09. um 14:00" in AppointmentTexts.confirmation_sms(
         card=card, start_local=_paris(24, 14), type_label=None, language="de"
     )
     assert AppointmentTexts.language("lu") == "fr"
+
+
+def test_a_business_name_outside_gsm7_never_costs_the_visitor_their_sms() -> None:
+    card = BusinessCard(name="Garage Auto Service N°1 🚗", phone="03 83 12 34 56", email=None, address="1 rue Haute")
+
+    confirmation = AppointmentTexts.confirmation_sms(
+        card=card, start_local=_paris(24, 14), type_label="Révision", language="fr"
+    )
+    reminder = AppointmentTexts.reminder_sms(card=card, start_local=_paris(24, 14), language="fr")
+
+    for text in (confirmation, reminder):
+        assert segment_count(text) == 1
+        assert "Garage Auto Service N1" in text and "°" not in text and "🚗" not in text
+    assert "(Révision)" in confirmation and "03 83 12 34 56" in reminder
 
 
 def test_the_confirmation_email_never_asks_to_reply_and_carries_the_ics(

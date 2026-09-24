@@ -56,6 +56,21 @@ def to_gsm7(text: str) -> str:
     return "".join(_TRANSLITERATIONS.get(ch, ch) for ch in text)
 
 
+def to_strict_gsm7(text: str) -> str:
+    """Transliterate *text* to GSM-7 and drop what has no equivalent (emoji, °, ™…), collapsing whitespace.
+
+    A single such character would send the whole message as UCS-2 (70 characters a segment).
+
+    Args:
+        text: The message body.
+
+    Returns:
+        The body, every character GSM-7 encodable.
+    """
+    simplified = to_gsm7(" ".join(text.split()))
+    return "".join(char for char in simplified if is_gsm7(char))
+
+
 def is_gsm7(text: str) -> bool:
     """Whether *text* fits the GSM-7 alphabet (else it is sent as UCS-2).
 
