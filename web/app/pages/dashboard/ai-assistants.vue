@@ -307,9 +307,24 @@
                 <p class="truncate text-sm font-medium text-[var(--app-ink)]">{{ request.name }}</p>
                 <p class="text-muted truncate text-xs">{{ request.contact }}</p>
               </div>
-              <p class="min-w-0 flex-1 text-xs leading-relaxed text-[var(--app-ink-soft)] @xl:text-sm">
-                {{ request.need_summary || request.need || 'Demande de rappel, sans détail.' }}
-              </p>
+              <div class="flex min-w-0 flex-1 flex-col gap-2">
+                <p class="text-xs leading-relaxed text-[var(--app-ink-soft)] @xl:text-sm">
+                  {{ request.need_summary || request.need || 'Demande de rappel, sans détail.' }}
+                </p>
+                <div v-if="request.photo_urls.length > 0" class="flex flex-wrap gap-1.5">
+                  <a
+                    v-for="(url, index) in request.photo_urls"
+                    :key="url"
+                    :href="url"
+                    target="_blank"
+                    rel="noopener"
+                    class="block h-12 w-12 overflow-hidden rounded-md border border-[var(--app-line)]"
+                    :aria-label="`Photo ${index + 1} envoyée par ${request.name}`"
+                  >
+                    <img :src="url" alt="" loading="lazy" class="h-full w-full object-cover" />
+                  </a>
+                </div>
+              </div>
               <div class="flex shrink-0 items-center gap-2">
                 <template v-if="request.status === 'new'">
                   <button

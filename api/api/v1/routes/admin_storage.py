@@ -23,6 +23,7 @@ from models.demo_site import DemoSite
 from models.prospect_db import ProspectDB
 from models.prospect_enrichment import ProspectEnrichment
 from models.user import User
+from services.ai_assistant.photo_service import RETENTION as PHOTO_RETENTION
 from services.auth_service import require_admin
 from services.manual_upload_service import manual_upload_service
 from services.r2_storage_service import r2_storage
@@ -126,7 +127,7 @@ class StorageObject(BaseModel):
     """One object of the bucket, enriched with business context."""
 
     key: str
-    kind: str  # website_video | website_thumbnail | website_background | presenter | support | prospect_photo | manual | other
+    kind: str  # website_video | website_thumbnail | website_background | presenter | support | prospect_photo | assistant_photo | manual | other
     size: int
     last_modified: datetime | None = None
     url: str
@@ -199,6 +200,8 @@ def _classify(key: str) -> str:
         return "support"
     if key.startswith(r2_storage.IMAGES_PROSPECTS_PREFIX):
         return "prospect_photo"
+    if key.startswith(r2_storage.IMAGES_ASSISTANT_PHOTOS_PREFIX):
+        return "assistant_photo"
     if key.startswith(r2_storage.MANUAL_UPLOADS_PREFIX):
         return "manual"
     return "other"
@@ -305,10 +308,13 @@ async def list_storage_objects(
         expires_in: int | None = None
         is_expired = False
         ttl_pending = False
-        # Seuls les livrables liés à une démo expirent (ancrés sur le TTL réel de LEUR démo) ; le clip
-        # presenter, les pièces jointes support, les photos de prospect et les imports manuels sont permanents.
+        # Les livrables liés à une démo expirent (ancrés sur le TTL réel de LEUR démo), les photos de devis
+        # au bout de 90 jours ; le clip presenter, les pièces jointes support, les photos de prospect et les
+        # imports manuels sont permanents.
         if kind in _DEMO_DELIVERABLE_KINDS:
             is_expired, expires_in, ttl_pending = _expiry_state(demo_by_slug.get(slug or ""), now)
+        elif kind == "assistant_photo" and entry["last_modified"] is not None:
+            expires_in = max(PHOTO_RETENTION.days - (now - entry["last_modified"]).days, 0)
         prospect_name = names_by_slug.get(slug or "")
         if kind == "prospect_photo":
             prospect_name = names_by_prospect_id.get(_prospect_id_from_key(key) or 0)

@@ -14,6 +14,7 @@ export type StorageObjectKind =
   | 'presenter'
   | 'support'
   | 'prospect_photo'
+  | 'assistant_photo'
   | 'manual'
   | 'other'
 

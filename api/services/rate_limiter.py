@@ -54,5 +54,8 @@ assistant_chat_limiter = SlidingWindowRateLimiter(max_events=30, window_seconds=
 # 8 leads / 5 min per visitor per assistant: a real visitor leaves one, this caps spam.
 assistant_lead_limiter = SlidingWindowRateLimiter(max_events=8, window_seconds=300)
 
+# 6 photos / 10 min per visitor per assistant: 3 per quote request, each one costs a vision call.
+assistant_photo_limiter = SlidingWindowRateLimiter(max_events=6, window_seconds=600)
+
 # 5 checkouts / 5 min per visitor per assistant: each click creates a Stripe session, this caps a bot.
 assistant_subscribe_limiter = SlidingWindowRateLimiter(max_events=5, window_seconds=300)

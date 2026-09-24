@@ -367,6 +367,7 @@ const FILTERS: Array<{ label: string; prefix: string }> = [
   { label: 'Vignettes', prefix: 'images/websites/' },
   { label: 'Clips webcam', prefix: 'videos/presenter/' },
   { label: 'Photos prospects', prefix: PROSPECT_PHOTOS_PREFIX },
+  { label: 'Photos de devis', prefix: 'images/assistant-photos/' },
   { label: 'Support', prefix: 'images/support/' },
   { label: 'Imports manuels', prefix: 'uploads/manual/' },
 ]
@@ -379,6 +380,7 @@ const KIND_ICONS: Record<string, string> = {
   presenter: 'i-lucide-webcam',
   support: 'i-lucide-paperclip',
   prospect_photo: 'i-lucide-image',
+  assistant_photo: 'i-lucide-camera',
   manual: 'i-lucide-upload',
   other: 'i-lucide-file',
 }
@@ -391,6 +393,7 @@ const KIND_LABELS: Record<string, string> = {
   presenter: 'Clip webcam',
   support: 'Pièce jointe',
   prospect_photo: 'Photo prospect',
+  assistant_photo: 'Photo de devis (assistant)',
   manual: 'Import manuel',
   other: 'Fichier',
 }
@@ -529,10 +532,10 @@ function isVideo(item: StorageObject): boolean {
 /**
  * Whether an object can be shown as an image.
  * @param item - Storage object.
- * @returns True for thumbnails, support attachments, rehosted prospect photos and hand-uploaded images.
+ * @returns True for thumbnails, support attachments, prospect and quote photos, and hand-uploaded images.
  */
 function isImage(item: StorageObject): boolean {
-  if (item.kind === 'website_thumbnail' || item.kind === 'support' || item.kind === 'prospect_photo') return true
+  if (['website_thumbnail', 'support', 'prospect_photo', 'assistant_photo'].includes(item.kind)) return true
   return item.kind === 'manual' && IMAGE_EXTENSIONS.includes(keyExtension(item.key))
 }
 

@@ -39,6 +39,7 @@ class R2StorageService:
         images/websites/{slug}.jpg               email thumbnail ({vignette_video})
         images/support/{yyyy}/{mm}/{uuid}.{ext}  support ticket attachments
         images/prospects/{prospect_id}/{hash}.jpg   rehosted enrichment photos (Facebook/Google)
+        images/assistant-photos/{yyyy}/{mm}/{uuid}.jpg   photos visitors send an assistant for a quote (90 days)
         uploads/manual/{yyyy}/{mm}/{uuid}.{ext}  files uploaded by hand from the storage page
 
     boto3 calls block, so async callers must go through the `*_async` methods.
@@ -52,6 +53,7 @@ class R2StorageService:
     IMAGES_PROFILE_PREFIX = "images/profile"
     IMAGES_SUPPORT_PREFIX = "images/support"
     IMAGES_PROSPECTS_PREFIX = "images/prospects"
+    IMAGES_ASSISTANT_PHOTOS_PREFIX = "images/assistant-photos"
     MANUAL_UPLOADS_PREFIX = "uploads/manual"
 
     def __init__(self) -> None:
@@ -227,6 +229,17 @@ class R2StorageService:
             extension = f".{extension}"
         now = datetime.now(UTC)
         return f"{cls.IMAGES_SUPPORT_PREFIX}/{now:%Y/%m}/{uuid.uuid4().hex}{extension}"
+
+    @classmethod
+    def assistant_photo_key(cls) -> str:
+        """
+        Build the key of a photo a visitor sent an assistant, unguessable (its URL is public).
+
+        Returns:
+            A unique JPEG object key under the assistant-photos prefix, filed by year and month.
+        """
+        now = datetime.now(UTC)
+        return f"{cls.IMAGES_ASSISTANT_PHOTOS_PREFIX}/{now:%Y/%m}/{uuid.uuid4().hex}.jpg"
 
     @classmethod
     def manual_upload_key(cls, extension: str) -> str:
