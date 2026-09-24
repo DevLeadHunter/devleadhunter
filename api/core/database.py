@@ -31,6 +31,10 @@ engine = create_engine(settings.database_url, pool_pre_ping=True, pool_recycle=3
 # Create SessionLocal class
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
+# Options of the tables that hold visitor or business text (emoji, ligatures, Word bullets): utf8mb4 whatever the
+# schema's default charset, which older databases kept in latin1.
+UTF8MB4_TABLE_OPTIONS: dict[str, str] = {"mysql_charset": "utf8mb4", "mysql_collate": "utf8mb4_unicode_ci"}
+
 
 # Create Base class for models
 class Base(DeclarativeBase):
