@@ -7,9 +7,8 @@ SQLite. Routes are called directly. Business time is Paris (UTC+2 in September).
 """
 
 import asyncio
-import importlib
 import json
-import pkgutil
+from collections.abc import Iterator
 from datetime import UTC, datetime, timedelta
 from typing import Any
 from zoneinfo import ZoneInfo
@@ -18,14 +17,13 @@ import httpx
 import pytest
 from fastapi import HTTPException
 from sqlalchemy import create_engine, inspect
+from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy.pool import StaticPool
-from starlette.requests import Request
 
 import api.v1.routes.ai_assistant_client_space as client_routes
 import api.v1.routes.ai_assistant_widget as routes
 import migrations.add_ai_assistant_calendars_tables as calendars_migration
-import models
 import services.ai_assistant.appointment_notices as notices_module
 import services.ai_assistant.calendar_access as access_module
 import services.ai_assistant.calendar_service as calendar_module
@@ -33,7 +31,6 @@ import services.ai_assistant.client_space_service as client_space_module
 import services.ai_assistant.google_calendar_client as google_module
 import services.email_sending_service as email_sending_module
 import services.sms_service as sms_module
-from core.database import Base
 from enums.ai_assistant_request import AiAssistantRequestType
 from enums.assistant_booking_mode import AssistantBookingMode
 from enums.assistant_calendar_status import AssistantCalendarConnection, AssistantCalendarStatus
@@ -68,13 +65,9 @@ from services.ai_assistant.request_email import AiAssistantRequestEmail, Request
 from services.encryption_service import encryption_service
 from services.rate_limiter import SlidingWindowRateLimiter
 from services.sms.gsm_segments import segment_count, to_gsm7
-from services.sms.sms_provider import SmsSendResult
-
-for _module in pkgutil.iter_modules(models.__path__):
-    importlib.import_module("models." + _module.name)
+from tests.assistant_fakes import VISITOR_REQUEST, AcceptingSmsProvider, AsyncCallRecorder
 
 _PARIS = ZoneInfo("Europe/Paris")
-_VISITOR = Request({"type": "http", "headers": [], "client": ("203.0.113.9", 0)})
 # Monday 21 September 2026, 10:00 in Paris (08:00 UTC).
 _MONDAY_10H = datetime(2026, 9, 21, 10, 0, tzinfo=_PARIS)
 _WEEK = [
@@ -99,9 +92,7 @@ def _utc(moment: datetime) -> datetime:
 
 
 @pytest.fixture
-def db() -> Session:
-    engine = create_engine("sqlite://", connect_args={"check_same_thread": False}, poolclass=StaticPool)
-    Base.metadata.create_all(engine)
+def db(engine: Engine) -> Iterator[Session]:
     session = sessionmaker(bind=engine)()
     session.add(User(id=7, name="Dibodev", email="operateur@dibodev.fr", hashed_password="x"))
     session.commit()
@@ -109,31 +100,6 @@ def db() -> Session:
         yield session
     finally:
         session.close()
-
-
-class _Recorder:
-    """Collects the calls of a mocked async function."""
-
-    def __init__(self, result: Any = None) -> None:
-        self.calls: list[dict[str, Any]] = []
-        self.result = result
-
-    async def __call__(self, *args: Any, **kwargs: Any) -> Any:
-        self.calls.append(kwargs)
-        return self.result
-
-
-class _Provider:
-    """A configured SMS provider that accepts everything."""
-
-    is_configured = True
-
-    def __init__(self) -> None:
-        self.texts: list[str] = []
-
-    async def send(self, *, to_e164: str, sender: str, text: str, **_: Any) -> SmsSendResult:
-        self.texts.append(text)
-        return SmsSendResult(success=True, provider_message_id=f"m{len(self.texts)}", price_cents=6)
 
 
 class _FakeGoogle:
@@ -207,10 +173,10 @@ def google(monkeypatch: pytest.MonkeyPatch) -> _FakeGoogle:
 @pytest.fixture
 def outbox(monkeypatch: pytest.MonkeyPatch) -> dict[str, Any]:
     """Mock the email sender and the SMS provider."""
-    email = _Recorder({"success": True})
-    provider = _Provider()
+    email = AsyncCallRecorder({"success": True})
+    provider = AcceptingSmsProvider()
     monkeypatch.setattr(email_sending_module.EmailSendingService, "send_via_user_identity", email)
-    monkeypatch.setattr(sms_module.notification_service, "notify_sms_event", _Recorder())
+    monkeypatch.setattr(sms_module.notification_service, "notify_sms_event", AsyncCallRecorder())
     monkeypatch.setattr(sms_module.sms_service, "_provider", provider)
     return {"email": email, "sms": provider}
 
@@ -831,10 +797,10 @@ def test_the_slots_route_offers_the_agenda_or_falls_back_on_half_days(
     assistant = _assistant(db)
     _calendar(db, assistant, appointment_types_json=["Révision"], duration_minutes=30)
 
-    offer = asyncio.run(routes.get_assistant_appointment_slots(assistant.slug, _VISITOR, after=None, db=db))
+    offer = asyncio.run(routes.get_assistant_appointment_slots(assistant.slug, VISITOR_REQUEST, after=None, db=db))
     google.failure = GoogleCalendarError("Google Agenda injoignable")
     access_module.ai_assistant_calendar_access._busy_cache.clear()
-    fallback = asyncio.run(routes.get_assistant_appointment_slots(assistant.slug, _VISITOR, after=None, db=db))
+    fallback = asyncio.run(routes.get_assistant_appointment_slots(assistant.slug, VISITOR_REQUEST, after=None, db=db))
 
     assert offer.mode is AssistantBookingMode.CALENDAR
     assert [time.start for time in offer.times] == [_paris(22, 10), _paris(22, 14), _paris(23, 8)]
@@ -855,7 +821,7 @@ def test_the_lead_route_books_the_slot_or_answers_409_when_it_was_taken(
         booking=AiAssistantBookingChoice(start=_paris(22, 10)),
     )
 
-    answer = asyncio.run(routes.submit_assistant_lead(assistant.slug, payload, _VISITOR, db))
+    answer = asyncio.run(routes.submit_assistant_lead(assistant.slug, payload, VISITOR_REQUEST, db))
 
     assert answer.booked_start == _paris(22, 10)
     [appointment] = db.query(AiAssistantAppointment).all()
@@ -863,7 +829,7 @@ def test_the_lead_route_books_the_slot_or_answers_409_when_it_was_taken(
     assert appointment.visitor_phone_e164 == "+33611223344"
     taken = payload.model_copy(update={"session_id": "session-2", "name": "Marc Petit"})
     with pytest.raises(HTTPException) as refused:
-        asyncio.run(routes.submit_assistant_lead(assistant.slug, taken, _VISITOR, db))
+        asyncio.run(routes.submit_assistant_lead(assistant.slug, taken, VISITOR_REQUEST, db))
     assert refused.value.status_code == 409
 
 
@@ -888,7 +854,7 @@ def test_the_client_space_shows_the_agenda_and_the_upcoming_appointments(
 ) -> None:
     assistant = _assistant(db)
     token = AiAssistantClientLinks.token(assistant.id)
-    disconnected = asyncio.run(client_routes.get_client_space(token, _VISITOR, db))
+    disconnected = asyncio.run(client_routes.get_client_space(token, VISITOR_REQUEST, db))
     _calendar(db, assistant, appointment_types_json=["Révision"])
     request = _request(db, assistant)
     start = datetime.now(UTC).replace(tzinfo=None, microsecond=0) + timedelta(days=2)
@@ -905,9 +871,9 @@ def test_the_client_space_shows_the_agenda_and_the_upcoming_appointments(
     )
     db.commit()
 
-    space = asyncio.run(client_routes.get_client_space(token, _VISITOR, db))
+    space = asyncio.run(client_routes.get_client_space(token, VISITOR_REQUEST, db))
     monkeypatch.setattr(google_module.settings, "google_client_id", "")
-    unavailable = asyncio.run(client_routes.get_client_space(token, _VISITOR, db))
+    unavailable = asyncio.run(client_routes.get_client_space(token, VISITOR_REQUEST, db))
 
     assert disconnected.calendar.status is AssistantCalendarConnection.DISCONNECTED
     assert space.calendar.status is AssistantCalendarConnection.CONNECTED
@@ -926,26 +892,26 @@ def test_the_client_connects_changes_and_disconnects_the_agenda(
     assistant = _assistant(db)
     token = AiAssistantClientLinks.token(assistant.id)
 
-    consent = asyncio.run(client_routes.connect_client_calendar(token, _VISITOR, db))
+    consent = asyncio.run(client_routes.connect_client_calendar(token, VISITOR_REQUEST, db))
     state = consent.url.split("state=")[1]
-    page = asyncio.run(client_routes.google_calendar_callback(_VISITOR, code="ok", state=state, error="", db=db))
+    page = asyncio.run(client_routes.google_calendar_callback(VISITOR_REQUEST, code="ok", state=state, error="", db=db))
     settings = asyncio.run(
         client_routes.update_client_calendar(
             token,
             AiAssistantClientCalendarUpdate(
                 duration_minutes=30, min_notice_hours=4, appointment_types=[" Révision ", "révision", "Pneus"]
             ),
-            _VISITOR,
+            VISITOR_REQUEST,
             db,
         )
     )
     with pytest.raises(HTTPException) as refused:
         asyncio.run(
             client_routes.update_client_calendar(
-                token, AiAssistantClientCalendarUpdate(duration_minutes=50), _VISITOR, db
+                token, AiAssistantClientCalendarUpdate(duration_minutes=50), VISITOR_REQUEST, db
             )
         )
-    disconnected = asyncio.run(client_routes.disconnect_client_calendar(token, _VISITOR, db))
+    disconnected = asyncio.run(client_routes.disconnect_client_calendar(token, VISITOR_REQUEST, db))
 
     assert "Google Agenda est connecté" in page.body.decode()
     assert page.headers["referrer-policy"] == "no-referrer"
@@ -961,10 +927,12 @@ def test_the_client_connects_changes_and_disconnects_the_agenda(
 
 def test_the_callback_page_explains_a_failed_consent(db: Session, google: _FakeGoogle) -> None:
     denied = asyncio.run(
-        client_routes.google_calendar_callback(_VISITOR, code="", state="", error="access_denied", db=db)
+        client_routes.google_calendar_callback(VISITOR_REQUEST, code="", state="", error="access_denied", db=db)
     )
     forged = asyncio.run(
-        client_routes.google_calendar_callback(_VISITOR, code="ok", state="9.9.AAAAAAAAAAAAAAAAAAAAAA", error="", db=db)
+        client_routes.google_calendar_callback(
+            VISITOR_REQUEST, code="ok", state="9.9.AAAAAAAAAAAAAAAAAAAAAA", error="", db=db
+        )
     )
 
     assert "Connexion annulée" in denied.body.decode()
@@ -1229,8 +1197,8 @@ def test_the_widget_learns_how_the_confirmation_leaves(
         booking=AiAssistantBookingChoice(start=_paris(22, 14)),
     )
 
-    sms = asyncio.run(routes.submit_assistant_lead(assistant.slug, by_sms, _VISITOR, db))
-    nothing = asyncio.run(routes.submit_assistant_lead(assistant.slug, by_nothing, _VISITOR, db))
+    sms = asyncio.run(routes.submit_assistant_lead(assistant.slug, by_sms, VISITOR_REQUEST, db))
+    nothing = asyncio.run(routes.submit_assistant_lead(assistant.slug, by_nothing, VISITOR_REQUEST, db))
 
     assert sms.confirmation_channel is AssistantVisitorChannel.SMS
     assert nothing.booked_start == _paris(22, 14) and nothing.confirmation_channel is None
@@ -1250,9 +1218,11 @@ def test_a_client_link_reaches_only_its_own_agenda(db: Session, google: _FakeGoo
     token = AiAssistantClientLinks.token(assistant.id)
 
     asyncio.run(
-        client_routes.update_client_calendar(token, AiAssistantClientCalendarUpdate(duration_minutes=30), _VISITOR, db)
+        client_routes.update_client_calendar(
+            token, AiAssistantClientCalendarUpdate(duration_minutes=30), VISITOR_REQUEST, db
+        )
     )
-    asyncio.run(client_routes.disconnect_client_calendar(token, _VISITOR, db))
+    asyncio.run(client_routes.disconnect_client_calendar(token, VISITOR_REQUEST, db))
 
     db.refresh(foreign)
     assert foreign.duration_minutes == 60
