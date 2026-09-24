@@ -153,30 +153,42 @@ class EmailVariables:
         return label.split("/", 1)[1].split("/", 1)[0]
 
     @classmethod
-    def resolve_expiry_date(cls, db: Session, demo_link: str) -> str:
+    def resolve_expiry_date(cls, db: Session, demo_link: str, *, prospect_id: int, user_id: int) -> str:
         """
-        Resolve `{date_expiration}`: the day the linked demo goes offline.
+        Resolve `{date_expiration}`: the day the linked demo — site or assistant — goes offline.
 
-        The demo is looked up by the slug of the link actually rendered in the email, so the
-        announced date always matches the site the prospect will visit.
+        A demo site is looked up by the slug of the link actually rendered in the email, so the
+        announced date always matches the site the prospect will visit. Without a demo link, the
+        date is the one of the sender's active assistant demo for this prospect.
 
         Args:
             db: Active database session.
             demo_link: The `{lien_demo}` URL of this send, or "" when the prospect has none.
+            prospect_id: Prospect being emailed.
+            user_id: The sending user, owner of the assistant.
 
         Returns:
             The French expiry date ("12 octobre"), or "" without a resolvable demo.
         """
         slug: str = cls._demo_slug(demo_link)
-        if not slug:
+        if slug:
+            site: DemoSite | None = db.execute(select(DemoSite).where(DemoSite.slug == slug)).scalar_one_or_none()
+            if site is None:
+                return ""
+            return cls._expiry_label(site.demo_link_sent_at, site.expires_at)
+        assistant: AiAssistant | None = ai_assistant_service.get_active_for_prospect(
+            db, prospect_id=prospect_id, user_id=user_id
+        )
+        if assistant is None:
             return ""
-        site: DemoSite | None = db.execute(select(DemoSite).where(DemoSite.slug == slug)).scalar_one_or_none()
-        if site is None:
-            return ""
-        # TTL not started: expires_at still holds the 2099 sentinel — this very send starts the clock.
-        if site.demo_link_sent_at is None or site.expires_at is None:
+        return cls._expiry_label(assistant.demo_link_sent_at, assistant.expires_at)
+
+    @classmethod
+    def _expiry_label(cls, demo_link_sent_at: datetime | None, expires_at: datetime | None) -> str:
+        # Countdown not started (unsent demo): this very send starts the clock.
+        if demo_link_sent_at is None or expires_at is None:
             return cls.format_expiry_date(datetime.now(UTC) + timedelta(days=settings.demo_site_ttl_days))
-        return cls.format_expiry_date(site.expires_at)
+        return cls.format_expiry_date(expires_at)
 
     @classmethod
     def resolve_assistant_url(cls, db: Session, prospect_id: int, user_id: int) -> str:
@@ -359,5 +371,5 @@ class EmailVariables:
                 if assistant_monthly_price_cents is not None
                 else ""
             ),
-            cls.EXPIRY_DATE: cls.resolve_expiry_date(db, demo_link),
+            cls.EXPIRY_DATE: cls.resolve_expiry_date(db, demo_link, prospect_id=prospect.id, user_id=user_id),
         }

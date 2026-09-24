@@ -24,6 +24,16 @@ export function parseApiDate(iso: string): Date {
 }
 
 /**
+ * Whole days left until an API date, never negative (a past date reads as 0).
+ * @param iso - ISO-8601 date or date-time string.
+ * @returns The number of days, rounded up.
+ */
+export function daysUntil(iso: string): number {
+  const remainingMilliseconds: number = parseApiDate(iso).getTime() - Date.now()
+  return Math.max(0, Math.ceil(remainingMilliseconds / (1000 * 60 * 60 * 24)))
+}
+
+/**
  * Format an ISO date as `01/06/26 14:32`.
  * @param iso - ISO-8601 date string, or a falsy value for an unknown date.
  * @returns The formatted date, or an empty string when `iso` is falsy.

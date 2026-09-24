@@ -1,4 +1,5 @@
 import { ApiClient } from '~/services/api'
+import { daysUntil } from '~/utils/date'
 
 const BASE_URL: string = '/api/v1/demo-sites'
 
@@ -545,8 +546,7 @@ export class DemoSiteService {
    * Compute days remaining before a demo site expires.
    */
   static daysUntilExpiry(expiresAt: string): number {
-    const diff: number = new Date(expiresAt).getTime() - Date.now()
-    return Math.max(0, Math.ceil(diff / (1000 * 60 * 60 * 24)))
+    return daysUntil(expiresAt)
   }
 
   /**

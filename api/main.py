@@ -51,6 +51,7 @@ from scrappers.google_scraper import GoogleScraper
 from scrappers.osm_scraper import OSMScraper
 from scrappers.pagesjaunes_scraper import PagesJaunesScraper
 from services.acquisition_orchestrator import acquisition_orchestrator
+from services.ai_assistant.cleanup_service import run_ai_assistant_cleanup_loop
 from services.demo_site_cleanup_service import run_demo_site_cleanup_loop
 from services.email_queue_worker import email_queue_worker
 from services.notification_service import notification_service, run_daily_recap_loop
@@ -186,6 +187,7 @@ async def startup_event() -> None:
     # Keep a strong reference to every long-lived loop, else asyncio may GC the task and it dies silently.
     for coro in (
         run_demo_site_cleanup_loop(),
+        run_ai_assistant_cleanup_loop(),
         email_queue_worker.run_forever(),
         run_order_fulfillment_recovery_loop(),
         run_order_payment_reconciliation_loop(),

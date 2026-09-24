@@ -64,7 +64,9 @@ def test_resolve_expiry_date_uses_started_ttl() -> None:
         demo_link_sent_at=datetime(2026, 9, 21, 6, 0, 0),
         expires_at=datetime(2026, 10, 12, 6, 0, 0),
     )
-    resolved = EmailVariables.resolve_expiry_date(_FakeDB(site), "https://demo.dibodev.fr/tacos-maru?src=email&v=A")
+    resolved = EmailVariables.resolve_expiry_date(
+        _FakeDB(site), "https://demo.dibodev.fr/tacos-maru?src=email&v=A", prospect_id=1, user_id=7
+    )
     assert resolved == "12 octobre"
 
 
@@ -72,13 +74,29 @@ def test_resolve_expiry_date_projects_ttl_for_first_send() -> None:
     """Before the first send, the announced date is today plus the TTL (this send starts the clock)."""
     site = SimpleNamespace(demo_link_sent_at=None, expires_at=datetime(2099, 12, 31))
     expected = EmailVariables.format_expiry_date(datetime.now(UTC) + timedelta(days=settings.demo_site_ttl_days))
-    assert EmailVariables.resolve_expiry_date(_FakeDB(site), "https://demo.dibodev.fr/tacos-maru") == expected
+    resolved = EmailVariables.resolve_expiry_date(
+        _FakeDB(site), "https://demo.dibodev.fr/tacos-maru", prospect_id=1, user_id=7
+    )
+    assert resolved == expected
 
 
-def test_resolve_expiry_date_empty_without_demo() -> None:
-    """No demo link, or an unknown slug, renders empty instead of a wrong date."""
-    assert EmailVariables.resolve_expiry_date(_FakeDB(None), "") == ""
-    assert EmailVariables.resolve_expiry_date(_FakeDB(None), "https://demo.dibodev.fr/inconnu") == ""
+def test_resolve_expiry_date_empty_without_demo(monkeypatch) -> None:
+    """No demo link (and no assistant), or an unknown slug, renders empty instead of a wrong date."""
+    _stub_active_assistant(monkeypatch, None)
+    assert EmailVariables.resolve_expiry_date(_FakeDB(None), "", prospect_id=1, user_id=7) == ""
+    unknown = "https://demo.dibodev.fr/inconnu"
+    assert EmailVariables.resolve_expiry_date(_FakeDB(None), unknown, prospect_id=1, user_id=7) == ""
+
+
+def test_resolve_expiry_date_falls_back_to_the_assistant_demo(monkeypatch) -> None:
+    """Without a demo link, {date_expiration} announces the sender's assistant demo expiry (projected before its first send)."""
+    started = SimpleNamespace(demo_link_sent_at=datetime(2026, 9, 21, 6, 0), expires_at=datetime(2026, 10, 12, 6, 0))
+    _stub_active_assistant(monkeypatch, started)
+    assert EmailVariables.resolve_expiry_date(_FakeDB(None), "", prospect_id=1, user_id=7) == "12 octobre"
+
+    _stub_active_assistant(monkeypatch, SimpleNamespace(demo_link_sent_at=None, expires_at=None))
+    expected = EmailVariables.format_expiry_date(datetime.now(UTC) + timedelta(days=settings.demo_site_ttl_days))
+    assert EmailVariables.resolve_expiry_date(_FakeDB(None), "", prospect_id=1, user_id=7) == expected
 
 
 def test_template_using_expiry_date_requires_demo() -> None:
@@ -87,6 +105,15 @@ def test_template_using_expiry_date_requires_demo() -> None:
         subject="Dernier rappel", body_html="Votre site reste en ligne jusqu'au {date_expiration}."
     )
     assert CampaignQueueService._template_uses_demo_link(template) is True
+
+
+def test_template_using_expiry_date_with_assistant_link_needs_no_demo_site() -> None:
+    """{date_expiration} next to {lien_assistant} reads the assistant's expiry: no demo site required."""
+    template = SimpleNamespace(
+        subject="Dernier rappel",
+        body_html="Votre assistant {lien_assistant} reste en ligne jusqu'au {date_expiration}.",
+    )
+    assert CampaignQueueService._template_uses_demo_link(template) is False
 
 
 def _stub_active_assistant(monkeypatch, assistant: object | None) -> dict[str, tuple[int, int]]:

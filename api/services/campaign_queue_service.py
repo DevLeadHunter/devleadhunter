@@ -23,6 +23,7 @@ from sqlalchemy import and_, case, func, or_, select
 from sqlalchemy.orm import Session, joinedload
 
 from enums.demo_site_status import DemoSiteStatus
+from models.ai_assistant import AiAssistant
 from models.campaign import Campaign, CampaignStatus, campaign_prospects
 from models.campaign_follow_up import CampaignFollowUp
 from models.demo_site import DemoSite
@@ -946,19 +947,22 @@ class CampaignQueueService:
     @staticmethod
     def _template_uses_demo_link(template: EmailTemplate | None) -> bool:
         """
-        Return True when a template references ``{lien_demo}`` or ``{date_expiration}``
-        (the expiry date is read from the demo, so both need an active demo site).
+        Return True when a template references ``{lien_demo}``, or ``{date_expiration}`` without an
+        assistant link (the expiry date then comes from the demo site, so both need an active one).
 
         Args:
             template: Template to inspect (subject + HTML body), or None.
 
         Returns:
-            True if the rendered email would depend on the prospect's demo.
+            True if the rendered email would depend on the prospect's demo site.
         """
         if template is None:
             return False
         haystack: str = f"{template.subject or ''} {template.body_html or ''}"
-        return f"{{{EmailVariables.DEMO_LINK}}}" in haystack or f"{{{EmailVariables.EXPIRY_DATE}}}" in haystack
+        if f"{{{EmailVariables.DEMO_LINK}}}" in haystack:
+            return True
+        uses_expiry_date: bool = f"{{{EmailVariables.EXPIRY_DATE}}}" in haystack
+        return uses_expiry_date and not CampaignQueueService._template_uses_any(template, _ASSISTANT_LINK_VARIABLES)
 
     @staticmethod
     def _template_uses_video(template: EmailTemplate | None) -> bool:
@@ -1036,13 +1040,15 @@ class CampaignQueueService:
             .limit(1)
         ).scalar_one_or_none()
 
-    def _has_active_assistant(self, prospect_id: int, user_id: int) -> bool:
-        """Whether the prospect has an active AI assistant of this user (source of ``{lien_assistant}``)."""
+    def _active_assistant_for_prospect(self, prospect_id: int, user_id: int) -> AiAssistant | None:
+        """The prospect's active AI assistant of this user — the demo the assistant links point to — or None."""
         from services.ai_assistant.assistant_service import ai_assistant_service
 
-        return (
-            ai_assistant_service.get_active_for_prospect(self.db, prospect_id=prospect_id, user_id=user_id) is not None
-        )
+        return ai_assistant_service.get_active_for_prospect(self.db, prospect_id=prospect_id, user_id=user_id)
+
+    def _has_active_assistant(self, prospect_id: int, user_id: int) -> bool:
+        """Whether the prospect has an active AI assistant of this user (source of ``{lien_assistant}``)."""
+        return self._active_assistant_for_prospect(prospect_id, user_id) is not None
 
     def _demo_link_for_prospect(self, prospect_id: int, user_id: int, variant: str | None) -> str:
         """
@@ -1279,13 +1285,13 @@ class CampaignQueueService:
         if item.queue_type == "initial" and result.get("success"):
             self._schedule_follow_ups(item)
 
-    def _demo_link_outlives(self, j1_item: EmailQueue, template_id: int | None, scheduled_at: datetime) -> bool:
+    def _offer_link_outlives(self, j1_item: EmailQueue, template_id: int | None, scheduled_at: datetime) -> bool:
         """
-        Whether a follow-up may be queued, i.e. its demo link will still be alive.
+        Whether a follow-up may be queued, i.e. the demo it links — site or assistant — will still be alive.
 
-        A demo site dies ``DEMO_SITE_TTL_DAYS`` after its demo link is **first emailed**
-        to the prospect (``demo_link_sent_at``). Before that send the site stays live
-        so batches can be generated ahead of a slow outreach cadence.
+        A demo dies ``DEMO_SITE_TTL_DAYS`` after its link is **first sent** to the prospect
+        (``demo_link_sent_at``). Before that send the demo stays live so batches can be generated
+        ahead of a slow outreach cadence.
 
         The refusal is recorded as a ``skipped`` queue row so the campaign page shows
         why the sequence stopped, instead of the follow-up silently never existing.
@@ -1299,20 +1305,33 @@ class CampaignQueueService:
             True when the follow-up can be queued.
         """
         template: EmailTemplate | None = self.db.get(EmailTemplate, template_id) if template_id else None
-        if not self._template_uses_demo_link(template):
+        uses_demo: bool = self._template_uses_demo_link(template)
+        uses_assistant: bool = self._template_uses_assistant_link(template)
+        if not uses_demo and not uses_assistant:
             return True
 
-        site: DemoSite | None = self._active_demo_for_prospect(j1_item.prospect_id, j1_item.user_id)
-        expires_at: datetime | None = site.expires_at if site else None
+        expires_at: datetime | None
+        if uses_demo:
+            site: DemoSite | None = self._active_demo_for_prospect(j1_item.prospect_id, j1_item.user_id)
+            expires_at = site.expires_at if site else None
+            offer_label, skip_reason = "demo site", "Site démo expiré avant la relance"
+        else:
+            assistant: AiAssistant | None = self._active_assistant_for_prospect(j1_item.prospect_id, j1_item.user_id)
+            # An assistant whose countdown has not started yet is alive for any follow-up.
+            if assistant is not None and assistant.expires_at is None:
+                return True
+            expires_at = assistant.expires_at if assistant else None
+            offer_label, skip_reason = "AI assistant", "Assistant expiré avant la relance"
         if expires_at is not None and expires_at.tzinfo is not None:
             expires_at = expires_at.replace(tzinfo=None)
         if expires_at is not None and expires_at > scheduled_at:
             return True
 
         logger.warning(
-            "[Queue] Follow-up skipped for prospect %d — demo site expires %s, before the follow-up on %s",
+            "[Queue] Follow-up skipped for prospect %d — %s expires %s, before the follow-up on %s",
             j1_item.prospect_id,
-            expires_at.isoformat() if expires_at else "never (no active site)",
+            offer_label,
+            expires_at.isoformat() if expires_at else "never (no active offer)",
             scheduled_at.isoformat(),
         )
         self.db.add(
@@ -1327,7 +1346,7 @@ class CampaignQueueService:
                 follow_up_index=j1_item.follow_up_index + 1,
                 scheduled_at=scheduled_at,
                 status=_STATUS_SKIPPED,
-                skip_reason="Site démo expiré avant la relance",
+                skip_reason=skip_reason,
             )
         )
         self.db.commit()
@@ -1367,7 +1386,7 @@ class CampaignQueueService:
                 follow_up_at = send_policy_service.follow_up_slot(
                     resolved, sent_at, campaign.follow_up_delay_days or None
                 )
-                if not self._demo_link_outlives(j1_item, campaign.follow_up_template_id, follow_up_at):
+                if not self._offer_link_outlives(j1_item, campaign.follow_up_template_id, follow_up_at):
                     return
                 self.db.add(
                     EmailQueue(
@@ -1391,7 +1410,7 @@ class CampaignQueueService:
         for step in follow_ups:
             elapsed_days += max(1, step.delay_days)
             step_at: datetime = send_policy_service.follow_up_slot(resolved, sent_at, elapsed_days)
-            if not self._demo_link_outlives(j1_item, step.template_id, step_at):
+            if not self._offer_link_outlives(j1_item, step.template_id, step_at):
                 break
             self.db.add(
                 EmailQueue(

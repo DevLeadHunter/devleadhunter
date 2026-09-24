@@ -347,6 +347,20 @@ class EmailSendingService:
                         prospect_id,
                         exc_info=True,
                     )
+                from services.ai_assistant.assistant_service import ai_assistant_service
+
+                try:
+                    ai_assistant_service.maybe_start_ttl_after_demo_email(
+                        self.db,
+                        user_id=user_id,
+                        prospect_id=int(prospect_id),
+                        sent_at=email_log.sent_at,
+                        body_html=body_html,
+                    )
+                except Exception:
+                    logger.warning(
+                        "Failed to start assistant demo TTL after email to prospect %s", prospect_id, exc_info=True
+                    )
             self._mark_prospect_contacted(prospect_id)
             if is_conversation_reply:
                 try:

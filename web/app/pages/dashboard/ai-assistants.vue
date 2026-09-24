@@ -54,7 +54,10 @@
             <div class="flex items-start justify-between gap-3">
               <div class="min-w-0">
                 <p class="truncate text-sm font-semibold text-[var(--app-ink)]">{{ assistant.business_name }}</p>
-                <p class="text-muted truncate text-xs">{{ assistant.assistant_name }}</p>
+                <p class="text-muted truncate text-xs">
+                  {{ assistant.assistant_name
+                  }}<span v-if="demoLifetimeLabel(assistant)"> · {{ demoLifetimeLabel(assistant) }}</span>
+                </p>
               </div>
               <span
                 class="shrink-0 rounded-full border px-2 py-0.5 text-[10px] font-medium tracking-wide uppercase"
@@ -64,7 +67,7 @@
                     : 'border-[var(--app-line)] text-[var(--app-ink-soft)]'
                 "
               >
-                {{ assistant.status === 'active' ? 'Actif' : assistant.status }}
+                {{ statusLabel(assistant) }}
               </span>
             </div>
 
@@ -377,7 +380,7 @@ import type { Prospect } from '~/types'
 import type { UseToastReturn } from '~/types/Composables'
 import { useToast } from '~/composables/useToast'
 import { useDrawerStackStore } from '~/stores/drawerStack'
-import { parseApiDate } from '~/utils/date'
+import { daysUntil, parseApiDate } from '~/utils/date'
 
 /**
  * Management page for the AI assistant module: the generated assistants (demo link + embed
@@ -414,6 +417,8 @@ const editForm: Ref<AiAssistantEditForm> = ref({
 const isSaving: Ref<boolean> = ref(false)
 
 /** Languages a customer can offer, in the order they matter for the target markets. */
+const STATUS_LABELS: Record<string, string> = { active: 'Actif', expired: 'Expiré', delivered: 'Vendu' }
+
 const LANGUAGE_OPTIONS: { code: string; label: string }[] = [
   { code: 'fr', label: 'Français' },
   { code: 'nl', label: 'Nederlands' },
@@ -651,6 +656,26 @@ function subscriptionLabel(assistant: AiAssistantSummary): string {
   if (assistant.subscription_amount_cents == null) return ''
   const euros: number = Math.round(assistant.subscription_amount_cents / 100)
   return `${euros} €/${assistant.subscription_interval === 'year' ? 'an' : 'mois'}`
+}
+
+/**
+ * Text of the status badge.
+ * @param assistant - The assistant.
+ * @returns « Actif », « Expiré », « Vendu », or the raw status for the transient ones.
+ */
+function statusLabel(assistant: AiAssistantSummary): string {
+  return STATUS_LABELS[assistant.status] ?? assistant.status
+}
+
+/**
+ * Where the demo stands in its life: waiting for its first send, or counting down to its expiry.
+ * @param assistant - The assistant.
+ * @returns « En attente d'envoi », « Expire dans N j », or an empty string once the demo is sold or gone.
+ */
+function demoLifetimeLabel(assistant: AiAssistantSummary): string {
+  if (assistant.status !== 'active') return ''
+  if (!assistant.demo_link_sent_at || !assistant.expires_at) return "En attente d'envoi"
+  return `Expire dans ${daysUntil(assistant.expires_at)} j`
 }
 
 /**

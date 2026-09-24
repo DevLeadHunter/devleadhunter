@@ -11,7 +11,7 @@ mandatory « STOP au 36180 » opt-out mention.
 from __future__ import annotations
 
 import logging
-from datetime import datetime
+from datetime import UTC, datetime
 
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
@@ -246,7 +246,10 @@ class SmsService:
             status=SmsStatus.PENDING.value,
             segments=segment_count(body),
         )
-        return await self._send_and_log(db, message=message)
+        outcome = await self._send_and_log(db, message=message)
+        if outcome.sent:
+            self._start_assistant_ttl_if_linked(db, user_id=user_id, prospect_id=prospect.id, body=body)
+        return outcome
 
     def compose_manual_body(self, text: str) -> str:
         """Append the mandatory STOP mention to a free-text manual SMS (idempotent).
@@ -329,7 +332,20 @@ class SmsService:
         # A manual contact supersedes the campaigns: nothing automated may double it.
         if outcome.sent and prospect_id is not None:
             self._hold_back_campaign_sends(db, prospect_id, label="Contacté manuellement (SMS)")
+            self._start_assistant_ttl_if_linked(db, user_id=user_id, prospect_id=prospect_id, body=body)
         return outcome
+
+    @staticmethod
+    def _start_assistant_ttl_if_linked(db: Session, *, user_id: int, prospect_id: int, body: str) -> None:
+        """Start the assistant demo countdown when a sent SMS carries its link (idempotent); never raises."""
+        from services.ai_assistant.assistant_service import ai_assistant_service
+
+        try:
+            assistant = ai_assistant_service.get_active_for_prospect(db, prospect_id=prospect_id, user_id=user_id)
+            if assistant is not None and ai_assistant_service.body_contains_assistant_link(assistant, body):
+                ai_assistant_service.start_demo_ttl(db, assistant, datetime.now(UTC))
+        except Exception:
+            logger.warning("Failed to start assistant demo TTL after SMS to prospect %s", prospect_id, exc_info=True)
 
     async def _send_and_log(self, db: Session, *, message: SmsMessage) -> SmsSendOutcome:
         """Persist the row, hand it to the provider, record the outcome, notify.
