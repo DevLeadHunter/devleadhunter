@@ -76,8 +76,9 @@
             <h2 class="text-sm font-semibold text-[var(--app-ink)]">Abonnement Assistant IA</h2>
             <p class="mt-0.5 text-xs text-[var(--app-ink-soft)]">
               Le prix mensuel de l'assistant et les mois offerts sur l'annuel, affichés via
-              <code class="rounded bg-[var(--app-surface-2)] px-1 py-0.5 text-[0.7rem]">{prix_assistant}</code>. Les
-              abonnés en cours gardent leur prix — seuls les nouveaux paient le nouveau tarif.
+              <code class="rounded bg-[var(--app-surface-2)] px-1 py-0.5 text-[0.7rem]">{prix_assistant}</code> et sur
+              la page de démo. Conseillé : 79 à 99 €/mois. Les abonnés en cours gardent leur prix — seuls les nouveaux
+              paient le nouveau tarif.
             </p>
           </div>
         </div>
@@ -140,7 +141,7 @@ import { useUserStore } from '~/stores/user'
 definePageMeta({ layout: 'dashboard', middleware: 'auth' })
 
 const DEFAULT_SALE_PRICE_CENTS: number = 50000
-const DEFAULT_ASSISTANT_MONTHLY_CENTS: number = 2900
+const DEFAULT_ASSISTANT_MONTHLY_CENTS: number = 7900
 const DEFAULT_ASSISTANT_FREE_MONTHS: number = 2
 
 const userStore: ReturnType<typeof useUserStore> = useUserStore()

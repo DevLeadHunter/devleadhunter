@@ -198,44 +198,47 @@ EMAIL_TEMPLATE_LIBRARY: list[dict[str, object]] = [
             "<p>Ça vous intéresse ?</p>"
         ),
     },
+    # Assistant IA: the request left unanswered, one link (the demo), the price said plainly.
     {
         "name": "Assistant IA - réponses 24/7",
         "category": _FIRST,
         "sort_order": 10,
-        "subject": "Vos clients écrivent, personne ne répond",
+        "subject": "Vos clients écrivent le soir, personne ne répond",
         "body_html": (
             "<p>{salutation},</p>"
-            "<p>J'ai mis en place pour {entreprise} un assistant qui répond tout seul à vos clients 24h/24, "
-            "même le soir et le week-end, et vous transmet leurs coordonnées : {lien_assistant}</p>"
-            "<p>{prix_assistant}/mois, installé sur votre site, sans engagement.</p>"
-            "<p>On le met en place ?</p>"
+            "<p>Le soir et le week-end, les clients qui écrivent à {entreprise} attendent le lendemain, "
+            "et beaucoup vont voir ailleurs.</p>"
+            "<p>J'ai préparé pour vous un assistant qui leur répond tout de suite, 24h/24, et vous transmet "
+            "chaque demande : {lien_assistant}</p>"
+            "<p>{prix_assistant}/mois, installé sur votre site, sans engagement. On le met en place ?</p>"
+        ),
+    },
+    {
+        "name": "Assistant IA - devis par photo",
+        "category": _FIRST,
+        "sort_order": 11,
+        "subject": "Une photo, un devis demandé",
+        "body_html": (
+            "<p>{salutation},</p>"
+            "<p>Un client vous envoie la photo de son problème à 22h : l'assistant que j'ai préparé pour "
+            "{entreprise} la regarde, pose les bonnes questions et vous transmet une demande de devis "
+            "complète.</p>"
+            "<p>Essayez avec n'importe quelle photo : {lien_assistant}</p>"
+            "<p>{prix_assistant}/mois, installé sur votre site, sans engagement. Ça vous parle ?</p>"
         ),
     },
     {
         "name": "Assistant IA - multilingue",
         "category": _FIRST,
-        "sort_order": 11,
-        "subject": "Répondre à vos clients dans leur langue",
-        "body_html": (
-            "<p>{salutation},</p>"
-            "<p>J'ai mis en place pour {entreprise} un assistant qui répond tout seul à vos clients dans "
-            "leur langue, 24h/24, et récupère leurs coordonnées : {lien_assistant}</p>"
-            "<p>{prix_assistant}/mois, installé sur votre site, sans engagement.</p>"
-            "<p>Ça vous intéresse ?</p>"
-        ),
-    },
-    {
-        "name": "Assistant IA - demandes captées",
-        "category": _FIRST,
         "sort_order": 12,
-        "subject": "Un assistant qui capte vos demandes",
+        "subject": "Vos clients, dans leur langue",
         "body_html": (
             "<p>{salutation},</p>"
-            "<p>La plupart des visiteurs d'un {metier} repartent sans laisser de message. J'ai mis en place "
-            "pour {entreprise} un assistant qui les accueille, répond tout seul et note leurs coordonnées : "
-            "{lien_assistant}</p>"
-            "<p>{prix_assistant}/mois, installé sur votre site, sans engagement.</p>"
-            "<p>Je vous le mets en place ?</p>"
+            "<p>Une partie des clients de {entreprise} n'ose pas écrire en français et repart sans rien "
+            "demander.</p>"
+            "<p>L'assistant que j'ai préparé leur répond dans leur langue, 24h/24, et vous transmet leur "
+            "demande en français : {lien_assistant}</p>"
+            "<p>{prix_assistant}/mois, installé sur votre site, sans engagement. On en parle ?</p>"
         ),
     },
     {
@@ -245,10 +248,11 @@ EMAIL_TEMPLATE_LIBRARY: list[dict[str, object]] = [
         "subject": "L'assistant de {entreprise} tourne toujours",
         "body_html": (
             "<p>{salutation},</p>"
-            "<p>L'assistant de {entreprise} tourne toujours : il répond tout seul à vos clients 24h/24 et "
-            "note leurs coordonnées : {lien_assistant}</p>"
-            "<p>{prix_assistant}/mois, installation comprise, sans engagement.</p>"
-            "<p>Je vous le mets en place cette semaine ?</p>"
+            "<p>L'assistant de {entreprise} tourne toujours. Chaque soir sans lui, des demandes partent "
+            "chez un concurrent.</p>"
+            "<p>Posez-lui une question ou envoyez-lui une photo, vous verrez : {lien_assistant}</p>"
+            "<p>{prix_assistant}/mois, installation comprise, sans engagement. Je vous l'installe cette "
+            "semaine ?</p>"
         ),
     },
     {
@@ -258,10 +262,9 @@ EMAIL_TEMPLATE_LIBRARY: list[dict[str, object]] = [
         "subject": "Le prix de l'assistant, sans détour",
         "body_html": (
             "<p>{salutation},</p>"
-            "<p>L'assistant que j'ai préparé pour {entreprise} répond tout seul à vos clients 24h/24 : "
-            "{lien_assistant}</p>"
-            "<p>Le tarif sans détour : {prix_assistant}/mois, installation comprise, sans engagement — vous "
-            "l'arrêtez quand vous voulez.</p>"
+            "<p>Sans détour : {prix_assistant}/mois pour ne plus laisser une seule demande sans réponse chez "
+            "{entreprise}. Installation comprise, sans engagement, premier mois satisfait ou remboursé.</p>"
+            "<p>La démo est toujours en ligne : {lien_assistant}</p>"
             "<p>Je vous le mets en place ?</p>"
         ),
     },

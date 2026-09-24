@@ -11,11 +11,11 @@
 
     <main class="ia__hero">
       <div class="ia__halo" aria-hidden="true" />
-      <p class="ia__kicker">Assistant en ligne</p>
-      <h1 class="ia__title">{{ shortBusinessName }}<span class="ia__dot">.</span></h1>
+      <p class="ia__kicker">{{ shortBusinessName }} · assistant en ligne</p>
+      <h1 class="ia__title">Plus aucune demande sans réponse<span class="ia__dot">.</span></h1>
       <p class="ia__lede">
-        Posez votre question à <em>{{ assistant.assistant_name }}</em
-        >, en bas à droite. Réponse immédiate, 24&nbsp;h/24.
+        Le soir, le week-end ou quand vous êtes occupé, <em>{{ assistant.assistant_name }}</em> répond à vos clients à
+        votre place et vous transmet chaque demande.
       </p>
 
       <ul class="ia__values">
@@ -26,38 +26,49 @@
               <path d="M12 7v5l3 2" stroke-linecap="round" stroke-linejoin="round" />
             </svg>
           </span>
-          <p class="ia__value-title">Disponible 24&nbsp;h/24</p>
+          <p class="ia__value-title">Répond 24&nbsp;h/24</p>
           <p class="ia__value-text">
-            {{ assistant.assistant_name }} répond en quelques secondes, jour et nuit, même quand c'est fermé.
+            {{ assistant.assistant_name }} répond en quelques secondes, jour et nuit, même quand c'est fermé, en
+            {{ languagesLabel }}.
           </p>
         </li>
         <li class="ia__value">
           <span class="ia__value-icon" aria-hidden="true">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6">
-              <circle cx="12" cy="12" r="9" />
-              <path d="M3 12h18M12 3c2.5 2.5 2.5 15 0 18M12 3c-2.5 2.5-2.5 15 0 18" stroke-linecap="round" />
+              <path
+                d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"
+                stroke-linejoin="round"
+              />
+              <circle cx="12" cy="13" r="3" />
             </svg>
           </span>
-          <p class="ia__value-title">Dans la langue du visiteur</p>
+          <p class="ia__value-title">Un devis sur photo</p>
           <p class="ia__value-text">
-            {{ capitalizedSubjectPronoun }} détecte la langue et répond en {{ languagesLabel }}.
+            Le client envoie une photo : {{ assistant.assistant_name }} décrit le problème, pose les bonnes questions et
+            vous transmet la demande de devis.
           </p>
         </li>
         <li class="ia__value">
           <span class="ia__value-icon" aria-hidden="true">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6">
-              <path d="M20 8v6a2 2 0 0 1-2 2H8l-4 3V6a2 2 0 0 1 2-2h8" stroke-linecap="round" stroke-linejoin="round" />
-              <path d="M17 3v5M19.5 5.5h-5" stroke-linecap="round" />
+              <rect x="3.5" y="5" width="17" height="15" rx="2" />
+              <path d="M3.5 10h17M8 3v4M16 3v4" stroke-linecap="round" />
             </svg>
           </span>
-          <p class="ia__value-title">Capte vos clients</p>
+          <p class="ia__value-title">Les rendez-vous demandés</p>
           <p class="ia__value-text">
-            {{ capitalizedSubjectPronoun }} note leurs coordonnées et leur besoin, et vous les recevez aussitôt.
+            {{ capitalizedSubjectPronoun }} note la demande de rendez-vous, le besoin et les coordonnées, et vous
+            prévient aussitôt.
           </p>
         </li>
       </ul>
 
-      <p class="ia__cue">Essayez : posez-lui une question, en bas à droite →</p>
+      <p v-if="priceLabel" class="ia__price">
+        <strong>{{ priceLabel }}</strong
+        >, installation comprise, sans engagement, premier mois satisfait ou remboursé.
+      </p>
+
+      <p class="ia__cue">Essayez : posez une question, envoyez une photo, demandez un rendez-vous, en bas à droite →</p>
 
       <p v-if="ownerNameLabel" class="ia__signature">
         Assistant réalisé pour {{ shortBusinessName }} par {{ ownerNameLabel }}, développeur web
@@ -133,6 +144,16 @@ const ownerNameLabel: ComputedRef<string> = computed((): string => (assistant.va
 const capitalizedSubjectPronoun: ComputedRef<string> = computed((): string =>
   AssistantPersonaUtils.capitalizedSubjectPronoun(assistant.value?.assistant_gender),
 )
+
+/**
+ * The monthly price a demo shows (« 79 €/mois », formatted by the API like the emails); empty once the
+ * assistant is sold, and right after the checkout (the payment may not be recorded yet).
+ */
+const priceLabel: ComputedRef<string> = computed((): string => {
+  const label: string | null | undefined = assistant.value?.monthly_price_label
+  if (!label || route.query.subscribed === '1') return ''
+  return `${label}/mois`
+})
 
 /** Bind the business's own accent colour to the page (falls back to the editorial gold). */
 const accentStyle: ComputedRef<Record<string, string>> = computed((): Record<string, string> => ({
@@ -352,6 +373,18 @@ useHead({
   color: var(--ia-ink-dim);
 }
 
+.ia__price {
+  margin: clamp(26px, 4vh, 36px) 0 0;
+  font-size: 0.95rem;
+  line-height: 1.5;
+  color: var(--ia-ink-dim);
+}
+
+.ia__price strong {
+  font-weight: 600;
+  color: var(--ia-ink);
+}
+
 .ia__cue {
   margin: clamp(30px, 5vh, 44px) 0 0;
   font-size: 0.92rem;
@@ -371,6 +404,7 @@ useHead({
   .ia__title,
   .ia__lede,
   .ia__values,
+  .ia__price,
   .ia__cue,
   .ia__signature {
     animation-name: ia-rise;
@@ -386,6 +420,9 @@ useHead({
   }
   .ia__values {
     animation-delay: 0.16s;
+  }
+  .ia__price {
+    animation-delay: 0.2s;
   }
   .ia__cue {
     animation-delay: 0.24s;

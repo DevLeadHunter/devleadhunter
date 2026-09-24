@@ -116,26 +116,28 @@ SMS_TEMPLATE_LIBRARY: list[SmsTemplate] = [
         category=SmsTemplateCategory.FIRST_CONTACT,
         body="{salutation}, j'ai modernisé le site de {entreprise}, comparez avec l'actuel : {lien_demo} {signature}",
     ),
-    # ── Module Assistant IA — premier contact ────────────────────────────────
+    # ── Module Assistant IA — premier contact (la demande restée sans réponse) ─
     SmsTemplate(
         key="assistant-24-7",
-        name="Assistant IA - répond 24/7",
+        name="Assistant IA - le soir, personne ne répond",
         category=SmsTemplateCategory.FIRST_CONTACT,
-        body="{salutation}, j'ai préparé un assistant qui répond à vos clients 24h/24 : {lien_assistant} {signature}",
+        body="{salutation}, le soir, personne ne répond à vos clients. Mon assistant, si : {lien_assistant} {signature}",
     ),
     SmsTemplate(
         key="assistant-langues",
         name="Assistant IA - dans leur langue",
         category=SmsTemplateCategory.FIRST_CONTACT,
         body=(
-            "{salutation}, votre nouvel assistant répond à vos clients dans leur langue : {lien_assistant} {signature}"
+            "{salutation}, mon assistant répond à vos clients dans leur langue, 24h/24 : {lien_assistant} {signature}"
         ),
     ),
     SmsTemplate(
         key="assistant-demandes",
-        name="Assistant IA - demandes captées",
+        name="Assistant IA - devis par photo",
         category=SmsTemplateCategory.FIRST_CONTACT,
-        body="{salutation}, mon assistant capte les demandes de vos clients, même la nuit : {lien_assistant} {signature}",
+        body=(
+            "{salutation}, mon assistant change la photo d'un client en demande de devis : {lien_assistant} {signature}"
+        ),
     ),
     # ── Relance J+30 (email resté sans réaction) ─────────────────────────────
     SmsTemplate(
@@ -204,14 +206,17 @@ SMS_TEMPLATE_LIBRARY: list[SmsTemplate] = [
         name="Assistant IA - relance",
         category=SmsTemplateCategory.FOLLOW_UP,
         body=(
-            "{salutation}, l'assistant IA envoyé par email répond toujours à vos clients : {lien_assistant} {signature}"
+            "{salutation}, l'assistant envoyé par email répond toujours, le soir aussi : {lien_assistant} {signature}"
         ),
     ),
     SmsTemplate(
         key="assistant-prix-cash",
         name="Assistant IA - le prix cash",
         category=SmsTemplateCategory.FOLLOW_UP,
-        body="{salutation}, l'assistant envoyé par email est prêt : {lien_assistant} {prix_assistant}/mois, sans engagement. {signature}",
+        body=(
+            "{salutation}, l'assistant envoyé par email : {prix_assistant}/mois, installé, sans engagement. "
+            "{lien_assistant} {signature}"
+        ),
     ),
 ]
 

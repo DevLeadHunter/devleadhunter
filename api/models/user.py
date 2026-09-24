@@ -63,10 +63,10 @@ class User(Base):
     # Website sale price in cents (default 500 €): per-user default for {prix},
     # new orders, and the sale drawer.
     site_sale_price_cents: Mapped[int] = mapped_column(default=50000, nullable=False)
-    # AI-assistant subscription: monthly price in cents (default 29 € launch) and the number of
-    # months offered on the annual plan (default 2 → 290 €/an). This is the CURRENT price for NEW
+    # AI-assistant subscription: monthly price in cents (default 79 €) and the number of
+    # months offered on the annual plan (default 2 → 790 €/an). This is the CURRENT price for NEW
     # subscriptions; existing subscriptions keep the price locked on their own row (grandfathering).
-    assistant_monthly_price_cents: Mapped[int] = mapped_column(default=2900, nullable=False)
+    assistant_monthly_price_cents: Mapped[int] = mapped_column(default=7900, nullable=False)
     assistant_annual_free_months: Mapped[int] = mapped_column(default=2, nullable=False)
     company_name: Mapped[str | None] = mapped_column(String(255), nullable=True)
     # Optional public website of the user's business — linked from the prospection

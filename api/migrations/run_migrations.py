@@ -158,6 +158,8 @@ MIGRATION_MODULES: list[tuple[str, str]] = [
     ("add_ai_assistant_alerts", "migrations.add_ai_assistant_alerts"),
     ("add_ai_assistant_photos_table", "migrations.add_ai_assistant_photos_table"),
     ("add_ai_assistant_eu_only", "migrations.add_ai_assistant_eu_only"),
+    ("raise_assistant_default_price", "migrations.raise_assistant_default_price"),
+    ("rewrite_assistant_emails_missed_requests", "migrations.rewrite_assistant_emails_missed_requests"),
 ]
 
 # Modules of this package that are not migrations and must not be registered.

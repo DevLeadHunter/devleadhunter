@@ -26,6 +26,7 @@ _TYPICAL_VARIABLES: dict[str, str] = {
     "lien_video": "demo.dibodev.fr/s/v/garage-martin-auto",
     "ancien_site": "garage-martin.fr",
     "prix": "500 €",
+    "prix_assistant": "79 €",
     "signature": "Léo",
 }
 
