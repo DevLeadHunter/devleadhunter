@@ -16,7 +16,7 @@ from __future__ import annotations
 import asyncio
 import logging
 from dataclasses import dataclass
-from datetime import UTC, datetime
+from datetime import datetime
 from typing import ClassVar
 from urllib.parse import urljoin, urlparse
 
@@ -335,7 +335,7 @@ class WebsiteEquipmentService:
         if equipment is None:
             return False
         prospect.website_equipment_json = self.to_snapshot(equipment)
-        prospect.website_equipment_at = datetime.now(UTC)
+        prospect.website_equipment_at = datetime.utcnow()
         db.commit()
         return True
 
@@ -369,7 +369,7 @@ class WebsiteEquipmentService:
 
         db = SessionLocal()
         try:
-            scanned_at = datetime.now(UTC)
+            scanned_at = datetime.utcnow()
             for row in db.query(ProspectDB).filter(ProspectDB.id.in_(list(website_by_id))).all():
                 website = website_by_id[row.id]
                 equipment = findings.get(website) if website else None
