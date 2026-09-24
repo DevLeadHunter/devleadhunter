@@ -63,6 +63,18 @@
         </li>
       </ul>
 
+      <section v-if="closedHours" class="ia__estimate" aria-label="Estimation d'après vos horaires Google">
+        <p class="ia__estimate-kicker">Estimation · chez vous, chaque mois</p>
+        <p class="ia__estimate-figure">≈&nbsp;{{ closedHours.estimated_requests }}&nbsp;demandes</p>
+        <p class="ia__estimate-text">
+          arrivent quand c'est fermé : {{ assistant.assistant_name }} y répond. Le calcul :
+          {{ closedHours.monthly_requests }} demandes par mois (notre hypothèse pour {{ closedHours.trade_label }}) ×
+          {{ closedHours.closed_share_pct }}&nbsp;%, la part du temps fermé entre 7&nbsp;h et 22&nbsp;h, quand vos
+          clients cherchent, d'après vos horaires Google ({{ closedHours.open_hours_per_week }}&nbsp;h d'ouverture par
+          semaine, {{ closedHours.closed_hours_in_month }}&nbsp;h fermées en {{ closedHoursMonth }}).
+        </p>
+      </section>
+
       <p v-if="priceLabel" class="ia__price">
         <strong>{{ priceLabel }}</strong
         >, installation comprise, sans engagement, premier mois satisfait ou remboursé.
@@ -92,7 +104,7 @@
 <script lang="ts" setup>
 import type { ComputedRef } from 'vue'
 import { computed, onMounted } from 'vue'
-import type { AiAssistantConfig } from '~/types/AiAssistant'
+import type { AiAssistantClosedHours, AiAssistantConfig } from '~/types/AiAssistant'
 import { DemoBeaconUtils } from '~/utils/DemoBeaconUtils'
 import { AssistantPersonaUtils } from '~/utils/AssistantPersonaUtils'
 import { useDemoTracking } from '~/composables/useDemoTracking'
@@ -154,6 +166,33 @@ const priceLabel: ComputedRef<string> = computed((): string => {
   if (!label || route.query.subscribed === '1') return ''
   return `${label}/mois`
 })
+
+/** French month names, January first, for the closed-hours estimate. */
+const MONTH_NAMES: string[] = [
+  'janvier',
+  'février',
+  'mars',
+  'avril',
+  'mai',
+  'juin',
+  'juillet',
+  'août',
+  'septembre',
+  'octobre',
+  'novembre',
+  'décembre',
+]
+
+/** The estimate of a demo, shown from two requests a month while the business is closed (null otherwise). */
+const closedHours: ComputedRef<AiAssistantClosedHours | null> = computed((): AiAssistantClosedHours | null => {
+  const estimate: AiAssistantClosedHours | null | undefined = assistant.value?.closed_hours
+  return estimate && estimate.estimated_requests >= 2 ? estimate : null
+})
+
+/** The month of the estimate, in French (« septembre »). */
+const closedHoursMonth: ComputedRef<string> = computed(
+  (): string => MONTH_NAMES[(closedHours.value?.month ?? 1) - 1] ?? 'ce mois-ci',
+)
 
 /** Bind the business's own accent colour to the page (falls back to the editorial gold). */
 const accentStyle: ComputedRef<Record<string, string>> = computed((): Record<string, string> => ({
@@ -373,6 +412,49 @@ useHead({
   color: var(--ia-ink-dim);
 }
 
+/* ── Closed-hours estimate ───────────────────────────────────────────────── */
+.ia__estimate {
+  margin: clamp(22px, 3.5vh, 30px) 0 0;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 6px 20px;
+  border: 1px solid var(--ia-line);
+  border-left: 3px solid var(--a-accent);
+  border-radius: 16px;
+  background: var(--ia-card);
+  padding: 16px 20px;
+  box-shadow: 0 12px 30px -24px rgba(23, 19, 13, 0.4);
+}
+
+.ia__estimate-kicker {
+  grid-column: 1 / -1;
+  margin: 0;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--ia-ink-dim);
+}
+
+/* In ink, not in the business's colour: a light brand colour would not read on the card. */
+.ia__estimate-figure {
+  margin: 0;
+  font-family: Fraunces, Georgia, serif;
+  font-size: clamp(30px, 5vw, 40px);
+  font-weight: 600;
+  line-height: 1;
+  color: var(--ia-ink);
+  white-space: nowrap;
+}
+
+.ia__estimate-text {
+  margin: 0;
+  font-size: 0.92rem;
+  line-height: 1.5;
+  color: var(--ia-ink-dim);
+}
+
 .ia__price {
   margin: clamp(26px, 4vh, 36px) 0 0;
   font-size: 0.95rem;
@@ -404,6 +486,7 @@ useHead({
   .ia__title,
   .ia__lede,
   .ia__values,
+  .ia__estimate,
   .ia__price,
   .ia__cue,
   .ia__signature {
@@ -420,6 +503,9 @@ useHead({
   }
   .ia__values {
     animation-delay: 0.16s;
+  }
+  .ia__estimate {
+    animation-delay: 0.18s;
   }
   .ia__price {
     animation-delay: 0.2s;
@@ -448,6 +534,9 @@ useHead({
     padding: 36px 22px 136px;
   }
   .ia__values {
+    grid-template-columns: 1fr;
+  }
+  .ia__estimate {
     grid-template-columns: 1fr;
   }
 }
