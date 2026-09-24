@@ -12,24 +12,13 @@
       </p>
     </div>
 
-    <div v-if="isLoading" class="flex h-40 items-center justify-center">
-      <UIcon name="i-lucide-loader-circle" class="h-7 w-7 animate-spin text-[var(--app-ink-soft)]" />
-    </div>
+    <UiLoader v-if="isLoading" label="Chargement des assistants…" />
 
     <template v-else>
-      <div class="grid grid-cols-3 gap-3">
-        <div class="rounded-lg border border-[var(--app-line)] bg-[var(--app-bg)] px-3 py-2.5 text-center">
-          <p class="text-xl font-bold text-[var(--app-ink)] tabular-nums">{{ activeAssistantCount }}</p>
-          <p class="text-muted text-[10px] tracking-wide uppercase">Assistants actifs</p>
-        </div>
-        <div class="rounded-lg border border-[var(--app-line)] bg-[var(--app-bg)] px-3 py-2.5 text-center">
-          <p class="text-xl font-bold text-[var(--app-ink)] tabular-nums">{{ pendingRequestCount }}</p>
-          <p class="text-muted text-[10px] tracking-wide uppercase">Demandes à traiter</p>
-        </div>
-        <div class="rounded-lg border border-[var(--app-line)] bg-[var(--app-bg)] px-3 py-2.5 text-center">
-          <p class="text-xl font-bold text-[var(--app-ink)] tabular-nums">{{ latestRequestLabel }}</p>
-          <p class="text-muted text-[10px] tracking-wide uppercase">Dernière demande</p>
-        </div>
+      <div class="grid grid-cols-1 gap-4 @sm:grid-cols-3">
+        <UiStatCard label="Assistants actifs" :value="activeAssistantCount" icon="i-lucide-bot" accent="neutral" />
+        <UiStatCard label="Demandes à traiter" :value="pendingRequestCount" icon="i-lucide-inbox" accent="neutral" />
+        <UiStatCard label="Dernière demande" :value="latestRequestLabel" icon="i-lucide-clock" accent="neutral" />
       </div>
 
       <section class="flex flex-col gap-3">
@@ -51,7 +40,7 @@
 
         <div v-else class="grid gap-3 @2xl:grid-cols-2">
           <article v-for="assistant in assistants" :key="assistant.id" class="app-card flex min-w-0 flex-col gap-3 p-4">
-            <div class="flex items-start justify-between gap-3">
+            <div class="flex flex-wrap items-start justify-between gap-x-3 gap-y-1.5">
               <div class="min-w-0">
                 <p class="truncate text-sm font-semibold text-[var(--app-ink)]">{{ assistant.business_name }}</p>
                 <p class="text-muted truncate text-xs">
@@ -63,10 +52,10 @@
                 <span
                   v-if="assistant.churn_risk"
                   class="inline-flex items-center gap-1 rounded-full border border-[var(--app-ink)] bg-[var(--app-ink)] px-2 py-0.5 text-[10px] font-medium tracking-wide text-[var(--app-bg)] uppercase"
-                  title="Abonné depuis plus de 30 jours, aucune conversation ni demande sur les 30 derniers jours : vérifiez que le widget est bien installé"
+                  title="Abonné depuis plus de 30 jours, aucune conversation ni demande sur les 30 derniers jours : vérifiez que la bulle de l'assistant apparaît sur son site"
                 >
                   <UIcon name="i-lucide-triangle-alert" class="h-3 w-3" />
-                  Risque de churn
+                  Risque de désabonnement
                 </span>
                 <span
                   class="rounded-full border px-2 py-0.5 text-[10px] font-medium tracking-wide uppercase"
@@ -91,11 +80,12 @@
               </span>
               <span
                 v-if="assistant.requests_30d > 0"
-                class="ml-auto inline-flex items-center gap-1 text-[11px] font-medium text-[var(--app-green)] tabular-nums"
+                class="ml-auto inline-flex items-center gap-1 text-[11px] font-medium text-[var(--app-ink-soft)] tabular-nums"
                 :title="requestCountsTitle(assistant)"
               >
                 <UIcon name="i-lucide-inbox" class="h-3 w-3" />
-                {{ assistant.requests_7d }} dem. / 7 j · {{ assistant.requests_30d }} / 30 j
+                {{ assistant.requests_7d }} demande{{ assistant.requests_7d > 1 ? 's' : '' }} / 7 j ·
+                {{ assistant.requests_30d }} / 30 j
               </span>
               <span
                 v-if="assistant.requests_outside_hours_pct !== null"
@@ -162,7 +152,7 @@
               <button
                 v-if="assistant.status === 'delivered'"
                 type="button"
-                class="btn-secondary h-8 text-xs"
+                class="btn-secondary h-8 text-xs disabled:cursor-not-allowed disabled:opacity-50"
                 :disabled="clientLinkBusyId === assistant.id"
                 title="Email au commerçant avec le lien de son espace (demandes, rapport, réglages, abonnement)"
                 @click="sendClientSpace(assistant)"
@@ -298,20 +288,16 @@
       </section>
 
       <section class="flex flex-col gap-3">
-        <div class="flex flex-wrap items-center justify-between gap-2">
-          <h2 class="text-sm font-semibold text-[var(--app-ink)]">Demandes</h2>
+        <div class="flex flex-wrap items-end justify-between gap-2 border-b border-[var(--app-line)]">
+          <h2 class="pb-2 text-sm font-semibold text-[var(--app-ink)]">Demandes</h2>
           <UiFilterTabs v-model="requestFilter" :tabs="requestFilterTabs" />
         </div>
 
-        <div v-if="visibleRequests.length === 0" class="app-card px-6 py-8 text-center">
-          <p class="text-muted text-sm leading-relaxed">
-            {{
-              requestFilter === 'new'
-                ? 'Aucune demande à traiter. Chaque visiteur qui laisse ses coordonnées dans un assistant apparaît ici.'
-                : 'Aucune demande pour le moment. Chaque visiteur qui laisse ses coordonnées dans un assistant apparaît ici.'
-            }}
-          </p>
-        </div>
+        <UiEmptyState
+          v-if="visibleRequests.length === 0"
+          :title="requestFilter === 'new' ? 'Aucune demande à traiter' : 'Aucune demande pour le moment'"
+          description="Chaque visiteur qui laisse ses coordonnées dans un assistant apparaît ici."
+        />
 
         <ul v-else class="app-card divide-y divide-[var(--app-line-soft)] overflow-hidden">
           <li v-for="request in visibleRequests" :key="request.id" class="flex flex-col gap-2 px-4 py-3">
@@ -327,7 +313,7 @@
                 <UIcon name="i-lucide-camera" class="h-3 w-3" />
                 {{ request.photo_urls.length }} photo{{ request.photo_urls.length > 1 ? 's' : '' }}
               </span>
-              <span v-if="request.is_test" class="app-badge" title="Laissée depuis une visite interne (?internal=1)">
+              <span v-if="request.is_test" class="app-badge" title="Laissée pendant une visite de test de l'opérateur">
                 Test
               </span>
               <span v-if="request.status === 'handled'" class="app-badge app-badge--success">Traitée</span>
@@ -377,7 +363,7 @@
                 <template v-if="request.status === 'new'">
                   <button
                     type="button"
-                    class="btn-secondary h-8 text-xs"
+                    class="btn-secondary h-8 text-xs disabled:cursor-not-allowed disabled:opacity-50"
                     :disabled="requestBusyId === request.id"
                     @click="setRequestStatus(request, 'handled')"
                   >
@@ -386,7 +372,7 @@
                   </button>
                   <button
                     type="button"
-                    class="text-muted h-8 cursor-pointer px-1 text-xs transition-colors hover:text-[var(--app-ink)]"
+                    class="text-muted h-8 cursor-pointer px-1 text-xs transition-colors hover:text-[var(--app-ink)] disabled:cursor-not-allowed disabled:opacity-50"
                     :disabled="requestBusyId === request.id"
                     @click="setRequestStatus(request, 'dropped')"
                   >
@@ -396,7 +382,7 @@
                 <button
                   v-else
                   type="button"
-                  class="text-muted h-8 cursor-pointer px-1 text-xs transition-colors hover:text-[var(--app-ink)]"
+                  class="text-muted h-8 cursor-pointer px-1 text-xs transition-colors hover:text-[var(--app-ink)] disabled:cursor-not-allowed disabled:opacity-50"
                   :disabled="requestBusyId === request.id"
                   @click="setRequestStatus(request, 'new')"
                 >
