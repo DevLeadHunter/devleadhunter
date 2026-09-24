@@ -30,6 +30,9 @@
           <span v-else>{{ item.contact }}</span>
         </p>
         <p v-if="item.summary" class="csr__summary">{{ item.summary }}</p>
+        <p v-if="item.appointment_slots.length > 0" class="csr__slots">
+          Créneaux souhaités, à confirmer : <strong>{{ item.appointment_slots.join(' ou ') }}</strong>
+        </p>
         <div v-if="item.photo_urls.length > 0" class="csr__photos">
           <a
             v-for="(url, index) in item.photo_urls"
@@ -188,6 +191,13 @@ function contactHref(contact: string): string | null {
   font-size: 14px;
   line-height: 1.5;
   color: var(--cs-ink-dim);
+}
+
+.csr__slots {
+  margin: 6px 0 0;
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--cs-ink);
 }
 
 .csr__photos {

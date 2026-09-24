@@ -164,6 +164,7 @@ MIGRATION_MODULES: list[tuple[str, str]] = [
     ("add_assistant_subscription_activated_at", "migrations.add_assistant_subscription_activated_at"),
     ("add_ai_assistant_reports_table", "migrations.add_ai_assistant_reports_table"),
     ("add_assistant_subscription_cancel_at_period_end", "migrations.add_assistant_subscription_cancel_at_period_end"),
+    ("add_ai_assistant_request_appointment_slots", "migrations.add_ai_assistant_request_appointment_slots"),
 ]
 
 # Modules of this package that are not migrations and must not be registered.

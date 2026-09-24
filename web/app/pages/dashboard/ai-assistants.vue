@@ -336,6 +336,13 @@
                 <p class="text-xs leading-relaxed text-[var(--app-ink-soft)] @xl:text-sm">
                   {{ request.need_summary || request.need || 'Demande de rappel, sans détail.' }}
                 </p>
+                <p
+                  v-if="request.appointment_slots.length > 0"
+                  class="flex items-start gap-1.5 text-xs leading-relaxed text-[var(--app-ink)]"
+                >
+                  <UIcon name="i-lucide-calendar-days" class="mt-0.5 h-3.5 w-3.5 shrink-0" />
+                  <span>Créneaux souhaités (à confirmer) : {{ request.appointment_slots.join(' ou ') }}</span>
+                </p>
                 <div v-if="request.photo_urls.length > 0" class="flex flex-wrap gap-1.5">
                   <a
                     v-for="(url, index) in request.photo_urls"
