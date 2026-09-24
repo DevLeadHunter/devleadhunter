@@ -59,3 +59,12 @@ assistant_photo_limiter = SlidingWindowRateLimiter(max_events=6, window_seconds=
 
 # 5 checkouts / 5 min per visitor per assistant: each click creates a Stripe session, this caps a bot.
 assistant_subscribe_limiter = SlidingWindowRateLimiter(max_events=5, window_seconds=300)
+
+# 120 client-space calls / 5 min per visitor: the page and its actions, far below a token guesser's needs.
+assistant_client_limiter = SlidingWindowRateLimiter(max_events=120, window_seconds=300)
+
+# 3 fresh client-space links / hour per assistant, emailed to the business from an expired link.
+assistant_client_renew_limiter = SlidingWindowRateLimiter(max_events=3, window_seconds=3600)
+
+# 6 fresh client-space links / day per assistant: an old link replayed never floods the business.
+assistant_client_renew_daily_limiter = SlidingWindowRateLimiter(max_events=6, window_seconds=86400)

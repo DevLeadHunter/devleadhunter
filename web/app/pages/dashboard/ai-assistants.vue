@@ -151,6 +151,21 @@
                 Régénérer
               </button>
               <button
+                v-if="assistant.status === 'delivered'"
+                type="button"
+                class="btn-secondary h-8 text-xs"
+                :disabled="clientLinkBusyId === assistant.id"
+                title="Email au commerçant avec le lien de son espace (demandes, rapport, réglages, abonnement)"
+                @click="sendClientSpace(assistant)"
+              >
+                <UIcon
+                  :name="clientLinkBusyId === assistant.id ? 'i-lucide-loader-circle' : 'i-lucide-user-round-key'"
+                  class="mr-1.5 h-3.5 w-3.5"
+                  :class="{ 'animate-spin': clientLinkBusyId === assistant.id }"
+                />
+                Envoyer l'espace client
+              </button>
+              <button
                 v-if="confirmingId !== assistant.id"
                 type="button"
                 class="text-muted ml-auto flex h-8 cursor-pointer items-center gap-1 rounded-lg px-2 text-xs transition-colors hover:text-[var(--app-red)]"
@@ -535,6 +550,7 @@ import { AssistantSidecarService } from '~/services/assistantSidecarService'
 import { ProspectsService } from '~/services/prospectsService'
 import type {
   AiAssistantAlertSettings,
+  AiAssistantClientLink,
   AiAssistantEditForm,
   AiAssistantListResponse,
   AiAssistantRequestItem,
@@ -575,6 +591,7 @@ const requestBusyId: Ref<number | null> = ref(null)
 const isLoading: Ref<boolean> = ref(true)
 const confirmingId: Ref<number | null> = ref(null)
 const regeneratingId: Ref<number | null> = ref(null)
+const clientLinkBusyId: Ref<number | null> = ref(null)
 const videoBusyId: Ref<number | null> = ref(null)
 const videoPollTimer: Ref<ReturnType<typeof setInterval> | null> = ref(null)
 const subscriptionBusyId: Ref<number | null> = ref(null)
@@ -771,6 +788,35 @@ async function copySnippet(assistant: AiAssistantSummary): Promise<void> {
     toast.success('Script copié — à coller avant </body> du site du client.')
   } catch {
     toast.error('Copie impossible depuis ce navigateur.')
+  }
+}
+
+/**
+ * Email the business its client-space link (requests, report, settings, subscription) and copy the link.
+ * @param assistant - A sold assistant.
+ * @returns A promise resolved once sent (or refused) and copied.
+ */
+async function sendClientSpace(assistant: AiAssistantSummary): Promise<void> {
+  clientLinkBusyId.value = assistant.id
+  try {
+    const link: AiAssistantClientLink = await AiAssistantService.issueClientLink(assistant.id, true)
+    let copied: boolean = true
+    try {
+      await navigator.clipboard.writeText(link.url)
+    } catch {
+      copied = false
+    }
+    const copyNote: string = copied ? ' Lien copié.' : ''
+    if (link.sent_to) {
+      toast.success(`Espace client envoyé à ${link.sent_to}.${copyNote}`)
+    } else {
+      const reason: string = (link.send_error ?? 'raison inconnue').replace(/\.+$/, '')
+      toast.error(`Email non envoyé : ${reason}.${copyNote}`)
+    }
+  } catch {
+    toast.error("Lien de l'espace client indisponible pour l'instant.")
+  } finally {
+    clientLinkBusyId.value = null
   }
 }
 
