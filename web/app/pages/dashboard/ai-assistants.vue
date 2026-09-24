@@ -628,20 +628,22 @@ async function copyVideoLink(assistant: AiAssistantSummary): Promise<void> {
 }
 
 /**
- * Generate a Stripe subscription checkout link and copy it, to send to the client.
+ * Copy the permanent subscription link to send to the client (each click opens a fresh Stripe Checkout).
  * @param assistant - The assistant being sold.
  * @param interval - `month` (mensuel) or `year` (annuel).
- * @returns A promise resolved once the link is generated and copied.
+ * @returns A promise resolved once the link is copied.
  */
 async function copySubscriptionLink(assistant: AiAssistantSummary, interval: 'month' | 'year'): Promise<void> {
   if (subscriptionBusyId.value !== null) return
   subscriptionBusyId.value = assistant.id
   try {
-    const { url }: { url: string } = await AiAssistantService.createSubscriptionCheckout(assistant.id, interval)
+    const { url }: { url: string } = await AiAssistantService.getSubscriptionLink(assistant.id, interval)
     await navigator.clipboard.writeText(url)
-    toast.success(`Lien d'abonnement ${interval === 'year' ? 'annuel' : 'mensuel'} copié — envoyez-le au client.`)
+    toast.success(
+      `Lien d'abonnement ${interval === 'year' ? 'annuel' : 'mensuel'} copié — envoyez-le au client, il reste valable.`,
+    )
   } catch {
-    toast.error('Génération du lien impossible (Stripe configuré ?).')
+    toast.error('Lien indisponible pour cet assistant.')
   } finally {
     subscriptionBusyId.value = null
   }
