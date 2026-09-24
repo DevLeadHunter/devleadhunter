@@ -10,7 +10,10 @@ from .routes import (
     admin_storage,
     admin_storyblok,
     ai_assistant_client_space,
+    ai_assistant_requests,
     ai_assistant_sources,
+    ai_assistant_subscriptions,
+    ai_assistant_widget,
     ai_assistants,
     auth,
     automations,
@@ -76,7 +79,12 @@ router.include_router(interactions.router)
 router.include_router(notifications.router)
 router.include_router(demo_events.router)
 router.include_router(demo_sites.router)
+# Same prefix for all: the order keeps two-segment paths unambiguous (an assistant's own routes before
+# /public/{slug}, which comes before /{assistant_id}/sources).
 router.include_router(ai_assistants.router)
+router.include_router(ai_assistant_requests.router)
+router.include_router(ai_assistant_subscriptions.router)
+router.include_router(ai_assistant_widget.router)
 router.include_router(ai_assistant_client_space.router)
 router.include_router(ai_assistant_sources.router)
 router.include_router(domains.router)

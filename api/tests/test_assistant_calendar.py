@@ -23,7 +23,7 @@ from sqlalchemy.pool import StaticPool
 from starlette.requests import Request
 
 import api.v1.routes.ai_assistant_client_space as client_routes
-import api.v1.routes.ai_assistants as routes
+import api.v1.routes.ai_assistant_widget as routes
 import migrations.add_ai_assistant_calendars_tables as calendars_migration
 import models
 import services.ai_assistant.appointment_notices as notices_module
