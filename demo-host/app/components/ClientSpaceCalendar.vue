@@ -1,10 +1,5 @@
 <template>
-  <section class="cs-section">
-    <header class="cs-section__head">
-      <h2 class="cs-section__title">Connexions</h2>
-      <span class="cs-section__meta">{{ STATUS_LABELS[calendar.status] }}</span>
-    </header>
-
+  <ClientSpaceSection title="Connexions" :meta="STATUS_LABELS[calendar.status]">
     <p v-if="calendar.status === 'unavailable'" class="cs-muted">
       Agenda Google : la connexion n’est pas encore ouverte. Vos rendez-vous arrivent en demandes, avec les créneaux
       souhaités par le visiteur.
@@ -37,16 +32,16 @@
       <p v-if="calendar.last_error" class="csc__error">Dernier problème le {{ calendar.last_error }}</p>
 
       <div class="csc__pair">
-        <label class="csc__field">
-          <span class="csc__label">Durée d’un rendez-vous</span>
+        <label class="cs-field">
+          <span class="cs-label">Durée d’un rendez-vous</span>
           <select v-model.number="duration" class="cs-input">
             <option v-for="minutes in calendar.duration_choices" :key="minutes" :value="minutes">
               {{ durationLabel(minutes) }}
             </option>
           </select>
         </label>
-        <label class="csc__field">
-          <span class="csc__label">Délai minimum avant un rendez-vous</span>
+        <label class="cs-field">
+          <span class="cs-label">Délai minimum avant un rendez-vous</span>
           <select v-model.number="notice" class="cs-input">
             <option v-for="hours in calendar.min_notice_choices" :key="hours" :value="hours">
               {{ hours === 0 ? 'Aucun' : `${hours} h` }}
@@ -55,8 +50,8 @@
         </label>
       </div>
 
-      <label class="csc__field">
-        <span class="csc__label">Types de rendez-vous (facultatif, un par ligne)</span>
+      <label class="cs-field">
+        <span class="cs-label">Types de rendez-vous (facultatif, un par ligne)</span>
         <textarea
           v-model="typesText"
           class="cs-input csc__types"
@@ -66,8 +61,8 @@
         <span class="cs-muted csc__hint">Le visiteur choisit l’un d’eux avant son créneau. 6 au plus.</span>
       </label>
 
-      <label class="csc__field">
-        <span class="csc__label">Agenda utilisé</span>
+      <label class="cs-field">
+        <span class="cs-label">Agenda utilisé</span>
         <input v-model="calendarId" class="cs-input" type="text" maxlength="255" autocomplete="off" />
         <span class="cs-muted csc__hint">
           « primary » : votre agenda principal. Pour un autre agenda, collez son identifiant (paramètres de l’agenda, «
@@ -75,22 +70,22 @@
         </span>
       </label>
 
-      <div class="csc__footer">
-        <button type="submit" class="cs-button" :disabled="isBusy || !hasChanges">
-          {{ isBusy ? 'Enregistrement…' : 'Enregistrer' }}
-        </button>
+      <ClientSpaceSaveBar
+        :is-busy="isBusy"
+        :can-save="hasChanges"
+        :error-message="errorMessage"
+        :show-saved="hasSaved && !hasChanges"
+      >
         <button type="button" class="cs-button cs-button--outline" :disabled="isBusy" @click="emit('disconnect')">
           Déconnecter
         </button>
-        <span v-if="errorMessage" class="csc__error">{{ errorMessage }}</span>
-        <span v-else-if="hasSaved && !hasChanges" class="csc__saved">Enregistré.</span>
-      </div>
+      </ClientSpaceSaveBar>
       <p class="cs-muted csc__hint">
         Déconnecter efface l’accès gardé ici. Pour le retirer aussi chez Google : votre compte Google, rubrique
         Sécurité, accès des applications tierces.
       </p>
     </form>
-  </section>
+  </ClientSpaceSection>
 </template>
 
 <script lang="ts" setup>
@@ -204,17 +199,6 @@ watch(
   grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
 }
 
-.csc__field {
-  display: grid;
-  gap: 6px;
-}
-
-.csc__label {
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--cs-ink);
-}
-
 .csc__types {
   resize: vertical;
   font: inherit;
@@ -224,21 +208,9 @@ watch(
   font-size: 12px;
 }
 
-.csc__footer {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 12px;
-}
-
 .csc__error {
   margin: 0;
   font-size: 13px;
-  color: #9f3a2f;
-}
-
-.csc__saved {
-  font-size: 13px;
-  color: var(--cs-ink-dim);
+  color: var(--cs-danger);
 }
 </style>

@@ -1,9 +1,5 @@
 <template>
-  <section class="cs-section">
-    <header class="cs-section__head">
-      <h2 class="cs-section__title">Demandes</h2>
-      <span class="cs-section__meta">{{ pendingLabel }}</span>
-    </header>
+  <ClientSpaceSection title="Demandes" :meta="pendingLabel">
     <p v-if="requests.length === 0" class="cs-muted">
       Aucune demande pour l’instant : elles arrivent ici dès qu’un visiteur laisse ses coordonnées.
     </p>
@@ -15,23 +11,14 @@
         :class="{ 'csr__item--done': item.status !== 'new' }"
       >
         <div class="csr__top">
-          <span class="csr__type" :class="{ 'csr__type--urgent': item.type === 'urgent' }">
+          <ClientSpaceBadge :tone="item.type === 'urgent' ? 'danger' : 'accent'">
             {{ TYPE_LABELS[item.type] }}
-          </span>
-          <span v-if="item.received_outside_hours" class="csr__flag">hors horaires</span>
+          </ClientSpaceBadge>
+          <ClientSpaceBadge v-if="item.received_outside_hours" tone="outline">hors horaires</ClientSpaceBadge>
           <span class="csr__date">{{ item.received_label }}</span>
         </div>
         <p class="csr__who">
-          <strong>{{ item.name }}</strong>
-          <span aria-hidden="true"> · </span>
-          <a
-            v-if="ContactLinkUtils.href(item.contact)"
-            :href="ContactLinkUtils.href(item.contact) ?? undefined"
-            class="csr__contact"
-          >
-            {{ item.contact }}
-          </a>
-          <span v-else>{{ item.contact }}</span>
+          <ClientSpaceContact :name="item.name" :contact="item.contact" />
         </p>
         <p v-if="item.summary" class="csr__summary">{{ item.summary }}</p>
         <p v-if="item.appointment_booked" class="csr__slots">
@@ -67,7 +54,7 @@
         </div>
       </li>
     </ul>
-  </section>
+  </ClientSpaceSection>
 </template>
 
 <script lang="ts" setup>
@@ -79,7 +66,6 @@ import type {
   AiAssistantClientRequestType,
 } from '~/types/AiAssistantClientSpace'
 import type { ClientSpaceRequestsEmits, ClientSpaceRequestsProps } from '~/types/ClientSpaceRequests'
-import { ContactLinkUtils } from '~/utils/ContactLinkUtils'
 
 const TYPE_LABELS: Record<AiAssistantClientRequestType, string> = {
   question: 'Question',
@@ -143,26 +129,6 @@ const pendingLabel: ComputedRef<string> = computed((): string => {
   font-size: 12px;
 }
 
-.csr__type {
-  border-radius: 999px;
-  padding: 2px 10px;
-  font-weight: 600;
-  color: var(--cs-ink);
-  background: color-mix(in srgb, var(--a-accent) 16%, #fff);
-}
-
-.csr__type--urgent {
-  color: #fff;
-  background: #9f3a2f;
-}
-
-.csr__flag {
-  border: 1px solid var(--cs-line);
-  border-radius: 999px;
-  padding: 1px 8px;
-  color: var(--cs-ink-dim);
-}
-
 .csr__date {
   margin-left: auto;
   color: var(--cs-ink-dim);
@@ -171,12 +137,6 @@ const pendingLabel: ComputedRef<string> = computed((): string => {
 .csr__who {
   margin: 10px 0 0;
   font-size: 15px;
-}
-
-.csr__contact {
-  color: var(--cs-ink);
-  text-decoration: underline;
-  text-underline-offset: 3px;
 }
 
 .csr__summary {
