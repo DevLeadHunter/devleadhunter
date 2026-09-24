@@ -419,6 +419,67 @@
               <input v-model="editForm.accent_color" type="text" class="app-input w-28" placeholder="#c8862f" />
             </div>
           </div>
+
+          <div class="flex flex-col gap-3 border-t border-[var(--app-line-soft)] pt-3">
+            <div class="flex flex-col gap-0.5">
+              <span class="text-xs font-semibold text-[var(--app-ink)]">Alertes au commerçant</span>
+              <span class="text-muted text-xs leading-relaxed">
+                Une fois l'assistant vendu : chaque demande par email, et un SMS pour celles qui ne peuvent pas
+                attendre. Rappel le lendemain si elle n'est pas traitée.
+              </span>
+            </div>
+            <label class="flex flex-col gap-1">
+              <span class="app-label !text-[0.6rem]">Mobile du commerçant</span>
+              <input
+                v-model="editForm.alert_phone"
+                type="tel"
+                inputmode="tel"
+                autocomplete="off"
+                class="app-input"
+                placeholder="06 12 34 56 78 ou +352 621 123 456"
+              />
+            </label>
+            <UiSwitch id="assistant-alert-sms" v-model="editForm.alert_sms_enabled" label="SMS" />
+            <template v-if="editForm.alert_sms_enabled">
+              <div class="flex flex-col gap-1.5">
+                <span class="app-label !text-[0.6rem]">SMS immédiat pour</span>
+                <div class="flex flex-wrap gap-1.5">
+                  <button
+                    v-for="option in ALERT_TYPE_OPTIONS"
+                    :key="option.value"
+                    type="button"
+                    class="cursor-pointer rounded-full border px-2.5 py-1 text-xs transition-colors"
+                    :class="
+                      editForm.alert_sms_types.includes(option.value)
+                        ? 'border-[var(--app-ink)] bg-[var(--app-ink)] text-[var(--app-bg)]'
+                        : 'border-[var(--app-line)] text-[var(--app-ink-soft)] hover:border-[var(--app-ink-soft)]'
+                    "
+                    @click="toggleAlertType(option.value)"
+                  >
+                    {{ option.label }}
+                  </button>
+                </div>
+              </div>
+              <div class="flex flex-col gap-1.5">
+                <span class="app-label !text-[0.6rem]">Ne pas déranger (SMS envoyés à la fin de la plage)</span>
+                <div class="flex items-center gap-2 text-xs text-[var(--app-ink-soft)]">
+                  <span>de</span>
+                  <div class="w-24">
+                    <UiSelectField v-model="editForm.alert_quiet_start_hour" :options="HOUR_OPTIONS" />
+                  </div>
+                  <span>à</span>
+                  <div class="w-24">
+                    <UiSelectField v-model="editForm.alert_quiet_end_hour" :options="HOUR_OPTIONS" />
+                  </div>
+                </div>
+              </div>
+            </template>
+            <UiSwitch
+              id="assistant-alert-email"
+              v-model="editForm.alert_email_enabled"
+              label="Email de résumé (toutes les demandes)"
+            />
+          </div>
         </div>
 
         <div class="mt-5 flex gap-2">
@@ -440,6 +501,7 @@ import { AiAssistantService } from '~/services/aiAssistantService'
 import { AssistantSidecarService } from '~/services/assistantSidecarService'
 import { ProspectsService } from '~/services/prospectsService'
 import type {
+  AiAssistantAlertSettings,
   AiAssistantEditForm,
   AiAssistantListResponse,
   AiAssistantRequestItem,
@@ -449,6 +511,7 @@ import type {
   AiAssistantSummary,
   AiAssistantUpdatePayload,
 } from '~/types/AiAssistant'
+import type { SelectFieldOption } from '~/types/SelectField'
 import type { UiFilterTab } from '~/types/UiFilterTabs'
 import type { Prospect } from '~/types'
 import type { UseToastReturn } from '~/types/Composables'
@@ -491,6 +554,12 @@ const editForm: Ref<AiAssistantEditForm> = ref({
   tone: '',
   accent_color: '',
   languages: [],
+  alert_phone: '',
+  alert_sms_enabled: true,
+  alert_email_enabled: true,
+  alert_sms_types: [],
+  alert_quiet_start_hour: 22,
+  alert_quiet_end_hour: 8,
 })
 const isSaving: Ref<boolean> = ref(false)
 
@@ -511,6 +580,21 @@ const REQUEST_TYPE_BADGES: Record<AiAssistantRequestType, string> = {
   urgent: 'app-badge--danger',
   other: '',
 }
+
+/** Request types the owner can have texted at once, the ones that cannot wait first. */
+const ALERT_TYPE_OPTIONS: { value: AiAssistantRequestType; label: string }[] = [
+  { value: 'quote', label: 'Devis' },
+  { value: 'appointment', label: 'Rendez-vous' },
+  { value: 'urgent', label: 'Urgence' },
+  { value: 'question', label: 'Question' },
+  { value: 'other', label: 'Autre' },
+]
+
+/** Whole hours of the day, for the quiet window. */
+const HOUR_OPTIONS: SelectFieldOption<number>[] = Array.from(
+  { length: 24 },
+  (_: unknown, hour: number): SelectFieldOption<number> => ({ value: hour, label: `${hour} h` }),
+)
 
 /** Languages a customer can offer, in the order they matter for the target markets. */
 const LANGUAGE_OPTIONS: { code: string; label: string }[] = [
@@ -842,6 +926,12 @@ function openEdit(assistant: AiAssistantSummary): void {
     tone: assistant.tone ?? '',
     accent_color: assistant.accent_color ?? '',
     languages: [...assistant.languages],
+    alert_phone: assistant.alerts.phone ?? '',
+    alert_sms_enabled: assistant.alerts.sms_enabled,
+    alert_email_enabled: assistant.alerts.email_enabled,
+    alert_sms_types: [...assistant.alerts.sms_types],
+    alert_quiet_start_hour: assistant.alerts.quiet_start_hour,
+    alert_quiet_end_hour: assistant.alerts.quiet_end_hour,
   }
 }
 
@@ -862,6 +952,39 @@ function toggleLanguage(code: string): void {
 }
 
 /**
+ * Toggle a request type in the SMS alert rules of the edit form.
+ * @param type - The request type to toggle.
+ */
+function toggleAlertType(type: AiAssistantRequestType): void {
+  const types: AiAssistantRequestType[] = editForm.value.alert_sms_types
+  editForm.value.alert_sms_types = types.includes(type)
+    ? types.filter((item: AiAssistantRequestType): boolean => item !== type)
+    : [...types, type]
+}
+
+/**
+ * The alert settings the form changed, so an untouched setting keeps following the API default.
+ * @param alerts - The assistant's current alert settings.
+ * @param form - The edit form.
+ * @returns Only the alert fields that differ from the current settings.
+ */
+function changedAlertFields(alerts: AiAssistantAlertSettings, form: AiAssistantEditForm): AiAssistantUpdatePayload {
+  const changes: AiAssistantUpdatePayload = {}
+  if (form.alert_phone.trim() !== (alerts.phone ?? '')) changes.alert_phone = form.alert_phone.trim()
+  if (form.alert_sms_enabled !== alerts.sms_enabled) changes.alert_sms_enabled = form.alert_sms_enabled
+  if (form.alert_email_enabled !== alerts.email_enabled) changes.alert_email_enabled = form.alert_email_enabled
+  const sameTypes: boolean =
+    form.alert_sms_types.length === alerts.sms_types.length &&
+    form.alert_sms_types.every((type: AiAssistantRequestType): boolean => alerts.sms_types.includes(type))
+  if (!sameTypes) changes.alert_sms_types = form.alert_sms_types
+  if (form.alert_quiet_start_hour !== alerts.quiet_start_hour) {
+    changes.alert_quiet_start_hour = form.alert_quiet_start_hour
+  }
+  if (form.alert_quiet_end_hour !== alerts.quiet_end_hour) changes.alert_quiet_end_hour = form.alert_quiet_end_hour
+  return changes
+}
+
+/**
  * Persist the customization and refresh the edited card.
  * @returns A promise resolved once saved.
  */
@@ -876,6 +999,7 @@ async function saveEdit(): Promise<void> {
       tone: editForm.value.tone,
       accent_color: editForm.value.accent_color,
       languages: editForm.value.languages,
+      ...changedAlertFields(target.alerts, editForm.value),
     }
     const updated: AiAssistantSummary = await AiAssistantService.update(target.id, payload)
     assistants.value = assistants.value.map(
@@ -883,8 +1007,10 @@ async function saveEdit(): Promise<void> {
     )
     editing.value = null
     toast.success('Assistant personnalisé.')
-  } catch {
-    toast.error('Enregistrement impossible pour le moment.')
+  } catch (error: unknown) {
+    // The API explains an alert number it cannot text; anything else stays generic.
+    const detail: string = error instanceof Error ? error.message : ''
+    toast.error(detail.startsWith("Numéro d'alerte") ? detail : 'Enregistrement impossible pour le moment.')
   } finally {
     isSaving.value = false
   }

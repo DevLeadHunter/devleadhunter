@@ -25,6 +25,7 @@ class SmsMessage(Base):
         price_cents: Cost of the send in cents, when known
         segments: Number of billed SMS segments
         error: Failure reason when status is ``failed``
+        kind: :class:`~enums.sms_message_kind.SmsMessageKind` value; NULL for prospecting (every older row)
         created_at: When the send was recorded
         delivered_at: When the DLR confirmed delivery
     """
@@ -44,6 +45,7 @@ class SmsMessage(Base):
     price_cents: Mapped[int | None] = mapped_column(Integer, nullable=True)
     segments: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
     error: Mapped[str | None] = mapped_column(Text, nullable=True)
+    kind: Mapped[str | None] = mapped_column(String(16), nullable=True)
     # UTC (Python-side), like delivered_at — the MySQL clock is not UTC in prod.
     created_at: Mapped[datetime] = mapped_column(default=datetime.utcnow, nullable=False, index=True)
     delivered_at: Mapped[datetime | None] = mapped_column(nullable=True)

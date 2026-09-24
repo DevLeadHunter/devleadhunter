@@ -13,6 +13,9 @@ import re
 
 # Any non-digit separator a human or a scraper might use between groups.
 _NON_DIGITS: re.Pattern[str] = re.compile(r"\D")
+# Separators allowed in a typed international number, and the E.164 shape once they are gone.
+_SEPARATORS: re.Pattern[str] = re.compile(r"[\s.()/-]")
+_E164: re.Pattern[str] = re.compile(r"^\+[1-9]\d{7,14}$")
 
 
 def to_e164_fr(raw: str | None) -> str | None:
@@ -54,3 +57,33 @@ def is_mobile_fr(raw: str | None) -> bool:
     """
     e164 = to_e164_fr(raw)
     return bool(e164 and e164[3] in {"6", "7"})
+
+
+def to_e164_mobile(raw: str | None, *, country: str = "FR") -> str | None:
+    """E.164 form of a number able to receive an SMS, French or not.
+
+    A French number must be a mobile (06 / 07): in national form (``06 12 34 56 78``, leading 0
+    required) only for a French business, or in international form (``+33 6…``, ``+33 (0)6…``).
+    Any other country's number must be typed in international form (``+352 621 …``, ``0032 …``):
+    a Luxembourg ``621 123 456`` or a Swiss ``079 …`` typed nationally would otherwise read as a
+    stranger's French mobile. Foreign mobile ranges are not checked.
+
+    Args:
+        raw: The phone number as typed.
+        country: ISO code of the business's country, deciding how a national number is read.
+
+    Returns:
+        The number as ``+…``, or ``None`` when it cannot receive an SMS.
+    """
+    compact = _SEPARATORS.sub("", (raw or "").replace("(0)", "").strip())
+    if not compact:
+        return None
+    if compact.startswith("00"):
+        compact = "+" + compact[2:]
+    if compact.startswith("+33"):
+        return to_e164_fr(compact) if is_mobile_fr(compact) else None
+    if compact.startswith("+"):
+        return compact if _E164.match(compact) else None
+    if country.upper() != "FR" or not compact.startswith("0"):
+        return None
+    return to_e164_fr(compact) if is_mobile_fr(compact) else None

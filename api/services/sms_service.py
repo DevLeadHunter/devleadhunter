@@ -17,6 +17,7 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from core.config import settings
+from enums.sms_message_kind import SmsMessageKind
 from enums.sms_status import SmsStatus
 from models.prospect_db import ProspectDB
 from models.sms_config import SmsConfig
@@ -335,6 +336,59 @@ class SmsService:
             self._start_assistant_ttl_if_linked(db, user_id=user_id, prospect_id=prospect_id, body=body)
         return outcome
 
+    async def send_service_message(
+        self,
+        db: Session,
+        *,
+        user_id: int,
+        config: SmsConfig,
+        to_e164: str,
+        text: str,
+        recipient_name: str,
+    ) -> SmsSendOutcome:
+        """Send a one-segment service SMS — an alert its recipient asked for, not marketing.
+
+        No STOP mention and no legal window (neither applies to a service message), but a number
+        on the user's STOP list is still honoured. Nothing is recorded against a prospect; the row is
+        marked ``service``, so it stays out of the prospecting daily cap and recap, and only a failure
+        raises a notification (an alert going out as planned is not news).
+
+        Args:
+            db: Active database session.
+            user_id: Sender.
+            config: The user's SMS config (sender).
+            to_e164: Recipient number, already in E.164.
+            text: Body, transliterated to GSM-7; refused beyond one segment.
+            recipient_name: Recipient label in the SMS log.
+
+        Returns:
+            The send outcome (``sent`` + reason when skipped).
+        """
+        if not config.sender:
+            return SmsSendOutcome(sent=False, reason="Renseignez un nom d'expéditeur dans Paramètres → Relance SMS")
+        if not self._provider.is_configured:
+            return SmsSendOutcome(sent=False, reason="smsmode non configuré")
+        if self.is_suppressed(db, user_id, to_e164):
+            return SmsSendOutcome(sent=False, reason="Numéro désinscrit (STOP)")
+        body = to_gsm7((text or "").strip())
+        segments = segment_count(body)
+        if segments == 0:
+            return SmsSendOutcome(sent=False, reason="Message vide")
+        if segments > 1:
+            return SmsSendOutcome(sent=False, reason=f"Message trop long : il partirait en {segments} SMS")
+        message = SmsMessage(
+            user_id=user_id,
+            prospect_id=None,
+            recipient_name=recipient_name,
+            to_e164=to_e164,
+            sender=config.sender,
+            body=body,
+            status=SmsStatus.PENDING.value,
+            segments=segments,
+            kind=SmsMessageKind.SERVICE.value,
+        )
+        return await self._send_and_log(db, message=message)
+
     @staticmethod
     def _start_assistant_ttl_if_linked(db: Session, *, user_id: int, prospect_id: int, body: str) -> None:
         """Start the assistant demo countdown when a sent SMS carries its link (idempotent); never raises."""
@@ -349,6 +403,8 @@ class SmsService:
 
     async def _send_and_log(self, db: Session, *, message: SmsMessage) -> SmsSendOutcome:
         """Persist the row, hand it to the provider, record the outcome, notify.
+
+        A service message only notifies on failure: an alert going out as planned is not news.
 
         Args:
             db: Active database session.
@@ -388,7 +444,8 @@ class SmsService:
         db.refresh(message)
         if result.success and message.prospect_id is not None:
             self._mark_prospect_contacted(db, message.prospect_id)
-        await self._notify_send(db, message, success=result.success)
+        if not result.success or message.kind != SmsMessageKind.SERVICE.value:
+            await self._notify_send(db, message, success=result.success)
         return SmsSendOutcome(sent=result.success, reason=result.error, message=message)
 
     def _mark_prospect_contacted(self, db: Session, prospect_id: int) -> None:

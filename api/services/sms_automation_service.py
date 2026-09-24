@@ -19,6 +19,7 @@ from sqlalchemy.orm import Session
 
 from core.config import settings
 from core.database import SessionLocal
+from enums.sms_message_kind import SmsMessageKind
 from models.campaign import Campaign
 from models.email_log import EmailLog
 from models.prospect_db import ProspectDB
@@ -71,10 +72,19 @@ class SmsAutomationService:
         )
 
     def _sent_today(self, db: Session, user_id: int) -> int:
-        """Number of SMS (any source) the user sent since midnight UTC — the daily-cap base."""
+        """Number of prospecting SMS (any source) the user sent since midnight UTC — the daily-cap base.
+
+        Service messages (a sold assistant's owner alerts) are not prospecting: they never eat the cap.
+        """
         day_start = datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
         return int(
-            db.query(SmsMessage.id).filter(SmsMessage.user_id == user_id, SmsMessage.created_at >= day_start).count()
+            db.query(SmsMessage.id)
+            .filter(
+                SmsMessage.user_id == user_id,
+                SmsMessage.created_at >= day_start,
+                SmsMessage.kind.is_distinct_from(SmsMessageKind.SERVICE.value),
+            )
+            .count()
             or 0
         )
 

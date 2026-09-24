@@ -18,6 +18,7 @@ from sqlalchemy.orm import Session
 from core.config import settings
 from core.database import get_db
 from enums.demo_site_status import DemoSiteStatus
+from enums.sms_message_kind import SmsMessageKind
 from enums.sms_status import SmsStatus
 from enums.sms_template_category import SmsTemplateCategory
 from models.prospect_db import ProspectDB
@@ -539,8 +540,12 @@ async def receive_dlr_callback(request: Request, db: Session = Depends(get_db)) 
     if detail:
         message.status_detail = detail
     db.commit()
-    # Notify only on a real transition, so a provider re-sending the same DLR never double-pings.
-    if message.status != previous_status and message.status in {SmsStatus.DELIVERED.value, SmsStatus.FAILED.value}:
+    # Notify only on a real transition, so a provider re-sending the same DLR never double-pings;
+    # a service SMS (a sold assistant's owner alert) only when it failed.
+    notified = {SmsStatus.FAILED.value}
+    if message.kind != SmsMessageKind.SERVICE.value:
+        notified.add(SmsStatus.DELIVERED.value)
+    if message.status != previous_status and message.status in notified:
         await notification_service.notify_sms_event(
             db,
             user_id=message.user_id,

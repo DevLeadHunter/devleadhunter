@@ -20,6 +20,7 @@ from sqlalchemy.orm import Session
 from core.config import settings
 from core.database import SessionLocal
 from enums.demo_site_status import DemoSiteStatus
+from enums.sms_message_kind import SmsMessageKind
 from enums.sms_status import SmsStatus
 from enums.user_role import is_platform_admin
 from models.demo_site import DemoSite
@@ -40,6 +41,7 @@ from services.activity_log_service import (
     CATEGORY_SYSTEM,
     STATUS_ERROR,
     STATUS_SUCCESS,
+    STATUS_WARNING,
     activity_log_service,
 )
 from services.posthog_service import posthog_service
@@ -50,6 +52,7 @@ logger = logging.getLogger(__name__)
 _PROSPECTS_URL = "/dashboard/my-prospects"
 _ORDERS_URL = "/dashboard/orders"
 _SMS_URL = "/dashboard/sms"
+_ASSISTANTS_URL = "/dashboard/ai-assistants"
 _DASHBOARD_URL = "/dashboard"
 
 # In-app notification log retention.
@@ -432,6 +435,46 @@ class NotificationService:
             tag=f"assistant-lead-{prospect_id}" if prospect_id else None,
         )
 
+    async def notify_assistant_requests_waiting(
+        self,
+        db: Session,
+        *,
+        user_id: int,
+        prospect_id: int | None,
+        fallback_name: str,
+        waiting_count: int,
+    ) -> None:
+        """
+        Warn the operator that a subscriber leaves requests unanswered for 48 h (a churn signal).
+
+        Args:
+            db: Active database session (to resolve the prospect's name).
+            user_id: Owner of the assistant — the notification recipient.
+            prospect_id: Prospect the assistant was sold to, when known.
+            fallback_name: Name shown when the prospect can't be resolved.
+            waiting_count: How many of its requests have waited 48 h or more without being handled.
+        """
+        prospect_name = self._resolve_prospect_name(db, prospect_id, fallback_name)
+        waiting = "1 demande non traitée" if waiting_count == 1 else f"{waiting_count} demandes non traitées"
+        activity_log_service.record(
+            category=CATEGORY_ASSISTANT,
+            action="assistant_requests_waiting",
+            status=STATUS_WARNING,
+            title=f"{prospect_name} · {waiting} depuis 48 h",
+            user_id=user_id,
+            entity_type="prospect",
+            entity_id=prospect_id,
+        )
+        await self._dispatch(
+            user_id=user_id,
+            category="assistant",
+            level="warning",
+            title=f"⏳ {prospect_name}",
+            body=f"{_MODULE_TAG_ASSISTANT} · Abonné {prospect_name} : {waiting} depuis 48 h (risque de désabonnement)",
+            url=_ASSISTANTS_URL,
+            tag=f"assistant-waiting-{prospect_id}" if prospect_id else None,
+        )
+
     async def notify_assistant_interest(
         self,
         db: Session,
@@ -563,19 +606,22 @@ class NotificationService:
                 clicked = (
                     db.query(EmailLog).filter(EmailLog.user_id == user_id, EmailLog.clicked_at >= day_start).count()
                 )
-                # Sent SMS = reached the provider today (SENT/DELIVERED); excludes stuck PENDING and failed rows.
+                # Sent SMS = prospecting SMS that reached the provider today (SENT/DELIVERED); excludes
+                # stuck PENDING and failed rows, and the owner alerts of sold assistants (service SMS).
+                prospecting = SmsMessage.kind.is_distinct_from(SmsMessageKind.SERVICE.value)
                 sms_sent = (
                     db.query(SmsMessage)
                     .filter(
                         SmsMessage.user_id == user_id,
                         SmsMessage.created_at >= day_start,
                         SmsMessage.status.in_([SmsStatus.SENT.value, SmsStatus.DELIVERED.value]),
+                        prospecting,
                     )
                     .count()
                 )
                 sms_delivered = (
                     db.query(SmsMessage)
-                    .filter(SmsMessage.user_id == user_id, SmsMessage.delivered_at >= day_start)
+                    .filter(SmsMessage.user_id == user_id, SmsMessage.delivered_at >= day_start, prospecting)
                     .count()
                 )
                 sales = (
