@@ -15,6 +15,8 @@ import re
 _NON_DIGITS: re.Pattern[str] = re.compile(r"\D")
 # Separators allowed in a typed international number, and the E.164 shape once they are gone.
 _SEPARATORS: re.Pattern[str] = re.compile(r"[\s.()/-]")
+# Mobiles the receptionist texts (France, Belgium, Luxembourg, Switzerland, Germany).
+SERVED_MOBILE_PREFIXES: tuple[str, ...] = ("+33", "+32", "+352", "+41", "+49")
 _E164: re.Pattern[str] = re.compile(r"^\+[1-9]\d{7,14}$")
 
 
