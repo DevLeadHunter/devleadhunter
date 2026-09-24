@@ -41,6 +41,7 @@ export type CampaignEnqueueOutcome = {
   enqueued: number
   skipped_no_demo: CampaignSkippedProspect[]
   skipped_no_video: CampaignSkippedProspect[]
+  skipped_no_assistant: CampaignSkippedProspect[]
 }
 
 export type CampaignResponse = {
@@ -150,6 +151,7 @@ export type LaunchCampaignResponse = {
   success: boolean
   enqueued: number
   skipped_no_demo?: Array<{ id: number; name: string }>
+  skipped_no_assistant?: Array<{ id: number; name: string }>
   message: string
 }
 

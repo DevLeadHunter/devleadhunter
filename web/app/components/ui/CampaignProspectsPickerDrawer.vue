@@ -344,7 +344,7 @@ async function submit(): Promise<void> {
 }
 
 /**
- * Warn when newcomers joined a launched campaign but not its send queue yet (no live demo / no video).
+ * Warn when newcomers joined a launched campaign but not its send queue yet (no live demo / video / assistant).
  * @param outcome - Enqueue outcome returned by the add call, or null when the campaign is not launched.
  */
 function warnAboutProspectsLeftOutOfQueue(outcome: CampaignEnqueueOutcome | null): void {
@@ -359,6 +359,13 @@ function warnAboutProspectsLeftOutOfQueue(outcome: CampaignEnqueueOutcome | null
   if (outcome.skipped_no_video.length > 0) {
     toast.warning(
       `Pas encore en file d'attente (pas de vidéo prête) : ${skippedProspectNames(outcome.skipped_no_video)}.`,
+    )
+  }
+  if (outcome.skipped_no_assistant.length > 0) {
+    const several: boolean = outcome.skipped_no_assistant.length > 1
+    toast.warning(
+      `Pas encore en file d'attente (pas d'assistant IA actif) : ${skippedProspectNames(outcome.skipped_no_assistant)}. ` +
+        `Génère ${several ? 'leurs assistants : ils rejoindront' : 'son assistant : il rejoindra'} la file à ${several ? 'leur' : 'sa'} position.`,
     )
   }
 }

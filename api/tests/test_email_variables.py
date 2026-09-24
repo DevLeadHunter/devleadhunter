@@ -11,6 +11,7 @@ from __future__ import annotations
 from datetime import UTC, datetime, timedelta
 from types import SimpleNamespace
 
+import services.email_variables as email_variables_module
 from core.config import settings
 from services.campaign_queue_service import CampaignQueueService
 from services.email_variables import EmailVariables
@@ -88,36 +89,43 @@ def test_template_using_expiry_date_requires_demo() -> None:
     assert CampaignQueueService._template_uses_demo_link(template) is True
 
 
-class _FakeAssistantDB:
-    """Fake session whose ``execute().scalars().first()`` returns a canned assistant."""
+def _stub_active_assistant(monkeypatch, assistant: object | None) -> dict[str, tuple[int, int]]:
+    """Stub the assistant lookup and record the (prospect_id, user_id) it was asked for."""
+    seen: dict[str, tuple[int, int]] = {}
 
-    def __init__(self, assistant: object | None) -> None:
-        self._assistant = assistant
+    def fake_lookup(db: object, *, prospect_id: int, user_id: int) -> object | None:
+        seen["scope"] = (prospect_id, user_id)
+        return assistant
 
-    def execute(self, *args: object, **kwargs: object) -> SimpleNamespace:
-        return SimpleNamespace(scalars=lambda: SimpleNamespace(first=lambda: self._assistant))
+    monkeypatch.setattr(email_variables_module.ai_assistant_service, "get_active_for_prospect", fake_lookup)
+    return seen
 
 
-def test_resolve_assistant_link_renders_anchor_for_active_assistant() -> None:
-    """`{lien_assistant}` renders a real anchor to the assistant's demo page."""
-    html = EmailVariables.resolve_assistant_link(_FakeAssistantDB(SimpleNamespace(slug="agence-immo")), 1)
+def test_resolve_assistant_link_renders_anchor_for_active_assistant(monkeypatch) -> None:
+    """`{lien_assistant}` renders a real anchor to the sender's own assistant demo page."""
+    seen = _stub_active_assistant(monkeypatch, SimpleNamespace(slug="agence-immo"))
+    html = EmailVariables.resolve_assistant_link(object(), 1, 7)
     assert html.startswith("<a ")
     assert "/ia/agence-immo" in html
     assert html.endswith("</a>")
+    assert seen["scope"] == (1, 7)  # the prospect AND the sending user, never another member's assistant
 
 
-def test_resolve_assistant_link_empty_without_assistant() -> None:
+def test_resolve_assistant_link_empty_without_assistant(monkeypatch) -> None:
     """`{lien_assistant}` is empty when the prospect has no active assistant."""
-    assert EmailVariables.resolve_assistant_link(_FakeAssistantDB(None), 1) == ""
+    _stub_active_assistant(monkeypatch, None)
+    assert EmailVariables.resolve_assistant_link(object(), 1, 7) == ""
 
 
-def test_resolve_assistant_url_is_the_bare_demo_url() -> None:
+def test_resolve_assistant_url_is_the_bare_demo_url(monkeypatch) -> None:
     """The shared resolver returns the raw `/ia/<slug>` URL (no anchor), for SMS to strip its scheme."""
-    url = EmailVariables.resolve_assistant_url(_FakeAssistantDB(SimpleNamespace(slug="agence-immo")), 1)
+    _stub_active_assistant(monkeypatch, SimpleNamespace(slug="agence-immo"))
+    url = EmailVariables.resolve_assistant_url(object(), 1, 7)
     assert url.endswith("/ia/agence-immo")
     assert "<a " not in url
 
 
-def test_resolve_assistant_url_empty_without_assistant() -> None:
+def test_resolve_assistant_url_empty_without_assistant(monkeypatch) -> None:
     """The shared resolver is empty when the prospect has no active assistant."""
-    assert EmailVariables.resolve_assistant_url(_FakeAssistantDB(None), 1) == ""
+    _stub_active_assistant(monkeypatch, None)
+    assert EmailVariables.resolve_assistant_url(object(), 1, 7) == ""

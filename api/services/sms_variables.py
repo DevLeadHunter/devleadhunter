@@ -99,9 +99,11 @@ class SmsVariables:
             cls.CITY: prospect.city or "",
             cls.TRADE: TradeNormalizer.normalize(prospect.category),
             cls.DEMO_LINK: cls.as_sms_link(demo_url),
-            cls.ASSISTANT_LINK: cls.as_sms_link(EmailVariables.resolve_assistant_url(db, prospect.id)),
+            cls.ASSISTANT_LINK: cls.as_sms_link(EmailVariables.resolve_assistant_url(db, prospect.id, user_id)),
             cls.VIDEO_LINK: cls.as_sms_link(video_url),
-            cls.ASSISTANT_VIDEO_LINK: cls.as_sms_link(EmailVariables.resolve_assistant_video(db, prospect.id)[0]),
+            cls.ASSISTANT_VIDEO_LINK: cls.as_sms_link(
+                EmailVariables.resolve_assistant_video(db, prospect.id, user_id)[0]
+            ),
             cls.OLD_WEBSITE: EmailVariables.display_website(prospect.website),
             cls.PRICE: PricingService.format_price(sale_price_cents) if sale_price_cents is not None else "",
             # Resolved from user_id (the assistant monthly price is per-user, like {prix}).

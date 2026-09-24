@@ -101,6 +101,34 @@ def test_enqueue_sms_creates_templateless_rows_in_order(monkeypatch):
     assert db.committed
 
 
+def test_enqueue_sms_assistant_campaign_needs_an_assistant_not_a_demo(monkeypatch):
+    db = _FakeDB()
+    svc = CampaignQueueService(db)
+
+    monkeypatch.setattr(cqs.CampaignQueueService, "_purge_skipped_initial_items", lambda self, cid: 0)
+    monkeypatch.setattr(
+        cqs.CampaignQueueService,
+        "_schedule_slots",
+        lambda self, campaign, count, now, latest: [datetime(2026, 1, 5, 9, 0)] * count,
+    )
+    # Nobody has a demo site; everyone but prospect 3 has an active assistant.
+    monkeypatch.setattr(cqs.CampaignQueueService, "_active_demo_for_prospect", lambda self, pid, uid: None)
+    monkeypatch.setattr(cqs.CampaignQueueService, "_has_active_assistant", lambda self, pid, uid: pid != 3)
+    from services.sms_service import sms_service
+
+    monkeypatch.setattr(sms_service, "is_suppressed", lambda db, uid, e164: False)
+
+    prospects = [_prospect(10, "06 12 34 56 78"), _prospect(3, "06 98 76 54 32")]
+    campaign = SimpleNamespace(id=1, user_id=7, channel="sms", sms_template_key="assistant-24-7", prospects=prospects)
+
+    result = svc._enqueue_sms(campaign)
+
+    assert [row.prospect_id for row in db.added] == [10]
+    assert [entry["id"] for entry in result.skipped_no_assistant] == [3]
+    assert result.skipped_no_demo == []
+    assert prospects[0].contacted_by_module == cqs.MODULE_AI_ASSISTANT  # the lock is stamped for the right module
+
+
 def test_enqueue_campaign_routes_sms_channel(monkeypatch):
     seen: dict[str, int] = {}
 

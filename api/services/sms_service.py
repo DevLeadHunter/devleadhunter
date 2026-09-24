@@ -24,6 +24,7 @@ from models.sms_message import SmsMessage
 from models.sms_reply import SmsReply
 from models.sms_suppression import SmsSuppression
 from services.activity_log_service import CATEGORY_SMS, STATUS_WARNING, activity_log_service
+from services.email_variables import EmailVariables
 from services.notification_service import notification_service
 from services.pricing_service import PricingService
 from services.prospect_phones import first_mobile_e164, sync_prospect_phones
@@ -217,6 +218,12 @@ class SmsService:
             return SmsSendOutcome(sent=False, reason="Modèle SMS introuvable")
         # A video template with no generated video falls back to its demo-link sibling.
         template = resolve_sms_template(template, video_ready=bool(video_url))
+        # An assistant template needs the prospect's active assistant, or the SMS would ship a hole.
+        needs_assistant: bool = template.uses(SmsVariables.ASSISTANT_LINK) or template.uses(
+            SmsVariables.ASSISTANT_VIDEO_LINK
+        )
+        if needs_assistant and not EmailVariables.resolve_assistant_url(db, prospect.id, user_id):
+            return SmsSendOutcome(sent=False, reason="Pas d'assistant IA actif pour ce prospect")
         variables = SmsVariables.build_for_prospect(
             db,
             user_id=user_id,

@@ -49,6 +49,7 @@ from schemas.sms import (
 from services.auth_service import get_current_user, require_admin
 from services.demo_site_service import demo_site_service
 from services.demo_video_service import has_ready_video, video_page_url
+from services.email_variables import EmailVariables
 from services.notification_service import notification_service
 from services.pricing_service import PricingService
 from services.prospect_phones import first_mobile_e164
@@ -457,6 +458,11 @@ async def preview_template(
         )
     if template.uses(SmsVariables.OLD_WEBSITE) and not prospect.website:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Ce prospect n'a pas d'ancien site connu.")
+    needs_assistant = template.uses(SmsVariables.ASSISTANT_LINK) or template.uses(SmsVariables.ASSISTANT_VIDEO_LINK)
+    if needs_assistant and not EmailVariables.resolve_assistant_url(db, prospect.id, current_user.id):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Ce prospect n'a pas d'assistant IA actif à envoyer."
+        )
 
     demo_url = ""
     video_url = ""

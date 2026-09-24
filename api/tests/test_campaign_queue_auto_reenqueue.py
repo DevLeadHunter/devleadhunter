@@ -84,6 +84,8 @@ def _campaign(**overrides):
         "include_video": True,
         "template_id": 100,
         "ab_template_id_b": None,
+        "follow_ups": [],
+        "follow_up_template_id": None,
         "prospects": [],
         "max_emails_per_day": None,
         "send_delay_minutes": 20,
@@ -200,18 +202,62 @@ def test_send_guard_skip_matrix(monkeypatch):
     service = CampaignQueueService(_FakeDB())
     monkeypatch.setattr(cqs.CampaignQueueService, "_demo_link_for_prospect", lambda self, pid, uid, v: "")
     # Demo template, no active demo → "demo".
-    assert service._send_guard_skip(1, 7, None, uses_demo=True, uses_video=False, include_video=True) == "demo"
+    assert (
+        service._send_guard_skip(1, 7, None, uses_demo=True, uses_video=False, include_video=True, uses_assistant=False)
+        == "demo"
+    )
 
     monkeypatch.setattr(cqs.CampaignQueueService, "_demo_link_for_prospect", lambda self, pid, uid, v: "url")
     monkeypatch.setattr(cqs.CampaignQueueService, "_video_for_prospect", lambda self, pid, uid, v: ("", ""))
     # Video-only template, no ready video → "video".
-    assert service._send_guard_skip(1, 7, None, uses_demo=False, uses_video=True, include_video=True) == "video"
+    assert (
+        service._send_guard_skip(1, 7, None, uses_demo=False, uses_video=True, include_video=True, uses_assistant=False)
+        == "video"
+    )
     # Combo template (demo + video) never blocks on the video — it degrades to the demo link.
-    assert service._send_guard_skip(1, 7, None, uses_demo=True, uses_video=True, include_video=True) is None
+    assert (
+        service._send_guard_skip(1, 7, None, uses_demo=True, uses_video=True, include_video=True, uses_assistant=False)
+        is None
+    )
     # Video-only template with the campaign video toggle off → "video".
-    assert service._send_guard_skip(1, 7, None, uses_demo=False, uses_video=True, include_video=False) == "video"
+    assert (
+        service._send_guard_skip(
+            1, 7, None, uses_demo=False, uses_video=True, include_video=False, uses_assistant=False
+        )
+        == "video"
+    )
     # Plain template (no demo, no video) is always allowed.
-    assert service._send_guard_skip(1, 7, None, uses_demo=False, uses_video=False, include_video=True) is None
+    assert (
+        service._send_guard_skip(
+            1, 7, None, uses_demo=False, uses_video=False, include_video=True, uses_assistant=False
+        )
+        is None
+    )
+
+    monkeypatch.setattr(cqs.CampaignQueueService, "_has_active_assistant", lambda self, pid, uid: False)
+    # Assistant template, no active assistant → "assistant".
+    assert (
+        service._send_guard_skip(1, 7, None, uses_demo=False, uses_video=False, include_video=True, uses_assistant=True)
+        == "assistant"
+    )
+    monkeypatch.setattr(cqs.CampaignQueueService, "_has_active_assistant", lambda self, pid, uid: True)
+    assert (
+        service._send_guard_skip(1, 7, None, uses_demo=False, uses_video=False, include_video=True, uses_assistant=True)
+        is None
+    )
+
+
+def test_campaign_module_reads_every_assistant_variable_and_the_follow_ups():
+    service = CampaignQueueService(_FakeDB())
+    price_only = SimpleNamespace(subject="Offre", body_html="Votre assistant pour {prix_assistant}/mois")
+    website = SimpleNamespace(subject="Site", body_html="{lien_demo}")
+    # A template that only mentions the assistant price is still an assistant offer.
+    assert service._campaign_module([price_only]) == cqs.MODULE_AI_ASSISTANT
+    assert service._campaign_module([website, None]) == cqs.MODULE_WEBSITES
+    # A follow-up linking the assistant makes the whole campaign an assistant campaign.
+    follow_up = SimpleNamespace(template=SimpleNamespace(subject="Relance", body_html="{lien_assistant}"))
+    templates = service._campaign_email_templates(_campaign(follow_ups=[follow_up]), website, None)
+    assert service._campaign_module(templates) == cqs.MODULE_AI_ASSISTANT
 
 
 def test_backfill_ready_prospects_counts_each_added(monkeypatch):

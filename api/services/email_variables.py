@@ -8,11 +8,11 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from core.config import settings
-from enums.ai_assistant_status import AiAssistantStatus
 from models.ai_assistant import AiAssistant
 from models.demo_site import DemoSite
 from models.prospect_db import ProspectDB
 from models.prospect_enrichment import ProspectEnrichment
+from services.ai_assistant.assistant_service import ai_assistant_service
 from services.decision_maker import build_greeting
 from services.french_date_formatter import FrenchDateFormatter
 from services.pricing_service import PricingService
@@ -179,28 +179,25 @@ class EmailVariables:
         return cls.format_expiry_date(site.expires_at)
 
     @classmethod
-    def resolve_assistant_url(cls, db: Session, prospect_id: int) -> str:
+    def resolve_assistant_url(cls, db: Session, prospect_id: int, user_id: int) -> str:
         """
         The public URL of the prospect's active AI assistant demo, or "" when he has none.
 
         Single source of truth shared by `{lien_assistant}` in email (wrapped in a tracked
-        anchor) and in SMS (rendered as a bare link): both link to the same assistant.
+        anchor) and in SMS (rendered as a bare link): both link to the same assistant. Only the
+        sender's own active demo qualifies — a sold assistant is never prospected again, and on
+        a shared prospect another member's assistant never leaks into this user's sends.
 
         Args:
             db: Active database session.
             prospect_id: Prospect the assistant belongs to.
+            user_id: The sending user, owner of the assistant.
 
         Returns:
-            The full `<demo-host>/a/<slug>` URL, or "" when the prospect has no active assistant.
+            The full `<demo-host>/ia/<slug>` URL, or "" when the prospect has no active assistant.
         """
-        assistant: AiAssistant | None = (
-            db.execute(
-                select(AiAssistant)
-                .where(AiAssistant.prospect_id == prospect_id, AiAssistant.status == AiAssistantStatus.ACTIVE.value)
-                .order_by(AiAssistant.created_at.desc())
-            )
-            .scalars()
-            .first()
+        assistant: AiAssistant | None = ai_assistant_service.get_active_for_prospect(
+            db, prospect_id=prospect_id, user_id=user_id
         )
         if assistant is None:
             return ""
@@ -208,7 +205,7 @@ class EmailVariables:
         return f"{base}/ia/{assistant.slug}"
 
     @classmethod
-    def resolve_assistant_link(cls, db: Session, prospect_id: int) -> str:
+    def resolve_assistant_link(cls, db: Session, prospect_id: int, user_id: int) -> str:
         """
         Resolve `{lien_assistant}`: a trackable link to the prospect's AI assistant demo.
 
@@ -218,15 +215,16 @@ class EmailVariables:
         Args:
             db: Active database session.
             prospect_id: Prospect the assistant belongs to.
+            user_id: The sending user, owner of the assistant.
 
         Returns:
             The inline anchor HTML, or "" when the prospect has no active assistant.
         """
-        url: str = cls.resolve_assistant_url(db, prospect_id)
+        url: str = cls.resolve_assistant_url(db, prospect_id, user_id)
         return cls.build_demo_link_html(url) if url else ""
 
     @classmethod
-    def resolve_assistant_video(cls, db: Session, prospect_id: int) -> tuple[str, str]:
+    def resolve_assistant_video(cls, db: Session, prospect_id: int, user_id: int) -> tuple[str, str]:
         """
         Resolve the prospect's assistant prospection video: (player page URL, thumbnail URL).
 
@@ -238,6 +236,7 @@ class EmailVariables:
         Args:
             db: Active database session.
             prospect_id: Prospect the assistant belongs to.
+            user_id: The sending user, owner of the assistant.
 
         Returns:
             The (video page URL, thumbnail URL) pair, or ("", "").
@@ -245,14 +244,8 @@ class EmailVariables:
         from enums.demo_video_status import DemoVideoStatus
         from services.assistant_video_service import public_thumbnail_url, video_page_url
 
-        assistant: AiAssistant | None = (
-            db.execute(
-                select(AiAssistant)
-                .where(AiAssistant.prospect_id == prospect_id, AiAssistant.status == AiAssistantStatus.ACTIVE.value)
-                .order_by(AiAssistant.created_at.desc())
-            )
-            .scalars()
-            .first()
+        assistant: AiAssistant | None = ai_assistant_service.get_active_for_prospect(
+            db, prospect_id=prospect_id, user_id=user_id
         )
         if assistant is None or assistant.video_status != DemoVideoStatus.READY.value:
             return "", ""
@@ -317,6 +310,8 @@ class EmailVariables:
         video_thumbnail_url: str = "",
         sale_price_cents: int | None = None,
         assistant_monthly_price_cents: int | None = None,
+        *,
+        user_id: int,
     ) -> dict[str, str]:
         """
         Build the full substitution map for a prospect's emails.
@@ -332,12 +327,14 @@ class EmailVariables:
             video_link: URL of the tracked video player page.
             video_thumbnail_url: Absolute URL of the personalised thumbnail.
             sale_price_cents: The sender's website sale price, rendered into {prix}; empty when unset.
+            assistant_monthly_price_cents: The sender's assistant price, rendered into {prix_assistant}.
+            user_id: The sending user, whose own assistant the assistant variables resolve to.
 
         Returns:
             The variable name to value map, ready for template substitution.
         """
         first, last, gender = cls.resolved_contact(db, prospect.id)
-        assistant_video_link, assistant_video_thumbnail = cls.resolve_assistant_video(db, prospect.id)
+        assistant_video_link, assistant_video_thumbnail = cls.resolve_assistant_video(db, prospect.id, user_id)
         return {
             cls.SALUTATION: build_greeting(first, last, gender),
             cls.FIRST_NAME: first or "",
@@ -348,7 +345,7 @@ class EmailVariables:
             cls.PHONE: prospect.phone or "",
             cls.TRADE: TradeNormalizer.normalize(prospect.category),
             cls.DEMO_LINK: cls.build_demo_link_html(demo_link),
-            cls.ASSISTANT_LINK: cls.resolve_assistant_link(db, prospect.id),
+            cls.ASSISTANT_LINK: cls.resolve_assistant_link(db, prospect.id, user_id),
             cls.VIDEO_LINK: video_link,
             cls.VIDEO_THUMBNAIL: cls.build_video_thumbnail_html(video_link, video_thumbnail_url),
             cls.ASSISTANT_VIDEO_LINK: assistant_video_link,
