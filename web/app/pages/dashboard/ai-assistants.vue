@@ -333,7 +333,7 @@
               <span v-if="request.status === 'handled'" class="app-badge app-badge--success">Traitée</span>
               <span v-else-if="request.status === 'dropped'" class="app-badge">Sans suite</span>
               <span class="text-muted ml-auto text-xs tabular-nums">
-                {{ request.business_name }} · {{ formatDateTime(request.created_at) }}
+                {{ request.business_name }} · {{ formatShortMonthDayTime(request.created_at) }}
               </span>
             </div>
             <div class="flex flex-col gap-2 @xl:flex-row @xl:items-start @xl:gap-4">
@@ -452,22 +452,7 @@
 
           <div class="flex flex-col gap-1.5">
             <span class="app-label !text-[0.6rem]">Langues</span>
-            <div class="flex flex-wrap gap-1.5">
-              <button
-                v-for="language in LANGUAGE_OPTIONS"
-                :key="language.code"
-                type="button"
-                class="cursor-pointer rounded-full border px-2.5 py-1 text-xs transition-colors"
-                :class="
-                  editForm.languages.includes(language.code)
-                    ? 'border-[var(--app-ink)] bg-[var(--app-ink)] text-[var(--app-bg)]'
-                    : 'border-[var(--app-line)] text-[var(--app-ink-soft)] hover:border-[var(--app-ink-soft)]'
-                "
-                @click="toggleLanguage(language.code)"
-              >
-                {{ language.label }}
-              </button>
-            </div>
+            <UiChipToggleGroup v-model="editForm.languages" :options="LANGUAGE_OPTIONS" />
           </div>
 
           <div class="flex items-center justify-between gap-3">
@@ -506,22 +491,7 @@
             <template v-if="editForm.alert_sms_enabled">
               <div class="flex flex-col gap-1.5">
                 <span class="app-label !text-[0.6rem]">SMS immédiat pour</span>
-                <div class="flex flex-wrap gap-1.5">
-                  <button
-                    v-for="option in ALERT_TYPE_OPTIONS"
-                    :key="option.value"
-                    type="button"
-                    class="cursor-pointer rounded-full border px-2.5 py-1 text-xs transition-colors"
-                    :class="
-                      editForm.alert_sms_types.includes(option.value)
-                        ? 'border-[var(--app-ink)] bg-[var(--app-ink)] text-[var(--app-bg)]'
-                        : 'border-[var(--app-line)] text-[var(--app-ink-soft)] hover:border-[var(--app-ink-soft)]'
-                    "
-                    @click="toggleAlertType(option.value)"
-                  >
-                    {{ option.label }}
-                  </button>
-                </div>
+                <UiChipToggleGroup v-model="editForm.alert_sms_types" :options="ALERT_TYPE_OPTIONS" />
               </div>
               <div class="flex flex-col gap-1.5">
                 <span class="app-label !text-[0.6rem]">Ne pas déranger (SMS envoyés à la fin de la plage)</span>
@@ -589,7 +559,7 @@ import type { Prospect } from '~/types'
 import type { UseToastReturn } from '~/types/Composables'
 import { useToast } from '~/composables/useToast'
 import { useDrawerStackStore } from '~/stores/drawerStack'
-import { daysUntil, parseApiDate } from '~/utils/date'
+import { daysUntil, formatShortMonthDayTime, parseApiDate } from '~/utils/date'
 
 /**
  * Management page for the AI assistant module: the generated assistants (demo link + embed
@@ -659,7 +629,7 @@ const REQUEST_TYPE_BADGES: Record<AiAssistantRequestType, string> = {
 const SAVE_REFUSALS: string[] = ["Numéro d'alerte", '« EU only »']
 
 /** Request types the owner can have texted at once, the ones that cannot wait first. */
-const ALERT_TYPE_OPTIONS: { value: AiAssistantRequestType; label: string }[] = [
+const ALERT_TYPE_OPTIONS: SelectFieldOption<AiAssistantRequestType>[] = [
   { value: 'quote', label: 'Devis' },
   { value: 'appointment', label: 'Rendez-vous' },
   { value: 'urgent', label: 'Urgence' },
@@ -674,14 +644,14 @@ const HOUR_OPTIONS: SelectFieldOption<number>[] = Array.from(
 )
 
 /** Languages a customer can offer, in the order they matter for the target markets. */
-const LANGUAGE_OPTIONS: { code: string; label: string }[] = [
-  { code: 'fr', label: 'Français' },
-  { code: 'nl', label: 'Nederlands' },
-  { code: 'de', label: 'Deutsch' },
-  { code: 'en', label: 'English' },
-  { code: 'lu', label: 'Lëtzebuergesch' },
-  { code: 'it', label: 'Italiano' },
-  { code: 'es', label: 'Español' },
+const LANGUAGE_OPTIONS: SelectFieldOption<string>[] = [
+  { value: 'fr', label: 'Français' },
+  { value: 'nl', label: 'Nederlands' },
+  { value: 'de', label: 'Deutsch' },
+  { value: 'en', label: 'English' },
+  { value: 'lu', label: 'Lëtzebuergesch' },
+  { value: 'it', label: 'Italiano' },
+  { value: 'es', label: 'Español' },
 ]
 
 /** Assistants currently live (the headline module KPI). */
@@ -783,20 +753,6 @@ async function setRequestStatus(request: AiAssistantRequestItem, status: AiAssis
   } finally {
     requestBusyId.value = null
   }
-}
-
-/**
- * Format an API timestamp as a short local date and time.
- * @param iso - The API date string (UTC, naive).
- * @returns The localised « jour mois, HH:MM » label.
- */
-function formatDateTime(iso: string): string {
-  return parseApiDate(iso).toLocaleString('fr-FR', {
-    day: 'numeric',
-    month: 'short',
-    hour: '2-digit',
-    minute: '2-digit',
-  })
 }
 
 /**
@@ -1053,28 +1009,6 @@ function openEdit(assistant: AiAssistantSummary): void {
 /** Close the customization modal without saving. */
 function closeEdit(): void {
   editing.value = null
-}
-
-/**
- * Toggle a language in the edit form.
- * @param code - The language code to toggle.
- */
-function toggleLanguage(code: string): void {
-  const languages: string[] = editForm.value.languages
-  editForm.value.languages = languages.includes(code)
-    ? languages.filter((item: string): boolean => item !== code)
-    : [...languages, code]
-}
-
-/**
- * Toggle a request type in the SMS alert rules of the edit form.
- * @param type - The request type to toggle.
- */
-function toggleAlertType(type: AiAssistantRequestType): void {
-  const types: AiAssistantRequestType[] = editForm.value.alert_sms_types
-  editForm.value.alert_sms_types = types.includes(type)
-    ? types.filter((item: AiAssistantRequestType): boolean => item !== type)
-    : [...types, type]
 }
 
 /**
