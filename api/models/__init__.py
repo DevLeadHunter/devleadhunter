@@ -5,6 +5,8 @@ Models package for Prospect Tool API.
 from models.acquisition_run import AcquisitionRun
 from models.acquisition_run_item import AcquisitionRunItem
 from models.ai_assistant import AiAssistant
+from models.ai_assistant_appointment import AiAssistantAppointment
+from models.ai_assistant_calendar import AiAssistantCalendar
 from models.ai_assistant_conversation import AiAssistantConversation
 from models.ai_assistant_lead import AiAssistantLead
 from models.ai_assistant_message import AiAssistantMessage
@@ -52,6 +54,8 @@ __all__ = [
     "AcquisitionRun",
     "AcquisitionRunItem",
     "AiAssistant",
+    "AiAssistantAppointment",
+    "AiAssistantCalendar",
     "AiAssistantLead",
     "AiAssistantPhoto",
     "AiAssistantReport",

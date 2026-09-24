@@ -337,7 +337,14 @@
                   {{ request.need_summary || request.need || 'Demande de rappel, sans détail.' }}
                 </p>
                 <p
-                  v-if="request.appointment_slots.length > 0"
+                  v-if="request.appointment_booked"
+                  class="flex items-start gap-1.5 text-xs leading-relaxed text-[var(--app-ink)]"
+                >
+                  <UIcon name="i-lucide-calendar-check" class="mt-0.5 h-3.5 w-3.5 shrink-0" />
+                  <span>Rendez-vous réservé dans l'agenda du client : {{ request.appointment_booked }}</span>
+                </p>
+                <p
+                  v-else-if="request.appointment_slots.length > 0"
                   class="flex items-start gap-1.5 text-xs leading-relaxed text-[var(--app-ink)]"
                 >
                   <UIcon name="i-lucide-calendar-days" class="mt-0.5 h-3.5 w-3.5 shrink-0" />

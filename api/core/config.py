@@ -473,6 +473,11 @@ class Settings(BaseSettings):
         alias="GOOGLE_POSTMASTER_REDIRECT_URI",
         description="Google OAuth redirect URI for Postmaster Tools (Santé email)",
     )
+    google_calendar_redirect_uri: str = Field(
+        default="http://localhost:8000/api/v1/ai-assistants/calendar/google/callback",
+        alias="GOOGLE_CALENDAR_REDIRECT_URI",
+        description="Google OAuth redirect URI of the assistants' agendas (connected from the client space)",
+    )
 
     # Encryption settings (for OAuth tokens)
     encryption_key: str | None = Field(

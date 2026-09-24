@@ -24,13 +24,20 @@
         <p class="csr__who">
           <strong>{{ item.name }}</strong>
           <span aria-hidden="true"> · </span>
-          <a v-if="contactHref(item.contact)" :href="contactHref(item.contact) ?? undefined" class="csr__contact">
+          <a
+            v-if="ContactLinkUtils.href(item.contact)"
+            :href="ContactLinkUtils.href(item.contact) ?? undefined"
+            class="csr__contact"
+          >
             {{ item.contact }}
           </a>
           <span v-else>{{ item.contact }}</span>
         </p>
         <p v-if="item.summary" class="csr__summary">{{ item.summary }}</p>
-        <p v-if="item.appointment_slots.length > 0" class="csr__slots">
+        <p v-if="item.appointment_booked" class="csr__slots">
+          Rendez-vous réservé dans votre agenda : <strong>{{ item.appointment_booked }}</strong>
+        </p>
+        <p v-else-if="item.appointment_slots.length > 0" class="csr__slots">
           Créneaux souhaités, à confirmer : <strong>{{ item.appointment_slots.join(' ou ') }}</strong>
         </p>
         <div v-if="item.photo_urls.length > 0" class="csr__photos">
@@ -72,6 +79,7 @@ import type {
   AiAssistantClientRequestType,
 } from '~/types/AiAssistantClientSpace'
 import type { ClientSpaceRequestsEmits, ClientSpaceRequestsProps } from '~/types/ClientSpaceRequests'
+import { ContactLinkUtils } from '~/utils/ContactLinkUtils'
 
 const TYPE_LABELS: Record<AiAssistantClientRequestType, string> = {
   question: 'Question',
@@ -86,9 +94,6 @@ const STATUS_LABELS: Record<AiAssistantClientRequestStatus, string> = {
   handled: 'Traitée',
   dropped: 'Sans suite',
 }
-
-const EMAIL_PATTERN: RegExp = /^[^@\s]+@[^@\s]+\.[^@\s]+$/
-const PHONE_PATTERN: RegExp = /^\+?[\d\s.()-]{6,}$/
 
 /**
  * The requests of the client's assistant, newest first, each with its contact and a « traitée » button.
@@ -108,18 +113,6 @@ const pendingLabel: ComputedRef<string> = computed((): string => {
   if (props.pendingCount === 0) return 'Tout est traité'
   return props.pendingCount === 1 ? '1 à traiter' : `${props.pendingCount} à traiter`
 })
-
-/**
- * A tap-to-call or tap-to-mail link for a visitor's contact, when it reads as one.
- * @param contact The contact the visitor left.
- * @returns The `tel:` / `mailto:` href, or null for anything else.
- */
-function contactHref(contact: string): string | null {
-  const cleaned: string = contact.trim()
-  if (EMAIL_PATTERN.test(cleaned)) return `mailto:${cleaned}`
-  if (PHONE_PATTERN.test(cleaned)) return `tel:${cleaned.replace(/[^\d+]/g, '')}`
-  return null
-}
 </script>
 
 <style scoped>
