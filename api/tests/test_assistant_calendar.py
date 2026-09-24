@@ -1260,3 +1260,20 @@ def test_long_appointment_kinds_are_cut_not_refused() -> None:
     update = AiAssistantClientCalendarUpdate(appointment_types=["Révision complète " * 5])
 
     assert len(update.appointment_types[0]) > 40
+
+
+def test_a_client_link_reaches_only_its_own_agenda(db: Session, google: _FakeGoogle) -> None:
+    assistant = _assistant(db)
+    other = _assistant(db)
+    _calendar(db, assistant)
+    foreign = _calendar(db, other, duration_minutes=60)
+    token = AiAssistantClientLinks.token(assistant.id)
+
+    asyncio.run(
+        client_routes.update_client_calendar(token, AiAssistantClientCalendarUpdate(duration_minutes=30), _VISITOR, db)
+    )
+    asyncio.run(client_routes.disconnect_client_calendar(token, _VISITOR, db))
+
+    db.refresh(foreign)
+    assert foreign.duration_minutes == 60
+    assert [calendar.assistant_id for calendar in db.query(AiAssistantCalendar).all()] == [other.id]

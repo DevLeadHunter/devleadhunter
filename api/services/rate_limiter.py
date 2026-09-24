@@ -68,3 +68,6 @@ assistant_client_renew_limiter = SlidingWindowRateLimiter(max_events=3, window_s
 
 # 6 fresh client-space links / day per assistant: an old link replayed never floods the business.
 assistant_client_renew_daily_limiter = SlidingWindowRateLimiter(max_events=6, window_seconds=86400)
+
+# 30 « marquer traitée » pages / 5 min per visitor: a signed link is opened once or twice, never dozens of times.
+assistant_request_link_limiter = SlidingWindowRateLimiter(max_events=30, window_seconds=300)
