@@ -20,6 +20,7 @@
         <BaseTableTh>Site web</BaseTableTh>
         <BaseTableTh>Contacté</BaseTableTh>
         <BaseTableTh align="center">Température</BaseTableTh>
+        <BaseTableTh v-if="showInboundDemand" align="center">Demande</BaseTableTh>
         <BaseTableTh>Source</BaseTableTh>
         <BaseTableTh v-if="showAbVariant" align="center">Variante</BaseTableTh>
         <BaseTableTh align="center" sr-only>Actions</BaseTableTh>
@@ -208,6 +209,18 @@
           <span v-else class="text-sm text-[var(--app-faint)]">—</span>
         </BaseTableTd>
 
+        <BaseTableTd v-if="showInboundDemand" label="Demande" align="center">
+          <span
+            v-if="prospect.inbound_demand"
+            class="app-badge tabular-nums"
+            :class="inboundDemandBadgeClass(prospect.inbound_demand.score)"
+            :title="inboundDemandTooltip(prospect)"
+          >
+            {{ prospect.inbound_demand.score }}
+          </span>
+          <span v-else class="text-sm text-[var(--app-faint)]">—</span>
+        </BaseTableTd>
+
         <BaseTableTd label="Source">
           <UiProspectSourceBadge :source="prospect.source" />
         </BaseTableTd>
@@ -270,7 +283,7 @@
 
 <script lang="ts" setup>
 import type { ComputedRef, EmitFn, PropType, Ref } from 'vue'
-import type { Prospect } from '~/types'
+import type { Prospect, ProspectInboundDemandSignal } from '~/types'
 import type { UseDragToReorderReturn } from '~/types/Composables'
 import type { UiProspectTableEmits, UiProspectTableProps } from '~/types/UiProspectTable'
 import { computed, onBeforeUnmount, ref } from 'vue'
@@ -310,6 +323,10 @@ const props: UiProspectTableProps = defineProps({
     default: false,
   },
   reorderable: {
+    type: Boolean,
+    default: false,
+  },
+  showInboundDemand: {
     type: Boolean,
     default: false,
   },
@@ -395,6 +412,28 @@ function isSelected(prospect: Prospect): boolean {
 function temperatureOf(prospect: Prospect): string {
   const temperature: string | undefined = props.temperatures?.[prospect.id]
   return temperature === 'hot' || temperature === 'warm' || temperature === 'cold' ? temperature : ''
+}
+
+/**
+ * Badge tone of an inbound demand score: strong from 60, promising from 40.
+ * @param score - The 0-100 score.
+ * @returns The badge modifier class ('' for the neutral tone).
+ */
+function inboundDemandBadgeClass(score: number): string {
+  if (score >= 60) return 'app-badge--success'
+  if (score >= 40) return 'app-badge--progress'
+  return ''
+}
+
+/**
+ * Tooltip explaining an inbound demand score, one signal per line.
+ * @param prospect - The scored prospect.
+ * @returns The signals with their points (empty when the prospect is not scored).
+ */
+function inboundDemandTooltip(prospect: Prospect): string {
+  return (prospect.inbound_demand?.signals ?? [])
+    .map((signal: ProspectInboundDemandSignal): string => `+${signal.points}  ${signal.label}`)
+    .join('\n')
 }
 
 /**

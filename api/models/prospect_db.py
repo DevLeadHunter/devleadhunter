@@ -5,7 +5,7 @@ Prospect database model for SQLAlchemy.
 from datetime import datetime
 from typing import TYPE_CHECKING
 
-from sqlalchemy import JSON, Boolean, Integer, String, Text
+from sqlalchemy import JSON, Boolean, Float, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from core.database import Base
@@ -99,6 +99,10 @@ class ProspectDB(Base):
     # a chat widget means « déjà équipé » for the Réceptionniste IA pitch. NULL = never scanned.
     website_equipment_json: Mapped[dict | None] = mapped_column(JSON, nullable=True)
     website_equipment_at: Mapped[datetime | None] = mapped_column(nullable=True)
+    # Google Maps rating and reviews count read at discovery — the review volume feeds the
+    # « demande entrante » score before any enrichment (enrichment figures win once they exist).
+    google_rating: Mapped[float | None] = mapped_column(Float, nullable=True)
+    google_reviews_count: Mapped[int | None] = mapped_column(Integer, nullable=True)
     created_at: Mapped[datetime] = mapped_column(default=datetime.utcnow, nullable=False)
     updated_at: Mapped[datetime | None] = mapped_column(onupdate=datetime.utcnow, nullable=True)
 

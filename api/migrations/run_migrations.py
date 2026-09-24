@@ -155,6 +155,7 @@ MIGRATION_MODULES: list[tuple[str, str]] = [
     ("rewrite_assistant_franc_emails", "migrations.rewrite_assistant_franc_emails"),
     ("add_ai_assistant_conversation_tables", "migrations.add_ai_assistant_conversation_tables"),
     ("add_prospect_website_equipment", "migrations.add_prospect_website_equipment"),
+    ("add_prospect_google_reviews", "migrations.add_prospect_google_reviews"),
 ]
 
 # Modules of this package that are not migrations and must not be registered.

@@ -15,6 +15,9 @@ const TEMPERATURE_FILTER_VALUES: TemperatureFilter[] = ['all', 'hot', 'warm', 'c
 export type EmailFilter = 'all' | 'undeliverable'
 const EMAIL_FILTER_VALUES: EmailFilter[] = ['all', 'undeliverable']
 
+export type ProspectSortOrder = 'recent' | 'demand'
+const SORT_ORDER_VALUES: ProspectSortOrder[] = ['recent', 'demand']
+
 /** Persisted filter state for the my-prospects page. */
 export type MyProspectsFiltersState = {
   searchQuery: string
@@ -23,6 +26,7 @@ export type MyProspectsFiltersState = {
   filterWebsite: ProspectWebsiteFilter
   filterTemperature: TemperatureFilter
   filterEmail: EmailFilter
+  sortOrder: ProspectSortOrder
   activeTab: 'not_contacted' | 'contacted'
 }
 
@@ -51,6 +55,7 @@ function defaultFilters(moduleKey: DlhModuleKey): MyProspectsFiltersState {
     filterWebsite: moduleKey === 'ai-assistant' ? 'all' : 'no',
     filterTemperature: 'all',
     filterEmail: 'all',
+    sortOrder: moduleKey === 'ai-assistant' ? 'demand' : 'recent',
     activeTab: 'not_contacted',
   }
 }
@@ -79,6 +84,9 @@ function parseStoredFilters(raw: string, defaults: MyProspectsFiltersState): MyP
     const filterEmail: EmailFilter = EMAIL_FILTER_VALUES.includes(parsed.filterEmail as EmailFilter)
       ? (parsed.filterEmail as EmailFilter)
       : defaults.filterEmail
+    const sortOrder: ProspectSortOrder = SORT_ORDER_VALUES.includes(parsed.sortOrder as ProspectSortOrder)
+      ? (parsed.sortOrder as ProspectSortOrder)
+      : defaults.sortOrder
 
     return {
       searchQuery: typeof parsed.searchQuery === 'string' ? parsed.searchQuery : defaults.searchQuery,
@@ -87,6 +95,7 @@ function parseStoredFilters(raw: string, defaults: MyProspectsFiltersState): MyP
       filterWebsite,
       filterTemperature,
       filterEmail,
+      sortOrder,
       activeTab,
     }
   } catch {
@@ -105,6 +114,7 @@ export function useMyProspectsFilters(): {
   filterWebsite: Ref<ProspectWebsiteFilter>
   filterTemperature: Ref<TemperatureFilter>
   filterEmail: Ref<EmailFilter>
+  sortOrder: Ref<ProspectSortOrder>
   activeTab: Ref<'not_contacted' | 'contacted'>
   clearFilters: () => void
 } {
@@ -116,6 +126,7 @@ export function useMyProspectsFilters(): {
   const filterWebsite: Ref<ProspectWebsiteFilter> = ref(defaults.filterWebsite)
   const filterTemperature: Ref<TemperatureFilter> = ref(defaults.filterTemperature)
   const filterEmail: Ref<EmailFilter> = ref(defaults.filterEmail)
+  const sortOrder: Ref<ProspectSortOrder> = ref(defaults.sortOrder)
   const activeTab: Ref<'not_contacted' | 'contacted'> = ref(defaults.activeTab)
 
   /**
@@ -129,6 +140,7 @@ export function useMyProspectsFilters(): {
     filterWebsite.value = snapshot.filterWebsite
     filterTemperature.value = snapshot.filterTemperature
     filterEmail.value = snapshot.filterEmail
+    sortOrder.value = snapshot.sortOrder
     activeTab.value = snapshot.activeTab
   }
 
@@ -155,6 +167,7 @@ export function useMyProspectsFilters(): {
       filterWebsite: filterWebsite.value,
       filterTemperature: filterTemperature.value,
       filterEmail: filterEmail.value,
+      sortOrder: sortOrder.value,
       activeTab: activeTab.value,
     }
     localStorage.setItem(filtersStorageKey(moduleStore.activeKey), JSON.stringify(snapshot))
@@ -164,7 +177,7 @@ export function useMyProspectsFilters(): {
    * Reset narrowing filters to the active module's defaults (tab is kept).
    */
   function clearFilters(): void {
-    applyFilters({ ...defaultFilters(moduleStore.activeKey), activeTab: activeTab.value })
+    applyFilters({ ...defaultFilters(moduleStore.activeKey), sortOrder: sortOrder.value, activeTab: activeTab.value })
   }
 
   onMounted((): void => {
@@ -172,7 +185,7 @@ export function useMyProspectsFilters(): {
   })
 
   watch(
-    [searchQuery, filterCategory, filterCity, filterWebsite, filterTemperature, filterEmail, activeTab],
+    [searchQuery, filterCategory, filterCity, filterWebsite, filterTemperature, filterEmail, sortOrder, activeTab],
     (): void => {
       saveFilters()
     },
@@ -194,6 +207,7 @@ export function useMyProspectsFilters(): {
     filterWebsite,
     filterTemperature,
     filterEmail,
+    sortOrder,
     activeTab,
     clearFilters,
   }

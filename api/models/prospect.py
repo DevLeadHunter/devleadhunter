@@ -62,6 +62,8 @@ class ProspectBase(BaseModel):
             "listing. Google Maps stays the source of truth when both are present."
         ),
     )
+    google_rating: float | None = Field(None, ge=0, le=5, description="Google Maps rating read at discovery")
+    google_reviews_count: int | None = Field(None, ge=0, description="Google Maps reviews count read at discovery")
     category: str = Field(..., description="Business category")
     source: Source = Field(..., description="Data source identifier")
     confidence: int = Field(
@@ -178,6 +180,20 @@ class WebsiteEquipmentSnapshot(BaseModel):
     has_contact_form: bool = Field(False, description="The site offers a contact form")
 
 
+class InboundDemandSignal(BaseModel):
+    """One reason behind an inbound demand score, with the points it brought."""
+
+    label: str = Field(..., description="What was observed, in French (e.g. '48 avis Google')")
+    points: int = Field(..., ge=0, description="Points this observation added to the score")
+
+
+class InboundDemand(BaseModel):
+    """How likely the prospect receives more requests than it answers (Réceptionniste IA sourcing)."""
+
+    score: int = Field(..., ge=0, le=100, description="0-100: target trade, review volume, extended hours, no chat")
+    signals: list[InboundDemandSignal] = Field(default_factory=list, description="Why, signal by signal")
+
+
 class Prospect(ProspectBase):
     """Complete prospect model with ID and ownership metadata."""
 
@@ -225,6 +241,9 @@ class Prospect(ProspectBase):
         None, description="Chat widget and contact form found on the website (None = never scanned)"
     )
     website_equipment_at: datetime | None = Field(None, description="When the website was last scanned")
+    inbound_demand: InboundDemand | None = Field(
+        None, description="« Demande entrante » score for the Réceptionniste IA (resolved server-side)"
+    )
     has_pending_contact_proposal: bool = Field(
         False,
         description="A decision-maker name awaits confirm/reject in the drawer (resolved server-side)",

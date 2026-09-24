@@ -115,7 +115,11 @@
         </div>
       </div>
 
-      <div class="grid grid-cols-2 gap-4 @4xl:grid-cols-6">
+      <div class="grid grid-cols-2 gap-4" :class="isAssistantModule ? '@4xl:grid-cols-7' : '@4xl:grid-cols-6'">
+        <div v-if="isAssistantModule">
+          <label class="app-label mb-1.5 block">Tri</label>
+          <UiSelectField v-model="sortOrder" :options="sortOrderOptions" />
+        </div>
         <div>
           <label class="app-label mb-1.5 block">Site web</label>
           <UiSelectField v-model="filterWebsite" :options="websiteFilterOptions" />
@@ -210,6 +214,7 @@
         :prospects="paginatedProspects"
         :selected-prospects="selectedProspects"
         :temperatures="temperatureByPid"
+        :show-inbound-demand="isAssistantModule"
         @view-prospect="openDrawer"
         @edit-prospect="openProspectEditDrawer"
         @delete-prospect="handleDeleteProspect"
@@ -455,6 +460,7 @@ const {
   filterWebsite,
   filterTemperature,
   filterEmail,
+  sortOrder,
   activeTab,
   clearFilters: resetFilters,
 }: ReturnType<typeof useMyProspectsFilters> = useMyProspectsFilters()
@@ -483,6 +489,10 @@ const temperatureFilterOptions: { value: string; label: string }[] = [
   { value: 'hot', label: 'Chaud' },
   { value: 'warm', label: 'Tiède' },
   { value: 'cold', label: 'Froid' },
+]
+const sortOrderOptions: { value: string; label: string }[] = [
+  { value: 'demand', label: 'Demande entrante' },
+  { value: 'recent', label: 'Plus récents' },
 ]
 const emailFilterOptions: { value: string; label: string }[] = [
   { value: 'all', label: 'Tous' },
@@ -603,11 +613,17 @@ const contactedCount: ComputedRef<number> = computed(
   () => baseFiltered.value.filter((prospect: Prospect) => prospect.contacted).length,
 )
 
-const filteredProspects: ComputedRef<Prospect[]> = computed(() =>
-  baseFiltered.value.filter((prospect: Prospect) =>
+const filteredProspects: ComputedRef<Prospect[]> = computed((): Prospect[] => {
+  const inTab: Prospect[] = baseFiltered.value.filter((prospect: Prospect) =>
     activeTab.value === 'contacted' ? prospect.contacted : !prospect.contacted,
-  ),
-)
+  )
+  if (!isAssistantModule.value || sortOrder.value !== 'demand') return inTab
+  // Stable sort: equal scores keep the most recent first, unscored prospects go last.
+  return [...inTab].sort(
+    (left: Prospect, right: Prospect): number =>
+      (right.inbound_demand?.score ?? -1) - (left.inbound_demand?.score ?? -1),
+  )
+})
 
 const totalPages: ComputedRef<number> = computed(() => Math.ceil(filteredProspects.value.length / pageSize))
 
@@ -671,9 +687,12 @@ function clearFilters(): void {
 }
 
 // Reset to the first page whenever the active filter set or tab changes.
-watch([activeTab, searchQuery, filterCity, filterCategory, filterWebsite, filterTemperature, filterEmail], (): void => {
-  currentPage.value = 1
-})
+watch(
+  [activeTab, searchQuery, filterCity, filterCategory, filterWebsite, filterTemperature, filterEmail, sortOrder],
+  (): void => {
+    currentPage.value = 1
+  },
+)
 
 /**
  * Toggle a single prospect in the selection.

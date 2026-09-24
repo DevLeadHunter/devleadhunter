@@ -124,6 +124,64 @@ class GoogleScraper(NodriverScraperMixin, BaseScraper):
         super().__init__(source=Source.GOOGLE)
         self._init_nodriver()
 
+    # Rating + reviews count shown under the place name (the F7nice block: "4,9 (132)"), read as
+    # "rating|count" so nodriver returns a plain string. Mirrors the enrichment scraper's parsing.
+    _REVIEW_STATS_JS = """
+    (() => {
+        try {
+            const block = document.querySelector('div.F7nice');
+            if (!block) return '';
+            const text = (block.innerText || '').replace(/\\s+/g, ' ');
+            const ratingMatch = text.match(/(\\d+[.,]\\d+)/);
+            const countMatch = text.match(/\\(([\\d\\s.,\\u00a0\\u202f]+)\\)/);
+            let count = countMatch ? countMatch[1].replace(/[^\\d]/g, '') : '';
+            if (!count) {
+                const aria = block.querySelector('[aria-label]');
+                const label = aria ? (aria.getAttribute('aria-label') || '') : '';
+                const ariaMatch = label.match(/([\\d][\\d\\s.,\\u00a0\\u202f]*)\\s*(avis|reviews|review)/i);
+                if (ariaMatch) count = ariaMatch[1].replace(/[^\\d]/g, '');
+            }
+            return (ratingMatch ? ratingMatch[1].replace(',', '.') : '') + '|' + count;
+        } catch (e) {
+            return '';
+        }
+    })()
+    """
+
+    @staticmethod
+    def parse_review_stats(raw_rating: str | None, raw_count: str | None) -> tuple[float | None, int | None]:
+        """
+        Convert the raw rating and reviews count read on a place panel into numbers.
+
+        Args:
+            raw_rating: Rating text ("4.9"), or None.
+            raw_count: Digits of the reviews count ("132"), or None.
+
+        Returns:
+            ``(rating, reviews_count)``; each is None when absent or out of range.
+        """
+        rating: float | None = None
+        if raw_rating:
+            try:
+                value = float(raw_rating.replace(",", "."))
+            except ValueError:
+                value = -1.0
+            rating = value if 0.0 <= value <= 5.0 else None
+        reviews_count = int(raw_count) if raw_count and raw_count.isdigit() else None
+        return rating, reviews_count
+
+    async def _read_review_stats(self, tab: object) -> tuple[str | None, str | None]:
+        """Read the raw rating and reviews count of the open place panel (None, None when absent)."""
+        try:
+            raw = await NodriverDom.evaluate(tab, self._REVIEW_STATS_JS, by_value=True)
+        except Exception as exc:
+            logger.debug("Could not read Google review stats: %s", exc)
+            return None, None
+        if not isinstance(raw, str) or "|" not in raw:
+            return None, None
+        rating, count = raw.split("|", 1)
+        return rating or None, count or None
+
     @staticmethod
     async def accept_cookies(tab: object) -> bool:
         """
@@ -372,6 +430,7 @@ class GoogleScraper(NodriverScraperMixin, BaseScraper):
             phone = find_phone(phone) or (phone.strip() if phone else None)
 
             city_name = self.extract_city(address)
+            rating, reviews_count = await self._read_review_stats(tab)
             return {
                 "name": name.strip(),
                 "address": address.strip(),
@@ -379,6 +438,8 @@ class GoogleScraper(NodriverScraperMixin, BaseScraper):
                 "phone": phone,
                 "website": website,
                 "category": category.strip(),
+                "rating": rating,
+                "reviews_count": reviews_count,
             }
         except Exception as exc:
             logger.error("Failed to extract Google Maps place details: %s", exc)
@@ -412,6 +473,9 @@ class GoogleScraper(NodriverScraperMixin, BaseScraper):
         except Exception as exc:
             logger.debug("Could not find email for %s: %s", name, exc)
 
+        google_rating, google_reviews_count = self.parse_review_stats(
+            details.get("rating"), details.get("reviews_count")
+        )
         return ProspectCreate(
             name=name,
             address=address or None,
@@ -421,6 +485,8 @@ class GoogleScraper(NodriverScraperMixin, BaseScraper):
             website=website,
             website_status=website_status,
             google_maps_url=google_maps_url,
+            google_rating=google_rating,
+            google_reviews_count=google_reviews_count,
             category=category,
             source=Source.GOOGLE,
             confidence=confidence,
@@ -833,6 +899,9 @@ class GoogleScraper(NodriverScraperMixin, BaseScraper):
                     except Exception as exc:
                         logger.debug("Could not find email: %s", exc)
 
+                    google_rating, google_reviews_count = self.parse_review_stats(
+                        details.get("rating"), details.get("reviews_count")
+                    )
                     prospects.append(
                         ProspectCreate(
                             name=name,
@@ -843,6 +912,8 @@ class GoogleScraper(NodriverScraperMixin, BaseScraper):
                             website=website,
                             website_status=website_status,
                             google_maps_url=place_url,
+                            google_rating=google_rating,
+                            google_reviews_count=google_reviews_count,
                             category=extracted_category,
                             source=Source.GOOGLE,
                             confidence=confidence,
