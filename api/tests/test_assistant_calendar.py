@@ -143,7 +143,6 @@ class _FakeGoogle:
         self.busy: list[BusyPeriod] = []
         self.busy_calls: list[tuple[datetime, datetime]] = []
         self.inserted: list[CalendarEventDraft] = []
-        self.revoked: list[str] = []
         self.refreshed: list[str] = []
         self.failure: GoogleCalendarError | None = None
         self.insert_failures: list[GoogleCalendarError] = []
@@ -190,15 +189,12 @@ class _FakeGoogle:
     async def account_email(self, access_token: str) -> str | None:
         return self.account
 
-    async def revoke(self, token: str) -> None:
-        self.revoked.append(token)
-
 
 @pytest.fixture
 def google(monkeypatch: pytest.MonkeyPatch) -> _FakeGoogle:
     """A configured Google client that never leaves the process, and a quiet activity log."""
     fake = _FakeGoogle()
-    for name in ("busy_periods", "insert_event", "refresh", "exchange_code", "account_email", "revoke"):
+    for name in ("busy_periods", "insert_event", "refresh", "exchange_code", "account_email"):
         monkeypatch.setattr(calendar_module.google_calendar_client, name, getattr(fake, name))
     monkeypatch.setattr(google_module.settings, "google_client_id", "client-id")
     monkeypatch.setattr(google_module.settings, "google_client_secret", "client-secret")
@@ -285,9 +281,6 @@ def _request(db: Session, assistant: AiAssistant, **fields: Any) -> AiAssistantR
     db.add(request)
     db.commit()
     return request
-
-
-# --- OAuth state and the Google HTTP client ---------------------------------------------------------------
 
 
 def test_the_oauth_state_names_its_assistant_and_expires() -> None:
@@ -413,9 +406,6 @@ def test_the_client_tells_a_lost_access_from_a_passing_failure(monkeypatch: pyte
     assert "notFound" in str(missing.value)
 
 
-# --- Connection -----------------------------------------------------------------------------------------------
-
-
 def test_the_consent_stores_encrypted_tokens_on_a_sold_assistant_only(db: Session, google: _FakeGoogle) -> None:
     assistant = _assistant(db)
     demo = _assistant(db, status="active")
@@ -483,9 +473,6 @@ def test_an_expired_access_token_is_refreshed_and_stored_encrypted(db: Session, 
     assert encryption_service.decrypt(calendar.access_token_encrypted) == "fresh-access"
 
 
-# --- Free slots -------------------------------------------------------------------------------------------------
-
-
 def _settings(**overrides: Any) -> CalendarSettings:
     values: dict[str, Any] = {
         "calendar_id": "primary",
@@ -543,9 +530,6 @@ def test_unknown_hours_offer_the_weekday_office_hours() -> None:
     )
 
     assert _starts(page) == [_paris(21, 10), _paris(21, 14), _paris(22, 9)]
-
-
-# --- Booking ----------------------------------------------------------------------------------------------------
 
 
 def test_a_booking_creates_the_event_and_the_appointment(db: Session, google: _FakeGoogle) -> None:
@@ -686,9 +670,6 @@ def test_the_visitor_is_told_on_the_channel_they_left(db: Session, google: _Fake
     assert service.visitor_channels(db, assistant, " 06 11 22 33 44 ") == ("+33611223344", None)
     assert service.visitor_channels(db, assistant, "Julie.Roux@Example.fr") == (None, "julie.roux@example.fr")
     assert service.visitor_channels(db, assistant, "03 83 12 34 56") == (None, None)
-
-
-# --- The visitor's messages -------------------------------------------------------------------------------------
 
 
 def test_the_confirmation_and_the_reminder_fit_one_sms_in_every_language() -> None:
@@ -834,9 +815,6 @@ def test_a_confirmation_lost_by_a_restart_is_sent_by_the_runner(
     assert "votre rendez-vous du jeu. 24/09 à 14:00 est confirmé" in sms
 
 
-# --- Public routes ----------------------------------------------------------------------------------------------
-
-
 @pytest.fixture
 def business_clock(monkeypatch: pytest.MonkeyPatch) -> list[int]:
     """Monday 10:00 in Paris, and the background work recorded instead of run."""
@@ -903,9 +881,6 @@ def test_the_chat_opens_the_appointment_panel_when_the_visitor_asks_for_one() ->
         assert asks(message), message
     for message in ("Le chantier est terminé ?", "Quels sont vos tarifs ?", "Merci beaucoup"):
         assert not asks(message), message
-
-
-# --- Client space -----------------------------------------------------------------------------------------------
 
 
 def test_the_client_space_shows_the_agenda_and_the_upcoming_appointments(
@@ -981,8 +956,6 @@ def test_the_client_connects_changes_and_disconnects_the_agenda(
     assert settings.appointment_types == ["Révision", "Pneus"]
     assert refused.value.status_code == 422
     assert disconnected.status is AssistantCalendarConnection.DISCONNECTED
-    # The grant may serve elsewhere (same Google account): it is never revoked from here.
-    assert google.revoked == []
     assert db.query(AiAssistantCalendar).count() == 0
 
 
@@ -997,9 +970,6 @@ def test_the_callback_page_explains_a_failed_consent(db: Session, google: _FakeG
     assert "Connexion annulée" in denied.body.decode()
     assert "Lien de connexion expiré" in forged.body.decode()
     assert db.query(AiAssistantCalendar).count() == 0
-
-
-# --- Owner alerts -----------------------------------------------------------------------------------------------
 
 
 def test_the_owner_is_told_the_appointment_is_already_in_the_agenda() -> None:
@@ -1044,9 +1014,6 @@ def test_the_migration_creates_both_tables_once(monkeypatch: pytest.MonkeyPatch)
 
     tables = set(inspect(engine).get_table_names())
     assert {"ai_assistant_calendars", "ai_assistant_appointments"} <= tables
-
-
-# --- Review fixes -----------------------------------------------------------------------------------------------
 
 
 def _book(
