@@ -1,6 +1,6 @@
 """Dates written in French words, whatever the server locale."""
 
-from datetime import datetime
+from datetime import date, datetime
 
 
 class FrenchDateFormatter:
@@ -26,6 +26,11 @@ class FrenchDateFormatter:
     def day_month(moment: datetime) -> str:
         """The day and month of ``moment``, as "12 octobre"."""
         return f"{moment.day} {FrenchDateFormatter.MONTHS[moment.month - 1]}"
+
+    @staticmethod
+    def month_year(moment: date) -> str:
+        """The month and year of ``moment``, as "septembre 2026"."""
+        return f"{FrenchDateFormatter.MONTHS[moment.month - 1]} {moment.year}"
 
     @staticmethod
     def long_date(moment: datetime) -> str:

@@ -9,6 +9,7 @@ from models.ai_assistant_conversation import AiAssistantConversation
 from models.ai_assistant_lead import AiAssistantLead
 from models.ai_assistant_message import AiAssistantMessage
 from models.ai_assistant_photo import AiAssistantPhoto
+from models.ai_assistant_report import AiAssistantReport
 from models.ai_assistant_request import AiAssistantRequest
 from models.ai_assistant_subscription import AiAssistantSubscription
 from models.campaign import Campaign, CampaignStatus
@@ -53,6 +54,7 @@ __all__ = [
     "AiAssistant",
     "AiAssistantLead",
     "AiAssistantPhoto",
+    "AiAssistantReport",
     "AiAssistantRequest",
     "AiAssistantSubscription",
     "Campaign",

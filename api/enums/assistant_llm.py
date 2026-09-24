@@ -9,6 +9,7 @@ class AssistantLlmUsage(str, Enum):
     CHAT = "assistant_chat"
     VISION = "assistant_vision"
     REQUEST = "assistant_request"
+    REPORT = "assistant_report"
 
 
 class LlmProvider(str, Enum):

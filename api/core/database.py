@@ -64,6 +64,7 @@ def init_db():
     from models.ai_assistant import AiAssistant  # noqa: F401
     from models.ai_assistant_lead import AiAssistantLead  # noqa: F401
     from models.ai_assistant_photo import AiAssistantPhoto  # noqa: F401
+    from models.ai_assistant_report import AiAssistantReport  # noqa: F401
     from models.ai_assistant_request import AiAssistantRequest  # noqa: F401
     from models.campaign import Campaign  # noqa: F401
     from models.campaign_follow_up import CampaignFollowUp  # noqa: F401

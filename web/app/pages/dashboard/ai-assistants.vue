@@ -59,16 +59,26 @@
                   }}<span v-if="demoLifetimeLabel(assistant)"> · {{ demoLifetimeLabel(assistant) }}</span>
                 </p>
               </div>
-              <span
-                class="shrink-0 rounded-full border px-2 py-0.5 text-[10px] font-medium tracking-wide uppercase"
-                :class="
-                  assistant.status === 'active'
-                    ? 'border-[var(--app-green)] text-[var(--app-green)]'
-                    : 'border-[var(--app-line)] text-[var(--app-ink-soft)]'
-                "
-              >
-                {{ statusLabel(assistant) }}
-              </span>
+              <div class="flex shrink-0 items-center gap-1.5">
+                <span
+                  v-if="assistant.churn_risk"
+                  class="inline-flex items-center gap-1 rounded-full border border-[var(--app-ink)] bg-[var(--app-ink)] px-2 py-0.5 text-[10px] font-medium tracking-wide text-[var(--app-bg)] uppercase"
+                  title="Abonné depuis plus de 30 jours, aucune conversation ni demande sur les 30 derniers jours : vérifiez que le widget est bien installé"
+                >
+                  <UIcon name="i-lucide-triangle-alert" class="h-3 w-3" />
+                  Risque de churn
+                </span>
+                <span
+                  class="rounded-full border px-2 py-0.5 text-[10px] font-medium tracking-wide uppercase"
+                  :class="
+                    assistant.status === 'active'
+                      ? 'border-[var(--app-green)] text-[var(--app-green)]'
+                      : 'border-[var(--app-line)] text-[var(--app-ink-soft)]'
+                  "
+                >
+                  {{ statusLabel(assistant) }}
+                </span>
+              </div>
             </div>
 
             <div class="flex flex-wrap items-center gap-1">

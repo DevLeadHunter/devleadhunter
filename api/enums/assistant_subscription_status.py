@@ -14,3 +14,10 @@ class AssistantSubscriptionStatus(str, Enum):
     PAST_DUE = "past_due"
     # Ended (Stripe ``canceled``) — the client stopped, or an annual term lapsed without renewal.
     CANCELED = "canceled"
+
+
+# A paying client: running, or a renewal charge being retried by Stripe.
+LIVE_SUBSCRIPTION_STATUSES: tuple[str, ...] = (
+    AssistantSubscriptionStatus.ACTIVE.value,
+    AssistantSubscriptionStatus.PAST_DUE.value,
+)

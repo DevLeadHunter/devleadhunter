@@ -475,6 +475,45 @@ class NotificationService:
             tag=f"assistant-waiting-{prospect_id}" if prospect_id else None,
         )
 
+    async def notify_assistant_inactive(
+        self,
+        db: Session,
+        *,
+        user_id: int,
+        prospect_id: int | None,
+        fallback_name: str,
+        month_label: str,
+    ) -> None:
+        """
+        Warn the operator that a subscriber's assistant had no visit at all over a month (a churn signal).
+
+        Args:
+            db: Active database session (to resolve the prospect's name).
+            user_id: Owner of the assistant — the notification recipient.
+            prospect_id: Prospect the assistant was sold to, when known.
+            fallback_name: Name shown when the prospect can't be resolved.
+            month_label: The silent month, in French (« septembre 2026 »).
+        """
+        prospect_name = self._resolve_prospect_name(db, prospect_id, fallback_name)
+        activity_log_service.record(
+            category=CATEGORY_ASSISTANT,
+            action="assistant_month_inactive",
+            status=STATUS_WARNING,
+            title=f"{prospect_name} · aucune activité en {month_label}",
+            user_id=user_id,
+            entity_type="prospect",
+            entity_id=prospect_id,
+        )
+        await self._dispatch(
+            user_id=user_id,
+            category="assistant",
+            level="warning",
+            title=f"💤 {prospect_name}",
+            body=f"{_MODULE_TAG_ASSISTANT} · Abonné {prospect_name} : aucune visite en {month_label} (risque de désabonnement)",
+            url=_ASSISTANTS_URL,
+            tag=f"assistant-inactive-{prospect_id}" if prospect_id else None,
+        )
+
     async def notify_assistant_interest(
         self,
         db: Session,
