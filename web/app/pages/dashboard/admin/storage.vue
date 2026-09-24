@@ -381,6 +381,7 @@ const KIND_ICONS: Record<string, string> = {
   support: 'i-lucide-paperclip',
   prospect_photo: 'i-lucide-image',
   assistant_photo: 'i-lucide-camera',
+  assistant_document: 'i-lucide-file-text',
   manual: 'i-lucide-upload',
   other: 'i-lucide-file',
 }
@@ -394,6 +395,7 @@ const KIND_LABELS: Record<string, string> = {
   support: 'Pièce jointe',
   prospect_photo: 'Photo prospect',
   assistant_photo: 'Photo de devis (assistant)',
+  assistant_document: 'Document (assistant)',
   manual: 'Import manuel',
   other: 'Fichier',
 }

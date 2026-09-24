@@ -129,6 +129,15 @@
                 <UIcon name="i-lucide-messages-square" class="mr-1.5 h-3.5 w-3.5" />
                 Conversations
               </button>
+              <button
+                type="button"
+                class="btn-secondary h-8 text-xs"
+                title="Site, fiche Google et documents lus par l'assistant"
+                @click="openSources(assistant)"
+              >
+                <UIcon name="i-lucide-library" class="mr-1.5 h-3.5 w-3.5" />
+                Sources
+              </button>
               <button type="button" class="btn-secondary h-8 text-xs" @click="copySnippet(assistant)">
                 <UIcon name="i-lucide-code" class="mr-1.5 h-3.5 w-3.5" />
                 Copier le script
@@ -726,6 +735,14 @@ function demoUrlWithInternal(demoUrl: string): string {
  */
 function openConversations(assistant: AiAssistantSummary): void {
   drawerStack.push({ kind: 'assistant-conversations', assistant })
+}
+
+/**
+ * Open what this assistant reads: its website pages, its Google listing, its documents (switches, upload).
+ * @param assistant - The assistant whose sources to show.
+ */
+function openSources(assistant: AiAssistantSummary): void {
+  drawerStack.push({ kind: 'assistant-sources', assistant })
 }
 
 /**

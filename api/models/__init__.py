@@ -8,6 +8,7 @@ from models.ai_assistant import AiAssistant
 from models.ai_assistant_appointment import AiAssistantAppointment
 from models.ai_assistant_calendar import AiAssistantCalendar
 from models.ai_assistant_conversation import AiAssistantConversation
+from models.ai_assistant_document import AiAssistantDocument
 from models.ai_assistant_lead import AiAssistantLead
 from models.ai_assistant_message import AiAssistantMessage
 from models.ai_assistant_photo import AiAssistantPhoto
@@ -56,6 +57,7 @@ __all__ = [
     "AiAssistant",
     "AiAssistantAppointment",
     "AiAssistantCalendar",
+    "AiAssistantDocument",
     "AiAssistantLead",
     "AiAssistantPhoto",
     "AiAssistantReport",

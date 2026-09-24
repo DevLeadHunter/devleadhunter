@@ -157,6 +157,12 @@ export type AssistantConversationsDrawerEntry = {
   assistant: AiAssistantSummary
 }
 
+/** What an assistant reads: its website, its Google listing, its documents. */
+export type AssistantSourcesDrawerEntry = {
+  kind: 'assistant-sources'
+  assistant: AiAssistantSummary
+}
+
 /** A zone of the coverage map (one city, or a region's covered cities). */
 export type CoverageZone = {
   kind: 'city' | 'region'
@@ -199,6 +205,7 @@ export type DrawerStackEntry =
   | FinalizeSaleDrawerEntry
   | AssistantSubscriptionDrawerEntry
   | AssistantConversationsDrawerEntry
+  | AssistantSourcesDrawerEntry
   | UserFormDrawerEntry
 
 /** Cross-page notice describing the latest prospect mutation done from a drawer. */

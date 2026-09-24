@@ -54,6 +54,7 @@ class R2StorageService:
     IMAGES_SUPPORT_PREFIX = "images/support"
     IMAGES_PROSPECTS_PREFIX = "images/prospects"
     IMAGES_ASSISTANT_PHOTOS_PREFIX = "images/assistant-photos"
+    DOCUMENTS_ASSISTANT_PREFIX = "documents/assistant"
     MANUAL_UPLOADS_PREFIX = "uploads/manual"
 
     def __init__(self) -> None:
@@ -240,6 +241,19 @@ class R2StorageService:
         """
         now = datetime.now(UTC)
         return f"{cls.IMAGES_ASSISTANT_PHOTOS_PREFIX}/{now:%Y/%m}/{uuid.uuid4().hex}.jpg"
+
+    @classmethod
+    def assistant_document_key(cls, assistant_id: int) -> str:
+        """
+        Build the key of a document a business gave its assistant, unguessable (its URL is public).
+
+        Args:
+            assistant_id: The assistant it belongs to.
+
+        Returns:
+            A unique PDF object key under the assistant-documents prefix, filed by assistant.
+        """
+        return f"{cls.DOCUMENTS_ASSISTANT_PREFIX}/{assistant_id}/{uuid.uuid4().hex}.pdf"
 
     @classmethod
     def manual_upload_key(cls, extension: str) -> str:

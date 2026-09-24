@@ -127,7 +127,7 @@ class StorageObject(BaseModel):
     """One object of the bucket, enriched with business context."""
 
     key: str
-    kind: str  # website_video | website_thumbnail | website_background | presenter | support | prospect_photo | assistant_photo | manual | other
+    kind: str  # website_video | website_thumbnail | website_background | presenter | support | prospect_photo | assistant_photo | assistant_document | manual | other
     size: int
     last_modified: datetime | None = None
     url: str
@@ -202,6 +202,8 @@ def _classify(key: str) -> str:
         return "prospect_photo"
     if key.startswith(r2_storage.IMAGES_ASSISTANT_PHOTOS_PREFIX):
         return "assistant_photo"
+    if key.startswith(r2_storage.DOCUMENTS_ASSISTANT_PREFIX):
+        return "assistant_document"
     if key.startswith(r2_storage.MANUAL_UPLOADS_PREFIX):
         return "manual"
     return "other"

@@ -205,6 +205,14 @@
       @back="drawerStack.back()"
     />
 
+    <UiAssistantSourcesDrawer
+      :open="assistantSourcesEntry !== null"
+      :assistant="assistantSourcesEntry?.assistant ?? null"
+      :show-back="hasPrevious"
+      @close="drawerStack.closeAll()"
+      @back="drawerStack.back()"
+    />
+
     <UiFinalizeSaleDrawer
       :open="finalizeSaleEntry !== null"
       :order="finalizeSaleEntry?.order ?? null"
@@ -232,6 +240,7 @@ import type { ComputedRef, Ref } from 'vue'
 import type {
   AddProspectDrawerEntry,
   AssistantConversationsDrawerEntry,
+  AssistantSourcesDrawerEntry,
   AssistantSubscriptionDrawerEntry,
   CampaignProspectsPickerDrawerEntry,
   CoverageFiltersDrawerEntry,
@@ -416,6 +425,12 @@ const assistantSubscriptionEntry: ComputedRef<AssistantSubscriptionDrawerEntry |
 const assistantConversationsEntry: ComputedRef<AssistantConversationsDrawerEntry | null> = computed(
   (): AssistantConversationsDrawerEntry | null =>
     drawerStack.topEntry?.kind === 'assistant-conversations' ? drawerStack.topEntry : null,
+)
+
+/** Top entry narrowed to the assistant sources drawer. */
+const assistantSourcesEntry: ComputedRef<AssistantSourcesDrawerEntry | null> = computed(
+  (): AssistantSourcesDrawerEntry | null =>
+    drawerStack.topEntry?.kind === 'assistant-sources' ? drawerStack.topEntry : null,
 )
 
 /** Top entry narrowed to the sale finalization drawer. */
