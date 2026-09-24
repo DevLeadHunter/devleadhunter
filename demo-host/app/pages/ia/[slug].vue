@@ -44,8 +44,8 @@
           </span>
           <p class="ia__value-title">Un devis sur photo</p>
           <p class="ia__value-text">
-            Le client envoie une photo : {{ assistant.assistant_name }} décrit le problème, pose les bonnes questions et
-            vous transmet la demande de devis.
+            Le client envoie une photo&nbsp;: {{ assistant.assistant_name }} décrit le problème, pose les bonnes
+            questions et vous transmet la demande de devis.
           </p>
         </li>
         <li class="ia__value">
@@ -67,7 +67,7 @@
         <p class="ia__estimate-kicker">Estimation · chez vous, chaque mois</p>
         <p class="ia__estimate-figure">≈&nbsp;{{ closedHours.estimated_requests }}&nbsp;demandes</p>
         <p class="ia__estimate-text">
-          arrivent quand c'est fermé : {{ assistant.assistant_name }} y répond. Le calcul :
+          arrivent quand c'est fermé&nbsp;: {{ assistant.assistant_name }} y répond. Le calcul&nbsp;:
           {{ closedHours.monthly_requests }} demandes par mois (notre hypothèse pour {{ closedHours.trade_label }}) ×
           {{ closedHours.closed_share_pct }}&nbsp;%, la part du temps fermé entre 7&nbsp;h et 22&nbsp;h, quand vos
           clients cherchent, d'après vos horaires Google ({{ closedHours.open_hours_per_week }}&nbsp;h d'ouverture par
@@ -80,7 +80,9 @@
         >, installation comprise, sans engagement, premier mois satisfait ou remboursé.
       </p>
 
-      <p class="ia__cue">Essayez : posez une question, envoyez une photo, demandez un rendez-vous, en bas à droite →</p>
+      <p class="ia__cue">
+        Essayez&nbsp;: posez une question, envoyez une photo, demandez un rendez-vous, en bas à droite →
+      </p>
 
       <p v-if="ownerNameLabel" class="ia__signature">
         Assistant réalisé pour {{ shortBusinessName }} par {{ ownerNameLabel }}, développeur web
