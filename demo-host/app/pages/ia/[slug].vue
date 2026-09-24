@@ -39,7 +39,9 @@
             </svg>
           </span>
           <p class="ia__value-title">Dans la langue du visiteur</p>
-          <p class="ia__value-text">Il détecte la langue et répond en {{ languagesLabel }}.</p>
+          <p class="ia__value-text">
+            {{ capitalizedSubjectPronoun }} détecte la langue et répond en {{ languagesLabel }}.
+          </p>
         </li>
         <li class="ia__value">
           <span class="ia__value-icon" aria-hidden="true">
@@ -49,7 +51,9 @@
             </svg>
           </span>
           <p class="ia__value-title">Capte vos clients</p>
-          <p class="ia__value-text">Il note leurs coordonnées et leur besoin, et vous les recevez aussitôt.</p>
+          <p class="ia__value-text">
+            {{ capitalizedSubjectPronoun }} note leurs coordonnées et leur besoin, et vous les recevez aussitôt.
+          </p>
         </li>
       </ul>
 
@@ -79,6 +83,7 @@ import type { ComputedRef } from 'vue'
 import { computed, onMounted } from 'vue'
 import type { AiAssistantConfig } from '~/types/AiAssistant'
 import { DemoBeaconUtils } from '~/utils/DemoBeaconUtils'
+import { AssistantPersonaUtils } from '~/utils/AssistantPersonaUtils'
 import { useDemoTracking } from '~/composables/useDemoTracking'
 
 const route: ReturnType<typeof useRoute> = useRoute()
@@ -124,6 +129,10 @@ const shortBusinessName: ComputedRef<string> = computed((): string => {
 
 /** Owner name for the signature line (empty when the owner set no name). */
 const ownerNameLabel: ComputedRef<string> = computed((): string => (assistant.value?.owner_name ?? '').trim())
+
+const capitalizedSubjectPronoun: ComputedRef<string> = computed((): string =>
+  AssistantPersonaUtils.capitalizedSubjectPronoun(assistant.value?.assistant_gender),
+)
 
 /** Bind the business's own accent colour to the page (falls back to the editorial gold). */
 const accentStyle: ComputedRef<Record<string, string>> = computed((): Record<string, string> => ({

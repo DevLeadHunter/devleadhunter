@@ -14,6 +14,7 @@ from models.demo_site import DemoSite
 from models.prospect_db import ProspectDB
 from models.prospect_enrichment import ProspectEnrichment
 from services.decision_maker import build_greeting
+from services.french_date_formatter import FrenchDateFormatter
 from services.pricing_service import PricingService
 from services.trade_normalizer import TradeNormalizer
 
@@ -46,21 +47,6 @@ class EmailVariables:
     PRICE = "prix"
     PRICE_ASSISTANT = "prix_assistant"
     EXPIRY_DATE = "date_expiration"
-
-    _FRENCH_MONTHS: tuple[str, ...] = (
-        "janvier",
-        "février",
-        "mars",
-        "avril",
-        "mai",
-        "juin",
-        "juillet",
-        "août",
-        "septembre",
-        "octobre",
-        "novembre",
-        "décembre",
-    )
 
     @staticmethod
     def build_video_thumbnail_html(video_link: str, thumbnail_url: str) -> str:
@@ -146,10 +132,9 @@ class EmailVariables:
             moment: The demo expiry instant.
 
         Returns:
-            The date as "12 octobre" — month names are hardcoded because the
-            server locale is not French.
+            The date as "12 octobre".
         """
-        return f"{moment.day} {EmailVariables._FRENCH_MONTHS[moment.month - 1]}"
+        return FrenchDateFormatter.day_month(moment)
 
     @staticmethod
     def _demo_slug(demo_link: str) -> str:
