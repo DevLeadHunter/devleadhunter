@@ -167,9 +167,19 @@
             <UIcon name="i-lucide-layout-template" class="h-3 w-3" />
             Site annuaire
           </span>
-          <span v-else-if="prospect.website" class="app-badge">
-            <UIcon name="i-lucide-circle-check" class="h-3 w-3" />
-            Oui
+          <span v-else-if="prospect.website" class="inline-flex flex-wrap items-center gap-1">
+            <span class="app-badge">
+              <UIcon name="i-lucide-circle-check" class="h-3 w-3" />
+              Oui
+            </span>
+            <span
+              v-if="ProspectWebsite.isChatEquipped(prospect)"
+              class="app-badge app-badge--engaged"
+              :title="`Déjà équipé d'un chat : ${ProspectWebsite.chatProviderLabels(prospect).join(', ')}`"
+            >
+              <UIcon name="i-lucide-message-circle" class="h-3 w-3" />
+              Chat
+            </span>
           </span>
           <span v-else class="app-badge app-badge--progress">
             <UIcon name="i-lucide-sparkle" class="h-3 w-3" />
@@ -267,6 +277,7 @@ import { computed, onBeforeUnmount, ref } from 'vue'
 import { useDragToReorder } from '~/composables/useDragToReorder'
 import { useUserStore } from '~/stores/user'
 import { ProspectCountries } from '~/utils/prospectCountries'
+import { ProspectWebsite } from '~/utils/prospectWebsite'
 
 /** Paginated prospect rows with per-row and select-all checkboxes. */
 const props: UiProspectTableProps = defineProps({

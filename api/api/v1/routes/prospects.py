@@ -25,6 +25,7 @@ from models.prospect import (
 from models.prospect_db import ProspectDB
 from models.search import ProspectSearchRequest, ProspectSearchResponse
 from models.user import User
+from schemas.sourcing import WebsiteEquipmentScanRequest, WebsiteEquipmentScanResponse
 from services.auth_service import require_auth
 from services.credit_service import credit_service
 from services.enrichment_service import enrichment_service
@@ -36,6 +37,7 @@ from services.prospect_enrichment_service import prospect_enrichment_service
 from services.prospect_phones import set_prospect_phones
 from services.prospect_service import prospect_service
 from services.scraper_service import scraper_service
+from services.website_equipment_service import website_equipment_service
 
 router = APIRouter(prefix="/prospects", tags=["prospects"])
 
@@ -671,3 +673,59 @@ async def lighthouse_audit(
     db.commit()
     db.refresh(row)
     return prospect_service._to_models_with_reservers(db, [row])[0]
+
+
+@router.post(
+    "/{prospect_id}/website-equipment",
+    response_model=Prospect,
+    summary="Scan the prospect's website for a chat widget and a contact form",
+    description="Read the home page (and the contact page it links to) — a chat widget means « déjà équipé »",
+)
+async def scan_website_equipment(
+    prospect_id: int,
+    current_user: User = Depends(require_auth),
+    db: Session = Depends(get_db),
+) -> Prospect:
+    """Scan one prospect's website now and persist what was found.
+
+    Raises:
+        HTTPException: 400 when there is no live website to scan, 502 when the
+            site cannot be read (offline, blocked, not HTML).
+    """
+    row = _get_visible_db_prospect(db, prospect_id, current_user)
+    _assert_not_reserved_by_other(db, current_user, row)
+    if not website_equipment_service.is_scannable(row):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Ce prospect n'a pas de site en ligne à analyser",
+        )
+    if not await website_equipment_service.refresh_prospect(db, row):
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail="Le site n'a pas pu être lu (hors ligne, protégé ou pas une page web)",
+        )
+    db.refresh(row)
+    return prospect_service._to_models_with_reservers(db, [row])[0]
+
+
+@router.post(
+    "/website-equipment/scan",
+    response_model=WebsiteEquipmentScanResponse,
+    summary="Scan several prospects' websites in the background",
+)
+async def scan_websites_equipment(
+    payload: WebsiteEquipmentScanRequest,
+    current_user: User = Depends(require_auth),
+    db: Session = Depends(get_db),
+) -> WebsiteEquipmentScanResponse:
+    """Queue a background scan for the visible prospects that have a live website."""
+    scannable_ids: list[int] = []
+    for prospect_id in dict.fromkeys(payload.prospect_ids):
+        try:
+            row = _get_visible_db_prospect(db, prospect_id, current_user)
+        except HTTPException:
+            continue
+        if website_equipment_service.is_scannable(row):
+            scannable_ids.append(row.id)
+    website_equipment_service.schedule_refresh(scannable_ids)
+    return WebsiteEquipmentScanResponse(scheduled=len(scannable_ids))

@@ -16,14 +16,19 @@ from __future__ import annotations
 import asyncio
 import logging
 from dataclasses import dataclass
+from datetime import UTC, datetime
 from typing import ClassVar
 from urllib.parse import urljoin, urlparse
 
 import httpx
 from bs4 import BeautifulSoup
 from bs4.element import Tag
+from sqlalchemy.orm import Session
 
+from core.database import SessionLocal
 from enums.chat_widget_provider import ChatWidgetProvider
+from enums.website_status import WebsiteStatus
+from models.prospect_db import ProspectDB
 from services.website_liveness_service import WebsiteLivenessService
 
 logger = logging.getLogger(__name__)
@@ -221,9 +226,14 @@ class WebsiteEquipmentDetector:
             href = str(anchor["href"]).strip()
             if not href or href.startswith(("mailto:", "tel:", "javascript:", "#")):
                 continue
-            absolute = urljoin(page_url, href).split("#", 1)[0]
-            parsed = urlparse(absolute)
-            if parsed.scheme not in ("http", "https") or cls._site_host(absolute) != page_host:
+            try:
+                absolute = urljoin(page_url, href).split("#", 1)[0]
+                parsed = urlparse(absolute)
+                is_same_site = cls._site_host(absolute) == page_host
+            except ValueError:
+                # Malformed href (e.g. a broken IPv6 literal) — just not a usable link.
+                continue
+            if parsed.scheme not in ("http", "https") or not is_same_site:
                 continue
             if absolute.rstrip("/") == page_url.split("#", 1)[0].rstrip("/"):
                 continue
@@ -265,10 +275,115 @@ class WebsiteEquipmentDetector:
 
 
 class WebsiteEquipmentService:
-    """Fetches prospects' websites and reports the contact tooling they already have."""
+    """Fetches prospects' websites and records the contact tooling they already have."""
 
     REQUEST_TIMEOUT_SECONDS = 8.0
     MAX_CONCURRENT_INSPECTIONS = 6
+
+    # Verdicts of the liveness check that leave nothing to scan.
+    _UNSCANNABLE_STATUSES: ClassVar[frozenset[str]] = frozenset(
+        {WebsiteStatus.DEAD.value, WebsiteStatus.PLACEHOLDER.value}
+    )
+
+    def __init__(self) -> None:
+        # Strong references: a fire-and-forget task nobody holds can be garbage-collected mid-run.
+        self._background_tasks: set[asyncio.Task[None]] = set()
+
+    @classmethod
+    def is_scannable(cls, prospect: ProspectDB) -> bool:
+        """
+        Whether the prospect has a website worth scanning.
+
+        Args:
+            prospect: The prospect row.
+
+        Returns:
+            True for a URL not already known dead or a directory mini-site.
+        """
+        if not prospect.website or not prospect.website.strip():
+            return False
+        return prospect.website_status not in cls._UNSCANNABLE_STATUSES
+
+    @staticmethod
+    def to_snapshot(equipment: WebsiteEquipment) -> dict[str, list[str] | bool]:
+        """
+        Serialize findings for the ``prospects.website_equipment_json`` column.
+
+        Args:
+            equipment: Scan findings.
+
+        Returns:
+            ``{"chat_providers": [...], "has_contact_form": bool}``.
+        """
+        return {
+            "chat_providers": [provider.value for provider in equipment.chat_providers],
+            "has_contact_form": equipment.has_contact_form,
+        }
+
+    async def refresh_prospect(self, db: Session, prospect: ProspectDB) -> bool:
+        """
+        Scan one prospect's website now and store what was found.
+
+        Args:
+            db: Active database session (committed on success).
+            prospect: A prospect with a scannable website.
+
+        Returns:
+            False when the site could not be read — the previous result is kept.
+        """
+        equipment = await self.inspect(prospect.website)
+        if equipment is None:
+            return False
+        prospect.website_equipment_json = self.to_snapshot(equipment)
+        prospect.website_equipment_at = datetime.now(UTC)
+        db.commit()
+        return True
+
+    def schedule_refresh(self, prospect_ids: list[int]) -> None:
+        """
+        Scan these prospects' websites in the background, without blocking the caller.
+
+        Prospects without a scannable website are skipped at run time.
+
+        Args:
+            prospect_ids: Prospects to scan (typically those a search just saved).
+        """
+        if not prospect_ids:
+            return
+        task = asyncio.create_task(self._refresh_in_background(list(prospect_ids)))
+        self._background_tasks.add(task)
+        task.add_done_callback(self._background_tasks.discard)
+
+    async def _refresh_in_background(self, prospect_ids: list[int]) -> None:
+        """Scan a batch on fresh sessions — none is held open while the sites are fetched."""
+        db = SessionLocal()
+        try:
+            rows = db.query(ProspectDB).filter(ProspectDB.id.in_(prospect_ids)).all()
+            website_by_id = {row.id: row.website for row in rows if self.is_scannable(row)}
+        finally:
+            db.close()
+        if not website_by_id:
+            return
+
+        findings = await self.inspect_many([website for website in website_by_id.values() if website])
+
+        db = SessionLocal()
+        try:
+            scanned_at = datetime.now(UTC)
+            for row in db.query(ProspectDB).filter(ProspectDB.id.in_(list(website_by_id))).all():
+                website = website_by_id[row.id]
+                equipment = findings.get(website) if website else None
+                # Skip unreadable sites, and rows whose URL was edited while the scan ran.
+                if equipment is None or row.website != website:
+                    continue
+                row.website_equipment_json = self.to_snapshot(equipment)
+                row.website_equipment_at = scanned_at
+            db.commit()
+        except Exception:
+            logger.exception("Website equipment scan could not be saved for %d prospect(s)", len(website_by_id))
+            db.rollback()
+        finally:
+            db.close()
 
     async def inspect_many(self, websites: list[str]) -> dict[str, WebsiteEquipment | None]:
         """
@@ -284,7 +399,12 @@ class WebsiteEquipmentService:
 
         async def bounded(website: str) -> WebsiteEquipment | None:
             async with semaphore:
-                return await self.inspect(website)
+                try:
+                    return await self.inspect(website)
+                except Exception:
+                    # One odd site must not sink the whole batch.
+                    logger.warning("Website equipment scan failed for %s", website, exc_info=True)
+                    return None
 
         distinct = list(dict.fromkeys(websites))
         results = await asyncio.gather(*(bounded(website) for website in distinct))
@@ -342,7 +462,7 @@ class WebsiteEquipmentService:
         """
         try:
             response = await client.get(url)
-        except httpx.HTTPError as exc:
+        except (httpx.HTTPError, httpx.InvalidURL, ValueError) as exc:
             logger.debug("Website equipment fetch failed for %s: %s", url, exc)
             return None
         content_type = response.headers.get("content-type", "").lower()

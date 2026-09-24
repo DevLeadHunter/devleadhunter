@@ -168,6 +168,16 @@ class ProspectPhonesUpdate(BaseModel):
     )
 
 
+class WebsiteEquipmentSnapshot(BaseModel):
+    """Contact tooling found on the prospect's website at the last scan."""
+
+    chat_providers: list[str] = Field(
+        default_factory=list,
+        description="Chat vendors whose widget is installed (ChatWidgetProvider values) — non-empty = « déjà équipé »",
+    )
+    has_contact_form: bool = Field(False, description="The site offers a contact form")
+
+
 class Prospect(ProspectBase):
     """Complete prospect model with ID and ownership metadata."""
 
@@ -211,6 +221,10 @@ class Prospect(ProspectBase):
     reserved_at: datetime | None = Field(None, description="When the reservation was made")
     lighthouse_json: dict | None = Field(None, description="Latest Lighthouse audit of the prospect's existing website")
     lighthouse_at: datetime | None = Field(None, description="When the audit was run")
+    website_equipment_json: WebsiteEquipmentSnapshot | None = Field(
+        None, description="Chat widget and contact form found on the website (None = never scanned)"
+    )
+    website_equipment_at: datetime | None = Field(None, description="When the website was last scanned")
     has_pending_contact_proposal: bool = Field(
         False,
         description="A decision-maker name awaits confirm/reject in the drawer (resolved server-side)",

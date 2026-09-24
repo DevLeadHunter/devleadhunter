@@ -95,6 +95,10 @@ class ProspectDB(Base):
     # feeds the "site améliorable → proposer une refonte" pitch.
     lighthouse_json: Mapped[dict | None] = mapped_column(JSON, nullable=True)
     lighthouse_at: Mapped[datetime | None] = mapped_column(nullable=True)
+    # Contact tooling found on the live website ({chat_providers: [...], has_contact_form}) —
+    # a chat widget means « déjà équipé » for the Réceptionniste IA pitch. NULL = never scanned.
+    website_equipment_json: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+    website_equipment_at: Mapped[datetime | None] = mapped_column(nullable=True)
     created_at: Mapped[datetime] = mapped_column(default=datetime.utcnow, nullable=False)
     updated_at: Mapped[datetime | None] = mapped_column(onupdate=datetime.utcnow, nullable=True)
 

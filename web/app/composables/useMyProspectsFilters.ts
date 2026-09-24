@@ -7,7 +7,7 @@ import { useModuleStore } from '~/stores/moduleStore'
 /** localStorage key persisting the « Mes prospects » list filters (site module; others get a suffix). */
 const MY_PROSPECTS_FILTERS_STORAGE_KEY: string = 'dlh-my-prospects-filters'
 
-const WEBSITE_FILTER_VALUES: ProspectWebsiteFilter[] = ['all', 'yes', 'no', 'dead', 'improvable']
+const WEBSITE_FILTER_VALUES: ProspectWebsiteFilter[] = ['all', 'yes', 'no', 'dead', 'improvable', 'chat', 'no-chat']
 
 export type TemperatureFilter = 'all' | 'hot' | 'warm' | 'cold'
 const TEMPERATURE_FILTER_VALUES: TemperatureFilter[] = ['all', 'hot', 'warm', 'cold']

@@ -13,6 +13,7 @@ from uuid import uuid4
 
 from core.database import SessionLocal
 from enums.country import normalize_country
+from enums.website_status import WebsiteStatus
 from models.prospect import Prospect, ProspectCreate
 from models.scraping_job import JobStatus, ScrapingJob, ScrapingJobCreate
 from services.enrichment_service import enrichment_service
@@ -22,6 +23,7 @@ from services.prospect_service import prospect_service
 from services.scrape_progress import ScrapeProgressReporter
 from services.scraper_service import scraper_service
 from services.scraping_job_stream_hub import scraping_job_stream_hub
+from services.website_equipment_service import website_equipment_service
 
 logger = logging.getLogger(__name__)
 
@@ -94,6 +96,8 @@ class ScrapingJobService:
         saved_count = 0
         skipped_count = 0
         seen_keys: set[tuple[str, str]] = set()
+        # Saved prospects with a live site: scanned for a chat widget / contact form once the job ends.
+        live_site_ids: list[int] = []
         start_time = time.time()
         stop_scraping = False
         state_lock = threading.Lock()
@@ -196,6 +200,8 @@ class ScrapingJobService:
             else:
                 # Decision-maker name resolves in the background while the job keeps scraping.
                 enrichment_service.schedule_contact_resolution([created.id])
+                if created.website_status == WebsiteStatus.LIVE.value:
+                    live_site_ids.append(created.id)
                 job.progress.current = saved_count
                 job.progress.total = max(job.progress.total, save_cap)
                 job.progress.percentage = min(100.0, (saved_count / save_cap) * 100)
@@ -317,6 +323,8 @@ class ScrapingJobService:
                 {"type": "error", "message": str(exc)},
             )
         finally:
+            # Runs on completion, cancellation and failure alike: whatever was saved gets scanned.
+            website_equipment_service.schedule_refresh(live_site_ids)
             db.close()
             self._running_tasks.pop(job_id, None)
             self._cancel_events.pop(job_id, None)
