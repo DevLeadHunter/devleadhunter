@@ -501,7 +501,7 @@
           </div>
 
           <div class="flex flex-col gap-1.5 border-t border-[var(--app-line-soft)] pt-3">
-            <UiSwitch id="assistant-eu-only" v-model="editForm.eu_only" label="IA en Europe uniquement (Mistral)" />
+            <UiSwitch id="assistant-eu-only" v-model="editForm.eu_only" label="IA hébergée en Europe (Mistral)" />
             <span class="text-muted text-xs leading-relaxed">
               Les échanges de cet assistant ne partent jamais chez un autre fournisseur, même en cas de panne de Mistral
               (l'assistant propose alors de laisser ses coordonnées).
@@ -612,7 +612,7 @@ const REQUEST_TYPE_BADGES: Record<AiAssistantRequestType, string> = {
 }
 
 /** Starts of the API refusals worth showing as they are when saving the customization. */
-const SAVE_REFUSALS: string[] = ["Numéro d'alerte", '« EU only »']
+const SAVE_REFUSALS: string[] = ["Numéro d'alerte", '« IA hébergée en Europe »']
 
 /** Request types the owner can have texted at once, the ones that cannot wait first. */
 const ALERT_TYPE_OPTIONS: SelectFieldOption<AiAssistantRequestType>[] = [
@@ -1044,7 +1044,7 @@ async function saveEdit(): Promise<void> {
     editing.value = null
     toast.success('Assistant personnalisé.')
   } catch (error: unknown) {
-    // The API explains what it refused (alert number, « EU only » without Mistral); anything else stays generic.
+    // The API explains what it refused (alert number, Europe-hosted AI without Mistral); anything else stays generic.
     const detail: string = error instanceof Error ? error.message : ''
     const explained: boolean = SAVE_REFUSALS.some((prefix: string): boolean => detail.startsWith(prefix))
     toast.error(explained ? detail : 'Enregistrement impossible pour le moment.')
