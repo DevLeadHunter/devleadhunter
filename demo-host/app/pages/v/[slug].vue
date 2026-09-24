@@ -144,6 +144,7 @@
 import type { DemoVideoEventCapture } from '~/types/demoVideoTracking'
 import type { ComputedRef, Ref } from 'vue'
 import type { DemoSitePublic } from '~/types/demoSite'
+import { BusinessNameUtils } from '~/utils/BusinessNameUtils'
 import { DemoBeaconUtils } from '~/utils/DemoBeaconUtils'
 
 const FALLBACK_ACCENT_COLOR: string = '#b45309'
@@ -196,11 +197,9 @@ const posterSrc: ComputedRef<string> = computed(
     `${config.public.apiBase}/api/v1/demo-sites/public/${slug.value}/video-thumbnail.jpg`,
 )
 
-/** Short business name: the part before the descriptive « - » of the Maps listing. */
-const shortBusinessName: ComputedRef<string> = computed((): string => {
-  const name: string = site.value?.business_name ?? ''
-  return name.split(/\s+[-–—]\s+/)[0]?.trim() || name
-})
+const shortBusinessName: ComputedRef<string> = computed((): string =>
+  BusinessNameUtils.short(site.value?.business_name ?? ''),
+)
 
 const prospectCity: ComputedRef<string> = computed((): string => {
   const city: unknown = site.value?.content_json?.city

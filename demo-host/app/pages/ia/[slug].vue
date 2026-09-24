@@ -106,7 +106,9 @@ import type { ComputedRef } from 'vue'
 import { computed, onMounted } from 'vue'
 import type { AiAssistantClosedHours, AiAssistantConfig } from '~/types/AiAssistant'
 import { DemoBeaconUtils } from '~/utils/DemoBeaconUtils'
+import { AssistantAccentUtils } from '~/utils/AssistantAccentUtils'
 import { AssistantPersonaUtils } from '~/utils/AssistantPersonaUtils'
+import { BusinessNameUtils } from '~/utils/BusinessNameUtils'
 import { useDemoTracking } from '~/composables/useDemoTracking'
 
 const route: ReturnType<typeof useRoute> = useRoute()
@@ -144,11 +146,9 @@ const languagesLabel: ComputedRef<string> = computed((): string => {
   return `${names.slice(0, -1).join(', ')} et ${names[names.length - 1]}`
 })
 
-/** Short business name: the part before the descriptive « - » of the Maps listing. */
-const shortBusinessName: ComputedRef<string> = computed((): string => {
-  const name: string = assistant.value?.business_name ?? ''
-  return name.split(/\s+[-–—]\s+/)[0]?.trim() || name
-})
+const shortBusinessName: ComputedRef<string> = computed((): string =>
+  BusinessNameUtils.short(assistant.value?.business_name ?? ''),
+)
 
 /** Owner name for the signature line (empty when the owner set no name). */
 const ownerNameLabel: ComputedRef<string> = computed((): string => (assistant.value?.owner_name ?? '').trim())
@@ -196,7 +196,7 @@ const closedHoursMonth: ComputedRef<string> = computed(
 
 /** Bind the business's own accent colour to the page (falls back to the editorial gold). */
 const accentStyle: ComputedRef<Record<string, string>> = computed((): Record<string, string> => ({
-  '--a-accent': assistant.value?.accent_color || '#a9793f',
+  '--a-accent': assistant.value?.accent_color || AssistantAccentUtils.FALLBACK_ACCENT,
 }))
 
 const { init: initTracking }: ReturnType<typeof useDemoTracking> = useDemoTracking()
