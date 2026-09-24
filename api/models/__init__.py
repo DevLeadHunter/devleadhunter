@@ -5,7 +5,9 @@ Models package for Prospect Tool API.
 from models.acquisition_run import AcquisitionRun
 from models.acquisition_run_item import AcquisitionRunItem
 from models.ai_assistant import AiAssistant
+from models.ai_assistant_conversation import AiAssistantConversation
 from models.ai_assistant_lead import AiAssistantLead
+from models.ai_assistant_message import AiAssistantMessage
 from models.ai_assistant_subscription import AiAssistantSubscription
 from models.campaign import Campaign, CampaignStatus
 from models.campaign_follow_up import CampaignFollowUp

@@ -86,6 +86,14 @@
                 <UIcon name="i-lucide-user-plus" class="h-3 w-3" />
                 {{ leadCountFor(assistant.id) }} capté{{ leadCountFor(assistant.id) > 1 ? 's' : '' }}
               </span>
+              <span
+                v-if="assistant.conversations_7d > 0"
+                class="inline-flex items-center gap-1 text-[11px] font-medium text-[var(--app-ink-soft)] tabular-nums"
+                :class="{ 'ml-auto': leadCountFor(assistant.id) === 0 }"
+              >
+                <UIcon name="i-lucide-messages-square" class="h-3 w-3" />
+                {{ assistant.conversations_7d }} conv. / 7 j
+              </span>
             </div>
 
             <div class="flex flex-wrap items-center gap-2">
@@ -98,6 +106,10 @@
                 <UIcon name="i-lucide-external-link" class="mr-1.5 h-3.5 w-3.5" />
                 Voir la démo
               </a>
+              <button type="button" class="btn-secondary h-8 text-xs" @click="openConversations(assistant)">
+                <UIcon name="i-lucide-messages-square" class="mr-1.5 h-3.5 w-3.5" />
+                Conversations
+              </button>
               <button type="button" class="btn-secondary h-8 text-xs" @click="copySnippet(assistant)">
                 <UIcon name="i-lucide-code" class="mr-1.5 h-3.5 w-3.5" />
                 Copier le script
@@ -463,6 +475,14 @@ function leadCountFor(assistantId: number): number {
  */
 function demoUrlWithInternal(demoUrl: string): string {
   return demoUrl.includes('?') ? `${demoUrl}&internal=1` : `${demoUrl}?internal=1`
+}
+
+/**
+ * Open the journal of what this assistant's visitors asked (the 20 latest conversations).
+ * @param assistant - The assistant whose conversations to read.
+ */
+function openConversations(assistant: AiAssistantSummary): void {
+  drawerStack.push({ kind: 'assistant-conversations', assistant })
 }
 
 /**

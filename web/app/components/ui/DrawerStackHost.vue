@@ -197,6 +197,14 @@
       @updated="drawerStack.notifySubscriptionUpdated"
     />
 
+    <UiAssistantConversationsDrawer
+      :open="assistantConversationsEntry !== null"
+      :assistant="assistantConversationsEntry?.assistant ?? null"
+      :show-back="hasPrevious"
+      @close="drawerStack.closeAll()"
+      @back="drawerStack.back()"
+    />
+
     <UiFinalizeSaleDrawer
       :open="finalizeSaleEntry !== null"
       :order="finalizeSaleEntry?.order ?? null"
@@ -223,6 +231,7 @@ import type { UseToastReturn } from '~/types/Composables'
 import type { ComputedRef, Ref } from 'vue'
 import type {
   AddProspectDrawerEntry,
+  AssistantConversationsDrawerEntry,
   AssistantSubscriptionDrawerEntry,
   CampaignProspectsPickerDrawerEntry,
   CoverageFiltersDrawerEntry,
@@ -401,6 +410,12 @@ const orderEntry: ComputedRef<OrderDrawerEntry | null> = computed((): OrderDrawe
 const assistantSubscriptionEntry: ComputedRef<AssistantSubscriptionDrawerEntry | null> = computed(
   (): AssistantSubscriptionDrawerEntry | null =>
     drawerStack.topEntry?.kind === 'assistant-subscription' ? drawerStack.topEntry : null,
+)
+
+/** Top entry narrowed to the assistant-conversations journal drawer. */
+const assistantConversationsEntry: ComputedRef<AssistantConversationsDrawerEntry | null> = computed(
+  (): AssistantConversationsDrawerEntry | null =>
+    drawerStack.topEntry?.kind === 'assistant-conversations' ? drawerStack.topEntry : null,
 )
 
 /** Top entry narrowed to the sale finalization drawer. */

@@ -1,5 +1,5 @@
 import type { EmailLog, EmailTemplate, Prospect, User } from '~/types'
-import type { AssistantSubscription } from '~/types/AiAssistant'
+import type { AiAssistantSummary, AssistantSubscription } from '~/types/AiAssistant'
 import type { Order } from '~/services/ordersService'
 import type { SmsMessage } from '~/services/smsService'
 import type { SearchProspectsPrefill } from '~/types/SearchProspectsDrawer'
@@ -151,6 +151,12 @@ export type AssistantSubscriptionDrawerEntry = {
   subscription: AssistantSubscription
 }
 
+/** The read-only journal of what an assistant's visitors asked. */
+export type AssistantConversationsDrawerEntry = {
+  kind: 'assistant-conversations'
+  assistant: AiAssistantSummary
+}
+
 /** A zone of the coverage map (one city, or a region's covered cities). */
 export type CoverageZone = {
   kind: 'city' | 'region'
@@ -192,6 +198,7 @@ export type DrawerStackEntry =
   | OrderDrawerEntry
   | FinalizeSaleDrawerEntry
   | AssistantSubscriptionDrawerEntry
+  | AssistantConversationsDrawerEntry
   | UserFormDrawerEntry
 
 /** Cross-page notice describing the latest prospect mutation done from a drawer. */

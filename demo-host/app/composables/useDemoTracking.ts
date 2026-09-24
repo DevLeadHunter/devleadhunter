@@ -262,9 +262,9 @@ export function useDemoTracking(): {
     if (!import.meta.client || initialized) return
     // The owner's own visit (?internal=1 / ?_edit=1) must not track or notify.
     if (DemoBeaconUtils.isInternalVisit()) return
-    // Embedded rendering = the dashboard's scaled card preview, never a prospect
-    // visit — tracking it would pollute the lead scoring with fake activity.
-    if (window.self !== window.top) return
+    // An embedded site = the dashboard's scaled card preview, never a prospect visit — tracking it
+    // would pollute the lead scoring. An embedded assistant is the real widget on a client's page.
+    if (window.self !== window.top && surface !== 'assistant') return
     const key: string = String(config.public.posthogProjectApiKey ?? '')
     // Never track a delivered/sold site, and skip when PostHog is not configured.
     if (!key || status !== 'active') return
