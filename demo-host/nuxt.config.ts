@@ -20,18 +20,9 @@ export default defineNuxtConfig({
   ],
 
   compatibilityDate: '2024-07-11',
-  css: ['~/assets/css/main.css'],
+  css: ['~/assets/css/fonts.css', '~/assets/css/main.css'],
   vite: {
     plugins: [tailwindcss()],
-  },
-  app: {
-    head: {
-      link: [
-        { rel: 'preconnect', href: 'https://fonts.googleapis.com' },
-        { rel: 'preconnect', href: 'https://fonts.gstatic.com', crossorigin: '' },
-        // No global font stylesheet: each template layer declares its own fonts (root `useHead`).
-      ],
-    },
   },
   runtimeConfig: {
     public: {

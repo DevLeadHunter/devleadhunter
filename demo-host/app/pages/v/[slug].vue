@@ -294,15 +294,6 @@ function trackDemoLinkClick(placement: 'page' | 'endcard'): void {
   capture('demo_video_cta_click', { href: demoHref.value, placement })
 }
 
-useHead({
-  link: [
-    {
-      rel: 'stylesheet',
-      href: 'https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,600;1,9..144,400&family=Inter:wght@400;500;600&display=swap',
-    },
-  ],
-})
-
 useSeoMeta({
   title: () => (site.value ? `${site.value.business_name} — votre site en vidéo` : 'Votre site en vidéo'),
   robots: 'noindex',

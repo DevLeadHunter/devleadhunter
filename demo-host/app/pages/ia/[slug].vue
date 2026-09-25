@@ -70,10 +70,8 @@
         <a :href="subscribeUrl" class="ia__cta">Je garde {{ assistant.assistant_name }}, {{ priceLabel }} par mois</a>
         <p class="ia__cta-note">
           Sans engagement, mise en place incluse, premier mois satisfait ou remboursé.<br />
-          {{ assistant.assistant_name }} se présente toujours comme assistant{{ femininSuffix }} virtuel{{
-            femininSuffix
-          }}
-          et ne donne jamais un prix à votre place.
+          {{ assistant.assistant_name }} se présente toujours comme réceptionniste IA et ne donne jamais un prix à votre
+          place.
         </p>
       </div>
 
@@ -230,12 +228,6 @@ onMounted((): void => {
 
 useHead({
   title: computed((): string => assistant.value?.business_name ?? 'Assistant'),
-  link: [
-    {
-      rel: 'stylesheet',
-      href: 'https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,600;1,9..144,400&family=Inter:wght@400;500;600&display=swap',
-    },
-  ],
 })
 </script>
 

@@ -50,9 +50,16 @@
               <span class="text-xs font-medium text-[var(--app-ink)]">Entreprise affichée</span>
               <input v-model="form.business_name" type="text" class="app-input" maxlength="255" required />
             </label>
+            <div class="flex flex-col gap-1.5">
+              <span class="text-xs font-medium text-[var(--app-ink)]">Réceptionniste</span>
+              <AssistantPersonaPicker v-model="form.assistant_name" :portrait-base-url="portraitBaseUrl" />
+            </div>
             <label class="flex flex-col gap-1">
-              <span class="text-xs font-medium text-[var(--app-ink)]">Prénom de l'assistant</span>
+              <span class="text-xs font-medium text-[var(--app-ink)]">Prénom affiché</span>
               <input v-model="form.assistant_name" type="text" class="app-input" maxlength="64" placeholder="Sofia" />
+              <span class="text-[11px] text-[var(--app-ink-soft)]">
+                Un autre prénom garde le visage de l'un des six, selon son genre.
+              </span>
             </label>
             <label class="flex flex-col gap-1">
               <span class="text-xs font-medium text-[var(--app-ink)]">Ton</span>
@@ -192,8 +199,8 @@
 </template>
 
 <script lang="ts" setup>
-import type { EmitFn, PropType, Ref } from 'vue'
-import { ref, watch } from 'vue'
+import type { ComputedRef, EmitFn, PropType, Ref } from 'vue'
+import { computed, ref, watch } from 'vue'
 import type {
   AiAssistantAlertSettings,
   AiAssistantEditForm,
@@ -204,6 +211,7 @@ import type {
 import type { SelectFieldOption } from '~/types/SelectField'
 import type { UseToastReturn } from '~/types/Composables'
 import type { UiAssistantSettingsDrawerEmits, UiAssistantSettingsDrawerProps } from '~/types/UiAssistantSettingsDrawer'
+import AssistantPersonaPicker from '~/components/ai-assistants/AssistantPersonaPicker.vue'
 import { AiAssistantService } from '~/services/aiAssistantService'
 import { useToast } from '~/composables/useToast'
 
@@ -258,6 +266,15 @@ const LANGUAGE_OPTIONS: SelectFieldOption<string>[] = [
 
 const form: Ref<AiAssistantEditForm> = ref(emptyForm())
 const isSaving: Ref<boolean> = ref(false)
+
+/** The demo host serving the portraits, read off the assistant's demo link (empty when it is not a URL). */
+const portraitBaseUrl: ComputedRef<string> = computed((): string => {
+  try {
+    return new URL(props.assistant?.demo_url ?? '').origin
+  } catch {
+    return ''
+  }
+})
 
 /**
  * A blank form, before an assistant fills it.
