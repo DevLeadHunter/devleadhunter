@@ -26,3 +26,5 @@ class AssistantLlmOutage(str, Enum):
     NO_ANSWER = "no_answer"
     EU_ONLY_NO_ANSWER = "eu_only_no_answer"
     EU_ONLY_NO_KEY = "eu_only_no_key"
+    # Mistral refused our request itself (a wrong model name, a bad parameter): not an outage, a configuration to fix.
+    REJECTED = "rejected"
