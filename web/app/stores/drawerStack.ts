@@ -2,13 +2,14 @@ import { defineStore, skipHydrate } from 'pinia'
 import type { ComputedRef, Ref } from 'vue'
 import { computed, ref, watch } from 'vue'
 import type {
+  AssistantMutationNotice,
   AssistantSubscriptionMutationNotice,
   DrawerStackEntry,
   OrderMutationNotice,
   ProspectMutationNotice,
 } from '~/types/DrawerStack'
 import type { Order } from '~/services/ordersService'
-import type { AssistantSubscription } from '~/types/AiAssistant'
+import type { AiAssistantSummary, AssistantSubscription } from '~/types/AiAssistant'
 import type { EmailTemplate, Prospect } from '~/types'
 
 /** sessionStorage key persisting the drawer stack across page reloads. */
@@ -37,6 +38,8 @@ export const useDrawerStackStore = defineStore('drawerStack', () => {
   const orderMutationCounter: Ref<number> = ref(0)
   const lastSubscriptionMutation: Ref<AssistantSubscriptionMutationNotice | null> = ref(null)
   const subscriptionMutationCounter: Ref<number> = ref(0)
+  const lastAssistantMutation: Ref<AssistantMutationNotice | null> = ref(null)
+  const assistantMutationCounter: Ref<number> = ref(0)
   const emailLogsRefreshCounter: Ref<number> = ref(0)
   const smsMessagesRefreshCounter: Ref<number> = ref(0)
   const emailTemplatesRefreshCounter: Ref<number> = ref(0)
@@ -169,6 +172,45 @@ export const useDrawerStackStore = defineStore('drawerStack', () => {
     subscriptionMutationCounter.value++
   }
 
+  /**
+   * Broadcast an assistant update: refresh the stacked entries showing it and notify pages watching
+   * `assistantMutationCounter`.
+   * @param assistant - The assistant as the API returned it.
+   */
+  function notifyAssistantUpdated(assistant: AiAssistantSummary): void {
+    stack.value = stack.value.map((entry: DrawerStackEntry): DrawerStackEntry => {
+      if (
+        (entry.kind === 'assistant-conversations' ||
+          entry.kind === 'assistant-sources' ||
+          entry.kind === 'assistant-settings') &&
+        entry.assistant.id === assistant.id
+      ) {
+        return { ...entry, assistant }
+      }
+      return entry
+    })
+    lastAssistantMutation.value = { type: 'updated', assistant }
+    assistantMutationCounter.value++
+  }
+
+  /**
+   * Broadcast an assistant deletion: drop the stacked entries showing it and notify pages watching
+   * `assistantMutationCounter`.
+   * @param assistantId - Identifier of the deleted assistant.
+   */
+  function notifyAssistantDeleted(assistantId: number): void {
+    stack.value = stack.value.filter((entry: DrawerStackEntry): boolean => {
+      const showsAssistant: boolean =
+        (entry.kind === 'assistant-conversations' ||
+          entry.kind === 'assistant-sources' ||
+          entry.kind === 'assistant-settings') &&
+        entry.assistant.id === assistantId
+      return !showsAssistant
+    })
+    lastAssistantMutation.value = { type: 'deleted', assistantId }
+    assistantMutationCounter.value++
+  }
+
   /** Signal that email logs changed (an email was sent from a drawer). */
   function bumpEmailLogsRefresh(): void {
     emailLogsRefreshCounter.value++
@@ -236,6 +278,8 @@ export const useDrawerStackStore = defineStore('drawerStack', () => {
     orderMutationCounter,
     lastSubscriptionMutation,
     subscriptionMutationCounter,
+    lastAssistantMutation,
+    assistantMutationCounter,
     emailLogsRefreshCounter,
     smsMessagesRefreshCounter,
     emailTemplatesRefreshCounter,
@@ -253,6 +297,8 @@ export const useDrawerStackStore = defineStore('drawerStack', () => {
     notifyOrderUpdated,
     notifyOrderDeleted,
     notifySubscriptionUpdated,
+    notifyAssistantUpdated,
+    notifyAssistantDeleted,
     bumpEmailLogsRefresh,
     bumpSmsMessagesRefresh,
     bumpEmailTemplatesRefresh,

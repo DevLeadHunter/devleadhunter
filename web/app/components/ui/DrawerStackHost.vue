@@ -213,6 +213,15 @@
       @back="drawerStack.back()"
     />
 
+    <UiAssistantSettingsDrawer
+      :open="assistantSettingsEntry !== null"
+      :assistant="assistantSettingsEntry?.assistant ?? null"
+      :show-back="hasPrevious"
+      @close="drawerStack.closeAll()"
+      @back="drawerStack.back()"
+      @saved="handleAssistantSaved"
+    />
+
     <UiFinalizeSaleDrawer
       :open="finalizeSaleEntry !== null"
       :order="finalizeSaleEntry?.order ?? null"
@@ -240,6 +249,7 @@ import type { ComputedRef, Ref } from 'vue'
 import type {
   AddProspectDrawerEntry,
   AssistantConversationsDrawerEntry,
+  AssistantSettingsDrawerEntry,
   AssistantSourcesDrawerEntry,
   AssistantSubscriptionDrawerEntry,
   CampaignProspectsPickerDrawerEntry,
@@ -266,6 +276,7 @@ import type {
 } from '~/types/DrawerStack'
 import type { SmsMessage } from '~/services/smsService'
 import type { EmailTemplate, Prospect } from '~/types'
+import type { AiAssistantSummary } from '~/types/AiAssistant'
 import type { Order } from '~/services/ordersService'
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useMediaQuery } from '@vueuse/core'
@@ -432,6 +443,25 @@ const assistantSourcesEntry: ComputedRef<AssistantSourcesDrawerEntry | null> = c
   (): AssistantSourcesDrawerEntry | null =>
     drawerStack.topEntry?.kind === 'assistant-sources' ? drawerStack.topEntry : null,
 )
+
+/** Top entry narrowed to the assistant settings drawer. */
+const assistantSettingsEntry: ComputedRef<AssistantSettingsDrawerEntry | null> = computed(
+  (): AssistantSettingsDrawerEntry | null =>
+    drawerStack.topEntry?.kind === 'assistant-settings' ? drawerStack.topEntry : null,
+)
+
+/**
+ * Assistant saved from its settings drawer: refresh the pages and drawers showing it, then leave the drawer.
+ * @param assistant - The assistant as the API returned it.
+ */
+function handleAssistantSaved(assistant: AiAssistantSummary): void {
+  drawerStack.notifyAssistantUpdated(assistant)
+  if (drawerStack.hasPrevious) {
+    drawerStack.back()
+  } else {
+    drawerStack.closeAll()
+  }
+}
 
 /** Top entry narrowed to the sale finalization drawer. */
 const finalizeSaleEntry: ComputedRef<FinalizeSaleDrawerEntry | null> = computed((): FinalizeSaleDrawerEntry | null => {

@@ -163,6 +163,12 @@ export type AssistantSourcesDrawerEntry = {
   assistant: AiAssistantSummary
 }
 
+/** An assistant's identity, alerts and model constraints, edited by the operator. */
+export type AssistantSettingsDrawerEntry = {
+  kind: 'assistant-settings'
+  assistant: AiAssistantSummary
+}
+
 /** A zone of the coverage map (one city, or a region's covered cities). */
 export type CoverageZone = {
   kind: 'city' | 'region'
@@ -206,6 +212,7 @@ export type DrawerStackEntry =
   | AssistantSubscriptionDrawerEntry
   | AssistantConversationsDrawerEntry
   | AssistantSourcesDrawerEntry
+  | AssistantSettingsDrawerEntry
   | UserFormDrawerEntry
 
 /** Cross-page notice describing the latest prospect mutation done from a drawer. */
@@ -216,3 +223,8 @@ export type OrderMutationNotice = { type: 'updated'; order: Order } | { type: 'd
 
 /** Cross-page notice describing the latest assistant-subscription mutation done from a drawer. */
 export type AssistantSubscriptionMutationNotice = { type: 'updated'; subscription: AssistantSubscription }
+
+/** Cross-page notice describing the latest assistant mutation done from a drawer or a page. */
+export type AssistantMutationNotice =
+  | { type: 'updated'; assistant: AiAssistantSummary }
+  | { type: 'deleted'; assistantId: number }

@@ -57,7 +57,7 @@
         <p
           v-if="feedback"
           class="mt-2 text-xs"
-          :class="feedbackIsError ? 'text-[var(--app-danger)]' : 'text-[var(--app-accent)]'"
+          :class="feedbackIsError ? 'text-[var(--app-red)]' : 'text-[var(--app-accent)]'"
         >
           {{ feedback }}
         </p>
@@ -124,7 +124,7 @@
         <p
           v-if="assistantFeedback"
           class="mt-1 text-xs"
-          :class="assistantFeedbackIsError ? 'text-[var(--app-danger)]' : 'text-[var(--app-accent)]'"
+          :class="assistantFeedbackIsError ? 'text-[var(--app-red)]' : 'text-[var(--app-accent)]'"
         >
           {{ assistantFeedback }}
         </p>

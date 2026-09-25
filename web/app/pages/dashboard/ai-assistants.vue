@@ -14,6 +14,19 @@
 
     <UiLoader v-if="isLoading" label="Chargement des assistants…" />
 
+    <UiEmptyState
+      v-else-if="hasLoadFailed"
+      title="Chargement impossible"
+      description="Les assistants et leurs demandes n'ont pas pu être chargés. Vérifiez votre connexion et réessayez."
+    >
+      <template #action>
+        <button type="button" class="btn-secondary h-9 text-xs" @click="loadData()">
+          <UIcon name="i-lucide-refresh-cw" class="mr-1.5 h-4 w-4" />
+          Réessayer
+        </button>
+      </template>
+    </UiEmptyState>
+
     <template v-else>
       <div class="grid grid-cols-1 gap-4 @sm:grid-cols-3">
         <UiStatCard label="Assistants actifs" :value="activeAssistantCount" icon="i-lucide-bot" accent="neutral" />
@@ -27,16 +40,18 @@
           <span class="text-muted text-xs tabular-nums">{{ assistants.length }}</span>
         </div>
 
-        <div v-if="assistants.length === 0" class="app-card flex flex-col items-center gap-4 px-6 py-10 text-center">
-          <UIcon name="i-lucide-bot" class="h-8 w-8 text-[var(--app-faint)]" />
-          <p class="text-muted max-w-sm text-sm leading-relaxed">
-            Aucun assistant généré. Ouvrez un prospect et cliquez « Générer un assistant IA » pour créer sa démo.
-          </p>
-          <NuxtLink to="/dashboard/my-prospects" class="btn-secondary h-9 text-xs">
-            <UIcon name="i-lucide-users" class="mr-1.5 h-4 w-4" />
-            Voir mes prospects
-          </NuxtLink>
-        </div>
+        <UiEmptyState
+          v-if="assistants.length === 0"
+          title="Aucun assistant généré"
+          description="Ouvrez un prospect et cliquez « Générer un assistant IA » pour créer sa démo."
+        >
+          <template #action>
+            <NuxtLink to="/dashboard/my-prospects" class="btn-secondary h-9 text-xs">
+              <UIcon name="i-lucide-users" class="mr-1.5 h-4 w-4" />
+              Voir mes prospects
+            </NuxtLink>
+          </template>
+        </UiEmptyState>
 
         <div v-else class="grid gap-3 @2xl:grid-cols-2">
           <article v-for="assistant in assistants" :key="assistant.id" class="app-card flex min-w-0 flex-col gap-3 p-4">
@@ -51,20 +66,13 @@
               <div class="flex shrink-0 items-center gap-1.5">
                 <span
                   v-if="assistant.churn_risk"
-                  class="inline-flex items-center gap-1 rounded-full border border-[var(--app-ink)] bg-[var(--app-ink)] px-2 py-0.5 text-[10px] font-medium tracking-wide text-[var(--app-bg)] uppercase"
+                  class="app-badge app-badge--strong"
                   title="Abonné depuis plus de 30 jours, aucune conversation ni demande sur les 30 derniers jours : vérifiez que la bulle de l'assistant apparaît sur son site"
                 >
                   <UIcon name="i-lucide-triangle-alert" class="h-3 w-3" />
                   Risque de désabonnement
                 </span>
-                <span
-                  class="rounded-full border px-2 py-0.5 text-[10px] font-medium tracking-wide uppercase"
-                  :class="
-                    assistant.status === 'active'
-                      ? 'border-[var(--app-green)] text-[var(--app-green)]'
-                      : 'border-[var(--app-line)] text-[var(--app-ink-soft)]'
-                  "
-                >
+                <span class="app-badge" :class="STATUS_BADGES[assistant.status] ?? ''">
                   {{ statusLabel(assistant) }}
                 </span>
               </div>
@@ -132,13 +140,13 @@
                 <UIcon name="i-lucide-code" class="mr-1.5 h-3.5 w-3.5" />
                 Copier le script
               </button>
-              <button type="button" class="btn-secondary h-8 text-xs" @click="openEdit(assistant)">
+              <button type="button" class="btn-secondary h-8 text-xs" @click="openSettings(assistant)">
                 <UIcon name="i-lucide-pencil" class="mr-1.5 h-3.5 w-3.5" />
                 Personnaliser
               </button>
               <button
                 type="button"
-                class="btn-secondary h-8 text-xs"
+                class="btn-secondary h-8 text-xs disabled:cursor-not-allowed disabled:opacity-50"
                 :disabled="regeneratingId === assistant.id"
                 @click="regenerateAssistant(assistant)"
               >
@@ -155,7 +163,7 @@
                 class="btn-secondary h-8 text-xs disabled:cursor-not-allowed disabled:opacity-50"
                 :disabled="clientLinkBusyId === assistant.id"
                 title="Email au commerçant avec le lien de son espace (demandes, rapport, réglages, abonnement)"
-                @click="sendClientSpace(assistant)"
+                @click="askSendClientSpace(assistant)"
               >
                 <UIcon
                   :name="clientLinkBusyId === assistant.id ? 'i-lucide-loader-circle' : 'i-lucide-user-round-key'"
@@ -208,7 +216,7 @@
                 </button>
                 <button
                   type="button"
-                  class="text-muted ml-auto flex h-8 cursor-pointer items-center gap-1 rounded-lg px-2 text-xs transition-colors hover:text-[var(--app-ink)]"
+                  class="text-muted ml-auto flex h-8 cursor-pointer items-center gap-1 rounded-lg px-2 text-xs transition-colors hover:text-[var(--app-ink)] disabled:cursor-not-allowed disabled:opacity-50"
                   :disabled="videoBusyId === assistant.id"
                   @click="generateVideo(assistant)"
                 >
@@ -230,7 +238,7 @@
               <template v-else>
                 <button
                   type="button"
-                  class="btn-secondary h-8 text-xs"
+                  class="btn-secondary h-8 text-xs disabled:cursor-not-allowed disabled:opacity-50"
                   :disabled="videoBusyId === assistant.id"
                   @click="generateVideo(assistant)"
                 >
@@ -246,42 +254,44 @@
                   class="text-[11px] text-[var(--app-red)]"
                   :title="assistant.video_error ?? ''"
                 >
-                  échec — réessayer
+                  échec, réessayer
                 </span>
               </template>
             </div>
 
             <div class="flex flex-wrap items-center gap-2 border-t border-[var(--app-line-soft)] pt-3">
               <span class="text-muted text-[10px] font-semibold tracking-wide uppercase">Abonnement</span>
-              <span
-                v-if="assistant.subscription_status === 'active'"
-                class="inline-flex items-center gap-1 rounded-full border border-[var(--app-green)] px-2 py-0.5 text-[10px] font-medium text-[var(--app-green)]"
-              >
+              <span v-if="assistant.subscription_status === 'active'" class="app-badge app-badge--success">
                 <UIcon name="i-lucide-check" class="h-3 w-3" />
                 Abonné · {{ subscriptionLabel(assistant) }}
               </span>
-              <button
-                type="button"
-                class="btn-secondary h-8 text-xs"
-                :disabled="subscriptionBusyId === assistant.id"
-                @click="copySubscriptionLink(assistant, 'month')"
-              >
-                <UIcon
-                  :name="subscriptionBusyId === assistant.id ? 'i-lucide-loader-circle' : 'i-lucide-link'"
-                  class="mr-1.5 h-3.5 w-3.5"
-                  :class="{ 'animate-spin': subscriptionBusyId === assistant.id }"
-                />
-                Lien mensuel
-              </button>
-              <button
-                type="button"
-                class="btn-secondary h-8 text-xs"
-                :disabled="subscriptionBusyId === assistant.id"
-                @click="copySubscriptionLink(assistant, 'year')"
-              >
-                <UIcon name="i-lucide-link" class="mr-1.5 h-3.5 w-3.5" />
-                Lien annuel
-              </button>
+              <span v-else-if="assistant.status === 'delivered'" class="text-muted text-xs">
+                Vendu sans abonnement Stripe
+              </span>
+              <template v-else>
+                <button
+                  type="button"
+                  class="btn-secondary h-8 text-xs disabled:cursor-not-allowed disabled:opacity-50"
+                  :disabled="subscriptionBusyId === assistant.id"
+                  @click="copySubscriptionLink(assistant, 'month')"
+                >
+                  <UIcon
+                    :name="subscriptionBusyId === assistant.id ? 'i-lucide-loader-circle' : 'i-lucide-link'"
+                    class="mr-1.5 h-3.5 w-3.5"
+                    :class="{ 'animate-spin': subscriptionBusyId === assistant.id }"
+                  />
+                  Lien mensuel
+                </button>
+                <button
+                  type="button"
+                  class="btn-secondary h-8 text-xs disabled:cursor-not-allowed disabled:opacity-50"
+                  :disabled="subscriptionBusyId === assistant.id"
+                  @click="copySubscriptionLink(assistant, 'year')"
+                >
+                  <UIcon name="i-lucide-link" class="mr-1.5 h-3.5 w-3.5" />
+                  Lien annuel
+                </button>
+              </template>
             </div>
           </article>
         </div>
@@ -299,257 +309,167 @@
           description="Chaque visiteur qui laisse ses coordonnées dans un assistant apparaît ici."
         />
 
-        <ul v-else class="app-card divide-y divide-[var(--app-line-soft)] overflow-hidden">
-          <li v-for="request in visibleRequests" :key="request.id" class="flex flex-col gap-2 px-4 py-3">
-            <div class="flex flex-wrap items-center gap-1.5">
-              <span class="app-badge" :class="REQUEST_TYPE_BADGES[request.type]">
-                {{ REQUEST_TYPE_LABELS[request.type] }}
-              </span>
-              <span v-if="request.received_outside_hours" class="app-badge">
-                <UIcon name="i-lucide-moon" class="h-3 w-3" />
-                Hors horaires
-              </span>
-              <span v-if="request.photo_urls.length > 0" class="app-badge">
-                <UIcon name="i-lucide-camera" class="h-3 w-3" />
-                {{ request.photo_urls.length }} photo{{ request.photo_urls.length > 1 ? 's' : '' }}
-              </span>
-              <span v-if="request.is_test" class="app-badge" title="Laissée pendant une visite de test de l'opérateur">
-                Test
-              </span>
-              <span v-if="request.status === 'handled'" class="app-badge app-badge--success">Traitée</span>
-              <span v-else-if="request.status === 'dropped'" class="app-badge">Sans suite</span>
-              <span class="text-muted ml-auto text-xs tabular-nums">
-                {{ request.business_name }} · {{ formatShortMonthDayTime(request.created_at) }}
-              </span>
-            </div>
-            <div class="flex flex-col gap-2 @xl:flex-row @xl:items-start @xl:gap-4">
-              <div class="min-w-0 shrink-0 @xl:w-48">
-                <p class="truncate text-sm font-medium text-[var(--app-ink)]">{{ request.name }}</p>
-                <p class="text-muted truncate text-xs">{{ request.contact }}</p>
+        <template v-else>
+          <ul class="app-card divide-y divide-[var(--app-line-soft)] overflow-hidden">
+            <li v-for="request in visibleRequests" :key="request.id" class="flex flex-col gap-2 px-4 py-3">
+              <div class="flex flex-wrap items-center gap-1.5">
+                <span class="app-badge" :class="request.type === 'urgent' ? 'app-badge--danger' : ''">
+                  {{ REQUEST_TYPE_LABELS[request.type] }}
+                </span>
+                <span v-if="request.received_outside_hours" class="app-badge">
+                  <UIcon name="i-lucide-moon" class="h-3 w-3" />
+                  Hors horaires
+                </span>
+                <span v-if="request.photo_urls.length > 0" class="app-badge">
+                  <UIcon name="i-lucide-camera" class="h-3 w-3" />
+                  {{ request.photo_urls.length }} photo{{ request.photo_urls.length > 1 ? 's' : '' }}
+                </span>
+                <span
+                  v-if="request.is_test"
+                  class="app-badge"
+                  title="Laissée pendant une visite de test de l'opérateur"
+                >
+                  Test
+                </span>
+                <span v-if="request.status === 'handled'" class="app-badge app-badge--success">Traitée</span>
+                <span v-else-if="request.status === 'dropped'" class="app-badge">Sans suite</span>
+                <span class="text-muted ml-auto text-xs tabular-nums">
+                  {{ request.business_name }} · {{ formatShortMonthDayTime(request.created_at) }}
+                </span>
               </div>
-              <div class="flex min-w-0 flex-1 flex-col gap-2">
-                <p class="text-xs leading-relaxed text-[var(--app-ink-soft)] @xl:text-sm">
-                  {{ request.need_summary || request.need || 'Demande de rappel, sans détail.' }}
-                </p>
-                <p
-                  v-if="request.appointment_booked"
-                  class="flex items-start gap-1.5 text-xs leading-relaxed text-[var(--app-ink)]"
-                >
-                  <UIcon name="i-lucide-calendar-check" class="mt-0.5 h-3.5 w-3.5 shrink-0" />
-                  <span>Rendez-vous réservé dans l'agenda du client : {{ request.appointment_booked }}</span>
-                </p>
-                <p
-                  v-else-if="request.appointment_slots.length > 0"
-                  class="flex items-start gap-1.5 text-xs leading-relaxed text-[var(--app-ink)]"
-                >
-                  <UIcon name="i-lucide-calendar-days" class="mt-0.5 h-3.5 w-3.5 shrink-0" />
-                  <span>Créneaux souhaités (à confirmer) : {{ request.appointment_slots.join(' ou ') }}</span>
-                </p>
-                <div v-if="request.photo_urls.length > 0" class="flex flex-wrap gap-1.5">
+              <div class="flex flex-col gap-2 @xl:flex-row @xl:items-start @xl:gap-4">
+                <div class="min-w-0 shrink-0 @xl:w-56">
+                  <p class="text-sm font-medium text-[var(--app-ink)]">{{ request.name }}</p>
                   <a
-                    v-for="(url, index) in request.photo_urls"
-                    :key="url"
-                    :href="url"
-                    target="_blank"
-                    rel="noopener"
-                    class="block h-12 w-12 overflow-hidden rounded-md border border-[var(--app-line)]"
-                    :aria-label="`Photo ${index + 1} envoyée par ${request.name}`"
+                    v-if="contactHref(request.contact)"
+                    :href="contactHref(request.contact) ?? undefined"
+                    class="text-muted text-xs break-all underline-offset-2 hover:text-[var(--app-ink)] hover:underline"
                   >
-                    <img :src="url" alt="" loading="lazy" class="h-full w-full object-cover" />
+                    {{ request.contact }}
                   </a>
+                  <p v-else class="text-muted text-xs break-all">{{ request.contact }}</p>
+                </div>
+                <div class="flex min-w-0 flex-1 flex-col gap-2">
+                  <p class="text-xs leading-relaxed text-[var(--app-ink-soft)] @xl:text-sm">
+                    {{ request.need_summary || request.need || 'Demande de rappel, sans détail.' }}
+                  </p>
+                  <p
+                    v-if="request.appointment_booked"
+                    class="flex items-start gap-1.5 text-xs leading-relaxed text-[var(--app-ink)]"
+                  >
+                    <UIcon name="i-lucide-calendar-check" class="mt-0.5 h-3.5 w-3.5 shrink-0" />
+                    <span>Rendez-vous réservé dans l'agenda du client : {{ request.appointment_booked }}</span>
+                  </p>
+                  <p
+                    v-else-if="request.appointment_slots.length > 0"
+                    class="flex items-start gap-1.5 text-xs leading-relaxed text-[var(--app-ink)]"
+                  >
+                    <UIcon name="i-lucide-calendar-days" class="mt-0.5 h-3.5 w-3.5 shrink-0" />
+                    <span>Créneaux souhaités (à confirmer) : {{ request.appointment_slots.join(' ou ') }}</span>
+                  </p>
+                  <div v-if="request.photo_urls.length > 0" class="flex flex-wrap gap-1.5">
+                    <a
+                      v-for="(url, index) in request.photo_urls"
+                      :key="url"
+                      :href="url"
+                      target="_blank"
+                      rel="noopener"
+                      class="block h-12 w-12 overflow-hidden rounded-md border border-[var(--app-line)]"
+                      :aria-label="`Photo ${index + 1} envoyée par ${request.name}`"
+                    >
+                      <img :src="url" alt="" loading="lazy" class="h-full w-full object-cover" />
+                    </a>
+                  </div>
+                </div>
+                <div class="flex shrink-0 items-center gap-2">
+                  <template v-if="request.status === 'new'">
+                    <button
+                      type="button"
+                      class="btn-secondary h-8 text-xs disabled:cursor-not-allowed disabled:opacity-50"
+                      :disabled="requestBusyId === request.id"
+                      @click="setRequestStatus(request, 'handled')"
+                    >
+                      <UIcon name="i-lucide-check" class="mr-1 h-3.5 w-3.5" />
+                      Marquer traitée
+                    </button>
+                    <button
+                      type="button"
+                      class="text-muted h-9 cursor-pointer px-1 text-xs transition-colors hover:text-[var(--app-ink)] disabled:cursor-not-allowed disabled:opacity-50"
+                      :disabled="requestBusyId === request.id"
+                      @click="setRequestStatus(request, 'dropped')"
+                    >
+                      Sans suite
+                    </button>
+                  </template>
+                  <button
+                    v-else
+                    type="button"
+                    class="text-muted h-9 cursor-pointer px-1 text-xs transition-colors hover:text-[var(--app-ink)] disabled:cursor-not-allowed disabled:opacity-50"
+                    :disabled="requestBusyId === request.id"
+                    @click="setRequestStatus(request, 'new')"
+                  >
+                    Rouvrir
+                  </button>
+                  <button
+                    v-if="request.prospect_id !== null"
+                    type="button"
+                    class="text-muted flex h-9 w-9 cursor-pointer items-center justify-center rounded-md transition-colors hover:bg-[var(--app-surface-2)] hover:text-[var(--app-ink)]"
+                    :aria-label="`Ouvrir le prospect ${request.business_name}`"
+                    @click="openRequestProspect(request)"
+                  >
+                    <UIcon name="i-lucide-arrow-up-right" class="h-4 w-4" />
+                  </button>
                 </div>
               </div>
-              <div class="flex shrink-0 items-center gap-2">
-                <template v-if="request.status === 'new'">
-                  <button
-                    type="button"
-                    class="btn-secondary h-8 text-xs disabled:cursor-not-allowed disabled:opacity-50"
-                    :disabled="requestBusyId === request.id"
-                    @click="setRequestStatus(request, 'handled')"
-                  >
-                    <UIcon name="i-lucide-check" class="mr-1 h-3.5 w-3.5" />
-                    Marquer traitée
-                  </button>
-                  <button
-                    type="button"
-                    class="text-muted h-8 cursor-pointer px-1 text-xs transition-colors hover:text-[var(--app-ink)] disabled:cursor-not-allowed disabled:opacity-50"
-                    :disabled="requestBusyId === request.id"
-                    @click="setRequestStatus(request, 'dropped')"
-                  >
-                    Sans suite
-                  </button>
-                </template>
-                <button
-                  v-else
-                  type="button"
-                  class="text-muted h-8 cursor-pointer px-1 text-xs transition-colors hover:text-[var(--app-ink)] disabled:cursor-not-allowed disabled:opacity-50"
-                  :disabled="requestBusyId === request.id"
-                  @click="setRequestStatus(request, 'new')"
-                >
-                  Rouvrir
-                </button>
-                <button
-                  v-if="request.prospect_id !== null"
-                  type="button"
-                  class="text-muted flex h-7 w-7 cursor-pointer items-center justify-center rounded-md transition-colors hover:bg-[var(--app-surface-2)] hover:text-[var(--app-ink)]"
-                  :aria-label="`Ouvrir le prospect ${request.business_name}`"
-                  @click="openRequestProspect(request)"
-                >
-                  <UIcon name="i-lucide-arrow-up-right" class="h-4 w-4" />
-                </button>
-              </div>
-            </div>
-          </li>
-        </ul>
+            </li>
+          </ul>
+          <p v-if="requestFilter === 'all' && requests.length >= REQUEST_LIST_LIMIT" class="text-muted text-xs">
+            Les {{ REQUEST_LIST_LIMIT }} dernières demandes sont affichées ; l'onglet « À traiter » les montre toutes.
+          </p>
+        </template>
       </section>
     </template>
 
-    <div
-      v-if="editing"
-      class="fixed inset-0 z-50 flex items-center justify-center bg-[var(--app-overlay)] p-4"
-      @click.self="closeEdit"
-    >
-      <div class="app-card max-h-[90vh] w-full max-w-md overflow-y-auto p-5">
-        <div class="mb-4 flex items-center justify-between">
-          <h3 class="text-sm font-semibold text-[var(--app-ink)]">Personnaliser l'assistant</h3>
-          <button
-            type="button"
-            class="text-muted cursor-pointer transition-colors hover:text-[var(--app-ink)]"
-            aria-label="Fermer"
-            @click="closeEdit"
-          >
-            <UIcon name="i-lucide-x" class="h-4 w-4" />
-          </button>
-        </div>
-
-        <div class="flex flex-col gap-3">
-          <label class="flex flex-col gap-1">
-            <span class="app-label !text-[0.6rem]">Entreprise affichée</span>
-            <input v-model="editForm.business_name" type="text" class="app-input" />
-          </label>
-          <label class="flex flex-col gap-1">
-            <span class="app-label !text-[0.6rem]">Nom de l'assistant</span>
-            <input v-model="editForm.assistant_name" type="text" class="app-input" placeholder="Sofia" />
-          </label>
-          <label class="flex flex-col gap-1">
-            <span class="app-label !text-[0.6rem]">Ton</span>
-            <input v-model="editForm.tone" type="text" class="app-input" placeholder="professionnel et chaleureux" />
-          </label>
-
-          <div class="flex flex-col gap-1.5">
-            <span class="app-label !text-[0.6rem]">Langues</span>
-            <UiChipToggleGroup v-model="editForm.languages" :options="LANGUAGE_OPTIONS" />
-          </div>
-
-          <div class="flex items-center justify-between gap-3">
-            <span class="app-label !text-[0.6rem]">Couleur d'accent</span>
-            <div class="flex items-center gap-2">
-              <input
-                v-model="editForm.accent_color"
-                type="color"
-                class="h-8 w-10 cursor-pointer rounded border border-[var(--app-line)] bg-transparent"
-                aria-label="Choisir la couleur d'accent"
-              />
-              <input v-model="editForm.accent_color" type="text" class="app-input w-28" placeholder="#c8862f" />
-            </div>
-          </div>
-
-          <div class="flex flex-col gap-3 border-t border-[var(--app-line-soft)] pt-3">
-            <div class="flex flex-col gap-0.5">
-              <span class="text-xs font-semibold text-[var(--app-ink)]">Alertes au commerçant</span>
-              <span class="text-muted text-xs leading-relaxed">
-                Une fois l'assistant vendu : chaque demande par email, et un SMS pour celles qui ne peuvent pas
-                attendre. Rappel le lendemain si elle n'est pas traitée.
-              </span>
-            </div>
-            <label class="flex flex-col gap-1">
-              <span class="app-label !text-[0.6rem]">Mobile du commerçant</span>
-              <input
-                v-model="editForm.alert_phone"
-                type="tel"
-                inputmode="tel"
-                autocomplete="off"
-                class="app-input"
-                placeholder="06 12 34 56 78 ou +352 621 123 456"
-              />
-            </label>
-            <UiSwitch id="assistant-alert-sms" v-model="editForm.alert_sms_enabled" label="SMS" />
-            <template v-if="editForm.alert_sms_enabled">
-              <div class="flex flex-col gap-1.5">
-                <span class="app-label !text-[0.6rem]">SMS immédiat pour</span>
-                <UiChipToggleGroup v-model="editForm.alert_sms_types" :options="ALERT_TYPE_OPTIONS" />
-              </div>
-              <div class="flex flex-col gap-1.5">
-                <span class="app-label !text-[0.6rem]">Ne pas déranger (SMS envoyés à la fin de la plage)</span>
-                <div class="flex items-center gap-2 text-xs text-[var(--app-ink-soft)]">
-                  <span>de</span>
-                  <div class="w-24">
-                    <UiSelectField v-model="editForm.alert_quiet_start_hour" :options="HOUR_OPTIONS" />
-                  </div>
-                  <span>à</span>
-                  <div class="w-24">
-                    <UiSelectField v-model="editForm.alert_quiet_end_hour" :options="HOUR_OPTIONS" />
-                  </div>
-                </div>
-              </div>
-            </template>
-            <UiSwitch
-              id="assistant-alert-email"
-              v-model="editForm.alert_email_enabled"
-              label="Email de résumé (toutes les demandes)"
-            />
-          </div>
-
-          <div class="flex flex-col gap-1.5 border-t border-[var(--app-line-soft)] pt-3">
-            <UiSwitch id="assistant-eu-only" v-model="editForm.eu_only" label="IA hébergée en Europe (Mistral)" />
-            <span class="text-muted text-xs leading-relaxed">
-              Les échanges de cet assistant ne partent jamais chez un autre fournisseur, même en cas de panne de Mistral
-              (l'assistant propose alors de laisser ses coordonnées).
-            </span>
-          </div>
-        </div>
-
-        <div class="mt-5 flex gap-2">
-          <button type="button" class="btn-secondary flex-1" @click="closeEdit">Annuler</button>
-          <button type="button" class="btn-primary flex-1" :disabled="isSaving" @click="saveEdit">
-            <UIcon v-if="isSaving" name="i-lucide-loader-circle" class="mr-1.5 h-4 w-4 animate-spin" />
-            Enregistrer
-          </button>
-        </div>
-      </div>
-    </div>
+    <UiConfirmModal
+      ref="clientSpaceConfirmModal"
+      title="Envoyer l'espace client"
+      :message="clientSpaceConfirmMessage"
+      confirm-text="Envoyer"
+      cancel-text="Annuler"
+      confirm-button-variant="primary"
+      @confirm="sendClientSpace"
+    />
   </div>
 </template>
 
 <script lang="ts" setup>
 import type { ComputedRef, Ref } from 'vue'
-import { computed, onMounted, onUnmounted, ref } from 'vue'
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { AiAssistantService } from '~/services/aiAssistantService'
 import { AssistantSidecarService } from '~/services/assistantSidecarService'
 import { ProspectsService } from '~/services/prospectsService'
 import type {
-  AiAssistantAlertSettings,
   AiAssistantClientLink,
-  AiAssistantEditForm,
   AiAssistantListResponse,
   AiAssistantRequestItem,
   AiAssistantRequestsResponse,
   AiAssistantRequestStatus,
   AiAssistantRequestType,
   AiAssistantSummary,
-  AiAssistantUpdatePayload,
 } from '~/types/AiAssistant'
-import type { SelectFieldOption } from '~/types/SelectField'
+import type { AssistantMutationNotice } from '~/types/DrawerStack'
 import type { UiFilterTab } from '~/types/UiFilterTabs'
 import type { Prospect } from '~/types'
 import type { UseToastReturn } from '~/types/Composables'
 import { useToast } from '~/composables/useToast'
 import { useDrawerStackStore } from '~/stores/drawerStack'
+import { contactHref } from '~/utils/contactLink'
 import { daysUntil, formatShortMonthDayTime, parseApiDate } from '~/utils/date'
 
 /**
  * Management page for the AI assistant module: the generated assistants (demo link + embed
- * snippet) and the requests their visitors left. Generation itself happens from a prospect.
+ * snippet) and the requests their visitors left. Generation itself happens from a prospect;
+ * customization happens in the settings drawer of the stack.
  */
 definePageMeta({
   layout: 'dashboard',
@@ -561,84 +481,54 @@ useSeoMeta({ title: 'Assistants IA — DevLeadHunter' })
 const toast: UseToastReturn = useToast()
 const drawerStack: ReturnType<typeof useDrawerStackStore> = useDrawerStackStore()
 
+/** How many requests the API lists at most per call; « À traiter » is fetched apart so it is never cut. */
+const REQUEST_LIST_LIMIT: number = 300
+
 const assistants: Ref<AiAssistantSummary[]> = ref([])
+/** The latest requests, every status (at most REQUEST_LIST_LIMIT). */
 const requests: Ref<AiAssistantRequestItem[]> = ref([])
+/** The requests still new, fetched apart so the tab shows them all. */
+const newRequests: Ref<AiAssistantRequestItem[]> = ref([])
 /** Real requests still waiting for handling (tests excluded), as counted by the API. */
 const pendingRequestCount: Ref<number> = ref(0)
 const requestFilter: Ref<string> = ref('new')
 const requestBusyId: Ref<number | null> = ref(null)
 const isLoading: Ref<boolean> = ref(true)
+const hasLoadFailed: Ref<boolean> = ref(false)
 const confirmingId: Ref<number | null> = ref(null)
 const regeneratingId: Ref<number | null> = ref(null)
 const clientLinkBusyId: Ref<number | null> = ref(null)
+/** The sold assistant whose client-space email waits for the confirmation. */
+const clientSpaceTarget: Ref<AiAssistantSummary | null> = ref(null)
+const clientSpaceConfirmModal: Ref<{ open: () => void } | null> = ref(null)
 const videoBusyId: Ref<number | null> = ref(null)
 const videoPollTimer: Ref<ReturnType<typeof setInterval> | null> = ref(null)
 const subscriptionBusyId: Ref<number | null> = ref(null)
 
-/** The assistant being customized (null = the modal is closed). */
-const editing: Ref<AiAssistantSummary | null> = ref(null)
-const editForm: Ref<AiAssistantEditForm> = ref({
-  assistant_name: '',
-  business_name: '',
-  tone: '',
-  accent_color: '',
-  languages: [],
-  alert_phone: '',
-  alert_sms_enabled: true,
-  alert_email_enabled: true,
-  alert_sms_types: [],
-  alert_quiet_start_hour: 22,
-  alert_quiet_end_hour: 8,
-  eu_only: false,
-})
-const isSaving: Ref<boolean> = ref(false)
+const STATUS_LABELS: Record<string, string> = {
+  pending: 'En préparation',
+  provisioning: 'En préparation',
+  active: 'Actif',
+  unavailable: 'Indisponible',
+  expired: 'Expiré',
+  failed: 'Échec',
+  delivered: 'Vendu',
+}
 
-const STATUS_LABELS: Record<string, string> = { active: 'Actif', expired: 'Expiré', delivered: 'Vendu' }
+/** Colour is kept for the statuses: live demos and sold assistants read at a glance. */
+const STATUS_BADGES: Record<string, string> = {
+  active: 'app-badge--success',
+  delivered: 'app-badge--strong',
+  failed: 'app-badge--danger',
+}
 
 const REQUEST_TYPE_LABELS: Record<AiAssistantRequestType, string> = {
   question: 'Question',
   quote: 'Devis',
   appointment: 'Rendez-vous',
   urgent: 'Urgence',
-  other: 'Demande',
+  other: 'Autre',
 }
-
-const REQUEST_TYPE_BADGES: Record<AiAssistantRequestType, string> = {
-  question: '',
-  quote: 'app-badge--progress',
-  appointment: 'app-badge--info',
-  urgent: 'app-badge--danger',
-  other: '',
-}
-
-/** Starts of the API refusals worth showing as they are when saving the customization. */
-const SAVE_REFUSALS: string[] = ["Numéro d'alerte", '« IA hébergée en Europe »']
-
-/** Request types the owner can have texted at once, the ones that cannot wait first. */
-const ALERT_TYPE_OPTIONS: SelectFieldOption<AiAssistantRequestType>[] = [
-  { value: 'quote', label: 'Devis' },
-  { value: 'appointment', label: 'Rendez-vous' },
-  { value: 'urgent', label: 'Urgence' },
-  { value: 'question', label: 'Question' },
-  { value: 'other', label: 'Autre' },
-]
-
-/** Whole hours of the day, for the quiet window. */
-const HOUR_OPTIONS: SelectFieldOption<number>[] = Array.from(
-  { length: 24 },
-  (_: unknown, hour: number): SelectFieldOption<number> => ({ value: hour, label: `${hour} h` }),
-)
-
-/** Languages a customer can offer, in the order they matter for the target markets. */
-const LANGUAGE_OPTIONS: SelectFieldOption<string>[] = [
-  { value: 'fr', label: 'Français' },
-  { value: 'nl', label: 'Nederlands' },
-  { value: 'de', label: 'Deutsch' },
-  { value: 'en', label: 'English' },
-  { value: 'lu', label: 'Lëtzebuergesch' },
-  { value: 'it', label: 'Italiano' },
-  { value: 'es', label: 'Español' },
-]
 
 /** Assistants currently live (the headline module KPI). */
 const activeAssistantCount: ComputedRef<number> = computed(
@@ -655,17 +545,32 @@ const latestRequestLabel: ComputedRef<string> = computed((): string => {
 
 /** Requests still waiting for the owner (tests left from internal visits only show under « Toutes »). */
 const pendingRequests: ComputedRef<AiAssistantRequestItem[]> = computed((): AiAssistantRequestItem[] =>
-  requests.value.filter((request: AiAssistantRequestItem): boolean => request.status === 'new' && !request.is_test),
+  newRequests.value.filter((request: AiAssistantRequestItem): boolean => !request.is_test),
 )
 
 const requestFilterTabs: ComputedRef<UiFilterTab[]> = computed((): UiFilterTab[] => [
-  { key: 'new', label: 'À traiter', count: pendingRequests.value.length },
+  { key: 'new', label: 'À traiter', count: pendingRequestCount.value },
   { key: 'all', label: 'Toutes', count: requests.value.length },
 ])
 
 const visibleRequests: ComputedRef<AiAssistantRequestItem[]> = computed((): AiAssistantRequestItem[] =>
   requestFilter.value === 'new' ? pendingRequests.value : requests.value,
 )
+
+/** Whether any assistant is mid-generation, which keeps the list polling. */
+const hasGeneratingVideo: ComputedRef<boolean> = computed((): boolean =>
+  assistants.value.some(
+    (item: AiAssistantSummary): boolean => item.video_status === 'pending' || item.video_status === 'generating',
+  ),
+)
+
+/** What the client-space confirmation asks, naming the address the email goes to. */
+const clientSpaceConfirmMessage: ComputedRef<string> = computed((): string => {
+  const target: AiAssistantSummary | null = clientSpaceTarget.value
+  if (!target) return ''
+  const recipient: string = target.email ? ` à ${target.email}` : ' à l’adresse connue du commerce'
+  return `Envoyer au commerçant${recipient} le lien de son espace (demandes, rapport, réglages, abonnement) ? Le lien est aussi copié.`
+})
 
 /**
  * Tooltip detailing an assistant's request counts.
@@ -702,6 +607,14 @@ function openSources(assistant: AiAssistantSummary): void {
 }
 
 /**
+ * Open the settings drawer: identity, alerts to the business, model constraints.
+ * @param assistant - The assistant to edit.
+ */
+function openSettings(assistant: AiAssistantSummary): void {
+  drawerStack.push({ kind: 'assistant-settings', assistant })
+}
+
+/**
  * Open a request's prospect in the shared drawer, to act on it (call, add to a campaign…).
  * @param request - The request.
  * @returns A promise resolved once the prospect drawer is pushed.
@@ -717,7 +630,7 @@ async function openRequestProspect(request: AiAssistantRequestItem): Promise<voi
 }
 
 /**
- * Move a request to another status (handled, dropped, or back to new) and refresh its row.
+ * Move a request to another status (handled, dropped, or back to new) and refresh its row in both lists.
  * @param request - The request to update.
  * @param status - Its new status.
  * @returns A promise resolved once the update is saved.
@@ -729,6 +642,10 @@ async function setRequestStatus(request: AiAssistantRequestItem, status: AiAssis
     requests.value = requests.value.map(
       (item: AiAssistantRequestItem): AiAssistantRequestItem => (item.id === updated.id ? updated : item),
     )
+    const others: AiAssistantRequestItem[] = newRequests.value.filter(
+      (item: AiAssistantRequestItem): boolean => item.id !== updated.id,
+    )
+    newRequests.value = updated.status === 'new' ? [updated, ...others] : others
     if (!request.is_test) {
       const wasPending: boolean = request.status === 'new'
       const isPending: boolean = updated.status === 'new'
@@ -758,18 +675,28 @@ function formatDate(iso: string): string {
 async function copySnippet(assistant: AiAssistantSummary): Promise<void> {
   try {
     await navigator.clipboard.writeText(assistant.embed_snippet)
-    toast.success('Script copié — à coller avant </body> du site du client.')
+    toast.success('Script copié : à coller avant </body> du site du client.')
   } catch {
     toast.error('Copie impossible depuis ce navigateur.')
   }
 }
 
 /**
- * Email the business its client-space link (requests, report, settings, subscription) and copy the link.
+ * Ask before emailing the business its client-space link: the email leaves at once when confirmed.
  * @param assistant - A sold assistant.
+ */
+function askSendClientSpace(assistant: AiAssistantSummary): void {
+  clientSpaceTarget.value = assistant
+  clientSpaceConfirmModal.value?.open()
+}
+
+/**
+ * Email the business its client-space link (requests, report, settings, subscription) and copy the link.
  * @returns A promise resolved once sent (or refused) and copied.
  */
-async function sendClientSpace(assistant: AiAssistantSummary): Promise<void> {
+async function sendClientSpace(): Promise<void> {
+  const assistant: AiAssistantSummary | null = clientSpaceTarget.value
+  if (!assistant) return
   clientLinkBusyId.value = assistant.id
   try {
     const link: AiAssistantClientLink = await AiAssistantService.issueClientLink(assistant.id, true)
@@ -790,19 +717,31 @@ async function sendClientSpace(assistant: AiAssistantSummary): Promise<void> {
     toast.error("Lien de l'espace client indisponible pour l'instant.")
   } finally {
     clientLinkBusyId.value = null
+    clientSpaceTarget.value = null
   }
 }
 
 /**
- * Soft-delete an assistant after the inline confirmation.
+ * Soft-delete an assistant after the inline confirmation, and take its requests and drawers off the screen.
  * @param assistant - The assistant to remove.
- * @returns A promise resolved once removed and the list refreshed.
+ * @returns A promise resolved once removed and the lists refreshed.
  */
 async function removeAssistant(assistant: AiAssistantSummary): Promise<void> {
   confirmingId.value = null
   try {
     await AiAssistantService.remove(assistant.id)
     assistants.value = assistants.value.filter((item: AiAssistantSummary): boolean => item.id !== assistant.id)
+    const removedPending: number = pendingRequests.value.filter(
+      (item: AiAssistantRequestItem): boolean => item.assistant_id === assistant.id,
+    ).length
+    requests.value = requests.value.filter(
+      (item: AiAssistantRequestItem): boolean => item.assistant_id !== assistant.id,
+    )
+    newRequests.value = newRequests.value.filter(
+      (item: AiAssistantRequestItem): boolean => item.assistant_id !== assistant.id,
+    )
+    pendingRequestCount.value = Math.max(pendingRequestCount.value - removedPending, 0)
+    drawerStack.notifyAssistantDeleted(assistant.id)
     toast.success('Assistant supprimé.')
   } catch {
     toast.error("Suppression impossible pour l'instant.")
@@ -819,9 +758,7 @@ async function regenerateAssistant(assistant: AiAssistantSummary): Promise<void>
   regeneratingId.value = assistant.id
   try {
     const updated: AiAssistantSummary = await AiAssistantService.regenerate(assistant.id)
-    assistants.value = assistants.value.map(
-      (item: AiAssistantSummary): AiAssistantSummary => (item.id === updated.id ? updated : item),
-    )
+    patchAssistant(updated)
     toast.success('Assistant régénéré depuis les dernières données du prospect.')
   } catch {
     toast.error('Régénération impossible pour le moment.')
@@ -830,14 +767,7 @@ async function regenerateAssistant(assistant: AiAssistantSummary): Promise<void>
   }
 }
 
-/** Whether any assistant is mid-generation, which keeps the list polling. */
-const hasGeneratingVideo: ComputedRef<boolean> = computed((): boolean =>
-  assistants.value.some(
-    (item: AiAssistantSummary): boolean => item.video_status === 'pending' || item.video_status === 'generating',
-  ),
-)
-
-/** Poll the list every few seconds while a video is generating, then stop. */
+/** Poll the list every few seconds while a video is generating, without hiding the page, then stop. */
 function startVideoPolling(): void {
   if (videoPollTimer.value !== null) return
   videoPollTimer.value = setInterval((): void => {
@@ -845,7 +775,7 @@ function startVideoPolling(): void {
       stopVideoPolling()
       return
     }
-    void loadData()
+    void refreshAssistants()
   }, 5000)
 }
 
@@ -873,11 +803,11 @@ async function generateVideo(assistant: AiAssistantSummary): Promise<void> {
       await AssistantSidecarService.buildFullVideo(assistant.id)
     if (build.status === 'done' && build.assistant) {
       patchAssistant(build.assistant)
-      toast.success('Vidéo générée sur votre ordinateur ✓')
+      toast.success('Vidéo générée sur votre ordinateur.')
       return
     }
     if (build.status === 'failed') {
-      toast.info('Génération locale indisponible — bascule sur le serveur…')
+      toast.info('Génération locale indisponible, bascule sur le serveur…')
     }
 
     // 'unavailable' (web build, no sidecar) or 'failed' → server-side generation (memory-guarded).
@@ -886,7 +816,7 @@ async function generateVideo(assistant: AiAssistantSummary): Promise<void> {
     toast.success('Génération de la vidéo lancée.')
     startVideoPolling()
   } catch {
-    toast.error("Vidéo impossible — enregistrez d'abord votre clip webcam « assistant » dans les paramètres.")
+    toast.error("Vidéo impossible : enregistrez d'abord votre clip webcam « assistant » dans les paramètres.")
   } finally {
     videoBusyId.value = null
   }
@@ -930,7 +860,7 @@ async function copySubscriptionLink(assistant: AiAssistantSummary, interval: 'mo
     const { url }: { url: string } = await AiAssistantService.getSubscriptionLink(assistant.id, interval)
     await navigator.clipboard.writeText(url)
     toast.success(
-      `Lien d'abonnement ${interval === 'year' ? 'annuel' : 'mensuel'} copié — envoyez-le au client, il reste valable.`,
+      `Lien d'abonnement ${interval === 'year' ? 'annuel' : 'mensuel'} copié : envoyez-le au client, il reste valable.`,
     )
   } catch {
     toast.error('Lien indisponible pour cet assistant.')
@@ -940,7 +870,7 @@ async function copySubscriptionLink(assistant: AiAssistantSummary, interval: 'mo
 }
 
 /**
- * Human label for an assistant's active subscription (e.g. « 29 €/mois »).
+ * Human label for an assistant's active subscription (e.g. « 79 €/mois »).
  * @param assistant - The subscribed assistant.
  * @returns The formatted price + interval, or an empty string when there is none.
  */
@@ -953,7 +883,7 @@ function subscriptionLabel(assistant: AiAssistantSummary): string {
 /**
  * Text of the status badge.
  * @param assistant - The assistant.
- * @returns « Actif », « Expiré », « Vendu », or the raw status for the transient ones.
+ * @returns The French label of the status, or the raw status for an unknown one.
  */
 function statusLabel(assistant: AiAssistantSummary): string {
   return STATUS_LABELS[assistant.status] ?? assistant.status
@@ -971,108 +901,53 @@ function demoLifetimeLabel(assistant: AiAssistantSummary): string {
 }
 
 /**
- * Open the customization modal, prefilled from the assistant.
- * @param assistant - The assistant to edit.
+ * Refresh the assistant cards only (video progress), leaving the page and the requests as they are.
+ * @returns A promise resolved once the cards are refreshed.
  */
-function openEdit(assistant: AiAssistantSummary): void {
-  editing.value = assistant
-  editForm.value = {
-    assistant_name: assistant.assistant_name,
-    business_name: assistant.business_name,
-    tone: assistant.tone ?? '',
-    accent_color: assistant.accent_color ?? '',
-    languages: [...assistant.languages],
-    alert_phone: assistant.alerts.phone ?? '',
-    alert_sms_enabled: assistant.alerts.sms_enabled,
-    alert_email_enabled: assistant.alerts.email_enabled,
-    alert_sms_types: [...assistant.alerts.sms_types],
-    alert_quiet_start_hour: assistant.alerts.quiet_start_hour,
-    alert_quiet_end_hour: assistant.alerts.quiet_end_hour,
-    eu_only: assistant.eu_only,
-  }
-}
-
-/** Close the customization modal without saving. */
-function closeEdit(): void {
-  editing.value = null
-}
-
-/**
- * The alert settings the form changed, so an untouched setting keeps following the API default.
- * @param alerts - The assistant's current alert settings.
- * @param form - The edit form.
- * @returns Only the alert fields that differ from the current settings.
- */
-function changedAlertFields(alerts: AiAssistantAlertSettings, form: AiAssistantEditForm): AiAssistantUpdatePayload {
-  const changes: AiAssistantUpdatePayload = {}
-  if (form.alert_phone.trim() !== (alerts.phone ?? '')) changes.alert_phone = form.alert_phone.trim()
-  if (form.alert_sms_enabled !== alerts.sms_enabled) changes.alert_sms_enabled = form.alert_sms_enabled
-  if (form.alert_email_enabled !== alerts.email_enabled) changes.alert_email_enabled = form.alert_email_enabled
-  const sameTypes: boolean =
-    form.alert_sms_types.length === alerts.sms_types.length &&
-    form.alert_sms_types.every((type: AiAssistantRequestType): boolean => alerts.sms_types.includes(type))
-  if (!sameTypes) changes.alert_sms_types = form.alert_sms_types
-  if (form.alert_quiet_start_hour !== alerts.quiet_start_hour) {
-    changes.alert_quiet_start_hour = form.alert_quiet_start_hour
-  }
-  if (form.alert_quiet_end_hour !== alerts.quiet_end_hour) changes.alert_quiet_end_hour = form.alert_quiet_end_hour
-  return changes
-}
-
-/**
- * Persist the customization and refresh the edited card.
- * @returns A promise resolved once saved.
- */
-async function saveEdit(): Promise<void> {
-  const target: AiAssistantSummary | null = editing.value
-  if (!target || isSaving.value) return
-  isSaving.value = true
+async function refreshAssistants(): Promise<void> {
   try {
-    const payload: AiAssistantUpdatePayload = {
-      assistant_name: editForm.value.assistant_name,
-      business_name: editForm.value.business_name,
-      tone: editForm.value.tone,
-      accent_color: editForm.value.accent_color,
-      languages: editForm.value.languages,
-      ...changedAlertFields(target.alerts, editForm.value),
-      ...(editForm.value.eu_only !== target.eu_only ? { eu_only: editForm.value.eu_only } : {}),
-    }
-    const updated: AiAssistantSummary = await AiAssistantService.update(target.id, payload)
-    assistants.value = assistants.value.map(
-      (item: AiAssistantSummary): AiAssistantSummary => (item.id === updated.id ? updated : item),
-    )
-    editing.value = null
-    toast.success('Assistant personnalisé.')
-  } catch (error: unknown) {
-    // The API explains what it refused (alert number, Europe-hosted AI without Mistral); anything else stays generic.
-    const detail: string = error instanceof Error ? error.message : ''
-    const explained: boolean = SAVE_REFUSALS.some((prefix: string): boolean => detail.startsWith(prefix))
-    toast.error(explained ? detail : 'Enregistrement impossible pour le moment.')
-  } finally {
-    isSaving.value = false
+    const list: AiAssistantListResponse = await AiAssistantService.list()
+    assistants.value = list.assistants
+  } catch {
+    // A missed poll is not worth a toast every five seconds: the next one, or a reload, catches up.
   }
 }
 
 /**
- * Load the assistants and the requests their visitors left.
- * @returns A promise resolved once both are loaded.
+ * Load the assistants and the requests their visitors left: the latest ones, and every one still new.
+ * @returns A promise resolved once loaded.
  */
 async function loadData(): Promise<void> {
   isLoading.value = true
+  hasLoadFailed.value = false
   try {
-    const [assistantList, requestList]: [AiAssistantListResponse, AiAssistantRequestsResponse] = await Promise.all([
+    const [assistantList, requestList, newList]: [
+      AiAssistantListResponse,
+      AiAssistantRequestsResponse,
+      AiAssistantRequestsResponse,
+    ] = await Promise.all([
       AiAssistantService.list(),
       AiAssistantService.listRequests(),
+      AiAssistantService.listRequests('new'),
     ])
     assistants.value = assistantList.assistants
     requests.value = requestList.requests
+    newRequests.value = newList.requests
     pendingRequestCount.value = requestList.pending_count
   } catch {
-    toast.error('Chargement des assistants impossible.')
+    hasLoadFailed.value = true
   } finally {
     isLoading.value = false
   }
 }
+
+watch(
+  (): number => drawerStack.assistantMutationCounter,
+  (): void => {
+    const notice: AssistantMutationNotice | null = drawerStack.lastAssistantMutation
+    if (notice?.type === 'updated') patchAssistant(notice.assistant)
+  },
+)
 
 onMounted(async (): Promise<void> => {
   await loadData()

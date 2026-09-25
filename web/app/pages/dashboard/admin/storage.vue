@@ -368,6 +368,7 @@ const FILTERS: Array<{ label: string; prefix: string }> = [
   { label: 'Clips webcam', prefix: 'videos/presenter/' },
   { label: 'Photos prospects', prefix: PROSPECT_PHOTOS_PREFIX },
   { label: 'Photos de devis', prefix: 'images/assistant-photos/' },
+  { label: 'Documents assistants', prefix: 'documents/assistant/' },
   { label: 'Support', prefix: 'images/support/' },
   { label: 'Imports manuels', prefix: 'uploads/manual/' },
 ]

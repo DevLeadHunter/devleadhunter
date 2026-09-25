@@ -1,5 +1,5 @@
 <template>
-  <div class="flex flex-wrap gap-1.5">
+  <div class="flex flex-wrap gap-1.5" role="group" :aria-label="props.label">
     <button
       v-for="option in props.options"
       :key="option.value"
@@ -11,6 +11,7 @@
           : 'border-[var(--app-line)] text-[var(--app-ink-soft)] hover:border-[var(--app-ink-soft)]',
         { 'disabled:cursor-not-allowed disabled:opacity-50': props.disabled },
       ]"
+      :aria-pressed="modelValue.includes(option.value)"
       :disabled="props.disabled"
       @click="toggleOption(option.value)"
     >
@@ -35,6 +36,10 @@ const props: UiChipToggleGroupProps<TValue> = defineProps({
   disabled: {
     type: Boolean,
     default: false,
+  },
+  label: {
+    type: String,
+    default: undefined,
   },
 })
 
