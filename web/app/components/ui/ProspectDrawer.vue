@@ -345,7 +345,7 @@
             <div v-if="!isAssistantModule" class="space-y-3 px-5 py-4">
               <div class="flex items-center justify-between gap-3">
                 <p class="text-[10px] font-semibold tracking-wider text-[var(--app-ink-soft)] uppercase">
-                  Assistant IA
+                  Réceptionniste IA
                 </p>
                 <a
                   v-if="prospectAssistant"
@@ -969,7 +969,7 @@ async function handleGenerateAssistant(): Promise<void> {
   try {
     const assistant: AiAssistantSummary = await AiAssistantService.create(props.prospect.id)
     prospectAssistant.value = assistant
-    toast.success('Assistant IA généré — prêt à tester et à envoyer.')
+    toast.success('Réceptionniste IA générée — prête à tester et à envoyer.')
   } catch (err: unknown) {
     toast.error(err instanceof Error ? err.message : 'La génération a échoué')
   } finally {

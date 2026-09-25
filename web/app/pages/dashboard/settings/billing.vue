@@ -73,7 +73,7 @@
             <UIcon name="i-lucide-bot" class="h-4 w-4 text-[var(--app-ink-soft)]" />
           </span>
           <div>
-            <h2 class="text-sm font-semibold text-[var(--app-ink)]">Abonnement Assistant IA</h2>
+            <h2 class="text-sm font-semibold text-[var(--app-ink)]">Abonnement Réceptionniste IA</h2>
             <p class="mt-0.5 text-xs text-[var(--app-ink-soft)]">
               Le prix mensuel de l'assistant et les mois offerts sur l'annuel, affichés via
               <code class="rounded bg-[var(--app-surface-2)] px-1 py-0.5 text-[0.7rem]">{prix_assistant}</code> et sur

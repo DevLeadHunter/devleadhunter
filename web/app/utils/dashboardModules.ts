@@ -28,7 +28,7 @@ const WEBSITES_NAV: UiSidebarGroup[] = [
 
 /**
  * The AI-assistant module navigation: the same prospection base, but the deliverable is an
- * embedded receptionist (« Assistants IA ») instead of a demo site — so « Sites démo » and
+ * embedded receptionist (« Réceptionnistes IA ») instead of a demo site — so « Sites démo » and
  * the site automation tunnel drop out, the assistants + their captured leads come in, and the
  * one-off « Ventes » becomes the recurring « Abonnements ».
  */
@@ -42,7 +42,7 @@ const AI_ASSISTANT_NAV: UiSidebarGroup[] = [
     links: [
       { to: '/dashboard/my-prospects', label: 'Mes prospects', icon: 'i-lucide-users' },
       { to: '/dashboard/coverage', label: 'Carte de prospection', icon: 'i-lucide-map' },
-      { to: '/dashboard/ai-assistants', label: 'Assistants IA', icon: 'i-lucide-bot' },
+      { to: '/dashboard/ai-assistants', label: 'Réceptionnistes IA', icon: 'i-lucide-bot' },
       { to: '/dashboard/ai-assistants/requests', label: 'Demandes', icon: 'i-lucide-inbox' },
       { to: '/dashboard/campaigns', label: 'Campagnes', icon: 'i-lucide-megaphone' },
       { to: '/dashboard/emails', label: 'Suivi des emails', icon: 'i-lucide-send' },
@@ -65,7 +65,7 @@ export const DASHBOARD_MODULES: DlhModule[] = [
   },
   {
     key: 'ai-assistant',
-    label: 'Assistant IA',
+    label: 'Réceptionniste IA',
     icon: 'i-lucide-bot',
     locked: false,
     home: '/dashboard/ai-assistants',

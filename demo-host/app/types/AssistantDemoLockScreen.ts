@@ -5,4 +5,5 @@ export type AssistantDemoLockScreenProps = {
   alertText: string
   isExample: boolean
   hintText: string
+  arrivalKey: number
 }

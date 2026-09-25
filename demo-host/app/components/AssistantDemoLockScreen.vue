@@ -7,7 +7,12 @@
 
     <div class="lock__stack">
       <span v-if="props.isExample" class="lock__example">exemple</span>
-      <div class="lock__notification" :class="{ 'lock__notification--new': !props.isExample }" aria-live="polite">
+      <div
+        :key="props.arrivalKey"
+        class="lock__notification"
+        :class="{ 'lock__notification--new': !props.isExample || props.arrivalKey > 0 }"
+        aria-live="polite"
+      >
         <div class="lock__app" aria-hidden="true">
           <svg viewBox="0 0 24 24">
             <path
@@ -72,6 +77,10 @@ const props: AssistantDemoLockScreenProps = defineProps({
   hintText: {
     type: String,
     required: true,
+  },
+  arrivalKey: {
+    type: Number,
+    default: 0,
   },
 })
 </script>

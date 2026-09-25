@@ -25,7 +25,7 @@
         <div class="ia__side">
           <p class="ia__label"><b>Votre client</b> · ce soir, 21h40</p>
           <AssistantDemoPhoneFrame time="21:40" screen="app">
-            <AssistantChat :config="assistant" inline @lead-sent="onLeadSent" />
+            <AssistantChat :config="assistant" inline @lead-sent="onLeadSent" @example-played="onExamplePlayed" />
           </AssistantDemoPhoneFrame>
         </div>
 
@@ -39,6 +39,7 @@
               :alert-text="alertText"
               :is-example="receivedLead === null"
               :hint-text="lockHintText"
+              :arrival-key="exampleArrivals"
             />
           </AssistantDemoPhoneFrame>
         </div>
@@ -130,6 +131,8 @@ const receivedLead: Ref<AssistantLeadSummary | null> = ref(null)
 const isComposerFocused: Ref<boolean> = ref(false)
 /** The business's phone, scrolled into view on a small screen once a request lands on it. */
 const ownerPhoneSide: Ref<HTMLElement | null> = ref(null)
+/** How many times the played example has ended: each one makes the example notification land again. */
+const exampleArrivals: Ref<number> = ref(0)
 
 const shortBusinessName: ComputedRef<string> = computed((): string =>
   BusinessNameUtils.short(assistant.value?.business_name ?? ''),
@@ -158,6 +161,9 @@ const alertText: ComputedRef<string> = computed((): string =>
 )
 
 const lockHintText: ComputedRef<string> = computed((): string => {
+  if (!receivedLead.value && exampleArrivals.value > 0) {
+    return 'Voilà ce que vous auriez reçu. À vous : écrivez à gauche comme ce client le ferait.'
+  }
   if (!receivedLead.value) return 'Terminez la conversation à gauche : ce SMS devient le vôtre.'
   const stored: string = receivedLead.value.hasPhoto ? 'La fiche complète et la photo sont' : 'La fiche complète est'
   return `Reçu à 21h43. ${stored} dans votre espace.`
@@ -201,6 +207,17 @@ const accentStyle: ComputedRef<Record<string, string>> = computed((): Record<str
  */
 function onLeadSent(summary: AssistantLeadSummary): void {
   receivedLead.value = summary
+  revealOwnerPhone()
+}
+
+/** The scripted conversation has run: the example SMS lands again on the business's phone. */
+function onExamplePlayed(): void {
+  exampleArrivals.value += 1
+  revealOwnerPhone()
+}
+
+/** On a small screen, scroll the business's phone into view once something lands on it. */
+function revealOwnerPhone(): void {
   if (typeof window !== 'undefined' && window.innerWidth < 760) {
     ownerPhoneSide.value?.scrollIntoView({ behavior: 'smooth', block: 'center' })
   }

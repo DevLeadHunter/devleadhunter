@@ -341,7 +341,7 @@ function categoryLabel(category: string): string {
     email: 'E-mail',
     sms: 'SMS',
     demo: 'Démo',
-    assistant: 'Assistant IA',
+    assistant: 'Réceptionniste IA',
     sale: 'Vente',
     prospect: 'Prospect',
     demo_site: 'Site démo',

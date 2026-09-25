@@ -1,7 +1,7 @@
 <template>
   <section class="app-card space-y-4 p-5">
     <div>
-      <h2 class="text-sm font-semibold text-[var(--app-ink)]">Clip webcam — Assistant IA</h2>
+      <h2 class="text-sm font-semibold text-[var(--app-ink)]">Clip webcam — Réceptionniste IA</h2>
       <p class="text-muted mt-1 text-sm leading-relaxed">
         Un discours webcam <strong>différent</strong> de celui des sites : ici vous présentez l'assistant. Enregistré
         une fois, il sert d'intro et d'outro à toutes les vidéos d'assistant (la démo du widget passe au milieu).
