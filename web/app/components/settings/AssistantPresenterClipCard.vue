@@ -95,7 +95,8 @@
 <script lang="ts" setup>
 import type { Ref } from 'vue'
 import { onMounted, ref } from 'vue'
-import { PresenterVideoService, type PresenterVideo } from '~/services/presenterVideoService'
+import type { PresenterVideo } from '~/services/presenterVideoService'
+import { PresenterVideoService } from '~/services/presenterVideoService'
 import type { UseToastReturn } from '~/types/Composables'
 import { useToast } from '~/composables/useToast'
 

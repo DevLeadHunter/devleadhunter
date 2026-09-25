@@ -107,7 +107,7 @@ const EXAMPLE_CONTACT: string = '06 12 34 56 78'
 /**
  * The scene of the demo page: what a customer of this trade asks, and what the business receives.
  */
-export class AssistantDemoScenario {
+export class AssistantDemoScenarioUtils {
   /**
    * The trade as a customer would type it in Google (« couvreur »), from the Google category.
    * @param tradeLabel - The Google Maps category, or null.
@@ -124,10 +124,10 @@ export class AssistantDemoScenario {
    * @returns The example, as the alert would summarise it.
    */
   static example(tradeLabel: string | null): AssistantLeadSummary {
-    const folded: string = AssistantDemoScenario.fold(tradeLabel ?? '')
+    const folded: string = AssistantDemoScenarioUtils.fold(tradeLabel ?? '')
     const match: TradeExample =
       TRADE_EXAMPLES.find((example: TradeExample): boolean =>
-        example.keywords.some((keyword: string): boolean => folded.includes(AssistantDemoScenario.fold(keyword))),
+        example.keywords.some((keyword: string): boolean => folded.includes(AssistantDemoScenarioUtils.fold(keyword))),
       ) ?? DEFAULT_EXAMPLE
     return {
       name: EXAMPLE_NAME,
@@ -167,7 +167,7 @@ export class AssistantDemoScenario {
    * @returns The text of the example SMS.
    */
   static exampleAlertText(tradeLabel: string | null): string {
-    return AssistantDemoScenario.alertText(AssistantDemoScenario.example(tradeLabel))
+    return AssistantDemoScenarioUtils.alertText(AssistantDemoScenarioUtils.example(tradeLabel))
   }
 
   /**

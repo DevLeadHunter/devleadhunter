@@ -1,6 +1,6 @@
 <template>
   <!-- Borderless: the parent row owns the separator, so the active underline sits on it. -->
-  <div role="tablist" class="flex flex-wrap items-center gap-1">
+  <div role="tablist" class="no-scrollbar flex max-w-full items-center gap-1 overflow-x-auto">
     <button
       v-for="tab in props.tabs"
       :key="tab.key"
@@ -58,7 +58,7 @@ const emit: {
  */
 function tabClass(active: boolean): string {
   const base: string =
-    'relative cursor-pointer px-4 py-2.5 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--app-ink-soft)] rounded-t'
+    'relative shrink-0 cursor-pointer px-4 py-2.5 text-sm font-medium whitespace-nowrap transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--app-ink-soft)] rounded-t'
   return active ? `${base} text-[var(--app-ink)]` : `${base} text-[var(--app-ink-soft)] hover:text-[var(--app-ink)]`
 }
 </script>

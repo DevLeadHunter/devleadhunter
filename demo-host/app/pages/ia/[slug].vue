@@ -23,33 +23,13 @@
 
       <section class="ia__path" aria-label="Où vos clients trouvent votre réceptionniste">
         <p class="ia__label"><b>D'abord</b> · où votre client vous trouve</p>
-        <div
-          class="ia__maps"
-          role="img"
-          :aria-label="`Votre fiche Google Maps, avec les boutons Site web et Prendre rendez-vous qui ouvrent ${assistant.assistant_name}`"
-        >
-          <div class="ia__maps-top">
-            <div>
-              <div class="ia__maps-name">{{ shortBusinessName }}</div>
-              <div class="ia__maps-meta">
-                <b v-if="ratingLabel">{{ ratingLabel }}</b>
-                <template v-if="ratingLabel"> · </template>{{ tradeLabel
-                }}<template v-if="assistant.city"> · {{ assistant.city }}</template>
-              </div>
-            </div>
-            <span class="ia__maps-closed">Fermé ce soir</span>
-          </div>
-          <div class="ia__maps-actions">
-            <span class="ia__maps-btn">Itinéraire</span>
-            <span class="ia__maps-btn">Appeler</span>
-            <span class="ia__maps-btn ia__maps-btn--lea"
-              >Site web <small>→ {{ assistant.assistant_name }}</small></span
-            >
-            <span class="ia__maps-btn ia__maps-btn--lea">
-              Prendre rendez-vous <small>→ {{ assistant.assistant_name }}</small>
-            </span>
-          </div>
-        </div>
+        <AssistantDemoGoogleListing
+          :business-name="shortBusinessName"
+          :rating-label="ratingLabel"
+          :trade-label="tradeLabel"
+          :city="assistant.city ?? ''"
+          :assistant-name="assistant.assistant_name"
+        />
         <p class="ia__path-text">
           Sur votre fiche Google, les boutons <b>Site web</b> et <b>Prendre rendez-vous</b> ouvrent
           {{ assistant.assistant_name }}. Si vous avez un site, {{ subjectPronoun }} y est aussi, en bas à droite. Votre
@@ -60,63 +40,23 @@
       <div class="ia__stage">
         <div class="ia__side">
           <p class="ia__label"><b>Votre client</b> · ce soir, 21h40</p>
-          <div class="ia__device">
-            <div class="ia__screen">
-              <div class="ia__island" aria-hidden="true" />
-              <div class="ia__statusbar" aria-hidden="true">
-                <span>21:40</span>
-                <span class="ia__statusbar-right">
-                  <span class="ia__signal"><i /><i /><i /><i /></span>
-                  <span class="ia__battery" />
-                </span>
-              </div>
-              <div class="ia__screen-body">
-                <AssistantChat :config="assistant" inline @lead-sent="onLeadSent" />
-              </div>
-            </div>
-          </div>
+          <AssistantDemoPhoneFrame time="21:40" screen="app">
+            <AssistantChat :config="assistant" inline @lead-sent="onLeadSent" />
+          </AssistantDemoPhoneFrame>
         </div>
 
-        <div class="ia__side">
+        <div ref="ownerPhoneSide" class="ia__side">
           <p class="ia__label"><b>Vous</b> · quelques secondes plus tard</p>
-          <div class="ia__device">
-            <div class="ia__screen ia__screen--lock">
-              <div class="ia__island" aria-hidden="true" />
-              <div class="ia__statusbar ia__statusbar--light" aria-hidden="true">
-                <span>21:43</span>
-                <span class="ia__statusbar-right">
-                  <span class="ia__signal"><i /><i /><i /><i /></span>
-                  <span class="ia__battery" />
-                </span>
-              </div>
-              <span class="ia__lock-date">{{ lockDateLabel }}</span>
-              <span class="ia__lock-time">21:43</span>
-              <span v-if="!receivedAlert" class="ia__lock-example">exemple</span>
-              <div class="ia__notif" :class="{ 'ia__notif--new': receivedAlert }" aria-live="polite">
-                <div class="ia__notif-app" aria-hidden="true">
-                  <svg viewBox="0 0 24 24">
-                    <path
-                      d="M12 3C6.5 3 2.5 6.6 2.5 11c0 2.4 1.2 4.6 3.2 6.1L5 21l4.4-2.1c.8.2 1.7.3 2.6.3 5.5 0 9.5-3.6 9.5-8.1S17.5 3 12 3Z"
-                      fill="#fff"
-                    />
-                  </svg>
-                </div>
-                <div class="ia__notif-body">
-                  <div class="ia__notif-top"><b>Messages</b><span>maintenant</span></div>
-                  <p class="ia__notif-title">{{ assistant.assistant_name }} · réceptionniste</p>
-                  <p class="ia__notif-text">{{ alertText }}</p>
-                </div>
-              </div>
-              <p class="ia__lock-hint">
-                <template v-if="receivedLead">
-                  Reçu à 21h43.
-                  {{ receivedLead.hasPhoto ? 'La fiche complète et la photo sont' : 'La fiche complète est' }} dans
-                  votre espace.
-                </template>
-                <template v-else>Terminez la conversation à gauche : ce SMS devient le vôtre.</template>
-              </p>
-            </div>
-          </div>
+          <AssistantDemoPhoneFrame time="21:43" screen="lock">
+            <AssistantDemoLockScreen
+              time="21:43"
+              :date-label="lockDateLabel"
+              :assistant-name="assistant.assistant_name"
+              :alert-text="alertText"
+              :is-example="receivedLead === null"
+              :hint-text="lockHintText"
+            />
+          </AssistantDemoPhoneFrame>
         </div>
       </div>
 
@@ -182,7 +122,7 @@ import type { AssistantLeadSummary } from '~/types/AssistantChat'
 import { DemoBeaconUtils } from '~/utils/DemoBeaconUtils'
 import type { AssistantAccentPalette } from '~/utils/AssistantAccentUtils'
 import { AssistantAccentUtils } from '~/utils/AssistantAccentUtils'
-import { AssistantDemoScenario } from '~/utils/AssistantDemoScenario'
+import { AssistantDemoScenarioUtils } from '~/utils/AssistantDemoScenarioUtils'
 import { AssistantPersonaUtils } from '~/utils/AssistantPersonaUtils'
 import { BusinessNameUtils } from '~/utils/BusinessNameUtils'
 import { useDemoTracking } from '~/composables/useDemoTracking'
@@ -207,6 +147,8 @@ const { data: assistant, pending }: Awaited<ReturnType<typeof useAsyncData<AiAss
 const receivedLead: Ref<AssistantLeadSummary | null> = ref(null)
 /** True while the visitor types in the customer's phone: the contact pill steps aside (it would cover the keys). */
 const isComposerFocused: Ref<boolean> = ref(false)
+/** The business's phone, scrolled into view on a small screen once a request lands on it. */
+const ownerPhoneSide: Ref<HTMLElement | null> = ref(null)
 
 const shortBusinessName: ComputedRef<string> = computed((): string =>
   BusinessNameUtils.short(assistant.value?.business_name ?? ''),
@@ -226,7 +168,7 @@ const femininSuffix: ComputedRef<string> = computed((): string =>
 
 /** What the customer types in Google (« couvreur Rennes »). */
 const searchPhrase: ComputedRef<string> = computed((): string => {
-  const trade: string = AssistantDemoScenario.searchWord(assistant.value?.trade_label ?? null)
+  const trade: string = AssistantDemoScenarioUtils.searchWord(assistant.value?.trade_label ?? null)
   const city: string = (assistant.value?.city ?? '').trim()
   return city ? `${trade} ${city}` : trade
 })
@@ -246,15 +188,18 @@ const ratingLabel: ComputedRef<string> = computed((): string => {
   return count ? `${stars} (${count} avis)` : stars
 })
 
-/** Whether the phone on the right shows the visitor's own request rather than the example. */
-const receivedAlert: ComputedRef<boolean> = computed((): boolean => receivedLead.value !== null)
-
 /** The SMS on the business's phone: the example of the trade, then the visitor's own request. */
 const alertText: ComputedRef<string> = computed((): string =>
   receivedLead.value
-    ? AssistantDemoScenario.alertText(receivedLead.value)
-    : AssistantDemoScenario.exampleAlertText(assistant.value?.trade_label ?? null),
+    ? AssistantDemoScenarioUtils.alertText(receivedLead.value)
+    : AssistantDemoScenarioUtils.exampleAlertText(assistant.value?.trade_label ?? null),
 )
+
+const lockHintText: ComputedRef<string> = computed((): string => {
+  if (!receivedLead.value) return 'Terminez la conversation à gauche : ce SMS devient le vôtre.'
+  const stored: string = receivedLead.value.hasPhoto ? 'La fiche complète et la photo sont' : 'La fiche complète est'
+  return `Reçu à 21h43. ${stored} dans votre espace.`
+})
 
 /** Today's date on the lock screen (« jeudi 24 septembre »). */
 const lockDateLabel: ComputedRef<string> = computed((): string =>
@@ -295,7 +240,7 @@ const accentStyle: ComputedRef<Record<string, string>> = computed((): Record<str
 function onLeadSent(summary: AssistantLeadSummary): void {
   receivedLead.value = summary
   if (typeof window !== 'undefined' && window.innerWidth < 760) {
-    document.querySelector('.ia__screen--lock')?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    ownerPhoneSide.value?.scrollIntoView({ behavior: 'smooth', block: 'center' })
   }
 }
 
@@ -316,7 +261,7 @@ const { init: initTracking }: ReturnType<typeof useDemoTracking> = useDemoTracki
 onMounted((): void => {
   const current: AiAssistantConfig | null | undefined = assistant.value
   if (!current) return
-  void initTracking(current.slug, current.status, null, DemoBeaconUtils.channelFromQuery(route.query.src), 'assistant')
+  initTracking(current.slug, current.status, null, DemoBeaconUtils.channelFromQuery(route.query.src), 'assistant')
 })
 
 useHead({
@@ -467,70 +412,6 @@ useHead({
   display: grid;
   gap: 14px;
 }
-.ia__maps {
-  border: 1px solid var(--ia-line);
-  border-radius: 16px;
-  background: var(--ia-card);
-  padding: 16px 18px;
-  display: grid;
-  gap: 12px;
-  box-shadow: 0 18px 40px -30px rgba(23, 19, 13, 0.4);
-}
-.ia__maps-top {
-  display: flex;
-  justify-content: space-between;
-  gap: 12px;
-  align-items: flex-start;
-}
-.ia__maps-name {
-  font-family: var(--ia-font-d);
-  font-weight: 600;
-  font-size: 20px;
-  line-height: 1.1;
-}
-.ia__maps-meta {
-  font-size: 13px;
-  color: var(--ia-ink-dim);
-  margin-top: 3px;
-}
-.ia__maps-meta b {
-  color: #c98a1a;
-  font-weight: 600;
-}
-.ia__maps-closed {
-  font-size: 12.5px;
-  color: var(--ia-urgent);
-  white-space: nowrap;
-}
-.ia__maps-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-.ia__maps-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 8px 13px;
-  border-radius: 999px;
-  border: 1px solid var(--ia-line);
-  font-size: 13px;
-  font-weight: 500;
-  color: var(--ia-ink);
-  background: var(--ia-paper-2);
-}
-.ia__maps-btn--lea {
-  border-color: var(--a-accent);
-  color: var(--a-accent-text);
-  background: color-mix(in srgb, var(--a-accent) 10%, var(--ia-card));
-}
-.ia__maps-btn--lea small {
-  font-size: 10.5px;
-  font-weight: 600;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  opacity: 0.85;
-}
 .ia__path-text {
   margin: 0;
   font-size: 14.5px;
@@ -575,230 +456,10 @@ useHead({
   width: 100%;
   min-width: 0;
 }
-.ia__device {
-  width: min(100%, 350px);
-  border-radius: 48px;
-  background: var(--ia-device);
-  padding: 11px;
-  box-shadow:
-    0 0 0 1px var(--ia-device-edge),
-    0 34px 70px -30px rgba(23, 19, 13, 0.55);
-}
-.ia__screen {
-  position: relative;
-  height: 660px;
-  border-radius: 38px;
-  overflow: hidden;
-  background: #fbf9f3;
-  display: flex;
-  flex-direction: column;
-}
-.ia__screen-body {
-  flex: 1;
-  min-height: 0;
-  display: flex;
-  flex-direction: column;
-}
-.ia__screen-body :deep(.ai-widget--inline) {
-  flex: 1;
-  min-height: 0;
-  display: flex;
-  flex-direction: column;
-}
-.ia__screen-body :deep(.ai-panel--inline) {
-  flex: 1;
-  min-height: 0;
-  height: auto;
-}
-.ia__island {
-  position: absolute;
-  top: 10px;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 96px;
-  height: 28px;
-  border-radius: 999px;
-  background: #000;
-  z-index: 5;
-}
-.ia__statusbar {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 16px 26px 6px;
-  font-size: 14px;
-  font-weight: 600;
-  font-variant-numeric: tabular-nums;
-}
-.ia__statusbar--light {
-  color: #fff;
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-}
-.ia__statusbar-right {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-}
-.ia__signal {
-  display: inline-flex;
-  align-items: flex-end;
-  gap: 2px;
-  height: 11px;
-}
-.ia__signal i {
-  width: 3px;
-  background: currentColor;
-  border-radius: 1px;
-}
-.ia__signal i:nth-child(1) {
-  height: 4px;
-}
-.ia__signal i:nth-child(2) {
-  height: 6px;
-}
-.ia__signal i:nth-child(3) {
-  height: 8px;
-}
-.ia__signal i:nth-child(4) {
-  height: 11px;
-}
-.ia__battery {
-  width: 24px;
-  height: 11px;
-  border: 1.5px solid currentColor;
-  border-radius: 4px;
-  position: relative;
-}
-.ia__battery::after {
-  content: '';
-  position: absolute;
-  inset: 2px;
-  right: 6px;
-  background: currentColor;
-  border-radius: 1px;
-}
-
-/* The business's phone: lock screen and the SMS */
-.ia__screen--lock {
-  background:
-    radial-gradient(120% 80% at 20% 0%, rgba(120, 160, 190, 0.55), transparent 60%),
-    radial-gradient(90% 70% at 90% 100%, rgba(180, 120, 90, 0.35), transparent 60%),
-    linear-gradient(180deg, #1c2a36 0%, #0f151c 100%);
-  color: #fff;
-  align-items: center;
-  padding: 60px 16px 0;
-  gap: 6px;
-}
-.ia__lock-date {
-  font-size: 15px;
-  font-weight: 500;
-  opacity: 0.9;
-}
-.ia__lock-time {
-  font-size: 76px;
-  font-weight: 500;
-  line-height: 1;
-  letter-spacing: -0.02em;
-  font-variant-numeric: tabular-nums;
-}
-.ia__lock-example {
-  position: absolute;
-  top: 184px;
-  right: 22px;
-  font-size: 10.5px;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  opacity: 0.6;
-}
-.ia__notif {
-  position: absolute;
-  left: 12px;
-  right: 12px;
-  top: 200px;
-  border-radius: 22px;
-  background: rgba(255, 255, 255, 0.92);
-  color: #111;
-  padding: 12px 14px 12px 12px;
-  display: grid;
-  grid-template-columns: 42px 1fr;
-  gap: 10px;
-  box-shadow: 0 18px 40px -18px rgba(0, 0, 0, 0.6);
-  backdrop-filter: blur(10px);
-}
-.ia__notif--new {
-  animation: ia-drop 0.45s cubic-bezier(0.2, 0.7, 0.3, 1);
-}
-@keyframes ia-drop {
-  from {
-    transform: translateY(-16px);
-    opacity: 0;
-  }
-  to {
-    transform: none;
-    opacity: 1;
-  }
-}
-.ia__notif-app {
-  width: 42px;
-  height: 42px;
-  border-radius: 11px;
-  background: linear-gradient(180deg, #5cd66b, #28b544);
-  display: grid;
-  place-items: center;
-}
-.ia__notif-app svg {
-  width: 26px;
-  height: 26px;
-}
-.ia__notif-body {
-  min-width: 0;
-}
-.ia__notif-top {
-  display: flex;
-  justify-content: space-between;
-  align-items: baseline;
-  gap: 8px;
-  font-size: 12px;
-  color: #555;
-}
-.ia__notif-top b {
-  color: #111;
-  font-weight: 600;
-}
-.ia__notif-title {
-  margin: 2px 0 0;
-  font-size: 14px;
-  font-weight: 600;
-}
-.ia__notif-text {
-  margin: 2px 0 0;
-  font-size: 13.5px;
-  line-height: 1.4;
-  color: #222;
-  overflow-wrap: anywhere;
-  display: -webkit-box;
-  -webkit-line-clamp: 4;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-}
 .ia__banner--hidden :deep(.ac) {
   opacity: 0;
   pointer-events: none;
 }
-.ia__lock-hint {
-  position: absolute;
-  left: 24px;
-  right: 24px;
-  bottom: 44px;
-  margin: 0;
-  font-size: 12.5px;
-  opacity: 0.75;
-  text-align: center;
-}
-
 /* ── Outcomes, estimate, CTA, signature ────────────────────────────────── */
 .ia__outcomes {
   margin-top: clamp(30px, 5vh, 44px);
@@ -901,14 +562,6 @@ useHead({
     padding-inline: 18px;
     /* Room to scroll the phones above the contact pill, which floats over the bottom corner. */
     padding-bottom: 100px;
-  }
-  .ia__device {
-    border-radius: 40px;
-    padding: 9px;
-  }
-  .ia__screen {
-    border-radius: 32px;
-    height: 620px;
   }
 }
 </style>
