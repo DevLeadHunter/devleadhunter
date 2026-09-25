@@ -52,6 +52,11 @@ on:
         required: false
         type: boolean
         default: false
+      report:
+        description: "Lire ce que la réceptionniste a journalisé (conversations, demandes, questions sans réponse), rien d'autre"
+        required: false
+        type: boolean
+        default: false
 
 jobs:
   generate:
@@ -120,6 +125,32 @@ jobs:
             print("RESULT slug=%s name=%s status=%s demo_url=%s" % (
                 assistant["slug"], assistant["assistant_name"], assistant["status"], assistant["demo_url"]
             ))
+
+            if str(inputs.get("report", "")).lower() == "true":
+                # Read-only: what the dashboard shows, printed so a session without a prod token can diagnose it.
+                detail = client.get("/ai-assistants/%s" % assistant["id"]).json()
+                print("COUNTS conversations_7d=%s conversations_30d=%s requests_7d=%s requests_30d=%s" % (
+                    detail.get("conversations_7d"), detail.get("conversations_30d"),
+                    detail.get("requests_7d"), detail.get("requests_30d"),
+                ))
+                journal = client.get("/ai-assistants/%s/conversations" % assistant["id"]).json()
+                for conversation in journal.get("conversations", []):
+                    print("CONVERSATION id=%s started=%s lang=%s messages=%s" % (
+                        conversation["id"], conversation["started_at"], conversation.get("language"),
+                        conversation["message_count"],
+                    ))
+                    for message in conversation.get("messages", []):
+                        print("  %s: %s" % (message["role"], message["content"].replace("
+", " / ")[:500]))
+                listed = client.get("/ai-assistants/requests", params={"assistant_id": assistant["id"]}).json()
+                for item in listed.get("requests", []):
+                    print("REQUEST id=%s type=%s status=%s name=%s need=%s" % (
+                        item["id"], item.get("type"), item.get("status"), item.get("name"),
+                        (item.get("need_summary") or item.get("need") or "")[:200],
+                    ))
+                faq = client.get("/ai-assistants/%s/faq" % assistant["id"]).json()
+                print("FAQ %s" % json.dumps(faq, ensure_ascii=False)[:3000])
+                raise SystemExit(0)
 
             if str(inputs.get("list_templates", "")).lower() == "true":
                 for template in client.get("/email-templates").json():
