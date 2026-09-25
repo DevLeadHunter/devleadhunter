@@ -1,4 +1,5 @@
-const EMAIL_PATTERN: RegExp = /^[^@\s]+@[^@\s]+\.[^@\s]+$/
+// No « ? » nor « & »: an address may not smuggle a header (« ?bcc=… ») into the mailto link.
+const EMAIL_PATTERN: RegExp = /^[^@\s?&]+@[^@\s?&]+\.[^@\s?&]+$/
 const PHONE_PATTERN: RegExp = /^\+?[\d\s.()-]{6,}$/
 
 /**

@@ -54,5 +54,12 @@ export default defineNuxtConfig({
           'http://tauri.localhost https://tauri.localhost',
       },
     },
+    // The assistant widget is an iframe on the clients' own websites: any site may frame it.
+    '/embed/**': {
+      cors: true,
+      headers: {
+        'Content-Security-Policy': 'frame-ancestors *',
+      },
+    },
   },
 })

@@ -1,8 +1,8 @@
 <template>
   <section class="cs-section">
     <header class="cs-section__head">
-      <h2 class="cs-section__title">{{ title }}</h2>
-      <span v-if="meta !== null" class="cs-section__meta">{{ meta }}</span>
+      <h2 class="cs-section__title">{{ props.title }}</h2>
+      <span v-if="props.meta !== null" class="cs-section__meta">{{ props.meta }}</span>
     </header>
     <slot />
   </section>
@@ -10,13 +10,14 @@
 
 <script lang="ts" setup>
 import type { PropType } from 'vue'
+import type { ClientSpaceSectionProps } from '~/types/ClientSpaceSection'
 
 /**
  * A card of the client space: its title, a short status on the title's right, then its content.
  * @param title The section title.
  * @param meta The short status right of the title; none when null.
  */
-defineProps({
+const props: ClientSpaceSectionProps = defineProps({
   title: { type: String, required: true },
   meta: { type: String as PropType<string | null>, default: null },
 })

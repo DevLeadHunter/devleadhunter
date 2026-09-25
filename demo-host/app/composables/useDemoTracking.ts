@@ -269,10 +269,7 @@ export function useDemoTracking(): {
     // Never track a delivered/sold site, and skip when PostHog is not configured.
     if (!key || status !== 'active') return
 
-    const {
-      default: posthog,
-    }: typeof import('C:/Users/leogu/Desktop/Projects/devleadhunter/demo-host/node_modules/posthog-js/dist/module') =
-      await import('posthog-js')
+    const { default: posthog }: typeof import('posthog-js') = await import('posthog-js')
     posthog.init(key, {
       api_host: POSTHOG_PROXY_PATH,
       ui_host: POSTHOG_UI_HOST,
@@ -285,10 +282,12 @@ export function useDemoTracking(): {
       persistence: 'memory',
       // Le slug sert aussi d'identité aux events email : un funnel email ↔ démo sur la même personne.
       bootstrap: { distinctID: slug, isIdentifiedID: true },
-      // Replay sans bandeau cookie : tous les champs de saisie sont masqués.
+      // Replay sans bandeau cookie : tous les champs de saisie sont masqués, et les bulles du chat aussi
+      // (ce que le visiteur écrit y est réaffiché).
       disable_session_recording: false,
       session_recording: {
         maskAllInputs: true,
+        maskTextSelector: '.ai-m',
       },
     })
     // `surface` sépare les modules dans le MÊME projet PostHog ('demo' = site, 'assistant' = module IA) ;
