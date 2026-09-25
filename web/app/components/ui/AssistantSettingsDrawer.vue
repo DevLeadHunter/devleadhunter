@@ -52,7 +52,11 @@
             </label>
             <div class="flex flex-col gap-1.5">
               <span class="text-xs font-medium text-[var(--app-ink)]">Réceptionniste</span>
-              <AssistantPersonaPicker v-model="form.assistant_name" :portrait-base-url="portraitBaseUrl" />
+              <AssistantPersonaPicker
+                v-model="form.assistant_name"
+                :demo-url="assistant.demo_url"
+                :accent-color="form.accent_color || null"
+              />
             </div>
             <label class="flex flex-col gap-1">
               <span class="text-xs font-medium text-[var(--app-ink)]">Prénom affiché</span>
@@ -199,8 +203,8 @@
 </template>
 
 <script lang="ts" setup>
-import type { ComputedRef, EmitFn, PropType, Ref } from 'vue'
-import { computed, ref, watch } from 'vue'
+import type { EmitFn, PropType, Ref } from 'vue'
+import { ref, watch } from 'vue'
 import type {
   AiAssistantAlertSettings,
   AiAssistantEditForm,
@@ -266,15 +270,6 @@ const LANGUAGE_OPTIONS: SelectFieldOption<string>[] = [
 
 const form: Ref<AiAssistantEditForm> = ref(emptyForm())
 const isSaving: Ref<boolean> = ref(false)
-
-/** The demo host serving the portraits, read off the assistant's demo link (empty when it is not a URL). */
-const portraitBaseUrl: ComputedRef<string> = computed((): string => {
-  try {
-    return new URL(props.assistant?.demo_url ?? '').origin
-  } catch {
-    return ''
-  }
-})
 
 /**
  * A blank form, before an assistant fills it.

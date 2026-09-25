@@ -1,7 +1,7 @@
 <template>
   <div v-if="pending" class="ia ia--message" :style="accentStyle">Chargement…</div>
   <div v-else-if="!assistant" class="ia ia--message ia--error" :style="accentStyle">
-    Assistant introuvable ou inactif.
+    Cette démo n'est plus disponible.
   </div>
   <div v-else class="ia" :style="accentStyle" @focusin="onFocusChange" @focusout="onFocusChange">
     <header class="ia__top">
@@ -227,7 +227,7 @@ onMounted((): void => {
 })
 
 useHead({
-  title: computed((): string => assistant.value?.business_name ?? 'Assistant'),
+  title: computed((): string => assistant.value?.business_name ?? 'Réceptionniste IA'),
 })
 </script>
 
