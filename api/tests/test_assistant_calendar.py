@@ -55,6 +55,7 @@ from services.ai_assistant.client_links import AiAssistantClientLinks
 from services.ai_assistant.google_calendar_client import (
     BusyPeriod,
     CalendarEventDraft,
+    CalendarEventState,
     GoogleCalendarClient,
     GoogleCalendarError,
     GoogleTokens,
@@ -111,16 +112,34 @@ class _FakeGoogle:
         self.inserted: list[CalendarEventDraft] = []
         self.refreshed: list[str] = []
         self.failure: GoogleCalendarError | None = None
+        # Failures answered to the next free/busy calls, one each, before the agenda answers normally.
+        self.busy_failures: list[GoogleCalendarError] = []
         self.insert_failures: list[GoogleCalendarError] = []
         self.insert_calls = 0
         self.account = "garage.morel@gmail.com"
         self.scopes: frozenset[str] = _SCOPES
+        # What ``get_event`` answers per event id; an inserted event not listed here still stands at its time.
+        self.event_states: dict[str, CalendarEventState | None] = {}
+        self.event_reads: list[str] = []
 
     async def busy_periods(self, access_token: str, calendar_id: str, *, start: datetime, end: datetime) -> list:
         if self.failure is not None:
             raise self.failure
+        if self.busy_failures:
+            raise self.busy_failures.pop(0)
         self.busy_calls.append((start, end))
         return list(self.busy)
+
+    async def get_event(self, access_token: str, calendar_id: str, event_id: str) -> CalendarEventState | None:
+        if self.failure is not None:
+            raise self.failure
+        self.event_reads.append(event_id)
+        if event_id in self.event_states:
+            return self.event_states[event_id]
+        for draft in self.inserted:
+            if draft.event_id == event_id:
+                return CalendarEventState(cancelled=False, start=draft.start.astimezone(UTC).replace(tzinfo=None))
+        return None
 
     async def insert_event(self, access_token: str, calendar_id: str, draft: CalendarEventDraft) -> str:
         self.insert_calls += 1
@@ -160,7 +179,7 @@ class _FakeGoogle:
 def google(monkeypatch: pytest.MonkeyPatch) -> _FakeGoogle:
     """A configured Google client that never leaves the process, and a quiet activity log."""
     fake = _FakeGoogle()
-    for name in ("busy_periods", "insert_event", "refresh", "exchange_code", "account_email"):
+    for name in ("busy_periods", "insert_event", "get_event", "refresh", "exchange_code", "account_email"):
         monkeypatch.setattr(calendar_module.google_calendar_client, name, getattr(fake, name))
     monkeypatch.setattr(google_module.settings, "google_client_id", "client-id")
     monkeypatch.setattr(google_module.settings, "google_client_secret", "client-secret")
@@ -720,10 +739,11 @@ def test_the_runner_sends_due_reminders_once_and_skips_late_ones(
     db: Session, google: _FakeGoogle, outbox: dict[str, Any]
 ) -> None:
     assistant = _assistant(db)
-    request = _request(db, assistant)
     now = _utc(_paris(23, 14, 5))
 
     def appointment(start: datetime, due: datetime, **fields: Any) -> AiAssistantAppointment:
+        # One request per appointment: the table allows no second appointment on a request.
+        request = _request(db, assistant, session_id=f"session-{start.day}-{start.hour}")
         row = AiAssistantAppointment(
             user_id=7,
             assistant_id=assistant.id,
@@ -753,6 +773,69 @@ def test_the_runner_sends_due_reminders_once_and_skips_late_ones(
     assert sms.startswith("Rappel : rendez-vous demain, 14:00, chez Garage Morel.")
     db.refresh(due)
     assert due.reminder_sent_at is not None
+
+
+def test_a_token_google_dropped_early_is_refreshed_once_before_the_agenda_is_declared_lost(
+    db: Session, google: _FakeGoogle
+) -> None:
+    assistant = _assistant(db)
+    calendar = _calendar(db, assistant)
+    google.busy_failures = [
+        GoogleCalendarError("Google Agenda a refusé l'appel (401)", needs_reconnect=True, status_code=401)
+    ]
+
+    slots = asyncio.run(
+        calendar_module.ai_assistant_calendar_service.free_slots(db, assistant, calendar, now=_MONDAY_10H)
+    )
+
+    db.refresh(calendar)
+    assert slots.slots and google.refreshed == ["refresh-0"]
+    assert calendar.status == AssistantCalendarStatus.CONNECTED.value and calendar.last_error is None
+
+
+def test_a_reminder_follows_what_the_agenda_says_of_the_event(
+    db: Session, google: _FakeGoogle, outbox: dict[str, Any]
+) -> None:
+    assistant = _assistant(db)
+    _calendar(db, assistant)
+    now = _utc(_paris(23, 14, 5))
+
+    def appointment(start: datetime, due: datetime, event_id: str) -> AiAssistantAppointment:
+        request = _request(db, assistant, session_id=f"session-{event_id}")
+        row = AiAssistantAppointment(
+            user_id=7,
+            assistant_id=assistant.id,
+            request_id=request.id,
+            starts_at=_utc(start),
+            ends_at=_utc(start + timedelta(hours=1)),
+            google_event_id=event_id,
+            visitor_phone_e164="+33611223344",
+            language="fr",
+            confirmation_sent_at=datetime(2026, 9, 21, 8, 0),
+            reminder_due_at=_utc(due),
+            created_at=datetime(2026, 9, 21, 8, 0),
+        )
+        db.add(row)
+        db.commit()
+        return row
+
+    appointment(_paris(24, 14), _paris(23, 14), "dlh-cancelled")
+    moved = appointment(_paris(24, 10), _paris(23, 10), "dlh-moved")
+    appointment(_paris(24, 11), _paris(23, 11), "dlh-deleted")
+    appointment(_paris(24, 12), _paris(23, 12), "dlh-postponed")
+    google.event_states["dlh-cancelled"] = CalendarEventState(cancelled=True, start=None)
+    google.event_states["dlh-moved"] = CalendarEventState(cancelled=False, start=_utc(_paris(24, 16, 30)))
+    google.event_states["dlh-deleted"] = None
+    google.event_states["dlh-postponed"] = CalendarEventState(cancelled=False, start=_utc(_paris(28, 12)))
+
+    # Every reminder is claimed; only the one still tomorrow leaves, at the time the agenda now holds.
+    assert asyncio.run(ai_assistant_appointment_notices.run_pass(db, now=now)) == 4
+    [sms] = outbox["sms"].texts
+    assert sms.startswith("Rappel : rendez-vous demain, 16:30, chez Garage Morel.")
+    db.refresh(moved)
+    assert (moved.starts_at, moved.ends_at) == (_utc(_paris(24, 16, 30)), _utc(_paris(24, 17, 30)))
+    assert sorted(google.event_reads) == ["dlh-cancelled", "dlh-deleted", "dlh-moved", "dlh-postponed"]
+    assert asyncio.run(ai_assistant_appointment_notices.run_pass(db, now=now)) == 0
 
 
 def test_a_confirmation_lost_by_a_restart_is_sent_by_the_runner(
