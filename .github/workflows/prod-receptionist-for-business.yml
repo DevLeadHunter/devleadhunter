@@ -140,8 +140,7 @@ jobs:
                         conversation["message_count"],
                     ))
                     for message in conversation.get("messages", []):
-                        print("  %s: %s" % (message["role"], message["content"].replace("
-", " / ")[:500]))
+                        print("  %s: %s" % (message["role"], message["content"].replace("\n", " / ")[:500]))
                 listed = client.get("/ai-assistants/requests", params={"assistant_id": assistant["id"]}).json()
                 for item in listed.get("requests", []):
                     print("REQUEST id=%s type=%s status=%s name=%s need=%s" % (
