@@ -205,6 +205,8 @@ const { data: assistant, pending }: Awaited<ReturnType<typeof useAsyncData<AiAss
 
 /** The request the visitor sent from the phone on the left, once there is one. */
 const receivedLead: Ref<AssistantLeadSummary | null> = ref(null)
+/** True while the visitor types in the customer's phone: the contact pill steps aside (it would cover the keys). */
+const isComposerFocused: Ref<boolean> = ref(false)
 
 const shortBusinessName: ComputedRef<string> = computed((): string =>
   BusinessNameUtils.short(assistant.value?.business_name ?? ''),
@@ -286,8 +288,16 @@ const accentStyle: ComputedRef<Record<string, string>> = computed((): Record<str
   return { '--a-accent': palette.accent, '--a-accent-strong': palette.strong, '--a-accent-text': palette.text }
 })
 
-/** True while the visitor types in the customer's phone: the contact pill steps aside (it would cover the keys). */
-const isComposerFocused: Ref<boolean> = ref(false)
+/**
+ * Show on the business's phone the request the visitor just sent from the customer's phone.
+ * @param summary - What the widget sent.
+ */
+function onLeadSent(summary: AssistantLeadSummary): void {
+  receivedLead.value = summary
+  if (typeof window !== 'undefined' && window.innerWidth < 760) {
+    document.querySelector('.ia__screen--lock')?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+  }
+}
 
 /**
  * Track whether the focus sits in a field of the inline widget.
@@ -299,17 +309,6 @@ function onFocusChange(event: FocusEvent): void {
     target instanceof HTMLElement &&
     (target instanceof HTMLTextAreaElement || target instanceof HTMLInputElement) &&
     target.closest('.ai-widget--inline') !== null
-}
-
-/**
- * Show on the business's phone the request the visitor just sent from the customer's phone.
- * @param summary - What the widget sent.
- */
-function onLeadSent(summary: AssistantLeadSummary): void {
-  receivedLead.value = summary
-  if (typeof window !== 'undefined' && window.innerWidth < 760) {
-    document.querySelector('.ia__screen--lock')?.scrollIntoView({ behavior: 'smooth', block: 'center' })
-  }
 }
 
 const { init: initTracking }: ReturnType<typeof useDemoTracking> = useDemoTracking()

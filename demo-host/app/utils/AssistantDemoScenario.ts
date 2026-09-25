@@ -1,16 +1,12 @@
 import type { AssistantLeadSummary } from '~/types/AssistantChat'
 
-/** An example request per trade, shown on the business's phone before the visitor sends a real one. */
 type TradeExample = {
-  /** Words of the trade found in its Google category (folded, lower case). */
+  /** Matched against the Google category once both are folded (lower case, no accents). */
   keywords: string[]
-  /** What the example customer asks for, as the alert would summarise it. */
   need: string
-  /** What kind of request the example is: it sets the label of the alert. */
   kind: AssistantLeadSummary['kind']
-  /** Whether the example customer sent a photo. */
   hasPhoto: boolean
-  /** The wished moment of an appointment (« samedi matin »), empty when none. */
+  /** « samedi matin », empty when the example is not an appointment. */
   slots: string
 }
 
@@ -145,9 +141,7 @@ export class AssistantDemoScenario {
   }
 
   /**
-   * The alert SMS as the business receives it, written like the real one (`AlertSms.new_request` on the API):
-   * « Nouvelle demande de devis (photo) de Marc, 06…, pour sam. 27/09 matin : … » or, once booked in the agenda,
-   * « RDV réservé le mer. 30/09 à 08:00 par Marc, 06… : … ».
+   * The alert SMS as the business receives it, worded like the real one (`AlertSms.new_request` on the API).
    * @param summary - What the visitor just sent.
    * @returns The text of the SMS.
    */

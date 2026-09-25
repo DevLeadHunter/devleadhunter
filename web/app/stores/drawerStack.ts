@@ -215,8 +215,7 @@ export const useDrawerStackStore = defineStore('drawerStack', () => {
   }
 
   /**
-   * Broadcast a change to a visitor request (status, note): refresh its drawer and notify pages watching
-   * `requestMutationCounter`.
+   * Broadcast a change to a visitor request (status, note) to its open drawer and to the pages watching the counter.
    * @param request - The request as the API returned it.
    */
   function notifyAssistantRequestUpdated(request: AiAssistantRequestItem): void {
