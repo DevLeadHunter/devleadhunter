@@ -3,7 +3,7 @@
   <div v-else-if="!assistant" class="ia ia--message ia--error" :style="accentStyle">
     Assistant introuvable ou inactif.
   </div>
-  <div v-else class="ia" :style="accentStyle">
+  <div v-else class="ia" :style="accentStyle" @focusin="onFocusChange" @focusout="onFocusChange">
     <header class="ia__top">
       <span class="ia__logo">{{ shortBusinessName }}</span>
       <span class="ia__live"><span class="ia__live-dot" />{{ assistant.assistant_name }} en ligne</span>
@@ -18,11 +18,11 @@
         Ce soir, 21h40. Un client cherche « {{ searchPhrase }} », tombe sur votre fiche Google et tape
         <strong>Site web</strong>. Vous êtes à table. {{ assistant.assistant_name }} répond, note sa demande, sa photo
         et ses coordonnées, et vous transmet tout.
-        <strong>Essayez, comme {{ subjectPronoun }} le ferait.</strong>
+        <strong>Essayez, comme ce client le ferait.</strong>
       </p>
 
       <section class="ia__path" aria-label="Où vos clients trouvent votre réceptionniste">
-        <p class="ia__label"><b>D'abord</b> · où {{ subjectPronoun }} vous trouve</p>
+        <p class="ia__label"><b>D'abord</b> · où votre client vous trouve</p>
         <div
           class="ia__maps"
           role="img"
@@ -108,8 +108,10 @@
                 </div>
               </div>
               <p class="ia__lock-hint">
-                <template v-if="receivedAlert">
-                  Reçu à 21h43. La fiche complète et la photo sont dans votre espace.
+                <template v-if="receivedLead">
+                  Reçu à 21h43.
+                  {{ receivedLead.hasPhoto ? 'La fiche complète et la photo sont' : 'La fiche complète est' }} dans
+                  votre espace.
                 </template>
                 <template v-else>Terminez la conversation à gauche : ce SMS devient le vôtre.</template>
               </p>
@@ -157,16 +159,18 @@
       </p>
     </main>
 
-    <AssistantContactBanner
-      :slug="assistant.slug"
-      :business-name="assistant.business_name"
-      :owner-name="assistant.owner_name ?? null"
-      :owner-photo-url="assistant.owner_profile_photo_url ?? null"
-      :owner-phone="assistant.owner_contact_phone ?? null"
-      :owner-email="assistant.owner_contact_email ?? null"
-      :status="assistant.status"
-      :accent-color="assistant.accent_color"
-    />
+    <div :class="{ 'ia__banner--hidden': isComposerFocused }">
+      <AssistantContactBanner
+        :slug="assistant.slug"
+        :business-name="assistant.business_name"
+        :owner-name="assistant.owner_name ?? null"
+        :owner-photo-url="assistant.owner_profile_photo_url ?? null"
+        :owner-phone="assistant.owner_contact_phone ?? null"
+        :owner-email="assistant.owner_contact_email ?? null"
+        :status="assistant.status"
+        :accent-color="assistant.accent_color"
+      />
+    </div>
   </div>
 </template>
 
@@ -279,8 +283,23 @@ const closedHours: ComputedRef<AiAssistantClosedHours | null> = computed((): AiA
 /** Bind the business's own accent colour to the page (falls back to the editorial gold). */
 const accentStyle: ComputedRef<Record<string, string>> = computed((): Record<string, string> => {
   const palette: AssistantAccentPalette = AssistantAccentUtils.palette(assistant.value?.accent_color)
-  return { '--a-accent': palette.accent, '--a-accent-deep': palette.deep, '--a-accent-ink': palette.ink }
+  return { '--a-accent': palette.accent, '--a-accent-ink': palette.ink, '--a-accent-text': palette.text }
 })
+
+/** True while the visitor types in the customer's phone: the contact pill steps aside (it would cover the keys). */
+const isComposerFocused: Ref<boolean> = ref(false)
+
+/**
+ * Track whether the focus sits in a field of the inline widget.
+ * @param event - The focusin or focusout event bubbling from the page.
+ */
+function onFocusChange(event: FocusEvent): void {
+  const target: EventTarget | null = event.type === 'focusin' ? event.target : event.relatedTarget
+  isComposerFocused.value =
+    target instanceof HTMLElement &&
+    (target instanceof HTMLTextAreaElement || target instanceof HTMLInputElement) &&
+    target.closest('.ai-widget--inline') !== null
+}
 
 /**
  * Show on the business's phone the request the visitor just sent from the customer's phone.
@@ -503,7 +522,7 @@ useHead({
 }
 .ia__maps-btn--lea {
   border-color: var(--a-accent);
-  color: var(--a-accent-deep);
+  color: var(--a-accent-text);
   background: color-mix(in srgb, var(--a-accent) 10%, var(--ia-card));
 }
 .ia__maps-btn--lea small {
@@ -761,6 +780,14 @@ useHead({
   line-height: 1.4;
   color: #222;
   overflow-wrap: anywhere;
+  display: -webkit-box;
+  -webkit-line-clamp: 4;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.ia__banner--hidden :deep(.ac) {
+  opacity: 0;
+  pointer-events: none;
 }
 .ia__lock-hint {
   position: absolute;
@@ -873,6 +900,8 @@ useHead({
   }
   .ia__page {
     padding-inline: 18px;
+    /* Room to scroll the phones above the contact pill, which floats over the bottom corner. */
+    padding-bottom: 100px;
   }
   .ia__device {
     border-radius: 40px;
