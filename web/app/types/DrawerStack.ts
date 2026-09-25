@@ -163,12 +163,6 @@ export type AssistantSourcesDrawerEntry = {
   assistant: AiAssistantSummary
 }
 
-/** An assistant's identity, alerts and model constraints, edited by the operator. */
-export type AssistantSettingsDrawerEntry = {
-  kind: 'assistant-settings'
-  assistant: AiAssistantSummary
-}
-
 /** One visitor request: its details, the conversation it came out of, and the owner's actions on it. */
 export type AssistantRequestDrawerEntry = {
   kind: 'assistant-request'
@@ -218,7 +212,6 @@ export type DrawerStackEntry =
   | AssistantSubscriptionDrawerEntry
   | AssistantConversationsDrawerEntry
   | AssistantSourcesDrawerEntry
-  | AssistantSettingsDrawerEntry
   | AssistantRequestDrawerEntry
   | UserFormDrawerEntry
 

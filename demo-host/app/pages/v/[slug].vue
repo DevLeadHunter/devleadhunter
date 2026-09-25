@@ -59,24 +59,9 @@
           >
             <h2 class="video-page__endcard-title">C'est votre site<span class="video-page__accent-dot">.</span></h2>
             <p class="video-page__endcard-text">Parcourez-le comme vos clients le verront.</p>
-            <a class="video-page__cta" :href="demoHref" @click="trackDemoLinkClick('endcard')">
+            <DemoCtaLink :href="demoHref" :pulse="false" @click="trackDemoLinkClick('endcard')">
               Parcourir mon site
-              <svg
-                class="video-page__cta-icon"
-                width="18"
-                height="18"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2.2"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                aria-hidden="true"
-              >
-                <path d="M5 12h14" />
-                <path d="m13 6 6 6-6 6" />
-              </svg>
-            </a>
+            </DemoCtaLink>
             <button type="button" class="video-page__replay" @click="replayVideo">
               <svg
                 width="13"
@@ -99,24 +84,7 @@
       </div>
 
       <div class="video-page__cta-row" :class="{ 'video-page__cta-row--hidden': isEndCardVisible }">
-        <a class="video-page__cta video-page__pulse" :href="demoHref" @click="trackDemoLinkClick('page')">
-          Parcourir mon site
-          <svg
-            class="video-page__cta-icon"
-            width="18"
-            height="18"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2.2"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-            aria-hidden="true"
-          >
-            <path d="M5 12h14" />
-            <path d="m13 6 6 6-6 6" />
-          </svg>
-        </a>
+        <DemoCtaLink :href="demoHref" @click="trackDemoLinkClick('page')">Parcourir mon site</DemoCtaLink>
         <p class="video-page__cta-note">Déjà en ligne — parcourez-le vous-même.</p>
       </div>
 
@@ -144,6 +112,7 @@
 import type { DemoVideoEventCapture } from '~/types/demoVideoTracking'
 import type { ComputedRef, Ref } from 'vue'
 import type { DemoSitePublic } from '~/types/demoSite'
+import DemoCtaLink from '~/components/DemoCtaLink.vue'
 import { BusinessNameUtils } from '~/utils/BusinessNameUtils'
 import { DemoBeaconUtils } from '~/utils/DemoBeaconUtils'
 
@@ -563,40 +532,7 @@ onMounted(async (): Promise<void> => {
   color: var(--vp-ink);
 }
 
-/* ── CTA: black pill, the DA's signature shape ─────────────────────────── */
-.video-page__cta {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 10px;
-  padding: 16px 32px;
-  border-radius: 999px;
-  background: var(--vp-ink);
-  color: var(--vp-paper);
-  font-weight: 600;
-  font-size: 15.5px;
-  text-decoration: none;
-  box-shadow: 0 10px 28px -12px rgba(23, 19, 13, 0.5);
-  transition:
-    transform 0.15s,
-    box-shadow 0.15s;
-}
-
-.video-page__cta-icon {
-  flex: none;
-  transition: transform 0.18s;
-}
-
-.video-page__cta:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 16px 34px -12px rgba(23, 19, 13, 0.55);
-}
-
-.video-page__cta:hover .video-page__cta-icon {
-  transform: translateX(3px);
-}
-
-/* Same layout on every viewport: full-width pill, note centered below. */
+/* ── CTA row: the shared black pill (DemoCtaLink), full width, note centered below ──────────────── */
 .video-page__cta-row {
   margin-top: clamp(26px, 4vh, 38px);
   display: flex;

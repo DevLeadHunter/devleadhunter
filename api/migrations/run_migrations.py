@@ -168,6 +168,7 @@ MIGRATION_MODULES: list[tuple[str, str]] = [
     ("add_ai_assistant_calendars_tables", "migrations.add_ai_assistant_calendars_tables"),
     ("add_ai_assistant_documents_table", "migrations.add_ai_assistant_documents_table"),
     ("convert_ai_assistant_tables_to_utf8mb4", "migrations.convert_ai_assistant_tables_to_utf8mb4"),
+    ("add_ai_assistant_messages_photo_url", "migrations.add_ai_assistant_messages_photo_url"),
     ("add_prospect_website_equipment", "migrations.add_prospect_website_equipment"),
     ("add_prospect_google_reviews", "migrations.add_prospect_google_reviews"),
 ]

@@ -183,9 +183,7 @@ export const useDrawerStackStore = defineStore('drawerStack', () => {
   function notifyAssistantUpdated(assistant: AiAssistantSummary): void {
     stack.value = stack.value.map((entry: DrawerStackEntry): DrawerStackEntry => {
       if (
-        (entry.kind === 'assistant-conversations' ||
-          entry.kind === 'assistant-sources' ||
-          entry.kind === 'assistant-settings') &&
+        (entry.kind === 'assistant-conversations' || entry.kind === 'assistant-sources') &&
         entry.assistant.id === assistant.id
       ) {
         return { ...entry, assistant }
@@ -204,9 +202,7 @@ export const useDrawerStackStore = defineStore('drawerStack', () => {
   function notifyAssistantDeleted(assistantId: number): void {
     stack.value = stack.value.filter((entry: DrawerStackEntry): boolean => {
       const showsAssistant: boolean =
-        (entry.kind === 'assistant-conversations' ||
-          entry.kind === 'assistant-sources' ||
-          entry.kind === 'assistant-settings') &&
+        (entry.kind === 'assistant-conversations' || entry.kind === 'assistant-sources') &&
         entry.assistant.id === assistantId
       return !showsAssistant
     })

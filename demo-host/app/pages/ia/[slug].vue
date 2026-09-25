@@ -4,11 +4,6 @@
     Cette démo n'est plus disponible.
   </div>
   <div v-else class="ia" :style="accentStyle" @focusin="onFocusChange" @focusout="onFocusChange">
-    <header class="ia__top">
-      <span class="ia__logo">{{ shortBusinessName }}</span>
-      <span class="ia__live"><span class="ia__live-dot" />{{ assistant.assistant_name }} en ligne</span>
-    </header>
-
     <main class="ia__page">
       <p class="ia__kicker">
         {{ shortBusinessName }}<template v-if="assistant.city"> · {{ assistant.city }}</template>
@@ -22,26 +17,26 @@
       </p>
 
       <div class="ia__stage">
-        <div class="ia__side">
-          <p class="ia__label"><b>Votre client</b> · ce soir, 21h40</p>
-          <AssistantDemoPhoneFrame time="21:40" screen="app">
+        <div class="ia__side ia__side--visitor">
+          <p class="ia__label">
+            <b>Votre client</b> · ce soir, 21h40
+            <span class="ia__live"><span class="ia__live-dot" />en direct</span>
+          </p>
+          <div class="ia__window">
             <AssistantChat :config="assistant" inline @lead-sent="onLeadSent" @example-played="onExamplePlayed" />
-          </AssistantDemoPhoneFrame>
+          </div>
         </div>
 
-        <div ref="ownerPhoneSide" class="ia__side">
+        <div ref="ownerFeedSide" class="ia__side ia__side--owner">
           <p class="ia__label"><b>Vous</b> · quelques secondes plus tard</p>
-          <AssistantDemoPhoneFrame time="21:43" screen="lock">
-            <AssistantDemoLockScreen
-              time="21:43"
-              :date-label="lockDateLabel"
-              :assistant-name="assistant.assistant_name"
-              :alert-text="alertText"
-              :is-example="receivedLead === null"
-              :hint-text="lockHintText"
-              :arrival-key="exampleArrivals"
-            />
-          </AssistantDemoPhoneFrame>
+          <AssistantDemoOwnerFeed
+            time-label="21:43"
+            :assistant-name="assistant.assistant_name"
+            :alert-text="alertText"
+            :is-example="receivedLead === null"
+            :hint-text="feedHintText"
+            :arrival-key="exampleArrivals"
+          />
         </div>
       </div>
 
@@ -68,7 +63,9 @@
       </p>
 
       <div v-if="priceLabel" class="ia__cta-row">
-        <a :href="subscribeUrl" class="ia__cta">Je garde {{ assistant.assistant_name }}, {{ priceLabel }} par mois</a>
+        <DemoCtaLink :href="subscribeUrl"
+          >Je garde {{ assistant.assistant_name }}, {{ priceLabel }} par mois</DemoCtaLink
+        >
         <p class="ia__cta-note">
           Sans engagement, mise en place incluse, premier mois satisfait ou remboursé.<br />
           {{ assistant.assistant_name }} se présente toujours comme réceptionniste IA et ne donne jamais un prix à votre
@@ -102,6 +99,8 @@ import type { ComputedRef, Ref } from 'vue'
 import { computed, onMounted, ref } from 'vue'
 import type { AiAssistantClosedHours, AiAssistantConfig } from '~/types/AiAssistant'
 import type { AssistantLeadSummary } from '~/types/AssistantChat'
+import AssistantDemoOwnerFeed from '~/components/AssistantDemoOwnerFeed.vue'
+import DemoCtaLink from '~/components/DemoCtaLink.vue'
 import { DemoBeaconUtils } from '~/utils/DemoBeaconUtils'
 import type { AssistantAccentPalette } from '~/utils/AssistantAccentUtils'
 import { AssistantAccentUtils } from '~/utils/AssistantAccentUtils'
@@ -125,12 +124,12 @@ const { data: assistant, pending }: Awaited<ReturnType<typeof useAsyncData<AiAss
     },
   )
 
-/** The request the visitor sent from the phone on the left, once there is one. */
+/** The request the visitor sent from the conversation, once there is one. */
 const receivedLead: Ref<AssistantLeadSummary | null> = ref(null)
-/** True while the visitor types in the customer's phone: the contact pill steps aside (it would cover the keys). */
+/** True while the visitor types in the conversation: the contact pill steps aside (it would cover the keys). */
 const isComposerFocused: Ref<boolean> = ref(false)
-/** The business's phone, scrolled into view on a small screen once a request lands on it. */
-const ownerPhoneSide: Ref<HTMLElement | null> = ref(null)
+/** The business's side, scrolled into view on a small screen once a request lands on it. */
+const ownerFeedSide: Ref<HTMLElement | null> = ref(null)
 /** How many times the played example has ended: each one makes the example notification land again. */
 const exampleArrivals: Ref<number> = ref(0)
 
@@ -160,19 +159,14 @@ const alertText: ComputedRef<string> = computed((): string =>
     : AssistantDemoScenarioUtils.exampleAlertText(assistant.value?.trade_label ?? null),
 )
 
-const lockHintText: ComputedRef<string> = computed((): string => {
+const feedHintText: ComputedRef<string> = computed((): string => {
   if (!receivedLead.value && exampleArrivals.value > 0) {
-    return 'Voilà ce que vous auriez reçu. À vous : écrivez à gauche comme ce client le ferait.'
+    return 'Voilà ce que vous auriez reçu. À vous : écrivez dans la conversation comme ce client le ferait.'
   }
   if (!receivedLead.value) return 'Terminez la conversation à gauche : ce SMS devient le vôtre.'
   const stored: string = receivedLead.value.hasPhoto ? 'La fiche complète et la photo sont' : 'La fiche complète est'
   return `Reçu à 21h43. ${stored} dans votre espace.`
 })
-
-/** Today's date on the lock screen (« jeudi 24 septembre »). */
-const lockDateLabel: ComputedRef<string> = computed((): string =>
-  new Intl.DateTimeFormat('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' }).format(new Date()),
-)
 
 /**
  * The monthly price a demo shows (« 79 € », formatted by the API like the emails); empty once the
@@ -202,24 +196,24 @@ const accentStyle: ComputedRef<Record<string, string>> = computed((): Record<str
 })
 
 /**
- * Show on the business's phone the request the visitor just sent from the customer's phone.
+ * Show on the business's side the request the visitor just sent from the conversation.
  * @param summary - What the widget sent.
  */
 function onLeadSent(summary: AssistantLeadSummary): void {
   receivedLead.value = summary
-  revealOwnerPhone()
+  revealOwnerFeed()
 }
 
-/** The scripted conversation has run: the example SMS lands again on the business's phone. */
+/** The scripted conversation has run: the example SMS lands again on the business's side. */
 function onExamplePlayed(): void {
   exampleArrivals.value += 1
-  revealOwnerPhone()
+  revealOwnerFeed()
 }
 
-/** On a small screen, scroll the business's phone into view once something lands on it. */
-function revealOwnerPhone(): void {
-  if (typeof window !== 'undefined' && window.innerWidth < 760) {
-    ownerPhoneSide.value?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+/** On a small screen, scroll the business's side into view once something lands on it. */
+function revealOwnerFeed(): void {
+  if (typeof window !== 'undefined' && window.innerWidth < 900) {
+    ownerFeedSide.value?.scrollIntoView({ behavior: 'smooth', block: 'center' })
   }
 }
 
@@ -257,9 +251,6 @@ useHead({
   --ia-ink-dim: #6d665b;
   --ia-line: rgba(23, 19, 13, 0.14);
   --ia-line-soft: rgba(23, 19, 13, 0.07);
-  --ia-urgent: #b8422f;
-  --ia-device: #121214;
-  --ia-device-edge: #2a2a2e;
   --ia-font-d: 'Fraunces', Georgia, serif;
   --ia-font-b: 'Inter', system-ui, sans-serif;
   overflow-x: clip;
@@ -281,45 +272,13 @@ useHead({
   color: #9f3a2f;
 }
 
-/* ── Top bar ────────────────────────────────────────────────────────────── */
-.ia__top {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-  border-bottom: 1px solid var(--ia-line);
-  padding: 18px 24px;
-}
-.ia__logo {
-  font-family: var(--ia-font-d);
-  font-size: 1.3rem;
-  font-weight: 600;
-  letter-spacing: -0.01em;
-}
-.ia__live {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 12px;
-  font-weight: 500;
-  color: var(--ia-ink-dim);
-  white-space: nowrap;
-}
-.ia__live-dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: #3fb950;
-  box-shadow: 0 0 0 3px rgba(63, 185, 80, 0.2);
-}
-
-/* ── Page ───────────────────────────────────────────────────────────────── */
+/* ── Page: the video page's editorial column, wider for the two-column scene ─────────────────────── */
 .ia__page {
   width: 100%;
-  max-width: 860px;
+  max-width: 1120px;
   margin: 0 auto;
   padding-inline: 24px;
-  padding-block: clamp(36px, 7vh, 80px) 48px;
+  padding-block: clamp(40px, 8vh, 96px) 48px;
   display: flex;
   flex-direction: column;
 }
@@ -365,6 +324,10 @@ useHead({
 }
 .ia__label {
   margin: 0;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px 12px;
   font-size: 12px;
   font-weight: 600;
   letter-spacing: 0.18em;
@@ -374,21 +337,35 @@ useHead({
 .ia__label b {
   color: var(--ia-ink);
 }
+.ia__live {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  margin-left: auto;
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  color: var(--ia-ink-dim);
+}
+.ia__live-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #3fb950;
+  box-shadow: 0 0 0 3px rgba(63, 185, 80, 0.2);
+}
 
-/* ── The Google listing ─────────────────────────────────────────────────── */
-/* ── The scene: two phones ──────────────────────────────────────────────── */
+/* ── The scene: the live conversation, and what the business receives ───────────────────────────── */
 .ia__stage {
   position: relative;
   margin-top: clamp(30px, 5vh, 48px);
   display: grid;
-  grid-template-columns: 1fr;
-  gap: 34px;
-  justify-items: center;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 30px;
 }
-@media (min-width: 760px) {
+@media (min-width: 900px) {
   .ia__stage {
-    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-    gap: 40px;
+    grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr);
+    gap: 32px;
     align-items: start;
   }
 }
@@ -405,14 +382,44 @@ useHead({
   z-index: 1;
   display: grid;
   gap: 14px;
-  justify-items: center;
-  width: 100%;
   min-width: 0;
+}
+.ia__side--owner {
+  align-self: start;
+}
+@media (min-width: 900px) {
+  .ia__side--owner {
+    position: sticky;
+    top: 24px;
+  }
+}
+/* The conversation, laid out as a window rather than a phone: it is the thing to try, not a picture of it. */
+.ia__window {
+  height: clamp(520px, 74vh, 640px);
+  display: flex;
+  flex-direction: column;
+  border-radius: 22px;
+  border: 1px solid var(--ia-line);
+  background: var(--ia-card);
+  box-shadow: 0 30px 70px -34px rgba(23, 19, 13, 0.45);
+  overflow: hidden;
+}
+.ia__window :deep(.ai-widget--inline) {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+.ia__window :deep(.ai-panel--inline) {
+  flex: 1;
+  min-height: 0;
+  height: auto;
 }
 .ia__banner--hidden :deep(.ac) {
   opacity: 0;
   pointer-events: none;
 }
+
 /* ── Outcomes, estimate, CTA, signature ────────────────────────────────── */
 .ia__outcomes {
   margin-top: clamp(30px, 5vh, 44px);
@@ -425,7 +432,7 @@ useHead({
 @media (min-width: 620px) {
   .ia__outcomes {
     grid-template-columns: repeat(3, 1fr);
-    gap: 24px;
+    gap: 28px;
   }
 }
 .ia__outcome {
@@ -463,29 +470,6 @@ useHead({
   align-items: stretch;
   gap: 14px;
 }
-.ia__cta {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 10px;
-  padding: 16px 32px;
-  border: 0;
-  border-radius: 999px;
-  background: var(--ia-ink);
-  color: var(--ia-paper);
-  font-weight: 600;
-  font-size: 15.5px;
-  text-decoration: none;
-  text-align: center;
-  box-shadow: 0 10px 28px -12px rgba(23, 19, 13, 0.5);
-  transition:
-    transform 0.15s,
-    box-shadow 0.15s;
-}
-.ia__cta:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 16px 34px -12px rgba(23, 19, 13, 0.55);
-}
 .ia__cta-note {
   margin: 0;
   text-align: center;
@@ -502,19 +486,14 @@ useHead({
   color: var(--ia-ink-dim);
   text-align: center;
 }
-@media (prefers-reduced-motion: reduce) {
-  .ia__notif--new {
-    animation: none;
-  }
-}
 @media (max-width: 640px) {
-  .ia__top {
-    padding: 14px 18px;
-  }
   .ia__page {
     padding-inline: 18px;
-    /* Room to scroll the phones above the contact pill, which floats over the bottom corner. */
+    /* Room to scroll the scene above the contact pill, which floats over the bottom corner. */
     padding-bottom: 100px;
+  }
+  .ia__window {
+    height: min(560px, 78vh);
   }
 }
 </style>
