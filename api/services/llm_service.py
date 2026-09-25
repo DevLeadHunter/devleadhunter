@@ -14,6 +14,7 @@ import json
 import logging
 import re
 import time
+from collections.abc import AsyncIterator
 from dataclasses import dataclass
 from typing import Any
 
@@ -62,6 +63,66 @@ class LlmCompletion:
     prompt_tokens: int | None
     completion_tokens: int | None
     latency_ms: int
+
+
+@dataclass
+class LlmStreamUsage:
+    """What a streamed call reports along the way: the served model and, on its last chunk, the token counts."""
+
+    model: str | None = None
+    prompt_tokens: int | None = None
+    completion_tokens: int | None = None
+
+
+def read_chat_stream_line(line: str, usage: LlmStreamUsage | None = None) -> str | None:
+    """
+    The text delta of one line of an OpenAI-style chat completions stream (Mistral and Groq speak it).
+
+    Args:
+        line: One line of the ``text/event-stream`` body.
+        usage: Filled with the model and the token counts when a chunk reports them (the last one does).
+
+    Returns:
+        The delta text, or None for a blank line, the ``[DONE]`` sentinel or a chunk without text.
+    """
+    if not line.startswith("data:"):
+        return None
+    data = line[len("data:") :].strip()
+    if not data or data == "[DONE]":
+        return None
+    try:
+        chunk = json.loads(data)
+    except ValueError:
+        return None
+    if not isinstance(chunk, dict):
+        return None
+    if usage is not None:
+        _read_stream_usage(chunk, usage)
+    try:
+        content = chunk["choices"][0]["delta"].get("content")
+    except (KeyError, IndexError, TypeError, AttributeError):
+        return None
+    if isinstance(content, list):
+        content = "".join(
+            str(part.get("text", "")) for part in content if isinstance(part, dict) and part.get("type") == "text"
+        )
+    return content if isinstance(content, str) and content else None
+
+
+def _read_stream_usage(chunk: dict[str, Any], usage: LlmStreamUsage) -> None:
+    """Keep the model and the tokens a chunk reports (Groq puts its usage under ``x_groq``)."""
+    if isinstance(chunk.get("model"), str) and chunk["model"]:
+        usage.model = chunk["model"]
+    reported = chunk.get("usage")
+    if not isinstance(reported, dict):
+        extra = chunk.get("x_groq")
+        reported = extra.get("usage") if isinstance(extra, dict) else None
+    if not isinstance(reported, dict):
+        return
+    if isinstance(reported.get("prompt_tokens"), int):
+        usage.prompt_tokens = reported["prompt_tokens"]
+    if isinstance(reported.get("completion_tokens"), int):
+        usage.completion_tokens = reported["completion_tokens"]
 
 
 def _format_sender_identity(*, sender_name: str, company_name: str | None) -> str:
@@ -167,6 +228,75 @@ class LLMService:
         except Exception as exc:
             logger.warning("Groq call failed (%s): %s", chosen_model, exc)
             return None
+
+    async def complete_stream(
+        self,
+        messages: list[dict[str, Any]],
+        *,
+        max_tokens: int = 600,
+        temperature: float = 0.6,
+        model: str | None = None,
+        timeout: float = 40.0,
+        usage: LlmStreamUsage | None = None,
+    ) -> AsyncIterator[str]:
+        """
+        Call Groq chat completions as a stream, one text delta at a time.
+
+        A failure before the first delta ends the stream empty (the caller decides, as with a None of
+        ``complete``); a failure after it ends the stream on what came through, since a reader already has it.
+        Rate limits and a rejected ``reasoning_effort`` are retried like in ``complete``.
+
+        Args:
+            messages: OpenAI-style messages (see ``_chat``).
+            max_tokens: Answer budget (floored so reasoning models keep room for the content).
+            temperature: Sampling temperature.
+            model: Model id override (default: ``settings.groq_model``).
+            timeout: HTTP timeout in seconds (between two chunks once the stream is open).
+            usage: Filled with the served model and the token counts Groq reports on its last chunk.
+
+        Yields:
+            The text deltas, in order.
+        """
+        if not self.is_configured:
+            return
+        chosen_model = model or settings.groq_model
+        payload: dict[str, Any] = {
+            "model": chosen_model,
+            "messages": messages,
+            "temperature": temperature,
+            "max_tokens": max(max_tokens, _MIN_MAX_TOKENS),
+            "stream": True,
+        }
+        if _uses_reasoning(chosen_model):
+            payload["reasoning_effort"] = "low"
+        try:
+            async with httpx.AsyncClient(timeout=timeout) as client:
+                attempt = 0
+                while True:
+                    async with client.stream("POST", _GROQ_URL, headers=self._headers(), json=payload) as response:
+                        if response.status_code == 400 and "reasoning_effort" in payload:
+                            payload.pop("reasoning_effort")
+                            continue
+                        if response.status_code == 429 and attempt < _RATE_LIMIT_MAX_RETRIES:
+                            attempt += 1
+                            delay = self._retry_delay_seconds(response, attempt)
+                            logger.info("Groq rate limited (%s): retry %s in %.1fs", chosen_model, attempt, delay)
+                            await asyncio.sleep(delay)
+                            continue
+                        if response.status_code >= 400:
+                            await response.aread()  # the error text is worth logging
+                        response.raise_for_status()
+                        async for line in response.aiter_lines():
+                            delta = read_chat_stream_line(line, usage)
+                            if delta:
+                                yield delta
+                        return
+        except httpx.HTTPStatusError as exc:
+            logger.warning(
+                "Groq stream failed (%s): HTTP %s %s", chosen_model, exc.response.status_code, exc.response.text[:300]
+            )
+        except Exception as exc:
+            logger.warning("Groq stream failed (%s): %s", chosen_model, exc)
 
     async def _post_with_retries(self, client: httpx.AsyncClient, payload: dict[str, Any]) -> httpx.Response:
         """POST a completion, waiting out rate limits and dropping ``reasoning_effort`` when the model rejects it.

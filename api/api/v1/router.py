@@ -10,6 +10,7 @@ from .routes import (
     admin_storage,
     admin_storyblok,
     ai_assistant_client_space,
+    ai_assistant_faq,
     ai_assistant_requests,
     ai_assistant_sources,
     ai_assistant_subscriptions,
@@ -87,6 +88,7 @@ router.include_router(ai_assistant_subscriptions.router)
 router.include_router(ai_assistant_widget.router)
 router.include_router(ai_assistant_client_space.router)
 router.include_router(ai_assistant_sources.router)
+router.include_router(ai_assistant_faq.router)
 router.include_router(domains.router)
 router.include_router(enrichment.router)
 router.include_router(orders.router)

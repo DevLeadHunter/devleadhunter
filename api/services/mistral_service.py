@@ -12,12 +12,13 @@ from __future__ import annotations
 import asyncio
 import logging
 import time
+from collections.abc import AsyncIterator
 from typing import Any
 
 import httpx
 
 from core.config import settings
-from services.llm_service import LlmCompletion
+from services.llm_service import LlmCompletion, LlmStreamUsage, read_chat_stream_line
 
 logger = logging.getLogger(__name__)
 
@@ -107,6 +108,78 @@ class MistralService:
             completion_tokens=usage.get("completion_tokens"),
             latency_ms=int((time.monotonic() - started) * 1000),
         )
+
+    async def complete_stream(
+        self,
+        messages: list[dict[str, Any]],
+        *,
+        model: str,
+        max_tokens: int = 600,
+        temperature: float = 0.5,
+        timeout: float = 30.0,
+        retries: int = 0,
+        usage: LlmStreamUsage | None = None,
+    ) -> AsyncIterator[str]:
+        """
+        Call Mistral chat completions as a stream, one text delta at a time.
+
+        A failure before the first delta ends the stream empty (the caller decides, as with a None of
+        ``complete``); a failure after it ends the stream on what came through, since a reader already has it.
+
+        Args:
+            messages: OpenAI-style messages.
+            model: Mistral model id.
+            max_tokens: Answer budget.
+            temperature: Sampling temperature.
+            timeout: HTTP timeout in seconds (between two chunks once the stream is open).
+            retries: Extra attempts after a rate limit or a transient server error.
+            usage: Filled with the served model and the token counts Mistral reports on its last chunk.
+
+        Yields:
+            The text deltas, in order.
+
+        Raises:
+            MistralRequestRejectedError: Mistral rejected the request as malformed (HTTP 400 / 422).
+        """
+        if not self.is_configured:
+            return
+        payload: dict[str, Any] = {
+            "model": model,
+            "messages": messages,
+            "temperature": temperature,
+            "max_tokens": max_tokens,
+            "stream": True,
+        }
+        headers = {"Authorization": f"Bearer {settings.mistral_api_key}"}
+        try:
+            async with httpx.AsyncClient(timeout=timeout) as client:
+                attempt = 0
+                while True:
+                    async with client.stream("POST", _MISTRAL_URL, headers=headers, json=payload) as response:
+                        if response.status_code in _REJECTED_STATUSES:
+                            body = (await response.aread()).decode(errors="replace")[:300]
+                            logger.warning("Mistral rejected the request (%s): %s", response.status_code, body)
+                            raise MistralRequestRejectedError(body)
+                        if response.status_code in _RETRYABLE_STATUSES and attempt < retries:
+                            attempt += 1
+                            await asyncio.sleep(self._retry_delay_seconds(response))
+                            continue
+                        if response.status_code >= 400:
+                            await response.aread()  # the error text is worth logging
+                        response.raise_for_status()
+                        async for line in response.aiter_lines():
+                            delta = read_chat_stream_line(line, usage)
+                            if delta:
+                                yield delta
+                        return
+        except MistralRequestRejectedError:
+            raise
+        except httpx.HTTPStatusError as exc:
+            logger.warning(
+                "Mistral stream failed (%s): HTTP %s %s", model, exc.response.status_code, exc.response.text[:300]
+            )
+        except Exception as exc:
+            logger.warning("Mistral stream failed (%s): %s", model, exc)
 
     async def _post(self, client: httpx.AsyncClient, payload: dict[str, Any], *, retries: int) -> dict[str, Any]:
         """POST a completion, retrying a rate limit or a transient error up to ``retries`` times."""
