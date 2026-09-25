@@ -11,7 +11,8 @@
           « {{ entry.question }} »
           <span v-if="entry.count > 1" class="csf__count">demandé {{ entry.count }} fois</span>
         </p>
-        <template v-if="openIndex === index">
+        <template v-if="props.readOnly" />
+        <template v-else-if="openIndex === index">
           <textarea
             v-model="draft"
             class="cs-input csf__answer"
@@ -86,6 +87,10 @@ const props: ClientSpaceFaqProps = defineProps({
   errorMessage: {
     type: String as PropType<string | null>,
     default: null,
+  },
+  readOnly: {
+    type: Boolean,
+    default: false,
   },
 })
 

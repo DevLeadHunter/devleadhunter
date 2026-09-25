@@ -13,10 +13,10 @@
             : `Connectez votre agenda Google : ${assistantName} proposera vos créneaux libres aux visiteurs et y réservera leurs rendez-vous.`
         }}
       </p>
-      <button type="button" class="cs-button" :disabled="isBusy" @click="emit('connect')">
+      <button v-if="!props.readOnly" type="button" class="cs-button" :disabled="isBusy" @click="emit('connect')">
         {{ calendar.status === 'error' ? 'Reconnecter Google Agenda' : 'Connecter Google Agenda' }}
       </button>
-      <p class="cs-muted">
+      <p v-if="!props.readOnly" class="cs-muted">
         Google s’ouvre dans un nouvel onglet : autorisez l’accès à vos événements et à vos disponibilités, puis revenez
         ici.
       </p>
@@ -31,46 +31,49 @@
       </p>
       <p v-if="calendar.last_error" class="csc__error">Dernier problème le {{ calendar.last_error }}</p>
 
-      <div class="csc__pair">
-        <label class="cs-field">
-          <span class="cs-label">Durée d’un rendez-vous</span>
-          <select v-model.number="duration" class="cs-input">
-            <option v-for="minutes in calendar.duration_choices" :key="minutes" :value="minutes">
-              {{ durationLabel(minutes) }}
-            </option>
-          </select>
-        </label>
-        <label class="cs-field">
-          <span class="cs-label">Délai minimum avant un rendez-vous</span>
-          <select v-model.number="notice" class="cs-input">
-            <option v-for="hours in calendar.min_notice_choices" :key="hours" :value="hours">
-              {{ hours === 0 ? 'Aucun' : `${hours} h` }}
-            </option>
-          </select>
-        </label>
-      </div>
+      <fieldset class="csc__fields" :disabled="props.readOnly">
+        <div class="csc__pair">
+          <label class="cs-field">
+            <span class="cs-label">Durée d’un rendez-vous</span>
+            <select v-model.number="duration" class="cs-input">
+              <option v-for="minutes in calendar.duration_choices" :key="minutes" :value="minutes">
+                {{ durationLabel(minutes) }}
+              </option>
+            </select>
+          </label>
+          <label class="cs-field">
+            <span class="cs-label">Délai minimum avant un rendez-vous</span>
+            <select v-model.number="notice" class="cs-input">
+              <option v-for="hours in calendar.min_notice_choices" :key="hours" :value="hours">
+                {{ hours === 0 ? 'Aucun' : `${hours} h` }}
+              </option>
+            </select>
+          </label>
+        </div>
 
-      <label class="cs-field">
-        <span class="cs-label">Types de rendez-vous (facultatif, un par ligne)</span>
-        <textarea
-          v-model="typesText"
-          class="cs-input csc__types"
-          rows="3"
-          placeholder="Révision&#10;Contrôle technique"
-        />
-        <span class="cs-muted csc__hint">Le visiteur choisit l’un d’eux avant son créneau. 6 au plus.</span>
-      </label>
+        <label class="cs-field">
+          <span class="cs-label">Types de rendez-vous (facultatif, un par ligne)</span>
+          <textarea
+            v-model="typesText"
+            class="cs-input csc__types"
+            rows="3"
+            placeholder="Révision&#10;Contrôle technique"
+          />
+          <span class="cs-muted csc__hint">Le visiteur choisit l’un d’eux avant son créneau. 6 au plus.</span>
+        </label>
 
-      <label class="cs-field">
-        <span class="cs-label">Agenda utilisé</span>
-        <input v-model="calendarId" class="cs-input" type="text" maxlength="255" autocomplete="off" />
-        <span class="cs-muted csc__hint">
-          « primary » : votre agenda principal. Pour un autre agenda, collez son identifiant (paramètres de l’agenda, «
-          Intégrer l’agenda »).
-        </span>
-      </label>
+        <label class="cs-field">
+          <span class="cs-label">Agenda utilisé</span>
+          <input v-model="calendarId" class="cs-input" type="text" maxlength="255" autocomplete="off" />
+          <span class="cs-muted csc__hint">
+            « primary » : votre agenda principal. Pour un autre agenda, collez son identifiant (paramètres de l’agenda,
+            « Intégrer l’agenda »).
+          </span>
+        </label>
+      </fieldset>
 
       <ClientSpaceSaveBar
+        v-if="!props.readOnly"
         :is-busy="isBusy"
         :can-save="hasChanges"
         :error-message="errorMessage"
@@ -80,7 +83,7 @@
           Déconnecter
         </button>
       </ClientSpaceSaveBar>
-      <p class="cs-muted csc__hint">
+      <p v-if="!props.readOnly" class="cs-muted csc__hint">
         Déconnecter efface l’accès gardé ici. Pour le retirer aussi chez Google : votre compte Google, rubrique
         Sécurité, accès des applications tierces.
       </p>
@@ -114,6 +117,7 @@ const MAX_TYPES: number = 6
  * @param isBusy A call is in flight.
  * @param errorMessage Why the last call was refused, if it was.
  * @param hasSaved The last settings save went through.
+ * @param readOnly The example space: shown, never connected nor saved.
  */
 const props: ClientSpaceCalendarProps = defineProps({
   calendar: { type: Object as PropType<AiAssistantClientCalendar>, required: true },
@@ -121,6 +125,7 @@ const props: ClientSpaceCalendarProps = defineProps({
   isBusy: { type: Boolean, default: false },
   errorMessage: { type: String as PropType<string | null>, default: null },
   hasSaved: { type: Boolean, default: false },
+  readOnly: { type: Boolean, default: false },
 })
 
 const emit: EmitFn<ClientSpaceCalendarEmits> = defineEmits<ClientSpaceCalendarEmits>()
@@ -181,6 +186,15 @@ watch(
 </script>
 
 <style scoped>
+.csc__fields {
+  display: grid;
+  gap: 14px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  min-width: 0;
+}
+
 .csc__connect,
 .csc__form {
   display: grid;

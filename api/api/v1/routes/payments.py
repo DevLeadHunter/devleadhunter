@@ -2,6 +2,7 @@
 Payment routes for Stripe integration.
 """
 
+import logging
 from typing import Any
 
 import stripe
@@ -14,6 +15,8 @@ from models.user import User
 from schemas.payment import CheckoutSessionCreate, CheckoutSessionResponse
 from services.auth_service import require_auth
 from services.credit_service import TransactionType, credit_service
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/payments", tags=["payments"])
 
@@ -76,6 +79,21 @@ async def create_checkout_session(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Failed to create checkout session: {e!s}"
         )
+
+
+async def _welcome_assistant_client(db: Session, assistant_id: int | None) -> None:
+    """Email the business that just subscribed its install line and its client-space link; never fails the webhook."""
+    from models.ai_assistant import AiAssistant
+    from services.ai_assistant.client_space_service import ai_assistant_client_space_service
+
+    if assistant_id is None:
+        return
+    try:
+        assistant = db.get(AiAssistant, assistant_id)
+        if assistant is not None:
+            await ai_assistant_client_space_service.send_welcome(db, assistant)
+    except Exception:
+        logger.warning("Assistant %s: the welcome email failed", assistant_id, exc_info=True)
 
 
 @router.post("/webhook")
@@ -159,6 +177,7 @@ async def stripe_webhook(
                     amount_cents=activated.amount_cents,
                     interval=activated.interval,
                 )
+                await _welcome_assistant_client(db, activated.ai_assistant_id)
             return {"status": "success", "message": "Assistant subscription activated"}
         if event_type in ("customer.subscription.updated", "customer.subscription.deleted"):
             assistant_subscription_service.update_from_stripe_subscription(db, event_obj)

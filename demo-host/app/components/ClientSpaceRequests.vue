@@ -42,7 +42,7 @@
         </div>
         <div class="csr__actions">
           <button
-            v-if="item.status === 'new'"
+            v-if="item.status === 'new' && !props.readOnly"
             type="button"
             class="cs-button cs-button--outline"
             :disabled="busyRequestId === item.id"
@@ -91,6 +91,10 @@ const props: ClientSpaceRequestsProps = defineProps({
   requests: { type: Array as PropType<AiAssistantClientRequest[]>, required: true },
   pendingCount: { type: Number, required: true },
   busyRequestId: { type: Number as PropType<number | null>, default: null },
+  readOnly: {
+    type: Boolean,
+    default: false,
+  },
 })
 
 const emit: EmitFn<ClientSpaceRequestsEmits> = defineEmits<ClientSpaceRequestsEmits>()

@@ -7,6 +7,8 @@ export type ClientSpaceFaqProps = {
   faq: AiAssistantClientFaqEntry[]
   isBusy: boolean
   errorMessage: string | null
+  /** In the example space: the questions are shown, none can be answered. */
+  readOnly: boolean
 }
 
 /** Events of the card: an answer to record, a question to drop. */

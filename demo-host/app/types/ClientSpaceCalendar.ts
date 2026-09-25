@@ -7,6 +7,8 @@ export type ClientSpaceCalendarProps = {
   isBusy: boolean
   errorMessage: string | null
   hasSaved: boolean
+  /** In the example space: the agenda is shown, nothing can be connected or saved. */
+  readOnly: boolean
 }
 
 /** Events of the ClientSpaceCalendar component. */

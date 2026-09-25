@@ -10,9 +10,8 @@
       </p>
       <h1 class="ia__title">Votre réceptionniste répond à vos clients<span class="ia__dot">.</span></h1>
       <p class="ia__lede">
-        Ce soir, 21h40. Un client cherche « {{ searchPhrase }} », tombe sur votre fiche Google et tape
-        <strong>Site web</strong>. Vous êtes à table. {{ assistant.assistant_name }} répond, note sa demande, sa photo
-        et ses coordonnées, et vous transmet tout.
+        Ce soir, 21h40, un client cherche « {{ searchPhrase }} » et ouvre votre site. Vous êtes à table.
+        {{ assistant.assistant_name }} répond, note sa demande et vous la transmet.
         <strong>Essayez, comme ce client le ferait.</strong>
       </p>
 
@@ -43,34 +42,50 @@
       <div class="ia__outcomes" aria-label="Ce que vous recevez">
         <div class="ia__outcome">
           <b>Un SMS, tout de suite</b>
-          <span>Le besoin, l'urgence, le numéro, la photo. L'email de résumé suit avec la conversation.</span>
+          <span>Le besoin, l'urgence, le numéro, la photo.</span>
         </div>
         <div class="ia__outcome">
           <b>Le rendez-vous dans votre agenda</b>
-          <span>Posé dans Google Agenda, avec un rappel envoyé au client la veille.</span>
+          <span>Google Agenda, rappel au client la veille.</span>
         </div>
         <div class="ia__outcome">
           <b>La fiche dans votre espace</b>
-          <span>Et chaque mois, ce que {{ assistant.assistant_name }} a traité pour vous.</span>
+          <span>Et un rapport chaque mois.</span>
         </div>
       </div>
 
+      <section class="ia__after" aria-label="Votre espace">
+        <a :href="exampleSpaceUrl" class="ia__after-figure" target="_blank" rel="noopener" @click="onExampleSpaceClick">
+          <img
+            src="/showroom/espace-client.webp"
+            alt="Votre espace : les demandes reçues par la réceptionniste, avec les coordonnées de chaque client"
+            width="1400"
+            height="1014"
+            loading="lazy"
+          />
+        </a>
+        <p class="ia__after-text">
+          <b>Vous gardez la main.</b>
+          Tout ce que {{ assistant.assistant_name }} reçoit arrive dans votre espace : demandes, photos, rapport du
+          mois, réglages.
+          <a :href="exampleSpaceUrl" target="_blank" rel="noopener" @click="onExampleSpaceClick">
+            Voir un exemple d'espace
+          </a>
+        </p>
+      </section>
+
       <p v-if="closedHours" class="ia__estimate">
-        <b>≈ {{ closedHours.estimated_requests }} demandes par mois</b> arrivent chez vous quand c'est fermé, d'après
-        vos horaires Google ({{ closedHours.closed_share_pct }} % du temps entre 7 h et 22 h) et notre hypothèse pour
-        {{ closedHours.trade_label }} ({{ closedHours.monthly_requests }} demandes par mois).
-        {{ assistant.assistant_name }} y répond.
+        <b>≈ {{ closedHours.estimated_requests }} demandes par mois</b> arrivent quand c'est fermé ({{
+          closedHours.closed_share_pct
+        }}
+        % du temps entre 7 h et 22 h). {{ assistant.assistant_name }} y répond.
       </p>
 
       <div v-if="priceLabel" class="ia__cta-row">
         <DemoCtaLink :href="subscribeUrl"
           >Je garde {{ assistant.assistant_name }}, {{ priceLabel }} par mois</DemoCtaLink
         >
-        <p class="ia__cta-note">
-          Sans engagement, mise en place incluse, premier mois satisfait ou remboursé.<br />
-          {{ assistant.assistant_name }} se présente toujours comme réceptionniste IA et ne donne jamais un prix à votre
-          place.
-        </p>
+        <p class="ia__cta-note">Sans engagement, mise en place incluse, premier mois satisfait ou remboursé.</p>
       </div>
 
       <p v-if="ownerNameLabel" class="ia__signature">
@@ -106,7 +121,7 @@ import type { AssistantAccentPalette } from '~/utils/AssistantAccentUtils'
 import { AssistantAccentUtils } from '~/utils/AssistantAccentUtils'
 import { AssistantDemoScenarioUtils } from '~/utils/AssistantDemoScenarioUtils'
 import { BusinessNameUtils } from '~/utils/BusinessNameUtils'
-import { useDemoTracking } from '~/composables/useDemoTracking'
+import { captureDemoEvent, useDemoTracking } from '~/composables/useDemoTracking'
 
 const route: ReturnType<typeof useRoute> = useRoute()
 const config: ReturnType<typeof useRuntimeConfig> = useRuntimeConfig()
@@ -178,6 +193,9 @@ const priceLabel: ComputedRef<string> = computed((): string => {
   return label
 })
 
+/** The example client space, read-only, with the way back to this demo. */
+const exampleSpaceUrl: ComputedRef<string> = computed((): string => `/client/exemple?demo=${slug.value}`)
+
 /** The permanent subscription link: each click opens a fresh Stripe Checkout. */
 const subscribeUrl: ComputedRef<string> = computed(
   (): string => `${config.public.apiBase}/api/v1/ai-assistants/public/${slug.value}/subscribe?interval=month`,
@@ -202,6 +220,11 @@ const accentStyle: ComputedRef<Record<string, string>> = computed((): Record<str
 function onLeadSent(summary: AssistantLeadSummary): void {
   receivedLead.value = summary
   revealOwnerFeed()
+}
+
+/** The prospect opens the example space: the sign that the « after » matters to them. */
+function onExampleSpaceClick(): void {
+  captureDemoEvent('assistant_space_example_opened')
 }
 
 /** The scripted conversation has run: the example SMS lands again on the business's side. */
@@ -418,6 +441,61 @@ useHead({
 .ia__banner--hidden :deep(.ac) {
   opacity: 0;
   pointer-events: none;
+}
+
+/* ── The space, as a picture: what the business keeps in hand ──────────── */
+.ia__after {
+  margin-top: clamp(30px, 5vh, 44px);
+  display: grid;
+  gap: 18px;
+  align-items: center;
+}
+@media (min-width: 900px) {
+  .ia__after {
+    grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr);
+    gap: 36px;
+  }
+}
+.ia__after-figure {
+  display: block;
+  border-radius: 18px;
+  overflow: hidden;
+  border: 1px solid var(--ia-line);
+  background: var(--ia-card);
+  box-shadow: 0 24px 60px -30px rgba(23, 19, 13, 0.4);
+  transition:
+    transform 0.15s,
+    box-shadow 0.15s;
+}
+.ia__after-figure:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 30px 70px -30px rgba(23, 19, 13, 0.45);
+}
+.ia__after-figure img {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+.ia__after-text {
+  margin: 0;
+  font-size: 15px;
+  line-height: 1.6;
+  color: var(--ia-ink-dim);
+}
+.ia__after-text b {
+  display: block;
+  margin-bottom: 6px;
+  font-family: var(--ia-font-d);
+  font-weight: 600;
+  font-size: 22px;
+  line-height: 1.2;
+  color: var(--ia-ink);
+}
+.ia__after-text a {
+  color: var(--ia-ink);
+  font-weight: 500;
+  text-decoration: underline;
+  text-underline-offset: 3px;
 }
 
 /* ── Outcomes, estimate, CTA, signature ────────────────────────────────── */
