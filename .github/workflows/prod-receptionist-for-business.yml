@@ -47,6 +47,11 @@ on:
         description: "Envoyer la démo tout de suite avec ce modèle d'e-mail (id), par une campagne d'un prospect"
         required: false
         default: ""
+      pause_campaign:
+        description: "Mettre en pause la campagne de test de cette entreprise (rien d'autre n'est fait)"
+        required: false
+        type: boolean
+        default: false
 
 jobs:
   generate:
@@ -120,11 +125,22 @@ jobs:
                 for template in client.get("/email-templates").json():
                     print("TEMPLATE id=%s active=%s name=%s" % (template["id"], template["is_active"], template["name"]))
 
+            campaign_name = "Parcours client — %s" % name
+            if str(inputs.get("pause_campaign", "")).lower() == "true":
+                # After a send-now, the queue still holds the J1: pausing keeps it from going out a second time.
+                campaigns = client.get("/campaigns", params={"limit": 200}).json().get("campaigns", [])
+                existing = next((c for c in campaigns if c.get("name") == campaign_name), None)
+                if existing is None:
+                    print("CAMPAIGN NOT FOUND")
+                else:
+                    paused = client.post("/campaigns/%s/pause" % existing["id"])
+                    print("CAMPAIGN PAUSE id=%s status=%s body=%s" % (existing["id"], paused.status_code, paused.text[:200]))
+                raise SystemExit(0)
+
             template_id = str(inputs.get("template_id", "")).strip()
             if template_id:
                 # The real journey: a one-prospect campaign with the chosen model, launched, then the email sent
                 # at once (the queue alone would wait for the sending window). The campaign is reused by name.
-                campaign_name = "Parcours client — %s" % name
                 campaigns = client.get("/campaigns", params={"limit": 200}).json().get("campaigns", [])
                 existing = next((c for c in campaigns if c.get("name") == campaign_name), None)
                 if existing is not None:
