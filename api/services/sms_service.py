@@ -348,9 +348,10 @@ class SmsService:
     ) -> SmsSendOutcome:
         """Send a one-segment service SMS — an alert its recipient asked for, not marketing.
 
-        No STOP mention and no legal window (neither applies to a service message), but a number
-        on the user's STOP list is still honoured. Nothing is recorded against a prospect; the row is
-        marked ``service``, so it stays out of the prospecting daily cap and recap, and only a failure
+        No STOP mention and no legal window (neither applies to a service message). The prospecting STOP
+        list is not applied either: a STOP answered to a cold SMS must not silence the alerts a client pays
+        for, nor the confirmation a visitor just asked for. Nothing is recorded against a prospect; the row
+        is marked ``service``, so it stays out of the prospecting daily cap and recap, and only a failure
         raises a notification (an alert going out as planned is not news).
 
         Args:
@@ -368,8 +369,6 @@ class SmsService:
             return SmsSendOutcome(sent=False, reason="Renseignez un nom d'expéditeur dans Paramètres → Relance SMS")
         if not self._provider.is_configured:
             return SmsSendOutcome(sent=False, reason="smsmode non configuré")
-        if self.is_suppressed(db, user_id, to_e164):
-            return SmsSendOutcome(sent=False, reason="Numéro désinscrit (STOP)")
         body = to_gsm7((text or "").strip())
         segments = segment_count(body)
         if segments == 0:

@@ -89,3 +89,35 @@ def to_e164_mobile(raw: str | None, *, country: str = "FR") -> str | None:
     if country.upper() != "FR" or not compact.startswith("0"):
         return None
     return to_e164_fr(compact) if is_mobile_fr(compact) else None
+
+
+# The mobile ranges of the countries the receptionist texts, after the country code.
+_SERVED_MOBILE_RANGES: tuple[tuple[str, tuple[str, ...]], ...] = (
+    ("+33", ("6", "7")),
+    ("+32", ("4",)),
+    ("+352", ("6",)),
+    ("+41", ("74", "75", "76", "77", "78", "79")),
+    ("+49", ("15", "16", "17")),
+)
+
+
+def to_served_mobile(raw: str | None, *, country: str = "FR") -> str | None:
+    """E.164 form of a mobile the receptionist may text: France, Belgium, Luxembourg, Switzerland or Germany.
+
+    A landline of those countries (``+32 2 …``, ``+41 22 …``) and any number of another country are refused:
+    an alert would either never arrive or be billed as international.
+
+    Args:
+        raw: The phone number as typed.
+        country: ISO code of the business's country, deciding how a national number is read.
+
+    Returns:
+        The number as ``+…``, or ``None`` when it is not a served mobile.
+    """
+    e164 = to_e164_mobile(raw, country=country)
+    if e164 is None:
+        return None
+    for prefix, mobile_starts in _SERVED_MOBILE_RANGES:
+        if e164.startswith(prefix):
+            return e164 if e164[len(prefix) :].startswith(mobile_starts) else None
+    return None
