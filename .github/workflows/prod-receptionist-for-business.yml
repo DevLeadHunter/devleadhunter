@@ -1,0 +1,117 @@
+name: 🤖 Réceptionniste IA pour une entreprise (manuel, prod)
+
+# Crée (ou retrouve) un prospect du compte propriétaire et lui génère sa réceptionniste sur la prod, par les
+# mêmes routes que le dashboard. Sert à tester le parcours client complet sur une entreprise réelle (la nôtre)
+# sans jeton de prod dans une session. Idempotent : un prospect du même nom et son assistant sont réutilisés.
+
+on:
+  workflow_dispatch:
+    inputs:
+      business_name:
+        description: "Nom de l'entreprise (tel qu'il s'affiche)"
+        required: true
+      website:
+        description: "Site de l'entreprise (https://…), lu pour la base de connaissance"
+        required: false
+        default: ""
+      phone:
+        description: "Téléphone de l'entreprise"
+        required: false
+        default: ""
+      email:
+        description: "E-mail de l'entreprise (reçoit la démo et les alertes)"
+        required: false
+        default: ""
+      city:
+        description: "Ville"
+        required: false
+        default: "Rennes"
+      country:
+        description: "Pays (FR, BE, CH, LU)"
+        required: false
+        default: "FR"
+      category:
+        description: "Métier / catégorie Google"
+        required: false
+        default: "Agence web"
+      owner_email:
+        description: "Compte DevLeadHunter propriétaire du prospect"
+        required: false
+        default: "contact@dibodev.fr"
+
+jobs:
+  generate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Créer le prospect et sa réceptionniste sur la prod (SSH)
+        uses: appleboy/ssh-action@v0.1.6
+        env:
+          BUSINESS_NAME: ${{ inputs.business_name }}
+          BUSINESS_WEBSITE: ${{ inputs.website }}
+          BUSINESS_PHONE: ${{ inputs.phone }}
+          BUSINESS_EMAIL: ${{ inputs.email }}
+          BUSINESS_CITY: ${{ inputs.city }}
+          BUSINESS_COUNTRY: ${{ inputs.country }}
+          BUSINESS_CATEGORY: ${{ inputs.category }}
+          OWNER_EMAIL: ${{ inputs.owner_email }}
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          port: ${{ secrets.SSH_PORT }}
+          username: ${{ secrets.SSH_USERNAME }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          envs: BUSINESS_NAME,BUSINESS_WEBSITE,BUSINESS_PHONE,BUSINESS_EMAIL,BUSINESS_CITY,BUSINESS_COUNTRY,BUSINESS_CATEGORY,OWNER_EMAIL
+          script: |
+            cd /var/www/api.devleadhunter.dibodev.fr/html/api
+            ../.venv/bin/python - <<'PY'
+            import os
+            from datetime import timedelta
+
+            import httpx
+
+            from services.auth_service import AuthService
+
+            API = "http://127.0.0.1:8005/api/v1"
+            owner = os.environ["OWNER_EMAIL"].strip()
+            name = os.environ["BUSINESS_NAME"].strip()
+            # Un jeton court, minté sur place, jamais imprimé : les routes du dashboard font le reste.
+            token = AuthService.create_access_token({"sub": owner}, expires_delta=timedelta(minutes=30))
+            client = httpx.Client(base_url=API, headers={"Authorization": f"Bearer {token}"}, timeout=900)
+
+            prospects = client.get("/prospects").json()
+            rows = prospects.get("prospects", prospects) if isinstance(prospects, dict) else prospects
+            prospect = next((p for p in rows if str(p.get("name", "")).strip().lower() == name.lower()), None)
+            if prospect is not None:
+                print("PROSPECT EXISTS id=%s" % prospect["id"])
+            else:
+                created = client.post(
+                    "/prospects",
+                    json={
+                        "name": name,
+                        "city": os.environ["BUSINESS_CITY"].strip() or None,
+                        "country": os.environ["BUSINESS_COUNTRY"].strip() or "FR",
+                        "phone": os.environ["BUSINESS_PHONE"].strip() or None,
+                        "email": os.environ["BUSINESS_EMAIL"].strip() or None,
+                        "website": os.environ["BUSINESS_WEBSITE"].strip() or None,
+                        "category": os.environ["BUSINESS_CATEGORY"].strip() or "Entreprise",
+                        "source": "manual",
+                        "confidence": 1,
+                    },
+                )
+                created.raise_for_status()
+                prospect = created.json()
+                print("PROSPECT CREATED id=%s" % prospect["id"])
+
+            listing = client.get("/ai-assistants", params={"prospect_id": prospect["id"]}).json()
+            assistants = listing.get("assistants", listing) if isinstance(listing, dict) else listing
+            if assistants:
+                assistant = assistants[0]
+                print("ASSISTANT EXISTS id=%s" % assistant["id"])
+            else:
+                generated = client.post("/ai-assistants", json={"prospect_id": prospect["id"]})
+                generated.raise_for_status()
+                assistant = generated.json()
+                print("ASSISTANT CREATED id=%s" % assistant["id"])
+            print("RESULT slug=%s name=%s status=%s demo_url=%s" % (
+                assistant["slug"], assistant["assistant_name"], assistant["status"], assistant["demo_url"]
+            ))
+            PY
