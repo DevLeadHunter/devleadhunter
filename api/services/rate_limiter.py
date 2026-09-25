@@ -37,7 +37,7 @@ class SlidingWindowRateLimiter:
         bucket = self._hits.get(key)
         if bucket is None:
             if len(self._hits) >= _MAX_TRACKED_KEYS:
-                self._hits.clear()
+                self._drop_oldest_keys()
             bucket = deque()
             self._hits[key] = bucket
         while bucket and bucket[0] < cutoff:
@@ -46,6 +46,11 @@ class SlidingWindowRateLimiter:
             return False
         bucket.append(now)
         return True
+
+    def _drop_oldest_keys(self) -> None:
+        """Forget the least recently created half of the keys, so a flood of new keys never frees every budget."""
+        for key in list(self._hits)[: _MAX_TRACKED_KEYS // 2]:
+            del self._hits[key]
 
 
 # 30 messages / 5 min per visitor per assistant: roomy for a real conversation, caps a bot.
