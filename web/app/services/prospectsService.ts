@@ -71,6 +71,11 @@ export type ProspectTemperaturesResponse = {
   items: ProspectTemperature[]
 }
 
+/** Number of website scans queued by a bulk request. */
+export type WebsiteEquipmentScanResponse = {
+  scheduled: number
+}
+
 export class ProspectsService {
   /**
    *
@@ -169,6 +174,26 @@ export class ProspectsService {
    */
   static async runLighthouseAudit(prospectId: number): Promise<Prospect> {
     return ApiClient.post<Prospect>(`${BASE_URL}/${prospectId}/lighthouse-audit`, {})
+  }
+
+  /**
+   * Scan the prospect's website for a chat widget and a contact form (a few seconds).
+   * @param prospectId - Target prospect id.
+   * @returns The prospect with its refreshed website equipment.
+   */
+  static async scanWebsiteEquipment(prospectId: number): Promise<Prospect> {
+    return ApiClient.post<Prospect>(`${BASE_URL}/${prospectId}/website-equipment`, {})
+  }
+
+  /**
+   * Queue a background website scan for several prospects (those without a live site are skipped).
+   * @param prospectIds - Prospects to scan.
+   * @returns How many scans were queued.
+   */
+  static async scanWebsitesEquipment(prospectIds: number[]): Promise<WebsiteEquipmentScanResponse> {
+    return ApiClient.post<WebsiteEquipmentScanResponse>(`${BASE_URL}/website-equipment/scan`, {
+      prospect_ids: prospectIds,
+    })
   }
 
   /**

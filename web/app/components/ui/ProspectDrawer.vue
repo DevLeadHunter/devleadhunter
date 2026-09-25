@@ -378,6 +378,58 @@
 
             <div class="border-t border-[var(--app-surface-2)]"></div>
 
+            <div v-if="canScanWebsiteEquipment" class="space-y-3 px-5 py-4">
+              <div class="flex items-center justify-between gap-3">
+                <p class="text-[10px] font-semibold tracking-wider text-[var(--app-ink-soft)] uppercase">
+                  Équipement du site
+                </p>
+                <button
+                  type="button"
+                  class="btn-secondary text-xs"
+                  :disabled="isScanningEquipment"
+                  @click="handleWebsiteEquipmentScan"
+                >
+                  <UIcon
+                    :name="isScanningEquipment ? 'i-lucide-loader-circle' : 'i-lucide-scan-search'"
+                    :class="['h-3.5 w-3.5', isScanningEquipment && 'animate-spin']"
+                  />
+                  {{ isScanningEquipment ? 'Analyse…' : prospect.website_equipment_json ? 'Relancer' : 'Analyser' }}
+                </button>
+              </div>
+
+              <template v-if="prospect.website_equipment_json">
+                <div class="flex flex-wrap gap-1.5">
+                  <span v-if="ProspectWebsite.isChatEquipped(prospect)" class="app-badge app-badge--engaged">
+                    <UIcon name="i-lucide-message-circle" class="h-3 w-3" />
+                    Chat : {{ ProspectWebsite.chatProviderLabels(prospect).join(', ') }}
+                  </span>
+                  <span v-else class="app-badge app-badge--success">
+                    <UIcon name="i-lucide-message-circle-off" class="h-3 w-3" />
+                    Aucun chat
+                  </span>
+                  <span class="app-badge">
+                    <UIcon
+                      :name="prospect.website_equipment_json.has_contact_form ? 'i-lucide-mail' : 'i-lucide-mail-x'"
+                      class="h-3 w-3"
+                    />
+                    {{
+                      prospect.website_equipment_json.has_contact_form ? 'Formulaire de contact' : 'Pas de formulaire'
+                    }}
+                  </span>
+                </div>
+                <p class="text-xs leading-relaxed text-[var(--app-ink-soft)]">{{ websiteEquipmentAdvice }}</p>
+                <p v-if="prospect.website_equipment_at" class="text-[10px] text-[var(--app-faint)]">
+                  Analysé le {{ formatLongMonthDate(prospect.website_equipment_at) }}
+                </p>
+              </template>
+
+              <p v-else class="text-xs leading-relaxed text-[var(--app-ink-soft)]">
+                Détecte un chat déjà installé (Tidio, Crisp, IONOS…) et un formulaire de contact.
+              </p>
+            </div>
+
+            <div v-if="canScanWebsiteEquipment" class="border-t border-[var(--app-surface-2)]"></div>
+
             <div v-if="prospect.website" class="space-y-3 px-5 py-4">
               <div class="flex items-center justify-between gap-3">
                 <p class="text-[10px] font-semibold tracking-wider text-[var(--app-ink-soft)] uppercase">
@@ -633,6 +685,7 @@
 <script lang="ts" setup>
 import { formatLongMonthDate, parseApiDate } from '~/utils/date'
 import { ProspectCountries } from '~/utils/prospectCountries'
+import { ProspectWebsite } from '~/utils/prospectWebsite'
 import type { UseToastReturn } from '~/types/Composables'
 import type {
   LighthouseGauge,
@@ -712,6 +765,7 @@ const editMode: Ref<boolean> = ref(false)
 const isSaving: Ref<boolean> = ref(false)
 const isReserving: Ref<boolean> = ref(false)
 const isAuditing: Ref<boolean> = ref(false)
+const isScanningEquipment: Ref<boolean> = ref(false)
 const isGeneratingAssistant: Ref<boolean> = ref(false)
 const prospectAssistant: Ref<AiAssistantSummary | null> = ref(null)
 const isLoadingDemoSite: Ref<boolean> = ref(false)
@@ -743,6 +797,18 @@ const isReservedByOther: ComputedRef<boolean> = computed(
 
 /** Contact details (emails, phones) stay editable unless another member currently holds the prospect. */
 const canEditContactDetails: ComputedRef<boolean> = computed((): boolean => !isReservedByOther.value)
+
+const canScanWebsiteEquipment: ComputedRef<boolean> = computed(
+  (): boolean => !!props.prospect && ProspectWebsite.hasWorkingWebsite(props.prospect),
+)
+
+/** What the last website scan means for the Réceptionniste IA pitch. */
+const websiteEquipmentAdvice: ComputedRef<string> = computed((): string => {
+  if (!props.prospect) return ''
+  return ProspectWebsite.isChatEquipped(props.prospect)
+    ? "Déjà équipé d'un chat : parlez de ce qu'il ne fait pas (photo, SMS au patron, rapport mensuel) ou passez au suivant."
+    : "Aucun chat : ses demandes écrites attendent qu'il rappelle, la réceptionniste a sa place."
+})
 
 /** The four Lighthouse category gauges (red < 50, amber < 90, green otherwise). */
 const lighthouseGauges: ComputedRef<LighthouseGauge[]> = computed((): LighthouseGauge[] => {
@@ -853,6 +919,24 @@ async function handleRelease(): Promise<void> {
     toast.error(err instanceof Error ? err.message : 'Libération impossible')
   } finally {
     isReserving.value = false
+  }
+}
+
+/**
+ * Scan the prospect's website for a chat widget and a contact form (a few seconds).
+ * @returns A promise resolved once the scan is stored.
+ */
+async function handleWebsiteEquipmentScan(): Promise<void> {
+  if (!props.prospect) return
+  isScanningEquipment.value = true
+  try {
+    const updated: Prospect = await ProspectsService.scanWebsiteEquipment(props.prospect.id)
+    emit('updated', updated)
+    toast.success(ProspectWebsite.isChatEquipped(updated) ? 'Chat déjà installé sur ce site' : 'Aucun chat sur ce site')
+  } catch (err: unknown) {
+    toast.error(err instanceof Error ? err.message : "L'analyse du site a échoué")
+  } finally {
+    isScanningEquipment.value = false
   }
 }
 

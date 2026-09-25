@@ -115,7 +115,11 @@
         </div>
       </div>
 
-      <div class="grid grid-cols-2 gap-4 @4xl:grid-cols-6">
+      <div class="grid grid-cols-2 gap-4" :class="isAssistantModule ? '@4xl:grid-cols-7' : '@4xl:grid-cols-6'">
+        <div v-if="isAssistantModule">
+          <label class="app-label mb-1.5 block">Tri</label>
+          <UiSelectField v-model="sortOrder" :options="sortOrderOptions" />
+        </div>
         <div>
           <label class="app-label mb-1.5 block">Site web</label>
           <UiSelectField v-model="filterWebsite" :options="websiteFilterOptions" />
@@ -210,6 +214,7 @@
         :prospects="paginatedProspects"
         :selected-prospects="selectedProspects"
         :temperatures="temperatureByPid"
+        :show-inbound-demand="isAssistantModule"
         @view-prospect="openDrawer"
         @edit-prospect="openProspectEditDrawer"
         @delete-prospect="handleDeleteProspect"
@@ -310,6 +315,19 @@
               {{ bulkEnrichLabel }}
             </button>
             <button
+              v-if="isAssistantModule"
+              type="button"
+              class="app-btn-secondary h-11 w-full disabled:cursor-not-allowed disabled:opacity-50"
+              :disabled="bulkScanning"
+              @click="bulkScanWebsites"
+            >
+              <UIcon
+                :name="bulkScanning ? 'i-lucide-loader-circle' : 'i-lucide-scan-search'"
+                :class="['h-4 w-4', bulkScanning && 'animate-spin']"
+              />
+              Analyser les sites
+            </button>
+            <button
               type="button"
               class="app-btn-danger h-11 w-full disabled:cursor-not-allowed disabled:opacity-50"
               :disabled="bulkDeleting"
@@ -349,6 +367,19 @@
               :class="['h-3.5 w-3.5', bulkBusy && 'animate-spin']"
             />
             {{ bulkEnrichLabel }}
+          </button>
+          <button
+            v-if="isAssistantModule"
+            type="button"
+            class="app-btn-secondary h-9 px-4 text-xs disabled:cursor-not-allowed disabled:opacity-50"
+            :disabled="bulkScanning"
+            @click="bulkScanWebsites"
+          >
+            <UIcon
+              :name="bulkScanning ? 'i-lucide-loader-circle' : 'i-lucide-scan-search'"
+              :class="['h-3.5 w-3.5', bulkScanning && 'animate-spin']"
+            />
+            Analyser les sites
           </button>
           <button type="button" class="app-btn-primary h-9 px-4 text-xs" @click="goToSiteGeneration">
             <UIcon name="i-lucide-globe" class="h-3.5 w-3.5" />Générer les sites
@@ -395,13 +426,18 @@ import { ref, computed, watch, onMounted } from 'vue'
 import type { ComputedRef, Ref } from 'vue'
 import type { Prospect } from '~/types'
 import { ProspectsService } from '~/services/prospectsService'
-import type { ProspectTemperature, ProspectTemperaturesResponse } from '~/services/prospectsService'
+import type {
+  ProspectTemperature,
+  ProspectTemperaturesResponse,
+  WebsiteEquipmentScanResponse,
+} from '~/services/prospectsService'
 import { downloadProspectsJson, downloadProspectTemplateJson, parseProspectsJson } from '~/utils/prospectJson'
 import { ProspectWebsite } from '~/utils/prospectWebsite'
 import { EnrichmentService } from '~/services/enrichmentService'
 import { useDrawerStackStore } from '~/stores/drawerStack'
 import { useToast } from '~/composables/useToast'
 import { useMyProspectsFilters } from '~/composables/useMyProspectsFilters'
+import { useModuleStore } from '~/stores/moduleStore'
 
 definePageMeta({
   layout: 'dashboard',
@@ -414,6 +450,7 @@ const error: Ref<string | null> = ref(null)
 const selectedProspects: Ref<string[]> = ref([])
 const bulkCampaignOpen: Ref<boolean> = ref(false)
 const bulkBusy: Ref<boolean> = ref(false)
+const bulkScanning: Ref<boolean> = ref(false)
 /** Progress of the running bulk enrichment (null when idle). */
 const bulkProgress: Ref<{ completed: number; total: number } | null> = ref(null)
 const {
@@ -423,22 +460,39 @@ const {
   filterWebsite,
   filterTemperature,
   filterEmail,
+  sortOrder,
   activeTab,
   clearFilters: resetFilters,
 }: ReturnType<typeof useMyProspectsFilters> = useMyProspectsFilters()
 
-const websiteFilterOptions: { value: string; label: string }[] = [
-  { value: 'all', label: 'Tous' },
-  { value: 'yes', label: 'Oui' },
-  { value: 'no', label: 'Non (aucun ou site mort)' },
-  { value: 'dead', label: 'Site mort / annuaire' },
-  { value: 'improvable', label: 'Améliorable (audit)' },
-]
+const moduleStore: ReturnType<typeof useModuleStore> = useModuleStore()
+const isAssistantModule: ComputedRef<boolean> = computed((): boolean => moduleStore.activeKey === 'ai-assistant')
+
+/** Website filter choices; the Réceptionniste IA adds the « déjà équipé d'un chat » split. */
+const websiteFilterOptions: ComputedRef<{ value: string; label: string }[]> = computed(
+  (): { value: string; label: string }[] => [
+    { value: 'all', label: 'Tous' },
+    { value: 'yes', label: 'Oui' },
+    { value: 'no', label: 'Non (aucun ou site mort)' },
+    ...(isAssistantModule.value
+      ? [
+          { value: 'no-chat', label: 'Sans chat détecté' },
+          { value: 'chat', label: "Déjà équipé d'un chat" },
+        ]
+      : []),
+    { value: 'dead', label: 'Site mort / annuaire' },
+    { value: 'improvable', label: 'Améliorable (audit)' },
+  ],
+)
 const temperatureFilterOptions: { value: string; label: string }[] = [
   { value: 'all', label: 'Toutes' },
   { value: 'hot', label: 'Chaud' },
   { value: 'warm', label: 'Tiède' },
   { value: 'cold', label: 'Froid' },
+]
+const sortOrderOptions: { value: string; label: string }[] = [
+  { value: 'demand', label: 'Demande entrante' },
+  { value: 'recent', label: 'Plus récents' },
 ]
 const emailFilterOptions: { value: string; label: string }[] = [
   { value: 'all', label: 'Tous' },
@@ -447,6 +501,8 @@ const emailFilterOptions: { value: string; label: string }[] = [
 const temperatureByPid: Ref<Record<number, string>> = ref({})
 const currentPage: Ref<number> = ref(1)
 const pageSize: number = 50
+/** Time the background website scan usually needs before the list shows its results. */
+const WEBSITE_SCAN_REFRESH_DELAY_MS: number = 20_000
 
 // Quick-delete (from table row icon)
 const prospectToDelete: Ref<Prospect | null> = ref(null)
@@ -531,6 +587,11 @@ const baseFiltered: ComputedRef<Prospect[]> = computed(() => {
     filtered = filtered.filter(
       (prospect: Prospect) => !!prospect.website && prospect.lighthouse_json?.is_improvable === true,
     )
+  } else if (filterWebsite.value === 'chat') {
+    filtered = filtered.filter((prospect: Prospect) => ProspectWebsite.isChatEquipped(prospect))
+  } else if (filterWebsite.value === 'no-chat') {
+    // Sans site, site mort ou site analysé sans widget : la réceptionniste n'a pas de concurrent en place.
+    filtered = filtered.filter((prospect: Prospect) => !ProspectWebsite.isChatEquipped(prospect))
   }
 
   if (filterTemperature.value !== 'all') {
@@ -552,11 +613,17 @@ const contactedCount: ComputedRef<number> = computed(
   () => baseFiltered.value.filter((prospect: Prospect) => prospect.contacted).length,
 )
 
-const filteredProspects: ComputedRef<Prospect[]> = computed(() =>
-  baseFiltered.value.filter((prospect: Prospect) =>
+const filteredProspects: ComputedRef<Prospect[]> = computed((): Prospect[] => {
+  const inTab: Prospect[] = baseFiltered.value.filter((prospect: Prospect) =>
     activeTab.value === 'contacted' ? prospect.contacted : !prospect.contacted,
-  ),
-)
+  )
+  if (!isAssistantModule.value || sortOrder.value !== 'demand') return inTab
+  // Stable sort: equal scores keep the most recent first, unscored prospects go last.
+  return [...inTab].sort(
+    (left: Prospect, right: Prospect): number =>
+      (right.inbound_demand?.score ?? -1) - (left.inbound_demand?.score ?? -1),
+  )
+})
 
 const totalPages: ComputedRef<number> = computed(() => Math.ceil(filteredProspects.value.length / pageSize))
 
@@ -620,9 +687,12 @@ function clearFilters(): void {
 }
 
 // Reset to the first page whenever the active filter set or tab changes.
-watch([activeTab, searchQuery, filterCity, filterCategory, filterWebsite, filterTemperature, filterEmail], (): void => {
-  currentPage.value = 1
-})
+watch(
+  [activeTab, searchQuery, filterCity, filterCategory, filterWebsite, filterTemperature, filterEmail, sortOrder],
+  (): void => {
+    currentPage.value = 1
+  },
+)
 
 /**
  * Toggle a single prospect in the selection.
@@ -712,6 +782,44 @@ async function bulkEnrich(): Promise<void> {
   } finally {
     bulkBusy.value = false
     bulkProgress.value = null
+  }
+}
+
+/**
+ * Queue a website scan (chat widget, contact form) for the selected prospects, then refresh
+ * the list quietly once the background scan has had time to run.
+ * @returns A promise resolved once the scans are queued.
+ */
+async function bulkScanWebsites(): Promise<void> {
+  if (bulkScanning.value || selectedIds.value.length === 0) return
+  bulkScanning.value = true
+  try {
+    const res: WebsiteEquipmentScanResponse = await ProspectsService.scanWebsitesEquipment(selectedIds.value)
+    if (res.scheduled === 0) {
+      toast.info('Aucun site en ligne à analyser dans la sélection')
+      return
+    }
+    toast.success(`Analyse de ${res.scheduled} site(s) lancée — résultats dans quelques secondes`)
+    clearSelection()
+    window.setTimeout((): void => {
+      reloadProspectsQuietly()
+    }, WEBSITE_SCAN_REFRESH_DELAY_MS)
+  } catch (err: unknown) {
+    toast.error(err instanceof Error ? err.message : "Erreur lors de l'analyse des sites")
+  } finally {
+    bulkScanning.value = false
+  }
+}
+
+/**
+ * Refresh the prospects without the loading state, so the table and pagination stay in place.
+ * @returns A promise resolved once the list is refreshed (errors are ignored).
+ */
+async function reloadProspectsQuietly(): Promise<void> {
+  try {
+    prospects.value = await ProspectsService.listProspects()
+  } catch {
+    // Best-effort: the next full load shows the scan results anyway.
   }
 }
 

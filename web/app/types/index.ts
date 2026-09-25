@@ -16,7 +16,7 @@ export type ProspectSource =
 export type ProspectWebsiteStatus = 'live' | 'dead' | 'placeholder'
 
 /** Website filter values — `yes`/`no` reason in "working website" : a dead or directory site counts as none. */
-export type ProspectWebsiteFilter = 'all' | 'yes' | 'no' | 'dead' | 'improvable'
+export type ProspectWebsiteFilter = 'all' | 'yes' | 'no' | 'dead' | 'improvable' | 'chat' | 'no-chat'
 
 /** Countries the prospection pipeline supports (ISO 3166-1 alpha-2). */
 export type ProspectCountry = 'FR' | 'CH' | 'BE' | 'LU'
@@ -50,6 +50,11 @@ export type Prospect = {
   reserved_at?: string | null
   lighthouse_json?: ProspectLighthouseAudit | null
   lighthouse_at?: string | null
+  website_equipment_json?: ProspectWebsiteEquipment | null
+  website_equipment_at?: string | null
+  google_rating?: number | null
+  google_reviews_count?: number | null
+  inbound_demand?: ProspectInboundDemand | null
   has_pending_contact_proposal?: boolean
   sms_opted_out?: boolean
   email_unsubscribed?: boolean
@@ -64,6 +69,24 @@ export type Prospect = {
   contacted_by_module_at?: string | null
   contacted_by_module_label?: string | null
   contact_locked_until?: string | null
+}
+
+/** One reason behind an inbound demand score, with the points it brought. */
+export type ProspectInboundDemandSignal = {
+  label: string
+  points: number
+}
+
+/** « Demande entrante » score (0-100) of a prospect for the Réceptionniste IA, with its signals. */
+export type ProspectInboundDemand = {
+  score: number
+  signals: ProspectInboundDemandSignal[]
+}
+
+/** Contact tooling found on a prospect's website by the last scan (a chat = « déjà équipé »). */
+export type ProspectWebsiteEquipment = {
+  chat_providers: string[]
+  has_contact_form: boolean
 }
 
 /**

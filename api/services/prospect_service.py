@@ -16,6 +16,7 @@ from models.search import ProspectSearchRequest
 from models.sms_suppression import SmsSuppression
 from models.user import User
 from services.activity_log_service import CATEGORY_PROSPECT, STATUS_INFO, STATUS_WARNING, activity_log_service
+from services.inbound_demand_service import InboundDemandService
 from services.prospect_emails import sync_prospect_emails
 from services.sms.phone_normalizer import to_e164_fr
 from services.validation_service import ValidationService
@@ -144,6 +145,7 @@ class ProspectService:
             pending_proposal_ids = {row[0] for row in pending_rows}
 
         resolved_opt_outs = ProspectService._resolve_opt_outs(db, db_prospects)
+        inbound_demand_by_id = InboundDemandService.score_prospects(db, db_prospects)
 
         prospects: list[Prospect] = []
         for db_prospect in db_prospects:
@@ -151,6 +153,7 @@ class ProspectService:
             if prospect.reserved_by_user_id:
                 prospect.reserved_by_name = names.get(prospect.reserved_by_user_id)
             prospect.has_pending_contact_proposal = db_prospect.id in pending_proposal_ids
+            prospect.inbound_demand = inbound_demand_by_id.get(db_prospect.id)
             ProspectService._set_opt_out_flags(prospect, db_prospect, resolved_opt_outs)
             prospects.append(prospect)
         return prospects
@@ -299,6 +302,8 @@ class ProspectService:
             website_status=website_status,
             google_maps_url=prospect.google_maps_url,
             facebook_url=facebook_url,
+            google_rating=prospect.google_rating,
+            google_reviews_count=prospect.google_reviews_count,
             category=prospect.category,
             source=source_value,
             confidence=prospect.confidence,

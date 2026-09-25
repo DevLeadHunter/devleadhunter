@@ -64,7 +64,7 @@ class WebsiteLivenessService:
 
     # A browser-like UA: default python UAs get blocked by common WAFs, which
     # would look like a dead site.
-    _REQUEST_HEADERS: ClassVar[dict[str, str]] = {
+    REQUEST_HEADERS: ClassVar[dict[str, str]] = {
         "User-Agent": (
             "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
             "(KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36"
@@ -153,7 +153,7 @@ class WebsiteLivenessService:
             async with httpx.AsyncClient(
                 follow_redirects=True,
                 timeout=self.REQUEST_TIMEOUT_SECONDS,
-                headers=self._REQUEST_HEADERS,
+                headers=self.REQUEST_HEADERS,
             ) as client:
                 response = await client.get(url)
         except (httpx.ConnectError, httpx.TooManyRedirects) as exc:
