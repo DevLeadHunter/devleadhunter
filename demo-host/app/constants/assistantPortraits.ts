@@ -9,6 +9,6 @@ export const ASSISTANT_PORTRAIT_SLUGS: string[] = []
 
 /** The default portrait of each gender, when shipped (`public/avatars/default-feminine.webp`…). */
 export const ASSISTANT_DEFAULT_PORTRAITS: Record<AiAssistantPersonaGender, boolean> = {
-  feminine: false,
-  masculine: false,
+  feminine: true,
+  masculine: true,
 }
