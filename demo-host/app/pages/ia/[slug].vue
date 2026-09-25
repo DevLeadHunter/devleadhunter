@@ -283,7 +283,7 @@ const closedHours: ComputedRef<AiAssistantClosedHours | null> = computed((): AiA
 /** Bind the business's own accent colour to the page (falls back to the editorial gold). */
 const accentStyle: ComputedRef<Record<string, string>> = computed((): Record<string, string> => {
   const palette: AssistantAccentPalette = AssistantAccentUtils.palette(assistant.value?.accent_color)
-  return { '--a-accent': palette.accent, '--a-accent-ink': palette.ink, '--a-accent-text': palette.text }
+  return { '--a-accent': palette.accent, '--a-accent-strong': palette.strong, '--a-accent-text': palette.text }
 })
 
 /** True while the visitor types in the customer's phone: the contact pill steps aside (it would cover the keys). */
