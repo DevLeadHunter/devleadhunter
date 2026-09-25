@@ -45,25 +45,15 @@ jobs:
     steps:
       - name: Créer le prospect et sa réceptionniste sur la prod (SSH)
         uses: appleboy/ssh-action@v0.1.6
-        env:
-          BUSINESS_NAME: ${{ inputs.business_name }}
-          BUSINESS_WEBSITE: ${{ inputs.website }}
-          BUSINESS_PHONE: ${{ inputs.phone }}
-          BUSINESS_EMAIL: ${{ inputs.email }}
-          BUSINESS_CITY: ${{ inputs.city }}
-          BUSINESS_COUNTRY: ${{ inputs.country }}
-          BUSINESS_CATEGORY: ${{ inputs.category }}
-          OWNER_EMAIL: ${{ inputs.owner_email }}
         with:
           host: ${{ secrets.SSH_HOST }}
           port: ${{ secrets.SSH_PORT }}
           username: ${{ secrets.SSH_USERNAME }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
-          envs: BUSINESS_NAME,BUSINESS_WEBSITE,BUSINESS_PHONE,BUSINESS_EMAIL,BUSINESS_CITY,BUSINESS_COUNTRY,BUSINESS_CATEGORY,OWNER_EMAIL
           script: |
             cd /var/www/api.devleadhunter.dibodev.fr/html/api
             ../.venv/bin/python - <<'PY'
-            import os
+            import json
             from datetime import timedelta
 
             import httpx
@@ -71,8 +61,10 @@ jobs:
             from services.auth_service import AuthService
 
             API = "http://127.0.0.1:8005/api/v1"
-            owner = os.environ["OWNER_EMAIL"].strip()
-            name = os.environ["BUSINESS_NAME"].strip()
+            # The workflow inputs, substituted by GitHub before the script leaves the runner.
+            inputs = json.loads('''${{ toJSON(inputs) }}''')
+            owner = inputs["owner_email"].strip()
+            name = inputs["business_name"].strip()
             # Un jeton court, minté sur place, jamais imprimé : les routes du dashboard font le reste.
             token = AuthService.create_access_token({"sub": owner}, expires_delta=timedelta(minutes=30))
             client = httpx.Client(base_url=API, headers={"Authorization": f"Bearer {token}"}, timeout=900)
@@ -87,12 +79,12 @@ jobs:
                     "/prospects",
                     json={
                         "name": name,
-                        "city": os.environ["BUSINESS_CITY"].strip() or None,
-                        "country": os.environ["BUSINESS_COUNTRY"].strip() or "FR",
-                        "phone": os.environ["BUSINESS_PHONE"].strip() or None,
-                        "email": os.environ["BUSINESS_EMAIL"].strip() or None,
-                        "website": os.environ["BUSINESS_WEBSITE"].strip() or None,
-                        "category": os.environ["BUSINESS_CATEGORY"].strip() or "Entreprise",
+                        "city": inputs["city"].strip() or None,
+                        "country": inputs["country"].strip() or "FR",
+                        "phone": inputs["phone"].strip() or None,
+                        "email": inputs["email"].strip() or None,
+                        "website": inputs["website"].strip() or None,
+                        "category": inputs["category"].strip() or "Entreprise",
                         "source": "manual",
                         "confidence": 1,
                     },
