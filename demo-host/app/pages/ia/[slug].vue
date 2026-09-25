@@ -13,29 +13,13 @@
       <p class="ia__kicker">
         {{ shortBusinessName }}<template v-if="assistant.city"> · {{ assistant.city }}</template>
       </p>
-      <h1 class="ia__title">Votre réceptionniste répond <em>déjà</em> à vos clients<span class="ia__dot">.</span></h1>
+      <h1 class="ia__title">Votre réceptionniste répond à vos clients<span class="ia__dot">.</span></h1>
       <p class="ia__lede">
         Ce soir, 21h40. Un client cherche « {{ searchPhrase }} », tombe sur votre fiche Google et tape
         <strong>Site web</strong>. Vous êtes à table. {{ assistant.assistant_name }} répond, note sa demande, sa photo
         et ses coordonnées, et vous transmet tout.
         <strong>Essayez, comme ce client le ferait.</strong>
       </p>
-
-      <section class="ia__path" aria-label="Où vos clients trouvent votre réceptionniste">
-        <p class="ia__label"><b>D'abord</b> · où votre client vous trouve</p>
-        <AssistantDemoGoogleListing
-          :business-name="shortBusinessName"
-          :rating-label="ratingLabel"
-          :trade-label="tradeLabel"
-          :city="assistant.city ?? ''"
-          :assistant-name="assistant.assistant_name"
-        />
-        <p class="ia__path-text">
-          Sur votre fiche Google, les boutons <b>Site web</b> et <b>Prendre rendez-vous</b> ouvrent
-          {{ assistant.assistant_name }}. Si vous avez un site, {{ subjectPronoun }} y est aussi, en bas à droite. Votre
-          messagerie vocale, vos cartes et votre camionnette renvoient au même lien.
-        </p>
-      </section>
 
       <div class="ia__stage">
         <div class="ia__side">
@@ -123,7 +107,6 @@ import { DemoBeaconUtils } from '~/utils/DemoBeaconUtils'
 import type { AssistantAccentPalette } from '~/utils/AssistantAccentUtils'
 import { AssistantAccentUtils } from '~/utils/AssistantAccentUtils'
 import { AssistantDemoScenarioUtils } from '~/utils/AssistantDemoScenarioUtils'
-import { AssistantPersonaUtils } from '~/utils/AssistantPersonaUtils'
 import { BusinessNameUtils } from '~/utils/BusinessNameUtils'
 import { useDemoTracking } from '~/composables/useDemoTracking'
 
@@ -157,10 +140,6 @@ const shortBusinessName: ComputedRef<string> = computed((): string =>
 /** Owner name for the signature line (empty when the owner set no name). */
 const ownerNameLabel: ComputedRef<string> = computed((): string => (assistant.value?.owner_name ?? '').trim())
 
-const subjectPronoun: ComputedRef<string> = computed((): string =>
-  AssistantPersonaUtils.subjectPronoun(assistant.value?.assistant_gender),
-)
-
 /** « e » after a word agreeing with a feminine persona, nothing for a masculine one. */
 const femininSuffix: ComputedRef<string> = computed((): string =>
   assistant.value?.assistant_gender === 'masculine' ? '' : 'e',
@@ -171,21 +150,6 @@ const searchPhrase: ComputedRef<string> = computed((): string => {
   const trade: string = AssistantDemoScenarioUtils.searchWord(assistant.value?.trade_label ?? null)
   const city: string = (assistant.value?.city ?? '').trim()
   return city ? `${trade} ${city}` : trade
-})
-
-/** The trade as the Google listing shows it (« Couvreur »), or a neutral word. */
-const tradeLabel: ComputedRef<string> = computed((): string => {
-  const trade: string = (assistant.value?.trade_label ?? '').trim()
-  return trade ? trade.charAt(0).toUpperCase() + trade.slice(1) : 'Entreprise'
-})
-
-/** « 4,8 ★ (57 avis) » when the listing has a rating. */
-const ratingLabel: ComputedRef<string> = computed((): string => {
-  const rating: number | null | undefined = assistant.value?.google_rating
-  if (!rating) return ''
-  const count: number | null | undefined = assistant.value?.google_reviews_count
-  const stars: string = `${rating.toFixed(1).replace('.', ',')} ★`
-  return count ? `${stars} (${count} avis)` : stars
 })
 
 /** The SMS on the business's phone: the example of the trade, then the visitor's own request. */
@@ -376,10 +340,6 @@ useHead({
   letter-spacing: -0.015em;
   text-wrap: balance;
 }
-.ia__title em {
-  font-style: italic;
-  font-weight: 400;
-}
 .ia__dot {
   color: var(--a-accent);
 }
@@ -407,22 +367,6 @@ useHead({
 }
 
 /* ── The Google listing ─────────────────────────────────────────────────── */
-.ia__path {
-  margin-top: clamp(30px, 5vh, 44px);
-  display: grid;
-  gap: 14px;
-}
-.ia__path-text {
-  margin: 0;
-  font-size: 14.5px;
-  line-height: 1.6;
-  color: var(--ia-ink-dim);
-  max-width: 64ch;
-}
-.ia__path-text b {
-  color: var(--ia-ink);
-}
-
 /* ── The scene: two phones ──────────────────────────────────────────────── */
 .ia__stage {
   position: relative;
