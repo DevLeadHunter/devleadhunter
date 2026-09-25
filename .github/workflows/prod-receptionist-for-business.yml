@@ -122,23 +122,37 @@ jobs:
 
             template_id = str(inputs.get("template_id", "")).strip()
             if template_id:
-                # The real journey: a one-prospect campaign with the chosen model, launched and sent at once.
-                campaign = client.post(
-                    "/campaigns",
-                    json={
-                        "name": "Parcours client — %s" % name,
-                        "description": "Test du parcours client complet sur une entreprise réelle.",
-                        "prospect_ids": [prospect["id"]],
-                        "template_id": int(template_id),
-                        "send_delay_minutes": 1,
-                        "max_emails_per_day": 5,
-                    },
+                # The real journey: a one-prospect campaign with the chosen model, launched, then the email sent
+                # at once (the queue alone would wait for the sending window). The campaign is reused by name.
+                campaign_name = "Parcours client — %s" % name
+                campaigns = client.get("/campaigns", params={"limit": 200}).json().get("campaigns", [])
+                existing = next((c for c in campaigns if c.get("name") == campaign_name), None)
+                if existing is not None:
+                    campaign_id = existing["id"]
+                    print("CAMPAIGN EXISTS id=%s status=%s" % (campaign_id, existing.get("status")))
+                else:
+                    campaign = client.post(
+                        "/campaigns",
+                        json={
+                            "name": campaign_name,
+                            "description": "Test du parcours client complet sur une entreprise réelle.",
+                            "prospect_ids": [prospect["id"]],
+                            "template_id": int(template_id),
+                            "send_delay_minutes": 1,
+                            "max_emails_per_day": 5,
+                        },
+                    )
+                    campaign.raise_for_status()
+                    campaign_id = campaign.json()["id"]
+                    print("CAMPAIGN CREATED id=%s" % campaign_id)
+                launched = client.post(
+                    "/campaigns/%s/launch" % campaign_id,
+                    json={"template_id": int(template_id), "send_delay_minutes": 1},
                 )
-                campaign.raise_for_status()
-                campaign_id = campaign.json()["id"]
-                print("CAMPAIGN CREATED id=%s" % campaign_id)
-                launched = client.post("/campaigns/%s/launch" % campaign_id)
                 print("CAMPAIGN LAUNCH status=%s body=%s" % (launched.status_code, launched.text[:200]))
-                sent = client.post("/campaigns/%s/send-now" % campaign_id)
+                sent = client.post(
+                    "/campaigns/%s/send-now" % campaign_id,
+                    json={"prospect_id": prospect["id"], "template_id": int(template_id)},
+                )
                 print("CAMPAIGN SEND-NOW status=%s body=%s" % (sent.status_code, sent.text[:300]))
             PY
