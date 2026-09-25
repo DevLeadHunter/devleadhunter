@@ -1,5 +1,5 @@
 import type { EmailLog, EmailTemplate, Prospect, User } from '~/types'
-import type { AiAssistantSummary, AssistantSubscription } from '~/types/AiAssistant'
+import type { AiAssistantRequestItem, AiAssistantSummary, AssistantSubscription } from '~/types/AiAssistant'
 import type { Order } from '~/services/ordersService'
 import type { SmsMessage } from '~/services/smsService'
 import type { SearchProspectsPrefill } from '~/types/SearchProspectsDrawer'
@@ -169,6 +169,12 @@ export type AssistantSettingsDrawerEntry = {
   assistant: AiAssistantSummary
 }
 
+/** One visitor request: its details, the conversation it came out of, and the owner's actions on it. */
+export type AssistantRequestDrawerEntry = {
+  kind: 'assistant-request'
+  request: AiAssistantRequestItem
+}
+
 /** A zone of the coverage map (one city, or a region's covered cities). */
 export type CoverageZone = {
   kind: 'city' | 'region'
@@ -213,6 +219,7 @@ export type DrawerStackEntry =
   | AssistantConversationsDrawerEntry
   | AssistantSourcesDrawerEntry
   | AssistantSettingsDrawerEntry
+  | AssistantRequestDrawerEntry
   | UserFormDrawerEntry
 
 /** Cross-page notice describing the latest prospect mutation done from a drawer. */
@@ -228,3 +235,6 @@ export type AssistantSubscriptionMutationNotice = { type: 'updated'; subscriptio
 export type AssistantMutationNotice =
   | { type: 'updated'; assistant: AiAssistantSummary }
   | { type: 'deleted'; assistantId: number }
+
+/** Cross-page notice describing the latest change to a visitor request done from its drawer. */
+export type AssistantRequestMutationNotice = { type: 'updated'; request: AiAssistantRequestItem }

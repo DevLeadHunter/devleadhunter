@@ -222,6 +222,15 @@
       @saved="handleAssistantSaved"
     />
 
+    <UiAssistantRequestDrawer
+      :open="assistantRequestEntry !== null"
+      :request="assistantRequestEntry?.request ?? null"
+      :show-back="hasPrevious"
+      @close="drawerStack.closeAll()"
+      @back="drawerStack.back()"
+      @updated="drawerStack.notifyAssistantRequestUpdated"
+    />
+
     <UiFinalizeSaleDrawer
       :open="finalizeSaleEntry !== null"
       :order="finalizeSaleEntry?.order ?? null"
@@ -249,6 +258,7 @@ import type { ComputedRef, Ref } from 'vue'
 import type {
   AddProspectDrawerEntry,
   AssistantConversationsDrawerEntry,
+  AssistantRequestDrawerEntry,
   AssistantSettingsDrawerEntry,
   AssistantSourcesDrawerEntry,
   AssistantSubscriptionDrawerEntry,
@@ -448,6 +458,12 @@ const assistantSourcesEntry: ComputedRef<AssistantSourcesDrawerEntry | null> = c
 const assistantSettingsEntry: ComputedRef<AssistantSettingsDrawerEntry | null> = computed(
   (): AssistantSettingsDrawerEntry | null =>
     drawerStack.topEntry?.kind === 'assistant-settings' ? drawerStack.topEntry : null,
+)
+
+/** Top entry narrowed to the visitor request drawer. */
+const assistantRequestEntry: ComputedRef<AssistantRequestDrawerEntry | null> = computed(
+  (): AssistantRequestDrawerEntry | null =>
+    drawerStack.topEntry?.kind === 'assistant-request' ? drawerStack.topEntry : null,
 )
 
 /**

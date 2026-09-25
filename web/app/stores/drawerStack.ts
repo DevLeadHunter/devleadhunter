@@ -3,13 +3,14 @@ import type { ComputedRef, Ref } from 'vue'
 import { computed, ref, watch } from 'vue'
 import type {
   AssistantMutationNotice,
+  AssistantRequestMutationNotice,
   AssistantSubscriptionMutationNotice,
   DrawerStackEntry,
   OrderMutationNotice,
   ProspectMutationNotice,
 } from '~/types/DrawerStack'
 import type { Order } from '~/services/ordersService'
-import type { AiAssistantSummary, AssistantSubscription } from '~/types/AiAssistant'
+import type { AiAssistantRequestItem, AiAssistantSummary, AssistantSubscription } from '~/types/AiAssistant'
 import type { EmailTemplate, Prospect } from '~/types'
 
 /** sessionStorage key persisting the drawer stack across page reloads. */
@@ -40,6 +41,8 @@ export const useDrawerStackStore = defineStore('drawerStack', () => {
   const subscriptionMutationCounter: Ref<number> = ref(0)
   const lastAssistantMutation: Ref<AssistantMutationNotice | null> = ref(null)
   const assistantMutationCounter: Ref<number> = ref(0)
+  const lastRequestMutation: Ref<AssistantRequestMutationNotice | null> = ref(null)
+  const requestMutationCounter: Ref<number> = ref(0)
   const emailLogsRefreshCounter: Ref<number> = ref(0)
   const smsMessagesRefreshCounter: Ref<number> = ref(0)
   const emailTemplatesRefreshCounter: Ref<number> = ref(0)
@@ -211,6 +214,22 @@ export const useDrawerStackStore = defineStore('drawerStack', () => {
     assistantMutationCounter.value++
   }
 
+  /**
+   * Broadcast a change to a visitor request (status, note): refresh its drawer and notify pages watching
+   * `requestMutationCounter`.
+   * @param request - The request as the API returned it.
+   */
+  function notifyAssistantRequestUpdated(request: AiAssistantRequestItem): void {
+    stack.value = stack.value.map((entry: DrawerStackEntry): DrawerStackEntry => {
+      if (entry.kind === 'assistant-request' && entry.request.id === request.id) {
+        return { ...entry, request }
+      }
+      return entry
+    })
+    lastRequestMutation.value = { type: 'updated', request }
+    requestMutationCounter.value++
+  }
+
   /** Signal that email logs changed (an email was sent from a drawer). */
   function bumpEmailLogsRefresh(): void {
     emailLogsRefreshCounter.value++
@@ -280,6 +299,8 @@ export const useDrawerStackStore = defineStore('drawerStack', () => {
     subscriptionMutationCounter,
     lastAssistantMutation,
     assistantMutationCounter,
+    lastRequestMutation,
+    requestMutationCounter,
     emailLogsRefreshCounter,
     smsMessagesRefreshCounter,
     emailTemplatesRefreshCounter,
@@ -299,6 +320,7 @@ export const useDrawerStackStore = defineStore('drawerStack', () => {
     notifySubscriptionUpdated,
     notifyAssistantUpdated,
     notifyAssistantDeleted,
+    notifyAssistantRequestUpdated,
     bumpEmailLogsRefresh,
     bumpSmsMessagesRefresh,
     bumpEmailTemplatesRefresh,

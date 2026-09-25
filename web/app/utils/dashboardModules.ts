@@ -43,6 +43,7 @@ const AI_ASSISTANT_NAV: UiSidebarGroup[] = [
       { to: '/dashboard/my-prospects', label: 'Mes prospects', icon: 'i-lucide-users' },
       { to: '/dashboard/coverage', label: 'Carte de prospection', icon: 'i-lucide-map' },
       { to: '/dashboard/ai-assistants', label: 'Assistants IA', icon: 'i-lucide-bot' },
+      { to: '/dashboard/ai-assistants/requests', label: 'Demandes', icon: 'i-lucide-inbox' },
       { to: '/dashboard/campaigns', label: 'Campagnes', icon: 'i-lucide-megaphone' },
       { to: '/dashboard/emails', label: 'Suivi des emails', icon: 'i-lucide-send' },
       { to: '/dashboard/sms', label: 'Suivi des SMS', icon: 'i-lucide-message-square-text' },
