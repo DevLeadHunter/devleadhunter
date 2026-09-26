@@ -35,16 +35,6 @@
   label[for] {
     cursor: pointer;
   }
-
-  /* iOS Safari zooms the page in when a focused field's font-size is under 16px,
-     and never zooms back out. Pin form fields to 16px at phone width to stop it. */
-  @media (max-width: 767px) {
-    input,
-    select,
-    textarea {
-      font-size: 16px;
-    }
-  }
 }
 
 @keyframes fadeInUp {
@@ -566,6 +556,16 @@ html {
 @keyframes app-spin {
   to {
     transform: rotate(360deg);
+  }
+}
+
+/* Phone inputs stay ≥16px so iOS doesn't zoom in on focus (and never zoom back).
+   `!important` so it overrides every component input class (.app-input, .landing-input, …). */
+@media (max-width: 767px) {
+  input,
+  select,
+  textarea {
+    font-size: 16px !important;
   }
 }
 
