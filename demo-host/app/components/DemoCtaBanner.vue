@@ -357,7 +357,10 @@ function collapse(): void {
   })
   // Notify only when they wrote something then backed out — a real « almost-lead » signal.
   if (withMessage) {
-    DemoBeaconUtils.send(apiBase.value, props.site.slug, 'demo_cta_banner_collapse', { seconds: openSeconds() })
+    DemoBeaconUtils.send(apiBase.value, props.site.slug, 'demo_cta_banner_collapse', {
+      seconds: openSeconds(),
+      message: message.value.trim(),
+    })
   }
   state.value = 'collapsed'
 }
@@ -414,8 +417,12 @@ function trackOwnerContactClick(kind: 'phone' | 'email'): void {
 function onPageHide(): void {
   if (state.value !== 'open' || isResolved.value) return
   isResolved.value = true
-  captureDemoEvent('demo_cta_banner_abandoned', { had_message: hasMessage(), open_seconds: openSeconds() })
-  DemoBeaconUtils.send(apiBase.value, props.site.slug, 'demo_cta_banner_abandoned', { seconds: openSeconds() })
+  const withMessage: boolean = hasMessage()
+  captureDemoEvent('demo_cta_banner_abandoned', { had_message: withMessage, open_seconds: openSeconds() })
+  DemoBeaconUtils.send(apiBase.value, props.site.slug, 'demo_cta_banner_abandoned', {
+    seconds: openSeconds(),
+    ...(withMessage ? { message: message.value.trim() } : {}),
+  })
 }
 
 watch(isVisible, (visible: boolean): void => {

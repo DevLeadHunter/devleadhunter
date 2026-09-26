@@ -18,7 +18,7 @@ from sqlalchemy.orm import Session
 
 from enums.demo_site_status import DemoSiteStatus
 from models.demo_site import DemoSite
-from models.demo_site_lead import DemoSiteLead
+from models.demo_site_lead import LEAD_STATUS_SUBMITTED, DemoSiteLead
 from models.email_log import EmailLog
 from models.email_reply import EmailReply
 from models.prospect_db import ProspectDB
@@ -199,10 +199,14 @@ class BehaviorService:
 
     @staticmethod
     def _demo_leads(db: Session, user_id: int, prospect_id: int) -> list[DemoSiteLead]:
-        """Return the prospect's banner leads, newest first."""
+        """Return the prospect's submitted banner leads, newest first (drafts excluded)."""
         return (
             db.query(DemoSiteLead)
-            .filter(DemoSiteLead.user_id == user_id, DemoSiteLead.prospect_id == prospect_id)
+            .filter(
+                DemoSiteLead.user_id == user_id,
+                DemoSiteLead.prospect_id == prospect_id,
+                DemoSiteLead.status == LEAD_STATUS_SUBMITTED,
+            )
             .order_by(DemoSiteLead.created_at.desc())
             .all()
         )
@@ -214,7 +218,11 @@ class BehaviorService:
             return {}
         rows = db.execute(
             select(DemoSiteLead.prospect_id, func.count(DemoSiteLead.id))
-            .where(DemoSiteLead.user_id == user_id, DemoSiteLead.prospect_id.in_(prospect_ids))
+            .where(
+                DemoSiteLead.user_id == user_id,
+                DemoSiteLead.prospect_id.in_(prospect_ids),
+                DemoSiteLead.status == LEAD_STATUS_SUBMITTED,
+            )
             .group_by(DemoSiteLead.prospect_id)
         ).all()
         return {int(pid): int(count or 0) for pid, count in rows if pid is not None}

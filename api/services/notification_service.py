@@ -100,6 +100,10 @@ _DEMO_EVENT_NOTIFS: dict[str, tuple[str, str, str]] = {
     "demo_video_replay": ("🔁", "success", "Revoit ta vidéo"),
 }
 
+# Demo events that carry the prospect's own words — a submitted lead or an unsent
+# draft (typed then collapsed/abandoned); their notification appends the excerpt.
+_DEMO_MESSAGE_EVENTS: frozenset[str] = frozenset({"demo_lead", "demo_cta_banner_collapse", "demo_cta_banner_abandoned"})
+
 # Marketing channel that brought a demo visit → short label appended to the body
 # (so the push and the activity log say « via SMS » / « via Email »); 'direct' shows nothing.
 _DEMO_CHANNEL_LABELS: dict[str, str] = {"sms": "SMS", "email": "Email"}
@@ -229,7 +233,7 @@ class NotificationService:
                 seconds=seconds if seconds is not None else 0,
                 max_scroll=max_scroll if max_scroll is not None else 0,
             )
-        if event_name == "demo_lead" and (message or "").strip():
+        if event_name in _DEMO_MESSAGE_EVENTS and (message or "").strip():
             excerpt = message.strip()[:160]
             body = f"{body} « {excerpt} »"
         channel_label = _DEMO_CHANNEL_LABELS.get((channel or "").lower())
