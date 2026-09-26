@@ -9,9 +9,9 @@
         <h1 class="app-page-title mt-2">Campagnes</h1>
         <p class="text-muted mt-1 text-sm">Vos séquences de cold email, de l'envoi initial aux relances.</p>
       </div>
-      <div class="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center sm:gap-3">
+      <div class="flex w-full flex-col gap-2 @2xl:w-auto @2xl:flex-row @2xl:items-center @2xl:gap-3">
         <div
-          class="flex w-full gap-0.5 rounded-full border border-[var(--app-line)] bg-[var(--app-surface)] p-0.5 sm:inline-flex sm:w-auto"
+          class="flex w-full gap-0.5 rounded-full border border-[var(--app-line)] bg-[var(--app-surface)] p-0.5 @2xl:inline-flex @2xl:w-auto"
           role="tablist"
           aria-label="Vue"
         >
@@ -22,7 +22,7 @@
             role="tab"
             :aria-selected="view === option.key"
             :class="[
-              'inline-flex flex-1 cursor-pointer items-center justify-center gap-1.5 rounded-full px-3.5 py-2.5 text-sm font-medium transition-colors sm:flex-none sm:py-1.5 sm:text-xs',
+              'inline-flex flex-1 cursor-pointer items-center justify-center gap-1.5 rounded-full px-3.5 py-2.5 text-sm font-medium transition-colors @2xl:flex-none @2xl:py-1.5 @2xl:text-xs',
               view === option.key
                 ? 'bg-[var(--app-ink)] text-[var(--app-bg)]'
                 : 'text-[var(--app-ink-soft)] hover:text-[var(--app-ink)]',
@@ -33,7 +33,7 @@
             {{ option.label }}
           </button>
         </div>
-        <button class="btn-primary w-full justify-center sm:w-auto" @click="openCreateDrawer">
+        <button class="btn-primary w-full justify-center @2xl:w-auto" @click="openCreateDrawer">
           <UIcon name="i-lucide-plus" class="h-4 w-4" />
           <span>Nouvelle campagne</span>
         </button>
