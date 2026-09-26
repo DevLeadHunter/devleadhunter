@@ -29,6 +29,20 @@
       Envoyer l'espace client
     </button>
     <button
+      v-if="props.status === 'active' || props.status === 'expired'"
+      type="button"
+      class="btn-secondary inline-flex w-full items-center justify-center gap-2 text-xs disabled:cursor-not-allowed disabled:opacity-50"
+      :disabled="props.isMarkingSold"
+      @click="emit('mark-sold')"
+    >
+      <UIcon
+        :name="props.isMarkingSold ? 'i-lucide-loader-circle' : 'i-lucide-badge-check'"
+        class="h-3.5 w-3.5"
+        :class="{ 'animate-spin': props.isMarkingSold }"
+      />
+      {{ props.isMarkingSold ? 'Passage en vendu…' : 'Marquer comme vendu (hors Stripe)' }}
+    </button>
+    <button
       type="button"
       class="btn-secondary w-full text-xs text-[var(--app-red)] disabled:cursor-not-allowed disabled:opacity-50"
       :disabled="props.isDeleting"
@@ -53,6 +67,10 @@ const props: AssistantActionsCardProps = defineProps({
     default: false,
   },
   isSendingClientLink: {
+    type: Boolean,
+    default: false,
+  },
+  isMarkingSold: {
     type: Boolean,
     default: false,
   },

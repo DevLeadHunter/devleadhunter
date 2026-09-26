@@ -2,7 +2,6 @@
 Payment routes for Stripe integration.
 """
 
-import logging
 from typing import Any
 
 import stripe
@@ -15,8 +14,6 @@ from models.user import User
 from schemas.payment import CheckoutSessionCreate, CheckoutSessionResponse
 from services.auth_service import require_auth
 from services.credit_service import TransactionType, credit_service
-
-logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/payments", tags=["payments"])
 
@@ -88,12 +85,9 @@ async def _welcome_assistant_client(db: Session, assistant_id: int | None) -> No
 
     if assistant_id is None:
         return
-    try:
-        assistant = db.get(AiAssistant, assistant_id)
-        if assistant is not None:
-            await ai_assistant_client_space_service.send_welcome(db, assistant)
-    except Exception:
-        logger.warning("Assistant %s: the welcome email failed", assistant_id, exc_info=True)
+    assistant = db.get(AiAssistant, assistant_id)
+    if assistant is not None:
+        await ai_assistant_client_space_service.try_send_welcome(db, assistant)
 
 
 @router.post("/webhook")

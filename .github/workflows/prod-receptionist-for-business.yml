@@ -52,6 +52,11 @@ on:
         required: false
         type: boolean
         default: false
+      deliver:
+        description: "Marquer la réceptionniste vendue hors Stripe (servie pour de bon, alertes au commerçant, e-mail de bienvenue), rien d'autre"
+        required: false
+        type: boolean
+        default: false
       report:
         description: "Lire ce que la réceptionniste a journalisé (conversations, demandes, questions sans réponse), rien d'autre"
         required: false
@@ -126,9 +131,19 @@ jobs:
                 assistant["slug"], assistant["assistant_name"], assistant["status"], assistant["demo_url"]
             ))
 
+            if str(inputs.get("deliver", "")).lower() == "true":
+                # The same route as the dashboard's « Marquer comme vendu » button.
+                delivered = client.post("/ai-assistants/%s/deliver" % assistant["id"])
+                print("DELIVER status=%s body=%s" % (delivered.status_code, delivered.text[:400]))
+                raise SystemExit(0)
+
             if str(inputs.get("report", "")).lower() == "true":
                 # Read-only: what the dashboard shows, printed so a session without a prod token can diagnose it.
                 detail = client.get("/ai-assistants/%s" % assistant["id"]).json()
+                print("STATE status=%s email=%s expires_at=%s alerts=%s" % (
+                    detail.get("status"), detail.get("email"), detail.get("expires_at"),
+                    json.dumps(detail.get("alerts"), ensure_ascii=False),
+                ))
                 print("COUNTS conversations_7d=%s conversations_30d=%s requests_7d=%s requests_30d=%s" % (
                     detail.get("conversations_7d"), detail.get("conversations_30d"),
                     detail.get("requests_7d"), detail.get("requests_30d"),
