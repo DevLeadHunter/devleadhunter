@@ -116,7 +116,7 @@ async function loadMore(): Promise<void> {
 }
 
 /**
- * Mark a notification read (locally + server-side) then open its deep link.
+ * Mark a notification read (locally + server-side) then open its own detail page.
  * @param item - The clicked notification.
  * @returns Nothing.
  */
@@ -126,7 +126,7 @@ async function open(item: NotificationItem): Promise<void> {
     unreadCount.value = Math.max(0, unreadCount.value - 1)
     await NotificationsService.markRead(item.id).catch((): void => {})
   }
-  await navigateTo(item.url)
+  await navigateTo(`/dashboard/notifications/${item.id}`)
 }
 
 /**
