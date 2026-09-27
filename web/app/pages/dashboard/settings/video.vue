@@ -7,13 +7,15 @@
       </p>
       <h1 class="app-page-title mt-2">Vidéo de prospection</h1>
       <p class="text-muted mt-2 max-w-2xl text-sm leading-relaxed">
-        Un clip webcam enregistré une seule fois. Chaque site démo génère ensuite sa vidéo personnalisée, prête pour vos
-        emails.
+        Un clip webcam par module, enregistré une seule fois. Chaque site démo et chaque réceptionniste génère ensuite
+        sa vidéo personnalisée, prête pour vos emails.
       </p>
     </div>
 
     <PresenterVideoConfig />
-    <AssistantPresenterClipCard />
+    <div id="clip-receptionniste" class="border-t border-[var(--app-line)] pt-8">
+      <PresenterVideoConfig module="ai-assistant" />
+    </div>
     <StoryblokConnectionCard />
   </div>
 </template>

@@ -580,6 +580,16 @@ def _store_video_bundle(slug: str, work_dir: Path, output_video: Path, output_th
     }
 
 
+def _store_video_preview(slug: str, work_dir: Path, output_video: Path) -> None:
+    """Register a calibration preview's bare mp4 for pickup by /video/build-result: nothing is published."""
+    _VIDEO_BUILD_RESULTS[slug] = {
+        "path": output_video,
+        "media_type": "video/mp4",
+        "filename": f"{slug}-preview.mp4",
+        "work_dir": work_dir,
+    }
+
+
 async def _run_video_build(
     data: dict,
     slug: str,
@@ -642,12 +652,7 @@ async def _run_video_build(
             thumbnail_label=video_montage.THUMBNAIL_LABEL_SITE,
         )
         if preview:
-            _VIDEO_BUILD_RESULTS[slug] = {
-                "path": output_video,
-                "media_type": "video/mp4",
-                "filename": f"{slug}-preview.mp4",
-                "work_dir": work_dir,
-            }
+            _store_video_preview(slug, work_dir, output_video)
         else:
             _store_video_bundle(slug, work_dir, output_video, output_thumb)
         _set_video_build_progress(slug, "done")
@@ -729,6 +734,8 @@ async def _run_assistant_video_build(
     screenshot_path = work_dir / "top.png"
     output_video = work_dir / "video.mp4"
     output_thumb = work_dir / "thumbnail.jpg"
+    # A calibration preview (unsaved timings, from the video settings) comes back as a bare mp4, never uploaded.
+    preview = bool(data.get("preview"))
     total_seconds = float(data["total_seconds"])
     try:
         await asyncio.to_thread(
@@ -755,7 +762,10 @@ async def _run_assistant_video_build(
             thumbnail_label=video_montage.THUMBNAIL_LABEL_ASSISTANT,
             pip_corner=video_montage.PIP_CORNER_RIGHT,
         )
-        _store_video_bundle(slug, work_dir, output_video, output_thumb)
+        if preview:
+            _store_video_preview(slug, work_dir, output_video)
+        else:
+            _store_video_bundle(slug, work_dir, output_video, output_thumb)
         _set_video_build_progress(slug, "done")
     except AssistantWidgetClipError as exc:
         shutil.rmtree(work_dir, ignore_errors=True)
