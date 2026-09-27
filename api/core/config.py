@@ -261,15 +261,18 @@ class Settings(BaseSettings):
         alias="MISTRAL_API_KEY",
         description="Mistral La Plateforme API key, used first by the AI assistant module (Groq is the fallback)",
     )
+    # Ministral 3 14B is what La Plateforme's free plan serves (30 requests and 937k tokens a minute, verified
+    # 27/09/2026): Mistral Small, Medium and Large answer 429 or 403 there. It follows the receptionist's markers
+    # and reads photos. Once pay-as-you-go is enabled, MISTRAL_CHAT_MODEL=mistral-small-latest is the upgrade.
     mistral_chat_model: str = Field(
-        default="mistral-small-latest",
+        default="ministral-14b-2512",
         alias="MISTRAL_CHAT_MODEL",
         description="Mistral model answering the assistant visitors and analysing their requests",
     )
     mistral_vision_model: str = Field(
-        default="mistral-small-latest",
+        default="ministral-14b-2512",
         alias="MISTRAL_VISION_MODEL",
-        description="Mistral multimodal model describing the quote photos (Mistral Small reads images)",
+        description="Mistral multimodal model describing the quote photos (Ministral 3 reads images)",
     )
     # Estimated prices, in EUR per million tokens, to log the cost of each assistant model call.
     mistral_eur_per_mtok_in: float = Field(default=0.1, alias="MISTRAL_EUR_PER_MTOK_IN")
