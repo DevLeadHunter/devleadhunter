@@ -14,3 +14,6 @@ export type DemoVideoEvent =
   | 'demo_video_endcard_shown'
 
 export type DemoVideoEventCapture = (event: DemoVideoEvent, properties?: Record<string, unknown>) => void
+
+/** Module the video page belongs to: 'demo' for the website (/v), 'assistant' for the receptionist (/va). */
+export type DemoVideoSurface = 'demo' | 'assistant'

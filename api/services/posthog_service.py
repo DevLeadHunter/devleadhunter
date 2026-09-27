@@ -48,6 +48,18 @@ DEMO_EVENTS: tuple[str, ...] = (
     "demo_video_fullscreen",
     "demo_video_mute",
     "demo_video_cta_click",
+    # The receptionist's video page (/va) emits the same events under its own prefix.
+    "assistant_video_play",
+    "assistant_video_resume",
+    "assistant_video_pause",
+    "assistant_video_replay",
+    "assistant_video_progress",
+    "assistant_video_complete",
+    "assistant_video_watch_time",
+    "assistant_video_seek",
+    "assistant_video_fullscreen",
+    "assistant_video_mute",
+    "assistant_video_cta_click",
 )
 
 

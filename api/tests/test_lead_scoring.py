@@ -115,6 +115,26 @@ def test_non_scored_video_events_do_not_change_score() -> None:
     assert with_noise["score"] == scored["score"]
 
 
+def test_the_receptionist_video_scores_like_the_site_video() -> None:
+    """The /va page's assistant_video_* events feed the same video signals as the site's /v page."""
+    site = ls.compute(
+        [
+            {"event": "demo_video_play", "timestamp": "t", "properties": {}},
+            {"event": "demo_video_complete", "timestamp": "t", "properties": {}},
+            {"event": "demo_video_watch_time", "timestamp": "t", "properties": {"seconds": 31}},
+        ]
+    )
+    receptionist = ls.compute(
+        [
+            {"event": "assistant_video_play", "timestamp": "t", "properties": {}},
+            {"event": "assistant_video_complete", "timestamp": "t", "properties": {}},
+            {"event": "assistant_video_watch_time", "timestamp": "t", "properties": {"seconds": 31}},
+        ]
+    )
+    assert receptionist["signals"] == site["signals"]
+    assert receptionist["score"] == site["score"] > 0
+
+
 def test_aggregate_maps_new_keys() -> None:
     """The hot-leads aggregate path carries the new signals through."""
     signals = ls.build_signals_from_aggregate({"pageviews": 3, "visits": 1, "sections_viewed": 4, "outbound_clicks": 2})

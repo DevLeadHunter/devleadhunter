@@ -17,6 +17,7 @@ from sqlalchemy import case, func, select
 from sqlalchemy.orm import Session
 
 from enums.demo_site_status import DemoSiteStatus
+from models.ai_assistant import AiAssistant
 from models.demo_site import DemoSite
 from models.demo_site_lead import LEAD_STATUS_SUBMITTED, DemoSiteLead
 from models.email_log import EmailLog
@@ -55,6 +56,17 @@ _EVENT_LABELS: dict[str, str] = {
     "demo_video_fullscreen": "Vidéo en plein écran",
     "demo_video_mute": "A coupé / remis le son",
     "demo_video_cta_click": "Clic « Découvrir le site » depuis la vidéo",
+    "assistant_video_play": "Lecture de la vidéo réceptionniste",
+    "assistant_video_resume": "Reprise de la vidéo réceptionniste",
+    "assistant_video_pause": "Vidéo réceptionniste mise en pause",
+    "assistant_video_replay": "A revu la vidéo réceptionniste",
+    "assistant_video_progress": "Vidéo réceptionniste regardée en partie",
+    "assistant_video_complete": "Vidéo réceptionniste regardée en entier",
+    "assistant_video_watch_time": "Temps de visionnage de la vidéo réceptionniste",
+    "assistant_video_seek": "A avancé / reculé dans la vidéo réceptionniste",
+    "assistant_video_fullscreen": "Vidéo réceptionniste en plein écran",
+    "assistant_video_mute": "A coupé / remis le son de la vidéo réceptionniste",
+    "assistant_video_cta_click": "Clic vers la démo depuis la vidéo réceptionniste",
     "email_sent": "Email envoyé",
     "email_opened": "Email ouvert",
     "email_clicked": "Lien de l'email cliqué",
@@ -71,7 +83,7 @@ class BehaviorService:
     # ------------------------------------------------------------------ #
 
     def _slugs_for_prospect(self, db: Session, user_id: int, prospect_id: int) -> list[str]:
-        """Return the demo slugs linked to a prospect (owned by the user)."""
+        """Return the slugs of a prospect's demo sites and receptionists (owned by the user), each once."""
         sites = (
             db.query(DemoSite)
             .filter(
@@ -81,7 +93,18 @@ class BehaviorService:
             )
             .all()
         )
-        return [site.slug for site in sites if site.slug]
+        assistants = (
+            db.query(AiAssistant)
+            .filter(
+                AiAssistant.prospect_id == prospect_id,
+                AiAssistant.user_id == user_id,
+                AiAssistant.deleted_at.is_(None),
+            )
+            .all()
+        )
+        slugs = [site.slug for site in sites] + [assistant.slug for assistant in assistants]
+        # A site and a receptionist named after the same business share their slug: its events are read once.
+        return list(dict.fromkeys(slug for slug in slugs if slug))
 
     async def _events_for_prospect(self, db: Session, user_id: int, prospect_id: int) -> list[dict[str, Any]]:
         """Fetch and merge behavioural events across all of a prospect's demos."""

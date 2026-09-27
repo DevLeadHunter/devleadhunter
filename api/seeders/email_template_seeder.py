@@ -198,7 +198,7 @@ EMAIL_TEMPLATE_LIBRARY: list[dict[str, object]] = [
             "<p>Ça vous intéresse ?</p>"
         ),
     },
-    # Assistant IA: the request left unanswered, one link (the demo), the price said plainly.
+    # Assistant IA: the request left unanswered, the demo (first emails add the video's thumbnail), the price plainly.
     {
         "name": "Assistant IA - réponses 24/7",
         "category": _FIRST,
@@ -210,6 +210,7 @@ EMAIL_TEMPLATE_LIBRARY: list[dict[str, object]] = [
             "et beaucoup vont voir ailleurs.</p>"
             "<p>J'ai préparé pour vous un assistant qui leur répond tout de suite, 24h/24, et vous transmet "
             "chaque demande : {lien_assistant}</p>"
+            "{vignette_video_assistant}"
             "<p>{prix_assistant}/mois, installé sur votre site, sans engagement. On le met en place ?</p>"
         ),
     },
@@ -224,6 +225,7 @@ EMAIL_TEMPLATE_LIBRARY: list[dict[str, object]] = [
             "{entreprise} la regarde, pose les bonnes questions et vous transmet une demande de devis "
             "complète.</p>"
             "<p>Essayez avec n'importe quelle photo : {lien_assistant}</p>"
+            "{vignette_video_assistant}"
             "<p>{prix_assistant}/mois, installé sur votre site, sans engagement. Ça vous parle ?</p>"
         ),
     },
@@ -238,6 +240,7 @@ EMAIL_TEMPLATE_LIBRARY: list[dict[str, object]] = [
             "demander.</p>"
             "<p>L'assistant que j'ai préparé leur répond dans leur langue, 24h/24, et vous transmet leur "
             "demande en français : {lien_assistant}</p>"
+            "{vignette_video_assistant}"
             "<p>{prix_assistant}/mois, installé sur votre site, sans engagement. On en parle ?</p>"
         ),
     },

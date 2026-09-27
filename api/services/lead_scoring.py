@@ -10,6 +10,16 @@ from __future__ import annotations
 
 from typing import Any, TypedDict
 
+# The receptionist's video page (/va) emits the site video's events under its own prefix: both score as the video.
+_ASSISTANT_VIDEO_EVENT_ALIASES: dict[str, str] = {
+    "assistant_video_play": "demo_video_play",
+    "assistant_video_complete": "demo_video_complete",
+    "assistant_video_replay": "demo_video_replay",
+    "assistant_video_fullscreen": "demo_video_fullscreen",
+    "assistant_video_progress": "demo_video_progress",
+    "assistant_video_watch_time": "demo_video_watch_time",
+}
+
 
 class BehaviorSignals(TypedDict):
     """Aggregated behavioural signals for a prospect (demo + email)."""
@@ -225,6 +235,7 @@ def compute(
 
     for ev in events:
         name = ev.get("event", "")
+        name = _ASSISTANT_VIDEO_EVENT_ALIASES.get(name, name)
         props = ev.get("properties", {}) if isinstance(ev.get("properties"), dict) else {}
 
         session_id = props.get("$session_id") or props.get("session_id")

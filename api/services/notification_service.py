@@ -100,6 +100,14 @@ _DEMO_EVENT_NOTIFS: dict[str, tuple[str, str, str]] = {
     "demo_video_replay": ("🔁", "success", "Revoit ta vidéo"),
 }
 
+# Receptionist video page (/va) events, as (emoji, level, body): the site video's pushes, under the assistant module.
+_ASSISTANT_VIDEO_EVENT_NOTIFS: dict[str, tuple[str, str, str]] = {
+    "assistant_video_opened": ("🎬", "success", "A ouvert ta vidéo"),
+    "assistant_video_play": ("▶️", "success", "Lance ta vidéo"),
+    "assistant_video_complete": ("✅", "success", "A vu ta vidéo en entier"),
+    "assistant_video_replay": ("🔁", "success", "Revoit ta vidéo"),
+}
+
 # Demo events that carry the prospect's own words — a submitted lead or an unsent
 # draft (typed then collapsed/abandoned); their notification appends the excerpt.
 _DEMO_MESSAGE_EVENTS: frozenset[str] = frozenset({"demo_lead", "demo_cta_banner_collapse", "demo_cta_banner_abandoned"})
@@ -254,6 +262,53 @@ class NotificationService:
             level=level,
             title=f"{emoji} {prospect_name}",
             body=f"{_MODULE_TAG_SITE} · {body}",
+            url=self._prospect_url(prospect_id),
+        )
+
+    async def notify_assistant_video_event(
+        self,
+        db: Session,
+        *,
+        user_id: int,
+        prospect_id: int | None,
+        event_name: str,
+        fallback_name: str,
+        channel: str | None = None,
+    ) -> None:
+        """
+        Raise a notification for a behavioural event on a receptionist's prospection video page (/va).
+
+        Args:
+            db: Active database session (to resolve the prospect's name).
+            user_id: Owner of the assistant, the notification recipient.
+            prospect_id: Prospect the assistant was generated for, when known.
+            event_name: Beaconed event name (e.g. ``assistant_video_play``).
+            fallback_name: Name shown when the prospect can't be resolved (e.g. the slug).
+            channel: Marketing channel that brought the visit ('email' / 'sms' / 'direct').
+        """
+        mapping = _ASSISTANT_VIDEO_EVENT_NOTIFS.get(event_name)
+        if mapping is None:
+            return
+        emoji, level, body = mapping
+        prospect_name = self._resolve_prospect_name(db, prospect_id, fallback_name)
+        channel_label = _DEMO_CHANNEL_LABELS.get((channel or "").lower())
+        if channel_label:
+            body = f"{body} · {channel_label}"
+        activity_log_service.record(
+            category=CATEGORY_ASSISTANT,
+            action=event_name,
+            status=level,
+            title=f"{prospect_name} · {body}",
+            user_id=user_id,
+            entity_type="prospect" if prospect_id else None,
+            entity_id=prospect_id,
+        )
+        await self._dispatch(
+            user_id=user_id,
+            category="assistant",
+            level=level,
+            title=f"{emoji} {prospect_name}",
+            body=f"{_MODULE_TAG_ASSISTANT} · {body}",
             url=self._prospect_url(prospect_id),
         )
 
