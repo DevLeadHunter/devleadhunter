@@ -37,6 +37,14 @@
           <dt class="text-[var(--app-ink-soft)]">Mobile d'alerte</dt>
           <dd class="text-right text-[var(--app-ink)]">{{ props.assistant.alerts.phone ?? 'Aucun' }}</dd>
         </div>
+        <div v-if="isSold" class="flex justify-between gap-3">
+          <dt class="text-[var(--app-ink-soft)]">Sur son site</dt>
+          <dd class="text-right break-all text-[var(--app-ink)]">{{ installedLabel }}</dd>
+        </div>
+        <div v-if="isSold" class="flex justify-between gap-3">
+          <dt class="text-[var(--app-ink-soft)]">Fiche Google</dt>
+          <dd class="text-right text-[var(--app-ink)]">{{ googleProfileLabel }}</dd>
+        </div>
         <div class="flex justify-between gap-3">
           <dt class="text-[var(--app-ink-soft)]">Modèle</dt>
           <dd class="text-right text-[var(--app-ink)]">
@@ -104,6 +112,23 @@ const toast: UseToastReturn = useToast()
 const { copy, copied }: UseCopyToClipboardReturn = useCopyToClipboard()
 
 const lifetimeLabel: ComputedRef<string> = computed((): string => assistantLifetimeLabel(props.assistant))
+
+/** Sold assistants show where they stand: the two « Pour démarrer » steps the client does alone. */
+const isSold: ComputedRef<boolean> = computed((): boolean => props.assistant.status === 'delivered')
+
+/** Where the widget's loader was last seen on the client's own site, as reported by the loader itself. */
+const installedLabel: ComputedRef<string> = computed((): string => {
+  const host: string | null = props.assistant.installed_host
+  const seenAt: string | null = props.assistant.installed_at
+  if (!host || !seenAt) return 'Pas encore vue'
+  return `${host} · vue le ${formatNumericDate(seenAt)}`
+})
+
+/** Whether the client said the receptionist's address is on its Google profile. */
+const googleProfileLabel: ComputedRef<string> = computed((): string => {
+  const linkedAt: string | null = props.assistant.google_profile_linked_at
+  return linkedAt ? `Adresse posée le ${formatNumericDate(linkedAt)}` : 'Adresse pas encore posée'
+})
 
 /**
  * Copy the embed snippet the client pastes on their site.

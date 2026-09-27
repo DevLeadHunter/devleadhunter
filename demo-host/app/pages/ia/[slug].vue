@@ -54,6 +54,21 @@
         </div>
       </div>
 
+      <div class="ia__never" aria-label="Ce qu’elle ne fera jamais">
+        <b>Ce que {{ assistant.assistant_name }} ne fera jamais</b>
+        <ul>
+          <li>
+            Donner un prix ou un délai que vous n’avez pas fixé : à « c’est combien ? », une photo ou une visite est
+            proposée.
+          </li>
+          <li>
+            Promettre une intervention à votre place, ni se faire passer pour une personne : réceptionniste IA dès le
+            premier message.
+          </li>
+          <li>Garder les photos au-delà du devis.</li>
+        </ul>
+      </div>
+
       <section class="ia__after" aria-label="Votre espace">
         <a :href="exampleSpaceUrl" class="ia__after-figure" target="_blank" rel="noopener" @click="onExampleSpaceClick">
           <img
@@ -526,6 +541,27 @@ useHead({
   font-size: 13.5px;
   color: var(--ia-ink-dim);
   line-height: 1.5;
+}
+.ia__never {
+  margin-top: 22px;
+  padding: 16px 18px;
+  border: 1px solid var(--ia-line);
+  border-radius: 14px;
+}
+.ia__never b {
+  font-family: var(--ia-font-d);
+  font-weight: 600;
+  font-size: 17px;
+}
+.ia__never ul {
+  margin: 8px 0 0;
+  padding-left: 18px;
+  font-size: 13.5px;
+  line-height: 1.5;
+  color: var(--ia-ink-dim);
+}
+.ia__never li {
+  margin: 0 0 4px;
 }
 .ia__estimate {
   margin: 26px 0 0;
