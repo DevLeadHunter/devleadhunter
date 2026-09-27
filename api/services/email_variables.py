@@ -16,6 +16,7 @@ from services.ai_assistant.assistant_service import ai_assistant_service
 from services.decision_maker import build_greeting
 from services.french_date_formatter import FrenchDateFormatter
 from services.pricing_service import PricingService
+from services.tracking_links import email_tracked_link
 from services.trade_normalizer import TradeNormalizer
 
 
@@ -218,23 +219,25 @@ class EmailVariables:
         return f"{base}/ia/{assistant.slug}"
 
     @classmethod
-    def resolve_assistant_link(cls, db: Session, prospect_id: int, user_id: int) -> str:
+    def resolve_assistant_link(cls, db: Session, prospect_id: int, user_id: int, variant: str | None = None) -> str:
         """
         Resolve `{lien_assistant}`: a trackable link to the prospect's AI assistant demo.
 
-        Rendered as a real anchor (like `{lien_demo}`) so the click is tracked; empty when the
-        prospect has no active assistant, so a template using it simply renders nothing there.
+        Rendered as a real anchor (like `{lien_demo}`) so the click is tracked, its URL stamped with the
+        email channel and the A/B variant like the site's links; empty when the prospect has no active
+        assistant, so a template using it simply renders nothing there.
 
         Args:
             db: Active database session.
             prospect_id: Prospect the assistant belongs to.
             user_id: The sending user, owner of the assistant.
+            variant: The send's A/B variant, or None outside an A/B campaign.
 
         Returns:
             The inline anchor HTML, or "" when the prospect has no active assistant.
         """
         url: str = cls.resolve_assistant_url(db, prospect_id, user_id)
-        return cls.build_demo_link_html(url) if url else ""
+        return cls.build_demo_link_html(email_tracked_link(url, variant)) if url else ""
 
     @classmethod
     def resolve_assistant_video(cls, db: Session, prospect_id: int, user_id: int) -> tuple[str, str]:
@@ -326,6 +329,7 @@ class EmailVariables:
         *,
         user_id: int,
         include_assistant_video: bool = True,
+        variant: str | None = None,
     ) -> dict[str, str]:
         """
         Build the full substitution map for a prospect's emails.
@@ -344,6 +348,7 @@ class EmailVariables:
             assistant_monthly_price_cents: The sender's assistant price, rendered into {prix_assistant}.
             user_id: The sending user, whose own assistant the assistant variables resolve to.
             include_assistant_video: The campaign's video toggle; off, the receptionist's video stays out.
+            variant: The send's A/B variant, stamped on the receptionist's links (the caller stamps the site's).
 
         Returns:
             The variable name to value map, ready for template substitution.
@@ -352,6 +357,8 @@ class EmailVariables:
         assistant_video_link, assistant_video_thumbnail = (
             cls.resolve_assistant_video(db, prospect.id, user_id) if include_assistant_video else ("", "")
         )
+        if assistant_video_link:
+            assistant_video_link = email_tracked_link(assistant_video_link, variant)
         return {
             cls.SALUTATION: build_greeting(first, last, gender),
             cls.FIRST_NAME: first or "",
@@ -362,7 +369,7 @@ class EmailVariables:
             cls.PHONE: prospect.phone or "",
             cls.TRADE: TradeNormalizer.normalize(prospect.category),
             cls.DEMO_LINK: cls.build_demo_link_html(demo_link),
-            cls.ASSISTANT_LINK: cls.resolve_assistant_link(db, prospect.id, user_id),
+            cls.ASSISTANT_LINK: cls.resolve_assistant_link(db, prospect.id, user_id, variant),
             cls.VIDEO_LINK: video_link,
             cls.VIDEO_THUMBNAIL: cls.build_video_thumbnail_html(video_link, video_thumbnail_url),
             cls.ASSISTANT_VIDEO_LINK: assistant_video_link,

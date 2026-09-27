@@ -36,6 +36,7 @@ from services.demo_site_verification_service import (
     DemoSiteVerificationResult,
     demo_site_verification_service,
 )
+from services.demo_slug_guard import DemoSlugGuard
 from services.enrichment_service import enrichment_service
 from services.photo_labeling_service import photo_labeling_service
 from services.photo_labels import is_card_worthy, labels_for_urls
@@ -300,17 +301,23 @@ class DemoSiteService:
         slug: str = re.sub(r"[^a-zA-Z0-9]+", "-", ascii_value.lower()).strip("-")
         return slug or "demo-site"
 
-    def unique_slug(self, db: Session, business_name: str) -> str:
-        """Generate a unique slug for a new demo site."""
+    def unique_slug(self, db: Session, business_name: str, prospect_id: int | None = None) -> str:
+        """Generate a unique slug for a new demo site, never one another prospect's receptionist holds."""
         base_slug: str = self.slugify(business_name)[:80]
         candidate: str = base_slug
         suffix: int = 1
 
-        while db.query(DemoSite).filter(DemoSite.slug == candidate).first() is not None:
+        while self._is_slug_taken(db, candidate, prospect_id):
             suffix += 1
             candidate = f"{base_slug}-{suffix}"
 
         return candidate
+
+    @staticmethod
+    def _is_slug_taken(db: Session, slug: str, prospect_id: int | None) -> bool:
+        """Whether a new demo site can't take this slug: another site holds it, or another prospect's receptionist."""
+        is_held_by_a_site: bool = db.query(DemoSite.id).filter(DemoSite.slug == slug).first() is not None
+        return is_held_by_a_site or DemoSlugGuard.is_used_by_another_prospect(db, slug, prospect_id)
 
     def demo_url_for_slug(self, slug: str) -> str:
         """Build the public demo URL for a slug."""
@@ -792,7 +799,7 @@ class DemoSiteService:
         if invite_client_to_cms and not normalized_email:
             raise ValueError("Client email is required to invite them to the CMS.")
 
-        slug: str = self.unique_slug(db, business_name)
+        slug: str = self.unique_slug(db, business_name, prospect_id)
         expires_at: datetime = self._pending_ttl_expires_at()
 
         demo_site: DemoSite = DemoSite(

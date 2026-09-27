@@ -8,20 +8,9 @@
 
 import type { ComputedRef, Ref } from 'vue'
 import { computed, onBeforeUnmount, ref } from 'vue'
-import type { VideoGenerationStep, VideoGenerationStepState } from '~/types/UiVideoGenerationModal'
+import type { VideoBuildPhase, VideoGenerationStep, VideoGenerationStepState } from '~/types/UiVideoGenerationModal'
+import { SITE_VIDEO_BUILD_PHASES } from '~/constants/videoBuildPhases'
 import { StoryblokSidecarService } from '~/services/storyblokSidecarService'
-
-/** Ordered sidecar phases; the final step (publication/preview) is app-driven. */
-const SIDECAR_STEP_ORDER: string[] = ['preparing', 'site_capture', 'editor_capture', 'background_assemble', 'montage']
-
-/** Step labels shown in the modal (the sidecar messages feed the log lines). */
-const STEP_LABELS: Record<string, string> = {
-  preparing: 'Préparation (contexte + clip présentateur)',
-  site_capture: 'Capture du site (défilement)',
-  editor_capture: 'Séquence éditeur Storyblok',
-  background_assemble: 'Assemblage du fond',
-  montage: 'Montage final (webcam + habillage)',
-}
 
 /** How often the sidecar phase is polled while a build runs. */
 const PROGRESS_POLL_MS: number = 1500
@@ -42,9 +31,13 @@ export type UseVideoGenerationProgressReturn = {
 
 /**
  * Progress state + controls for the video-generation modal.
+ * @param buildPhases - The phases the followed build reports, in order; the final, app-driven step comes after them.
  * @returns Reactive modal state and its lifecycle controls.
  */
-export function useVideoGenerationProgress(): UseVideoGenerationProgressReturn {
+export function useVideoGenerationProgress(
+  buildPhases: VideoBuildPhase[] = SITE_VIDEO_BUILD_PHASES,
+): UseVideoGenerationProgressReturn {
+  const phaseKeys: string[] = buildPhases.map((phase: VideoBuildPhase): string => phase.key)
   const isOpen: Ref<boolean> = ref(false)
   const isRunning: Ref<boolean> = ref(false)
   const logLines: Ref<string[]> = ref([])
@@ -61,10 +54,11 @@ export function useVideoGenerationProgress(): UseVideoGenerationProgressReturn {
   let lastLoggedStep: string = ''
 
   const steps: ComputedRef<VideoGenerationStep[]> = computed((): VideoGenerationStep[] => {
-    const keys: string[] = [...SIDECAR_STEP_ORDER, 'finalize']
+    const keys: string[] = [...phaseKeys, 'finalize']
     const activeIndex: number = keys.indexOf(currentStepKey.value)
     return keys.map((key: string, index: number): VideoGenerationStep => {
-      const label: string = key === 'finalize' ? finalStepLabel.value : (STEP_LABELS[key] ?? key)
+      const phaseLabel: string = buildPhases.find((phase: VideoBuildPhase): boolean => phase.key === key)?.label ?? key
+      const label: string = key === 'finalize' ? finalStepLabel.value : phaseLabel
       let state: VideoGenerationStepState = 'pending'
       if (hasCompleted.value || index < activeIndex) state = 'done'
       else if (index === activeIndex) state = hasFailed.value ? 'error' : 'active'
@@ -96,7 +90,7 @@ export function useVideoGenerationProgress(): UseVideoGenerationProgressReturn {
 
   /**
    * Open the modal and start following a build.
-   * @param slug - Slug of the demo site being rendered (the sidecar's progress key).
+   * @param slug - Slug of the site or receptionist being rendered (the sidecar's progress key).
    * @param finalLabel - Label of the last, app-driven step (publish vs preview).
    */
   function start(slug: string, finalLabel: string): void {
@@ -125,7 +119,7 @@ export function useVideoGenerationProgress(): UseVideoGenerationProgressReturn {
       if (progress.updatedAt * 1000 < startedAtMs - 2000) return
       if (progress.step === 'error') return // the caller decides (fail / server fallback)
       const key: string = progress.step === 'done' ? 'finalize' : progress.step
-      if (SIDECAR_STEP_ORDER.includes(key) || key === 'finalize') currentStepKey.value = key
+      if (phaseKeys.includes(key) || key === 'finalize') currentStepKey.value = key
       if (progress.step !== lastLoggedStep && progress.message) {
         lastLoggedStep = progress.step
         appendLog(progress.message)

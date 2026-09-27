@@ -16,6 +16,7 @@ from services.assistant_pricing_service import AssistantPricingService
 from services.decision_maker.greeting import build_greeting
 from services.email_variables import EmailVariables
 from services.pricing_service import PricingService
+from services.tracking_links import sms_tracked_link
 from services.trade_normalizer import TradeNormalizer
 
 
@@ -80,6 +81,8 @@ class SmsVariables:
     ) -> dict[str, str]:
         """Build the full substitution map for a prospect's SMS.
 
+        The receptionist's links are resolved here and take the SMS short form, as the callers give the site's.
+
         Args:
             db: Active database session.
             user_id: The sending user (signature).
@@ -93,16 +96,18 @@ class SmsVariables:
         """
         first, last, gender = EmailVariables.resolved_contact(db, prospect.id)
         user: User | None = db.get(User, user_id)
+        assistant_url: str = EmailVariables.resolve_assistant_url(db, prospect.id, user_id)
+        assistant_video_url: str = EmailVariables.resolve_assistant_video(db, prospect.id, user_id)[0]
         return {
             cls.SALUTATION: build_greeting(first, last, gender),
             cls.COMPANY: prospect.name or "",
             cls.CITY: prospect.city or "",
             cls.TRADE: TradeNormalizer.normalize(prospect.category),
             cls.DEMO_LINK: cls.as_sms_link(demo_url),
-            cls.ASSISTANT_LINK: cls.as_sms_link(EmailVariables.resolve_assistant_url(db, prospect.id, user_id)),
+            cls.ASSISTANT_LINK: cls.as_sms_link(sms_tracked_link(assistant_url)) if assistant_url else "",
             cls.VIDEO_LINK: cls.as_sms_link(video_url),
-            cls.ASSISTANT_VIDEO_LINK: cls.as_sms_link(
-                EmailVariables.resolve_assistant_video(db, prospect.id, user_id)[0]
+            cls.ASSISTANT_VIDEO_LINK: (
+                cls.as_sms_link(sms_tracked_link(assistant_video_url)) if assistant_video_url else ""
             ),
             cls.OLD_WEBSITE: EmailVariables.display_website(prospect.website),
             cls.PRICE: PricingService.format_price(sale_price_cents) if sale_price_cents is not None else "",

@@ -138,6 +138,15 @@ def test_resolve_assistant_link_renders_anchor_for_active_assistant(monkeypatch)
     assert seen["scope"] == (1, 7)  # the prospect AND the sending user, never another member's assistant
 
 
+def test_resolve_assistant_link_carries_the_email_channel_and_the_variant(monkeypatch) -> None:
+    """Like `{lien_demo}`, the visit it brings reads as an email visit of its A/B variant; the text stays clean."""
+    _stub_active_assistant(monkeypatch, SimpleNamespace(slug="agence-immo"))
+    html = EmailVariables.resolve_assistant_link(object(), 1, 7, "B")
+    assert '/ia/agence-immo?src=email&v=B"' in html
+    visible_text = html.split(">", 1)[1].rsplit("</a>", 1)[0]
+    assert visible_text.endswith("/ia/agence-immo")
+
+
 def test_resolve_assistant_link_empty_without_assistant(monkeypatch) -> None:
     """`{lien_assistant}` is empty when the prospect has no active assistant."""
     _stub_active_assistant(monkeypatch, None)

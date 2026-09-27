@@ -82,29 +82,44 @@ class BehaviorService:
     # Demo slugs / events
     # ------------------------------------------------------------------ #
 
+    @staticmethod
+    def _slugs_by_prospect(db: Session, user_id: int, prospect_ids: list[int] | None = None) -> dict[int, list[str]]:
+        """
+        Map each prospect to the slugs of its demo sites and receptionists (owned by the user), each once.
+
+        A site and a receptionist of the same prospect named after its business share their slug: its
+        events are read once.
+
+        Args:
+            db: Active database session.
+            user_id: Owner of the demos.
+            prospect_ids: The prospects to map; every prospect with a demo when None.
+
+        Returns:
+            ``{prospect_id: [slug, ...]}``, sites first.
+        """
+        sites = db.query(DemoSite.prospect_id, DemoSite.slug).filter(
+            DemoSite.user_id == user_id,
+            DemoSite.prospect_id.isnot(None),
+            DemoSite.status != DemoSiteStatus.DELETED.value,
+        )
+        assistants = db.query(AiAssistant.prospect_id, AiAssistant.slug).filter(
+            AiAssistant.user_id == user_id,
+            AiAssistant.prospect_id.isnot(None),
+            AiAssistant.deleted_at.is_(None),
+        )
+        if prospect_ids is not None:
+            sites = sites.filter(DemoSite.prospect_id.in_(prospect_ids))
+            assistants = assistants.filter(AiAssistant.prospect_id.in_(prospect_ids))
+        pid_to_slugs: dict[int, list[str]] = defaultdict(list)
+        for prospect_id, slug in [*sites.all(), *assistants.all()]:
+            if slug and slug not in pid_to_slugs[prospect_id]:
+                pid_to_slugs[prospect_id].append(slug)
+        return dict(pid_to_slugs)
+
     def _slugs_for_prospect(self, db: Session, user_id: int, prospect_id: int) -> list[str]:
         """Return the slugs of a prospect's demo sites and receptionists (owned by the user), each once."""
-        sites = (
-            db.query(DemoSite)
-            .filter(
-                DemoSite.prospect_id == prospect_id,
-                DemoSite.user_id == user_id,
-                DemoSite.status != DemoSiteStatus.DELETED.value,
-            )
-            .all()
-        )
-        assistants = (
-            db.query(AiAssistant)
-            .filter(
-                AiAssistant.prospect_id == prospect_id,
-                AiAssistant.user_id == user_id,
-                AiAssistant.deleted_at.is_(None),
-            )
-            .all()
-        )
-        slugs = [site.slug for site in sites] + [assistant.slug for assistant in assistants]
-        # A site and a receptionist named after the same business share their slug: its events are read once.
-        return list(dict.fromkeys(slug for slug in slugs if slug))
+        return self._slugs_by_prospect(db, user_id, [prospect_id]).get(prospect_id, [])
 
     async def _events_for_prospect(self, db: Session, user_id: int, prospect_id: int) -> list[dict[str, Any]]:
         """Fetch and merge behavioural events across all of a prospect's demos."""
@@ -375,22 +390,10 @@ class BehaviorService:
         """
         Return the user's hottest leads (demo + email), newest-strongest first.
 
-        One grouped PostHog query for all demo slugs + one grouped email query —
-        efficient enough for a dashboard widget. Excludes leads with no activity.
+        One grouped PostHog query for all demo slugs (sites and receptionists) + one grouped email
+        query — efficient enough for a dashboard widget. Excludes leads with no activity.
         """
-        sites = (
-            db.query(DemoSite)
-            .filter(
-                DemoSite.user_id == user_id,
-                DemoSite.prospect_id.isnot(None),
-                DemoSite.status != DemoSiteStatus.DELETED.value,
-            )
-            .all()
-        )
-        pid_to_slugs: dict[int, list[str]] = defaultdict(list)
-        for site in sites:
-            if site.prospect_id and site.slug:
-                pid_to_slugs[site.prospect_id].append(site.slug)
+        pid_to_slugs: dict[int, list[str]] = self._slugs_by_prospect(db, user_id)
         if not pid_to_slugs:
             return []
 
@@ -470,8 +473,8 @@ class BehaviorService:
         """
         Return the hot/warm/cold temperature + score for each given prospect (demo + email).
 
-        One grouped PostHog query + one grouped email query, whatever the number of
-        prospects. Prospects with no activity get temperature "unknown".
+        One grouped PostHog query (their sites and receptionists) + one grouped email query, whatever
+        the number of prospects. Prospects with no activity get temperature "unknown".
 
         Args:
             db: Active database session.
@@ -483,19 +486,7 @@ class BehaviorService:
         """
         if not prospect_ids:
             return {}
-        sites = (
-            db.query(DemoSite)
-            .filter(
-                DemoSite.user_id == user_id,
-                DemoSite.prospect_id.in_(prospect_ids),
-                DemoSite.status != DemoSiteStatus.DELETED.value,
-            )
-            .all()
-        )
-        pid_to_slugs: dict[int, list[str]] = defaultdict(list)
-        for site in sites:
-            if site.prospect_id and site.slug:
-                pid_to_slugs[site.prospect_id].append(site.slug)
+        pid_to_slugs: dict[int, list[str]] = self._slugs_by_prospect(db, user_id, prospect_ids)
 
         all_slugs = [slug for slugs in pid_to_slugs.values() for slug in slugs]
         aggregate = await posthog_service.get_aggregate_by_slugs(all_slugs) if all_slugs else {}

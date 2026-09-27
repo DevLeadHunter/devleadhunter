@@ -8,6 +8,12 @@ export type VideoGenerationStep = {
   state: VideoGenerationStepState
 }
 
+/** One phase the desktop build reports while it runs, with the label the modal gives it. */
+export type VideoBuildPhase = {
+  key: string
+  label: string
+}
+
 export type UiVideoGenerationModalProps = {
   open: boolean
   title: string

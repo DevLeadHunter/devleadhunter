@@ -30,6 +30,30 @@ export class DemoBeaconUtils {
   }
 
   /**
+   * A/B variant a campaign link carries, from its ``?v=`` value. Pure, so it is safe during SSR.
+   * @param variant - The raw ``v`` query value (e.g. route.query.v).
+   * @returns The variant, or null when the link carries none.
+   */
+  static variantFromQuery(variant: unknown): string | null {
+    return typeof variant === 'string' && variant ? variant : null
+  }
+
+  /**
+   * A demo-host path carrying the visit's A/B variant and channel, so the next page stays attributed.
+   * @param path - The page path (e.g. '/ia/garage-martin').
+   * @param variant - The visit's A/B variant, or null.
+   * @param channel - The visit's channel; 'direct' adds nothing.
+   * @returns The path with its ``v`` and ``src`` query when there are any.
+   */
+  static attributedPath(path: string, variant: string | null, channel: string): string {
+    const params: URLSearchParams = new URLSearchParams()
+    if (variant) params.set('v', variant)
+    if (channel !== 'direct') params.set('src', channel)
+    const query: string = params.toString()
+    return query ? `${path}?${query}` : path
+  }
+
+  /**
    * Beacon a demo/video behavioural event to the notifications endpoint (best-effort).
    * @param apiBase - DevLeadHunter API base URL.
    * @param slug - Demo slug identifying the prospect.

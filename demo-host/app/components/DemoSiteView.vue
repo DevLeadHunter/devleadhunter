@@ -110,7 +110,7 @@ useStoryblokBridge(isVisualEditor, (content: Record<string, unknown>): void => {
 })
 
 onMounted((): void => {
-  const variant: string | null = typeof route.query.v === 'string' ? route.query.v : null
+  const variant: string | null = DemoBeaconUtils.variantFromQuery(route.query.v)
   void initDemoTracking(props.site.slug, props.site.status, variant, DemoBeaconUtils.channelFromQuery(route.query.src))
 })
 </script>

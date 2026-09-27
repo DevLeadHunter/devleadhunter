@@ -23,6 +23,7 @@ from enums.demo_site_status import DemoSiteStatus
 from enums.sms_message_kind import SmsMessageKind
 from enums.sms_status import SmsStatus
 from enums.user_role import is_platform_admin
+from models.ai_assistant import AiAssistant
 from models.demo_site import DemoSite
 from models.email_log import EmailLog
 from models.notification import Notification
@@ -727,7 +728,7 @@ class NotificationService:
                     .filter(Order.user_id == user_id, Order.paid_at >= day_start, Order.deleted_at.is_(None))
                     .count()
                 )
-                slugs = [
+                site_slugs = [
                     row[0]
                     for row in db.query(DemoSite.slug)
                     .filter(
@@ -737,6 +738,14 @@ class NotificationService:
                     )
                     .all()
                 ]
+                receptionist_slugs = [
+                    row[0]
+                    for row in db.query(AiAssistant.slug)
+                    .filter(AiAssistant.user_id == user_id, AiAssistant.deleted_at.is_(None))
+                    .all()
+                ]
+                # A site and a receptionist of the same prospect may share a slug: its visits count once.
+                slugs = list(dict.fromkeys(site_slugs + receptionist_slugs))
                 visits = await posthog_service.count_demo_visits_since(slugs, day_start)
                 body = (
                     f"{sent} mails · {delivered} livrés · {opened} ouverts · {clicked} clics · "

@@ -40,7 +40,7 @@ from services.email_variables import EmailVariables
 from services.pricing_service import PricingService
 from services.sms.templates import SmsTemplate
 from services.sms_variables import SmsVariables
-from services.tracking_links import CHANNEL_EMAIL, append_query_param, sms_tracked_link
+from services.tracking_links import email_tracked_link, sms_tracked_link
 from services.unsubscribe_service import unsubscribe_service
 
 logger = logging.getLogger(__name__)
@@ -1091,10 +1091,7 @@ class CampaignQueueService:
         site: DemoSite | None = self._active_demo_for_prospect(prospect_id, user_id)
         if not site or not site.demo_url:
             return ""
-        url: str = append_query_param(site.demo_url, "src", CHANNEL_EMAIL)
-        if variant:
-            url = append_query_param(url, "v", variant)
-        return url
+        return email_tracked_link(site.demo_url, variant)
 
     def _video_for_prospect(self, prospect_id: int, user_id: int, variant: str | None) -> tuple[str, str]:
         """
@@ -1111,10 +1108,8 @@ class CampaignQueueService:
         site: DemoSite | None = self._active_demo_for_prospect(prospect_id, user_id)
         if not site or not has_ready_video(site):
             return "", ""
-        url: str = append_query_param(video_page_url(site.slug), "src", CHANNEL_EMAIL)
-        if variant:
-            url = append_query_param(url, "v", variant)
-        return url, public_thumbnail_url(site.slug, site.video_generated_at)
+        page_url: str = email_tracked_link(video_page_url(site.slug), variant)
+        return page_url, public_thumbnail_url(site.slug, site.video_generated_at)
 
     def _send_guard_skip(
         self,
@@ -1285,6 +1280,7 @@ class CampaignQueueService:
             assistant_monthly_price_cents=AssistantPricingService.monthly_price_cents(self.db, item.user_id),
             user_id=item.user_id,
             include_assistant_video=campaign.include_video,
+            variant=item.ab_variant,
         )
 
         email_service = EmailSendingService(self.db)

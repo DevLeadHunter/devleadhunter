@@ -136,10 +136,9 @@ const isEndCardVisible: Ref<boolean> = ref(false)
 
 const slug: ComputedRef<string> = computed((): string => String(route.params.slug ?? ''))
 
-const abVariant: ComputedRef<string | null> = computed((): string | null => {
-  const value: unknown = route.query.v
-  return typeof value === 'string' && value ? value : null
-})
+const abVariant: ComputedRef<string | null> = computed((): string | null =>
+  DemoBeaconUtils.variantFromQuery(route.query.v),
+)
 
 const channel: ComputedRef<string> = computed((): string => DemoBeaconUtils.channelFromQuery(route.query.src))
 
@@ -198,13 +197,9 @@ const playLabelDurationSuffix: ComputedRef<string> = computed((): string =>
 )
 
 /** Demo link keeping the A/B variant + channel so PostHog attributes the visit (full reload on purpose). */
-const demoHref: ComputedRef<string> = computed((): string => {
-  const params: URLSearchParams = new URLSearchParams()
-  if (abVariant.value) params.set('v', abVariant.value)
-  if (channel.value !== 'direct') params.set('src', channel.value)
-  const query: string = params.toString()
-  return query ? `/${slug.value}?${query}` : `/${slug.value}`
-})
+const demoHref: ComputedRef<string> = computed((): string =>
+  DemoBeaconUtils.attributedPath(`/${slug.value}`, abVariant.value, channel.value),
+)
 
 const ownerNameLabel: ComputedRef<string> = computed((): string => (site.value?.owner_name ?? '').trim())
 

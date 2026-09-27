@@ -75,8 +75,8 @@ _VIDEO_BUILD_STEP_MESSAGES: dict[str, str] = {
     "site_capture": "Capture du site (défilement)…",
     "editor_capture": "Séquence éditeur Storyblok…",
     "background_assemble": "Assemblage du fond…",
-    "widget_capture": "Capture de l'assistant (réponse en direct)…",
-    "widget_assemble": "Assemblage de la séquence assistant…",
+    "widget_capture": "Capture de la réceptionniste (réponse en direct)…",
+    "widget_assemble": "Assemblage de la séquence réceptionniste…",
     "montage": "Montage final (webcam + habillage)…",
     "done": "Vidéo prête.",
 }
@@ -690,7 +690,8 @@ async def video_build_assistant_full(
     data = json.loads(payload)
     slug = str(data["slug"])
     _discard_video_build_result(slug)
-    _set_video_build_progress(slug, "preparing")
+    # The default message names a Storyblok session, which only the site build opens.
+    _set_video_build_progress(slug, "preparing", "Préparation (clip présentateur)…")
     work_dir = Path(tempfile.mkdtemp(prefix=f"assistant-video-full-{slug}-"))
     presenter_path = work_dir / "presenter.mp4"
     # The upload's temp file dies with this request — materialise it before detaching.

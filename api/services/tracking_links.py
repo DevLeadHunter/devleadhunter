@@ -37,6 +37,20 @@ def sms_tracked_link(url: str) -> str:
     )
 
 
+def email_tracked_link(url: str, variant: str | None = None) -> str:
+    """Stamp a demo-host URL with the email channel, and with the A/B variant when the send has one.
+
+    Args:
+        url: A demo page or video page URL on the demo host.
+        variant: The send's A/B variant ('A' / 'B'), or None outside an A/B campaign.
+
+    Returns:
+        The URL with ``?src=email`` appended, then ``&v=<variant>`` when there is one.
+    """
+    tagged = append_query_param(url, "src", CHANNEL_EMAIL)
+    return append_query_param(tagged, "v", variant) if variant else tagged
+
+
 def append_query_param(url: str, key: str, value: str) -> str:
     """Append ``key=value`` to *url*, choosing ``?`` or ``&`` as needed.
 
