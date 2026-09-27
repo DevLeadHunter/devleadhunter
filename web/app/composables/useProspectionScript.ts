@@ -9,6 +9,9 @@ import { ref } from 'vue'
 /** The three takes, in the order they are filmed and played. */
 export type ProspectionScriptSegmentId = 'intro' | 'middle' | 'outro'
 
+/** The sellable module a presenter clip belongs to: its takes describe what the montage shows. */
+export type ProspectionScriptModule = 'websites' | 'ai-assistant'
+
 /** One take: what is on screen, how long it should run, and what to say. */
 export type ProspectionScriptSegment = {
   id: ProspectionScriptSegmentId
@@ -24,8 +27,11 @@ export type ProspectionScriptSavedSegment = {
   defaultText: string
 }
 
-/** localStorage key holding the user's edited script. */
-const SCRIPT_STORAGE_KEY: string = 'dlh-prospection-script'
+/** localStorage keys holding the user's edited script, one per module. */
+const SCRIPT_STORAGE_KEYS: Record<ProspectionScriptModule, string> = {
+  websites: 'dlh-prospection-script',
+  'ai-assistant': 'dlh-prospection-script-ai-assistant',
+}
 
 /**
  * Default spoken script: generic (never names the prospect) and, for the middle take, in the fixed order of the rendered background — the site scrolls, then the Storyblok editor appears.
@@ -71,6 +77,72 @@ export function buildDefaultScript(presenterName: string, companyName: string): 
         "N'hésitez pas à y jeter un coup d'œil, et dites-moi ce que vous en pensez. Bonne journée !",
     },
   ]
+}
+
+/**
+ * Default spoken script of the receptionist clip: generic (never names the prospect nor the receptionist, whose
+ * first name changes with each demo) and, for the middle take, in the fixed order of the rendered background — the
+ * widget answers a client for most of the take, then the owner's space shows for its last seven seconds.
+ * @param presenterName - The connected user's full name, woven into the greeting.
+ * @param companyName - The user's optional business name, appended to the greeting when set.
+ * @returns The three default takes.
+ */
+export function buildAssistantScript(presenterName: string, companyName: string): ProspectionScriptSegment[] {
+  const name: string = presenterName.trim()
+  const company: string = companyName.trim()
+  const presenter: string = company ? `${name} de ${company}` : name
+  return [
+    {
+      id: 'intro',
+      title: 'Intro',
+      staging: 'Vous, en plein écran. Le prénom du prospect s’affiche à côté de vous.',
+      targetSeconds: 6,
+      text: name
+        ? `Bonjour, moi c'est ${presenter}. Je vous ai préparé une réceptionniste, rien que pour votre entreprise.`
+        : 'Bonjour. Je vous ai préparé une réceptionniste, rien que pour votre entreprise.',
+    },
+    {
+      id: 'middle',
+      title: 'La réceptionniste répond, puis l’espace du patron',
+      staging:
+        'Le widget répond à un client pendant l’essentiel de la prise : une question, la réponse, une photo, le ' +
+        'formulaire. Les sept dernières secondes montrent l’espace où arrivent les demandes. ' +
+        'Vous passez en petite pastille ronde, en bas à gauche.',
+      targetSeconds: 30,
+      text:
+        'Elle est en ligne sur votre site, ou depuis votre fiche Google, vingt-quatre heures sur vingt-quatre. ' +
+        "Un client pose une question : elle répond avec vos horaires et vos prestations, jamais rien d'inventé. " +
+        'Il envoie une photo pour un devis : elle la garde et note sa demande. ' +
+        'Il veut un rendez-vous : elle le prend dans votre agenda. ' +
+        "Et ça, c'est votre espace : chaque demande arrive ici, et vous recevez un SMS.",
+    },
+    {
+      id: 'outro',
+      title: 'Outro',
+      staging: 'Retour sur vous en plein écran, pour l’appel à l’action.',
+      targetSeconds: 12,
+      text:
+        "Le lien pour l'essayer est juste sous la vidéo. " +
+        'Posez-lui une question, envoyez-lui une photo, et dites-moi ce que vous en pensez. Bonne journée !',
+    },
+  ]
+}
+
+/**
+ * The default takes of a module's clip.
+ * @param module - The sellable module the clip belongs to.
+ * @param presenterName - The connected user's full name.
+ * @param companyName - The user's optional business name.
+ * @returns The three default takes.
+ */
+export function buildScriptFor(
+  module: ProspectionScriptModule,
+  presenterName: string,
+  companyName: string,
+): ProspectionScriptSegment[] {
+  return module === 'ai-assistant'
+    ? buildAssistantScript(presenterName, companyName)
+    : buildDefaultScript(presenterName, companyName)
 }
 
 /**
@@ -123,18 +195,21 @@ function isSavedSegment(entry: unknown): entry is ProspectionScriptSavedSegment 
  *
  * @param presenterName - The connected user's full name, used to seed the defaults.
  * @param companyName - The user's optional business name, used to seed the defaults.
+ * @param module - The sellable module the clip belongs to (the site clip by default).
  * @returns The script plus its edit helpers.
  */
 export function useProspectionScript(
   presenterName: string,
   companyName: string,
+  module: ProspectionScriptModule = 'websites',
 ): {
   segments: Ref<ProspectionScriptSegment[]>
   isCustomised: Ref<boolean>
   updateSegmentText: (id: ProspectionScriptSegmentId, text: string) => void
   resetToDefault: () => void
 } {
-  const defaults: ProspectionScriptSegment[] = buildDefaultScript(presenterName, companyName)
+  const defaults: ProspectionScriptSegment[] = buildScriptFor(module, presenterName, companyName)
+  const storageKey: string = SCRIPT_STORAGE_KEYS[module]
   const segments: Ref<ProspectionScriptSegment[]> = ref(defaults)
   const isCustomised: Ref<boolean> = ref(false)
 
@@ -154,13 +229,13 @@ export function useProspectionScript(
     for (const segment of segments.value) {
       payload[segment.id] = { text: segment.text, defaultText: defaultTextOf(segment.id) }
     }
-    localStorage.setItem(SCRIPT_STORAGE_KEY, JSON.stringify(payload))
+    localStorage.setItem(storageKey, JSON.stringify(payload))
   }
 
   /** Restore the saved texts over the defaults; an edit of a default that has since changed is dropped. */
   function restore(): void {
     if (!import.meta.client) return
-    const raw: string | null = localStorage.getItem(SCRIPT_STORAGE_KEY)
+    const raw: string | null = localStorage.getItem(storageKey)
     if (!raw) return
     try {
       const parsed: unknown = JSON.parse(raw)
@@ -198,7 +273,7 @@ export function useProspectionScript(
   function resetToDefault(): void {
     segments.value = buildDefaultScript(presenterName, companyName)
     isCustomised.value = false
-    if (import.meta.client) localStorage.removeItem(SCRIPT_STORAGE_KEY)
+    if (import.meta.client) localStorage.removeItem(storageKey)
   }
 
   restore()

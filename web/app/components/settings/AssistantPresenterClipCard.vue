@@ -65,7 +65,19 @@
         />
       </div>
 
-      <div class="flex flex-wrap items-center gap-2">
+      <UiPresenterVideoRecorder
+        v-if="isRecording"
+        module="ai-assistant"
+        :auto-generate="autoGenerate"
+        @saved="onRecorded"
+        @cancel="isRecording = false"
+      />
+
+      <div v-else class="flex flex-wrap items-center gap-2">
+        <button type="button" class="btn-primary h-9 text-xs" :disabled="isSaving" @click="isRecording = true">
+          <UIcon name="i-lucide-video" class="mr-1.5 h-4 w-4" />
+          {{ clip.has_video ? 'Réenregistrer avec le prompteur' : 'Enregistrer avec le prompteur' }}
+        </button>
         <input
           ref="fileInput"
           type="file"
@@ -113,6 +125,8 @@ const outroSeconds: Ref<number> = ref(5)
 const autoGenerate: Ref<boolean> = ref(false)
 const selectedFile: Ref<File | null> = ref(null)
 const fileInput: Ref<HTMLInputElement | null> = ref(null)
+/** The in-app recorder is open: three takes read on the prompter, assembled by the API. */
+const isRecording: Ref<boolean> = ref(false)
 
 /**
  * Apply loaded clip metadata to the local state.
@@ -150,6 +164,15 @@ async function onToggleAutoGenerate(value: boolean): Promise<void> {
   } finally {
     isSaving.value = false
   }
+}
+
+/**
+ * Keep the clip the recorder just assembled and close it.
+ * @param recorded - The clip metadata from the API.
+ */
+function onRecorded(recorded: PresenterVideo): void {
+  applyClip(recorded)
+  isRecording.value = false
 }
 
 /**

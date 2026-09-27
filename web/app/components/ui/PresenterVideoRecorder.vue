@@ -318,11 +318,11 @@
 
 <script lang="ts" setup>
 import type { UseAuthReturn, UseToastReturn } from '~/types/Composables'
-import type { ComputedRef, Ref, WritableComputedRef } from 'vue'
+import type { ComputedRef, PropType, Ref, WritableComputedRef } from 'vue'
 import type { SelectFieldOption } from '~/types/SelectField'
 import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue'
 import type { PresenterVideo } from '~/services/presenterVideoService'
-import type { ProspectionScriptSegment } from '~/composables/useProspectionScript'
+import type { ProspectionScriptModule, ProspectionScriptSegment } from '~/composables/useProspectionScript'
 import type { RecordedTake, RecorderDevice } from '~/composables/useWebcamRecorder'
 import type { KeptTake, RecorderPhase, UiPresenterVideoRecorderProps } from '~/types/UiPresenterVideoRecorder'
 import { PresenterVideoService } from '~/services/presenterVideoService'
@@ -336,6 +336,10 @@ const props: UiPresenterVideoRecorderProps = defineProps({
   autoGenerate: {
     type: Boolean,
     default: true,
+  },
+  module: {
+    type: String as PropType<ProspectionScriptModule>,
+    default: 'websites',
   },
 })
 
@@ -378,7 +382,7 @@ const script: {
   isCustomised: Ref<boolean, boolean>
   updateSegmentText: (id: ProspectionScriptSegmentId, text: string) => void
   resetToDefault: () => void
-} = useProspectionScript(user.value?.name ?? '', user.value?.company_name ?? '')
+} = useProspectionScript(user.value?.name ?? '', user.value?.company_name ?? '', props.module)
 
 const phase: Ref<RecorderPhase> = ref('permission')
 const currentIndex: Ref<number> = ref(0)
@@ -683,10 +687,15 @@ async function sendTakes(): Promise<void> {
       middle!,
       outro!,
       props.autoGenerate,
+      props.module,
     )
     releaseAllTakes()
     recorder.stopEverything()
-    toast.success('Votre vidéo est prête — les prochains sites démo l’utiliseront automatiquement')
+    toast.success(
+      props.module === 'ai-assistant'
+        ? 'Votre vidéo est prête — les prochaines réceptionnistes l’utiliseront automatiquement'
+        : 'Votre vidéo est prête — les prochains sites démo l’utiliseront automatiquement',
+    )
     emit('saved', info)
   } catch (err: unknown) {
     toast.error(err instanceof Error ? err.message : "Échec de l'assemblage")

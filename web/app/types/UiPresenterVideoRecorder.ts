@@ -2,10 +2,13 @@
  * Props and internal shapes of the in-app presenter-clip recorder.
  */
 
+import type { ProspectionScriptModule } from '~/composables/useProspectionScript'
 import type { RecordedTake } from '~/composables/useWebcamRecorder'
 
 export type UiPresenterVideoRecorderProps = {
   autoGenerate: boolean
+  /** Which clip is filmed: the site clip (default) or the receptionist clip, each with its own takes. */
+  module: ProspectionScriptModule
 }
 
 /** Where the recorder is in the take-after-take flow. */
