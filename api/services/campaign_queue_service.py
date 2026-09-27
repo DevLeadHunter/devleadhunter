@@ -474,7 +474,7 @@ class CampaignQueueService:
             return False
 
         now = _utcnow()
-        module: str = self._campaign_module(self._campaign_email_templates(campaign, template, None))
+        module: str = self._email_campaign_module(campaign)
         if contact_lock_service.is_locked_for_module(prospect, module, now):
             return False
         # Append after the last pending J1 only — never behind a scheduled follow-up (which sits days
@@ -663,7 +663,7 @@ class CampaignQueueService:
 
         now = _utcnow()
         sms_template = find_sms_template(campaign.sms_template_key or "")
-        module: str = MODULE_AI_ASSISTANT if self._sms_template_uses_assistant(sms_template) else MODULE_WEBSITES
+        module: str = self._sms_campaign_module(sms_template)
         latest: datetime | None = self.db.execute(
             select(func.max(EmailQueue.scheduled_at)).where(
                 EmailQueue.campaign_id == campaign.id,
@@ -777,6 +777,13 @@ class CampaignQueueService:
         from services.sms.templates import DEFAULT_FIRST_CONTACT_KEY, find_sms_template
 
         sms_template = find_sms_template(campaign.sms_template_key or DEFAULT_FIRST_CONTACT_KEY)
+        # Another module took the prospect after this campaign's reservation expired in a long queue.
+        module: str = self._sms_campaign_module(sms_template)
+        if contact_lock_service.is_locked_for_module(prospect, module, _utcnow()):
+            item.status = _STATUS_SKIPPED
+            item.skip_reason = _CROSS_MODULE_SKIP_REASON
+            self.db.commit()
+            return
         needs_assistant: bool = self._sms_template_uses_assistant_link(sms_template)
         if needs_assistant and not self._has_active_assistant(prospect.id, campaign.user_id):
             item.status = _STATUS_SKIPPED
@@ -810,6 +817,7 @@ class CampaignQueueService:
         )
         if outcome.sent:
             item.status = _STATUS_SENT
+            contact_lock_service.record_contact(prospect, module, _utcnow())
             if site is not None:
                 demo_site_service.restart_demo_ttl(self.db, site, datetime.now(UTC))
         else:
@@ -1058,6 +1066,34 @@ class CampaignQueueService:
             return MODULE_AI_ASSISTANT
         return MODULE_WEBSITES
 
+    def _email_campaign_module(self, campaign: Campaign) -> str:
+        """The module of an email campaign, read from its stored J1 templates and follow-ups as at launch.
+
+        Args:
+            campaign: An email campaign.
+
+        Returns:
+            ``MODULE_AI_ASSISTANT`` or ``MODULE_WEBSITES``.
+        """
+        template_a: EmailTemplate | None = (
+            self.db.get(EmailTemplate, campaign.template_id) if campaign.template_id else None
+        )
+        template_b: EmailTemplate | None = (
+            self.db.get(EmailTemplate, campaign.ab_template_id_b) if campaign.ab_template_id_b else None
+        )
+        return self._campaign_module(self._campaign_email_templates(campaign, template_a, template_b))
+
+    def _sms_campaign_module(self, sms_template: SmsTemplate | None) -> str:
+        """The module of an SMS campaign, read from its first-contact template.
+
+        Args:
+            sms_template: The campaign's SMS template (``None`` when the key is unknown).
+
+        Returns:
+            ``MODULE_AI_ASSISTANT`` when the template is an assistant offer, else ``MODULE_WEBSITES``.
+        """
+        return MODULE_AI_ASSISTANT if self._sms_template_uses_assistant(sms_template) else MODULE_WEBSITES
+
     def _active_demo_for_prospect(self, prospect_id: int, user_id: int) -> DemoSite | None:
         """Latest ACTIVE demo site of a prospect (or None)."""
         return self.db.execute(
@@ -1188,6 +1224,15 @@ class CampaignQueueService:
             logger.info("[Queue] Skipping do-not-contact prospect %d", prospect.id)
             item.status = _STATUS_SKIPPED
             item.skip_reason = _DO_NOT_CONTACT_SKIP_REASON
+            self.db.commit()
+            return
+
+        # Guard: another module took the prospect after this campaign's reservation expired in a long queue.
+        module: str = self._email_campaign_module(campaign)
+        if contact_lock_service.is_locked_for_module(prospect, module, _utcnow()):
+            logger.info("[Queue] Skipping prospect %d — reserved by another module", prospect.id)
+            item.status = _STATUS_SKIPPED
+            item.skip_reason = _CROSS_MODULE_SKIP_REASON
             self.db.commit()
             return
 
@@ -1323,6 +1368,9 @@ class CampaignQueueService:
 
         item.email_log_id = result.get("email_log_id")
         item.status = _STATUS_SENT if result.get("success") else _STATUS_FAILED
+        if result.get("success"):
+            # The lock counts from the module's last message, so its follow-ups hold the other modules off.
+            contact_lock_service.record_contact(prospect, module, _utcnow())
         self.db.commit()
 
         # Schedule follow-ups after a successful J1 send.

@@ -1,9 +1,9 @@
 """Cross-module contact lock — never approach the same prospect for two offers at once.
 
-When a sellable module (a website campaign, an AI-assistant campaign, a cold SMS…) engages a
-prospect, it stamps ``prospect.contacted_by_module`` / ``contacted_by_module_at``. For the next
-``LOCK_DAYS`` days the *other* modules skip that prospect, so he finishes one module's sequence
-before another can start. A module is never blocked by its own stamp — its own follow-ups run.
+When a sellable module (a website campaign, an AI-assistant campaign, a cold SMS…) reserves a
+prospect, it stamps ``prospect.contacted_by_module`` / ``contacted_by_module_at``, and every message it
+actually sends refreshes that stamp. For ``LOCK_DAYS`` days after the module's last message the *other*
+modules skip that prospect. A module is never blocked by its own stamp — its own follow-ups run.
 """
 
 from __future__ import annotations
@@ -16,9 +16,7 @@ from models.prospect_db import ProspectDB
 MODULE_WEBSITES = "websites"
 MODULE_AI_ASSISTANT = "ai-assistant"
 
-# How long one module's contact reserves a prospect against the others. A full sequence (first
-# email + follow-ups + the J+30 relance) runs ~30-40 days, so 45 days lets a prospect finish one
-# module's outreach before another module may start.
+# Days of silence owed after one module's last message before another module may write.
 LOCK_DAYS = 45
 
 _MODULE_LABELS: dict[str, str] = {

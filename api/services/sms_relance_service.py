@@ -26,6 +26,7 @@ from models.demo_site import DemoSite
 from models.email_log import EmailLog
 from models.prospect_db import ProspectDB
 from models.sms_message import SmsMessage
+from services.contact_lock_service import MODULE_WEBSITES, contact_lock_service
 from services.demo_site_service import demo_site_service
 from services.demo_video_service import has_ready_video, video_page_url
 from services.prospect_phones import first_mobile_e164
@@ -74,8 +75,8 @@ class SmsRelanceService:
     ) -> list[SmsRelanceCandidate]:
         """Return the user's prospects already due for an SMS relance (emailed, no reaction).
 
-        Used by the worker to actually send: only prospects whose first email is older
-        than *after_days* qualify.
+        Only prospects whose first email is older than *after_days* qualify, and a prospect another
+        module reserved is left out.
 
         Args:
             db: Active database session.
@@ -87,7 +88,7 @@ class SmsRelanceService:
             Eligible candidates, oldest email first.
         """
         cutoff = datetime.utcnow() - timedelta(days=after_days)
-        return self._collect_relance(db, user_id, cutoff=cutoff, limit=limit)
+        return self._collect_relance(db, user_id, cutoff=cutoff, limit=limit, skip_contact_locked=True)
 
     def find_relance_projection_candidates(
         self, db: Session, user_id: int, *, limit: int = 500
@@ -106,10 +107,10 @@ class SmsRelanceService:
         Returns:
             Relance-destined candidates, oldest email first.
         """
-        return self._collect_relance(db, user_id, cutoff=None, limit=limit)
+        return self._collect_relance(db, user_id, cutoff=None, limit=limit, skip_contact_locked=False)
 
     def _collect_relance(
-        self, db: Session, user_id: int, *, cutoff: datetime | None, limit: int
+        self, db: Session, user_id: int, *, cutoff: datetime | None, limit: int, skip_contact_locked: bool
     ) -> list[SmsRelanceCandidate]:
         """Select prospects with an unanswered email, a mobile, a demo, never texted.
 
@@ -119,6 +120,8 @@ class SmsRelanceService:
             cutoff: When set, keep only emails sent at or before it (worker path); when
                 ``None``, keep every age (forecast projection path).
             limit: Max candidates to return.
+            skip_contact_locked: Leave out the prospects another module reserved; kept otherwise so a
+                planned relance can show why it is skipped.
 
         Returns:
             Matching candidates, oldest email first.
@@ -170,8 +173,11 @@ class SmsRelanceService:
             .limit(limit * 3)  # over-fetch: mobile/demo/suppression filters trim below
         ).all()
 
+        now = datetime.utcnow()
         candidates: list[SmsRelanceCandidate] = []
         for prospect, emailed_at in rows:
+            if skip_contact_locked and contact_lock_service.is_locked_for_module(prospect, MODULE_WEBSITES, now):
+                continue
             candidate = self._build_candidate(db, user_id, prospect, emailed_at=emailed_at, cold=False)
             if candidate is not None:
                 candidates.append(candidate)
@@ -281,6 +287,8 @@ class SmsRelanceService:
     ) -> bool:
         """Send one SMS (relance or cold) — revive a dormant demo first, then restart its TTL.
 
+        A sent SMS is a websites-module contact: it stamps the cross-module lock.
+
         Args:
             db: Active database session.
             user_id: Sender.
@@ -310,6 +318,8 @@ class SmsRelanceService:
             video_url=video_url,
         )
         if outcome.sent:
+            # restart_demo_ttl below commits this stamp.
+            contact_lock_service.record_contact(candidate.prospect, MODULE_WEBSITES, datetime.utcnow())
             # A fresh 21-day TTL from the SMS send — the prospect gets a live link again.
             demo_site_service.restart_demo_ttl(db, candidate.demo_site, datetime.now(UTC))
         return outcome.sent

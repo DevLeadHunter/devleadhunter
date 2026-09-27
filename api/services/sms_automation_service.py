@@ -369,7 +369,6 @@ class SmsAutomationService:
                 if sent:
                     row.status = "sent"
                     row.sent_at = datetime.utcnow()
-                    contact_lock_service.record_contact(prospect, MODULE_WEBSITES, datetime.utcnow())
                     sent_for_user += 1
                     total += 1
                 else:

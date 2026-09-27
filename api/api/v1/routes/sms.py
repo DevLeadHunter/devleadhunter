@@ -190,7 +190,10 @@ async def send_relance(
     if candidate is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Prospect non éligible à une relance SMS (déjà relancé, pas de mobile, ou pas de démo active).",
+            detail=(
+                "Prospect non éligible à une relance SMS (déjà relancé, pas de mobile, pas de démo active,"
+                " ou réservé par un autre module)."
+            ),
         )
     sent = await sms_relance_service.send_relance(db, current_user.id, candidate)
     return SmsSendResponse(sent=sent, reason=None if sent else "Envoi refusé par le provider")
