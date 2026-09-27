@@ -60,7 +60,7 @@
             src="/showroom/espace-client.webp"
             alt="Votre espace : les demandes reçues par la réceptionniste, avec les coordonnées de chaque client"
             width="1400"
-            height="1014"
+            height="875"
             loading="lazy"
           />
         </a>
