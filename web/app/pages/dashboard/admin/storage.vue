@@ -365,6 +365,8 @@ const FILTERS: Array<{ label: string; prefix: string }> = [
   { label: 'Tout', prefix: '' },
   { label: 'Vidéos', prefix: 'videos/websites/' },
   { label: 'Vignettes', prefix: 'images/websites/' },
+  { label: 'Vidéos réceptionniste', prefix: 'videos/assistant/' },
+  { label: 'Vignettes réceptionniste', prefix: 'images/assistant/' },
   { label: 'Clips webcam', prefix: 'videos/presenter/' },
   { label: 'Photos prospects', prefix: PROSPECT_PHOTOS_PREFIX },
   { label: 'Photos de devis', prefix: 'images/assistant-photos/' },
@@ -378,6 +380,8 @@ const KIND_ICONS: Record<string, string> = {
   website_video: 'i-lucide-video',
   website_thumbnail: 'i-lucide-image',
   website_background: 'i-lucide-film',
+  assistant_video: 'i-lucide-video',
+  assistant_thumbnail: 'i-lucide-image',
   presenter: 'i-lucide-webcam',
   support: 'i-lucide-paperclip',
   prospect_photo: 'i-lucide-image',
@@ -392,6 +396,8 @@ const KIND_LABELS: Record<string, string> = {
   website_video: 'Vidéo',
   website_thumbnail: 'Vignette',
   website_background: 'Fond de montage',
+  assistant_video: 'Vidéo (réceptionniste)',
+  assistant_thumbnail: 'Vignette (réceptionniste)',
   presenter: 'Clip webcam',
   support: 'Pièce jointe',
   prospect_photo: 'Photo prospect',
@@ -528,7 +534,7 @@ function keyExtension(key: string): string {
  * @returns True for demo/presenter videos and for hand-uploaded video files.
  */
 function isVideo(item: StorageObject): boolean {
-  if (item.kind === 'website_video' || item.kind === 'website_background' || item.kind === 'presenter') return true
+  if (['website_video', 'website_background', 'assistant_video', 'presenter'].includes(item.kind)) return true
   return item.kind === 'manual' && VIDEO_EXTENSIONS.includes(keyExtension(item.key))
 }
 
@@ -538,7 +544,11 @@ function isVideo(item: StorageObject): boolean {
  * @returns True for thumbnails, support attachments, prospect and quote photos, and hand-uploaded images.
  */
 function isImage(item: StorageObject): boolean {
-  if (['website_thumbnail', 'support', 'prospect_photo', 'assistant_photo'].includes(item.kind)) return true
+  if (
+    ['website_thumbnail', 'assistant_thumbnail', 'support', 'prospect_photo', 'assistant_photo'].includes(item.kind)
+  ) {
+    return true
+  }
   return item.kind === 'manual' && IMAGE_EXTENSIONS.includes(keyExtension(item.key))
 }
 

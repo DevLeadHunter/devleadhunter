@@ -14,11 +14,13 @@ from typing import Any, Protocol
 
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
 from pydantic import BaseModel
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from core.config import settings
 from core.database import get_db
 from enums.demo_site_status import DemoSiteStatus
+from models.ai_assistant import AiAssistant
 from models.demo_site import DemoSite
 from models.prospect_db import ProspectDB
 from models.prospect_enrichment import ProspectEnrichment
@@ -36,6 +38,8 @@ router = APIRouter(prefix="/admin/storage", tags=["admin-storage"])
 _BACKGROUND_SUFFIX = "-background.mp4"
 # Catégories dont l'expiration suit le TTL de la démo (le reste du bucket est permanent).
 _DEMO_DELIVERABLE_KINDS = ("website_video", "website_thumbnail", "website_background")
+# Same for the receptionist's video and thumbnail, anchored on the receptionist demo they belong to.
+_ASSISTANT_DELIVERABLE_KINDS = ("assistant_video", "assistant_thumbnail")
 
 
 class _DemoTtl(Protocol):
@@ -99,25 +103,78 @@ def _demo_ttl_by_slug(db: Session, slugs: set[str]) -> dict[str, Any]:
     return {row.slug: row for row in rows}
 
 
-def _expired_website_keys(db: Session, objects: list[dict[str, Any]], now: datetime) -> list[str]:
-    """Pick the demo-deliverable keys whose demo has expired (or vanished), for health and purge.
+def _assistant_ttl_by_slug(db: Session, slugs: set[str]) -> dict[str, Any]:
+    """Load the TTL-relevant columns and display name of the receptionists behind a set of slugs.
+
+    A deleted receptionist is left out, so its files read as leftovers the purge should have removed.
 
     Args:
         db: Active database session.
-        objects: Raw R2 listing entries under the website prefixes.
+        slugs: Receptionist slugs to look up.
+
+    Returns:
+        A ``slug -> row`` map exposing ``status``, ``demo_link_sent_at``, ``expires_at`` and ``name``.
+    """
+    if not slugs:
+        return {}
+    rows = (
+        db.query(
+            AiAssistant.slug,
+            AiAssistant.status,
+            AiAssistant.demo_link_sent_at,
+            AiAssistant.expires_at,
+            func.coalesce(ProspectDB.name, AiAssistant.business_name).label("name"),
+        )
+        .outerjoin(ProspectDB, ProspectDB.id == AiAssistant.prospect_id)
+        .filter(AiAssistant.slug.in_(slugs), AiAssistant.deleted_at.is_(None))
+        .all()
+    )
+    return {row.slug: row for row in rows}
+
+
+def _deliverable_slugs(objects: list[dict[str, Any]]) -> tuple[set[str], set[str]]:
+    """Split the slugs of a listing's deliverables between the site demos and the receptionists.
+
+    Args:
+        objects: Raw R2 listing entries.
+
+    Returns:
+        The site slugs and the receptionist slugs (one slug may name both, for the same prospect).
+    """
+    site_slugs: set[str] = set()
+    assistant_slugs: set[str] = set()
+    for item in objects:
+        slug = _slug_from_key(item["key"])
+        if slug is None:
+            continue
+        if _classify(item["key"]) in _ASSISTANT_DELIVERABLE_KINDS:
+            assistant_slugs.add(slug)
+        else:
+            site_slugs.add(slug)
+    return site_slugs, assistant_slugs
+
+
+def _expired_deliverable_keys(db: Session, objects: list[dict[str, Any]], now: datetime) -> list[str]:
+    """Pick the site and receptionist deliverable keys whose demo has expired (or vanished), for health and purge.
+
+    Args:
+        db: Active database session.
+        objects: Raw R2 listing entries under the deliverable prefixes.
         now: Current UTC instant.
 
     Returns:
         The object keys that should no longer exist.
     """
-    slugs = {slug for slug in (_slug_from_key(item["key"]) for item in objects) if slug}
-    demo_by_slug = _demo_ttl_by_slug(db, slugs)
+    site_slugs, assistant_slugs = _deliverable_slugs(objects)
+    demo_by_slug = _demo_ttl_by_slug(db, site_slugs)
+    assistant_by_slug = _assistant_ttl_by_slug(db, assistant_slugs)
     expired: list[str] = []
     for item in objects:
         slug = _slug_from_key(item["key"])
         if slug is None:
             continue
-        is_expired, _, _ = _expiry_state(demo_by_slug.get(slug), now)
+        owners = assistant_by_slug if _classify(item["key"]) in _ASSISTANT_DELIVERABLE_KINDS else demo_by_slug
+        is_expired, _, _ = _expiry_state(owners.get(slug), now)
         if is_expired:
             expired.append(item["key"])
     return expired
@@ -127,7 +184,7 @@ class StorageObject(BaseModel):
     """One object of the bucket, enriched with business context."""
 
     key: str
-    kind: str  # website_video | website_thumbnail | website_background | presenter | support | prospect_photo | assistant_photo | assistant_document | manual | other
+    kind: str  # website_video | website_thumbnail | website_background | assistant_video | assistant_thumbnail | presenter | support | prospect_photo | assistant_photo | assistant_document | manual | other
     size: int
     last_modified: datetime | None = None
     url: str
@@ -194,6 +251,11 @@ def _classify(key: str) -> str:
         return "website_background" if key.endswith(_BACKGROUND_SUFFIX) else "website_video"
     if key.startswith(r2_storage.IMAGES_WEBSITES_PREFIX):
         return "website_thumbnail"
+    if key.startswith(f"{r2_storage.VIDEOS_ASSISTANT_PREFIX}/"):
+        return "assistant_video"
+    # The trailing slash keeps the quote photos (``images/assistant-photos/``) out.
+    if key.startswith(f"{r2_storage.IMAGES_ASSISTANT_PREFIX}/"):
+        return "assistant_thumbnail"
     if key.startswith(r2_storage.VIDEOS_PRESENTER_PREFIX):
         return "presenter"
     if key.startswith(r2_storage.IMAGES_SUPPORT_PREFIX):
@@ -210,12 +272,12 @@ def _classify(key: str) -> str:
 
 
 def _slug_from_key(key: str) -> str | None:
-    """Extract the demo slug carried by a website video / thumbnail / montage-background key.
+    """Extract the demo slug carried by a site or receptionist video / thumbnail / montage-background key.
 
     The ``{slug}-background.mp4`` montage artifact resolves to its base slug so its expiry anchors on
     the same demo as the final video (they are purged together).
     """
-    if _classify(key) not in _DEMO_DELIVERABLE_KINDS:
+    if _classify(key) not in (*_DEMO_DELIVERABLE_KINDS, *_ASSISTANT_DELIVERABLE_KINDS):
         return None
     base: str = key.rsplit("/", 1)[-1].rsplit(".", 1)[0]
     if base.endswith("-background"):
@@ -276,7 +338,8 @@ async def list_storage_objects(
     _ensure_configured()
     raw = await _list_async(prefix)
 
-    slugs = {s for s in (_slug_from_key(item["key"]) for item in raw) if s}
+    slugs, assistant_slugs = _deliverable_slugs(raw)
+    assistant_by_slug = _assistant_ttl_by_slug(db, assistant_slugs)
     names_by_slug: dict[str, str] = {}
     demo_by_slug: dict[str, Any] = {}
     if slugs:
@@ -315,9 +378,14 @@ async def list_storage_objects(
         # imports manuels sont permanents.
         if kind in _DEMO_DELIVERABLE_KINDS:
             is_expired, expires_in, ttl_pending = _expiry_state(demo_by_slug.get(slug or ""), now)
+        elif kind in _ASSISTANT_DELIVERABLE_KINDS:
+            is_expired, expires_in, ttl_pending = _expiry_state(assistant_by_slug.get(slug or ""), now)
         elif kind == "assistant_photo" and entry["last_modified"] is not None:
             expires_in = max(PHOTO_RETENTION.days - (now - entry["last_modified"]).days, 0)
         prospect_name = names_by_slug.get(slug or "")
+        if kind in _ASSISTANT_DELIVERABLE_KINDS:
+            assistant_row = assistant_by_slug.get(slug or "")
+            prospect_name = assistant_row.name if assistant_row is not None else None
         if kind == "prospect_photo":
             prospect_name = names_by_prospect_id.get(_prospect_id_from_key(key) or 0)
         items.append(
@@ -361,6 +429,7 @@ async def storage_health(
     from enums.demo_video_status import DemoVideoStatus
 
     objects = await _list_async(r2_storage.VIDEOS_WEBSITES_PREFIX)
+    objects.extend(await _list_async(f"{r2_storage.VIDEOS_ASSISTANT_PREFIX}/"))
     # Les fonds de montage ``-background.mp4`` ne sont pas des livrables autonomes : hors comparaison
     # orphelins/manquants (sinon ils apparaîtraient toujours comme orphelins).
     keys = {item["key"] for item in objects if not item["key"].endswith(_BACKGROUND_SUFFIX)}
@@ -370,10 +439,19 @@ async def storage_health(
         for (slug,) in db.query(DemoSite.slug).filter(DemoSite.video_status == DemoVideoStatus.READY.value).all()
         if slug
     }
-    expected = {r2_storage.website_video_key(slug) for slug in ready_slugs}
+    ready_assistant_slugs = {
+        slug
+        for (slug,) in db.query(AiAssistant.slug)
+        .filter(AiAssistant.video_status == DemoVideoStatus.READY.value, AiAssistant.deleted_at.is_(None))
+        .all()
+        if slug
+    }
+    expected = {r2_storage.website_video_key(slug) for slug in ready_slugs} | {
+        r2_storage.assistant_video_key(slug) for slug in ready_assistant_slugs
+    }
 
     now = datetime.now(UTC)
-    expired = _expired_website_keys(db, objects, now)
+    expired = _expired_deliverable_keys(db, objects, now)
 
     return StorageHealthResponse(
         orphan_objects=sorted(keys - expected),
@@ -433,7 +511,7 @@ async def purge_expired_objects(
     db: Session = Depends(get_db),
 ) -> StorageActionResponse:
     """
-    Delete every demo deliverable whose demo has expired or vanished (video + thumbnail + background).
+    Delete every site or receptionist deliverable whose demo has expired or vanished (video, thumbnail, background).
 
     Anchored on the same demo lifecycle as the listing's expiry badge, so this removes exactly what the
     page flags — never a file still tied to a live or not-yet-sent demo.
@@ -447,9 +525,11 @@ async def purge_expired_objects(
     for prefix in (
         r2_storage.VIDEOS_WEBSITES_PREFIX,
         r2_storage.IMAGES_WEBSITES_PREFIX,
+        f"{r2_storage.VIDEOS_ASSISTANT_PREFIX}/",
+        f"{r2_storage.IMAGES_ASSISTANT_PREFIX}/",
     ):
         objects.extend(await _list_async(prefix))
-    stale = _expired_website_keys(db, objects, now)
+    stale = _expired_deliverable_keys(db, objects, now)
 
     if stale:
         import asyncio

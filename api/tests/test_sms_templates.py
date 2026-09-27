@@ -98,6 +98,12 @@ class TestResolveFallback:
         assert resolve_sms_template(template, video_ready=True).key == "assistant-24-7"
         assert resolve_sms_template(template, video_ready=False, assistant_video_ready=True) is template
 
+    def test_receptionist_video_follow_up_falls_back_to_the_receptionist_follow_up(self) -> None:
+        template = find_sms_template("assistant-relance-video")
+        assert template is not None and template.category is SmsTemplateCategory.FOLLOW_UP
+        assert resolve_sms_template(template, video_ready=True).key == "assistant-relance"
+        assert resolve_sms_template(template, video_ready=False, assistant_video_ready=True) is template
+
 
 class TestRender:
     def test_substitutes_variables(self) -> None:

@@ -217,6 +217,16 @@ SMS_TEMPLATE_LIBRARY: list[SmsTemplate] = [
         ),
     ),
     SmsTemplate(
+        key="assistant-relance-video",
+        name="Assistant IA - relance vidéo",
+        category=SmsTemplateCategory.FOLLOW_UP,
+        body=(
+            "{salutation}, la vidéo de mon email : {lien_video_assistant} Votre réceptionniste, "
+            "{prix_assistant}/mois, sans engagement. {signature}"
+        ),
+        fallback_key="assistant-relance",
+    ),
+    SmsTemplate(
         key="assistant-prix-cash",
         name="Assistant IA - le prix cash",
         category=SmsTemplateCategory.FOLLOW_UP,

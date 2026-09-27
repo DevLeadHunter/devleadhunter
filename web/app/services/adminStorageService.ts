@@ -11,6 +11,8 @@ export type StorageObjectKind =
   | 'website_video'
   | 'website_thumbnail'
   | 'website_background'
+  | 'assistant_video'
+  | 'assistant_thumbnail'
   | 'presenter'
   | 'support'
   | 'prospect_photo'
