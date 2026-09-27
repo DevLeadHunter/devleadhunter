@@ -936,7 +936,7 @@ def test_the_client_space_shows_the_agenda_and_the_upcoming_appointments(
     db: Session, google: _FakeGoogle, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     assistant = _assistant(db)
-    token = AiAssistantClientLinks.token(assistant.id)
+    token = AiAssistantClientLinks.token(assistant)
     disconnected = asyncio.run(client_routes.get_client_space(token, VISITOR_REQUEST, db))
     _calendar(db, assistant, appointment_types_json=["Révision"])
     request = _request(db, assistant)
@@ -973,7 +973,7 @@ def test_the_client_connects_changes_and_disconnects_the_agenda(
     db: Session, google: _FakeGoogle, outbox: dict[str, Any]
 ) -> None:
     assistant = _assistant(db)
-    token = AiAssistantClientLinks.token(assistant.id)
+    token = AiAssistantClientLinks.token(assistant)
 
     consent = asyncio.run(client_routes.connect_client_calendar(token, VISITOR_REQUEST, db))
     state = consent.url.split("state=")[1]
@@ -1298,7 +1298,7 @@ def test_a_client_link_reaches_only_its_own_agenda(db: Session, google: _FakeGoo
     other = _assistant(db)
     _calendar(db, assistant)
     foreign = _calendar(db, other, duration_minutes=60)
-    token = AiAssistantClientLinks.token(assistant.id)
+    token = AiAssistantClientLinks.token(assistant)
 
     asyncio.run(
         client_routes.update_client_calendar(

@@ -29,6 +29,20 @@
       Envoyer l'espace client
     </button>
     <button
+      v-if="props.status === 'delivered'"
+      type="button"
+      class="btn-secondary inline-flex w-full items-center justify-center gap-2 text-xs disabled:cursor-not-allowed disabled:opacity-50"
+      :disabled="props.isRevokingClientLinks"
+      @click="emit('revoke-client-links')"
+    >
+      <UIcon
+        :name="props.isRevokingClientLinks ? 'i-lucide-loader-circle' : 'i-lucide-link-2-off'"
+        class="h-3.5 w-3.5"
+        :class="{ 'animate-spin': props.isRevokingClientLinks }"
+      />
+      {{ props.isRevokingClientLinks ? 'Coupure des liens…' : 'Couper les anciens liens' }}
+    </button>
+    <button
       v-if="props.status === 'active' || props.status === 'expired'"
       type="button"
       class="btn-secondary inline-flex w-full items-center justify-center gap-2 text-xs disabled:cursor-not-allowed disabled:opacity-50"
@@ -67,6 +81,10 @@ const props: AssistantActionsCardProps = defineProps({
     default: false,
   },
   isSendingClientLink: {
+    type: Boolean,
+    default: false,
+  },
+  isRevokingClientLinks: {
     type: Boolean,
     default: false,
   },
