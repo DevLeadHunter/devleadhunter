@@ -144,6 +144,12 @@ jobs:
                     detail.get("status"), detail.get("email"), detail.get("expires_at"),
                     json.dumps(detail.get("alerts"), ensure_ascii=False),
                 ))
+                from core.config import settings as api_settings
+
+                print("LLM mistral_key=%s groq_key=%s mistral_model=%s groq_model=%s" % (
+                    bool(api_settings.mistral_api_key), bool(api_settings.groq_api_key),
+                    api_settings.mistral_chat_model, api_settings.groq_model,
+                ))
                 print("COUNTS conversations_7d=%s conversations_30d=%s requests_7d=%s requests_30d=%s" % (
                     detail.get("conversations_7d"), detail.get("conversations_30d"),
                     detail.get("requests_7d"), detail.get("requests_30d"),
