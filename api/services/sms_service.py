@@ -177,7 +177,8 @@ class SmsService:
         """Send one SMS (J+30 relance or first contact) to *prospect* from a library template, logging the outcome.
 
         Without an explicit ``template_key``, a first contact renders the default first-contact
-        template and a relance renders the template chosen in the user's SMS config.
+        template and a relance renders the template chosen in the user's SMS config. A message that
+        does not fit one segment, even without the first name, is refused: it would be billed twice.
 
         Args:
             db: Active database session.
@@ -241,6 +242,18 @@ class SmsService:
         if segment_count(body) > 1:
             # Over one segment: dropping the first name is the cheapest cut that keeps the message whole.
             body = self.compose_from_template(template, {**variables, SmsVariables.SALUTATION: "Bonjour"})
+        segments = segment_count(body)
+        if segments > 1:
+            logger.warning(
+                "SMS template %s would take %s segments for prospect %s", template.key, segments, prospect.id
+            )
+            return SmsSendOutcome(
+                sent=False,
+                reason=(
+                    f"Modèle « {template.name} » trop long pour ce prospect : il partirait en {segments} SMS, "
+                    "choisissez-en un plus court"
+                ),
+            )
         message = SmsMessage(
             user_id=user_id,
             prospect_id=prospect.id,
@@ -249,7 +262,7 @@ class SmsService:
             sender=config.sender,
             body=body,
             status=SmsStatus.PENDING.value,
-            segments=segment_count(body),
+            segments=segments,
         )
         outcome = await self._send_and_log(db, message=message)
         if outcome.sent:
