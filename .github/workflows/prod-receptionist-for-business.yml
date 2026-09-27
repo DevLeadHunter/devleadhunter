@@ -163,9 +163,16 @@ jobs:
                         (item.get("need_summary") or item.get("need") or "")[:200],
                     ))
                 # The owner's alerts are not in the API: read straight from the database (read-only).
+                import importlib
+                import pkgutil
+
+                import models
                 from core.database import SessionLocal
                 from models.ai_assistant_request import AiAssistantRequest
 
+                # Every mapper must be registered before the first query (relationships are resolved by name).
+                for module in pkgutil.iter_modules(models.__path__):
+                    importlib.import_module("models.%s" % module.name)
                 with SessionLocal() as db:
                     rows = db.query(AiAssistantRequest).filter(
                         AiAssistantRequest.assistant_id == assistant["id"]
