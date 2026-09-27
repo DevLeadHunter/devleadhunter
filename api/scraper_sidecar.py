@@ -532,11 +532,13 @@ async def _compose_desktop_montage(
     output_thumb: Path,
     presenter_photo_path: Path | None,
     thumbnail_label: str,
+    pip_corner: str | None = None,
 ) -> None:
     """Run the shared ffmpeg montage for a desktop build (site or assistant), off the event loop.
 
     Both builds compose the same way — presenter clip + captured middle segment + « Bonjour {Prénom} »
-    — and differ only in the captured ``capture_path`` and the email ``thumbnail_label``.
+    — and differ only in the captured ``capture_path``, the email ``thumbnail_label`` and the corner of the
+    webcam bubble (``pip_corner``, the montage's default when None).
     """
     from services import video_montage
 
@@ -558,6 +560,7 @@ async def _compose_desktop_montage(
         # Desktop: let ffmpeg use every idle core (the below-normal priority keeps the PC responsive).
         threads=video_montage.FFMPEG_THREADS_AUTO,
         thumbnail_label=thumbnail_label,
+        pip_corner=pip_corner or video_montage.PIP_CORNER_LEFT,
     )
 
 
@@ -749,6 +752,7 @@ async def _run_assistant_video_build(
             output_thumb=output_thumb,
             presenter_photo_path=presenter_photo_path,
             thumbnail_label=video_montage.THUMBNAIL_LABEL_ASSISTANT,
+            pip_corner=video_montage.PIP_CORNER_RIGHT,
         )
         _store_video_bundle(slug, work_dir, output_video, output_thumb)
         _set_video_build_progress(slug, "done")

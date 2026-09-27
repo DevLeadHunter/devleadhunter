@@ -218,7 +218,11 @@ class SmsService:
         if template is None:
             return SmsSendOutcome(sent=False, reason="Modèle SMS introuvable")
         # A video template with no generated video falls back to its demo-link sibling.
-        template = resolve_sms_template(template, video_ready=bool(video_url))
+        template = resolve_sms_template(
+            template,
+            video_ready=bool(video_url),
+            assistant_video_ready=bool(EmailVariables.resolve_assistant_video(db, prospect.id, user_id)[0]),
+        )
         # An assistant template needs the prospect's active assistant, or the SMS would ship a hole.
         needs_assistant: bool = template.uses(SmsVariables.ASSISTANT_LINK) or template.uses(
             SmsVariables.ASSISTANT_VIDEO_LINK

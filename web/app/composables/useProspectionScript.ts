@@ -80,9 +80,7 @@ export function buildDefaultScript(presenterName: string, companyName: string): 
 }
 
 /**
- * Default spoken script of the receptionist clip: generic (never names the prospect nor the receptionist, whose
- * first name changes with each demo) and, for the middle take, in the fixed order of the rendered background — the
- * widget answers a client for most of the take, then the owner's space shows for its last seven seconds.
+ * Default receptionist script: « votre réceptionniste », never a name or a pronoun, middle take in the video's order.
  * @param presenterName - The connected user's full name, woven into the greeting.
  * @param companyName - The user's optional business name, appended to the greeting when set.
  * @returns The three default takes.
@@ -98,22 +96,23 @@ export function buildAssistantScript(presenterName: string, companyName: string)
       staging: 'Vous, en plein écran. Le prénom du prospect s’affiche à côté de vous.',
       targetSeconds: 6,
       text: name
-        ? `Bonjour, moi c'est ${presenter}. Je vous ai préparé une réceptionniste, rien que pour votre entreprise.`
-        : 'Bonjour. Je vous ai préparé une réceptionniste, rien que pour votre entreprise.',
+        ? `Bonjour, moi c'est ${presenter}. Je vous ai préparé votre réceptionniste, rien que pour votre entreprise.`
+        : 'Bonjour. Je vous ai préparé votre réceptionniste, rien que pour votre entreprise.',
     },
     {
       id: 'middle',
       title: 'La réceptionniste répond, puis l’espace du patron',
       staging:
-        'Le widget répond à un client pendant l’essentiel de la prise : une question, la réponse, une photo, le ' +
-        'formulaire. Les sept dernières secondes montrent l’espace où arrivent les demandes. ' +
-        'Vous passez en petite pastille ronde, en bas à gauche.',
+        'Le chat joue un exemple pendant l’essentiel de la prise : un client écrit, une photo est demandée, la ' +
+        'demande est transmise, puis les créneaux de rendez-vous s’ouvrent. Les sept dernières secondes montrent ' +
+        'l’espace où arrivent les demandes. Vous passez en petite pastille ronde, en bas à droite.',
       targetSeconds: 30,
       text:
-        'Elle est en ligne sur votre site, ou depuis votre fiche Google, vingt-quatre heures sur vingt-quatre. ' +
-        "Un client pose une question : elle répond avec vos horaires et vos prestations, jamais rien d'inventé. " +
-        'Il envoie une photo pour un devis : elle la garde et note sa demande. ' +
-        'Il veut un rendez-vous : elle le prend dans votre agenda. ' +
+        'Votre réceptionniste est en ligne sur votre site, ou depuis votre fiche Google, vingt-quatre heures sur ' +
+        'vingt-quatre. ' +
+        "Un client pose une question : réponse immédiate, avec vos horaires et vos prestations, jamais rien d'inventé. " +
+        'Il envoie une photo pour un devis : sa demande est notée, photo comprise. ' +
+        "Il veut un rendez-vous : c'est réservé dans votre agenda. " +
         "Et ça, c'est votre espace : chaque demande arrive ici, et vous recevez un SMS.",
     },
     {
@@ -269,9 +268,9 @@ export function useProspectionScript(
     persist()
   }
 
-  /** Drop the edits and go back to the recommended script. */
+  /** Drop the edits and go back to the recommended script of this clip's module. */
   function resetToDefault(): void {
-    segments.value = buildDefaultScript(presenterName, companyName)
+    segments.value = buildScriptFor(module, presenterName, companyName)
     isCustomised.value = false
     if (import.meta.client) localStorage.removeItem(storageKey)
   }

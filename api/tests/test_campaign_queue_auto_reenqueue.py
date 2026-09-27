@@ -246,6 +246,24 @@ def test_send_guard_skip_matrix(monkeypatch):
         is None
     )
 
+    # The receptionist's video as the only door: held back until it exists, and while the video toggle is off.
+    monkeypatch.setattr(cqs.CampaignQueueService, "_has_ready_assistant_video", lambda self, pid, uid: False)
+    assert service._send_guard_skip(1, 7, None, False, False, True, True, uses_assistant_video_only=True) == "video"
+    monkeypatch.setattr(cqs.CampaignQueueService, "_has_ready_assistant_video", lambda self, pid, uid: True)
+    assert service._send_guard_skip(1, 7, None, False, False, True, True, uses_assistant_video_only=True) is None
+    assert service._send_guard_skip(1, 7, None, False, False, False, True, uses_assistant_video_only=True) == "video"
+
+
+def test_a_receptionist_video_template_is_video_only_unless_it_carries_the_live_link():
+    service = CampaignQueueService(_FakeDB())
+    video_only = SimpleNamespace(subject="Votre réceptionniste", body_html="<p>{vignette_video_assistant}</p>")
+    combo = SimpleNamespace(subject="x", body_html="<p>{vignette_video_assistant} {lien_assistant}</p>")
+    plain = SimpleNamespace(subject="x", body_html="<p>{lien_assistant}</p>")
+    assert service._template_uses_assistant_video_only(video_only) is True
+    assert service._template_uses_assistant_video_only(combo) is False
+    assert service._template_uses_assistant_video_only(plain) is False
+    assert service._template_uses_assistant_video_only(None) is False
+
 
 def test_campaign_module_reads_every_assistant_variable_and_the_follow_ups():
     service = CampaignQueueService(_FakeDB())

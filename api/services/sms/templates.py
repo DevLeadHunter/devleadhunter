@@ -11,7 +11,7 @@ taken from the matching email, no imperative (« voici », « cliquez »), no ur
 The mandatory STOP mention is appended at send time, never written here.
 
 Variables: {salutation} {entreprise} {ville} {metier} {lien_demo} {lien_assistant}
-{lien_video} {ancien_site} {prix} {signature}.
+{lien_video} {lien_video_assistant} {ancien_site} {prix} {prix_assistant} {signature}.
 """
 
 from __future__ import annotations
@@ -35,9 +35,9 @@ DEFAULT_FOLLOW_UP_KEY: str = "rappel-court"
 class SmsTemplate:
     """One library template: a stable key, a display name, its touch and its body.
 
-    A template built around ``{lien_video}`` names a ``fallback_key``: the template
-    actually rendered for a prospect whose video is not generated (a video body with
-    an empty link would send a broken message).
+    A template built around ``{lien_video}`` or ``{lien_video_assistant}`` names a
+    ``fallback_key``: the template actually rendered for a prospect whose video is not
+    generated (a video body with an empty link would send a broken message).
     """
 
     key: str
@@ -138,6 +138,13 @@ SMS_TEMPLATE_LIBRARY: list[SmsTemplate] = [
         body=(
             "{salutation}, mon assistant change la photo d'un client en demande de devis : {lien_assistant} {signature}"
         ),
+    ),
+    SmsTemplate(
+        key="assistant-video",
+        name="Assistant IA - en vidéo",
+        category=SmsTemplateCategory.FIRST_CONTACT,
+        body="{salutation}, j'ai préparé votre réceptionniste. En 30 s de vidéo : {lien_video_assistant} {signature}",
+        fallback_key="assistant-24-7",
     ),
     # ── Relance J+30 (email resté sans réaction) ─────────────────────────────
     SmsTemplate(
@@ -247,18 +254,23 @@ def find_sms_template(key: str) -> SmsTemplate | None:
     return next((template for template in SMS_TEMPLATE_LIBRARY if template.key == key), None)
 
 
-def resolve_sms_template(template: SmsTemplate, *, video_ready: bool) -> SmsTemplate:
+def resolve_sms_template(
+    template: SmsTemplate, *, video_ready: bool, assistant_video_ready: bool = False
+) -> SmsTemplate:
     """The template to actually render: its fallback when it links a video the prospect lacks.
 
     Args:
         template: The template the user picked.
-        video_ready: Whether the prospect's prospection video is generated.
+        video_ready: Whether the prospect's site prospection video is generated.
+        assistant_video_ready: Whether the prospect's receptionist video is generated.
 
     Returns:
-        *template* itself, or its declared fallback when the body needs ``{lien_video}``
-        and no video exists (the original when no fallback is declared).
+        *template* itself, or its declared fallback when the body needs ``{lien_video}`` or
+        ``{lien_video_assistant}`` and that video does not exist (the original when no fallback is declared).
     """
-    if video_ready or not template.uses("lien_video") or template.fallback_key is None:
+    is_site_video_missing = template.uses("lien_video") and not video_ready
+    is_assistant_video_missing = template.uses("lien_video_assistant") and not assistant_video_ready
+    if template.fallback_key is None or not (is_site_video_missing or is_assistant_video_missing):
         return template
     return find_sms_template(template.fallback_key) or template
 

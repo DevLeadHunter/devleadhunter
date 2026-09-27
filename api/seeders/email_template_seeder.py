@@ -241,6 +241,21 @@ EMAIL_TEMPLATE_LIBRARY: list[dict[str, object]] = [
             "<p>{prix_assistant}/mois, installé sur votre site, sans engagement. On en parle ?</p>"
         ),
     },
+    # The video as its only door, held back until generated; no pronoun, each persona may be a man or a woman.
+    {
+        "name": "Assistant IA - vidéo",
+        "category": _FIRST,
+        "sort_order": 9,
+        "subject": "Votre réceptionniste, en vidéo",
+        "body_html": (
+            "<p>{salutation},</p>"
+            "<p>J'ai préparé votre réceptionniste, rien que pour {entreprise} : le soir et le week-end, vos "
+            "clients ont une réponse tout de suite, et vous recevez chaque demande.</p>"
+            "<p>Je vous montre en 30 secondes :</p>"
+            "{vignette_video_assistant}"
+            "<p>{prix_assistant}/mois, installation comprise, sans engagement. Ça vous parle ?</p>"
+        ),
+    },
     {
         "name": "Assistant IA - relance",
         "category": _FOLLOW,

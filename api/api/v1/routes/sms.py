@@ -464,6 +464,13 @@ async def preview_template(
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST, detail="Ce prospect n'a pas d'assistant IA actif à envoyer."
         )
+    if (
+        template.uses(SmsVariables.ASSISTANT_VIDEO_LINK)
+        and not (EmailVariables.resolve_assistant_video(db, prospect.id, current_user.id)[0])
+    ):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Ce prospect n'a pas de vidéo de réceptionniste générée."
+        )
 
     demo_url = ""
     video_url = ""

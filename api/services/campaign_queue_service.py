@@ -63,10 +63,17 @@ _CROSS_MODULE_SKIP_REASON = "Réservé par un autre module"
 
 # Skip reason stored on a queue row whose template needs the prospect's active AI assistant.
 _NO_ASSISTANT_SKIP_REASON = "Pas d'assistant IA actif"
+# Skip reason stored on a queue row whose video-only template needs the receptionist's generated video.
+_NO_ASSISTANT_VIDEO_SKIP_REASON = "Pas de vidéo de réceptionniste prête"
 
 # Template variables that only render with the prospect's active AI assistant (link, video, thumbnail).
 _ASSISTANT_LINK_VARIABLES: tuple[str, ...] = (
     EmailVariables.ASSISTANT_LINK,
+    EmailVariables.ASSISTANT_VIDEO_LINK,
+    EmailVariables.ASSISTANT_VIDEO_THUMBNAIL,
+)
+# The receptionist's video variables: a template using them without {lien_assistant} has the video as its only door.
+_ASSISTANT_VIDEO_VARIABLES: tuple[str, ...] = (
     EmailVariables.ASSISTANT_VIDEO_LINK,
     EmailVariables.ASSISTANT_VIDEO_THUMBNAIL,
 )
@@ -182,6 +189,8 @@ class CampaignQueueService:
         uses_video_b: bool = self._template_uses_video(template_b)
         uses_assistant_a: bool = self._template_uses_assistant_link(template_a)
         uses_assistant_b: bool = self._template_uses_assistant_link(template_b)
+        uses_assistant_video_only_a: bool = self._template_uses_assistant_video_only(template_a)
+        uses_assistant_video_only_b: bool = self._template_uses_assistant_video_only(template_b)
         module: str = self._campaign_module(self._campaign_email_templates(campaign, template_a, template_b))
 
         # Append after the last pending slot so re-launching is safe.
@@ -230,16 +239,27 @@ class CampaignQueueService:
                 uses_demo = uses_demo_a if variant == "A" else uses_demo_b
                 uses_video = uses_video_a if variant == "A" else uses_video_b
                 uses_assistant = uses_assistant_a if variant == "A" else uses_assistant_b
+                uses_assistant_video_only = (
+                    uses_assistant_video_only_a if variant == "A" else uses_assistant_video_only_b
+                )
             else:
                 variant = None
                 tpl_id = template_id
                 uses_demo = uses_demo_a
                 uses_video = uses_video_a
                 uses_assistant = uses_assistant_a
+                uses_assistant_video_only = uses_assistant_video_only_a
 
             # Guards: no empty {lien_demo} / {lien_assistant}, and no video-only template without a ready video.
             skip_kind = self._send_guard_skip(
-                prospect.id, campaign.user_id, variant, uses_demo, uses_video, campaign.include_video, uses_assistant
+                prospect.id,
+                campaign.user_id,
+                variant,
+                uses_demo,
+                uses_video,
+                campaign.include_video,
+                uses_assistant,
+                uses_assistant_video_only=uses_assistant_video_only,
             )
             if skip_kind == "demo":
                 logger.info("[Queue] Skipping prospect %d — no active demo site for {lien_demo}", prospect.id)
@@ -448,6 +468,7 @@ class CampaignQueueService:
             self._template_uses_video(template),
             campaign.include_video,
             self._template_uses_assistant_link(template),
+            uses_assistant_video_only=self._template_uses_assistant_video_only(template),
         )
         if skip_kind is not None:
             return False
@@ -991,6 +1012,16 @@ class CampaignQueueService:
         """Return True when a template is an AI-assistant offer (any assistant variable, price included)."""
         return self._template_uses_any(template, _ASSISTANT_VARIABLES)
 
+    def _template_uses_assistant_video_only(self, template: EmailTemplate | None) -> bool:
+        """Return True when the receptionist's video is a template's only door (no ``{lien_assistant}`` to fall back on)."""
+        return self._template_uses_any(template, _ASSISTANT_VIDEO_VARIABLES) and not self._template_uses_any(
+            template, (EmailVariables.ASSISTANT_LINK,)
+        )
+
+    def _has_ready_assistant_video(self, prospect_id: int, user_id: int) -> bool:
+        """Whether the prospect's active receptionist of this user has a generated video."""
+        return bool(EmailVariables.resolve_assistant_video(self.db, prospect_id, user_id)[0])
+
     @staticmethod
     def _sms_template_uses_assistant_link(template: SmsTemplate | None) -> bool:
         """Return True when an SMS template needs the prospect's active assistant (its link or video)."""
@@ -1094,16 +1125,17 @@ class CampaignQueueService:
         uses_video: bool,
         include_video: bool,
         uses_assistant: bool,
+        *,
+        uses_assistant_video_only: bool = False,
     ) -> str | None:
         """
         Return why a prospect can't receive the initial email yet, or None when it can.
 
         Three launch guards, shared by the bulk enqueue and the single-prospect re-enqueue:
           - ``"demo"``: the template ships ``{lien_demo}`` but the prospect has no active demo site.
-          - ``"video"``: a video-only template (no ``{lien_demo}`` fallback) has no ready video, or the
-            campaign's video toggle is off — the email would have no content. A combo template
-            (``{lien_demo}`` + ``{vignette_video}``) is never blocked here: it degrades to the demo
-            link at dispatch when the video is missing.
+          - ``"video"``: a video-only template (no ``{lien_demo}`` / ``{lien_assistant}`` fallback) has no
+            ready video, or the campaign's video toggle is off — the email would have no content. A combo
+            template (a link + a thumbnail) is never blocked here: it degrades to its link at dispatch.
           - ``"assistant"``: the template needs the prospect's AI assistant (link, video or thumbnail)
             but none is active — never generated, sold or deleted.
 
@@ -1115,6 +1147,7 @@ class CampaignQueueService:
             uses_video: Whether it references ``{lien_video}``/``{vignette_video}``.
             include_video: The campaign's video toggle.
             uses_assistant: Whether it references an assistant link/video variable.
+            uses_assistant_video_only: Whether the receptionist's video is its only door.
 
         Returns:
             ``"demo"``, ``"video"``, ``"assistant"``, or None when the prospect can be enqueued.
@@ -1127,6 +1160,8 @@ class CampaignQueueService:
                 return "video"
         if uses_assistant and not self._has_active_assistant(prospect_id, user_id):
             return "assistant"
+        if uses_assistant_video_only and not (include_video and self._has_ready_assistant_video(prospect_id, user_id)):
+            return "video"
         return None
 
     async def _dispatch(self, item: EmailQueue) -> None:
@@ -1197,6 +1232,18 @@ class CampaignQueueService:
             self.db.commit()
             return
 
+        # A video-only receptionist template says nothing without its video (not generated, or the toggle is off).
+        if self._template_uses_assistant_video_only(template) and not (
+            campaign.include_video and self._has_ready_assistant_video(prospect.id, item.user_id)
+        ):
+            logger.info(
+                "[Queue] Skipping send for prospect %d — receptionist video-only template, no video", prospect.id
+            )
+            item.status = _STATUS_SKIPPED
+            item.skip_reason = _NO_ASSISTANT_VIDEO_SKIP_REASON
+            self.db.commit()
+            return
+
         if uses_demo and demo_link:
             demo_site = self._active_demo_for_prospect(prospect.id, item.user_id)
             if demo_site is not None and demo_site.demo_link_sent_at is None:
@@ -1237,6 +1284,7 @@ class CampaignQueueService:
             sale_price_cents=sale_price_cents,
             assistant_monthly_price_cents=AssistantPricingService.monthly_price_cents(self.db, item.user_id),
             user_id=item.user_id,
+            include_assistant_video=campaign.include_video,
         )
 
         email_service = EmailSendingService(self.db)
@@ -1472,6 +1520,7 @@ class CampaignQueueService:
             sale_price_cents=PricingService.sale_price_cents(self.db, campaign.user_id),
             assistant_monthly_price_cents=AssistantPricingService.monthly_price_cents(self.db, campaign.user_id),
             user_id=campaign.user_id,
+            include_assistant_video=campaign.include_video,
         )
 
         email_service = EmailSendingService(self.db)

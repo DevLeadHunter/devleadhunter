@@ -172,6 +172,7 @@ MIGRATION_MODULES: list[tuple[str, str]] = [
     ("add_prospect_website_equipment", "migrations.add_prospect_website_equipment"),
     ("add_prospect_google_reviews", "migrations.add_prospect_google_reviews"),
     ("add_demo_site_lead_status", "migrations.add_demo_site_lead_status"),
+    ("seed_assistant_video_email_template", "migrations.seed_assistant_video_email_template"),
 ]
 
 # Modules of this package that are not migrations and must not be registered.

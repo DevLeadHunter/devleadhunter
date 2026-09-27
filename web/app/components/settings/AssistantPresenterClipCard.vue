@@ -3,8 +3,8 @@
     <div>
       <h2 class="text-sm font-semibold text-[var(--app-ink)]">Clip webcam — Réceptionniste IA</h2>
       <p class="text-muted mt-1 text-sm leading-relaxed">
-        Un discours webcam <strong>différent</strong> de celui des sites : ici vous présentez l'assistant. Enregistré
-        une fois, il sert d'intro et d'outro à toutes les vidéos d'assistant (la démo du widget passe au milieu).
+        Un discours webcam <strong>différent</strong> de celui des sites : ici vous présentez la réceptionniste.
+        Enregistré une fois, il sert d'intro et d'outro à toutes ses vidéos (la démo du chat passe au milieu).
       </p>
     </div>
 
@@ -36,7 +36,7 @@
           Supprimer
         </button>
       </div>
-      <p v-else class="text-muted text-sm">Aucun clip assistant pour le moment.</p>
+      <p v-else class="text-muted text-sm">Aucun clip réceptionniste pour le moment.</p>
 
       <div class="grid grid-cols-2 gap-3">
         <label class="flex flex-col gap-1">
@@ -55,7 +55,7 @@
       >
         <div class="min-w-0">
           <p class="text-sm font-medium text-[var(--app-ink)]">Génération automatique</p>
-          <p class="text-muted text-xs">Chaque nouvel assistant génère sa vidéo tout seul.</p>
+          <p class="text-muted text-xs">Chaque nouvelle réceptionniste génère sa vidéo toute seule.</p>
         </div>
         <UiSwitch
           id="assistant-video-auto-generate"
@@ -112,7 +112,7 @@ import { PresenterVideoService } from '~/services/presenterVideoService'
 import type { UseToastReturn } from '~/types/Composables'
 import { useToast } from '~/composables/useToast'
 
-/** The sellable module this clip belongs to — its speech presents the AI assistant, not a site. */
+/** The sellable module this clip belongs to — its speech presents the receptionist, not a site. */
 const CLIP_MODULE: string = 'ai-assistant'
 
 const toast: UseToastReturn = useToast()
@@ -141,7 +141,7 @@ function applyClip(loaded: PresenterVideo): void {
 
 /**
  * Persist the auto-generation toggle for the existing clip.
- * @param value - Whether every new assistant should generate its video automatically.
+ * @param value - Whether every new receptionist should generate its video automatically.
  * @returns A promise resolved once the setting is saved.
  */
 async function onToggleAutoGenerate(value: boolean): Promise<void> {
@@ -185,7 +185,7 @@ function onFilePicked(event: Event): void {
 }
 
 /**
- * Upload the picked assistant clip.
+ * Upload the picked receptionist clip.
  * @returns A promise resolved once the upload is attempted.
  */
 async function uploadClip(): Promise<void> {
@@ -203,7 +203,7 @@ async function uploadClip(): Promise<void> {
       ),
     )
     selectedFile.value = null
-    toast.success('Clip assistant enregistré.')
+    toast.success('Clip réceptionniste enregistré.')
   } catch {
     toast.error('Enregistrement impossible (format ou durée du clip ?).')
   } finally {
@@ -212,7 +212,7 @@ async function uploadClip(): Promise<void> {
 }
 
 /**
- * Delete the assistant clip.
+ * Delete the receptionist clip.
  * @returns A promise resolved once removed.
  */
 async function removeClip(): Promise<void> {
@@ -220,7 +220,7 @@ async function removeClip(): Promise<void> {
   isSaving.value = true
   try {
     applyClip(await PresenterVideoService.deletePresenterVideo(CLIP_MODULE))
-    toast.success('Clip assistant supprimé.')
+    toast.success('Clip réceptionniste supprimé.')
   } catch {
     toast.error('Suppression impossible pour le moment.')
   } finally {
@@ -232,7 +232,7 @@ onMounted(async (): Promise<void> => {
   try {
     applyClip(await PresenterVideoService.getPresenterVideo(CLIP_MODULE))
   } catch {
-    toast.error('Chargement du clip assistant impossible.')
+    toast.error('Chargement du clip réceptionniste impossible.')
   } finally {
     isLoading.value = false
   }

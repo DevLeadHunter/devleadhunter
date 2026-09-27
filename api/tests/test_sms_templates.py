@@ -24,6 +24,7 @@ _TYPICAL_VARIABLES: dict[str, str] = {
     "lien_demo": "demo.dibodev.fr/s/garage-martin-auto",
     "lien_assistant": "demo.dibodev.fr/ia/garage-martin-auto",
     "lien_video": "demo.dibodev.fr/s/v/garage-martin-auto",
+    "lien_video_assistant": "demo.dibodev.fr/va/garage-martin-auto",
     "ancien_site": "garage-martin.fr",
     "prix": "500 €",
     "prix_assistant": "79 €",
@@ -63,13 +64,14 @@ class TestLibraryIntegrity:
     def test_every_video_template_declares_a_valid_fallback(self) -> None:
         # A video body with no generated video would render an empty link: unacceptable in a sent SMS.
         for template in SMS_TEMPLATE_LIBRARY:
-            if not template.uses("lien_video"):
+            if not (template.uses("lien_video") or template.uses("lien_video_assistant")):
                 continue
             assert template.fallback_key is not None, template.key
             fallback = find_sms_template(template.fallback_key)
             assert fallback is not None, template.key
             assert fallback.category is template.category, template.key
             assert not fallback.uses("lien_video"), template.key
+            assert not fallback.uses("lien_video_assistant"), template.key
 
 
 class TestResolveFallback:
@@ -88,6 +90,13 @@ class TestResolveFallback:
         template = find_sms_template("offre-a-vie")
         assert template is not None
         assert resolve_sms_template(template, video_ready=False) is template
+
+    def test_receptionist_video_template_waits_for_the_receptionist_video(self) -> None:
+        template = find_sms_template("assistant-video")
+        assert template is not None
+        # The site video says nothing about the receptionist's: only its own video keeps the template.
+        assert resolve_sms_template(template, video_ready=True).key == "assistant-24-7"
+        assert resolve_sms_template(template, video_ready=False, assistant_video_ready=True) is template
 
 
 class TestRender:

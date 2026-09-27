@@ -23,13 +23,19 @@ FPS = 30
 # Email-thumbnail pill label, per module (« Bonjour {Prénom} — {label} »). The montage is shared, so
 # each caller passes its own; the default keeps the site wording for callers that don't.
 THUMBNAIL_LABEL_SITE = "votre site en vidéo"
-THUMBNAIL_LABEL_ASSISTANT = "votre assistant en vidéo"
+THUMBNAIL_LABEL_ASSISTANT = "votre réceptionniste en vidéo"
+# The thumbnail pill shrinks from the first size down to the second until it fits a long first name.
+_THUMBNAIL_FONT_SIZE = 44
+_THUMBNAIL_MIN_FONT_SIZE = 28
 
-# Webcam picture-in-picture bubble during the site segment.
+# Webcam picture-in-picture bubble during the captured segment.
 PIP_SIZE = 260
 PIP_MARGIN = 24
+# Bottom corner of the webcam and photo bubbles: the receptionist video takes the right one, clear of its chat.
+PIP_CORNER_LEFT = "left"
+PIP_CORNER_RIGHT = "right"
 
-# Presenter photo bubble on the email thumbnail (bottom-left, light ring).
+# Presenter photo bubble on the email thumbnail (bottom corner, light ring).
 PHOTO_BUBBLE_SIZE = 200
 PHOTO_BUBBLE_MARGIN = 36
 PHOTO_BUBBLE_RING = 7
@@ -152,19 +158,23 @@ def build_circle_mask(work_dir: Path) -> Path:
     return path
 
 
-def _paste_presenter_photo_bubble(overlay, draw, photo_path: Path, thumb_h: int) -> None:
+def _paste_presenter_photo_bubble(
+    overlay, draw, photo_path: Path, thumb_w: int, thumb_h: int, pip_corner: str = PIP_CORNER_LEFT
+) -> None:
     """
-    Draw the presenter photo as a round bubble with a light ring, bottom-left.
+    Draw the presenter photo as a round bubble with a light ring, in a bottom corner.
 
     A human face is the strongest trust cue in the inbox; the bubble mirrors the
-    webcam PiP the prospect will see in the video itself. An unreadable photo is
-    skipped silently — it must never fail a whole video generation.
+    webcam PiP the prospect will see in the video itself, in the same corner. An
+    unreadable photo is skipped silently — it must never fail a whole video generation.
 
     Args:
         overlay: RGBA overlay layer of the thumbnail (mutated in place).
         draw: Draw handle bound to that overlay.
         photo_path: Normalised square portrait (see presenter photo upload).
+        thumb_w: Thumbnail width, to anchor a right-corner bubble.
         thumb_h: Thumbnail height, to anchor the bubble at the bottom.
+        pip_corner: ``PIP_CORNER_LEFT`` or ``PIP_CORNER_RIGHT``, like the video's webcam bubble.
     """
     from PIL import Image, ImageDraw, ImageEnhance, ImageOps
 
@@ -187,7 +197,8 @@ def _paste_presenter_photo_bubble(overlay, draw, photo_path: Path, thumb_h: int)
     bubble.paste(photo, (0, 0), mask)
     bubble = bubble.resize((PHOTO_BUBBLE_SIZE, PHOTO_BUBBLE_SIZE), Image.LANCZOS)
 
-    x0 = PHOTO_BUBBLE_MARGIN
+    is_right_corner = pip_corner == PIP_CORNER_RIGHT
+    x0 = thumb_w - PHOTO_BUBBLE_MARGIN - PHOTO_BUBBLE_SIZE if is_right_corner else PHOTO_BUBBLE_MARGIN
     y0 = thumb_h - PHOTO_BUBBLE_MARGIN - PHOTO_BUBBLE_SIZE
     ring = PHOTO_BUBBLE_RING
     draw.ellipse(
@@ -203,6 +214,7 @@ def build_thumbnail(
     output_path: Path,
     presenter_photo_path: Path | None = None,
     thumbnail_label: str = THUMBNAIL_LABEL_SITE,
+    pip_corner: str = PIP_CORNER_LEFT,
 ) -> None:
     """
     Build the personalised email thumbnail: site screenshot, slight darkening,
@@ -217,6 +229,8 @@ def build_thumbnail(
         first_name: The prospect's first name, or None.
         output_path: JPEG destination.
         presenter_photo_path: Optional square portrait for the bubble.
+        thumbnail_label: The pill's wording after « Bonjour {Prénom} », per module.
+        pip_corner: The bottom corner of the photo bubble, the same as the video's webcam bubble.
     """
     from PIL import Image, ImageDraw, ImageEnhance
 
@@ -243,12 +257,17 @@ def build_thumbnail(
 
     # Greeting pill, top-left.
     text = f"Bonjour {first_name} — {thumbnail_label}" if first_name else thumbnail_label.capitalize()
-    font = _load_font(44)
-    text_box = draw.textbbox((0, 0), text, font=font)
-    text_w = text_box[2] - text_box[0]
-    text_h = text_box[3] - text_box[1]
     pad_x, pad_y = 32, 20
     x0, y0 = 32, 32
+    font_size = _THUMBNAIL_FONT_SIZE
+    font = _load_font(font_size)
+    text_box = draw.textbbox((0, 0), text, font=font)
+    while text_box[2] - text_box[0] + pad_x * 2 > thumb_w - x0 * 2 and font_size > _THUMBNAIL_MIN_FONT_SIZE:
+        font_size -= 2
+        font = _load_font(font_size)
+        text_box = draw.textbbox((0, 0), text, font=font)
+    text_w = text_box[2] - text_box[0]
+    text_h = text_box[3] - text_box[1]
     draw.rounded_rectangle(
         (x0, y0, x0 + text_w + pad_x * 2, y0 + text_h + pad_y * 2),
         radius=(text_h + pad_y * 2) // 2,
@@ -262,7 +281,7 @@ def build_thumbnail(
     )
 
     if presenter_photo_path is not None and presenter_photo_path.is_file():
-        _paste_presenter_photo_bubble(overlay, draw, presenter_photo_path, thumb_h)
+        _paste_presenter_photo_bubble(overlay, draw, presenter_photo_path, thumb_w, thumb_h, pip_corner)
 
     composed = Image.alpha_composite(image.convert("RGBA"), overlay).convert("RGB")
     output_path.parent.mkdir(parents=True, exist_ok=True)
@@ -311,20 +330,23 @@ def compose(
     mask_path: Path,
     output_path: Path,
     threads: str = FFMPEG_THREADS,
+    pip_corner: str = PIP_CORNER_LEFT,
 ) -> None:
     """
     Single-pass ffmpeg composition.
 
     Base = presenter clip (full canvas, carries the audio). The site capture
     covers it between intro and D-outro, with the webcam shrunk to a circular PiP
-    bubble; the greeting pill fades in/out during the intro. ``threads`` keeps the
-    VPS cap by default; the desktop passes ``FFMPEG_THREADS_AUTO``.
+    bubble in a bottom corner (``pip_corner``); the greeting pill fades in/out during
+    the intro. ``threads`` keeps the VPS cap by default; the desktop passes
+    ``FFMPEG_THREADS_AUTO``.
 
     Raises:
         VideoMontageError: when ffmpeg is missing, times out, or fails.
     """
     site_end = duration - outro
     fade_out_start = max(intro - 0.5, 0.4)
+    pip_x = f"W-w-{PIP_MARGIN}" if pip_corner == PIP_CORNER_RIGHT else f"{PIP_MARGIN}"
 
     # NB filtergraph: inside single quotes, NO escaping — the commas of between()/min()
     # are literal and valid there.
@@ -338,7 +360,7 @@ def compose(
         f"[pip_sq][pip_mask]alphamerge[pip];"
         f"[pres_full][site]overlay=0:0:eof_action=pass:"
         f"enable='between(t,{intro:.3f},{site_end:.3f})'[with_site];"
-        f"[with_site][pip]overlay={PIP_MARGIN}:H-h-{PIP_MARGIN}:eof_action=pass:"
+        f"[with_site][pip]overlay={pip_x}:H-h-{PIP_MARGIN}:eof_action=pass:"
         f"enable='between(t,{intro:.3f},{site_end:.3f})'[with_pip];"
         f"[2:v]format=rgba,fade=in:st=0.3:d=0.4:alpha=1,"
         f"fade=out:st={fade_out_start:.3f}:d=0.5:alpha=1[greeting];"
@@ -433,13 +455,15 @@ def compose_final(
     presenter_photo_path: Path | None = None,
     threads: str = FFMPEG_THREADS,
     thumbnail_label: str = THUMBNAIL_LABEL_SITE,
+    pip_corner: str = PIP_CORNER_LEFT,
 ) -> None:
     """
     Full montage from primitives: greeting + mask, ffmpeg compose, thumbnail.
 
     Blocking (ffmpeg + Pillow) — callers run it in a worker thread. Reused by the
     VPS and the desktop sidecar, which passes its own bundled ``ffmpeg_path``.
-    ``thumbnail_label`` sets the email pill wording per module (site vs assistant).
+    ``thumbnail_label`` sets the email pill wording per module (site vs assistant) and
+    ``pip_corner`` the bottom corner of the webcam and photo bubbles.
 
     Raises:
         VideoMontageError: when a step fails.
@@ -460,5 +484,6 @@ def compose_final(
         mask_path=mask_path,
         output_path=output_video,
         threads=threads,
+        pip_corner=pip_corner,
     )
-    build_thumbnail(screenshot_path, first_name, output_thumbnail, presenter_photo_path, thumbnail_label)
+    build_thumbnail(screenshot_path, first_name, output_thumbnail, presenter_photo_path, thumbnail_label, pip_corner)

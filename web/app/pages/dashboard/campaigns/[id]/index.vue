@@ -469,8 +469,8 @@
             <span class="text-xs">
               <span class="font-medium text-[var(--app-ink)]">Joindre la vidéo de prospection</span>
               <span class="text-muted mt-0.5 block">
-                Insère la vignette vidéo quand une vidéo est prête. Décochée, la campagne n'envoie que le lien du site
-                (les modèles combinés basculent alors sur la démo seule).
+                Insère la vignette vidéo quand une vidéo est prête. Décochée, la campagne n'envoie que le lien de la
+                démo (les modèles combinés basculent alors sur la démo seule).
               </span>
             </span>
           </label>

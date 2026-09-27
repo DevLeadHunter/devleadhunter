@@ -49,9 +49,9 @@ class EmailVariables:
     EXPIRY_DATE = "date_expiration"
 
     @staticmethod
-    def build_video_thumbnail_html(video_link: str, thumbnail_url: str) -> str:
+    def build_video_thumbnail_html(video_link: str, thumbnail_url: str, alt_text: str = "Votre site en vidéo") -> str:
         """
-        Build the email-safe clickable thumbnail block for `{vignette_video}`.
+        Build the email-safe clickable thumbnail block for `{vignette_video}` / `{vignette_video_assistant}`.
 
         Emails cannot embed a playable video, so the proven pattern is a personalised thumbnail
         (his site plus a play button) linking to the player page. Inline styles only, since email
@@ -59,8 +59,9 @@ class EmailVariables:
         images (Outlook, some Orange) would otherwise leave a video-only email with no way in.
 
         Args:
-            video_link: Player page URL on the demo host (`/v/{slug}`).
+            video_link: Player page URL on the demo host (`/v/{slug}`, `/va/{slug}`).
             thumbnail_url: Absolute public URL of the personalised JPEG.
+            alt_text: What the image shows, read when remote images are blocked.
 
         Returns:
             The HTML block, or an empty string when either URL is missing.
@@ -70,7 +71,7 @@ class EmailVariables:
         label: str = EmailVariables._demo_link_label(video_link)
         return (
             f'<p style="margin:16px 0 6px;"><a href="{video_link}" target="_blank">'
-            f'<img src="{thumbnail_url}" alt="Votre site en vidéo" width="480" '
+            f'<img src="{thumbnail_url}" alt="{alt_text}" width="480" '
             f'style="display:block;width:100%;max-width:480px;border-radius:12px;border:0;" />'
             f"</a></p>"
             f'<p style="margin:0 0 16px;font-size:13px;color:#555;">La vidéo : '
@@ -241,9 +242,9 @@ class EmailVariables:
         Resolve the prospect's assistant prospection video: (player page URL, thumbnail URL).
 
         Empty strings when the prospect has no active assistant or its video is not ready — a
-        template using ``{lien_video_assistant}`` / ``{vignette_video_assistant}`` then renders
-        nothing there and degrades to the live ``{lien_assistant}`` CTA (the assistant video is a
-        bonus, never a send blocker — same graceful degradation as ``{lien_assistant}`` in email).
+        template pairing ``{vignette_video_assistant}`` with ``{lien_assistant}`` then degrades to
+        that live link, while a template with the video as its only door is held back by the queue
+        guard until the video exists.
 
         Args:
             db: Active database session.
@@ -324,6 +325,7 @@ class EmailVariables:
         assistant_monthly_price_cents: int | None = None,
         *,
         user_id: int,
+        include_assistant_video: bool = True,
     ) -> dict[str, str]:
         """
         Build the full substitution map for a prospect's emails.
@@ -341,12 +343,15 @@ class EmailVariables:
             sale_price_cents: The sender's website sale price, rendered into {prix}; empty when unset.
             assistant_monthly_price_cents: The sender's assistant price, rendered into {prix_assistant}.
             user_id: The sending user, whose own assistant the assistant variables resolve to.
+            include_assistant_video: The campaign's video toggle; off, the receptionist's video stays out.
 
         Returns:
             The variable name to value map, ready for template substitution.
         """
         first, last, gender = cls.resolved_contact(db, prospect.id)
-        assistant_video_link, assistant_video_thumbnail = cls.resolve_assistant_video(db, prospect.id, user_id)
+        assistant_video_link, assistant_video_thumbnail = (
+            cls.resolve_assistant_video(db, prospect.id, user_id) if include_assistant_video else ("", "")
+        )
         return {
             cls.SALUTATION: build_greeting(first, last, gender),
             cls.FIRST_NAME: first or "",
@@ -362,7 +367,7 @@ class EmailVariables:
             cls.VIDEO_THUMBNAIL: cls.build_video_thumbnail_html(video_link, video_thumbnail_url),
             cls.ASSISTANT_VIDEO_LINK: assistant_video_link,
             cls.ASSISTANT_VIDEO_THUMBNAIL: cls.build_video_thumbnail_html(
-                assistant_video_link, assistant_video_thumbnail
+                assistant_video_link, assistant_video_thumbnail, "Votre réceptionniste en vidéo"
             ),
             cls.OLD_WEBSITE: cls.display_website(prospect.website),
             cls.PRICE: PricingService.format_price(sale_price_cents) if sale_price_cents is not None else "",
