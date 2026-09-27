@@ -2,7 +2,7 @@
 const DESCRIPTION_SEPARATOR: RegExp = /\s+[-–—]\s+/
 
 /**
- * Business names as the public pages show them.
+ * Business names and headings as the public pages show them.
  */
 export class BusinessNameUtils {
   /**
@@ -12,5 +12,18 @@ export class BusinessNameUtils {
    */
   static short(name: string): string {
     return name.split(DESCRIPTION_SEPARATOR)[0]?.trim() || name
+  }
+
+  /**
+   * The business's trade and town as one heading line (« Couvreur à Rennes »).
+   * @param tradeLabel - The Google Maps category, or null.
+   * @param city - The town, or null.
+   * @returns The line; the known part alone when the other is missing, empty when both are.
+   */
+  static tradeAndCity(tradeLabel: string | null, city: string | null): string {
+    const trade: string = (tradeLabel ?? '').trim()
+    const town: string = (city ?? '').trim()
+    if (trade && town) return `${trade} à ${town}`
+    return trade || town
   }
 }

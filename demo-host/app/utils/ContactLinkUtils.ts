@@ -3,7 +3,7 @@ const EMAIL_PATTERN: RegExp = /^[^@\s?&]+@[^@\s?&]+\.[^@\s?&]+$/
 const PHONE_PATTERN: RegExp = /^\+?[\d\s.()-]{6,}$/
 
 /**
- * Tap-to-call and tap-to-mail links for the contacts visitors leave.
+ * Tap-to-call, tap-to-mail and map links for the contacts on the public pages.
  */
 export class ContactLinkUtils {
   /**
@@ -16,5 +16,14 @@ export class ContactLinkUtils {
     if (EMAIL_PATTERN.test(cleaned)) return `mailto:${cleaned}`
     if (PHONE_PATTERN.test(cleaned)) return `tel:${cleaned.replace(/[^\d+]/g, '')}`
     return null
+  }
+
+  /**
+   * A Google Maps link that finds a place from its name and address.
+   * @param place - What to look for (« Toitures Morel, 12 rue des Lilas, Rennes »).
+   * @returns The Maps search link.
+   */
+  static mapHref(place: string): string {
+    return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(place.trim())}`
   }
 }
