@@ -162,6 +162,19 @@ jobs:
                         item["id"], item.get("type"), item.get("status"), item.get("name"),
                         (item.get("need_summary") or item.get("need") or "")[:200],
                     ))
+                # The owner's alerts are not in the API: read straight from the database (read-only).
+                from core.database import SessionLocal
+                from models.ai_assistant_request import AiAssistantRequest
+
+                with SessionLocal() as db:
+                    rows = db.query(AiAssistantRequest).filter(
+                        AiAssistantRequest.assistant_id == assistant["id"]
+                    ).order_by(AiAssistantRequest.id.desc()).limit(10).all()
+                    for row in rows:
+                        print("ALERTS request=%s is_test=%s created=%s owner_alerted=%s sms_due=%s sms_sent=%s reminder=%s" % (
+                            row.id, row.is_test, row.created_at, row.owner_alerted_at, row.sms_due_at,
+                            row.sms_sent_at, row.reminder_sent_at,
+                        ))
                 faq = client.get("/ai-assistants/%s/faq" % assistant["id"]).json()
                 print("FAQ %s" % json.dumps(faq, ensure_ascii=False)[:3000])
                 raise SystemExit(0)
