@@ -28,6 +28,11 @@
       />
       Envoyer l'espace client
     </button>
+    <UiCopyLinkField
+      v-if="props.status === 'delivered' && props.clientSpaceLinkToCopy"
+      :url="props.clientSpaceLinkToCopy"
+      label="Lien de l'espace client"
+    />
     <button
       v-if="props.status === 'delivered'"
       type="button"
@@ -68,7 +73,7 @@
 </template>
 
 <script lang="ts" setup>
-import type { EmitFn } from 'vue'
+import type { EmitFn, PropType } from 'vue'
 import type { AssistantActionsCardEmits, AssistantActionsCardProps } from '~/types/AssistantActionsCard'
 
 const props: AssistantActionsCardProps = defineProps({
@@ -87,6 +92,10 @@ const props: AssistantActionsCardProps = defineProps({
   isRevokingClientLinks: {
     type: Boolean,
     default: false,
+  },
+  clientSpaceLinkToCopy: {
+    type: String as PropType<string | null>,
+    default: null,
   },
   isMarkingSold: {
     type: Boolean,
