@@ -103,3 +103,46 @@ def test_a_receptionist_sms_looks_its_assistant_up_once(
     assert lookups == [(prospect.id, 7)]
     assert "/s/ia/garage-martin " in provider.texts[0]
     assert assistant.demo_link_sent_at is not None
+
+
+@pytest.mark.parametrize(
+    ("sender", "text", "reason"),
+    [
+        ("", "Nouvelle demande", "Renseignez un nom d'expéditeur dans Paramètres → Relance SMS"),
+        ("Dibodev", "a" * 161, "Message trop long : il partirait en 2 SMS. Raccourcissez-le pour tenir en 1 seul."),
+    ],
+)
+def test_the_manual_and_the_service_sms_refuse_alike(
+    db: Session, provider: AcceptingSmsProvider, sender: str, text: str, reason: str
+) -> None:
+    """The typed SMS and the receptionist's alert share the same guards: a sender name, one segment."""
+    config = SmsConfig(user_id=7, sender=sender)
+    db.add(config)
+    db.commit()
+    service = SmsService(provider=provider)
+
+    service_outcome = asyncio.run(
+        service.send_service_message(
+            db, user_id=7, config=config, to_e164="+33611223344", text=text, recipient_name="Garage"
+        )
+    )
+    manual_outcome = asyncio.run(service.send_manual(db, user_id=7, config=config, to_raw="06 11 22 33 44", text=text))
+
+    assert (service_outcome.sent, service_outcome.reason) == (False, reason)
+    assert (manual_outcome.sent, manual_outcome.reason) == (False, reason)
+    assert provider.texts == []
+
+
+def test_an_empty_service_sms_is_refused(db: Session, provider: AcceptingSmsProvider) -> None:
+    config = SmsConfig(user_id=7, sender="Dibodev")
+    db.add(config)
+    db.commit()
+
+    outcome = asyncio.run(
+        SmsService(provider=provider).send_service_message(
+            db, user_id=7, config=config, to_e164="+33611223344", text="   ", recipient_name="Garage"
+        )
+    )
+
+    assert (outcome.sent, outcome.reason) == (False, "Message vide")
+    assert provider.texts == []

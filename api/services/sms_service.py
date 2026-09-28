@@ -315,11 +315,9 @@ class SmsService:
         Returns:
             The send outcome (``sent`` + reason when skipped).
         """
-        # A configured sender is the channel's only switch.
-        if not config.sender:
-            return SmsSendOutcome(sent=False, reason="Renseignez un nom d'expéditeur dans Paramètres → Relance SMS")
-        if not self._provider.is_configured:
-            return SmsSendOutcome(sent=False, reason="smsmode non configuré")
+        channel_refusal = self._channel_refusal(config)
+        if channel_refusal:
+            return SmsSendOutcome(sent=False, reason=channel_refusal)
         # The legal window guards marketing to a saved prospect; a bare-number self-test stays free.
         if prospect_id is not None:
             refusal = self.legal_window_refusal()
@@ -333,15 +331,9 @@ class SmsService:
         if self.is_suppressed(db, user_id, to_e164):
             return SmsSendOutcome(sent=False, reason="Numéro désinscrit (STOP)")
         body = self.compose_manual_body(text)
-        if not body:
-            return SmsSendOutcome(sent=False, reason="Message vide")
-        # Hard cap at one segment: a longer body would silently bill (and send) several SMS.
-        segments = segment_count(body)
-        if segments > 1:
-            return SmsSendOutcome(
-                sent=False,
-                reason=f"Message trop long : il partirait en {segments} SMS. Raccourcissez-le pour tenir en 1 seul.",
-            )
+        body_refusal = self._one_segment_refusal(body)
+        if body_refusal:
+            return SmsSendOutcome(sent=False, reason=body_refusal)
 
         message = SmsMessage(
             user_id=user_id,
@@ -351,7 +343,7 @@ class SmsService:
             sender=config.sender,
             body=body,
             status=SmsStatus.PENDING.value,
-            segments=segments,
+            segments=segment_count(body),
         )
         outcome = await self._send_and_log(db, message=message)
         # A manual contact supersedes the campaigns: nothing automated may double it.
@@ -389,16 +381,13 @@ class SmsService:
         Returns:
             The send outcome (``sent`` + reason when skipped).
         """
-        if not config.sender:
-            return SmsSendOutcome(sent=False, reason="Renseignez un nom d'expéditeur dans Paramètres → Relance SMS")
-        if not self._provider.is_configured:
-            return SmsSendOutcome(sent=False, reason="smsmode non configuré")
+        channel_refusal = self._channel_refusal(config)
+        if channel_refusal:
+            return SmsSendOutcome(sent=False, reason=channel_refusal)
         body = to_gsm7((text or "").strip())
-        segments = segment_count(body)
-        if segments == 0:
-            return SmsSendOutcome(sent=False, reason="Message vide")
-        if segments > 1:
-            return SmsSendOutcome(sent=False, reason=f"Message trop long : il partirait en {segments} SMS")
+        body_refusal = self._one_segment_refusal(body)
+        if body_refusal:
+            return SmsSendOutcome(sent=False, reason=body_refusal)
         message = SmsMessage(
             user_id=user_id,
             prospect_id=None,
@@ -407,10 +396,44 @@ class SmsService:
             sender=config.sender,
             body=body,
             status=SmsStatus.PENDING.value,
-            segments=segments,
+            segments=segment_count(body),
             kind=SmsMessageKind.SERVICE.value,
         )
         return await self._send_and_log(db, message=message)
+
+    def _channel_refusal(self, config: SmsConfig) -> str | None:
+        """
+        Why no SMS can leave at all: no sender name (the channel's only switch), or no provider.
+
+        Args:
+            config: The user's SMS config.
+
+        Returns:
+            The refusal shown to the user, or ``None`` when the channel is ready.
+        """
+        if not config.sender:
+            return "Renseignez un nom d'expéditeur dans Paramètres → Relance SMS"
+        if not self._provider.is_configured:
+            return "smsmode non configuré"
+        return None
+
+    @staticmethod
+    def _one_segment_refusal(body: str) -> str | None:
+        """
+        Why a composed body cannot leave: empty, or long enough to be billed (and sent) as several SMS.
+
+        Args:
+            body: The final body, GSM-7 transliterated.
+
+        Returns:
+            The refusal shown to the user, or ``None`` when the body fits one segment.
+        """
+        segments = segment_count(body)
+        if segments == 0:
+            return "Message vide"
+        if segments > 1:
+            return f"Message trop long : il partirait en {segments} SMS. Raccourcissez-le pour tenir en 1 seul."
+        return None
 
     @staticmethod
     def is_assistant_message(message: SmsMessage) -> bool:
