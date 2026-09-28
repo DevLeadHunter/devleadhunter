@@ -4,15 +4,16 @@ Gmail OAuth service for sending emails via Gmail API.
 
 import base64
 import logging
-from datetime import datetime, timedelta
 from email.mime.application import MIMEApplication
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
+from typing import Any, ClassVar
 
 import httpx
 
 from core.config import settings
 from services.email_attachment import EmailAttachment
+from services.google_oauth_client import google_oauth_client
 
 logger = logging.getLogger(__name__)
 
@@ -21,16 +22,15 @@ class GmailOAuthService:
     """
     Service for sending emails via Gmail API using OAuth2.
 
-    Requires GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET in environment variables.
+    Its consent, tokens and profile go through the shared Google OAuth client (GOOGLE_CLIENT_ID and
+    GOOGLE_CLIENT_SECRET), with its own scope and redirect address.
     """
+
+    SCOPES: ClassVar[tuple[str, ...]] = ("https://www.googleapis.com/auth/gmail.send",)
+    TIMEOUT_SECONDS: ClassVar[float] = 30.0
 
     def __init__(self):
         """Initialize Gmail OAuth service."""
-        self.client_id = settings.google_client_id
-        self.client_secret = settings.google_client_secret
-        self.redirect_uri = settings.google_redirect_uri
-
-        self.token_url = "https://oauth2.googleapis.com/token"
         self.gmail_api_url = "https://gmail.googleapis.com/gmail/v1/users/me/messages/send"
 
     def get_authorization_url(self, state: str | None = None) -> str:
@@ -43,23 +43,11 @@ class GmailOAuthService:
         Returns:
             Authorization URL to redirect user to
         """
-        scopes = "https://www.googleapis.com/auth/gmail.send"
-        auth_url = (
-            f"https://accounts.google.com/o/oauth2/v2/auth?"
-            f"client_id={self.client_id}&"
-            f"redirect_uri={self.redirect_uri}&"
-            f"response_type=code&"
-            f"scope={scopes}&"
-            f"access_type=offline&"
-            f"prompt=consent"
+        return google_oauth_client.authorization_url(
+            scopes=self.SCOPES, redirect_uri=settings.google_redirect_uri, state=state
         )
 
-        if state:
-            auth_url += f"&state={state}"
-
-        return auth_url
-
-    async def exchange_code_for_tokens(self, code: str) -> dict:
+    async def exchange_code_for_tokens(self, code: str) -> dict[str, Any]:
         """
         Exchange authorization code for access and refresh tokens.
 
@@ -67,45 +55,21 @@ class GmailOAuthService:
             code: Authorization code from Google
 
         Returns:
-            Dict with access_token, refresh_token, and expires_in
+            Dict with access_token, refresh_token and expires_at (naive UTC)
 
         Raises:
-            Exception: If token exchange fails
+            GoogleOAuthError: If token exchange fails
         """
-        payload = {
-            "code": code,
-            "client_id": self.client_id,
-            "client_secret": self.client_secret,
-            "redirect_uri": self.redirect_uri,
-            "grant_type": "authorization_code",
+        tokens = await google_oauth_client.exchange_code(
+            code, redirect_uri=settings.google_redirect_uri, timeout_seconds=self.TIMEOUT_SECONDS
+        )
+        return {
+            "access_token": tokens.access_token,
+            "refresh_token": tokens.refresh_token,
+            "expires_at": tokens.expires_at,
         }
 
-        try:
-            async with httpx.AsyncClient() as client:
-                response = await client.post(self.token_url, data=payload, timeout=30.0)
-
-                response.raise_for_status()
-                result = response.json()
-
-                # Calculate expiration time
-                expires_in = result.get("expires_in", 3600)
-                expires_at = datetime.utcnow() + timedelta(seconds=expires_in)
-
-                return {
-                    "access_token": result.get("access_token"),
-                    "refresh_token": result.get("refresh_token"),
-                    "expires_at": expires_at,
-                    "token_type": result.get("token_type"),
-                }
-
-        except httpx.HTTPStatusError as e:
-            logger.error(f"Google OAuth error: {e.response.text}")
-            raise Exception(f"Failed to exchange code for tokens: {e.response.text}")
-        except Exception as e:
-            logger.error(f"Error exchanging code for tokens: {e!s}")
-            raise
-
-    async def refresh_access_token(self, refresh_token: str) -> dict:
+    async def refresh_access_token(self, refresh_token: str) -> dict[str, Any]:
         """
         Refresh an expired access token.
 
@@ -113,41 +77,13 @@ class GmailOAuthService:
             refresh_token: Refresh token
 
         Returns:
-            Dict with new access_token and expires_in
+            Dict with the new access_token and its expires_at (naive UTC)
 
         Raises:
-            Exception: If token refresh fails
+            GoogleOAuthError: If token refresh fails
         """
-        payload = {
-            "client_id": self.client_id,
-            "client_secret": self.client_secret,
-            "refresh_token": refresh_token,
-            "grant_type": "refresh_token",
-        }
-
-        try:
-            async with httpx.AsyncClient() as client:
-                response = await client.post(self.token_url, data=payload, timeout=30.0)
-
-                response.raise_for_status()
-                result = response.json()
-
-                # Calculate expiration time
-                expires_in = result.get("expires_in", 3600)
-                expires_at = datetime.utcnow() + timedelta(seconds=expires_in)
-
-                return {
-                    "access_token": result.get("access_token"),
-                    "expires_at": expires_at,
-                    "token_type": result.get("token_type"),
-                }
-
-        except httpx.HTTPStatusError as e:
-            logger.error(f"Token refresh error: {e.response.text}")
-            raise Exception(f"Failed to refresh token: {e.response.text}")
-        except Exception as e:
-            logger.error(f"Error refreshing token: {e!s}")
-            raise
+        tokens = await google_oauth_client.refresh(refresh_token, timeout_seconds=self.TIMEOUT_SECONDS)
+        return {"access_token": tokens.access_token, "expires_at": tokens.expires_at}
 
     async def send_email(
         self,
@@ -240,7 +176,7 @@ class GmailOAuthService:
             logger.error(f"Error sending email via Gmail: {e!s}")
             raise
 
-    async def get_user_info(self, access_token: str) -> dict:
+    async def get_user_info(self, access_token: str) -> dict[str, Any]:
         """
         Get user information from Google.
 
@@ -249,24 +185,13 @@ class GmailOAuthService:
 
         Returns:
             Dict with user email and name
+
+        Raises:
+            GoogleOAuthError: If Google refuses the token
         """
-        try:
-            headers = {"Authorization": f"Bearer {access_token}"}
-
-            async with httpx.AsyncClient() as client:
-                response = await client.get(
-                    "https://www.googleapis.com/oauth2/v2/userinfo", headers=headers, timeout=30.0
-                )
-
-                response.raise_for_status()
-                result = response.json()
-
-                return {
-                    "email": result.get("email"),
-                    "name": result.get("name"),
-                    "verified_email": result.get("verified_email", False),
-                }
-
-        except Exception as e:
-            logger.error(f"Error getting user info: {e!s}")
-            raise
+        profile = await google_oauth_client.user_info(access_token, timeout_seconds=self.TIMEOUT_SECONDS)
+        return {
+            "email": profile.get("email"),
+            "name": profile.get("name"),
+            "verified_email": profile.get("verified_email", False),
+        }

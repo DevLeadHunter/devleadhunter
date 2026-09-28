@@ -1,36 +1,27 @@
 """Google OAuth for Gmail Postmaster Tools (per-user, read-only).
 
-Separate from Gmail sending OAuth: different scope, callback and stored tokens.
+Separate from Gmail sending OAuth: different scope, callback and stored tokens. The consent, the tokens and the
+profile go through the shared Google OAuth client.
 """
 
 from __future__ import annotations
 
-import logging
-from datetime import datetime, timedelta
-from urllib.parse import quote
-
-import httpx
+from typing import Any, ClassVar
 
 from core.config import settings
-
-logger = logging.getLogger(__name__)
+from services.google_oauth_client import google_oauth_client
 
 # v1 REST API (`gmailpostmastertools.googleapis.com/v1`) only accepts this scope.
 # `postmaster.traffic.readonly` is for the newer v2 client — using it yields 403 on v1.
 POSTMASTER_SCOPE: str = "https://www.googleapis.com/auth/postmaster.readonly"
 USERINFO_EMAIL_SCOPE: str = "https://www.googleapis.com/auth/userinfo.email"
-POSTMASTER_OAUTH_SCOPES: str = f"openid {USERINFO_EMAIL_SCOPE} {POSTMASTER_SCOPE}"
 
 
 class PostmasterOAuthService:
     """OAuth2 helper for the Postmaster Tools API."""
 
-    def __init__(self) -> None:
-        """Initialize with the shared Google OAuth client credentials."""
-        self.client_id = settings.google_client_id
-        self.client_secret = settings.google_client_secret
-        self.redirect_uri = settings.google_postmaster_redirect_uri
-        self.token_url = "https://oauth2.googleapis.com/token"
+    SCOPES: ClassVar[tuple[str, ...]] = ("openid", USERINFO_EMAIL_SCOPE, POSTMASTER_SCOPE)
+    TIMEOUT_SECONDS: ClassVar[float] = 30.0
 
     @property
     def is_platform_configured(self) -> bool:
@@ -39,7 +30,7 @@ class PostmasterOAuthService:
         Returns:
             True when client id and secret are set.
         """
-        return bool(self.client_id and self.client_secret)
+        return google_oauth_client.is_configured
 
     def get_authorization_url(self, state: str) -> str:
         """Build the Google consent URL for Postmaster read access.
@@ -50,20 +41,11 @@ class PostmasterOAuthService:
         Returns:
             URL to redirect the browser to.
         """
-        scope = quote(POSTMASTER_OAUTH_SCOPES, safe="")
-        redirect = quote(self.redirect_uri, safe="")
-        return (
-            "https://accounts.google.com/o/oauth2/v2/auth?"
-            f"client_id={self.client_id}&"
-            f"redirect_uri={redirect}&"
-            "response_type=code&"
-            f"scope={scope}&"
-            "access_type=offline&"
-            "prompt=consent&"
-            f"state={quote(state, safe='')}"
+        return google_oauth_client.authorization_url(
+            scopes=self.SCOPES, redirect_uri=settings.google_postmaster_redirect_uri, state=state
         )
 
-    async def exchange_code_for_tokens(self, code: str) -> dict:
+    async def exchange_code_for_tokens(self, code: str) -> dict[str, Any]:
         """Exchange an authorization code for access and refresh tokens.
 
         Args:
@@ -73,33 +55,18 @@ class PostmasterOAuthService:
             Dict with access_token, optional refresh_token and expires_at.
 
         Raises:
-            Exception: When the token exchange fails.
+            GoogleOAuthError: When the token exchange fails.
         """
-        payload = {
-            "code": code,
-            "client_id": self.client_id,
-            "client_secret": self.client_secret,
-            "redirect_uri": self.redirect_uri,
-            "grant_type": "authorization_code",
-        }
-        try:
-            async with httpx.AsyncClient() as client:
-                response = await client.post(self.token_url, data=payload, timeout=30.0)
-                response.raise_for_status()
-                result = response.json()
-        except httpx.HTTPStatusError as exc:
-            logger.error("Postmaster OAuth token exchange failed: %s", exc.response.text)
-            raise Exception(f"Failed to exchange code for tokens: {exc.response.text}") from exc
-
-        expires_in = int(result.get("expires_in", 3600))
+        tokens = await google_oauth_client.exchange_code(
+            code, redirect_uri=settings.google_postmaster_redirect_uri, timeout_seconds=self.TIMEOUT_SECONDS
+        )
         return {
-            "access_token": result.get("access_token"),
-            "refresh_token": result.get("refresh_token"),
-            "expires_at": datetime.utcnow() + timedelta(seconds=expires_in),
-            "token_type": result.get("token_type"),
+            "access_token": tokens.access_token,
+            "refresh_token": tokens.refresh_token,
+            "expires_at": tokens.expires_at,
         }
 
-    async def refresh_access_token(self, refresh_token: str) -> dict:
+    async def refresh_access_token(self, refresh_token: str) -> dict[str, Any]:
         """Refresh an expired access token.
 
         Args:
@@ -109,31 +76,12 @@ class PostmasterOAuthService:
             Dict with access_token and expires_at.
 
         Raises:
-            Exception: When refresh fails (token revoked, app in testing mode, etc.).
+            GoogleOAuthError: When refresh fails (token revoked, app in testing mode, etc.).
         """
-        payload = {
-            "client_id": self.client_id,
-            "client_secret": self.client_secret,
-            "refresh_token": refresh_token,
-            "grant_type": "refresh_token",
-        }
-        try:
-            async with httpx.AsyncClient() as client:
-                response = await client.post(self.token_url, data=payload, timeout=30.0)
-                response.raise_for_status()
-                result = response.json()
-        except httpx.HTTPStatusError as exc:
-            logger.error("Postmaster OAuth refresh failed: %s", exc.response.text)
-            raise Exception(f"Failed to refresh token: {exc.response.text}") from exc
+        tokens = await google_oauth_client.refresh(refresh_token, timeout_seconds=self.TIMEOUT_SECONDS)
+        return {"access_token": tokens.access_token, "expires_at": tokens.expires_at}
 
-        expires_in = int(result.get("expires_in", 3600))
-        return {
-            "access_token": result.get("access_token"),
-            "expires_at": datetime.utcnow() + timedelta(seconds=expires_in),
-            "token_type": result.get("token_type"),
-        }
-
-    async def get_user_info(self, access_token: str) -> dict:
+    async def get_user_info(self, access_token: str) -> dict[str, Any]:
         """Fetch the Google account profile for the connected user.
 
         Args:
@@ -141,13 +89,8 @@ class PostmasterOAuthService:
 
         Returns:
             Google userinfo payload (email, verified_email, name, …).
+
+        Raises:
+            GoogleOAuthError: When Google refuses the token.
         """
-        headers = {"Authorization": f"Bearer {access_token}"}
-        async with httpx.AsyncClient() as client:
-            response = await client.get(
-                "https://www.googleapis.com/oauth2/v2/userinfo",
-                headers=headers,
-                timeout=30.0,
-            )
-            response.raise_for_status()
-            return response.json()
+        return await google_oauth_client.user_info(access_token, timeout_seconds=self.TIMEOUT_SECONDS)
