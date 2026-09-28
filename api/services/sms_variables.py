@@ -13,6 +13,7 @@ from sqlalchemy.orm import Session
 from models.ai_assistant import AiAssistant
 from models.prospect_db import ProspectDB
 from models.user import User
+from services.ai_assistant.assistant_service import ai_assistant_service
 from services.assistant_pricing_service import AssistantPricingService
 from services.decision_maker.greeting import build_greeting
 from services.email_variables import EmailVariables
@@ -89,7 +90,7 @@ class SmsVariables:
             db: Active database session.
             user_id: The sending user (signature).
             prospect: Prospect being texted.
-            assistant: The sender's active assistant for him (``EmailVariables.active_assistant``), or None.
+            assistant: The sender's active assistant for him (``ai_assistant_service.get_active_for_prospect``), or None.
             demo_url: Full URL of his demo site (rendered without scheme).
             video_url: Full URL of his tracked video page (rendered without scheme).
             sale_price_cents: The sender's website sale price, rendered into {prix}; empty when unset.
@@ -99,7 +100,7 @@ class SmsVariables:
         """
         first, last, gender = EmailVariables.resolved_contact(db, prospect.id)
         user: User | None = db.get(User, user_id)
-        assistant_url: str = EmailVariables.assistant_page_url(assistant)
+        assistant_url: str = ai_assistant_service.page_url(assistant.slug) if assistant is not None else ""
         assistant_video_url: str = EmailVariables.assistant_video_urls(assistant)[0]
         return {
             cls.SALUTATION: build_greeting(first, last, gender),

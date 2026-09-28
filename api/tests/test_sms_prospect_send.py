@@ -5,7 +5,6 @@ import asyncio
 import pytest
 from sqlalchemy.orm import Session
 
-import services.email_variables as email_variables_module
 import services.sms_service as sms_module
 from models.ai_assistant import AiAssistant
 from models.prospect_db import ProspectDB
@@ -88,7 +87,7 @@ def test_a_receptionist_sms_looks_its_assistant_up_once(
         lookups.append((prospect_id, user_id))
         return assistant
 
-    monkeypatch.setattr(email_variables_module.ai_assistant_service, "get_active_for_prospect", counting_lookup)
+    monkeypatch.setattr(ai_assistant_service, "get_active_for_prospect", counting_lookup)
     config = SmsConfig(user_id=7, sender="Dibodev")
     db.add(config)
     db.commit()
