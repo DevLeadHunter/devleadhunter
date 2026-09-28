@@ -6,8 +6,8 @@ from types import SimpleNamespace
 
 import pytest
 
-import services.demo_video_service as demo_video_module
 from enums.demo_video_status import DemoVideoStatus
+from services import video_pipeline
 from services.demo_video_service import DemoVideoGenerationError, DemoVideoService
 
 
@@ -64,29 +64,29 @@ def test_reconcile_without_orphans_does_not_commit() -> None:
 
 
 def test_capture_memory_guard_refuses_when_low(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(demo_video_module, "_available_memory_mb", lambda: 500.0)
+    monkeypatch.setattr(video_pipeline, "available_memory_mb", lambda: 500.0)
     with pytest.raises(DemoVideoGenerationError):
         DemoVideoService._guard_capture_memory()
 
 
 def test_capture_memory_guard_allows_when_high(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(demo_video_module, "_available_memory_mb", lambda: 3000.0)
+    monkeypatch.setattr(video_pipeline, "available_memory_mb", lambda: 3000.0)
     DemoVideoService._guard_capture_memory()  # must not raise
 
 
 def test_capture_memory_guard_allows_when_unknown(monkeypatch: pytest.MonkeyPatch) -> None:
     # None = /proc/meminfo unreadable (e.g. non-Linux) → never block generation.
-    monkeypatch.setattr(demo_video_module, "_available_memory_mb", lambda: None)
+    monkeypatch.setattr(video_pipeline, "available_memory_mb", lambda: None)
     DemoVideoService._guard_capture_memory()  # must not raise
 
 
 def test_montage_memory_guard_refuses_when_low(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(demo_video_module, "_available_memory_mb", lambda: 300.0)
+    monkeypatch.setattr(video_pipeline, "available_memory_mb", lambda: 300.0)
     with pytest.raises(DemoVideoGenerationError):
         DemoVideoService._guard_montage_memory()
 
 
 def test_montage_memory_guard_allows_with_headroom(monkeypatch: pytest.MonkeyPatch) -> None:
     # Lower floor than capture: 700 Mo is enough to montage but not to capture.
-    monkeypatch.setattr(demo_video_module, "_available_memory_mb", lambda: 700.0)
+    monkeypatch.setattr(video_pipeline, "available_memory_mb", lambda: 700.0)
     DemoVideoService._guard_montage_memory()  # must not raise

@@ -67,6 +67,7 @@ from services.order_payment_reconciliation_service import run_order_payment_reco
 from services.scraper_service import scraper_service
 from services.send_queue_watchdog_service import run_send_queue_watchdog_loop
 from services.sms_automation_service import run_sms_automation_loop
+from services.video_generation_watchdog import video_generation_watchdog
 
 ensure_proactor_event_loop()
 
@@ -171,26 +172,6 @@ async def startup_event() -> None:
     facebook_scraper = FacebookSearchScraper()
     await scraper_service.add_scraper(facebook_scraper)
 
-    # A video generation task lives only in memory, so a restart (crash, OOM kill,
-    # deploy) orphans any site left mid-render — request_generation then refuses to
-    # restart it and the dashboard polls it forever. Reset those to failed at boot.
-    from core.database import SessionLocal
-    from services.assistant_video_service import assistant_video_service
-    from services.demo_video_service import demo_video_service
-
-    reconcile_db = SessionLocal()
-    try:
-        reset = demo_video_service.reconcile_orphaned(reconcile_db)
-        if reset:
-            logging.getLogger(__name__).info("Reset %d orphaned demo video generation(s) at startup", reset)
-        reset_assistant = assistant_video_service.reconcile_orphaned(reconcile_db)
-        if reset_assistant:
-            logging.getLogger(__name__).info(
-                "Reset %d orphaned assistant video generation(s) at startup", reset_assistant
-            )
-    finally:
-        reconcile_db.close()
-
     # Keep a strong reference to every long-lived loop, else asyncio may GC the task and it dies silently.
     for coro in (
         run_demo_site_cleanup_loop(),
@@ -206,6 +187,7 @@ async def startup_event() -> None:
         run_daily_recap_loop(),
         run_send_queue_watchdog_loop(),
         run_sms_automation_loop(),
+        video_generation_watchdog.run_forever(),
     ):
         task = asyncio.create_task(coro)
         _background_tasks.add(task)
