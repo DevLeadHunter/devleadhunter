@@ -322,6 +322,7 @@ class NotificationService:
         prospect_id: int | None = None,
         fallback_name: str = "",
         detail: str | None = None,
+        is_assistant_module: bool = False,
     ) -> None:
         """
         Raise a notification for an SMS lifecycle event.
@@ -333,6 +334,7 @@ class NotificationService:
             prospect_id: Prospect the SMS targets, when it is a saved prospect.
             fallback_name: Name shown when no prospect is known (the raw number for a manual send).
             detail: Failure reason appended to the body (e.g. ``Spam``), when known.
+            is_assistant_module: The SMS belongs to the receptionist module: its push says so, like the module's others.
         """
         mapping = _SMS_EVENT_NOTIFS.get(event_name)
         if mapping is None:
@@ -357,7 +359,7 @@ class NotificationService:
             category="sms",
             level=level,
             title=f"{emoji} {recipient_name}",
-            body=body,
+            body=f"{_MODULE_TAG_ASSISTANT} · {body}" if is_assistant_module else body,
             url=url,
         )
 
@@ -434,7 +436,7 @@ class NotificationService:
             status=STATUS_SUCCESS,
             title=f"{prospect_name} · Abonné à l'assistant {plan}",
             user_id=user_id,
-            entity_type="prospect",
+            entity_type="prospect" if prospect_id else None,
             entity_id=prospect_id,
         )
         await self._dispatch(
@@ -481,7 +483,7 @@ class NotificationService:
             status=STATUS_SUCCESS,
             title=f"{prospect_name} · {label} via l'assistant IA",
             user_id=user_id,
-            entity_type="prospect",
+            entity_type="prospect" if prospect_id else None,
             entity_id=prospect_id,
         )
         outside_hours = " (hors horaires)" if received_outside_hours else ""
@@ -522,7 +524,7 @@ class NotificationService:
             status=STATUS_WARNING,
             title=f"{prospect_name} · {waiting} depuis 48 h",
             user_id=user_id,
-            entity_type="prospect",
+            entity_type="prospect" if prospect_id else None,
             entity_id=prospect_id,
         )
         await self._dispatch(
@@ -561,7 +563,7 @@ class NotificationService:
             status=STATUS_WARNING,
             title=f"{prospect_name} · aucune activité en {month_label}",
             user_id=user_id,
-            entity_type="prospect",
+            entity_type="prospect" if prospect_id else None,
             entity_id=prospect_id,
         )
         await self._dispatch(
@@ -605,7 +607,7 @@ class NotificationService:
             title=f"{prospect_name} · Intéressé par l'assistant IA",
             detail=message.strip() or None,
             user_id=user_id,
-            entity_type="prospect",
+            entity_type="prospect" if prospect_id else None,
             entity_id=prospect_id,
         )
         await self._dispatch(
@@ -734,7 +736,7 @@ class NotificationService:
                     .filter(
                         DemoSite.user_id == user_id,
                         DemoSite.status != DemoSiteStatus.DELETED.value,
-                        DemoSite.slug.isnot(None),
+                        DemoSite.slug.is_not(None),
                     )
                     .all()
                 ]

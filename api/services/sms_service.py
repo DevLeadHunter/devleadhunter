@@ -11,6 +11,7 @@ mandatory « STOP au 36180 » opt-out mention.
 from __future__ import annotations
 
 import logging
+import re
 from datetime import UTC, datetime
 
 from sqlalchemy import func, select
@@ -19,6 +20,7 @@ from sqlalchemy.orm import Session
 from core.config import settings
 from enums.sms_message_kind import SmsMessageKind
 from enums.sms_status import SmsStatus
+from models.ai_assistant import AiAssistant
 from models.prospect_db import ProspectDB
 from models.sms_config import SmsConfig
 from models.sms_message import SmsMessage
@@ -50,6 +52,8 @@ logger = logging.getLogger(__name__)
 # Mandatory opt-out mention appended to every marketing SMS (36180 = the free
 # French STOP short code operators route back to the provider).
 _STOP_MENTION: str = " STOP au 36180"
+# The receptionist's pages in a body: its demo (/ia/…) or its video (/va/…), the short links (/s/ia/…) included.
+_ASSISTANT_PAGE_LINK: re.Pattern[str] = re.compile(r"/(?:s/)?(?:ia|va)/[\w-]+")
 
 
 class SmsSendOutcome:
@@ -177,7 +181,8 @@ class SmsService:
         """Send one SMS (J+30 relance or first contact) to *prospect* from a library template, logging the outcome.
 
         Without an explicit ``template_key``, a first contact renders the default first-contact
-        template and a relance renders the template chosen in the user's SMS config.
+        template and a relance renders the template chosen in the user's SMS config. A message that
+        does not fit one segment, even without the first name, is refused: it would be billed twice.
 
         Args:
             db: Active database session.
@@ -217,22 +222,24 @@ class SmsService:
         template = find_sms_template(template_key or default_key)
         if template is None:
             return SmsSendOutcome(sent=False, reason="Modèle SMS introuvable")
+        assistant: AiAssistant | None = EmailVariables.active_assistant(db, prospect.id, user_id)
         # A video template with no generated video falls back to its demo-link sibling.
         template = resolve_sms_template(
             template,
             video_ready=bool(video_url),
-            assistant_video_ready=bool(EmailVariables.resolve_assistant_video(db, prospect.id, user_id)[0]),
+            assistant_video_ready=bool(EmailVariables.assistant_video_urls(assistant)[0]),
         )
         # An assistant template needs the prospect's active assistant, or the SMS would ship a hole.
         needs_assistant: bool = template.uses(SmsVariables.ASSISTANT_LINK) or template.uses(
             SmsVariables.ASSISTANT_VIDEO_LINK
         )
-        if needs_assistant and not EmailVariables.resolve_assistant_url(db, prospect.id, user_id):
+        if needs_assistant and assistant is None:
             return SmsSendOutcome(sent=False, reason="Pas d'assistant IA actif pour ce prospect")
         variables = SmsVariables.build_for_prospect(
             db,
             user_id=user_id,
             prospect=prospect,
+            assistant=assistant,
             demo_url=demo_url,
             video_url=video_url,
             sale_price_cents=PricingService.sale_price_cents(db, user_id),
@@ -241,6 +248,18 @@ class SmsService:
         if segment_count(body) > 1:
             # Over one segment: dropping the first name is the cheapest cut that keeps the message whole.
             body = self.compose_from_template(template, {**variables, SmsVariables.SALUTATION: "Bonjour"})
+        segments = segment_count(body)
+        if segments > 1:
+            logger.warning(
+                "SMS template %s would take %s segments for prospect %s", template.key, segments, prospect.id
+            )
+            return SmsSendOutcome(
+                sent=False,
+                reason=(
+                    f"Modèle « {template.name} » trop long pour ce prospect : il partirait en {segments} SMS, "
+                    "choisissez-en un plus court"
+                ),
+            )
         message = SmsMessage(
             user_id=user_id,
             prospect_id=prospect.id,
@@ -249,11 +268,11 @@ class SmsService:
             sender=config.sender,
             body=body,
             status=SmsStatus.PENDING.value,
-            segments=segment_count(body),
+            segments=segments,
         )
         outcome = await self._send_and_log(db, message=message)
         if outcome.sent:
-            self._start_assistant_ttl_if_linked(db, user_id=user_id, prospect_id=prospect.id, body=body)
+            self._start_assistant_ttl(db, assistant, body=body)
         return outcome
 
     def compose_manual_body(self, text: str) -> str:
@@ -295,11 +314,9 @@ class SmsService:
         Returns:
             The send outcome (``sent`` + reason when skipped).
         """
-        # A configured sender is the channel's only switch.
-        if not config.sender:
-            return SmsSendOutcome(sent=False, reason="Renseignez un nom d'expéditeur dans Paramètres → Relance SMS")
-        if not self._provider.is_configured:
-            return SmsSendOutcome(sent=False, reason="smsmode non configuré")
+        channel_refusal = self._channel_refusal(config)
+        if channel_refusal:
+            return SmsSendOutcome(sent=False, reason=channel_refusal)
         # The legal window guards marketing to a saved prospect; a bare-number self-test stays free.
         if prospect_id is not None:
             refusal = self.legal_window_refusal()
@@ -313,15 +330,9 @@ class SmsService:
         if self.is_suppressed(db, user_id, to_e164):
             return SmsSendOutcome(sent=False, reason="Numéro désinscrit (STOP)")
         body = self.compose_manual_body(text)
-        if not body:
-            return SmsSendOutcome(sent=False, reason="Message vide")
-        # Hard cap at one segment: a longer body would silently bill (and send) several SMS.
-        segments = segment_count(body)
-        if segments > 1:
-            return SmsSendOutcome(
-                sent=False,
-                reason=f"Message trop long : il partirait en {segments} SMS. Raccourcissez-le pour tenir en 1 seul.",
-            )
+        body_refusal = self._one_segment_refusal(body)
+        if body_refusal:
+            return SmsSendOutcome(sent=False, reason=body_refusal)
 
         message = SmsMessage(
             user_id=user_id,
@@ -331,7 +342,7 @@ class SmsService:
             sender=config.sender,
             body=body,
             status=SmsStatus.PENDING.value,
-            segments=segments,
+            segments=segment_count(body),
         )
         outcome = await self._send_and_log(db, message=message)
         # A manual contact supersedes the campaigns: nothing automated may double it.
@@ -369,16 +380,13 @@ class SmsService:
         Returns:
             The send outcome (``sent`` + reason when skipped).
         """
-        if not config.sender:
-            return SmsSendOutcome(sent=False, reason="Renseignez un nom d'expéditeur dans Paramètres → Relance SMS")
-        if not self._provider.is_configured:
-            return SmsSendOutcome(sent=False, reason="smsmode non configuré")
+        channel_refusal = self._channel_refusal(config)
+        if channel_refusal:
+            return SmsSendOutcome(sent=False, reason=channel_refusal)
         body = to_gsm7((text or "").strip())
-        segments = segment_count(body)
-        if segments == 0:
-            return SmsSendOutcome(sent=False, reason="Message vide")
-        if segments > 1:
-            return SmsSendOutcome(sent=False, reason=f"Message trop long : il partirait en {segments} SMS")
+        body_refusal = self._one_segment_refusal(body)
+        if body_refusal:
+            return SmsSendOutcome(sent=False, reason=body_refusal)
         message = SmsMessage(
             user_id=user_id,
             prospect_id=None,
@@ -387,22 +395,82 @@ class SmsService:
             sender=config.sender,
             body=body,
             status=SmsStatus.PENDING.value,
-            segments=segments,
+            segments=segment_count(body),
             kind=SmsMessageKind.SERVICE.value,
         )
         return await self._send_and_log(db, message=message)
 
-    @staticmethod
-    def _start_assistant_ttl_if_linked(db: Session, *, user_id: int, prospect_id: int, body: str) -> None:
-        """Start the assistant demo countdown when a sent SMS carries its link (idempotent); never raises."""
-        from services.ai_assistant.assistant_service import ai_assistant_service
+    def _channel_refusal(self, config: SmsConfig) -> str | None:
+        """
+        Why no SMS can leave at all: no sender name (the channel's only switch), or no provider.
 
+        Args:
+            config: The user's SMS config.
+
+        Returns:
+            The refusal shown to the user, or ``None`` when the channel is ready.
+        """
+        if not config.sender:
+            return "Renseignez un nom d'expéditeur dans Paramètres → Relance SMS"
+        if not self._provider.is_configured:
+            return "smsmode non configuré"
+        return None
+
+    @staticmethod
+    def _one_segment_refusal(body: str) -> str | None:
+        """
+        Why a composed body cannot leave: empty, or long enough to be billed (and sent) as several SMS.
+
+        Args:
+            body: The final body, GSM-7 transliterated.
+
+        Returns:
+            The refusal shown to the user, or ``None`` when the body fits one segment.
+        """
+        segments = segment_count(body)
+        if segments == 0:
+            return "Message vide"
+        if segments > 1:
+            return f"Message trop long : il partirait en {segments} SMS. Raccourcissez-le pour tenir en 1 seul."
+        return None
+
+    @staticmethod
+    def is_assistant_message(message: SmsMessage) -> bool:
+        """
+        Whether an SMS belongs to the receptionist module: a service message, or one linking its demo or video.
+
+        Args:
+            message: The SMS row.
+
+        Returns:
+            ``True`` for a receptionist SMS (its alerts, confirmations and reminders included).
+        """
+        return message.kind == SmsMessageKind.SERVICE.value or bool(_ASSISTANT_PAGE_LINK.search(message.body or ""))
+
+    @classmethod
+    def _start_assistant_ttl_if_linked(cls, db: Session, *, user_id: int, prospect_id: int, body: str) -> None:
+        """Start the countdown of the prospect's active assistant when a sent SMS carries its link; never raises."""
         try:
-            assistant = ai_assistant_service.get_active_for_prospect(db, prospect_id=prospect_id, user_id=user_id)
-            if assistant is not None and ai_assistant_service.body_contains_assistant_link(assistant, body):
-                ai_assistant_service.start_demo_ttl(db, assistant, datetime.now(UTC))
+            assistant = EmailVariables.active_assistant(db, prospect_id, user_id)
         except Exception:
             logger.warning("Failed to start assistant demo TTL after SMS to prospect %s", prospect_id, exc_info=True)
+            return
+        cls._start_assistant_ttl(db, assistant, body=body)
+
+    @staticmethod
+    def _start_assistant_ttl(db: Session, assistant: AiAssistant | None, *, body: str) -> None:
+        """Start an assistant's demo countdown when a sent SMS carries its link (idempotent); never raises."""
+        from services.ai_assistant.assistant_service import ai_assistant_service
+
+        if assistant is None:
+            return
+        try:
+            if ai_assistant_service.body_contains_assistant_link(assistant, body):
+                ai_assistant_service.start_demo_ttl(db, assistant, datetime.now(UTC))
+        except Exception:
+            logger.warning(
+                "Failed to start assistant demo TTL after SMS to prospect %s", assistant.prospect_id, exc_info=True
+            )
 
     async def _send_and_log(self, db: Session, *, message: SmsMessage) -> SmsSendOutcome:
         """Persist the row, hand it to the provider, record the outcome, notify.
@@ -496,6 +564,7 @@ class SmsService:
             event_name="sms_sent" if success else "sms_failed",
             prospect_id=message.prospect_id,
             fallback_name=message.recipient_name or message.to_e164,
+            is_assistant_module=self.is_assistant_message(message),
         )
 
     def record_reply(

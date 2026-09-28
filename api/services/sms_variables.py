@@ -10,6 +10,7 @@ from __future__ import annotations
 
 from sqlalchemy.orm import Session
 
+from models.ai_assistant import AiAssistant
 from models.prospect_db import ProspectDB
 from models.user import User
 from services.assistant_pricing_service import AssistantPricingService
@@ -75,18 +76,20 @@ class SmsVariables:
         *,
         user_id: int,
         prospect: ProspectDB,
+        assistant: AiAssistant | None,
         demo_url: str = "",
         video_url: str = "",
         sale_price_cents: int | None = None,
     ) -> dict[str, str]:
         """Build the full substitution map for a prospect's SMS.
 
-        The receptionist's links are resolved here and take the SMS short form, as the callers give the site's.
+        The receptionist's links take the SMS short form, as the callers give the site's.
 
         Args:
             db: Active database session.
             user_id: The sending user (signature).
             prospect: Prospect being texted.
+            assistant: The sender's active assistant for him (``EmailVariables.active_assistant``), or None.
             demo_url: Full URL of his demo site (rendered without scheme).
             video_url: Full URL of his tracked video page (rendered without scheme).
             sale_price_cents: The sender's website sale price, rendered into {prix}; empty when unset.
@@ -96,8 +99,8 @@ class SmsVariables:
         """
         first, last, gender = EmailVariables.resolved_contact(db, prospect.id)
         user: User | None = db.get(User, user_id)
-        assistant_url: str = EmailVariables.resolve_assistant_url(db, prospect.id, user_id)
-        assistant_video_url: str = EmailVariables.resolve_assistant_video(db, prospect.id, user_id)[0]
+        assistant_url: str = EmailVariables.assistant_page_url(assistant)
+        assistant_video_url: str = EmailVariables.assistant_video_urls(assistant)[0]
         return {
             cls.SALUTATION: build_greeting(first, last, gender),
             cls.COMPANY: prospect.name or "",

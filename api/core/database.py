@@ -59,40 +59,10 @@ def get_db():
 
 def init_db():
     """
-    Initialize database tables.
+    Create the table of every model that has none yet; an existing table is never altered.
 
-    This function creates all tables defined in the models.
+    The ``models`` package imports every model, which registers its table.
     """
-    from models.acquisition_run import AcquisitionRun  # noqa: F401
-    from models.acquisition_run_item import AcquisitionRunItem  # noqa: F401
-    from models.ai_assistant import AiAssistant  # noqa: F401
-    from models.ai_assistant_lead import AiAssistantLead  # noqa: F401
-    from models.ai_assistant_photo import AiAssistantPhoto  # noqa: F401
-    from models.ai_assistant_report import AiAssistantReport  # noqa: F401
-    from models.ai_assistant_request import AiAssistantRequest  # noqa: F401
-    from models.campaign import Campaign  # noqa: F401
-    from models.campaign_follow_up import CampaignFollowUp  # noqa: F401
-    from models.credit_settings import CreditSettings  # noqa: F401
-    from models.credit_transaction import CreditTransaction  # noqa: F401
-    from models.demo_site import DemoSite  # noqa: F401
-    from models.email_account import EmailAccount  # noqa: F401
-    from models.email_log import EmailLog  # noqa: F401
-    from models.email_queue import EmailQueue  # noqa: F401
-    from models.email_template import EmailTemplate  # noqa: F401
-    from models.email_template_library_hide import EmailTemplateLibraryHide  # noqa: F401
-    from models.email_unsubscribe import EmailUnsubscribe  # noqa: F401
-    from models.notification import Notification  # noqa: F401
-    from models.order import Order  # noqa: F401
-    from models.payment_account import PaymentAccount  # noqa: F401
-    from models.prospect_db import ProspectDB  # noqa: F401
-    from models.prospect_enrichment import ProspectEnrichment  # noqa: F401
-    from models.prospect_interaction import ProspectInteraction  # noqa: F401
-    from models.push_subscription import PushSubscription  # noqa: F401
-    from models.resend_config import ResendConfig  # noqa: F401
-    from models.send_policy import SendPolicy  # noqa: F401
-    from models.support_attachment import SupportAttachment  # noqa: F401
-    from models.support_message import SupportMessage  # noqa: F401
-    from models.support_ticket import SupportTicket  # noqa: F401
-    from models.user import User  # noqa: F401
+    import models  # noqa: F401
 
     Base.metadata.create_all(bind=engine)

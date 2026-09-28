@@ -14,6 +14,8 @@ from io import BytesIO
 
 import httpx
 
+from services.public_url_guard import PublicOnlyTransport
+
 logger = logging.getLogger(__name__)
 
 # A colour must be this saturated, and neither too dark nor too bright, to read as a real brand colour.
@@ -40,7 +42,8 @@ class BrandColorService:
         try:
             from PIL import Image
 
-            response = httpx.get(cleaned, timeout=8.0, follow_redirects=True)
+            with httpx.Client(timeout=8.0, follow_redirects=True, transport=PublicOnlyTransport()) as client:
+                response = client.get(cleaned)
             response.raise_for_status()
             image = Image.open(BytesIO(response.content)).convert("RGBA").resize((80, 80))
         except Exception:

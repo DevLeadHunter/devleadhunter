@@ -35,11 +35,15 @@ class R2StorageService:
     differ, resolved from `ENV`. The key layout is known here and nowhere else::
 
         videos/websites/{slug}.mp4               generated prospection video
+        videos/assistant/{slug}.mp4              receptionist prospection video
         videos/presenter/{user_id}.mp4           source webcam clip, one per user
         images/websites/{slug}.jpg               email thumbnail ({vignette_video})
+        images/assistant/{slug}.jpg              receptionist email thumbnail ({vignette_video_assistant})
+        images/profile/{user_id}.jpg             profile photo, the bubble on the email thumbnails
         images/support/{yyyy}/{mm}/{uuid}.{ext}  support ticket attachments
         images/prospects/{prospect_id}/{hash}.jpg   rehosted enrichment photos (Facebook/Google)
         images/assistant-photos/{yyyy}/{mm}/{uuid}.jpg   photos visitors send an assistant for a quote (90 days)
+        documents/assistant/{assistant_id}/{uuid}.pdf    documents a business gives its assistant (price list, terms…)
         uploads/manual/{yyyy}/{mm}/{uuid}.{ext}  files uploaded by hand from the storage page
 
     boto3 calls block, so async callers must go through the `*_async` methods.

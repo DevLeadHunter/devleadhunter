@@ -4,6 +4,7 @@ Models package for Prospect Tool API.
 
 from models.acquisition_run import AcquisitionRun
 from models.acquisition_run_item import AcquisitionRunItem
+from models.activity_log import ActivityLog
 from models.ai_assistant import AiAssistant
 from models.ai_assistant_appointment import AiAssistantAppointment
 from models.ai_assistant_calendar import AiAssistantCalendar
@@ -23,21 +24,26 @@ from models.demo_site import DemoSite
 from models.demo_site_lead import DemoSiteLead
 from models.email_account import EmailAccount
 from models.email_log import EmailLog
+from models.email_queue import EmailQueue
 from models.email_reply import EmailReply
 from models.email_signature import EmailSignature
 from models.email_template import EmailTemplate
+from models.email_template_library_hide import EmailTemplateLibraryHide
 from models.email_unsubscribe import EmailUnsubscribe
 from models.facebook_exclusion import FacebookPageExclusion
 from models.health import HealthStatus
 from models.notification import Notification
 from models.order import Order
 from models.organization import Organization, OrganizationMember
+from models.payment_account import PaymentAccount
 from models.presenter_video import PresenterVideo
 from models.prospect import Prospect
 from models.prospect_db import ProspectDB
 from models.prospect_enrichment import ProspectEnrichment
 from models.prospect_interaction import ProspectInteraction
 from models.push_subscription import PushSubscription
+from models.resend_config import ResendConfig
+from models.scraper_diagnostic import ScraperDiagnostic
 from models.scraping_job import ScrapingJob
 from models.search import ProspectSearchRequest, ProspectSearchResponse
 from models.send_policy import SendPolicy
@@ -54,11 +60,14 @@ from models.user import User
 __all__ = [
     "AcquisitionRun",
     "AcquisitionRunItem",
+    "ActivityLog",
     "AiAssistant",
     "AiAssistantAppointment",
     "AiAssistantCalendar",
+    "AiAssistantConversation",
     "AiAssistantDocument",
     "AiAssistantLead",
+    "AiAssistantMessage",
     "AiAssistantPhoto",
     "AiAssistantReport",
     "AiAssistantRequest",
@@ -69,17 +78,23 @@ __all__ = [
     "CreditSettings",
     "CreditTransaction",
     "DemoSite",
+    "DemoSiteLead",
     "EmailAccount",
     "EmailLog",
+    "EmailQueue",
     "EmailReply",
     "EmailSignature",
     "EmailTemplate",
+    "EmailTemplateLibraryHide",
     "EmailUnsubscribe",
+    "FacebookPageExclusion",
     "HealthStatus",
     "Notification",
     "Order",
     "Organization",
     "OrganizationMember",
+    "PaymentAccount",
+    "PresenterVideo",
     "Prospect",
     "ProspectDB",
     "ProspectEnrichment",
@@ -87,6 +102,8 @@ __all__ = [
     "ProspectSearchRequest",
     "ProspectSearchResponse",
     "PushSubscription",
+    "ResendConfig",
+    "ScraperDiagnostic",
     "ScrapingJob",
     "SendPolicy",
     "SmsAutoQueue",
