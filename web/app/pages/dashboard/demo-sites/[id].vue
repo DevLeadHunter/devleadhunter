@@ -62,7 +62,7 @@
         <p class="text-sm text-[var(--app-ink-soft)]">{{ site.slug }} · {{ templateLabel }}</p>
       </header>
 
-      <div class="grid items-start gap-6 @4xl:grid-cols-[360px_1fr]">
+      <div class="grid items-start gap-6 @4xl:grid-cols-[360px_minmax(0,1fr)]">
         <aside ref="asideRef" class="card sticky top-6 max-h-[calc(100vh-3rem)] space-y-5 overflow-y-auto p-5">
           <UiTabs v-model="activeTab" :tabs="asideTabs" />
 
