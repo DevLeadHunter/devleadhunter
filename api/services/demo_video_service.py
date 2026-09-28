@@ -3,8 +3,9 @@
 Assembles, per prospect, a short (~30-45 s) video from:
   - the user's generic presenter clip (webcam + voice, uploaded once —
     see ``presenter_video_service``), full-screen for the intro/outro;
-  - an automated scroll capture of the prospect's OWN generated demo site
-    (Playwright records the page while a script scrolls it smoothly);
+  - a capture of the prospect's OWN generated demo site: the background the desktop
+    app rendered (site scroll + Storyblok editor, which needs the owner's session),
+    or, without it, a headless scroll of the site recorded on the VPS;
   - a text greeting « Bonjour {Prénom} » overlaid on the intro (text, not
     cloned voice — decision from the reflection ticket);
   - a personalised email thumbnail (site screenshot + play button) used by
@@ -17,46 +18,35 @@ Timeline (D = presenter clip duration):
 The voice stays 100 % generic — personalisation is visual only (his site,
 his first name) so ONE recording works for every prospect.
 
-Rendering happens in a temp directory, then the mp4 + jpg are pushed to
-Cloudflare R2 (``videos/websites/{slug}.mp4`` / ``images/websites/{slug}.jpg``)
-and served straight from Cloudflare — the VPS never streams a byte. The player
-page lives on the demo host at ``/v/{slug}`` (PostHog-tracked, same identity as
-the demo).
+The generation itself (render, publication, statuses) is shared with the receptionist's video in
+:class:`services.prospection_video_service.ProspectionVideoService`. The mp4 + jpg live on Cloudflare R2
+(``videos/websites/{slug}.mp4`` / ``images/websites/{slug}.jpg``), served straight from Cloudflare — the VPS
+never streams a byte. The player page lives on the demo host at ``/v/{slug}`` (PostHog-tracked, same identity
+as the demo).
 """
 
 from __future__ import annotations
 
 import asyncio
 import logging
-import shutil
-import subprocess
-import tempfile
 import time
-from datetime import UTC, datetime
+from datetime import datetime
 from pathlib import Path
-from urllib.parse import parse_qsl, urlencode, urlparse, urlunparse
-
-from sqlalchemy.orm import Session
 
 from core.config import settings
 from enums.demo_site_status import DemoSiteStatus
 from enums.demo_video_status import DemoVideoStatus
 from models.demo_site import DemoSite
-from models.presenter_video import PresenterVideo
-from services import video_montage, video_pipeline
+from services import video_montage
+from services.capture_page import CapturePage
+from services.prospection_video_service import CapturedSegment, ProspectionVideoService
 from services.r2_storage_service import r2_storage
 from services.video_pipeline import VideoGenerationError as DemoVideoGenerationError
 
 logger = logging.getLogger(__name__)
 
-# Shared pipeline primitives (see :mod:`services.video_pipeline`). Kept as module-level aliases so the
-# guards below read them by module-global lookup — the reliability tests monkeypatch
-# ``_available_memory_mb`` on this module, and the site + assistant share one render semaphore.
-_generation_semaphore = video_pipeline.generation_semaphore
-_MIN_SCROLL_SECONDS = video_pipeline.MIN_SCROLL_SECONDS
-_MIN_FREE_MEMORY_MB_FOR_CAPTURE = video_pipeline.MIN_FREE_MEMORY_MB_FOR_CAPTURE
-_MIN_FREE_MEMORY_MB_FOR_MONTAGE = video_pipeline.MIN_FREE_MEMORY_MB_FOR_MONTAGE
-_available_memory_mb = video_pipeline.available_memory_mb
+# The presenter clip the site video uses (the generic speech about the site).
+SITE_PRESENTER_MODULE = "websites"
 
 
 def video_object_key(slug: str) -> str:
@@ -113,306 +103,123 @@ def delete_files_for_slug(slug: str) -> None:
         logger.warning("[Video] R2 cleanup failed for slug=%s", slug, exc_info=True)
 
 
-def reenqueue_campaigns_after_video_ready(db: Session, prospect_id: int | None, user_id: int) -> None:
-    """
-    Best-effort: pull a prospect into its active campaigns once its prospection video is ready.
+class DemoVideoService(ProspectionVideoService[DemoSite]):
+    """The prospection video of a demo site: its capture (desktop background, else a headless scroll) and its files."""
 
-    A prospect skipped at campaign launch for lacking a video gets no queue row and nothing
-    reconsiders it — the send queue is built once. When the video finishes the prospect can finally
-    be emailed, so we re-run the per-prospect enqueue here. Never raises: a queue hiccup must not
-    undo a finished video.
+    subject_model = DemoSite
+    kind = "site"
+    presenter_module = SITE_PRESENTER_MODULE
+    shown_subject = "le site"
+    already_running_message = "Une génération est déjà en cours pour ce site."
+    missing_presenter_message = (
+        "Aucun clip de présentation. Enregistrez d'abord votre vidéo webcam "
+        "(voix générique) dans « Vidéo de présentation »."
+    )
+    thumbnail_label = video_montage.THUMBNAIL_LABEL_SITE
+    pip_corner = video_montage.PIP_CORNER_LEFT
 
-    Args:
-        db: Active database session.
-        prospect_id: The prospect whose video just became ready (None for a site with no prospect).
-        user_id: Owner of the prospect's campaigns.
-    """
-    if not prospect_id:
-        return
-    try:
-        from services.campaign_queue_service import CampaignQueueService
-
-        added: int = CampaignQueueService(db).enqueue_ready_prospect(prospect_id, user_id)
-        if added:
-            logger.info(
-                "[Video] Video ready for prospect %d — auto-enqueued into %d active campaign send(s)",
-                prospect_id,
-                added,
-            )
-    except Exception:
-        logger.warning("[Video] Auto re-enqueue after video ready failed for prospect %s", prospect_id, exc_info=True)
-
-
-class DemoVideoService:
-    """Orchestrates capture + composition of prospection videos."""
-
-    def request_generation(self, db: Session, site: DemoSite, user_id: int) -> DemoSite:
+    def _check_can_generate(self, site: DemoSite) -> None:
         """
-        Validate and start a background generation for a demo site.
+        Refuse a site that is not active or has no public page.
 
         Args:
-            db: Active database session (request-scoped).
-            site: Demo site owned by the user.
-            user_id: Owner (used to fetch the presenter clip).
-
-        Returns:
-            The site with ``video_status`` set to ``pending``.
+            site: The demo site.
 
         Raises:
-            ValueError: when the site or presenter clip is not ready.
+            ValueError: with the reason the dashboard shows.
         """
-        from services.presenter_video_service import presenter_video_service
-
         if site.status != DemoSiteStatus.ACTIVE.value:
             raise ValueError("La vidéo ne peut être générée que pour un site démo actif.")
         if not site.demo_url:
             raise ValueError("Ce site démo n'a pas d'URL publique.")
-        if site.video_status in (DemoVideoStatus.PENDING.value, DemoVideoStatus.GENERATING.value):
-            raise ValueError("Une génération est déjà en cours pour ce site.")
 
-        presenter = presenter_video_service.get_for_user(db, user_id)
-        if presenter is None:
-            raise ValueError(
-                "Aucun clip de présentation. Enregistrez d'abord votre vidéo webcam "
-                "(voix générique) dans « Vidéo de présentation »."
-            )
-        scroll_seconds = presenter.duration_seconds - presenter.intro_seconds - presenter.outro_seconds
-        if scroll_seconds < _MIN_SCROLL_SECONDS:
-            raise ValueError(
-                "Intro + outro trop longues pour la durée du clip : il reste "
-                f"{scroll_seconds:.0f}s pour montrer le site (minimum {_MIN_SCROLL_SECONDS:.0f}s)."
-            )
-
-        site.video_status = DemoVideoStatus.PENDING.value
-        site.video_error = None
-        db.commit()
-        db.refresh(site)
-
-        asyncio.create_task(self._run_generation(site.id, user_id))
-        return site
-
-    def maybe_start_auto_generation(self, db: Session, site: DemoSite, user_id: int) -> bool:
+    def _video_key(self, slug: str) -> str:
         """
-        Best-effort auto-generation hook, called right after a demo site is
-        created (single, bulk AND full-automation paths all go through
-        ``demo_site_service.create_demo_site``).
-
-        Fires only when the user has a presenter clip with ``auto_generate``
-        enabled; never raises (a video failure must not fail site creation).
-
-        Returns:
-            True when a generation was started.
-        """
-        from services.presenter_video_service import presenter_video_service
-
-        try:
-            presenter = presenter_video_service.get_for_user(db, user_id)
-            if presenter is None or not presenter.auto_generate:
-                return False
-            self.request_generation(db, site, user_id)
-            logger.info("Auto video generation started for slug=%s", site.slug)
-            return True
-        except ValueError as exc:
-            logger.info("Auto video generation skipped for slug=%s: %s", site.slug, exc)
-            return False
-        except Exception:
-            logger.exception("Auto video generation hook failed for slug=%s", site.slug)
-            return False
-
-    def reconcile_orphaned(self, db: Session) -> int:
-        """
-        Mark demo sites left mid-generation as failed (called once at startup).
-
-        A generation task lives only in memory, so a process restart — a crash, an
-        OOM kill, a deploy — orphans any site still in ``pending``/``generating``:
-        no task will ever finish it, and :meth:`request_generation` refuses to
-        restart a site in those states, so the dashboard polls it forever.
+        The R2 key of the site video.
 
         Args:
-            db: Active database session.
+            slug: The site's slug.
 
         Returns:
-            The number of sites reset to ``failed``.
+            The object key.
         """
-        orphaned: list[DemoSite] = (
-            db.query(DemoSite)
-            .filter(DemoSite.video_status.in_([DemoVideoStatus.PENDING.value, DemoVideoStatus.GENERATING.value]))
-            .all()
-        )
-        for site in orphaned:
-            site.video_status = DemoVideoStatus.FAILED.value
-            site.video_error = "Génération interrompue (redémarrage du serveur) — relancez-la."
-        if orphaned:
-            db.commit()
-        return len(orphaned)
+        return video_object_key(slug)
 
-    def clear_video(self, db: Session, site: DemoSite) -> DemoSite:
-        """Delete the generated video files and reset the site's video state."""
-        delete_files_for_slug(site.slug)
-        site.video_status = None
-        site.video_error = None
-        site.video_generated_at = None
-        db.commit()
-        db.refresh(site)
-        return site
+    def _thumbnail_key(self, slug: str) -> str:
+        """
+        The R2 key of the site video's email thumbnail.
 
-    # ------------------------------------------------------------------ #
-    # Background job
-    # ------------------------------------------------------------------ #
+        Args:
+            slug: The site's slug.
 
-    async def _run_generation(self, demo_site_id: int, user_id: int) -> None:
-        """Background task: own DB session, serialized by a global semaphore."""
-        from core.database import SessionLocal
-        from services.presenter_video_service import presenter_video_service
+        Returns:
+            The object key.
+        """
+        return thumbnail_object_key(slug)
 
-        async with _generation_semaphore:
-            db: Session = SessionLocal()
-            try:
-                site: DemoSite | None = db.query(DemoSite).filter(DemoSite.id == demo_site_id).first()
-                if site is None:
-                    return
-                presenter = presenter_video_service.get_for_user(db, user_id)
-                if presenter is None:
-                    site.video_status = DemoVideoStatus.FAILED.value
-                    site.video_error = "Aucun clip de présentation configuré."
-                    db.commit()
-                    return
+    def _delete_files(self, slug: str) -> None:
+        """
+        Delete the site video's files, its desktop background included.
 
-                site.video_status = DemoVideoStatus.GENERATING.value
-                db.commit()
+        Args:
+            slug: The site's slug.
+        """
+        delete_files_for_slug(slug)
 
-                first_name = video_pipeline.resolve_first_name(db, site.prospect_id)
-                # Le clip source vit sur R2 : on le matérialise en temp pour ffmpeg.
-                source_dir = Path(tempfile.mkdtemp(prefix=f"presenter-src-{user_id}-"))
-                try:
-                    presenter_path = await video_pipeline.resolve_presenter_file(presenter, source_dir)
-                    photo_path = await video_pipeline.resolve_presenter_photo(db, user_id, source_dir)
-                    await self._generate(site, presenter, presenter_path, first_name, photo_path)
-                except DemoVideoGenerationError as exc:
-                    site.video_status = DemoVideoStatus.FAILED.value
-                    site.video_error = str(exc)[:1000]
-                    db.commit()
-                    logger.warning("Video generation failed for slug=%s: %s", site.slug, exc)
-                    return
-                except Exception as exc:
-                    site.video_status = DemoVideoStatus.FAILED.value
-                    site.video_error = f"Erreur inattendue : {exc}"[:1000]
-                    db.commit()
-                    logger.exception("Video generation crashed for slug=%s", site.slug)
-                    return
-                finally:
-                    shutil.rmtree(source_dir, ignore_errors=True)
+    async def _capture_middle(self, site: DemoSite, middle_seconds: float, work_dir: Path) -> CapturedSegment:
+        """
+        Use the background the desktop app rendered, or record the site scrolling in a headless browser.
 
-                site.video_status = DemoVideoStatus.READY.value
-                site.video_error = None
-                site.video_generated_at = datetime.now(UTC)
-                db.commit()
-                logger.info("Prospection video ready for slug=%s", site.slug)
-                reenqueue_campaigns_after_video_ready(db, site.prospect_id, user_id)
-            finally:
-                db.close()
+        Args:
+            site: The demo site.
+            middle_seconds: How long the site shows.
+            work_dir: The generation's temporary folder.
 
-    # ------------------------------------------------------------------ #
-    # Pipeline steps
-    # ------------------------------------------------------------------ #
+        Returns:
+            The recording and the top-of-site still.
 
-    async def _generate(
-        self,
-        site: DemoSite,
-        presenter: PresenterVideo,
-        presenter_path: Path,
-        first_name: str | None,
-        presenter_photo_path: Path | None,
-    ) -> None:
-        """Capture the site, compose the video, build the thumbnail, publish to R2."""
-        scroll_seconds = presenter.duration_seconds - presenter.intro_seconds - presenter.outro_seconds
-        work_dir = Path(tempfile.mkdtemp(prefix=f"demo-video-{site.slug}-"))
+        Raises:
+            DemoVideoGenerationError: when the box is low on memory or the site cannot be captured.
+        """
+        background = await self._download_background(site.slug, work_dir)
+        if background is not None:
+            return background
+        # The heavy fallback: refused when the box is already low on memory.
+        self._guard_capture_memory()
+        return await asyncio.to_thread(self._capture_site_sync, site.demo_url or "", middle_seconds, work_dir)
+
+    async def _download_background(self, slug: str, work_dir: Path) -> CapturedSegment | None:
+        """
+        Fetch the background the desktop app rendered, if one is stored on R2.
+
+        The background (site scroll + Storyblok editor) is rendered on the sidecar because it needs the owner's
+        Storyblok session; here we just materialise it, with its first frame as the thumbnail still.
+
+        Args:
+            slug: The site's slug.
+            work_dir: The generation's temporary folder.
+
+        Returns:
+            The background, or None to fall back to a plain site capture.
+        """
+        key = r2_storage.website_background_key(slug)
         try:
-            # Prefer the desktop-produced background (site scroll + Storyblok editor,
-            # sized to scroll_seconds); fall back to a plain site capture otherwise.
-            background = await self._resolve_background(site, work_dir)
-            if background is not None:
-                capture_path, scroll_offset, screenshot_path = background
-            else:
-                # No desktop-produced background → server-side headless capture (the
-                # heavy fallback). Refuse it when the box is already low on memory so
-                # a fallback generation can never OOM-kill the whole API.
-                self._guard_capture_memory()
-                capture_path, scroll_offset, screenshot_path = await self._capture_site(
-                    site.demo_url or "", scroll_seconds, work_dir
-                )
-            output_path = work_dir / "output.mp4"
-            thumbnail_path = work_dir / "thumbnail.jpg"
-            # The montage runs on the VPS even in the desktop path — never let it OOM the box.
-            self._guard_montage_memory()
-            try:
-                await asyncio.to_thread(
-                    video_montage.compose_final,
-                    ffmpeg_path=settings.ffmpeg_path,
-                    presenter_duration=presenter.duration_seconds,
-                    presenter_intro=presenter.intro_seconds,
-                    presenter_outro=presenter.outro_seconds,
-                    presenter_path=presenter_path,
-                    capture_path=capture_path,
-                    scroll_offset=scroll_offset,
-                    scroll_seconds=scroll_seconds,
-                    first_name=first_name,
-                    screenshot_path=screenshot_path,
-                    output_video=output_path,
-                    output_thumbnail=thumbnail_path,
-                    presenter_photo_path=presenter_photo_path,
-                )
-            except video_montage.VideoMontageError as exc:
-                raise DemoVideoGenerationError(str(exc)) from exc
-
-            # Publication sur R2 : c'est Cloudflare qui sert, plus le VPS.
-            await r2_storage.upload_file_async(output_path, video_object_key(site.slug), "video/mp4")
-            await r2_storage.upload_file_async(thumbnail_path, thumbnail_object_key(site.slug), "image/jpeg")
-        finally:
-            shutil.rmtree(work_dir, ignore_errors=True)
+            if not r2_storage.exists(key):
+                return None
+            recording_path = await r2_storage.download_to_path_async(key, work_dir / "background.mp4")
+        except Exception:
+            logger.warning("[Video] background fetch failed for slug=%s", slug, exc_info=True)
+            return None
+        screenshot_path = work_dir / "top.png"
+        await asyncio.to_thread(
+            video_montage.extract_first_frame, settings.ffmpeg_path, recording_path, screenshot_path
+        )
+        return CapturedSegment(recording_path=recording_path, start_seconds=0.0, screenshot_path=screenshot_path)
 
     @staticmethod
-    def _guard_capture_memory() -> None:
+    def _capture_site_sync(url: str, scroll_seconds: float, work_dir: Path) -> CapturedSegment:
         """
-        Refuse the server-side headless capture when the box is low on memory.
-
-        This is the fallback path (no desktop background): headless Chromium plus
-        the ffmpeg montage can exceed the service memory cap on a busy VPS, and an
-        OOM kill there takes down the whole single-worker API. Failing cleanly with
-        a clear message is always better than crashing the box.
-
-        Raises:
-            DemoVideoGenerationError: when available memory is below the floor.
-        """
-        available = _available_memory_mb()
-        if available is not None and available < _MIN_FREE_MEMORY_MB_FOR_CAPTURE:
-            raise DemoVideoGenerationError(
-                f"Serveur momentanément trop chargé pour générer la vidéo ici ({available:.0f} Mo libres). "
-                "Générez-la depuis l'application desktop, ou réessayez plus tard."
-            )
-
-    @staticmethod
-    def _guard_montage_memory() -> None:
-        """
-        Refuse the ffmpeg montage when the box is low on memory.
-
-        The montage runs on the VPS even when the (heavy) capture happened on the
-        desktop, and it OOM-killed the whole single-worker API on a starved box.
-        Failing cleanly is always better than taking the box down.
-
-        Raises:
-            DemoVideoGenerationError: when available memory is below the montage floor.
-        """
-        available = _available_memory_mb()
-        if available is not None and available < _MIN_FREE_MEMORY_MB_FOR_MONTAGE:
-            raise DemoVideoGenerationError(
-                f"Serveur momentanément trop chargé pour assembler la vidéo ({available:.0f} Mo libres). "
-                "Réessayez dans quelques minutes."
-            )
-
-    async def _capture_site(self, url: str, scroll_seconds: float, work_dir: Path) -> tuple[Path, float, Path]:
-        """
-        Record the demo site scrolling smoothly for ``scroll_seconds``.
+        Record the demo site scrolling smoothly for ``scroll_seconds`` (blocking: run it in a worker thread).
 
         ⚠️ Uses Playwright's SYNC API inside a worker thread: the uvicorn
         reload worker may run a SelectorEventLoop on Windows, where asyncio
@@ -420,71 +227,17 @@ class DemoVideoService:
         ``NotImplementedError``. A plain thread has no event loop, so the
         sync API works everywhere.
 
+        Args:
+            url: The demo site; visited with ``?internal=1``.
+            scroll_seconds: How long the scroll lasts.
+            work_dir: Temp directory receiving the recording + screenshot.
+
         Returns:
-            (capture webm path, offset of the scroll start inside the recording in seconds, top-of-page screenshot path).
+            The recording, the offset of the scroll start inside it, and the top-of-page screenshot.
 
         Raises:
             DemoVideoGenerationError: when the page cannot be captured.
         """
-        return await asyncio.to_thread(self._capture_site_sync, url, scroll_seconds, work_dir)
-
-    async def _resolve_background(self, site: DemoSite, work_dir: Path) -> tuple[Path, float, Path] | None:
-        """
-        Use the desktop-produced video background if one is stored on R2.
-
-        The background (site scroll + Storyblok editor) is rendered on the sidecar
-        because it needs the owner's Storyblok session; here we just materialise it.
-
-        Returns:
-            ``(capture_path, scroll_offset=0, screenshot_path)`` or ``None`` to fall
-            back to a plain site capture.
-        """
-        key = r2_storage.website_background_key(site.slug)
-        try:
-            if not r2_storage.exists(key):
-                return None
-            capture_path = await r2_storage.download_to_path_async(key, work_dir / "background.mp4")
-        except Exception:
-            logger.warning("[Video] background fetch failed for slug=%s", site.slug, exc_info=True)
-            return None
-        screenshot_path = work_dir / "top.png"
-        self._extract_first_frame(capture_path, screenshot_path)
-        return capture_path, 0.0, screenshot_path
-
-    @staticmethod
-    def _extract_first_frame(video_path: Path, output_path: Path) -> None:
-        """Grab the first frame of a video (top of the site) for the email thumbnail."""
-        subprocess.run(
-            [
-                settings.ffmpeg_path,
-                "-y",
-                "-hide_banner",
-                "-loglevel",
-                "error",
-                "-threads",
-                video_montage.FFMPEG_THREADS,
-                "-i",
-                str(video_path),
-                "-frames:v",
-                "1",
-                str(output_path),
-            ],
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL,
-            timeout=60,
-            check=False,
-        )
-
-    @staticmethod
-    def _as_internal_url(url: str) -> str:
-        """Add ``internal=1`` so a capture visit is excluded from tracking/notifications."""
-        parts = urlparse(url)
-        query = dict(parse_qsl(parts.query))
-        query["internal"] = "1"
-        return urlunparse(parts._replace(query=urlencode(query)))
-
-    def _capture_site_sync(self, url: str, scroll_seconds: float, work_dir: Path) -> tuple[Path, float, Path]:
-        """Blocking Playwright capture (see ``_capture_site``)."""
         try:
             from playwright.sync_api import sync_playwright
         except ImportError as exc:  # pragma: no cover — dependency guard
@@ -493,9 +246,6 @@ class DemoVideoService:
             ) from exc
 
         screenshot_path = work_dir / "top.png"
-        # ?internal=1 tags this as the owner's own visit so the capture never fires
-        # prospect notifications / tracking events (guarded by DemoBeaconUtils).
-        internal_url = self._as_internal_url(url)
         try:
             with sync_playwright() as playwright:
                 browser = playwright.chromium.launch(headless=True)
@@ -507,10 +257,7 @@ class DemoVideoService:
                 page = context.new_page()
                 recording_start = time.monotonic()
 
-                try:
-                    page.goto(internal_url, wait_until="networkidle", timeout=45000)
-                except Exception:
-                    page.goto(internal_url, wait_until="load", timeout=45000)
+                CapturePage.open(page, CapturePage.internal_url(url))
                 page.wait_for_timeout(1200)
 
                 # Pré-scroll : déclenche les animations d'entrée + lazy-load,
@@ -567,15 +314,17 @@ class DemoVideoService:
                 browser.close()
                 if video is None:
                     raise DemoVideoGenerationError("Playwright n'a pas produit d'enregistrement vidéo.")
-                capture_path = Path(video.path())
+                recording_path = Path(video.path())
         except DemoVideoGenerationError:
             raise
         except Exception as exc:
             raise DemoVideoGenerationError(f"Échec de la capture du site ({url}) : {exc}") from exc
 
-        if not capture_path.is_file():
+        if not recording_path.is_file():
             raise DemoVideoGenerationError("Fichier de capture introuvable après l'enregistrement.")
-        return capture_path, scroll_offset, screenshot_path
+        return CapturedSegment(
+            recording_path=recording_path, start_seconds=scroll_offset, screenshot_path=screenshot_path
+        )
 
 
 demo_video_service = DemoVideoService()

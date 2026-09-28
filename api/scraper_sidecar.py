@@ -17,18 +17,23 @@ from __future__ import annotations
 
 import argparse
 import asyncio
+import functools
 import logging
 import multiprocessing
 import os
 import shutil
 import sys
+import tempfile
 import time
+from collections.abc import Callable, Coroutine
 from pathlib import Path
+from typing import Any, TypeVar
+from urllib.parse import urlparse
 
 import uvicorn
 from fastapi import Depends, FastAPI, File, Form, Header, HTTPException, UploadFile, status
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
+from pydantic import BaseModel, Field, ValidationError, field_validator
 
 from core.win32_asyncio import ensure_proactor_event_loop
 from models.prospect import (
@@ -99,7 +104,27 @@ _VIDEO_BUILD_RESULTS: dict[str, dict[str, object]] = {}
 
 # Strong references to running build tasks — asyncio only keeps weak ones, and a
 # garbage-collected task dies silently mid-build.
-_VIDEO_BUILD_TASKS: set[asyncio.Task] = set()
+_VIDEO_BUILD_TASKS: set[asyncio.Task[None]] = set()
+
+_PRESENTER_FILE_NAME = "presenter.mp4"
+_PRESENTER_PHOTO_FILE_NAME = "presenter-photo.jpg"
+_SCREENSHOT_FILE_NAME = "top.png"
+
+_SLUG_PATTERN = r"^[A-Za-z0-9][A-Za-z0-9_-]{0,119}$"
+_STORYBLOK_ID_PATTERN = r"^\d{1,20}$"
+
+
+def _keep_video_build(task: asyncio.Task[None]) -> None:
+    """Hold a detached build until it ends, logging the exception it may die with."""
+    _VIDEO_BUILD_TASKS.add(task)
+    task.add_done_callback(_forget_video_build)
+
+
+def _forget_video_build(task: asyncio.Task[None]) -> None:
+    """Drop a finished build; a build records its own failures, so an exception here is a bug worth a log."""
+    _VIDEO_BUILD_TASKS.discard(task)
+    if not task.cancelled() and task.exception() is not None:
+        logger.error("Detached video build died", exc_info=task.exception())
 
 
 def _discard_video_build_result(slug: str) -> None:
@@ -121,22 +146,72 @@ class SidecarEnrichmentRequest(BaseModel):
     facebook_url: str | None = None
 
 
-class StoryblokBackgroundClipRequest(BaseModel):
-    """Everything the sidecar needs to render a prospect's video background."""
+class SidecarVideoTarget(BaseModel):
+    """The page a desktop video build films, and the size of the clip it renders."""
 
-    slug: str
+    # The slug names the build's temporary folder and files.
+    slug: str = Field(pattern=_SLUG_PATTERN)
     demo_url: str
-    space_id: str
-    story_id: str
+    out_width: int = Field(default=1280, gt=0)
+    out_height: int = Field(default=720, gt=0)
+    fps: int = Field(default=30, gt=0, le=60)
+
+    @field_validator("demo_url")
+    @classmethod
+    def require_web_address(cls, demo_url: str) -> str:
+        """
+        Accept only an http(s) address with a host: the capture opens it in a browser.
+
+        Args:
+            demo_url: The page to film.
+
+        Returns:
+            The address, unchanged.
+
+        Raises:
+            ValueError: for any other scheme (``file:``, ``javascript:``…) or an address without a host.
+        """
+        parts = urlparse(demo_url)
+        if parts.scheme not in ("http", "https") or not parts.netloc:
+            raise ValueError("demo_url doit être une adresse http(s)")
+        return demo_url
+
+
+class StoryblokEditorSequence(BaseModel):
+    """The Storyblok editor sequence of a site video: the story to open and the hero line typed into it."""
+
+    space_id: str = Field(pattern=_STORYBLOK_ID_PATTERN)
+    story_id: str = Field(pattern=_STORYBLOK_ID_PATTERN)
     # Trade-aware hero line typed in the editor demo (e.g. a landscaper phrase for a
     # landscaper site); empty falls back to a neutral default in the clip service.
     accroche: str = ""
-    site_seconds: float = 14.0
-    hold_seconds: float = 1.0
-    total_seconds: float | None = None
-    out_width: int = 1280
-    out_height: int = 720
-    fps: int = 30
+    site_seconds: float = Field(default=14.0, gt=0)
+    hold_seconds: float = Field(default=1.0, ge=0)
+
+
+class StoryblokBackgroundClipRequest(StoryblokEditorSequence, SidecarVideoTarget):
+    """Everything the sidecar needs to render a prospect's video background."""
+
+    total_seconds: float | None = Field(default=None, gt=0)
+
+
+class DesktopVideoBuildRequest(SidecarVideoTarget):
+    """A complete desktop build: the page to film, and the presenter clip's timings the montage needs."""
+
+    total_seconds: float = Field(gt=0)
+    presenter_duration: float = Field(gt=0)
+    presenter_intro: float = Field(ge=0)
+    presenter_outro: float = Field(ge=0)
+    first_name: str | None = None
+    # A calibration preview (unsaved timings, from the video settings) comes back as a bare mp4, never uploaded.
+    preview: bool = False
+
+
+class SiteVideoBuildRequest(StoryblokEditorSequence, DesktopVideoBuildRequest):
+    """A complete desktop build of a site video, whose middle ends on the Storyblok editor sequence."""
+
+
+BuildRequestT = TypeVar("BuildRequestT", bound=DesktopVideoBuildRequest)
 
 
 async def close_transient_browsers() -> None:
@@ -417,9 +492,6 @@ async def storyblok_background_clip(request: StoryblokBackgroundClipRequest) -> 
     mp4 file; when no session is available, returns ``{"skipped": true}`` so the
     caller composes the video without the editor sequence.
     """
-    import tempfile
-    from pathlib import Path
-
     from fastapi.responses import FileResponse, JSONResponse
     from starlette.background import BackgroundTask
 
@@ -487,44 +559,134 @@ async def video_build_full(
     CORS error while the build is still running), so the build is detached: this
     returns ``{"started": true}`` immediately, the app polls ``/video/build-progress``
     until ``done``/``error``, then fetches the file from ``/video/build-result``.
-    ``409 {reason: needs_login}`` when the Storyblok session is missing.
+    ``409 {reason: needs_login}`` when the Storyblok session is missing, ``422`` when the payload is invalid.
     """
-    import json
-    import tempfile
-    from pathlib import Path
-
     from fastapi.responses import JSONResponse
 
     from services.storyblok_session_service import storyblok_session_service
 
-    data = json.loads(payload)
+    request = _parse_video_build_request(SiteVideoBuildRequest, payload)
     seed, user_data_dir = storyblok_session_service.resolve_capture_source()
     if seed is None and user_data_dir is None:
         return JSONResponse({"skipped": True, "reason": "needs_login"}, status_code=status.HTTP_409_CONFLICT)
+    return await _start_detached_video_build(
+        request,
+        presenter,
+        presenter_photo,
+        run_build=functools.partial(_run_video_build, request, seed, user_data_dir),
+    )
 
-    slug = str(data["slug"])
+
+@app.post("/video/build-assistant-full", dependencies=[Depends(require_sidecar_token)])
+async def video_build_assistant_full(
+    payload: str = Form(...),
+    presenter: UploadFile = File(...),
+    presenter_photo: UploadFile | None = File(default=None),
+) -> object:
+    """
+    START the complete desktop assistant-video build (widget capture + montage) and return at once.
+
+    Same detached contract as ``/video/build-full`` (a single multi-minute response gets killed by the
+    webview): returns ``{"started": true}``, the app polls ``/video/build-progress`` until
+    ``done``/``error``, then fetches the file from ``/video/build-result``. Unlike the site build there
+    is no Storyblok session to resolve — the assistant widget is public, so this never needs a login.
+    ``422`` when the payload is invalid.
+    """
+    request = _parse_video_build_request(DesktopVideoBuildRequest, payload)
+    return await _start_detached_video_build(
+        request,
+        presenter,
+        presenter_photo,
+        run_build=functools.partial(_run_assistant_video_build, request),
+        # The default message names a Storyblok session, which only the site build opens.
+        preparing_message="Préparation (clip présentateur)…",
+    )
+
+
+def _parse_video_build_request(request_model: type[BuildRequestT], payload: str) -> BuildRequestT:
+    """
+    Read and check the JSON payload of a build (a form field, sent next to the uploaded files).
+
+    Args:
+        request_model: The model of the payload.
+        payload: The raw JSON.
+
+    Returns:
+        The validated build request.
+
+    Raises:
+        HTTPException: 422 naming the invalid fields, in words the app shows as the build's error.
+    """
+    try:
+        return request_model.model_validate_json(payload)
+    except ValidationError as exc:
+        invalid_fields = sorted({".".join(str(part) for part in error["loc"]) or "payload" for error in exc.errors()})
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+            detail=f"Demande de génération invalide ({', '.join(invalid_fields)}).",
+        ) from exc
+
+
+async def _start_detached_video_build(
+    request: DesktopVideoBuildRequest,
+    presenter: UploadFile,
+    presenter_photo: UploadFile | None,
+    *,
+    run_build: Callable[[Path, Path | None], Coroutine[Any, Any, None]],
+    preparing_message: str | None = None,
+) -> dict[str, object]:
+    """
+    Save the uploads, then start a build detached from the request and return at once.
+
+    Args:
+        request: The validated build.
+        presenter: The presenter clip upload.
+        presenter_photo: The optional profile photo upload.
+        run_build: The build, given its folder and the saved photo (None without one).
+        preparing_message: The first progress message; the default one when None.
+
+    Returns:
+        ``{"started": True, "slug": …}``.
+    """
+    slug = request.slug
     _discard_video_build_result(slug)
-    _set_video_build_progress(slug, "preparing")
-    work_dir = Path(tempfile.mkdtemp(prefix=f"video-full-{slug}-"))
-    presenter_path = work_dir / "presenter.mp4"
-    # The upload's temp file dies with this request — materialise it before detaching.
-    presenter_path.write_bytes(await presenter.read())
-    presenter_photo_path: Path | None = None
-    if presenter_photo is not None:
-        photo_bytes = await presenter_photo.read()
-        if photo_bytes:
-            presenter_photo_path = work_dir / "presenter-photo.jpg"
-            presenter_photo_path.write_bytes(photo_bytes)
-
-    task = asyncio.create_task(_run_video_build(data, slug, seed, user_data_dir, work_dir, presenter_photo_path))
-    _VIDEO_BUILD_TASKS.add(task)
-    task.add_done_callback(_VIDEO_BUILD_TASKS.discard)
+    _set_video_build_progress(slug, "preparing", preparing_message)
+    work_dir = Path(tempfile.mkdtemp(prefix=f"video-build-{slug}-"))
+    try:
+        # The upload's temp file dies with this request — materialise it before detaching.
+        (work_dir / _PRESENTER_FILE_NAME).write_bytes(await presenter.read())
+        presenter_photo_path = await _save_presenter_photo(presenter_photo, work_dir)
+    except Exception:
+        shutil.rmtree(work_dir, ignore_errors=True)
+        raise
+    _keep_video_build(asyncio.create_task(run_build(work_dir, presenter_photo_path)))
     return {"started": True, "slug": slug}
+
+
+async def _save_presenter_photo(presenter_photo: UploadFile | None, work_dir: Path) -> Path | None:
+    """
+    Save the optional profile photo of the thumbnail bubble.
+
+    Args:
+        presenter_photo: The upload, None when the owner has no photo.
+        work_dir: The build's folder.
+
+    Returns:
+        The saved photo, or None when there is none.
+    """
+    if presenter_photo is None:
+        return None
+    photo_bytes = await presenter_photo.read()
+    if not photo_bytes:
+        return None
+    photo_path = work_dir / _PRESENTER_PHOTO_FILE_NAME
+    photo_path.write_bytes(photo_bytes)
+    return photo_path
 
 
 async def _compose_desktop_montage(
     *,
-    data: dict,
+    request: DesktopVideoBuildRequest,
     presenter_path: Path,
     capture_path: Path,
     screenshot_path: Path,
@@ -532,27 +694,27 @@ async def _compose_desktop_montage(
     output_thumb: Path,
     presenter_photo_path: Path | None,
     thumbnail_label: str,
-    pip_corner: str | None = None,
+    pip_corner: str,
 ) -> None:
     """Run the shared ffmpeg montage for a desktop build (site or assistant), off the event loop.
 
     Both builds compose the same way — presenter clip + captured middle segment + « Bonjour {Prénom} »
     — and differ only in the captured ``capture_path``, the email ``thumbnail_label`` and the corner of the
-    webcam bubble (``pip_corner``, the montage's default when None).
+    webcam bubble (``pip_corner``).
     """
     from services import video_montage
 
     await asyncio.to_thread(
         video_montage.compose_final,
         ffmpeg_path=_FFMPEG_PATH,
-        presenter_duration=float(data["presenter_duration"]),
-        presenter_intro=float(data["presenter_intro"]),
-        presenter_outro=float(data["presenter_outro"]),
+        presenter_duration=request.presenter_duration,
+        presenter_intro=request.presenter_intro,
+        presenter_outro=request.presenter_outro,
         presenter_path=presenter_path,
         capture_path=capture_path,
         scroll_offset=0.0,
-        scroll_seconds=float(data["total_seconds"]),
-        first_name=data.get("first_name") or None,
+        scroll_seconds=request.total_seconds,
+        first_name=request.first_name or None,
         screenshot_path=screenshot_path,
         output_video=output_video,
         output_thumbnail=output_thumb,
@@ -560,7 +722,7 @@ async def _compose_desktop_montage(
         # Desktop: let ffmpeg use every idle core (the below-normal priority keeps the PC responsive).
         threads=video_montage.FFMPEG_THREADS_AUTO,
         thumbnail_label=thumbnail_label,
-        pip_corner=pip_corner or video_montage.PIP_CORNER_LEFT,
+        pip_corner=pip_corner,
     )
 
 
@@ -591,192 +753,212 @@ def _store_video_preview(slug: str, work_dir: Path, output_video: Path) -> None:
 
 
 async def _run_video_build(
-    data: dict,
-    slug: str,
+    request: SiteVideoBuildRequest,
     seed: object,
     user_data_dir: str | None,
     work_dir: Path,
     presenter_photo_path: Path | None = None,
 ) -> None:
     """
-    Detached build: capture the background, montage, store the result for pickup.
+    Detached site build: the background (site scroll + Storyblok editor), then the shared montage.
 
-    Progress goes to ``_VIDEO_BUILD_PROGRESS`` (polled by the app's modal) and the
-    finished file to ``_VIDEO_BUILD_RESULTS`` (served once by /video/build-result).
+    Args:
+        request: The validated build.
+        seed: The machine's Storyblok session to inject, if any.
+        user_data_dir: The dedicated Storyblok profile, if any.
+        work_dir: The build's folder, holding the presenter clip.
+        presenter_photo_path: The profile photo of the thumbnail bubble, if any.
     """
     from services import video_montage
-    from services.storyblok_editor_clip_service import StoryblokEditorClipError, storyblok_editor_clip_service
 
-    background_path = work_dir / "background.mp4"
-    presenter_path = work_dir / "presenter.mp4"
-    screenshot_path = work_dir / "top.png"
+    await _run_desktop_video_build(
+        request,
+        work_dir,
+        presenter_photo_path,
+        capture=functools.partial(_capture_site_background, request, seed, user_data_dir, work_dir),
+        thumbnail_label=video_montage.THUMBNAIL_LABEL_SITE,
+        pip_corner=video_montage.PIP_CORNER_LEFT,
+    )
+
+
+async def _run_assistant_video_build(
+    request: DesktopVideoBuildRequest,
+    work_dir: Path,
+    presenter_photo_path: Path | None = None,
+) -> None:
+    """
+    Detached receptionist build: the widget answering (then the example space), then the shared montage.
+
+    Args:
+        request: The validated build.
+        work_dir: The build's folder, holding the presenter clip.
+        presenter_photo_path: The profile photo of the thumbnail bubble, if any.
+    """
+    from services import video_montage
+
+    await _run_desktop_video_build(
+        request,
+        work_dir,
+        presenter_photo_path,
+        capture=functools.partial(_capture_receptionist_widget, request, work_dir),
+        thumbnail_label=video_montage.THUMBNAIL_LABEL_ASSISTANT,
+        pip_corner=video_montage.PIP_CORNER_RIGHT,
+    )
+
+
+async def _run_desktop_video_build(
+    request: DesktopVideoBuildRequest,
+    work_dir: Path,
+    presenter_photo_path: Path | None,
+    *,
+    capture: Callable[[], Coroutine[Any, Any, tuple[Path, Path]]],
+    thumbnail_label: str,
+    pip_corner: str,
+) -> None:
+    """
+    Capture the middle, montage, then leave the result for pickup; every failure ends in an ``error`` step.
+
+    Progress goes to ``_VIDEO_BUILD_PROGRESS`` (polled by the app's modal) and the finished file to
+    ``_VIDEO_BUILD_RESULTS`` (served once by /video/build-result). A build still running when the app stops
+    waiting for it is stopped.
+
+    Args:
+        request: The validated build.
+        work_dir: The build's folder, holding the presenter clip.
+        presenter_photo_path: The profile photo of the thumbnail bubble, if any.
+        capture: Films the middle, returning its recording and the thumbnail still.
+        thumbnail_label: The words after « Bonjour {Prénom} » on the thumbnail.
+        pip_corner: The bottom corner of the webcam bubble.
+    """
+    from services import video_montage
+    from services.assistant_widget_clip_service import AssistantWidgetClipError
+    from services.storyblok_editor_clip_service import StoryblokEditorClipError
+    from services.video_pipeline import GENERATION_OVERRUN_MESSAGE, MAXIMUM_GENERATION_SECONDS
+
+    slug = request.slug
     output_video = work_dir / "video.mp4"
     output_thumb = work_dir / "thumbnail.jpg"
-    preview = bool(data.get("preview"))
-    total_seconds = float(data["total_seconds"])
     try:
-        await asyncio.to_thread(
-            storyblok_editor_clip_service.build_background,
-            demo_url=data["demo_url"],
-            space_id=data["space_id"],
-            story_id=data["story_id"],
-            output_path=background_path,
-            seed=seed,
-            user_data_dir=user_data_dir,
-            accroche=data.get("accroche", ""),
-            executable_path=_chrome_path or find_installed_chrome(),
-            site_seconds=float(data.get("site_seconds", 14.0)),
-            hold_seconds=float(data.get("hold_seconds", 1.0)),
-            total_seconds=total_seconds,
-            out_width=int(data.get("out_width", 1280)),
-            out_height=int(data.get("out_height", 720)),
-            fps=int(data.get("fps", 30)),
-            on_progress=lambda step: _set_video_build_progress(slug, step),
-        )
-        _set_video_build_progress(slug, "montage")
-        await asyncio.to_thread(
-            video_montage.extract_first_frame,
-            _FFMPEG_PATH,
-            background_path,
-            screenshot_path,
-            video_montage.FFMPEG_THREADS_AUTO,
-        )
-        await _compose_desktop_montage(
-            data=data,
-            presenter_path=presenter_path,
-            capture_path=background_path,
-            screenshot_path=screenshot_path,
-            output_video=output_video,
-            output_thumb=output_thumb,
-            presenter_photo_path=presenter_photo_path,
-            thumbnail_label=video_montage.THUMBNAIL_LABEL_SITE,
-        )
-        if preview:
+        async with asyncio.timeout(MAXIMUM_GENERATION_SECONDS):
+            capture_path, screenshot_path = await capture()
+            _set_video_build_progress(slug, "montage")
+            await _compose_desktop_montage(
+                request=request,
+                presenter_path=work_dir / _PRESENTER_FILE_NAME,
+                capture_path=capture_path,
+                screenshot_path=screenshot_path,
+                output_video=output_video,
+                output_thumb=output_thumb,
+                presenter_photo_path=presenter_photo_path,
+                thumbnail_label=thumbnail_label,
+                pip_corner=pip_corner,
+            )
+        if request.preview:
             _store_video_preview(slug, work_dir, output_video)
         else:
             _store_video_bundle(slug, work_dir, output_video, output_thumb)
         _set_video_build_progress(slug, "done")
-    except StoryblokEditorClipError as exc:
+    except TimeoutError:
+        shutil.rmtree(work_dir, ignore_errors=True)
+        _set_video_build_progress(slug, "error", GENERATION_OVERRUN_MESSAGE)
+    except (StoryblokEditorClipError, AssistantWidgetClipError, video_montage.VideoMontageError) as exc:
         shutil.rmtree(work_dir, ignore_errors=True)
         message = str(exc)
+        # A Storyblok session that expired mid-capture is a reconnect prompt, not a hard error.
         if message.startswith("needs_login:"):
             _set_video_build_progress(
                 slug, "error", "Session Storyblok expirée — reconnexion nécessaire.", reason="needs_login"
             )
         else:
             _set_video_build_progress(slug, "error", message)
-    except video_montage.VideoMontageError as exc:
-        shutil.rmtree(work_dir, ignore_errors=True)
-        _set_video_build_progress(slug, "error", str(exc))
     except Exception as exc:  # a detached task must never die silently
         shutil.rmtree(work_dir, ignore_errors=True)
         logger.exception("Video build crashed for slug=%s", slug)
         _set_video_build_progress(slug, "error", f"Erreur inattendue : {exc}")
 
 
-@app.post("/video/build-assistant-full", dependencies=[Depends(require_sidecar_token)])
-async def video_build_assistant_full(
-    payload: str = Form(...),
-    presenter: UploadFile = File(...),
-    presenter_photo: UploadFile | None = File(default=None),
-) -> object:
+async def _capture_site_background(
+    request: SiteVideoBuildRequest, seed: object, user_data_dir: str | None, work_dir: Path
+) -> tuple[Path, Path]:
     """
-    START the complete desktop assistant-video build (widget capture + montage) and return at once.
+    Film the middle of a site video (site scroll + Storyblok editor), with its first frame as the thumbnail still.
 
-    Same detached contract as ``/video/build-full`` (a single multi-minute response gets killed by the
-    webview): returns ``{"started": true}``, the app polls ``/video/build-progress`` until
-    ``done``/``error``, then fetches the file from ``/video/build-result``. Unlike the site build there
-    is no Storyblok session to resolve — the assistant widget is public, so this never needs a login.
-    """
-    import json
-    import tempfile
-    from pathlib import Path
+    Args:
+        request: The validated build.
+        seed: The machine's Storyblok session to inject, if any.
+        user_data_dir: The dedicated Storyblok profile, if any.
+        work_dir: The build's folder.
 
-    data = json.loads(payload)
-    slug = str(data["slug"])
-    _discard_video_build_result(slug)
-    # The default message names a Storyblok session, which only the site build opens.
-    _set_video_build_progress(slug, "preparing", "Préparation (clip présentateur)…")
-    work_dir = Path(tempfile.mkdtemp(prefix=f"assistant-video-full-{slug}-"))
-    presenter_path = work_dir / "presenter.mp4"
-    # The upload's temp file dies with this request — materialise it before detaching.
-    presenter_path.write_bytes(await presenter.read())
-    presenter_photo_path: Path | None = None
-    if presenter_photo is not None:
-        photo_bytes = await presenter_photo.read()
-        if photo_bytes:
-            presenter_photo_path = work_dir / "presenter-photo.jpg"
-            presenter_photo_path.write_bytes(photo_bytes)
+    Returns:
+        The background mp4 and the still.
 
-    task = asyncio.create_task(_run_assistant_video_build(data, slug, work_dir, presenter_photo_path))
-    _VIDEO_BUILD_TASKS.add(task)
-    task.add_done_callback(_VIDEO_BUILD_TASKS.discard)
-    return {"started": True, "slug": slug}
-
-
-async def _run_assistant_video_build(
-    data: dict,
-    slug: str,
-    work_dir: Path,
-    presenter_photo_path: Path | None = None,
-) -> None:
-    """
-    Detached build: capture the widget answering, montage, store the result for pickup.
-
-    Progress goes to ``_VIDEO_BUILD_PROGRESS`` (polled by the app's modal) and the finished zip
-    (``video.mp4`` + ``thumbnail.jpg``) to ``_VIDEO_BUILD_RESULTS`` (served once by /video/build-result).
+    Raises:
+        StoryblokEditorClipError: when the site or the editor cannot be filmed (``needs_login:`` for a lost session).
     """
     from services import video_montage
-    from services.assistant_widget_clip_service import AssistantWidgetClipError, assistant_widget_clip_service
+    from services.storyblok_editor_clip_service import storyblok_editor_clip_service
 
-    middle_path = work_dir / "widget.mp4"
-    presenter_path = work_dir / "presenter.mp4"
-    screenshot_path = work_dir / "top.png"
-    output_video = work_dir / "video.mp4"
-    output_thumb = work_dir / "thumbnail.jpg"
-    # A calibration preview (unsaved timings, from the video settings) comes back as a bare mp4, never uploaded.
-    preview = bool(data.get("preview"))
-    total_seconds = float(data["total_seconds"])
-    try:
-        await asyncio.to_thread(
-            assistant_widget_clip_service.build_widget_clip,
-            demo_url=data["demo_url"],
-            output_path=middle_path,
-            screenshot_path=screenshot_path,
-            executable_path=_chrome_path or find_installed_chrome(),
-            total_seconds=total_seconds,
-            out_width=int(data.get("out_width", 1280)),
-            out_height=int(data.get("out_height", 720)),
-            fps=int(data.get("fps", 30)),
-            on_progress=lambda step: _set_video_build_progress(slug, step),
-        )
-        _set_video_build_progress(slug, "montage")
-        await _compose_desktop_montage(
-            data=data,
-            presenter_path=presenter_path,
-            capture_path=middle_path,
-            screenshot_path=screenshot_path,
-            output_video=output_video,
-            output_thumb=output_thumb,
-            presenter_photo_path=presenter_photo_path,
-            thumbnail_label=video_montage.THUMBNAIL_LABEL_ASSISTANT,
-            pip_corner=video_montage.PIP_CORNER_RIGHT,
-        )
-        if preview:
-            _store_video_preview(slug, work_dir, output_video)
-        else:
-            _store_video_bundle(slug, work_dir, output_video, output_thumb)
-        _set_video_build_progress(slug, "done")
-    except AssistantWidgetClipError as exc:
-        shutil.rmtree(work_dir, ignore_errors=True)
-        _set_video_build_progress(slug, "error", str(exc))
-    except video_montage.VideoMontageError as exc:
-        shutil.rmtree(work_dir, ignore_errors=True)
-        _set_video_build_progress(slug, "error", str(exc))
-    except Exception as exc:  # a detached task must never die silently
-        shutil.rmtree(work_dir, ignore_errors=True)
-        logger.exception("Assistant video build crashed for slug=%s", slug)
-        _set_video_build_progress(slug, "error", f"Erreur inattendue : {exc}")
+    background_path = work_dir / "background.mp4"
+    screenshot_path = work_dir / _SCREENSHOT_FILE_NAME
+    await asyncio.to_thread(
+        storyblok_editor_clip_service.build_background,
+        demo_url=request.demo_url,
+        space_id=request.space_id,
+        story_id=request.story_id,
+        output_path=background_path,
+        seed=seed,
+        user_data_dir=user_data_dir,
+        accroche=request.accroche,
+        executable_path=_chrome_path or find_installed_chrome(),
+        site_seconds=request.site_seconds,
+        hold_seconds=request.hold_seconds,
+        total_seconds=request.total_seconds,
+        out_width=request.out_width,
+        out_height=request.out_height,
+        fps=request.fps,
+        on_progress=functools.partial(_set_video_build_progress, request.slug),
+    )
+    await asyncio.to_thread(
+        video_montage.extract_first_frame,
+        _FFMPEG_PATH,
+        background_path,
+        screenshot_path,
+        video_montage.FFMPEG_THREADS_AUTO,
+    )
+    return background_path, screenshot_path
+
+
+async def _capture_receptionist_widget(request: DesktopVideoBuildRequest, work_dir: Path) -> tuple[Path, Path]:
+    """
+    Film the middle of a receptionist video (the widget answering), with the chat before the scene as the still.
+
+    Args:
+        request: The validated build.
+        work_dir: The build's folder.
+
+    Returns:
+        The widget mp4 and the still.
+
+    Raises:
+        AssistantWidgetClipError: when the widget cannot be filmed or its example did not play.
+    """
+    from services.assistant_widget_clip_service import assistant_widget_clip_service
+
+    widget_path = work_dir / "widget.mp4"
+    screenshot_path = work_dir / _SCREENSHOT_FILE_NAME
+    await asyncio.to_thread(
+        assistant_widget_clip_service.build_widget_clip,
+        demo_url=request.demo_url,
+        output_path=widget_path,
+        screenshot_path=screenshot_path,
+        executable_path=_chrome_path or find_installed_chrome(),
+        total_seconds=request.total_seconds,
+        out_width=request.out_width,
+        out_height=request.out_height,
+        fps=request.fps,
+        on_progress=functools.partial(_set_video_build_progress, request.slug),
+    )
+    return widget_path, screenshot_path
 
 
 @app.get("/video/build-result", dependencies=[Depends(require_sidecar_token)])

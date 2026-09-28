@@ -50,6 +50,7 @@ FFMPEG_THREADS = "2"
 # Desktop value: "0" lets ffmpeg size itself on the machine's cores, and the
 # below-normal process priority keeps the PC responsive while it encodes.
 FFMPEG_THREADS_AUTO = "0"
+_MONTAGE_TIMEOUT_SECONDS = 600
 
 
 def as_background_priority_process(command: list[str]) -> tuple[list[str], dict[str, int]]:
@@ -85,6 +86,31 @@ _FONT_CANDIDATES: tuple[str, ...] = (
 
 class VideoMontageError(Exception):
     """Raised when an ffmpeg/Pillow montage step fails (message shown in-app)."""
+
+
+def run_ffmpeg(ffmpeg_path: str, args: list[str], timeout_seconds: float | None = None) -> None:
+    """
+    Run ffmpeg as a polite background process, overwriting its output, with a readable error when it fails.
+
+    Args:
+        ffmpeg_path: The ffmpeg binary (each side passes its own: the VPS setting, the sidecar's bundled copy).
+        args: Everything after ``ffmpeg -y``.
+        timeout_seconds: How long ffmpeg may run, without limit when None.
+
+    Raises:
+        VideoMontageError: when ffmpeg is missing, runs too long or fails (its last error lines in the message).
+    """
+    command, run_kwargs = as_background_priority_process([ffmpeg_path, "-y", *args])
+    try:
+        result = subprocess.run(
+            command, capture_output=True, encoding="utf-8", errors="replace", timeout=timeout_seconds, **run_kwargs
+        )
+    except FileNotFoundError as exc:
+        raise VideoMontageError(f"ffmpeg introuvable ({ffmpeg_path}). Installez-le ou configurez FFMPEG_PATH.") from exc
+    except subprocess.TimeoutExpired as exc:
+        raise VideoMontageError(f"ffmpeg a dépassé {exc.timeout / 60:.0f} min : il a été arrêté.") from exc
+    if result.returncode != 0:
+        raise VideoMontageError(f"ffmpeg a échoué : {result.stderr.strip()[-500:]}")
 
 
 def _load_font(size: int):
@@ -368,9 +394,7 @@ def compose(
         f"enable='between(t,0,{intro:.3f})'[vout]"
     )
 
-    command = [
-        ffmpeg_path,
-        "-y",
+    arguments = [
         "-hide_banner",
         "-loglevel",
         "error",
@@ -422,18 +446,7 @@ def compose(
         "+faststart",
         str(output_path),
     ]
-
-    command, run_kwargs = as_background_priority_process(command)
-    try:
-        result = subprocess.run(command, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE, timeout=600, **run_kwargs)
-    except FileNotFoundError as exc:
-        raise VideoMontageError(f"ffmpeg introuvable ({ffmpeg_path}). Installez-le ou configurez FFMPEG_PATH.") from exc
-    except subprocess.TimeoutExpired as exc:
-        raise VideoMontageError("Montage ffmpeg trop long (timeout 10 min).") from exc
-
-    if result.returncode != 0:
-        detail = result.stderr.decode("utf-8", errors="replace").strip()[-500:]
-        raise VideoMontageError(f"Échec du montage ffmpeg : {detail}")
+    run_ffmpeg(ffmpeg_path, arguments, timeout_seconds=_MONTAGE_TIMEOUT_SECONDS)
     if not output_path.is_file() or output_path.stat().st_size == 0:
         raise VideoMontageError("Le montage ffmpeg n'a produit aucun fichier.")
 

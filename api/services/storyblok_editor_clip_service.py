@@ -26,8 +26,9 @@ import subprocess
 import tempfile
 from collections.abc import Callable
 from pathlib import Path
-from urllib.parse import parse_qsl, urlencode, urlparse, urlunparse
 
+from services import video_montage
+from services.capture_page import CapturePage
 from services.storyblok_session_service import StoryblokSessionSeed
 
 logger = logging.getLogger(__name__)
@@ -190,7 +191,7 @@ class StoryblokEditorClipService:
                 page = context.new_page()
                 # ?internal=1 flags this as the owner's own visit → no prospect
                 # notifications / tracking events fire during the capture.
-                page.goto(self._as_internal_url(demo_url), wait_until="load", timeout=45000)
+                page.goto(CapturePage.internal_url(demo_url), wait_until="load", timeout=45000)
                 page.evaluate(
                     "() => document.querySelectorAll('img').forEach(i => { i.loading='eager'; i.decoding='sync'; })"
                 )
@@ -358,14 +359,6 @@ class StoryblokEditorClipService:
     # ── Small helpers ────────────────────────────────────────────────────────
 
     @staticmethod
-    def _as_internal_url(url: str) -> str:
-        """Add ``internal=1`` so a capture visit is excluded from tracking/notifications."""
-        parts = urlparse(url)
-        query = dict(parse_qsl(parts.query))
-        query["internal"] = "1"
-        return urlunparse(parts._replace(query=urlencode(query)))
-
-    @staticmethod
     def _seed_script(local_storage: dict[str, str]) -> str:
         """Init script that seeds the auth localStorage before Storyblok's SPA boots."""
         return (
@@ -472,18 +465,19 @@ class StoryblokEditorClipService:
     @staticmethod
     def _enc(fps: int) -> list[str]:
         """Shared x264 encode flags (see :func:`services.video_montage.x264_encode_flags`)."""
-        from services.video_montage import x264_encode_flags
-
-        return x264_encode_flags(fps)
+        return video_montage.x264_encode_flags(fps)
 
     def _run_ffmpeg(self, args: list[str]) -> None:
-        """Run ffmpeg with ``-y`` at background priority, raising a clear error on failure."""
-        from services.video_montage import as_background_priority_process
+        """
+        Run ffmpeg through the shared runner (``-y``, background priority).
 
-        command, run_kwargs = as_background_priority_process([self._ffmpeg, "-y", *args])
-        result = subprocess.run(command, capture_output=True, text=True, **run_kwargs)
-        if result.returncode != 0:
-            raise StoryblokEditorClipError(f"ffmpeg a échoué : {result.stderr[-400:]}")
+        Raises:
+            StoryblokEditorClipError: when ffmpeg fails.
+        """
+        try:
+            video_montage.run_ffmpeg(self._ffmpeg, args)
+        except video_montage.VideoMontageError as exc:
+            raise StoryblokEditorClipError(str(exc)) from exc
 
 
 storyblok_editor_clip_service = StoryblokEditorClipService()

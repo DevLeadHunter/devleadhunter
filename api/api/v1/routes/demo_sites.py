@@ -3,8 +3,6 @@
 import logging
 import shutil
 import tempfile
-import zipfile
-from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -42,9 +40,6 @@ from services.demo_video_service import (
     has_ready_video,
     public_thumbnail_url,
     public_video_file_url,
-    reenqueue_campaigns_after_video_ready,
-    thumbnail_object_key,
-    video_object_key,
     video_page_url,
 )
 from services.email_variables import EmailVariables
@@ -55,6 +50,7 @@ from services.service_card_suggestion_service import ServiceCardsUnavailableErro
 from services.site_export_service import site_export_service
 from services.storyblok_service import storyblok_service
 from services.templates.registry import default_subtitle
+from services.video_pipeline import VideoGenerationError
 
 logger = logging.getLogger(__name__)
 
@@ -673,34 +669,12 @@ async def upload_demo_site_video_final(
     site = demo_site_service.get_for_user(db, current_user.id, demo_site_id)
     if not site:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Demo site not found")
-
-    work_dir = Path(tempfile.mkdtemp(prefix=f"video-final-{site.slug}-"))
     try:
-        zip_path = work_dir / "bundle.zip"
-        with zip_path.open("wb") as buffer:
-            shutil.copyfileobj(file.file, buffer)
-        video_path = work_dir / "video.mp4"
-        thumbnail_path = work_dir / "thumbnail.jpg"
-        try:
-            with zipfile.ZipFile(zip_path) as archive:
-                video_path.write_bytes(archive.read("video.mp4"))
-                thumbnail_path.write_bytes(archive.read("thumbnail.jpg"))
-        except (zipfile.BadZipFile, KeyError) as exc:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Archive vidéo invalide (video.mp4 + thumbnail.jpg attendus).",
-            ) from exc
-
-        await r2_storage.upload_file_async(video_path, video_object_key(site.slug), "video/mp4")
-        await r2_storage.upload_file_async(thumbnail_path, thumbnail_object_key(site.slug), "image/jpeg")
-        site.video_status = DemoVideoStatus.READY.value
-        site.video_error = None
-        site.video_generated_at = datetime.now(UTC)
-        db.commit()
-        db.refresh(site)
-        reenqueue_campaigns_after_video_ready(db, site.prospect_id, site.user_id)
-    finally:
-        shutil.rmtree(work_dir, ignore_errors=True)
+        await demo_video_service.store_desktop_video(db, site, file.file)
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+    except VideoGenerationError as exc:
+        raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=str(exc)) from exc
     return _serialize_demo_site(site)
 
 
