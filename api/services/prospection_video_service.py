@@ -186,7 +186,7 @@ class ProspectionVideoService(ABC, Generic[VideoSubjectT]):
 
     def reconcile_orphaned(self, db: Session) -> int:
         """
-        Fail the unfinished videos that no generation of this process can finish, and stop the ones rendering too long.
+        Fail the unfinished videos no generation of this process can finish, and abandon the ones rendering too long.
 
         A generation lives only in memory: after a restart (crash, OOM kill, deploy) its video would stay pending
         forever, and :meth:`request_generation` refuses to restart it. A render stuck for more than
@@ -224,7 +224,7 @@ class ProspectionVideoService(ABC, Generic[VideoSubjectT]):
 
     def purge_video(self, subject: VideoSubjectT) -> None:
         """
-        Stop a generation under way, delete the video's files and reset its state, left for the caller to commit.
+        Abandon a generation under way, delete the video's files and reset its state, left for the caller to commit.
 
         Args:
             subject: The demo site or receptionist.

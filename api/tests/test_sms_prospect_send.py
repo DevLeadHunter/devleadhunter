@@ -14,7 +14,7 @@ from services.ai_assistant.assistant_service import ai_assistant_service
 from services.sms_service import SmsService
 from tests.assistant_fakes import AcceptingSmsProvider, AsyncCallRecorder
 
-# A demo slug as long as the site's used to allow (80 characters): no template fits one segment with it.
+# An 80-character demo slug: no template fits one segment with it.
 _LONG_SLUG = "garage-de-la-grande-place-et-des-environs-de-charleville-mezieres-et-alentours-sud"
 
 
