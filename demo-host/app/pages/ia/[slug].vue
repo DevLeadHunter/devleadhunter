@@ -22,7 +22,7 @@
             <span class="ia__live"><span class="ia__live-dot" />en direct</span>
           </p>
           <div class="ia__window">
-            <AssistantChat :config="assistant" inline @lead-sent="onLeadSent" @example-played="onExamplePlayed" />
+            <AssistantChat :assistant="assistant" inline @lead-sent="onLeadSent" @example-played="onExamplePlayed" />
           </div>
         </div>
 

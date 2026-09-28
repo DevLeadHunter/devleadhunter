@@ -287,7 +287,7 @@ export function useDemoTracking(): {
       disable_session_recording: false,
       session_recording: {
         maskAllInputs: true,
-        maskTextSelector: '.ai-m',
+        maskTextSelector: '.ai-message',
       },
     })
     // `surface` sépare les modules dans le MÊME projet PostHog ('demo' = site, 'assistant' = module IA) ;
