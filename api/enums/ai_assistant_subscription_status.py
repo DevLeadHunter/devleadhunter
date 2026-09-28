@@ -3,7 +3,7 @@
 from enum import Enum
 
 
-class AssistantSubscriptionStatus(str, Enum):
+class AiAssistantSubscriptionStatus(str, Enum):
     """Status of a sold AI-assistant subscription."""
 
     # Checkout created but not yet paid (Stripe ``incomplete``) — nothing to activate yet.
@@ -18,6 +18,6 @@ class AssistantSubscriptionStatus(str, Enum):
 
 # A paying client: running, or a renewal charge being retried by Stripe.
 LIVE_SUBSCRIPTION_STATUSES: tuple[str, ...] = (
-    AssistantSubscriptionStatus.ACTIVE.value,
-    AssistantSubscriptionStatus.PAST_DUE.value,
+    AiAssistantSubscriptionStatus.ACTIVE.value,
+    AiAssistantSubscriptionStatus.PAST_DUE.value,
 )

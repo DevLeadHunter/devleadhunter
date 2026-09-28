@@ -3,7 +3,7 @@
 from enum import Enum
 
 
-class AssistantLlmUsage(str, Enum):
+class AiAssistantLlmUsage(str, Enum):
     """What an assistant model call is for — each one is routed to Mistral first."""
 
     CHAT = "assistant_chat"
@@ -19,7 +19,7 @@ class LlmProvider(str, Enum):
     GROQ = "groq"
 
 
-class AssistantLlmOutage(str, Enum):
+class AiAssistantLlmOutage(str, Enum):
     """What went wrong when an assistant call could not be served by Mistral (one admin alert each)."""
 
     FALLBACK = "fallback"

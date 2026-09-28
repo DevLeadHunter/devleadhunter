@@ -3,7 +3,7 @@
 from enum import Enum
 
 
-class AssistantVisitorChannel(str, Enum):
+class AiAssistantVisitorChannel(str, Enum):
     """By SMS (a mobile of the served countries) or by email."""
 
     SMS = "sms"

@@ -3,7 +3,7 @@
 from enum import Enum
 
 
-class AssistantBookingMode(str, Enum):
+class AiAssistantBookingMode(str, Enum):
     """Free slots booked in the connected agenda (``calendar``), or half-days to wish (``request``)."""
 
     CALENDAR = "calendar"

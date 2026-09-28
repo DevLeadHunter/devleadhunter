@@ -8,7 +8,7 @@ from enum import Enum
 _ALIASES: dict[str, str] = {"lu": "lb"}
 
 
-class AssistantWidgetLanguage(str, Enum):
+class AiAssistantWidgetLanguage(str, Enum):
     """A language the widget offers greetings and suggestions in (the model still replies in any language)."""
 
     FR = "fr"
@@ -18,7 +18,7 @@ class AssistantWidgetLanguage(str, Enum):
     LB = "lb"
 
     @classmethod
-    def from_code(cls, code: str | None) -> AssistantWidgetLanguage | None:
+    def from_code(cls, code: str | None) -> AiAssistantWidgetLanguage | None:
         """
         The widget language a code names, whatever its case, region or legacy spelling.
 
@@ -51,6 +51,6 @@ class AssistantWidgetLanguage(str, Enum):
         return normalized
 
     @classmethod
-    def _missing_(cls, value: object) -> AssistantWidgetLanguage | None:
+    def _missing_(cls, value: object) -> AiAssistantWidgetLanguage | None:
         """Read a differently spelled code (« LB », « lu ») as the language it names when a model parses it."""
         return cls.from_code(value) if isinstance(value, str) else None

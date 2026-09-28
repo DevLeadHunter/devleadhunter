@@ -3,7 +3,7 @@
 from enum import Enum
 
 
-class AssistantKnowledgeSource(str, Enum):
+class AiAssistantKnowledgeSource(str, Enum):
     """A page of the business's website, or a document it gave (PDF)."""
 
     PAGE = "page"
