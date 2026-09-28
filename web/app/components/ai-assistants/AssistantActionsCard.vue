@@ -29,8 +29,8 @@
       Envoyer l'espace client
     </button>
     <UiCopyLinkField
-      v-if="props.status === 'delivered' && props.clientSpaceLinkToCopy"
-      :url="props.clientSpaceLinkToCopy"
+      v-if="props.status === 'delivered' && props.clientSpaceLinkForManualCopy"
+      :url="props.clientSpaceLinkForManualCopy"
       link-label="Lien de l'espace client"
     />
     <button
@@ -93,7 +93,7 @@ const props: AssistantActionsCardProps = defineProps({
     type: Boolean,
     default: false,
   },
-  clientSpaceLinkToCopy: {
+  clientSpaceLinkForManualCopy: {
     type: String as PropType<string | null>,
     default: null,
   },

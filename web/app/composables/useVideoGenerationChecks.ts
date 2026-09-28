@@ -1,5 +1,5 @@
 import type { Ref } from 'vue'
-import type { UseVideoGenerationFollowUpReturn, VideoGenerationCheckPace } from '~/types/Composables'
+import type { UseVideoGenerationChecksReturn, VideoGenerationCheckPace } from '~/types/Composables'
 import { onScopeDispose, ref } from 'vue'
 
 const VIDEO_GENERATION_CHECK_PACE: VideoGenerationCheckPace[] = [
@@ -12,26 +12,31 @@ const VIDEO_GENERATION_CHECK_PACE: VideoGenerationCheckPace[] = [
  * Follow a video generation running on the server: check less and less often, and stop after fifteen minutes.
  * @param refreshVideoStatus - Reloads what shows the video, its generation status included.
  * @param isVideoGenerating - Whether the video is still pending or generating.
- * @returns The follow-up controls, and whether the video outlasted the follow-up.
+ * @returns The check controls, and whether the video outlasted the checks.
  */
-export function useVideoGenerationFollowUp(
+export function useVideoGenerationChecks(
   refreshVideoStatus: () => Promise<void>,
   isVideoGenerating: () => boolean,
-): UseVideoGenerationFollowUpReturn {
+): UseVideoGenerationChecksReturn {
   const isTakingLongerThanExpected: Ref<boolean> = ref(false)
   let nextCheckTimer: ReturnType<typeof setTimeout> | null = null
-  let followUpStartedAt: number = 0
+  let checksStartedAt: number = 0
+  let isFollowing: boolean = false
+  let isScopeDisposed: boolean = false
 
   /** Follow the generation from now on, from the fastest pace. */
-  function start(): void {
-    stop()
+  function startChecks(): void {
+    if (isScopeDisposed) return
+    stopChecks()
+    isFollowing = true
     isTakingLongerThanExpected.value = false
-    followUpStartedAt = Date.now()
+    checksStartedAt = Date.now()
     scheduleNextCheck()
   }
 
-  /** Stop checking (the page leaves, or the generation is over). */
-  function stop(): void {
+  /** Stop checking the video status. */
+  function stopChecks(): void {
+    isFollowing = false
     if (nextCheckTimer !== null) {
       clearTimeout(nextCheckTimer)
       nextCheckTimer = null
@@ -40,12 +45,12 @@ export function useVideoGenerationFollowUp(
 
   /** Plan the next check at the pace of the time spent, or give up once the last pace is over. */
   function scheduleNextCheck(): void {
-    const elapsedMinutes: number = (Date.now() - followUpStartedAt) / 60000
+    if (!isFollowing || nextCheckTimer !== null) return
+    const elapsedMinutes: number = (Date.now() - checksStartedAt) / 60000
     const pace: VideoGenerationCheckPace | undefined = VIDEO_GENERATION_CHECK_PACE.find(
       (candidate: VideoGenerationCheckPace): boolean => elapsedMinutes < candidate.untilMinutes,
     )
     if (!pace) {
-      nextCheckTimer = null
       isTakingLongerThanExpected.value = isVideoGenerating()
       return
     }
@@ -58,20 +63,28 @@ export function useVideoGenerationFollowUp(
    */
   async function checkVideoStatus(): Promise<void> {
     nextCheckTimer = null
-    await refreshVideoStatus()
-    if (isVideoGenerating()) scheduleNextCheck()
+    try {
+      await refreshVideoStatus()
+    } catch {
+      // A missed check is not worth a toast.
+    }
+    if (isFollowing && isVideoGenerating()) scheduleNextCheck()
   }
 
   /**
-   * Reload the video status once, on demand, after the follow-up gave up.
+   * Reload the video status once, on demand, after the checks gave up.
    * @returns A promise resolved once reloaded.
+   * @throws When the reload fails.
    */
-  async function refreshNow(): Promise<void> {
+  async function checkNow(): Promise<void> {
     await refreshVideoStatus()
     if (!isVideoGenerating()) isTakingLongerThanExpected.value = false
   }
 
-  onScopeDispose(stop)
+  onScopeDispose((): void => {
+    isScopeDisposed = true
+    stopChecks()
+  })
 
-  return { isTakingLongerThanExpected, start, stop, refreshNow }
+  return { isTakingLongerThanExpected, startChecks, stopChecks, checkNow }
 }
