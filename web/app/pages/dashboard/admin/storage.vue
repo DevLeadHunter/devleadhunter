@@ -376,10 +376,8 @@ const FILTERS: Array<{ label: string; prefix: string }> = [
   { label: 'Imports manuels', prefix: 'uploads/manual/' },
 ]
 
-/** Categories played inline as videos. */
 const VIDEO_KINDS: StorageObjectKind[] = ['website_video', 'website_background', 'assistant_video', 'presenter']
 
-/** Categories shown inline as images. */
 const IMAGE_KINDS: StorageObjectKind[] = [
   'website_thumbnail',
   'assistant_thumbnail',

@@ -31,7 +31,7 @@
     <UiCopyLinkField
       v-if="props.status === 'delivered' && props.clientSpaceLinkToCopy"
       :url="props.clientSpaceLinkToCopy"
-      label="Lien de l'espace client"
+      link-label="Lien de l'espace client"
     />
     <button
       v-if="props.status === 'delivered'"

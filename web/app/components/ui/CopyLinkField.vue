@@ -1,13 +1,13 @@
 <template>
   <div class="space-y-1.5">
-    <p class="text-xs font-medium text-[var(--app-ink)]">{{ props.label }}</p>
+    <p class="text-xs font-medium text-[var(--app-ink)]">{{ props.linkLabel }}</p>
     <div class="flex items-center gap-2">
       <input
         ref="linkInput"
         :value="props.url"
         readonly
         class="input-field h-9 min-w-0 flex-1 truncate text-xs"
-        :aria-label="props.label"
+        :aria-label="props.linkLabel"
         @focus="selectLink"
       />
       <button type="button" class="btn-secondary h-9 shrink-0 px-3 text-xs" @click="copyLink">
@@ -31,7 +31,7 @@ const props: UiCopyLinkFieldProps = defineProps({
     type: String,
     required: true,
   },
-  label: {
+  linkLabel: {
     type: String,
     required: true,
   },

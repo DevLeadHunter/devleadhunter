@@ -2,7 +2,6 @@ import type { Ref } from 'vue'
 import type { UseVideoGenerationFollowUpReturn, VideoGenerationCheckPace } from '~/types/Composables'
 import { onScopeDispose, ref } from 'vue'
 
-/** Every 5 s for two minutes, every 15 s up to five, every 30 s up to fifteen, then the page stops asking. */
 const VIDEO_GENERATION_CHECK_PACE: VideoGenerationCheckPace[] = [
   { untilMinutes: 2, everySeconds: 5 },
   { untilMinutes: 5, everySeconds: 15 },
