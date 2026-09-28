@@ -459,7 +459,7 @@ useHead({
   min-height: 0;
   height: auto;
 }
-.ia__banner--hidden :deep(.ac) {
+.ia__banner--hidden :deep(.contact-banner) {
   opacity: 0;
   pointer-events: none;
 }
