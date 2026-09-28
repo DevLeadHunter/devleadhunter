@@ -20,6 +20,7 @@ from sqlalchemy.orm import Session
 from core.config import settings
 from enums.sms_message_kind import SmsMessageKind
 from enums.sms_status import SmsStatus
+from models.ai_assistant import AiAssistant
 from models.prospect_db import ProspectDB
 from models.sms_config import SmsConfig
 from models.sms_message import SmsMessage
@@ -221,22 +222,25 @@ class SmsService:
         template = find_sms_template(template_key or default_key)
         if template is None:
             return SmsSendOutcome(sent=False, reason="Modèle SMS introuvable")
+        # Looked up once for the whole message: the template's fallback, the guard, the links and the countdown.
+        assistant: AiAssistant | None = EmailVariables.active_assistant(db, prospect.id, user_id)
         # A video template with no generated video falls back to its demo-link sibling.
         template = resolve_sms_template(
             template,
             video_ready=bool(video_url),
-            assistant_video_ready=bool(EmailVariables.resolve_assistant_video(db, prospect.id, user_id)[0]),
+            assistant_video_ready=bool(EmailVariables.assistant_video_urls(assistant)[0]),
         )
         # An assistant template needs the prospect's active assistant, or the SMS would ship a hole.
         needs_assistant: bool = template.uses(SmsVariables.ASSISTANT_LINK) or template.uses(
             SmsVariables.ASSISTANT_VIDEO_LINK
         )
-        if needs_assistant and not EmailVariables.resolve_assistant_url(db, prospect.id, user_id):
+        if needs_assistant and assistant is None:
             return SmsSendOutcome(sent=False, reason="Pas d'assistant IA actif pour ce prospect")
         variables = SmsVariables.build_for_prospect(
             db,
             user_id=user_id,
             prospect=prospect,
+            assistant=assistant,
             demo_url=demo_url,
             video_url=video_url,
             sale_price_cents=PricingService.sale_price_cents(db, user_id),
@@ -269,7 +273,7 @@ class SmsService:
         )
         outcome = await self._send_and_log(db, message=message)
         if outcome.sent:
-            self._start_assistant_ttl_if_linked(db, user_id=user_id, prospect_id=prospect.id, body=body)
+            self._start_assistant_ttl(db, assistant, body=body)
         return outcome
 
     def compose_manual_body(self, text: str) -> str:
@@ -421,17 +425,30 @@ class SmsService:
         """
         return message.kind == SmsMessageKind.SERVICE.value or bool(_ASSISTANT_PAGE_LINK.search(message.body or ""))
 
-    @staticmethod
-    def _start_assistant_ttl_if_linked(db: Session, *, user_id: int, prospect_id: int, body: str) -> None:
-        """Start the assistant demo countdown when a sent SMS carries its link (idempotent); never raises."""
-        from services.ai_assistant.assistant_service import ai_assistant_service
-
+    @classmethod
+    def _start_assistant_ttl_if_linked(cls, db: Session, *, user_id: int, prospect_id: int, body: str) -> None:
+        """Start the countdown of the prospect's active assistant when a sent SMS carries its link; never raises."""
         try:
-            assistant = ai_assistant_service.get_active_for_prospect(db, prospect_id=prospect_id, user_id=user_id)
-            if assistant is not None and ai_assistant_service.body_contains_assistant_link(assistant, body):
-                ai_assistant_service.start_demo_ttl(db, assistant, datetime.now(UTC))
+            assistant = EmailVariables.active_assistant(db, prospect_id, user_id)
         except Exception:
             logger.warning("Failed to start assistant demo TTL after SMS to prospect %s", prospect_id, exc_info=True)
+            return
+        cls._start_assistant_ttl(db, assistant, body=body)
+
+    @staticmethod
+    def _start_assistant_ttl(db: Session, assistant: AiAssistant | None, *, body: str) -> None:
+        """Start an assistant's demo countdown when a sent SMS carries its link (idempotent); never raises."""
+        from services.ai_assistant.assistant_service import ai_assistant_service
+
+        if assistant is None:
+            return
+        try:
+            if ai_assistant_service.body_contains_assistant_link(assistant, body):
+                ai_assistant_service.start_demo_ttl(db, assistant, datetime.now(UTC))
+        except Exception:
+            logger.warning(
+                "Failed to start assistant demo TTL after SMS to prospect %s", assistant.prospect_id, exc_info=True
+            )
 
     async def _send_and_log(self, db: Session, *, message: SmsMessage) -> SmsSendOutcome:
         """Persist the row, hand it to the provider, record the outcome, notify.

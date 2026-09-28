@@ -13,6 +13,7 @@ from types import SimpleNamespace
 
 import services.email_variables as email_variables_module
 from core.config import settings
+from models.prospect_db import ProspectDB
 from services.campaign_queue_service import CampaignQueueService
 from services.email_variables import EmailVariables
 
@@ -65,7 +66,7 @@ def test_resolve_expiry_date_uses_started_ttl() -> None:
         expires_at=datetime(2026, 10, 12, 6, 0, 0),
     )
     resolved = EmailVariables.resolve_expiry_date(
-        _FakeDB(site), "https://demo.dibodev.fr/tacos-maru?src=email&v=A", prospect_id=1, user_id=7
+        _FakeDB(site), "https://demo.dibodev.fr/tacos-maru?src=email&v=A", None
     )
     assert resolved == "12 octobre"
 
@@ -74,29 +75,25 @@ def test_resolve_expiry_date_projects_ttl_for_first_send() -> None:
     """Before the first send, the announced date is today plus the TTL (this send starts the clock)."""
     site = SimpleNamespace(demo_link_sent_at=None, expires_at=datetime(2099, 12, 31))
     expected = EmailVariables.format_expiry_date(datetime.now(UTC) + timedelta(days=settings.demo_site_ttl_days))
-    resolved = EmailVariables.resolve_expiry_date(
-        _FakeDB(site), "https://demo.dibodev.fr/tacos-maru", prospect_id=1, user_id=7
-    )
+    resolved = EmailVariables.resolve_expiry_date(_FakeDB(site), "https://demo.dibodev.fr/tacos-maru", None)
     assert resolved == expected
 
 
-def test_resolve_expiry_date_empty_without_demo(monkeypatch) -> None:
+def test_resolve_expiry_date_empty_without_demo() -> None:
     """No demo link (and no assistant), or an unknown slug, renders empty instead of a wrong date."""
-    _stub_active_assistant(monkeypatch, None)
-    assert EmailVariables.resolve_expiry_date(_FakeDB(None), "", prospect_id=1, user_id=7) == ""
+    assert EmailVariables.resolve_expiry_date(_FakeDB(None), "", None) == ""
     unknown = "https://demo.dibodev.fr/inconnu"
-    assert EmailVariables.resolve_expiry_date(_FakeDB(None), unknown, prospect_id=1, user_id=7) == ""
+    assert EmailVariables.resolve_expiry_date(_FakeDB(None), unknown, None) == ""
 
 
-def test_resolve_expiry_date_falls_back_to_the_assistant_demo(monkeypatch) -> None:
+def test_resolve_expiry_date_falls_back_to_the_assistant_demo() -> None:
     """Without a demo link, {date_expiration} announces the sender's assistant demo expiry (projected before its first send)."""
     started = SimpleNamespace(demo_link_sent_at=datetime(2026, 9, 21, 6, 0), expires_at=datetime(2026, 10, 12, 6, 0))
-    _stub_active_assistant(monkeypatch, started)
-    assert EmailVariables.resolve_expiry_date(_FakeDB(None), "", prospect_id=1, user_id=7) == "12 octobre"
+    assert EmailVariables.resolve_expiry_date(_FakeDB(None), "", started) == "12 octobre"
 
-    _stub_active_assistant(monkeypatch, SimpleNamespace(demo_link_sent_at=None, expires_at=None))
+    unsent = SimpleNamespace(demo_link_sent_at=None, expires_at=None)
     expected = EmailVariables.format_expiry_date(datetime.now(UTC) + timedelta(days=settings.demo_site_ttl_days))
-    assert EmailVariables.resolve_expiry_date(_FakeDB(None), "", prospect_id=1, user_id=7) == expected
+    assert EmailVariables.resolve_expiry_date(_FakeDB(None), "", unsent) == expected
 
 
 def test_template_using_expiry_date_requires_demo() -> None:
@@ -128,29 +125,32 @@ def _stub_active_assistant(monkeypatch, assistant: object | None) -> dict[str, t
     return seen
 
 
-def test_resolve_assistant_link_renders_anchor_for_active_assistant(monkeypatch) -> None:
-    """`{lien_assistant}` renders a real anchor to the sender's own assistant demo page."""
+def test_the_assistant_lookup_is_scoped_to_the_prospect_and_the_sender(monkeypatch) -> None:
+    """The prospect AND the sending user: never another member's assistant on a shared prospect."""
     seen = _stub_active_assistant(monkeypatch, SimpleNamespace(slug="agence-immo"))
-    html = EmailVariables.resolve_assistant_link(object(), 1, 7)
+    assert EmailVariables.active_assistant(object(), 1, 7).slug == "agence-immo"
+    assert seen["scope"] == (1, 7)
+
+
+def test_assistant_link_html_renders_anchor_for_active_assistant() -> None:
+    """`{lien_assistant}` renders a real anchor to the sender's own assistant demo page."""
+    html = EmailVariables.assistant_link_html(SimpleNamespace(slug="agence-immo"))
     assert html.startswith("<a ")
     assert "/ia/agence-immo" in html
     assert html.endswith("</a>")
-    assert seen["scope"] == (1, 7)  # the prospect AND the sending user, never another member's assistant
 
 
-def test_resolve_assistant_link_carries_the_email_channel_and_the_variant(monkeypatch) -> None:
+def test_assistant_link_html_carries_the_email_channel_and_the_variant() -> None:
     """Like `{lien_demo}`, the visit it brings reads as an email visit of its A/B variant; the text stays clean."""
-    _stub_active_assistant(monkeypatch, SimpleNamespace(slug="agence-immo"))
-    html = EmailVariables.resolve_assistant_link(object(), 1, 7, "B")
+    html = EmailVariables.assistant_link_html(SimpleNamespace(slug="agence-immo"), "B")
     assert '/ia/agence-immo?src=email&v=B"' in html
     visible_text = html.split(">", 1)[1].rsplit("</a>", 1)[0]
     assert visible_text.endswith("/ia/agence-immo")
 
 
-def test_resolve_assistant_link_empty_without_assistant(monkeypatch) -> None:
+def test_assistant_link_html_empty_without_assistant() -> None:
     """`{lien_assistant}` is empty when the prospect has no active assistant."""
-    _stub_active_assistant(monkeypatch, None)
-    assert EmailVariables.resolve_assistant_link(object(), 1, 7) == ""
+    assert EmailVariables.assistant_link_html(None) == ""
 
 
 def test_resolve_assistant_url_is_the_bare_demo_url(monkeypatch) -> None:
@@ -165,3 +165,31 @@ def test_resolve_assistant_url_empty_without_assistant(monkeypatch) -> None:
     """The shared resolver is empty when the prospect has no active assistant."""
     _stub_active_assistant(monkeypatch, None)
     assert EmailVariables.resolve_assistant_url(object(), 1, 7) == ""
+
+
+def test_the_email_variables_look_the_assistant_up_once(db, monkeypatch) -> None:
+    """Its link, its video and the expiry date all come from one lookup of the sender's assistant."""
+    lookups: list[tuple[int, int]] = []
+    assistant = SimpleNamespace(
+        slug="agence-immo",
+        video_status="ready",
+        video_generated_at=datetime(2026, 9, 27, 8, 0),
+        demo_link_sent_at=datetime(2026, 9, 21, 6, 0),
+        expires_at=datetime(2026, 10, 12, 6, 0),
+    )
+
+    def counting_lookup(db: object, *, prospect_id: int, user_id: int) -> object:
+        lookups.append((prospect_id, user_id))
+        return assistant
+
+    monkeypatch.setattr(email_variables_module.ai_assistant_service, "get_active_for_prospect", counting_lookup)
+    prospect = ProspectDB(name="Agence Immo", category="Agence immobilière", source="google", confidence=2, user_id=7)
+    db.add(prospect)
+    db.commit()
+
+    variables = EmailVariables.build_for_prospect(db, prospect, user_id=7, variant="A")
+
+    assert lookups == [(prospect.id, 7)]
+    assert "/ia/agence-immo?src=email&v=A" in variables["lien_assistant"]
+    assert variables["lien_video_assistant"].endswith("/va/agence-immo?src=email&v=A")
+    assert variables["date_expiration"] == "12 octobre"

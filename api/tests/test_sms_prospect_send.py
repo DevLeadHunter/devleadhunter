@@ -5,10 +5,13 @@ import asyncio
 import pytest
 from sqlalchemy.orm import Session
 
+import services.email_variables as email_variables_module
 import services.sms_service as sms_module
+from models.ai_assistant import AiAssistant
 from models.prospect_db import ProspectDB
 from models.sms_config import SmsConfig
 from models.sms_message import SmsMessage
+from services.ai_assistant.assistant_service import ai_assistant_service
 from services.sms_service import SmsService
 from tests.assistant_fakes import AcceptingSmsProvider, AsyncCallRecorder
 
@@ -69,3 +72,34 @@ def test_a_template_that_fits_one_segment_is_sent(db: Session, provider: Accepti
     [text] = provider.texts
     assert "demo.dibodev.fr/s/garage-martin" in text and text.endswith("STOP au 36180")
     assert outcome.message is not None and outcome.message.segments == 1
+
+
+def test_a_receptionist_sms_looks_its_assistant_up_once(
+    db: Session, provider: AcceptingSmsProvider, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The template's fallback, the guard, the link and the countdown all read the same lookup."""
+    prospect = _prospect(db)
+    assistant = ai_assistant_service.create(
+        db, user_id=7, business_name="Garage Martin", prospect_id=prospect.id, country="FR", use_brand_color=False
+    )
+    lookups: list[tuple[int, int]] = []
+
+    def counting_lookup(db: Session, *, prospect_id: int, user_id: int) -> AiAssistant | None:
+        lookups.append((prospect_id, user_id))
+        return assistant
+
+    monkeypatch.setattr(email_variables_module.ai_assistant_service, "get_active_for_prospect", counting_lookup)
+    config = SmsConfig(user_id=7, sender="Dibodev")
+    db.add(config)
+    db.commit()
+
+    outcome = asyncio.run(
+        SmsService(provider=provider).send_to_prospect(
+            db, user_id=7, prospect=prospect, config=config, demo_url="", cold=True, template_key="assistant-24-7"
+        )
+    )
+
+    assert outcome.sent
+    assert lookups == [(prospect.id, 7)]
+    assert "/s/ia/garage-martin " in provider.texts[0]
+    assert assistant.demo_link_sent_at is not None
