@@ -27,6 +27,7 @@ from models.sms_message import SmsMessage
 from models.sms_reply import SmsReply
 from models.sms_suppression import SmsSuppression
 from services.activity_log_service import CATEGORY_SMS, STATUS_WARNING, activity_log_service
+from services.ai_assistant.assistant_service import ai_assistant_service
 from services.email_variables import EmailVariables
 from services.notification_service import notification_service
 from services.pricing_service import PricingService
@@ -222,7 +223,9 @@ class SmsService:
         template = find_sms_template(template_key or default_key)
         if template is None:
             return SmsSendOutcome(sent=False, reason="Modèle SMS introuvable")
-        assistant: AiAssistant | None = EmailVariables.active_assistant(db, prospect.id, user_id)
+        assistant: AiAssistant | None = ai_assistant_service.get_active_for_prospect(
+            db, prospect_id=prospect.id, user_id=user_id
+        )
         # A video template with no generated video falls back to its demo-link sibling.
         template = resolve_sms_template(
             template,
@@ -451,7 +454,7 @@ class SmsService:
     def _start_assistant_ttl_if_linked(cls, db: Session, *, user_id: int, prospect_id: int, body: str) -> None:
         """Start the countdown of the prospect's active assistant when a sent SMS carries its link; never raises."""
         try:
-            assistant = EmailVariables.active_assistant(db, prospect_id, user_id)
+            assistant = ai_assistant_service.get_active_for_prospect(db, prospect_id=prospect_id, user_id=user_id)
         except Exception:
             logger.warning("Failed to start assistant demo TTL after SMS to prospect %s", prospect_id, exc_info=True)
             return

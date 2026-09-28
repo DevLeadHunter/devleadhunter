@@ -41,7 +41,7 @@ MIN_FREE_MEMORY_MB_FOR_CAPTURE = 1200.0
 # montage is the only server-side step.
 MIN_FREE_MEMORY_MB_FOR_MONTAGE = 500.0
 
-# A render taking longer is stuck: it is stopped and marked failed (the desktop app stops waiting at the same point).
+# A render taking longer is stuck: it is abandoned and marked failed (the desktop app stops waiting at the same point).
 MAXIMUM_GENERATION_MINUTES = 20
 MAXIMUM_GENERATION_SECONDS = MAXIMUM_GENERATION_MINUTES * 60.0
 GENERATION_OVERRUN_MESSAGE = (
@@ -140,7 +140,7 @@ class GenerationRuns:
 
     def cancel(self, key: GenerationKey) -> None:
         """
-        Stop a generation under way, if any (its task gets a cancellation at its next pause).
+        Abandon a generation under way, if any (its task gets a cancellation at its next pause).
 
         Args:
             key: The video.

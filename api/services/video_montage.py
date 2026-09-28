@@ -102,15 +102,15 @@ def run_ffmpeg(ffmpeg_path: str, args: list[str], timeout_seconds: float | None 
     """
     command, run_kwargs = as_background_priority_process([ffmpeg_path, "-y", *args])
     try:
-        result = subprocess.run(
+        completed_process = subprocess.run(
             command, capture_output=True, encoding="utf-8", errors="replace", timeout=timeout_seconds, **run_kwargs
         )
     except FileNotFoundError as exc:
         raise VideoMontageError(f"ffmpeg introuvable ({ffmpeg_path}). Installez-le ou configurez FFMPEG_PATH.") from exc
     except subprocess.TimeoutExpired as exc:
         raise VideoMontageError(f"ffmpeg a dépassé {exc.timeout / 60:.0f} min : il a été arrêté.") from exc
-    if result.returncode != 0:
-        raise VideoMontageError(f"ffmpeg a échoué : {result.stderr.strip()[-500:]}")
+    if completed_process.returncode != 0:
+        raise VideoMontageError(f"ffmpeg a échoué : {completed_process.stderr.strip()[-500:]}")
 
 
 def _load_font(size: int):

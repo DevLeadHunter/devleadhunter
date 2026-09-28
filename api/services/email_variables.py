@@ -166,7 +166,8 @@ class EmailVariables:
         Args:
             db: Active database session.
             demo_link: The `{lien_demo}` URL of this send, or "" when the prospect has none.
-            assistant: The sender's active assistant for this prospect (:meth:`active_assistant`), or None.
+            assistant: The sender's active assistant for this prospect
+                (``ai_assistant_service.get_active_for_prospect``), or None.
 
         Returns:
             The French expiry date ("12 octobre"), or "" without a resolvable demo.
@@ -188,59 +189,6 @@ class EmailVariables:
             return cls.format_expiry_date(datetime.now(UTC) + timedelta(days=settings.demo_site_ttl_days))
         return cls.format_expiry_date(expires_at)
 
-    @staticmethod
-    def active_assistant(db: Session, prospect_id: int, user_id: int) -> AiAssistant | None:
-        """
-        The sender's active assistant demo for a prospect: the one every assistant variable links to.
-
-        Only the sender's own active demo qualifies — a sold assistant is never prospected again, and
-        on a shared prospect another member's assistant never leaks into this user's sends. A message
-        looks it up once and hands it to every variable that needs it.
-
-        Args:
-            db: Active database session.
-            prospect_id: Prospect the assistant belongs to.
-            user_id: The sending user, owner of the assistant.
-
-        Returns:
-            The assistant, or None when the prospect has no active demo of this user.
-        """
-        return ai_assistant_service.get_active_for_prospect(db, prospect_id=prospect_id, user_id=user_id)
-
-    @staticmethod
-    def assistant_page_url(assistant: AiAssistant | None) -> str:
-        """
-        The public URL of an assistant demo, or "" without an assistant.
-
-        Single source of truth shared by `{lien_assistant}` in email (wrapped in a tracked anchor)
-        and in SMS (rendered as a bare link): both link to the same assistant.
-
-        Args:
-            assistant: The sender's active assistant for the prospect, or None.
-
-        Returns:
-            The full `<demo-host>/ia/<slug>` URL, or "".
-        """
-        if assistant is None:
-            return ""
-        base: str = settings.demo_host_base_url.rstrip("/")
-        return f"{base}/ia/{assistant.slug}"
-
-    @classmethod
-    def resolve_assistant_url(cls, db: Session, prospect_id: int, user_id: int) -> str:
-        """
-        Look up the prospect's active assistant and return its demo URL (see :meth:`assistant_page_url`).
-
-        Args:
-            db: Active database session.
-            prospect_id: Prospect the assistant belongs to.
-            user_id: The sending user, owner of the assistant.
-
-        Returns:
-            The full `<demo-host>/ia/<slug>` URL, or "" when the prospect has no active assistant.
-        """
-        return cls.assistant_page_url(cls.active_assistant(db, prospect_id, user_id))
-
     @classmethod
     def assistant_link_html(cls, assistant: AiAssistant | None, variant: str | None = None) -> str:
         """
@@ -257,8 +205,9 @@ class EmailVariables:
         Returns:
             The inline anchor HTML, or "" without an active assistant.
         """
-        url: str = cls.assistant_page_url(assistant)
-        return cls.build_demo_link_html(email_tracked_link(url, variant)) if url else ""
+        if assistant is None:
+            return ""
+        return cls.build_demo_link_html(email_tracked_link(ai_assistant_service.page_url(assistant.slug), variant))
 
     @staticmethod
     def assistant_video_urls(assistant: AiAssistant | None) -> tuple[str, str]:
@@ -282,21 +231,6 @@ class EmailVariables:
         if assistant is None or assistant.video_status != DemoVideoStatus.READY.value:
             return "", ""
         return video_page_url(assistant.slug), public_thumbnail_url(assistant.slug, assistant.video_generated_at)
-
-    @classmethod
-    def resolve_assistant_video(cls, db: Session, prospect_id: int, user_id: int) -> tuple[str, str]:
-        """
-        Look up the prospect's active assistant and return its video (see :meth:`assistant_video_urls`).
-
-        Args:
-            db: Active database session.
-            prospect_id: Prospect the assistant belongs to.
-            user_id: The sending user, owner of the assistant.
-
-        Returns:
-            The (video page URL, thumbnail URL) pair, or ("", "").
-        """
-        return cls.assistant_video_urls(cls.active_assistant(db, prospect_id, user_id))
 
     @staticmethod
     def display_website(url: str | None) -> str:
@@ -386,7 +320,9 @@ class EmailVariables:
             The variable name to value map, ready for template substitution.
         """
         first, last, gender = cls.resolved_contact(db, prospect.id)
-        assistant: AiAssistant | None = cls.active_assistant(db, prospect.id, user_id)
+        assistant: AiAssistant | None = ai_assistant_service.get_active_for_prospect(
+            db, prospect_id=prospect.id, user_id=user_id
+        )
         assistant_video_link, assistant_video_thumbnail = (
             cls.assistant_video_urls(assistant) if include_assistant_video else ("", "")
         )

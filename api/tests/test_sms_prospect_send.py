@@ -5,7 +5,6 @@ import asyncio
 import pytest
 from sqlalchemy.orm import Session
 
-import services.email_variables as email_variables_module
 import services.sms_service as sms_module
 from models.ai_assistant import AiAssistant
 from models.prospect_db import ProspectDB
@@ -15,7 +14,7 @@ from services.ai_assistant.assistant_service import ai_assistant_service
 from services.sms_service import SmsService
 from tests.assistant_fakes import AcceptingSmsProvider, AsyncCallRecorder
 
-# A demo slug as long as the site's used to allow (80 characters): no template fits one segment with it.
+# A demo slug over 80 characters: no template fits one segment with it.
 _LONG_SLUG = "garage-de-la-grande-place-et-des-environs-de-charleville-mezieres-et-alentours-sud"
 
 
@@ -88,7 +87,7 @@ def test_a_receptionist_sms_looks_its_assistant_up_once(
         lookups.append((prospect_id, user_id))
         return assistant
 
-    monkeypatch.setattr(email_variables_module.ai_assistant_service, "get_active_for_prospect", counting_lookup)
+    monkeypatch.setattr(ai_assistant_service, "get_active_for_prospect", counting_lookup)
     config = SmsConfig(user_id=7, sender="Dibodev")
     db.add(config)
     db.commit()

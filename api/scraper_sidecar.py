@@ -820,7 +820,7 @@ async def _run_desktop_video_build(
 
     Progress goes to ``_VIDEO_BUILD_PROGRESS`` (polled by the app's modal) and the finished file to
     ``_VIDEO_BUILD_RESULTS`` (served once by /video/build-result). A build still running when the app stops
-    waiting for it is stopped.
+    waiting for it is abandoned.
 
     Args:
         request: The validated build.

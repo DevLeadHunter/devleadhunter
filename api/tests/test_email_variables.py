@@ -125,11 +125,21 @@ def _stub_active_assistant(monkeypatch, assistant: object | None) -> dict[str, t
     return seen
 
 
-def test_the_assistant_lookup_is_scoped_to_the_prospect_and_the_sender(monkeypatch) -> None:
+def test_the_assistant_lookup_is_scoped_to_the_prospect_and_the_sender(db, monkeypatch) -> None:
     """The prospect AND the sending user: never another member's assistant on a shared prospect."""
-    seen = _stub_active_assistant(monkeypatch, SimpleNamespace(slug="agence-immo"))
-    assert EmailVariables.active_assistant(object(), 1, 7).slug == "agence-immo"
-    assert seen["scope"] == (1, 7)
+    seen = _stub_active_assistant(
+        monkeypatch, SimpleNamespace(slug="agence-immo", video_status=None, demo_link_sent_at=None, expires_at=None)
+    )
+    shared_prospect = ProspectDB(
+        name="Agence Immo", category="Agence immobilière", source="google", confidence=2, user_id=3
+    )
+    db.add(shared_prospect)
+    db.commit()
+
+    variables = EmailVariables.build_for_prospect(db, shared_prospect, user_id=7)
+
+    assert seen["scope"] == (shared_prospect.id, 7)
+    assert "/ia/agence-immo" in variables["lien_assistant"]
 
 
 def test_assistant_link_html_renders_anchor_for_active_assistant() -> None:
@@ -151,20 +161,6 @@ def test_assistant_link_html_carries_the_email_channel_and_the_variant() -> None
 def test_assistant_link_html_empty_without_assistant() -> None:
     """`{lien_assistant}` is empty when the prospect has no active assistant."""
     assert EmailVariables.assistant_link_html(None) == ""
-
-
-def test_resolve_assistant_url_is_the_bare_demo_url(monkeypatch) -> None:
-    """The shared resolver returns the raw `/ia/<slug>` URL (no anchor), for SMS to strip its scheme."""
-    _stub_active_assistant(monkeypatch, SimpleNamespace(slug="agence-immo"))
-    url = EmailVariables.resolve_assistant_url(object(), 1, 7)
-    assert url.endswith("/ia/agence-immo")
-    assert "<a " not in url
-
-
-def test_resolve_assistant_url_empty_without_assistant(monkeypatch) -> None:
-    """The shared resolver is empty when the prospect has no active assistant."""
-    _stub_active_assistant(monkeypatch, None)
-    assert EmailVariables.resolve_assistant_url(object(), 1, 7) == ""
 
 
 def test_the_email_variables_look_the_assistant_up_once(db, monkeypatch) -> None:

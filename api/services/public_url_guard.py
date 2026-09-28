@@ -110,8 +110,8 @@ class PublicUrlGuard:
                 (a host answering a public and a private address is refused as a whole).
         """
         addresses: list[IpAddress] = []
-        for value in resolved:
-            address = ipaddress.ip_address(value.split("%", 1)[0])
+        for resolved_address in resolved:
+            address = ipaddress.ip_address(resolved_address.split("%", 1)[0])
             if not cls.is_public_address(address):
                 logger.warning("Fetch refused: %s resolves to the non-public address %s", host, address)
                 raise NonPublicAddressError(f"Adresse non publique refusée : {host} ({address})")

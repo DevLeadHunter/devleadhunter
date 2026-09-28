@@ -47,6 +47,7 @@ from schemas.sms import (
     SmsThreadItemResponse,
     SmsThreadResponse,
 )
+from services.ai_assistant.assistant_service import ai_assistant_service
 from services.auth_service import get_current_user, require_admin
 from services.demo_site_service import demo_site_service
 from services.demo_video_service import has_ready_video, video_page_url
@@ -463,7 +464,7 @@ async def preview_template(
     if template.uses(SmsVariables.OLD_WEBSITE) and not prospect.website:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Ce prospect n'a pas d'ancien site connu.")
     needs_assistant = template.uses(SmsVariables.ASSISTANT_LINK) or template.uses(SmsVariables.ASSISTANT_VIDEO_LINK)
-    assistant = EmailVariables.active_assistant(db, prospect.id, current_user.id)
+    assistant = ai_assistant_service.get_active_for_prospect(db, prospect_id=prospect.id, user_id=current_user.id)
     if needs_assistant and assistant is None:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST, detail="Ce prospect n'a pas d'assistant IA actif à envoyer."

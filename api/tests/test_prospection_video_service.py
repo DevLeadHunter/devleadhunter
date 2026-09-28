@@ -229,7 +229,7 @@ def test_a_failed_capture_ends_failed_with_its_reason(
 def test_an_error_right_after_the_render_starts_still_ends_failed(
     videos: SimpleNamespace, db: Session, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """Resolving the first name used to run outside the try: its failure left the video « generating » forever."""
+    """A failing first-name lookup ends the video in "failed", never in "generating"."""
 
     def broken_first_name(db: Session, prospect_id: int | None) -> str:
         raise RuntimeError("base injoignable")

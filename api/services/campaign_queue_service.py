@@ -33,6 +33,7 @@ from models.email_template import EmailTemplate
 from models.prospect_db import ProspectDB
 from models.sms_reply import SmsReply
 from services.activity_log_service import CATEGORY_CAMPAIGN, STATUS_INFO, activity_log_service
+from services.ai_assistant.assistant_service import ai_assistant_service
 from services.assistant_pricing_service import AssistantPricingService
 from services.contact_lock_service import MODULE_AI_ASSISTANT, MODULE_WEBSITES, contact_lock_service
 from services.email_sending_service import EmailSendingService
@@ -1028,7 +1029,8 @@ class CampaignQueueService:
 
     def _has_ready_assistant_video(self, prospect_id: int, user_id: int) -> bool:
         """Whether the prospect's active receptionist of this user has a generated video."""
-        return bool(EmailVariables.resolve_assistant_video(self.db, prospect_id, user_id)[0])
+        assistant = ai_assistant_service.get_active_for_prospect(self.db, prospect_id=prospect_id, user_id=user_id)
+        return bool(EmailVariables.assistant_video_urls(assistant)[0])
 
     @staticmethod
     def _sms_template_uses_assistant_link(template: SmsTemplate | None) -> bool:

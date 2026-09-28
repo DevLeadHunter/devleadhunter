@@ -164,7 +164,7 @@ class GoogleOAuthClient:
             raise GoogleOAuthError(
                 f"Google a refusé l'accès au profil ({response.status_code})", status_code=response.status_code
             )
-        return self._json(response)
+        return self.json_object(response)
 
     async def _token_request(self, form: dict[str, str], *, timeout_seconds: float) -> dict[str, Any]:
         """POST to the token endpoint."""
@@ -174,7 +174,7 @@ class GoogleOAuthClient:
         except httpx.HTTPError as exc:
             raise GoogleOAuthError("Google injoignable") from exc
         if response.status_code >= 400:
-            error = self._json(response).get("error")
+            error = self.json_object(response).get("error")
             error_code = error if isinstance(error, str) else None
             logger.warning("Google token endpoint refused (%s): %s", response.status_code, error_code)
             raise GoogleOAuthError(
@@ -182,7 +182,7 @@ class GoogleOAuthClient:
                 status_code=response.status_code,
                 error_code=error_code,
             )
-        return self._json(response)
+        return self.json_object(response)
 
     @staticmethod
     def _tokens(payload: dict[str, Any], *, refresh_token: str | None) -> GoogleTokens:
@@ -199,7 +199,7 @@ class GoogleOAuthClient:
         )
 
     @staticmethod
-    def _json(response: httpx.Response) -> dict[str, Any]:
+    def json_object(response: httpx.Response) -> dict[str, Any]:
         """A response's JSON object (empty when it has none)."""
         try:
             payload = response.json()
