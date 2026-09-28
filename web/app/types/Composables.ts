@@ -21,7 +21,7 @@ export type UseAutomationCompletionNotifierReturn = {
 }
 
 export type UseCopyToClipboardReturn = {
-  copy: (text: string) => Promise<void>
+  copy: (text: string) => Promise<boolean>
   copied: Ref<boolean>
 }
 
@@ -146,9 +146,9 @@ export type VideoGenerationCheckPace = {
   everySeconds: number
 }
 
-export type UseVideoGenerationFollowUpReturn = {
+export type UseVideoGenerationChecksReturn = {
   isTakingLongerThanExpected: Ref<boolean>
-  start: () => void
-  stop: () => void
-  refreshNow: () => Promise<void>
+  startChecks: () => void
+  stopChecks: () => void
+  checkNow: () => Promise<void>
 }

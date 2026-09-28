@@ -3,7 +3,7 @@ export type AssistantActionsCardProps = {
   isRegenerating: boolean
   isSendingClientLink: boolean
   isRevokingClientLinks: boolean
-  clientSpaceLinkToCopy: string | null
+  clientSpaceLinkForManualCopy: string | null
   isMarkingSold: boolean
   isDeleting: boolean
 }

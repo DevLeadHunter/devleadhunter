@@ -6,7 +6,7 @@ import type {
 } from '~/types/AdminStorage'
 import { ApiClient } from './api'
 
-/** Inspects and manages the Cloudflare R2 bucket for the admin storage page. */
+/** Inspects and manages the Cloudflare R2 bucket. */
 export class AdminStorageService {
   /**
    * List the bucket objects.
