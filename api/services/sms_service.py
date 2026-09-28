@@ -11,6 +11,7 @@ mandatory « STOP au 36180 » opt-out mention.
 from __future__ import annotations
 
 import logging
+import re
 from datetime import UTC, datetime
 
 from sqlalchemy import func, select
@@ -50,6 +51,8 @@ logger = logging.getLogger(__name__)
 # Mandatory opt-out mention appended to every marketing SMS (36180 = the free
 # French STOP short code operators route back to the provider).
 _STOP_MENTION: str = " STOP au 36180"
+# The receptionist's pages in a body: its demo (/ia/…) or its video (/va/…), the short links (/s/ia/…) included.
+_ASSISTANT_PAGE_LINK: re.Pattern[str] = re.compile(r"/(?:s/)?(?:ia|va)/[\w-]+")
 
 
 class SmsSendOutcome:
@@ -406,6 +409,19 @@ class SmsService:
         return await self._send_and_log(db, message=message)
 
     @staticmethod
+    def is_assistant_message(message: SmsMessage) -> bool:
+        """
+        Whether an SMS belongs to the receptionist module: a service message, or one linking its demo or video.
+
+        Args:
+            message: The SMS row.
+
+        Returns:
+            ``True`` for a receptionist SMS (its alerts, confirmations and reminders included).
+        """
+        return message.kind == SmsMessageKind.SERVICE.value or bool(_ASSISTANT_PAGE_LINK.search(message.body or ""))
+
+    @staticmethod
     def _start_assistant_ttl_if_linked(db: Session, *, user_id: int, prospect_id: int, body: str) -> None:
         """Start the assistant demo countdown when a sent SMS carries its link (idempotent); never raises."""
         from services.ai_assistant.assistant_service import ai_assistant_service
@@ -509,6 +525,7 @@ class SmsService:
             event_name="sms_sent" if success else "sms_failed",
             prospect_id=message.prospect_id,
             fallback_name=message.recipient_name or message.to_e164,
+            is_assistant_module=self.is_assistant_message(message),
         )
 
     def record_reply(

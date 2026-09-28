@@ -563,6 +563,7 @@ async def receive_dlr_callback(request: Request, db: Session = Depends(get_db)) 
             prospect_id=message.prospect_id,
             fallback_name=message.recipient_name or message.to_e164,
             detail=detail if message.status == SmsStatus.FAILED.value else None,
+            is_assistant_module=sms_service.is_assistant_message(message),
         )
     return {"status": "ok"}
 
@@ -625,6 +626,7 @@ async def receive_stop_callback(request: Request, db: Session = Depends(get_db))
             event_name="sms_stop",
             prospect_id=message.prospect_id,
             fallback_name=message.recipient_name or message.to_e164,
+            is_assistant_module=sms_service.is_assistant_message(message),
         )
     return {"status": "ok"}
 
