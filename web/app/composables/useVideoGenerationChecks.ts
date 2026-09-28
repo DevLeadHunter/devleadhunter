@@ -21,14 +21,14 @@ export function useVideoGenerationChecks(
   const isTakingLongerThanExpected: Ref<boolean> = ref(false)
   let nextCheckTimer: ReturnType<typeof setTimeout> | null = null
   let checksStartedAt: number = 0
-  let isFollowing: boolean = false
+  let areChecksRunning: boolean = false
   let isScopeDisposed: boolean = false
 
   /** Follow the generation from now on, from the fastest pace. */
   function startChecks(): void {
     if (isScopeDisposed) return
     stopChecks()
-    isFollowing = true
+    areChecksRunning = true
     isTakingLongerThanExpected.value = false
     checksStartedAt = Date.now()
     scheduleNextCheck()
@@ -36,7 +36,7 @@ export function useVideoGenerationChecks(
 
   /** Stop checking the video status. */
   function stopChecks(): void {
-    isFollowing = false
+    areChecksRunning = false
     if (nextCheckTimer !== null) {
       clearTimeout(nextCheckTimer)
       nextCheckTimer = null
@@ -45,7 +45,7 @@ export function useVideoGenerationChecks(
 
   /** Plan the next check at the pace of the time spent, or give up once the last pace is over. */
   function scheduleNextCheck(): void {
-    if (!isFollowing || nextCheckTimer !== null) return
+    if (!areChecksRunning || nextCheckTimer !== null) return
     const elapsedMinutes: number = (Date.now() - checksStartedAt) / 60000
     const pace: VideoGenerationCheckPace | undefined = VIDEO_GENERATION_CHECK_PACE.find(
       (candidate: VideoGenerationCheckPace): boolean => elapsedMinutes < candidate.untilMinutes,
@@ -68,7 +68,7 @@ export function useVideoGenerationChecks(
     } catch {
       // A missed check is not worth a toast.
     }
-    if (isFollowing && isVideoGenerating()) scheduleNextCheck()
+    if (areChecksRunning && isVideoGenerating()) scheduleNextCheck()
   }
 
   /**
