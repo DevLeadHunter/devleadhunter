@@ -18,7 +18,7 @@ from typing import Any
 import httpx
 
 from core.config import settings
-from services.llm_service import LlmCompletion, LlmStreamUsage, read_chat_stream_line
+from services.llm_completion import LlmCompletion, LlmStreamUsage, read_chat_stream_line
 
 logger = logging.getLogger(__name__)
 
@@ -74,18 +74,13 @@ class MistralService:
         """
         if not self.is_configured:
             return None
-        payload: dict[str, Any] = {
-            "model": model,
-            "messages": messages,
-            "temperature": temperature,
-            "max_tokens": max_tokens,
-        }
-        if json_mode:
-            payload["response_format"] = {"type": "json_object"}
+        payload = LlmCompletion.request_payload(
+            messages, model=model, max_tokens=max_tokens, temperature=temperature, json_mode=json_mode
+        )
         started = time.monotonic()
         try:
             async with httpx.AsyncClient(timeout=timeout) as client:
-                data = await self._post(client, payload, retries=retries)
+                response_payload = await self._post(client, payload, retries=retries)
         except MistralRequestRejectedError:
             raise
         except httpx.HTTPStatusError as exc:
@@ -96,18 +91,11 @@ class MistralService:
         except Exception as exc:
             logger.warning("Mistral call failed (%s): %s", model, exc)
             return None
-        text = self._text(data)
-        if text is None:
+        completion = LlmCompletion.from_response(response_payload, requested_model=model, started=started)
+        if completion is None or not completion.text:
             logger.warning("Mistral answer without content (%s)", model)
             return None
-        usage: dict[str, Any] = data.get("usage") or {}
-        return LlmCompletion(
-            text=text,
-            model=str(data.get("model") or model),
-            prompt_tokens=usage.get("prompt_tokens"),
-            completion_tokens=usage.get("completion_tokens"),
-            latency_ms=int((time.monotonic() - started) * 1000),
-        )
+        return completion
 
     async def complete_stream(
         self,
@@ -143,13 +131,9 @@ class MistralService:
         """
         if not self.is_configured:
             return
-        payload: dict[str, Any] = {
-            "model": model,
-            "messages": messages,
-            "temperature": temperature,
-            "max_tokens": max_tokens,
-            "stream": True,
-        }
+        payload = LlmCompletion.request_payload(
+            messages, model=model, max_tokens=max_tokens, temperature=temperature, stream=True
+        )
         headers = {"Authorization": f"Bearer {settings.mistral_api_key}"}
         try:
             async with httpx.AsyncClient(timeout=timeout) as client:
@@ -206,21 +190,6 @@ class MistralService:
         except ValueError:
             delay = 1.0
         return max(0.0, min(delay, _MAX_RETRY_DELAY_SECONDS))
-
-    @staticmethod
-    def _text(data: dict[str, Any]) -> str | None:
-        """The answer text: a plain string, or the text chunks of a structured content."""
-        try:
-            content = data["choices"][0]["message"]["content"]
-        except (KeyError, IndexError, TypeError):
-            return None
-        if isinstance(content, list):
-            content = "".join(
-                str(chunk.get("text", ""))
-                for chunk in content
-                if isinstance(chunk, dict) and chunk.get("type") == "text"
-            )
-        return content.strip() if isinstance(content, str) and content.strip() else None
 
 
 mistral_service = MistralService()

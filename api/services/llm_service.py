@@ -15,12 +15,12 @@ import logging
 import re
 import time
 from collections.abc import AsyncIterator
-from dataclasses import dataclass
 from typing import Any
 
 import httpx
 
 from core.config import settings
+from services.llm_completion import LlmCompletion, LlmStreamUsage, read_chat_stream_line
 
 logger = logging.getLogger(__name__)
 
@@ -52,77 +52,6 @@ def _uses_reasoning(model: str) -> bool:
     """Whether the model id is a reasoning model that needs ``reasoning_effort``."""
     lowered = model.lower()
     return any(hint in lowered for hint in _REASONING_MODEL_HINTS)
-
-
-@dataclass(frozen=True)
-class LlmCompletion:
-    """A model answer with what it cost: the text, the model, the tokens and how long it took."""
-
-    text: str
-    model: str
-    prompt_tokens: int | None
-    completion_tokens: int | None
-    latency_ms: int
-
-
-@dataclass
-class LlmStreamUsage:
-    """What a streamed call reports along the way: the served model and, on its last chunk, the token counts."""
-
-    model: str | None = None
-    prompt_tokens: int | None = None
-    completion_tokens: int | None = None
-
-
-def read_chat_stream_line(line: str, usage: LlmStreamUsage | None = None) -> str | None:
-    """
-    The text delta of one line of an OpenAI-style chat completions stream (Mistral and Groq speak it).
-
-    Args:
-        line: One line of the ``text/event-stream`` body.
-        usage: Filled with the model and the token counts when a chunk reports them (the last one does).
-
-    Returns:
-        The delta text, or None for a blank line, the ``[DONE]`` sentinel or a chunk without text.
-    """
-    if not line.startswith("data:"):
-        return None
-    data = line[len("data:") :].strip()
-    if not data or data == "[DONE]":
-        return None
-    try:
-        chunk = json.loads(data)
-    except ValueError:
-        return None
-    if not isinstance(chunk, dict):
-        return None
-    if usage is not None:
-        _read_stream_usage(chunk, usage)
-    try:
-        content = chunk["choices"][0]["delta"].get("content")
-    except (KeyError, IndexError, TypeError, AttributeError):
-        return None
-    if isinstance(content, list):
-        content = "".join(
-            str(part.get("text", "")) for part in content if isinstance(part, dict) and part.get("type") == "text"
-        )
-    return content if isinstance(content, str) and content else None
-
-
-def _read_stream_usage(chunk: dict[str, Any], usage: LlmStreamUsage) -> None:
-    """Keep the model and the tokens a chunk reports (Groq puts its usage under ``x_groq``)."""
-    if isinstance(chunk.get("model"), str) and chunk["model"]:
-        usage.model = chunk["model"]
-    reported = chunk.get("usage")
-    if not isinstance(reported, dict):
-        extra = chunk.get("x_groq")
-        reported = extra.get("usage") if isinstance(extra, dict) else None
-    if not isinstance(reported, dict):
-        return
-    if isinstance(reported.get("prompt_tokens"), int):
-        usage.prompt_tokens = reported["prompt_tokens"]
-    if isinstance(reported.get("completion_tokens"), int):
-        usage.completion_tokens = reported["completion_tokens"]
 
 
 def _format_sender_identity(*, sender_name: str, company_name: str | None) -> str:
@@ -197,29 +126,20 @@ class LLMService:
         if not self.is_configured:
             return None
         chosen_model = model or settings.groq_model
-        payload: dict[str, Any] = {
-            "model": chosen_model,
-            "messages": messages,
-            "temperature": temperature,
-            "max_tokens": max(max_tokens, _MIN_MAX_TOKENS),
-        }
-        if json_mode:
-            payload["response_format"] = {"type": "json_object"}
+        payload = LlmCompletion.request_payload(
+            messages,
+            model=chosen_model,
+            max_tokens=max(max_tokens, _MIN_MAX_TOKENS),
+            temperature=temperature,
+            json_mode=json_mode,
+        )
         if _uses_reasoning(chosen_model):
             payload["reasoning_effort"] = "low"
         started = time.monotonic()
         try:
             async with httpx.AsyncClient(timeout=timeout) as client:
                 response = await self._post_with_retries(client, payload)
-                data: dict[str, Any] = response.json()
-                usage: dict[str, Any] = data.get("usage") or {}
-                return LlmCompletion(
-                    text=data["choices"][0]["message"]["content"].strip(),
-                    model=str(data.get("model") or chosen_model),
-                    prompt_tokens=usage.get("prompt_tokens"),
-                    completion_tokens=usage.get("completion_tokens"),
-                    latency_ms=int((time.monotonic() - started) * 1000),
-                )
+                completion = LlmCompletion.from_response(response.json(), requested_model=chosen_model, started=started)
         except httpx.HTTPStatusError as exc:
             logger.warning(
                 "Groq call failed (%s): HTTP %s %s", chosen_model, exc.response.status_code, exc.response.text[:300]
@@ -228,6 +148,9 @@ class LLMService:
         except Exception as exc:
             logger.warning("Groq call failed (%s): %s", chosen_model, exc)
             return None
+        if completion is None:
+            logger.warning("Groq answer without content (%s)", chosen_model)
+        return completion
 
     async def complete_stream(
         self,
@@ -260,13 +183,13 @@ class LLMService:
         if not self.is_configured:
             return
         chosen_model = model or settings.groq_model
-        payload: dict[str, Any] = {
-            "model": chosen_model,
-            "messages": messages,
-            "temperature": temperature,
-            "max_tokens": max(max_tokens, _MIN_MAX_TOKENS),
-            "stream": True,
-        }
+        payload = LlmCompletion.request_payload(
+            messages,
+            model=chosen_model,
+            max_tokens=max(max_tokens, _MIN_MAX_TOKENS),
+            temperature=temperature,
+            stream=True,
+        )
         if _uses_reasoning(chosen_model):
             payload["reasoning_effort"] = "low"
         try:
