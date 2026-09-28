@@ -279,6 +279,11 @@ class Settings(BaseSettings):
     mistral_eur_per_mtok_out: float = Field(default=0.3, alias="MISTRAL_EUR_PER_MTOK_OUT")
     groq_eur_per_mtok_in: float = Field(default=0.15, alias="GROQ_EUR_PER_MTOK_IN")
     groq_eur_per_mtok_out: float = Field(default=0.75, alias="GROQ_EUR_PER_MTOK_OUT")
+    assistant_daily_visitor_message_cap: int = Field(
+        default=400,
+        alias="ASSISTANT_DAILY_VISITOR_MESSAGE_CAP",
+        description="Visitor messages an assistant answers with the model per business day, before a fixed reply",
+    )
 
     # Fallback .fr first-year price (HT, EUR) shown before purchase when the live OVH public
     # catalog is unreachable. The catalog (services/domain/ovh_catalog.py) is the source of truth.

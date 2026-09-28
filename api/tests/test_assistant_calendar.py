@@ -683,7 +683,7 @@ def test_the_confirmation_and_the_reminder_fit_one_sms_in_every_language() -> No
     assert "Ihr Termin am Do. 24.09. um 14:00" in AppointmentTexts.confirmation_sms(
         card=card, start_local=_paris(24, 14), type_label=None, language="de"
     )
-    assert AppointmentTexts.language("lu") == "fr"
+    assert AppointmentTexts.language("lb") == "fr"
 
 
 def test_a_business_name_outside_gsm7_never_costs_the_visitor_their_sms() -> None:
@@ -914,6 +914,8 @@ def test_the_lead_route_books_the_slot_or_answers_409_when_it_was_taken(
     with pytest.raises(HTTPException) as refused:
         asyncio.run(routes.submit_assistant_lead(assistant.slug, taken, VISITOR_REQUEST, db))
     assert refused.value.status_code == 409
+    # The widget reads the code, never the sentence: it tells the visitor in their language and reloads the slots.
+    assert refused.value.detail["code"] == "slot_taken"
 
 
 def test_the_chat_opens_the_appointment_panel_when_the_visitor_asks_for_one() -> None:
