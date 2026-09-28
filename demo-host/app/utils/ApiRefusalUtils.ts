@@ -22,4 +22,16 @@ export class ApiRefusalUtils {
     const detail: unknown = (error as ApiRefusal | null)?.data?.detail
     return typeof detail === 'string' ? detail : null
   }
+
+  /**
+   * The machine-readable code of a refused call, when the API sent one (`detail: { code, message }`).
+   * @param error - What `$fetch` threw.
+   * @returns The code, or null (a sentence, field errors, no answer).
+   */
+  static code(error: unknown): string | null {
+    const detail: unknown = (error as ApiRefusal | null)?.data?.detail
+    if (typeof detail !== 'object' || detail === null || Array.isArray(detail)) return null
+    const code: unknown = (detail as Record<string, unknown>).code
+    return typeof code === 'string' ? code : null
+  }
 }
