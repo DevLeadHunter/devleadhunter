@@ -108,7 +108,7 @@ function reservePreviewSlot(): PreviewSlot {
  * @returns The controls to wire onto the card's iframe.
  */
 export function useLazyPreview(
-  previewTarget: Ref<HTMLElement | null>,
+  previewTarget: Readonly<Ref<HTMLElement | null>>,
   isPreviewEnabled: () => boolean,
 ): UseLazyPreviewReturn {
   const shouldRenderPreview: Ref<boolean> = ref(false)
