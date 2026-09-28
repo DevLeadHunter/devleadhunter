@@ -21,7 +21,7 @@ export type UseAutomationCompletionNotifierReturn = {
 }
 
 export type UseCopyToClipboardReturn = {
-  copy: (text: string) => Promise<void>
+  copy: (text: string) => Promise<boolean>
   copied: Ref<boolean>
 }
 

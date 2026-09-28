@@ -60,17 +60,7 @@
 
     <div class="border-t border-[var(--app-line)] pt-4">
       <h3 class="text-sm font-semibold text-[var(--app-ink)]">Lien de la démo</h3>
-      <div class="mt-2 flex items-center gap-2">
-        <input :value="props.assistant.demo_url" readonly class="input-field h-9 flex-1 truncate text-xs" />
-        <button
-          type="button"
-          class="flex h-9 w-9 shrink-0 cursor-pointer items-center justify-center rounded border border-[var(--app-line)] text-[var(--app-ink-soft)] hover:text-[var(--app-ink)]"
-          :title="isDemoUrlCopied ? 'Lien copié !' : 'Copier le lien'"
-          @click="copyDemoUrl"
-        >
-          <UIcon :name="isDemoUrlCopied ? 'i-lucide-check' : 'i-lucide-copy'" class="h-4 w-4" />
-        </button>
-      </div>
+      <UiCopyLinkField :url="props.assistant.demo_url" link-label="Lien de la démo" is-link-label-hidden class="mt-2" />
     </div>
 
     <div class="border-t border-[var(--app-line)] pt-4">
@@ -92,11 +82,11 @@
 </template>
 
 <script lang="ts" setup>
-import type { ComputedRef, PropType, Ref } from 'vue'
+import type { ComputedRef, PropType } from 'vue'
 import type { AiAssistantSummary } from '~/types/AiAssistant'
 import type { AssistantSummaryCardProps } from '~/types/AssistantSummaryCard'
 import type { UseToastReturn } from '~/types/Composables'
-import { computed, ref } from 'vue'
+import { computed } from 'vue'
 import { useToast } from '~/composables/useToast'
 import { assistantLanguagesLabel, assistantLifetimeLabel } from '~/utils/aiAssistantLabels'
 import { ClipboardCopy } from '~/utils/clipboardCopy'
@@ -110,8 +100,6 @@ const props: AssistantSummaryCardProps = defineProps({
 })
 
 const toast: UseToastReturn = useToast()
-
-const isDemoUrlCopied: Ref<boolean> = ref(false)
 
 const lifetimeLabel: ComputedRef<string> = computed((): string => assistantLifetimeLabel(props.assistant))
 
@@ -131,21 +119,6 @@ const googleProfileLabel: ComputedRef<string> = computed((): string => {
   const linkedAt: string | null = props.assistant.google_profile_linked_at
   return linkedAt ? `Adresse posée le ${formatNumericDate(linkedAt)}` : 'Adresse pas encore posée'
 })
-
-/**
- * Copy the demo link and show a check for a moment; say so when the browser refuses.
- * @returns A promise resolved once the copy was tried.
- */
-async function copyDemoUrl(): Promise<void> {
-  if (!(await ClipboardCopy.copyText(props.assistant.demo_url))) {
-    toast.error('Copie refusée par le navigateur : sélectionnez le lien pour le copier.')
-    return
-  }
-  isDemoUrlCopied.value = true
-  setTimeout((): void => {
-    isDemoUrlCopied.value = false
-  }, 2000)
-}
 
 /**
  * Copy the embed snippet the client pastes on their site.
