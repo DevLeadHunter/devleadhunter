@@ -22,6 +22,7 @@ from typing import BinaryIO, ClassVar, Generic, TypeVar
 
 from sqlalchemy.orm import Session
 
+from core.clock import naive_utc_now
 from core.config import settings
 from enums.demo_video_status import DemoVideoStatus
 from models.ai_assistant import AiAssistant
@@ -569,7 +570,7 @@ class ProspectionVideoService(ABC, Generic[VideoSubjectT]):
         """
         subject.video_status = DemoVideoStatus.READY.value
         subject.video_error = None
-        subject.video_generated_at = video_pipeline.naive_utc_now()
+        subject.video_generated_at = naive_utc_now()
         db.commit()
         db.refresh(subject)
 

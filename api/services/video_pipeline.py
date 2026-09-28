@@ -15,7 +15,6 @@ import logging
 import time
 from collections.abc import Callable, Coroutine
 from dataclasses import dataclass
-from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any, TypeAlias
 
@@ -166,11 +165,6 @@ class GenerationRuns:
 
 
 generation_runs = GenerationRuns()
-
-
-def naive_utc_now() -> datetime:
-    """Current time as naive UTC, the storage convention."""
-    return datetime.now(UTC).replace(tzinfo=None)
 
 
 def available_memory_mb() -> float | None:
