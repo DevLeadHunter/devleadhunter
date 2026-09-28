@@ -222,7 +222,6 @@ class SmsService:
         template = find_sms_template(template_key or default_key)
         if template is None:
             return SmsSendOutcome(sent=False, reason="Modèle SMS introuvable")
-        # Looked up once for the whole message: the template's fallback, the guard, the links and the countdown.
         assistant: AiAssistant | None = EmailVariables.active_assistant(db, prospect.id, user_id)
         # A video template with no generated video falls back to its demo-link sibling.
         template = resolve_sms_template(
