@@ -179,6 +179,8 @@ MIGRATION_MODULES: list[tuple[str, str]] = [
     ("add_ai_assistant_limits", "migrations.add_ai_assistant_limits"),
     ("add_ai_assistant_request_event", "migrations.add_ai_assistant_request_event"),
     ("add_ai_assistant_client_link_version", "migrations.add_ai_assistant_client_link_version"),
+    ("add_ai_assistant_message_cap_alerted_on", "migrations.add_ai_assistant_message_cap_alerted_on"),
+    ("rename_assistant_language_lu_to_lb", "migrations.rename_assistant_language_lu_to_lb"),
 ]
 
 # Modules of this package that are not migrations and must not be registered.

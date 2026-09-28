@@ -9,17 +9,22 @@ from __future__ import annotations
 
 import time
 from collections import deque
+from collections.abc import Callable
 
 # Above this many tracked keys, the oldest are dropped so memory stays bounded under a flood.
 _MAX_TRACKED_KEYS = 50_000
 
 
 class SlidingWindowRateLimiter:
-    """Allow at most ``max_events`` per ``window_seconds`` for each key."""
+    """Allow at most ``max_events`` per ``window_seconds`` for each key.
 
-    def __init__(self, max_events: int, window_seconds: float) -> None:
+    The window is read on ``clock`` (``time.monotonic`` by default): a test passes its own to move time at will.
+    """
+
+    def __init__(self, max_events: int, window_seconds: float, *, clock: Callable[[], float] = time.monotonic) -> None:
         self._max_events = max_events
         self._window_seconds = window_seconds
+        self._clock = clock
         self._hits: dict[str, deque[float]] = {}
 
     def allow(self, key: str) -> bool:
@@ -32,7 +37,7 @@ class SlidingWindowRateLimiter:
         Returns:
             True when the hit is allowed, False when the budget is exceeded.
         """
-        now = time.monotonic()
+        now = self._clock()
         cutoff = now - self._window_seconds
         bucket = self._hits.get(key)
         if bucket is None:

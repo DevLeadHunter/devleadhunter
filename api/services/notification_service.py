@@ -576,6 +576,48 @@ class NotificationService:
             tag=f"assistant-inactive-{prospect_id}" if prospect_id else None,
         )
 
+    async def notify_assistant_daily_cap_reached(
+        self,
+        db: Session,
+        *,
+        user_id: int,
+        prospect_id: int | None,
+        fallback_name: str,
+        cap: int,
+    ) -> None:
+        """
+        Warn the operator that an assistant answered its daily cap of visitor messages (fixed replies until midnight).
+
+        Args:
+            db: Active database session (to resolve the prospect's name).
+            user_id: Owner of the assistant — the notification recipient.
+            prospect_id: Prospect the assistant was generated for, when known.
+            fallback_name: Name shown when the prospect can't be resolved.
+            cap: The visitor messages a day the model answers.
+        """
+        prospect_name = self._resolve_prospect_name(db, prospect_id, fallback_name)
+        activity_log_service.record(
+            category=CATEGORY_ASSISTANT,
+            action="assistant_daily_cap_reached",
+            status=STATUS_WARNING,
+            title=f"{prospect_name} · plafond de {cap} messages atteint aujourd'hui",
+            user_id=user_id,
+            entity_type="prospect",
+            entity_id=prospect_id,
+        )
+        await self._dispatch(
+            user_id=user_id,
+            category="assistant",
+            level="warning",
+            title=f"🧯 {prospect_name}",
+            body=(
+                f"{_MODULE_TAG_ASSISTANT} · {cap} messages de visiteurs aujourd'hui : "
+                "la réceptionniste propose le rappel jusqu'à minuit"
+            ),
+            url=_ASSISTANTS_URL,
+            tag=f"assistant-daily-cap-{prospect_id}" if prospect_id else None,
+        )
+
     async def notify_assistant_interest(
         self,
         db: Session,
