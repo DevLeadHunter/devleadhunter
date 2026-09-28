@@ -140,3 +140,15 @@ export type UseDragToReorderReturn<T> = {
   onGripPointerDown: (event: PointerEvent, item: T) => void
   cancelDrag: () => Promise<void>
 }
+
+export type VideoGenerationCheckPace = {
+  untilMinutes: number
+  everySeconds: number
+}
+
+export type UseVideoGenerationFollowUpReturn = {
+  isTakingLongerThanExpected: Ref<boolean>
+  start: () => void
+  stop: () => void
+  refreshNow: () => Promise<void>
+}

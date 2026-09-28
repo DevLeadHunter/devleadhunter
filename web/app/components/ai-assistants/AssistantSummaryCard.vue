@@ -13,7 +13,7 @@
         </div>
         <div class="flex justify-between gap-3">
           <dt class="text-[var(--app-ink-soft)]">Langues</dt>
-          <dd class="text-right text-[var(--app-ink)] uppercase">{{ props.assistant.languages.join(' · ') }}</dd>
+          <dd class="text-right text-[var(--app-ink)]">{{ assistantLanguagesLabel(props.assistant.languages) }}</dd>
         </div>
         <div v-if="props.assistant.tone" class="flex justify-between gap-3">
           <dt class="text-[var(--app-ink-soft)]">Ton</dt>
@@ -65,10 +65,10 @@
         <button
           type="button"
           class="flex h-9 w-9 shrink-0 cursor-pointer items-center justify-center rounded border border-[var(--app-line)] text-[var(--app-ink-soft)] hover:text-[var(--app-ink)]"
-          :title="copied ? 'Lien copié !' : 'Copier le lien'"
-          @click="copy(props.assistant.demo_url)"
+          :title="isDemoUrlCopied ? 'Lien copié !' : 'Copier le lien'"
+          @click="copyDemoUrl"
         >
-          <UIcon :name="copied ? 'i-lucide-check' : 'i-lucide-copy'" class="h-4 w-4" />
+          <UIcon :name="isDemoUrlCopied ? 'i-lucide-check' : 'i-lucide-copy'" class="h-4 w-4" />
         </button>
       </div>
     </div>
@@ -92,13 +92,14 @@
 </template>
 
 <script lang="ts" setup>
-import type { ComputedRef, PropType } from 'vue'
-import { computed } from 'vue'
+import type { ComputedRef, PropType, Ref } from 'vue'
 import type { AiAssistantSummary } from '~/types/AiAssistant'
 import type { AssistantSummaryCardProps } from '~/types/AssistantSummaryCard'
-import type { UseCopyToClipboardReturn, UseToastReturn } from '~/types/Composables'
+import type { UseToastReturn } from '~/types/Composables'
+import { computed, ref } from 'vue'
 import { useToast } from '~/composables/useToast'
-import { assistantLifetimeLabel } from '~/utils/aiAssistantLabels'
+import { assistantLanguagesLabel, assistantLifetimeLabel } from '~/utils/aiAssistantLabels'
+import { ClipboardCopy } from '~/utils/clipboardCopy'
 import { formatNumericDate } from '~/utils/date'
 
 const props: AssistantSummaryCardProps = defineProps({
@@ -109,7 +110,8 @@ const props: AssistantSummaryCardProps = defineProps({
 })
 
 const toast: UseToastReturn = useToast()
-const { copy, copied }: UseCopyToClipboardReturn = useCopyToClipboard()
+
+const isDemoUrlCopied: Ref<boolean> = ref(false)
 
 const lifetimeLabel: ComputedRef<string> = computed((): string => assistantLifetimeLabel(props.assistant))
 
@@ -131,11 +133,29 @@ const googleProfileLabel: ComputedRef<string> = computed((): string => {
 })
 
 /**
+ * Copy the demo link and show a check for a moment; say so when the browser refuses.
+ * @returns A promise resolved once the copy was tried.
+ */
+async function copyDemoUrl(): Promise<void> {
+  if (!(await ClipboardCopy.copyText(props.assistant.demo_url))) {
+    toast.error('Copie refusée par le navigateur : sélectionnez le lien pour le copier.')
+    return
+  }
+  isDemoUrlCopied.value = true
+  setTimeout((): void => {
+    isDemoUrlCopied.value = false
+  }, 2000)
+}
+
+/**
  * Copy the embed snippet the client pastes on their site.
- * @returns A promise resolved once copied.
+ * @returns A promise resolved once the copy was tried.
  */
 async function copySnippet(): Promise<void> {
-  await copy(props.assistant.embed_snippet)
-  toast.success('Script copié : à coller avant </body> du site du client.')
+  if (await ClipboardCopy.copyText(props.assistant.embed_snippet)) {
+    toast.success('Script copié : à coller avant </body> du site du client.')
+  } else {
+    toast.error('Copie refusée par le navigateur : sélectionnez le script pour le copier.')
+  }
 }
 </script>

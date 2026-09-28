@@ -41,7 +41,7 @@
 
 <script lang="ts" setup>
 import type { UseDesktopRuntimeReturn } from '~/types/Composables'
-import type { StorageActionResponse } from '~/services/adminStorageService'
+import type { StorageActionResponse } from '~/types/AdminStorage'
 import type { ToolbarPosition } from '~/types/DevLeadHunterDevToolbar'
 import type { CSSProperties, Ref } from 'vue'
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'

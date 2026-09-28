@@ -337,8 +337,9 @@ import type {
   StorageHealthResponse,
   StorageListResponse,
   StorageObject,
+  StorageObjectKind,
   StorageUploadResponse,
-} from '~/services/adminStorageService'
+} from '~/types/AdminStorage'
 import { computed, onMounted, ref } from 'vue'
 import { AdminStorageService } from '~/services/adminStorageService'
 import { useToast } from '~/composables/useToast'
@@ -375,8 +376,18 @@ const FILTERS: Array<{ label: string; prefix: string }> = [
   { label: 'Imports manuels', prefix: 'uploads/manual/' },
 ]
 
+const VIDEO_KINDS: StorageObjectKind[] = ['website_video', 'website_background', 'assistant_video', 'presenter']
+
+const IMAGE_KINDS: StorageObjectKind[] = [
+  'website_thumbnail',
+  'assistant_thumbnail',
+  'support',
+  'prospect_photo',
+  'assistant_photo',
+]
+
 /** Icon per object category. */
-const KIND_ICONS: Record<string, string> = {
+const KIND_ICONS: Record<StorageObjectKind, string> = {
   website_video: 'i-lucide-video',
   website_thumbnail: 'i-lucide-image',
   website_background: 'i-lucide-film',
@@ -392,7 +403,7 @@ const KIND_ICONS: Record<string, string> = {
 }
 
 /** Human label per object category — distinguishes a prospect's video from its thumbnail. */
-const KIND_LABELS: Record<string, string> = {
+const KIND_LABELS: Record<StorageObjectKind, string> = {
   website_video: 'Vidéo',
   website_thumbnail: 'Vignette',
   website_background: 'Fond de montage',
@@ -490,21 +501,21 @@ const healthSuffix: ComputedRef<string> = computed((): string => {
 })
 
 /**
- * Icon matching an object category.
- * @param kind - Raw category from the API.
+ * Icon matching an object category (the generic file icon for a category this page does not know yet).
+ * @param kind - Category from the API.
  * @returns Lucide icon name.
  */
-function kindIcon(kind: string): string {
-  return KIND_ICONS[kind] ?? KIND_ICONS.other!
+function kindIcon(kind: StorageObjectKind): string {
+  return KIND_ICONS[kind] ?? KIND_ICONS.other
 }
 
 /**
- * Human label matching an object category.
- * @param kind - Raw category from the API.
+ * Human label matching an object category (« Fichier » for a category this page does not know yet).
+ * @param kind - Category from the API.
  * @returns Localised label.
  */
-function kindLabel(kind: string): string {
-  return KIND_LABELS[kind] ?? KIND_LABELS.other!
+function kindLabel(kind: StorageObjectKind): string {
+  return KIND_LABELS[kind] ?? KIND_LABELS.other
 }
 
 /**
@@ -534,7 +545,7 @@ function keyExtension(key: string): string {
  * @returns True for demo/presenter videos and for hand-uploaded video files.
  */
 function isVideo(item: StorageObject): boolean {
-  if (['website_video', 'website_background', 'assistant_video', 'presenter'].includes(item.kind)) return true
+  if (VIDEO_KINDS.includes(item.kind)) return true
   return item.kind === 'manual' && VIDEO_EXTENSIONS.includes(keyExtension(item.key))
 }
 
@@ -544,11 +555,7 @@ function isVideo(item: StorageObject): boolean {
  * @returns True for thumbnails, support attachments, prospect and quote photos, and hand-uploaded images.
  */
 function isImage(item: StorageObject): boolean {
-  if (
-    ['website_thumbnail', 'assistant_thumbnail', 'support', 'prospect_photo', 'assistant_photo'].includes(item.kind)
-  ) {
-    return true
-  }
+  if (IMAGE_KINDS.includes(item.kind)) return true
   return item.kind === 'manual' && IMAGE_EXTENSIONS.includes(keyExtension(item.key))
 }
 

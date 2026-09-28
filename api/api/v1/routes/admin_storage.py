@@ -20,6 +20,7 @@ from sqlalchemy.orm import Session
 from core.config import settings
 from core.database import get_db
 from enums.demo_site_status import DemoSiteStatus
+from enums.storage_object_kind import StorageObjectKind
 from models.ai_assistant import AiAssistant
 from models.demo_site import DemoSite
 from models.prospect_db import ProspectDB
@@ -37,9 +38,16 @@ router = APIRouter(prefix="/admin/storage", tags=["admin-storage"])
 # Suffixe des vidéos de fond de montage (intermédiaire, vit et meurt avec sa démo).
 _BACKGROUND_SUFFIX = "-background.mp4"
 # Catégories dont l'expiration suit le TTL de la démo (le reste du bucket est permanent).
-_DEMO_DELIVERABLE_KINDS = ("website_video", "website_thumbnail", "website_background")
+_DEMO_DELIVERABLE_KINDS: tuple[StorageObjectKind, ...] = (
+    StorageObjectKind.WEBSITE_VIDEO,
+    StorageObjectKind.WEBSITE_THUMBNAIL,
+    StorageObjectKind.WEBSITE_BACKGROUND,
+)
 # Same for the receptionist's video and thumbnail, anchored on the receptionist demo they belong to.
-_ASSISTANT_DELIVERABLE_KINDS = ("assistant_video", "assistant_thumbnail")
+_ASSISTANT_DELIVERABLE_KINDS: tuple[StorageObjectKind, ...] = (
+    StorageObjectKind.ASSISTANT_VIDEO,
+    StorageObjectKind.ASSISTANT_THUMBNAIL,
+)
 
 
 class _DemoTtl(Protocol):
@@ -184,7 +192,7 @@ class StorageObject(BaseModel):
     """One object of the bucket, enriched with business context."""
 
     key: str
-    kind: str  # website_video | website_thumbnail | website_background | assistant_video | assistant_thumbnail | presenter | support | prospect_photo | assistant_photo | assistant_document | manual | other
+    kind: StorageObjectKind
     size: int
     last_modified: datetime | None = None
     url: str
@@ -211,7 +219,7 @@ class StorageUploadResponse(BaseModel):
 
     key: str
     url: str
-    kind: str
+    kind: StorageObjectKind
     size: int
     message: str = ""
 
@@ -245,30 +253,34 @@ class DeleteObjectsRequest(BaseModel):
     keys: list[str]
 
 
-def _classify(key: str) -> str:
-    """Map an object key to a human category."""
+def _classify(key: str) -> StorageObjectKind:
+    """Map an object key to its category."""
     if key.startswith(r2_storage.VIDEOS_WEBSITES_PREFIX):
-        return "website_background" if key.endswith(_BACKGROUND_SUFFIX) else "website_video"
+        return (
+            StorageObjectKind.WEBSITE_BACKGROUND
+            if key.endswith(_BACKGROUND_SUFFIX)
+            else StorageObjectKind.WEBSITE_VIDEO
+        )
     if key.startswith(r2_storage.IMAGES_WEBSITES_PREFIX):
-        return "website_thumbnail"
+        return StorageObjectKind.WEBSITE_THUMBNAIL
     if key.startswith(f"{r2_storage.VIDEOS_ASSISTANT_PREFIX}/"):
-        return "assistant_video"
+        return StorageObjectKind.ASSISTANT_VIDEO
     # The trailing slash keeps the quote photos (``images/assistant-photos/``) out.
     if key.startswith(f"{r2_storage.IMAGES_ASSISTANT_PREFIX}/"):
-        return "assistant_thumbnail"
+        return StorageObjectKind.ASSISTANT_THUMBNAIL
     if key.startswith(r2_storage.VIDEOS_PRESENTER_PREFIX):
-        return "presenter"
+        return StorageObjectKind.PRESENTER
     if key.startswith(r2_storage.IMAGES_SUPPORT_PREFIX):
-        return "support"
+        return StorageObjectKind.SUPPORT
     if key.startswith(r2_storage.IMAGES_PROSPECTS_PREFIX):
-        return "prospect_photo"
+        return StorageObjectKind.PROSPECT_PHOTO
     if key.startswith(r2_storage.IMAGES_ASSISTANT_PHOTOS_PREFIX):
-        return "assistant_photo"
+        return StorageObjectKind.ASSISTANT_PHOTO
     if key.startswith(r2_storage.DOCUMENTS_ASSISTANT_PREFIX):
-        return "assistant_document"
+        return StorageObjectKind.ASSISTANT_DOCUMENT
     if key.startswith(r2_storage.MANUAL_UPLOADS_PREFIX):
-        return "manual"
-    return "other"
+        return StorageObjectKind.MANUAL
+    return StorageObjectKind.OTHER
 
 
 def _slug_from_key(key: str) -> str | None:
@@ -380,13 +392,13 @@ async def list_storage_objects(
             is_expired, expires_in, ttl_pending = _expiry_state(demo_by_slug.get(slug or ""), now)
         elif kind in _ASSISTANT_DELIVERABLE_KINDS:
             is_expired, expires_in, ttl_pending = _expiry_state(assistant_by_slug.get(slug or ""), now)
-        elif kind == "assistant_photo" and entry["last_modified"] is not None:
+        elif kind == StorageObjectKind.ASSISTANT_PHOTO and entry["last_modified"] is not None:
             expires_in = max(PHOTO_RETENTION.days - (now - entry["last_modified"]).days, 0)
         prospect_name = names_by_slug.get(slug or "")
         if kind in _ASSISTANT_DELIVERABLE_KINDS:
             assistant_row = assistant_by_slug.get(slug or "")
             prospect_name = assistant_row.name if assistant_row is not None else None
-        if kind == "prospect_photo":
+        if kind == StorageObjectKind.PROSPECT_PHOTO:
             prospect_name = names_by_prospect_id.get(_prospect_id_from_key(key) or 0)
         items.append(
             StorageObject(

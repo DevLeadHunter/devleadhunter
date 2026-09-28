@@ -28,6 +28,25 @@
       />
       Envoyer l'espace client
     </button>
+    <UiCopyLinkField
+      v-if="props.status === 'delivered' && props.clientSpaceLinkToCopy"
+      :url="props.clientSpaceLinkToCopy"
+      link-label="Lien de l'espace client"
+    />
+    <button
+      v-if="props.status === 'delivered'"
+      type="button"
+      class="btn-secondary inline-flex w-full items-center justify-center gap-2 text-xs disabled:cursor-not-allowed disabled:opacity-50"
+      :disabled="props.isRevokingClientLinks"
+      @click="emit('revoke-client-links')"
+    >
+      <UIcon
+        :name="props.isRevokingClientLinks ? 'i-lucide-loader-circle' : 'i-lucide-link-2-off'"
+        class="h-3.5 w-3.5"
+        :class="{ 'animate-spin': props.isRevokingClientLinks }"
+      />
+      {{ props.isRevokingClientLinks ? 'Coupure des liens…' : 'Couper les anciens liens' }}
+    </button>
     <button
       v-if="props.status === 'active' || props.status === 'expired'"
       type="button"
@@ -54,7 +73,7 @@
 </template>
 
 <script lang="ts" setup>
-import type { EmitFn } from 'vue'
+import type { EmitFn, PropType } from 'vue'
 import type { AssistantActionsCardEmits, AssistantActionsCardProps } from '~/types/AssistantActionsCard'
 
 const props: AssistantActionsCardProps = defineProps({
@@ -69,6 +88,14 @@ const props: AssistantActionsCardProps = defineProps({
   isSendingClientLink: {
     type: Boolean,
     default: false,
+  },
+  isRevokingClientLinks: {
+    type: Boolean,
+    default: false,
+  },
+  clientSpaceLinkToCopy: {
+    type: String as PropType<string | null>,
+    default: null,
   },
   isMarkingSold: {
     type: Boolean,

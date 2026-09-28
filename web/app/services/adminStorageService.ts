@@ -1,74 +1,12 @@
+import type {
+  StorageActionResponse,
+  StorageHealthResponse,
+  StorageListResponse,
+  StorageUploadResponse,
+} from '~/types/AdminStorage'
 import { ApiClient } from './api'
 
-/**
- * Admin storage service — inspects and manages the Cloudflare R2 bucket
- * (generated videos, email thumbnails, presenter clips, support attachments).
- * @module services/adminStorageService
- */
-
-/** Category of a stored object, derived from its key prefix. */
-export type StorageObjectKind =
-  | 'website_video'
-  | 'website_thumbnail'
-  | 'website_background'
-  | 'assistant_video'
-  | 'assistant_thumbnail'
-  | 'presenter'
-  | 'support'
-  | 'prospect_photo'
-  | 'assistant_photo'
-  | 'assistant_document'
-  | 'manual'
-  | 'other'
-
-/** One object of the bucket, enriched with business context. */
-export type StorageObject = {
-  key: string
-  kind: StorageObjectKind
-  size: number
-  last_modified: string | null
-  url: string
-  slug: string | null
-  prospect_name: string | null
-  expires_in_days: number | null
-  is_expired: boolean
-  ttl_pending: boolean
-}
-
-/** Bucket listing + totals. */
-export type StorageListResponse = {
-  bucket: string
-  public_base_url: string
-  items: StorageObject[]
-  total: number
-  total_size: number
-  ttl_days: number
-}
-
-/** Result of a manual upload / URL import — the caller pastes ``url`` where it is needed. */
-export type StorageUploadResponse = {
-  key: string
-  url: string
-  kind: StorageObjectKind
-  size: number
-  message: string
-}
-
-/** R2 ↔ database consistency report. */
-export type StorageHealthResponse = {
-  orphan_objects: string[]
-  missing_objects: string[]
-  expired_objects: string[]
-}
-
-/** Result of a mutating action (delete / purge / sync). */
-export type StorageActionResponse = {
-  deleted: number
-  copied: number
-  unchanged: number
-  message: string
-}
-
+/** Inspects and manages the Cloudflare R2 bucket for the admin storage page. */
 export class AdminStorageService {
   /**
    * List the bucket objects.
