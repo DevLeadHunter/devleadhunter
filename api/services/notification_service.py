@@ -602,7 +602,7 @@ class NotificationService:
             status=STATUS_WARNING,
             title=f"{prospect_name} · plafond de {cap} messages atteint aujourd'hui",
             user_id=user_id,
-            entity_type="prospect",
+            entity_type="prospect" if prospect_id else None,
             entity_id=prospect_id,
         )
         await self._dispatch(
