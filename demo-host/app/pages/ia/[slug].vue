@@ -15,12 +15,12 @@
 
 <script lang="ts" setup>
 import type { ComputedRef, Ref } from 'vue'
-import { computed, onMounted, ref } from 'vue'
 import type { LocationQuery } from 'vue-router'
-import AssistantBusinessPage from '~/components/AssistantBusinessPage.vue'
-import AssistantDemoPage from '~/components/AssistantDemoPage.vue'
 import type { AiAssistantConfig } from '~/types/AiAssistant'
 import type { AssistantAccentPalette } from '~/utils/AssistantAccentUtils'
+import { computed, onMounted, ref } from 'vue'
+import AssistantBusinessPage from '~/components/AssistantBusinessPage.vue'
+import AssistantDemoPage from '~/components/AssistantDemoPage.vue'
 import { AssistantAccentUtils } from '~/utils/AssistantAccentUtils'
 import { BusinessNameUtils } from '~/utils/BusinessNameUtils'
 
@@ -67,7 +67,7 @@ const pageTitle: ComputedRef<string> = computed((): string => {
 
 const businessDescription: ComputedRef<string | undefined> = computed((): string | undefined => {
   if (!isSold.value || !assistant.value) return undefined
-  const lead: string = `${businessName.value}${tradePhrase(assistant.value.trade_label ?? null, assistant.value.city ?? null)}`
+  const lead: string = `${businessName.value}${BusinessNameUtils.tradeAndCityAfterName(assistant.value.trade_label ?? null, assistant.value.city ?? null)}`
   return `${lead}. Posez votre question, envoyez une photo ou demandez un rendez-vous, même en dehors des horaires.`
 })
 
@@ -77,20 +77,6 @@ const businessDescription: ComputedRef<string | undefined> = computed((): string
  */
 function routeSlug(): string {
   return String(route.params.slug ?? '')
-}
-
-/**
- * What follows the business's name in a sentence (« , couvreur à Rennes », « à Rennes »).
- * @param tradeLabel - The Google Maps category, or null.
- * @param city - The town, or null.
- * @returns The phrase, empty when both are unknown.
- */
-function tradePhrase(tradeLabel: string | null, city: string | null): string {
-  const trade: string = (tradeLabel ?? '').trim()
-  const town: string = (city ?? '').trim()
-  const place: string = town ? ` à ${town}` : ''
-  if (!trade) return place
-  return `, ${trade.charAt(0).toLocaleLowerCase('fr-FR')}${trade.slice(1)}${place}`
 }
 
 onMounted(async (): Promise<void> => {
