@@ -736,7 +736,7 @@ class NotificationService:
                     .filter(
                         DemoSite.user_id == user_id,
                         DemoSite.status != DemoSiteStatus.DELETED.value,
-                        DemoSite.slug.isnot(None),
+                        DemoSite.slug.is_not(None),
                     )
                     .all()
                 ]
