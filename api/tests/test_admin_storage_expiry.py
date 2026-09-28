@@ -14,6 +14,7 @@ from sqlalchemy.orm import Session
 from api.v1.routes.admin_storage import _classify, _expired_deliverable_keys, _expiry_state, _slug_from_key
 from enums.ai_assistant_status import AiAssistantStatus
 from enums.demo_site_status import DemoSiteStatus
+from enums.storage_object_kind import StorageObjectKind
 from services.ai_assistant.assistant_service import ai_assistant_service
 
 _NOW = datetime(2026, 9, 9, 12, 0, 0, tzinfo=UTC)
@@ -77,6 +78,26 @@ def test_classify_recognises_new_kinds() -> None:
     assert _classify("videos/websites/foo-background.mp4") == "website_background"
     assert _classify("videos/websites/foo.mp4") == "website_video"
     assert _classify("uploads/manual/2026/09/abc.jpg") == "manual"
+
+
+def test_every_key_prefix_maps_to_one_storage_kind() -> None:
+    kind_by_sample_key = {
+        "videos/websites/foo.mp4": StorageObjectKind.WEBSITE_VIDEO,
+        "images/websites/foo.jpg": StorageObjectKind.WEBSITE_THUMBNAIL,
+        "videos/websites/foo-background.mp4": StorageObjectKind.WEBSITE_BACKGROUND,
+        "videos/assistant/foo.mp4": StorageObjectKind.ASSISTANT_VIDEO,
+        "images/assistant/foo.jpg": StorageObjectKind.ASSISTANT_THUMBNAIL,
+        "videos/presenter/7.mp4": StorageObjectKind.PRESENTER,
+        "images/support/2026/09/abc.png": StorageObjectKind.SUPPORT,
+        "images/prospects/29/abc.jpg": StorageObjectKind.PROSPECT_PHOTO,
+        "images/assistant-photos/2026/09/abc.jpg": StorageObjectKind.ASSISTANT_PHOTO,
+        "documents/assistant/12/abc.pdf": StorageObjectKind.ASSISTANT_DOCUMENT,
+        "uploads/manual/2026/09/abc.jpg": StorageObjectKind.MANUAL,
+        "misc/readme.txt": StorageObjectKind.OTHER,
+    }
+
+    assert {key: _classify(key) for key in kind_by_sample_key} == kind_by_sample_key
+    assert set(kind_by_sample_key.values()) == set(StorageObjectKind)
 
 
 def test_the_receptionist_files_have_their_own_kinds_and_slug() -> None:
