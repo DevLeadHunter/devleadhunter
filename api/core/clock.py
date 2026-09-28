@@ -4,10 +4,5 @@ from datetime import UTC, datetime
 
 
 def naive_utc_now() -> datetime:
-    """
-    The current time in UTC, without its time zone, as every stored date is written.
-
-    Returns:
-        A naive datetime holding the UTC time.
-    """
+    """Current time as naive UTC, the storage convention."""
     return datetime.now(UTC).replace(tzinfo=None)

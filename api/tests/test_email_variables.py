@@ -130,13 +130,15 @@ def test_the_assistant_lookup_is_scoped_to_the_prospect_and_the_sender(db, monke
     seen = _stub_active_assistant(
         monkeypatch, SimpleNamespace(slug="agence-immo", video_status=None, demo_link_sent_at=None, expires_at=None)
     )
-    shared = ProspectDB(name="Agence Immo", category="Agence immobilière", source="google", confidence=2, user_id=3)
-    db.add(shared)
+    shared_prospect = ProspectDB(
+        name="Agence Immo", category="Agence immobilière", source="google", confidence=2, user_id=3
+    )
+    db.add(shared_prospect)
     db.commit()
 
-    variables = EmailVariables.build_for_prospect(db, shared, user_id=7)
+    variables = EmailVariables.build_for_prospect(db, shared_prospect, user_id=7)
 
-    assert seen["scope"] == (shared.id, 7)
+    assert seen["scope"] == (shared_prospect.id, 7)
     assert "/ia/agence-immo" in variables["lien_assistant"]
 
 
