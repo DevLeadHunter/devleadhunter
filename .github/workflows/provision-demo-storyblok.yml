@@ -1,0 +1,78 @@
+name: 📦 Provision Storyblok for existing demo (manual, prod)
+
+on:
+  workflow_dispatch:
+    inputs:
+      demo_site_id:
+        description: Demo site id to provision (creates CMS space, keeps demo_link_sent_at)
+        required: true
+        default: "108"
+
+jobs:
+  provision:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Provision Storyblok space on prod (SSH)
+        uses: appleboy/ssh-action@v0.1.6
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          port: ${{ secrets.SSH_PORT }}
+          username: ${{ secrets.SSH_USERNAME }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          command_timeout: 15m
+          script: |
+            cd /var/www/api.devleadhunter.dibodev.fr/html/api
+            DEMO_SITE_ID="${{ github.event.inputs.demo_site_id }}" ../.venv/bin/python - <<'PY'
+            import asyncio
+            import importlib
+            import os
+            import pkgutil
+
+            import models
+            from sqlalchemy.orm import configure_mappers
+
+            for _m in pkgutil.iter_modules(models.__path__):
+                importlib.import_module(f"models.{_m.name}")
+            configure_mappers()
+
+            from core.database import SessionLocal
+            from models.demo_site import DemoSite
+            from services.demo_site_service import demo_site_service
+            from services.storyblok_service import storyblok_service
+
+            site_id = int(os.environ.get("DEMO_SITE_ID", "108"))
+
+            async def main() -> None:
+                db = SessionLocal()
+                try:
+                    site = db.query(DemoSite).filter(DemoSite.id == site_id).first()
+                    if site is None:
+                        print("SITE_NOT_FOUND", site_id)
+                        return
+                    if site.storyblok_space_id:
+                        print("ALREADY", site.storyblok_space_id, site.storyblok_editor_url)
+                        return
+                    if not isinstance(site.content_json, dict) or not site.content_json:
+                        site = await demo_site_service.regenerate_demo_site(db, site)
+                    content = site.content_json or {}
+                    provision = await storyblok_service.provision_space_with_content(
+                        business_name=site.business_name,
+                        slug=site.slug,
+                        template_id=site.template_id,
+                        collaborator_email=(site.email or "").strip(),
+                        preview_url=demo_site_service.demo_url_for_slug(site.slug),
+                        content_json=content,
+                        invite_client=False,
+                        rehost_all_assets=True,
+                    )
+                    demo_site_service._apply_storyblok_provision(site, provision)
+                    db.commit()
+                    db.refresh(site)
+                    print("OK space_id=", site.storyblok_space_id)
+                    print("editor=", site.storyblok_editor_url)
+                    print("login=", site.storyblok_login_email, site.storyblok_login_password)
+                finally:
+                    db.close()
+
+            asyncio.run(main())
+            PY
