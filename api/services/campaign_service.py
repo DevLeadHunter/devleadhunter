@@ -375,7 +375,7 @@ class CampaignService:
         current_ids: set[int] = {prospect.id for prospect in campaign.prospects}
         if len(ordered_prospect_ids) != len(current_ids) or set(ordered_prospect_ids) != current_ids:
             raise HTTPException(
-                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
                 detail="L'ordre fourni ne correspond pas aux prospects de la campagne",
             )
 

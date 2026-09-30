@@ -74,7 +74,7 @@ class SupportStorageService:
 
         if len(data) > self._max_bytes:
             raise HTTPException(
-                status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+                status_code=status.HTTP_413_CONTENT_TOO_LARGE,
                 detail=f"File exceeds maximum size of {settings.support_max_attachment_mb} MB.",
             )
 
