@@ -176,6 +176,19 @@ async def stripe_webhook(
         if event_type in ("customer.subscription.updated", "customer.subscription.deleted"):
             assistant_subscription_service.update_from_stripe_subscription(db, event_obj)
             return {"status": "success", "message": "Assistant subscription synced"}
+        if event_type == "invoice.payment_failed":
+            past_due_subscription = assistant_subscription_service.record_payment_failure(db, event_obj)
+            if past_due_subscription is not None:
+                from services.notification_service import notification_service
+
+                await notification_service.notify_assistant_payment_failed(
+                    db,
+                    user_id=past_due_subscription.user_id,
+                    prospect_id=past_due_subscription.prospect_id,
+                    fallback_name=past_due_subscription.client_name or "Un client",
+                    invoice_id=event_obj["id"],
+                )
+                return {"status": "success", "message": "Assistant subscription payment failure recorded"}
 
         # Otherwise fall back to the credits purchase handler.
         success = payment_service.handle_webhook_event(db, event)
