@@ -46,6 +46,10 @@
           <dd class="text-right text-[var(--app-ink)]">{{ googleProfileLabel }}</dd>
         </div>
         <div class="flex justify-between gap-3">
+          <dt class="text-[var(--app-ink-soft)]">Boîte mail</dt>
+          <dd class="text-right break-all text-[var(--app-ink)]">{{ mailboxLabel }}</dd>
+        </div>
+        <div class="flex justify-between gap-3">
           <dt class="text-[var(--app-ink-soft)]">Modèle</dt>
           <dd class="text-right text-[var(--app-ink)]">
             {{ props.assistant.eu_only ? 'IA hébergée en Europe' : 'Mistral, secours Groq' }}
@@ -88,7 +92,7 @@ import type { AssistantSummaryCardProps } from '~/types/AssistantSummaryCard'
 import type { UseToastReturn } from '~/types/Composables'
 import { computed } from 'vue'
 import { useToast } from '~/composables/useToast'
-import { assistantLanguagesLabel, assistantLifetimeLabel } from '~/utils/aiAssistantLabels'
+import { assistantLanguagesLabel, assistantLifetimeLabel, mailboxStatusLabel } from '~/utils/aiAssistantLabels'
 import { ClipboardCopy } from '~/utils/clipboardCopy'
 import { formatNumericDate } from '~/utils/date'
 
@@ -102,6 +106,8 @@ const props: AssistantSummaryCardProps = defineProps({
 const toast: UseToastReturn = useToast()
 
 const lifetimeLabel: ComputedRef<string> = computed((): string => assistantLifetimeLabel(props.assistant))
+
+const mailboxLabel: ComputedRef<string> = computed((): string => mailboxStatusLabel(props.assistant))
 
 /** Sold assistants show where they stand: the two « Pour démarrer » steps the client does alone. */
 const isSold: ComputedRef<boolean> = computed((): boolean => props.assistant.status === 'delivered')
