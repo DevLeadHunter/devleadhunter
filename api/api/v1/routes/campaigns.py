@@ -83,7 +83,7 @@ def _parse_forecast_start(start: str | None) -> datetime:
     try:
         parsed: datetime = datetime.fromisoformat(start.replace("Z", "+00:00"))
     except ValueError as exc:
-        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Invalid start datetime") from exc
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail="Invalid start datetime") from exc
     if parsed.tzinfo is not None:
         parsed = parsed.astimezone(UTC).replace(tzinfo=None)
     return parsed
@@ -370,7 +370,7 @@ async def update_campaign_settings(
             template = find_sms_template(settings.sms_template_key)
             if template is None or template.category is not SmsTemplateCategory.FOLLOW_UP:
                 raise HTTPException(
-                    status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                    status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
                     detail="Modèle inconnu : la campagne J+30 utilise un modèle de relance de la bibliothèque.",
                 )
             # The campaign and Paramètres → Relance SMS drive the same content: keep one truth.
@@ -601,7 +601,7 @@ async def launch_campaign(
         sms_config = sms_config_service.get(db, current_user.id)
         if sms_config is None or not sms_config.sender:
             raise HTTPException(
-                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
                 detail="Expéditeur SMS manquant — Paramètres → Relance SMS",
             )
         campaign.status = CampaignStatus.ACTIVE.value
@@ -627,7 +627,7 @@ async def launch_campaign(
 
     if not _has_resend_config(db, current_user.id):
         raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
             detail="Configuration Resend manquante — Paramètres → Configuration Resend",
         )
 
@@ -637,7 +637,7 @@ async def launch_campaign(
 
     if not template_id:
         raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
             detail="template_id requis — sélectionnez un template J1",
         )
 
@@ -746,7 +746,7 @@ async def resume_campaign(
         config = sms_config_service.get(db, current_user.id)
         if config is None or not config.sender:
             raise HTTPException(
-                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
                 detail="Configurez un expéditeur SMS (Paramètres → Relance SMS) avant de relancer cette campagne.",
             )
         sms_config_service.set_automation(
@@ -763,7 +763,7 @@ async def resume_campaign(
     current_status = getattr(campaign.status, "value", campaign.status)
     if current_status not in (CampaignStatus.PAUSED.value, CampaignStatus.DRAFT.value):
         raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
             detail="Seules les campagnes en pause ou brouillon peuvent être relancées",
         )
 
@@ -774,7 +774,7 @@ async def resume_campaign(
         sms_config = sms_config_service.get(db, current_user.id)
         if sms_config is None or not sms_config.sender:
             raise HTTPException(
-                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
                 detail="Expéditeur SMS manquant — Paramètres → Relance SMS",
             )
         campaign.status = CampaignStatus.ACTIVE.value
@@ -790,12 +790,12 @@ async def resume_campaign(
 
     if not campaign.template_id:
         raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
             detail="Configurez un template J1 avant de reprendre",
         )
     if not _has_resend_config(db, current_user.id):
         raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
             detail="Configuration Resend manquante — Paramètres → Configuration Resend",
         )
 
@@ -831,7 +831,7 @@ async def send_now(
     campaign = _get_or_404(db, campaign_id, current_user.id)
     if not _has_resend_config(db, current_user.id):
         raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
             detail="Configuration Resend manquante — Paramètres → Configuration Resend",
         )
 
@@ -943,7 +943,7 @@ async def cancel_queue_item(
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Élément de file introuvable")
         if planned.status != "pending":
             raise HTTPException(
-                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Seul un envoi en attente peut être annulé."
+                status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail="Seul un envoi en attente peut être annulé."
             )
         planned.status = "cancelled"
         planned.skip_reason = "Annulé manuellement"
@@ -957,7 +957,7 @@ async def cancel_queue_item(
     try:
         CampaignQueueService(db).cancel_queue_item(item)
     except ValueError as exc:
-        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc)) from exc
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail=str(exc)) from exc
     return {"success": True, "id": item.id, "status": item.status}
 
 
@@ -982,7 +982,7 @@ async def resend_queue_item(
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Élément de file introuvable")
         if planned.status not in ("skipped", "cancelled"):
             raise HTTPException(
-                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
                 detail="Seul un envoi sauté ou annulé peut être replanifié.",
             )
         planned.scheduled_at = paris_to_utc_naive(next_send_slot(now_in_paris()))
@@ -998,7 +998,7 @@ async def resend_queue_item(
 
     if not _has_resend_config(db, current_user.id):
         raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
             detail="Configuration Resend manquante — Paramètres → Configuration Resend",
         )
     item: EmailQueue | None = db.get(EmailQueue, queue_id)
@@ -1008,7 +1008,7 @@ async def resend_queue_item(
     try:
         CampaignQueueService(db).requeue_item(item)
     except ValueError as exc:
-        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc)) from exc
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail=str(exc)) from exc
     return {"success": True, "id": item.id, "status": item.status, "scheduled_at": item.scheduled_at.isoformat()}
 
 
@@ -1031,12 +1031,12 @@ async def backfill_ready_prospects(
     current_status = getattr(campaign.status, "value", campaign.status)
     if current_status != CampaignStatus.ACTIVE.value:
         raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
             detail="La campagne doit être active pour ajouter des prospects prêts.",
         )
     if not _has_resend_config(db, current_user.id):
         raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
             detail="Configuration Resend manquante — Paramètres → Configuration Resend",
         )
     added = CampaignQueueService(db).backfill_ready_prospects(campaign)

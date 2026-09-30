@@ -282,7 +282,7 @@ async def reschedule_auto_sms(
         paris = next_send_slot(paris)
     if paris <= now_in_paris():
         raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="La nouvelle date doit être dans le futur."
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail="La nouvelle date doit être dans le futur."
         )
     row.scheduled_at = paris_to_utc_naive(paris)
     row.status = "pending"

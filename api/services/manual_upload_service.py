@@ -169,7 +169,7 @@ class ManualUploadService:
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Fichier vide.")
         if len(data) > _MAX_UPLOAD_BYTES:
             raise HTTPException(
-                status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+                status_code=status.HTTP_413_CONTENT_TOO_LARGE,
                 detail=f"Le fichier dépasse {_MAX_UPLOAD_BYTES // (1024 * 1024)} Mo.",
             )
         resolved_type, extension = self._resolve_type(content_type, filename, data)

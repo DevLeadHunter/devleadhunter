@@ -177,7 +177,7 @@ async def update_sending_identity(
     try:
         set_active_provider(db, current_user.id, payload.provider.value)
     except SendingNotConfiguredError as exc:
-        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc))
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail=str(exc))
     logger.info("[Settings] Sending provider set to %s for user %d", payload.provider.value, current_user.id)
     return describe_sending_config(db, current_user.id)
 

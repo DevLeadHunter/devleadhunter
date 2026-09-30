@@ -120,11 +120,17 @@ def _start_steps_of(db: Session, assistant: AiAssistant) -> list[AiAssistantStar
     return ai_assistant_start_reminders.missing_steps(db, assistant)
 
 
+def _start_steps_by_assistant_id(db: Session, assistants: list[AiAssistant]) -> dict[int, list[AiAssistantStartStep]]:
+    """The « Pour démarrer » steps each sold assistant of a list still misses, keyed by its id (a demo has none)."""
+    sold = [assistant for assistant in assistants if assistant.status == AiAssistantStatus.DELIVERED.value]
+    return ai_assistant_start_reminders.missing_steps_by_assistant_id(db, sold)
+
+
 def _to_full_owner_response(db: Session, assistant: AiAssistant) -> AiAssistantResponse:
     """One assistant as the list shows it (subscription, counts and start steps included), after an edit."""
     return _to_owner_response(
         assistant,
-        assistant_subscription_service.active_by_assistant_ids(db, [assistant.id]).get(assistant.id),
+        assistant_subscription_service.live_by_assistant_ids(db, [assistant.id]).get(assistant.id),
         ai_assistant_conversation_service.counts_for_assistants(db, [assistant.id]).get(assistant.id),
         ai_assistant_request_service.counts_for_assistants(db, [assistant.id]).get(assistant.id),
         _start_steps_of(db, assistant),
@@ -168,9 +174,10 @@ async def list_assistants(
     if prospect_id is not None:
         query = query.filter(AiAssistant.prospect_id == prospect_id)
     assistants = query.order_by(AiAssistant.created_at.desc()).all()
-    subscriptions = assistant_subscription_service.active_by_assistant_ids(db, [a.id for a in assistants])
+    subscriptions = assistant_subscription_service.live_by_assistant_ids(db, [a.id for a in assistants])
     conversation_counts = ai_assistant_conversation_service.counts_for_assistants(db, [a.id for a in assistants])
     request_counts = ai_assistant_request_service.counts_for_assistants(db, [a.id for a in assistants])
+    missing_start_steps = _start_steps_by_assistant_id(db, assistants)
     return AiAssistantListResponse(
         assistants=[
             _to_owner_response(
@@ -178,7 +185,7 @@ async def list_assistants(
                 subscriptions.get(assistant.id),
                 conversation_counts.get(assistant.id),
                 request_counts.get(assistant.id),
-                _start_steps_of(db, assistant),
+                missing_start_steps.get(assistant.id),
             )
             for assistant in assistants
         ]
@@ -214,7 +221,7 @@ async def update_assistant(
     try:
         updated = ai_assistant_service.update(db, assistant, payload.model_dump(exclude_unset=True))
     except ValueError as exc:
-        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc)) from exc
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail=str(exc)) from exc
     return _to_full_owner_response(db, updated)
 
 
@@ -325,7 +332,7 @@ async def generate_assistant_video(
     try:
         assistant_video_service.request_generation(db, assistant, user.id)
     except ValueError as exc:
-        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc))
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail=str(exc))
     return _to_full_owner_response(db, assistant)
 
 

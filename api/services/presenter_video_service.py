@@ -245,7 +245,7 @@ class PresenterVideoService:
         max_bytes = settings.presenter_video_max_mb * 1024 * 1024
         if len(data) > max_bytes:
             raise HTTPException(
-                status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+                status_code=status.HTTP_413_CONTENT_TOO_LARGE,
                 detail=f"La vidéo dépasse {settings.presenter_video_max_mb} MB.",
             )
 
@@ -344,7 +344,7 @@ class PresenterVideoService:
         max_bytes = settings.presenter_video_max_mb * 1024 * 1024
         if sum(len(payload) for payload in payloads) > max_bytes:
             raise HTTPException(
-                status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+                status_code=status.HTTP_413_CONTENT_TOO_LARGE,
                 detail=f"L'enregistrement dépasse {settings.presenter_video_max_mb} MB.",
             )
 

@@ -63,6 +63,9 @@ Les webhooks permettent à Stripe de notifier votre API lors d'un paiement réus
 | `charge.refunded` | ✅ | Remboursement → `Order` `refunded` (`order_service.try_handle_refund_from_event`) |
 | `refund.created` | ✅ | Remboursement (idem) |
 | `refund.updated` | ✅ | Remboursement (statut `succeeded`) |
+| `customer.subscription.updated` | ✅ | Abonnement réceptionniste : statut synchronisé (retard, résiliation programmée) |
+| `customer.subscription.deleted` | ✅ | Abonnement réceptionniste résilié → `canceled` |
+| `invoice.payment_failed` | ✅ | Paiement d'abonnement réceptionniste refusé → `past_due` tout de suite + notification (une fois par facture) |
 | `charge.refund.updated` | ➖ | Activé mais non traité spécifiquement (ignoré proprement) |
 | `checkout.session.async_payment_succeeded` | ➖ | Moyens de paiement différés — non géré aujourd'hui (le code lit `checkout.session.completed`) |
 | `checkout.session.async_payment_failed` | ➖ | Observabilité (échec paiement différé) |
@@ -70,7 +73,7 @@ Les webhooks permettent à Stripe de notifier votre API lors d'un paiement réus
 | `payment_intent.created` | ➖ | Observabilité |
 
 > ✅ = déclenche une action côté API. ➖ = activé pour visibilité/futur, ignoré sans erreur par le handler.
-> Le minimum **fonctionnel** = `checkout.session.completed`, `payment_intent.succeeded`, `charge.refunded` (+ `refund.created` / `refund.updated`).
+> Le minimum **fonctionnel** = `checkout.session.completed`, `payment_intent.succeeded`, `charge.refunded` (+ `refund.created` / `refund.updated`), et pour les abonnements réceptionniste `customer.subscription.updated` / `.deleted` et `invoice.payment_failed`.
 
 #### Étape 4.3 : Récupérer le Signing Secret
 

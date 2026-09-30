@@ -468,7 +468,8 @@ fois (`docs/STRIPE_SETUP.md`).
   clic à l'autre (prix du moment tant que rien n'est payé), purgée après 7 j sans paiement (boucle
   `services/ai_assistant/cleanup_service.py`) ; 5 clics / 5 min par visiteur. Un assistant déjà vendu
   renvoie vers sa page. Le webhook (`/payments/webhook`) active la ligne sur
-  `checkout.session.completed` et synchronise le statut sur `customer.subscription.updated/deleted`.
+  `checkout.session.completed`, synchronise le statut sur `customer.subscription.updated/deleted` et passe
+  l'abonnement en retard dès `invoice.payment_failed` (notification à l'opérateur, une fois par facture).
 - **À l'activation** : l'assistant passe `DELIVERED` (sorti du TTL démo, jamais coupé tant que le client
   paie) — une démo **expirée** est ainsi ravivée par le paiement. `activated_at` garde l'heure du premier
   paiement (le début du service, pour le rapport mensuel et le drapeau « risque de désabonnement »).
@@ -478,7 +479,7 @@ fois (`docs/STRIPE_SETUP.md`).
 
 **À vérifier en Stripe test mode avant la prod** (non testable hors ligne) : le flux checkout + webhook
 de bout en bout, et **ajouter les événements** `customer.subscription.updated` / `customer.subscription.deleted`
-à l'endpoint webhook Stripe. Les abonnements passent par le compte Stripe **plateforme** ; la facture du site,
+/ `invoice.payment_failed` à l'endpoint webhook Stripe. Les abonnements passent par le compte Stripe **plateforme** ; la facture du site,
 elle, passe par le compte **connecté** de l'utilisateur (Stripe Connect).
 
 Fichiers : `api/services/assistant_subscription_service.py`, `api/models/ai_assistant_subscription.py`,
@@ -1444,6 +1445,7 @@ référence, portrait de Sofia.
   événement Google Agenda est définie (le rappel J-1 d'un rendez-vous réservé dans l'agenda repart) ; l'e-mail d'une
   demande accorde « réceptionniste virtuel » au prénom, comme le rapport ; le journal des conversations marque les
   visites de test.
-- **Laissé en l'état** : la liste du dashboard lit les étapes « Pour démarrer » réceptionniste par réceptionniste
-  (une requête d'agenda par réceptionniste vendue) ; `HTTP_413_REQUEST_ENTITY_TOO_LARGE` reste tant que la version de
-  Starlette du serveur, qui doit connaître `HTTP_413_CONTENT_TOO_LARGE`, n'est pas vérifiée.
+- **Liste du dashboard** : les étapes « Pour démarrer » des réceptionnistes vendues listées se calculent sur une seule
+  requête d'agenda (`missing_steps_by_assistant_id`).
+- **Laissé en l'état** : `HTTP_413_REQUEST_ENTITY_TOO_LARGE` reste tant que la version de Starlette du serveur, qui
+  doit connaître `HTTP_413_CONTENT_TOO_LARGE`, n'est pas vérifiée.

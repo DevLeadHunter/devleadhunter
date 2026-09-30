@@ -1,0 +1,169 @@
+name: 🔎 Dump receptionist campaign targets (manual, read-only)
+
+on:
+  workflow_dispatch:
+
+jobs:
+  dump:
+    runs-on: ubuntu-latest
+    steps:
+      - name: 📇 Runtime versions, receptionists and prospects by trade (SSH)
+        uses: appleboy/ssh-action@v0.1.6
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          port: ${{ secrets.SSH_PORT }}
+          username: ${{ secrets.SSH_USERNAME }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script: |
+            cd /var/www/api.devleadhunter.dibodev.fr/html/api
+            echo "===== runtime versions ====="
+            ../.venv/bin/python -c "import sys, fastapi, starlette; print('python', sys.version.split()[0]); print('fastapi', fastapi.__version__); print('starlette', starlette.__version__); import starlette.status as status; print('has HTTP_413_CONTENT_TOO_LARGE', 'HTTP_413_CONTENT_TOO_LARGE' in vars(status)); print('has HTTP_422_UNPROCESSABLE_CONTENT', 'HTTP_422_UNPROCESSABLE_CONTENT' in vars(status))"
+            ../.venv/bin/python - <<'PY'
+            import importlib
+            import pkgutil
+            from collections import Counter
+            from datetime import datetime, timedelta
+
+            import models
+            from sqlalchemy.orm import configure_mappers
+
+            for _m in pkgutil.iter_modules(models.__path__):
+                importlib.import_module(f"models.{_m.name}")
+            configure_mappers()
+
+            from core.database import SessionLocal
+            from models.ai_assistant import AiAssistant
+            from models.prospect_db import ProspectDB
+            from services.contact_lock_service import LOCK_DAYS, MODULE_AI_ASSISTANT
+            from services.sms.phone_normalizer import is_mobile_fr
+
+            TRADES = {
+                "couvreur": ("couvreur", "couverture", "toiture", "zingu", "roof"),
+                "charpentier": ("charpent", "carpenter"),
+                "carrosserie": ("carross", "body shop", "auto body"),
+                "garage": ("garage", "mécani", "mecani", "mechanic", "réparation auto", "auto repair"),
+                "plombier": ("plomb", "chauffag", "plumb", "sanitaire"),
+                "electricien": ("électric", "electric", "élec"),
+                "menuisier": ("menuis", "ébénist", "cabinet"),
+                "macon": ("maçon", "macon", "gros œuvre", "mason"),
+                "peintre": ("peintre", "peinture", "painter"),
+                "paysagiste": ("paysag", "jardin", "espace vert", "landscap"),
+            }
+
+            def trade_of(category):
+                text = (category or "").lower()
+                for trade, keywords in TRADES.items():
+                    if any(keyword in text for keyword in keywords):
+                        return trade
+                return "autre"
+
+            def has_email(prospect):
+                return bool((prospect.email or "").strip()) or any((e or "").strip() for e in (prospect.emails or []))
+
+            def has_mobile(prospect):
+                return any(is_mobile_fr(number) for number in [prospect.phone, *(prospect.phones or [])] if number)
+
+            def has_live_site(prospect):
+                return bool((prospect.website or "").strip()) and prospect.website_status not in ("dead", "placeholder")
+
+            now = datetime.utcnow()
+            lock_window = timedelta(days=LOCK_DAYS)
+
+            def lock_state(prospect):
+                module = prospect.contacted_by_module
+                stamped_at = prospect.contacted_by_module_at
+                if module and module != MODULE_AI_ASSISTANT and stamped_at and now - stamped_at < lock_window:
+                    return f"bloqué ({module} jusqu'au {(stamped_at + lock_window):%d/%m})"
+                if module == MODULE_AI_ASSISTANT:
+                    return "déjà écrit pour la réceptionniste"
+                return None
+
+            db = SessionLocal()
+            try:
+                assistants = db.query(AiAssistant).order_by(AiAssistant.id).all()
+                print("\n===== receptionists =====")
+                for assistant in assistants:
+                    prospect = db.get(ProspectDB, assistant.prospect_id) if assistant.prospect_id else None
+                    print(
+                        f"  #{assistant.id} {assistant.slug} [{assistant.status}]"
+                        f" deleted={assistant.deleted_at is not None}"
+                        f" video={getattr(assistant, 'video_status', None)}"
+                        f" prospect={prospect.name if prospect else '-'} ({prospect.category if prospect else '-'})"
+                    )
+
+                prospects = db.query(ProspectDB).all()
+                print(f"\n===== prospects: {len(prospects)} =====")
+                summary = {}
+                for prospect in prospects:
+                    trade = trade_of(prospect.category)
+                    row = summary.setdefault(trade, Counter())
+                    row["total"] += 1
+                    row[f"pays {prospect.country}"] += 1
+                    if prospect.do_not_contact:
+                        row["ne plus contacter"] += 1
+                        continue
+                    if prospect.email_undeliverable:
+                        row["email invalide"] += 1
+                    lock = lock_state(prospect)
+                    if lock:
+                        row["bloqué ou déjà écrit"] += 1
+                        continue
+                    if prospect.contacted:
+                        row["contacté (ancien, hors verrou)"] += 1
+                    reachable_by_email = has_email(prospect) and not prospect.email_undeliverable
+                    if reachable_by_email:
+                        row["dispo email"] += 1
+                    elif has_mobile(prospect):
+                        row["dispo sms seul"] += 1
+                    if has_live_site(prospect):
+                        row["avec site vivant"] += 1
+
+                for trade, row in sorted(summary.items(), key=lambda item: -item[1]["total"]):
+                    parts = ", ".join(f"{key} {value}" for key, value in sorted(row.items()) if key != "total")
+                    print(f"  {trade}: total {row['total']} — {parts}")
+
+                print("\n===== available prospects of the first targets (no email or phone printed) =====")
+                for trade in ("couvreur", "charpentier", "carrosserie", "garage", "plombier", "electricien", "menuisier", "macon"):
+                    available = [
+                        p for p in prospects
+                        if trade_of(p.category) == trade
+                        and not p.do_not_contact
+                        and not lock_state(p)
+                        and ((has_email(p) and not p.email_undeliverable) or has_mobile(p))
+                    ]
+                    available.sort(key=lambda p: -(p.google_reviews_count or 0))
+                    print(f"\n### {trade}: {len(available)} disponibles")
+                    for p in available[:40]:
+                        print(
+                            f"  · #{p.id} {p.name} [{p.city or '?'}, {p.country}]"
+                            f" note {p.google_rating or '-'} ({p.google_reviews_count or 0} avis)"
+                            f"{' site' if has_live_site(p) else ''}"
+                            f"{' email' if has_email(p) and not p.email_undeliverable else ''}"
+                            f"{' mobile' if has_mobile(p) else ''}"
+                            f"{' contacté-ancien' if p.contacted else ''}"
+                        )
+
+                print()
+                print("===== receptionist email templates (sent text) =====")
+                import html as html_lib
+                import re as re_lib
+                from models.email_template import EmailTemplate
+                templates = (
+                    db.query(EmailTemplate)
+                    .filter(EmailTemplate.name.ilike("%assistant%") | EmailTemplate.name.ilike("%réceptionniste%"))
+                    .order_by(EmailTemplate.user_id, EmailTemplate.sort_order, EmailTemplate.id)
+                    .all()
+                )
+                for template in templates:
+                    body = template.body_text or re_lib.sub(r"<[^>]+>", " ", template.body_html or "")
+                    body = re_lib.sub(r"[ \t]+", " ", html_lib.unescape(body)).strip()
+                    print()
+                    print(
+                        f"--- #{template.id} user={template.user_id} library={template.is_library}"
+                        f" active={template.is_active} category={template.category} name={template.name}"
+                    )
+                    print(f"subject: {template.subject}")
+                    print(body[:1800])
+            finally:
+                db.close()
+            PY

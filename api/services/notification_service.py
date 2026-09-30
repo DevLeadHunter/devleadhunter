@@ -54,6 +54,7 @@ _PROSPECTS_URL = "/dashboard/my-prospects"
 _ORDERS_URL = "/dashboard/orders"
 _SMS_URL = "/dashboard/sms"
 _ASSISTANTS_URL = "/dashboard/ai-assistants"
+_SUBSCRIPTIONS_URL = "/dashboard/subscriptions"
 _DASHBOARD_URL = "/dashboard"
 
 # In-app notification log retention.
@@ -448,6 +449,46 @@ class NotificationService:
             body=f"{_MODULE_TAG_ASSISTANT} · S'est abonné — {plan}",
             url=f"{_PROSPECTS_URL}?open={prospect_id}" if prospect_id else _DASHBOARD_URL,
             tag=f"assistant-sub-{prospect_id}" if prospect_id else None,
+        )
+
+    async def notify_assistant_payment_failed(
+        self,
+        db: Session,
+        *,
+        user_id: int,
+        prospect_id: int | None,
+        fallback_name: str,
+        invoice_id: str,
+    ) -> None:
+        """
+        Warn the operator that Stripe could not charge a subscriber: the subscription is now past due.
+
+        Args:
+            db: Active database session (to resolve the prospect's name).
+            user_id: Owner of the assistant — the notification recipient.
+            prospect_id: Prospect the assistant was sold to, when known.
+            fallback_name: Name shown when the prospect can't be resolved.
+            invoice_id: The Stripe invoice whose payment failed.
+        """
+        prospect_name = self._resolve_prospect_name(db, prospect_id, fallback_name)
+        activity_log_service.record(
+            category=CATEGORY_ASSISTANT,
+            action="assistant_payment_failed",
+            status=STATUS_WARNING,
+            title=f"{prospect_name} · Paiement refusé (abonnement réceptionniste)",
+            detail=f"Facture Stripe {invoice_id}",
+            user_id=user_id,
+            entity_type="prospect" if prospect_id else None,
+            entity_id=prospect_id,
+        )
+        await self._dispatch(
+            user_id=user_id,
+            category="assistant",
+            level="warning",
+            title=f"💳 {prospect_name}",
+            body=f"{_MODULE_TAG_ASSISTANT} · Paiement refusé : {prospect_name} (abonnement réceptionniste)",
+            url=_SUBSCRIPTIONS_URL,
+            tag=f"assistant-payment-failed-{prospect_id}" if prospect_id else None,
         )
 
     async def notify_assistant_lead(

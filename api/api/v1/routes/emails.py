@@ -106,7 +106,7 @@ async def sync_resend_status(
     api_key: str | None = get_resend_api_key(db, current_user.id)
     if not api_key:
         raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
             detail="Resend non configuré",
         )
 
@@ -217,7 +217,7 @@ async def quick_send_email(
         resolve_sending_identity(db, current_user.id)
     except SendingNotConfiguredError as exc:
         raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
             detail=str(exc),
         )
     if unsubscribe_service.is_unsubscribed(db, payload.recipient_email):
@@ -344,12 +344,12 @@ async def resend_email_log(
     prospect: ProspectDB | None = db.get(ProspectDB, log.prospect_id) if log.prospect_id else None
     target_email: str = (payload.email or "").strip() or (prospect.email if prospect else None) or log.recipient_email
     if not target_email:
-        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Aucune adresse e-mail cible")
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail="Aucune adresse e-mail cible")
 
     try:
         resolve_sending_identity(db, current_user.id)
     except SendingNotConfiguredError as exc:
-        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc))
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail=str(exc))
     if unsubscribe_service.is_unsubscribed(db, target_email):
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"{target_email} s'est désabonné")
 
@@ -486,7 +486,7 @@ async def reply_to_prospect(
     """
     body_html = (payload.body_html or "").strip()
     if not body_html:
-        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Message vide")
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail="Message vide")
     result = await conversation_service.send_reply(db, current_user.id, reply_id, body_html)
     if result.get("error") == "not_found":
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Réponse introuvable")

@@ -159,7 +159,7 @@ async def create_automation(
     has_query: bool = bool(payload.search_metiers and payload.search_villes and payload.target_days)
     if not payload.prospect_ids and not has_query:
         raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
             detail="Fournis une sélection de prospects, ou un métier + une ville + un objectif en jours.",
         )
 
@@ -191,7 +191,7 @@ async def create_automation(
         )
     except ValueError as exc:
         # The service refuses (and never persists) a run with no eligible selection and no query.
-        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc)) from exc
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail=str(exc)) from exc
     return _detail_response(db, run)
 
 
@@ -285,7 +285,7 @@ async def approve_automation(
     run = _get_or_404(db, run_id, current_user.id)
     if run.status != "awaiting_review":
         raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
             detail="L'automatisation n'est pas en attente de validation",
         )
     acquisition_service.approve_review(db, run)
