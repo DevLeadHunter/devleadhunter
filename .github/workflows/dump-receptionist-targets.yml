@@ -17,7 +17,7 @@ jobs:
           script: |
             cd /var/www/api.devleadhunter.dibodev.fr/html/api
             echo "===== runtime versions ====="
-            ../.venv/bin/python -c "import sys, fastapi, starlette; print('python', sys.version.split()[0]); print('fastapi', fastapi.__version__); print('starlette', starlette.__version__)"
+            ../.venv/bin/python -c "import sys, fastapi, starlette; print('python', sys.version.split()[0]); print('fastapi', fastapi.__version__); print('starlette', starlette.__version__); import starlette.status as status; print('has HTTP_413_CONTENT_TOO_LARGE', 'HTTP_413_CONTENT_TOO_LARGE' in vars(status)); print('has HTTP_422_UNPROCESSABLE_CONTENT', 'HTTP_422_UNPROCESSABLE_CONTENT' in vars(status))"
             ../.venv/bin/python - <<'PY'
             import importlib
             import pkgutil
