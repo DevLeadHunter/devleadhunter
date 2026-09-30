@@ -23,7 +23,10 @@ from schemas.email_sending import (
     EmailLogResponse,
     EmailStatsResponse,
     PendingRepliesResponse,
+    ReplyScheduleRequest,
     ReplySendRequest,
+    ScheduledEmailResponse,
+    ScheduledEmailUpdateRequest,
     SendEmailResponse,
 )
 from services.auth_service import get_current_user
@@ -31,6 +34,7 @@ from services.campaign_queue_service import CampaignQueueService
 from services.conversation_service import conversation_service
 from services.email_log_stats import aggregate_email_log_counts, compute_engagement_rates
 from services.email_sending_service import EmailSendingService
+from services.scheduled_email_service import ScheduledEmailError, scheduled_email_service
 
 logger = logging.getLogger(__name__)
 
@@ -486,6 +490,88 @@ async def reply_to_prospect(
     result = await conversation_service.send_reply(db, current_user.id, reply_id, body_html)
     if result.get("error") == "not_found":
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Réponse introuvable")
+    return result
+
+
+def _scheduled_response(row: Any) -> ScheduledEmailResponse:
+    """Shape a planned email for the API (naive UTC, like every API timestamp)."""
+    return ScheduledEmailResponse(
+        id=row.id,
+        status=row.status,
+        scheduled_at=row.scheduled_at.isoformat(),
+        recipient_email=row.recipient_email,
+    )
+
+
+@router.post("/replies/{reply_id}/schedule", response_model=ScheduledEmailResponse)
+async def schedule_reply_to_prospect(
+    reply_id: int,
+    payload: ReplyScheduleRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> ScheduledEmailResponse:
+    """
+    Plan an answer to a prospect's reply; the worker sends it at ``scheduled_at``
+    through the same path as « Envoyer la réponse ».
+    """
+    try:
+        row = scheduled_email_service.schedule_reply(
+            db, current_user.id, reply_id, payload.body_html, payload.scheduled_at
+        )
+    except ScheduledEmailError as exc:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail=str(exc)) from exc
+    if row is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Réponse introuvable")
+    return _scheduled_response(row)
+
+
+@router.patch("/scheduled/{scheduled_id}", response_model=ScheduledEmailResponse)
+async def update_scheduled_email(
+    scheduled_id: int,
+    payload: ScheduledEmailUpdateRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> ScheduledEmailResponse:
+    """Change the text and/or time of a planned email (a failed one is replanned)."""
+    try:
+        row = scheduled_email_service.update(
+            db,
+            current_user.id,
+            scheduled_id,
+            body_html=payload.body_html,
+            scheduled_at=payload.scheduled_at,
+        )
+    except ScheduledEmailError as exc:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail=str(exc)) from exc
+    if row is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Envoi programmé introuvable")
+    return _scheduled_response(row)
+
+
+@router.delete("/scheduled/{scheduled_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def cancel_scheduled_email(
+    scheduled_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> None:
+    """Cancel a planned email that has not gone out."""
+    if not scheduled_email_service.cancel(db, current_user.id, scheduled_id):
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Envoi programmé introuvable")
+
+
+@router.post("/scheduled/{scheduled_id}/send-now")
+async def send_scheduled_email_now(
+    scheduled_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> dict[str, Any]:
+    """Send a planned (or failed) email right away."""
+    try:
+        result = await scheduled_email_service.send_now(db, current_user.id, scheduled_id)
+    except ScheduledEmailError as exc:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail=str(exc)) from exc
+    if result is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Envoi programmé introuvable")
     return result
 
 

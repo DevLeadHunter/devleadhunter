@@ -681,6 +681,24 @@ export type ConversationItem = {
   intent?: string | null
   /** The reply id behind an inbound item (action targets). */
   reply_id?: number | null
+  /** Planned answer not sent yet: its id, naive-UTC time and status (pending | sending | failed). */
+  scheduled_id?: number | null
+  scheduled_at?: string | null
+  scheduled_status?: ScheduledEmailStatus | null
+  scheduled_error?: string | null
+  /** The prospect wrote again after the answer was planned. */
+  has_newer_reply?: boolean
+}
+
+/** Lifecycle of a planned email as shown in a conversation. */
+export type ScheduledEmailStatus = 'pending' | 'sending' | 'failed'
+
+/** A planned email as returned by the API. */
+export type ScheduledEmail = {
+  id: number
+  status: string
+  scheduled_at: string
+  recipient_email: string
 }
 
 /** A human reply still awaiting an answer (« à traiter »). */

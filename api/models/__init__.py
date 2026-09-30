@@ -45,6 +45,7 @@ from models.prospect_enrichment import ProspectEnrichment
 from models.prospect_interaction import ProspectInteraction
 from models.push_subscription import PushSubscription
 from models.resend_config import ResendConfig
+from models.scheduled_email import ScheduledEmail
 from models.scraper_diagnostic import ScraperDiagnostic
 from models.scraping_job import ScrapingJob
 from models.search import ProspectSearchRequest, ProspectSearchResponse
@@ -107,6 +108,7 @@ __all__ = [
     "ProspectSearchResponse",
     "PushSubscription",
     "ResendConfig",
+    "ScheduledEmail",
     "ScraperDiagnostic",
     "ScrapingJob",
     "SendPolicy",

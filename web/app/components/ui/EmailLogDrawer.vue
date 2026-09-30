@@ -67,74 +67,73 @@
               </p>
 
               <div class="space-y-3">
-                <div
-                  v-for="item in threadItems"
-                  :key="`${item.direction}-${item.id}`"
-                  :class="item.direction === 'inbound' ? 'mr-6' : 'ml-6'"
-                >
-                  <div
-                    :class="[
-                      'rounded-xl border px-3 py-2.5',
-                      item.direction === 'inbound'
-                        ? 'border-[var(--app-line)] bg-[var(--app-surface-2)]'
-                        : 'border-[var(--app-accent)]/25 bg-[var(--app-accent-soft)]',
-                    ]"
-                  >
-                    <div class="mb-1 flex flex-wrap items-center gap-2">
-                      <span class="text-[11px] font-medium text-[var(--app-ink)]">
-                        {{ item.direction === 'inbound' ? item.counterpart : 'Moi' }}
-                      </span>
-                      <span v-if="item.timestamp" class="text-[10px] text-[var(--app-faint)]">
-                        {{ formatCompactDateTime(item.timestamp) }}
-                      </span>
-                      <span v-if="item.is_auto_reply" class="app-badge text-[10px]">
-                        <UIcon name="i-lucide-bot" class="h-2.5 w-2.5" />
-                        Réponse automatique
-                      </span>
-                      <template v-else>
-                        <span
-                          v-if="item.intent && INTENT_BADGES[item.intent]"
-                          :class="['app-badge text-[10px]', INTENT_BADGES[item.intent]?.variant]"
-                        >
-                          <UIcon :name="INTENT_BADGES[item.intent]?.icon ?? 'i-lucide-tag'" class="h-2.5 w-2.5" />
-                          {{ INTENT_BADGES[item.intent]?.label }}
-                        </span>
-                        <span v-if="item.pending" class="app-badge app-badge--progress text-[10px]">
-                          <UIcon name="i-lucide-clock" class="h-2.5 w-2.5" />
-                          À traiter
-                        </span>
-                      </template>
-                    </div>
-                    <p
-                      v-if="item.direction === 'inbound'"
-                      class="text-xs leading-relaxed [overflow-wrap:anywhere] break-words whitespace-pre-wrap text-[var(--app-ink)]"
-                    >
-                      {{ item.body_text }}
-                    </p>
-                    <!-- eslint-disable vue/no-v-html -- Outbound replies are our own HTML (message + signature) -->
+                <template v-for="item in threadItems" :key="threadItemKey(item)">
+                  <UiScheduledReplyCard v-if="item.scheduled_id" :item="item" @changed="onScheduledChanged" />
+                  <div v-else :class="item.direction === 'inbound' ? 'mr-6' : 'ml-6'">
                     <div
-                      v-else-if="item.body_html"
-                      class="mt-0.5 overflow-hidden rounded-md border border-[var(--app-line)]/50 bg-white p-2 text-xs text-neutral-900"
-                      v-html="stripScriptTags(item.body_html)"
-                    />
-                    <!-- eslint-enable vue/no-v-html -->
-                    <p
-                      v-else
-                      class="text-xs leading-relaxed [overflow-wrap:anywhere] break-words whitespace-pre-wrap text-[var(--app-ink)]"
+                      :class="[
+                        'rounded-xl border px-3 py-2.5',
+                        item.direction === 'inbound'
+                          ? 'border-[var(--app-line)] bg-[var(--app-surface-2)]'
+                          : 'border-[var(--app-accent)]/25 bg-[var(--app-accent-soft)]',
+                      ]"
                     >
-                      {{ outboundPreview(item) }}
-                    </p>
-                    <button
-                      v-if="item.intent === 'unsubscribe' && item.pending"
-                      class="mt-2 inline-flex items-center gap-1.5 rounded-lg border border-[var(--app-red)]/40 px-2.5 py-1 text-[11px] font-medium text-[var(--app-red)] transition-colors hover:bg-[var(--app-red)]/10"
-                      title="Ajoute cette adresse aux désinscrits — plus aucune prospection ne lui sera envoyée"
-                      @click="unsubscribeFromReply(item.id)"
-                    >
-                      <UIcon name="i-lucide-user-x" class="h-3 w-3" />
-                      Honorer la désinscription
-                    </button>
+                      <div class="mb-1 flex flex-wrap items-center gap-2">
+                        <span class="text-[11px] font-medium text-[var(--app-ink)]">
+                          {{ item.direction === 'inbound' ? item.counterpart : 'Moi' }}
+                        </span>
+                        <span v-if="item.timestamp" class="text-[10px] text-[var(--app-faint)]">
+                          {{ formatCompactDateTime(item.timestamp) }}
+                        </span>
+                        <span v-if="item.is_auto_reply" class="app-badge text-[10px]">
+                          <UIcon name="i-lucide-bot" class="h-2.5 w-2.5" />
+                          Réponse automatique
+                        </span>
+                        <template v-else>
+                          <span
+                            v-if="item.intent && INTENT_BADGES[item.intent]"
+                            :class="['app-badge text-[10px]', INTENT_BADGES[item.intent]?.variant]"
+                          >
+                            <UIcon :name="INTENT_BADGES[item.intent]?.icon ?? 'i-lucide-tag'" class="h-2.5 w-2.5" />
+                            {{ INTENT_BADGES[item.intent]?.label }}
+                          </span>
+                          <span v-if="item.pending" class="app-badge app-badge--progress text-[10px]">
+                            <UIcon name="i-lucide-clock" class="h-2.5 w-2.5" />
+                            À traiter
+                          </span>
+                        </template>
+                      </div>
+                      <p
+                        v-if="item.direction === 'inbound'"
+                        class="text-xs leading-relaxed [overflow-wrap:anywhere] break-words whitespace-pre-wrap text-[var(--app-ink)]"
+                      >
+                        {{ item.body_text }}
+                      </p>
+                      <!-- eslint-disable vue/no-v-html -- Outbound replies are our own HTML (message + signature) -->
+                      <div
+                        v-else-if="item.body_html"
+                        class="mt-0.5 overflow-hidden rounded-md border border-[var(--app-line)]/50 bg-white p-2 text-xs text-neutral-900"
+                        v-html="stripScriptTags(item.body_html)"
+                      />
+                      <!-- eslint-enable vue/no-v-html -->
+                      <p
+                        v-else
+                        class="text-xs leading-relaxed [overflow-wrap:anywhere] break-words whitespace-pre-wrap text-[var(--app-ink)]"
+                      >
+                        {{ outboundPreview(item) }}
+                      </p>
+                      <button
+                        v-if="item.intent === 'unsubscribe' && item.pending"
+                        class="mt-2 inline-flex items-center gap-1.5 rounded-lg border border-[var(--app-red)]/40 px-2.5 py-1 text-[11px] font-medium text-[var(--app-red)] transition-colors hover:bg-[var(--app-red)]/10"
+                        title="Ajoute cette adresse aux désinscrits — plus aucune prospection ne lui sera envoyée"
+                        @click="unsubscribeFromReply(item.id)"
+                      >
+                        <UIcon name="i-lucide-user-x" class="h-3 w-3" />
+                        Honorer la désinscription
+                      </button>
+                    </div>
                   </div>
-                </div>
+                </template>
               </div>
 
               <div v-if="replyTarget" class="mt-4">
@@ -144,29 +143,28 @@
                   class="input-field w-full text-sm"
                   placeholder="Votre réponse au prospect…"
                 ></textarea>
-                <div class="mt-2 flex flex-wrap items-center justify-between gap-2">
-                  <button
-                    v-if="pendingTarget"
-                    class="text-muted text-xs font-medium transition-colors hover:text-[var(--app-ink)]"
-                    title="J'ai déjà répondu ailleurs (ex : depuis ma boîte mail)"
-                    @click="markHandled(pendingTarget.id)"
-                  >
-                    Marquer comme traité sans répondre
-                  </button>
-                  <button
-                    class="btn-primary ml-auto disabled:cursor-not-allowed disabled:opacity-50"
-                    :disabled="isSendingReply || !replyText.trim()"
-                    @click="sendReply"
-                  >
-                    <UIcon
-                      :name="isSendingReply ? 'i-lucide-loader-circle' : 'i-lucide-reply'"
-                      :class="['mr-1.5 h-4 w-4', isSendingReply && 'animate-spin']"
-                    />
-                    {{ isSendingReply ? 'Envoi…' : 'Envoyer la réponse' }}
-                  </button>
-                </div>
+                <UiScheduleSendControls
+                  class="mt-2"
+                  :can-send="replyText.trim().length > 0"
+                  :is-busy="isSendingReply"
+                  send-label="Envoyer la réponse"
+                  @send="sendReply"
+                  @schedule="scheduleReply"
+                >
+                  <template #secondary>
+                    <button
+                      v-if="pendingTarget"
+                      class="text-muted text-xs font-medium transition-colors hover:text-[var(--app-ink)]"
+                      title="J'ai déjà répondu ailleurs (ex : depuis ma boîte mail)"
+                      @click="markHandled(pendingTarget.id)"
+                    >
+                      Marquer comme traité sans répondre
+                    </button>
+                  </template>
+                </UiScheduleSendControls>
                 <p class="text-muted mt-1.5 text-[11px]">
-                  Envoyée dans le fil de discussion du prospect, sa prochaine réponse reviendra ici.
+                  Envoyée dans le fil de discussion du prospect, sa prochaine réponse reviendra ici. L'horloge à côté du
+                  bouton la programme pour plus tard.
                 </p>
               </div>
             </div>
@@ -313,7 +311,8 @@ import type { ConversationItem, EmailLog, EmailStatus } from '~/types'
 import type { EmailLogDrawerProps } from '~/types/EmailLogDrawer'
 import { DemoSiteService } from '~/services/demoSiteService'
 import { EmailLogsService } from '~/services/emailLogsService'
-import { formatCompactDateTime } from '~/utils/date'
+import { formatCompactDateTime, formatScheduledMoment } from '~/utils/date'
+import { ReplyBodyFormat } from '~/utils/replyBodyFormat'
 import { useToast } from '~/composables/useToast'
 import { useDrawerStackStore } from '~/stores/drawerStack'
 
@@ -413,15 +412,16 @@ function stripScriptTags(html: string): string {
  * @returns The message as plain text.
  */
 function outboundPreview(item: ConversationItem): string {
-  const html: string = item.body_html ?? ''
-  const text: string = html
-    .replace(/<(?:br|\/p|\/div)[^>]*>/gi, '\n')
-    .replace(/<[^>]+>/g, '')
-    .trim()
-  const doc: HTMLTextAreaElement | null = typeof document !== 'undefined' ? document.createElement('textarea') : null
-  if (!doc) return text
-  doc.innerHTML = text
-  return doc.value
+  return ReplyBodyFormat.toText(item.body_html ?? '')
+}
+
+/**
+ * Stable key of a thread bubble: planned answers and sent emails share id ranges.
+ * @param item - The conversation item.
+ * @returns The key.
+ */
+function threadItemKey(item: ConversationItem): string {
+  return item.scheduled_id ? `scheduled-${item.scheduled_id}` : `${item.direction}-${item.id}`
 }
 
 /**
@@ -450,11 +450,6 @@ watch(
   { immediate: true },
 )
 
-/** Escape user text for safe HTML embedding. */
-function escapeHtml(text: string): string {
-  return text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
-}
-
 /**
  * Send the typed answer to the prospect, threaded into their mail client.
  * @returns A promise resolved once the send is attempted.
@@ -465,10 +460,7 @@ async function sendReply(): Promise<void> {
   if (!target || !text || isSendingReply.value) return
   isSendingReply.value = true
   try {
-    const html: string = text
-      .split(/\n{2,}/)
-      .map((paragraph: string): string => `<p>${escapeHtml(paragraph).replace(/\n/g, '<br />')}</p>`)
-      .join('')
+    const html: string = ReplyBodyFormat.toHtml(text)
     const result: { success: boolean; error?: string } = await EmailLogsService.sendReply(target.id, html)
     if (result.success) {
       toast.success('Réponse envoyée')
@@ -483,6 +475,37 @@ async function sendReply(): Promise<void> {
   } finally {
     isSendingReply.value = false
   }
+}
+
+/**
+ * Plan the typed answer for later; it leaves at that time exactly like « Envoyer la réponse ».
+ * @param moment - When to send it.
+ * @returns A promise resolved once planned.
+ */
+async function scheduleReply(moment: Date): Promise<void> {
+  const target: ConversationItem | null = replyTarget.value
+  const text: string = replyText.value.trim()
+  if (!target || !text || isSendingReply.value) return
+  isSendingReply.value = true
+  try {
+    await EmailLogsService.scheduleReply(target.id, ReplyBodyFormat.toHtml(text), moment)
+    toast.success(`Réponse programmée ${formatScheduledMoment(moment)}`)
+    replyText.value = ''
+    await onScheduledChanged()
+  } catch (error: unknown) {
+    toast.error(error instanceof Error && error.message ? error.message : 'Impossible de programmer la réponse')
+  } finally {
+    isSendingReply.value = false
+  }
+}
+
+/**
+ * Reload the thread after a planned answer changed (planned, edited, cancelled or sent).
+ * @returns A promise resolved once reloaded.
+ */
+async function onScheduledChanged(): Promise<void> {
+  await loadConversation()
+  drawerStack.bumpEmailLogsRefresh()
 }
 
 /**

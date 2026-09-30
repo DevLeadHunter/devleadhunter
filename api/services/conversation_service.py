@@ -223,6 +223,18 @@ class ConversationService:
                     "reply_id": reply.id,
                 }
             )
+        from services.scheduled_email_service import scheduled_email_service
+
+        scheduled = scheduled_email_service.thread_items(db, user_id, log.prospect_id, log.recipient_email)
+        for item in scheduled:
+            # Flag, never cancel: the user wrote the message and decides whether it still fits.
+            item["has_newer_reply"] = any(
+                other["direction"] == "inbound"
+                and not other["is_auto_reply"]
+                and str(other["timestamp"] or "") > item["scheduled_created_at"]
+                for other in items
+            )
+        items.extend(scheduled)
         items.sort(key=lambda item: str(item["timestamp"] or ""))
         return items
 

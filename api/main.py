@@ -65,6 +65,7 @@ from services.email_queue_worker import email_queue_worker
 from services.notification_service import notification_service, run_daily_recap_loop
 from services.order_fulfillment_recovery_service import run_order_fulfillment_recovery_loop
 from services.order_payment_reconciliation_service import run_order_payment_reconciliation_loop
+from services.scheduled_email_service import scheduled_email_service
 from services.scraper_service import scraper_service
 from services.send_queue_watchdog_service import run_send_queue_watchdog_loop
 from services.sms_automation_service import run_sms_automation_loop
@@ -189,6 +190,7 @@ async def startup_event() -> None:
         run_daily_recap_loop(),
         run_send_queue_watchdog_loop(),
         run_sms_automation_loop(),
+        scheduled_email_service.run_loop(),
         video_generation_watchdog.run_forever(),
     ):
         task = asyncio.create_task(coro)
