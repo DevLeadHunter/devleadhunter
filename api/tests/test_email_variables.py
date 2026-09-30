@@ -128,7 +128,10 @@ def _stub_active_assistant(monkeypatch, assistant: object | None) -> dict[str, t
 def test_the_assistant_lookup_is_scoped_to_the_prospect_and_the_sender(db, monkeypatch) -> None:
     """The prospect AND the sending user: never another member's assistant on a shared prospect."""
     seen = _stub_active_assistant(
-        monkeypatch, SimpleNamespace(slug="agence-immo", video_status=None, demo_link_sent_at=None, expires_at=None)
+        monkeypatch,
+        SimpleNamespace(
+            slug="agence-immo", assistant_name="Sofia", video_status=None, demo_link_sent_at=None, expires_at=None
+        ),
     )
     shared_prospect = ProspectDB(
         name="Agence Immo", category="Agence immobilière", source="google", confidence=2, user_id=3
@@ -168,6 +171,7 @@ def test_the_email_variables_look_the_assistant_up_once(db, monkeypatch) -> None
     lookups: list[tuple[int, int]] = []
     assistant = SimpleNamespace(
         slug="agence-immo",
+        assistant_name="Sofia",
         video_status="ready",
         video_generated_at=datetime(2026, 9, 27, 8, 0),
         demo_link_sent_at=datetime(2026, 9, 21, 6, 0),

@@ -79,9 +79,17 @@ _ASSISTANT_VIDEO_VARIABLES: tuple[str, ...] = (
     EmailVariables.ASSISTANT_VIDEO_THUMBNAIL,
 )
 # Any assistant variable, price included, makes a template an AI-assistant offer (module inference).
-_ASSISTANT_VARIABLES: tuple[str, ...] = (*_ASSISTANT_LINK_VARIABLES, EmailVariables.PRICE_ASSISTANT)
+_ASSISTANT_VARIABLES: tuple[str, ...] = (
+    *_ASSISTANT_LINK_VARIABLES,
+    EmailVariables.PRICE_ASSISTANT,
+    EmailVariables.RECEPTIONIST_FIRST_NAME,
+)
 _SMS_ASSISTANT_LINK_VARIABLES: tuple[str, ...] = (SmsVariables.ASSISTANT_LINK, SmsVariables.ASSISTANT_VIDEO_LINK)
-_SMS_ASSISTANT_VARIABLES: tuple[str, ...] = (*_SMS_ASSISTANT_LINK_VARIABLES, SmsVariables.PRICE_ASSISTANT)
+_SMS_ASSISTANT_VARIABLES: tuple[str, ...] = (
+    *_SMS_ASSISTANT_LINK_VARIABLES,
+    SmsVariables.PRICE_ASSISTANT,
+    SmsVariables.RECEPTIONIST_FIRST_NAME,
+)
 
 
 @dataclass

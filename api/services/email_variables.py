@@ -40,6 +40,7 @@ class EmailVariables:
     TRADE = "metier"
     DEMO_LINK = "lien_demo"
     ASSISTANT_LINK = "lien_assistant"
+    RECEPTIONIST_FIRST_NAME = "prenom_receptionniste"
     VIDEO_LINK = "lien_video"
     VIDEO_THUMBNAIL = "vignette_video"
     ASSISTANT_VIDEO_LINK = "lien_video_assistant"
@@ -339,6 +340,7 @@ class EmailVariables:
             cls.TRADE: TradeNormalizer.normalize(prospect.category),
             cls.DEMO_LINK: cls.build_demo_link_html(demo_link),
             cls.ASSISTANT_LINK: cls.assistant_link_html(assistant, variant),
+            cls.RECEPTIONIST_FIRST_NAME: assistant.assistant_name if assistant is not None else "",
             cls.VIDEO_LINK: video_link,
             cls.VIDEO_THUMBNAIL: cls.build_video_thumbnail_html(video_link, video_thumbnail_url),
             cls.ASSISTANT_VIDEO_LINK: assistant_video_link,

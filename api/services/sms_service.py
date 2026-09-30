@@ -233,8 +233,13 @@ class SmsService:
             assistant_video_ready=bool(EmailVariables.assistant_video_urls(assistant)[0]),
         )
         # An assistant template needs the prospect's active assistant, or the SMS would ship a hole.
-        needs_assistant: bool = template.uses(SmsVariables.ASSISTANT_LINK) or template.uses(
-            SmsVariables.ASSISTANT_VIDEO_LINK
+        needs_assistant: bool = any(
+            template.uses(name)
+            for name in (
+                SmsVariables.ASSISTANT_LINK,
+                SmsVariables.ASSISTANT_VIDEO_LINK,
+                SmsVariables.RECEPTIONIST_FIRST_NAME,
+            )
         )
         if needs_assistant and assistant is None:
             return SmsSendOutcome(sent=False, reason="Pas d'assistant IA actif pour ce prospect")

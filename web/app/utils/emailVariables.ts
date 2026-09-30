@@ -79,9 +79,16 @@ export class EmailVariables {
     {
       key: 'lien_assistant',
       token: '{lien_assistant}',
-      label: 'Lien assistant IA',
-      description: 'Lien tracké vers la démo de l’assistant IA du prospect (vide sans assistant généré).',
-      example: 'https://demo.dibodev.fr/a/le-gourmet',
+      label: 'Lien réceptionniste',
+      description: 'Lien tracké vers la démo de la réceptionniste IA du prospect (vide sans réceptionniste).',
+      example: 'https://demo.dibodev.fr/ia/le-gourmet',
+    },
+    {
+      key: 'prenom_receptionniste',
+      token: '{prenom_receptionniste}',
+      label: 'Prénom de la réceptionniste',
+      description: 'Prénom de la réceptionniste IA du prospect ; l’email n’est pas envoyé sans réceptionniste active.',
+      example: 'Sofia',
     },
     {
       key: 'lien_video',
@@ -100,16 +107,16 @@ export class EmailVariables {
     {
       key: 'lien_video_assistant',
       token: '{lien_video_assistant}',
-      label: 'Lien vidéo assistant',
-      description: 'URL de la page vidéo de l’assistant IA (vide sans vidéo assistant générée).',
+      label: 'Lien vidéo réceptionniste',
+      description: 'URL de la page vidéo de la réceptionniste IA (vide sans vidéo générée).',
       example: 'https://demo.dibodev.fr/va/le-gourmet',
     },
     {
       key: 'vignette_video_assistant',
       token: '{vignette_video_assistant}',
-      label: 'Vignette vidéo assistant',
-      description: 'Bloc image cliquable de la vidéo de l’assistant IA (HTML prêt à coller, renvoie au player).',
-      example: '[vignette cliquable de la vidéo assistant]',
+      label: 'Vignette vidéo réceptionniste',
+      description: 'Bloc image cliquable de la vidéo de la réceptionniste IA (HTML prêt à coller, renvoie au player).',
+      example: '[vignette cliquable de la vidéo de la réceptionniste]',
     },
     {
       key: 'ancien_site',
@@ -125,6 +132,13 @@ export class EmailVariables {
       label: 'Prix',
       description: 'Prix de vente configuré, rendu « 500 € ». Vide dans un premier email — à réserver aux relances.',
       example: '500 €',
+    },
+    {
+      key: 'prix_assistant',
+      token: '{prix_assistant}',
+      label: 'Prix réceptionniste',
+      description: 'Prix mensuel de la réceptionniste IA configuré, rendu « 79 € ».',
+      example: '79 €',
     },
     {
       key: 'date_expiration',

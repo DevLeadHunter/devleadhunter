@@ -31,6 +31,7 @@ class SmsVariables:
     TRADE = "metier"
     DEMO_LINK = "lien_demo"
     ASSISTANT_LINK = "lien_assistant"
+    RECEPTIONIST_FIRST_NAME = "prenom_receptionniste"
     VIDEO_LINK = "lien_video"
     ASSISTANT_VIDEO_LINK = "lien_video_assistant"
     OLD_WEBSITE = "ancien_site"
@@ -109,6 +110,7 @@ class SmsVariables:
             cls.TRADE: TradeNormalizer.normalize(prospect.category),
             cls.DEMO_LINK: cls.as_sms_link(demo_url),
             cls.ASSISTANT_LINK: cls.as_sms_link(sms_tracked_link(assistant_url)) if assistant_url else "",
+            cls.RECEPTIONIST_FIRST_NAME: assistant.assistant_name if assistant is not None else "",
             cls.VIDEO_LINK: cls.as_sms_link(video_url),
             cls.ASSISTANT_VIDEO_LINK: (
                 cls.as_sms_link(sms_tracked_link(assistant_video_url)) if assistant_video_url else ""

@@ -11,7 +11,7 @@ taken from the matching email, no imperative (« voici », « cliquez »), no ur
 The mandatory STOP mention is appended at send time, never written here.
 
 Variables: {salutation} {entreprise} {ville} {metier} {lien_demo} {lien_assistant}
-{lien_video} {lien_video_assistant} {ancien_site} {prix} {prix_assistant} {signature}.
+{lien_video} {lien_video_assistant} {prenom_receptionniste} {ancien_site} {prix} {prix_assistant} {signature}.
 """
 
 from __future__ import annotations
@@ -119,31 +119,39 @@ SMS_TEMPLATE_LIBRARY: list[SmsTemplate] = [
     # ── Module Assistant IA — premier contact (la demande restée sans réponse) ─
     SmsTemplate(
         key="assistant-24-7",
-        name="Assistant IA - le soir, personne ne répond",
+        name="Réceptionniste IA - le soir, personne ne répond",
         category=SmsTemplateCategory.FIRST_CONTACT,
-        body="{salutation}, le soir, personne ne répond à vos clients. Mon assistant, si : {lien_assistant} {signature}",
+        body=(
+            "{salutation}, le soir, personne ne répond à vos clients. Votre réceptionniste, si : "
+            "{lien_assistant} {signature}"
+        ),
     ),
     SmsTemplate(
         key="assistant-langues",
-        name="Assistant IA - dans leur langue",
+        name="Réceptionniste IA - dans leur langue",
         category=SmsTemplateCategory.FIRST_CONTACT,
         body=(
-            "{salutation}, mon assistant répond à vos clients dans leur langue, 24h/24 : {lien_assistant} {signature}"
+            "{salutation}, {prenom_receptionniste}, votre réceptionniste, répond à vos clients dans leur langue : "
+            "{lien_assistant} {signature}"
         ),
     ),
     SmsTemplate(
         key="assistant-demandes",
-        name="Assistant IA - devis par photo",
+        name="Réceptionniste IA - devis par photo",
         category=SmsTemplateCategory.FIRST_CONTACT,
         body=(
-            "{salutation}, mon assistant change la photo d'un client en demande de devis : {lien_assistant} {signature}"
+            "{salutation}, votre réceptionniste change la photo d'un client en demande de devis : "
+            "{lien_assistant} {signature}"
         ),
     ),
     SmsTemplate(
         key="assistant-video",
-        name="Assistant IA - en vidéo",
+        name="Réceptionniste IA - en vidéo",
         category=SmsTemplateCategory.FIRST_CONTACT,
-        body="{salutation}, j'ai préparé votre réceptionniste. En 30 s de vidéo : {lien_video_assistant} {signature}",
+        body=(
+            "{salutation}, j'ai préparé {prenom_receptionniste}, votre réceptionniste. En 30 s de vidéo : "
+            "{lien_video_assistant} {signature}"
+        ),
         fallback_key="assistant-24-7",
     ),
     # ── Relance J+30 (email resté sans réaction) ─────────────────────────────
@@ -210,15 +218,16 @@ SMS_TEMPLATE_LIBRARY: list[SmsTemplate] = [
     ),
     SmsTemplate(
         key="assistant-relance",
-        name="Assistant IA - relance",
+        name="Réceptionniste IA - relance",
         category=SmsTemplateCategory.FOLLOW_UP,
         body=(
-            "{salutation}, l'assistant envoyé par email répond toujours, le soir aussi : {lien_assistant} {signature}"
+            "{salutation}, après mon email, votre réceptionniste {prenom_receptionniste} répond toujours : "
+            "{lien_assistant} {signature}"
         ),
     ),
     SmsTemplate(
         key="assistant-relance-video",
-        name="Assistant IA - relance vidéo",
+        name="Réceptionniste IA - relance vidéo",
         category=SmsTemplateCategory.FOLLOW_UP,
         body=(
             "{salutation}, la vidéo de mon email : {lien_video_assistant} Votre réceptionniste, "
@@ -228,11 +237,11 @@ SMS_TEMPLATE_LIBRARY: list[SmsTemplate] = [
     ),
     SmsTemplate(
         key="assistant-prix-cash",
-        name="Assistant IA - le prix cash",
+        name="Réceptionniste IA - le prix cash",
         category=SmsTemplateCategory.FOLLOW_UP,
         body=(
-            "{salutation}, l'assistant envoyé par email : {prix_assistant}/mois, installé, sans engagement. "
-            "{lien_assistant} {signature}"
+            "{salutation}, le prix de mon email : {prix_assistant}/mois, installation comprise, "
+            "sans engagement. {lien_assistant} {signature}"
         ),
     ),
 ]
