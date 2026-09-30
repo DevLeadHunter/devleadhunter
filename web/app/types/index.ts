@@ -686,6 +686,8 @@ export type ConversationItem = {
   scheduled_at?: string | null
   scheduled_status?: ScheduledEmailStatus | null
   scheduled_error?: string | null
+  /** Signature appended when the planned answer leaves. */
+  signature_html?: string | null
   /** The prospect wrote again after the answer was planned. */
   has_newer_reply?: boolean
 }

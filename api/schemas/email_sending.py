@@ -154,6 +154,7 @@ class ConversationItem(BaseModel):
     scheduled_status: str | None = None
     scheduled_created_at: str | None = None
     scheduled_error: str | None = None
+    signature_html: str | None = None
     has_newer_reply: bool = False
 
 

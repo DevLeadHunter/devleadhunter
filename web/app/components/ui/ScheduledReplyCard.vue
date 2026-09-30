@@ -63,10 +63,9 @@
       <!-- eslint-disable vue/no-v-html -- Our own HTML, written in the app -->
       <div
         class="overflow-hidden rounded-md border border-[var(--app-line)]/50 bg-white p-2 text-xs text-neutral-900 [&_p+p]:mt-2"
-        v-html="props.item.body_html ?? ''"
+        v-html="emailPreviewHtml"
       />
       <!-- eslint-enable vue/no-v-html -->
-      <p class="text-muted mt-1 text-[10px]">Votre signature sera ajoutée à l'envoi.</p>
 
       <div v-if="!isSending" class="mt-2 flex flex-wrap items-center gap-1">
         <button
@@ -132,6 +131,10 @@ const isConfirmingCancel: Ref<boolean> = ref(false)
 const draftText: Ref<string> = ref('')
 const draftTimeValue: Ref<string> = ref('')
 const minimumValue: Ref<string> = ref('')
+
+const emailPreviewHtml: ComputedRef<string> = computed(
+  (): string => `${props.item.body_html ?? ''}${props.item.signature_html ?? ''}`,
+)
 
 const isFailed: ComputedRef<boolean> = computed((): boolean => props.item.scheduled_status === 'failed')
 const isSending: ComputedRef<boolean> = computed((): boolean => props.item.scheduled_status === 'sending')

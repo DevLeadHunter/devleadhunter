@@ -23,6 +23,7 @@ from core.database import SessionLocal
 from enums.scheduled_email_status import ScheduledEmailStatus
 from models.email_reply import EmailReply
 from models.scheduled_email import ScheduledEmail
+from services.email_signatures import render_default_signature_html
 from services.notification_service import notification_service
 
 logger = logging.getLogger(__name__)
@@ -214,7 +215,7 @@ class ScheduledEmailService:
             recipient_email: The thread's address (fallback scope).
 
         Returns:
-            Pending, in-flight and failed planned emails.
+            Pending, in-flight and failed planned emails, with the signature that will be appended.
         """
         query = select(ScheduledEmail).where(
             ScheduledEmail.user_id == user_id,
@@ -224,6 +225,9 @@ class ScheduledEmailService:
             query = query.where(ScheduledEmail.prospect_id == prospect_id)
         else:
             query = query.where(ScheduledEmail.recipient_email == recipient_email)
+        rows: list[ScheduledEmail] = list(db.execute(query.order_by(ScheduledEmail.scheduled_at)).scalars())
+        # Rendered now, as the send renders it: the preview matches the email that will leave.
+        signature_html: str = render_default_signature_html(db, user_id) if rows else ""
         return [
             {
                 "direction": "outbound",
@@ -244,8 +248,9 @@ class ScheduledEmailService:
                 "scheduled_status": row.status,
                 "scheduled_created_at": row.created_at.isoformat(),
                 "scheduled_error": row.error_message,
+                "signature_html": signature_html,
             }
-            for row in db.execute(query.order_by(ScheduledEmail.scheduled_at)).scalars()
+            for row in rows
         ]
 
     # ------------------------------------------------------------------ #
