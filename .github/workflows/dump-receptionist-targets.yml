@@ -142,6 +142,28 @@ jobs:
                             f"{' mobile' if has_mobile(p) else ''}"
                             f"{' contacté-ancien' if p.contacted else ''}"
                         )
+
+                print()
+                print("===== receptionist email templates (sent text) =====")
+                import html as html_lib
+                import re as re_lib
+                from models.email_template import EmailTemplate
+                templates = (
+                    db.query(EmailTemplate)
+                    .filter(EmailTemplate.name.ilike("%assistant%") | EmailTemplate.name.ilike("%réceptionniste%"))
+                    .order_by(EmailTemplate.user_id, EmailTemplate.sort_order, EmailTemplate.id)
+                    .all()
+                )
+                for template in templates:
+                    body = template.body_text or re_lib.sub(r"<[^>]+>", " ", template.body_html or "")
+                    body = re_lib.sub(r"[ \t]+", " ", html_lib.unescape(body)).strip()
+                    print()
+                    print(
+                        f"--- #{template.id} user={template.user_id} library={template.is_library}"
+                        f" active={template.is_active} category={template.category} name={template.name}"
+                    )
+                    print(f"subject: {template.subject}")
+                    print(body[:1800])
             finally:
                 db.close()
             PY
