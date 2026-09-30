@@ -56,6 +56,7 @@ from scrappers.osm_scraper import OSMScraper
 from scrappers.pagesjaunes_scraper import PagesJaunesScraper
 from services.acquisition_orchestrator import acquisition_orchestrator
 from services.ai_assistant.cleanup_service import run_ai_assistant_cleanup_loop
+from services.ai_assistant.mailbox_sync import ai_assistant_mailbox_sync
 from services.ai_assistant.report_service import ai_assistant_report_service
 from services.ai_assistant.request_runner import AiAssistantRequestRunner
 from services.ai_assistant.source_service import ai_assistant_source_service
@@ -179,6 +180,7 @@ async def startup_event() -> None:
         AiAssistantRequestRunner.run_loop(),
         ai_assistant_report_service.run_loop(),
         ai_assistant_source_service.run_loop(),
+        ai_assistant_mailbox_sync.run_loop(),
         email_queue_worker.run_forever(),
         run_order_fulfillment_recovery_loop(),
         run_order_payment_reconciliation_loop(),
