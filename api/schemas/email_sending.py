@@ -159,8 +159,10 @@ class ConversationResponse(BaseModel):
 class PendingReplyItem(BaseModel):
     """A human reply still awaiting an answer."""
 
+    source: str = "email_reply"
     id: int
-    email_log_id: int
+    email_log_id: int | None = None
+    demo_lead_id: int | None = None
     prospect_id: int | None = None
     prospect_name: str | None = None
     from_email: str

@@ -1,3 +1,4 @@
+import type { PendingReply } from '~/types'
 import { ApiClient } from './api'
 
 /** The user's SMS sender configuration (a configured sender = channel on) + automation opt-ins. */
@@ -313,5 +314,15 @@ export class SmsService {
     return ApiClient.post<SmsAutoQueueAction>(`/api/v1/sms/auto-queue/${rowId}/reschedule`, {
       scheduled_at: scheduledAtIso,
     })
+  }
+
+  /** Demo-banner messages awaiting an answer (SMS-only prospects). */
+  static async getPendingReplies(): Promise<{ count: number; items: PendingReply[] }> {
+    return ApiClient.get('/api/v1/sms/replies/pending')
+  }
+
+  /** Mark a demo-banner message as dealt with (SMS inbox). */
+  static async markDemoLeadHandled(leadId: number): Promise<void> {
+    await ApiClient.post(`/api/v1/sms/demo-leads/${leadId}/handled`, {})
   }
 }

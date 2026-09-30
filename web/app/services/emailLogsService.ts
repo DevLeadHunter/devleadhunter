@@ -44,6 +44,11 @@ export class EmailLogsService {
     await ApiClient.post(`/api/v1/emails/replies/${replyId}/handled`, {})
   }
 
+  /** Mark a demo-banner message as dealt with. */
+  static async markDemoLeadHandled(leadId: number): Promise<void> {
+    await ApiClient.post(`/api/v1/emails/demo-leads/${leadId}/handled`, {})
+  }
+
   /**
    * Answer a prospect's reply from the app (threaded into their mail client).
    * @param replyId The reply being answered.

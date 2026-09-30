@@ -685,8 +685,10 @@ export type ConversationItem = {
 
 /** A human reply still awaiting an answer (« à traiter »). */
 export type PendingReply = {
+  source?: 'email_reply' | 'demo_lead'
   id: number
-  email_log_id: number
+  email_log_id?: number | null
+  demo_lead_id?: number | null
   prospect_id?: number | null
   prospect_name?: string | null
   from_email: string

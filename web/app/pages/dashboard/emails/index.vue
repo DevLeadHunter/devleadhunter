@@ -81,31 +81,11 @@
       </div>
     </div>
 
-    <button
-      v-if="pendingReplies.count > 0"
-      :class="[
-        'flex w-full items-center gap-3 rounded-xl border px-4 py-3 text-left transition-colors',
-        showPendingOnly
-          ? 'border-[var(--app-green)] bg-[var(--app-green-soft)]'
-          : 'border-[var(--app-green)]/30 bg-[var(--app-surface)] hover:bg-[var(--app-green-soft)]',
-      ]"
-      @click="showPendingOnly = !showPendingOnly"
-    >
-      <span
-        class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[var(--app-green-soft)] text-[var(--app-green)]"
-      >
-        <UIcon name="i-lucide-reply" class="h-4 w-4" />
-      </span>
-      <span class="flex-1 text-sm text-[var(--app-ink)]">
-        <span class="font-semibold">
-          {{ pendingReplies.count }} réponse{{ pendingReplies.count > 1 ? 's' : '' }} à traiter
-        </span>
-        <span class="text-muted"> — un prospect attend votre réponse.</span>
-      </span>
-      <span class="text-muted shrink-0 text-xs font-medium">
-        {{ showPendingOnly ? 'Tout afficher' : 'Voir' }}
-      </span>
-    </button>
+    <PendingRepliesPanel
+      :items="pendingReplies.items"
+      @open="openPendingReply"
+      @mark-handled="markPendingReplyHandled"
+    />
 
     <div class="card">
       <div class="grid grid-cols-2 gap-4 @4xl:grid-cols-4">
@@ -261,7 +241,8 @@ import type { EngagementStep } from '~/types/EmailsListPage'
 import type { SelectFieldOption } from '~/types/SelectField'
 import type { ComputedRef, Ref } from 'vue'
 import { computed, onMounted, ref, watch } from 'vue'
-import type { EmailLog, EmailStats, EmailStatus, PendingReply } from '~/types'
+import type { EmailLog, EmailStats, EmailStatus, PendingReply, Prospect } from '~/types'
+import { ProspectsService } from '~/services/prospectsService'
 import { formatCompactDateTime } from '~/utils/date'
 import { EmailCampaignsService } from '~/services/emailCampaignsService'
 import { EmailLogsService } from '~/services/emailLogsService'
@@ -306,9 +287,6 @@ const stats: Ref<EmailStats> = ref({
 
 /** « À traiter » queue: human replies awaiting an answer. */
 const pendingReplies: Ref<{ count: number; items: PendingReply[] }> = ref({ count: 0, items: [] })
-/** When on, the table shows only the logs whose reply awaits an answer. */
-const showPendingOnly: Ref<boolean> = ref(false)
-
 const statusOptions: { value: string; label: string }[] = [
   { value: 'all', label: 'Tous' },
   { value: 'pending', label: 'En attente' },
@@ -330,11 +308,6 @@ const campaignOptions: ComputedRef<SelectFieldOption[]> = computed(() => [
 
 const filteredLogs: ComputedRef<EmailLog[]> = computed((): EmailLog[] => {
   let list: EmailLog[] = logs.value
-
-  if (showPendingOnly.value) {
-    const pendingLogIds: Set<number> = new Set(pendingReplies.value.items.map((r: PendingReply) => r.email_log_id))
-    list = list.filter((l: EmailLog) => pendingLogIds.has(l.id))
-  }
 
   if (searchQuery.value) {
     const q: string = searchQuery.value.toLowerCase()
@@ -461,8 +434,43 @@ function clearFilters(): void {
   searchQuery.value = ''
   filterStatus.value = 'all'
   filterCampaignId.value = 'all'
-  showPendingOnly.value = false
   currentPage.value = 1
+}
+
+/**
+ * Open a pending reply row — email thread when a log exists, else the prospect drawer.
+ * @param item - Pending queue entry from the API.
+ */
+async function openPendingReply(item: PendingReply): Promise<void> {
+  if (item.email_log_id) {
+    const log: EmailLog | undefined = logs.value.find((l: EmailLog) => l.id === item.email_log_id)
+    if (log) {
+      openDrawer(log)
+      return
+    }
+  }
+  if (item.prospect_id) {
+    const prospect: Prospect = await ProspectsService.getProspect(item.prospect_id)
+    drawerStack.push({ kind: 'prospect', prospect })
+  }
+}
+
+/**
+ * Mark one pending item as handled without sending from the app.
+ * @param item - Pending queue entry from the API.
+ */
+async function markPendingReplyHandled(item: PendingReply): Promise<void> {
+  try {
+    if (item.source === 'demo_lead') {
+      await EmailLogsService.markDemoLeadHandled(item.demo_lead_id ?? item.id)
+    } else {
+      await EmailLogsService.markReplyHandled(item.id)
+    }
+    await loadLogs()
+    toast.success('Marqué comme traité')
+  } catch (err: unknown) {
+    toast.error(err instanceof Error ? err.message : 'Impossible de marquer comme traité')
+  }
 }
 
 /**
@@ -508,7 +516,6 @@ async function loadLogs(): Promise<void> {
     logs.value = logsRes.logs
     stats.value = statsRes
     pendingReplies.value = pendingRes
-    if (pendingRes.count === 0) showPendingOnly.value = false
   } catch (err: unknown) {
     error.value = err instanceof Error ? err.message : 'Erreur lors du chargement des emails'
   } finally {

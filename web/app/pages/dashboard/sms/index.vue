@@ -65,6 +65,12 @@
       </div>
     </div>
 
+    <PendingRepliesPanel
+      :items="pendingReplies.items"
+      @open="openPendingReply"
+      @mark-handled="markPendingReplyHandled"
+    />
+
     <div
       v-if="error"
       class="rounded-lg border border-[var(--app-red)] bg-[var(--app-surface)] p-4 text-[var(--app-red)]"
@@ -147,8 +153,12 @@
 <script lang="ts" setup>
 import type { ComputedRef, Ref } from 'vue'
 import { computed, onMounted, ref, watch } from 'vue'
+import type { PendingReply, Prospect } from '~/types'
+import type { UseToastReturn } from '~/types/Composables'
 import type { SmsCredit, SmsMessage, SmsMessagesResponse, SmsStats } from '~/services/smsService'
 import { SmsService } from '~/services/smsService'
+import { ProspectsService } from '~/services/prospectsService'
+import { useToast } from '~/composables/useToast'
 import { SMS_STATUS_BADGE_CLASS, SMS_STATUS_LABELS, smsStatusDetailLabel } from '~/constants/smsStatus'
 import { formatEuros } from '~/utils/currency'
 import { formatCompactDateTime } from '~/utils/date'
@@ -159,8 +169,11 @@ definePageMeta({ layout: 'dashboard', middleware: ['auth'] })
 
 /** Persistent drawer stack (the SMS composer lives there). */
 const drawerStack: ReturnType<typeof useDrawerStackStore> = useDrawerStackStore()
+const toast: UseToastReturn = useToast()
 /** Current user — the smsmode balance is an account-level fact, admins only. */
 const userStore: ReturnType<typeof useUserStore> = useUserStore()
+
+const pendingReplies: Ref<{ count: number; items: PendingReply[] }> = ref({ count: 0, items: [] })
 
 const messages: Ref<SmsMessage[]> = ref([])
 const isLoading: Ref<boolean> = ref(false)
@@ -209,6 +222,42 @@ async function loadCredit(): Promise<void> {
 }
 
 /** Fetch the SMS history and stats. */
+/**
+ * Open the SMS composer for a demo-banner message awaiting an answer.
+ * @param item - Pending queue entry from the API.
+ */
+async function openPendingReply(item: PendingReply): Promise<void> {
+  if (item.prospect_id) {
+    const prospect: Prospect = await ProspectsService.getProspect(item.prospect_id)
+    drawerStack.push({ kind: 'send-sms', prospect })
+    return
+  }
+  drawerStack.push({ kind: 'send-sms', prospect: null })
+}
+
+/**
+ * Mark one pending demo message as handled without sending from the app.
+ * @param item - Pending queue entry from the API.
+ */
+async function markPendingReplyHandled(item: PendingReply): Promise<void> {
+  try {
+    await SmsService.markDemoLeadHandled(item.demo_lead_id ?? item.id)
+    await loadPendingReplies()
+    toast.success('Marqué comme traité')
+  } catch (err: unknown) {
+    toast.error(err instanceof Error ? err.message : 'Impossible de marquer comme traité')
+  }
+}
+
+/** Refresh the « à traiter » queue for SMS-only prospects. */
+async function loadPendingReplies(): Promise<void> {
+  pendingReplies.value = await SmsService.getPendingReplies().catch((): { count: number; items: PendingReply[] } => ({
+    count: 0,
+    items: [],
+  }))
+}
+
+/** Fetch SMS history, stats and the pending demo-message queue. */
 async function loadAll(): Promise<void> {
   isLoading.value = true
   error.value = null
@@ -219,6 +268,7 @@ async function loadAll(): Promise<void> {
     ])
     messages.value = list.messages
     stats.value = statsRes
+    await loadPendingReplies()
   } catch (err: unknown) {
     error.value = err instanceof Error ? err.message : 'Erreur lors du chargement des SMS'
   } finally {

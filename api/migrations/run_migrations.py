@@ -172,6 +172,7 @@ MIGRATION_MODULES: list[tuple[str, str]] = [
     ("add_prospect_website_equipment", "migrations.add_prospect_website_equipment"),
     ("add_prospect_google_reviews", "migrations.add_prospect_google_reviews"),
     ("add_demo_site_lead_status", "migrations.add_demo_site_lead_status"),
+    ("add_demo_site_lead_handled_at", "migrations.add_demo_site_lead_handled_at"),
     ("seed_assistant_video_email_template", "migrations.seed_assistant_video_email_template"),
     ("add_assistant_video_thumbnail_to_first_emails", "migrations.add_assistant_video_thumbnail_to_first_emails"),
     ("add_ai_assistant_start_columns", "migrations.add_ai_assistant_start_columns"),

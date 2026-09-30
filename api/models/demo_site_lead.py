@@ -33,6 +33,7 @@ class DemoSiteLead(Base):
         status: ``submitted`` (real lead) or ``draft`` (typed then abandoned without sending)
         created_at: Timestamp when the lead was submitted
         updated_at: Last time the row changed — a draft is upserted as the prospect keeps typing
+        handled_at: When the operator answered or dismissed the lead (« à traiter » cleared)
     """
 
     __tablename__ = "demo_site_leads"
@@ -47,3 +48,4 @@ class DemoSiteLead(Base):
     )
     created_at: Mapped[datetime] = mapped_column(default=datetime.utcnow, nullable=False)
     updated_at: Mapped[datetime | None] = mapped_column(onupdate=datetime.utcnow, nullable=True)
+    handled_at: Mapped[datetime | None] = mapped_column(nullable=True)

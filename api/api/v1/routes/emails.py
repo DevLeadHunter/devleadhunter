@@ -227,6 +227,13 @@ async def quick_send_email(
 
     body_html = payload.body_html + render_signature_html(db, payload.signature_id, user_id=current_user.id)
 
+    from services.demo_lead_inbox_service import demo_lead_inbox_service
+    from services.reply_inbox_forward_service import inbox_copy_address
+
+    identity = resolve_sending_identity(db, current_user.id)
+    copy_to = inbox_copy_address(identity)
+    bcc: list[str] | None = [copy_to] if copy_to else None
+
     sending = EmailSendingService(db)
     result = await sending.send_via_user_identity(
         user_id=current_user.id,
@@ -236,6 +243,7 @@ async def quick_send_email(
         recipient_name=payload.recipient_name,
         prospect_id=payload.prospect_id,
         campaign_id=payload.campaign_id,
+        bcc=bcc,
     )
     # A manual contact supersedes the campaigns: hold back every pending send of this prospect.
     if result.get("success") and payload.prospect_id:
@@ -245,6 +253,7 @@ async def quick_send_email(
             )
         except Exception:
             logger.warning("Could not hold back campaign sends for prospect %s", payload.prospect_id, exc_info=True)
+        demo_lead_inbox_service.mark_handled_for_prospect(db, current_user.id, int(payload.prospect_id))
     return result
 
 
@@ -346,6 +355,12 @@ async def resend_email_log(
     # path adds a fresh, correct one for the target address.
     body_html: str = unsubscribe_service.strip_unsubscribe_footer(log.body_html or "")
 
+    from services.reply_inbox_forward_service import inbox_copy_address
+
+    identity = resolve_sending_identity(db, current_user.id)
+    copy_to = inbox_copy_address(identity)
+    bcc: list[str] | None = [copy_to] if copy_to else None
+
     sending = EmailSendingService(db)
     return await sending.send_via_user_identity(
         user_id=current_user.id,
@@ -355,6 +370,7 @@ async def resend_email_log(
         recipient_name=log.recipient_name,
         prospect_id=str(log.prospect_id) if log.prospect_id else None,
         campaign_id=str(log.campaign_id) if log.campaign_id else None,
+        bcc=bcc,
     )
 
 
@@ -384,8 +400,12 @@ async def get_pending_replies(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> PendingRepliesResponse:
-    """The « à traiter » queue: human replies not yet answered, newest first."""
+    """The « à traiter » queue: human replies + demo messages (email prospects), newest first."""
+    from services.demo_lead_inbox_service import demo_lead_inbox_service
+
     items = conversation_service.pending_replies(db, current_user.id)
+    items.extend(demo_lead_inbox_service.pending_items(db, current_user.id, "email"))
+    items.sort(key=lambda row: row.get("received_at") or "", reverse=True)
     return PendingRepliesResponse(count=len(items), items=items)
 
 
@@ -398,6 +418,19 @@ async def mark_reply_handled(
     """Mark a reply as dealt with (e.g. answered from the user's own mailbox)."""
     if not conversation_service.mark_handled(db, current_user.id, reply_id):
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Réponse introuvable")
+
+
+@router.post("/demo-leads/{lead_id}/handled", status_code=status.HTTP_204_NO_CONTENT)
+async def mark_demo_lead_handled(
+    lead_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> None:
+    """Mark a demo-banner message as dealt with."""
+    from services.demo_lead_inbox_service import demo_lead_inbox_service
+
+    if not demo_lead_inbox_service.mark_handled(db, current_user.id, lead_id):
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Message démo introuvable")
 
 
 @router.post("/replies/{reply_id}/unsubscribe", status_code=status.HTTP_204_NO_CONTENT)

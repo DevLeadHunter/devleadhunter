@@ -292,6 +292,32 @@ async def reschedule_auto_sms(
     return SmsAutoQueueActionResponse(id=row.id, status=row.status, scheduled_at=row.scheduled_at)
 
 
+@router.get("/replies/pending")
+async def get_sms_pending_replies(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Demo-banner messages awaiting an answer for SMS-only prospects."""
+    from schemas.email_sending import PendingRepliesResponse
+    from services.demo_lead_inbox_service import demo_lead_inbox_service
+
+    items = demo_lead_inbox_service.pending_items(db, current_user.id, "sms")
+    return PendingRepliesResponse(count=len(items), items=items)
+
+
+@router.post("/demo-leads/{lead_id}/handled", status_code=status.HTTP_204_NO_CONTENT)
+async def mark_sms_demo_lead_handled(
+    lead_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> None:
+    """Mark a demo-banner message as dealt with (SMS inbox)."""
+    from services.demo_lead_inbox_service import demo_lead_inbox_service
+
+    if not demo_lead_inbox_service.mark_handled(db, current_user.id, lead_id):
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Message démo introuvable")
+
+
 @router.get("/messages", response_model=SmsMessagesResponse)
 async def list_messages(
     limit: int = 500,
@@ -517,6 +543,10 @@ async def send_manual_sms(
         prospect_id=payload.prospect_id,
         recipient_name=payload.recipient_name,
     )
+    if outcome.sent and payload.prospect_id:
+        from services.demo_lead_inbox_service import demo_lead_inbox_service
+
+        demo_lead_inbox_service.mark_handled_for_prospect(db, current_user.id, payload.prospect_id)
     return SmsSendResponse(sent=outcome.sent, reason=outcome.reason)
 
 

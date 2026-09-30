@@ -307,7 +307,13 @@
                   <div v-if="prospect.address || prospect.city || countrySuffix" class="mt-0.5">
                     <p v-if="prospect.address" class="text-sm text-[var(--app-ink)]">{{ prospect.address }}</p>
                     <p v-if="prospect.city" class="text-sm text-[var(--app-ink-soft)]">{{ prospect.city }}</p>
-                    <p v-if="countrySuffix" class="text-sm text-[var(--app-ink-soft)]">{{ countrySuffix }}</p>
+                    <p
+                      v-if="countrySuffix || (prospect.country && prospect.country !== 'FR')"
+                      class="flex items-center gap-1.5 text-sm text-[var(--app-ink-soft)]"
+                    >
+                      <UiCountryFlag :code="prospect.country" :hide-france="false" />
+                      <span>{{ countrySuffix || ProspectCountries.option(prospect.country).label }}</span>
+                    </p>
                   </div>
                   <p v-else class="text-sm text-[var(--app-faint)]">—</p>
                 </div>

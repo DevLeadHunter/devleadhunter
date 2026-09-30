@@ -261,8 +261,10 @@ class ConversationService:
                 prospects[prospect.id] = prospect.name or ""
         return [
             {
+                "source": "email_reply",
                 "id": reply.id,
                 "email_log_id": reply.email_log_id,
+                "demo_lead_id": None,
                 "prospect_id": reply.prospect_id,
                 "prospect_name": prospects.get(reply.prospect_id or -1) or None,
                 "from_email": reply.from_email,
@@ -345,6 +347,8 @@ class ConversationService:
         )
 
         if result.get("success"):
+            from services.demo_lead_inbox_service import demo_lead_inbox_service
+
             now = datetime.now(UTC).replace(tzinfo=None)
             pending = db.execute(
                 select(EmailReply).where(
@@ -356,6 +360,8 @@ class ConversationService:
             for row in pending:
                 row.handled_at = now
             db.commit()
+            if reply.prospect_id:
+                demo_lead_inbox_service.mark_handled_for_prospect(db, user_id, reply.prospect_id)
         return result
 
 

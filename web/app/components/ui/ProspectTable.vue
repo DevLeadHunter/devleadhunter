@@ -128,13 +128,12 @@
         </BaseTableTd>
 
         <BaseTableTd label="Ville" class="text-sm text-[var(--app-ink-soft)]">
-          <span
+          <UiCountryFlag
             v-if="prospect.country && prospect.country !== 'FR'"
+            :code="prospect.country"
             :title="ProspectCountries.option(prospect.country).label"
-            class="mr-1"
-          >
-            {{ ProspectCountries.option(prospect.country).flag }}
-          </span>
+            class="mr-1 inline-block"
+          />
           {{ prospect.city || '—' }}
         </BaseTableTd>
 
