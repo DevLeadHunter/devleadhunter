@@ -519,7 +519,7 @@ async def schedule_reply_to_prospect(
             db, current_user.id, reply_id, payload.body_html, payload.scheduled_at
         )
     except ScheduledEmailError as exc:
-        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc)) from exc
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail=str(exc)) from exc
     if row is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Réponse introuvable")
     return _scheduled_response(row)
@@ -542,7 +542,7 @@ async def update_scheduled_email(
             scheduled_at=payload.scheduled_at,
         )
     except ScheduledEmailError as exc:
-        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc)) from exc
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail=str(exc)) from exc
     if row is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Envoi programmé introuvable")
     return _scheduled_response(row)
@@ -569,7 +569,7 @@ async def send_scheduled_email_now(
     try:
         result = await scheduled_email_service.send_now(db, current_user.id, scheduled_id)
     except ScheduledEmailError as exc:
-        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc)) from exc
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail=str(exc)) from exc
     if result is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Envoi programmé introuvable")
     return result
