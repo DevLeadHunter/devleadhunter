@@ -186,6 +186,8 @@ MIGRATION_MODULES: list[tuple[str, str]] = [
         "add_assistant_subscription_payment_failed_invoice_id",
         "migrations.add_assistant_subscription_payment_failed_invoice_id",
     ),
+    ("add_ai_assistant_mailbox_enabled", "migrations.add_ai_assistant_mailbox_enabled"),
+    ("add_ai_assistant_mailbox_tables", "migrations.add_ai_assistant_mailbox_tables"),
 ]
 
 # Modules of this package that are not migrations and must not be registered.

@@ -1,8 +1,8 @@
 """
-The OAuth steps every Google integration shares: the consent page, the code exchange, the token refresh and the
-connected account's profile.
+The OAuth steps every Google integration shares: the consent page, the code exchange, the token refresh, the
+revocation and the connected account's profile, and the error of a refused API call.
 
-The assistants' agendas, Gmail sending and Postmaster Tools share the server's Google OAuth client
+The assistants' agendas and mailboxes, Gmail sending and Postmaster Tools share the server's Google OAuth client
 (``GOOGLE_CLIENT_ID`` / ``GOOGLE_CLIENT_SECRET``); each keeps its own scopes, redirect address and errors.
 """
 
@@ -46,11 +46,21 @@ class GoogleOAuthError(Exception):
         return self.error_code in ("invalid_grant", "unauthorized_client")
 
 
+class GoogleApiError(Exception):
+    """A Google API call that failed; ``needs_reconnect`` when the account must consent again."""
+
+    def __init__(self, message: str, *, needs_reconnect: bool = False, status_code: int | None = None) -> None:
+        super().__init__(message)
+        self.needs_reconnect = needs_reconnect
+        self.status_code = status_code
+
+
 class GoogleOAuthClient:
     """Google's OAuth endpoints, for any scope and redirect address."""
 
     AUTHORIZATION_URL: ClassVar[str] = "https://accounts.google.com/o/oauth2/v2/auth"
     TOKEN_URL: ClassVar[str] = "https://oauth2.googleapis.com/token"
+    REVOKE_URL: ClassVar[str] = "https://oauth2.googleapis.com/revoke"
     USERINFO_URL: ClassVar[str] = "https://www.googleapis.com/oauth2/v2/userinfo"
 
     @property
@@ -139,6 +149,28 @@ class GoogleOAuthClient:
             timeout_seconds=timeout_seconds,
         )
         return self._tokens(payload, refresh_token=payload.get("refresh_token") or refresh_token)
+
+    async def revoke(self, token: str, *, timeout_seconds: float) -> bool:
+        """
+        Revoke an account's grant to this client: every token of it stops working, for every scope.
+
+        Args:
+            token: A refresh token (or an access token) of the grant.
+            timeout_seconds: HTTP timeout.
+
+        Returns:
+            True when Google revoked it; False when it refused (an already revoked token) or did not answer.
+        """
+        try:
+            async with httpx.AsyncClient(timeout=timeout_seconds) as client:
+                response = await client.post(self.REVOKE_URL, data={"token": token})
+        except httpx.HTTPError:
+            logger.warning("Google revocation endpoint unreachable")
+            return False
+        if response.status_code >= 400:
+            logger.warning("Google revocation refused (%s)", response.status_code)
+            return False
+        return True
 
     async def user_info(self, access_token: str, *, timeout_seconds: float) -> dict[str, Any]:
         """

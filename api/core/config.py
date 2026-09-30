@@ -486,6 +486,12 @@ class Settings(BaseSettings):
         alias="GOOGLE_CALENDAR_REDIRECT_URI",
         description="Google OAuth redirect URI of the assistants' agendas (connected from the client space)",
     )
+    # Empty: no receptionist can connect a Gmail mailbox.
+    google_mailbox_redirect_uri: str = Field(
+        default="",
+        alias="GOOGLE_MAILBOX_REDIRECT_URI",
+        description="Google OAuth redirect URI of the receptionists' Gmail mailboxes (connected from the client space)",
+    )
 
     # Encryption settings (for OAuth tokens)
     encryption_key: str | None = Field(
