@@ -44,11 +44,20 @@ export class BusinessNameUtils {
   }
 
   /**
+   * The « de » a French noun takes before the business name, elided before a vowel (« de », « d' »).
+   * @param name - The business name.
+   * @returns « d' » or « de » followed by a space.
+   */
+  static preposition(name: string): string {
+    return FRENCH_ELISION_START.test(name) ? "d'" : 'de '
+  }
+
+  /**
    * The business as the complement of a French noun (« de Toitures Morel », « d'Atelier Morel »).
    * @param name - The business name.
    * @returns The name with its « de » or « d' ».
    */
   static ofBusiness(name: string): string {
-    return FRENCH_ELISION_START.test(name) ? `d'${name}` : `de ${name}`
+    return `${BusinessNameUtils.preposition(name)}${name}`
   }
 }

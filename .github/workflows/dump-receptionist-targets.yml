@@ -18,6 +18,11 @@ jobs:
             cd /var/www/api.devleadhunter.dibodev.fr/html/api
             echo "===== runtime versions ====="
             ../.venv/bin/python -c "import sys, fastapi, starlette; print('python', sys.version.split()[0]); print('fastapi', fastapi.__version__); print('starlette', starlette.__version__); import starlette.status as status; print('has HTTP_413_CONTENT_TOO_LARGE', 'HTTP_413_CONTENT_TOO_LARGE' in vars(status)); print('has HTTP_422_UNPROCESSABLE_CONTENT', 'HTTP_422_UNPROCESSABLE_CONTENT' in vars(status))"
+            echo "===== receptionist model calls, last 7 days (usage provider model fallback) ====="
+            sudo journalctl -u devleadhunter-api.service --since "7 days ago" --no-pager 2>/dev/null | grep -oE "assistant_llm_call usage=[a-z_]+ provider=[a-z]+ model=[^ ]+" | sort | uniq -c | sort -rn | head -20 || true
+            sudo journalctl -u devleadhunter-api.service --since "7 days ago" --no-pager 2>/dev/null | grep -oE "assistant_llm_call .*fallback=True" | grep -oE "usage=[a-z_]+ provider=[a-z]+" | sort | uniq -c || true
+            echo "===== model failures and rate limits, last 7 days ====="
+            sudo journalctl -u devleadhunter-api.service --since "7 days ago" --no-pager 2>/dev/null | grep -iE "call failed|rate limit|rate_limit|429" | cut -c1-240 | tail -25 || true
             ../.venv/bin/python - <<'PY'
             import importlib
             import pkgutil
