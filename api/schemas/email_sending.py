@@ -148,6 +148,13 @@ class ConversationItem(BaseModel):
     intent: str | None = None
     # The EmailReply id behind an inbound item (action targets: handle, unsubscribe).
     reply_id: int | None = None
+    # Planned answers (not sent yet): id, time, status and whether the prospect wrote since.
+    scheduled_id: int | None = None
+    scheduled_at: str | None = None
+    scheduled_status: str | None = None
+    scheduled_created_at: str | None = None
+    scheduled_error: str | None = None
+    has_newer_reply: bool = False
 
 
 class ConversationResponse(BaseModel):
@@ -183,6 +190,29 @@ class ReplySendRequest(BaseModel):
     """Payload to answer a prospect's reply from the app."""
 
     body_html: str
+
+
+class ReplyScheduleRequest(BaseModel):
+    """Payload to plan an answer to a prospect's reply."""
+
+    body_html: str
+    scheduled_at: datetime
+
+
+class ScheduledEmailUpdateRequest(BaseModel):
+    """Change the text and/or the time of a planned email."""
+
+    body_html: str | None = None
+    scheduled_at: datetime | None = None
+
+
+class ScheduledEmailResponse(BaseModel):
+    """A planned email."""
+
+    id: int
+    status: str
+    scheduled_at: str
+    recipient_email: str
 
 
 class EmailStatsResponse(BaseModel):

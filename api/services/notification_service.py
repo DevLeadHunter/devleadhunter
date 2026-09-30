@@ -75,6 +75,7 @@ _EMAIL_EVENT_NOTIFS: dict[str, tuple[str, str, str]] = {
     "email_replied_interested": ("🎯", "success", "T'a répondu — intéressé !"),
     "email_replied_negative": ("🙅", "warning", "T'a répondu — pas intéressé"),
     "email_conversation_reply_sent": ("✅", "info", "Ta réponse est partie"),
+    "email_scheduled_reply_failed": ("❌", "error", "Ta réponse programmée n'est pas partie"),
     "email_unsubscribed": ("🚫", "warning", "S'est désinscrit de tes emails"),
 }
 

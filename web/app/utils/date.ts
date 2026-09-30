@@ -169,3 +169,43 @@ export function formatRelativeTime(iso: string | null | undefined): string {
   if (diffDays < 7) return `il y a ${diffDays} jours`
   return formatNumericDate(iso)
 }
+
+/**
+ * Format a date as the value of a `datetime-local` input (local time, minute precision).
+ * @param moment - The date to format.
+ * @returns The `YYYY-MM-DDTHH:mm` local string.
+ */
+export function toDatetimeLocalValue(moment: Date): string {
+  const pad: (value: number) => string = (value: number): string => String(value).padStart(2, '0')
+  return `${moment.getFullYear()}-${pad(moment.getMonth() + 1)}-${pad(moment.getDate())}T${pad(moment.getHours())}:${pad(moment.getMinutes())}`
+}
+
+/**
+ * Read a `datetime-local` input value as a moment, only when it lies in the future.
+ * @param value - The `YYYY-MM-DDTHH:mm` local string.
+ * @returns The date, or `null` when empty, invalid or not in the future.
+ */
+export function parseFutureDatetimeLocalValue(value: string): Date | null {
+  if (!value) return null
+  const moment: Date = new Date(value)
+  if (Number.isNaN(moment.getTime()) || moment.getTime() <= Date.now()) return null
+  return moment
+}
+
+/**
+ * Format a planned send time relative to today: `aujourd'hui à 18:30`, `demain à 11:00`, `lundi 5 oct. à 09:00`.
+ * @param moment - The planned time.
+ * @returns The label, in local time.
+ */
+export function formatScheduledMoment(moment: Date): string {
+  const time: string = moment.toLocaleTimeString(LOCALE, { hour: '2-digit', minute: '2-digit' })
+  const startOfToday: Date = new Date()
+  startOfToday.setHours(0, 0, 0, 0)
+  const startOfMoment: Date = new Date(moment)
+  startOfMoment.setHours(0, 0, 0, 0)
+  const dayOffset: number = Math.round((startOfMoment.getTime() - startOfToday.getTime()) / (1000 * 60 * 60 * 24))
+  if (dayOffset === 0) return `aujourd'hui à ${time}`
+  if (dayOffset === 1) return `demain à ${time}`
+  const day: string = moment.toLocaleDateString(LOCALE, { weekday: 'long', day: 'numeric', month: 'short' })
+  return `${day} à ${time}`
+}

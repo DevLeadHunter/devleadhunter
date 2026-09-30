@@ -404,7 +404,7 @@ import type { DemoSite } from '~/services/demoSiteService'
 import { ProspectsService } from '~/services/prospectsService'
 import { SmsService } from '~/services/smsService'
 import type { SmsAutoQueueAction } from '~/services/smsService'
-import { parseApiDate } from '~/utils/date'
+import { parseApiDate, toDatetimeLocalValue } from '~/utils/date'
 import { useToast } from '~/composables/useToast'
 import type { UseToastReturn } from '~/types/Composables'
 
@@ -776,16 +776,6 @@ async function cancelAutoSms(row: ForecastRow): Promise<void> {
     next.delete(rowId)
     pendingCancelIds.value = next
   }
-}
-
-/**
- * `YYYY-MM-DDTHH:mm` local value for a datetime-local input.
- * @param moment - The date to format.
- * @returns The input-ready local value.
- */
-function toDatetimeLocalValue(moment: Date): string {
-  const pad: (value: number) => string = (value: number): string => String(value).padStart(2, '0')
-  return `${moment.getFullYear()}-${pad(moment.getMonth() + 1)}-${pad(moment.getDate())}T${pad(moment.getHours())}:${pad(moment.getMinutes())}`
 }
 
 /**

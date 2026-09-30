@@ -112,7 +112,7 @@ import type { UiSmsConversationProps } from '~/types/UiSmsConversation'
 import type { UseToastReturn } from '~/types/Composables'
 import { SmsService } from '~/services/smsService'
 import { SMS_STATUS_LABELS } from '~/constants/smsStatus'
-import { formatCompactDateTime } from '~/utils/date'
+import { formatCompactDateTime, toDatetimeLocalValue } from '~/utils/date'
 import { useToast } from '~/composables/useToast'
 
 const props: UiSmsConversationProps = defineProps({
@@ -141,16 +141,6 @@ const receivedAtLocal: Ref<string> = ref('')
 const canSubmit: ComputedRef<boolean> = computed(
   (): boolean => fromNumber.value.trim().length > 0 && body.value.trim().length > 0,
 )
-
-/**
- * Format a date as the value of a datetime-local input (local time, minute precision).
- * @param date - The date to format.
- * @returns The `YYYY-MM-DDTHH:mm` local string.
- */
-function toDatetimeLocalValue(date: Date): string {
-  const pad: (n: number) => string = (n: number): string => String(n).padStart(2, '0')
-  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`
-}
 
 /** Fetch the prospect's thread (sent SMS + consigned replies, oldest first). */
 async function loadThread(): Promise<void> {
