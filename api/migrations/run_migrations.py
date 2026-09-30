@@ -182,6 +182,8 @@ MIGRATION_MODULES: list[tuple[str, str]] = [
     ("add_ai_assistant_client_link_version", "migrations.add_ai_assistant_client_link_version"),
     ("add_ai_assistant_message_cap_alerted_on", "migrations.add_ai_assistant_message_cap_alerted_on"),
     ("rename_assistant_language_lu_to_lb", "migrations.rename_assistant_language_lu_to_lb"),
+    ("add_ai_assistant_mailbox_enabled", "migrations.add_ai_assistant_mailbox_enabled"),
+    ("add_ai_assistant_mailbox_tables", "migrations.add_ai_assistant_mailbox_tables"),
 ]
 
 # Modules of this package that are not migrations and must not be registered.
