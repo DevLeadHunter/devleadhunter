@@ -146,6 +146,7 @@ async def get_public_demo_site_by_domain(
     if not site:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="No site for this domain")
     payload = DemoSitePublicResponse.model_validate(site).model_dump()
+    payload["content_json"] = demo_site_service.content_json_for_public(db, site)
     if site.storyblok_preview_token:
         payload["storyblok_region"] = settings.storyblok_region
     return DemoSitePublicResponse(**payload)
@@ -161,6 +162,7 @@ async def get_public_demo_site(
     if not site:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Demo site not found or expired")
     payload = DemoSitePublicResponse.model_validate(site).model_dump()
+    payload["content_json"] = demo_site_service.content_json_for_public(db, site)
     if site.storyblok_preview_token:
         payload["storyblok_region"] = settings.storyblok_region
     payload["video_available"] = has_ready_video(site)

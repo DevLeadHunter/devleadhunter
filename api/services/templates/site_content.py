@@ -438,6 +438,19 @@ def apply_section_overrides(
     if cards:
         site_content["services"] = cards
         fill_missing_card_images(site_content, enrichment)
+    raw_images = overrides.get("images")
+    if isinstance(raw_images, dict):
+        existing = site_content.get("images")
+        merged: dict[str, Any] = dict(existing) if isinstance(existing, dict) else {}
+        for key in ("faq", "aboutSecondary"):
+            url = raw_images.get(key)
+            if isinstance(url, str) and url.strip():
+                merged[key] = url.strip()
+        if merged:
+            site_content["images"] = merged
+    badge = overrides.get("heroBadge")
+    if isinstance(badge, str) and badge.strip():
+        site_content["heroBadge"] = badge.strip()
     return site_content
 
 

@@ -508,10 +508,10 @@ async function loadLogs(): Promise<void> {
     ] = await Promise.all([
       EmailCampaignsService.getEmailLogs({ limit: 500 }),
       EmailCampaignsService.getEmailStats(),
-      EmailLogsService.getPendingReplies().catch((): { count: number; items: PendingReply[] } => ({
-        count: 0,
-        items: [],
-      })),
+      EmailLogsService.getPendingReplies().catch((err: unknown): { count: number; items: PendingReply[] } => {
+        console.error('[Suivi des emails] File à traiter indisponible:', err)
+        return { count: 0, items: [] }
+      }),
     ])
     logs.value = logsRes.logs
     stats.value = statsRes
@@ -541,7 +541,8 @@ watch(
  * @returns A promise that resolves once the sync is complete.
  */
 async function syncStatus(isUserRequested: boolean): Promise<void> {
-  isSyncing.value = true
+  if (isUserRequested && isSyncing.value) return
+  if (isUserRequested) isSyncing.value = true
   try {
     const result: { updated: number; checked: number; errors?: string[] | undefined } = await ApiClient.post<{
       updated: number
@@ -571,14 +572,13 @@ async function syncStatus(isUserRequested: boolean): Promise<void> {
       toast.error(err instanceof Error ? err.message : 'Erreur lors de la synchronisation')
     }
   } finally {
-    isSyncing.value = false
+    if (isUserRequested) isSyncing.value = false
   }
 }
 
 onMounted(async (): Promise<void> => {
   await loadLogs()
-  // Auto-sync on page load so statuses are fresh even without webhooks. It runs
-  // unattended, so it only speaks up when it actually changed something.
-  await syncStatus(false)
+  // Rafraîchissement léger en arrière-plan (sans bloquer le bouton Sync).
+  void syncStatus(false)
 })
 </script>

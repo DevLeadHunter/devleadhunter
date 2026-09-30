@@ -304,14 +304,14 @@
                 </div>
                 <div>
                   <p class="text-[10px] text-[var(--app-ink-soft)]">Adresse</p>
-                  <div v-if="prospect.address || prospect.city || countrySuffix" class="mt-0.5">
+                  <div v-if="prospect.address || prospect.city || countrySuffix" class="mt-1 space-y-1">
                     <p v-if="prospect.address" class="text-sm text-[var(--app-ink)]">{{ prospect.address }}</p>
                     <p v-if="prospect.city" class="text-sm text-[var(--app-ink-soft)]">{{ prospect.city }}</p>
                     <p
                       v-if="countrySuffix || (prospect.country && prospect.country !== 'FR')"
-                      class="flex items-center gap-1.5 text-sm text-[var(--app-ink-soft)]"
+                      class="flex items-center gap-2 pt-0.5 text-sm text-[var(--app-ink-soft)]"
                     >
-                      <UiCountryFlag :code="prospect.country" :hide-france="false" />
+                      <UiCountryFlag :code="prospect.country" :hide-france="false" size="default" />
                       <span>{{ countrySuffix || ProspectCountries.option(prospect.country).label }}</span>
                     </p>
                   </div>

@@ -264,6 +264,18 @@ class DemoSiteService:
         # tweak must never wipe them again.
         return apply_section_overrides(content, demo_site.section_overrides, enrichment)
 
+    def content_json_for_public(self, db: Session, demo_site: DemoSite) -> dict:
+        """Published demo payload with operator overrides layered on stored ``content_json``."""
+        content: dict = dict(demo_site.content_json) if isinstance(demo_site.content_json, dict) else {}
+        enrichment = self._enrichment_dict_for_site(db, demo_site)
+        if isinstance(enrichment, dict) and isinstance(demo_site.image_order, list) and demo_site.image_order:
+            pool: list[str] = usable_site_photos(enrichment)
+            enrichment = {
+                **enrichment,
+                "photos": self._effective_photos(pool, demo_site.image_order, demo_site.image_pool_snapshot),
+            }
+        return apply_section_overrides(content, demo_site.section_overrides, enrichment)
+
     @staticmethod
     def _apply_brand_color(
         palette: dict[str, str],
@@ -432,6 +444,8 @@ class DemoSiteService:
         image_order: list[str] | None = None,
         services: list[dict] | None = None,
         services_source: str | None = None,
+        section_images: dict[str, str] | None = None,
+        hero_badge: str | None = None,
     ) -> DemoSite:
         """Update demo site fields and regenerate its published content.
 
@@ -455,6 +469,27 @@ class DemoSiteService:
                     raise ValueError("Aucune carte valide : chaque carte doit avoir un titre.")
                 overrides["services"] = cards
                 overrides["services_source"] = services_source if services_source in _SERVICE_CARD_SOURCES else "manual"
+            demo_site.section_overrides = overrides or None
+        if section_images is not None or hero_badge is not None:
+            overrides = dict(demo_site.section_overrides) if isinstance(demo_site.section_overrides, dict) else {}
+            if section_images is not None:
+                pool, _ = self._photo_pool_with_enrichment(db, demo_site)
+                allowed = set(pool)
+                images: dict[str, str] = {}
+                for key in ("faq", "aboutSecondary"):
+                    url = section_images.get(key)
+                    if isinstance(url, str) and url.strip() and url.strip() in allowed:
+                        images[key] = url.strip()
+                if images:
+                    overrides["images"] = images
+                else:
+                    overrides.pop("images", None)
+            if hero_badge is not None:
+                badge = hero_badge.strip()
+                if badge:
+                    overrides["heroBadge"] = badge
+                else:
+                    overrides.pop("heroBadge", None)
             demo_site.section_overrides = overrides or None
         if image_order is not None:
             pool: list[str] = usable_site_photos(self._enrichment_dict_for_site(db, demo_site))
@@ -1131,7 +1166,8 @@ class DemoSiteService:
             if key not in flat_content and previous.get(key) is not None:
                 flat_content[key] = previous[key]
 
-        site.content_json = flat_content
+        enrichment = self._enrichment_dict_for_site(db, site)
+        site.content_json = apply_section_overrides(flat_content, site.section_overrides, enrichment)
         db.commit()
         db.refresh(site)
         return True

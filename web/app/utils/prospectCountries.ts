@@ -43,13 +43,4 @@ export class ProspectCountries {
     const option: ProspectCountryOption = ProspectCountries.option(code)
     return option.code === 'FR' ? '' : option.label
   }
-
-  /**
-   * PNG flag URL (Windows and older browsers do not render regional-indicator emoji flags).
-   * @param code - ISO alpha-2 code.
-   * @returns flagcdn.com URL for the country.
-   */
-  static flagSrc(code: string): string {
-    return `https://flagcdn.com/w40/${code.toLowerCase()}.png`
-  }
 }

@@ -36,11 +36,12 @@ from services import reply_capture_service
 from services.activity_log_service import CATEGORY_DEMO_SITE, STATUS_INFO, activity_log_service
 from services.bounce_fallback_service import bounce_fallback_service
 from services.demo_identity import posthog_distinct_id, resolve_demo_slug
+from services.demo_site_service import demo_site_service
 from services.encryption_service import encryption_service
 from services.notification_service import notification_service
 from services.posthog_service import posthog_service
 from services.storyblok_service import storyblok_service
-from services.templates.site_content import from_storyblok_site_content
+from services.templates.site_content import apply_section_overrides, from_storyblok_site_content
 
 router = APIRouter(prefix="/webhooks", tags=["webhooks"])
 logger = logging.getLogger(__name__)
@@ -654,6 +655,9 @@ async def storyblok_webhook(
     for key in ("address", "rating", "reviewsCount", "lat", "lng"):
         if key not in flat_content and previous.get(key) is not None:
             flat_content[key] = previous[key]
+
+    enrichment = demo_site_service._enrichment_dict_for_site(db, site)
+    flat_content = apply_section_overrides(flat_content, site.section_overrides, enrichment)
 
     site.content_json = flat_content
     db.commit()

@@ -178,6 +178,19 @@ def test_apply_section_overrides_replaces_services_and_fills_missing_photos() ->
     assert images == ["https://cdn/burger.jpg", "https://cdn/wrap.jpg", ""]
 
 
+def test_apply_section_overrides_merges_faq_and_about_secondary_images() -> None:
+    site = {"images": {"faq": "https://unsplash/faq.jpg", "aboutSecondary": "https://unsplash/about2.jpg"}}
+    overrides = {
+        "images": {
+            "faq": "https://cdn/r2/faq-garage.jpg",
+            "aboutSecondary": "https://cdn/r2/devanture.jpg",
+        }
+    }
+    apply_section_overrides(site, overrides)
+    assert site["images"]["faq"] == "https://cdn/r2/faq-garage.jpg"
+    assert site["images"]["aboutSecondary"] == "https://cdn/r2/devanture.jpg"
+
+
 def test_apply_section_overrides_ignores_empty_or_invalid_overrides() -> None:
     site = {"services": [{"title": "Généré", "description": "", "image": ""}], "gallery": []}
     apply_section_overrides(site, None)

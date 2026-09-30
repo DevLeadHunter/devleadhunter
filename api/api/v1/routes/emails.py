@@ -50,8 +50,9 @@ _RESEND_EVENT_TO_STATUS: dict[str, str] = {
     "suppressed": EmailStatus.SUPPRESSED.value,
 }
 
-# Statuses still eligible for further events.
-# Scheduled/sent/delivered/opened/clicked can all receive later events.
+# Statuses worth polling when webhooks are missing. ``opened`` / ``clicked`` are terminal
+# for this fallback — re-fetching every delivered+opened log on each page load meant
+# hundreds of sequential Resend API calls and a stuck « Sync » spinner.
 _UNRESOLVED_STATUSES = (
     EmailStatus.PENDING.value,
     EmailStatus.SENDING.value,
@@ -59,9 +60,9 @@ _UNRESOLVED_STATUSES = (
     EmailStatus.SENT.value,
     EmailStatus.DELIVERY_DELAYED.value,
     EmailStatus.DELIVERED.value,
-    EmailStatus.OPENED.value,
-    EmailStatus.CLICKED.value,
 )
+
+_SYNC_RESEND_LIMIT = 80
 
 # When syncing from Resend's last_event, cascade-fill all timestamp columns
 # implied by that state (e.g. if "opened", delivery must have happened too).
@@ -106,14 +107,17 @@ async def sync_resend_status(
         )
 
     # Fetch all unresolved logs that have a Resend message ID
-    logs: list[EmailLog] = (
+    logs: list[EmailLog] = list(
         db.execute(
-            select(EmailLog).where(
+            select(EmailLog)
+            .where(
                 EmailLog.user_id == current_user.id,
                 EmailLog.provider == "resend",
                 EmailLog.provider_message_id.isnot(None),
                 EmailLog.status.in_(_UNRESOLVED_STATUSES),
             )
+            .order_by(EmailLog.id.desc())
+            .limit(_SYNC_RESEND_LIMIT)
         )
         .scalars()
         .all()

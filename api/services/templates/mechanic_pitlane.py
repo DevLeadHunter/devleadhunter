@@ -231,5 +231,17 @@ def build_site_content(
     # Per-service image: a distinct default per card (no "% length" repeat within the 6-card grid).
     for index, service in enumerate(site["services"]):
         service["image"] = _DEFAULT_SERVICE_IMAGES[index % len(_DEFAULT_SERVICE_IMAGES)]
-    site["images"] = {"aboutSecondary": _DEFAULT_ABOUT_SECONDARY, "faq": _DEFAULT_FAQ_IMAGE}
+    photos_raw = enr.get("photos")
+    photos: list[str] = (
+        [url.strip() for url in photos_raw if isinstance(url, str) and url.strip()]
+        if isinstance(photos_raw, list)
+        else []
+    )
+    # Layer fallbacks: faq → gallery[0], aboutSecondary → gallery[1] (photos[2] and [3] after hero/about).
+    if len(photos) >= 4:
+        site["images"] = {"aboutSecondary": photos[3], "faq": photos[2]}
+    elif len(photos) == 3:
+        site["images"] = {"aboutSecondary": photos[2], "faq": photos[2]}
+    else:
+        site["images"] = {"aboutSecondary": _DEFAULT_ABOUT_SECONDARY, "faq": _DEFAULT_FAQ_IMAGE}
     return site

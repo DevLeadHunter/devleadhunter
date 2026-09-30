@@ -128,13 +128,15 @@
         </BaseTableTd>
 
         <BaseTableTd label="Ville" class="text-sm text-[var(--app-ink-soft)]">
-          <UiCountryFlag
-            v-if="prospect.country && prospect.country !== 'FR'"
-            :code="prospect.country"
-            :title="ProspectCountries.option(prospect.country).label"
-            class="mr-1 inline-block"
-          />
-          {{ prospect.city || '—' }}
+          <span class="inline-flex items-center gap-1.5">
+            <UiCountryFlag
+              v-if="prospect.country && prospect.country !== 'FR'"
+              :code="prospect.country"
+              :title="ProspectCountries.option(prospect.country).label"
+              size="compact"
+            />
+            <span>{{ prospect.city || '—' }}</span>
+          </span>
         </BaseTableTd>
 
         <BaseTableTd
