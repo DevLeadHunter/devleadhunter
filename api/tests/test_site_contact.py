@@ -1,6 +1,7 @@
 """The contact page of the marketing site: the message reaches the publisher's inbox and one reply answers the visitor."""
 
 import asyncio
+from datetime import datetime
 from typing import Any
 
 import pytest
@@ -18,11 +19,13 @@ from schemas.site_contact import SiteContactRequest
 from services.notification_service import notification_service
 from services.rate_limiter import SlidingWindowRateLimiter
 from services.sending_identity import SendingIdentity, SendingNotConfiguredError
+from services.site_contact_email import SiteContactEmail
 from services.site_contact_service import SiteContactDeliveryError, SiteContactService
 
 _CAMPAIGN_IDENTITY = SendingIdentity(
     provider="resend", from_email="leo@mail.dibodev.fr", from_name="Léo", resend_api_key="re_test"
 )
+_THURSDAY_MORNING = datetime(2026, 10, 1, 9, 42)
 
 
 class _RecordingResend:
@@ -89,7 +92,7 @@ def test_the_message_reaches_the_inbox_and_a_reply_answers_the_visitor(
     assert email["to_email"] == settings.contact_form_to
     assert email["reply_to"] == "camille@studio-exemple.fr"
     assert email["from_email"] == "leo@mail.dibodev.fr"
-    assert email["subject"] == "Page contact · Crédits et facturation · Camille Martin"
+    assert email["subject"] == "Nouveau message · Camille Martin · Crédits et facturation"
     assert "combien coûte un crédit" in email["text_body"]
 
 
@@ -103,6 +106,55 @@ def test_the_visitor_text_is_escaped_in_the_html_email(
     [email] = resend.sent
     assert "<script>" not in email["html_body"]
     assert "&lt;script&gt;alert(1)&lt;/script&gt;" in email["html_body"]
+
+
+def test_a_mobile_can_be_called_or_texted_on_whatsapp_from_the_email() -> None:
+    email = SiteContactEmail.render(_message(phone="06 12 34 56 78"), received_at=_THURSDAY_MORNING)
+
+    assert 'href="tel:+33612345678"' in email.html
+    assert 'href="https://wa.me/33612345678"' in email.html
+
+
+def test_a_landline_can_be_called_but_not_texted_from_the_email() -> None:
+    email = SiteContactEmail.render(_message(phone="01 23 45 67 89"), received_at=_THURSDAY_MORNING)
+
+    assert 'href="tel:+33123456789"' in email.html
+    assert "wa.me" not in email.html
+
+
+def test_without_a_phone_the_email_only_offers_to_reply() -> None:
+    email = SiteContactEmail.render(_message(), received_at=_THURSDAY_MORNING)
+
+    assert "tel:" not in email.html
+    assert "Téléphone" not in email.text
+
+
+def test_the_reply_opens_with_a_subject_in_the_language_of_the_site() -> None:
+    email = SiteContactEmail.render(_message(locale="en"), received_at=_THURSDAY_MORNING)
+
+    assert 'href="mailto:camille@studio-exemple.fr?subject=Your%20message%20on%20devleadhunter.fr"' in email.html
+    assert "Langue du site : Anglais" in email.text
+
+
+@pytest.mark.parametrize(
+    ("received_at", "deadline"),
+    [
+        (datetime(2026, 10, 1, 9, 42), "vendredi 2 octobre 2026"),
+        (datetime(2026, 10, 2, 18, 0), "lundi 5 octobre 2026"),
+        (datetime(2026, 10, 3, 11, 0), "lundi 5 octobre 2026"),
+        (datetime(2026, 10, 4, 22, 30), "lundi 5 octobre 2026"),
+    ],
+)
+def test_the_answer_is_due_the_next_weekday(received_at: datetime, deadline: str) -> None:
+    email = SiteContactEmail.render(_message(), received_at=received_at)
+
+    assert f"À répondre au plus tard {deadline}" in email.text
+
+
+def test_the_message_keeps_its_line_breaks_in_the_email() -> None:
+    email = SiteContactEmail.render(_message(message="Bonjour,\r\nÀ bientôt"), received_at=_THURSDAY_MORNING)
+
+    assert "Bonjour,<br>À bientôt" in email.html
 
 
 def test_the_admins_are_notified_once_the_mail_left(
