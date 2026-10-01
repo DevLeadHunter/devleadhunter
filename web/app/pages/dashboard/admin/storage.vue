@@ -372,6 +372,7 @@ const FILTERS: Array<{ label: string; prefix: string }> = [
   { label: 'Photos prospects', prefix: PROSPECT_PHOTOS_PREFIX },
   { label: 'Photos de devis', prefix: 'images/assistant-photos/' },
   { label: 'Documents assistants', prefix: 'documents/assistant/' },
+  { label: 'Portraits réceptionniste', prefix: 'images/assistant-avatars/' },
   { label: 'Support', prefix: 'images/support/' },
   { label: 'Imports manuels', prefix: 'uploads/manual/' },
 ]
@@ -384,6 +385,7 @@ const IMAGE_KINDS: StorageObjectKind[] = [
   'support',
   'prospect_photo',
   'assistant_photo',
+  'assistant_avatar',
 ]
 
 /** Icon per object category. */
@@ -398,6 +400,7 @@ const KIND_ICONS: Record<StorageObjectKind, string> = {
   prospect_photo: 'i-lucide-image',
   assistant_photo: 'i-lucide-camera',
   assistant_document: 'i-lucide-file-text',
+  assistant_avatar: 'i-lucide-circle-user',
   manual: 'i-lucide-upload',
   other: 'i-lucide-file',
 }
@@ -414,6 +417,7 @@ const KIND_LABELS: Record<StorageObjectKind, string> = {
   prospect_photo: 'Photo prospect',
   assistant_photo: 'Photo de devis (assistant)',
   assistant_document: 'Document (assistant)',
+  assistant_avatar: 'Portrait (réceptionniste)',
   manual: 'Import manuel',
   other: 'Fichier',
 }

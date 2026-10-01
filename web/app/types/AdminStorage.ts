@@ -9,6 +9,7 @@ export type StorageObjectKind =
   | 'prospect_photo'
   | 'assistant_photo'
   | 'assistant_document'
+  | 'assistant_avatar'
   | 'manual'
   | 'other'
 

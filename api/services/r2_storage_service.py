@@ -44,6 +44,7 @@ class R2StorageService:
         images/prospects/{prospect_id}/{hash}.jpg   rehosted enrichment photos (Facebook/Google)
         images/assistant-photos/{yyyy}/{mm}/{uuid}.jpg   photos visitors send an assistant for a quote (90 days)
         documents/assistant/{assistant_id}/{uuid}.pdf    documents a business gives its assistant (price list, terms…)
+        images/assistant-avatars/{assistant_id}/{uuid}.webp   a receptionist's own portrait (photo or logo)
         uploads/manual/{yyyy}/{mm}/{uuid}.{ext}  files uploaded by hand from the storage page
 
     boto3 calls block, so async callers must go through the `*_async` methods.
@@ -59,6 +60,7 @@ class R2StorageService:
     IMAGES_PROSPECTS_PREFIX = "images/prospects"
     IMAGES_ASSISTANT_PHOTOS_PREFIX = "images/assistant-photos"
     DOCUMENTS_ASSISTANT_PREFIX = "documents/assistant"
+    IMAGES_ASSISTANT_AVATARS_PREFIX = "images/assistant-avatars"
     MANUAL_UPLOADS_PREFIX = "uploads/manual"
 
     def __init__(self) -> None:
@@ -258,6 +260,19 @@ class R2StorageService:
             A unique PDF object key under the assistant-documents prefix, filed by assistant.
         """
         return f"{cls.DOCUMENTS_ASSISTANT_PREFIX}/{assistant_id}/{uuid.uuid4().hex}.pdf"
+
+    @classmethod
+    def assistant_avatar_key(cls, assistant_id: int) -> str:
+        """
+        Build the key of a receptionist's own portrait, new at each upload so no cache serves the previous one.
+
+        Args:
+            assistant_id: The assistant it belongs to.
+
+        Returns:
+            A unique WebP object key under the assistant-avatars prefix, filed by assistant.
+        """
+        return f"{cls.IMAGES_ASSISTANT_AVATARS_PREFIX}/{assistant_id}/{uuid.uuid4().hex}.webp"
 
     @classmethod
     def manual_upload_key(cls, extension: str) -> str:

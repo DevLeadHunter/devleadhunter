@@ -16,5 +16,6 @@ class StorageObjectKind(str, Enum):
     PROSPECT_PHOTO = "prospect_photo"
     ASSISTANT_PHOTO = "assistant_photo"
     ASSISTANT_DOCUMENT = "assistant_document"
+    ASSISTANT_AVATAR = "assistant_avatar"
     MANUAL = "manual"
     OTHER = "other"

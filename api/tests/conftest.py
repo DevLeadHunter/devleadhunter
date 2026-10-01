@@ -1,4 +1,4 @@
-"""Shared test setup: every model registered on the metadata, and an in-memory database per test."""
+"""Shared test setup: every model registered on the metadata, an in-memory database per test, no real storage."""
 
 import importlib
 import pkgutil
@@ -11,10 +11,19 @@ from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy.pool import StaticPool
 
 import models
+from core.config import settings
 from core.database import Base
+from services.r2_storage_service import r2_storage
 
 for _module in pkgutil.iter_modules(models.__path__):
     importlib.import_module("models." + _module.name)
+
+
+@pytest.fixture(autouse=True)
+def storage_unconfigured(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Storage as in CI, unconfigured unless a test fakes it: a local run never touches the developer's real bucket."""
+    monkeypatch.setattr(settings, "r2_endpoint", None)
+    monkeypatch.setattr(r2_storage, "_client", None)
 
 
 @pytest.fixture

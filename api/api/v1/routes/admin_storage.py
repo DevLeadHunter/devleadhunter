@@ -278,6 +278,8 @@ def _classify(key: str) -> StorageObjectKind:
         return StorageObjectKind.ASSISTANT_PHOTO
     if key.startswith(r2_storage.DOCUMENTS_ASSISTANT_PREFIX):
         return StorageObjectKind.ASSISTANT_DOCUMENT
+    if key.startswith(f"{r2_storage.IMAGES_ASSISTANT_AVATARS_PREFIX}/"):
+        return StorageObjectKind.ASSISTANT_AVATAR
     if key.startswith(r2_storage.MANUAL_UPLOADS_PREFIX):
         return StorageObjectKind.MANUAL
     return StorageObjectKind.OTHER

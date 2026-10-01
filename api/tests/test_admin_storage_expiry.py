@@ -92,6 +92,7 @@ def test_every_key_prefix_maps_to_one_storage_kind() -> None:
         "images/prospects/29/abc.jpg": StorageObjectKind.PROSPECT_PHOTO,
         "images/assistant-photos/2026/09/abc.jpg": StorageObjectKind.ASSISTANT_PHOTO,
         "documents/assistant/12/abc.pdf": StorageObjectKind.ASSISTANT_DOCUMENT,
+        "images/assistant-avatars/12/abc.webp": StorageObjectKind.ASSISTANT_AVATAR,
         "uploads/manual/2026/09/abc.jpg": StorageObjectKind.MANUAL,
         "misc/readme.txt": StorageObjectKind.OTHER,
     }
