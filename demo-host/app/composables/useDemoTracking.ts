@@ -59,6 +59,7 @@ const POSTHOG_UI_HOST: string = 'https://eu.posthog.com'
  */
 export function useDemoTracking(): {
   init: (slug: string, status: string, variant: string | null, channel: string, surface?: string) => Promise<void>
+  initForOwnEvents: (slug: string, surface: string) => Promise<void>
 } {
   const config: ReturnType<typeof useRuntimeConfig> = useRuntimeConfig()
 
@@ -259,15 +260,47 @@ export function useDemoTracking(): {
     channel: string,
     surface: string = 'demo',
   ): Promise<void> {
-    if (!import.meta.client || initialized) return
+    const posthog: PostHog | null = await start(slug, status, variant, channel, surface)
+    if (!posthog) return
+    const apiBase: string = String(config.public.apiBase ?? '')
+    DemoBeaconUtils.send(apiBase, slug, 'demo_opened')
+    setupListeners(posthog, slug, apiBase)
+  }
+
+  /**
+   * Initialise PostHog on a page of the demo journey that sends only its own events (the prospect's demo space).
+   * @param slug - Demo slug (used as a super property for server-side querying).
+   * @param surface - PostHog surface separating modules in one project ('assistant' = IA).
+   */
+  async function initForOwnEvents(slug: string, surface: string): Promise<void> {
+    await start(slug, 'active', null, 'direct', surface)
+  }
+
+  /**
+   * Start the shared PostHog instance for a live demo, unless the visit is the owner's or an embedded preview.
+   * @param slug - Demo slug, the visitor's identity.
+   * @param status - Demo status; tracking runs only when 'active'.
+   * @param variant - Optional A/B variant from the email link.
+   * @param channel - Marketing channel that brought the visit.
+   * @param surface - PostHog surface separating modules in one project.
+   * @returns The started instance, or null when nothing is tracked.
+   */
+  async function start(
+    slug: string,
+    status: string,
+    variant: string | null,
+    channel: string,
+    surface: string,
+  ): Promise<PostHog | null> {
+    if (!import.meta.client || initialized) return null
     // The owner's own visit (?internal=1 / ?_edit=1) must not track or notify.
-    if (DemoBeaconUtils.isInternalVisit()) return
+    if (DemoBeaconUtils.isInternalVisit()) return null
     // An embedded site = the dashboard's scaled card preview, never a prospect visit — tracking it
     // would pollute the lead scoring. An embedded assistant is the real widget on a client's page.
-    if (window.self !== window.top && surface !== 'assistant') return
+    if (window.self !== window.top && surface !== 'assistant') return null
     const key: string = String(config.public.posthogProjectApiKey ?? '')
     // Never track a delivered/sold site, and skip when PostHog is not configured.
-    if (!key || status !== 'active') return
+    if (!key || status !== 'active') return null
 
     const { default: posthog }: typeof import('posthog-js') = await import('posthog-js')
     posthog.init(key, {
@@ -295,10 +328,8 @@ export function useDemoTracking(): {
     posthog.register({ surface, demo_slug: slug, channel, ...(variant ? { ab_variant: variant } : {}) })
     demoPosthog = posthog
     initialized = true
-    const apiBase: string = String(config.public.apiBase ?? '')
-    DemoBeaconUtils.send(apiBase, slug, 'demo_opened')
-    setupListeners(posthog, slug, apiBase)
+    return posthog
   }
 
-  return { init }
+  return { init, initForOwnEvents }
 }
