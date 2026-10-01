@@ -212,9 +212,9 @@ C'est le **produit** que le client colle sur son site. Il porte :
   texte sombre. Le même visage sur le lanceur, l'en-tête et à côté de la dernière réponse d'une suite de réponses.
   Panneau blanc à filet, en-tête blanc (portrait 44 px cerclé de l'accent avec point vert, prénom en Fraunces,
   « Réceptionniste IA · Nom du commerce » sur deux lignes au plus, pilule « en ligne »), bulles de l'assistante
-  blanches à filet, bulles du visiteur sur l'accent fort en texte blanc, **trois puces d'action dans le fil** avant
-  le premier échange (photo pour un devis, prendre rendez-vous, « Quels services proposez-vous ? ») et un lien
-  texte « Être rappelé » centré au-dessus de la saisie dès l'accueil, panneaux photo / créneaux / coordonnées rendus
+  blanches à filet, bulles du visiteur sur l'accent fort en texte blanc, **des puces dans le fil** avant le premier
+  échange (voir « Puces d'ouverture par commerce ») et un lien texte « Être rappelé » centré au-dessus de la saisie
+  dès l'accueil, panneaux photo / créneaux / coordonnées rendus
   **dans le fil** comme des cartes, boutons ronds dans la barre de saisie, bouton d'envoi sur l'accent fort. Palette calculée
   par `utils/AssistantAccentUtils.palette()` : `accent` (points, filets), `strong` (l'accent assombri jusqu'à ce que
   le blanc y soit lisible : le seul fond qui porte du texte), `text` (l'accent assombri jusqu'à être lisible en texte
@@ -231,6 +231,24 @@ C'est le **produit** que le client colle sur son site. Il porte :
   `AssistantChatComposer`, avec un type par composant dans `app/types/`. Les pictos passent par `AssistantIcon`
   (`camera`, `calendar`, `close`, `send`, `pencil`). Les dates des créneaux se formatent dans
   `utils/AssistantScheduleUtils.ts`.
+- **Puces d'ouverture par commerce (01/10)** : sous l'accueil, « Voir un exemple » (démo seulement), les puces
+  d'action que le métier justifie, puis les questions du commerce, 4 puces au plus (`ASSISTANT_OPENING_CHIPS_MAX`).
+  Les questions viennent d'un appel unique au modèle (`suggested_questions.py`, usage `SUGGESTIONS` du routeur :
+  Mistral puis Groq, jamais Groq en « IA hébergée en Europe ») fait à la génération, à « Régénérer depuis le
+  prospect » et à chaque relecture du site (« Mettre à jour », ou la relecture de la semaine quand des pages ont
+  changé) : les 3 questions que posent vraiment les clients de CE commerce, d'après sa fiche, son site et ses avis,
+  rangées dans `knowledge_json['suggested_questions']`. Elles sont nettoyées (45 caractères au plus, numéros et
+  guillemets retirés, doublons écartés, « ? » tenu au dernier mot par une espace insécable ; un métier sans
+  rendez-vous perd une question qui ouvrirait le calendrier) et il en faut au moins 2, sinon les précédentes restent.
+  Sans questions écrites (réceptionniste générée avant le 01/10, modèle en panne), celles du métier les remplacent à
+  la lecture (`trade_openings.py` : une liste par métier, une par défaut). Le métier se lit une seule fois dans la
+  catégorie Google (`trade_resolver.py`, commun avec l'estimation de la page de démo et l'intake événement) et décide
+  des puces d'action : pas de photo pour la restauration, l'événementiel, la coiffure, la beauté, la santé et
+  l'immobilier ; pas de rendez-vous pour le food truck, le traiteur et le restaurant. La config publique porte
+  `suggested_questions`, `offers_photo_quote` et `offers_appointment` ; le widget ne montre ces questions qu'en
+  français (les autres langues gardent la question générique de `SUGGESTIONS`), la photo et le calendrier restent
+  dans la barre de saisie et s'ouvrent quand le visiteur les demande en toutes lettres. L'exemple joué d'un food
+  truck est un anniversaire à privatiser.
 - **5 langues d'interface** (FR / NL / DE / EN / LU) : accueil, suggestions, placeholder, libellés du
   formulaire de rappel, réponse de secours — un jeu complet par langue.
 - **Ouverture dans la langue du visiteur** : au montage, la langue du navigateur est choisie si
@@ -856,8 +874,9 @@ de 8 h, heure de Paris. Une démo ou un client résilié n'en reçoit jamais, re
 
 ## Espace client (`services/ai_assistant/client_space_service.py`)
 
-La page `/client/{token}` du demo-host (`demo-host/app/pages/client/[token].vue`), sans compte ni mot de
-passe, pour le client d'un assistant **vendu** (`delivered`) ; une démo n'en a pas.
+La page `/client/{token}` du demo-host (`demo-host/app/components/ClientSpaceApp.vue`, page
+`pages/client/[token].vue`), sans compte ni mot de passe, pour le client d'un assistant **vendu** (`delivered`).
+Une démo a son **espace démo** en lecture seule (`/ia/{slug}/espace`, voir le vingt-deuxième passage).
 
 - **Lien magique** (`client_links.py`) : `<id>.<expiration en base 36>.<signature>`, environ 28
   caractères, HMAC-SHA256 tronqué à 96 bits (clé `SECRET_KEY`) de l'assistant et de l'expiration, valable
@@ -1024,7 +1043,8 @@ l'assistant depuis un prospect selon le module actif.
 
 Émis par le widget : `assistant_opened`, `assistant_message_sent`, `assistant_lead_submitted`,
 `assistant_photo_sent`, `assistant_suggestion_action` (une puce de suite qui ouvre le rappel, le calendrier ou la
-photo, propriété `action`) ; la page vidéo `/va/{slug}` émet les events vidéo du site sous le préfixe
+photo, propriété `action`) ; la page de démo émet `assistant_demo_space_opened` au clic vers l'espace du prospect
+(`assistant_space_example_opened` quand l'API ne sert pas encore d'espace démo et que le lien mène à l'exemple) ; la page vidéo `/va/{slug}` émet les events vidéo du site sous le préfixe
 `assistant_video_*` (`_play`, `_resume`, `_pause`, `_replay`, `_progress`, `_complete`, `_watch_time`, `_seek`,
 `_fullscreen`, `_mute`, `_cta_click`, `_endcard_shown`). Tous portent la super-propriété **`surface: 'assistant'`** (le site porte
 `surface: 'demo'`), pour distinguer les modules dans le même projet PostHog. `useDemoTracking.init` accepte
@@ -1096,6 +1116,7 @@ dashboard (non instrumenté).
 | Démo guidée, accueil contextuel, chrome multilingue | `demo-host/app/utils/AssistantDemoScenarioUtils.ts` (`script`), `AssistantHostPageUtils.ts`, `demo-host/app/constants/AssistantWidgetLabels.ts` (`UI_LABELS`, `GREETING_*`, `EXAMPLE_LABELS`) |
 | Réponses en flux | `api/services/ai_assistant/llm_router.py` (`chat_stream`), `chat_service.py` (`answer_stream`), `api/api/v1/routes/ai_assistant_widget.py` (`/chat/stream`), `demo-host/app/utils/AssistantStreamUtils.ts` |
 | Questions sans réponse, FAQ | `api/services/ai_assistant/faq_service.py`, `missing_info_marker.py`, `api/api/v1/routes/ai_assistant_faq.py`, `web/app/components/ai-assistants/AssistantFaqCard.vue`, `demo-host/app/components/ClientSpaceFaq.vue` |
+| Puces d'ouverture (questions du commerce, métier lu dans la catégorie Google) | `api/services/ai_assistant/suggested_questions.py`, `trade_openings.py`, `trade_resolver.py`, `api/enums/ai_assistant_trade.py` |
 | Guide d'installation | `web/app/components/ai-assistants/AssistantInstallGuideCard.vue`, `web/app/constants/assistantInstallGuides.ts` |
 | Clip présentateur (réglages) | `web/app/components/settings/PresenterVideoConfig.vue` (`module="ai-assistant"`), `web/app/constants/presenterVideoWordings.ts` |
 
@@ -1550,3 +1571,33 @@ référence, portrait de Sofia.
   requête d'agenda (`missing_steps_by_assistant_id`).
 - **Laissé en l'état** : `HTTP_413_REQUEST_ENTITY_TOO_LARGE` reste tant que la version de Starlette du serveur, qui
   doit connaître `HTTP_413_CONTENT_TOO_LARGE`, n'est pas vérifiée.
+
+## Vingt-deuxième passage — tableau de bord, espace du prospect, page de démo (01/10)
+
+- **Espace client en tableau de bord** : thème clair seulement (le mode sombre et Fraunces sont retirés de l'espace),
+  barre latérale (initiales du commerce sur sa couleur, rubriques, réceptionniste en pied), barre du haut avec
+  « {Prénom} est en ligne ». L'accueil (`ClientSpaceHome.vue`) aligne quatre chiffres (à rappeler, demandes,
+  conversations, part hors horaires), l'activité des 30 derniers jours (`ClientSpaceActivityChart.vue`, barres
+  conversations et demandes par jour), « À faire » ou « Pour démarrer », les prochains rendez-vous, les dernières
+  demandes, la réceptionniste et ses réglages, le dernier rapport. Agenda et réglages passent sur deux colonnes à
+  l'ordinateur ; la barre du haut reste affichée quand une demande est ouverte à côté de la liste.
+- **Chiffres en direct** : la réponse de l'espace porte `recent` (30 derniers jours glissants : conversations,
+  demandes, devis, clients gagnés, part hors horaires) et `activity` (un point par jour de Paris), calculés par
+  `services/ai_assistant/client_space_activity.py` avec le même comptage que le rapport mensuel
+  (`AiAssistantReportStats.figures`, sans l'appel au modèle des questions fréquentes). Fenêtre glissante : jamais
+  zéro le 1er du mois. L'espace vitrine `exemple` porte un mois d'activité fictive.
+- **Espace démo du prospect** : `POST /ai-assistants/public/{slug}/space` (`demo_space_service.py`), avec les
+  sessions du widget gardées par le navigateur (`dlh-assistant-{slug}`) : la réceptionniste du prospect telle qu'il
+  l'aura (prénom, portrait, couleur, réponses imposées et apprises, fiche Google, ligne du site, « Pour démarrer »
+  à faire), ses propres demandes avec leur conversation, complétées sous deux par des exemples de son métier marqués
+  « Exemple », un rapport d'exemple, ses chiffres et son activité sur ses seules sessions (tests compris). Rien ne
+  s'enregistre ; une démo vendue, expirée ou supprimée n'en a pas (404). La config publique porte `has_demo_space`.
+  Page `pages/ia/[slug]/espace.vue` (la démo passe en `pages/ia/[slug]/index.vue`), même écrans que l'espace client
+  (`useDemoSpaceLink.ts` remplace le lien personnel), bandeau « Votre espace, tel que vous l'aurez » avec « Revenir à
+  ma démo » et « Je garde {Prénom}, {prix} par mois ».
+- **Page de démo plus visuelle** : titre en Inter, accroche en deux phrases, trois promesses en pastilles, le
+  téléphone du patron dessiné (écran verrouillé, heure, SMS), trois cartes « ce que vous recevez », l'estimation en
+  gros chiffre, l'espace en grand avec le bouton « Découvrir votre espace » (et « Voir la demande dans votre espace »
+  sous le téléphone dès qu'une demande est partie), ce que la réceptionniste ne fait jamais en quatre lignes, l'offre
+  en carte de prix. Inter auto-hébergée est déclarée de 400 à 800 (le fichier est variable).
+- **Vitrine** : `scripts/capture_client_space_example.py` capture désormais l'accueil de l'espace exemple.

@@ -1,4 +1,4 @@
-import type { AssistantWidgetLanguage } from '~/types/AiAssistant'
+import type { AiAssistantPersonaGender, AssistantWidgetLanguage } from '~/types/AiAssistant'
 
 /** What a visitor asked for, as the API types a request. */
 export type AiAssistantClientRequestType = 'question' | 'quote' | 'appointment' | 'urgent' | 'other'
@@ -40,6 +40,15 @@ export type AiAssistantClientRequest = {
   outcome: AiAssistantClientRequestOutcome | null
   /** The event described, for a wedding, a reception, a catering request; null otherwise. */
   event: AiAssistantClientEvent | null
+  is_example?: boolean
+  conversation?: AiAssistantClientConversationLine[]
+}
+
+/** One turn of the conversation a request came out of; `photo_url` when the visitor's turn was a photo. */
+export type AiAssistantClientConversationLine = {
+  role: 'user' | 'assistant'
+  content: string
+  photo_url: string | null
 }
 
 /** What an event request said of the event; each field null until the visitor gave it. */
@@ -67,6 +76,24 @@ export type AiAssistantClientReport = {
   won: number
   won_line: string | null
   email_requests: number
+  is_example?: boolean
+}
+
+/** The last days' figures, counted live like the monthly report. */
+export type AiAssistantClientRecentFigures = {
+  days: number
+  conversations: number
+  requests: number
+  quotes: number
+  won: number
+  outside_hours_pct: number | null
+}
+
+/** One day of the home's activity chart (« 2026-10-01 », in the business's time zone). */
+export type AiAssistantClientActivityDay = {
+  day: string
+  conversations: number
+  requests: number
 }
 
 /** Whether the test SMS left for the client's alert mobile. */
@@ -176,8 +203,14 @@ export type AiAssistantClientSpace = {
   pending_count: number
   requests: AiAssistantClientRequest[]
   report: AiAssistantClientReport | null
+  recent?: AiAssistantClientRecentFigures | null
+  activity?: AiAssistantClientActivityDay[]
   /** The example space a prospect opens from its demo page: fictional data, nothing to save. */
   is_example: boolean
+  is_demo?: boolean
+  subscribe_url?: string
+  monthly_price_label?: string
+  assistant_gender?: AiAssistantPersonaGender
   settings: AiAssistantClientSettings
   language_options: AiAssistantClientLanguageOption[]
   subscription: AiAssistantClientSubscription | null

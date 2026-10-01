@@ -49,6 +49,10 @@ export type AiAssistantConfig = {
   monthly_price_label?: string | null
   closed_hours?: AiAssistantClosedHours | null
   business?: AiAssistantPublicBusiness | null
+  suggested_questions?: string[]
+  offers_photo_quote?: boolean
+  offers_appointment?: boolean
+  has_demo_space?: boolean
 }
 
 /**

@@ -45,6 +45,7 @@ from schemas.ai_assistant_client_space import (
 from services.ai_assistant.alert_sms import AlertSms
 from services.ai_assistant.assistant_service import ai_assistant_service
 from services.ai_assistant.client_links import AiAssistantClientLinks
+from services.ai_assistant.client_space_payload import ai_assistant_client_space_payload
 from services.ai_assistant.event_intake import AiAssistantEventIntake, EventIntakeContext
 from services.ai_assistant.knowledge_builder import ai_assistant_knowledge_builder
 from services.ai_assistant.limits import AiAssistantLimits
@@ -394,7 +395,8 @@ def test_the_example_space_opens_without_a_link_and_its_actions_stay_closed(db: 
 
     assert space.is_example is True
     assert (space.business_name, space.assistant_name, space.pending_count) == ("Toitures Morel", "Sofia", 2)
-    assert [item.type.value for item in space.requests] == ["urgent", "appointment", "quote"]
+    assert [item.type.value for item in space.requests][:3] == ["urgent", "appointment", "quote"]
+    assert space.recent is not None and len(space.activity) == 30
     assert space.report is not None and space.subscription is not None and space.calendar.status.value == "connected"
     assert space.settings.alert_sms_types and space.faq and space.unanswered
     # Dated from now: the example never looks stale.
@@ -554,7 +556,7 @@ def test_each_visit_carries_a_fresh_link_the_site_and_the_line_to_paste(db: Sess
 
     fresh = AiAssistantClientLinks.read(page.fresh_token or "", assistant)
     assert fresh is not None and fresh.assistant_id == assistant.id and fresh.is_expired is False
-    assert page.link_expires_label == routes._business_label(fresh.expires_at, "%d/%m/%Y")
+    assert page.link_expires_label == ai_assistant_client_space_payload.business_label(fresh.expires_at, "%d/%m/%Y")
     assert page.website_url == "https://toitures-morel.fr"
     assert other.website_url == "https://www.couverture-petit.fr"
     base = settings.demo_host_base_url.rstrip("/")

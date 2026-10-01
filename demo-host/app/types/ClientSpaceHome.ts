@@ -1,7 +1,7 @@
 import type { AiAssistantClientSpace } from '~/types/AiAssistantClientSpace'
 import type { ClientSpaceSettingsScreen } from '~/types/ClientSpaceNavigation'
 
-/** One line of the home's « À faire » block, or one step of « Pour démarrer » (a done step has no action). */
+/** One line of the home's « À faire » panel, or one step of « Pour démarrer » (a done step has no action). */
 export type ClientSpaceHomeTask = {
   key: 'requests' | 'questions' | 'calendar' | 'mailbox' | 'sms' | 'google' | 'install'
   icon: 'phone' | 'help-circle' | 'calendar' | 'mail' | 'check' | 'code' | 'message-square' | 'external-link'
@@ -11,10 +11,26 @@ export type ClientSpaceHomeTask = {
   action: string
 }
 
-/** One figure of the home's month block. */
+export type ClientSpaceHomeKpi = {
+  key: 'pending' | 'requests' | 'conversations' | 'outside-hours'
+  label: string
+  value: string
+  hint: string
+  icon: 'phone' | 'inbox' | 'message-square' | 'moon'
+  tone: 'red' | 'accent'
+  opensRequests: boolean
+}
+
+/** One figure of the home's report panel. */
 export type ClientSpaceHomeFigure = {
   icon: 'message-square' | 'inbox' | 'file-text' | 'moon'
   value: string
+  label: string
+}
+
+export type ClientSpaceHomeAssistantLink = {
+  screen: ClientSpaceSettingsScreen
+  icon: 'message-circle' | 'ban' | 'bell'
   label: string
 }
 
