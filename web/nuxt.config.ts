@@ -220,7 +220,7 @@ export default defineNuxtConfig({
         // Per-locale sitemaps live under /sitemaps/ (not /__sitemap__/) for cleaner URLs
         // and better compatibility with crawlers / nginx security rules.
         sitemapsPathPrefix: '/sitemaps/',
-        exclude: ['/dashboard/**', '/login', '/profile'],
+        exclude: ['/dashboard/**', '/login', '/signup', '/profile', '/configuration'],
       }
     : undefined,
 })

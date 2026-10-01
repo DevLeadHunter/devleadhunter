@@ -4,5 +4,11 @@ Disallow: /dashboard/
 Disallow: /login
 Disallow: /signup
 Disallow: /profile
+Disallow: /configuration
+Disallow: /fr/dashboard/
+Disallow: /fr/login
+Disallow: /fr/signup
+Disallow: /fr/profile
+Disallow: /fr/configuration
 
 Sitemap: https://devleadhunter.fr/sitemap_index.xml
