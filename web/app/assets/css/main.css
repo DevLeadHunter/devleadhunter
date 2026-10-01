@@ -758,6 +758,11 @@ body.is-drag-reordering * {
   outline-offset: 3px;
 }
 
+/* Smaller pill for in-block actions: a utility such as px-4 cannot shrink the unlayered pills above. */
+.landing-btn--compact {
+  @apply gap-2 px-4 py-2.5 text-sm;
+}
+
 /* Editorial underlined text link */
 .landing-link {
   @apply cursor-pointer font-medium;
@@ -810,6 +815,10 @@ body.is-drag-reordering * {
 
 .landing-input--error {
   border-color: #b3462e;
+}
+
+.landing-input--large {
+  @apply px-4 py-3 text-base;
 }
 
 /* Auth pages — staggered rise-in entrance (mirrors the landing hero) */

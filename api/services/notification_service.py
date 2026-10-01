@@ -60,6 +60,8 @@ _DASHBOARD_URL = "/dashboard"
 # In-app notification log retention.
 _RETENTION_DAYS = 90
 
+_CONTACT_EXCERPT_LENGTH = 220
+
 # Email lifecycle event → (emoji, level, body). Title = "{emoji} {prospect}", so the
 # action (body) stays visible on iOS without expanding the notification.
 _EMAIL_EVENT_NOTIFS: dict[str, tuple[str, str, str]] = {
@@ -756,16 +758,7 @@ class NotificationService:
             title=f"Erreur serveur · {context}",
             detail=message,
         )
-        db = SessionLocal()
-        try:
-            admins = db.query(User).filter(User.is_active.is_(True)).all()
-            admin_ids = [admin.id for admin in admins if is_platform_admin(admin.role)]
-        except Exception as exc:
-            logger.warning("notify_error admin lookup failed (context=%s): %s", context, exc)
-            admin_ids = []
-        finally:
-            db.close()
-        for admin_id in admin_ids:
+        for admin_id in self._active_admin_ids(context):
             await self._dispatch(
                 user_id=admin_id,
                 category="system",
@@ -774,6 +767,29 @@ class NotificationService:
                 body=f"{context} — {message}"[:200],
                 url=_DASHBOARD_URL,
                 tag=tag,
+            )
+
+    async def notify_site_contact(self, *, name: str, email: str, topic_label: str, message: str) -> None:
+        """
+        Raise a notification for every active admin when a visitor writes from the marketing site's contact page.
+
+        Args:
+            name: The visitor's name.
+            email: The visitor's email address.
+            topic_label: What the message is about, as picked on the form.
+            message: The visitor's message, cut short in the body (the email carries the full text).
+        """
+        excerpt = " ".join(message.split())
+        if len(excerpt) > _CONTACT_EXCERPT_LENGTH:
+            excerpt = excerpt[: _CONTACT_EXCERPT_LENGTH - 1].rstrip() + "…"
+        for admin_id in self._active_admin_ids("site_contact"):
+            await self._dispatch(
+                user_id=admin_id,
+                category="contact",
+                level="success",
+                title=f"📨 {name}",
+                body=f"Page contact · {topic_label} · {email} — « {excerpt} »",
+                url=_DASHBOARD_URL,
             )
 
     async def send_daily_recap(self) -> None:
@@ -914,6 +930,27 @@ class NotificationService:
         except Exception as exc:
             logger.warning("notification persist failed (user=%s): %s", user_id, exc)
             return None
+        finally:
+            db.close()
+
+    @staticmethod
+    def _active_admin_ids(context: str) -> list[int]:
+        """
+        Ids of the active platform admins, who receive the notifications about the whole platform.
+
+        Args:
+            context: What the lookup is for, written in the warning when it fails.
+
+        Returns:
+            The admin ids, or an empty list when the lookup failed.
+        """
+        db = SessionLocal()
+        try:
+            admins = db.query(User).filter(User.is_active.is_(True)).all()
+            return [admin.id for admin in admins if is_platform_admin(admin.role)]
+        except Exception as exc:
+            logger.warning("Admin lookup failed (context=%s): %s", context, exc)
+            return []
         finally:
             db.close()
 
