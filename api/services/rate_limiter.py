@@ -73,6 +73,9 @@ assistant_subscribe_limiter = SlidingWindowRateLimiter(max_events=5, window_seco
 # 120 client-space calls / 5 min per visitor: the page and its actions, far below a token guesser's needs.
 assistant_client_limiter = SlidingWindowRateLimiter(max_events=120, window_seconds=300)
 
+# 60 demo-space reads / 5 min per visitor: the page and its reloads, far below what guessing session ids needs.
+assistant_demo_space_limiter = SlidingWindowRateLimiter(max_events=60, window_seconds=300)
+
 # 3 fresh client-space links / hour per assistant, emailed to the business from an expired link.
 assistant_client_renew_limiter = SlidingWindowRateLimiter(max_events=3, window_seconds=3600)
 
