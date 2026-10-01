@@ -64,6 +64,11 @@ class Settings(BaseSettings):
     # Admin user settings
     admin_email: str = Field(default="contact@dibodev.fr", alias="ADMIN_EMAIL", description="Admin user email address")
     admin_password: str = Field(default="admin123", alias="ADMIN_PASSWORD", description="Admin user password")
+    contact_form_to: str = Field(
+        default="contact@dibodev.fr",
+        alias="CONTACT_FORM_TO",
+        description="Inbox that receives the messages of the marketing site's contact page",
+    )
 
     # Stripe settings
     stripe_secret_key: str = Field(default="", alias="STRIPE_SECRET_KEY", description="Stripe secret key for API calls")

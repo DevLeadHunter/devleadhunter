@@ -6,7 +6,8 @@
     "faq": "FAQ",
     "downloads": "Download the app",
     "login": "Log in",
-    "signup": "Start for free"
+    "signup": "Start for free",
+    "contact": "Contact"
   },
   "cookies": {
     "title": "Cookies",
@@ -269,38 +270,159 @@
       "subtitle": "Create an account, get your free credits and launch your first campaign today.",
       "cta": "Start for free",
       "note": "No credit card · No subscription"
+    },
+    "copyButton": {
+      "copied": "Copied",
+      "failed": "Copy failed"
     }
   },
   "legal": {
-    "updated": "Last updated: July 2026",
+    "updated": "Last updated: October 2026",
+    "nav": {
+      "label": "Legal information",
+      "notice": "Legal notice",
+      "privacy": "Privacy policy",
+      "terms": "Terms of service",
+      "helpLabel": "A question?",
+      "helpLink": "Contact page"
+    },
+    "notice": {
+      "title": "Legal notice",
+      "intro": "Who publishes devleadhunter.fr, where the site is hosted and how to reach its publisher.",
+      "publisher": {
+        "title": "Publisher",
+        "rows": {
+          "name": "Publisher",
+          "status": "Legal status",
+          "statusValue": "Sole proprietor (French micro-entreprise), trading as Dibodev",
+          "address": "Address",
+          "siret": "SIRET",
+          "vat": "VAT number",
+          "vatNote": "VAT not applicable, article 293 B of the French tax code",
+          "phone": "Phone",
+          "email": "Email"
+        }
+      },
+      "director": {
+        "title": "Publication director"
+      },
+      "hosting": {
+        "title": "Hosting",
+        "intro": "The DevLeadHunter site and application are hosted by:",
+        "rows": {
+          "host": "Host",
+          "address": "Address",
+          "phone": "Phone",
+          "website": "Website"
+        }
+      },
+      "intellectualProperty": {
+        "title": "Intellectual property",
+        "ownership": "The DevLeadHunter name, its logo, and the texts, visuals and code of the site belong to {name}. Any reproduction, even partial, requires written consent.",
+        "fonts": "The Fraunces, Instrument Sans and Spline Sans Mono typefaces are used under the SIL Open Font License."
+      },
+      "personalData": {
+        "title": "Personal data and cookies",
+        "body": "The data collected on this site, how it is used and the cookies are described in the {privacyLink}.",
+        "privacyLink": "privacy policy"
+      },
+      "report": {
+        "title": "Report content",
+        "body": "To report illegal content or an error on the site, write to {email} or call {phone}."
+      }
+    },
     "privacy": {
       "title": "Privacy policy",
-      "intro": "DevLeadHunter takes the protection of your data seriously. This page describes, plainly, what we collect and why.",
-      "s1": {
+      "intro": "What DevLeadHunter collects, why, for how long, and how to exercise your rights.",
+      "controller": {
         "title": "Data controller",
-        "body": "DevLeadHunter is published by Léo Guillaume (Dibodev). For any question about your data: leo{'@'}dibodev.fr."
+        "body": "{name}, sole proprietor (Dibodev), {address}. For any question about your data: {email}."
       },
-      "s2": {
+      "collected": {
         "title": "Data we collect",
-        "body": "Account: email address and password (stored hashed). Usage: the searches, prospects and campaigns you create in the tool. Payment: credit purchases are processed by Stripe — no card number ever reaches our servers."
+        "account": {
+          "term": "Account:",
+          "text": "name, email address and password (stored hashed)."
+        },
+        "usage": {
+          "term": "Usage:",
+          "text": "the searches, prospects and campaigns you create in the tool."
+        },
+        "payment": {
+          "term": "Payment:",
+          "text": "credit purchases go through Stripe. No card number ever reaches DevLeadHunter's servers."
+        },
+        "contactForm": {
+          "term": "Contact form:",
+          "text": "name, email, phone if you give it, and your message."
+        }
       },
-      "s3": {
+      "analytics": {
         "title": "Analytics",
         "body": "This site measures its audience with two tools. Umami, cookieless and anonymous, runs at all times. PostHog, subject to your consent via the cookie banner, uses cookies to analyse site usage in more detail (pageviews, clicks, journeys). Statistics stay internal: no data is sold or used for advertising."
       },
-      "s4": {
-        "title": "Purposes",
-        "body": "Your data is used only to provide the service: authentication, running your searches and campaigns, billing credits. It is never sold or shared for advertising."
+      "purposes": {
+        "title": "Purposes and legal bases",
+        "contract": {
+          "term": "performance of the contract.",
+          "text": "Running your account, your searches and your campaigns:"
+        },
+        "legalObligation": {
+          "term": "legal obligation.",
+          "text": "Invoicing credits and keeping the invoices:"
+        },
+        "legitimateInterest": {
+          "term": "legitimate interest.",
+          "text": "Answering your messages:"
+        },
+        "consent": {
+          "term": "your consent.",
+          "text": "Measuring the audience with PostHog:"
+        },
+        "noSale": "Your data is never sold, rented or used for advertising."
       },
-      "s5": {
+      "recipients": {
+        "title": "Recipients",
+        "intro": "Only the publisher accesses your data. Technical providers process it on the publisher's behalf, each for its own task:",
+        "hosting": {
+          "term": "Hosting:",
+          "text": "OVH (France)."
+        },
+        "payment": {
+          "term": "Payment:",
+          "text": "Stripe."
+        },
+        "emails": {
+          "term": "Sending emails:",
+          "text": "Resend."
+        },
+        "audience": {
+          "term": "Audience measurement:",
+          "text": "PostHog (servers in Europe), only with your consent."
+        },
+        "transfers": "When a provider is based outside the European Union, the transfer is covered by the European Commission's standard contractual clauses."
+      },
+      "retention": {
         "title": "Retention",
-        "body": "Your account data is kept while your account is active, then deleted when the account is closed or upon request."
+        "account": {
+          "term": "Account:",
+          "text": "while it is active, then deleted when it is closed or on simple request."
+        },
+        "messages": {
+          "term": "Contact form messages:",
+          "text": "3 years after the last exchange."
+        },
+        "invoices": {
+          "term": "Credit purchase invoices:",
+          "text": "10 years, as French commercial law requires."
+        }
       },
-      "s6": {
+      "rights": {
         "title": "Your rights",
-        "body": "Under the GDPR you have the right to access, rectify, erase and port your data. Write to leo{'@'}dibodev.fr — answer within 30 days."
+        "body": "You can access your data, correct it, delete it, get it back in a readable format, object to its processing or restrict its use. Write to {email}, you will get an answer within one month.",
+        "complaint": "If you believe your rights are not respected, you can lodge a complaint with the CNIL, the French data protection authority, at cnil.fr."
       },
-      "s7": {
+      "cookies": {
         "title": "Cookies",
         "body": "The site uses technical cookies (login session, language preference) and, only if you accept them via the consent banner, analytics cookies (PostHog). You can decline the latter with no impact on your browsing, and change your choice by clearing the site's data in your browser. No advertising or third-party tracking cookies."
       }
@@ -308,45 +430,131 @@
     "terms": {
       "title": "Terms of service",
       "intro": "By creating a DevLeadHunter account, you accept the terms below.",
-      "s1": {
+      "publisher": {
         "title": "Publisher",
-        "body": "DevLeadHunter is published by Léo Guillaume (Dibodev). Contact: leo{'@'}dibodev.fr."
+        "body": "DevLeadHunter is published by {name}, sole proprietor trading as Dibodev, SIRET {siret}, {address}. Contact: {email} or {phone}. Full details are in the {noticeLink}.",
+        "noticeLink": "legal notice"
       },
-      "s2": {
+      "service": {
         "title": "Purpose of the service",
         "body": "DevLeadHunter is a prospecting automation tool: finding businesses without a website, generating demo sites, cold email campaigns and sales tracking."
       },
-      "s3": {
+      "account": {
         "title": "Account",
         "body": "Signing up requires a valid email address. You are responsible for keeping your credentials confidential and for the activity performed from your account."
       },
-      "s4": {
+      "credits": {
         "title": "Credits & payment",
-        "body": "The tool works pay-as-you-go through a credit system, with no subscription. Payments are processed by Stripe. Purchased credits never expire."
+        "body": "The tool works pay-as-you-go with credits, with no subscription. Prices are shown in euros, VAT not applicable (article 293 B of the French tax code). Payments are processed by Stripe. Purchased credits never expire."
       },
-      "s5": {
+      "use": {
         "title": "Responsible use",
         "body": "You are solely responsible for the compliance of your campaigns with applicable regulations (GDPR, anti-spam rules): unsubscribe link, respect of recipients and of your sending domain. The tool ships these guardrails; using them properly is on you."
       },
-      "s6": {
+      "liability": {
         "title": "Availability & liability",
         "body": "The service is provided “as is”, with no guarantee of continuous availability. The publisher's liability is limited to the amount of credits purchased over the last twelve months."
       },
-      "s7": {
+      "termination": {
         "title": "Termination",
         "body": "You may close your account at any time. The publisher may suspend an account in case of abusive, fraudulent or illegal use of the tool."
       },
-      "s8": {
+      "law": {
         "title": "Governing law",
         "body": "These terms are governed by French law."
       }
     }
+  },
+  "contact": {
+    "meta": {
+      "title": "Contact",
+      "description": "A question about DevLeadHunter? Call +33 6 42 19 38 12 or send a message, and get an answer within 24 hours on weekdays."
+    },
+    "eyebrow": "Contact",
+    "titleStart": "Got a question?",
+    "titleAccent": "Let's talk",
+    "lead": "I build DevLeadHunter and I answer every message myself. Call me on weekdays or write to me, I reply within 24 hours.",
+    "person": {
+      "role": "Developer, founder of DevLeadHunter",
+      "portraitAlt": "Portrait of Léo Guillaume"
+    },
+    "phone": {
+      "label": "By phone",
+      "hours": "Monday to Friday, 9 am to 6 pm (Paris time). No switchboard, you reach me directly.",
+      "call": "Call",
+      "copy": "Copy the number"
+    },
+    "email": {
+      "label": "By email",
+      "delay": "Reply within 24 hours, Monday to Friday.",
+      "write": "Write an email",
+      "copy": "Copy the address"
+    },
+    "place": {
+      "label": "Based in",
+      "city": "Saint-Erblon, near Rennes, France",
+      "publisher": "DevLeadHunter is published by Dibodev, the company of Léo Guillaume.",
+      "legalLink": "Legal notice"
+    },
+    "form": {
+      "title": "Write to me",
+      "required": "Every field is required except the phone.",
+      "topicLegend": "Your message is about",
+      "topics": {
+        "discover": "Discovering the tool",
+        "credits": "Credits and billing",
+        "account": "Help with my account",
+        "privacy": "Personal data",
+        "other": "Something else"
+      },
+      "placeholders": {
+        "discover": "Tell me what you want to do with DevLeadHunter, or what makes you hesitate.",
+        "credits": "Your question about credits, a purchase or an invoice.",
+        "account": "Describe the issue and, if you can, the email address of your account.",
+        "privacy": "Say what you need: access, correction or deletion of your data.",
+        "other": "Your message."
+      },
+      "name": "Name",
+      "namePlaceholder": "Camille Martin",
+      "email": "Email",
+      "emailPlaceholder": "you{'@'}example.com",
+      "phone": "Phone",
+      "optional": "(optional)",
+      "phonePlaceholder": "+33 6 12 34 56 78",
+      "phoneHint": "If you'd rather I call you back.",
+      "message": "Message",
+      "submit": "Send the message",
+      "submitting": "Sending…",
+      "privacyNote": "Your details are only used to answer you.",
+      "privacyLink": "Privacy policy",
+      "errors": {
+        "name": "Enter your name so I know who I'm answering.",
+        "email": "Enter a valid email address, that's where I'll answer.",
+        "message": "Write your message (a few words are enough).",
+        "sending": "Your message didn't go through. Try again in a moment or call {phone}."
+      },
+      "sent": {
+        "title": "Message sent.",
+        "body": "Thank you {name}. I'll answer within 24 hours on weekdays, at {email}.",
+        "again": "Write another message"
+      }
+    },
+    "quick": {
+      "label": "Quick answers",
+      "credits": "How do credits work?",
+      "trial": "Can I try it for free?",
+      "privacy": "Is it GDPR compliant?"
+    }
+  },
+  "publisher": {
+    "phone": "+33 6 42 19 38 12"
   },
   "footer": {
     "description": "The automation chain that turns businesses without a website into clients: research, site generation, cold email and go-live — end to end.",
     "product": "Product",
     "resources": "Resources",
     "account": "Account",
+    "legalNotice": "Legal notice",
     "privacy": "Privacy",
     "terms": "Terms",
     "copyright": "All rights reserved.",
@@ -358,7 +566,8 @@
       "faq": "FAQ",
       "downloads": "Download the app",
       "login": "Log in",
-      "signup": "Create an account"
+      "signup": "Create an account",
+      "contact": "Contact"
     }
   }
 }

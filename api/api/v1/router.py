@@ -43,6 +43,7 @@ from .routes import (
     prospects,
     scraping_jobs,
     send_policy,
+    site_contact,
     sms,
     sources,
     support,
@@ -105,3 +106,4 @@ router.include_router(admin_storyblok.router)
 router.include_router(automations.router)
 router.include_router(send_policy.router)
 router.include_router(sms.router)
+router.include_router(site_contact.router)

@@ -79,6 +79,9 @@ assistant_client_renew_limiter = SlidingWindowRateLimiter(max_events=3, window_s
 # 6 fresh client-space links / day per assistant: an old link replayed never floods the business.
 assistant_client_renew_daily_limiter = SlidingWindowRateLimiter(max_events=6, window_seconds=86400)
 
+# 5 messages / hour per visitor on the marketing site's contact page: a person writes once, this caps a bot.
+site_contact_limiter = SlidingWindowRateLimiter(max_events=5, window_seconds=3600)
+
 # 2 test SMS / hour per assistant, from the client space: a mistyped number never drains the SMS budget.
 assistant_client_test_sms_limiter = SlidingWindowRateLimiter(max_events=2, window_seconds=3600)
 

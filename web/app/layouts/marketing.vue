@@ -23,26 +23,26 @@
           <span class="font-display text-lg font-semibold tracking-tight text-[#1b1813]">devleadhunter</span>
         </NuxtLink>
 
-        <div class="hidden items-center gap-8 lg:flex">
+        <div class="hidden items-center gap-6 lg:flex xl:gap-8">
           <a
             v-for="link in sectionLinks"
             :key="link.target"
             :href="link.target"
-            class="text-sm font-medium text-[#6b6355] transition-colors hover:text-[#1b1813]"
+            class="text-sm font-medium whitespace-nowrap text-[#6b6355] transition-colors hover:text-[#1b1813]"
             @click.prevent="onNavClick(link.target)"
           >
             {{ $t(link.label) }}
           </a>
           <NuxtLink
             :to="localePath('/downloads')"
-            class="text-sm font-medium text-[#6b6355] transition-colors hover:text-[#1b1813]"
+            class="text-sm font-medium whitespace-nowrap text-[#6b6355] transition-colors hover:text-[#1b1813]"
             @click="track('site_download_click', { location: 'nav' })"
           >
             {{ $t('nav.downloads') }}
           </NuxtLink>
           <NuxtLink
             :to="localePath('/signup')"
-            class="landing-btn-primary px-5 py-2.5 text-sm"
+            class="landing-btn-primary px-5 py-2.5 text-sm whitespace-nowrap"
             @click="track('site_cta_click', { location: 'header', label: 'signup' })"
           >
             {{ $t('nav.signup') }}
@@ -91,6 +91,14 @@
           >
             {{ $t('nav.downloads') }}
           </NuxtLink>
+          <NuxtLink
+            :to="localePath('/contact')"
+            class="menu-item font-display text-4xl font-semibold text-[#1b1813] transition-colors hover:text-[#6b6355]"
+            :style="{ transitionDelay: `${(sectionLinks.length + 1) * 40}ms` }"
+            @click="onMobileContact"
+          >
+            {{ $t('nav.contact') }}
+          </NuxtLink>
         </nav>
         <div class="border-t border-[#e3dccd] p-6">
           <NuxtLink :to="localePath('/signup')" class="landing-btn-primary w-full text-center" @click="onMobileSignup">
@@ -126,6 +134,28 @@
             <p class="max-w-sm text-sm leading-relaxed text-[#6b6355]">
               {{ $t('footer.description') }}
             </p>
+            <ul class="mt-5 space-y-2">
+              <li>
+                <a
+                  :href="PUBLISHER_CONTACT.phoneHref"
+                  class="inline-flex items-center gap-2 text-sm font-medium text-[#1b1813] tabular-nums transition-colors hover:text-[#6b6355]"
+                  @click="track('site_contact_phone_click', { location: 'footer' })"
+                >
+                  <UIcon name="i-lucide-phone" class="h-4 w-4 text-[#6b6355]" aria-hidden="true" />
+                  {{ $t('publisher.phone') }}
+                </a>
+              </li>
+              <li>
+                <a
+                  :href="PUBLISHER_CONTACT.emailHref"
+                  class="inline-flex items-center gap-2 text-sm font-medium text-[#1b1813] transition-colors hover:text-[#6b6355]"
+                  @click="track('site_contact_email_click', { location: 'footer' })"
+                >
+                  <UIcon name="i-lucide-mail" class="h-4 w-4 text-[#6b6355]" aria-hidden="true" />
+                  {{ PUBLISHER_CONTACT.email }}
+                </a>
+              </li>
+            </ul>
           </div>
 
           <div>
@@ -164,6 +194,15 @@
                   {{ $t('footer.links.downloads') }}
                 </NuxtLink>
               </li>
+              <li>
+                <NuxtLink
+                  :to="localePath('/contact')"
+                  class="text-sm text-[#6b6355] transition-colors hover:text-[#1b1813]"
+                  @click="track('site_nav_click', { target: '/contact', location: 'footer' })"
+                >
+                  {{ $t('footer.links.contact') }}
+                </NuxtLink>
+              </li>
             </ul>
           </div>
 
@@ -198,7 +237,7 @@
           <p class="font-label text-xs text-[#6b6355]">
             © {{ currentYear }} devleadhunter · dibodev — {{ $t('footer.copyright') }}
           </p>
-          <div class="flex flex-wrap items-center gap-6">
+          <div class="flex flex-wrap items-center gap-x-6 gap-y-3">
             <label class="font-label flex items-center gap-2 text-xs text-[#6b6355]">
               {{ $t('footer.language') }}
               <select
@@ -206,11 +245,19 @@
                 class="font-label cursor-pointer rounded-lg border border-[#e3dccd] bg-[#fcfaf5] px-2.5 py-1.5 text-xs text-[#1b1813] transition-colors focus:border-[#1b1813] focus:outline-none"
                 @change="switchLocale(($event.target as HTMLSelectElement).value)"
               >
-                <option v-for="langOption in availableLocales" :key="langOption.code" :value="langOption.code">
+                <option
+                  v-for="langOption in availableLocales"
+                  :key="langOption.code"
+                  :value="langOption.code"
+                  :selected="langOption.code === currentLocale"
+                >
                   {{ langOption.code.toUpperCase() }}
                 </option>
               </select>
             </label>
+            <NuxtLink :to="localePath('/legal')" class="text-sm text-[#6b6355] transition-colors hover:text-[#1b1813]">
+              {{ $t('footer.legalNotice') }}
+            </NuxtLink>
             <NuxtLink
               :to="localePath('/privacy')"
               class="text-sm text-[#6b6355] transition-colors hover:text-[#1b1813]"
@@ -234,6 +281,7 @@ import type { LandingSectionLink } from '~/types/MarketingLayout'
 import type { Ref, ComputedRef } from 'vue'
 import type { LocaleObject } from '@nuxtjs/i18n'
 import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
+import { PUBLISHER_CONTACT } from '~/constants/publisher'
 
 // Le type de retour de useI18n est élidé par TypeScript : inécrivable à la main.
 // eslint-disable-next-line @typescript-eslint/typedef
@@ -330,6 +378,14 @@ function onMobileDownload(): void {
 }
 
 /**
+ * Track the mobile-menu contact link, then close the menu.
+ */
+function onMobileContact(): void {
+  track('site_nav_click', { target: '/contact', location: 'mobile_menu' })
+  closeMobileMenu()
+}
+
+/**
  * Track the mobile-menu signup CTA, then close the menu.
  */
 function onMobileSignup(): void {
@@ -338,17 +394,19 @@ function onMobileSignup(): void {
 }
 
 /**
- * Smooth-scroll to a landing section, accounting for the sticky header height.
+ * Smooth-scroll to a landing section, accounting for the sticky header height; from another page, open the home page there.
  * @param selector - CSS selector of the target section.
  */
 function scrollToSection(selector: string): void {
   const element: Element | null = document.querySelector(selector)
-  if (element) {
-    const headerOffset: number = 80
-    const elementPosition: number = element.getBoundingClientRect().top
-    const offsetPosition: number = elementPosition + window.pageYOffset - headerOffset
-    window.scrollTo({ top: offsetPosition, behavior: 'smooth' })
+  if (!element) {
+    navigateTo({ path: localePath('index'), hash: selector })
+    return
   }
+  const headerOffset: number = 80
+  const elementPosition: number = element.getBoundingClientRect().top
+  const offsetPosition: number = elementPosition + window.pageYOffset - headerOffset
+  window.scrollTo({ top: offsetPosition, behavior: 'smooth' })
 }
 
 /**
