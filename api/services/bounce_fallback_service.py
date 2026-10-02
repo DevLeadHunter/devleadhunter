@@ -23,6 +23,7 @@ from models.campaign import Campaign
 from models.email_log import EmailLog
 from models.email_queue import EmailQueue
 from models.prospect_db import ProspectDB
+from services.country_profiles import CountryProfiles
 from services.prospect_emails import sync_prospect_emails
 from services.send_policy_service import send_policy_service
 
@@ -98,7 +99,7 @@ class BounceFallbackService:
                 queue_type="initial",
                 ab_variant=email_log.ab_variant,
                 follow_up_index=0,
-                scheduled_at=self._next_slot(db, email_log.user_id),
+                scheduled_at=self._next_slot(db, email_log.user_id, CountryProfiles.get(prospect.country).timezone),
                 status="pending",
             )
         )
@@ -132,11 +133,11 @@ class BounceFallbackService:
         db.add(prospect)
 
     @staticmethod
-    def _next_slot(db: Session, user_id: int) -> datetime:
-        """Return the next in-window send slot (respects the user's SendPolicy), or now as a fallback."""
+    def _next_slot(db: Session, user_id: int, timezone_name: str) -> datetime:
+        """Return the next send slot inside the user's SendPolicy window on the prospect's clock, or now as a fallback."""
         resolved = send_policy_service.resolve(db, user_id)
         seed = send_policy_service.pending_counts_by_day(db, user_id)
-        slots = send_policy_service.next_send_slots(resolved, 1, seed_counts=seed)
+        slots = send_policy_service.next_send_slots(resolved, 1, seed_counts=seed, slot_timezones=[timezone_name])
         return slots[0] if slots else datetime.now(UTC).replace(tzinfo=None)
 
 

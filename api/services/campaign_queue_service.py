@@ -16,6 +16,7 @@ Responsibilities:
 from __future__ import annotations
 
 import logging
+from collections.abc import Sequence
 from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
 
@@ -36,6 +37,7 @@ from services.activity_log_service import CATEGORY_CAMPAIGN, STATUS_INFO, activi
 from services.ai_assistant.assistant_service import ai_assistant_service
 from services.assistant_pricing_service import AssistantPricingService
 from services.contact_lock_service import MODULE_AI_ASSISTANT, MODULE_WEBSITES, contact_lock_service
+from services.country_profiles import CountryProfiles
 from services.email_sending_service import EmailSendingService
 from services.email_variables import EmailVariables
 from services.pricing_service import PricingService
@@ -227,7 +229,7 @@ class CampaignQueueService:
         result = EnqueueResult()
 
         # --- Pass 1: decide who gets enqueued (skip filters) -----------------
-        to_enqueue: list[tuple[int, int, str | None]] = []  # (prospect_id, tpl_id, variant)
+        to_enqueue: list[tuple[ProspectDB, int | None, str | None]] = []  # (prospect, tpl_id, variant)
         for idx, prospect in enumerate(campaign.prospects):
             if prospect.id in already_queued:
                 continue
@@ -284,18 +286,20 @@ class CampaignQueueService:
                 continue
 
             contact_lock_service.record_contact(prospect, module, now)
-            to_enqueue.append((prospect.id, tpl_id, variant))
+            to_enqueue.append((prospect, tpl_id, variant))
 
         # --- Compute send slots (global send policy, or legacy spacing) ------
-        slots: list[datetime] = self._schedule_slots(campaign, len(to_enqueue), now, latest)
+        slots: list[datetime] = self._schedule_slots(
+            campaign, [prospect for prospect, _tpl_id, _variant in to_enqueue], now, latest
+        )
 
         # --- Pass 2: create the queue rows ----------------------------------
-        for (prospect_id, tpl_id, variant), slot in zip(to_enqueue, slots):
+        for (prospect, tpl_id, variant), slot in zip(to_enqueue, slots):
             self.db.add(
                 EmailQueue(
                     user_id=campaign.user_id,
                     campaign_id=campaign.id,
-                    prospect_id=prospect_id,
+                    prospect_id=prospect.id,
                     template_id=tpl_id,
                     email_account_id=None,
                     queue_type="initial",
@@ -495,7 +499,7 @@ class CampaignQueueService:
                 EmailQueue.queue_type == "initial",
             )
         ).scalar()
-        slot: datetime = self._schedule_slots(campaign, 1, now, latest)[0]
+        slot: datetime = self._schedule_slots(campaign, [prospect], now, latest)[0]
         contact_lock_service.record_contact(prospect, module, now)
         self.db.add(
             EmailQueue(
@@ -515,29 +519,49 @@ class CampaignQueueService:
         logger.info("[Queue] Auto-enqueued now-ready prospect %d into active campaign %d", prospect_id, campaign.id)
         return True
 
+    @staticmethod
+    def prospect_timezone(prospect: ProspectDB | None) -> str:
+        """
+        The IANA zone a prospect reads the clock in, from its country.
+
+        The send window of a policy is evaluated in this zone, and the queue exposes it
+        so the dashboard can show the prospect's local hour. An unknown or closed
+        country reads as France, like everywhere else in the product.
+
+        Args:
+            prospect: The prospect, or ``None`` on a row whose prospect is gone.
+
+        Returns:
+            An IANA zone name such as ``America/Toronto``.
+        """
+        return CountryProfiles.get(prospect.country if prospect is not None else None).timezone
+
     def _schedule_slots(
         self,
         campaign: Campaign,
-        count: int,
+        prospects: Sequence[ProspectDB],
         now: datetime,
         latest: datetime | None,
     ) -> list[datetime]:
         """
-        Compute ``count`` send datetimes.
+        Compute one send datetime per prospect, in order.
 
-        When the user has a :class:`SendPolicy`, slots honour its weekday/hour
-        window and daily cap (spread across days). Otherwise we keep the legacy
-        behaviour: one email every ``campaign.send_delay_minutes``, no window.
+        When the user has a :class:`SendPolicy`, slots honour its weekday/hour window
+        in each prospect's own timezone (an 8 a.m. in Montréal is an 8 a.m. in Montréal)
+        and its daily cap, counted on the sender's day and spread across days.
+        Otherwise we keep the legacy behaviour: one email every
+        ``campaign.send_delay_minutes``, no window, so no timezone to honour.
 
         Args:
             campaign: The campaign being enqueued.
-            count: Number of slots needed.
+            prospects: The prospects to slot, in send order.
             now: Current UTC time.
             latest: Last pending scheduled slot of this campaign, if any.
 
         Returns:
-            ``count`` ascending naive-UTC datetimes.
+            ``len(prospects)`` ascending naive-UTC datetimes.
         """
+        count: int = len(prospects)
         if count <= 0:
             return []
 
@@ -559,6 +583,7 @@ class CampaignQueueService:
                 occupied=occupied,
                 per_campaign_cap=campaign.max_emails_per_day,
                 campaign_seed_counts=send_policy_service.pending_campaign_counts_by_day(self.db, campaign.id),
+                slot_timezones=[self.prospect_timezone(prospect) for prospect in prospects],
             )
 
         delay = timedelta(minutes=max(campaign.send_delay_minutes, 1))
@@ -584,7 +609,9 @@ class CampaignQueueService:
         pending_by_prospect: dict[int, EmailQueue] = {
             item.prospect_id: item
             for item in self.db.execute(
-                select(EmailQueue).where(
+                select(EmailQueue)
+                .options(joinedload(EmailQueue.prospect))
+                .where(
                     EmailQueue.campaign_id == campaign.id,
                     EmailQueue.queue_type == "initial",
                     EmailQueue.status == _STATUS_PENDING,
@@ -609,10 +636,10 @@ class CampaignQueueService:
         """
         Compute fresh send slots for the campaign's pending J1s, in their new order.
 
-        Same policy/legacy split as the launch scheduler, but the campaign's own pending J1s (the rows
-        being moved) are removed from the per-day usage and occupied instants so they don't block
-        themselves, and the days its sent J1s already used are seeded so the per-campaign cap still
-        holds (today is full once one J1 has left).
+        Same policy/legacy split as the launch scheduler — each slot in its prospect's timezone — but
+        the campaign's own pending J1s (the rows being moved) are removed from the per-day usage and
+        occupied instants so they don't block themselves, and the days its sent J1s already used are
+        seeded so the per-campaign cap still holds (today is full once one J1 has left).
 
         Args:
             campaign: The campaign being rescheduled.
@@ -655,6 +682,7 @@ class CampaignQueueService:
             occupied=occupied,
             per_campaign_cap=campaign.max_emails_per_day,
             campaign_seed_counts=send_policy_service.sent_campaign_counts_by_day(self.db, campaign.id),
+            slot_timezones=[self.prospect_timezone(item.prospect) for item in pending_items],
         )
 
     def _enqueue_sms(self, campaign: Campaign) -> EnqueueResult:
@@ -691,7 +719,7 @@ class CampaignQueueService:
         }
 
         result = EnqueueResult()
-        to_enqueue: list[int] = []
+        to_enqueue: list[ProspectDB] = []
         for prospect in campaign.prospects:
             if prospect.id in already_queued:
                 continue
@@ -718,15 +746,15 @@ class CampaignQueueService:
                 missing_offer_skips.append({"id": prospect.id, "name": prospect.name or ""})
                 continue
             contact_lock_service.record_contact(prospect, module, now)
-            to_enqueue.append(prospect.id)
+            to_enqueue.append(prospect)
 
-        slots: list[datetime] = self._schedule_slots(campaign, len(to_enqueue), now, latest)
-        for prospect_id, slot in zip(to_enqueue, slots):
+        slots: list[datetime] = self._schedule_slots(campaign, to_enqueue, now, latest)
+        for prospect, slot in zip(to_enqueue, slots):
             self.db.add(
                 EmailQueue(
                     user_id=campaign.user_id,
                     campaign_id=campaign.id,
-                    prospect_id=prospect_id,
+                    prospect_id=prospect.id,
                     template_id=None,
                     email_account_id=None,
                     queue_type="initial",
@@ -1459,12 +1487,15 @@ class CampaignQueueService:
         Create EmailQueue rows for all follow-up steps after a J1 success.
 
         Uses ``campaign_follow_ups`` rows when they exist; falls back to the
-        legacy ``follow_up_template_id`` / ``follow_up_delay_days`` fields.
+        legacy ``follow_up_template_id`` / ``follow_up_delay_days`` fields. Every
+        step is counted on the prospect's clock, so it leaves at the local hour the
+        J1 left.
 
         Args:
             j1_item: The just-sent J1 queue item.
         """
         campaign: Campaign = j1_item.campaign
+        timezone_name: str = self.prospect_timezone(j1_item.prospect)
 
         # Prefer the new multi-step follow-up table.
         follow_ups: list[CampaignFollowUp] = (
@@ -1486,7 +1517,7 @@ class CampaignQueueService:
             # Legacy fallback: single follow-up fields on the campaign.
             if campaign.follow_up_template_id:
                 follow_up_at = send_policy_service.follow_up_slot(
-                    resolved, sent_at, campaign.follow_up_delay_days or None
+                    resolved, sent_at, campaign.follow_up_delay_days or None, timezone_name=timezone_name
                 )
                 if not self._offer_link_outlives(j1_item, campaign.follow_up_template_id, follow_up_at):
                     return
@@ -1511,7 +1542,9 @@ class CampaignQueueService:
         elapsed_days: int = 0
         for step in follow_ups:
             elapsed_days += max(1, step.delay_days)
-            step_at: datetime = send_policy_service.follow_up_slot(resolved, sent_at, elapsed_days)
+            step_at: datetime = send_policy_service.follow_up_slot(
+                resolved, sent_at, elapsed_days, timezone_name=timezone_name
+            )
             if not self._offer_link_outlives(j1_item, step.template_id, step_at):
                 break
             self.db.add(
@@ -1992,6 +2025,7 @@ class CampaignQueueService:
                     "prospect_email": prospect.email if prospect else None,
                     "prospect_city": prospect.city if prospect else None,
                     "prospect_category": prospect.category if prospect else "",
+                    "prospect_timezone": self.prospect_timezone(prospect),
                     "queue_type": item.queue_type,
                     "follow_up_index": item.follow_up_index,
                     "ab_variant": item.ab_variant,

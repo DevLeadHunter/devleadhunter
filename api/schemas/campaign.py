@@ -260,6 +260,8 @@ class CampaignForecastItem(BaseModel):
     prospect_email: str | None = None
     prospect_city: str | None = None
     prospect_category: str = ""
+    # IANA zone the send window was evaluated in (the prospect's country); None on the SMS projections.
+    prospect_timezone: str | None = None
     # "initial" (J1), "followup", or the automated SMS projections "sms_relance" / "sms_cold".
     queue_type: str
     follow_up_index: int = 0
