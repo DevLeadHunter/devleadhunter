@@ -105,7 +105,6 @@ SMS_TEMPLATE_LIBRARY: list[SmsTemplate] = [
         ),
         fallback_key="direct",
     ),
-    # The link's slug names the business, so the dead-site and redesign bodies do not repeat it.
     SmsTemplate(
         key="site-en-panne",
         name="Site en panne",
@@ -169,7 +168,6 @@ SMS_TEMPLATE_LIBRARY: list[SmsTemplate] = [
         ),
         fallback_key="assistant-24-7",
     ),
-    # Sites web, relance J+30 (email resté sans réaction): each one recalls the email sent a month ago.
     SmsTemplate(
         key="rappel-court",
         name="Rappel court",

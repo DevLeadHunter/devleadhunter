@@ -1,6 +1,6 @@
 # Modèles francs : emails et SMS (sites web + réceptionniste IA)
 
-Document de validation des modèles de prospection. Rien ne part tant qu'il n'est pas relu : les modèles ci-dessous sont dans le code, pas encore déployés.
+Document de validation des modèles de prospection. Rien ne part tant qu'il n'est pas relu : les modèles ci-dessous sont ceux du code (seeder et bibliothèque SMS).
 
 ## Pourquoi
 
