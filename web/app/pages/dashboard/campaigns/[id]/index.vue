@@ -130,12 +130,13 @@
       </div>
 
       <div class="border-b border-[var(--app-line)]">
-        <nav class="no-scrollbar flex gap-1 overflow-x-auto">
+        <!-- `overflow-x-auto` alone makes the row scroll on both axes on iOS (an implicit `overflow-y: auto` plus the 1px the tabs overlap the border by), so a finger could drag the tabs up and down: lock the touch gesture to the x axis. -->
+        <nav class="no-scrollbar -mb-px flex touch-pan-x gap-1 overflow-x-auto overflow-y-hidden overscroll-x-contain">
           <button
             v-for="tab in visibleTabs"
             :key="tab.key"
             :class="[
-              '-mb-px flex flex-1 items-center justify-center gap-2 border-b-2 px-3 pt-1 pb-2.5 text-sm font-medium whitespace-nowrap transition-colors @2xl:flex-none @2xl:justify-start',
+              'flex flex-1 items-center justify-center gap-2 border-b-2 px-3 pt-1 pb-2.5 text-sm font-medium whitespace-nowrap transition-colors @2xl:flex-none @2xl:justify-start',
               activeTab === tab.key
                 ? 'border-[var(--app-ink)] text-[var(--app-ink)]'
                 : 'border-transparent text-[var(--app-ink-soft)] hover:text-[var(--app-ink)]',
