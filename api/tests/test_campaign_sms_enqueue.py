@@ -70,7 +70,7 @@ def test_enqueue_sms_creates_templateless_rows_in_order(monkeypatch):
     monkeypatch.setattr(
         cqs.CampaignQueueService,
         "_schedule_slots",
-        lambda self, campaign, count, now, latest: [datetime(2026, 1, 5, 9, 0)] * count,
+        lambda self, campaign, prospects, now, latest: [datetime(2026, 1, 5, 9, 0)] * len(prospects),
     )
     # A demo exists for everyone except prospect 3.
     monkeypatch.setattr(
@@ -109,7 +109,7 @@ def test_enqueue_sms_assistant_campaign_needs_an_assistant_not_a_demo(monkeypatc
     monkeypatch.setattr(
         cqs.CampaignQueueService,
         "_schedule_slots",
-        lambda self, campaign, count, now, latest: [datetime(2026, 1, 5, 9, 0)] * count,
+        lambda self, campaign, prospects, now, latest: [datetime(2026, 1, 5, 9, 0)] * len(prospects),
     )
     # Nobody has a demo site; everyone but prospect 3 has an active assistant.
     monkeypatch.setattr(cqs.CampaignQueueService, "_active_demo_for_prospect", lambda self, pid, uid: None)

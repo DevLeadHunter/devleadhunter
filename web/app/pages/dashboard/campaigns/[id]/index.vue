@@ -686,7 +686,7 @@
               <BaseTableTh align="right">Actions</BaseTableTh>
             </template>
 
-            <BaseTableTr v-for="item in queueData.items" :key="item.id">
+            <BaseTableTr v-for="item in queueRows" :key="item.id">
               <BaseTableTd>
                 <span class="block text-sm font-semibold text-[var(--app-ink)]">
                   {{ item.prospect_name || `#${item.prospect_id}` }}
@@ -719,6 +719,7 @@
 
               <BaseTableTd label="Planifié" class="font-label text-xs text-[var(--app-ink-soft)]">
                 {{ formatCompactDateTime(item.scheduled_at) }}
+                <span v-if="item.prospectLocalTimeLabel"> · {{ item.prospectLocalTimeLabel }}</span>
               </BaseTableTd>
 
               <BaseTableTd label="Statut" align="center">
@@ -798,7 +799,7 @@
 
 <script lang="ts" setup>
 import type { UseAuthReturn, UseToastReturn } from '~/types/Composables'
-import type { TemplateOption } from '~/types/CampaignDetailPage'
+import type { CampaignQueueRow, TemplateOption } from '~/types/CampaignDetailPage'
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import type { ComputedRef, Ref } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
@@ -815,6 +816,7 @@ import { ProspectsService } from '~/services/prospectsService'
 import { ApiClient } from '~/services/api'
 import type { CampaignFollowUp, CampaignVariantStats, Prospect, ProspectSource } from '~/types'
 import { formatCompactDateTime } from '~/utils/date'
+import { ProspectTimezone } from '~/utils/prospectTimezone'
 import { useToast } from '~/composables/useToast'
 import { useDrawerStackStore } from '~/stores/drawerStack'
 import type { SendPolicy } from '~/types/Automation'
@@ -996,6 +998,15 @@ const smsQueueCounts: ComputedRef<{ sent: number; pending: number; failed: numbe
   }
   return { sent, pending, failed }
 })
+
+const queueRows: ComputedRef<CampaignQueueRow[]> = computed((): CampaignQueueRow[] =>
+  (queueData.value?.items ?? []).map(
+    (item: CampaignQueueItem): CampaignQueueRow => ({
+      ...item,
+      prospectLocalTimeLabel: ProspectTimezone.localTimeLabel(item.scheduled_at, item.prospect_timezone),
+    }),
+  ),
+)
 
 /** Tabs shown for this campaign — the A/B tab is email-only. */
 const visibleTabs: ComputedRef<{ key: string; label: string; icon: string }[]> = computed(() =>
