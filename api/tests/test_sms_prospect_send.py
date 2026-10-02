@@ -1,4 +1,8 @@
-"""A prospect SMS rendered from the library: it fits one segment, or it is not sent."""
+"""A prospect SMS rendered from a template: it fits the service's segment budget, or it is not sent.
+
+The budget rule is tested with fixture templates rather than the library's: the frank library
+takes two segments by design, and this file is about the sending service's guard, not the copy.
+"""
 
 import asyncio
 
@@ -6,23 +10,41 @@ import pytest
 from sqlalchemy.orm import Session
 
 import services.sms_service as sms_module
+from enums.sms_template_category import SmsTemplateCategory
 from models.ai_assistant import AiAssistant
 from models.prospect_db import ProspectDB
 from models.sms_config import SmsConfig
 from models.sms_message import SmsMessage
 from services.ai_assistant.assistant_service import ai_assistant_service
+from services.sms.templates import SmsTemplate
 from services.sms_service import SmsService
 from tests.assistant_fakes import AcceptingSmsProvider, AsyncCallRecorder
 
 # A demo slug over 80 characters: no template fits one segment with it.
 _LONG_SLUG = "garage-de-la-grande-place-et-des-environs-de-charleville-mezieres-et-alentours-sud"
 
+_FIXTURE_TEMPLATES: dict[str, SmsTemplate] = {
+    "direct": SmsTemplate(
+        key="direct",
+        name="Direct",
+        category=SmsTemplateCategory.FIRST_CONTACT,
+        body="{salutation}, j'ai préparé un site pour {entreprise}, il est déjà en ligne : {lien_demo} {signature}",
+    ),
+    "assistant-24-7": SmsTemplate(
+        key="assistant-24-7",
+        name="Réceptionniste",
+        category=SmsTemplateCategory.FIRST_CONTACT,
+        body="{salutation}, votre réceptionniste répond à vos clients : {lien_assistant} {signature}",
+    ),
+}
+
 
 @pytest.fixture
 def provider(monkeypatch: pytest.MonkeyPatch) -> AcceptingSmsProvider:
-    """An accepting SMS provider, an open legal window and a silent notification."""
+    """An accepting SMS provider, an open legal window, a silent notification and the fixture templates."""
     monkeypatch.setattr(SmsService, "legal_window_refusal", lambda self: None)
     monkeypatch.setattr(sms_module.notification_service, "notify_sms_event", AsyncCallRecorder())
+    monkeypatch.setattr(sms_module, "find_sms_template", _FIXTURE_TEMPLATES.get)
     return AcceptingSmsProvider()
 
 

@@ -3,7 +3,10 @@
 Same trusted sources as the email variables (decision-maker greeting, normalised
 trade, dead-website display, configured price) but plain text: no HTML anchor,
 and links without their scheme — a bare ``demo.dibodev.fr/slug`` is tapped like
-any URL on a phone and costs eight characters less of the single GSM-7 segment.
+any URL on a phone and costs eight characters less of the GSM-7 budget. The
+``{telephone}`` variable is the sender's public phone (``users.contact_phone``, the
+one shown on the demo banner): the alphanumeric SMS sender receives no reply, so a
+frank SMS names the number to answer to.
 """
 
 from __future__ import annotations
@@ -37,6 +40,7 @@ class SmsVariables:
     OLD_WEBSITE = "ancien_site"
     PRICE = "prix"
     PRICE_ASSISTANT = "prix_assistant"
+    PHONE = "telephone"
     SIGNATURE = "signature"
 
     @staticmethod
@@ -56,6 +60,19 @@ class SmsVariables:
             if cleaned.startswith(scheme):
                 return cleaned[len(scheme) :]
         return cleaned
+
+    @staticmethod
+    def phone_for(contact_phone: str | None) -> str:
+        """The sender's public phone as written in his settings, the number a prospect answers to.
+
+        Args:
+            contact_phone: The sending user's ``contact_phone``, or ``None``.
+
+        Returns:
+            The phone, trimmed; empty when the user has not set one (a template using
+            ``{telephone}`` must not be sent then).
+        """
+        return (contact_phone or "").strip()
 
     @staticmethod
     def signature_for(account_name: str | None) -> str:
@@ -121,5 +138,6 @@ class SmsVariables:
             cls.PRICE_ASSISTANT: AssistantPricingService.format_price(
                 AssistantPricingService.monthly_price_cents(db, user_id)
             ),
+            cls.PHONE: cls.phone_for(user.contact_phone if user else None),
             cls.SIGNATURE: cls.signature_for(user.name if user else None),
         }

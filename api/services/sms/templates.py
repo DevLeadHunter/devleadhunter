@@ -1,17 +1,30 @@
-"""The SMS template library — one angle per message, written to fit one GSM-7 segment.
+"""The SMS template library, written frank: one message says who writes, what was prepared, the price and how to answer.
 
 Mirrors the cold-email library (``seeders/email_template_seeder.py``) at SMS scale: a
 first-contact family for prospects reached by SMS first (a mobile, no email) and a
-follow-up family for prospects who ignored the email. Bodies stay short on purpose —
-the STOP mention (14 chars) and the plain demo link (up to ~45 chars) already eat a
-third of the 160-character budget, so every template says one thing, names the
-business (in the text or through the link's slug), and signs with the sender's first
-name. Trust rules baked in: an action at the first person (« j'ai préparé »), a reason
-taken from the matching email, no imperative (« voici », « cliquez »), no urgency.
-The mandatory STOP mention is appended at send time, never written here.
+follow-up family for prospects who ignored the email. A prospecting SMS may take TWO
+GSM-7 segments (306 characters, STOP mention included): a frank message does not fit
+in one. The sending service (``services/sms_service.py``) allows two
+segments for a send to a prospect; the service messages (receptionist alerts) keep
+one. Every frank template says:
+  - who writes (« je fais des sites web », the receptionist is « une assistante
+    virtuelle (une IA) ») and signs with the sender's first name;
+  - what was prepared, through ONE short link (``{lien_demo}``, ``{lien_video}``,
+    ``{lien_assistant}``, ``{lien_video_assistant}``, already in the branded
+    ``demo.dibodev.fr/s/…`` form without scheme, handled by the callers);
+  - the price (``{prix}`` once, no subscription; ``{prix_assistant}`` a month, no
+    commitment, first month satisfied or refunded);
+  - how to answer: the alphanumeric sender (« Dibodev ») receives no reply, so the
+    message gives the sender's public phone, ``{telephone}`` (``users.contact_phone``,
+    the one shown on the demo banner). A template using it needs that phone to be set.
+Trust rules kept from the first library: an action at the first person, no imperative
+(« voici », « cliquez », « ici »), no artificial urgency, GSM-7 transliteration at send
+time. The mandatory STOP mention (14 characters) is appended at send time, never
+written here; the budget tests reserve its room.
 
 Variables: {salutation} {entreprise} {ville} {metier} {lien_demo} {lien_assistant}
-{lien_video} {lien_video_assistant} {prenom_receptionniste} {ancien_site} {prix} {prix_assistant} {signature}.
+{lien_video} {lien_video_assistant} {prenom_receptionniste} {ancien_site} {prix} {prix_assistant}
+{telephone} {signature}.
 """
 
 from __future__ import annotations
@@ -29,6 +42,11 @@ DEFAULT_FIRST_CONTACT_KEY: str = "direct"
 
 # Template a J+30 relance renders until the user picks another one in Paramètres → Relance SMS.
 DEFAULT_FOLLOW_UP_KEY: str = "rappel-court"
+
+_WEBSITE_PRICE_LINE: str = "C'est {prix}, une seule fois, sans abonnement."
+_RECEPTIONIST_PRICE_LINE: str = "{prix_assistant}/mois sans engagement, 1er mois satisfait ou remboursé."
+_ASK_WITH_PHONE: str = "Un mot me suffit, oui ou non, au {telephone}. {signature}"
+_RECEPTIONIST_INTRO: str = "j'ai préparé {prenom_receptionniste}, votre réceptionniste virtuelle (une IA)"
 
 
 @dataclass(frozen=True, slots=True)
@@ -68,62 +86,55 @@ class SmsTemplate:
 
 
 SMS_TEMPLATE_LIBRARY: list[SmsTemplate] = [
-    # ── Premier contact ──────────────────────────────────────────────────────
     SmsTemplate(
         key="direct",
-        name="Direct",
-        category=SmsTemplateCategory.FIRST_CONTACT,
-        body="{salutation}, j'ai préparé un site pour {entreprise}, il est déjà en ligne : {lien_demo} {signature}",
-    ),
-    SmsTemplate(
-        key="visibilite",
-        name="Visibilité - on vous cherche",
-        category=SmsTemplateCategory.FIRST_CONTACT,
-        body="{salutation}, sans site, on ne vous trouve pas. J'ai préparé votre site : {lien_demo} {signature}",
-    ),
-    SmsTemplate(
-        key="credibilite",
-        name="Crédibilité - la première impression",
+        name="Franc - premier contact",
         category=SmsTemplateCategory.FIRST_CONTACT,
         body=(
-            "{salutation}, on vous cherche en ligne avant d'appeler. J'ai préparé votre site : {lien_demo} {signature}"
-        ),
-    ),
-    SmsTemplate(
-        key="bouche-a-oreille",
-        name="Bouche-à-oreille - on vous retrouve",
-        category=SmsTemplateCategory.FIRST_CONTACT,
-        body=(
-            "{salutation}, un site aide vos clients à parler de vous. J'ai préparé votre site : {lien_demo} {signature}"
+            "{salutation}, je fais des sites web et j'ai construit celui de {entreprise}, il est en ligne : "
+            "{lien_demo} " + _WEBSITE_PRICE_LINE + " " + _ASK_WITH_PHONE
         ),
     ),
     SmsTemplate(
         key="video",
         name="Vidéo - je vous montre",
         category=SmsTemplateCategory.FIRST_CONTACT,
-        body="{salutation}, j'ai préparé un site pour {entreprise}. En 30 s de vidéo : {lien_video} {signature}",
+        body=(
+            "{salutation}, je fais des sites web et j'ai construit celui de {entreprise}. Je vous le montre en 30 s "
+            "de vidéo : {lien_video} " + _WEBSITE_PRICE_LINE + " " + _ASK_WITH_PHONE
+        ),
         fallback_key="direct",
     ),
+    # The link's slug names the business, so the dead-site and redesign bodies do not repeat it.
     SmsTemplate(
         key="site-en-panne",
         name="Site en panne",
         category=SmsTemplateCategory.FIRST_CONTACT,
-        body="{salutation}, {ancien_site} ne répond plus. J'ai préparé votre nouveau site : {lien_demo} {signature}",
+        body=(
+            "{salutation}, {ancien_site} ne répond plus. Je fais des sites web et j'en ai construit un nouveau, il "
+            "est en ligne : {lien_demo} " + _WEBSITE_PRICE_LINE + " " + _ASK_WITH_PHONE
+        ),
     ),
     SmsTemplate(
         key="refonte",
         name="Refonte",
         category=SmsTemplateCategory.FIRST_CONTACT,
-        body="{salutation}, j'ai modernisé le site de {entreprise}, comparez avec l'actuel : {lien_demo} {signature}",
+        body=(
+            "{salutation}, je fais des sites web et j'ai construit une version plus moderne de votre site, à "
+            "comparer avec l'actuel : {lien_demo} " + _WEBSITE_PRICE_LINE + " " + _ASK_WITH_PHONE
+        ),
     ),
-    # ── Module Assistant IA — premier contact (la demande restée sans réponse) ─
     SmsTemplate(
         key="assistant-24-7",
         name="Réceptionniste IA - le soir, personne ne répond",
         category=SmsTemplateCategory.FIRST_CONTACT,
         body=(
-            "{salutation}, le soir, personne ne répond à vos clients. Votre réceptionniste, si : "
-            "{lien_assistant} {signature}"
+            "{salutation}, "
+            + _RECEPTIONIST_INTRO
+            + " : le soir, elle répond à vos clients. {lien_assistant} "
+            + _RECEPTIONIST_PRICE_LINE
+            + " "
+            + _ASK_WITH_PHONE
         ),
     ),
     SmsTemplate(
@@ -131,8 +142,8 @@ SMS_TEMPLATE_LIBRARY: list[SmsTemplate] = [
         name="Réceptionniste IA - dans leur langue",
         category=SmsTemplateCategory.FIRST_CONTACT,
         body=(
-            "{salutation}, {prenom_receptionniste}, votre réceptionniste, répond à vos clients dans leur langue : "
-            "{lien_assistant} {signature}"
+            "{salutation}, " + _RECEPTIONIST_INTRO + " : elle répond à vos clients dans leur langue. "
+            "{lien_assistant} " + _RECEPTIONIST_PRICE_LINE + " " + _ASK_WITH_PHONE
         ),
     ),
     SmsTemplate(
@@ -140,8 +151,8 @@ SMS_TEMPLATE_LIBRARY: list[SmsTemplate] = [
         name="Réceptionniste IA - devis par photo",
         category=SmsTemplateCategory.FIRST_CONTACT,
         body=(
-            "{salutation}, votre réceptionniste change la photo d'un client en demande de devis : "
-            "{lien_assistant} {signature}"
+            "{salutation}, " + _RECEPTIONIST_INTRO + " : une photo devient une demande de devis. "
+            "{lien_assistant} " + _RECEPTIONIST_PRICE_LINE + " " + _ASK_WITH_PHONE
         ),
     ),
     SmsTemplate(
@@ -149,19 +160,23 @@ SMS_TEMPLATE_LIBRARY: list[SmsTemplate] = [
         name="Réceptionniste IA - en vidéo",
         category=SmsTemplateCategory.FIRST_CONTACT,
         body=(
-            "{salutation}, j'ai préparé {prenom_receptionniste}, votre réceptionniste. En 30 s de vidéo : "
-            "{lien_video_assistant} {signature}"
+            "{salutation}, "
+            + _RECEPTIONIST_INTRO
+            + ". Je vous la montre en 30 s de vidéo : {lien_video_assistant} "
+            + _RECEPTIONIST_PRICE_LINE
+            + " "
+            + _ASK_WITH_PHONE
         ),
         fallback_key="assistant-24-7",
     ),
-    # ── Relance J+30 (email resté sans réaction) ─────────────────────────────
+    # Sites web, relance J+30 (email resté sans réaction): each one recalls the email sent a month ago.
     SmsTemplate(
         key="rappel-court",
         name="Rappel court",
         category=SmsTemplateCategory.FOLLOW_UP,
         body=(
-            "{salutation}, le site envoyé par email est toujours en ligne : {lien_demo} "
-            "Un mot me suffit, oui ou non. {signature}"
+            "{salutation}, le site envoyé par email est toujours en ligne : {lien_demo} C'est {prix}, une seule "
+            "fois. " + _ASK_WITH_PHONE
         ),
     ),
     SmsTemplate(
@@ -169,8 +184,8 @@ SMS_TEMPLATE_LIBRARY: list[SmsTemplate] = [
         name="Offre à vie",
         category=SmsTemplateCategory.FOLLOW_UP,
         body=(
-            "{salutation}, votre site envoyé par email : {lien_demo} "
-            "{prix} une fois, sans abonnement, et il est à vous. {signature}"
+            "{salutation}, le site de {entreprise} envoyé par email est toujours en ligne : {lien_demo} "
+            "{prix} une seule fois, sans abonnement, et il est à vous, sur votre propre adresse. " + _ASK_WITH_PHONE
         ),
     ),
     SmsTemplate(
@@ -178,42 +193,29 @@ SMS_TEMPLATE_LIBRARY: list[SmsTemplate] = [
         name="Offre à vie - vidéo",
         category=SmsTemplateCategory.FOLLOW_UP,
         body=(
-            "{salutation}, votre site envoyé par email, en vidéo : {lien_video} "
-            "{prix} une fois, sans abonnement, à vie. {signature}"
+            "{salutation}, le site envoyé par email, en 30 s de vidéo : {lien_video} "
+            "{prix} une seule fois, sans abonnement, et il est à vous. " + _ASK_WITH_PHONE
         ),
         fallback_key="offre-a-vie",
-    ),
-    SmsTemplate(
-        key="autonomie",
-        name="Autonomie - vous gardez la main",
-        category=SmsTemplateCategory.FOLLOW_UP,
-        body=(
-            "{salutation}, le site envoyé par email est en ligne : {lien_demo} "
-            "Vous y changez tout, sans développeur. {signature}"
-        ),
-    ),
-    SmsTemplate(
-        key="urgence-douce",
-        name="Urgence douce",
-        category=SmsTemplateCategory.FOLLOW_UP,
-        body=(
-            "{salutation}, le site envoyé par email ne restera pas en ligne : {lien_demo} "
-            "Un mot et je le garde. {signature}"
-        ),
     ),
     SmsTemplate(
         key="site-en-panne-relance",
         name="Site en panne - relance",
         category=SmsTemplateCategory.FOLLOW_UP,
-        body="{salutation}, {ancien_site} est toujours en erreur. Le nouveau, envoyé par email : {lien_demo} {signature}",
+        body=(
+            "{salutation}, {ancien_site} est toujours en erreur. Le nouveau site, envoyé par email, est en ligne : "
+            "{lien_demo} " + _WEBSITE_PRICE_LINE + " " + _ASK_WITH_PHONE
+        ),
     ),
     SmsTemplate(
         key="refonte-relance",
         name="Refonte - relance",
         category=SmsTemplateCategory.FOLLOW_UP,
         body=(
-            "{salutation}, la version modernisée de votre site, envoyée par email, est en ligne : "
-            "{lien_demo} {signature}"
+            "{salutation}, la nouvelle version de votre site, envoyée par email, est en ligne : {lien_demo} "
+            + _WEBSITE_PRICE_LINE
+            + " "
+            + _ASK_WITH_PHONE
         ),
     ),
     SmsTemplate(
@@ -221,8 +223,8 @@ SMS_TEMPLATE_LIBRARY: list[SmsTemplate] = [
         name="Réceptionniste IA - relance",
         category=SmsTemplateCategory.FOLLOW_UP,
         body=(
-            "{salutation}, après mon email, votre réceptionniste {prenom_receptionniste} répond toujours : "
-            "{lien_assistant} {signature}"
+            "{salutation}, après mon email, {prenom_receptionniste}, votre réceptionniste virtuelle (une IA), répond "
+            "toujours : {lien_assistant} " + _RECEPTIONIST_PRICE_LINE + " " + _ASK_WITH_PHONE
         ),
     ),
     SmsTemplate(
@@ -230,18 +232,19 @@ SMS_TEMPLATE_LIBRARY: list[SmsTemplate] = [
         name="Réceptionniste IA - relance vidéo",
         category=SmsTemplateCategory.FOLLOW_UP,
         body=(
-            "{salutation}, la vidéo de mon email : {lien_video_assistant} Votre réceptionniste, "
-            "{prix_assistant}/mois, sans engagement. {signature}"
+            "{salutation}, la vidéo de mon email : votre réceptionniste virtuelle (une IA) en 30 s : "
+            "{lien_video_assistant} " + _RECEPTIONIST_PRICE_LINE + " " + _ASK_WITH_PHONE
         ),
         fallback_key="assistant-relance",
     ),
     SmsTemplate(
         key="assistant-prix-cash",
-        name="Réceptionniste IA - le prix cash",
+        name="Réceptionniste IA - le prix, sans détour",
         category=SmsTemplateCategory.FOLLOW_UP,
         body=(
-            "{salutation}, le prix de mon email : {prix_assistant}/mois, installation comprise, "
-            "sans engagement. {lien_assistant} {signature}"
+            "{salutation}, le prix de mon email, sans détour : {prix_assistant}/mois pour {prenom_receptionniste}, "
+            "votre réceptionniste virtuelle (une IA). Sans engagement, 1er mois satisfait ou remboursé. "
+            "{lien_assistant} " + _ASK_WITH_PHONE
         ),
     ),
 ]
