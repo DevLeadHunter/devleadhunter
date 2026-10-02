@@ -1,6 +1,6 @@
 # Présence humaine sur la démo : maquettes à valider
 
-Ticket Asana « [IA Code] Présence humaine sur la démo : carte « Qui est derrière ce site » + réceptionniste Dibodev dans le bandeau » (validé et élargi par Léo le 03/10). Rien n'est codé : ce dossier contient trois maquettes HTML autonomes et cette note. Léo tranche, puis on implémente.
+Ticket Asana « [IA Code] Présence humaine sur la démo : carte « Qui est derrière ce site » + réceptionniste Dibodev dans le bandeau » (validé et élargi le 03/10). Rien n'est codé : ce dossier contient trois maquettes HTML autonomes et cette note. Décision produit à prendre, puis on implémente.
 
 Ouvrir les maquettes dans un navigateur (double-clic suffit, aucun serveur) :
 
@@ -33,7 +33,7 @@ Recommandation : A. La carte s'ouvre souvent seule en fin de page ; à ce moment
 
 La réceptionniste « Léa » existe déjà (assistant public `dibodev`, slug utilisé par `dibodev.fr` via `ai-assistant.js`, palette violette #7464d6, portrait `/avatars/lea.webp`, puces « Vous faites des sites web pour artisans ? »). L'idée : la brancher sur les démos actives avec une base de connaissance dédiée à l'offre site et le contexte du site regardé (nom, prix, date d'expiration, lien), pour qu'elle réponde à 22 h, prenne le contact et alerte Léo.
 
-- **Position 1, onglet dans la carte.** Deux onglets sous l'en-tête : « Laissez-moi un mot » (asynchrone, Léo répond) et « Une question ? » (Léa, tout de suite). La conversation vit dans la carte, habillée crème/encre comme le bandeau, avec une ligne de contexte « Elle connaît ce site : Menuiserie Lefort, 500 € une fois, en ligne jusqu'au 2 novembre ». Un seul objet à l'écran, une seule identité visuelle. Coût : un habillage de chat à écrire dans le demo-host (la logique, le streaming et la capture de contact sont réutilisés via les composables `useAssistantConversation` / `useAssistantLeadForm`).
+- **Position 1, onglet dans la carte.** Deux onglets sous l'en-tête : « Laissez-moi un mot » (asynchrone, l'expéditeur répond) et « Une question ? » (Léa, tout de suite). La conversation vit dans la carte, habillée crème/encre comme le bandeau, avec une ligne de contexte « Elle connaît ce site : Menuiserie Lefort, 500 € une fois, en ligne jusqu'au 2 novembre ». Un seul objet à l'écran, une seule identité visuelle. Coût : un habillage de chat à écrire dans le demo-host (la logique, le streaming et la capture de contact sont réutilisés via les composables `useAssistantConversation` / `useAssistantLeadForm`).
 - **Position 2, panneau Léa depuis la carte.** Une ligne discrète sous le bouton « Me répondre » : « Une question maintenant ? Léa, mon assistante IA, vous répond tout de suite, même le soir. [Lui écrire] ». Le clic ouvre le panneau Léa tel qu'il tourne sur dibodev.fr (iframe `/embed/dibodev` avec le slug de la démo en paramètre), carte réduite en pastille. Zéro habillage, mais deux identités se suivent (bandeau crème puis panneau blanc/violet).
 
 La conversation type (même dans les deux positions) : Léa se présente comme IA (« l'assistante IA de Léo, le développeur qui a construit ce site »), répond prix / abonnement / paiement / date avec les mots du mail, et quand le prospect écrit « il peut m'appeler demain ? 06 12 34 56 78 », le numéro devient une demande (c'est déjà ce que fait `chat_contact_capture.py`) et Léo est prévenu (push opérateur déjà en place pour les démos de la réceptionniste, `request_follow_up`).
@@ -50,7 +50,7 @@ Texte du modèle 30 « Franc - prix et date (France/Belgique) » mot pour mot (l
 
 Recommandation : (a) avec la signature allégée pour la prochaine vague (zéro développement, la photo et dibodev.fr entrent dans le mail), (b) en test A/B dès que la variable de la carte existe. La carte répète le lien : utile pour ceux qui ne lisent pas le texte, mesurable (clic texte vs clic bouton, Resend trace chaque URL).
 
-## Choix à trancher par Léo
+## Choix à trancher
 
 1. Carte : variante **A** (photo en tête) ou **B** (photo discrète) ?
 2. Libellé du bouton : « Me répondre » (ticket), « Je suis intéressé » (actuel) ou « Répondre à Léo » ?
@@ -89,7 +89,7 @@ Recommandation : (a) avec la signature allégée pour la prochaine vague (zéro 
 - `demo-host/app/components/DemoCtaBanner.vue` : nouveau bloc identité (`dlh-who`), liste des faits (`dlh-facts`), bouton « Me répondre », textes ; variante par prop ou par constante selon la décision.
 - `demo-host/app/types/demoSite.ts` : `expires_at: string`, `offer_price_label?: string | null`.
 - `api/schemas/demo_site.py` `DemoSitePublicResponse` + `api/api/v1/routes/demo_sites.py` (route publique) : `offer_price_label` depuis `PricingService` (prix du user), format « 500 € » ; la date vient d'`expires_at`, formatée côté demo-host comme `FrenchDateFormatter.day_month` (« 2 novembre »).
-- Profil de Léo : `owner_profile_photo_url` = portrait dibodev.fr (ou une copie R2), `owner_contact_phone`, `owner_company_website_url`.
+- Profil de l'expéditeur : `owner_profile_photo_url` = portrait dibodev.fr (ou une copie R2), `owner_contact_phone`, `owner_company_website_url`.
 - PostHog (démo trackée via `captureDemoEvent`) : propriété `banner_variant` sur `demo_cta_banner_shown` / `_open` / `_auto_open` / `_submitted` ; nouvel événement `demo_cta_banner_owner_link_click` (clic dibodev.fr) ; `demo_cta_banner_facts_shown` (prix et date affichés : oui/non) pour comparer avec les démos sans prix. Beacon API inchangé (`demo_lead`).
 
 ### Brique 2, réceptionniste
@@ -115,7 +115,7 @@ Baseline vague 3 : 1 message laissé sur environ 95 sessions humaines (≈ 1 %),
 
 ## Ce que je n'ai pas pu obtenir ou que j'ai supposé
 
-- `owner_profile_photo_url`, `owner_contact_phone`, `owner_contact_email` sont vides sur l'assistant public `dibodev` et probablement sur le profil de Léo : la maquette utilise le portrait de dibodev.fr et le 06 de la signature ; l'adresse mail n'est affichée nulle part (non trouvée dans la signature).
+- `owner_profile_photo_url`, `owner_contact_phone`, `owner_contact_email` sont vides sur l'assistant public `dibodev` et probablement sur le profil de l'expéditeur : la maquette utilise le portrait de dibodev.fr et le 06 de la signature ; l'adresse mail n'est affichée nulle part (non trouvée dans la signature).
 - Le délai « sous 48 h » et « le nom de domaine est compris » dans la conversation de Léa sont mes formulations à partir des notes (domaine OVH inclus dans les 500 €) : à valider.
 - La nouvelle version de dibodev.fr est violette (#6f5fe0 / #5b4bd0, Rubik) : l'email reprend le violet pour les liens et le bouton, la police reste la pile système (une police web n'est pas fiable en email). Le bandeau reste noir et blanc (identité DevLeadHunter) : seule Léa porte le violet, et seulement en position 2.
 - IBM Plex (bandeau) et Fraunces (Léa) ne sont pas chargées par les maquettes (aucune dépendance réseau) : si elles ne sont pas installées sur le poste, le rendu utilise la police système et Georgia, légèrement différent de la prod.
