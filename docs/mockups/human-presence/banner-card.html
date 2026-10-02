@@ -1,0 +1,442 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Carte « Qui est derrière ce site » : maquette du bandeau démo</title>
+<style>
+  /* ────────────────────────────────────────────────────────────────────────
+     Chrome de la maquette (gris neutre) : ce n'est PAS le design proposé.
+     Le design proposé = tout ce qui porte le préfixe .dlh- (bandeau).
+     ──────────────────────────────────────────────────────────────────────── */
+  * { box-sizing: border-box; }
+  html, body { margin: 0; }
+  body {
+    font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+    background: #dcdcd8;
+    color: #222;
+    -webkit-font-smoothing: antialiased;
+  }
+  .mk-bar {
+    position: sticky; top: 0; z-index: 10;
+    display: flex; flex-wrap: wrap; align-items: center; gap: 10px 22px;
+    padding: 12px 20px;
+    background: #f3f3f0;
+    border-bottom: 1px solid #c9c9c4;
+  }
+  .mk-title { font-size: 13px; font-weight: 600; letter-spacing: .02em; color: #333; margin-right: auto; }
+  .mk-title small { display: block; font-weight: 400; color: #777; margin-top: 2px; }
+  .mk-group { display: flex; align-items: center; gap: 8px; font-size: 12px; color: #666; }
+  .mk-seg { display: inline-flex; border: 1px solid #b9b9b3; border-radius: 8px; overflow: hidden; background: #fff; }
+  .mk-seg button {
+    appearance: none; border: 0; background: transparent; cursor: pointer;
+    padding: 6px 11px; font: inherit; font-size: 12.5px; color: #444;
+    border-right: 1px solid #d6d6d1;
+  }
+  .mk-seg button:last-child { border-right: 0; }
+  .mk-seg button[aria-pressed="true"] { background: #222; color: #fff; }
+  .mk-note {
+    padding: 10px 20px; font-size: 12.5px; color: #555; background: #ebebe7; border-bottom: 1px solid #d2d2cd;
+  }
+  .mk-note b { color: #222; }
+  .mk-caption { font-size: 12px; color: #666; padding: 8px 2px 0; }
+
+  /* Scène : une « page » de site démo avec le bandeau par-dessus. */
+  .stage {
+    position: relative; overflow: hidden;
+    min-height: 780px; margin: 22px auto; max-width: 1280px;
+    border: 1px solid #bdbdb8; border-radius: 10px; box-shadow: 0 20px 50px rgba(0,0,0,.15);
+    background: #fff;
+  }
+  .stage--phone-wrap {
+    display: flex; justify-content: center; align-items: flex-start; gap: 40px;
+    background: transparent; border: 0; box-shadow: none; overflow: visible; min-height: 0; padding: 10px 0 30px;
+  }
+  .phone {
+    position: relative; width: 375px; height: 812px; overflow: hidden; flex: none;
+    border-radius: 44px; border: 10px solid #111; background: #fff;
+    box-shadow: 0 30px 70px rgba(0,0,0,.35);
+  }
+  .phone__notch {
+    position: absolute; top: 0; left: 50%; transform: translateX(-50%); width: 120px; height: 26px;
+    background: #111; border-radius: 0 0 16px 16px; z-index: 5;
+  }
+  .phone .site { padding-top: 26px; }
+
+  /* Planche : chaque état posé sur un aplat, pour comparer d'un coup d'œil. */
+  .board { max-width: 1320px; margin: 22px auto 60px; padding: 0 20px; }
+  .board__row { margin-bottom: 26px; }
+  .board__row h2 { font-size: 14px; font-weight: 600; color: #333; margin: 0 0 10px; }
+  .board__row h2 span { font-weight: 400; color: #777; }
+  .board__grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+  .board__cell {
+    position: relative; min-height: 470px; overflow: hidden;
+    border-radius: 12px; border: 1px solid #bdbdb8;
+    display: flex; align-items: flex-end; justify-content: flex-end; padding: 24px;
+  }
+  .board__cell--light { background: #ebe6da; }
+  .board__cell--dark { background: #1c1c1f; }
+  .board__cell--phone { align-items: flex-start; justify-content: center; padding: 18px 0 0; min-height: 470px; }
+  .board__cell--phone .phone { transform: scale(.55); transform-origin: top center; height: 812px; margin-bottom: -365px; }
+  /* Dans la planche le bandeau n'est plus flottant : la cellule grandit avec lui. */
+  .board__cell > .dlh-banner { position: static; margin-top: 30px; }
+  .board__label {
+    position: absolute; top: 12px; left: 14px; font-size: 11px; letter-spacing: .08em; text-transform: uppercase;
+    color: rgba(0,0,0,.55); background: rgba(255,255,255,.7); padding: 3px 7px; border-radius: 4px;
+  }
+  .board__cell--dark .board__label { color: rgba(255,255,255,.7); background: rgba(0,0,0,.4); }
+
+  /* ────────────────────────────────────────────────────────────────────────
+     Faux site démo « Menuiserie Lefort » : décor crédible derrière le bandeau,
+     en clair et en sombre (les templates DLH existent dans les deux tons).
+     ──────────────────────────────────────────────────────────────────────── */
+  .site { min-height: 100%; font-family: Georgia, 'Times New Roman', serif; --s-bg: #faf8f4; --s-ink: #1f1b16; --s-mute: #6e665c; --s-card: #ffffff; --s-line: #e7e1d6; --s-accent: #8b5e3c; --s-photo: linear-gradient(135deg, #d9b991, #8b5e3c 70%, #5e3b22); background: var(--s-bg); color: var(--s-ink); }
+  .site--dark { --s-bg: #141416; --s-ink: #f1efe9; --s-mute: #a39d93; --s-card: #1e1f23; --s-line: #2c2d33; --s-accent: #d6a872; --s-photo: linear-gradient(135deg, #5a4634, #2a2320 70%, #141416); }
+  .site__nav { display: flex; align-items: center; gap: 26px; padding: 22px 48px; border-bottom: 1px solid var(--s-line); font-family: system-ui, sans-serif; }
+  .site__logo { font-family: Georgia, serif; font-size: 20px; font-weight: 700; letter-spacing: -.01em; margin-right: auto; }
+  .site__nav a { font-size: 14px; color: var(--s-mute); text-decoration: none; }
+  .site__nav .site__btn { padding: 10px 16px; border-radius: 8px; background: var(--s-ink); color: var(--s-bg); font-weight: 600; font-size: 14px; }
+  .site__hero { display: grid; grid-template-columns: 1.1fr .9fr; gap: 40px; padding: 60px 48px 48px; align-items: center; }
+  .site__eyebrow { font-family: system-ui, sans-serif; font-size: 12px; letter-spacing: .14em; text-transform: uppercase; color: var(--s-accent); margin-bottom: 14px; }
+  .site__h1 { font-size: 46px; line-height: 1.08; letter-spacing: -.02em; margin: 0 0 18px; font-weight: 500; }
+  .site__lead { font-family: system-ui, sans-serif; font-size: 17px; line-height: 1.55; color: var(--s-mute); max-width: 520px; margin: 0 0 26px; }
+  .site__cta { display: flex; gap: 12px; font-family: system-ui, sans-serif; }
+  .site__cta span { padding: 13px 20px; border-radius: 8px; font-size: 15px; font-weight: 600; }
+  .site__cta span:first-child { background: var(--s-ink); color: var(--s-bg); }
+  .site__cta span:last-child { border: 1px solid var(--s-line); color: var(--s-ink); }
+  .site__photo { aspect-ratio: 4 / 3; border-radius: 14px; background: var(--s-photo); box-shadow: 0 30px 60px rgba(0,0,0,.18); }
+  .site__section { padding: 20px 48px 48px; }
+  .site__h2 { font-size: 28px; font-weight: 500; margin: 0 0 20px; letter-spacing: -.01em; }
+  .site__cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; font-family: system-ui, sans-serif; }
+  .site__card { background: var(--s-card); border: 1px solid var(--s-line); border-radius: 12px; padding: 20px; }
+  .site__card b { display: block; font-size: 16px; margin-bottom: 6px; }
+  .site__card p { margin: 0; font-size: 14px; line-height: 1.5; color: var(--s-mute); }
+  .site__quote { font-size: 22px; line-height: 1.4; font-style: italic; max-width: 760px; margin: 0 0 8px; }
+  .site__quote + small { font-family: system-ui, sans-serif; color: var(--s-mute); font-size: 13px; }
+  .site__footer { padding: 28px 48px 80px; border-top: 1px solid var(--s-line); font-family: system-ui, sans-serif; font-size: 13px; color: var(--s-mute); }
+  /* Variante étroite pour le téléphone : mêmes blocs, empilés. */
+  .site--narrow .site__nav { padding: 16px 20px; gap: 14px; }
+  .site--narrow .site__nav a:not(.site__btn) { display: none; }
+  .site--narrow .site__hero { grid-template-columns: 1fr; padding: 34px 20px 20px; gap: 22px; }
+  .site--narrow .site__h1 { font-size: 32px; }
+  .site--narrow .site__lead { font-size: 15px; }
+  .site--narrow .site__section, .site--narrow .site__footer { padding-left: 20px; padding-right: 20px; }
+  .site--narrow .site__cards { grid-template-columns: 1fr; }
+  .site--narrow .site__h2 { font-size: 24px; }
+  .site--narrow .site__quote { font-size: 18px; }
+
+  /* ────────────────────────────────────────────────────────────────────────
+     BANDEAU DevLeadHunter : valeurs littérales reprises de DemoCtaBanner.vue
+     (crème #fbf9f3 / encre #1d1a14 / trait #e1dbcc), IBM Plex si présent sur
+     le poste, sinon la police système. Les nouveautés sont marquées « NEW ».
+     Dans la maquette, position:absolute (dans la scène) au lieu de fixed.
+     ──────────────────────────────────────────────────────────────────────── */
+  .dlh-banner {
+    position: absolute; right: 20px; bottom: 20px; z-index: 50;
+    font-family: 'IBM Plex Sans', system-ui, -apple-system, 'Segoe UI', sans-serif;
+    -webkit-font-smoothing: antialiased;
+    color: #1d1a14;
+  }
+  .dlh-banner * { box-sizing: border-box; }
+  .dlh-banner button { font-family: inherit; }
+
+  /* Pastille (état réduit). */
+  .dlh-pill {
+    display: flex; align-items: center; gap: 10px; height: 52px; min-width: 300px; padding: 0 16px;
+    border: 1px solid #e1dbcc; border-radius: 999px; background: #fbf9f3;
+    box-shadow: 0 12px 32px rgba(15, 12, 8, .35); cursor: pointer; text-align: left;
+  }
+  .dlh-pill__text { display: flex; flex-direction: column; align-items: flex-start; line-height: 1.2; min-width: 0; }
+  .dlh-pill__label { font-size: 14px; font-weight: 600; color: #1d1a14; white-space: nowrap; }
+  .dlh-pill__hint { font-size: 11px; color: #6b6558; white-space: nowrap; }
+  .dlh-pill__chevron { flex-shrink: 0; margin-left: auto; }
+
+  /* Carte (état ouvert). */
+  .dlh-card {
+    display: flex; flex-direction: column; gap: 13px; width: 360px; padding: 20px;
+    border: 1px solid #e1dbcc; border-radius: 14px; background: #fbf9f3;
+    box-shadow: 0 18px 48px rgba(15, 12, 8, .4);
+  }
+  .dlh-card__grab { display: none; }
+  .dlh-card__head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+  .dlh-card__brand { display: flex; align-items: center; gap: 8px; min-width: 0; }
+  .dlh-card__label {
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    font-family: 'IBM Plex Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 10px; font-weight: 500; letter-spacing: .14em; text-transform: uppercase; color: #6b6558;
+  }
+  .dlh-card__close { display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; border: 0; border-radius: 999px; background: transparent; cursor: pointer; }
+  .dlh-card__close:hover { background: #efe9db; }
+  .dlh-card__title { font-size: 19px; font-weight: 600; letter-spacing: -.01em; color: #1d1a14; line-height: 1.25; }
+  .dlh-card__sub { font-size: 13px; line-height: 1.45; color: #6b6558; }
+  .dlh-card__intro { display: flex; flex-direction: column; gap: 5px; }
+  .dlh-card__textarea {
+    width: 100%; height: 76px; padding: 10px 14px; resize: none; outline: none;
+    border: 1px solid #e1dbcc; border-radius: 10px; background: #fff; font: inherit; font-size: 15px; color: #1d1a14;
+  }
+  .dlh-card__textarea::placeholder { color: #a09a8c; }
+  .dlh-card__submit {
+    display: flex; align-items: center; justify-content: center; gap: 8px; height: 46px; width: 100%;
+    border: 0; border-radius: 10px; background: #1d1a14; color: #fbf9f3; font-size: 15px; font-weight: 600; cursor: pointer;
+  }
+  .dlh-card__contacts { display: flex; flex-wrap: wrap; gap: 8px; }
+  .dlh-contact-chip {
+    display: inline-flex; flex: 1; align-items: center; justify-content: center; gap: 7px; height: 40px; min-width: 140px;
+    border: 1px solid #e1dbcc; border-radius: 10px; font-size: 12.5px; font-weight: 500; color: #1d1a14; text-decoration: none; white-space: nowrap;
+  }
+  .dlh-contact-chip svg { color: #6b6558; flex-shrink: 0; }
+  .dlh-avatar { flex-shrink: 0; border: 1px solid #e1dbcc; border-radius: 999px; object-fit: cover; background: #e1dbcc; }
+  .dlh-avatar--pill { width: 36px; height: 36px; margin-left: -6px; }
+
+  /* NEW : bloc identité « qui est derrière ce site » (variante A, photo en tête). */
+  .dlh-who { display: flex; align-items: center; gap: 12px; }
+  .dlh-avatar--who { width: 56px; height: 56px; border-width: 2px; border-color: #fff; box-shadow: 0 0 0 1px #e1dbcc; }
+  .dlh-who__name { font-size: 16px; font-weight: 600; line-height: 1.2; }
+  .dlh-who__role { margin-top: 3px; font-size: 12.5px; color: #6b6558; }
+  .dlh-who__link { color: #1d1a14; text-decoration: underline; text-underline-offset: 2px; text-decoration-color: #c9c2b2; }
+
+  /* NEW : les trois faits francs (prix, date, autonomie), repris mot pour mot du mail. */
+  .dlh-facts { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 6px; }
+  .dlh-facts li { position: relative; padding-left: 14px; font-size: 13.5px; line-height: 1.4; color: #3f3a30; }
+  .dlh-facts li::before { content: ''; position: absolute; left: 1px; top: .55em; width: 5px; height: 5px; border-radius: 999px; background: #1d1a14; }
+  .dlh-facts b { color: #1d1a14; font-weight: 600; }
+
+  /* NEW : signature compacte (variante B, photo discrète à côté du formulaire). */
+  .dlh-signoff { display: flex; align-items: center; gap: 10px; }
+  .dlh-avatar--small { width: 34px; height: 34px; }
+  .dlh-signoff__text { font-size: 12.5px; line-height: 1.35; color: #6b6558; }
+  .dlh-signoff__text b { color: #1d1a14; font-weight: 600; }
+
+  /* Mobile (≤ 640 px dans le vrai composant) : ici une classe, car la media
+     query ne « voit » pas le cadre du téléphone. */
+  .dlh-banner.is-mobile { right: 12px; left: 12px; bottom: 12px; }
+  .dlh-banner.is-mobile.is-open { right: 0; left: 0; bottom: 0; }
+  .dlh-banner.is-mobile .dlh-pill { width: 100%; min-width: 0; }
+  .dlh-banner.is-mobile .dlh-card {
+    width: 100%; border-radius: 18px 18px 0 0; border-right: 0; border-bottom: 0; border-left: 0;
+    padding: 10px 20px 22px;
+  }
+  .dlh-banner.is-mobile .dlh-card__grab { display: block; width: 40px; height: 4px; margin: 0 auto 2px; border-radius: 999px; background: #e1dbcc; }
+
+  @media (max-width: 900px) {
+    .board__grid { grid-template-columns: 1fr; }
+    .site__hero { grid-template-columns: 1fr; }
+    .site__cards { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<header class="mk-bar">
+  <div class="mk-title">Maquette · carte « Qui est derrière ce site » dans le bandeau démo
+    <small>Contrôles de la maquette (gris) ≠ design proposé (bandeau crème). Photo chargée depuis dibodev.fr, tout le reste est local.</small>
+  </div>
+  <div class="mk-group">Vue
+    <div class="mk-seg" data-key="view">
+      <button type="button" data-value="scene">Scène</button>
+      <button type="button" data-value="board">Planche</button>
+    </div>
+  </div>
+  <div class="mk-group">Variante
+    <div class="mk-seg" data-key="variant">
+      <button type="button" data-value="A">A · photo en tête</button>
+      <button type="button" data-value="B">B · photo discrète</button>
+    </div>
+  </div>
+  <div class="mk-group">État
+    <div class="mk-seg" data-key="state">
+      <button type="button" data-value="pill">Pastille</button>
+      <button type="button" data-value="open">Ouvert · bureau</button>
+      <button type="button" data-value="mobile">Ouvert · mobile 375</button>
+    </div>
+  </div>
+  <div class="mk-group">Site derrière
+    <div class="mk-seg" data-key="theme">
+      <button type="button" data-value="light">Clair</button>
+      <button type="button" data-value="dark">Sombre</button>
+    </div>
+  </div>
+</header>
+<div class="mk-note" id="note"></div>
+
+<main id="root"></main>
+
+<script>
+  // ── Données de la maquette : UN seul jeu de mots, repris à l'identique dans le mail et la réceptionniste.
+  const DATA = {
+    business: 'Menuiserie Lefort',
+    ownerName: 'Léo Guillaume',
+    ownerRole: 'Développeur à Rennes',
+    ownerSite: 'dibodev.fr',
+    ownerPhotoUrl: 'https://dibodev.fr/images/about/leo-guillaume-portrait-800.webp',
+    phone: '06 42 19 38 12',
+    price: '500 €',
+    expiry: '2 novembre',
+  };
+
+  const ICONS = {
+    asterisk: (size) => `<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="#e8a33c" stroke-width="2.6" stroke-linecap="round" aria-hidden="true"><path d="M12 2v20M2 12h20M4.9 4.9l14.2 14.2M19.1 4.9L4.9 19.1"/></svg>`,
+    chevronUp: `<svg class="dlh-pill__chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#6b6558" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 14l6-6 6 6"/></svg>`,
+    chevronDown: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#a09a8c" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 10l6 6 6-6"/></svg>`,
+    arrow: `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#fbf9f3" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg>`,
+    phone: `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6A19.79 19.79 0 0 1 2.12 4.18 2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.13.96.36 1.9.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.91.34 1.85.57 2.81.7A2 2 0 0 1 22 16.92z"/></svg>`,
+  };
+
+  const avatar = (cls, alt = '') => `<img class="dlh-avatar ${cls}" src="${DATA.ownerPhotoUrl}" alt="${alt}">`;
+
+  // ── Pastille : seule la seconde ligne change entre A (« une tête ») et B (texte actuel).
+  function pillHtml(variant) {
+    const hint = variant === 'A' ? `${DATA.ownerName}, développeur à Rennes` : 'Laissez-moi un mot';
+    return `<button type="button" class="dlh-pill">
+      ${avatar('dlh-avatar--pill')}
+      <span class="dlh-pill__text"><span class="dlh-pill__label">Ce site vous plaît ?</span><span class="dlh-pill__hint">${hint}</span></span>
+      ${ICONS.chevronUp}
+    </button>`;
+  }
+
+  const headHtml = `<div class="dlh-card__head">
+      <div class="dlh-card__brand">${ICONS.asterisk(13)}<span class="dlh-card__label">Votre démo · ${DATA.business}</span></div>
+      <button type="button" class="dlh-card__close" aria-label="Réduire">${ICONS.chevronDown}</button>
+    </div>`;
+
+  const submitHtml = `<button type="button" class="dlh-card__submit">Me répondre ${ICONS.arrow}</button>`;
+  const contactsHtml = `<div class="dlh-card__contacts"><a class="dlh-contact-chip" href="tel:+33642193812">${ICONS.phone}${DATA.phone}</a></div>`;
+  const whoLink = `<a class="dlh-who__link" href="https://dibodev.fr" target="_blank" rel="noopener">${DATA.ownerSite}</a>`;
+
+  // ── Variante A : la personne d'abord (photo 56 px, nom, ville, lien), puis les trois faits, puis le formulaire.
+  function cardAHtml() {
+    return `<div class="dlh-card">
+      <div class="dlh-card__grab" aria-hidden="true"></div>
+      ${headHtml}
+      <div class="dlh-who">
+        ${avatar('dlh-avatar--who', DATA.ownerName)}
+        <div><div class="dlh-who__name">${DATA.ownerName}</div><div class="dlh-who__role">${DATA.ownerRole} · ${whoLink}</div></div>
+      </div>
+      <div class="dlh-card__title">J'ai construit ce site pour vous.</div>
+      <ul class="dlh-facts">
+        <li><b>${DATA.price}</b>, une seule fois. Pas d'abonnement.</li>
+        <li>En ligne jusqu'au <b>${DATA.expiry}</b>, après je le retire.</li>
+        <li>Sur votre adresse, vous modifiez textes et photos vous-même.</li>
+      </ul>
+      <textarea class="dlh-card__textarea" placeholder="Une question, un oui, un non : écrivez-moi."></textarea>
+      ${submitHtml}
+      ${contactsHtml}
+    </div>`;
+  }
+
+  // ── Variante B : l'offre d'abord (titre actuel + une phrase franche), la personne en signature discrète.
+  function cardBHtml() {
+    return `<div class="dlh-card">
+      <div class="dlh-card__grab" aria-hidden="true"></div>
+      ${headHtml}
+      <div class="dlh-card__intro">
+        <div class="dlh-card__title">Ce site vous plaît ?</div>
+        <div class="dlh-card__sub">${DATA.price}, une seule fois, pas d'abonnement. Je le garde en ligne jusqu'au ${DATA.expiry}. Un mot me suffit, même un non.</div>
+      </div>
+      <textarea class="dlh-card__textarea" placeholder="Votre message (optionnel)"></textarea>
+      <div class="dlh-signoff">
+        ${avatar('dlh-avatar--small', DATA.ownerName)}
+        <div class="dlh-signoff__text"><b>${DATA.ownerName}</b>, développeur à Rennes<br>${whoLink}</div>
+      </div>
+      ${submitHtml}
+      ${contactsHtml}
+    </div>`;
+  }
+
+  function bannerHtml(variant, state) {
+    const open = state !== 'pill';
+    const mobile = state === 'mobile';
+    const inner = !open ? pillHtml(variant) : (variant === 'A' ? cardAHtml() : cardBHtml());
+    return `<div class="dlh-banner ${mobile ? 'is-mobile' : ''} ${open ? 'is-open' : ''}">${inner}</div>`;
+  }
+
+  // ── Faux site démo (décor).
+  function siteHtml(theme, narrow) {
+    return `<div class="site ${theme === 'dark' ? 'site--dark' : ''} ${narrow ? 'site--narrow' : ''}">
+      <nav class="site__nav"><span class="site__logo">Menuiserie Lefort</span><a>Prestations</a><a>Réalisations</a><a>Avis</a><a class="site__btn">Demander un devis</a></nav>
+      <section class="site__hero">
+        <div>
+          <div class="site__eyebrow">Menuisier à Saint-Herblain</div>
+          <h1 class="site__h1">Portes, placards et escaliers sur mesure, posés proprement.</h1>
+          <p class="site__lead">Je prends les mesures chez vous, je fabrique à l'atelier et je pose moi-même. Devis clair, délais tenus, chantier laissé propre.</p>
+          <div class="site__cta"><span>Demander un devis</span><span>Voir les réalisations</span></div>
+        </div>
+        <div class="site__photo"></div>
+      </section>
+      <section class="site__section">
+        <h2 class="site__h2">Ce que je fais</h2>
+        <div class="site__cards">
+          <div class="site__card"><b>Placards et dressings</b><p>Sur mesure, du sol au plafond, portes coulissantes ou battantes.</p></div>
+          <div class="site__card"><b>Portes et fenêtres bois</b><p>Pose et remplacement, réglages compris, finitions soignées.</p></div>
+          <div class="site__card"><b>Escaliers</b><p>Fabrication en chêne ou hêtre, garde-corps assortis.</p></div>
+        </div>
+      </section>
+      <section class="site__section">
+        <p class="site__quote">« Travail impeccable, dans les temps, et il a tout nettoyé en partant. »</p>
+        <small>Avis Google, mars 2026</small>
+      </section>
+      <footer class="site__footer">Menuiserie Lefort · Saint-Herblain · 02 40 00 00 00</footer>
+    </div>`;
+  }
+
+  function phoneHtml(variant, theme) {
+    return `<div class="phone"><div class="phone__notch"></div>${siteHtml(theme, true)}${bannerHtml(variant, 'mobile')}</div>`;
+  }
+
+  // ── État des contrôles.
+  const state = { view: 'scene', variant: 'A', state: 'open', theme: 'light' };
+
+  const NOTES = {
+    A: `<b>Variante A, photo en tête</b> : la personne d'abord (photo 56 px, nom, ville, lien dibodev.fr), puis les trois faits du mail (prix, date de retrait, autonomie), puis le mot à laisser. Répond à « qui est derrière ce site ? » avant de demander quoi que ce soit.`,
+    B: `<b>Variante B, photo discrète</b> : l'offre d'abord (titre actuel « Ce site vous plaît ? » + une phrase franche prix/date), la personne en signature compacte sous le champ. Changement minimal par rapport au bandeau actuel, la tête reste visible dans la pastille et à côté du bouton.`,
+  };
+
+  function render() {
+    document.querySelectorAll('.mk-seg').forEach((seg) => {
+      const key = seg.dataset.key;
+      seg.querySelectorAll('button').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.value === state[key])));
+      // Les contrôles variante/état n'ont pas de sens sur la planche (elle montre tout).
+      if (key === 'variant' || key === 'state') seg.closest('.mk-group').style.opacity = state.view === 'board' ? .4 : 1;
+    });
+    const root = document.getElementById('root');
+    const note = document.getElementById('note');
+    if (state.view === 'board') {
+      note.innerHTML = `<b>Planche</b> : les six états côte à côte sur un aplat ${state.theme === 'dark' ? 'sombre' : 'clair'}. Comportement conservé du bandeau actuel : jamais fermable (seulement réduit en pastille), s'ouvre seul quand la page est lue jusqu'en bas, formulaire sans coordonnées demandées (le mail connaît déjà l'adresse).`;
+      const cellCls = `board__cell board__cell--${state.theme}`;
+      root.innerHTML = `<div class="board">${['A', 'B'].map((v) => `
+        <div class="board__row">
+          <h2>Variante ${v} <span>· ${v === 'A' ? 'photo en tête' : 'photo discrète à côté du formulaire'}</span></h2>
+          <div class="board__grid">
+            <div class="${cellCls}"><span class="board__label">Pastille (réduit)</span>${bannerHtml(v, 'pill')}</div>
+            <div class="${cellCls}"><span class="board__label">Ouvert · bureau</span>${bannerHtml(v, 'open')}</div>
+            <div class="${cellCls} board__cell--phone"><span class="board__label">Ouvert · mobile 375</span>${phoneHtml(v, state.theme)}</div>
+          </div>
+        </div>`).join('')}</div>`;
+      return;
+    }
+    note.innerHTML = NOTES[state.variant] + (state.state === 'pill'
+      ? ` · <b>Pastille</b> : l'entrée discrète, 52 px, jamais au-dessus des boutons du site. En A la deuxième ligne nomme la personne ; en B elle garde « Laissez-moi un mot ».`
+      : state.state === 'mobile'
+        ? ` · <b>Mobile</b> : feuille collée en bas, poignée, boutons de 46 px. Les prospects de la vague 3 visitaient surtout depuis un téléphone, le soir.`
+        : ` · <b>Bureau</b> : carte de 360 px en bas à droite, même largeur qu'aujourd'hui.`);
+    if (state.state === 'mobile') {
+      root.innerHTML = `<div class="stage stage--phone-wrap">${phoneHtml(state.variant, state.theme)}</div>`;
+    } else {
+      root.innerHTML = `<div class="stage">${siteHtml(state.theme, false)}${bannerHtml(state.variant, state.state)}</div>`;
+    }
+  }
+
+  document.querySelectorAll('.mk-seg button').forEach((b) => b.addEventListener('click', () => {
+    state[b.closest('.mk-seg').dataset.key] = b.dataset.value;
+    render();
+  }));
+  // Clics de démonstration : la pastille ouvre la carte, le chevron la réduit.
+  document.getElementById('root').addEventListener('click', (e) => {
+    if (state.view === 'board') return;
+    if (e.target.closest('.dlh-pill')) { state.state = 'open'; render(); }
+    else if (e.target.closest('.dlh-card__close')) { state.state = 'pill'; render(); }
+  });
+  render();
+</script>
+</body>
+</html>

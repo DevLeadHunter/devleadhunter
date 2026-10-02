@@ -1,0 +1,286 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Email franc en HTML : deux variantes avec la vraie signature</title>
+<style>
+  /* Chrome de la maquette (gris). Le design proposé = ce qui est DANS les cadres « mail ». */
+  * { box-sizing: border-box; }
+  html, body { margin: 0; }
+  body { font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif; background: #dcdcd8; color: #222; -webkit-font-smoothing: antialiased; }
+  .mk-bar { position: sticky; top: 0; z-index: 10; display: flex; flex-wrap: wrap; align-items: center; gap: 10px 20px; padding: 12px 20px; background: #f3f3f0; border-bottom: 1px solid #c9c9c4; }
+  .mk-title { font-size: 13px; font-weight: 600; color: #333; margin-right: auto; }
+  .mk-title small { display: block; font-weight: 400; color: #777; margin-top: 2px; }
+  .mk-group { display: flex; align-items: center; gap: 8px; font-size: 12px; color: #666; }
+  .mk-seg { display: inline-flex; border: 1px solid #b9b9b3; border-radius: 8px; overflow: hidden; background: #fff; }
+  .mk-seg button { appearance: none; border: 0; background: transparent; cursor: pointer; padding: 6px 11px; font: inherit; font-size: 12.5px; color: #444; border-right: 1px solid #d6d6d1; }
+  .mk-seg button:last-child { border-right: 0; }
+  .mk-seg button[aria-pressed="true"] { background: #222; color: #fff; }
+  .mk-note { padding: 10px 20px; font-size: 12.5px; color: #555; background: #ebebe7; border-bottom: 1px solid #d2d2cd; line-height: 1.5; }
+  .mk-note b { color: #222; }
+
+  .columns { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 20px; max-width: 1980px; margin: 22px auto; padding: 0 20px; align-items: start; }
+  .columns.hide-ref { grid-template-columns: repeat(2, minmax(0, 1fr)); max-width: 1380px; }
+  .columns.hide-ref .col--ref { display: none; }
+  .col h2 { font-size: 14px; font-weight: 600; margin: 0 0 4px; color: #333; }
+  .col h2 span { font-weight: 400; color: #777; }
+  .col p.desc { font-size: 12.5px; color: #666; margin: 0 0 10px; line-height: 1.45; min-height: 36px; }
+
+  /* Cadre « client mail » : en-tête d'un webmail quelconque, puis le message. */
+  .mail { border: 1px solid #bdbdb8; border-radius: 10px; overflow: hidden; background: #fff; box-shadow: 0 16px 40px rgba(0,0,0,.14); }
+  .mail__head { padding: 14px 18px 12px; border-bottom: 1px solid #e6e6e2; background: #fafaf8; font-size: 13px; color: #555; }
+  .mail__subject { font-size: 17px; font-weight: 600; color: #1a1a1a; margin: 0 0 10px; }
+  .mail__row { display: flex; gap: 8px; line-height: 1.6; }
+  .mail__row b { color: #333; font-weight: 600; min-width: 28px; }
+  .mail__from-avatar { width: 34px; height: 34px; border-radius: 50%; background: #6f5fe0; color: #fff; display: inline-flex; align-items: center; justify-content: center; font-weight: 600; font-size: 14px; margin-right: 10px; float: left; }
+  .mail__body { padding: 22px 18px 26px; overflow: auto; }
+  .mail__body.is-mobile { padding: 18px 14px 22px; }
+  .mail__body > .email-root { margin: 0 auto; }
+  .mail__body.is-mobile > .email-root { max-width: 362px; }
+  /* Rendu « par défaut d'un webmail » pour la colonne de référence (le mail actuel n'a aucun style). */
+  .email-root--defaults { font-family: Arial, Helvetica, sans-serif; font-size: 13px; line-height: 1.4; color: #222; }
+  .email-root--defaults a { color: #1155cc; }
+
+  .metrics { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; padding: 12px 14px; border-top: 1px solid #e6e6e2; background: #fafaf8; }
+  .metric { font-size: 11px; color: #777; line-height: 1.3; }
+  .metric b { display: block; font-size: 14px; color: #222; font-weight: 600; }
+  .metric.warn b { color: #b45309; }
+
+  .checks { max-width: 1380px; margin: 10px auto 60px; padding: 0 20px; }
+  .checks h2 { font-size: 15px; margin: 0 0 10px; color: #333; }
+  .checks table { width: 100%; border-collapse: collapse; background: #fff; border: 1px solid #bdbdb8; border-radius: 10px; overflow: hidden; font-size: 13px; }
+  .checks th, .checks td { text-align: left; padding: 10px 14px; border-bottom: 1px solid #e6e6e2; vertical-align: top; }
+  .checks th { background: #fafaf8; font-weight: 600; color: #333; width: 30%; }
+  .checks tr:last-child td, .checks tr:last-child th { border-bottom: 0; }
+  .ok { color: #047857; font-weight: 600; }
+  .todo { color: #b45309; font-weight: 600; }
+  @media (max-width: 1400px) { .columns, .columns.hide-ref { grid-template-columns: 1fr; max-width: 760px; } }
+</style>
+</head>
+<body>
+
+<header class="mk-bar">
+  <div class="mk-title">Maquette · email franc (modèle 30 « Franc - prix et date ») en HTML léger
+    <small>Texte réel du modèle 30 lu en prod le 03/10, vraie signature « Signature Dibodev » (id 1), vrai pied de désinscription. Seule dépendance réseau : les images de la signature sur dibodev.fr.</small>
+  </div>
+  <div class="mk-group">Signature
+    <div class="mk-seg" data-key="signature"><button type="button" data-value="real">Réelle (portrait + 4 icônes)</button><button type="button" data-value="light">Allégée (portrait seul)</button></div>
+  </div>
+  <div class="mk-group">Largeur
+    <div class="mk-seg" data-key="width"><button type="button" data-value="desktop">Bureau</button><button type="button" data-value="mobile">Mobile 390</button></div>
+  </div>
+  <div class="mk-group">Email actuel
+    <div class="mk-seg" data-key="ref"><button type="button" data-value="show">Afficher</button><button type="button" data-value="hide">Masquer</button></div>
+  </div>
+</header>
+<div class="mk-note" id="note"></div>
+
+<section class="columns" id="columns">
+  <div class="col col--ref">
+    <h2>Référence <span>· l'email tel qu'il part aujourd'hui</span></h2>
+    <p class="desc">Corps du modèle 30 sans aucun style (police par défaut du webmail), pas de signature (le modèle 30 n'en a pas d'attachée en prod), pied de désinscription ajouté par le chemin d'envoi. Mail-tester : 9/10.</p>
+    <div class="mail" id="mail-ref"></div>
+  </div>
+  <div class="col">
+    <h2>Variante (a) <span>· texte brut + signature avec photo</span></h2>
+    <p class="desc">Même texte, une taille de lecture confortable (15 px), et la signature de Léo avec sa photo. Zéro développement : attacher la signature au modèle, le reste existe.</p>
+    <div class="mail" id="mail-a"></div>
+  </div>
+  <div class="col">
+    <h2>Variante (b) <span>· texte + carte « votre site est ici » + signature</span></h2>
+    <p class="desc">Le même texte, plus une carte légère sous le premier paragraphe : nom du site, lien, bouton, prix et date. Reprend la palette de dibodev.fr (violet #6f5fe0, encre #141414). Une variable en plus côté API.</p>
+    <div class="mail" id="mail-b"></div>
+  </div>
+</section>
+
+<section class="checks">
+  <h2>Contrôle délivrabilité (repassé contre les critères mail-tester, à confirmer par un vrai envoi test)</h2>
+  <table id="checks"></table>
+</section>
+
+<script>
+  // ── Variables telles que le chemin d'envoi les résout (email_variables.py) : {salutation} « Bonjour M. Lefort »,
+  //    {prix} « 500 € », {date_expiration} « 2 novembre », {lien_demo} = ancre dont le texte visible est host/slug.
+  const V = {
+    salutation: 'Bonjour M. Lefort',
+    entreprise: 'Menuiserie Lefort',
+    prix: '500 €',
+    date_expiration: '2 novembre',
+    demoHref: 'https://demo.dibodev.fr/menuiserie-lefort?v=A',
+    demoLabel: 'demo.dibodev.fr/menuiserie-lefort',
+  };
+  const SUBJECT = `le site de ${V.entreprise}`; // objet réel du modèle 30
+
+  // Corps du modèle 30, mot pour mot (body_html en prod), variables remplacées.
+  const PARAGRAPHS = [
+    `${V.salutation},`,
+    `J'ai construit le site de ${V.entreprise}. Il est déjà en ligne, vous pouvez le voir ici : {lien_demo}`,
+    `C'est ${V.prix}, une seule fois. Pas d'abonnement : je le mets sur votre propre adresse, et vous modifiez ensuite textes et photos vous-même, sans dépendre de personne.`,
+    `Je le garde en ligne jusqu'au ${V.date_expiration} — après, je le retire.`,
+    `Un mot me suffit : oui, non, ou une question.`,
+  ];
+
+  // Pied de désinscription, tel que unsubscribe_service.add_unsubscribe_footer l'ajoute (lien factice ici).
+  const FOOTER = `<div style="margin-top: 40px; padding-top: 20px; border-top: 1px solid #eee; font-size: 12px; color: #999; text-align: center;">
+    <p>Vous recevez cet email car vous êtes dans notre liste de prospects.</p>
+    <p><a href="#desinscription" style="color: #999; text-decoration: underline;">Se désabonner</a></p>
+</div>`;
+
+  // Signature « Signature Dibodev » (id 1, par défaut), HTML de prod à l'identique.
+  const SIGNATURE_REAL = `<table cellspacing="0" cellpadding="0" border="0" style="border-collapse:collapse;font-family:-apple-system,BlinkMacSystemFont,&quot;Segoe UI&quot;,Roboto,&quot;Helvetica Neue&quot;,Arial,sans-serif">
+<tbody><tr>
+<td style="vertical-align:top;padding:0px 18px 0px 0px;line-height:0;font-size:0px">
+<img src="https://dibodev.fr/email/sig-portrait.png" width="88" height="110" alt="Léo Guillaume" style="display:block;width:88px;height:110px;border:0px;border-radius:8px">
+</td>
+<td width="1" style="width:1px;padding:0px;background-color:rgb(227,227,223);font-size:0px;line-height:0">&nbsp;</td>
+<td style="vertical-align:top;padding:0px 0px 0px 18px;text-align:left">
+<p style="margin:0px 0px 1px;font-size:17px;line-height:20px;font-weight:600;color:rgb(20,20,20)">Léo Guillaume</p>
+<p style="margin:0px;font-size:13px;line-height:19px;font-weight:400;color:rgb(102,102,95)">Développeur indépendant à Rennes</p>
+<p style="margin:0px 0px 10px;font-size:13px;line-height:19px;font-weight:400;color:rgb(102,102,95)">Logiciels de gestion, sites web et IA</p>
+<p style="margin:0px 0px 10px;font-size:13px;line-height:13px;font-weight:600">
+<a href="tel:+33642193812" style="color:rgb(111,95,224);text-decoration:none;font-weight:600" target="_blank"><img src="https://dibodev.fr/email/sig-phone.png" width="13" height="13" alt="" style="display:inline-block;vertical-align:-2px;border:0px;margin:0px 6px 0px 0px;width:13px;height:13px">06&nbsp;42&nbsp;19&nbsp;38&nbsp;12</a>
+<span style="color:rgb(102,102,95);font-weight:400">&nbsp;&nbsp;</span>
+<a href="https://dibodev.fr/" style="color:rgb(111,95,224);text-decoration:none;font-weight:600" target="_blank"><img src="https://dibodev.fr/email/sig-globe.png" width="13" height="13" alt="" style="display:inline-block;vertical-align:-2px;border:0px;margin:0px 6px 0px 0px;width:13px;height:13px">dibodev.fr</a>
+</p>
+<table cellspacing="0" cellpadding="0" border="0" style="border-collapse:collapse">
+<tbody><tr>
+<td style="vertical-align:middle;padding:0px 17px 0px 0px">
+<a href="https://www.malt.fr/profile/leoguillaume2" style="text-decoration:none;white-space:nowrap" target="_blank"><span style="color:rgb(254,154,0);font-size:12px;letter-spacing:2.9px;line-height:1">★★★★★</span><span style="color:rgb(20,20,20);font-size:12px;font-weight:600"> 5/5</span><span style="color:rgb(102,102,95);font-size:12px;font-weight:400"> sur Malt</span></a>
+</td>
+<td style="vertical-align:middle;padding:0px 10px 0px 0px;line-height:0;font-size:0px">
+<a href="https://www.linkedin.com/in/dibodev/" style="text-decoration:none" target="_blank"><img src="https://dibodev.fr/email/sig-linkedin.png" width="14" height="14" alt="LinkedIn" style="display:block;border:0px;width:14px;height:14px"></a>
+</td>
+<td style="vertical-align:middle;line-height:0;font-size:0px">
+<a href="https://github.com/Leoglme/" style="text-decoration:none" target="_blank"><img src="https://dibodev.fr/email/sig-github.png" width="14" height="14" alt="GitHub" style="display:block;border:0px;width:14px;height:14px"></a>
+</td>
+</tr>
+</tbody></table>
+</td>
+</tr>
+<tr>
+<td colspan="3" style="padding:13px 0px 0px;font-size:11px;line-height:13px;font-weight:400;color:rgb(138,138,131)">Léo Guillaume EI · SIRET 988&nbsp;307&nbsp;906&nbsp;00020</td>
+</tr>
+</tbody></table>`;
+
+  // Même signature, allégée : les 4 icônes PNG deviennent du texte, il ne reste que le portrait (une seule image).
+  const SIGNATURE_LIGHT = `<table cellspacing="0" cellpadding="0" border="0" style="border-collapse:collapse;font-family:-apple-system,BlinkMacSystemFont,&quot;Segoe UI&quot;,Roboto,&quot;Helvetica Neue&quot;,Arial,sans-serif">
+<tbody><tr>
+<td style="vertical-align:top;padding:0px 18px 0px 0px;line-height:0;font-size:0px">
+<img src="https://dibodev.fr/email/sig-portrait.png" width="88" height="110" alt="Léo Guillaume" style="display:block;width:88px;height:110px;border:0px;border-radius:8px">
+</td>
+<td width="1" style="width:1px;padding:0px;background-color:rgb(227,227,223);font-size:0px;line-height:0">&nbsp;</td>
+<td style="vertical-align:top;padding:0px 0px 0px 18px;text-align:left">
+<p style="margin:0px 0px 1px;font-size:17px;line-height:20px;font-weight:600;color:rgb(20,20,20)">Léo Guillaume</p>
+<p style="margin:0px;font-size:13px;line-height:19px;font-weight:400;color:rgb(102,102,95)">Développeur indépendant à Rennes</p>
+<p style="margin:0px 0px 10px;font-size:13px;line-height:19px;font-weight:400;color:rgb(102,102,95)">Logiciels de gestion, sites web et IA</p>
+<p style="margin:0px 0px 10px;font-size:13px;line-height:18px;font-weight:600">
+<a href="tel:+33642193812" style="color:rgb(111,95,224);text-decoration:none;font-weight:600">06&nbsp;42&nbsp;19&nbsp;38&nbsp;12</a>
+<span style="color:rgb(102,102,95);font-weight:400">&nbsp;·&nbsp;</span>
+<a href="https://dibodev.fr/" style="color:rgb(111,95,224);text-decoration:none;font-weight:600">dibodev.fr</a>
+</p>
+<p style="margin:0px;font-size:12px;line-height:16px">
+<a href="https://www.malt.fr/profile/leoguillaume2" style="text-decoration:none;white-space:nowrap"><span style="color:rgb(254,154,0);letter-spacing:2.9px;line-height:1">★★★★★</span><span style="color:rgb(20,20,20);font-weight:600"> 5/5</span><span style="color:rgb(102,102,95)"> sur Malt</span></a>
+<span style="color:rgb(102,102,95)">&nbsp;·&nbsp;</span>
+<a href="https://www.linkedin.com/in/dibodev/" style="color:rgb(102,102,95);text-decoration:underline">LinkedIn</a>
+<span style="color:rgb(102,102,95)">&nbsp;·&nbsp;</span>
+<a href="https://github.com/Leoglme/" style="color:rgb(102,102,95);text-decoration:underline">GitHub</a>
+</p>
+</td>
+</tr>
+<tr>
+<td colspan="3" style="padding:13px 0px 0px;font-size:11px;line-height:13px;font-weight:400;color:rgb(138,138,131)">Léo Guillaume EI · SIRET 988&nbsp;307&nbsp;906&nbsp;00020</td>
+</tr>
+</tbody></table>`;
+
+  // Carte « votre site est ici » (variante b) : tables + styles inline, pas d'image, bouton « pare-balles ».
+  const CARD = `<table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="border-collapse:separate;margin:6px 0 20px;border:1px solid #e3e3df;border-radius:10px;background:#fbfbf9">
+<tr><td style="padding:16px 18px">
+  <p style="margin:0 0 5px;font-size:11px;line-height:14px;letter-spacing:.08em;text-transform:uppercase;color:#66665f;font-weight:600">Votre site, déjà en ligne</p>
+  <p style="margin:0 0 2px;font-size:17px;line-height:22px;font-weight:600;color:#141414">${V.entreprise}</p>
+  <p style="margin:0 0 14px;font-size:13px;line-height:18px"><a href="${V.demoHref}" style="color:#6f5fe0;text-decoration:none">${V.demoLabel}</a></p>
+  <table role="presentation" cellspacing="0" cellpadding="0" border="0"><tr>
+    <td style="border-radius:7px;background:#6f5fe0"><a href="${V.demoHref}" style="display:inline-block;padding:10px 16px;font-size:14px;line-height:16px;font-weight:600;color:#ffffff;text-decoration:none;border-radius:7px">Voir le site</a></td>
+    <td style="padding-left:14px;font-size:13px;line-height:18px;color:#141414"><b style="font-weight:600">${V.prix}</b>, une seule fois<br><span style="color:#66665f">en ligne jusqu'au ${V.date_expiration}</span></td>
+  </tr></table>
+</td></tr></table>`;
+
+  const demoAnchor = (color) => `<a href="${V.demoHref}" ${color ? `style="color:${color}"` : ''}>${V.demoLabel}</a>`;
+  const WRAP_STYLE = `max-width:600px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;font-size:15px;line-height:1.55;color:#141414`;
+
+  function paragraphsHtml(styled, color) {
+    return PARAGRAPHS.map((p) => `<p${styled ? ' style="margin:0 0 14px"' : ''}>${p.replace('{lien_demo}', demoAnchor(color))}</p>`).join('\n');
+  }
+
+  // ── Les trois emails. « ref » = ce qui part aujourd'hui ; (a) et (b) = propositions.
+  function emailHtml(kind, signature) {
+    const sig = signature === 'real' ? SIGNATURE_REAL : SIGNATURE_LIGHT;
+    if (kind === 'ref') return `<div class="email-root email-root--defaults">${paragraphsHtml(false, null)}${FOOTER}</div>`;
+    const paragraphs = paragraphsHtml(true, '#6f5fe0');
+    const body = kind === 'a'
+      ? paragraphs
+      : paragraphs.replace('</p>\n<p style="margin:0 0 14px">C\'est', `</p>\n${CARD}<p style="margin:0 0 14px">C'est`);
+    return `<div class="email-root" style="${WRAP_STYLE}">${body}<div style="margin-top:16px;">${sig}</div>${FOOTER}</div>`;
+  }
+
+  const IMAGE_KB = { 'sig-portrait.png': 44.6, 'sig-phone.png': 1.2, 'sig-globe.png': 1.4, 'sig-linkedin.png': 0.9, 'sig-github.png': 1.3 };
+  function metrics(html) {
+    const tmp = document.createElement('div'); tmp.innerHTML = html;
+    const imgs = [...tmp.querySelectorAll('img')];
+    const kb = imgs.reduce((sum, img) => sum + (IMAGE_KB[img.getAttribute('src').split('/').pop()] || 0), 0);
+    const links = tmp.querySelectorAll('a').length;
+    const text = tmp.textContent.replace(/\s+/g, ' ').trim();
+    return { images: imgs.length, kb, links, chars: text.length, html: Math.round(new Blob([html]).size / 100) / 10 };
+  }
+  function mailHtml(kind, state) {
+    const html = emailHtml(kind, state.signature);
+    const m = metrics(html);
+    return `<div class="mail__head">
+      <p class="mail__subject">${SUBJECT}</p>
+      <span class="mail__from-avatar">LG</span>
+      <div class="mail__row"><b>De</b><span>Léo Guillaume &lt;…@dibodev.fr&gt; <span style="color:#999">· via Resend</span></span></div>
+      <div class="mail__row"><b>À</b><span>Menuiserie Lefort</span></div>
+    </div>
+    <div class="mail__body ${state.width === 'mobile' ? 'is-mobile' : ''}">${html}</div>
+    <div class="metrics">
+      <div class="metric ${m.images > 1 ? 'warn' : ''}"><b>${m.images}</b>image${m.images > 1 ? 's' : ''}</div>
+      <div class="metric"><b>${m.kb ? m.kb.toFixed(1) + ' Ko' : '0 Ko'}</b>poids images</div>
+      <div class="metric"><b>${m.links}</b>liens</div>
+      <div class="metric"><b>${m.chars}</b>caractères de texte</div>
+      <div class="metric"><b>${m.html} Ko</b>HTML</div>
+    </div>`;
+  }
+
+  const CHECKS = [
+    ['Largeur', 'Conteneur à 600 px maximum, tables simples, aucune grille CSS. <span class="ok">OK</span> (Gmail, Outlook, Apple Mail).'],
+    ['Images', 'Portrait de la signature : PNG 176×220 affiché 88×110, 44,6 Ko, attributs <code>width</code>/<code>height</code>/<code>alt</code> présents. Signature réelle = 4 icônes PNG en plus (≈ 5 Ko) ; signature allégée = <b>une seule image</b>. Pas d\'image de fond, pas de vignette. <span class="ok">OK</span>'],
+    ['Texte dominant', 'Environ 700 caractères de texte pour une image de 88 px : le ratio texte/image reste très au-dessus des seuils. La carte (b) n\'ajoute que du texte. <span class="ok">OK</span>'],
+    ['Styles', 'Inline uniquement, pas de <code>&lt;style&gt;</code>, pas de police web, pas de JS ni de formulaire. Les <code>border-radius</code> sont ignorés par Outlook sans casser la mise en page. <span class="ok">OK</span>'],
+    ['Liens', 'Variante (a) : lien démo + tel + dibodev.fr + Malt + LinkedIn + GitHub + désinscription = 7. Variante (b) : + 2 (carte) = 9, tous vers des domaines connus, aucun raccourcisseur. Le lien démo répété 2 fois avec la même URL est courant et sans effet. <span class="ok">OK</span>'],
+    ['Désinscription', 'Pied « Se désabonner » conservé tel quel + en-têtes <code>List-Unsubscribe</code> / <code>List-Unsubscribe-Post</code> (RFC 8058) déjà posés par <code>email_sending_service</code>. <span class="ok">OK</span>'],
+    ['Version texte', 'Non fournie aujourd\'hui ; Resend la génère depuis le HTML. La carte (b) y apparaît comme « Voir le site » + URL, lisible. <span class="ok">OK</span>'],
+    ['Mode sombre', 'Couleurs explicites sur fond blanc (#141414 sur #fff), signature identique à celle qui sort de Gmail aujourd\'hui. Portrait sur fond noir : lisible dans les deux modes. <span class="ok">OK</span>'],
+    ['Mots et ton', 'Pas de majuscules, pas de « gratuit / urgent / offre », un seul prix, une seule demande. Le tiret cadratin « — » de la 4ᵉ phrase est celui du modèle 30 en prod (un caractère à changer si Léo le souhaite). <span class="ok">OK</span>'],
+    ['À confirmer par un envoi test', 'Score mail-tester attendu inchangé (9/10 aujourd\'hui) : l\'image unique et les tables inline ne retirent rien, le point manquant vient de l\'infrastructure (DKIM/DMARC/réputation), pas du contenu. <span class="todo">À vérifier</span> avant la première campagne avec le vrai lien de désinscription et le vrai expéditeur.'],
+  ];
+
+  const state = { signature: 'real', width: 'desktop', ref: 'show' };
+  function render() {
+    document.querySelectorAll('.mk-seg').forEach((seg) => {
+      const key = seg.dataset.key;
+      seg.querySelectorAll('button').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.value === state[key])));
+    });
+    document.getElementById('columns').classList.toggle('hide-ref', state.ref === 'hide');
+    document.getElementById('mail-ref').innerHTML = mailHtml('ref', state);
+    document.getElementById('mail-a').innerHTML = mailHtml('a', state);
+    document.getElementById('mail-b').innerHTML = mailHtml('b', state);
+    document.getElementById('checks').innerHTML = CHECKS.map(([k, v]) => `<tr><th>${k}</th><td>${v}</td></tr>`).join('');
+    document.getElementById('note').innerHTML = state.signature === 'real'
+      ? `<b>Signature réelle</b> : l'HTML de « Signature Dibodev » tel qu'il est en prod (créée le 21/08, retouchée le 30/09, jamais partie en campagne). Elle compte 5 images : le portrait et 4 icônes d'environ 1 Ko. C'est acceptable, mais la consigne « une seule image » n'est tenue que par la version allégée.`
+      : `<b>Signature allégée</b> : même mise en page, les 4 icônes PNG remplacées par du texte (téléphone, dibodev.fr, LinkedIn, GitHub). Une seule image dans tout l'email : le portrait. C'est la version que je recommande pour la campagne.`;
+  }
+  document.querySelectorAll('.mk-seg button').forEach((b) => b.addEventListener('click', () => { state[b.closest('.mk-seg').dataset.key] = b.dataset.value; render(); }));
+  render();
+</script>
+</body>
+</html>
