@@ -189,6 +189,7 @@ MIGRATION_MODULES: list[tuple[str, str]] = [
     ("add_ai_assistant_mailbox_enabled", "migrations.add_ai_assistant_mailbox_enabled"),
     ("add_ai_assistant_mailbox_tables", "migrations.add_ai_assistant_mailbox_tables"),
     ("add_ai_assistant_custom_avatar", "migrations.add_ai_assistant_custom_avatar"),
+    ("reseed_frank_email_template_library", "migrations.reseed_frank_email_template_library"),
 ]
 
 # Modules of this package that are not migrations and must not be registered.
