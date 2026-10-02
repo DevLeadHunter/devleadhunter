@@ -114,14 +114,15 @@
   @container (min-width: 820px) { .grid3 { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
 
   /* To-do list */
-  .todo { list-style: none; margin: 10px 8px 8px; padding: 0; }
-  .todo li { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 4px 14px; align-items: center; padding: 13px 12px; border-radius: 10px; transition: background .12s; }
+  .todo { list-style: none; margin: 6px 0 0; padding: 0; }
+  .todo li { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 2px 14px; align-items: center; padding: 12px 18px; transition: background .12s; }
   .todo li + li { border-top: 1px solid var(--line-soft); }
   .todo li:hover { background: var(--row-hover); }
+  .todo li:last-child { border-radius: 0 0 11px 11px; }
   @container (min-width: 640px) { .todo li { grid-template-columns: auto minmax(0, 1fr) auto; } .todo .link { grid-column: 3; } }
   .todo .link { grid-column: 2; }
-  .todo .t { font-size: 14.5px; font-weight: 500; }
-  .todo .x { font-size: 13px; color: var(--muted); margin-top: 2px; line-height: 1.4; }
+  .todo .t { font-size: 14px; font-weight: 500; margin: 0; }
+  .todo .x { font-size: 13px; color: var(--muted); margin: 2px 0 0; line-height: 1.4; }
   .tone-green { color: var(--green); } .tone-red { color: var(--red); } .tone-amber { color: var(--amber); } .tone-blue { color: var(--blue); }
 
   /* Pipeline cells + segment bar */
@@ -186,7 +187,7 @@
   td.main { width: 100%; max-width: 0; }
   td.main .nm { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .mob { display: none; list-style: none; margin: 0; padding: 0 8px 8px; }
-  .mob li { display: flex; align-items: center; gap: 12px; padding: 11px 10px; border-top: 1px solid var(--line-soft); border-radius: 10px; }
+  .mob li { display: flex; align-items: center; gap: 12px; padding: 11px 10px; border-top: 1px solid var(--line-soft); }
   .mob li:first-child { border-top: 0; }
   .mob .nm { display: block; font-size: 14px; font-weight: 500; }
   .mob .sub { display: block; font-size: 12.5px; color: var(--muted); margin-top: 2px; }
@@ -278,28 +279,23 @@
         <ul class="todo">
           <li>
             <svg class="ic tone-green" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5h16v11H8l-4 4z"/></svg>
-            <div class="min"><p class="t">Les projets d'Hugo veut en parler de vive voix</p><p class="x">A répondu 5 min après le clic, le 24/09. Votre réponse du 24 a été lue, la relance du 1<sup>er</sup> pas encore. Proposez deux créneaux datés.</p></div>
+            <div class="min"><p class="t">Hugo veut en parler de vive voix</p><p class="x">A répondu 5 min après le clic. Votre réponse a été lue le 25/09, rien depuis.</p></div>
             <a class="link" href="#">Répondre <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a>
           </li>
           <li>
             <svg class="ic tone-amber" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 8v5M12 16h.01"/></svg>
-            <div class="min"><p class="t">TP Motorsport trouve des offres moins chères</p><p class="x">Message du bandeau le 29/09 à 23 h, après la relance. A regardé votre vidéo en entier le 30 à 7 h 30, silence depuis.</p></div>
+            <div class="min"><p class="t">TP Motorsport trouve des offres moins chères</p><p class="x">A regardé votre vidéo en entier le 30/09, silence depuis.</p></div>
             <a class="link" href="#">Relancer <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a>
           </li>
           <li>
             <svg class="ic tone-blue" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.9v3a2 2 0 01-2.2 2 19.8 19.8 0 01-8.6-3.1 19.5 19.5 0 01-6-6A19.8 19.8 0 012.1 4.2 2 2 0 014.1 2h3a2 2 0 012 1.7c.1.9.4 1.9.7 2.8a2 2 0 01-.5 2.1L8 9.9a16 16 0 006 6l1.3-1.3a2 2 0 012.1-.4c.9.3 1.8.6 2.8.7a2 2 0 011.7 2z"/></svg>
-            <div class="min"><p class="t">Garage Nomade a cliqué votre numéro</p><p class="x">3 visites le 22/09, 2 min 19 s actives, rien depuis la relance. Un appel ou un SMS, pas un troisième mail.</p></div>
+            <div class="min"><p class="t">Garage Nomade a cliqué votre numéro</p><p class="x">3 visites le 22/09, rien depuis la relance. Un appel plutôt qu'un troisième mail.</p></div>
             <a class="link" href="#">Voir la fiche <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a>
           </li>
           <li>
             <svg class="ic tone-blue" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></svg>
-            <div class="min"><p class="t">Urgence SOS Sanitaire a tout exploré sans écrire</p><p class="x">38 clics dans son site, 3 visites le 25/09 dont une à 20 h. Le bandeau ouvert puis refermé.</p></div>
-            <a class="link" href="#">Voir la fiche <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a>
-          </li>
-          <li>
-            <svg class="ic tone-red" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M15 9l-6 6M9 9l6 6"/></svg>
-            <div class="min"><p class="t">AK Paysagiste a demandé le retrait de sa démo</p><p class="x">Réponse reçue dans votre boîte le 29/09, comptée à la main. Démo supprimée, « ne plus contacter » posé.</p></div>
-            <a class="link" href="#">Traité <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 13l4 4L19 7"/></svg></a>
+            <div class="min"><p class="t">7 autres ont visité sans écrire</p><p class="x">Urgence SOS, Jardin du Monde, N.N Sanitaire, Newtech, dos Santos, All'Effiloché, Schoch.</p></div>
+            <a class="link" href="#prospects">Voir la liste <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a>
           </li>
         </ul>
       </section>
@@ -325,8 +321,13 @@
           <li><i style="background:var(--red)"></i>Refus <b>2</b></li>
           <li><i style="background:var(--chart-empty)"></i>Sans réaction <b>13</b></li>
         </ul>
-        <div class="body" style="padding-top:16px">
-          <p class="muted" style="margin:0;font-size:13px">Les 8 qui ont visité sans écrire sont la suite logique : ils ont lu le prix et la date, et n'ont pas dit non.</p>
+        <div class="body" style="padding-top:14px">
+          <ul class="rows" style="margin:0">
+            <li><span>Reçus</span><b class="num">25 / 25</b></li>
+            <li><span>Relances envoyées</span><b class="num">23</b></li>
+            <li><span>Démos en ligne</span><b class="num">24 / 25</b></li>
+          </ul>
+          <p class="muted" style="margin:10px 0 0;font-size:12.5px">Les démos expirent du 13 au 21 octobre.</p>
         </div>
       </section>
     </div>
@@ -346,15 +347,10 @@
         </div>
       </section>
       <section class="card">
-        <header><div><h3>Relance</h3><p class="desc">« Votre site sera retiré le … », à J+3.</p></div></header>
+        <header><div><h3>Premier mail et relance</h3><p class="desc">Ce que chaque envoi a produit.</p></div></header>
         <div class="body">
-          <p class="big num" style="margin:4px 0 0">1 <small>visite sur 23 relances</small></p>
-          <p class="muted" style="margin:10px 0 0;font-size:13px;line-height:1.45">Presque jamais cliquée, mais c'est elle qui a fait écrire TP Motorsport. Deux refus sont arrivés après elle.</p>
-          <ul class="rows" style="margin-top:12px">
-            <li><span>Envoyées</span><b class="num">23</b></li>
-            <li><span>Annulées (réponse, refus)</span><b class="num">2</b></li>
-            <li><span>Réponses après relance</span><b class="num">3</b></li>
-          </ul>
+          <ul class="rows" id="sends"></ul>
+          <p class="muted" style="margin:10px 0 0;font-size:12.5px;line-height:1.45">La relance n'est presque jamais cliquée, mais c'est elle qui a fait écrire TP Motorsport.</p>
         </div>
       </section>
       <section class="card">
@@ -442,14 +438,14 @@
     return d;
   }
   function renderChart() {
-    var W = Math.max(320, chartEl.clientWidth - 20), L = 40, R = 12, T = 34, mainH = W < 520 ? 150 : 200, stripH = 40, gap = 18, xl = 24;
+    var W = Math.max(320, chartEl.clientWidth - 20), L = 40, R = 12, T = 40, mainH = W < 520 ? 150 : 190, stripH = 46, gap = 26, xl = 28;
     var mainB = T + mainH, stripT = mainB + gap, stripB = stripT + stripH, H = stripB + xl, plotW = W - L - R, step = plotW / (days.length - 1);
     var yMax = 12, line = css('--chart-line'), bar = css('--chart-bar'), ink = css('--ink'), surface = css('--surface');
     var x = function (i) { return L + i * step; }, y = function (v) { return mainB - v / yMax * mainH; };
     var pts = visits.map(function (v, i) { return [x(i), y(v)]; });
     var path = smooth(pts), area = path + ' L ' + x(days.length - 1) + ' ' + mainB + ' L ' + x(0) + ' ' + mainB + ' Z';
     var s = '<svg viewBox="0 0 ' + W + ' ' + H + '" width="' + W + '" height="' + H + '" role="img" aria-label="Visites et mails par jour"><defs><linearGradient id="g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="' + line + '" stop-opacity=".22"/><stop offset="1" stop-color="' + line + '" stop-opacity="0"/></linearGradient></defs>';
-    [0, 3, 6, 9, 12].forEach(function (v) { s += '<line x1="' + L + '" x2="' + (W - R) + '" y1="' + y(v) + '" y2="' + y(v) + '" stroke="' + ink + '" stroke-opacity="' + (v ? .07 : .14) + '"' + (v ? ' stroke-dasharray="3 4"' : '') + '/><text x="' + (L - 10) + '" y="' + (y(v) + 4) + '" text-anchor="end">' + v + '</text>'; });
+    [0, 4, 8, 12].forEach(function (v) { s += '<line x1="' + L + '" x2="' + (W - R) + '" y1="' + y(v) + '" y2="' + y(v) + '" stroke="' + ink + '" stroke-opacity="' + (v ? .07 : .14) + '"' + (v ? ' stroke-dasharray="3 4"' : '') + '/><text x="' + (L - 10) + '" y="' + (y(v) + 4) + '" text-anchor="end">' + v + '</text>'; });
     Object.keys(replies).forEach(function (i) {
       var cx = x(+i), label = (replies[i].split('·').length) + (replies[i].indexOf('·') > -1 ? ' réponses' : ' réponse'), pw = label.length * 6.2 + 18, px = Math.min(Math.max(L, cx - pw / 2), W - R - pw);
       s += '<line x1="' + cx + '" x2="' + cx + '" y1="' + (T - 4) + '" y2="' + mainB + '" stroke="' + ink + '" stroke-opacity=".35" stroke-dasharray="2 3"/>';
@@ -457,8 +453,8 @@
     });
     s += '<path d="' + area + '" fill="url(#g)"/><path d="' + path + '" fill="none" stroke="' + line + '" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>';
     s += '<text x="' + (L - 10) + '" y="' + (stripT + stripH / 2 + 4) + '" text-anchor="end">Mails</text><line x1="' + L + '" x2="' + (W - R) + '" y1="' + stripB + '" y2="' + stripB + '" stroke="' + ink + '" stroke-opacity=".14"/>';
-    var bw = Math.max(4, Math.min(10, step * .4)), mMax = 12;
-    mails.forEach(function (v, i) { if (!v) return; var h = Math.max(4, v / mMax * (stripH - 12)); s += '<rect x="' + (x(i) - bw / 2) + '" y="' + (stripB - h) + '" width="' + bw + '" height="' + h + '" rx="1.5" fill="' + bar + '"/><text x="' + x(i) + '" y="' + (stripB - h - 4) + '" text-anchor="middle" style="fill:' + ink + '">' + v + '</text>'; });
+    var bw = Math.max(5, Math.min(12, step * .35)), mMax = 12;
+    mails.forEach(function (v, i) { if (!v) return; var h = Math.max(4, v / mMax * (stripH - 16)); s += '<rect x="' + (x(i) - bw / 2) + '" y="' + (stripB - h) + '" width="' + bw + '" height="' + h + '" rx="1.5" fill="' + bar + '"/><text x="' + x(i) + '" y="' + (stripB - h - 5) + '" text-anchor="middle" style="fill:' + ink + '">' + v + '</text>'; });
     days.forEach(function (d, i) { if (W < 520 && i % 2 === 1) return; s += '<text x="' + x(i) + '" y="' + (H - 6) + '" text-anchor="' + (i === 0 ? 'start' : i === days.length - 1 ? 'end' : 'middle') + '">' + d + '</text>'; });
     s += '<g id="hover"></g><rect id="hit" x="' + (L - step / 2) + '" y="' + T + '" width="' + (plotW + step) + '" height="' + (stripB - T) + '" fill="transparent"/></svg><div class="tip" id="tip" hidden></div>';
     chartEl.innerHTML = s;
@@ -483,6 +479,12 @@
     return '<li><span>' + t[0] + '</span><span class="m"><span class="meter"><i style="width:' + Math.max(3, pct) + '%"></i></span><b class="num" style="font-weight:500;min-width:52px;text-align:right">' + t[1] + ' / ' + t[2] + '</b></span></li>';
   }).join('');
 
+  // ---- Sends ----
+  var sends = [['Premier mail', 25, 10, 2], ['Relance J+3', 23, 1, 3]];
+  document.getElementById('sends').innerHTML = '<li style="border-top:0;padding-top:0"><span class="label" style="font-weight:500">Envoi</span><span class="label" style="display:grid;grid-template-columns:64px 64px 70px;text-align:right;font-weight:500">Envoyés<span>Visites</span><span>Réponses</span></span></li>' + sends.map(function (r) {
+    return '<li><span>' + r[0] + '</span><span class="num" style="display:grid;grid-template-columns:64px 64px 70px;text-align:right"><b style="font-weight:500">' + r[1] + '</b><b style="font-weight:500">' + r[2] + '</b><b style="font-weight:500">' + r[3] + '</b></span></li>';
+  }).join('');
+
   // ---- Replies ----
   var rep = [
     ['Les projets d\'Hugo', 'green', 'Intéressé', '24/09', '« je préférerais qu\'on se voit et qu\'on en discute de vive voix »'],
@@ -496,7 +498,7 @@
 
   // ---- Prospects table ----
   var P = [
-    ['TP Motorsport', 'garage', 'int', 6, 313, '30/09 07:31', '28/09, cliquée'],
+    ['TP Motorsport', 'garage', 'int', 6, 313, '30/09 07:31', '28/09 · cliquée'],
     ['Garage Nomade', 'garage', 'vis', 3, 139, '22/09 15:47', '25/09'],
     ['Urgence SOS Sanitaire Russo', 'sanitaire', 'vis', 3, 96, '25/09 20:00', '30/09'],
     ['Jardin du Monde', 'paysagiste', 'vis', 4, 79, '22/09 16:57', '25/09'],
@@ -542,7 +544,7 @@
         '<td class="r"><span style="display:inline-flex;align-items:center;gap:10px"><span class="num">' + (p.visits || '<span class="muted">0</span>') + '</span><span class="meter"><i style="width:' + Math.max(3, p.visits / maxV * 100) + '%"></i></span></span></td>' +
         '<td class="r num">' + fmt(p.active) + '</td>' +
         '<td class="num">' + (p.last || '<span class="muted">—</span>') + '</td>' +
-        '<td class="muted num">' + p.fu + '</td></tr>';
+        '<td class="muted num" style="white-space:nowrap">' + p.fu + '</td></tr>';
     }).join('');
     document.getElementById('emptyDesk').hidden = rows.length > 0;
     document.getElementById('mob').innerHTML = rows.map(function (p) {
