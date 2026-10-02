@@ -998,7 +998,6 @@ const smsQueueCounts: ComputedRef<{ sent: number; pending: number; failed: numbe
   return { sent, pending, failed }
 })
 
-/** Queue items with the prospect's local hour resolved once — null for a prospect on the viewer's clock. */
 const queueRows: ComputedRef<CampaignQueueRow[]> = computed((): CampaignQueueRow[] =>
   (queueData.value?.items ?? []).map(
     (item: CampaignQueueItem): CampaignQueueRow => ({

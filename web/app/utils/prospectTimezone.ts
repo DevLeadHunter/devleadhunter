@@ -3,13 +3,7 @@ import { parseApiDate } from '~/utils/date'
 
 const LOCALE: string = 'fr-FR'
 
-/**
- * The prospect's clock for a scheduled send, shown next to the viewer's.
- *
- * The API evaluates every send window in the prospect's timezone (`prospect_timezone`, an IANA
- * name read from its country) and serialises the instant as naive UTC. The dashboard renders it
- * in the viewer's clock; this class adds « 08:00 à Montréal » when the prospect reads another one.
- */
+/** The prospect's clock for a scheduled send (« 08:00 à Montréal »), shown only when it differs from the viewer's. */
 export class ProspectTimezone {
   private constructor() {}
 
