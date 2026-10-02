@@ -1,15 +1,17 @@
-"""Countries supported by the prospection pipeline (ISO 3166-1 alpha-2)."""
+"""Countries supported by the prospection pipeline (ISO 3166-1 alpha-2).
+
+The facts of each country (currency, timezone, SMS rules, formats…) live in
+``services.country_profiles``; this module keeps the short helpers the scrapers and the
+job payloads read.
+"""
 
 from __future__ import annotations
 
-SUPPORTED_COUNTRIES: dict[str, str] = {
-    "FR": "France",
-    "CH": "Suisse",
-    "BE": "Belgique",
-    "LU": "Luxembourg",
-}
+from services.country_profiles import DEFAULT_COUNTRY_CODE, CountryProfiles
 
-DEFAULT_COUNTRY: str = "FR"
+SUPPORTED_COUNTRIES: dict[str, str] = CountryProfiles.labels()
+
+DEFAULT_COUNTRY: str = DEFAULT_COUNTRY_CODE
 
 
 def normalize_country(code: str | None) -> str:
@@ -22,8 +24,7 @@ def normalize_country(code: str | None) -> str:
     Returns:
         The uppercase code when supported, the French default otherwise.
     """
-    cleaned = (code or "").strip().upper()
-    return cleaned if cleaned in SUPPORTED_COUNTRIES else DEFAULT_COUNTRY
+    return CountryProfiles.get(code).code
 
 
 def country_label(code: str | None) -> str:
@@ -36,4 +37,4 @@ def country_label(code: str | None) -> str:
     Returns:
         The label of the normalized code.
     """
-    return SUPPORTED_COUNTRIES[normalize_country(code)]
+    return CountryProfiles.get(code).label

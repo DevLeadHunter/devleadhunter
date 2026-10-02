@@ -10,6 +10,7 @@ from __future__ import annotations
 from sqlalchemy.orm import Session
 
 from models.user import User
+from services.country_profiles import DEFAULT_COUNTRY_CODE, CountryProfiles
 
 # Launch price, used when a user has not set their own.
 DEFAULT_SALE_PRICE_CENTS = 50000
@@ -46,6 +47,4 @@ class PricingService:
         Returns:
             The euro-formatted string, with a French decimal comma when needed.
         """
-        if cents % 100 == 0:
-            return f"{cents // 100} €"
-        return f"{cents / 100:.2f}".replace(".", ",") + " €"
+        return CountryProfiles.get(DEFAULT_COUNTRY_CODE).format_price(cents)
