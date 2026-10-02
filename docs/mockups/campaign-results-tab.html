@@ -1,0 +1,546 @@
+<title>Résultats de campagne</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<style>
+  /* Layout: the DevLeadHunter campaign page (Atelier UI), with a new « Résultats » tab. Summary first, then detail, then the prospect table. */
+  :root {
+    --bg: #f4f1e9; --surface: #fbf9f3; --surface-2: #f3efe5;
+    --ink: #1d1a14; --ink-soft: #6e6759; --faint: #b7ae9c; --line: #e1dbcc; --line-soft: #eae5d8;
+    --accent: #e8a33c; --accent-ink: #9c6b14; --accent-soft: rgba(232,163,60,.14);
+    --green: #2f7d4e; --green-soft: rgba(47,125,78,.12); --red: #bf4d33; --red-soft: rgba(191,77,51,.12);
+    --blue: #4a6b8f; --blue-soft: rgba(95,127,158,.16); --violet: #7a63ad; --violet-soft: rgba(141,123,184,.16);
+    --bar: #1d1a14; --bar-2: #8c8474; --bar-3: #d2cab8;
+    --btn-bg: #1d1a14; --btn-text: #fbf9f3;
+    --shadow: 0 10px 30px -18px rgba(29,26,20,.35);
+    --font: 'IBM Plex Sans', 'Inter', system-ui, sans-serif; --mono: 'IBM Plex Mono', ui-monospace, SFMono-Regular, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #131312; --surface: #1b1b1a; --surface-2: #232322;
+      --ink: #f0efeb; --ink-soft: #a1a09a; --faint: #565550; --line: #2b2b29; --line-soft: #232322;
+      --accent: #e8a33c; --accent-ink: #ecb865; --accent-soft: rgba(232,163,60,.13);
+      --green: #55a878; --green-soft: rgba(85,168,120,.15); --red: #d76a55; --red-soft: rgba(215,106,85,.15);
+      --blue: #85a8c8; --blue-soft: rgba(133,168,200,.15); --violet: #a894d6; --violet-soft: rgba(168,148,214,.15);
+      --bar: #f0efeb; --bar-2: #8d8b84; --bar-3: #3a3936;
+      --btn-bg: #f0efeb; --btn-text: #131312; --shadow: 0 10px 30px -18px rgba(0,0,0,.65);
+      color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #131312; --surface: #1b1b1a; --surface-2: #232322;
+    --ink: #f0efeb; --ink-soft: #a1a09a; --faint: #565550; --line: #2b2b29; --line-soft: #232322;
+    --accent: #e8a33c; --accent-ink: #ecb865; --accent-soft: rgba(232,163,60,.13);
+    --green: #55a878; --green-soft: rgba(85,168,120,.15); --red: #d76a55; --red-soft: rgba(215,106,85,.15);
+    --blue: #85a8c8; --blue-soft: rgba(133,168,200,.15); --violet: #a894d6; --violet-soft: rgba(168,148,214,.15);
+    --bar: #f0efeb; --bar-2: #8d8b84; --bar-3: #3a3936;
+    --btn-bg: #f0efeb; --btn-text: #131312; --shadow: 0 10px 30px -18px rgba(0,0,0,.65);
+    color-scheme: dark;
+  }
+  * { box-sizing: border-box; }
+  body { background: var(--bg); color: var(--ink); font-family: var(--font); font-size: 14px; line-height: 1.45; margin: 0; }
+  .page { max-width: 1120px; margin: 0 auto; padding-block: 18px 56px; padding-inline: 16px; }
+  @media (min-width: 720px) { .page { padding-inline: 28px; } }
+  a { color: inherit; }
+  .crumb { color: var(--ink-soft); font-size: 12px; display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+  .crumb b { color: var(--ink); font-weight: 500; }
+  .head { display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: 12px; margin-top: 10px; }
+  h1 { font-size: 22px; line-height: 1.2; margin: 0; font-weight: 600; letter-spacing: -.01em; text-wrap: balance; }
+  .sub { color: var(--ink-soft); font-size: 13px; margin-top: 6px; display: flex; flex-wrap: wrap; gap: 6px 14px; align-items: center; }
+  .pill { display: inline-flex; align-items: center; gap: 6px; border-radius: 999px; padding: 3px 9px; font-size: 11.5px; font-weight: 600; border: 1px solid var(--line); background: var(--surface); }
+  .pill.done { color: var(--green); border-color: transparent; background: var(--green-soft); }
+  .pill .dot { width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
+  .btn { font: inherit; font-size: 12.5px; font-weight: 500; border-radius: 10px; padding: 7px 12px; border: 1px solid var(--line); background: var(--surface); color: var(--ink); cursor: pointer; display: inline-flex; align-items: center; gap: 6px; }
+  .btn.primary { background: var(--btn-bg); color: var(--btn-text); border-color: var(--btn-bg); }
+  .btn:focus-visible, .tab:focus-visible, .chip:focus-visible, th button:focus-visible { outline: 2px solid var(--ink-soft); outline-offset: 2px; }
+  .btn:hover { border-color: var(--ink-soft); }
+  .label { font-size: 10.5px; letter-spacing: .08em; text-transform: uppercase; color: var(--ink-soft); font-weight: 600; }
+  .mono { font-family: var(--mono); font-variant-numeric: tabular-nums; }
+
+  /* Tabs: one scroll axis only (touch-action: pan-x), explicit overflow-y hidden, edge fades when there is more to scroll. */
+  .tabs-wrap { position: relative; margin-top: 18px; border-bottom: 1px solid var(--line); }
+  .tabs { display: flex; gap: 2px; overflow-x: auto; overflow-y: hidden; touch-action: pan-x; overscroll-behavior-x: contain; -webkit-overflow-scrolling: touch; scrollbar-width: none; scroll-snap-type: x proximity; }
+  .tabs::-webkit-scrollbar { display: none; }
+  .tab { position: relative; flex: 0 0 auto; scroll-snap-align: start; display: inline-flex; align-items: center; gap: 7px; padding: 10px 12px 11px; border: 0; background: none; color: var(--ink-soft); font: inherit; font-size: 13.5px; font-weight: 500; cursor: pointer; white-space: nowrap; -webkit-tap-highlight-color: transparent; }
+  .tab:hover { color: var(--ink); }
+  .tab[aria-selected="true"] { color: var(--ink); }
+  .tab .ul { position: absolute; left: 10px; right: 10px; bottom: -1px; height: 2px; border-radius: 2px; background: transparent; }
+  .tab[aria-selected="true"] .ul { background: var(--accent); }
+  .tab .count { font-family: var(--mono); font-size: 11px; padding: 1px 7px; border-radius: 999px; background: var(--surface-2); color: var(--ink-soft); }
+  .tab .count.hot { background: var(--accent-soft); color: var(--accent-ink); }
+  .tab .new { font-size: 10px; letter-spacing: .06em; text-transform: uppercase; color: var(--accent-ink); background: var(--accent-soft); border-radius: 4px; padding: 1px 5px; }
+  .tabs-wrap .fade { position: absolute; top: 0; bottom: 1px; width: 36px; pointer-events: none; opacity: 0; transition: opacity .15s; }
+  .tabs-wrap .fade.l { left: 0; background: linear-gradient(90deg, var(--bg), transparent); }
+  .tabs-wrap .fade.r { right: 0; background: linear-gradient(270deg, var(--bg), transparent); }
+  .tabs-wrap.has-l .fade.l, .tabs-wrap.has-r .fade.r { opacity: 1; }
+  @media (min-width: 900px) { .tab { padding-inline: 14px; } }
+
+  .panel { margin-top: 18px; display: none; }
+  .panel.active { display: block; }
+  .placeholder { border: 1px dashed var(--line); border-radius: 12px; padding: 28px; color: var(--ink-soft); text-align: center; font-size: 13px; }
+
+  .grid { display: grid; gap: 12px; }
+  .card { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 16px; min-width: 0; }
+  .card h3 { margin: 0; font-size: 14px; font-weight: 600; display: flex; align-items: center; gap: 8px; }
+  .card h3 .ic { width: 16px; height: 16px; color: var(--accent-ink); flex: none; }
+  .card .hint { color: var(--ink-soft); font-size: 12px; margin-top: 3px; }
+  .card-head { display: flex; justify-content: space-between; gap: 10px; align-items: flex-start; flex-wrap: wrap; margin-bottom: 12px; }
+
+  /* Status strip */
+  .status { display: grid; gap: 14px; }
+  @media (min-width: 760px) { .status { grid-template-columns: 1.3fr 1fr; } }
+  .progress { display: grid; gap: 8px; }
+  .progress .row { display: grid; grid-template-columns: 110px 1fr auto; gap: 10px; align-items: center; font-size: 12.5px; }
+  .progress .track { height: 6px; border-radius: 3px; background: var(--surface-2); overflow: hidden; }
+  .progress .fill { height: 100%; border-radius: 3px; background: var(--bar); }
+  .progress .fill.part { background: var(--bar-2); }
+  .events { display: grid; gap: 8px; font-size: 12.5px; }
+  .events .ev { display: grid; grid-template-columns: 54px 1fr; gap: 10px; align-items: baseline; }
+  .events .when { color: var(--ink-soft); font-family: var(--mono); font-size: 11.5px; }
+  .events .ev b { font-weight: 600; }
+
+  /* KPI tiles */
+  .kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  @media (min-width: 640px) { .kpis { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+  @media (min-width: 980px) { .kpis { grid-template-columns: repeat(6, minmax(0, 1fr)); } }
+  .kpi { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 13px 14px; min-width: 0; }
+  .kpi .v { font-size: 26px; font-weight: 600; line-height: 1.1; margin-top: 6px; letter-spacing: -.01em; }
+  .kpi .v small { font-size: 13px; color: var(--ink-soft); font-weight: 500; margin-left: 4px; }
+  .kpi .d { margin-top: 6px; font-size: 11.5px; color: var(--ink-soft); display: flex; align-items: center; gap: 5px; }
+  .kpi .d.up { color: var(--green); } .kpi .d.down { color: var(--red); }
+  .kpi.zero .v { color: var(--ink-soft); }
+
+  /* Two columns */
+  .two { grid-template-columns: 1fr; }
+  @media (min-width: 860px) { .two { grid-template-columns: 1fr 1fr; } .two.wide-left { grid-template-columns: 1.25fr 1fr; } }
+
+  /* Funnel */
+  .funnel { display: grid; gap: 7px; }
+  .funnel .step { display: grid; grid-template-columns: 150px 1fr 74px; gap: 10px; align-items: center; font-size: 12.5px; }
+  @media (max-width: 560px) { .funnel .step { grid-template-columns: 118px 1fr 64px; font-size: 12px; } }
+  .funnel .bar { height: 18px; border-radius: 4px; background: var(--bar); transition: width .4s; }
+  .funnel .n { font-family: var(--mono); font-size: 12px; text-align: right; color: var(--ink); }
+  .funnel .n small { color: var(--ink-soft); }
+  .funnel .drop { grid-column: 2 / span 2; color: var(--ink-soft); font-size: 11px; padding-left: 2px; margin-top: -3px; }
+  .funnel .drop b { color: var(--red); font-weight: 600; }
+
+  /* Insights */
+  .insights { display: grid; gap: 8px; }
+  .insight { display: grid; grid-template-columns: 22px 1fr; gap: 10px; align-items: start; padding: 10px 12px; border-radius: 10px; background: var(--surface-2); font-size: 13px; }
+  .insight .ic { width: 16px; height: 16px; margin-top: 2px; }
+  .insight.good .ic { color: var(--green); } .insight.bad .ic { color: var(--red); } .insight.neutral .ic { color: var(--blue); }
+  .insight b { font-weight: 600; }
+  .insight .why { color: var(--ink-soft); font-size: 12px; margin-top: 2px; }
+
+  /* SVG charts */
+  svg { display: block; width: 100%; height: auto; max-width: 100%; }
+  .legend { display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 12px; color: var(--ink-soft); margin-top: 6px; }
+  .legend i { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 6px; vertical-align: -1px; }
+
+  /* Lists of prospects to act on */
+  .todo { display: grid; gap: 6px; }
+  .todo .it { display: grid; grid-template-columns: 1fr auto; gap: 10px; align-items: center; padding: 9px 10px; border: 1px solid var(--line-soft); border-radius: 10px; background: var(--surface); }
+  .todo .it .nm { font-weight: 600; font-size: 13px; }
+  .todo .it .meta { color: var(--ink-soft); font-size: 12px; margin-top: 2px; }
+  .todo .it .meta b { color: var(--ink); font-weight: 500; }
+  .todo .acts { display: flex; gap: 6px; }
+  .todo .acts .btn { padding: 5px 9px; font-size: 12px; }
+  .todo .verbatim { grid-column: 1 / -1; font-size: 12.5px; color: var(--ink); background: var(--surface-2); border-radius: 8px; padding: 8px 10px; font-style: italic; }
+
+  /* Chips / filters */
+  .chips { display: flex; gap: 6px; flex-wrap: wrap; }
+  .chip { font: inherit; font-size: 12px; font-weight: 500; border-radius: 999px; padding: 5px 11px; border: 1px solid var(--line); background: var(--surface); color: var(--ink-soft); cursor: pointer; display: inline-flex; gap: 6px; align-items: center; }
+  .chip .n { font-family: var(--mono); font-size: 11px; color: var(--ink-soft); }
+  .chip[aria-pressed="true"] { background: var(--btn-bg); color: var(--btn-text); border-color: var(--btn-bg); }
+  .chip[aria-pressed="true"] .n { color: inherit; opacity: .75; }
+
+  /* State chips */
+  .st { display: inline-flex; align-items: center; gap: 6px; font-size: 11.5px; font-weight: 600; border-radius: 999px; padding: 3px 9px; white-space: nowrap; }
+  .st::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
+  .st.sent { background: var(--surface-2); color: var(--ink-soft); }
+  .st.clicked { background: var(--blue-soft); color: var(--blue); }
+  .st.engaged { background: var(--violet-soft); color: var(--violet); }
+  .st.interested { background: var(--green-soft); color: var(--green); }
+  .st.refused { background: var(--red-soft); color: var(--red); }
+  .st.bounced { background: var(--red-soft); color: var(--red); }
+
+  /* Table */
+  .tbl-wrap { overflow-x: auto; margin-inline: -16px; padding-inline: 16px; }
+  table { width: 100%; border-collapse: collapse; font-size: 12.5px; min-width: 760px; }
+  th { text-align: left; font-size: 10.5px; letter-spacing: .06em; text-transform: uppercase; color: var(--ink-soft); font-weight: 600; padding: 8px 8px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+  th button { font: inherit; background: none; border: 0; color: inherit; cursor: pointer; padding: 0; display: inline-flex; gap: 4px; align-items: center; text-transform: inherit; letter-spacing: inherit; }
+  th button.on { color: var(--ink); }
+  td { padding: 9px 8px; border-bottom: 1px solid var(--line-soft); vertical-align: middle; }
+  tr:hover td { background: var(--surface-2); }
+  td .nm { font-weight: 600; }
+  td .sm { color: var(--ink-soft); font-size: 11.5px; }
+  td.num { font-family: var(--mono); font-variant-numeric: tabular-nums; }
+  .spark { display: inline-flex; gap: 2px; align-items: flex-end; height: 14px; }
+  .spark i { width: 4px; background: var(--bar-2); border-radius: 1px; display: block; }
+  .spark i.hi { background: var(--bar); }
+  @media (max-width: 640px) {
+    table { min-width: 0; }
+    thead { display: none; }
+    tr { display: grid; grid-template-columns: 1fr auto; gap: 2px 10px; padding: 10px 0; border-bottom: 1px solid var(--line-soft); }
+    td { border: 0; padding: 0; }
+    td.c-name { grid-column: 1; grid-row: 1; }
+    td.c-state { grid-column: 2; grid-row: 1 / span 2; justify-self: end; align-self: center; }
+    td.c-visits, td.c-time, td.c-fu, td.c-issue { grid-column: 1; font-size: 12px; color: var(--ink-soft); }
+    td.c-visits::before { content: "Visites "; } td.c-time::before { content: "Temps actif "; } td.c-fu::before { content: "Relance "; }
+    td.c-sent, td.c-delay { display: none; }
+    tr:hover td { background: transparent; }
+  }
+
+  /* Bars by trade */
+  .hbars { display: grid; gap: 7px; }
+  .hbars .r { display: grid; grid-template-columns: 120px 1fr 70px; gap: 10px; align-items: center; font-size: 12.5px; }
+  .hbars .t { height: 14px; border-radius: 4px; background: var(--bar); }
+  .hbars .t.soft { background: var(--bar-3); }
+  .hbars .n { font-family: var(--mono); font-size: 12px; text-align: right; }
+  .hbars .n small { color: var(--ink-soft); }
+
+  /* Devices */
+  .stack { display: flex; height: 14px; border-radius: 4px; overflow: hidden; gap: 2px; }
+  .stack i { display: block; height: 100%; }
+  .stack .a { background: var(--bar); } .stack .b { background: var(--bar-2); } .stack .c { background: var(--bar-3); }
+
+  .foot { color: var(--ink-soft); font-size: 12px; margin-top: 22px; line-height: 1.5; }
+  .foot b { color: var(--ink); font-weight: 600; }
+  .note { border-left: 3px solid var(--accent); background: var(--accent-soft); border-radius: 0 10px 10px 0; padding: 10px 14px; font-size: 13px; margin-top: 16px; }
+  .note b { font-weight: 600; }
+  @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+
+<div class="page">
+  <div class="crumb"><span>Campagnes</span><span>›</span><b>Vague 3 — Suisse (email franc)</b></div>
+
+  <div class="head">
+    <div>
+      <h1>Vague 3 — Suisse (email franc)</h1>
+      <div class="sub">
+        <span class="pill done"><span class="dot"></span>Terminée</span>
+        <span>22 sept. → 1<sup>er</sup> oct. 2026</span>
+        <span>25 prospects · email · relance J+3</span>
+        <span>Modèle 31 « le site de {entreprise} »</span>
+      </div>
+    </div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+      <button class="btn" type="button">Exporter le bilan</button>
+      <button class="btn primary" type="button">Actualiser</button>
+    </div>
+  </div>
+
+  <div class="tabs-wrap" id="tabsWrap">
+    <div class="tabs" role="tablist" id="tabs">
+      <button class="tab" role="tab" aria-selected="false" data-panel="config" type="button">Configuration<span class="ul"></span></button>
+      <button class="tab" role="tab" aria-selected="false" data-panel="queue" type="button">File d'envoi <span class="count">0</span><span class="ul"></span></button>
+      <button class="tab" role="tab" aria-selected="false" data-panel="ab" type="button">Variantes A/B<span class="ul"></span></button>
+      <button class="tab" role="tab" aria-selected="false" data-panel="prospects" type="button">Prospects <span class="count">25</span><span class="ul"></span></button>
+      <button class="tab" role="tab" aria-selected="true" data-panel="results" type="button">Résultats <span class="count hot">4 à traiter</span><span class="new">nouveau</span><span class="ul"></span></button>
+      <button class="tab" role="tab" aria-selected="false" data-panel="journal" type="button">Journal<span class="ul"></span></button>
+    </div>
+    <div class="fade l"></div><div class="fade r"></div>
+  </div>
+
+  <section class="panel" data-panel="config"><div class="placeholder">Onglet existant (cadence, plafond, modèles). Inchangé.</div></section>
+  <section class="panel" data-panel="queue"><div class="placeholder">Onglet existant (file d'envoi, annuler / renvoyer). Inchangé.</div></section>
+  <section class="panel" data-panel="ab"><div class="placeholder">Onglet existant (variantes A/B). Inchangé.</div></section>
+  <section class="panel" data-panel="prospects"><div class="placeholder">Onglet existant (liste et ordre des prospects). Inchangé.</div></section>
+  <section class="panel" data-panel="journal"><div class="placeholder">Journal d'activité de la campagne (envois, clics, réponses, actions manuelles), déjà disponible ailleurs : ici filtré sur la campagne.</div></section>
+
+  <section class="panel active" data-panel="results">
+
+    <!-- 1. Où on en est -->
+    <div class="grid status">
+      <div class="card">
+        <div class="card-head">
+          <div><h3><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>Où en est la campagne</h3><div class="hint">Tout est parti. Les démos restent en ligne jusqu'au 13 au 21 octobre selon le prospect.</div></div>
+          <span class="label">Actualisé il y a 3 min</span>
+        </div>
+        <div class="progress">
+          <div class="row"><span>Premiers mails</span><div class="track"><div class="fill" style="width:100%"></div></div><span class="mono">25 / 25</span></div>
+          <div class="row"><span>Relances J+3</span><div class="track"><div class="fill part" style="width:92%"></div></div><span class="mono">23 / 25</span></div>
+          <div class="row"><span>Démos en ligne</span><div class="track"><div class="fill part" style="width:96%"></div></div><span class="mono">24 / 25</span></div>
+        </div>
+        <div class="hint" style="margin-top:10px">2 relances annulées : Hugo (a répondu), AK Paysagiste (ne plus contacter). 1 démo supprimée à la demande du prospect.</div>
+      </div>
+      <div class="card">
+        <div class="card-head"><div><h3><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 12h4l3-7 4 14 3-7h2"/></svg>Derniers signaux</h3><div class="hint">Ce qui s'est passé en dernier, humains seulement.</div></div></div>
+        <div class="events">
+          <div class="ev"><span class="when">30/09 18:00</span><span><b>Chergui Chauffage</b> a répondu à la relance : refus poli.</span></div>
+          <div class="ev"><span class="when">30/09 07:31</span><span><b>TP Motorsport</b> a regardé la vidéo en entier, puis le site 18 s.</span></div>
+          <div class="ev"><span class="when">29/09 23:00</span><span><b>TP Motorsport</b> a écrit depuis le bandeau : objection prix.</span></div>
+          <div class="ev"><span class="when">29/09 19:57</span><span><b>AK Paysagiste</b> demande le retrait de sa démo (réponse reçue hors outil).</span></div>
+          <div class="ev"><span class="when">28/09 08:48</span><span><b>Newtech Électricité</b> a ouvert son site 18 min après l'envoi.</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 2. KPI -->
+    <div class="grid kpis" style="margin-top:12px">
+      <div class="kpi"><div class="label">Envoyés</div><div class="v">25</div><div class="d">25 reçus, 0 rebond</div></div>
+      <div class="kpi"><div class="label">Clics humains</div><div class="v">10<small>40 %</small></div><div class="d up">▲ France 24 %, Belgique 40 %</div></div>
+      <div class="kpi"><div class="label">Visites engagées</div><div class="v">10<small>100 % des clics</small></div><div class="d">5 sont revenus</div></div>
+      <div class="kpi"><div class="label">Ont écrit</div><div class="v">4<small>16 %</small></div><div class="d up">▲ vos autres campagnes : 5 %</div></div>
+      <div class="kpi"><div class="label">Intéressés</div><div class="v">2<small>8 %</small></div><div class="d">Hugo, TP Motorsport</div></div>
+      <div class="kpi zero"><div class="label">Ventes</div><div class="v">0</div><div class="d">2 pistes ouvertes</div></div>
+    </div>
+
+    <!-- 3. Funnel + insights -->
+    <div class="grid two wide-left" style="margin-top:12px">
+      <div class="card">
+        <div class="card-head"><div><h3><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 5h16l-6 8v6l-4-2v-4z"/></svg>L'entonnoir</h3><div class="hint">Un clic = une vraie visite mesurée sur le site, jamais le clic brut du fournisseur.</div></div></div>
+        <div class="funnel" id="funnel"></div>
+      </div>
+      <div class="card">
+        <div class="card-head"><div><h3><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3l2.5 5.5L20 9l-4 4 1 6-5-3-5 3 1-6-4-4 5.5-.5z"/></svg>Ce qu'il faut retenir</h3><div class="hint">Généré depuis les chiffres, pas écrit à la main.</div></div></div>
+        <div class="insights">
+          <div class="insight good"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M5 13l4 4L19 7"/></svg><div><b>Ils lisent tout de suite.</b><div class="why">8 clics sur 10 dans l'heure qui suit l'envoi, médiane 12 min.</div></div></div>
+          <div class="insight good"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M5 13l4 4L19 7"/></svg><div><b>Garages et électriciens répondent au mail.</b><div class="why">Garages 2 / 2, électriciens 2 / 3, sanitaire 2 / 4.</div></div></div>
+          <div class="insight good"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M5 13l4 4L19 7"/></svg><div><b>2 intéressés sur 25.</b><div class="why">Le double de vos autres campagnes. Les deux veulent discuter ou négocier.</div></div></div>
+          <div class="insight bad"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M6 6l12 12M18 6L6 18"/></svg><div><b>Les barbiers n'ont pas ouvert leur site.</b><div class="why">0 clic sur 4. Pareil en France et en Belgique.</div></div></div>
+          <div class="insight bad"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M6 6l12 12M18 6L6 18"/></svg><div><b>La relance n'a presque rien donné.</b><div class="why">1 clic sur 23 relances, mais c'est elle qui a fait écrire TP Motorsport.</div></div></div>
+          <div class="insight neutral"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="12" r="9"/><path d="M12 8v5M12 16h.01"/></svg><div><b>8 prospects ont visité et n'ont pas écrit.</b><div class="why">Dont 3 très actifs : Garage Nomade, Urgence SOS, Jardin du Monde.</div></div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 4. Jour par jour -->
+    <div class="card" style="margin-top:12px">
+      <div class="card-head"><div><h3><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>Jour par jour</h3><div class="hint">Envois, relances et premières visites. Les réponses sont marquées au-dessus.</div></div>
+        <div class="legend"><span><i style="background:var(--bar)"></i>premiers mails</span><span><i style="background:var(--bar-3)"></i>relances</span><span><i style="background:var(--accent)"></i>premières visites</span></div>
+      </div>
+      <div id="daily"></div>
+    </div>
+
+    <!-- 5. À traiter -->
+    <div class="grid two" style="margin-top:12px">
+      <div class="card">
+        <div class="card-head"><div><h3><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 11-9-9"/><path d="M21 3v6h-6"/></svg>Ont visité, n'ont pas écrit</h3><div class="hint">Les plus actifs d'abord. C'est ici que se joue la suite.</div></div><span class="pill">8</span></div>
+        <div class="todo" id="silent"></div>
+      </div>
+      <div class="card">
+        <div class="card-head"><div><h3><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 5h16v11H8l-4 4z"/></svg>Réponses</h3><div class="hint">Mails captés, messages du bandeau, réponses comptées à la main.</div></div><span class="pill">4</span></div>
+        <div class="todo" id="replies"></div>
+      </div>
+    </div>
+
+    <!-- 6. Table -->
+    <div class="card" style="margin-top:12px">
+      <div class="card-head">
+        <div><h3><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 6h16M4 12h16M4 18h16"/></svg>Les 25 prospects</h3><div class="hint">Cliquer un en-tête pour trier. Cliquer une ligne ouvre la fiche.</div></div>
+        <div class="chips" id="filters">
+          <button class="chip" type="button" aria-pressed="true" data-f="all">Tous <span class="n">25</span></button>
+          <button class="chip" type="button" aria-pressed="false" data-f="clicked">Ont cliqué <span class="n">10</span></button>
+          <button class="chip" type="button" aria-pressed="false" data-f="silent">Cliqué sans écrire <span class="n">8</span></button>
+          <button class="chip" type="button" aria-pressed="false" data-f="replied">Ont écrit <span class="n">4</span></button>
+          <button class="chip" type="button" aria-pressed="false" data-f="none">Sans réaction <span class="n">15</span></button>
+        </div>
+      </div>
+      <div class="tbl-wrap">
+        <table id="tbl">
+          <thead><tr>
+            <th><button type="button" data-k="name">Prospect</button></th>
+            <th><button type="button" data-k="state">État</button></th>
+            <th><button type="button" data-k="sent">1er mail</button></th>
+            <th><button type="button" data-k="delay">Délai → clic</button></th>
+            <th><button type="button" data-k="visits">Visites</button></th>
+            <th><button type="button" data-k="active">Temps actif</button></th>
+            <th><button type="button" data-k="fu">Relance</button></th>
+            <th><button type="button" data-k="issue">Issue</button></th>
+          </tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- 7. Trade + visits -->
+    <div class="grid two" style="margin-top:12px">
+      <div class="card">
+        <div class="card-head"><div><h3><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 20h18M6 20V9M11 20V4M16 20v-8"/></svg>Par métier</h3><div class="hint">Part des prospects qui ont ouvert leur site.</div></div></div>
+        <div class="hbars" id="trades"></div>
+        <div class="hint" style="margin-top:10px">Lecture prudente : 2 à 10 prospects par métier.</div>
+      </div>
+      <div class="card">
+        <div class="card-head"><div><h3><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="7" y="2" width="10" height="20" rx="2"/><path d="M11 18h2"/></svg>Les visites</h3><div class="hint">25 visites humaines, 10 prospects.</div></div></div>
+        <div class="label" style="margin-bottom:6px">Appareil</div>
+        <div class="stack"><i class="a" style="width:96%"></i><i class="b" style="width:4%"></i></div>
+        <div class="legend"><span><i style="background:var(--bar)"></i>téléphone 24</span><span><i style="background:var(--bar-2)"></i>ordinateur 1</span></div>
+        <div class="label" style="margin:14px 0 6px">Heure de la visite</div>
+        <div id="hours"></div>
+        <div class="legend"><span><i style="background:var(--bar)"></i>journée</span><span><i style="background:var(--accent)"></i>après 18 h (5 visites, les plus longues)</span></div>
+      </div>
+    </div>
+
+    <div class="note"><b>Comparer.</b> Un bouton « Comparer à une autre campagne » poserait la vague 3 France et la vague 3 Belgique en face de celle-ci, sur ces mêmes graphiques et ces mêmes définitions. C'est la pièce qui manque pour lire la vague 4.</div>
+
+    <p class="foot"><b>Définitions.</b> Clic humain = au moins une visite du site démo mesurée côté site, hors visites internes. Engagée = plus de 20 secondes, la moitié de la page ou une interaction. Temps actif = d'après les enregistrements de session. Ont écrit = réponse captée, message du bandeau, ou réponse reçue hors outil que vous comptez vous-même. Les ouvertures de mail ne sont pas affichées : le signal n'est pas fiable.</p>
+  </section>
+</div>
+
+<script>
+(function () {
+  var ACCENT = getComputedStyle(document.documentElement).getPropertyValue('--accent').trim() || '#e8a33c';
+  // ---- Tabs ----
+  var wrap = document.getElementById('tabsWrap'), tabs = document.getElementById('tabs');
+  function fades() {
+    var max = tabs.scrollWidth - tabs.clientWidth;
+    wrap.classList.toggle('has-l', tabs.scrollLeft > 4);
+    wrap.classList.toggle('has-r', max - tabs.scrollLeft > 4);
+  }
+  tabs.addEventListener('scroll', fades); window.addEventListener('resize', fades); fades();
+  tabs.querySelectorAll('.tab').forEach(function (t) {
+    t.addEventListener('click', function () {
+      tabs.querySelectorAll('.tab').forEach(function (o) { o.setAttribute('aria-selected', o === t ? 'true' : 'false'); });
+      document.querySelectorAll('.panel').forEach(function (p) { p.classList.toggle('active', p.dataset.panel === t.dataset.panel); });
+      t.scrollIntoView({ block: 'nearest', inline: 'nearest', behavior: 'smooth' });
+    });
+  });
+  try { var at = document.querySelector('.tab[aria-selected="true"]'); at.scrollIntoView({ block: 'nearest', inline: 'nearest' }); } catch (e) {}
+
+  // ---- Data (campaign #18, Suisse, wave 3) ----
+  var P = [
+    ['TP Motorsport','garage','23/09 11:00',2,6,313,'28/09',true,'interested','intéressé, objection prix'],
+    ['Garage Nomade','garage','22/09 13:30',28,3,139,'25/09',false,'engaged','a cliqué votre numéro'],
+    ['Urgence SOS Sanitaire Russo','sanitaire','25/09 11:30',273,3,96,'30/09',false,'engaged','silencieux, 38 clics'],
+    ['Jardin du Monde','paysagiste','22/09 13:00',6,4,79,'25/09',false,'engaged','revenu 4 fois'],
+    ['N.N Sanitaire','sanitaire','22/09 14:30',423,1,62,'25/09',false,'engaged','silencieux'],
+    ['Newtech Électricité Sàrl','électricien','28/09 08:30',18,1,54,'',false,'engaged','silencieux'],
+    ['Paysagisme et Nettoyages dos Santos','paysagiste','22/09 12:30',61,4,50,'24/09',false,'engaged','bandeau ouvert, refermé'],
+    ["All'Effiloché",'food truck','25/09 11:00',3,1,43,'30/09',false,'engaged','silencieux'],
+    ["Les projets d'Hugo",'paysagiste','24/09 10:30',3,1,36,'annulée',false,'interested','intéressé, veut un appel'],
+    ['Schoch Electricité','électricien','22/09 12:00',25,1,33,'25/09',false,'engaged','silencieux'],
+    ['AK Paysagiste','paysagiste','23/09 10:30',null,0,0,'28/09',false,'refused','refus, démo retirée'],
+    ['Chergui Chauffage Sanitaire','sanitaire','25/09 12:30',null,0,0,'30/09',false,'refused','refus poli'],
+    ['Jardins A. Haziri','paysagiste','22/09 11:31',null,0,0,'25/09',false,'sent',''],
+    ['Mala Paysagiste','paysagiste','23/09 11:30',null,0,0,'28/09',false,'sent',''],
+    ['Blanc André Paysagiste','paysagiste','23/09 12:00',null,0,0,'28/09',false,'sent',''],
+    ['Battaglia Paysagiste Sàrl','paysagiste','23/09 12:30',null,0,0,'28/09',false,'sent',''],
+    ['BERTI Paysagiste Sàrl','paysagiste','23/09 13:00',null,0,0,'28/09',false,'sent',''],
+    ['Matthieu Gohl Paysagiste','paysagiste','24/09 11:00',null,0,0,'29/09',false,'sent',''],
+    ['BarberStreet Montreux','barbier','24/09 11:30',null,0,0,'29/09',false,'sent',''],
+    ['Furetto Barber club','barbier','24/09 12:00',null,0,0,'29/09',false,'sent',''],
+    ['La Loge Coiffure & Barbier','barbier','24/09 12:30',null,0,0,'29/09',false,'sent',''],
+    ['Tiptop Barbershop','barbier','24/09 13:00',null,0,0,'29/09',false,'sent',''],
+    ["Koko's Bistro FoodTruck",'food truck','25/09 10:30',null,0,0,'30/09',false,'sent',''],
+    ['RH Installations Sanitaires','sanitaire','25/09 12:00',null,0,0,'30/09',false,'sent',''],
+    ['Haut-Plateau Electricité Sàrl','électricien','25/09 13:30',null,0,0,'30/09',false,'sent','']
+  ].map(function (r) { return { name: r[0], trade: r[1], sent: r[2], delay: r[3], visits: r[4], active: r[5], fu: r[6], fuClick: r[7], state: r[8], issue: r[9] }; });
+  var STATE = { sent: ['sent','Envoyé, reçu'], clicked: ['clicked','A cliqué'], engaged: ['engaged','A visité'], interested: ['interested','Intéressé'], refused: ['refused','Refus'] };
+  var ORDER = { sent: 0, clicked: 1, engaged: 2, refused: 3, interested: 4 };
+
+  // ---- Funnel ----
+  var F = [['Mails envoyés',25],['Reçus',25],['Clic humain',10],['Visite engagée',10],['Revenu une 2e fois',5],['Ont écrit',4],['Intéressés',2],['Vente encaissée',0]];
+  var fh = '';
+  F.forEach(function (s, i) {
+    var w = Math.max(1.5, s[1] / 25 * 100), share = Math.round(s[1] / 25 * 100);
+    fh += '<div class="step"><span>' + s[0] + '</span><div><div class="bar" style="width:' + w + '%;opacity:' + (1 - i * .08) + '"></div></div><span class="n">' + s[1] + ' <small>' + share + ' %</small></span></div>';
+    if (i === 1) fh += '<div class="drop">puis <b>15 prospects</b> ne cliquent jamais</div>';
+    if (i === 4) fh += '<div class="drop">puis <b>8 visiteurs</b> ne répondent pas, dont 3 très actifs</div>';
+  });
+  document.getElementById('funnel').innerHTML = fh;
+
+  // ---- Daily chart (SVG) ----
+  var D = [['mar 22',6,0,5],['mer 23',6,0,1],['jeu 24',6,1,1],['ven 25',6,5,2],['lun 28',1,6,1],['mar 29',0,5,0],['mer 30',0,6,0]];
+  var R = { 'jeu 24': 1, 'mar 29': 2, 'mer 30': 1 };
+  (function () {
+    var W = 720, H = 190, L = 28, B = 28, T = 26, max = 7, gw = (W - L - 8) / D.length, bw = Math.min(16, gw / 4);
+    var bar = getComputedStyle(document.documentElement).getPropertyValue('--bar').trim(), bar3 = getComputedStyle(document.documentElement).getPropertyValue('--bar-3').trim();
+    var s = '<svg viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="Envois, relances et premières visites par jour">';
+    [0, 2, 4, 6].forEach(function (v) { var y = T + (H - T - B) * (1 - v / max); s += '<line x1="' + L + '" x2="' + W + '" y1="' + y + '" y2="' + y + '" stroke="var(--line-soft)"/><text x="' + (L - 6) + '" y="' + (y + 4) + '" font-size="11" text-anchor="end" fill="var(--ink-soft)" font-family="IBM Plex Mono, monospace">' + v + '</text>'; });
+    D.forEach(function (d, i) {
+      var cx = L + gw * i + gw / 2, base = H - B;
+      [[d[1], bar], [d[2], bar3], [d[3], ACCENT]].forEach(function (b, j) {
+        var h = (H - T - B) * b[0] / max, x = cx + (j - 1) * (bw + 3) - bw / 2;
+        if (b[0]) s += '<rect x="' + x + '" y="' + (base - h) + '" width="' + bw + '" height="' + h + '" rx="3" fill="' + b[1] + '"/>';
+        if (b[0] && j === 2) s += '<text x="' + (x + bw / 2) + '" y="' + (base - h - 5) + '" font-size="11" text-anchor="middle" fill="var(--ink-soft)" font-family="IBM Plex Mono, monospace">' + b[0] + '</text>';
+      });
+      s += '<text x="' + cx + '" y="' + (H - 8) + '" font-size="12" text-anchor="middle" fill="var(--ink-soft)" font-family="IBM Plex Sans, sans-serif">' + d[0] + '</text>';
+      if (R[d[0]]) s += '<g><rect x="' + (cx - 24) + '" y="' + (T - 20) + '" width="48" height="16" rx="8" fill="var(--surface-2)"/><text x="' + cx + '" y="' + (T - 8) + '" font-size="10.5" font-weight="600" text-anchor="middle" fill="var(--ink)" font-family="IBM Plex Sans, sans-serif">' + R[d[0]] + ' rép.</text></g>';
+    });
+    s += '</svg>';
+    document.getElementById('daily').innerHTML = s;
+  })();
+
+  // ---- To-do lists ----
+  var silent = P.filter(function (p) { return p.state === 'engaged'; }).sort(function (a, b) { return b.active - a.active; });
+  document.getElementById('silent').innerHTML = silent.map(function (p) {
+    return '<div class="it"><div><div class="nm">' + p.name + '</div><div class="meta">' + p.visits + ' visite' + (p.visits > 1 ? 's' : '') + ' · <b>' + p.active + ' s</b> actifs · ' + (p.issue || 'silencieux') + '</div></div><div class="acts"><button class="btn" type="button">Voir</button><button class="btn primary" type="button">Relancer</button></div></div>';
+  }).join('');
+  var replies = [
+    ['Les projets d\'Hugo','intéressé','24/09 10:35 · mail, 5 min après le clic','« ça peut être intéressant mais je préférerais qu\'on se voit et qu\'on en discute de vive voix »','Répondre',true],
+    ['TP Motorsport','intéressé','29/09 23:00 · bandeau, après la relance','« Ça pourrai interesser mais j\'ai des offres pour le memme style mais a prix plus attractif »','Répondre',true],
+    ['AK Paysagiste','refus','29/09 19:57 · mail reçu hors outil, compté à la main','« je souhaite que vous retiriez mon site au plus vite »','Traité',false],
+    ['Chergui Chauffage Sanitaire','refus','30/09 18:00 · mail, relance','« je ne pourrai pas donner suite à votre demande »','Traité',false]
+  ];
+  document.getElementById('replies').innerHTML = replies.map(function (r) {
+    return '<div class="it"><div><div class="nm">' + r[0] + ' <span class="st ' + (r[1] === 'intéressé' ? 'interested' : 'refused') + '">' + r[1] + '</span></div><div class="meta">' + r[2] + '</div></div><div class="acts"><button class="btn' + (r[5] ? ' primary' : '') + '" type="button">' + r[4] + '</button></div><div class="verbatim">' + r[3] + '</div></div>';
+  }).join('');
+
+  // ---- Table ----
+  var tbody = document.querySelector('#tbl tbody'), filter = 'all', sortKey = 'active', sortDir = -1;
+  function matches(p) {
+    if (filter === 'all') return true;
+    if (filter === 'clicked') return p.visits > 0;
+    if (filter === 'silent') return p.state === 'engaged';
+    if (filter === 'replied') return p.state === 'interested' || p.state === 'refused';
+    if (filter === 'none') return p.visits === 0 && p.state === 'sent';
+    return true;
+  }
+  function spark(p) {
+    if (!p.visits) return '<span class="sm">—</span>';
+    var n = Math.min(p.visits, 6), h = '';
+    for (var i = 0; i < n; i++) h += '<i style="height:' + (6 + (i % 3) * 4) + 'px" class="' + (i === n - 1 ? 'hi' : '') + '"></i>';
+    return '<span class="spark" title="' + p.visits + ' visites">' + h + '</span> <span class="mono">' + p.visits + '</span>';
+  }
+  function render() {
+    var rows = P.filter(matches).slice().sort(function (a, b) {
+      var va = a[sortKey], vb = b[sortKey];
+      if (sortKey === 'state') { va = ORDER[a.state]; vb = ORDER[b.state]; }
+      if (va === null || va === undefined) va = -1; if (vb === null || vb === undefined) vb = -1;
+      if (typeof va === 'string') return va.localeCompare(vb) * sortDir;
+      return (va - vb) * sortDir;
+    });
+    tbody.innerHTML = rows.map(function (p) {
+      var st = STATE[p.state];
+      return '<tr>' +
+        '<td class="c-name"><div class="nm">' + p.name + '</div><div class="sm">' + p.trade + '</div></td>' +
+        '<td class="c-state"><span class="st ' + st[0] + '">' + st[1] + '</span></td>' +
+        '<td class="c-sent mono">' + p.sent + '</td>' +
+        '<td class="c-delay mono">' + (p.delay === null ? '<span class="sm">—</span>' : (p.delay < 60 ? p.delay + ' min' : Math.round(p.delay / 60) + ' h')) + '</td>' +
+        '<td class="c-visits">' + spark(p) + '</td>' +
+        '<td class="c-time mono">' + (p.active ? p.active + ' s' : '<span class="sm">—</span>') + '</td>' +
+        '<td class="c-fu mono">' + (p.fu || '<span class="sm">—</span>') + (p.fuClick ? ' <span class="st clicked" style="padding:1px 7px">cliqué</span>' : '') + '</td>' +
+        '<td class="c-issue"><span class="sm">' + (p.issue || '') + '</span></td>' +
+      '</tr>';
+    }).join('');
+    document.querySelectorAll('#tbl th button').forEach(function (b) { b.classList.toggle('on', b.dataset.k === sortKey); b.textContent = b.textContent.replace(/ [▲▼]$/, '') + (b.dataset.k === sortKey ? (sortDir < 0 ? ' ▼' : ' ▲') : ''); });
+  }
+  document.querySelectorAll('#tbl th button').forEach(function (b) {
+    b.addEventListener('click', function () { if (sortKey === b.dataset.k) sortDir = -sortDir; else { sortKey = b.dataset.k; sortDir = b.dataset.k === 'name' ? 1 : -1; } render(); });
+  });
+  document.querySelectorAll('#filters .chip').forEach(function (c) {
+    c.addEventListener('click', function () { filter = c.dataset.f; document.querySelectorAll('#filters .chip').forEach(function (o) { o.setAttribute('aria-pressed', o === c ? 'true' : 'false'); }); render(); });
+  });
+  render();
+
+  // ---- Trades ----
+  var TR = [['garage',2,2],['électricien',2,3],['sanitaire',2,4],['paysagiste',3,10],['food truck',1,2],['barbier',0,4]];
+  document.getElementById('trades').innerHTML = TR.map(function (t) {
+    var pct = Math.round(t[1] / t[2] * 100);
+    return '<div class="r"><span>' + t[0] + '</span><div><div class="t' + (t[0] === 'barbier' || t[0] === 'food truck' ? ' soft' : '') + '" style="width:' + Math.max(1.5, pct) + '%"></div></div><span class="n">' + pct + ' % <small>' + t[1] + '/' + t[2] + '</small></span></div>';
+  }).join('');
+
+  // ---- Hours ----
+  (function () {
+    var hours = { 7: 2, 8: 1, 10: 1, 11: 4, 12: 1, 13: 7, 15: 1, 16: 3, 20: 1, 21: 1, 22: 3 };
+    var W = 340, H = 70, bar = getComputedStyle(document.documentElement).getPropertyValue('--bar').trim(), s = '<svg viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="Visites par heure">';
+    var n = 17, gw = W / n;
+    for (var h = 7; h <= 23; h++) {
+      var v = hours[h] || 0, i = h - 7, hh = v / 7 * 44, x = i * gw + 2;
+      s += '<rect x="' + x + '" y="' + (50 - hh) + '" width="' + (gw - 4) + '" height="' + hh + '" rx="2" fill="' + (h >= 18 ? ACCENT : bar) + '"/>';
+      if (h % 3 === 1) s += '<text x="' + (x + (gw - 4) / 2) + '" y="64" font-size="10" text-anchor="middle" fill="var(--ink-soft)" font-family="IBM Plex Mono, monospace">' + h + 'h</text>';
+    }
+    s += '</svg>';
+    document.getElementById('hours').innerHTML = s;
+  })();
+})();
+</script>
