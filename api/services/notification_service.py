@@ -337,7 +337,7 @@ class NotificationService:
             event_name: Underscore event name (e.g. ``sms_delivered``).
             prospect_id: Prospect the SMS targets, when it is a saved prospect.
             fallback_name: Name shown when no prospect is known (the raw number for a manual send).
-            detail: Failure reason appended to the body (e.g. ``Spam``), when known.
+            detail: Detail appended to the body: a failure reason (e.g. ``Spam``), or what a sent SMS cost.
             is_assistant_module: The SMS belongs to the receptionist module: its push says so, like the module's others.
         """
         mapping = _SMS_EVENT_NOTIFS.get(event_name)

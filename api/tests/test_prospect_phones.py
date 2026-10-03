@@ -82,3 +82,43 @@ class TestSyncPromotesMobile:
         prospect = _prospect(phone="01 42 68 53 00", phones=["01 42 68 53 00"])
         sync_prospect_phones(prospect, add=["04 78 00 00 00"])
         assert prospect.phone == "01 42 68 53 00"
+
+
+class TestSwissProspectPhones:
+    def test_a_swiss_079_is_the_swiss_mobile_of_a_swiss_prospect(self) -> None:
+        prospect = _prospect(phone="079 123 45 67", phones=["079 123 45 67"], country="CH")
+        assert first_mobile_e164(prospect) == "+41791234567"
+
+    def test_a_swiss_prospect_mobile_behind_his_geneva_landline_is_found(self) -> None:
+        prospect = _prospect(phone="022 123 45 67", phones=["022 123 45 67", "+41 76 123 45 67"], country="CH")
+        assert first_mobile_e164(prospect) == "+41761234567"
+
+    def test_a_french_mobile_stored_on_a_swiss_prospect_is_not_his_mobile(self) -> None:
+        prospect = _prospect(phone="06 12 34 56 78", phones=["06 12 34 56 78"], country="CH")
+        assert first_mobile_e164(prospect) is None
+
+    def test_a_prospect_without_country_reads_as_french(self) -> None:
+        assert first_mobile_e164(_prospect(phone="079 123 45 67")) == "+33791234567"
+
+    def test_dedupe_reads_national_and_international_swiss_forms_as_one_number(self) -> None:
+        assert dedupe_phones(["079 123 45 67", "+41 79 123 45 67", "022 123 45 67"], country="CH") == [
+            "079 123 45 67",
+            "022 123 45 67",
+        ]
+
+    def test_sync_promotes_a_discovered_swiss_mobile(self) -> None:
+        prospect = _prospect(phone="022 123 45 67", phones=["022 123 45 67"], country="CH")
+        sync_prospect_phones(prospect, add=["079 123 45 67"])
+        assert prospect.phones == ["079 123 45 67", "022 123 45 67"]
+        assert prospect.phone == "079 123 45 67"
+
+
+class TestClosedCountryProspectPhones:
+    def test_a_belgian_prospect_has_no_mobile_to_text(self) -> None:
+        prospect = _prospect(phone="0470 12 34 56", phones=["0470 12 34 56"], country="BE")
+        assert first_mobile_e164(prospect) is None
+
+    def test_a_belgian_mobile_is_not_promoted_over_the_landline(self) -> None:
+        prospect = _prospect(phone="02 511 11 11", phones=["02 511 11 11"], country="BE")
+        sync_prospect_phones(prospect, add=["0470 12 34 56"])
+        assert prospect.phones == ["02 511 11 11", "0470 12 34 56"]

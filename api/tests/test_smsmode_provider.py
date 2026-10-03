@@ -163,7 +163,7 @@ class TestSmsModeProvider:
 
 
 class TestComposeBody:
-    def test_relance_body_recalls_the_email_with_link_signature_and_stop(self) -> None:
+    def test_relance_body_recalls_the_email_with_link_and_signature_and_leaves_the_mention_to_smsmode(self) -> None:
         service = SmsService()
         template = find_sms_template(DEFAULT_FOLLOW_UP_KEY)
         assert template is not None
@@ -173,6 +173,5 @@ class TestComposeBody:
         )
         assert "email" in body
         assert "demo.dibodev.fr/garage-central" in body
-        assert body.endswith("STOP au 36180")
-        assert body.count("36180") == 1
-        assert "Léo" in body
+        assert "STOP" not in body and "36180" not in body
+        assert body.endswith("Léo")

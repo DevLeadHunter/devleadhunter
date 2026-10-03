@@ -5,7 +5,7 @@ upcoming send is MATERIALISED as an :class:`SmsAutoQueue` row with an exact slot
 the forecast shows real times and the operator can cancel or reschedule any pending
 row. On each pass the worker revalidates pending rows (eligibility can be lost),
 plans the newly eligible prospects, then sends what is due — always inside the legal
-window, capped per pass and per day, never texting a prospect twice.
+window, capped per pass and per day, one first contact and one relance per prospect at most.
 """
 
 from __future__ import annotations
@@ -29,16 +29,11 @@ from models.sms_message import SmsMessage
 from services.contact_lock_service import MODULE_WEBSITES, contact_lock_service
 from services.demo_site_service import demo_site_service
 from services.prospect_phones import first_mobile_e164
-from services.sms.send_window import (
-    is_within_window,
-    next_send_slot,
-    now_in_paris,
-    paris_to_utc_naive,
-    utc_to_paris_naive,
-)
+from services.sms.send_window import france_send_window
 from services.sms.smsmode_provider import smsmode_provider
 from services.sms_auto_campaign_service import sms_auto_campaign_service
 from services.sms_config_service import sms_config_service
+from services.sms_prospecting_rules import SmsProspectingRules
 from services.sms_relance_service import SmsRelanceCandidate, sms_relance_service
 from services.sms_service import sms_service
 from services.tracking_links import sms_tracked_link
@@ -106,8 +101,13 @@ class SmsAutomationService:
         """
         if prospect is None:
             return "Prospect introuvable"
-        if db.query(SmsMessage.id).filter(SmsMessage.user_id == user_id, SmsMessage.prospect_id == prospect.id).first():
-            return "Déjà SMSé"
+        country_refusal = SmsProspectingRules.country_refusal(prospect)
+        if country_refusal:
+            return country_refusal
+        if kind == "cold" and SmsProspectingRules.has_received_a_prospecting_sms(db, user_id, prospect.id):
+            return "Déjà contacté par SMS"
+        if kind == "relance" and SmsProspectingRules.has_completed_the_sequence(db, user_id, prospect.id):
+            return "Déjà relancé par SMS (ou SMS envoyé à la main)"
         if prospect.do_not_contact:
             return "Ne plus contacter"
         if contact_lock_service.is_locked_for_module(prospect, MODULE_WEBSITES, datetime.utcnow()):
@@ -207,14 +207,16 @@ class SmsAutomationService:
             .filter(SmsAutoQueue.user_id == config.user_id)
             .all()
         }
-        now = now_in_paris()
+        now = france_send_window.now()
         delay = timedelta(days=config.auto_relance_after_days)
         entries: list[tuple[datetime, SmsRelanceCandidate]] = []
         if config.auto_relance_enabled:
             for candidate in sms_relance_service.find_relance_projection_candidates(db, config.user_id):
                 if candidate.prospect.id in engaged:
                     continue
-                eligible = utc_to_paris_naive(candidate.emailed_at + delay) if candidate.emailed_at else now
+                eligible = (
+                    france_send_window.to_local_naive(candidate.emailed_at + delay) if candidate.emailed_at else now
+                )
                 entries.append((max(now, eligible), candidate))
         if config.cold_sms_enabled:
             for candidate in sms_relance_service.find_cold_candidates(db, config.user_id, limit=_MAX_PLANNED):
@@ -233,7 +235,7 @@ class SmsAutomationService:
             .all()
         )
         for (scheduled_at,) in existing:
-            paris = utc_to_paris_naive(scheduled_at)
+            paris = france_send_window.to_local_naive(scheduled_at)
             slot_used[paris] = slot_used.get(paris, 0) + 1
             day_used[paris.date()] = day_used.get(paris.date(), 0) + 1
         today = now.date()
@@ -255,7 +257,7 @@ class SmsAutomationService:
                     campaign_id=relance_campaign.id if belongs_to_campaign and relance_campaign else None,
                     kind="cold" if candidate.cold else "relance",
                     status="pending",
-                    scheduled_at=paris_to_utc_naive(slot_paris),
+                    scheduled_at=france_send_window.to_utc_naive(slot_paris),
                     emailed_at=candidate.emailed_at,
                 )
             )
@@ -290,17 +292,19 @@ class SmsAutomationService:
         slot_used = dict(slot_used)
         day_used = dict(day_used)
         assigned: list[datetime] = []
-        cursor = next_send_slot(now_in_paris())
+        cursor = france_send_window.next_open_slot(france_send_window.now())
         index = 0
         while index < len(earliest_list) and cursor < end_paris and len(assigned) < _MAX_PLANNED:
             if day_used.get(cursor.date(), 0) >= settings.sms_auto_daily_cap:
-                cursor = next_send_slot(datetime.combine(cursor.date() + timedelta(days=1), datetime.min.time()))
+                cursor = france_send_window.next_open_slot(
+                    datetime.combine(cursor.date() + timedelta(days=1), datetime.min.time())
+                )
                 continue
-            if not is_within_window(cursor):
-                cursor = next_send_slot(cursor)
+            if not france_send_window.is_open(cursor):
+                cursor = france_send_window.next_open_slot(cursor)
                 continue
             if earliest_list[index] > cursor:
-                cursor = next_send_slot(earliest_list[index])
+                cursor = france_send_window.next_open_slot(earliest_list[index])
                 continue
             room = settings.sms_auto_per_run - slot_used.get(cursor, 0)
             while (
@@ -353,6 +357,9 @@ class SmsAutomationService:
                 if candidate is None:
                     row.status = "skipped"
                     row.skip_reason = reason or "Non éligible"
+                    continue
+                # The pass runs on the French window: a holiday of the prospect's own country keeps the row pending.
+                if sms_service.legal_window_refusal(candidate.prospect.country) is not None:
                     continue
                 template_key = (
                     relance_campaign.sms_template_key

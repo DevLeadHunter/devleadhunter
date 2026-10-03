@@ -62,16 +62,9 @@ from services.sms.dlr import (
     dlr_status_detail,
     dlr_status_value,
 )
-from services.sms.gsm_segments import segment_count
 from services.sms.mo import mo_is_stop, mo_origin_message_id, mo_ref_client, mo_sender_number
-from services.sms.phone_normalizer import to_e164_fr
-from services.sms.send_window import (
-    is_within_window,
-    next_send_slot,
-    now_in_paris,
-    paris_to_utc_naive,
-    utc_to_paris_naive,
-)
+from services.sms.phone_normalizer import PhoneNumberPlans, to_e164_fr
+from services.sms.send_window import france_send_window
 from services.sms.smsmode_provider import smsmode_provider
 from services.sms.templates import (
     DEFAULT_FIRST_CONTACT_KEY,
@@ -81,7 +74,7 @@ from services.sms.templates import (
 )
 from services.sms_config_service import sms_config_service
 from services.sms_relance_service import sms_relance_service
-from services.sms_service import sms_service
+from services.sms_service import SmsSendOutcome, sms_service
 from services.sms_variables import SmsVariables
 from services.tracking_links import sms_tracked_link
 
@@ -181,21 +174,21 @@ async def send_relance(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> SmsSendResponse:
-    """Send a relance SMS to one eligible prospect."""
-    refusal = sms_service.legal_window_refusal()
-    if refusal:
-        sms_service.log_window_block(current_user.id, prospect_id=prospect_id, detail=refusal)
-        return SmsSendResponse(sent=False, reason=refusal)
+    """Send a relance SMS to one eligible prospect, inside the legal window of his country."""
     candidates = sms_relance_service.find_candidates(db, current_user.id, limit=200)
     candidate = next((c for c in candidates if c.prospect.id == prospect_id), None)
     if candidate is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=(
-                "Prospect non éligible à une relance SMS (déjà relancé, pas de mobile, pas de démo active,"
-                " ou réservé par un autre module)."
+                "Prospect non éligible à une relance SMS (déjà relancé, pas de mobile, pays sans SMS de"
+                " prospection, pas de démo active, ou réservé par un autre module)."
             ),
         )
+    refusal = sms_service.legal_window_refusal(candidate.prospect.country)
+    if refusal:
+        sms_service.log_window_block(current_user.id, prospect_id=prospect_id, detail=refusal)
+        return SmsSendResponse(sent=False, reason=refusal)
     sent = await sms_relance_service.send_relance(db, current_user.id, candidate)
     return SmsSendResponse(sent=sent, reason=None if sent else "Envoi refusé par le provider")
 
@@ -277,14 +270,14 @@ async def reschedule_auto_sms(
     moment = request.scheduled_at
     if moment.tzinfo is not None:
         moment = moment.astimezone(UTC).replace(tzinfo=None)
-    paris = utc_to_paris_naive(moment)
-    if not is_within_window(paris):
-        paris = next_send_slot(paris)
-    if paris <= now_in_paris():
+    paris = france_send_window.to_local_naive(moment)
+    if not france_send_window.is_open(paris):
+        paris = france_send_window.next_open_slot(paris)
+    if paris <= france_send_window.now():
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail="La nouvelle date doit être dans le futur."
         )
-    row.scheduled_at = paris_to_utc_naive(paris)
+    row.scheduled_at = france_send_window.to_utc_naive(paris)
     row.status = "pending"
     row.skip_reason = None
     db.commit()
@@ -522,9 +515,12 @@ async def preview_template(
         video_url=video_url,
         sale_price_cents=PricingService.sale_price_cents(db, current_user.id),
     )
+    phone_refusal = sms_service.contact_phone_refusal(template, variables)
+    if phone_refusal:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=phone_refusal)
     body = sms_service.render_template_body(template, variables)
     return SmsTemplatePreviewResponse(
-        key=template.key, body=body, segments=segment_count(sms_service.compose_manual_body(body))
+        key=template.key, body=body, segments=sms_service.marketing_segment_count(body, country=prospect.country)
     )
 
 
@@ -554,7 +550,27 @@ async def send_manual_sms(
         from services.demo_lead_inbox_service import demo_lead_inbox_service
 
         demo_lead_inbox_service.mark_handled_for_prospect(db, current_user.id, payload.prospect_id)
-    return SmsSendResponse(sent=outcome.sent, reason=outcome.reason)
+    return _send_response(outcome)
+
+
+def _send_response(outcome: SmsSendOutcome) -> SmsSendResponse:
+    """Serialize a send outcome with the segments and cost of the SMS when it left.
+
+    Args:
+        outcome: The service outcome, its message row set when the send was attempted.
+
+    Returns:
+        The response the composer shows after a send.
+    """
+    message = outcome.message if outcome.sent else None
+    return SmsSendResponse(
+        sent=outcome.sent,
+        reason=outcome.reason,
+        segments=message.segments if message else None,
+        price_cents=message.price_cents if message else None,
+        provider_segments=outcome.provider_segments,
+        provider_text=outcome.provider_text,
+    )
 
 
 @router.post("/callbacks/dlr", status_code=status.HTTP_200_OK)
@@ -694,7 +710,7 @@ def _match_stop_message(db: Session, payload: dict[str, object]) -> SmsMessage |
             if matched is not None:
                 return matched
     number = mo_sender_number(payload)
-    phone_e164 = to_e164_fr(number) or (number if number.startswith("+") else None)
+    phone_e164 = to_e164_fr(number) or PhoneNumberPlans.international_to_e164(number)
     if phone_e164:
         return (
             db.query(SmsMessage).filter(SmsMessage.to_e164 == phone_e164).order_by(SmsMessage.created_at.desc()).first()

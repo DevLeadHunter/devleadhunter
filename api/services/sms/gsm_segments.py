@@ -92,13 +92,29 @@ def segment_count(text: str) -> int:
     Returns:
         The segment count (``0`` for an empty body).
     """
+    return segment_count_with_reserve(text, 0)
+
+
+def segment_count_with_reserve(text: str, reserved_characters: int) -> int:
+    """Number of SMS segments *text* costs once the provider appends *reserved_characters* more to it.
+
+    The appended characters (an opt-out mention) share the body's encoding: one more character
+    of a UCS-2 message is a UCS-2 character.
+
+    Args:
+        text: The message body as we send it.
+        reserved_characters: Characters the provider adds after the body.
+
+    Returns:
+        The segment count (``0`` for an empty body).
+    """
     if not text:
         return 0
     if is_gsm7(text):
-        length = sum(2 if ch in _GSM7_EXTENDED else 1 for ch in text)
+        length = sum(2 if ch in _GSM7_EXTENDED else 1 for ch in text) + reserved_characters
         single, multi = _GSM_SINGLE, _GSM_MULTI
     else:
-        length = len(text)
+        length = len(text) + reserved_characters
         single, multi = _UCS2_SINGLE, _UCS2_MULTI
     if length <= single:
         return 1

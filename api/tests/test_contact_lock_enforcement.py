@@ -156,7 +156,7 @@ def _stub_sms_dispatch(monkeypatch: pytest.MonkeyPatch) -> list[int]:
         return SimpleNamespace(sent=True, reason=None)
 
     monkeypatch.setattr(sms_config_service, "get", lambda _db, _user_id: SimpleNamespace(sender="GarageMartin"))
-    monkeypatch.setattr(sms_service, "legal_window_refusal", lambda: None)
+    monkeypatch.setattr(sms_service, "legal_window_refusal", lambda country=None: None)
     monkeypatch.setattr(sms_service, "send_to_prospect", send_to_prospect)
     monkeypatch.setattr(CampaignQueueService, "_has_active_assistant", lambda _self, _pid, _uid: True)
     monkeypatch.setattr(CampaignQueueService, "_active_demo_for_prospect", lambda _self, _pid, _uid: None)

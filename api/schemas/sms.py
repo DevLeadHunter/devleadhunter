@@ -47,10 +47,18 @@ class SmsRelanceCandidateResponse(BaseModel):
 
 
 class SmsSendResponse(BaseModel):
-    """Outcome of a relance send."""
+    """Outcome of a send (relance or manual), with what it cost when it left."""
 
     sent: bool
     reason: str | None = None
+    segments: int | None = Field(default=None, description="Billed segments, the provider's count when it gave one")
+    price_cents: int | None = Field(
+        default=None, description="Cost in cents: the provider's, else our country estimate"
+    )
+    provider_segments: int | None = Field(default=None, description="Segments smsmode counted (messagePartCount)")
+    provider_text: str | None = Field(
+        default=None, description="Body smsmode acknowledged, its opt-out mention included"
+    )
 
 
 class SmsTemplateResponse(BaseModel):
@@ -68,18 +76,22 @@ class SmsTemplateResponse(BaseModel):
 
 
 class SmsTemplatePreviewResponse(BaseModel):
-    """A library template rendered for one prospect (STOP mention excluded, appended at send)."""
+    """A library template rendered for one prospect (smsmode appends the opt-out mention at send)."""
 
     key: str
     body: str
-    segments: int = Field(description="Segments the SMS will bill once the STOP mention is appended")
+    segments: int = Field(description="Segments the SMS will bill once smsmode appends its opt-out mention")
 
 
 class SmsManualSendRequest(BaseModel):
     """Payload to send one free-text SMS (manual composer / self-test)."""
 
-    to: str = Field(min_length=1, description="Recipient number, any French format")
-    text: str = Field(min_length=1, max_length=1000, description="Message body (STOP mention appended automatically)")
+    to: str = Field(
+        min_length=1, description="Recipient mobile: national form of the prospect's country, or international (+…)"
+    )
+    text: str = Field(
+        min_length=1, max_length=1000, description="Message body (smsmode appends the opt-out mention itself)"
+    )
     prospect_id: int | None = Field(default=None, description="Linked prospect, when the number belongs to one")
     recipient_name: str | None = Field(default=None, max_length=255, description="Display label for a bare number")
 
@@ -113,7 +125,9 @@ class SmsReplyCreateRequest(BaseModel):
     """Payload to consign an SMS reply received on the operator's phone."""
 
     prospect_id: int | None = Field(default=None, description="Prospect the reply belongs to")
-    from_number: str = Field(min_length=1, description="Number the prospect wrote from, any French format")
+    from_number: str = Field(
+        min_length=1, description="Number the prospect wrote from: his country's national form, or international (+…)"
+    )
     body: str = Field(min_length=1, max_length=2000, description="Message text as received")
     received_at: datetime | None = Field(default=None, description="When the reply arrived (defaults to now)")
 

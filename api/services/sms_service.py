@@ -1,11 +1,13 @@
 """SMS orchestration — normalise, guard, send, log.
 
-Sends ONE relance SMS to a prospect: normalise the number to E.164, verify it is
-a mobile, honour the per-user STOP suppression list, send through the configured
-provider, and log the outcome. The legal send window is enforced by the caller
-(the queue) and re-checked here as a hard backstop. The body carries the plain
-demo URL (never a shortened link — French operators filter those) and always the
-mandatory « STOP au 36180 » opt-out mention.
+Sends ONE prospecting SMS (first contact or relance) to a prospect: refuse a country closed to
+cold SMS, normalise the number in the prospect's own numbering, verify it is a mobile, honour
+the per-user STOP suppression list and the « one first contact, one relance » rule, send through
+the configured provider, and log the outcome with its cost. The legal send window is enforced by
+the caller (the queue) and re-checked here in the prospect's timezone as a hard backstop. The
+body carries the plain demo URL (never a shortened link — French operators filter those); the
+opt-out mention is appended by smsmode itself (``body.stop``), in the shape the destination
+country expects, so we only reserve its characters in the segment budget.
 """
 
 from __future__ import annotations
@@ -28,14 +30,16 @@ from models.sms_reply import SmsReply
 from models.sms_suppression import SmsSuppression
 from services.activity_log_service import CATEGORY_SMS, STATUS_WARNING, activity_log_service
 from services.ai_assistant.assistant_service import ai_assistant_service
+from services.country_profiles import DEFAULT_COUNTRY_CODE, CountryProfiles
 from services.email_variables import EmailVariables
 from services.notification_service import notification_service
 from services.pricing_service import PricingService
 from services.prospect_phones import first_mobile_e164, sync_prospect_phones
-from services.sms.gsm_segments import segment_count, to_gsm7
-from services.sms.phone_normalizer import is_mobile_fr, to_e164_fr
-from services.sms.pricing import estimate_price_cents
-from services.sms.send_window import is_within_window, next_send_slot, now_in_paris
+from services.sms.gsm_segments import segment_count_with_reserve, to_gsm7
+from services.sms.opt_out_mention import SmsOptOutMention
+from services.sms.phone_normalizer import PhoneNumberPlans, to_e164_fr
+from services.sms.pricing import SmsPricing
+from services.sms.send_window import SmsSendWindow
 from services.sms.sms_provider import SmsProvider, SmsSendResult
 from services.sms.smsmode_provider import smsmode_provider
 from services.sms.templates import (
@@ -46,28 +50,48 @@ from services.sms.templates import (
     render_sms_template,
     resolve_sms_template,
 )
+from services.sms_prospecting_rules import SmsProspectingRules
 from services.sms_variables import SmsVariables
 
 logger = logging.getLogger(__name__)
 
-# Mandatory opt-out mention appended to every marketing SMS (36180 = the free
-# French STOP short code operators route back to the provider).
-_STOP_MENTION: str = " STOP au 36180"
+MARKETING_SMS_MAXIMUM_SEGMENTS: int = 2
+SERVICE_SMS_MAXIMUM_SEGMENTS: int = 1
+CONTACT_PHONE_VARIABLE: str = "telephone"
+CONTACT_PHONE_MISSING_REFUSAL: str = "Renseignez votre téléphone de contact dans votre profil"
 # The receptionist's pages in a body: its demo (/ia/…) or its video (/va/…), the short links (/s/ia/…) included.
 _ASSISTANT_PAGE_LINK: re.Pattern[str] = re.compile(r"/(?:s/)?(?:ia|va)/[\w-]+")
 
 
 class SmsSendOutcome:
-    """Result of a prospect-level send attempt (thin wrapper for the route)."""
+    """Result of a prospect-level send attempt (thin wrapper for the route).
 
-    def __init__(self, *, sent: bool, reason: str | None = None, message: SmsMessage | None = None) -> None:
+    Attributes:
+        sent: Whether smsmode accepted the message.
+        reason: Why it did not leave, when it did not.
+        message: The SMS row, once one was written.
+        provider_text: The body smsmode acknowledged, its opt-out mention included, when returned.
+        provider_segments: The segments smsmode bills, when returned.
+    """
+
+    def __init__(
+        self,
+        *,
+        sent: bool,
+        reason: str | None = None,
+        message: SmsMessage | None = None,
+        provider_text: str | None = None,
+        provider_segments: int | None = None,
+    ) -> None:
         self.sent = sent
         self.reason = reason
         self.message = message
+        self.provider_text = provider_text
+        self.provider_segments = provider_segments
 
 
 class SmsService:
-    """Send relance SMS and manage the STOP suppression list."""
+    """Send prospecting SMS and manage the STOP suppression list."""
 
     def __init__(self, provider: SmsProvider | None = None) -> None:
         """Bind the SMS provider (defaults to smsmode)."""
@@ -106,22 +130,27 @@ class SmsService:
         db.commit()
         logger.info("SMS suppression added for user %s (%s)", user_id, reason)
 
-    def legal_window_refusal(self) -> str | None:
-        """Refusal reason when the current Paris time is outside the legal SMS window.
+    def legal_window_refusal(self, country: str | None = None) -> str | None:
+        """Refusal reason when the current local time of *country* is outside the legal SMS window.
 
-        Marketing SMS is only legal Mon–Fri 8h–20h, Sat 10h–19h, never Sunday or a
-        French public holiday — a HARD guardrail, whatever the user configured.
+        Marketing SMS is only legal Mon–Fri 8h–20h, Sat 10h–19h, never Sunday or a public holiday of
+        the prospect's country — a HARD guardrail, whatever the user configured.
+
+        Args:
+            country: ISO code of the recipient's country; ``None`` reads the French window.
 
         Returns:
             A human refusal naming the next legal slot, or ``None`` when a send may go out now.
         """
-        now = now_in_paris()
-        if is_within_window(now):
+        window = SmsSendWindow(country)
+        now = window.now()
+        if window.is_open(now):
             return None
-        slot = next_send_slot(now)
+        slot = window.next_open_slot(now)
+        timezone_hint = "" if window.country == "FR" else f" (fuseau {window.timezone.key})"
         return (
             "Hors de la fenêtre légale d'envoi SMS (lun–ven 8h–20h, sam 10h–19h, jamais dimanche ni jour férié). "
-            f"Prochain créneau : {slot.strftime('%d/%m à %Hh%M')}."
+            f"Prochain créneau : {slot.strftime('%d/%m à %Hh%M')}{timezone_hint}."
         )
 
     def log_window_block(self, user_id: int, *, prospect_id: int | None = None, detail: str | None = None) -> None:
@@ -144,19 +173,19 @@ class SmsService:
         )
 
     def render_template_body(self, template: SmsTemplate, variables: dict[str, str]) -> str:
-        """Render a library template as the editable text of the composer (STOP mention excluded).
+        """Render a library template as the editable text of the composer, the body smsmode receives.
 
         Args:
             template: The library template.
             variables: The prospect's substitution map (see :class:`SmsVariables`).
 
         Returns:
-            The GSM-7 body, without the STOP mention the send appends.
+            The GSM-7 body; smsmode appends the opt-out mention after it at send time.
         """
         return to_gsm7(render_sms_template(template.body, variables))
 
     def compose_from_template(self, template: SmsTemplate, variables: dict[str, str]) -> str:
-        """Render a library template into a ready-to-send body, STOP mention included.
+        """Render a library template into the body sent to the provider (no mention: smsmode appends its own).
 
         Args:
             template: The library template.
@@ -165,7 +194,45 @@ class SmsService:
         Returns:
             The full message body.
         """
-        return self.compose_manual_body(self.render_template_body(template, variables))
+        return self.render_template_body(template, variables)
+
+    def to_gsm7_body(self, text: str) -> str:
+        """Trim a typed body and transliterate it to GSM-7 — the text smsmode receives.
+
+        Args:
+            text: The body typed by the user.
+
+        Returns:
+            The sendable body, without any opt-out mention (smsmode appends its own).
+        """
+        return to_gsm7((text or "").strip())
+
+    @staticmethod
+    def contact_phone_refusal(template: SmsTemplate, variables: dict[str, str]) -> str | None:
+        """Why a template giving the sender's phone (``{telephone}``) cannot leave: that phone is not set.
+
+        Args:
+            template: The library template about to be rendered.
+            variables: The prospect's substitution map.
+
+        Returns:
+            The French refusal, or ``None`` when the template needs no phone or the phone is set.
+        """
+        if template.uses(CONTACT_PHONE_VARIABLE) and not (variables.get(CONTACT_PHONE_VARIABLE) or "").strip():
+            return CONTACT_PHONE_MISSING_REFUSAL
+        return None
+
+    def marketing_segment_count(self, body: str, *, country: str | None) -> int:
+        """Segments a marketing body bills once smsmode appends the opt-out mention of the destination country.
+
+        Args:
+            body: The body as we send it.
+            country: ISO code of the destination country.
+
+        Returns:
+            The billed segment count.
+        """
+        return segment_count_with_reserve(body, SmsOptOutMention.reserved_characters_for_country(country))
 
     async def send_to_prospect(
         self,
@@ -179,11 +246,14 @@ class SmsService:
         template_key: str | None = None,
         video_url: str = "",
     ) -> SmsSendOutcome:
-        """Send one SMS (J+30 relance or first contact) to *prospect* from a library template, logging the outcome.
+        """Send one SMS (relance or first contact) to *prospect* from a library template, logging the outcome.
 
-        Without an explicit ``template_key``, a first contact renders the default first-contact
-        template and a relance renders the template chosen in the user's SMS config. A message that
-        does not fit one segment, even without the first name, is refused: it would be billed twice.
+        The prospect's history decides the touch: his first contact when he was never contacted, his
+        relance after a first contact (an email, or a first-contact SMS), nothing once the relance went.
+        A relance asked for a prospect never contacted is refused. Without an explicit ``template_key``,
+        a first contact renders the default first-contact template and a relance renders the template
+        chosen in the user's SMS config. A message that does not fit two segments, even without the
+        first name, is refused: it would be billed thrice.
 
         Args:
             db: Active database session.
@@ -191,7 +261,7 @@ class SmsService:
             prospect: Recipient prospect.
             config: The user's SMS config (sender + relance template).
             demo_url: Full demo URL to push (rendered without scheme by the templates).
-            cold: Whether this is a cold first contact rather than a relance.
+            cold: Whether the caller starts a first contact (cold SMS, SMS campaign) rather than a relance.
             template_key: Library template to render instead of the configured one.
             video_url: Full URL of the prospect's video page, for the templates that link it.
 
@@ -203,21 +273,25 @@ class SmsService:
             return SmsSendOutcome(sent=False, reason="Expéditeur SMS non configuré")
         if not self._provider.is_configured:
             return SmsSendOutcome(sent=False, reason="smsmode non configuré")
-        # France only: a Swiss 079 without prefix normalizes into a VALID +337 mobile — the SMS would reach a stranger.
-        if (prospect.country or "FR") != "FR":
-            return SmsSendOutcome(
-                sent=False, reason="SMS réservé aux prospects français (numérotation et STOP français)"
-            )
-        refusal = self.legal_window_refusal()
-        if refusal:
-            self.log_window_block(user_id, prospect_id=prospect.id, detail=refusal)
-            return SmsSendOutcome(sent=False, reason=refusal)
+        country_refusal = SmsProspectingRules.country_refusal(prospect)
+        if country_refusal:
+            return SmsSendOutcome(sent=False, reason=country_refusal)
+        country = SmsProspectingRules.country_of(prospect)
+        window_refusal = self.legal_window_refusal(country)
+        if window_refusal:
+            self.log_window_block(user_id, prospect_id=prospect.id, detail=window_refusal)
+            return SmsSendOutcome(sent=False, reason=window_refusal)
 
         to_e164 = first_mobile_e164(prospect)
         if not to_e164:
-            return SmsSendOutcome(sent=False, reason="Pas de mobile 06/07 pour ce prospect")
+            return SmsSendOutcome(sent=False, reason="Pas de mobile pour ce prospect dans la numérotation de son pays")
         if self.is_suppressed(db, user_id, to_e164):
             return SmsSendOutcome(sent=False, reason="Numéro désinscrit (STOP)")
+        touch = SmsProspectingRules.next_touch(db, user_id, prospect.id)
+        if touch is None:
+            return SmsSendOutcome(sent=False, reason=SmsProspectingRules.SEQUENCE_COMPLETE)
+        if not cold and touch is SmsMessageKind.FIRST_CONTACT:
+            return SmsSendOutcome(sent=False, reason=SmsProspectingRules.NO_FIRST_CONTACT_BEFORE_FOLLOW_UP)
 
         default_key = DEFAULT_FIRST_CONTACT_KEY if cold else (config.relance_template_key or DEFAULT_FOLLOW_UP_KEY)
         template = find_sms_template(template_key or default_key)
@@ -252,12 +326,15 @@ class SmsService:
             video_url=video_url,
             sale_price_cents=PricingService.sale_price_cents(db, user_id),
         )
+        phone_refusal = self.contact_phone_refusal(template, variables)
+        if phone_refusal:
+            return SmsSendOutcome(sent=False, reason=phone_refusal)
         body = self.compose_from_template(template, variables)
-        if segment_count(body) > 1:
-            # Over one segment: dropping the first name is the cheapest cut that keeps the message whole.
+        if self.marketing_segment_count(body, country=country) > MARKETING_SMS_MAXIMUM_SEGMENTS:
+            # Over the budget: dropping the first name is the cheapest cut that keeps the message whole.
             body = self.compose_from_template(template, {**variables, SmsVariables.SALUTATION: "Bonjour"})
-        segments = segment_count(body)
-        if segments > 1:
+        segments = self.marketing_segment_count(body, country=country)
+        if segments > MARKETING_SMS_MAXIMUM_SEGMENTS:
             logger.warning(
                 "SMS template %s would take %s segments for prospect %s", template.key, segments, prospect.id
             )
@@ -265,7 +342,7 @@ class SmsService:
                 sent=False,
                 reason=(
                     f"Modèle « {template.name} » trop long pour ce prospect : il partirait en {segments} SMS, "
-                    "choisissez-en un plus court"
+                    f"la limite est de {MARKETING_SMS_MAXIMUM_SEGMENTS}"
                 ),
             )
         message = SmsMessage(
@@ -277,25 +354,12 @@ class SmsService:
             body=body,
             status=SmsStatus.PENDING.value,
             segments=segments,
+            kind=touch.value,
         )
-        outcome = await self._send_and_log(db, message=message)
+        outcome = await self._send_and_log(db, message=message, opt_out_mention=True)
         if outcome.sent:
             self._start_assistant_ttl(db, assistant, body=body)
         return outcome
-
-    def compose_manual_body(self, text: str) -> str:
-        """Append the mandatory STOP mention to a free-text manual SMS (idempotent).
-
-        Args:
-            text: The body typed by the user.
-
-        Returns:
-            The body with the ``STOP au 36180`` mention appended once.
-        """
-        cleaned = to_gsm7((text or "").strip())
-        if "36180" in cleaned:
-            return cleaned
-        return cleaned + _STOP_MENTION
 
     async def send_manual(
         self,
@@ -308,14 +372,18 @@ class SmsService:
         prospect_id: int | None = None,
         recipient_name: str | None = None,
     ) -> SmsSendOutcome:
-        """Send one free-text SMS to a bare number (manual composer / self-test).
+        """Send one free-text SMS to a number (manual composer / self-test), smsmode's opt-out mention included.
+
+        A saved prospect must be the user's own and goes through the country guard; his number is read in his
+        country's numbering (a Swiss ``079`` is ``+4179…``, never ``+337…``). A bare number must be a French
+        mobile. A manual SMS ends the prospect's automated sequence: nothing automated may text him after it.
 
         Args:
             db: Active database session.
             user_id: Sender.
             config: The user's SMS config (sender).
-            to_raw: Recipient number as typed (any French format).
-            text: Free-text body (the STOP mention is appended automatically).
+            to_raw: Recipient number as typed.
+            text: Free-text body (smsmode appends the opt-out mention).
             prospect_id: Prospect id, when the number belongs to a saved prospect.
             recipient_name: Display label when there is no saved prospect.
 
@@ -325,20 +393,30 @@ class SmsService:
         channel_refusal = self._channel_refusal(config)
         if channel_refusal:
             return SmsSendOutcome(sent=False, reason=channel_refusal)
-        # The legal window guards marketing to a saved prospect; a bare-number self-test stays free.
-        if prospect_id is not None:
-            refusal = self.legal_window_refusal()
-            if refusal:
-                self.log_window_block(user_id, prospect_id=prospect_id, detail=refusal)
-                return SmsSendOutcome(sent=False, reason=refusal)
+        prospect = self._owned_prospect(db, user_id, prospect_id)
+        if prospect_id is not None and prospect is None:
+            return SmsSendOutcome(sent=False, reason="Prospect introuvable")
+        country = SmsProspectingRules.country_of(prospect) if prospect is not None else DEFAULT_COUNTRY_CODE
+        # The country guard and the legal window protect a saved prospect; a bare-number self-test stays free.
+        if prospect is not None:
+            country_refusal = SmsProspectingRules.country_refusal(prospect)
+            if country_refusal:
+                return SmsSendOutcome(sent=False, reason=country_refusal)
+            window_refusal = self.legal_window_refusal(country)
+            if window_refusal:
+                self.log_window_block(user_id, prospect_id=prospect_id, detail=window_refusal)
+                return SmsSendOutcome(sent=False, reason=window_refusal)
 
-        to_e164 = to_e164_fr(to_raw)
-        if not to_e164 or not is_mobile_fr(to_raw):
-            return SmsSendOutcome(sent=False, reason="Numéro invalide : un mobile français 06/07 est requis")
+        to_e164 = PhoneNumberPlans.mobile_of_country(to_raw, country=country)
+        if not to_e164:
+            return SmsSendOutcome(sent=False, reason=self._invalid_mobile_reason(prospect))
         if self.is_suppressed(db, user_id, to_e164):
             return SmsSendOutcome(sent=False, reason="Numéro désinscrit (STOP)")
-        body = self.compose_manual_body(text)
-        body_refusal = self._one_segment_refusal(body)
+        reserved_characters = SmsOptOutMention.reserved_characters_for_number(to_e164)
+        body = self.to_gsm7_body(text)
+        body_refusal = self._segment_budget_refusal(
+            body, reserved_characters=reserved_characters, maximum_segments=MARKETING_SMS_MAXIMUM_SEGMENTS
+        )
         if body_refusal:
             return SmsSendOutcome(sent=False, reason=body_refusal)
 
@@ -350,9 +428,10 @@ class SmsService:
             sender=config.sender,
             body=body,
             status=SmsStatus.PENDING.value,
-            segments=segment_count(body),
+            segments=segment_count_with_reserve(body, reserved_characters),
+            kind=SmsMessageKind.PROSPECTING.value,
         )
-        outcome = await self._send_and_log(db, message=message)
+        outcome = await self._send_and_log(db, message=message, opt_out_mention=True)
         # A manual contact supersedes the campaigns: nothing automated may double it.
         if outcome.sent and prospect_id is not None:
             self._hold_back_campaign_sends(db, prospect_id, label="Contacté manuellement (SMS)")
@@ -371,10 +450,10 @@ class SmsService:
     ) -> SmsSendOutcome:
         """Send a one-segment service SMS — an alert its recipient asked for, not marketing.
 
-        No STOP mention and no legal window (neither applies to a service message). The prospecting STOP
-        list is not applied either: a STOP answered to a cold SMS must not silence the alerts a client pays
-        for, nor the confirmation a visitor just asked for. Nothing is recorded against a prospect; the row
-        is marked ``service``, so it stays out of the prospecting daily cap and recap, and only a failure
+        No opt-out mention and no legal window (neither applies to a service message). The prospecting
+        STOP list is not applied either: a STOP answered to a cold SMS must not silence the alerts a client
+        pays for, nor the confirmation a visitor just asked for. Nothing is recorded against a prospect; the
+        row is marked ``service``, so it stays out of the prospecting daily cap and recap, and only a failure
         raises a notification (an alert going out as planned is not news).
 
         Args:
@@ -391,8 +470,10 @@ class SmsService:
         channel_refusal = self._channel_refusal(config)
         if channel_refusal:
             return SmsSendOutcome(sent=False, reason=channel_refusal)
-        body = to_gsm7((text or "").strip())
-        body_refusal = self._one_segment_refusal(body)
+        body = self.to_gsm7_body(text)
+        body_refusal = self._segment_budget_refusal(
+            body, reserved_characters=0, maximum_segments=SERVICE_SMS_MAXIMUM_SEGMENTS
+        )
         if body_refusal:
             return SmsSendOutcome(sent=False, reason=body_refusal)
         message = SmsMessage(
@@ -403,10 +484,10 @@ class SmsService:
             sender=config.sender,
             body=body,
             status=SmsStatus.PENDING.value,
-            segments=segment_count(body),
+            segments=segment_count_with_reserve(body, 0),
             kind=SmsMessageKind.SERVICE.value,
         )
-        return await self._send_and_log(db, message=message)
+        return await self._send_and_log(db, message=message, opt_out_mention=False)
 
     def _channel_refusal(self, config: SmsConfig) -> str | None:
         """
@@ -425,21 +506,55 @@ class SmsService:
         return None
 
     @staticmethod
-    def _one_segment_refusal(body: str) -> str | None:
+    def _owned_prospect(db: Session, user_id: int, prospect_id: int | None) -> ProspectDB | None:
+        """The user's prospect *prospect_id*, ``None`` when there is none or it belongs to someone else.
+
+        Args:
+            db: Active database session.
+            user_id: Owner.
+            prospect_id: The prospect id sent by the dashboard, when there is one.
+
+        Returns:
+            The prospect row, or ``None``.
         """
-        Why a composed body cannot leave: empty, or long enough to be billed (and sent) as several SMS.
+        if prospect_id is None:
+            return None
+        return db.query(ProspectDB).filter(ProspectDB.id == prospect_id, ProspectDB.user_id == user_id).first()
+
+    @staticmethod
+    def _invalid_mobile_reason(prospect: ProspectDB | None) -> str:
+        """The refusal for a typed number that is not a mobile we may text.
+
+        Args:
+            prospect: The saved prospect the number belongs to, ``None`` for a bare number.
+
+        Returns:
+            The French refusal, naming the prospect's country when there is one.
+        """
+        if prospect is None:
+            return "Numéro invalide : un mobile français 06/07 est requis"
+        label = CountryProfiles.get(SmsProspectingRules.country_of(prospect)).label
+        return f"Numéro invalide : un mobile du pays du prospect ({label}) est requis"
+
+    @staticmethod
+    def _segment_budget_refusal(body: str, *, reserved_characters: int, maximum_segments: int) -> str | None:
+        """
+        Why a composed body cannot leave: empty, or long enough to be billed beyond its segment budget.
 
         Args:
             body: The final body, GSM-7 transliterated.
+            reserved_characters: Characters the provider appends (the opt-out mention), counted in the budget.
+            maximum_segments: Segments the body may bill at most.
 
         Returns:
-            The refusal shown to the user, or ``None`` when the body fits one segment.
+            The refusal shown to the user, or ``None`` when the body fits.
         """
-        segments = segment_count(body)
+        segments = segment_count_with_reserve(body, reserved_characters)
         if segments == 0:
             return "Message vide"
-        if segments > 1:
-            return f"Message trop long : il partirait en {segments} SMS. Raccourcissez-le pour tenir en 1 seul."
+        if segments > maximum_segments:
+            limit = "1 seul" if maximum_segments == 1 else str(maximum_segments)
+            return f"Message trop long : il partirait en {segments} SMS. Raccourcissez-le pour tenir en {limit}."
         return None
 
     @staticmethod
@@ -480,14 +595,15 @@ class SmsService:
                 "Failed to start assistant demo TTL after SMS to prospect %s", assistant.prospect_id, exc_info=True
             )
 
-    async def _send_and_log(self, db: Session, *, message: SmsMessage) -> SmsSendOutcome:
-        """Persist the row, hand it to the provider, record the outcome, notify.
+    async def _send_and_log(self, db: Session, *, message: SmsMessage, opt_out_mention: bool) -> SmsSendOutcome:
+        """Persist the row, hand it to the provider, record the outcome and its cost, notify.
 
         A service message only notifies on failure: an alert going out as planned is not news.
 
         Args:
             db: Active database session.
             message: A ready-to-send SMS row (recipient, sender, body set).
+            opt_out_mention: Whether the provider appends its opt-out mention (every marketing SMS).
 
         Returns:
             The send outcome.
@@ -504,6 +620,7 @@ class SmsService:
             to_e164=message.to_e164,
             sender=message.sender,
             text=message.body,
+            opt_out_mention=opt_out_mention,
             # smsmode requires refClient to be 3–140 chars, so a bare id ("1") is rejected.
             ref_client=f"dlh-{message.id}",
             callback_url=callback_url,
@@ -512,9 +629,11 @@ class SmsService:
         if result.success:
             message.status = SmsStatus.SENT.value
             message.provider_message_id = result.provider_message_id
-            # smsmode returns no price for our account, so fall back to a segment-based estimate.
+            message.segments = result.provider_segments or message.segments
             message.price_cents = (
-                result.price_cents if result.price_cents is not None else estimate_price_cents(message.segments)
+                result.price_cents
+                if result.price_cents is not None
+                else SmsPricing.estimate_cents_for_number(message.segments, to_e164=message.to_e164)
             )
         else:
             message.status = SmsStatus.FAILED.value
@@ -525,7 +644,13 @@ class SmsService:
             self._mark_prospect_contacted(db, message.prospect_id)
         if not result.success or message.kind != SmsMessageKind.SERVICE.value:
             await self._notify_send(db, message, success=result.success)
-        return SmsSendOutcome(sent=result.success, reason=result.error, message=message)
+        return SmsSendOutcome(
+            sent=result.success,
+            reason=result.error,
+            message=message,
+            provider_text=result.provider_text,
+            provider_segments=result.provider_segments,
+        )
 
     def _mark_prospect_contacted(self, db: Session, prospect_id: int) -> None:
         """Flag the prospect as contacted after a successful send — mirrors the email path (best-effort).
@@ -559,7 +684,7 @@ class SmsService:
             logger.warning("Could not hold back campaign sends for prospect %s: %s", prospect_id, exc)
 
     async def _notify_send(self, db: Session, message: SmsMessage, *, success: bool) -> None:
-        """Raise the send/failure notification for a just-sent SMS (best-effort).
+        """Raise the send/failure notification for a just-sent SMS, the cost of a sent one in its detail (best-effort).
 
         Args:
             db: Active database session.
@@ -572,8 +697,24 @@ class SmsService:
             event_name="sms_sent" if success else "sms_failed",
             prospect_id=message.prospect_id,
             fallback_name=message.recipient_name or message.to_e164,
+            detail=self._segments_and_cost_label(message) if success else None,
             is_assistant_module=self.is_assistant_message(message),
         )
+
+    @staticmethod
+    def _segments_and_cost_label(message: SmsMessage) -> str:
+        """The segments and cost of a sent SMS, as the activity feed shows them (« 2 SMS · ≈ 13 c »).
+
+        Args:
+            message: The sent SMS row, its price set.
+
+        Returns:
+            The one-line cost detail.
+        """
+        segments_label = "1 SMS" if message.segments == 1 else f"{message.segments} SMS"
+        if message.price_cents is None:
+            return segments_label
+        return f"{segments_label} · ≈ {SmsPricing.french_amount_label(message.price_cents)}"
 
     def record_reply(
         self,
@@ -595,7 +736,7 @@ class SmsService:
             db: Active database session.
             user_id: Owner consigning the reply.
             prospect_id: Prospect the reply belongs to (``None`` for a bare number).
-            from_raw: Number the prospect wrote from, any French format.
+            from_raw: Number the prospect wrote from: national form of his country, or international.
             body: Message text as received.
             received_at: When the reply arrived (defaults to now, UTC).
 
@@ -605,17 +746,20 @@ class SmsService:
         Raises:
             ValueError: On an unparseable number, an empty body, or an unknown prospect.
         """
-        from_e164 = to_e164_fr(from_raw)
+        prospect = self._owned_prospect(db, user_id, prospect_id)
+        if prospect_id is not None and prospect is None:
+            raise ValueError("Prospect introuvable")
+        country = SmsProspectingRules.country_of(prospect) if prospect is not None else DEFAULT_COUNTRY_CODE
+        from_e164 = self._reply_number_to_e164(from_raw, country=country)
         if not from_e164:
-            raise ValueError("Numéro invalide : un numéro français est requis")
+            if country == DEFAULT_COUNTRY_CODE:
+                raise ValueError("Numéro invalide : un numéro français est requis")
+            raise ValueError(
+                "Numéro invalide : un mobile du pays du prospect ou un numéro international (+…) est requis"
+            )
         text = (body or "").strip()
         if not text:
             raise ValueError("Message vide")
-        prospect: ProspectDB | None = None
-        if prospect_id is not None:
-            prospect = db.query(ProspectDB).filter(ProspectDB.id == prospect_id, ProspectDB.user_id == user_id).first()
-            if prospect is None:
-                raise ValueError("Prospect introuvable")
         reply = SmsReply(
             user_id=user_id,
             prospect_id=prospect_id,
@@ -632,6 +776,26 @@ class SmsService:
         if prospect_id is not None:
             self._hold_back_campaign_sends(db, prospect_id, label="Le prospect a répondu (SMS)")
         return reply
+
+    @staticmethod
+    def _reply_number_to_e164(from_raw: str, *, country: str) -> str | None:
+        """E.164 of the number a reply came from, read in the prospect's country.
+
+        A French prospect's number may be any French number; another prospect's must be a mobile of his
+        country, or a number typed in international form (``+…`` or ``00…``), never a French reading of it.
+
+        Args:
+            from_raw: The number as typed by the operator.
+            country: ISO code of the prospect's country, France for a bare number.
+
+        Returns:
+            The number as ``+…``, or ``None`` when it does not parse.
+        """
+        if country == DEFAULT_COUNTRY_CODE:
+            return to_e164_fr(from_raw)
+        typed = (from_raw or "").strip()
+        international = PhoneNumberPlans.international_to_e164(typed) if typed.startswith(("+", "00")) else None
+        return PhoneNumberPlans.mobile_of_country(typed, country=country) or international
 
     def list_thread(self, db: Session, user_id: int, prospect_id: int) -> tuple[list[SmsMessage], list[SmsReply]]:
         """Return a prospect's SMS thread material — sent messages and consigned replies, oldest first.

@@ -40,7 +40,7 @@ from schemas.campaign import (
 from services.auth_service import get_current_user
 from services.campaign_queue_service import CampaignQueueService
 from services.campaign_service import campaign_service
-from services.sms.send_window import next_send_slot, now_in_paris, paris_to_utc_naive
+from services.sms.send_window import france_send_window
 from services.sms_auto_campaign_service import SMS_AUTO_RELANCE_KIND
 
 router = APIRouter(prefix="/campaigns", tags=["campaigns"])
@@ -985,7 +985,9 @@ async def resend_queue_item(
                 status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
                 detail="Seul un envoi sauté ou annulé peut être replanifié.",
             )
-        planned.scheduled_at = paris_to_utc_naive(next_send_slot(now_in_paris()))
+        planned.scheduled_at = france_send_window.to_utc_naive(
+            france_send_window.next_open_slot(france_send_window.now())
+        )
         planned.status = "pending"
         planned.skip_reason = None
         db.commit()

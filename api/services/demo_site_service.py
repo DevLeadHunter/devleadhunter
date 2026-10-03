@@ -20,7 +20,6 @@ from models.acquisition_run_item import AcquisitionRunItem
 from models.demo_site import DemoSite
 from models.order import Order
 from models.prospect_db import ProspectDB
-from models.sms_message import SmsMessage
 from models.sms_suppression import SmsSuppression
 from models.user import User
 from services.activity_log_service import (
@@ -48,6 +47,7 @@ from services.service_card_suggestion_service import (
     ServiceCardsUnavailableError,
     service_card_suggestion_service,
 )
+from services.sms_prospecting_rules import SmsProspectingRules
 from services.storyblok_service import (
     StoryblokProvisionError,
     StoryblokProvisionResult,
@@ -1513,9 +1513,8 @@ class DemoSiteService:
     def _should_keep_dormant(self, db: Session, site: DemoSite) -> bool:
         """Whether an expiring demo should be kept dormant for a possible SMS relance.
 
-        Kept when the prospect can still be SMS-reached: a French mobile, not marked
-        « ne plus contacter », not opted out (STOP), and not already texted (the one-SMS
-        touch is still available).
+        Kept when the prospect can still be SMS-reached: a mobile of his country, not marked
+        « ne plus contacter », not opted out (STOP), and his one relance SMS still to come.
 
         Args:
             db: Active database session.
@@ -1540,13 +1539,7 @@ class DemoSiteService:
             is not None
         ):
             return False
-        already_texted = (
-            db.query(SmsMessage.id)
-            .filter(SmsMessage.user_id == site.user_id, SmsMessage.prospect_id == site.prospect_id)
-            .first()
-            is not None
-        )
-        return not already_texted
+        return not SmsProspectingRules.has_completed_the_sequence(db, site.user_id, site.prospect_id)
 
     @staticmethod
     def _purge_demo_video(site: DemoSite) -> None:
