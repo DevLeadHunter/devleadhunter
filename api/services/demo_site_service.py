@@ -152,6 +152,7 @@ class DemoSiteService:
         city: str | None = None,
         description: str | None = None,
         theme: dict[str, str] | None = None,
+        country: str = "FR",
     ) -> dict:
         """Build content JSON for client-side preview without provisioning."""
         palette = theme or self._default_theme_for_template(template_id)
@@ -163,7 +164,16 @@ class DemoSiteService:
             description=description,
             template_id=template_id,
             theme=palette,
+            country=country,
         )
+
+    def _prospect_country_for_site(self, db: Session, demo_site: DemoSite) -> str:
+        """The country of the prospect a demo site belongs to, France without a linked prospect."""
+        prospect_id: int | None = getattr(demo_site, "prospect_id", None)
+        if not prospect_id:
+            return "FR"
+        prospect = enrichment_service.get_prospect_for_user(db, demo_site.user_id, prospect_id)
+        return (prospect.country if prospect is not None else None) or "FR"
 
     def _enrichment_dict_for_site(self, db: Session, demo_site: DemoSite) -> dict | None:
         """Return the prospect's enrichment data for a demo site, when linked."""
@@ -259,6 +269,7 @@ class DemoSiteService:
             template_id=demo_site.template_id,
             theme=palette,
             enrichment=enrichment,
+            country=self._prospect_country_for_site(db, demo_site),
         )
         # Curated cards (food specialties) replace the generated ones on EVERY rebuild — a colour
         # tweak must never wipe them again.
@@ -878,6 +889,7 @@ class DemoSiteService:
                 theme=palette,
                 enrichment=enrichment_dict,
                 section_overrides=demo_site.section_overrides,
+                country=self._prospect_country_for_site(db, demo_site),
             )
 
             demo_site.storyblok_space_id = provision.space_id

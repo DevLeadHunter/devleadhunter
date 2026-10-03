@@ -62,7 +62,7 @@ def _service(monkeypatch: pytest.MonkeyPatch, *, unsubscribed: bool) -> tuple[Em
     )
     monkeypatch.setattr(sending.unsubscribe_service, "is_unsubscribed", lambda _db, _email: unsubscribed)
     monkeypatch.setattr(
-        sending.unsubscribe_service, "add_unsubscribe_footer", lambda body, _link: body + "<!--FOOTER-->"
+        sending.unsubscribe_service, "add_unsubscribe_footer", lambda body, _link, **_kwargs: body + "<!--FOOTER-->"
     )
     monkeypatch.setattr(sending.unsubscribe_service, "generate_unsubscribe_link", lambda *_args: "https://x/u")
 

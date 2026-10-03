@@ -5,15 +5,16 @@ is the primary — the one shown in the table — and ``prospect.phone`` is alwa
 it. The primary may be a business landline, so SMS does NOT target it blindly: it targets the first
 *mobile* found across the whole list (see :func:`first_mobile_e164`), read in the prospect's own
 country's numbering, and only in a country open to SMS prospecting. Mirrors
-:mod:`services.prospect_emails`, with an E.164 dedupe key so « 06 42 19 38 12 » and « +33642193812 »
-count as one number.
+:mod:`services.prospect_emails`, with an E.164 dedupe key read in the prospect's country, so
+« 06 42 19 38 12 » and « +33642193812 » count as one number, like « 514 555-0199 » and « +15145550199 ».
 """
 
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from services.sms.phone_normalizer import PhoneNumberPlans, to_e164_fr
+from services.country_profiles import DEFAULT_COUNTRY_CODE
+from services.sms.phone_normalizer import PhoneNumberPlans, to_e164
 from services.sms_prospecting_rules import SmsProspectingRules
 
 if TYPE_CHECKING:
@@ -25,21 +26,17 @@ def _clean(value: object) -> str | None:
     return value.strip() if isinstance(value, str) and value.strip() else None
 
 
-def _dedupe_key(phone: str, country: str | None) -> str:
-    """Build the identity key of a number — its E.164 form when parseable, else its bare digits."""
-    return (
-        PhoneNumberPlans.mobile_of_country(phone, country=country)
-        or to_e164_fr(phone)
-        or "".join(char for char in phone if char.isdigit() or char == "+")
-    )
+def _dedupe_key(phone: str, country: str) -> str:
+    """Build the identity key of a number — its E.164 form in ``country`` when parseable, else its bare digits."""
+    return to_e164(phone, country=country) or "".join(char for char in phone if char.isdigit() or char == "+")
 
 
-def dedupe_phones(phones: list[object], *, country: str | None = None) -> list[str]:
+def dedupe_phones(phones: list[object], *, country: str = DEFAULT_COUNTRY_CODE) -> list[str]:
     """Dedupe phone numbers by E.164 identity, keeping first-seen order and dropping blanks.
 
     Args:
         phones: The raw numbers, blanks and non-strings included.
-        country: The owner's ISO country code, deciding how a national number is read (France when unset).
+        country: ISO code of the owner's country, deciding how a national number is read.
 
     Returns:
         The cleaned, deduped numbers in first-seen order.

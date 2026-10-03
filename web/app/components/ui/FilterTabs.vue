@@ -1,6 +1,9 @@
 <template>
   <!-- Borderless: the parent row owns the separator, so the active underline sits on it. -->
-  <div role="tablist" class="no-scrollbar flex max-w-full items-center gap-1 overflow-x-auto">
+  <div
+    role="tablist"
+    class="no-scrollbar -mb-px flex max-w-full touch-pan-x items-center gap-1 overflow-x-auto overflow-y-hidden overscroll-x-contain"
+  >
     <button
       v-for="tab in props.tabs"
       :key="tab.key"
@@ -19,7 +22,7 @@
       </span>
       <span
         v-if="tab.key === props.modelValue"
-        class="absolute inset-x-3 -bottom-px h-0.5 rounded-full bg-[var(--app-accent)]"
+        class="absolute inset-x-3 bottom-0 h-0.5 rounded-full bg-[var(--app-accent)]"
       ></span>
     </button>
   </div>

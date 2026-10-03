@@ -230,6 +230,104 @@ def test_split_postal_address_extracts_zip_and_city() -> None:
     assert _split_postal_address("8 avenue des Ternes", "Paris") == ("8 avenue des Ternes", None, "Paris")
 
 
+def test_split_postal_address_reads_the_prospect_country_shape() -> None:
+    """Swiss and Belgian codes have four digits; the country written after the city is never taken for it."""
+    assert _split_postal_address("Rue du Rhône 12, 1204 Genève", None, "CH") == ("Rue du Rhône 12", "1204", "Genève")
+    assert _split_postal_address("Rue de la Loi 16, 1000 Bruxelles", None, "BE") == (
+        "Rue de la Loi 16",
+        "1000",
+        "Bruxelles",
+    )
+    assert _split_postal_address("Rue du Rhône 12, 1204 Genève, Suisse", None, "CH") == (
+        "Rue du Rhône 12",
+        "1204",
+        "Genève",
+    )
+    assert _split_postal_address("12 rue de la Paix, 75002 Paris, France", None) == (
+        "12 rue de la Paix",
+        "75002",
+        "Paris",
+    )
+    # A four-digit code is not a French one: the address stays whole rather than inventing a zip.
+    assert _split_postal_address("Rue du Rhône 12, 1204 Genève", "Genève", "FR") == (
+        "Rue du Rhône 12, 1204 Genève",
+        None,
+        "Genève",
+    )
+
+
+def test_split_postal_address_keeps_a_french_street_whole_when_no_city_follows_the_code() -> None:
+    """Only North America writes the city before the code: a French street keeps its commas."""
+    assert _split_postal_address("Lieu-dit Les Champs, Route de Vitré, 35000", "Rennes") == (
+        "Lieu-dit Les Champs, Route de Vitré",
+        "35000",
+        "Rennes",
+    )
+
+
+def test_split_postal_address_reads_a_quebec_address() -> None:
+    """Québec writes the city and its province before the code: « Montréal (Québec) H2X 1Y4 »."""
+    assert _split_postal_address("123, rue Sainte-Catherine Ouest, Montréal (Québec) H2X 1Y4", None, "CA") == (
+        "123, rue Sainte-Catherine Ouest",
+        "H2X 1Y4",
+        "Montréal",
+    )
+    assert _split_postal_address("123 Rue X, Laval, QC h7n 1a1", None, "CA") == ("123 Rue X", "H7N 1A1", "Laval")
+    assert _split_postal_address("123 Rue X, Laval, QC H7N 1A1, Canada", None, "CA") == (
+        "123 Rue X",
+        "H7N 1A1",
+        "Laval",
+    )
+
+
+def test_billing_details_pre_set_the_prospect_country() -> None:
+    """A Swiss prospect opens the drawer on Switzerland, with its address split the Swiss way."""
+
+    class _ProspectDB(_FakeDB):
+        def query(self, *_entities: object) -> SimpleNamespace:
+            prospect = SimpleNamespace(address="Rue du Rhône 12, 1204 Genève", city=None, country="CH")
+            return SimpleNamespace(filter=lambda *_c: SimpleNamespace(first=lambda: prospect))
+
+    order = _order(
+        prospect_id=3, billing_address=None, billing_city=None, billing_zip_code=None, billing_country_code=None
+    )
+    details = OrderService().billing_details_for_order(_ProspectDB(), order)
+    assert details["country_code"] == "CH"
+    assert (details["address"], details["zip_code"], details["city"]) == ("Rue du Rhône 12", "1204", "Genève")
+
+
+def test_missing_billing_fields_wants_no_tax_id_outside_france(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Qonto documents the TIN as optional: a Swiss client is invoiced without one, a French one is not."""
+    service = OrderService()
+    monkeypatch.setattr(service, "connected_provider", lambda _db, _user: "qonto")
+    billing = {
+        "name": "Paysagiste Favre",
+        "email": "info@favre.ch",
+        "address": "Rue du Rhône 12",
+        "zip_code": "1204",
+        "city": "Genève",
+        "country_code": "CH",
+    }
+    assert service.missing_billing_fields(_FakeDB(), SimpleNamespace(id=1), billing) == []
+    assert service.missing_billing_fields(_FakeDB(), SimpleNamespace(id=1), {**billing, "country_code": "FR"}) == [
+        "le SIREN / SIRET"
+    ]
+
+
+def test_missing_billing_fields_wants_no_neq_for_a_quebec_client(monkeypatch: pytest.MonkeyPatch) -> None:
+    service = OrderService()
+    monkeypatch.setattr(service, "connected_provider", lambda _db, _user: "qonto")
+    billing = {
+        "name": "Paysagement Tremblay",
+        "email": "info@tremblay.ca",
+        "address": "123, rue Sainte-Catherine Ouest",
+        "zip_code": "H2X 1Y4",
+        "city": "Montréal",
+        "country_code": "CA",
+    }
+    assert service.missing_billing_fields(_FakeDB(), SimpleNamespace(id=1), billing) == []
+
+
 def test_missing_billing_fields_lists_every_gap(monkeypatch: pytest.MonkeyPatch) -> None:
     """Every provider-required field missing is reported at once, not one by one."""
     service = OrderService()

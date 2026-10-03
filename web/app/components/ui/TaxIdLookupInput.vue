@@ -70,6 +70,7 @@ const emit: EmitFn<UiTaxIdLookupInputEmits> = defineEmits<UiTaxIdLookupInputEmit
 
 const lookupStatus: Ref<TaxIdLookupStatus> = ref('idle')
 const verifiedCompanyName: Ref<string | null> = ref(null)
+const hasTypedLetters: Ref<boolean> = ref(false)
 
 let lookupDebounceTimeout: ReturnType<typeof setTimeout> | null = null
 let lookupAbortController: AbortController | null = null
@@ -92,6 +93,10 @@ const inputStateClass: ComputedRef<string | undefined> = computed((): string | u
 const errorMessage: ComputedRef<string | undefined> = computed((): string | undefined => {
   if (compactTaxId.value.length === 0 || lookupStatus.value === 'loading' || lookupStatus.value === 'verified') {
     return undefined
+  }
+
+  if (hasTypedLetters.value) {
+    return 'Un SIREN / SIRET ne contient que des chiffres : pour un client étranger, choisissez son pays.'
   }
 
   if (isIncompleteTaxId(compactTaxId.value)) {
@@ -126,6 +131,7 @@ function handleInput(event: Event): void {
     return
   }
   const rawValue: string = (event.target as HTMLInputElement).value
+  hasTypedLetters.value = /\p{L}/u.test(rawValue)
   emit('update:modelValue', normalizeTaxIdDigits(rawValue).slice(0, SIRET_DIGIT_COUNT))
 }
 
@@ -144,7 +150,7 @@ function scheduleLookup(digits: string): void {
     return
   }
 
-  if (!isCompleteTaxId(digits) || !hasValidTaxIdChecksum(digits)) {
+  if (hasTypedLetters.value || !isCompleteTaxId(digits) || !hasValidTaxIdChecksum(digits)) {
     lookupStatus.value = 'idle'
     return
   }

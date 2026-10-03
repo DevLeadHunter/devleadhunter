@@ -146,43 +146,49 @@
       </div>
     </div>
 
-    <div class="no-scrollbar flex items-center gap-1 overflow-x-auto border-b border-[var(--app-line)]">
-      <button
-        type="button"
-        class="relative flex flex-1 items-center justify-center px-4 py-2.5 text-sm font-medium whitespace-nowrap transition-colors @2xl:flex-none"
-        :class="
-          activeTab === 'not_contacted'
-            ? 'text-[var(--app-ink)]'
-            : 'text-[var(--app-ink-soft)] hover:text-[var(--app-ink)]'
-        "
-        @click="activeTab = 'not_contacted'"
+    <div class="border-b border-[var(--app-line)]">
+      <div
+        class="no-scrollbar -mb-px flex touch-pan-x items-center gap-1 overflow-x-auto overflow-y-hidden overscroll-x-contain"
       >
-        Pas contacté
-        <span class="font-label ml-1.5 rounded-full bg-[var(--app-surface-2)] px-2 py-0.5 text-xs">
-          {{ notContactedCount }}
-        </span>
-        <span
-          v-if="activeTab === 'not_contacted'"
-          class="absolute inset-x-3 -bottom-px h-0.5 rounded-full bg-[var(--app-accent)]"
-        ></span>
-      </button>
-      <button
-        type="button"
-        class="relative flex flex-1 items-center justify-center px-4 py-2.5 text-sm font-medium whitespace-nowrap transition-colors @2xl:flex-none"
-        :class="
-          activeTab === 'contacted' ? 'text-[var(--app-ink)]' : 'text-[var(--app-ink-soft)] hover:text-[var(--app-ink)]'
-        "
-        @click="activeTab = 'contacted'"
-      >
-        Contacté
-        <span class="font-label ml-1.5 rounded-full bg-[var(--app-surface-2)] px-2 py-0.5 text-xs">
-          {{ contactedCount }}
-        </span>
-        <span
-          v-if="activeTab === 'contacted'"
-          class="absolute inset-x-3 -bottom-px h-0.5 rounded-full bg-[var(--app-accent)]"
-        ></span>
-      </button>
+        <button
+          type="button"
+          class="relative flex flex-1 items-center justify-center px-4 py-2.5 text-sm font-medium whitespace-nowrap transition-colors @2xl:flex-none"
+          :class="
+            activeTab === 'not_contacted'
+              ? 'text-[var(--app-ink)]'
+              : 'text-[var(--app-ink-soft)] hover:text-[var(--app-ink)]'
+          "
+          @click="activeTab = 'not_contacted'"
+        >
+          Pas contacté
+          <span class="font-label ml-1.5 rounded-full bg-[var(--app-surface-2)] px-2 py-0.5 text-xs">
+            {{ notContactedCount }}
+          </span>
+          <span
+            v-if="activeTab === 'not_contacted'"
+            class="absolute inset-x-3 bottom-0 h-0.5 rounded-full bg-[var(--app-accent)]"
+          ></span>
+        </button>
+        <button
+          type="button"
+          class="relative flex flex-1 items-center justify-center px-4 py-2.5 text-sm font-medium whitespace-nowrap transition-colors @2xl:flex-none"
+          :class="
+            activeTab === 'contacted'
+              ? 'text-[var(--app-ink)]'
+              : 'text-[var(--app-ink-soft)] hover:text-[var(--app-ink)]'
+          "
+          @click="activeTab = 'contacted'"
+        >
+          Contacté
+          <span class="font-label ml-1.5 rounded-full bg-[var(--app-surface-2)] px-2 py-0.5 text-xs">
+            {{ contactedCount }}
+          </span>
+          <span
+            v-if="activeTab === 'contacted'"
+            class="absolute inset-x-3 bottom-0 h-0.5 rounded-full bg-[var(--app-accent)]"
+          ></span>
+        </button>
+      </div>
     </div>
 
     <div v-if="isLoading" class="flex items-center justify-center py-16">
@@ -431,6 +437,7 @@ import type {
   ProspectTemperaturesResponse,
   WebsiteEquipmentScanResponse,
 } from '~/services/prospectsService'
+import { ProspectCountries } from '~/utils/prospectCountries'
 import { downloadProspectsJson, downloadProspectTemplateJson, parseProspectsJson } from '~/utils/prospectJson'
 import { ProspectWebsite } from '~/utils/prospectWebsite'
 import { EnrichmentService } from '~/services/enrichmentService'
@@ -921,6 +928,7 @@ async function handleImportFile(event: Event): Promise<void> {
           name: item.name,
           address: item.address || null,
           city: item.city || null,
+          country: item.country ?? ProspectCountries.france.code,
           phone: item.phone || null,
           email: item.email || null,
           website: item.website || null,

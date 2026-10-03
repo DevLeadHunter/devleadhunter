@@ -13,9 +13,10 @@ from models.demo_site import DemoSite
 from models.prospect_db import ProspectDB
 from models.prospect_enrichment import ProspectEnrichment
 from services.ai_assistant.assistant_service import ai_assistant_service
+from services.country_profiles import CountryProfile, CountryProfiles
 from services.decision_maker import build_greeting
 from services.french_date_formatter import FrenchDateFormatter
-from services.pricing_service import PricingService
+from services.regional_lexicon import RegionalLexicon
 from services.tracking_links import email_tracked_link
 from services.trade_normalizer import TradeNormalizer
 
@@ -303,7 +304,8 @@ class EmailVariables:
         `{salutation}` is always safe ("Bonjour" / "Bonjour Léo" / "Bonjour M. Guillaume"), while
         `{prenom}` and `{nom}` are empty when unknown. The video variables stay empty when the
         prospect has no generated clip — the queue guards prevent sending a template needing them.
-        The sender's active assistant is looked up once, for all the assistant variables.
+        The sender's active assistant is looked up once, for all the assistant variables. The prices
+        are written as the prospect reads them in his country (« 500 € », « ≈ 470 CHF », « ≈ 800 $ CA »).
 
         Args:
             db: Active database session.
@@ -311,8 +313,8 @@ class EmailVariables:
             demo_link: URL of his generated demo site.
             video_link: URL of the tracked video player page.
             video_thumbnail_url: Absolute URL of the personalised thumbnail.
-            sale_price_cents: The sender's website sale price, rendered into {prix}; empty when unset.
-            assistant_monthly_price_cents: The sender's assistant price, rendered into {prix_assistant}.
+            sale_price_cents: The sender's website sale price in euro cents, rendered into {prix}; empty when unset.
+            assistant_monthly_price_cents: The sender's assistant price in euro cents, rendered into {prix_assistant}.
             user_id: The sending user, whose own assistant the assistant variables resolve to.
             include_assistant_video: The campaign's video toggle; off, the receptionist's video stays out.
             variant: The send's A/B variant, stamped on the receptionist's links (the caller stamps the site's).
@@ -329,6 +331,7 @@ class EmailVariables:
         )
         if assistant_video_link:
             assistant_video_link = email_tracked_link(assistant_video_link, variant)
+        country: CountryProfile = CountryProfiles.get(prospect.country)
         return {
             cls.SALUTATION: build_greeting(first, last, gender),
             cls.FIRST_NAME: first or "",
@@ -348,11 +351,10 @@ class EmailVariables:
                 assistant_video_link, assistant_video_thumbnail, "Votre réceptionniste en vidéo"
             ),
             cls.OLD_WEBSITE: cls.display_website(prospect.website),
-            cls.PRICE: PricingService.format_price(sale_price_cents) if sale_price_cents is not None else "",
+            cls.PRICE: country.format_price(sale_price_cents) if sale_price_cents is not None else "",
             cls.PRICE_ASSISTANT: (
-                PricingService.format_price(assistant_monthly_price_cents)
-                if assistant_monthly_price_cents is not None
-                else ""
+                country.format_price(assistant_monthly_price_cents) if assistant_monthly_price_cents is not None else ""
             ),
             cls.EXPIRY_DATE: cls.resolve_expiry_date(db, demo_link, assistant),
+            RegionalLexicon.COUNTRY_KEY: country.code,
         }

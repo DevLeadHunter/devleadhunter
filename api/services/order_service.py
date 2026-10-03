@@ -10,7 +10,6 @@ from __future__ import annotations
 
 import html
 import logging
-import re
 from datetime import UTC, datetime, timedelta
 from decimal import ROUND_HALF_UP, Decimal
 from typing import TYPE_CHECKING, Any
@@ -29,6 +28,7 @@ from services.activity_log_service import (
     STATUS_WARNING,
     activity_log_service,
 )
+from services.country_profiles import DEFAULT_COUNTRY_CODE, CountryProfile, CountryProfiles
 from services.decision_maker.normalize import title_case_name
 from services.pricing_service import PricingService
 
@@ -50,7 +50,6 @@ _TERMINAL_STATUSES: tuple[str, ...] = (
     OrderStatus.REFUNDED.value,
     OrderStatus.CANCELLED.value,
 )
-_FRENCH_ZIP_PATTERN: re.Pattern[str] = re.compile(r"\b(\d{5})\b")
 
 # OVH statuses meaning the registrar is still processing the domain order — waiting on
 # OVH is not a delivery failure, so these keep the fulfilment retry budget intact.
@@ -89,17 +88,25 @@ def _format_business_name_for_display(name: str) -> str:
     return title_case_name(name) or name
 
 
-def _split_postal_address(address: str | None, city: str | None) -> tuple[str | None, str | None, str | None]:
+def _split_postal_address(
+    address: str | None, city: str | None, country: str = DEFAULT_COUNTRY_CODE
+) -> tuple[str | None, str | None, str | None]:
     """
     Split a free-form scraped address into (street, zip code, city).
 
     Scrapers return a single line ("12 rue de la Paix, 75002 Paris"), whereas the
-    payment providers want the parts separately. The last 5-digit group is the
-    zip code — a leading one would be a street number.
+    payment providers want the parts separately. The zip code takes the shape of the
+    prospect's country (five digits in France, four in Switzerland and Belgium,
+    « H2X 1Y4 » in Québec); the last match wins — a leading one would be a street
+    number. Europe writes the city after the code; North America writes it before
+    (« 123, rue X, Montréal (Québec) H2X 1Y4 »), so there, when nothing follows the code,
+    the city is the last comma segment before it. The country and the province written
+    after the city (« Genève, Suisse », « Laval, QC ») are never taken for it.
 
     Args:
         address: The scraped street address, if any.
         city: The prospect's city, used when the address carries none.
+        country: ISO code of the prospect's country, deciding the zip code shape.
 
     Returns:
         Tuple of (street, zip code, city), each None when undeterminable.
@@ -107,15 +114,20 @@ def _split_postal_address(address: str | None, city: str | None) -> tuple[str | 
     if not address:
         return None, None, (city or None)
 
+    profile: CountryProfile = CountryProfiles.get(country)
     single_line = " ".join(address.split())
-    zip_matches = list(_FRENCH_ZIP_PATTERN.finditer(single_line))
+    zip_matches = list(profile.postal_code_regex.finditer(single_line))
     if not zip_matches:
         return single_line or None, None, (city or None)
 
     zip_match = zip_matches[-1]
     street = single_line[: zip_match.start()].strip(" ,")
-    trailing_city = single_line[zip_match.end() :].strip(" ,")
-    return (street or None), zip_match.group(1), (city or trailing_city or None)
+    found_city = profile.strip_address_tail(single_line[zip_match.end() :])
+    if not found_city and profile.city_precedes_postal_code:
+        street = profile.strip_address_tail(street)
+        if "," in street:
+            street, found_city = (part.strip(" ,") for part in street.rsplit(",", 1))
+    return (street or None), zip_match.group(1).upper(), (city or found_city or None)
 
 
 def format_amount(amount_cents: int, currency: str = "eur") -> str:
@@ -313,7 +325,8 @@ class OrderService:
         Return the invoice's billing counterpart, pre-filled from the prospect.
 
         Stored details win once the operator has reviewed them; otherwise the
-        prospect's scraped address is split into street / zip / city so the
+        prospect's scraped address is split into street / zip / city — in the
+        prospect's country, which also pre-sets the billing country — so the
         drawer opens on something editable rather than empty.
 
         Args:
@@ -324,10 +337,14 @@ class OrderService:
             The billing fields expected by the « Finaliser la vente » drawer.
         """
         address, zip_code, city = order.billing_address, order.billing_zip_code, order.billing_city
-        if not any((address, zip_code, city)) and order.prospect_id:
+        country_code = order.billing_country_code
+        prospect: ProspectDB | None = None
+        if order.prospect_id and (not any((address, zip_code, city)) or not country_code):
             prospect = db.query(ProspectDB).filter(ProspectDB.id == order.prospect_id).first()
-            if prospect:
-                address, zip_code, city = _split_postal_address(prospect.address, prospect.city)
+        if prospect is not None:
+            country_code = country_code or CountryProfiles.get(prospect.country).code
+            if not any((address, zip_code, city)):
+                address, zip_code, city = _split_postal_address(prospect.address, prospect.city, country_code)
 
         return {
             "name": order.business_name or order.customer_name,
@@ -335,7 +352,7 @@ class OrderService:
             "address": address,
             "city": city,
             "zip_code": zip_code,
-            "country_code": order.billing_country_code or "FR",
+            "country_code": country_code or DEFAULT_COUNTRY_CODE,
             "tax_id": order.billing_tax_id,
             "vat_number": order.billing_vat_number,
         }
@@ -361,10 +378,12 @@ class OrderService:
         List the human labels of the billing fields still required.
 
         Requirements follow the provider that will invoice: both reject a client
-        without a postal address, and Qonto additionally rejects one without a TIN
-        (``tin_number`` — the SIREN/SIRET). A fully manual sale (cash, transfer)
-        just needs someone to bill and an address to email. The email is checked
-        here so a missing one blocks *before* an invoice number is burned.
+        without a postal address, and Qonto additionally rejects a French client
+        without a TIN (``tin_number`` — the SIREN/SIRET); the fiscal identifier of
+        another country (IDE, BCE, NEQ) is optional, as Qonto documents it. A fully
+        manual sale (cash, transfer) just needs someone to bill and an address to
+        email. The email is checked here so a missing one blocks *before* an
+        invoice number is burned.
 
         Args:
             db: Active database session.
@@ -380,8 +399,9 @@ class OrderService:
         provider = self.connected_provider(db, user)
         if provider is not None:
             required |= {"address": "l'adresse", "zip_code": "le code postal", "city": "la ville"}
-        if provider == PaymentProvider.QONTO.value:
-            required["tax_id"] = "le SIREN / SIRET"
+        country: CountryProfile = CountryProfiles.get(billing.get("country_code"))
+        if provider == PaymentProvider.QONTO.value and country.tax_id_required:
+            required["tax_id"] = f"le {country.tax_id_label}"
         return [label for key, label in required.items() if not (billing.get(key) or "").strip()]
 
     def save_billing_details(self, db: Session, order: Order, billing: dict[str, str | None]) -> Order:
@@ -401,7 +421,7 @@ class OrderService:
         order.billing_address = billing.get("address")
         order.billing_city = billing.get("city")
         order.billing_zip_code = billing.get("zip_code")
-        order.billing_country_code = (billing.get("country_code") or "FR").upper()
+        order.billing_country_code = CountryProfiles.get(billing.get("country_code")).code
         order.billing_tax_id = billing.get("tax_id")
         order.billing_vat_number = billing.get("vat_number")
         db.commit()
@@ -428,7 +448,7 @@ class OrderService:
             address=details["address"],
             city=details["city"],
             zip_code=details["zip_code"],
-            country_code=details["country_code"] or "FR",
+            country_code=details["country_code"] or DEFAULT_COUNTRY_CODE,
             vat_number=details["vat_number"],
             tax_id=details["tax_id"],
         )

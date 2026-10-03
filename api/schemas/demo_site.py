@@ -44,6 +44,9 @@ class DemoSitePreviewRequest(BaseModel):
     city: str | None = Field(default=None, max_length=128)
     description: str | None = Field(default=None, max_length=2000)
     theme: DemoSiteTheme | None = None
+    country: str = Field(
+        default="FR", min_length=2, max_length=2, description="ISO 3166-1 alpha-2 code of the prospect"
+    )
 
 
 class DemoSitePreviewResponse(BaseModel):

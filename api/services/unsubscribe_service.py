@@ -4,12 +4,14 @@ Unsubscribe service for managing email unsubscriptions (RGPD compliance).
 
 import hashlib
 import hmac
+from html import escape
 from urllib.parse import quote
 
 from sqlalchemy.orm import Session
 
 from core.config import settings
 from models.email_unsubscribe import EmailUnsubscribe
+from services.country_profiles import CountryProfiles
 
 
 def _normalize_email(email: str) -> str:
@@ -152,23 +154,55 @@ class UnsubscribeService:
         'font-size: 12px; color: #999; text-align: center;">'
     )
 
-    def add_unsubscribe_footer(self, html_body: str, unsubscribe_link: str) -> str:
+    def sender_identification_line(self, country: str | None, sender_name: str | None) -> str:
+        """
+        The sender identification a country's anti-spam law puts in the footer, empty elsewhere.
+
+        Canada (CASL) wants the sender named with a postal address in every commercial email. The
+        address is the ``SENDER_POSTAL_ADDRESS`` setting: left empty, the line is simply absent —
+        a send never fails on it.
+
+        Args:
+            country: ISO code of the recipient's country (``None`` reads as France).
+            sender_name: The sending identity's display name.
+
+        Returns:
+            The plain-text line (« Envoyé par Léo, 12 rue … »), or an empty string.
+        """
+        postal_address = (settings.sender_postal_address or "").strip()
+        if not postal_address or not CountryProfiles.get(country).email_footer_needs_postal_address:
+            return ""
+        name = (sender_name or "").strip()
+        return f"Envoyé par {name}, {postal_address}" if name else f"Envoyé par {postal_address}"
+
+    def add_unsubscribe_footer(
+        self,
+        html_body: str,
+        unsubscribe_link: str,
+        *,
+        country: str | None = None,
+        sender_name: str | None = None,
+    ) -> str:
         """
         Add unsubscribe footer to email HTML body.
 
         Args:
             html_body: Original HTML body
             unsubscribe_link: Unsubscribe link URL
+            country: ISO code of the recipient's country — Canada adds the sender's postal identification
+            sender_name: The sending identity's display name, for that identification
 
         Returns:
             HTML body with unsubscribe footer
         """
+        identification = self.sender_identification_line(country, sender_name)
+        identification_html = f"    <p>\n        {escape(identification)}\n    </p>\n" if identification else ""
         footer = f"""
 {self._FOOTER_MARKER}
     <p>
         Vous recevez cet email car vous êtes dans notre liste de prospects.
     </p>
-    <p>
+{identification_html}    <p>
         <a href="{unsubscribe_link}" style="color: #999; text-decoration: underline;">
             Se désabonner
         </a>

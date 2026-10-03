@@ -567,6 +567,7 @@ class EnrichmentScraper:
         city: str | None = None,
         google_maps_url: str | None = None,
         facebook_url: str | None = None,
+        country: str = "FR",
     ) -> EnrichmentData:
         """Fetch enrichment for a business: Google Maps (rich) + OpenStreetMap (stable gap-filler).
 
@@ -574,14 +575,16 @@ class EnrichmentScraper:
         Google is weak/blocked on (opening hours, social links, description) via a plain HTTP API.
         OSM runs even when nodriver is unavailable, so enrichment degrades gracefully instead of
         returning nothing. With no Google listing but a Facebook page, the read is delegated to the
-        Facebook scraper instead — Google wins whenever its URL is present.
+        Facebook scraper instead — Google wins whenever its URL is present. ``country`` is the
+        prospect's: it restricts the OSM lookup and tells the Facebook reader which postal code
+        and phone shapes to expect.
         """
         # No Google listing to anchor on → read the Facebook page instead (many artisans only have one).
         if not (google_maps_url or "").strip() and (facebook_url or "").strip():
             from scrappers.facebook_enrichment_scraper import facebook_enrichment_scraper
 
             fb_only = await facebook_enrichment_scraper.enrich(
-                business_name=business_name, facebook_url=facebook_url or ""
+                business_name=business_name, facebook_url=facebook_url or "", country=country
             )
             fb_only.photos = await _perceptual_dedupe_photos(fb_only.photos)
             fb_only.reviews = _dedupe_reviews(fb_only.reviews)
@@ -599,7 +602,7 @@ class EnrichmentScraper:
 
         # Complementary OpenStreetMap enrichment (plain HTTP, no browser, never blocked).
         try:
-            osm = await enrich_from_osm(business_name, city)
+            osm = await enrich_from_osm(business_name, city, country)
         except Exception as exc:
             logger.info("OSM enrichment failed for %s: %s", business_name, exc)
             osm = {}

@@ -18,9 +18,10 @@ from models.prospect_db import ProspectDB
 from models.user import User
 from services.ai_assistant.assistant_service import ai_assistant_service
 from services.assistant_pricing_service import AssistantPricingService
+from services.country_profiles import CountryProfile, CountryProfiles
 from services.decision_maker.greeting import build_greeting
 from services.email_variables import EmailVariables
-from services.pricing_service import PricingService
+from services.regional_lexicon import RegionalLexicon
 from services.tracking_links import sms_tracked_link
 from services.trade_normalizer import TradeNormalizer
 
@@ -102,7 +103,9 @@ class SmsVariables:
     ) -> dict[str, str]:
         """Build the full substitution map for a prospect's SMS.
 
-        The receptionist's links take the SMS short form, as the callers give the site's.
+        The receptionist's links take the SMS short form, as the callers give the site's. The prices
+        are written as the prospect reads them in his country (« 500 € », « ≈ 470 CHF », which the GSM-7
+        transliteration of the body turns into « env. 470 CHF »).
 
         Args:
             db: Active database session.
@@ -111,7 +114,7 @@ class SmsVariables:
             assistant: The sender's active assistant for him (``ai_assistant_service.get_active_for_prospect``), or None.
             demo_url: Full URL of his demo site (rendered without scheme).
             video_url: Full URL of his tracked video page (rendered without scheme).
-            sale_price_cents: The sender's website sale price, rendered into {prix}; empty when unset.
+            sale_price_cents: The sender's website sale price in euro cents, rendered into {prix}; empty when unset.
 
         Returns:
             The variable name to value map, ready for template substitution.
@@ -120,6 +123,7 @@ class SmsVariables:
         user: User | None = db.get(User, user_id)
         assistant_url: str = ai_assistant_service.page_url(assistant.slug) if assistant is not None else ""
         assistant_video_url: str = EmailVariables.assistant_video_urls(assistant)[0]
+        country: CountryProfile = CountryProfiles.get(prospect.country)
         return {
             cls.SALUTATION: build_greeting(first, last, gender),
             cls.COMPANY: prospect.name or "",
@@ -133,11 +137,10 @@ class SmsVariables:
                 cls.as_sms_link(sms_tracked_link(assistant_video_url)) if assistant_video_url else ""
             ),
             cls.OLD_WEBSITE: EmailVariables.display_website(prospect.website),
-            cls.PRICE: PricingService.format_price(sale_price_cents) if sale_price_cents is not None else "",
+            cls.PRICE: country.format_price(sale_price_cents) if sale_price_cents is not None else "",
             # Resolved from user_id (the assistant monthly price is per-user, like {prix}).
-            cls.PRICE_ASSISTANT: AssistantPricingService.format_price(
-                AssistantPricingService.monthly_price_cents(db, user_id)
-            ),
+            cls.PRICE_ASSISTANT: country.format_price(AssistantPricingService.monthly_price_cents(db, user_id)),
             cls.PHONE: cls.phone_for(user.contact_phone if user else None),
+            RegionalLexicon.COUNTRY_KEY: country.code,
             cls.SIGNATURE: cls.signature_for(user.name if user else None),
         }

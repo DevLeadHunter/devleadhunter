@@ -73,6 +73,18 @@ class TestParseCityPostal:
     def test_no_address_returns_none(self) -> None:
         assert _parse_city_postal("Aucune adresse ici", "") == (None, None)
 
+    def test_quebec_page_reads_its_postal_code_shape(self) -> None:
+        assert _parse_city_postal("Montréal, QC H2X 1Y4", country="CA") == ("Montréal", "H2X 1Y4")
+        assert _parse_city_postal("Laval, Québec, Canada h7n 1a1", country="CA") == ("Laval", "H7N 1A1")
+        assert _parse_city_postal("123 Rue X, Montréal, QC H2X 1Y4", country="CA") == ("Montréal", "H2X 1Y4")
+        # Five French digits mean nothing on a Québec page, and a Québec code nothing on a French one.
+        assert _parse_city_postal("Paris, France, 75011", country="CA") == (None, None)
+        assert _parse_city_postal("Montréal, QC H2X 1Y4", country="FR") == (None, None)
+
+    def test_swiss_page_reads_four_digits(self) -> None:
+        assert _parse_city_postal("Genève, Suisse, 1204", country="CH") == ("Genève", "1204")
+        assert _parse_city_postal("Rue du Rhône 12, 1204 Genève", country="CH") == ("Genève", "1204")
+
 
 class TestParsePhone:
     def test_coordonnees_block(self) -> None:
@@ -93,6 +105,13 @@ class TestParsePhone:
 
     def test_no_phone_returns_none(self) -> None:
         assert _parse_phone("Aucun numéro ici", "") is None
+
+    def test_quebec_page_reads_the_north_american_plan(self) -> None:
+        assert _parse_phone("Téléphone : (514) 555-0199", country="CA") == "514 555-0199"
+        assert _parse_phone("Appelez au +1 438 555 0100", country="CA") == "438 555-0100"
+        # A ten-digit Québec number is never read as a French one, and vice versa.
+        assert _parse_phone("Téléphone : 514 555-0199", country="FR") is None
+        assert _parse_phone("Tél : 06 29 34 58 99", country="CA") is None
 
 
 class TestFacebookScrapeEmptyGuard:

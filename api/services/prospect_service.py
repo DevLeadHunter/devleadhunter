@@ -18,7 +18,7 @@ from models.user import User
 from services.activity_log_service import CATEGORY_PROSPECT, STATUS_INFO, STATUS_WARNING, activity_log_service
 from services.inbound_demand_service import InboundDemandService
 from services.prospect_emails import sync_prospect_emails
-from services.sms.phone_normalizer import to_e164_fr
+from services.sms.phone_normalizer import to_e164
 from services.validation_service import ValidationService
 
 
@@ -178,7 +178,7 @@ class ProspectService:
         phones: set[str] = set()
         emails: set[str] = set()
         for db_prospect in db_prospects:
-            phone_e164 = to_e164_fr(db_prospect.phone) if db_prospect.phone else None
+            phone_e164 = to_e164(db_prospect.phone, country=db_prospect.country) if db_prospect.phone else None
             if phone_e164 and db_prospect.user_id:
                 prospect_phone[db_prospect.id] = phone_e164
                 phones.add(phone_e164)

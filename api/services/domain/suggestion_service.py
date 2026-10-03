@@ -1,9 +1,10 @@
-"""Suggest a ``.fr`` domain for a prospect — a logical, ideally-available pre-fill.
+"""Suggest a domain for a prospect — a logical, ideally-available pre-fill in his country's extension.
 
 Priority is the LOGICAL domain built from the business name (code logic): the client wants
 THEIR name as the address, not a creative brand. Groq only enriches the alternatives (handy
 when the exact name is taken or awkward). Every candidate — code or AI — is validated as a
-real ``.fr`` label and checked for availability (AFNIC RDAP) before being offered.
+real domain label and checked for availability (RDAP) before being offered, under the
+extensions of the prospect's country (``.fr`` in France, ``.ch``, ``.be``, ``.lu``, ``.ca``).
 """
 
 from __future__ import annotations
@@ -12,6 +13,7 @@ import re
 import unicodedata
 from dataclasses import dataclass
 
+from services.country_profiles import DEFAULT_COUNTRY_CODE, CountryProfiles
 from services.domain.availability import availability_map
 from services.domain.ovh_catalog import first_year_price_eur
 from services.llm_service import llm_service
@@ -62,7 +64,7 @@ def _is_valid_label(label: str) -> bool:
 
 
 class DomainSuggestionService:
-    """Build and rank ``.fr`` domain candidates for a prospect."""
+    """Build and rank domain candidates for a prospect, in the extensions of his country."""
 
     def _candidate_labels(self, name: str, city: str | None, category: str | None) -> list[str]:
         """Ordered, de-duplicated labels built from the business name (logical first)."""
@@ -93,15 +95,22 @@ class DomainSuggestionService:
         return out
 
     async def suggest(
-        self, *, name: str, city: str | None, category: str | None, use_ai: bool = True
+        self,
+        *,
+        name: str,
+        city: str | None,
+        category: str | None,
+        use_ai: bool = True,
+        country: str = DEFAULT_COUNTRY_CODE,
     ) -> DomainSuggestion:
-        """Propose a ``.fr`` domain for a prospect, ranked by logic then availability.
+        """Propose a domain for a prospect, ranked by logic then availability.
 
         Args:
             name: Business name (drives the logical candidates).
             city: City, when known (adds ``nom-ville`` variants).
             category: Trade, when known (adds a ``nom-metier`` variant).
             use_ai: Enrich with Groq (the « Suggérer » button); off for snappy as-you-type suggestions.
+            country: ISO code of the prospect's country, whose profile names the extensions offered.
 
         Returns:
             A :class:`DomainSuggestion` — the best pre-fill plus the checked alternatives.
@@ -113,11 +122,16 @@ class DomainSuggestionService:
             labels = self._dedupe_valid(labels + ai_labels)
         labels = labels[:_MAX_CANDIDATES]
 
-        domains = [f"{label}.fr" for label in labels]
+        tlds = CountryProfiles.get(country).domain_tlds
+        domains = [f"{label}{tld}" for tld in tlds for label in labels]
         available = await availability_map(domains)
-        price = await first_year_price_eur("fr")
+        prices = {tld: await first_year_price_eur(tld.lstrip(".")) for tld in tlds}
 
-        candidates = [DomainCandidate(domain=d, available=available.get(d), price_eur=price) for d in domains]
+        candidates = [
+            DomainCandidate(domain=domain, available=available.get(domain), price_eur=prices[tld])
+            for tld in tlds
+            for domain in (f"{label}{tld}" for label in labels)
+        ]
         return DomainSuggestion(suggested=self._pick_suggested(candidates), candidates=candidates)
 
     @staticmethod

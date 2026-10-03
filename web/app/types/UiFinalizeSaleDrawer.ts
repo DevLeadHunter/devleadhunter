@@ -19,6 +19,22 @@ export type FinalizeSaleForm = {
   amount_euros: number
 }
 
+export type ProfessionalLicenseDraft = {
+  label: string
+  number: string
+}
+
+export type StoredProfessionalLicense = {
+  label: string
+  number: string
+  source: string | null
+}
+
+export type ProfessionalLicenseState = {
+  isQuebecProspect: boolean
+  storedLicense: StoredProfessionalLicense | null
+}
+
 /** Steps of the sale: review the billing details, then review and send the email. */
 export type FinalizeSaleStep = 'billing' | 'email'
 

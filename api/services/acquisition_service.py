@@ -418,6 +418,7 @@ class AcquisitionService:
         from models.prospect_db import ProspectDB
         from services.email_sending_service import EmailSendingService
         from services.email_variables import EmailVariables
+        from services.regional_lexicon import RegionalLexicon
 
         item: AcquisitionRunItem | None = db.get(AcquisitionRunItem, item_id)
         if item is None or item.run_id != run.id:
@@ -442,6 +443,7 @@ class AcquisitionService:
             "phone": prospect.phone or "",
             "metier": prospect.category or "",
             "lien_demo": EmailVariables.build_demo_link_html(demo_url),
+            RegionalLexicon.COUNTRY_KEY: prospect.country or "FR",
         }
         service = EmailSendingService(db)
         return {
