@@ -5,6 +5,7 @@ from sqlalchemy.orm import Session
 from enums.sms_template_category import SmsTemplateCategory
 from models.prospect_db import ProspectDB
 from models.user import User
+from services.country_profiles import CountryProfiles
 from services.sms.gsm_segments import is_gsm7
 from services.sms.templates import (
     DEFAULT_FIRST_CONTACT_KEY,
@@ -46,6 +47,12 @@ _LONG_SLUG_VARIABLES: dict[str, str] = {
     "lien_video_assistant": "demo.dibodev.fr/s/va/plomberie-chauffage-dupont",
 }
 _PROSPECTING_SEGMENT_BUDGET = 2
+
+
+def _with_prices_of(country: str, variables: dict[str, str]) -> dict[str, str]:
+    """The variables as a prospect of ``country`` reads his prices (500 € and 79 € written in his currency)."""
+    profile = CountryProfiles.get(country)
+    return {**variables, "prix": profile.format_price(50000), "prix_assistant": profile.format_price(7900)}
 
 
 class TestLibraryIntegrity:
@@ -153,9 +160,9 @@ class TestTwoSegmentBudget:
     def test_every_first_contact_fits_two_gsm7_segments(self) -> None:
         for template in list_sms_templates(SmsTemplateCategory.FIRST_CONTACT):
             for variables in (_TYPICAL_VARIABLES, _LONG_SLUG_VARIABLES):
-                body = sms_service.render_template_body(template, variables)
-                assert is_gsm7(body), template.key
                 for country in ("FR", "CH"):
+                    body = sms_service.render_template_body(template, _with_prices_of(country, variables))
+                    assert is_gsm7(body), f"{template.key} {country}"
                     segments = sms_service.marketing_segment_count(body, country=country)
                     assert segments <= _PROSPECTING_SEGMENT_BUDGET, f"{template.key} {country}: {len(body)} chars"
 
@@ -180,9 +187,9 @@ class TestFollowUpLibrary:
             # A J+30 relance says where it comes from: the email sent a month ago.
             assert "email" in template.body, template.key
             for variables in (_TYPICAL_VARIABLES, _LONG_SLUG_VARIABLES):
-                body = sms_service.render_template_body(template, variables)
-                assert is_gsm7(body), template.key
                 for country in ("FR", "CH"):
+                    body = sms_service.render_template_body(template, _with_prices_of(country, variables))
+                    assert is_gsm7(body), f"{template.key} {country}"
                     segments = sms_service.marketing_segment_count(body, country=country)
                     assert segments <= _PROSPECTING_SEGMENT_BUDGET, f"{template.key} {country}: {len(body)} chars"
 

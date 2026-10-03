@@ -131,7 +131,7 @@ SMS_TEMPLATE_LIBRARY: list[SmsTemplate] = [
         body=(
             "{salutation}, "
             + _RECEPTIONIST_INTRO
-            + " : le soir, elle répond à vos clients. {lien_assistant} "
+            + " : le soir, elle répond. {lien_assistant} "
             + _RECEPTIONIST_PRICE_LINE
             + " "
             + _ASK_WITH_PHONE
@@ -151,7 +151,7 @@ SMS_TEMPLATE_LIBRARY: list[SmsTemplate] = [
         name="Réceptionniste IA - devis par photo",
         category=SmsTemplateCategory.FIRST_CONTACT,
         body=(
-            "{salutation}, " + _RECEPTIONIST_INTRO + " : une photo, une demande de devis. "
+            "{salutation}, " + _RECEPTIONIST_INTRO + " : demande de devis par photo. "
             "{lien_assistant} " + _RECEPTIONIST_PRICE_LINE + " " + _ASK_WITH_PHONE
         ),
     ),
@@ -162,7 +162,7 @@ SMS_TEMPLATE_LIBRARY: list[SmsTemplate] = [
         body=(
             "{salutation}, "
             + _RECEPTIONIST_INTRO
-            + ". Je vous la montre en 30 s de vidéo : {lien_video_assistant} "
+            + ". En 30 s de vidéo : {lien_video_assistant} "
             + _RECEPTIONIST_PRICE_LINE
             + " "
             + _ASK_WITH_PHONE
@@ -183,8 +183,8 @@ SMS_TEMPLATE_LIBRARY: list[SmsTemplate] = [
         name="Offre à vie",
         category=SmsTemplateCategory.FOLLOW_UP,
         body=(
-            "{salutation}, le site de {entreprise} envoyé par email est toujours en ligne : {lien_demo} "
-            "{prix} une seule fois, sans abonnement, et il est à vous, sur votre propre adresse. " + _ASK_WITH_PHONE
+            "{salutation}, le site de {entreprise} envoyé par email reste en ligne : {lien_demo} "
+            "{prix} une seule fois, sans abonnement, il est à vous, sur votre propre adresse. " + _ASK_WITH_PHONE
         ),
     ),
     SmsTemplate(
