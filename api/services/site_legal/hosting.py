@@ -13,7 +13,7 @@ from dataclasses import dataclass
 
 @dataclass(frozen=True)
 class HostingProvider:
-    """The identity of a hosting provider, as a legal notice names it."""
+    """The identity of a hosting provider, as a legal notice names it (its address on its postal lines)."""
 
     name: str
     address: str
@@ -25,7 +25,7 @@ class HostingProvider:
 
 SITE_HOSTING_PROVIDER: HostingProvider = HostingProvider(
     name="Vercel Inc.",
-    address="440 N Barranca Avenue #4133, Covina, CA 91723, États-Unis",
+    address="440 N Barranca Avenue #4133\nCovina, CA 91723\nÉtats-Unis",
     phone="+1 559 288 7060",
     phone_e164="+15592887060",
     website_url="https://vercel.com",

@@ -5,14 +5,20 @@ from typing import Literal
 from pydantic import BaseModel
 
 SiteLegalBlockKind = Literal["identity", "text"]
+SiteLegalPageKind = Literal["legal", "privacy"]
 
 
 class SiteLegalLine(BaseModel):
-    """One line of a block: a labelled value or a sentence, linked when it can be tapped (email, phone, site)."""
+    """One line of a block: a labelled value or a sentence, linked when it can be tapped (email, phone, site).
+
+    In an identity, ``paragraph`` groups the lines shown together: the name and the address, then the
+    contacts, then the identifiers.
+    """
 
     label: str | None = None
     text: str
     href: str | None = None
+    paragraph: int = 0
 
 
 class SiteLegalBlock(BaseModel):
@@ -20,21 +26,25 @@ class SiteLegalBlock(BaseModel):
 
     heading: str
     kind: SiteLegalBlockKind = "text"
+    intro: str | None = None
     lines: list[SiteLegalLine]
 
 
 class SiteLegalSection(BaseModel):
-    """A part of the legal page, reached by its anchor from the footer link."""
+    """One legal page of the site: the legal notice or the privacy policy, with the sentence under its title."""
 
+    page: SiteLegalPageKind
     anchor: str
     title: str
+    intro: str
     blocks: list[SiteLegalBlock]
 
 
 class SiteLegalLink(BaseModel):
-    """A footer link to one section of the legal page."""
+    """A footer link to one legal page of the site."""
 
     label: str
+    page: SiteLegalPageKind
     anchor: str
 
 

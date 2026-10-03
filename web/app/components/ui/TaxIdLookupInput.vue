@@ -24,7 +24,7 @@
       {{ errorMessage }}
     </p>
     <p v-else class="mt-1 text-[11px] text-[var(--app-ink-soft)]">
-      Saisissez un SIREN (9 chiffres) ou un SIRET (14 chiffres) pour préremplir la fiche.
+      {{ props.hint }}
     </p>
   </div>
 </template>
@@ -36,6 +36,7 @@ import type { ComputedRef, EmitFn, Ref } from 'vue'
 import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import { lookupCompanyBilling } from '~/services/companyRegistryLookupService'
 import {
+  SIRET_DIGIT_COUNT,
   formatTaxIdForDisplay,
   hasValidTaxIdChecksum,
   isCompleteTaxId,
@@ -44,7 +45,6 @@ import {
 } from '~/utils/taxIdUtils'
 
 const LOOKUP_DEBOUNCE_MS: number = 500
-const SIRET_DIGIT_COUNT: number = 14
 
 /** Optional SIREN/SIRET field with registry lookup to prefill billing details. */
 const props: TaxIdLookupInputProps = defineProps({
@@ -63,6 +63,14 @@ const props: TaxIdLookupInputProps = defineProps({
   disabled: {
     type: Boolean,
     default: false,
+  },
+  acceptsSiren: {
+    type: Boolean,
+    default: true,
+  },
+  hint: {
+    type: String,
+    default: 'Saisissez un SIREN (9 chiffres) ou un SIRET (14 chiffres) pour préremplir la fiche.',
   },
 })
 
@@ -96,19 +104,23 @@ const errorMessage: ComputedRef<string | undefined> = computed((): string | unde
   }
 
   if (hasTypedLetters.value) {
-    return 'Un SIREN / SIRET ne contient que des chiffres : pour un client étranger, choisissez son pays.'
+    return props.acceptsSiren
+      ? 'Un SIREN / SIRET ne contient que des chiffres : pour un client étranger, choisissez son pays.'
+      : 'Un SIRET ne contient que des chiffres.'
   }
 
-  if (isIncompleteTaxId(compactTaxId.value)) {
-    return 'SIREN (9 chiffres) ou SIRET (14 chiffres) incomplet.'
+  if (isIncompleteNumber(compactTaxId.value)) {
+    return props.acceptsSiren
+      ? 'SIREN (9 chiffres) ou SIRET (14 chiffres) incomplet.'
+      : 'Un SIRET contient 14 chiffres.'
   }
 
-  if (!isCompleteTaxId(compactTaxId.value)) {
+  if (!isCompleteNumber(compactTaxId.value)) {
     return undefined
   }
 
   if (!hasValidTaxIdChecksum(compactTaxId.value)) {
-    return 'Numéro SIREN / SIRET invalide.'
+    return props.acceptsSiren ? 'Numéro SIREN / SIRET invalide.' : 'Numéro SIRET invalide.'
   }
 
   if (lookupStatus.value === 'not-found') {
@@ -121,6 +133,24 @@ const errorMessage: ComputedRef<string | undefined> = computed((): string | unde
 
   return undefined
 })
+
+/**
+ * Whether the digits form a whole number this field accepts (a SIRET, or a SIREN where allowed).
+ * @param digits - Compact digits typed by the user.
+ * @returns True when the number can be checked and looked up.
+ */
+function isCompleteNumber(digits: string): boolean {
+  return props.acceptsSiren ? isCompleteTaxId(digits) : digits.length === SIRET_DIGIT_COUNT
+}
+
+/**
+ * Whether the user started a number without reaching an accepted length yet.
+ * @param digits - Compact digits typed by the user.
+ * @returns True while the number is too short.
+ */
+function isIncompleteNumber(digits: string): boolean {
+  return props.acceptsSiren ? isIncompleteTaxId(digits) : digits.length > 0 && digits.length < SIRET_DIGIT_COUNT
+}
 
 /**
  * Propagate formatted typing to the parent model as compact digits.
@@ -150,7 +180,7 @@ function scheduleLookup(digits: string): void {
     return
   }
 
-  if (hasTypedLetters.value || !isCompleteTaxId(digits) || !hasValidTaxIdChecksum(digits)) {
+  if (hasTypedLetters.value || !isCompleteNumber(digits) || !hasValidTaxIdChecksum(digits)) {
     lookupStatus.value = 'idle'
     return
   }

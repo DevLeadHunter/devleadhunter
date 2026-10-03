@@ -78,6 +78,11 @@ def test_foreign_countries_show_a_rounded_converted_price() -> None:
 
 def test_a_small_converted_price_is_rounded_to_the_unit() -> None:
     assert CountryProfiles.get("CH").format_price(7900) == "≈ 74 CHF"
+
+
+def test_a_price_shown_alone_drops_the_approximation_sign() -> None:
+    assert CountryProfiles.get("CH").format_price_without_approximation(50000) == "470 CHF"
+    assert CountryProfiles.get("FR").format_price_without_approximation(49990) == "499,90 €"
     assert CountryProfiles.get("CA").format_price(7900) == "≈ 126 $ CA"
     assert CountryProfiles.get("FR").format_price(7900) == "79 €"
 

@@ -63,7 +63,7 @@ def _demo(db: Session, owner: User, prospect: ProspectDB | None, **fields: Any) 
 
 @pytest.mark.parametrize(
     ("country", "sale_price_cents", "label"),
-    [("FR", 50000, "500 €"), ("CH", 50000, "≈ 470 CHF"), ("BE", 39000, "390 €")],
+    [("FR", 50000, "500 €"), ("CH", 50000, "470 CHF"), ("BE", 39000, "390 €")],
 )
 def test_the_price_is_the_owner_sale_price_in_the_prospect_currency(
     db: Session, country: str, sale_price_cents: int, label: str
@@ -101,7 +101,7 @@ def test_the_public_demo_carries_the_price_and_the_withdrawal_day(db: Session) -
     sent = asyncio.run(get_public_demo_site("menuiserie-lefort", db))
     unsent = asyncio.run(get_public_demo_site("garage-martin", db))
 
-    assert (sent.sale_price_label, sent.expiry_date_label) == ("≈ 470 CHF", "2 novembre")
+    assert (sent.sale_price_label, sent.expiry_date_label) == ("470 CHF", "2 novembre")
     assert (unsent.sale_price_label, unsent.expiry_date_label) == ("500 €", None)
     assert (sent.owner_name, sent.owner_company_website_url) == ("Camille Durand", "https://camille-durand.fr")
 

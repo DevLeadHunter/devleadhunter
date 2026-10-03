@@ -40,4 +40,6 @@ export type TaxIdLookupInputProps = {
   inputId?: string
   placeholder?: string
   disabled?: boolean
+  acceptsSiren?: boolean
+  hint?: string
 }

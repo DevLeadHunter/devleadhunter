@@ -180,17 +180,17 @@ class DemoSiteService:
 
     def sale_price_label(self, db: Session, demo_site: DemoSite) -> str:
         """
-        The owner's website sale price as the demo's prospect reads it, the same as ``{prix}`` in his emails.
+        The owner's website sale price as the demo's prospect reads it, in the currency of ``{prix}`` in his emails.
 
         Args:
             db: Active database session.
             demo_site: The demo the prospect is looking at.
 
         Returns:
-            The price in the prospect's currency (« 500 € », « ≈ 470 CHF »).
+            The price in the prospect's currency, without « ≈ » (« 500 € », « 470 CHF »).
         """
         country: CountryProfile = CountryProfiles.get(self._prospect_country_for_site(db, demo_site))
-        return country.format_price(PricingService.sale_price_cents(db, demo_site.user_id))
+        return country.format_price_without_approximation(PricingService.sale_price_cents(db, demo_site.user_id))
 
     @staticmethod
     def expiry_date_label(demo_site: DemoSite) -> str | None:
