@@ -83,7 +83,7 @@ class BehaviorService:
     # ------------------------------------------------------------------ #
 
     @staticmethod
-    def _slugs_by_prospect(db: Session, user_id: int, prospect_ids: list[int] | None = None) -> dict[int, list[str]]:
+    def slugs_by_prospect(db: Session, user_id: int, prospect_ids: list[int] | None = None) -> dict[int, list[str]]:
         """
         Map each prospect to the slugs of its demo sites and receptionists (owned by the user), each once.
 
@@ -119,7 +119,7 @@ class BehaviorService:
 
     def _slugs_for_prospect(self, db: Session, user_id: int, prospect_id: int) -> list[str]:
         """Return the slugs of a prospect's demo sites and receptionists (owned by the user), each once."""
-        return self._slugs_by_prospect(db, user_id, [prospect_id]).get(prospect_id, [])
+        return self.slugs_by_prospect(db, user_id, [prospect_id]).get(prospect_id, [])
 
     async def _events_for_prospect(self, db: Session, user_id: int, prospect_id: int) -> list[dict[str, Any]]:
         """Fetch and merge behavioural events across all of a prospect's demos."""
@@ -393,7 +393,7 @@ class BehaviorService:
         One grouped PostHog query for all demo slugs (sites and receptionists) + one grouped email
         query — efficient enough for a dashboard widget. Excludes leads with no activity.
         """
-        pid_to_slugs: dict[int, list[str]] = self._slugs_by_prospect(db, user_id)
+        pid_to_slugs: dict[int, list[str]] = self.slugs_by_prospect(db, user_id)
         if not pid_to_slugs:
             return []
 
@@ -486,7 +486,7 @@ class BehaviorService:
         """
         if not prospect_ids:
             return {}
-        pid_to_slugs: dict[int, list[str]] = self._slugs_by_prospect(db, user_id, prospect_ids)
+        pid_to_slugs: dict[int, list[str]] = self.slugs_by_prospect(db, user_id, prospect_ids)
 
         all_slugs = [slug for slugs in pid_to_slugs.values() for slug in slugs]
         aggregate = await posthog_service.get_aggregate_by_slugs(all_slugs) if all_slugs else {}
