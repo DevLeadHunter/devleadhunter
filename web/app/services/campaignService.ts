@@ -48,6 +48,7 @@ export type CampaignEnqueueOutcome = {
   skipped_no_demo: CampaignSkippedProspect[]
   skipped_no_video: CampaignSkippedProspect[]
   skipped_no_assistant: CampaignSkippedProspect[]
+  skipped_no_loyalty_card_demo: CampaignSkippedProspect[]
 }
 
 export type CampaignResponse = {

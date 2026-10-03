@@ -21,6 +21,8 @@ from services.regional_lexicon import RegionalLexicon
 from services.tracking_links import email_tracked_link
 from services.trade_normalizer import TradeNormalizer
 
+LOYALTY_CARD_DEMO_MISSING_REFUSAL: str = "Pas de démo de carte de fidélité pour ce prospect"
+
 
 class EmailVariables:
     """
@@ -49,9 +51,11 @@ class EmailVariables:
     VIDEO_THUMBNAIL = "vignette_video"
     ASSISTANT_VIDEO_LINK = "lien_video_assistant"
     ASSISTANT_VIDEO_THUMBNAIL = "vignette_video_assistant"
+    CARD_LINK = "lien_carte"
     OLD_WEBSITE = "ancien_site"
     PRICE = "prix"
     PRICE_ASSISTANT = "prix_assistant"
+    CARD_PRICE = "prix_carte"
     EXPIRY_DATE = "date_expiration"
 
     @staticmethod
@@ -307,8 +311,10 @@ class EmailVariables:
         `{salutation}` is always safe ("Bonjour" / "Bonjour Léo" / "Bonjour M. Guillaume"), while
         `{prenom}` and `{nom}` are empty when unknown. The video variables stay empty when the
         prospect has no generated clip — the queue guards prevent sending a template needing them.
-        The sender's active assistant is looked up once, for all the assistant variables. The prices
-        are written as the prospect reads them in his country (« 500 € », « ≈ 470 CHF », « ≈ 800 $ CA »).
+        `{lien_carte}` is empty, and the guards never send a template using it. The sender's active
+        assistant is looked up once, for all the assistant variables. The prices are written as the
+        prospect reads them in his country (« 500 € », « ≈ 470 CHF », « ≈ 800 $ CA »); `{prix_carte}` is the
+        platform's monthly loyalty-card price (``WALLET_SUBSCRIPTION_PRICE_CENTS``).
 
         Args:
             db: Active database session.
@@ -355,11 +361,13 @@ class EmailVariables:
             cls.ASSISTANT_VIDEO_THUMBNAIL: cls.build_video_thumbnail_html(
                 assistant_video_link, assistant_video_thumbnail, "Votre réceptionniste en vidéo"
             ),
+            cls.CARD_LINK: "",
             cls.OLD_WEBSITE: cls.display_website(prospect.website),
             cls.PRICE: country.format_price(sale_price_cents) if sale_price_cents is not None else "",
             cls.PRICE_ASSISTANT: (
                 country.format_price(assistant_monthly_price_cents) if assistant_monthly_price_cents is not None else ""
             ),
+            cls.CARD_PRICE: country.format_price(settings.wallet_subscription_price_cents),
             cls.EXPIRY_DATE: cls.resolve_expiry_date(db, demo_link, assistant),
             RegionalLexicon.COUNTRY_KEY: country.code,
         }

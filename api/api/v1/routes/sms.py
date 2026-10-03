@@ -53,7 +53,7 @@ from services.ai_assistant.assistant_service import ai_assistant_service
 from services.auth_service import get_current_user, require_admin
 from services.demo_site_service import demo_site_service
 from services.demo_video_service import has_ready_video, video_page_url
-from services.email_variables import EmailVariables
+from services.email_variables import LOYALTY_CARD_DEMO_MISSING_REFUSAL, EmailVariables
 from services.notification_service import notification_service
 from services.pricing_service import PricingService
 from services.prospect_phones import first_mobile_e164
@@ -503,6 +503,8 @@ async def preview_template(
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST, detail="Ce prospect n'a pas de vidéo de réceptionniste générée."
         )
+    if template.uses(SmsVariables.CARD_LINK):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=LOYALTY_CARD_DEMO_MISSING_REFUSAL)
 
     demo_url = ""
     video_url = ""

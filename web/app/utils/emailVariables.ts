@@ -135,6 +135,13 @@ export class EmailVariables {
       example: '[vignette cliquable de la vidéo de la réceptionniste]',
     },
     {
+      key: 'lien_carte',
+      token: '{lien_carte}',
+      label: 'Lien carte de fidélité',
+      description: 'Lien vers la démo de carte de fidélité du prospect ; l’email n’est pas envoyé sans démo de carte.',
+      example: 'https://demo.dibodev.fr/c/boulangerie-martin',
+    },
+    {
       key: 'ancien_site',
       token: '{ancien_site}',
       label: 'Ancien site',
@@ -157,6 +164,13 @@ export class EmailVariables {
       description:
         'Prix mensuel de la réceptionniste IA configuré, dans la monnaie du prospect : « 79 € », « ≈ 70 CHF ».',
       example: '79 €',
+    },
+    {
+      key: 'prix_carte',
+      token: '{prix_carte}',
+      label: 'Prix carte de fidélité',
+      description: 'Prix mensuel de la carte de fidélité, dans la monnaie du prospect : « 19 € », « ≈ 18 CHF ».',
+      example: '19 €',
     },
     {
       key: 'date_expiration',

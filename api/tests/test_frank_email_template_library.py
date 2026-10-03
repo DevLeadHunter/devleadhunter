@@ -4,7 +4,7 @@ Locks the copy rules of the frank library (``seeders/email_template_seeder.py`` 
 ``services/sms/templates.py``) so a future edit cannot quietly bring back a vague message:
 plain words, no long dash, no « voici / cliquez / ici », a nude ending, a single door, the
 price through a variable, and for the receptionist the plain mention of an AI, in the gender of its
-first name.
+first name. The loyalty-card templates have their own rules in ``test_loyalty_card_templates.py``.
 """
 
 from __future__ import annotations
@@ -32,10 +32,18 @@ _GENDERED_RECEPTIONIST_WORDS = re.compile(
     r"\b(il|elle|virtuel|virtuelle|préparée|une réceptionniste|un réceptionniste|la réceptionniste)\b", re.IGNORECASE
 )
 _VARIABLE = re.compile(r"\{[a-z_]+\}")
+_MODULE_EMAIL_NAME_PREFIXES = ("Réceptionniste", "Carte fidélité")
+_MODULE_SMS_KEY_PREFIXES = ("assistant-", "carte-")
+_SMS_DOOR_VARIABLES = ("lien_demo", "lien_video", "lien_assistant", "lien_video_assistant", "lien_carte")
+_PRICE_VARIABLES = ("prix", "prix_assistant", "prix_carte")
 
 
 def _website_emails() -> list[dict[str, object]]:
-    return [template for template in EMAIL_TEMPLATE_LIBRARY if not str(template["name"]).startswith("Réceptionniste")]
+    return [
+        template
+        for template in EMAIL_TEMPLATE_LIBRARY
+        if not str(template["name"]).startswith(_MODULE_EMAIL_NAME_PREFIXES)
+    ]
 
 
 def _receptionist_emails() -> list[dict[str, object]]:
@@ -47,7 +55,7 @@ def _receptionist_sms() -> list[SmsTemplate]:
 
 
 def _website_sms() -> list[SmsTemplate]:
-    return [template for template in SMS_TEMPLATE_LIBRARY if not template.key.startswith("assistant-")]
+    return [template for template in SMS_TEMPLATE_LIBRARY if not template.key.startswith(_MODULE_SMS_KEY_PREFIXES)]
 
 
 class TestEmailLibraryShape:
@@ -108,13 +116,13 @@ class TestEmailCopyRules:
             body = str(template["body_html"])
             assert "{prix}" in body, template["name"]
             assert "{date_expiration}" in body, template["name"]
-            assert "{prix_assistant}" not in body, template["name"]
+            assert "{prix_assistant}" not in body and "{prix_carte}" not in body, template["name"]
             assert any(marker in body for marker in _EXIT_MARKERS), template["name"]
 
     def test_every_website_email_opens_exactly_one_door(self) -> None:
         for template in _website_emails():
             body = str(template["body_html"])
-            doors = body.count("{lien_demo}") + body.count("{vignette_video}")
+            doors = body.count("{lien_demo}") + body.count("{vignette_video}") + body.count("{lien_carte}")
             assert doors == 1, template["name"]
 
     def test_the_first_contact_says_who_writes(self) -> None:
@@ -137,7 +145,7 @@ class TestReceptionistEmailCopyRules:
             body = str(template["body_html"])
             assert "{assistant_virtuel}" in body and "IA" in body, template["name"]
             assert "pas une personne" not in body, template["name"]
-            assert "{prix_assistant}" in body and "{prix}" not in body, template["name"]
+            assert "{prix_assistant}" in body and "{prix}" not in body and "{prix_carte}" not in body, template["name"]
             assert "satisfait ou remboursé" in body, template["name"]
             assert "{date_expiration}" in body, template["name"]
             assert any(marker in body for marker in _EXIT_MARKERS), template["name"]
@@ -163,6 +171,7 @@ class TestReceptionistEmailCopyRules:
             )
             assert body.count("{lien_assistant}") == (0 if is_video_template else 1), template["name"]
             assert body.count("{vignette_video_assistant}") == (1 if shows_the_thumbnail else 0), template["name"]
+            assert "{lien_carte}" not in body, template["name"]
 
 
 class TestSmsCopyRules:
@@ -172,22 +181,21 @@ class TestSmsCopyRules:
         assert first_contact is not None and first_contact.uses("telephone") and first_contact.uses("prix")
         assert follow_up is not None and follow_up.uses("telephone") and follow_up.uses("prix")
 
-    def test_every_sms_gives_a_price_a_door_and_the_number_to_answer_to(self) -> None:
+    def test_every_sms_gives_one_price_one_door_and_the_number_to_answer_to(self) -> None:
         for template in SMS_TEMPLATE_LIBRARY:
-            doors = sum(
-                template.body.count(f"{{{link}}}")
-                for link in ("lien_demo", "lien_video", "lien_assistant", "lien_video_assistant")
-            )
+            doors = sum(template.body.count(f"{{{link}}}") for link in _SMS_DOOR_VARIABLES)
             assert doors == 1, template.key
             assert template.uses("telephone"), template.key
             assert template.uses("signature"), template.key
-            assert template.uses("prix") or template.uses("prix_assistant"), template.key
+            prices_used = [price for price in _PRICE_VARIABLES if template.uses(price)]
+            assert len(prices_used) == 1, template.key
             assert _FORBIDDEN_WORDS.search(template.body) is None, template.key
             assert "http" not in template.body, template.key
 
     def test_website_sms_say_who_writes_and_the_one_time_price(self) -> None:
         for template in _website_sms():
             assert template.uses("prix") and not template.uses("prix_assistant"), template.key
+            assert not template.uses("prix_carte"), template.key
             if template.category is SmsTemplateCategory.FIRST_CONTACT:
                 assert "je fais des sites web" in template.body.lower(), template.key
 
@@ -197,5 +205,6 @@ class TestSmsCopyRules:
             assert "{assistant_virtuel} (IA)" in template.body, template.key
             assert _GENDERED_RECEPTIONIST_WORDS.search(_VARIABLE.sub("", template.body)) is None, template.key
             assert template.uses("prix_assistant") and not template.uses("prix"), template.key
+            assert not template.uses("prix_carte"), template.key
             assert "satisfait ou remboursé" in template.body, template.key
             assert "site" not in template.body.lower(), template.key

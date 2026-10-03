@@ -2,6 +2,7 @@
 
 from sqlalchemy.orm import Session
 
+from core.config import settings
 from enums.sms_template_category import SmsTemplateCategory
 from models.prospect_db import ProspectDB
 from models.user import User
@@ -30,9 +31,12 @@ _TYPICAL_VARIABLES: dict[str, str] = {
     "lien_assistant": "demo.dibodev.fr/s/ia/garage-martin-auto",
     "lien_video": "demo.dibodev.fr/s/v/garage-martin-auto",
     "lien_video_assistant": "demo.dibodev.fr/s/va/garage-martin-auto",
+    "lien_carte": "demo.dibodev.fr/s/c/garage-martin-auto",
     "ancien_site": "garage-martin.fr",
     "prix": "500 €",
     "prix_assistant": "79 €",
+    "prix_carte": "19 €",
+    "date_expiration": "12 novembre",
     "prenom_receptionniste": "Sofia",
     "receptionniste": "une réceptionniste",
     "assistant_virtuel": "une assistante virtuelle",
@@ -47,6 +51,8 @@ _LONG_SLUG_VARIABLES: dict[str, str] = {
     "lien_assistant": "demo.dibodev.fr/s/ia/plomberie-chauffage-dupont",
     "lien_video": "demo.dibodev.fr/s/v/plomberie-chauffage-dupont",
     "lien_video_assistant": "demo.dibodev.fr/s/va/plomberie-chauffage-dupont",
+    "lien_carte": "demo.dibodev.fr/s/c/plomberie-chauffage-dupont",
+    "date_expiration": "30 septembre",
 }
 _PROSPECTING_SEGMENT_BUDGET = 2
 
@@ -58,6 +64,7 @@ def _as_read_in(country: str, variables: dict[str, str]) -> dict[str, str]:
         **variables,
         "prix": profile.format_price(50000),
         "prix_assistant": profile.format_price(7900),
+        "prix_carte": profile.format_price(settings.wallet_subscription_price_cents),
         "telephone": SmsVariables.phone_for(variables["telephone"], country),
     }
 

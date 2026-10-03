@@ -18,14 +18,19 @@ one. Every frank template says:
   - how to answer: the alphanumeric sender (« Dibodev ») receives no reply, so the
     message gives the sender's public phone, ``{telephone}`` (``users.contact_phone``,
     the one shown on the demo banner). A template using it needs that phone to be set.
+The loyalty-card family (``carte-…``) links ``{lien_carte}``, gives ``{prix_carte}`` a month and
+the withdrawal day ``{date_expiration}``, and names the iPhone: the card lives in Apple Wallet.
+Its first contacts say « je fais des outils web pour les commerces » (GSM-7 has no « ç »). A
+template using ``{lien_carte}`` never leaves without the prospect's card demo.
 Trust rules kept from the first library: an action at the first person, no imperative
 (« voici », « cliquez », « ici »), no artificial urgency, GSM-7 transliteration at send
 time. smsmode appends the opt-out mention at send time (``body.stop``), never written
 here; the budget tests reserve its room in France (14 characters) and Switzerland (25).
 
 Variables: {salutation} {entreprise} {ville} {metier} {lien_demo} {lien_assistant}
-{lien_video} {lien_video_assistant} {prenom_receptionniste} {receptionniste} {assistant_virtuel}
-{ancien_site} {prix} {prix_assistant} {telephone} {signature}.
+{lien_video} {lien_video_assistant} {lien_carte} {prenom_receptionniste} {receptionniste}
+{assistant_virtuel} {ancien_site} {prix} {prix_assistant} {prix_carte} {date_expiration}
+{telephone} {signature}.
 """
 
 from __future__ import annotations
@@ -171,6 +176,24 @@ SMS_TEMPLATE_LIBRARY: list[SmsTemplate] = [
         fallback_key="assistant-24-7",
     ),
     SmsTemplate(
+        key="carte-direct",
+        name="Carte fidélité - premier contact franc",
+        category=SmsTemplateCategory.FIRST_CONTACT,
+        body=(
+            "{salutation}, je fais des outils web pour les commerces et j'ai préparé votre carte fidélité iPhone : "
+            "{lien_carte} {prix_carte}/mois, 1er mois offert. En ligne jusqu'au {date_expiration}. " + _ASK_WITH_PHONE
+        ),
+    ),
+    SmsTemplate(
+        key="carte-sans-appli",
+        name="Carte fidélité - sans appli",
+        category=SmsTemplateCategory.FIRST_CONTACT,
+        body=(
+            "{salutation}, je fais des outils web pour les commerces. Votre carte fidélité iPhone, sans appli à "
+            "installer : {lien_carte} {prix_carte}/mois. En ligne jusqu'au {date_expiration}. " + _ASK_WITH_PHONE
+        ),
+    ),
+    SmsTemplate(
         key="rappel-court",
         name="Rappel court",
         category=SmsTemplateCategory.FOLLOW_UP,
@@ -245,6 +268,24 @@ SMS_TEMPLATE_LIBRARY: list[SmsTemplate] = [
             "{salutation}, le prix de mon email, sans détour : {prix_assistant}/mois pour {prenom_receptionniste}, "
             "{assistant_virtuel} (IA). Sans engagement, 1er mois satisfait ou remboursé. "
             "{lien_assistant} " + _ASK_WITH_PHONE
+        ),
+    ),
+    SmsTemplate(
+        key="carte-relance",
+        name="Carte fidélité - relance franche",
+        category=SmsTemplateCategory.FOLLOW_UP,
+        body=(
+            "{salutation}, votre carte fidélité iPhone, envoyée par email : {lien_carte} {prix_carte}/mois, 1er "
+            "mois offert. Besoin d'y réfléchir ? Elle reste en ligne jusqu'au {date_expiration}. " + _ASK_WITH_PHONE
+        ),
+    ),
+    SmsTemplate(
+        key="carte-rappel-court",
+        name="Carte fidélité - rappel court",
+        category=SmsTemplateCategory.FOLLOW_UP,
+        body=(
+            "{salutation}, la carte fidélité iPhone envoyée par email est toujours en ligne : {lien_carte} "
+            "{prix_carte}/mois sans engagement. Je la retire le {date_expiration}. " + _ASK_WITH_PHONE
         ),
     ),
 ]
