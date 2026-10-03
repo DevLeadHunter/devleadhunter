@@ -149,6 +149,12 @@ class TestOptOutMention:
 
 
 class TestToGsm7:
+    def test_the_approximation_sign_of_a_converted_price_becomes_env(self) -> None:
+        assert to_gsm7("≈ 470 CHF") == "env. 470 CHF"
+        body = to_gsm7("C'est ≈ 800 $ CA, une seule fois.")
+        assert body == "C'est env. 800 $ CA, une seule fois."
+        assert is_gsm7(body) and segment_count(body) == 1
+
     def test_keeps_gsm7_accents_but_lowers_cedilla(self) -> None:
         # é è à ù stay (GSM-7); ç is NOT GSM-7 in lowercase → simplified to c; ô → o.
         assert to_gsm7("café à côté ça") == "café à coté ca"

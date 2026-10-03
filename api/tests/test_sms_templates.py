@@ -143,6 +143,13 @@ class TestRender:
 
 
 class TestTwoSegmentBudget:
+    def test_a_swiss_price_renders_in_gsm7_within_two_swiss_segments(self) -> None:
+        template = find_sms_template(DEFAULT_FIRST_CONTACT_KEY)
+        assert template is not None
+        body = sms_service.render_template_body(template, {**_LONG_SLUG_VARIABLES, "prix": "≈ 470 CHF"})
+        assert "env. 470 CHF" in body and is_gsm7(body)
+        assert sms_service.marketing_segment_count(body, country="CH") <= _PROSPECTING_SEGMENT_BUDGET
+
     def test_every_first_contact_fits_two_gsm7_segments(self) -> None:
         for template in list_sms_templates(SmsTemplateCategory.FIRST_CONTACT):
             for variables in (_TYPICAL_VARIABLES, _LONG_SLUG_VARIABLES):

@@ -32,7 +32,7 @@ _TRANSLITERATIONS: dict[str, str] = {
     "Á": "A", "Í": "I", "Ó": "O", "Ú": "U", "Ã": "A", "Õ": "O",
     "œ": "oe", "Œ": "OE",
     "’": "'", "‘": "'", "“": '"', "”": '"', "«": '"', "»": '"',
-    "–": "-", "—": "-", "…": "...", "•": "-",
+    "–": "-", "—": "-", "…": "...", "•": "-", "≈": "env.",
     "\u00a0": " ", "\u202f": " ",
 }  # fmt: skip
 
@@ -42,8 +42,9 @@ def to_gsm7(text: str) -> str:
 
     Keeps every accent that is already GSM-7 (é, è, à, ù…): only the characters that would
     force the whole message into UCS-2 — circumflex letters (â, ê…), the lowercase cedilla
-    (ç, absent from GSM-7) and typographic punctuation (curly quotes, long dashes, ellipsis)
-    — are replaced, so a normal French message stays one segment. Anything else is untouched.
+    (ç, absent from GSM-7), typographic punctuation (curly quotes, long dashes, ellipsis) and the
+    approximation sign of a converted price (« ≈ 470 CHF » reads « env. 470 CHF ») — are replaced,
+    so a normal French message stays one segment. Anything else is untouched.
 
     Args:
         text: The raw message body.
