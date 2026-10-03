@@ -24,6 +24,35 @@
 > 5 · `api-adresse` 2 · `+33` 14 · `36180` 6 · `SIREN|SIRET` 14 · `.fr` en dur dans le domaine
 > 6 · `fr-FR` 31 (presque tous = affichage pour l'utilisateur) · `€` 52 (prix, exemples, aide).
 
+## État au 2026-10-03 (soir) : ce qui est livré depuis cet audit
+
+Les tickets du § A sont fusionnés sur `main` et déployés : fenêtre d'envoi au fuseau du prospect
+(`5906b7c6`), licence RBQ et 10 templates republiés (`b78ecaeb`), Québec ouvert + dette de vente
+Europe (`e4d71846`), SMS de prospection vers la Suisse + modèles francs (`4af58720`). Les lignes
+du corps de ce document décrivent l'état du commit `3dcc87ee` ; voici ce qu'elles deviennent.
+
+**Corrigé** : `country` dans l'export/import JSON des prospects ; `extract_city` et les codes postaux
+lus au format du pays (scrapers, découpage d'adresse à la vente, ville avant le code au Québec) ;
+`TaxIdLookupInput` et `PostalCodeAutocompleteInput` ne mutilent plus une saisie hors France ;
+`FinalizeSaleDrawer` (pays du prospect, libellé fiscal par pays, facultatif hors France, licence RBQ
+pour un prospect CA) ; mention TVA Qonto par pays (S293B, S283, S259 : codes présents dans l'API
+Qonto) ; domaines par pays et RDAP sans faux « disponible » ; pays transmis jusqu'à `build_content_json`
+et lexique régional dans les emails, les SMS et les sites ; `{prix}` dans la monnaie du prospect
+(arrondi à l'unité sous 200) ; pied de mail CASL (lit `SENDER_POSTAL_ADDRESS`, transmis par
+`deploy-api.yml`) ; téléphone nord-américain (lecture, affichage, jamais un mobile SMS) ; garde pays sur
+tous les envois SMS, `send_manual` compris, lue sur le profil déclaré ; mention de désinscription posée
+par smsmode (`body.stop`) au lieu de « STOP au 36180 » ; « ≈ » écrit « env. » en SMS ; numéro de
+l'expéditeur en format international pour un prospect hors de France ; fenêtre légale et fériés SMS
+par pays ; coût SMS par pays ; `plumber_atelier` sans « 0 € / 10 ans ».
+
+**Encore ouvert** : `email_scraper` en `gl=fr` (`scrappers/email_scraper.py:385`) ; annuaires CH, BE, LU
+et CA absents du scoring email ; numéros +41 / +32 ignorés par le parseur Facebook (France et Amérique
+du Nord seulement) ; « à Rennes » dans le script vidéo ; carte de couverture sans le Québec ; Réceptionniste
+IA hors France (§ 7 : fuseau du client, +1, expéditeur, pied légal) ; décisionnaire hors France ;
+probe Qonto en sandbox (client CH ou CA sans numéro fiscal, doublon éventuel de mention) ; choix `.ca`
+ou `.com` et titulaire OVH ; boucles SMS automatiques limitées à la France tant que le premier SMS suisse
+n'est pas vérifié (`SmsProspectingRules.AUTOMATIC_SMS_COUNTRIES`).
+
 ## A. En cours ailleurs (ne pas refaire, juste s'y brancher)
 
 | Ticket | Ce qu'il couvre | Ce que cet audit lui transmet |
