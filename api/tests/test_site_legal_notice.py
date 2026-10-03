@@ -30,10 +30,11 @@ from services.templates import registry
 _PUBLISHER = DemoPublisherIdentity(
     name="Alexis Durand",
     company_name="Atelier Web Durand",
-    postal_address="4 rue des Lilas, 35000 Rennes",
+    postal_address="4 rue des Lilas\n35000 Rennes",
     email="contact@atelier-web.example",
     phone="06 12 34 56 78",
     website_url="https://atelier-web.example",
+    siret="98830790600020",
 )
 
 
@@ -104,7 +105,7 @@ def test_a_french_delivered_site_names_its_publisher_its_director_and_its_host()
         ("Mentions légales", "mentions-legales"),
         ("Confidentialité", "politique-de-confidentialite"),
     ]
-    assert _headings(legal) == ["Éditeur du site", "Directeur de la publication", "Hébergeur"]
+    assert _headings(legal) == ["Éditeur du site", "Hébergeur"]
     assert _rendered(_block(legal, "Éditeur du site")) == [
         "SARL Plomberie Durand",
         "Nom commercial : Durand Plomberie",
@@ -113,9 +114,9 @@ def test_a_french_delivered_site_names_its_publisher_its_director_and_its_host()
         "E‑mail : contact@durand.example",
         "SIRET : 123 456 789 00012",
         "TVA intracommunautaire : FR32123456789",
+        "Directeur de la publication : Alexis Durand",
     ]
     assert _block(legal, "Éditeur du site").lines[3].href == "tel:+33611223344"
-    assert _rendered(_block(legal, "Directeur de la publication")) == ["Alexis Durand"]
     host = _block(legal, "Hébergeur")
     assert _rendered(host)[:3] == [
         "Vercel Inc.",
@@ -170,14 +171,23 @@ def test_a_french_demo_is_published_by_the_user_who_prepared_it_and_its_visits_a
         "Port ne l'a pas mis en ligne à son nom, Atelier Web Durand en est l'éditeur et le responsable des données "
         "décrites ci-dessous."
     )
-    assert _headings(legal) == [
-        "Éditeur de la démonstration",
-        "Directeur de la publication",
-        "Entreprise présentée",
-        "Hébergeur",
+    assert _headings(legal) == ["Éditeur de la démonstration", "Entreprise présentée", "Hébergeur"]
+    assert _rendered(_block(legal, "Éditeur de la démonstration")) == [
+        "Atelier Web Durand",
+        "Alexis Durand",
+        "4 rue des Lilas",
+        "35000 Rennes",
+        "Téléphone : 06 12 34 56 78",
+        "E‑mail : contact@atelier-web.example",
+        "Site : atelier-web.example",
+        "SIRET : 988 307 906 00020",
+        "Directeur de la publication : Alexis Durand",
     ]
-    assert _rendered(_block(legal, "Directeur de la publication")) == ["Alexis Durand"]
     assert "SIREN : 123 456 789" in _rendered(_block(legal, "Entreprise présentée"))
+    assert _rendered(_block(privacy, "Responsable du traitement pendant la démonstration"))[2:4] == [
+        "4 rue des Lilas",
+        "35000 Rennes",
+    ]
     assert _headings(privacy)[:4] == [
         "Responsable du traitement pendant la démonstration",
         "Mesure des visites de la démonstration",
@@ -224,12 +234,8 @@ def test_a_swiss_demo_still_follows_french_law_for_its_publisher() -> None:
     notice = _notice("CH", BusinessLegalIdentity(name="Garage du Rhône Sàrl"), is_demo=True)
 
     legal = _section(notice, 0)
-    assert _headings(legal) == [
-        "Éditeur de la démonstration",
-        "Directeur de la publication",
-        "Entreprise présentée",
-        "Hébergeur",
-    ]
+    assert _headings(legal) == ["Éditeur de la démonstration", "Entreprise présentée", "Hébergeur"]
+    assert "SIRET : 988 307 906 00020" in _rendered(_block(legal, "Éditeur de la démonstration"))
     assert "Commission nationale de l'informatique et des libertés (CNIL)" in _all_text(notice)
     assert "IDE" not in _all_text(notice)
 
@@ -360,7 +366,8 @@ def _user(db: Session) -> User:
         hashed_password="x",
         company_name="Atelier Web Durand",
         contact_email="contact@atelier-web.example",
-        postal_address="4 rue des Lilas, 35000 Rennes",
+        postal_address="4 rue des Lilas, appartement B2\n\n  35000   Rennes \nFrance",
+        siret="98830790600020",
     )
     db.add(user)
     db.commit()
@@ -473,6 +480,8 @@ def test_a_demo_never_publishes_the_siren_of_a_decision_maker_still_to_confirm(d
     assert sources.publisher is not None
     assert sources.publisher.label == "Atelier Web Durand"
     assert sources.publisher.email == "contact@atelier-web.example"
+    assert sources.publisher.postal_address == "4 rue des Lilas, appartement B2\n35000 Rennes\nFrance"
+    assert sources.publisher.siret == "98830790600020"
 
 
 def test_a_street_only_address_gets_its_postal_code_and_its_town(db: Session) -> None:

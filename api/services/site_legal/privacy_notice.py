@@ -181,7 +181,7 @@ class PrivacyNoticeBuilder:
             lines=[
                 *lines.plain(publisher.company_name),
                 *lines.plain(publisher.person_name),
-                *lines.plain(publisher.postal_address),
+                *lines.address(publisher.postal_address),
                 *lines.email(publisher.email),
             ],
         )

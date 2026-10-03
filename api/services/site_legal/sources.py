@@ -74,10 +74,11 @@ class DemoPublisherIdentity:
     Attributes:
         name: The user's name.
         company_name: Their trading name.
-        postal_address: The postal address of their profile.
+        postal_address: The postal address of their profile, on the lines they wrote it on.
         email: Their public contact email (never the login address).
         phone: Their public contact phone.
         website_url: Their company website.
+        siret: Their establishment number, 14 digits.
     """
 
     name: str
@@ -86,6 +87,7 @@ class DemoPublisherIdentity:
     email: str | None = None
     phone: str | None = None
     website_url: str | None = None
+    siret: str | None = None
 
     @property
     def label(self) -> str:
@@ -303,10 +305,11 @@ class SiteLegalSourceLoader:
         return DemoPublisherIdentity(
             name=user.name,
             company_name=cls._text(user.company_name),
-            postal_address=cls._text(user.postal_address),
+            postal_address=cls._multiline_text(user.postal_address),
             email=cls._text(user.contact_email),
             phone=cls._text(user.contact_phone),
             website_url=cls._text(user.company_website_url),
+            siret=cls._text(user.siret),
         )
 
     @staticmethod
@@ -330,3 +333,11 @@ class SiteLegalSourceLoader:
             return None
         cleaned = " ".join(value.split())
         return cleaned or None
+
+    @classmethod
+    def _multiline_text(cls, value: object) -> str | None:
+        """A text keeping its line breaks, each line trimmed and the empty ones dropped, ``None`` when empty."""
+        if not isinstance(value, str):
+            return None
+        kept_lines = [line for line in (cls._text(raw_line) for raw_line in value.splitlines()) if line]
+        return "\n".join(kept_lines) or None

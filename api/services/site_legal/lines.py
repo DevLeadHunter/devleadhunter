@@ -58,6 +58,13 @@ class SiteLegalLines:
             return []
         return [SiteLegalLine(text=text)]
 
+    @staticmethod
+    def address(text: str | None) -> list[SiteLegalLine]:
+        """An address on as many lines as it was written on, or nothing when it is unknown."""
+        if not text:
+            return []
+        return [SiteLegalLine(text=line) for line in text.splitlines() if line]
+
     def email(self, email: str | None) -> list[SiteLegalLine]:
         """An email address opening the visitor's mail app, or nothing."""
         if not email:

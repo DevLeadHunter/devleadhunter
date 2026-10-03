@@ -2,11 +2,14 @@
 User Pydantic schemas for request/response validation.
 """
 
+import re
 from datetime import datetime
 
-from pydantic import BaseModel, ConfigDict, EmailStr, Field
+from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
 
 from enums.user_role import UserRole
+
+_SIRET_PATTERN = re.compile(r"[0-9]{14}")
 
 
 class UserBase(BaseModel):
@@ -30,6 +33,7 @@ class UserBase(BaseModel):
     postal_address: str | None = Field(
         None, max_length=500, description="Sender postal address printed in the footer of emails to Canada (CASL)"
     )
+    siret: str | None = Field(None, max_length=14, description="French establishment number shown on demo legal pages")
 
 
 class UserSignup(BaseModel):
@@ -86,6 +90,18 @@ class UserUpdate(BaseModel):
     postal_address: str | None = Field(
         None, max_length=500, description="Sender postal address printed in the footer of emails to Canada (CASL)"
     )
+    siret: str | None = Field(None, max_length=20, description="French establishment number shown on demo legal pages")
+
+    @field_validator("siret")
+    @classmethod
+    def _siret_digits_only(cls, value: str | None) -> str | None:
+        """Keep the SIRET's 14 digits without their spaces; an empty value clears it."""
+        if value is None:
+            return None
+        digits = "".join(value.split())
+        if digits and not _SIRET_PATTERN.fullmatch(digits):
+            raise ValueError("A SIRET has 14 digits")
+        return digits
 
 
 class AdminUserUpdate(UserUpdate):

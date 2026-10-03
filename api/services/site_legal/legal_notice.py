@@ -11,17 +11,19 @@ from services.site_legal.lines import SiteLegalLines
 from services.site_legal.sources import DEMO_PUBLISHER_COUNTRY_CODE, SiteLegalSources
 
 _FRANCE_CODE = "FR"
+_FRENCH_COMPANY_ID_DIGITS = 9
 _FRENCH_ESTABLISHMENT_ID_DIGITS = 14
+_FRENCH_REGISTRY_ID_LENGTHS = frozenset({_FRENCH_COMPANY_ID_DIGITS, _FRENCH_ESTABLISHMENT_ID_DIGITS})
 _NON_DIGIT = re.compile(r"\D")
 
 
 class LegalNoticeBuilder:
     """Builds the « Mentions légales » section of a site (« Impressum », « Renseignements sur l'entreprise »).
 
-    A delivered site is published by the business: its identity comes first, then the publication
-    director and the host where the country's law asks for them. A demo is published by the
-    DevLeadHunter user who prepared it, established in France: the notice names that publisher, its
-    director and the host under French law, then the business the demo presents.
+    A delivered site is published by the business: its identity comes first, closed by the publication
+    director where the country's law asks for one, then the host. A demo is published by the
+    DevLeadHunter user who prepared it, established in France: the notice names that publisher with
+    their SIRET and their director under French law, then the business the demo presents and the host.
     """
 
     @classmethod
@@ -40,16 +42,13 @@ class LegalNoticeBuilder:
         if sources.is_demo:
             publisher_rules = CountryProfiles.get(DEMO_PUBLISHER_COUNTRY_CODE).site_legal
             blocks = [
-                cls._demo_publisher_block(sources, lines),
-                *cls._demo_director_blocks(sources, lines, publisher_rules.is_publication_director_required),
-                cls._business_block(lines.localize("Entreprise présentée"), sources, lines),
+                cls._demo_publisher_block(sources, lines, publisher_rules.is_publication_director_required),
+                cls._business_block(lines.localize("Entreprise présentée"), sources, lines, director=None),
             ]
             is_host_disclosure_required = publisher_rules.is_host_disclosure_required
         else:
-            blocks = [
-                cls._business_block(facts.publisher_heading, sources, lines),
-                *cls._director_blocks(sources, lines),
-            ]
+            director = sources.business.publication_director if facts.is_publication_director_required else None
+            blocks = [cls._business_block(facts.publisher_heading, sources, lines, director=director)]
             is_host_disclosure_required = facts.is_host_disclosure_required
         if is_host_disclosure_required:
             blocks.append(cls._host_block(lines))
@@ -60,8 +59,10 @@ class LegalNoticeBuilder:
         )
 
     @classmethod
-    def _business_block(cls, heading: str, sources: SiteLegalSources, lines: SiteLegalLines) -> SiteLegalBlock:
-        """The business's identity: name, address, contacts, registry identifier, VAT number and licence."""
+    def _business_block(
+        cls, heading: str, sources: SiteLegalSources, lines: SiteLegalLines, *, director: str | None
+    ) -> SiteLegalBlock:
+        """The business's identity: name, address, contacts, identifiers, licence, then its director if any."""
         business = sources.business
         country = sources.country
         license_label = business.professional_license_label or "Licence professionnelle"
@@ -74,49 +75,39 @@ class LegalNoticeBuilder:
                 *lines.plain(business.address),
                 *lines.phone(business.phone, country.code),
                 *lines.email(business.email),
-                *lines.value(cls._legal_id_label(country, business.legal_id), business.legal_id),
+                *lines.value(
+                    cls._legal_id_label(country, business.legal_id), cls._shown_legal_id(country, business.legal_id)
+                ),
                 *lines.value(country.site_legal.vat_number_label, business.vat_number),
                 *lines.value(license_label, business.professional_license_number),
+                *lines.value("Directeur de la publication", director),
             ],
         )
 
-    @staticmethod
-    def _director_blocks(sources: SiteLegalSources, lines: SiteLegalLines) -> list[SiteLegalBlock]:
-        """The publication director of a delivered site, where the country's law asks for one."""
-        if not sources.country.site_legal.is_publication_director_required:
-            return []
-        director = lines.plain(sources.business.publication_director)
-        return [SiteLegalBlock(heading=lines.localize("Directeur de la publication"), kind="identity", lines=director)]
-
-    @staticmethod
-    def _demo_publisher_block(sources: SiteLegalSources, lines: SiteLegalLines) -> SiteLegalBlock:
-        """The DevLeadHunter user who publishes the demo, as their profile states them."""
+    @classmethod
+    def _demo_publisher_block(
+        cls, sources: SiteLegalSources, lines: SiteLegalLines, is_publication_director_required: bool
+    ) -> SiteLegalBlock:
+        """The DevLeadHunter user who publishes the demo, as their profile states them, director of its content."""
         publisher = sources.publisher
         heading = lines.localize("Éditeur de la démonstration")
         if publisher is None:
             return SiteLegalBlock(heading=heading, kind="identity", lines=[])
+        director = publisher.name if is_publication_director_required else None
         return SiteLegalBlock(
             heading=heading,
             kind="identity",
             lines=[
                 *lines.plain(publisher.company_name),
                 *lines.plain(publisher.person_name),
-                *lines.plain(publisher.postal_address),
+                *lines.address(publisher.postal_address),
                 *lines.phone(publisher.phone, DEMO_PUBLISHER_COUNTRY_CODE),
                 *lines.email(publisher.email),
                 *lines.website(publisher.website_url),
+                *lines.value("SIRET", cls._grouped_french_id(publisher.siret)),
+                *lines.value("Directeur de la publication", director),
             ],
         )
-
-    @staticmethod
-    def _demo_director_blocks(
-        sources: SiteLegalSources, lines: SiteLegalLines, is_publication_director_required: bool
-    ) -> list[SiteLegalBlock]:
-        """The demo's publication director: its publisher, who answers for what the demo says."""
-        if not is_publication_director_required or sources.publisher is None:
-            return []
-        director = lines.plain(sources.publisher.name)
-        return [SiteLegalBlock(heading=lines.localize("Directeur de la publication"), kind="identity", lines=director)]
 
     @staticmethod
     def _host_block(lines: SiteLegalLines) -> SiteLegalBlock:
@@ -140,3 +131,16 @@ class LegalNoticeBuilder:
         if country.code == _FRANCE_CODE and len(digits) == _FRENCH_ESTABLISHMENT_ID_DIGITS:
             return "SIRET"
         return country.site_legal.legal_id_label
+
+    @classmethod
+    def _shown_legal_id(cls, country: CountryProfile, legal_id: str | None) -> str | None:
+        """The business identifier as published: a French SIREN or SIRET in its usual groups, any other as given."""
+        return cls._grouped_french_id(legal_id) if country.code == _FRANCE_CODE else legal_id
+
+    @staticmethod
+    def _grouped_french_id(legal_id: str | None) -> str | None:
+        """A SIREN or SIRET written in its usual groups (« 988 307 906 00020 »), anything else as given."""
+        digits = _NON_DIGIT.sub("", legal_id or "")
+        if len(digits) not in _FRENCH_REGISTRY_ID_LENGTHS:
+            return legal_id
+        return " ".join(group for group in (digits[:3], digits[3:6], digits[6:9], digits[9:]) if group)

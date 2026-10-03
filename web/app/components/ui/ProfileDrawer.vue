@@ -206,6 +206,26 @@
               pour écrire à vos prospects québécois.
             </p>
           </div>
+
+          <div>
+            <label class="text-muted mb-1.5 block text-xs font-medium" for="profile-siret">
+              SIRET <span class="text-[var(--app-ink-soft)]">(facultatif)</span>
+            </label>
+            <input
+              id="profile-siret"
+              v-model="form.siret"
+              type="text"
+              inputmode="numeric"
+              autocomplete="off"
+              class="input-field"
+              :class="{ 'border-[var(--app-red)]': siretErrorMessage }"
+              placeholder="Ex : 988 307 906 00020"
+            />
+            <p v-if="siretErrorMessage" class="mt-1.5 text-xs text-[var(--app-red)]">{{ siretErrorMessage }}</p>
+            <p v-else class="text-muted mt-1.5 text-xs">
+              Affiché dans les mentions légales de vos sites de démonstration, comme l'exige la loi.
+            </p>
+          </div>
         </form>
 
         <div class="flex gap-2 border-t border-[var(--app-line)] px-5 py-4">
@@ -216,7 +236,7 @@
             type="submit"
             form="profile-form"
             class="btn-primary flex-1 disabled:cursor-not-allowed disabled:opacity-50"
-            :disabled="isSaving"
+            :disabled="isSaving || siretErrorMessage !== null"
           >
             <UIcon v-if="isSaving" name="i-lucide-loader-circle" class="mr-1.5 h-4 w-4 animate-spin" />
             {{ isSaving ? 'Enregistrement…' : 'Enregistrer' }}
@@ -237,6 +257,12 @@ import { ProfilePhotoService } from '~/services/profilePhotoService'
 import { useUserStore } from '~/stores/user'
 import { useProfilePhoto } from '~/composables/useProfilePhoto'
 import { useToast } from '~/composables/useToast'
+import {
+  SIRET_DIGIT_COUNT,
+  formatTaxIdForDisplay,
+  hasValidTaxIdChecksum,
+  normalizeTaxIdDigits,
+} from '~/utils/taxIdUtils'
 
 /** User profile and password drawer. */
 const props: UiDrawerProps = defineProps({
@@ -268,6 +294,7 @@ const form: Ref<ProfileForm> = ref({
   contact_phone: '',
   contact_email: '',
   postal_address: '',
+  siret: '',
 })
 
 /** Shared profile photo state (also feeds the sidebar avatar). */
@@ -287,6 +314,14 @@ const userInitials: ComputedRef<string> = computed((): string => {
     return `${parts[0][0]}${parts[1][0]}`.toUpperCase()
   }
   return name.substring(0, 2).toUpperCase()
+})
+
+const siretErrorMessage: ComputedRef<string | null> = computed((): string | null => {
+  const siretDigits: string = normalizeTaxIdDigits(form.value.siret)
+  if (siretDigits.length === 0) return null
+  if (siretDigits.length !== SIRET_DIGIT_COUNT) return 'Un SIRET contient 14 chiffres.'
+  if (!hasValidTaxIdChecksum(siretDigits)) return 'Numéro SIRET invalide : vérifiez les chiffres.'
+  return null
 })
 
 /**
@@ -340,6 +375,7 @@ async function removeProfilePhoto(): Promise<void> {
  * @returns A promise that resolves once the profile is saved.
  */
 async function handleSave(): Promise<void> {
+  if (siretErrorMessage.value !== null) return
   isSaving.value = true
   try {
     await userStore.updateProfile({
@@ -351,6 +387,7 @@ async function handleSave(): Promise<void> {
       contact_phone: form.value.contact_phone.trim(),
       contact_email: form.value.contact_email.trim(),
       postal_address: form.value.postal_address.trim(),
+      siret: normalizeTaxIdDigits(form.value.siret),
     })
     toast.success('Profil mis à jour')
     emit('close')
@@ -373,6 +410,7 @@ watch(
         contact_phone: userStore.user?.contact_phone ?? '',
         contact_email: userStore.user?.contact_email ?? '',
         postal_address: userStore.user?.postal_address ?? '',
+        siret: formatTaxIdForDisplay(userStore.user?.siret ?? ''),
       }
       ensureProfilePhotoLoaded()
     }
