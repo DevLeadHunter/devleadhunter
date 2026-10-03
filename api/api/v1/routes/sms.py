@@ -51,6 +51,7 @@ from schemas.sms import (
 )
 from services.ai_assistant.assistant_service import ai_assistant_service
 from services.auth_service import get_current_user, require_admin
+from services.campaign_queue_service import CampaignQueueService
 from services.demo_site_service import demo_site_service
 from services.demo_video_service import has_ready_video, video_page_url
 from services.email_variables import LOYALTY_CARD_DEMO_MISSING_REFUSAL, EmailVariables
@@ -360,6 +361,7 @@ async def create_sms_reply(
         )
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+    await sms_service.classify_reply(db, reply)
     return SmsReplyResponse(
         id=reply.id,
         prospect_id=reply.prospect_id,
@@ -447,6 +449,8 @@ async def list_templates(
             variables=template.variables,
             is_default=template.key == DEFAULT_FIRST_CONTACT_KEY,
             fallback_key=template.fallback_key,
+            recalls_an_email=template.recalls_an_email,
+            module=CampaignQueueService.sms_template_module(template),
         )
         for template in list_sms_templates(category)
     ]

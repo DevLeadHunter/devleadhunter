@@ -1,10 +1,11 @@
 """
-Campaign results: what a campaign's mails produced, prospect by prospect.
+Campaign results: what a campaign's mails or SMS produced, prospect by prospect.
 
-Assembles the sends of the campaign's queue, the human visits of each prospect's demo
-(PostHog sessions), the replies (captured mails, demo banner messages, replies added by
-hand) and the sales into the payload of the dashboard's « Résultats » tab. Day series,
-rates and the to-do list are derived from it by the dashboard, in the viewer's timezone.
+Assembles the sends of the campaign's queue (an SMS send carries its delivery report and its
+cost), the human visits of each prospect's demo (PostHog sessions), the replies (captured mails,
+demo banner messages, SMS replies consigned by hand, replies added by hand) and the sales into the
+payload of the dashboard's « Résultats » tab, whichever the channel. Day series, rates and the
+to-do list are derived from it by the dashboard, in the viewer's timezone.
 
 The database is read in a worker thread and its pooled connection handed back before
 PostHog is asked for the visits, so a slow PostHog answer never keeps a connection busy;
@@ -21,12 +22,13 @@ from dataclasses import dataclass, field
 from datetime import UTC, datetime
 
 from fastapi import HTTPException, status
-from sqlalchemy import select
+from sqlalchemy import and_, or_, select
 from sqlalchemy.orm import Session
 
 from enums.demo_site_status import DemoSiteStatus
 from enums.email_status import EmailStatus
 from enums.order_status import WON_STATUSES
+from enums.sms_status import SmsStatus
 from models.campaign import Campaign
 from models.demo_site import DemoSite
 from models.demo_site_lead import LEAD_STATUS_SUBMITTED, DemoSiteLead
@@ -35,6 +37,8 @@ from models.email_queue import EmailQueue
 from models.email_reply import EmailReply
 from models.order import Order
 from models.prospect_db import ProspectDB
+from models.sms_message import SmsMessage
+from models.sms_reply import SmsReply
 from schemas.campaign_results import (
     CampaignBenchmark,
     CampaignBenchmarksResponse,
@@ -55,6 +59,7 @@ from services.reply_intent_service import NEGATIVE_INTENTS
 
 _EXCERPT_LENGTH = 280
 _INTENT_BY_VERDICT: dict[str, str] = {"interested": "interested", "refused": "not_interested", "other": "other"}
+_SMS_REPLY_WITHOUT_TEXT = "Réponse notée sans son texte"
 
 
 @dataclass
@@ -71,22 +76,23 @@ class _ProspectFacts:
     replies: list[CampaignResultsReply] = field(default_factory=list)
     sale_cents: int = 0
     sale_currency: str | None = None
+    sms_cost_cents: int = 0
     window_end: datetime | None = None
 
     @classmethod
-    def from_prospect(cls, prospect: ProspectDB) -> _ProspectFacts:
-        """Start a prospect's facts from its row."""
+    def from_prospect(cls, prospect: ProspectDB, *, is_sms_campaign: bool) -> _ProspectFacts:
+        """Start a prospect's facts from its row (his email's state means nothing to an SMS campaign)."""
         return cls(
             prospect_id=prospect.id,
             name=prospect.name,
             category=prospect.category,
             city=prospect.city,
-            is_email_undeliverable=bool(prospect.email_undeliverable),
+            is_email_undeliverable=bool(prospect.email_undeliverable) and not is_sms_campaign,
         )
 
     @property
     def first_sent_at(self) -> datetime | None:
-        """When the first mail actually left, None while it has not."""
+        """When the first message actually left, None while it has not."""
         return next((send.at for send in self.sends if send.step == 0 and send.status == "sent"), None)
 
 
@@ -96,6 +102,7 @@ class _CampaignReading:
 
     campaign_id: int
     name: str
+    channel: str
     status: str
     started_at: datetime | None
     facts_by_prospect: dict[int, _ProspectFacts]
@@ -153,7 +160,7 @@ class CampaignResultsService:
 
     async def build_benchmarks(self, db: Session, user_id: int) -> CampaignBenchmarksResponse:
         """
-        Return the stage counts of every email campaign of the user that sent a first mail, cached ten minutes.
+        Return the stage counts of every campaign of the user, email or SMS, that sent a first message, cached ten minutes.
 
         Args:
             db: Active database session.
@@ -174,13 +181,14 @@ class CampaignResultsService:
             await self._attach_visits(reading)
             benchmarks: list[CampaignBenchmark] = []
             for campaign in reading.campaigns:
-                totals = self._totals(list(campaign.facts_by_prospect.values()))
+                totals = self._totals(list(campaign.facts_by_prospect.values()), channel=campaign.channel)
                 if totals.contacted == 0:
                     continue
                 benchmarks.append(
                     CampaignBenchmark(
                         campaign_id=campaign.campaign_id,
                         name=campaign.name,
+                        channel=campaign.channel,
                         status=campaign.status,
                         started_at=campaign.started_at,
                         contacted=totals.contacted,
@@ -198,9 +206,11 @@ class CampaignResultsService:
         self, db: Session, user_id: int, campaign_id: int, payload: CampaignManualReplyCreate
     ) -> CampaignResultsReply:
         """
-        Record a reply that reached the user outside the app, attached to the last mail of the campaign it answers.
+        Record a reply that reached the user outside the app, attached to the last message of the campaign it answers.
 
-        Like a captured reply, it marks that mail as replied, which stops the prospect's pending follow-ups.
+        Like a captured reply, it marks that mail as replied, which stops the prospect's pending follow-ups. On
+        an SMS campaign the reply is consigned as an SMS reply of the number the campaign texted, which holds
+        the prospect's pending sends back the same way.
 
         Args:
             db: Active database session.
@@ -212,11 +222,13 @@ class CampaignResultsService:
             The recorded reply, as the results tab lists it.
 
         Raises:
-            HTTPException: 404 when the campaign or the prospect is not the user's, 422 when no mail was sent to them.
+            HTTPException: 404 when the campaign or the prospect is not the user's, 422 when no message was sent to them.
         """
         campaign = db.query(Campaign).filter(Campaign.id == campaign_id, Campaign.user_id == user_id).first()
         if campaign is None or all(prospect.id != payload.prospect_id for prospect in campaign.prospects):
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Prospect not found in this campaign")
+        if campaign.channel == "sms":
+            return self._add_manual_sms_reply(db, user_id, campaign_id, payload)
         email_log = (
             db.query(EmailLog)
             .filter(
@@ -234,9 +246,7 @@ class CampaignResultsService:
                 detail="Aucun mail de cette campagne n'est encore parti vers ce prospect.",
             )
         now = datetime.now(UTC).replace(tzinfo=None)
-        received_at = payload.received_at or now
-        if received_at.tzinfo is not None:
-            received_at = received_at.astimezone(UTC).replace(tzinfo=None)
+        received_at = self._utc_naive(payload.received_at) or now
         reply = EmailReply(
             email_log_id=email_log.id,
             user_id=user_id,
@@ -268,6 +278,76 @@ class CampaignResultsService:
             excerpt=self._excerpt(payload.message),
             is_handled=True,
         )
+
+    def _add_manual_sms_reply(
+        self, db: Session, user_id: int, campaign_id: int, payload: CampaignManualReplyCreate
+    ) -> CampaignResultsReply:
+        """
+        Consign the reply of an SMS campaign's prospect on the number its last SMS went to.
+
+        Args:
+            db: Active database session.
+            user_id: Owner of the campaign.
+            campaign_id: The SMS campaign the reply belongs to.
+            payload: Prospect, verdict, date and words of the reply.
+
+        Returns:
+            The recorded reply, as the results tab lists it.
+
+        Raises:
+            HTTPException: 422 when no SMS of the campaign reached the prospect yet, or the reply is refused.
+        """
+        from services.sms_service import sms_service
+
+        last_send = db.execute(
+            select(EmailQueue, SmsMessage)
+            .join(SmsMessage, SmsMessage.id == EmailQueue.sms_message_id)
+            .where(
+                EmailQueue.user_id == user_id,
+                EmailQueue.campaign_id == campaign_id,
+                EmailQueue.prospect_id == payload.prospect_id,
+                EmailQueue.status == "sent",
+            )
+            .order_by(SmsMessage.created_at.desc())
+            .limit(1)
+        ).first()
+        if last_send is None:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail="Aucun SMS de cette campagne n'est encore parti vers ce prospect.",
+            )
+        queue_item, message = last_send
+        try:
+            reply = sms_service.record_reply(
+                db,
+                user_id=user_id,
+                prospect_id=payload.prospect_id,
+                from_raw=message.to_e164,
+                body=payload.message.strip() or _SMS_REPLY_WITHOUT_TEXT,
+                received_at=self._utc_naive(payload.received_at),
+                intent=_INTENT_BY_VERDICT[payload.verdict],
+            )
+        except ValueError as exc:
+            raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc)) from exc
+        self._results_cache.pop((user_id, campaign_id), None)
+        self._benchmarks_cache.pop(user_id, None)
+        return CampaignResultsReply(
+            id=f"sms:{reply.id}",
+            prospect_id=payload.prospect_id,
+            received_at=reply.received_at,
+            verdict=payload.verdict,
+            channel="sms",
+            answered_step=0 if queue_item.queue_type == "initial" else max(1, queue_item.follow_up_index),
+            excerpt=self._excerpt(payload.message),
+            is_handled=True,
+        )
+
+    @staticmethod
+    def _utc_naive(moment: datetime | None) -> datetime | None:
+        """A moment as the database stores it: UTC without a timezone (None stays None)."""
+        if moment is None or moment.tzinfo is None:
+            return moment
+        return moment.astimezone(UTC).replace(tzinfo=None)
 
     @staticmethod
     def is_human_session(session: DemoSession) -> bool:
@@ -359,12 +439,8 @@ class CampaignResultsService:
         return reading, demo_sites
 
     def _read_benchmarks(self, db: Session, user_id: int) -> _DatabaseReading:
-        """Read every email campaign the user launched, then hand the connection back."""
-        campaigns = (
-            db.query(Campaign)
-            .filter(Campaign.user_id == user_id, Campaign.channel == "email", Campaign.started_at.isnot(None))
-            .all()
-        )
+        """Read every campaign the user launched, email or SMS, then hand the connection back."""
+        campaigns = db.query(Campaign).filter(Campaign.user_id == user_id, Campaign.started_at.isnot(None)).all()
         reading = self._read_campaigns(db, user_id, campaigns)
         self._release_connection(db)
         return reading
@@ -383,6 +459,7 @@ class CampaignResultsService:
                 _CampaignReading(
                     campaign_id=campaign.id,
                     name=campaign.name,
+                    channel=campaign.channel,
                     status=str(getattr(campaign.status, "value", campaign.status)),
                     started_at=campaign.started_at,
                     facts_by_prospect=facts_by_campaign[campaign.id],
@@ -395,9 +472,12 @@ class CampaignResultsService:
     def _collect_facts(
         self, db: Session, user_id: int, campaigns: list[Campaign]
     ) -> dict[int, dict[int, _ProspectFacts]]:
-        """Load sends, replies, banner messages and sales of each campaign's prospects (visits come later)."""
+        """Load sends, replies, banner messages, SMS replies and sales of each campaign's prospects (visits come later)."""
         facts_by_campaign: dict[int, dict[int, _ProspectFacts]] = {
-            campaign.id: {prospect.id: _ProspectFacts.from_prospect(prospect) for prospect in campaign.prospects}
+            campaign.id: {
+                prospect.id: _ProspectFacts.from_prospect(prospect, is_sms_campaign=campaign.channel == "sms")
+                for prospect in campaign.prospects
+            }
             for campaign in campaigns
         }
         campaign_ids = list(facts_by_campaign)
@@ -408,6 +488,7 @@ class CampaignResultsService:
         prospect_ids = sorted({pid for facts in facts_by_campaign.values() for pid in facts})
         self._attach_window_ends(db, user_id, prospect_ids, facts_by_campaign)
         self._attach_banner_messages(db, user_id, prospect_ids, facts_by_campaign)
+        self._attach_sms_replies(db, user_id, prospect_ids, facts_by_campaign)
         self._attach_sales(db, user_id, prospect_ids, facts_by_campaign)
         return facts_by_campaign
 
@@ -415,29 +496,41 @@ class CampaignResultsService:
     def _attach_sends(
         db: Session, user_id: int, campaign_ids: list[int], facts_by_campaign: dict[int, dict[int, _ProspectFacts]]
     ) -> dict[int, int]:
-        """Turn the campaigns' queue rows into sends, and return the step of each dispatched mail by email log id."""
+        """Turn the campaigns' queue rows into sends, and return the step of each dispatched mail by email log id.
+
+        A mail's send carries its bounce; an SMS's send its delivery failure and its cost.
+        """
         rows = db.execute(
-            select(EmailQueue, EmailLog)
+            select(EmailQueue, EmailLog, SmsMessage)
             .outerjoin(EmailLog, EmailLog.id == EmailQueue.email_log_id)
+            .outerjoin(SmsMessage, SmsMessage.id == EmailQueue.sms_message_id)
             .where(EmailQueue.user_id == user_id, EmailQueue.campaign_id.in_(campaign_ids))
             .order_by(EmailQueue.scheduled_at)
         ).all()
         step_by_log_id: dict[int, int] = {}
         status_by_queue_status = {"sent": "sent", "pending": "planned", "sending": "planned", "failed": "failed"}
-        for queue_item, email_log in rows:
+        for queue_item, email_log, sms_message in rows:
             facts = facts_by_campaign.get(queue_item.campaign_id, {}).get(queue_item.prospect_id)
             if facts is None:
                 continue
             step = 0 if queue_item.queue_type == "initial" else max(1, queue_item.follow_up_index)
             send_status = status_by_queue_status.get(queue_item.status, "skipped")
-            sent_at = email_log.sent_at if email_log is not None else None
+            sent_at: datetime | None = None
+            is_bounced: bool = False
+            if email_log is not None:
+                sent_at = email_log.sent_at
+                is_bounced = email_log.bounced_at is not None or email_log.status == EmailStatus.BOUNCED.value
+            elif sms_message is not None:
+                sent_at = sms_message.created_at
+                is_bounced = sms_message.status == SmsStatus.FAILED.value
+                if send_status == "sent":
+                    facts.sms_cost_cents += sms_message.price_cents or 0
             facts.sends.append(
                 CampaignResultsSend(
                     step=step,
                     status=send_status,
                     at=sent_at if send_status == "sent" and sent_at else queue_item.scheduled_at,
-                    is_bounced=email_log is not None
-                    and (email_log.bounced_at is not None or email_log.status == EmailStatus.BOUNCED.value),
+                    is_bounced=is_bounced,
                 )
             )
             if email_log is not None:
@@ -483,22 +576,23 @@ class CampaignResultsService:
     def _attach_window_ends(
         db: Session, user_id: int, prospect_ids: list[int], facts_by_campaign: dict[int, dict[int, _ProspectFacts]]
     ) -> None:
-        """Close each prospect's window at the first mail of a later campaign, so its visits are not counted twice."""
+        """Close each prospect's window at the first message of a later campaign, so its visits are not counted twice."""
         if not prospect_ids:
             return
         rows = db.execute(
-            select(EmailQueue.campaign_id, EmailQueue.prospect_id, EmailLog.sent_at)
-            .join(EmailLog, EmailLog.id == EmailQueue.email_log_id)
+            select(EmailQueue.campaign_id, EmailQueue.prospect_id, EmailLog.sent_at, SmsMessage.created_at)
+            .outerjoin(EmailLog, EmailLog.id == EmailQueue.email_log_id)
+            .outerjoin(SmsMessage, SmsMessage.id == EmailQueue.sms_message_id)
             .where(
                 EmailQueue.user_id == user_id,
                 EmailQueue.prospect_id.in_(prospect_ids),
                 EmailQueue.queue_type == "initial",
-                EmailLog.sent_at.isnot(None),
+                or_(EmailLog.sent_at.isnot(None), and_(SmsMessage.id.isnot(None), EmailQueue.status == "sent")),
             )
         ).all()
-        first_mails_by_prospect: dict[int, list[tuple[int, datetime]]] = defaultdict(list)
-        for campaign_id, prospect_id, sent_at in rows:
-            first_mails_by_prospect[prospect_id].append((campaign_id, sent_at))
+        first_messages_by_prospect: dict[int, list[tuple[int, datetime]]] = defaultdict(list)
+        for campaign_id, prospect_id, mail_sent_at, sms_sent_at in rows:
+            first_messages_by_prospect[prospect_id].append((campaign_id, mail_sent_at or sms_sent_at))
         for campaign_id, facts_by_prospect in facts_by_campaign.items():
             for prospect_id, facts in facts_by_prospect.items():
                 started = facts.first_sent_at
@@ -506,7 +600,7 @@ class CampaignResultsService:
                     continue
                 later = [
                     sent_at
-                    for other_id, sent_at in first_mails_by_prospect.get(prospect_id, [])
+                    for other_id, sent_at in first_messages_by_prospect.get(prospect_id, [])
                     if other_id != campaign_id and sent_at > started
                 ]
                 facts.window_end = min(later) if later else None
@@ -534,7 +628,6 @@ class CampaignResultsService:
                     continue
                 if facts.window_end is not None and lead.created_at >= facts.window_end:
                     continue
-                sent_steps = [send.step for send in facts.sends if send.status == "sent" and send.at <= lead.created_at]
                 facts.replies.append(
                     CampaignResultsReply(
                         id=f"banner:{lead.id}",
@@ -542,11 +635,45 @@ class CampaignResultsService:
                         received_at=lead.created_at,
                         verdict="interested",
                         channel="banner",
-                        answered_step=max(sent_steps, default=0),
+                        answered_step=CampaignResultsService._answered_step(facts, lead.created_at),
                         excerpt=CampaignResultsService._excerpt(lead.message or ""),
                         is_handled=lead.handled_at is not None,
                     )
                 )
+
+    @staticmethod
+    def _attach_sms_replies(
+        db: Session, user_id: int, prospect_ids: list[int], facts_by_campaign: dict[int, dict[int, _ProspectFacts]]
+    ) -> None:
+        """Attach the SMS replies consigned for the prospects during each campaign's window (the sender is one-way)."""
+        if not prospect_ids:
+            return
+        replies = db.query(SmsReply).filter(SmsReply.user_id == user_id, SmsReply.prospect_id.in_(prospect_ids)).all()
+        for facts_by_prospect in facts_by_campaign.values():
+            for reply in replies:
+                facts = facts_by_prospect.get(reply.prospect_id or -1)
+                if facts is None or facts.first_sent_at is None or reply.received_at < facts.first_sent_at:
+                    continue
+                if facts.window_end is not None and reply.received_at >= facts.window_end:
+                    continue
+                facts.replies.append(
+                    CampaignResultsReply(
+                        id=f"sms:{reply.id}",
+                        prospect_id=facts.prospect_id,
+                        received_at=reply.received_at,
+                        verdict=CampaignResultsService.reply_verdict(reply.intent),
+                        channel="sms",
+                        answered_step=CampaignResultsService._answered_step(facts, reply.received_at),
+                        excerpt=CampaignResultsService._excerpt(reply.body),
+                        is_handled=True,
+                    )
+                )
+
+    @staticmethod
+    def _answered_step(facts: _ProspectFacts, answered_at: datetime) -> int:
+        """The step of the last message that had left when the prospect answered (0 for the first one)."""
+        sent_steps = [send.step for send in facts.sends if send.status == "sent" and send.at <= answered_at]
+        return max(sent_steps, default=0)
 
     @staticmethod
     def _attach_sales(
@@ -610,9 +737,10 @@ class CampaignResultsService:
         )
         return CampaignResultsResponse(
             campaign_id=campaign.campaign_id,
+            channel=campaign.channel,
             generated_at=datetime.now(UTC).replace(tzinfo=None),
             is_visit_tracking_available=posthog_service.is_configured,
-            totals=self._totals(all_facts),
+            totals=self._totals(all_facts, channel=campaign.channel),
             next_send=CampaignResultsNextSend(at=planned[0][0], prospect_name=planned[0][1]) if planned else None,
             last_planned_send_at=planned[-1][0] if planned else None,
             demo_sites=demo_sites,
@@ -634,8 +762,8 @@ class CampaignResultsService:
             ),
         )
 
-    def _totals(self, all_facts: list[_ProspectFacts]) -> CampaignResultsTotals:
-        """Count the prospects at each stage and the mail volumes."""
+    def _totals(self, all_facts: list[_ProspectFacts], *, channel: str) -> CampaignResultsTotals:
+        """Count the prospects at each stage, the message volumes and, for an SMS campaign, what its SMS cost."""
         states = [self.prospect_state(facts) for facts in all_facts]
         sends = [send for facts in all_facts for send in facts.sends]
         return CampaignResultsTotals(
@@ -654,6 +782,7 @@ class CampaignResultsService:
             failed=sum(1 for send in sends if send.status == "failed"),
             planned_first_mails=sum(1 for send in sends if send.step == 0 and send.status == "planned"),
             planned_follow_ups=sum(1 for send in sends if send.step > 0 and send.status == "planned"),
+            sms_cost_cents=sum(facts.sms_cost_cents for facts in all_facts) if channel == "sms" else None,
         )
 
     @staticmethod

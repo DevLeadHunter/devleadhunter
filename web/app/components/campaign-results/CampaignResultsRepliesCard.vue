@@ -3,9 +3,7 @@
     <header class="flex flex-wrap items-start gap-x-4 gap-y-3 px-[18px] pt-4">
       <div class="min-w-0 flex-[1_1_220px]">
         <h3 id="campaign-results-replies-title" class="text-[15px] font-medium text-[var(--app-ink)]">Réponses</h3>
-        <p class="mt-0.5 text-[13px] text-[var(--app-ink-soft)]">
-          Par mail, laissées sur le site, ou arrivées ailleurs et ajoutées à la main.
-        </p>
+        <p class="mt-0.5 text-[13px] text-[var(--app-ink-soft)]">{{ props.words.repliesOriginNote }}</p>
       </div>
       <div class="ml-auto flex items-center gap-3.5">
         <span v-if="props.replies.length > 0" class="text-sm text-[var(--app-ink-soft)] tabular-nums">
@@ -79,6 +77,7 @@
 <script lang="ts" setup>
 import type { ComputedRef, EmitFn, PropType } from 'vue'
 import type { CampaignResultsReply, CampaignResultsRow, CampaignResultsSend } from '~/types/CampaignResults'
+import type { CampaignChannelWords } from '~/types/CampaignChannelWords'
 import type {
   CampaignResultsRepliesCardEmits,
   CampaignResultsRepliesCardProps,
@@ -101,6 +100,10 @@ const props: CampaignResultsRepliesCardProps = defineProps({
   },
   rows: {
     type: Array as PropType<CampaignResultsRow[]>,
+    required: true,
+  },
+  words: {
+    type: Object as PropType<CampaignChannelWords>,
     required: true,
   },
 })
@@ -130,10 +133,10 @@ const replyLines: ComputedRef<CampaignResultsReplyLine[]> = computed((): Campaig
 )
 
 /**
- * How long after which mail a reply came: « 2 h après le premier mail », « 1 j 9 h après la relance ».
+ * How long after which message a reply came: « 2 h après le premier mail », « 1 j 9 h après la relance ».
  * @param reply - The reply.
  * @param receivedAt - When it was received.
- * @returns The label, empty when the answered mail is unknown.
+ * @returns The label, empty when the answered message is unknown.
  */
 function originLabelOf(reply: CampaignResultsReply, receivedAt: Date): string {
   const sends: CampaignResultsSend[] = rowByProspectId.value.get(reply.prospect_id)?.prospect.sends ?? []
@@ -146,7 +149,9 @@ function originLabelOf(reply: CampaignResultsReply, receivedAt: Date): string {
     Math.round((receivedAt.getTime() - parseApiDate(answeredSend.at).getTime()) / 60000),
   )
   const lastStep: number = Math.max(0, ...sends.map((send: CampaignResultsSend): number => send.step))
-  const mailName: string = CampaignResults.stepLabel(reply.answered_step, lastStep).toLocaleLowerCase('fr-FR')
-  return `${CampaignResultsFormat.delay(minutes)} après ${reply.answered_step === 0 ? 'le' : 'la'} ${mailName}`
+  const stepName: string = CampaignResultsFormat.lowercaseFirst(
+    CampaignResults.stepLabel(reply.answered_step, lastStep, props.words),
+  )
+  return `${CampaignResultsFormat.delay(minutes)} après ${reply.answered_step === 0 ? 'le' : 'la'} ${stepName}`
 }
 </script>

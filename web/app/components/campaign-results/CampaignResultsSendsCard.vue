@@ -77,6 +77,7 @@
 
 <script lang="ts" setup>
 import type { ComputedRef, PropType } from 'vue'
+import type { CampaignChannelWords } from '~/types/CampaignChannelWords'
 import type { CampaignResultsStepSummary } from '~/types/CampaignResults'
 import type { CampaignResultsSendsCardProps } from '~/types/CampaignResultsSendsCard'
 import { computed } from 'vue'
@@ -105,12 +106,17 @@ const props: CampaignResultsSendsCardProps = defineProps({
     type: Boolean,
     required: true,
   },
+  words: {
+    type: Object as PropType<CampaignChannelWords>,
+    required: true,
+  },
 })
 
 const title: ComputedRef<string> = computed((): string => {
   const followUpCount: number = props.steps.length - 1
-  if (followUpCount <= 0) return 'Premier mail'
-  return followUpCount === 1 ? 'Premier mail et relance' : 'Premier mail et relances'
+  const firstMessage: string = `Premier ${props.words.messageNoun}`
+  if (followUpCount <= 0) return firstMessage
+  return followUpCount === 1 ? `${firstMessage} et relance` : `${firstMessage} et relances`
 })
 
 const headings: ComputedRef<string[]> = computed((): string[] =>
@@ -118,7 +124,7 @@ const headings: ComputedRef<string[]> = computed((): string[] =>
 )
 
 /**
- * Under a step's sent count: how many it reached for the first mail, the cancelled ones for a follow-up.
+ * Under a step's sent count: how many it reached for the first message, the cancelled ones for a follow-up.
  * @param step - The step summary.
  * @returns The detail, a non-breaking space when there is nothing to add.
  */

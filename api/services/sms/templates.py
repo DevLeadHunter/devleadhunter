@@ -58,6 +58,9 @@ class SmsTemplate:
     A template built around ``{lien_video}`` or ``{lien_video_assistant}`` names a
     ``fallback_key``: the template actually rendered for a prospect whose video is not
     generated (a video body with an empty link would send a broken message).
+
+    A relance written as a reminder of an email (« le site de mon email ») sets
+    ``recalls_an_email``: it cannot follow a first SMS.
     """
 
     key: str
@@ -65,6 +68,7 @@ class SmsTemplate:
     category: SmsTemplateCategory
     body: str
     fallback_key: str | None = None
+    recalls_an_email: bool = False
 
     @property
     def variables(self) -> list[str]:
@@ -175,12 +179,14 @@ SMS_TEMPLATE_LIBRARY: list[SmsTemplate] = [
         name="Rappel court",
         category=SmsTemplateCategory.FOLLOW_UP,
         body="{salutation}, le site de mon email est toujours en ligne : {lien_demo} {prix} une fois. " + _SIGN_OFF,
+        recalls_an_email=True,
     ),
     SmsTemplate(
         key="offre-a-vie",
         name="Offre à vie",
         category=SmsTemplateCategory.FOLLOW_UP,
         body="{salutation}, le site envoyé par email : {lien_demo} {prix} une fois et il est à vous. " + _SIGN_OFF,
+        recalls_an_email=True,
     ),
     SmsTemplate(
         key="offre-a-vie-video",
@@ -210,6 +216,7 @@ SMS_TEMPLATE_LIBRARY: list[SmsTemplate] = [
             "{salutation}, après mon email, {prenom_receptionniste} (IA) répond toujours : {lien_assistant} "
             "{prix_assistant}/mois. " + _SIGN_OFF
         ),
+        recalls_an_email=True,
     ),
     SmsTemplate(
         key="assistant-relance-video",
@@ -220,6 +227,7 @@ SMS_TEMPLATE_LIBRARY: list[SmsTemplate] = [
             "{prix_assistant}/mois. " + _SIGN_OFF
         ),
         fallback_key="assistant-relance",
+        recalls_an_email=True,
     ),
     SmsTemplate(
         key="assistant-prix-cash",
@@ -238,6 +246,7 @@ SMS_TEMPLATE_LIBRARY: list[SmsTemplate] = [
             "{salutation}, la carte fidélité iPhone de mon email : {lien_carte} {prix_carte}/mois, 1er mois offert. "
             + _SIGN_OFF
         ),
+        recalls_an_email=True,
     ),
     SmsTemplate(
         key="carte-rappel-court",

@@ -73,6 +73,10 @@ class SmsTemplateResponse(BaseModel):
     fallback_key: str | None = Field(
         default=None, description="Template rendered instead when the prospect has no generated video"
     )
+    recalls_an_email: bool = Field(
+        default=False, description="Relance written as a reminder of an email: it cannot follow a first SMS"
+    )
+    module: str = Field(default="websites", description="The module the template sells: websites or ai-assistant")
 
 
 class SmsTemplatePreviewResponse(BaseModel):

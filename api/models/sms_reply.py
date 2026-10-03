@@ -23,6 +23,7 @@ class SmsReply(Base):
         from_number: Normalised E.164 number the prospect wrote from
         body: Message text as received
         received_at: When the reply arrived (editable at consignment, UTC naive)
+        intent: The reply's verdict (``interested``, ``not_interested``…), the email replies' vocabulary
         created_at: When the row was consigned (UTC naive)
     """
 
@@ -34,4 +35,5 @@ class SmsReply(Base):
     from_number: Mapped[str] = mapped_column(String(20), nullable=False)
     body: Mapped[str] = mapped_column(Text, nullable=False)
     received_at: Mapped[datetime] = mapped_column(default=datetime.utcnow, nullable=False, index=True)
+    intent: Mapped[str | None] = mapped_column(String(32), nullable=True)
     created_at: Mapped[datetime] = mapped_column(default=datetime.utcnow, nullable=False)

@@ -15,3 +15,9 @@ export type CampaignDetailTab = {
   key: string
   label: string
 }
+
+export type CampaignSmsFollowUpForm = {
+  isEnabled: boolean
+  delayDays: number
+  templateKey: string
+}

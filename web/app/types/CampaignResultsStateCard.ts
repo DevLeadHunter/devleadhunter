@@ -1,3 +1,4 @@
+import type { CampaignChannelWords } from '~/types/CampaignChannelWords'
 import type {
   CampaignResultsProspectState,
   CampaignResultsStateFact,
@@ -10,6 +11,7 @@ export type CampaignResultsStateCardProps = {
   prospectCount: number
   isSending: boolean
   isAloneOnRow: boolean
+  words: CampaignChannelWords
 }
 
 export type CampaignResultsStateCardEmits = {

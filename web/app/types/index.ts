@@ -527,9 +527,11 @@ export type EmailStatus =
 export type CampaignFollowUp = {
   id: number
   campaign_id: number
-  template_id: number
+  template_id: number | null
   template_name?: string | null
   template_subject?: string | null
+  sms_template_key?: string | null
+  sms_template_name?: string | null
   delay_days: number
   position: number
   created_at: string

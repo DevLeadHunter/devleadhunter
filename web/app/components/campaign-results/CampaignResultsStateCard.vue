@@ -12,7 +12,7 @@
           <p class="mt-0.5 text-[13px] text-[var(--app-ink-soft)]">
             {{
               props.isSending
-                ? "Un carré par prospect. Les carrés vides n'ont pas encore reçu de mail."
+                ? `Un carré par prospect. Les carrés vides n'ont pas encore reçu de ${props.words.messageNoun}.`
                 : "Un carré par prospect, à l'étape la plus avancée qu'il a atteinte."
             }}
           </p>
@@ -80,6 +80,7 @@
 
 <script lang="ts" setup>
 import type { ComputedRef, EmitFn, PropType } from 'vue'
+import type { CampaignChannelWords } from '~/types/CampaignChannelWords'
 import type { CampaignResultsRow, CampaignResultsStateFact, CampaignResultsStateGroup } from '~/types/CampaignResults'
 import type { CampaignResultsStateCardEmits, CampaignResultsStateCardProps } from '~/types/CampaignResultsStateCard'
 import type { UiUnitChartUnit } from '~/types/UiUnitChart'
@@ -107,6 +108,10 @@ const props: CampaignResultsStateCardProps = defineProps({
   },
   isAloneOnRow: {
     type: Boolean,
+    required: true,
+  },
+  words: {
+    type: Object as PropType<CampaignChannelWords>,
     required: true,
   },
 })

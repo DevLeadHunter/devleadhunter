@@ -133,6 +133,13 @@ export type CampaignUpdatePayload = {
   status?: CampaignStatus
 }
 
+export type CampaignFollowUpPayload = {
+  template_id?: number
+  sms_template_key?: string
+  delay_days: number
+  position: number
+}
+
 export type CampaignSettingsPayload = {
   template_id?: number | null
   ab_template_id_b?: number | null
@@ -143,7 +150,7 @@ export type CampaignSettingsPayload = {
   clear_max_emails_per_day?: boolean
   behavior_personalized_followups?: boolean
   include_video?: boolean
-  follow_ups?: Array<{ template_id: number; delay_days: number; position: number }>
+  follow_ups?: CampaignFollowUpPayload[]
 }
 
 export type CampaignLaunchPayload = {

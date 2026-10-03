@@ -1,3 +1,4 @@
+import type { CampaignChannelWords } from '~/types/CampaignChannelWords'
 import type { CampaignResultsDay, CampaignResultsRow, CampaignResultsSortKey } from '~/types/CampaignResults'
 
 export type CampaignResultsProspectsCardProps = {
@@ -5,6 +6,7 @@ export type CampaignResultsProspectsCardProps = {
   days: CampaignResultsDay[]
   periodLabel: string
   isVisitTrackingAvailable: boolean
+  words: CampaignChannelWords
 }
 
 export type CampaignResultsProspectsCardEmits = {

@@ -196,4 +196,13 @@ export class CampaignResultsFormat {
   static capitalize(text: string): string {
     return text.charAt(0).toLocaleUpperCase(LOCALE) + text.slice(1)
   }
+
+  /**
+   * A label put inside a sentence: only its first letter lowered, so « Premier SMS » reads « premier SMS ».
+   * @param text - The label.
+   * @returns The label with a lowercase first letter.
+   */
+  static lowercaseFirst(text: string): string {
+    return text.charAt(0).toLocaleLowerCase(LOCALE) + text.slice(1)
+  }
 }

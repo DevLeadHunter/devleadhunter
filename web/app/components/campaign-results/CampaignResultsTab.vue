@@ -18,7 +18,7 @@
     <UiEmptyState
       v-else-if="rows.length === 0"
       title="Pas encore de résultats"
-      description="Ajoutez des prospects à la campagne : leurs visites, réponses et ventes s'afficheront ici dès le premier mail."
+      :description="`Ajoutez des prospects à la campagne : leurs visites, réponses et ventes s'afficheront ici dès le premier ${words.messageNoun}.`"
     />
 
     <template v-else-if="headline">
@@ -56,6 +56,7 @@
           :prospect-count="rows.length"
           :is-sending="isSending"
           :is-alone-on-row="!hasTradeComparison"
+          :words="words"
           @select-prospect="emit('open-prospect', $event)"
           @select-state="showProspectsInState"
           @show-prospects="showAllProspects"
@@ -76,12 +77,14 @@
         :marks="visitMarks"
         :is-visit-tracking-available="props.results.is_visit_tracking_available"
         :period-label="periodLabel"
+        :words="words"
       />
 
       <CampaignResultsRepliesCard
         v-if="hasSentMails"
         :replies="props.results.replies"
         :rows="rows"
+        :words="words"
         @open-prospect="emit('open-prospect', $event)"
         @add-reply="openReplyDrawer"
       />
@@ -93,6 +96,7 @@
         :prospect-count="rows.length"
         :note="sendsNote"
         :is-visit-tracking-available="props.results.is_visit_tracking_available"
+        :words="words"
       />
 
       <CampaignResultsProspectsCard
@@ -103,6 +107,7 @@
         :days="days"
         :period-label="periodLabel"
         :is-visit-tracking-available="props.results.is_visit_tracking_available"
+        :words="words"
         @open-prospect="emit('open-prospect', $event)"
       />
     </template>
@@ -113,6 +118,7 @@
 import type { ComputedRef, EmitFn, PropType, Ref, WritableComputedRef } from 'vue'
 import type { CampaignStatus } from '~/services/campaignService'
 import type { CampaignFollowUp } from '~/types'
+import type { CampaignChannelWords } from '~/types/CampaignChannelWords'
 import type {
   CampaignBenchmark,
   CampaignResultsComparison,
@@ -137,7 +143,7 @@ import type { SelectFieldOption } from '~/types/SelectField'
 import type { UiKpiBandCell } from '~/types/UiKpiBand'
 import { useNow } from '@vueuse/core'
 import { computed, ref } from 'vue'
-import { CAMPAIGN_RESULTS_FILTER_BY_STATE } from '~/constants/campaignResults'
+import { CAMPAIGN_CHANNEL_WORDS, CAMPAIGN_RESULTS_FILTER_BY_STATE } from '~/constants/campaignResults'
 import { useDrawerStackStore } from '~/stores/drawerStack'
 import { CampaignResults } from '~/utils/campaignResults'
 import { CampaignResultsSummary } from '~/utils/campaignResultsSummary'
@@ -177,7 +183,11 @@ const now: Ref<Date> = useNow({ interval: 60_000 })
 const prospectsCard: Ref<CampaignResultsProspectsCardExposed | null> = ref(null)
 const prospectFilter: Ref<CampaignResultsFilterKey> = ref('all')
 const isShowingQuietRows: Ref<boolean> = ref(false)
-const comparisonKey: Ref<string> = ref('others')
+const comparisonKey: Ref<string> = ref('')
+
+const words: ComputedRef<CampaignChannelWords> = computed(
+  (): CampaignChannelWords => CAMPAIGN_CHANNEL_WORDS[props.results?.channel ?? 'email'],
+)
 
 const rows: ComputedRef<CampaignResultsRow[]> = computed((): CampaignResultsRow[] =>
   props.results ? CampaignResults.buildRows(props.results) : [],
@@ -192,7 +202,7 @@ const headline: ComputedRef<CampaignResultsHeadline | null> = computed((): Campa
 )
 
 const comparisons: ComputedRef<CampaignResultsComparison[]> = computed((): CampaignResultsComparison[] =>
-  CampaignResults.comparisons(props.benchmarks, props.campaignId),
+  CampaignResults.comparisons(props.benchmarks, props.campaignId, props.results?.channel ?? 'email'),
 )
 
 const comparisonOptions: ComputedRef<SelectFieldOption<string>[]> = computed((): SelectFieldOption<string>[] =>
@@ -233,11 +243,11 @@ const kpiCells: ComputedRef<UiKpiBandCell[]> = computed((): UiKpiBandCell[] => {
 })
 
 const todos: ComputedRef<CampaignResultsTodo[]> = computed((): CampaignResultsTodo[] =>
-  CampaignResultsSummary.todos(rows.value, now.value),
+  CampaignResultsSummary.todos(rows.value, now.value, words.value),
 )
 
 const todosEmptyNote: ComputedRef<string> = computed((): string =>
-  props.results ? CampaignResultsSummary.todosEmptyNote(props.results.totals) : '',
+  props.results ? CampaignResultsSummary.todosEmptyNote(props.results.totals, words.value) : '',
 )
 
 const hasSentMails: ComputedRef<boolean> = computed((): boolean => (props.results?.totals.first_mails_sent ?? 0) > 0)
@@ -287,7 +297,7 @@ const stepSummaries: ComputedRef<CampaignResultsStepSummary[]> = computed((): Ca
 })
 
 const sendsNote: ComputedRef<string> = computed((): string =>
-  CampaignResultsSummary.sendsNote(stepSummaries.value, props.results?.replies ?? []),
+  CampaignResultsSummary.sendsNote(stepSummaries.value, props.results?.replies ?? [], words.value),
 )
 
 const prospectNames: ComputedRef<Record<number, string>> = computed(
@@ -332,7 +342,7 @@ async function showAllProspects(): Promise<void> {
   await prospectsCard.value?.reveal(null)
 }
 
-/** Open the drawer adding a reply received outside the app, among the prospects a mail reached. */
+/** Open the drawer adding a reply received outside the app, among the prospects a message reached. */
 function openReplyDrawer(): void {
   drawerStack.push({
     kind: 'campaign-reply',

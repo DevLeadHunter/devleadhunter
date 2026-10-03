@@ -104,6 +104,7 @@ import type {
   CampaignResultsSend,
   CampaignResultsVisit,
 } from '~/types/CampaignResults'
+import type { CampaignChannelWords } from '~/types/CampaignChannelWords'
 import type {
   CampaignResultsJourneyEvent,
   CampaignResultsJourneyMail,
@@ -125,6 +126,10 @@ const props: CampaignResultsJourneyProps = defineProps({
   },
   days: {
     type: Array as PropType<CampaignResultsDay[]>,
+    required: true,
+  },
+  words: {
+    type: Object as PropType<CampaignChannelWords>,
     required: true,
   },
 })
@@ -321,17 +326,17 @@ function mailKindOf(send: CampaignResultsSend): CampaignResultsJourneyMailKind {
 }
 
 /**
- * What a send was, for the tooltip: « Premier mail », « Relance prévue », « 2e relance annulée »…
+ * What a send was, for the tooltip: « Premier mail », « Relance prévue », « Premier SMS, non reçu »…
  * @param send - The send.
  * @returns The label.
  */
 function sendLabel(send: CampaignResultsSend): string {
-  const name: string = CampaignResults.stepLabel(send.step, lastStep.value)
+  const name: string = CampaignResults.stepLabel(send.step, lastStep.value, props.words)
   const isFollowUp: boolean = send.step > 0
   if (send.status === 'planned') return `${name} ${isFollowUp ? 'prévue' : 'prévu'}`
   if (send.status === 'skipped') return `${name} ${isFollowUp ? 'annulée' : 'annulé'}`
   if (send.status === 'failed') return `${name}, échec d'envoi`
-  return send.is_bounced ? `${name}, rebond` : name
+  return send.is_bounced ? `${name}, ${props.words.failedDeliveryNoun}` : name
 }
 
 /**

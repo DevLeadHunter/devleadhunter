@@ -307,8 +307,8 @@
                   chaque prospect (salutation, lien de sa démo, votre prénom). Un seul SMS par
                   prospect — le même réglage que Paramètres → Relance SMS.`
                 : `Modèle « ${smsTemplate?.name ?? 'Direct'} » de la bibliothèque SMS, rendu pour chaque prospect
-                  (salutation, nom de l'entreprise, lien de sa démo, votre prénom). Un seul SMS
-                  par prospect, sans A/B ni relance.`
+                  (salutation, nom de l'entreprise, lien de sa démo, votre prénom), sans A/B. La relance se
+                  règle juste en dessous.`
             }}
           </p>
           <p v-if="smsTemplateFallbackName" class="text-muted mt-1 text-[11px] leading-relaxed">
@@ -316,6 +316,17 @@
             Prospect sans vidéo générée : le modèle « {{ smsTemplateFallbackName }} » (lien du site) part à la place.
           </p>
         </section>
+
+        <CampaignSmsFollowUpCard
+          v-if="isSms && !isAutoRelanceCampaign && smsTemplate"
+          v-model:is-enabled="settingsForm.sms_follow_up.isEnabled"
+          v-model:delay-days="settingsForm.sms_follow_up.delayDays"
+          v-model:template-key="settingsForm.sms_follow_up.templateKey"
+          :templates="smsFollowUpTemplates"
+          :campaign-module="smsTemplate.module"
+          :preview-prospect-id="campaign.prospects[0]?.id ?? null"
+          :default-delay-days="defaultFollowUpDelayDays"
+        />
 
         <section v-if="!isSms" class="rounded-xl border border-[var(--app-line)] bg-[var(--app-surface)] p-5">
           <div class="mb-4 flex items-center justify-between">
@@ -820,13 +831,19 @@
 
 <script lang="ts" setup>
 import type { UseAuthReturn, UseToastReturn } from '~/types/Composables'
-import type { CampaignDetailTab, CampaignQueueRow, TemplateOption } from '~/types/CampaignDetailPage'
+import type {
+  CampaignDetailTab,
+  CampaignQueueRow,
+  CampaignSmsFollowUpForm,
+  TemplateOption,
+} from '~/types/CampaignDetailPage'
 import type { SmsSegmentCount } from '~/types/SmsSegmentCount'
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import type { ComputedRef, Ref } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import type {
   CampaignDetailResponse,
+  CampaignFollowUpPayload,
   CampaignProspect,
   CampaignQueueItem,
   CampaignQueueResponse,
@@ -911,6 +928,8 @@ const QUEUE_STATUS_BADGE_CLASS: Record<string, string> = {
 
 const AUTO_REFRESH_INTERVAL_MS: number = 30_000
 
+const DEFAULT_FOLLOW_UP_DELAY_DAYS: number = 5
+
 const campaign: Ref<CampaignDetailResponse | null> = ref(null)
 const stats: Ref<CampaignStats | null> = ref(null)
 const queueData: Ref<CampaignQueueResponse | null> = ref(null)
@@ -942,6 +961,8 @@ const smsTemplates: Ref<SmsTemplate[]> = ref([])
 /** The first-contact template this SMS campaign sends (chosen key, else the library default). */
 const smsTemplate: Ref<SmsTemplate | null> = ref(null)
 
+const smsFollowUpTemplates: Ref<SmsTemplate[]> = ref([])
+
 /** The SMS rendered for the campaign's first prospect, when his demo allows it. */
 const smsRenderedPreview: Ref<string> = ref('')
 
@@ -956,6 +977,7 @@ const settingsForm: Ref<{
   behavior_personalized_followups: boolean
   include_video: boolean
   follow_ups: Array<{ template_id: number; delay_days: number }>
+  sms_follow_up: CampaignSmsFollowUpForm
 }> = ref({
   template_id: 0,
   ab_template_id_b: 0,
@@ -965,6 +987,7 @@ const settingsForm: Ref<{
   behavior_personalized_followups: false,
   include_video: true,
   follow_ups: [],
+  sms_follow_up: { isEnabled: false, delayDays: DEFAULT_FOLLOW_UP_DELAY_DAYS, templateKey: '' },
 })
 
 const { openCreate, openPreview }: EmailTemplateCreator = useEmailTemplateCreator(templates, reloadTemplates)
@@ -973,6 +996,10 @@ const { openCreate, openPreview }: EmailTemplateCreator = useEmailTemplateCreato
 const sendPolicy: Ref<SendPolicy | null> = ref(null)
 
 const sendPolicySummary: ComputedRef<string> = computed((): string => formatSendPolicySummary(sendPolicy.value))
+
+const defaultFollowUpDelayDays: ComputedRef<number> = computed(
+  (): number => sendPolicy.value?.follow_up_delay_days ?? DEFAULT_FOLLOW_UP_DELAY_DAYS,
+)
 
 /** Persistent drawer stack (prospect detail lives in the layout). */
 const drawerStack: ReturnType<typeof useDrawerStackStore> = useDrawerStackStore()
@@ -1043,7 +1070,7 @@ const queueRows: ComputedRef<CampaignQueueRow[]> = computed((): CampaignQueueRow
   ),
 )
 
-const hasResultsTab: ComputedRef<boolean> = computed((): boolean => !isSms.value && Boolean(campaign.value?.started_at))
+const hasResultsTab: ComputedRef<boolean> = computed((): boolean => Boolean(campaign.value?.started_at))
 
 /** Tabs shown for this campaign — the A/B tab is email-only. */
 const visibleTabs: ComputedRef<CampaignDetailTab[]> = computed((): CampaignDetailTab[] =>
@@ -1119,7 +1146,7 @@ const canBackfillReady: ComputedRef<boolean> = computed(
 /** Metric cards for the stats strip. */
 const smsMetricCards: ComputedRef<Array<{ label: string; value: number | string; icon: string; color: string }>> =
   computed(() => {
-    if (!isSms.value) return []
+    if (!isSms.value || hasResultsTab.value) return []
     const c: { sent: number; pending: number; failed: number } = smsQueueCounts.value
     return [
       {
@@ -1176,6 +1203,7 @@ const settingsDirty: ComputedRef<boolean> = computed((): boolean => {
     behavior_personalized_followups: boolean
     include_video: boolean
     follow_ups: { template_id: number; delay_days: number }[]
+    sms_follow_up: CampaignSmsFollowUpForm
   } = settingsForm.value
   if (f.template_id !== (c.template_id ?? 0)) return true
   if (f.send_delay_minutes !== c.send_delay_minutes) return true
@@ -1184,6 +1212,7 @@ const settingsDirty: ComputedRef<boolean> = computed((): boolean => {
   if (f.include_video !== c.include_video) return true
   if (f.enable_ab !== !!c.ab_template_id_b) return true
   if (f.enable_ab && f.ab_template_id_b !== (c.ab_template_id_b ?? 0)) return true
+  if (isSms.value) return isSmsFollowUpEdited(f.sms_follow_up, savedSmsFollowUp(c))
   if (f.follow_ups.length !== c.follow_ups.length) return true
   return f.follow_ups.some(
     (fu: { template_id: number; delay_days: number }, i: number) =>
@@ -1214,6 +1243,9 @@ async function loadSmsPreview(detail: CampaignDetailResponse): Promise<void> {
   smsTemplates.value = await SmsService.listTemplates(
     detail.system_kind === 'sms_auto_relance' ? 'follow_up' : 'first_contact',
   ).catch((): SmsTemplate[] => [])
+  if (detail.system_kind !== 'sms_auto_relance') {
+    smsFollowUpTemplates.value = await SmsService.listTemplates('follow_up').catch((): SmsTemplate[] => [])
+  }
   const fallback: SmsTemplate | null =
     smsTemplates.value.find((template: SmsTemplate): boolean => template.is_default) ?? smsTemplates.value[0] ?? null
   // Honour the campaign's chosen template; fall back to the library default.
@@ -1365,11 +1397,60 @@ function syncSettingsForm(c: CampaignDetailResponse): void {
     enable_ab: !!c.ab_template_id_b,
     behavior_personalized_followups: c.behavior_personalized_followups,
     include_video: c.include_video,
-    follow_ups: c.follow_ups.map((fu: CampaignFollowUp) => ({
-      template_id: fu.template_id,
-      delay_days: fu.delay_days,
-    })),
+    follow_ups: savedEmailFollowUps(c),
+    sms_follow_up: savedSmsFollowUp(c),
   }
+}
+
+/**
+ * The saved email follow-ups of a campaign, as the configuration form edits them.
+ * @param c - Campaign detail response.
+ * @returns Each email step's template and delay, in order.
+ */
+function savedEmailFollowUps(c: CampaignDetailResponse): { template_id: number; delay_days: number }[] {
+  const emailFollowUps: { template_id: number; delay_days: number }[] = []
+  for (const followUp of c.follow_ups) {
+    if (followUp.template_id === null) continue
+    emailFollowUps.push({ template_id: followUp.template_id, delay_days: followUp.delay_days })
+  }
+  return emailFollowUps
+}
+
+/**
+ * The saved relance of an SMS campaign, as the configuration form edits it.
+ * @param c - Campaign detail response.
+ * @returns The relance, off when the campaign has none.
+ */
+function savedSmsFollowUp(c: CampaignDetailResponse): CampaignSmsFollowUpForm {
+  const step: CampaignFollowUp | undefined = c.follow_ups.find((followUp: CampaignFollowUp): boolean =>
+    Boolean(followUp.sms_template_key),
+  )
+  return {
+    isEnabled: step !== undefined,
+    delayDays: step?.delay_days ?? defaultFollowUpDelayDays.value,
+    templateKey: step?.sms_template_key ?? '',
+  }
+}
+
+/**
+ * Whether the relance in the form differs from the saved one (the delay and the template only count while it is on).
+ * @param edited - The relance in the form.
+ * @param saved - The saved relance.
+ * @returns True when there is something to save.
+ */
+function isSmsFollowUpEdited(edited: CampaignSmsFollowUpForm, saved: CampaignSmsFollowUpForm): boolean {
+  if (edited.isEnabled !== saved.isEnabled) return true
+  return edited.isEnabled && (edited.delayDays !== saved.delayDays || edited.templateKey !== saved.templateKey)
+}
+
+/**
+ * The follow-up sequence an SMS campaign saves: its single relance, or none.
+ * @param followUp - The relance in the form.
+ * @returns The sequence to save.
+ */
+function smsFollowUpSteps(followUp: CampaignSmsFollowUpForm): CampaignFollowUpPayload[] {
+  if (!followUp.isEnabled || !followUp.templateKey) return []
+  return [{ sms_template_key: followUp.templateKey, delay_days: followUp.delayDays, position: 1 }]
 }
 
 /**
@@ -1443,6 +1524,7 @@ async function saveSettings(): Promise<void> {
       behavior_personalized_followups: boolean
       include_video: boolean
       follow_ups: { template_id: number; delay_days: number }[]
+      sms_follow_up: CampaignSmsFollowUpForm
     } = settingsForm.value
     const hasDailyCap: boolean = f.max_emails_per_day !== null && f.max_emails_per_day > 0
     const updated: CampaignDetailResponse = await CampaignService.updateSettings(campaignId.value, {
@@ -1454,19 +1536,23 @@ async function saveSettings(): Promise<void> {
       clear_max_emails_per_day: !hasDailyCap,
       behavior_personalized_followups: f.behavior_personalized_followups,
       include_video: f.include_video,
-      follow_ups: f.follow_ups
-        .filter((fu: { template_id: number; delay_days: number }) => fu.template_id > 0)
-        .map((fu: { template_id: number; delay_days: number }, i: number) => ({
-          template_id: fu.template_id,
-          delay_days: fu.delay_days,
-          position: i + 1,
-        })),
+      follow_ups: isSms.value
+        ? smsFollowUpSteps(f.sms_follow_up)
+        : f.follow_ups
+            .filter((fu: { template_id: number; delay_days: number }) => fu.template_id > 0)
+            .map(
+              (fu: { template_id: number; delay_days: number }, i: number): CampaignFollowUpPayload => ({
+                template_id: fu.template_id,
+                delay_days: fu.delay_days,
+                position: i + 1,
+              }),
+            ),
     })
     campaign.value = updated
     syncSettingsForm(updated)
     toast.success('Configuration enregistrée')
-  } catch {
-    toast.error("Erreur lors de l'enregistrement")
+  } catch (err: unknown) {
+    toast.error(err instanceof Error ? err.message : "Erreur lors de l'enregistrement")
   } finally {
     isSavingSettings.value = false
   }
@@ -1727,7 +1813,7 @@ function openEditDrawer(): void {
 
 /** Append an empty follow-up slot. */
 function addFollowUp(): void {
-  settingsForm.value.follow_ups.push({ template_id: 0, delay_days: 5 })
+  settingsForm.value.follow_ups.push({ template_id: 0, delay_days: defaultFollowUpDelayDays.value })
 }
 
 /**

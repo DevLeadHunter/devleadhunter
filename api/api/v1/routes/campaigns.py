@@ -13,7 +13,7 @@ from sqlalchemy import delete, func, select
 from sqlalchemy.orm import Session
 
 from core.database import get_db
-from models.campaign import CampaignStatus
+from models.campaign import Campaign, CampaignStatus
 from models.campaign_follow_up import CampaignFollowUp
 from models.email_queue import EmailQueue
 from models.prospect_db import ProspectDB
@@ -44,10 +44,12 @@ from schemas.campaign_results import (
     CampaignResultsResponse,
 )
 from services.auth_service import get_current_user
+from services.campaign_follow_up_rules import CampaignFollowUpRules
 from services.campaign_queue_service import CampaignQueueService
 from services.campaign_results_service import campaign_results_service
 from services.campaign_service import campaign_service
 from services.sms.send_window import france_send_window
+from services.sms.templates import find_sms_template
 from services.sms_auto_campaign_service import SMS_AUTO_RELANCE_KIND
 
 router = APIRouter(prefix="/campaigns", tags=["campaigns"])
@@ -156,20 +158,51 @@ def _detail_response(
             )
             for prospect in campaign.prospects
         ],
-        follow_ups=[
-            CampaignFollowUpResponse(
-                id=fu.id,
-                campaign_id=fu.campaign_id,
-                template_id=fu.template_id,
-                template_name=fu.template.name if fu.template else None,
-                template_subject=fu.template.subject if fu.template else None,
-                delay_days=fu.delay_days,
-                position=fu.position,
-                created_at=fu.created_at,
-            )
-            for fu in sorted(campaign.follow_ups, key=lambda x: x.position)
-        ],
+        follow_ups=[_follow_up_response(fu) for fu in sorted(campaign.follow_ups, key=lambda x: x.position)],
     )
+
+
+def _follow_up_response(follow_up: CampaignFollowUp) -> CampaignFollowUpResponse:
+    """Serialize a follow-up step with the name of its email or SMS template."""
+    sms_template = find_sms_template(follow_up.sms_template_key) if follow_up.sms_template_key else None
+    return CampaignFollowUpResponse(
+        id=follow_up.id,
+        campaign_id=follow_up.campaign_id,
+        template_id=follow_up.template_id,
+        template_name=follow_up.template.name if follow_up.template else None,
+        template_subject=follow_up.template.subject if follow_up.template else None,
+        sms_template_key=follow_up.sms_template_key,
+        sms_template_name=sms_template.name if sms_template else None,
+        delay_days=follow_up.delay_days,
+        position=follow_up.position,
+        created_at=follow_up.created_at,
+    )
+
+
+def _saved_steps(campaign: Campaign) -> list[CampaignFollowUpCreate]:
+    """The campaign's saved follow-up sequence, in order, as the follow-up rules read it."""
+    return [
+        CampaignFollowUpCreate(
+            template_id=follow_up.template_id,
+            sms_template_key=follow_up.sms_template_key,
+            delay_days=follow_up.delay_days,
+            position=follow_up.position,
+        )
+        for follow_up in sorted(campaign.follow_ups, key=lambda step: step.position)
+    ]
+
+
+def _refuse_invalid_follow_ups(
+    campaign: Campaign, steps: list[CampaignFollowUpCreate], *, first_contact_key: str | None
+) -> None:
+    """Refuse a follow-up sequence the campaign's channel cannot send.
+
+    Raises:
+        HTTPException: 422 with the reason shown to the user.
+    """
+    refusal = CampaignFollowUpRules.refusal(campaign, steps, first_contact_key=first_contact_key)
+    if refusal:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail=refusal)
 
 
 def _get_or_404(db: Session, campaign_id: int, user_id: int):
@@ -365,6 +398,11 @@ async def update_campaign_settings(
     queue items that have not been dispatched yet.
     """
     campaign = _get_or_404(db, campaign_id, current_user.id)
+    _refuse_invalid_follow_ups(
+        campaign,
+        settings.follow_ups if settings.follow_ups is not None else _saved_steps(campaign),
+        first_contact_key=settings.sms_template_key or campaign.sms_template_key,
+    )
 
     if settings.template_id is not None:
         campaign.template_id = settings.template_id
@@ -408,6 +446,7 @@ async def update_campaign_settings(
                 CampaignFollowUp(
                     campaign_id=campaign_id,
                     template_id=fu.template_id,
+                    sms_template_key=fu.sms_template_key,
                     delay_days=fu.delay_days,
                     position=i,
                 )
@@ -501,7 +540,8 @@ async def add_follow_up(
     db: Session = Depends(get_db),
 ) -> CampaignFollowUpResponse:
     """Append a follow-up step to the campaign sequence."""
-    _get_or_404(db, campaign_id, current_user.id)
+    campaign = _get_or_404(db, campaign_id, current_user.id)
+    _refuse_invalid_follow_ups(campaign, [*_saved_steps(campaign), data], first_contact_key=campaign.sms_template_key)
 
     # Auto-set position to last + 1 if not supplied or already taken.
     max_pos: int = (
@@ -514,6 +554,7 @@ async def add_follow_up(
     fu = CampaignFollowUp(
         campaign_id=campaign_id,
         template_id=data.template_id,
+        sms_template_key=data.sms_template_key,
         delay_days=data.delay_days,
         position=max_pos + 1,
     )
@@ -521,16 +562,7 @@ async def add_follow_up(
     db.commit()
     db.refresh(fu)
 
-    return CampaignFollowUpResponse(
-        id=fu.id,
-        campaign_id=fu.campaign_id,
-        template_id=fu.template_id,
-        template_name=fu.template.name if fu.template else None,
-        template_subject=fu.template.subject if fu.template else None,
-        delay_days=fu.delay_days,
-        position=fu.position,
-        created_at=fu.created_at,
-    )
+    return _follow_up_response(fu)
 
 
 @router.patch("/{campaign_id}/follow-ups/{followup_id}", response_model=CampaignFollowUpResponse)
@@ -542,13 +574,23 @@ async def update_follow_up(
     db: Session = Depends(get_db),
 ) -> CampaignFollowUpResponse:
     """Update a follow-up step (template, delay, or position)."""
-    _get_or_404(db, campaign_id, current_user.id)
+    campaign = _get_or_404(db, campaign_id, current_user.id)
     fu: CampaignFollowUp | None = db.get(CampaignFollowUp, followup_id)
     if not fu or fu.campaign_id != campaign_id:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Follow-up not found")
+    if data.sms_template_key is not None:
+        updated_steps: list[CampaignFollowUpCreate] = [
+            step.model_copy(update={"sms_template_key": data.sms_template_key})
+            if step.position == fu.position
+            else step
+            for step in _saved_steps(campaign)
+        ]
+        _refuse_invalid_follow_ups(campaign, updated_steps, first_contact_key=campaign.sms_template_key)
 
     if data.template_id is not None:
         fu.template_id = data.template_id
+    if data.sms_template_key is not None:
+        fu.sms_template_key = data.sms_template_key
     if data.delay_days is not None:
         fu.delay_days = data.delay_days
     if data.position is not None:
@@ -557,16 +599,7 @@ async def update_follow_up(
     db.commit()
     db.refresh(fu)
 
-    return CampaignFollowUpResponse(
-        id=fu.id,
-        campaign_id=fu.campaign_id,
-        template_id=fu.template_id,
-        template_name=fu.template.name if fu.template else None,
-        template_subject=fu.template.subject if fu.template else None,
-        delay_days=fu.delay_days,
-        position=fu.position,
-        created_at=fu.created_at,
-    )
+    return _follow_up_response(fu)
 
 
 @router.delete("/{campaign_id}/follow-ups/{followup_id}", status_code=status.HTTP_204_NO_CONTENT)

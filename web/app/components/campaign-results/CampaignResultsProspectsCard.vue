@@ -19,7 +19,7 @@
           <svg viewBox="0 0 12 12" class="h-3 w-3">
             <rect x="5" y="1" width="2" height="10" rx="1" class="fill-[var(--app-ink)]" />
           </svg>
-          Mail
+          {{ CampaignResultsFormat.capitalize(props.words.messageNoun) }}
         </span>
         <span v-if="props.isVisitTrackingAvailable" class="inline-flex items-center gap-1.5">
           <svg viewBox="0 0 12 12" class="h-3 w-3">
@@ -121,7 +121,7 @@
           </span>
         </BaseTableTd>
         <BaseTableTd class="min-w-[272px]">
-          <CampaignResultsJourney :row="row" :days="props.days" />
+          <CampaignResultsJourney :row="row" :days="props.days" :words="props.words" />
           <CampaignResultsJourneyAxis :days="props.days" class="mt-1 md:hidden" />
         </BaseTableTd>
         <BaseTableTd
@@ -177,6 +177,7 @@
 
 <script lang="ts" setup>
 import type { ComputedRef, EmitFn, ModelRef, PropType, Ref } from 'vue'
+import type { CampaignChannelWords } from '~/types/CampaignChannelWords'
 import type {
   CampaignResultsDay,
   CampaignResultsFilterKey,
@@ -219,6 +220,10 @@ const props: CampaignResultsProspectsCardProps = defineProps({
   },
   isVisitTrackingAvailable: {
     type: Boolean,
+    required: true,
+  },
+  words: {
+    type: Object as PropType<CampaignChannelWords>,
     required: true,
   },
 })

@@ -1,3 +1,4 @@
+import type { CampaignChannelWords } from '~/types/CampaignChannelWords'
 import type { CampaignResultsDay, CampaignResultsVisitMarks } from '~/types/CampaignResults'
 
 export type CampaignResultsDailyChartProps = {
@@ -6,6 +7,7 @@ export type CampaignResultsDailyChartProps = {
   marks: CampaignResultsVisitMarks
   isVisitTrackingAvailable: boolean
   periodLabel: string
+  words: CampaignChannelWords
 }
 
 export type CampaignResultsDailyChartDisplayMode = 'chart' | 'table'

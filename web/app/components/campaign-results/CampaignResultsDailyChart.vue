@@ -14,7 +14,7 @@
             <span class="h-0.5 w-3.5 rounded-full bg-[var(--app-blue)]"></span>Visites
           </span>
           <span v-if="hasSentFirstMails" class="inline-flex items-center gap-1.5">
-            <span class="h-[11px] w-2 rounded-t-[2px] bg-[var(--app-ink)]"></span>Premiers mails
+            <span class="h-[11px] w-2 rounded-t-[2px] bg-[var(--app-ink)]"></span>{{ firstMessagesLabel }}
           </span>
           <span v-if="hasSentFollowUps" class="inline-flex items-center gap-1.5">
             <span class="h-[11px] w-2 rounded-t-[2px] bg-[var(--app-faint)]"></span>Relances
@@ -170,7 +170,7 @@
           text-anchor="end"
           class="fill-[var(--app-ink-soft)] text-[11px]"
         >
-          Mails
+          {{ messagesLabel }}
         </text>
         <line
           :x1="geometry.left"
@@ -303,7 +303,7 @@
       <BaseTable min-width="640px" class="max-md:p-3">
         <template #head>
           <BaseTableTh>Jour</BaseTableTh>
-          <BaseTableTh align="right">Premiers mails</BaseTableTh>
+          <BaseTableTh align="right">{{ firstMessagesLabel }}</BaseTableTh>
           <BaseTableTh align="right">Relances</BaseTableTh>
           <BaseTableTh v-if="props.isVisitTrackingAvailable" align="right">Visites</BaseTableTh>
           <BaseTableTh v-if="props.isVisitTrackingAvailable" align="right">Nouveaux visiteurs</BaseTableTh>
@@ -313,7 +313,7 @@
           <BaseTableTd class="text-sm whitespace-nowrap text-[var(--app-ink)]">
             {{ CampaignResultsFormat.shortWeekday(day.date) }}
           </BaseTableTd>
-          <BaseTableTd label="Premiers mails" align="right" class="text-sm text-[var(--app-ink)] tabular-nums">
+          <BaseTableTd :label="firstMessagesLabel" align="right" class="text-sm text-[var(--app-ink)] tabular-nums">
             {{ day.firstMails }}
             <span v-if="day.plannedFirstMails > 0" class="text-[var(--app-ink-soft)]">
               + {{ day.plannedFirstMails }} {{ day.plannedFirstMails > 1 ? 'prévus' : 'prévu' }}
@@ -375,6 +375,7 @@
 
 <script lang="ts" setup>
 import type { ComputedRef, PropType, Ref } from 'vue'
+import type { CampaignChannelWords } from '~/types/CampaignChannelWords'
 import type { CampaignResultsDay, CampaignResultsReply, CampaignResultsVisitMarks } from '~/types/CampaignResults'
 import type {
   CampaignResultsDailyChartBand,
@@ -418,6 +419,10 @@ const props: CampaignResultsDailyChartProps = defineProps({
   },
   periodLabel: {
     type: String,
+    required: true,
+  },
+  words: {
+    type: Object as PropType<CampaignChannelWords>,
     required: true,
   },
 })
@@ -485,6 +490,12 @@ const chartWidth: Ref<number> = ref(0)
 const displayMode: Ref<CampaignResultsDailyChartDisplayMode> = ref('chart')
 const activeDayIndex: Ref<number | null> = ref(null)
 
+const messagesLabel: ComputedRef<string> = computed((): string =>
+  CampaignResultsFormat.capitalize(props.words.messagesNoun),
+)
+
+const firstMessagesLabel: ComputedRef<string> = computed((): string => `Premiers ${props.words.messagesNoun}`)
+
 const hasVisitPlot: ComputedRef<boolean> = computed(
   (): boolean =>
     props.isVisitTrackingAvailable && props.days.some((day: CampaignResultsDay): boolean => day.visits > 0),
@@ -495,9 +506,11 @@ const hasReplies: ComputedRef<boolean> = computed((): boolean =>
 )
 
 const chartDescription: ComputedRef<string> = computed((): string => {
-  if (!props.isVisitTrackingAvailable) return `Mails envoyés et réponses, ${props.periodLabel}.`
-  if (!hasVisitPlot.value) return `Mails envoyés et réponses, ${props.periodLabel}. Aucun site ouvert sur la période.`
-  return `Visites des sites, mails envoyés et réponses, ${props.periodLabel}.`
+  if (!props.isVisitTrackingAvailable) return `${messagesLabel.value} envoyés et réponses, ${props.periodLabel}.`
+  if (!hasVisitPlot.value) {
+    return `${messagesLabel.value} envoyés et réponses, ${props.periodLabel}. Aucun site ouvert sur la période.`
+  }
+  return `Visites des sites, ${props.words.messagesNoun} envoyés et réponses, ${props.periodLabel}.`
 })
 
 const geometry: ComputedRef<CampaignResultsDailyChartGeometry | null> = computed(
@@ -756,7 +769,7 @@ const activeDayRows: ComputedRef<CampaignResultsDailyChartTooltipRow[]> = comput
         {
           key: 'planned-first',
           swatch: 'firstMails',
-          label: 'Premiers mails prévus',
+          label: `${firstMessagesLabel.value} prévus`,
           value: String(day.plannedFirstMails),
           isDetail: false,
         },
@@ -783,7 +796,7 @@ const activeDayRows: ComputedRef<CampaignResultsDailyChartTooltipRow[]> = comput
     rows.push({
       key: 'first-mails',
       swatch: 'firstMails',
-      label: 'Premiers mails',
+      label: firstMessagesLabel.value,
       value: day.plannedFirstMails > 0 ? `${day.firstMails} + ${day.plannedFirstMails} prévus` : String(day.firstMails),
       isDetail: false,
     })
@@ -819,8 +832,8 @@ const chartSummary: ComputedRef<string> = computed((): string => {
     : ''
   return `${visits}${CampaignResultsFormat.count(
     sumOf((day: CampaignResultsDay): number => day.firstMails),
-    'premier mail envoyé',
-    'premiers mails envoyés',
+    `premier ${props.words.messageNoun} envoyé`,
+    `premiers ${props.words.messagesNoun} envoyés`,
   )}, ${CampaignResultsFormat.count(
     sumOf((day: CampaignResultsDay): number => day.followUps),
     'relance envoyée',

@@ -3,23 +3,34 @@ Pydantic schemas for campaign management.
 """
 
 from datetime import datetime
-from typing import Literal
+from typing import Literal, Self
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 
 class CampaignFollowUpCreate(BaseModel):
-    """Schema for adding a follow-up step to a campaign."""
+    """Schema for adding a follow-up step to a campaign: an email template, or an SMS one for an SMS campaign."""
 
-    template_id: int = Field(..., description="Template to use for this follow-up")
-    delay_days: int = Field(5, ge=1, le=365, description="Days after previous send")
+    template_id: int | None = Field(None, description="Email template of this follow-up (email campaigns)")
+    sms_template_key: str | None = Field(
+        None, max_length=64, description="SMS library template of this follow-up (SMS campaigns)"
+    )
+    delay_days: int = Field(5, ge=1, le=365, description="Sending days after the previous send")
     position: int = Field(1, ge=1, description="1-based order in the sequence")
+
+    @model_validator(mode="after")
+    def names_one_template(self) -> Self:
+        """Refuse a step that names both an email and an SMS template, or neither."""
+        if (self.template_id is None) == (self.sms_template_key is None):
+            raise ValueError("Une relance utilise un modèle d'email ou un modèle SMS.")
+        return self
 
 
 class CampaignFollowUpUpdate(BaseModel):
     """Schema for updating a follow-up step."""
 
     template_id: int | None = None
+    sms_template_key: str | None = Field(None, max_length=64)
     delay_days: int | None = Field(None, ge=1, le=365)
     position: int | None = Field(None, ge=1)
 
@@ -29,9 +40,11 @@ class CampaignFollowUpResponse(BaseModel):
 
     id: int
     campaign_id: int
-    template_id: int
+    template_id: int | None = None
     template_name: str | None = None
     template_subject: str | None = None
+    sms_template_key: str | None = None
+    sms_template_name: str | None = None
     delay_days: int
     position: int
     created_at: datetime

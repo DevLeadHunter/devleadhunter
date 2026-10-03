@@ -1,5 +1,7 @@
+import type { CampaignChannelWords } from '~/types/CampaignChannelWords'
 import type {
   CampaignBenchmark,
+  CampaignResultsChannel,
   CampaignResultsComparison,
   CampaignResultsDay,
   CampaignResultsFilterKey,
@@ -21,6 +23,8 @@ import type {
 } from '~/types/CampaignResults'
 import type { UiUnitChartUnit } from '~/types/UiUnitChart'
 import {
+  CAMPAIGN_CHANNEL_NAMES,
+  CAMPAIGN_CHANNEL_WORDS,
   CAMPAIGN_RESULTS_STATE_LABELS,
   CAMPAIGN_RESULTS_STATE_ORDER,
   CAMPAIGN_RESULTS_STATE_TONES,
@@ -368,7 +372,7 @@ export class CampaignResults {
         .reduce((total: number, days: number): number => total + days, 0)
       return {
         step,
-        label: CampaignResults.stepLabel(step, lastStep),
+        label: CampaignResults.stepLabel(step, lastStep, CAMPAIGN_CHANNEL_WORDS[results.channel]),
         timingLabel: CampaignResults.stepTimingLabel(step, delayToStep),
         sent: stepSends.filter((send: CampaignResultsSend): boolean => send.status === 'sent').length,
         planned: plannedTimes.length,
@@ -382,12 +386,13 @@ export class CampaignResults {
 
   /**
    * Name of a step of the sequence.
-   * @param step - 0 for the first mail, then the follow-up number.
+   * @param step - 0 for the first message, then the follow-up number.
    * @param lastStep - The campaign's last step, which tells whether follow-ups need a number.
-   * @returns « Premier mail », « Relance », « 1re relance », « 2e relance »…
+   * @param words - The words of the campaign's channel.
+   * @returns « Premier mail » (« Premier SMS »), « Relance », « 1re relance », « 2e relance »…
    */
-  static stepLabel(step: number, lastStep: number): string {
-    if (step === 0) return 'Premier mail'
+  static stepLabel(step: number, lastStep: number, words: CampaignChannelWords): string {
+    if (step === 0) return `Premier ${words.messageNoun}`
     if (lastStep === 1) return 'Relance'
     return step === 1 ? '1re relance' : `${step}e relance`
   }
@@ -488,43 +493,59 @@ export class CampaignResults {
   }
 
   /**
-   * What a campaign can be compared against: the pooled other campaigns, then each of them, most recent first.
-   * @param benchmarks - Stage counts of the user's email campaigns.
+   * What a campaign can be compared against: the pooled campaigns of each channel, then each campaign, most recent first.
+   * @param benchmarks - Stage counts of the user's email and SMS campaigns.
    * @param campaignId - The campaign being looked at, left out.
-   * @returns The comparisons, empty when the campaign is the only one; a campaign with too few contacts is left out.
+   * @param channel - The channel of the campaign being looked at, pooled first.
+   * @returns The comparisons; a campaign with too few contacts is left out, a channel pools from two campaigns.
    */
-  static comparisons(benchmarks: CampaignBenchmark[], campaignId: number): CampaignResultsComparison[] {
+  static comparisons(
+    benchmarks: CampaignBenchmark[],
+    campaignId: number,
+    channel: CampaignResultsChannel,
+  ): CampaignResultsComparison[] {
     const others: CampaignBenchmark[] = benchmarks.filter(
       (benchmark: CampaignBenchmark): boolean => benchmark.campaign_id !== campaignId,
     )
-    const comparableOthers: CampaignBenchmark[] = others.filter((benchmark: CampaignBenchmark): boolean =>
-      CampaignResults.hasEnoughContactsToCompare(benchmark.contacted),
-    )
-    const each: CampaignResultsComparison[] = comparableOthers.map(
-      (benchmark: CampaignBenchmark): CampaignResultsComparison => ({
-        key: `campaign-${benchmark.campaign_id}`,
-        label: benchmark.name,
-        referenceLabel: '',
-        contacted: benchmark.contacted,
-        visited: benchmark.visited,
-        replied: benchmark.replied,
-        interested: benchmark.interested,
-      }),
-    )
-    if (others.length < 2) return each
-    const sumOf: (stage: CampaignResultsStage) => number = (stage: CampaignResultsStage): number =>
-      others.reduce((total: number, benchmark: CampaignBenchmark): number => total + benchmark[stage], 0)
-    return [
-      {
-        key: 'others',
-        label: 'vos autres campagnes',
-        referenceLabel: 'ailleurs',
+    const each: CampaignResultsComparison[] = others
+      .filter((benchmark: CampaignBenchmark): boolean =>
+        CampaignResults.hasEnoughContactsToCompare(benchmark.contacted),
+      )
+      .map(
+        (benchmark: CampaignBenchmark): CampaignResultsComparison => ({
+          key: `campaign-${benchmark.campaign_id}`,
+          label:
+            benchmark.channel === channel
+              ? benchmark.name
+              : `${benchmark.name} (${CAMPAIGN_CHANNEL_NAMES[benchmark.channel]})`,
+          referenceLabel: '',
+          contacted: benchmark.contacted,
+          visited: benchmark.visited,
+          replied: benchmark.replied,
+          interested: benchmark.interested,
+        }),
+      )
+    const otherChannel: CampaignResultsChannel = channel === 'email' ? 'sms' : 'email'
+    const pools: CampaignResultsComparison[] = []
+    for (const poolChannel of [channel, otherChannel]) {
+      const pooled: CampaignBenchmark[] = others.filter(
+        (benchmark: CampaignBenchmark): boolean => benchmark.channel === poolChannel,
+      )
+      if (pooled.length < 2) continue
+      const sumOf: (stage: CampaignResultsStage) => number = (stage: CampaignResultsStage): number =>
+        pooled.reduce((total: number, benchmark: CampaignBenchmark): number => total + benchmark[stage], 0)
+      const channelName: string = CAMPAIGN_CHANNEL_NAMES[poolChannel]
+      const isOwnChannel: boolean = poolChannel === channel
+      pools.push({
+        key: `others-${poolChannel}`,
+        label: isOwnChannel ? `vos autres campagnes ${channelName}` : `vos campagnes ${channelName}`,
+        referenceLabel: isOwnChannel ? 'ailleurs' : `en ${channelName}`,
         contacted: sumOf('contacted'),
         visited: sumOf('visited'),
         replied: sumOf('replied'),
         interested: sumOf('interested'),
-      },
-      ...each,
-    ]
+      })
+    }
+    return [...pools, ...each]
   }
 }

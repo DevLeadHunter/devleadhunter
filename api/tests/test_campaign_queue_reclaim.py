@@ -59,6 +59,7 @@ def _orphan() -> SimpleNamespace:
         scheduled_at="2026-08-24T08:26:01",
         queue_type="initial",
         email_log_id=None,
+        campaign=SimpleNamespace(channel="email"),
     )
 
 

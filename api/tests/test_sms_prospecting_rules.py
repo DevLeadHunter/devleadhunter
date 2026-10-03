@@ -270,8 +270,18 @@ class TestAutomaticLoopsStayInFrance:
         monkeypatch.setattr(sms_service, "legal_window_refusal", lambda country=None: None)
         monkeypatch.setattr(sms_service_module, "find_sms_template", lambda key: self._DIRECT_TEMPLATE)
         monkeypatch.setattr(sms_service_module.notification_service, "notify_sms_event", AsyncCallRecorder())
-        campaign = SimpleNamespace(id=1, user_id=_USER_ID, channel="sms", sms_template_key="direct")
-        item = SimpleNamespace(prospect=swiss, campaign=campaign, status="sending", skip_reason=None)
+        campaign = SimpleNamespace(
+            id=1, user_id=_USER_ID, channel="sms", sms_template_key="direct", follow_up_template_id=None
+        )
+        item = SimpleNamespace(
+            prospect=swiss,
+            campaign=campaign,
+            queue_type="initial",
+            sms_template_key=None,
+            sms_message_id=None,
+            status="sending",
+            skip_reason=None,
+        )
 
         asyncio.run(CampaignQueueService(db)._dispatch_sms(item))
 

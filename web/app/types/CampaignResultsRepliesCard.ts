@@ -1,8 +1,10 @@
+import type { CampaignChannelWords } from '~/types/CampaignChannelWords'
 import type { CampaignResultsReply, CampaignResultsRow } from '~/types/CampaignResults'
 
 export type CampaignResultsRepliesCardProps = {
   replies: CampaignResultsReply[]
   rows: CampaignResultsRow[]
+  words: CampaignChannelWords
 }
 
 export type CampaignResultsRepliesCardEmits = {

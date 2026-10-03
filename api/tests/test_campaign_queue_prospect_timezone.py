@@ -96,8 +96,8 @@ def test_legacy_spacing_ignores_the_window_and_the_zones(monkeypatch) -> None:
 def test_follow_ups_are_counted_on_the_j1_prospect_clock(monkeypatch) -> None:
     campaign = SimpleNamespace(id=6, user_id=1, follow_up_template_id=None)
     steps = [
-        SimpleNamespace(template_id=42, delay_days=3, position=1),
-        SimpleNamespace(template_id=43, delay_days=2, position=2),
+        SimpleNamespace(template_id=42, sms_template_key=None, delay_days=3, position=1),
+        SimpleNamespace(template_id=43, sms_template_key=None, delay_days=2, position=2),
     ]
     j1_item = SimpleNamespace(
         id=1,
@@ -110,7 +110,7 @@ def test_follow_ups_are_counted_on_the_j1_prospect_clock(monkeypatch) -> None:
     )
     db = _FakeDB([_Result(scalars=steps)])
     service = CampaignQueueService(db)
-    service._offer_link_outlives = lambda item, template_id, scheduled_at: True  # type: ignore[method-assign]
+    service._offer_link_outlives = lambda item, scheduled_at, **template: True  # type: ignore[method-assign]
     monkeypatch.setattr(send_policy_service, "resolve", lambda db, user_id: "resolved-policy")
     captured: list[tuple[int, str]] = []
 

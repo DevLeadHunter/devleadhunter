@@ -14,7 +14,9 @@ export type CampaignResultsSendStatus = 'sent' | 'planned' | 'skipped' | 'failed
 
 export type CampaignResultsReplyVerdict = 'interested' | 'refused' | 'other'
 
-export type CampaignResultsReplyChannel = 'email' | 'banner' | 'manual'
+export type CampaignResultsReplyChannel = 'email' | 'banner' | 'manual' | 'sms'
+
+export type CampaignResultsChannel = 'email' | 'sms'
 
 export type CampaignResultsSend = {
   step: number
@@ -67,10 +69,12 @@ export type CampaignResultsTotals = {
   failed: number
   planned_first_mails: number
   planned_follow_ups: number
+  sms_cost_cents: number | null
 }
 
 export type CampaignResultsResponse = {
   campaign_id: number
+  channel: CampaignResultsChannel
   generated_at: string
   is_visit_tracking_available: boolean
   totals: CampaignResultsTotals
@@ -84,6 +88,7 @@ export type CampaignResultsResponse = {
 export type CampaignBenchmark = {
   campaign_id: number
   name: string
+  channel: CampaignResultsChannel
   status: string
   started_at: string | null
   contacted: number

@@ -135,6 +135,8 @@ export type SmsThread = {
 /** Which touch of the SMS sequence a library template is written for. */
 export type SmsTemplateCategory = 'first_contact' | 'follow_up'
 
+export type SmsTemplateModule = 'websites' | 'ai-assistant'
+
 export type SmsAutoQueueAction = {
   id: number
   status: string
@@ -151,6 +153,8 @@ export type SmsTemplate = {
   is_default: boolean
   /** Template rendered instead when the prospect has no generated video (video templates only). */
   fallback_key: string | null
+  recalls_an_email: boolean
+  module: SmsTemplateModule
 }
 
 /** A library template rendered for one prospect (STOP mention excluded, appended at send). */

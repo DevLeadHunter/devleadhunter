@@ -145,7 +145,15 @@ def test_a_refused_relance_sms_leaves_the_lock_untouched(monkeypatch: pytest.Mon
 def _sms_item(prospect: SimpleNamespace) -> SimpleNamespace:
     """A queued receptionist SMS."""
     campaign = SimpleNamespace(user_id=_USER_ID, channel="sms", sms_template_key="assistant-24-7")
-    return SimpleNamespace(prospect=prospect, campaign=campaign, status="sending", skip_reason=None)
+    return SimpleNamespace(
+        prospect=prospect,
+        campaign=campaign,
+        queue_type="initial",
+        sms_template_key=None,
+        sms_message_id=None,
+        status="sending",
+        skip_reason=None,
+    )
 
 
 def _stub_sms_dispatch(monkeypatch: pytest.MonkeyPatch) -> list[int]:
@@ -154,13 +162,14 @@ def _stub_sms_dispatch(monkeypatch: pytest.MonkeyPatch) -> list[int]:
 
     async def send_to_prospect(_db: object, **kwargs: Any) -> SimpleNamespace:
         texted.append(kwargs["prospect"].id)
-        return SimpleNamespace(sent=True, reason=None)
+        return SimpleNamespace(sent=True, reason=None, message=None)
 
     monkeypatch.setattr(sms_config_service, "get", lambda _db, _user_id: SimpleNamespace(sender="GarageMartin"))
     monkeypatch.setattr(sms_service, "legal_window_refusal", lambda country=None: None)
     monkeypatch.setattr(sms_service, "send_to_prospect", send_to_prospect)
     monkeypatch.setattr(CampaignQueueService, "_has_active_assistant", lambda _self, _pid, _uid: True)
     monkeypatch.setattr(CampaignQueueService, "_active_demo_for_prospect", lambda _self, _pid, _uid: None)
+    monkeypatch.setattr(CampaignQueueService, "_schedule_follow_ups", lambda _self, _item: None)
     return texted
 
 

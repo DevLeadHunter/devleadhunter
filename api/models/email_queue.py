@@ -12,7 +12,7 @@ from __future__ import annotations
 from datetime import datetime
 from typing import TYPE_CHECKING
 
-from sqlalchemy import DateTime, ForeignKey, String
+from sqlalchemy import DateTime, ForeignKey, Integer, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from core.database import Base
@@ -40,6 +40,8 @@ class EmailQueue(Base):
         queue_type:       ``"initial"`` (J1) or ``"followup"`` (J+N relance).
         scheduled_at:     Earliest UTC time at which this item may be sent.
         email_log_id:     Populated once the email has been dispatched.
+        sms_template_key: SMS library template of an SMS follow-up.
+        sms_message_id:   The SMS an SMS-channel item sent.
         status:           ``pending`` → ``sending`` → ``sent`` / ``skipped`` /
                           ``failed``.
         created_at:       Row creation timestamp.
@@ -84,6 +86,8 @@ class EmailQueue(Base):
         ForeignKey("email_logs.id", ondelete="SET NULL"),
         nullable=True,
     )
+    sms_template_key: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    sms_message_id: Mapped[int | None] = mapped_column(Integer, nullable=True, index=True)
     status: Mapped[str] = mapped_column(String(20), nullable=False, default="pending", index=True)
     # Why a row was skipped, shown on the campaign page (empty for every other status).
     skip_reason: Mapped[str | None] = mapped_column(String(160), nullable=True)

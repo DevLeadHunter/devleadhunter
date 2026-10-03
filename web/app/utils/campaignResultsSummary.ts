@@ -1,4 +1,5 @@
 import type { CampaignStatus } from '~/services/campaignService'
+import type { CampaignChannelWords } from '~/types/CampaignChannelWords'
 import type {
   CampaignResultsComparison,
   CampaignResultsDay,
@@ -21,6 +22,7 @@ import type {
   CampaignResultsTradeGroup,
 } from '~/types/CampaignResults'
 import type { UiKpiBandCell, UiKpiBandTrendBadge } from '~/types/UiKpiBand'
+import { CAMPAIGN_CHANNEL_WORDS } from '~/constants/campaignResults'
 import { CampaignResults } from '~/utils/campaignResults'
 import { CampaignResultsFormat } from '~/utils/campaignResultsFormat'
 import { formatRelativeTime, formatScheduledMoment, parseApiDate } from '~/utils/date'
@@ -114,7 +116,7 @@ export class CampaignResultsSummary {
         label: 'Contactés',
         value: String(contacted),
         total: `/ ${totals.prospects}`,
-        detail: CampaignResultsSummary.contactedDetail(totals),
+        detail: CampaignResultsSummary.contactedDetail(totals, CAMPAIGN_CHANNEL_WORDS[results.channel]),
         trendBadge: { trend: 'flat', text: CampaignResultsSummary.contactedBadgeText(results, rows, now) },
         comparisonNote: '',
         meterRatio: totals.prospects > 0 ? contacted / totals.prospects : 0,
@@ -157,12 +159,13 @@ export class CampaignResultsSummary {
 
   /**
    * What is worth doing now, the most likely sale first: replies to answer, interested prospects to follow,
-   * visitors who did not write, addresses to check, refusals to acknowledge.
+   * visitors who did not write, addresses or numbers to check, refusals to acknowledge.
    * @param rows - The campaign's rows.
    * @param now - The current moment.
+   * @param words - The words of the campaign's channel.
    * @returns The to-do entries, in order.
    */
-  static todos(rows: CampaignResultsRow[], now: Date): CampaignResultsTodo[] {
+  static todos(rows: CampaignResultsRow[], now: Date, words: CampaignChannelWords): CampaignResultsTodo[] {
     const todos: CampaignResultsTodo[] = []
     const interestedReplies: CampaignResultsRowReply[] = CampaignResultsSummary.latestInterestedReplies(rows)
     for (const { row, reply } of interestedReplies) {
@@ -179,10 +182,10 @@ export class CampaignResultsSummary {
         todos.push(CampaignResultsSummary.replyTodo(row, reply, 'blue'))
       }
     }
-    const visitorsTodo: CampaignResultsTodo | null = CampaignResultsSummary.visitorsTodo(rows)
+    const visitorsTodo: CampaignResultsTodo | null = CampaignResultsSummary.visitorsTodo(rows, words)
     if (visitorsTodo) todos.push(visitorsTodo)
     for (const row of rows) {
-      const bouncedTodo: CampaignResultsTodo | null = CampaignResultsSummary.bouncedTodo(row)
+      const bouncedTodo: CampaignResultsTodo | null = CampaignResultsSummary.bouncedTodo(row, words)
       if (bouncedTodo) todos.push(bouncedTodo)
     }
     for (const row of rows) {
@@ -195,18 +198,27 @@ export class CampaignResultsSummary {
   }
 
   /**
-   * The facts under the state squares: the sends to come while the campaign runs, the sends made once it is over.
+   * The facts under the state squares: the sends to come or made, and what the SMS of an SMS campaign cost.
    * @param results - The campaign's results.
    * @param rows - The campaign's rows.
    * @returns The facts, in reading order.
    */
   static stateFacts(results: CampaignResultsResponse, rows: CampaignResultsRow[]): CampaignResultsStateFact[] {
     const totals: CampaignResultsTotals = results.totals
+    const words: CampaignChannelWords = CAMPAIGN_CHANNEL_WORDS[results.channel]
     const planned: CampaignResultsPlannedSend[] = CampaignResults.plannedSends(rows)
-    const facts: CampaignResultsStateFact[] = CampaignResultsSummary.sendFacts(totals, planned)
+    const facts: CampaignResultsStateFact[] = CampaignResultsSummary.sendFacts(totals, planned, words)
+    const sentCount: number = totals.first_mails_sent + totals.follow_ups_sent
+    if (totals.sms_cost_cents !== null && sentCount > 0) {
+      facts.push({
+        label: 'Coût des SMS',
+        value: CampaignResultsFormat.money(totals.sms_cost_cents, 'EUR'),
+        detail: CampaignResultsFormat.count(sentCount, 'SMS envoyé', 'SMS envoyés'),
+      })
+    }
     if (totals.bounced > 0) {
       facts.push({
-        label: 'Rebonds',
+        label: CampaignResultsFormat.capitalize(words.failedDeliveriesNoun),
         value: String(totals.bounced),
         detail: CampaignResultsSummary.bouncedNames(rows),
       })
@@ -247,20 +259,26 @@ export class CampaignResultsSummary {
   /**
    * What the to-do list says when nothing waits.
    * @param totals - The campaign's totals.
+   * @param words - The words of the campaign's channel.
    * @returns Why there is nothing to do yet.
    */
-  static todosEmptyNote(totals: CampaignResultsTotals): string {
-    if (totals.contacted === 0) return "Rien à traiter : aucun mail n'est encore parti."
+  static todosEmptyNote(totals: CampaignResultsTotals, words: CampaignChannelWords): string {
+    if (totals.contacted === 0) return `Rien à traiter : aucun ${words.messageNoun} n'est encore parti.`
     return "Rien à traiter pour l'instant : aucune réponse ni visite n'attend de suite."
   }
 
   /**
    * What the follow-ups brought, under the table of the sequence.
-   * @param steps - The step summaries, from the first mail.
+   * @param steps - The step summaries, from the first message.
    * @param replies - Every reply of the campaign.
+   * @param words - The words of the campaign's channel.
    * @returns The sentence.
    */
-  static sendsNote(steps: CampaignResultsStepSummary[], replies: CampaignResultsReply[]): string {
+  static sendsNote(
+    steps: CampaignResultsStepSummary[],
+    replies: CampaignResultsReply[],
+    words: CampaignChannelWords,
+  ): string {
     const followUps: CampaignResultsStepSummary[] = steps.filter(
       (step: CampaignResultsStepSummary): boolean => step.step > 0,
     )
@@ -270,7 +288,7 @@ export class CampaignResultsSummary {
       0,
     )
     if (sentFollowUps === 0) return "Une relance s'annule d'elle-même si le prospect répond avant son départ."
-    if (replies.length === 0) return 'Aucune réponse, ni au premier mail ni aux relances.'
+    if (replies.length === 0) return `Aucune réponse, ni au premier ${words.messageNoun} ni aux relances.`
     const repliesAfterFollowUps: number = replies.filter(
       (reply: CampaignResultsReply): boolean => reply.answered_step > 0,
     ).length
@@ -278,7 +296,7 @@ export class CampaignResultsSummary {
       return `${repliesAfterFollowUps} des ${replies.length} réponses sont arrivées après une relance.`
     }
     if (repliesAfterFollowUps > 0) return 'La seule réponse est arrivée après une relance.'
-    return 'La seule réponse est arrivée après le premier mail.'
+    return `La seule réponse est arrivée après le premier ${words.messageNoun}.`
   }
 
   /**
@@ -339,11 +357,12 @@ export class CampaignResultsSummary {
   /**
    * The main result in one line: sales, else interested prospects, else visits.
    * @param results - The campaign's results.
-   * @param isSending - Whether mails are still planned.
+   * @param isSending - Whether messages are still planned.
    * @returns The headline title.
    */
   private static headlineTitle(results: CampaignResultsResponse, isSending: boolean): string {
     const totals: CampaignResultsTotals = results.totals
+    const words: CampaignChannelWords = CAMPAIGN_CHANNEL_WORDS[results.channel]
     if (totals.sales > 0) {
       return `${CampaignResultsFormat.count(totals.sales, 'vente')}, ${CampaignResultsFormat.money(totals.revenue_cents, totals.currency)}`
     }
@@ -352,8 +371,8 @@ export class CampaignResultsSummary {
       return `${CampaignResultsFormat.count(totals.interested, 'intéressé')}${outcome}`
     }
     if (totals.contacted === 0) {
-      if (!results.next_send) return 'Aucun mail envoyé'
-      return `Premier mail ${formatScheduledMoment(parseApiDate(results.next_send.at))}`
+      if (!results.next_send) return `Aucun ${words.messageNoun} envoyé`
+      return `Premier ${words.messageNoun} ${formatScheduledMoment(parseApiDate(results.next_send.at))}`
     }
     const contactedLabel: string = CampaignResultsFormat.count(
       totals.contacted,
@@ -370,7 +389,7 @@ export class CampaignResultsSummary {
   }
 
   /**
-   * Context of a running campaign: the latest reply when it is fresh, and the mails still to leave.
+   * Context of a running campaign: the latest reply when it is fresh, and the messages still to leave.
    * @param results - The campaign's results.
    * @param rows - The campaign's rows.
    * @param now - The current moment.
@@ -380,8 +399,8 @@ export class CampaignResultsSummary {
     const sentences: string[] = []
     const freshReply: string = CampaignResultsSummary.freshReplySentence(results, rows, now)
     if (freshReply) sentences.push(freshReply)
-    const plannedMails: string = CampaignResultsSummary.plannedMailsSentence(results, now)
-    if (plannedMails) sentences.push(plannedMails)
+    const plannedSends: string = CampaignResultsSummary.plannedSendsSentence(results, now)
+    if (plannedSends) sentences.push(plannedSends)
     return sentences.join(' ')
   }
 
@@ -405,17 +424,24 @@ export class CampaignResultsSummary {
   }
 
   /**
-   * The mails still to leave and the day the last one leaves.
+   * The messages still to leave and the day the last one leaves.
    * @param results - The campaign's results.
    * @param now - The current moment.
    * @returns « 11 premiers mails et 25 relances partiront d'ici le jeudi 1er octobre. », or empty.
    */
-  private static plannedMailsSentence(results: CampaignResultsResponse, now: Date): string {
+  private static plannedSendsSentence(results: CampaignResultsResponse, now: Date): string {
     const totals: CampaignResultsTotals = results.totals
+    const words: CampaignChannelWords = CAMPAIGN_CHANNEL_WORDS[results.channel]
     if (!results.last_planned_send_at) return ''
     const plannedParts: string[] = []
     if (totals.planned_first_mails > 0) {
-      plannedParts.push(CampaignResultsFormat.count(totals.planned_first_mails, 'premier mail', 'premiers mails'))
+      plannedParts.push(
+        CampaignResultsFormat.count(
+          totals.planned_first_mails,
+          `premier ${words.messageNoun}`,
+          `premiers ${words.messagesNoun}`,
+        ),
+      )
     }
     if (totals.planned_follow_ups > 0) {
       plannedParts.push(CampaignResultsFormat.count(totals.planned_follow_ups, 'relance'))
@@ -548,18 +574,22 @@ export class CampaignResultsSummary {
   }
 
   /**
-   * Under the contacted count: the mails sent, or the prospects still to contact, and their incidents.
+   * Under the contacted count: the messages sent, or the prospects still to contact, and their incidents.
    * @param totals - The campaign's totals.
-   * @returns « 49 mails · 2 rebonds », « 11 à venir · aucun échec ».
+   * @param words - The words of the campaign's channel.
+   * @returns « 49 mails · 2 rebonds », « 40 SMS · 1 non reçu », « 11 à venir · aucun échec ».
    */
-  private static contactedDetail(totals: CampaignResultsTotals): string {
+  private static contactedDetail(totals: CampaignResultsTotals, words: CampaignChannelWords): string {
     const isSending: boolean = CampaignResultsSummary.isSending(totals)
-    if (!isSending && totals.first_mails_sent + totals.follow_ups_sent === 0) return 'Aucun mail parti'
+    const sentCount: number = totals.first_mails_sent + totals.follow_ups_sent
+    if (!isSending && sentCount === 0) return `Aucun ${words.messageNoun} parti`
     const sendCount: string = isSending
       ? `${totals.prospects - totals.contacted} à venir`
-      : CampaignResultsFormat.count(totals.first_mails_sent + totals.follow_ups_sent, 'mail')
+      : CampaignResultsFormat.count(sentCount, words.messageNoun, words.messagesNoun)
     const incidents: string[] = []
-    if (totals.bounced > 0) incidents.push(CampaignResultsFormat.count(totals.bounced, 'rebond'))
+    if (totals.bounced > 0) {
+      incidents.push(CampaignResultsFormat.count(totals.bounced, words.failedDeliveryNoun, words.failedDeliveriesNoun))
+    }
     if (totals.failed > 0) incidents.push(CampaignResultsFormat.count(totals.failed, 'échec'))
     if (incidents.length === 0) incidents.push('aucun échec')
     return `${sendCount} · ${incidents.join(', ')}`
@@ -702,18 +732,20 @@ export class CampaignResultsSummary {
   }
 
   /**
-   * The facts about the mails: those to come while the campaign runs, else those sent, none before the first one.
+   * The facts about the messages: those to come while the campaign runs, else those sent, none before the first one.
    * @param totals - The campaign's totals.
    * @param planned - The planned sends, the soonest first.
+   * @param words - The words of the campaign's channel.
    * @returns The facts.
    */
   private static sendFacts(
     totals: CampaignResultsTotals,
     planned: CampaignResultsPlannedSend[],
+    words: CampaignChannelWords,
   ): CampaignResultsStateFact[] {
     if (planned.length > 0) return CampaignResultsSummary.plannedSendFacts(planned)
     if (totals.first_mails_sent + totals.follow_ups_sent === 0) return []
-    return [CampaignResultsSummary.mailsSentFact(totals)]
+    return [CampaignResultsSummary.messagesSentFact(totals, words)]
   }
 
   /**
@@ -749,16 +781,24 @@ export class CampaignResultsSummary {
   }
 
   /**
-   * The mails a finished campaign sent.
+   * The messages a finished campaign sent.
    * @param totals - The campaign's totals.
+   * @param words - The words of the campaign's channel.
    * @returns The fact.
    */
-  private static mailsSentFact(totals: CampaignResultsTotals): CampaignResultsStateFact {
-    const firstMails: string = CampaignResultsFormat.count(totals.first_mails_sent, 'premier mail', 'premiers mails')
-    const parts: string[] = [firstMails]
+  private static messagesSentFact(
+    totals: CampaignResultsTotals,
+    words: CampaignChannelWords,
+  ): CampaignResultsStateFact {
+    const firstMessages: string = CampaignResultsFormat.count(
+      totals.first_mails_sent,
+      `premier ${words.messageNoun}`,
+      `premiers ${words.messagesNoun}`,
+    )
+    const parts: string[] = [firstMessages]
     if (totals.follow_ups_sent > 0) parts.push(CampaignResultsFormat.count(totals.follow_ups_sent, 'relance'))
     return {
-      label: 'Mails envoyés',
+      label: `${CampaignResultsFormat.capitalize(words.messagesNoun)} envoyés`,
       value: String(totals.first_mails_sent + totals.follow_ups_sent),
       detail: parts.join(', '),
     }
@@ -906,9 +946,10 @@ export class CampaignResultsSummary {
   /**
    * The to-do entry of the prospects who visited their site without writing, grouped when there are several.
    * @param rows - The campaign's rows.
+   * @param words - The words of the campaign's channel.
    * @returns The entry, or null when no prospect is in that case.
    */
-  private static visitorsTodo(rows: CampaignResultsRow[]): CampaignResultsTodo | null {
+  private static visitorsTodo(rows: CampaignResultsRow[], words: CampaignChannelWords): CampaignResultsTodo | null {
     const visitors: CampaignResultsRow[] = rows
       .filter((row: CampaignResultsRow): boolean => row.prospect.state === 'visited')
       .sort(
@@ -921,9 +962,7 @@ export class CampaignResultsSummary {
       row.prospect.sends.some((send: CampaignResultsSend): boolean => send.step > 0 && send.status === 'planned'),
     )
     if (visitors.length === 1) {
-      const advice: string = areFollowUpsPlanned
-        ? 'Sa relance est déjà prévue.'
-        : "Un appel ou un SMS plutôt qu'un mail de plus."
+      const advice: string = areFollowUpsPlanned ? 'Sa relance est déjà prévue.' : words.visitorWithoutReplyAdvice
       return {
         key: 'visitors',
         tone: 'blue',
@@ -938,9 +977,7 @@ export class CampaignResultsSummary {
     const leaders: string[] = visitors
       .slice(0, SENTENCE_NAMES_LIMIT)
       .map((row: CampaignResultsRow): string => CampaignResultsSummary.nameWithVisits(row))
-    const advice: string = areFollowUpsPlanned
-      ? 'Leurs relances sont déjà prévues.'
-      : "Un appel ou un SMS plutôt qu'un mail de plus."
+    const advice: string = areFollowUpsPlanned ? 'Leurs relances sont déjà prévues.' : words.visitorWithoutReplyAdvice
     return {
       key: 'visitors',
       tone: 'blue',
@@ -975,20 +1012,21 @@ export class CampaignResultsSummary {
   }
 
   /**
-   * The to-do entry of a prospect whose mail bounced while nothing came back from them.
+   * The to-do entry of a prospect whose mail bounced, or whose SMS never arrived, while nothing came back from them.
    * @param row - The prospect row.
-   * @returns The entry, or null when no mail bounced or the prospect answered anyway.
+   * @param words - The words of the campaign's channel.
+   * @returns The entry, or null when every message arrived or the prospect answered anyway.
    */
-  private static bouncedTodo(row: CampaignResultsRow): CampaignResultsTodo | null {
+  private static bouncedTodo(row: CampaignResultsRow, words: CampaignChannelWords): CampaignResultsTodo | null {
     const hasBounced: boolean = row.prospect.sends.some((send: CampaignResultsSend): boolean => send.is_bounced)
     const isWithoutAnswer: boolean = row.prospect.state === 'visited' || row.prospect.state === 'silent'
     if (!hasBounced || !isWithoutAnswer) return null
     const sentences: string[] = []
     if (row.visitCount > 0) {
       const visits: string = CampaignResultsFormat.count(row.visitCount, 'fois', 'fois')
-      sentences.push(`Un mail a rebondi, mais le site a été ouvert ${visits} depuis.`)
+      sentences.push(`${words.failedDeliverySentence}, mais le site a été ouvert ${visits} depuis.`)
     } else {
-      sentences.push('Un mail a rebondi.')
+      sentences.push(`${words.failedDeliverySentence}.`)
     }
     const nextFollowUp: CampaignResultsSend | undefined = row.prospect.sends.find(
       (send: CampaignResultsSend): boolean => send.step > 0 && send.status === 'planned',
@@ -999,8 +1037,8 @@ export class CampaignResultsSummary {
     return {
       key: `bounce-${row.prospect.id}`,
       tone: 'amber',
-      icon: 'i-lucide-mail-warning',
-      title: `${row.prospect.name} : adresse à vérifier`,
+      icon: words.failedDeliveryIcon,
+      title: `${row.prospect.name} : ${words.contactToCheckLabel}`,
       verdict: null,
       text: sentences.join(' '),
       actionLabel: 'Ouvrir la fiche',

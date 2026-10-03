@@ -1,8 +1,10 @@
+import type { CampaignChannelWords } from '~/types/CampaignChannelWords'
 import type { CampaignResultsDay, CampaignResultsReplyVerdict, CampaignResultsRow } from '~/types/CampaignResults'
 
 export type CampaignResultsJourneyProps = {
   row: CampaignResultsRow
   days: CampaignResultsDay[]
+  words: CampaignChannelWords
 }
 
 export type CampaignResultsJourneyMailKind = 'firstMail' | 'followUp' | 'planned' | 'cancelled' | 'failed'

@@ -33,9 +33,11 @@ from services.activity_log_service import CATEGORY_SMS, STATUS_WARNING, activity
 from services.ai_assistant.assistant_service import ai_assistant_service
 from services.country_profiles import DEFAULT_COUNTRY_CODE, CountryProfiles
 from services.email_variables import LOYALTY_CARD_DEMO_MISSING_REFUSAL, EmailVariables
+from services.llm_service import llm_service
 from services.notification_service import notification_service
 from services.pricing_service import PricingService
 from services.prospect_phones import first_mobile_e164, sync_prospect_phones
+from services.reply_intent_service import normalize_verdict
 from services.sms.gsm_segments import is_gsm7, segment_count_with_reserve, to_gsm7
 from services.sms.opt_out_mention import SmsOptOutMention
 from services.sms.phone_normalizer import PhoneNumberPlans, to_e164_fr
@@ -787,6 +789,7 @@ class SmsService:
         from_raw: str,
         body: str,
         received_at: datetime | None = None,
+        intent: str | None = None,
     ) -> SmsReply:
         """Consign an SMS reply received on the operator's own phone (the sender is one-way).
 
@@ -801,6 +804,7 @@ class SmsService:
             from_raw: Number the prospect wrote from: national form of his country, or international.
             body: Message text as received.
             received_at: When the reply arrived (defaults to now, UTC).
+            intent: The verdict the operator gave the reply, when he gave one.
 
         Returns:
             The persisted reply row.
@@ -828,6 +832,7 @@ class SmsService:
             from_number=from_e164,
             body=text,
             received_at=received_at or datetime.utcnow(),
+            intent=intent,
         )
         db.add(reply)
         if prospect is not None:
@@ -883,6 +888,24 @@ class SmsService:
             .all()
         )
         return sent, replies
+
+    async def classify_reply(self, db: Session, reply: SmsReply) -> str | None:
+        """Give a consigned reply its verdict, like a captured email reply: one LLM call, a failure leaves it unset.
+
+        Args:
+            db: Active database session.
+            reply: The consigned reply.
+
+        Returns:
+            The verdict, or ``None`` when the model could not tell.
+        """
+        if reply.intent:
+            return reply.intent
+        verdict = normalize_verdict(await llm_service.classify_reply_intent(reply.body))
+        if verdict is not None:
+            reply.intent = verdict
+            db.commit()
+        return verdict
 
     def delete_reply(self, db: Session, user_id: int, reply_id: int) -> bool:
         """Delete one consigned reply (typo repair).

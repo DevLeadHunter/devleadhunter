@@ -1,5 +1,5 @@
 """
-Contracts of a campaign's results: what its mails produced, prospect by prospect.
+Contracts of a campaign's results: what its mails or its SMS produced, prospect by prospect.
 """
 
 from __future__ import annotations
@@ -14,11 +14,15 @@ CampaignResultsProspectState = Literal[
 ]
 CampaignResultsSendStatus = Literal["sent", "planned", "skipped", "failed"]
 CampaignResultsReplyVerdict = Literal["interested", "refused", "other"]
-CampaignResultsReplyChannel = Literal["email", "banner", "manual"]
+CampaignResultsReplyChannel = Literal["email", "banner", "manual", "sms"]
+CampaignResultsChannel = Literal["email", "sms"]
 
 
 class CampaignResultsSend(BaseModel):
-    """One mail of a prospect's sequence: the first mail (step 0) or a follow-up (step 1 and up)."""
+    """One message of a prospect's sequence: the first one (step 0) or a follow-up (step 1 and up).
+
+    ``is_bounced`` marks a mail that bounced, or an SMS that never reached the phone.
+    """
 
     step: int
     status: CampaignResultsSendStatus
@@ -35,7 +39,7 @@ class CampaignResultsVisit(BaseModel):
 
 
 class CampaignResultsReply(BaseModel):
-    """A prospect's reply, whichever way it came: a captured mail, the demo banner, or added by hand."""
+    """A prospect's reply, whichever way it came: a captured mail, the demo banner, an SMS, or added by hand."""
 
     id: str
     prospect_id: int
@@ -48,7 +52,7 @@ class CampaignResultsReply(BaseModel):
 
 
 class CampaignResultsProspect(BaseModel):
-    """A prospect of the campaign with everything that happened to them since the first mail."""
+    """A prospect of the campaign with everything that happened to them since the first message."""
 
     id: int
     name: str
@@ -61,7 +65,7 @@ class CampaignResultsProspect(BaseModel):
 
 
 class CampaignResultsTotals(BaseModel):
-    """Prospect counts at each stage, plus the mail volumes behind them."""
+    """Prospect counts at each stage, plus the message volumes behind them and what the SMS cost."""
 
     prospects: int
     contacted: int
@@ -78,10 +82,11 @@ class CampaignResultsTotals(BaseModel):
     failed: int
     planned_first_mails: int
     planned_follow_ups: int
+    sms_cost_cents: int | None = Field(default=None, description="What the SMS sent cost, SMS campaigns only")
 
 
 class CampaignResultsNextSend(BaseModel):
-    """The next planned mail of the campaign and the prospect it goes to."""
+    """The next planned message of the campaign and the prospect it goes to."""
 
     at: datetime
     prospect_name: str
@@ -99,6 +104,7 @@ class CampaignResultsResponse(BaseModel):
     """Payload of a campaign's « Résultats » tab."""
 
     campaign_id: int
+    channel: CampaignResultsChannel = "email"
     generated_at: datetime
     is_visit_tracking_available: bool
     totals: CampaignResultsTotals
@@ -114,6 +120,7 @@ class CampaignBenchmark(BaseModel):
 
     campaign_id: int
     name: str
+    channel: CampaignResultsChannel = "email"
     status: str
     started_at: datetime | None = None
     contacted: int
@@ -123,13 +130,13 @@ class CampaignBenchmark(BaseModel):
 
 
 class CampaignBenchmarksResponse(BaseModel):
-    """The user's email campaigns that have sent at least one first mail, most recent first."""
+    """The user's campaigns, email and SMS, that have sent at least one first message, most recent first."""
 
     campaigns: list[CampaignBenchmark]
 
 
 class CampaignManualReplyCreate(BaseModel):
-    """A reply that reached the user outside the app (their own inbox, a call), added by hand."""
+    """A reply that reached the user outside the app (their own inbox, their phone, a call), added by hand."""
 
     prospect_id: int
     verdict: CampaignResultsReplyVerdict

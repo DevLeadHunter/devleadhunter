@@ -74,7 +74,8 @@ Clés par défaut dans le code et la configuration du compte admin :
 - `DEFAULT_FIRST_CONTACT_KEY = "direct"` (worker SMS froid et campagnes SMS sans clé) ;
 - `DEFAULT_FOLLOW_UP_KEY = "rappel-court"` (jamais utilisé en vrai : le compte admin a choisi `offre-a-vie`) ;
 - `sms_configs.relance_template_key = "offre-a-vie"` sur le compte admin ;
-- `campaigns.sms_template_key` : `direct` (campagne 14), `offre-a-vie` (campagne 16).
+- `campaigns.sms_template_key` : `direct` (campagne 14), `offre-a-vie` (campagne 16) ;
+- relance d'une campagne SMS (`campaign_follow_ups.sms_template_key`) : un modèle de relance du même module qui ne rappelle pas un email (`recalls_an_email`), `offre-a-vie-video` en premier ; sans vidéo prête, la relance ne part pas.
 
 ## 2. Ce qui change
 

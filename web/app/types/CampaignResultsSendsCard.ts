@@ -1,3 +1,4 @@
+import type { CampaignChannelWords } from '~/types/CampaignChannelWords'
 import type { CampaignResultsStepSummary } from '~/types/CampaignResults'
 
 export type CampaignResultsSendsCardProps = {
@@ -6,4 +7,5 @@ export type CampaignResultsSendsCardProps = {
   prospectCount: number
   note: string
   isVisitTrackingAvailable: boolean
+  words: CampaignChannelWords
 }

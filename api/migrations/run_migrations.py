@@ -195,6 +195,7 @@ MIGRATION_MODULES: list[tuple[str, str]] = [
     ("add_user_postal_address", "migrations.add_user_postal_address"),
     ("add_loyalty_card_email_templates", "migrations.add_loyalty_card_email_templates"),
     ("add_user_siret", "migrations.add_user_siret"),
+    ("add_sms_campaign_follow_ups", "migrations.add_sms_campaign_follow_ups"),
 ]
 
 # Modules of this package that are not migrations and must not be registered.

@@ -1,4 +1,6 @@
+import type { CampaignChannelWords } from '~/types/CampaignChannelWords'
 import type {
+  CampaignResultsChannel,
   CampaignResultsFilterKey,
   CampaignResultsProspectState,
   CampaignResultsReplyChannel,
@@ -103,6 +105,38 @@ export const CAMPAIGN_RESULTS_CHANNEL_LABELS: Record<CampaignResultsReplyChannel
   email: 'Par mail',
   banner: 'Sur son site, par le bandeau',
   manual: 'Ajoutée à la main',
+  sms: 'Par SMS',
+}
+
+// Masculine nouns only: the sentences around them are written for « le mail » and « le SMS ».
+export const CAMPAIGN_CHANNEL_WORDS: Record<CampaignResultsChannel, CampaignChannelWords> = {
+  email: {
+    messageNoun: 'mail',
+    messagesNoun: 'mails',
+    failedDeliveryNoun: 'rebond',
+    failedDeliveriesNoun: 'rebonds',
+    failedDeliverySentence: 'Un mail a rebondi',
+    contactToCheckLabel: 'adresse à vérifier',
+    failedDeliveryIcon: 'i-lucide-mail-warning',
+    visitorWithoutReplyAdvice: "Un appel ou un SMS plutôt qu'un mail de plus.",
+    repliesOriginNote: 'Par mail, laissées sur le site, ou arrivées ailleurs et ajoutées à la main.',
+  },
+  sms: {
+    messageNoun: 'SMS',
+    messagesNoun: 'SMS',
+    failedDeliveryNoun: 'non reçu',
+    failedDeliveriesNoun: 'non reçus',
+    failedDeliverySentence: "Un SMS n'est pas arrivé",
+    contactToCheckLabel: 'numéro à vérifier',
+    failedDeliveryIcon: 'i-lucide-message-square-warning',
+    visitorWithoutReplyAdvice: "Un appel plutôt qu'un SMS de plus.",
+    repliesOriginNote: 'Par SMS sur votre téléphone puis ajoutées ici, ou laissées sur le site.',
+  },
+}
+
+export const CAMPAIGN_CHANNEL_NAMES: Record<CampaignResultsChannel, string> = {
+  email: 'email',
+  sms: 'SMS',
 }
 
 export const CAMPAIGN_RESULTS_JOURNEY_WIDTH: number = 280

@@ -24,6 +24,7 @@ from sqlalchemy import and_, case, func, or_, select
 from sqlalchemy.orm import Session, joinedload
 
 from enums.demo_site_status import DemoSiteStatus
+from enums.sms_status import SmsStatus
 from models.ai_assistant import AiAssistant
 from models.campaign import Campaign, CampaignStatus, campaign_prospects
 from models.campaign_follow_up import CampaignFollowUp
@@ -32,6 +33,7 @@ from models.email_log import EmailLog
 from models.email_queue import EmailQueue
 from models.email_template import EmailTemplate
 from models.prospect_db import ProspectDB
+from models.sms_message import SmsMessage
 from models.sms_reply import SmsReply
 from services.activity_log_service import CATEGORY_CAMPAIGN, STATUS_INFO, activity_log_service
 from services.ai_assistant.assistant_service import ai_assistant_service
@@ -41,7 +43,7 @@ from services.country_profiles import CountryProfiles
 from services.email_sending_service import EmailSendingService
 from services.email_variables import LOYALTY_CARD_DEMO_MISSING_REFUSAL, EmailVariables
 from services.pricing_service import PricingService
-from services.sms.templates import SmsTemplate
+from services.sms.templates import DEFAULT_FIRST_CONTACT_KEY, SmsTemplate, find_sms_template
 from services.sms_variables import SmsVariables
 from services.tracking_links import email_tracked_link, sms_tracked_link
 from services.unsubscribe_service import unsubscribe_service
@@ -68,6 +70,8 @@ _CROSS_MODULE_SKIP_REASON = "Réservé par un autre module"
 _NO_ASSISTANT_SKIP_REASON = "Pas d'assistant IA actif"
 # Skip reason stored on a queue row whose video-only template needs the receptionist's generated video.
 _NO_ASSISTANT_VIDEO_SKIP_REASON = "Pas de vidéo de réceptionniste prête"
+_NO_VIDEO_FOR_SMS_FOLLOW_UP_SKIP_REASON = "Pas de vidéo prête pour la relance"
+_REPLIED_SKIP_REASON = "Le prospect a répondu"
 
 # Template variables that only render with the prospect's active AI assistant (link, video, thumbnail).
 _ASSISTANT_LINK_VARIABLES: tuple[str, ...] = (
@@ -717,7 +721,7 @@ class CampaignQueueService:
 
         now = _utcnow()
         sms_template = find_sms_template(campaign.sms_template_key or "")
-        module: str = self._sms_campaign_module(sms_template)
+        module: str = self.sms_template_module(sms_template)
         latest: datetime | None = self.db.execute(
             select(func.max(EmailQueue.scheduled_at)).where(
                 EmailQueue.campaign_id == campaign.id,
@@ -796,12 +800,15 @@ class CampaignQueueService:
         return result
 
     async def _dispatch_sms(self, item: EmailQueue) -> None:
-        """Compose and send one cold SMS for an SMS-channel queue item.
+        """Compose and send one SMS for an SMS-channel queue item: the first SMS, or its relance.
 
         Reuses :meth:`sms_service.send_to_prospect` (all SMS guards: sender / provider / legal window /
-        mobile / STOP-suppression, plus compose + provider send + log). Outside the SMS legal window the
-        item is pushed forward and left ``pending`` so the worker retries when the window opens, instead
-        of being burned as skipped.
+        mobile / STOP-suppression / touch, plus compose + provider send + log). Outside the SMS legal
+        window the item is pushed forward and left ``pending`` so the worker retries when the window
+        opens, instead of being burned as skipped. A sent first SMS starts the demo's countdown and
+        schedules the campaign's relance, like a J1 email; the relance holds back like an email follow-up
+        (a reply), and a relance built around the video waits for no fallback: without the prospect's
+        video it is skipped.
         """
         from services.demo_site_service import demo_site_service
         from services.sms_config_service import sms_config_service
@@ -810,18 +817,20 @@ class CampaignQueueService:
 
         prospect: ProspectDB = item.prospect
         campaign: Campaign = item.campaign
+        is_follow_up: bool = item.queue_type != "initial"
 
         if prospect.do_not_contact:
-            item.status = _STATUS_SKIPPED
-            item.skip_reason = _DO_NOT_CONTACT_SKIP_REASON
-            self.db.commit()
+            self._skip(item, _DO_NOT_CONTACT_SKIP_REASON)
+            return
+
+        if is_follow_up and self._prospect_replied(item.user_id, prospect.id):
+            logger.info("[Queue] Skipping SMS follow-up for prospect %d — prospect replied", prospect.id)
+            self._skip(item, _REPLIED_SKIP_REASON)
             return
 
         config = sms_config_service.get(self.db, campaign.user_id)
         if config is None or not config.sender:
-            item.status = _STATUS_SKIPPED
-            item.skip_reason = "Expéditeur SMS non configuré"
-            self.db.commit()
+            self._skip(item, "Expéditeur SMS non configuré")
             return
 
         # Outside the legal SMS window → wait, don't burn the item: re-arm it pending a bit later.
@@ -831,36 +840,29 @@ class CampaignQueueService:
             self.db.commit()
             return
 
-        # An assistant SMS needs the prospect's active assistant, not a demo; a website SMS needs the demo.
-        from services.sms.templates import DEFAULT_FIRST_CONTACT_KEY, find_sms_template
-
-        sms_template = find_sms_template(campaign.sms_template_key or DEFAULT_FIRST_CONTACT_KEY)
-        # Another module took the prospect after this campaign's reservation expired in a long queue.
-        module: str = self._sms_campaign_module(sms_template)
-        if contact_lock_service.is_locked_for_module(prospect, module, _utcnow()):
-            item.status = _STATUS_SKIPPED
-            item.skip_reason = _CROSS_MODULE_SKIP_REASON
-            self.db.commit()
+        template_key: str | None = item.sms_template_key if is_follow_up else (campaign.sms_template_key or None)
+        sms_template = find_sms_template(template_key or ("" if is_follow_up else DEFAULT_FIRST_CONTACT_KEY))
+        if sms_template is None:
+            self._skip(item, "Modèle SMS introuvable")
             return
+        # Another module took the prospect after this campaign's reservation expired in a long queue.
+        module: str = self.sms_template_module(sms_template)
+        if contact_lock_service.is_locked_for_module(prospect, module, _utcnow()):
+            self._skip(item, _CROSS_MODULE_SKIP_REASON)
+            return
+        # An assistant SMS needs the prospect's active assistant, not a demo; a website SMS needs the demo.
         needs_assistant: bool = self._sms_template_uses_assistant_link(sms_template)
         if needs_assistant and not self._has_active_assistant(prospect.id, campaign.user_id):
-            item.status = _STATUS_SKIPPED
-            item.skip_reason = _NO_ASSISTANT_SKIP_REASON
-            self.db.commit()
+            self._skip(item, _NO_ASSISTANT_SKIP_REASON)
             return
         if self._sms_template_uses_loyalty_card_link(sms_template):
-            item.status = _STATUS_SKIPPED
-            item.skip_reason = LOYALTY_CARD_DEMO_MISSING_REFUSAL
-            self.db.commit()
+            self._skip(item, LOYALTY_CARD_DEMO_MISSING_REFUSAL)
             return
         site: DemoSite | None = self._active_demo_for_prospect(prospect.id, campaign.user_id)
         if not needs_assistant and (not site or not site.slug):
-            item.status = _STATUS_SKIPPED
-            item.skip_reason = "Pas de site démo actif"
-            self.db.commit()
+            self._skip(item, "Pas de site démo actif")
             return
 
-        # Only the "video" template needs it; harmless (rendered as nothing) for the others.
         from services.demo_video_service import has_ready_video, video_page_url
 
         demo_url: str = ""
@@ -868,24 +870,40 @@ class CampaignQueueService:
         if site is not None and site.slug:
             demo_url = sms_tracked_link(demo_site_service.demo_url_for_slug(site.slug))
             video_url = sms_tracked_link(video_page_url(site.slug)) if has_ready_video(site) else ""
+        if is_follow_up and sms_template.uses(SmsVariables.VIDEO_LINK) and not video_url:
+            logger.info("[Queue] Skipping SMS follow-up for prospect %d — video relance, no video ready", prospect.id)
+            self._skip(item, _NO_VIDEO_FOR_SMS_FOLLOW_UP_SKIP_REASON)
+            return
+
         outcome = await sms_service.send_to_prospect(
             self.db,
             user_id=campaign.user_id,
             prospect=prospect,
             config=config,
             demo_url=demo_url,
-            cold=True,
-            template_key=campaign.sms_template_key or None,
+            cold=not is_follow_up,
+            template_key=template_key,
             video_url=video_url,
         )
+        if outcome.message is not None:
+            item.sms_message_id = outcome.message.id
         if outcome.sent:
             item.status = _STATUS_SENT
             contact_lock_service.record_contact(prospect, module, _utcnow())
-            if site is not None:
+            if site is not None and not is_follow_up:
                 demo_site_service.restart_demo_ttl(self.db, site, datetime.now(UTC))
         else:
             item.status = _STATUS_SKIPPED
             item.skip_reason = (outcome.reason or "Échec SMS")[:160]
+        self.db.commit()
+
+        if outcome.sent and not is_follow_up:
+            self._schedule_follow_ups(item)
+
+    def _skip(self, item: EmailQueue, reason: str) -> None:
+        """Mark a queue item skipped with the reason the campaign page shows, and commit."""
+        item.status = _STATUS_SKIPPED
+        item.skip_reason = reason
         self.db.commit()
 
     def reclaim_orphaned_sending(self) -> int:
@@ -895,10 +913,11 @@ class CampaignQueueService:
         An item only holds ``sending`` while ``_dispatch`` runs, so on a fresh worker start any such
         row is orphaned — a previous process died mid-dispatch (typically a deploy restart). If the
         email actually went out, an ``EmailLog`` exists for the same campaign/prospect at or after the
-        item's slot: we settle the row as ``sent`` and arm its follow-ups, the step the dead process
-        never reached. Otherwise the send never happened and we requeue the row as ``pending`` to
-        retry. The ``EmailLog`` check is what keeps this safe — a claimed row is never re-sent once its
-        email already left. Call once at startup, before any dispatch, so no in-flight row is touched.
+        item's slot (an SMS-channel item: an SMS the provider accepted): we settle the row as ``sent``
+        and arm its follow-ups, the step the dead process never reached. Otherwise the send never
+        happened and we requeue the row as ``pending`` to retry. That check is what keeps this safe — a
+        claimed row is never re-sent once its message already left. Call once at startup, before any
+        dispatch, so no in-flight row is touched.
 
         Returns:
             The number of orphaned rows reconciled.
@@ -908,18 +927,26 @@ class CampaignQueueService:
         )
         reconciled: int = 0
         for item in orphans:
-            log: EmailLog | None = self._sent_log_for_item(item)
-            if log is not None:
+            if item.campaign.channel == "sms":
+                sent_sms: SmsMessage | None = self._sent_sms_for_item(item)
+                if sent_sms is not None:
+                    item.sms_message_id = sent_sms.id
+                went_out: bool = sent_sms is not None
+            else:
+                log: EmailLog | None = self._sent_log_for_item(item)
+                if log is not None:
+                    item.email_log_id = log.id
+                went_out = log is not None
+            if went_out:
                 item.status = _STATUS_SENT
-                item.email_log_id = log.id
-                # The email went out, so the post-send bookkeeping the dead process skipped applies too.
+                # The message went out, so the post-send bookkeeping the dead process skipped applies too.
                 prospect: ProspectDB | None = self.db.get(ProspectDB, item.prospect_id)
                 if prospect is not None and not prospect.contacted:
                     prospect.contacted = True
                 self.db.commit()
                 if item.queue_type == "initial" and not self._has_follow_ups(item.campaign_id, item.prospect_id):
                     self._schedule_follow_ups(item)
-                logger.info("[Queue] Reclaimed orphaned item %d as sent (email_log %d)", item.id, log.id)
+                logger.info("[Queue] Reclaimed orphaned item %d as sent", item.id)
             else:
                 item.status = _STATUS_PENDING
                 self.db.commit()
@@ -928,6 +955,24 @@ class CampaignQueueService:
         if reconciled:
             logger.info("[Queue] Reclaimed %d orphaned 'sending' item(s)", reconciled)
         return reconciled
+
+    def _sent_sms_for_item(self, item: EmailQueue) -> SmsMessage | None:
+        """Return the SMS proving this SMS-channel queue item left (accepted by the provider), or None.
+
+        Only an SMS written at or after the item's slot counts, so an earlier SMS to the same
+        prospect is never mistaken for this one.
+        """
+        return self.db.execute(
+            select(SmsMessage)
+            .where(
+                SmsMessage.user_id == item.user_id,
+                SmsMessage.prospect_id == item.prospect_id,
+                SmsMessage.created_at >= item.scheduled_at,
+                SmsMessage.status.in_((SmsStatus.SENT.value, SmsStatus.DELIVERED.value)),
+            )
+            .order_by(SmsMessage.created_at.asc())
+            .limit(1)
+        ).scalar_one_or_none()
 
     def _sent_log_for_item(self, item: EmailQueue) -> EmailLog | None:
         """Return the EmailLog proving this queue item's email actually left, or None.
@@ -1160,16 +1205,17 @@ class CampaignQueueService:
         )
         return self._campaign_module(self._campaign_email_templates(campaign, template_a, template_b))
 
-    def _sms_campaign_module(self, sms_template: SmsTemplate | None) -> str:
-        """The module of an SMS campaign, read from its first-contact template.
+    @classmethod
+    def sms_template_module(cls, sms_template: SmsTemplate | None) -> str:
+        """The module an SMS template sells: an SMS campaign's module is read from its first-contact template.
 
         Args:
-            sms_template: The campaign's SMS template (``None`` when the key is unknown).
+            sms_template: The SMS template (``None`` when the key is unknown).
 
         Returns:
             ``MODULE_AI_ASSISTANT`` when the template is an assistant offer, else ``MODULE_WEBSITES``.
         """
-        return MODULE_AI_ASSISTANT if self._sms_template_uses_assistant(sms_template) else MODULE_WEBSITES
+        return MODULE_AI_ASSISTANT if cls._sms_template_uses_assistant(sms_template) else MODULE_WEBSITES
 
     def _active_demo_for_prospect(self, prospect_id: int, user_id: int) -> DemoSite | None:
         """Latest ACTIVE demo site of a prospect (or None)."""
@@ -1329,7 +1375,7 @@ class CampaignQueueService:
         if item.queue_type != "initial" and self._prospect_replied(item.user_id, prospect.id):
             logger.info("[Queue] Skipping follow-up for prospect %d — prospect replied", prospect.id)
             item.status = _STATUS_SKIPPED
-            item.skip_reason = "Le prospect a répondu"
+            item.skip_reason = _REPLIED_SKIP_REASON
             self.db.commit()
             return
 
@@ -1477,7 +1523,44 @@ class CampaignQueueService:
         if item.queue_type == "initial" and result.get("success"):
             self._schedule_follow_ups(item)
 
-    def _offer_link_outlives(self, j1_item: EmailQueue, template_id: int | None, scheduled_at: datetime) -> bool:
+    def _offer_links_of(self, template_id: int | None, sms_template_key: str | None) -> tuple[bool, bool, bool]:
+        """
+        Which demos a follow-up template links: the prospect's site, his assistant, his loyalty card.
+
+        An SMS template's site link is its demo or its video page, which lives only as long as the demo.
+
+        Args:
+            template_id: Email template of the step (email campaigns).
+            sms_template_key: SMS library template of the step (SMS campaigns).
+
+        Returns:
+            ``(links the site, links the assistant, links the loyalty card)``.
+        """
+        if sms_template_key is not None:
+            sms_template: SmsTemplate | None = find_sms_template(sms_template_key)
+            links_site: bool = sms_template is not None and (
+                sms_template.uses(SmsVariables.DEMO_LINK) or sms_template.uses(SmsVariables.VIDEO_LINK)
+            )
+            return (
+                links_site,
+                self._sms_template_uses_assistant_link(sms_template),
+                self._sms_template_uses_loyalty_card_link(sms_template),
+            )
+        template: EmailTemplate | None = self.db.get(EmailTemplate, template_id) if template_id else None
+        return (
+            self._template_uses_demo_link(template),
+            self._template_uses_assistant_link(template),
+            self._template_uses_loyalty_card_link(template),
+        )
+
+    def _offer_link_outlives(
+        self,
+        j1_item: EmailQueue,
+        scheduled_at: datetime,
+        *,
+        template_id: int | None = None,
+        sms_template_key: str | None = None,
+    ) -> bool:
         """
         Whether a follow-up may be queued, i.e. the demo it links (site, assistant, loyalty card) will still be alive.
 
@@ -1491,16 +1574,14 @@ class CampaignQueueService:
 
         Args:
             j1_item: The J1 whose follow-up is being scheduled.
-            template_id: Template of the follow-up step.
             scheduled_at: When that follow-up would leave.
+            template_id: Email template of the follow-up step (email campaigns).
+            sms_template_key: SMS library template of the follow-up step (SMS campaigns).
 
         Returns:
             True when the follow-up can be queued.
         """
-        template: EmailTemplate | None = self.db.get(EmailTemplate, template_id) if template_id else None
-        uses_demo: bool = self._template_uses_demo_link(template)
-        uses_assistant: bool = self._template_uses_assistant_link(template)
-        uses_loyalty_card_link: bool = self._template_uses_loyalty_card_link(template)
+        uses_demo, uses_assistant, uses_loyalty_card_link = self._offer_links_of(template_id, sms_template_key)
         if not uses_demo and not uses_assistant and not uses_loyalty_card_link:
             return True
 
@@ -1537,6 +1618,7 @@ class CampaignQueueService:
                 campaign_id=j1_item.campaign_id,
                 prospect_id=j1_item.prospect_id,
                 template_id=template_id,
+                sms_template_key=sms_template_key,
                 email_account_id=None,
                 queue_type="followup",
                 ab_variant=j1_item.ab_variant,
@@ -1551,7 +1633,7 @@ class CampaignQueueService:
 
     def _schedule_follow_ups(self, j1_item: EmailQueue) -> None:
         """
-        Create EmailQueue rows for all follow-up steps after a J1 success.
+        Create EmailQueue rows for all follow-up steps after a J1 success, an email's or an SMS's.
 
         Uses ``campaign_follow_ups`` rows when they exist; falls back to the
         legacy ``follow_up_template_id`` / ``follow_up_delay_days`` fields. Every
@@ -1586,7 +1668,7 @@ class CampaignQueueService:
                 follow_up_at = send_policy_service.follow_up_slot(
                     resolved, sent_at, campaign.follow_up_delay_days or None, timezone_name=timezone_name
                 )
-                if not self._offer_link_outlives(j1_item, campaign.follow_up_template_id, follow_up_at):
+                if not self._offer_link_outlives(j1_item, follow_up_at, template_id=campaign.follow_up_template_id):
                     return
                 self.db.add(
                     EmailQueue(
@@ -1612,7 +1694,9 @@ class CampaignQueueService:
             step_at: datetime = send_policy_service.follow_up_slot(
                 resolved, sent_at, elapsed_days, timezone_name=timezone_name
             )
-            if not self._offer_link_outlives(j1_item, step.template_id, step_at):
+            if not self._offer_link_outlives(
+                j1_item, step_at, template_id=step.template_id, sms_template_key=step.sms_template_key
+            ):
                 break
             self.db.add(
                 EmailQueue(
@@ -1620,6 +1704,7 @@ class CampaignQueueService:
                     campaign_id=j1_item.campaign_id,
                     prospect_id=j1_item.prospect_id,
                     template_id=step.template_id,
+                    sms_template_key=step.sms_template_key,
                     email_account_id=None,
                     queue_type="followup",
                     ab_variant=j1_item.ab_variant,

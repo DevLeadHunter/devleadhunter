@@ -189,7 +189,9 @@ class TestEmailCampaign:
         sent_first_email = _claimed_initial_send(db, campaign, prospect, first_email.id)
         follow_up_at = datetime.now(UTC).replace(tzinfo=None) + timedelta(days=3)
 
-        is_queued = CampaignQueueService(db)._offer_link_outlives(sent_first_email, follow_up.id, follow_up_at)
+        is_queued = CampaignQueueService(db)._offer_link_outlives(
+            sent_first_email, follow_up_at, template_id=follow_up.id
+        )
 
         assert is_queued is False
         held_back = db.query(EmailQueue).filter(EmailQueue.queue_type == "followup").one()
