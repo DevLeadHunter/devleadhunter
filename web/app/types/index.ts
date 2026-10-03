@@ -218,6 +218,7 @@ export type User = {
   contact_phone?: string | null
   contact_email?: string | null
   postal_address?: string | null
+  siret?: string | null
   is_active: boolean
   created_at: string
   updated_at: string | null
@@ -253,6 +254,7 @@ export type ProfileUpdate = {
   contact_phone?: string | null
   contact_email?: string | null
   postal_address?: string | null
+  siret?: string | null
   site_sale_price_cents?: number
   assistant_monthly_price_cents?: number
   assistant_annual_free_months?: number

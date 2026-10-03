@@ -80,6 +80,7 @@ class User(Base):
     contact_phone: Mapped[str | None] = mapped_column(String(30), nullable=True)
     contact_email: Mapped[str | None] = mapped_column(String(255), nullable=True)
     postal_address: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    siret: Mapped[str | None] = mapped_column(String(14), nullable=True)
     # Gmail Postmaster Tools OAuth — per-user read access to Gmail-side reputation.
     postmaster_google_email: Mapped[str | None] = mapped_column(String(255), nullable=True)
     postmaster_oauth_refresh_token: Mapped[str | None] = mapped_column(Text, nullable=True)

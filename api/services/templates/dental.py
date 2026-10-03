@@ -22,6 +22,7 @@ from services.templates.site_content import (  # noqa: F401 — re-exported for 
     map_prospect_and_enrichment,
     to_storyblok_site_content,
 )
+from services.templates.visitor_data import TemplateVisitorData
 
 TEMPLATE_ID: str = "dental"
 
@@ -45,6 +46,11 @@ TEMPLATE_META: dict[str, object] = {
     # keys not listed here don't visibly theme this layer, so the editor hides them.
     "color_roles": {"action": "primary", "secondaire": "secondary"},
 }
+
+VISITOR_DATA: TemplateVisitorData = TemplateVisitorData(
+    has_contact_form=True,
+    has_google_fonts=True,
+)
 
 BODY_COMPONENTS: list[str] = []
 COMPONENT_SCHEMAS: list[dict[str, Any]] = []

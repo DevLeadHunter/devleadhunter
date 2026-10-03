@@ -25,6 +25,7 @@ from services.templates.site_content import (  # noqa: F401 — re-exported for 
     resolve_trade_services,
     to_storyblok_site_content,
 )
+from services.templates.visitor_data import TemplateVisitorData
 
 TEMPLATE_ID: str = "barber"
 
@@ -50,6 +51,12 @@ TEMPLATE_META: dict[str, object] = {
     # Barber's action colour is the gold accent (its primary is the dark charcoal).
     "brand_color_key": "accent",
 }
+
+VISITOR_DATA: TemplateVisitorData = TemplateVisitorData(
+    has_contact_form=True,
+    has_google_fonts=True,
+    has_google_map=True,
+)
 
 # Shared base bloks only (flat SiteContent).
 BODY_COMPONENTS: list[str] = []

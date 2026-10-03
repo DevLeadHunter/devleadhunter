@@ -2,24 +2,20 @@
   <div v-if="pending" class="flex min-h-screen items-center justify-center bg-slate-950 text-slate-300">
     Chargement…
   </div>
-  <div v-else-if="error || !site" class="flex min-h-screen items-center justify-center bg-slate-950 text-slate-300">
+  <div
+    v-else-if="error || !site?.legal"
+    class="flex min-h-screen items-center justify-center bg-slate-950 text-slate-300"
+  >
     Site introuvable.
   </div>
-  <main v-else class="min-h-screen bg-white text-slate-900">
-    <DemoSiteView :site="site" />
-    <SiteLegalFooter v-if="site.legal" :legal-notice="site.legal" :legal-page-path="legalPagePath" />
-  </main>
+  <SiteLegalPage v-else :legal-notice="site.legal" :business-name="site.business_name" site-href="/" />
 </template>
 
 <script lang="ts" setup>
 import type { DemoSitePublic } from '~/types/demoSite'
-import { SiteLegalLinkUtils } from '~/utils/SiteLegalLinkUtils'
 
-// Sert un site vendu par son domaine client ; la racine demo.dibodev.fr n'est pas un site et 404.
 const config: ReturnType<typeof useRuntimeConfig> = useRuntimeConfig()
-const url: URL = useRequestURL()
-const host: string = url.host
-const legalPagePath: string = SiteLegalLinkUtils.deliveredLegalPath()
+const host: string = useRequestURL().host
 
 const {
   data: site,
@@ -33,8 +29,4 @@ const {
     })
   },
 )
-
-useSeoMeta({
-  title: () => site.value?.business_name ?? 'Site',
-})
 </script>

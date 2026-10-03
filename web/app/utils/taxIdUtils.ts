@@ -1,5 +1,5 @@
 const SIREN_DIGIT_COUNT: number = 9
-const SIRET_DIGIT_COUNT: number = 14
+export const SIRET_DIGIT_COUNT: number = 14
 
 /**
  * Normalize a French SIREN/SIRET input to digits only.

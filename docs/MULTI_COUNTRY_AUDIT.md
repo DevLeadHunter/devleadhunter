@@ -52,7 +52,9 @@ pays transmis par les scrapers Maps, OSM et auto, par le sidecar d'enrichissemen
 annuaires, plateformes, messageries grand public et domaines publics CH, BE, LU et CA reconnus (scoring email,
 sous-domaines compris, `x.qc.ca` découpé après `qc.ca`, site d'annuaire jamais compté comme vrai site,
 mini-sites d'annuaire, « Domain zu verkaufen ») ; numéros CH, BE et LU lus sur Facebook dans la forme du pays
-(un « 079 » suisse n'est plus lu comme un mobile français), affichés dans leurs blocs nationaux.
+(un « 079 » suisse n'est plus lu comme un mobile français), affichés dans leurs blocs nationaux ;
+pied légal et page `/legal` sur tous les sites générés, démo comme site vendu, calculés par l'API pour le
+pays de l'entreprise (§ 4.3).
 
 **Encore ouvert** : carte de couverture sans le Québec ; Réceptionniste
 IA hors France (§ 7 : fuseau du client, +1, expéditeur, pied légal) ; décisionnaire hors France ;
@@ -88,7 +90,7 @@ n'est pas vérifié (`SmsProspectingRules.AUTOMATIC_SMS_COUNTRIES`).
 | `invoice_locale`, `vat_exemption_reason`, `invoice_currency`, `vat_number_required`, `tax_id_pattern`, `registrant_must_be_local` | Qonto : `locale`, code TVA, devise du client ; n° TVA du client obligatoire pour l'autoliquidation (BE/LU) ; validation de l'identifiant fiscal par pays ; `.ca` réservé à un titulaire canadien | 6 |
 | `postal_area_prefix_len`, `mailbox_provider_domains` | garde-fou homonyme par zone (FR 2, CA 3) ; familles de boîtes mail par pays (bluewin.ch, skynet.be, videotron.ca…) pour la page Santé email | 3, 8 |
 | Côté commande (pas pays) : `orders.billing_region` | province québécoise (champ `state` Stripe, adresse Qonto `province_code`) | 6 |
-| `legal_notice_title`, `legal_footer_lines`, `host_disclosure_required`, `privacy_notice_required`, `trade_permit_label`, `contact_label`, `site_locale`, `payment_methods_phrase` | pied de page et mentions des sites générés, « Nous joindre », `lang="fr-CA"`, moyens de paiement | 4 |
+| fait : `site_legal` (`SiteLegalFacts` : `locale`, titres et liens du pied, `legal_id_label`, `vat_number_label`, `is_publication_director_required`, `is_host_disclosure_required`, `privacy_regime`, autorité de contrôle) ; restent `trade_permit_label`, `contact_label`, `payment_methods_phrase` | pied de page et page légale des sites générés (§ 4.3) ; restent « Nous joindre », moyens de paiement, autorisation d'établissement | 4 |
 | `map_region_label`, `map_regions_file` | carte : « Régions administratives », fichier geojson du pays | 2 |
 | Côté utilisateur (pas pays) : `users.postal_address`, `users.city`, `ai_assistants.timezone` | pied CASL, script vidéo, fuseau de l'artisan | 5, 4, 7 |
 
@@ -248,17 +250,19 @@ Constat principal : **le pays n'arrive jamais jusqu'au site**. `demo_site_servic
 | `api/services/templates/barber.py:124-144` / `:217` | prix « 32 € », « 22 € »… en fin de description, retirés par `without_price` | aucun | non-problème |
 | `api/services/templates/registry.py:69` | « à Le » → « au » marche aussi pour « au Locle », « aux Escoumins » | aucun | non-problème |
 
-**4.3 Pied de page et mentions légales, par pays** (qui met quoi : l'API n'envoie rien, demo-host n'a ni pied ni page légale, tout vient des layers, non vérifiables ici). Règles citées de mémoire, à faire valider :
+**4.3 Pied de page et mentions légales, par pays** (vérifié le 03/10 sur les textes consolidés ; ce n'est pas un avis d'avocat). Le tableau d'origine, écrit de mémoire, se trompait sur quatre points : l'article de la LCEN (l'ancien art. 6 III est devenu l'art. 1-1 avec la loi SREN du 21/05/2024), le répertoire des métiers (remplacé par le RNE le 01/01/2023), l'autorisation d'établissement luxembourgeoise (son numéro ou son code-barres doit figurer sur le site) et la licence RBQ (les membres de la CMEQ et de la CMMTQ en sont exemptés).
 
-| Pays | Titre | Identifiant | Mentions attendues sur un site vitrine | Contact |
+| Pays | Titre | Ce que la loi demande sur le site vitrine d'un artisan | Identifiant | Confidentialité |
 |---|---|---|---|---|
-| FR | « Mentions légales » | RCS ou RM, TVA si assujetti | raison sociale, forme, adresse, téléphone, e-mail, directeur de publication, hébergeur (LCEN art. 6) | Contact |
-| CH | « Impressum » | IDE CHE-xxx.xxx.xxx (+ « TVA » si assujetti) | raison sociale, adresse, e-mail (LCD art. 3 al. 1 let. s) ; pas d'hébergeur | Contact |
-| BE | « Mentions légales » | n° d'entreprise BCE, TVA BE | nom, adresse, e-mail (CDE art. XII.6) ; « éditeur responsable » concerne les imprimés, à confirmer | Contact |
-| LU | « Mentions légales » | RCS B…, TVA LU, autorisation d'établissement | nom, adresse, e-mail (loi du 14 août 2000) | Contact |
-| CA/QC | pas de page obligatoire ; « Politique de confidentialité » obligatoire (Loi 25) dès qu'un formulaire collecte des données | NEQ facultatif ; **licence RBQ obligatoire dans toute publicité d'un entrepreneur en construction** (ticket RBQ) | nom, adresse | « Nous joindre » |
+| FR | « Mentions légales » | LCEN art. 1-1 : nom, prénoms, domicile et téléphone (personne physique) ou dénomination, siège, téléphone et capital (société), n° d'inscription au RCS ou au RNE (artisanat) ; directeur de la publication (art. 93-2 loi 82-652 : l'entrepreneur lui-même, ou le gérant) ; hébergeur avec nom, adresse et téléphone. LCEN art. 19 (art. 14 : les communications commerciales sont du commerce électronique) : adresse, e-mail, téléphone, n° TVA, autorité d'autorisation, profession réglementée. Sanction art. 1-2 : un an et 75 000 € | SIREN ou SIRET ; « RCS + ville du greffe » et « EI » (C. com. R123-237, R526-27) pour une entreprise au RCS ; « RM » obsolète | RGPD art. 13 ; durée CNIL : trois ans après le dernier contact (référentiel « gestion commerciale ») ; médiateur de la consommation sur le site si clientèle de particuliers (C. conso L616-1, R616-1) ; plus de lien vers la plateforme RLL, fermée le 20/07/2025 (règl. 2024/3228) |
+| CH | « Impressum » (« Mentions légales » aussi en usage, aucune règle) | LCD art. 3 al. 1 let. s ch. 1 : identité et adresse de contact, e-mail compris (application à un site sans commande en ligne débattue ; par prudence oui, et un formulaire seul ne suffit pas) ; raison de commerce inscrite, complète (CO art. 954a) ; ni hébergeur ni directeur | IDE facultatif (LIDE art. 5 al. 3, OIDE art. 8 al. 5) | nLPD art. 19 (responsable, finalité, destinataires, États étrangers et garanties) ; LTC art. 45c (informer des cookies et de la façon de les refuser) ; PFPDT |
+| BE | « Mentions légales » | CDE art. XII.6 (le SPF Économie l'applique aux sites vitrines) : nom, adresse, coordonnées dont l'e-mail, numéro d'entreprise, autorité d'autorisation, profession réglementée, n° TVA, codes de conduite. Société : CSA art. 2:20 (forme légale, siège, « RPM » suivi du tribunal). « Éditeur responsable » : imprimés seulement (nouveau Code pénal art. 671) | numéro d'entreprise (BCE), n° TVA | RGPD art. 13 ; APD |
+| LU | « Mentions légales » | loi du 14/08/2000 art. 5(1) : nom, adresse, coordonnées dont l'e-mail, n° RCS, n° TVA, autorisation et autorité qui l'a délivrée ; loi du 02/09/2011 art. 28(1) et 34(1) : code-barres 2D ou numéro de l'autorisation d'établissement sur le site (amende de 25 à 250 €) | n° RCS (si commerçant), autorisation d'établissement | RGPD art. 13 ; CNPD |
+| CA/QC | pas d'équivalent des mentions légales | licence RBQ dans toute publicité, site compris (Loi sur le bâtiment art. 57.1 ; exemptés : membres CMEQ et CMMTQ, tenus par les règles de leur corporation) ; site en français (Charte art. 52) | NEQ facultatif | LPRPSP (Loi 25) : art. 3.1 (titre et coordonnées du responsable, par défaut la personne ayant la plus haute autorité), art. 3.2 (politiques de gouvernance), art. 8 (fins, moyens, droits, retrait du consentement, communication hors Québec), art. 8.2 (politique publiée dès qu'on recueille par un moyen technologique ; la CAI y range les courriels reçus), art. 17 (évaluation avant de communiquer hors Québec) ; réponse sous 30 jours ; CAI |
 
-Proposition : un objet `legal` dans SiteContent (`legal_name`, `legal_id`, `vat_id`, `trade_licence`, lignes du pied) rendu par un pied commun (paquet `website-content` ou demo-host) plutôt que 10 layers modifiés un par un ; faits du profil : `legal_notice_title`, `legal_footer_lines`, `host_disclosure_required`, `privacy_notice_required`, `trade_permit_label`, `contact_label`, `site_locale`. Le `tax_id_label` existant sert de libellé.
+Livré : un bloc `legal` calculé par l'API à chaque service du site (`api/services/site_legal/`), jamais stocké dans `content_json` (une publication Storyblok peut mettre à jour une ligne de contact, pas l'effacer), à partir du prospect, de l'identité de registre de confiance, de la vente et du profil pays (`CountryProfile.site_legal`) ; un lien discret en pied de chaque site et une page `/legal` (démo : `/{slug}/legal`) rendus par demo-host, sans toucher aux 10 layers ni au contrat `website-content`. Une démo nomme son éditeur (l'utilisateur DevLeadHunter, établi en France) et décrit la mesure PostHog ; un site vendu nomme l'entreprise et dit qu'il ne mesure rien.
+
+Reste à collecter à la vente (aucune donnée en base aujourd'hui) : FR, le registre (« RCS de la ville du greffe » ou « RNE »), le capital d'une société, la mention « EI », le médiateur de la consommation ; BE, la forme légale et le tribunal d'une société ; LU, le numéro de l'autorisation d'établissement ; le SIRET de l'éditeur des démos (« Mon profil » n'a pas de champ).
 
 ## 5. Emails et SMS
 

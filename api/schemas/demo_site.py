@@ -5,6 +5,8 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, EmailStr, Field
 
+from schemas.site_legal_notice import SiteLegalNotice
+
 
 class DemoSiteTheme(BaseModel):
     """Customizable color palette for a demo site template."""
@@ -272,6 +274,7 @@ class DemoSitePublicResponse(BaseModel):
     expiry_date_label: str | None = Field(
         default=None, description="Day the demo goes offline (« 2 novembre »), null until its link is first sent"
     )
+    legal: SiteLegalNotice | None = None
 
     model_config = ConfigDict(from_attributes=True)
 

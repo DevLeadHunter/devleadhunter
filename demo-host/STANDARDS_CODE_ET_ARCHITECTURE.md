@@ -50,13 +50,17 @@ Chaque template vit dans **son propre repo GitHub** (`devleadhunter-template-<id
 demo-host/
 ├── app/
 │   ├── components/
-│   │   └── DemoSiteView.vue                  # Dispatch template_id → layer root
+│   │   ├── DemoSiteView.vue                  # Dispatch template_id → layer root
+│   │   ├── SiteLegalFooter.vue               # Lien « Mentions légales · Confidentialité » sous chaque site
+│   │   └── SiteLegalPage.vue                 # Page légale (bloc `legal` calculé par l'API)
 │   ├── composables/
 │   │   ├── useDemoTracking.ts                # PostHog surface=demo
 │   │   └── useDemoVideoTracking.ts
 │   ├── pages/
-│   │   ├── [slug].vue                        # Démo TTL
+│   │   ├── [slug]/index.vue                  # Démo TTL
+│   │   ├── [slug]/legal.vue                  # Page légale de la démo
 │   │   ├── index.vue                         # Site vendu (host → slug)
+│   │   ├── legal.vue                         # Page légale du site vendu
 │   │   ├── preview-layers.vue                # Harnais DEV — layers sur SiteContents figés
 │   │   └── v/[slug].vue                      # Player vidéo prospection
 │   ├── types/                                # Un fichier par composant/contrat

@@ -17,6 +17,8 @@ from __future__ import annotations
 
 from typing import Any
 
+from services.templates.visitor_data import TemplateVisitorData
+
 TEMPLATE_ID: str = "plumber-signature"
 
 TEMPLATE_META: dict[str, object] = {
@@ -41,6 +43,11 @@ TEMPLATE_META: dict[str, object] = {
     # The coral "signal" (accent) is the real CTA colour here, not the petrol primary.
     "brand_color_key": "accent",
 }
+
+VISITOR_DATA: TemplateVisitorData = TemplateVisitorData(
+    has_contact_form=True,
+    has_google_fonts=True,
+)
 
 # Top-level bloks this template adds to the Storyblok page body whitelist
 # (on top of the shared hero/trust/services/why_us/contact base).

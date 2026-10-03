@@ -25,6 +25,7 @@ from services.templates.site_content import (  # noqa: F401 — re-exported for 
     map_prospect_and_enrichment,
     to_storyblok_site_content,
 )
+from services.templates.visitor_data import TemplateVisitorData
 
 TEMPLATE_ID: str = "landscaper-verdure"
 
@@ -52,6 +53,12 @@ TEMPLATE_META: dict[str, object] = {
     # Action colour = primary, so the prospect's logo colour lands on the buttons.
     "brand_color_key": "primary",
 }
+
+VISITOR_DATA: TemplateVisitorData = TemplateVisitorData(
+    has_contact_form=True,
+    has_google_fonts=True,
+    has_google_map=True,
+)
 
 # Shared base bloks only (flat SiteContent).
 BODY_COMPONENTS: list[str] = []

@@ -23,6 +23,7 @@ from services.templates.site_content import (  # noqa: F401 — re-exported for 
     map_prospect_and_enrichment,
     to_storyblok_site_content,
 )
+from services.templates.visitor_data import TemplateVisitorData
 
 TEMPLATE_ID: str = "artisan-edito"
 
@@ -51,6 +52,10 @@ TEMPLATE_META: dict[str, object] = {
     # Édito's action colour is the amber accent (its primary is the dark editorial ink).
     "brand_color_key": "accent",
 }
+
+VISITOR_DATA: TemplateVisitorData = TemplateVisitorData(
+    has_google_fonts=True,
+)
 
 # This template only uses the shared base bloks.
 BODY_COMPONENTS: list[str] = []
