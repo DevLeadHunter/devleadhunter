@@ -1,8 +1,8 @@
 # Présence humaine sur la démo : maquettes à valider
 
-Ticket Asana « [IA Code] Présence humaine sur la démo : carte « Qui est derrière ce site » + réceptionniste Dibodev dans le bandeau » (validé et élargi le 03/10). Rien n'est codé : ce dossier contient trois maquettes HTML autonomes et cette note. Décision produit à prendre, puis on implémente.
+Ticket Asana « [IA Code] Présence humaine sur la démo : carte « Qui est derrière ce site » + réceptionniste Dibodev dans le bandeau » (validé et élargi le 03/10). Ce dossier contient trois maquettes HTML autonomes et cette note. La carte (brique 1) est codée et en ligne depuis le 03/10 ; la réceptionniste et l'email restent des maquettes.
 
-**État au 03/10** : le choix 1 est tranché (carte en variante C : la photo et le nom de A, le texte court de B), les sept autres attendent. Voir « Décisions et avis » plus bas.
+**État au 03/10** : les choix 1 à 3 sont tranchés (carte en variante C, bouton « Me répondre », prix et date partout) et la carte est en ligne. Les choix 4 à 8 attendent. Voir « Décisions et avis » plus bas.
 
 Ouvrir les maquettes dans un navigateur (double-clic suffit, aucun serveur) :
 
@@ -69,8 +69,8 @@ Recommandation : (a) avec la signature allégée pour la prochaine vague (zéro 
 | # | Choix | État | Avis donné |
 |---|---|---|---|
 | 1 | Carte | **Tranché : variante C** (photo et nom de A, texte de B) | |
-| 2 | Bouton | En attente | « Me répondre » : le champ invite au oui, au non ou à une question, « Je suis intéressé » contredit le non |
-| 3 | Prix et date dans la carte | En attente | Partout (règle n° 1) ; une démo jamais envoyée n'affiche pas de date |
+| 2 | Bouton | **Tranché : « Me répondre »** (remplace « Je suis intéressé ») | |
+| 3 | Prix et date dans la carte | **Tranché : partout** (une démo jamais envoyée n'affiche pas de date) | |
 | 4 | Réceptionniste dans le bandeau | En attente | Après le lancement, pour mesurer la carte seule ; ensuite la position 1 (un seul objet, une seule identité) |
 | 5 | Persona | En attente | Léa, présentée comme l'assistante IA de l'expéditeur (la même que sur dibodev.fr) |
 | 6 | Email | En attente | (a) avec la signature allégée (une seule image) ; (b) ressemble à une newsletter et double le lien |

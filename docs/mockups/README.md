@@ -10,7 +10,7 @@ Ticket Asana « [IA Code] Présence humaine sur la démo ». Trois briques pour 
 
 | Fichier | Ce qu'il montre | État au 03/10 |
 |---|---|---|
-| `human-presence/banner-card.html` | La carte « Qui est derrière ce site » dans le bandeau démo : variantes C, A, B ; pastille, bureau, mobile ; site clair ou sombre | **Variante C retenue** (photo et nom en premier plan, texte court) ; bouton et affichage du prix à trancher |
+| `human-presence/banner-card.html` | La carte « Qui est derrière ce site » dans le bandeau démo : variantes C, A, B ; pastille, bureau, mobile ; site clair ou sombre | **Codée et en ligne le 03/10** (variante C, bouton « Me répondre », prix et date de retrait) |
 | `human-presence/banner-receptionist.html` | La réceptionniste Léa dans le bandeau : onglet dans la carte (position 1) ou panneau séparé (position 2) | En attente |
 | `human-presence/email-frank.html` | L'email franc en HTML : référence, variante (a) texte + signature, variante (b) avec une carte « Votre site, déjà en ligne » ; signature réelle ou allégée | En attente |
 | `human-presence/NOTE.md` | Le pourquoi, les huit choix à trancher, l'avis donné sur chacun, l'effort et le plan d'implémentation | À jour |
