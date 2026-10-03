@@ -12,6 +12,7 @@ from enums.email_status import EmailStatus
 from enums.sending_provider import SendingProvider
 from models.email_account import EmailAccount
 from models.email_log import EmailLog
+from models.prospect_db import ProspectDB
 from services import reply_capture_service
 from services.demo_identity import posthog_distinct_id, resolve_demo_slug
 from services.email_attachment import EmailAttachment
@@ -266,7 +267,12 @@ class EmailSendingService:
                 int(prospect_id) if prospect_id else None,
                 base_url,
             )
-            body_html = unsubscribe_service.add_unsubscribe_footer(body_html, unsubscribe_link)
+            body_html = unsubscribe_service.add_unsubscribe_footer(
+                body_html,
+                unsubscribe_link,
+                country=self._prospect_country(prospect_id),
+                sender_name=identity.from_name,
+            )
 
         email_log = EmailLog(
             user_id=user_id,
@@ -412,3 +418,10 @@ class EmailSendingService:
         for key, value in variables.items():
             text = text.replace(f"{{{key}}}", str(value))
         return RegionalLexicon.localize_rendered(text, variables)
+
+    def _prospect_country(self, prospect_id: str | None) -> str | None:
+        """The country of the prospect an email goes to, ``None`` when the send is not tied to a prospect."""
+        if not prospect_id:
+            return None
+        prospect: ProspectDB | None = self.db.get(ProspectDB, int(prospect_id))
+        return prospect.country if prospect is not None else None

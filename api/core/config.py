@@ -79,6 +79,14 @@ class Settings(BaseSettings):
     frontend_url: str = Field(
         default="http://localhost:3000", alias="FRONTEND_URL", description="Frontend URL for redirects after payment"
     )
+    sender_postal_address: str = Field(
+        default="",
+        alias="SENDER_POSTAL_ADDRESS",
+        description=(
+            "Postal address of the sender, printed in the footer of emails to countries whose anti-spam law "
+            "requires it (Canada, CASL); empty = no address line"
+        ),
+    )
 
     # Demo site builder / Storyblok
     demo_host_base_url: str = Field(
