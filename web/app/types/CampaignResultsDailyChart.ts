@@ -81,6 +81,7 @@ export type CampaignResultsDailyChartPeak = {
   y: number
   label: string
   isLabelBefore: boolean
+  isLabelled: boolean
 }
 
 export type CampaignResultsDailyChartMark = {

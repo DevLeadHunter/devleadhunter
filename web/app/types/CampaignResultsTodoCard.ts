@@ -2,6 +2,7 @@ import type { CampaignResultsTodo, CampaignResultsTodoAction } from '~/types/Cam
 
 export type CampaignResultsTodoCardProps = {
   todos: CampaignResultsTodo[]
+  emptyNote: string
 }
 
 export type CampaignResultsTodoCardEmits = {

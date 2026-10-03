@@ -10,13 +10,22 @@
       </span>
     </header>
 
-    <ul v-if="props.todos.length > 0" class="mt-3">
+    <ul
+      v-if="props.todos.length > 0"
+      class="mt-3 grid border-t border-[var(--app-line-soft)]"
+      :class="{ '@4xl:grid-cols-2': props.todos.length > 1 }"
+    >
       <li
-        v-for="todo in visibleTodos"
+        v-for="(todo, todoIndex) in visibleTodos"
         :key="todo.key"
-        class="grid grid-cols-[auto_minmax(0,1fr)] items-start gap-x-3.5 gap-y-1 border-t border-[var(--app-line-soft)] px-[18px] py-3.5 transition-colors hover:bg-[var(--app-surface-2)]/40 @xl:grid-cols-[auto_minmax(0,1fr)_auto] @xl:items-center"
+        class="grid grid-cols-[auto_minmax(0,1fr)] items-start gap-x-3.5 border-[var(--app-line-soft)] px-[18px] py-3.5 transition-colors hover:bg-[var(--app-surface-2)]/40"
+        :class="{
+          'border-t': todoIndex > 0,
+          '@4xl:border-t-0': todoIndex === 1,
+          '@4xl:border-l': todoIndex % 2 === 1,
+        }"
       >
-        <UIcon :name="todo.icon" class="mt-0.5 h-[18px] w-[18px] @xl:mt-0" :class="TONE_CLASSES[todo.tone]" />
+        <UIcon :name="todo.icon" class="mt-0.5 h-[18px] w-[18px]" :class="TONE_CLASSES[todo.tone]" />
         <div class="min-w-0">
           <p class="flex flex-wrap items-center gap-x-2 gap-y-1 text-[14.5px] font-medium text-[var(--app-ink)]">
             {{ todo.title }}
@@ -24,16 +33,16 @@
               {{ CAMPAIGN_RESULTS_VERDICT_LABELS[todo.verdict] }}
             </span>
           </p>
-          <p class="mt-0.5 text-[13px] leading-snug text-[var(--app-ink-soft)]">{{ todo.text }}</p>
+          <p class="mt-0.5 max-w-[72ch] text-[13px] leading-snug text-[var(--app-ink-soft)]">{{ todo.text }}</p>
+          <button
+            type="button"
+            class="mt-2 inline-flex cursor-pointer items-center gap-1.5 text-[13.5px] font-medium whitespace-nowrap text-[var(--app-ink)] transition-[gap] hover:gap-2.5"
+            @click="emit('act', todo.action)"
+          >
+            {{ todo.actionLabel }}
+            <UIcon name="i-lucide-arrow-right" class="h-[15px] w-[15px]" />
+          </button>
         </div>
-        <button
-          type="button"
-          class="col-start-2 mt-1.5 inline-flex cursor-pointer items-center gap-1.5 justify-self-start text-[13.5px] font-medium whitespace-nowrap text-[var(--app-ink)] transition-[gap] hover:gap-2.5 @xl:col-start-3 @xl:mt-0"
-          @click="emit('act', todo.action)"
-        >
-          {{ todo.actionLabel }}
-          <UIcon name="i-lucide-arrow-right" class="h-[15px] w-[15px]" />
-        </button>
       </li>
     </ul>
 
@@ -41,7 +50,7 @@
       v-else
       class="mt-3 border-t border-[var(--app-line-soft)] px-[18px] py-4 text-[13.5px] text-[var(--app-ink-soft)]"
     >
-      Rien à traiter pour l'instant : aucune réponse ni visite n'attend de suite.
+      {{ props.emptyNote }}
     </p>
 
     <div v-if="hiddenTodoCount > 0" class="mt-auto border-t border-[var(--app-line-soft)] px-[18px] py-3">
@@ -70,11 +79,15 @@ const props: CampaignResultsTodoCardProps = defineProps({
     type: Array as PropType<CampaignResultsTodo[]>,
     required: true,
   },
+  emptyNote: {
+    type: String,
+    required: true,
+  },
 })
 
 const emit: EmitFn<CampaignResultsTodoCardEmits> = defineEmits<CampaignResultsTodoCardEmits>()
 
-const TODOS_SHOWN_FOLDED: number = 5
+const TODOS_SHOWN_FOLDED: number = 6
 
 const TONE_CLASSES: Record<CampaignResultsTodoTone, string> = {
   green: 'text-[var(--app-green)]',
