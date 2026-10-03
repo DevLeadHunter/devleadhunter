@@ -13,6 +13,8 @@ const SRGB_LINEAR_SEGMENT_DIVISOR: number = 12.92
 const SRGB_GAMMA_OFFSET: number = 0.055
 const SRGB_GAMMA: number = 2.4
 const CONTRAST_LUMINANCE_OFFSET: number = 0.05
+const HEX_COLOR_PATTERN: RegExp = /^#([0-9a-f]{6})$/i
+const HEX_RADIX: number = 16
 
 /**
  * Background colour and readable ink of the band a template paints at its bottom edge (client only).
@@ -57,6 +59,22 @@ export class BackgroundToneUtils {
     const lightInkContrast: number = BackgroundToneUtils.contrastRatio(background, LIGHT_INK)
     const darkInkContrast: number = BackgroundToneUtils.contrastRatio(background, DARK_INK)
     return Math.max(lightInkContrast, darkInkContrast) < MIN_CONTRAST_FOR_MUTED_INK
+  }
+
+  /**
+   * A hex colour (`#RRGGBB`) turned into channels, without the page (safe on the server).
+   * @param hexColor - The colour.
+   * @returns Its channels, or null when it is not a six-digit hex colour.
+   */
+  static fromHex(hexColor: string): RgbaColor | null {
+    const digits: string | undefined = HEX_COLOR_PATTERN.exec(hexColor)?.[1]
+    if (!digits) return null
+    return {
+      red: Number.parseInt(digits.slice(0, 2), HEX_RADIX),
+      green: Number.parseInt(digits.slice(2, 4), HEX_RADIX),
+      blue: Number.parseInt(digits.slice(4, 6), HEX_RADIX),
+      alpha: 1,
+    }
   }
 
   /**

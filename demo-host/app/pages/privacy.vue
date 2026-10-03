@@ -1,17 +1,17 @@
 <template>
   <div v-if="isLoading" class="flex min-h-screen items-center justify-center bg-slate-950 text-slate-300">
-    Loading demo site…
+    Chargement…
   </div>
   <div
     v-else-if="hasFailed || !site?.legal"
-    class="flex min-h-screen items-center justify-center bg-slate-950 text-red-300"
+    class="flex min-h-screen items-center justify-center bg-slate-950 text-slate-300"
   >
-    Demo site not found or expired.
+    Site introuvable.
   </div>
   <SiteLegalPage
     v-else
     :legal-notice="site.legal"
-    page="legal"
+    page="privacy"
     :business-name="site.business_name"
     :logo-url="logoUrl"
     :page-paths="pagePaths"
