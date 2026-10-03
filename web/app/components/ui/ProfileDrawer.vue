@@ -189,6 +189,23 @@
               placeholder="Ex : contact@dibodev.fr"
             />
           </div>
+
+          <div>
+            <label class="text-muted mb-1.5 block text-xs font-medium" for="profile-postal-address">
+              Adresse postale <span class="text-[var(--app-ink-soft)]">(facultatif)</span>
+            </label>
+            <textarea
+              id="profile-postal-address"
+              v-model="form.postal_address"
+              rows="2"
+              class="input-field"
+              placeholder="Exemple : 12 rue de l'Atelier, 35000 Rennes, France"
+            />
+            <p class="text-muted mt-1.5 text-xs">
+              Imprimée en bas des emails envoyés au Québec, comme l'exige la loi canadienne anti-pourriel. Obligatoire
+              pour écrire à vos prospects québécois.
+            </p>
+          </div>
         </form>
 
         <div class="flex gap-2 border-t border-[var(--app-line)] px-5 py-4">
@@ -250,6 +267,7 @@ const form: Ref<ProfileForm> = ref({
   company_website_url: '',
   contact_phone: '',
   contact_email: '',
+  postal_address: '',
 })
 
 /** Shared profile photo state (also feeds the sidebar avatar). */
@@ -332,6 +350,7 @@ async function handleSave(): Promise<void> {
       // Sent as '' (never null) so emptying a field clears it server-side — the API skips null, maps '' to NULL.
       contact_phone: form.value.contact_phone.trim(),
       contact_email: form.value.contact_email.trim(),
+      postal_address: form.value.postal_address.trim(),
     })
     toast.success('Profil mis à jour')
     emit('close')
@@ -353,6 +372,7 @@ watch(
         company_website_url: userStore.user?.company_website_url ?? '',
         contact_phone: userStore.user?.contact_phone ?? '',
         contact_email: userStore.user?.contact_email ?? '',
+        postal_address: userStore.user?.postal_address ?? '',
       }
       ensureProfilePhotoLoaded()
     }

@@ -39,6 +39,7 @@ class User(Base):
         company_name: Optional business name shown in outreach / AI prompts
         contact_phone: Optional public phone shown on the demo/video contact banner
         contact_email: Optional public display email (distinct from the login email)
+        postal_address: Optional postal address naming the sender in the footer of emails to Canada (CASL)
         is_active: Whether the user is active
         sending_provider: Active email-sending transport (resend | gmail)
         onboarding_completed: Whether the setup wizard has been completed
@@ -78,6 +79,7 @@ class User(Base):
     # Optional public contacts for the demo/video « Ce site vous plaît ? » banner — hidden there when empty.
     contact_phone: Mapped[str | None] = mapped_column(String(30), nullable=True)
     contact_email: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    postal_address: Mapped[str | None] = mapped_column(String(500), nullable=True)
     # Gmail Postmaster Tools OAuth — per-user read access to Gmail-side reputation.
     postmaster_google_email: Mapped[str | None] = mapped_column(String(255), nullable=True)
     postmaster_oauth_refresh_token: Mapped[str | None] = mapped_column(Text, nullable=True)

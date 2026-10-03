@@ -111,8 +111,8 @@ async function submitResend(): Promise<void> {
     } else {
       toast.error(result.error ?? "Échec du renvoi de l'e-mail")
     }
-  } catch {
-    toast.error("Échec du renvoi de l'e-mail")
+  } catch (err: unknown) {
+    toast.error(err instanceof Error ? err.message : "Échec du renvoi de l'e-mail")
   } finally {
     resending.value = false
   }

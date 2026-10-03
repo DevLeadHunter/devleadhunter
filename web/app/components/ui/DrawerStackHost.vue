@@ -683,6 +683,7 @@ function handleResendEmail(): void {
       recipient_name: entry.log.recipient_name ?? '',
       subject: entry.log.subject,
       body: htmlToPlainText(entry.log.body_html),
+      prospect_id: entry.log.prospect_id ?? null,
     },
   })
 }

@@ -50,6 +50,7 @@ def _build_user_response(db: Session, user: User) -> UserResponse:
         company_website_url=user.company_website_url,
         contact_phone=user.contact_phone,
         contact_email=user.contact_email,
+        postal_address=user.postal_address,
         is_active=user.is_active,
         created_at=user.created_at,
         updated_at=user.updated_at,
@@ -221,6 +222,8 @@ async def update_current_user_info(
         current_user.contact_phone = user_data.contact_phone.strip() or None
     if user_data.contact_email is not None:
         current_user.contact_email = user_data.contact_email.strip() or None
+    if user_data.postal_address is not None:
+        current_user.postal_address = user_data.postal_address.strip() or None
 
     db.commit()
     db.refresh(current_user)

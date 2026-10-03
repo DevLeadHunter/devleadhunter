@@ -166,8 +166,6 @@ jobs:
             # Capture des réponses prospects : domaine Resend inbound de la PLATEFORME
             # (pas un secret, pas par-user — tous les Reply-To passent par lui).
             REPLY_CAPTURE_DOMAIN=reply.dibodev.fr
-            # Adresse postale de l'expéditeur, imprimée dans le pied des emails vers le Canada (loi CASL). Vide = pas de ligne.
-            SENDER_POSTAL_ADDRESS="${{ secrets.SENDER_POSTAL_ADDRESS }}"
             BRIGHTDATA_API_TOKEN=${{ secrets.BRIGHTDATA_API_TOKEN }}
             BRIGHTDATA_ZONE=mcp_unlocker
             PAGESPEED_API_KEY=${{ secrets.PAGESPEED_API_KEY }}

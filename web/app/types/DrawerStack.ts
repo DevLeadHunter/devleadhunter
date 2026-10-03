@@ -38,6 +38,7 @@ export type SendEmailPrefill = {
   recipient_name: string
   subject: string
   body: string
+  prospect_id: string | null
 }
 
 export type SendEmailDrawerEntry = {

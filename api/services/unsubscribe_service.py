@@ -11,7 +11,12 @@ from sqlalchemy.orm import Session
 
 from core.config import settings
 from models.email_unsubscribe import EmailUnsubscribe
+from models.user import User
 from services.country_profiles import CountryProfiles
+
+POSTAL_ADDRESS_MISSING_REFUSAL: str = (
+    "Adresse postale manquante dans votre profil : obligatoire pour écrire au Québec (loi CASL)"
+)
 
 
 def _normalize_email(email: str) -> str:
@@ -154,26 +159,60 @@ class UnsubscribeService:
         'font-size: 12px; color: #999; text-align: center;">'
     )
 
-    def sender_identification_line(self, country: str | None, sender_name: str | None) -> str:
+    @staticmethod
+    def _postal_address_on_one_line(sender: User | None) -> str:
+        """The sender's profile address on one footer line: the line breaks typed in the profile become commas."""
+        if sender is None:
+            return ""
+        lines = [line.strip().strip(",").strip() for line in (sender.postal_address or "").splitlines()]
+        return ", ".join(line for line in lines if line)
+
+    def sender_identification_line(self, country: str | None, sender: User | None) -> str:
         """
         The sender identification a country's anti-spam law puts in the footer, empty elsewhere.
 
-        Canada (CASL) wants the sender named with a postal address in every commercial email. The
-        address is the ``SENDER_POSTAL_ADDRESS`` setting: left empty, the line is simply absent —
-        a send never fails on it.
+        Canada (CASL) wants the sender named with a postal address in every commercial email. Both come
+        from the profile of the user who sends: « Envoyé par Dibodev (Jean Dupont), 12 rue … », or
+        « Envoyé par Jean Dupont, 12 rue … » when the profile has no company name. Without an address
+        there is no line.
 
         Args:
             country: ISO code of the recipient's country (``None`` reads as France).
-            sender_name: The sending identity's display name.
+            sender: The user who sends, ``None`` when unknown.
 
         Returns:
-            The plain-text line (« Envoyé par Léo, 12 rue … »), or an empty string.
+            The plain-text line, or an empty string.
         """
-        postal_address = (settings.sender_postal_address or "").strip()
-        if not postal_address or not CountryProfiles.get(country).email_footer_needs_postal_address:
+        if not CountryProfiles.get(country).email_footer_needs_postal_address:
             return ""
-        name = (sender_name or "").strip()
-        return f"Envoyé par {name}, {postal_address}" if name else f"Envoyé par {postal_address}"
+        postal_address = self._postal_address_on_one_line(sender)
+        if sender is None or not postal_address:
+            return ""
+        name = (sender.name or "").strip()
+        company_name = (sender.company_name or "").strip()
+        is_company_named_after_sender: bool = company_name.casefold() == name.casefold()
+        if company_name and name and not is_company_named_after_sender:
+            sender_label = f"{company_name} ({name})"
+        else:
+            sender_label = company_name or name
+        return f"Envoyé par {sender_label}, {postal_address}" if sender_label else f"Envoyé par {postal_address}"
+
+    def sender_identification_refusal(self, country: str | None, sender: User | None) -> str | None:
+        """
+        Why a commercial email to *country* cannot leave yet: its law wants a sender postal address the profile lacks.
+
+        Args:
+            country: ISO code of the recipient's country (``None`` reads as France).
+            sender: The user who sends, ``None`` when unknown.
+
+        Returns:
+            The French reason, or ``None`` when the email may leave.
+        """
+        if not CountryProfiles.get(country).email_footer_needs_postal_address:
+            return None
+        if self._postal_address_on_one_line(sender):
+            return None
+        return POSTAL_ADDRESS_MISSING_REFUSAL
 
     def add_unsubscribe_footer(
         self,
@@ -181,7 +220,7 @@ class UnsubscribeService:
         unsubscribe_link: str,
         *,
         country: str | None = None,
-        sender_name: str | None = None,
+        sender: User | None = None,
     ) -> str:
         """
         Add unsubscribe footer to email HTML body.
@@ -190,12 +229,12 @@ class UnsubscribeService:
             html_body: Original HTML body
             unsubscribe_link: Unsubscribe link URL
             country: ISO code of the recipient's country — Canada adds the sender's postal identification
-            sender_name: The sending identity's display name, for that identification
+            sender: The user who sends, whose profile gives that identification
 
         Returns:
             HTML body with unsubscribe footer
         """
-        identification = self.sender_identification_line(country, sender_name)
+        identification = self.sender_identification_line(country, sender)
         identification_html = f"    <p>\n        {escape(identification)}\n    </p>\n" if identification else ""
         footer = f"""
 {self._FOOTER_MARKER}

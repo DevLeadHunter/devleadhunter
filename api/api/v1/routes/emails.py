@@ -225,6 +225,10 @@ async def quick_send_email(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"{payload.recipient_email} s'est désabonné",
         )
+    sending = EmailSendingService(db)
+    identification_refusal: str | None = sending.sender_identification_refusal(current_user.id, payload.prospect_id)
+    if identification_refusal:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail=identification_refusal)
 
     # Route through the shared send path so DEV_EMAIL_REDIRECT (dev safety), the RGPD
     # unsubscribe footer and the EmailLog are all applied. NEVER call the provider
@@ -242,7 +246,6 @@ async def quick_send_email(
     copy_to = inbox_copy_address(identity)
     bcc: list[str] | None = [copy_to] if copy_to else None
 
-    sending = EmailSendingService(db)
     result = await sending.send_via_user_identity(
         user_id=current_user.id,
         recipient_email=payload.recipient_email,
@@ -352,6 +355,11 @@ async def resend_email_log(
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail=str(exc))
     if unsubscribe_service.is_unsubscribed(db, target_email):
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"{target_email} s'est désabonné")
+    sending = EmailSendingService(db)
+    prospect_id: str | None = str(log.prospect_id) if log.prospect_id else None
+    identification_refusal: str | None = sending.sender_identification_refusal(current_user.id, prospect_id)
+    if identification_refusal:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail=identification_refusal)
 
     # A corrected address becomes the prospect's primary, so the pending follow-up reaches it too.
     if prospect is not None and target_email.lower() != (prospect.email or "").lower():
@@ -369,14 +377,13 @@ async def resend_email_log(
     copy_to = inbox_copy_address(identity)
     bcc: list[str] | None = [copy_to] if copy_to else None
 
-    sending = EmailSendingService(db)
     return await sending.send_via_user_identity(
         user_id=current_user.id,
         recipient_email=target_email,
         subject=log.subject,
         body_html=body_html,
         recipient_name=log.recipient_name,
-        prospect_id=str(log.prospect_id) if log.prospect_id else None,
+        prospect_id=prospect_id,
         campaign_id=str(log.campaign_id) if log.campaign_id else None,
         bcc=bcc,
     )

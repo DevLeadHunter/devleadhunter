@@ -13,6 +13,7 @@ from enums.sending_provider import SendingProvider
 from models.email_account import EmailAccount
 from models.email_log import EmailLog
 from models.prospect_db import ProspectDB
+from models.user import User
 from services import reply_capture_service
 from services.demo_identity import posthog_distinct_id, resolve_demo_slug
 from services.email_attachment import EmailAttachment
@@ -216,6 +217,7 @@ class EmailSendingService:
         one-off sends. The provider is resolved once, from ``users.sending_provider``
         (see :func:`services.sending_identity.resolve_sending_identity`), and all
         the cross-cutting concerns — dev redirect, RGPD unsubscribe check + footer,
+        the sender's postal identification a Canadian recipient is owed (CASL),
         one-click unsubscribe headers, ``EmailLog`` bookkeeping and the PostHog
         ``email_sent`` capture — are applied here regardless of provider. No
         ``EmailAccount`` selection is required from the caller.
@@ -246,6 +248,8 @@ class EmailSendingService:
 
         Raises:
             SendingNotConfiguredError: When the active provider is not configured.
+            Exception: When outreach goes to an unsubscribed address, or to a Canadian prospect while the
+                sender's profile has no postal address (see :meth:`sender_identification_refusal`).
         """
         # Resolve the provider once (raises SendingNotConfiguredError if unusable).
         identity: SendingIdentity = resolve_sending_identity(self.db, user_id)
@@ -261,6 +265,12 @@ class EmailSendingService:
             if unsubscribe_service.is_unsubscribed(self.db, recipient_email):
                 raise Exception(f"{recipient_email} s'est désabonné")
 
+            country: str | None = self._prospect_country(prospect_id)
+            sender: User | None = self.db.get(User, user_id)
+            identification_refusal: str | None = unsubscribe_service.sender_identification_refusal(country, sender)
+            if identification_refusal:
+                raise Exception(identification_refusal)
+
             base_url = getattr(settings, "frontend_url", "http://localhost:3000")
             unsubscribe_link = unsubscribe_service.generate_unsubscribe_link(
                 recipient_email,
@@ -270,8 +280,8 @@ class EmailSendingService:
             body_html = unsubscribe_service.add_unsubscribe_footer(
                 body_html,
                 unsubscribe_link,
-                country=self._prospect_country(prospect_id),
-                sender_name=identity.from_name,
+                country=country,
+                sender=sender,
             )
 
         email_log = EmailLog(
@@ -418,6 +428,21 @@ class EmailSendingService:
         for key, value in variables.items():
             text = text.replace(f"{{{key}}}", str(value))
         return RegionalLexicon.localize_rendered(text, variables)
+
+    def sender_identification_refusal(self, user_id: int, prospect_id: str | None) -> str | None:
+        """
+        Why a commercial email from the user to a prospect cannot leave yet, ``None`` when it can.
+
+        Args:
+            user_id: The user who sends.
+            prospect_id: The recipient prospect, ``None`` for an address tied to no prospect.
+
+        Returns:
+            The French reason (the profile lacks the postal address a Canadian recipient is owed), or ``None``.
+        """
+        return unsubscribe_service.sender_identification_refusal(
+            self._prospect_country(prospect_id), self.db.get(User, user_id)
+        )
 
     def _prospect_country(self, prospect_id: str | None) -> str | None:
         """The country of the prospect an email goes to, ``None`` when the send is not tied to a prospect."""

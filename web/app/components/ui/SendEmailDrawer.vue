@@ -179,6 +179,10 @@ const selectedSignatureId: WritableComputedRef<number> = computed({
   },
 })
 
+const recipientProspectId: ComputedRef<string | null> = computed((): string | null =>
+  props.prospect ? String(props.prospect.id) : (props.prefill?.prospect_id ?? null),
+)
+
 /** Manual send form state. */
 const form: Ref<SendEmailForm> = ref({
   recipient_email: '',
@@ -224,11 +228,16 @@ async function handleSend(): Promise<void> {
       subject: form.value.subject,
       body_html: `<p>${form.value.body.replace(/\n/g, '<br>')}</p>`,
       signature_id: signatureId.value ?? undefined,
+      prospect_id: recipientProspectId.value ?? undefined,
     })
     toast.success('Email envoyé avec succès')
     emit('sent')
-  } catch {
-    toast.error("Erreur lors de l'envoi — vérifiez votre configuration Resend dans les Paramètres")
+  } catch (err: unknown) {
+    toast.error(
+      err instanceof Error
+        ? err.message
+        : "Erreur lors de l'envoi : vérifiez votre configuration Resend dans les Paramètres",
+    )
   } finally {
     isSending.value = false
   }
@@ -247,7 +256,12 @@ watch(
     if (key === lastInitKey.value) return
     lastInitKey.value = key
     if (props.prefill) {
-      form.value = { ...props.prefill }
+      form.value = {
+        recipient_email: props.prefill.recipient_email,
+        recipient_name: props.prefill.recipient_name,
+        subject: props.prefill.subject,
+        body: props.prefill.body,
+      }
       return
     }
     form.value = {
