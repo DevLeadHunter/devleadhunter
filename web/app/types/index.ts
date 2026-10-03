@@ -18,8 +18,8 @@ export type ProspectWebsiteStatus = 'live' | 'dead' | 'placeholder'
 /** Website filter values — `yes`/`no` reason in "working website" : a dead or directory site counts as none. */
 export type ProspectWebsiteFilter = 'all' | 'yes' | 'no' | 'dead' | 'improvable' | 'chat' | 'no-chat'
 
-/** Countries the prospection pipeline supports (ISO 3166-1 alpha-2). */
-export type ProspectCountry = 'FR' | 'CH' | 'BE' | 'LU'
+/** Countries the prospection pipeline supports (ISO 3166-1 alpha-2); CA is Québec, prospected by email only. */
+export type ProspectCountry = 'FR' | 'CH' | 'BE' | 'LU' | 'CA'
 
 /**
  * Prospect interface representing a business without website

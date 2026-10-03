@@ -1,5 +1,7 @@
-import type { Prospect } from '~/types'
+import type { Prospect, ProspectCountry } from '~/types'
 import type { EnrichmentOpeningHours, EnrichmentReview, ImportedEnrichmentPayload } from '~/services/enrichmentService'
+import type { ProspectCountryOption } from '~/utils/prospectCountries'
+import { ProspectCountries } from '~/utils/prospectCountries'
 
 /** JSON import/export helpers for prospects (client-side exchange format). */
 
@@ -8,6 +10,7 @@ export type ProspectJsonItem = {
   name: string
   address?: string
   city?: string
+  country?: ProspectCountry
   phone?: string
   email?: string
   website?: string
@@ -53,6 +56,7 @@ export function downloadProspectsJson(prospects: Prospect[]): void {
       name: prospect.name,
       address: prospect.address ?? '',
       city: prospect.city ?? '',
+      country: prospect.country ?? ProspectCountries.france.code,
       phone: prospect.phone ?? '',
       email: prospect.email ?? '',
       website: prospect.website ?? '',
@@ -77,6 +81,7 @@ export function downloadProspectTemplateJson(): void {
       name: 'Plomberie Dupont (exemple — remplacez et dupliquez cette ligne)',
       address: '12 rue des Artisans',
       city: 'Lyon',
+      country: 'FR',
       phone: '04 72 00 00 00',
       email: 'contact@plomberie-dupont.fr',
       website: '',
@@ -133,6 +138,19 @@ function cleanString(value: unknown): string {
 function optionalString(value: unknown): string | undefined {
   const text: string = cleanString(value)
   return text === '' ? undefined : text
+}
+
+/**
+ * Read the country of an imported row: a supported ISO code in any case, France when absent or unknown.
+ * @param value - Raw JSON value.
+ * @returns A supported country code.
+ */
+function importedCountry(value: unknown): ProspectCountry {
+  const code: string = cleanString(value).toUpperCase()
+  const known: ProspectCountryOption | undefined = ProspectCountries.catalog.find(
+    (option: ProspectCountryOption): boolean => option.code === code,
+  )
+  return known?.code ?? ProspectCountries.france.code
 }
 
 /**
@@ -313,6 +331,7 @@ export function parseProspectsJson(text: string): ProspectJsonParseResult {
       name,
       address: cleanString(record.address),
       city: cleanString(record.city),
+      country: importedCountry(record.country),
       phone: cleanString(record.phone),
       email: cleanString(record.email),
       website: cleanString(record.website),
