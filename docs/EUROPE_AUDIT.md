@@ -20,9 +20,12 @@
   recherche « Sion » géocodait une commune française) ; requête Google Maps suffixée du pays
   (« plombier à Mons Belgique ») ; SERP Bright Data `gl=`/`cc=` suit le pays (avant : `gl=fr`
   enterrait les pages suisses).
-- **Garde SMS** : `sms_service.send_to_prospect` refuse tout prospect non-FR. Raison : un 079
-  suisse saisi sans indicatif se normalise en `+337…` **valide** → SMS payant vers un inconnu
-  français ; et la mention STOP 36180 est un code court français.
+- **Garde SMS** (revue le 2026-10-03) : par profil pays (`CountryProfiles`, `sms_prospecting_open`) :
+  France et Suisse ouvertes, Belgique, Luxembourg et Canada refusés. Le numéro se lit dans la
+  numérotation du pays du prospect (un 079 suisse saisi sans indicatif devient `+4179…`, jamais
+  `+337…`), la fenêtre légale et les jours fériés sont ceux de son pays, et la mention de
+  désinscription est posée par smsmode (`body.stop`) : STOP et numéro court en France, lien
+  `no-sms.eu` en Suisse.
 - **Garde décisionnaire** : la cascade SIRENE/Pappers ne tourne plus pour un prospect non-FR
   (elle ne pouvait produire qu'un homonyme français « Registre officiel » + son SIREN écrit sur
   le prospect).
