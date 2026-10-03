@@ -48,6 +48,7 @@ export const useDrawerStackStore = defineStore('drawerStack', () => {
   const emailTemplatesRefreshCounter: Ref<number> = ref(0)
   const usersRefreshCounter: Ref<number> = ref(0)
   const campaignsRefreshCounter: Ref<number> = ref(0)
+  const campaignResultsRefreshCounter: Ref<number> = ref(0)
 
   // Getters
   const topEntry: ComputedRef<DrawerStackEntry | null> = computed(
@@ -267,6 +268,11 @@ export const useDrawerStackStore = defineStore('drawerStack', () => {
     campaignsRefreshCounter.value++
   }
 
+  /** Signal that a campaign's results changed (a reply added by hand from a drawer). */
+  function bumpCampaignResultsRefresh(): void {
+    campaignResultsRefreshCounter.value++
+  }
+
   // Persister chaque mutation de la pile (F5 ne ferme plus les drawers).
   watch(
     stack,
@@ -301,6 +307,7 @@ export const useDrawerStackStore = defineStore('drawerStack', () => {
     emailTemplatesRefreshCounter,
     usersRefreshCounter,
     campaignsRefreshCounter,
+    campaignResultsRefreshCounter,
     topEntry,
     hasPrevious,
     push,
@@ -321,5 +328,6 @@ export const useDrawerStackStore = defineStore('drawerStack', () => {
     bumpEmailTemplatesRefresh,
     bumpUsersRefresh,
     bumpCampaignsRefresh,
+    bumpCampaignResultsRefresh,
   }
 })

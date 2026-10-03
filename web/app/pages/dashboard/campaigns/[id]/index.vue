@@ -76,14 +76,6 @@
             {{ campaign.status === 'paused' ? 'Relancer' : 'Lancer' }}
           </button>
           <button
-            class="flex h-10 w-10 items-center justify-center rounded-lg border border-[var(--app-line)] text-[var(--app-ink-soft)] transition-colors hover:bg-[var(--app-surface)] hover:text-[var(--app-ink)] disabled:opacity-50"
-            title="Actualiser"
-            :disabled="isRefreshing"
-            @click="refreshLiveData"
-          >
-            <UIcon name="i-lucide-rotate-cw" :class="['h-4 w-4', { 'animate-spin': isRefreshing }]" />
-          </button>
-          <button
             v-if="!isAutoRelanceCampaign"
             class="flex h-10 w-10 items-center justify-center rounded-lg border border-[var(--app-line)] text-[var(--app-ink-soft)] transition-colors hover:bg-[var(--app-surface)] hover:text-[var(--app-ink)]"
             title="Modifier"
@@ -111,13 +103,9 @@
         <NuxtLink to="/dashboard/settings/sms" class="font-medium underline">Paramètres → Relance SMS</NuxtLink>).
       </UiCallout>
 
-      <div
-        v-if="metricCards.length"
-        class="grid grid-cols-2 gap-3 @xl:grid-cols-4"
-        :class="{ '@5xl:grid-cols-7': !isSms }"
-      >
+      <div v-if="smsMetricCards.length" class="grid grid-cols-2 gap-3 @xl:grid-cols-4">
         <div
-          v-for="m in metricCards"
+          v-for="m in smsMetricCards"
           :key="m.label"
           class="rounded-xl border border-[var(--app-line)] bg-[var(--app-surface)] p-3.5"
         >
@@ -131,29 +119,58 @@
 
       <div class="border-b border-[var(--app-line)]">
         <!-- `overflow-x-auto` alone makes the row scroll on both axes on iOS (an implicit `overflow-y: auto` plus the 1px the tabs overlap the border by), so a finger could drag the tabs up and down: lock the touch gesture to the x axis. -->
-        <nav class="no-scrollbar -mb-px flex touch-pan-x gap-1 overflow-x-auto overflow-y-hidden overscroll-x-contain">
+        <nav
+          class="no-scrollbar -mb-px flex touch-pan-x gap-6 overflow-x-auto overflow-y-hidden overscroll-x-contain"
+          role="tablist"
+          aria-label="Sections de la campagne"
+        >
           <button
             v-for="tab in visibleTabs"
             :key="tab.key"
+            type="button"
+            role="tab"
+            :aria-selected="activeTab === tab.key"
             :class="[
-              'flex flex-1 items-center justify-center gap-2 border-b-2 px-3 pt-1 pb-2.5 text-sm font-medium whitespace-nowrap transition-colors @2xl:flex-none @2xl:justify-start',
+              'relative flex min-h-[46px] shrink-0 cursor-pointer items-center gap-[7px] text-sm whitespace-nowrap transition-colors',
               activeTab === tab.key
-                ? 'border-[var(--app-ink)] text-[var(--app-ink)]'
-                : 'border-transparent text-[var(--app-ink-soft)] hover:text-[var(--app-ink)]',
+                ? 'font-medium text-[var(--app-ink)]'
+                : 'text-[var(--app-ink-soft)] hover:text-[var(--app-ink)]',
             ]"
             @click="activeTab = tab.key"
           >
-            <UIcon :name="tab.icon" class="h-4 w-4" />
             {{ tab.label }}
             <span
-              v-if="tab.key === 'queue' && queueData?.pending_count"
-              class="rounded-full bg-[var(--app-blue-soft)] px-1.5 py-0.5 text-[10px] font-semibold text-[var(--app-blue)]"
+              v-if="tabCounts[tab.key]"
+              class="text-[13px] font-normal tabular-nums"
+              :class="activeTab === tab.key ? 'text-[var(--app-ink-soft)]' : 'text-[var(--app-faint)]'"
             >
-              {{ queueData.pending_count }}
+              {{ tabCounts[tab.key] }}
             </span>
+            <span
+              v-if="tab.key === 'results' && hasUnansweredInterestedReply"
+              class="h-1.5 w-1.5 rounded-full bg-[var(--app-red)]"
+              title="Une réponse intéressée attend"
+            ></span>
+            <span
+              v-if="activeTab === tab.key"
+              class="absolute inset-x-0 bottom-0 h-0.5 rounded-t-sm bg-[var(--app-ink)]"
+            ></span>
           </button>
         </nav>
       </div>
+
+      <CampaignResultsTab
+        v-if="activeTab === 'results' && hasResultsTab"
+        :campaign-id="campaign.id"
+        :campaign-status="campaign.status"
+        :follow-ups="campaign.follow_ups"
+        :results="campaignResults"
+        :benchmarks="campaignBenchmarks"
+        :is-loading="isLoadingResults"
+        @open-prospect="openProspectDrawerById"
+        @open-queue="activeTab = 'queue'"
+        @retry="loadResults"
+      />
 
       <div v-if="activeTab === 'config'" class="space-y-4">
         <section class="rounded-xl border border-[var(--app-line)] bg-[var(--app-surface)] p-5">
@@ -799,7 +816,7 @@
 
 <script lang="ts" setup>
 import type { UseAuthReturn, UseToastReturn } from '~/types/Composables'
-import type { CampaignQueueRow, TemplateOption } from '~/types/CampaignDetailPage'
+import type { CampaignDetailTab, CampaignQueueRow, TemplateOption } from '~/types/CampaignDetailPage'
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import type { ComputedRef, Ref } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
@@ -815,6 +832,12 @@ import { CampaignService } from '~/services/campaignService'
 import { ProspectsService } from '~/services/prospectsService'
 import { ApiClient } from '~/services/api'
 import type { CampaignFollowUp, CampaignVariantStats, Prospect, ProspectSource } from '~/types'
+import type {
+  CampaignBenchmark,
+  CampaignBenchmarksResponse,
+  CampaignResultsReply,
+  CampaignResultsResponse,
+} from '~/types/CampaignResults'
 import { formatCompactDateTime } from '~/utils/date'
 import { ProspectTimezone } from '~/utils/prospectTimezone'
 import { useToast } from '~/composables/useToast'
@@ -835,11 +858,12 @@ const route: ReturnType<typeof useRoute> = useRoute()
 const toast: UseToastReturn = useToast()
 const { user }: UseAuthReturn = useAuth()
 
-const TABS: { key: string; label: string; icon: string }[] = [
-  { key: 'config', label: 'Configuration', icon: 'i-lucide-settings-2' },
-  { key: 'ab', label: 'A/B Test', icon: 'i-lucide-flask-conical' },
-  { key: 'prospects', label: 'Prospects', icon: 'i-lucide-users' },
-  { key: 'queue', label: "File d'attente", icon: 'i-lucide-list-checks' },
+const TABS: CampaignDetailTab[] = [
+  { key: 'results', label: 'Résultats' },
+  { key: 'prospects', label: 'Prospects' },
+  { key: 'queue', label: "File d'attente" },
+  { key: 'ab', label: 'A/B Test' },
+  { key: 'config', label: 'Configuration' },
 ]
 
 const STATUS_LABELS: Record<string, string> = {
@@ -890,7 +914,11 @@ const templates: Ref<TemplateOption[]> = ref([])
 const isLoading: Ref<boolean> = ref(false)
 const isSavingSettings: Ref<boolean> = ref(false)
 const activeTab: Ref<string> = ref('config')
+const campaignResults: Ref<CampaignResultsResponse | null> = ref(null)
+const campaignBenchmarks: Ref<CampaignBenchmark[]> = ref([])
+const isLoadingResults: Ref<boolean> = ref(false)
 const campaignSelectedProspects: Ref<string[]> = ref([])
+let hasChosenInitialTab: boolean = false
 const prospectToRemoveId: Ref<number | null> = ref(null)
 const removeProspectModal: Ref<{ open: () => void } | null> = ref(null)
 const confirmDeleteModal: Ref<{ open: () => void } | null> = ref(null)
@@ -1008,9 +1036,27 @@ const queueRows: ComputedRef<CampaignQueueRow[]> = computed((): CampaignQueueRow
   ),
 )
 
+const hasResultsTab: ComputedRef<boolean> = computed((): boolean => !isSms.value && Boolean(campaign.value?.started_at))
+
 /** Tabs shown for this campaign — the A/B tab is email-only. */
-const visibleTabs: ComputedRef<{ key: string; label: string; icon: string }[]> = computed(() =>
-  isSms.value ? TABS.filter((tab: { key: string; label: string; icon: string }): boolean => tab.key !== 'ab') : TABS,
+const visibleTabs: ComputedRef<CampaignDetailTab[]> = computed((): CampaignDetailTab[] =>
+  TABS.filter(
+    (tab: CampaignDetailTab): boolean =>
+      (tab.key !== 'results' || hasResultsTab.value) && (tab.key !== 'ab' || !isSms.value),
+  ),
+)
+
+const tabCounts: ComputedRef<Record<string, number>> = computed(
+  (): Record<string, number> => ({
+    prospects: campaign.value?.prospects.length ?? 0,
+    queue: queueData.value?.pending_count ?? 0,
+  }),
+)
+
+const hasUnansweredInterestedReply: ComputedRef<boolean> = computed((): boolean =>
+  (campaignResults.value?.replies ?? []).some(
+    (reply: CampaignResultsReply): boolean => reply.verdict === 'interested' && !reply.is_handled,
+  ),
 )
 
 /** Campaign prospects enriched with full list data when available. */
@@ -1064,38 +1110,20 @@ const canBackfillReady: ComputedRef<boolean> = computed(
 )
 
 /** Metric cards for the stats strip. */
-const metricCards: ComputedRef<Array<{ label: string; value: number | string; icon: string; color: string }>> =
+const smsMetricCards: ComputedRef<Array<{ label: string; value: number | string; icon: string; color: string }>> =
   computed(() => {
-    // SMS has no opens/clicks/replies: report send progress from the queue instead.
-    if (isSms.value) {
-      const c: { sent: number; pending: number; failed: number } = smsQueueCounts.value
-      return [
-        {
-          label: 'Prospects',
-          value: campaign.value?.prospects_count ?? 0,
-          icon: 'i-lucide-users',
-          color: 'text-[var(--app-ink)]',
-        },
-        { label: 'Envoyés', value: c.sent, icon: 'i-lucide-send', color: 'text-[var(--app-green)]' },
-        { label: 'En attente', value: c.pending, icon: 'i-lucide-clock', color: 'text-[var(--app-accent-ink)]' },
-        { label: 'Échecs', value: c.failed, icon: 'i-lucide-circle-x', color: 'text-[var(--app-red)]' },
-      ]
-    }
-    const s: CampaignStats | null = stats.value
-    if (!s) return []
+    if (!isSms.value) return []
+    const c: { sent: number; pending: number; failed: number } = smsQueueCounts.value
     return [
-      { label: 'Envoyés', value: s.total_emails_sent, icon: 'i-lucide-send', color: 'text-[var(--app-ink)]' },
-      { label: 'Délivrés', value: s.emails_delivered, icon: 'i-lucide-circle-check', color: 'text-[var(--app-green)]' },
-      { label: 'Ouverts', value: s.emails_opened, icon: 'i-lucide-mail-open', color: 'text-[var(--app-violet)]' },
       {
-        label: 'Cliqués',
-        value: s.emails_clicked,
-        icon: 'i-lucide-mouse-pointer-click',
+        label: 'Prospects',
+        value: campaign.value?.prospects_count ?? 0,
+        icon: 'i-lucide-users',
         color: 'text-[var(--app-ink)]',
       },
-      { label: 'Répondus', value: s.emails_replied, icon: 'i-lucide-reply', color: 'text-[var(--app-green)]' },
-      { label: 'Taux ouv.', value: `${s.open_rate}%`, icon: 'i-lucide-eye', color: 'text-[var(--app-accent-ink)]' },
-      { label: 'Taux rép.', value: `${s.reply_rate}%`, icon: 'i-lucide-pointer', color: 'text-[var(--app-accent)]' },
+      { label: 'Envoyés', value: c.sent, icon: 'i-lucide-send', color: 'text-[var(--app-green)]' },
+      { label: 'En attente', value: c.pending, icon: 'i-lucide-clock', color: 'text-[var(--app-accent-ink)]' },
+      { label: 'Échecs', value: c.failed, icon: 'i-lucide-circle-x', color: 'text-[var(--app-red)]' },
     ]
   })
 
@@ -1249,6 +1277,11 @@ async function loadAll(): Promise<void> {
     templates.value = Array.isArray(tpls) ? tpls : []
     sendPolicy.value = await SendPolicyService.getSendPolicy().catch((): null => null)
     syncSettingsForm(c)
+    if (!hasChosenInitialTab) {
+      activeTab.value = hasResultsTab.value ? 'results' : 'config'
+      hasChosenInitialTab = true
+    }
+    if (hasResultsTab.value) loadResults()
     if (c.channel === 'sms') {
       smsConfig.value = await SmsService.getConfig().catch((): null => null)
       await loadSmsPreview(c)
@@ -1271,6 +1304,25 @@ async function reloadTemplates(): Promise<void> {
     (): TemplateOption[] => [],
   )
   templates.value = Array.isArray(tpls) ? tpls : []
+}
+
+/**
+ * Load the campaign's results and the other campaigns they are compared with; a failed refresh keeps the last ones.
+ * @returns A promise resolved once both are loaded or have failed.
+ */
+async function loadResults(): Promise<void> {
+  isLoadingResults.value = true
+  try {
+    const [results, benchmarks]: [CampaignResultsResponse | null, CampaignBenchmarksResponse | null] =
+      await Promise.all([
+        CampaignService.getResults(campaignId.value).catch((): null => null),
+        CampaignService.getBenchmarks().catch((): null => null),
+      ])
+    if (results) campaignResults.value = results
+    if (benchmarks) campaignBenchmarks.value = benchmarks.campaigns
+  } finally {
+    isLoadingResults.value = false
+  }
 }
 
 /**
@@ -1316,6 +1368,7 @@ async function refreshLiveData(): Promise<void> {
     campaign.value = c
     stats.value = s
     queueData.value = q
+    if (hasResultsTab.value) await loadResults()
   } catch {
     // Silent refresh: keep the last data on screen.
   } finally {
@@ -1466,6 +1519,17 @@ function openAddProspectsDrawer(): void {
  */
 function openProspectDrawer(prospect: Prospect): void {
   drawerStack.push({ kind: 'prospect', prospect })
+}
+
+/**
+ * Open the detail drawer of a campaign prospect known by its id.
+ * @param prospectId - Prospect to show.
+ */
+function openProspectDrawerById(prospectId: number): void {
+  const prospect: Prospect | undefined = campaignProspectRows.value.find(
+    (row: Prospect): boolean => row.id === prospectId,
+  )
+  if (prospect) openProspectDrawer(prospect)
 }
 
 /**
@@ -1653,6 +1717,8 @@ watch(activeTab, (tab: string): void => {
 
 // La campagne vient d'être renommée depuis son drawer.
 watch((): number => drawerStack.campaignsRefreshCounter, loadAll)
+
+watch((): number => drawerStack.campaignResultsRefreshCounter, loadResults)
 
 // Soft auto-refresh: starts while the campaign is running, stops otherwise.
 watch(isCampaignActive, (active: boolean): void => {

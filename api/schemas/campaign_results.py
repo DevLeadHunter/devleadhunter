@@ -31,6 +31,7 @@ class CampaignResultsVisit(BaseModel):
 
     started_at: datetime
     active_seconds: int
+    device_type: str | None = None
 
 
 class CampaignResultsReply(BaseModel):

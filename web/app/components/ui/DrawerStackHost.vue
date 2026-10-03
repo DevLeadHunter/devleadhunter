@@ -153,6 +153,16 @@
       @added="handleCampaignProspectsAdded"
     />
 
+    <UiCampaignReplyDrawer
+      :open="campaignReplyEntry !== null"
+      :show-back="hasPrevious"
+      :campaign-id="campaignReplyEntry?.campaignId ?? null"
+      :prospects="campaignReplyEntry?.prospects ?? []"
+      @close="drawerStack.closeAll()"
+      @back="drawerStack.back()"
+      @saved="handleCampaignReplySaved"
+    />
+
     <UiSendPolicyDrawer
       :open="sendPolicyEntry !== null"
       :show-back="hasPrevious"
@@ -253,6 +263,7 @@ import type {
   AssistantSourcesDrawerEntry,
   AssistantSubscriptionDrawerEntry,
   CampaignProspectsPickerDrawerEntry,
+  CampaignReplyDrawerEntry,
   CoverageFiltersDrawerEntry,
   CoverageProspectsDrawerEntry,
   CampaignFormDrawerEntry,
@@ -401,6 +412,22 @@ const campaignProspectsPickerEntry: ComputedRef<CampaignProspectsPickerDrawerEnt
 /** Prospects attached to the campaign — refresh the page behind, then leave the stack. */
 function handleCampaignProspectsAdded(): void {
   drawerStack.bumpCampaignsRefresh()
+  if (drawerStack.hasPrevious) {
+    drawerStack.back()
+  } else {
+    drawerStack.closeAll()
+  }
+}
+
+const campaignReplyEntry: ComputedRef<CampaignReplyDrawerEntry | null> = computed(
+  (): CampaignReplyDrawerEntry | null => {
+    return drawerStack.topEntry?.kind === 'campaign-reply' ? drawerStack.topEntry : null
+  },
+)
+
+/** Reply added to a campaign — refresh its results behind, then leave the stack. */
+function handleCampaignReplySaved(): void {
+  drawerStack.bumpCampaignResultsRefresh()
   if (drawerStack.hasPrevious) {
     drawerStack.back()
   } else {
