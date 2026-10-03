@@ -1,6 +1,9 @@
 <template>
-  <section class="app-card @container min-w-0 overflow-hidden" aria-labelledby="campaign-results-state-title">
-    <div class="grid" :class="{ '@3xl:grid-cols-2': props.facts.length > 0 }">
+  <section
+    class="app-card @container flex min-w-0 flex-col overflow-hidden"
+    aria-labelledby="campaign-results-state-title"
+  >
+    <div class="flex-1" :class="hasSideFacts ? 'grid @3xl:grid-cols-2' : 'flex flex-col'">
       <div class="min-w-0 pb-3.5">
         <header class="px-[18px] pt-4">
           <h3 id="campaign-results-state-title" class="text-[15px] font-medium text-[var(--app-ink)]">
@@ -44,7 +47,7 @@
 
       <div
         class="flex min-w-0 flex-col border-t border-[var(--app-line-soft)]"
-        :class="{ '@3xl:border-t-0 @3xl:border-l': props.facts.length > 0 }"
+        :class="hasSideFacts ? '@3xl:border-t-0 @3xl:border-l' : 'mt-auto'"
       >
         <dl v-if="props.facts.length > 0">
           <div
@@ -102,6 +105,10 @@ const props: CampaignResultsStateCardProps = defineProps({
     type: Boolean,
     required: true,
   },
+  isAloneOnRow: {
+    type: Boolean,
+    required: true,
+  },
 })
 
 const emit: EmitFn<CampaignResultsStateCardEmits> = defineEmits<CampaignResultsStateCardEmits>()
@@ -120,6 +127,8 @@ const unitsLabel: ComputedRef<string> = computed((): string =>
     )
     .join(', '),
 )
+
+const hasSideFacts: ComputedRef<boolean> = computed((): boolean => props.isAloneOnRow && props.facts.length > 0)
 
 const footerActionLabel: ComputedRef<string> = computed((): string => {
   if (props.isSending) return "Ouvrir la file d'attente"

@@ -9,6 +9,7 @@ export type CampaignResultsStateCardProps = {
   facts: CampaignResultsStateFact[]
   prospectCount: number
   isSending: boolean
+  isAloneOnRow: boolean
 }
 
 export type CampaignResultsStateCardEmits = {

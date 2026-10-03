@@ -49,12 +49,13 @@
 
       <CampaignResultsTodoCard :todos="todos" :empty-note="todosEmptyNote" @act="handleTodoAction" />
 
-      <div class="grid items-start gap-5 @4xl:gap-6" :class="{ '@4xl:grid-cols-2': hasTradeComparison }">
+      <div class="grid gap-5 @4xl:gap-6" :class="{ '@4xl:grid-cols-2': hasTradeComparison }">
         <CampaignResultsStateCard
           :groups="stateGroups"
           :facts="stateFacts"
           :prospect-count="rows.length"
           :is-sending="isSending"
+          :is-alone-on-row="!hasTradeComparison"
           @select-prospect="emit('open-prospect', $event)"
           @select-state="showProspectsInState"
           @show-prospects="showAllProspects"
