@@ -641,6 +641,9 @@ def map_prospect_and_enrichment(
     rating = enrichment.get("rating")
     reviews_count = enrichment.get("reviews_count")
 
+    license_number = _clean_str(enrichment.get("professional_license_number"))
+    license_label = _clean_str(enrichment.get("professional_license_label")) if license_number else ""
+
     return {
         "businessName": business_name,
         "phone": phone or "",
@@ -648,6 +651,8 @@ def map_prospect_and_enrichment(
         "address": address,
         "city": site_city,
         "area": area_label,
+        "professionalLicenseLabel": license_label,
+        "professionalLicenseNumber": license_number,
         "subtitle": subtitle,
         "about": about,
         "logo": logo,
@@ -801,6 +806,16 @@ FIELD_SCHEMAS: dict[str, dict[str, Any]] = {
     "email": {"type": "text", "display_name": "Email de contact"},
     "city": {"type": "text", "display_name": "Ville"},
     "area": {"type": "text", "display_name": "Secteur d'intervention", "description": "Ex : « Lyon et ses alentours »"},
+    "professionalLicenseLabel": {
+        "type": "text",
+        "display_name": "Libellé de la licence professionnelle",
+        "description": "Ex : « Licence RBQ ». Affiché devant le numéro en pied de page, vide = rien d'affiché",
+    },
+    "professionalLicenseNumber": {
+        "type": "text",
+        "display_name": "Numéro de licence professionnelle",
+        "description": "Ex : « 5678-1234-01 ». Obligatoire sur le site au Québec, vide = rien d'affiché",
+    },
     "logo": {
         "type": "asset",
         "filetypes": ["images"],
@@ -870,7 +885,19 @@ SECTION_DEFINITIONS: list[tuple[str, str, list[str]]] = [
     (
         "contact",
         "Contact & informations",
-        ["contactHeading", "businessName", "phone", "email", "city", "area", "logo", "openingHours", "social"],
+        [
+            "contactHeading",
+            "businessName",
+            "phone",
+            "email",
+            "city",
+            "area",
+            "professionalLicenseLabel",
+            "professionalLicenseNumber",
+            "logo",
+            "openingHours",
+            "social",
+        ],
     ),
 ]
 
@@ -1112,6 +1139,8 @@ def _content_field_values(site_content: dict[str, Any]) -> dict[str, Any]:
         "email": site_content.get("email", ""),
         "city": site_content.get("city", ""),
         "area": site_content.get("area", ""),
+        "professionalLicenseLabel": site_content.get("professionalLicenseLabel", ""),
+        "professionalLicenseNumber": site_content.get("professionalLicenseNumber", ""),
         "subtitle": site_content.get("subtitle", ""),
         "about": site_content.get("about", ""),
         "heroTitle": site_content.get("heroTitle", ""),
@@ -1351,6 +1380,8 @@ def from_storyblok_site_content(raw: dict[str, Any]) -> dict[str, Any] | None:
         "email": _clean_str(blok.get("email")),
         "city": _clean_str(blok.get("city")),
         "area": _clean_str(blok.get("area")),
+        "professionalLicenseLabel": _clean_str(blok.get("professionalLicenseLabel")),
+        "professionalLicenseNumber": _clean_str(blok.get("professionalLicenseNumber")),
         "subtitle": _clean_str(blok.get("subtitle")),
         "about": _clean_str(blok.get("about")),
         "heroTitle": _clean_str(blok.get("heroTitle")),

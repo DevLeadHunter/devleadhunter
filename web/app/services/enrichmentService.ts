@@ -71,6 +71,9 @@ export type ProspectEnrichment = {
   place_postal_code: string | null
   identity_check_status: string | null
   identity_check_detail: string | null
+  professional_license_label: string | null
+  professional_license_number: string | null
+  professional_license_source: string | null
   error_message: string | null
   enriched_at: string | null
   created_at: string
@@ -89,6 +92,8 @@ export type ProspectEnrichmentUpdate = {
   social_links?: Record<string, string>
   contact_first_name?: string | null
   contact_last_name?: string | null
+  professional_license_label?: string | null
+  professional_license_number?: string | null
 }
 
 /** Enrichment fields carried by a rich prospect import (mirror of the server `EnrichmentData`). */

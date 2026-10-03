@@ -1,0 +1,563 @@
+<title>Résultats de campagne</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+  /* Layout: the DevLeadHunter campaign page with a « Résultats » tab, composed like the dibodev.fr back office: a headline, a joined KPI band, one list to act on, one chart, one table. */
+  :root {
+    --canvas: #f4f1e9; --surface: #fbf9f3; --sunken: #f1ede3; --row-hover: #f6f3ea;
+    --ink: #1d1a14; --ink-2: #4f4a40; --muted: #6e6759; --faint: #b7ae9c;
+    --line: rgba(29, 26, 20, 0.12); --line-soft: rgba(29, 26, 20, 0.07); --line-strong: rgba(29, 26, 20, 0.22);
+    --green: #2f7d4e; --green-tint: rgba(47, 125, 78, 0.12); --red: #bf4d33; --red-tint: rgba(191, 77, 51, 0.12);
+    --amber: #9c6b14; --amber-tint: rgba(232, 163, 60, 0.16); --blue: #4a6b8f; --blue-tint: rgba(95, 127, 158, 0.16);
+    --chart-line: #2f7d4e; --chart-bar: #1d1a14; --chart-empty: #d9d2c2;
+    --shadow-pop: 0 24px 48px -18px rgba(29, 26, 20, 0.28), 0 0 0 1px rgba(29, 26, 20, 0.07);
+    --font: 'IBM Plex Sans', 'Inter', system-ui, sans-serif; --mono: 'IBM Plex Mono', ui-monospace, SFMono-Regular, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --canvas: #131312; --surface: #1b1b1a; --sunken: #232322; --row-hover: #222220;
+      --ink: #f0efeb; --ink-2: #c9c7c0; --muted: #a1a09a; --faint: #565550;
+      --line: rgba(240, 239, 235, 0.12); --line-soft: rgba(240, 239, 235, 0.07); --line-strong: rgba(240, 239, 235, 0.24);
+      --green: #55a878; --green-tint: rgba(85, 168, 120, 0.16); --red: #d76a55; --red-tint: rgba(215, 106, 85, 0.16);
+      --amber: #ecb865; --amber-tint: rgba(232, 163, 60, 0.14); --blue: #85a8c8; --blue-tint: rgba(133, 168, 200, 0.16);
+      --chart-line: #55a878; --chart-bar: #f0efeb; --chart-empty: #3a3936;
+      --shadow-pop: 0 24px 48px -18px rgba(0, 0, 0, 0.7), 0 0 0 1px rgba(255, 255, 255, 0.08);
+      color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"] {
+    --canvas: #131312; --surface: #1b1b1a; --sunken: #232322; --row-hover: #222220;
+    --ink: #f0efeb; --ink-2: #c9c7c0; --muted: #a1a09a; --faint: #565550;
+    --line: rgba(240, 239, 235, 0.12); --line-soft: rgba(240, 239, 235, 0.07); --line-strong: rgba(240, 239, 235, 0.24);
+    --green: #55a878; --green-tint: rgba(85, 168, 120, 0.16); --red: #d76a55; --red-tint: rgba(215, 106, 85, 0.16);
+    --amber: #ecb865; --amber-tint: rgba(232, 163, 60, 0.14); --blue: #85a8c8; --blue-tint: rgba(133, 168, 200, 0.16);
+    --chart-line: #55a878; --chart-bar: #f0efeb; --chart-empty: #3a3936;
+    --shadow-pop: 0 24px 48px -18px rgba(0, 0, 0, 0.7), 0 0 0 1px rgba(255, 255, 255, 0.08);
+    color-scheme: dark;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--canvas); color: var(--ink); font-family: var(--font); font-size: 14px; line-height: 1.45; -webkit-font-smoothing: antialiased; }
+  .page { max-width: 1120px; margin: 0 auto; padding-block: 16px 64px; padding-inline: 16px; container-type: inline-size; }
+  @media (min-width: 720px) { .page { padding-inline: 28px; padding-block: 22px 72px; } }
+  a { color: inherit; }
+  .label { font-size: 11px; font-weight: 500; line-height: 1.2; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+  .muted { color: var(--muted); }
+  .num { font-variant-numeric: tabular-nums; }
+  .link { color: var(--ink); font-size: 13.5px; font-weight: 500; text-decoration: none; display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; transition: gap .15s; }
+  .link:hover { gap: 9px; }
+  .link svg { width: 15px; height: 15px; }
+  :is(a, button, [role="tab"]):focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+  svg.ic { width: 18px; height: 18px; flex: none; }
+
+  /* Header */
+  .crumb { font-size: 12.5px; color: var(--muted); display: flex; gap: 6px; }
+  .crumb b { color: var(--ink); font-weight: 500; }
+  .head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin-top: 8px; flex-wrap: wrap; }
+  h1 { font-size: 22px; line-height: 1.15; margin: 0; font-weight: 500; letter-spacing: -.015em; text-wrap: balance; }
+  .meta { margin-top: 8px; display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 13px; color: var(--ink-2); align-items: center; }
+  .status { display: inline-flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 500; }
+  .status i { width: 8px; height: 8px; border-radius: 50%; background: currentColor; }
+  .status.green { color: var(--green); }
+  .btn { font: inherit; font-size: 13px; font-weight: 500; height: 34px; padding: 0 12px; border-radius: 9px; border: 1px solid var(--line); background: var(--surface); color: var(--ink); cursor: pointer; display: inline-flex; align-items: center; gap: 7px; transition: background .15s, border-color .15s; }
+  .btn:hover { background: var(--row-hover); border-color: var(--line-strong); }
+  .btn.ghost { border-color: transparent; background: transparent; width: 34px; padding: 0; justify-content: center; }
+  .btn.ghost:hover { background: var(--line-soft); }
+
+  /* Tabs: ink underline, counts muted, one scroll axis under a finger. */
+  .tabs { margin-top: 20px; border-bottom: 1px solid var(--line); -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 28px), transparent); mask-image: linear-gradient(to right, #000 calc(100% - 28px), transparent); }
+  .tabs [role="tablist"] { display: flex; gap: 22px; min-width: 0; overflow-x: auto; overflow-y: hidden; touch-action: pan-x; overscroll-behavior-x: contain; scrollbar-width: none; padding-right: 28px; margin-bottom: -1px; }
+  .tabs [role="tablist"]::-webkit-scrollbar { display: none; }
+  .tab { position: relative; flex: none; display: inline-flex; align-items: center; gap: 7px; min-height: 46px; padding: 0 2px; background: none; border: 0; font: inherit; font-size: 14px; color: var(--muted); cursor: pointer; white-space: nowrap; transition: color .15s; -webkit-tap-highlight-color: transparent; }
+  .tab:hover { color: var(--ink); }
+  .tab[aria-selected="true"] { color: var(--ink); font-weight: 500; }
+  .tab .n { font-size: 13px; color: var(--faint); font-variant-numeric: tabular-nums; }
+  .tab[aria-selected="true"] .n { color: var(--ink-2); }
+  .tab .alert { width: 6px; height: 6px; border-radius: 50%; background: var(--red); }
+  .tab .bar { position: absolute; left: 0; right: 0; bottom: 0; height: 2px; border-radius: 2px 2px 0 0; background: var(--ink); display: none; }
+  .tab[aria-selected="true"] .bar { display: block; }
+
+  .panel { display: none; margin-top: 20px; }
+  .panel.active { display: grid; gap: 18px; }
+  .placeholder { border: 1px dashed var(--line); border-radius: 12px; padding: 36px 20px; text-align: center; color: var(--muted); font-size: 13.5px; }
+
+  /* Headline */
+  .headline { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 12px 24px; }
+  .headline h2 { margin: 10px 0 0; font-size: 24px; line-height: 1.2; font-weight: 500; letter-spacing: -.015em; text-wrap: balance; }
+  @media (min-width: 760px) { .headline h2 { font-size: 28px; } }
+  .headline p { margin: 6px 0 0; font-size: 15px; color: var(--ink-2); max-width: 62ch; }
+
+  /* KPI band: joined cells */
+  .kpis { display: grid; grid-template-columns: 1fr 1fr; gap: 1px; background: var(--line); border: 1px solid var(--line); border-radius: 12px; overflow: hidden; }
+  @container (min-width: 760px) { .kpis { grid-template-columns: repeat(4, 1fr); } }
+  .kpi { background: var(--surface); padding: 16px 18px 0; display: flex; flex-direction: column; min-width: 0; }
+  .kpi .v { margin-top: 10px; font-size: 26px; line-height: 1; font-weight: 500; letter-spacing: -.02em; }
+  @media (min-width: 640px) { .kpi .v { font-size: 32px; } }
+  .kpi .v small { font-size: 16px; font-weight: 400; letter-spacing: 0; color: var(--muted); margin-left: 3px; }
+  .kpi .d { margin-top: 10px; display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; font-size: 12.5px; color: var(--muted); }
+  .delta { display: inline-flex; align-items: center; gap: 2px; height: 22px; padding: 0 7px 0 5px; border-radius: 999px; font-size: 12px; font-weight: 500; font-variant-numeric: tabular-nums; }
+  .delta.up { background: var(--green-tint); color: var(--green); }
+  .delta.flat { color: var(--muted); padding-left: 0; }
+  .delta svg { width: 13px; height: 13px; }
+  .kpi .spark { margin: 12px -18px 0; height: 44px; }
+  .kpi .spark svg { display: block; width: 100%; height: 44px; }
+
+  /* Cards */
+  .card { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; min-width: 0; }
+  .card > header { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 10px; padding: 16px 18px 0; }
+  .card > header.divided { border-bottom: 1px solid var(--line-soft); padding-bottom: 14px; }
+  .card h3 { margin: 0; font-size: 15.5px; font-weight: 500; letter-spacing: -.005em; }
+  .card .desc { margin: 2px 0 0; font-size: 13px; color: var(--muted); }
+  .card .actions { margin-left: auto; display: flex; align-items: center; gap: 8px; flex: none; }
+  .card .body { padding: 12px 18px 18px; }
+  .grid2 { display: grid; gap: 18px; }
+  @container (min-width: 900px) { .grid2 { grid-template-columns: minmax(0, 1.65fr) minmax(0, 1fr); align-items: stretch; } }
+  .grid3 { display: grid; gap: 18px; }
+  @container (min-width: 820px) { .grid3 { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+
+  /* To-do list */
+  .todo { list-style: none; margin: 6px 0 0; padding: 0; }
+  .todo li { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 2px 14px; align-items: center; padding: 12px 18px; transition: background .12s; }
+  .todo li + li { border-top: 1px solid var(--line-soft); }
+  .todo li:hover { background: var(--row-hover); }
+  .todo li:last-child { border-radius: 0 0 11px 11px; }
+  @container (min-width: 640px) { .todo li { grid-template-columns: auto minmax(0, 1fr) auto; } .todo .link { grid-column: 3; } }
+  .todo .link { grid-column: 2; }
+  .todo .t { font-size: 14px; font-weight: 500; margin: 0; }
+  .todo .x { font-size: 13px; color: var(--muted); margin: 2px 0 0; line-height: 1.4; }
+  .tone-green { color: var(--green); } .tone-red { color: var(--red); } .tone-amber { color: var(--amber); } .tone-blue { color: var(--blue); }
+
+  /* Pipeline cells + segment bar */
+  .cells { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1px; margin: 16px 18px 0; background: var(--line); border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
+  .cells a { background: var(--surface); padding: 12px 14px; text-decoration: none; transition: background .12s; min-width: 0; }
+  .cells a:hover { background: var(--row-hover); }
+  .cells b { display: block; font-size: 24px; line-height: 1.1; font-weight: 500; letter-spacing: -.02em; }
+  .cells span { display: flex; align-items: center; gap: 6px; margin-top: 4px; font-size: 12.5px; color: var(--muted); }
+  .dot { width: 6px; height: 6px; border-radius: 50%; display: inline-block; flex: none; }
+  .segbar { display: flex; gap: 2px; height: 10px; border-radius: 999px; overflow: hidden; margin: 18px 18px 0; }
+  .segbar span { height: 100%; }
+  .seglist { list-style: none; margin: 12px 18px 0; padding: 0; display: grid; grid-template-columns: 1fr 1fr; gap: 6px 14px; font-size: 13px; color: var(--ink-2); }
+  .seglist li { display: flex; align-items: center; gap: 7px; }
+  .seglist i { width: 8px; height: 8px; border-radius: 2px; flex: none; }
+  .seglist b { margin-left: auto; font-weight: 500; font-variant-numeric: tabular-nums; color: var(--ink); }
+
+  /* Chart */
+  .chart { position: relative; user-select: none; padding: 8px 10px 14px; }
+  .chart svg { display: block; width: 100%; height: auto; }
+  .chart text { font-size: 11px; fill: var(--muted); font-variant-numeric: tabular-nums; font-family: var(--font); }
+  .chart .tip { position: absolute; top: 16px; z-index: 2; min-width: 176px; border-radius: 10px; background: var(--surface); box-shadow: var(--shadow-pop); padding: 10px 12px; font-size: 13px; pointer-events: none; }
+  .chart .tip p { margin: 0; display: flex; justify-content: space-between; gap: 12px; }
+  .chart .tip p + p { margin-top: 4px; }
+  .chart .tip b { font-weight: 500; font-variant-numeric: tabular-nums; }
+  .chart .tip .sw { display: inline-flex; align-items: center; gap: 8px; color: var(--ink-2); }
+  .chart .tip .sw i { display: inline-block; }
+  .chart .tip .note { margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--line-soft); color: var(--ink-2); font-size: 12.5px; }
+
+  /* Small lists in the 3 cards */
+  .rows { list-style: none; margin: 8px 0 0; padding: 0; }
+  .rows li { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 10px; align-items: center; padding: 9px 0; border-top: 1px solid var(--line-soft); font-size: 13.5px; }
+  .rows li:first-child { border-top: 0; }
+  .rows .m { display: inline-flex; align-items: center; gap: 10px; }
+  .meter { display: block; width: 72px; height: 6px; border-radius: 999px; background: var(--sunken); overflow: hidden; }
+  .meter i { display: block; height: 100%; border-radius: 999px; background: var(--ink); opacity: .28; }
+  .big { font-size: 30px; line-height: 1; font-weight: 500; letter-spacing: -.02em; }
+  .big small { font-size: 15px; font-weight: 400; letter-spacing: 0; color: var(--muted); }
+  .quote { font-size: 13px; color: var(--ink-2); line-height: 1.4; margin-top: 3px; }
+  .st { display: inline-flex; align-items: center; gap: 7px; font-size: 13px; font-weight: 500; white-space: nowrap; }
+  .st i { width: 8px; height: 8px; border-radius: 50%; background: currentColor; flex: none; }
+  .st.green { color: var(--green); } .st.red { color: var(--red); } .st.ink { color: var(--ink); } .st.muted { color: var(--muted); }
+
+  /* Table card */
+  .tabsrow { display: flex; flex-wrap: wrap; align-items: center; gap: 0 14px; padding: 0 18px; border-bottom: 1px solid var(--line-soft); }
+  .tabsrow .tabs { margin: 0; border: 0; flex: 1 1 auto; min-width: 0; }
+  .tabsrow .tab { min-height: 44px; font-size: 13.5px; }
+  .search { display: flex; align-items: center; gap: 8px; height: 34px; padding: 0 10px; border: 1px solid var(--line); border-radius: 9px; background: var(--surface); color: var(--muted); font-size: 13px; width: 100%; margin-bottom: 10px; }
+  @container (min-width: 760px) { .search { width: 240px; margin-left: auto; margin-bottom: 0; } }
+  .search input { border: 0; background: none; font: inherit; color: var(--ink); width: 100%; outline: none; }
+  table { width: 100%; border-collapse: separate; border-spacing: 0; font-size: 14px; }
+  th { height: 38px; padding: 0 14px; text-align: left; font-size: 11px; font-weight: 500; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); background: var(--canvas); border-bottom: 1px solid var(--line-soft); white-space: nowrap; }
+  th.r, td.r { text-align: right; }
+  th button { font: inherit; background: none; border: 0; padding: 0; color: inherit; cursor: pointer; text-transform: inherit; letter-spacing: inherit; }
+  th button.on { color: var(--ink); }
+  td { padding: 12px 14px; border-bottom: 1px solid var(--line-soft); vertical-align: middle; }
+  th:first-child, td:first-child { padding-left: 20px; } th:last-child, td:last-child { padding-right: 20px; }
+  tbody tr { cursor: pointer; transition: background .12s; }
+  tbody tr:hover { background: var(--row-hover); }
+  tbody tr:last-child td { border-bottom: 0; }
+  td .nm { display: block; font-weight: 500; }
+  td .sub { display: block; font-size: 12.5px; color: var(--muted); margin-top: 1px; }
+  td.main { width: 100%; max-width: 0; }
+  td.main .nm { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .mob { display: none; list-style: none; margin: 0; padding: 0 8px 8px; }
+  .mob li { display: flex; align-items: center; gap: 12px; padding: 11px 10px; border-top: 1px solid var(--line-soft); }
+  .mob li:first-child { border-top: 0; }
+  .mob .nm { display: block; font-size: 14px; font-weight: 500; }
+  .mob .sub { display: block; font-size: 12.5px; color: var(--muted); margin-top: 2px; }
+  @container (max-width: 759px) { .desk { display: none; } .mob { display: block; } }
+  .empty { padding: 28px 18px; text-align: center; color: var(--muted); font-size: 13.5px; }
+
+  .foot { font-size: 12.5px; color: var(--muted); line-height: 1.5; max-width: 90ch; }
+  .foot b { color: var(--ink-2); font-weight: 500; }
+  @media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
+</style>
+
+<div class="page">
+  <div class="crumb"><span>Campagnes</span><span>›</span><b>Vague 3 — Suisse (email franc)</b></div>
+  <div class="head">
+    <div>
+      <h1>Vague 3 — Suisse (email franc)</h1>
+      <div class="meta">
+        <span class="status green"><i></i>Terminée</span>
+        <span>22 sept. → 1<sup>er</sup> oct. 2026</span>
+        <span>25 prospects · email · relance J+3</span>
+      </div>
+    </div>
+    <div style="display:flex;gap:8px;align-items:center">
+      <span class="muted" style="font-size:13px;display:none" id="refreshedAt">Actualisé il y a 3 min</span>
+      <button class="btn" type="button" id="exportBtn"><svg class="ic" style="width:15px;height:15px" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12m0 0l-4-4m4 4l4-4M4 17v2a2 2 0 002 2h12a2 2 0 002-2v-2"/></svg><span>Exporter</span></button>
+      <button class="btn ghost" type="button" aria-label="Actualiser les données" id="refreshBtn"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 11-2.6-6.4"/><path d="M21 3v6h-6"/></svg></button>
+    </div>
+  </div>
+
+  <div class="tabs">
+    <div role="tablist" aria-label="Sections de la campagne" id="pageTabs">
+      <button class="tab" role="tab" aria-selected="false" data-panel="config" type="button">Configuration<span class="bar"></span></button>
+      <button class="tab" role="tab" aria-selected="false" data-panel="queue" type="button">File d'envoi <span class="n">0</span><span class="bar"></span></button>
+      <button class="tab" role="tab" aria-selected="false" data-panel="ab" type="button">Variantes A/B<span class="bar"></span></button>
+      <button class="tab" role="tab" aria-selected="false" data-panel="prospects" type="button">Prospects <span class="n">25</span><span class="bar"></span></button>
+      <button class="tab" role="tab" aria-selected="true" data-panel="results" type="button">Résultats <span class="alert" aria-label="2 réponses à traiter"></span><span class="bar"></span></button>
+    </div>
+  </div>
+
+  <section class="panel" data-panel="config"><div class="placeholder">Onglet existant, inchangé.</div></section>
+  <section class="panel" data-panel="queue"><div class="placeholder">Onglet existant, inchangé.</div></section>
+  <section class="panel" data-panel="ab"><div class="placeholder">Onglet existant, inchangé.</div></section>
+  <section class="panel" data-panel="prospects"><div class="placeholder">Onglet existant, inchangé.</div></section>
+
+  <section class="panel active" data-panel="results">
+
+    <div class="headline">
+      <div>
+        <p class="label">Vendredi 3 octobre · bilan de la campagne</p>
+        <h2>2 prospects intéressés, aucune vente encaissée</h2>
+        <p>10 prospects sur 25 ont ouvert leur site, 4 ont écrit. Tout est parti ; les démos restent en ligne jusqu'au 21 octobre.</p>
+      </div>
+      <a class="link" href="#prospects">Voir les 25 prospects <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a>
+    </div>
+
+    <section class="kpis" aria-label="Chiffres clés">
+      <div class="kpi">
+        <p class="label">Clics humains</p>
+        <p class="v num">10<small>/ 25</small></p>
+        <div class="d"><span class="delta up"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 19V5M6 11l6-6 6 6"/></svg>+16 pts</span><span>face à la France (24 %)</span></div>
+        <div class="spark" data-spark="5,1,1,2,0,1,0,0" data-style="bars"></div>
+      </div>
+      <div class="kpi">
+        <p class="label">Ont écrit</p>
+        <p class="v num">4<small>16 %</small></p>
+        <div class="d"><span class="delta up"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 19V5M6 11l6-6 6 6"/></svg>+11 pts</span><span>vs vos autres campagnes</span></div>
+        <div class="spark" data-spark="0,0,1,0,0,0,2,1" data-style="bars"></div>
+      </div>
+      <div class="kpi">
+        <p class="label">Intéressés</p>
+        <p class="v num">2<small>8 %</small></p>
+        <div class="d"><span class="delta flat"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M5 12h14"/></svg>Pas de comparaison</span></div>
+        <div class="spark" data-spark="0,0,1,0,0,0,1,0" data-style="bars"></div>
+      </div>
+      <div class="kpi">
+        <p class="label">Ventes</p>
+        <p class="v num">0</p>
+        <div class="d"><span>2 pistes ouvertes</span></div>
+        <div class="spark" aria-hidden="true"></div>
+      </div>
+    </section>
+
+    <div class="grid2">
+      <section class="card">
+        <header>
+          <div><h3>À traiter</h3><p class="desc">Classé par chance de vente.</p></div>
+          <div class="actions"><span class="muted num" style="font-size:14px">5</span></div>
+        </header>
+        <ul class="todo">
+          <li>
+            <svg class="ic tone-green" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5h16v11H8l-4 4z"/></svg>
+            <div class="min"><p class="t">Hugo veut en parler de vive voix</p><p class="x">A répondu 5 min après le clic. Votre réponse a été lue le 25/09, rien depuis.</p></div>
+            <a class="link" href="#">Répondre <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a>
+          </li>
+          <li>
+            <svg class="ic tone-amber" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 8v5M12 16h.01"/></svg>
+            <div class="min"><p class="t">TP Motorsport trouve des offres moins chères</p><p class="x">A regardé votre vidéo en entier le 30/09, silence depuis.</p></div>
+            <a class="link" href="#">Relancer <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a>
+          </li>
+          <li>
+            <svg class="ic tone-blue" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.9v3a2 2 0 01-2.2 2 19.8 19.8 0 01-8.6-3.1 19.5 19.5 0 01-6-6A19.8 19.8 0 012.1 4.2 2 2 0 014.1 2h3a2 2 0 012 1.7c.1.9.4 1.9.7 2.8a2 2 0 01-.5 2.1L8 9.9a16 16 0 006 6l1.3-1.3a2 2 0 012.1-.4c.9.3 1.8.6 2.8.7a2 2 0 011.7 2z"/></svg>
+            <div class="min"><p class="t">Garage Nomade a cliqué votre numéro</p><p class="x">3 visites le 22/09, rien depuis la relance. Un appel plutôt qu'un troisième mail.</p></div>
+            <a class="link" href="#">Voir la fiche <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a>
+          </li>
+          <li>
+            <svg class="ic tone-blue" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></svg>
+            <div class="min"><p class="t">7 autres ont visité sans écrire</p><p class="x">Urgence SOS, Jardin du Monde, N.N Sanitaire, Newtech, dos Santos, All'Effiloché, Schoch.</p></div>
+            <a class="link" href="#prospects">Voir la liste <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a>
+          </li>
+        </ul>
+      </section>
+
+      <section class="card">
+        <header>
+          <div><h3>Où en sont les 25</h3><p class="desc">Après le premier mail et la relance.</p></div>
+        </header>
+        <div class="cells">
+          <a href="#prospects"><b class="num">10</b><span><i class="dot" style="background:var(--ink)"></i>ont cliqué</span></a>
+          <a href="#prospects"><b class="num">4</b><span><i class="dot" style="background:var(--green)"></i>ont écrit</span></a>
+          <a href="#prospects"><b class="num">2</b><span><i class="dot" style="background:var(--green)"></i>intéressés</span></a>
+        </div>
+        <div class="segbar" aria-hidden="true">
+          <span style="flex-grow:2;background:var(--green)"></span>
+          <span style="flex-grow:8;background:var(--ink)"></span>
+          <span style="flex-grow:2;background:var(--red)"></span>
+          <span style="flex-grow:13;background:var(--chart-empty)"></span>
+        </div>
+        <ul class="seglist">
+          <li><i style="background:var(--green)"></i>Intéressés <b>2</b></li>
+          <li><i style="background:var(--ink)"></i>Ont visité, pas écrit <b>8</b></li>
+          <li><i style="background:var(--red)"></i>Refus <b>2</b></li>
+          <li><i style="background:var(--chart-empty)"></i>Sans réaction <b>13</b></li>
+        </ul>
+        <div class="body" style="padding-top:14px">
+          <ul class="rows" style="margin:0">
+            <li><span>Reçus</span><b class="num">25 / 25</b></li>
+            <li><span>Relances envoyées</span><b class="num">23</b></li>
+            <li><span>Démos en ligne</span><b class="num">24 / 25</b></li>
+          </ul>
+          <p class="muted" style="margin:10px 0 0;font-size:12.5px">Les démos expirent du 13 au 21 octobre.</p>
+        </div>
+      </section>
+    </div>
+
+    <section class="card">
+      <header>
+        <div><h3>Jour par jour</h3><p class="desc">Visites humaines sur les sites (courbe) et mails envoyés (barres). Les pastilles marquent les réponses.</p></div>
+      </header>
+      <div class="chart" id="chart"></div>
+    </section>
+
+    <div class="grid3">
+      <section class="card">
+        <header><div><h3>Par métier</h3><p class="desc">Part des prospects qui ont ouvert leur site.</p></div></header>
+        <div class="body">
+          <ul class="rows" id="trades"></ul>
+        </div>
+      </section>
+      <section class="card">
+        <header><div><h3>Premier mail et relance</h3><p class="desc">Ce que chaque envoi a produit.</p></div></header>
+        <div class="body">
+          <ul class="rows" id="sends"></ul>
+          <p class="muted" style="margin:10px 0 0;font-size:12.5px;line-height:1.45">La relance n'est presque jamais cliquée, mais c'est elle qui a fait écrire TP Motorsport.</p>
+        </div>
+      </section>
+      <section class="card">
+        <header><div><h3>Réponses</h3><p class="desc">Mails captés, bandeau, et hors outil.</p></div></header>
+        <div class="body">
+          <ul class="rows" id="replies"></ul>
+        </div>
+      </section>
+    </div>
+
+    <section class="card" id="prospects">
+      <header class="divided">
+        <div><h3>Les 25 prospects</h3><p class="desc">Un clic sur une ligne ouvre la fiche. Les visites sont humaines, le temps vient des enregistrements.</p></div>
+      </header>
+      <div class="tabsrow">
+        <div class="tabs"><div role="tablist" aria-label="Filtrer les prospects" id="filterTabs">
+          <button class="tab" role="tab" aria-selected="true" data-f="all" type="button">Tous <span class="n">25</span><span class="bar"></span></button>
+          <button class="tab" role="tab" aria-selected="false" data-f="clicked" type="button">Ont cliqué <span class="n">10</span><span class="bar"></span></button>
+          <button class="tab" role="tab" aria-selected="false" data-f="replied" type="button">Ont écrit <span class="n">4</span><span class="bar"></span></button>
+          <button class="tab" role="tab" aria-selected="false" data-f="none" type="button">Sans réaction <span class="n">13</span><span class="bar"></span></button>
+        </div></div>
+        <label class="search"><svg class="ic" style="width:15px;height:15px" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg><input id="q" type="search" placeholder="Chercher un prospect" aria-label="Chercher un prospect"></label>
+      </div>
+      <div class="desk">
+        <table>
+          <thead><tr>
+            <th>Prospect</th>
+            <th>État</th>
+            <th class="r"><button type="button" data-k="visits">Visites</button></th>
+            <th class="r"><button type="button" data-k="active">Temps actif</button></th>
+            <th><button type="button" data-k="last">Dernière visite</button></th>
+            <th>Relance</th>
+          </tr></thead>
+          <tbody id="tbody"></tbody>
+        </table>
+        <p class="empty" id="emptyDesk" hidden>Aucun prospect ne correspond.</p>
+      </div>
+      <ul class="mob" id="mob"></ul>
+    </section>
+
+    <p class="foot"><b>Définitions.</b> Clic humain : au moins une visite du site démo mesurée sur le site, hors visites internes. Temps actif : d'après les enregistrements de session. Ont écrit : réponse captée, message du bandeau, ou réponse reçue dans votre boîte que vous comptez vous-même. Les ouvertures de mail ne sont pas affichées, le signal n'est pas fiable.</p>
+  </section>
+</div>
+
+<script>
+(function () {
+  var css = function (name) { return getComputedStyle(document.documentElement).getPropertyValue(name).trim(); };
+  var arrow = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>';
+
+  // ---- Page tabs ----
+  var pageTabs = document.getElementById('pageTabs');
+  pageTabs.querySelectorAll('.tab').forEach(function (t) {
+    t.addEventListener('click', function () {
+      pageTabs.querySelectorAll('.tab').forEach(function (o) { o.setAttribute('aria-selected', o === t ? 'true' : 'false'); });
+      document.querySelectorAll('.panel').forEach(function (p) { p.classList.toggle('active', p.dataset.panel === t.dataset.panel); });
+      t.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+    });
+  });
+
+  // ---- Sparklines (bars) ----
+  document.querySelectorAll('.spark[data-spark]').forEach(function (el) {
+    var v = el.dataset.spark.split(',').map(Number), max = Math.max(1, Math.max.apply(null, v)), W = 200, H = 44, n = v.length, gw = W / n;
+    var s = '<svg viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="none" aria-hidden="true">';
+    v.forEach(function (x, i) {
+      var h = Math.max(2, x / max * (H - 14)), y = H - h;
+      s += '<rect x="' + (i * gw + 3) + '" y="' + y + '" width="' + (gw - 6) + '" height="' + h + '" rx="1.5" fill="' + (x ? css('--chart-line') : css('--chart-empty')) + '" opacity="' + (x ? .85 : .6) + '"/>';
+    });
+    el.innerHTML = s + '</svg>';
+  });
+
+  // ---- Chart: visits line + mails bars + reply pills ----
+  var days = ['22 sept.', '23 sept.', '24 sept.', '25 sept.', '26 sept.', '28 sept.', '29 sept.', '30 sept.'];
+  var longDays = ['mar. 22 sept.', 'mer. 23 sept.', 'jeu. 24 sept.', 'ven. 25 sept.', 'sam. 26 sept.', 'lun. 28 sept.', 'mar. 29 sept.', 'mer. 30 sept.'];
+  var visits = [11, 3, 1, 4, 0, 1, 3, 2], mails = [6, 6, 7, 11, 0, 7, 5, 6], first = [5, 1, 1, 2, 0, 1, 0, 0];
+  var replies = { 2: 'Hugo, intéressé', 6: 'AK, refus · TP Motorsport, intéressé', 7: 'Chergui, refus' };
+  var chartEl = document.getElementById('chart');
+  function smooth(pts) {
+    if (pts.length < 2) return '';
+    var d = 'M ' + pts[0][0] + ' ' + pts[0][1];
+    for (var i = 0; i < pts.length - 1; i++) {
+      var p0 = pts[i - 1] || pts[i], p1 = pts[i], p2 = pts[i + 1], p3 = pts[i + 2] || p2;
+      var c1x = p1[0] + (p2[0] - p0[0]) / 6, c1y = p1[1] + (p2[1] - p0[1]) / 6, c2x = p2[0] - (p3[0] - p1[0]) / 6, c2y = p2[1] - (p3[1] - p1[1]) / 6;
+      d += ' C ' + c1x + ' ' + c1y + ', ' + c2x + ' ' + c2y + ', ' + p2[0] + ' ' + p2[1];
+    }
+    return d;
+  }
+  function renderChart() {
+    var W = Math.max(320, chartEl.clientWidth - 20), L = 40, R = 12, T = 40, mainH = W < 520 ? 150 : 190, stripH = 46, gap = 26, xl = 28;
+    var mainB = T + mainH, stripT = mainB + gap, stripB = stripT + stripH, H = stripB + xl, plotW = W - L - R, step = plotW / (days.length - 1);
+    var yMax = 12, line = css('--chart-line'), bar = css('--chart-bar'), ink = css('--ink'), surface = css('--surface');
+    var x = function (i) { return L + i * step; }, y = function (v) { return mainB - v / yMax * mainH; };
+    var pts = visits.map(function (v, i) { return [x(i), y(v)]; });
+    var path = smooth(pts), area = path + ' L ' + x(days.length - 1) + ' ' + mainB + ' L ' + x(0) + ' ' + mainB + ' Z';
+    var s = '<svg viewBox="0 0 ' + W + ' ' + H + '" width="' + W + '" height="' + H + '" role="img" aria-label="Visites et mails par jour"><defs><linearGradient id="g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="' + line + '" stop-opacity=".22"/><stop offset="1" stop-color="' + line + '" stop-opacity="0"/></linearGradient></defs>';
+    [0, 4, 8, 12].forEach(function (v) { s += '<line x1="' + L + '" x2="' + (W - R) + '" y1="' + y(v) + '" y2="' + y(v) + '" stroke="' + ink + '" stroke-opacity="' + (v ? .07 : .14) + '"' + (v ? ' stroke-dasharray="3 4"' : '') + '/><text x="' + (L - 10) + '" y="' + (y(v) + 4) + '" text-anchor="end">' + v + '</text>'; });
+    Object.keys(replies).forEach(function (i) {
+      var cx = x(+i), label = (replies[i].split('·').length) + (replies[i].indexOf('·') > -1 ? ' réponses' : ' réponse'), pw = label.length * 6.2 + 18, px = Math.min(Math.max(L, cx - pw / 2), W - R - pw);
+      s += '<line x1="' + cx + '" x2="' + cx + '" y1="' + (T - 4) + '" y2="' + mainB + '" stroke="' + ink + '" stroke-opacity=".35" stroke-dasharray="2 3"/>';
+      s += '<rect x="' + px + '" y="' + (T - 26) + '" width="' + pw + '" height="18" rx="9" fill="' + ink + '"/><text x="' + (px + pw / 2) + '" y="' + (T - 13.5) + '" text-anchor="middle" style="fill:' + surface + ';font-weight:500;font-size:10.5px">' + label + '</text>';
+    });
+    s += '<path d="' + area + '" fill="url(#g)"/><path d="' + path + '" fill="none" stroke="' + line + '" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>';
+    s += '<text x="' + (L - 10) + '" y="' + (stripT + stripH / 2 + 4) + '" text-anchor="end">Mails</text><line x1="' + L + '" x2="' + (W - R) + '" y1="' + stripB + '" y2="' + stripB + '" stroke="' + ink + '" stroke-opacity=".14"/>';
+    var bw = Math.max(5, Math.min(12, step * .35)), mMax = 12;
+    mails.forEach(function (v, i) { if (!v) return; var h = Math.max(4, v / mMax * (stripH - 16)); s += '<rect x="' + (x(i) - bw / 2) + '" y="' + (stripB - h) + '" width="' + bw + '" height="' + h + '" rx="1.5" fill="' + bar + '"/><text x="' + x(i) + '" y="' + (stripB - h - 5) + '" text-anchor="middle" style="fill:' + ink + '">' + v + '</text>'; });
+    days.forEach(function (d, i) { if (W < 520 && i % 2 === 1) return; s += '<text x="' + x(i) + '" y="' + (H - 6) + '" text-anchor="' + (i === 0 ? 'start' : i === days.length - 1 ? 'end' : 'middle') + '">' + d + '</text>'; });
+    s += '<g id="hover"></g><rect id="hit" x="' + (L - step / 2) + '" y="' + T + '" width="' + (plotW + step) + '" height="' + (stripB - T) + '" fill="transparent"/></svg><div class="tip" id="tip" hidden></div>';
+    chartEl.innerHTML = s;
+    var hit = document.getElementById('hit'), hover = document.getElementById('hover'), tip = document.getElementById('tip');
+    function show(clientX) {
+      var rect = chartEl.getBoundingClientRect(), i = Math.round((clientX - rect.left - 10 - L) / step); i = Math.max(0, Math.min(days.length - 1, i));
+      hover.innerHTML = '<line x1="' + x(i) + '" x2="' + x(i) + '" y1="' + T + '" y2="' + stripB + '" stroke="' + ink + '" stroke-opacity=".22"/><circle cx="' + x(i) + '" cy="' + y(visits[i]) + '" r="4.5" fill="' + surface + '" stroke="' + line + '" stroke-width="2"/>';
+      tip.innerHTML = '<p class="label" style="margin-bottom:8px">' + longDays[i] + '</p><p><span class="sw"><i style="width:14px;height:3px;border-radius:2px;background:' + line + '"></i>Visites</span><b>' + visits[i] + '</b></p><p><span class="sw"><i style="width:8px;height:10px;border-radius:2px;background:' + bar + '"></i>Mails envoyés</span><b>' + mails[i] + '</b></p><p><span class="sw" style="padding-left:22px">Premières visites</span><b>' + first[i] + '</b></p>' + (replies[i] ? '<p class="note">' + replies[i] + '</p>' : '');
+      tip.hidden = false; var tw = 190, left = x(i) + 10 + 16; tip.style.left = (left + tw > W ? Math.max(0, x(i) + 10 - tw - 16) : left) + 'px';
+    }
+    hit.addEventListener('mousemove', function (e) { show(e.clientX); });
+    hit.addEventListener('touchstart', function (e) { show(e.touches[0].clientX); }, { passive: true });
+    hit.addEventListener('touchmove', function (e) { show(e.touches[0].clientX); }, { passive: true });
+    chartEl.addEventListener('mouseleave', function () { hover.innerHTML = ''; tip.hidden = true; });
+  }
+  renderChart(); window.addEventListener('resize', renderChart);
+
+  // ---- Trades ----
+  var trades = [['Garages', 2, 2], ['Électriciens', 2, 3], ['Sanitaire, chauffage', 2, 4], ['Paysagistes', 3, 10], ['Food trucks', 1, 2], ['Barbiers', 0, 4]];
+  document.getElementById('trades').innerHTML = trades.map(function (t) {
+    var pct = Math.round(t[1] / t[2] * 100);
+    return '<li><span>' + t[0] + '</span><span class="m"><span class="meter"><i style="width:' + Math.max(3, pct) + '%"></i></span><b class="num" style="font-weight:500;min-width:52px;text-align:right">' + t[1] + ' / ' + t[2] + '</b></span></li>';
+  }).join('');
+
+  // ---- Sends ----
+  var sends = [['Premier mail', 25, 10, 2], ['Relance J+3', 23, 1, 3]];
+  document.getElementById('sends').innerHTML = '<li style="border-top:0;padding-top:0"><span class="label" style="font-weight:500">Envoi</span><span class="label" style="display:grid;grid-template-columns:64px 64px 70px;text-align:right;font-weight:500">Envoyés<span>Visites</span><span>Réponses</span></span></li>' + sends.map(function (r) {
+    return '<li><span>' + r[0] + '</span><span class="num" style="display:grid;grid-template-columns:64px 64px 70px;text-align:right"><b style="font-weight:500">' + r[1] + '</b><b style="font-weight:500">' + r[2] + '</b><b style="font-weight:500">' + r[3] + '</b></span></li>';
+  }).join('');
+
+  // ---- Replies ----
+  var rep = [
+    ['Les projets d\'Hugo', 'green', 'Intéressé', '24/09', '« je préférerais qu\'on se voit et qu\'on en discute de vive voix »'],
+    ['TP Motorsport', 'green', 'Intéressé', '29/09', '« j\'ai des offres pour le même style mais à prix plus attractif »'],
+    ['AK Paysagiste', 'red', 'Refus', '29/09', '« je souhaite que vous retiriez mon site au plus vite »'],
+    ['Chergui Chauffage', 'red', 'Refus', '30/09', '« je ne pourrai pas donner suite à votre demande »']
+  ];
+  document.getElementById('replies').innerHTML = rep.map(function (r) {
+    return '<li><div class="min"><span style="display:flex;gap:10px;align-items:center;flex-wrap:wrap"><b style="font-weight:500">' + r[0] + '</b><span class="st ' + r[1] + '"><i></i>' + r[2] + '</span></span><p class="quote">' + r[4] + '</p></div><span class="muted num" style="font-size:12.5px;align-self:start">' + r[3] + '</span></li>';
+  }).join('');
+
+  // ---- Prospects table ----
+  var P = [
+    ['TP Motorsport', 'garage', 'int', 6, 313, '30/09 07:31', '28/09 · cliquée'],
+    ['Garage Nomade', 'garage', 'vis', 3, 139, '22/09 15:47', '25/09'],
+    ['Urgence SOS Sanitaire Russo', 'sanitaire', 'vis', 3, 96, '25/09 20:00', '30/09'],
+    ['Jardin du Monde', 'paysagiste', 'vis', 4, 79, '22/09 16:57', '25/09'],
+    ['N.N Sanitaire', 'sanitaire', 'vis', 1, 62, '22/09 21:33', '25/09'],
+    ['Newtech Électricité Sàrl', 'électricien', 'vis', 1, 54, '28/09 08:48', 'pas encore'],
+    ['Paysagisme et Nettoyages dos Santos', 'paysagiste', 'vis', 4, 50, '23/09 11:26', '24/09'],
+    ["All'Effiloché", 'food truck', 'vis', 1, 43, '25/09 11:03', '30/09'],
+    ["Les projets d'Hugo", 'paysagiste', 'int', 1, 36, '24/09 10:33', 'annulée'],
+    ['Schoch Electricité', 'électricien', 'vis', 1, 33, '22/09 12:25', '25/09'],
+    ['AK Paysagiste', 'paysagiste', 'ref', 0, 0, '', '28/09'],
+    ['Chergui Chauffage Sanitaire', 'sanitaire', 'ref', 0, 0, '', '30/09'],
+    ['Jardins A. Haziri', 'paysagiste', 'sent', 0, 0, '', '25/09'],
+    ['Mala Paysagiste', 'paysagiste', 'sent', 0, 0, '', '28/09'],
+    ['Blanc André Paysagiste', 'paysagiste', 'sent', 0, 0, '', '28/09'],
+    ['Battaglia Paysagiste Sàrl', 'paysagiste', 'sent', 0, 0, '', '28/09'],
+    ['BERTI Paysagiste Sàrl', 'paysagiste', 'sent', 0, 0, '', '28/09'],
+    ['Matthieu Gohl Paysagiste', 'paysagiste', 'sent', 0, 0, '', '29/09'],
+    ['BarberStreet Montreux', 'barbier', 'sent', 0, 0, '', '29/09'],
+    ['Furetto Barber club', 'barbier', 'sent', 0, 0, '', '29/09'],
+    ['La Loge Coiffure & Barbier', 'barbier', 'sent', 0, 0, '', '29/09'],
+    ['Tiptop Barbershop', 'barbier', 'sent', 0, 0, '', '29/09'],
+    ["Koko's Bistro FoodTruck", 'food truck', 'sent', 0, 0, '', '30/09'],
+    ['RH Installations Sanitaires', 'sanitaire', 'sent', 0, 0, '', '30/09'],
+    ['Haut-Plateau Electricité Sàrl', 'électricien', 'sent', 0, 0, '', '30/09']
+  ].map(function (r) { return { name: r[0], trade: r[1], state: r[2], visits: r[3], active: r[4], last: r[5], fu: r[6] }; });
+  var ST = { int: ['green', 'Intéressé'], ref: ['red', 'Refus'], vis: ['ink', 'A visité'], sent: ['muted', 'Envoyé, reçu'] };
+  var filter = 'all', q = '', sortKey = 'active', dir = -1;
+  function keep(p) {
+    if (q && p.name.toLowerCase().indexOf(q) < 0 && p.trade.indexOf(q) < 0) return false;
+    if (filter === 'clicked') return p.visits > 0;
+    if (filter === 'replied') return p.state === 'int' || p.state === 'ref';
+    if (filter === 'none') return p.state === 'sent';
+    return true;
+  }
+  function fmt(s) { if (!s) return '<span class="muted">—</span>'; var m = Math.floor(s / 60), r = s % 60; return m ? m + ' min ' + (r < 10 ? '0' : '') + r + ' s' : s + ' s'; }
+  function render() {
+    var rows = P.filter(keep).sort(function (a, b) { var va = a[sortKey], vb = b[sortKey]; if (typeof va === 'string') return (va > vb ? 1 : va < vb ? -1 : 0) * dir; return (va - vb) * dir; });
+    var maxV = 7;
+    document.getElementById('tbody').innerHTML = rows.map(function (p) {
+      var st = ST[p.state];
+      return '<tr><td class="main"><span class="nm">' + p.name + '</span><span class="sub">' + p.trade + '</span></td>' +
+        '<td><span class="st ' + st[0] + '"><i></i>' + st[1] + '</span></td>' +
+        '<td class="r"><span style="display:inline-flex;align-items:center;gap:10px"><span class="num">' + (p.visits || '<span class="muted">0</span>') + '</span><span class="meter"><i style="width:' + Math.max(3, p.visits / maxV * 100) + '%"></i></span></span></td>' +
+        '<td class="r num">' + fmt(p.active) + '</td>' +
+        '<td class="num">' + (p.last || '<span class="muted">—</span>') + '</td>' +
+        '<td class="muted num" style="white-space:nowrap">' + p.fu + '</td></tr>';
+    }).join('');
+    document.getElementById('emptyDesk').hidden = rows.length > 0;
+    document.getElementById('mob').innerHTML = rows.map(function (p) {
+      var st = ST[p.state];
+      return '<li><span style="min-width:0;flex:1"><span class="nm">' + p.name + '</span><span class="sub">' + p.trade + (p.visits ? ' · ' + p.visits + ' visite' + (p.visits > 1 ? 's' : '') + ' · ' + fmt(p.active) : '') + '</span></span><span class="st ' + st[0] + '"><i></i>' + st[1] + '</span></li>';
+    }).join('') || '<li class="empty">Aucun prospect ne correspond.</li>';
+    document.querySelectorAll('th button').forEach(function (b) { b.classList.toggle('on', b.dataset.k === sortKey); });
+  }
+  document.querySelectorAll('#filterTabs .tab').forEach(function (t) {
+    t.addEventListener('click', function () { filter = t.dataset.f; document.querySelectorAll('#filterTabs .tab').forEach(function (o) { o.setAttribute('aria-selected', o === t ? 'true' : 'false'); }); render(); });
+  });
+  document.querySelectorAll('th button').forEach(function (b) { b.addEventListener('click', function () { if (sortKey === b.dataset.k) dir = -dir; else { sortKey = b.dataset.k; dir = -1; } render(); }); });
+  document.getElementById('q').addEventListener('input', function (e) { q = e.target.value.trim().toLowerCase(); render(); });
+  render();
+})();
+</script>

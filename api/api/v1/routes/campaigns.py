@@ -888,6 +888,7 @@ async def get_campaign_queue(
                     "prospect_email": (
                         prospects_by_id[row.prospect_id].email if row.prospect_id in prospects_by_id else None
                     ),
+                    "prospect_timezone": CampaignQueueService.prospect_timezone(prospects_by_id.get(row.prospect_id)),
                     "ab_variant": None,
                     "follow_up_index": 1,
                     "email_log_id": None,
@@ -912,6 +913,7 @@ async def get_campaign_queue(
                 "prospect_id": i.prospect_id,
                 "prospect_name": i.prospect.name if i.prospect else None,
                 "prospect_email": i.prospect.email if i.prospect else None,
+                "prospect_timezone": CampaignQueueService.prospect_timezone(i.prospect),
                 "ab_variant": i.ab_variant,
                 "follow_up_index": i.follow_up_index,
                 "email_log_id": i.email_log_id,
