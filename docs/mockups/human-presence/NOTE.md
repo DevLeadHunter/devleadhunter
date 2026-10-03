@@ -53,6 +53,10 @@ Texte du modèle 30 « Franc - prix et date (France/Belgique) » mot pour mot (l
 
 Recommandation : (a) avec la signature allégée pour la prochaine vague (zéro développement, la photo et dibodev.fr entrent dans le mail), (b) en test A/B dès que la variable de la carte existe. La carte répète le lien : utile pour ceux qui ne lisent pas le texte, mesurable (clic texte vs clic bouton, Resend trace chaque URL).
 
+**Variante (b) refaite le 03/10 au soir** (retour : pas calquée sur le mail que reçoit un client de dibodev.fr) : `email-frank-dibodev.html` est le mail franc mis dans le gabarit MJML de l'accusé de réception de dibodev.fr (fond #f6f6f3, logo, carte blanche, titre, bouton violet « Voir le site de… », encadré « Si vous le voulez » en trois étapes numérotées, date de retrait, « Un mot me suffit », signature de dibodev.fr, pied gris avec le lien de désinscription). Rendu avec les fichiers du dépôt dibodev.fr (`server/services/mail/mjml/`), exemple fictif Menuiserie Lefort.
+
+Fait vérifié dans Resend le 03/10 : les mails de campagne de la vague 3 sont partis sans signature (premier contact du 28/09, relance du 01/10) ; seules les réponses écrites à la main dans le composeur partent avec la signature. La variante (a) correspond donc aux réponses manuelles, pas aux campagnes.
+
 ## Choix à trancher
 
 1. Carte : variante **A** (photo en tête) ou **B** (photo discrète) ?
@@ -73,7 +77,7 @@ Recommandation : (a) avec la signature allégée pour la prochaine vague (zéro 
 | 3 | Prix et date dans la carte | **Tranché : partout** (une démo jamais envoyée n'affiche pas de date) | |
 | 4 | Réceptionniste dans le bandeau | En attente | Après le lancement, pour mesurer la carte seule ; ensuite la position 1 (un seul objet, une seule identité) |
 | 5 | Persona | En attente | Léa, présentée comme l'assistante IA de l'expéditeur (la même que sur dibodev.fr) |
-| 6 | Email | En attente | (a) avec la signature allégée (une seule image) ; (b) ressemble à une newsletter et double le lien |
+| 6 | Email | En attente (variante b refaite le 03/10 au soir, `email-frank-dibodev.html`) | (a) avec la signature allégée (une seule image) ; (b) ressemble à une newsletter et double le lien |
 | 7 | Signature | En attente | Oui, mais sur les modèles « Franc - … » de la bibliothèque, qui servent pour la vague 4 (prix par pays) plutôt que sur 30 à 33 |
 | 8 | Copie de Léa | En attente | « Le nom de domaine est compris » est exact ; « sous 48 h » seulement si c'est tenable à chaque vente, sinon « dans les jours qui suivent le paiement ». Le tiret du modèle 30 ne compte plus : les modèles de la bibliothèque n'en ont pas |
 
