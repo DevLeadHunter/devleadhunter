@@ -31,14 +31,17 @@ from services.activity_log_service import (
     activity_log_service,
 )
 from services.brand_color_service import brand_color_service
+from services.country_profiles import CountryProfile, CountryProfiles
 from services.demo_site_verification_service import (
     DemoSiteVerificationResult,
     demo_site_verification_service,
 )
 from services.demo_slug_guard import DemoSlugGuard
 from services.enrichment_service import enrichment_service
+from services.french_date_formatter import FrenchDateFormatter
 from services.photo_labeling_service import photo_labeling_service
 from services.photo_labels import is_card_worthy, labels_for_urls
+from services.pricing_service import PricingService
 from services.prospect_phones import first_mobile_e164
 from services.prospect_photo_storage_service import prospect_photo_storage
 from services.r2_storage_service import r2_storage
@@ -174,6 +177,35 @@ class DemoSiteService:
             return "FR"
         prospect = enrichment_service.get_prospect_for_user(db, demo_site.user_id, prospect_id)
         return (prospect.country if prospect is not None else None) or "FR"
+
+    def sale_price_label(self, db: Session, demo_site: DemoSite) -> str:
+        """
+        The owner's website sale price as the demo's prospect reads it, the same as ``{prix}`` in his emails.
+
+        Args:
+            db: Active database session.
+            demo_site: The demo the prospect is looking at.
+
+        Returns:
+            The price in the prospect's currency (« 500 € », « ≈ 470 CHF »).
+        """
+        country: CountryProfile = CountryProfiles.get(self._prospect_country_for_site(db, demo_site))
+        return country.format_price(PricingService.sale_price_cents(db, demo_site.user_id))
+
+    @staticmethod
+    def expiry_date_label(demo_site: DemoSite) -> str | None:
+        """
+        The day the demo goes offline, the same as ``{date_expiration}`` in the prospect's emails (« 2 novembre »).
+
+        Args:
+            demo_site: The demo the prospect is looking at.
+
+        Returns:
+            The French day and month, or None while the demo link was never sent (countdown not started).
+        """
+        if demo_site.demo_link_sent_at is None:
+            return None
+        return FrenchDateFormatter.day_month(demo_site.expires_at)
 
     def _enrichment_dict_for_site(self, db: Session, demo_site: DemoSite) -> dict | None:
         """Return the prospect's enrichment data for a demo site, when linked."""
