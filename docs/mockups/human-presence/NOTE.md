@@ -57,6 +57,8 @@ Recommandation : (a) avec la signature allégée pour la prochaine vague (zéro 
 
 Fait vérifié dans Resend le 03/10 : les mails de campagne de la vague 3 sont partis sans signature (premier contact du 28/09, relance du 01/10) ; seules les réponses écrites à la main dans le composeur partent avec la signature. La variante (a) correspond donc aux réponses manuelles, pas aux campagnes.
 
+**Cinq déclinaisons compatibles avec les modèles** (03/10 au soir ; retour : le gabarit doit marcher avec les modèles actuels, sans contenu qu'ils n'ont pas) : `email-frank-declinaisons.html` compare (1) l'habillage seul, (2) un encadré « Votre site » avec le nom, le prix, la date de retrait et un bouton, (3) un titre et un récapitulatif « En bref », (4) la photo de couverture du site de démo en haut de la carte, (5) un en-tête personnel (photo, nom, téléphone) et une signature en texte sans image. Le texte du modèle reste tel quel ; les blocs ajoutés viennent de `{entreprise}`, `{lien_demo}`, `{prix}`, `{date_expiration}`, du profil et de la photo de couverture du site.
+
 ## Choix à trancher
 
 1. Carte : variante **A** (photo en tête) ou **B** (photo discrète) ?
