@@ -77,8 +77,8 @@ class SiteLegalNoticeService:
         """The footer links: the legal notice where the country customarily links it, then the privacy policy."""
         links: list[SiteLegalLink] = []
         if legal_notice_label:
-            links.append(SiteLegalLink(label=legal_notice_label, anchor=legal_notice.anchor))
-        links.append(SiteLegalLink(label=privacy_label, anchor=privacy_notice.anchor))
+            links.append(SiteLegalLink(label=legal_notice_label, page=legal_notice.page, anchor=legal_notice.anchor))
+        links.append(SiteLegalLink(label=privacy_label, page=privacy_notice.page, anchor=privacy_notice.anchor))
         return links
 
     @staticmethod

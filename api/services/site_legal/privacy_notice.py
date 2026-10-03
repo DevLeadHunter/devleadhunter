@@ -16,7 +16,7 @@ POSTHOG_RECORDINGS_RETENTION = "trente jours"
 
 
 class PrivacyNoticeBuilder:
-    """Builds the « Politique de confidentialité » section of a site (« Protection des données » in Switzerland).
+    """Builds the « Politique de confidentialité » page of a site (« Protection des données » in Switzerland).
 
     A delivered site is the business's: the business is in charge of the data, the page measures no
     audience, and the regime of the business's country words the rights. A demo is its publisher's:
@@ -59,9 +59,26 @@ class PrivacyNoticeBuilder:
             cls._rights_block(sources, lines, regime_facts),
         ]
         return SiteLegalSection(
+            page="privacy",
             anchor=SiteLegalLines.anchor(facts.privacy_notice_title),
             title=facts.privacy_notice_title,
+            intro=cls._page_intro(sources, lines),
             blocks=[block for block in blocks if block.lines],
+        )
+
+    @staticmethod
+    def _page_intro(sources: SiteLegalSources, lines: SiteLegalLines) -> str:
+        """The sentence under the page title, in the words of the regime that applies (« renseignements » in Québec)."""
+        if sources.is_demo:
+            return lines.localize(
+                "Comment ce site de démonstration traite vos données personnelles, et quels sont vos droits."
+            )
+        is_quebec = sources.country.site_legal.privacy_regime is PrivacyRegime.QUEBEC_PRIVATE_SECTOR
+        personal_data = "renseignements personnels" if is_quebec else "données personnelles"
+        return lines.localize(
+            "Comment le site de {business} traite vos {personal_data}, et quels sont vos droits.",
+            business=sources.business.name,
+            personal_data=personal_data,
         )
 
     @staticmethod
@@ -77,13 +94,10 @@ class PrivacyNoticeBuilder:
         return SiteLegalBlock(
             heading=lines.localize(heading),
             kind="identity",
-            lines=[
-                *lines.plain(business.name),
-                *role,
-                *lines.plain(business.address),
-                *lines.phone(business.phone, sources.country.code),
-                *lines.email(business.email),
-            ],
+            lines=SiteLegalLines.paragraphs(
+                [*lines.plain(business.name), *role, *lines.plain(business.address)],
+                [*lines.phone(business.phone, sources.country.code), *lines.email(business.email)],
+            ),
         )
 
     @staticmethod
@@ -178,12 +192,14 @@ class PrivacyNoticeBuilder:
         return SiteLegalBlock(
             heading=heading,
             kind="identity",
-            lines=[
-                *lines.plain(publisher.company_name),
-                *lines.plain(publisher.person_name),
-                *lines.address(publisher.postal_address),
-                *lines.email(publisher.email),
-            ],
+            lines=SiteLegalLines.paragraphs(
+                [
+                    *lines.plain(publisher.company_name),
+                    *lines.plain(publisher.person_name),
+                    *lines.address(publisher.postal_address),
+                ],
+                lines.email(publisher.email),
+            ),
         )
 
     @staticmethod

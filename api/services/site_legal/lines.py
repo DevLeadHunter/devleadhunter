@@ -10,7 +10,7 @@ from services.regional_lexicon import RegionalLexicon
 from services.sms.phone_normalizer import to_e164
 
 _NON_ANCHOR_CHARACTERS = re.compile(r"[^a-z0-9]+")
-_HYPHENATED_EMAIL_WORD = re.compile(r"\b([eE])-(mails?)\b")
+_UNBREAKABLE_HYPHENATED_WORD = re.compile(r"\b(?:[eE]-mails?|ci-dess(?:us|ous))\b")
 _NON_BREAKING_HYPHEN = "‑"
 _DOUBLED_PERIOD = re.compile(r"(?<!\.)\.\.(?!\.)")
 
@@ -26,7 +26,7 @@ class SiteLegalLines:
         Write a sentence in the country's words, then fill in its facts.
 
         The template is localized before the facts go in, so a business name is never rewritten
-        (« Mail Coiffure » keeps its name in Québec). « e-mail » keeps its hyphen unbreakable, so a
+        (« Mail Coiffure » keeps its name in Québec). « e-mail » and « ci-dessous » keep their hyphen unbreakable, so a
         line never ends on « e- », and a name ending a sentence on its own period (« Toitures Gagnon
         inc. ») does not get a second one.
 
@@ -38,7 +38,9 @@ class SiteLegalLines:
             The sentence, ready to show.
         """
         localized = RegionalLexicon.localize(template, self._country)
-        unbreakable = _HYPHENATED_EMAIL_WORD.sub(rf"\1{_NON_BREAKING_HYPHEN}\2", localized)
+        unbreakable = _UNBREAKABLE_HYPHENATED_WORD.sub(
+            lambda word: word.group(0).replace("-", _NON_BREAKING_HYPHEN), localized
+        )
         return _DOUBLED_PERIOD.sub(".", unbreakable.format(**facts))
 
     def sentence(self, template: str, href: str | None = None, **facts: str) -> SiteLegalLine:
@@ -96,6 +98,22 @@ class SiteLegalLines:
         without_scheme = href.removeprefix("https://").removeprefix("http://")
         shown_address = without_scheme.removeprefix("www.").removesuffix("/")
         return [SiteLegalLine(label=self.localize("Site"), text=shown_address, href=href)]
+
+    @staticmethod
+    def paragraphs(*groups: list[SiteLegalLine]) -> list[SiteLegalLine]:
+        """
+        The lines of an identity, each group of known facts shown as its own paragraph.
+
+        Args:
+            *groups: The lines of each paragraph, in order; an empty group leaves no gap.
+
+        Returns:
+            The lines, numbered by paragraph.
+        """
+        known_groups = [group for group in groups if group]
+        return [
+            line.model_copy(update={"paragraph": index}) for index, group in enumerate(known_groups) for line in group
+        ]
 
     @staticmethod
     def anchor(title: str) -> str:

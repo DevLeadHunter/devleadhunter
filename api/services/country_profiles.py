@@ -266,9 +266,9 @@ class CountryProfiles:
             domain_tlds=(".ch",),
             site_legal=SiteLegalFacts(
                 locale="fr-CH",
-                page_title="Impressum et protection des données",
-                legal_notice_title="Impressum",
-                legal_notice_link_label="Impressum",
+                page_title="Mentions légales et protection des données",
+                legal_notice_title="Mentions légales",
+                legal_notice_link_label="Mentions légales",
                 privacy_notice_title="Protection des données",
                 privacy_link_label="Protection des données",
                 publisher_heading="Éditeur du site",
