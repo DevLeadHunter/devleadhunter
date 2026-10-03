@@ -38,8 +38,11 @@ lus au format du pays (scrapers, découpage d'adresse à la vente, ville avant l
 pour un prospect CA) ; mention TVA Qonto par pays (S293B, S283, S259 : codes présents dans l'API
 Qonto) ; domaines par pays et RDAP sans faux « disponible » ; pays transmis jusqu'à `build_content_json`
 et lexique régional dans les emails, les SMS et les sites ; `{prix}` dans la monnaie du prospect
-(arrondi à l'unité sous 200) ; pied de mail CASL (lit `SENDER_POSTAL_ADDRESS`, transmis par
-`deploy-api.yml`) ; téléphone nord-américain (lecture, affichage, jamais un mobile SMS) ; garde pays sur
+(arrondi à l'unité sous 200) ; pied de mail CASL (« Envoyé par {entreprise} ({nom}), {adresse} », lu
+sur le profil de l'utilisateur qui envoie : champ « Adresse postale » de « Mon profil »,
+`users.postal_address` ; tant qu'il est vide, tout email commercial vers un prospect québécois est
+retenu, avec la raison affichée sur la ligne de la campagne) ; téléphone nord-américain (lecture,
+affichage, jamais un mobile SMS) ; garde pays sur
 tous les envois SMS, `send_manual` compris, lue sur le profil déclaré ; mention de désinscription posée
 par smsmode (`body.stop`) au lieu de « STOP au 36180 » ; « ≈ » écrit « env. » en SMS ; numéro de
 l'expéditeur en format international pour un prospect hors de France ; fenêtre légale et fériés SMS
@@ -83,7 +86,7 @@ n'est pas vérifié (`SmsProspectingRules.AUTOMATIC_SMS_COUNTRIES`).
 | Côté commande (pas pays) : `orders.billing_region` | province québécoise (champ `state` Stripe, adresse Qonto `province_code`) | 6 |
 | `legal_notice_title`, `legal_footer_lines`, `host_disclosure_required`, `privacy_notice_required`, `trade_permit_label`, `contact_label`, `site_locale`, `payment_methods_phrase` | pied de page et mentions des sites générés, « Nous joindre », `lang="fr-CA"`, moyens de paiement | 4 |
 | `map_region_label`, `map_regions_file` | carte : « Régions administratives », fichier geojson du pays | 2 |
-| Côté utilisateur (pas pays) : `users.sender_postal_address`, `users.city`, `ai_assistants.timezone` | pied CASL, script vidéo, fuseau de l'artisan | 5, 4, 7 |
+| Côté utilisateur (pas pays) : `users.postal_address`, `users.city`, `ai_assistants.timezone` | pied CASL, script vidéo, fuseau de l'artisan | 5, 4, 7 |
 
 ## C. Trois pièges transverses à transmettre aux tickets en cours
 
@@ -265,7 +268,7 @@ Variables email, toutes résolues dans `api/services/email_variables.py:333-357`
 | `api/services/sms/gsm_segments.py:27-37` + `sms/templates.py:173` / `:182` | « ≈ » hors GSM-7 (§ C.2) | « env. » ou format SMS dédié | en cours (piège) |
 | `api/services/email_variables.py:190-191` | `{date_expiration}` calculée en UTC, pas au fuseau du prospect (un jour d'écart possible au Québec le soir) | convertir vers `profile.timezone` avant `day_month` | cosmétique |
 | `api/services/email_variables.py:140` / `:333` | mois en français (« 12 octobre »), « Bonjour M./Mme » | aucun (valide dans les 5 pays) | non-problème |
-| `api/services/unsubscribe_service.py:155-186` + `api/services/email_sending_service.py:257-268` | pied de mail = phrase + lien « Se désabonner » : **ni nom de l'expéditeur, ni adresse postale, ni contact**. CASL (Canada) exige nom + adresse postale + contact valables 60 jours ; `profile.email_footer_needs_postal_address` n'est lu **nulle part** | bloc identité ajouté quand le profil l'exige ; refuser l'envoi CA si l'adresse manque ; **fait manquant côté utilisateur** `users.sender_postal_address` (`api/models/user.py` n'a que `company_name` :71 et `company_website_url` :74 ; `api/schemas/user.py` aucun champ postal) | en cours (Québec) |
+| `api/services/unsubscribe_service.py:155-186` + `api/services/email_sending_service.py:257-268` | pied de mail = phrase + lien « Se désabonner » : **ni nom de l'expéditeur, ni adresse postale, ni contact**. CASL (Canada) exige nom + adresse postale + contact valables 60 jours ; `profile.email_footer_needs_postal_address` n'est lu **nulle part** | bloc identité ajouté quand le profil l'exige ; refuser l'envoi CA si l'adresse manque ; **fait manquant côté utilisateur** `users.postal_address` (`api/models/user.py` n'a que `company_name` :71 et `company_website_url` :74 ; `api/schemas/user.py` aucun champ postal) | en cours (Québec) |
 | `api/services/unsubscribe_service.py:23-37` + `api/api/v1/routes/unsubscribe.py:102` / `:173` / `:203` + `email_sending_service.py:128-140` | jeton HMAC sans date limite (valable > 60 j CASL, > 30 j CAN-SPAM), GET + POST one-click, en-têtes RFC 8058, page `lang="fr"` | aucun | non-problème |
 | `api/services/sms_service.py:55` / `:296-298` + `web/app/components/ui/SendSmsDrawer.vue:105` / `:142` / `:269` + `web/app/pages/dashboard/settings/sms.vue:229` + `web/app/pages/dashboard/campaigns/[id]/index.vue:982` + `web/app/components/ui/DrawerStackHost.vue:710` | « STOP au 36180 » en dur, idempotence testée sur « 36180 » ; `profile.sms_opt_out` (LINK pour CH, no-sms.eu) n'est lu **nulle part** (aucune occurrence de « no-sms » dans le dépôt) ; la regex de `DrawerStackHost` ne retirerait pas une mention en lien (doublon au renvoi) | mention par `sms_opt_out`, renvoyée par l'API au front | en cours (SMS Suisse) |
 | `api/services/sms/send_window.py:17` / `:22-62` / `:66-74` / `:92-114` / `:126` / `:145` | `ZoneInfo("Europe/Paris")`, `now_in_paris`, horaires FR (lun-ven 8-20 h, sam 10-19 h), 11 fériés de métropole | `profile.timezone`, faits manquants `sms_window`, `holidays_country`, `holidays_subdiv` ; lib `holidays` absente de `api/requirements.txt` ; en Suisse les fériés dépendent du canton (déduire du CP ou prendre l'union) | en cours |
@@ -420,7 +423,7 @@ Non vérifié : couverture et prix smsmode vers CA/CH/BE/LU ; `tzdata` absent de
 2. **Mention TVA** : confirmer avec le comptable l'autoliquidation (BE/LU avec n° TVA client valide VIES ; sans n° TVA le client reste traité comme un particulier et `S293B` s'applique), la non-application (CH/CA), l'obligation pour le vendeur d'avoir un n° TVA intracommunautaire et de déposer une DES pour les ventes BE/LU, et retrouver les codes Qonto correspondants dans l'interface (S283 ? S259 ?) pour les mettre dans le profil.
 3. **Probe sandbox** : reconnecter Qonto sandbox en local (OAuth) ou créer une clé API sandbox pour que je lance le script de l'annexe A.
 4. **Domaine `.ca`** : enregistrer au nom du client (exigence de présence canadienne CIRA, contact owner distinct chez OVH) ou proposer `.com` aux Québécois ?
-5. **Adresse postale CASL** : quelle adresse mettre dans le pied de mail (siège, domiciliation) ? Elle devient `users.sender_postal_address`.
+5. **Adresse postale CASL** : quelle adresse mettre dans le pied de mail (siège, domiciliation) ? Elle se saisit dans « Mon profil » (`users.postal_address`).
 6. **Prix du Réceptionniste** : 29 € (migration) ou 79 € (code) ; afficher « 29 € (≈ 50 $ CA) » à un Québécois qui paiera en EUR ?
 7. **Pied légal des sites** : ajouter maintenant un bloc `legal` commun (touche le paquet `website-content` et les 10 layers) ou seulement à la première vente hors France ? Même question pour la politique de confidentialité (Loi 25) sur `/ia/{slug}`.
 8. **Script vidéo** : retirer « à Rennes » pour tout le monde, ou un clip par marché (table `presenter_videos` par marché) ?

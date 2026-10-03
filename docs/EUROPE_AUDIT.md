@@ -93,7 +93,8 @@ fiscal, motif et exemple de code postal, monnaie) — aucun fait pays dupliqué 
 - **Québec (CA) ouvert par email** à la vague 4 (plan `wave-4-plan.md` § 4) : téléphone NANP
   (« 514 555-0199 », jamais lu comme un numéro français), code postal `A1A 1A1`, recherche
   suffixée « Québec », pas de SMS (`sms_prospecting_open=False`), pied de mail CASL avec
-  l'adresse postale `SENDER_POSTAL_ADDRESS`, lexique régional (devis → soumission, e-mail →
-  courriel, portable → cellulaire) appliqué au rendu des messages et aux textes des sites.
+  l'adresse postale du profil de l'utilisateur qui envoie (email retenu tant qu'elle manque),
+  lexique régional (devis → soumission, e-mail → courriel, portable → cellulaire) appliqué au
+  rendu des messages et aux textes des sites.
 - **Prix** : plus de modèle email par pays — `{prix}` et `{prix_assistant}` sont rendus dans la
   monnaie du prospect par `CountryProfile.format_price` (« 500 € », « ≈ 470 CHF », « ≈ 800 $ CA »).
