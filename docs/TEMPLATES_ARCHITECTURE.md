@@ -38,19 +38,25 @@ Toute l'intégration (bridge Storyblok, tracking démo, fetch par slug, type `De
 
 ## Les repos
 
-### État des templates (2026-07-12)
+### État des templates (2026-10-03)
+
+> Source de vérité des tags = `demo-host/nuxt.config.ts` (bloc `extends`) et de l'ordre du
+> picker = `TEMPLATE_MODULES` dans `api/services/templates/registry.py` : relire le code avant toute affirmation.
 
 | `template_id` | Métier | Tag live | Notes |
 |---|---|---|---|
-| `artisan-edito` | Multi-métier (**défaut**) | **v1.2.0** | Template passe-partout éditoriale |
-| `plumber-signature` | Plombier | **v1.2.0** | La plus riche (11 sections) |
-| `plumber-atelier` | Plombier | **v1.3.0** | DA typographique « fiche d'intervention » |
-| `plumber-cuivre` | Plombier | **v1.2.0** | DA bleu eau « Source » |
-| `electrician-lumen` | Électricien | **v1.2.0** | GSAP embarqué dans SES deps |
-| `mechanic-pitlane` | Mécanicien / garagiste | **v1.3.0** | DA asphalt / racing red (AutoWorks), one-page vendable |
-| `dental` | Dentiste / cabinet dentaire | **v1.1.2** | DA Family Dental Care (El Messiri + Nunito), FR, palette thémable, mailto, favicon logo, fallbacks Unsplash |
-| `food` | Food truck / street food | **v1.0.3** | DA crème & vert forêt, primary thémable, Unsplash fallbacks, favicon logo |
-| `barber` | Barbier / coiffeur homme | **v1.1.2** | DA crème & charcoal (Barlow + Work Sans), one-page, favicon logo, fallbacks Unsplash. ⚠️ v1.1.1 → v1.1.2 : un `<img src="/images/…">` statique vers un fichier absent **cassait le build Vercel du demo-host** (le build du layer restait vert) |
+| `artisan-edito` | Multi-métier (**défaut**) | **v1.4.1** | Template passe-partout éditoriale |
+| `plumber-signature` | Plombier | **v1.4.0** | La plus riche (11 sections) |
+| `plumber-atelier` | Plombier | **v1.5.0** | DA typographique « fiche d'intervention » |
+| `plumber-cuivre` | Plombier | **v1.4.0** | DA bleu eau « Source » |
+| `electrician-lumen` | Électricien | **v1.4.0** | GSAP embarqué dans SES deps |
+| `mechanic-pitlane` | Mécanicien / garagiste | **v1.4.0** | DA asphalt / racing red (AutoWorks), one-page vendable |
+| `dental` | Dentiste / cabinet dentaire | **v1.3.0** | DA Family Dental Care (El Messiri + Nunito), FR, palette thémable, mailto, favicon logo, fallbacks Unsplash |
+| `food` | Food truck / street food | **v1.2.0** | DA crème & vert forêt, primary thémable, Unsplash fallbacks, favicon logo |
+| `barber` | Barbier / coiffeur homme | **v1.3.0** | DA crème & charcoal (Barlow + Work Sans), one-page, favicon logo, fallbacks Unsplash |
+| `landscaper-verdure` | Paysagiste | **v1.7.0** | DA verte « Verdure », section avis, vrais chiffres, méthode ; champs Storyblok propres via `SECTION_FIELDS` |
+
+Contrat `@devleadhunter/website-content` : **v1.11.0** (licence professionnelle `professionalLicenseLabel` / `professionalLicenseNumber` + `professionalLicenseLine()`, rendue en pied de page par les 10 templates).
 
 *(`plumber-simple` retiré + archivé le 2026-07-08 — trop générique.)* La migration en layers est
 **terminée et en prod** depuis le 2026-07-08 ; le legacy in-repo a été supprimé.
@@ -267,8 +273,10 @@ Deux contextes distincts :
 4. Fournir un mock dans `content.ts` pour le `.playground`.
 5. Tag `v1.0.0`.
 6. Côté demo-host : ajouter 1 ligne dans `extends` + l'entrée dans le dispatch `defineAsyncComponent`.
-7. Côté API : créer `api/services/templates/<id>.py` (`TEMPLATE_ID`, `TEMPLATE_META`, **`build_site_content`** — appelle `map_prospect_and_enrichment` de `site_content.py` et ajoute ses `services`/`faq` métier) + l'ajouter à `TEMPLATE_MODULES` dans `registry.py`.
-8. **Vérifier la checklist Storyblok ci-dessous** — c'est elle qui garantit que le client livré peut vraiment éditer son site.
+7. Côté API : créer `api/services/templates/<id>.py` (`TEMPLATE_ID`, `TEMPLATE_META`, **`build_site_content`** — appelle `map_prospect_and_enrichment` de `site_content.py` et ajoute ses `services`/`faq` métier) + l'ajouter à `TEMPLATE_MODULES` dans `registry.py`. **Déclarer `USED_SECTIONS`** = la liste ordonnée des sections que le layer rend (suffixes de `SECTION_DEFINITIONS` : hero/trust/about/services/gallery/reviews/faq/beforeAfter/contact) → l'éditeur client ne montre que ces sections (défaut = toutes). Droper une section **non rendue** est sûr ; ne jamais droper une section rendue.
+8. **Click-to-edit** : dans le composant racine, `import { editableAttrs } from '@devleadhunter/website-content'` et poser `v-bind="editableAttrs(content._editable?.<section>)"` sur chaque `<XSection>` (fallthrough Vue sur sa racine). Bumper la dépendance `@devleadhunter/website-content` ≥ v1.5.0.
+9. **Licence professionnelle** : rendre `professionalLicenseLine(content)` (contrat ≥ v1.11.0) en pied de page, et dans la section confiance si la template en a une ; rien d'affiché quand le numéro est vide. Obligatoire sur le site d'un entrepreneur en construction au Québec (licence RBQ). ⚠️ Toute fonction du contrat utilisée dans le template (`editableAttrs`, `professionalLicenseLine`) s'importe explicitement depuis `@devleadhunter/website-content` : rien ne l'auto-importe, et un oubli plante le rendu (dental v1.2.3).
+10. **Vérifier la checklist Storyblok ci-dessous** — c'est elle qui garantit que le client livré peut vraiment éditer son site.
 
 ### Checklist Storyblok d'une template (CMS client fonctionnel)
 
