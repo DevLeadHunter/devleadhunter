@@ -29,30 +29,39 @@
 - **Copie templates** : trust électricien neutralisé (NF C 15-100 / garantie décennale /
   Consuel → formulations vraies partout), « Devis 0 € » → « Devis gratuit » (4 templates).
 
-## 🔴 Reste — bloquant à la PREMIÈRE VENTE CH/BE (à faire avant de finaliser une vente hors France)
+## ✅ Fait (2026-10-03, ticket Support Québec) — la vente hors France ne casse plus
 
-1. **`order_service._split_postal_address`** ne reconnaît que les CP à 5 chiffres → `zip_code`
-   vide → la finalisation exige un code postal introuvable. CH/BE = 4 chiffres.
-2. **`UiTaxIdLookupInput` / `taxIdUtils.ts`** : un IDE suisse (CHE-xxx.xxx.xxx) réduit à
-   9 chiffres peut passer le Luhn et déclencher un lookup SIRENE qui écrase le formulaire avec
-   une société française tierce (`FinalizeSaleDrawer.applyRegistryPrefill`). Un n° BCE belge
-   (10 chiffres) est bloqué « incomplet ». → Par pays : champ libre hors FR, pas de lookup.
-3. **`FinalizeSaleDrawer`** : `country_code: 'FR'` en dur, autocomplete BAN, « Montant (€) ».
-   → sélecteur de pays (préréglé sur `prospect.country`) + saisie libre hors FR.
-4. **Qonto** : `locale FR`, `EUR`, mention `S293B` (franchise TVA française) en dur. Pour la
-   Belgique (B2B intracommunautaire) la mention correcte est l'autoliquidation (art. 196 dir.
-   TVA) ; pour la Suisse (export hors UE) la TVA n'est pas applicable — et un client suisse
-   attend du CHF. À trancher au premier acheteur : facturer en EUR (simple, légal) et adapter la
-   mention, ou gérer le CHF.
-5. **Domaine** : `suggestion_service` ne propose que du `.fr` ; proposer `.ch`/`.be` selon le
-   pays (l'achat OVH lui-même semble générique, à vérifier au premier cas).
+Tout passe par le socle `api/services/country_profiles.py` (`CountryProfile` par pays) et la
+route `GET /api/v1/countries` que le drawer consomme (libellé et obligation de l'identifiant
+fiscal, motif et exemple de code postal, monnaie) — aucun fait pays dupliqué côté front.
+
+1. **`order_service._split_postal_address(address, city, country)`** lit le motif du profil
+   (FR 5 chiffres, CH/BE/LU 4, CA `A1A 1A1`, ville avant le code et province « (Québec) »
+   retirée) ; `billing_details_for_order` prérègle le pays de facturation sur
+   `prospect.country`.
+2. **`FinalizeSaleDrawer`** : sélecteur « Pays de facturation » (préréglé), lookup SIRENE et
+   autocomplete BAN seulement en France, champ libre ailleurs avec le libellé du pays (SIREN /
+   SIRET, IDE (CHE), Numéro BCE, Numéro RCS, NEQ), contrôle de la forme du code postal,
+   « Montant (€) » conservé (on encaisse en euros).
+3. **Identifiant fiscal optionnel hors France** (`missing_billing_fields` + drawer) : Qonto
+   documente le TIN comme optionnel à la création du client ; jamais de chaîne vide envoyée.
+   ⚠️ Reste à vérifier en sandbox Qonto avec un client CH/CA sans TIN (voir § 9 du plan vague 4).
+4. **Qonto** : EUR partout ; `vat_exemption_reason` par pays — `S293B` (art. 293 B) en France,
+   `S283` (autoliquidation, art. 196 directive TVA / art. 283-2 CGI) pour un B2B de l'UE
+   (BE/LU), `S259` (prestation de services exportée hors UE, art. 259-1 CGI) pour CH/CA, la
+   mention en clair répétée dans `terms_and_conditions` hors France. Le CHF n'est pas géré
+   (décision : facturer en euros, la banque du client convertit).
+5. **Domaine** : `suggestion_service.suggest(…, country)` propose les TLD du profil
+   (`.fr` / `.ch` / `.be` / `.lu` / `.ca`), prix OVH par TLD.
+6. **Extraction ville/CP** : `GoogleScraper.extract_city`, `OSMScraper.extract_city`,
+   `facebook_enrichment_scraper._parse_city_postal` et la garde `_place_mismatch` lisent le
+   motif du profil (mots pays « Suisse / Belgique / Québec, QC, Canada » compris) ; Nominatim
+   `countrycodes` suit le pays jusque dans l'enrichissement OSM.
 
 ## 🟠 Reste — dégrade la qualité CH/BE (non bloquant pour la vague email)
 
-- **Extraction ville/CP** : partout `\d{5}` (google/osm/pagesjaunes `extract_city`,
-  `facebook_enrichment_scraper._parse_city_postal` + regex « France » littéral). CH/BE = 4
-  chiffres → `place_city`/`place_postal_code` vides → garde-fou homonyme de fiche inactif.
-- **Parseur téléphone FB** (`_FR_PHONE_RE`) : ignore `+41`/`+32` → prospect FB CH/BE sans tel.
+- **Parseur téléphone FB** (`_FR_PHONE_RE`) : ignore `+41`/`+32` → prospect FB CH/BE sans tel
+  (le plan nord-américain est lu pour un prospect CA).
 - **`email_scraper`** : `gl=fr` en dur + stratégie « nom + téléphone » réservée aux numéros FR.
 - **Scoring email** : blocklist d'annuaires FR uniquement — ajouter local.ch, search.ch,
   moneyhouse.ch, zefix.ch, goldenpages.be, kbopub… + « commune de » (équivalents mairie).
@@ -74,8 +83,14 @@
 - Lead scoring : purement comportemental, aucun biais géo.
 - `resilient_extract._PHONE_RE` (JSON-LD) : déjà international.
 
-## Décisions associées (vague 3)
+## Décisions associées (vague 3, révisées vague 4)
 
-- Canada écarté (CASL). USA = email only (TCPA interdit le cold SMS) et chaîne 100 % FR à
-  traduire d'abord. Suisse : rester en 1-to-1 ultra-personnalisé (la « publicité de masse »
-  y est opt-in). Prix : mention « ≈470 CHF » dans le modèle email suisse.
+- USA = email only (TCPA interdit le cold SMS) et chaîne 100 % FR à traduire d'abord. Suisse :
+  rester en 1-to-1 ultra-personnalisé (la « publicité de masse » y est opt-in).
+- **Québec (CA) ouvert par email** à la vague 4 (plan `wave-4-plan.md` § 4) : téléphone NANP
+  (« 514 555-0199 », jamais lu comme un numéro français), code postal `A1A 1A1`, recherche
+  suffixée « Québec », pas de SMS (`sms_prospecting_open=False`), pied de mail CASL avec
+  l'adresse postale `SENDER_POSTAL_ADDRESS`, lexique régional (devis → soumission, e-mail →
+  courriel, portable → cellulaire) appliqué au rendu des messages et aux textes des sites.
+- **Prix** : plus de modèle email par pays — `{prix}` et `{prix_assistant}` sont rendus dans la
+  monnaie du prospect par `CountryProfile.format_price` (« 500 € », « ≈ 470 CHF », « ≈ 800 $ CA »).
