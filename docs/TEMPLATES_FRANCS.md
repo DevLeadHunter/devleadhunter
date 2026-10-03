@@ -97,7 +97,7 @@ Choix de copy communs : plus de `{vignette_video}` dans les emails texte (une se
 - Module sites web : `direct` (Franc - premier contact), `video`, `site-en-panne`, `refonte` ; relances `rappel-court`, `offre-a-vie`, `offre-a-vie-video`, `site-en-panne-relance`, `refonte-relance`.
 - Module réceptionniste : `assistant-24-7`, `assistant-langues`, `assistant-demandes`, `assistant-video` ; relances `assistant-relance`, `assistant-relance-video`, `assistant-prix-cash`.
 - Retirés du code : `visibilite`, `credibilite`, `bouche-a-oreille`, `autonomie`, `urgence-douce` (jamais envoyés ; leur angle tenait en une demi-phrase qui ne rentre plus dans un SMS franc). Les clés stockées en base (`direct`, `offre-a-vie`, `rappel-court`) sont conservées.
-- Budget : un SMS de prospection franc prend 2 segments GSM-7 (306 caractères, mention de désinscription comprise : smsmode l'ajoute à l'envoi, 14 caractères réservés en France, 25 en Suisse). Les tests garantissent 2 segments au plus, en France comme en Suisse, avec un slug de 26 caractères, un nom d'entreprise de 26 caractères et un téléphone de 14 caractères. Les messages de service (alertes réceptionniste) restent à 1 segment.
+- Budget : un SMS de prospection franc prend 2 segments GSM-7 (306 caractères, mention de désinscription comprise : smsmode l'ajoute à l'envoi, 14 caractères réservés en France, 25 en Suisse). Les tests garantissent 2 segments au plus, en France comme en Suisse (prix écrits « env. 470 CHF »), avec un slug de 26 caractères, un nom d'entreprise de 26 caractères et un téléphone de 14 caractères. Les messages de service (alertes réceptionniste) restent à 1 segment.
 - Nouvelle variable `{telephone}` : le téléphone public de l'expéditeur (`users.contact_phone`, celui du bandeau démo, Paramètres). L'expéditeur « Dibodev » ne reçoit pas de réponse : chaque SMS dit « Un mot me suffit, oui ou non, au {telephone}. » Si le téléphone public n'est pas renseigné, le SMS est refusé à l'envoi comme dans l'aperçu (« Renseignez votre téléphone de contact dans votre profil »).
 
 ### Migration de données (`reseed_frank_email_template_library`)
@@ -468,10 +468,10 @@ Bonjour M. Martin, le site envoyé par email est toujours en ligne : demo.dibode
 
 #### Offre à vie (`offre-a-vie`)
 
-- Catégorie : Relance J+30 ; 2 segments, 267 caractères (mention STOP comprise)
+- Catégorie : Relance J+30 ; 2 segments, 257 caractères (mention STOP comprise)
 
 ```
-Bonjour M. Martin, le site de Garage Martin envoyé par email est toujours en ligne : demo.dibodev.fr/s/garage-martin 500 € une seule fois, sans abonnement, et il est à vous, sur votre propre adresse. Un mot me suffit, oui ou non, au 06 12 34 56 78. Marc
+Bonjour M. Martin, le site de Garage Martin envoyé par email reste en ligne : demo.dibodev.fr/s/garage-martin 500 € une seule fois, sans abonnement, il est à vous, sur votre propre adresse. Un mot me suffit, oui ou non, au 06 12 34 56 78. Marc
 ```
 
 #### Offre à vie - vidéo (`offre-a-vie-video`)
@@ -502,10 +502,10 @@ Bonjour M. Martin, la nouvelle version de votre site, envoyée par email, est en
 
 #### Réceptionniste IA - le soir, personne ne répond (`assistant-24-7`)
 
-- Catégorie : Premier contact ; 2 segments, 280 caractères (mention STOP comprise)
+- Catégorie : Premier contact ; 2 segments, 266 caractères (mention STOP comprise)
 
 ```
-Bonjour M. Martin, j'ai préparé Nathan, votre réceptionniste virtuelle (une IA) : le soir, elle répond à vos clients. demo.dibodev.fr/s/ia/garage-martin 79 €/mois sans engagement, 1er mois satisfait ou remboursé. Un mot me suffit, oui ou non, au 06 12 34 56 78. Marc
+Bonjour M. Martin, j'ai préparé Nathan, votre réceptionniste virtuelle (une IA) : le soir, elle répond. demo.dibodev.fr/s/ia/garage-martin 79 €/mois sans engagement, 1er mois satisfait ou remboursé. Un mot me suffit, oui ou non, au 06 12 34 56 78. Marc
 ```
 
 #### Réceptionniste IA - dans leur langue (`assistant-langues`)
@@ -518,18 +518,18 @@ Bonjour M. Martin, j'ai préparé Nathan, votre réceptionniste virtuelle (une I
 
 #### Réceptionniste IA - devis par photo (`assistant-demandes`)
 
-- Catégorie : Premier contact ; 2 segments, 277 caractères (mention STOP comprise)
+- Catégorie : Premier contact ; 2 segments, 272 caractères (mention STOP comprise)
 
 ```
-Bonjour M. Martin, j'ai préparé Nathan, votre réceptionniste virtuelle (une IA) : une photo, une demande de devis. demo.dibodev.fr/s/ia/garage-martin 79 €/mois sans engagement, 1er mois satisfait ou remboursé. Un mot me suffit, oui ou non, au 06 12 34 56 78. Marc
+Bonjour M. Martin, j'ai préparé Nathan, votre réceptionniste virtuelle (une IA) : demande de devis par photo. demo.dibodev.fr/s/ia/garage-martin 79 €/mois sans engagement, 1er mois satisfait ou remboursé. Un mot me suffit, oui ou non, au 06 12 34 56 78. Marc
 ```
 
 #### Réceptionniste IA - en vidéo (`assistant-video`)
 
-- Catégorie : Premier contact, repli sans vidéo : `assistant-24-7` ; 2 segments, 280 caractères (mention STOP comprise)
+- Catégorie : Premier contact, repli sans vidéo : `assistant-24-7` ; 2 segments, 262 caractères (mention STOP comprise)
 
 ```
-Bonjour M. Martin, j'ai préparé Nathan, votre réceptionniste virtuelle (une IA). Je vous la montre en 30 s de vidéo : demo.dibodev.fr/s/va/garage-martin 79 €/mois sans engagement, 1er mois satisfait ou remboursé. Un mot me suffit, oui ou non, au 06 12 34 56 78. Marc
+Bonjour M. Martin, j'ai préparé Nathan, votre réceptionniste virtuelle (une IA). En 30 s de vidéo : demo.dibodev.fr/s/va/garage-martin 79 €/mois sans engagement, 1er mois satisfait ou remboursé. Un mot me suffit, oui ou non, au 06 12 34 56 78. Marc
 ```
 
 #### Réceptionniste IA - relance (`assistant-relance`)
