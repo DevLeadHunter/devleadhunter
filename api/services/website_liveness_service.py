@@ -43,6 +43,16 @@ class WebsiteLivenessService:
             "solocal.com",
             "wixsite.com",
             "pagesjaunes.fr",
+            "local.ch",
+            "search.ch",
+            "localsearch.ch",
+            "goldenpages.be",
+            "pagesdor.be",
+            "goudengids.be",
+            "editus.lu",
+            "yellow.lu",
+            "pagesjaunes.ca",
+            "yellowpages.ca",
         }
     )
 
@@ -56,6 +66,9 @@ class WebsiteLivenessService:
         "domain has expired",
         "ce domaine est à vendre",
         "ce nom de domaine a expiré",
+        "domain zu verkaufen",
+        "domain ist zu verkaufen",
+        "domain steht zum verkauf",
     )
 
     # Statuses that prove the page is gone. Other 4xx (401/403/429…) usually

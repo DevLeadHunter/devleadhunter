@@ -133,3 +133,58 @@ def test_proximity_breaks_ties_between_bare_generics() -> None:
     page = f"loin@example-mail.fr{filler}Boulangerie Martin proche@contact-mail.fr"
     best = scorer.best_email(page, name="Boulangerie Martin", city="Nantes")
     assert best == "proche@contact-mail.fr"
+
+
+def test_foreign_directories_are_never_the_artisan_email() -> None:
+    """local.ch, pagesjaunes.ca and their peers list the artisan; their address is the directory's."""
+    for email in (
+        "info@local.ch",
+        "contact@localsearch.ch",
+        "info@pagesjaunes.ca",
+        "service@411.ca",
+        "info@goldenpages.be",
+        "contact@editus.lu",
+    ):
+        assert _only(email, name="Sanitaire Rochat", city="Lausanne") is None, email
+
+
+def test_a_directory_subdomain_is_rejected_like_its_domain() -> None:
+    assert _only("info@tel.search.ch", name="Sanitaire Rochat", city="Lausanne") is None
+    assert _only("info@mylocal.ch", name="Sanitaire Rochat", city="Lausanne") == "info@mylocal.ch"
+
+
+def test_a_local_ch_listing_never_beats_the_swiss_plumber_email() -> None:
+    page = "Sanitaire Rochat, Lausanne : info@local.ch. Plus d'infos sur la fiche. Écrire à atelier.lausanne@bluewin.ch"
+    assert scorer.best_email(page, name="Sanitaire Rochat", city="Lausanne") == "atelier.lausanne@bluewin.ch"
+
+
+def test_foreign_state_and_canton_domains_are_rejected() -> None:
+    for email in (
+        "info@bk.admin.ch",
+        "contact@etat.ge.ch",
+        "info@vd.ch",
+        "info@economie.fgov.be",
+        "contact@belgium.be",
+        "guichet@guichet.public.lu",
+        "info@canada.gc.ca",
+        "req@registreentreprises.gouv.qc.ca",
+        "311@ville.montreal.qc.ca",
+    ):
+        assert _only(email, name="Plomberie Tremblay", city="Laval") is None, email
+    assert _only("contact@sysadmin.ch", name="Sysadmin", city="Genève") == "contact@sysadmin.ch"
+
+
+def test_a_quebec_provincial_domain_is_split_after_qc_ca() -> None:
+    assert EmailCandidateScorer._registrable_label("plomberie-tremblay.qc.ca") == "plomberie-tremblay"
+    assert EmailCandidateScorer._registrable_label("info.plomberie-tremblay.qc.ca") == "plomberie-tremblay"
+    assert EmailCandidateScorer._registrable_label("saint-germain-lembron.fr") == "saint-germain-lembron"
+
+
+def test_two_qc_ca_domains_no_longer_share_the_website_bonus() -> None:
+    page = "voisin@toitures-gagnon.qc.ca puis Plomberie Tremblay jean@plomberie-tremblay.qc.ca"
+    best = scorer.best_email(page, name="Garage X", city="Laval", website="https://www.plomberie-tremblay.qc.ca")
+    assert best == "jean@plomberie-tremblay.qc.ca"
+
+
+def test_a_qc_ca_town_hall_named_after_the_city_is_rejected() -> None:
+    assert _only("info@montreal.qc.ca", name="Plomberie Tremblay", city="Montréal") is None

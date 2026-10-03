@@ -147,3 +147,28 @@ def test_verdict_is_cached_per_url() -> None:
     assert _check(service, "https://meme-site.fr") is WebsiteStatus.DEAD
     assert _check(service, "https://meme-site.fr") is WebsiteStatus.DEAD
     assert len(_FakeAsyncClient.requested_urls) == 1
+
+
+def test_live_foreign_directory_listing_is_placeholder() -> None:
+    service = WebsiteLivenessService()
+    _FakeAsyncClient.response = _FakeResponse(status_code=200)
+    assert _check(service, "https://www.local.ch/fr/d/lausanne/1004/sanitaire/abc") is WebsiteStatus.PLACEHOLDER
+    assert _check(service, "https://sanitaire-rochat.localsearch.ch") is WebsiteStatus.PLACEHOLDER
+    assert _check(service, "https://www.pagesjaunes.ca/bus/Quebec/Laval/Plomberie-Tremblay/1234567.html") is (
+        WebsiteStatus.PLACEHOLDER
+    )
+
+
+def test_german_domain_for_sale_page_is_dead() -> None:
+    service = WebsiteLivenessService()
+    _FakeAsyncClient.response = _FakeResponse(status_code=200, text="<h1>Diese Domain steht zum Verkauf!</h1>")
+    assert _check(service, "https://sanitaer-meier.ch") is WebsiteStatus.DEAD
+    _FakeAsyncClient.response = _FakeResponse(status_code=200, text="<title>Domain zu verkaufen</title>")
+    assert _check(service, "https://garage-huber.ch") is WebsiteStatus.DEAD
+
+
+def test_a_live_german_site_selling_something_stays_live() -> None:
+    """« Occasionen zu verkaufen » on a garage site is not a parked domain."""
+    service = WebsiteLivenessService()
+    _FakeAsyncClient.response = _FakeResponse(status_code=200, text="<h2>Occasionen zu verkaufen</h2>")
+    assert _check(service, "https://garage-keller.ch") is WebsiteStatus.LIVE
