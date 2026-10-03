@@ -72,12 +72,10 @@ Recommandation : (a) avec la signature allégée pour la prochaine vague (zéro 
 | 2 | Bouton | En attente | « Me répondre » : le champ invite au oui, au non ou à une question, « Je suis intéressé » contredit le non |
 | 3 | Prix et date dans la carte | En attente | Partout (règle n° 1) ; une démo jamais envoyée n'affiche pas de date |
 | 4 | Réceptionniste dans le bandeau | En attente | Après le lancement, pour mesurer la carte seule ; ensuite la position 1 (un seul objet, une seule identité) |
-| 5 | Persona | En attente | Léa, présentée comme « assistante IA de Léo » (la même que sur dibodev.fr) |
+| 5 | Persona | En attente | Léa, présentée comme l'assistante IA de l'expéditeur (la même que sur dibodev.fr) |
 | 6 | Email | En attente | (a) avec la signature allégée (une seule image) ; (b) ressemble à une newsletter et double le lien |
 | 7 | Signature | En attente | Oui, mais sur les modèles « Franc - … » de la bibliothèque, qui servent pour la vague 4 (prix par pays) plutôt que sur 30 à 33. Prérequis : la photo et le téléphone du profil sont vides en prod |
 | 8 | Copie de Léa | En attente | « Le nom de domaine est compris » est exact ; « sous 48 h » seulement si c'est tenable à chaque vente, sinon « dans les jours qui suivent le paiement ». Le tiret du modèle 30 ne compte plus : les modèles de la bibliothèque n'en ont pas |
-
-La carte (variante C) se code en un jour environ, sans attendre les choix 4, 5 et 8, qui concernent la réceptionniste.
 
 ## Contraintes de délivrabilité vérifiées (email)
 

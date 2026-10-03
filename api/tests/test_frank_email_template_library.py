@@ -26,11 +26,8 @@ _FORBIDDEN_WORDS = re.compile(r"\b(voici|cliquez|ici)\b", re.IGNORECASE)
 _LONG_DASHES = ("—", "–")
 _BIG_BRANDS = ("google", "apple", "facebook", "instagram")
 _EXIT_MARKERS = ("non", "rien à faire")
-# A follow-up may close on the time left to think instead of the way out, stated just before.
 _CLOSING_MARKERS = (*_EXIT_MARKERS, "Prenez votre temps")
-# Like the frank website email, these keep a single door: the demo link, no video thumbnail.
 _SINGLE_DOOR_RECEPTIONIST_EMAILS = ("Réceptionniste IA - franc", "Réceptionniste IA - en bref")
-# The persona's gender lives in the variables: the copy itself never agrees with it.
 _GENDERED_RECEPTIONIST_WORDS = re.compile(
     r"\b(il|elle|virtuel|virtuelle|préparée|une réceptionniste|un réceptionniste|la réceptionniste)\b", re.IGNORECASE
 )

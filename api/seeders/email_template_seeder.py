@@ -257,7 +257,6 @@ EMAIL_TEMPLATE_LIBRARY: list[dict[str, object]] = [
             "{lien_assistant}</p>" + _RECEPTIONIST_PRICE_LINE + _RECEPTIONIST_EXPIRY_LINE + _SINGLE_ASK_WITH_EXIT
         ),
     },
-    # Everything the receptionist does, in keywords: the prospect sees it is more than a chatbot.
     {
         "name": "Réceptionniste IA - en bref",
         "category": _FIRST,
