@@ -202,6 +202,36 @@ def test_create_invoice_builds_finalized_body_and_parses_result() -> None:
     assert link["potential_payment_methods"] == ["bank_transfer", "credit_card", "apple_pay"]
 
 
+@pytest.mark.parametrize(
+    ("country", "code", "mention_repeated"),
+    [("FR", "S293B", False), ("BE", "S283", True), ("LU", "S283", True), ("CH", "S259", True)],
+)
+def test_create_invoice_vat_mention_follows_the_client_country(country: str, code: str, mention_repeated: bool) -> None:
+    """Franchise en base in France, reverse charge in the EU, export of services outside it — always in euros."""
+    _FakeAsyncClient.routes = {
+        ("POST", "/client_invoices"): {"client_invoice": {"id": "inv_1", "number": "F-2026-007"}},
+        ("POST", "/payment_links"): {"payment_link": {"id": "pl_1"}},
+    }
+    client = BillingClient(name="Paysagement Tremblay", country_code=country)
+    request = InvoiceRequest(client=client, amount_cents=50000, currency="eur", label="Site web")
+    asyncio.run(_provider().create_invoice("cli_1", request))
+
+    body = _last_call("POST", "/client_invoices")["json"]
+    assert body["currency"] == "EUR"
+    assert body["items"][0]["vat_rate"] == "0"
+    assert body["items"][0]["vat_exemption_reason"] == code
+    assert ("terms_and_conditions" in body) is mention_repeated
+
+
+def test_vat_exemption_mentions_read_as_leo_writes_them() -> None:
+    """The mention a foreign client reads names the regime in plain words."""
+    exemption_for = QontoPaymentProvider.vat_exemption_for
+    assert exemption_for("FR").mention == "TVA non applicable, art. 293 B du CGI"
+    assert exemption_for("CH").mention.startswith("TVA non applicable, exportation hors UE")
+    assert exemption_for("BE").mention.startswith("Autoliquidation, art. 196 directive TVA")
+    assert exemption_for(None) == exemption_for("FR")
+
+
 def test_create_invoice_requires_iban() -> None:
     """Without an IBAN the invoice can't be issued (Qonto requires it)."""
     request = InvoiceRequest(client=BillingClient(name="X"), amount_cents=50000, currency="eur", label="Site web")

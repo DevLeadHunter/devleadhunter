@@ -230,6 +230,66 @@ def test_split_postal_address_extracts_zip_and_city() -> None:
     assert _split_postal_address("8 avenue des Ternes", "Paris") == ("8 avenue des Ternes", None, "Paris")
 
 
+def test_split_postal_address_reads_the_prospect_country_shape() -> None:
+    """Swiss and Belgian codes have four digits; the country written after the city is never taken for it."""
+    assert _split_postal_address("Rue du Rhône 12, 1204 Genève", None, "CH") == ("Rue du Rhône 12", "1204", "Genève")
+    assert _split_postal_address("Rue de la Loi 16, 1000 Bruxelles", None, "BE") == (
+        "Rue de la Loi 16",
+        "1000",
+        "Bruxelles",
+    )
+    assert _split_postal_address("Rue du Rhône 12, 1204 Genève, Suisse", None, "CH") == (
+        "Rue du Rhône 12",
+        "1204",
+        "Genève",
+    )
+    assert _split_postal_address("12 rue de la Paix, 75002 Paris, France", None) == (
+        "12 rue de la Paix",
+        "75002",
+        "Paris",
+    )
+    # A four-digit code is not a French one: the address stays whole rather than inventing a zip.
+    assert _split_postal_address("Rue du Rhône 12, 1204 Genève", "Genève", "FR") == (
+        "Rue du Rhône 12, 1204 Genève",
+        None,
+        "Genève",
+    )
+
+
+def test_billing_details_pre_set_the_prospect_country() -> None:
+    """A Swiss prospect opens the drawer on Switzerland, with its address split the Swiss way."""
+
+    class _ProspectDB(_FakeDB):
+        def query(self, *_entities: object) -> SimpleNamespace:
+            prospect = SimpleNamespace(address="Rue du Rhône 12, 1204 Genève", city=None, country="CH")
+            return SimpleNamespace(filter=lambda *_c: SimpleNamespace(first=lambda: prospect))
+
+    order = _order(
+        prospect_id=3, billing_address=None, billing_city=None, billing_zip_code=None, billing_country_code=None
+    )
+    details = OrderService().billing_details_for_order(_ProspectDB(), order)
+    assert details["country_code"] == "CH"
+    assert (details["address"], details["zip_code"], details["city"]) == ("Rue du Rhône 12", "1204", "Genève")
+
+
+def test_missing_billing_fields_wants_no_tax_id_outside_france(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Qonto documents the TIN as optional: a Swiss client is invoiced without one, a French one is not."""
+    service = OrderService()
+    monkeypatch.setattr(service, "connected_provider", lambda _db, _user: "qonto")
+    billing = {
+        "name": "Paysagiste Favre",
+        "email": "info@favre.ch",
+        "address": "Rue du Rhône 12",
+        "zip_code": "1204",
+        "city": "Genève",
+        "country_code": "CH",
+    }
+    assert service.missing_billing_fields(_FakeDB(), SimpleNamespace(id=1), billing) == []
+    assert service.missing_billing_fields(_FakeDB(), SimpleNamespace(id=1), {**billing, "country_code": "FR"}) == [
+        "le SIREN / SIRET"
+    ]
+
+
 def test_missing_billing_fields_lists_every_gap(monkeypatch: pytest.MonkeyPatch) -> None:
     """Every provider-required field missing is reported at once, not one by one."""
     service = OrderService()

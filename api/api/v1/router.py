@@ -20,6 +20,7 @@ from .routes import (
     automations,
     behavior,
     campaigns,
+    countries,
     credit_settings,
     credits,
     dashboard,
@@ -97,6 +98,7 @@ router.include_router(payment_accounts.router)
 router.include_router(dashboard.router)
 router.include_router(behavior.router)
 router.include_router(sources.router)
+router.include_router(countries.router)
 router.include_router(webhooks.router)
 router.include_router(admin_storage.router)
 router.include_router(organizations.router)

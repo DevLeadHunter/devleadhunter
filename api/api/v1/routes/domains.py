@@ -79,21 +79,26 @@ async def check_availability(name: str, current_user: User = Depends(require_aut
 @router.get(
     "/suggestions",
     response_model=DomainSuggestionsResponse,
-    summary="Suggest a .fr domain from a prospect or a business name",
-    description="Build logical .fr candidates (name/city/trade), enrich with AI, check availability. Pass prospect_id, or name.",
+    summary="Suggest a domain from a prospect or a business name",
+    description=(
+        "Build logical candidates (name/city/trade) under the extensions of the prospect's country, "
+        "enrich with AI, check availability. Pass prospect_id, or name (+ country)."
+    ),
 )
 async def suggest_domains(
     prospect_id: int | None = None,
     name: str | None = None,
     city: str | None = None,
     category: str | None = None,
+    country: str = "FR",
     ai: bool = True,
     current_user: User = Depends(require_auth),
     db: Session = Depends(get_db),
 ) -> DomainSuggestionsResponse:
-    """Suggest a pre-fillable ``.fr`` domain from a visible prospect or a raw business name.
+    """Suggest a pre-fillable domain from a visible prospect or a raw business name.
 
-    Pass ``ai=false`` for snappy as-you-type suggestions (skips Groq).
+    The prospect's country picks the extensions (``.fr``, ``.ch``, ``.be``, ``.lu``, ``.ca``);
+    with a raw name, ``country`` does. Pass ``ai=false`` for snappy as-you-type suggestions (skips Groq).
 
     Raises:
         HTTPException: 404 when a given prospect is not visible; 400 when neither prospect_id nor name is given.
@@ -107,11 +112,13 @@ async def suggest_domains(
             org_id = organization_service.user_org_id(db, current_user.id)
             if org_id is None or row.organization_id != org_id:
                 raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Prospect {prospect_id} not found")
-        name, city, category = row.name, row.city, row.category
+        name, city, category, country = row.name, row.city, row.category, row.country
     if not (name or "").strip():
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="prospect_id ou name requis")
 
-    suggestion = await domain_suggestion_service.suggest(name=name, city=city, category=category, use_ai=ai)
+    suggestion = await domain_suggestion_service.suggest(
+        name=name, city=city, category=category, use_ai=ai, country=country
+    )
     return DomainSuggestionsResponse(
         suggested=suggestion.suggested,
         candidates=[
