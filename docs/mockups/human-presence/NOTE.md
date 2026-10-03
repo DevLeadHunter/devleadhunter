@@ -2,7 +2,7 @@
 
 Ticket Asana « [IA Code] Présence humaine sur la démo : carte « Qui est derrière ce site » + réceptionniste Dibodev dans le bandeau » (validé et élargi le 03/10). Rien n'est codé : ce dossier contient trois maquettes HTML autonomes et cette note. Décision produit à prendre, puis on implémente.
 
-**État au 03/10 (soir)** : le choix 1 est tranché (carte en variante C : la photo et le nom de A, le texte court de B), les sept autres attendent. Voir « Décisions et avis » plus bas.
+**État au 03/10** : le choix 1 est tranché (carte en variante C : la photo et le nom de A, le texte court de B), les sept autres attendent. Voir « Décisions et avis » plus bas.
 
 Ouvrir les maquettes dans un navigateur (double-clic suffit, aucun serveur) :
 
@@ -64,7 +64,7 @@ Recommandation : (a) avec la signature allégée pour la prochaine vague (zéro 
 7. Attacher la signature aux modèles francs **30, 31, 32, 33** (un clic chacun dans Modèles) : oui ?
 8. Deux détails de copie à confirmer : le délai annoncé par Léa (« met le site sur votre adresse sous 48 h ») et la phrase « le nom de domaine est compris » ; le tiret cadratin « — » dans la 4ᵉ phrase du modèle 30.
 
-## Décisions et avis (état au 03/10, soir)
+## Décisions et avis (état au 03/10)
 
 | # | Choix | État | Avis donné |
 |---|---|---|---|

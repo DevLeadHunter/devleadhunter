@@ -78,7 +78,7 @@ Clés par défaut dans le code et la configuration du compte admin :
 
 ## 2. Ce qui change
 
-### Relecture du 03/10 (soir)
+### Relecture du 03/10
 
 - « Dernier message, promis » devient « Dernier mail de ma part » : une relance SMS J+30 peut encore suivre, le mail ne promet donc plus d'être le dernier message.
 - « Même un « non merci » me va » sonnait peu sûr de soi. Il est remplacé par une ligne qui laisse le temps : « Besoin d'y réfléchir ? Prenez votre temps : il reste en ligne jusqu'au 24 octobre. » La sortie reste écrite juste avant (« Sinon, rien à faire »). « Un mot me suffit, même un non » est gardé.
