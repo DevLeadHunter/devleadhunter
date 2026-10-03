@@ -320,9 +320,9 @@ class PrivacyNoticeBuilder:
                 heading=lines.localize("Communication à l'étranger"),
                 lines=[
                     lines.sentence(
-                        "Certains de ces prestataires, dont Vercel, Google et Cloudflare, traitent ces données aux "
-                        "États-Unis. Ils sont certifiés selon le Swiss-US Data Privacy Framework, que le Conseil "
-                        "fédéral reconnaît comme garantissant un niveau de protection adéquat."
+                        "Certains de ces prestataires traitent ces données hors de Suisse, notamment aux États-Unis. "
+                        "Vercel, Google et Cloudflare sont certifiés selon le Swiss-US Data Privacy Framework, que le "
+                        "Conseil fédéral reconnaît comme garantissant un niveau de protection adéquat."
                     )
                 ],
             )
@@ -330,9 +330,10 @@ class PrivacyNoticeBuilder:
             heading=lines.localize("Transferts hors de l'Union européenne"),
             lines=[
                 lines.sentence(
-                    "Certains de ces prestataires, dont Vercel, Google et Cloudflare, traitent ces données aux "
-                    "États-Unis. Ils sont certifiés selon le Data Privacy Framework UE-États-Unis, reconnu par la "
-                    "Commission européenne comme garantissant un niveau de protection adéquat."
+                    "Certains de ces prestataires traitent ces données hors de l'Union européenne, notamment aux "
+                    "États-Unis. Vercel, Google et Cloudflare sont certifiés selon le Data Privacy Framework "
+                    "UE-États-Unis, reconnu par la Commission européenne comme garantissant un niveau de protection "
+                    "adéquat."
                 )
             ],
         )

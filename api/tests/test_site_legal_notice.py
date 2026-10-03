@@ -139,6 +139,7 @@ def test_a_french_delivered_site_privacy_policy_tells_what_the_form_does_and_mea
     assert "au plus trois ans après le dernier contact" in form
     assert "Ce site ne mesure pas son audience et ne dépose aucun cookie." in text
     assert "PostHog" not in text
+    assert "Vercel, Google et Cloudflare sont certifiés selon le Data Privacy Framework UE-États-Unis" in text
     rights = _block(privacy, "Vos droits")
     assert rights.lines[-1].text == "Commission nationale de l'informatique et des libertés (CNIL)"
     assert rights.lines[-1].href == "https://www.cnil.fr"
@@ -214,7 +215,7 @@ def test_a_swiss_delivered_site_has_an_impressum_and_follows_the_swiss_act() -> 
     assert "IDE : CHE-123.456.789" in _rendered(_block(legal, "Éditeur du site"))
     assert "TVA : CHE-123.456.789 TVA" in _rendered(_block(legal, "Éditeur du site"))
     assert "RGPD" not in text
-    assert "Swiss-US Data Privacy Framework" in text
+    assert "Vercel, Google et Cloudflare sont certifiés selon le Swiss-US Data Privacy Framework" in text
     assert "Préposé fédéral à la protection des données et à la transparence (PFPDT)" in text
     assert "Auto Ways" in text
 
