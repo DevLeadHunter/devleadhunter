@@ -771,13 +771,13 @@ Bonjour M. Martin, votre carte fidélité iPhone, envoyée par email : demo.dibo
 Bonjour M. Martin, la carte fidélité iPhone envoyée par email est toujours en ligne : demo.dibodev.fr/s/c/garage-martin 19 €/mois sans engagement. Je la retire le 24 octobre. Un mot me suffit, oui ou non, au 06 12 34 56 78. Marc
 ```
 
-## 5. Points à valider avant tout envoi
+## 5. Points tranchés (relecture du 03/10)
 
-1. **Visibilité et Crédibilité** : gardés parce qu'ils ont servi (vagues 1 et 2) et réécrits en franc avec leur accroche en une phrase, ce qui donne un axe A/B « franc pur » contre « franc + raison ». Décision produit : les garder ou les désactiver aussi.
-2. **« Je fais des sites web »** comme phrase « qui écrit » : le nom vient du bloc signature, pas du corps (sinon il doublerait). Pour la réceptionniste : « Je fais des outils web pour les artisans et les commerçants ». À valider ou à remplacer.
-3. **« Franc - dernier rappel avant retrait »** est en catégorie premier email, comme le modèle 33 dont il vient, pour pouvoir ouvrir une campagne à part vers les démos qui expirent. Le passer dans l'onglet relance est un champ à changer.
+1. **Visibilité et Crédibilité** : gardés parce qu'ils ont servi (vagues 1 et 2) et réécrits en franc avec leur accroche en une phrase, ce qui donne un axe A/B « franc pur » contre « franc + raison ». Gardés.
+2. **« Je fais des sites web »** comme phrase « qui écrit » : le nom vient du bloc signature, pas du corps (sinon il doublerait). Pour la réceptionniste : « Je fais des outils web pour les artisans et les commerçants ». Validé.
+3. **« Franc - dernier rappel avant retrait »** est en catégorie premier email, comme le modèle 33 dont il vient, pour pouvoir ouvrir une campagne à part vers les démos qui expirent. Il y reste.
 4. **Relance vidéo** (« Franc - relance vidéo », `offre-a-vie-video`, `assistant-relance-video`) : la vidéo est la seule porte ; sans vidéo générée, l'email est retenu par la file et le SMS retombe sur son jumeau sans vidéo.
-5. **SMS sans date de retrait** : les variables SMS n'ont pas `{date_expiration}` (le lien court `/s/{slug}` ne permet pas de retrouver la démo comme en email). À ajouter ou non (il reste 10 à 60 caractères selon le modèle).
+5. **SMS sans date de retrait** : les variables SMS n'ont pas `{date_expiration}` (le lien court `/s/{slug}` ne permet pas de retrouver la démo comme en email). Pas de date dans les SMS : ils sont déjà assez longs, le mail la donne.
 6. **`{telephone}` vide** : réglé. Un modèle qui utilise `{telephone}` est refusé à l'envoi et dans l'aperçu tant que le téléphone public n'est pas renseigné dans Paramètres.
 7. **2 segments** : réglé. Le service d'envoi autorise 2 segments pour un envoi de prospection, et le prénom n'est retiré qu'au-delà de 2 segments.
 8. **Catalogue des variables SMS du composeur** (`web/app/utils/smsVariables.ts`) : réglé, `{telephone}` y est proposé (« Téléphone de contact »).

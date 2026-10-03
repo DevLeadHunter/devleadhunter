@@ -50,10 +50,10 @@ par pays ; coût SMS par pays ; `plumber_atelier` sans « 0 € / 10 ans ».
 
 **Encore ouvert** : `email_scraper` en `gl=fr` (`scrappers/email_scraper.py:385`) ; annuaires CH, BE, LU
 et CA absents du scoring email ; numéros +41 / +32 ignorés par le parseur Facebook (France et Amérique
-du Nord seulement) ; « à Rennes » dans le script vidéo ; carte de couverture sans le Québec ; Réceptionniste
+du Nord seulement) ; carte de couverture sans le Québec ; Réceptionniste
 IA hors France (§ 7 : fuseau du client, +1, expéditeur, pied légal) ; décisionnaire hors France ;
-probe Qonto en sandbox (client CH ou CA sans numéro fiscal, doublon éventuel de mention) ; choix `.ca`
-ou `.com` et titulaire OVH ; boucles SMS automatiques limitées à la France tant que le premier SMS suisse
+probe Qonto en sandbox (client CH ou CA sans numéro fiscal, doublon éventuel de mention) ; achat
+d'un `.com` (ou d'un `.ca` au nom du client) par l'automatisation de domaine ; boucles SMS automatiques limitées à la France tant que le premier SMS suisse
 n'est pas vérifié (`SmsProspectingRules.AUTOMATIC_SMS_COUNTRIES`).
 
 ## A. En cours ailleurs (ne pas refaire, juste s'y brancher)
@@ -419,17 +419,20 @@ Non vérifié : couverture et prix smsmode vers CA/CH/BE/LU ; `tzdata` absent de
 
 ## Questions ouvertes
 
-1. **Facturation CH/CA** : rester en EUR (simple, légal, déjà annoncé « ≈ 470 CHF » et « ≈ 800 $ CA ») ou facturer dans la devise du client (Qonto l'accepte si le client est créé en CHF/CAD) ?
-2. **Mention TVA** : confirmer avec le comptable l'autoliquidation (BE/LU avec n° TVA client valide VIES ; sans n° TVA le client reste traité comme un particulier et `S293B` s'applique), la non-application (CH/CA), l'obligation pour le vendeur d'avoir un n° TVA intracommunautaire et de déposer une DES pour les ventes BE/LU, et retrouver les codes Qonto correspondants dans l'interface (S283 ? S259 ?) pour les mettre dans le profil.
-3. **Probe sandbox** : reconnecter Qonto sandbox en local (OAuth) ou créer une clé API sandbox pour que je lance le script de l'annexe A.
-4. **Domaine `.ca`** : enregistrer au nom du client (exigence de présence canadienne CIRA, contact owner distinct chez OVH) ou proposer `.com` aux Québécois ?
-5. **Adresse postale CASL** : quelle adresse mettre dans le pied de mail (siège, domiciliation) ? Elle se saisit dans « Mon profil » (`users.postal_address`).
-6. **Prix du Réceptionniste** : 29 € (migration) ou 79 € (code) ; afficher « 29 € (≈ 50 $ CA) » à un Québécois qui paiera en EUR ?
-7. **Pied légal des sites** : ajouter maintenant un bloc `legal` commun (touche le paquet `website-content` et les 10 layers) ou seulement à la première vente hors France ? Même question pour la politique de confidentialité (Loi 25) sur `/ia/{slug}`.
-8. **Script vidéo** : retirer « à Rennes » pour tout le monde, ou un clip par marché (table `presenter_videos` par marché) ?
-9. **Carte du Québec** : 17 régions administratives (recommandé) ou seulement les provinces du Canada ?
-10. **Décisionnaire hors France** : laisser tourner les 3 stratégies sans registre (avis, mentions légales, IA, jamais `primary`) avec salutation neutre par défaut, et demander un compte Zefix pour la Suisse ?
-11. **Bibliothèques** : accepter `phonenumbers` et `holidays` dans `api/requirements.txt`, ou garder le normaliseur maison étendu par profil ?
+Tranché le 03/10 :
+
+- **Facturation CH/CA** : en euros. Les mails annoncent le prix local avec « ≈ » (« ≈ 470 CHF »), comme pour la Suisse.
+- **Domaine d'un client québécois** : un `.com` s'achète comme un `.fr`, au nom de l'opérateur. Un `.ca` exige un titulaire présent au Canada (règle CIRA), il se prend donc au nom du client.
+- **Adresse postale CASL** : dans « Mon profil » (`users.postal_address`), remplie en prod.
+- **Pied légal des sites** : un bloc `legal` commun et, pour le Québec, une politique de confidentialité (Loi 25), ajoutés à la première vente hors de France.
+- **Script vidéo** : « à Rennes » gardé pour tous les marchés.
+
+Encore ouverts :
+
+1. **Mention TVA** : faire confirmer par le comptable l'autoliquidation (BE/LU avec n° TVA client valide VIES ; sans n° TVA le client reste traité comme un particulier et `S293B` s'applique), la non-application (CH/CA), l'obligation pour le vendeur d'avoir un n° TVA intracommunautaire et de déposer une DES pour les ventes BE/LU. Les codes Qonto (`S293B`, `S283`, `S259`) sont dans les profils pays.
+2. **Probe sandbox** : reconnecter Qonto sandbox en local (OAuth) ou créer une clé API sandbox pour lancer le script de l'annexe A.
+3. **Prix du Réceptionniste** affiché à un Québécois qui paiera en euros (module réceptionniste).
+4. Choix techniques, tranchés au moment du chantier : carte du Québec (17 régions administratives), décisionnaire hors France (les 3 stratégies sans registre avec une salutation neutre par défaut, compte Zefix pour la Suisse), bibliothèques `phonenumbers` et `holidays` ou normaliseur maison étendu par profil.
 
 ## Annexe A : probe Qonto sandbox (prêt, non lancé)
 
