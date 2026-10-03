@@ -121,7 +121,7 @@ export function useDemoTracking(): {
         if (!target) return
         // The lead banner is DevLeadHunter chrome, not site content: its clicks
         // beacon their own demo_lead event and must not pollute section stats.
-        if (target.closest('[data-dlh-cta-banner]')) return
+        if (target.closest('[data-dlh-cta-banner], [data-dlh-legal-footer]')) return
         const anchor: HTMLAnchorElement | null = target.closest('a')
         const button: HTMLButtonElement | null = target.closest('button')
         if (!anchor && !button) return

@@ -7,6 +7,12 @@
   </div>
   <main v-else class="min-h-screen bg-white text-slate-900">
     <DemoSiteView :site="previewedSite ?? site" />
+    <SiteLegalFooter
+      v-if="site.legal"
+      :key="previewedSite?.template_id ?? site.template_id"
+      :legal-notice="site.legal"
+      :legal-page-path="legalPagePath"
+    />
     <DemoCtaBanner :site="site" />
   </main>
 </template>
@@ -15,10 +21,14 @@
 import type { ComputedRef, Ref } from 'vue'
 import type { DemoPreviewOverrides, DemoPreviewServiceCard } from '~/composables/useDemoPreviewOverrides'
 import type { DemoSitePublic } from '~/types/demoSite'
+import { SiteLegalLinkUtils } from '~/utils/SiteLegalLinkUtils'
 
 const route: ReturnType<typeof useRoute> = useRoute()
 const config: ReturnType<typeof useRuntimeConfig> = useRuntimeConfig()
 const slug: ComputedRef<string> = computed((): string => String(route.params.slug ?? ''))
+const legalPagePath: ComputedRef<string> = computed((): string =>
+  SiteLegalLinkUtils.demoLegalPath(slug.value, route.query),
+)
 
 /** Live-edit mode: the dashboard preview iframe adds `?_edit=1` and drives us via postMessage. */
 const isLiveEditPreview: ComputedRef<boolean> = computed((): boolean => route.query._edit === '1')

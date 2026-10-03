@@ -1,3 +1,5 @@
+import type { SiteLegalNotice } from '~/types/SiteLegalNotice'
+
 /** Public payload returned by the API for a demo / delivered site. */
 export type DemoSitePublic = {
   slug: string
@@ -16,4 +18,5 @@ export type DemoSitePublic = {
   owner_profile_photo_url?: string | null
   owner_contact_phone?: string | null
   owner_contact_email?: string | null
+  legal?: SiteLegalNotice | null
 }
