@@ -1,48 +1,35 @@
+import type { SiteLegalPagePaths } from '~/types/SiteLegalPage'
 import { DemoBeaconUtils } from '~/utils/DemoBeaconUtils'
 
 const LEGAL_PAGE_SEGMENT: string = 'legal'
+const PRIVACY_PAGE_SEGMENT: string = 'privacy'
 const OWNER_VISIT_QUERY: string = 'internal=1'
 
 /**
- * Paths between a site and its legal page, on a demo (`/{slug}/legal`) and on a client's domain (`/legal`).
+ * Paths between a site and its legal pages, on a demo (`/{slug}/legal`, `/{slug}/privacy`) and on a client's
+ * domain (`/legal`, `/privacy`).
  */
 export class SiteLegalLinkUtils {
   /**
-   * The legal page of a site served on its client's domain.
-   * @returns The root-relative path.
+   * The home and legal pages of a site served on its client's domain.
+   * @returns The root-relative paths.
    */
-  static deliveredLegalPath(): string {
-    return `/${LEGAL_PAGE_SEGMENT}`
+  static deliveredPagePaths(): SiteLegalPagePaths {
+    return { home: '/', legal: `/${LEGAL_PAGE_SEGMENT}`, privacy: `/${PRIVACY_PAGE_SEGMENT}` }
   }
 
   /**
-   * The home page of a demo, keeping the visit's attribution and the owner's tag.
+   * The home and legal pages of a demo, keeping the visit's attribution and the owner's tag.
    * @param slug - The demo slug.
    * @param query - The current route query.
-   * @returns The path with the carried query, if any.
+   * @returns The paths, with the carried query, if any.
    */
-  static demoHomePath(slug: string, query: Record<string, unknown>): string {
-    return SiteLegalLinkUtils.withVisitQuery(`/${slug}`, query)
-  }
-
-  /**
-   * The legal page of a demo, keeping the visit's attribution and the owner's tag.
-   * @param slug - The demo slug.
-   * @param query - The current route query.
-   * @returns The path with the carried query, if any.
-   */
-  static demoLegalPath(slug: string, query: Record<string, unknown>): string {
-    return SiteLegalLinkUtils.withVisitQuery(`/${slug}/${LEGAL_PAGE_SEGMENT}`, query)
-  }
-
-  /**
-   * A link to one section of the legal page.
-   * @param legalPagePath - The legal page path, its query included.
-   * @param anchor - The section anchor.
-   * @returns The path ending on the anchor.
-   */
-  static sectionHref(legalPagePath: string, anchor: string): string {
-    return `${legalPagePath}#${anchor}`
+  static demoPagePaths(slug: string, query: Record<string, unknown>): SiteLegalPagePaths {
+    return {
+      home: SiteLegalLinkUtils.withVisitQuery(`/${slug}`, query),
+      legal: SiteLegalLinkUtils.withVisitQuery(`/${slug}/${LEGAL_PAGE_SEGMENT}`, query),
+      privacy: SiteLegalLinkUtils.withVisitQuery(`/${slug}/${PRIVACY_PAGE_SEGMENT}`, query),
+    }
   }
 
   /**

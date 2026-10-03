@@ -11,7 +11,7 @@
   <SiteLegalPage
     v-else
     :legal-notice="site.legal"
-    page="legal"
+    page="privacy"
     :business-name="site.business_name"
     :logo-url="logoUrl"
     :page-paths="pagePaths"

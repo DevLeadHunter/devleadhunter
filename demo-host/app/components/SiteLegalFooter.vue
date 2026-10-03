@@ -15,7 +15,7 @@
       class="flex flex-wrap items-center justify-center gap-x-2.5 gap-y-1 text-center"
       aria-label="Informations légales"
     >
-      <template v-for="(link, index) in props.legalNotice.links" :key="link.anchor">
+      <template v-for="(link, index) in props.legalNotice.links" :key="link.page">
         <span v-if="index > 0" class="opacity-70" aria-hidden="true">·</span>
         <a
           class="underline-offset-3 transition-colors hover:underline focus-visible:underline"
@@ -24,7 +24,7 @@
               ? 'hover:text-white focus-visible:text-white'
               : 'hover:text-neutral-900 focus-visible:text-neutral-900'
           "
-          :href="SiteLegalLinkUtils.sectionHref(props.legalPagePath, link.anchor)"
+          :href="props.pagePaths[link.page]"
         >
           {{ link.label }}
         </a>
@@ -38,16 +38,16 @@ import type { ComputedRef, PropType, Ref } from 'vue'
 import type { RgbaColor } from '~/types/BackgroundTone'
 import type { SiteLegalFooterProps } from '~/types/SiteLegalFooter'
 import type { SiteLegalNotice } from '~/types/SiteLegalNotice'
+import type { SiteLegalPagePaths } from '~/types/SiteLegalPage'
 import { BackgroundToneUtils } from '~/utils/BackgroundToneUtils'
-import { SiteLegalLinkUtils } from '~/utils/SiteLegalLinkUtils'
 
 const props: SiteLegalFooterProps = defineProps({
   legalNotice: {
     type: Object as PropType<SiteLegalNotice>,
     required: true,
   },
-  legalPagePath: {
-    type: String,
+  pagePaths: {
+    type: Object as PropType<SiteLegalPagePaths>,
     required: true,
   },
 })

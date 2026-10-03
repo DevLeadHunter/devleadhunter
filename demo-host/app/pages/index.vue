@@ -7,19 +7,20 @@
   </div>
   <main v-else class="min-h-screen bg-white text-slate-900">
     <DemoSiteView :site="site" />
-    <SiteLegalFooter v-if="site.legal" :legal-notice="site.legal" :legal-page-path="legalPagePath" />
+    <SiteLegalFooter v-if="site.legal" :legal-notice="site.legal" :page-paths="legalPagePaths" />
   </main>
 </template>
 
 <script lang="ts" setup>
 import type { DemoSitePublic } from '~/types/demoSite'
+import type { SiteLegalPagePaths } from '~/types/SiteLegalPage'
 import { SiteLegalLinkUtils } from '~/utils/SiteLegalLinkUtils'
 
 // Sert un site vendu par son domaine client ; la racine demo.dibodev.fr n'est pas un site et 404.
 const config: ReturnType<typeof useRuntimeConfig> = useRuntimeConfig()
 const url: URL = useRequestURL()
 const host: string = url.host
-const legalPagePath: string = SiteLegalLinkUtils.deliveredLegalPath()
+const legalPagePaths: SiteLegalPagePaths = SiteLegalLinkUtils.deliveredPagePaths()
 
 const {
   data: site,
