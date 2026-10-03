@@ -2,21 +2,34 @@
 
 The first prospecting message a prospect receives (email or SMS) is his first contact, the next SMS his
 relance, and nothing automated follows. A legacy row and a manual SMS end the sequence; a send smsmode
-refused reached nobody and counts for nothing.
+refused reached nobody and counts for nothing. The automated loops (J+30 relance, cold SMS) text
+France only, while a send the user starts himself follows the country profiles.
 """
 
+import asyncio
 from datetime import UTC, datetime, timedelta
+from types import SimpleNamespace
 
+import pytest
 from sqlalchemy.orm import Session
 
+import services.sms_service as sms_service_module
 from enums.sms_message_kind import SmsMessageKind
+from enums.sms_template_category import SmsTemplateCategory
 from models.demo_site import DemoSite
 from models.email_log import EmailLog
 from models.prospect_db import ProspectDB
+from models.sms_auto_queue import SmsAutoQueue
+from models.sms_config import SmsConfig
 from models.sms_message import SmsMessage
+from services.campaign_queue_service import CampaignQueueService
+from services.sms.templates import SmsTemplate
+from services.sms_auto_campaign_service import sms_auto_campaign_service
 from services.sms_automation_service import sms_automation_service
 from services.sms_prospecting_rules import SmsProspectingRules
 from services.sms_relance_service import sms_relance_service
+from services.sms_service import sms_service
+from tests.assistant_fakes import AcceptingSmsProvider, AsyncCallRecorder
 
 _USER_ID = 7
 _NOW: datetime = datetime.now(UTC).replace(tzinfo=None)
@@ -208,3 +221,58 @@ class TestAutomationReasons:
         assert sms_automation_service._ineligibility_reason(db, _USER_ID, belgian, "cold") == (
             "Pas de SMS de prospection vers ce pays (Belgique)"
         )
+
+
+class TestAutomaticLoopsStayInFrance:
+    _DIRECT = SmsTemplate(
+        key="direct",
+        name="Direct",
+        category=SmsTemplateCategory.FIRST_CONTACT,
+        body="{salutation}, j'ai préparé un site pour {entreprise}, il est déjà en ligne : {lien_demo} {signature}",
+    )
+
+    def test_a_swiss_prospect_due_for_the_j30_relance_is_not_planned_by_the_automated_loop(
+        self, db: Session, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        monkeypatch.setattr(sms_auto_campaign_service, "ensure", lambda db, user_id, **kwargs: SimpleNamespace(id=1))
+        monkeypatch.setattr(sms_auto_campaign_service, "attach_prospect", lambda db, campaign, prospect_id: None)
+        french = _prospect(db, name="Plomberie Vidal", slug="plomberie-vidal", email="vidal@example.com")
+        swiss = _prospect(db, name="Garage Favre", slug="garage-favre", email="favre@example.ch", country="CH")
+        _email(db, french, days_ago=40)
+        _email(db, swiss, days_ago=40)
+        config = SmsConfig(user_id=_USER_ID, sender="Dibodev", auto_relance_enabled=True, auto_relance_after_days=30)
+        db.add(config)
+        db.commit()
+
+        sms_automation_service._plan_user(db, config)
+
+        assert {row.prospect_id for row in db.query(SmsAutoQueue).all()} == {french.id}
+        # The manual relance page still offers him: a send started by hand is open to Switzerland.
+        assert _relance_candidate_ids(db) == {french.id, swiss.id}
+
+    def test_a_planned_swiss_row_is_skipped_with_its_reason(self, db: Session) -> None:
+        swiss = _prospect(db, name="Garage Favre", slug="garage-favre", country="CH")
+
+        assert sms_automation_service._ineligibility_reason(db, _USER_ID, swiss, "cold") == (
+            "Pas de SMS automatique vers ce pays (Suisse) : campagne ou envoi à la main"
+        )
+        assert SmsProspectingRules.automatic_country_refusal(_prospect(db, name="Garage Martin", slug="g-m")) is None
+
+    def test_a_campaign_sms_launched_to_a_swiss_prospect_leaves(
+        self, db: Session, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        swiss = _prospect(db, name="Garage Favre", slug="garage-favre", country="CH")
+        db.add(SmsConfig(user_id=_USER_ID, sender="Dibodev"))
+        db.commit()
+        provider = AcceptingSmsProvider()
+        monkeypatch.setattr(sms_service, "_provider", provider)
+        monkeypatch.setattr(sms_service, "legal_window_refusal", lambda country=None: None)
+        monkeypatch.setattr(sms_service_module, "find_sms_template", lambda key: self._DIRECT)
+        monkeypatch.setattr(sms_service_module.notification_service, "notify_sms_event", AsyncCallRecorder())
+        campaign = SimpleNamespace(id=1, user_id=_USER_ID, channel="sms", sms_template_key="direct")
+        item = SimpleNamespace(prospect=swiss, campaign=campaign, status="sending", skip_reason=None)
+
+        asyncio.run(CampaignQueueService(db)._dispatch_sms(item))
+
+        assert (item.status, item.skip_reason) == ("sent", None)
+        assert provider.sends[0]["to_e164"] == "+41791234567"

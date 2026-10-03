@@ -104,6 +104,9 @@ class SmsAutomationService:
         country_refusal = SmsProspectingRules.country_refusal(prospect)
         if country_refusal:
             return country_refusal
+        automatic_country_refusal = SmsProspectingRules.automatic_country_refusal(prospect)
+        if automatic_country_refusal:
+            return automatic_country_refusal
         if kind == "cold" and SmsProspectingRules.has_received_a_prospecting_sms(db, user_id, prospect.id):
             return "Déjà contacté par SMS"
         if kind == "relance" and SmsProspectingRules.has_completed_the_sequence(db, user_id, prospect.id):
@@ -214,6 +217,8 @@ class SmsAutomationService:
             for candidate in sms_relance_service.find_relance_projection_candidates(db, config.user_id):
                 if candidate.prospect.id in engaged:
                     continue
+                if SmsProspectingRules.automatic_country_refusal(candidate.prospect):
+                    continue
                 eligible = (
                     france_send_window.to_local_naive(candidate.emailed_at + delay) if candidate.emailed_at else now
                 )
@@ -221,6 +226,8 @@ class SmsAutomationService:
         if config.cold_sms_enabled:
             for candidate in sms_relance_service.find_cold_candidates(db, config.user_id, limit=_MAX_PLANNED):
                 if candidate.prospect.id in engaged:
+                    continue
+                if SmsProspectingRules.automatic_country_refusal(candidate.prospect):
                     continue
                 entries.append((now, candidate))
         if not entries:

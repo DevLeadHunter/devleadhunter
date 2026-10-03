@@ -13,7 +13,7 @@ a service message never is one.
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, ClassVar
 
 from sqlalchemy import ColumnElement, Select, and_, or_, select
 from sqlalchemy.orm import Session
@@ -29,7 +29,14 @@ if TYPE_CHECKING:
 
 
 class SmsProspectingRules:
-    """Decide whether a prospect may receive a prospecting SMS, and which touch it would be."""
+    """Decide whether a prospect may receive a prospecting SMS, and which touch it would be.
+
+    A send the user starts himself (a campaign, the composer, a manual relance) follows the country
+    profiles; the automated loops (J+30 relance, cold SMS) text the ``AUTOMATIC_SMS_COUNTRIES`` only.
+    """
+
+    # TODO: add Switzerland once its first real SMS is checked (final text, segments, price, delivery report).
+    AUTOMATIC_SMS_COUNTRIES: ClassVar[frozenset[str]] = frozenset({"FR"})
 
     SEQUENCE_COMPLETE: str = (
         "Plus de SMS de prospection pour ce prospect : il a déjà reçu sa relance SMS ou un SMS envoyé à la main"
@@ -81,6 +88,23 @@ class SmsProspectingRules:
         if not profile.sms_prospecting_open:
             return f"Pas de SMS de prospection vers ce pays ({profile.label})"
         return None
+
+    @classmethod
+    def automatic_country_refusal(cls, prospect: ProspectDB) -> str | None:
+        """Why an automated loop (J+30 relance, cold SMS) may not text the prospect, ``None`` when it may.
+
+        Args:
+            prospect: The prospect an automated loop would text.
+
+        Returns:
+            The French reason shown on the planned row, or ``None``.
+        """
+        country = cls.country_of(prospect)
+        if country in cls.AUTOMATIC_SMS_COUNTRIES:
+            return None
+        profile = CountryProfiles.declared(country)
+        label = profile.label if profile is not None else country
+        return f"Pas de SMS automatique vers ce pays ({label}) : campagne ou envoi à la main"
 
     @staticmethod
     def _touches_of_user(user_id: int) -> ColumnElement[bool]:
