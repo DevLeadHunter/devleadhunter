@@ -1,4 +1,4 @@
-# Modèles francs : emails et SMS (sites web + réceptionniste IA)
+# Modèles francs : emails et SMS (sites web, réceptionniste IA, carte de fidélité)
 
 Document de validation des modèles de prospection. Rien ne part tant qu'il n'est pas relu : les modèles ci-dessous sont ceux du code (seeder et bibliothèque SMS).
 
@@ -10,7 +10,7 @@ Règle n° 1 (décision produit du 02/10/2026), pour tous les modules, email et 
 
 1. qui écrit et pourquoi, en une phrase ;
 2. ce qu'on a préparé pour lui, avec le lien ;
-3. le prix dès le premier message (site : `{prix}`, 500 €, une seule fois, pas d'abonnement ; réceptionniste : `{prix_assistant}`, 79 € par mois, premier mois satisfait ou remboursé) ;
+3. le prix dès le premier message (site : `{prix}`, 500 €, une seule fois, pas d'abonnement ; réceptionniste : `{prix_assistant}`, 79 € par mois, premier mois satisfait ou remboursé ; carte de fidélité : `{prix_carte}`, 19 € par mois, premier mois offert) ;
 4. la vraie date de retrait de la démo (`{date_expiration}`) ;
 5. une sortie facile : si c'est non, il le dit et on ne le recontacte plus ;
 6. une seule demande, légère : un mot suffit, oui, non ou une question.
@@ -100,7 +100,7 @@ Choix de copy communs : plus de `{vignette_video}` dans les emails texte (une se
 
 « Assistant IA - … » devient « Réceptionniste IA - … » (le renommage se fait sur la même ligne en base : la campagne 21 garde son modèle). Chaque modèle présente la réceptionniste par son prénom et `{assistant_virtuel}` (IA), dit « à une adresse à son nom », `{prix_assistant}` par mois sans engagement, premier mois satisfait ou remboursé, `{date_expiration}`, et la sortie facile. Aucun ne parle de « votre site » ni d'installation. « Réceptionniste IA - franc » et « Réceptionniste IA - en bref » gardent une seule porte (le lien, sans vignette vidéo), comme le mail franc des sites.
 
-### SMS (16 modèles, tous francs, 2 segments)
+### SMS, modules sites web et réceptionniste IA (16 modèles, tous francs, 2 segments)
 
 - Module sites web : `direct` (Franc - premier contact), `video`, `site-en-panne`, `refonte` ; relances `rappel-court`, `offre-a-vie`, `offre-a-vie-video`, `site-en-panne-relance`, `refonte-relance`.
 - Module réceptionniste : `assistant-24-7`, `assistant-langues`, `assistant-demandes`, `assistant-video` ; relances `assistant-relance`, `assistant-relance-video`, `assistant-prix-cash`.
@@ -108,15 +108,34 @@ Choix de copy communs : plus de `{vignette_video}` dans les emails texte (une se
 - Budget : un SMS de prospection franc prend 2 segments GSM-7 (306 caractères, mention de désinscription comprise : smsmode l'ajoute à l'envoi, 14 caractères réservés en France, 25 en Suisse). Les tests garantissent 2 segments au plus, en France comme en Suisse (prix écrits « env. 470 CHF »), avec un slug de 26 caractères, un nom d'entreprise de 26 caractères et un téléphone de 14 caractères. Les messages de service (alertes réceptionniste) restent à 1 segment.
 - Nouvelle variable `{telephone}` : le téléphone public de l'expéditeur (`users.contact_phone`, celui du bandeau démo, Paramètres). L'expéditeur « Dibodev » ne reçoit pas de réponse : chaque SMS dit « Un mot me suffit, oui ou non, au {telephone}. » Si le téléphone public n'est pas renseigné, le SMS est refusé à l'envoi comme dans l'aperçu (« Renseignez votre téléphone de contact dans votre profil »). Pour un prospect hors de France, le numéro s'écrit au format international (« +33 6 12 34 56 78 »), le seul qu'on puisse composer depuis la Suisse ; les 16 SMS tiennent toujours en 2 segments.
 
+### Emails et SMS, module carte de fidélité (5 emails, 4 SMS)
+
+Emails : **Carte fidélité - premier contact franc** (en tête des premiers emails du module), Carte fidélité - vos clients reviennent, Carte fidélité - en bref ; relances **Carte fidélité - relance franche** (en tête des relances du module) et Carte fidélité - rappel court. SMS : `carte-direct` et `carte-sans-appli` en premier contact, `carte-relance` et `carte-rappel-court` en relance (elles rappellent l'email).
+
+Les textes ne promettent que ce que fait le module :
+
+- la carte vit dans Apple Wallet, sur iPhone uniquement (pas de Google Wallet) : chaque modèle parle de l'iPhone, aucun d'Android, et aucun sujet ne nomme Apple, Wallet ni iPhone ;
+- le client l'ajoute en un scan du QR code du comptoir, sans appli à installer ; le commerçant imprime lui-même le QR code ou l'affiche ;
+- un tampon à chaque passage depuis l'espace du commerçant, la récompense de son choix au dernier tampon ;
+- ses offres s'affichent sur l'écran verrouillé de ses clients, envoyées à toutes les cartes ou après un passage.
+
+Prix : `{prix_carte}`, 19 € par mois (`WALLET_SUBSCRIPTION_PRICE_CENTS`, un prix unique pour toute la plateforme), écrit dans la monnaie du prospect comme les autres prix (« ≈ 18 CHF », « env. 18 CHF » en SMS), sans engagement, premier mois offert (l'abonnement commence par 30 jours d'essai). Qui écrit : « Je fais des outils web pour les commerçants » dans les emails, « je fais des outils web pour les commerces » dans les SMS (le « ç » n'existe pas en GSM-7).
+
+Variables propres au module : `{lien_carte}`, la démo de carte du prospect, et `{prix_carte}`. Aucun prospect n'a de démo de carte : `{lien_carte}` reste vide et un modèle qui l'utilise ne part jamais. Chaque chemin d'envoi le retient avec la raison « Pas de démo de carte de fidélité pour ce prospect » : lancement, reprise et ajout de prospects d'une campagne email ou SMS, envoi depuis la file, relances programmées et immédiates, aperçu du composeur SMS, envoi SMS au prospect et relance SMS. Retenu avant tout envoi, un modèle carte ne réserve aucun prospect pour les autres modules.
+
+Les 4 SMS tiennent en 2 segments en France comme en Suisse, avec un lien de 47 caractères et « 30 septembre ». Comme ils donnent aussi la date de retrait, ils disent « carte fidélité » plutôt que « carte de fidélité » et ne gardent qu'une des deux conditions (« 1er mois offert » ou « sans engagement ») ; `carte-sans-appli` donne le prix seul.
+
 ### Migration de données (`reseed_frank_email_template_library`)
 
 Jouée au prochain déploiement, sur les lignes de bibliothèque du compte admin uniquement : renomme les 6 modèles réceptionniste sur place, réécrit sujet et corps des modèles gardés (même nom), insère les nouveaux modèles francs, désactive les modèles retirés que personne n'a utilisés. Un modèle retiré mais encore référencé par une campagne resterait actif (signalé dans les logs). Les modèles personnels (30 à 33) ne sont pas touchés. Rejouable sans effet.
 
 La relecture du 03/10 passe par une seconde migration, `refresh_frank_email_template_library`, qui rejoue la même mise à jour (une migration ne tourne qu'une fois) : elle réécrit les modèles relus et insère les trois nouveaux.
 
+Les modèles carte arrivent par une troisième migration, `add_loyalty_card_email_templates`, qui rejoue la même mise à jour et insère les cinq emails « Carte fidélité - … ».
+
 ## 3. Valeurs d'exemple utilisées ci-dessous
 
-Prospect « Garage Martin » à Clermont-Ferrand, décisionnaire « M. Martin », garagiste, ancien site `garage-martin.fr`, prix 500 €, réceptionniste « Nathan » à 79 € par mois (prénom masculin : « un assistant virtuel » ; avec « Léa », le même modèle écrit « une assistante virtuelle »), date d'expiration 24/10/2026 (rendue « 24 octobre »), téléphone public `06 12 34 56 78` et prénom d'expéditeur « Marc » (exemples : les vrais sont ceux des Paramètres et du compte). Dans les emails, les liens sont de vrais liens cliquables ; la vidéo est une vignette cliquable (image du site avec bouton lecture), rendue ici entre crochets. Les corps d'email s'affichent sans la signature, ajoutée à l'envoi. Les SMS montrent le texte envoyé : smsmode y ajoute ensuite sa mention de désinscription (STOP et numéro court en France, lien `no-sms.eu` en Suisse) ; le nombre de caractères indiqué compte les 14 caractères réservés en France.
+Prospect « Garage Martin » à Clermont-Ferrand, décisionnaire « M. Martin », garagiste, ancien site `garage-martin.fr`, prix 500 €, réceptionniste « Nathan » à 79 € par mois (prénom masculin : « un assistant virtuel » ; avec « Léa », le même modèle écrit « une assistante virtuelle »), carte de fidélité à 19 € par mois et démo de carte `demo.dibodev.fr/c/garage-martin` (`demo.dibodev.fr/s/c/garage-martin` en SMS), date d'expiration 24/10/2026 (rendue « 24 octobre »), téléphone public `06 12 34 56 78` et prénom d'expéditeur « Marc » (exemples : les vrais sont ceux des Paramètres et du compte). Dans les emails, les liens sont de vrais liens cliquables ; la vidéo est une vignette cliquable (image du site avec bouton lecture), rendue ici entre crochets. Les corps d'email s'affichent sans la signature, ajoutée à l'envoi. Les SMS montrent le texte envoyé : smsmode y ajoute ensuite sa mention de désinscription (STOP et numéro court en France, lien `no-sms.eu` en Suisse) ; le nombre de caractères indiqué compte les 14 caractères réservés en France.
 
 ## 4. Les modèles
 
@@ -491,6 +510,101 @@ Nathan répond déjà à cette adresse : demo.dibodev.fr/ia/garage-martin
 Je retire la démo le 24 octobre. Un mot me suffit, même un non.
 ```
 
+### Emails, module carte de fidélité
+
+#### Carte fidélité - premier contact franc
+
+- Catégorie : Premier email
+- Sujet : `la carte de fidélité de Garage Martin`
+
+```
+Bonjour M. Martin,
+
+Je fais des outils web pour les commerçants, et j'ai préparé la carte de fidélité de Garage Martin. Vos clients l'ajoutent à Apple Wallet sur leur iPhone, sans appli à installer, et vous la tamponnez à chaque passage. Elle est déjà prête : demo.dibodev.fr/c/garage-martin
+
+C'est 19 € par mois, sans engagement, et le premier mois est offert. Rien à acheter : vous imprimez vous-même le QR code ou l'affiche à poser sur le comptoir.
+
+Je la garde en ligne jusqu'au 24 octobre. Après, je la retire.
+
+Un mot me suffit : oui, non, ou une question. Si c'est non, dites-le-moi et je ne vous recontacte plus.
+```
+
+#### Carte fidélité - vos clients reviennent
+
+- Catégorie : Premier email
+- Sujet : `faire revenir vos clients`
+
+```
+Bonjour M. Martin,
+
+Une carte de fidélité en carton, on l'oublie ou on la perd. Une carte dans l'iPhone, vos clients l'ont toujours sur eux. Et quand vous lancez une offre, elle s'affiche sur leur écran verrouillé : de quoi les faire revenir.
+
+Je fais des outils web pour les commerçants, et j'ai préparé celle de Garage Martin. Elle est déjà prête : demo.dibodev.fr/c/garage-martin
+
+C'est 19 € par mois, sans engagement, et le premier mois est offert.
+
+Je la garde en ligne jusqu'au 24 octobre. Après, je la retire.
+
+Un mot me suffit : oui, non, ou une question. Si c'est non, dites-le-moi et je ne vous recontacte plus.
+```
+
+#### Carte fidélité - en bref
+
+- Catégorie : Premier email
+- Sujet : `la carte de Garage Martin, en bref`
+
+```
+Bonjour M. Martin,
+
+Je fais des outils web pour les commerçants, et j'ai préparé la carte de fidélité de Garage Martin. En bref :
+
+- Dans Apple Wallet, sur l'iPhone de vos clients
+- Ajoutée en un scan, avec le QR code du comptoir, sans appli
+- Un tampon à chaque passage, depuis votre espace
+- La récompense de votre choix au dernier tampon
+- Vos offres sur leur écran verrouillé, envoyées à tous ou après un passage
+
+Elle est déjà prête : demo.dibodev.fr/c/garage-martin
+
+C'est 19 € par mois, sans engagement, et le premier mois est offert.
+
+Je la garde en ligne jusqu'au 24 octobre. Après, je la retire.
+
+Un mot me suffit : oui, non, ou une question. Si c'est non, dites-le-moi et je ne vous recontacte plus.
+```
+
+#### Carte fidélité - relance franche
+
+- Catégorie : Relance
+- Sujet : `votre carte de fidélité, toujours prête`
+
+```
+Bonjour M. Martin,
+
+Je fais des outils web pour les commerçants. Il y a quelques jours, je vous ai envoyé la carte de fidélité que j'ai préparée pour Garage Martin. Vos clients l'ajoutent sur leur iPhone en un scan. Elle est toujours prête : demo.dibodev.fr/c/garage-martin
+
+C'est 19 € par mois, sans engagement, et le premier mois est offert. Vous imprimez vous-même le QR code ou l'affiche à poser sur le comptoir.
+
+Besoin d'y réfléchir ? Prenez votre temps : elle reste en ligne jusqu'au 24 octobre.
+
+Un mot me suffit, même un non.
+```
+
+#### Carte fidélité - rappel court
+
+- Catégorie : Relance
+- Sujet : `vous avez vu votre carte ?`
+
+```
+Bonjour M. Martin,
+
+La carte de fidélité iPhone que j'ai préparée pour Garage Martin est toujours prête : demo.dibodev.fr/c/garage-martin
+
+C'est 19 € par mois, sans engagement, premier mois offert. Je la retire le 24 octobre.
+
+Un mot me suffit, même un non.
+```
+
 ### SMS, module sites web
 
 #### Franc - premier contact (`direct`)
@@ -621,6 +735,40 @@ Bonjour M. Martin, la vidéo de mon email : Nathan, un assistant virtuel (IA), e
 
 ```
 Bonjour M. Martin, le prix de mon email, sans détour : 79 €/mois pour Nathan, un assistant virtuel (IA). Sans engagement, 1er mois satisfait ou remboursé. demo.dibodev.fr/s/ia/garage-martin Un mot me suffit, oui ou non, au 06 12 34 56 78. Marc
+```
+
+### SMS, module carte de fidélité
+
+#### Carte fidélité - premier contact franc (`carte-direct`)
+
+- Catégorie : Premier contact ; 2 segments, 266 caractères (mention STOP comprise)
+
+```
+Bonjour M. Martin, je fais des outils web pour les commerces et j'ai préparé votre carte fidélité iPhone : demo.dibodev.fr/s/c/garage-martin 19 €/mois, 1er mois offert. En ligne jusqu'au 24 octobre. Un mot me suffit, oui ou non, au 06 12 34 56 78. Marc
+```
+
+#### Carte fidélité - sans appli (`carte-sans-appli`)
+
+- Catégorie : Premier contact ; 2 segments, 258 caractères (mention STOP comprise)
+
+```
+Bonjour M. Martin, je fais des outils web pour les commerces. Votre carte fidélité iPhone, sans appli à installer : demo.dibodev.fr/s/c/garage-martin 19 €/mois. En ligne jusqu'au 24 octobre. Un mot me suffit, oui ou non, au 06 12 34 56 78. Marc
+```
+
+#### Carte fidélité - relance franche (`carte-relance`)
+
+- Catégorie : Relance J+30 ; 2 segments, 261 caractères (mention STOP comprise)
+
+```
+Bonjour M. Martin, votre carte fidélité iPhone, envoyée par email : demo.dibodev.fr/s/c/garage-martin 19 €/mois, 1er mois offert. Besoin d'y réfléchir ? Elle reste en ligne jusqu'au 24 octobre. Un mot me suffit, oui ou non, au 06 12 34 56 78. Marc
+```
+
+#### Carte fidélité - rappel court (`carte-rappel-court`)
+
+- Catégorie : Relance J+30 ; 2 segments, 242 caractères (mention STOP comprise)
+
+```
+Bonjour M. Martin, la carte fidélité iPhone envoyée par email est toujours en ligne : demo.dibodev.fr/s/c/garage-martin 19 €/mois sans engagement. Je la retire le 24 octobre. Un mot me suffit, oui ou non, au 06 12 34 56 78. Marc
 ```
 
 ## 5. Points à valider avant tout envoi
