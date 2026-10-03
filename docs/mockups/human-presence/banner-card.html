@@ -239,6 +239,7 @@
   </div>
   <div class="mk-group">Variante
     <div class="mk-seg" data-key="variant">
+      <button type="button" data-value="C">C · mix retenu</button>
       <button type="button" data-value="A">A · photo en tête</button>
       <button type="button" data-value="B">B · photo discrète</button>
     </div>
@@ -284,9 +285,9 @@
 
   const avatar = (cls, alt = '') => `<img class="dlh-avatar ${cls}" src="${DATA.ownerPhotoUrl}" alt="${alt}">`;
 
-  // ── Pastille : seule la seconde ligne change entre A (« une tête ») et B (texte actuel).
+  // ── Pastille : seule la seconde ligne change entre A et C (« une tête ») et B (texte actuel).
   function pillHtml(variant) {
-    const hint = variant === 'A' ? `${DATA.ownerName}, développeur à Rennes` : 'Laissez-moi un mot';
+    const hint = variant === 'B' ? 'Laissez-moi un mot' : `${DATA.ownerName}, développeur à Rennes`;
     return `<button type="button" class="dlh-pill">
       ${avatar('dlh-avatar--pill')}
       <span class="dlh-pill__text"><span class="dlh-pill__label">Ce site vous plaît ?</span><span class="dlh-pill__hint">${hint}</span></span>
@@ -343,10 +344,36 @@
     </div>`;
   }
 
+  // ── Variante C, retenue le 03/10 : l'en-tête de A (la personne d'abord), le texte court de B.
+  function cardCHtml() {
+    return `<div class="dlh-card">
+      <div class="dlh-card__grab" aria-hidden="true"></div>
+      ${headHtml}
+      <div class="dlh-who">
+        ${avatar('dlh-avatar--who', DATA.ownerName)}
+        <div><div class="dlh-who__name">${DATA.ownerName}</div><div class="dlh-who__role">${DATA.ownerRole} · ${whoLink}</div></div>
+      </div>
+      <div class="dlh-card__intro">
+        <div class="dlh-card__title">Ce site vous plaît ?</div>
+        <div class="dlh-card__sub">${DATA.price}, une seule fois, pas d'abonnement. Je le garde en ligne jusqu'au ${DATA.expiry}. Un mot me suffit, même un non.</div>
+      </div>
+      <textarea class="dlh-card__textarea" placeholder="Votre message (optionnel)"></textarea>
+      ${submitHtml}
+      ${contactsHtml}
+    </div>`;
+  }
+
+  const CARDS = { A: cardAHtml, B: cardBHtml, C: cardCHtml };
+  const VARIANT_LABELS = {
+    C: 'mix retenu : en-tête de A, texte de B',
+    A: 'photo en tête',
+    B: 'photo discrète à côté du formulaire',
+  };
+
   function bannerHtml(variant, state) {
     const open = state !== 'pill';
     const mobile = state === 'mobile';
-    const inner = !open ? pillHtml(variant) : (variant === 'A' ? cardAHtml() : cardBHtml());
+    const inner = !open ? pillHtml(variant) : CARDS[variant]();
     return `<div class="dlh-banner ${mobile ? 'is-mobile' : ''} ${open ? 'is-open' : ''}">${inner}</div>`;
   }
 
@@ -384,9 +411,10 @@
   }
 
   // ── État des contrôles.
-  const state = { view: 'scene', variant: 'A', state: 'open', theme: 'light' };
+  const state = { view: 'scene', variant: 'C', state: 'open', theme: 'light' };
 
   const NOTES = {
+    C: `<b>Variante C, retenue le 03/10</b> : la photo et le nom en premier plan (en-tête de A), puis le texte court de B (« Ce site vous plaît ? » + une phrase prix/date). Le texte de A prenait trop de place.`,
     A: `<b>Variante A, photo en tête</b> : la personne d'abord (photo 56 px, nom, ville, lien dibodev.fr), puis les trois faits du mail (prix, date de retrait, autonomie), puis le mot à laisser. Répond à « qui est derrière ce site ? » avant de demander quoi que ce soit.`,
     B: `<b>Variante B, photo discrète</b> : l'offre d'abord (titre actuel « Ce site vous plaît ? » + une phrase franche prix/date), la personne en signature compacte sous le champ. Changement minimal par rapport au bandeau actuel, la tête reste visible dans la pastille et à côté du bouton.`,
   };
@@ -403,9 +431,9 @@
     if (state.view === 'board') {
       note.innerHTML = `<b>Planche</b> : les six états côte à côte sur un aplat ${state.theme === 'dark' ? 'sombre' : 'clair'}. Comportement conservé du bandeau actuel : jamais fermable (seulement réduit en pastille), s'ouvre seul quand la page est lue jusqu'en bas, formulaire sans coordonnées demandées (le mail connaît déjà l'adresse).`;
       const cellCls = `board__cell board__cell--${state.theme}`;
-      root.innerHTML = `<div class="board">${['A', 'B'].map((v) => `
+      root.innerHTML = `<div class="board">${['C', 'A', 'B'].map((v) => `
         <div class="board__row">
-          <h2>Variante ${v} <span>· ${v === 'A' ? 'photo en tête' : 'photo discrète à côté du formulaire'}</span></h2>
+          <h2>Variante ${v} <span>· ${VARIANT_LABELS[v]}</span></h2>
           <div class="board__grid">
             <div class="${cellCls}"><span class="board__label">Pastille (réduit)</span>${bannerHtml(v, 'pill')}</div>
             <div class="${cellCls}"><span class="board__label">Ouvert · bureau</span>${bannerHtml(v, 'open')}</div>
@@ -415,7 +443,7 @@
       return;
     }
     note.innerHTML = NOTES[state.variant] + (state.state === 'pill'
-      ? ` · <b>Pastille</b> : l'entrée discrète, 52 px, jamais au-dessus des boutons du site. En A la deuxième ligne nomme la personne ; en B elle garde « Laissez-moi un mot ».`
+      ? ` · <b>Pastille</b> : l'entrée discrète, 52 px, jamais au-dessus des boutons du site. En A et C la deuxième ligne nomme la personne ; en B elle garde « Laissez-moi un mot ».`
       : state.state === 'mobile'
         ? ` · <b>Mobile</b> : feuille collée en bas, poignée, boutons de 46 px. Les prospects de la vague 3 visitaient surtout depuis un téléphone, le soir.`
         : ` · <b>Bureau</b> : carte de 360 px en bas à droite, même largeur qu'aujourd'hui.`);

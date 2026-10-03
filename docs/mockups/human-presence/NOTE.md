@@ -2,9 +2,11 @@
 
 Ticket Asana « [IA Code] Présence humaine sur la démo : carte « Qui est derrière ce site » + réceptionniste Dibodev dans le bandeau » (validé et élargi le 03/10). Rien n'est codé : ce dossier contient trois maquettes HTML autonomes et cette note. Décision produit à prendre, puis on implémente.
 
+**État au 03/10 (soir)** : le choix 1 est tranché (carte en variante C : la photo et le nom de A, le texte court de B), les sept autres attendent. Voir « Décisions et avis » plus bas.
+
 Ouvrir les maquettes dans un navigateur (double-clic suffit, aucun serveur) :
 
-- `banner-card.html` : la carte dans le bandeau, 2 variantes × 3 états (pastille, ouvert bureau, ouvert mobile 375), site clair ou sombre derrière, vue scène ou planche.
+- `banner-card.html` : la carte dans le bandeau, 3 variantes (C retenue, A, B) × 3 états (pastille, ouvert bureau, ouvert mobile 375), site clair ou sombre derrière, vue scène ou planche.
 - `banner-receptionist.html` : la réceptionniste Léa dans le bandeau, 2 positions × entrée/conversation × bureau/mobile, planche.
 - `email-frank.html` : l'email du modèle 30 en HTML, référence actuelle + 2 variantes côte à côte, signature réelle ou allégée, compteurs (images, poids, liens) et grille de contrôle délivrabilité.
 
@@ -26,6 +28,7 @@ Ce qui change : la pastille montre la photo de Léo (déjà prévu par `owner_pr
 
 - **Variante A, photo en tête.** Photo 56 px, « Léo Guillaume », « Développeur à Rennes · dibodev.fr », titre « J'ai construit ce site pour vous. », trois faits (prix, date, autonomie), champ « Une question, un oui, un non : écrivez-moi. », bouton « Me répondre », téléphone. La pastille dit « Ce site vous plaît ? / Léo Guillaume, développeur à Rennes ». C'est la variante qui répond le plus directement à « ils ont voulu parler à un humain » : la personne avant la demande.
 - **Variante B, photo discrète.** Titre actuel « Ce site vous plaît ? », une phrase franche (prix, date, « même un non »), le champ, puis la signature compacte (photo 34 px, nom, ville, dibodev.fr) et le bouton. Pastille actuelle avec la photo. Changement minimal, l'offre reste le sujet.
+- **Variante C, retenue le 03/10.** L'en-tête de A (photo 56 px, nom, « Développeur à Rennes · dibodev.fr ») puis le texte de B (« Ce site vous plaît ? » et la phrase prix, date, « même un non »), le champ « Votre message (optionnel) », le bouton et le téléphone. Pastille de A (la deuxième ligne nomme la personne). Le texte de A prenait trop de place.
 
 Recommandation : A. La carte s'ouvre souvent seule en fin de page ; à ce moment-là le prospect a lu son site et la question qu'il se pose est « c'est qui, c'est combien, c'est sérieux ? ». A répond aux trois dans l'ordre. B garde la hiérarchie actuelle qui n'a produit qu'un message.
 
@@ -60,6 +63,21 @@ Recommandation : (a) avec la signature allégée pour la prochaine vague (zéro 
 6. Email : **(a)** ou **(b)**, signature **réelle** (5 images) ou **allégée** (1 image) ?
 7. Attacher la signature aux modèles francs **30, 31, 32, 33** (un clic chacun dans Modèles) : oui ?
 8. Deux détails de copie à confirmer : le délai annoncé par Léa (« met le site sur votre adresse sous 48 h ») et la phrase « le nom de domaine est compris » ; le tiret cadratin « — » dans la 4ᵉ phrase du modèle 30.
+
+## Décisions et avis (état au 03/10, soir)
+
+| # | Choix | État | Avis donné |
+|---|---|---|---|
+| 1 | Carte | **Tranché : variante C** (photo et nom de A, texte de B) | |
+| 2 | Bouton | En attente | « Me répondre » : le champ invite au oui, au non ou à une question, « Je suis intéressé » contredit le non |
+| 3 | Prix et date dans la carte | En attente | Partout (règle n° 1) ; une démo jamais envoyée n'affiche pas de date |
+| 4 | Réceptionniste dans le bandeau | En attente | Après le lancement, pour mesurer la carte seule ; ensuite la position 1 (un seul objet, une seule identité) |
+| 5 | Persona | En attente | Léa, présentée comme « assistante IA de Léo » (la même que sur dibodev.fr) |
+| 6 | Email | En attente | (a) avec la signature allégée (une seule image) ; (b) ressemble à une newsletter et double le lien |
+| 7 | Signature | En attente | Oui, mais sur les modèles « Franc - … » de la bibliothèque, qui servent pour la vague 4 (prix par pays) plutôt que sur 30 à 33. Prérequis : la photo et le téléphone du profil sont vides en prod |
+| 8 | Copie de Léa | En attente | « Le nom de domaine est compris » est exact ; « sous 48 h » seulement si c'est tenable à chaque vente, sinon « dans les jours qui suivent le paiement ». Le tiret du modèle 30 ne compte plus : les modèles de la bibliothèque n'en ont pas |
+
+La carte (variante C) se code en un jour environ, sans attendre les choix 4, 5 et 8, qui concernent la réceptionniste.
 
 ## Contraintes de délivrabilité vérifiées (email)
 
