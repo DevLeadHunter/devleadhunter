@@ -76,6 +76,12 @@ def test_foreign_countries_show_a_rounded_converted_price() -> None:
     assert canada.format_price(50000) == "≈ 800 $ CA"
 
 
+def test_a_small_converted_price_is_rounded_to_the_unit() -> None:
+    assert CountryProfiles.get("CH").format_price(7900) == "≈ 74 CHF"
+    assert CountryProfiles.get("CA").format_price(7900) == "≈ 126 $ CA"
+    assert CountryProfiles.get("FR").format_price(7900) == "79 €"
+
+
 def test_sms_rules_follow_leo_decisions() -> None:
     assert CountryProfiles.get("FR").sms_opt_out is SmsOptOutMode.SHORT_CODE
     assert CountryProfiles.get("CH").sms_prospecting_open is True

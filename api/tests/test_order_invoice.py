@@ -256,6 +256,15 @@ def test_split_postal_address_reads_the_prospect_country_shape() -> None:
     )
 
 
+def test_split_postal_address_keeps_a_french_street_whole_when_no_city_follows_the_code() -> None:
+    """Only North America writes the city before the code: a French street keeps its commas."""
+    assert _split_postal_address("Lieu-dit Les Champs, Route de Vitré, 35000", "Rennes") == (
+        "Lieu-dit Les Champs, Route de Vitré",
+        "35000",
+        "Rennes",
+    )
+
+
 def test_split_postal_address_reads_a_quebec_address() -> None:
     """Québec writes the city and its province before the code: « Montréal (Québec) H2X 1Y4 »."""
     assert _split_postal_address("123, rue Sainte-Catherine Ouest, Montréal (Québec) H2X 1Y4", None, "CA") == (

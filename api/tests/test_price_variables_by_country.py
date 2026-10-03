@@ -40,8 +40,8 @@ def _no_assistant(monkeypatch: pytest.MonkeyPatch) -> None:
     ("country", "price", "assistant_price"),
     [
         ("FR", "500 €", "29 €"),
-        ("CH", "≈ 470 CHF", "≈ 30 CHF"),
-        ("CA", "≈ 800 $ CA", "≈ 50 $ CA"),
+        ("CH", "≈ 470 CHF", "≈ 27 CHF"),
+        ("CA", "≈ 800 $ CA", "≈ 46 $ CA"),
         ("BE", "500 €", "29 €"),
     ],
 )
@@ -56,7 +56,7 @@ def test_email_prices_follow_the_prospect_country(country: str, price: str, assi
 
 @pytest.mark.parametrize(
     ("country", "price", "assistant_price"),
-    [("FR", "500 €", "29 €"), ("CH", "env. 470 CHF", "env. 30 CHF"), ("CA", "env. 800 $ CA", "env. 50 $ CA")],
+    [("FR", "500 €", "29 €"), ("CH", "env. 470 CHF", "env. 27 CHF"), ("CA", "env. 800 $ CA", "env. 46 $ CA")],
 )
 def test_sms_prices_follow_the_prospect_country(country: str, price: str, assistant_price: str) -> None:
     variables = SmsVariables.build_for_prospect(

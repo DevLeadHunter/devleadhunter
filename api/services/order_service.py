@@ -99,8 +99,8 @@ def _split_postal_address(
     prospect's country (five digits in France, four in Switzerland and Belgium,
     « H2X 1Y4 » in Québec); the last match wins — a leading one would be a street
     number. Europe writes the city after the code; North America writes it before
-    (« 123, rue X, Montréal (Québec) H2X 1Y4 »), so when nothing follows the code the
-    city is the last comma segment before it. The country and the province written
+    (« 123, rue X, Montréal (Québec) H2X 1Y4 »), so there, when nothing follows the code,
+    the city is the last comma segment before it. The country and the province written
     after the city (« Genève, Suisse », « Laval, QC ») are never taken for it.
 
     Args:
@@ -123,7 +123,7 @@ def _split_postal_address(
     zip_match = zip_matches[-1]
     street = single_line[: zip_match.start()].strip(" ,")
     found_city = profile.strip_address_tail(single_line[zip_match.end() :])
-    if not found_city:
+    if not found_city and profile.city_precedes_postal_code:
         street = profile.strip_address_tail(street)
         if "," in street:
             street, found_city = (part.strip(" ,") for part in street.rsplit(",", 1))

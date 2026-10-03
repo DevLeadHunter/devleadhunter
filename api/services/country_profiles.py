@@ -24,9 +24,9 @@ from enums.sms_opt_out_mode import SmsOptOutMode
 
 DEFAULT_COUNTRY_CODE: str = "FR"
 
-# Rounding step of a price converted into a foreign currency: a prospect reads « ≈ 470 CHF »,
-# never « ≈ 468,35 CHF ». Rates are the ones the wave 4 plan fixed; to re-check on launch day.
+# A converted price rounds to the ten from 200 up (« ≈ 470 CHF »), to the unit below: 79 € reads « ≈ 74 CHF ».
 _CONVERTED_PRICE_STEP: int = 10
+_CONVERTED_PRICE_STEP_FROM: int = 200
 # A civic number alone in its segment, as Canada Post writes it before the street (« 123, rue X »).
 _CIVIC_NUMBER_SEGMENT: re.Pattern[str] = re.compile(r"\d+[A-Za-z]?(?:-\d+[A-Za-z]?)?")
 
@@ -75,6 +75,8 @@ class CountryProfile:
     # Province names written after the city (« Montréal (Québec) », « Laval, Québec ») that are also a
     # city's name: a bare one is only dropped when another segment, the city, precedes it.
     address_region_names: tuple[str, ...] = ()
+    # North America writes the city before the postal code (« Montréal (Québec) H2X 1Y4 »), Europe after it.
+    city_precedes_postal_code: bool = False
 
     @property
     def is_euro(self) -> bool:
@@ -128,7 +130,8 @@ class CountryProfile:
         """Render a euro sale price as the prospect reads it in his country.
 
         A euro country keeps the exact amount (« 500 € », « 499,90 € »); another currency gets
-        the converted amount rounded to the nearest ten with an approximation sign (« ≈ 470 CHF »).
+        the converted amount with an approximation sign, rounded to the nearest ten from 200 up
+        (« ≈ 470 CHF ») and to the unit below (« ≈ 74 CHF »).
 
         Args:
             cents: The sale price in euro cents.
@@ -139,7 +142,8 @@ class CountryProfile:
         if self.is_euro:
             return self.price_format.format(amount=_format_euro_amount(cents))
         converted = cents / 100 * self.eur_rate
-        rounded = int(round(converted / _CONVERTED_PRICE_STEP) * _CONVERTED_PRICE_STEP)
+        step = _CONVERTED_PRICE_STEP if converted >= _CONVERTED_PRICE_STEP_FROM else 1
+        rounded = int(round(converted / step) * step)
         return self.price_format.format(amount=rounded)
 
 
@@ -269,6 +273,7 @@ class CountryProfiles:
             },
             address_trailing_names=("Canada", "QC"),
             address_region_names=("Québec", "Quebec"),
+            city_precedes_postal_code=True,
         ),
     }
 
