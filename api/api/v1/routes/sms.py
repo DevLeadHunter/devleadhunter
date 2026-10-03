@@ -490,6 +490,8 @@ async def preview_template(
             SmsVariables.ASSISTANT_LINK,
             SmsVariables.ASSISTANT_VIDEO_LINK,
             SmsVariables.RECEPTIONIST_FIRST_NAME,
+            SmsVariables.RECEPTIONIST,
+            SmsVariables.VIRTUAL_ASSISTANT,
         )
     )
     assistant = ai_assistant_service.get_active_for_prospect(db, prospect_id=prospect.id, user_id=current_user.id)

@@ -13,6 +13,7 @@ from models.demo_site import DemoSite
 from models.prospect_db import ProspectDB
 from models.prospect_enrichment import ProspectEnrichment
 from services.ai_assistant.assistant_service import ai_assistant_service
+from services.ai_assistant.receptionist_wording import ReceptionistWording
 from services.country_profiles import CountryProfile, CountryProfiles
 from services.decision_maker import build_greeting
 from services.french_date_formatter import FrenchDateFormatter
@@ -42,6 +43,8 @@ class EmailVariables:
     DEMO_LINK = "lien_demo"
     ASSISTANT_LINK = "lien_assistant"
     RECEPTIONIST_FIRST_NAME = "prenom_receptionniste"
+    RECEPTIONIST = "receptionniste"
+    VIRTUAL_ASSISTANT = "assistant_virtuel"
     VIDEO_LINK = "lien_video"
     VIDEO_THUMBNAIL = "vignette_video"
     ASSISTANT_VIDEO_LINK = "lien_video_assistant"
@@ -344,6 +347,8 @@ class EmailVariables:
             cls.DEMO_LINK: cls.build_demo_link_html(demo_link),
             cls.ASSISTANT_LINK: cls.assistant_link_html(assistant, variant),
             cls.RECEPTIONIST_FIRST_NAME: assistant.assistant_name if assistant is not None else "",
+            cls.RECEPTIONIST: ReceptionistWording.receptionist(assistant),
+            cls.VIRTUAL_ASSISTANT: ReceptionistWording.virtual_assistant(assistant),
             cls.VIDEO_LINK: video_link,
             cls.VIDEO_THUMBNAIL: cls.build_video_thumbnail_html(video_link, video_thumbnail_url),
             cls.ASSISTANT_VIDEO_LINK: assistant_video_link,

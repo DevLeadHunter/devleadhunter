@@ -91,6 +91,22 @@ export class EmailVariables {
       example: 'Sofia',
     },
     {
+      key: 'receptionniste',
+      token: '{receptionniste}',
+      label: 'Réceptionniste (accordé)',
+      description:
+        '« une réceptionniste » ou « un réceptionniste », accordé au prénom de la réceptionniste IA (Léa, Nathan).',
+      example: 'une réceptionniste',
+    },
+    {
+      key: 'assistant_virtuel',
+      token: '{assistant_virtuel}',
+      label: 'Assistant virtuel (accordé)',
+      description:
+        '« une assistante virtuelle » ou « un assistant virtuel », accordé au prénom de la réceptionniste IA (Léa, Nathan).',
+      example: 'une assistante virtuelle',
+    },
+    {
       key: 'lien_video',
       token: '{lien_video}',
       label: 'Lien vidéo',

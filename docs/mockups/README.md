@@ -1,0 +1,27 @@
+# Maquettes
+
+Les maquettes HTML du produit, gardées dans le dépôt pour qu'aucune ne se perde dans un fil de discussion. Chacune s'ouvre par un double-clic dans un navigateur : aucun serveur, aucune installation.
+
+## En attente de décision
+
+### Présence humaine sur la démo (`human-presence/`)
+
+Ticket Asana « [IA Code] Présence humaine sur la démo ». Trois briques pour franchir le mur clic → contact de la vague 3 (environ 95 visites humaines, un seul message laissé).
+
+| Fichier | Ce qu'il montre | État au 03/10 |
+|---|---|---|
+| `human-presence/banner-card.html` | La carte « Qui est derrière ce site » dans le bandeau démo : variantes C, A, B ; pastille, bureau, mobile ; site clair ou sombre | **Variante C retenue** (photo et nom en premier plan, texte court) ; bouton et affichage du prix à trancher |
+| `human-presence/banner-receptionist.html` | La réceptionniste Léa dans le bandeau : onglet dans la carte (position 1) ou panneau séparé (position 2) | En attente |
+| `human-presence/email-frank.html` | L'email franc en HTML : référence, variante (a) texte + signature, variante (b) avec une carte « Votre site, déjà en ligne » ; signature réelle ou allégée | En attente |
+| `human-presence/NOTE.md` | Le pourquoi, les huit choix à trancher, l'avis donné sur chacun, l'effort et le plan d'implémentation | À jour |
+
+### Ailleurs
+
+- **Espace client de la réceptionniste** : la refonte du 01/10 (tableau de bord clair, quatre chiffres sur 30 jours, graphique) a été envoyée en captures, retour attendu avant de styliser les écrans secondaires. Maquettes publiées : v6 https://claude.ai/artifact/MPU1yQjGhRAUpDPFj6wizR et v7 https://claude.ai/artifact/6XhTx9kxyx7r7t1xiuhqPX.
+- **Module Apple Wallet** : `design/wallet/` sur la branche `feat/apple-wallet-module` (page d'inscription client, chevalet, surface commerçant).
+
+## Tranchées et codées
+
+| Fichier | Ce qu'il montre | Devenu |
+|---|---|---|
+| `campaign-results-tab.html` | L'onglet « Résultats » d'une campagne (maquette v4) | Codé et en prod le 03/10 |

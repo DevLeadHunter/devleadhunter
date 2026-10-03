@@ -3,7 +3,8 @@
 Locks the copy rules of the frank library (``seeders/email_template_seeder.py`` and
 ``services/sms/templates.py``) so a future edit cannot quietly bring back a vague message:
 plain words, no long dash, no « voici / cliquez / ici », a nude ending, a single door, the
-price through a variable, and for the receptionist the plain mention that she is an AI.
+price through a variable, and for the receptionist the plain mention of an AI, in the gender of its
+first name.
 """
 
 from __future__ import annotations
@@ -25,6 +26,12 @@ _FORBIDDEN_WORDS = re.compile(r"\b(voici|cliquez|ici)\b", re.IGNORECASE)
 _LONG_DASHES = ("—", "–")
 _BIG_BRANDS = ("google", "apple", "facebook", "instagram")
 _EXIT_MARKERS = ("non", "rien à faire")
+_CLOSING_MARKERS = (*_EXIT_MARKERS, "Prenez votre temps")
+_SINGLE_DOOR_RECEPTIONIST_EMAILS = ("Réceptionniste IA - franc", "Réceptionniste IA - en bref")
+_GENDERED_RECEPTIONIST_WORDS = re.compile(
+    r"\b(il|elle|virtuel|virtuelle|préparée|une réceptionniste|un réceptionniste|la réceptionniste)\b", re.IGNORECASE
+)
+_VARIABLE = re.compile(r"\{[a-z_]+\}")
 
 
 def _website_emails() -> list[dict[str, object]]:
@@ -88,7 +95,13 @@ class TestEmailCopyRules:
             assert "{signature}" not in body, template["name"]
             assert body.endswith("</p>"), template["name"]
             last_paragraph = body.rsplit("<p>", 1)[1]
-            assert any(marker in last_paragraph for marker in _EXIT_MARKERS), template["name"]
+            assert any(marker in last_paragraph for marker in _CLOSING_MARKERS), template["name"]
+
+    def test_no_follow_up_promises_to_be_the_last_message_nor_begs_for_a_no(self) -> None:
+        for template in EMAIL_TEMPLATE_LIBRARY:
+            body = str(template["body_html"])
+            assert "Dernier message" not in body and "promis" not in body, template["name"]
+            assert "non merci" not in body and "Je range mes démos" not in body, template["name"]
 
     def test_every_website_email_says_the_price_the_day_and_how_to_say_no(self) -> None:
         for template in _website_emails():
@@ -114,19 +127,25 @@ class TestEmailCopyRules:
 
 
 class TestReceptionistEmailCopyRules:
-    def test_six_receptionist_emails_named_after_the_product(self) -> None:
-        assert len(_receptionist_emails()) == 6
+    def test_eight_receptionist_emails_named_after_the_product(self) -> None:
+        assert len(_receptionist_emails()) == 8
         for template in _receptionist_emails():
             assert str(template["name"]).startswith("Réceptionniste IA - "), template["name"]
 
     def test_she_is_plainly_an_ai_with_her_own_address_and_a_refundable_first_month(self) -> None:
         for template in _receptionist_emails():
             body = str(template["body_html"])
-            assert "assistante virtuelle" in body and "IA" in body, template["name"]
+            assert "{assistant_virtuel}" in body and "IA" in body, template["name"]
+            assert "pas une personne" not in body, template["name"]
             assert "{prix_assistant}" in body and "{prix}" not in body, template["name"]
             assert "satisfait ou remboursé" in body, template["name"]
             assert "{date_expiration}" in body, template["name"]
             assert any(marker in body for marker in _EXIT_MARKERS), template["name"]
+
+    def test_the_gendered_words_come_from_the_variables(self) -> None:
+        for template in _receptionist_emails():
+            copy = _VARIABLE.sub("", f"{template['subject']} {template['body_html']}")
+            assert _GENDERED_RECEPTIONIST_WORDS.search(copy) is None, template["name"]
 
     def test_she_never_assumes_the_prospect_has_a_website(self) -> None:
         for template in _receptionist_emails():
@@ -138,9 +157,12 @@ class TestReceptionistEmailCopyRules:
         for template in _receptionist_emails():
             body = str(template["body_html"])
             is_video_template = template["name"] == "Réceptionniste IA - en vidéo"
-            is_first_email = template["category"] == EmailTemplateCategory.FIRST_EMAIL.value
+            shows_the_thumbnail = (
+                template["category"] == EmailTemplateCategory.FIRST_EMAIL.value
+                and template["name"] not in _SINGLE_DOOR_RECEPTIONIST_EMAILS
+            )
             assert body.count("{lien_assistant}") == (0 if is_video_template else 1), template["name"]
-            assert body.count("{vignette_video_assistant}") == (1 if is_first_email else 0), template["name"]
+            assert body.count("{vignette_video_assistant}") == (1 if shows_the_thumbnail else 0), template["name"]
 
 
 class TestSmsCopyRules:
@@ -172,7 +194,8 @@ class TestSmsCopyRules:
     def test_receptionist_sms_say_she_is_an_ai_and_the_refundable_month(self) -> None:
         for template in _receptionist_sms():
             assert template.name.startswith("Réceptionniste IA - "), template.key
-            assert "réceptionniste virtuelle (une IA)" in template.body, template.key
+            assert "{assistant_virtuel} (IA)" in template.body, template.key
+            assert _GENDERED_RECEPTIONIST_WORDS.search(_VARIABLE.sub("", template.body)) is None, template.key
             assert template.uses("prix_assistant") and not template.uses("prix"), template.key
             assert "satisfait ou remboursé" in template.body, template.key
             assert "site" not in template.body.lower(), template.key

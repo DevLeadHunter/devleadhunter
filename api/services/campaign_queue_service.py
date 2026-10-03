@@ -85,12 +85,16 @@ _ASSISTANT_VARIABLES: tuple[str, ...] = (
     *_ASSISTANT_LINK_VARIABLES,
     EmailVariables.PRICE_ASSISTANT,
     EmailVariables.RECEPTIONIST_FIRST_NAME,
+    EmailVariables.RECEPTIONIST,
+    EmailVariables.VIRTUAL_ASSISTANT,
 )
 _SMS_ASSISTANT_LINK_VARIABLES: tuple[str, ...] = (SmsVariables.ASSISTANT_LINK, SmsVariables.ASSISTANT_VIDEO_LINK)
 _SMS_ASSISTANT_VARIABLES: tuple[str, ...] = (
     *_SMS_ASSISTANT_LINK_VARIABLES,
     SmsVariables.PRICE_ASSISTANT,
     SmsVariables.RECEPTIONIST_FIRST_NAME,
+    SmsVariables.RECEPTIONIST,
+    SmsVariables.VIRTUAL_ASSISTANT,
 )
 
 

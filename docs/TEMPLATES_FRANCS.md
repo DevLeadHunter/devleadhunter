@@ -15,7 +15,7 @@ Règle n° 1 (décision produit du 02/10/2026), pour tous les modules, email et 
 5. une sortie facile : si c'est non, il le dit et on ne le recontacte plus ;
 6. une seule demande, légère : un mot suffit, oui, non ou une question.
 
-Pour la réceptionniste : dire clairement que c'est une assistante virtuelle (IA), pas une personne, et qu'elle vit à une adresse à son nom (le prospect n'a pas besoin de site).
+Pour la réceptionniste : dire clairement que c'est un assistant virtuel (IA), accordé au prénom choisi (« Léa, une assistante virtuelle », « Nathan, un assistant virtuel »), et qu'il vit à une adresse à son nom (le prospect n'a pas besoin de site). Sans se dévaloriser : pas de « pas une personne ».
 
 Les refus sont acceptés : aucun modèle n'a été adouci pour les éviter.
 
@@ -78,19 +78,27 @@ Clés par défaut dans le code et la configuration du compte admin :
 
 ## 2. Ce qui change
 
-### Emails, module sites web (13 modèles, tous francs)
+### Relecture du 03/10 (soir)
+
+- « Dernier message, promis » devient « Dernier mail de ma part » : une relance SMS J+30 peut encore suivre, le mail ne promet donc plus d'être le dernier message.
+- « Même un « non merci » me va » sonnait peu sûr de soi. Il est remplacé par une ligne qui laisse le temps : « Besoin d'y réfléchir ? Prenez votre temps : il reste en ligne jusqu'au 24 octobre. » La sortie reste écrite juste avant (« Sinon, rien à faire »). « Un mot me suffit, même un non » est gardé.
+- « Je range mes démos » est retiré du dernier rappel avant retrait.
+- Rappel court est validé et épinglé, avec un jumeau vidéo, « Rappel court - vidéo ».
+- Réceptionniste : la moitié du casting est masculine (Hugo, Marc, Nathan). Les mots genrés viennent de deux variables accordées au prénom, `{receptionniste}` (« une réceptionniste » ou « un réceptionniste ») et `{assistant_virtuel}` (« une assistante virtuelle » ou « un assistant virtuel »). Le texte nomme la réceptionniste par son prénom plutôt que par « il » ou « elle », et « pas une personne » est retiré partout. Deux modèles s'ajoutent : « Réceptionniste IA - franc », calqué sur le mail franc des sites, et « Réceptionniste IA - en bref », qui liste en mots-clés tout ce que fait la réceptionniste.
+
+### Emails, module sites web (14 modèles, tous francs)
 
 Premier email : **Franc - premier contact** (recommandé, épinglé en tête, repris du modèle 30 avec `{prix}` et `{date_expiration}`), Visibilité - on vous cherche, Crédibilité - la première impression, Vidéo - je vous montre, Site en panne - premier email, Refonte - premier email, Franc - dernier rappel avant retrait (repris du 33 ; catégorie premier email comme le 33, parce qu'il ouvre sa propre campagne vers les prospects dont la démo expire).
 
-Relance : **Franc - relance** (recommandé, repris du 32), **Franc - relance vidéo** (nouveau : la relance J+3 en vidéo prévue pour la vague 4), Rappel court, Offre à vie, Refonte - relance.
+Relance : **Franc - relance** (recommandé, repris du 32), **Franc - relance vidéo** (la relance J+3 en vidéo prévue pour la vague 4), **Rappel court** et **Rappel court - vidéo** (épinglés), Offre à vie, Refonte - relance.
 
 Retirés (désactivés en prod, jamais supprimés) : Bouche-à-oreille - on vous retrouve, Autonomie - vous gardez la main, Urgence douce, Site en panne - relance. Aucun n'a jamais servi dans une campagne.
 
 Choix de copy communs : plus de `{vignette_video}` dans les emails texte (une seule porte par mail : la vidéo est un angle à part, J1 « Vidéo - je vous montre » ou relance « Franc - relance vidéo ») ; « ici » et les tirets cadratins des modèles 30 à 33 ont été retirés des versions bibliothèque ; le corps finit nu, la signature vient du bloc signature à l'envoi.
 
-### Emails, module réceptionniste IA (6 modèles, renommés et réécrits)
+### Emails, module réceptionniste IA (8 modèles, renommés et réécrits)
 
-« Assistant IA - … » devient « Réceptionniste IA - … » (le renommage se fait sur la même ligne en base : la campagne 21 garde son modèle). Chaque modèle dit « une assistante virtuelle (IA), pas une personne », « à une adresse à son nom », `{prix_assistant}` par mois sans engagement, premier mois satisfait ou remboursé, `{date_expiration}`, et la sortie facile. Aucun ne parle de « votre site » ni d'installation.
+« Assistant IA - … » devient « Réceptionniste IA - … » (le renommage se fait sur la même ligne en base : la campagne 21 garde son modèle). Chaque modèle présente la réceptionniste par son prénom et `{assistant_virtuel}` (IA), dit « à une adresse à son nom », `{prix_assistant}` par mois sans engagement, premier mois satisfait ou remboursé, `{date_expiration}`, et la sortie facile. Aucun ne parle de « votre site » ni d'installation. « Réceptionniste IA - franc » et « Réceptionniste IA - en bref » gardent une seule porte (le lien, sans vignette vidéo), comme le mail franc des sites.
 
 ### SMS (16 modèles, tous francs, 2 segments)
 
@@ -104,16 +112,14 @@ Choix de copy communs : plus de `{vignette_video}` dans les emails texte (une se
 
 Jouée au prochain déploiement, sur les lignes de bibliothèque du compte admin uniquement : renomme les 6 modèles réceptionniste sur place, réécrit sujet et corps des modèles gardés (même nom), insère les nouveaux modèles francs, désactive les modèles retirés que personne n'a utilisés. Un modèle retiré mais encore référencé par une campagne resterait actif (signalé dans les logs). Les modèles personnels (30 à 33) ne sont pas touchés. Rejouable sans effet.
 
+La relecture du 03/10 passe par une seconde migration, `refresh_frank_email_template_library`, qui rejoue la même mise à jour (une migration ne tourne qu'une fois) : elle réécrit les modèles relus et insère les trois nouveaux.
+
 ## 3. Valeurs d'exemple utilisées ci-dessous
 
-Prospect « Garage Martin » à Clermont-Ferrand, décisionnaire « M. Martin », garagiste, ancien site `garage-martin.fr`, prix 500 €, réceptionniste « Nathan » à 79 € par mois, date d'expiration 24/10/2026 (rendue « 24 octobre »), téléphone public `06 12 34 56 78` et prénom d'expéditeur « Marc » (exemples : les vrais sont ceux des Paramètres et du compte). Dans les emails, les liens sont de vrais liens cliquables ; la vidéo est une vignette cliquable (image du site avec bouton lecture), rendue ici entre crochets. Les corps d'email s'affichent sans la signature, ajoutée à l'envoi. Les SMS montrent le texte envoyé : smsmode y ajoute ensuite sa mention de désinscription (STOP et numéro court en France, lien `no-sms.eu` en Suisse) ; le nombre de caractères indiqué compte les 14 caractères réservés en France.
+Prospect « Garage Martin » à Clermont-Ferrand, décisionnaire « M. Martin », garagiste, ancien site `garage-martin.fr`, prix 500 €, réceptionniste « Nathan » à 79 € par mois (prénom masculin : « un assistant virtuel » ; avec « Léa », le même modèle écrit « une assistante virtuelle »), date d'expiration 24/10/2026 (rendue « 24 octobre »), téléphone public `06 12 34 56 78` et prénom d'expéditeur « Marc » (exemples : les vrais sont ceux des Paramètres et du compte). Dans les emails, les liens sont de vrais liens cliquables ; la vidéo est une vignette cliquable (image du site avec bouton lecture), rendue ici entre crochets. Les corps d'email s'affichent sans la signature, ajoutée à l'envoi. Les SMS montrent le texte envoyé : smsmode y ajoute ensuite sa mention de désinscription (STOP et numéro court en France, lien `no-sms.eu` en Suisse) ; le nombre de caractères indiqué compte les 14 caractères réservés en France.
 
 ## 4. Les modèles
 
-WARNING: No ENCRYPTION_KEY found in environment. Generating new key.
-This key will be lost when the server restarts!
-Generated key: LDdwHn3sDAK0_C3CvUMav3k5kq0q1RbcYsTIleWj_yk=
-Save this key in your .env file as ENCRYPTION_KEY
 ### Emails, module sites web
 
 #### Franc - premier contact
@@ -228,11 +234,11 @@ Un mot me suffit : oui, non, ou une question. Si c'est non, dites-le-moi et je n
 ```
 Bonjour M. Martin,
 
-Dernier message, promis. Le site de Garage Martin est toujours en ligne : demo.dibodev.fr/garage-martin
+Dernier mail de ma part. Le site de Garage Martin est toujours en ligne : demo.dibodev.fr/garage-martin
 
-Je le retire le 24 octobre. Si vous le voulez, c'est 500 €, une seule fois. Sinon, rien à faire.
+Si vous le voulez, c'est 500 €, une seule fois. Sinon, rien à faire.
 
-Même un « non merci » me va.
+Besoin d'y réfléchir ? Prenez votre temps : il reste en ligne jusqu'au 24 octobre.
 ```
 
 #### Franc - relance vidéo
@@ -247,9 +253,9 @@ Je vous ai écrit il y a quelques jours au sujet du site de Garage Martin. Cette
 
 [vignette cliquable de la vidéo, lien demo.dibodev.fr/v/garage-martin]
 
-Il reste en ligne jusqu'au 24 octobre. Si vous le voulez, c'est 500 €, une seule fois, sans abonnement. Sinon, rien à faire.
+Si vous le voulez, c'est 500 €, une seule fois, sans abonnement. Sinon, rien à faire.
 
-Même un « non merci » me va.
+Besoin d'y réfléchir ? Prenez votre temps : il reste en ligne jusqu'au 24 octobre.
 ```
 
 #### Franc - dernier rappel avant retrait
@@ -260,7 +266,7 @@ Même un « non merci » me va.
 ```
 Bonjour M. Martin,
 
-Je range mes démos : le site de Garage Martin sera retiré le 24 octobre. Il est encore en ligne : demo.dibodev.fr/garage-martin
+Le site que j'ai construit pour Garage Martin sera retiré le 24 octobre. Il est encore en ligne : demo.dibodev.fr/garage-martin
 
 Si vous voulez le garder, c'est 500 €, une seule fois. Je le mets sur votre propre adresse, et vous pourrez ensuite tout modifier vous-même.
 
@@ -269,13 +275,30 @@ Un mot me suffit, même un non.
 
 #### Rappel court
 
-- Catégorie : Relance
+- Catégorie : Relance (recommandé, épinglé)
 - Sujet : `vous avez vu votre site ?`
 
 ```
 Bonjour M. Martin,
 
 Le site de Garage Martin est toujours en ligne : demo.dibodev.fr/garage-martin
+
+C'est 500 €, une seule fois, sans abonnement. Je le retire le 24 octobre.
+
+Un mot me suffit, même un non.
+```
+
+#### Rappel court - vidéo
+
+- Catégorie : Relance (recommandé, épinglé)
+- Sujet : `votre site, en 30 secondes`
+
+```
+Bonjour M. Martin,
+
+Le site de Garage Martin, en 30 secondes :
+
+[vignette cliquable de la vidéo, lien demo.dibodev.fr/v/garage-martin]
 
 C'est 500 €, une seule fois, sans abonnement. Je le retire le 24 octobre.
 
@@ -318,21 +341,65 @@ Un mot me suffit, même un non.
 
 ### Emails, module réceptionniste IA
 
-#### Réceptionniste IA - le soir, personne ne répond
+#### Réceptionniste IA - franc
 
 - Catégorie : Premier email
-- Sujet : `une réceptionniste pour Garage Martin`
+- Sujet : `un réceptionniste pour Garage Martin`
 
 ```
 Bonjour M. Martin,
 
-Je fais des outils web pour les artisans et les commerçants, et j'ai préparé pour Garage Martin une réceptionniste, Nathan : une assistante virtuelle (IA), pas une personne. Le soir et le week-end, elle répond tout de suite à vos clients et vous transmet chaque demande. Elle est déjà en ligne, à une adresse à son nom : demo.dibodev.fr/ia/garage-martin
+Je fais des outils web pour les artisans et les commerçants, et j'ai préparé Nathan pour Garage Martin : un assistant virtuel (IA) qui répond à vos clients quand vous ne pouvez pas. Nathan est déjà en ligne, à une adresse à son nom : demo.dibodev.fr/ia/garage-martin
+
+C'est 79 € par mois, sans engagement. Le premier mois est satisfait ou remboursé.
+
+La démo reste en ligne jusqu'au 24 octobre. Après, je la retire.
+
+Un mot me suffit : oui, non, ou une question. Si c'est non, dites-le-moi et je ne vous recontacte plus.
+```
+
+#### Réceptionniste IA - en bref
+
+- Catégorie : Premier email
+- Sujet : `votre réceptionniste, en bref`
+
+```
+Bonjour M. Martin,
+
+Je fais des outils web pour les artisans et les commerçants, et j'ai préparé Nathan pour Garage Martin : un assistant virtuel (IA). En bref :
+
+- Réponses à vos clients 24 h sur 24, dans leur langue
+- Demandes de devis avec photo
+- Prise de rendez-vous dans votre agenda Google
+- Chaque demande transmise par mail, les urgentes aussi par SMS
+- Uniquement vos vraies informations : rien d'inventé
+- Une adresse à son nom pour votre fiche Google, pas besoin de site
+- Un bilan chaque mois
+
+Nathan est déjà en ligne : demo.dibodev.fr/ia/garage-martin
+
+C'est 79 € par mois, sans engagement. Le premier mois est satisfait ou remboursé.
+
+La démo reste en ligne jusqu'au 24 octobre. Après, je la retire.
+
+Un mot me suffit : oui, non, ou une question. Si c'est non, dites-le-moi et je ne vous recontacte plus.
+```
+
+#### Réceptionniste IA - le soir, personne ne répond
+
+- Catégorie : Premier email
+- Sujet : `vos clients du soir`
+
+```
+Bonjour M. Martin,
+
+Je fais des outils web pour les artisans et les commerçants, et j'ai préparé Nathan pour Garage Martin : un assistant virtuel (IA) qui, le soir et le week-end, répond tout de suite à vos clients et vous transmet chaque demande. Nathan est déjà en ligne, à une adresse à son nom : demo.dibodev.fr/ia/garage-martin
 
 [vignette cliquable de la vidéo, lien demo.dibodev.fr/va/garage-martin]
 
 C'est 79 € par mois, sans engagement. Le premier mois est satisfait ou remboursé.
 
-Je la garde en ligne jusqu'au 24 octobre. Après, je la retire.
+La démo reste en ligne jusqu'au 24 octobre. Après, je la retire.
 
 Un mot me suffit : oui, non, ou une question. Si c'est non, dites-le-moi et je ne vous recontacte plus.
 ```
@@ -345,13 +412,13 @@ Un mot me suffit : oui, non, ou une question. Si c'est non, dites-le-moi et je n
 ```
 Bonjour M. Martin,
 
-Je fais des outils web pour les artisans et les commerçants, et j'ai préparé pour Garage Martin une réceptionniste, Nathan : une assistante virtuelle (IA), pas une personne. Un client lui envoie la photo de son problème à 22 h, elle pose les bonnes questions et vous transmet une demande de devis complète. Elle est déjà en ligne, à une adresse à son nom, et elle accepte n'importe quelle photo : demo.dibodev.fr/ia/garage-martin
+Je fais des outils web pour les artisans et les commerçants, et j'ai préparé Nathan pour Garage Martin : un assistant virtuel (IA). Un client envoie la photo de son problème à 22 h, et vous recevez une demande de devis complète, avec les bonnes questions déjà posées. Nathan est déjà en ligne, à une adresse à son nom, et accepte n'importe quelle photo : demo.dibodev.fr/ia/garage-martin
 
 [vignette cliquable de la vidéo, lien demo.dibodev.fr/va/garage-martin]
 
 C'est 79 € par mois, sans engagement. Le premier mois est satisfait ou remboursé.
 
-Je la garde en ligne jusqu'au 24 octobre. Après, je la retire.
+La démo reste en ligne jusqu'au 24 octobre. Après, je la retire.
 
 Un mot me suffit : oui, non, ou une question. Si c'est non, dites-le-moi et je ne vous recontacte plus.
 ```
@@ -364,13 +431,13 @@ Un mot me suffit : oui, non, ou une question. Si c'est non, dites-le-moi et je n
 ```
 Bonjour M. Martin,
 
-Une partie des clients de Garage Martin n'ose pas écrire en français et repart sans rien demander. Je fais des outils web pour les artisans et les commerçants, et j'ai préparé pour vous une réceptionniste, Nathan : une assistante virtuelle (IA), pas une personne. Elle répond à vos clients dans leur langue, 24 h sur 24, et vous transmet leur demande en français. Elle est déjà en ligne, à une adresse à son nom : demo.dibodev.fr/ia/garage-martin
+Une partie des clients de Garage Martin n'ose pas écrire en français et repart sans rien demander. Je fais des outils web pour les artisans et les commerçants, et j'ai préparé pour vous Nathan : un assistant virtuel (IA) qui répond à vos clients dans leur langue, 24 h sur 24, et vous transmet leur demande en français. Nathan est déjà en ligne, à une adresse à son nom : demo.dibodev.fr/ia/garage-martin
 
 [vignette cliquable de la vidéo, lien demo.dibodev.fr/va/garage-martin]
 
 C'est 79 € par mois, sans engagement. Le premier mois est satisfait ou remboursé.
 
-Je la garde en ligne jusqu'au 24 octobre. Après, je la retire.
+La démo reste en ligne jusqu'au 24 octobre. Après, je la retire.
 
 Un mot me suffit : oui, non, ou une question. Si c'est non, dites-le-moi et je ne vous recontacte plus.
 ```
@@ -383,13 +450,13 @@ Un mot me suffit : oui, non, ou une question. Si c'est non, dites-le-moi et je n
 ```
 Bonjour M. Martin,
 
-Je fais des outils web pour les artisans et les commerçants, et j'ai préparé pour Garage Martin une réceptionniste, Nathan : une assistante virtuelle (IA), pas une personne, qui répond à vos clients le soir et le week-end et vous transmet chaque demande. Je vous la montre en 30 secondes :
+Je fais des outils web pour les artisans et les commerçants, et j'ai préparé Nathan pour Garage Martin : un assistant virtuel (IA) qui répond à vos clients le soir et le week-end et vous transmet chaque demande. Je vous montre comment ça marche, en 30 secondes :
 
 [vignette cliquable de la vidéo, lien demo.dibodev.fr/va/garage-martin]
 
 C'est 79 € par mois, sans engagement. Le premier mois est satisfait ou remboursé.
 
-Je la garde en ligne jusqu'au 24 octobre. Après, je la retire.
+La démo reste en ligne jusqu'au 24 octobre. Après, je la retire.
 
 Un mot me suffit : oui, non, ou une question. Si c'est non, dites-le-moi et je ne vous recontacte plus.
 ```
@@ -397,31 +464,31 @@ Un mot me suffit : oui, non, ou une question. Si c'est non, dites-le-moi et je n
 #### Réceptionniste IA - relance
 
 - Catégorie : Relance
-- Sujet : `avant que je la retire`
+- Sujet : `avant que je retire la démo`
 
 ```
 Bonjour M. Martin,
 
-Dernier message, promis. Nathan, la réceptionniste que j'ai préparée pour Garage Martin (une assistante virtuelle, IA), répond toujours à cette adresse : demo.dibodev.fr/ia/garage-martin
+Dernier mail de ma part. Pour Garage Martin, Nathan (un assistant virtuel, IA) répond toujours à cette adresse : demo.dibodev.fr/ia/garage-martin
 
-Je la retire le 24 octobre. Si vous la voulez, c'est 79 € par mois, sans engagement, premier mois satisfait ou remboursé. Sinon, rien à faire.
+Pour garder Nathan, c'est 79 € par mois, sans engagement, premier mois satisfait ou remboursé. Sinon, rien à faire.
 
-Même un « non merci » me va.
+Besoin d'y réfléchir ? Prenez votre temps : la démo reste en ligne jusqu'au 24 octobre.
 ```
 
 #### Réceptionniste IA - le prix, sans détour
 
 - Catégorie : Relance
-- Sujet : `le prix de la réceptionniste`
+- Sujet : `le prix, sans détour`
 
 ```
 Bonjour M. Martin,
 
-Sans détour : 79 € par mois pour que Nathan, votre réceptionniste (une assistante virtuelle, IA), réponde à vos clients à votre place quand vous ne pouvez pas. Sans engagement, premier mois satisfait ou remboursé.
+Sans détour : 79 € par mois pour que Nathan, votre réceptionniste (un assistant virtuel, IA), réponde à vos clients à votre place quand vous ne pouvez pas. Sans engagement, premier mois satisfait ou remboursé.
 
-Elle est toujours en ligne, à une adresse à son nom : demo.dibodev.fr/ia/garage-martin
+Nathan répond déjà à cette adresse : demo.dibodev.fr/ia/garage-martin
 
-Je la retire le 24 octobre. Un mot me suffit, même un non.
+Je retire la démo le 24 octobre. Un mot me suffit, même un non.
 ```
 
 ### SMS, module sites web
@@ -502,60 +569,59 @@ Bonjour M. Martin, la nouvelle version de votre site, envoyée par email, est en
 
 #### Réceptionniste IA - le soir, personne ne répond (`assistant-24-7`)
 
-- Catégorie : Premier contact ; 2 segments, 266 caractères (mention STOP comprise)
+- Catégorie : Premier contact ; 2 segments, 263 caractères (mention STOP comprise)
 
 ```
-Bonjour M. Martin, j'ai préparé Nathan, votre réceptionniste virtuelle (une IA) : le soir, elle répond. demo.dibodev.fr/s/ia/garage-martin 79 €/mois sans engagement, 1er mois satisfait ou remboursé. Un mot me suffit, oui ou non, au 06 12 34 56 78. Marc
+Bonjour M. Martin, j'ai préparé Nathan, un assistant virtuel (IA) qui répond le soir à vos clients : demo.dibodev.fr/s/ia/garage-martin 79 €/mois sans engagement, 1er mois satisfait ou remboursé. Un mot me suffit, oui ou non, au 06 12 34 56 78. Marc
 ```
 
 #### Réceptionniste IA - dans leur langue (`assistant-langues`)
 
-- Catégorie : Premier contact ; 2 segments, 274 caractères (mention STOP comprise)
+- Catégorie : Premier contact ; 2 segments, 260 caractères (mention STOP comprise)
 
 ```
-Bonjour M. Martin, j'ai préparé Nathan, votre réceptionniste virtuelle (une IA), qui parle la langue du client. demo.dibodev.fr/s/ia/garage-martin 79 €/mois sans engagement, 1er mois satisfait ou remboursé. Un mot me suffit, oui ou non, au 06 12 34 56 78. Marc
+Bonjour M. Martin, j'ai préparé Nathan, un assistant virtuel (IA), qui parle la langue du client. demo.dibodev.fr/s/ia/garage-martin 79 €/mois sans engagement, 1er mois satisfait ou remboursé. Un mot me suffit, oui ou non, au 06 12 34 56 78. Marc
 ```
 
 #### Réceptionniste IA - devis par photo (`assistant-demandes`)
 
-- Catégorie : Premier contact ; 2 segments, 272 caractères (mention STOP comprise)
+- Catégorie : Premier contact ; 2 segments, 258 caractères (mention STOP comprise)
 
 ```
-Bonjour M. Martin, j'ai préparé Nathan, votre réceptionniste virtuelle (une IA) : demande de devis par photo. demo.dibodev.fr/s/ia/garage-martin 79 €/mois sans engagement, 1er mois satisfait ou remboursé. Un mot me suffit, oui ou non, au 06 12 34 56 78. Marc
+Bonjour M. Martin, j'ai préparé Nathan, un assistant virtuel (IA) : demande de devis par photo. demo.dibodev.fr/s/ia/garage-martin 79 €/mois sans engagement, 1er mois satisfait ou remboursé. Un mot me suffit, oui ou non, au 06 12 34 56 78. Marc
 ```
 
 #### Réceptionniste IA - en vidéo (`assistant-video`)
 
-- Catégorie : Premier contact, repli sans vidéo : `assistant-24-7` ; 2 segments, 262 caractères (mention STOP comprise)
+- Catégorie : Premier contact, repli sans vidéo : `assistant-24-7` ; 2 segments, 248 caractères (mention STOP comprise)
 
 ```
-Bonjour M. Martin, j'ai préparé Nathan, votre réceptionniste virtuelle (une IA). En 30 s de vidéo : demo.dibodev.fr/s/va/garage-martin 79 €/mois sans engagement, 1er mois satisfait ou remboursé. Un mot me suffit, oui ou non, au 06 12 34 56 78. Marc
+Bonjour M. Martin, j'ai préparé Nathan, un assistant virtuel (IA). En 30 s de vidéo : demo.dibodev.fr/s/va/garage-martin 79 €/mois sans engagement, 1er mois satisfait ou remboursé. Un mot me suffit, oui ou non, au 06 12 34 56 78. Marc
 ```
 
 #### Réceptionniste IA - relance (`assistant-relance`)
 
-- Catégorie : Relance J+30 ; 2 segments, 265 caractères (mention STOP comprise)
+- Catégorie : Relance J+30 ; 2 segments, 251 caractères (mention STOP comprise)
 
 ```
-Bonjour M. Martin, après mon email, Nathan, votre réceptionniste virtuelle (une IA), répond toujours : demo.dibodev.fr/s/ia/garage-martin 79 €/mois sans engagement, 1er mois satisfait ou remboursé. Un mot me suffit, oui ou non, au 06 12 34 56 78. Marc
+Bonjour M. Martin, après mon email, Nathan, un assistant virtuel (IA), répond toujours : demo.dibodev.fr/s/ia/garage-martin 79 €/mois sans engagement, 1er mois satisfait ou remboursé. Un mot me suffit, oui ou non, au 06 12 34 56 78. Marc
 ```
 
 #### Réceptionniste IA - relance vidéo (`assistant-relance-video`)
 
-- Catégorie : Relance J+30, repli sans vidéo : `assistant-relance` ; 2 segments, 255 caractères (mention STOP comprise)
+- Catégorie : Relance J+30, repli sans vidéo : `assistant-relance` ; 2 segments, 250 caractères (mention STOP comprise)
 
 ```
-Bonjour M. Martin, la vidéo de mon email : votre réceptionniste virtuelle (une IA) en 30 s : demo.dibodev.fr/s/va/garage-martin 79 €/mois sans engagement, 1er mois satisfait ou remboursé. Un mot me suffit, oui ou non, au 06 12 34 56 78. Marc
+Bonjour M. Martin, la vidéo de mon email : Nathan, un assistant virtuel (IA), en 30 s : demo.dibodev.fr/s/va/garage-martin 79 €/mois sans engagement, 1er mois satisfait ou remboursé. Un mot me suffit, oui ou non, au 06 12 34 56 78. Marc
 ```
 
 #### Réceptionniste IA - le prix, sans détour (`assistant-prix-cash`)
 
-- Catégorie : Relance J+30 ; 2 segments, 271 caractères (mention STOP comprise)
+- Catégorie : Relance J+30 ; 2 segments, 257 caractères (mention STOP comprise)
 
 ```
-Bonjour M. Martin, le prix de mon email, sans détour : 79 €/mois pour Nathan, votre réceptionniste virtuelle (une IA). Sans engagement, 1er mois satisfait ou remboursé. demo.dibodev.fr/s/ia/garage-martin Un mot me suffit, oui ou non, au 06 12 34 56 78. Marc
+Bonjour M. Martin, le prix de mon email, sans détour : 79 €/mois pour Nathan, un assistant virtuel (IA). Sans engagement, 1er mois satisfait ou remboursé. demo.dibodev.fr/s/ia/garage-martin Un mot me suffit, oui ou non, au 06 12 34 56 78. Marc
 ```
-
 
 ## 5. Points à valider avant tout envoi
 

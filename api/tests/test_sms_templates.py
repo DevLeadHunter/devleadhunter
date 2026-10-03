@@ -33,7 +33,9 @@ _TYPICAL_VARIABLES: dict[str, str] = {
     "ancien_site": "garage-martin.fr",
     "prix": "500 €",
     "prix_assistant": "79 €",
-    "prenom_receptionniste": "Nathan",
+    "prenom_receptionniste": "Sofia",
+    "receptionniste": "une réceptionniste",
+    "assistant_virtuel": "une assistante virtuelle",
     "telephone": "06 12 34 56 78",
     "signature": "Léo",
 }

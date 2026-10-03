@@ -17,6 +17,7 @@ from models.ai_assistant import AiAssistant
 from models.prospect_db import ProspectDB
 from models.user import User
 from services.ai_assistant.assistant_service import ai_assistant_service
+from services.ai_assistant.receptionist_wording import ReceptionistWording
 from services.assistant_pricing_service import AssistantPricingService
 from services.country_profiles import DEFAULT_COUNTRY_CODE, CountryProfile, CountryProfiles
 from services.decision_maker.greeting import build_greeting
@@ -37,6 +38,8 @@ class SmsVariables:
     DEMO_LINK = "lien_demo"
     ASSISTANT_LINK = "lien_assistant"
     RECEPTIONIST_FIRST_NAME = "prenom_receptionniste"
+    RECEPTIONIST = "receptionniste"
+    VIRTUAL_ASSISTANT = "assistant_virtuel"
     VIDEO_LINK = "lien_video"
     ASSISTANT_VIDEO_LINK = "lien_video_assistant"
     OLD_WEBSITE = "ancien_site"
@@ -139,6 +142,8 @@ class SmsVariables:
             cls.DEMO_LINK: cls.as_sms_link(demo_url),
             cls.ASSISTANT_LINK: cls.as_sms_link(sms_tracked_link(assistant_url)) if assistant_url else "",
             cls.RECEPTIONIST_FIRST_NAME: assistant.assistant_name if assistant is not None else "",
+            cls.RECEPTIONIST: ReceptionistWording.receptionist(assistant),
+            cls.VIRTUAL_ASSISTANT: ReceptionistWording.virtual_assistant(assistant),
             cls.VIDEO_LINK: cls.as_sms_link(video_url),
             cls.ASSISTANT_VIDEO_LINK: (
                 cls.as_sms_link(sms_tracked_link(assistant_video_url)) if assistant_video_url else ""
