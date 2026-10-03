@@ -202,6 +202,8 @@ export class StoryblokSiteContentBridge {
       email: this.readString(blok.email),
       city: this.readString(blok.city),
       area: this.readString(blok.area),
+      professionalLicenseLabel: this.readString(blok.professionalLicenseLabel),
+      professionalLicenseNumber: this.readString(blok.professionalLicenseNumber),
       subtitle: this.readString(blok.subtitle),
       about: this.readString(blok.about),
       heroTitle: this.readString(blok.heroTitle),

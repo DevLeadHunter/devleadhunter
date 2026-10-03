@@ -17,7 +17,7 @@
     "lint:fix": "npm run lint:prettier:fix && npm run lint:eslint:fix"
   },
   "dependencies": {
-    "@devleadhunter/website-content": "github:DevLeadHunter/devleadhunter-website-content#v1.9.0",
+    "@devleadhunter/website-content": "github:DevLeadHunter/devleadhunter-website-content#v1.11.0",
     "@dicebear/core": "^9.4.3",
     "@dicebear/notionists": "^9.4.3",
     "gsap": "^3.15.0",
