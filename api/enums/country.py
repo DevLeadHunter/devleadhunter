@@ -29,7 +29,7 @@ def normalize_country(code: str | None) -> str:
 
 def country_label(code: str | None) -> str:
     """
-    French display name of a country ("Suisse"), used to disambiguate search queries.
+    French display name of a country ("Suisse", "Canada (Québec)").
 
     Args:
         code: ISO alpha-2 code.
@@ -38,3 +38,16 @@ def country_label(code: str | None) -> str:
         The label of the normalized code.
     """
     return CountryProfiles.get(code).label
+
+
+def search_label(code: str | None) -> str:
+    """
+    The word a search query appends to pin the country ("Suisse", "Québec"), empty in France.
+
+    Args:
+        code: ISO alpha-2 code.
+
+    Returns:
+        The search suffix of the normalized code.
+    """
+    return CountryProfiles.get(code).search_label

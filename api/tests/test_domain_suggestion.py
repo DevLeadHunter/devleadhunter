@@ -6,6 +6,7 @@ never claiming a domain is free without a 404 from the registry.
 """
 
 import asyncio
+from typing import ClassVar
 
 import pytest
 
@@ -17,16 +18,20 @@ from services.domain.suggestion_service import DomainCandidate, domain_suggestio
 
 
 class _FakeResponse:
-    def __init__(self, status_code: int) -> None:
+    def __init__(self, status_code: int, url: str) -> None:
         self.status_code = status_code
+        self.url = url
 
 
 class _FakeClient:
-    """httpx.AsyncClient stand-in: yields a canned status, or raises a canned error."""
+    """httpx.AsyncClient stand-in: yields a canned status, or raises a canned error, and records the URL asked."""
 
-    def __init__(self, *, status: int | None, exc: Exception | None) -> None:
+    requested: ClassVar[list[str]] = []
+
+    def __init__(self, *, status: int | None, exc: Exception | None, redirect_to: str | None) -> None:
         self._status = status
         self._exc = exc
+        self._redirect_to = redirect_to
 
     async def __aenter__(self) -> "_FakeClient":
         return self
@@ -34,15 +39,28 @@ class _FakeClient:
     async def __aexit__(self, *_exc: object) -> bool:
         return False
 
-    async def get(self, _url: str) -> _FakeResponse:
+    async def get(self, url: str) -> _FakeResponse:
+        _FakeClient.requested.append(url)
         if self._exc is not None:
             raise self._exc
         assert self._status is not None
-        return _FakeResponse(self._status)
+        # Like httpx with ``follow_redirects``: the response URL is the final one, the request URL otherwise.
+        return _FakeResponse(self._status, self._redirect_to or url)
 
 
-def _patch_client(monkeypatch: pytest.MonkeyPatch, *, status: int | None = None, exc: Exception | None = None) -> None:
-    monkeypatch.setattr(availability_module.httpx, "AsyncClient", lambda **_kw: _FakeClient(status=status, exc=exc))
+def _patch_client(
+    monkeypatch: pytest.MonkeyPatch,
+    *,
+    status: int | None = None,
+    exc: Exception | None = None,
+    redirect_to: str | None = None,
+) -> None:
+    _FakeClient.requested = []
+    monkeypatch.setattr(
+        availability_module.httpx,
+        "AsyncClient",
+        lambda **_kw: _FakeClient(status=status, exc=exc, redirect_to=redirect_to),
+    )
 
 
 class TestCandidateLabels:
@@ -91,6 +109,32 @@ class TestAvailability:
     def test_no_dot_is_not_checked(self) -> None:
         assert asyncio.run(is_available("example")) is None
 
+    def test_each_registry_is_asked_on_its_own_server(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """.fr, .ch and .ca have an authoritative RDAP server; a 404 from it means available."""
+        expected = {
+            "tacos-maru.fr": "https://rdap.nic.fr/domain/tacos-maru.fr",
+            "tacos-maru.ch": "https://rdap.nic.ch/domain/tacos-maru.ch",
+            "tacos-maru.ca": "https://rdap.ca.fury.ca/rdap/domain/tacos-maru.ca",
+        }
+        for domain, url in expected.items():
+            _patch_client(monkeypatch, status=404)
+            assert asyncio.run(is_available(domain)) is True
+            assert _FakeClient.requested == [url]
+            _patch_client(monkeypatch, status=200)
+            assert asyncio.run(is_available(domain)) is False
+
+    def test_a_tld_without_registry_server_is_not_verifiable(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """rdap.org answers 404 for .be and .lu (absent from the IANA bootstrap): never « available »."""
+        for domain in ("tacos-maru.be", "tacos-maru.lu"):
+            _patch_client(monkeypatch, status=404)
+            assert asyncio.run(is_available(domain)) is None
+            assert _FakeClient.requested == [f"https://rdap.org/domain/{domain}"]
+
+    def test_a_bootstrap_redirect_to_the_registry_is_trusted(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """A .com goes through rdap.org, which forwards to Verisign: its 404 is a real « not registered »."""
+        _patch_client(monkeypatch, status=404, redirect_to="https://rdap.verisign.com/com/v1/domain/tacos-maru.com")
+        assert asyncio.run(is_available("tacos-maru.com")) is True
+
 
 class TestOvhCatalogPrice:
     def test_extracts_the_fr_first_year_price(self) -> None:
@@ -118,20 +162,48 @@ class TestOvhCatalogPrice:
 
 class TestSuggest:
     @staticmethod
-    def _run_suggest(monkeypatch: pytest.MonkeyPatch, *, availability: dict[str, bool | None], ai: list[str]):
+    def _run_suggest(
+        monkeypatch: pytest.MonkeyPatch,
+        *,
+        availability: dict[str, bool | None],
+        ai: list[str],
+        country: str = "FR",
+        priced_tlds: list[str] | None = None,
+    ):
         async def _fake_map(domains: list[str]) -> dict[str, bool | None]:
             return {d: availability.get(d) for d in domains}
 
         async def _fake_ai(*, business_name: str, city: str | None, category: str | None) -> list[str]:
             return ai
 
-        async def _fake_price(_tld: str) -> float:
+        async def _fake_price(tld: str) -> float:
+            if priced_tlds is not None:
+                priced_tlds.append(tld)
             return 4.99
 
         monkeypatch.setattr(suggestion_module, "availability_map", _fake_map)
         monkeypatch.setattr(suggestion_module.llm_service, "suggest_domain_names", _fake_ai)
         monkeypatch.setattr(suggestion_module, "first_year_price_eur", _fake_price)
-        return asyncio.run(domain_suggestion_service.suggest(name="Chez Mimon", city="Poitiers", category="restaurant"))
+        return asyncio.run(
+            domain_suggestion_service.suggest(
+                name="Chez Mimon", city="Poitiers", category="restaurant", country=country
+            )
+        )
+
+    def test_the_extension_follows_the_prospect_country(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """A Swiss prospect gets ``.ch`` candidates priced as ``.ch``; France stays ``.fr``."""
+        priced_tlds: list[str] = []
+        switzerland = self._run_suggest(monkeypatch, availability={}, ai=[], country="CH", priced_tlds=priced_tlds)
+        assert all(c.domain.endswith(".ch") for c in switzerland.candidates)
+        assert priced_tlds == ["ch"]
+
+        france = self._run_suggest(monkeypatch, availability={}, ai=[], country="FR")
+        assert all(c.domain.endswith(".fr") for c in france.candidates)
+
+    def test_a_quebec_prospect_gets_a_dot_ca(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        canada = self._run_suggest(monkeypatch, availability={"chezmimon.ca": True}, ai=[], country="CA")
+        assert canada.suggested == "chezmimon.ca"
+        assert all(c.domain.endswith(".ca") for c in canada.candidates)
 
     def test_prefers_the_first_available_candidate(self, monkeypatch: pytest.MonkeyPatch) -> None:
         result = self._run_suggest(

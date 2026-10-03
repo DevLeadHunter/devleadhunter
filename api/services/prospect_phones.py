@@ -4,15 +4,16 @@ A prospect can hold several numbers (Maps, Facebook, a reply from another mobile
 is the primary — the one shown in the table — and ``prospect.phone`` is always kept in sync with
 it. The primary may be a business landline, so SMS does NOT target it blindly: it targets the first
 *mobile* (06/07) found across the whole list (see :func:`first_mobile_e164`). Mirrors
-:mod:`services.prospect_emails`, with an E.164 dedupe key so « 06 42 19 38 12 » and « +33642193812 »
-count as one number.
+:mod:`services.prospect_emails`, with an E.164 dedupe key — read in the prospect's country — so
+« 06 42 19 38 12 » and « +33642193812 » count as one number, like « 514 555-0199 » and « +15145550199 ».
 """
 
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from services.sms.phone_normalizer import is_mobile_fr, to_e164_fr
+from services.country_profiles import DEFAULT_COUNTRY_CODE
+from services.sms.phone_normalizer import is_mobile_fr, to_e164, to_e164_fr
 
 if TYPE_CHECKING:
     from models.prospect_db import ProspectDB
@@ -23,20 +24,33 @@ def _clean(value: object) -> str | None:
     return value.strip() if isinstance(value, str) and value.strip() else None
 
 
-def _dedupe_key(phone: str) -> str:
-    """Build the identity key of a number — its E.164 form when parseable, else its bare digits."""
-    return to_e164_fr(phone) or "".join(char for char in phone if char.isdigit() or char == "+")
+def _dedupe_key(phone: str, country: str) -> str:
+    """Build the identity key of a number — its E.164 form in ``country`` when parseable, else its bare digits."""
+    return to_e164(phone, country=country) or "".join(char for char in phone if char.isdigit() or char == "+")
 
 
-def dedupe_phones(phones: list[object]) -> list[str]:
-    """Dedupe phone numbers by E.164 identity, keeping first-seen order and dropping blanks."""
+def _prospect_country(prospect: ProspectDB) -> str:
+    """The prospect's country code, France for a legacy row without one."""
+    return getattr(prospect, "country", None) or DEFAULT_COUNTRY_CODE
+
+
+def dedupe_phones(phones: list[object], country: str = DEFAULT_COUNTRY_CODE) -> list[str]:
+    """Dedupe phone numbers by E.164 identity, keeping first-seen order and dropping blanks.
+
+    Args:
+        phones: The candidate numbers, blanks and non-strings tolerated.
+        country: ISO code of the business's country, deciding how a national number is read.
+
+    Returns:
+        The cleaned, deduped numbers in first-seen order.
+    """
     seen: set[str] = set()
     result: list[str] = []
     for candidate in phones:
         cleaned = _clean(candidate)
         if cleaned is None:
             continue
-        key = _dedupe_key(cleaned)
+        key = _dedupe_key(cleaned, country)
         if not key or key in seen:
             continue
         seen.add(key)
@@ -57,7 +71,7 @@ def set_prospect_phones(prospect: ProspectDB, phones: list[object]) -> list[str]
     Returns:
         The cleaned, deduped list actually stored.
     """
-    cleaned = dedupe_phones(phones)
+    cleaned = dedupe_phones(phones, _prospect_country(prospect))
     prospect.phones = cleaned
     prospect.phone = cleaned[0] if cleaned else None
     return cleaned
@@ -99,7 +113,7 @@ def sync_prospect_phones(
     if not current and prospect.phone:
         current = [prospect.phone]
     combined: list[object] = ([primary] if primary else []) + current + list(add or [])
-    phones = dedupe_phones(combined)
+    phones = dedupe_phones(combined, _prospect_country(prospect))
     if primary is None:
         phones = _promote_first_mobile(phones)
     prospect.phones = phones
@@ -127,6 +141,8 @@ def first_mobile_e164(prospect: ProspectDB) -> str | None:
 
     A text SMS only reaches a mobile, so every SMS path (relance, cold, campaign) targets the first
     mobile in the list — the display primary is often a business landline we deliberately keep.
+    Only French mobiles qualify: a Canadian number does not say whether it is cellular, and cold
+    SMS is closed there anyway (see the country profile).
 
     Args:
         prospect: The prospect to read.

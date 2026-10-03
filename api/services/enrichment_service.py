@@ -10,7 +10,6 @@ from __future__ import annotations
 
 import asyncio
 import logging
-import re
 from dataclasses import replace
 from datetime import UTC, datetime
 from typing import Any
@@ -26,6 +25,7 @@ from models.prospect_enrichment import ProspectEnrichment
 from scrappers import scrape_signals
 from scrappers.enrichment_scraper import EnrichmentData, _dedupe_reviews, enrichment_scraper
 from scrappers.google_scraper import GoogleScraper
+from services.country_profiles import CountryProfiles
 from services.decision_maker.activity import activity_consistency
 from services.decision_maker.types import NameCandidate, NameResolution
 from services.enrichment_content import EnrichmentContentMapper
@@ -44,8 +44,6 @@ from services.trade_normalizer import TradeNormalizer
 from services.validation_service import validation_service
 
 logger = logging.getLogger(__name__)
-
-_POSTAL_CODE_RE = re.compile(r"\b(\d{5})\b")
 
 # Registre/Pappers are shared rate-limited APIs — a scraping job must not fire dozens of lookups at once.
 _CONTACT_RESOLUTION_SEMAPHORE = asyncio.Semaphore(2)
@@ -238,6 +236,7 @@ class EnrichmentService:
                 city=prospect.city,
                 google_maps_url=prospect.google_maps_url,
                 facebook_url=prospect.facebook_url,
+                country=prospect.country or "FR",
             )
             # A Facebook-anchored scrape that carries NOTHING did not read the page (the
             # scraper degrades to an empty payload when the browser is unavailable or the
@@ -719,7 +718,7 @@ class EnrichmentService:
     @staticmethod
     def _place_mismatch(prospect: ProspectDB, data: EnrichmentData) -> str | None:
         """Reject scraped data read from another business's Maps place."""
-        postal_match = _POSTAL_CODE_RE.search(prospect.address or "")
+        postal_match = CountryProfiles.get(prospect.country).postal_code_regex.search(prospect.address or "")
         return validation_service.place_identity_mismatch(
             prospect_name=prospect.name or "",
             prospect_city=prospect.city,

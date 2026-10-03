@@ -487,6 +487,7 @@ import { EnrichmentService } from '~/services/enrichmentService'
 import { useDragToReorder } from '~/composables/useDragToReorder'
 import { useToast } from '~/composables/useToast'
 import { PhotoLabels } from '~/utils/photoLabels'
+import { PROFESSIONAL_LICENSE_SOURCE_LABELS } from '~/constants/professionalLicense'
 
 /** Prospect data enrichment form and actions. */
 const props: UiProspectEnrichmentProps = defineProps({
@@ -575,11 +576,6 @@ const CONTACT_SOURCE_LABELS: Record<string, string> = {
   owner_response: 'Réponse aux avis',
   legal_mentions: 'Mentions légales',
   llm_aggregate: 'IA (texte public)',
-  manual: 'Saisie manuelle',
-}
-
-const PROFESSIONAL_LICENSE_SOURCE_LABELS: Record<string, string> = {
-  rbq_registry: 'Trouvée dans le registre RBQ',
   manual: 'Saisie manuelle',
 }
 

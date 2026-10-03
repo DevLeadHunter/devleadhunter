@@ -132,6 +132,7 @@ async def preview_demo_site(payload: DemoSitePreviewRequest) -> DemoSitePreviewR
         city=payload.city,
         description=payload.description,
         theme=theme_dict,
+        country=payload.country,
     )
     return DemoSitePreviewResponse(template_id=payload.template_id, content_json=content_json)
 

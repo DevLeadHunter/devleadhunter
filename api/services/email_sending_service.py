@@ -12,6 +12,7 @@ from enums.email_status import EmailStatus
 from enums.sending_provider import SendingProvider
 from models.email_account import EmailAccount
 from models.email_log import EmailLog
+from models.prospect_db import ProspectDB
 from services import reply_capture_service
 from services.demo_identity import posthog_distinct_id, resolve_demo_slug
 from services.email_attachment import EmailAttachment
@@ -19,6 +20,7 @@ from services.encryption_service import encryption_service
 from services.gmail_oauth_service import GmailOAuthService
 from services.notification_service import notification_service
 from services.posthog_service import posthog_service
+from services.regional_lexicon import RegionalLexicon
 from services.resend_service import ResendService
 from services.sending_identity import SendingIdentity, resolve_sending_identity
 from services.unsubscribe_service import unsubscribe_service
@@ -265,7 +267,12 @@ class EmailSendingService:
                 int(prospect_id) if prospect_id else None,
                 base_url,
             )
-            body_html = unsubscribe_service.add_unsubscribe_footer(body_html, unsubscribe_link)
+            body_html = unsubscribe_service.add_unsubscribe_footer(
+                body_html,
+                unsubscribe_link,
+                country=self._prospect_country(prospect_id),
+                sender_name=identity.from_name,
+            )
 
         email_log = EmailLog(
             user_id=user_id,
@@ -399,7 +406,22 @@ class EmailSendingService:
             return {"success": False, "email_log_id": email_log.id, "error": str(e)}
 
     def replace_variables(self, text: str, variables: dict) -> str:
-        """Replace variables in text with values."""
+        """Replace variables in text with values, in the regional French of the country the map carries.
+
+        Args:
+            text: The template subject or body, with ``{variables}``.
+            variables: The substitution map; a prospect's map carries his country (a Québécois reads « soumission »).
+
+        Returns:
+            The rendered text.
+        """
         for key, value in variables.items():
             text = text.replace(f"{{{key}}}", str(value))
-        return text
+        return RegionalLexicon.localize_rendered(text, variables)
+
+    def _prospect_country(self, prospect_id: str | None) -> str | None:
+        """The country of the prospect an email goes to, ``None`` when the send is not tied to a prospect."""
+        if not prospect_id:
+            return None
+        prospect: ProspectDB | None = self.db.get(ProspectDB, int(prospect_id))
+        return prospect.country if prospect is not None else None

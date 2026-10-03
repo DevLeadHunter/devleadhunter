@@ -71,9 +71,41 @@
             <form id="finalize-sale-form" class="space-y-4 p-5" @submit.prevent="handleIssueInvoice">
               <div>
                 <label class="mb-1 block text-[10px] font-medium tracking-wider text-[var(--app-ink-soft)] uppercase">
-                  SIREN / SIRET (facultatif)
+                  Pays de facturation
                 </label>
-                <UiTaxIdLookupInput v-model="form.tax_id" :disabled="isInvoiceIssued" @prefill="applyRegistryPrefill" />
+                <select v-model="form.country_code" class="input-field" :disabled="isInvoiceIssued">
+                  <option v-if="countryProfiles.length === 0" :value="form.country_code">
+                    {{ ProspectCountries.option(form.country_code).flag }}
+                    {{ ProspectCountries.option(form.country_code).label }}
+                  </option>
+                  <option
+                    v-for="countryProfile in countryProfiles"
+                    :key="countryProfile.code"
+                    :value="countryProfile.code"
+                  >
+                    {{ ProspectCountries.option(countryProfile.code).flag }} {{ countryProfile.label }}
+                  </option>
+                </select>
+              </div>
+
+              <div>
+                <label class="mb-1 block text-[10px] font-medium tracking-wider text-[var(--app-ink-soft)] uppercase">
+                  {{ taxIdFieldLabel }}
+                </label>
+                <UiTaxIdLookupInput
+                  v-if="isFranceSelected"
+                  v-model="form.tax_id"
+                  :disabled="isInvoiceIssued"
+                  @prefill="applyRegistryPrefill"
+                />
+                <input
+                  v-else
+                  v-model="form.tax_id"
+                  type="text"
+                  class="input-field"
+                  :placeholder="selectedCountryProfile?.tax_id_example ?? ''"
+                  :disabled="isInvoiceIssued"
+                />
                 <p v-if="isTaxIdRequired" class="mt-1 text-[11px] text-[var(--app-ink-soft)]">
                   Exigé par Qonto pour émettre la facture.
                 </p>
@@ -129,10 +161,19 @@
                   >Adresse</label
                 >
                 <UiAddressAutocompleteInput
+                  v-if="isFranceSelected"
                   v-model="form.address"
                   placeholder="12 rue de la Paix"
                   :disabled="isInvoiceIssued"
                   @select="handleAddressSelect"
+                />
+                <input
+                  v-else
+                  v-model="form.address"
+                  type="text"
+                  class="input-field"
+                  placeholder="Numéro et rue"
+                  :disabled="isInvoiceIssued"
                 />
               </div>
               <div class="grid grid-cols-3 gap-3">
@@ -141,17 +182,39 @@
                     >Code postal</label
                   >
                   <UiPostalCodeAutocompleteInput
+                    v-if="isFranceSelected"
                     v-model="form.zip_code"
                     placeholder="35000"
                     :disabled="isInvoiceIssued"
                     @select="handlePostalCodeSelect"
+                  />
+                  <input
+                    v-else
+                    v-model="form.zip_code"
+                    type="text"
+                    class="input-field"
+                    :placeholder="selectedCountryProfile?.postal_code_example ?? ''"
+                    :disabled="isInvoiceIssued"
                   />
                 </div>
                 <div class="col-span-2">
                   <label class="mb-1 block text-[10px] font-medium tracking-wider text-[var(--app-ink-soft)] uppercase"
                     >Ville</label
                   >
-                  <UiCityAutocompleteInput v-model="form.city" placeholder="Rennes" :disabled="isInvoiceIssued" />
+                  <UiCityAutocompleteInput
+                    v-if="isFranceSelected"
+                    v-model="form.city"
+                    placeholder="Rennes"
+                    :disabled="isInvoiceIssued"
+                  />
+                  <input
+                    v-else
+                    v-model="form.city"
+                    type="text"
+                    class="input-field"
+                    placeholder="Ville"
+                    :disabled="isInvoiceIssued"
+                  />
                 </div>
               </div>
               <div>
@@ -166,6 +229,59 @@
                   :disabled="isInvoiceIssued"
                 />
               </div>
+
+              <template v-if="isQuebecProspect">
+                <p
+                  class="border-t border-[var(--app-surface-2)] pt-4 text-[10px] font-semibold tracking-wider text-[var(--app-ink-soft)] uppercase"
+                >
+                  Licence RBQ
+                </p>
+                <div v-if="storedProfessionalLicense" class="flex items-center gap-3">
+                  <div class="min-w-0 flex-1">
+                    <p class="text-[10px] text-[var(--app-ink-soft)]">{{ storedProfessionalLicense.label }}</p>
+                    <p class="truncate text-sm font-medium text-[var(--app-ink)]">
+                      {{ storedProfessionalLicense.number }}
+                    </p>
+                  </div>
+                  <span v-if="professionalLicenseOriginLabel" class="app-badge app-badge--success text-[10px]">
+                    {{ professionalLicenseOriginLabel }}
+                  </span>
+                </div>
+                <div v-else>
+                  <div class="grid grid-cols-2 gap-3">
+                    <div>
+                      <label
+                        class="mb-1 block text-[10px] font-medium tracking-wider text-[var(--app-ink-soft)] uppercase"
+                        >Libellé</label
+                      >
+                      <input
+                        v-model="professionalLicenseDraft.label"
+                        type="text"
+                        maxlength="60"
+                        class="input-field"
+                        :disabled="isInvoiceIssued"
+                      />
+                    </div>
+                    <div>
+                      <label
+                        class="mb-1 block text-[10px] font-medium tracking-wider text-[var(--app-ink-soft)] uppercase"
+                        >Numéro (facultatif)</label
+                      >
+                      <input
+                        v-model="professionalLicenseDraft.number"
+                        type="text"
+                        maxlength="60"
+                        class="input-field"
+                        placeholder="5678-1234-01"
+                        :disabled="isInvoiceIssued"
+                      />
+                    </div>
+                  </div>
+                  <p class="mt-1 text-[11px] text-[var(--app-ink-soft)]">
+                    Obligatoire sur le site d'un entrepreneur en construction au Québec
+                  </p>
+                </div>
+              </template>
 
               <p v-if="missingLabel" class="text-xs text-[var(--app-red)]">Renseignez {{ missingLabel }}.</p>
             </form>
@@ -260,20 +376,31 @@ import { computed, ref, watch } from 'vue'
 import type {
   FinalizeSaleForm,
   FinalizeSaleStep,
+  ProfessionalLicenseDraft,
+  ProfessionalLicenseState,
+  StoredProfessionalLicense,
   UiFinalizeSaleDrawerEmits,
   UiFinalizeSaleDrawerProps,
 } from '~/types/UiFinalizeSaleDrawer'
 import type { AddressSuggestion } from '~/types/AddressAutocompleteInput'
 import type { CompanyBillingPrefill } from '~/types/CompanyRegistryLookup'
+import type { CountryProfile } from '~/types/CountryProfile'
 import type { PostalCodeCitySuggestion } from '~/types/PostalCodeAutocompleteInput'
+import type { Prospect } from '~/types'
+import type { ProspectEnrichment } from '~/services/enrichmentService'
 import type {
   Order,
   OrderBillingDetails,
   OrderBillingPrefill,
   OrderPaymentEmailPreview,
 } from '~/services/ordersService'
+import { CountriesService } from '~/services/countriesService'
+import { EnrichmentService } from '~/services/enrichmentService'
 import { OrdersService } from '~/services/ordersService'
+import { ProspectsService } from '~/services/prospectsService'
 import { useToast } from '~/composables/useToast'
+import { ProspectCountries } from '~/utils/prospectCountries'
+import { PROFESSIONAL_LICENSE_DEFAULT_LABEL, PROFESSIONAL_LICENSE_SOURCE_LABELS } from '~/constants/professionalLicense'
 
 /** Sale finalization drawer: reviewed billing details → invoice → sale email. */
 const props: UiFinalizeSaleDrawerProps = defineProps({
@@ -300,6 +427,13 @@ const isLoading: Ref<boolean> = ref(false)
 const isBusy: Ref<boolean> = ref(false)
 const invoicingProvider: Ref<string | null> = ref(null)
 const emailPreview: Ref<OrderPaymentEmailPreview | null> = ref(null)
+const countryProfiles: Ref<CountryProfile[]> = ref([])
+const isQuebecProspect: Ref<boolean> = ref(false)
+const storedProfessionalLicense: Ref<StoredProfessionalLicense | null> = ref(null)
+const professionalLicenseDraft: Ref<ProfessionalLicenseDraft> = ref({
+  label: PROFESSIONAL_LICENSE_DEFAULT_LABEL,
+  number: '',
+})
 
 const form: Ref<FinalizeSaleForm> = ref({
   name: '',
@@ -307,7 +441,7 @@ const form: Ref<FinalizeSaleForm> = ref({
   address: '',
   zip_code: '',
   city: '',
-  country_code: 'FR',
+  country_code: ProspectCountries.france.code,
   tax_id: '',
   vat_number: '',
   amount_euros: 0,
@@ -324,8 +458,36 @@ const paymentUrl: ComputedRef<string> = computed(
 /** Whether a provider will issue the invoice (drives the required fields). */
 const hasConnectedProvider: ComputedRef<boolean> = computed((): boolean => invoicingProvider.value !== null)
 
-/** Qonto rejects an invoice whose client carries no TIN, so the SIREN is required there. */
-const isTaxIdRequired: ComputedRef<boolean> = computed((): boolean => invoicingProvider.value === 'qonto')
+const selectedCountryProfile: ComputedRef<CountryProfile | null> = computed(
+  (): CountryProfile | null =>
+    countryProfiles.value.find((profile: CountryProfile): boolean => profile.code === form.value.country_code) ?? null,
+)
+
+/** France is the only country with a registry lookup (SIRENE) and address autocomplete (BAN). */
+const isFranceSelected: ComputedRef<boolean> = computed(
+  (): boolean => form.value.country_code === ProspectCountries.france.code,
+)
+
+/** Qonto rejects a French invoice whose client carries no TIN; abroad the identifier is optional. */
+const isTaxIdRequired: ComputedRef<boolean> = computed(
+  (): boolean => invoicingProvider.value === 'qonto' && (selectedCountryProfile.value?.tax_id_required ?? false),
+)
+
+const taxIdLabel: ComputedRef<string> = computed(
+  (): string => selectedCountryProfile.value?.tax_id_label ?? 'Identifiant fiscal',
+)
+
+const taxIdFieldLabel: ComputedRef<string> = computed((): string =>
+  isTaxIdRequired.value ? taxIdLabel.value : `${taxIdLabel.value} (facultatif)`,
+)
+
+/** Whether the typed postal code has the shape of the selected country (empty or unknown shape passes). */
+const hasValidPostalCodeShape: ComputedRef<boolean> = computed((): boolean => {
+  const pattern: string | undefined = selectedCountryProfile.value?.postal_code_pattern
+  const zipCode: string = form.value.zip_code.trim()
+  if (!pattern || !zipCode) return true
+  return new RegExp(`^(?:${pattern})$`, 'i').test(zipCode)
+})
 
 /** Human list of the still-missing billing fields (empty when ready to issue). */
 const missingLabel: ComputedRef<string> = computed((): string => {
@@ -338,10 +500,15 @@ const missingLabel: ComputedRef<string> = computed((): string => {
     if (!form.value.zip_code.trim()) missing.push('le code postal')
     if (!form.value.city.trim()) missing.push('la ville')
   }
-  if (isTaxIdRequired.value && !form.value.tax_id.trim()) missing.push('le SIREN / SIRET')
+  if (!hasValidPostalCodeShape.value) missing.push(`un code postal au format ${selectedCountryProfile.value?.label}`)
+  if (isTaxIdRequired.value && !form.value.tax_id.trim()) missing.push(`le ${taxIdLabel.value}`)
   if (form.value.amount_euros <= 0) missing.push('un montant')
   return missing.join(', ')
 })
+
+const professionalLicenseOriginLabel: ComputedRef<string> = computed(
+  (): string => PROFESSIONAL_LICENSE_SOURCE_LABELS[storedProfessionalLicense.value?.source ?? ''] ?? '',
+)
 
 /** Label of the primary button, which skips issuing when an invoice already exists. */
 const issueButtonLabel: ComputedRef<string> = computed((): string => {
@@ -350,14 +517,26 @@ const issueButtonLabel: ComputedRef<string> = computed((): string => {
 })
 
 /**
- * Load the pre-filled billing details and whether a provider will invoice.
+ * Load the pre-filled billing details (country pre-set from the prospect), the country facts, the provider and the RBQ license.
  * @returns A promise resolved once the form is ready.
  */
 async function load(): Promise<void> {
   if (!props.order) return
   isLoading.value = true
   try {
-    const billing: OrderBillingPrefill = await OrdersService.getOrderBilling(props.order.id)
+    const [billing, profiles, professionalLicenseState]: [
+      OrderBillingPrefill,
+      CountryProfile[],
+      ProfessionalLicenseState,
+    ] = await Promise.all([
+      OrdersService.getOrderBilling(props.order.id),
+      countryProfiles.value.length > 0 ? countryProfiles.value : CountriesService.list(),
+      fetchProfessionalLicenseState(props.order.prospect_id),
+    ])
+    countryProfiles.value = profiles
+    isQuebecProspect.value = professionalLicenseState.isQuebecProspect
+    storedProfessionalLicense.value = professionalLicenseState.storedLicense
+    professionalLicenseDraft.value = { label: PROFESSIONAL_LICENSE_DEFAULT_LABEL, number: '' }
     invoicingProvider.value = billing.invoicing_provider
     form.value = {
       name: billing.name ?? '',
@@ -365,7 +544,7 @@ async function load(): Promise<void> {
       address: billing.address ?? '',
       zip_code: billing.zip_code ?? '',
       city: billing.city ?? '',
-      country_code: billing.country_code || 'FR',
+      country_code: billing.country_code || ProspectCountries.france.code,
       tax_id: billing.tax_id ?? '',
       vat_number: billing.vat_number ?? '',
       amount_euros: Math.round((props.order.amount_cents ?? 0) / 100),
@@ -377,6 +556,52 @@ async function load(): Promise<void> {
   }
 }
 
+/**
+ * Read whether the sold prospect is in Québec, and the RBQ license its enrichment already holds.
+ * @param prospectId - Prospect of the order, null for a sale without one.
+ * @returns What the license block shows.
+ */
+async function fetchProfessionalLicenseState(prospectId: number | null): Promise<ProfessionalLicenseState> {
+  if (prospectId === null) return { isQuebecProspect: false, storedLicense: null }
+
+  const prospect: Prospect = await ProspectsService.getProspect(prospectId)
+  if (prospect.country !== 'CA') return { isQuebecProspect: false, storedLicense: null }
+
+  const enrichment: ProspectEnrichment | null = await EnrichmentService.getProspectEnrichment(prospectId)
+  return { isQuebecProspect: true, storedLicense: toStoredProfessionalLicense(enrichment) }
+}
+
+/**
+ * The license an enrichment holds, with its origin.
+ * @param enrichment - The prospect's enrichment record, null when none exists yet.
+ * @returns The stored license, or null when the enrichment has no number.
+ */
+function toStoredProfessionalLicense(enrichment: ProspectEnrichment | null): StoredProfessionalLicense | null {
+  const number: string = enrichment?.professional_license_number?.trim() ?? ''
+  if (!enrichment || !number) return null
+  return {
+    label: enrichment.professional_license_label?.trim() || PROFESSIONAL_LICENSE_DEFAULT_LABEL,
+    number,
+    source: enrichment.professional_license_source,
+  }
+}
+
+/**
+ * Store the RBQ license typed for a Québec prospect on its enrichment, before the invoice is issued.
+ * @returns A promise resolved once the license is saved, or at once when no number was typed.
+ */
+async function saveProfessionalLicense(): Promise<void> {
+  const prospectId: number | null = props.order?.prospect_id ?? null
+  const number: string = professionalLicenseDraft.value.number.trim()
+  if (prospectId === null || !isQuebecProspect.value || storedProfessionalLicense.value || !number) return
+
+  const enrichment: ProspectEnrichment = await EnrichmentService.updateProspectEnrichment(prospectId, {
+    professional_license_label: professionalLicenseDraft.value.label.trim() || PROFESSIONAL_LICENSE_DEFAULT_LABEL,
+    professional_license_number: number,
+  })
+  storedProfessionalLicense.value = toStoredProfessionalLicense(enrichment)
+}
+
 /** Billing payload sent to the API. */
 function buildBillingPayload(): OrderBillingDetails {
   return {
@@ -385,7 +610,7 @@ function buildBillingPayload(): OrderBillingDetails {
     address: form.value.address.trim() || null,
     city: form.value.city.trim() || null,
     zip_code: form.value.zip_code.trim() || null,
-    country_code: form.value.country_code || 'FR',
+    country_code: form.value.country_code || ProspectCountries.france.code,
     tax_id: form.value.tax_id.trim() || null,
     vat_number: form.value.vat_number.trim() || null,
   }
@@ -396,6 +621,7 @@ async function handleIssueInvoice(): Promise<void> {
   if (!props.order) return
   isBusy.value = true
   try {
+    await saveProfessionalLicense()
     const updated: Order = await OrdersService.finalizeOrder(
       props.order.id,
       buildBillingPayload(),

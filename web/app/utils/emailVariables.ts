@@ -130,14 +130,16 @@ export class EmailVariables {
       key: 'prix',
       token: '{prix}',
       label: 'Prix',
-      description: 'Prix de vente configuré, rendu « 500 € ». Vide dans un premier email — à réserver aux relances.',
+      description:
+        'Prix de vente configuré, dans la monnaie du prospect : « 500 € », « ≈ 470 CHF », « ≈ 800 $ CA ». Vide dans un premier email — à réserver aux relances.',
       example: '500 €',
     },
     {
       key: 'prix_assistant',
       token: '{prix_assistant}',
       label: 'Prix réceptionniste',
-      description: 'Prix mensuel de la réceptionniste IA configuré, rendu « 79 € ».',
+      description:
+        'Prix mensuel de la réceptionniste IA configuré, dans la monnaie du prospect : « 79 € », « ≈ 70 CHF ».',
       example: '79 €',
     },
     {

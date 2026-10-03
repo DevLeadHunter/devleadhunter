@@ -20,6 +20,7 @@ import re
 from dataclasses import dataclass
 
 from enums.sms_template_category import SmsTemplateCategory
+from services.regional_lexicon import RegionalLexicon
 
 _VARIABLE_PATTERN: re.Pattern[str] = re.compile(r"\{([a-zA-Z_][a-zA-Z0-9_]*)\}")
 _REPEATED_SPACES: re.Pattern[str] = re.compile(r" {2,}")
@@ -297,6 +298,8 @@ def resolve_sms_template(
 def render_sms_template(body: str, variables: dict[str, str]) -> str:
     """Substitute every ``{variable}`` of *body*; an unknown or empty variable renders as nothing.
 
+    The text is then written in the regional French of the country a prospect's map carries.
+
     Args:
         body: The template body.
         variables: The variable name to value map.
@@ -305,4 +308,4 @@ def render_sms_template(body: str, variables: dict[str, str]) -> str:
         The rendered text, single-spaced and trimmed.
     """
     rendered = _VARIABLE_PATTERN.sub(lambda match: variables.get(match.group(1), ""), body)
-    return _REPEATED_SPACES.sub(" ", rendered).strip()
+    return RegionalLexicon.localize_rendered(_REPEATED_SPACES.sub(" ", rendered).strip(), variables)

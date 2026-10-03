@@ -20,6 +20,7 @@ export class ProspectCountries {
     { code: 'CH', label: 'Suisse', flag: '🇨🇭' },
     { code: 'BE', label: 'Belgique', flag: '🇧🇪' },
     { code: 'LU', label: 'Luxembourg', flag: '🇱🇺' },
+    { code: 'CA', label: 'Canada (Québec)', flag: '🇨🇦' },
   ]
 
   /**

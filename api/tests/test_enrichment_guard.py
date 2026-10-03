@@ -122,6 +122,7 @@ def test_service_parses_prospect_postal_code_from_address() -> None:
         name="Plomberie Vidal",
         address="12 rue des Forges, 63000 Clermont-Ferrand",
         city="Clermont-Ferrand",
+        country="FR",
     )
     data = EnrichmentData(place_title="Plomberie Vidal", place_city="Lille", place_postal_code="59000")
     reason = EnrichmentService._place_mismatch(prospect, data)

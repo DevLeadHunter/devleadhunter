@@ -285,6 +285,7 @@ def _site(**overrides: object) -> SimpleNamespace:
 def test_rebuild_applies_the_curated_cards(monkeypatch: pytest.MonkeyPatch) -> None:
     enrichment = {"photos": ["https://cdn/hero.jpg", "https://cdn/about.jpg", *POOL], "photo_labels": LABELS}
     monkeypatch.setattr(DemoSiteService, "_enrichment_dict_for_site", lambda self, db, site: enrichment)
+    monkeypatch.setattr(DemoSiteService, "_prospect_country_for_site", lambda self, db, site: "FR")
     site = _site(
         section_overrides={
             "services": [{"title": "Le Burger", "description": "Double", "image": "https://cdn/burger.jpg"}],

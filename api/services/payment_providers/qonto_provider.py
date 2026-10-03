@@ -5,12 +5,16 @@ environment guard and staging-token header kept from the socle. The client is
 found-or-created, the invoice is finalized (``status: unpaid``) so Qonto owns
 its number, and the PDF is fetched after Qonto has generated it (async, ~10s).
 
-Qonto is Léo's account only, so the VAT block is his franchise-en-base regime
-(art. 293 B): rate 0, exemption reason ``S293B`` — matching his real invoices.
+Qonto is Léo's account only, so the VAT block is his franchise-en-base regime:
+rate 0 everywhere, and an exemption reason that follows the client's country —
+``S293B`` (art. 293 B du CGI) for a French client, the reverse charge for a
+business of another EU country, the export of services for a client outside the
+EU. Every invoice stays in euros (the client's bank converts).
 """
 
 import asyncio
 import logging
+from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 
 import httpx
@@ -18,6 +22,7 @@ import httpx
 from core.config import settings
 from enums.payment_provider import PaymentEnvironment, PaymentProvider
 from models.payment_account import PaymentAccount
+from services.country_profiles import CountryProfiles
 from services.payment_providers.base import (
     BillingClient,
     InvoiceRequest,
@@ -36,7 +41,32 @@ _PAYMENT_METHODS = ["bank_transfer", "credit_card", "apple_pay"]
 # payment cleared by the buyer but not yet settled by Mollie onto the invoice.
 _PAID_LINK_STATUSES = frozenset({"paid", "processing"})
 _VAT_RATE = "0"
-_VAT_EXEMPTION_REASON = "S293B"
+
+
+@dataclass(frozen=True)
+class VatExemption:
+    """The VAT exemption of an invoice: Qonto's reason code and the mention the client reads.
+
+    Qonto prints its own legal mention from the code; ``mention`` is repeated in the
+    invoice notes only outside France, where the client does not know the French article.
+    """
+
+    code: str
+    mention: str
+    repeat_mention: bool
+
+
+# Qonto's codes name articles of the French tax code: 293 B franchise en base, 283-2 reverse charge
+# on an intra-EU B2B service, 259-1 a service to a business established outside the EU.
+_VAT_EXEMPTION_FRANCE = VatExemption("S293B", "TVA non applicable, art. 293 B du CGI", repeat_mention=False)
+_VAT_EXEMPTION_EU_BUSINESS = VatExemption(
+    "S283", "Autoliquidation, art. 196 directive TVA (art. 283-2 du CGI)", repeat_mention=True
+)
+_VAT_EXEMPTION_EXPORT = VatExemption(
+    "S259", "TVA non applicable, exportation hors UE (art. 259-1 du CGI)", repeat_mention=True
+)
+
+
 # The invoice PDF is generated asynchronously by Qonto — poll for its attachment.
 _PDF_POLL_ATTEMPTS = 6
 _PDF_POLL_DELAY_SECONDS = 3.0
@@ -226,6 +256,7 @@ class QontoPaymentProvider(PaymentProviderClient):
 
         today = datetime.now(UTC).date()
         currency = (request.currency or "EUR").upper()
+        exemption = self.vat_exemption_for(request.client.country_code)
         body = {
             "client_id": client_id,
             "issue_date": today.isoformat(),
@@ -241,10 +272,12 @@ class QontoPaymentProvider(PaymentProviderClient):
                     "unit": "unit",
                     "unit_price": {"value": f"{request.amount_cents / 100:.2f}", "currency": currency},
                     "vat_rate": _VAT_RATE,
-                    "vat_exemption_reason": _VAT_EXEMPTION_REASON,
+                    "vat_exemption_reason": exemption.code,
                 }
             ],
         }
+        if exemption.repeat_mention:
+            body["terms_and_conditions"] = exemption.mention
         invoice = (await self._request("POST", "/client_invoices", json=body))["client_invoice"]
         payment_link_id = await self._enable_card_payment(invoice, request)
         return IssuedInvoice(
@@ -254,6 +287,21 @@ class QontoPaymentProvider(PaymentProviderClient):
             payment_url=invoice.get("invoice_url"),
             payment_link_id=payment_link_id,
         )
+
+    @staticmethod
+    def vat_exemption_for(country_code: str | None) -> VatExemption:
+        """The VAT exemption to put on an invoice billed to a client of ``country_code``.
+
+        Args:
+            country_code: ISO code of the client's billing country (``None`` reads as France).
+
+        Returns:
+            The exemption code and mention for that country.
+        """
+        country = CountryProfiles.get(country_code)
+        if country.code == "FR":
+            return _VAT_EXEMPTION_FRANCE
+        return _VAT_EXEMPTION_EU_BUSINESS if country.in_european_union else _VAT_EXEMPTION_EXPORT
 
     async def _enable_card_payment(self, invoice: dict, request: InvoiceRequest) -> str | None:
         """

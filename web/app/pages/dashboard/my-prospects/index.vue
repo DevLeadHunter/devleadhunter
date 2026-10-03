@@ -437,6 +437,7 @@ import type {
   ProspectTemperaturesResponse,
   WebsiteEquipmentScanResponse,
 } from '~/services/prospectsService'
+import { ProspectCountries } from '~/utils/prospectCountries'
 import { downloadProspectsJson, downloadProspectTemplateJson, parseProspectsJson } from '~/utils/prospectJson'
 import { ProspectWebsite } from '~/utils/prospectWebsite'
 import { EnrichmentService } from '~/services/enrichmentService'
@@ -927,6 +928,7 @@ async function handleImportFile(event: Event): Promise<void> {
           name: item.name,
           address: item.address || null,
           city: item.city || null,
+          country: item.country ?? ProspectCountries.france.code,
           phone: item.phone || null,
           email: item.email || null,
           website: item.website || null,
