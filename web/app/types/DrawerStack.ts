@@ -4,6 +4,7 @@ import type { Order } from '~/services/ordersService'
 import type { SmsMessage } from '~/services/smsService'
 import type { SearchProspectsPrefill } from '~/types/SearchProspectsDrawer'
 import type { CampaignDetailResponse } from '~/services/campaignService'
+import type { SelectFieldOption } from '~/types/SelectField'
 
 /**
  * Entries of the persistent right-side drawer stack.
@@ -119,6 +120,12 @@ export type CampaignProspectsPickerDrawerEntry = {
   existingProspectIds: number[]
 }
 
+export type CampaignReplyDrawerEntry = {
+  kind: 'campaign-reply'
+  campaignId: number
+  prospects: SelectFieldOption<number>[]
+}
+
 export type SendPolicyDrawerEntry = {
   kind: 'send-policy'
 }
@@ -204,6 +211,7 @@ export type DrawerStackEntry =
   | AddProspectDrawerEntry
   | SearchProspectsDrawerEntry
   | CampaignProspectsPickerDrawerEntry
+  | CampaignReplyDrawerEntry
   | SendPolicyDrawerEntry
   | CoverageFiltersDrawerEntry
   | CoverageProspectsDrawerEntry

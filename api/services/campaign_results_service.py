@@ -485,7 +485,11 @@ class CampaignResultsService:
                 if facts.window_end is not None and session.started_at >= facts.window_end:
                     continue
                 facts.visits.append(
-                    CampaignResultsVisit(started_at=session.started_at, active_seconds=self.active_seconds(session))
+                    CampaignResultsVisit(
+                        started_at=session.started_at,
+                        active_seconds=self.active_seconds(session),
+                        device_type=session.device_type,
+                    )
                 )
 
     def _assemble(
@@ -547,21 +551,21 @@ class CampaignResultsService:
 
     @staticmethod
     def _demo_sites(db: Session, user_id: int, prospect_ids: list[int]) -> CampaignResultsDemoSites:
-        """Count the campaign's demo sites still online and their expiry range."""
+        """Count the campaign's demo sites still online and the expiry range of those whose countdown started."""
         if not prospect_ids:
             return CampaignResultsDemoSites(online=0)
-        expiries = [
-            expires_at
-            for (expires_at,) in db.query(DemoSite.expires_at)
+        online_sites = (
+            db.query(DemoSite.expires_at, DemoSite.demo_link_sent_at)
             .filter(
                 DemoSite.user_id == user_id,
                 DemoSite.prospect_id.in_(prospect_ids),
                 DemoSite.status == DemoSiteStatus.ACTIVE.value,
             )
             .all()
-        ]
+        )
+        expiries = [expires_at for expires_at, demo_link_sent_at in online_sites if demo_link_sent_at is not None]
         return CampaignResultsDemoSites(
-            online=len(expiries),
+            online=len(online_sites),
             first_expiry_at=min(expiries) if expiries else None,
             last_expiry_at=max(expiries) if expiries else None,
         )

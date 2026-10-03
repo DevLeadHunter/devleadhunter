@@ -282,3 +282,24 @@ async def test_benchmarks_skip_campaigns_that_never_sent(
     benchmarks = await CampaignResultsService().build_benchmarks(db, USER_ID)
 
     assert [(b.name, b.contacted, b.visited) for b in benchmarks.campaigns] == [("Vague 3 — Suisse", 1, 1)]
+
+
+@pytest.mark.asyncio
+async def test_demo_expiry_range_skips_sites_whose_countdown_has_not_started(
+    db: Session, campaign: Campaign, fake_sessions: list[DemoSession]
+) -> None:
+    reached = _prospect(db, "Garage Nomade", "garage-nomade")
+    waiting = _prospect(db, "Newtech", "newtech")
+    campaign.prospects = [reached, waiting]
+    db.flush()
+    db.query(DemoSite).filter(DemoSite.prospect_id == reached.id).one().demo_link_sent_at = LAUNCH
+    db.query(DemoSite).filter(DemoSite.prospect_id == waiting.id).one().expires_at = datetime(2099, 12, 31, 23, 59, 59)
+    _send(db, campaign, reached, at=LAUNCH)
+    db.commit()
+
+    results = await CampaignResultsService().build(db, USER_ID, campaign.id)
+
+    assert results is not None
+    assert results.demo_sites.online == 2
+    assert results.demo_sites.first_expiry_at == LAUNCH + timedelta(days=21)
+    assert results.demo_sites.last_expiry_at == LAUNCH + timedelta(days=21)

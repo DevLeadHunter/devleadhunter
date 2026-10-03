@@ -4,6 +4,12 @@
  */
 import { ApiClient } from './api'
 import type { CampaignFollowUp, CampaignVariantStats } from '~/types'
+import type {
+  CampaignBenchmarksResponse,
+  CampaignManualReplyPayload,
+  CampaignResultsReply,
+  CampaignResultsResponse,
+} from '~/types/CampaignResults'
 
 export type CampaignStatus = 'draft' | 'active' | 'completed' | 'paused' | 'cancelled'
 
@@ -424,5 +430,32 @@ export class CampaignService {
   static async getForecast(startIso: string, days: number = 7): Promise<CampaignForecastResponse> {
     const qs: URLSearchParams = new URLSearchParams({ start: startIso, days: String(days) })
     return ApiClient.get<CampaignForecastResponse>(`/api/v1/campaigns/forecast?${qs.toString()}`)
+  }
+
+  /**
+   * Fetch what a campaign's mails produced, prospect by prospect: sends, human visits, replies and sales.
+   * @param campaignId - Campaign ID.
+   * @returns The campaign's results.
+   */
+  static async getResults(campaignId: number): Promise<CampaignResultsResponse> {
+    return ApiClient.get<CampaignResultsResponse>(`/api/v1/campaigns/${campaignId}/results`)
+  }
+
+  /**
+   * Fetch the stage counts of the user's email campaigns, to compare a campaign against the others.
+   * @returns One benchmark per campaign that sent at least one first mail.
+   */
+  static async getBenchmarks(): Promise<CampaignBenchmarksResponse> {
+    return ApiClient.get<CampaignBenchmarksResponse>('/api/v1/campaigns/results/benchmarks')
+  }
+
+  /**
+   * Record a reply that reached the user outside the app, so the campaign's results count it.
+   * @param campaignId - Campaign the reply belongs to.
+   * @param payload - Prospect, verdict, date and words of the reply.
+   * @returns The recorded reply.
+   */
+  static async addManualReply(campaignId: number, payload: CampaignManualReplyPayload): Promise<CampaignResultsReply> {
+    return ApiClient.post<CampaignResultsReply>(`/api/v1/campaigns/${campaignId}/replies`, payload)
   }
 }

@@ -10,3 +10,8 @@ export type TemplateOption = {
 export type CampaignQueueRow = CampaignQueueItem & {
   prospectLocalTimeLabel: string | null
 }
+
+export type CampaignDetailTab = {
+  key: string
+  label: string
+}
