@@ -5,6 +5,7 @@ export type ProfileForm = {
   company_website_url: string
   contact_phone: string
   contact_email: string
+  postal_address: string
 }
 
 export type UiProfileDrawerEmits = {

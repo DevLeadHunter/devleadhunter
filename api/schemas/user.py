@@ -27,6 +27,9 @@ class UserBase(BaseModel):
     company_website_url: str | None = Field(None, max_length=500, description="Optional business website URL")
     contact_phone: str | None = Field(None, max_length=30, description="Optional public phone (demo contact banner)")
     contact_email: str | None = Field(None, max_length=255, description="Optional public display email")
+    postal_address: str | None = Field(
+        None, max_length=500, description="Sender postal address printed in the footer of emails to Canada (CASL)"
+    )
 
 
 class UserSignup(BaseModel):
@@ -80,6 +83,9 @@ class UserUpdate(BaseModel):
     company_website_url: str | None = Field(None, max_length=500, description="Optional business website URL")
     contact_phone: str | None = Field(None, max_length=30, description="Optional public phone (demo contact banner)")
     contact_email: str | None = Field(None, max_length=255, description="Optional public display email")
+    postal_address: str | None = Field(
+        None, max_length=500, description="Sender postal address printed in the footer of emails to Canada (CASL)"
+    )
 
 
 class AdminUserUpdate(UserUpdate):

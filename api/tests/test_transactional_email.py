@@ -29,6 +29,9 @@ class _FakeDB:
     def add(self, row: object) -> None:
         self.added.append(row)
 
+    def get(self, _model: type, _ident: object) -> None:
+        return None
+
     def commit(self) -> None:
         return None
 

@@ -1290,6 +1290,17 @@ class CampaignQueueService:
             self.db.commit()
             return
 
+        # Guard: ahead of the Storyblok swap and the personalisation, so a held-back email spends nothing.
+        identification_refusal: str | None = unsubscribe_service.sender_identification_refusal(
+            prospect.country, item.user
+        )
+        if identification_refusal:
+            logger.info("[Queue] Skipping send for prospect %d — no sender postal address", prospect.id)
+            item.status = _STATUS_SKIPPED
+            item.skip_reason = identification_refusal
+            self.db.commit()
+            return
+
         # Guard (defense in depth): never send an email whose template needs
         # {lien_demo} when the prospect has no active demo site — e.g. the demo
         # expired between enqueue and dispatch.
@@ -1595,6 +1606,11 @@ class CampaignQueueService:
             return {"success": False, "error": "Prospect introuvable ou sans email"}
         if not template:
             return {"success": False, "error": "Template introuvable"}
+        identification_refusal: str | None = unsubscribe_service.sender_identification_refusal(
+            prospect.country, campaign.user
+        )
+        if identification_refusal:
+            return {"success": False, "error": identification_refusal}
 
         video_link, video_thumbnail_url = "", ""
         if self._template_uses_video(template) and campaign.include_video:
