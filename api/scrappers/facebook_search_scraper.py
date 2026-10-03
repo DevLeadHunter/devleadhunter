@@ -30,7 +30,7 @@ from urllib.parse import parse_qs, unquote, urlparse
 
 from bs4 import BeautifulSoup, Tag
 
-from enums.country import country_label
+from enums.country import search_label
 from enums.source import Source
 from models.prospect import ProspectCreate
 from services.scrape_progress import ScrapeProgressReporter
@@ -316,13 +316,14 @@ class FacebookSearchScraper(BaseScraper):
         Args:
             category: Business category (e.g. ``"food truck"``).
             city: City to search in.
-            country: Search country — its name joins the loose queries so homonym
-                     cities abroad do not pollute the results.
+            country: Search country — its region word (« Suisse », « Québec ») joins the loose
+                     queries so homonym cities abroad do not pollute the results.
 
         Returns:
             Ordered list of search queries.
         """
-        label = "" if country == "FR" else f" {country_label(country)}"
+        region = search_label(country)
+        label = f" {region}" if region else ""
         return [
             f'site:facebook.com "{category}" "{city}"',
             f"site:facebook.com {category} {city}{label}",

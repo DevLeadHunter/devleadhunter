@@ -29,6 +29,7 @@ import base64
 import json
 import logging
 import re
+from functools import lru_cache
 from typing import Any
 from urllib.parse import parse_qs, parse_qsl, unquote, urlencode, urlparse, urlunparse
 
@@ -38,7 +39,9 @@ from scrappers.enrichment_scraper import EnrichmentData, _dedupe_reviews
 from scrappers.nodriver_browser import NODRIVER_AVAILABLE, NodriverBrowser
 from scrappers.nodriver_dom import NodriverDom
 from scrappers.nodriver_executor import run_nodriver_task
+from services.country_profiles import CountryProfiles
 from services.decision_maker.normalize import company_tokens, fold
+from services.sms.phone_normalizer import format_phone_for_display, to_e164_nanp
 
 logger = logging.getLogger(__name__)
 
@@ -547,16 +550,38 @@ def _website_belongs_to_business(website: str, place_title: str | None) -> bool:
     return any(tok in domain_label or domain_label in tok for tok in tokens)
 
 
-# FB "Coordonnées" writes « City, France, 75011 »; a street address writes « 75011 Paris » — read both orders.
-_CITY_FRANCE_POSTAL_RE: re.Pattern[str] = re.compile(
-    r"([A-Za-zÀ-ÿ][A-Za-zÀ-ÿ'’.\- ]{1,58}?),\s*France,?\s*(\d{5})\b", re.IGNORECASE
-)
-_POSTAL_CITY_RE: re.Pattern[str] = re.compile(r"\b(\d{5})\b[ ,]+([A-Za-zÀ-ÿ][A-Za-zÀ-ÿ'’.\- ]{1,58})")
+_CITY_FRAGMENT: str = r"[A-Za-zÀ-ÿ][A-Za-zÀ-ÿ'’.\- ]{1,58}"
+
+
+@lru_cache(maxsize=8)
+def _city_postal_patterns(country: str) -> tuple[re.Pattern[str], re.Pattern[str]]:
+    """The two address orders a Facebook page writes, for a country's postal code shape.
+
+    FB "Coordonnées" writes « City, France, 75011 » (« Montréal, QC H2X 1Y4 » in Québec) — the country and
+    province names come from the profile; a street address writes « 75011 Paris ». Both are anchored on the
+    postal code, the only reliable shape.
+
+    Args:
+        country: ISO code of the prospect's country.
+
+    Returns:
+        ``(city-country-postal pattern, postal-city pattern)``, each with the city and the code as groups.
+    """
+    profile = CountryProfiles.get(country)
+    postal = profile.postal_code_pattern
+    names = (*profile.address_trailing_names, *profile.address_region_names) or (profile.label,)
+    words = "|".join(re.escape(name) for name in names)
+    city_country_postal = re.compile(rf"({_CITY_FRAGMENT}?),\s*(?:(?:{words}),?\s*)+({postal})\b", re.IGNORECASE)
+    postal_city = re.compile(rf"\b({postal})\b[ ,]+({_CITY_FRAGMENT})", re.IGNORECASE)
+    return city_country_postal, postal_city
+
 
 # Facebook caption / UI words a naive match could mistake for a city.
 _NON_CITY_WORDS: frozenset[str] = frozenset(
     {
         "adresse",
+        "canada",
+        "qc",
         "coordonnees",
         "mobile",
         "whatsapp",
@@ -580,17 +605,19 @@ _NON_CITY_WORDS: frozenset[str] = frozenset(
 )
 
 
-def _clean_city_fragment(raw: str) -> str:
-    """Trim a captured city fragment to its first clause (strip country, separators).
+def _clean_city_fragment(raw: str, country: str = "FR") -> str:
+    """Trim a captured city fragment to its first clause (strip country, region, separators).
 
     Args:
         raw: The raw city capture.
+        country: ISO code of the prospect's country, whose country and province names are dropped.
 
     Returns:
         The cleaned city string (possibly empty).
     """
     city = re.split(r"[,\n·•|]", raw)[0].strip(" ,.-\t")
-    return re.sub(r"\b(France|Frankreich)\b.*$", "", city, flags=re.IGNORECASE).strip(" ,.-")
+    city = re.sub(r"\b(France|Frankreich)\b.*$", "", city, flags=re.IGNORECASE).strip(" ,.-")
+    return CountryProfiles.get(country).strip_address_tail(city)
 
 
 def _is_plausible_city(city: str) -> bool:
@@ -607,22 +634,35 @@ def _is_plausible_city(city: str) -> bool:
 
 # French phone in the « Coordonnées » block — 06 29 34 58 99, 0629345899, +33 6 29 34 58 99…
 _FR_PHONE_RE: re.Pattern[str] = re.compile(r"(?<!\d)(?:\+33[\s.\-]?[1-9]|0[1-9])(?:[\s.\-]?\d{2}){4}(?!\d)")
+# North American phone — (514) 555-0199, 514 555-0199, +1 514 555 0199, 1-514-555-0199.
+_NANP_PHONE_RE: re.Pattern[str] = re.compile(
+    r"(?<!\d)(?:\+?1[\s.\-]?)?\(?[2-9]\d{2}\)?[\s.\-]?[2-9]\d{2}[\s.\-]?\d{4}(?!\d)"
+)
 
 
-def _parse_phone(*texts: str) -> str | None:
-    """Best-effort French phone number from a Facebook page's text.
+def _parse_phone(*texts: str, country: str = "FR") -> str | None:
+    """Best-effort phone number from a Facebook page's text, in the prospect's country.
 
     Args:
         *texts: Text blocks to scan (intro first, then the about panel).
+        country: ISO code of the prospect's country — Canada reads the North American plan,
+            every other country the French shape.
 
     Returns:
-        The number normalised to ``0X XX XX XX XX``, or ``None`` when absent.
+        The number in its display form (``0X XX XX XX XX``, ``514 555-0199``), or ``None`` when absent.
     """
+    is_north_american = CountryProfiles.get(country).code == "CA"
+    pattern = _NANP_PHONE_RE if is_north_american else _FR_PHONE_RE
     for text in texts:
         if not text:
             continue
-        match = _FR_PHONE_RE.search(text)
+        match = pattern.search(text)
         if not match:
+            continue
+        if is_north_american:
+            e164 = to_e164_nanp(match.group(0))
+            if e164:
+                return format_phone_for_display(e164, country="CA")
             continue
         digits = re.sub(r"\D", "", match.group(0))
         if digits.startswith("33"):
@@ -632,31 +672,34 @@ def _parse_phone(*texts: str) -> str | None:
     return None
 
 
-def _parse_city_postal(*texts: str) -> tuple[str | None, str | None]:
-    """Best-effort French ``(city, postal_code)`` from a Facebook page's text.
+def _parse_city_postal(*texts: str, country: str = "FR") -> tuple[str | None, str | None]:
+    """Best-effort ``(city, postal_code)`` from a Facebook page's text, in the prospect's country.
 
-    Anchored on the 5-digit postal code — the only address shape reliable enough on a
-    Facebook page (a lone city line is too ambiguous). Reads both the "Coordonnées"
-    order (``City, France, 75011``) and a street-address order (``75011 Paris``). Scans
-    blocks most-specific first and returns the first plausible match.
+    Anchored on the postal code — the only address shape reliable enough on a Facebook page
+    (a lone city line is too ambiguous) — in the shape of the country (five digits in France,
+    four in Switzerland and Belgium, « H2X 1Y4 » in Québec). Reads both the "Coordonnées"
+    order (``City, France, 75011``, ``Montréal, QC H2X 1Y4``) and a street-address order
+    (``75011 Paris``). Scans blocks most-specific first and returns the first plausible match.
 
     Args:
         *texts: Text blocks to scan (intro first, then description, then page body).
+        country: ISO code of the prospect's country.
 
     Returns:
         ``(city, postal_code)`` — either element may be ``None``.
     """
+    city_country_postal, postal_city = _city_postal_patterns(country)
     for text in texts:
         if not text:
             continue
-        for match in _CITY_FRANCE_POSTAL_RE.finditer(text):
-            city = _clean_city_fragment(match.group(1))
+        for match in city_country_postal.finditer(text):
+            city = _clean_city_fragment(match.group(1), country)
             if _is_plausible_city(city):
-                return city, match.group(2)
-        for match in _POSTAL_CITY_RE.finditer(text):
-            city = _clean_city_fragment(match.group(2))
+                return city, match.group(2).upper()
+        for match in postal_city.finditer(text):
+            city = _clean_city_fragment(match.group(2), country)
             if _is_plausible_city(city):
-                return city, match.group(1)
+                return city, match.group(1).upper()
     return None, None
 
 
@@ -900,12 +943,13 @@ def _pick_description(
 class FacebookEnrichmentScraper:
     """Gathers proof data (rating, reviews, socials, photos) from a public Facebook page."""
 
-    async def enrich(self, *, business_name: str, facebook_url: str) -> EnrichmentData:
+    async def enrich(self, *, business_name: str, facebook_url: str, country: str = "FR") -> EnrichmentData:
         """Scrape a prospect's Facebook page into an ``EnrichmentData`` (source « facebook »).
 
         Args:
             business_name: Prospect name (logging only).
             facebook_url: Public Facebook page URL.
+            country: ISO code of the prospect's country — decides the postal code and phone shapes read.
 
         Returns:
             The scraped enrichment; an empty « facebook » payload when nodriver is
@@ -916,11 +960,11 @@ class FacebookEnrichmentScraper:
             return EnrichmentData(source="facebook")
 
         async def task() -> EnrichmentData:
-            return await self._enrich_nodriver(business_name, facebook_url)
+            return await self._enrich_nodriver(business_name, facebook_url, country)
 
         return await run_nodriver_task(task, timeout=180)
 
-    async def _enrich_nodriver(self, business_name: str, facebook_url: str) -> EnrichmentData:
+    async def _enrich_nodriver(self, business_name: str, facebook_url: str, country: str = "FR") -> EnrichmentData:
         """nodriver implementation: home → photos → reviews, dismiss login each hop."""
         # Facebook throttles logged-out photo scrolling behind a « Voir plus sur Facebook » wall after
         # ~30 photos. A dedicated persistent Chrome profile did NOT lift it (tested: a fresh profile
@@ -942,7 +986,7 @@ class FacebookEnrichmentScraper:
             if isinstance(logo_src, str) and logo_src.strip():
                 page["profile_photo"] = (await self._rehost_fb_photos([logo_src]))[0]
             reviews_text, embedded_texts = await self._extract_reviews(tab, facebook_url)
-            return self._build_from_raw(page, reviews_text, photos, embedded_texts)
+            return self._build_from_raw(page, reviews_text, photos, embedded_texts, country=country)
         except Exception as exc:
             logger.warning("Facebook enrichment failed for %s: %s", business_name, exc)
             return EnrichmentData(source="facebook")
@@ -1135,8 +1179,10 @@ class FacebookEnrichmentScraper:
         reviews_text: str,
         photos: list[str] | None = None,
         embedded_texts: list[str] | None = None,
+        *,
+        country: str = "FR",
     ) -> EnrichmentData:
-        """Coerce the raw page payload + reviews into a typed ``EnrichmentData``."""
+        """Coerce the raw page payload + reviews into a typed ``EnrichmentData``, read in the prospect's country."""
         about_text = str(dom.get("about_text") or "")
         intro_text = str(dom.get("intro_text") or "")
         og_description = str(dom["og_description"]).strip() if dom.get("og_description") else None
@@ -1159,8 +1205,10 @@ class FacebookEnrichmentScraper:
         if website and not _website_belongs_to_business(website, place_title):
             logger.debug("[Facebook] Dropping third-party website '%s' (no name match with '%s')", website, place_title)
             website = None
-        place_city, place_postal_code = _parse_city_postal(intro_text, str(og_description or ""), about_text[:4000])
-        phone = _parse_phone(intro_text, about_text[:4000])
+        place_city, place_postal_code = _parse_city_postal(
+            intro_text, str(og_description or ""), about_text[:4000], country=country
+        )
+        phone = _parse_phone(intro_text, about_text[:4000], country=country)
         description = _pick_description(
             intro_text=intro_text,
             about_text=about_text,

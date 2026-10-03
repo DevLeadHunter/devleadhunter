@@ -73,6 +73,10 @@ class TestParseCityPostal:
     def test_no_address_returns_none(self) -> None:
         assert _parse_city_postal("Aucune adresse ici", "") == (None, None)
 
+    def test_swiss_page_reads_four_digits(self) -> None:
+        assert _parse_city_postal("Genève, Suisse, 1204", country="CH") == ("Genève", "1204")
+        assert _parse_city_postal("Rue du Rhône 12, 1204 Genève", country="CH") == ("Genève", "1204")
+
 
 class TestParsePhone:
     def test_coordonnees_block(self) -> None:

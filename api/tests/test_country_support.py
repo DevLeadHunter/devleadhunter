@@ -2,9 +2,12 @@
 
 from __future__ import annotations
 
-from enums.country import country_label, normalize_country
+from urllib.parse import unquote
+
+from enums.country import country_label, normalize_country, search_label
 from enums.source import Source
 from scrappers.google_scraper import GoogleScraper
+from scrappers.osm_scraper import OSMScraper
 from services.scraper_service import ScraperService
 
 
@@ -60,3 +63,23 @@ def test_google_query_appends_the_country_outside_france() -> None:
     """Homonym cities (Mons, Fribourg…) need the country pinned in the Maps query."""
     assert GoogleScraper.build_query("plombier", "Mons", "BE").endswith("Belgique")
     assert "Suisse" not in GoogleScraper.build_query("plombier", "Lyon", "FR")
+
+
+def test_switzerland_is_searched_with_its_name() -> None:
+    """The search suffix is the region the prospects read in their listings, nothing in France."""
+    assert search_label("CH") == "Suisse"
+    assert search_label("FR") == ""
+    assert unquote(GoogleScraper.build_query("paysagiste", "Genève", "CH")) == "paysagiste à Genève Suisse"
+
+
+def test_extract_city_reads_the_country_postal_shape() -> None:
+    """A Swiss code has four digits; the country written after the city is never taken for it."""
+    assert GoogleScraper.extract_city("12 rue de la Paix, 75002 Paris", "FR") == "Paris"
+    assert GoogleScraper.extract_city("Rue du Rhône 12, 1204 Genève, Suisse", "CH") == "Genève"
+    assert OSMScraper.extract_city("Rue du Rhône 12, 1204 Genève, Suisse", "CH") == "Genève"
+
+
+def test_extract_city_never_returns_the_country_or_the_province() -> None:
+    """Without a postal code the last segment used to be « Suisse » or « Belgique »."""
+    assert GoogleScraper.extract_city("Rue du Rhône 12, Genève, Suisse", "CH") == "Genève"
+    assert GoogleScraper.extract_city("Rue de la Loi 16, 1000 Bruxelles, Belgique", "BE") == "Bruxelles"

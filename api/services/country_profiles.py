@@ -44,6 +44,9 @@ class CountryProfile:
 
     code: str
     label: str
+    # The word appended to a search query (Maps, SERP, Facebook) to pin the country: the region
+    # the prospects read in their own listings (« Québec », not « Canada (Québec) »); empty in France.
+    search_label: str
     enabled: bool
     in_european_union: bool
     currency: str
@@ -147,6 +150,7 @@ class CountryProfiles:
         "FR": CountryProfile(
             code="FR",
             label="France",
+            search_label="",
             enabled=True,
             in_european_union=True,
             currency="EUR",
@@ -168,6 +172,7 @@ class CountryProfiles:
         "CH": CountryProfile(
             code="CH",
             label="Suisse",
+            search_label="Suisse",
             enabled=True,
             in_european_union=False,
             currency="CHF",
@@ -189,6 +194,7 @@ class CountryProfiles:
         "BE": CountryProfile(
             code="BE",
             label="Belgique",
+            search_label="Belgique",
             enabled=True,
             in_european_union=True,
             currency="EUR",
@@ -211,6 +217,7 @@ class CountryProfiles:
         "LU": CountryProfile(
             code="LU",
             label="Luxembourg",
+            search_label="Luxembourg",
             enabled=True,
             in_european_union=True,
             currency="EUR",
@@ -232,6 +239,7 @@ class CountryProfiles:
         "CA": CountryProfile(
             code="CA",
             label="Canada (Québec)",
+            search_label="Québec",
             enabled=False,
             in_european_union=False,
             currency="CAD",

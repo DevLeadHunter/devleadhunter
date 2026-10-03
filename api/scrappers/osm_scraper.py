@@ -4,7 +4,6 @@ OpenStreetMap (Nominatim) scraper for fetching business prospects.
 
 import asyncio
 import logging
-import re
 from collections.abc import Callable
 
 import aiohttp
@@ -13,6 +12,7 @@ from enums.source import Source
 from enums.website_status import WebsiteStatus
 from models.prospect import ProspectCreate
 from services.address_service import address_service
+from services.country_profiles import CountryProfiles
 from services.scrape_progress import ScrapeProgressReporter
 from services.validation_service import validation_service
 from services.website_liveness_service import website_liveness_service
@@ -57,12 +57,13 @@ class OSMScraper(BaseScraper):
             await email_scraper.close()
 
     @staticmethod
-    def extract_city(address: str) -> str:
+    def extract_city(address: str, country: str = "FR") -> str:
         """
         Extract city from full address.
 
         Args:
             address: Full address string
+            country: ISO code of the search country, deciding the postal code shape
 
         Returns:
             Extracted city name
@@ -70,17 +71,15 @@ class OSMScraper(BaseScraper):
         if not address:
             return "Inconnue"
 
-        # Chercher un code postal français (5 chiffres consécutifs)
-        postal_code_pattern = r"\b(\d{5})\s+(.+)$"
-        match = re.search(postal_code_pattern, address)
-
-        if match:
-            city = match.group(2).strip()
-            return city
+        profile = CountryProfiles.get(country)
+        match = profile.postal_code_regex.search(address)
+        city_after_code = profile.strip_address_tail(address[match.end() :]) if match else ""
+        if city_after_code:
+            return city_after_code
 
         # Fallback: prendre après la virgule ou le dernier élément
         if "," in address:
-            parts = [p.strip() for p in address.split(",")]
+            parts = [p.strip() for p in profile.strip_address_tail(address).split(",")]
             return parts[-1]
 
         parts = address.split()

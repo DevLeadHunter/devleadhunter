@@ -184,7 +184,7 @@ def _best_match(results: list[dict[str, Any]], business_name: str) -> dict[str, 
     return exact or contains
 
 
-async def enrich_from_osm(business_name: str, city: str | None) -> dict[str, Any]:
+async def enrich_from_osm(business_name: str, city: str | None, country: str = "FR") -> dict[str, Any]:
     """Fetch complementary enrichment for one business from OpenStreetMap.
 
     Args:
@@ -201,7 +201,7 @@ async def enrich_from_osm(business_name: str, city: str | None) -> dict[str, Any
         "q": query,
         "format": "json",
         "limit": 5,
-        "countrycodes": "fr",
+        "countrycodes": country.lower(),
         "extratags": 1,
         "namedetails": 1,
     }

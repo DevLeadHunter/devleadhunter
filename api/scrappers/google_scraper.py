@@ -13,7 +13,7 @@ from time import monotonic
 from typing import TypeVar
 from urllib.parse import quote
 
-from enums.country import country_label
+from enums.country import search_label
 from enums.source import Source
 from enums.website_status import WebsiteStatus
 from models.prospect import ProspectCreate, ProspectSearchSuggestion
@@ -22,6 +22,7 @@ from scrappers.nodriver_browser import NODRIVER_AVAILABLE, NodriverBrowser, Nodr
 from scrappers.nodriver_dom import NodriverDom
 from scrappers.nodriver_executor import run_nodriver_task
 from scrappers.resilient_extract import find_phone, parse_ld_json_blocks
+from services.country_profiles import CountryProfiles
 from services.scrape_progress import ScrapeProgressReporter
 from services.validation_service import validation_service
 from services.website_liveness_service import website_liveness_service
@@ -244,9 +245,10 @@ class GoogleScraper(NodriverScraperMixin, BaseScraper):
             parts.append(category)
         if city:
             parts.append(f"à {city}")
-        if country != "FR":
-            # Homonym cities exist across the border (Mons, Fribourg…): the country pins Maps.
-            parts.append(country_label(country))
+        region = search_label(country)
+        if region:
+            # Homonym cities exist across the border (Mons, Fribourg, Laval…): the region pins Maps.
+            parts.append(region)
         query = " ".join(parts).strip()
         return quote(query) if query else "entreprises"
 
@@ -260,17 +262,35 @@ class GoogleScraper(NodriverScraperMixin, BaseScraper):
         return cleaned
 
     @staticmethod
-    def extract_city(address: str) -> str:
-        """Extract city name from a full address string."""
+    def extract_city(address: str, country: str = "FR") -> str:
+        """Extract the city from a full address string.
+
+        Europe writes the city after the postal code (« 75002 Paris », « 1204 Genève »); Maps writes a
+        Québec address as « 123 Rue X, Montréal, QC H2X 1Y4, Canada », so when the code ends a segment
+        the city is the segment before it. The country and the province are never taken for the city.
+
+        Args:
+            address: The address as Maps displays it.
+            country: ISO code of the search country, deciding the postal code shape.
+
+        Returns:
+            The city, or « Inconnue » when the address carries none.
+        """
         address = GoogleScraper._sanitize_maps_text(address)
         if not address:
             return "Inconnue"
-        postal_match = re.search(r"\b(\d{5})\s+(.+)$", address)
-        if postal_match:
-            return postal_match.group(2).strip()
-        parts = [p.strip() for p in address.split(",") if p.strip()]
-        if len(parts) >= 2:
-            return parts[-1]
+        profile = CountryProfiles.get(country)
+        postal_matches = list(profile.postal_code_regex.finditer(address))
+        if postal_matches:
+            postal_match = postal_matches[-1]
+            trailing = profile.strip_address_tail(address[postal_match.end() :].split(",", 1)[0])
+            if trailing:
+                return trailing
+            before = profile.strip_address_tail(address[: postal_match.start()])
+            segments = [p.strip() for p in before.split(",") if p.strip()]
+            if len(segments) >= 2:
+                return segments[-1]
+        parts = [p.strip() for p in profile.strip_address_tail(address).split(",") if p.strip()]
         return parts[-1] if parts else "Inconnue"
 
     @staticmethod
@@ -345,6 +365,7 @@ class GoogleScraper(NodriverScraperMixin, BaseScraper):
         *,
         default_category: str = "Entreprise",
         item_timeout_s: float = 5.0,
+        country: str = "FR",
     ) -> dict[str, str | None] | None:
         """Extract business details from the currently open Google Maps place panel.
 
@@ -429,7 +450,7 @@ class GoogleScraper(NodriverScraperMixin, BaseScraper):
             # Layer 3 — regex-normalise the phone (markup-independent); keep raw if no match.
             phone = find_phone(phone) or (phone.strip() if phone else None)
 
-            city_name = self.extract_city(address)
+            city_name = self.extract_city(address, country)
             rating, reviews_count = await self._read_review_stats(tab)
             return {
                 "name": name.strip(),
@@ -802,7 +823,9 @@ class GoogleScraper(NodriverScraperMixin, BaseScraper):
                         "Maps feed not found (url=%s) — trying single-place panel",
                         NodriverDom.tab_url(tab),
                     )
-                    single = await self._extract_current_place(tab, default_category=category, item_timeout_s=4.0)
+                    single = await self._extract_current_place(
+                        tab, default_category=category, item_timeout_s=4.0, country=country
+                    )
                     if single and single.get("name") and self._is_valid_place_name(single["name"]):
                         single_status = await website_liveness_service.check_website_status(single.get("website"))
                         if only_without_website and single_status is WebsiteStatus.LIVE:
@@ -866,7 +889,9 @@ class GoogleScraper(NodriverScraperMixin, BaseScraper):
                     place_url = self._normalize_maps_href(href)
                     await NodriverDom.navigate(tab, place_url, sleep_s=0.35)
 
-                    details = await self._extract_current_place(tab, default_category=category, item_timeout_s=3.0)
+                    details = await self._extract_current_place(
+                        tab, default_category=category, item_timeout_s=3.0, country=country
+                    )
                     if not details or not details.get("name"):
                         continue
                     if not self._is_valid_place_name(details["name"]):
@@ -883,7 +908,7 @@ class GoogleScraper(NodriverScraperMixin, BaseScraper):
                         continue
 
                     extracted_category = details.get("category") or category
-                    city_name = details.get("city") or self.extract_city(address)
+                    city_name = details.get("city") or self.extract_city(address, country)
 
                     confidence = validation_service.calculate_confidence_score(
                         phone=phone,
