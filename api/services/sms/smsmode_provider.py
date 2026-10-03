@@ -1,9 +1,14 @@
 """smsmode implementation of :class:`SmsProvider` (REST API v1).
 
-Contract confirmed against a production integration:
-``POST https://rest.smsmode.com/sms/v1/messages`` with an ``X-Api-Key`` header
-and body ``{recipient:{to}, body:{text}, from, refClient?, callbackUrlStatus?}``;
-the response carries ``messageId`` and, when priced, ``price.amount`` (euros).
+Contract confirmed against a production integration and the OpenAPI spec
+(https://dev.smsmode.com/sms/openapi/rest-sms.yml): ``POST https://rest.smsmode.com/sms/v1/messages``
+with an ``X-Api-Key`` header and body ``{recipient:{to}, body:{text, stop?}, from, refClient?,
+callbackUrlStatus?, callbackUrlMo?}``. ``body.stop = true`` makes smsmode append its own opt-out
+mention after our text: « STOP » plus the account's five-digit short code in France, an unsubscribe
+link (``no-sms.eu``) to a foreign number — the spec calls it mandatory for a lettered sender on a
+marketing channel, or the message may be blocked or the sender replaced by a short code. The 201
+response is the Message resource: ``messageId``, ``body.text`` (the acknowledged body),
+``body.messagePartCount`` (the billed segments) and, when priced, ``price.amount`` (euros).
 """
 
 from __future__ import annotations
@@ -101,6 +106,7 @@ class SmsModeProvider(SmsProvider):
         to_e164: str,
         sender: str,
         text: str,
+        opt_out_mention: bool = False,
         ref_client: str | None = None,
         callback_url: str | None = None,
         callback_url_mo: str | None = None,
@@ -110,7 +116,8 @@ class SmsModeProvider(SmsProvider):
         Args:
             to_e164: Recipient in E.164 format.
             sender: Alphanumeric sender id.
-            text: Message body.
+            text: Message body, without any opt-out mention.
+            opt_out_mention: Whether smsmode appends its opt-out mention (``body.stop``).
             ref_client: Reference echoed back on the callbacks.
             callback_url: Delivery-receipt (DLR) callback URL.
             callback_url_mo: Incoming-message (MO / STOP opt-out) callback URL.
@@ -121,9 +128,12 @@ class SmsModeProvider(SmsProvider):
         if not self.is_configured:
             return SmsSendResult(success=False, error="smsmode non configuré (SMSMODE_API_KEY absent)")
 
+        body: dict[str, object] = {"text": text}
+        if opt_out_mention:
+            body["stop"] = True
         payload: dict[str, object] = {
             "recipient": {"to": to_e164},
-            "body": {"text": text},
+            "body": body,
             "from": sender,
         }
         if ref_client:
@@ -165,7 +175,42 @@ class SmsModeProvider(SmsProvider):
                 price_cents = round(float(price.get("amount", 0)) * 100)
             except (TypeError, ValueError):
                 price_cents = None
-        return SmsSendResult(success=True, provider_message_id=message_id, price_cents=price_cents)
+        acknowledged_body = data.get("body") if isinstance(data.get("body"), dict) else {}
+        return SmsSendResult(
+            success=True,
+            provider_message_id=message_id,
+            price_cents=price_cents,
+            provider_text=self._acknowledged_text(acknowledged_body),
+            provider_segments=self._acknowledged_segments(acknowledged_body),
+        )
+
+    @staticmethod
+    def _acknowledged_text(body: dict[str, object]) -> str | None:
+        """The body text smsmode acknowledged, ``None`` when the response carries none.
+
+        Args:
+            body: The ``body`` object of the Message resource.
+
+        Returns:
+            The text, or ``None``.
+        """
+        text = body.get("text")
+        return text if isinstance(text, str) and text.strip() else None
+
+    @staticmethod
+    def _acknowledged_segments(body: dict[str, object]) -> int | None:
+        """The ``messagePartCount`` smsmode bills, ``None`` when the response carries none.
+
+        Args:
+            body: The ``body`` object of the Message resource.
+
+        Returns:
+            The segment count, or ``None``.
+        """
+        count = body.get("messagePartCount")
+        if isinstance(count, bool) or not isinstance(count, int | float):
+            return None
+        return int(count) if int(count) >= 1 else None
 
     @staticmethod
     def _extract_error(response: httpx.Response) -> str:

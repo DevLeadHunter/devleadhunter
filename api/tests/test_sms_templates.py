@@ -1,7 +1,12 @@
-"""Unit tests for the SMS template library — integrity, rendering, one-segment budget."""
+"""Unit tests for the SMS template library: integrity, rendering, the two-segment budget of a frank SMS."""
+
+from sqlalchemy.orm import Session
 
 from enums.sms_template_category import SmsTemplateCategory
-from services.sms.gsm_segments import is_gsm7, segment_count
+from models.prospect_db import ProspectDB
+from models.user import User
+from services.country_profiles import CountryProfiles
+from services.sms.gsm_segments import is_gsm7
 from services.sms.templates import (
     DEFAULT_FIRST_CONTACT_KEY,
     DEFAULT_FOLLOW_UP_KEY,
@@ -15,7 +20,7 @@ from services.sms_config_service import SmsConfigService
 from services.sms_service import sms_service
 from services.sms_variables import SmsVariables
 
-# A common case: a first name and an 18-character slug (the link is the heaviest variable).
+# A common case: a first name, an 18-character slug (the link is the heaviest variable) and the sender's phone.
 _TYPICAL_VARIABLES: dict[str, str] = {
     "salutation": "Bonjour Geoffrey",
     "entreprise": "Garage Martin Auto",
@@ -29,8 +34,30 @@ _TYPICAL_VARIABLES: dict[str, str] = {
     "prix": "500 €",
     "prix_assistant": "79 €",
     "prenom_receptionniste": "Nathan",
+    "telephone": "06 12 34 56 78",
     "signature": "Léo",
 }
+# A heavier case: a 26-character slug on every link, the longest a real business name usually makes.
+_LONG_SLUG_VARIABLES: dict[str, str] = {
+    **_TYPICAL_VARIABLES,
+    "entreprise": "Plomberie Chauffage Dupont",
+    "lien_demo": "demo.dibodev.fr/s/plomberie-chauffage-dupont",
+    "lien_assistant": "demo.dibodev.fr/s/ia/plomberie-chauffage-dupont",
+    "lien_video": "demo.dibodev.fr/s/v/plomberie-chauffage-dupont",
+    "lien_video_assistant": "demo.dibodev.fr/s/va/plomberie-chauffage-dupont",
+}
+_PROSPECTING_SEGMENT_BUDGET = 2
+
+
+def _as_read_in(country: str, variables: dict[str, str]) -> dict[str, str]:
+    """The variables as a prospect of ``country`` reads them: prices in his currency, the sender's phone dialable from there."""
+    profile = CountryProfiles.get(country)
+    return {
+        **variables,
+        "prix": profile.format_price(50000),
+        "prix_assistant": profile.format_price(7900),
+        "telephone": SmsVariables.phone_for(variables["telephone"], country),
+    }
 
 
 class TestLibraryIntegrity:
@@ -58,7 +85,7 @@ class TestLibraryIntegrity:
     def test_variables_are_declared_in_order(self) -> None:
         template = find_sms_template("video")
         assert template is not None
-        assert template.variables == ["salutation", "entreprise", "lien_video", "signature"]
+        assert template.variables == ["salutation", "entreprise", "lien_video", "prix", "telephone", "signature"]
         assert template.uses("lien_video")
         assert not template.uses("lien_demo")
 
@@ -114,24 +141,42 @@ class TestRender:
     def test_unknown_or_empty_variable_leaves_no_double_space(self) -> None:
         assert render_sms_template("Bonjour {inconnu} {signature}", {"signature": ""}) == "Bonjour"
 
-    def test_compose_from_template_is_a_first_contact_with_stop_once(self) -> None:
+    def test_compose_from_template_is_a_frank_first_contact_ending_with_the_signature(self) -> None:
         template = find_sms_template(DEFAULT_FIRST_CONTACT_KEY)
         assert template is not None
         body = sms_service.compose_from_template(template, _TYPICAL_VARIABLES)
-        assert body.endswith("STOP au 36180")
-        assert body.count("36180") == 1
+        assert "STOP" not in body and "36180" not in body
         # A first contact must NOT claim a prior email.
         assert "par email" not in body
         assert "Garage Martin Auto" in body
         assert "demo.dibodev.fr/s/garage-martin-auto" in body
+        assert "500 €" in body and "06 12 34 56 78" in body
+        assert body.endswith(_TYPICAL_VARIABLES["signature"])
 
 
-class TestOneSegmentBudget:
-    def test_every_first_contact_template_fits_one_gsm7_segment(self) -> None:
+class TestTwoSegmentBudget:
+    def test_a_swiss_price_renders_in_gsm7_within_two_swiss_segments(self) -> None:
+        template = find_sms_template(DEFAULT_FIRST_CONTACT_KEY)
+        assert template is not None
+        body = sms_service.render_template_body(template, _as_read_in("CH", _LONG_SLUG_VARIABLES))
+        assert "env. 470 CHF" in body and "+33 6 12 34 56 78" in body and is_gsm7(body)
+        assert sms_service.marketing_segment_count(body, country="CH") <= _PROSPECTING_SEGMENT_BUDGET
+
+    def test_every_first_contact_fits_two_gsm7_segments(self) -> None:
         for template in list_sms_templates(SmsTemplateCategory.FIRST_CONTACT):
-            body = sms_service.compose_from_template(template, _TYPICAL_VARIABLES)
-            assert is_gsm7(body), template.key
-            assert segment_count(body) == 1, f"{template.key}: {len(body)} chars"
+            for variables in (_TYPICAL_VARIABLES, _LONG_SLUG_VARIABLES):
+                for country in ("FR", "CH"):
+                    body = sms_service.render_template_body(template, _as_read_in(country, variables))
+                    assert is_gsm7(body), f"{template.key} {country}"
+                    segments = sms_service.marketing_segment_count(body, country=country)
+                    assert segments <= _PROSPECTING_SEGMENT_BUDGET, f"{template.key} {country}: {len(body)} chars"
+
+    def test_the_stop_mention_room_is_reserved_in_the_budget(self) -> None:
+        template = find_sms_template(DEFAULT_FIRST_CONTACT_KEY)
+        assert template is not None
+        for country in ("FR", "CH"):
+            body = sms_service.render_template_body(template, _as_read_in(country, _LONG_SLUG_VARIABLES))
+            assert sms_service.marketing_segment_count(body, country=country) <= _PROSPECTING_SEGMENT_BUDGET, country
 
 
 class TestFollowUpLibrary:
@@ -140,15 +185,18 @@ class TestFollowUpLibrary:
         assert template is not None
         assert template.category is SmsTemplateCategory.FOLLOW_UP
 
-    def test_every_follow_up_recalls_the_email_and_fits_one_segment(self) -> None:
+    def test_every_follow_up_recalls_the_email_and_fits_two_segments(self) -> None:
         follow_ups = list_sms_templates(SmsTemplateCategory.FOLLOW_UP)
         assert follow_ups
         for template in follow_ups:
             # A J+30 relance says where it comes from: the email sent a month ago.
             assert "email" in template.body, template.key
-            body = sms_service.compose_from_template(template, _TYPICAL_VARIABLES)
-            assert is_gsm7(body), template.key
-            assert segment_count(body) == 1, f"{template.key}: {len(body)} chars"
+            for variables in (_TYPICAL_VARIABLES, _LONG_SLUG_VARIABLES):
+                for country in ("FR", "CH"):
+                    body = sms_service.render_template_body(template, _as_read_in(country, variables))
+                    assert is_gsm7(body), f"{template.key} {country}"
+                    segments = sms_service.marketing_segment_count(body, country=country)
+                    assert segments <= _PROSPECTING_SEGMENT_BUDGET, f"{template.key} {country}: {len(body)} chars"
 
     def test_relance_choice_rejects_a_first_contact_or_unknown_key(self) -> None:
         service = SmsConfigService()
@@ -181,9 +229,46 @@ class TestSmsVariables:
         assert SmsVariables.signature_for("") == ""
         assert SmsVariables.signature_for(None) == ""
 
+    def test_phone_is_written_so_the_prospect_can_dial_it(self) -> None:
+        assert SmsVariables.phone_for(" 06 12 34 56 78 ") == "06 12 34 56 78"
+        assert SmsVariables.phone_for("+33 6 12 34 56 78") == "06 12 34 56 78"
+        assert SmsVariables.phone_for("06 12 34 56 78", "CH") == "+33 6 12 34 56 78"
+        assert SmsVariables.phone_for("06.12.34.56.78", "CA") == "+33 6 12 34 56 78"
+        assert SmsVariables.phone_for("") == ""
+        assert SmsVariables.phone_for(None) == ""
+
+    def test_the_prospect_map_carries_the_sender_phone_and_stays_empty_without_one(self, db: Session) -> None:
+        with_phone = User(
+            name="Marc Dupont", email="marc@example.com", hashed_password="x", contact_phone="06 12 34 56 78"
+        )
+        without_phone = User(name="Marie Durand", email="marie@example.com", hashed_password="x")
+        prospect = ProspectDB(
+            name="Garage Martin", category="Garage automobile", source="google", confidence=2, user_id=1
+        )
+        db.add_all([with_phone, without_phone, prospect])
+        db.commit()
+
+        variables = SmsVariables.build_for_prospect(db, user_id=with_phone.id, prospect=prospect, assistant=None)
+        assert variables[SmsVariables.PHONE] == "06 12 34 56 78"
+        assert variables[SmsVariables.SIGNATURE] == "Marc"
+
+        variables = SmsVariables.build_for_prospect(db, user_id=without_phone.id, prospect=prospect, assistant=None)
+        assert variables[SmsVariables.PHONE] == ""
+
+    def test_a_swiss_prospect_reads_the_sender_phone_in_international_form(self, db: Session) -> None:
+        sender = User(name="Marc Dupont", email="marc@example.com", hashed_password="x", contact_phone="06 12 34 56 78")
+        swiss_prospect = ProspectDB(
+            name="Jardins Favre", category="Paysagiste", source="google", confidence=2, user_id=1, country="CH"
+        )
+        db.add_all([sender, swiss_prospect])
+        db.commit()
+
+        variables = SmsVariables.build_for_prospect(db, user_id=sender.id, prospect=swiss_prospect, assistant=None)
+        assert variables[SmsVariables.PHONE] == "+33 6 12 34 56 78"
+
 
 class TestAssistantTemplates:
-    """The AI-assistant SMS family links `{lien_assistant}`, not the website demo."""
+    """The receptionist SMS family links `{lien_assistant}`, not the website demo."""
 
     _KEYS = ("assistant-24-7", "assistant-langues", "assistant-demandes", "assistant-relance", "assistant-prix-cash")
 

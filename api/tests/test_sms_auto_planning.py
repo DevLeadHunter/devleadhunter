@@ -19,9 +19,17 @@ for _module in pkgutil.iter_modules(_models_pkg.__path__):
 configure_mappers()
 
 import services.sms_automation_service as sas  # noqa: E402
-from services.sms.send_window import is_within_window, now_in_paris  # noqa: E402
+from services.sms.send_window import france_send_window  # noqa: E402
 
 _service = sas.sms_automation_service
+
+
+def now_in_paris() -> datetime:
+    return france_send_window.now()
+
+
+def is_within_window(moment: datetime) -> bool:
+    return france_send_window.is_open(moment)
 
 
 def test_future_relance_lands_on_its_eligibility_day():

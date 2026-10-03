@@ -58,7 +58,7 @@
               placeholder="06 12 34 56 78"
               autocomplete="tel"
             />
-            <p class="text-muted mt-1 text-[11px]">Uniquement les mobiles français commençant par 06 ou 07.</p>
+            <p class="text-muted mt-1 text-[11px]">{{ acceptedMobileNumberLabel }}</p>
           </div>
 
           <div>
@@ -90,20 +90,19 @@
               class="input-field resize-none"
               placeholder="Bonjour, je vous ai envoyé un aperçu de site web…"
             />
-            <div class="mt-1.5 flex items-center justify-between text-[11px]">
+            <div v-if="segmentCount" class="mt-1.5 flex items-center justify-between text-[11px]">
               <span class="text-muted">
-                {{ segmentInfo.chars }} caractère{{ segmentInfo.chars > 1 ? 's' : '' }} · {{ segmentInfo.segments }} SMS
-                <span v-if="segmentInfo.encoding === 'unicode'" class="text-[var(--app-red)]">
+                {{ segmentCount.characters }} caractère{{ segmentCount.characters > 1 ? 's' : '' }} ·
+                {{ segmentCount.segments }} SMS
+                <span v-if="segmentCount.is_unicode" class="text-[var(--app-red)]">
                   · accents/emoji : capacité réduite
                 </span>
               </span>
             </div>
             <p v-if="isTooLong" class="mt-1 text-[11px] font-medium text-[var(--app-red)]">
-              Message trop long — il partirait en {{ segmentInfo.segments }} SMS. Raccourcissez-le pour tenir en 1 seul.
+              {{ smsTooLongWarning }}
             </p>
-            <p class="text-muted mt-1 text-[11px]">
-              La mention « STOP au 36180 » est ajoutée automatiquement (obligatoire).
-            </p>
+            <p class="text-muted mt-1 text-[11px]">La mention de désinscription est ajoutée à l'envoi.</p>
           </div>
         </form>
 
@@ -134,80 +133,12 @@ import type { Prospect } from '~/types'
 import type { SendSmsPrefill } from '~/types/DrawerStack'
 import type { SelectFieldOption } from '~/types/SelectField'
 import type { SmsConfig, SmsSendResult, SmsTemplate, SmsTemplatePreview } from '~/services/smsService'
+import type { SmsSegmentCount } from '~/types/SmsSegmentCount'
+import type { ProspectCountryOption } from '~/utils/prospectCountries'
 import { computed, ref, watch } from 'vue'
 import { SmsService } from '~/services/smsService'
 import { useToast } from '~/composables/useToast'
-
-/** Mandatory STOP mention appended server-side; counted here for an accurate segment preview. */
-const STOP_MENTION: string = ' STOP au 36180'
-
-/** GSM-7 basic + extension characters — anything outside forces UCS-2 (unicode) encoding. */
-const GSM7_CHARS: string =
-  '@£$¥èéùìòÇ\nØø\rÅåΔ_ΦΓΛΩΠΨΣΘΞ ÆæßÉ !"#¤%&\'()*+,-./0123456789:;<=>?¡ABCDEFGHIJKLMNOPQRSTUVWXYZÄÖÑÜ§¿abcdefghijklmnopqrstuvwxyzäöñüà' +
-  '^{}\\[~]|€'
-
-/**
- * Closest GSM-7 equivalent for the common non-GSM-7 characters (mirrors the API's `to_gsm7`).
- * The GSM-7 accents (é è à ù…) are kept; the circumflex letters, the lowercase cedilla (ç,
- * absent from GSM-7) and typographic punctuation that would halve the per-SMS budget are
- * simplified, so a normal French message stays one segment.
- */
-const GSM7_TRANSLITERATIONS: Record<string, string> = {
-  â: 'a',
-  ê: 'e',
-  î: 'i',
-  ô: 'o',
-  û: 'u',
-  Â: 'A',
-  Ê: 'E',
-  Î: 'I',
-  Ô: 'O',
-  Û: 'U',
-  ë: 'e',
-  ï: 'i',
-  Ë: 'E',
-  Ï: 'I',
-  ÿ: 'y',
-  Ÿ: 'Y',
-  ç: 'c',
-  á: 'a',
-  í: 'i',
-  ó: 'o',
-  ú: 'u',
-  ã: 'a',
-  õ: 'o',
-  Á: 'A',
-  Í: 'I',
-  Ó: 'O',
-  Ú: 'U',
-  Ã: 'A',
-  Õ: 'O',
-  œ: 'oe',
-  Œ: 'OE',
-  '’': "'",
-  '‘': "'",
-  '“': '"',
-  '”': '"',
-  '«': '"',
-  '»': '"',
-  '–': '-',
-  '—': '-',
-  '…': '...',
-  '•': '-',
-  '\u00a0': ' ',
-  '\u202f': ' ',
-}
-
-/**
- * Simplify the non-GSM-7 characters of a body to their closest GSM-7 equivalent.
- * @param text - The raw message body.
- * @returns The body with circumflex letters and typographic punctuation transliterated.
- */
-function normalizeToGsm7(text: string): string {
-  let out: string = ''
-  for (const char of text) out += GSM7_TRANSLITERATIONS[char] ?? char
-  return out
-}
+import { ProspectCountries } from '~/utils/prospectCountries'
 
 const props: UiSendSmsDrawerProps = defineProps({
   open: {
@@ -231,6 +162,11 @@ const props: UiSendSmsDrawerProps = defineProps({
 const emit: EmitFn<UiSendSmsDrawerEmits> = defineEmits<UiSendSmsDrawerEmits>()
 
 const toast: UseToastReturn = useToast()
+
+const SEGMENT_COUNT_DELAY_MILLISECONDS: number = 300
+
+let segmentCountTimer: ReturnType<typeof setTimeout> | undefined
+let segmentCountRequestNumber: number = 0
 
 /** Whether the manual send request is in flight. */
 const isSending: Ref<boolean> = ref(false)
@@ -257,26 +193,26 @@ const selectedTemplateKey: Ref<string> = ref('')
 /** Whether a template is being rendered for the prospect. */
 const isLoadingTemplate: Ref<boolean> = ref(false)
 
-/**
- * Live character + segment estimate of the full body (message + STOP mention), counted on the
- * GSM-7-normalized text so the preview matches what the API actually sends.
- */
-const segmentInfo: ComputedRef<{ chars: number; segments: number; encoding: 'gsm' | 'unicode' }> = computed(() => {
-  const trimmed: string = normalizeToGsm7(form.value.text.trim())
-  if (!trimmed) {
-    return { chars: 0, segments: 0, encoding: 'gsm' }
-  }
-  const body: string = trimmed.includes('36180') ? trimmed : trimmed + STOP_MENTION
-  const isUnicode: boolean = [...body].some((char: string): boolean => !GSM7_CHARS.includes(char))
-  const chars: number = body.length
-  const single: number = isUnicode ? 70 : 160
-  const multi: number = isUnicode ? 67 : 153
-  const segments: number = chars <= single ? 1 : Math.ceil(chars / multi)
-  return { chars, segments, encoding: isUnicode ? 'unicode' : 'gsm' }
-})
+const segmentCount: Ref<SmsSegmentCount | null> = ref(null)
 
-/** A message that would bill (and send) more than one SMS is blocked. */
-const isTooLong: ComputedRef<boolean> = computed((): boolean => segmentInfo.value.segments > 1)
+/** A message that would bill (and send) more SMS than allowed is blocked. */
+const isTooLong: ComputedRef<boolean> = computed(
+  (): boolean => segmentCount.value !== null && segmentCount.value.segments > segmentCount.value.maximum_segments,
+)
+
+const smsTooLongWarning: ComputedRef<string> = computed((): string =>
+  segmentCount.value
+    ? `Message trop long : il partirait en ${segmentCount.value.segments} SMS. ` +
+      `Raccourcissez-le pour tenir en ${segmentCount.value.maximum_segments}.`
+    : '',
+)
+
+const acceptedMobileNumberLabel: ComputedRef<string> = computed((): string => {
+  const country: ProspectCountryOption = ProspectCountries.option(props.prospect?.country)
+  return country.code === 'FR'
+    ? 'Uniquement les mobiles français commençant par 06 ou 07.'
+    : `Mobile du prospect (${country.label}), au format national ou international.`
+})
 
 /**
  * Load the SMS config to know whether the server key is ready.
@@ -330,12 +266,43 @@ async function applyTemplate(key: string): Promise<void> {
 }
 
 /**
+ * Ask the API how many segments the typed message bills, the opt-out mention of its recipient's country included.
+ * @param text - The message as typed.
+ * @returns A promise that resolves once the count of the latest request is stored.
+ */
+async function refreshSegmentCount(text: string): Promise<void> {
+  segmentCountRequestNumber += 1
+  const requestNumber: number = segmentCountRequestNumber
+  if (!text.trim()) {
+    segmentCount.value = null
+    return
+  }
+  try {
+    const count: SmsSegmentCount = await SmsService.countSegments({ text, prospect_id: props.prospect?.id ?? null })
+    if (requestNumber === segmentCountRequestNumber) segmentCount.value = count
+  } catch {
+    if (requestNumber === segmentCountRequestNumber) segmentCount.value = null
+  }
+}
+
+/**
+ * Recount the segments once the user pauses typing.
+ * @param text - The message as typed.
+ */
+function scheduleSegmentCount(text: string): void {
+  clearTimeout(segmentCountTimer)
+  segmentCountTimer = setTimeout((): void => {
+    refreshSegmentCount(text)
+  }, SEGMENT_COUNT_DELAY_MILLISECONDS)
+}
+
+/**
  * Send the SMS through the manual endpoint, then notify the host so the stack can navigate back.
  * @returns A promise that resolves once the SMS has been dispatched.
  */
 async function handleSend(): Promise<void> {
   if (isTooLong.value) {
-    toast.error('Message trop long : il tient sur plusieurs SMS. Raccourcissez-le.')
+    toast.error(smsTooLongWarning.value)
     return
   }
   isSending.value = true
@@ -387,6 +354,8 @@ watch(
 )
 
 watch(selectedTemplateKey, applyTemplate)
+
+watch((): string => form.value.text, scheduleSegmentCount)
 </script>
 
 <style scoped>

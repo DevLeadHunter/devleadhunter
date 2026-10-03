@@ -19,6 +19,7 @@ export class SmsVariables {
     { key: 'lien_video', token: '{lien_video}', label: 'Lien vidéo', example: 'demo.dibodev.fr/s/v/garage-martin' },
     { key: 'ancien_site', token: '{ancien_site}', label: 'Ancien site', example: 'garage-martin.fr' },
     { key: 'prix', token: '{prix}', label: 'Prix', example: '500 €' },
+    { key: 'telephone', token: '{telephone}', label: 'Téléphone de contact', example: '06 12 34 56 78' },
     { key: 'signature', token: '{signature}', label: 'Signature', example: 'Léo' },
   ]
 

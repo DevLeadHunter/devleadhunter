@@ -19,7 +19,14 @@ class TestSmsModeProvider:
             import json
 
             captured["body"] = json.loads(request.content)
-            return httpx.Response(200, json={"messageId": "abc123", "price": {"amount": 0.06, "currency": "EUR"}})
+            return httpx.Response(
+                200,
+                json={
+                    "messageId": "abc123",
+                    "price": {"amount": 0.06, "currency": "EUR"},
+                    "body": {"text": "Bonjour\nSTOP 36034", "encoding": "GSM7", "messagePartCount": 1, "length": 18},
+                },
+            )
 
         transport = httpx.MockTransport(handler)
         original = httpx.AsyncClient
@@ -32,18 +39,46 @@ class TestSmsModeProvider:
 
         provider = SmsModeProvider()
         provider._api_key = "test-key"
-        result = await provider.send(to_e164="+33629345899", sender="Dibodev", text="Bonjour", ref_client="7")
+        result = await provider.send(
+            to_e164="+33629345899", sender="Dibodev", text="Bonjour", opt_out_mention=True, ref_client="7"
+        )
 
         assert result.success is True
         assert result.provider_message_id == "abc123"
         assert result.price_cents == 6  # 0.06 € → cents
+        assert (result.provider_text, result.provider_segments) == ("Bonjour\nSTOP 36034", 1)
         assert captured["headers"]["x-api-key"] == "test-key"
+        # body.stop makes smsmode append its own opt-out mention; our text never carries one.
         assert captured["body"] == {
             "recipient": {"to": "+33629345899"},
-            "body": {"text": "Bonjour"},
+            "body": {"text": "Bonjour", "stop": True},
             "from": "Dibodev",
             "refClient": "7",
         }
+
+    @pytest.mark.asyncio
+    async def test_a_service_send_asks_for_no_mention_and_tolerates_a_bare_response(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        captured: dict = {}
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            import json
+
+            captured["body"] = json.loads(request.content)
+            return httpx.Response(200, json={"messageId": "abc123"})
+
+        transport = httpx.MockTransport(handler)
+        original = httpx.AsyncClient
+        monkeypatch.setattr(httpx, "AsyncClient", lambda *a, **k: original(*a, **{**k, "transport": transport}))
+
+        provider = SmsModeProvider()
+        provider._api_key = "test-key"
+        result = await provider.send(to_e164="+41791234567", sender="Dibodev", text="Nouvelle demande")
+
+        assert result.success is True
+        assert "stop" not in captured["body"]["body"]
+        assert (result.price_cents, result.provider_text, result.provider_segments) == (None, None, None)
 
     @pytest.mark.asyncio
     async def test_api_error_returns_failure(self, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -128,7 +163,7 @@ class TestSmsModeProvider:
 
 
 class TestComposeBody:
-    def test_relance_body_recalls_the_email_with_link_signature_and_stop(self) -> None:
+    def test_relance_body_recalls_the_email_with_link_and_signature_and_leaves_the_mention_to_smsmode(self) -> None:
         service = SmsService()
         template = find_sms_template(DEFAULT_FOLLOW_UP_KEY)
         assert template is not None
@@ -138,6 +173,5 @@ class TestComposeBody:
         )
         assert "email" in body
         assert "demo.dibodev.fr/garage-central" in body
-        assert body.endswith("STOP au 36180")
-        assert body.count("36180") == 1
-        assert "Léo" in body
+        assert "STOP" not in body and "36180" not in body
+        assert body.endswith("Léo")

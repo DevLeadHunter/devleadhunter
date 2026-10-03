@@ -78,13 +78,13 @@ class TestDisplayFormat:
 
 class TestProspectPhonesByCountry:
     def test_french_numbers_dedupe_across_formats(self) -> None:
-        assert dedupe_phones(["06 42 19 38 12", "+33642193812"], "FR") == ["06 42 19 38 12"]
+        assert dedupe_phones(["06 42 19 38 12", "+33642193812"], country="FR") == ["06 42 19 38 12"]
 
     def test_a_swiss_number_dedupes_with_its_international_form(self) -> None:
-        assert dedupe_phones(["079 123 45 67", "+41 79 123 45 67"], "CH") == ["079 123 45 67"]
+        assert dedupe_phones(["079 123 45 67", "+41 79 123 45 67"], country="CH") == ["079 123 45 67"]
 
     def test_quebec_numbers_dedupe_across_formats(self) -> None:
-        assert dedupe_phones(["514 555-0199", "+15145550199", "(514) 555-0199"], "CA") == ["514 555-0199"]
+        assert dedupe_phones(["514 555-0199", "+15145550199", "(514) 555-0199"], country="CA") == ["514 555-0199"]
 
     def test_sync_dedupes_in_the_prospect_country(self) -> None:
         prospect = SimpleNamespace(phone="514 555-0199", phones=["514 555-0199"], country="CA")

@@ -689,7 +689,7 @@ class CampaignQueueService:
         """Enqueue cold-SMS items for an SMS-channel campaign (reuses the email queue + scheduler).
 
         Mirrors :meth:`enqueue_campaign` but with no template / A-B: the reachability guard is
-        "French mobile + not opted-out + active demo" (the SMS always ships the demo link). Rows are
+        "textable mobile + not opted-out + active demo" (the SMS always ships the demo link). Rows are
         plain :class:`EmailQueue` items with ``template_id=None``, drained by the same worker and sent
         through :meth:`_dispatch_sms`. Prospects are iterated in ``campaign.prospects`` order (explicit
         ``position``), so with ``max_emails_per_day=1`` the send is one group per day.
@@ -730,7 +730,7 @@ class CampaignQueueService:
                 continue
             to_e164 = first_mobile_e164(prospect)
             if to_e164 is None:
-                continue  # not SMS-reachable — no 06/07 mobile anywhere in the list
+                continue  # not SMS-reachable — no textable mobile anywhere in the list
             if sms_service.is_suppressed(self.db, campaign.user_id, to_e164):
                 continue
             # The linked offer must exist: a demo for a website SMS, an assistant for an assistant SMS.
@@ -785,6 +785,7 @@ class CampaignQueueService:
         """
         from services.demo_site_service import demo_site_service
         from services.sms_config_service import sms_config_service
+        from services.sms_prospecting_rules import SmsProspectingRules
         from services.sms_service import sms_service
 
         prospect: ProspectDB = item.prospect
@@ -804,7 +805,7 @@ class CampaignQueueService:
             return
 
         # Outside the legal SMS window → wait, don't burn the item: re-arm it pending a bit later.
-        if sms_service.legal_window_refusal():
+        if sms_service.legal_window_refusal(SmsProspectingRules.country_of(prospect)):
             item.status = _STATUS_PENDING
             item.scheduled_at = _utcnow() + timedelta(minutes=60)
             self.db.commit()

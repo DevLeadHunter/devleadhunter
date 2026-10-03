@@ -5,8 +5,8 @@
       <h1 class="app-page-title">Relance SMS</h1>
       <p class="text-muted mt-1 text-sm">
         Relancez par SMS les prospects qui n'ont pas répondu à votre email — un rappel vers leur site de démonstration.
-        L'envoi respecte les horaires légaux (lun–ven 8h–20h, sam 10h–19h, jamais dimanche ni jour férié), n'inclut que
-        les mobiles 06/07, et porte toujours la mention STOP.
+        L'envoi respecte les horaires légaux (lun–ven 8h–20h, sam 10h–19h, jamais dimanche ni jour férié), ne vise que
+        des mobiles du pays du prospect (France ou Suisse), et porte toujours la mention de désinscription.
       </p>
     </header>
 
@@ -51,7 +51,8 @@
       <h2 class="text-sm font-semibold text-[var(--app-ink)]">Automatisations</h2>
       <p class="mt-1 text-xs text-[var(--app-ink-soft)]">
         Désactivées par défaut : vous gardez la main en manuel. Activez-les pour laisser DevLeadHunter envoyer tout
-        seul, toujours dans la fenêtre légale (lun–ven 8h–20h, sam 10h–19h).
+        seul, toujours dans la fenêtre légale (lun–ven 8h–20h, sam 10h–19h). Elles ne visent que les prospects en
+        France.
       </p>
 
       <div class="mt-4 flex items-start gap-3">
@@ -125,6 +126,10 @@
           {{ relanceTemplatePreview }}
         </p>
         <p class="mt-1 text-[11px] text-[var(--app-ink-soft)]">
+          <span v-if="relancePreviewSegmentCount">{{ relancePreviewSegmentCount.segments }} SMS en France · </span>La
+          mention de désinscription est ajoutée à l'envoi.
+        </p>
+        <p class="mt-1 text-[11px] text-[var(--app-ink-soft)]">
           Rendu pour chaque prospect (salutation, lien de sa démo, votre prénom). Utilisé par « Relancer », « Tout
           relancer » et la relance automatique. Un seul SMS par prospect.
         </p>
@@ -173,7 +178,8 @@
 <script lang="ts" setup>
 import type { UseAuthReturn, UseToastReturn } from '~/types/Composables'
 import type { ComputedRef, Ref } from 'vue'
-import { computed, onMounted, ref } from 'vue'
+import type { SmsSegmentCount } from '~/types/SmsSegmentCount'
+import { computed, onMounted, ref, watch } from 'vue'
 import type { SmsCandidateRow } from '~/types/SmsSettingsPage'
 import type { SelectFieldOption } from '~/types/SelectField'
 import type { SmsConfig, SmsRelanceCandidate, SmsSendResult, SmsTemplate } from '~/services/smsService'
@@ -206,6 +212,8 @@ const relanceTemplates: Ref<SmsTemplate[]> = ref([])
 const rows: Ref<SmsCandidateRow[]> = ref([])
 const isLoadingCandidates: Ref<boolean> = ref(false)
 
+const relancePreviewSegmentCount: Ref<SmsSegmentCount | null> = ref(null)
+
 /** Whether sends are possible (a sender is configured + the server key is ready). */
 const canSend: ComputedRef<boolean> = computed(
   (): boolean => Boolean(config.value?.sender) && Boolean(config.value?.provider_ready),
@@ -220,13 +228,13 @@ const relanceTemplateOptions: ComputedRef<SelectFieldOption<string>[]> = compute
   ),
 )
 
-/** The chosen relance template with sample values, STOP mention included, as a prospect would read it. */
+/** The chosen relance template with sample values, as a prospect would read it. */
 const relanceTemplatePreview: ComputedRef<string> = computed((): string => {
   const template: SmsTemplate | undefined = relanceTemplates.value.find(
     (candidate: SmsTemplate): boolean => candidate.key === relanceTemplateKey.value,
   )
   if (!template) return ''
-  return `${SmsVariables.renderWithSampleValues(template.body, SmsVariables.firstNameOf(user.value?.name))} STOP au 36180`
+  return SmsVariables.renderWithSampleValues(template.body, SmsVariables.firstNameOf(user.value?.name))
 })
 
 /** Name of the template sent instead when a prospect has no generated video (video templates only). */
@@ -315,6 +323,23 @@ async function onChangeRelanceTemplate(key: string): Promise<void> {
   await saveAutomation()
 }
 
+/**
+ * Count what the relance preview bills in France, the opt-out mention included.
+ * @param previewText - The previewed relance SMS.
+ * @returns A promise resolved once the count is stored.
+ */
+async function countRelancePreviewSegments(previewText: string): Promise<void> {
+  if (!previewText) {
+    relancePreviewSegmentCount.value = null
+    return
+  }
+  try {
+    relancePreviewSegmentCount.value = await SmsService.countSegments({ text: previewText, prospect_id: null })
+  } catch {
+    relancePreviewSegmentCount.value = null
+  }
+}
+
 /** Load the relance candidates. */
 async function loadCandidates(): Promise<void> {
   isLoadingCandidates.value = true
@@ -377,6 +402,8 @@ async function sendAll(): Promise<void> {
     }
   }
 }
+
+watch(relanceTemplatePreview, countRelancePreviewSegments)
 
 onMounted(async (): Promise<void> => {
   await loadConfig()
