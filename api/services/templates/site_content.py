@@ -25,7 +25,10 @@ import uuid
 from datetime import datetime
 from typing import Any
 
+from services.country_profiles import CountryProfiles
 from services.photo_labels import labels_for_urls, rank_card_photos
+from services.regional_lexicon import RegionalLexicon
+from services.sms.phone_normalizer import format_phone_for_display
 from services.validation_service import validation_service
 
 # Operator-curated service cards (``DemoSite.section_overrides["services"]``): shape limits.
@@ -113,6 +116,77 @@ ELECTRICIAN_FAQ: list[dict[str, str]] = [
         "answer": "Oui, nos installations sont conformes et couvertes par notre assurance professionnelle.",
     },
 ]
+
+
+# Keys whose values are not prose — identity, contact, media, numbers, real customer quotes — and so
+# are never rewritten in a country's regional words.
+_NON_PROSE_KEYS: frozenset[str] = frozenset(
+    {
+        "_uid",
+        "component",
+        "businessName",
+        "phone",
+        "email",
+        "address",
+        "city",
+        "logo",
+        "heroImage",
+        "aboutImage",
+        "images",
+        "url",
+        "before",
+        "after",
+        "network",
+        "author",
+        "palette",
+        "theme",
+        "lat",
+        "lng",
+        "rating",
+        "reviewsCount",
+        "reviews",
+        "openingHours",
+        "social",
+    }
+)
+
+
+def apply_country_conventions(site_content: dict[str, Any], country: str | None) -> dict[str, Any]:
+    """Write a built site the way the prospect's country reads it.
+
+    The phone takes the local display shape (« 514 555-0199 », « 06 12 34 56 78 ») and every prose
+    field — editorial defaults included — goes through the country's regional lexicon (Québec reads
+    « soumission », « courriel », « cellulaire »). Identity, contact, media and real reviews are left
+    as they are; a country without a lexicon only gets its phone shaped. The input is never mutated:
+    a template's editorial defaults are module constants shared by every generation, and rewriting
+    them in place would turn the next French site Québécois.
+
+    Args:
+        site_content: The flat ``SiteContent`` (or legacy body content) just built.
+        country: ISO code of the prospect's country, France when unknown.
+
+    Returns:
+        A new content dict.
+    """
+    profile = CountryProfiles.get(country)
+    content: dict[str, Any] = _localize_prose(site_content, profile.code) if profile.lexicon else dict(site_content)
+    phone = content.get("phone")
+    if isinstance(phone, str) and phone.strip():
+        content["phone"] = format_phone_for_display(phone, country=profile.code)
+    return content
+
+
+def _localize_prose(node: Any, country: str) -> Any:
+    """Copy a content tree with every prose string rewritten in the country's words, non-prose keys kept as is."""
+    if isinstance(node, dict):
+        return {
+            key: value if key in _NON_PROSE_KEYS else _localize_prose(value, country) for key, value in node.items()
+        }
+    if isinstance(node, list):
+        return [_localize_prose(item, country) for item in node]
+    if isinstance(node, str):
+        return RegionalLexicon.localize(node, country)
+    return node
 
 
 def _uid() -> str:

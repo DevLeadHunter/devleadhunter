@@ -27,7 +27,12 @@ from core.config import settings
 from services.enrichment_content import EnrichmentContentMapper
 from services.templates import registry as template_registry
 from services.templates.default_images import apply_default_images
-from services.templates.site_content import SECTION_COMPONENT_NAMES, SITE_CONTENT_SCHEMAS, apply_section_overrides
+from services.templates.site_content import (
+    SECTION_COMPONENT_NAMES,
+    SITE_CONTENT_SCHEMAS,
+    apply_country_conventions,
+    apply_section_overrides,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -126,6 +131,7 @@ class StoryblokService:
         template_id: str,
         theme: dict[str, str] | None = None,
         enrichment: dict[str, Any] | None = None,
+        country: str = "FR",
     ) -> dict[str, Any]:
         """
         Build the default Storyblok story payload for a template.
@@ -139,6 +145,8 @@ class StoryblokService:
             template_id: Selected template identifier.
             theme: Optional color palette (primary, secondary, accent).
             enrichment: Optional rich data merged into the content (photos, reviews…).
+            country: ISO code of the prospect's country — its regional words and phone shape are applied
+                to the built content (Québec reads « soumission » for « devis »).
 
         Returns:
             Storyblok-compatible content object.
@@ -163,6 +171,7 @@ class StoryblokService:
                 palette=palette,
                 enrichment=enrichment,
             )
+            site_content = apply_country_conventions(site_content, country)
             # Seed empty image slots with the template's own default images so they reach Storyblok
             # (uploaded as real, editable assets) — not just the render-time layer fallback.
             apply_default_images(site_content, template_id)
@@ -178,7 +187,7 @@ class StoryblokService:
             subtitle=subtitle,
             palette=palette,
         )
-        return EnrichmentContentMapper.apply_to_content(content, enrichment)
+        return apply_country_conventions(EnrichmentContentMapper.apply_to_content(content, enrichment), country)
 
     @staticmethod
     def _is_flat_site_content(content_json: dict[str, Any]) -> bool:
@@ -694,6 +703,7 @@ class StoryblokService:
         theme: dict[str, str] | None = None,
         enrichment: dict[str, Any] | None = None,
         section_overrides: dict[str, Any] | None = None,
+        country: str = "FR",
     ) -> StoryblokProvisionResult:
         """
         Create a Storyblok space and seed the home story.
@@ -701,6 +711,7 @@ class StoryblokService:
         When ``invite_client`` is True, Storyblok sends a collaborator invite to
         ``collaborator_email``. Falls back to mock mode when credentials are missing.
         ``section_overrides`` (curated cards) replace the generated sections, as on regeneration.
+        ``country`` is the prospect's: the seeded content reads his regional words and phone shape.
         """
         content_json: dict[str, Any] = self.build_content_json(
             business_name=business_name,
@@ -711,6 +722,7 @@ class StoryblokService:
             template_id=template_id,
             theme=theme,
             enrichment=enrichment,
+            country=country,
         )
         apply_section_overrides(content_json, section_overrides, enrichment)
 

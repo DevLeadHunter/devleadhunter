@@ -19,6 +19,7 @@ from services.encryption_service import encryption_service
 from services.gmail_oauth_service import GmailOAuthService
 from services.notification_service import notification_service
 from services.posthog_service import posthog_service
+from services.regional_lexicon import RegionalLexicon
 from services.resend_service import ResendService
 from services.sending_identity import SendingIdentity, resolve_sending_identity
 from services.unsubscribe_service import unsubscribe_service
@@ -399,7 +400,15 @@ class EmailSendingService:
             return {"success": False, "email_log_id": email_log.id, "error": str(e)}
 
     def replace_variables(self, text: str, variables: dict) -> str:
-        """Replace variables in text with values."""
+        """Replace variables in text with values, in the regional French of the country the map carries.
+
+        Args:
+            text: The template subject or body, with ``{variables}``.
+            variables: The substitution map; a prospect's map carries his country (a Québécois reads « soumission »).
+
+        Returns:
+            The rendered text.
+        """
         for key, value in variables.items():
             text = text.replace(f"{{{key}}}", str(value))
-        return text
+        return RegionalLexicon.localize_rendered(text, variables)

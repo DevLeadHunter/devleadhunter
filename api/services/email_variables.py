@@ -13,9 +13,11 @@ from models.demo_site import DemoSite
 from models.prospect_db import ProspectDB
 from models.prospect_enrichment import ProspectEnrichment
 from services.ai_assistant.assistant_service import ai_assistant_service
+from services.country_profiles import CountryProfile, CountryProfiles
 from services.decision_maker import build_greeting
 from services.french_date_formatter import FrenchDateFormatter
 from services.pricing_service import PricingService
+from services.regional_lexicon import RegionalLexicon
 from services.tracking_links import email_tracked_link
 from services.trade_normalizer import TradeNormalizer
 
@@ -329,6 +331,7 @@ class EmailVariables:
         )
         if assistant_video_link:
             assistant_video_link = email_tracked_link(assistant_video_link, variant)
+        country: CountryProfile = CountryProfiles.get(prospect.country)
         return {
             cls.SALUTATION: build_greeting(first, last, gender),
             cls.FIRST_NAME: first or "",
@@ -355,4 +358,5 @@ class EmailVariables:
                 else ""
             ),
             cls.EXPIRY_DATE: cls.resolve_expiry_date(db, demo_link, assistant),
+            RegionalLexicon.COUNTRY_KEY: country.code,
         }

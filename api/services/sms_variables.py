@@ -15,9 +15,11 @@ from models.prospect_db import ProspectDB
 from models.user import User
 from services.ai_assistant.assistant_service import ai_assistant_service
 from services.assistant_pricing_service import AssistantPricingService
+from services.country_profiles import CountryProfile, CountryProfiles
 from services.decision_maker.greeting import build_greeting
 from services.email_variables import EmailVariables
 from services.pricing_service import PricingService
+from services.regional_lexicon import RegionalLexicon
 from services.tracking_links import sms_tracked_link
 from services.trade_normalizer import TradeNormalizer
 
@@ -103,6 +105,7 @@ class SmsVariables:
         user: User | None = db.get(User, user_id)
         assistant_url: str = ai_assistant_service.page_url(assistant.slug) if assistant is not None else ""
         assistant_video_url: str = EmailVariables.assistant_video_urls(assistant)[0]
+        country: CountryProfile = CountryProfiles.get(prospect.country)
         return {
             cls.SALUTATION: build_greeting(first, last, gender),
             cls.COMPANY: prospect.name or "",
@@ -121,5 +124,6 @@ class SmsVariables:
             cls.PRICE_ASSISTANT: AssistantPricingService.format_price(
                 AssistantPricingService.monthly_price_cents(db, user_id)
             ),
+            RegionalLexicon.COUNTRY_KEY: country.code,
             cls.SIGNATURE: cls.signature_for(user.name if user else None),
         }
