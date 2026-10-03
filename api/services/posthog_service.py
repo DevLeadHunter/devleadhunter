@@ -11,7 +11,8 @@ from __future__ import annotations
 
 import logging
 import re
-from datetime import datetime
+from dataclasses import dataclass
+from datetime import UTC, datetime
 from typing import Any
 
 import httpx
@@ -61,6 +62,32 @@ DEMO_EVENTS: tuple[str, ...] = (
     "assistant_video_mute",
     "assistant_video_cta_click",
 )
+
+
+@dataclass(frozen=True)
+class DemoSession:
+    """
+    One browsing session on a demo, summarised from its events.
+
+    Attributes:
+        slug: Demo slug the session browsed.
+        session_id: PostHog session id.
+        started_at: First event of the session (naive UTC).
+        device_type: ``Mobile``, ``Desktop``, ``Tablet``, or None when unknown.
+        city: GeoIP city, None when PostHog could not place the visitor.
+        interaction_count: Events other than page views (scroll, section, click, time…).
+        time_on_page_seconds: Visible time reported when the visitor left, None when it never arrived.
+        engaged_seconds: Visible time when the visit qualified as engaged, None when it never did.
+    """
+
+    slug: str
+    session_id: str
+    started_at: datetime
+    device_type: str | None
+    city: str | None
+    interaction_count: int
+    time_on_page_seconds: float | None
+    engaged_seconds: float | None
 
 
 class PostHogService:
@@ -183,6 +210,68 @@ class PostHogService:
                 "last_seen": row[8],
             }
         return result
+
+    async def get_demo_sessions(self, slugs: list[str], since: datetime) -> list[DemoSession]:
+        """
+        Return every browsing session on the given demos since a moment, one grouped query.
+
+        Only demo events count (``DEMO_EVENTS``): the email events mirrored under the same
+        ``demo_slug`` are server-side and never make a visit.
+
+        Args:
+            slugs: Demo slugs to read.
+            since: Earliest session start to keep (naive UTC).
+
+        Returns:
+            The sessions, oldest first; empty when PostHog is not configured, no slug is given or the query fails.
+        """
+        safe_slugs = sorted({self._safe_slug(s) for s in slugs if self._safe_slug(s)})
+        if not self.is_configured or not safe_slugs:
+            return []
+        in_list = ", ".join(f"'{s}'" for s in safe_slugs)
+        demo_events_list = ", ".join(f"'{e}'" for e in DEMO_EVENTS)
+        since_str = since.strftime("%Y-%m-%d %H:%M:%S")
+        query = (
+            "SELECT properties.demo_slug AS slug, properties.$session_id AS session_id, "
+            "min(timestamp) AS started_at, "
+            "any(properties.$device_type) AS device_type, "
+            "any(properties.$geoip_city_name) AS city, "
+            "countIf(event != '$pageview') AS interaction_count, "
+            "maxIf(toFloat(properties.seconds), event = 'demo_time_on_page') AS time_on_page_seconds, "
+            "maxIf(toFloat(properties.engaged_seconds), event = 'demo_engaged') AS engaged_seconds "
+            "FROM events "
+            f"WHERE properties.demo_slug IN ({in_list}) "
+            f"AND event IN ({demo_events_list}) "
+            f"AND timestamp >= '{since_str}' "
+            "GROUP BY slug, session_id "
+            "ORDER BY started_at "
+            "LIMIT 10000"
+        )
+        sessions: list[DemoSession] = []
+        for row in await self._run_query(query):
+            if not isinstance(row, (list, tuple)) or len(row) < 8 or not row[0] or not row[1] or not row[2]:
+                continue
+            sessions.append(
+                DemoSession(
+                    slug=str(row[0]),
+                    session_id=str(row[1]),
+                    started_at=self._to_naive_utc(str(row[2])),
+                    device_type=str(row[3]) if row[3] else None,
+                    city=str(row[4]) if row[4] else None,
+                    interaction_count=int(row[5] or 0),
+                    time_on_page_seconds=float(row[6]) if row[6] is not None else None,
+                    engaged_seconds=float(row[7]) if row[7] is not None else None,
+                )
+            )
+        return sessions
+
+    @staticmethod
+    def _to_naive_utc(value: str) -> datetime:
+        """Parse a PostHog ISO timestamp into the naive UTC datetimes the API stores."""
+        parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
+        if parsed.tzinfo is None:
+            return parsed
+        return parsed.astimezone(UTC).replace(tzinfo=None)
 
     async def get_events_for_slug(self, slug: str, *, limit: int = 300) -> list[dict[str, Any]]:
         """

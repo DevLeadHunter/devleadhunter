@@ -37,8 +37,15 @@ from schemas.campaign import (
     CampaignStats,
     CampaignUpdate,
 )
+from schemas.campaign_results import (
+    CampaignBenchmarksResponse,
+    CampaignManualReplyCreate,
+    CampaignResultsReply,
+    CampaignResultsResponse,
+)
 from services.auth_service import get_current_user
 from services.campaign_queue_service import CampaignQueueService
+from services.campaign_results_service import campaign_results_service
 from services.campaign_service import campaign_service
 from services.sms.send_window import next_send_slot, now_in_paris, paris_to_utc_naive
 from services.sms_auto_campaign_service import SMS_AUTO_RELANCE_KIND
@@ -1056,3 +1063,36 @@ async def get_campaign_stats(
     if not stats:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Campaign not found")
     return stats
+
+
+@router.get("/results/benchmarks", response_model=CampaignBenchmarksResponse)
+async def get_campaign_benchmarks(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> CampaignBenchmarksResponse:
+    """Stage counts of the user's email campaigns, to compare one campaign's rates against the others."""
+    return await campaign_results_service.build_benchmarks(db, current_user.id)
+
+
+@router.get("/{campaign_id}/results", response_model=CampaignResultsResponse)
+async def get_campaign_results(
+    campaign_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> CampaignResultsResponse:
+    """What the campaign's mails produced, prospect by prospect: sends, human visits, replies and sales."""
+    results = await campaign_results_service.build(db, current_user.id, campaign_id)
+    if results is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Campaign not found")
+    return results
+
+
+@router.post("/{campaign_id}/replies", response_model=CampaignResultsReply, status_code=status.HTTP_201_CREATED)
+async def add_campaign_manual_reply(
+    campaign_id: int,
+    payload: CampaignManualReplyCreate,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> CampaignResultsReply:
+    """Record a reply that reached the user outside the app, so the campaign's results count it."""
+    return campaign_results_service.add_manual_reply(db, current_user.id, campaign_id, payload)
