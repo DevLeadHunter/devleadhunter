@@ -5,6 +5,7 @@ mail, before a later campaign's first mail); replies come from captured mails, t
 and replies added by hand; a paid order makes a sale.
 """
 
+import asyncio
 from datetime import datetime, timedelta
 
 import pytest
@@ -303,3 +304,42 @@ async def test_demo_expiry_range_skips_sites_whose_countdown_has_not_started(
     assert results.demo_sites.online == 2
     assert results.demo_sites.first_expiry_at == LAUNCH + timedelta(days=21)
     assert results.demo_sites.last_expiry_at == LAUNCH + timedelta(days=21)
+
+
+@pytest.mark.asyncio
+async def test_posthog_is_asked_once_the_database_connection_is_handed_back(
+    db: Session, campaign: Campaign, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    prospect = _prospect(db, "Garage Nomade", "garage-nomade")
+    campaign.prospects = [prospect]
+    _send(db, campaign, prospect, at=LAUNCH)
+    db.commit()
+    transaction_open_during_posthog: list[bool] = []
+
+    async def get_demo_sessions(slugs: list[str], since: datetime) -> list[DemoSession]:
+        transaction_open_during_posthog.append(db.in_transaction())
+        return []
+
+    monkeypatch.setattr(results_module.posthog_service, "get_demo_sessions", get_demo_sessions)
+
+    await CampaignResultsService().build(db, USER_ID, campaign.id)
+
+    assert transaction_open_during_posthog == [False]
+
+
+@pytest.mark.asyncio
+async def test_concurrent_requests_share_one_computation(db: Session, monkeypatch: pytest.MonkeyPatch) -> None:
+    service = CampaignResultsService()
+    readings: list[int] = []
+
+    def read_benchmarks(_: Session, user_id: int) -> results_module._DatabaseReading:
+        readings.append(user_id)
+        return results_module._DatabaseReading(campaigns=[], prospect_ids_by_slug={})
+
+    monkeypatch.setattr(service, "_read_benchmarks", read_benchmarks)
+    monkeypatch.setattr(CampaignResultsService, "_release_connection", staticmethod(lambda _: None))
+
+    first, second = await asyncio.gather(service.build_benchmarks(db, USER_ID), service.build_benchmarks(db, USER_ID))
+
+    assert readings == [USER_ID]
+    assert first is second

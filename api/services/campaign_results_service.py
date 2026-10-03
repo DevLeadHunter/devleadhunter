@@ -5,10 +5,15 @@ Assembles the sends of the campaign's queue, the human visits of each prospect's
 (PostHog sessions), the replies (captured mails, demo banner messages, replies added by
 hand) and the sales into the payload of the dashboard's « Résultats » tab. Day series,
 rates and the to-do list are derived from it by the dashboard, in the viewer's timezone.
+
+The database is read in a worker thread and its pooled connection handed back before
+PostHog is asked for the visits, so a slow PostHog answer never keeps a connection busy;
+concurrent requests for the same results wait for one computation instead of repeating it.
 """
 
 from __future__ import annotations
 
+import asyncio
 import time
 import uuid
 from collections import defaultdict
@@ -54,9 +59,13 @@ _INTENT_BY_VERDICT: dict[str, str] = {"interested": "interested", "refused": "no
 
 @dataclass
 class _ProspectFacts:
-    """Everything known about one prospect within one campaign."""
+    """Everything known about one prospect within one campaign, copied out of the database session."""
 
-    prospect: ProspectDB
+    prospect_id: int
+    name: str
+    category: str
+    city: str | None
+    is_email_undeliverable: bool
     sends: list[CampaignResultsSend] = field(default_factory=list)
     visits: list[CampaignResultsVisit] = field(default_factory=list)
     replies: list[CampaignResultsReply] = field(default_factory=list)
@@ -64,10 +73,40 @@ class _ProspectFacts:
     sale_currency: str | None = None
     window_end: datetime | None = None
 
+    @classmethod
+    def from_prospect(cls, prospect: ProspectDB) -> _ProspectFacts:
+        """Start a prospect's facts from its row."""
+        return cls(
+            prospect_id=prospect.id,
+            name=prospect.name,
+            category=prospect.category,
+            city=prospect.city,
+            is_email_undeliverable=bool(prospect.email_undeliverable),
+        )
+
     @property
     def first_sent_at(self) -> datetime | None:
         """When the first mail actually left, None while it has not."""
         return next((send.at for send in self.sends if send.step == 0 and send.status == "sent"), None)
+
+
+@dataclass
+class _CampaignReading:
+    """One campaign as read from the database, with the facts of each of its prospects."""
+
+    campaign_id: int
+    name: str
+    status: str
+    started_at: datetime | None
+    facts_by_prospect: dict[int, _ProspectFacts]
+
+
+@dataclass
+class _DatabaseReading:
+    """What the database knows about some campaigns, read in one go before PostHog is asked for the visits."""
+
+    campaigns: list[_CampaignReading]
+    prospect_ids_by_slug: dict[str, set[int]]
 
 
 class CampaignResultsService:
@@ -79,6 +118,8 @@ class CampaignResultsService:
     def __init__(self) -> None:
         self._results_cache: dict[tuple[int, int], tuple[float, CampaignResultsResponse]] = {}
         self._benchmarks_cache: dict[int, tuple[float, CampaignBenchmarksResponse]] = {}
+        self._results_locks: dict[tuple[int, int], asyncio.Lock] = {}
+        self._benchmarks_locks: dict[int, asyncio.Lock] = {}
 
     async def build(self, db: Session, user_id: int, campaign_id: int) -> CampaignResultsResponse | None:
         """
@@ -92,17 +133,23 @@ class CampaignResultsService:
         Returns:
             The results, or None when the campaign does not exist for this user.
         """
-        cached = self._results_cache.get((user_id, campaign_id))
-        if cached and cached[0] > time.monotonic():
-            return cached[1]
-        campaign = db.query(Campaign).filter(Campaign.id == campaign_id, Campaign.user_id == user_id).first()
-        if campaign is None:
-            return None
-        facts = self._collect_facts(db, user_id, [campaign])[campaign.id]
-        await self._attach_visits(db, user_id, list(facts.values()))
-        response = self._assemble(db, user_id, campaign, facts)
-        self._results_cache[(user_id, campaign_id)] = (time.monotonic() + self._RESULTS_TTL_SECONDS, response)
-        return response
+        cache_key = (user_id, campaign_id)
+        cached = self._fresh_results(cache_key)
+        if cached is not None:
+            return cached
+        await asyncio.to_thread(self._release_connection, db)
+        async with self._results_locks.setdefault(cache_key, asyncio.Lock()):
+            cached = self._fresh_results(cache_key)
+            if cached is not None:
+                return cached
+            loaded = await asyncio.to_thread(self._read_results, db, user_id, campaign_id)
+            if loaded is None:
+                return None
+            reading, demo_sites = loaded
+            await self._attach_visits(reading)
+            response = self._assemble(reading.campaigns[0], demo_sites)
+            self._results_cache[cache_key] = (time.monotonic() + self._RESULTS_TTL_SECONDS, response)
+            return response
 
     async def build_benchmarks(self, db: Session, user_id: int) -> CampaignBenchmarksResponse:
         """
@@ -115,41 +162,37 @@ class CampaignResultsService:
         Returns:
             One benchmark per campaign, most recently started first.
         """
-        cached = self._benchmarks_cache.get(user_id)
-        if cached and cached[0] > time.monotonic():
-            return cached[1]
-        campaigns = (
-            db.query(Campaign)
-            .filter(Campaign.user_id == user_id, Campaign.channel == "email", Campaign.started_at.isnot(None))
-            .all()
-        )
-        facts_by_campaign = self._collect_facts(db, user_id, campaigns)
-        await self._attach_visits(
-            db,
-            user_id,
-            [facts for facts_by_prospect in facts_by_campaign.values() for facts in facts_by_prospect.values()],
-        )
-        benchmarks: list[CampaignBenchmark] = []
-        for campaign in campaigns:
-            totals = self._totals(list(facts_by_campaign[campaign.id].values()))
-            if totals.contacted == 0:
-                continue
-            benchmarks.append(
-                CampaignBenchmark(
-                    campaign_id=campaign.id,
-                    name=campaign.name,
-                    status=str(getattr(campaign.status, "value", campaign.status)),
-                    started_at=campaign.started_at,
-                    contacted=totals.contacted,
-                    visited=totals.visited,
-                    replied=totals.replied,
-                    interested=totals.interested,
+        cached = self._fresh_benchmarks(user_id)
+        if cached is not None:
+            return cached
+        await asyncio.to_thread(self._release_connection, db)
+        async with self._benchmarks_locks.setdefault(user_id, asyncio.Lock()):
+            cached = self._fresh_benchmarks(user_id)
+            if cached is not None:
+                return cached
+            reading = await asyncio.to_thread(self._read_benchmarks, db, user_id)
+            await self._attach_visits(reading)
+            benchmarks: list[CampaignBenchmark] = []
+            for campaign in reading.campaigns:
+                totals = self._totals(list(campaign.facts_by_prospect.values()))
+                if totals.contacted == 0:
+                    continue
+                benchmarks.append(
+                    CampaignBenchmark(
+                        campaign_id=campaign.campaign_id,
+                        name=campaign.name,
+                        status=campaign.status,
+                        started_at=campaign.started_at,
+                        contacted=totals.contacted,
+                        visited=totals.visited,
+                        replied=totals.replied,
+                        interested=totals.interested,
+                    )
                 )
-            )
-        benchmarks.sort(key=lambda benchmark: benchmark.started_at or datetime.min, reverse=True)
-        response = CampaignBenchmarksResponse(campaigns=benchmarks)
-        self._benchmarks_cache[user_id] = (time.monotonic() + self._BENCHMARKS_TTL_SECONDS, response)
-        return response
+            benchmarks.sort(key=lambda benchmark: benchmark.started_at or datetime.min, reverse=True)
+            response = CampaignBenchmarksResponse(campaigns=benchmarks)
+            self._benchmarks_cache[user_id] = (time.monotonic() + self._BENCHMARKS_TTL_SECONDS, response)
+            return response
 
     def add_manual_reply(
         self, db: Session, user_id: int, campaign_id: int, payload: CampaignManualReplyCreate
@@ -279,12 +322,82 @@ class CampaignResultsService:
             return "pending"
         return "not_sent"
 
+    def _fresh_results(self, cache_key: tuple[int, int]) -> CampaignResultsResponse | None:
+        """The cached results of a campaign while they are less than a minute old."""
+        cached = self._results_cache.get(cache_key)
+        if cached and cached[0] > time.monotonic():
+            return cached[1]
+        return None
+
+    def _fresh_benchmarks(self, user_id: int) -> CampaignBenchmarksResponse | None:
+        """The cached benchmarks of a user while they are less than ten minutes old."""
+        cached = self._benchmarks_cache.get(user_id)
+        if cached and cached[0] > time.monotonic():
+            return cached[1]
+        return None
+
+    @staticmethod
+    def _release_connection(db: Session) -> None:
+        """
+        End the session's read transaction so its pooled connection goes back before a long wait.
+
+        A commit rather than a rollback: these reads leave nothing pending, and a commit never
+        discards what a caller may have written on the same session.
+        """
+        db.commit()
+
+    def _read_results(
+        self, db: Session, user_id: int, campaign_id: int
+    ) -> tuple[_DatabaseReading, CampaignResultsDemoSites] | None:
+        """Read one of the user's campaigns and its demo sites, then hand the connection back."""
+        campaign = db.query(Campaign).filter(Campaign.id == campaign_id, Campaign.user_id == user_id).first()
+        if campaign is None:
+            return None
+        reading = self._read_campaigns(db, user_id, [campaign])
+        demo_sites = self._demo_sites(db, user_id, list(reading.campaigns[0].facts_by_prospect))
+        self._release_connection(db)
+        return reading, demo_sites
+
+    def _read_benchmarks(self, db: Session, user_id: int) -> _DatabaseReading:
+        """Read every email campaign the user launched, then hand the connection back."""
+        campaigns = (
+            db.query(Campaign)
+            .filter(Campaign.user_id == user_id, Campaign.channel == "email", Campaign.started_at.isnot(None))
+            .all()
+        )
+        reading = self._read_campaigns(db, user_id, campaigns)
+        self._release_connection(db)
+        return reading
+
+    def _read_campaigns(self, db: Session, user_id: int, campaigns: list[Campaign]) -> _DatabaseReading:
+        """Read the facts of the campaigns' prospects and the demo slugs their visits are looked up by."""
+        facts_by_campaign = self._collect_facts(db, user_id, campaigns)
+        prospect_ids = sorted({prospect_id for facts in facts_by_campaign.values() for prospect_id in facts})
+        slugs_by_prospect = BehaviorService.slugs_by_prospect(db, user_id, prospect_ids) if prospect_ids else {}
+        prospect_ids_by_slug: dict[str, set[int]] = defaultdict(set)
+        for prospect_id, slugs in slugs_by_prospect.items():
+            for slug in slugs:
+                prospect_ids_by_slug[slug].add(prospect_id)
+        return _DatabaseReading(
+            campaigns=[
+                _CampaignReading(
+                    campaign_id=campaign.id,
+                    name=campaign.name,
+                    status=str(getattr(campaign.status, "value", campaign.status)),
+                    started_at=campaign.started_at,
+                    facts_by_prospect=facts_by_campaign[campaign.id],
+                )
+                for campaign in campaigns
+            ],
+            prospect_ids_by_slug=prospect_ids_by_slug,
+        )
+
     def _collect_facts(
         self, db: Session, user_id: int, campaigns: list[Campaign]
     ) -> dict[int, dict[int, _ProspectFacts]]:
         """Load sends, replies, banner messages and sales of each campaign's prospects (visits come later)."""
         facts_by_campaign: dict[int, dict[int, _ProspectFacts]] = {
-            campaign.id: {prospect.id: _ProspectFacts(prospect=prospect) for prospect in campaign.prospects}
+            campaign.id: {prospect.id: _ProspectFacts.from_prospect(prospect) for prospect in campaign.prospects}
             for campaign in campaigns
         }
         campaign_ids = list(facts_by_campaign)
@@ -356,7 +469,7 @@ class CampaignResultsService:
             facts.replies.append(
                 CampaignResultsReply(
                     id=f"email:{reply.id}",
-                    prospect_id=facts.prospect.id,
+                    prospect_id=facts.prospect_id,
                     received_at=reply.received_at or reply.created_at,
                     verdict=self.reply_verdict(reply.intent),
                     channel="manual" if reply.matched_by == "manual" else "email",
@@ -425,7 +538,7 @@ class CampaignResultsService:
                 facts.replies.append(
                     CampaignResultsReply(
                         id=f"banner:{lead.id}",
-                        prospect_id=facts.prospect.id,
+                        prospect_id=facts.prospect_id,
                         received_at=lead.created_at,
                         verdict="interested",
                         channel="banner",
@@ -461,24 +574,20 @@ class CampaignResultsService:
                 facts.sale_cents += order.amount_cents
                 facts.sale_currency = facts.sale_currency or order.currency
 
-    async def _attach_visits(self, db: Session, user_id: int, all_facts: list[_ProspectFacts]) -> None:
+    async def _attach_visits(self, reading: _DatabaseReading) -> None:
         """Attach each prospect's human visits within its campaign window, from one PostHog query."""
+        all_facts = [facts for campaign in reading.campaigns for facts in campaign.facts_by_prospect.values()]
         started = [facts.first_sent_at for facts in all_facts if facts.first_sent_at is not None]
         if not started:
             return
-        prospect_ids = sorted({facts.prospect.id for facts in all_facts})
-        slugs_by_prospect = BehaviorService.slugs_by_prospect(db, user_id, prospect_ids)
-        prospect_ids_by_slug: dict[str, set[int]] = defaultdict(set)
-        for prospect_id, slugs in slugs_by_prospect.items():
-            for slug in slugs:
-                prospect_ids_by_slug[slug].add(prospect_id)
+        prospect_ids_by_slug = reading.prospect_ids_by_slug
         sessions = await posthog_service.get_demo_sessions(list(prospect_ids_by_slug), min(started))
         for facts in all_facts:
             first_sent_at = facts.first_sent_at
             if first_sent_at is None:
                 continue
             for session in sessions:
-                if facts.prospect.id not in prospect_ids_by_slug.get(session.slug, set()):
+                if facts.prospect_id not in prospect_ids_by_slug.get(session.slug, set()):
                     continue
                 if session.started_at < first_sent_at or not self.is_human_session(session):
                     continue
@@ -492,31 +601,29 @@ class CampaignResultsService:
                     )
                 )
 
-    def _assemble(
-        self, db: Session, user_id: int, campaign: Campaign, facts_by_prospect: dict[int, _ProspectFacts]
-    ) -> CampaignResultsResponse:
+    def _assemble(self, campaign: _CampaignReading, demo_sites: CampaignResultsDemoSites) -> CampaignResultsResponse:
         """Shape one campaign's facts into the results payload."""
-        all_facts = list(facts_by_prospect.values())
+        all_facts = list(campaign.facts_by_prospect.values())
         planned = sorted(
-            ((send.at, facts.prospect.name) for facts in all_facts for send in facts.sends if send.status == "planned"),
+            ((send.at, facts.name) for facts in all_facts for send in facts.sends if send.status == "planned"),
             key=lambda planned_send: planned_send[0],
         )
         return CampaignResultsResponse(
-            campaign_id=campaign.id,
+            campaign_id=campaign.campaign_id,
             generated_at=datetime.now(UTC).replace(tzinfo=None),
             is_visit_tracking_available=posthog_service.is_configured,
             totals=self._totals(all_facts),
             next_send=CampaignResultsNextSend(at=planned[0][0], prospect_name=planned[0][1]) if planned else None,
             last_planned_send_at=planned[-1][0] if planned else None,
-            demo_sites=self._demo_sites(db, user_id, list(facts_by_prospect)),
+            demo_sites=demo_sites,
             prospects=[
                 CampaignResultsProspect(
-                    id=facts.prospect.id,
-                    name=facts.prospect.name,
-                    category=facts.prospect.category,
-                    city=facts.prospect.city,
+                    id=facts.prospect_id,
+                    name=facts.name,
+                    category=facts.category,
+                    city=facts.city,
                     state=self.prospect_state(facts),
-                    is_email_undeliverable=bool(facts.prospect.email_undeliverable),
+                    is_email_undeliverable=facts.is_email_undeliverable,
                     sends=sorted(facts.sends, key=lambda send: (send.step, send.at)),
                     visits=sorted(facts.visits, key=lambda visit: visit.started_at),
                 )
