@@ -1,8 +1,8 @@
 """Find prospects to SMS (relance or cold) and send, reviving the demo if dormant.
 
 The SMS pushes a prospect back to their demo site. Two selections:
-- **Relance**: a prospect emailed a while ago who did NOT reply, owns a mobile, was
-  never texted, and was not opted out of the relance. More natural than a cold SMS.
+- **Relance**: a prospect emailed a while ago who did NOT reply, owns a mobile, never
+  got his relance SMS, and was not opted out of the relance. More natural than a cold SMS.
   Opens and clicks do NOT bar a relance — they are too noisy (bot prefetch, the
   operator's own demo visits) to read as a real reaction.
 - **Cold**: a prospect with a mobile but NO email — the SMS is the first touch, so a
@@ -25,12 +25,12 @@ from enums.demo_site_status import DemoSiteStatus
 from models.demo_site import DemoSite
 from models.email_log import EmailLog
 from models.prospect_db import ProspectDB
-from models.sms_message import SmsMessage
 from services.contact_lock_service import MODULE_WEBSITES, contact_lock_service
 from services.demo_site_service import demo_site_service
 from services.demo_video_service import has_ready_video, video_page_url
 from services.prospect_phones import first_mobile_e164
 from services.sms_config_service import sms_config_service
+from services.sms_prospecting_rules import SmsProspectingRules
 from services.sms_service import sms_service
 from services.tracking_links import sms_tracked_link
 
@@ -112,7 +112,7 @@ class SmsRelanceService:
     def _collect_relance(
         self, db: Session, user_id: int, *, cutoff: datetime | None, limit: int, skip_contact_locked: bool
     ) -> list[SmsRelanceCandidate]:
-        """Select prospects with an unanswered email, a mobile, a demo, never texted.
+        """Select prospects with an unanswered email, a mobile, a demo, and no relance SMS yet.
 
         Args:
             db: Active database session.
@@ -142,12 +142,6 @@ class SmsRelanceService:
             .group_by(EmailLog.prospect_id)
             .subquery()
         )
-        # NULL prospect ids (self-test SMS) would void this NOT IN filter entirely — SQL NULL semantics.
-        already_texted = (
-            select(SmsMessage.prospect_id)
-            .where(SmsMessage.user_id == user_id, SmsMessage.prospect_id.isnot(None))
-            .subquery()
-        )
         # A reply on ANY email disqualifies the prospect — the operator owns that conversation.
         # (Without this, another still-unanswered email of the same prospect kept re-selecting him.)
         replied = (
@@ -166,7 +160,7 @@ class SmsRelanceService:
             .where(
                 ProspectDB.user_id == user_id,
                 ProspectDB.phone.isnot(None),
-                ProspectDB.id.notin_(select(already_texted.c.prospect_id)),
+                ProspectDB.id.notin_(SmsProspectingRules.sequence_complete_prospect_ids(user_id)),
                 ProspectDB.id.notin_(select(replied.c.prospect_id)),
             )
             .order_by(unreacted.c.emailed_at.asc())
@@ -186,7 +180,7 @@ class SmsRelanceService:
         return candidates
 
     def find_cold_candidates(self, db: Session, user_id: int, *, limit: int = 50) -> list[SmsRelanceCandidate]:
-        """Return the user's prospects for a cold SMS (a mobile but no email).
+        """Return the user's prospects for a cold SMS (a mobile but no email, never texted).
 
         Args:
             db: Active database session.
@@ -196,12 +190,6 @@ class SmsRelanceService:
         Returns:
             Eligible cold candidates.
         """
-        # NULL prospect ids (self-test SMS) would void this NOT IN filter entirely — SQL NULL semantics.
-        already_texted = (
-            select(SmsMessage.prospect_id)
-            .where(SmsMessage.user_id == user_id, SmsMessage.prospect_id.isnot(None))
-            .subquery()
-        )
         rows = db.execute(
             select(ProspectDB)
             .where(
@@ -209,7 +197,7 @@ class SmsRelanceService:
                 ProspectDB.phone.isnot(None),
                 or_(ProspectDB.email.is_(None), ProspectDB.email == ""),
                 ProspectDB.contacted.is_(False),
-                ProspectDB.id.notin_(select(already_texted.c.prospect_id)),
+                ProspectDB.id.notin_(SmsProspectingRules.texted_prospect_ids(user_id)),
             )
             .order_by(ProspectDB.created_at.asc())
             .limit(limit * 3)

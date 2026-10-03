@@ -1,9 +1,14 @@
-"""Unit tests for the pure SMS helpers — phone, segments, legal window."""
+"""Unit tests for the pure SMS helpers — phone, segments, legal window per country, pricing, callbacks."""
 
-from datetime import datetime
+from datetime import date, datetime
 
 import pytest
+from sqlalchemy.orm import Session
 
+from api.v1.routes.sms import _match_stop_message
+from core.config import settings
+from enums.sms_opt_out_mode import SmsOptOutMode
+from models.sms_message import SmsMessage
 from services.sms.dlr import (
     classify_dlr,
     dlr_message_id,
@@ -11,11 +16,12 @@ from services.sms.dlr import (
     dlr_status_detail,
     dlr_status_value,
 )
-from services.sms.gsm_segments import is_gsm7, segment_count, to_gsm7
+from services.sms.gsm_segments import is_gsm7, segment_count, segment_count_with_reserve, to_gsm7
 from services.sms.mo import mo_is_stop, mo_origin_message_id, mo_ref_client, mo_sender_number
-from services.sms.phone_normalizer import is_mobile_fr, to_e164_fr
-from services.sms.pricing import estimate_price_cents
-from services.sms.send_window import is_within_window, next_send_slot
+from services.sms.opt_out_mention import SmsOptOutMention
+from services.sms.phone_normalizer import PhoneNumberPlans, is_mobile_fr, to_e164_fr
+from services.sms.pricing import SmsPricing
+from services.sms.send_window import PublicHolidays, SmsSendWindow, france_send_window
 from services.sms_config_service import SmsConfigService
 from services.sms_service import sms_service
 
@@ -46,6 +52,58 @@ class TestPhoneNormalizer:
         assert to_e164_fr(None) is None
 
 
+class TestMobileOfCountry:
+    def test_a_french_mobile_reads_as_before(self) -> None:
+        assert PhoneNumberPlans.mobile_of_country("06 29 34 58 99", country="FR") == "+33629345899"
+        assert PhoneNumberPlans.mobile_of_country("+33 7 12 34 56 78", country=None) == "+33712345678"
+        assert PhoneNumberPlans.mobile_of_country("01 42 68 53 00", country="FR") is None
+
+    def test_a_french_number_is_read_exactly_as_the_former_french_helpers_read_it(self) -> None:
+        for raw in (
+            "06 29 34 58 99",
+            "+33 6 29 34 58 99",
+            "0033629345899",
+            "33629345899",
+            "+33 (0)6 29 34 58 99",
+            "01 42 68 53 00",
+            "079 123 45 67",
+            "+41 79 123 45 67",
+            "",
+        ):
+            former_reading = to_e164_fr(raw) if is_mobile_fr(raw) else None
+            assert PhoneNumberPlans.mobile_of_country(raw, country="FR") == former_reading, raw
+
+    def test_a_swiss_079_without_country_code_is_a_swiss_mobile_for_a_swiss_prospect(self) -> None:
+        assert PhoneNumberPlans.mobile_of_country("079 123 45 67", country="CH") == "+41791234567"
+        assert PhoneNumberPlans.mobile_of_country("079 123 45 67", country="FR") == "+33791234567"
+
+    def test_a_swiss_landline_and_a_foreign_mobile_are_refused_for_a_swiss_prospect(self) -> None:
+        assert PhoneNumberPlans.mobile_of_country("022 123 45 67", country="CH") is None
+        assert PhoneNumberPlans.mobile_of_country("+41 22 123 45 67", country="CH") is None
+        assert PhoneNumberPlans.mobile_of_country("+33 6 12 34 56 78", country="CH") is None
+
+    def test_international_forms_of_the_prospect_country_are_kept(self) -> None:
+        assert PhoneNumberPlans.mobile_of_country("+41 79 123 45 67", country="CH") == "+41791234567"
+        assert PhoneNumberPlans.mobile_of_country("0041 76 123 45 67", country="ch") == "+41761234567"
+        assert PhoneNumberPlans.mobile_of_country("0470 12 34 56", country="BE") == "+32470123456"
+
+    def test_a_country_we_do_not_text_has_no_mobile(self) -> None:
+        assert PhoneNumberPlans.mobile_of_country("514 555 0199", country="CA") is None
+        assert PhoneNumberPlans.mobile_of_country("06 29 34 58 99", country="XX") is None
+
+    def test_country_of_a_number_follows_its_dial_code(self) -> None:
+        assert PhoneNumberPlans.country_of_e164("+33612345678") == "FR"
+        assert PhoneNumberPlans.country_of_e164("+41791234567") == "CH"
+        assert PhoneNumberPlans.country_of_e164("+447700900123") is None
+        assert PhoneNumberPlans.country_of_e164(None) is None
+
+    def test_an_international_number_with_or_without_its_plus_becomes_e164(self) -> None:
+        assert PhoneNumberPlans.international_to_e164("33612345678") == "+33612345678"
+        assert PhoneNumberPlans.international_to_e164("41791234567") == "+41791234567"
+        assert PhoneNumberPlans.international_to_e164("+41 79 123 45 67") == "+41791234567"
+        assert PhoneNumberPlans.international_to_e164("Dibodev") is None
+
+
 class TestGsmSegments:
     def test_plain_ascii_is_gsm7_one_segment(self) -> None:
         assert is_gsm7("Bonjour, voici votre site : demo.dibodev.fr/xyz") is True
@@ -67,8 +125,36 @@ class TestGsmSegments:
     def test_empty(self) -> None:
         assert segment_count("") == 0
 
+    def test_the_reserve_counts_in_the_body_encoding(self) -> None:
+        assert segment_count_with_reserve("a" * 146, 14) == 1
+        assert segment_count_with_reserve("a" * 147, 14) == 2
+        assert segment_count_with_reserve("ê" * 56, 14) == 1
+        assert segment_count_with_reserve("ê" * 57, 14) == 2
+        assert segment_count_with_reserve("", 14) == 0
+
+
+class TestOptOutMention:
+    def test_france_reserves_the_short_code_mention_and_elsewhere_the_link(self) -> None:
+        assert SmsOptOutMention.mode_for_country("FR") is SmsOptOutMode.SHORT_CODE
+        assert SmsOptOutMention.mode_for_country("CH") is SmsOptOutMode.LINK
+        assert SmsOptOutMention.reserved_characters_for_country("FR") == 14
+        assert SmsOptOutMention.reserved_characters_for_country("CH") == 25
+        assert SmsOptOutMention.reserved_characters_for_country(None) == 25  # unknown destination: the longer mention
+
+    def test_the_reserve_follows_the_destination_number(self) -> None:
+        assert SmsOptOutMention.reserved_characters_for_number("+33612345678") == 14
+        assert SmsOptOutMention.reserved_characters_for_number("+41791234567") == 25
+        # A number of a country without a profile gets the link, the longer of the two mentions.
+        assert SmsOptOutMention.reserved_characters_for_number("+491512345678") == 25
+
 
 class TestToGsm7:
+    def test_the_approximation_sign_of_a_converted_price_becomes_env(self) -> None:
+        assert to_gsm7("≈ 470 CHF") == "env. 470 CHF"
+        body = to_gsm7("C'est ≈ 800 $ CA, une seule fois.")
+        assert body == "C'est env. 800 $ CA, une seule fois."
+        assert is_gsm7(body) and segment_count(body) == 1
+
     def test_keeps_gsm7_accents_but_lowers_cedilla(self) -> None:
         # é è à ù stay (GSM-7); ç is NOT GSM-7 in lowercase → simplified to c; ô → o.
         assert to_gsm7("café à côté ça") == "café à coté ca"
@@ -90,34 +176,81 @@ class TestToGsm7:
 class TestSendWindow:
     def test_weekday_inside(self) -> None:
         # Monday 2026-08-31 at 10:00 → open.
-        assert is_within_window(datetime(2026, 8, 31, 10, 0)) is True
+        assert france_send_window.is_open(datetime(2026, 8, 31, 10, 0)) is True
 
     def test_weekday_before_open(self) -> None:
-        assert is_within_window(datetime(2026, 8, 31, 7, 30)) is False
+        assert france_send_window.is_open(datetime(2026, 8, 31, 7, 30)) is False
 
     def test_saturday_hours(self) -> None:
         # Saturday 2026-08-29 — open 10:00–19:00.
-        assert is_within_window(datetime(2026, 8, 29, 9, 30)) is False
-        assert is_within_window(datetime(2026, 8, 29, 11, 0)) is True
+        assert france_send_window.is_open(datetime(2026, 8, 29, 9, 30)) is False
+        assert france_send_window.is_open(datetime(2026, 8, 29, 11, 0)) is True
 
     def test_sunday_closed(self) -> None:
-        assert is_within_window(datetime(2026, 8, 30, 12, 0)) is False
+        assert france_send_window.is_open(datetime(2026, 8, 30, 12, 0)) is False
 
     def test_public_holiday_closed(self) -> None:
         # 2026-05-01 (Fête du Travail) is a Friday but a holiday.
-        assert is_within_window(datetime(2026, 5, 1, 11, 0)) is False
+        assert france_send_window.is_open(datetime(2026, 5, 1, 11, 0)) is False
 
     def test_next_slot_defers_sunday_to_monday(self) -> None:
-        slot = next_send_slot(datetime(2026, 8, 30, 12, 0))  # Sunday noon
+        slot = france_send_window.next_open_slot(datetime(2026, 8, 30, 12, 0))  # Sunday noon
         assert slot.weekday() == 0 and slot.hour == 8  # Monday 08:00
 
     def test_next_slot_before_open_returns_open(self) -> None:
-        slot = next_send_slot(datetime(2026, 8, 31, 6, 0))  # Monday 06:00
+        slot = france_send_window.next_open_slot(datetime(2026, 8, 31, 6, 0))  # Monday 06:00
         assert slot.hour == 8 and slot.date() == datetime(2026, 8, 31).date()
 
     def test_next_slot_inside_returns_same(self) -> None:
         moment = datetime(2026, 8, 31, 10, 0)
-        assert next_send_slot(moment) == moment
+        assert france_send_window.next_open_slot(moment) == moment
+
+    def test_utc_round_trip_follows_the_country_clock(self) -> None:
+        paris_summer = datetime(2026, 8, 31, 10, 0)
+        assert france_send_window.to_utc_naive(paris_summer) == datetime(2026, 8, 31, 8, 0)
+        assert france_send_window.to_local_naive(datetime(2026, 8, 31, 8, 0)) == paris_summer
+
+
+class TestSwissSendWindow:
+    def test_the_window_is_evaluated_on_zurich_time(self) -> None:
+        window = SmsSendWindow("CH")
+        assert window.country == "CH"
+        assert window.timezone.key == "Europe/Zurich"
+        assert window.is_open(datetime(2026, 8, 31, 10, 0)) is True
+        assert window.is_open(datetime(2026, 8, 30, 12, 0)) is False  # Sunday
+
+    def test_swiss_national_holidays_close_the_window_and_french_ones_do_not(self) -> None:
+        window = SmsSendWindow("CH")
+        assert window.is_open(datetime(2026, 8, 1, 11, 0)) is False  # Fête nationale (a Saturday in 2026)
+        assert window.is_open(datetime(2026, 4, 3, 11, 0)) is False  # Vendredi saint 2026
+        assert window.is_open(datetime(2026, 7, 14, 11, 0)) is True  # 14 juillet is a working Tuesday in Switzerland
+        assert window.is_open(datetime(2026, 5, 1, 11, 0)) is True  # 1er mai is cantonal only
+        assert france_send_window.is_open(datetime(2026, 8, 3, 11, 0)) is True  # a plain Monday in France
+
+    def test_the_next_slot_skips_a_swiss_holiday(self) -> None:
+        window = SmsSendWindow("CH")
+        # In 2026 the 1st of August is a Saturday: Friday evening jumps over the holiday and Sunday to Monday.
+        slot = window.next_open_slot(datetime(2026, 7, 31, 21, 0))
+        assert slot == datetime(2026, 8, 3, 8, 0)
+
+    def test_an_undeclared_country_reads_the_french_window_and_a_closed_one_its_own_clock(self) -> None:
+        assert SmsSendWindow("XX").country == "FR"
+        assert SmsSendWindow(None).country == "FR"
+        assert SmsSendWindow("CA").timezone.key == "America/Toronto"
+
+
+class TestPublicHolidays:
+    def test_easter_based_days_2026(self) -> None:
+        assert PublicHolidays.easter_sunday(2026) == date(2026, 4, 5)
+        assert date(2026, 4, 6) in PublicHolidays.france(2026)  # Lundi de Pâques
+        assert date(2026, 5, 14) in PublicHolidays.france(2026)  # Ascension
+        assert date(2026, 4, 3) in PublicHolidays.switzerland(2026)  # Vendredi saint
+        assert date(2026, 5, 25) in PublicHolidays.switzerland(2026)  # Lundi de Pentecôte
+
+    def test_the_country_dispatch_defaults_to_france(self) -> None:
+        assert PublicHolidays.for_country("CH", 2026) == PublicHolidays.switzerland(2026)
+        assert PublicHolidays.for_country("BE", 2026) == PublicHolidays.france(2026)
+        assert PublicHolidays.for_country(None, 2026) == PublicHolidays.france(2026)
 
 
 class TestSenderValidation:
@@ -137,53 +270,73 @@ class TestSenderValidation:
         assert SmsConfigService.is_valid_sender("Dibo-dev") is False
 
 
-class TestManualBody:
-    def test_appends_stop_mention(self) -> None:
-        body = sms_service.compose_manual_body("Bonjour, votre site est prêt")
-        assert body.endswith("STOP au 36180")
-
-    def test_stop_mention_not_duplicated(self) -> None:
-        # A user who already wrote the opt-out keeps a single mention.
-        body = sms_service.compose_manual_body("Offre limitée STOP au 36180")
-        assert body.count("36180") == 1
+class TestGsm7Body:
+    def test_no_stop_mention_is_ever_written_by_us(self) -> None:
+        body = sms_service.to_gsm7_body("Bonjour, votre site est prêt")
+        assert "STOP" not in body and "36180" not in body
+        assert body == "Bonjour, votre site est pret"
 
     def test_trims_surrounding_whitespace(self) -> None:
-        body = sms_service.compose_manual_body("   Coucou   ")
-        assert body.startswith("Coucou")
+        assert sms_service.to_gsm7_body("   Coucou   ") == "Coucou"
+
+    def test_marketing_segments_reserve_the_mention_of_the_destination_country(self) -> None:
+        body = "a" * 146
+        assert sms_service.marketing_segment_count(body, country="FR") == 1
+        assert sms_service.marketing_segment_count(body, country="CH") == 2
 
 
 class TestPriceEstimate:
-    def test_single_segment_uses_configured_rate(self) -> None:
-        # Real FR rate 0.061 €/segment → 6.1 cents, rounded.
-        assert estimate_price_cents(1) == round(0.061 * 100)
+    def test_france_reads_the_account_rate_and_other_countries_the_public_list(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        monkeypatch.setattr(settings, "smsmode_price_per_segment_eur", 0.061)
+        assert SmsPricing.estimate_cents(1, country="FR") == 6
+        assert SmsPricing.estimate_cents(2, country="FR") == 12
+        assert SmsPricing.estimate_cents(1, country="CH") == 7
+        assert SmsPricing.estimate_cents(2, country="CH") == 13
+        assert SmsPricing.estimate_cents(1, country="BE") == 6
+        assert SmsPricing.estimate_cents(1, country="CA") == 2
 
-    def test_multiple_segments_scale(self) -> None:
-        assert estimate_price_cents(3) == round(3 * 0.061 * 100)
+    def test_the_number_names_the_destination(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.setattr(settings, "smsmode_price_per_segment_eur", 0.061)
+        assert SmsPricing.estimate_cents_for_number(2, to_e164="+41791234567") == 13
+        assert SmsPricing.estimate_cents_for_number(1, to_e164="+33612345678") == 6
+        # An unserved destination is estimated at the dearest listed price rather than at zero.
+        assert SmsPricing.estimate_cents_for_number(1, to_e164="+447700900123") == 7
 
-    def test_zero_segments_bills_one(self) -> None:
-        # A send always bills at least one segment, never zero.
-        assert estimate_price_cents(0) == round(0.061 * 100)
+    def test_zero_segments_bills_one(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.setattr(settings, "smsmode_price_per_segment_eur", 0.061)
+        assert SmsPricing.estimate_cents(0, country="FR") == 6
+
+    def test_cents_format_for_the_activity_feed(self) -> None:
+        assert SmsPricing.french_amount_label(13) == "13 c"
+        assert SmsPricing.french_amount_label(120) == "1,20 €"
 
 
 class TestLegalWindowGuard:
     def test_refuses_on_sunday(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        import services.sms_service as sms_module
-
-        monkeypatch.setattr(sms_module, "now_in_paris", lambda: datetime(2026, 8, 30, 12, 0))  # Sunday noon
-        refusal = sms_module.sms_service.legal_window_refusal()
+        monkeypatch.setattr(SmsSendWindow, "now", lambda self: datetime(2026, 8, 30, 12, 0))  # Sunday noon
+        refusal = sms_service.legal_window_refusal()
         assert refusal is not None and "fenêtre légale" in refusal
 
     def test_refuses_before_opening(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        import services.sms_service as sms_module
-
-        monkeypatch.setattr(sms_module, "now_in_paris", lambda: datetime(2026, 8, 31, 7, 0))  # Monday 07:00
-        assert sms_module.sms_service.legal_window_refusal() is not None
+        monkeypatch.setattr(SmsSendWindow, "now", lambda self: datetime(2026, 8, 31, 7, 0))  # Monday 07:00
+        assert sms_service.legal_window_refusal() is not None
 
     def test_allows_inside_window(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        import services.sms_service as sms_module
+        monkeypatch.setattr(SmsSendWindow, "now", lambda self: datetime(2026, 8, 31, 10, 0))  # Monday 10:00
+        assert sms_service.legal_window_refusal() is None
 
-        monkeypatch.setattr(sms_module, "now_in_paris", lambda: datetime(2026, 8, 31, 10, 0))  # Monday 10:00
-        assert sms_module.sms_service.legal_window_refusal() is None
+    def test_a_swiss_prospect_is_spared_on_august_first_and_texted_on_july_fourteenth(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        monkeypatch.setattr(SmsSendWindow, "now", lambda self: datetime(2026, 7, 14, 10, 0))  # Tuesday
+        assert sms_service.legal_window_refusal("FR") is not None
+        assert sms_service.legal_window_refusal("CH") is None
+        monkeypatch.setattr(SmsSendWindow, "now", lambda self: datetime(2025, 8, 1, 10, 0))  # a Friday
+        assert sms_service.legal_window_refusal("FR") is None
+        refusal = sms_service.legal_window_refusal("CH")
+        assert refusal is not None and "Europe/Zurich" in refusal
 
 
 class TestMoStopParsing:
@@ -200,6 +353,14 @@ class TestMoStopParsing:
 
     def test_sender_number_from_nested_recipient(self) -> None:
         assert mo_sender_number({"recipient": {"to": "33612345678"}}) == "33612345678"
+
+    def test_sender_number_skips_the_short_code_of_a_documented_mo(self) -> None:
+        payload = {"direction": "MO", "recipient": {"to": "36034"}, "from": "41791234567", "body": {"text": "STOP"}}
+        assert mo_sender_number(payload) == "41791234567"
+
+    def test_sender_number_skips_the_lettered_sender(self) -> None:
+        assert mo_sender_number({"recipient": {"to": "Dibodev"}, "msisdn": "33612345678"}) == "33612345678"
+        assert mo_sender_number({"recipient": {"to": "36034"}}) == ""
 
     def test_origin_message_id_and_ref_client(self) -> None:
         assert mo_origin_message_id({"originMessageId": "abc-123"}) == "abc-123"
@@ -240,3 +401,16 @@ class TestDlrParsing:
     def test_ref_client_fallback(self) -> None:
         assert dlr_ref_client({"refClient": "dlh-3"}) == "dlh-3"
         assert dlr_ref_client({}) == ""
+
+
+def test_a_swiss_stop_reply_matches_its_sms_by_the_sender_number(db: Session) -> None:
+    """Without originMessageId nor refClient, the number in ``from`` still finds the Swiss SMS it answers."""
+    swiss_sms = SmsMessage(
+        user_id=7, prospect_id=3, to_e164="+41791234567", sender="Dibodev", body="Bonjour", status="sent", segments=1
+    )
+    db.add(swiss_sms)
+    db.commit()
+
+    matched = _match_stop_message(db, {"direction": "MO", "recipient": {"to": "36034"}, "from": "41791234567"})
+
+    assert matched is not None and matched.id == swiss_sms.id

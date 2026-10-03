@@ -20,7 +20,7 @@ from services.notification_service import notification_service
 from services.resend_service import ResendService
 from services.sending_identity import SendingIdentity, SendingNotConfiguredError, resolve_sending_identity
 from services.site_contact_email import SiteContactEmail
-from services.sms.send_window import now_in_paris
+from services.sms.send_window import france_send_window
 
 logger = logging.getLogger(__name__)
 
@@ -49,7 +49,7 @@ class SiteContactService:
             SiteContactDeliveryError: When the message could not be mailed; the admins are told, with the
                 visitor's address so they can still answer.
         """
-        email = SiteContactEmail.render(request, received_at=now_in_paris())
+        email = SiteContactEmail.render(request, received_at=france_send_window.now())
         try:
             identity = self._resolve_sender_identity(db)
             await self._resend_service.send_email(

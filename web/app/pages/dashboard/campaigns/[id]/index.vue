@@ -296,14 +296,18 @@
           <div class="rounded-lg border border-[var(--app-line)] bg-[var(--app-surface-2)] p-3">
             <p class="text-sm leading-relaxed whitespace-pre-line text-[var(--app-ink)]">{{ smsPreview }}</p>
           </div>
+          <p class="text-muted mt-1.5 text-[11px]">
+            <span v-if="smsPreviewSegmentCount">{{ smsPreviewSegmentCount.segments }} SMS · </span>La mention de
+            désinscription est ajoutée à l'envoi.
+          </p>
           <p class="text-muted mt-2 text-[11px] leading-relaxed">
             {{
               isAutoRelanceCampaign
                 ? `Modèle de relance « ${smsTemplate?.name ?? 'Rappel court'} » de la bibliothèque SMS, rendu pour
-                  chaque prospect (salutation, lien de sa démo, votre prénom et la mention « STOP »). Un seul SMS par
+                  chaque prospect (salutation, lien de sa démo, votre prénom). Un seul SMS par
                   prospect — le même réglage que Paramètres → Relance SMS.`
                 : `Modèle « ${smsTemplate?.name ?? 'Direct'} » de la bibliothèque SMS, rendu pour chaque prospect
-                  (salutation, nom de l'entreprise, lien de sa démo, votre prénom et la mention « STOP »). Un seul SMS
+                  (salutation, nom de l'entreprise, lien de sa démo, votre prénom). Un seul SMS
                   par prospect, sans A/B ni relance.`
             }}
           </p>
@@ -817,6 +821,7 @@
 <script lang="ts" setup>
 import type { UseAuthReturn, UseToastReturn } from '~/types/Composables'
 import type { CampaignDetailTab, CampaignQueueRow, TemplateOption } from '~/types/CampaignDetailPage'
+import type { SmsSegmentCount } from '~/types/SmsSegmentCount'
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import type { ComputedRef, Ref } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
@@ -940,6 +945,8 @@ const smsTemplate: Ref<SmsTemplate | null> = ref(null)
 /** The SMS rendered for the campaign's first prospect, when his demo allows it. */
 const smsRenderedPreview: Ref<string> = ref('')
 
+const smsPreviewSegmentCount: Ref<SmsSegmentCount | null> = ref(null)
+
 const settingsForm: Ref<{
   template_id: number
   ab_template_id_b: number
@@ -1010,7 +1017,7 @@ const smsPreview: ComputedRef<string> = computed((): string => {
   const body: string = smsRenderedPreview.value
     ? smsRenderedPreview.value
     : SmsVariables.renderWithSampleValues(smsTemplate.value?.body ?? '', SmsVariables.firstNameOf(user.value?.name))
-  return body ? `${body} STOP au 36180` : ''
+  return body
 })
 
 /** Send progress for an SMS campaign, counted from the queue (no email stats apply). */
@@ -1230,6 +1237,26 @@ async function renderSmsPreview(prospectId: number | undefined): Promise<void> {
     smsRenderedPreview.value = preview.body
   } catch {
     // No demo for that prospect yet: the sample rendering stands in.
+  }
+}
+
+/**
+ * Count what the previewed SMS bills for the campaign's first prospect, the opt-out mention of his country included.
+ * @param previewText - The previewed SMS.
+ * @returns A promise resolved once the count is stored.
+ */
+async function countSmsPreviewSegments(previewText: string): Promise<void> {
+  if (!previewText) {
+    smsPreviewSegmentCount.value = null
+    return
+  }
+  try {
+    smsPreviewSegmentCount.value = await SmsService.countSegments({
+      text: previewText,
+      prospect_id: campaign.value?.prospects?.[0]?.id ?? null,
+    })
+  } catch {
+    smsPreviewSegmentCount.value = null
   }
 }
 
@@ -1710,6 +1737,8 @@ function addFollowUp(): void {
 function removeFollowUp(idx: number): void {
   settingsForm.value.follow_ups.splice(idx, 1)
 }
+
+watch(smsPreview, countSmsPreviewSegments)
 
 watch(activeTab, (tab: string): void => {
   if (tab === 'queue') loadQueue()
