@@ -8,7 +8,8 @@ in one. The sending service (``services/sms_service.py``) allows two
 segments for a send to a prospect; the service messages (receptionist alerts) keep
 one. Every frank template says:
   - who writes (« je fais des sites web », the receptionist is « une assistante
-    virtuelle (une IA) ») and signs with the sender's first name;
+    virtuelle (IA) » or « un assistant virtuel (IA) », ``{assistant_virtuel}`` agreeing
+    with its first name, never « il » or « elle ») and signs with the sender's first name;
   - what was prepared, through ONE short link (``{lien_demo}``, ``{lien_video}``,
     ``{lien_assistant}``, ``{lien_video_assistant}``, already in the branded
     ``demo.dibodev.fr/s/…`` form without scheme, handled by the callers);
@@ -23,8 +24,8 @@ time. smsmode appends the opt-out mention at send time (``body.stop``), never wr
 here; the budget tests reserve its room in France (14 characters) and Switzerland (25).
 
 Variables: {salutation} {entreprise} {ville} {metier} {lien_demo} {lien_assistant}
-{lien_video} {lien_video_assistant} {prenom_receptionniste} {ancien_site} {prix} {prix_assistant}
-{telephone} {signature}.
+{lien_video} {lien_video_assistant} {prenom_receptionniste} {receptionniste} {assistant_virtuel}
+{ancien_site} {prix} {prix_assistant} {telephone} {signature}.
 """
 
 from __future__ import annotations
@@ -47,7 +48,7 @@ DEFAULT_FOLLOW_UP_KEY: str = "rappel-court"
 _WEBSITE_PRICE_LINE: str = "C'est {prix}, une seule fois, sans abonnement."
 _RECEPTIONIST_PRICE_LINE: str = "{prix_assistant}/mois sans engagement, 1er mois satisfait ou remboursé."
 _ASK_WITH_PHONE: str = "Un mot me suffit, oui ou non, au {telephone}. {signature}"
-_RECEPTIONIST_INTRO: str = "j'ai préparé {prenom_receptionniste}, votre réceptionniste virtuelle (une IA)"
+_RECEPTIONIST_INTRO: str = "j'ai préparé {prenom_receptionniste}, {assistant_virtuel} (IA)"
 
 
 @dataclass(frozen=True, slots=True)
@@ -131,7 +132,7 @@ SMS_TEMPLATE_LIBRARY: list[SmsTemplate] = [
         body=(
             "{salutation}, "
             + _RECEPTIONIST_INTRO
-            + " : le soir, elle répond. {lien_assistant} "
+            + " qui répond le soir à vos clients : {lien_assistant} "
             + _RECEPTIONIST_PRICE_LINE
             + " "
             + _ASK_WITH_PHONE
@@ -222,8 +223,8 @@ SMS_TEMPLATE_LIBRARY: list[SmsTemplate] = [
         name="Réceptionniste IA - relance",
         category=SmsTemplateCategory.FOLLOW_UP,
         body=(
-            "{salutation}, après mon email, {prenom_receptionniste}, votre réceptionniste virtuelle (une IA), répond "
-            "toujours : {lien_assistant} " + _RECEPTIONIST_PRICE_LINE + " " + _ASK_WITH_PHONE
+            "{salutation}, après mon email, {prenom_receptionniste}, {assistant_virtuel} (IA), répond toujours : "
+            "{lien_assistant} " + _RECEPTIONIST_PRICE_LINE + " " + _ASK_WITH_PHONE
         ),
     ),
     SmsTemplate(
@@ -231,7 +232,7 @@ SMS_TEMPLATE_LIBRARY: list[SmsTemplate] = [
         name="Réceptionniste IA - relance vidéo",
         category=SmsTemplateCategory.FOLLOW_UP,
         body=(
-            "{salutation}, la vidéo de mon email : votre réceptionniste virtuelle (une IA) en 30 s : "
+            "{salutation}, la vidéo de mon email : {prenom_receptionniste}, {assistant_virtuel} (IA), en 30 s : "
             "{lien_video_assistant} " + _RECEPTIONIST_PRICE_LINE + " " + _ASK_WITH_PHONE
         ),
         fallback_key="assistant-relance",
@@ -242,7 +243,7 @@ SMS_TEMPLATE_LIBRARY: list[SmsTemplate] = [
         category=SmsTemplateCategory.FOLLOW_UP,
         body=(
             "{salutation}, le prix de mon email, sans détour : {prix_assistant}/mois pour {prenom_receptionniste}, "
-            "votre réceptionniste virtuelle (une IA). Sans engagement, 1er mois satisfait ou remboursé. "
+            "{assistant_virtuel} (IA). Sans engagement, 1er mois satisfait ou remboursé. "
             "{lien_assistant} " + _ASK_WITH_PHONE
         ),
     ),

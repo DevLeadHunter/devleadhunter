@@ -351,6 +351,8 @@ class SmsService:
                 SmsVariables.ASSISTANT_LINK,
                 SmsVariables.ASSISTANT_VIDEO_LINK,
                 SmsVariables.RECEPTIONIST_FIRST_NAME,
+                SmsVariables.RECEPTIONIST,
+                SmsVariables.VIRTUAL_ASSISTANT,
             )
         )
         if needs_assistant and assistant is None:

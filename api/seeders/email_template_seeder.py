@@ -18,16 +18,22 @@ offline, how to say no, and a single light ask. Rules baked in:
   - One door per email: a demo link, or the video thumbnail for the « vidéo » templates
     (``{vignette_video}`` / ``{vignette_video_assistant}``, held back by the queue until the
     video exists).
-  - The receptionist templates say plainly that she is a virtual assistant (an AI), not a
-    person, that she lives at an address of her own (a hosted page, the prospect needs no
-    website) and that the first month is satisfied or refunded.
+  - The receptionist templates say plainly that the receptionist is a virtual assistant (an
+    AI) living at an address of its own (a hosted page, the prospect needs no website), and
+    that the first month is satisfied or refunded. Half the casting is masculine (Hugo, Marc,
+    Nathan): the gendered words come from ``{receptionniste}`` and ``{assistant_virtuel}``,
+    and the text names the receptionist by first name rather than « il » or « elle ».
+  - A follow-up says at most « Dernier mail de ma part », never the last message: a J+30 SMS
+    may still come. Giving time replaces begging for an answer (« Besoin d'y réfléchir ? Prenez
+    votre temps »).
 
 Variables: {salutation} {prenom} {nom} {entreprise} {ville} {metier} {lien_demo}
-{lien_assistant} {prenom_receptionniste} {lien_video} {vignette_video} {vignette_video_assistant}
-{ancien_site} {prix} {prix_assistant} {date_expiration}.
+{lien_assistant} {prenom_receptionniste} {receptionniste} {assistant_virtuel} {lien_video}
+{vignette_video} {vignette_video_assistant} {ancien_site} {prix} {prix_assistant} {date_expiration}.
 
 ``sort_order`` (higher = pinned) marks the recommended templates at the top of the list: the
-frank first contact, the frank follow-up and the frank video follow-up.
+frank first contact, the frank follow-ups (with and without video), the short reminder and its
+video twin, then the receptionist templates.
 
 Safe to re-run: templates are matched by (user_id, name) and skipped if present, so the seeder
 only APPENDS. The prod cut-over to this frank library (rename the receptionist templates in
@@ -54,10 +60,16 @@ _SINGLE_ASK_WITH_EXIT = (
     "<p>Un mot me suffit : oui, non, ou une question. Si c'est non, dites-le-moi et je ne vous recontacte plus.</p>"
 )
 _SHORT_ASK_WITH_EXIT = "<p>Un mot me suffit, même un non.</p>"
+_WEBSITE_TIME_TO_THINK_LINE = (
+    "<p>Besoin d'y réfléchir ? Prenez votre temps : il reste en ligne jusqu'au {date_expiration}.</p>"
+)
 _RECEPTIONIST_PRICE_LINE = (
     "<p>C'est {prix_assistant} par mois, sans engagement. Le premier mois est satisfait ou remboursé.</p>"
 )
-_RECEPTIONIST_EXPIRY_LINE = "<p>Je la garde en ligne jusqu'au {date_expiration}. Après, je la retire.</p>"
+_RECEPTIONIST_EXPIRY_LINE = "<p>La démo reste en ligne jusqu'au {date_expiration}. Après, je la retire.</p>"
+_RECEPTIONIST_TIME_TO_THINK_LINE = (
+    "<p>Besoin d'y réfléchir ? Prenez votre temps : la démo reste en ligne jusqu'au {date_expiration}.</p>"
+)
 
 # The canonical library. ``sort_order`` > 0 = recommended (pinned to the top of the list).
 EMAIL_TEMPLATE_LIBRARY: list[dict[str, object]] = [
@@ -148,10 +160,8 @@ EMAIL_TEMPLATE_LIBRARY: list[dict[str, object]] = [
         "subject": "avant que je le retire",
         "body_html": (
             "<p>{salutation},</p>"
-            "<p>Dernier message, promis. Le site de {entreprise} est toujours en ligne : {lien_demo}</p>"
-            "<p>Je le retire le {date_expiration}. Si vous le voulez, c'est {prix}, une seule fois. Sinon, rien "
-            "à faire.</p>"
-            "<p>Même un « non merci » me va.</p>"
+            "<p>Dernier mail de ma part. Le site de {entreprise} est toujours en ligne : {lien_demo}</p>"
+            "<p>Si vous le voulez, c'est {prix}, une seule fois. Sinon, rien à faire.</p>" + _WEBSITE_TIME_TO_THINK_LINE
         ),
     },
     {
@@ -164,9 +174,8 @@ EMAIL_TEMPLATE_LIBRARY: list[dict[str, object]] = [
             "<p>Je vous ai écrit il y a quelques jours au sujet du site de {entreprise}. Cette fois, je vous le "
             "montre en 30 secondes :</p>"
             "{vignette_video}"
-            "<p>Il reste en ligne jusqu'au {date_expiration}. Si vous le voulez, c'est {prix}, une seule fois, "
-            "sans abonnement. Sinon, rien à faire.</p>"
-            "<p>Même un « non merci » me va.</p>"
+            "<p>Si vous le voulez, c'est {prix}, une seule fois, sans abonnement. Sinon, rien à faire.</p>"
+            + _WEBSITE_TIME_TO_THINK_LINE
         ),
     },
     # A first email on purpose: it opens its own campaign towards the prospects whose demo is about to expire.
@@ -177,7 +186,7 @@ EMAIL_TEMPLATE_LIBRARY: list[dict[str, object]] = [
         "subject": "votre site sera retiré le {date_expiration}",
         "body_html": (
             "<p>{salutation},</p>"
-            "<p>Je range mes démos : le site de {entreprise} sera retiré le {date_expiration}. Il est encore en "
+            "<p>Le site que j'ai construit pour {entreprise} sera retiré le {date_expiration}. Il est encore en "
             "ligne : {lien_demo}</p>"
             "<p>Si vous voulez le garder, c'est {prix}, une seule fois. Je le mets sur votre propre adresse, et "
             "vous pourrez ensuite tout modifier vous-même.</p>" + _SHORT_ASK_WITH_EXIT
@@ -186,11 +195,24 @@ EMAIL_TEMPLATE_LIBRARY: list[dict[str, object]] = [
     {
         "name": "Rappel court",
         "category": _FOLLOW,
-        "sort_order": 0,
+        "sort_order": 80,
         "subject": "vous avez vu votre site ?",
         "body_html": (
             "<p>{salutation},</p>"
             "<p>Le site de {entreprise} est toujours en ligne : {lien_demo}</p>"
+            "<p>C'est {prix}, une seule fois, sans abonnement. Je le retire le {date_expiration}.</p>"
+            + _SHORT_ASK_WITH_EXIT
+        ),
+    },
+    {
+        "name": "Rappel court - vidéo",
+        "category": _FOLLOW,
+        "sort_order": 75,
+        "subject": "votre site, en 30 secondes",
+        "body_html": (
+            "<p>{salutation},</p>"
+            "<p>Le site de {entreprise}, en 30 secondes :</p>"
+            "{vignette_video}"
             "<p>C'est {prix}, une seule fois, sans abonnement. Je le retire le {date_expiration}.</p>"
             + _SHORT_ASK_WITH_EXIT
         ),
@@ -223,16 +245,54 @@ EMAIL_TEMPLATE_LIBRARY: list[dict[str, object]] = [
         ),
     },
     {
+        "name": "Réceptionniste IA - franc",
+        "category": _FIRST,
+        "sort_order": 16,
+        "subject": "{receptionniste} pour {entreprise}",
+        "body_html": (
+            "<p>{salutation},</p>"
+            "<p>Je fais des outils web pour les artisans et les commerçants, et j'ai préparé "
+            "{prenom_receptionniste} pour {entreprise} : {assistant_virtuel} (IA) qui répond à vos clients quand "
+            "vous ne pouvez pas. {prenom_receptionniste} est déjà en ligne, à une adresse à son nom : "
+            "{lien_assistant}</p>" + _RECEPTIONIST_PRICE_LINE + _RECEPTIONIST_EXPIRY_LINE + _SINGLE_ASK_WITH_EXIT
+        ),
+    },
+    # Everything the receptionist does, in keywords: the prospect sees it is more than a chatbot.
+    {
+        "name": "Réceptionniste IA - en bref",
+        "category": _FIRST,
+        "sort_order": 15,
+        "subject": "votre réceptionniste, en bref",
+        "body_html": (
+            "<p>{salutation},</p>"
+            "<p>Je fais des outils web pour les artisans et les commerçants, et j'ai préparé "
+            "{prenom_receptionniste} pour {entreprise} : {assistant_virtuel} (IA). En bref :</p>"
+            "<ul>"
+            "<li>Réponses à vos clients 24 h sur 24, dans leur langue</li>"
+            "<li>Demandes de devis avec photo</li>"
+            "<li>Prise de rendez-vous dans votre agenda Google</li>"
+            "<li>Chaque demande transmise par mail, les urgentes aussi par SMS</li>"
+            "<li>Uniquement vos vraies informations : rien d'inventé</li>"
+            "<li>Une adresse à son nom pour votre fiche Google, pas besoin de site</li>"
+            "<li>Un bilan chaque mois</li>"
+            "</ul>"
+            "<p>{prenom_receptionniste} est déjà en ligne : {lien_assistant}</p>"
+            + _RECEPTIONIST_PRICE_LINE
+            + _RECEPTIONIST_EXPIRY_LINE
+            + _SINGLE_ASK_WITH_EXIT
+        ),
+    },
+    {
         "name": "Réceptionniste IA - le soir, personne ne répond",
         "category": _FIRST,
         "sort_order": 10,
-        "subject": "une réceptionniste pour {entreprise}",
+        "subject": "vos clients du soir",
         "body_html": (
             "<p>{salutation},</p>"
-            "<p>Je fais des outils web pour les artisans et les commerçants, et j'ai préparé pour {entreprise} une "
-            "réceptionniste, {prenom_receptionniste} : une assistante virtuelle (IA), pas une personne. Le soir "
-            "et le week-end, elle répond tout de suite à vos clients et vous transmet chaque demande. Elle est "
-            "déjà en ligne, à une adresse à son nom : {lien_assistant}</p>"
+            "<p>Je fais des outils web pour les artisans et les commerçants, et j'ai préparé "
+            "{prenom_receptionniste} pour {entreprise} : {assistant_virtuel} (IA) qui, le soir et le week-end, "
+            "répond tout de suite à vos clients et vous transmet chaque demande. {prenom_receptionniste} est déjà "
+            "en ligne, à une adresse à son nom : {lien_assistant}</p>"
             "{vignette_video_assistant}" + _RECEPTIONIST_PRICE_LINE + _RECEPTIONIST_EXPIRY_LINE + _SINGLE_ASK_WITH_EXIT
         ),
     },
@@ -243,11 +303,11 @@ EMAIL_TEMPLATE_LIBRARY: list[dict[str, object]] = [
         "subject": "une photo, une demande de devis",
         "body_html": (
             "<p>{salutation},</p>"
-            "<p>Je fais des outils web pour les artisans et les commerçants, et j'ai préparé pour {entreprise} une "
-            "réceptionniste, {prenom_receptionniste} : une assistante virtuelle (IA), pas une personne. Un client "
-            "lui envoie la photo de son problème à 22 h, elle pose les bonnes questions et vous transmet une "
-            "demande de devis complète. Elle est déjà en ligne, à une adresse à son nom, et elle accepte "
-            "n'importe quelle photo : {lien_assistant}</p>"
+            "<p>Je fais des outils web pour les artisans et les commerçants, et j'ai préparé "
+            "{prenom_receptionniste} pour {entreprise} : {assistant_virtuel} (IA). Un client envoie la photo de son "
+            "problème à 22 h, et vous recevez une demande de devis complète, avec les bonnes questions déjà posées. "
+            "{prenom_receptionniste} est déjà en ligne, à une adresse à son nom, et accepte n'importe quelle "
+            "photo : {lien_assistant}</p>"
             "{vignette_video_assistant}" + _RECEPTIONIST_PRICE_LINE + _RECEPTIONIST_EXPIRY_LINE + _SINGLE_ASK_WITH_EXIT
         ),
     },
@@ -259,10 +319,10 @@ EMAIL_TEMPLATE_LIBRARY: list[dict[str, object]] = [
         "body_html": (
             "<p>{salutation},</p>"
             "<p>Une partie des clients de {entreprise} n'ose pas écrire en français et repart sans rien demander. "
-            "Je fais des outils web pour les artisans et les commerçants, et j'ai préparé pour vous une "
-            "réceptionniste, {prenom_receptionniste} : une assistante virtuelle (IA), pas une personne. Elle "
-            "répond à vos clients dans leur langue, 24 h sur 24, et vous transmet leur demande en français. Elle "
-            "est déjà en ligne, à une adresse à son nom : {lien_assistant}</p>"
+            "Je fais des outils web pour les artisans et les commerçants, et j'ai préparé pour vous "
+            "{prenom_receptionniste} : {assistant_virtuel} (IA) qui répond à vos clients dans leur langue, "
+            "24 h sur 24, et vous transmet leur demande en français. {prenom_receptionniste} est déjà en ligne, à "
+            "une adresse à son nom : {lien_assistant}</p>"
             "{vignette_video_assistant}" + _RECEPTIONIST_PRICE_LINE + _RECEPTIONIST_EXPIRY_LINE + _SINGLE_ASK_WITH_EXIT
         ),
     },
@@ -274,10 +334,9 @@ EMAIL_TEMPLATE_LIBRARY: list[dict[str, object]] = [
         "subject": "votre réceptionniste, en vidéo",
         "body_html": (
             "<p>{salutation},</p>"
-            "<p>Je fais des outils web pour les artisans et les commerçants, et j'ai préparé pour {entreprise} une "
-            "réceptionniste, {prenom_receptionniste} : une assistante virtuelle (IA), pas une personne, qui répond "
-            "à vos clients le soir et le week-end et vous transmet chaque demande. Je vous la montre en "
-            "30 secondes :</p>"
+            "<p>Je fais des outils web pour les artisans et les commerçants, et j'ai préparé "
+            "{prenom_receptionniste} pour {entreprise} : {assistant_virtuel} (IA) qui répond à vos clients le soir "
+            "et le week-end et vous transmet chaque demande. Je vous montre comment ça marche, en 30 secondes :</p>"
             "{vignette_video_assistant}" + _RECEPTIONIST_PRICE_LINE + _RECEPTIONIST_EXPIRY_LINE + _SINGLE_ASK_WITH_EXIT
         ),
     },
@@ -285,28 +344,27 @@ EMAIL_TEMPLATE_LIBRARY: list[dict[str, object]] = [
         "name": "Réceptionniste IA - relance",
         "category": _FOLLOW,
         "sort_order": 10,
-        "subject": "avant que je la retire",
+        "subject": "avant que je retire la démo",
         "body_html": (
             "<p>{salutation},</p>"
-            "<p>Dernier message, promis. {prenom_receptionniste}, la réceptionniste que j'ai préparée pour "
-            "{entreprise} (une assistante virtuelle, IA), répond toujours à cette adresse : {lien_assistant}</p>"
-            "<p>Je la retire le {date_expiration}. Si vous la voulez, c'est {prix_assistant} par mois, sans "
-            "engagement, premier mois satisfait ou remboursé. Sinon, rien à faire.</p>"
-            "<p>Même un « non merci » me va.</p>"
+            "<p>Dernier mail de ma part. Pour {entreprise}, {prenom_receptionniste} ({assistant_virtuel}, IA) "
+            "répond toujours à cette adresse : {lien_assistant}</p>"
+            "<p>Pour garder {prenom_receptionniste}, c'est {prix_assistant} par mois, sans engagement, premier mois "
+            "satisfait ou remboursé. Sinon, rien à faire.</p>" + _RECEPTIONIST_TIME_TO_THINK_LINE
         ),
     },
     {
         "name": "Réceptionniste IA - le prix, sans détour",
         "category": _FOLLOW,
         "sort_order": 13,
-        "subject": "le prix de la réceptionniste",
+        "subject": "le prix, sans détour",
         "body_html": (
             "<p>{salutation},</p>"
             "<p>Sans détour : {prix_assistant} par mois pour que {prenom_receptionniste}, votre réceptionniste "
-            "(une assistante virtuelle, IA), réponde à vos clients à votre place quand vous ne pouvez pas. Sans "
+            "({assistant_virtuel}, IA), réponde à vos clients à votre place quand vous ne pouvez pas. Sans "
             "engagement, premier mois satisfait ou remboursé.</p>"
-            "<p>Elle est toujours en ligne, à une adresse à son nom : {lien_assistant}</p>"
-            "<p>Je la retire le {date_expiration}. Un mot me suffit, même un non.</p>"
+            "<p>{prenom_receptionniste} répond déjà à cette adresse : {lien_assistant}</p>"
+            "<p>Je retire la démo le {date_expiration}. Un mot me suffit, même un non.</p>"
         ),
     },
 ]
