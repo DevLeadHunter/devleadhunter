@@ -24,7 +24,7 @@ Un seul jeu de mots dans les trois maquettes, repris du modèle 30 : « 500 €,
 
 Comportement conservé du bandeau actuel (`demo-host/app/components/DemoCtaBanner.vue`) : jamais fermable (réduit en pastille seulement), ouverture automatique une fois la page lue jusqu'en bas, formulaire sans coordonnées demandées (le mail connaît l'adresse), tracking `demo_cta_banner_*`, identité crème/encre littérale pour se poser sur n'importe quel template clair ou sombre.
 
-Ce qui change : la pastille montre la photo de Léo (déjà prévu par `owner_profile_photo_url`, jamais renseigné en prod), la carte répond à « qui est derrière ce site » et dit le prix et la date, le bouton devient « Me répondre ».
+Ce qui change : la pastille montre la photo de Léo (déjà en place : `owner_profile_photo_url`, tiré de la photo du profil), la carte répond à « qui est derrière ce site » et dit le prix et la date, le bouton devient « Me répondre ».
 
 - **Variante A, photo en tête.** Photo 56 px, « Léo Guillaume », « Développeur à Rennes · dibodev.fr », titre « J'ai construit ce site pour vous. », trois faits (prix, date, autonomie), champ « Une question, un oui, un non : écrivez-moi. », bouton « Me répondre », téléphone. La pastille dit « Ce site vous plaît ? / Léo Guillaume, développeur à Rennes ». C'est la variante qui répond le plus directement à « ils ont voulu parler à un humain » : la personne avant la demande.
 - **Variante B, photo discrète.** Titre actuel « Ce site vous plaît ? », une phrase franche (prix, date, « même un non »), le champ, puis la signature compacte (photo 34 px, nom, ville, dibodev.fr) et le bouton. Pastille actuelle avec la photo. Changement minimal, l'offre reste le sujet.
@@ -74,7 +74,7 @@ Recommandation : (a) avec la signature allégée pour la prochaine vague (zéro 
 | 4 | Réceptionniste dans le bandeau | En attente | Après le lancement, pour mesurer la carte seule ; ensuite la position 1 (un seul objet, une seule identité) |
 | 5 | Persona | En attente | Léa, présentée comme l'assistante IA de l'expéditeur (la même que sur dibodev.fr) |
 | 6 | Email | En attente | (a) avec la signature allégée (une seule image) ; (b) ressemble à une newsletter et double le lien |
-| 7 | Signature | En attente | Oui, mais sur les modèles « Franc - … » de la bibliothèque, qui servent pour la vague 4 (prix par pays) plutôt que sur 30 à 33. Prérequis : la photo et le téléphone du profil sont vides en prod |
+| 7 | Signature | En attente | Oui, mais sur les modèles « Franc - … » de la bibliothèque, qui servent pour la vague 4 (prix par pays) plutôt que sur 30 à 33 |
 | 8 | Copie de Léa | En attente | « Le nom de domaine est compris » est exact ; « sous 48 h » seulement si c'est tenable à chaque vente, sinon « dans les jours qui suivent le paiement ». Le tiret du modèle 30 ne compte plus : les modèles de la bibliothèque n'en ont pas |
 
 ## Contraintes de délivrabilité vérifiées (email)
