@@ -50,6 +50,9 @@ class ProspectEnrichmentResponse(BaseModel):
     place_postal_code: str | None = None
     identity_check_status: str | None = None
     identity_check_detail: str | None = None
+    professional_license_label: str | None = None
+    professional_license_number: str | None = None
+    professional_license_source: str | None = None
     error_message: str | None = None
     enriched_at: datetime | None = None
     created_at: datetime
@@ -84,3 +87,5 @@ class ProspectEnrichmentUpdate(BaseModel):
     social_links: dict[str, Any] | None = None
     contact_first_name: str | None = None
     contact_last_name: str | None = None
+    professional_license_label: str | None = Field(default=None, max_length=60)
+    professional_license_number: str | None = Field(default=None, max_length=60)

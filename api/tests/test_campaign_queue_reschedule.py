@@ -37,9 +37,10 @@ class _FakeDB:
         self.commits += 1
 
 
-def _pending_item(prospect_id: int, scheduled_at: datetime | None = None) -> SimpleNamespace:
+def _pending_item(prospect_id: int, scheduled_at: datetime | None = None, country: str = "FR") -> SimpleNamespace:
     return SimpleNamespace(
         prospect_id=prospect_id,
+        prospect=SimpleNamespace(id=prospect_id, country=country),
         queue_type="initial",
         status="pending",
         scheduled_at=scheduled_at or datetime(2026, 9, 7, 8, 0, 0),
@@ -114,7 +115,7 @@ def test_reschedule_slots_drops_own_pending_and_seeds_sent_days(monkeypatch) -> 
 
     own_slot = datetime(2026, 9, 8, 8, 0)
     campaign = SimpleNamespace(id=6, user_id=1, max_emails_per_day=1, send_delay_minutes=20)
-    pending_items = [_pending_item(10, own_slot)]
+    pending_items = [_pending_item(10, own_slot, country="CH")]
 
     monkeypatch.setattr(send_policy_service, "get_policy", lambda db, user_id: object())
     monkeypatch.setattr(send_policy_service, "resolve", lambda db, user_id: "resolved-policy")
@@ -135,6 +136,7 @@ def test_reschedule_slots_drops_own_pending_and_seeds_sent_days(monkeypatch) -> 
         captured["occupied"] = set(kwargs["occupied"])
         captured["campaign_seed_counts"] = dict(kwargs["campaign_seed_counts"])
         captured["per_campaign_cap"] = kwargs["per_campaign_cap"]
+        captured["slot_timezones"] = list(kwargs["slot_timezones"])
         return [datetime(2026, 9, 9, 8, 0) for _ in range(count)]
 
     monkeypatch.setattr(send_policy_service, "next_send_slots", _fake_next_send_slots)
@@ -149,3 +151,5 @@ def test_reschedule_slots_drops_own_pending_and_seeds_sent_days(monkeypatch) -> 
     # The day the sent J1 used stays reserved against the per-campaign cap.
     assert captured["campaign_seed_counts"] == {date(2026, 9, 7): 1}
     assert captured["per_campaign_cap"] == 1
+    # Each moved row is re-slotted on its own prospect's clock.
+    assert captured["slot_timezones"] == ["Europe/Zurich"]

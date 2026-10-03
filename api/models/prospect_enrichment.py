@@ -75,6 +75,10 @@ class ProspectEnrichment(Base):
     identity_check_status: Mapped[str | None] = mapped_column(String(16), nullable=True)
     identity_check_detail: Mapped[str | None] = mapped_column(String(400), nullable=True)
 
+    professional_license_label: Mapped[str | None] = mapped_column(String(60), nullable=True)
+    professional_license_number: Mapped[str | None] = mapped_column(String(60), nullable=True)
+    professional_license_source: Mapped[str | None] = mapped_column(String(50), nullable=True)
+
     # Structured, editable collections (JSON)
     photos: Mapped[list | None] = mapped_column(JSON, nullable=True)
     reviews: Mapped[list | None] = mapped_column(JSON, nullable=True)

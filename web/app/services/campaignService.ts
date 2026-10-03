@@ -169,6 +169,7 @@ export type CampaignQueueItem = {
   email_log_id?: number | null
   /** Why a row was skipped (e.g. « Annulé manuellement », « Site démo expiré ») — null otherwise. */
   skip_reason?: string | null
+  prospect_timezone: string
 }
 
 export type CampaignQueueResponse = {
@@ -193,6 +194,7 @@ export type CampaignForecastItem = {
   prospect_email?: string | null
   prospect_city?: string | null
   prospect_category: string
+  prospect_timezone?: string | null
   queue_type: 'initial' | 'followup' | 'sms_relance' | 'sms_cold'
   follow_up_index: number
   ab_variant?: string | null

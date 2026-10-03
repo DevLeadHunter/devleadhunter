@@ -130,12 +130,13 @@
       </div>
 
       <div class="border-b border-[var(--app-line)]">
-        <nav class="no-scrollbar flex gap-1 overflow-x-auto">
+        <!-- `overflow-x-auto` alone makes the row scroll on both axes on iOS (an implicit `overflow-y: auto` plus the 1px the tabs overlap the border by), so a finger could drag the tabs up and down: lock the touch gesture to the x axis. -->
+        <nav class="no-scrollbar -mb-px flex touch-pan-x gap-1 overflow-x-auto overflow-y-hidden overscroll-x-contain">
           <button
             v-for="tab in visibleTabs"
             :key="tab.key"
             :class="[
-              '-mb-px flex flex-1 items-center justify-center gap-2 border-b-2 px-3 pt-1 pb-2.5 text-sm font-medium whitespace-nowrap transition-colors @2xl:flex-none @2xl:justify-start',
+              'flex flex-1 items-center justify-center gap-2 border-b-2 px-3 pt-1 pb-2.5 text-sm font-medium whitespace-nowrap transition-colors @2xl:flex-none @2xl:justify-start',
               activeTab === tab.key
                 ? 'border-[var(--app-ink)] text-[var(--app-ink)]'
                 : 'border-transparent text-[var(--app-ink-soft)] hover:text-[var(--app-ink)]',
@@ -685,7 +686,7 @@
               <BaseTableTh align="right">Actions</BaseTableTh>
             </template>
 
-            <BaseTableTr v-for="item in queueData.items" :key="item.id">
+            <BaseTableTr v-for="item in queueRows" :key="item.id">
               <BaseTableTd>
                 <span class="block text-sm font-semibold text-[var(--app-ink)]">
                   {{ item.prospect_name || `#${item.prospect_id}` }}
@@ -718,6 +719,7 @@
 
               <BaseTableTd label="Planifié" class="font-label text-xs text-[var(--app-ink-soft)]">
                 {{ formatCompactDateTime(item.scheduled_at) }}
+                <span v-if="item.prospectLocalTimeLabel"> · {{ item.prospectLocalTimeLabel }}</span>
               </BaseTableTd>
 
               <BaseTableTd label="Statut" align="center">
@@ -797,7 +799,7 @@
 
 <script lang="ts" setup>
 import type { UseAuthReturn, UseToastReturn } from '~/types/Composables'
-import type { TemplateOption } from '~/types/CampaignDetailPage'
+import type { CampaignQueueRow, TemplateOption } from '~/types/CampaignDetailPage'
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import type { ComputedRef, Ref } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
@@ -814,6 +816,7 @@ import { ProspectsService } from '~/services/prospectsService'
 import { ApiClient } from '~/services/api'
 import type { CampaignFollowUp, CampaignVariantStats, Prospect, ProspectSource } from '~/types'
 import { formatCompactDateTime } from '~/utils/date'
+import { ProspectTimezone } from '~/utils/prospectTimezone'
 import { useToast } from '~/composables/useToast'
 import { useDrawerStackStore } from '~/stores/drawerStack'
 import type { SendPolicy } from '~/types/Automation'
@@ -995,6 +998,15 @@ const smsQueueCounts: ComputedRef<{ sent: number; pending: number; failed: numbe
   }
   return { sent, pending, failed }
 })
+
+const queueRows: ComputedRef<CampaignQueueRow[]> = computed((): CampaignQueueRow[] =>
+  (queueData.value?.items ?? []).map(
+    (item: CampaignQueueItem): CampaignQueueRow => ({
+      ...item,
+      prospectLocalTimeLabel: ProspectTimezone.localTimeLabel(item.scheduled_at, item.prospect_timezone),
+    }),
+  ),
+)
 
 /** Tabs shown for this campaign — the A/B tab is email-only. */
 const visibleTabs: ComputedRef<{ key: string; label: string; icon: string }[]> = computed(() =>

@@ -19,6 +19,7 @@ from sqlalchemy.orm import Session
 from enums.contact_name_status import ContactNameStatus, ProposedContactState
 from enums.enrichment_status import EnrichmentStatus
 from enums.identity_check_status import IdentityCheckStatus
+from enums.professional_license_source import ProfessionalLicenseSource
 from models.prospect_db import ProspectDB
 from models.prospect_enrichment import ProspectEnrichment
 from scrappers import scrape_signals
@@ -29,6 +30,7 @@ from services.decision_maker.activity import activity_consistency
 from services.decision_maker.types import NameCandidate, NameResolution
 from services.enrichment_content import EnrichmentContentMapper
 from services.photo_labeling_service import photo_labeling_service, should_label_for_category
+from services.professional_license_service import professional_license_service
 from services.prospect_emails import sync_prospect_emails
 from services.prospect_photo_storage_service import prospect_photo_storage
 from services.scraper_diagnostics_service import (
@@ -69,10 +71,14 @@ EDITABLE_FIELDS: tuple[str, ...] = (
     "social_links",
     "contact_first_name",
     "contact_last_name",
+    "professional_license_label",
+    "professional_license_number",
 )
 
 # Manual contact edits flip these bookkeeping fields (human input always wins).
 _CONTACT_FIELDS: tuple[str, ...] = ("contact_first_name", "contact_last_name")
+
+_PROFESSIONAL_LICENSE_FIELDS: tuple[str, ...] = ("professional_license_label", "professional_license_number")
 
 
 class EnrichmentService:
@@ -322,6 +328,7 @@ class EnrichmentService:
 
         # Decision-maker name resolution (best-effort, never blocks enrichment).
         await self._resolve_contact(db, prospect, record)
+        await professional_license_service.resolve_for_enrichment(db, prospect, record)
 
         db.refresh(record)
         return record
@@ -810,6 +817,9 @@ class EnrichmentService:
             from services.decision_maker.normalize import infer_gender
 
             record.contact_gender = infer_gender(record.contact_first_name)
+        if any(key in updates for key in _PROFESSIONAL_LICENSE_FIELDS):
+            has_license_number = bool((record.professional_license_number or "").strip())
+            record.professional_license_source = ProfessionalLicenseSource.MANUAL.value if has_license_number else None
         # A manually edited record is considered ready to use.
         if record.status != EnrichmentStatus.COMPLETED.value:
             record.status = EnrichmentStatus.COMPLETED.value
@@ -836,6 +846,8 @@ class EnrichmentService:
             "services": record.services or [],
             "social_links": record.social_links or {},
             "photo_labels": record.photo_labels or {},
+            "professional_license_label": record.professional_license_label,
+            "professional_license_number": record.professional_license_number,
         }
 
     def apply_to_content(self, content_json: dict[str, Any], enrichment: dict[str, Any] | None) -> dict[str, Any]:
