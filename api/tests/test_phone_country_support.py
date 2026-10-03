@@ -2,10 +2,13 @@
 
 from __future__ import annotations
 
-from services.prospect_phones import dedupe_phones
+from types import SimpleNamespace
+
+from services.prospect_phones import dedupe_phones, first_mobile_e164, sync_prospect_phones
 from services.sms.phone_normalizer import (
     format_phone_for_display,
     to_e164,
+    to_e164_fr,
     to_e164_mobile,
     to_e164_nanp,
 )
@@ -32,6 +35,14 @@ class TestNorthAmericanNumbers:
 
 
 class TestCountryAwareNormalization:
+    def test_a_canadian_ten_digit_number_is_never_read_as_french(self) -> None:
+        assert to_e164("514 555-0199", country="CA") == "+15145550199"
+        assert to_e164_mobile("514 555-0199", country="CA") == "+15145550199"
+        assert to_e164_fr("514 555-0199") is None
+        # A French business typing ten digits without a leading 0 has no French shape either.
+        assert to_e164("514 555-0199", country="FR") is None
+        assert to_e164_mobile("514 555-0199", country="FR") is None
+
     def test_an_international_form_is_read_whatever_the_country(self) -> None:
         assert to_e164("+1 514 555 0199", country="FR") == "+15145550199"
         assert to_e164("+33 6 12 34 56 78", country="CA") == "+33612345678"
@@ -50,6 +61,10 @@ class TestCountryAwareNormalization:
 
 
 class TestDisplayFormat:
+    def test_quebec_writes_the_area_code_apart_and_hyphenates(self) -> None:
+        assert format_phone_for_display("5145550199", country="CA") == "514 555-0199"
+        assert format_phone_for_display("+1 514 555 0199", country="CA") == "514 555-0199"
+
     def test_france_groups_by_two(self) -> None:
         assert format_phone_for_display("+33612345678", country="FR") == "06 12 34 56 78"
         assert format_phone_for_display("06 12 34 56 78", country="FR") == "06 12 34 56 78"
@@ -67,3 +82,17 @@ class TestProspectPhonesByCountry:
 
     def test_a_swiss_number_dedupes_with_its_international_form(self) -> None:
         assert dedupe_phones(["079 123 45 67", "+41 79 123 45 67"], "CH") == ["079 123 45 67"]
+
+    def test_quebec_numbers_dedupe_across_formats(self) -> None:
+        assert dedupe_phones(["514 555-0199", "+15145550199", "(514) 555-0199"], "CA") == ["514 555-0199"]
+
+    def test_sync_dedupes_in_the_prospect_country(self) -> None:
+        prospect = SimpleNamespace(phone="514 555-0199", phones=["514 555-0199"], country="CA")
+        sync_prospect_phones(prospect, add=["+1 514 555 0199", "438 555-0100"])
+        assert prospect.phones == ["514 555-0199", "438 555-0100"]
+        assert prospect.phone == "514 555-0199"
+
+    def test_a_canadian_number_is_not_an_sms_mobile(self) -> None:
+        # The plan does not tell a cellular from a landline, and cold SMS is closed in Canada.
+        prospect = SimpleNamespace(phone="514 555-0199", phones=["514 555-0199"], country="CA")
+        assert first_mobile_e164(prospect) is None

@@ -256,6 +256,21 @@ def test_split_postal_address_reads_the_prospect_country_shape() -> None:
     )
 
 
+def test_split_postal_address_reads_a_quebec_address() -> None:
+    """Québec writes the city and its province before the code: « Montréal (Québec) H2X 1Y4 »."""
+    assert _split_postal_address("123, rue Sainte-Catherine Ouest, Montréal (Québec) H2X 1Y4", None, "CA") == (
+        "123, rue Sainte-Catherine Ouest",
+        "H2X 1Y4",
+        "Montréal",
+    )
+    assert _split_postal_address("123 Rue X, Laval, QC h7n 1a1", None, "CA") == ("123 Rue X", "H7N 1A1", "Laval")
+    assert _split_postal_address("123 Rue X, Laval, QC H7N 1A1, Canada", None, "CA") == (
+        "123 Rue X",
+        "H7N 1A1",
+        "Laval",
+    )
+
+
 def test_billing_details_pre_set_the_prospect_country() -> None:
     """A Swiss prospect opens the drawer on Switzerland, with its address split the Swiss way."""
 
@@ -288,6 +303,20 @@ def test_missing_billing_fields_wants_no_tax_id_outside_france(monkeypatch: pyte
     assert service.missing_billing_fields(_FakeDB(), SimpleNamespace(id=1), {**billing, "country_code": "FR"}) == [
         "le SIREN / SIRET"
     ]
+
+
+def test_missing_billing_fields_wants_no_neq_for_a_quebec_client(monkeypatch: pytest.MonkeyPatch) -> None:
+    service = OrderService()
+    monkeypatch.setattr(service, "connected_provider", lambda _db, _user: "qonto")
+    billing = {
+        "name": "Paysagement Tremblay",
+        "email": "info@tremblay.ca",
+        "address": "123, rue Sainte-Catherine Ouest",
+        "zip_code": "H2X 1Y4",
+        "city": "Montréal",
+        "country_code": "CA",
+    }
+    assert service.missing_billing_fields(_FakeDB(), SimpleNamespace(id=1), billing) == []
 
 
 def test_missing_billing_fields_lists_every_gap(monkeypatch: pytest.MonkeyPatch) -> None:

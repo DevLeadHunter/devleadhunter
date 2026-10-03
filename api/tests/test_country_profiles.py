@@ -2,7 +2,10 @@
 
 from __future__ import annotations
 
+import dataclasses
 from zoneinfo import ZoneInfo
+
+import pytest
 
 from enums.country import SUPPORTED_COUNTRIES, normalize_country
 from enums.sms_opt_out_mode import SmsOptOutMode
@@ -28,12 +31,28 @@ def test_supported_countries_are_the_enabled_profiles() -> None:
     assert "FR" in SUPPORTED_COUNTRIES
 
 
-def test_a_declared_but_closed_country_stays_out_of_prospection() -> None:
-    canada = CountryProfiles.declared("CA")
-    assert canada is not None
-    assert canada.enabled is False
-    assert "CA" not in SUPPORTED_COUNTRIES
-    assert normalize_country("CA") == "FR"
+def test_canada_is_open_to_prospection_by_email_only() -> None:
+    canada = CountryProfiles.get("CA")
+    assert canada.enabled is True
+    assert SUPPORTED_COUNTRIES["CA"] == "Canada (Québec)"
+    assert normalize_country("ca") == "CA"
+    assert canada.sms_prospecting_open is False
+    assert canada.email_footer_needs_postal_address is True
+    assert canada.search_label == "Québec"
+    assert canada.in_european_union is False
+
+
+def test_a_closed_country_reads_as_france(monkeypatch: pytest.MonkeyPatch) -> None:
+    """``get`` only resolves open profiles: a declared-but-closed country reads as France."""
+    closed = dataclasses.replace(_quebec(), enabled=False)
+    monkeypatch.setitem(CountryProfiles._PROFILES, "CA", closed)
+    assert CountryProfiles.get("CA").code == "FR"
+    assert CountryProfiles.declared("CA") is closed
+    assert "CA" not in {profile.code for profile in CountryProfiles.enabled()}
+
+
+def test_the_open_countries_are_france_switzerland_belgium_luxembourg_and_quebec() -> None:
+    assert [profile.code for profile in CountryProfiles.enabled()] == ["FR", "CH", "BE", "LU", "CA"]
 
 
 def test_every_profile_names_a_real_timezone() -> None:

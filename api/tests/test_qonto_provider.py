@@ -232,6 +232,12 @@ def test_vat_exemption_mentions_read_as_leo_writes_them() -> None:
     assert exemption_for(None) == exemption_for("FR")
 
 
+def test_a_quebec_client_is_invoiced_as_an_export_in_euros() -> None:
+    exemption = QontoPaymentProvider.vat_exemption_for("CA")
+    assert exemption.code == "S259"
+    assert exemption.mention.startswith("TVA non applicable, exportation hors UE")
+
+
 def test_create_invoice_requires_iban() -> None:
     """Without an IBAN the invoice can't be issued (Qonto requires it)."""
     request = InvoiceRequest(client=BillingClient(name="X"), amount_cents=50000, currency="eur", label="Site web")

@@ -40,3 +40,16 @@ def test_each_country_names_its_fiscal_identifier() -> None:
     assert payload["CH"]["tax_id_required"] is False
     assert payload["CH"]["postal_code_pattern"] == r"\d{4}"
     assert payload["BE"]["tax_id_label"] == "Numéro BCE"
+
+
+def test_canada_carries_its_own_facts() -> None:
+    canada = {entry["code"]: entry for entry in _countries()}["CA"]
+    assert canada["label"] == "Canada (Québec)"
+    assert canada["currency"] == "CAD"
+    assert canada["dial_code"] == "+1"
+    assert canada["postal_code_pattern"] == r"[A-Z]\d[A-Z] ?\d[A-Z]\d"
+    assert canada["postal_code_example"] == "H2X 1Y4"
+    assert canada["tax_id_label"] == "NEQ"
+    assert canada["tax_id_example"] == "1234567890"
+    assert canada["tax_id_required"] is False
+    assert canada["sms_prospecting_open"] is False

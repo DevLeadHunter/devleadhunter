@@ -235,12 +235,12 @@ class CountryProfiles:
             tax_id_required=False,
             domain_tlds=(".lu",),
         ),
-        # Declared ahead of the Québec support: opened to prospection once its formats land.
+        # Québec by email only: French-speaking, North American phone plan, CASL footer.
         "CA": CountryProfile(
             code="CA",
             label="Canada (Québec)",
             search_label="Québec",
-            enabled=False,
+            enabled=True,
             in_european_union=False,
             currency="CAD",
             eur_rate=1.6,

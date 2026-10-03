@@ -6,6 +6,7 @@ from urllib.parse import unquote
 
 from enums.country import country_label, normalize_country, search_label
 from enums.source import Source
+from scrappers.facebook_search_scraper import FacebookSearchScraper
 from scrappers.google_scraper import GoogleScraper
 from scrappers.osm_scraper import OSMScraper
 from services.scraper_service import ScraperService
@@ -72,6 +73,19 @@ def test_switzerland_is_searched_with_its_name() -> None:
     assert unquote(GoogleScraper.build_query("paysagiste", "Genève", "CH")) == "paysagiste à Genève Suisse"
 
 
+def test_canada_is_searched_as_quebec() -> None:
+    """Québec prospects read « Québec » in their listings, never « Canada (Québec) » (Laval exists in France too)."""
+    assert normalize_country("ca") == "CA"
+    assert country_label("CA") == "Canada (Québec)"
+    assert search_label("CA") == "Québec"
+    assert unquote(GoogleScraper.build_query("paysagiste", "Laval", "CA")) == "paysagiste à Laval Québec"
+    queries = FacebookSearchScraper._queries(
+        FacebookSearchScraper.__new__(FacebookSearchScraper), "paysagiste", "Laval", "CA"
+    )
+    assert queries[1] == "site:facebook.com paysagiste Laval Québec"
+    assert "Canada" not in " ".join(queries)
+
+
 def test_extract_city_reads_the_country_postal_shape() -> None:
     """A Swiss code has four digits; the country written after the city is never taken for it."""
     assert GoogleScraper.extract_city("12 rue de la Paix, 75002 Paris", "FR") == "Paris"
@@ -83,3 +97,20 @@ def test_extract_city_never_returns_the_country_or_the_province() -> None:
     """Without a postal code the last segment used to be « Suisse » or « Belgique »."""
     assert GoogleScraper.extract_city("Rue du Rhône 12, Genève, Suisse", "CH") == "Genève"
     assert GoogleScraper.extract_city("Rue de la Loi 16, 1000 Bruxelles, Belgique", "BE") == "Bruxelles"
+
+
+def test_extract_city_reads_a_quebec_address() -> None:
+    """Maps writes « Montréal, QC H2X 1Y4, Canada »: the city is the segment before the province."""
+    assert GoogleScraper.extract_city("123 Rue Sainte-Catherine O, Montréal, QC H2X 1Y4, Canada", "CA") == "Montréal"
+    assert GoogleScraper.extract_city("123 Rue X, Laval, QC H7N 1A1, Canada", "CA") == "Laval"
+    assert GoogleScraper.extract_city("123 Rue X, Laval, QC, Canada", "CA") == "Laval"
+    assert GoogleScraper.extract_city("123, rue X, Montréal (Québec) H2X 1Y4", "CA") == "Montréal"
+
+
+def test_failover_chain_drops_french_directories_for_canada() -> None:
+    """Pages Jaunes Canada is not wired: a Québec search runs on Maps, OSM and Facebook only."""
+    service = _service_with_all_sources()
+    candidates, _ = service._ordered_candidates(None, "CA")
+    names = [scraper.source.value for scraper in candidates]
+    assert "pagesjaunes" not in names
+    assert "brightdata" not in names

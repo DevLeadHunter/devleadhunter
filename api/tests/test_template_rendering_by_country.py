@@ -14,6 +14,11 @@ def _map(country: str | None) -> dict[str, str]:
     return variables
 
 
+def test_an_email_template_renders_in_quebec_words_for_a_quebec_prospect() -> None:
+    rendered = EmailSendingService(None).replace_variables("{entreprise} : votre devis par e-mail", _map("CA"))
+    assert rendered == "Paysagement Tremblay : votre soumission par courriel"
+
+
 def test_an_email_template_keeps_its_french_elsewhere_and_never_shows_the_country() -> None:
     template = "{entreprise} : votre devis par e-mail"
     assert EmailSendingService(None).replace_variables(template, _map("FR")) == (
@@ -23,6 +28,11 @@ def test_an_email_template_keeps_its_french_elsewhere_and_never_shows_the_countr
         "Paysagement Tremblay : votre devis par e-mail"
     )
     assert "CA" not in EmailSendingService(None).replace_variables("{entreprise}", _map("CA"))
+
+
+def test_an_sms_template_renders_in_quebec_words_for_a_quebec_prospect() -> None:
+    rendered = render_sms_template("Bonjour, votre devis : {lien_demo}", _map("CA"))
+    assert rendered == "Bonjour, votre soumission : demo.dibodev.fr/tremblay"
 
 
 def test_an_sms_template_keeps_its_french_elsewhere() -> None:

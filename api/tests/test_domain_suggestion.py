@@ -200,6 +200,11 @@ class TestSuggest:
         france = self._run_suggest(monkeypatch, availability={}, ai=[], country="FR")
         assert all(c.domain.endswith(".fr") for c in france.candidates)
 
+    def test_a_quebec_prospect_gets_a_dot_ca(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        canada = self._run_suggest(monkeypatch, availability={"chezmimon.ca": True}, ai=[], country="CA")
+        assert canada.suggested == "chezmimon.ca"
+        assert all(c.domain.endswith(".ca") for c in canada.candidates)
+
     def test_prefers_the_first_available_candidate(self, monkeypatch: pytest.MonkeyPatch) -> None:
         result = self._run_suggest(
             monkeypatch,

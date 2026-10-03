@@ -26,6 +26,29 @@ def _site() -> dict:
     }
 
 
+def test_quebec_site_reads_quebec_words_and_phone() -> None:
+    site = apply_country_conventions(_site(), "CA")
+    assert site["phone"] == "514 555-0199"
+    assert site["subtitle"] == "Une soumission gratuite par courriel sous 48 h."
+    assert site["about"] == "Je réponds à chaque demande de soumission depuis mon cellulaire."
+    assert site["ctaQuoteLabel"] == "Demander une soumission"
+    assert site["services"] == [{"title": "Soumission détaillée", "description": "Chiffrage précis par courriel."}]
+    assert site["faq"] == [
+        {"question": "La soumission est-elle gratuite ?", "answer": "Oui, la soumission est gratuite."}
+    ]
+    assert site["gallery"] == [{"url": "https://img.example/g1.jpg", "alt": "Soumission en cours"}]
+
+
+def test_identity_contact_media_and_real_reviews_stay_verbatim() -> None:
+    site = apply_country_conventions(_site(), "CA")
+    assert site["businessName"] == "Devis Express Inc."
+    assert site["email"] == "devis@devis-express.ca"
+    assert site["address"] == "123, rue Sainte-Catherine Ouest"
+    assert site["heroImage"] == "https://img.example/devis-hero.jpg"
+    assert site["reviews"] == [{"author": "Marie", "text": "Devis rapide, super portable.", "rating": 5}]
+    assert site["social"] == [{"network": "facebook", "url": "https://facebook.com/devis-express"}]
+
+
 def test_a_french_site_only_gets_its_phone_shaped() -> None:
     original = _site()
     original["phone"] = "+33612345678"
@@ -33,3 +56,13 @@ def test_a_french_site_only_gets_its_phone_shaped() -> None:
     assert site["phone"] == "06 12 34 56 78"
     assert site["subtitle"] == original["subtitle"]
     assert site["services"] == original["services"]
+
+
+def test_the_input_content_is_never_mutated() -> None:
+    """Templates share their editorial defaults: localizing one site must not rewrite the next one."""
+    original = _site()
+    nested_before = original["services"][0]["title"]
+    apply_country_conventions(original, "CA")
+    assert original["phone"] == "5145550199"
+    assert original["subtitle"] == "Un devis gratuit par e-mail sous 48 h."
+    assert original["services"][0]["title"] == nested_before == "Devis détaillé"
