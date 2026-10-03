@@ -162,6 +162,37 @@ def format_phone_for_display(raw: str | None, *, country: str = "FR") -> str:
     return raw.strip()
 
 
+def format_phone_for_reader(raw: str | None, *, number_country: str, reader_country: str | None) -> str:
+    """The number written so a reader of ``reader_country`` can dial it: national at home, international abroad.
+
+    A French « 06 12 34 56 78 » stays so for a French reader and reads « +33 6 12 34 56 78 » in Switzerland,
+    where a number starting with 06 does not exist.
+
+    Args:
+        raw: The phone number as stored.
+        number_country: ISO code of the country the number belongs to, deciding how a national form is read.
+        reader_country: ISO code of the reader's country (``None`` reads as France).
+
+    Returns:
+        The number to print, empty for an empty input, the input trimmed when it has no known shape.
+    """
+    if not raw or not raw.strip():
+        return ""
+    e164 = to_e164(raw, country=number_country)
+    if e164 is None:
+        return raw.strip()
+    reader = CountryProfiles.get(reader_country)
+    if e164.startswith(reader.dial_code):
+        return format_phone_for_display(e164, country=reader.code)
+    if e164.startswith("+33"):
+        subscriber = e164[3:]
+        pairs = " ".join(subscriber[index : index + 2] for index in range(1, len(subscriber), 2))
+        return f"+33 {subscriber[0]} {pairs}"
+    if e164.startswith("+1"):
+        return f"+1 {format_phone_for_display(e164, country='CA')}"
+    return e164
+
+
 def to_e164_mobile(raw: str | None, *, country: str = "FR") -> str | None:
     """E.164 form of a number able to receive an SMS, French or not.
 

@@ -18,10 +18,11 @@ from models.prospect_db import ProspectDB
 from models.user import User
 from services.ai_assistant.assistant_service import ai_assistant_service
 from services.assistant_pricing_service import AssistantPricingService
-from services.country_profiles import CountryProfile, CountryProfiles
+from services.country_profiles import DEFAULT_COUNTRY_CODE, CountryProfile, CountryProfiles
 from services.decision_maker.greeting import build_greeting
 from services.email_variables import EmailVariables
 from services.regional_lexicon import RegionalLexicon
+from services.sms.phone_normalizer import format_phone_for_reader
 from services.tracking_links import sms_tracked_link
 from services.trade_normalizer import TradeNormalizer
 
@@ -63,17 +64,23 @@ class SmsVariables:
         return cleaned
 
     @staticmethod
-    def phone_for(contact_phone: str | None) -> str:
-        """The sender's public phone as written in his settings, the number a prospect answers to.
+    def phone_for(contact_phone: str | None, reader_country: str | None = DEFAULT_COUNTRY_CODE) -> str:
+        """The sender's public phone as the prospect must dial it, the number he answers to.
+
+        The sender's number is read as a French one unless written in international form; a prospect
+        abroad gets it in international form (« +33 6 12 34 56 78 »), a French one in national form.
 
         Args:
             contact_phone: The sending user's ``contact_phone``, or ``None``.
+            reader_country: ISO code of the prospect's country.
 
         Returns:
-            The phone, trimmed; empty when the user has not set one (a template using
+            The phone to print; empty when the user has not set one (a template using
             ``{telephone}`` must not be sent then).
         """
-        return (contact_phone or "").strip()
+        return format_phone_for_reader(
+            contact_phone, number_country=DEFAULT_COUNTRY_CODE, reader_country=reader_country
+        )
 
     @staticmethod
     def signature_for(account_name: str | None) -> str:
@@ -140,7 +147,7 @@ class SmsVariables:
             cls.PRICE: country.format_price(sale_price_cents) if sale_price_cents is not None else "",
             # Resolved from user_id (the assistant monthly price is per-user, like {prix}).
             cls.PRICE_ASSISTANT: country.format_price(AssistantPricingService.monthly_price_cents(db, user_id)),
-            cls.PHONE: cls.phone_for(user.contact_phone if user else None),
+            cls.PHONE: cls.phone_for(user.contact_phone if user else None, country.code),
             RegionalLexicon.COUNTRY_KEY: country.code,
             cls.SIGNATURE: cls.signature_for(user.name if user else None),
         }
