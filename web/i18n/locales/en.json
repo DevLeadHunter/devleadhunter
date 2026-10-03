@@ -416,11 +416,11 @@
     "pricing": {
       "eyebrow": "Pricing",
       "title": "A small subscription. Every month.",
-      "subtitle": "The merchant pays a light subscription, the first month is free. You set the price — and collection is automatic.",
+      "subtitle": "The merchant pays a light subscription, the first month is free, and collection is automatic.",
       "roiNote": "A website sells once. A loyalty card sells every single month.",
       "cta": "Start for free",
       "stat1Value": "€19",
-      "stat1Label": "per month per shop — you set the price",
+      "stat1Label": "per month per shop",
       "stat2Value": "1st month",
       "stat2Label": "free, no commitment",
       "stat3Value": "€0",
@@ -442,7 +442,7 @@
       "q5": "Are the notifications GDPR compliant?",
       "a5": "Yes. Consent is collected when the customer adds their card, and removing the card from their Wallet stops everything — no superfluous data is collected.",
       "q6": "How much does it cost, and who pays what?",
-      "a6": "The merchant pays a monthly subscription at the price you set (€19 recommended), first month free, no commitment. Collection is automatic via Stripe."
+      "a6": "The merchant pays €19 a month, first month free, no commitment. Collection is automatic via Stripe."
     },
     "finalCta": {
       "title": "The shops in your town are just waiting for their card.",

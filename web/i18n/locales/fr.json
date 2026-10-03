@@ -416,11 +416,11 @@
     "pricing": {
       "eyebrow": "Tarifs",
       "title": "Un petit abonnement. Chaque mois.",
-      "subtitle": "Le commerçant paie un abonnement léger, le premier mois est offert. Vous fixez le prix — et l'encaissement est automatique.",
+      "subtitle": "Le commerçant paie un abonnement léger, le premier mois est offert, et l'encaissement est automatique.",
       "roiNote": "Un site web se vend une fois. Une carte de fidélité se vend tous les mois.",
       "cta": "Commencer gratuitement",
       "stat1Value": "19 €",
-      "stat1Label": "par mois et par commerce — prix libre",
+      "stat1Label": "par mois et par commerce",
       "stat2Value": "1ᵉʳ mois",
       "stat2Label": "offert, sans engagement",
       "stat3Value": "0 €",
@@ -442,7 +442,7 @@
       "q5": "Les notifications sont-elles conformes au RGPD ?",
       "a5": "Oui. Le consentement est recueilli au moment où le client ajoute sa carte, et supprimer la carte de son Wallet arrête tout — aucune donnée superflue n'est collectée.",
       "q6": "Combien ça coûte, et qui paie quoi ?",
-      "a6": "Le commerçant paie un abonnement mensuel dont vous fixez le prix (19 € conseillé), premier mois offert, sans engagement. L'encaissement est automatique via Stripe."
+      "a6": "Le commerçant paie un abonnement de 19 € par mois, premier mois offert, sans engagement. L'encaissement est automatique via Stripe."
     },
     "finalCta": {
       "title": "Les commerçants de votre ville n'attendent que leur carte.",
