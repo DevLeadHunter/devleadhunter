@@ -1,4 +1,5 @@
 import type { PendingReply } from '~/types'
+import type { SmsSegmentCount, SmsSegmentCountPayload } from '~/types/SmsSegmentCount'
 import { ApiClient } from './api'
 
 /** The user's SMS sender configuration (a configured sender = channel on) + automation opt-ins. */
@@ -34,10 +35,14 @@ export type SmsRelanceCandidate = {
   emailed_at: string
 }
 
-/** Outcome of a single relance send. */
+/** Outcome of a single send, with what the SMS cost when it left. */
 export type SmsSendResult = {
   sent: boolean
   reason: string | null
+  segments?: number | null
+  price_cents?: number | null
+  provider_segments?: number | null
+  provider_text?: string | null
 }
 
 /** Outcome of a bulk relance send. */
@@ -246,6 +251,15 @@ export class SmsService {
    */
   static async sendManual(payload: SmsManualSendPayload): Promise<SmsSendResult> {
     return ApiClient.post<SmsSendResult>('/api/v1/sms/send', payload)
+  }
+
+  /**
+   * Count the segments a typed message bills, the opt-out mention of its recipient's country included.
+   * @param payload - The message as typed, and its recipient prospect when there is one.
+   * @returns The characters, the billed segments and the most a prospecting SMS may bill.
+   */
+  static async countSegments(payload: SmsSegmentCountPayload): Promise<SmsSegmentCount> {
+    return ApiClient.post<SmsSegmentCount>('/api/v1/sms/segment-count', payload)
   }
 
   /**
