@@ -118,11 +118,32 @@ def test_a_french_delivered_site_names_its_publisher_its_director_and_its_host()
     ]
     assert _block(legal, "Éditeur du site").lines[3].href == "tel:+33611223344"
     host = _block(legal, "Hébergeur")
-    assert _rendered(host)[:3] == [
+    assert host.intro == "Le site est hébergé par\u00a0:"
+    assert _rendered(host)[:5] == [
         "Vercel Inc.",
-        "440 N Barranca Avenue #4133, Covina, CA 91723, États-Unis",
+        "440 N Barranca Avenue #4133",
+        "Covina, CA 91723",
+        "États-Unis",
         "Téléphone : +1 559 288 7060",
     ]
+    assert [line.paragraph for line in host.lines] == [0, 0, 0, 0, 1, 1]
+
+
+def test_each_section_is_its_own_page_with_a_sentence_under_its_title() -> None:
+    notice = _notice("FR", BusinessLegalIdentity(name="Durand Plomberie"), is_demo=False)
+
+    legal, privacy = notice.sections
+    assert [(section.page, section.title) for section in notice.sections] == [
+        ("legal", "Mentions légales"),
+        ("privacy", "Politique de confidentialité"),
+    ]
+    assert [link.page for link in notice.links] == ["legal", "privacy"]
+    assert legal.intro == "Les informations légales du site de Durand Plomberie\u00a0: son éditeur et son hébergeur."
+    assert (
+        privacy.intro
+        == "Comment le site de Durand Plomberie traite vos données personnelles, et quels sont vos droits."
+    )
+    assert _block(legal, "Éditeur du site").intro == "Le site est édité par\u00a0:"
 
 
 def test_a_french_delivered_site_privacy_policy_tells_what_the_form_does_and_measures_nothing() -> None:
@@ -169,9 +190,17 @@ def test_a_french_demo_is_published_by_the_user_who_prepared_it_and_its_visits_a
     assert notice.demo_notice == (
         "Ce site est une démonstration préparée par Atelier Web Durand pour Barbier du Port. Tant que Barbier du "
         "Port ne l'a pas mis en ligne à son nom, Atelier Web Durand en est l'éditeur et le responsable des données "
-        "décrites ci-dessous."
+        "décrites ci\u2011dessous."
     )
     assert _headings(legal) == ["Éditeur de la démonstration", "Entreprise présentée", "Hébergeur"]
+    assert legal.intro == (
+        "Les informations légales de ce site de démonstration\u00a0: son éditeur, l'entreprise qu'il présente et son "
+        "hébergeur."
+    )
+    publisher_block = _block(legal, "Éditeur de la démonstration")
+    assert publisher_block.intro == "Ce site de démonstration est édité par\u00a0:"
+    assert [line.paragraph for line in publisher_block.lines] == [0, 0, 0, 0, 1, 1, 1, 2, 2]
+    assert _block(legal, "Entreprise présentée").intro == "La démonstration présente l'entreprise\u00a0:"
     assert _rendered(_block(legal, "Éditeur de la démonstration")) == [
         "Atelier Web Durand",
         "Alexis Durand",
@@ -201,7 +230,7 @@ def test_a_french_demo_is_published_by_the_user_who_prepared_it_and_its_visits_a
     assert "Ce site ne mesure pas son audience" not in text
 
 
-def test_a_swiss_delivered_site_has_an_impressum_and_follows_the_swiss_act() -> None:
+def test_a_swiss_delivered_site_has_legal_mentions_and_follows_the_swiss_act() -> None:
     notice = _notice(
         "CH",
         BusinessLegalIdentity(
@@ -219,8 +248,9 @@ def test_a_swiss_delivered_site_has_an_impressum_and_follows_the_swiss_act() -> 
     legal = _section(notice, 0)
     text = _all_text(notice)
     assert notice.locale == "fr-CH"
-    assert notice.page_title == "Impressum et protection des données"
-    assert [link.label for link in notice.links] == ["Impressum", "Protection des données"]
+    assert notice.page_title == "Mentions légales et protection des données"
+    assert [link.label for link in notice.links] == ["Mentions légales", "Protection des données"]
+    assert legal.intro == "Les informations légales du site de Garage du Rhône Sàrl."
     assert _headings(legal) == ["Éditeur du site"]
     assert "IDE : CHE-123.456.789" in _rendered(_block(legal, "Éditeur du site"))
     assert "TVA : CHE-123.456.789 TVA" in _rendered(_block(legal, "Éditeur du site"))
@@ -558,7 +588,7 @@ def test_the_public_demo_payload_carries_the_legal_block(db: Session) -> None:
 
     assert payload.legal is not None
     assert payload.legal.locale == "fr-CH"
-    assert [link.label for link in payload.legal.links] == ["Impressum", "Protection des données"]
+    assert [link.label for link in payload.legal.links] == ["Mentions légales", "Protection des données"]
     assert payload.legal.demo_notice is not None
     assert "legal" not in (payload.content_json or {})
     assert "legal" not in site.content_json

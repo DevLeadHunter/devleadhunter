@@ -29,6 +29,7 @@ DEFAULT_COUNTRY_CODE: str = "FR"
 # A converted price rounds to the ten from 200 up (« ≈ 470 CHF »), to the unit below: 79 € reads « ≈ 74 CHF ».
 _CONVERTED_PRICE_STEP: int = 10
 _CONVERTED_PRICE_STEP_FROM: int = 200
+_APPROXIMATION_SIGN_PREFIX: str = "≈ "
 # A civic number alone in its segment, as Canada Post writes it before the street (« 123, rue X »).
 _CIVIC_NUMBER_SEGMENT: re.Pattern[str] = re.compile(r"\d+[A-Za-z]?(?:-\d+[A-Za-z]?)?")
 
@@ -186,6 +187,20 @@ class CountryProfile:
         rounded = int(round(converted / step) * step)
         return self.price_format.format(amount=rounded)
 
+    def format_price_without_approximation(self, cents: int) -> str:
+        """Render a euro sale price as a plain amount, the converted one without its « ≈ » (« 470 CHF »).
+
+        For a price shown alone, where « ≈ » would read as a price that can still move: the demo's
+        banner card. An email keeps ``format_price``, next to the euro amount.
+
+        Args:
+            cents: The sale price in euro cents.
+
+        Returns:
+            The price string.
+        """
+        return self.format_price(cents).removeprefix(_APPROXIMATION_SIGN_PREFIX)
+
 
 class CountryProfiles:
     """Registry of the declared countries, keyed by ISO code."""
@@ -251,9 +266,9 @@ class CountryProfiles:
             domain_tlds=(".ch",),
             site_legal=SiteLegalFacts(
                 locale="fr-CH",
-                page_title="Impressum et protection des données",
-                legal_notice_title="Impressum",
-                legal_notice_link_label="Impressum",
+                page_title="Mentions légales et protection des données",
+                legal_notice_title="Mentions légales",
+                legal_notice_link_label="Mentions légales",
                 privacy_notice_title="Protection des données",
                 privacy_link_label="Protection des données",
                 publisher_heading="Éditeur du site",

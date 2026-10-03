@@ -1,7 +1,7 @@
 import type { SiteLegalNotice } from '~/types/SiteLegalNotice'
+import type { SiteLegalPagePaths } from '~/types/SiteLegalPage'
 
-/** `legalPagePath` already carries the demo's query: each link appends its section anchor to it. */
 export type SiteLegalFooterProps = {
   legalNotice: SiteLegalNotice
-  legalPagePath: string
+  pagePaths: SiteLegalPagePaths
 }

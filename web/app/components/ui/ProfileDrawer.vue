@@ -43,6 +43,20 @@
 
         <form id="profile-form" class="flex-1 space-y-4 overflow-y-auto px-5 py-4" @submit.prevent="handleSave">
           <div>
+            <label class="text-muted mb-1.5 block text-xs font-medium" for="profile-siret">
+              SIRET <span class="text-[var(--app-ink-soft)]">(facultatif)</span>
+            </label>
+            <UiTaxIdLookupInput
+              v-model="form.siret"
+              input-id="profile-siret"
+              placeholder="Ex : 988 307 906 00020"
+              :accepts-siren="false"
+              hint="En saisissant votre SIRET, les champs vides du profil se remplissent automatiquement. Il s'affiche dans les mentions légales de vos démos."
+              @prefill="fillEmptyFieldsFromRegistry"
+            />
+          </div>
+
+          <div>
             <span class="text-muted mb-1.5 block text-xs font-medium">
               Photo de profil <span class="text-[var(--app-ink-soft)]">(facultatif)</span>
             </span>
@@ -206,26 +220,6 @@
               pour écrire à vos prospects québécois.
             </p>
           </div>
-
-          <div>
-            <label class="text-muted mb-1.5 block text-xs font-medium" for="profile-siret">
-              SIRET <span class="text-[var(--app-ink-soft)]">(facultatif)</span>
-            </label>
-            <input
-              id="profile-siret"
-              v-model="form.siret"
-              type="text"
-              inputmode="numeric"
-              autocomplete="off"
-              class="input-field"
-              :class="{ 'border-[var(--app-red)]': siretErrorMessage }"
-              placeholder="Ex : 988 307 906 00020"
-            />
-            <p v-if="siretErrorMessage" class="mt-1.5 text-xs text-[var(--app-red)]">{{ siretErrorMessage }}</p>
-            <p v-else class="text-muted mt-1.5 text-xs">
-              Affiché dans les mentions légales de vos sites de démonstration, comme l'exige la loi.
-            </p>
-          </div>
         </form>
 
         <div class="flex gap-2 border-t border-[var(--app-line)] px-5 py-4">
@@ -236,7 +230,7 @@
             type="submit"
             form="profile-form"
             class="btn-primary flex-1 disabled:cursor-not-allowed disabled:opacity-50"
-            :disabled="isSaving || siretErrorMessage !== null"
+            :disabled="isSaving || !isSiretValidOrEmpty"
           >
             <UIcon v-if="isSaving" name="i-lucide-loader-circle" class="mr-1.5 h-4 w-4 animate-spin" />
             {{ isSaving ? 'Enregistrement…' : 'Enregistrer' }}
@@ -249,6 +243,7 @@
 
 <script lang="ts" setup>
 import type { UseProfilePhotoReturn, UseToastReturn } from '~/types/Composables'
+import type { CompanyBillingPrefill } from '~/types/CompanyRegistryLookup'
 import type { ProfileForm, UiProfileDrawerEmits } from '~/types/UiProfileDrawer'
 import type { ComputedRef, EmitFn, Ref } from 'vue'
 import type { UiDrawerProps } from '~/types/UiDrawer'
@@ -257,12 +252,9 @@ import { ProfilePhotoService } from '~/services/profilePhotoService'
 import { useUserStore } from '~/stores/user'
 import { useProfilePhoto } from '~/composables/useProfilePhoto'
 import { useToast } from '~/composables/useToast'
-import {
-  SIRET_DIGIT_COUNT,
-  formatTaxIdForDisplay,
-  hasValidTaxIdChecksum,
-  normalizeTaxIdDigits,
-} from '~/utils/taxIdUtils'
+import { SIRET_DIGIT_COUNT, hasValidTaxIdChecksum, normalizeTaxIdDigits } from '~/utils/taxIdUtils'
+
+const REGISTRY_ADDRESS_COUNTRY: string = 'France'
 
 /** User profile and password drawer. */
 const props: UiDrawerProps = defineProps({
@@ -316,13 +308,26 @@ const userInitials: ComputedRef<string> = computed((): string => {
   return name.substring(0, 2).toUpperCase()
 })
 
-const siretErrorMessage: ComputedRef<string | null> = computed((): string | null => {
+const isSiretValidOrEmpty: ComputedRef<boolean> = computed((): boolean => {
   const siretDigits: string = normalizeTaxIdDigits(form.value.siret)
-  if (siretDigits.length === 0) return null
-  if (siretDigits.length !== SIRET_DIGIT_COUNT) return 'Un SIRET contient 14 chiffres.'
-  if (!hasValidTaxIdChecksum(siretDigits)) return 'Numéro SIRET invalide : vérifiez les chiffres.'
-  return null
+  return siretDigits.length === 0 || (siretDigits.length === SIRET_DIGIT_COUNT && hasValidTaxIdChecksum(siretDigits))
 })
+
+/**
+ * Fill the profile fields still empty with the company found for the typed SIRET, never overwriting what is written.
+ * @param prefill - The company returned by the registry of French companies.
+ */
+function fillEmptyFieldsFromRegistry(prefill: CompanyBillingPrefill): void {
+  if (!form.value.company_name.trim()) {
+    form.value.company_name = prefill.name
+  }
+  if (!form.value.postal_address.trim()) {
+    const locality: string = `${prefill.zip_code} ${prefill.city}`.trim()
+    form.value.postal_address = [prefill.address, locality, REGISTRY_ADDRESS_COUNTRY]
+      .filter((addressLine: string): boolean => addressLine.length > 0)
+      .join('\n')
+  }
+}
 
 /**
  * Open the hidden photo file input.
@@ -375,7 +380,7 @@ async function removeProfilePhoto(): Promise<void> {
  * @returns A promise that resolves once the profile is saved.
  */
 async function handleSave(): Promise<void> {
-  if (siretErrorMessage.value !== null) return
+  if (!isSiretValidOrEmpty.value) return
   isSaving.value = true
   try {
     await userStore.updateProfile({
@@ -410,7 +415,7 @@ watch(
         contact_phone: userStore.user?.contact_phone ?? '',
         contact_email: userStore.user?.contact_email ?? '',
         postal_address: userStore.user?.postal_address ?? '',
-        siret: formatTaxIdForDisplay(userStore.user?.siret ?? ''),
+        siret: userStore.user?.siret ?? '',
       }
       ensureProfilePhotoLoaded()
     }

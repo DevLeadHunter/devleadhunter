@@ -1,5 +1,15 @@
 @import 'tailwindcss';
 
+/* Font and palette of the generated sites' legal pages, taken from dibodev.fr. */
+@theme {
+  --font-legal: 'Rubik', ui-sans-serif, system-ui, sans-serif;
+  --color-legal-ink: #141414;
+  --color-legal-ink-muted: #4b4b47;
+  --color-legal-ink-soft: #66665f;
+  --color-legal-band: #f6f6f3;
+  --color-legal-line: rgb(20 20 20 / 0.12);
+}
+
 @layer base {
   html {
     scroll-behavior: smooth;

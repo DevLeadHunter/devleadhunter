@@ -18,7 +18,7 @@ _NON_DIGIT = re.compile(r"\D")
 
 
 class LegalNoticeBuilder:
-    """Builds the « Mentions légales » section of a site (« Impressum », « Renseignements sur l'entreprise »).
+    """Builds the « Mentions légales » page of a site (« Renseignements sur l'entreprise » in Québec).
 
     A delivered site is published by the business: its identity comes first, closed by the publication
     director where the country's law asks for one, then the host. A demo is published by the
@@ -43,45 +43,84 @@ class LegalNoticeBuilder:
             publisher_rules = CountryProfiles.get(DEMO_PUBLISHER_COUNTRY_CODE).site_legal
             blocks = [
                 cls._demo_publisher_block(sources, lines, publisher_rules.is_publication_director_required),
-                cls._business_block(lines.localize("Entreprise présentée"), sources, lines, director=None),
+                cls._business_block(
+                    lines.localize("Entreprise présentée"),
+                    lines.localize("La démonstration présente l'entreprise\u00a0:"),
+                    sources,
+                    lines,
+                    director=None,
+                ),
             ]
             is_host_disclosure_required = publisher_rules.is_host_disclosure_required
         else:
             director = sources.business.publication_director if facts.is_publication_director_required else None
-            blocks = [cls._business_block(facts.publisher_heading, sources, lines, director=director)]
+            blocks = [
+                cls._business_block(
+                    facts.publisher_heading,
+                    lines.localize("Le site est édité par\u00a0:"),
+                    sources,
+                    lines,
+                    director=director,
+                )
+            ]
             is_host_disclosure_required = facts.is_host_disclosure_required
         if is_host_disclosure_required:
             blocks.append(cls._host_block(lines))
         return SiteLegalSection(
+            page="legal",
             anchor=SiteLegalLines.anchor(facts.legal_notice_title),
             title=facts.legal_notice_title,
+            intro=cls._page_intro(sources, lines, is_host_disclosure_required),
             blocks=[block for block in blocks if block.lines],
         )
 
+    @staticmethod
+    def _page_intro(sources: SiteLegalSources, lines: SiteLegalLines, is_host_disclosure_required: bool) -> str:
+        """The sentence under the page title, naming what the page tells."""
+        if sources.is_demo:
+            return lines.localize(
+                "Les informations légales de ce site de démonstration\u00a0: son éditeur, l'entreprise qu'il présente "
+                "et son hébergeur."
+            )
+        if is_host_disclosure_required:
+            return lines.localize(
+                "Les informations légales du site de {business}\u00a0: son éditeur et son hébergeur.",
+                business=sources.business.name,
+            )
+        return lines.localize("Les informations légales du site de {business}.", business=sources.business.name)
+
     @classmethod
     def _business_block(
-        cls, heading: str, sources: SiteLegalSources, lines: SiteLegalLines, *, director: str | None
+        cls, heading: str, intro: str, sources: SiteLegalSources, lines: SiteLegalLines, *, director: str | None
     ) -> SiteLegalBlock:
-        """The business's identity: name, address, contacts, identifiers, licence, then its director if any."""
+        """The business's identity: name and address, contacts, then identifiers, licence and director."""
         business = sources.business
         country = sources.country
         license_label = business.professional_license_label or "Licence professionnelle"
         return SiteLegalBlock(
             heading=heading,
             kind="identity",
-            lines=[
-                *lines.plain(business.name),
-                *lines.value("Nom commercial", business.trade_name),
-                *lines.plain(business.address),
-                *lines.phone(business.phone, country.code),
-                *lines.email(business.email),
-                *lines.value(
-                    cls._legal_id_label(country, business.legal_id), cls._shown_legal_id(country, business.legal_id)
-                ),
-                *lines.value(country.site_legal.vat_number_label, business.vat_number),
-                *lines.value(license_label, business.professional_license_number),
-                *lines.value("Directeur de la publication", director),
-            ],
+            intro=intro,
+            lines=SiteLegalLines.paragraphs(
+                [
+                    *lines.plain(business.name),
+                    *lines.value("Nom commercial", business.trade_name),
+                    *lines.plain(business.address),
+                ],
+                [
+                    *lines.phone(business.phone, country.code),
+                    *lines.email(business.email),
+                ],
+                [
+                    *lines.value(
+                        cls._legal_id_label(country, business.legal_id),
+                        cls._shown_legal_id(country, business.legal_id),
+                    ),
+                    *lines.value(country.site_legal.vat_number_label, business.vat_number),
+                    *lines.value(license_label, business.professional_license_number),
+                    *lines.value("Directeur de la publication", director),
+                ],
+            ),
         )
 
     @classmethod
@@ -97,16 +136,23 @@ class LegalNoticeBuilder:
         return SiteLegalBlock(
             heading=heading,
             kind="identity",
-            lines=[
-                *lines.plain(publisher.company_name),
-                *lines.plain(publisher.person_name),
-                *lines.address(publisher.postal_address),
-                *lines.phone(publisher.phone, DEMO_PUBLISHER_COUNTRY_CODE),
-                *lines.email(publisher.email),
-                *lines.website(publisher.website_url),
-                *lines.value("SIRET", cls._grouped_french_id(publisher.siret)),
-                *lines.value("Directeur de la publication", director),
-            ],
+            intro=lines.localize("Ce site de démonstration est édité par\u00a0:"),
+            lines=SiteLegalLines.paragraphs(
+                [
+                    *lines.plain(publisher.company_name),
+                    *lines.plain(publisher.person_name),
+                    *lines.address(publisher.postal_address),
+                ],
+                [
+                    *lines.phone(publisher.phone, DEMO_PUBLISHER_COUNTRY_CODE),
+                    *lines.email(publisher.email),
+                    *lines.website(publisher.website_url),
+                ],
+                [
+                    *lines.value("SIRET", cls._grouped_french_id(publisher.siret)),
+                    *lines.value("Directeur de la publication", director),
+                ],
+            ),
         )
 
     @staticmethod
@@ -116,12 +162,14 @@ class LegalNoticeBuilder:
         return SiteLegalBlock(
             heading=lines.localize("Hébergeur"),
             kind="identity",
-            lines=[
-                SiteLegalLine(text=host.name),
-                SiteLegalLine(text=host.address),
-                SiteLegalLine(label=lines.localize("Téléphone"), text=host.phone, href=f"tel:{host.phone_e164}"),
-                *lines.website(host.website_url),
-            ],
+            intro=lines.localize("Le site est hébergé par\u00a0:"),
+            lines=SiteLegalLines.paragraphs(
+                [SiteLegalLine(text=host.name), *lines.address(host.address)],
+                [
+                    SiteLegalLine(label=lines.localize("Téléphone"), text=host.phone, href=f"tel:{host.phone_e164}"),
+                    *lines.website(host.website_url),
+                ],
+            ),
         )
 
     @staticmethod
