@@ -10,20 +10,11 @@
       </span>
     </header>
 
-    <ul
-      v-if="props.todos.length > 0"
-      class="mt-3 grid border-t border-[var(--app-line-soft)]"
-      :class="{ '@4xl:grid-cols-2': props.todos.length > 1 }"
-    >
+    <ul v-if="props.todos.length > 0" class="mt-3">
       <li
-        v-for="(todo, todoIndex) in visibleTodos"
+        v-for="todo in visibleTodos"
         :key="todo.key"
-        class="grid grid-cols-[auto_minmax(0,1fr)] items-start gap-x-3.5 border-[var(--app-line-soft)] px-[18px] py-3.5 transition-colors hover:bg-[var(--app-surface-2)]/40"
-        :class="{
-          'border-t': todoIndex > 0,
-          '@4xl:border-t-0': todoIndex === 1,
-          '@4xl:border-l': todoIndex % 2 === 1,
-        }"
+        class="grid grid-cols-[auto_minmax(0,1fr)] items-start gap-x-3.5 border-t border-[var(--app-line-soft)] px-[18px] py-3.5 transition-colors hover:bg-[var(--app-surface-2)]/40"
       >
         <UIcon :name="todo.icon" class="mt-0.5 h-[18px] w-[18px]" :class="TONE_CLASSES[todo.tone]" />
         <div class="min-w-0">
@@ -87,7 +78,7 @@ const props: CampaignResultsTodoCardProps = defineProps({
 
 const emit: EmitFn<CampaignResultsTodoCardEmits> = defineEmits<CampaignResultsTodoCardEmits>()
 
-const TODOS_SHOWN_FOLDED: number = 6
+const TODOS_SHOWN_FOLDED: number = 5
 
 const TONE_CLASSES: Record<CampaignResultsTodoTone, string> = {
   green: 'text-[var(--app-green)]',
