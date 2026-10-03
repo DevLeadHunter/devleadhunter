@@ -8,11 +8,12 @@ Les maquettes HTML du produit, gardées dans le dépôt pour qu'aucune ne se per
 
 Ticket Asana « [IA Code] Présence humaine sur la démo ». Trois briques pour franchir le mur clic → contact de la vague 3 (environ 95 visites humaines, un seul message laissé).
 
-| Fichier | Ce qu'il montre | État au 03/10 |
+| Fichier | Ce qu'il montre | État |
 |---|---|---|
 | `human-presence/banner-card.html` | La carte « Qui est derrière ce site » dans le bandeau démo : variantes C, A, B ; pastille, bureau, mobile ; site clair ou sombre | **Codée et en ligne le 03/10** (variante C, bouton « Me répondre », prix et date de retrait) |
 | `human-presence/banner-receptionist.html` | La réceptionniste Léa dans le bandeau : onglet dans la carte (position 1) ou panneau séparé (position 2) | En attente |
 | `human-presence/email-frank.html` | L'email franc en HTML : référence, variante (a) texte + signature, variante (b) avec une carte « Votre site, déjà en ligne » ; signature réelle ou allégée | En attente |
+| `human-presence/email-frank-finalistes.html` | Les finalistes du mail franc (04/10) : le mail d'aujourd'hui et quatre modèles (lettre signée, lien en évidence, fiche du site, fiche avec photo), sur quatre textes de la bibliothèque, en clair, en sombre et images bloquées, code affiché | En attente, avis donné : modèle B (lettre signée, lien en évidence) |
 | `human-presence/email-frank-declinaisons.html` | Cinq déclinaisons du mail franc dans le gabarit de dibodev.fr, compatibles avec les modèles actuels (habillage, encadré du site, récapitulatif, photo du commerce, en-tête personnel) ; ordinateur et téléphone | En attente |
 | `human-presence/email-frank-dibodev.html` | Variante (b) refaite le 03/10 au soir : le mail franc dans la mise en page de l'accusé de réception de dibodev.fr (carte blanche, bouton violet, trois étapes, signature) | En attente |
 | `human-presence/NOTE.md` | Le pourquoi, les huit choix à trancher, l'avis donné sur chacun, l'effort et le plan d'implémentation | À jour |
