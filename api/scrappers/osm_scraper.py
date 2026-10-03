@@ -258,6 +258,7 @@ class OSMScraper(BaseScraper):
         city_search: str,
         *,
         only_without_website: bool = True,
+        country: str = "FR",
     ) -> ProspectCreate | None:
         """
         Extract prospect details from OSM business data.
@@ -265,6 +266,7 @@ class OSMScraper(BaseScraper):
         Args:
             business: Business data from OSM/Overpass
             city_search: City searched for
+            country: Search country, in which a missing email is searched
 
         Returns:
             ProspectCreate object or None if extraction fails
@@ -323,7 +325,7 @@ class OSMScraper(BaseScraper):
             if not email:
                 try:
                     email = await email_scraper.find_email(
-                        name, city, website=website if website_status is WebsiteStatus.LIVE else None
+                        name, city, website=website if website_status is WebsiteStatus.LIVE else None, country=country
                     )
                     if email:
                         logger.info(f"Found email for {name}: {email}")
@@ -413,6 +415,7 @@ class OSMScraper(BaseScraper):
                         business,
                         city,
                         only_without_website=only_without_website,
+                        country=country,
                     )
                     if prospect:
                         prospects.append(prospect)

@@ -61,13 +61,20 @@ fiscal, motif et exemple de code postal, monnaie) — aucun fait pays dupliqué 
    motif du profil (mots pays « Suisse / Belgique / Québec, QC, Canada » compris) ; Nominatim
    `countrycodes` suit le pays jusque dans l'enrichissement OSM.
 
+## ✅ Fait (2026-10-03) — sourcing hors de France
+
+- **Téléphone Facebook** : lu dans la numérotation du pays du prospect (`+41`, `+32`, `+352` et
+  formes nationales), écrit dans ses blocs (« 079 123 45 67 », « 0470 12 34 56 ») ; le pays
+  arrive jusqu'au parseur par le sidecar d'enrichissement.
+- **`email_scraper`** : toutes les recherches Google en `gl` du pays et `hl=fr` ; le téléphone est
+  cherché sous la forme nationale de son pays.
+- **Scoring email** : annuaires CH, BE, LU et CA (sous-domaines compris), domaines publics
+  (`.admin.ch`, cantons, `.fgov.be`, `.belgium.be`, `.public.lu`, `.gc.ca`, `.gouv.qc.ca`, `ville.`)
+  et messageries grand public de ces pays reconnus.
+
 ## 🟠 Reste — dégrade la qualité CH/BE (non bloquant pour la vague email)
 
-- **Parseur téléphone FB** (`_FR_PHONE_RE`) : ignore `+41`/`+32` → prospect FB CH/BE sans tel
-  (le plan nord-américain est lu pour un prospect CA).
-- **`email_scraper`** : `gl=fr` en dur + stratégie « nom + téléphone » réservée aux numéros FR.
-- **Scoring email** : blocklist d'annuaires FR uniquement — ajouter local.ch, search.ch,
-  moneyhouse.ch, zefix.ch, goldenpages.be, kbopub… + « commune de » (équivalents mairie).
+- **Scoring email** : « commune de » (équivalents mairie) non reconnu.
 - **Autocomplete ville/adresse** (`geo.api.gouv.fr` / BAN) : aucune suggestion CH/BE (saisie
   libre possible — pénible, pas bloquant).
 - **Mentions légales décisionnaire** : tester `/impressum` (CH) et « éditeur responsable » (BE)

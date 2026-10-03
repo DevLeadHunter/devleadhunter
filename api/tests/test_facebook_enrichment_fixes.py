@@ -4,11 +4,13 @@ from types import SimpleNamespace
 
 from scrappers.enrichment_scraper import EnrichmentData
 from scrappers.facebook_enrichment_scraper import (
+    FacebookEnrichmentScraper,
     _clean_social_url,
     _parse_city_postal,
     _parse_phone,
     _website_belongs_to_business,
 )
+from services.sms.phone_normalizer import to_e164
 
 # Real "À propos" text captured from a public FB page (Coordonnées block order).
 _ABOUT_TEXT = """Food truck mexicain Tacos Maru
@@ -22,6 +24,15 @@ Mobile
 foodtruckmexicaintacosmaru@gmail.com
 E-mail
 Recommandé par 96 % (22 avis)"""
+
+_SWISS_ABOUT_TEXT = """Sanitaire Rochat
+À propos
+Coordonnées
+Lausanne, Suisse, 1004
+Adresse
++41 79 123 45 67
+Mobile
+Recommandé par 98 % (41 avis)"""
 
 
 class TestCleanSocialUrl:
@@ -85,6 +96,12 @@ class TestParseCityPostal:
         assert _parse_city_postal("Genève, Suisse, 1204", country="CH") == ("Genève", "1204")
         assert _parse_city_postal("Rue du Rhône 12, 1204 Genève", country="CH") == ("Genève", "1204")
 
+    def test_belgian_and_luxembourg_pages_read_four_digits(self) -> None:
+        assert _parse_city_postal("Liège, Belgique, 4000", country="BE") == ("Liège", "4000")
+        assert _parse_city_postal("Chaussée de Waterloo 1234, 1180 Uccle", country="BE") == ("Uccle", "1180")
+        assert _parse_city_postal("Rue de la Gare 12, L-1611 Luxembourg", country="LU") == ("Luxembourg", "1611")
+        assert _parse_city_postal("Esch-sur-Alzette, Luxembourg, 4011", country="LU") == ("Esch-sur-Alzette", "4011")
+
 
 class TestParsePhone:
     def test_coordonnees_block(self) -> None:
@@ -112,6 +129,41 @@ class TestParsePhone:
         # A ten-digit Québec number is never read as a French one, and vice versa.
         assert _parse_phone("Téléphone : 514 555-0199", country="FR") is None
         assert _parse_phone("Tél : 06 29 34 58 99", country="CA") is None
+
+    def test_swiss_page_reads_its_international_and_national_numbers(self) -> None:
+        assert _parse_phone("Coordonnées\n+41 79 123 45 67\nMobile", country="CH") == "079 123 45 67"
+        assert _parse_phone("Tél. 079/123 45 67", country="CH") == "079 123 45 67"
+        assert _parse_phone("Atelier : +41 (0)21 123 45 67", country="CH") == "021 123 45 67"
+        assert _parse_phone("+41 79 123 45 67", country="FR") is None
+
+    def test_a_swiss_079_is_a_swiss_mobile_never_a_false_french_one(self) -> None:
+        phone = _parse_phone("Contact : 0791234567", country="CH")
+        assert phone == "079 123 45 67"
+        assert to_e164(phone, country="CH") == "+41791234567"
+        assert _parse_phone("Tél : 06 29 34 58 99", country="CH") is None
+
+    def test_belgian_mobile_keeps_its_four_digit_prefix(self) -> None:
+        assert _parse_phone("Appelez-nous au 0470 12 34 56", country="BE") == "0470 12 34 56"
+        assert _parse_phone("GSM : 0470/12.34.56", country="BE") == "0470 12 34 56"
+        assert _parse_phone("+32 470 12 34 56", country="BE") == "0470 12 34 56"
+        assert _parse_phone("Bureau : 02 511 11 11", country="BE") == "02 511 11 11"
+
+    def test_luxembourg_page_reads_numbers_without_a_trunk_zero(self) -> None:
+        assert _parse_phone("Tél. +352 26 12 34 56", country="LU") == "26 12 34 56"
+        assert _parse_phone("Mobile 621 123 456", country="LU") == "621 123 456"
+        assert _parse_phone("1 234 567 J’aime", country="LU") is None
+
+
+class TestSwissFacebookPage:
+    """A Swiss page read end to end: city, postal code and phone in the prospect's country."""
+
+    def test_read_as_swiss_the_page_gives_its_city_postal_code_and_mobile(self) -> None:
+        data = FacebookEnrichmentScraper._build_from_raw({"about_text": _SWISS_ABOUT_TEXT}, "", country="CH")
+        assert (data.place_city, data.place_postal_code, data.phone) == ("Lausanne", "1004", "079 123 45 67")
+
+    def test_read_as_french_the_same_page_gives_nothing(self) -> None:
+        data = FacebookEnrichmentScraper._build_from_raw({"about_text": _SWISS_ABOUT_TEXT}, "")
+        assert (data.place_city, data.place_postal_code, data.phone) == (None, None, None)
 
 
 class TestFacebookScrapeEmptyGuard:

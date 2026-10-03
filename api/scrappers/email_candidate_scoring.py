@@ -60,6 +60,26 @@ GENERIC_EMAIL_PROVIDERS: frozenset[str] = frozenset(
         "numericable.fr",
         "protonmail.com",
         "proton.me",
+        "bluewin.ch",
+        "bluemail.ch",
+        "gmx.ch",
+        "gmx.net",
+        "sunrise.ch",
+        "hispeed.ch",
+        "skynet.be",
+        "telenet.be",
+        "proximus.be",
+        "voo.be",
+        "hotmail.be",
+        "pt.lu",
+        "videotron.ca",
+        "sympatico.ca",
+        "bell.net",
+        "hotmail.ca",
+        "live.ca",
+        "yahoo.ca",
+        "globetrotter.net",
+        "cgocable.ca",
     }
 )
 
@@ -117,6 +137,47 @@ BLOCKED_DOMAINS: frozenset[str] = frozenset(
         "ootravaux.fr",
         "travaux.com",
         "houzz.fr",
+        "local.ch",
+        "search.ch",
+        "localsearch.ch",
+        "moneyhouse.ch",
+        "zefix.ch",
+        "help.ch",
+        "monetas.ch",
+        "renovero.ch",
+        "ofri.ch",
+        "swissfirms.ch",
+        "houzz.ch",
+        "yelp.ch",
+        "tripadvisor.ch",
+        "goldenpages.be",
+        "pagesdor.be",
+        "goudengids.be",
+        "infobel.be",
+        "infobel.com",
+        "companyweb.be",
+        "trendstop.levif.be",
+        "openthebox.be",
+        "1307.be",
+        "houzz.be",
+        "yelp.be",
+        "tripadvisor.be",
+        "editus.lu",
+        "yellow.lu",
+        "lbr.lu",
+        "pagesjaunes.ca",
+        "yellowpages.ca",
+        "411.ca",
+        "canada411.ca",
+        "canpages.ca",
+        "soumissionrenovation.ca",
+        "reno-assistance.ca",
+        "homestars.com",
+        "houzz.ca",
+        "yelp.ca",
+        "tripadvisor.ca",
+        "bbb.org",
+        "opencorporates.com",
         # Genealogy / off-topic sites surfacing in broad searches
         "geneafrance.com",
         "geneanet.org",
@@ -138,6 +199,14 @@ BLOCKED_DOMAIN_SUBSTRINGS: tuple[str, ...] = (
 # Collectivity / tourist-office shapes matched on the full domain.
 BLOCKED_DOMAIN_PATTERNS: tuple[re.Pattern[str], ...] = (
     re.compile(r"\.gouv\.fr$"),
+    re.compile(r"(^|\.)admin\.ch$"),
+    re.compile(r"(^|\.)(ag|ai|ar|be|bl|bs|fr|ge|gl|gr|ju|lu|ne|nw|ow|sg|sh|so|sz|tg|ti|ur|vd|vs|zg|zh)\.ch$"),
+    re.compile(r"(^|\.)fgov\.be$"),
+    re.compile(r"(^|\.)belgium\.be$"),
+    re.compile(r"(^|\.)public\.lu$"),
+    re.compile(r"(^|\.)gc\.ca$"),
+    re.compile(r"(^|\.)gouv\.qc\.ca$"),
+    re.compile(r"(^|\.)ville\."),
     re.compile(r"(^|[.-])ville-"),
     re.compile(r"(^|[.-])cc-"),
     re.compile(r"(^|[.-])ccas([.-]|$)"),
@@ -183,6 +252,26 @@ _EMAIL_PATTERN: re.Pattern[str] = re.compile(r"[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]
 
 # Proximity credit reaches zero beyond this many chars from the nearest name mention.
 _PROXIMITY_REACH_CHARS: int = 1500
+
+_CANADIAN_SECOND_LEVEL_SUFFIXES: frozenset[str] = frozenset(
+    {
+        "ab.ca",
+        "bc.ca",
+        "gc.ca",
+        "mb.ca",
+        "nb.ca",
+        "nf.ca",
+        "nl.ca",
+        "ns.ca",
+        "nt.ca",
+        "nu.ca",
+        "on.ca",
+        "pe.ca",
+        "qc.ca",
+        "sk.ca",
+        "yk.ca",
+    }
+)
 
 
 class EmailCandidateScorer:
@@ -249,7 +338,7 @@ class EmailCandidateScorer:
             return True
         if any(local.startswith(prefix) for prefix in BLOCKED_LOCAL_PREFIXES):
             return True
-        if domain in BLOCKED_DOMAINS:
+        if self._is_blocked_domain(domain):
             return True
         if any(chunk in domain for chunk in BLOCKED_DOMAIN_SUBSTRINGS):
             return True
@@ -320,11 +409,19 @@ class EmailCandidateScorer:
         return re.sub(r"[^a-z0-9]", "", fold(value))
 
     @staticmethod
+    def _is_blocked_domain(domain: str) -> bool:
+        """Whether *domain* is a known directory / platform domain or one of its subdomains (``tel.search.ch``)."""
+        labels = domain.split(".")
+        return any(".".join(labels[index:]) in BLOCKED_DOMAINS for index in range(len(labels) - 1))
+
+    @staticmethod
     def _registrable_label(domain: str) -> str:
-        """Second-level label of a domain (``saint-germain-lembron.fr`` → that label)."""
+        """Label registered before the suffix, ``.fr`` as ``.qc.ca`` (``plomberie-tremblay`` in ``plomberie-tremblay.qc.ca``)."""
         parts = [part for part in domain.lower().split(".") if part]
-        if len(parts) >= 2:
-            return parts[-2]
+        has_canadian_second_level_suffix = len(parts) >= 3 and ".".join(parts[-2:]) in _CANADIAN_SECOND_LEVEL_SUFFIXES
+        suffix_length = 2 if has_canadian_second_level_suffix else 1
+        if len(parts) > suffix_length:
+            return parts[-suffix_length - 1]
         return parts[0] if parts else ""
 
     @classmethod

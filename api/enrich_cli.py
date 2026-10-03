@@ -34,6 +34,7 @@ import httpx
 from core.config import settings
 from core.win32_asyncio import ensure_proactor_event_loop
 from scrappers.enrichment_scraper import EnrichmentData, enrichment_scraper
+from services.country_profiles import DEFAULT_COUNTRY_CODE
 
 _DEFAULT_API_BASE = "https://api.devleadhunter.dibodev.fr"
 _API_PREFIX = "/api/v1"
@@ -145,6 +146,7 @@ async def _scrape(prospect: dict[str, object]) -> EnrichmentData:
         city=str(prospect["city"]) if prospect.get("city") else None,
         google_maps_url=str(prospect["google_maps_url"]) if prospect.get("google_maps_url") else None,
         facebook_url=str(prospect["facebook_url"]) if prospect.get("facebook_url") else None,
+        country=str(prospect.get("country") or DEFAULT_COUNTRY_CODE),
     )
 
 

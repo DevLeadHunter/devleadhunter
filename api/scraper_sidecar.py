@@ -46,6 +46,7 @@ from scrappers.chrome_provisioning import ensure_chrome, find_installed_chrome
 from scrappers.email_scraper import email_scraper
 from scrappers.enrichment_scraper import EnrichmentData, enrichment_scraper
 from scrappers.google_scraper import close_maps_suggestion_session
+from services.country_profiles import DEFAULT_COUNTRY_CODE
 from services.prospect_enrichment_service import prospect_enrichment_service
 
 logger = logging.getLogger(__name__)
@@ -144,6 +145,7 @@ class SidecarEnrichmentRequest(BaseModel):
     google_maps_url: str | None = None
     # Facebook page URL — enrichment anchor used when there is no Google listing.
     facebook_url: str | None = None
+    country: str = DEFAULT_COUNTRY_CODE
 
 
 class SidecarVideoTarget(BaseModel):
@@ -425,7 +427,8 @@ async def enrichment(request: SidecarEnrichmentRequest) -> EnrichmentData:
     why nothing here touches a database.
 
     Args:
-        request: Business name and optional city.
+        request: Business name, optional city, and the prospect's country deciding the
+            postal code and phone shapes read.
 
     Returns:
         The scraped enrichment payload.
@@ -439,6 +442,7 @@ async def enrichment(request: SidecarEnrichmentRequest) -> EnrichmentData:
             city=request.city,
             google_maps_url=request.google_maps_url,
             facebook_url=request.facebook_url,
+            country=request.country,
         )
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc

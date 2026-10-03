@@ -46,11 +46,15 @@ affichage, jamais un mobile SMS) ; garde pays sur
 tous les envois SMS, `send_manual` compris, lue sur le profil déclaré ; mention de désinscription posée
 par smsmode (`body.stop`) au lieu de « STOP au 36180 » ; « ≈ » écrit « env. » en SMS ; numéro de
 l'expéditeur en format international pour un prospect hors de France ; fenêtre légale et fériés SMS
-par pays ; coût SMS par pays ; `plumber_atelier` sans « 0 € / 10 ans ».
+par pays ; coût SMS par pays ; `plumber_atelier` sans « 0 € / 10 ans » ; recherche d'emails au pays du
+prospect (`gl` du pays et `hl=fr` sur toutes les recherches Google, téléphone cherché sous sa forme nationale,
+pays transmis par les scrapers Maps, OSM et auto, par le sidecar d'enrichissement et par `enrich_cli`) ;
+annuaires, plateformes, messageries grand public et domaines publics CH, BE, LU et CA reconnus (scoring email,
+sous-domaines compris, `x.qc.ca` découpé après `qc.ca`, site d'annuaire jamais compté comme vrai site,
+mini-sites d'annuaire, « Domain zu verkaufen ») ; numéros CH, BE et LU lus sur Facebook dans la forme du pays
+(un « 079 » suisse n'est plus lu comme un mobile français), affichés dans leurs blocs nationaux.
 
-**Encore ouvert** : `email_scraper` en `gl=fr` (`scrappers/email_scraper.py:385`) ; annuaires CH, BE, LU
-et CA absents du scoring email ; numéros +41 / +32 ignorés par le parseur Facebook (France et Amérique
-du Nord seulement) ; carte de couverture sans le Québec ; Réceptionniste
+**Encore ouvert** : carte de couverture sans le Québec ; Réceptionniste
 IA hors France (§ 7 : fuseau du client, +1, expéditeur, pied légal) ; décisionnaire hors France ;
 probe Qonto en sandbox (client CH ou CA sans numéro fiscal, doublon éventuel de mention) ; achat
 d'un `.com` (ou d'un `.ca` au nom du client) par l'automatisation de domaine ; boucles SMS automatiques limitées à la France tant que le premier SMS suisse

@@ -42,3 +42,22 @@ def test_is_platform_url_matches_host_not_lookalikes() -> None:
     assert validation_service.is_platform_url("https://mon-planity.com") is False  # different domain
     assert validation_service.is_platform_url("https://real-salon.fr/planity.com") is False  # path, not host
     assert validation_service.is_platform_url(None) is False
+
+
+def test_is_valid_website_rejects_foreign_directories_and_platforms() -> None:
+    """A Swiss, Belgian, Luxembourg or Québec listing never counts as the artisan's site: he stays « no website »."""
+    for url in (
+        "https://www.local.ch/fr/d/lausanne/1004/sanitaire/sanitaire-rochat-abc",
+        "https://tel.search.ch/lausanne/rue-de-geneve-12/sanitaire-rochat",
+        "https://www.treatwell.be/salon/barber-liege/",
+        "https://www.goldenpages.be/fr/p/plomberie-dupont/",
+        "https://www.editus.lu/fr/plomberie-schmit",
+        "https://www.pagesjaunes.ca/bus/Quebec/Laval/Plomberie-Tremblay/1234567.html",
+    ):
+        assert validation_service.is_valid_website(url) is False, url
+
+
+def test_is_valid_website_keeps_a_foreign_artisan_own_site() -> None:
+    assert validation_service.is_valid_website("https://www.sanitaire-rochat.ch") is True
+    assert validation_service.is_valid_website("https://www.mylocal.ch") is True
+    assert validation_service.is_valid_website("https://plomberie-tremblay.qc.ca") is True

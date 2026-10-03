@@ -769,6 +769,7 @@ async function bulkEnrich(): Promise<void> {
         city: prospect.city ?? null,
         googleMapsUrl: prospect.google_maps_url ?? null,
         facebookUrl: prospect.facebook_url ?? null,
+        country: prospect.country ?? 'FR',
       }),
     )
   if (targets.length === 0) return

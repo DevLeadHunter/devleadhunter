@@ -1,4 +1,5 @@
 import type { EnrichmentReview, EnrichmentOpeningHours } from '~/services/enrichmentService'
+import type { ProspectCountry } from '~/types'
 
 export type UiProspectEnrichmentProps = {
   prospectId: number | null
@@ -7,6 +8,7 @@ export type UiProspectEnrichmentProps = {
   prospectCity: string
   prospectGoogleMapsUrl: string
   prospectFacebookUrl: string
+  prospectCountry: ProspectCountry
 }
 
 export type EnrichmentForm = {
