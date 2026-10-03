@@ -83,6 +83,22 @@ class SmsTemplatePreviewResponse(BaseModel):
     segments: int = Field(description="Segments the SMS will bill once smsmode appends its opt-out mention")
 
 
+class SmsSegmentCountRequest(BaseModel):
+    """A message typed in the composer, and the prospect it goes to when there is one."""
+
+    text: str = Field(default="", max_length=1000, description="Message as typed")
+    prospect_id: int | None = Field(default=None, description="Recipient prospect; none for a French bare number")
+
+
+class SmsSegmentCountResponse(BaseModel):
+    """What a typed message bills once smsmode appends the opt-out mention of its recipient's country."""
+
+    characters: int = Field(description="Characters of the body smsmode receives, GSM-7 transliterated")
+    segments: int = Field(description="Billed segments, opt-out mention included")
+    maximum_segments: int = Field(description="Most segments a prospecting SMS may bill")
+    is_unicode: bool = Field(description="Whether a character forces UCS-2, 70 characters a segment")
+
+
 class SmsManualSendRequest(BaseModel):
     """Payload to send one free-text SMS (manual composer / self-test)."""
 

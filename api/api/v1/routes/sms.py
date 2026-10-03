@@ -40,6 +40,8 @@ from schemas.sms import (
     SmsRelanceCandidateResponse,
     SmsReplyCreateRequest,
     SmsReplyResponse,
+    SmsSegmentCountRequest,
+    SmsSegmentCountResponse,
     SmsSendResponse,
     SmsStatsResponse,
     SmsTemplatePreviewResponse,
@@ -521,6 +523,24 @@ async def preview_template(
     body = sms_service.render_template_body(template, variables)
     return SmsTemplatePreviewResponse(
         key=template.key, body=body, segments=sms_service.marketing_segment_count(body, country=prospect.country)
+    )
+
+
+@router.post("/segment-count", response_model=SmsSegmentCountResponse)
+async def count_sms_segments(
+    payload: SmsSegmentCountRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> SmsSegmentCountResponse:
+    """Count the segments a typed SMS bills, the opt-out mention of its recipient's country included."""
+    count = sms_service.count_composed_segments(
+        db, user_id=current_user.id, text=payload.text, prospect_id=payload.prospect_id
+    )
+    return SmsSegmentCountResponse(
+        characters=count.characters,
+        segments=count.segments,
+        maximum_segments=count.maximum_segments,
+        is_unicode=count.is_unicode,
     )
 
 

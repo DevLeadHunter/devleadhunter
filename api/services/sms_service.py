@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import logging
 import re
+from dataclasses import dataclass
 from datetime import UTC, datetime
 
 from sqlalchemy import func, select
@@ -35,7 +36,7 @@ from services.email_variables import EmailVariables
 from services.notification_service import notification_service
 from services.pricing_service import PricingService
 from services.prospect_phones import first_mobile_e164, sync_prospect_phones
-from services.sms.gsm_segments import segment_count_with_reserve, to_gsm7
+from services.sms.gsm_segments import is_gsm7, segment_count_with_reserve, to_gsm7
 from services.sms.opt_out_mention import SmsOptOutMention
 from services.sms.phone_normalizer import PhoneNumberPlans, to_e164_fr
 from services.sms.pricing import SmsPricing
@@ -61,6 +62,16 @@ CONTACT_PHONE_VARIABLE: str = "telephone"
 CONTACT_PHONE_MISSING_REFUSAL: str = "Renseignez votre téléphone de contact dans votre profil"
 # The receptionist's pages in a body: its demo (/ia/…) or its video (/va/…), the short links (/s/ia/…) included.
 _ASSISTANT_PAGE_LINK: re.Pattern[str] = re.compile(r"/(?:s/)?(?:ia|va)/[\w-]+")
+
+
+@dataclass(frozen=True)
+class ComposedSmsSegments:
+    """What a typed SMS bills once smsmode appends the opt-out mention of its recipient's country."""
+
+    characters: int
+    segments: int
+    maximum_segments: int
+    is_unicode: bool
 
 
 class SmsSendOutcome:
@@ -233,6 +244,33 @@ class SmsService:
             The billed segment count.
         """
         return segment_count_with_reserve(body, SmsOptOutMention.reserved_characters_for_country(country))
+
+    def count_composed_segments(
+        self, db: Session, *, user_id: int, text: str, prospect_id: int | None
+    ) -> ComposedSmsSegments:
+        """Count what a message typed in the composer bills, with the same rule as :meth:`send_manual`.
+
+        The recipient decides the room of the opt-out mention: the user's prospect reads his own country,
+        a bare number is French.
+
+        Args:
+            db: Active database session.
+            user_id: The user typing the message.
+            text: The message as typed.
+            prospect_id: The recipient prospect, ``None`` for a bare number.
+
+        Returns:
+            The characters smsmode receives, the billed segments, the ceiling and the encoding.
+        """
+        prospect = self._owned_prospect(db, user_id, prospect_id)
+        country = SmsProspectingRules.country_of(prospect) if prospect is not None else DEFAULT_COUNTRY_CODE
+        body = self.to_gsm7_body(text)
+        return ComposedSmsSegments(
+            characters=len(body),
+            segments=self.marketing_segment_count(body, country=country),
+            maximum_segments=MARKETING_SMS_MAXIMUM_SEGMENTS,
+            is_unicode=not is_gsm7(body),
+        )
 
     async def send_to_prospect(
         self,

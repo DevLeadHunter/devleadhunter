@@ -447,6 +447,42 @@ class TestContactPhoneGuard:
         assert "au 06 11 22 33 44" in provider.texts[0]
 
 
+class TestComposerSegmentCount:
+    """The composer reads its segment count from the API, the opt-out reserve of the recipient's country included."""
+
+    def test_the_same_text_bills_one_french_segment_and_two_swiss_ones(self, db: Session) -> None:
+        french = _prospect(db)
+        swiss = _prospect(db, country="CH", phone="079 123 45 67")
+        text = "a" * 146
+
+        french_count = SmsService().count_composed_segments(db, user_id=_USER_ID, text=text, prospect_id=french.id)
+        swiss_count = SmsService().count_composed_segments(db, user_id=_USER_ID, text=text, prospect_id=swiss.id)
+
+        assert (french_count.segments, swiss_count.segments) == (1, 2)
+        assert french_count.maximum_segments == swiss_count.maximum_segments == 2
+        assert french_count.characters == 146
+
+    def test_a_bare_number_and_another_user_prospect_read_the_french_reserve(self, db: Session) -> None:
+        stranger = _prospect(db, country="CH", phone="079 123 45 67", user_id=99)
+        text = "a" * 146
+
+        bare = SmsService().count_composed_segments(db, user_id=_USER_ID, text=text, prospect_id=None)
+        foreign = SmsService().count_composed_segments(db, user_id=_USER_ID, text=text, prospect_id=stranger.id)
+
+        assert bare.segments == foreign.segments == 1
+
+    def test_the_count_reads_the_transliterated_body(self, db: Session) -> None:
+        typed = SmsService().count_composed_segments(
+            db, user_id=_USER_ID, text="  Votre site est prêt  ", prospect_id=None
+        )
+        emoji = SmsService().count_composed_segments(db, user_id=_USER_ID, text="Merci 🙂", prospect_id=None)
+        empty = SmsService().count_composed_segments(db, user_id=_USER_ID, text="   ", prospect_id=None)
+
+        assert (typed.characters, typed.is_unicode) == (len("Votre site est pret"), False)
+        assert emoji.is_unicode is True
+        assert empty.segments == 0
+
+
 class TestManualComposer:
     @pytest.mark.parametrize(
         ("sender", "text", "reason"),
