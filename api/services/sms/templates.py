@@ -3,7 +3,7 @@
 Mirrors the cold-email library (``seeders/email_template_seeder.py``) at SMS scale: a
 first-contact family for prospects reached by SMS first (a mobile, no email) and a
 follow-up family for prospects who ignored the email. A prospecting SMS may take TWO
-GSM-7 segments (306 characters, STOP mention included): a frank message does not fit
+GSM-7 segments (306 characters, opt-out mention included): a frank message does not fit
 in one. The sending service (``services/sms_service.py``) allows two
 segments for a send to a prospect; the service messages (receptionist alerts) keep
 one. Every frank template says:
@@ -19,8 +19,8 @@ one. Every frank template says:
     the one shown on the demo banner). A template using it needs that phone to be set.
 Trust rules kept from the first library: an action at the first person, no imperative
 (« voici », « cliquez », « ici »), no artificial urgency, GSM-7 transliteration at send
-time. The mandatory STOP mention (14 characters) is appended at send time, never
-written here; the budget tests reserve its room.
+time. smsmode appends the opt-out mention at send time (``body.stop``), never written
+here; the budget tests reserve its room in France (14 characters) and Switzerland (25).
 
 Variables: {salutation} {entreprise} {ville} {metier} {lien_demo} {lien_assistant}
 {lien_video} {lien_video_assistant} {prenom_receptionniste} {ancien_site} {prix} {prix_assistant}
@@ -100,8 +100,8 @@ SMS_TEMPLATE_LIBRARY: list[SmsTemplate] = [
         name="Vidéo - je vous montre",
         category=SmsTemplateCategory.FIRST_CONTACT,
         body=(
-            "{salutation}, je fais des sites web et j'ai construit celui de {entreprise}. Je vous le montre en 30 s "
-            "de vidéo : {lien_video} " + _WEBSITE_PRICE_LINE + " " + _ASK_WITH_PHONE
+            "{salutation}, je fais des sites web et j'ai construit celui de {entreprise}. En 30 s de vidéo : "
+            "{lien_video} " + _WEBSITE_PRICE_LINE + " " + _ASK_WITH_PHONE
         ),
         fallback_key="direct",
     ),
@@ -141,7 +141,7 @@ SMS_TEMPLATE_LIBRARY: list[SmsTemplate] = [
         name="Réceptionniste IA - dans leur langue",
         category=SmsTemplateCategory.FIRST_CONTACT,
         body=(
-            "{salutation}, " + _RECEPTIONIST_INTRO + " : elle répond à vos clients dans leur langue. "
+            "{salutation}, " + _RECEPTIONIST_INTRO + ", qui parle la langue du client. "
             "{lien_assistant} " + _RECEPTIONIST_PRICE_LINE + " " + _ASK_WITH_PHONE
         ),
     ),
@@ -150,7 +150,7 @@ SMS_TEMPLATE_LIBRARY: list[SmsTemplate] = [
         name="Réceptionniste IA - devis par photo",
         category=SmsTemplateCategory.FIRST_CONTACT,
         body=(
-            "{salutation}, " + _RECEPTIONIST_INTRO + " : une photo devient une demande de devis. "
+            "{salutation}, " + _RECEPTIONIST_INTRO + " : une photo, une demande de devis. "
             "{lien_assistant} " + _RECEPTIONIST_PRICE_LINE + " " + _ASK_WITH_PHONE
         ),
     ),

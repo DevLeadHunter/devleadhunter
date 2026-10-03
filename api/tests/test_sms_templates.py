@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session
 from enums.sms_template_category import SmsTemplateCategory
 from models.prospect_db import ProspectDB
 from models.user import User
-from services.sms.gsm_segments import is_gsm7, segment_count
+from services.sms.gsm_segments import is_gsm7
 from services.sms.templates import (
     DEFAULT_FIRST_CONTACT_KEY,
     DEFAULT_FOLLOW_UP_KEY,
@@ -146,9 +146,11 @@ class TestTwoSegmentBudget:
     def test_every_first_contact_fits_two_gsm7_segments(self) -> None:
         for template in list_sms_templates(SmsTemplateCategory.FIRST_CONTACT):
             for variables in (_TYPICAL_VARIABLES, _LONG_SLUG_VARIABLES):
-                body = sms_service.compose_from_template(template, variables)
+                body = sms_service.render_template_body(template, variables)
                 assert is_gsm7(body), template.key
-                assert segment_count(body) <= _PROSPECTING_SEGMENT_BUDGET, f"{template.key}: {len(body)} chars"
+                for country in ("FR", "CH"):
+                    segments = sms_service.marketing_segment_count(body, country=country)
+                    assert segments <= _PROSPECTING_SEGMENT_BUDGET, f"{template.key} {country}: {len(body)} chars"
 
     def test_the_stop_mention_room_is_reserved_in_the_budget(self) -> None:
         template = find_sms_template(DEFAULT_FIRST_CONTACT_KEY)
@@ -171,9 +173,11 @@ class TestFollowUpLibrary:
             # A J+30 relance says where it comes from: the email sent a month ago.
             assert "email" in template.body, template.key
             for variables in (_TYPICAL_VARIABLES, _LONG_SLUG_VARIABLES):
-                body = sms_service.compose_from_template(template, variables)
+                body = sms_service.render_template_body(template, variables)
                 assert is_gsm7(body), template.key
-                assert segment_count(body) <= _PROSPECTING_SEGMENT_BUDGET, f"{template.key}: {len(body)} chars"
+                for country in ("FR", "CH"):
+                    segments = sms_service.marketing_segment_count(body, country=country)
+                    assert segments <= _PROSPECTING_SEGMENT_BUDGET, f"{template.key} {country}: {len(body)} chars"
 
     def test_relance_choice_rejects_a_first_contact_or_unknown_key(self) -> None:
         service = SmsConfigService()
