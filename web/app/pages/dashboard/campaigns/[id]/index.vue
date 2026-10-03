@@ -804,6 +804,7 @@
 <script lang="ts" setup>
 import type { UseAuthReturn, UseToastReturn } from '~/types/Composables'
 import type { CampaignQueueRow, TemplateOption } from '~/types/CampaignDetailPage'
+import type { SmsSegmentCount } from '~/types/SmsSegmentCount'
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import type { ComputedRef, Ref } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
@@ -830,7 +831,6 @@ import type { SendingIdentityResponse } from '~/services/settingsService'
 import { SettingsService } from '~/services/settingsService'
 import { SmsService, type SmsConfig, type SmsTemplate, type SmsTemplatePreview } from '~/services/smsService'
 import { SmsVariables } from '~/utils/smsVariables'
-import type { SmsSegmentCount } from '~/types/SmsSegmentCount'
 import type { SelectFieldOption } from '~/types/SelectField'
 
 definePageMeta({ layout: 'dashboard', middleware: 'auth' })

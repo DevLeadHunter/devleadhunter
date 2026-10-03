@@ -35,14 +35,10 @@ export type SmsRelanceCandidate = {
   emailed_at: string
 }
 
-/** Outcome of a single send, with what the SMS cost when it left. */
+/** Outcome of a single relance send. */
 export type SmsSendResult = {
   sent: boolean
   reason: string | null
-  segments?: number | null
-  price_cents?: number | null
-  provider_segments?: number | null
-  provider_text?: string | null
 }
 
 /** Outcome of a bulk relance send. */

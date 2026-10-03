@@ -178,10 +178,10 @@
 <script lang="ts" setup>
 import type { UseAuthReturn, UseToastReturn } from '~/types/Composables'
 import type { ComputedRef, Ref } from 'vue'
+import type { SmsSegmentCount } from '~/types/SmsSegmentCount'
 import { computed, onMounted, ref, watch } from 'vue'
 import type { SmsCandidateRow } from '~/types/SmsSettingsPage'
 import type { SelectFieldOption } from '~/types/SelectField'
-import type { SmsSegmentCount } from '~/types/SmsSegmentCount'
 import type { SmsConfig, SmsRelanceCandidate, SmsSendResult, SmsTemplate } from '~/services/smsService'
 import { SmsService } from '~/services/smsService'
 import { SmsVariables } from '~/utils/smsVariables'

@@ -58,7 +58,7 @@
               placeholder="06 12 34 56 78"
               autocomplete="tel"
             />
-            <p class="text-muted mt-1 text-[11px]">{{ mobileNumberHint }}</p>
+            <p class="text-muted mt-1 text-[11px]">{{ acceptedMobileNumberLabel }}</p>
           </div>
 
           <div>
@@ -100,7 +100,7 @@
               </span>
             </div>
             <p v-if="isTooLong" class="mt-1 text-[11px] font-medium text-[var(--app-red)]">
-              {{ tooLongMessage }}
+              {{ smsTooLongWarning }}
             </p>
             <p class="text-muted mt-1 text-[11px]">La mention de désinscription est ajoutée à l'envoi.</p>
           </div>
@@ -140,8 +140,6 @@ import { SmsService } from '~/services/smsService'
 import { useToast } from '~/composables/useToast'
 import { ProspectCountries } from '~/utils/prospectCountries'
 
-const SEGMENT_COUNT_DELAY_MILLISECONDS: number = 300
-
 const props: UiSendSmsDrawerProps = defineProps({
   open: {
     type: Boolean,
@@ -164,6 +162,11 @@ const props: UiSendSmsDrawerProps = defineProps({
 const emit: EmitFn<UiSendSmsDrawerEmits> = defineEmits<UiSendSmsDrawerEmits>()
 
 const toast: UseToastReturn = useToast()
+
+const SEGMENT_COUNT_DELAY_MILLISECONDS: number = 300
+
+let segmentCountTimer: ReturnType<typeof setTimeout> | undefined
+let segmentCountRequestNumber: number = 0
 
 /** Whether the manual send request is in flight. */
 const isSending: Ref<boolean> = ref(false)
@@ -192,22 +195,19 @@ const isLoadingTemplate: Ref<boolean> = ref(false)
 
 const segmentCount: Ref<SmsSegmentCount | null> = ref(null)
 
-let segmentCountTimer: ReturnType<typeof setTimeout> | undefined
-let segmentCountRequestNumber: number = 0
-
-/** A message that would bill (and send) beyond the segment ceiling is blocked. */
+/** A message that would bill (and send) more SMS than allowed is blocked. */
 const isTooLong: ComputedRef<boolean> = computed(
   (): boolean => segmentCount.value !== null && segmentCount.value.segments > segmentCount.value.maximum_segments,
 )
 
-const tooLongMessage: ComputedRef<string> = computed((): string =>
+const smsTooLongWarning: ComputedRef<string> = computed((): string =>
   segmentCount.value
     ? `Message trop long : il partirait en ${segmentCount.value.segments} SMS. ` +
       `Raccourcissez-le pour tenir en ${segmentCount.value.maximum_segments}.`
     : '',
 )
 
-const mobileNumberHint: ComputedRef<string> = computed((): string => {
+const acceptedMobileNumberLabel: ComputedRef<string> = computed((): string => {
   const country: ProspectCountryOption = ProspectCountries.option(props.prospect?.country)
   return country.code === 'FR'
     ? 'Uniquement les mobiles français commençant par 06 ou 07.'
@@ -297,23 +297,12 @@ function scheduleSegmentCount(text: string): void {
 }
 
 /**
- * The confirmation of a sent SMS, with what it billed when the API returned it.
- * @param result - The send outcome.
- * @returns « SMS envoyé », followed by its segments and estimated cost when known.
- */
-function sentSmsSummary(result: SmsSendResult): string {
-  if (!result.segments) return 'SMS envoyé'
-  const cost: string = typeof result.price_cents === 'number' ? ` · ≈ ${result.price_cents} c` : ''
-  return `SMS envoyé · ${result.segments} SMS${cost}`
-}
-
-/**
  * Send the SMS through the manual endpoint, then notify the host so the stack can navigate back.
  * @returns A promise that resolves once the SMS has been dispatched.
  */
 async function handleSend(): Promise<void> {
   if (isTooLong.value) {
-    toast.error(tooLongMessage.value)
+    toast.error(smsTooLongWarning.value)
     return
   }
   isSending.value = true
@@ -325,7 +314,7 @@ async function handleSend(): Promise<void> {
       recipient_name: form.value.recipient_name || null,
     })
     if (result.sent) {
-      toast.success(sentSmsSummary(result))
+      toast.success('SMS envoyé')
       emit('sent')
     } else {
       toast.error(result.reason ?? "Échec de l'envoi du SMS")
