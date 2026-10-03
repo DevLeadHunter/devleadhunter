@@ -224,7 +224,7 @@ class TestAutomationReasons:
 
 
 class TestAutomaticLoopsStayInFrance:
-    _DIRECT = SmsTemplate(
+    _DIRECT_TEMPLATE = SmsTemplate(
         key="direct",
         name="Direct",
         category=SmsTemplateCategory.FIRST_CONTACT,
@@ -245,10 +245,11 @@ class TestAutomaticLoopsStayInFrance:
         db.commit()
 
         sms_automation_service._plan_user(db, config)
+        automatically_planned_prospect_ids = {row.prospect_id for row in db.query(SmsAutoQueue).all()}
+        relance_page_prospect_ids = _relance_candidate_ids(db)
 
-        assert {row.prospect_id for row in db.query(SmsAutoQueue).all()} == {french.id}
-        # The manual relance page still offers him: a send started by hand is open to Switzerland.
-        assert _relance_candidate_ids(db) == {french.id, swiss.id}
+        assert automatically_planned_prospect_ids == {french.id}
+        assert relance_page_prospect_ids == {french.id, swiss.id}
 
     def test_a_planned_swiss_row_is_skipped_with_its_reason(self, db: Session) -> None:
         swiss = _prospect(db, name="Garage Favre", slug="garage-favre", country="CH")
@@ -267,7 +268,7 @@ class TestAutomaticLoopsStayInFrance:
         provider = AcceptingSmsProvider()
         monkeypatch.setattr(sms_service, "_provider", provider)
         monkeypatch.setattr(sms_service, "legal_window_refusal", lambda country=None: None)
-        monkeypatch.setattr(sms_service_module, "find_sms_template", lambda key: self._DIRECT)
+        monkeypatch.setattr(sms_service_module, "find_sms_template", lambda key: self._DIRECT_TEMPLATE)
         monkeypatch.setattr(sms_service_module.notification_service, "notify_sms_event", AsyncCallRecorder())
         campaign = SimpleNamespace(id=1, user_id=_USER_ID, channel="sms", sms_template_key="direct")
         item = SimpleNamespace(prospect=swiss, campaign=campaign, status="sending", skip_reason=None)
