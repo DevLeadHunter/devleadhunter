@@ -22,6 +22,7 @@ from typing import Any
 _STOP_KEYWORDS: frozenset[str] = frozenset(
     {"STOP", "STOPSMS", "STOP SMS", "UNSUBSCRIBE", "DESABONNEMENT", "DÉSABONNEMENT", "DESABO"}
 )
+_MINIMUM_PHONE_NUMBER_DIGITS: int = 8
 
 
 def mo_is_stop(payload: dict[str, Any]) -> bool:
@@ -47,21 +48,23 @@ def mo_is_stop(payload: dict[str, Any]) -> bool:
 def mo_sender_number(payload: dict[str, Any]) -> str:
     """The prospect's mobile number behind the MO, tolerating nested shapes.
 
+    smsmode's documented MO carries the prospect in ``from`` and the short code he answered in
+    ``recipient.to``: a value without a full phone number (a short code, the sender id) is skipped.
+
     Args:
         payload: The MO callback JSON body.
 
     Returns:
-        The raw number (``recipient.to`` first), or "" when none is present. A non-number
-        (e.g. the alphanumeric sender id) is left for the caller's E.164 validation to reject.
+        The raw number (``recipient.to`` first when it is one), or "" when none is present.
     """
     recipient = payload.get("recipient")
     if isinstance(recipient, dict):
         value = str(recipient.get("to") or "").strip()
-        if value:
+        if sum(char.isdigit() for char in value) >= _MINIMUM_PHONE_NUMBER_DIGITS:
             return value
     for key in ("to", "msisdn", "from", "recipient", "sender"):
         value = payload.get(key)
-        if isinstance(value, str) and value.strip():
+        if isinstance(value, str) and sum(char.isdigit() for char in value) >= _MINIMUM_PHONE_NUMBER_DIGITS:
             return value.strip()
     return ""
 

@@ -3,9 +3,12 @@
 from datetime import date, datetime
 
 import pytest
+from sqlalchemy.orm import Session
 
+from api.v1.routes.sms import _match_stop_message
 from core.config import settings
 from enums.sms_opt_out_mode import SmsOptOutMode
+from models.sms_message import SmsMessage
 from services.sms.dlr import (
     classify_dlr,
     dlr_message_id,
@@ -345,6 +348,14 @@ class TestMoStopParsing:
     def test_sender_number_from_nested_recipient(self) -> None:
         assert mo_sender_number({"recipient": {"to": "33612345678"}}) == "33612345678"
 
+    def test_sender_number_skips_the_short_code_of_a_documented_mo(self) -> None:
+        payload = {"direction": "MO", "recipient": {"to": "36034"}, "from": "41791234567", "body": {"text": "STOP"}}
+        assert mo_sender_number(payload) == "41791234567"
+
+    def test_sender_number_skips_the_lettered_sender(self) -> None:
+        assert mo_sender_number({"recipient": {"to": "Dibodev"}, "msisdn": "33612345678"}) == "33612345678"
+        assert mo_sender_number({"recipient": {"to": "36034"}}) == ""
+
     def test_origin_message_id_and_ref_client(self) -> None:
         assert mo_origin_message_id({"originMessageId": "abc-123"}) == "abc-123"
         assert mo_ref_client({"refClient": "dlh-42"}) == "dlh-42"
@@ -384,3 +395,16 @@ class TestDlrParsing:
     def test_ref_client_fallback(self) -> None:
         assert dlr_ref_client({"refClient": "dlh-3"}) == "dlh-3"
         assert dlr_ref_client({}) == ""
+
+
+def test_a_swiss_stop_reply_matches_its_sms_by_the_sender_number(db: Session) -> None:
+    """Without originMessageId nor refClient, the number in ``from`` still finds the Swiss SMS it answers."""
+    swiss_sms = SmsMessage(
+        user_id=7, prospect_id=3, to_e164="+41791234567", sender="Dibodev", body="Bonjour", status="sent", segments=1
+    )
+    db.add(swiss_sms)
+    db.commit()
+
+    matched = _match_stop_message(db, {"direction": "MO", "recipient": {"to": "36034"}, "from": "41791234567"})
+
+    assert matched is not None and matched.id == swiss_sms.id
