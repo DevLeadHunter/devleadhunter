@@ -136,6 +136,51 @@
         </div>
       </div>
 
+      <div class="rounded-lg border border-[var(--app-line)] bg-[var(--app-bg)] p-3">
+        <div class="mb-2 flex items-center justify-between">
+          <p
+            class="flex items-center gap-1.5 text-[10px] font-semibold tracking-wider text-[var(--app-ink-soft)] uppercase"
+          >
+            <UIcon name="i-lucide-badge-check" class="h-3.5 w-3.5" />
+            Licence professionnelle
+          </p>
+          <span v-if="professionalLicenseSourceLabel" class="app-badge app-badge--success text-[10px]">
+            {{ professionalLicenseSourceLabel }}
+          </span>
+        </div>
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="mb-1 block text-[10px] text-[var(--app-ink-soft)]">Libellé</label>
+            <input
+              v-model="form.professional_license_label"
+              type="text"
+              maxlength="60"
+              class="input-field"
+              placeholder="Licence RBQ"
+            />
+          </div>
+          <div>
+            <label class="mb-1 block text-[10px] text-[var(--app-ink-soft)]">Numéro</label>
+            <input
+              v-model="form.professional_license_number"
+              type="text"
+              maxlength="60"
+              class="input-field"
+              placeholder="5678-1234-01"
+            />
+          </div>
+        </div>
+        <p class="text-muted mt-1.5 text-[10px] leading-relaxed">
+          Affichée en pied de page du site. Obligatoire au Québec pour les entrepreneurs en construction (licence RBQ,
+          cherchée automatiquement dans le registre public) — vide = rien d'affiché.
+        </p>
+        <div v-if="isProfessionalLicenseDirty" class="mt-2 flex justify-end">
+          <button type="button" class="btn-primary text-xs" :disabled="isSaving" @click="saveProfessionalLicenseOnly">
+            Enregistrer
+          </button>
+        </div>
+      </div>
+
       <button
         v-if="!record || record.status === 'pending'"
         class="btn-secondary w-full"
@@ -519,6 +564,8 @@ const form: Ref<EnrichmentForm> = ref({
   opening_hours: [],
   contact_first_name: '',
   contact_last_name: '',
+  professional_license_label: '',
+  professional_license_number: '',
 })
 
 /** Human label of the resolved-contact source badge. */
@@ -528,6 +575,11 @@ const CONTACT_SOURCE_LABELS: Record<string, string> = {
   owner_response: 'Réponse aux avis',
   legal_mentions: 'Mentions légales',
   llm_aggregate: 'IA (texte public)',
+  manual: 'Saisie manuelle',
+}
+
+const PROFESSIONAL_LICENSE_SOURCE_LABELS: Record<string, string> = {
+  rbq_registry: 'Trouvée dans le registre RBQ',
   manual: 'Saisie manuelle',
 }
 
@@ -571,6 +623,16 @@ const contactDirty: ComputedRef<boolean> = computed(
     form.value.contact_last_name !== (record.value?.contact_last_name ?? ''),
 )
 
+const professionalLicenseSourceLabel: ComputedRef<string> = computed(
+  (): string => PROFESSIONAL_LICENSE_SOURCE_LABELS[record.value?.professional_license_source ?? ''] ?? '',
+)
+
+const isProfessionalLicenseDirty: ComputedRef<boolean> = computed(
+  (): boolean =>
+    form.value.professional_license_label !== (record.value?.professional_license_label ?? '') ||
+    form.value.professional_license_number !== (record.value?.professional_license_number ?? ''),
+)
+
 const STATUS_LABELS: Record<string, string> = {
   pending: 'À récupérer',
   enriching: 'En cours…',
@@ -607,6 +669,26 @@ function syncForm(): void {
     opening_hours: (r?.opening_hours ?? []).map((row: EnrichmentOpeningHours) => ({ ...row })),
     contact_first_name: r?.contact_first_name ?? '',
     contact_last_name: r?.contact_last_name ?? '',
+    professional_license_label: r?.professional_license_label ?? '',
+    professional_license_number: r?.professional_license_number ?? '',
+  }
+}
+
+/** Persist ONLY the professional licence (works before any enrichment run). */
+async function saveProfessionalLicenseOnly(): Promise<void> {
+  if (!props.prospectId) return
+  isSaving.value = true
+  try {
+    record.value = await EnrichmentService.updateProspectEnrichment(props.prospectId, {
+      professional_license_label: form.value.professional_license_label.trim() || null,
+      professional_license_number: form.value.professional_license_number.trim() || null,
+    })
+    syncForm()
+    toast.success('Licence professionnelle enregistrée')
+  } catch (err: unknown) {
+    toast.error(err instanceof Error ? err.message : 'Erreur lors de la sauvegarde')
+  } finally {
+    isSaving.value = false
   }
 }
 
@@ -734,6 +816,13 @@ async function save(): Promise<void> {
         ? {
             contact_first_name: form.value.contact_first_name || null,
             contact_last_name: form.value.contact_last_name || null,
+          }
+        : {}),
+      // An untouched licence must not flip a registry-found licence to « saisie manuelle ».
+      ...(isProfessionalLicenseDirty.value
+        ? {
+            professional_license_label: form.value.professional_license_label.trim() || null,
+            professional_license_number: form.value.professional_license_number.trim() || null,
           }
         : {}),
     })

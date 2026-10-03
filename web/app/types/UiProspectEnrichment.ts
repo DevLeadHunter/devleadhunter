@@ -20,4 +20,6 @@ export type EnrichmentForm = {
   opening_hours: EnrichmentOpeningHours[]
   contact_first_name: string
   contact_last_name: string
+  professional_license_label: string
+  professional_license_number: string
 }
