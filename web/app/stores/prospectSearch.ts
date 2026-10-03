@@ -342,6 +342,7 @@ export const useProspectSearchStore = defineStore('prospectSearch', () => {
           candidate.city ?? '',
           candidate.google_maps_url ?? '',
           candidate.facebook_url ?? '',
+          candidate.country ?? 'FR',
         )
         state.tested += 1
         if (record.status !== 'completed') {

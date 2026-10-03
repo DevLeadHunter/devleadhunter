@@ -41,7 +41,7 @@ from scrappers.nodriver_dom import NodriverDom
 from scrappers.nodriver_executor import run_nodriver_task
 from services.country_profiles import CountryProfiles
 from services.decision_maker.normalize import company_tokens, fold
-from services.sms.phone_normalizer import format_phone_for_display, to_e164_nanp
+from services.sms.phone_normalizer import format_phone_in_national_form
 
 logger = logging.getLogger(__name__)
 
@@ -638,37 +638,53 @@ _FR_PHONE_RE: re.Pattern[str] = re.compile(r"(?<!\d)(?:\+33[\s.\-]?[1-9]|0[1-9])
 _NANP_PHONE_RE: re.Pattern[str] = re.compile(
     r"(?<!\d)(?:\+?1[\s.\-]?)?\(?[2-9]\d{2}\)?[\s.\-]?[2-9]\d{2}[\s.\-]?\d{4}(?!\d)"
 )
+_CH_PHONE_RE: re.Pattern[str] = re.compile(
+    r"(?<!\d)(?:(?:\+|00)41[\s.\-]?(?:\(0\)[\s.\-]?)?|0)[1-9]\d(?:[\s.\-/]?\d){7}(?!\d)"
+)
+_BE_PHONE_RE: re.Pattern[str] = re.compile(
+    r"(?<!\d)(?:(?:\+|00)32[\s.\-]?(?:\(0\)[\s.\-]?)?|0)"
+    r"(?:4[5-9]\d(?:[\s.\-/]?\d){6}|[2349](?:[\s.\-/]?\d){7}|[15-8]\d(?:[\s.\-/]?\d){6})(?!\d)"
+)
+_LU_PHONE_RE: re.Pattern[str] = re.compile(
+    r"(?<!\d)(?:(?:\+|00)352[\s.\-]?(?:6\d{2}(?:[\s.\-/]?\d){6}|\d{2}(?:[\s.\-/]?\d{2}){2,3})"
+    r"|6\d{2}(?:[\s.\-/]?\d){6})(?!\d)"
+)
+_PHONE_RE_BY_COUNTRY: dict[str, re.Pattern[str]] = {
+    "FR": _FR_PHONE_RE,
+    "CH": _CH_PHONE_RE,
+    "BE": _BE_PHONE_RE,
+    "LU": _LU_PHONE_RE,
+    "CA": _NANP_PHONE_RE,
+}
 
 
 def _parse_phone(*texts: str, country: str = "FR") -> str | None:
     """Best-effort phone number from a Facebook page's text, in the prospect's country.
 
+    Only a number of that country is read, national or with its dial code: ``06 29 34 58 99`` or
+    ``+33 6 29 34 58 99`` in France, ``079 123 45 67`` or ``+41 79 123 45 67`` in Switzerland,
+    ``0470 12 34 56`` or ``+32 2 511 11 11`` in Belgium, ``621 123 456`` or ``+352 26 12 34 56`` in
+    Luxembourg, ``(514) 555-0199`` in Québec. A Swiss ``079`` is never cut into French pairs.
+
     Args:
         *texts: Text blocks to scan (intro first, then the about panel).
-        country: ISO code of the prospect's country — Canada reads the North American plan,
-            every other country the French shape.
+        country: ISO code of the prospect's country.
 
     Returns:
-        The number in its display form (``0X XX XX XX XX``, ``514 555-0199``), or ``None`` when absent.
+        The number as its country prints it (``06 29 34 58 99``, ``079 123 45 67``,
+        ``0470 12 34 56``, ``514 555-0199``), or ``None`` when absent.
     """
-    is_north_american = CountryProfiles.get(country).code == "CA"
-    pattern = _NANP_PHONE_RE if is_north_american else _FR_PHONE_RE
+    profile = CountryProfiles.get(country)
+    pattern = _PHONE_RE_BY_COUNTRY.get(profile.code)
+    if pattern is None:
+        return None
     for text in texts:
         if not text:
             continue
-        match = pattern.search(text)
-        if not match:
-            continue
-        if is_north_american:
-            e164 = to_e164_nanp(match.group(0))
-            if e164:
-                return format_phone_for_display(e164, country="CA")
-            continue
-        digits = re.sub(r"\D", "", match.group(0))
-        if digits.startswith("33"):
-            digits = "0" + digits[2:]
-        if len(digits) == 10:
-            return " ".join(digits[i : i + 2] for i in range(0, 10, 2))
+        for match in pattern.finditer(text):
+            phone = format_phone_in_national_form(match.group(0), country=profile.code)
+            if phone:
+                return phone
     return None
 
 

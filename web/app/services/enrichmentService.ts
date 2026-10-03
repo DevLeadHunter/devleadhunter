@@ -1,5 +1,6 @@
 import { ApiClient } from './api'
 import type { ScraperSidecarInfo } from '~/services/scraperSidecarService'
+import type { ProspectCountry } from '~/types'
 import { getScraperSidecarInfo, postToScraperSidecar } from '~/services/scraperSidecarService'
 
 /** A single scraped review. */
@@ -134,6 +135,7 @@ export type BulkEnrichTarget = {
   city: string | null
   googleMapsUrl: string | null
   facebookUrl: string | null
+  country: ProspectCountry
 }
 
 export class EnrichmentService {
@@ -162,6 +164,7 @@ export class EnrichmentService {
    * @param city - City narrowing the lookup.
    * @param googleMapsUrl - Maps place URL anchoring the scrape on the exact listing.
    * @param facebookUrl - Facebook page URL used when the prospect has no Google listing.
+   * @param country - Prospect's country, deciding the phone and postal code shapes the scraper reads.
    * @returns The refreshed enrichment record.
    */
   static async runProspectEnrichment(
@@ -170,6 +173,7 @@ export class EnrichmentService {
     city: string,
     googleMapsUrl: string = '',
     facebookUrl: string = '',
+    country: ProspectCountry = 'FR',
   ): Promise<ProspectEnrichment> {
     const scrapedData: unknown = businessName
       ? await postToScraperSidecar<unknown>(
@@ -179,6 +183,7 @@ export class EnrichmentService {
             city: city || null,
             google_maps_url: googleMapsUrl || null,
             facebook_url: facebookUrl || null,
+            country,
           },
           // The sidecar caps a scrape at 180s — a call still pending past that is wedged.
           { timeoutMs: 240_000 },
@@ -278,6 +283,7 @@ export class EnrichmentService {
             city: target.city,
             google_maps_url: target.googleMapsUrl,
             facebook_url: target.facebookUrl,
+            country: target.country,
           },
           { timeoutMs: 240_000 },
         )

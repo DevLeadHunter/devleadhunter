@@ -482,6 +482,7 @@ import type { UseDragToReorderReturn, UseToastReturn } from '~/types/Composables
 import type { EnrichmentForm, UiProspectEnrichmentProps } from '~/types/UiProspectEnrichment'
 import type { ComponentPublicInstance, ComputedRef, PropType, Ref } from 'vue'
 import type { EnrichmentOpeningHours, ProspectEnrichment } from '~/services/enrichmentService'
+import type { ProspectCountry } from '~/types'
 import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import { EnrichmentService } from '~/services/enrichmentService'
 import { useDragToReorder } from '~/composables/useDragToReorder'
@@ -510,6 +511,10 @@ const props: UiProspectEnrichmentProps = defineProps({
   prospectFacebookUrl: {
     type: String,
     default: '',
+  },
+  prospectCountry: {
+    type: String as PropType<ProspectCountry>,
+    default: 'FR',
   },
   open: {
     type: Boolean,
@@ -780,6 +785,7 @@ async function run(): Promise<void> {
       props.prospectCity,
       props.prospectGoogleMapsUrl,
       props.prospectFacebookUrl,
+      props.prospectCountry,
     )
     syncForm()
     toast.success('Données récupérées')
