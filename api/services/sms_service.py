@@ -250,8 +250,8 @@ class SmsService:
     ) -> ComposedSmsSegments:
         """Count what a message typed in the composer bills, with the same rule as :meth:`send_manual`.
 
-        The recipient decides the room of the opt-out mention: the user's prospect reads his own country,
-        a bare number is French.
+        The characters reserved for the opt-out mention follow the recipient: the country of the user's
+        prospect, France for a bare number.
 
         Args:
             db: Active database session.
@@ -260,7 +260,7 @@ class SmsService:
             prospect_id: The recipient prospect, ``None`` for a bare number.
 
         Returns:
-            The characters smsmode receives, the billed segments, the ceiling and the encoding.
+            The characters smsmode receives, the billed segments, the most segments allowed and the encoding.
         """
         prospect = self._owned_prospect(db, user_id, prospect_id)
         country = SmsProspectingRules.country_of(prospect) if prospect is not None else DEFAULT_COUNTRY_CODE
