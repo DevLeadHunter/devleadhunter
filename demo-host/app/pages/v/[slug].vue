@@ -114,6 +114,7 @@ import type { ComputedRef, Ref } from 'vue'
 import type { DemoSitePublic } from '~/types/demoSite'
 import DemoCtaLink from '~/components/DemoCtaLink.vue'
 import { BusinessNameUtils } from '~/utils/BusinessNameUtils'
+import { ContactLinkUtils } from '~/utils/ContactLinkUtils'
 import { DemoBeaconUtils } from '~/utils/DemoBeaconUtils'
 
 const FALLBACK_ACCENT_COLOR: string = '#b45309'
@@ -206,11 +207,9 @@ const ownerNameLabel: ComputedRef<string> = computed((): string => (site.value?.
 const ownerCompanyLabel: ComputedRef<string> = computed((): string => (site.value?.owner_company_name ?? '').trim())
 
 /** Owner company website link, normalized to an absolute http(s) URL. */
-const ownerCompanyWebsiteHref: ComputedRef<string> = computed((): string => {
-  const url: string = (site.value?.owner_company_website_url ?? '').trim()
-  if (!url) return ''
-  return /^https?:\/\//i.test(url) ? url : `https://${url}`
-})
+const ownerCompanyWebsiteHref: ComputedRef<string> = computed((): string =>
+  ContactLinkUtils.websiteHref(site.value?.owner_company_website_url),
+)
 
 const hasOwnerSignature: ComputedRef<boolean> = computed(
   (): boolean => Boolean(ownerNameLabel.value) || Boolean(ownerCompanyLabel.value),

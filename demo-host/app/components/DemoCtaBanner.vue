@@ -25,7 +25,7 @@
       </svg>
       <span class="dlh-pill__text">
         <span class="dlh-pill__label">Ce site vous plaît ?</span>
-        <span class="dlh-pill__hint">Laissez-moi un mot</span>
+        <span class="dlh-pill__hint">{{ pillSubtitleLabel }}</span>
       </span>
       <svg
         class="dlh-pill__chevron"
@@ -62,7 +62,7 @@
           >
             <path d="M12 2v20M2 12h20M4.9 4.9l14.2 14.2M19.1 4.9L4.9 19.1" />
           </svg>
-          <span class="dlh-card__label">Votre démo — {{ businessName }}</span>
+          <span class="dlh-card__label">Votre démo · {{ businessName }}</span>
         </div>
         <button type="button" class="dlh-card__close" aria-label="Réduire" @click="collapse">
           <svg
@@ -82,17 +82,29 @@
       </div>
 
       <template v-if="state === 'open'">
-        <div class="dlh-card__intro">
-          <div class="dlh-card__introrow">
-            <img v-if="ownerPhotoUrl" class="dlh-avatar dlh-avatar--card" :src="ownerPhotoUrl" alt="" />
-            <div>
-              <div class="dlh-card__title">Ce site vous plaît ?</div>
-              <div v-if="ownerNameLabel" class="dlh-card__who">{{ ownerNameLabel }} · développeur web</div>
+        <div v-if="ownerNameLabel" class="dlh-owner">
+          <img v-if="ownerPhotoUrl" class="dlh-avatar dlh-avatar--owner" :src="ownerPhotoUrl" alt="" />
+          <div class="dlh-owner__identity">
+            <div class="dlh-owner__name">{{ ownerNameLabel }}</div>
+            <div class="dlh-owner__role">
+              {{ OWNER_ROLE_LABEL }}
+              <template v-if="ownerWebsiteDomain">
+                ·
+                <a
+                  class="dlh-owner__website"
+                  :href="ownerWebsiteHref"
+                  target="_blank"
+                  rel="noopener"
+                  @click="trackOwnerWebsiteClick"
+                  >{{ ownerWebsiteDomain }}</a
+                >
+              </template>
             </div>
           </div>
-          <div class="dlh-card__sub">
-            Cette démo a été préparée pour vous. Laissez un message, vous serez recontacté très vite.
-          </div>
+        </div>
+        <div class="dlh-card__intro">
+          <div class="dlh-card__title">Ce site vous plaît ?</div>
+          <div class="dlh-card__sub">{{ offerText }}</div>
         </div>
         <textarea
           v-model="message"
@@ -104,7 +116,7 @@
           @input="onFieldInput"
         ></textarea>
         <button type="button" class="dlh-card__submit dlh-celebrate" :disabled="isSending" @click="submit">
-          {{ isSending ? 'Envoi…' : 'Je suis intéressé' }}
+          {{ isSending ? 'Envoi…' : 'Me répondre' }}
           <svg
             v-if="!isSending"
             width="15"
@@ -120,16 +132,11 @@
             <path d="M5 12h14M13 6l6 6-6 6" />
           </svg>
         </button>
-        <div v-if="hasError" class="dlh-card__error">L'envoi a échoué — réessayez dans un instant.</div>
+        <div v-if="hasError" class="dlh-card__error">L'envoi a échoué, réessayez dans un instant.</div>
 
-        <!-- Direct-contact chips — quiet escape hatch under the primary form; each hidden when unset. -->
-        <div v-if="hasOwnerContact" class="dlh-card__contacts">
-          <a
-            v-if="ownerContactPhone"
-            class="dlh-contact-chip"
-            :href="ownerPhoneHref"
-            @click="trackOwnerContactClick('phone')"
-          >
+        <!-- Direct-contact chip — quiet escape hatch under the primary form; hidden when unset. -->
+        <div v-if="ownerContactPhone" class="dlh-card__contacts">
+          <a class="dlh-contact-chip" :href="ownerPhoneHref" @click="trackOwnerPhoneClick">
             <svg
               width="12"
               height="12"
@@ -146,28 +153,6 @@
               />
             </svg>
             {{ ownerContactPhone }}
-          </a>
-          <a
-            v-if="ownerContactEmail"
-            class="dlh-contact-chip"
-            :href="ownerEmailHref"
-            @click="trackOwnerContactClick('email')"
-          >
-            <svg
-              width="12"
-              height="12"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="2.2"
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              aria-hidden="true"
-            >
-              <rect x="2" y="4" width="20" height="16" rx="2" />
-              <path d="m22 7-10 5L2 7" />
-            </svg>
-            {{ ownerContactEmail }}
           </a>
         </div>
       </template>
@@ -186,7 +171,7 @@
           </svg>
         </span>
         <div class="dlh-success__title">Merci, c'est envoyé !</div>
-        <div class="dlh-success__sub">Votre message est bien parti — vous serez recontacté très vite.</div>
+        <div class="dlh-success__sub">Votre message est bien parti, vous serez recontacté très vite.</div>
         <button type="button" class="dlh-success__back" @click="collapse">Continuer à explorer le site</button>
       </div>
     </div>
@@ -198,6 +183,7 @@ import type { ComputedRef, PropType, Ref } from 'vue'
 import type { DemoCtaBannerProps, DemoCtaBannerState } from '~/types/DemoCtaBanner'
 import type { DemoSitePublic } from '~/types/demoSite'
 import { captureDemoEvent } from '~/composables/useDemoTracking'
+import { ContactLinkUtils } from '~/utils/ContactLinkUtils'
 import { DemoBeaconUtils } from '~/utils/DemoBeaconUtils'
 
 /**
@@ -230,6 +216,8 @@ const props: DemoCtaBannerProps = defineProps({
 
 const config: ReturnType<typeof useRuntimeConfig> = useRuntimeConfig()
 
+const OWNER_ROLE_LABEL: string = 'Développeur web'
+
 const state: Ref<DemoCtaBannerState> = ref('collapsed')
 const message: Ref<string> = ref('')
 const isSending: Ref<boolean> = ref(false)
@@ -257,18 +245,35 @@ const ownerNameLabel: ComputedRef<string> = computed((): string => (props.site.o
 
 const ownerContactPhone: ComputedRef<string> = computed((): string => (props.site.owner_contact_phone ?? '').trim())
 
-const ownerContactEmail: ComputedRef<string> = computed((): string => (props.site.owner_contact_email ?? '').trim())
-
 /** tel: link of the owner's phone — digits (and +) only, so « 06 42 19 38 12 » dials. */
 const ownerPhoneHref: ComputedRef<string> = computed(
   (): string => `tel:${ownerContactPhone.value.replace(/[^+\d]/g, '')}`,
 )
 
-const ownerEmailHref: ComputedRef<string> = computed((): string => `mailto:${ownerContactEmail.value}`)
-
-const hasOwnerContact: ComputedRef<boolean> = computed(
-  (): boolean => Boolean(ownerContactPhone.value) || Boolean(ownerContactEmail.value),
+const ownerWebsiteHref: ComputedRef<string> = computed((): string =>
+  ContactLinkUtils.websiteHref(props.site.owner_company_website_url),
 )
+
+const ownerWebsiteDomain: ComputedRef<string> = computed((): string =>
+  ContactLinkUtils.websiteDomain(props.site.owner_company_website_url),
+)
+
+const pillSubtitleLabel: ComputedRef<string> = computed((): string =>
+  ownerNameLabel.value ? `${ownerNameLabel.value}, ${OWNER_ROLE_LABEL.toLowerCase()}` : 'Laissez-moi un mot',
+)
+
+const offerText: ComputedRef<string> = computed((): string => {
+  const sentences: string[] = []
+
+  const salePrice: string = (props.site.sale_price_label ?? '').trim()
+  if (salePrice) sentences.push(`${salePrice}, une seule fois, pas d'abonnement.`)
+
+  const expiryDate: string = (props.site.expiry_date_label ?? '').trim()
+  if (expiryDate) sentences.push(`Je le garde en ligne jusqu'au ${expiryDate}.`)
+
+  sentences.push('Un mot me suffit, même un non.')
+  return sentences.join(' ')
+})
 
 /** Whether the banner renders at all — live demos, real prospect visits only. */
 const isVisible: ComputedRef<boolean> = computed((): boolean => {
@@ -402,15 +407,15 @@ async function submit(): Promise<void> {
   }
 }
 
-/**
- * Track a contact chip click — video page only; the demo page's global tel:/mailto: listener already beacons these.
- * @param kind - Which chip was clicked.
- */
-function trackOwnerContactClick(kind: 'phone' | 'email'): void {
-  if (!props.isVideoPageVariant) return
-  const event: string = kind === 'phone' ? 'demo_phone_click' : 'demo_contact_click'
-  captureDemoEvent(event, { source: 'cta_banner' })
-  DemoBeaconUtils.send(apiBase.value, props.site.slug, event)
+/** Track a click on the owner's phone chip and notify the owner (the demo page's click listener skips the banner). */
+function trackOwnerPhoneClick(): void {
+  captureDemoEvent('demo_phone_click', { source: 'cta_banner' })
+  DemoBeaconUtils.send(apiBase.value, props.site.slug, 'demo_phone_click')
+}
+
+/** Track a click on the owner's website link in PostHog. */
+function trackOwnerWebsiteClick(): void {
+  captureDemoEvent('demo_cta_banner_owner_link_click', { host: ownerWebsiteDomain.value })
 }
 
 /** On tab close, flag a prospect who opened the form but left without sending. */
@@ -491,8 +496,11 @@ onUnmounted((): void => {
 }
 
 .dlh-pill__hint {
+  max-width: 100%;
+  overflow: hidden;
   font-size: 11px;
   color: #6b6558;
+  text-overflow: ellipsis;
   white-space: nowrap;
 }
 
@@ -583,6 +591,7 @@ onUnmounted((): void => {
 .dlh-card__title {
   font-size: 19px;
   font-weight: 600;
+  line-height: 1.25;
   letter-spacing: -0.01em;
   color: #1d1a14;
 }
@@ -647,6 +656,7 @@ onUnmounted((): void => {
   flex-shrink: 0;
   border: 1px solid #e1dbcc;
   border-radius: 999px;
+  background: #e1dbcc;
   object-fit: cover;
 }
 
@@ -656,21 +666,46 @@ onUnmounted((): void => {
   margin-left: -6px;
 }
 
-.dlh-avatar--card {
-  width: 44px;
-  height: 44px;
+.dlh-avatar--owner {
+  width: 56px;
+  height: 56px;
+  border: 2px solid #ffffff;
+  box-shadow: 0 0 0 1px #e1dbcc;
 }
 
-.dlh-card__introrow {
+.dlh-owner {
   display: flex;
   align-items: center;
   gap: 12px;
 }
 
-.dlh-card__who {
-  margin-top: 2px;
+.dlh-owner__identity {
+  min-width: 0;
+}
+
+.dlh-owner__name {
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 1.2;
+  color: #1d1a14;
+}
+
+.dlh-owner__role {
+  margin-top: 3px;
   font-size: 12.5px;
   color: #6b6558;
+  overflow-wrap: anywhere;
+}
+
+.dlh-owner__website {
+  color: #1d1a14;
+  text-decoration: underline;
+  text-decoration-color: #c9c2b2;
+  text-underline-offset: 2px;
+}
+
+.dlh-owner__website:hover {
+  text-decoration-color: #1d1a14;
 }
 
 .dlh-card__contacts {
