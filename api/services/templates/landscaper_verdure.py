@@ -104,6 +104,8 @@ SECTION_FIELDS: dict[str, list[str]] = {
         "email",
         "city",
         "area",
+        "professionalLicenseLabel",
+        "professionalLicenseNumber",
         "logo",
         "openingHours",
         "social",
