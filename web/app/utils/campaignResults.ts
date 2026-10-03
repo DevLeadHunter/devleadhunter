@@ -36,6 +36,8 @@ const MILLISECONDS_PER_MINUTE: number = 60_000
 const MINUTES_PER_HOUR: number = 60
 const ACCENT_MARKS_PATTERN: RegExp = /[\u0300-\u036f]/g
 const QUIET_STATES: CampaignResultsProspectState[] = ['silent', 'pending', 'not_sent']
+const MINIMUM_CONTACTED_TO_COMPARE: number = 10
+const MINIMUM_CONTACTED_PER_TRADE: number = 2
 
 /** Derives the day series, prospect rows and breakdowns of a campaign's « Résultats » tab from its API payload. */
 export class CampaignResults {
@@ -468,16 +470,37 @@ export class CampaignResults {
   }
 
   /**
+   * Whether enough prospects were contacted for a rate to mean something against another campaign's.
+   * @param contacted - Prospects contacted.
+   * @returns True from ten contacted prospects.
+   */
+  static hasEnoughContactsToCompare(contacted: number): boolean {
+    return contacted >= MINIMUM_CONTACTED_TO_COMPARE
+  }
+
+  /**
+   * The trades with enough contacted prospects for their rates to be compared.
+   * @param groups - The trade groups.
+   * @returns The groups with at least two contacted prospects, in the same order.
+   */
+  static comparableTradeGroups(groups: CampaignResultsTradeGroup[]): CampaignResultsTradeGroup[] {
+    return groups.filter((group: CampaignResultsTradeGroup): boolean => group.contacted >= MINIMUM_CONTACTED_PER_TRADE)
+  }
+
+  /**
    * What a campaign can be compared against: the pooled other campaigns, then each of them, most recent first.
    * @param benchmarks - Stage counts of the user's email campaigns.
    * @param campaignId - The campaign being looked at, left out.
-   * @returns The comparisons, empty when the campaign is the only one.
+   * @returns The comparisons, empty when the campaign is the only one; a campaign with too few contacts is left out.
    */
   static comparisons(benchmarks: CampaignBenchmark[], campaignId: number): CampaignResultsComparison[] {
     const others: CampaignBenchmark[] = benchmarks.filter(
       (benchmark: CampaignBenchmark): boolean => benchmark.campaign_id !== campaignId,
     )
-    const each: CampaignResultsComparison[] = others.map(
+    const comparableOthers: CampaignBenchmark[] = others.filter((benchmark: CampaignBenchmark): boolean =>
+      CampaignResults.hasEnoughContactsToCompare(benchmark.contacted),
+    )
+    const each: CampaignResultsComparison[] = comparableOthers.map(
       (benchmark: CampaignBenchmark): CampaignResultsComparison => ({
         key: `campaign-${benchmark.campaign_id}`,
         label: benchmark.name,

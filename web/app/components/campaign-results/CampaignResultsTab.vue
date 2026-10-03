@@ -34,7 +34,10 @@
             {{ headline.summary }}
           </p>
         </div>
-        <div v-if="comparisonOptions.length > 0" class="flex w-full items-center gap-2 @2xl:w-auto">
+        <div
+          v-if="hasEnoughContactsToCompare && comparisonOptions.length > 0"
+          class="flex w-full items-center gap-2 @2xl:w-auto"
+        >
           <span class="shrink-0 text-[13px] text-[var(--app-ink-soft)]">Comparé à</span>
           <div class="min-w-0 flex-1 @2xl:w-64 @2xl:flex-none">
             <UiSelectField v-model="selectedComparisonKey" :options="comparisonOptions" aria-label="Comparer à" />
@@ -44,8 +47,9 @@
 
       <UiKpiBand :cells="kpiCells" label="Chiffres clés de la campagne" />
 
-      <div class="grid items-start gap-5 @4xl:grid-cols-[minmax(0,1.65fr)_minmax(0,1fr)] @4xl:gap-6">
-        <CampaignResultsTodoCard :todos="todos" @act="handleTodoAction" />
+      <CampaignResultsTodoCard :todos="todos" :empty-note="todosEmptyNote" @act="handleTodoAction" />
+
+      <div class="grid items-start gap-5 @4xl:gap-6" :class="{ '@4xl:grid-cols-2': hasTradeComparison }">
         <CampaignResultsStateCard
           :groups="stateGroups"
           :facts="stateFacts"
@@ -55,6 +59,12 @@
           @select-state="showProspectsInState"
           @show-prospects="showAllProspects"
           @open-queue="emit('open-queue')"
+        />
+        <CampaignResultsTradesCard
+          v-if="hasTradeComparison"
+          :groups="tradeGroups"
+          :note="tradesNote"
+          @select-prospect="emit('open-prospect', $event)"
         />
       </div>
 
@@ -68,27 +78,21 @@
       />
 
       <CampaignResultsRepliesCard
+        v-if="hasSentMails"
         :replies="props.results.replies"
         :rows="rows"
         @open-prospect="emit('open-prospect', $event)"
         @add-reply="openReplyDrawer"
       />
 
-      <div class="grid items-start gap-5 @3xl:gap-6" :class="{ '@3xl:grid-cols-2': tradeGroups.length > 1 }">
-        <CampaignResultsTradesCard
-          v-if="tradeGroups.length > 1"
-          :groups="tradeGroups"
-          :note="tradesNote"
-          @select-prospect="emit('open-prospect', $event)"
-        />
-        <CampaignResultsSendsCard
-          :steps="stepSummaries"
-          :prospect-names="prospectNames"
-          :prospect-count="rows.length"
-          :note="sendsNote"
-          :is-visit-tracking-available="props.results.is_visit_tracking_available"
-        />
-      </div>
+      <CampaignResultsSendsCard
+        v-if="hasSentMails"
+        :steps="stepSummaries"
+        :prospect-names="prospectNames"
+        :prospect-count="rows.length"
+        :note="sendsNote"
+        :is-visit-tracking-available="props.results.is_visit_tracking_available"
+      />
 
       <CampaignResultsProspectsCard
         ref="prospectsCard"
@@ -215,13 +219,27 @@ const selectedComparisonKey: WritableComputedRef<string> = computed({
   },
 })
 
-const kpiCells: ComputedRef<UiKpiBandCell[]> = computed((): UiKpiBandCell[] =>
-  props.results ? CampaignResultsSummary.kpiCells(props.results, rows.value, selectedComparison.value, now.value) : [],
+const hasEnoughContactsToCompare: ComputedRef<boolean> = computed((): boolean =>
+  props.results ? CampaignResults.hasEnoughContactsToCompare(props.results.totals.contacted) : false,
 )
+
+const kpiCells: ComputedRef<UiKpiBandCell[]> = computed((): UiKpiBandCell[] => {
+  if (!props.results) return []
+  const comparison: CampaignResultsComparison | null = hasEnoughContactsToCompare.value
+    ? selectedComparison.value
+    : null
+  return CampaignResultsSummary.kpiCells(props.results, rows.value, comparison, now.value)
+})
 
 const todos: ComputedRef<CampaignResultsTodo[]> = computed((): CampaignResultsTodo[] =>
   CampaignResultsSummary.todos(rows.value, now.value),
 )
+
+const todosEmptyNote: ComputedRef<string> = computed((): string =>
+  props.results ? CampaignResultsSummary.todosEmptyNote(props.results.totals) : '',
+)
+
+const hasSentMails: ComputedRef<boolean> = computed((): boolean => (props.results?.totals.first_mails_sent ?? 0) > 0)
 
 const stateGroups: ComputedRef<CampaignResultsStateGroup[]> = computed((): CampaignResultsStateGroup[] =>
   CampaignResults.stateGroups(rows.value),
@@ -251,6 +269,10 @@ const visitMarks: ComputedRef<CampaignResultsVisitMarks> = computed(
 
 const tradeGroups: ComputedRef<CampaignResultsTradeGroup[]> = computed((): CampaignResultsTradeGroup[] =>
   CampaignResults.tradeGroups(rows.value),
+)
+
+const hasTradeComparison: ComputedRef<boolean> = computed(
+  (): boolean => CampaignResults.comparableTradeGroups(tradeGroups.value).length > 1,
 )
 
 const tradesNote: ComputedRef<string> = computed((): string => CampaignResultsSummary.tradesNote(tradeGroups.value))

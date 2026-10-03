@@ -203,10 +203,7 @@ export class CampaignResultsSummary {
   static stateFacts(results: CampaignResultsResponse, rows: CampaignResultsRow[]): CampaignResultsStateFact[] {
     const totals: CampaignResultsTotals = results.totals
     const planned: CampaignResultsPlannedSend[] = CampaignResults.plannedSends(rows)
-    const facts: CampaignResultsStateFact[] =
-      planned.length > 0
-        ? CampaignResultsSummary.plannedSendFacts(planned)
-        : [CampaignResultsSummary.mailsSentFact(totals)]
+    const facts: CampaignResultsStateFact[] = CampaignResultsSummary.sendFacts(totals, planned)
     if (totals.bounced > 0) {
       facts.push({
         label: 'Rebonds',
@@ -237,9 +234,7 @@ export class CampaignResultsSummary {
    * @returns The sentence, empty when there is nothing to tell apart.
    */
   static tradesNote(groups: CampaignResultsTradeGroup[]): string {
-    const comparableGroups: CampaignResultsTradeGroup[] = groups.filter(
-      (group: CampaignResultsTradeGroup): boolean => group.contacted >= 2,
-    )
+    const comparableGroups: CampaignResultsTradeGroup[] = CampaignResults.comparableTradeGroups(groups)
     const best: CampaignResultsTradeGroup | undefined = comparableGroups[0]
     const worst: CampaignResultsTradeGroup | undefined = comparableGroups[comparableGroups.length - 1]
     if (!best || !worst || best === worst) return ''
@@ -247,6 +242,16 @@ export class CampaignResultsSummary {
     const bestLabel: string = best.label.toLocaleLowerCase('fr-FR')
     const worstLabel: string = worst.label.toLocaleLowerCase('fr-FR')
     return `Le mieux : ${bestLabel} (${best.visited} sur ${best.contacted}). Le moins bien : ${worstLabel} (${worst.visited} sur ${worst.contacted}).`
+  }
+
+  /**
+   * What the to-do list says when nothing waits.
+   * @param totals - The campaign's totals.
+   * @returns Why there is nothing to do yet.
+   */
+  static todosEmptyNote(totals: CampaignResultsTotals): string {
+    if (totals.contacted === 0) return "Rien à traiter : aucun mail n'est encore parti."
+    return "Rien à traiter pour l'instant : aucune réponse ni visite n'attend de suite."
   }
 
   /**
@@ -432,7 +437,7 @@ export class CampaignResultsSummary {
    */
   private static reviewSummary(results: CampaignResultsResponse, rows: CampaignResultsRow[]): string {
     const totals: CampaignResultsTotals = results.totals
-    if (totals.contacted === 0) return "Aucun mail n'est parti dans cette campagne."
+    if (totals.contacted === 0) return ''
     const sentences: string[] = []
     const isTitleAboutVisits: boolean = totals.sales === 0 && totals.interested === 0
     if (isTitleAboutVisits || !results.is_visit_tracking_available) {
@@ -535,7 +540,7 @@ export class CampaignResultsSummary {
       label: 'Ont ouvert leur site',
       value: String(totals.visited),
       total: null,
-      detail: `${CampaignResultsFormat.percent(totals.visited, totals.contacted)} % des contactés`,
+      detail: CampaignResultsSummary.shareOfContacted(totals.visited, totals.contacted),
       ...CampaignResultsSummary.comparisonOf(totals.visited, totals.contacted, comparison, 'visited'),
       meterRatio: CampaignResultsSummary.ratioOf(totals.visited, totals.contacted),
       meterTone: 'blue',
@@ -548,7 +553,9 @@ export class CampaignResultsSummary {
    * @returns « 49 mails · 2 rebonds », « 11 à venir · aucun échec ».
    */
   private static contactedDetail(totals: CampaignResultsTotals): string {
-    const sendCount: string = CampaignResultsSummary.isSending(totals)
+    const isSending: boolean = CampaignResultsSummary.isSending(totals)
+    if (!isSending && totals.first_mails_sent + totals.follow_ups_sent === 0) return 'Aucun mail parti'
+    const sendCount: string = isSending
       ? `${totals.prospects - totals.contacted} à venir`
       : CampaignResultsFormat.count(totals.first_mails_sent + totals.follow_ups_sent, 'mail')
     const incidents: string[] = []
@@ -582,8 +589,8 @@ export class CampaignResultsSummary {
    * @returns « 12 % · 2 intéressés, 1 refus ».
    */
   private static repliedDetail(totals: CampaignResultsTotals): string {
+    if (totals.replied === 0) return CampaignResultsSummary.shareOfContacted(0, totals.contacted)
     const share: string = `${CampaignResultsFormat.percent(totals.replied, totals.contacted)} %`
-    if (totals.replied === 0) return `${share} des contactés`
     const verdicts: string[] = [CampaignResultsFormat.count(totals.interested, 'intéressé')]
     if (totals.refused > 0) verdicts.push(CampaignResultsFormat.count(totals.refused, 'refus', 'refus'))
     return `${share} · ${verdicts.join(', ')}`
@@ -596,13 +603,14 @@ export class CampaignResultsSummary {
    * @returns « 8 % · TP Motorsport, Les projets d'Hugo ».
    */
   private static interestedDetail(totals: CampaignResultsTotals, rows: CampaignResultsRow[]): string {
+    if (totals.contacted === 0) return ''
     const share: string = `${CampaignResultsFormat.percent(totals.interested, totals.contacted)} %`
     const names: string[] = rows
       .filter(
         (row: CampaignResultsRow): boolean => row.prospect.state === 'interested' || row.prospect.state === 'sold',
       )
       .map((row: CampaignResultsRow): string => row.prospect.name)
-    if (names.length === 0) return `${share} des contactés`
+    if (names.length === 0) return CampaignResultsSummary.shareOfContacted(totals.interested, totals.contacted)
     const listedNames: string = names.slice(0, DETAIL_NAMES_LIMIT).join(', ')
     const ellipsis: string = names.length > DETAIL_NAMES_LIMIT ? '…' : ''
     return `${share} · ${listedNames}${ellipsis}`
@@ -635,6 +643,17 @@ export class CampaignResultsSummary {
       'encaissé',
     )
     return `${amount} ${participle}`
+  }
+
+  /**
+   * The share of the contacted prospects a figure stands for, empty before the first mail.
+   * @param count - Prospects at the stage.
+   * @param contacted - Prospects contacted.
+   * @returns « 40 % des contactés », or empty when nobody was contacted.
+   */
+  private static shareOfContacted(count: number, contacted: number): string {
+    if (contacted === 0) return ''
+    return `${CampaignResultsFormat.percent(count, contacted)} % des contactés`
   }
 
   /**
@@ -683,6 +702,21 @@ export class CampaignResultsSummary {
   }
 
   /**
+   * The facts about the mails: those to come while the campaign runs, else those sent, none before the first one.
+   * @param totals - The campaign's totals.
+   * @param planned - The planned sends, the soonest first.
+   * @returns The facts.
+   */
+  private static sendFacts(
+    totals: CampaignResultsTotals,
+    planned: CampaignResultsPlannedSend[],
+  ): CampaignResultsStateFact[] {
+    if (planned.length > 0) return CampaignResultsSummary.plannedSendFacts(planned)
+    if (totals.first_mails_sent + totals.follow_ups_sent === 0) return []
+    return [CampaignResultsSummary.mailsSentFact(totals)]
+  }
+
+  /**
    * The facts of a running campaign: next send, follow-ups to come and last planned send.
    * @param planned - The planned sends, the soonest first.
    * @returns The facts.
@@ -721,11 +755,12 @@ export class CampaignResultsSummary {
    */
   private static mailsSentFact(totals: CampaignResultsTotals): CampaignResultsStateFact {
     const firstMails: string = CampaignResultsFormat.count(totals.first_mails_sent, 'premier mail', 'premiers mails')
-    const followUps: string = CampaignResultsFormat.count(totals.follow_ups_sent, 'relance')
+    const parts: string[] = [firstMails]
+    if (totals.follow_ups_sent > 0) parts.push(CampaignResultsFormat.count(totals.follow_ups_sent, 'relance'))
     return {
       label: 'Mails envoyés',
       value: String(totals.first_mails_sent + totals.follow_ups_sent),
-      detail: `${firstMails}, ${followUps}`,
+      detail: parts.join(', '),
     }
   }
 

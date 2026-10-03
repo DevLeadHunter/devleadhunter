@@ -3,32 +3,26 @@
     <header class="flex flex-wrap items-start gap-x-4 gap-y-3 px-[18px] pt-4">
       <div class="min-w-0 flex-[1_1_220px]">
         <h3 id="campaign-results-chart-title" class="text-[15px] font-medium text-[var(--app-ink)]">Jour par jour</h3>
-        <p class="mt-0.5 text-[13px] text-[var(--app-ink-soft)]">
-          {{
-            props.isVisitTrackingAvailable
-              ? `Visites des sites, mails envoyés et réponses, ${props.periodLabel}.`
-              : `Mails envoyés et réponses, ${props.periodLabel}.`
-          }}
-        </p>
+        <p class="mt-0.5 text-[13px] text-[var(--app-ink-soft)]">{{ chartDescription }}</p>
       </div>
       <div class="ml-auto flex flex-wrap items-center gap-x-3.5 gap-y-2">
         <div
           class="flex flex-wrap items-center gap-x-3.5 gap-y-1 text-[12.5px] text-[var(--app-ink)]/80"
           aria-hidden="true"
         >
-          <span v-if="props.isVisitTrackingAvailable" class="inline-flex items-center gap-1.5">
+          <span v-if="hasVisitPlot" class="inline-flex items-center gap-1.5">
             <span class="h-0.5 w-3.5 rounded-full bg-[var(--app-blue)]"></span>Visites
           </span>
-          <span class="inline-flex items-center gap-1.5">
+          <span v-if="hasSentFirstMails" class="inline-flex items-center gap-1.5">
             <span class="h-[11px] w-2 rounded-t-[2px] bg-[var(--app-ink)]"></span>Premiers mails
           </span>
-          <span class="inline-flex items-center gap-1.5">
+          <span v-if="hasSentFollowUps" class="inline-flex items-center gap-1.5">
             <span class="h-[11px] w-2 rounded-t-[2px] bg-[var(--app-faint)]"></span>Relances
           </span>
           <span v-if="hasPlannedMails" class="inline-flex items-center gap-1.5">
             <span class="h-[11px] w-2 rounded-[2px] border border-dashed border-[var(--app-ink-soft)]"></span>Prévus
           </span>
-          <span class="inline-flex items-center gap-1.5">
+          <span v-if="hasReplies" class="inline-flex items-center gap-1.5">
             <span class="h-[9px] w-3.5 rounded-full bg-[var(--app-ink)]"></span>Réponses
           </span>
         </div>
@@ -67,7 +61,7 @@
             fill-opacity="0.03"
           />
           <text
-            v-if="band.isLabelled"
+            v-if="band.isLabelled && hasVisitPlot"
             :x="band.x + band.width / 2"
             :y="geometry.plotBottom - 10"
             text-anchor="middle"
@@ -77,7 +71,7 @@
           </text>
         </g>
 
-        <g v-for="(tick, tickIndex) in visitScale.ticks" :key="tick">
+        <g v-for="(tick, tickIndex) in visibleVisitTicks" :key="tick">
           <line
             :x1="geometry.left"
             :x2="geometry.width - geometry.right"
@@ -86,10 +80,7 @@
             :class="tick === 0 ? 'stroke-[var(--app-line)]' : 'stroke-[var(--app-line-soft)]'"
           />
           <text
-            v-if="
-              props.isVisitTrackingAvailable &&
-              (!geometry.isNarrow || tickIndex % 2 === 0 || tickIndex === visitScale.ticks.length - 1)
-            "
+            v-if="!geometry.isNarrow || tickIndex % 2 === 0 || tickIndex === visibleVisitTicks.length - 1"
             :x="geometry.left - 8"
             :y="visitY(tick) + 4"
             text-anchor="end"
@@ -149,8 +140,9 @@
             stroke-width="2"
           />
           <text
-            :x="visitPeak.isLabelBefore ? visitPeak.x - 9 : visitPeak.x + 9"
-            :y="visitPeak.y - 6"
+            v-if="visitPeak.isLabelled"
+            :x="visitPeak.isLabelBefore ? visitPeak.x - PEAK_LABEL_GAP : visitPeak.x + PEAK_LABEL_GAP"
+            :y="visitPeak.y - PEAK_LABEL_RISE"
             :text-anchor="visitPeak.isLabelBefore ? 'end' : 'start'"
             class="fill-[var(--app-ink)] text-[11px] font-medium"
           >
@@ -246,7 +238,7 @@
             stroke-opacity="0.22"
           />
           <circle
-            v-if="!activeDay.isFuture && props.isVisitTrackingAvailable"
+            v-if="!activeDay.isFuture && hasVisitPlot"
             :cx="dayCenterX(activeDayIndex)"
             :cy="visitY(activeDay.visits)"
             r="4.5"
@@ -256,9 +248,9 @@
         </g>
         <rect
           :x="geometry.left"
-          :y="geometry.top - REPLY_PILL_RISE"
+          :y="hitAreaTop"
           :width="geometry.width - geometry.left - geometry.right"
-          :height="geometry.stripBottom - geometry.top + REPLY_PILL_RISE"
+          :height="geometry.stripBottom - hitAreaTop"
           fill="transparent"
           class="cursor-crosshair"
           @pointermove="pointToDay"
@@ -449,6 +441,7 @@ const AXIS_WIDTH: number = 48
 const NARROW_AXIS_WIDTH: number = 28
 const PLOT_RIGHT_MARGIN: number = 6
 const PLOT_TOP: number = 36
+const COMPACT_PLOT_TOP: number = 12
 const PLOT_HEIGHT: number = 180
 const NARROW_PLOT_HEIGHT: number = 140
 const STRIP_GAP: number = 20
@@ -462,6 +455,9 @@ const LARGEST_VISIT_TICK_STEP: number = 1000
 const MINIMUM_VISIT_SCALE_STEPS: number = 2
 const MAXIMUM_VISIT_SCALE_STEPS: number = 4
 const PEAK_LABEL_WIDTH: number = 80
+const PEAK_LABEL_GAP: number = 9
+const PEAK_LABEL_RISE: number = 6
+const PEAK_LABEL_HEIGHT: number = 12
 const WEEKEND_LABEL_MIN_WIDTH: number = 70
 const BAND_JOIN_TOLERANCE: number = 0.5
 const REPLY_PILL_RISE: number = 30
@@ -489,14 +485,30 @@ const chartWidth: Ref<number> = ref(0)
 const displayMode: Ref<CampaignResultsDailyChartDisplayMode> = ref('chart')
 const activeDayIndex: Ref<number | null> = ref(null)
 
+const hasVisitPlot: ComputedRef<boolean> = computed(
+  (): boolean =>
+    props.isVisitTrackingAvailable && props.days.some((day: CampaignResultsDay): boolean => day.visits > 0),
+)
+
+const hasReplies: ComputedRef<boolean> = computed((): boolean =>
+  props.days.some((day: CampaignResultsDay): boolean => day.replies.length > 0),
+)
+
+const chartDescription: ComputedRef<string> = computed((): string => {
+  if (!props.isVisitTrackingAvailable) return `Mails envoyés et réponses, ${props.periodLabel}.`
+  if (!hasVisitPlot.value) return `Mails envoyés et réponses, ${props.periodLabel}. Aucun site ouvert sur la période.`
+  return `Visites des sites, mails envoyés et réponses, ${props.periodLabel}.`
+})
+
 const geometry: ComputedRef<CampaignResultsDailyChartGeometry | null> = computed(
   (): CampaignResultsDailyChartGeometry | null => {
     if (chartWidth.value <= 0 || props.days.length === 0) return null
     const width: number = Math.max(MINIMUM_CHART_WIDTH, Math.floor(chartWidth.value))
     const isNarrow: boolean = width < NARROW_CHART_BELOW
     const left: number = isNarrow ? NARROW_AXIS_WIDTH : AXIS_WIDTH
-    const plotHeight: number = isNarrow ? NARROW_PLOT_HEIGHT : PLOT_HEIGHT
-    const plotBottom: number = PLOT_TOP + plotHeight
+    const top: number = plotTopOf(hasVisitPlot.value || hasReplies.value)
+    const plotHeight: number = plotHeightOf(hasVisitPlot.value, isNarrow)
+    const plotBottom: number = top + plotHeight
     const stripBottom: number = plotBottom + STRIP_GAP + STRIP_HEIGHT
     return {
       width,
@@ -504,7 +516,7 @@ const geometry: ComputedRef<CampaignResultsDailyChartGeometry | null> = computed
       isNarrow,
       left,
       right: PLOT_RIGHT_MARGIN,
-      top: PLOT_TOP,
+      top,
       plotHeight,
       plotBottom,
       stripBottom,
@@ -527,8 +539,24 @@ const visitScale: ComputedRef<CampaignResultsDailyChartVisitScale> = computed(
   },
 )
 
+const visibleVisitTicks: ComputedRef<number[]> = computed((): number[] =>
+  hasVisitPlot.value ? visitScale.value.ticks : [],
+)
+
+const hitAreaTop: ComputedRef<number> = computed((): number =>
+  geometry.value ? Math.max(0, geometry.value.top - REPLY_PILL_RISE) : 0,
+)
+
 const observedDayCount: ComputedRef<number> = computed(
   (): number => props.days.filter((day: CampaignResultsDay): boolean => !day.isFuture).length,
+)
+
+const hasSentFirstMails: ComputedRef<boolean> = computed((): boolean =>
+  props.days.some((day: CampaignResultsDay): boolean => day.firstMails > 0),
+)
+
+const hasSentFollowUps: ComputedRef<boolean> = computed((): boolean =>
+  props.days.some((day: CampaignResultsDay): boolean => day.followUps > 0),
 )
 
 const hasPlannedMails: ComputedRef<boolean> = computed((): boolean =>
@@ -582,7 +610,7 @@ const replyPills: ComputedRef<CampaignResultsDailyChartReplyPill[]> = computed(
 )
 
 const visitLinePoints: ComputedRef<[number, number][]> = computed((): [number, number][] => {
-  if (!geometry.value || !props.isVisitTrackingAvailable) return []
+  if (!geometry.value || !hasVisitPlot.value) return []
   return props.days
     .slice(0, observedDayCount.value)
     .map((day: CampaignResultsDay, index: number): [number, number] => [dayCenterX(index), visitY(day.visits)])
@@ -601,17 +629,22 @@ const visitAreaPath: ComputedRef<string> = computed((): string => {
 const visitPeak: ComputedRef<CampaignResultsDailyChartPeak | null> = computed(
   (): CampaignResultsDailyChartPeak | null => {
     const chart: CampaignResultsDailyChartGeometry | null = geometry.value
-    if (!chart || !props.isVisitTrackingAvailable) return null
+    if (!chart || !hasVisitPlot.value) return null
     const observedDays: CampaignResultsDay[] = props.days.slice(0, observedDayCount.value)
     const peakVisits: number = Math.max(0, ...observedDays.map((day: CampaignResultsDay): number => day.visits))
     if (peakVisits === 0) return null
     const peakIndex: number = observedDays.findIndex((day: CampaignResultsDay): boolean => day.visits === peakVisits)
     const x: number = dayCenterX(peakIndex)
+    const y: number = visitY(peakVisits)
+    const isLabelBefore: boolean = x + PEAK_LABEL_WIDTH > chart.width - chart.right
+    const labelLeft: number = isLabelBefore ? x - PEAK_LABEL_GAP - PEAK_LABEL_WIDTH : x + PEAK_LABEL_GAP
+    const labelTop: number = y - PEAK_LABEL_RISE - PEAK_LABEL_HEIGHT
     return {
       x,
-      y: visitY(peakVisits),
+      y,
       label: CampaignResultsFormat.count(peakVisits, 'visite'),
-      isLabelBefore: x + PEAK_LABEL_WIDTH > chart.width - chart.right,
+      isLabelBefore,
+      isLabelled: !isUnderReplyPill(labelLeft, labelLeft + PEAK_LABEL_WIDTH, labelTop),
     }
   },
 )
@@ -737,7 +770,7 @@ const activeDayRows: ComputedRef<CampaignResultsDailyChartTooltipRow[]> = comput
       ]
     }
     const rows: CampaignResultsDailyChartTooltipRow[] = []
-    if (props.isVisitTrackingAvailable) {
+    if (hasVisitPlot.value) {
       rows.push({ key: 'visits', swatch: 'visits', label: 'Visites', value: String(day.visits), isDetail: false })
       rows.push({
         key: 'new-visitors',
@@ -826,6 +859,26 @@ const visitMarkCells: ComputedRef<CampaignResultsDailyChartMark[]> = computed(()
 ])
 
 /**
+ * Top of the visit plot: room above it for the reply pills and the peak label, little when neither is drawn.
+ * @param hasMarksAbove - Whether visits or replies are drawn above the plot.
+ * @returns The y coordinate.
+ */
+function plotTopOf(hasMarksAbove: boolean): number {
+  return hasMarksAbove ? PLOT_TOP : COMPACT_PLOT_TOP
+}
+
+/**
+ * Height of the visit plot, none when nobody opened their site.
+ * @param hasVisits - Whether a visit is drawn.
+ * @param isNarrow - Whether the chart is narrow.
+ * @returns The height.
+ */
+function plotHeightOf(hasVisits: boolean, isNarrow: boolean): number {
+  if (!hasVisits) return 0
+  return isNarrow ? NARROW_PLOT_HEIGHT : PLOT_HEIGHT
+}
+
+/**
  * Horizontal centre of a day on the chart.
  * @param dayIndex - The day's index.
  * @returns The x coordinate.
@@ -883,6 +936,21 @@ function mailLabelText(sent: number, planned: number): string {
   if (sent === 0) return String(planned)
   if (planned === 0) return String(sent)
   return `${sent} +${planned}`
+}
+
+/**
+ * Whether a label would run under one of the reply pills drawn above the plot.
+ * @param left - The label's left edge.
+ * @param right - The label's right edge.
+ * @param top - The label's top edge.
+ * @returns True when a pill covers part of it.
+ */
+function isUnderReplyPill(left: number, right: number, top: number): boolean {
+  const chart: CampaignResultsDailyChartGeometry | null = geometry.value
+  if (!chart || top >= chart.top - REPLY_PILL_RISE + REPLY_PILL_HEIGHT) return false
+  return replyPills.value.some(
+    (pill: CampaignResultsDailyChartReplyPill): boolean => pill.x < right && pill.x + pill.width > left,
+  )
 }
 
 /**
