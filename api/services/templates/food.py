@@ -27,6 +27,7 @@ from services.templates.site_content import (  # noqa: F401 — re-exported for 
     resolve_trade_services,
     to_storyblok_site_content,
 )
+from services.templates.visitor_data import TemplateVisitorData
 
 TEMPLATE_ID: str = "food"
 
@@ -61,6 +62,11 @@ TEMPLATE_META: dict[str, object] = {
         "with_images": True,
     },
 }
+
+VISITOR_DATA: TemplateVisitorData = TemplateVisitorData(
+    has_contact_form=True,
+    has_google_fonts=True,
+)
 
 # Shared base bloks only (flat SiteContent).
 BODY_COMPONENTS: list[str] = []

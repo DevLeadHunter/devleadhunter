@@ -24,6 +24,7 @@ from services.templates.site_content import (  # noqa: F401 — re-exported for 
     resolve_trade_services,
     to_storyblok_site_content,
 )
+from services.templates.visitor_data import TemplateVisitorData
 
 TEMPLATE_ID: str = "mechanic-pitlane"
 
@@ -48,6 +49,13 @@ TEMPLATE_META: dict[str, object] = {
     # keys not listed here don't visibly theme this layer, so the editor hides them.
     "color_roles": {"action": "primary", "fond": "secondary", "secondaire": "accent"},
 }
+
+VISITOR_DATA: TemplateVisitorData = TemplateVisitorData(
+    has_contact_form=True,
+    has_google_fonts=True,
+    has_google_map=True,
+    has_vehicle_plate_lookup=True,
+)
 
 # Shared base bloks only (flat SiteContent).
 BODY_COMPONENTS: list[str] = []

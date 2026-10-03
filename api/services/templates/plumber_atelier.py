@@ -16,6 +16,7 @@ from __future__ import annotations
 from typing import Any
 
 from services.templates._base import build_base_page
+from services.templates.visitor_data import TemplateVisitorData
 
 TEMPLATE_ID: str = "plumber-atelier"
 
@@ -39,6 +40,10 @@ TEMPLATE_META: dict[str, object] = {
     # keys not listed here don't visibly theme this layer, so the editor hides them.
     "color_roles": {"action": "primary", "secondaire": "secondary"},
 }
+
+VISITOR_DATA: TemplateVisitorData = TemplateVisitorData(
+    has_google_fonts=True,
+)
 
 # This template only uses the shared base bloks.
 BODY_COMPONENTS: list[str] = []

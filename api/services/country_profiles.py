@@ -6,12 +6,13 @@ instead of assuming France: the French label, the currency and how a sale price 
 in it, the timezone of the send window, the dial code, the postal code shape, whether
 cold SMS is open and how a recipient opts out, whether an email needs a postal address in
 its footer, which fiscal identifier an invoice client carries, the domain extensions to
-suggest, and the regional words a generated text swaps.
+suggest, the regional words a generated text swaps, and what the legal page of a generated
+site says there.
 
 A profile only STATES the facts. Each service applies them where it renders or decides:
 the email and SMS variables, the send policy, the SMS service, the sale drawer, the
-site content builder. A country can be declared here before it is opened to prospection:
-``enabled`` is what ``SUPPORTED_COUNTRIES`` and the front catalog expose.
+site content builder, the site legal block. A country can be declared here before it is
+opened to prospection: ``enabled`` is what ``SUPPORTED_COUNTRIES`` and the front catalog expose.
 """
 
 from __future__ import annotations
@@ -20,6 +21,7 @@ import re
 from dataclasses import dataclass, field
 from typing import ClassVar
 
+from enums.privacy_regime import PrivacyRegime
 from enums.sms_opt_out_mode import SmsOptOutMode
 
 DEFAULT_COUNTRY_CODE: str = "FR"
@@ -36,6 +38,43 @@ def _format_euro_amount(cents: int) -> str:
     if cents % 100 == 0:
         return str(cents // 100)
     return f"{cents / 100:.2f}".replace(".", ",")
+
+
+@dataclass(frozen=True)
+class SiteLegalFacts:
+    """What the legal page of a generated site says in a country, and how its footer links to it.
+
+    Attributes:
+        locale: The language tag of the site (``fr-CH``), the ``lang`` of its legal page.
+        page_title: The title of the legal page.
+        legal_notice_title: The title of the section naming who publishes the site.
+        legal_notice_link_label: Its footer link, ``None`` where no such notice is customary.
+        privacy_notice_title: The title of the privacy section.
+        privacy_link_label: Its footer link.
+        publisher_heading: The heading of the business's identity on a delivered site.
+        legal_id_label: How the business identifier reads on the page (« SIREN », « IDE », « NEQ »).
+        vat_number_label: How the VAT number reads on the page.
+        is_publication_director_required: Whether the law asks for a publication director (France).
+        is_host_disclosure_required: Whether the law asks the legal notice to name the hosting provider.
+        privacy_regime: The data protection law the privacy section follows.
+        privacy_authority_name: The authority a visitor can turn to.
+        privacy_authority_url: Its website.
+    """
+
+    locale: str
+    page_title: str
+    legal_notice_title: str
+    legal_notice_link_label: str | None
+    privacy_notice_title: str
+    privacy_link_label: str
+    publisher_heading: str
+    legal_id_label: str
+    vat_number_label: str
+    is_publication_director_required: bool
+    is_host_disclosure_required: bool
+    privacy_regime: PrivacyRegime
+    privacy_authority_name: str
+    privacy_authority_url: str
 
 
 @dataclass(frozen=True)
@@ -67,6 +106,7 @@ class CountryProfile:
     tax_id_example: str
     tax_id_required: bool
     domain_tlds: tuple[str, ...]
+    site_legal: SiteLegalFacts
     # Regional words a generated text swaps (lower-case, whole words), empty when none.
     lexicon: dict[str, str] = field(default_factory=dict)
     # Names an address writes after its city that are never a city: the country (« Suisse », « Canada »)
@@ -171,6 +211,22 @@ class CountryProfiles:
             tax_id_example="123 456 789",
             tax_id_required=True,
             domain_tlds=(".fr",),
+            site_legal=SiteLegalFacts(
+                locale="fr-FR",
+                page_title="Mentions légales et politique de confidentialité",
+                legal_notice_title="Mentions légales",
+                legal_notice_link_label="Mentions légales",
+                privacy_notice_title="Politique de confidentialité",
+                privacy_link_label="Confidentialité",
+                publisher_heading="Éditeur du site",
+                legal_id_label="SIREN",
+                vat_number_label="TVA intracommunautaire",
+                is_publication_director_required=True,
+                is_host_disclosure_required=True,
+                privacy_regime=PrivacyRegime.GDPR,
+                privacy_authority_name="Commission nationale de l'informatique et des libertés (CNIL)",
+                privacy_authority_url="https://www.cnil.fr",
+            ),
             address_trailing_names=("France",),
         ),
         "CH": CountryProfile(
@@ -193,6 +249,22 @@ class CountryProfiles:
             tax_id_example="CHE-123.456.789",
             tax_id_required=False,
             domain_tlds=(".ch",),
+            site_legal=SiteLegalFacts(
+                locale="fr-CH",
+                page_title="Impressum et protection des données",
+                legal_notice_title="Impressum",
+                legal_notice_link_label="Impressum",
+                privacy_notice_title="Protection des données",
+                privacy_link_label="Protection des données",
+                publisher_heading="Éditeur du site",
+                legal_id_label="IDE",
+                vat_number_label="TVA",
+                is_publication_director_required=False,
+                is_host_disclosure_required=False,
+                privacy_regime=PrivacyRegime.SWISS_FADP,
+                privacy_authority_name="Préposé fédéral à la protection des données et à la transparence (PFPDT)",
+                privacy_authority_url="https://www.edoeb.admin.ch",
+            ),
             address_trailing_names=("Suisse", "Switzerland", "Schweiz", "Svizzera"),
         ),
         "BE": CountryProfile(
@@ -216,6 +288,22 @@ class CountryProfiles:
             tax_id_example="0123.456.789",
             tax_id_required=False,
             domain_tlds=(".be",),
+            site_legal=SiteLegalFacts(
+                locale="fr-BE",
+                page_title="Mentions légales et politique de confidentialité",
+                legal_notice_title="Mentions légales",
+                legal_notice_link_label="Mentions légales",
+                privacy_notice_title="Politique de confidentialité",
+                privacy_link_label="Confidentialité",
+                publisher_heading="Éditeur du site",
+                legal_id_label="Numéro d'entreprise",
+                vat_number_label="TVA",
+                is_publication_director_required=False,
+                is_host_disclosure_required=False,
+                privacy_regime=PrivacyRegime.GDPR,
+                privacy_authority_name="Autorité de protection des données (APD)",
+                privacy_authority_url="https://www.autoriteprotectiondonnees.be",
+            ),
             address_trailing_names=("Belgique", "Belgium", "België", "Belgien"),
         ),
         "LU": CountryProfile(
@@ -238,6 +326,22 @@ class CountryProfiles:
             tax_id_example="B123456",
             tax_id_required=False,
             domain_tlds=(".lu",),
+            site_legal=SiteLegalFacts(
+                locale="fr-LU",
+                page_title="Mentions légales et politique de confidentialité",
+                legal_notice_title="Mentions légales",
+                legal_notice_link_label="Mentions légales",
+                privacy_notice_title="Politique de confidentialité",
+                privacy_link_label="Confidentialité",
+                publisher_heading="Éditeur du site",
+                legal_id_label="RCS Luxembourg",
+                vat_number_label="TVA",
+                is_publication_director_required=False,
+                is_host_disclosure_required=False,
+                privacy_regime=PrivacyRegime.GDPR,
+                privacy_authority_name="Commission nationale pour la protection des données (CNPD)",
+                privacy_authority_url="https://cnpd.public.lu",
+            ),
         ),
         # Québec by email only: French-speaking, North American phone plan, CASL footer.
         "CA": CountryProfile(
@@ -261,6 +365,22 @@ class CountryProfiles:
             tax_id_example="1234567890",
             tax_id_required=False,
             domain_tlds=(".ca",),
+            site_legal=SiteLegalFacts(
+                locale="fr-CA",
+                page_title="Renseignements sur l'entreprise et politique de confidentialité",
+                legal_notice_title="Renseignements sur l'entreprise",
+                legal_notice_link_label=None,
+                privacy_notice_title="Politique de confidentialité",
+                privacy_link_label="Politique de confidentialité",
+                publisher_heading="Entreprise",
+                legal_id_label="NEQ",
+                vat_number_label="Numéros de TPS et de TVQ",
+                is_publication_director_required=False,
+                is_host_disclosure_required=False,
+                privacy_regime=PrivacyRegime.QUEBEC_PRIVATE_SECTOR,
+                privacy_authority_name="Commission d'accès à l'information du Québec",
+                privacy_authority_url="https://www.cai.gouv.qc.ca",
+            ),
             lexicon={
                 "devis": "soumission",
                 "e-mail": "courriel",

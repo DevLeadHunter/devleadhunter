@@ -48,6 +48,7 @@ from services.prospect_phones import first_mobile_e164
 from services.r2_storage_service import r2_storage
 from services.service_card_suggestion_service import ServiceCardsUnavailableError
 from services.site_export_service import site_export_service
+from services.site_legal import site_legal_notice_service
 from services.storyblok_service import storyblok_service
 from services.templates.registry import default_subtitle
 from services.video_pipeline import VideoGenerationError
@@ -148,6 +149,7 @@ async def get_public_demo_site_by_domain(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="No site for this domain")
     payload = DemoSitePublicResponse.model_validate(site).model_dump()
     payload["content_json"] = demo_site_service.content_json_for_public(db, site)
+    payload["legal"] = site_legal_notice_service.build_for_site(db, site, payload["content_json"])
     if site.storyblok_preview_token:
         payload["storyblok_region"] = settings.storyblok_region
     return DemoSitePublicResponse(**payload)
@@ -164,6 +166,7 @@ async def get_public_demo_site(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Demo site not found or expired")
     payload = DemoSitePublicResponse.model_validate(site).model_dump()
     payload["content_json"] = demo_site_service.content_json_for_public(db, site)
+    payload["legal"] = site_legal_notice_service.build_for_site(db, site, payload["content_json"])
     if site.storyblok_preview_token:
         payload["storyblok_region"] = settings.storyblok_region
     payload["video_available"] = has_ready_video(site)

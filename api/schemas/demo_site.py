@@ -5,6 +5,8 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, EmailStr, Field
 
+from schemas.site_legal_notice import SiteLegalNotice
+
 
 class DemoSiteTheme(BaseModel):
     """Customizable color palette for a demo site template."""
@@ -266,6 +268,7 @@ class DemoSitePublicResponse(BaseModel):
     owner_profile_photo_url: str | None = None
     owner_contact_phone: str | None = None
     owner_contact_email: str | None = None
+    legal: SiteLegalNotice | None = None
 
     model_config = ConfigDict(from_attributes=True)
 

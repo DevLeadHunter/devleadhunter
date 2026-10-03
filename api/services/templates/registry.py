@@ -36,6 +36,7 @@ from services.templates import (
     plumber_cuivre,
     plumber_signature,
 )
+from services.templates.visitor_data import TemplateVisitorData
 
 # Order here defines the order shown in the template picker (default first).
 TEMPLATE_MODULES = [
@@ -120,6 +121,16 @@ def service_cards_meta(template_id: str) -> dict[str, Any] | None:
     meta = getattr(get_module(template_id), "TEMPLATE_META", {}) or {}
     raw = meta.get("service_cards")
     return raw if isinstance(raw, dict) else None
+
+
+def visitor_data(template_id: str) -> TemplateVisitorData:
+    """Return what the template's layer does with a visitor's data (form, fonts, map, plate lookup).
+
+    The site's privacy notice states exactly these flows. Every template module declares its own
+    ``VISITOR_DATA``; an unknown template id falls back to the default template's declaration.
+    """
+    declared = getattr(get_module(template_id), "VISITOR_DATA", None)
+    return declared if isinstance(declared, TemplateVisitorData) else TemplateVisitorData()
 
 
 def color_roles(template_id: str) -> dict[str, str]:
