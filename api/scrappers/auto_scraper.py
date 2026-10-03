@@ -111,12 +111,16 @@ class AutoScraper(BaseScraper):
             logger.error("[Auto] PagesJaunes scraper failed: %s", exc)
             return []
 
-    async def _enrich_email(self, prospect: ProspectCreate) -> ProspectCreate:
+    async def _enrich_email(self, prospect: ProspectCreate, country: str) -> ProspectCreate:
         """
         Try to find a missing email via smart Google search.
 
         Uses the phone number when available (most accurate strategy).
         Skips if the prospect already has an email.
+
+        Args:
+            prospect: The scraped prospect.
+            country: ISO code of the search country (``prospect.country`` is only set once the job saves it).
         """
         if prospect.email:
             return prospect
@@ -127,6 +131,7 @@ class AutoScraper(BaseScraper):
                 phone=prospect.phone,
                 social_url=prospect.social_url,
                 website=prospect.website if prospect.website_status is WebsiteStatus.LIVE else None,
+                country=country,
             )
             if found:
                 data = prospect.model_dump()
@@ -226,7 +231,7 @@ class AutoScraper(BaseScraper):
                 if len(enriched) >= max_results:
                     break
 
-                prospect = await self._enrich_email(prospect)
+                prospect = await self._enrich_email(prospect, country)
                 enriched.append(prospect)
 
                 if progress:

@@ -470,8 +470,10 @@ class GoogleScraper(NodriverScraperMixin, BaseScraper):
         self,
         details: dict[str, str | None],
         google_maps_url: str | None = None,
+        *,
+        country: str = "FR",
     ) -> ProspectCreate:
-        """Build a ProspectCreate object from extracted Maps details."""
+        """Build a ProspectCreate object from extracted Maps details, its email searched in ``country``."""
         name = details["name"] or "Entreprise"
         address = details.get("address") or ""
         city = details.get("city") or "Inconnue"
@@ -489,7 +491,7 @@ class GoogleScraper(NodriverScraperMixin, BaseScraper):
         email: str | None = None
         try:
             email = await email_scraper.find_email(
-                name, city, website=website if website_status is WebsiteStatus.LIVE else None
+                name, city, website=website if website_status is WebsiteStatus.LIVE else None, country=country
             )
         except Exception as exc:
             logger.debug("Could not find email for %s: %s", name, exc)
@@ -831,7 +833,7 @@ class GoogleScraper(NodriverScraperMixin, BaseScraper):
                         if only_without_website and single_status is WebsiteStatus.LIVE:
                             return []
                         prospect = await self._build_prospect_from_details(
-                            single, google_maps_url=self._place_url_from_tab(tab)
+                            single, google_maps_url=self._place_url_from_tab(tab), country=country
                         )
                         if progress:
                             await progress.prospect(prospect)
@@ -919,7 +921,10 @@ class GoogleScraper(NodriverScraperMixin, BaseScraper):
                     email: str | None = None
                     try:
                         email = await email_scraper.find_email(
-                            name, city_name, website=website if website_status is WebsiteStatus.LIVE else None
+                            name,
+                            city_name,
+                            website=website if website_status is WebsiteStatus.LIVE else None,
+                            country=country,
                         )
                     except Exception as exc:
                         logger.debug("Could not find email: %s", exc)

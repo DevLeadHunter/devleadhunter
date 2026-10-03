@@ -134,12 +134,87 @@ def to_e164(raw: str | None, *, country: str = "FR") -> str | None:
     return candidate if national.isdigit() and _E164.match(candidate) else None
 
 
+class NationalPhoneLayouts:
+    """The digit blocks Switzerland, Belgium and Luxembourg print a number of their own in."""
+
+    _BELGIAN_ONE_DIGIT_ZONES: ClassVar[tuple[str, ...]] = ("02", "03", "04", "09")
+    _BELGIAN_SERVICE_PREFIXES: ClassVar[tuple[str, ...]] = ("080", "090")
+    _SWISS_SERVICE_PREFIXES: ClassVar[tuple[str, ...]] = ("08", "09")
+    _LUXEMBOURG_BLOCKS_BY_LENGTH: ClassVar[dict[int, tuple[int, ...]]] = {
+        9: (3, 3, 3),
+        8: (2, 2, 2, 2),
+        6: (2, 2, 2),
+    }
+
+    @classmethod
+    def to_national_form(cls, e164: str, *, country: str) -> str | None:
+        """The national form of a Swiss, Belgian or Luxembourg number belonging to ``country``.
+
+        Args:
+            e164: The number in ``+…`` form.
+            country: ISO code of the reader's country.
+
+        Returns:
+            ``079 123 45 67``, ``0470 12 34 56``, ``621 123 456``…, or ``None`` for a number of another
+            country, of a country without a layout here, or of a length its country does not print.
+        """
+        profile = CountryProfiles.get(country)
+        if not e164.startswith(profile.dial_code):
+            return None
+        subscriber = e164[len(profile.dial_code) :]
+        if profile.code == "CH":
+            return cls._group_swiss_digits(f"0{subscriber}")
+        if profile.code == "BE":
+            return cls._group_belgian_digits(f"0{subscriber}")
+        if profile.code == "LU":
+            return cls._group_luxembourg_digits(subscriber)
+        return None
+
+    @classmethod
+    def _group_swiss_digits(cls, national: str) -> str | None:
+        """``079 123 45 67``, a business number ``0800 123 456``."""
+        if len(national) != 10:
+            return None
+        blocks = (4, 3, 3) if national.startswith(cls._SWISS_SERVICE_PREFIXES) else (3, 3, 2, 2)
+        return cls._group_in_blocks(national, blocks)
+
+    @classmethod
+    def _group_belgian_digits(cls, national: str) -> str | None:
+        """Mobile ``0470 12 34 56``, landline ``02 123 45 67`` or ``081 22 33 44``, business ``0800 12 345``."""
+        if len(national) == 10:
+            return cls._group_in_blocks(national, (4, 2, 2, 2))
+        if len(national) != 9:
+            return None
+        if national.startswith(cls._BELGIAN_SERVICE_PREFIXES):
+            return cls._group_in_blocks(national, (4, 2, 3))
+        if national.startswith(cls._BELGIAN_ONE_DIGIT_ZONES):
+            return cls._group_in_blocks(national, (2, 3, 2, 2))
+        return cls._group_in_blocks(national, (3, 2, 2, 2))
+
+    @classmethod
+    def _group_luxembourg_digits(cls, subscriber: str) -> str | None:
+        """Mobile ``621 123 456``, landline ``26 12 34 56`` or ``44 55 66``: Luxembourg dials no trunk zero."""
+        blocks = cls._LUXEMBOURG_BLOCKS_BY_LENGTH.get(len(subscriber))
+        return cls._group_in_blocks(subscriber, blocks) if blocks else None
+
+    @staticmethod
+    def _group_in_blocks(digits: str, sizes: tuple[int, ...]) -> str:
+        """``digits`` cut into consecutive blocks of ``sizes`` digits, joined by spaces."""
+        blocks: list[str] = []
+        start = 0
+        for size in sizes:
+            blocks.append(digits[start : start + size])
+            start += size
+        return " ".join(blocks)
+
+
 def format_phone_for_display(raw: str | None, *, country: str = "FR") -> str:
     """The number as a reader of ``country`` expects it on a site or in a message.
 
     France groups ten digits by two (``06 12 34 56 78``); Québec writes the area code apart and
-    hyphenates the line (``514 555-0199``). Another country, or a number of no known shape, keeps
-    what was typed.
+    hyphenates the line (``514 555-0199``); Switzerland, Belgium and Luxembourg print a number of
+    their own in their usual blocks (``079 123 45 67``, ``0470 12 34 56``, ``621 123 456``). Any
+    other number, or a number of no known shape, keeps what was typed.
 
     Args:
         raw: The phone number as stored.
@@ -159,7 +234,28 @@ def format_phone_for_display(raw: str | None, *, country: str = "FR") -> str:
     if e164.startswith("+33"):
         national = f"0{e164[3:]}"
         return " ".join(national[index : index + 2] for index in range(0, 10, 2))
-    return raw.strip()
+    return NationalPhoneLayouts.to_national_form(e164, country=country) or raw.strip()
+
+
+def format_phone_in_national_form(raw: str | None, *, country: str = "FR") -> str | None:
+    """The number as its own country writes it nationally, when it is a number of ``country``.
+
+    « +41 79 123 45 67 » gives « 079 123 45 67 » for a Swiss business, « 0470123456 » gives
+    « 0470 12 34 56 » for a Belgian one and « +1 514 555 0199 » gives « 514 555-0199 » for a Québec
+    one, while a French « +33 6 … » gives nothing for any of them.
+
+    Args:
+        raw: The phone number as typed or scraped.
+        country: ISO code of the business's country, deciding how a national number is read.
+
+    Returns:
+        The national form, or ``None`` for a number of another country or of no plausible shape.
+    """
+    e164 = to_e164(raw, country=country)
+    profile = CountryProfiles.get(country)
+    if e164 is None or not e164.startswith(profile.dial_code):
+        return None
+    return format_phone_for_display(raw, country=profile.code)
 
 
 def format_phone_for_reader(raw: str | None, *, number_country: str, reader_country: str | None) -> str:

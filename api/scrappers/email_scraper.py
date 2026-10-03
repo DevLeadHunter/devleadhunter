@@ -13,6 +13,8 @@ from scrappers.email_candidate_scoring import email_candidate_scorer
 from scrappers.nodriver_browser import NODRIVER_AVAILABLE, NodriverBrowser
 from scrappers.nodriver_dom import NodriverDom
 from scrappers.nodriver_executor import run_nodriver_task
+from services.country_profiles import DEFAULT_COUNTRY_CODE, CountryProfiles
+from services.sms.phone_normalizer import format_phone_in_national_form
 
 logger = logging.getLogger(__name__)
 
@@ -47,6 +49,24 @@ class EmailScraper:
     async def close(self) -> None:
         """Close the browser and release resources."""
         await self._browser.close()
+
+    @staticmethod
+    def build_google_search_url(query: str, *, country: str = DEFAULT_COUNTRY_CODE, page_number: int = 0) -> str:
+        """Google results page of ``query``, ranked for the prospect's country and shown in French.
+
+        Args:
+            query: Search query.
+            country: ISO code of the prospect's country, sent as ``gl`` (``ch``, ``be``, ``lu``, ``ca``).
+            page_number: Zero-based results page.
+
+        Returns:
+            The search URL to open.
+        """
+        region = CountryProfiles.get(country).code.lower()
+        search_url = f"https://www.google.com/search?q={quote_plus(query)}&gl={region}&hl=fr"
+        if page_number:
+            search_url += f"&start={page_number * 10}"
+        return search_url
 
     def extract_emails_from_text(self, text: str) -> list[str]:
         """
@@ -103,6 +123,7 @@ class EmailScraper:
         name: str,
         city: str,
         website: str | None = None,
+        country: str = DEFAULT_COUNTRY_CODE,
     ) -> str | None:
         """
         Search Google on a results page and return the email most likely the prospect's.
@@ -118,17 +139,13 @@ class EmailScraper:
             name: Business name (drives disqualification + ranking).
             city: City name (used by the domain-equals-city reject rule).
             website: Prospect website URL when live — strongest ownership signal.
+            country: ISO code of the prospect's country, ranking the results for it.
 
         Returns:
             Best-scored email found, or None.
         """
         try:
-            if page_number == 0:
-                search_url = f"https://www.google.com/search?q={quote_plus(query)}"
-            else:
-                start_param = page_number * 10
-                search_url = f"https://www.google.com/search?q={quote_plus(query)}&start={start_param}"
-
+            search_url = self.build_google_search_url(query, country=country, page_number=page_number)
             await NodriverDom.navigate(tab, search_url, sleep_s=0.5)
 
             if page_number == 0:
@@ -158,6 +175,7 @@ class EmailScraper:
         name: str,
         city: str,
         website: str | None = None,
+        country: str = DEFAULT_COUNTRY_CODE,
     ) -> str | None:
         """
         Search Google across multiple pages until a scored email is found.
@@ -169,19 +187,24 @@ class EmailScraper:
             name: Business name forwarded to the scorer.
             city: City name forwarded to the scorer.
             website: Prospect website URL when live.
+            country: ISO code of the prospect's country, ranking the results for it.
 
         Returns:
             First page's best email, or None.
         """
         for page_num in range(max_pages):
-            email = await self.search_google_page(tab, query, page_num, name=name, city=city, website=website)
+            email = await self.search_google_page(
+                tab, query, page_num, name=name, city=city, website=website, country=country
+            )
             if email:
                 return email
             if page_num < max_pages - 1:
                 await asyncio.sleep(0.5)
         return None
 
-    async def _find_email_nodriver(self, name: str, city: str, website: str | None = None) -> str | None:
+    async def _find_email_nodriver(
+        self, name: str, city: str, website: str | None = None, country: str = DEFAULT_COUNTRY_CODE
+    ) -> str | None:
         """Internal nodriver implementation for email lookup."""
         if not NODRIVER_AVAILABLE:
             return None
@@ -192,7 +215,7 @@ class EmailScraper:
             query1 = f"{name} {city} email"
             logger.info("Searching for email with query: %s (3 pages)", query1)
             email = await self.search_google_multiple_pages(
-                tab, query1, max_pages=3, name=name, city=city, website=website
+                tab, query1, max_pages=3, name=name, city=city, website=website, country=country
             )
             if email:
                 return email
@@ -200,7 +223,7 @@ class EmailScraper:
             query2 = f"{name} {city} contact"
             logger.info("Trying contact query: %s (3 pages)", query2)
             return await self.search_google_multiple_pages(
-                tab, query2, max_pages=3, name=name, city=city, website=website
+                tab, query2, max_pages=3, name=name, city=city, website=website, country=country
             )
         finally:
             pass
@@ -212,6 +235,7 @@ class EmailScraper:
         phone: str | None = None,
         social_url: str | None = None,
         website: str | None = None,
+        country: str = DEFAULT_COUNTRY_CODE,
     ) -> str | None:
         """
         Smart email lookup with tiered query strategy (always enabled).
@@ -226,10 +250,12 @@ class EmailScraper:
         Args:
             name: Business name.
             city: City name.
-            phone: Phone number (optional, greatly improves P1 accuracy).
+            phone: Phone number (optional, greatly improves P1 accuracy), searched the way
+                the prospect's country writes it (``079 123 45 67`` for a Swiss business).
             social_url: Direct Facebook / Instagram profile URL already known
                 (e.g. extracted from a PagesJaunes listing).  When provided the
                 scraper navigates there directly, bypassing the Google SERP step.
+            country: ISO code of the prospect's country, ranking every search for it.
 
         Returns:
             First valid email found, or ``None``.
@@ -249,20 +275,11 @@ class EmailScraper:
 
             # Priority 1: name + phone (most precise)
             if phone:
-                phone_clean = re.sub(r"[\-\.\(\)]", "", phone).strip()
-                # Ensure spaces in French format: "06 63 96 82 57"
-                digits_only = re.sub(r"\s+", "", phone_clean)
-                if digits_only.startswith("33") and len(digits_only) == 11:
-                    # International +33… → 0…
-                    digits_only = "0" + digits_only[2:]
-                if len(digits_only) == 10:
-                    phone_formatted = " ".join(digits_only[i : i + 2] for i in range(0, 10, 2))
-                else:
-                    phone_formatted = phone.strip()
+                phone_formatted = format_phone_in_national_form(phone, country=country) or phone.strip()
                 query1 = f'"{name}" "{phone_formatted}"'
                 logger.info("Smart email P1 (name+phone): %s", query1)
                 email = await self.search_google_multiple_pages(
-                    tab, query1, max_pages=2, name=name, city=city, website=website
+                    tab, query1, max_pages=2, name=name, city=city, website=website, country=country
                 )
                 if email:
                     return email
@@ -271,7 +288,7 @@ class EmailScraper:
             query2 = f'"{name}" "{city}" email'
             logger.info("Smart email P2 (name+city): %s", query2)
             email = await self.search_google_multiple_pages(
-                tab, query2, max_pages=1, name=name, city=city, website=website
+                tab, query2, max_pages=1, name=name, city=city, website=website, country=country
             )
             if email:
                 return email
@@ -281,7 +298,7 @@ class EmailScraper:
             query3 = f'"{name}" {city} contact email'
             logger.info("Smart email P3 (broad): %s", query3)
             email = await self.search_google_multiple_pages(
-                tab, query3, max_pages=1, name=name, city=city, website=website
+                tab, query3, max_pages=1, name=name, city=city, website=website, country=country
             )
             if email:
                 return email
@@ -289,7 +306,7 @@ class EmailScraper:
             # Priority 4: social media bio search via Google (when no social_url was given)
             # Many small businesses publish their email only in their social profile.
             logger.info("Smart email P4 (social search): %s %s", name, city)
-            return await self._find_email_social_nodriver(tab, name, city, phone)
+            return await self._find_email_social_nodriver(tab, name, city, phone, country=country)
         finally:
             pass
 
@@ -351,6 +368,8 @@ class EmailScraper:
         name: str,
         city: str,
         phone: str | None = None,
+        *,
+        country: str = DEFAULT_COUNTRY_CODE,
     ) -> str | None:
         """
         Search Google for a business social profile and extract an email from it.
@@ -364,25 +383,20 @@ class EmailScraper:
             tab: Active nodriver :class:`Tab` instance.
             name: Business name.
             city: City name.
-            phone: Phone number (optional, used to build a tighter query).
+            phone: Phone number (optional, used to build a tighter query when it is a
+                number of the prospect's country, written the way that country writes it).
+            country: ISO code of the prospect's country, ranking the search for it.
 
         Returns:
             Email address extracted from the social profile, or ``None``.
         """
-        # Build the most targeted query available
-        if phone:
-            digits = re.sub(r"\D", "", phone)
-            if digits.startswith("33") and len(digits) == 11:
-                digits = "0" + digits[2:]
-            if len(digits) == 10:
-                phone_fmt = " ".join(digits[i : i + 2] for i in range(0, 10, 2))
-                query = f'"{name}" "{phone_fmt}" facebook OR instagram'
-            else:
-                query = f'"{name}" "{city}" facebook OR instagram'
+        national_phone = format_phone_in_national_form(phone, country=country) if phone else None
+        if national_phone:
+            query = f'"{name}" "{national_phone}" facebook OR instagram'
         else:
             query = f'"{name}" "{city}" facebook OR instagram'
 
-        search_url = f"https://www.google.com/search?q={quote_plus(query)}&gl=fr&hl=fr"
+        search_url = self.build_google_search_url(query, country=country)
         try:
             await NodriverDom.navigate(tab, search_url, sleep_s=0.5)
         except Exception as exc:
@@ -438,6 +452,8 @@ class EmailScraper:
         phone: str | None = None,
         social_url: str | None = None,
         website: str | None = None,
+        *,
+        country: str = DEFAULT_COUNTRY_CODE,
     ) -> str | None:
         """
         Find email with smart query prioritisation.
@@ -455,6 +471,8 @@ class EmailScraper:
                 falling through to the Google-search tiers.
             website: Prospect website URL when live — strongest ownership signal
                 for the candidate scorer.
+            country: ISO code of the prospect's country: the searches are ranked for it
+                and the phone is searched in its national form.
 
         Returns:
             Email address if found, otherwise None.
@@ -465,14 +483,16 @@ class EmailScraper:
 
         try:
             return await run_nodriver_task(
-                lambda: self._find_email_smart_nodriver(name, city, phone, social_url, website),
+                lambda: self._find_email_smart_nodriver(name, city, phone, social_url, website, country),
                 timeout=120,
             )
         except Exception as exc:
             logger.error("Error in smart email scraper: %s", exc)
             return None
 
-    async def find_email(self, name: str, city: str, website: str | None = None) -> str | None:
+    async def find_email(
+        self, name: str, city: str, website: str | None = None, *, country: str = DEFAULT_COUNTRY_CODE
+    ) -> str | None:
         """
         Find an email address for a business via Google search.
 
@@ -484,6 +504,7 @@ class EmailScraper:
             city: City name.
             website: Prospect website URL when live — strongest ownership signal
                 for the candidate scorer.
+            country: ISO code of the prospect's country, ranking the searches for it.
         """
         if not NODRIVER_AVAILABLE:
             logger.warning("nodriver not available, skipping email search")
@@ -491,7 +512,7 @@ class EmailScraper:
 
         try:
             return await run_nodriver_task(
-                lambda: self._find_email_nodriver(name, city, website),
+                lambda: self._find_email_nodriver(name, city, website, country),
                 timeout=120,
             )
         except Exception as exc:
