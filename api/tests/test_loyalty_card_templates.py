@@ -2,9 +2,10 @@
 
 The loyalty-card templates live in the shared libraries: « Carte fidélité - … » in
 ``seeders/email_template_seeder.py``, ``carte-…`` in ``services/sms/templates.py``. Every template is frank
-(who writes, one link, the monthly price, the withdrawal day, how to say no), assured, honest about the
-device (an iPhone card) and white-label. Every SMS fits two GSM-7 segments once smsmode appends its opt-out
-mention, for a French and a Swiss prospect, rendered and counted by the sending service itself.
+(one link, the monthly price, how to answer; the emails also say who writes, the withdrawal day and how to
+say no), assured, honest about the device (an iPhone card) and white-label. Every SMS stays within two
+GSM-7 segments once smsmode appends its opt-out mention, for a French and a Swiss prospect, rendered and
+counted by the sending service itself.
 """
 
 from __future__ import annotations
@@ -184,12 +185,15 @@ class TestCopyRules:
         assert "iPhone" in text, name
 
     @pytest.mark.parametrize(("name", "body"), _template_bodies())
-    def test_one_link_the_monthly_price_and_the_withdrawal_day(self, name: str, body: str) -> None:
+    def test_one_link_and_the_monthly_price(self, name: str, body: str) -> None:
         assert body.count("{lien_carte}") == 1, name
         assert not any(link in body for link in _OTHER_MODULES_LINK_VARIABLES), name
         assert "{prix_carte}" in body, name
         assert "{prix}" not in body and "{prix_assistant}" not in body, name
-        assert "{date_expiration}" in body, name
+
+    def test_every_email_gives_the_withdrawal_day(self) -> None:
+        for template in _LOYALTY_CARD_EMAILS:
+            assert "{date_expiration}" in str(template["body_html"]), template["name"]
 
     def test_every_variable_is_a_known_one(self) -> None:
         for template in _LOYALTY_CARD_EMAILS:
@@ -246,29 +250,22 @@ class TestSmsRules:
     @pytest.mark.parametrize("template", _LOYALTY_CARD_SMS, ids=lambda template: template.key)
     def test_names_the_number_to_answer_to_and_signs(self, template: SmsTemplate) -> None:
         assert template.uses("telephone")
-        assert template.body.endswith("{signature}")
+        assert template.body.endswith("{signature}, {telephone}")
         assert "{prix_carte}/mois" in template.body
         assert "STOP" not in template.body and "36180" not in template.body and "36034" not in template.body
 
-    def test_first_contacts_say_who_writes_and_claim_no_prior_email(self) -> None:
+    def test_first_contacts_claim_no_prior_email(self) -> None:
         for template in _LOYALTY_CARD_SMS:
-            if template.category is not SmsTemplateCategory.FIRST_CONTACT:
-                continue
-            assert "je fais des outils web pour les commerces" in template.body, template.key
-            assert "email" not in template.body, template.key
-
-    def test_follow_ups_recall_the_email(self) -> None:
-        for template in _LOYALTY_CARD_SMS:
-            if template.category is SmsTemplateCategory.FOLLOW_UP:
-                assert "email" in template.body, template.key
+            if template.category is SmsTemplateCategory.FIRST_CONTACT:
+                assert "email" not in template.body, template.key
 
     def test_a_rendered_first_contact_reads_the_full_offer(self) -> None:
         template = find_sms_template("carte-direct")
         assert template is not None
         body = sms_service.compose_from_template(template, _TYPICAL_VARIABLES)
         assert body.count("demo.dibodev.fr/s/c/boulangerie-martin") == 1
-        assert "19 €/mois" in body and "12 novembre" in body and "06 12 34 56 78" in body
-        assert body.endswith("Marc")
+        assert "19 €/mois" in body and "iPhone" in body
+        assert body.endswith("Marc, 06 12 34 56 78")
 
 
 class TestSmsTwoSegmentBudget:

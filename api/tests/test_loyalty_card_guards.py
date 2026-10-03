@@ -33,7 +33,7 @@ from services.campaign_queue_service import CampaignQueueService
 from services.email_sending_service import EmailSendingService
 from services.email_variables import LOYALTY_CARD_DEMO_MISSING_REFUSAL, EmailVariables
 from services.sms_relance_service import SmsRelanceCandidate, sms_relance_service
-from services.sms_service import SmsService, sms_service
+from services.sms_service import sms_service
 from services.sms_variables import SmsVariables
 from tests.assistant_fakes import AcceptingSmsProvider, AsyncCallRecorder
 
@@ -81,7 +81,7 @@ def sms_provider(db: Session, sender: User, monkeypatch: pytest.MonkeyPatch) -> 
     """An accepting provider behind the SMS service, an open legal window and the sender's SMS name."""
     provider = AcceptingSmsProvider()
     monkeypatch.setattr(sms_service, "_provider", provider)
-    monkeypatch.setattr(SmsService, "legal_window_refusal", lambda self, country=None: None)
+    monkeypatch.setattr(sms_service, "legal_window_refusal", lambda country=None: None)
     monkeypatch.setattr(sms_module.notification_service, "notify_sms_event", AsyncCallRecorder())
     db.add(SmsConfig(user_id=sender.id, sender="Dibodev"))
     db.commit()

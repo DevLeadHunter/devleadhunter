@@ -192,19 +192,19 @@ class TestSmsCopyRules:
             assert _FORBIDDEN_WORDS.search(template.body) is None, template.key
             assert "http" not in template.body, template.key
 
-    def test_website_sms_say_who_writes_and_the_one_time_price(self) -> None:
+    def test_website_sms_name_the_site_and_the_one_time_price(self) -> None:
         for template in _website_sms():
             assert template.uses("prix") and not template.uses("prix_assistant"), template.key
             assert not template.uses("prix_carte"), template.key
+            assert "{prix} une fois" in template.body, template.key
             if template.category is SmsTemplateCategory.FIRST_CONTACT:
-                assert "je fais des sites web" in template.body.lower(), template.key
+                assert "site" in template.body.lower(), template.key
 
-    def test_receptionist_sms_say_she_is_an_ai_and_the_refundable_month(self) -> None:
+    def test_receptionist_sms_name_it_by_first_name_as_an_ai_with_its_monthly_price(self) -> None:
         for template in _receptionist_sms():
             assert template.name.startswith("Réceptionniste IA - "), template.key
-            assert "{assistant_virtuel} (IA)" in template.body, template.key
+            assert template.uses("prenom_receptionniste") and "IA" in template.body, template.key
             assert _GENDERED_RECEPTIONIST_WORDS.search(_VARIABLE.sub("", template.body)) is None, template.key
-            assert template.uses("prix_assistant") and not template.uses("prix"), template.key
+            assert "{prix_assistant}/mois" in template.body and not template.uses("prix"), template.key
             assert not template.uses("prix_carte"), template.key
-            assert "satisfait ou remboursé" in template.body, template.key
             assert "site" not in template.body.lower(), template.key

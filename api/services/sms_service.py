@@ -58,6 +58,7 @@ logger = logging.getLogger(__name__)
 
 MARKETING_SMS_MAXIMUM_SEGMENTS: int = 2
 SERVICE_SMS_MAXIMUM_SEGMENTS: int = 1
+_GREETING_WITHOUT_FIRST_NAME: str = "Bonjour"
 CONTACT_PHONE_VARIABLE: str = "telephone"
 CONTACT_PHONE_MISSING_REFUSAL: str = "Renseignez votre téléphone de contact dans votre profil"
 # The receptionist's pages in a body: its demo (/ia/…) or its video (/va/…), the short links (/s/ia/…) included.
@@ -207,6 +208,26 @@ class SmsService:
         """
         return self.render_template_body(template, variables)
 
+    def compose_within_budget(self, template: SmsTemplate, variables: dict[str, str], *, country: str | None) -> str:
+        """Render a library template, greeting without the first name when that saves a billed segment.
+
+        Args:
+            template: The library template.
+            variables: The prospect's substitution map.
+            country: ISO code of the recipient's country, whose opt-out mention counts in the budget.
+
+        Returns:
+            The body smsmode receives.
+        """
+        body = self.compose_from_template(template, variables)
+        body_without_first_name = self.compose_from_template(
+            template, {**variables, SmsVariables.SALUTATION: _GREETING_WITHOUT_FIRST_NAME}
+        )
+        saves_a_segment: bool = self.marketing_segment_count(
+            body_without_first_name, country=country
+        ) < self.marketing_segment_count(body, country=country)
+        return body_without_first_name if saves_a_segment else body
+
     def to_gsm7_body(self, text: str) -> str:
         """Trim a typed body and transliterate it to GSM-7 — the text smsmode receives.
 
@@ -291,8 +312,9 @@ class SmsService:
         A relance asked for a prospect never contacted is refused. Without an explicit ``template_key``,
         a first contact renders the default first-contact template and a relance renders the template
         chosen in the user's SMS config. A template linking the loyalty-card demo (``{lien_carte}``) is
-        refused. A message that does not fit two segments, even without the first name, is refused: it
-        would be billed thrice.
+        refused. The greeting loses the first name whenever that saves a segment (see
+        :meth:`compose_within_budget`); a message that still does not fit two segments is refused: it would
+        be billed thrice.
 
         Args:
             db: Active database session.
@@ -372,10 +394,7 @@ class SmsService:
         phone_refusal = self.contact_phone_refusal(template, variables)
         if phone_refusal:
             return SmsSendOutcome(sent=False, reason=phone_refusal)
-        body = self.compose_from_template(template, variables)
-        if self.marketing_segment_count(body, country=country) > MARKETING_SMS_MAXIMUM_SEGMENTS:
-            # Over the budget: dropping the first name is the cheapest cut that keeps the message whole.
-            body = self.compose_from_template(template, {**variables, SmsVariables.SALUTATION: "Bonjour"})
+        body = self.compose_within_budget(template, variables, country=country)
         segments = self.marketing_segment_count(body, country=country)
         if segments > MARKETING_SMS_MAXIMUM_SEGMENTS:
             logger.warning(

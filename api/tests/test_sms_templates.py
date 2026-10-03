@@ -94,7 +94,7 @@ class TestLibraryIntegrity:
     def test_variables_are_declared_in_order(self) -> None:
         template = find_sms_template("video")
         assert template is not None
-        assert template.variables == ["salutation", "entreprise", "lien_video", "prix", "telephone", "signature"]
+        assert template.variables == ["salutation", "lien_video", "prix", "signature", "telephone"]
         assert template.uses("lien_video")
         assert not template.uses("lien_demo")
 
@@ -150,17 +150,15 @@ class TestRender:
     def test_unknown_or_empty_variable_leaves_no_double_space(self) -> None:
         assert render_sms_template("Bonjour {inconnu} {signature}", {"signature": ""}) == "Bonjour"
 
-    def test_compose_from_template_is_a_frank_first_contact_ending_with_the_signature(self) -> None:
+    def test_compose_from_template_is_a_frank_first_contact_ending_with_the_signature_and_phone(self) -> None:
         template = find_sms_template(DEFAULT_FIRST_CONTACT_KEY)
         assert template is not None
         body = sms_service.compose_from_template(template, _TYPICAL_VARIABLES)
         assert "STOP" not in body and "36180" not in body
-        # A first contact must NOT claim a prior email.
-        assert "par email" not in body
-        assert "Garage Martin Auto" in body
+        assert "email" not in body
         assert "demo.dibodev.fr/s/garage-martin-auto" in body
-        assert "500 €" in body and "06 12 34 56 78" in body
-        assert body.endswith(_TYPICAL_VARIABLES["signature"])
+        assert "500 €" in body
+        assert body.endswith("Léo, 06 12 34 56 78")
 
 
 class TestTwoSegmentBudget:
@@ -188,18 +186,36 @@ class TestTwoSegmentBudget:
             assert sms_service.marketing_segment_count(body, country=country) <= _PROSPECTING_SEGMENT_BUDGET, country
 
 
+class TestOneSegmentInFrance:
+    def test_every_template_fits_one_segment_in_france(self) -> None:
+        for template in SMS_TEMPLATE_LIBRARY:
+            body = sms_service.compose_within_budget(template, _TYPICAL_VARIABLES, country="FR")
+            assert sms_service.marketing_segment_count(body, country="FR") == 1, f"{template.key}: {len(body)} chars"
+            assert body.startswith(_TYPICAL_VARIABLES["salutation"]), template.key
+
+    def test_a_long_business_name_keeps_one_segment_by_dropping_the_first_name(self) -> None:
+        for template in SMS_TEMPLATE_LIBRARY:
+            body = sms_service.compose_within_budget(template, _LONG_SLUG_VARIABLES, country="FR")
+            assert sms_service.marketing_segment_count(body, country="FR") == 1, f"{template.key}: {len(body)} chars"
+
+    def test_the_first_name_stays_when_dropping_it_saves_nothing(self) -> None:
+        template = find_sms_template(DEFAULT_FIRST_CONTACT_KEY)
+        assert template is not None
+        body = sms_service.compose_within_budget(template, _as_read_in("CH", _LONG_SLUG_VARIABLES), country="CH")
+        assert body.startswith(_TYPICAL_VARIABLES["salutation"])
+        assert sms_service.marketing_segment_count(body, country="CH") == _PROSPECTING_SEGMENT_BUDGET
+
+
 class TestFollowUpLibrary:
     def test_default_follow_up_template_exists(self) -> None:
         template = find_sms_template(DEFAULT_FOLLOW_UP_KEY)
         assert template is not None
         assert template.category is SmsTemplateCategory.FOLLOW_UP
 
-    def test_every_follow_up_recalls_the_email_and_fits_two_segments(self) -> None:
+    def test_every_follow_up_stays_in_gsm7_within_two_segments(self) -> None:
         follow_ups = list_sms_templates(SmsTemplateCategory.FOLLOW_UP)
         assert follow_ups
         for template in follow_ups:
-            # A J+30 relance says where it comes from: the email sent a month ago.
-            assert "email" in template.body, template.key
             for variables in (_TYPICAL_VARIABLES, _LONG_SLUG_VARIABLES):
                 for country in ("FR", "CH"):
                     body = sms_service.render_template_body(template, _as_read_in(country, variables))

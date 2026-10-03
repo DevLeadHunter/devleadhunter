@@ -524,7 +524,7 @@ async def preview_template(
     phone_refusal = sms_service.contact_phone_refusal(template, variables)
     if phone_refusal:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=phone_refusal)
-    body = sms_service.render_template_body(template, variables)
+    body = sms_service.compose_within_budget(template, variables, country=prospect.country)
     return SmsTemplatePreviewResponse(
         key=template.key, body=body, segments=sms_service.marketing_segment_count(body, country=prospect.country)
     )

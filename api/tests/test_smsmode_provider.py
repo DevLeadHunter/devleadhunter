@@ -169,9 +169,14 @@ class TestComposeBody:
         assert template is not None
         body = service.compose_from_template(
             template,
-            {"salutation": "Bonjour Marc", "lien_demo": "demo.dibodev.fr/garage-central", "signature": "Léo"},
+            {
+                "salutation": "Bonjour Marc",
+                "lien_demo": "demo.dibodev.fr/garage-central",
+                "signature": "Léo",
+                "telephone": "06 12 34 56 78",
+            },
         )
         assert "email" in body
         assert "demo.dibodev.fr/garage-central" in body
         assert "STOP" not in body and "36180" not in body
-        assert body.endswith("Léo")
+        assert body.endswith("Léo, 06 12 34 56 78")
