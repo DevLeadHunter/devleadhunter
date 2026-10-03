@@ -172,7 +172,7 @@
         </div>
         <p class="text-muted mt-1.5 text-[10px] leading-relaxed">
           Affichée en pied de page du site. Obligatoire au Québec pour les entrepreneurs en construction (licence RBQ,
-          cherchée automatiquement dans le registre public) — vide = rien d'affiché.
+          cherchée automatiquement dans le registre public). Vide = rien d'affiché.
         </p>
         <div v-if="isProfessionalLicenseDirty" class="mt-2 flex justify-end">
           <button type="button" class="btn-primary text-xs" :disabled="isSaving" @click="saveProfessionalLicenseOnly">
@@ -674,7 +674,7 @@ function syncForm(): void {
   }
 }
 
-/** Persist ONLY the professional licence (works before any enrichment run). */
+/** Persist only the professional license (works before any enrichment run). */
 async function saveProfessionalLicenseOnly(): Promise<void> {
   if (!props.prospectId) return
   isSaving.value = true
@@ -685,8 +685,8 @@ async function saveProfessionalLicenseOnly(): Promise<void> {
     })
     syncForm()
     toast.success('Licence professionnelle enregistrée')
-  } catch (err: unknown) {
-    toast.error(err instanceof Error ? err.message : 'Erreur lors de la sauvegarde')
+  } catch (error: unknown) {
+    toast.error(error instanceof Error ? error.message : 'Erreur lors de la sauvegarde')
   } finally {
     isSaving.value = false
   }
@@ -818,7 +818,7 @@ async function save(): Promise<void> {
             contact_last_name: form.value.contact_last_name || null,
           }
         : {}),
-      // An untouched licence must not flip a registry-found licence to « saisie manuelle ».
+      // An untouched license must not flip a registry-found license to « saisie manuelle ».
       ...(isProfessionalLicenseDirty.value
         ? {
             professional_license_label: form.value.professional_license_label.trim() || null,

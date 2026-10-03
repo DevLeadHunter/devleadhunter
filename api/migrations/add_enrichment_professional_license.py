@@ -24,8 +24,9 @@ _COLUMNS: tuple[tuple[str, str], ...] = (
 )
 
 
-def _column_exists(conn: Connection, column_name: str) -> bool:
-    result = conn.execute(
+def _column_exists(connection: Connection, column_name: str) -> bool:
+    """Whether ``prospect_enrichments`` already has the column (read on the live schema)."""
+    result = connection.execute(
         text(
             """
             SELECT COUNT(*)
@@ -41,11 +42,12 @@ def _column_exists(conn: Connection, column_name: str) -> bool:
 
 
 def run_migration() -> None:
-    with engine.connect() as conn:
+    """Add the missing license columns (re-runnable)."""
+    with engine.connect() as connection:
         for column_name, definition in _COLUMNS:
-            if not _column_exists(conn, column_name):
-                conn.execute(text(f"ALTER TABLE prospect_enrichments ADD COLUMN {column_name} {definition}"))
-        conn.commit()
+            if not _column_exists(connection, column_name):
+                connection.execute(text(f"ALTER TABLE prospect_enrichments ADD COLUMN {column_name} {definition}"))
+        connection.commit()
 
 
 if __name__ == "__main__":

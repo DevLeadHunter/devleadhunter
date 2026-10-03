@@ -809,12 +809,12 @@ FIELD_SCHEMAS: dict[str, dict[str, Any]] = {
     "professionalLicenseLabel": {
         "type": "text",
         "display_name": "Libellé de la licence professionnelle",
-        "description": "Ex : « Licence RBQ » — affiché devant le numéro en pied de page (vide = rien d'affiché)",
+        "description": "Ex : « Licence RBQ ». Affiché devant le numéro en pied de page, vide = rien d'affiché",
     },
     "professionalLicenseNumber": {
         "type": "text",
         "display_name": "Numéro de licence professionnelle",
-        "description": "Ex : « 5678-1234-01 » — obligatoire sur le site au Québec (vide = rien d'affiché)",
+        "description": "Ex : « 5678-1234-01 ». Obligatoire sur le site au Québec, vide = rien d'affiché",
     },
     "logo": {
         "type": "asset",

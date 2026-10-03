@@ -310,7 +310,7 @@ class ProfessionalLicenseService:
             label=RBQ_LICENSE_LABEL,
             number=self.format_license_number(holder.license_number),
             source=ProfessionalLicenseSource.RBQ_REGISTRY.value,
-            provenance=f"Registre RBQ : « {holder.business_name} », {holder.city} — nom et ville concordants",
+            provenance=f"Registre RBQ : « {holder.business_name} », {holder.city}, nom et ville concordants",
         )
 
     async def resolve_for_enrichment(self, db: Session, prospect: ProspectDB, record: ProspectEnrichment) -> None:
