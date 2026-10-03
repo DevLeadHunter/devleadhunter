@@ -32,7 +32,7 @@ from models.sms_suppression import SmsSuppression
 from services.activity_log_service import CATEGORY_SMS, STATUS_WARNING, activity_log_service
 from services.ai_assistant.assistant_service import ai_assistant_service
 from services.country_profiles import DEFAULT_COUNTRY_CODE, CountryProfiles
-from services.email_variables import EmailVariables
+from services.email_variables import LOYALTY_CARD_DEMO_MISSING_REFUSAL, EmailVariables
 from services.notification_service import notification_service
 from services.pricing_service import PricingService
 from services.prospect_phones import first_mobile_e164, sync_prospect_phones
@@ -290,8 +290,9 @@ class SmsService:
         relance after a first contact (an email, or a first-contact SMS), nothing once the relance went.
         A relance asked for a prospect never contacted is refused. Without an explicit ``template_key``,
         a first contact renders the default first-contact template and a relance renders the template
-        chosen in the user's SMS config. A message that does not fit two segments, even without the
-        first name, is refused: it would be billed thrice.
+        chosen in the user's SMS config. A template linking the loyalty-card demo (``{lien_carte}``) is
+        refused. A message that does not fit two segments, even without the first name, is refused: it
+        would be billed thrice.
 
         Args:
             db: Active database session.
@@ -357,6 +358,8 @@ class SmsService:
         )
         if needs_assistant and assistant is None:
             return SmsSendOutcome(sent=False, reason="Pas d'assistant IA actif pour ce prospect")
+        if template.uses(SmsVariables.CARD_LINK):
+            return SmsSendOutcome(sent=False, reason=LOYALTY_CARD_DEMO_MISSING_REFUSAL)
         variables = SmsVariables.build_for_prospect(
             db,
             user_id=user_id,

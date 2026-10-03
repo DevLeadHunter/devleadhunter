@@ -1,4 +1,4 @@
-"""``{prix}`` and ``{prix_assistant}`` are written in the prospect's currency, from his country."""
+"""``{prix}``, ``{prix_assistant}`` and ``{prix_carte}`` are written in the prospect's currency, from his country."""
 
 from __future__ import annotations
 
@@ -8,6 +8,7 @@ import pytest
 
 import services.email_variables as email_variables_module
 import services.sms_variables as sms_variables_module
+from core.config import settings
 from enums.sms_template_category import SmsTemplateCategory
 from services.email_variables import EmailVariables
 from services.regional_lexicon import RegionalLexicon
@@ -41,26 +42,33 @@ def _no_assistant(monkeypatch: pytest.MonkeyPatch) -> None:
 
 
 @pytest.mark.parametrize(
-    ("country", "price", "assistant_price"),
+    ("country", "price", "assistant_price", "card_price"),
     [
-        ("FR", "500 €", "29 €"),
-        ("CH", "≈ 470 CHF", "≈ 27 CHF"),
-        ("CA", "≈ 800 $ CA", "≈ 46 $ CA"),
-        ("BE", "500 €", "29 €"),
+        ("FR", "500 €", "29 €", "19 €"),
+        ("CH", "≈ 470 CHF", "≈ 27 CHF", "≈ 18 CHF"),
+        ("CA", "≈ 800 $ CA", "≈ 46 $ CA", "≈ 30 $ CA"),
+        ("BE", "500 €", "29 €", "19 €"),
     ],
 )
-def test_email_prices_follow_the_prospect_country(country: str, price: str, assistant_price: str) -> None:
+def test_email_prices_follow_the_prospect_country(
+    country: str, price: str, assistant_price: str, card_price: str
+) -> None:
     variables = EmailVariables.build_for_prospect(
         _FakeDB(), _prospect(country), sale_price_cents=50000, assistant_monthly_price_cents=2900, user_id=7
     )
     assert variables[EmailVariables.PRICE] == price
     assert variables[EmailVariables.PRICE_ASSISTANT] == assistant_price
+    assert variables[EmailVariables.CARD_PRICE] == card_price
     assert variables[RegionalLexicon.COUNTRY_KEY] == country
 
 
 @pytest.mark.parametrize(
     ("country", "rendered_prices"),
-    [("FR", "500 € / 29 €"), ("CH", "env. 470 CHF / env. 27 CHF"), ("CA", "env. 800 $ CA / env. 46 $ CA")],
+    [
+        ("FR", "500 € / 29 € / 19 €"),
+        ("CH", "env. 470 CHF / env. 27 CHF / env. 18 CHF"),
+        ("CA", "env. 800 $ CA / env. 46 $ CA / env. 30 $ CA"),
+    ],
 )
 def test_sms_prices_follow_the_prospect_country_in_gsm7(country: str, rendered_prices: str) -> None:
     """« ≈ » is outside GSM-7: the SMS writes « env. » so it keeps its 160-character segments."""
@@ -68,7 +76,10 @@ def test_sms_prices_follow_the_prospect_country_in_gsm7(country: str, rendered_p
         _FakeDB(), user_id=7, prospect=_prospect(country), assistant=None, sale_price_cents=50000
     )
     template = SmsTemplate(
-        key="prix", name="Prix", category=SmsTemplateCategory.FIRST_CONTACT, body="{prix} / {prix_assistant}"
+        key="prix",
+        name="Prix",
+        category=SmsTemplateCategory.FIRST_CONTACT,
+        body="{prix} / {prix_assistant} / {prix_carte}",
     )
     body = sms_service.render_template_body(template, variables)
     assert body == rendered_prices
@@ -80,3 +91,11 @@ def test_an_unset_price_renders_empty_whatever_the_country() -> None:
     variables = EmailVariables.build_for_prospect(_FakeDB(), _prospect("CA"), user_id=7)
     assert variables[EmailVariables.PRICE] == ""
     assert variables[EmailVariables.PRICE_ASSISTANT] == ""
+
+
+def test_the_card_price_is_the_platform_price_whoever_sends(monkeypatch: pytest.MonkeyPatch) -> None:
+    """``{prix_carte}`` reads ``WALLET_SUBSCRIPTION_PRICE_CENTS``: no per-user price to resolve."""
+    monkeypatch.setattr(settings, "wallet_subscription_price_cents", 2400)
+    email_variables = EmailVariables.build_for_prospect(_FakeDB(), _prospect("FR"), user_id=7)
+    sms_variables = SmsVariables.build_for_prospect(_FakeDB(), user_id=7, prospect=_prospect("FR"), assistant=None)
+    assert email_variables[EmailVariables.CARD_PRICE] == sms_variables[SmsVariables.CARD_PRICE] == "24 €"

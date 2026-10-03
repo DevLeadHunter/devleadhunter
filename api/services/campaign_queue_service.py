@@ -39,7 +39,7 @@ from services.assistant_pricing_service import AssistantPricingService
 from services.contact_lock_service import MODULE_AI_ASSISTANT, MODULE_WEBSITES, contact_lock_service
 from services.country_profiles import CountryProfiles
 from services.email_sending_service import EmailSendingService
-from services.email_variables import EmailVariables
+from services.email_variables import LOYALTY_CARD_DEMO_MISSING_REFUSAL, EmailVariables
 from services.pricing_service import PricingService
 from services.sms.templates import SmsTemplate
 from services.sms_variables import SmsVariables
@@ -113,6 +113,8 @@ class EnqueueResult:
                           has no generated prospection video.
         skipped_no_assistant: Prospects skipped because their template needs
                           the prospect's AI assistant but none is active.
+        skipped_no_loyalty_card_demo: Prospects skipped because their template
+                          links ``{lien_carte}`` and they have no loyalty-card demo.
         skipped_locked:   Prospects skipped because another sellable module
                           contacted them inside the cross-module lock window.
     """
@@ -121,6 +123,7 @@ class EnqueueResult:
     skipped_no_demo: list[dict[str, object]] = field(default_factory=list)
     skipped_no_video: list[dict[str, object]] = field(default_factory=list)
     skipped_no_assistant: list[dict[str, object]] = field(default_factory=list)
+    skipped_no_loyalty_card_demo: list[dict[str, object]] = field(default_factory=list)
     skipped_locked: list[dict[str, object]] = field(default_factory=list)
 
 
@@ -206,6 +209,8 @@ class CampaignQueueService:
         uses_assistant_b: bool = self._template_uses_assistant_link(template_b)
         uses_assistant_video_only_a: bool = self._template_uses_assistant_video_only(template_a)
         uses_assistant_video_only_b: bool = self._template_uses_assistant_video_only(template_b)
+        uses_loyalty_card_link_a: bool = self._template_uses_loyalty_card_link(template_a)
+        uses_loyalty_card_link_b: bool = self._template_uses_loyalty_card_link(template_b)
         module: str = self._campaign_module(self._campaign_email_templates(campaign, template_a, template_b))
 
         # Append after the last pending slot so re-launching is safe.
@@ -257,6 +262,7 @@ class CampaignQueueService:
                 uses_assistant_video_only = (
                     uses_assistant_video_only_a if variant == "A" else uses_assistant_video_only_b
                 )
+                uses_loyalty_card_link = uses_loyalty_card_link_a if variant == "A" else uses_loyalty_card_link_b
             else:
                 variant = None
                 tpl_id = template_id
@@ -264,6 +270,7 @@ class CampaignQueueService:
                 uses_video = uses_video_a
                 uses_assistant = uses_assistant_a
                 uses_assistant_video_only = uses_assistant_video_only_a
+                uses_loyalty_card_link = uses_loyalty_card_link_a
 
             # Guards: no empty {lien_demo} / {lien_assistant}, and no video-only template without a ready video.
             skip_kind = self._send_guard_skip(
@@ -275,6 +282,7 @@ class CampaignQueueService:
                 campaign.include_video,
                 uses_assistant,
                 uses_assistant_video_only=uses_assistant_video_only,
+                uses_loyalty_card_link=uses_loyalty_card_link,
             )
             if skip_kind == "demo":
                 logger.info("[Queue] Skipping prospect %d — no active demo site for {lien_demo}", prospect.id)
@@ -287,6 +295,10 @@ class CampaignQueueService:
             if skip_kind == "assistant":
                 logger.info("[Queue] Skipping prospect %d — no active AI assistant for {lien_assistant}", prospect.id)
                 result.skipped_no_assistant.append({"id": prospect.id, "name": prospect.name or ""})
+                continue
+            if skip_kind == "loyalty_card":
+                logger.info("[Queue] Skipping prospect %d: no loyalty-card demo for {lien_carte}", prospect.id)
+                result.skipped_no_loyalty_card_demo.append({"id": prospect.id, "name": prospect.name or ""})
                 continue
 
             contact_lock_service.record_contact(prospect, module, now)
@@ -486,6 +498,7 @@ class CampaignQueueService:
             campaign.include_video,
             self._template_uses_assistant_link(template),
             uses_assistant_video_only=self._template_uses_assistant_video_only(template),
+            uses_loyalty_card_link=self._template_uses_loyalty_card_link(template),
         )
         if skip_kind is not None:
             return False
@@ -737,6 +750,9 @@ class CampaignQueueService:
                 continue  # not SMS-reachable — no textable mobile anywhere in the list
             if sms_service.is_suppressed(self.db, campaign.user_id, to_e164):
                 continue
+            if self._sms_template_uses_loyalty_card_link(sms_template):
+                result.skipped_no_loyalty_card_demo.append({"id": prospect.id, "name": prospect.name or ""})
+                continue
             # The linked offer must exist: a demo for a website SMS, an assistant for an assistant SMS.
             has_offer: bool = (
                 self._has_active_assistant(prospect.id, campaign.user_id)
@@ -830,6 +846,11 @@ class CampaignQueueService:
         if needs_assistant and not self._has_active_assistant(prospect.id, campaign.user_id):
             item.status = _STATUS_SKIPPED
             item.skip_reason = _NO_ASSISTANT_SKIP_REASON
+            self.db.commit()
+            return
+        if self._sms_template_uses_loyalty_card_link(sms_template):
+            item.status = _STATUS_SKIPPED
+            item.skip_reason = LOYALTY_CARD_DEMO_MISSING_REFUSAL
             self.db.commit()
             return
         site: DemoSite | None = self._active_demo_for_prospect(prospect.id, campaign.user_id)
@@ -1019,7 +1040,8 @@ class CampaignQueueService:
     def _template_uses_demo_link(template: EmailTemplate | None) -> bool:
         """
         Return True when a template references ``{lien_demo}``, or ``{date_expiration}`` without an
-        assistant link (the expiry date then comes from the demo site, so both need an active one).
+        assistant or loyalty-card link (the expiry date then comes from the demo site, so both need an
+        active one).
 
         Args:
             template: Template to inspect (subject + HTML body), or None.
@@ -1033,7 +1055,10 @@ class CampaignQueueService:
         if f"{{{EmailVariables.DEMO_LINK}}}" in haystack:
             return True
         uses_expiry_date: bool = f"{{{EmailVariables.EXPIRY_DATE}}}" in haystack
-        return uses_expiry_date and not CampaignQueueService._template_uses_any(template, _ASSISTANT_LINK_VARIABLES)
+        uses_assistant_or_loyalty_card_link: bool = CampaignQueueService._template_uses_any(
+            template, (*_ASSISTANT_LINK_VARIABLES, EmailVariables.CARD_LINK)
+        )
+        return uses_expiry_date and not uses_assistant_or_loyalty_card_link
 
     @staticmethod
     def _template_uses_video(template: EmailTemplate | None) -> bool:
@@ -1073,6 +1098,10 @@ class CampaignQueueService:
         assistant = ai_assistant_service.get_active_for_prospect(self.db, prospect_id=prospect_id, user_id=user_id)
         return bool(EmailVariables.assistant_video_urls(assistant)[0])
 
+    def _template_uses_loyalty_card_link(self, template: EmailTemplate | None) -> bool:
+        """Return True when a template links the prospect's loyalty-card demo (``{lien_carte}``)."""
+        return self._template_uses_any(template, (EmailVariables.CARD_LINK,))
+
     @staticmethod
     def _sms_template_uses_assistant_link(template: SmsTemplate | None) -> bool:
         """Return True when an SMS template needs the prospect's active assistant (its link or video)."""
@@ -1082,6 +1111,11 @@ class CampaignQueueService:
     def _sms_template_uses_assistant(template: SmsTemplate | None) -> bool:
         """Return True when an SMS template is an AI-assistant offer (any assistant variable, price included)."""
         return template is not None and any(template.uses(name) for name in _SMS_ASSISTANT_VARIABLES)
+
+    @staticmethod
+    def _sms_template_uses_loyalty_card_link(template: SmsTemplate | None) -> bool:
+        """Return True when an SMS template links the prospect's loyalty-card demo (``{lien_carte}``)."""
+        return template is not None and template.uses(SmsVariables.CARD_LINK)
 
     def _campaign_email_templates(
         self, campaign: Campaign, template_a: EmailTemplate | None, template_b: EmailTemplate | None
@@ -1201,17 +1235,19 @@ class CampaignQueueService:
         uses_assistant: bool,
         *,
         uses_assistant_video_only: bool = False,
+        uses_loyalty_card_link: bool = False,
     ) -> str | None:
         """
         Return why a prospect can't receive the initial email yet, or None when it can.
 
-        Three launch guards, shared by the bulk enqueue and the single-prospect re-enqueue:
+        Four launch guards, shared by the bulk enqueue and the single-prospect re-enqueue:
           - ``"demo"``: the template ships ``{lien_demo}`` but the prospect has no active demo site.
           - ``"video"``: a video-only template (no ``{lien_demo}`` / ``{lien_assistant}`` fallback) has no
             ready video, or the campaign's video toggle is off — the email would have no content. A combo
             template (a link + a thumbnail) is never blocked here: it degrades to its link at dispatch.
           - ``"assistant"``: the template needs the prospect's AI assistant (link, video or thumbnail)
             but none is active — never generated, sold or deleted.
+          - ``"loyalty_card"``: the template links ``{lien_carte}``, a loyalty-card demo the prospect lacks.
 
         Args:
             prospect_id: Prospect being evaluated.
@@ -1222,9 +1258,10 @@ class CampaignQueueService:
             include_video: The campaign's video toggle.
             uses_assistant: Whether it references an assistant link/video variable.
             uses_assistant_video_only: Whether the receptionist's video is its only door.
+            uses_loyalty_card_link: Whether it references ``{lien_carte}``.
 
         Returns:
-            ``"demo"``, ``"video"``, ``"assistant"``, or None when the prospect can be enqueued.
+            ``"demo"``, ``"video"``, ``"assistant"``, ``"loyalty_card"``, or None when the prospect can be enqueued.
         """
         if uses_demo and not self._demo_link_for_prospect(prospect_id, user_id, variant):
             return "demo"
@@ -1236,6 +1273,8 @@ class CampaignQueueService:
             return "assistant"
         if uses_assistant_video_only and not (include_video and self._has_ready_assistant_video(prospect_id, user_id)):
             return "video"
+        if uses_loyalty_card_link:
+            return "loyalty_card"
         return None
 
     async def _dispatch(self, item: EmailQueue) -> None:
@@ -1338,6 +1377,13 @@ class CampaignQueueService:
             self.db.commit()
             return
 
+        if self._template_uses_loyalty_card_link(template):
+            logger.info("[Queue] Skipping send for prospect %d: no loyalty-card demo for {lien_carte}", prospect.id)
+            item.status = _STATUS_SKIPPED
+            item.skip_reason = LOYALTY_CARD_DEMO_MISSING_REFUSAL
+            self.db.commit()
+            return
+
         if uses_demo and demo_link:
             demo_site = self._active_demo_for_prospect(prospect.id, item.user_id)
             if demo_site is not None and demo_site.demo_link_sent_at is None:
@@ -1433,11 +1479,12 @@ class CampaignQueueService:
 
     def _offer_link_outlives(self, j1_item: EmailQueue, template_id: int | None, scheduled_at: datetime) -> bool:
         """
-        Whether a follow-up may be queued, i.e. the demo it links — site or assistant — will still be alive.
+        Whether a follow-up may be queued, i.e. the demo it links (site, assistant, loyalty card) will still be alive.
 
         A demo dies ``DEMO_SITE_TTL_DAYS`` after its link is **first sent** to the prospect
         (``demo_link_sent_at``). Before that send the demo stays live so batches can be generated
-        ahead of a slow outreach cadence.
+        ahead of a slow outreach cadence. A follow-up linking the loyalty-card demo (``{lien_carte}``)
+        is refused like an expired offer.
 
         The refusal is recorded as a ``skipped`` queue row so the campaign page shows
         why the sequence stopped, instead of the follow-up silently never existing.
@@ -1453,7 +1500,8 @@ class CampaignQueueService:
         template: EmailTemplate | None = self.db.get(EmailTemplate, template_id) if template_id else None
         uses_demo: bool = self._template_uses_demo_link(template)
         uses_assistant: bool = self._template_uses_assistant_link(template)
-        if not uses_demo and not uses_assistant:
+        uses_loyalty_card_link: bool = self._template_uses_loyalty_card_link(template)
+        if not uses_demo and not uses_assistant and not uses_loyalty_card_link:
             return True
 
         expires_at: datetime | None
@@ -1461,6 +1509,9 @@ class CampaignQueueService:
             site: DemoSite | None = self._active_demo_for_prospect(j1_item.prospect_id, j1_item.user_id)
             expires_at = site.expires_at if site else None
             offer_label, skip_reason = "demo site", "Site démo expiré avant la relance"
+        elif uses_loyalty_card_link:
+            expires_at = None
+            offer_label, skip_reason = "loyalty-card demo", LOYALTY_CARD_DEMO_MISSING_REFUSAL
         else:
             assistant: AiAssistant | None = self._active_assistant_for_prospect(j1_item.prospect_id, j1_item.user_id)
             # An assistant whose countdown has not started yet is alive for any follow-up.
@@ -1615,6 +1666,8 @@ class CampaignQueueService:
         )
         if identification_refusal:
             return {"success": False, "error": identification_refusal}
+        if self._template_uses_loyalty_card_link(template):
+            return {"success": False, "error": LOYALTY_CARD_DEMO_MISSING_REFUSAL}
 
         video_link, video_thumbnail_url = "", ""
         if self._template_uses_video(template) and campaign.include_video:

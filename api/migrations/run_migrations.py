@@ -193,6 +193,7 @@ MIGRATION_MODULES: list[tuple[str, str]] = [
     ("reseed_frank_email_template_library", "migrations.reseed_frank_email_template_library"),
     ("refresh_frank_email_template_library", "migrations.refresh_frank_email_template_library"),
     ("add_user_postal_address", "migrations.add_user_postal_address"),
+    ("add_loyalty_card_email_templates", "migrations.add_loyalty_card_email_templates"),
 ]
 
 # Modules of this package that are not migrations and must not be registered.

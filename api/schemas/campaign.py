@@ -214,6 +214,7 @@ class CampaignEnqueueOutcome(BaseModel):
     skipped_no_video: list[CampaignSkippedProspect] = Field(default_factory=list)
     # Left out because their template needs the prospect's AI assistant and none is active yet.
     skipped_no_assistant: list[CampaignSkippedProspect] = Field(default_factory=list)
+    skipped_no_loyalty_card_demo: list[CampaignSkippedProspect] = Field(default_factory=list)
     # Left out because another sellable module contacted them inside the cross-module lock window.
     skipped_locked: list[CampaignSkippedProspect] = Field(default_factory=list)
 

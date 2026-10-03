@@ -525,6 +525,12 @@ class Settings(BaseSettings):
         "missing staging token in sandbox fails loudly instead of hitting the real organization.",
     )
 
+    wallet_subscription_price_cents: int = Field(
+        default=1900,
+        alias="WALLET_SUBSCRIPTION_PRICE_CENTS",
+        description="Monthly Apple Wallet subscription price in cents (editable)",
+    )
+
     @property
     def qonto_is_sandbox(self) -> bool:
         """Whether Qonto runs against its sandbox environment."""

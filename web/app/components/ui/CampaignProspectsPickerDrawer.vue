@@ -344,7 +344,7 @@ async function submit(): Promise<void> {
 }
 
 /**
- * Warn when newcomers joined a launched campaign but not its send queue yet (no live demo / video / assistant).
+ * Warn when newcomers joined a launched campaign but not its send queue (no live demo / video / assistant / card demo).
  * @param outcome - Enqueue outcome returned by the add call, or null when the campaign is not launched.
  */
 function warnAboutProspectsLeftOutOfQueue(outcome: CampaignEnqueueOutcome | null): void {
@@ -366,6 +366,11 @@ function warnAboutProspectsLeftOutOfQueue(outcome: CampaignEnqueueOutcome | null
     toast.warning(
       `Pas encore en file d'attente (pas d'assistant IA actif) : ${skippedProspectNames(outcome.skipped_no_assistant)}. ` +
         `Génère ${several ? 'leurs assistants : ils rejoindront' : 'son assistant : il rejoindra'} la file à ${several ? 'leur' : 'sa'} position.`,
+    )
+  }
+  if (outcome.skipped_no_loyalty_card_demo.length > 0) {
+    toast.warning(
+      `Pas en file d'attente (pas de démo de carte de fidélité) : ${skippedProspectNames(outcome.skipped_no_loyalty_card_demo)}.`,
     )
   }
 }
