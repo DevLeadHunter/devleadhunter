@@ -266,6 +266,12 @@ class DemoSitePublicResponse(BaseModel):
     owner_profile_photo_url: str | None = None
     owner_contact_phone: str | None = None
     owner_contact_email: str | None = None
+    sale_price_label: str | None = Field(
+        default=None, description="Owner's website sale price in the prospect's currency (« 500 € », « ≈ 470 CHF »)"
+    )
+    expiry_date_label: str | None = Field(
+        default=None, description="Day the demo goes offline (« 2 novembre »), null until its link is first sent"
+    )
 
     model_config = ConfigDict(from_attributes=True)
 

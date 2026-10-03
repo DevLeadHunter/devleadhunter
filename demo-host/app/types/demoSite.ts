@@ -16,4 +16,6 @@ export type DemoSitePublic = {
   owner_profile_photo_url?: string | null
   owner_contact_phone?: string | null
   owner_contact_email?: string | null
+  sale_price_label?: string | null
+  expiry_date_label?: string | null
 }
