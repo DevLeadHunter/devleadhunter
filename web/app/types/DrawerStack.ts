@@ -1,4 +1,4 @@
-import type { EmailLog, EmailTemplate, Prospect, User } from '~/types'
+import type { EmailLog, EmailTemplate, Prospect, ProspectCountry, User } from '~/types'
 import type { AiAssistantRequestItem, AiAssistantSummary, AssistantSubscription } from '~/types/AiAssistant'
 import type { Order } from '~/services/ordersService'
 import type { SmsMessage } from '~/services/smsService'
@@ -177,12 +177,13 @@ export type AssistantRequestDrawerEntry = {
   request: AiAssistantRequestItem
 }
 
-/** A zone of the coverage map (one city, or a region's covered cities). */
+/** A zone of the coverage map (one city, or a region's covered cities), scoped to its country so homonyms stay apart. */
 export type CoverageZone = {
   kind: 'city' | 'region'
   label: string
   cities: string[]
   prefillCity?: string
+  country?: ProspectCountry
 }
 
 /** Coverage-map filters drawer entry (trades + zones to attack). */

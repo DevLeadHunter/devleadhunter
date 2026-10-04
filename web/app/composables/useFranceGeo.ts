@@ -1,4 +1,8 @@
-/** Geocoding for the coverage map: France via geo.api.gouv.fr, Belgium/Switzerland/Luxembourg via Photon (OSM), localStorage cache. Region contours are loaded by MapLibre, not here. */
+/**
+ * Geocoding for the coverage map: France via geo.api.gouv.fr, Switzerland, Belgium, Luxembourg and Québec via
+ * Photon (OSM), localStorage cache. Only definitive answers are cached: a failed call is retried on the next load,
+ * never remembered as an unknown city. Region contours are loaded by MapLibre, not here.
+ */
 
 import { ProspectCountries } from '~/utils/prospectCountries'
 
@@ -14,10 +18,31 @@ export type CityGeo = {
   region: string
 }
 
-const CITIES_CACHE_KEY: string = 'dlh-cities-v5'
+/** v6: v5 could hold a failed call saved as an unknown city, which emptied the map for good. */
+const CITIES_CACHE_KEY: string = 'dlh-cities-v6'
 
-/** Parallel requests allowed against the public geocoding APIs. */
-const GEOCODING_CONCURRENCY: number = 6
+/** Parallel requests allowed against the public geocoding APIs, kept low so a burst stays under their rate limits. */
+const GEOCODING_CONCURRENCY: number = 4
+
+/** Pause before the single retry of a failed call (a rate-limit burst or a dropped connection). */
+const GEOCODING_RETRY_DELAY_MS: number = 800
+
+/** One lookup: a place, a definitive « no such place » (cached), or a failed call (never cached). */
+type GeocodingOutcome<T> = { kind: 'found'; value: T } | { kind: 'unknown' } | { kind: 'failed' }
+
+/**
+ * Run a lookup, and run it once more after a short pause when the call itself failed.
+ * @param lookup - The lookup to run.
+ * @returns The first definitive outcome, or `failed` when both calls failed.
+ */
+async function withOneRetry<T>(lookup: () => Promise<GeocodingOutcome<T>>): Promise<GeocodingOutcome<T>> {
+  const first: GeocodingOutcome<T> = await lookup()
+  if (first.kind !== 'failed') return first
+  await new Promise<void>((resolve: () => void): void => {
+    setTimeout(resolve, GEOCODING_RETRY_DELAY_MS)
+  })
+  return lookup()
+}
 
 /**
  * Read a JSON value from localStorage (null on any failure).
@@ -110,9 +135,9 @@ export type GeocodableCity = {
 /**
  * Geocode one French commune through geo.api.gouv.fr (name search, population boost).
  * @param city - Raw city name.
- * @returns The commune centre with its INSEE/department/region codes, or null.
+ * @returns The commune centre with its INSEE/department/region codes, `unknown`, or `failed`.
  */
-async function geocodeFrenchCity(city: string): Promise<CityGeo | null> {
+async function geocodeFrenchCity(city: string): Promise<GeocodingOutcome<CityGeo>> {
   type Commune = {
     code?: string
     nom?: string
@@ -121,66 +146,93 @@ async function geocodeFrenchCity(city: string): Promise<CityGeo | null> {
     codeRegion?: string
   }
   const key: string = cityKey(city)
+  let results: Commune[]
   try {
-    const results: Commune[] = await $fetch<Commune[]>('https://geo.api.gouv.fr/communes', {
+    results = await $fetch<Commune[]>('https://geo.api.gouv.fr/communes', {
       query: { nom: key, fields: 'code,nom,centre,codeDepartement,codeRegion', boost: 'population', limit: 5 },
     })
-    // « Betton » remontait Betton-Bettonet (306 hab., Savoie) : le nom exact prime sur le score flou.
-    const exact: Commune | undefined = results.find((commune: Commune): boolean => cityKey(commune.nom ?? '') === key)
-    const top: Commune | undefined = exact ?? results[0]
-    const coords: [number, number] | undefined = top?.centre?.coordinates
-    if (!top || !coords) return null
-    return {
+  } catch {
+    return { kind: 'failed' }
+  }
+  // « Betton » remontait Betton-Bettonet (306 hab., Savoie) : le nom exact prime sur le score flou.
+  const exact: Commune | undefined = results.find((commune: Commune): boolean => cityKey(commune.nom ?? '') === key)
+  const top: Commune | undefined = exact ?? results[0]
+  const coords: [number, number] | undefined = top?.centre?.coordinates
+  if (!top || !coords) return { kind: 'unknown' }
+  return {
+    kind: 'found',
+    value: {
       lng: coords[0],
       lat: coords[1],
       insee: top.code ?? '',
       dept: top.codeDepartement ?? '',
       region: top.codeRegion ?? '',
-    }
-  } catch {
-    return null
+    },
   }
 }
 
 /** Public multi-country geocoder (Komoot/OSM), used for cities outside France. */
 const PHOTON_URL: string = 'https://photon.komoot.io/api/'
 
+/** OSM `place` values of a settlement, preferred over a province or canton of the same name. */
+const SETTLEMENT_PLACE_VALUES: ReadonlySet<string> = new Set([
+  'city',
+  'town',
+  'village',
+  'hamlet',
+  'suburb',
+  'municipality',
+])
+
 /** One Photon result — only the fields the city lookup needs. */
 type PhotonFeature = {
   geometry?: { coordinates?: [number, number] }
-  properties?: { name?: string; countrycode?: string }
+  properties?: { name?: string; countrycode?: string; osm_key?: string; osm_value?: string }
 }
 
 /**
- * Geocode a city outside France through Photon, filtered to the requested country so a homonym elsewhere is never placed.
+ * Whether a Photon result is a settlement rather than the province, canton or country that shares its name.
+ * @param feature - One Photon result.
+ * @returns True for a city, town, village or suburb.
+ */
+function isSettlement(feature: PhotonFeature): boolean {
+  return feature.properties?.osm_key === 'place' && SETTLEMENT_PLACE_VALUES.has(feature.properties.osm_value ?? '')
+}
+
+/**
+ * Geocode a city outside France through Photon, filtered to the requested country so a homonym elsewhere is never
+ * placed, and preferring the settlement to its namesake region (« Québec » the city, not the province).
  * @param city - Raw city name.
  * @param countryCode - ISO alpha-2 country code (upper, e.g. « CH »).
- * @returns The city centre (no INSEE/region, which are France-only), or null.
+ * @returns The city centre (no INSEE/region, which are France-only), `unknown`, or `failed`.
  */
-async function geocodeForeignCity(city: string, countryCode: string): Promise<CityGeo | null> {
+async function geocodeForeignCity(city: string, countryCode: string): Promise<GeocodingOutcome<CityGeo>> {
+  const label: string = ProspectCountries.option(countryCode).label
+  let response: { features?: PhotonFeature[] }
   try {
-    const label: string = ProspectCountries.option(countryCode).label
-    const response: { features?: PhotonFeature[] } = await $fetch<{ features?: PhotonFeature[] }>(PHOTON_URL, {
+    response = await $fetch<{ features?: PhotonFeature[] }>(PHOTON_URL, {
       query: { q: `${city}, ${label}`, limit: 5, lang: 'fr' },
     })
-    const inCountry: PhotonFeature[] = (response.features ?? []).filter(
-      (feature: PhotonFeature): boolean => (feature.properties?.countrycode ?? '').toUpperCase() === countryCode,
-    )
-    if (inCountry.length === 0) return null
-    const wanted: string = cityKey(city)
-    const exact: PhotonFeature | undefined = inCountry.find(
-      (feature: PhotonFeature): boolean => cityKey(feature.properties?.name ?? '') === wanted,
-    )
-    const coords: [number, number] | undefined = (exact ?? inCountry[0])?.geometry?.coordinates
-    if (!coords) return null
-    return { lng: coords[0], lat: coords[1], insee: '', dept: '', region: '' }
   } catch {
-    return null
+    return { kind: 'failed' }
   }
+  const inCountry: PhotonFeature[] = (response.features ?? []).filter(
+    (feature: PhotonFeature): boolean => (feature.properties?.countrycode ?? '').toUpperCase() === countryCode,
+  )
+  const settlements: PhotonFeature[] = inCountry.filter(isSettlement)
+  const candidates: PhotonFeature[] = settlements.length > 0 ? settlements : inCountry
+  const wanted: string = cityKey(city)
+  const exact: PhotonFeature | undefined = candidates.find(
+    (feature: PhotonFeature): boolean => cityKey(feature.properties?.name ?? '') === wanted,
+  )
+  const coords: [number, number] | undefined = (exact ?? candidates[0])?.geometry?.coordinates
+  if (!coords) return { kind: 'unknown' }
+  return { kind: 'found', value: { lng: coords[0], lat: coords[1], insee: '', dept: '', region: '' } }
 }
 
 /**
- * Geocode a batch of cities, routing each to its country's geocoder; cached, unknown cities resolve to null.
+ * Geocode a batch of cities, routing each to its country's geocoder. Unknown cities resolve to null and are cached;
+ * a city whose lookup failed twice also resolves to null, but only for this load: the next one asks again.
  * @param cities - City + country pairs to resolve.
  * @returns A map of « <cc>:<city> » key → geo (or null).
  */
@@ -196,14 +248,22 @@ export async function geocodeCities(cities: GeocodableCity[]): Promise<Record<st
   }
   if (pending.length === 0) return cache
 
+  const failedKeys: string[] = []
   await runBoundedGeocoding(pending, async (entry: GeocodableCity): Promise<void> => {
     const code: string = normalizeCountryCode(entry.country)
-    cache[cityCountryKey(entry.city, entry.country)] =
-      code === 'FR' ? await geocodeFrenchCity(entry.city) : await geocodeForeignCity(entry.city, code)
+    const key: string = cityCountryKey(entry.city, entry.country)
+    const outcome: GeocodingOutcome<CityGeo> = await withOneRetry(
+      (): Promise<GeocodingOutcome<CityGeo>> =>
+        code === 'FR' ? geocodeFrenchCity(entry.city) : geocodeForeignCity(entry.city, code),
+    )
+    if (outcome.kind === 'failed') failedKeys.push(key)
+    else cache[key] = outcome.kind === 'found' ? outcome.value : null
   })
 
   writeCache(CITIES_CACHE_KEY, cache)
-  return cache
+  const resolved: Record<string, CityGeo | null> = { ...cache }
+  for (const key of failedKeys) resolved[key] = null
+  return resolved
 }
 
 /**
@@ -237,7 +297,8 @@ type AddressQuery = {
   insee: string
 }
 
-const ADDRESSES_CACHE_KEY: string = 'dlh-fr-addresses-v1'
+/** v2: v1 could hold a failed call saved as an unplaceable address. */
+const ADDRESSES_CACHE_KEY: string = 'dlh-fr-addresses-v2'
 
 /** Below this score, the BAN match is too loose to be trusted as a street position. */
 const MIN_ADDRESS_SCORE: number = 0.4
@@ -254,7 +315,8 @@ export function addressKey(address: string | null | undefined, city: string, cou
 }
 
 /**
- * Geocode street addresses through the BAN, bounded to each prospect's commune; unplaceable addresses resolve to null.
+ * Geocode street addresses through the BAN, bounded to each prospect's commune. Unplaceable addresses resolve to
+ * null and are cached; an address whose lookup failed twice is left out, so the next load asks again.
  * @param addresses - Address + city pairs to resolve.
  * @param cities - Cities already resolved by `geocodeCities`, for their INSEE code.
  * @returns A map of normalised key → coordinates (or null).
@@ -288,18 +350,25 @@ export async function geocodeAddresses(
   if (queries.length === 0) return cache
 
   await runBoundedGeocoding(queries, async ({ key, query, insee }: AddressQuery): Promise<void> => {
-    try {
-      const response: { features?: BanFeature[] } = await $fetch<{ features?: BanFeature[] }>(
-        'https://api-adresse.data.gouv.fr/search/',
-        { query: { q: query, citycode: insee, limit: 1 } },
-      )
-      const top: BanFeature | undefined = response.features?.[0]
-      const coords: [number, number] | undefined = top?.geometry?.coordinates
-      const score: number = top?.properties?.score ?? 0
-      cache[key] = coords && score >= MIN_ADDRESS_SCORE ? { lng: coords[0], lat: coords[1] } : null
-    } catch {
-      cache[key] = null
-    }
+    const outcome: GeocodingOutcome<AddressGeo> = await withOneRetry(
+      async (): Promise<GeocodingOutcome<AddressGeo>> => {
+        let response: { features?: BanFeature[] }
+        try {
+          response = await $fetch<{ features?: BanFeature[] }>('https://api-adresse.data.gouv.fr/search/', {
+            query: { q: query, citycode: insee, limit: 1 },
+          })
+        } catch {
+          return { kind: 'failed' }
+        }
+        const top: BanFeature | undefined = response.features?.[0]
+        const coords: [number, number] | undefined = top?.geometry?.coordinates
+        const score: number = top?.properties?.score ?? 0
+        return coords && score >= MIN_ADDRESS_SCORE
+          ? { kind: 'found', value: { lng: coords[0], lat: coords[1] } }
+          : { kind: 'unknown' }
+      },
+    )
+    if (outcome.kind !== 'failed') cache[key] = outcome.kind === 'found' ? outcome.value : null
   })
 
   writeCache(ADDRESSES_CACHE_KEY, cache)

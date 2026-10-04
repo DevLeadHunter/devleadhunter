@@ -178,6 +178,11 @@ async def dashboard_hot_leads(
     return HotLeadsResponse(items=items)
 
 
+def _coverage_country():
+    """The prospect's ISO alpha-2 country, upper-cased, legacy null/empty rows read as FR."""
+    return func.upper(func.coalesce(func.nullif(func.trim(ProspectDB.country), ""), "FR"))
+
+
 def _apply_coverage_scope(stmt, scope: str, member_id, uid: int, org_id):
     """Restrict a prospect select to the coverage scope (me / org / member).
 
@@ -235,9 +240,8 @@ async def dashboard_coverage(
         resolved_scope = "me"
 
     city_col = func.trim(ProspectDB.city)
-    # ISO alpha-2 country (upper), defaulting legacy null/empty rows to FR. Cities are grouped
-    # by (city, country) so a foreign homonym (Fribourg CH) stays separate from the French one.
-    country_norm = func.upper(func.coalesce(func.nullif(func.trim(ProspectDB.country), ""), "FR"))
+    # Cities are grouped by (city, country) so a foreign homonym (Fribourg CH) stays separate from the French one.
+    country_norm = _coverage_country()
     stmt = select(
         func.min(city_col).label("city"),
         country_norm.label("country"),
@@ -312,6 +316,7 @@ async def dashboard_coverage(
 @router.get("/coverage/prospects", response_model=CoverageProspectsResponse)
 async def coverage_zone_prospects(
     cities: list[str] = Query(..., description="City names of the zone (repeatable)"),
+    country: str | None = Query(None, description="ISO alpha-2 country of the zone. Absent = every country."),
     scope: str = Query("me", description="me | org | member"),
     member_id: int | None = Query(None, description="User id when scope=member"),
     categories: list[str] | None = Query(None, description="Optional trade filter (repeatable)"),
@@ -324,7 +329,8 @@ async def coverage_zone_prospects(
     a LIGHT recap per prospect: demo generated, email engagement, sold.
 
     Powers the coverage-map zone drawer — same scope/trade semantics as
-    ``/coverage``. Capped at ``limit`` rows (name-ordered); ``total`` carries the
+    ``/coverage``. ``country`` keeps cross-border homonyms apart (Laval in Mayenne,
+    Laval in Québec). Capped at ``limit`` rows (name-ordered); ``total`` carries the
     real count so the UI can say « 300 affichés sur 412 ».
     """
     uid = current_user.id
@@ -335,6 +341,9 @@ async def coverage_zone_prospects(
         return CoverageProspectsResponse(items=[], total=0)
 
     stmt = select(ProspectDB).where(func.lower(func.trim(ProspectDB.city)).in_(wanted_cities))
+    wanted_country = (country or "").strip().upper()
+    if wanted_country:
+        stmt = stmt.where(_coverage_country() == wanted_country)
     stmt = _apply_coverage_scope(stmt, scope, member_id, uid, org_id)
     wanted_categories = [c.strip().lower() for c in (categories or []) if c and c.strip()]
     if wanted_categories:

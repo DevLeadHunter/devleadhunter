@@ -6,3 +6,6 @@ src-tauri/target
 package-lock.json
 src-tauri/gen/schemas
 .pytest_cache
+
+# Map contours: generated data, kept compact (the host serves them uncompressed).
+public/*.geojson

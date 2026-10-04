@@ -56,7 +56,18 @@ mini-sites d'annuaire, « Domain zu verkaufen ») ; numéros CH, BE et LU lus su
 pied légal et pages `/legal` et `/privacy` sur tous les sites générés, démo comme site vendu, calculés par l'API pour le
 pays de l'entreprise (§ 4.3).
 
-**Encore ouvert** : carte de couverture sans le Québec ; Réceptionniste
+**Carte de couverture (04/10)** : le Québec y est, en 17 régions administratives
+(`web/public/regions-ca-qc.geojson`, Découpages administratifs du Gouvernement du Québec, CC BY 4.0,
+simplifié à 2 %, codes `CA-QC-01` à `CA-QC-17`, crédit affiché dans l'attribution de la carte) ; tous les
+pays du catalogue sont dans le sélecteur, même sans prospect, avec leur nombre ; cadrage fixe sur le sud du
+Québec et limites de déplacement étendues jusqu'à lui ; les régions françaises sont servies par
+`web/public/regions-fr.geojson` au lieu de GitHub ; la zone d'une ville porte son pays jusqu'à l'API
+(`/dashboard/coverage/prospects?country=`), Laval (Mayenne) et Laval (Québec) ne se mélangent plus ; une
+région étrangère couverte ouvre ses prospects ; Photon préfère la ville à la région homonyme (Québec,
+Fribourg, Luxembourg). Le géocodage ne garde plus un appel raté comme une ville inconnue (cache
+`dlh-cities-v6`, `dlh-fr-addresses-v2`) : c'est ce qui vidait la carte de toutes ses zones.
+
+**Encore ouvert** : Réceptionniste
 IA hors France (§ 7 : fuseau du client, +1, expéditeur, pied légal) ; décisionnaire hors France ;
 probe Qonto en sandbox (client CH ou CA sans numéro fiscal, doublon éventuel de mention) ; achat
 d'un `.com` (ou d'un `.ca` au nom du client) par l'automatisation de domaine ; boucles SMS automatiques limitées à la France tant que le premier SMS suisse

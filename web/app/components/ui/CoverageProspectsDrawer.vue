@@ -191,6 +191,7 @@ async function loadZone(): Promise<void> {
       scopeName,
       memberId,
       store.selectedCategories,
+      zone.country,
     )
     rows.value = data.items
     total.value = data.total
@@ -215,12 +216,13 @@ async function openProspect(prospectId: number): Promise<void> {
   }
 }
 
-/** Open the search drawer prefilled with the zone's city (stacked). */
+/** Open the search drawer prefilled with the zone's city and country (stacked). */
 function prospectAgain(): void {
   drawerStack.push({
     kind: 'search-prospects',
     prefill: {
       ...(props.zone?.prefillCity ? { city: props.zone.prefillCity } : {}),
+      ...(props.zone?.country ? { country: props.zone.country } : {}),
       ...(store.selectedCategories.length === 1 ? { category: store.selectedCategories[0] as string } : {}),
     },
   })

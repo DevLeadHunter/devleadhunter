@@ -153,6 +153,7 @@ export class DashboardService {
    * @param scope - 'me' | 'org' | 'member'.
    * @param memberId - Member user id when scope is 'member'.
    * @param categories - Optional trade filter (empty = all trades).
+   * @param country - ISO alpha-2 country of the zone, so a homonym abroad stays out (Laval FR vs Laval QC).
    * @returns Light prospect rows + real total.
    */
   static async getCoverageProspects(
@@ -160,9 +161,11 @@ export class DashboardService {
     scope: string = 'me',
     memberId?: number,
     categories: string[] = [],
+    country?: string,
   ): Promise<CoverageProspectsResponse> {
     const params: URLSearchParams = new URLSearchParams({ scope })
     if (memberId != null) params.set('member_id', String(memberId))
+    if (country) params.set('country', country)
     for (const city of cities) params.append('cities', city)
     for (const category of categories) params.append('categories', category)
     return ApiClient.get<CoverageProspectsResponse>(`/api/v1/dashboard/coverage/prospects?${params.toString()}`)

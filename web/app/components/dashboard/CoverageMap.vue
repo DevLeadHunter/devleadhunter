@@ -1,8 +1,8 @@
 <template>
   <div class="flex h-full min-h-0 flex-col gap-4">
-    <div v-if="availableCountries.length > 1" class="flex flex-wrap gap-1.5">
+    <div class="flex flex-wrap gap-1.5">
       <button
-        v-for="option in availableCountries"
+        v-for="option in countryOptions"
         :key="option.code"
         type="button"
         class="flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs transition-colors"
@@ -11,10 +11,12 @@
             ? 'border-[var(--app-ink)] bg-[var(--app-ink)] text-[var(--app-bg)]'
             : 'border-[var(--app-line)] text-[var(--app-ink-soft)] hover:border-[var(--app-ink-soft)]'
         "
+        :aria-pressed="option.code === selectedCountry"
         @click="selectCountry(option.code)"
       >
         <span>{{ option.flag }}</span>
         <span>{{ option.label }}</span>
+        <span class="tabular-nums opacity-60">{{ option.prospectCount }}</span>
       </button>
     </div>
 
@@ -114,7 +116,14 @@
 
 <script lang="ts" setup>
 import type { CoverageCity, CoverageCountry } from '~/services/dashboardService'
-import type { CityFeatureProperties, CoverageTierColors, ProspectFeatureProperties } from '~/types/DashboardCoverageMap'
+import type {
+  CityFeatureProperties,
+  CoverageCountryOption,
+  CoverageMapBounds,
+  CoverageTierColors,
+  ForeignRegionIndex,
+  ProspectFeatureProperties,
+} from '~/types/DashboardCoverageMap'
 import type { Feature, FeatureCollection, Point } from 'geojson'
 import type {
   ExpressionSpecification,
@@ -126,7 +135,7 @@ import type {
 import type { ComputedRef, Ref } from 'vue'
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import 'maplibre-gl/dist/maplibre-gl.css'
-import type { AddressGeo, CityGeo } from '~/composables/useFranceGeo'
+import type { AddressGeo, CityGeo, ReverseGeocodedCommune } from '~/composables/useFranceGeo'
 import { addressKey, lookupCity, reverseGeocodeCommune } from '~/composables/useFranceGeo'
 import { useAppTheme } from '~/composables/useAppTheme'
 import type { Prospect, ProspectCountry } from '~/types'
@@ -136,17 +145,20 @@ import { useDrawerStackStore } from '~/stores/drawerStack'
 import type { AppTheme } from '~/types/AppTheme'
 import type { ForeignRegionCollection, ForeignRegionProperties } from '~/utils/foreignRegions'
 import { countryBounds, countryRegionCount, fetchForeignRegions, foreignRegionAt } from '~/utils/foreignRegions'
+import type { FranceMajorCity } from '~/utils/franceTerritory'
 import { FRANCE_MAJOR_CITIES, FRANCE_REGIONS } from '~/utils/franceTerritory'
 import type { ProspectCountryOption } from '~/utils/prospectCountries'
 import { ProspectCountries } from '~/utils/prospectCountries'
 
 /**
- * Metropolitan region contours (simplified, ~220 KB) — the france-geojson reference
- * dataset. Loaded directly by MapLibre (its parser ignores the `text/plain`
- * content-type served by raw.githubusercontent.com, which breaks `$fetch`).
+ * Metropolitan region contours (simplified, ~220 KB, france-geojson from IGN Admin Express), served from the public
+ * folder: a third-party host that rate-limits or goes down must not erase the zones.
  */
-const REGIONS_GEOJSON_URL: string =
-  'https://raw.githubusercontent.com/gregoiredavid/france-geojson/master/regions-version-simplifiee.geojson'
+const REGIONS_GEOJSON_URL: string = '/regions-fr.geojson'
+
+/** Credits of the region contours, shown in the map attribution as their licences ask. */
+const FRANCE_REGIONS_ATTRIBUTION: string = 'Régions © IGN'
+const FOREIGN_REGIONS_ATTRIBUTION: string = 'Natural Earth · Régions du Québec © Gouvernement du Québec (CC BY 4.0)'
 
 /** OpenFreeMap basemap styles (free, no API key, no usage limit) per app theme. */
 const MAP_STYLES: Record<AppTheme, string> = {
@@ -155,15 +167,21 @@ const MAP_STYLES: Record<AppTheme, string> = {
 }
 
 /** Metropolitan France framing (initial view). */
-const FRANCE_BOUNDS: [[number, number], [number, number]] = [
+const FRANCE_BOUNDS: CoverageMapBounds = [
   [-5.6, 41.2],
   [9.9, 51.4],
 ]
 
-/** Panning limit — France + a comfortable margin. */
-const MAP_MAX_BOUNDS: [[number, number], [number, number]] = [
-  [-13.0, 37.0],
-  [16.5, 55.5],
+/** Southern Québec, where its cities are, rather than the whole province up to Nunavik. */
+const QUEBEC_BOUNDS: CoverageMapBounds = [
+  [-79.6, 44.9],
+  [-64.0, 50.4],
+]
+
+/** Panning limit — every supported country, from Québec to Switzerland, with a comfortable margin. */
+const MAP_MAX_BOUNDS: CoverageMapBounds = [
+  [-100.0, 30.0],
+  [32.0, 66.0],
 ]
 
 const REGIONS_SOURCE_ID: string = 'dlh-regions'
@@ -181,13 +199,25 @@ const FOREIGN_REGIONS_LINE_LAYER_ID: string = 'dlh-foreign-regions-line'
 const EMPTY_COLLECTION: FeatureCollection = { type: 'FeatureCollection', features: [] }
 
 /** Framing that fits France plus Belgium, Switzerland and Luxembourg. */
-const EUROPE_BOUNDS: [[number, number], [number, number]] = [
+const EUROPE_BOUNDS: CoverageMapBounds = [
   [-5.6, 41.2],
   [10.6, 51.6],
 ]
 
+/** Fixed framings for the countries their region contours would frame badly; the others use their contours' box. */
+const COUNTRY_FRAMES: Partial<Record<ProspectCountry, CoverageMapBounds>> = { FR: FRANCE_BOUNDS, CA: QUEBEC_BOUNDS }
+
+/** Countries that fit in one view with France (the initial framing widens to them when they hold prospects). */
+const FRANCE_NEIGHBOURS: ReadonlySet<string> = new Set(['CH', 'BE', 'LU'])
+
 /** Label of the top administrative division per country (the coverage stat + choropleth level). */
-const REGION_LABELS: Record<string, string> = { FR: 'Régions', CH: 'Cantons', BE: 'Provinces', LU: 'Districts' }
+const REGION_LABELS: Record<string, string> = {
+  FR: 'Régions',
+  CH: 'Cantons',
+  BE: 'Provinces',
+  LU: 'Districts',
+  CA: 'Régions',
+}
 
 /** Zoom at which the city aggregate hands over to the per-prospect points. */
 const PROSPECT_DETAIL_ZOOM: number = 11
@@ -227,40 +257,61 @@ const regionTotals: ComputedRef<Record<string, number>> = computed((): Record<st
   return totals
 })
 
-/** Belgium/Switzerland/Luxembourg region contours, loaded once for the choropleth + point-in-region totals. */
+/** Region contours outside France (cantons, provinces, districts, Québec regions), loaded once for the choropleth. */
 const foreignRegions: Ref<ForeignRegionCollection | null> = ref(null)
 
 /** Country whose regions + stats the top cards currently show (driven by the selector). */
 const selectedCountry: Ref<ProspectCountry> = ref('FR')
 
-/** Countries with at least one prospect, as selectable options (API order = most prospected first). */
-const availableCountries: ComputedRef<ProspectCountryOption[]> = computed((): ProspectCountryOption[] =>
-  (store.coverage?.countries ?? [])
-    .filter((entry: CoverageCountry): boolean => entry.count > 0)
-    .map((entry: CoverageCountry): ProspectCountryOption => ProspectCountries.option(entry.country)),
-)
+/** Once the user picks a country, data reloads (scope, trades) no longer move the selection. */
+const hasPickedCountry: Ref<boolean> = ref(false)
 
-/** True when there is at least one prospect outside France (drives the Europe framing). */
-const hasForeignProspects: ComputedRef<boolean> = computed((): boolean =>
+/** Every supported country with its prospect count, most prospected first, so a country is reachable before its first prospect. */
+const countryOptions: ComputedRef<CoverageCountryOption[]> = computed((): CoverageCountryOption[] => {
+  const counts: Map<string, number> = new Map(
+    (store.coverage?.countries ?? []).map((entry: CoverageCountry): [string, number] => [
+      entry.country.toUpperCase(),
+      entry.count,
+    ]),
+  )
+  return ProspectCountries.catalog
+    .map(
+      (option: ProspectCountryOption): CoverageCountryOption => ({
+        ...option,
+        prospectCount: counts.get(option.code) ?? 0,
+      }),
+    )
+    .sort((a: CoverageCountryOption, b: CoverageCountryOption): number => b.prospectCount - a.prospectCount)
+})
+
+/** True when Switzerland, Belgium or Luxembourg hold prospects (the initial view then widens from France to them). */
+const hasNeighbourProspects: ComputedRef<boolean> = computed((): boolean =>
   (store.coverage?.countries ?? []).some(
-    (entry: CoverageCountry): boolean => entry.country.toUpperCase() !== 'FR' && entry.count > 0,
+    (entry: CoverageCountry): boolean => FRANCE_NEIGHBOURS.has(entry.country.toUpperCase()) && entry.count > 0,
   ),
 )
 
-/** Prospect total per foreign region (canton/province/district), from point-in-region on the geocoded cities. */
-const foreignRegionTotals: ComputedRef<Record<string, number>> = computed((): Record<string, number> => {
-  const totals: Record<string, number> = {}
+/** Prospect total and prospected cities per foreign region, from point-in-region on the geocoded cities. */
+const foreignRegionIndex: ComputedRef<ForeignRegionIndex> = computed((): ForeignRegionIndex => {
+  const index: ForeignRegionIndex = { totals: {}, cities: {} }
   const regions: ForeignRegionCollection | null = foreignRegions.value
-  if (!regions) return totals
+  if (!regions) return index
   for (const city of store.coverage?.cities ?? []) {
     if (city.country.toUpperCase() === 'FR') continue
     const geo: CityGeo | null = lookupCity(store.cityGeo, city.city, city.country)
     if (!geo) continue
     const region: ForeignRegionProperties | null = foreignRegionAt(regions, geo.lng, geo.lat)
-    if (region) totals[region.code] = (totals[region.code] ?? 0) + city.count
+    if (!region) continue
+    index.totals[region.code] = (index.totals[region.code] ?? 0) + city.count
+    index.cities[region.code] = [...(index.cities[region.code] ?? []), city.city]
   }
-  return totals
+  return index
 })
+
+/** Prospect total per foreign region (canton/province/district/Québec region). */
+const foreignRegionTotals: ComputedRef<Record<string, number>> = computed(
+  (): Record<string, number> => foreignRegionIndex.value.totals,
+)
 
 /** Cities successfully placed on the map for the selected country. */
 const selectedCountryCityCount: ComputedRef<number> = computed(
@@ -380,6 +431,7 @@ function buildCitiesCollection(): FeatureCollection<Point, CityFeatureProperties
       geometry: { type: 'Point', coordinates: [geo.lng, geo.lat] },
       properties: {
         city: city.city,
+        country: city.country.toUpperCase(),
         count: city.count,
         radius: Math.min(16, 3.5 + Math.sqrt(city.count) * 2),
       },
@@ -424,7 +476,11 @@ function addMapOverlays(): void {
   const dark: boolean = theme.value === 'dark'
 
   // Foreign cantons/provinces first, so France's detailed regions paint alongside them.
-  map.addSource(FOREIGN_REGIONS_SOURCE_ID, { type: 'geojson', data: foreignRegions.value ?? EMPTY_COLLECTION })
+  map.addSource(FOREIGN_REGIONS_SOURCE_ID, {
+    type: 'geojson',
+    data: foreignRegions.value ?? EMPTY_COLLECTION,
+    attribution: FOREIGN_REGIONS_ATTRIBUTION,
+  })
   map.addLayer({
     id: FOREIGN_REGIONS_FILL_LAYER_ID,
     type: 'fill',
@@ -441,7 +497,11 @@ function addMapOverlays(): void {
     },
   })
 
-  map.addSource(REGIONS_SOURCE_ID, { type: 'geojson', data: REGIONS_GEOJSON_URL })
+  map.addSource(REGIONS_SOURCE_ID, {
+    type: 'geojson',
+    data: REGIONS_GEOJSON_URL,
+    attribution: FRANCE_REGIONS_ATTRIBUTION,
+  })
   map.addSource(CITIES_SOURCE_ID, { type: 'geojson', data: buildCitiesCollection() })
 
   map.addLayer({
@@ -513,20 +573,39 @@ function refreshMapData(): void {
 }
 
 /**
+ * Framing of a country: its fixed box when it has one, else the box of its region contours.
+ * @param code - The country to frame.
+ * @returns The box, or null while the country's contours are not loaded.
+ */
+function countryFrame(code: ProspectCountry): CoverageMapBounds | null {
+  const fixed: CoverageMapBounds | undefined = COUNTRY_FRAMES[code]
+  if (fixed) return fixed
+  return foreignRegions.value ? countryBounds(foreignRegions.value, code) : null
+}
+
+/**
+ * First view of the map: France (widened to its neighbours when they hold prospects), or the selected country.
+ * @returns The box the map opens on.
+ */
+function initialBounds(): CoverageMapBounds {
+  if (selectedCountry.value === 'FR') return hasNeighbourProspects.value ? EUROPE_BOUNDS : FRANCE_BOUNDS
+  return countryFrame(selectedCountry.value) ?? EUROPE_BOUNDS
+}
+
+/**
  * Create the MapLibre map in the container (client-only, lazy-loaded chunk),
- * framed on metropolitan France with zoom + fullscreen controls.
+ * framed on the selected country with zoom + fullscreen controls.
  * @returns A promise resolved once the map is created (or marked failed).
  */
 async function initMap(): Promise<void> {
   const container: HTMLElement | null = mapContainer.value
   if (!container || mapInstance) return
   try {
-    const maplibregl: typeof import('C:/Users/leogu/Desktop/Projects/devleadhunter/web/node_modules/maplibre-gl/dist/maplibre-gl') =
-      (await import('maplibre-gl')).default
+    const maplibregl: typeof import('maplibre-gl') = (await import('maplibre-gl')).default
     const map: MaplibreMap = new maplibregl.Map({
       container,
       style: MAP_STYLES[theme.value],
-      bounds: hasForeignProspects.value ? EUROPE_BOUNDS : FRANCE_BOUNDS,
+      bounds: initialBounds(),
       fitBoundsOptions: { padding: 24 },
       maxBounds: MAP_MAX_BOUNDS,
       minZoom: 4,
@@ -584,9 +663,21 @@ async function openProspectFromMap(prospectId: number): Promise<void> {
 }
 
 /**
+ * Title of a city zone: the city, plus its country outside France (Laval in Mayenne and Laval in Québec exist).
+ * @param city - City name.
+ * @param country - ISO alpha-2 country of the city.
+ * @returns The drawer title.
+ */
+function cityZoneLabel(city: string, country: string): string {
+  const suffix: string = ProspectCountries.suffix(country)
+  return suffix ? `${city} · ${suffix}` : city
+}
+
+/**
  * Route a map click to the right drawer:
  * - city dot → zone drawer listing that city's prospects;
- * - covered region → zone drawer listing the region's prospects;
+ * - covered region, in France or abroad → zone drawer listing the region's prospects;
+ * - uncovered foreign region → new search in that country;
  * - anything else → reverse geocode the click and prefill a new search there
  *   (fallback: the region's biggest city).
  * @param event - MapLibre click event.
@@ -607,23 +698,45 @@ async function onMapClick(event: MapMouseEvent): Promise<void> {
     return
   }
 
-  // ── City dot: prospected city → its prospect list ──
+  // ── City dot: prospected city → its prospect list, in its own country ──
   if (feature.layer.id === CITIES_LAYER_ID) {
     const city: string = String(feature.properties?.city ?? '')
     if (!city) return
+    const cityCountry: ProspectCountry = ProspectCountries.option(String(feature.properties?.country ?? 'FR')).code
     drawerStack.push({
       kind: 'coverage-prospects',
-      zone: { kind: 'city', label: city, cities: [city], prefillCity: city },
+      zone: {
+        kind: 'city',
+        label: cityZoneLabel(city, cityCountry),
+        cities: [city],
+        prefillCity: city,
+        country: cityCountry,
+      },
     })
     return
   }
 
-  // ── Foreign region (canton/province/district): launch a search in that country ──
+  // ── Foreign region (canton/province/district/Québec region): its prospects, else a search in that country ──
   if (feature.layer.id === FOREIGN_REGIONS_FILL_LAYER_ID) {
-    const countryCode: string = String(feature.properties?.country ?? '')
+    const regionCode: string = String(feature.properties?.code ?? '')
+    const foreignCountry: ProspectCountry = ProspectCountries.option(String(feature.properties?.country ?? '')).code
+    const regionCities: string[] = foreignRegionIndex.value.cities[regionCode] ?? []
+    if (regionCities.length > 0) {
+      drawerStack.push({
+        kind: 'coverage-prospects',
+        zone: {
+          kind: 'region',
+          label: String(feature.properties?.name ?? ''),
+          cities: regionCities,
+          prefillCity: regionCities[0],
+          country: foreignCountry,
+        },
+      })
+      return
+    }
     drawerStack.push({
       kind: 'search-prospects',
-      prefill: { ...(countryCode ? { country: countryCode as ProspectCountry } : {}), ...categoryPrefill() },
+      prefill: { country: foreignCountry, ...categoryPrefill() },
     })
     return
   }
@@ -641,6 +754,7 @@ async function onMapClick(event: MapMouseEvent): Promise<void> {
         label: regionLabel,
         cities: store.coveredCitiesOfRegion(code),
         prefillCity: FRANCE_MAJOR_CITIES.find((c: FranceMajorCity): boolean => c.region === code)?.name,
+        country: 'FR',
       },
     })
     return
@@ -654,7 +768,7 @@ async function onMapClick(event: MapMouseEvent): Promise<void> {
   const city: string | undefined = commune?.name ?? fallback
   drawerStack.push({
     kind: 'search-prospects',
-    prefill: { ...(city ? { city } : {}), ...categoryPrefill() },
+    prefill: { ...(city ? { city } : {}), country: 'FR', ...categoryPrefill() },
   })
 }
 
@@ -664,14 +778,13 @@ function openSearchDrawer(): void {
 }
 
 /**
- * Frame the map on a country from its region bounding box (France uses a fixed box).
+ * Frame the map on a country (France and Québec use a fixed box, the others their region contours' box).
  * @param code - The country to zoom onto.
  */
 function frameCountry(code: ProspectCountry): void {
   const map: MaplibreMap | null = mapInstance
   if (!map || !isMapReady.value) return
-  const bounds: [[number, number], [number, number]] | null =
-    code === 'FR' ? FRANCE_BOUNDS : foreignRegions.value ? countryBounds(foreignRegions.value, code) : null
+  const bounds: CoverageMapBounds | null = countryFrame(code)
   if (bounds) map.fitBounds(bounds, { padding: 30, duration: 600 })
 }
 
@@ -680,6 +793,7 @@ function frameCountry(code: ProspectCountry): void {
  * @param code - The country picked in the selector.
  */
 function selectCountry(code: ProspectCountry): void {
+  hasPickedCountry.value = true
   selectedCountry.value = code
   frameCountry(code)
 }
@@ -732,7 +846,7 @@ function onMapMouseMove(event: MapMouseEvent): void {
       sub:
         total > 0
           ? `${total} prospect${total > 1 ? 's' : ''} — cliquer pour voir`
-          : 'Non prospecté — cliquer pour attaquer',
+          : 'Aucun prospect — cliquer pour attaquer',
     }
   } else {
     const code: string = String(feature.properties?.code ?? '')
@@ -781,14 +895,12 @@ watch(
   { deep: false },
 )
 
-// Keep the selector on a country that actually has prospects (defaults to the most prospected).
+// Until the user picks a country, the selector follows the most prospected one.
 watch(
-  availableCountries,
-  (options: ProspectCountryOption[]): void => {
-    if (options.length === 0) return
-    if (!options.some((option: ProspectCountryOption): boolean => option.code === selectedCountry.value)) {
-      selectedCountry.value = options[0]?.code ?? 'FR'
-    }
+  countryOptions,
+  (options: CoverageCountryOption[]): void => {
+    if (hasPickedCountry.value) return
+    selectedCountry.value = options[0]?.code ?? 'FR'
   },
   { immediate: true },
 )

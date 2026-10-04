@@ -1,35 +1,57 @@
-/** Canton/province choropleth for Belgium, Switzerland and Luxembourg: static contours + point-in-region lookup. */
+/**
+ * Region choropleth outside France — cantons (CH), provinces (BE), districts (LU) and Québec's 17 administrative
+ * regions (CA): static contours + point-in-region lookup.
+ */
 
 import type { Feature, FeatureCollection, MultiPolygon, Polygon } from 'geojson'
 
-/** Properties carried by each foreign region feature (ISO 3166-2 code, display name, ISO alpha-2 country). */
+/** Properties carried by each foreign region feature (region code, display name, ISO alpha-2 country). */
 export type ForeignRegionProperties = {
   code: string
   name: string
   country: string
 }
 
-/** The Belgium/Switzerland/Luxembourg region contours served from the public folder. */
+/** One foreign region contour. */
+export type ForeignRegionFeature = Feature<Polygon | MultiPolygon, ForeignRegionProperties>
+
+/** Every foreign region contour served from the public folder, merged into one collection. */
 export type ForeignRegionCollection = FeatureCollection<Polygon | MultiPolygon, ForeignRegionProperties>
 
-/** Cantons (CH), provinces (BE) and districts (LU), matched on the ISO 3166-2 `code`. */
-const FOREIGN_REGIONS_URL: string = '/regions-ch-be-lu.geojson'
+/**
+ * Contour files, matched on `code`: ISO 3166-2 for CH/BE/LU (Natural Earth), `CA-QC-01` to `CA-QC-17` for the
+ * Québec regions (Découpages administratifs, © Gouvernement du Québec, CC BY 4.0, simplified).
+ */
+const FOREIGN_REGION_FILES: string[] = ['/regions-ch-be-lu.geojson', '/regions-ca-qc.geojson']
 
-/** Loaded once then reused: the contours never change during a session. */
-let cachedCollection: ForeignRegionCollection | null = null
+/** Files loaded once then reused: the contours never change during a session. */
+const loadedFiles: Map<string, ForeignRegionFeature[]> = new Map()
 
 /**
- * Fetch the foreign region contours from the public folder, cached for the session.
- * @returns The region collection, or null when the file cannot be loaded.
+ * Load one contour file, cached for the session. A failed load is not cached, so the next call tries again.
+ * @param url - Public path of the file.
+ * @returns The file's features, or none when it cannot be loaded.
+ */
+async function loadRegionFile(url: string): Promise<ForeignRegionFeature[]> {
+  const cached: ForeignRegionFeature[] | undefined = loadedFiles.get(url)
+  if (cached) return cached
+  try {
+    const collection: ForeignRegionCollection = await $fetch<ForeignRegionCollection>(url)
+    loadedFiles.set(url, collection.features)
+    return collection.features
+  } catch {
+    return []
+  }
+}
+
+/**
+ * Fetch every foreign region contour from the public folder; one missing file never hides the others.
+ * @returns The merged collection, or null when no file could be loaded.
  */
 export async function fetchForeignRegions(): Promise<ForeignRegionCollection | null> {
-  if (cachedCollection) return cachedCollection
-  try {
-    cachedCollection = await $fetch<ForeignRegionCollection>(FOREIGN_REGIONS_URL)
-    return cachedCollection
-  } catch {
-    return null
-  }
+  const files: ForeignRegionFeature[][] = await Promise.all(FOREIGN_REGION_FILES.map(loadRegionFile))
+  const features: ForeignRegionFeature[] = files.flat()
+  return features.length > 0 ? { type: 'FeatureCollection', features } : null
 }
 
 /**
@@ -96,10 +118,8 @@ export function foreignRegionAt(
  * @returns The number of regions belonging to that country.
  */
 export function countryRegionCount(collection: ForeignRegionCollection, country: string): number {
-  return collection.features.filter(
-    (feature: Feature<Polygon | MultiPolygon, ForeignRegionProperties>): boolean =>
-      feature.properties.country === country,
-  ).length
+  return collection.features.filter((feature: ForeignRegionFeature): boolean => feature.properties.country === country)
+    .length
 }
 
 /**
