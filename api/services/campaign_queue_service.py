@@ -1496,10 +1496,13 @@ class CampaignQueueService:
             except Exception as exc:
                 logger.warning("[Queue] Behaviour personalisation failed for prospect %d: %s", prospect.id, exc)
 
-        # Append the signature LAST so it survives the LLM personalisation above.
+        # Sign and dress LAST so both survive the LLM personalisation above.
+        from services.email_layout import EmailLayout
         from services.email_signatures import render_signature_html
 
-        body_html += render_signature_html(self.db, template.signature_id, variables, user_id=item.user_id)
+        signature_html: str = render_signature_html(self.db, template.signature_id, variables, user_id=item.user_id)
+        accent_color: str | None = campaign.user.email_accent_color if campaign.user else None
+        body_html = EmailLayout.dress(template.layout, body_html, signature_html, variables, accent_color)
 
         result: dict = await email_service.send_via_user_identity(
             user_id=item.user_id,
@@ -1773,9 +1776,12 @@ class CampaignQueueService:
         subject = email_service.replace_variables(template.subject, variables)
         body_html = email_service.replace_variables(template.body_html, variables)
 
+        from services.email_layout import EmailLayout
         from services.email_signatures import render_signature_html
 
-        body_html += render_signature_html(self.db, template.signature_id, variables, user_id=campaign.user_id)
+        signature_html: str = render_signature_html(self.db, template.signature_id, variables, user_id=campaign.user_id)
+        accent_color: str | None = campaign.user.email_accent_color if campaign.user else None
+        body_html = EmailLayout.dress(template.layout, body_html, signature_html, variables, accent_color)
 
         return await email_service.send_via_user_identity(
             user_id=campaign.user_id,

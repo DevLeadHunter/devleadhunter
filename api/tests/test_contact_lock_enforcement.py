@@ -205,8 +205,8 @@ def test_a_campaign_sms_sent_refreshes_the_lock_of_its_module(monkeypatch: pytes
 
 def _email_item(prospect: SimpleNamespace) -> SimpleNamespace:
     """A queued J1 email of a website campaign."""
-    campaign = SimpleNamespace(user_id=_USER_ID, channel="email", include_video=False)
-    template = SimpleNamespace(subject="Votre site", body_html="<p>Bonjour</p>", signature_id=None)
+    campaign = SimpleNamespace(user_id=_USER_ID, channel="email", include_video=False, user=None)
+    template = SimpleNamespace(subject="Votre site", body_html="<p>Bonjour</p>", signature_id=None, layout="plain")
     return SimpleNamespace(
         prospect=prospect,
         campaign=campaign,

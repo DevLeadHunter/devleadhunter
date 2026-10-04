@@ -52,6 +52,7 @@ def _build_user_response(db: Session, user: User) -> UserResponse:
         contact_email=user.contact_email,
         postal_address=user.postal_address,
         siret=user.siret,
+        email_accent_color=user.email_accent_color,
         is_active=user.is_active,
         created_at=user.created_at,
         updated_at=user.updated_at,
@@ -227,6 +228,8 @@ async def update_current_user_info(
         current_user.postal_address = user_data.postal_address.strip() or None
     if user_data.siret is not None:
         current_user.siret = user_data.siret or None
+    if user_data.email_accent_color is not None:
+        current_user.email_accent_color = user_data.email_accent_color or None
 
     db.commit()
     db.refresh(current_user)

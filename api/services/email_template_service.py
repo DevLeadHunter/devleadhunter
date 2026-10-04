@@ -15,9 +15,19 @@ from enums.user_role import is_super_admin
 from models.email_template import EmailTemplate
 from models.email_template_library_hide import EmailTemplateLibraryHide
 from models.user import User
-from schemas.email_template import EmailTemplateCreate, EmailTemplateResponse, EmailTemplateUpdate
+from schemas.email_template import (
+    EmailTemplateCreate,
+    EmailTemplatePreviewResponse,
+    EmailTemplateResponse,
+    EmailTemplateUpdate,
+)
+from services.email_layout import EmailLayout
+from services.email_signatures import render_signature_html
+from services.email_variables import EmailVariables
+from services.unsubscribe_service import unsubscribe_service
 
 _VARIABLE_PATTERN = re.compile(r"\{([a-zA-Z_][a-zA-Z0-9_]*)\}")
+_PREVIEW_UNSUBSCRIBE_LINK = "#"
 
 
 def extract_variables(text: str) -> list[str]:
@@ -85,6 +95,7 @@ def _clone_template(
         variables=source.variables,
         is_active=source.is_active,
         category=source.category,
+        layout=source.layout,
         sort_order=source.sort_order,
         is_library=False,
         library_source_id=library_source_id,
@@ -107,6 +118,8 @@ def _apply_update(template: EmailTemplate, data: EmailTemplateUpdate) -> None:
         template.is_active = data.is_active
     if data.category is not None:
         template.category = data.category.value
+    if data.layout is not None:
+        template.layout = data.layout.value
     if "signature_id" in data.model_fields_set:
         template.signature_id = data.signature_id
 
@@ -132,6 +145,7 @@ def to_response(template: EmailTemplate) -> EmailTemplateResponse:
         signature_id=template.signature_id,
         is_active=template.is_active,
         category=template.category,
+        layout=template.layout,
         sort_order=template.sort_order,
         is_library=template.is_library,
         is_fork=template.library_source_id is not None,
@@ -139,6 +153,42 @@ def to_response(template: EmailTemplate) -> EmailTemplateResponse:
         created_at=template.created_at,
         updated_at=template.updated_at,
     )
+
+
+def render_preview(
+    db: Session,
+    user: User,
+    *,
+    subject: str,
+    body_html: str,
+    signature_id: int | None,
+    layout: str,
+    sample_values: dict[str, str],
+) -> EmailTemplatePreviewResponse:
+    """
+    Render a template as it would leave: variables, signature, then the layout the template chose.
+
+    Args:
+        db: Active database session.
+        user: The user previewing, whose signature and accent colour apply.
+        subject: Subject still holding its ``{variables}``.
+        body_html: Body still holding its ``{variables}``.
+        signature_id: Signature attached to the template, or None.
+        layout: The template's ``EmailTemplateLayout`` value.
+        sample_values: Example value of each variable, as the app sends them.
+
+    Returns:
+        The rendered subject and body.
+    """
+    variables: dict[str, str] = EmailVariables.preview_values(sample_values)
+    for key, value in variables.items():
+        subject = subject.replace(f"{{{key}}}", value)
+        body_html = body_html.replace(f"{{{key}}}", value)
+    signature_html: str = render_signature_html(db, signature_id, variables, user_id=user.id)
+    dressed_html: str = EmailLayout.dress(layout, body_html, signature_html, variables, user.email_accent_color)
+    if unsubscribe_service.FOOTER_SLOT in dressed_html:
+        dressed_html = unsubscribe_service.add_unsubscribe_footer(dressed_html, _PREVIEW_UNSUBSCRIBE_LINK, sender=user)
+    return EmailTemplatePreviewResponse(subject=subject, body_html=dressed_html)
 
 
 def list_for_user(db: Session, user: User) -> list[EmailTemplate]:
@@ -216,6 +266,7 @@ def create_template(db: Session, user: User, data: EmailTemplateCreate) -> Email
         variables=json.dumps(variables),
         signature_id=data.signature_id,
         category=data.category.value,
+        layout=data.layout.value,
         is_library=share,
         library_source_id=None,
     )

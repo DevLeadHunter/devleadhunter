@@ -183,19 +183,6 @@ export class EmailVariables {
   ]
 
   /**
-   * Substitute every known variable by its example value, for a live draft preview.
-   * The saved-template endpoint cannot render unsaved edits, hence this local pass.
-   * @param content - Raw subject or body still holding `{variable}` tokens.
-   * @returns The content with every known token replaced.
-   */
-  static renderWithSampleValues(content: string): string {
-    return EmailVariables.catalog.reduce<string>(
-      (rendered: string, variable: EmailVariable): string => rendered.split(variable.token).join(variable.example),
-      content,
-    )
-  }
-
-  /**
    * Build a sample substitution map for realistic template preview.
    * @returns Record mapping each variable key to its example value.
    */

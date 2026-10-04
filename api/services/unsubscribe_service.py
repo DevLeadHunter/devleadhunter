@@ -153,6 +153,10 @@ class UnsubscribeService:
 
         return link
 
+    FOOTER_SLOT: str = "<!--unsubscribe-footer-slot-->"
+    _DRESSED_FOOTER_START: str = "<!--unsubscribe-footer-->"
+    _DRESSED_FOOTER_END: str = "<!--/unsubscribe-footer-->"
+    _FOOTER_SENTENCE: str = "Vous recevez cet email car vous êtes dans notre liste de prospects."
     # Opening tag of the generated footer — the anchor both the builder and the stripper rely on.
     _FOOTER_MARKER: str = (
         '<div style="margin-top: 40px; padding-top: 20px; border-top: 1px solid #eee; '
@@ -235,11 +239,19 @@ class UnsubscribeService:
             HTML body with unsubscribe footer
         """
         identification = self.sender_identification_line(country, sender)
+        if self.FOOTER_SLOT in html_body:
+            identification_line = f"{escape(identification)}<br>" if identification else ""
+            dressed_footer = (
+                f"{self._DRESSED_FOOTER_START}{identification_line}{self._FOOTER_SENTENCE} "
+                f'<a href="{unsubscribe_link}" style="color:#66665f;text-decoration:underline;">Se désabonner</a>'
+                f"{self._DRESSED_FOOTER_END}"
+            )
+            return html_body.replace(self.FOOTER_SLOT, dressed_footer)
         identification_html = f"    <p>\n        {escape(identification)}\n    </p>\n" if identification else ""
         footer = f"""
 {self._FOOTER_MARKER}
     <p>
-        Vous recevez cet email car vous êtes dans notre liste de prospects.
+        {self._FOOTER_SENTENCE}
     </p>
 {identification_html}    <p>
         <a href="{unsubscribe_link}" style="color: #999; text-decoration: underline;">
@@ -272,6 +284,11 @@ class UnsubscribeService:
             The body without the footer (``</body>`` and anything after it preserved), unchanged when
             no footer is present.
         """
+        dressed_start: int = html_body.find(self._DRESSED_FOOTER_START)
+        dressed_end: int = html_body.find(self._DRESSED_FOOTER_END)
+        if dressed_start != -1 and dressed_end > dressed_start:
+            after_footer: int = dressed_end + len(self._DRESSED_FOOTER_END)
+            return html_body[:dressed_start] + self.FOOTER_SLOT + html_body[after_footer:]
         marker_index: int = html_body.find(self._FOOTER_MARKER)
         if marker_index == -1:
             return html_body

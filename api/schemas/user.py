@@ -10,6 +10,7 @@ from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
 from enums.user_role import UserRole
 
 _SIRET_PATTERN = re.compile(r"[0-9]{14}")
+_HEX_COLOR_PATTERN = re.compile(r"#[0-9a-f]{6}")
 
 
 class UserBase(BaseModel):
@@ -34,6 +35,9 @@ class UserBase(BaseModel):
         None, max_length=500, description="Sender postal address printed in the footer of emails to Canada (CASL)"
     )
     siret: str | None = Field(None, max_length=14, description="French establishment number shown on demo legal pages")
+    email_accent_color: str | None = Field(
+        None, max_length=7, description="Colour of the links and of the button in dressed prospecting emails (#RRGGBB)"
+    )
 
 
 class UserSignup(BaseModel):
@@ -91,6 +95,9 @@ class UserUpdate(BaseModel):
         None, max_length=500, description="Sender postal address printed in the footer of emails to Canada (CASL)"
     )
     siret: str | None = Field(None, max_length=20, description="French establishment number shown on demo legal pages")
+    email_accent_color: str | None = Field(
+        None, max_length=7, description="Colour of the links and of the button in dressed prospecting emails (#RRGGBB)"
+    )
 
     @field_validator("siret")
     @classmethod
@@ -102,6 +109,17 @@ class UserUpdate(BaseModel):
         if digits and not _SIRET_PATTERN.fullmatch(digits):
             raise ValueError("A SIRET has 14 digits")
         return digits
+
+    @field_validator("email_accent_color")
+    @classmethod
+    def _accent_color_is_hexadecimal(cls, value: str | None) -> str | None:
+        """Keep a ``#RRGGBB`` colour in lower case; an empty value clears it."""
+        if value is None:
+            return None
+        color = value.strip().lower()
+        if color and not _HEX_COLOR_PATTERN.fullmatch(color):
+            raise ValueError("A colour is written #RRGGBB")
+        return color
 
 
 class AdminUserUpdate(UserUpdate):

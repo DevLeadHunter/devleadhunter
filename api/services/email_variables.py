@@ -58,6 +58,12 @@ class EmailVariables:
     CARD_PRICE = "prix_carte"
     EXPIRY_DATE = "date_expiration"
 
+    LINK_STYLE = "color:#111;text-decoration:underline;"
+    THUMBNAIL_WIDTH = 480
+    THUMBNAIL_PARAGRAPH_STYLE = "margin:16px 0 6px;"
+    THUMBNAIL_NOTE_STYLE = "margin:0 0 16px;font-size:13px;color:#555;"
+    PREVIEW_THUMBNAIL_PATH = "/images/email-preview-video-thumbnail.jpg"
+
     @staticmethod
     def build_video_thumbnail_html(video_link: str, thumbnail_url: str, alt_text: str = "Votre site en vidéo") -> str:
         """
@@ -79,14 +85,15 @@ class EmailVariables:
         if not video_link or not thumbnail_url:
             return ""
         label: str = EmailVariables._demo_link_label(video_link)
+        width: int = EmailVariables.THUMBNAIL_WIDTH
         return (
-            f'<p style="margin:16px 0 6px;"><a href="{video_link}" target="_blank">'
-            f'<img src="{thumbnail_url}" alt="{alt_text}" width="480" '
-            f'style="display:block;width:100%;max-width:480px;border-radius:12px;border:0;" />'
+            f'<p style="{EmailVariables.THUMBNAIL_PARAGRAPH_STYLE}"><a href="{video_link}" target="_blank">'
+            f'<img src="{thumbnail_url}" alt="{alt_text}" width="{width}" '
+            f'style="display:block;width:100%;max-width:{width}px;border-radius:12px;border:0;" />'
             f"</a></p>"
-            f'<p style="margin:0 0 16px;font-size:13px;color:#555;">La vidéo : '
+            f'<p style="{EmailVariables.THUMBNAIL_NOTE_STYLE}">La vidéo : '
             f'<a href="{video_link}" target="_blank" rel="noopener noreferrer" '
-            f'style="color:#111;text-decoration:underline;">{label}</a></p>'
+            f'style="{EmailVariables.LINK_STYLE}">{label}</a></p>'
         )
 
     @staticmethod
@@ -116,8 +123,40 @@ class EmailVariables:
         label: str = text if text is not None else EmailVariables._demo_link_label(demo_link)
         return (
             f'<a href="{demo_link}" target="_blank" rel="noopener noreferrer" '
-            f'style="color:#111;text-decoration:underline;">{label}</a>'
+            f'style="{EmailVariables.LINK_STYLE}">{label}</a>'
         )
+
+    @classmethod
+    def preview_values(cls, sample_values: dict[str, str]) -> dict[str, str]:
+        """
+        Turn the sample values of a template preview into what a real send carries.
+
+        The app previews a template with one example per variable, written as plain text. A send
+        carries anchors for the demo links and a thumbnail block for the videos: the preview gets
+        the same, so it shows the email as it leaves, layout included.
+
+        Args:
+            sample_values: The example of each variable, as the app sends them.
+
+        Returns:
+            The map with the link and thumbnail variables in their sent form.
+        """
+        values: dict[str, str] = {key: str(value) for key, value in sample_values.items()}
+        for key in (cls.DEMO_LINK, cls.ASSISTANT_LINK, cls.CARD_LINK):
+            link: str = values.get(key, "")
+            if link and "<" not in link:
+                values[key] = cls.build_demo_link_html(link)
+        thumbnail_url: str = f"{settings.frontend_url.rstrip('/')}{cls.PREVIEW_THUMBNAIL_PATH}"
+        thumbnails: tuple[tuple[str, str, str], ...] = (
+            (cls.VIDEO_THUMBNAIL, cls.VIDEO_LINK, "Votre site en vidéo"),
+            (cls.ASSISTANT_VIDEO_THUMBNAIL, cls.ASSISTANT_VIDEO_LINK, "Votre réceptionniste en vidéo"),
+        )
+        for thumbnail_key, link_key, alt_text in thumbnails:
+            if thumbnail_key in values:
+                values[thumbnail_key] = cls.build_video_thumbnail_html(
+                    values.get(link_key, ""), thumbnail_url, alt_text
+                )
+        return values
 
     @staticmethod
     def _demo_link_label(demo_link: str) -> str:

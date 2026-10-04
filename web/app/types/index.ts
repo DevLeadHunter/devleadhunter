@@ -219,6 +219,7 @@ export type User = {
   contact_email?: string | null
   postal_address?: string | null
   siret?: string | null
+  email_accent_color?: string | null
   is_active: boolean
   created_at: string
   updated_at: string | null
@@ -255,6 +256,7 @@ export type ProfileUpdate = {
   contact_email?: string | null
   postal_address?: string | null
   siret?: string | null
+  email_accent_color?: string | null
   site_sale_price_cents?: number
   assistant_monthly_price_cents?: number
   assistant_annual_free_months?: number
@@ -461,6 +463,21 @@ export type EmailAccount = {
  */
 export type EmailTemplateCategory = 'first_email' | 'follow_up'
 
+export type EmailTemplateLayout = 'plain' | 'card' | 'card_table'
+
+export type EmailTemplatePreview = {
+  subject: string
+  body_html: string
+}
+
+export type EmailTemplateDraftPreviewRequest = {
+  subject: string
+  body_html: string
+  signature_id: number | null
+  layout: EmailTemplateLayout
+  variables: Record<string, string>
+}
+
 export type EmailTemplate = {
   id: number
   user_id: number
@@ -472,6 +489,7 @@ export type EmailTemplate = {
   signature_id?: number | null
   is_active: boolean
   category: EmailTemplateCategory
+  layout: EmailTemplateLayout
   /** Higher = pinned higher; the seeded « ★ Recommandé » templates use a high value. */
   sort_order: number
   is_library?: boolean
@@ -621,6 +639,7 @@ export type EmailTemplateCreate = {
   variables?: string[]
   signature_id?: number | null
   category?: EmailTemplateCategory
+  layout?: EmailTemplateLayout
   share_with_all?: boolean
 }
 
@@ -633,6 +652,7 @@ export type EmailTemplateUpdate = {
   is_active?: boolean
   signature_id?: number | null
   category?: EmailTemplateCategory
+  layout?: EmailTemplateLayout
 }
 
 export type SendEmailRequest = {

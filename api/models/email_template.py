@@ -32,6 +32,7 @@ class EmailTemplate(Base):
         body_text: Email body in plain text format (optional)
         variables: JSON string of available variables (e.g., ["company_name", "contact_name"])
         is_active: Whether the template is active
+        layout: How the email leaves: plain paragraphs, a card, or a card whose offer is a table
         created_at: Timestamp when template was created
         updated_at: Timestamp when template was last updated
     """
@@ -59,7 +60,6 @@ class EmailTemplate(Base):
         server_default=EmailTemplateCategory.FIRST_EMAIL.value,
         default=EmailTemplateCategory.FIRST_EMAIL.value,
     )
-    # How the email leaves: plain paragraphs, a card, or a card whose offer is a table (services/email_layout.py).
     layout: Mapped[str] = mapped_column(
         String(20),
         nullable=False,

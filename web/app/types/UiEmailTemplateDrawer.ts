@@ -1,4 +1,4 @@
-import type { EmailTemplate, EmailTemplateCategory } from '~/types'
+import type { EmailTemplate, EmailTemplateCategory, EmailTemplateLayout } from '~/types'
 import type { EmailTemplateDrawerMode } from '~/types/DrawerStack'
 import type { UiDrawerProps } from '~/types/UiDrawer'
 
@@ -18,6 +18,7 @@ export type EmailTemplateForm = {
   is_active: boolean
   signature_id: number | null
   category: EmailTemplateCategory
+  layout: EmailTemplateLayout
 }
 
 export type UiEmailTemplateDrawerEmits = {

@@ -11,6 +11,7 @@ from models.email_account import EmailAccount
 from models.user import User
 from schemas.email_template import (
     EmailTemplateCreate,
+    EmailTemplateDraftPreviewRequest,
     EmailTemplatePreviewRequest,
     EmailTemplatePreviewResponse,
     EmailTemplateResponse,
@@ -20,13 +21,6 @@ from services import email_template_service as template_service
 from services.auth_service import get_current_user
 
 router = APIRouter(prefix="/email-templates", tags=["email-templates"])
-
-
-def replace_variables(text: str, variables: dict) -> str:
-    """Replace ``{key}`` placeholders in *text*."""
-    for key, value in variables.items():
-        text = text.replace(f"{{{key}}}", str(value))
-    return text
 
 
 @router.get("", response_model=list[EmailTemplateResponse])
@@ -106,16 +100,30 @@ async def preview_email_template(
     if not template:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Email template not found")
 
-    preview_subject = replace_variables(template.subject, preview_data.variables)
-    preview_body_html = replace_variables(template.body_html, preview_data.variables)
-
-    from services.email_signatures import render_signature_html
-
-    preview_body_html += render_signature_html(
+    return template_service.render_preview(
         db,
-        template.signature_id,
-        preview_data.variables,
-        user_id=current_user.id,
+        current_user,
+        subject=template.subject,
+        body_html=template.body_html,
+        signature_id=template.signature_id,
+        layout=template.layout,
+        sample_values=preview_data.variables,
     )
 
-    return EmailTemplatePreviewResponse(subject=preview_subject, body_html=preview_body_html)
+
+@router.post("/preview-draft", response_model=EmailTemplatePreviewResponse)
+async def preview_email_template_draft(
+    draft: EmailTemplateDraftPreviewRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> EmailTemplatePreviewResponse:
+    """Preview a template still being written, as it would leave."""
+    return template_service.render_preview(
+        db,
+        current_user,
+        subject=draft.subject,
+        body_html=draft.body_html,
+        signature_id=draft.signature_id,
+        layout=draft.layout.value,
+        sample_values=draft.variables,
+    )

@@ -7,6 +7,7 @@ from datetime import datetime
 from pydantic import BaseModel, ConfigDict, Field
 
 from enums.email_template_category import EmailTemplateCategory
+from enums.email_template_layout import EmailTemplateLayout
 
 
 class EmailTemplateBase(BaseModel):
@@ -19,6 +20,7 @@ class EmailTemplateBase(BaseModel):
     variables: list[str] | None = None
     signature_id: int | None = None
     category: EmailTemplateCategory = EmailTemplateCategory.FIRST_EMAIL
+    layout: EmailTemplateLayout = EmailTemplateLayout.PLAIN
 
 
 class EmailTemplateCreate(EmailTemplateBase):
@@ -42,6 +44,7 @@ class EmailTemplateUpdate(BaseModel):
     variables: list[str] | None = None
     is_active: bool | None = None
     category: EmailTemplateCategory | None = None
+    layout: EmailTemplateLayout | None = None
     # ``signature_id`` is nullable on purpose: an explicit ``null`` detaches the
     # signature (switch turned off), so it must be part of the update payload.
     signature_id: int | None = None
@@ -63,6 +66,7 @@ class EmailTemplateResponse(BaseModel):
     signature_id: int | None = None
     is_active: bool
     category: EmailTemplateCategory = EmailTemplateCategory.FIRST_EMAIL
+    layout: EmailTemplateLayout = EmailTemplateLayout.PLAIN
     # Exposed so the app can pin the recommended templates (higher = pinned higher).
     sort_order: int = 0
     is_library: bool = False
@@ -77,6 +81,16 @@ class EmailTemplatePreviewRequest(BaseModel):
 
     template_id: int
     variables: dict = Field(default_factory=dict, description="Variable values to substitute in template")
+
+
+class EmailTemplateDraftPreviewRequest(BaseModel):
+    """A template still being written, previewed as it would leave: signature and layout included."""
+
+    subject: str = Field(..., max_length=500)
+    body_html: str
+    signature_id: int | None = None
+    layout: EmailTemplateLayout = EmailTemplateLayout.PLAIN
+    variables: dict[str, str] = Field(default_factory=dict, description="Example value of each variable")
 
 
 class EmailTemplatePreviewResponse(BaseModel):

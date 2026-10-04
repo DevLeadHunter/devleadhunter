@@ -220,6 +220,34 @@
               pour écrire à vos prospects québécois.
             </p>
           </div>
+
+          <div>
+            <label class="text-muted mb-1.5 block text-xs font-medium" for="profile-email-accent-color">
+              Couleur de vos emails <span class="text-[var(--app-ink-soft)]">(facultatif)</span>
+            </label>
+            <div class="flex items-center gap-2">
+              <input
+                v-model="emailAccentColorOrDefault"
+                type="color"
+                class="h-9 w-12 shrink-0 cursor-pointer rounded border border-[var(--app-line)] bg-transparent p-0.5"
+                aria-label="Choisir la couleur de vos emails"
+              />
+              <input
+                id="profile-email-accent-color"
+                v-model="form.email_accent_color"
+                type="text"
+                class="input-field"
+                maxlength="7"
+                placeholder="Exemple : #6f5fe0"
+              />
+            </div>
+            <p class="text-muted mt-1.5 text-xs">
+              Couleur des liens et du bouton dans les modèles d'email habillés en carte. Vide, ils partent en noir.
+            </p>
+            <p v-if="!isEmailAccentColorValidOrEmpty" class="mt-1.5 text-xs text-[var(--app-red)]">
+              Écrivez la couleur sous la forme #6f5fe0.
+            </p>
+          </div>
         </form>
 
         <div class="flex gap-2 border-t border-[var(--app-line)] px-5 py-4">
@@ -230,7 +258,7 @@
             type="submit"
             form="profile-form"
             class="btn-primary flex-1 disabled:cursor-not-allowed disabled:opacity-50"
-            :disabled="isSaving || !isSiretValidOrEmpty"
+            :disabled="isSaving || !isSiretValidOrEmpty || !isEmailAccentColorValidOrEmpty"
           >
             <UIcon v-if="isSaving" name="i-lucide-loader-circle" class="mr-1.5 h-4 w-4 animate-spin" />
             {{ isSaving ? 'Enregistrement…' : 'Enregistrer' }}
@@ -245,7 +273,7 @@
 import type { UseProfilePhotoReturn, UseToastReturn } from '~/types/Composables'
 import type { CompanyBillingPrefill } from '~/types/CompanyRegistryLookup'
 import type { ProfileForm, UiProfileDrawerEmits } from '~/types/UiProfileDrawer'
-import type { ComputedRef, EmitFn, Ref } from 'vue'
+import type { ComputedRef, EmitFn, Ref, WritableComputedRef } from 'vue'
 import type { UiDrawerProps } from '~/types/UiDrawer'
 import { computed, ref, watch } from 'vue'
 import { ProfilePhotoService } from '~/services/profilePhotoService'
@@ -255,6 +283,9 @@ import { useToast } from '~/composables/useToast'
 import { SIRET_DIGIT_COUNT, hasValidTaxIdChecksum, normalizeTaxIdDigits } from '~/utils/taxIdUtils'
 
 const REGISTRY_ADDRESS_COUNTRY: string = 'France'
+
+const DEFAULT_EMAIL_ACCENT_COLOR: string = '#141414'
+const HEX_COLOR_PATTERN: RegExp = /^#[0-9a-f]{6}$/i
 
 /** User profile and password drawer. */
 const props: UiDrawerProps = defineProps({
@@ -287,6 +318,7 @@ const form: Ref<ProfileForm> = ref({
   contact_email: '',
   postal_address: '',
   siret: '',
+  email_accent_color: '',
 })
 
 /** Shared profile photo state (also feeds the sidebar avatar). */
@@ -311,6 +343,21 @@ const userInitials: ComputedRef<string> = computed((): string => {
 const isSiretValidOrEmpty: ComputedRef<boolean> = computed((): boolean => {
   const siretDigits: string = normalizeTaxIdDigits(form.value.siret)
   return siretDigits.length === 0 || (siretDigits.length === SIRET_DIGIT_COUNT && hasValidTaxIdChecksum(siretDigits))
+})
+
+const isEmailAccentColorValidOrEmpty: ComputedRef<boolean> = computed((): boolean => {
+  const typedColor: string = form.value.email_accent_color.trim()
+  return typedColor.length === 0 || HEX_COLOR_PATTERN.test(typedColor)
+})
+
+const emailAccentColorOrDefault: WritableComputedRef<string> = computed({
+  get: (): string => {
+    const typedColor: string = form.value.email_accent_color.trim()
+    return HEX_COLOR_PATTERN.test(typedColor) ? typedColor.toLowerCase() : DEFAULT_EMAIL_ACCENT_COLOR
+  },
+  set: (pickedColor: string): void => {
+    form.value.email_accent_color = pickedColor
+  },
 })
 
 /**
@@ -380,7 +427,7 @@ async function removeProfilePhoto(): Promise<void> {
  * @returns A promise that resolves once the profile is saved.
  */
 async function handleSave(): Promise<void> {
-  if (!isSiretValidOrEmpty.value) return
+  if (!isSiretValidOrEmpty.value || !isEmailAccentColorValidOrEmpty.value) return
   isSaving.value = true
   try {
     await userStore.updateProfile({
@@ -393,6 +440,7 @@ async function handleSave(): Promise<void> {
       contact_email: form.value.contact_email.trim(),
       postal_address: form.value.postal_address.trim(),
       siret: normalizeTaxIdDigits(form.value.siret),
+      email_accent_color: form.value.email_accent_color.trim().toLowerCase(),
     })
     toast.success('Profil mis à jour')
     emit('close')
@@ -416,6 +464,7 @@ watch(
         contact_email: userStore.user?.contact_email ?? '',
         postal_address: userStore.user?.postal_address ?? '',
         siret: userStore.user?.siret ?? '',
+        email_accent_color: userStore.user?.email_accent_color ?? '',
       }
       ensureProfilePhotoLoaded()
     }

@@ -40,6 +40,7 @@ class User(Base):
         contact_phone: Optional public phone shown on the demo/video contact banner
         contact_email: Optional public display email (distinct from the login email)
         postal_address: Optional postal address naming the sender in the footer of emails to Canada (CASL)
+        email_accent_color: Optional #RRGGBB colour of the links and button of dressed prospecting emails (ink when empty)
         is_active: Whether the user is active
         sending_provider: Active email-sending transport (resend | gmail)
         onboarding_completed: Whether the setup wizard has been completed
@@ -81,7 +82,6 @@ class User(Base):
     contact_email: Mapped[str | None] = mapped_column(String(255), nullable=True)
     postal_address: Mapped[str | None] = mapped_column(String(500), nullable=True)
     siret: Mapped[str | None] = mapped_column(String(14), nullable=True)
-    # Colour of the links and of the button in dressed prospecting emails (#RRGGBB); ink when empty.
     email_accent_color: Mapped[str | None] = mapped_column(String(7), nullable=True)
     # Gmail Postmaster Tools OAuth — per-user read access to Gmail-side reputation.
     postmaster_google_email: Mapped[str | None] = mapped_column(String(255), nullable=True)

@@ -3,7 +3,13 @@
  * @module services/emailTemplatesService
  */
 
-import type { EmailTemplate, EmailTemplateCreate, EmailTemplateUpdate } from '~/types'
+import type {
+  EmailTemplate,
+  EmailTemplateCreate,
+  EmailTemplateDraftPreviewRequest,
+  EmailTemplatePreview,
+  EmailTemplateUpdate,
+} from '~/types'
 import { ApiClient } from './api'
 
 export class EmailTemplatesService {
@@ -73,14 +79,28 @@ export class EmailTemplatesService {
   static async previewEmailTemplate(
     templateId: number,
     variables: Record<string, string>,
-  ): Promise<{ subject: string; body_html: string }> {
+  ): Promise<EmailTemplatePreview> {
     try {
-      return await ApiClient.post<{ subject: string; body_html: string }>('/api/v1/email-templates/preview', {
+      return await ApiClient.post<EmailTemplatePreview>('/api/v1/email-templates/preview', {
         template_id: templateId,
         variables,
       })
     } catch (error) {
       console.error('Failed to preview email template:', error)
+      throw error
+    }
+  }
+
+  /**
+   * Preview a template still being written, as it would leave: signature and layout included.
+   * @param draft - The subject, body, signature, layout and sample values of the draft.
+   * @returns The rendered subject and body.
+   */
+  static async previewEmailTemplateDraft(draft: EmailTemplateDraftPreviewRequest): Promise<EmailTemplatePreview> {
+    try {
+      return await ApiClient.post<EmailTemplatePreview>('/api/v1/email-templates/preview-draft', draft)
+    } catch (error) {
+      console.error('Failed to preview email template draft:', error)
       throw error
     }
   }

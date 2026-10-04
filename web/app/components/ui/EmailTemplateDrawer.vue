@@ -84,6 +84,12 @@
               </p>
             </div>
 
+            <div>
+              <label class="mb-2 block text-sm font-medium text-[var(--app-ink)]">Habillage</label>
+              <UiSelectField v-model="form.layout" :options="layoutOptions" />
+              <p class="text-muted mt-1.5 text-xs">{{ selectedLayoutDescription }}</p>
+            </div>
+
             <div
               v-if="mode === 'create' && isSuperAdminUser"
               class="rounded-xl border border-[var(--app-line)] bg-[var(--app-surface-2)] px-4 py-3"
@@ -141,7 +147,12 @@
                 </div>
               </div>
 
-              <UiEmailPreviewPane v-if="isComposerPreview" :subject="previewSubject" :body-html="previewHtml" />
+              <template v-if="isComposerPreview">
+                <div v-if="isPreviewLoading" class="flex items-center justify-center py-16">
+                  <UIcon name="i-lucide-loader-circle" class="h-6 w-6 animate-spin text-[var(--app-faint)]" />
+                </div>
+                <UiEmailPreviewPane v-else :subject="previewSubject" :body-html="previewHtml" />
+              </template>
 
               <div v-show="!isComposerPreview">
                 <div class="mb-2 rounded-xl border border-[var(--app-line)] bg-[var(--app-surface-2)]/50 p-3.5">
@@ -282,7 +293,13 @@ import type {
   UiEmailTemplateDrawerProps,
 } from '~/types/UiEmailTemplateDrawer'
 import type { ComputedRef, EmitFn, PropType, Ref, WritableComputedRef } from 'vue'
-import type { EmailSignature, EmailTemplate, EmailTemplateCategory } from '~/types'
+import type {
+  EmailSignature,
+  EmailTemplate,
+  EmailTemplateCategory,
+  EmailTemplateLayout,
+  EmailTemplatePreview,
+} from '~/types'
 import type { EmailTemplateDrawerMode } from '~/types/DrawerStack'
 import type { SelectFieldOption } from '~/types/SelectField'
 import { computed, ref, watch } from 'vue'
@@ -290,7 +307,13 @@ import { EmailTemplatesService } from '~/services/emailTemplatesService'
 import { EmailSignaturesService } from '~/services/emailSignaturesService'
 import { useVariableInsertion } from '~/composables/useVariableInsertion'
 import { EmailVariables } from '~/utils/emailVariables'
-import { EMAIL_TEMPLATE_CATEGORIES, EMAIL_TEMPLATE_CATEGORY_LABELS } from '~/utils/emailTemplate'
+import {
+  EMAIL_TEMPLATE_CATEGORIES,
+  EMAIL_TEMPLATE_CATEGORY_LABELS,
+  EMAIL_TEMPLATE_LAYOUTS,
+  EMAIL_TEMPLATE_LAYOUT_DESCRIPTIONS,
+  EMAIL_TEMPLATE_LAYOUT_LABELS,
+} from '~/utils/emailTemplate'
 import { useDrawerStackStore } from '~/stores/drawerStack'
 import { useToast } from '~/composables/useToast'
 import { useUserStore } from '~/stores/user'
@@ -368,6 +391,7 @@ const form: Ref<EmailTemplateForm> = ref({
   is_active: true,
   signature_id: null,
   category: 'first_email',
+  layout: 'plain',
 })
 
 const signatureOptions: ComputedRef<SelectFieldOption<number>[]> = computed((): SelectFieldOption<number>[] =>
@@ -393,6 +417,17 @@ const categoryOptions: SelectFieldOption[] = EMAIL_TEMPLATE_CATEGORIES.map(
     value: category,
     label: EMAIL_TEMPLATE_CATEGORY_LABELS[category],
   }),
+)
+
+const layoutOptions: SelectFieldOption[] = EMAIL_TEMPLATE_LAYOUTS.map(
+  (layout: EmailTemplateLayout): SelectFieldOption => ({
+    value: layout,
+    label: EMAIL_TEMPLATE_LAYOUT_LABELS[layout],
+  }),
+)
+
+const selectedLayoutDescription: ComputedRef<string> = computed(
+  (): string => EMAIL_TEMPLATE_LAYOUT_DESCRIPTIONS[form.value.layout],
 )
 
 /** Subject input element (for cursor-aware variable insertion). */
@@ -503,6 +538,7 @@ async function handleSave(): Promise<void> {
         is_active: form.value.is_active,
         signature_id: signatureId,
         category: form.value.category,
+        layout: form.value.layout,
       })
       toast.success('Modèle mis à jour')
       emit('saved', updated)
@@ -513,6 +549,7 @@ async function handleSave(): Promise<void> {
         body_html: form.value.body_html,
         signature_id: signatureId,
         category: form.value.category,
+        layout: form.value.layout,
         share_with_all: shareWithAll.value,
       })
       toast.success('Modèle créé')
@@ -538,11 +575,29 @@ function composerTabClass(active: boolean): string {
     : `${base} text-[var(--app-ink-soft)] hover:text-[var(--app-ink)]`
 }
 
-/** Switch the composer to its preview tab, rendering the draft currently typed. */
-function showComposerPreview(): void {
-  previewSubject.value = EmailVariables.renderWithSampleValues(form.value.subject)
-  previewHtml.value = EmailVariables.renderWithSampleValues(form.value.body_html)
+/**
+ * Switch the composer to its preview tab: the draft currently typed, rendered as it would leave.
+ * @returns A promise that resolves once the preview is rendered.
+ */
+async function showComposerPreview(): Promise<void> {
   isComposerPreview.value = true
+  isPreviewLoading.value = true
+  try {
+    const preview: EmailTemplatePreview = await EmailTemplatesService.previewEmailTemplateDraft({
+      subject: form.value.subject,
+      body_html: form.value.body_html,
+      signature_id: includeSignature.value ? form.value.signature_id : null,
+      layout: form.value.layout,
+      variables: EmailVariables.buildPreviewSampleVariables(),
+    })
+    previewSubject.value = preview.subject
+    previewHtml.value = preview.body_html
+  } catch (err: unknown) {
+    isComposerPreview.value = false
+    toast.error(err instanceof Error ? err.message : "Erreur lors du chargement de l'aperçu")
+  } finally {
+    isPreviewLoading.value = false
+  }
 }
 
 /**
@@ -553,7 +608,7 @@ async function loadPreview(): Promise<void> {
   if (!props.template) return
   isPreviewLoading.value = true
   try {
-    const preview: { subject: string; body_html: string } = await EmailTemplatesService.previewEmailTemplate(
+    const preview: EmailTemplatePreview = await EmailTemplatesService.previewEmailTemplate(
       props.template.id,
       EmailVariables.buildPreviewSampleVariables(),
     )
@@ -565,6 +620,17 @@ async function loadPreview(): Promise<void> {
     isPreviewLoading.value = false
   }
 }
+
+watch(
+  (): [EmailTemplateLayout, boolean, number | null] => [
+    form.value.layout,
+    includeSignature.value,
+    form.value.signature_id,
+  ],
+  (): void => {
+    if (isComposerPreview.value) void showComposerPreview()
+  },
+)
 
 // Turning the switch on with no valid selection → preselect the default.
 watch(includeSignature, (on: boolean): void => {
@@ -603,6 +669,7 @@ watch(
       is_active: props.template?.is_active ?? true,
       signature_id: props.template?.signature_id ?? null,
       category: props.template?.category ?? 'first_email',
+      layout: props.template?.layout ?? 'plain',
     }
   },
   { immediate: true },
