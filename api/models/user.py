@@ -81,6 +81,8 @@ class User(Base):
     contact_email: Mapped[str | None] = mapped_column(String(255), nullable=True)
     postal_address: Mapped[str | None] = mapped_column(String(500), nullable=True)
     siret: Mapped[str | None] = mapped_column(String(14), nullable=True)
+    # Colour of the links and of the button in dressed prospecting emails (#RRGGBB); ink when empty.
+    email_accent_color: Mapped[str | None] = mapped_column(String(7), nullable=True)
     # Gmail Postmaster Tools OAuth — per-user read access to Gmail-side reputation.
     postmaster_google_email: Mapped[str | None] = mapped_column(String(255), nullable=True)
     postmaster_oauth_refresh_token: Mapped[str | None] = mapped_column(Text, nullable=True)

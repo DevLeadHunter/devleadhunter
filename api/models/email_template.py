@@ -10,6 +10,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from core.database import Base
 from enums.email_template_category import EmailTemplateCategory
+from enums.email_template_layout import EmailTemplateLayout
 
 if TYPE_CHECKING:
     from models.email_account import EmailAccount
@@ -57,6 +58,13 @@ class EmailTemplate(Base):
         nullable=False,
         server_default=EmailTemplateCategory.FIRST_EMAIL.value,
         default=EmailTemplateCategory.FIRST_EMAIL.value,
+    )
+    # How the email leaves: plain paragraphs, a card, or a card whose offer is a table (services/email_layout.py).
+    layout: Mapped[str] = mapped_column(
+        String(20),
+        nullable=False,
+        server_default=EmailTemplateLayout.PLAIN.value,
+        default=EmailTemplateLayout.PLAIN.value,
     )
     # Higher = pinned higher in the app's template list (recommended templates use a high value).
     sort_order: Mapped[int] = mapped_column(Integer, nullable=False, server_default="0", default=0)
