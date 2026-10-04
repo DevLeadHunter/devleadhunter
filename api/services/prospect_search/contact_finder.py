@@ -3,14 +3,16 @@ Contact finder — the searches that follow a verification when no email came ou
 
 In order: look for the business's Facebook page (its « À propos » block is where
 tradespeople publish their email), then one wider search whose emails are only kept
-with the result that gives them to this business. An email whose domain receives no
-mail is dropped before it can bounce.
+with the result that gives them to this business, then the phone number itself, which
+directories list under names the listing does not use. An email whose domain receives
+no mail is dropped before it can bounce.
 """
 
 from __future__ import annotations
 
 import asyncio
 import logging
+import re
 
 import dns.exception
 import dns.resolver
@@ -28,6 +30,10 @@ from services.validation_service import validation_service
 logger = logging.getLogger(__name__)
 
 _MAIL_LOOKUP_TIMEOUT_SECONDS: float = 4.0
+# National numbers are nine digits after the trunk zero in France, Switzerland and Belgium.
+_PHONE_MATCH_DIGITS: int = 9
+_QUOTED_NAME_MAXIMUM_WORDS: int = 3
+_NON_DIGITS_RE: re.Pattern[str] = re.compile(r"\D")
 
 
 class EmailDomainCheck:
@@ -105,6 +111,8 @@ class ContactFinder:
             await self._find_facebook_page(facts, trade)
         if facts.email is None and facts.facebook_url is None:
             await self._search_email(facts, trade)
+        if facts.email is None and facts.phone:
+            await self._search_by_phone(facts)
         await self.drop_dead_email(facts)
         await CandidateVerifier.consider_email_domain(facts, trade)
 
@@ -137,7 +145,8 @@ class ContactFinder:
     async def _search_email(self, facts: CandidateFacts, trade: TradeProfile) -> None:
         """One wider search for a business with no Facebook page; the judge says whose each email is."""
         page = await self._client.google_parsed(
-            f'"{facts.name}" {facts.town} email OR courriel OR "@"'.strip(), country=facts.country
+            f'{self._name_to_search(facts)} {facts.town} email OR courriel OR "@"'.strip(),
+            country=facts.country,
         )
         if page is None:
             return
@@ -161,12 +170,58 @@ class ContactFinder:
         }
         for email, index in candidates:
             line = results[index]
-            is_about_business = CandidateVerifier.names_business(line.title, facts, trade)
+            is_about_business = CandidateVerifier.names_business(line.title, facts, trade) or self._shows_phone(
+                line.text, facts
+            )
             if judged.get((email, index)) is False or (judged.get((email, index)) is None and not is_about_business):
                 continue
             is_directory_entry = CandidateVerifier.is_known_third_party(line.link, line.host) and is_about_business
             proof = EmailProofLevel.DIRECTORY if is_directory_entry else EmailProofLevel.GUESSED
             facts.offer_email(email, proof, source=line.host, url=line.link, snippet=line.text)
+
+    @staticmethod
+    def _name_to_search(facts: CandidateFacts) -> str:
+        """
+        The name as a search should carry it.
+
+        A short name is quoted. A long listing title (« Architecte paysagiste Déco-Jardin Sàrl »)
+        is written nowhere else word for word, so it is searched unquoted.
+        """
+        is_long_title = len(facts.name.split()) > _QUOTED_NAME_MAXIMUM_WORDS
+        return facts.name if is_long_title else f'"{facts.name}"'
+
+    @staticmethod
+    def _shows_phone(text: str, facts: CandidateFacts) -> bool:
+        """Whether a text shows the candidate's phone number, however it is spaced."""
+        phone_digits = _NON_DIGITS_RE.sub("", facts.phone or "")
+        if len(phone_digits) < _PHONE_MATCH_DIGITS:
+            return False
+        return phone_digits[-_PHONE_MATCH_DIGITS:] in _NON_DIGITS_RE.sub("", text)
+
+    async def _search_by_phone(self, facts: CandidateFacts) -> None:
+        """
+        Search the phone number itself: directories list a business under names the listing does not use.
+
+        A result showing the candidate's number is about the candidate, whatever name it carries;
+        the one email it shows next to the number is kept as given by a third party. A result
+        showing several emails is a list of businesses and proves nothing.
+        """
+        phone_digits = _NON_DIGITS_RE.sub("", facts.phone or "")
+        if len(phone_digits) < _PHONE_MATCH_DIGITS:
+            return
+        page = await self._client.google_parsed(
+            f'"{(facts.phone or "").strip()}" OR "{phone_digits}"', country=facts.country
+        )
+        if page is None:
+            return
+        for line in CandidateVerifier.result_lines(page):
+            if not self._shows_phone(line.text, facts):
+                continue
+            emails = self._usable_emails(line.text, facts)
+            if len(emails) == 1:
+                facts.offer_email(
+                    emails[0], EmailProofLevel.DIRECTORY, source=line.host, url=line.link, snippet=line.text
+                )
 
     @staticmethod
     def _usable_emails(text: str, facts: CandidateFacts) -> list[str]:

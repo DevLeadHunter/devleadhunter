@@ -9,6 +9,7 @@ from enums.prospect_search import CandidateOrigin, EmailProofLevel
 from enums.website_status import WebsiteStatus
 from services.prospect_search.candidate_facts import CandidateFacts
 from services.prospect_search.candidate_verifier import CandidateVerifier
+from services.prospect_search.contact_finder import ContactFinder
 from services.prospect_search.search_judge import JudgedEmail, JudgeVerdict, SearchJudge
 from services.prospect_search.trade_catalog import TradeCatalog
 from services.website_liveness_service import website_liveness_service
@@ -399,3 +400,94 @@ def test_a_working_website_already_known_is_not_looked_for_again(monkeypatch: py
     asyncio.run(CandidateVerifier.consider_email_domain(facts, _LANDSCAPER))
 
     assert facts.website == "https://tendance-nature.ch/"
+
+
+def _find_contact(facts: CandidateFacts, results: list[dict[str, str]]) -> None:
+    finder = ContactFinder(_OnePageClient({"organic": results}), _ScriptedJudge())  # type: ignore[arg-type]
+    asyncio.run(finder.find(facts, _LANDSCAPER))
+
+
+def test_the_phone_number_finds_the_email_a_directory_lists_under_another_name() -> None:
+    facts = _facts(
+        name="Architecte paysagiste Déco- Jardin Sàrl",
+        city="Troistorrents",
+        phone="079 204 45 56",
+        facebook_url="https://www.facebook.com/decojardin",
+        is_facebook_page_read=True,
+    )
+
+    _find_contact(
+        facts,
+        [
+            _result(
+                "https://www.local.ch/fr/d/troistorrents/1872/deco-jardin-sarl",
+                "DECO-JARDIN Sàrl à Troistorrents",
+                "DECO-JARDIN Sàrl · Portable: 079 204 45 56* · E-mail: decojars@bluewin.ch.",
+            )
+        ],
+    )
+
+    assert (facts.email, facts.email_proof_level) == ("decojars@bluewin.ch", EmailProofLevel.DIRECTORY.value)
+
+
+def test_a_list_of_businesses_showing_the_phone_number_gives_no_email() -> None:
+    facts = _facts(phone="079 204 45 56", facebook_url="https://www.facebook.com/x", is_facebook_page_read=True)
+
+    _find_contact(
+        facts,
+        [
+            _result(
+                "https://annuaire.example.ch/paysagistes/monthey",
+                "Paysagistes à Monthey",
+                "Dupont 079 204 45 56 dupont@bluewin.ch ; Martin 079 111 22 33 martin.jardin@bluewin.ch",
+            )
+        ],
+    )
+
+    assert facts.email is None
+
+
+def test_an_email_in_a_result_without_the_phone_number_is_not_taken_by_the_phone_search() -> None:
+    facts = _facts(phone="079 204 45 56", facebook_url="https://www.facebook.com/x", is_facebook_page_read=True)
+
+    _find_contact(
+        facts,
+        [
+            _result(
+                "https://www.local.ch/fr/d/sion/autre",
+                "Autre Jardin à Sion",
+                "Portable: 079 999 88 77 · autre@bluewin.ch",
+            )
+        ],
+    )
+
+    assert facts.email is None
+
+
+def test_a_long_listing_title_is_searched_unquoted_and_its_phone_proves_the_directory_entry() -> None:
+    facts = _facts(name="Architecte paysagiste Déco- Jardin Sàrl", city="Troistorrents", phone="079 204 45 56")
+    client = _OnePageClient(
+        {
+            "organic": [
+                _result(
+                    "https://www.local.ch/fr/d/troistorrents/1872/deco-jardin-sarl",
+                    "DECO-JARDIN Sàrl à Troistorrents",
+                    "DECO-JARDIN Sàrl · Portable: 079 204 45 56* · E-mail: decojars@bluewin.ch.",
+                )
+            ]
+        }
+    )
+
+    asyncio.run(ContactFinder(client, _ScriptedJudge()).find(facts, _LANDSCAPER))  # type: ignore[arg-type]
+
+    assert client.queries[1].startswith("Architecte paysagiste Déco- Jardin Sàrl Troistorrents email")
+    assert (facts.email, facts.email_proof_level) == ("decojars@bluewin.ch", EmailProofLevel.DIRECTORY.value)
+
+
+def test_a_short_name_is_searched_word_for_word() -> None:
+    facts = _facts(phone=None)
+    client = _OnePageClient({"organic": []})
+
+    asyncio.run(ContactFinder(client, _ScriptedJudge()).find(facts, _LANDSCAPER))  # type: ignore[arg-type]
+
+    assert client.queries[-1].startswith('"Tendance Nature" Sion email')
