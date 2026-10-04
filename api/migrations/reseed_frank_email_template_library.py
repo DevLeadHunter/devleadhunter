@@ -8,7 +8,9 @@ admin's LIBRARY rows only (``is_library = 1``):
   - rename in place the receptionist templates (« Assistant IA - … » becomes « Réceptionniste
     IA - … »), so the campaigns referencing them keep their row (same id);
   - upsert every template of ``EMAIL_TEMPLATE_LIBRARY``: a kept angle gets the frank subject,
-    body, variables, category and sort order; a new frank template is inserted;
+    body, variables, category and sort order, and the admin's preferred signature when it has
+    none (its layout stays as chosen); a new frank template is inserted signed and in the card
+    with the offer table;
   - deactivate (``is_active = 0``) the library templates dropped from the set that NO campaign
     ever used (as J1, A/B variant, legacy or listed follow-up, or queued email). A dropped
     template still referenced somewhere stays active and is only reported: nothing is deleted,
@@ -38,6 +40,7 @@ if str(_ROOT) not in sys.path:
 
 from core.config import settings
 from core.database import engine
+from enums.email_template_layout import EmailTemplateLayout
 from seeders.email_template_seeder import EMAIL_TEMPLATE_LIBRARY, _extract_variables
 
 
@@ -107,6 +110,7 @@ class FrankEmailTemplateLibraryReseed:
         """Write every canonical template on the admin account, rewriting the rows that already exist."""
         rewritten = 0
         inserted = 0
+        signature_id: int | None = self._preferred_signature_id(admin_id)
         for template in EMAIL_TEMPLATE_LIBRARY:
             subject = str(template["subject"])
             body_html = str(template["body_html"])
@@ -118,6 +122,7 @@ class FrankEmailTemplateLibraryReseed:
                 "variables": json.dumps(_extract_variables(subject, body_html)),
                 "category": str(template["category"]),
                 "sort_order": int(template["sort_order"]),  # type: ignore[arg-type]
+                "signature_id": signature_id,
             }
             existing_id = self._library_template_id(admin_id, params["name"])
             if existing_id is not None:
@@ -126,7 +131,8 @@ class FrankEmailTemplateLibraryReseed:
                         """
                         UPDATE email_templates
                         SET subject = :subject, body_html = :body_html, variables = :variables,
-                            category = :category, sort_order = :sort_order, is_active = 1
+                            category = :category, sort_order = :sort_order, is_active = 1,
+                            signature_id = COALESCE(signature_id, :signature_id)
                         WHERE id = :id
                         """
                     ),
@@ -139,17 +145,28 @@ class FrankEmailTemplateLibraryReseed:
                         """
                         INSERT INTO email_templates
                             (user_id, name, subject, body_html, variables, is_active, category, sort_order,
-                             is_library, created_at)
+                             is_library, signature_id, layout, created_at)
                         VALUES
                             (:user_id, :name, :subject, :body_html, :variables, 1, :category, :sort_order,
-                             1, :created_at)
+                             1, :signature_id, :layout, :created_at)
                         """
                     ),
-                    # Naive UTC like the models: the MySQL clock is not UTC in prod.
-                    {**params, "created_at": datetime.now(UTC).replace(tzinfo=None)},
+                    {
+                        **params,
+                        "layout": EmailTemplateLayout.CARD_TABLE.value,
+                        # Naive UTC like the models: the MySQL clock is not UTC in prod.
+                        "created_at": datetime.now(UTC).replace(tzinfo=None),
+                    },
                 )
                 inserted += 1
         return rewritten, inserted
+
+    def _preferred_signature_id(self, admin_id: int) -> int | None:
+        """The admin's default signature, else his first one, or ``None`` when he has none."""
+        return self._connection.execute(
+            text("SELECT id FROM email_signatures WHERE user_id = :user_id ORDER BY is_default DESC, id LIMIT 1"),
+            {"user_id": admin_id},
+        ).scalar()
 
     def _deactivate_unused_dropped_templates(self, admin_id: int) -> tuple[int, list[str]]:
         """Deactivate the admin's library rows outside the canonical set that no campaign ever used."""

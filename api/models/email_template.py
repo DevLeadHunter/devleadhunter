@@ -63,8 +63,8 @@ class EmailTemplate(Base):
     layout: Mapped[str] = mapped_column(
         String(20),
         nullable=False,
-        server_default=EmailTemplateLayout.PLAIN.value,
-        default=EmailTemplateLayout.PLAIN.value,
+        server_default=EmailTemplateLayout.CARD_TABLE.value,
+        default=EmailTemplateLayout.CARD_TABLE.value,
     )
     # Higher = pinned higher in the app's template list (recommended templates use a high value).
     sort_order: Mapped[int] = mapped_column(Integer, nullable=False, server_default="0", default=0)

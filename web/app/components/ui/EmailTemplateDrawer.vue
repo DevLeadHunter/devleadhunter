@@ -308,6 +308,7 @@ import { EmailSignaturesService } from '~/services/emailSignaturesService'
 import { useVariableInsertion } from '~/composables/useVariableInsertion'
 import { EmailVariables } from '~/utils/emailVariables'
 import {
+  DEFAULT_EMAIL_TEMPLATE_LAYOUT,
   EMAIL_TEMPLATE_CATEGORIES,
   EMAIL_TEMPLATE_CATEGORY_LABELS,
   EMAIL_TEMPLATE_LAYOUTS,
@@ -391,7 +392,7 @@ const form: Ref<EmailTemplateForm> = ref({
   is_active: true,
   signature_id: null,
   category: 'first_email',
-  layout: 'plain',
+  layout: DEFAULT_EMAIL_TEMPLATE_LAYOUT,
 })
 
 const signatureOptions: ComputedRef<SelectFieldOption<number>[]> = computed((): SelectFieldOption<number>[] =>
@@ -661,7 +662,7 @@ watch(
     if (key === lastInitKey.value) return
     lastInitKey.value = key
     shareWithAll.value = false
-    includeSignature.value = props.template?.signature_id != null
+    includeSignature.value = props.template ? props.template.signature_id != null : true
     form.value = {
       name: props.template?.name ?? '',
       subject: props.template?.subject ?? '',
@@ -669,7 +670,7 @@ watch(
       is_active: props.template?.is_active ?? true,
       signature_id: props.template?.signature_id ?? null,
       category: props.template?.category ?? 'first_email',
-      layout: props.template?.layout ?? 'plain',
+      layout: props.template?.layout ?? DEFAULT_EMAIL_TEMPLATE_LAYOUT,
     }
   },
   { immediate: true },

@@ -20,7 +20,7 @@ class EmailTemplateBase(BaseModel):
     variables: list[str] | None = None
     signature_id: int | None = None
     category: EmailTemplateCategory = EmailTemplateCategory.FIRST_EMAIL
-    layout: EmailTemplateLayout = EmailTemplateLayout.PLAIN
+    layout: EmailTemplateLayout = EmailTemplateLayout.CARD_TABLE
 
 
 class EmailTemplateCreate(EmailTemplateBase):
@@ -89,7 +89,7 @@ class EmailTemplateDraftPreviewRequest(BaseModel):
     subject: str = Field(..., max_length=500)
     body_html: str
     signature_id: int | None = None
-    layout: EmailTemplateLayout = EmailTemplateLayout.PLAIN
+    layout: EmailTemplateLayout = EmailTemplateLayout.CARD_TABLE
     variables: dict[str, str] = Field(default_factory=dict, description="Example value of each variable")
 
 

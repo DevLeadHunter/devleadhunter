@@ -11,6 +11,9 @@ export const EMAIL_TEMPLATE_CATEGORY_LABELS: Record<EmailTemplateCategory, strin
 
 export const EMAIL_TEMPLATE_LAYOUTS: EmailTemplateLayout[] = ['plain', 'card', 'card_table']
 
+/** Layout a new template starts with: the card with the offer table, like the whole library. */
+export const DEFAULT_EMAIL_TEMPLATE_LAYOUT: EmailTemplateLayout = 'card_table'
+
 export const EMAIL_TEMPLATE_LAYOUT_LABELS: Record<EmailTemplateLayout, string> = {
   plain: 'Simple (texte seul)',
   card: 'Carte',

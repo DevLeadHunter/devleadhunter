@@ -134,8 +134,8 @@ Vérification du 04/10 sur les 30 modèles actifs de prod (règle de la proposit
 | 3 | Prix et date dans la carte | **Tranché : partout** (une démo jamais envoyée n'affiche pas de date) | |
 | 4 | Réceptionniste dans le bandeau | En attente | Après le lancement, pour mesurer la carte seule ; ensuite la position 1 (un seul objet, une seule identité) |
 | 5 | Persona | En attente | Léa, présentée comme l'assistante IA de l'expéditeur (la même que sur dibodev.fr) |
-| 6 | Email | **Tranché le 04/10 et codé** : la proposition 1, sans titre et sans image du site | Réglage « Habillage » par modèle (simple, carte, carte avec tableau), aperçu dans l'éditeur, couleur des emails dans le profil. À comparer au mail simple sur une campagne |
-| 7 | Signature | **Tranché et fait le 04/10 : la signature sur tous les mails.** Cochée sur les 51 modèles de prod | Reste à corriger dans le code : un modèle créé par le seeder ou par un fork naît sans signature |
+| 6 | Email | **Tranché le 04/10 et codé** : la proposition 1, sans titre et sans image du site. Testé « nickel » sur Gmail, Orange et Epitech, puis passé sur les 51 modèles le soir même | Réglage « Habillage » par modèle (simple, carte, carte avec tableau), aperçu dans l'éditeur, couleur des emails dans le profil. Deux versions simples gardées pour comparer sur une campagne : « Franc - premier contact (simple) » et « Réceptionniste IA - franc (simple) » |
+| 7 | Signature | **Tranché et fait le 04/10 : la signature sur tous les mails.** Cochée sur les 51 modèles de prod | Depuis le 05/10, un nouveau modèle (éditeur, copie d'un modèle de la bibliothèque, seeder, migration) naît signé et en carte avec tableau |
 | 8 | Copie de Léa | En attente | « Le nom de domaine est compris » est exact ; « sous 48 h » seulement si c'est tenable à chaque vente, sinon « dans les jours qui suivent le paiement ». Le tiret du modèle 30 ne compte plus : les modèles de la bibliothèque n'en ont pas |
 
 ## Contraintes de délivrabilité vérifiées (email)

@@ -15,9 +15,11 @@ from sqlalchemy.orm import Session
 
 from core.config import settings
 from enums.email_template_category import EmailTemplateCategory
+from enums.email_template_layout import EmailTemplateLayout
 from migrations.reseed_frank_email_template_library import FrankEmailTemplateLibraryReseed
 from models.campaign import Campaign, CampaignStatus
 from models.campaign_follow_up import CampaignFollowUp
+from models.email_signature import EmailSignature
 from models.email_template import EmailTemplate
 from models.user import User
 from seeders.email_template_seeder import EMAIL_TEMPLATE_LIBRARY
@@ -168,6 +170,27 @@ def test_the_admin_own_models_are_never_touched(engine: Engine, db: Session, see
         is_library=False,
         sort_order=0,
     )
+
+
+def test_library_rows_leave_signed_and_new_ones_dressed(
+    engine: Engine, db: Session, seeded_admin: dict[str, int]
+) -> None:
+    signature = EmailSignature(
+        user_id=seeded_admin["admin"], name="Signature Dibodev", content_html="<p>Léo</p>", is_default=True
+    )
+    db.add(signature)
+    used_angle = db.get(EmailTemplate, seeded_admin["used_angle"])
+    used_angle.layout = EmailTemplateLayout.PLAIN.value
+    db.commit()
+
+    _run_twice(engine)
+
+    db.expire_all()
+    inserted = db.execute(select(EmailTemplate).where(EmailTemplate.name == "Franc - premier contact")).scalar_one()
+    assert (inserted.signature_id, inserted.layout) == (signature.id, EmailTemplateLayout.CARD_TABLE.value)
+    rewritten = db.get(EmailTemplate, seeded_admin["used_angle"])
+    assert (rewritten.signature_id, rewritten.layout) == (signature.id, EmailTemplateLayout.PLAIN.value)
+    assert db.get(EmailTemplate, seeded_admin["personal_frank"]).signature_id is None
 
 
 def test_a_rerun_changes_nothing(engine: Engine, db: Session, seeded_admin: dict[str, int]) -> None:

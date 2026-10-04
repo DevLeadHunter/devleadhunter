@@ -313,10 +313,6 @@ def test_the_layout_travels_with_a_template(db: Session) -> None:
     assert untouched.layout == _CARD_TABLE
     updated = email_template_service.update_template(db, user, created.id, EmailTemplateUpdate(layout=_CARD))
     assert updated.layout == _CARD
-    by_default = email_template_service.create_template(
-        db, user, EmailTemplateCreate(name="Simple", subject="objet", body_html="<p>Texte</p>")
-    )
-    assert by_default.layout == EmailTemplateLayout.PLAIN.value
 
 
 def test_the_profile_colour_is_a_hexadecimal_colour() -> None:

@@ -22,7 +22,7 @@ from schemas.email_template import (
     EmailTemplateUpdate,
 )
 from services.email_layout import EmailLayout
-from services.email_signatures import render_signature_html
+from services.email_signatures import preferred_signature_id, render_signature_html
 from services.email_variables import EmailVariables
 from services.unsubscribe_service import unsubscribe_service
 
@@ -81,13 +81,17 @@ def _clone_template(
     source: EmailTemplate,
     *,
     user_id: int,
+    signature_id: int | None,
     library_source_id: int | None = None,
 ) -> EmailTemplate:
-    """Duplicate *source* as a personal row for *user_id*."""
+    """Duplicate *source* as a personal row for *user_id*, signed with *signature_id*.
+
+    A signature belongs to its owner, so the copy never keeps the one of *source*.
+    """
     return EmailTemplate(
         user_id=user_id,
         email_account_id=None,
-        signature_id=None,
+        signature_id=signature_id,
         name=source.name,
         subject=source.subject,
         body_html=source.body_html,
@@ -245,7 +249,12 @@ def get_for_user(db: Session, template_id: int, user: User) -> EmailTemplate | N
 
 
 def create_template(db: Session, user: User, data: EmailTemplateCreate) -> EmailTemplate:
-    """Create a personal template or a new library entry (super-admin only)."""
+    """
+    Create a personal template or a new library entry (super-admin only).
+
+    A payload that does not name a signature gets the user's preferred one: every email leaves
+    signed unless the user explicitly sends ``signature_id: null``.
+    """
     share = bool(data.share_with_all)
     if share and not is_super_admin(user.role):
         raise HTTPException(
@@ -255,6 +264,9 @@ def create_template(db: Session, user: User, data: EmailTemplateCreate) -> Email
     subject_vars = extract_variables(data.subject)
     body_vars = extract_variables(data.body_html)
     variables = data.variables if data.variables else list(set(subject_vars + body_vars))
+    signature_id: int | None = (
+        data.signature_id if "signature_id" in data.model_fields_set else preferred_signature_id(db, user.id)
+    )
 
     template = EmailTemplate(
         user_id=user.id,
@@ -264,7 +276,7 @@ def create_template(db: Session, user: User, data: EmailTemplateCreate) -> Email
         body_html=data.body_html,
         body_text=data.body_text,
         variables=json.dumps(variables),
-        signature_id=data.signature_id,
+        signature_id=signature_id,
         category=data.category.value,
         layout=data.layout.value,
         is_library=share,
@@ -281,7 +293,12 @@ def _fork_or_get(db: Session, user: User, library: EmailTemplate) -> EmailTempla
     existing = _get_fork(db, user.id, library.id)
     if existing is not None:
         return existing
-    fork = _clone_template(library, user_id=user.id, library_source_id=library.id)
+    fork = _clone_template(
+        library,
+        user_id=user.id,
+        signature_id=preferred_signature_id(db, user.id),
+        library_source_id=library.id,
+    )
     db.add(fork)
     db.flush()
     return fork

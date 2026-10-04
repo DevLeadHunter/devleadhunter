@@ -473,7 +473,8 @@ def seed_email_templates() -> None:
     Insert the canonical cold-email library for the admin user.
 
     Each template is matched by (user_id, name); existing rows are left untouched
-    so the seeder is safe to re-run (only new templates are added). The rewrite of
+    so the seeder is safe to re-run (only new templates are added). A new row carries
+    the admin's preferred signature and the model's default layout. The rewrite of
     already-seeded rows lives in the ``reseed_frank_email_template_library`` migration.
     """
     from sqlalchemy import select
@@ -482,6 +483,7 @@ def seed_email_templates() -> None:
     from core.database import get_db, init_db
     from models.email_template import EmailTemplate
     from models.user import User
+    from services.email_signatures import preferred_signature_id
 
     init_db()
     db = next(get_db())
@@ -494,6 +496,7 @@ def seed_email_templates() -> None:
             return
 
         created = 0
+        signature_id: int | None = preferred_signature_id(db, admin.id)
         for tpl in EMAIL_TEMPLATE_LIBRARY:
             name = str(tpl["name"])
             subject = str(tpl["subject"])
@@ -512,6 +515,7 @@ def seed_email_templates() -> None:
                 EmailTemplate(
                     user_id=admin.id,
                     email_account_id=None,
+                    signature_id=signature_id,
                     name=name,
                     subject=subject,
                     body_html=body_html,

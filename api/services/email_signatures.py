@@ -21,6 +21,24 @@ def get_default_signature(db: Session, user_id: int) -> EmailSignature | None:
     ).scalar_one_or_none()
 
 
+def preferred_signature_id(db: Session, user_id: int) -> int | None:
+    """Return the signature a new template carries: the user's default one, else their first one.
+
+    Args:
+        db: Database session.
+        user_id: Owner of the signatures.
+
+    Returns:
+        The signature id, or None when the user has no signature.
+    """
+    return db.execute(
+        select(EmailSignature.id)
+        .where(EmailSignature.user_id == user_id)
+        .order_by(EmailSignature.is_default.desc(), EmailSignature.id)
+        .limit(1)
+    ).scalar_one_or_none()
+
+
 def render_default_signature_html(db: Session, user_id: int, variables: dict[str, str] | None = None) -> str:
     """Append block for the user's default signature, or empty string."""
     signature = get_default_signature(db, user_id)
