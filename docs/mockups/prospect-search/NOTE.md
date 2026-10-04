@@ -5,7 +5,8 @@
 | Maquette | Date | État |
 |---|---|---|
 | `recherche-v2.html` : trois directions (la phrase, le parcours, le fil) | 4 octobre 2026 | **Refusée** : « aucune ne me plaît » |
-| `vivier-v3.html` : le vivier de leads en direct | 4 octobre 2026 | En attente de décision |
+| `vivier-v3.html` : le vivier de leads en direct | 4 octobre 2026 | Direction retenue (« ça me plaît bien »), remplacée par la v4 |
+| `vivier-v4.html` : les leads en direct, version reprise, avec la page « Nouvelle recherche » | 4 octobre 2026 | En attente de décision |
 
 ## Ce qui est demandé
 
@@ -73,3 +74,33 @@ garde le comportement actuel pour les leads complets.
 1. Le concept du vivier tel que montré.
 2. Par défaut : « Je valide » ou « Automatique ».
 3. Le lancement d'une recherche (bouton « Nouvelle recherche ») n'est pas encore dessiné.
+
+## Version 4 : ce qui change après le retour sur la v3
+
+Retour reçu : la direction plaît, mais il manque la page « Nouvelle recherche » ; des flèches écrites
+en texte ; la carte de suivi sur les autres pages est trop étroite et trop haute ; le nom « Vivier »
+et son icône peuvent être mieux ; inutile d'afficher les raccourcis clavier.
+
+| Point | Dans `vivier-v4.html` |
+|---|---|
+| Page « Nouvelle recherche » | Cinq questions sur une colonne (métiers, combien, où, comment les joindre, critères), une ligne « Reprendre » pour relancer une recherche passée, et une barre fixe en bas : résumé en une phrase, coût et durée recalculés à chaque choix, bouton « Lancer la recherche » |
+| Flèches en texte | Remplacées par des icônes |
+| Suivi sur les autres pages | Une barre large et basse en bas de la page : état de la recherche, lead à valider, ses critères, Refuser, Accepter ; elle se replie en pastille |
+| Nom et icône | Trois propositions à comparer dans le menu : « Leads », « Radar », « Chasse » |
+| Raccourcis clavier | Ils marchent toujours, ils ne sont plus affichés |
+| Critères vérifiés | Quatre pastilles par ligne (email, portable, pas de site, note) : vert vérifié, ambre à vérifier, gris absent ; le volet les détaille avec leur preuve |
+| Répartition | Quatre chiffres et une barre de répartition, à la place du bandeau de cinq cases |
+| Tri en lot | Bouton « Accepter les n complets », filtres par métier |
+
+Sources ajoutées pour la page « Nouvelle recherche » : Exa Websets et Parallel (résumé et coût avant
+de lancer), Clay et Apollo (relancer une recherche, exclure les prospects connus). Erreur évitée :
+la colonne de dizaines de filtres.
+
+Avis donné sur le nom : « Leads », avec l'icône radar. Le mot dit ce que contient la page, et il se
+distingue de « Mes prospects », qui reçoit les leads acceptés.
+
+## À trancher (v4)
+
+1. Le nom du menu : Leads, Radar ou Chasse.
+2. Le mode par défaut : « Je valide » ou « Automatique ».
+3. Un essai sur cinq leads avant la vraie recherche (vu chez Parallel et Clay) : utile ou non.
