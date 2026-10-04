@@ -1,5 +1,18 @@
 <template>
   <section class="app-card min-w-0 overflow-hidden" aria-label="Candidats de la recherche">
+    <div
+      v-if="shouldRemindDecisions"
+      class="flex flex-wrap items-center justify-between gap-x-3 gap-y-2 border-b border-[var(--app-line)] bg-[var(--app-surface-2)]/60 px-4 py-2.5 @2xl:px-5"
+    >
+      <p class="flex min-w-0 items-center gap-2 text-xs font-medium text-[var(--app-ink)]">
+        <UIcon name="i-lucide-circle-help" class="h-4 w-4 shrink-0 text-[var(--app-accent-ink)]" />
+        {{ decisionReminderLabel }}
+      </p>
+      <button type="button" class="app-btn-secondary h-9 min-h-9 px-3 text-xs" @click="activeTab = 'to_confirm'">
+        Décider
+        <UIcon name="i-lucide-arrow-right" class="h-3.5 w-3.5" />
+      </button>
+    </div>
     <div class="border-b border-[var(--app-line)] px-1.5 pt-1">
       <UiFilterTabs :model-value="activeTab" :tabs="tabs" @update:model-value="selectTab" />
     </div>
@@ -116,6 +129,7 @@ const emit: EmitFn<ProspectSearchResultsCardEmits> = defineEmits<ProspectSearchR
 
 const DEFAULT_TAB: ProspectSearchResultTabKey = 'kept'
 const UNEXPLAINED_REJECT_GROUP_KEY: string = 'unexplained'
+const ALWAYS_SHOWN_TABS: string[] = ['kept', 'journal']
 
 const activeTab: Ref<ProspectSearchResultTabKey> = ref(DEFAULT_TAB)
 const expandedRejectedGroupKeys: Ref<string[]> = ref([])
@@ -142,8 +156,17 @@ const tabs: ComputedRef<UiFilterTab[]> = computed((): UiFilterTab[] =>
       label: PROSPECT_SEARCH_RESULT_TAB_LABELS[key],
       count: key === 'journal' ? props.search.journal.length : candidatesByStatus.value[key].length,
     }),
-  ).filter((tab: UiFilterTab): boolean => tab.key !== 'discovered' || (tab.count ?? 0) > 0),
+  ).filter((tab: UiFilterTab): boolean => ALWAYS_SHOWN_TABS.includes(tab.key) || (tab.count ?? 0) > 0),
 )
+
+const shouldRemindDecisions: ComputedRef<boolean> = computed(
+  (): boolean => candidatesByStatus.value.to_confirm.length > 0 && activeTab.value !== 'to_confirm',
+)
+
+const decisionReminderLabel: ComputedRef<string> = computed((): string => {
+  const waitingCount: number = candidatesByStatus.value.to_confirm.length
+  return waitingCount > 1 ? `${waitingCount} candidats attendent votre décision.` : '1 candidat attend votre décision.'
+})
 
 const activeCandidates: ComputedRef<ProspectSearchCandidate[]> = computed((): ProspectSearchCandidate[] =>
   activeTab.value === 'journal' ? [] : candidatesByStatus.value[activeTab.value],

@@ -44,6 +44,7 @@
           :search="store.currentSearch"
           :is-cancelling="store.isCancelling"
           :is-resuming="store.isResuming"
+          :latest-journal-message="store.currentSearch.journal.at(-1)?.message ?? null"
           @cancel="cancelSearch"
           @resume="resumeSearch"
         />

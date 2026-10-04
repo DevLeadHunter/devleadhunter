@@ -49,6 +49,15 @@
       </button>
     </header>
 
+    <p
+      v-if="isActive && props.latestJournalMessage"
+      class="mt-3 flex items-start gap-2 text-xs leading-relaxed text-[var(--app-ink-soft)]"
+      aria-live="polite"
+    >
+      <UIcon name="i-lucide-activity" class="mt-0.5 h-3.5 w-3.5 shrink-0" />
+      <span class="line-clamp-2 min-w-0 break-words">{{ props.latestJournalMessage }}</span>
+    </p>
+
     <UiCallout v-if="props.search.status === 'failed' && props.search.error_message" variant="danger" class="mt-4">
       {{ props.search.error_message }}
     </UiCallout>
@@ -72,7 +81,10 @@
             :style="{ width: `${trade.keptPercentage}%` }"
           ></div>
         </div>
-        <p class="mt-2 flex flex-wrap gap-x-3.5 gap-y-1 text-xs text-[var(--app-ink-soft)]">
+        <p
+          v-if="trade.counterLabels.length > 0"
+          class="mt-2 flex flex-wrap gap-x-3.5 gap-y-1 text-xs text-[var(--app-ink-soft)]"
+        >
           <span v-for="counterLabel in trade.counterLabels" :key="counterLabel">{{ counterLabel }}</span>
         </p>
         <p
@@ -122,6 +134,10 @@ const props: ProspectSearchProgressCardProps = defineProps({
     type: Boolean,
     required: true,
   },
+  latestJournalMessage: {
+    type: String as PropType<string | null>,
+    default: null,
+  },
 })
 
 const emit: EmitFn<ProspectSearchProgressCardEmits> = defineEmits<ProspectSearchProgressCardEmits>()
@@ -150,15 +166,19 @@ const objectiveLabel: ComputedRef<string> = computed((): string => {
 const tradeProgress: ComputedRef<ProspectSearchTradeProgress[]> = computed((): ProspectSearchTradeProgress[] =>
   props.search.trade_counts.map((counts: ProspectSearchTradeCounts): ProspectSearchTradeProgress => {
     const isShortOfObjective: boolean = counts.kept < counts.wanted
-    const counterLabels: string[] = [
-      `${counts.set_aside} mis de côté`,
-      `${counts.to_confirm} à confirmer`,
-      `${counts.waiting_browser} ${counts.waiting_browser > 1 ? 'pages' : 'page'} Facebook à lire`,
-      `${counts.rejected} ${counts.rejected > 1 ? 'écartés' : 'écarté'}`,
+    const counters: [number, string][] = [
+      [counts.set_aside, `${counts.set_aside} mis de côté`],
+      [counts.to_confirm, `${counts.to_confirm} à confirmer`],
+      [
+        counts.waiting_browser,
+        `${counts.waiting_browser} ${counts.waiting_browser > 1 ? 'pages' : 'page'} Facebook à lire`,
+      ],
+      [counts.rejected, `${counts.rejected} ${counts.rejected > 1 ? 'écartés' : 'écarté'}`],
+      [counts.unverified, `${counts.unverified} non ${counts.unverified > 1 ? 'vérifiés' : 'vérifié'}`],
     ]
-    if (counts.unverified > 0) {
-      counterLabels.push(`${counts.unverified} non ${counts.unverified > 1 ? 'vérifiés' : 'vérifié'}`)
-    }
+    const counterLabels: string[] = counters
+      .filter(([count]: [number, string]): boolean => count > 0)
+      .map(([, label]: [number, string]): string => label)
     return {
       key: counts.trade,
       label: counts.label,
