@@ -91,6 +91,15 @@
       </div>
     </div>
 
+    <ProspectSearchStatusBanner
+      v-if="searchStore.activeSearch"
+      :search="searchStore.activeSearch"
+      :latest-journal-message="searchStore.latestJournalMessage"
+      :is-cancelling="searchStore.isCancelling"
+      @follow="openSearchDrawer"
+      @cancel="cancelSearch"
+    />
+
     <div class="grid grid-cols-2 gap-4 @4xl:grid-cols-4">
       <UiStatCard label="Total Prospects" :value="totalProspects" icon="i-lucide-users" accent="neutral" />
       <UiStatCard label="Avec Email" :value="prospectsWithEmail" icon="i-lucide-mail" accent="emerald" />
@@ -115,12 +124,19 @@
         </div>
       </div>
 
-      <div class="grid grid-cols-2 gap-4" :class="isAssistantModule ? '@4xl:grid-cols-7' : '@4xl:grid-cols-6'">
-        <div v-if="isAssistantModule">
+      <div
+        class="grid grid-cols-2 gap-4"
+        :class="{
+          '@4xl:grid-cols-3': isPendingTab,
+          '@4xl:grid-cols-6': !isPendingTab && !isAssistantModule,
+          '@4xl:grid-cols-7': !isPendingTab && isAssistantModule,
+        }"
+      >
+        <div v-if="isAssistantModule && !isPendingTab">
           <label class="app-label mb-1.5 block">Tri</label>
           <UiSelectField v-model="sortOrder" :options="sortOrderOptions" />
         </div>
-        <div>
+        <div v-if="!isPendingTab">
           <label class="app-label mb-1.5 block">Site web</label>
           <UiSelectField v-model="filterWebsite" :options="websiteFilterOptions" />
         </div>
@@ -132,11 +148,11 @@
           <label class="app-label mb-1.5 block">Catégorie</label>
           <input v-model="filterCategory" type="text" placeholder="Ex: restaurant" class="app-input" />
         </div>
-        <div>
+        <div v-if="!isPendingTab">
           <label class="app-label mb-1.5 block">Température</label>
           <UiSelectField v-model="filterTemperature" :options="temperatureFilterOptions" />
         </div>
-        <div>
+        <div v-if="!isPendingTab">
           <label class="app-label mb-1.5 block">Email</label>
           <UiSelectField v-model="filterEmail" :options="emailFilterOptions" />
         </div>
@@ -150,6 +166,28 @@
       <div
         class="no-scrollbar -mb-px flex touch-pan-x items-center gap-1 overflow-x-auto overflow-y-hidden overscroll-x-contain"
       >
+        <button
+          type="button"
+          class="relative flex flex-1 items-center justify-center px-4 py-2.5 text-sm font-medium whitespace-nowrap transition-colors @2xl:flex-none"
+          :class="isPendingTab ? 'text-[var(--app-ink)]' : 'text-[var(--app-ink-soft)] hover:text-[var(--app-ink)]'"
+          @click="activeTab = 'pending'"
+        >
+          À valider
+          <span
+            class="font-label ml-1.5 rounded-full px-2 py-0.5 text-xs"
+            :class="
+              pendingLeadCount > 0
+                ? 'bg-[var(--app-accent-soft)] text-[var(--app-accent-ink)]'
+                : 'bg-[var(--app-surface-2)]'
+            "
+          >
+            {{ pendingLeadCount }}
+          </span>
+          <span
+            v-if="isPendingTab"
+            class="absolute inset-x-3 bottom-0 h-0.5 rounded-full bg-[var(--app-accent)]"
+          ></span>
+        </button>
         <button
           type="button"
           class="relative flex flex-1 items-center justify-center px-4 py-2.5 text-sm font-medium whitespace-nowrap transition-colors @2xl:flex-none"
@@ -191,7 +229,9 @@
       </div>
     </div>
 
-    <div v-if="isLoading" class="flex items-center justify-center py-16">
+    <ProspectSearchPendingLeadList v-if="isPendingTab" :candidates="filteredPendingLeads" />
+
+    <div v-else-if="isLoading" class="flex items-center justify-center py-16">
       <UIcon name="i-lucide-loader-circle" class="h-8 w-8 animate-spin text-[var(--app-accent)]" />
     </div>
 
@@ -277,7 +317,7 @@
 
     <Transition name="bulkbar">
       <div
-        v-if="selectedProspects.length > 0"
+        v-if="!isPendingTab && selectedProspects.length > 0"
         class="fixed inset-x-0 bottom-0 z-40 flex justify-center px-0 sm:bottom-[calc(1.5rem+env(safe-area-inset-bottom))] sm:px-4"
       >
         <!-- Mobile (< sm) : bottom sheet ancrée au bas de l'écran. -->
@@ -431,6 +471,7 @@ import type { UseToastReturn } from '~/types/Composables'
 import { ref, computed, watch, onMounted } from 'vue'
 import type { ComputedRef, Ref } from 'vue'
 import type { Prospect } from '~/types'
+import type { ProspectSearchCandidate } from '~/types/ProspectSearch'
 import { ProspectsService } from '~/services/prospectsService'
 import type {
   ProspectTemperature,
@@ -445,6 +486,7 @@ import { useDrawerStackStore } from '~/stores/drawerStack'
 import { useToast } from '~/composables/useToast'
 import { useMyProspectsFilters } from '~/composables/useMyProspectsFilters'
 import { useModuleStore } from '~/stores/moduleStore'
+import { useProspectSearchStore } from '~/stores/prospectSearch'
 
 definePageMeta({
   layout: 'dashboard',
@@ -524,6 +566,22 @@ const bulkDeleteConfirmModal: Ref<{ open: () => void; close: () => void } | null
 const drawerStack: ReturnType<typeof useDrawerStackStore> = useDrawerStackStore()
 
 const toast: UseToastReturn = useToast()
+
+const searchStore: ReturnType<typeof useProspectSearchStore> = useProspectSearchStore()
+
+const isPendingTab: ComputedRef<boolean> = computed((): boolean => activeTab.value === 'pending')
+
+const filteredPendingLeads: ComputedRef<ProspectSearchCandidate[]> = computed((): ProspectSearchCandidate[] =>
+  searchStore.findPendingCandidates({
+    searchQuery: searchQuery.value,
+    town: filterCity.value,
+    trade: filterCategory.value,
+  }),
+)
+
+const pendingLeadCount: ComputedRef<number> = computed((): number =>
+  searchStore.hasLoadedPendingCandidates ? filteredPendingLeads.value.length : searchStore.pendingCount,
+)
 
 const deleteConfirmMessage: ComputedRef<string> = computed(() => {
   if (!prospectToDelete.value) return 'Cette action est irréversible.'
@@ -831,6 +889,40 @@ async function reloadProspectsQuietly(): Promise<void> {
   }
 }
 
+/** Open the drawer following the running search. */
+function openSearchDrawer(): void {
+  drawerStack.push({ kind: 'prospect-search' })
+}
+
+/**
+ * Stop the running search; what it found is kept.
+ * @returns A promise resolved once the search is stopped, or the failure is reported.
+ */
+async function cancelSearch(): Promise<void> {
+  try {
+    await searchStore.cancelSearch()
+  } catch (err: unknown) {
+    toast.error(err instanceof Error ? err.message : "Impossible d'arrêter la recherche")
+  }
+}
+
+/**
+ * Show the « À valider » tab when another screen asked for it (launch of a search, « Voir tous les leads »).
+ * @returns True when the tab was asked for.
+ */
+function showRequestedPendingTab(): boolean {
+  const wasRequested: boolean = searchStore.consumePendingTabRequest()
+  if (wasRequested) activeTab.value = 'pending'
+  return wasRequested
+}
+
+/** Leave a remembered « À valider » tab when it has nothing to decide and no search is running. */
+function leaveEmptyPendingTab(): void {
+  if (isPendingTab.value && searchStore.pendingCount === 0 && searchStore.activeSearch === null) {
+    activeTab.value = 'not_contacted'
+  }
+}
+
 /** Open the detail drawer for a given prospect, browsable across the filtered list. */
 function openDrawer(prospect: Prospect): void {
   drawerStack.setProspectBrowseList(filteredProspects.value)
@@ -1002,6 +1094,20 @@ watch(
   },
 )
 
+watch(
+  (): boolean => searchStore.isPendingTabRequested,
+  (isRequested: boolean): void => {
+    if (isRequested) showRequestedPendingTab()
+  },
+)
+
+watch(
+  (): number => searchStore.prospectsCreatedSignal,
+  (): void => {
+    reloadProspectsQuietly()
+  },
+)
+
 /**
  * Open the quick-delete confirmation modal for a prospect.
  */
@@ -1059,6 +1165,11 @@ async function confirmBulkDelete(): Promise<void> {
 }
 
 onMounted(async (): Promise<void> => {
+  const hasShownRequestedTab: boolean = showRequestedPendingTab()
+  if (!hasShownRequestedTab && searchStore.hasLoadedActivity) leaveEmptyPendingTab()
+  if (!hasShownRequestedTab && !searchStore.hasLoadedActivity) {
+    watch((): boolean => searchStore.hasLoadedActivity, leaveEmptyPendingTab, { once: true })
+  }
   await loadProspects()
   // Deep-link from the dashboard hot-leads widget: ?open=<prospectId> opens the drawer.
   const openParam: LocationQueryValue | LocationQueryValue[] | undefined = useRoute().query.open

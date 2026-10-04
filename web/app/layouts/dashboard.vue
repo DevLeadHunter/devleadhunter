@@ -75,6 +75,8 @@
       <UiDrawerStackHost />
 
       <UiCommandPalette />
+
+      <ProspectSearchLeadNotifications />
     </div>
   </div>
 </template>
@@ -87,6 +89,7 @@ import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useUserStore } from '~/stores/user'
 import { useAppTheme } from '~/composables/useAppTheme'
 import { useDrawerStackStore } from '~/stores/drawerStack'
+import { useProspectSearchStore } from '~/stores/prospectSearch'
 import { useAutomationCompletionNotifier } from '~/composables/useAutomationCompletionNotifier'
 import { DASHBOARD_SCROLL_CONTAINER_ID } from '~/composables/useDashboardScroll'
 import { useHorizontalSwipe } from '~/composables/useHorizontalSwipe'
@@ -115,6 +118,8 @@ const { theme, initTheme }: { theme: Ref<AppTheme, AppTheme>; initTheme: () => v
 
 /** Persistent drawer stack — drives the content push when a drawer is open. */
 const drawerStack: ReturnType<typeof useDrawerStackStore> = useDrawerStackStore()
+
+const prospectSearchStore: ReturnType<typeof useProspectSearchStore> = useProspectSearchStore()
 
 /** Background watcher toasting automatisation completions across every dashboard page. */
 const automationNotifier: UseAutomationCompletionNotifierReturn = useAutomationCompletionNotifier()
@@ -236,6 +241,7 @@ onMounted(async (): Promise<void> => {
   if (import.meta.client) {
     window.addEventListener('resize', handleResize)
     automationNotifier.start()
+    prospectSearchStore.startWatching()
   }
 })
 
@@ -243,6 +249,7 @@ onUnmounted((): void => {
   if (import.meta.client) {
     window.removeEventListener('resize', handleResize)
     automationNotifier.stop()
+    prospectSearchStore.stopWatching()
   }
 })
 </script>

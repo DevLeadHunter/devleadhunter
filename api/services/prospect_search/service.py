@@ -9,17 +9,23 @@ import functools
 import logging
 
 from sqlalchemy import func, select
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, defer
 
 from core.clock import naive_utc_now
 from core.database import SessionLocal
 from enums.prospect_search import CandidateRejectReason, CandidateStatus, ProspectSearchStatus
 from models.prospect_search import ProspectSearch
 from models.prospect_search_candidate import ProspectSearchCandidate
-from schemas.prospect_search import ProspectSearchCreate, SearchTradeCounts
+from schemas.prospect_search import (
+    CandidateDecisions,
+    CandidateDecisionsOutcome,
+    ProspectSearchCreate,
+    RefusedCandidateDecision,
+    SearchTradeCounts,
+)
 from services.country_profiles import CountryProfiles
 from services.organization_service import organization_service
-from services.prospect_search.candidate_decision import CandidateVerdict
+from services.prospect_search.candidate_decision import CandidateDecision, CandidateVerdict, SearchCriteria
 from services.prospect_search.candidate_store import CandidateStore
 from services.prospect_search.facebook_contact import FacebookContactRead, facebook_contact_recorder
 from services.prospect_search.runner import ProspectSearchRunner
@@ -28,12 +34,20 @@ from services.prospect_search.trade_catalog import TradeCatalog
 logger = logging.getLogger(__name__)
 
 _RECENT_SEARCHES_LIMIT: int = 30
+_PENDING_CANDIDATES_LIMIT: int = 300
 _ACTIVE_STATUSES: tuple[str, ...] = (ProspectSearchStatus.PENDING.value, ProspectSearchStatus.RUNNING.value)
+_UNFINISHED_STATUSES: tuple[str, ...] = (*_ACTIVE_STATUSES, ProspectSearchStatus.WAITING_BROWSER.value)
 _KNOWN_BUSINESS_REASONS: tuple[str, ...] = (
     CandidateRejectReason.ALREADY_KNOWN.value,
     CandidateRejectReason.DO_NOT_CONTACT.value,
 )
+_PLACES_AN_ACCEPTANCE_KEEPS: tuple[str, ...] = (CandidateStatus.KEPT.value, CandidateStatus.SET_ASIDE.value)
 _ALREADY_A_PROSPECT: str = "Cette entreprise est déjà dans vos prospects."
+_PROSPECT_NOT_CREATED: str = "Le prospect n'a pas pu être créé. Réessayez dans un instant."
+_REFUSAL_NOT_SAVED: str = "Le refus n'a pas pu être enregistré. Réessayez dans un instant."
+_CANDIDATE_NOT_FOUND: str = "Ce candidat est introuvable."
+_NOT_REFUSED_BY_THE_USER: str = "Seuls les candidats que vous avez refusés peuvent être remis en attente."
+_CANDIDATE_ALREADY_A_PROSPECT: str = "Ce candidat est déjà un prospect."
 
 
 class ProspectSearchError(ValueError):
@@ -82,6 +96,7 @@ class ProspectSearchService:
             channel=payload.channel.value,
             only_without_website=payload.only_without_website,
             minimum_rating=payload.minimum_rating,
+            validation_mode=payload.validation_mode.value,
             status=ProspectSearchStatus.PENDING.value,
             progress={},
             journal=[],
@@ -130,6 +145,42 @@ class ProspectSearchService:
                 .order_by(ProspectSearchCandidate.id)
             ).scalars()
         )
+
+    def pending_candidates(self, db: Session, user_id: int) -> list[ProspectSearchCandidate]:
+        """The user's candidates waiting for a decision, every search together, newest first."""
+        return list(
+            db.execute(
+                select(ProspectSearchCandidate)
+                .where(ProspectSearchCandidate.user_id == user_id, ProspectSearchCandidate.is_pending)
+                .order_by(ProspectSearchCandidate.id.desc())
+                .limit(_PENDING_CANDIDATES_LIMIT)
+            ).scalars()
+        )
+
+    def pending_candidate_count(self, db: Session, user_id: int) -> int:
+        """How many of the user's candidates wait for a decision, every search together."""
+        return (
+            db.execute(
+                select(func.count(ProspectSearchCandidate.id)).where(
+                    ProspectSearchCandidate.user_id == user_id, ProspectSearchCandidate.is_pending
+                )
+            ).scalar()
+            or 0
+        )
+
+    def active_search(self, db: Session, user_id: int) -> ProspectSearch | None:
+        """
+        The user's most recent search still at work (not started yet, running, or waiting for a browser).
+
+        Read without its journal, which the activity does not show.
+        """
+        return db.execute(
+            select(ProspectSearch)
+            .options(defer(ProspectSearch.journal))
+            .where(ProspectSearch.user_id == user_id, ProspectSearch.status.in_(_UNFINISHED_STATUSES))
+            .order_by(ProspectSearch.id.desc())
+            .limit(1)
+        ).scalar()
 
     def trade_counts(self, db: Session, searches: list[ProspectSearch]) -> dict[int, list[SearchTradeCounts]]:
         """
@@ -191,7 +242,7 @@ class ProspectSearchService:
         search = self.get_for_user(db, user_id, search_id)
         if search is None:
             return None
-        if search.status in (*_ACTIVE_STATUSES, ProspectSearchStatus.WAITING_BROWSER.value):
+        if search.status in _UNFINISHED_STATUSES:
             search.status = ProspectSearchStatus.CANCELLED.value
             search.completed_at = naive_utc_now()
             db.commit()
@@ -272,31 +323,26 @@ class ProspectSearchService:
         self, db: Session, user_id: int, search_id: int, candidate_id: int
     ) -> ProspectSearchCandidate | None:
         """
-        Keep a candidate by hand and create its prospect.
+        Accept a candidate: it becomes a prospect.
+
+        A candidate the search kept or set aside keeps that place; any other is kept by hand.
 
         Raises:
             ProspectSearchError: The business is already one of the user's prospects (the candidate
-                is then discarded as already known).
+                is then discarded as already known), or its prospect could not be created.
         """
         candidate = self._owned_candidate(db, user_id, search_id, candidate_id)
         if candidate is None:
             return None
-        if candidate.reject_reason in _KNOWN_BUSINESS_REASONS:
-            raise ProspectSearchError(_ALREADY_A_PROSPECT)
-        facts = CandidateStore.facts_of(candidate)
-        CandidateStore.write_back(candidate, facts, CandidateVerdict(CandidateStatus.KEPT, detail="Gardé à la main."))
-        db.commit()
-        prospect_id = await CandidateStore.promote(
-            db,
-            candidate,
-            facts,
-            TradeCatalog.resolve(candidate.trade),
-            organization_id=organization_service.user_org_id(db, user_id),
+        self._place_as_accepted(db, candidate)
+        await CandidateStore.promote_accepted(
+            db, [candidate], organization_id=organization_service.user_org_id(db, user_id)
         )
         db.refresh(candidate)
         self._carry_on_after_browser_round(db, search_id)
-        if prospect_id is None:
-            raise ProspectSearchError(_ALREADY_A_PROSPECT)
+        refusal = self._acceptance_refusal(candidate)
+        if refusal is not None:
+            raise ProspectSearchError(refusal)
         return candidate
 
     def reject_candidate(
@@ -311,18 +357,142 @@ class ProspectSearchService:
         candidate = self._owned_candidate(db, user_id, search_id, candidate_id)
         if candidate is None:
             return None
-        if candidate.prospect_id is not None:
-            raise ProspectSearchError("Ce candidat est déjà un prospect : supprimez-le depuis vos prospects.")
-        facts = CandidateStore.facts_of(candidate)
-        CandidateStore.write_back(
-            candidate,
-            facts,
-            CandidateVerdict(CandidateStatus.REJECTED, CandidateRejectReason.MANUAL, "Écarté à la main."),
+        self._discard_by_hand(db, candidate)
+        db.refresh(candidate)
+        self._carry_on_after_browser_round(db, search_id)
+        return candidate
+
+    def restore_candidate(
+        self, db: Session, user_id: int, search_id: int, candidate_id: int
+    ) -> ProspectSearchCandidate | None:
+        """
+        Undo the user's refusal of a candidate: it waits for a decision again, without becoming a prospect.
+
+        Its place is decided again from what its search stored and with the search's criteria, its
+        checks and its Facebook read taken as done: the row does not keep which ones it went through.
+        A place the rules discard becomes « à confirmer ». No prospect is created, even in an automatic search.
+
+        Raises:
+            ProspectSearchError: The candidate was not refused by the user, or it is a prospect already.
+        """
+        candidate = self._owned_candidate(db, user_id, search_id, candidate_id)
+        search = self.get_for_user(db, user_id, search_id)
+        if candidate is None or search is None:
+            return None
+        is_refused_by_hand = (
+            candidate.status == CandidateStatus.REJECTED.value
+            and candidate.reject_reason == CandidateRejectReason.MANUAL.value
         )
+        if not is_refused_by_hand:
+            raise ProspectSearchError(_NOT_REFUSED_BY_THE_USER)
+        if candidate.prospect_id is not None:
+            raise ProspectSearchError(_CANDIDATE_ALREADY_A_PROSPECT)
+
+        facts = CandidateStore.facts_of(candidate)
+        facts.is_verified = True
+        facts.is_facebook_page_read = True
+        verdict = CandidateDecision.decide(
+            facts, TradeCatalog.resolve(candidate.trade), SearchCriteria.of_search(search)
+        )
+        if verdict.status == CandidateStatus.REJECTED:
+            verdict = CandidateVerdict(CandidateStatus.TO_CONFIRM, detail="Remis à valider à la main.")
+        CandidateStore.write_back(candidate, facts, verdict)
         db.commit()
         db.refresh(candidate)
         self._carry_on_after_browser_round(db, search_id)
         return candidate
+
+    async def decide_candidates(
+        self, db: Session, user_id: int, decisions: CandidateDecisions
+    ) -> CandidateDecisionsOutcome:
+        """
+        Apply several decisions of the user at once.
+
+        Each one follows the rules of :meth:`keep_candidate` and :meth:`reject_candidate`. A decision
+        that cannot be applied, for a rule or an unexpected failure, does not stop the others: it is
+        rolled back and returned with its reason. The user's prospects are read once per search, not
+        once per accepted candidate. The searches waiting for a browser that the decisions concern
+        carry on whatever happens.
+
+        Args:
+            db: Active database session.
+            user_id: The user deciding; candidates of another user are reported as not found.
+            decisions: The candidates to accept and the ones to refuse, from any of the user's searches.
+
+        Returns:
+            How many candidates became prospects, how many were discarded, and the decisions not applied.
+        """
+        ids_to_accept = list(dict.fromkeys(decisions.accept))
+        ids_to_reject = list(dict.fromkeys(decisions.reject))
+        candidate_by_id = {
+            candidate.id: candidate
+            for candidate in db.execute(
+                select(ProspectSearchCandidate).where(
+                    ProspectSearchCandidate.user_id == user_id,
+                    ProspectSearchCandidate.id.in_([*ids_to_accept, *ids_to_reject]),
+                )
+            ).scalars()
+        }
+        search_id_by_candidate_id = {
+            candidate_id: candidate.search_id for candidate_id, candidate in candidate_by_id.items()
+        }
+        organization_id = organization_service.user_org_id(db, user_id)
+        outcome = CandidateDecisionsOutcome(accepted=0, rejected=0)
+
+        def report_not_applied(candidate_id: int, detail: str) -> None:
+            outcome.refused.append(RefusedCandidateDecision(candidate_id=candidate_id, detail=detail))
+
+        try:
+            for candidate_id in ids_to_reject:
+                candidate = candidate_by_id.get(candidate_id)
+                if candidate is None:
+                    report_not_applied(candidate_id, _CANDIDATE_NOT_FOUND)
+                    continue
+                try:
+                    self._discard_by_hand(db, candidate)
+                except ProspectSearchError as exc:
+                    report_not_applied(candidate_id, str(exc))
+                except Exception as exc:
+                    db.rollback()
+                    logger.error("Prospect search: refusing candidate %s failed: %s", candidate_id, exc, exc_info=True)
+                    report_not_applied(candidate_id, _REFUSAL_NOT_SAVED)
+                else:
+                    outcome.rejected += 1
+
+            accepted_ids_by_search: dict[int, list[int]] = {}
+            for candidate_id in ids_to_accept:
+                candidate = candidate_by_id.get(candidate_id)
+                if candidate is None:
+                    report_not_applied(candidate_id, _CANDIDATE_NOT_FOUND)
+                    continue
+                try:
+                    self._place_as_accepted(db, candidate)
+                except ProspectSearchError as exc:
+                    report_not_applied(candidate_id, str(exc))
+                except Exception as exc:
+                    db.rollback()
+                    logger.error("Prospect search: accepting candidate %s failed: %s", candidate_id, exc, exc_info=True)
+                    report_not_applied(candidate_id, _PROSPECT_NOT_CREATED)
+                else:
+                    accepted_ids_by_search.setdefault(search_id_by_candidate_id[candidate_id], []).append(candidate_id)
+
+            for candidate_ids in accepted_ids_by_search.values():
+                refusal_by_candidate_id = await self._promote_accepted_together(
+                    db, {candidate_id: candidate_by_id[candidate_id] for candidate_id in candidate_ids}, organization_id
+                )
+                for candidate_id, refusal in refusal_by_candidate_id.items():
+                    if refusal is None:
+                        outcome.accepted += 1
+                    else:
+                        report_not_applied(candidate_id, refusal)
+        finally:
+            for search_id in set(search_id_by_candidate_id.values()):
+                try:
+                    self._carry_on_after_browser_round(db, search_id)
+                except Exception as exc:
+                    db.rollback()
+                    logger.error("Prospect search %s: carrying on after the decisions failed: %s", search_id, exc)
+        return outcome
 
     def resume_interrupted(self) -> None:
         """Restart the searches a deployment or a crash stopped mid-run (called once at startup)."""
@@ -333,6 +503,80 @@ class ProspectSearchService:
         for search_id in interrupted:
             logger.info("Prospect search %s was interrupted — resuming", search_id)
             self.start(search_id)
+
+    async def _promote_accepted_together(
+        self, db: Session, candidate_by_id: dict[int, ProspectSearchCandidate], organization_id: int | None
+    ) -> dict[int, str | None]:
+        """
+        Create the prospects of accepted candidates of one search, whatever fails on the way.
+
+        Args:
+            db: Active database session.
+            candidate_by_id: The accepted candidates of the search, placed already.
+            organization_id: The user's organization, the prospects are shared with it.
+
+        Returns:
+            For each candidate id, why it is not a prospect in the user's words, ``None`` when it is one.
+        """
+        try:
+            await CandidateStore.promote_accepted(db, list(candidate_by_id.values()), organization_id=organization_id)
+        except Exception as exc:
+            db.rollback()
+            logger.error(
+                "Prospect search: accepting candidates %s failed: %s", list(candidate_by_id), exc, exc_info=True
+            )
+        refusal_by_candidate_id: dict[int, str | None] = {}
+        for candidate_id, candidate in candidate_by_id.items():
+            try:
+                refusal_by_candidate_id[candidate_id] = self._acceptance_refusal(candidate)
+            except Exception as exc:
+                db.rollback()
+                logger.error("Prospect search: accepted candidate %s could not be read again: %s", candidate_id, exc)
+                refusal_by_candidate_id[candidate_id] = _PROSPECT_NOT_CREATED
+        return refusal_by_candidate_id
+
+    def _place_as_accepted(self, db: Session, candidate: ProspectSearchCandidate) -> None:
+        """
+        Give an accepted candidate the place its prospect is created from.
+
+        Raises:
+            ProspectSearchError: The search discarded it because its business is a prospect already.
+        """
+        if candidate.reject_reason in _KNOWN_BUSINESS_REASONS:
+            raise ProspectSearchError(_ALREADY_A_PROSPECT)
+        if candidate.status in _PLACES_AN_ACCEPTANCE_KEEPS:
+            return
+        CandidateStore.write_back(
+            candidate,
+            CandidateStore.facts_of(candidate),
+            CandidateVerdict(CandidateStatus.KEPT, detail="Gardé à la main."),
+        )
+        db.commit()
+
+    @staticmethod
+    def _acceptance_refusal(candidate: ProspectSearchCandidate) -> str | None:
+        """Why an accepted candidate did not become a prospect, in the user's words; ``None`` when it did."""
+        if candidate.status == CandidateStatus.REJECTED.value:
+            return _ALREADY_A_PROSPECT
+        if candidate.prospect_id is None:
+            return _PROSPECT_NOT_CREATED
+        return None
+
+    def _discard_by_hand(self, db: Session, candidate: ProspectSearchCandidate) -> None:
+        """
+        Discard a candidate on the user's decision.
+
+        Raises:
+            ProspectSearchError: The candidate already became a prospect.
+        """
+        if candidate.prospect_id is not None:
+            raise ProspectSearchError("Ce candidat est déjà un prospect : supprimez-le depuis vos prospects.")
+        CandidateStore.write_back(
+            candidate,
+            CandidateStore.facts_of(candidate),
+            CandidateVerdict(CandidateStatus.REJECTED, CandidateRejectReason.MANUAL, "Écarté à la main."),
+        )
+        db.commit()
 
     def _carry_on_after_browser_round(self, db: Session, search_id: int) -> None:
         """

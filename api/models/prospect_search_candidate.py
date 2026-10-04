@@ -5,11 +5,18 @@ Prospect search candidate model — one business seen by a search, with its verd
 from datetime import datetime
 from typing import Any
 
-from sqlalchemy import JSON, Boolean, Float, Integer, String
+from sqlalchemy import JSON, Boolean, ColumnElement, Float, Integer, String, and_
+from sqlalchemy.ext.hybrid import hybrid_property
 from sqlalchemy.orm import Mapped, mapped_column
 
 from core.database import UTF8MB4_TABLE_OPTIONS, Base
 from enums.prospect_search import CandidateStatus
+
+_STATUSES_OPEN_TO_A_DECISION: tuple[str, ...] = (
+    CandidateStatus.KEPT.value,
+    CandidateStatus.SET_ASIDE.value,
+    CandidateStatus.TO_CONFIRM.value,
+)
 
 
 class ProspectSearchCandidate(Base):
@@ -53,6 +60,7 @@ class ProspectSearchCandidate(Base):
         prospect_id: The prospect created from this candidate
         created_at: When it was found
         updated_at: Last change
+        is_pending: Whether it waits for the user to accept or refuse it (derived, usable in a query)
     """
 
     __tablename__ = "prospect_search_candidates"
@@ -93,3 +101,14 @@ class ProspectSearchCandidate(Base):
     prospect_id: Mapped[int | None] = mapped_column(Integer, nullable=True, index=True)
     created_at: Mapped[datetime] = mapped_column(default=datetime.utcnow, nullable=False)
     updated_at: Mapped[datetime | None] = mapped_column(onupdate=datetime.utcnow, nullable=True)
+
+    @hybrid_property
+    def is_pending(self) -> bool:
+        """Whether the candidate waits for the user's decision: placed by the search and not a prospect yet."""
+        return self.prospect_id is None and self.status in _STATUSES_OPEN_TO_A_DECISION
+
+    @is_pending.inplace.expression
+    @classmethod
+    def _is_pending_filter(cls) -> ColumnElement[bool]:
+        """The same rule as a query filter."""
+        return and_(cls.prospect_id.is_(None), cls.status.in_(_STATUSES_OPEN_TO_A_DECISION))

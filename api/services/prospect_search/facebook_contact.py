@@ -13,7 +13,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 
 from core.database import SessionLocal
-from enums.prospect_search import CandidateStatus, EmailProofLevel, ProspectSearchChannel
+from enums.prospect_search import CandidateStatus, EmailProofLevel, ProspectSearchValidationMode
 from models.prospect_search import ProspectSearch
 from models.prospect_search_candidate import ProspectSearchCandidate
 from scrappers.email_candidate_scoring import email_candidate_scorer
@@ -48,6 +48,9 @@ class FacebookContactRecorder:
         """
         Complete a waiting candidate with what its Facebook page says, and place it.
 
+        Its prospect is created here only in an automatic search; in a manual one the
+        placed candidate waits for the user's decision.
+
         Args:
             candidate_id: The candidate whose page was read.
             read: What the browser found.
@@ -65,12 +68,9 @@ class FacebookContactRecorder:
                 return None
             facts = CandidateStore.facts_of(row)
             trade = TradeCatalog.resolve(row.trade)
-            criteria = SearchCriteria(
-                channel=ProspectSearchChannel(search.channel),
-                only_without_website=search.only_without_website,
-                minimum_rating=search.minimum_rating,
-            )
+            criteria = SearchCriteria.of_search(search)
             organization_id = organization_service.user_org_id(db, row.user_id)
+            creates_prospect = search.validation_mode == ProspectSearchValidationMode.AUTOMATIC.value
 
         facts.is_verified = True
         facts.is_facebook_page_read = True
@@ -112,7 +112,8 @@ class FacebookContactRecorder:
                 verdict = CandidateVerdict(CandidateStatus.REJECTED, known.reason, known.detail)
             CandidateStore.write_back(row, facts, verdict)
             db.commit()
-            await CandidateStore.promote_or_leave_to_confirm(db, row, facts, trade, organization_id=organization_id)
+            if creates_prospect:
+                await CandidateStore.promote_or_leave_to_confirm(db, row, facts, trade, organization_id=organization_id)
             return CandidateStore.verdict_of(row)
 
 

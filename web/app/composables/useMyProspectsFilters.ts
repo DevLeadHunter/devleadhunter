@@ -18,6 +18,9 @@ const EMAIL_FILTER_VALUES: EmailFilter[] = ['all', 'undeliverable']
 export type ProspectSortOrder = 'recent' | 'demand'
 const SORT_ORDER_VALUES: ProspectSortOrder[] = ['recent', 'demand']
 
+export type MyProspectsTab = 'pending' | 'not_contacted' | 'contacted'
+const TAB_VALUES: MyProspectsTab[] = ['pending', 'not_contacted', 'contacted']
+
 /** Persisted filter state for the my-prospects page. */
 export type MyProspectsFiltersState = {
   searchQuery: string
@@ -27,7 +30,7 @@ export type MyProspectsFiltersState = {
   filterTemperature: TemperatureFilter
   filterEmail: EmailFilter
   sortOrder: ProspectSortOrder
-  activeTab: 'not_contacted' | 'contacted'
+  activeTab: MyProspectsTab
 }
 
 /**
@@ -74,8 +77,9 @@ function parseStoredFilters(raw: string, defaults: MyProspectsFiltersState): MyP
     )
       ? (parsed.filterWebsite as ProspectWebsiteFilter)
       : defaults.filterWebsite
-    const activeTab: MyProspectsFiltersState['activeTab'] =
-      parsed.activeTab === 'contacted' ? 'contacted' : 'not_contacted'
+    const activeTab: MyProspectsTab = TAB_VALUES.includes(parsed.activeTab as MyProspectsTab)
+      ? (parsed.activeTab as MyProspectsTab)
+      : defaults.activeTab
     const filterTemperature: TemperatureFilter = TEMPERATURE_FILTER_VALUES.includes(
       parsed.filterTemperature as TemperatureFilter,
     )
@@ -115,7 +119,7 @@ export function useMyProspectsFilters(): {
   filterTemperature: Ref<TemperatureFilter>
   filterEmail: Ref<EmailFilter>
   sortOrder: Ref<ProspectSortOrder>
-  activeTab: Ref<'not_contacted' | 'contacted'>
+  activeTab: Ref<MyProspectsTab>
   clearFilters: () => void
 } {
   const moduleStore: ReturnType<typeof useModuleStore> = useModuleStore()
@@ -127,7 +131,7 @@ export function useMyProspectsFilters(): {
   const filterTemperature: Ref<TemperatureFilter> = ref(defaults.filterTemperature)
   const filterEmail: Ref<EmailFilter> = ref(defaults.filterEmail)
   const sortOrder: Ref<ProspectSortOrder> = ref(defaults.sortOrder)
-  const activeTab: Ref<'not_contacted' | 'contacted'> = ref(defaults.activeTab)
+  const activeTab: Ref<MyProspectsTab> = ref(defaults.activeTab)
 
   /**
    * Apply a full filter snapshot to the refs.

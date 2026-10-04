@@ -10,7 +10,10 @@ from models.prospect_search import ProspectSearch
 from models.prospect_search_candidate import ProspectSearchCandidate
 from models.user import User
 from schemas.prospect_search import (
+    CandidateDecisions,
+    CandidateDecisionsOutcome,
     FacebookContactPayload,
+    ProspectSearchActivity,
     ProspectSearchCandidateResponse,
     ProspectSearchCreate,
     ProspectSearchDetail,
@@ -86,6 +89,42 @@ async def list_prospect_searches(
 ) -> list[ProspectSearchSummary]:
     """The user's recent searches with their totals."""
     return _summaries(db, prospect_search_service.list_for_user(db, current_user.id))
+
+
+# The fixed paths below are declared before « /{search_id} », which would otherwise take them for a search id.
+@router.get("/pending-candidates", response_model=list[ProspectSearchCandidateResponse])
+async def list_pending_candidates(
+    current_user: User = Depends(require_auth),
+    db: Session = Depends(get_db),
+) -> list[ProspectSearchCandidateResponse]:
+    """The candidates of every search of the user that wait for a decision, newest first."""
+    return [
+        ProspectSearchCandidateResponse.model_validate(candidate)
+        for candidate in prospect_search_service.pending_candidates(db, current_user.id)
+    ]
+
+
+@router.get("/activity", response_model=ProspectSearchActivity)
+async def get_prospect_search_activity(
+    current_user: User = Depends(require_auth),
+    db: Session = Depends(get_db),
+) -> ProspectSearchActivity:
+    """How many candidates wait for the user, and the search still at work."""
+    active_search = prospect_search_service.active_search(db, current_user.id)
+    return ProspectSearchActivity(
+        pending_count=prospect_search_service.pending_candidate_count(db, current_user.id),
+        active_search=_summaries(db, [active_search])[0] if active_search is not None else None,
+    )
+
+
+@router.post("/candidates/decisions", response_model=CandidateDecisionsOutcome)
+async def decide_candidates(
+    payload: CandidateDecisions,
+    current_user: User = Depends(require_auth),
+    db: Session = Depends(get_db),
+) -> CandidateDecisionsOutcome:
+    """Accept and refuse several candidates at once, from any of the user's searches."""
+    return await prospect_search_service.decide_candidates(db, current_user.id, payload)
 
 
 @router.get("/{search_id}", response_model=ProspectSearchDetail)
@@ -181,7 +220,7 @@ async def keep_candidate(
     current_user: User = Depends(require_auth),
     db: Session = Depends(get_db),
 ) -> ProspectSearchCandidateResponse:
-    """Keep a candidate by hand: it becomes a prospect."""
+    """Accept a candidate: it becomes a prospect."""
     try:
         candidate = await prospect_search_service.keep_candidate(db, current_user.id, search_id, candidate_id)
     except ProspectSearchError as exc:
@@ -199,6 +238,21 @@ async def reject_candidate(
     """Discard a candidate by hand: no later search proposes it again."""
     try:
         candidate = prospect_search_service.reject_candidate(db, current_user.id, search_id, candidate_id)
+    except ProspectSearchError as exc:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
+    return _candidate_or_404(candidate)
+
+
+@router.post("/{search_id}/candidates/{candidate_id}/restore", response_model=ProspectSearchCandidateResponse)
+async def restore_candidate(
+    search_id: int,
+    candidate_id: int,
+    current_user: User = Depends(require_auth),
+    db: Session = Depends(get_db),
+) -> ProspectSearchCandidateResponse:
+    """Undo the refusal of a candidate: it waits for a decision again, without becoming a prospect."""
+    try:
+        candidate = prospect_search_service.restore_candidate(db, current_user.id, search_id, candidate_id)
     except ProspectSearchError as exc:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
     return _candidate_or_404(candidate)

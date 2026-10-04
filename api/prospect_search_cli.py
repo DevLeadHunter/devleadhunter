@@ -7,8 +7,13 @@ reads the waiting Facebook pages with the Chrome of this machine, then hands the
 Usage:
     python prospect_search_cli.py --trades paysagiste "électricien" --country CH --count 5 --channel email_and_sms
     python prospect_search_cli.py --trades garage --cities Annecy Chambéry --count 3
+    python prospect_search_cli.py --trades garage --count 3 --validation manual
     python prospect_search_cli.py --follow 12
     python prospect_search_cli.py --resume 12
+
+A search started here creates its prospects itself (``--validation automatic``, the default of
+this command, made to source in bulk); ``--validation manual`` leaves each candidate to be
+accepted or refused in the application.
 
 Output: the search's journal on stderr as it advances; on stdout one JSON line per
 candidate worth reading (kept, set aside, to confirm), then a summary line.
@@ -37,6 +42,7 @@ _POLL_SECONDS: float = 4.0
 _FINISHED_STATUSES: frozenset[str] = frozenset({"completed", "cancelled", "failed"})
 _REPORTED_STATUSES: tuple[str, ...] = ("kept", "set_aside", "to_confirm")
 _CHANNELS: tuple[str, ...] = ("email", "sms", "email_and_sms")
+_VALIDATION_MODES: tuple[str, ...] = ("manual", "automatic")
 
 
 class ProspectSearchCli:
@@ -73,6 +79,7 @@ class ProspectSearchCli:
                 "channel": args.channel,
                 "only_without_website": not args.with_website,
                 "minimum_rating": args.minimum_rating,
+                "validation_mode": args.validation,
             },
         )
         if response.status_code == 422:
@@ -302,6 +309,13 @@ def _parse_args(argv: list[str]) -> argparse.Namespace:
     parser.add_argument("--channel", choices=_CHANNELS, default="email", help="Contact the prospects must allow.")
     parser.add_argument("--with-website", action="store_true", help="Also keep businesses with a working website.")
     parser.add_argument("--minimum-rating", type=float, default=None, help="Google rating floor (e.g. 4.0).")
+    parser.add_argument(
+        "--validation",
+        choices=_VALIDATION_MODES,
+        default="automatic",
+        help="automatic (default): the search creates the prospects itself; manual: each candidate waits "
+        "to be accepted in the application.",
+    )
     parser.add_argument("--no-browser", action="store_true", help="Do not read Facebook pages on this machine.")
     return parser.parse_args(argv)
 

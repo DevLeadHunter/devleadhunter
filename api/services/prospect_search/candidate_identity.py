@@ -137,6 +137,7 @@ class KnownBusinessIndex:
         self._do_not_contact_keys: set[str] = set()
         self._contacted_keys: set[str] = set()
         self._rejected_keys: set[str] = set()
+        self._awaiting_decision_keys: set[str] = set()
 
     @classmethod
     def load(cls, db: Session, *, user_id: int, organization_id: int | None, search_id: int) -> KnownBusinessIndex:
@@ -187,6 +188,16 @@ class KnownBusinessIndex:
         for keys in rejected:
             index._rejected_keys.update(key for key in (keys or []) if not key.startswith("name:"))
 
+        awaiting = db.execute(
+            select(ProspectSearchCandidate.identity_keys).where(
+                ProspectSearchCandidate.user_id == user_id,
+                ProspectSearchCandidate.search_id != search_id,
+                ProspectSearchCandidate.is_pending,
+            )
+        ).scalars()
+        for keys in awaiting:
+            index._awaiting_decision_keys.update(key for key in (keys or []) if not key.startswith("name:"))
+
         # An address already written to stays known even when its prospect was deleted since.
         contacted = db.execute(select(EmailLog.recipient_email).where(EmailLog.user_id == user_id).distinct()).scalars()
         index._contacted_keys.update(f"mail:{email.strip().lower()}" for email in contacted if email)
@@ -226,6 +237,12 @@ class KnownBusinessIndex:
                 )
         if any(key in self._contacted_keys for key in keys):
             return KnownBusiness(CandidateRejectReason.ALREADY_KNOWN, "Son adresse a déjà reçu un de vos emails.", None)
+        if any(key in self._awaiting_decision_keys for key in keys):
+            return KnownBusiness(
+                CandidateRejectReason.AWAITING_DECISION,
+                "Déjà proposé par une recherche précédente : il attend votre validation.",
+                None,
+            )
         if any(key in self._rejected_keys for key in keys):
             return KnownBusiness(
                 CandidateRejectReason.PREVIOUSLY_REJECTED, "Déjà écarté par une recherche précédente.", None

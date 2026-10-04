@@ -41,15 +41,31 @@ class ProspectSearchChannel(str, Enum):
     EMAIL_AND_SMS = "email_and_sms"
 
 
+class ProspectSearchValidationMode(str, Enum):
+    """
+    Who turns the candidates of a search into prospects.
+
+    Attributes:
+        MANUAL: The search creates no prospect; the user accepts or refuses each candidate it placed
+        AUTOMATIC: Kept and set-aside candidates become prospects as the search places them
+    """
+
+    MANUAL = "manual"
+    AUTOMATIC = "automatic"
+
+
 class CandidateStatus(str, Enum):
     """
     Where a candidate stands in the search.
 
+    A kept or set-aside candidate becomes a prospect at once in an automatic search, and
+    when the user accepts it in a manual one.
+
     Attributes:
         DISCOVERED: Found, not verified yet
         NEEDS_BROWSER: Verified, waiting for its Facebook page to be read on a desktop
-        KEPT: Meets the objective, saved as a prospect
-        SET_ASIDE: Usable on another channel only (mobile without email…), saved as a prospect
+        KEPT: Meets the objective
+        SET_ASIDE: Usable on another channel only (mobile without email…)
         TO_CONFIRM: Has a contact the search could not prove, waits for the user's decision
         REJECTED: Discarded, with a reason
     """
@@ -77,6 +93,7 @@ class CandidateRejectReason(str, Enum):
         ALREADY_KNOWN: Already a prospect of the user
         DO_NOT_CONTACT: Matches a prospect flagged « do not contact »
         PREVIOUSLY_REJECTED: Discarded by an earlier search
+        AWAITING_DECISION: Proposed by another search, waiting for the user's decision
         MANUAL: Discarded by the user
     """
 
@@ -90,6 +107,7 @@ class CandidateRejectReason(str, Enum):
     ALREADY_KNOWN = "already_known"
     DO_NOT_CONTACT = "do_not_contact"
     PREVIOUSLY_REJECTED = "previously_rejected"
+    AWAITING_DECISION = "awaiting_decision"
     MANUAL = "manual"
 
 

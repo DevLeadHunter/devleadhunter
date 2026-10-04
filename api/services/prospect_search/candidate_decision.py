@@ -13,6 +13,7 @@ from dataclasses import dataclass
 
 from enums.prospect_search import CandidateRejectReason, CandidateStatus, EmailProofLevel, ProspectSearchChannel
 from enums.website_status import WebsiteStatus
+from models.prospect_search import ProspectSearch
 from services.prospect_search.candidate_facts import CandidateFacts
 from services.prospect_search.trade_catalog import TradeProfile
 
@@ -27,6 +28,15 @@ class SearchCriteria:
     channel: ProspectSearchChannel
     only_without_website: bool
     minimum_rating: float | None
+
+    @classmethod
+    def of_search(cls, search: ProspectSearch) -> SearchCriteria:
+        """The criteria a stored search asks for."""
+        return cls(
+            channel=ProspectSearchChannel(search.channel),
+            only_without_website=search.only_without_website,
+            minimum_rating=search.minimum_rating,
+        )
 
 
 @dataclass(frozen=True)
@@ -105,10 +115,10 @@ class CandidateDecision:
     def _set_aside_detail(has_email: bool, has_mobile: bool) -> str:
         """Why a reachable candidate does not count toward the objective."""
         if has_mobile and not has_email:
-            return "Portable sans email : gardé pour une campagne SMS."
+            return "Portable sans email : joignable par SMS."
         if has_email and not has_mobile:
-            return "Email sans portable : gardé pour une campagne email."
-        return "Contact partiel : gardé de côté."
+            return "Email sans portable : joignable par email."
+        return "Un seul moyen de contact."
 
     @classmethod
     def _rejection(

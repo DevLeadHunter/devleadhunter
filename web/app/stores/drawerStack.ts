@@ -6,6 +6,7 @@ import type {
   AssistantRequestMutationNotice,
   AssistantSubscriptionMutationNotice,
   DrawerStackEntry,
+  DrawerStackEntryKind,
   OrderMutationNotice,
   ProspectMutationNotice,
 } from '~/types/DrawerStack'
@@ -16,6 +17,10 @@ import type { EmailTemplate, Prospect } from '~/types'
 /** sessionStorage key persisting the drawer stack across page reloads. */
 const DRAWER_STACK_STORAGE_KEY: string = 'dlh-drawer-stack'
 
+const PAGE_INDEPENDENT_DRAWER_KINDS: DrawerStackEntryKind[] = ['prospect-search', 'prospect-search-lead']
+
+const RETIRED_DRAWER_KINDS: string[] = ['search-prospects']
+
 /** Pinia store driving the persistent right-side drawer stack (survives route changes via `UiDrawerStackHost`). */
 // Pinia ne fournit pas de type nommé pour un store : TypeScript l'élide, il est inécrivable.
 // eslint-disable-next-line @typescript-eslint/typedef
@@ -25,7 +30,11 @@ export const useDrawerStackStore = defineStore('drawerStack', () => {
   if (import.meta.client) {
     try {
       const raw: string | null = sessionStorage.getItem(DRAWER_STACK_STORAGE_KEY)
-      if (raw) stack.value = JSON.parse(raw) as DrawerStackEntry[]
+      if (raw) {
+        stack.value = (JSON.parse(raw) as DrawerStackEntry[]).filter(
+          (entry: DrawerStackEntry): boolean => !RETIRED_DRAWER_KINDS.includes(entry.kind),
+        )
+      }
     } catch {
       // État illisible → on repart d'une pile vide.
     }
@@ -82,6 +91,20 @@ export const useDrawerStackStore = defineStore('drawerStack', () => {
     stack.value = []
     prospectBrowseList.value = []
     emailTemplateBrowseList.value = []
+  }
+
+  /**
+   * Leave a page: the drawers that follow the user stay open, the ones of the page left close.
+   */
+  function keepPageIndependentEntries(): void {
+    const followingEntries: DrawerStackEntry[] = stack.value.filter((entry: DrawerStackEntry): boolean =>
+      PAGE_INDEPENDENT_DRAWER_KINDS.includes(entry.kind),
+    )
+    if (followingEntries.length === 0) {
+      closeAll()
+      return
+    }
+    stack.value = followingEntries
   }
 
   /**
@@ -313,6 +336,7 @@ export const useDrawerStackStore = defineStore('drawerStack', () => {
     push,
     back,
     closeAll,
+    keepPageIndependentEntries,
     setProspectBrowseList,
     setEmailTemplateBrowseList,
     notifyProspectUpdated,

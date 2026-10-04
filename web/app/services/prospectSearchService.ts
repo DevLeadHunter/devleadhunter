@@ -1,7 +1,10 @@
 import type {
+  ProspectSearchActivity,
   ProspectSearchBrowserTask,
   ProspectSearchCandidate,
   ProspectSearchCreatePayload,
+  ProspectSearchDecisionsPayload,
+  ProspectSearchDecisionsResult,
   ProspectSearchDetail,
   ProspectSearchFacebookContact,
   ProspectSearchSummary,
@@ -111,6 +114,17 @@ export class ProspectSearchService {
   }
 
   /**
+   * Put a lead refused by hand back in the waiting list, at the place the search gave it.
+   * @param searchId - Identifier of the search.
+   * @param candidateId - Candidate refused a moment ago.
+   * @returns The candidate, waiting for a decision again.
+   * @throws Error carrying the API message when the lead was not refused by hand.
+   */
+  static async restoreCandidate(searchId: number, candidateId: number): Promise<ProspectSearchCandidate> {
+    return ApiClient.post<ProspectSearchCandidate>(`${BASE_URL}/${searchId}/candidates/${candidateId}/restore`, {})
+  }
+
+  /**
    * Keep a candidate by hand: it becomes a prospect.
    * @param searchId - Identifier of the search.
    * @param candidateId - Candidate to keep.
@@ -130,5 +144,30 @@ export class ProspectSearchService {
    */
   static async rejectCandidate(searchId: number, candidateId: number): Promise<ProspectSearchCandidate> {
     return ApiClient.post<ProspectSearchCandidate>(`${BASE_URL}/${searchId}/candidates/${candidateId}/reject`, {})
+  }
+
+  /**
+   * List every candidate waiting for the user's decision, whatever the search it comes from.
+   * @returns The waiting candidates, newest first.
+   */
+  static async listPendingCandidates(): Promise<ProspectSearchCandidate[]> {
+    return ApiClient.get<ProspectSearchCandidate[]>(`${BASE_URL}/pending-candidates`)
+  }
+
+  /**
+   * Read what the shell follows: how many candidates wait, and the search still running.
+   * @returns The waiting count and the active search, if any.
+   */
+  static async getActivity(): Promise<ProspectSearchActivity> {
+    return ApiClient.get<ProspectSearchActivity>(`${BASE_URL}/activity`)
+  }
+
+  /**
+   * Accept and refuse several candidates at once.
+   * @param payload - Candidates to accept and candidates to refuse.
+   * @returns How many decisions were applied, and the ones the server refused with their reason.
+   */
+  static async decideCandidates(payload: ProspectSearchDecisionsPayload): Promise<ProspectSearchDecisionsResult> {
+    return ApiClient.post<ProspectSearchDecisionsResult>(`${BASE_URL}/candidates/decisions`, payload)
   }
 }
