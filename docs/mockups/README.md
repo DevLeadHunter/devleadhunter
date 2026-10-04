@@ -22,8 +22,9 @@ Ticket Asana « [IA Code] Présence humaine sur la démo ». Trois briques pour 
 
 | Fichier | Ce qu'il montre | État |
 |---|---|---|
-| `prospect-search/recherche-v2.html` | La nouvelle version de l'écran de recherche, sur les données de la vraie recherche n° 2 : direction A « la phrase » (objectif écrit en une phrase, six chiffres cliquables, un tableau, volet de preuves), B « le parcours » (quatre étapes, tri un par un), C « le fil » (ville par ville) ; thèmes clair et sombre | En attente (avis donné : A, avec le tri de B) |
-| `prospect-search/NOTE.md` | Le pourquoi, les trois directions, l'avis donné, les trois points à trancher | À jour |
+| `prospect-search/vivier-v3.html` | **Le vivier de leads en direct** (maquette qui vit : les leads arrivent, on accepte, on refuse, on annule) : feuille unique, bandeau de recherche, cinq chiffres, onglets à compteur, tableau avec monogramme et bord coloré, volet de preuves, clavier ; et depuis une autre page, carte de suivi dans le menu et carte flottante pour trier | En attente |
+| `prospect-search/recherche-v2.html` | Première proposition : la phrase, le parcours, le fil | **Refusée le 04/10** (« aucune ne me plaît ») |
+| `prospect-search/NOTE.md` | Ce qui est demandé, ce que montre le vivier, d'où vient chaque élément (dibodev.fr, PrePeers B2B, web), ce que cela change, les points à trancher | À jour |
 
 ### Ailleurs
 
