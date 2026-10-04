@@ -5,7 +5,7 @@ Personal prospect research tool for freelance web developers. Built with Nuxt.js
 ## Features
 
 - 🔐 Authentication (Login, Signup)
-- 🔍 Prospect Search with filters (category, city, max results)
+- 🔍 Objective-driven prospect search (trades, country, count per trade, contact channel)
 - 📧 Email Campaigns (create, manage, bulk send)
 - 👤 User Profile Management
 - 📱 Fully Responsive Design
@@ -93,7 +93,7 @@ const myRef: Ref<string> = ref('')
 Pinia stores in `app/stores/`:
 
 - `user` - Authentication and user data
-- `prospectSearch` - Prospect search results and filters
+- `prospectSearch` - Objective-driven prospect search (followed search, recent searches, Facebook page reading)
 - `campaigns` - Email campaigns
 - `automations` - Automation rules and send policy
 - `coverage` - Coverage map zones

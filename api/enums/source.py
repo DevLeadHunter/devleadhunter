@@ -16,6 +16,7 @@ class Source(str, Enum):
         OSM: OpenStreetMap
         FACEBOOK: Facebook pages discovered via a search engine (site:facebook.com) —
             targets businesses whose only web presence is their Facebook page.
+        SEARCH: The objective-driven search, which merges every source and verifies each business.
         ALL: All sources
     """
 
@@ -35,3 +36,4 @@ class Source(str, Enum):
     ALL = "all"
     AUTO = "auto"
     BRIGHTDATA = "brightdata"
+    SEARCH = "search"

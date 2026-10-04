@@ -246,15 +246,4 @@ export class ProspectsService {
   static async deleteProspect(prospectId: number): Promise<void> {
     await ApiClient.delete(`${BASE_URL}/${prospectId}`)
   }
-
-  /**
-   * Remember a Facebook page rejected by the search match filter (no email / has
-   * a website), so future Facebook discoveries skip it instead of re-testing it.
-   * @param pageUrl - Canonical Facebook page URL.
-   * @param reason - Why the page is unusable.
-   * @returns A promise resolved once the exclusion is stored.
-   */
-  static async excludeFacebookPage(pageUrl: string, reason: 'no_email' | 'has_website'): Promise<void> {
-    await ApiClient.post<{ status: string }>(`${BASE_URL}/facebook-exclusions`, { page_url: pageUrl, reason })
-  }
 }

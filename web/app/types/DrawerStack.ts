@@ -2,7 +2,7 @@ import type { EmailLog, EmailTemplate, Prospect, User } from '~/types'
 import type { AiAssistantRequestItem, AiAssistantSummary, AssistantSubscription } from '~/types/AiAssistant'
 import type { Order } from '~/services/ordersService'
 import type { SmsMessage } from '~/services/smsService'
-import type { SearchProspectsPrefill } from '~/types/SearchProspectsDrawer'
+import type { SearchProspectsPrefill } from '~/types/UiSearchProspectsDrawer'
 import type { CampaignDetailResponse } from '~/services/campaignService'
 import type { SelectFieldOption } from '~/types/SelectField'
 

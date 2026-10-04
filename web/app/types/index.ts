@@ -1,5 +1,3 @@
-export type BusinessCategory = 'restaurant' | 'plombier' | 'electricien' | 'coiffeur' | 'garage' | 'all'
-
 /** Mirrors the backend ``Source`` enum ; ``all`` is a filter-only sentinel, never stored. */
 export type ProspectSource =
   | 'google'
@@ -9,6 +7,7 @@ export type ProspectSource =
   | 'auto'
   | 'brightdata'
   | 'facebook'
+  | 'search'
   | 'manual'
   | 'all'
 
@@ -197,13 +196,6 @@ export type ManualProspectAddForm = {
   business_name: string
   google_maps_url: string
   city: string
-}
-
-export type ProspectSearchFilters = {
-  category?: BusinessCategory
-  city?: string
-  source?: ProspectSource
-  maxResults?: number
 }
 
 export type UserRole = 'USER' | 'ADMIN' | 'SUPER_ADMIN'

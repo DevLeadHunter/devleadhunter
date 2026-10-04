@@ -47,9 +47,4 @@ uvicorn main:app --reload --host 0.0.0.0 --port 8000
 ```bash
 # Health check
 curl http://localhost:8000/health
-
-# Recherche de prospects
-curl -X POST http://localhost:8000/api/v1/prospects/search \
-  -H "Content-Type: application/json" \
-  -d '{"category":"restaurant","city":"Paris","max_results":10}'
 ```

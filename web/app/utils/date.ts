@@ -142,6 +142,20 @@ export function formatShortMonthDayTime(iso: string | null | undefined): string 
 }
 
 /**
+ * Format an ISO date as `14:32:07` — the time alone, to the second.
+ * @param iso - ISO-8601 date string, or a falsy value for an unknown date.
+ * @returns The formatted time, or an empty string when `iso` is falsy.
+ */
+export function formatClockTime(iso: string | null | undefined): string {
+  if (!iso) return ''
+  return parseApiDate(iso).toLocaleTimeString(LOCALE, {
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+  })
+}
+
+/**
  * Format an ISO date as `01 juin` — day and month only.
  * @param iso - ISO-8601 date string, or a falsy value for an unknown date.
  * @returns The formatted date, or an empty string when `iso` is falsy.

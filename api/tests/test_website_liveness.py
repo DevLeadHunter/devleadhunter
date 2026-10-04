@@ -145,8 +145,31 @@ def test_verdict_is_cached_per_url() -> None:
     service = WebsiteLivenessService()
     _FakeAsyncClient.response = _FakeResponse(status_code=404)
     assert _check(service, "https://meme-site.fr") is WebsiteStatus.DEAD
+    requests_of_first_check = len(_FakeAsyncClient.requested_urls)
     assert _check(service, "https://meme-site.fr") is WebsiteStatus.DEAD
-    assert len(_FakeAsyncClient.requested_urls) == 1
+    assert len(_FakeAsyncClient.requested_urls) == requests_of_first_check
+
+
+def test_a_site_is_only_dead_once_its_other_address_forms_failed_too() -> None:
+    service = WebsiteLivenessService()
+    _FakeAsyncClient.response = _FakeResponse(status_code=404)
+    assert _check(service, "http://ancienne-adresse.ch/") is WebsiteStatus.DEAD
+    assert _FakeAsyncClient.requested_urls == [
+        "http://ancienne-adresse.ch/",
+        "https://ancienne-adresse.ch/",
+        "https://www.ancienne-adresse.ch/",
+        "http://www.ancienne-adresse.ch/",
+    ]
+
+
+def test_a_listing_keeping_the_http_address_of_an_https_site_is_live(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Seen on a real candidate: http://… answered 500, https://… answered 200."""
+
+    async def answer_by_scheme(self: _FakeAsyncClient, url: str) -> _FakeResponse:
+        return _FakeResponse(status_code=200 if url.startswith("https://") else 500)
+
+    monkeypatch.setattr(_FakeAsyncClient, "get", answer_by_scheme)
+    assert _check(WebsiteLivenessService(), "http://fv-entretien.ch/") is WebsiteStatus.LIVE
 
 
 def test_live_foreign_directory_listing_is_placeholder() -> None:

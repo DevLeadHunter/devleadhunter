@@ -1,26 +1,12 @@
 """
-Base scraper class for web scraping operations.
+Base scraper class for browser-driven scraping.
 """
 
-from abc import ABC, abstractmethod
-from collections.abc import Callable
-from typing import TYPE_CHECKING, Optional
-
 from enums.source import Source
-from models.prospect import ProspectCreate
-
-if TYPE_CHECKING:
-    from services.scrape_progress import ScrapeProgressReporter
 
 
-class BaseScraper(ABC):
-    """
-    Abstract base class for all scrapers.
-
-    This class defines the interface that all scrapers must implement.
-    Concrete scrapers should inherit from this class and implement
-    the required methods.
-    """
+class BaseScraper:
+    """Carries what every browser-driven scraper shares: its source and its running state."""
 
     def __init__(self, source: Source):
         """
@@ -31,34 +17,6 @@ class BaseScraper(ABC):
         """
         self.source = source
         self._is_running = False
-
-    @abstractmethod
-    async def scrape(
-        self,
-        category: str,
-        city: str,
-        max_results: int = 50,
-        *,
-        country: str = "FR",
-        only_without_website: bool = True,
-        progress: Optional["ScrapeProgressReporter"] = None,
-        should_stop: Callable[[], bool] | None = None,
-    ) -> list[ProspectCreate]:
-        """
-        Scrape prospects from the source.
-
-        Args:
-            category: Business category to search for
-            city: City to search in
-            max_results: Maximum number of results to return
-            country: ISO alpha-2 country of the search (FR, CH, BE) — disambiguates the
-                     city in queries; France-only sources return nothing for other countries
-            only_without_website: When True, skip prospects that already have a website
-
-        Returns:
-            List of ProspectCreate objects
-        """
-        raise NotImplementedError("Subclasses must implement scrape method")
 
     @property
     def is_running(self) -> bool:

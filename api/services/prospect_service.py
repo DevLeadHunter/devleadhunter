@@ -12,7 +12,6 @@ from models.email_unsubscribe import EmailUnsubscribe
 from models.prospect import Prospect, ProspectCreate, ProspectUpdate
 from models.prospect_db import ProspectDB
 from models.prospect_enrichment import ProspectEnrichment
-from models.search import ProspectSearchRequest
 from models.sms_suppression import SmsSuppression
 from models.user import User
 from services.activity_log_service import CATEGORY_PROSPECT, STATUS_INFO, STATUS_WARNING, activity_log_service
@@ -47,47 +46,6 @@ class ProspectService:
     def __init__(self):
         """Initialize the prospect service."""
         pass
-
-    async def search_prospects(
-        self, db: Session, request: ProspectSearchRequest, user_id: int | None = None
-    ) -> list[Prospect]:
-        """
-        Search for prospects based on given criteria.
-
-        Args:
-            db: Database session
-            request: Search criteria including category, city, and max results
-            user_id: Optional user ID to filter prospects by user
-
-        Returns:
-            List of matching prospects
-
-        Example:
-            >>> request = ProspectSearchRequest(category="restaurant", city="Paris")
-            >>> results = await service.search_prospects(db, request)
-        """
-        query = db.query(ProspectDB)
-
-        # Filter by user if provided
-        if user_id is not None:
-            query = query.filter(ProspectDB.user_id == user_id)
-
-        # Filter by category (partial match)
-        if request.category:
-            query = query.filter(ProspectDB.category.ilike(f"%{request.category}%"))
-
-        # Filter by city
-        if request.city:
-            query = query.filter(ProspectDB.city.ilike(f"%{request.city}%"))
-
-        # Order by creation date (most recent first)
-        query = query.order_by(ProspectDB.created_at.desc())
-
-        # Limit results
-        db_prospects = query.limit(request.max_results).all()
-
-        # Convert to Pydantic models
-        return [Prospect.model_validate(p) for p in db_prospects]
 
     async def get_all_prospects(
         self,

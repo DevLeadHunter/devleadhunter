@@ -951,7 +951,7 @@ watch([searchQuery, filterCity, filterCategory, filterWebsite], (): void => {
   currentPage.value = 1
 })
 
-/** Open the prospect-search drawer (scraping) without leaving the tunnel. */
+/** Open the prospect-search drawer without leaving the tunnel. */
 function openSearchDrawer(): void {
   drawerStack.push({ kind: 'search-prospects' })
 }
@@ -974,10 +974,11 @@ async function reloadEmailTemplates(): Promise<void> {
 
 /**
  * Reload the selectable prospects (unused only), preserving the selection.
+ * @param isBackgroundRefresh - True to keep the table in place instead of showing the loader.
  * @returns A promise resolved once reloaded.
  */
-async function reloadProspects(): Promise<void> {
-  isLoadingProspects.value = true
+async function reloadProspects(isBackgroundRefresh: boolean = false): Promise<void> {
+  if (!isBackgroundRefresh) isLoadingProspects.value = true
   try {
     const [prospectList, usedIds]: [Prospect[], number[]] = await Promise.all([
       ProspectsService.listProspects(),
@@ -992,11 +993,11 @@ async function reloadProspects(): Promise<void> {
   }
 }
 
-// A search launched from the « Chercher plus » drawer just finished — refresh.
+// A search launched from the « Chercher plus » drawer keeps creating prospects while it runs.
 watch(
-  (): number => searchStore.completedSignal,
+  (): number => searchStore.prospectsCreatedSignal,
   (): void => {
-    void reloadProspects()
+    reloadProspects(true)
   },
 )
 

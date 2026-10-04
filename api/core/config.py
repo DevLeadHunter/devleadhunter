@@ -332,6 +332,14 @@ class Settings(BaseSettings):
         ),
     )
 
+    # Prospect search: the Facebook pages of candidates are read by a browser. In production the
+    # desktop app does it (the VPS cannot run Chrome); an API running on a workstation can do it itself.
+    prospect_search_local_browser: bool = Field(
+        default=False,
+        alias="PROSPECT_SEARCH_LOCAL_BROWSER",
+        description="When True, this API process reads the Facebook pages of search candidates with its own Chrome",
+    )
+
     # Nodriver / Chrome scraping (see scrappers.nodriver_browser)
     scraper_browser_headless: bool = Field(
         default=False,
