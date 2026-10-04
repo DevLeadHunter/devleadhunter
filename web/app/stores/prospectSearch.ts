@@ -287,6 +287,10 @@ export const useProspectSearchStore = defineStore('prospectSearch', () => {
         ),
       })
       await refreshCurrentSearch()
+    } catch (err: unknown) {
+      // A refused decision may still have moved the candidate (the business became a prospect meanwhile).
+      await refreshCurrentSearch()
+      throw err
     } finally {
       busyCandidateIds.value = busyCandidateIds.value.filter((id: number): boolean => id !== candidateId)
     }

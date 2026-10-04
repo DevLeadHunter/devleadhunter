@@ -216,6 +216,7 @@ class ProspectSearchRunner:
             seed=self._search_id,
         )
         for town in towns:
+            self._reload_counts()
             if self._is_filled(state, profile):
                 trade_progress["stop_reason"] = None
                 return
@@ -236,7 +237,6 @@ class ProspectSearchRunner:
 
     async def _scan_town(self, state: _RunState, profile: TradeProfile, town: str) -> None:
         """Read every source of one town for one trade, verifying candidates as they come."""
-        self._reload_counts()
         self._log(f"{profile.label} · {town} : recherche en cours.")
         self._flush()
         companies = await self._registry_companies(state, profile, town)
