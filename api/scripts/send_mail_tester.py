@@ -39,6 +39,7 @@ from services.email_layout import EmailLayout
 from services.email_sending_service import EmailSendingService
 from services.email_signatures import render_signature_html
 from services.email_variables import EmailVariables
+from services.french_elision import FrenchElision
 from services.resend_service import ResendService
 from services.sending_identity import SendingIdentity, resolve_sending_identity
 from services.unsubscribe_service import unsubscribe_service
@@ -76,6 +77,7 @@ def _render(content: str) -> str:
     Returns:
         The rendered content.
     """
+    content = FrenchElision.apply(content, _SAMPLE_VARIABLES)
     for name, value in _SAMPLE_VARIABLES.items():
         content = content.replace("{" + name + "}", value)
     return content

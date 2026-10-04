@@ -293,7 +293,7 @@ def test_a_preview_shows_the_email_as_it_leaves(db: Session) -> None:
             EmailVariables.EXPIRY_DATE: "12 octobre",
         },
     )
-    assert preview.subject == "le site de Le Gourmet"
+    assert preview.subject == "le site du Gourmet"
     assert _row_labels(preview.body_html) == ["Prix", "Date", "Réponse"]
     assert "Léo Guillaume" in preview.body_html
     assert "background-color:#6f5fe0" in preview.body_html

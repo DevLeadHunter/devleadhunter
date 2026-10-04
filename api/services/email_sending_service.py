@@ -18,6 +18,7 @@ from services import reply_capture_service
 from services.demo_identity import posthog_distinct_id, resolve_demo_slug
 from services.email_attachment import EmailAttachment
 from services.encryption_service import encryption_service
+from services.french_elision import FrenchElision
 from services.gmail_oauth_service import GmailOAuthService
 from services.notification_service import notification_service
 from services.posthog_service import posthog_service
@@ -418,6 +419,8 @@ class EmailSendingService:
     def replace_variables(self, text: str, variables: dict) -> str:
         """Replace variables in text with values, in the regional French of the country the map carries.
 
+        The word before a variable is first elided or contracted for its value (« d'Atelier Dupont »).
+
         Args:
             text: The template subject or body, with ``{variables}``.
             variables: The substitution map; a prospect's map carries his country (a Québécois reads « soumission »).
@@ -425,6 +428,7 @@ class EmailSendingService:
         Returns:
             The rendered text.
         """
+        text = FrenchElision.apply(text, variables)
         for key, value in variables.items():
             text = text.replace(f"{{{key}}}", str(value))
         return RegionalLexicon.localize_rendered(text, variables)

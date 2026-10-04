@@ -24,6 +24,7 @@ from schemas.email_template import (
 from services.email_layout import EmailLayout
 from services.email_signatures import preferred_signature_id, render_signature_html
 from services.email_variables import EmailVariables
+from services.french_elision import FrenchElision
 from services.unsubscribe_service import unsubscribe_service
 
 _VARIABLE_PATTERN = re.compile(r"\{([a-zA-Z_][a-zA-Z0-9_]*)\}")
@@ -185,6 +186,8 @@ def render_preview(
         The rendered subject and body.
     """
     variables: dict[str, str] = EmailVariables.preview_values(sample_values)
+    subject = FrenchElision.apply(subject, variables)
+    body_html = FrenchElision.apply(body_html, variables)
     for key, value in variables.items():
         subject = subject.replace(f"{{{key}}}", value)
         body_html = body_html.replace(f"{{{key}}}", value)

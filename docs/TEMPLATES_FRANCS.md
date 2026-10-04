@@ -87,6 +87,10 @@ Clés par défaut dans le code et la configuration du compte admin :
 - Rappel court est validé et épinglé, avec un jumeau vidéo, « Rappel court - vidéo ».
 - Réceptionniste : la moitié du casting est masculine (Hugo, Marc, Nathan). Les mots genrés viennent de deux variables accordées au prénom, `{receptionniste}` (« une réceptionniste » ou « un réceptionniste ») et `{assistant_virtuel}` (« une assistante virtuelle » ou « un assistant virtuel »). Le texte nomme la réceptionniste par son prénom plutôt que par « il » ou « elle », et « pas une personne » est retiré partout. Deux modèles s'ajoutent : « Réceptionniste IA - franc », calqué sur le mail franc des sites, et « Réceptionniste IA - en bref », qui liste en mots-clés tout ce que fait la réceptionniste.
 
+### Rendu du mot placé avant une variable (05/10)
+
+Un modèle écrit « le site de {entreprise} », « à {ville} », « que {prenom_receptionniste} ». Au rendu de chaque email (envoi d'une campagne, relance, aperçu), le mot suit la valeur reçue : « d'Atelier Dupont » devant une voyelle, « du Jardin de Kyllian » devant « Le », « des Jardins Tournaisiens » devant « Les », « au Mans », « qu'Inès ». Toute autre valeur garde le mot écrit : « de La Bonne Frite », « de L'Oasis », « de Haut-Plateau ». Les modèles ne sont pas réécrits (`api/services/french_elision.py`).
+
 ### Emails, module sites web (14 modèles, tous francs)
 
 Premier email : **Franc - premier contact** (recommandé, épinglé en tête, repris du modèle 30 avec `{prix}` et `{date_expiration}`), Visibilité - on vous cherche, Crédibilité - la première impression, Vidéo - je vous montre, Site en panne - premier email, Refonte - premier email, Franc - dernier rappel avant retrait (repris du 33 ; catégorie premier email comme le 33, parce qu'il ouvre sa propre campagne vers les prospects dont la démo expire).
