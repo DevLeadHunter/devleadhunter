@@ -18,6 +18,13 @@ Ticket Asana « [IA Code] Présence humaine sur la démo ». Trois briques pour 
 | `human-presence/email-frank-dibodev.html` | Variante (b) refaite le 03/10 au soir : le mail franc dans la mise en page de l'accusé de réception de dibodev.fr (carte blanche, bouton violet, trois étapes, signature) | En attente |
 | `human-presence/NOTE.md` | Le pourquoi, les huit choix à trancher, l'avis donné sur chacun, l'effort et le plan d'implémentation | À jour |
 
+### Trouver des prospects (`prospect-search/`)
+
+| Fichier | Ce qu'il montre | État |
+|---|---|---|
+| `prospect-search/recherche-v2.html` | La nouvelle version de l'écran de recherche, sur les données de la vraie recherche n° 2 : direction A « la phrase » (objectif écrit en une phrase, six chiffres cliquables, un tableau, volet de preuves), B « le parcours » (quatre étapes, tri un par un), C « le fil » (ville par ville) ; thèmes clair et sombre | En attente (avis donné : A, avec le tri de B) |
+| `prospect-search/NOTE.md` | Le pourquoi, les trois directions, l'avis donné, les trois points à trancher | À jour |
+
 ### Ailleurs
 
 - **Espace client de la réceptionniste** : la refonte du 01/10 (tableau de bord clair, quatre chiffres sur 30 jours, graphique) a été envoyée en captures, retour attendu avant de styliser les écrans secondaires. Maquettes publiées : v6 https://claude.ai/artifact/MPU1yQjGhRAUpDPFj6wizR et v7 https://claude.ai/artifact/6XhTx9kxyx7r7t1xiuhqPX.

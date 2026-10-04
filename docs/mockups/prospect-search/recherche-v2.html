@@ -1,0 +1,403 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Maquette · Trouver des prospects (v2)</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link
+      href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      :root {
+        --app-bg: #f4f1e9; --app-surface: #fbf9f3; --app-surface-2: #ede9de; --app-ink: #1d1a14; --app-ink-soft: #6e6759;
+        --app-faint: #b7ae9c; --app-line: #e1dbcc; --app-line-soft: #eae5d8; --app-accent: #e8a33c; --app-accent-ink: #9c6b14;
+        --app-accent-soft: rgba(232, 163, 60, 0.14); --app-green: #2f7d4e; --app-green-soft: rgba(47, 125, 78, 0.12);
+        --app-red: #bf4d33; --app-red-soft: rgba(191, 77, 51, 0.12); --app-btn-bg: #1d1a14; --app-btn-text: #fbf9f3;
+        --app-overlay: rgba(29, 26, 20, 0.45); --app-shadow-lift: 0 24px 56px rgba(29, 26, 20, 0.18), 0 2px 8px rgba(29, 26, 20, 0.08);
+      }
+      :root[data-theme='dark'] {
+        --app-bg: #131312; --app-surface: #1b1b1a; --app-surface-2: #242423; --app-ink: #f0efeb; --app-ink-soft: #a1a09a;
+        --app-faint: #565550; --app-line: #2b2b29; --app-line-soft: #232322; --app-accent-ink: #ecb865;
+        --app-accent-soft: rgba(232, 163, 60, 0.13); --app-green: #55a878; --app-green-soft: rgba(85, 168, 120, 0.15);
+        --app-red: #d76a55; --app-red-soft: rgba(215, 106, 85, 0.15); --app-btn-bg: #f0efeb; --app-btn-text: #131312;
+        --app-overlay: rgba(0, 0, 0, 0.65); --app-shadow-lift: 0 24px 56px rgba(0, 0, 0, 0.65), 0 2px 8px rgba(0, 0, 0, 0.4);
+      }
+      * { box-sizing: border-box; margin: 0; }
+      body { background: var(--app-bg); color: var(--app-ink); font: 14px/1.5 'IBM Plex Sans', system-ui, sans-serif; }
+      button { font: inherit; color: inherit; background: none; border: 0; cursor: pointer; }
+      .mono { font-family: 'IBM Plex Mono', ui-monospace, monospace; }
+      .label { font: 500 0.66rem/1.4 'IBM Plex Mono', monospace; letter-spacing: 0.12em; text-transform: uppercase; color: var(--app-ink-soft); }
+      .soft { color: var(--app-ink-soft); }
+
+      /* Bandeau de maquette (hors application) */
+      .mock-bar { position: sticky; top: 0; z-index: 40; display: flex; flex-wrap: wrap; align-items: center; gap: 10px 16px; padding: 10px 16px; background: #111; color: #f3f3f0; }
+      .mock-bar strong { font-weight: 600; }
+      .mock-switch { display: flex; gap: 4px; padding: 3px; border-radius: 999px; background: #262624; }
+      .mock-switch button { padding: 5px 12px; border-radius: 999px; color: #b9b8b2; font-size: 13px; font-weight: 500; }
+      .mock-switch button[aria-pressed='true'] { background: #f3f3f0; color: #111; }
+      .mock-pitch { padding: 10px 16px; background: #1c1c1a; color: #d6d5cf; font-size: 13px; }
+
+      /* Coque de l'application */
+      .app { display: grid; grid-template-columns: 232px minmax(0, 1fr); min-height: 100vh; }
+      .side { border-right: 1px solid var(--app-line); padding: 18px 12px; }
+      .brand { display: flex; align-items: center; gap: 8px; padding: 0 8px 14px; font-weight: 600; }
+      .side .label { padding: 14px 8px 6px; }
+      .nav { display: flex; align-items: center; gap: 10px; padding: 7px 8px; border-radius: 8px; color: var(--app-ink-soft); }
+      .nav svg { width: 16px; height: 16px; }
+      .nav.is-active { background: var(--app-surface-2); color: var(--app-ink); font-weight: 500; }
+      .nav .new { margin-left: auto; font: 500 0.6rem 'IBM Plex Mono', monospace; letter-spacing: 0.08em; color: var(--app-accent-ink); }
+      main { padding: 28px 32px 64px; max-width: 1180px; }
+      h1 { margin-top: 6px; font-size: 22px; font-weight: 600; letter-spacing: -0.01em; }
+      .lede { margin-top: 4px; color: var(--app-ink-soft); }
+      .card { margin-top: 20px; border: 1px solid var(--app-line); border-radius: 12px; background: var(--app-surface); }
+      .btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; height: 36px; padding: 0 16px; border-radius: 999px; font-weight: 600; white-space: nowrap; }
+      .btn svg { width: 15px; height: 15px; }
+      .btn.primary { background: var(--app-btn-bg); color: var(--app-btn-text); }
+      .btn.secondary { border: 1px solid var(--app-line); background: var(--app-surface); font-weight: 500; }
+      .btn.big { height: 44px; padding: 0 22px; }
+      .badge { display: inline-flex; align-items: center; gap: 6px; padding: 2px 10px; border-radius: 999px; background: var(--app-surface-2); color: var(--app-ink-soft); font-size: 12px; font-weight: 500; white-space: nowrap; }
+      .badge.ok { background: var(--app-green-soft); color: var(--app-green); }
+      .badge.warn { background: var(--app-accent-soft); color: var(--app-accent-ink); }
+      .badge.no { background: var(--app-red-soft); color: var(--app-red); }
+
+      /* A — La phrase */
+      .objective { padding: 22px 24px; }
+      .sentence { font-size: 20px; line-height: 2.05; letter-spacing: -0.01em; }
+      .tok { display: inline-flex; align-items: center; gap: 5px; padding: 0 3px; font-weight: 600; border-bottom: 2px solid var(--app-ink); line-height: 1.25; }
+      .tok svg { width: 13px; height: 13px; color: var(--app-ink-soft); }
+      .tok.chip { padding: 1px 10px 1px 12px; border: 0; border-radius: 999px; background: var(--app-surface-2); font-size: 17px; }
+      .tok.add { border-bottom-style: dashed; border-color: var(--app-faint); color: var(--app-ink-soft); font-weight: 500; }
+      .objective-foot { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 18px; margin-top: 18px; padding-top: 18px; border-top: 1px solid var(--app-line-soft); }
+      .result-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; padding: 18px 24px 14px; }
+      .result-head h2 { font-size: 16px; font-weight: 600; }
+      .live { display: flex; align-items: center; gap: 8px; padding: 0 24px 14px; color: var(--app-ink-soft); font-size: 13px; }
+      .live svg { width: 14px; height: 14px; }
+      .funnel { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); border-top: 1px solid var(--app-line); border-bottom: 1px solid var(--app-line); }
+      .funnel button { padding: 14px 16px 12px; text-align: left; border-right: 1px solid var(--app-line-soft); }
+      .funnel button:last-child { border-right: 0; }
+      .funnel b { display: block; font: 500 24px/1.1 'IBM Plex Mono', monospace; }
+      .funnel span { display: flex; align-items: center; gap: 6px; margin-top: 4px; color: var(--app-ink-soft); font-size: 12px; }
+      .funnel button[aria-pressed='true'] { box-shadow: inset 0 -2px 0 var(--app-ink); background: var(--app-surface-2); }
+      .funnel button[aria-pressed='true'] span { color: var(--app-ink); }
+      .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--app-accent); }
+      table { width: 100%; border-collapse: collapse; }
+      th { padding: 10px 16px; text-align: left; font: 500 0.66rem 'IBM Plex Mono', monospace; letter-spacing: 0.12em; text-transform: uppercase; color: var(--app-ink-soft); }
+      th:first-child, td:first-child { padding-left: 24px; }
+      td { padding: 11px 16px; border-top: 1px solid var(--app-line-soft); vertical-align: middle; }
+      tbody tr { cursor: pointer; }
+      tbody tr:hover { background: color-mix(in srgb, var(--app-surface-2) 55%, transparent); }
+      td .name { font-weight: 600; }
+      .nowrap { white-space: nowrap; }
+      td small { display: block; color: var(--app-ink-soft); font-size: 12px; }
+      .proof { margin-left: 6px; color: var(--app-ink-soft); font-size: 12px; }
+      .table-foot { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; padding: 12px 24px; border-top: 1px solid var(--app-line-soft); color: var(--app-ink-soft); font-size: 13px; }
+      .history td, .history th { padding-top: 9px; padding-bottom: 9px; }
+
+      /* Volet de la fiche candidat */
+      .scrim { position: fixed; inset: 0; z-index: 50; background: var(--app-overlay); opacity: 0; pointer-events: none; transition: opacity 0.2s; }
+      .drawer { position: fixed; top: 0; right: 0; bottom: 0; z-index: 51; display: flex; flex-direction: column; width: min(440px, 100%); border-left: 1px solid var(--app-line); background: var(--app-surface); box-shadow: var(--app-shadow-lift); transform: translateX(100%); transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1); }
+      body.has-drawer .scrim { opacity: 1; pointer-events: auto; }
+      body.has-drawer .drawer { transform: none; }
+      .drawer header { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; padding: 18px 20px; border-bottom: 1px solid var(--app-line); }
+      .drawer h3 { font-size: 16px; font-weight: 600; }
+      .drawer .body { flex: 1; overflow: auto; padding: 16px 20px; }
+      .fact { display: flex; gap: 10px; padding: 9px 0; border-bottom: 1px solid var(--app-line-soft); }
+      .fact svg { flex: none; width: 15px; height: 15px; margin-top: 3px; color: var(--app-ink-soft); }
+      .fact a { color: inherit; text-underline-offset: 2px; }
+      .drawer footer { display: flex; gap: 8px; padding: 14px 20px; border-top: 1px solid var(--app-line); }
+      .drawer footer .btn { flex: 1; height: 44px; }
+
+      /* B — Le parcours */
+      .steps { display: flex; flex-wrap: wrap; gap: 6px 26px; margin-top: 20px; }
+      .steps button { display: flex; align-items: center; gap: 10px; color: var(--app-ink-soft); font-weight: 500; }
+      .steps i { display: grid; place-items: center; width: 26px; height: 26px; border: 1px solid var(--app-line); border-radius: 50%; font: 500 12px 'IBM Plex Mono', monospace; font-style: normal; }
+      .steps button[aria-current='step'] { color: var(--app-ink); }
+      .steps button[aria-current='step'] i { border-color: var(--app-ink); background: var(--app-btn-bg); color: var(--app-btn-text); }
+      .steps button.done i { background: var(--app-surface-2); }
+      .panel { padding: 26px 28px; }
+      .panel h2 { font-size: 18px; font-weight: 600; }
+      .choices { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; margin-top: 12px; }
+      .choice { display: flex; flex-direction: column; gap: 8px; padding: 14px; border: 1px solid var(--app-line); border-radius: 12px; text-align: left; font-weight: 500; }
+      .choice svg { width: 18px; height: 18px; color: var(--app-ink-soft); }
+      .choice.on { border-color: var(--app-ink); background: var(--app-surface-2); }
+      .choice.plus { border-style: dashed; color: var(--app-ink-soft); }
+      .group { margin-top: 24px; }
+      .hero-count { font: 500 56px/1 'IBM Plex Mono', monospace; letter-spacing: -0.03em; }
+      .bar { height: 8px; margin-top: 16px; border-radius: 999px; background: var(--app-surface-2); overflow: hidden; }
+      .bar div { height: 100%; border-radius: 999px; background: var(--app-ink); }
+      .triage { max-width: 620px; margin: 0 auto; }
+      .triage .actions { display: flex; gap: 10px; margin-top: 20px; }
+      .triage .actions .btn { flex: 1; }
+      kbd { padding: 1px 6px; border: 1px solid var(--app-line); border-radius: 5px; font: 500 11px 'IBM Plex Mono', monospace; color: var(--app-ink-soft); }
+
+      /* C — Le fil */
+      .feed { padding: 8px 24px 20px; }
+      .town { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 12px; margin-top: 18px; padding-bottom: 8px; border-bottom: 1px solid var(--app-line); }
+      .town h3 { font-size: 15px; font-weight: 600; }
+      .entry { display: grid; grid-template-columns: 64px 12px minmax(0, 1fr) auto; align-items: baseline; gap: 12px; padding: 9px 0; border-bottom: 1px solid var(--app-line-soft); }
+      .entry time { color: var(--app-ink-soft); font: 400 12px 'IBM Plex Mono', monospace; }
+      .entry .pin { width: 8px; height: 8px; border-radius: 50%; background: var(--app-faint); }
+      .entry .pin.ok { background: var(--app-green); }
+      .entry .pin.warn { background: var(--app-accent); }
+      .entry .pin.no { background: var(--app-red); }
+
+      @media (max-width: 1000px) {
+        .app { grid-template-columns: 1fr; }
+        .side { display: none; }
+      }
+      @media (max-width: 700px) {
+        main { padding: 20px 16px 48px; }
+        .sentence { font-size: 17px; }
+        .funnel { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+        .funnel button:nth-child(3) { border-right: 0; }
+        .funnel button:nth-child(-n + 3) { border-bottom: 1px solid var(--app-line-soft); }
+        .hide-sm { display: none; }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="mock-bar">
+      <strong>Maquette · Trouver des prospects</strong>
+      <div class="mock-switch" id="direction-switch">
+        <button data-direction="A" aria-pressed="true">A · La phrase</button>
+        <button data-direction="B" aria-pressed="false">B · Le parcours</button>
+        <button data-direction="C" aria-pressed="false">C · Le fil</button>
+      </div>
+      <div class="mock-switch" id="theme-switch">
+        <button data-theme="light" aria-pressed="true">Clair</button>
+        <button data-theme="dark" aria-pressed="false">Sombre</button>
+      </div>
+    </div>
+    <p class="mock-pitch" id="pitch"></p>
+
+    <div class="app">
+      <aside class="side">
+        <div class="brand"><i data-lucide="hexagon"></i> devleadhunter</div>
+        <p class="label">Pilotage</p>
+        <div class="nav"><i data-lucide="layout-dashboard"></i> Tableau de bord</div>
+        <div class="nav"><i data-lucide="workflow"></i> Automatisations</div>
+        <p class="label">Prospection</p>
+        <div class="nav is-active"><i data-lucide="search"></i> Trouver des prospects</div>
+        <div class="nav"><i data-lucide="users"></i> Mes prospects</div>
+        <div class="nav"><i data-lucide="map"></i> Carte de prospection</div>
+        <div class="nav"><i data-lucide="app-window"></i> Sites démo</div>
+        <div class="nav"><i data-lucide="megaphone"></i> Campagnes</div>
+        <div class="nav"><i data-lucide="send"></i> Suivi des emails</div>
+        <div class="nav"><i data-lucide="message-square-text"></i> Suivi des SMS</div>
+        <div class="nav"><i data-lucide="banknote"></i> Ventes</div>
+      </aside>
+      <main id="page"></main>
+    </div>
+
+    <div class="scrim" id="scrim"></div>
+    <aside class="drawer" id="drawer" aria-label="Fiche du candidat"></aside>
+
+    <script src="https://unpkg.com/lucide@0.469.0/dist/umd/lucide.min.js"></script>
+    <script>
+      const DATA = {"rows": [{"n": "Flores des Jardins", "t": "paysagiste", "c": null, "s": "kept", "r": null, "d": null, "p": "06 46 •• •• 93", "m": true, "e": "isa•••@gmail.com", "pl": "a", "g": 5.0, "gn": 4, "fb": true, "o": "google_local", "ev": 2}, {"n": "SARL SANCHEZ PAYSAGE", "t": "paysagiste", "c": "Limoges", "s": "kept", "r": null, "d": null, "p": "06 78 •• •• 12", "m": true, "e": "sap•••@gmail.com", "pl": "a", "g": 4.3, "gn": 9, "fb": true, "o": "google_local", "ev": 3}, {"n": "HB espace vert", "t": "paysagiste", "c": "Limoges", "s": "kept", "r": null, "d": null, "p": "06 20 •• •• 41", "m": true, "e": "hbe•••@gmail.com", "pl": "b", "g": 4.9, "gn": 8, "fb": true, "o": "google_local", "ev": 3}, {"n": "Electricité Thibault Mauduit", "t": "electricien", "c": "Limoges", "s": "kept", "r": null, "d": null, "p": "06 16 •• •• 60", "m": true, "e": "thi•••@gmail.com", "pl": "a", "g": 5.0, "gn": 12, "fb": false, "o": "registry_rge", "ev": 2}, {"n": "Smf", "t": "electricien", "c": "Le Palais Sur Vienne", "s": "kept", "r": null, "d": null, "p": "06 74 •• •• 98", "m": true, "e": "abd•••@sfr.fr", "pl": "a", "g": null, "gn": null, "fb": false, "o": "registry_rge", "ev": 1}, {"n": "Ricard", "t": "electricien", "c": "Castres", "s": "kept", "r": null, "d": null, "p": "06 71 •• •• 26", "m": true, "e": "ric•••@orange.fr", "pl": "a", "g": null, "gn": null, "fb": false, "o": "registry_rge", "ev": 1}, {"n": "Limousin Paysage", "t": "paysagiste", "c": "Couzeix", "s": "to_confirm", "r": null, "d": "Un email a été trouvé sans preuve franche qu'il lui appartient : à vous de voir.", "p": "05 55 •• •• 59", "m": false, "e": "con•••@utopiaconsulting.fr", "pl": "c", "g": 4.3, "gn": 25, "fb": true, "o": "google_local", "ev": 2}, {"n": "Cris Elek 23", "t": "electricien", "c": null, "s": "to_confirm", "r": null, "d": "Un site est déclaré sur sa fiche Google, mais il n'a pas été retrouvé : à vérifier.", "p": "06 44 •• •• 13", "m": true, "e": null, "pl": null, "g": 5.0, "gn": 2, "fb": false, "o": "google_local", "ev": 0}, {"n": "Mathieu Hurbe Paysagiste", "t": "paysagiste", "c": null, "s": "set_aside", "r": null, "d": "Portable sans email : gardé pour une campagne SMS.", "p": "06 45 •• •• 30", "m": true, "e": null, "pl": null, "g": 5.0, "gn": 90, "fb": true, "o": "google_local", "ev": 2}, {"n": "MD SERVICES JARDINAGE", "t": "paysagiste", "c": null, "s": "set_aside", "r": null, "d": "Portable sans email : gardé pour une campagne SMS.", "p": "06 50 •• •• 36", "m": true, "e": null, "pl": null, "g": 5.0, "gn": 10, "fb": false, "o": "google_local", "ev": 0}, {"n": "Système D jardin", "t": "paysagiste", "c": "Limoges", "s": "set_aside", "r": null, "d": "Portable sans email : gardé pour une campagne SMS.", "p": "07 44 •• •• 24", "m": true, "e": null, "pl": null, "g": 5.0, "gn": 20, "fb": false, "o": "google_local", "ev": 0}, {"n": "Jardinier limoges entreprise Instants-verts87", "t": "paysagiste", "c": null, "s": "set_aside", "r": null, "d": "Portable sans email : gardé pour une campagne SMS.", "p": "06 03 •• •• 90", "m": true, "e": null, "pl": null, "g": 4.8, "gn": 4, "fb": false, "o": "google_local", "ev": 0}, {"n": "Scholl Entretien parc et jardin", "t": "paysagiste", "c": null, "s": "set_aside", "r": null, "d": "Portable sans email : gardé pour une campagne SMS.", "p": "07 85 •• •• 97", "m": true, "e": null, "pl": null, "g": 5.0, "gn": 6, "fb": false, "o": "google_local", "ev": 0}, {"n": "C.E.P.E.S. 87", "t": "electricien", "c": "Chalus", "s": "set_aside", "r": null, "d": "Email sans portable : gardé pour une campagne email.", "p": null, "m": false, "e": "cep•••@orange.fr", "pl": "a", "g": null, "gn": null, "fb": false, "o": "registry_rge", "ev": 1}, {"n": "REBEYROL CREATEUR ET SOINS DE JARDINS A LIMOGES", "t": "paysagiste", "c": "Le Vigen", "s": "rejected", "r": "has_website", "d": "A déjà un site : http://www.rebeyrol.com/", "p": "05 55 •• •• 83", "m": false, "e": null, "pl": null, "g": 4.7, "gn": 128, "fb": false, "o": "google_local", "ev": 1}, {"n": "Paysagiste Avenir paysage 87 Verneuil-sur-Vienne", "t": "paysagiste", "c": "Verneuil-sur-Vienne", "s": "rejected", "r": "has_website", "d": "A déjà un site : https://www.avenirpaysage87.fr/", "p": "05 32 •• •• 47", "m": false, "e": null, "pl": null, "g": 4.8, "gn": 53, "fb": false, "o": "google_local", "ev": 1}, {"n": "Thibaut Paysage SARL", "t": "paysagiste", "c": "Limoges", "s": "rejected", "r": "has_website", "d": "A déjà un site : http://www.thibaut-paysagiste.fr/", "p": "06 01 •• •• 75", "m": true, "e": null, "pl": null, "g": 3.9, "gn": 58, "fb": false, "o": "google_local", "ev": 1}, {"n": "Mirando élagueur Limoges", "t": "paysagiste", "c": "Limoges", "s": "rejected", "r": "has_website", "d": "A déjà un site : https://mirandoelagueurexpert.fr/", "p": "06 41 •• •• 05", "m": true, "e": null, "pl": null, "g": 4.9, "gn": 114, "fb": false, "o": "google_local", "ev": 1}, {"n": "Au Service du Paysage", "t": "paysagiste", "c": "Boisseuil", "s": "rejected", "r": "has_website", "d": "A déjà un site : http://www.auservicedupaysage.com/?utm_source=gmb", "p": "05 55 •• •• 88", "m": false, "e": null, "pl": null, "g": 4.6, "gn": 118, "fb": false, "o": "google_local", "ev": 1}, {"n": "Leger Daniel", "t": "paysagiste", "c": "Limoges", "s": "rejected", "r": "has_website", "d": "A déjà un site : https://www.paysagiste-legerdaniel.com/", "p": "06 08 •• •• 91", "m": true, "e": "dan•••@gmail.com", "pl": "b", "g": 5.0, "gn": 5, "fb": false, "o": "google_local", "ev": 3}, {"n": "LEAF PAYSAGE", "t": "paysagiste", "c": "Isle", "s": "rejected", "r": "has_website", "d": "A déjà un site : https://www.leaf-paysage.fr/", "p": "06 49 •• •• 42", "m": true, "e": "lea•••@gmail.com", "pl": "c", "g": 5.0, "gn": 18, "fb": true, "o": "google_local", "ev": 3}, {"n": "E.Gauquie Paysage", "t": "paysagiste", "c": "Saint-Just-le-Martel", "s": "discovered", "r": null, "d": null, "p": "05 55 •• •• 32", "m": false, "e": null, "pl": null, "g": 5.0, "gn": 43, "fb": false, "o": "google_local", "ev": 0}, {"n": "Maison Robin Bois & Jardin", "t": "paysagiste", "c": "Limoges", "s": "discovered", "r": null, "d": null, "p": "06 07 •• •• 40", "m": true, "e": null, "pl": null, "g": 5.0, "gn": 7, "fb": false, "o": "google_local", "ev": 0}]}
+
+      const STATUS = {
+        kept: { label: 'Gardé', badge: 'ok', count: 6, title: 'Gardés' },
+        set_aside: { label: 'De côté', badge: '', count: 14, title: 'De côté' },
+        to_confirm: { label: 'À décider', badge: 'warn', count: 2, title: 'À décider' },
+        rejected: { label: 'Écarté', badge: 'no', count: 37, title: 'Écartés' },
+        discovered: { label: 'Non vérifié', badge: '', count: 10, title: 'Non vérifiés' },
+      }
+      const TRADE = { paysagiste: 'Paysagiste', electricien: 'Électricien' }
+      const PROOF = { a: 'publié par le pro', b: 'donné par un annuaire', c: 'sans preuve franche' }
+      const PITCH = {
+        A: 'A · La phrase. L’objectif s’écrit comme une phrase, en haut de la page. Dessous, un seul tableau : on clique un chiffre pour filtrer, une ligne pour voir les preuves et décider. Tout tient sur une page, dense, sans volet à ouvrir pour lancer.',
+        B: 'B · Le parcours. Quatre étapes, une chose à la fois : choisir, regarder la recherche avancer, trancher les cas douteux un par un, partir en campagne. Plus guidé, moins dense. Cliquez les étapes pour les voir.',
+        C: 'C · Le fil. La recherche se raconte ville par ville, dans l’ordre où elle avance. On voit tout ce que l’app a fait et pourquoi. Très transparent, moins pratique pour retrouver un prospect.',
+      }
+      let direction = 'A'
+      let filter = 'kept'
+      let step = 3
+
+      const rating = (row) => (row.g ? `${String(row.g.toFixed(1)).replace('.', ',')}${row.gn ? ` · ${row.gn} avis` : ''}` : '—')
+      const place = (row) => [TRADE[row.t], row.c].filter(Boolean).join(' · ')
+      const badge = (key) => `<span class="badge ${STATUS[key].badge}">${STATUS[key].label}</span>`
+
+      function objectiveSentence() {
+        return `<section class="card objective">
+          <p class="sentence">Je cherche <button class="tok mono">3 <i data-lucide="chevron-down"></i></button>
+            <button class="tok chip">Paysagiste <i data-lucide="x"></i></button>
+            <button class="tok chip">Électricien <i data-lucide="x"></i></button>
+            <button class="tok add"><i data-lucide="plus"></i> un métier</button> par métier, en
+            <button class="tok">France <i data-lucide="chevron-down"></i></button>,
+            <button class="tok">dans toutes les villes <i data-lucide="chevron-down"></i></button>, joignables par
+            <button class="tok">email et portable <i data-lucide="chevron-down"></i></button>,
+            <button class="tok">sans site web <i data-lucide="chevron-down"></i></button>, notés
+            <button class="tok">4,0 ou plus <i data-lucide="chevron-down"></i></button>.</p>
+          <div class="objective-foot">
+            <button class="btn primary big"><i data-lucide="search"></i> Lancer la recherche</button>
+            <span class="soft">Au plus 330 requêtes, soit environ 0,50 $ · 5 à 10 minutes · les prospects déjà connus ne sont jamais repris</span>
+          </div>
+        </section>`
+      }
+
+      function tableRows() {
+        const rows = DATA.rows.filter((row) => filter === 'all' || row.s === filter)
+        return rows
+          .map((row, index) => {
+            const last = row.s === 'rejected' || row.s === 'to_confirm' ? `<span class="soft">${row.d || ''}</span>` : badge(row.s)
+            return `<tr data-row="${DATA.rows.indexOf(row)}">
+              <td><span class="name">${row.n}</span><small>${place(row)}</small></td>
+              <td>${row.e ? `<span class="mono nowrap">${row.e}</span><small>${PROOF[row.pl] || ''}</small>` : '<span class="soft">—</span>'}</td>
+              <td class="hide-sm">${row.p ? `<span class="mono nowrap">${row.p}</span><small>${row.m ? 'portable' : 'fixe'}</small>` : '<span class="soft">—</span>'}</td>
+              <td class="hide-sm">${row.g ? `<span class="mono nowrap">${String(row.g.toFixed(1)).replace('.', ',')}</span><small>${row.gn ? `${row.gn} avis` : 'note Google'}</small>` : '<span class="soft">—</span>'}</td>
+              <td>${filter === 'all' ? badge(row.s) : last}</td>
+            </tr>`
+          })
+          .join('')
+      }
+
+      function renderA() {
+        const total = Object.values(STATUS).reduce((sum, status) => sum + status.count, 0)
+        const cells = [['all', total, 'Fiches lues'], ...Object.entries(STATUS).map(([key, status]) => [key, status.count, status.title])]
+        const shown = DATA.rows.filter((row) => filter === 'all' || row.s === filter).length
+        const expected = filter === 'all' ? total : STATUS[filter].count
+        return `<p class="label">✳ Prospection</p><h1>Trouver des prospects</h1>
+          <p class="lede">Dites ce que vous cherchez. L’app trouve, vérifie chaque entreprise et vous rend des prospects prêts à contacter.</p>
+          ${objectiveSentence()}
+          <section class="card">
+            <div class="result-head">
+              <div><h2>Paysagiste, Électricien · France</h2>
+                <p class="soft mono" style="font-size:12px;margin-top:3px">Terminée le 4 oct. à 18:34 · 5 min 25 · 114 requêtes · 0,17 $</p></div>
+              <button class="btn secondary"><i data-lucide="megaphone"></i> Créer une campagne avec les 6 gardés</button>
+            </div>
+            <div class="funnel">${cells
+              .map(([key, count, title]) => `<button data-filter="${key}" aria-pressed="${key === filter}"><b>${count}</b><span>${key === 'to_confirm' ? '<i class="dot"></i>' : ''}${title}</span></button>`)
+              .join('')}</div>
+            <table><thead><tr><th>Entreprise</th><th>Email</th><th class="hide-sm">Téléphone</th><th class="hide-sm">Avis</th><th>${filter === 'rejected' ? 'Raison' : filter === 'to_confirm' ? 'À trancher' : 'Statut'}</th></tr></thead>
+              <tbody>${tableRows()}</tbody></table>
+            <div class="table-foot"><span>${shown < expected ? `${shown} lignes montrées sur ${expected} dans la maquette.` : `${shown} lignes.`} Cliquez une ligne pour voir ses preuves.</span>
+              <span>Paysagiste 3 / 3 · Électricien 3 / 3 · villes parcourues : Limoges, Albi</span></div>
+          </section>
+          <section class="card history">
+            <div class="result-head"><h2>Recherches précédentes</h2></div>
+            <table><thead><tr><th>Date</th><th>Objectif</th><th>Gardés</th><th class="hide-sm">De côté</th><th class="hide-sm">À décider</th><th class="hide-sm">Coût</th></tr></thead>
+              <tbody>
+                <tr><td class="mono">4 oct., 18:28</td><td>3 paysagistes et 3 électriciens · France · email et portable</td><td class="mono">6 / 6</td><td class="hide-sm mono">14</td><td class="hide-sm mono">2</td><td class="hide-sm mono">0,17 $</td></tr>
+                <tr><td class="mono">4 oct., 18:20</td><td>3 paysagistes · Monthey (Suisse) · email et portable</td><td class="mono">0 / 3</td><td class="hide-sm mono">5</td><td class="hide-sm mono">9</td><td class="hide-sm mono">0,19 $</td></tr>
+              </tbody></table>
+          </section>`
+      }
+
+      function renderB() {
+        const names = ['Objectif', 'Recherche', 'Tri', 'Campagne']
+        const steps = names
+          .map((name, index) => `<button data-step="${index + 1}" class="${index + 1 < step ? 'done' : ''}" ${index + 1 === step ? 'aria-current="step"' : ''}><i>${index + 1 < step ? '✓' : index + 1}</i>${name}</button>`)
+          .join('')
+        const waiting = DATA.rows.find((row) => row.s === 'to_confirm')
+        const panels = {
+          1: `<h2>Que cherchez-vous ?</h2>
+            <div class="group"><p class="label">Métiers</p><div class="choices">
+              ${['Paysagiste', 'Électricien', 'Plombier-chauffagiste', 'Garage automobile', 'Couvreur', 'Menuisier', 'Barbier', 'Food truck']
+                .map((trade, index) => `<button class="choice ${index < 2 ? 'on' : ''}"><i data-lucide="${index < 2 ? 'check' : 'circle'}"></i>${trade}</button>`)
+                .join('')}
+              <button class="choice plus"><i data-lucide="plus"></i>Un autre métier</button></div></div>
+            <div class="group"><p class="label">Pays</p><div class="choices">
+              <button class="choice on"><i data-lucide="check"></i>France</button><button class="choice"><i data-lucide="circle"></i>Suisse</button>
+              <button class="choice"><i data-lucide="circle"></i>Belgique</button><button class="choice"><i data-lucide="circle"></i>Québec</button></div></div>
+            <div class="group"><p class="label">Comment les joindre</p><div class="choices">
+              <button class="choice"><i data-lucide="mail"></i>Par email</button><button class="choice"><i data-lucide="smartphone"></i>Par SMS</button>
+              <button class="choice on"><i data-lucide="check"></i>Email et portable</button></div></div>
+            <div class="objective-foot"><button class="btn primary big" data-step="2">Lancer la recherche <i data-lucide="arrow-right"></i></button>
+              <span class="soft">3 par métier · sans site web · note Google 4,0 ou plus · environ 0,50 $ au plus</span></div>`,
+          2: `<p class="label">Recherche en cours</p>
+            <p class="hero-count" style="margin-top:10px">4 <span class="soft" style="font-size:28px">/ 6 gardés</span></p>
+            <div class="bar"><div style="width:66%"></div></div>
+            <p class="live" style="padding:16px 0 0"><i data-lucide="activity"></i> Électricien · Albi : 20 fiches Google lues, 9 sans site déclaré, 12 à vérifier.</p>
+            <div class="group"><p class="soft">9 mis de côté · 1 à décider · 22 écartés · 61 requêtes, 0,09 $</p></div>
+            <div class="objective-foot"><button class="btn secondary"><i data-lucide="circle-stop"></i> Arrêter</button>
+              <span class="soft">Vous pouvez quitter cette page : la recherche continue et vous attend ici.</span></div>`,
+          3: `<div class="triage"><p class="label">À décider · 1 sur 2</p>
+            <h2 style="margin-top:8px">${waiting.n}</h2><p class="soft">${place(waiting)} · ${rating(waiting)}</p>
+            <p style="margin-top:14px">${waiting.d}</p>
+            <div class="group">
+              <div class="fact"><i data-lucide="mail"></i><div><span class="mono">${waiting.e}</span><br /><span class="soft">Lu sur la page d’un tiers, sans lien clair avec l’entreprise.</span></div></div>
+              <div class="fact"><i data-lucide="phone"></i><div><span class="mono">${waiting.p}</span><br /><span class="soft">Fixe.</span></div></div>
+              <div class="fact"><i data-lucide="map-pin"></i><div><a href="#">Fiche Google</a> · <a href="#">Page Facebook</a></div></div>
+            </div>
+            <div class="actions"><button class="btn primary big"><i data-lucide="check"></i> Garder <kbd>G</kbd></button>
+              <button class="btn secondary big">Écarter <kbd>E</kbd></button><button class="btn secondary big">Plus tard <kbd>→</kbd></button></div></div>`,
+          4: `<h2>6 prospects prêts</h2><p class="soft">3 paysagistes et 3 électriciens, tous avec un email prouvé et un portable. 14 autres sont de côté.</p>
+            <table style="margin-top:16px"><tbody>${DATA.rows
+              .filter((row) => row.s === 'kept')
+              .map((row) => `<tr><td style="padding-left:0"><span class="name">${row.n}</span><small>${place(row)}</small></td><td class="mono">${row.e}</td><td class="mono hide-sm">${row.p}</td></tr>`)
+              .join('')}</tbody></table>
+            <div class="objective-foot"><button class="btn primary big"><i data-lucide="megaphone"></i> Créer la campagne</button>
+              <button class="btn secondary big">Voir dans Mes prospects</button></div>`,
+        }
+        return `<p class="label">✳ Prospection</p><h1>Trouver des prospects</h1>
+          <div class="steps">${steps}</div><section class="card panel">${panels[step]}</section>`
+      }
+
+      function renderC() {
+        const entries = [
+          ['18:28:51', '', 'Mathieu Hurbe Paysagiste', 'Page Facebook à lire', ''],
+          ['18:28:56', '', 'MD SERVICES JARDINAGE', 'De côté : portable sans email', ''],
+          ['18:29:02', 'no', 'REBEYROL CREATEUR ET SOINS DE JARDINS', 'Écarté : a déjà un site, rebeyrol.com', 'no'],
+          ['18:29:09', 'ok', 'Flores des Jardins', 'Gardé : email publié par le pro, portable', 'ok'],
+          ['18:29:14', 'warn', 'Limousin Paysage', 'À décider : email sans preuve franche', 'warn'],
+          ['18:29:20', 'no', 'Thibaut Paysage SARL', 'Écarté : a déjà un site, thibaut-paysagiste.fr', 'no'],
+          ['18:29:31', 'ok', 'SARL SANCHEZ PAYSAGE', 'Gardé : email publié par le pro, portable', 'ok'],
+          ['18:29:44', 'ok', 'HB espace vert', 'Gardé : email donné par un annuaire, portable', 'ok'],
+        ]
+        return `<p class="label">✳ Prospection</p><h1>Trouver des prospects</h1>
+          ${objectiveSentence()}
+          <section class="card">
+            <div class="result-head"><div><h2>Paysagiste, Électricien · France</h2>
+              <p class="soft mono" style="font-size:12px;margin-top:3px">6 gardés · 14 de côté · 2 à décider · 37 écartés · 114 requêtes · 0,17 $</p></div>
+              <button class="btn secondary"><i data-lucide="megaphone"></i> Créer une campagne avec les 6 gardés</button></div>
+            <div class="feed">
+              <div class="town"><h3>Limoges · Paysagiste</h3><span class="soft">20 fiches Google lues, 10 sans site déclaré, 19 vérifiées</span></div>
+              ${entries
+                .map(([time, pin, name, text, tone]) => `<div class="entry"><time>${time}</time><i class="pin ${pin}"></i><div><span class="name" style="font-weight:600">${name}</span><br /><span class="soft">${text}</span></div>${tone === 'warn' ? '<button class="btn secondary" style="height:30px;padding:0 12px;font-size:13px">Décider</button>' : '<span></span>'}</div>`)
+                .join('')}
+              <div class="town"><h3>Limoges · Électricien</h3><span class="soft">18 entreprises avec email dans le registre public, 20 fiches Google lues</span></div>
+              <div class="entry"><time>18:31:02</time><i class="pin ok"></i><div><span style="font-weight:600">Electricité Thibault Mauduit</span><br /><span class="soft">Gardé : email du registre public, portable</span></div><span></span></div>
+              <div class="entry"><time>18:31:10</time><i class="pin"></i><div><span style="font-weight:600">C.E.P.E.S. 87</span><br /><span class="soft">De côté : email sans portable</span></div><span></span></div>
+            </div>
+          </section>`
+      }
+
+      function openDrawer(row) {
+        const decide = row.s === 'to_confirm'
+        document.getElementById('drawer').innerHTML = `<header><div><h3>${row.n}</h3><p class="soft">${place(row)}</p></div><button data-close aria-label="Fermer"><i data-lucide="x"></i></button></header>
+          <div class="body">${badge(row.s)}${row.d ? `<p style="margin-top:10px">${row.d}</p>` : ''}
+            <div style="margin-top:12px">
+              ${row.e ? `<div class="fact"><i data-lucide="mail"></i><div><span class="mono">${row.e}</span><br /><span class="soft">Preuve : ${PROOF[row.pl]}. <a href="#">Voir la source</a></span></div></div>` : ''}
+              ${row.p ? `<div class="fact"><i data-lucide="phone"></i><div><span class="mono">${row.p}</span><br /><span class="soft">${row.m ? 'Portable' : 'Fixe'} · lu sur la fiche Google</span></div></div>` : ''}
+              <div class="fact"><i data-lucide="star"></i><div>${rating(row)}<br /><span class="soft">Fiche Google</span></div></div>
+              <div class="fact"><i data-lucide="globe"></i><div>Aucun site trouvé<br /><span class="soft">Recherche « nom + ville », domaine de l’email et page Facebook contrôlés</span></div></div>
+              <div class="fact"><i data-lucide="map-pin"></i><div><a href="#">Fiche Google</a>${row.fb ? ' · <a href="#">Page Facebook</a>' : ''}</div></div>
+            </div></div>
+          <footer>${decide ? '<button class="btn primary"><i data-lucide="check"></i> Garder</button><button class="btn secondary">Écarter</button>' : '<button class="btn primary">Ouvrir la fiche prospect</button><button class="btn secondary" data-close>Fermer</button>'}</footer>`
+        document.body.classList.add('has-drawer')
+        lucide.createIcons()
+      }
+
+      function render() {
+        document.getElementById('pitch').textContent = PITCH[direction]
+        document.getElementById('page').innerHTML = { A: renderA, B: renderB, C: renderC }[direction]()
+        lucide.createIcons()
+      }
+
+      document.addEventListener('click', (event) => {
+        const target = event.target.closest('button, tr[data-row], #scrim')
+        if (!target) return
+        if (target.dataset.direction) { direction = target.dataset.direction; document.querySelectorAll('#direction-switch button').forEach((button) => button.setAttribute('aria-pressed', String(button === target))); render() }
+        else if (target.dataset.theme) { document.documentElement.dataset.theme = target.dataset.theme; document.querySelectorAll('#theme-switch button').forEach((button) => button.setAttribute('aria-pressed', String(button === target))) }
+        else if (target.dataset.filter) { filter = target.dataset.filter; render() }
+        else if (target.dataset.step) { step = Number(target.dataset.step); render() }
+        else if (target.dataset.row) openDrawer(DATA.rows[Number(target.dataset.row)])
+        else if (target.id === 'scrim' || target.hasAttribute('data-close')) document.body.classList.remove('has-drawer')
+      })
+      render()
+    </script>
+  </body>
+</html>
