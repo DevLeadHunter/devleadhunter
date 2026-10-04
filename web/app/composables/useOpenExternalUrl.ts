@@ -14,10 +14,7 @@ export function useOpenExternalUrl(): UseOpenExternalUrlReturn {
     }
 
     if (isDesktopApp.value) {
-      const {
-        open,
-      }: typeof import('C:/Users/leogu/Desktop/Projects/devleadhunter/web/node_modules/@tauri-apps/plugin-shell/dist-js/index') =
-        await import('@tauri-apps/plugin-shell')
+      const { open }: typeof import('@tauri-apps/plugin-shell') = await import('@tauri-apps/plugin-shell')
       await open(url)
       return
     }

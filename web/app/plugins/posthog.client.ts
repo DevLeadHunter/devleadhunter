@@ -64,10 +64,7 @@ export default defineNuxtPlugin((nuxtApp): void => {
    */
   async function ensureInstance(): Promise<PostHog> {
     if (instance) return instance
-    const {
-      default: posthog,
-    }: typeof import('C:/Users/leogu/Desktop/Projects/devleadhunter/web/node_modules/posthog-js/dist/module') =
-      await import('posthog-js')
+    const { default: posthog }: typeof import('posthog-js') = await import('posthog-js')
     posthog.init(key, {
       api_host: host,
       capture_pageview: false,
