@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Mail de prospection · aujourd'hui et proposition</title>
+<title>Mail de prospection · aujourd'hui et propositions</title>
 <style>
   :root { color-scheme: light; --ink: #141414; --text: #4b4b47; --muted: #66665f; --line: rgba(20,20,20,.14); --paper: #ecebe6; }
   * { box-sizing: border-box; }
@@ -30,7 +30,6 @@
   .tab:focus-visible, .switch button:focus-visible, select:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
   .controls { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 20px; padding-bottom: 16px; font-size: 13px; color: var(--text); }
   .controls label { display: inline-flex; align-items: center; gap: 8px; }
-  .controls [hidden] { display: none; }
   select { font: inherit; font-size: 13px; padding: 7px 10px; border-radius: 8px; border: 1px solid var(--line); background: #fff; color: var(--ink); }
   select:disabled { color: var(--muted); background: #f3f3ef; }
   .switch { display: inline-flex; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; background: #fff; }
@@ -39,8 +38,6 @@
   .panel { padding-bottom: 32px; }
   .facts { margin-bottom: 14px; }
   .facts .pitch { color: var(--ink); font-size: 15px; }
-  .facts .warning { margin-top: 10px; padding: 10px 14px; border-radius: 8px; background: #fff4e0; color: #5c3d00; }
-  .facts .warning strong { color: #5c3d00; }
   .chips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
   .chip { border: 1px solid var(--line); border-radius: 999px; padding: 3px 12px; font-size: 13px; color: var(--ink); background: #fff; }
   .chip b { font-weight: 600; }
@@ -72,17 +69,16 @@
 </head>
 <body>
 <header>
-  <h1>Mail de prospection : aujourd'hui, et la proposition</h1>
-  <p>Trois choses à comparer : ce qui part aujourd'hui (vérifié dans la prod le 04/10), le mail que reçoit un client de dibodev.fr, et le mail de prospection posé dans ce même habillage. Le texte des modèles et ta signature ne changent pas. Exemple fictif : Menuiserie Lefort.</p>
+  <h1>Mail de prospection : aujourd'hui, et trois propositions</h1>
+  <p>Ce qui part aujourd'hui, le mail que reçoit un client de dibodev.fr, puis trois propositions sans logo, montées avec les blocs du mail de dibodev.fr. Le texte des modèles et ta signature ne changent pas. Exemple fictif : Menuiserie Lefort.</p>
 </header>
 
 <div class="block">
   <div class="sheet">
-    <h2>Ce qui part aujourd'hui, vérifié dans la prod le 04/10</h2>
+    <h2>État de la prod au 04/10</h2>
     <ul>
-      <li><strong>Ta signature « Signature Dibodev » est bien en place.</strong> C'est la signature par défaut, et elle est cochée sur les 29 modèles créés avant le 22/09, dont « Rappel court » et « Vidéo - je vous montre ». Les vagues 1 et 2 sont parties avec une signature (l'ancienne, au logo ; celle avec ta photo date du 30/09).</li>
-      <li><strong>Elle n'est pas cochée sur les 22 modèles créés depuis :</strong> tous les « Franc », la réceptionniste, la carte de fidélité. Les 134 mails de la vague 3 sont donc partis sans signature.</li>
-      <li><strong>Le mail vidéo contient bien une vignette cliquable :</strong> la capture du site, le bouton lecture et ta photo en bulle, puis le lien en texte (4 mails en vague 2). L'exemple ci-dessous reprend ce format.</li>
+      <li><strong>Ta signature est cochée sur tes 51 modèles.</strong> Elle manquait sur les 22 créés depuis le 22/09 (les « Franc », la réceptionniste, la carte de fidélité), donc la vague 3 est partie sans. C'est corrigé le 04/10.</li>
+      <li><strong>Le mail vidéo contient une vignette cliquable :</strong> la capture du site, le bouton lecture et ta photo en bulle, puis le lien en texte.</li>
       <li><strong>Le texte part sans mise en page</strong>, dans la police de la messagerie, suivi d'un pied gris clair centré.</li>
     </ul>
   </div>
@@ -90,15 +86,15 @@
 
 <div class="block">
   <div class="sheet verdict">
-    <h2>Ma proposition : le même mail, dans l'habillage de dibodev.fr</h2>
+    <h2>Ce que je propose maintenant</h2>
+    <p>Retenu de ton retour : pas de logo, plus d'encadré violet avec une flèche, le format vidéo te plaît, et le mail doit être aussi carré que celui de dibodev.fr.</p>
     <ol>
-      <li><strong>Ton texte et ta signature restent tels quels.</strong> Une seule signature partout : campagnes, réponses à la main, mails de dibodev.fr.</li>
-      <li><strong>Autour, l'habillage de dibodev.fr :</strong> le logo en haut, la carte blanche sur fond gris, les mêmes couleurs, le pied discret. Mesuré sur le vrai mail du site, pas réinventé.</li>
-      <li><strong>Le lien du site passe sur sa propre ligne violette</strong>, dans l'esprit de l'encadré violet de dibodev.fr. Il est facile à toucher au pouce et reste la seule porte du mail.</li>
-      <li><strong>Prix et date en gras</strong>, comme le délai de réponse dans le mail de dibodev.fr.</li>
+      <li><strong>Carré, avec aperçu (mon choix).</strong> Les blocs du mail de dibodev.fr : un titre, l'aperçu du site dans un cadre de navigateur, un vrai bouton violet, puis l'encadré violet numéroté. Aucun mot ajouté : le titre est l'objet du mail, et chaque point de l'encadré est un paragraphe de ton modèle, sa première phrase en gras.</li>
+      <li><strong>Carré, sans image.</strong> Le même, sans l'aperçu : le lien reste dans la phrase, le bouton dessous.</li>
+      <li><strong>Simple, avec aperçu.</strong> Le format vidéo que tu aimes, appliqué au mail classique : le texte, l'aperçu du site, le bouton. Ni titre ni encadré.</li>
     </ol>
-    <p><strong>Risque de spam :</strong> par rapport à un mail d'aujourd'hui avec ta signature, la proposition ajoute une seule petite image (le logo) et aucun lien. Personne ne peut garantir la boîte principale de Gmail : il faut la passer sur les adresses témoins avant la vague. Si le test est moins bon, la « variante prudente » retire le logo et les icônes.</p>
-    <p><strong>À faire tout de suite, sans attendre l'habillage :</strong> cocher la signature sur les modèles « Franc ».</p>
+    <p>Dans les trois, le mail vidéo garde sa vignette telle quelle (choisis « Vidéo - je vous montre » dans la liste).</p>
+    <p><strong>Risque de spam :</strong> la 1 et la 3 ajoutent une image, la capture du site (environ 60 Ko), comme tes mails vidéo de la vague 2. La 2 n'en ajoute aucune. Dans tous les cas, à passer sur les adresses témoins avant la vague.</p>
   </div>
 </div>
 
@@ -108,10 +104,6 @@
   <label>Texte du modèle
     <select id="template-select"></select>
   </label>
-  <span class="switch" id="signature-switch" role="group" aria-label="Signature sur le mail d'aujourd'hui" hidden>
-    <button type="button" data-signature="on" class="is-active">Signature cochée</button>
-    <button type="button" data-signature="prod">Comme en prod sur ce modèle</button>
-  </span>
   <span class="switch" role="group" aria-label="Affichage des images">
     <button type="button" data-images="shown" class="is-active">Images affichées</button>
     <button type="button" data-images="blocked">Images bloquées</button>
@@ -123,7 +115,6 @@
     <p class="pitch" id="pitch"></p>
     <p id="added"></p>
     <div class="chips" id="chips"></div>
-    <p class="warning" id="warning" hidden></p>
   </div>
   <div class="inbox" id="inbox"></div>
   <div class="frames">
@@ -141,7 +132,7 @@
         <tbody id="compare-body"></tbody>
       </table>
     </div>
-    <p style="margin-top:12px;">Chiffres mesurés sur le modèle « Franc - premier contact ». Les images de la signature et le logo pèsent 1 à 5 Ko chacun, ta photo 45 Ko.</p>
+    <p style="margin-top:12px;">Chiffres mesurés sur le modèle « Franc - premier contact ». Les images de la signature pèsent 1 à 5 Ko chacune, ta photo 45 Ko, la capture du site environ 60 Ko.</p>
   </div>
 </div>
 
@@ -149,11 +140,11 @@
   <div class="sheet">
     <h2>Côté logiciel</h2>
     <ul>
-      <li><strong>Un habillage posé à l'envoi</strong> autour du texte et de la signature : aucun modèle à réécrire. La relance, la vidéo et la réceptionniste passent dedans (liste « Texte du modèle »).</li>
-      <li><strong>Un réglage par modèle</strong> (« Habillage : simple ou dibodev.fr ») : le test A/B qui existe déjà compare alors le même texte, habillé ou non.</li>
-      <li><strong>Le lien</strong> reste la variable <code>{lien_demo}</code> (ou <code>{lien_assistant}</code>) : seul son rendu change.</li>
-      <li><strong>La signature</strong> reste celle de la page Signatures, cochée modèle par modèle comme aujourd'hui.</li>
-      <li><strong>Le logo, le nom et la couleur</strong> viennent du profil : Dibodev et le violet pour toi, rien d'imposé à un autre utilisateur.</li>
+      <li><strong>Un habillage posé à l'envoi</strong>, sans réécrire aucun modèle. Sa règle : le titre est l'objet du mail ; ce qui précède le lien reste du texte ; le lien devient l'aperçu et le bouton ; les paragraphes qui suivent passent dans l'encadré, première phrase en gras.</li>
+      <li><strong>Un réglage par modèle</strong> (« Habillage : simple ou carré ») : le test A/B qui existe déjà compare alors le même texte, habillé ou non.</li>
+      <li><strong>L'aperçu du site</strong> est la capture que la vidéo utilise déjà. Il faut la produire aussi pour les démos sans vidéo.</li>
+      <li><strong>La réceptionniste</strong> garde le bouton sans aperçu tant qu'on n'a pas de capture de sa page.</li>
+      <li><strong>La signature</strong> reste celle de la page Signatures. <strong>La couleur</strong> vient du profil : le violet pour toi, rien d'imposé à un autre utilisateur.</li>
       <li><strong>Le pied</strong> garde le même lien de désinscription et les mêmes en-têtes de désinscription en un clic.</li>
     </ul>
   </div>
@@ -180,8 +171,10 @@
   var FONT = "-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif";
   var COLOR = { page: '#f6f6f3', card: '#ffffff', text: '#4b4b47', ink: '#141414', muted: '#66665f', rule: '#e3e3df', accent: '#6f5fe0', soft: '#f5f3ff' };
   var UNSUBSCRIBE_URL = 'https://devleadhunter.fr/api/v1/unsubscribe';
-  var THUMBNAIL_FILE = 'email-vignette-exemple.jpg';
-  var THUMBNAIL_REAL_URL = 'https://pub-16f42d674fbd407c8f21b3f152645750.r2.dev/images/websites/menuiserie-lefort.jpg';
+  var SAMPLE_IMAGES = {
+    'email-vignette-exemple.jpg': 'https://pub-16f42d674fbd407c8f21b3f152645750.r2.dev/images/websites/menuiserie-lefort.jpg',
+    'email-capture-exemple.jpg': 'https://pub-16f42d674fbd407c8f21b3f152645750.r2.dev/images/websites/menuiserie-lefort-capture.jpg'
+  };
 
   var SAMPLE = {
     salutation: 'Bonjour',
@@ -193,116 +186,146 @@
     assistant_virtuel: 'une assistante virtuelle'
   };
   var LINKS = {
-    lien_demo: { href: 'https://demo.dibodev.fr/menuiserie-lefort?src=email', label: 'demo.dibodev.fr/menuiserie-lefort', eyebrow: 'Votre site', title: 'Menuiserie Lefort', button: 'Voir mon site' },
-    lien_assistant: { href: 'https://demo.dibodev.fr/ia/menuiserie-lefort?src=email', label: 'demo.dibodev.fr/ia/menuiserie-lefort', eyebrow: 'Votre réceptionniste', title: 'Léa, pour Menuiserie Lefort', button: 'Parler à Léa' }
+    lien_demo: { href: 'https://demo.dibodev.fr/menuiserie-lefort?src=email', label: 'demo.dibodev.fr/menuiserie-lefort', button: 'Voir mon site', capture: 'email-capture-exemple.jpg', alt: 'Le site de Menuiserie Lefort' },
+    lien_assistant: { href: 'https://demo.dibodev.fr/ia/menuiserie-lefort?src=email', label: 'demo.dibodev.fr/ia/menuiserie-lefort', button: 'Parler à Léa', capture: null, alt: '' }
   };
-  var VIDEO = { href: 'https://demo.dibodev.fr/v/menuiserie-lefort?src=email', label: 'demo.dibodev.fr/v/menuiserie-lefort' };
+  var VIDEO = { href: 'https://demo.dibodev.fr/v/menuiserie-lefort?src=email', label: 'demo.dibodev.fr/v/menuiserie-lefort', thumbnail: 'email-vignette-exemple.jpg' };
   var BOLD_VARIABLES = ['prix', 'prix_assistant', 'date_expiration'];
+  var DOOR_PATTERN = /\{(lien_demo|lien_assistant|vignette_video)\}/;
 
-  /* Bodies read in prod on 04/10 (GET /email-templates), with the state of their « Inclure une signature » switch. */
+  /* Subjects and bodies read in prod on 04/10 (GET /email-templates). */
   var TEMPLATES = [
-    { id: 'first', name: 'Franc - premier contact', prodId: 40, signatureInProd: false, subject: 'le site de {entreprise}',
+    { id: 'first', name: 'Franc - premier contact', subject: 'le site de {entreprise}',
       body: "<p>{salutation},</p><p>Je fais des sites web, et j'ai construit celui de {entreprise}. Il est déjà en ligne : {lien_demo}</p><p>C'est {prix}, une seule fois. Pas d'abonnement : je le mets sur votre propre adresse, et vous modifiez ensuite textes et photos vous-même, sans dépendre de personne.</p><p>Je le garde en ligne jusqu'au {date_expiration}. Après, je le retire.</p><p>Un mot me suffit : oui, non, ou une question. Si c'est non, dites-le-moi et je ne vous recontacte plus.</p>" },
-    { id: 'reminder', name: 'Rappel court (relance)', prodId: 24, signatureInProd: true, subject: 'vous avez vu votre site ?',
+    { id: 'reminder', name: 'Rappel court (relance)', subject: 'vous avez vu votre site ?',
       body: "<p>{salutation},</p><p>Le site de {entreprise} est toujours en ligne : {lien_demo}</p><p>C'est {prix}, une seule fois, sans abonnement. Je le retire le {date_expiration}.</p><p>Un mot me suffit, même un non.</p>" },
-    { id: 'video', name: 'Vidéo - je vous montre', prodId: 21, signatureInProd: true, subject: 'le site de {entreprise}, en vidéo',
+    { id: 'video', name: 'Vidéo - je vous montre', subject: 'le site de {entreprise}, en vidéo',
       body: "<p>{salutation},</p><p>Je fais des sites web, et j'ai construit celui de {entreprise}. Plutôt que de l'expliquer, je vous le montre en 30 secondes :</p>{vignette_video}<p>C'est {prix}, une seule fois. Pas d'abonnement : je le mets sur votre propre adresse, et vous modifiez ensuite textes et photos vous-même, sans dépendre de personne.</p><p>Je le garde en ligne jusqu'au {date_expiration}. Après, je le retire.</p><p>Un mot me suffit : oui, non, ou une question. Si c'est non, dites-le-moi et je ne vous recontacte plus.</p>" },
-    { id: 'receptionist', name: 'Réceptionniste IA - en bref', prodId: 46, signatureInProd: false, subject: 'votre réceptionniste, en bref',
+    { id: 'receptionist', name: 'Réceptionniste IA - en bref', subject: 'votre réceptionniste, en bref',
       body: "<p>{salutation},</p><p>Je fais des outils web pour les artisans et les commerçants, et j'ai préparé {prenom_receptionniste} pour {entreprise} : {assistant_virtuel} (IA). En bref :</p><ul><li>Réponses à vos clients 24 h sur 24, dans leur langue</li><li>Demandes de devis avec photo</li><li>Prise de rendez-vous dans votre agenda Google</li><li>Chaque demande transmise par mail, les urgentes aussi par SMS</li><li>Uniquement vos vraies informations : rien d'inventé</li><li>Une adresse à son nom pour votre fiche Google, pas besoin de site</li><li>Un bilan chaque mois</li></ul><p>{prenom_receptionniste} est déjà en ligne : {lien_assistant}</p><p>C'est {prix_assistant} par mois, sans engagement. Le premier mois est satisfait ou remboursé.</p><p>La démo reste en ligne jusqu'au {date_expiration}. Après, je la retire.</p><p>Un mot me suffit : oui, non, ou une question. Si c'est non, dites-le-moi et je ne vous recontacte plus.</p>" }
   ];
 
   var VERSIONS = [
-    { id: 'today', tab: "Aujourd'hui", kind: 'today', link: 'plain',
-      pitch: "Ce que l'outil envoie aujourd'hui quand la signature est cochée : le texte du modèle sans mise en page, ta signature « Signature Dibodev », puis le pied gris centré.",
+    { id: 'today', tab: "Aujourd'hui", kind: 'today',
+      pitch: "Ce que l'outil envoie aujourd'hui : le texte du modèle sans mise en page, ta signature « Signature Dibodev », puis le pied gris centré.",
       added: '',
       change: 'La référence. Le texte et la signature ne sont pas dans la même police, et le pied est centré, en gris clair.' },
     { id: 'dibodev', tab: 'Le mail de dibodev.fr', kind: 'reference',
-      pitch: "Le mail que reçoit un client qui remplit le formulaire de dibodev.fr, rendu avec les fichiers du dépôt dibodev.fr. C'est le modèle à suivre : logo, carte blanche, encadré violet, ta signature, pied discret.",
+      pitch: "Le mail que reçoit un client qui remplit le formulaire de dibodev.fr, rendu avec les fichiers du dépôt dibodev.fr. C'est le niveau à atteindre : un titre, un encadré violet numéroté, des blocs alignés, ta signature.",
       added: '',
-      change: "Le modèle à suivre. C'est un mail attendu par celui qui le reçoit : il peut se permettre un titre, des étapes et un récapitulatif." },
-    { id: 'proposal', tab: 'Proposition', badge: 'Mon choix', kind: 'dressed', link: 'row', logo: true, signature: 'prod',
-      pitch: "Le mail de prospection dans l'habillage de dibodev.fr : logo, carte blanche, lien du site sur sa propre ligne violette, ta signature sans y toucher, pied discret.",
-      added: 'Logo, carte et pied. Le lien passe sur sa propre ligne, prix et date en gras.',
-      change: "Aussi soigné que le mail de dibodev.fr. Une seule image de plus qu'aujourd'hui : le logo." },
-    { id: 'button', tab: 'Variante avec bouton', kind: 'dressed', link: 'card', logo: true, signature: 'prod',
-      pitch: "La proposition, où le lien devient une fiche : « Votre site », le nom du commerce, l'adresse et un bouton. Plus proche d'une publicité : à tester contre la proposition, pas avant.",
-      added: 'Comme la proposition, et {lien_demo} devient une fiche tirée de {entreprise}.',
-      change: 'Un bouton en plus. Il attire le clic, mais la vague 3 a déjà 35 % de clics humains avec un simple lien.' },
-    { id: 'careful', tab: 'Variante prudente', kind: 'dressed', link: 'row', logo: false, signature: 'light',
-      pitch: "La proposition sans le logo, avec une signature réduite à ta photo (sans les quatre icônes, sans LinkedIn ni GitHub). À sortir seulement si le test sur les adresses témoins est moins bon avec la proposition.",
-      added: 'Carte et pied. Signature à une seule image, SIRET dans le pied.',
-      change: 'Une seule image. Moins « dibodev.fr », mais le plus léger pour les filtres.' }
+      change: 'Le niveau à atteindre : titre, encadré numéroté, récapitulatif, signature.' },
+    { id: 'square-preview', tab: '1 · Carré, avec aperçu', badge: 'Mon choix', kind: 'dressed', title: true, box: true, preview: true,
+      pitch: "Les blocs du mail de dibodev.fr : le titre, l'aperçu du site dans un cadre de navigateur, le bouton violet, puis l'encadré numéroté « L'essentiel ». Chaque point de l'encadré est un paragraphe de ton modèle.",
+      added: "Le titre (l'objet du mail), l'aperçu du site et son bouton, l'encadré. Aucune phrase ajoutée.",
+      change: 'Le plus proche du mail de dibodev.fr. Une image de plus : la capture du site.' },
+    { id: 'square', tab: '2 · Carré, sans image', kind: 'dressed', title: true, box: true, preview: false,
+      pitch: "La proposition 1 sans l'aperçu : le lien reste dans la phrase, avec le nom du commerce dans l'adresse, et le bouton violet dessous. Aucune image en plus de ta signature.",
+      added: "Le titre (l'objet du mail), le bouton, l'encadré. Aucune phrase ajoutée.",
+      change: "Aussi carré, sans image en plus. Moins parlant : le prospect ne voit pas son site avant de cliquer." },
+    { id: 'simple-preview', tab: '3 · Simple, avec aperçu', kind: 'dressed', title: false, box: false, preview: true,
+      pitch: "Le format vidéo que tu aimes, appliqué au mail classique : le texte, l'aperçu du site, le bouton, le reste du texte avec prix et date en gras. Ni titre ni encadré.",
+      added: "L'aperçu du site et son bouton. Prix et date en gras.",
+      change: "Le même mail en vidéo ou non. Moins carré que le mail de dibodev.fr." }
   ];
-
-  var LIGHT_SIGNATURE_HTML = '<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse;font-family:' + FONT + ';">'
-    + '<tr>'
-    + '<td style="vertical-align:top;padding:0 18px 0 0;line-height:0;font-size:0;"><img src="https://dibodev.fr/email/sig-portrait.png" width="88" height="110" alt="Léo Guillaume" style="display:block;width:88px;height:110px;border:0;border-radius:8px;"></td>'
-    + '<td width="1" style="width:1px;padding:0;background-color:' + COLOR.rule + ';font-size:0;line-height:0;">&nbsp;</td>'
-    + '<td style="vertical-align:top;padding:0 0 0 18px;text-align:left;">'
-    + '<p style="margin:0 0 1px;font-size:17px;line-height:20px;font-weight:600;color:' + COLOR.ink + ';">Léo Guillaume</p>'
-    + '<p style="margin:0;font-size:13px;line-height:19px;color:' + COLOR.muted + ';">Développeur indépendant à Rennes</p>'
-    + '<p style="margin:0 0 10px;font-size:13px;line-height:19px;color:' + COLOR.muted + ';">Logiciels de gestion, sites web et IA</p>'
-    + '<p style="margin:0 0 10px;font-size:13px;line-height:19px;color:' + COLOR.muted + ';">'
-    + '<a href="tel:+33642193812" style="color:' + COLOR.accent + ';font-weight:600;text-decoration:none;white-space:nowrap;">06&nbsp;42&nbsp;19&nbsp;38&nbsp;12</a>'
-    + ' &nbsp;·&nbsp; <a href="https://dibodev.fr/" style="color:' + COLOR.accent + ';font-weight:600;text-decoration:none;">dibodev.fr</a></p>'
-    + '<p style="margin:0;font-size:12px;line-height:18px;"><a href="https://www.malt.fr/profile/leoguillaume2" style="text-decoration:none;white-space:nowrap;"><span style="color:#fe9a00;letter-spacing:2.9px;">★★★★★</span><span style="color:' + COLOR.ink + ';font-weight:600;"> 5/5</span><span style="color:' + COLOR.muted + ';"> sur Malt</span></a></p>'
-    + '</td>'
-    + '</tr>'
-    + '</table>';
 
   var HEAD_STYLE = '<style>'
     + '@media only screen and (max-width:480px){'
     + '.em-outer{padding:0 !important;}'
-    + '.em-head{padding:32px 20px 20px !important;}'
     + '.em-top{height:0 !important;}'
     + '.em-card{padding:28px 20px !important;border-radius:0 !important;}'
+    + '.em-title{font-size:24px !important;line-height:30px !important;}'
+    + '.em-soft{padding:20px !important;}'
     + '.em-foot{padding:24px 20px 40px !important;}'
     + '}'
     + '</style>';
 
-  /** {lien_demo} / {lien_assistant}, as each version presents it. */
-  function linkHtml(version, link) {
-    if (version.link === 'plain') {
-      return '<a href="' + link.href + '" target="_blank" rel="noopener noreferrer" style="color:#111;text-decoration:underline;">' + link.label + '</a>';
-    }
-    if (version.link === 'row') {
-      return '<a href="' + link.href + '" style="display:block;margin:10px 0 0;padding:13px 16px;background-color:' + COLOR.soft + ';border-radius:12px;font-size:15px;line-height:22px;font-weight:600;color:' + COLOR.accent + ';text-decoration:none;word-break:break-word;">' + link.label + '&nbsp;&nbsp;&rarr;</a>';
-    }
-    return '<a href="' + link.href + '" style="display:block;margin:12px 0 0;padding:20px 24px 24px;background-color:' + COLOR.soft + ';border-radius:12px;text-decoration:none;">'
-      + '<span style="display:block;font-size:13px;line-height:18px;font-weight:400;color:' + COLOR.muted + ';">' + link.eyebrow + '</span>'
-      + '<span style="display:block;margin:2px 0 0;font-size:18px;line-height:24px;font-weight:600;color:' + COLOR.ink + ';">' + link.title + '</span>'
-      + '<span style="display:block;margin:2px 0 0;font-size:14px;line-height:20px;font-weight:500;color:' + COLOR.accent + ';word-break:break-word;">' + link.label + '</span>'
-      + '<span style="display:inline-block;margin:14px 0 0;padding:11px 18px;background-color:' + COLOR.accent + ';border-radius:10px;font-size:15px;line-height:20px;font-weight:600;color:#ffffff;">' + link.button + '</span>'
-      + '</a>';
+  function plainValue(text) {
+    return text.replace(/\{(\w+)\}/g, function (placeholder, name) { return name in SAMPLE ? SAMPLE[name] : placeholder; });
   }
 
-  /** {vignette_video}: the block of EmailVariables.build_video_thumbnail_html, in the colours of the version. */
-  function videoThumbnailHtml(version) {
-    var dressed = version.kind === 'dressed';
-    var noteStyle = dressed ? 'margin:0 0 16px;font-size:13px;line-height:19px;color:' + COLOR.muted + ';' : 'margin:0 0 16px;font-size:13px;color:#555;';
-    var linkStyle = dressed ? 'color:' + COLOR.accent + ';font-weight:500;text-decoration:none;' : 'color:#111;text-decoration:underline;';
-    return '<p style="margin:16px 0 6px;"><a href="' + VIDEO.href + '" target="_blank"><img src="' + THUMBNAIL_FILE + '" alt="Votre site en vidéo" width="480" height="270" style="display:block;width:100%;max-width:480px;height:auto;border-radius:12px;border:0;" /></a></p>'
-      + '<p style="' + noteStyle + '">La vidéo : <a href="' + VIDEO.href + '" target="_blank" rel="noopener noreferrer" style="' + linkStyle + '">' + VIDEO.label + '</a></p>';
-  }
-
-  function fillVariables(text, version, isBody) {
+  function boldValue(text) {
     return text.replace(/\{(\w+)\}/g, function (placeholder, name) {
-      if (LINKS[name]) { return linkHtml(version, LINKS[name]); }
-      if (name === 'vignette_video') { return videoThumbnailHtml(version); }
       if (!(name in SAMPLE)) { return placeholder; }
-      if (isBody && version.kind === 'dressed' && BOLD_VARIABLES.indexOf(name) !== -1) {
-        return '<strong style="font-weight:600;color:' + COLOR.ink + ';">' + SAMPLE[name] + '</strong>';
-      }
-      return SAMPLE[name];
+      return BOLD_VARIABLES.indexOf(name) !== -1 ? '<strong style="font-weight:600;color:' + COLOR.ink + ';">' + SAMPLE[name] + '</strong>' : SAMPLE[name];
     });
   }
 
+  function buttonHtml(link, bottomMargin) {
+    return '<p style="margin:0 0 ' + bottomMargin + 'px;"><a href="' + link.href + '" style="display:inline-block;padding:12px 22px;background-color:' + COLOR.accent + ';border-radius:8px;font-size:15px;line-height:24px;font-weight:500;color:#ffffff;text-decoration:none;">' + link.button + '</a></p>';
+  }
+
+  /** The site inside a browser frame: an address bar written in text, then the capture, both linked. */
+  function previewHtml(link) {
+    return '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:0 0 16px;border-collapse:separate;border:1px solid ' + COLOR.rule + ';border-radius:12px;">'
+      + '<tr><td style="padding:9px 14px;background-color:' + COLOR.page + ';border-bottom:1px solid ' + COLOR.rule + ';border-radius:11px 11px 0 0;font-size:12px;line-height:18px;color:' + COLOR.muted + ';">'
+      + '<span style="font-size:9px;letter-spacing:4px;color:#cfcfc8;">&#9679;&#9679;&#9679;</span>&nbsp;&nbsp;<a href="' + link.href + '" style="color:' + COLOR.muted + ';text-decoration:none;">' + link.label + '</a>'
+      + '</td></tr>'
+      + '<tr><td style="font-size:0;line-height:0;"><a href="' + link.href + '"><img src="' + link.capture + '" width="518" height="291" alt="' + link.alt + '" style="display:block;width:100%;height:auto;border:0;border-radius:0 0 11px 11px;"></a></td></tr>'
+      + '</table>';
+  }
+
+  /** {vignette_video}: the block of EmailVariables.build_video_thumbnail_html, in the colours of the card. */
+  function videoHtml(dressed, bottomMargin) {
+    var noteStyle = dressed ? 'margin:0 0 ' + bottomMargin + 'px;font-size:13px;line-height:19px;color:' + COLOR.muted + ';' : 'margin:0 0 16px;font-size:13px;color:#555;';
+    var linkStyle = dressed ? 'color:' + COLOR.accent + ';font-weight:500;text-decoration:none;' : 'color:#111;text-decoration:underline;';
+    /* In the card the thumbnail takes the full column, so it lines up with the box under it; today it is 480 px wide. */
+    var width = dressed ? 520 : 480;
+    return '<p style="margin:' + (dressed ? '0' : '16px') + ' 0 6px;"><a href="' + VIDEO.href + '" target="_blank"><img src="' + VIDEO.thumbnail + '" alt="Votre site en vidéo" width="' + width + '" height="' + Math.round(width * 9 / 16) + '" style="display:block;width:100%;max-width:' + width + 'px;height:auto;border-radius:12px;border:0;" /></a></p>'
+      + '<p style="' + noteStyle + '">La vidéo : <a href="' + VIDEO.href + '" target="_blank" rel="noopener noreferrer" style="' + linkStyle + '">' + VIDEO.label + '</a></p>';
+  }
+
+  /** The numbered box of dibodev.fr: one point per paragraph, its first sentence in bold. */
+  function boxHtml(paragraphs) {
+    var rows = paragraphs.map(function (paragraph, index) {
+      var text = plainValue(paragraph.replace(/^<p>|<\/p>$/g, ''));
+      var parts = text.match(/^(.+?[.?!])\s+(\S[\s\S]*)$/);
+      var isLast = index === paragraphs.length - 1;
+      var gap = isLast ? '0' : '16px';
+      return '<tr>'
+        + '<td width="32" valign="top" style="width:32px;padding:0 16px ' + gap + ' 0;"><div style="width:32px;height:32px;border-radius:16px;background-color:' + COLOR.accent + ';color:#ffffff;font-size:14px;line-height:32px;font-weight:600;text-align:center;">' + (index + 1) + '</div></td>'
+        + '<td valign="top" style="padding:5px 0 ' + gap + ';">'
+        + '<p style="margin:0;font-size:15px;line-height:22px;font-weight:600;color:' + COLOR.ink + ';">' + (parts ? parts[1] : text) + '</p>'
+        + (parts ? '<p style="margin:2px 0 0;font-size:14px;line-height:22px;color:' + COLOR.text + ';">' + parts[2] + '</p>' : '')
+        + '</td></tr>';
+    }).join('');
+    return '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border-collapse:separate;background-color:' + COLOR.soft + ';border-radius:12px;"><tr><td class="em-soft" style="padding:24px;">'
+      + '<p style="margin:0 0 20px;font-size:18px;line-height:24px;font-weight:600;color:' + COLOR.ink + ';">L\'essentiel</p>'
+      + '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse;">' + rows + '</table>'
+      + '</td></tr></table>';
+  }
+
+  function styledBlock(block) {
+    return block
+      .replace(/<p>/g, '<p style="margin:0 0 16px;">')
+      .replace(/<ul>/g, '<ul style="margin:0 0 16px;padding:0 0 0 22px;">')
+      .replace(/<li>/g, '<li style="margin:0 0 6px;">');
+  }
+
+  /** The door of the mail (link or video), as the version presents it. */
+  function doorHtml(block, version, bottomMargin) {
+    if (block === '{vignette_video}') { return videoHtml(true, bottomMargin); }
+    var name = block.match(DOOR_PATTERN)[1];
+    var link = LINKS[name];
+    var sentence = block.replace(/^<p>|<\/p>$/g, '').replace('{' + name + '}', '').trim();
+    if (version.preview && link.capture) {
+      return '<p style="margin:0 0 16px;">' + plainValue(sentence) + '</p>' + previewHtml(link) + buttonHtml(link, bottomMargin);
+    }
+    return '<p style="margin:0 0 16px;">' + plainValue(sentence) + ' <a href="' + link.href + '" style="color:' + COLOR.accent + ';font-weight:500;text-decoration:none;word-break:break-word;">' + link.label + '</a></p>' + buttonHtml(link, bottomMargin);
+  }
+
+  function capitalised(text) { return text.charAt(0).toUpperCase() + text.slice(1); }
+
   /** What the tool sends today: bare paragraphs, the signature wrapper of email_signatures.render_signature_html, the footer of unsubscribe_service. */
-  function buildTodayEmail(template, version, withSignature) {
-    return '<!doctype html><html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>' + fillVariables(template.subject, version, false) + '</title></head>'
+  function buildTodayEmail(template) {
+    var body = plainValue(template.body
+      .replace('{vignette_video}', videoHtml(false, 16))
+      .replace(/\{(lien_demo|lien_assistant)\}/, function (placeholder, name) {
+        return '<a href="' + LINKS[name].href + '" target="_blank" rel="noopener noreferrer" style="color:#111;text-decoration:underline;">' + LINKS[name].label + '</a>';
+      }));
+    return '<!doctype html><html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>' + plainValue(template.subject) + '</title></head>'
       + '<body style="margin:0;padding:20px 20px 28px;background:#ffffff;font-family:Arial,Helvetica,sans-serif;font-size:13px;line-height:1.5;color:#222222;">'
-      + fillVariables(template.body, version, true)
-      + (withSignature ? '<div style="margin-top:16px;">' + PROD_SIGNATURE_HTML + '</div>' : '')
+      + body
+      + '<div style="margin-top:16px;">' + PROD_SIGNATURE_HTML + '</div>'
       + '\n<div style="margin-top: 40px; padding-top: 20px; border-top: 1px solid #eee; font-size: 12px; color: #999; text-align: center;">'
       + '<p>Vous recevez cet email car vous êtes dans notre liste de prospects.</p>'
       + '<p><a href="' + UNSUBSCRIBE_URL + '" style="color: #999; text-decoration: underline;">Se désabonner</a></p>'
@@ -310,40 +333,44 @@
   }
 
   function buildDressedEmail(template, version) {
-    var body = fillVariables(template.body, version, true)
-      .replace(/<p>/g, '<p style="margin:0 0 16px;">')
-      .replace(/<ul>/g, '<ul style="margin:0 0 16px;padding:0 0 0 22px;">')
-      .replace(/<li>/g, '<li style="margin:0 0 6px;">');
-    var head = version.logo
-      ? '<tr>\n<td class="em-head" style="padding:32px 0 20px;font-size:0;line-height:0;text-align:left;">'
-        + '<img src="https://dibodev.fr/email/logo-240.png" width="28" height="28" alt="" style="display:inline-block;vertical-align:middle;width:28px;height:28px;border:0;">'
-        + '<span style="display:inline-block;vertical-align:middle;margin-left:8px;font-family:' + FONT + ';font-size:18px;line-height:28px;font-weight:600;color:' + COLOR.ink + ';letter-spacing:-0.2px;">Dibodev</span>'
-        + '</td>\n</tr>\n'
-      : '<tr>\n<td class="em-top" height="32" style="height:32px;font-size:0;line-height:0;">&nbsp;</td>\n</tr>\n';
+    var blocks = template.body.match(/<p>[\s\S]*?<\/p>|<ul>[\s\S]*?<\/ul>|\{vignette_video\}/g) || [];
+    var doorIndex = -1;
+    blocks.forEach(function (block, index) { if (doorIndex === -1 && DOOR_PATTERN.test(block)) { doorIndex = index; } });
+    var before = doorIndex === -1 ? blocks : blocks.slice(0, doorIndex);
+    var after = doorIndex === -1 ? [] : blocks.slice(doorIndex + 1);
+    var points = version.box ? after.filter(function (block) { return block.indexOf('<p>') === 0; }) : [];
+    var prose = version.box ? after.filter(function (block) { return block.indexOf('<p>') !== 0; }) : after;
+    var hasBox = points.length > 0;
+
+    var content = (version.title ? '<p class="em-title" style="margin:0 0 20px;font-size:26px;line-height:32px;font-weight:600;color:' + COLOR.ink + ';">' + capitalised(plainValue(template.subject)) + '</p>' : '')
+      + before.map(function (block) { return styledBlock(plainValue(block)); }).join('')
+      + (doorIndex === -1 ? '' : doorHtml(blocks[doorIndex], version, hasBox ? 28 : 16))
+      + (hasBox ? boxHtml(points) : '')
+      + prose.map(function (block) { return styledBlock(boldValue(block)); }).join('');
     /* The dressing drops the clipboard markers and the trailing line break of a pasted signature, so the card ends on its own padding. */
-    var signature = version.signature === 'prod'
-      ? PROD_SIGNATURE_HTML.replace(/<!--(Start|End)Fragment-->/g, '').replace(/(\s*<br\s*\/?>\s*)+$/, '').trim()
-      : LIGHT_SIGNATURE_HTML;
-    var legal = version.signature === 'prod' ? '' : 'Léo Guillaume EI · SIRET 988&nbsp;307&nbsp;906&nbsp;00020<br>';
-    return '<!doctype html>\n<html lang="fr">\n<head>\n<meta charset="utf-8">\n<meta name="viewport" content="width=device-width, initial-scale=1">\n<title>' + fillVariables(template.subject, version, false) + '</title>\n' + HEAD_STYLE + '\n</head>\n'
+    var signature = PROD_SIGNATURE_HTML.replace(/<!--(Start|End)Fragment-->/g, '').replace(/(\s*<br\s*\/?>\s*)+$/, '').trim();
+
+    return '<!doctype html>\n<html lang="fr">\n<head>\n<meta charset="utf-8">\n<meta name="viewport" content="width=device-width, initial-scale=1">\n<title>' + plainValue(template.subject) + '</title>\n' + HEAD_STYLE + '\n</head>\n'
       + '<body style="margin:0;padding:0;background-color:' + COLOR.page + ';">\n'
       + '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:' + COLOR.page + ';">\n<tr>\n<td class="em-outer" align="center" style="padding:0 16px;">\n'
       + '<table role="presentation" width="600" cellpadding="0" cellspacing="0" border="0" style="width:100%;max-width:600px;">\n'
-      + head
+      + '<tr>\n<td class="em-top" height="32" style="height:32px;font-size:0;line-height:0;">&nbsp;</td>\n</tr>\n'
       + '<tr>\n<td class="em-card" style="padding:40px;background-color:' + COLOR.card + ';border-radius:16px;font-family:' + FONT + ';font-size:15px;line-height:24px;color:' + COLOR.text + ';text-align:left;">\n'
-      + body + '\n'
-      + '<div style="margin-top:16px;">' + signature + '</div>\n'
+      + content + '\n'
+      + '<div style="margin-top:' + (hasBox ? 28 : 16) + 'px;">' + signature + '</div>\n'
       + '</td>\n</tr>\n<tr>\n'
       + '<td class="em-foot" style="padding:24px 0 40px;font-family:' + FONT + ';font-size:12px;line-height:18px;color:' + COLOR.muted + ';text-align:left;">'
-      + legal
       + 'Vous recevez cet e-mail car vous êtes dans ma liste de prospects. <a href="' + UNSUBSCRIBE_URL + '" style="color:' + COLOR.muted + ';text-decoration:underline;">Se désabonner</a>'
       + '</td>\n</tr>\n</table>\n</td>\n</tr>\n</table>\n</body>\n</html>';
   }
 
-  function buildEmail(template, version, withSignature) {
+  function buildEmail(template, version) {
     if (version.kind === 'reference') { return DIBODEV_ACKNOWLEDGEMENT_HTML; }
-    if (version.kind === 'dressed') { return buildDressedEmail(template, version); }
-    return buildTodayEmail(template, version, withSignature);
+    return version.kind === 'dressed' ? buildDressedEmail(template, version) : buildTodayEmail(template);
+  }
+
+  function withRealImageUrls(html) {
+    return Object.keys(SAMPLE_IMAGES).reduce(function (text, file) { return text.split(file).join(SAMPLE_IMAGES[file]); }, html);
   }
 
   function measure(html) {
@@ -354,21 +381,19 @@
       hosts[href.indexOf('tel:') === 0 ? 'téléphone' : href.replace(/^https?:\/\//, '').split(/[/?#]/)[0].replace(/^www\./, '')] = true;
       return match;
     });
-    var sent = html.split(THUMBNAIL_FILE).join(THUMBNAIL_REAL_URL);
-    return { images: (html.match(/<img\s/g) || []).length, links: linkCount, hosts: Object.keys(hosts), kilobytes: (new Blob([sent]).size / 1024).toFixed(1).replace('.', ',') };
+    return { images: (html.match(/<img\s/g) || []).length, links: linkCount, hosts: Object.keys(hosts), kilobytes: (new Blob([withRealImageUrls(html)]).size / 1024).toFixed(1).replace('.', ',') };
   }
 
   function inboxSnippet(template) {
     var holder = document.createElement('div');
-    holder.innerHTML = fillVariables(template.body.replace('{vignette_video}', ''), VERSIONS[0], true).replace(/<\/(p|li)>/g, ' </$1>');
+    holder.innerHTML = plainValue(template.body.replace('{vignette_video}', '').replace(/\{(lien_demo|lien_assistant)\}/, function (placeholder, name) { return LINKS[name].label; })).replace(/<\/(p|li)>/g, ' </$1>');
     var text = holder.textContent.replace(/\s+/g, ' ').trim();
     return text.length > 110 ? text.slice(0, 110) + '…' : text;
   }
 
-  var state = { version: 'proposal', template: 'first', signature: 'on', images: 'shown' };
+  var state = { version: 'square-preview', template: 'first', images: 'shown' };
   var tabs = document.getElementById('tabs');
   var templateSelect = document.getElementById('template-select');
-  var signatureSwitch = document.getElementById('signature-switch');
   var frames = [document.getElementById('frame-desktop'), document.getElementById('frame-phone')];
 
   function byId(list, id) { return list.filter(function (entry) { return entry.id === id; })[0]; }
@@ -380,7 +405,7 @@
       var height = image.getAttribute('height');
       var style = image.getAttribute('style') || '';
       var inline = /inline-block/.test(style);
-      var fluid = /max-width/.test(style);
+      var fluid = /width:100%/.test(style);
       box.textContent = image.alt;
       box.style.cssText = 'box-sizing:border-box;overflow:hidden;border:1px solid #c9c9c2;border-radius:3px;font:11px/14px Arial,sans-serif;color:#66665f;'
         + (inline ? 'display:inline-block;vertical-align:middle;margin:' + (image.style.margin || '0') + ';' : 'display:block;')
@@ -403,10 +428,8 @@
   function render() {
     var version = byId(VERSIONS, state.version);
     var template = byId(TEMPLATES, state.template);
-    var isToday = version.kind === 'today';
     var isReference = version.kind === 'reference';
-    var withSignature = state.signature === 'on' || template.signatureInProd;
-    var html = buildEmail(template, version, withSignature);
+    var html = buildEmail(template, version);
     var stats = measure(html);
 
     Array.prototype.slice.call(tabs.children).forEach(function (tab) {
@@ -414,7 +437,6 @@
       tab.setAttribute('aria-pressed', String(tab.dataset.version === state.version));
     });
     templateSelect.disabled = isReference;
-    signatureSwitch.hidden = !isToday || template.signatureInProd;
 
     document.getElementById('pitch').textContent = version.pitch;
     var added = document.getElementById('added');
@@ -426,16 +448,10 @@
       '<b>' + stats.kilobytes + ' Ko</b> de code'
     ].map(function (label) { return '<span class="chip">' + label + '</span>'; }).join('');
 
-    var warning = document.getElementById('warning');
-    warning.hidden = isReference || template.signatureInProd;
-    warning.innerHTML = isToday
-      ? '<strong>En prod, la signature n\'est pas cochée sur ce modèle (n° ' + template.prodId + ').</strong> Tel quel, il part sans signature, comme les 134 mails de la vague 3 : bouton « Comme en prod sur ce modèle ».'
-      : '<strong>À cocher avant l\'envoi :</strong> en prod, la signature n\'est pas cochée sur ce modèle (n° ' + template.prodId + ').';
-
     document.getElementById('inbox').innerHTML = isReference
       ? '<span class="tag">Boîte de réception</span><span class="from">Léo Guillaume · Dibodev</span><span class="subject">Votre demande est bien arrivée</span>Je vous réponds au plus tard lundi 5 octobre. Voici la suite et le récapitulatif de votre demande.'
-      : '<span class="tag">Boîte de réception</span><span class="from">Léo Guillaume</span><span class="subject">' + fillVariables(template.subject, version, false) + '</span>' + inboxSnippet(template);
-    document.getElementById('code').value = html.split(THUMBNAIL_FILE).join(THUMBNAIL_REAL_URL);
+      : '<span class="tag">Boîte de réception</span><span class="from">Léo Guillaume</span><span class="subject">' + plainValue(template.subject) + '</span>' + (version.title ? capitalised(plainValue(template.subject)) + ' ' : '') + inboxSnippet(template);
+    document.getElementById('code').value = withRealImageUrls(html);
     frames.forEach(function (frame) {
       frame.onload = function () { fitFrame(frame); };
       frame.srcdoc = html;
@@ -462,26 +478,16 @@
 
   Array.prototype.slice.call(document.querySelectorAll('.switch button')).forEach(function (button) {
     button.addEventListener('click', function () {
-      var key = button.dataset.signature ? 'signature' : 'images';
-      state[key] = button.dataset[key];
+      state.images = button.dataset.images;
       Array.prototype.slice.call(button.parentNode.children).forEach(function (sibling) { sibling.classList.toggle('is-active', sibling === button); });
       render();
     });
   });
 
-  var firstTemplate = TEMPLATES[0];
-  function compareRow(label, version, withSignature, change, isPick) {
-    var stats = measure(buildEmail(firstTemplate, version, withSignature));
-    return '<tr' + (isPick ? ' class="is-pick"' : '') + '><td>' + label + '</td><td>' + stats.images + '</td><td>' + stats.links + '</td><td>' + stats.kilobytes + ' Ko</td><td>' + change + '</td></tr>';
-  }
-  document.getElementById('compare-body').innerHTML = [
-    compareRow("Aujourd'hui, signature cochée", VERSIONS[0], true, VERSIONS[0].change, false),
-    compareRow("Aujourd'hui, modèles « Franc » en prod", VERSIONS[0], false, 'Ce qui est parti en vague 3 : ni visage, ni numéro, ni SIRET.', false),
-    compareRow('Proposition', VERSIONS[2], true, VERSIONS[2].change, true),
-    compareRow('Variante avec bouton', VERSIONS[3], true, VERSIONS[3].change, false),
-    compareRow('Variante prudente', VERSIONS[4], true, VERSIONS[4].change, false),
-    compareRow('Le mail de dibodev.fr', VERSIONS[1], true, VERSIONS[1].change, false)
-  ].join('');
+  document.getElementById('compare-body').innerHTML = VERSIONS.map(function (version) {
+    var stats = measure(buildEmail(TEMPLATES[0], version));
+    return '<tr' + (version.badge ? ' class="is-pick"' : '') + '><td>' + version.tab + '</td><td>' + stats.images + '</td><td>' + stats.links + '</td><td>' + stats.kilobytes + ' Ko</td><td>' + version.change + '</td></tr>';
+  }).join('');
 
   render();
   window.addEventListener('resize', function () { frames.forEach(fitFrame); });

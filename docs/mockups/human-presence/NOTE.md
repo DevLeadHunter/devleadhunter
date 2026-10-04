@@ -4,13 +4,13 @@ Ticket Asana « [IA Code] Présence humaine sur la démo : carte « Qui est derr
 
 **État au 03/10** : les choix 1 à 3 sont tranchés (carte en variante C, bouton « Me répondre », prix et date partout) et la carte est en ligne. Les choix 4 à 8 attendent. Voir « Décisions et avis » plus bas.
 
-**04/10** : l'email a sa maquette de décision (`email-frank-finalistes.html`, refaite le jour même sur l'état réel de la prod), avis donné : le mail dans l'habillage de dibodev.fr, signature inchangée. Voir « Finalistes » dans la partie 3.
+**04/10** : l'email a sa maquette de décision (`email-frank-finalistes.html`, refaite le jour même sur l'état réel de la prod), troisième version le soir même : trois propositions sans logo, montées avec les blocs du mail de dibodev.fr ; avis donné : « carré, avec aperçu ». La signature est cochée sur les 51 modèles de prod depuis le 04/10. Voir « Finalistes » dans la partie 3.
 
 Ouvrir les maquettes dans un navigateur (double-clic suffit, aucun serveur) :
 
 - `banner-card.html` : la carte dans le bandeau, 3 variantes (C retenue, A, B) × 3 états (pastille, ouvert bureau, ouvert mobile 375), site clair ou sombre derrière, vue scène ou planche.
 - `banner-receptionist.html` : la réceptionniste Léa dans le bandeau, 2 positions × entrée/conversation × bureau/mobile, planche.
-- `email-frank-finalistes.html` (avec `email-vignette-exemple.jpg` à côté) : la maquette à regarder pour trancher le choix 6. Ce qui part aujourd'hui (vérifié en prod), le mail de dibodev.fr en référence, la proposition et ses deux variantes, sur quatre textes lus en prod, images affichées ou bloquées, code affiché.
+- `email-frank-finalistes.html` (avec `email-vignette-exemple.jpg` et `email-capture-exemple.jpg` à côté) : la maquette à regarder pour trancher le choix 6. Ce qui part aujourd'hui (vérifié en prod), le mail de dibodev.fr en référence, et trois propositions sans logo, sur quatre textes lus en prod, images affichées ou bloquées, code affiché.
 - `email-frank.html` : l'email du modèle 30 en HTML, référence actuelle + 2 variantes côte à côte, signature réelle ou allégée, compteurs (images, poids, liens) et grille de contrôle délivrabilité.
 
 Seules dépendances réseau : le portrait de Léo (`dibodev.fr/images/about/leo-guillaume-portrait-800.webp` pour le bandeau, `dibodev.fr/email/sig-portrait.png` pour l'email), le portrait de Léa (`demo.dibodev.fr/avatars/lea.webp`) et les 4 icônes de la signature réelle. Les polices sont celles du poste (IBM Plex et Fraunces si installées, sinon système et Georgia) pour ne rien charger.
@@ -62,37 +62,44 @@ Fait vérifié dans Resend le 03/10 : les mails de campagne de la vague 3 sont p
 
 **Cinq déclinaisons compatibles avec les modèles** (03/10 au soir ; retour : le gabarit doit marcher avec les modèles actuels, sans contenu qu'ils n'ont pas) : `email-frank-declinaisons.html` compare (1) l'habillage seul, (2) un encadré « Votre site » avec le nom, le prix, la date de retrait et un bouton, (3) un titre et un récapitulatif « En bref », (4) la photo de couverture du site de démo en haut de la carte, (5) un en-tête personnel (photo, nom, téléphone) et une signature en texte sans image. Le texte du modèle reste tel quel ; les blocs ajoutés viennent de `{entreprise}`, `{lien_demo}`, `{prix}`, `{date_expiration}`, du profil et de la photo de couverture du site.
 
-**Finalistes (04/10, refaite le même jour)**. Retours de Léo : d'abord « améliorer les cinq déclinaisons et donner un avis sur le meilleur habillage » ; puis, sur la première version, « Aujourd'hui est faux, ma signature est en place ; la vignette vidéo n'est pas la vraie ; regarde dibodev.fr ». La maquette `email-frank-finalistes.html` (avec `email-vignette-exemple.jpg` à côté) est donc reconstruite sur ce qui existe.
+**Finalistes (04/10, trois versions dans la journée)**. La maquette `email-frank-finalistes.html` (avec `email-vignette-exemple.jpg` et `email-capture-exemple.jpg` à côté) a été refaite deux fois sur les retours de Léo.
+
+Retours de Léo, dans l'ordre :
+
+1. « Améliorer les cinq déclinaisons et donner un avis sur le meilleur habillage. »
+2. Sur la première version : « Aujourd'hui est faux, ma signature est en place ; la vignette vidéo n'est pas la vraie ; regarde dibodev.fr. »
+3. Sur la deuxième : « Sur tous les mails que j'envoie, il faut tout le temps la signature. » Le format vidéo lui plaît. En mail classique, il n'aime pas l'encadré violet avec la flèche en texte ; il préfère à la limite le bouton, mais « on est encore très loin du mail de dibodev, beaucoup plus carré, beaucoup plus propre ». Le logo Dibodev n'est pas utile.
 
 Faits vérifiés en prod le 04/10 (API : modèles, signatures, journaux d'envoi ; Resend) :
 
-- « Signature Dibodev » (n° 1, par défaut, 5 images, mise à jour le 30/09) est cochée sur les 29 modèles créés avant le 22/09, dont 8 encore actifs (« Rappel court » n° 24, « Vidéo - je vous montre » n° 21). Les 51 mails de campagne des vagues 1 et 2 sont partis avec une signature (l'ancienne version : logo et trois icônes).
-- Elle n'est cochée sur aucun des 22 modèles créés depuis (n° 30 à 51 : tous les « Franc », la réceptionniste, la carte de fidélité). Les 134 mails de la vague 3 (campagnes 17 à 20) sont partis sans signature.
-- Le mail vidéo de la vague 2 (campagne 12, 4 mails) contenait bien la vignette : capture du site en 1280 × 720, pastille « Bonjour {Prénom} — votre site en vidéo », bouton lecture, photo en bulle, puis « La vidéo : » et le lien en texte. L'image d'exemple de la maquette reprend ce format (constantes de `video_montage.py`).
+- « Signature Dibodev » (n° 1, par défaut, 5 images, mise à jour le 30/09) était cochée sur les 29 modèles créés avant le 22/09 : les 51 mails de campagne des vagues 1 et 2 sont partis avec une signature (l'ancienne version : logo et trois icônes).
+- Elle n'était cochée sur aucun des 22 modèles créés depuis (n° 30 à 51 : tous les « Franc », la réceptionniste, la carte de fidélité) : les 134 mails de la vague 3 (campagnes 17 à 20) sont partis sans. **Corrigé le 04/10 à la demande de Léo** : `signature_id = 1` posé sur ces 22 modèles par `PATCH /email-templates/{id}`, les 51 modèles ont maintenant la signature. La cause reste dans le code : un modèle créé par le seeder, par le reseed ou par un fork naît sans signature.
+- Le mail vidéo de la vague 2 (campagne 12, 4 mails) contenait bien la vignette : capture du site en 1280 × 720, pastille « Bonjour {Prénom} — votre site en vidéo », bouton lecture, photo en bulle, puis « La vidéo : » et le lien en texte. L'image d'exemple reprend ce format (constantes de `video_montage.py`).
 - Le domaine d'envoi `mail.dibodev.fr` a le suivi des ouvertures et des clics activé.
 
-Les cinq versions de la maquette :
+Les cinq versions de la maquette (troisième version) :
 
-- **Aujourd'hui** : les paragraphes nus, la signature de prod (HTML exact), le pied gris centré. Une bascule montre le mail « comme en prod sur ce modèle » quand la signature n'y est pas cochée.
-- **Le mail de dibodev.fr** : l'accusé de réception, rendu avec les gabarits MJML du dépôt `dibodev.fr-frontend`. C'est la référence à suivre.
-- **Proposition (avis donné)** : le logo Dibodev, la carte blanche sur fond #f6f6f3, le texte en 15 px #4b4b47, `{lien_demo}` sur sa propre ligne violette (48 px de haut), prix et date en gras, la signature de prod sans y toucher, le pied discret aligné à gauche. Mêmes mesures que le mail de dibodev.fr ; code écrit à la main (tables, styles en ligne), sans MJML.
-- **Variante avec bouton** : `{lien_demo}` devient une fiche (« Votre site », nom du commerce, adresse, bouton « Voir mon site »).
-- **Variante prudente** : sans logo, signature à une image (sans les icônes, LinkedIn ni GitHub), SIRET dans le pied. À sortir si le test sur les adresses témoins est moins bon avec la proposition.
+- **Aujourd'hui** : les paragraphes nus, la signature de prod (HTML exact), le pied gris centré.
+- **Le mail de dibodev.fr** : l'accusé de réception, rendu avec les gabarits MJML du dépôt `dibodev.fr-frontend`. C'est le niveau à atteindre.
+- **1 · Carré, avec aperçu (avis donné)** : les blocs du mail de dibodev.fr, aux mêmes mesures. Un titre (26 px, l'objet du mail avec sa majuscule), le texte qui précède le lien, l'aperçu du site dans un cadre de navigateur (barre d'adresse écrite en texte, puis la capture), un bouton violet « Voir mon site » (rayon 8 px comme les boutons du site), puis l'encadré violet numéroté « L'essentiel » : un point par paragraphe qui suit le lien, sa première phrase en gras, le reste dessous. Aucune phrase ajoutée au modèle. Signature de prod inchangée, pas de logo, pied discret.
+- **2 · Carré, sans image** : la même sans l'aperçu ; le lien reste dans la phrase, le bouton dessous.
+- **3 · Simple, avec aperçu** : le format vidéo que Léo aime, appliqué au mail classique : texte, aperçu, bouton, reste du texte avec prix et date en gras. Ni titre ni encadré.
+
+Dans les trois, le mail vidéo garde sa vignette (sur toute la largeur de la carte) et son lien « La vidéo : ». La réceptionniste garde le bouton sans aperçu tant qu'on n'a pas de capture de sa page.
 
 Mesures sur « Franc - premier contact » :
 
 | Version | Images | Liens | Poids du code |
 |---|---|---|---|
-| Aujourd'hui, signature cochée | 5 | 7 | 4,6 Ko |
-| Aujourd'hui, modèles « Franc » en prod (sans signature) | 0 | 2 | 1,3 Ko |
-| Proposition | 6 | 7 | 6,3 Ko |
-| Variante avec bouton | 6 | 7 | 6,8 Ko |
-| Variante prudente | 1 | 5 | 4,3 Ko |
+| Aujourd'hui | 5 | 7 | 4,6 Ko |
+| 1 · Carré, avec aperçu | 6 | 9 | 8,6 Ko |
+| 2 · Carré, sans image | 5 | 8 | 7,8 Ko |
+| 3 · Simple, avec aperçu | 6 | 9 | 6,8 Ko |
 | Le mail de dibodev.fr (MJML) | 6 | 8 | 28,7 Ko |
 
-Avis donné : **la proposition**. Par rapport à un mail d'aujourd'hui avec la signature, elle ajoute une seule image (le logo, 4,8 Ko) et aucun lien. Aucun réglage ne garantit la boîte principale : la passer sur les adresses témoins avant la vague, puis la comparer au mail simple sur une campagne. À faire sans attendre l'habillage : cocher la signature sur les modèles « Franc » (choix 7).
+Avis donné : **la 1**. Elle reprend le titre, l'encadré numéroté et le bouton du mail de dibodev.fr, et l'aperçu du site fait pour le mail classique ce que la vignette fait pour le mail vidéo. Elle ajoute une image (la capture, environ 60 Ko), comme les mails vidéo de la vague 2 ; la 2 n'en ajoute aucune. Aucun réglage ne garantit la boîte principale : passer la version retenue sur les adresses témoins avant la vague, puis la comparer au mail simple sur une campagne.
 
-Ce qui était faux dans la première version du 04/10, à ne pas refaire : « Aujourd'hui » montrait tous les modèles sans signature (vrai seulement pour ceux d'après le 22/09) ; la vignette vidéo était un dessin inventé ; la recommandation retirait le logo et réécrivait la signature, loin du mail de dibodev.fr.
+Écartées en chemin, à ne pas reproposer : le logo Dibodev en haut du mail ; le lien sur une ligne violette terminée par une flèche en texte ; une signature réécrite ou allégée (la signature de Léo ne se touche pas) ; un « Aujourd'hui » dessiné sans lire la prod ; une vignette vidéo inventée.
 
 ## Choix à trancher
 
@@ -114,8 +121,8 @@ Ce qui était faux dans la première version du 04/10, à ne pas refaire : « Au
 | 3 | Prix et date dans la carte | **Tranché : partout** (une démo jamais envoyée n'affiche pas de date) | |
 | 4 | Réceptionniste dans le bandeau | En attente | Après le lancement, pour mesurer la carte seule ; ensuite la position 1 (un seul objet, une seule identité) |
 | 5 | Persona | En attente | Léa, présentée comme l'assistante IA de l'expéditeur (la même que sur dibodev.fr) |
-| 6 | Email | En attente (maquette du 04/10, `email-frank-finalistes.html`) | La proposition : le mail dans l'habillage de dibodev.fr (logo, carte, lien sur sa propre ligne), signature de prod inchangée. Variante avec bouton en test plus tard, variante prudente si le test témoin est moins bon |
-| 7 | Signature | En attente | Oui, et c'est le plus pressé : vérifié le 04/10, la signature n'est cochée sur aucun modèle créé depuis le 22/09 (n° 30 à 51), donc sur aucun « Franc » de la bibliothèque |
+| 6 | Email | En attente (maquette du 04/10, troisième version, `email-frank-finalistes.html`) | La 1, « carré, avec aperçu » : titre, aperçu du site dans un cadre, bouton violet, encadré numéroté, signature inchangée, pas de logo. La 2 si on ne veut aucune image en plus |
+| 7 | Signature | **Tranché et fait le 04/10 : la signature sur tous les mails.** Cochée sur les 51 modèles de prod | Reste à corriger dans le code : un modèle créé par le seeder ou par un fork naît sans signature |
 | 8 | Copie de Léa | En attente | « Le nom de domaine est compris » est exact ; « sous 48 h » seulement si c'est tenable à chaque vente, sinon « dans les jours qui suivent le paiement ». Le tiret du modèle 30 ne compte plus : les modèles de la bibliothèque n'en ont pas |
 
 ## Contraintes de délivrabilité vérifiées (email)
@@ -160,13 +167,13 @@ Ce qui était faux dans la première version du 04/10, à ne pas refaire : « Au
 - Dashboard : signature allégée créée dans Signatures, attachée aux modèles 30-33.
 - API (b) : `EmailVariables.CARD = "carte_demo"` + `build_demo_card_html(demo_link, business_name, price_label, expiry_label)` ; modèle 30 édité pour l'inclure sous le premier paragraphe.
 - Optionnel : conteneur 600 px / 15 px posé autour du corps dans `send_via_user_identity` (avant le pied), pour que (a) ait une taille de lecture sans toucher aux 39 modèles.
-- Habillage des finalistes (04/10), 1 à 1,5 jour avec les tests :
-  - `api/services/email_layout.py` (nouveau) : pose l'en-tête (logo et nom) et la carte autour du corps et de la signature, écrit les styles sur `<p>`, `<ul>`, `<li>`, ajoute le bloc `<style>` (téléphone) et le pied (phrase et lien de désinscription) ; retire le saut de ligne final d'une signature collée.
+- Habillage des finalistes (04/10), 1,5 à 2 jours avec les tests :
+  - `api/services/email_layout.py` (nouveau) : pose la carte autour du corps et de la signature. Règle de la version « carré » : le titre est l'objet du mail ; les blocs qui précèdent le lien restent du texte ; le lien (`{lien_demo}`, `{lien_assistant}`) devient l'aperçu et le bouton, la vignette vidéo reste telle quelle ; les paragraphes qui suivent passent dans l'encadré, première phrase en gras. Styles posés sur `<p>`, `<ul>`, `<li>`, bloc `<style>` pour le téléphone, pied (phrase et lien de désinscription), saut de ligne final d'une signature collée retiré.
   - `email_sending_service.send_via_user_identity` : l'habillage remplace l'ajout du pied actuel pour les modèles habillés ; `strip_unsubscribe_footer` doit reconnaître les deux formes (renvoi vers une adresse corrigée).
-  - `EmailVariables.build_demo_link_html` : rendu « ligne » pour `{lien_demo}` et `{lien_assistant}` ; `{prix}`, `{prix_assistant}` et `{date_expiration}` en gras dans le corps, jamais dans l'objet.
-  - Modèles : un réglage « Habillage : simple ou dibodev.fr » (colonne, éditeur, aperçu), pour que le test A/B existant compare le même texte habillé ou non.
-  - Profil : logo, nom affiché et couleur des liens (Dibodev et le violet pour Léo, rien d'imposé à un autre utilisateur).
-  - Dashboard : cocher la signature sur les modèles francs (aucun développement).
+  - Capture du site : celle que la vidéo utilise déjà (`website_thumbnail_key`), à produire aussi pour les démos sans vidéo, sans pastille ni bouton lecture.
+  - Modèles : un réglage « Habillage : simple ou carré » (colonne, éditeur, aperçu), pour que le test A/B existant compare le même texte habillé ou non.
+  - Profil : couleur des liens et du bouton (le violet pour Léo, rien d'imposé à un autre utilisateur).
+  - Création de modèles : signature par défaut posée d'office (seeder, reseed, fork, éditeur).
 - Mesure : Resend trace chaque URL (texte vs bouton), PostHog `email_clicked` existant, A/B par campagne existant.
 
 ## Mesure prévue
