@@ -34,6 +34,9 @@ l'audit. Elle a été retirée le même jour et remplacée par la cible de la se
 - Pages Facebook : lues par le Chrome du poste, jamais par le serveur. L'application Windows le fait
   seule quand la recherche est ouverte ; `python prospect_search_cli.py` le fait depuis un terminal.
 - Noms des fiches Google nettoyés (slogan, parenthèses, pictogrammes retirés).
+- Email cherché aussi par le numéro de téléphone : un résultat qui montre le numéro du candidat parle
+  de lui, quel que soit le nom affiché.
+- Une fiche qui déclare un site que la vérification ne retrouve pas attend dans « À confirmer ».
 
 **Mesuré sur les premiers passages (base locale, vraies requêtes)**
 
@@ -47,6 +50,37 @@ l'audit. Elle a été retirée le même jour et remplacée par la cible de la se
 
 Une requête coûte environ 0,0015 $. Un métier couvert par un registre revient à moins d'un centime
 par prospect ; un métier sans registre, à 3 à 6 centimes.
+
+**Premières recherches réelles (production, 4 octobre)**
+
+| Objectif | Requêtes | Gardés | Mis de côté | À confirmer |
+|---|---|---|---|---|
+| 3 paysagistes à Monthey (Suisse), email et portable | 124 | 0 | 5 | 9 |
+| 3 paysagistes et 3 électriciens en France, email et portable | 114 | 6 | 14 | 2 |
+
+Les 6 gardés (Limoges, Castres) ont un email prouvé et un portable ; quatre ont été recontrôlés à la
+main, aucun n'a de site. Durée : 5 à 7 minutes par recherche, lecture des pages Facebook comprise.
+
+**Comparatif avec la méthode manuelle (paysagistes, Monthey, même objectif)**
+
+| | Méthode manuelle (Claude Code + Bright Data) | Recherche de l'app |
+|---|---|---|
+| Requêtes | 16 | 124 |
+| Fiches lues | 11 (annuaire) | 79 (Google « Lieux », 4 pages) |
+| Prospects complets (email et portable) | 0 | 0 |
+| Prospects avec portable, sans site | 0 gardé | 5 créés (4 recontrôlés à la main : justes) |
+| Raison et preuve de chaque rejet | à la main, non gardées | enregistrées, 40 rejets |
+
+- Ce que l'app a mieux fait : sept fois plus de fiches, les mêmes contrôles sur chacune, un email
+  trouvé là où l'annuaire le cachait, aucune requête perdue sur les réponses vides (elle réessaie),
+  et tout est gardé en mémoire pour la recherche suivante.
+- Ce que la main avait mieux fait : un email donné par un annuaire sous un autre nom que la fiche
+  Google. Corrigé le jour même : recherche par numéro de téléphone, et titre long cherché sans
+  guillemets (le cas est rejoué en test).
+- Ce que l'app ne fait toujours pas : lire l'astérisque « pas de publicité » de l'annuaire suisse,
+  trouver un artisan qui n'a ni fiche Google ni page Facebook (annonces dans des groupes), ouvrir le
+  bouton « Site Web » d'une fiche quand Google ne montre pas le site ailleurs (ces fiches attendent
+  dans « À confirmer »).
 
 **Ce qui reste (lots de la section 10)**
 
