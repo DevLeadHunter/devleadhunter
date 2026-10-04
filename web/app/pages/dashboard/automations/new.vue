@@ -968,7 +968,12 @@ function openSendPolicyDrawer(): void {
 async function reloadEmailTemplates(): Promise<void> {
   const emailList: EmailTemplate[] = await EmailTemplatesService.getEmailTemplates()
   emailTemplates.value = emailList.map(
-    (t: EmailTemplate): TemplateSelectOption => ({ id: t.id, name: t.name, subject: t.subject }),
+    (t: EmailTemplate): TemplateSelectOption => ({
+      id: t.id,
+      name: t.name,
+      subject: t.subject,
+      is_active: t.is_active,
+    }),
   )
 }
 

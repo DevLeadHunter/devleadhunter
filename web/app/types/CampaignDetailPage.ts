@@ -5,6 +5,7 @@ export type TemplateOption = {
   id: number
   name: string
   subject: string
+  is_active: boolean
 }
 
 export type CampaignQueueRow = CampaignQueueItem & {

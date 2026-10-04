@@ -67,15 +67,17 @@ const props: TemplateSelectProps = defineProps({
 
 const emit: EmitFn<TemplateSelectEmits> = defineEmits<TemplateSelectEmits>()
 
-/** Menu entries; the subject rides along as the secondary line. */
+/** Menu entries: the active templates, plus the selected one even if it was deactivated since. */
 const items: ComputedRef<TemplateSelectItem[]> = computed((): TemplateSelectItem[] =>
-  props.templates.map(
-    (template: TemplateSelectOption): TemplateSelectItem => ({
-      value: template.id,
-      label: template.name,
-      description: template.subject,
-    }),
-  ),
+  props.templates
+    .filter((template: TemplateSelectOption): boolean => template.is_active || template.id === props.modelValue)
+    .map(
+      (template: TemplateSelectOption): TemplateSelectItem => ({
+        value: template.id,
+        label: template.name,
+        description: template.subject,
+      }),
+    ),
 )
 
 const selected: ComputedRef<TemplateSelectOption | undefined> = computed((): TemplateSelectOption | undefined =>

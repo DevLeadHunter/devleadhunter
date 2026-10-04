@@ -2,6 +2,7 @@ export type TemplateSelectOption = {
   id: number
   name: string
   subject: string
+  is_active: boolean
 }
 
 /** Menu entry of the searchable picker: a template flattened for USelectMenu. */
