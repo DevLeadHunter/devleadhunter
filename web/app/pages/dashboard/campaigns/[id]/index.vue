@@ -100,7 +100,11 @@
         envoi depuis le
         <NuxtLink to="/dashboard/campaigns?view=forecast" class="font-medium underline">prévisionnel</NuxtLink> ; le
         bouton Pause coupe l'automatisation (même interrupteur que
-        <NuxtLink to="/dashboard/settings/sms" class="font-medium underline">Paramètres → Relance SMS</NuxtLink>).
+        <NuxtLink to="/dashboard/settings/sms" class="font-medium underline"
+          >Paramètres
+          <UIcon name="i-lucide-arrow-right" class="inline-block h-[1em] w-[1em] align-[-0.125em]" /> Relance
+          SMS</NuxtLink
+        >).
       </UiCallout>
 
       <div v-if="smsMetricCards.length" class="grid grid-cols-2 gap-3 @xl:grid-cols-4">
@@ -273,7 +277,11 @@
             <p class="text-xs text-[var(--app-ink)]">
               <span class="font-medium">Expéditeur SMS requis.</span>
               Renseignez un nom d'expéditeur dans
-              <NuxtLink to="/dashboard/settings/sms" class="font-medium underline">Paramètres → Relance SMS</NuxtLink>
+              <NuxtLink to="/dashboard/settings/sms" class="font-medium underline"
+                >Paramètres
+                <UIcon name="i-lucide-arrow-right" class="inline-block h-[1em] w-[1em] align-[-0.125em]" /> Relance
+                SMS</NuxtLink
+              >
               avant de lancer.
             </p>
           </div>
@@ -301,15 +309,17 @@
             désinscription est ajoutée à l'envoi.
           </p>
           <p class="text-muted mt-2 text-[11px] leading-relaxed">
-            {{
-              isAutoRelanceCampaign
-                ? `Modèle de relance « ${smsTemplate?.name ?? 'Rappel court'} » de la bibliothèque SMS, rendu pour
-                  chaque prospect (salutation, lien de sa démo, votre prénom). Un seul SMS par
-                  prospect — le même réglage que Paramètres → Relance SMS.`
-                : `Modèle « ${smsTemplate?.name ?? 'Direct'} » de la bibliothèque SMS, rendu pour chaque prospect
-                  (salutation, nom de l'entreprise, lien de sa démo, votre prénom), sans A/B. La relance se
-                  règle juste en dessous.`
-            }}
+            <template v-if="isAutoRelanceCampaign">
+              Modèle de relance « {{ smsTemplate?.name ?? 'Rappel court' }} » de la bibliothèque SMS, rendu pour chaque
+              prospect (salutation, lien de sa démo, votre prénom). Un seul SMS par prospect — le même réglage que
+              Paramètres
+              <UIcon name="i-lucide-arrow-right" class="inline-block h-[1em] w-[1em] align-[-0.125em]" /> Relance SMS.
+            </template>
+            <template v-else>
+              Modèle « {{ smsTemplate?.name ?? 'Direct' }} » de la bibliothèque SMS, rendu pour chaque prospect
+              (salutation, nom de l'entreprise, lien de sa démo, votre prénom), sans A/B. La relance se règle juste en
+              dessous.
+            </template>
           </p>
           <p v-if="smsTemplateFallbackName" class="text-muted mt-1 text-[11px] leading-relaxed">
             <UIcon name="i-lucide-video-off" class="mr-0.5 inline-block h-3 w-3 align-[-2px]" />
@@ -1134,7 +1144,7 @@ const canLaunch: ComputedRef<boolean> = computed((): boolean =>
 /** Reason the launch button is disabled, shown as its tooltip (channel-aware). */
 const launchDisabledReason: ComputedRef<string> = computed((): string =>
   isSms.value
-    ? 'Configurez un expéditeur SMS dans Paramètres → Relance SMS'
+    ? 'Configurez un expéditeur SMS dans la page Relance SMS des paramètres'
     : 'Sélectionnez un template J1 dans la configuration',
 )
 

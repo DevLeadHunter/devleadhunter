@@ -66,7 +66,7 @@
 
     <p v-else-if="compressionGainLabel" class="text-muted mt-3 flex items-center gap-2 text-xs">
       <UIcon name="i-lucide-check" class="h-3.5 w-3.5 text-[var(--app-ink)]" />
-      {{ compressionGainLabel }}
+      <UiArrowText :text="compressionGainLabel" />
     </p>
 
     <UiCallout v-if="props.sizeErrorMessage" variant="danger" class="mt-3">

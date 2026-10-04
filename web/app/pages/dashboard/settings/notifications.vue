@@ -34,8 +34,9 @@
         <h2 class="text-sm font-semibold text-[var(--app-ink)]">📱 Sur iPhone</h2>
         <p class="mt-1 text-xs text-[var(--app-ink-soft)]">
           Pour recevoir les notifications sur iPhone, ajoute d'abord DevLeadHunter à ton écran d'accueil : bouton
-          <strong>Partager</strong> → <strong>« Sur l'écran d'accueil »</strong>, puis rouvre l'app depuis l'icône et
-          active le bouton ci-dessus.
+          <strong>Partager</strong>
+          <UIcon name="i-lucide-arrow-right" class="inline-block h-[1em] w-[1em] align-[-0.125em]" />
+          <strong>« Sur l'écran d'accueil »</strong>, puis rouvre l'app depuis l'icône et active le bouton ci-dessus.
         </p>
       </div>
     </section>

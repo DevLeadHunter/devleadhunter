@@ -120,7 +120,8 @@
             <p class="text-muted text-[11px] leading-relaxed">
               Le modèle choisi part vers chaque prospect mobile avec le lien de son site démo. Pas d'A/B : le message et
               la mention « STOP » sont rendus automatiquement (tu peux le changer ensuite sur la campagne). L'expéditeur
-              se règle dans Paramètres → Relance SMS.
+              se règle dans Paramètres
+              <UIcon name="i-lucide-arrow-right" class="inline-block h-[1em] w-[1em] align-[-0.125em]" /> Relance SMS.
             </p>
           </div>
 

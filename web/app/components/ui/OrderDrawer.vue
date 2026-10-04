@@ -254,9 +254,11 @@
                   :href="`https://${order.domain}`"
                   target="_blank"
                   rel="noopener noreferrer"
-                  class="ml-auto text-[11px] font-medium text-[var(--app-accent-ink)] hover:underline"
-                  >Ouvrir →</a
+                  class="ml-auto inline-flex items-center gap-1 text-[11px] font-medium text-[var(--app-accent-ink)] hover:underline"
                 >
+                  Ouvrir
+                  <UIcon name="i-lucide-arrow-right" class="h-3 w-3" />
+                </a>
               </div>
               <div v-else class="flex items-start gap-2 text-sm">
                 <UIcon
@@ -265,7 +267,9 @@
                 />
                 <span class="text-[var(--app-ink-soft)]">
                   Domaine <span class="font-medium text-[var(--app-ink)]">{{ order.domain }}</span> acheté — mise en
-                  ligne en cours (propagation DNS, quelques minutes). Suivi dans Paramètres → Monitoring.
+                  ligne en cours (propagation DNS, quelques minutes). Suivi dans Paramètres
+                  <UIcon name="i-lucide-arrow-right" class="inline-block h-[1em] w-[1em] align-[-0.125em]" />
+                  Monitoring.
                   <span v-if="ovhOrderStatusLabel" class="mt-1 block">
                     Commande OVH : <span class="font-medium text-[var(--app-ink)]">{{ ovhOrderStatusLabel }}</span>
                   </span>

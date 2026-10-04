@@ -17,7 +17,7 @@
               :style="{ color: TOAST_STYLE[toast.type].iconColor }"
             />
           </span>
-          <p class="flex-1 pt-1 text-sm leading-snug text-[var(--app-ink)]">{{ toast.message }}</p>
+          <p class="flex-1 pt-1 text-sm leading-snug text-[var(--app-ink)]"><UiArrowText :text="toast.message" /></p>
           <button
             type="button"
             class="flex h-6 w-6 shrink-0 cursor-pointer items-center justify-center rounded text-[var(--app-faint)] transition-colors hover:bg-[var(--app-surface-2)] hover:text-[var(--app-ink)]"

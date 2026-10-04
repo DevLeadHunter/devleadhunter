@@ -18,7 +18,7 @@
       </div>
 
       <UiCallout v-if="recorder.error.value" variant="warning" class="max-w-md text-left">
-        {{ recorder.error.value }}
+        <UiArrowText :text="recorder.error.value" />
       </UiCallout>
 
       <button type="button" class="app-btn-primary" :disabled="recorder.isRequesting.value" @click="askForCamera">
@@ -118,7 +118,9 @@
       </div>
 
       <template v-if="phase === 'setup'">
-        <UiCallout v-if="recorder.error.value" variant="warning">{{ recorder.error.value }}</UiCallout>
+        <UiCallout v-if="recorder.error.value" variant="warning"
+          ><UiArrowText :text="recorder.error.value"
+        /></UiCallout>
 
         <div class="rounded-xl border border-[var(--app-line)] bg-[var(--app-surface)] px-4 py-3.5">
           <div class="flex items-start gap-3">

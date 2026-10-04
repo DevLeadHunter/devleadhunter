@@ -363,7 +363,7 @@
           '@3xl:border-l': markIndex === 2,
         }"
       >
-        <dt class="app-label">{{ mark.label }}</dt>
+        <dt class="app-label"><UiArrowText :text="mark.label" /></dt>
         <dd class="mt-1.5 text-[17px] font-medium tracking-[-0.01em] text-[var(--app-ink)] tabular-nums">
           {{ mark.value
           }}<small class="text-[13px] font-normal tracking-normal text-[var(--app-ink-soft)]">{{ mark.suffix }}</small>

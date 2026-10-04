@@ -181,9 +181,9 @@
                 :to="entryLink(entry) ?? ''"
                 class="hover:text-[var(--app-accent-ink)] hover:underline"
               >
-                {{ entry.title }}
+                <UiArrowText :text="entry.title" />
               </NuxtLink>
-              <span v-else>{{ entry.title }}</span>
+              <span v-else><UiArrowText :text="entry.title" /></span>
             </BaseTableTd>
             <BaseTableTd label="Détail">
               <button
@@ -199,7 +199,7 @@
                 class="block max-w-[280px] truncate text-xs text-[var(--app-ink-soft)]"
                 :title="entry.detail"
               >
-                {{ entry.detail }}
+                <UiArrowText :text="entry.detail" />
               </span>
               <span v-else class="text-sm text-[var(--app-faint)]">—</span>
             </BaseTableTd>

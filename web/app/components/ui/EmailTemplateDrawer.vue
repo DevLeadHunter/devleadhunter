@@ -168,7 +168,9 @@
                   </div>
                   <UiVariableChips @insert="insertIntoActiveField" />
                   <p class="mt-3 text-[11px] leading-snug text-[var(--app-ink-soft)]">
-                    Clic → insère au curseur dans le champ actif. Ou tapez «&nbsp;{&nbsp;» dans l'objet ou le message.
+                    Clic
+                    <UIcon name="i-lucide-arrow-right" class="inline-block h-[1em] w-[1em] align-[-0.125em]" /> insère
+                    au curseur dans le champ actif. Ou tapez «&nbsp;{&nbsp;» dans l'objet ou le message.
                   </p>
                 </div>
 

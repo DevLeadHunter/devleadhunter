@@ -42,10 +42,14 @@
             </span>
             <span class="min-w-0 flex-1">
               <span class="flex items-center gap-2">
-                <span class="truncate text-sm font-medium text-[var(--app-ink)]">{{ item.title }}</span>
+                <span class="truncate text-sm font-medium text-[var(--app-ink)]"
+                  ><UiArrowText :text="item.title"
+                /></span>
                 <span v-if="!item.read" class="ml-auto h-2 w-2 shrink-0 rounded-full bg-[var(--app-accent-ink)]"></span>
               </span>
-              <span class="mt-0.5 block truncate text-xs text-[var(--app-ink-soft)]">{{ item.body }}</span>
+              <span class="mt-0.5 block truncate text-xs text-[var(--app-ink-soft)]"
+                ><UiArrowText :text="item.body"
+              /></span>
               <span class="mt-1 block text-[11px] text-[var(--app-faint)]">{{
                 formatRelativeTime(item.created_at)
               }}</span>

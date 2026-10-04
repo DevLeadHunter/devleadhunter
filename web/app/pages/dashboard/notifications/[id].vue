@@ -27,7 +27,7 @@
         </span>
         <div class="min-w-0 flex-1">
           <h1 class="text-lg font-semibold [overflow-wrap:anywhere] break-words text-[var(--app-ink)]">
-            {{ notification.title }}
+            <UiArrowText :text="notification.title" />
           </h1>
           <p class="mt-0.5 text-xs text-[var(--app-faint)]">{{ formatDateTime(notification.created_at) }}</p>
         </div>
@@ -37,7 +37,7 @@
         <p
           class="text-sm leading-relaxed [overflow-wrap:anywhere] break-words whitespace-pre-wrap text-[var(--app-ink)]"
         >
-          {{ notification.body }}
+          <UiArrowText :text="notification.body" />
         </p>
       </div>
 

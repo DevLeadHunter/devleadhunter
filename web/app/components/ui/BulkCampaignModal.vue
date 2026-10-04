@@ -80,7 +80,7 @@
           />
         </div>
 
-        <p v-if="error" class="mt-3 text-sm text-[var(--app-red)]">{{ error }}</p>
+        <p v-if="error" class="mt-3 text-sm text-[var(--app-red)]"><UiArrowText :text="error" /></p>
 
         <div class="mt-6 flex gap-3">
           <button type="button" class="btn-secondary flex-1" :disabled="submitting" @click="emit('close')">

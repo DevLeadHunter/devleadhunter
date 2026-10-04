@@ -54,7 +54,7 @@
             </span>
           </p>
           <p v-if="record?.proposed_provenance" class="mt-1 text-[10px] leading-relaxed text-[var(--app-ink-soft)]">
-            {{ record?.proposed_provenance }}
+            <UiArrowText :text="record?.proposed_provenance ?? ''" />
           </p>
           <p class="mt-1 text-[10px] leading-relaxed text-[var(--app-ink-soft)]">
             Ce nom n'entrera dans aucun email tant qu'il n'est pas confirmé — la salutation reste « Bonjour » neutre.
@@ -86,7 +86,7 @@
           class="mb-2 flex items-start gap-1.5 text-[10px] leading-relaxed text-[var(--app-ink-soft)]"
         >
           <UIcon name="i-lucide-badge-check" class="mt-0.5 h-3 w-3 shrink-0 text-[var(--app-green)]" />
-          {{ record?.contact_name_provenance }}
+          <UiArrowText :text="record?.contact_name_provenance ?? ''" />
         </p>
 
         <p
