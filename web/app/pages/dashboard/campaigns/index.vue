@@ -7,7 +7,7 @@
           Prospection
         </p>
         <h1 class="app-page-title mt-2">Campagnes</h1>
-        <p class="text-muted mt-1 text-sm">Vos séquences de cold email, de l'envoi initial aux relances.</p>
+        <p class="text-muted mt-1 text-sm">Vos séquences d'emails et de SMS, de l'envoi initial aux relances.</p>
       </div>
       <div class="flex w-full flex-col gap-2 @2xl:w-auto @2xl:flex-row @2xl:items-center @2xl:gap-3">
         <div
@@ -91,7 +91,9 @@
               />
             </div>
 
-            <div class="flex items-center gap-2">
+            <div class="flex flex-wrap items-center gap-2">
+              <UiSegmentedControl v-model="channelFilter" :options="CHANNEL_OPTIONS" label="Canal des campagnes" />
+
               <div ref="sortMenuEl" class="relative">
                 <button
                   type="button"
@@ -163,10 +165,29 @@
               </button>
             </span>
             <span
+              v-if="channelFilter !== 'all'"
+              class="inline-flex items-center gap-1.5 rounded-full border border-[var(--app-line)] bg-[var(--app-surface)] py-0.5 pr-1 pl-2.5 text-xs text-[var(--app-ink)]"
+            >
+              {{ CHANNEL_CHIP_LABELS[channelFilter] }}
+              <button
+                type="button"
+                class="flex rounded-full p-0.5 text-[var(--app-faint)] transition-colors hover:bg-[var(--app-surface-2)] hover:text-[var(--app-ink)]"
+                aria-label="Retirer le filtre de canal"
+                @click="channelFilter = 'all'"
+              >
+                <UIcon name="i-lucide-x" class="h-3 w-3" />
+              </button>
+            </span>
+            <span
               v-if="period.preset !== 'all'"
               class="inline-flex items-center gap-1.5 rounded-full border border-[var(--app-line)] bg-[var(--app-surface)] py-0.5 pr-1 pl-2.5 text-xs text-[var(--app-ink)]"
             >
-              {{ periodChipLabel }}
+              <span v-if="customPeriodRange" class="inline-flex items-center gap-1">
+                {{ customPeriodRange.start }}
+                <UIcon name="i-lucide-arrow-right" class="h-3 w-3" />
+                {{ customPeriodRange.end }}
+              </span>
+              <template v-else>{{ periodChipLabel }}</template>
               <button
                 type="button"
                 class="flex rounded-full p-0.5 text-[var(--app-faint)] transition-colors hover:bg-[var(--app-surface-2)] hover:text-[var(--app-ink)]"
@@ -409,11 +430,13 @@ import { useDrawerStackStore } from '~/stores/drawerStack'
 import { useToast } from '~/composables/useToast'
 import { CampaignService } from '~/services/campaignService'
 import type {
+  CampaignChannel,
   CampaignDetailResponse,
   CampaignResponse,
   CampaignStats,
   CampaignStatus,
 } from '~/services/campaignService'
+import type { SelectFieldOption } from '~/types/SelectField'
 import type { UiFilterTab } from '~/types/UiFilterTabs'
 import type { PeriodPreset, PeriodValue } from '~/types/UiPeriodFilter'
 import type { UseToastReturn } from '~/types/Composables'
@@ -431,6 +454,9 @@ type SortOption = { key: CampaignSortKey; label: string }
 
 /** Which status group the tabs slice the list into. */
 type StatusTabKey = 'ongoing' | 'draft' | 'done' | 'all'
+
+/** Which channel the list keeps: every campaign, or only the email or the SMS ones. */
+type ChannelFilter = 'all' | CampaignChannel
 
 /** Which view of the campaigns page is shown: the list, or the week-ahead forecast. */
 type CampaignView = 'list' | 'forecast'
@@ -505,9 +531,30 @@ const TAB_LABELS: Record<StatusTabKey, string> = {
   all: 'Toutes',
 }
 
+/** Channel filter options, in display order. */
+const CHANNEL_OPTIONS: SelectFieldOption<ChannelFilter>[] = [
+  { value: 'all', label: 'Tous canaux' },
+  { value: 'email', label: 'Email' },
+  { value: 'sms', label: 'SMS' },
+]
+
+/** Chip shown above the grid while a channel filter is on. */
+const CHANNEL_CHIP_LABELS: Record<CampaignChannel, string> = {
+  email: 'Campagnes email',
+  sms: 'Campagnes SMS',
+}
+
+/** What the result count and the empty message add after « campagne » for each channel filter. */
+const CHANNEL_NOUN_SUFFIXES: Record<ChannelFilter, string> = {
+  all: '',
+  email: ' email',
+  sms: ' SMS',
+}
+
 // Vue active de la page (liste ou prévisionnel), et état réactif des filtres de la liste.
 const view: Ref<CampaignView> = ref('list')
 const searchQuery: Ref<string> = ref('')
+const channelFilter: Ref<ChannelFilter> = ref('all')
 const statusTab: Ref<StatusTabKey> = ref('ongoing')
 const sortKey: Ref<CampaignSortKey> = ref('recent')
 const period: Ref<PeriodValue> = ref({ preset: 'all', start: null, end: null })
@@ -532,7 +579,7 @@ const sortLabel: ComputedRef<string> = computed(
     SORT_OPTIONS.find((option: SortOption): boolean => option.key === sortKey.value)?.label ?? 'Plus récentes',
 )
 
-/** Campaigns matching the search + period (before the status tab slices them). */
+/** Campaigns matching the search, channel and period (before the status tab slices them). */
 const searchedCampaigns: ComputedRef<CampaignResponse[]> = computed((): CampaignResponse[] => {
   const query: string = searchQuery.value.trim().toLowerCase()
   return campaignsStore.campaigns.filter((campaign: CampaignResponse): boolean => {
@@ -540,11 +587,12 @@ const searchedCampaigns: ComputedRef<CampaignResponse[]> = computed((): Campaign
       !query ||
       campaign.name.toLowerCase().includes(query) ||
       (campaign.description?.toLowerCase().includes(query) ?? false)
-    return matchesQuery && matchesPeriod(campaign)
+    const matchesChannel: boolean = channelFilter.value === 'all' || campaign.channel === channelFilter.value
+    return matchesQuery && matchesChannel && matchesPeriod(campaign)
   })
 })
 
-/** Count of campaigns in each status tab, reflecting the search + period. */
+/** Count of campaigns in each status tab, reflecting the search, channel and period. */
 const tabCounts: ComputedRef<Record<StatusTabKey, number>> = computed((): Record<StatusTabKey, number> => {
   const counts: Record<StatusTabKey, number> = { ongoing: 0, draft: 0, done: 0, all: searchedCampaigns.value.length }
   for (const campaign of searchedCampaigns.value) counts[STATUS_BUCKET[campaign.status]]++
@@ -571,32 +619,38 @@ const visibleCampaigns: ComputedRef<CampaignResponse[]> = computed((): CampaignR
 const hasActiveFilters: ComputedRef<boolean> = computed(
   (): boolean =>
     searchQuery.value.trim() !== '' ||
+    channelFilter.value !== 'all' ||
     period.value.preset !== 'all' ||
     sortKey.value !== 'recent' ||
     statusTab.value !== 'ongoing',
 )
 
-/** `N campagnes · <onglet>` shown above the grid. */
+/** `N campagnes [SMS] · <onglet>` shown above the grid. */
 const resultCountLabel: ComputedRef<string> = computed((): string => {
   const count: number = visibleCampaigns.value.length
-  return `${count} campagne${count > 1 ? 's' : ''} · ${TAB_LABELS[statusTab.value]}`
+  return `${count} campagne${count > 1 ? 's' : ''}${CHANNEL_NOUN_SUFFIXES[channelFilter.value]} · ${TAB_LABELS[statusTab.value]}`
 })
 
-/** Chip label describing the active period. */
+/** Chip label describing the active period (a custom range is drawn from `customPeriodRange`). */
 const periodChipLabel: ComputedRef<string> = computed((): string => {
   if (period.value.preset === 'month') return 'Ce mois-ci'
   if (period.value.preset === '30d') return '30 derniers jours'
-  if (period.value.preset === 'custom' && period.value.start && period.value.end) {
-    return `${formatLongMonthDate(period.value.start)} → ${formatLongMonthDate(period.value.end)}`
-  }
   return 'Période'
 })
+
+/** First and last day of a custom period, shown in the chip on either side of the arrow icon. */
+const customPeriodRange: ComputedRef<{ start: string; end: string } | null> = computed(
+  (): { start: string; end: string } | null =>
+    period.value.preset === 'custom' && period.value.start && period.value.end
+      ? { start: formatLongMonthDate(period.value.start), end: formatLongMonthDate(period.value.end) }
+      : null,
+)
 
 /** Message of the filtered-empty panel, tuned to the active search. */
 const filteredEmptyMessage: ComputedRef<string> = computed((): string =>
   searchQuery.value.trim()
     ? `Rien pour « ${searchQuery.value.trim()} » dans « ${TAB_LABELS[statusTab.value]} ». Élargissez la recherche ou changez d'onglet.`
-    : `Aucune campagne dans « ${TAB_LABELS[statusTab.value]} » pour ces filtres.`,
+    : `Aucune campagne${CHANNEL_NOUN_SUFFIXES[channelFilter.value]} dans « ${TAB_LABELS[statusTab.value]} » pour ces filtres.`,
 )
 
 /** Confirmation message of the delete dialog. */
@@ -766,6 +820,7 @@ function toggleMenu(id: number): void {
  */
 function resetFilters(): void {
   searchQuery.value = ''
+  channelFilter.value = 'all'
   statusTab.value = 'ongoing'
   sortKey.value = 'recent'
   period.value = { preset: 'all', start: null, end: null }
@@ -916,6 +971,7 @@ function initFiltersFromQuery(): boolean {
   const query: LocationQuery = route.query
   if (query.view === 'forecast') view.value = 'forecast'
   if (typeof query.q === 'string') searchQuery.value = query.q
+  if (query.channel === 'email' || query.channel === 'sms') channelFilter.value = query.channel
   const sortKeys: CampaignSortKey[] = SORT_OPTIONS.map((option: SortOption): CampaignSortKey => option.key)
   if (typeof query.sort === 'string' && sortKeys.includes(query.sort as CampaignSortKey)) {
     sortKey.value = query.sort as CampaignSortKey
@@ -949,11 +1005,12 @@ function applyDefaultTab(): void {
 
 // Refléter les filtres dans l'URL (replace : pas d'entrée d'historique par frappe).
 watch(
-  [view, searchQuery, statusTab, sortKey, period],
+  [view, searchQuery, channelFilter, statusTab, sortKey, period],
   (): void => {
     const query: Record<string, string> = {}
     if (view.value !== 'list') query.view = view.value
     if (searchQuery.value.trim()) query.q = searchQuery.value.trim()
+    if (channelFilter.value !== 'all') query.channel = channelFilter.value
     if (statusTab.value !== 'ongoing') query.status = statusTab.value
     if (sortKey.value !== 'recent') query.sort = sortKey.value
     if (period.value.preset !== 'all') {
