@@ -22,7 +22,8 @@ Ticket Asana « [IA Code] Présence humaine sur la démo ». Trois briques pour 
 
 | Fichier | Ce qu'il montre | État |
 |---|---|---|
-| `prospect-search/vivier-v3.html` | **Le vivier de leads en direct** (maquette qui vit : les leads arrivent, on accepte, on refuse, on annule) : feuille unique, bandeau de recherche, cinq chiffres, onglets à compteur, tableau avec monogramme et bord coloré, volet de preuves, clavier ; et depuis une autre page, carte de suivi dans le menu et carte flottante pour trier | En attente |
+| `prospect-search/vivier-v4.html` | **Les leads en direct, version reprise** (maquette qui vit) : page des leads avec critères vérifiés en pastilles, barre de répartition, tri en lot ; page « Nouvelle recherche » en cinq questions avec résumé et coût ; barre de suivi large et basse sur les autres pages ; trois noms de menu à comparer | En attente |
+| `prospect-search/vivier-v3.html` | Première version du vivier en direct | Direction retenue le 04/10, remplacée par la v4 |
 | `prospect-search/recherche-v2.html` | Première proposition : la phrase, le parcours, le fil | **Refusée le 04/10** (« aucune ne me plaît ») |
 | `prospect-search/NOTE.md` | Ce qui est demandé, ce que montre le vivier, d'où vient chaque élément (dibodev.fr, PrePeers B2B, web), ce que cela change, les points à trancher | À jour |
 
