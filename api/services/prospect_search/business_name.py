@@ -16,7 +16,7 @@ _PARENTHESES_RE: re.Pattern[str] = re.compile(r"\([^)]*\)")
 # A separator set off by spaces opens a tagline; a hyphen inside a name (« Weiss-Couvreur ») does not.
 _TAGLINE_SEPARATOR_RE: re.Pattern[str] = re.compile(r"\s+[-–—|:/·•]+(?:\s+|$)|,\s+")
 _SPACES_RE: re.Pattern[str] = re.compile(r"\s+")
-_EDGE_PUNCTUATION: str = " -–—|,;:/·•"
+_EDGE_PUNCTUATION: str = ' -–—|,;:/·•"«»'
 _MINIMUM_NAME_WORDS: int = 2
 # Letters, digits, spaces and punctuation make a name; pictographs and trademark signs decorate it.
 _NAME_CHARACTER_CATEGORIES: frozenset[str] = frozenset({"L", "N", "Z", "P"})

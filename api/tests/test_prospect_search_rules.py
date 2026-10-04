@@ -434,6 +434,7 @@ def test_an_overlong_trade_or_town_is_refused_before_the_search_is_stored() -> N
         ("Weiss-Couvreur zingueur", "Weiss-Couvreur zingueur"),
         ("Garage - Carrosserie Dupont", "Garage - Carrosserie Dupont"),
         ("L'Atelier d'Émile & Fils", "L'Atelier d'Émile & Fils"),
+        ('"🌿" Jardins du Chablais', "Jardins du Chablais"),
         ("🏠", "🏠"),
     ],
 )
