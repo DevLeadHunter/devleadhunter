@@ -1,0 +1,413 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Maquette · Vivier de leads (v3)</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link
+      href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      :root {
+        --bg: #f4f1e9; --sheet: #fbf9f3; --tint: #ede9de; --ink: #1d1a14; --soft: #6e6759; --faint: #b7ae9c;
+        --line: #e1dbcc; --line-soft: #eae5d8; --amber: #e8a33c; --amber-ink: #9c6b14; --amber-soft: rgba(232, 163, 60, 0.14);
+        --green: #2f7d4e; --green-soft: rgba(47, 125, 78, 0.12); --red: #bf4d33; --red-soft: rgba(191, 77, 51, 0.12);
+        --btn: #1d1a14; --btn-text: #fbf9f3; --hover: rgba(29, 26, 20, 0.045);
+        --pop: 0 24px 48px -18px rgba(29, 26, 20, 0.28), 0 0 0 1px rgba(29, 26, 20, 0.08);
+        --ease: cubic-bezier(0.22, 1, 0.36, 1);
+      }
+      :root[data-theme='dark'] {
+        --bg: #131312; --sheet: #1b1b1a; --tint: #242423; --ink: #f0efeb; --soft: #a1a09a; --faint: #565550;
+        --line: #2b2b29; --line-soft: #232322; --amber-ink: #ecb865; --amber-soft: rgba(232, 163, 60, 0.13);
+        --green: #55a878; --green-soft: rgba(85, 168, 120, 0.15); --red: #d76a55; --red-soft: rgba(215, 106, 85, 0.15);
+        --btn: #f0efeb; --btn-text: #131312; --hover: rgba(240, 239, 235, 0.05);
+        --pop: 0 24px 48px -18px rgba(0, 0, 0, 0.7), 0 0 0 1px rgba(240, 239, 235, 0.08);
+      }
+      * { box-sizing: border-box; margin: 0; }
+      body { display: flex; flex-direction: column; height: 100vh; background: var(--bg); color: var(--ink); font: 14px/1.45 'IBM Plex Sans', system-ui, sans-serif; }
+      button { font: inherit; color: inherit; background: none; border: 0; cursor: pointer; }
+      .mono { font-family: 'IBM Plex Mono', ui-monospace, monospace; font-variant-numeric: tabular-nums; }
+      .label { font: 500 11px/1.4 'IBM Plex Mono', monospace; letter-spacing: 0.08em; text-transform: uppercase; color: var(--soft); }
+      .soft { color: var(--soft); }
+      svg { width: 16px; height: 16px; flex: none; }
+
+      .mock-bar { flex: none; z-index: 60; display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; padding: 9px 14px; background: #111; color: #f3f3f0; font-size: 13px; }
+      .mock-switch { display: flex; gap: 3px; padding: 3px; border-radius: 999px; background: #262624; }
+      .mock-switch button { padding: 4px 11px; border-radius: 999px; color: #b9b8b2; font-weight: 500; }
+      .mock-switch button[aria-pressed='true'] { background: #f3f3f0; color: #111; }
+      .mock-note { margin-left: auto; color: #a8a7a1; }
+
+      .app { flex: 1; min-height: 0; display: grid; grid-template-columns: 236px minmax(0, 1fr); }
+      .side { display: flex; flex-direction: column; padding: 14px 10px 12px 12px; overflow: auto; }
+      .brand { display: flex; align-items: center; gap: 8px; padding: 2px 8px 12px; font-weight: 600; }
+      .side .label { padding: 12px 8px 5px; }
+      .nav { display: flex; align-items: center; gap: 10px; width: 100%; height: 36px; padding: 0 8px; border-radius: 8px; color: var(--soft); text-align: left; }
+      .nav:hover { background: var(--hover); }
+      .nav.is-active { background: var(--sheet); color: var(--ink); font-weight: 500; box-shadow: 0 0 0 1px var(--line); }
+      .count { margin-left: auto; min-width: 20px; padding: 1px 6px; border-radius: 999px; background: var(--amber-soft); color: var(--amber-ink); font: 500 11px/1.5 'IBM Plex Mono', monospace; text-align: center; }
+      .task { margin-top: auto; padding: 12px; border: 1px solid var(--line); border-radius: 12px; background: var(--sheet); text-align: left; width: 100%; }
+      .task b { display: flex; align-items: center; gap: 8px; font-weight: 500; }
+      .pulse { position: relative; width: 8px; height: 8px; border-radius: 50%; background: var(--green); }
+      .pulse.is-live::after { content: ''; position: absolute; inset: 0; border-radius: 50%; background: var(--green); animation: ping 1.4s var(--ease) infinite; }
+      @keyframes ping { to { transform: scale(2.6); opacity: 0; } }
+      .bar { display: block; height: 5px; margin-top: 9px; border-radius: 999px; background: var(--tint); overflow: hidden; }
+      .bar i { display: block; height: 100%; border-radius: 999px; background: var(--ink); transition: width 0.4s var(--ease); }
+
+      .sheet { display: flex; flex-direction: column; margin: 8px 8px 8px 0; border: 1px solid var(--line); border-radius: 14px; background: var(--sheet); overflow: hidden; transition: margin 0.3s var(--ease); }
+      body.has-drawer .sheet { margin-right: 448px; }
+      .head { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px; min-height: 60px; padding: 10px 20px; border-bottom: 1px solid var(--line); }
+      .head h1 { font-size: 17px; font-weight: 500; }
+      .head .right { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-left: auto; }
+      .btn { display: inline-flex; align-items: center; justify-content: center; gap: 7px; height: 34px; padding: 0 14px; border-radius: 999px; font-weight: 500; white-space: nowrap; transition: opacity 0.15s, transform 0.15s; }
+      .btn:active { transform: translateY(1px); }
+      .btn.primary { background: var(--btn); color: var(--btn-text); font-weight: 600; }
+      .btn.secondary { border: 1px solid var(--line); background: var(--sheet); }
+      .btn.ghost { color: var(--soft); }
+      .seg { display: flex; padding: 3px; border: 1px solid var(--line); border-radius: 999px; }
+      .seg button { height: 26px; padding: 0 11px; border-radius: 999px; color: var(--soft); font-size: 13px; font-weight: 500; }
+      .seg button[aria-pressed='true'] { background: var(--tint); color: var(--ink); }
+      .scroll { flex: 1; overflow: auto; }
+
+      .live { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; padding: 12px 20px; border-bottom: 1px solid var(--line); }
+      .live .what { display: flex; align-items: center; gap: 9px; font-weight: 500; }
+      .live .now { flex: 1; min-width: 200px; color: var(--soft); font-size: 12.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+      .live .bar { flex: 0 0 160px; margin: 0; }
+      .metrics { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); border-bottom: 1px solid var(--line); }
+      .metric { padding: 14px 20px; border-right: 1px solid var(--line-soft); }
+      .metric:last-child { border-right: 0; }
+      .metric b { display: block; font: 500 24px/1.15 'IBM Plex Mono', monospace; font-variant-numeric: tabular-nums; }
+      .metric span { display: flex; align-items: center; gap: 6px; margin-top: 3px; color: var(--soft); font-size: 12.5px; }
+      .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--amber); }
+      .toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 22px; min-height: 48px; padding: 0 20px; border-bottom: 1px solid var(--line); }
+      .tab { position: relative; display: inline-flex; align-items: center; gap: 7px; height: 48px; color: var(--soft); font-weight: 500; }
+      .tab[aria-selected='true'] { color: var(--ink); }
+      .tab[aria-selected='true']::after { content: ''; position: absolute; left: 0; right: 0; bottom: -1px; height: 2px; background: var(--ink); }
+      .tab em { padding: 0 6px; border-radius: 999px; background: var(--tint); font: 500 11px/1.6 'IBM Plex Mono', monospace; font-style: normal; }
+      .hint { margin-left: auto; display: flex; align-items: center; gap: 10px; color: var(--soft); font-size: 12.5px; }
+      kbd { padding: 0 6px; border: 1px solid var(--line); border-radius: 5px; background: var(--sheet); font: 500 11px/1.7 'IBM Plex Mono', monospace; color: var(--soft); }
+
+      .fresh { display: flex; justify-content: center; padding: 8px; border-bottom: 1px solid var(--line-soft); background: var(--amber-soft); }
+      .fresh button { display: inline-flex; align-items: center; gap: 8px; color: var(--amber-ink); font-weight: 500; }
+      .cols, .row { display: grid; grid-template-columns: minmax(200px, 1.7fr) minmax(190px, 1.4fr) 138px 84px minmax(120px, 1fr) 104px; align-items: center; gap: 12px; padding: 0 20px 0 17px; }
+      .cols { height: 36px; border-bottom: 1px solid var(--line-soft); background: color-mix(in srgb, var(--tint) 55%, transparent); border-left: 3px solid transparent; }
+      .row { min-height: 58px; border-bottom: 1px solid var(--line-soft); border-left: 3px solid var(--faint); cursor: pointer; transition: background 0.15s; }
+      .row:hover { background: var(--hover); }
+      .row.is-open { background: var(--tint); }
+      .row.q-full { border-left-color: var(--green); }
+      .row.q-check { border-left-color: var(--amber); }
+      .row.is-new { animation: arrive 1.6s var(--ease); }
+      @keyframes arrive { from { background: var(--amber-soft); transform: translateY(-6px); opacity: 0; } 30% { opacity: 1; transform: none; } to { background: transparent; } }
+      .who { display: flex; align-items: center; gap: 11px; min-width: 0; }
+      .mono-avatar { display: grid; place-items: center; width: 32px; height: 32px; flex: none; border: 1px solid var(--line); border-radius: 50%; background: var(--tint); font: 600 11px 'IBM Plex Sans', sans-serif; letter-spacing: 0.02em; }
+      .cell { min-width: 0; }
+      .cell > span { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+      .cell > .pill { display: inline-flex; }
+      .cell small, .who small { display: block; color: var(--soft); font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+      .name { font-weight: 600; }
+      .pill { display: inline-flex; align-items: center; gap: 6px; padding: 2px 9px; border-radius: 999px; background: var(--tint); color: var(--soft); font-size: 12px; font-weight: 500; white-space: nowrap; }
+      .pill.full { background: var(--green-soft); color: var(--green); }
+      .pill.check { background: var(--amber-soft); color: var(--amber-ink); }
+      .pill.no { background: var(--red-soft); color: var(--red); }
+      .acts { display: flex; justify-content: flex-end; gap: 6px; }
+      .round { display: grid; place-items: center; width: 34px; height: 34px; border-radius: 50%; border: 1px solid var(--line); background: var(--sheet); transition: transform 0.12s, background 0.15s; }
+      .round:hover { transform: scale(1.06); }
+      .round.yes { border-color: var(--btn); background: var(--btn); color: var(--btn-text); }
+      .empty { padding: 56px 20px; text-align: center; color: var(--soft); }
+      .empty i { display: grid; place-items: center; width: 44px; height: 44px; margin: 0 auto 12px; border-radius: 50%; background: var(--tint); color: var(--ink); }
+      .empty b { display: block; color: var(--ink); font-size: 15px; font-weight: 500; }
+
+      .drawer { position: fixed; top: var(--bar-height, 60px); right: 8px; bottom: 8px; z-index: 30; display: flex; flex-direction: column; width: 432px; border: 1px solid var(--line); border-radius: 14px; background: var(--sheet); transform: translateX(calc(100% + 16px)); transition: transform 0.3s var(--ease); }
+      body.has-drawer .drawer { transform: none; }
+      .drawer header { display: flex; align-items: flex-start; gap: 12px; padding: 16px 18px; border-bottom: 1px solid var(--line); }
+      .drawer h2 { font-size: 16px; font-weight: 600; }
+      .drawer .body { flex: 1; overflow: auto; padding: 6px 18px 16px; }
+      .fact { display: flex; gap: 11px; padding: 11px 0; border-bottom: 1px solid var(--line-soft); }
+      .fact svg { margin-top: 2px; color: var(--soft); }
+      .fact a { color: inherit; text-underline-offset: 2px; }
+      .drawer footer { padding: 12px 18px 14px; border-top: 1px solid var(--line); }
+      .drawer .choice { display: grid; grid-template-columns: 1.3fr 1fr 1fr; gap: 8px; }
+      .drawer .choice .btn { height: 42px; padding: 0 8px; }
+      .drawer .keys { display: flex; justify-content: space-between; margin-top: 10px; color: var(--soft); font-size: 12px; }
+      .done { display: flex; align-items: center; justify-content: center; gap: 8px; height: 42px; border-radius: 10px; background: var(--green-soft); color: var(--green); font-weight: 500; }
+
+      .toast { position: fixed; left: 50%; bottom: 22px; z-index: 70; display: flex; align-items: center; gap: 14px; padding: 10px 12px 10px 16px; border-radius: 12px; background: var(--btn); color: var(--btn-text); box-shadow: var(--pop); transform: translate(-50%, 80px); opacity: 0; transition: transform 0.3s var(--ease), opacity 0.2s; }
+      .toast.is-on { transform: translate(-50%, 0); opacity: 1; }
+      .toast button { padding: 3px 10px; border-radius: 999px; border: 1px solid color-mix(in srgb, var(--btn-text) 35%, transparent); color: var(--btn-text); font-weight: 500; }
+
+      .dock { position: fixed; right: 20px; bottom: 20px; z-index: 40; width: 340px; border-radius: 14px; background: var(--sheet); box-shadow: var(--pop); overflow: hidden; }
+      .dock header { display: flex; align-items: center; gap: 9px; width: 100%; padding: 11px 14px; text-align: left; font-weight: 500; }
+      .dock header .mono { margin-left: auto; color: var(--soft); font-size: 12px; }
+      .dock .lead { padding: 12px 14px 14px; border-top: 1px solid var(--line); animation: arrive 1.2s var(--ease); }
+      .dock .lead .btn { flex: 1; height: 38px; }
+      .dock .more { display: block; width: 100%; padding: 9px 14px; border-top: 1px solid var(--line-soft); color: var(--soft); font-size: 12.5px; text-align: left; }
+      .ghost-page { padding: 22px 20px; }
+      .ghost-page .sk { height: 46px; margin-top: 8px; border-radius: 8px; background: var(--tint); opacity: 0.6; }
+
+      @media (max-width: 1240px) {
+        .cols, .row { grid-template-columns: minmax(180px, 1.5fr) minmax(170px, 1.2fr) minmax(110px, 0.8fr) 96px; }
+        .c-phone, .c-note { display: none; }
+        body.has-drawer .cols, body.has-drawer .row { grid-template-columns: minmax(0, 1fr) 96px; }
+        body.has-drawer .c-mail, body.has-drawer .c-quality { display: none; }
+        .hint { display: none; }
+      }
+      @media (max-width: 860px) {
+        body { height: auto; }
+        .app { grid-template-columns: 1fr; }
+        .side { display: none; }
+        .sheet, body.has-drawer .sheet { margin: 8px; }
+        .cols { display: none; }
+        .row, body.has-drawer .row { grid-template-columns: minmax(0, 1fr) auto; padding: 10px 14px 10px 11px; }
+        .c-mail, .c-quality { display: none; }
+        .metrics { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+        .metric:nth-child(n + 4) { border-top: 1px solid var(--line-soft); }
+        .metric:nth-child(3) { border-right: 0; }
+        .drawer { left: 8px; width: auto; }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="mock-bar">
+      <strong>Maquette · Vivier de leads</strong>
+      <div class="mock-switch" id="page-switch">
+        <button data-page="vivier" aria-pressed="true">Page Vivier</button>
+        <button data-page="other" aria-pressed="false">Une autre page</button>
+      </div>
+      <div class="mock-switch" id="theme-switch">
+        <button data-theme="light" aria-pressed="true">Clair</button>
+        <button data-theme="dark" aria-pressed="false">Sombre</button>
+      </div>
+      <button class="btn" id="replay" style="height:28px;border:1px solid #3a3a37;color:#f3f3f0">Rejouer la recherche</button>
+      <span class="mock-note">Les leads arrivent tout seuls. Acceptez, refusez, changez de page.</span>
+    </div>
+
+    <div class="app">
+      <aside class="side">
+        <div class="brand"><i data-lucide="hexagon"></i> devleadhunter</div>
+        <p class="label">Pilotage</p>
+        <button class="nav"><i data-lucide="layout-dashboard"></i> Tableau de bord</button>
+        <button class="nav"><i data-lucide="workflow"></i> Automatisations</button>
+        <p class="label">Prospection</p>
+        <button class="nav" data-page="vivier" id="nav-vivier"><i data-lucide="inbox"></i> Vivier <span class="count" id="nav-count"></span></button>
+        <button class="nav"><i data-lucide="users"></i> Mes prospects</button>
+        <button class="nav"><i data-lucide="app-window"></i> Sites démo</button>
+        <button class="nav" data-page="other" id="nav-other"><i data-lucide="megaphone"></i> Campagnes</button>
+        <button class="nav"><i data-lucide="send"></i> Suivi des emails</button>
+        <button class="nav"><i data-lucide="banknote"></i> Ventes</button>
+        <button class="task" data-page="vivier" id="task"></button>
+      </aside>
+      <main class="sheet" id="sheet"></main>
+    </div>
+
+    <aside class="drawer" id="drawer" aria-label="Fiche du lead"></aside>
+    <div class="dock" id="dock" hidden></div>
+    <div class="toast" id="toast" role="status"></div>
+
+    <script src="https://unpkg.com/lucide@0.469.0/dist/umd/lucide.min.js"></script>
+    <script>
+      const SOURCE = {"rows": [{"n": "Flores des Jardins", "t": "paysagiste", "c": null, "s": "kept", "r": null, "d": null, "p": "06 46 •• •• 93", "m": true, "e": "isa•••@gmail.com", "pl": "a", "g": 5.0, "gn": 4, "fb": true, "o": "google_local", "ev": 2}, {"n": "SARL SANCHEZ PAYSAGE", "t": "paysagiste", "c": "Limoges", "s": "kept", "r": null, "d": null, "p": "06 78 •• •• 12", "m": true, "e": "sap•••@gmail.com", "pl": "a", "g": 4.3, "gn": 9, "fb": true, "o": "google_local", "ev": 3}, {"n": "HB espace vert", "t": "paysagiste", "c": "Limoges", "s": "kept", "r": null, "d": null, "p": "06 20 •• •• 41", "m": true, "e": "hbe•••@gmail.com", "pl": "b", "g": 4.9, "gn": 8, "fb": true, "o": "google_local", "ev": 3}, {"n": "Electricité Thibault Mauduit", "t": "electricien", "c": "Limoges", "s": "kept", "r": null, "d": null, "p": "06 16 •• •• 60", "m": true, "e": "thi•••@gmail.com", "pl": "a", "g": 5.0, "gn": 12, "fb": false, "o": "registry_rge", "ev": 2}, {"n": "Smf", "t": "electricien", "c": "Le Palais Sur Vienne", "s": "kept", "r": null, "d": null, "p": "06 74 •• •• 98", "m": true, "e": "abd•••@sfr.fr", "pl": "a", "g": null, "gn": null, "fb": false, "o": "registry_rge", "ev": 1}, {"n": "Ricard", "t": "electricien", "c": "Castres", "s": "kept", "r": null, "d": null, "p": "06 71 •• •• 26", "m": true, "e": "ric•••@orange.fr", "pl": "a", "g": null, "gn": null, "fb": false, "o": "registry_rge", "ev": 1}, {"n": "Limousin Paysage", "t": "paysagiste", "c": "Couzeix", "s": "to_confirm", "r": null, "d": "Un email a été trouvé sans preuve franche qu'il lui appartient : à vous de voir.", "p": "05 55 •• •• 59", "m": false, "e": "con•••@utopiaconsulting.fr", "pl": "c", "g": 4.3, "gn": 25, "fb": true, "o": "google_local", "ev": 2}, {"n": "Cris Elek 23", "t": "electricien", "c": null, "s": "to_confirm", "r": null, "d": "Un site est déclaré sur sa fiche Google, mais il n'a pas été retrouvé : à vérifier.", "p": "06 44 •• •• 13", "m": true, "e": null, "pl": null, "g": 5.0, "gn": 2, "fb": false, "o": "google_local", "ev": 0}, {"n": "Mathieu Hurbe Paysagiste", "t": "paysagiste", "c": null, "s": "set_aside", "r": null, "d": "Portable sans email : gardé pour une campagne SMS.", "p": "06 45 •• •• 30", "m": true, "e": null, "pl": null, "g": 5.0, "gn": 90, "fb": true, "o": "google_local", "ev": 2}, {"n": "MD SERVICES JARDINAGE", "t": "paysagiste", "c": null, "s": "set_aside", "r": null, "d": "Portable sans email : gardé pour une campagne SMS.", "p": "06 50 •• •• 36", "m": true, "e": null, "pl": null, "g": 5.0, "gn": 10, "fb": false, "o": "google_local", "ev": 0}, {"n": "Système D jardin", "t": "paysagiste", "c": "Limoges", "s": "set_aside", "r": null, "d": "Portable sans email : gardé pour une campagne SMS.", "p": "07 44 •• •• 24", "m": true, "e": null, "pl": null, "g": 5.0, "gn": 20, "fb": false, "o": "google_local", "ev": 0}, {"n": "Jardinier limoges entreprise Instants-verts87", "t": "paysagiste", "c": null, "s": "set_aside", "r": null, "d": "Portable sans email : gardé pour une campagne SMS.", "p": "06 03 •• •• 90", "m": true, "e": null, "pl": null, "g": 4.8, "gn": 4, "fb": false, "o": "google_local", "ev": 0}, {"n": "Scholl Entretien parc et jardin", "t": "paysagiste", "c": null, "s": "set_aside", "r": null, "d": "Portable sans email : gardé pour une campagne SMS.", "p": "07 85 •• •• 97", "m": true, "e": null, "pl": null, "g": 5.0, "gn": 6, "fb": false, "o": "google_local", "ev": 0}, {"n": "C.E.P.E.S. 87", "t": "electricien", "c": "Chalus", "s": "set_aside", "r": null, "d": "Email sans portable : gardé pour une campagne email.", "p": null, "m": false, "e": "cep•••@orange.fr", "pl": "a", "g": null, "gn": null, "fb": false, "o": "registry_rge", "ev": 1}, {"n": "REBEYROL CREATEUR ET SOINS DE JARDINS A LIMOGES", "t": "paysagiste", "c": "Le Vigen", "s": "rejected", "r": "has_website", "d": "A déjà un site : http://www.rebeyrol.com/", "p": "05 55 •• •• 83", "m": false, "e": null, "pl": null, "g": 4.7, "gn": 128, "fb": false, "o": "google_local", "ev": 1}, {"n": "Paysagiste Avenir paysage 87 Verneuil-sur-Vienne", "t": "paysagiste", "c": "Verneuil-sur-Vienne", "s": "rejected", "r": "has_website", "d": "A déjà un site : https://www.avenirpaysage87.fr/", "p": "05 32 •• •• 47", "m": false, "e": null, "pl": null, "g": 4.8, "gn": 53, "fb": false, "o": "google_local", "ev": 1}, {"n": "Thibaut Paysage SARL", "t": "paysagiste", "c": "Limoges", "s": "rejected", "r": "has_website", "d": "A déjà un site : http://www.thibaut-paysagiste.fr/", "p": "06 01 •• •• 75", "m": true, "e": null, "pl": null, "g": 3.9, "gn": 58, "fb": false, "o": "google_local", "ev": 1}, {"n": "Mirando élagueur Limoges", "t": "paysagiste", "c": "Limoges", "s": "rejected", "r": "has_website", "d": "A déjà un site : https://mirandoelagueurexpert.fr/", "p": "06 41 •• •• 05", "m": true, "e": null, "pl": null, "g": 4.9, "gn": 114, "fb": false, "o": "google_local", "ev": 1}, {"n": "Au Service du Paysage", "t": "paysagiste", "c": "Boisseuil", "s": "rejected", "r": "has_website", "d": "A déjà un site : http://www.auservicedupaysage.com/?utm_source=gmb", "p": "05 55 •• •• 88", "m": false, "e": null, "pl": null, "g": 4.6, "gn": 118, "fb": false, "o": "google_local", "ev": 1}, {"n": "Leger Daniel", "t": "paysagiste", "c": "Limoges", "s": "rejected", "r": "has_website", "d": "A déjà un site : https://www.paysagiste-legerdaniel.com/", "p": "06 08 •• •• 91", "m": true, "e": "dan•••@gmail.com", "pl": "b", "g": 5.0, "gn": 5, "fb": false, "o": "google_local", "ev": 3}, {"n": "LEAF PAYSAGE", "t": "paysagiste", "c": "Isle", "s": "rejected", "r": "has_website", "d": "A déjà un site : https://www.leaf-paysage.fr/", "p": "06 49 •• •• 42", "m": true, "e": "lea•••@gmail.com", "pl": "c", "g": 5.0, "gn": 18, "fb": true, "o": "google_local", "ev": 3}, {"n": "E.Gauquie Paysage", "t": "paysagiste", "c": "Saint-Just-le-Martel", "s": "discovered", "r": null, "d": null, "p": "05 55 •• •• 32", "m": false, "e": null, "pl": null, "g": 5.0, "gn": 43, "fb": false, "o": "google_local", "ev": 0}, {"n": "Maison Robin Bois & Jardin", "t": "paysagiste", "c": "Limoges", "s": "discovered", "r": null, "d": null, "p": "06 07 •• •• 40", "m": true, "e": null, "pl": null, "g": 5.0, "gn": 7, "fb": false, "o": "google_local", "ev": 0}]}
+      const TRADE = { paysagiste: 'Paysagiste', electricien: 'Électricien' }
+      const PROOF = { a: 'publié par le pro', b: 'donné par un annuaire', c: 'sans preuve franche' }
+      const TABS = [['pending', 'À valider'], ['accepted', 'Acceptés'], ['aside', 'De côté'], ['out', 'Écartés']]
+      const TOTAL_LISTINGS = 69
+      const PLACE = { kept: 'pending', to_confirm: 'pending', set_aside: 'aside', rejected: 'out' }
+      const QUALITY = { kept: 'full', to_confirm: 'check', set_aside: 'part', rejected: 'none' }
+
+      let leads, queue, buffer, page = 'vivier', tab = 'pending', openId = null, auto = false, checked, timer, lastAction = null, dockOpen = true
+
+      function reset() {
+        const all = SOURCE.rows.filter((row) => PLACE[row.s]).map((row, id) => ({ ...row, id, place: PLACE[row.s], quality: QUALITY[row.s], by: 'app' }))
+        const first = new Set([0, 6, 8, 9, 10, 14, 15, 16])
+        leads = all.filter((lead) => first.has(lead.id))
+        queue = all.filter((lead) => !first.has(lead.id)).sort((a, b) => (a.id * 7) % 11 - (b.id * 7) % 11)
+        buffer = []; checked = 31; openId = null; lastAction = null
+        document.body.classList.remove('has-drawer')
+        clearInterval(timer)
+        timer = setInterval(arrive, 3400)
+        render()
+      }
+
+      const running = () => queue.length > 0
+      const inPlace = (place) => leads.filter((lead) => lead.place === place)
+      const initials = (name) => name.replace(/[^\p{L}\s]/gu, ' ').split(/\s+/).filter(Boolean).slice(0, 2).map((word) => word[0].toUpperCase()).join('')
+      const where = (lead) => [TRADE[lead.t], lead.c].filter(Boolean).join(' · ')
+      const stars = (lead) => (lead.g ? `${lead.g.toFixed(1).replace('.', ',')}` : '—')
+      const qualityPill = (lead) => ({ full: '<span class="pill full">Complet</span>', check: '<span class="pill check">À vérifier</span>', part: `<span class="pill">${lead.e ? 'Email seul' : 'Portable seul'}</span>`, none: '<span class="pill no">Écarté</span>' })[lead.quality]
+
+      function arrive() {
+        const lead = queue.shift()
+        if (!lead) { clearInterval(timer); render(); return }
+        checked = Math.min(TOTAL_LISTINGS, checked + 4)
+        lead.isNew = true
+        if (auto && lead.quality === 'full') { lead.place = 'accepted'; leads.unshift(lead) }
+        else if (lead.place === 'pending' && page === 'vivier' && tab === 'pending') buffer.push(lead)
+        else leads.unshift(lead)
+        if (!queue.length) checked = TOTAL_LISTINGS
+        render()
+      }
+
+      function decide(id, place) {
+        const lead = leads.find((item) => item.id === id)
+        if (!lead) return
+        const visible = inPlace(tab)
+        const next = visible[visible.indexOf(lead) + 1] || visible[visible.indexOf(lead) - 1]
+        lastAction = { id, from: lead.place, by: lead.by }
+        lead.place = place; lead.by = 'you'; lead.isNew = false
+        toast(place === 'accepted' ? `${lead.n} accepté, ajouté à Mes prospects` : place === 'out' ? `${lead.n} refusé` : `${lead.n} mis de côté`, true)
+        if (openId === id) openId = next && next.place === tab ? next.id : null
+        if (openId === null) document.body.classList.remove('has-drawer')
+        render()
+      }
+
+      function undo() {
+        if (!lastAction) return
+        const lead = leads.find((item) => item.id === lastAction.id)
+        lead.place = lastAction.from; lead.by = lastAction.by; lastAction = null
+        toast('Décision annulée', false); render()
+      }
+
+      let toastTimer
+      function toast(text, canUndo) {
+        const node = document.getElementById('toast')
+        node.innerHTML = `<span>${text}</span>${canUndo ? '<button data-undo>Annuler <kbd style="background:transparent;border-color:currentColor;color:inherit;opacity:.7">Z</kbd></button>' : ''}`
+        node.classList.add('is-on'); clearTimeout(toastTimer)
+        toastTimer = setTimeout(() => node.classList.remove('is-on'), 5000)
+      }
+
+      function rowHtml(lead) {
+        const actions = lead.place === 'pending' || lead.place === 'aside'
+          ? `<button class="round" data-refuse="${lead.id}" title="Refuser (R)"><i data-lucide="x"></i></button><button class="round yes" data-accept="${lead.id}" title="Accepter (A)"><i data-lucide="check"></i></button>`
+          : lead.place === 'out' ? `<button class="btn ghost" data-restore="${lead.id}" style="height:30px;padding:0 10px;font-size:13px">Reprendre</button>` : '<span class="pill full">Prospect créé</span>'
+        return `<div class="row q-${lead.quality} ${lead.id === openId ? 'is-open' : ''} ${lead.isNew ? 'is-new' : ''}" data-open="${lead.id}">
+          <div class="who"><span class="mono-avatar">${initials(lead.n)}</span><div class="cell keep" style="min-width:0"><span class="name">${lead.n}</span><small>${where(lead)}</small></div></div>
+          <div class="cell c-mail">${lead.e ? `<span class="mono">${lead.e}</span><small>${PROOF[lead.pl]}</small>` : '<span class="soft">Pas d’email</span>'}</div>
+          <div class="cell c-phone">${lead.p ? `<span class="mono">${lead.p}</span><small>${lead.m ? 'portable' : 'fixe'}</small>` : '<span class="soft">—</span>'}</div>
+          <div class="cell c-note"><span class="mono">${stars(lead)}</span><small>${lead.gn ? `${lead.gn} avis` : 'sans avis'}</small></div>
+          <div class="cell c-quality">${lead.place === 'out' ? `<span class="soft" title="${lead.d || ''}">${lead.by === 'you' ? 'Refusé par vous' : (lead.d || '').replace('A déjà un site : ', 'A un site : ').replace(/https?:\/\/(www\.)?/, '').replace(/\/.*$/, '')}</span>` : qualityPill(lead)}</div>
+          <div class="acts keep">${actions}</div></div>`
+      }
+
+      function vivierHtml() {
+        const rows = inPlace(tab)
+        const progress = Math.round((checked / TOTAL_LISTINGS) * 100)
+        const live = running()
+          ? `<div class="live"><span class="what"><i class="pulse is-live"></i> Recherche en cours</span><span class="now mono">Électricien · Limoges : ${checked} fiches vérifiées sur ${TOTAL_LISTINGS}</span><span class="bar"><i style="width:${progress}%"></i></span><button class="btn ghost" style="height:28px;padding:0 8px"><i data-lucide="circle-stop"></i> Arrêter</button></div>`
+          : `<div class="live"><span class="what"><i class="pulse"></i> Recherche terminée</span><span class="now mono">3 paysagistes et 3 électriciens · France · 5 min 25 · 114 requêtes · 0,17 $</span><button class="btn ghost" style="height:28px;padding:0 8px"><i data-lucide="play"></i> Poursuivre</button></div>`
+        const metrics = [[inPlace('pending').length, 'À valider', true], [inPlace('accepted').length, 'Acceptés'], [inPlace('aside').length, 'De côté'], [inPlace('out').length, 'Écartés'], [checked, 'Fiches vérifiées']]
+        const empty = tab === 'pending'
+          ? `<div class="empty"><i><span data-lucide="check-check"></span></i><b>${running() ? 'Tout est trié pour l’instant' : 'Tout est trié'}</b><p>${running() ? 'Les prochains leads arrivent ici dès qu’ils sont vérifiés.' : 'Les leads acceptés sont dans Mes prospects.'}</p></div>`
+          : '<div class="empty"><i><span data-lucide="inbox"></span></i><b>Rien ici pour l’instant</b></div>'
+        return `<div class="head"><h1>Vivier de leads</h1>
+            <div class="right"><div class="seg" title="En automatique, les leads complets sont acceptés tout seuls">
+              <button data-auto="0" aria-pressed="${!auto}">Je valide</button><button data-auto="1" aria-pressed="${auto}">Automatique</button></div>
+              <button class="btn primary"><i data-lucide="plus"></i> Nouvelle recherche</button></div></div>
+          <div class="scroll">${live}
+            <div class="metrics">${metrics.map(([value, title, dot]) => `<div class="metric"><b>${value}</b><span>${dot && value ? '<i class="dot"></i>' : ''}${title}</span></div>`).join('')}</div>
+            <div class="toolbar" role="tablist">${TABS.map(([key, title]) => `<button class="tab" role="tab" data-tab="${key}" aria-selected="${key === tab}">${title}<em>${inPlace(key).length}</em></button>`).join('')}
+              <span class="hint"><kbd>A</kbd> accepter <kbd>R</kbd> refuser <kbd>S</kbd> de côté <kbd>↑</kbd><kbd>↓</kbd> <kbd>Z</kbd> annuler</span></div>
+            ${buffer.length ? `<div class="fresh"><button data-flush><i data-lucide="arrow-up"></i> ${buffer.length > 1 ? `${buffer.length} nouveaux leads` : '1 nouveau lead'} · Afficher</button></div>` : ''}
+            <div class="cols label"><span>Lead</span><span class="c-mail">Email</span><span class="c-phone">Téléphone</span><span class="c-note">Note</span><span class="c-quality">${tab === 'out' ? 'Raison' : 'Qualité'}</span><span></span></div>
+            ${rows.length ? rows.map(rowHtml).join('') : empty}</div>`
+      }
+
+      function otherHtml() {
+        return `<div class="head"><h1>Campagnes</h1><div class="right"><button class="btn secondary">Nouvelle campagne</button></div></div>
+          <div class="scroll ghost-page"><p class="soft">Vous travaillez ailleurs : la recherche continue. Le menu de gauche montre où elle en est, et la carte en bas à droite vous laisse accepter ou refuser sans quitter cette page.</p>
+            ${'<div class="sk"></div>'.repeat(7)}</div>`
+      }
+
+      function drawerHtml(lead) {
+        const decided = lead.place === 'accepted'
+        return `<header><span class="mono-avatar" style="width:38px;height:38px">${initials(lead.n)}</span><div style="flex:1;min-width:0"><h2>${lead.n}</h2><p class="soft">${where(lead)}</p></div>
+            <button data-close aria-label="Fermer"><i data-lucide="x"></i></button></header>
+          <div class="body"><div style="padding:10px 0 2px">${qualityPill(lead)}</div>${lead.d ? `<p style="padding:8px 0 4px">${lead.d}</p>` : ''}
+            ${lead.e ? `<div class="fact"><i data-lucide="mail"></i><div><span class="mono">${lead.e}</span><br /><span class="soft">Preuve : ${PROOF[lead.pl]} · <a href="#">voir la source</a></span></div></div>` : '<div class="fact"><i data-lucide="mail"></i><div>Pas d’email trouvé<br /><span class="soft">Nom, numéro de téléphone et page Facebook cherchés</span></div></div>'}
+            ${lead.p ? `<div class="fact"><i data-lucide="phone"></i><div><span class="mono">${lead.p}</span><br /><span class="soft">${lead.m ? 'Portable' : 'Fixe'} · fiche Google</span></div></div>` : ''}
+            <div class="fact"><i data-lucide="star"></i><div>${stars(lead)}${lead.gn ? ` · ${lead.gn} avis` : ''}<br /><span class="soft">Fiche Google</span></div></div>
+            <div class="fact"><i data-lucide="globe"></i><div>${lead.place === 'out' && lead.by === 'app' ? 'A déjà un site' : 'Aucun site trouvé'}<br /><span class="soft">Recherche « nom + ville », domaine de l’email et page Facebook contrôlés</span></div></div>
+            <div class="fact"><i data-lucide="map-pin"></i><div><a href="#">Fiche Google</a>${lead.fb ? ' · <a href="#">Page Facebook</a>' : ''}</div></div></div>
+          <footer>${decided
+            ? '<div class="done"><i data-lucide="check"></i> Accepté · prospect créé</div><div class="keys"><a href="#" style="color:inherit">Ouvrir la fiche prospect</a><span><kbd>Z</kbd> annuler</span></div>'
+            : `<div class="choice"><button class="btn primary" data-accept="${lead.id}"><i data-lucide="check"></i> Accepter</button><button class="btn secondary" data-refuse="${lead.id}">Refuser</button><button class="btn secondary" data-aside="${lead.id}">De côté</button></div>
+               <div class="keys"><span><kbd>A</kbd> · <kbd>R</kbd> · <kbd>S</kbd></span><span><kbd>↑</kbd><kbd>↓</kbd> lead suivant</span></div>`}</footer>`
+      }
+
+      function render() {
+        const pending = inPlace('pending').length + buffer.length
+        document.getElementById('nav-count').textContent = pending || ''
+        document.getElementById('nav-count').hidden = !pending
+        document.getElementById('nav-vivier').classList.toggle('is-active', page === 'vivier')
+        document.getElementById('nav-other').classList.toggle('is-active', page === 'other')
+        document.getElementById('task').innerHTML = `<b><i class="pulse ${running() ? 'is-live' : ''}"></i> ${running() ? 'Recherche en cours' : 'Recherche terminée'}</b>
+          <span class="soft" style="display:block;margin-top:4px;font-size:12.5px">${inPlace('accepted').length} acceptés · ${pending} à valider</span>
+          <span class="bar"><i style="width:${Math.round((checked / TOTAL_LISTINGS) * 100)}%"></i></span>`
+        document.getElementById('sheet').innerHTML = page === 'vivier' ? vivierHtml() : otherHtml()
+        const open = leads.find((lead) => lead.id === openId)
+        if (open && page === 'vivier') document.getElementById('drawer').innerHTML = drawerHtml(open)
+        const dock = document.getElementById('dock')
+        const waiting = inPlace('pending')
+        dock.hidden = page === 'vivier' || (!waiting.length && !running())
+        if (!dock.hidden) {
+          const lead = waiting[0]
+          dock.innerHTML = `<button data-dock><header><i class="pulse ${running() ? 'is-live' : ''}"></i> ${running() ? 'Recherche en cours' : 'Recherche terminée'}<span class="mono">${waiting.length} à valider</span><i data-lucide="${dockOpen ? 'chevron-down' : 'chevron-up'}"></i></header></button>
+            ${dockOpen && lead ? `<div class="lead"><div class="who"><span class="mono-avatar">${initials(lead.n)}</span><div class="cell" style="min-width:0"><span class="name">${lead.n}</span><small>${where(lead)}</small></div><span style="margin-left:auto">${qualityPill(lead)}</span></div>
+              <p class="soft mono" style="margin-top:9px;font-size:12px">${lead.e || 'pas d’email'} · ${lead.p || 'pas de téléphone'}</p>
+              <div style="display:flex;gap:8px;margin-top:11px"><button class="btn primary" data-accept="${lead.id}"><i data-lucide="check"></i> Accepter</button><button class="btn secondary" data-refuse="${lead.id}">Refuser</button></div></div>
+              <button class="more" data-page="vivier">${waiting.length > 1 ? `${waiting.length - 1} autres à valider · ` : ''}Ouvrir le vivier →</button>` : ''}
+            ${dockOpen && !lead ? '<div class="lead soft">Rien à valider pour l’instant. Les prochains leads s’afficheront ici.</div>' : ''}`
+        }
+        leads.forEach((lead) => { if (lead.isNew) setTimeout(() => (lead.isNew = false), 1700) })
+        lucide.createIcons()
+      }
+
+      function goTo(next) {
+        page = next
+        if (page !== 'vivier') { document.body.classList.remove('has-drawer'); openId = null; leads.unshift(...buffer.splice(0)) }
+        document.querySelectorAll('#page-switch button').forEach((button) => button.setAttribute('aria-pressed', String(button.dataset.page === page)))
+        render()
+      }
+
+      document.addEventListener('click', (event) => {
+        const target = event.target.closest('[data-accept],[data-refuse],[data-aside],[data-restore],[data-undo],[data-flush],[data-tab],[data-auto],[data-page],[data-theme],[data-close],[data-dock],[data-open],#replay')
+        if (!target) return
+        const data = target.dataset
+        if (data.accept) decide(Number(data.accept), 'accepted')
+        else if (data.refuse) decide(Number(data.refuse), 'out')
+        else if (data.aside) decide(Number(data.aside), 'aside')
+        else if (data.restore) decide(Number(data.restore), 'pending')
+        else if ('undo' in data) undo()
+        else if ('flush' in data) { leads.unshift(...buffer.splice(0)); render() }
+        else if (data.tab) { tab = data.tab; openId = null; document.body.classList.remove('has-drawer'); render() }
+        else if (data.auto) { auto = data.auto === '1'; if (auto) leads.filter((lead) => lead.place === 'pending' && lead.quality === 'full').forEach((lead) => (lead.place = 'accepted')); render() }
+        else if (data.page) goTo(data.page)
+        else if (data.theme) { document.documentElement.dataset.theme = data.theme; document.querySelectorAll('#theme-switch button').forEach((button) => button.setAttribute('aria-pressed', String(button === target))) }
+        else if ('close' in data) { openId = null; document.body.classList.remove('has-drawer'); render() }
+        else if ('dock' in data) { dockOpen = !dockOpen; render() }
+        else if (target.id === 'replay') reset()
+        else if (data.open) { openId = Number(data.open); document.body.classList.add('has-drawer'); render() }
+      })
+
+      document.addEventListener('keydown', (event) => {
+        const key = event.key.toLowerCase()
+        if (key === 'z') return undo()
+        if (page !== 'vivier') return
+        const rows = inPlace(tab)
+        const index = rows.findIndex((lead) => lead.id === openId)
+        if (key === 'arrowdown' || key === 'arrowup') {
+          event.preventDefault()
+          const next = rows[Math.max(0, Math.min(rows.length - 1, index + (key === 'arrowdown' ? 1 : -1)))] || rows[0]
+          if (next) { openId = next.id; document.body.classList.add('has-drawer'); render() }
+        } else if (openId !== null && key === 'a') decide(openId, 'accepted')
+        else if (openId !== null && key === 'r') decide(openId, 'out')
+        else if (openId !== null && key === 's') decide(openId, 'aside')
+        else if (key === 'escape') { openId = null; document.body.classList.remove('has-drawer'); render() }
+      })
+
+      const syncBar = () => document.documentElement.style.setProperty('--bar-height', `${document.querySelector('.mock-bar').offsetHeight + 8}px`)
+      addEventListener('resize', syncBar)
+      syncBar()
+      reset()
+    </script>
+  </body>
+</html>
