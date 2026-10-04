@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Mail franc · les finalistes</title>
+<title>Mail de prospection · aujourd'hui et proposition</title>
 <style>
   :root { color-scheme: light; --ink: #141414; --text: #4b4b47; --muted: #66665f; --line: rgba(20,20,20,.14); --paper: #ecebe6; }
   * { box-sizing: border-box; }
@@ -16,14 +16,12 @@
   .block { margin-bottom: 20px; }
   .sheet { background: #fff; border-radius: 12px; padding: 18px 22px; max-width: 1100px; font-size: 14px; line-height: 22px; color: var(--text); }
   .sheet p { margin: 0 0 8px; }
-  .sheet p:last-child, .sheet ul:last-child { margin-bottom: 0; }
-  .sheet ul { margin: 0 0 8px; padding-left: 20px; }
-  .sheet li { margin-bottom: 4px; }
+  .sheet p:last-child, .sheet ul:last-child, .sheet ol:last-child { margin-bottom: 0; }
+  .sheet ul, .sheet ol { margin: 0 0 8px; padding-left: 20px; }
+  .sheet li { margin-bottom: 5px; }
   .sheet strong { color: var(--ink); font-weight: 600; }
   .verdict { background: var(--ink); color: #d8d8d2; }
   .verdict h2, .verdict strong { color: #fff; }
-  .verdict ol { margin: 0 0 10px; padding-left: 20px; }
-  .verdict li { margin-bottom: 6px; }
   nav { display: flex; flex-wrap: wrap; gap: 8px; padding-top: 4px; padding-bottom: 12px; }
   .tab { border: 1px solid var(--line); background: #fff; color: var(--ink); border-radius: 999px; padding: 9px 16px; font: inherit; font-size: 14px; cursor: pointer; }
   .tab.is-active { background: var(--ink); color: #fff; border-color: var(--ink); }
@@ -32,13 +30,17 @@
   .tab:focus-visible, .switch button:focus-visible, select:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
   .controls { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 20px; padding-bottom: 16px; font-size: 13px; color: var(--text); }
   .controls label { display: inline-flex; align-items: center; gap: 8px; }
+  .controls [hidden] { display: none; }
   select { font: inherit; font-size: 13px; padding: 7px 10px; border-radius: 8px; border: 1px solid var(--line); background: #fff; color: var(--ink); }
+  select:disabled { color: var(--muted); background: #f3f3ef; }
   .switch { display: inline-flex; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; background: #fff; }
   .switch button { border: 0; background: transparent; padding: 7px 12px; font: inherit; font-size: 13px; color: var(--ink); cursor: pointer; }
   .switch button.is-active { background: var(--ink); color: #fff; }
   .panel { padding-bottom: 32px; }
   .facts { margin-bottom: 14px; }
   .facts .pitch { color: var(--ink); font-size: 15px; }
+  .facts .warning { margin-top: 10px; padding: 10px 14px; border-radius: 8px; background: #fff4e0; color: #5c3d00; }
+  .facts .warning strong { color: #5c3d00; }
   .chips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
   .chip { border: 1px solid var(--line); border-radius: 999px; padding: 3px 12px; font-size: 13px; color: var(--ink); background: #fff; }
   .chip b { font-weight: 600; }
@@ -55,7 +57,7 @@
   table.compare { width: 100%; border-collapse: collapse; font-size: 13px; line-height: 19px; }
   table.compare th, table.compare td { text-align: left; vertical-align: top; padding: 9px 12px 9px 0; border-top: 1px solid #ebebe7; }
   table.compare th { border-top: 0; color: var(--muted); font-weight: 500; font-size: 12px; text-transform: uppercase; letter-spacing: .05em; }
-  table.compare td:first-child { color: var(--ink); font-weight: 600; white-space: nowrap; }
+  table.compare td:first-child { color: var(--ink); font-weight: 600; }
   table.compare tr.is-pick td { background: #f5f3ff; }
   table.compare tr.is-pick td:first-child { box-shadow: inset 3px 0 0 #6f5fe0; padding-left: 10px; }
   .scroll { overflow-x: auto; }
@@ -70,32 +72,45 @@
 </head>
 <body>
 <header>
-  <h1>Mail franc : les finalistes</h1>
-  <p>Les cinq déclinaisons du 03/10 retravaillées. Le texte des modèles ne change pas : l'habillage se pose autour à l'envoi, avec ce qu'on connaît déjà (profil, signature, lien, prix, date). Exemple fictif : Menuiserie Lefort.</p>
+  <h1>Mail de prospection : aujourd'hui, et la proposition</h1>
+  <p>Trois choses à comparer : ce qui part aujourd'hui (vérifié dans la prod le 04/10), le mail que reçoit un client de dibodev.fr, et le mail de prospection posé dans ce même habillage. Le texte des modèles et ta signature ne changent pas. Exemple fictif : Menuiserie Lefort.</p>
 </header>
 
 <div class="block">
-  <div class="sheet verdict">
-    <h2>Mon avis : le modèle B, « lettre signée, lien en évidence »</h2>
-    <ol>
-      <li><strong>Il a l'allure d'un mail de dibodev.fr sans ressembler à une publicité.</strong> Même carte blanche, mêmes couleurs, même signature. Mais ni logo en bandeau, ni bouton, ni titre : ça reste une lettre écrite par une personne.</li>
-      <li><strong>La confiance vient de la signature.</strong> Ton visage, ton nom, ta ville, ton numéro, ta note, ton SIRET : tout ce qu'un artisan cherche pour savoir si c'est sérieux. La même signature que dans tes réponses à la main.</li>
-      <li><strong>Le lien devient une grande ligne facile à toucher au pouce</strong>, avec le nom du commerce dedans. Une seule porte, comme aujourd'hui.</li>
-      <li><strong>Risque de spam au plus bas pour un mail habillé :</strong> une seule image (ta photo), cinq liens, un code trois fois plus léger que les cinq déclinaisons, du texte avant tout.</li>
-    </ol>
-    <p>C et D sont à garder pour un test plus tard : bouton et photo font « publicité », et les clics ne sont pas le problème (35 % de clics humains en vague 3 avec un simple lien). Avant d'envoyer B à tout le monde : le passer sur les cinq adresses témoins, puis le comparer au mail d'aujourd'hui sur une campagne.</p>
+  <div class="sheet">
+    <h2>Ce qui part aujourd'hui, vérifié dans la prod le 04/10</h2>
+    <ul>
+      <li><strong>Ta signature « Signature Dibodev » est bien en place.</strong> C'est la signature par défaut, et elle est cochée sur les 29 modèles créés avant le 22/09, dont « Rappel court » et « Vidéo - je vous montre ». Les vagues 1 et 2 sont parties avec une signature (l'ancienne, au logo ; celle avec ta photo date du 30/09).</li>
+      <li><strong>Elle n'est pas cochée sur les 22 modèles créés depuis :</strong> tous les « Franc », la réceptionniste, la carte de fidélité. Les 134 mails de la vague 3 sont donc partis sans signature.</li>
+      <li><strong>Le mail vidéo contient bien une vignette cliquable :</strong> la capture du site, le bouton lecture et ta photo en bulle, puis le lien en texte (4 mails en vague 2). L'exemple ci-dessous reprend ce format.</li>
+      <li><strong>Le texte part sans mise en page</strong>, dans la police de la messagerie, suivi d'un pied gris clair centré.</li>
+    </ul>
   </div>
 </div>
 
-<nav id="tabs" aria-label="Modèle d'habillage"></nav>
+<div class="block">
+  <div class="sheet verdict">
+    <h2>Ma proposition : le même mail, dans l'habillage de dibodev.fr</h2>
+    <ol>
+      <li><strong>Ton texte et ta signature restent tels quels.</strong> Une seule signature partout : campagnes, réponses à la main, mails de dibodev.fr.</li>
+      <li><strong>Autour, l'habillage de dibodev.fr :</strong> le logo en haut, la carte blanche sur fond gris, les mêmes couleurs, le pied discret. Mesuré sur le vrai mail du site, pas réinventé.</li>
+      <li><strong>Le lien du site passe sur sa propre ligne violette</strong>, dans l'esprit de l'encadré violet de dibodev.fr. Il est facile à toucher au pouce et reste la seule porte du mail.</li>
+      <li><strong>Prix et date en gras</strong>, comme le délai de réponse dans le mail de dibodev.fr.</li>
+    </ol>
+    <p><strong>Risque de spam :</strong> par rapport à un mail d'aujourd'hui avec ta signature, la proposition ajoute une seule petite image (le logo) et aucun lien. Personne ne peut garantir la boîte principale de Gmail : il faut la passer sur les adresses témoins avant la vague. Si le test est moins bon, la « variante prudente » retire le logo et les icônes.</p>
+    <p><strong>À faire tout de suite, sans attendre l'habillage :</strong> cocher la signature sur les modèles « Franc ».</p>
+  </div>
+</div>
+
+<nav id="tabs" aria-label="Version du mail"></nav>
 
 <div class="controls">
   <label>Texte du modèle
     <select id="template-select"></select>
   </label>
-  <span class="switch" role="group" aria-label="Thème du lecteur">
-    <button type="button" data-theme="light" class="is-active">Clair</button>
-    <button type="button" data-theme="dark">Sombre (Apple Mail)</button>
+  <span class="switch" id="signature-switch" role="group" aria-label="Signature sur le mail d'aujourd'hui" hidden>
+    <button type="button" data-signature="on" class="is-active">Signature cochée</button>
+    <button type="button" data-signature="prod">Comme en prod sur ce modèle</button>
   </span>
   <span class="switch" role="group" aria-label="Affichage des images">
     <button type="button" data-images="shown" class="is-active">Images affichées</button>
@@ -108,6 +123,7 @@
     <p class="pitch" id="pitch"></p>
     <p id="added"></p>
     <div class="chips" id="chips"></div>
+    <p class="warning" id="warning" hidden></p>
   </div>
   <div class="inbox" id="inbox"></div>
   <div class="frames">
@@ -118,33 +134,14 @@
 
 <div class="block">
   <div class="sheet">
-    <h2>Les modèles côte à côte</h2>
+    <h2>Côte à côte</h2>
     <div class="scroll">
       <table class="compare">
-        <thead><tr><th>Modèle</th><th>Images</th><th>Liens</th><th>Poids du code</th><th>Si les images sont bloquées</th><th>Risque (spam, onglet Promotions)</th><th>Avis</th></tr></thead>
+        <thead><tr><th>Version</th><th>Images</th><th>Liens</th><th>Poids du code</th><th>Ce que ça change</th></tr></thead>
         <tbody id="compare-body"></tbody>
       </table>
     </div>
-    <p style="margin-top:12px;">Chiffres mesurés sur le modèle « Franc - premier contact ». Le risque est une estimation : aucun réglage ne garantit la boîte principale, seul un envoi test le confirme.</p>
-  </div>
-</div>
-
-<div class="block">
-  <div class="sheet">
-    <h2>Ce qui change par rapport aux cinq déclinaisons</h2>
-    <ul>
-      <li><strong>Plus de logo en bandeau.</strong> C'est lui qui fait « newsletter », et « Dibodev » est déjà dans la signature.</li>
-      <li><strong>Six images → une seule.</strong> Le logo et les quatre petites icônes partent, ta photo reste. LinkedIn et GitHub partent aussi : un artisan ne les ouvre pas.</li>
-      <li><strong>Un code écrit à la main, environ trois fois plus léger.</strong> Les déclinaisons sortaient de MJML (16 Ko, et une police chargée chez Google à l'ouverture). Ici, rien n'est chargé à part ta photo.</li>
-      <li><strong>Prix et date en gras</strong>, comme le délai de réponse dans l'accusé de réception de dibodev.fr. Celui qui lit en diagonale voit quand même les deux.</li>
-      <li><strong>Texte presque noir, 16 px sur téléphone</strong> (15 px gris avant).</li>
-      <li><strong>Mode sombre prévu</strong> pour Apple Mail (bouton « Sombre » plus haut). Gmail assombrit de lui-même.</li>
-      <li><strong>SIRET dans le pied gris</strong>, avec la phrase de désinscription : il vient du profil, pas de la signature.</li>
-      <li><strong>N° 2 (encadré « Votre site ») → modèle C.</strong> L'encadré remonte à la place du lien au lieu de le doubler en bas, et ne répète plus le prix ni la date.</li>
-      <li><strong>N° 3 (titre et « En bref ») : abandonné.</strong> Le même contenu y était écrit trois fois (objet, texte, tableau).</li>
-      <li><strong>N° 4 (photo) → modèle D.</strong> La photo passe dans la fiche, deux fois plus petite.</li>
-      <li><strong>N° 5 (en-tête personnel) : abandonné.</strong> Ton nom en haut obligeait à cacher un texte dans le mail pour garder un bon aperçu dans la boîte de réception, et la signature n'était plus celle de tes réponses.</li>
-    </ul>
+    <p style="margin-top:12px;">Chiffres mesurés sur le modèle « Franc - premier contact ». Les images de la signature et le logo pèsent 1 à 5 Ko chacun, ta photo 45 Ko.</p>
   </div>
 </div>
 
@@ -152,12 +149,12 @@
   <div class="sheet">
     <h2>Côté logiciel</h2>
     <ul>
-      <li><strong>Un habillage posé à l'envoi</strong>, autour du texte du modèle : aucun modèle à réécrire, la relance, la vidéo et la réceptionniste passent dedans (liste « Texte du modèle » plus haut).</li>
-      <li><strong>Un réglage par modèle</strong> (« Habillage : simple ou lettre ») : le test A/B qui existe déjà compare alors le même texte, habillé ou non.</li>
+      <li><strong>Un habillage posé à l'envoi</strong> autour du texte et de la signature : aucun modèle à réécrire. La relance, la vidéo et la réceptionniste passent dedans (liste « Texte du modèle »).</li>
+      <li><strong>Un réglage par modèle</strong> (« Habillage : simple ou dibodev.fr ») : le test A/B qui existe déjà compare alors le même texte, habillé ou non.</li>
       <li><strong>Le lien</strong> reste la variable <code>{lien_demo}</code> (ou <code>{lien_assistant}</code>) : seul son rendu change.</li>
-      <li><strong>La signature</strong> est celle de la page Signatures, en version une image, attachée aux modèles francs (aujourd'hui les campagnes partent sans signature).</li>
-      <li><strong>Le pied</strong> prend le nom et le SIRET du profil ; le lien de désinscription et les en-têtes de désinscription en un clic ne changent pas.</li>
-      <li><strong>La couleur</strong> des liens est un réglage du profil : violet dibodev.fr pour toi, noir par défaut pour un autre utilisateur.</li>
+      <li><strong>La signature</strong> reste celle de la page Signatures, cochée modèle par modèle comme aujourd'hui.</li>
+      <li><strong>Le logo, le nom et la couleur</strong> viennent du profil : Dibodev et le violet pour toi, rien d'imposé à un autre utilisateur.</li>
+      <li><strong>Le pied</strong> garde le même lien de désinscription et les mêmes en-têtes de désinscription en un clic.</li>
     </ul>
   </div>
 </div>
@@ -175,10 +172,16 @@
 (function () {
   'use strict';
 
+  /* Exact content_html of « Signature Dibodev » (signature n° 1 in prod, read on 04/10). */
+  var PROD_SIGNATURE_HTML = "<!--StartFragment-->\n\n<table cellspacing=\"0\" cellpadding=\"0\" border=\"0\" style=\"border-collapse:collapse;font-family:-apple-system,BlinkMacSystemFont,&quot;Segoe UI&quot;,Roboto,&quot;Helvetica Neue&quot;,Arial,sans-serif\">\n<tbody><tr>\n<td style=\"vertical-align:top;padding:0px 18px 0px 0px;line-height:0;font-size:0px\">\n<img src=\"https://dibodev.fr/email/sig-portrait.png\" width=\"88\" height=\"110\" alt=\"Léo Guillaume\" style=\"display:block;width:88px;height:110px;border:0px;border-radius:8px\">\n</td>\n<td width=\"1\" style=\"width:1px;padding:0px;background-color:rgb(227,227,223);font-size:0px;line-height:0\">&nbsp;</td>\n<td style=\"vertical-align:top;padding:0px 0px 0px 18px;text-align:left\">\n<p style=\"margin:0px 0px 1px;font-size:17px;line-height:20px;font-weight:600;color:rgb(20,20,20)\">Léo Guillaume</p>\n<p style=\"margin:0px;font-size:13px;line-height:19px;font-weight:400;color:rgb(102,102,95)\">Développeur indépendant à Rennes</p>\n<p style=\"margin:0px 0px 10px;font-size:13px;line-height:19px;font-weight:400;color:rgb(102,102,95)\">Logiciels de gestion, sites web et IA</p>\n<p style=\"margin:0px 0px 10px;font-size:13px;line-height:13px;font-weight:600\">\n<a href=\"tel:+33642193812\" style=\"color:rgb(111,95,224);text-decoration:none;font-weight:600\" target=\"_blank\"><img src=\"https://dibodev.fr/email/sig-phone.png\" width=\"13\" height=\"13\" alt=\"\" style=\"display:inline-block;vertical-align:-2px;border:0px;margin:0px 6px 0px 0px;width:13px;height:13px\">06&nbsp;42&nbsp;19&nbsp;38&nbsp;12</a>\n<span style=\"color:rgb(102,102,95);font-weight:400\">&nbsp;&nbsp;</span>\n<a href=\"https://dibodev.fr/\" style=\"color:rgb(111,95,224);text-decoration:none;font-weight:600\" target=\"_blank\"><img src=\"https://dibodev.fr/email/sig-globe.png\" width=\"13\" height=\"13\" alt=\"\" style=\"display:inline-block;vertical-align:-2px;border:0px;margin:0px 6px 0px 0px;width:13px;height:13px\">dibodev.fr</a>\n</p>\n<table cellspacing=\"0\" cellpadding=\"0\" border=\"0\" style=\"border-collapse:collapse\">\n<tbody><tr>\n<td style=\"vertical-align:middle;padding:0px 17px 0px 0px\">\n<a href=\"https://www.malt.fr/profile/leoguillaume2\" style=\"text-decoration:none;white-space:nowrap\" target=\"_blank\"><span style=\"color:rgb(254,154,0);font-size:12px;letter-spacing:2.9px;line-height:1\">★★★★★</span><span style=\"color:rgb(20,20,20);font-size:12px;font-weight:600\"> 5/5</span><span style=\"color:rgb(102,102,95);font-size:12px;font-weight:400\"> sur Malt</span></a>\n</td>\n<td style=\"vertical-align:middle;padding:0px 10px 0px 0px;line-height:0;font-size:0px\">\n<a href=\"https://www.linkedin.com/in/dibodev/\" style=\"text-decoration:none\" target=\"_blank\"><img src=\"https://dibodev.fr/email/sig-linkedin.png\" width=\"14\" height=\"14\" alt=\"LinkedIn\" style=\"display:block;border:0px;width:14px;height:14px\"></a>\n</td>\n<td style=\"vertical-align:middle;line-height:0;font-size:0px\">\n<a href=\"https://github.com/Leoglme/\" style=\"text-decoration:none\" target=\"_blank\"><img src=\"https://dibodev.fr/email/sig-github.png\" width=\"14\" height=\"14\" alt=\"GitHub\" style=\"display:block;border:0px;width:14px;height:14px\"></a>\n</td>\n</tr>\n</tbody></table>\n</td>\n</tr>\n<tr>\n<td colspan=\"3\" style=\"padding:13px 0px 0px;font-size:11px;line-height:13px;font-weight:400;color:rgb(138,138,131)\">Léo Guillaume EI · SIRET 988&nbsp;307&nbsp;906&nbsp;00020</td>\n</tr>\n</tbody></table><br><!--EndFragment-->";
+  /* The acknowledgement mail of dibodev.fr, rendered with the MJML templates of the dibodev.fr-frontend repository. */
+  var DIBODEV_ACKNOWLEDGEMENT_HTML = "<!doctype html>\n    <html xmlns=\"http://www.w3.org/1999/xhtml\" xmlns:v=\"urn:schemas-microsoft-com:vml\" xmlns:o=\"urn:schemas-microsoft-com:office:office\">\n      <head>\n        <title>\n          Votre demande est bien arrivée\n        </title>\n        <!--[if !mso]><!-- -->\n        <meta http-equiv=\"X-UA-Compatible\" content=\"IE=edge\">\n        <!--<![endif]-->\n        <meta http-equiv=\"Content-Type\" content=\"text/html; charset=UTF-8\">\n        <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">\n        <style type=\"text/css\">\n          #outlook a { padding:0; }\n          body { margin:0;padding:0;-webkit-text-size-adjust:100%;-ms-text-size-adjust:100%; }\n          table, td { border-collapse:collapse;mso-table-lspace:0pt;mso-table-rspace:0pt; }\n          img { border:0;height:auto;line-height:100%; outline:none;text-decoration:none;-ms-interpolation-mode:bicubic; }\n          p { display:block;margin:13px 0; }\n        </style>\n        <!--[if mso]>\n        <xml>\n        <o:OfficeDocumentSettings>\n          <o:AllowPNG/>\n          <o:PixelsPerInch>96</o:PixelsPerInch>\n        </o:OfficeDocumentSettings>\n        </xml>\n        <![endif]-->\n        <!--[if lte mso 11]>\n        <style type=\"text/css\">\n          .mj-outlook-group-fix { width:100% !important; }\n        </style>\n        <![endif]-->\n        \n      <!--[if !mso]><!-->\n        <link href=\"https://fonts.googleapis.com/css?family=Roboto:300,400,500,700\" rel=\"stylesheet\" type=\"text/css\">\n        <style type=\"text/css\">\n          @import url(https://fonts.googleapis.com/css?family=Roboto:300,400,500,700);\n        </style>\n      <!--<![endif]-->\n\n    \n        \n    <style type=\"text/css\">\n      @media only screen and (min-width:480px) {\n        .mj-column-per-100 { width:100% !important; max-width: 100%; }\n      }\n    </style>\n    \n  \n        <style type=\"text/css\">\n        \n        \n        </style>\n        <style type=\"text/css\">a { color: #6f5fe0; }\n      @media only screen and (max-width: 480px) {\n        .card > table > tbody > tr > td { padding: 28px 20px !important; }\n        .card, .card > table { border-radius: 0 !important; }\n        .edge > table > tbody > tr > td { padding-left: 20px !important; padding-right: 20px !important; }\n        .soft > table > tbody > tr > td { padding: 20px !important; }\n        .title div { font-size: 24px !important; line-height: 30px !important; }\n        .detail-label { width: 96px !important; }\n      }</style>\n        \n      </head>\n      <body style=\"background-color:#f6f6f3;\">\n        \n    <div style=\"display:none;font-size:1px;color:#ffffff;line-height:1px;max-height:0px;max-width:0px;opacity:0;overflow:hidden;\">\n      Je vous réponds au plus tard lundi 5 octobre. Voici la suite et le récapitulatif de votre demande.\n    </div>\n  \n        \n      <div\n         style=\"background-color:#f6f6f3;\"\n      >\n        \n      \n      <!--[if mso | IE]>\n      <table\n         align=\"center\" border=\"0\" cellpadding=\"0\" cellspacing=\"0\" class=\"edge-outlook\" style=\"width:600px;\" width=\"600\"\n      >\n        <tr>\n          <td style=\"line-height:0px;font-size:0px;mso-line-height-rule:exactly;\">\n      <![endif]-->\n    \n      \n      <div  class=\"edge\" style=\"margin:0px auto;max-width:600px;\">\n        \n        <table\n           align=\"center\" border=\"0\" cellpadding=\"0\" cellspacing=\"0\" role=\"presentation\" style=\"width:100%;\"\n        >\n          <tbody>\n            <tr>\n              <td\n                 style=\"direction:ltr;font-size:0px;padding:32px 0 20px;text-align:center;\"\n              >\n                <!--[if mso | IE]>\n                  <table role=\"presentation\" border=\"0\" cellpadding=\"0\" cellspacing=\"0\">\n                \n        <tr>\n      \n            <td\n               class=\"\" style=\"vertical-align:top;width:600px;\"\n            >\n          <![endif]-->\n            \n      <div\n         class=\"mj-column-per-100 mj-outlook-group-fix\" style=\"font-size:0px;text-align:left;direction:ltr;display:inline-block;vertical-align:top;width:100%;\"\n      >\n        \n      <table\n         border=\"0\" cellpadding=\"0\" cellspacing=\"0\" role=\"presentation\" width=\"100%\"\n      >\n        <tbody>\n          <tr>\n            <td  style=\"vertical-align:top;padding:0;\">\n              \n      <table\n         border=\"0\" cellpadding=\"0\" cellspacing=\"0\" role=\"presentation\" style=\"\" width=\"100%\"\n      >\n        \n            <tr>\n              <td\n                 align=\"left\" style=\"font-size:0px;padding:0;word-break:break-word;\"\n              >\n                \n      <div\n         style=\"font-family:-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;font-size:15px;line-height:24px;text-align:left;color:#4b4b47;\"\n      ><table role=\"presentation\" width=\"100%\" cellpadding=\"0\" cellspacing=\"0\" border=\"0\" style=\"border-collapse:collapse;\">\n  <tr>\n    <td style=\"font-size:0;line-height:0;\">\n      <img src=\"https://dibodev.fr/email/logo-240.png\" width=\"28\" height=\"28\" alt=\"\" style=\"display:inline-block;vertical-align:middle;width:28px;height:28px;border:0;\"><span style=\"display:inline-block;vertical-align:middle;margin-left:8px;font-size:18px;line-height:28px;font-weight:600;color:#141414;letter-spacing:-0.2px;\">Dibodev</span>\n    </td>\n  </tr>\n</table></div>\n    \n              </td>\n            </tr>\n          \n      </table>\n    \n            </td>\n          </tr>\n        </tbody>\n      </table>\n    \n      </div>\n    \n          <!--[if mso | IE]>\n            </td>\n          \n        </tr>\n      \n                  </table>\n                <![endif]-->\n              </td>\n            </tr>\n          </tbody>\n        </table>\n        \n      </div>\n    \n      \n      <!--[if mso | IE]>\n          </td>\n        </tr>\n      </table>\n      \n      <table\n         align=\"center\" border=\"0\" cellpadding=\"0\" cellspacing=\"0\" class=\"card-outlook\" style=\"width:600px;\" width=\"600\"\n      >\n        <tr>\n          <td style=\"line-height:0px;font-size:0px;mso-line-height-rule:exactly;\">\n      <![endif]-->\n    \n      \n      <div  class=\"card\" style=\"background:#ffffff;background-color:#ffffff;margin:0px auto;border-radius:16px;max-width:600px;\">\n        \n        <table\n           align=\"center\" border=\"0\" cellpadding=\"0\" cellspacing=\"0\" role=\"presentation\" style=\"background:#ffffff;background-color:#ffffff;width:100%;border-radius:16px;\"\n        >\n          <tbody>\n            <tr>\n              <td\n                 style=\"direction:ltr;font-size:0px;padding:40px;text-align:center;\"\n              >\n                <!--[if mso | IE]>\n                  <table role=\"presentation\" border=\"0\" cellpadding=\"0\" cellspacing=\"0\">\n                \n            <tr>\n              <td\n                 class=\"\" width=\"600px\"\n              >\n          \n      <table\n         align=\"center\" border=\"0\" cellpadding=\"0\" cellspacing=\"0\" class=\"\" style=\"width:520px;\" width=\"520\"\n      >\n        <tr>\n          <td style=\"line-height:0px;font-size:0px;mso-line-height-rule:exactly;\">\n      <![endif]-->\n    \n      \n      <div  style=\"margin:0px auto;max-width:520px;\">\n        \n        <table\n           align=\"center\" border=\"0\" cellpadding=\"0\" cellspacing=\"0\" role=\"presentation\" style=\"width:100%;\"\n        >\n          <tbody>\n            <tr>\n              <td\n                 style=\"direction:ltr;font-size:0px;padding:0;text-align:center;\"\n              >\n                <!--[if mso | IE]>\n                  <table role=\"presentation\" border=\"0\" cellpadding=\"0\" cellspacing=\"0\">\n                \n        <tr>\n      \n            <td\n               class=\"\" style=\"vertical-align:top;width:520px;\"\n            >\n          <![endif]-->\n            \n      <div\n         class=\"mj-column-per-100 mj-outlook-group-fix\" style=\"font-size:0px;text-align:left;direction:ltr;display:inline-block;vertical-align:top;width:100%;\"\n      >\n        \n      <table\n         border=\"0\" cellpadding=\"0\" cellspacing=\"0\" role=\"presentation\" width=\"100%\"\n      >\n        <tbody>\n          <tr>\n            <td  style=\"vertical-align:top;padding:0;\">\n              \n      <table\n         border=\"0\" cellpadding=\"0\" cellspacing=\"0\" role=\"presentation\" style=\"\" width=\"100%\"\n      >\n        \n            <tr>\n              <td\n                 align=\"left\" class=\"title\" style=\"font-size:0px;padding:0 0 12px;word-break:break-word;\"\n              >\n                \n      <div\n         style=\"font-family:-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;font-size:26px;font-weight:600;line-height:32px;text-align:left;color:#141414;\"\n      >Merci Camille, votre message est bien arrivé.</div>\n    \n              </td>\n            </tr>\n          \n            <tr>\n              <td\n                 align=\"left\" style=\"font-size:0px;padding:0 0 28px;word-break:break-word;\"\n              >\n                \n      <div\n         style=\"font-family:-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;font-size:15px;line-height:24px;text-align:left;color:#4b4b47;\"\n      >Je vous réponds au plus tard <strong style=\"font-weight:600;color:#141414;\">lundi 5 octobre</strong>. Voici comment la suite va se passer.</div>\n    \n              </td>\n            </tr>\n          \n      </table>\n    \n            </td>\n          </tr>\n        </tbody>\n      </table>\n    \n      </div>\n    \n          <!--[if mso | IE]>\n            </td>\n          \n        </tr>\n      \n                  </table>\n                <![endif]-->\n              </td>\n            </tr>\n          </tbody>\n        </table>\n        \n      </div>\n    \n      \n      <!--[if mso | IE]>\n          </td>\n        </tr>\n      </table>\n      \n              </td>\n            </tr>\n          \n            <tr>\n              <td\n                 class=\"soft-outlook\" width=\"600px\"\n              >\n          \n      <table\n         align=\"center\" border=\"0\" cellpadding=\"0\" cellspacing=\"0\" class=\"soft-outlook\" style=\"width:520px;\" width=\"520\"\n      >\n        <tr>\n          <td style=\"line-height:0px;font-size:0px;mso-line-height-rule:exactly;\">\n      <![endif]-->\n    \n      \n      <div  class=\"soft\" style=\"background:#f5f3ff;background-color:#f5f3ff;margin:0px auto;border-radius:12px;max-width:520px;\">\n        \n        <table\n           align=\"center\" border=\"0\" cellpadding=\"0\" cellspacing=\"0\" role=\"presentation\" style=\"background:#f5f3ff;background-color:#f5f3ff;width:100%;border-radius:12px;\"\n        >\n          <tbody>\n            <tr>\n              <td\n                 style=\"direction:ltr;font-size:0px;padding:24px;text-align:center;\"\n              >\n                <!--[if mso | IE]>\n                  <table role=\"presentation\" border=\"0\" cellpadding=\"0\" cellspacing=\"0\">\n                \n        <tr>\n      \n            <td\n               class=\"\" style=\"vertical-align:top;width:472px;\"\n            >\n          <![endif]-->\n            \n      <div\n         class=\"mj-column-per-100 mj-outlook-group-fix\" style=\"font-size:0px;text-align:left;direction:ltr;display:inline-block;vertical-align:top;width:100%;\"\n      >\n        \n      <table\n         border=\"0\" cellpadding=\"0\" cellspacing=\"0\" role=\"presentation\" width=\"100%\"\n      >\n        <tbody>\n          <tr>\n            <td  style=\"vertical-align:top;padding:0;\">\n              \n      <table\n         border=\"0\" cellpadding=\"0\" cellspacing=\"0\" role=\"presentation\" style=\"\" width=\"100%\"\n      >\n        \n            <tr>\n              <td\n                 align=\"left\" style=\"font-size:0px;padding:0 0 20px;word-break:break-word;\"\n              >\n                \n      <div\n         style=\"font-family:-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;font-size:18px;font-weight:600;line-height:24px;text-align:left;color:#141414;\"\n      >Ce qui se passe ensuite</div>\n    \n              </td>\n            </tr>\n          \n            <tr>\n              <td\n                 align=\"left\" style=\"font-size:0px;padding:0;word-break:break-word;\"\n              >\n                \n      <div\n         style=\"font-family:-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;font-size:15px;line-height:24px;text-align:left;color:#4b4b47;\"\n      ><table role=\"presentation\" width=\"100%\" cellpadding=\"0\" cellspacing=\"0\" border=\"0\" style=\"border-collapse:collapse;\">\n        <tr>\n          <td width=\"32\" valign=\"top\" style=\"width:32px;padding:0 16px 16px 0;\">\n            <div style=\"width:32px;height:32px;border-radius:16px;background-color:#6f5fe0;color:#ffffff;font-size:14px;line-height:32px;font-weight:600;text-align:center;\">1</div>\n          </td>\n          <td valign=\"top\" style=\"padding:5px 0 16px;\">\n            <p style=\"margin:0;font-size:15px;line-height:22px;font-weight:600;color:#141414;\">Je vous réponds sous 24 h</p>\n            <p style=\"margin:2px 0 0;font-size:14px;line-height:22px;color:#4b4b47;\">Par e‑mail ou par téléphone, selon ce que vous préférez.</p>\n          </td>\n        </tr>\n        <tr>\n          <td width=\"32\" valign=\"top\" style=\"width:32px;padding:0 16px 16px 0;\">\n            <div style=\"width:32px;height:32px;border-radius:16px;background-color:#6f5fe0;color:#ffffff;font-size:14px;line-height:32px;font-weight:600;text-align:center;\">2</div>\n          </td>\n          <td valign=\"top\" style=\"padding:5px 0 16px;\">\n            <p style=\"margin:0;font-size:15px;line-height:22px;font-weight:600;color:#141414;\">Un échange de 30 minutes</p>\n            <p style=\"margin:2px 0 0;font-size:14px;line-height:22px;color:#4b4b47;\">On regarde ensemble votre besoin, vos outils actuels et ce qui existe déjà.</p>\n          </td>\n        </tr>\n        <tr>\n          <td width=\"32\" valign=\"top\" style=\"width:32px;padding:0 16px 0 0;\">\n            <div style=\"width:32px;height:32px;border-radius:16px;background-color:#6f5fe0;color:#ffffff;font-size:14px;line-height:32px;font-weight:600;text-align:center;\">3</div>\n          </td>\n          <td valign=\"top\" style=\"padding:5px 0 0;\">\n            <p style=\"margin:0;font-size:15px;line-height:22px;font-weight:600;color:#141414;\">Une proposition chiffrée</p>\n            <p style=\"margin:2px 0 0;font-size:14px;line-height:22px;color:#4b4b47;\">Périmètre, prix au forfait et étapes, gratuitement et sans engagement.</p>\n          </td>\n        </tr>\n      </table></div>\n    \n              </td>\n            </tr>\n          \n      </table>\n    \n            </td>\n          </tr>\n        </tbody>\n      </table>\n    \n      </div>\n    \n          <!--[if mso | IE]>\n            </td>\n          \n        </tr>\n      \n                  </table>\n                <![endif]-->\n              </td>\n            </tr>\n          </tbody>\n        </table>\n        \n      </div>\n    \n      \n      <!--[if mso | IE]>\n          </td>\n        </tr>\n      </table>\n      \n              </td>\n            </tr>\n          \n            <tr>\n              <td\n                 class=\"\" width=\"600px\"\n              >\n          \n      <table\n         align=\"center\" border=\"0\" cellpadding=\"0\" cellspacing=\"0\" class=\"\" style=\"width:520px;\" width=\"520\"\n      >\n        <tr>\n          <td style=\"line-height:0px;font-size:0px;mso-line-height-rule:exactly;\">\n      <![endif]-->\n    \n      \n      <div  style=\"margin:0px auto;max-width:520px;\">\n        \n        <table\n           align=\"center\" border=\"0\" cellpadding=\"0\" cellspacing=\"0\" role=\"presentation\" style=\"width:100%;\"\n        >\n          <tbody>\n            <tr>\n              <td\n                 style=\"direction:ltr;font-size:0px;padding:32px 0 0;text-align:center;\"\n              >\n                <!--[if mso | IE]>\n                  <table role=\"presentation\" border=\"0\" cellpadding=\"0\" cellspacing=\"0\">\n                \n        <tr>\n      \n            <td\n               class=\"\" style=\"vertical-align:top;width:520px;\"\n            >\n          <![endif]-->\n            \n      <div\n         class=\"mj-column-per-100 mj-outlook-group-fix\" style=\"font-size:0px;text-align:left;direction:ltr;display:inline-block;vertical-align:top;width:100%;\"\n      >\n        \n      <table\n         border=\"0\" cellpadding=\"0\" cellspacing=\"0\" role=\"presentation\" width=\"100%\"\n      >\n        <tbody>\n          <tr>\n            <td  style=\"vertical-align:top;padding:0;\">\n              \n      <table\n         border=\"0\" cellpadding=\"0\" cellspacing=\"0\" role=\"presentation\" style=\"\" width=\"100%\"\n      >\n        \n            <tr>\n              <td\n                 align=\"left\" style=\"font-size:0px;padding:0 0 12px;word-break:break-word;\"\n              >\n                \n      <div\n         style=\"font-family:-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;font-size:15px;font-weight:600;line-height:22px;text-align:left;color:#141414;\"\n      >Votre demande</div>\n    \n              </td>\n            </tr>\n          \n            <tr>\n              <td\n                 align=\"left\" style=\"font-size:0px;padding:0;word-break:break-word;\"\n              >\n                \n      <div\n         style=\"font-family:-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;font-size:15px;line-height:24px;text-align:left;color:#4b4b47;\"\n      ><table role=\"presentation\" width=\"100%\" cellpadding=\"0\" cellspacing=\"0\" border=\"0\" style=\"border-collapse:collapse;\">\n        <tr>\n          <td class=\"detail-label\" width=\"120\" valign=\"top\" style=\"width:120px;padding:10px 12px 10px 0;border-top:1px solid #ebebe7;font-size:14px;line-height:20px;color:#66665f;\">Besoin</td>\n          <td valign=\"top\" style=\"padding:10px 0;border-top:1px solid #ebebe7;font-size:14px;line-height:20px;font-weight:500;color:#141414;word-break:break-word;\">Site vitrine</td>\n        </tr>\n        <tr>\n          <td class=\"detail-label\" width=\"120\" valign=\"top\" style=\"width:120px;padding:10px 12px 10px 0;border-top:1px solid #ebebe7;font-size:14px;line-height:20px;color:#66665f;\">Budget</td>\n          <td valign=\"top\" style=\"padding:10px 0;border-top:1px solid #ebebe7;font-size:14px;line-height:20px;font-weight:500;color:#141414;word-break:break-word;\">1 500 à 3 000 €</td>\n        </tr>\n        <tr>\n          <td class=\"detail-label\" width=\"120\" valign=\"top\" style=\"width:120px;padding:10px 12px 10px 0;border-top:1px solid #ebebe7;font-size:14px;line-height:20px;color:#66665f;\">Téléphone</td>\n          <td valign=\"top\" style=\"padding:10px 0;border-top:1px solid #ebebe7;font-size:14px;line-height:20px;font-weight:500;color:#141414;word-break:break-word;\">06 12 34 56 78</td>\n        </tr>\n      </table>\n      <div style=\"margin:4px 0 0;padding:16px 18px;background-color:#f6f6f3;border-radius:12px;font-size:14px;line-height:22px;color:#141414;white-space:pre-line;word-break:break-word;\">Bonjour, je cherche à refaire le site de mon cabinet avant la fin de l’année.</div></div>\n    \n              </td>\n            </tr>\n          \n      </table>\n    \n            </td>\n          </tr>\n        </tbody>\n      </table>\n    \n      </div>\n    \n          <!--[if mso | IE]>\n            </td>\n          \n        </tr>\n      \n                  </table>\n                <![endif]-->\n              </td>\n            </tr>\n          </tbody>\n        </table>\n        \n      </div>\n    \n      \n      <!--[if mso | IE]>\n          </td>\n        </tr>\n      </table>\n      \n              </td>\n            </tr>\n          \n            <tr>\n              <td\n                 class=\"\" width=\"600px\"\n              >\n          \n      <table\n         align=\"center\" border=\"0\" cellpadding=\"0\" cellspacing=\"0\" class=\"\" style=\"width:520px;\" width=\"520\"\n      >\n        <tr>\n          <td style=\"line-height:0px;font-size:0px;mso-line-height-rule:exactly;\">\n      <![endif]-->\n    \n      \n      <div  style=\"margin:0px auto;max-width:520px;\">\n        \n        <table\n           align=\"center\" border=\"0\" cellpadding=\"0\" cellspacing=\"0\" role=\"presentation\" style=\"width:100%;\"\n        >\n          <tbody>\n            <tr>\n              <td\n                 style=\"direction:ltr;font-size:0px;padding:28px 0 0;text-align:center;\"\n              >\n                <!--[if mso | IE]>\n                  <table role=\"presentation\" border=\"0\" cellpadding=\"0\" cellspacing=\"0\">\n                \n        <tr>\n      \n            <td\n               class=\"\" style=\"vertical-align:top;width:520px;\"\n            >\n          <![endif]-->\n            \n      <div\n         class=\"mj-column-per-100 mj-outlook-group-fix\" style=\"font-size:0px;text-align:left;direction:ltr;display:inline-block;vertical-align:top;width:100%;\"\n      >\n        \n      <table\n         border=\"0\" cellpadding=\"0\" cellspacing=\"0\" role=\"presentation\" width=\"100%\"\n      >\n        <tbody>\n          <tr>\n            <td  style=\"vertical-align:top;padding:0;\">\n              \n      <table\n         border=\"0\" cellpadding=\"0\" cellspacing=\"0\" role=\"presentation\" style=\"\" width=\"100%\"\n      >\n        \n            <tr>\n              <td\n                 align=\"left\" style=\"font-size:0px;padding:0 0 12px;word-break:break-word;\"\n              >\n                \n      <div\n         style=\"font-family:-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;font-size:15px;line-height:24px;text-align:left;color:#4b4b47;\"\n      >Un détail à ajouter ? Répondez simplement à cet e‑mail. Et si c’est urgent, appelez-moi au <a href=\"tel:+33642193812\" style=\"color:#6f5fe0;font-weight:500;text-decoration:none;white-space:nowrap;\">06 42 19 38 12</a>.</div>\n    \n              </td>\n            </tr>\n          \n            <tr>\n              <td\n                 align=\"left\" style=\"font-size:0px;padding:0 0 24px;word-break:break-word;\"\n              >\n                \n      <div\n         style=\"font-family:-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;font-size:15px;line-height:24px;text-align:left;color:#4b4b47;\"\n      >En attendant, vous pouvez parcourir <a href=\"https://dibodev.fr/projets\" style=\"color:#6f5fe0;font-weight:500;text-decoration:none;\">mes réalisations</a>.</div>\n    \n              </td>\n            </tr>\n          \n            <tr>\n              <td\n                 align=\"left\" style=\"font-size:0px;padding:0 0 16px;word-break:break-word;\"\n              >\n                \n      <div\n         style=\"font-family:-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;font-size:15px;line-height:24px;text-align:left;color:#4b4b47;\"\n      >À très vite,</div>\n    \n              </td>\n            </tr>\n          \n            <tr>\n              <td\n                 align=\"left\" style=\"font-size:0px;padding:0;word-break:break-word;\"\n              >\n                \n      <div\n         style=\"font-family:-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;font-size:15px;line-height:24px;text-align:left;color:#4b4b47;\"\n      ><table role=\"presentation\" cellspacing=\"0\" cellpadding=\"0\" border=\"0\" style=\"border-collapse:collapse;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;\">\n<tr>\n<td style=\"vertical-align:top;padding:0 18px 0 0;line-height:0;font-size:0;\">\n<img src=\"https://dibodev.fr/email/sig-portrait.png\" width=\"88\" height=\"110\" alt=\"Léo Guillaume\" style=\"display:block;width:88px;height:110px;border:0;border-radius:8px;\">\n</td>\n<td width=\"1\" style=\"width:1px;padding:0;background-color:#e3e3df;font-size:0;line-height:0;\">&nbsp;</td>\n<td style=\"vertical-align:top;padding:0 0 0 18px;text-align:left;\">\n<p style=\"margin:0 0 1px;font-size:17px;line-height:20px;font-weight:600;color:#141414;\">Léo Guillaume</p>\n<p style=\"margin:0;font-size:13px;line-height:19px;font-weight:400;color:#66665f;\">Développeur indépendant à Rennes</p>\n<p style=\"margin:0 0 10px;font-size:13px;line-height:19px;font-weight:400;color:#66665f;\">Logiciels de gestion, sites web et IA</p>\n<p style=\"margin:0 0 10px;font-size:13px;line-height:13px;font-weight:600;\">\n<a href=\"tel:+33642193812\" style=\"color:#6f5fe0;text-decoration:none;font-weight:600;\"><img src=\"https://dibodev.fr/email/sig-phone.png\" width=\"13\" height=\"13\" alt=\"\" style=\"display:inline-block;vertical-align:-2px;border:0;margin:0 6px 0 0;width:13px;height:13px\">06&nbsp;42&nbsp;19&nbsp;38&nbsp;12</a>\n<span style=\"color:#66665f;font-weight:400;\">&nbsp;&nbsp;</span>\n<a href=\"https://dibodev.fr/\" style=\"color:#6f5fe0;text-decoration:none;font-weight:600;\"><img src=\"https://dibodev.fr/email/sig-globe.png\" width=\"13\" height=\"13\" alt=\"\" style=\"display:inline-block;vertical-align:-2px;border:0;margin:0 6px 0 0;width:13px;height:13px\">dibodev.fr</a>\n</p>\n<table role=\"presentation\" cellspacing=\"0\" cellpadding=\"0\" border=\"0\" style=\"border-collapse:collapse;\">\n<tr>\n<td style=\"vertical-align:middle;padding:0 17px 0 0;\">\n<a href=\"https://www.malt.fr/profile/leoguillaume2\" style=\"text-decoration:none;white-space:nowrap;\"><span style=\"color:#fe9a00;font-size:12px;letter-spacing:2.9px;line-height:1;\">★★★★★</span><span style=\"color:#141414;font-size:12px;font-weight:600;\"> 5/5</span><span style=\"color:#66665f;font-size:12px;font-weight:400;\"> sur Malt</span></a>\n</td>\n<td style=\"vertical-align:middle;padding:0 10px 0 0;line-height:0;font-size:0;\">\n<a href=\"https://www.linkedin.com/in/dibodev/\" style=\"text-decoration:none;\"><img src=\"https://dibodev.fr/email/sig-linkedin.png\" width=\"14\" height=\"14\" alt=\"LinkedIn\" style=\"display:block;border:0;width:14px;height:14px;\"></a>\n</td>\n<td style=\"vertical-align:middle;line-height:0;font-size:0;\">\n<a href=\"https://github.com/Leoglme/\" style=\"text-decoration:none;\"><img src=\"https://dibodev.fr/email/sig-github.png\" width=\"14\" height=\"14\" alt=\"GitHub\" style=\"display:block;border:0;width:14px;height:14px;\"></a>\n</td>\n</tr>\n</table>\n</td>\n</tr>\n<tr>\n<td colspan=\"3\" style=\"padding:13px 0 0;font-size:11px;line-height:13px;font-weight:400;color:#8a8a83;\">Léo Guillaume EI · SIRET 988&nbsp;307&nbsp;906&nbsp;00020</td>\n</tr>\n</table></div>\n    \n              </td>\n            </tr>\n          \n      </table>\n    \n            </td>\n          </tr>\n        </tbody>\n      </table>\n    \n      </div>\n    \n          <!--[if mso | IE]>\n            </td>\n          \n        </tr>\n      \n                  </table>\n                <![endif]-->\n              </td>\n            </tr>\n          </tbody>\n        </table>\n        \n      </div>\n    \n      \n      <!--[if mso | IE]>\n          </td>\n        </tr>\n      </table>\n      \n              </td>\n            </tr>\n          \n                  </table>\n                <![endif]-->\n              </td>\n            </tr>\n          </tbody>\n        </table>\n        \n      </div>\n    \n      \n      <!--[if mso | IE]>\n          </td>\n        </tr>\n      </table>\n      \n      <table\n         align=\"center\" border=\"0\" cellpadding=\"0\" cellspacing=\"0\" class=\"edge-outlook\" style=\"width:600px;\" width=\"600\"\n      >\n        <tr>\n          <td style=\"line-height:0px;font-size:0px;mso-line-height-rule:exactly;\">\n      <![endif]-->\n    \n      \n      <div  class=\"edge\" style=\"margin:0px auto;max-width:600px;\">\n        \n        <table\n           align=\"center\" border=\"0\" cellpadding=\"0\" cellspacing=\"0\" role=\"presentation\" style=\"width:100%;\"\n        >\n          <tbody>\n            <tr>\n              <td\n                 style=\"direction:ltr;font-size:0px;padding:24px 0 40px;text-align:center;\"\n              >\n                <!--[if mso | IE]>\n                  <table role=\"presentation\" border=\"0\" cellpadding=\"0\" cellspacing=\"0\">\n                \n        <tr>\n      \n            <td\n               class=\"\" style=\"vertical-align:top;width:600px;\"\n            >\n          <![endif]-->\n            \n      <div\n         class=\"mj-column-per-100 mj-outlook-group-fix\" style=\"font-size:0px;text-align:left;direction:ltr;display:inline-block;vertical-align:top;width:100%;\"\n      >\n        \n      <table\n         border=\"0\" cellpadding=\"0\" cellspacing=\"0\" role=\"presentation\" width=\"100%\"\n      >\n        <tbody>\n          <tr>\n            <td  style=\"vertical-align:top;padding:0;\">\n              \n      <table\n         border=\"0\" cellpadding=\"0\" cellspacing=\"0\" role=\"presentation\" style=\"\" width=\"100%\"\n      >\n        \n            <tr>\n              <td\n                 align=\"left\" style=\"font-size:0px;padding:0;word-break:break-word;\"\n              >\n                \n      <div\n         style=\"font-family:-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;font-size:12px;line-height:18px;text-align:left;color:#66665f;\"\n      >Vous recevez cet e‑mail parce que vous avez écrit via un formulaire de dibodev.fr. Vos coordonnées servent uniquement à vous répondre. <a href=\"https://dibodev.fr/privacy\" style=\"color:#66665f;text-decoration:underline;\">Confidentialité</a></div>\n    \n              </td>\n            </tr>\n          \n      </table>\n    \n            </td>\n          </tr>\n        </tbody>\n      </table>\n    \n      </div>\n    \n          <!--[if mso | IE]>\n            </td>\n          \n        </tr>\n      \n                  </table>\n                <![endif]-->\n              </td>\n            </tr>\n          </tbody>\n        </table>\n        \n      </div>\n    \n      \n      <!--[if mso | IE]>\n          </td>\n        </tr>\n      </table>\n      <![endif]-->\n    \n    \n      </div>\n    \n      </body>\n    </html>";
+
   var FONT = "-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif";
-  var COLOR = { page: '#f6f6f3', card: '#ffffff', text: '#2b2b27', ink: '#141414', muted: '#66665f', rule: '#e3e3df', accent: '#6f5fe0', soft: '#f5f3ff' };
-  var COVER_PHOTO_URL = 'https://images.unsplash.com/photo-1660796334912-8ce8e9c2cff0?auto=format&fit=crop&w=960&h=480&q=70';
+  var COLOR = { page: '#f6f6f3', card: '#ffffff', text: '#4b4b47', ink: '#141414', muted: '#66665f', rule: '#e3e3df', accent: '#6f5fe0', soft: '#f5f3ff' };
   var UNSUBSCRIBE_URL = 'https://devleadhunter.fr/api/v1/unsubscribe';
+  var THUMBNAIL_FILE = 'email-vignette-exemple.jpg';
+  var THUMBNAIL_REAL_URL = 'https://pub-16f42d674fbd407c8f21b3f152645750.r2.dev/images/websites/menuiserie-lefort.jpg';
 
   var SAMPLE = {
     salutation: 'Bonjour',
@@ -190,166 +193,157 @@
     assistant_virtuel: 'une assistante virtuelle'
   };
   var LINKS = {
-    lien_demo: { href: 'https://demo.dibodev.fr/menuiserie-lefort?src=email', label: 'demo.dibodev.fr/menuiserie-lefort', eyebrow: 'Votre site', title: 'Menuiserie Lefort', button: 'Voir mon site', hasPhoto: true },
-    lien_assistant: { href: 'https://demo.dibodev.fr/ia/menuiserie-lefort?src=email', label: 'demo.dibodev.fr/ia/menuiserie-lefort', eyebrow: 'Votre réceptionniste', title: 'Léa, pour Menuiserie Lefort', button: 'Parler à Léa', hasPhoto: false }
+    lien_demo: { href: 'https://demo.dibodev.fr/menuiserie-lefort?src=email', label: 'demo.dibodev.fr/menuiserie-lefort', eyebrow: 'Votre site', title: 'Menuiserie Lefort', button: 'Voir mon site' },
+    lien_assistant: { href: 'https://demo.dibodev.fr/ia/menuiserie-lefort?src=email', label: 'demo.dibodev.fr/ia/menuiserie-lefort', eyebrow: 'Votre réceptionniste', title: 'Léa, pour Menuiserie Lefort', button: 'Parler à Léa' }
   };
   var VIDEO = { href: 'https://demo.dibodev.fr/v/menuiserie-lefort?src=email', label: 'demo.dibodev.fr/v/menuiserie-lefort' };
   var BOLD_VARIABLES = ['prix', 'prix_assistant', 'date_expiration'];
 
-  /* Bodies copied from api/seeders/email_template_seeder.py (EMAIL_TEMPLATE_LIBRARY). */
+  /* Bodies read in prod on 04/10 (GET /email-templates), with the state of their « Inclure une signature » switch. */
   var TEMPLATES = [
-    { id: 'first', name: 'Franc - premier contact', subject: 'le site de {entreprise}',
+    { id: 'first', name: 'Franc - premier contact', prodId: 40, signatureInProd: false, subject: 'le site de {entreprise}',
       body: "<p>{salutation},</p><p>Je fais des sites web, et j'ai construit celui de {entreprise}. Il est déjà en ligne : {lien_demo}</p><p>C'est {prix}, une seule fois. Pas d'abonnement : je le mets sur votre propre adresse, et vous modifiez ensuite textes et photos vous-même, sans dépendre de personne.</p><p>Je le garde en ligne jusqu'au {date_expiration}. Après, je le retire.</p><p>Un mot me suffit : oui, non, ou une question. Si c'est non, dites-le-moi et je ne vous recontacte plus.</p>" },
-    { id: 'reminder', name: 'Rappel court (relance)', subject: 'vous avez vu votre site ?',
+    { id: 'reminder', name: 'Rappel court (relance)', prodId: 24, signatureInProd: true, subject: 'vous avez vu votre site ?',
       body: "<p>{salutation},</p><p>Le site de {entreprise} est toujours en ligne : {lien_demo}</p><p>C'est {prix}, une seule fois, sans abonnement. Je le retire le {date_expiration}.</p><p>Un mot me suffit, même un non.</p>" },
-    { id: 'video', name: 'Vidéo - je vous montre', subject: 'le site de {entreprise}, en vidéo',
+    { id: 'video', name: 'Vidéo - je vous montre', prodId: 21, signatureInProd: true, subject: 'le site de {entreprise}, en vidéo',
       body: "<p>{salutation},</p><p>Je fais des sites web, et j'ai construit celui de {entreprise}. Plutôt que de l'expliquer, je vous le montre en 30 secondes :</p>{vignette_video}<p>C'est {prix}, une seule fois. Pas d'abonnement : je le mets sur votre propre adresse, et vous modifiez ensuite textes et photos vous-même, sans dépendre de personne.</p><p>Je le garde en ligne jusqu'au {date_expiration}. Après, je le retire.</p><p>Un mot me suffit : oui, non, ou une question. Si c'est non, dites-le-moi et je ne vous recontacte plus.</p>" },
-    { id: 'receptionist', name: 'Réceptionniste IA - en bref', subject: 'votre réceptionniste, en bref',
+    { id: 'receptionist', name: 'Réceptionniste IA - en bref', prodId: 46, signatureInProd: false, subject: 'votre réceptionniste, en bref',
       body: "<p>{salutation},</p><p>Je fais des outils web pour les artisans et les commerçants, et j'ai préparé {prenom_receptionniste} pour {entreprise} : {assistant_virtuel} (IA). En bref :</p><ul><li>Réponses à vos clients 24 h sur 24, dans leur langue</li><li>Demandes de devis avec photo</li><li>Prise de rendez-vous dans votre agenda Google</li><li>Chaque demande transmise par mail, les urgentes aussi par SMS</li><li>Uniquement vos vraies informations : rien d'inventé</li><li>Une adresse à son nom pour votre fiche Google, pas besoin de site</li><li>Un bilan chaque mois</li></ul><p>{prenom_receptionniste} est déjà en ligne : {lien_assistant}</p><p>C'est {prix_assistant} par mois, sans engagement. Le premier mois est satisfait ou remboursé.</p><p>La démo reste en ligne jusqu'au {date_expiration}. Après, je la retire.</p><p>Un mot me suffit : oui, non, ou une question. Si c'est non, dites-le-moi et je ne vous recontacte plus.</p>" }
   ];
 
-  var DESIGNS = [
-    { id: 'today', tab: "Aujourd'hui", link: 'plain', dressed: false,
-      pitch: "Ce qui part aujourd'hui : le texte seul, dans la police du lecteur, sans signature, puis un pied gris centré. C'est la référence de la vague 3.",
-      added: 'Rien.', blocked: 'Aucune image', risk: 'Le plus bas', verdict: 'Sûr, mais anonyme : aucun visage, aucun numéro, aucun SIRET.' },
-    { id: 'letter', tab: 'A · Lettre signée', link: 'inline', dressed: true,
-      pitch: "Le texte du modèle dans la carte blanche de dibodev.fr, ta signature avec photo dessous, le SIRET et la désinscription dans le pied gris. Ni logo, ni bouton.",
-      added: 'Carte, signature et pied. Prix et date passent en gras.', blocked: 'Complet, seule ta photo manque', risk: 'Faible', verdict: "Le changement le plus prudent : seul l'habillage bouge par rapport à la vague 3." },
-    { id: 'row', tab: 'B · Lien en évidence', badge: 'Mon choix', link: 'row', dressed: true,
-      pitch: "La lettre A, où le lien du site devient une grande ligne violette, facile à toucher au pouce. Toujours une seule porte, toujours le nom du commerce dans l'adresse.",
-      added: 'Comme A, et {lien_demo} se présente sur sa propre ligne.', blocked: 'Complet, seule ta photo manque', risk: 'Faible', verdict: 'Le meilleur compromis : aussi soigné que dibodev.fr, aucun signe de publicité en plus.' },
-    { id: 'card', tab: 'C · Fiche du site', link: 'card', dressed: true,
-      pitch: "À la place du lien, une fiche : « Votre site », le nom du commerce, l'adresse et un bouton. Elle ne répète ni le prix ni la date : ils sont juste dessous, en gras.",
-      added: 'Comme A, et {lien_demo} devient une fiche tirée de {entreprise}.', blocked: 'Complet, seule ta photo manque', risk: 'Moyen', verdict: 'Le bouton fait plus « publicité ». À tester contre B, pas avant.' },
-    { id: 'photo', tab: 'D · Fiche avec photo', link: 'photo', dressed: true,
-      pitch: "La fiche C avec la photo de couverture du site de démo. Le plus vendeur et le plus risqué : une deuxième image, lourde, et parfois une photo par défaut du métier plutôt que celle du commerce.",
-      added: 'Comme C, plus la photo de couverture du site de démo.', blocked: 'Un grand cadre vide dans la fiche', risk: 'Le plus élevé', verdict: 'À garder pour plus tard, sur les seuls prospects qui ont de vraies photos.' }
+  var VERSIONS = [
+    { id: 'today', tab: "Aujourd'hui", kind: 'today', link: 'plain',
+      pitch: "Ce que l'outil envoie aujourd'hui quand la signature est cochée : le texte du modèle sans mise en page, ta signature « Signature Dibodev », puis le pied gris centré.",
+      added: '',
+      change: 'La référence. Le texte et la signature ne sont pas dans la même police, et le pied est centré, en gris clair.' },
+    { id: 'dibodev', tab: 'Le mail de dibodev.fr', kind: 'reference',
+      pitch: "Le mail que reçoit un client qui remplit le formulaire de dibodev.fr, rendu avec les fichiers du dépôt dibodev.fr. C'est le modèle à suivre : logo, carte blanche, encadré violet, ta signature, pied discret.",
+      added: '',
+      change: "Le modèle à suivre. C'est un mail attendu par celui qui le reçoit : il peut se permettre un titre, des étapes et un récapitulatif." },
+    { id: 'proposal', tab: 'Proposition', badge: 'Mon choix', kind: 'dressed', link: 'row', logo: true, signature: 'prod',
+      pitch: "Le mail de prospection dans l'habillage de dibodev.fr : logo, carte blanche, lien du site sur sa propre ligne violette, ta signature sans y toucher, pied discret.",
+      added: 'Logo, carte et pied. Le lien passe sur sa propre ligne, prix et date en gras.',
+      change: "Aussi soigné que le mail de dibodev.fr. Une seule image de plus qu'aujourd'hui : le logo." },
+    { id: 'button', tab: 'Variante avec bouton', kind: 'dressed', link: 'card', logo: true, signature: 'prod',
+      pitch: "La proposition, où le lien devient une fiche : « Votre site », le nom du commerce, l'adresse et un bouton. Plus proche d'une publicité : à tester contre la proposition, pas avant.",
+      added: 'Comme la proposition, et {lien_demo} devient une fiche tirée de {entreprise}.',
+      change: 'Un bouton en plus. Il attire le clic, mais la vague 3 a déjà 35 % de clics humains avec un simple lien.' },
+    { id: 'careful', tab: 'Variante prudente', kind: 'dressed', link: 'row', logo: false, signature: 'light',
+      pitch: "La proposition sans le logo, avec une signature réduite à ta photo (sans les quatre icônes, sans LinkedIn ni GitHub). À sortir seulement si le test sur les adresses témoins est moins bon avec la proposition.",
+      added: 'Carte et pied. Signature à une seule image, SIRET dans le pied.',
+      change: 'Une seule image. Moins « dibodev.fr », mais le plus léger pour les filtres.' }
   ];
 
-  var SIGNATURE_HTML = '<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:28px 0 0;border-collapse:collapse;font-family:' + FONT + ';">'
+  var LIGHT_SIGNATURE_HTML = '<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse;font-family:' + FONT + ';">'
     + '<tr>'
     + '<td style="vertical-align:top;padding:0 18px 0 0;line-height:0;font-size:0;"><img src="https://dibodev.fr/email/sig-portrait.png" width="88" height="110" alt="Léo Guillaume" style="display:block;width:88px;height:110px;border:0;border-radius:8px;"></td>'
-    + '<td class="em-rule" style="vertical-align:top;padding:0 0 0 18px;border-left:1px solid ' + COLOR.rule + ';text-align:left;">'
-    + '<p class="em-ink" style="margin:0 0 2px;font-size:17px;line-height:22px;font-weight:600;color:' + COLOR.ink + ';">Léo Guillaume</p>'
-    + '<p class="em-muted" style="margin:0;font-size:13px;line-height:19px;color:' + COLOR.muted + ';">Développeur indépendant à Rennes</p>'
-    + '<p class="em-muted" style="margin:0 0 9px;font-size:13px;line-height:19px;color:' + COLOR.muted + ';">Logiciels de gestion, sites web et IA</p>'
-    + '<p class="em-muted" style="margin:0 0 8px;font-size:13px;line-height:19px;color:' + COLOR.muted + ';">'
-    + '<a href="tel:+33642193812" class="em-link" style="color:' + COLOR.accent + ';font-weight:600;text-decoration:none;white-space:nowrap;">06&nbsp;42&nbsp;19&nbsp;38&nbsp;12</a>'
-    + ' &nbsp;·&nbsp; <a href="https://dibodev.fr/" class="em-link" style="color:' + COLOR.accent + ';font-weight:600;text-decoration:none;">dibodev.fr</a></p>'
-    + '<p style="margin:0;font-size:12px;line-height:18px;"><a href="https://www.malt.fr/profile/leoguillaume2" style="text-decoration:none;white-space:nowrap;"><span style="color:#fe9a00;letter-spacing:2px;">★★★★★</span> <span class="em-ink" style="color:' + COLOR.ink + ';font-weight:600;">5/5</span> <span class="em-muted" style="color:' + COLOR.muted + ';">sur Malt</span></a></p>'
+    + '<td width="1" style="width:1px;padding:0;background-color:' + COLOR.rule + ';font-size:0;line-height:0;">&nbsp;</td>'
+    + '<td style="vertical-align:top;padding:0 0 0 18px;text-align:left;">'
+    + '<p style="margin:0 0 1px;font-size:17px;line-height:20px;font-weight:600;color:' + COLOR.ink + ';">Léo Guillaume</p>'
+    + '<p style="margin:0;font-size:13px;line-height:19px;color:' + COLOR.muted + ';">Développeur indépendant à Rennes</p>'
+    + '<p style="margin:0 0 10px;font-size:13px;line-height:19px;color:' + COLOR.muted + ';">Logiciels de gestion, sites web et IA</p>'
+    + '<p style="margin:0 0 10px;font-size:13px;line-height:19px;color:' + COLOR.muted + ';">'
+    + '<a href="tel:+33642193812" style="color:' + COLOR.accent + ';font-weight:600;text-decoration:none;white-space:nowrap;">06&nbsp;42&nbsp;19&nbsp;38&nbsp;12</a>'
+    + ' &nbsp;·&nbsp; <a href="https://dibodev.fr/" style="color:' + COLOR.accent + ';font-weight:600;text-decoration:none;">dibodev.fr</a></p>'
+    + '<p style="margin:0;font-size:12px;line-height:18px;"><a href="https://www.malt.fr/profile/leoguillaume2" style="text-decoration:none;white-space:nowrap;"><span style="color:#fe9a00;letter-spacing:2.9px;">★★★★★</span><span style="color:' + COLOR.ink + ';font-weight:600;"> 5/5</span><span style="color:' + COLOR.muted + ';"> sur Malt</span></a></p>'
     + '</td>'
     + '</tr>'
     + '</table>';
 
   var HEAD_STYLE = '<style>'
     + '@media only screen and (max-width:480px){'
-    + '.em-outer{padding:0 0 32px !important;}'
+    + '.em-outer{padding:0 !important;}'
+    + '.em-head{padding:32px 20px 20px !important;}'
+    + '.em-top{height:0 !important;}'
     + '.em-card{padding:28px 20px !important;border-radius:0 !important;}'
-    + '.em-foot{padding:20px 20px 0 !important;}'
-    + '.em-body p,.em-body li,.em-row{font-size:16px !important;line-height:26px !important;}'
-    + '}'
-    + '@media (prefers-color-scheme: dark){'
-    + '.em-page{background-color:#121211 !important;}'
-    + '.em-card{background-color:#1d1d1b !important;}'
-    + '.em-text{color:#d9d9d2 !important;}'
-    + '.em-ink{color:#f5f5f0 !important;}'
-    + '.em-muted{color:#a6a69e !important;}'
-    + '.em-link{color:#b3a8f7 !important;}'
-    + '.em-soft{background-color:#2a2740 !important;}'
-    + '.em-rule{border-color:#3a3a36 !important;}'
+    + '.em-foot{padding:24px 20px 40px !important;}'
     + '}'
     + '</style>';
 
-  /** Sample video thumbnail (the real one is the personalised JPEG of the video pipeline). */
-  function videoThumbnailDataUri() {
-    var svg = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 540">'
-      + '<defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#2a221b"/><stop offset="1" stop-color="#6b5440"/></linearGradient></defs>'
-      + '<rect width="960" height="540" fill="url(#g)"/>'
-      + '<rect width="960" height="54" fill="#1b1612"/><circle cx="30" cy="27" r="7" fill="#5b4c40"/><circle cx="54" cy="27" r="7" fill="#5b4c40"/><circle cx="78" cy="27" r="7" fill="#5b4c40"/>'
-      + '<rect x="250" y="14" width="460" height="26" rx="13" fill="#2f2620"/><text x="480" y="32" font-family="Arial" font-size="14" fill="#c9bcae" text-anchor="middle">demo.dibodev.fr/menuiserie-lefort</text>'
-      + '<text x="72" y="250" font-family="Georgia,serif" font-size="58" fill="#fff">Menuiserie Lefort</text>'
-      + '<text x="72" y="298" font-family="Arial" font-size="24" fill="#e6d9cb">Menuisier à Saint-Herblain</text>'
-      + '<rect x="72" y="338" width="210" height="54" rx="27" fill="#fff"/><text x="177" y="372" font-family="Arial" font-size="20" fill="#2a221b" text-anchor="middle">Demander un devis</text>'
-      + '<circle cx="480" cy="290" r="62" fill="#fff" fill-opacity=".94"/><path d="M462 258l52 32-52 32z" fill="#141414"/>'
-      + '</svg>';
-    return 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg);
-  }
-
-  /** {lien_demo} / {lien_assistant}, as each model presents it. */
-  function linkHtml(design, link) {
-    if (design.link === 'plain') {
+  /** {lien_demo} / {lien_assistant}, as each version presents it. */
+  function linkHtml(version, link) {
+    if (version.link === 'plain') {
       return '<a href="' + link.href + '" target="_blank" rel="noopener noreferrer" style="color:#111;text-decoration:underline;">' + link.label + '</a>';
     }
-    if (design.link === 'inline') {
-      return '<a href="' + link.href + '" class="em-link" style="color:' + COLOR.accent + ';font-weight:600;text-decoration:underline;">' + link.label + '</a>';
+    if (version.link === 'row') {
+      return '<a href="' + link.href + '" style="display:block;margin:10px 0 0;padding:13px 16px;background-color:' + COLOR.soft + ';border-radius:12px;font-size:15px;line-height:22px;font-weight:600;color:' + COLOR.accent + ';text-decoration:none;word-break:break-word;">' + link.label + '&nbsp;&nbsp;&rarr;</a>';
     }
-    if (design.link === 'row') {
-      return '<a href="' + link.href + '" class="em-row em-soft em-link" style="display:block;margin:10px 0 0;padding:13px 16px;background-color:' + COLOR.soft + ';border-radius:12px;font-size:15px;line-height:22px;font-weight:600;color:' + COLOR.accent + ';text-decoration:none;word-break:break-word;">' + link.label + '&nbsp;&nbsp;&rarr;</a>';
-    }
-    var photo = design.link === 'photo' && link.hasPhoto
-      ? '<img src="' + COVER_PHOTO_URL + '" width="480" height="240" alt="Le site de ' + SAMPLE.entreprise + '" style="display:block;width:100%;max-width:480px;height:auto;margin:0 0 14px;border:0;border-radius:8px;">'
-      : '';
-    return '<a href="' + link.href + '" class="em-soft" style="display:block;margin:12px 0 0;padding:18px 20px 20px;background-color:' + COLOR.soft + ';border-radius:12px;text-decoration:none;">'
-      + photo
-      + '<span class="em-muted" style="display:block;font-size:13px;line-height:18px;font-weight:400;color:' + COLOR.muted + ';">' + link.eyebrow + '</span>'
-      + '<span class="em-ink" style="display:block;margin:2px 0 0;font-size:19px;line-height:26px;font-weight:600;color:' + COLOR.ink + ';">' + link.title + '</span>'
-      + '<span class="em-link" style="display:block;margin:2px 0 0;font-size:14px;line-height:20px;font-weight:500;color:' + COLOR.accent + ';word-break:break-word;">' + link.label + '</span>'
+    return '<a href="' + link.href + '" style="display:block;margin:12px 0 0;padding:20px 24px 24px;background-color:' + COLOR.soft + ';border-radius:12px;text-decoration:none;">'
+      + '<span style="display:block;font-size:13px;line-height:18px;font-weight:400;color:' + COLOR.muted + ';">' + link.eyebrow + '</span>'
+      + '<span style="display:block;margin:2px 0 0;font-size:18px;line-height:24px;font-weight:600;color:' + COLOR.ink + ';">' + link.title + '</span>'
+      + '<span style="display:block;margin:2px 0 0;font-size:14px;line-height:20px;font-weight:500;color:' + COLOR.accent + ';word-break:break-word;">' + link.label + '</span>'
       + '<span style="display:inline-block;margin:14px 0 0;padding:11px 18px;background-color:' + COLOR.accent + ';border-radius:10px;font-size:15px;line-height:20px;font-weight:600;color:#ffffff;">' + link.button + '</span>'
       + '</a>';
   }
 
-  /** {vignette_video}: same block as EmailVariables.build_video_thumbnail_html, in the colours of the model. */
-  function videoThumbnailHtml(design) {
-    var noteStyle = design.dressed ? 'margin:0 0 16px;font-size:13px;line-height:19px;color:' + COLOR.muted + ';' : 'margin:0 0 16px;font-size:13px;color:#555;';
-    var linkStyle = design.dressed ? 'color:' + COLOR.accent + ';font-weight:600;text-decoration:underline;' : 'color:#111;text-decoration:underline;';
-    return '<p style="margin:16px 0 6px;"><a href="' + VIDEO.href + '"><img src="' + videoThumbnailDataUri() + '" alt="Votre site en vidéo" width="480" height="270" style="display:block;width:100%;max-width:480px;height:auto;border-radius:12px;border:0;"></a></p>'
-      + '<p class="em-muted" style="' + noteStyle + '">La vidéo : <a href="' + VIDEO.href + '" class="em-link" style="' + linkStyle + '">' + VIDEO.label + '</a></p>';
+  /** {vignette_video}: the block of EmailVariables.build_video_thumbnail_html, in the colours of the version. */
+  function videoThumbnailHtml(version) {
+    var dressed = version.kind === 'dressed';
+    var noteStyle = dressed ? 'margin:0 0 16px;font-size:13px;line-height:19px;color:' + COLOR.muted + ';' : 'margin:0 0 16px;font-size:13px;color:#555;';
+    var linkStyle = dressed ? 'color:' + COLOR.accent + ';font-weight:500;text-decoration:none;' : 'color:#111;text-decoration:underline;';
+    return '<p style="margin:16px 0 6px;"><a href="' + VIDEO.href + '" target="_blank"><img src="' + THUMBNAIL_FILE + '" alt="Votre site en vidéo" width="480" height="270" style="display:block;width:100%;max-width:480px;height:auto;border-radius:12px;border:0;" /></a></p>'
+      + '<p style="' + noteStyle + '">La vidéo : <a href="' + VIDEO.href + '" target="_blank" rel="noopener noreferrer" style="' + linkStyle + '">' + VIDEO.label + '</a></p>';
   }
 
-  function fillVariables(text, design, isBody) {
+  function fillVariables(text, version, isBody) {
     return text.replace(/\{(\w+)\}/g, function (placeholder, name) {
-      if (LINKS[name]) { return linkHtml(design, LINKS[name]); }
-      if (name === 'vignette_video') { return videoThumbnailHtml(design); }
+      if (LINKS[name]) { return linkHtml(version, LINKS[name]); }
+      if (name === 'vignette_video') { return videoThumbnailHtml(version); }
       if (!(name in SAMPLE)) { return placeholder; }
-      if (isBody && design.dressed && BOLD_VARIABLES.indexOf(name) !== -1) {
-        return '<strong class="em-ink" style="font-weight:600;color:' + COLOR.ink + ';">' + SAMPLE[name] + '</strong>';
+      if (isBody && version.kind === 'dressed' && BOLD_VARIABLES.indexOf(name) !== -1) {
+        return '<strong style="font-weight:600;color:' + COLOR.ink + ';">' + SAMPLE[name] + '</strong>';
       }
       return SAMPLE[name];
     });
   }
 
-  /** What is sent today: the bare paragraphs, then the footer of unsubscribe_service.add_unsubscribe_footer. */
-  function buildTodayEmail(template, design) {
-    return '<!doctype html><html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>' + fillVariables(template.subject, design, false) + '</title></head>'
+  /** What the tool sends today: bare paragraphs, the signature wrapper of email_signatures.render_signature_html, the footer of unsubscribe_service. */
+  function buildTodayEmail(template, version, withSignature) {
+    return '<!doctype html><html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>' + fillVariables(template.subject, version, false) + '</title></head>'
       + '<body style="margin:0;padding:20px 20px 28px;background:#ffffff;font-family:Arial,Helvetica,sans-serif;font-size:13px;line-height:1.5;color:#222222;">'
-      + fillVariables(template.body, design, true)
-      + '<div style="margin-top: 40px; padding-top: 20px; border-top: 1px solid #eee; font-size: 12px; color: #999; text-align: center;">'
+      + fillVariables(template.body, version, true)
+      + (withSignature ? '<div style="margin-top:16px;">' + PROD_SIGNATURE_HTML + '</div>' : '')
+      + '\n<div style="margin-top: 40px; padding-top: 20px; border-top: 1px solid #eee; font-size: 12px; color: #999; text-align: center;">'
       + '<p>Vous recevez cet email car vous êtes dans notre liste de prospects.</p>'
       + '<p><a href="' + UNSUBSCRIBE_URL + '" style="color: #999; text-decoration: underline;">Se désabonner</a></p>'
       + '</div></body></html>';
   }
 
-  function buildDressedEmail(template, design) {
-    var body = fillVariables(template.body, design, true)
+  function buildDressedEmail(template, version) {
+    var body = fillVariables(template.body, version, true)
       .replace(/<p>/g, '<p style="margin:0 0 16px;">')
       .replace(/<ul>/g, '<ul style="margin:0 0 16px;padding:0 0 0 22px;">')
       .replace(/<li>/g, '<li style="margin:0 0 6px;">');
-    return '<!doctype html>\n<html lang="fr">\n<head>\n<meta charset="utf-8">\n<meta name="viewport" content="width=device-width, initial-scale=1">\n<meta name="color-scheme" content="light dark">\n<meta name="supported-color-schemes" content="light dark">\n<title>' + fillVariables(template.subject, design, false) + '</title>\n' + HEAD_STYLE + '\n</head>\n'
-      + '<body class="em-page" style="margin:0;padding:0;background-color:' + COLOR.page + ';">\n'
-      + '<table role="presentation" class="em-page" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:' + COLOR.page + ';">\n<tr>\n<td class="em-outer" align="center" style="padding:32px 16px 40px;">\n'
-      + '<table role="presentation" width="600" cellpadding="0" cellspacing="0" border="0" style="width:100%;max-width:600px;">\n<tr>\n'
-      + '<td class="em-card em-text" style="padding:40px;background-color:' + COLOR.card + ';border-radius:16px;font-family:' + FONT + ';font-size:15px;line-height:24px;color:' + COLOR.text + ';text-align:left;">\n'
-      + '<div class="em-body">' + body + '</div>\n'
-      + SIGNATURE_HTML + '\n'
+    var head = version.logo
+      ? '<tr>\n<td class="em-head" style="padding:32px 0 20px;font-size:0;line-height:0;text-align:left;">'
+        + '<img src="https://dibodev.fr/email/logo-240.png" width="28" height="28" alt="" style="display:inline-block;vertical-align:middle;width:28px;height:28px;border:0;">'
+        + '<span style="display:inline-block;vertical-align:middle;margin-left:8px;font-family:' + FONT + ';font-size:18px;line-height:28px;font-weight:600;color:' + COLOR.ink + ';letter-spacing:-0.2px;">Dibodev</span>'
+        + '</td>\n</tr>\n'
+      : '<tr>\n<td class="em-top" height="32" style="height:32px;font-size:0;line-height:0;">&nbsp;</td>\n</tr>\n';
+    /* The dressing drops the clipboard markers and the trailing line break of a pasted signature, so the card ends on its own padding. */
+    var signature = version.signature === 'prod'
+      ? PROD_SIGNATURE_HTML.replace(/<!--(Start|End)Fragment-->/g, '').replace(/(\s*<br\s*\/?>\s*)+$/, '').trim()
+      : LIGHT_SIGNATURE_HTML;
+    var legal = version.signature === 'prod' ? '' : 'Léo Guillaume EI · SIRET 988&nbsp;307&nbsp;906&nbsp;00020<br>';
+    return '<!doctype html>\n<html lang="fr">\n<head>\n<meta charset="utf-8">\n<meta name="viewport" content="width=device-width, initial-scale=1">\n<title>' + fillVariables(template.subject, version, false) + '</title>\n' + HEAD_STYLE + '\n</head>\n'
+      + '<body style="margin:0;padding:0;background-color:' + COLOR.page + ';">\n'
+      + '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:' + COLOR.page + ';">\n<tr>\n<td class="em-outer" align="center" style="padding:0 16px;">\n'
+      + '<table role="presentation" width="600" cellpadding="0" cellspacing="0" border="0" style="width:100%;max-width:600px;">\n'
+      + head
+      + '<tr>\n<td class="em-card" style="padding:40px;background-color:' + COLOR.card + ';border-radius:16px;font-family:' + FONT + ';font-size:15px;line-height:24px;color:' + COLOR.text + ';text-align:left;">\n'
+      + body + '\n'
+      + '<div style="margin-top:16px;">' + signature + '</div>\n'
       + '</td>\n</tr>\n<tr>\n'
-      + '<td class="em-foot em-muted" style="padding:20px 40px 0;font-family:' + FONT + ';font-size:12px;line-height:18px;color:' + COLOR.muted + ';text-align:left;">'
-      + 'Léo Guillaume EI · SIRET 988&nbsp;307&nbsp;906&nbsp;00020<br>'
-      + 'Vous recevez cet e-mail car vous êtes dans ma liste de prospects. <a href="' + UNSUBSCRIBE_URL + '" class="em-muted" style="color:' + COLOR.muted + ';text-decoration:underline;">Se désabonner</a>'
+      + '<td class="em-foot" style="padding:24px 0 40px;font-family:' + FONT + ';font-size:12px;line-height:18px;color:' + COLOR.muted + ';text-align:left;">'
+      + legal
+      + 'Vous recevez cet e-mail car vous êtes dans ma liste de prospects. <a href="' + UNSUBSCRIBE_URL + '" style="color:' + COLOR.muted + ';text-decoration:underline;">Se désabonner</a>'
       + '</td>\n</tr>\n</table>\n</td>\n</tr>\n</table>\n</body>\n</html>';
   }
 
-  function buildEmail(template, design) {
-    return design.dressed ? buildDressedEmail(template, design) : buildTodayEmail(template, design);
+  function buildEmail(template, version, withSignature) {
+    if (version.kind === 'reference') { return DIBODEV_ACKNOWLEDGEMENT_HTML; }
+    if (version.kind === 'dressed') { return buildDressedEmail(template, version); }
+    return buildTodayEmail(template, version, withSignature);
   }
 
   function measure(html) {
@@ -357,43 +351,48 @@
     var linkCount = 0;
     html.replace(/<a\s[^>]*href="([^"]+)"/g, function (match, href) {
       linkCount += 1;
-      hosts[href.indexOf('tel:') === 0 ? 'téléphone' : href.replace(/^https?:\/\//, '').split(/[/?#]/)[0]] = true;
+      hosts[href.indexOf('tel:') === 0 ? 'téléphone' : href.replace(/^https?:\/\//, '').split(/[/?#]/)[0].replace(/^www\./, '')] = true;
       return match;
     });
-    var imageCount = (html.match(/<img\s/g) || []).length;
-    var withoutSample = html.replace(/data:image\/svg\+xml[^"]*/g, 'https://demo.dibodev.fr/v/menuiserie-lefort/vignette.jpg');
-    return { images: imageCount, links: linkCount, hosts: Object.keys(hosts), kilobytes: (new Blob([withoutSample]).size / 1024).toFixed(1).replace('.', ',') };
+    var sent = html.split(THUMBNAIL_FILE).join(THUMBNAIL_REAL_URL);
+    return { images: (html.match(/<img\s/g) || []).length, links: linkCount, hosts: Object.keys(hosts), kilobytes: (new Blob([sent]).size / 1024).toFixed(1).replace('.', ',') };
   }
 
-  function inboxSnippet(template, design) {
+  function inboxSnippet(template) {
     var holder = document.createElement('div');
-    holder.innerHTML = fillVariables(template.body, DESIGNS[0], true).replace(/<\/(p|li)>/g, ' </$1>');
+    holder.innerHTML = fillVariables(template.body.replace('{vignette_video}', ''), VERSIONS[0], true).replace(/<\/(p|li)>/g, ' </$1>');
     var text = holder.textContent.replace(/\s+/g, ' ').trim();
     return text.length > 110 ? text.slice(0, 110) + '…' : text;
   }
 
-  var state = { design: 'row', template: 'first', theme: 'light', images: 'shown' };
+  var state = { version: 'proposal', template: 'first', signature: 'on', images: 'shown' };
   var tabs = document.getElementById('tabs');
   var templateSelect = document.getElementById('template-select');
+  var signatureSwitch = document.getElementById('signature-switch');
   var frames = [document.getElementById('frame-desktop'), document.getElementById('frame-phone')];
 
   function byId(list, id) { return list.filter(function (entry) { return entry.id === id; })[0]; }
 
+  function blockImages(doc) {
+    Array.prototype.slice.call(doc.images).forEach(function (image) {
+      var box = doc.createElement('span');
+      var width = image.getAttribute('width');
+      var height = image.getAttribute('height');
+      var style = image.getAttribute('style') || '';
+      var inline = /inline-block/.test(style);
+      var fluid = /max-width/.test(style);
+      box.textContent = image.alt;
+      box.style.cssText = 'box-sizing:border-box;overflow:hidden;border:1px solid #c9c9c2;border-radius:3px;font:11px/14px Arial,sans-serif;color:#66665f;'
+        + (inline ? 'display:inline-block;vertical-align:middle;margin:' + (image.style.margin || '0') + ';' : 'display:block;')
+        + (fluid ? 'width:100%;max-width:' + width + 'px;aspect-ratio:' + width + '/' + height + ';padding:6px;' : 'width:' + width + 'px;height:' + height + 'px;' + (Number(width) > 40 ? 'padding:6px;' : ''));
+      image.parentNode.replaceChild(box, image);
+    });
+  }
+
   function fitFrame(frame) {
     var doc = frame.contentDocument;
     if (!doc || !doc.body) { return; }
-    if (state.images === 'blocked') {
-      Array.prototype.slice.call(doc.images).forEach(function (image) {
-        var box = doc.createElement('span');
-        var width = image.getAttribute('width');
-        var height = image.getAttribute('height');
-        var fluid = /max-width/.test(image.getAttribute('style') || '');
-        box.textContent = image.alt;
-        box.style.cssText = 'display:block;box-sizing:border-box;' + (fluid ? 'width:100%;max-width:' + width + 'px;aspect-ratio:' + width + '/' + height + ';' : 'width:' + width + 'px;height:' + height + 'px;')
-          + 'padding:6px;border:1px solid #c9c9c2;border-radius:4px;font:12px/16px Arial,sans-serif;color:#66665f;overflow:hidden;' + (image.style.margin ? 'margin:' + image.style.margin + ';' : '');
-        image.parentNode.replaceChild(box, image);
-      });
-    }
+    if (state.images === 'blocked') { blockImages(doc); }
     frame.style.height = '0px';
     frame.style.height = Math.max(doc.documentElement.scrollHeight, 320) + 'px';
     Array.prototype.slice.call(doc.images).forEach(function (image) {
@@ -402,36 +401,54 @@
   }
 
   function render() {
-    var design = byId(DESIGNS, state.design);
+    var version = byId(VERSIONS, state.version);
     var template = byId(TEMPLATES, state.template);
-    var html = buildEmail(template, design);
-    var shown = state.theme === 'dark' ? html.replace('@media (prefers-color-scheme: dark)', '@media all') : html;
+    var isToday = version.kind === 'today';
+    var isReference = version.kind === 'reference';
+    var withSignature = state.signature === 'on' || template.signatureInProd;
+    var html = buildEmail(template, version, withSignature);
     var stats = measure(html);
 
-    Array.prototype.slice.call(tabs.children).forEach(function (tab) { tab.classList.toggle('is-active', tab.dataset.design === state.design); tab.setAttribute('aria-pressed', String(tab.dataset.design === state.design)); });
-    document.getElementById('pitch').textContent = design.pitch;
-    document.getElementById('added').innerHTML = '<strong>Ajouté par l\'habillage :</strong> ' + design.added;
+    Array.prototype.slice.call(tabs.children).forEach(function (tab) {
+      tab.classList.toggle('is-active', tab.dataset.version === state.version);
+      tab.setAttribute('aria-pressed', String(tab.dataset.version === state.version));
+    });
+    templateSelect.disabled = isReference;
+    signatureSwitch.hidden = !isToday || template.signatureInProd;
+
+    document.getElementById('pitch').textContent = version.pitch;
+    var added = document.getElementById('added');
+    added.hidden = !version.added;
+    added.innerHTML = '<strong>Ajouté par l\'habillage :</strong> ' + version.added;
     document.getElementById('chips').innerHTML = [
       '<b>' + stats.images + '</b> image' + (stats.images > 1 ? 's' : ''),
       '<b>' + stats.links + '</b> liens (' + stats.hosts.join(', ') + ')',
-      '<b>' + stats.kilobytes + ' Ko</b> de code',
-      'Risque : <b>' + design.risk + '</b>'
+      '<b>' + stats.kilobytes + ' Ko</b> de code'
     ].map(function (label) { return '<span class="chip">' + label + '</span>'; }).join('');
-    document.getElementById('inbox').innerHTML = '<span class="tag">Boîte de réception</span><span class="from">Léo Guillaume</span><span class="subject">' + fillVariables(template.subject, design, false) + '</span>' + inboxSnippet(template, design);
-    document.getElementById('code').value = html.replace(/data:image\/svg\+xml[^"]*/g, 'https://demo.dibodev.fr/v/menuiserie-lefort/vignette.jpg');
+
+    var warning = document.getElementById('warning');
+    warning.hidden = isReference || template.signatureInProd;
+    warning.innerHTML = isToday
+      ? '<strong>En prod, la signature n\'est pas cochée sur ce modèle (n° ' + template.prodId + ').</strong> Tel quel, il part sans signature, comme les 134 mails de la vague 3 : bouton « Comme en prod sur ce modèle ».'
+      : '<strong>À cocher avant l\'envoi :</strong> en prod, la signature n\'est pas cochée sur ce modèle (n° ' + template.prodId + ').';
+
+    document.getElementById('inbox').innerHTML = isReference
+      ? '<span class="tag">Boîte de réception</span><span class="from">Léo Guillaume · Dibodev</span><span class="subject">Votre demande est bien arrivée</span>Je vous réponds au plus tard lundi 5 octobre. Voici la suite et le récapitulatif de votre demande.'
+      : '<span class="tag">Boîte de réception</span><span class="from">Léo Guillaume</span><span class="subject">' + fillVariables(template.subject, version, false) + '</span>' + inboxSnippet(template);
+    document.getElementById('code').value = html.split(THUMBNAIL_FILE).join(THUMBNAIL_REAL_URL);
     frames.forEach(function (frame) {
       frame.onload = function () { fitFrame(frame); };
-      frame.srcdoc = shown;
+      frame.srcdoc = html;
     });
   }
 
-  DESIGNS.forEach(function (design) {
+  VERSIONS.forEach(function (version) {
     var tab = document.createElement('button');
     tab.type = 'button';
     tab.className = 'tab';
-    tab.dataset.design = design.id;
-    tab.innerHTML = design.tab + (design.badge ? '<span class="badge">' + design.badge + '</span>' : '');
-    tab.addEventListener('click', function () { state.design = design.id; render(); });
+    tab.dataset.version = version.id;
+    tab.innerHTML = version.tab + (version.badge ? '<span class="badge">' + version.badge + '</span>' : '');
+    tab.addEventListener('click', function () { state.version = version.id; render(); });
     tabs.appendChild(tab);
   });
 
@@ -445,7 +462,7 @@
 
   Array.prototype.slice.call(document.querySelectorAll('.switch button')).forEach(function (button) {
     button.addEventListener('click', function () {
-      var key = button.dataset.theme ? 'theme' : 'images';
+      var key = button.dataset.signature ? 'signature' : 'images';
       state[key] = button.dataset[key];
       Array.prototype.slice.call(button.parentNode.children).forEach(function (sibling) { sibling.classList.toggle('is-active', sibling === button); });
       render();
@@ -453,12 +470,18 @@
   });
 
   var firstTemplate = TEMPLATES[0];
-  var rows = DESIGNS.map(function (design) {
-    var stats = measure(buildEmail(firstTemplate, design));
-    return '<tr' + (design.badge ? ' class="is-pick"' : '') + '><td>' + design.tab + '</td><td>' + stats.images + '</td><td>' + stats.links + '</td><td>' + stats.kilobytes + ' Ko</td><td>' + design.blocked + '</td><td>' + design.risk + '</td><td>' + design.verdict + '</td></tr>';
-  });
-  rows.push('<tr><td>Ancienne n° 1 (avec logo)</td><td>6</td><td>7</td><td>16,0 Ko</td><td>Logo et icônes manquent</td><td>Moyen</td><td>Le calque exact de l\'accusé de réception : fait pour un client qui attend le mail, pas pour un premier contact.</td></tr>');
-  document.getElementById('compare-body').innerHTML = rows.join('');
+  function compareRow(label, version, withSignature, change, isPick) {
+    var stats = measure(buildEmail(firstTemplate, version, withSignature));
+    return '<tr' + (isPick ? ' class="is-pick"' : '') + '><td>' + label + '</td><td>' + stats.images + '</td><td>' + stats.links + '</td><td>' + stats.kilobytes + ' Ko</td><td>' + change + '</td></tr>';
+  }
+  document.getElementById('compare-body').innerHTML = [
+    compareRow("Aujourd'hui, signature cochée", VERSIONS[0], true, VERSIONS[0].change, false),
+    compareRow("Aujourd'hui, modèles « Franc » en prod", VERSIONS[0], false, 'Ce qui est parti en vague 3 : ni visage, ni numéro, ni SIRET.', false),
+    compareRow('Proposition', VERSIONS[2], true, VERSIONS[2].change, true),
+    compareRow('Variante avec bouton', VERSIONS[3], true, VERSIONS[3].change, false),
+    compareRow('Variante prudente', VERSIONS[4], true, VERSIONS[4].change, false),
+    compareRow('Le mail de dibodev.fr', VERSIONS[1], true, VERSIONS[1].change, false)
+  ].join('');
 
   render();
   window.addEventListener('resize', function () { frames.forEach(fitFrame); });
