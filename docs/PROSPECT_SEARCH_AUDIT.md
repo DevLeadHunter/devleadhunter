@@ -8,6 +8,57 @@ actuels ; ici on traite la puissance de la recherche elle-même.
 But fixé par Léo : une seule recherche (plus de choix de source), aussi bonne que ce que fait
 Claude Code à la main pendant les campagnes, puis meilleure. L'IA peut en faire partie.
 
+## État au 4 octobre 2026 : la recherche unique est livrée
+
+Les sections 1 à 7 décrivent l'ancienne recherche (par sources), telle qu'elle était le jour de
+l'audit. Elle a été retirée le même jour et remplacée par la cible de la section 8.
+
+**Ce qui existe**
+
+- Une seule recherche, par objectif : métiers, pays, villes facultatives, nombre par métier, canal
+  (email, SMS, ou les deux), « sans site web », note Google minimale. Écran `Trouver des prospects`,
+  routes `/api/v1/prospect-searches`, code dans `api/services/prospect_search/`.
+- Elle tourne sur le serveur et reprend après un déploiement. Trouver : registres RGE (France) et
+  RBQ (Québec), résultats locaux de Google par Bright Data, pages Facebook connues de Google.
+  Vérifier : une recherche « "nom" ville » lue par des règles, puis par l'IA quand les règles ne
+  tranchent pas (site caché, fermé, homonyme, réseau, autre métier).
+- Email avec son niveau de preuve : A publié par le professionnel (sa page Facebook, un registre),
+  B donné par un tiers qui parle de lui (annuaire), C sans preuve franche (attend une décision).
+  Le domaine d'un email est contrôlé à chaque fois : s'il sert un site au nom de l'entreprise,
+  l'entreprise a un site.
+- Chaque candidat a une place et une raison : gardé, mis de côté (joignable par l'autre canal), à
+  confirmer, page Facebook à lire, écarté. Les gardés et les mis de côté deviennent des prospects
+  (source « Recherche »).
+- Mémoire : un prospect existant, un « ne plus contacter », une adresse déjà écrite, un candidat
+  écarté depuis moins de 120 jours et une ville déjà balayée ne coûtent plus aucune requête.
+- Pages Facebook : lues par le Chrome du poste, jamais par le serveur. L'application Windows le fait
+  seule quand la recherche est ouverte ; `python prospect_search_cli.py` le fait depuis un terminal.
+- Noms des fiches Google nettoyés (slogan, parenthèses, pictogrammes retirés).
+
+**Mesuré sur les premiers passages (base locale, vraies requêtes)**
+
+| Objectif | Requêtes | Gardés | Mis de côté |
+|---|---|---|---|
+| 3 plombiers, France (registre RGE) | 10 | 5 | 0 |
+| 3 électriciens, Québec (registre RBQ) | 17 | 3 | 0 |
+| 3 garages, France | 75 | 4 | 2 |
+| 2 couvreurs, France | 75 | 2 | 6 |
+| 3 paysagistes, Suisse | 160 | 4 | 12 |
+
+Une requête coûte environ 0,0015 $. Un métier couvert par un registre revient à moins d'un centime
+par prospect ; un métier sans registre, à 3 à 6 centimes.
+
+**Ce qui reste (lots de la section 10)**
+
+- Lot 2, en partie : le bouton « Vérifier » sur un prospect importé, ajouté à la main ou déjà en
+  base.
+- Lot 5, en partie : l'envoi direct des gardés vers une campagne (ils arrivent dans « Mes
+  prospects »).
+- Lot 6 : pastille « fiche complète » et enrichissement en file.
+- Lot 7 : dirigeant hors France (le nom lu pendant la vérification est gardé comme preuve, pas
+  encore reporté sur le prospect), score de potentiel, tableau de rendement.
+- Lecture Facebook par un service payant : écartée (trop chère).
+
 ## 1. En bref
 
 - **La recherche de l'app ne sert pas.** 20 passages de source enregistrés depuis l'origine, tous

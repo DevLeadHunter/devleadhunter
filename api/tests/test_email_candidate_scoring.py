@@ -188,3 +188,25 @@ def test_two_qc_ca_domains_no_longer_share_the_website_bonus() -> None:
 
 def test_a_qc_ca_town_hall_named_after_the_city_is_rejected() -> None:
     assert _only("info@montreal.qc.ca", name="Plomberie Tremblay", city="Montréal") is None
+
+
+def test_a_field_label_glued_to_the_address_is_not_part_of_it() -> None:
+    """Seen on local.ch: the Google snippet writes « Emailjean.dupont@gmail.com »."""
+    page = "Histoire d'un jardin Emailsebastien.mosimann@gmail.com puis E-Mailpaul@bluewin.ch"
+    ranked = [email for email, _ in scorer.rank_candidates(page, name="Histoire d'un jardin", city="Vevey")]
+    assert ranked == ["sebastien.mosimann@gmail.com", "paul@bluewin.ch"]
+
+
+def test_an_address_that_starts_with_the_word_email_is_left_whole() -> None:
+    assert _only("emailing@atelier-dupont.fr", name="Atelier Dupont", city="Lyon") == "emailing@atelier-dupont.fr"
+
+
+def test_a_capitalised_address_starting_with_mail_is_left_whole() -> None:
+    assert (
+        _only("Maillard.plomberie@orange.fr", name="Maillard Plomberie", city="Dijon") == "maillard.plomberie@orange.fr"
+    )
+    assert _only("Mailys.dupont@gmail.com", name="Jardins Dupont", city="Dijon") == "mailys.dupont@gmail.com"
+
+
+def test_the_email_label_a_directory_glues_to_the_address_is_still_detached() -> None:
+    assert _only("Emailgarage.dupont@orange.fr", name="Garage Dupont", city="Lyon") == "garage.dupont@orange.fr"

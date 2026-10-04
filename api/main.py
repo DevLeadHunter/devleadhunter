@@ -48,12 +48,6 @@ from api.v1.router import router as api_router
 from core.config import settings
 from core.rate_limiter import limiter
 from core.win32_asyncio import ensure_proactor_event_loop
-from scrappers.auto_scraper import AutoScraper
-from scrappers.brightdata_scraper import BrightDataScraper
-from scrappers.facebook_search_scraper import FacebookSearchScraper
-from scrappers.google_scraper import GoogleScraper
-from scrappers.osm_scraper import OSMScraper
-from scrappers.pagesjaunes_scraper import PagesJaunesScraper
 from services.acquisition_orchestrator import acquisition_orchestrator
 from services.ai_assistant.cleanup_service import run_ai_assistant_cleanup_loop
 from services.ai_assistant.mailbox_sync import ai_assistant_mailbox_sync
@@ -65,8 +59,8 @@ from services.email_queue_worker import email_queue_worker
 from services.notification_service import notification_service, run_daily_recap_loop
 from services.order_fulfillment_recovery_service import run_order_fulfillment_recovery_loop
 from services.order_payment_reconciliation_service import run_order_payment_reconciliation_loop
+from services.prospect_search.service import prospect_search_service
 from services.scheduled_email_service import scheduled_email_service
-from services.scraper_service import scraper_service
 from services.send_queue_watchdog_service import run_send_queue_watchdog_loop
 from services.sms_automation_service import run_sms_automation_loop
 from services.video_generation_watchdog import video_generation_watchdog
@@ -151,29 +145,8 @@ async def startup_event() -> None:
     Initialize services on application startup.
 
     This function runs when the FastAPI application starts.
-    It sets up scrapers and other services.
+    It starts the background services.
     """
-    # Register scrapers
-    google_scraper = GoogleScraper()
-    await scraper_service.add_scraper(google_scraper)
-
-    pagesjaunes_scraper = PagesJaunesScraper()
-    await scraper_service.add_scraper(pagesjaunes_scraper)
-
-    osm_scraper = OSMScraper()
-    await scraper_service.add_scraper(osm_scraper)
-
-    auto_scraper = AutoScraper()
-    await scraper_service.add_scraper(auto_scraper)
-
-    brightdata_scraper = BrightDataScraper()
-    await scraper_service.add_scraper(brightdata_scraper)
-
-    # Explicit-only source (_ISOLATED_SOURCES): a generic search never cascades into
-    # Facebook, and an explicit Facebook search never falls back to the generic chain.
-    facebook_scraper = FacebookSearchScraper()
-    await scraper_service.add_scraper(facebook_scraper)
-
     # Keep a strong reference to every long-lived loop, else asyncio may GC the task and it dies silently.
     for coro in (
         run_demo_site_cleanup_loop(),
@@ -196,6 +169,12 @@ async def startup_event() -> None:
         task = asyncio.create_task(coro)
         _background_tasks.add(task)
         task.add_done_callback(_background_tasks.discard)
+
+    # A deployment restarts the API mid-search: carry on what was running, never lose a search.
+    try:
+        prospect_search_service.resume_interrupted()
+    except Exception:
+        logging.getLogger(__name__).exception("Could not resume the interrupted prospect searches")
 
 
 async def _warmup_maps_autocomplete() -> None:

@@ -103,6 +103,29 @@ class WebsiteLivenessService:
             cleaned = f"https://{cleaned}"
         return cleaned
 
+    @staticmethod
+    def other_address_forms(url: str) -> list[str]:
+        """
+        The other ways the same site may be addressed: the other scheme, with or without ``www``.
+
+        Args:
+            url: Normalized website URL.
+
+        Returns:
+            Up to three alternative URLs of the same host and path, the https ones first.
+        """
+        parsed = urlparse(url)
+        host = parsed.netloc
+        if not host:
+            return []
+        other_host = host.removeprefix("www.") if host.startswith("www.") else f"www.{host}"
+        forms = [
+            parsed._replace(scheme=scheme, netloc=netloc).geturl()
+            for scheme in ("https", "http")
+            for netloc in (host, other_host)
+        ]
+        return [form for form in forms if form != url]
+
     @classmethod
     def is_placeholder_host(cls, url: str) -> bool:
         """
@@ -141,6 +164,12 @@ class WebsiteLivenessService:
             return cached
 
         status = await self._probe(normalized)
+        if status is WebsiteStatus.DEAD:
+            # A listing often keeps an old address form (http, or without www) of a site that works.
+            for other_form in self.other_address_forms(normalized):
+                if await self._probe(other_form) is WebsiteStatus.LIVE:
+                    status = WebsiteStatus.LIVE
+                    break
         if status is not WebsiteStatus.DEAD and self.is_placeholder_host(normalized):
             status = WebsiteStatus.PLACEHOLDER
 

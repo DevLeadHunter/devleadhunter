@@ -14,10 +14,7 @@ Usage:
     python enrich_cli.py --prospect 123 --dry-run
 
 Environment:
-    DLH_API_BASE   API base URL (default: https://api.devleadhunter.dibodev.fr).
-    DLH_API_TOKEN  Bearer JWT of the operator's account. Optional: when unset, the CLI logs in
-                   with ADMIN_EMAIL / ADMIN_PASSWORD from the .env and mints a fresh token itself,
-                   so no token ever has to be pasted by hand.
+    DLH_API_BASE / DLH_API_TOKEN — see :mod:`core.operator_api`.
 """
 
 from __future__ import annotations
@@ -25,84 +22,30 @@ from __future__ import annotations
 import argparse
 import asyncio
 import json
-import os
 import sys
 from dataclasses import asdict
 
 import httpx
 
-from core.config import settings
+from core.operator_api import OperatorApi
 from core.win32_asyncio import ensure_proactor_event_loop
 from scrappers.enrichment_scraper import EnrichmentData, enrichment_scraper
 from services.country_profiles import DEFAULT_COUNTRY_CODE
 
-_DEFAULT_API_BASE = "https://api.devleadhunter.dibodev.fr"
-_API_PREFIX = "/api/v1"
 _HTTP_TIMEOUT = 60.0
 
-# Resolved once per run by ``_ensure_authenticated`` and read by ``_auth_headers``.
-_access_token: str | None = None
 
-
-def _api_base() -> str:
-    """Return the API base URL, from ``DLH_API_BASE`` or the production default."""
-    return (os.environ.get("DLH_API_BASE") or _DEFAULT_API_BASE).rstrip("/")
-
-
-async def _ensure_authenticated(client: httpx.AsyncClient) -> None:
-    """Resolve the operator's Bearer token once, before any authenticated call.
-
-    Prefers ``DLH_API_TOKEN`` when set (handy to force a specific token or another
-    account while debugging); otherwise logs in with the operator credentials already
-    present in the ``.env`` (``ADMIN_EMAIL`` / ``ADMIN_PASSWORD``) and mints a fresh
-    token, so the run never needs a hand-pasted token.
-    """
-    global _access_token
-
-    env_token = (os.environ.get("DLH_API_TOKEN") or "").strip()
-    if env_token:
-        _access_token = env_token
-        return
-
-    email = (settings.admin_email or "").strip()
-    password = settings.admin_password or ""
-    if not email or not password:
-        raise SystemExit("No DLH_API_TOKEN and no ADMIN_EMAIL / ADMIN_PASSWORD in the .env — cannot authenticate.")
-
-    response = await client.post(
-        f"{_api_base()}{_API_PREFIX}/auth/login",
-        json={"email": email, "password": password},
-    )
-    if response.status_code == 401:
-        raise SystemExit(f"Login rejected for {email} — check ADMIN_PASSWORD in the .env.")
-    response.raise_for_status()
-
-    token = str(response.json().get("access_token") or "").strip()
-    if not token:
-        raise SystemExit("Login succeeded but the API returned no access_token.")
-    _access_token = token
-
-
-def _auth_headers() -> dict[str, str]:
-    """Return the Bearer auth header resolved by ``_ensure_authenticated``."""
-    if not _access_token:
-        raise SystemExit("Not authenticated — _ensure_authenticated must run before any API call.")
-    return {"Authorization": f"Bearer {_access_token}"}
-
-
-async def _list_prospects(client: httpx.AsyncClient) -> list[dict[str, object]]:
+async def _list_prospects(api: OperatorApi) -> list[dict[str, object]]:
     """Return every prospect the operator owns."""
-    response = await client.get(f"{_api_base()}{_API_PREFIX}/prospects", headers=_auth_headers())
+    response = await api.get("/prospects")
     response.raise_for_status()
     payload = response.json()
     return payload if isinstance(payload, list) else []
 
 
-async def _enrichment_photos(client: httpx.AsyncClient, prospect_id: int) -> list[str] | None:
+async def _enrichment_photos(api: OperatorApi, prospect_id: int) -> list[str] | None:
     """Return a prospect's enrichment photos, or ``None`` when it has no enrichment record yet."""
-    response = await client.get(
-        f"{_api_base()}{_API_PREFIX}/prospects/{prospect_id}/enrichment", headers=_auth_headers()
-    )
+    response = await api.get(f"/prospects/{prospect_id}/enrichment")
     if response.status_code == 404:
         return None
     response.raise_for_status()
@@ -115,25 +58,25 @@ def _name_matches(prospect: dict[str, object], needle: str) -> bool:
     return needle.strip().lower() in str(prospect.get("name") or "").lower()
 
 
-async def _select_targets(client: httpx.AsyncClient, args: argparse.Namespace) -> list[dict[str, object]]:
+async def _select_targets(api: OperatorApi, args: argparse.Namespace) -> list[dict[str, object]]:
     """Resolve the CLI selection flags into the list of prospects to enrich."""
     if args.prospect:
         wanted = set(args.prospect)
-        targets = [p for p in await _list_prospects(client) if int(p.get("id", 0)) in wanted]
+        targets = [p for p in await _list_prospects(api) if int(p.get("id", 0)) in wanted]
         for missing in wanted - {int(p["id"]) for p in targets}:
             print(json.dumps({"prospect_id": missing, "status": "not_found"}), flush=True)
         return targets
 
     if args.name:
-        matches = [p for p in await _list_prospects(client) if _name_matches(p, args.name)]
+        matches = [p for p in await _list_prospects(api) if _name_matches(p, args.name)]
         if len(matches) > 1:
             listed = ", ".join(f"#{p['id']} {p.get('name')}" for p in matches)
             raise SystemExit(f"« {args.name} » matches several prospects: {listed}. Use --prospect <id>.")
         return matches
 
-    prospects = await _list_prospects(client)
+    prospects = await _list_prospects(api)
     if args.missing_photos:
-        prospects = [p for p in prospects if not await _enrichment_photos(client, int(p["id"]))]
+        prospects = [p for p in prospects if not await _enrichment_photos(api, int(p["id"]))]
     if args.limit is not None:
         prospects = prospects[: args.limit]
     return prospects
@@ -161,18 +104,14 @@ def _is_meaningful(data: EnrichmentData) -> bool:
     )
 
 
-async def _persist(client: httpx.AsyncClient, prospect_id: int, data: EnrichmentData) -> str:
+async def _persist(api: OperatorApi, prospect_id: int, data: EnrichmentData) -> str:
     """Post the scraped data to the API for persistence; return the resulting enrichment status."""
-    response = await client.post(
-        f"{_api_base()}{_API_PREFIX}/prospects/{prospect_id}/enrichment/run",
-        headers=_auth_headers(),
-        json=asdict(data),
-    )
+    response = await api.post(f"/prospects/{prospect_id}/enrichment/run", json=asdict(data))
     response.raise_for_status()
     return str(response.json().get("status") or "unknown")
 
 
-async def _enrich_one(client: httpx.AsyncClient, prospect: dict[str, object]) -> dict[str, object]:
+async def _enrich_one(api: OperatorApi, prospect: dict[str, object]) -> dict[str, object]:
     """Scrape then persist a single prospect, returning a result row for the report."""
     prospect_id = int(prospect["id"])
     name = str(prospect.get("name") or "")
@@ -185,7 +124,7 @@ async def _enrich_one(client: httpx.AsyncClient, prospect: dict[str, object]) ->
         return {"prospect_id": prospect_id, "name": name, "status": "empty", "photos": 0}
 
     try:
-        persisted_status = await _persist(client, prospect_id, data)
+        persisted_status = await _persist(api, prospect_id, data)
     except Exception as exc:
         return {"prospect_id": prospect_id, "name": name, "status": "persist_failed", "error": str(exc)}
 
@@ -234,8 +173,9 @@ def _preflight() -> None:
 async def _run(args: argparse.Namespace) -> int:
     """Select, scrape and persist; stream one JSON line per prospect plus a final summary."""
     async with httpx.AsyncClient(timeout=_HTTP_TIMEOUT) as client:
-        await _ensure_authenticated(client)
-        targets = await _select_targets(client, args)
+        api = OperatorApi(client)
+        await api.authenticate()
+        targets = await _select_targets(api, args)
 
         if not targets:
             print(json.dumps({"summary": {"total": 0, "message": "no matching prospect"}}), flush=True)
@@ -257,7 +197,7 @@ async def _run(args: argparse.Namespace) -> int:
                     file=sys.stderr,
                     flush=True,
                 )
-                result = await _enrich_one(client, prospect)
+                result = await _enrich_one(api, prospect)
                 results.append(result)
                 print(json.dumps(result, ensure_ascii=False), flush=True)
         finally:

@@ -1,10 +1,5 @@
 import type { ComputedRef, MaybeRefOrGetter, Ref } from 'vue'
-import type { LoginCredentials, Prospect, SignupPayload, User } from '~/types'
-import type {
-  ScrapingJobHydrationPayload,
-  ScrapingJobProgressState,
-  ScrapingJobStreamHandlers,
-} from '~/composables/useScrapingJobStream'
+import type { LoginCredentials, SignupPayload, User } from '~/types'
 
 export type UseAuthReturn = {
   login: (credentials: LoginCredentials) => Promise<void>
@@ -52,18 +47,6 @@ export type UseProfilePhotoReturn = {
   profilePhotoObjectUrl: Ref<string | null>
   ensureProfilePhotoLoaded: () => Promise<void>
   refreshProfilePhoto: () => Promise<void>
-}
-
-export type UseScrapingJobStreamReturn = {
-  logs: Ref<string[]>
-  prospects: Ref<Prospect[]>
-  progress: Ref<ScrapingJobProgressState>
-  skippedDuplicates: Ref<number>
-  isConnected: Ref<boolean>
-  connect: (jobId: string, token: string, streamHandlers?: ScrapingJobStreamHandlers) => void
-  disconnect: () => void
-  hydrateFromJob: (job: ScrapingJobHydrationPayload) => void
-  reset: () => void
 }
 
 export type UseToastReturn = {

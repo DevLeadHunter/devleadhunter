@@ -45,6 +45,7 @@ from models.prospect import (
 from scrappers.chrome_provisioning import ensure_chrome, find_installed_chrome
 from scrappers.email_scraper import email_scraper
 from scrappers.enrichment_scraper import EnrichmentData, enrichment_scraper
+from scrappers.facebook_enrichment_scraper import facebook_enrichment_scraper
 from scrappers.google_scraper import close_maps_suggestion_session
 from services.country_profiles import DEFAULT_COUNTRY_CODE
 from services.prospect_enrichment_service import prospect_enrichment_service
@@ -146,6 +147,23 @@ class SidecarEnrichmentRequest(BaseModel):
     # Facebook page URL — enrichment anchor used when there is no Google listing.
     facebook_url: str | None = None
     country: str = DEFAULT_COUNTRY_CODE
+
+
+class SidecarFacebookContactRequest(BaseModel):
+    """Facebook page whose contact block the prospect search asks to read."""
+
+    business_name: str
+    facebook_url: str
+    country: str = DEFAULT_COUNTRY_CODE
+
+
+class SidecarFacebookContact(BaseModel):
+    """Contact block read on a Facebook page (``is_readable`` false when it opened without a readable block)."""
+
+    is_readable: bool
+    emails: list[str]
+    phone: str | None
+    website: str | None
 
 
 class SidecarVideoTarget(BaseModel):
@@ -449,6 +467,47 @@ async def enrichment(request: SidecarEnrichmentRequest) -> EnrichmentData:
     finally:
         await close_transient_browsers()
         await close_autocomplete_session()
+
+
+@app.post(
+    "/scraper/facebook-contact",
+    response_model=SidecarFacebookContact,
+    dependencies=[Depends(require_sidecar_token)],
+)
+async def facebook_contact(request: SidecarFacebookContactRequest) -> SidecarFacebookContact:
+    """Read the contact block of a public Facebook page for the prospect search.
+
+    A quick read (email, phone, website): photos and reviews are left to the full
+    enrichment, which only runs on the prospects the search keeps.
+
+    Args:
+        request: Candidate name, Facebook page URL and country.
+
+    Returns:
+        What the page publishes; ``is_readable`` is false when the page opened without a readable block.
+
+    Raises:
+        HTTPException: 503 when the browser could not do the read (the candidate must stay waiting).
+    """
+    try:
+        page = await facebook_enrichment_scraper.read_contact(
+            business_name=request.business_name,
+            facebook_url=request.facebook_url,
+            country=request.country,
+        )
+    finally:
+        await close_transient_browsers()
+    if page is None:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Le navigateur n'a pas pu lire cette page Facebook. Réessayez dans un instant.",
+        )
+    return SidecarFacebookContact(
+        is_readable=page.place_title is not None,
+        emails=list(page.emails),
+        phone=page.phone,
+        website=page.website,
+    )
 
 
 @app.get("/storyblok/session", dependencies=[Depends(require_sidecar_token)])

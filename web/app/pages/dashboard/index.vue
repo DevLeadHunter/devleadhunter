@@ -160,7 +160,7 @@
               <span class="min-w-0 flex-1">
                 <span class="block text-sm font-medium text-[var(--app-ink)]">Trouver des prospects</span>
                 <span class="flex items-center gap-1 text-[11px] text-[var(--app-ink-soft)]">
-                  Métier + ville <UIcon name="i-lucide-arrow-right" class="h-3 w-3 shrink-0" /> artisans
+                  Métiers + pays <UIcon name="i-lucide-arrow-right" class="h-3 w-3 shrink-0" /> prospects vérifiés
                 </span>
               </span>
               <UIcon name="i-lucide-chevron-right" class="h-3.5 w-3.5 shrink-0 text-[var(--app-ink-soft)]" />

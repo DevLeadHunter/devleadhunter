@@ -1,5 +1,5 @@
 """
-Prospect source metadata shared by API and scrapers.
+Prospect source metadata shared by the API and the dashboard.
 
 Keep in sync with:
 - ``api/enums/source.py``              (Python ``Source`` enum)
@@ -11,30 +11,27 @@ from __future__ import annotations
 
 from enums.source import Source
 
-# Human-readable labels (French) for UI selects.
+# Human-readable labels (French) for UI selects. The search writes ``search``; the other
+# sources are kept for the prospects created before it replaced the per-source scrapers.
 SOURCE_LABELS: dict[Source, str] = {
+    Source.SEARCH: "Recherche",
+    Source.MANUAL: "Ajout manuel",
     Source.GOOGLE: "Google",
+    Source.FACEBOOK: "Facebook",
     Source.PAGESJAUNES: "Pages Jaunes",
     Source.YELP: "Yelp",
     Source.OSM: "OpenStreetMap",
-    Source.AUTO: "Auto (recommandé)",
+    Source.AUTO: "Auto",
     Source.BRIGHTDATA: "BrightData",
     Source.ALL: "Toutes les sources",
 }
 
-# Sources that have a registered scraper (excludes the ALL aggregate sentinel).
-SCRAPER_SOURCES: tuple[Source, ...] = (
+# Sources a prospect list can be filtered on, the current ones first.
+FILTER_SOURCES: tuple[Source, ...] = (
+    Source.SEARCH,
+    Source.MANUAL,
     Source.GOOGLE,
-    Source.PAGESJAUNES,
-    Source.OSM,
-    Source.AUTO,
-    Source.BRIGHTDATA,
-)
-
-# Sources exposed in the search/filter UI.
-SEARCH_FILTER_SOURCES: tuple[Source, ...] = (
-    Source.AUTO,
-    Source.GOOGLE,
+    Source.FACEBOOK,
     Source.PAGESJAUNES,
     Source.OSM,
     Source.BRIGHTDATA,
@@ -60,6 +57,6 @@ def list_source_options(*, include_all: bool = True) -> list[dict[str, str]]:
     if include_all:
         options.append({"value": Source.ALL.value, "label": source_label(Source.ALL)})
 
-    for src in SEARCH_FILTER_SOURCES:
-        options.append({"value": src.value, "label": source_label(src)})
+    for source in FILTER_SOURCES:
+        options.append({"value": source.value, "label": source_label(source)})
     return options
