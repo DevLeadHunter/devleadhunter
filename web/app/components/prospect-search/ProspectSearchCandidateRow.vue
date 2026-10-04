@@ -50,14 +50,14 @@
 
         <div
           v-if="links.length > 0 || props.candidate.evidence.length > 0"
-          class="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1.5 text-xs"
+          class="mt-1.5 flex flex-wrap items-center gap-x-4 gap-y-0.5 text-xs"
         >
           <span v-for="link in links" :key="link.key" class="inline-flex items-center gap-1.5">
             <a
               :href="link.href"
               target="_blank"
               rel="noopener noreferrer"
-              class="inline-flex items-center gap-1 font-medium text-[var(--app-ink)] underline underline-offset-2 transition-opacity hover:opacity-70"
+              class="inline-flex min-h-7 items-center gap-1 font-medium text-[var(--app-ink)] underline underline-offset-2 transition-opacity hover:opacity-70"
             >
               <UIcon :name="link.icon" class="h-3.5 w-3.5 shrink-0" />
               {{ link.label }}
@@ -67,7 +67,7 @@
           <button
             v-if="props.candidate.evidence.length > 0"
             type="button"
-            class="inline-flex cursor-pointer items-center gap-1 font-medium text-[var(--app-ink-soft)] transition-colors hover:text-[var(--app-ink)]"
+            class="inline-flex min-h-7 cursor-pointer items-center gap-1 font-medium text-[var(--app-ink-soft)] transition-colors hover:text-[var(--app-ink)]"
             :aria-expanded="isShowingEvidence"
             @click="isShowingEvidence = !isShowingEvidence"
           >
@@ -85,7 +85,7 @@
         <button
           v-if="canDecide"
           type="button"
-          class="app-btn-primary h-8 min-h-8 px-3 text-xs"
+          class="app-btn-primary h-11 min-h-11 flex-1 px-3 text-xs @md:flex-none @3xl:h-8 @3xl:min-h-8"
           :disabled="props.isBusy"
           @click="emit('keep', props.candidate.id)"
         >
@@ -98,7 +98,7 @@
         <button
           v-if="canDecide"
           type="button"
-          class="app-btn-secondary h-8 min-h-8 px-3 text-xs"
+          class="app-btn-secondary h-11 min-h-11 flex-1 px-3 text-xs @md:flex-none @3xl:h-8 @3xl:min-h-8"
           :disabled="props.isBusy"
           @click="emit('reject', props.candidate.id)"
         >
@@ -107,7 +107,7 @@
         <button
           v-if="canKeepAnyway"
           type="button"
-          class="app-btn-secondary h-8 min-h-8 px-3 text-xs"
+          class="app-btn-secondary h-11 min-h-11 flex-1 px-3 text-xs @md:flex-none @3xl:h-8 @3xl:min-h-8"
           :disabled="props.isBusy"
           @click="emit('keep', props.candidate.id)"
         >
@@ -117,7 +117,7 @@
         <button
           v-if="canOpenProspect"
           type="button"
-          class="app-btn-secondary h-8 min-h-8 px-3 text-xs"
+          class="app-btn-secondary h-11 min-h-11 flex-1 px-3 text-xs @md:flex-none @3xl:h-8 @3xl:min-h-8"
           :disabled="props.isOpeningProspect"
           @click="openProspect"
         >

@@ -89,7 +89,7 @@ export const PROSPECT_SEARCH_RESULT_TAB_LABELS: Record<ProspectSearchResultTabKe
   kept: 'Gardés',
   set_aside: 'Mis de côté',
   to_confirm: 'À confirmer',
-  needs_browser: 'Pages Facebook à lire',
+  needs_browser: 'Facebook à lire',
   discovered: 'Non vérifiés',
   rejected: 'Écartés',
   journal: 'Journal',

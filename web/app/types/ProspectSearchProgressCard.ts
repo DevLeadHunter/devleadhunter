@@ -4,6 +4,7 @@ export type ProspectSearchProgressCardProps = {
   search: ProspectSearchSummary
   isCancelling: boolean
   isResuming: boolean
+  latestJournalMessage: string | null
 }
 
 export type ProspectSearchProgressCardEmits = {
