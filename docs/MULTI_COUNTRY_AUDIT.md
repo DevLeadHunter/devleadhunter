@@ -109,6 +109,12 @@ n'est pas vérifié (`SmsProspectingRules.AUTOMATIC_SMS_COUNTRIES`).
 
 ## 1. Recherche de prospects
 
+> Section caduque depuis le 04/10/2026 : les scrapers par source et les jobs de scraping cités
+> ci-dessous ont été retirés et remplacés par la recherche par objectif
+> (`api/services/prospect_search/`, voir `docs/PROSPECT_SEARCH_AUDIT.md`). Le pays y est porté par
+> la recherche elle-même : un pays fermé est refusé à la création, les requêtes Google sont classées
+> avec `gl=<pays>`, les registres sont choisis par pays.
+
 Chemin du pays vérifié : `SearchProspectsDrawer.vue:405` → `ScrapingJobCreate.country` (`api/models/scraping_job.py:29`) → `scraping_job_service.py:51` (`normalize_country`) → `scrape_all(country=…)` (`:255`) → `scraper_service.py:183` retire Pages Jaunes et l'unlocker hors FR → `scraper.scrape(country=…)` (`:127`). Google Maps : `google_scraper.py:793` `build_query(category, city, country)` ; SERP Bright Data : `brightdata_client.py:124` `gl=` / `:141` `cc=` ; OSM : `osm_scraper.py:160` `countrycodes=`. Là où le pays n'arrive pas : `email_scraper`, `osm_enrichment`, `enrichment_scraper`, `acquisition_service`.
 
 | fichier:ligne | ce qui suppose la France | correctif proposé (fait du profil) | gravité |

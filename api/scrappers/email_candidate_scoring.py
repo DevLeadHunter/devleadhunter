@@ -253,6 +253,9 @@ _EMAIL_PATTERN: re.Pattern[str] = re.compile(r"[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]
 # Proximity credit reaches zero beyond this many chars from the nearest name mention.
 _PROXIMITY_REACH_CHARS: int = 1500
 
+# Directory snippets glue the field label to the address (« Emailjean.dupont@gmail.com »).
+_GLUED_FIELD_LABEL: re.Pattern[str] = re.compile(r"\b(?:E-?[Mm]ail|Courriel|Mél)\s*:?(?=[a-z0-9][a-z0-9._%+-]*@)")
+
 _CANADIAN_SECOND_LEVEL_SUFFIXES: frozenset[str] = frozenset(
     {
         "ab.ca",
@@ -297,7 +300,7 @@ class EmailCandidateScorer:
         if not page_text:
             return []
 
-        text_lower = page_text.lower()
+        text_lower = self.without_glued_labels(page_text).lower()
         first_seen: dict[str, int] = {}
         positions: dict[str, list[int]] = {}
         for match in _EMAIL_PATTERN.finditer(text_lower):
@@ -330,6 +333,20 @@ class EmailCandidateScorer:
 
         scored.sort(key=lambda pair: (-pair[1], first_seen[pair[0]]))
         return scored
+
+    @staticmethod
+    def without_glued_labels(text: str) -> str:
+        """*text* with a field label glued to an email (« Emailjean@… ») detached from it."""
+        return _GLUED_FIELD_LABEL.sub(" ", text)
+
+    def belongs_to_an_institution(self, email: str, *, city: str) -> bool:
+        """Whether *email* provably belongs to a town hall, a directory or a platform, never to a business of *city*."""
+        return self._is_disqualified(email.strip().lower(), self._alnum(city))
+
+    @classmethod
+    def is_directory_host(cls, host: str) -> bool:
+        """Whether *host* is a known directory, registry or platform (subdomains included)."""
+        return cls._is_blocked_domain(host.lower().removeprefix("www."))
 
     def _is_disqualified(self, email: str, city_key: str) -> bool:
         """True when *email* provably belongs to a non-prospect (the only hard reject)."""

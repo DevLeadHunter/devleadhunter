@@ -420,6 +420,7 @@ function sourceLabel(source: string): string {
     brightdata: 'Bright Data',
     facebook: 'Facebook',
     auto: 'Recherche auto',
+    search: 'Recherche',
     yelp: 'Yelp',
     enrichment: 'Enrichissement',
     decision_maker: 'Nom du décisionnaire',

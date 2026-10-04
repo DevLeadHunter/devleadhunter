@@ -41,8 +41,8 @@ from .routes import (
     organizations,
     payment_accounts,
     payments,
+    prospect_searches,
     prospects,
-    scraping_jobs,
     send_policy,
     site_contact,
     sms,
@@ -63,7 +63,7 @@ router = APIRouter(prefix="", tags=["v1"])
 router.include_router(auth.router)
 router.include_router(health.router)
 router.include_router(prospects.router)
-router.include_router(scraping_jobs.router)
+router.include_router(prospect_searches.router)
 router.include_router(users.router)
 router.include_router(credit_settings.router)
 router.include_router(credits.router)

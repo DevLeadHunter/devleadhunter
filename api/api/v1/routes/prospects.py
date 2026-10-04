@@ -3,15 +3,12 @@ Prospect management routes.
 """
 
 from datetime import UTC, datetime
-from typing import Literal
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
 from core.database import get_db
-from enums.website_status import WebsiteStatus
-from models.credit_settings import CreditSettings
 from models.prospect import (
     Prospect,
     ProspectCreate,
@@ -23,20 +20,16 @@ from models.prospect import (
     ProspectUpdate,
 )
 from models.prospect_db import ProspectDB
-from models.search import ProspectSearchRequest, ProspectSearchResponse
 from models.user import User
 from schemas.sourcing import WebsiteEquipmentScanRequest, WebsiteEquipmentScanResponse
 from services.auth_service import require_auth
-from services.credit_service import credit_service
 from services.enrichment_service import enrichment_service
-from services.facebook_exclusion_service import facebook_exclusion_service
 from services.lighthouse_service import LighthouseAuditError, lighthouse_service
 from services.organization_service import OrganizationError, organization_service
 from services.prospect_emails import set_prospect_emails
 from services.prospect_enrichment_service import prospect_enrichment_service
 from services.prospect_phones import set_prospect_phones
 from services.prospect_service import prospect_service
-from services.scraper_service import scraper_service
 from services.website_equipment_service import website_equipment_service
 
 router = APIRouter(prefix="/prospects", tags=["prospects"])
@@ -71,143 +64,6 @@ def _assert_not_reserved_by_other(db: Session, user: User, row: ProspectDB) -> N
         organization_service.assert_prospect_actionable(db, user.id, row)
     except OrganizationError as exc:
         raise HTTPException(status_code=exc.status_code, detail=str(exc)) from exc
-
-
-@router.post(
-    "/search",
-    response_model=ProspectSearchResponse,
-    status_code=status.HTTP_200_OK,
-    summary="Search for prospects (deprecated)",
-    description="⚠️ DEPRECATED: Use POST /scraping-jobs instead for better UX with async processing",
-)
-async def search_prospects(
-    request: ProspectSearchRequest, current_user: User = Depends(require_auth), db: Session = Depends(get_db)
-) -> ProspectSearchResponse:
-    """
-    Search for prospects matching the given criteria.
-
-    ⚠️ DEPRECATED: This endpoint is synchronous and blocks until scraping is complete.
-    Use POST /scraping-jobs instead for better user experience with async processing,
-    real-time progress updates, and ability to leave/return to the page.
-
-    Args:
-        request: Search criteria including category, city, and max results
-        current_user: Current authenticated user
-        db: Database session
-
-    Returns:
-        ProspectSearchResponse with matching prospects and statistics
-
-    Raises:
-        HTTPException: If search fails or insufficient credits
-
-    Example:
-        >>> POST /prospects/search
-        {
-            "category": "restaurant",
-            "city": "Paris",
-            "max_results": 20,
-            "source": "pagesjaunes"
-        }
-    """
-    try:
-        # Get credit settings
-        credit_settings: CreditSettings | None = db.query(CreditSettings).filter(CreditSettings.id == 1).first()
-
-        if not credit_settings:
-            raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Credit settings not configured"
-            )
-
-        # Calculate total credits needed
-        credits_per_search = credit_settings.credits_per_search
-        max_credits_needed = credits_per_search + (request.max_results * credit_settings.credits_per_result)
-
-        # Check user balance
-        user_balance = credit_service.get_user_balance(db, current_user.id)
-
-        # For admin users, balance is -1 (unlimited)
-        if user_balance != -1:
-            if user_balance < credits_per_search:
-                raise HTTPException(
-                    status_code=status.HTTP_402_PAYMENT_REQUIRED,
-                    detail=f"Insufficient credits. You need at least {credits_per_search} credits to perform a search. Current balance: {user_balance}",
-                )
-
-        # Run scrapers to get fresh data
-        source_value = request.source.value if request.source else None
-
-        scraped_prospects = await scraper_service.scrape_all(
-            category=request.category or "",
-            city=request.city or "",
-            max_results=request.max_results,
-            source_filter=source_value,
-            only_without_website=request.only_without_website,
-        )
-
-        # Save scraped prospects to database
-        prospects = []
-        skipped_count = 0
-
-        for prospect_data in scraped_prospects:
-            # Check for duplicates
-            is_duplicate = await prospect_service.check_duplicate(
-                db=db, name=prospect_data.name, city=prospect_data.city, user_id=current_user.id
-            )
-
-            if is_duplicate:
-                skipped_count += 1
-                # Still include in results but don't save
-                continue
-
-            # Save to database
-            prospect = await prospect_service.create_prospect(db=db, prospect=prospect_data, user_id=current_user.id)
-            prospects.append(prospect)
-
-        # Calculate actual credits needed based on results
-        actual_credits_needed = credits_per_search + (len(prospects) * credit_settings.credits_per_result)
-
-        # Deduct credits from user account (if not admin)
-        if user_balance != -1:
-            if user_balance < actual_credits_needed:
-                raise HTTPException(
-                    status_code=status.HTTP_402_PAYMENT_REQUIRED,
-                    detail=f"Insufficient credits. This search requires {actual_credits_needed} credits. Current balance: {user_balance}",
-                )
-
-            # Deduct credits
-            success = credit_service.use_credits(
-                db=db,
-                user_id=current_user.id,
-                amount=actual_credits_needed,
-                description=f"Prospect search: {request.category or 'all'} in {request.city or 'all locations'} ({len(prospects)} results)",
-                metadata=f"search_category:{request.category or 'all'},search_city:{request.city or 'all'},results_count:{len(prospects)},skipped:{skipped_count}",
-            )
-
-            if not success:
-                raise HTTPException(
-                    status_code=status.HTTP_402_PAYMENT_REQUIRED, detail="Failed to deduct credits. Please try again."
-                )
-
-        # Decision-maker names resolve in the background — already there when the drawer opens.
-        enrichment_service.schedule_contact_resolution([p.id for p in prospects])
-
-        # Calculate statistics — a dead or placeholder website counts as "no website"
-        has_website = sum(
-            1
-            for p in prospects
-            if p.website and p.website_status not in (WebsiteStatus.DEAD, WebsiteStatus.PLACEHOLDER)
-        )
-        without_website = len(prospects) - has_website
-
-        return ProspectSearchResponse(
-            total=len(prospects), prospects=prospects, has_website=has_website, without_website=without_website
-        )
-
-    except HTTPException:
-        raise
-    except Exception as e:
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Search failed: {e!s}")
 
 
 @router.get(
@@ -294,13 +150,6 @@ async def enrich_prospect(
         ) from exc
 
 
-class FacebookExclusionRequest(BaseModel):
-    """Payload for POST /prospects/facebook-exclusions."""
-
-    page_url: str = Field(..., min_length=1, max_length=2048, description="Canonical Facebook page URL")
-    reason: Literal["no_email", "has_website"] = Field(..., description="Why the page is unusable")
-
-
 class DoNotContactRequest(BaseModel):
     """Payload for POST /prospects/{id}/do-not-contact."""
 
@@ -312,33 +161,6 @@ class SmsAutoExclusionRequest(BaseModel):
     """Payload for POST /prospects/{id}/sms-auto-exclusion."""
 
     excluded: bool = Field(..., description="True to skip every automated SMS for this prospect, False to re-allow")
-
-
-@router.post(
-    "/facebook-exclusions",
-    summary="Exclude a Facebook page from future discoveries",
-    description=(
-        "Record a Facebook page rejected by the search match filter (no email / has a website) "
-        "so later Facebook searches skip it instead of re-enriching the same page."
-    ),
-)
-async def exclude_facebook_page(
-    request: FacebookExclusionRequest,
-    current_user: User = Depends(require_auth),
-    db: Session = Depends(get_db),
-) -> dict[str, str]:
-    """Store a per-user Facebook page exclusion (idempotent).
-
-    Args:
-        request: The page URL and rejection reason
-        current_user: Current authenticated user
-        db: Database session
-
-    Returns:
-        A minimal acknowledgement payload
-    """
-    facebook_exclusion_service.add(db, current_user.id, request.page_url, request.reason)
-    return {"status": "ok"}
 
 
 @router.get(

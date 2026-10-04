@@ -1009,6 +1009,51 @@ class FacebookEnrichmentScraper:
         finally:
             await browser.close()
 
+    async def read_contact(
+        self, *, business_name: str, facebook_url: str, country: str = "FR"
+    ) -> EnrichmentData | None:
+        """Read only the contact block of a public Facebook page (email, phone, website), in a few seconds.
+
+        The prospect search calls this on each candidate to prove an email; photos and
+        reviews are left to the full enrichment, which only runs on kept prospects.
+
+        Args:
+            business_name: Candidate name (logging only).
+            facebook_url: Public Facebook page URL.
+            country: ISO code of the candidate's country — decides the phone shape read.
+
+        Returns:
+            The page's contact data, an empty « facebook » payload (no ``place_title``) when the
+            page opened without a readable block; ``None`` when the browser could not do the
+            read at all (nodriver unavailable, browser error, time limit reached).
+        """
+        if not NODRIVER_AVAILABLE:
+            logger.warning("nodriver not available — Facebook contact read skipped for %s", business_name)
+            return None
+
+        async def task() -> EnrichmentData | None:
+            browser = NodriverBrowser(ephemeral=True)
+            try:
+                tab = await browser.get_tab(self._base_url(facebook_url))
+                await self._prepare_tab(tab)
+                if not await NodriverDom.wait_for_selector(tab, "h1", timeout_s=10.0):
+                    return EnrichmentData(source="facebook")
+                page = await self._extract_json(tab, _FB_PAGE_JS)
+                page["profile_photo"] = None
+                page["photos"] = []
+                return self._build_from_raw(page, "", [], [], country=country)
+            except Exception as exc:
+                logger.warning("Facebook contact read failed for %s: %s", business_name, exc)
+                return None
+            finally:
+                await browser.close()
+
+        try:
+            return await run_nodriver_task(task, timeout=90)
+        except TimeoutError:
+            logger.warning("Facebook contact read timed out for %s", business_name)
+            return None
+
     @staticmethod
     def _base_url(facebook_url: str) -> str:
         """Normalize a Facebook page URL to a root that the /photos_by, /photos_of, /reviews

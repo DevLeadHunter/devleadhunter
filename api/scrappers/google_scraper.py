@@ -7,23 +7,19 @@ from __future__ import annotations
 import asyncio
 import logging
 import re
-from collections.abc import Callable
 from dataclasses import dataclass
 from time import monotonic
 from typing import TypeVar
 from urllib.parse import quote
 
-from enums.country import search_label
 from enums.source import Source
 from enums.website_status import WebsiteStatus
 from models.prospect import ProspectCreate, ProspectSearchSuggestion
-from scrappers import scrape_signals
 from scrappers.nodriver_browser import NODRIVER_AVAILABLE, NodriverBrowser, NodriverScraperMixin
 from scrappers.nodriver_dom import NodriverDom
 from scrappers.nodriver_executor import run_nodriver_task
 from scrappers.resilient_extract import find_phone, parse_ld_json_blocks
 from services.country_profiles import CountryProfiles
-from services.scrape_progress import ScrapeProgressReporter
 from services.validation_service import validation_service
 from services.website_liveness_service import website_liveness_service
 
@@ -236,21 +232,6 @@ class GoogleScraper(NodriverScraperMixin, BaseScraper):
         except Exception as exc:
             logger.error("Error accepting web modal: %s", exc)
             return False
-
-    @staticmethod
-    def build_query(category: str | None, city: str | None, country: str = "FR") -> str:
-        """Build a URL-encoded Google Maps search query, disambiguated outside France."""
-        parts: list[str] = []
-        if category:
-            parts.append(category)
-        if city:
-            parts.append(f"à {city}")
-        region = search_label(country)
-        if region:
-            # Homonym cities exist across the border (Mons, Fribourg, Laval…): the region pins Maps.
-            parts.append(region)
-        query = " ".join(parts).strip()
-        return quote(query) if query else "entreprises"
 
     @staticmethod
     def _sanitize_maps_text(text: str) -> str:
@@ -758,205 +739,6 @@ class GoogleScraper(NodriverScraperMixin, BaseScraper):
                 return await self._build_prospect_from_details(details, google_maps_url=self._place_url_from_tab(tab))
             finally:
                 pass
-        finally:
-            await self.stop()
-            await self.close()
-
-    async def scrape(
-        self,
-        category: str,
-        city: str,
-        max_results: int = 50,
-        *,
-        country: str = "FR",
-        only_without_website: bool = True,
-        progress: ScrapeProgressReporter | None = None,
-        should_stop: Callable[[], bool] | None = None,
-    ) -> list[ProspectCreate]:
-        """
-        Scrape prospects from Google Maps.
-
-        Args:
-            category: Business category to search for.
-            city: City to search in.
-            max_results: Maximum number of results to return.
-            country: Search country — appended to the Maps query outside France.
-
-        Returns:
-            List of ProspectCreate objects.
-        """
-        if not NODRIVER_AVAILABLE:
-            logger.warning("nodriver not available, returning empty results")
-            return []
-
-        async def task() -> list[ProspectCreate]:
-            return await self._scrape_nodriver(
-                category, city, country, max_results, only_without_website, progress, should_stop
-            )
-
-        return await run_nodriver_task(task, timeout=600)
-
-    async def _scrape_nodriver(
-        self,
-        category: str,
-        city: str,
-        country: str,
-        max_results: int,
-        only_without_website: bool,
-        progress: ScrapeProgressReporter | None,
-        should_stop: Callable[[], bool] | None,
-    ) -> list[ProspectCreate]:
-        """nodriver bulk scrape implementation."""
-        await self.start()
-        try:
-            tab = await self._nodriver.get_tab()
-            try:
-                if progress:
-                    await progress.log("Google Maps — chargement de la recherche…")
-                query = self.build_query(category, city, country)
-                url = f"https://www.google.com/maps/search/{query}"
-                logger.info("Scraping: %s", url)
-                await NodriverDom.navigate(tab, url, sleep_s=0.6)
-                await self._prepare_maps_tab(tab)
-
-                feed_selector = "motion.div[role='feed'], div[role='feed']"
-                if not await NodriverDom.wait_for_selector(tab, feed_selector, timeout_s=12.0):
-                    logger.warning(
-                        "Maps feed not found (url=%s) — trying single-place panel",
-                        NodriverDom.tab_url(tab),
-                    )
-                    single = await self._extract_current_place(
-                        tab, default_category=category, item_timeout_s=4.0, country=country
-                    )
-                    if single and single.get("name") and self._is_valid_place_name(single["name"]):
-                        single_status = await website_liveness_service.check_website_status(single.get("website"))
-                        if only_without_website and single_status is WebsiteStatus.LIVE:
-                            return []
-                        prospect = await self._build_prospect_from_details(
-                            single, google_maps_url=self._place_url_from_tab(tab), country=country
-                        )
-                        if progress:
-                            await progress.prospect(prospect)
-                        return [prospect]
-                    logger.error("No feed and no single place — page may be blocked or consent pending")
-                    try:
-                        page_html = await NodriverDom.evaluate(tab, "document.documentElement.outerHTML", by_value=True)
-                    except Exception:
-                        page_html = None
-                    scrape_signals.note_block(
-                        self.source.value,
-                        reason="no feed (blocked or consent pending)",
-                        html=page_html if isinstance(page_html, str) else None,
-                    )
-                    return []
-
-                place_hrefs: list[str] = []
-                seen_urls: set[str] = set()
-                scroll_attempts = 0
-                max_scrolls = 8
-                href_target = max(max_results * (8 if only_without_website else 2), max_results)
-
-                while len(place_hrefs) < href_target and scroll_attempts < max_scrolls:
-                    hrefs = await NodriverDom.evaluate_list(
-                        tab,
-                        """
-                        (() => Array.from(document.querySelectorAll("motion.div[role='feed'] a[href*='/maps/place/'], div[role='feed'] a[href*='/maps/place/']"))
-                            .map(a => a.getAttribute('href'))
-                            .filter(Boolean))()
-                        """,
-                    )
-                    for href in hrefs:
-                        if isinstance(href, str) and href and href not in seen_urls:
-                            seen_urls.add(href)
-                            place_hrefs.append(href)
-                    if len(place_hrefs) >= href_target:
-                        break
-                    await NodriverDom.scroll_element(tab, feed_selector, 2500)
-                    await asyncio.sleep(0.15)
-                    scroll_attempts += 1
-
-                logger.info("Collected %s place links from Google Maps feed", len(place_hrefs))
-                if progress:
-                    await progress.log(f"Google Maps — {len(place_hrefs)} fiche(s) à analyser")
-
-                prospects: list[ProspectCreate] = []
-                max_to_open = max(max_results * (12 if only_without_website else 2), max_results)
-
-                for href in place_hrefs[:max_to_open]:
-                    if should_stop and should_stop():
-                        break
-                    if len(prospects) >= max_results:
-                        break
-
-                    place_url = self._normalize_maps_href(href)
-                    await NodriverDom.navigate(tab, place_url, sleep_s=0.35)
-
-                    details = await self._extract_current_place(
-                        tab, default_category=category, item_timeout_s=3.0, country=country
-                    )
-                    if not details or not details.get("name"):
-                        continue
-                    if not self._is_valid_place_name(details["name"]):
-                        continue
-
-                    name = details["name"]
-                    address = details.get("address") or ""
-                    phone = details.get("phone")
-                    website = details.get("website")
-                    # A dead or placeholder website does not disqualify the
-                    # prospect — it is kept with its URL and marked via website_status.
-                    website_status = await website_liveness_service.check_website_status(website)
-                    if only_without_website and website_status is WebsiteStatus.LIVE:
-                        continue
-
-                    extracted_category = details.get("category") or category
-                    city_name = details.get("city") or self.extract_city(address, country)
-
-                    confidence = validation_service.calculate_confidence_score(
-                        phone=phone,
-                        address=address,
-                        website=website if website_status is WebsiteStatus.LIVE else None,
-                    )
-
-                    email: str | None = None
-                    try:
-                        email = await email_scraper.find_email(
-                            name,
-                            city_name,
-                            website=website if website_status is WebsiteStatus.LIVE else None,
-                            country=country,
-                        )
-                    except Exception as exc:
-                        logger.debug("Could not find email: %s", exc)
-
-                    google_rating, google_reviews_count = self.parse_review_stats(
-                        details.get("rating"), details.get("reviews_count")
-                    )
-                    prospects.append(
-                        ProspectCreate(
-                            name=name,
-                            address=address,
-                            city=city_name,
-                            phone=phone,
-                            email=email,
-                            website=website,
-                            website_status=website_status,
-                            google_maps_url=place_url,
-                            google_rating=google_rating,
-                            google_reviews_count=google_reviews_count,
-                            category=extracted_category,
-                            source=Source.GOOGLE,
-                            confidence=confidence,
-                        )
-                    )
-                    if progress:
-                        await progress.prospect(prospects[-1])
-
-                logger.info("Scraping complete: %s prospects found", len(prospects))
-                return prospects
-            except Exception as exc:
-                logger.error("Error in Google scraping: %s", exc)
-                return []
         finally:
             await self.stop()
             await self.close()

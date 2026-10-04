@@ -83,7 +83,6 @@ Once the server is running, access the interactive API documentation:
 
 - `GET /api/v1/prospects` - List all prospects
 - `GET /api/v1/prospects/{id}` - Get prospect by ID
-- `POST /api/v1/prospects/search` - Search for prospects
 - `POST /api/v1/prospects` - Create new prospect
 - `PUT /api/v1/prospects/{id}` - Update prospect
 - `DELETE /api/v1/prospects/{id}` - Delete prospect

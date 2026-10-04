@@ -4,9 +4,6 @@ Dedicated asyncio loop for nodriver browser automation.
 nodriver requires the Browser to be created and used on the same event loop.
 When uvicorn runs with SelectorEventLoop on Windows, browser work is dispatched
 to this singleton thread loop.
-
-Progress / WebSocket callbacks must run on the **uvicorn** loop — see
-``ScrapeProgressReporter`` which marshals handlers back to the main loop.
 """
 
 from __future__ import annotations

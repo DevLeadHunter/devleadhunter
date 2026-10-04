@@ -25,6 +25,7 @@ import type { ProspectSourcePresentation, UiProspectSourceBadgeProps } from '~/t
 import type { ComputedRef, PropType } from 'vue'
 import { computed } from 'vue'
 import type { ProspectSource } from '~/types'
+import { formatProspectSource } from '~/constants/prospectSources'
 
 /** Badge naming the acquisition source a prospect came from. */
 const props: UiProspectSourceBadgeProps = defineProps({
@@ -36,6 +37,13 @@ const props: UiProspectSourceBadgeProps = defineProps({
 
 /** Per-source badge colours and favicon logos for prospect origin. */
 const SOURCE_CONFIG: Record<string, ProspectSourcePresentation> = {
+  search: {
+    label: formatProspectSource('search'),
+    logoUrl: null,
+    icon: 'i-lucide-search-check',
+    bg: 'bg-[var(--app-ink)]',
+    text: 'text-[var(--app-bg)]',
+  },
   pagesjaunes: {
     label: 'Pages Jaunes',
     logoUrl: 'https://www.google.com/s2/favicons?domain=pagesjaunes.fr&sz=32',
@@ -105,6 +113,6 @@ const FALLBACK: ProspectSourcePresentation = {
 }
 
 const config: ComputedRef<ProspectSourcePresentation> = computed((): ProspectSourcePresentation => {
-  return SOURCE_CONFIG[props.source] ?? { ...FALLBACK, label: props.source }
+  return SOURCE_CONFIG[props.source] ?? { ...FALLBACK, label: formatProspectSource(props.source) }
 })
 </script>

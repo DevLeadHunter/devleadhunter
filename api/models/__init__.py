@@ -43,12 +43,12 @@ from models.prospect import Prospect
 from models.prospect_db import ProspectDB
 from models.prospect_enrichment import ProspectEnrichment
 from models.prospect_interaction import ProspectInteraction
+from models.prospect_search import ProspectSearch
+from models.prospect_search_candidate import ProspectSearchCandidate
 from models.push_subscription import PushSubscription
 from models.resend_config import ResendConfig
 from models.scheduled_email import ScheduledEmail
 from models.scraper_diagnostic import ScraperDiagnostic
-from models.scraping_job import ScrapingJob
-from models.search import ProspectSearchRequest, ProspectSearchResponse
 from models.send_policy import SendPolicy
 from models.sms_auto_queue import SmsAutoQueue
 from models.sms_config import SmsConfig
@@ -104,13 +104,12 @@ __all__ = [
     "ProspectDB",
     "ProspectEnrichment",
     "ProspectInteraction",
-    "ProspectSearchRequest",
-    "ProspectSearchResponse",
+    "ProspectSearch",
+    "ProspectSearchCandidate",
     "PushSubscription",
     "ResendConfig",
     "ScheduledEmail",
     "ScraperDiagnostic",
-    "ScrapingJob",
     "SendPolicy",
     "SmsAutoQueue",
     "SmsConfig",
