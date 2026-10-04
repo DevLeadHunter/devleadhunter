@@ -227,21 +227,26 @@ class EmailLayout:
 
     @classmethod
     def _build_offer_table(cls, rows: list[tuple[str, str]]) -> str:
-        """The offer as label and value rows separated by hairlines; the first sentence of a value leads in ink."""
+        """
+        The offer as label and value rows separated by hairlines; the first sentence of a value leads in ink.
+
+        Each label and sentence sits in its own block, so the plain-text version mail providers
+        derive from the HTML keeps them on separate lines.
+        """
         cells: list[str] = []
         for index, (label, text) in enumerate(rows):
             closing_rule: str = f"border-bottom:1px solid {cls._RULE_COLOR};" if index == len(rows) - 1 else ""
             sentences = cls._FIRST_SENTENCE.fullmatch(text) if "<" not in text else None
             value: str = (
-                f'{sentences.group(1)}<span style="display:block;margin:2px 0 0;font-weight:400;'
-                f'color:{cls._TEXT_COLOR};">{sentences.group(2)}</span>'
+                f'<div>{sentences.group(1)}</div><div style="margin:2px 0 0;font-weight:400;'
+                f'color:{cls._TEXT_COLOR};">{sentences.group(2)}</div>'
                 if sentences
-                else text
+                else f"<div>{text}</div>"
             )
             cells.append(
                 f'<tr><td class="em-label" width="120" valign="top" style="width:120px;padding:10px 12px 10px 0;'
                 f"border-top:1px solid {cls._RULE_COLOR};{closing_rule}font-size:14px;line-height:20px;"
-                f'color:{cls._MUTED_COLOR};">{label}</td>'
+                f'color:{cls._MUTED_COLOR};"><div>{label}</div></td>'
                 f'<td valign="top" style="padding:10px 0;border-top:1px solid {cls._RULE_COLOR};{closing_rule}'
                 f"font-size:14px;line-height:20px;font-weight:500;color:{cls._INK_COLOR};"
                 f'word-break:break-word;">{value}</td></tr>'

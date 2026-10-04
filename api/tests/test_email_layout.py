@@ -80,7 +80,7 @@ def _dressed(name: str, layout: str = _CARD_TABLE) -> str:
 
 
 def _row_labels(html: str) -> list[str]:
-    return re.findall(r'class="em-label"[^>]*>([^<]+)</td>', html)
+    return re.findall(r'class="em-label"[^>]*><div>([^<]+)</div>', html)
 
 
 def _letters(html: str) -> str:
@@ -104,7 +104,7 @@ def test_the_first_contact_gets_its_button_and_its_three_rows() -> None:
     assert ">Voir mon site</a>" in html
     assert "background-color:#6f5fe0" in html
     assert f'style="{EmailVariables.LINK_STYLE}"' not in html
-    assert "C'est 500 €, une seule fois.<span" in html
+    assert "<div>C'est 500 €, une seule fois.</div><div" in html
     assert unsubscribe_service.FOOTER_SLOT in html
 
 

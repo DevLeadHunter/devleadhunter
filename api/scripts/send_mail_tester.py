@@ -35,7 +35,9 @@ from core.config import settings
 from core.database import SessionLocal
 from models.email_template import EmailTemplate
 from models.user import User
+from services.email_layout import EmailLayout
 from services.email_sending_service import EmailSendingService
+from services.email_signatures import render_signature_html
 from services.email_variables import EmailVariables
 from services.resend_service import ResendService
 from services.sending_identity import SendingIdentity, resolve_sending_identity
@@ -138,7 +140,10 @@ async def _run(
             raise SystemExit(f"Fournisseur actif = {identity.provider}. Ce test cible le chemin Resend.")
 
         subject = _render(template.subject)
-        body_html = _render(template.body_html)
+        signature_html = render_signature_html(db, template.signature_id, _SAMPLE_VARIABLES, user_id=user.id)
+        body_html = EmailLayout.dress(
+            template.layout, _render(template.body_html), signature_html, _SAMPLE_VARIABLES, user.email_accent_color
+        )
 
         # Same footer + headers as a production send. The local FRONTEND_URL
         # would ship an ``http://localhost:3000`` unsubscribe link: strict
