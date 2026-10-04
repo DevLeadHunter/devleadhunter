@@ -12,13 +12,14 @@ from enums.prospect_search import (
     CandidateStatus,
     EmailProofLevel,
     ProspectSearchChannel,
+    ProspectSearchValidationMode,
 )
 from enums.website_status import WebsiteStatus
 from models.email_log import EmailLog
 from models.facebook_exclusion import FacebookPageExclusion
 from models.prospect_db import ProspectDB
 from models.prospect_search_candidate import ProspectSearchCandidate
-from schemas.prospect_search import ProspectSearchCreate
+from schemas.prospect_search import CandidateDecisions, ProspectSearchCreate
 from services.prospect_search.business_name import BusinessName
 from services.prospect_search.candidate_decision import CandidateDecision, SearchCriteria
 from services.prospect_search.candidate_facts import CandidateFacts
@@ -192,6 +193,30 @@ class TestKnownBusinessIndex:
         assert remembered is not None and remembered.reason is CandidateRejectReason.PREVIOUSLY_REJECTED
         assert same_search.match(["tel:+41794731961"]) is None
 
+    def test_a_business_awaiting_validation_is_not_proposed_again_by_a_later_search(self, db: Session) -> None:
+        db.add(
+            ProspectSearchCandidate(
+                search_id=1,
+                user_id=USER_ID,
+                trade="paysagiste",
+                origin=CandidateOrigin.GOOGLE_LOCAL.value,
+                name="Tendance Nature",
+                country="CH",
+                status=CandidateStatus.KEPT.value,
+                identity_keys=["tel:+41787575742", "name:nature tendance|sion"],
+                evidence=[],
+            )
+        )
+        db.commit()
+
+        later_search = KnownBusinessIndex.load(db, user_id=USER_ID, organization_id=None, search_id=2)
+        same_search = KnownBusinessIndex.load(db, user_id=USER_ID, organization_id=None, search_id=1)
+
+        known = later_search.match(["tel:+41787575742"])
+        assert known is not None
+        assert (known.reason, known.prospect_id) == (CandidateRejectReason.AWAITING_DECISION, None)
+        assert same_search.match(["tel:+41787575742"]) is None
+
     def test_an_address_already_written_to_is_known_even_without_its_prospect(self, db: Session) -> None:
         db.add(
             EmailLog(
@@ -236,8 +261,21 @@ class TestCandidateDecision:
     def test_a_mobile_without_email_is_set_aside_not_discarded(self) -> None:
         verdict = CandidateDecision.decide(_facts(phone="078 757 57 42"), _LANDSCAPER, _EMAIL_ONLY)
 
-        assert verdict.status is CandidateStatus.SET_ASIDE
-        assert "SMS" in (verdict.detail or "")
+        assert (verdict.status, verdict.detail) == (
+            CandidateStatus.SET_ASIDE,
+            "Portable sans email : joignable par SMS.",
+        )
+
+    def test_an_email_without_mobile_is_set_aside_by_a_search_for_sms(self) -> None:
+        sms_only = SearchCriteria(channel=ProspectSearchChannel.SMS, only_without_website=True, minimum_rating=None)
+        facts = _facts(email="contact@tendance.ch", email_proof_level=EmailProofLevel.PUBLISHED.value)
+
+        verdict = CandidateDecision.decide(facts, _LANDSCAPER, sms_only)
+
+        assert (verdict.status, verdict.detail) == (
+            CandidateStatus.SET_ASIDE,
+            "Email sans portable : joignable par email.",
+        )
 
     def test_a_guessed_email_waits_for_the_user(self) -> None:
         facts = _facts(email="peutetre@gmail.com", email_proof_level=EmailProofLevel.GUESSED.value)
@@ -419,6 +457,46 @@ def test_an_overlong_trade_or_town_is_refused_before_the_search_is_stored() -> N
         ProspectSearchCreate(trades=["t" * 61])
     with pytest.raises(ValidationError):
         ProspectSearchCreate(trades=["paysagiste"], cities=["v" * 81])
+
+
+def test_a_search_waits_for_the_user_to_validate_unless_asked_otherwise() -> None:
+    assert ProspectSearchCreate(trades=["paysagiste"]).validation_mode == ProspectSearchValidationMode.MANUAL
+    assert (
+        ProspectSearchCreate(trades=["paysagiste"], validation_mode="automatic").validation_mode
+        == ProspectSearchValidationMode.AUTOMATIC
+    )
+
+
+@pytest.mark.parametrize(
+    ("status", "prospect_id", "is_pending"),
+    [
+        (CandidateStatus.KEPT, None, True),
+        (CandidateStatus.SET_ASIDE, None, True),
+        (CandidateStatus.TO_CONFIRM, None, True),
+        (CandidateStatus.KEPT, 12, False),
+        (CandidateStatus.SET_ASIDE, 12, False),
+        (CandidateStatus.NEEDS_BROWSER, None, False),
+        (CandidateStatus.DISCOVERED, None, False),
+        (CandidateStatus.REJECTED, None, False),
+    ],
+)
+def test_a_candidate_is_pending_when_it_is_placed_and_not_a_prospect_yet(
+    status: CandidateStatus, prospect_id: int | None, is_pending: bool
+) -> None:
+    candidate = ProspectSearchCandidate(status=status.value, prospect_id=prospect_id)
+
+    assert candidate.is_pending is is_pending
+
+
+def test_a_request_decides_a_hundred_candidates_at_most() -> None:
+    assert len(CandidateDecisions(accept=list(range(60)), reject=list(range(60, 100))).accept) == 60
+    with pytest.raises(ValidationError):
+        CandidateDecisions(accept=list(range(60)), reject=list(range(60, 101)))
+
+
+def test_a_candidate_cannot_be_accepted_and_refused_in_the_same_request() -> None:
+    with pytest.raises(ValidationError):
+        CandidateDecisions(accept=[4, 5], reject=[5])
 
 
 @pytest.mark.parametrize(

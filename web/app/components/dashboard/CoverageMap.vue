@@ -63,7 +63,7 @@
       <p class="text-muted max-w-xs text-sm leading-relaxed">
         Aucune ville prospectée pour ces filtres. Lancez une recherche pour commencer à colorer la carte.
       </p>
-      <button type="button" class="btn-secondary text-xs" @click="openSearchDrawer">Trouver des prospects</button>
+      <button type="button" class="btn-secondary text-xs" @click="openSearchPage">Trouver des prospects</button>
     </div>
 
     <div v-else-if="!isMapFailed" ref="mapWrap" class="coverage-map relative flex min-h-0 flex-1 flex-col">
@@ -143,12 +143,14 @@ import { ProspectsService } from '~/services/prospectsService'
 import { useCoverageStore } from '~/stores/coverage'
 import { useDrawerStackStore } from '~/stores/drawerStack'
 import type { AppTheme } from '~/types/AppTheme'
+import type { ProspectSearchPrefill } from '~/types/ProspectSearch'
 import type { ForeignRegionCollection, ForeignRegionProperties } from '~/utils/foreignRegions'
 import { countryBounds, countryRegionCount, fetchForeignRegions, foreignRegionAt } from '~/utils/foreignRegions'
 import type { FranceMajorCity } from '~/utils/franceTerritory'
 import { FRANCE_MAJOR_CITIES, FRANCE_REGIONS } from '~/utils/franceTerritory'
 import type { ProspectCountryOption } from '~/utils/prospectCountries'
 import { ProspectCountries } from '~/utils/prospectCountries'
+import { ProspectSearches } from '~/utils/prospectSearches'
 
 /**
  * Metropolitan region contours (simplified, ~220 KB, france-geojson from IGN Admin Express), served from the public
@@ -734,10 +736,7 @@ async function onMapClick(event: MapMouseEvent): Promise<void> {
       })
       return
     }
-    drawerStack.push({
-      kind: 'search-prospects',
-      prefill: { country: foreignCountry, ...categoryPrefill() },
-    })
+    openNewSearch({ country: foreignCountry, ...categoryPrefill() })
     return
   }
 
@@ -766,15 +765,20 @@ async function onMapClick(event: MapMouseEvent): Promise<void> {
     (c: FranceMajorCity): boolean => c.region === code,
   )?.name
   const city: string | undefined = commune?.name ?? fallback
-  drawerStack.push({
-    kind: 'search-prospects',
-    prefill: { ...(city ? { city } : {}), country: 'FR', ...categoryPrefill() },
-  })
+  openNewSearch({ ...(city ? { city } : {}), country: 'FR', ...categoryPrefill() })
 }
 
-/** Open the search drawer from the empty state. */
-function openSearchDrawer(): void {
-  drawerStack.push({ kind: 'search-prospects', prefill: { ...categoryPrefill() } })
+/**
+ * Open the new-search page with what the map already knows about the clicked zone.
+ * @param prefill - Trade, town and country to hand over.
+ */
+function openNewSearch(prefill: ProspectSearchPrefill): void {
+  navigateTo(ProspectSearches.newSearchLocation(prefill))
+}
+
+/** Open the new-search page from the empty state. */
+function openSearchPage(): void {
+  openNewSearch(categoryPrefill())
 }
 
 /**

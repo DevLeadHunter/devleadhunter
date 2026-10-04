@@ -144,6 +144,7 @@ import { useCoverageStore } from '~/stores/coverage'
 import { useDrawerStackStore } from '~/stores/drawerStack'
 import type { CoverageZone } from '~/types/DrawerStack'
 import type { UiCoverageProspectsDrawerEmits, UiCoverageProspectsDrawerProps } from '~/types/UiCoverageProspectsDrawer'
+import { ProspectSearches } from '~/utils/prospectSearches'
 
 /** Drawer listing prospects for a clicked coverage zone. */
 const props: UiCoverageProspectsDrawerProps = defineProps({
@@ -216,16 +217,15 @@ async function openProspect(prospectId: number): Promise<void> {
   }
 }
 
-/** Open the search drawer prefilled with the zone's city and country (stacked). */
+/** Open the new-search page prefilled with the zone's city and country. */
 function prospectAgain(): void {
-  drawerStack.push({
-    kind: 'search-prospects',
-    prefill: {
+  navigateTo(
+    ProspectSearches.newSearchLocation({
       ...(props.zone?.prefillCity ? { city: props.zone.prefillCity } : {}),
       ...(props.zone?.country ? { country: props.zone.country } : {}),
       ...(store.selectedCategories.length === 1 ? { category: store.selectedCategories[0] as string } : {}),
-    },
-  })
+    }),
+  )
 }
 
 // Reload whenever the drawer opens on a (new) zone.

@@ -2,6 +2,8 @@ import type { ProspectCountry, ProspectWebsiteStatus } from '~/types'
 
 export type ProspectSearchChannel = 'email' | 'sms' | 'email_and_sms'
 
+export type ProspectSearchValidationMode = 'manual' | 'automatic'
+
 export type ProspectSearchStatus = 'pending' | 'running' | 'waiting_browser' | 'completed' | 'cancelled' | 'failed'
 
 export type ProspectSearchCandidateStatus =
@@ -25,6 +27,7 @@ export type ProspectSearchRejectReason =
   | 'already_known'
   | 'do_not_contact'
   | 'previously_rejected'
+  | 'awaiting_decision'
   | 'manual'
 
 /** How well an email is proven: `a` published by the business, `b` listed by a directory, `c` guessed. */
@@ -45,6 +48,7 @@ export type ProspectSearchCreatePayload = {
   channel: ProspectSearchChannel
   only_without_website: boolean
   minimum_rating: number | null
+  validation_mode: ProspectSearchValidationMode
 }
 
 export type ProspectSearchTradeCounts = {
@@ -70,6 +74,7 @@ export type ProspectSearchSummary = {
   channel: ProspectSearchChannel
   only_without_website: boolean
   minimum_rating: number | null
+  validation_mode: ProspectSearchValidationMode
   status: ProspectSearchStatus
   request_count: number
   judge_call_count: number
@@ -90,6 +95,7 @@ export type ProspectSearchEvidenceLine = {
 
 export type ProspectSearchCandidate = {
   id: number
+  search_id: number
   trade: string
   origin: ProspectSearchCandidateOrigin
   searched_city: string | null
@@ -115,6 +121,8 @@ export type ProspectSearchCandidate = {
   reject_detail: string | null
   evidence: ProspectSearchEvidenceLine[]
   prospect_id: number | null
+  is_pending: boolean
+  created_at: string
 }
 
 export type ProspectSearchJournalLine = {
@@ -125,6 +133,27 @@ export type ProspectSearchJournalLine = {
 export type ProspectSearchDetail = ProspectSearchSummary & {
   journal: ProspectSearchJournalLine[]
   candidates: ProspectSearchCandidate[]
+}
+
+export type ProspectSearchActivity = {
+  pending_count: number
+  active_search: ProspectSearchSummary | null
+}
+
+export type ProspectSearchDecisionsPayload = {
+  accept: number[]
+  reject: number[]
+}
+
+export type ProspectSearchRefusedDecision = {
+  candidate_id: number
+  detail: string
+}
+
+export type ProspectSearchDecisionsResult = {
+  accepted: number
+  rejected: number
+  refused: ProspectSearchRefusedDecision[]
 }
 
 /** A Facebook page the desktop app must read for a waiting candidate. */
@@ -152,11 +181,52 @@ export type ProspectSearchFacebookReading = {
   errorMessage: string | null
 }
 
-export type ProspectSearchResultTabKey = ProspectSearchCandidateStatus | 'journal'
-
 export type ProspectSearchChannelOption = {
   value: ProspectSearchChannel
   label: string
   description: string
   icon: string
+}
+
+export type ProspectSearchValidationOption = {
+  value: ProspectSearchValidationMode
+  label: string
+  description: string
+  icon: string
+}
+
+export type ProspectSearchPrefill = {
+  category?: string
+  city?: string
+  country?: ProspectCountry
+}
+
+export type ProspectSearchPageLocation = {
+  path: string
+  query: Record<string, string>
+}
+
+export type ProspectSearchLeadCriterionKey = 'email' | 'mobile' | 'noWebsite' | 'rating'
+
+export type ProspectSearchLeadCriterionState = 'verified' | 'toCheck' | 'missing'
+
+export type ProspectSearchLeadCriterion = {
+  key: ProspectSearchLeadCriterionKey
+  icon: string
+  state: ProspectSearchLeadCriterionState
+  label: string
+}
+
+export type ProspectSearchLeadFilters = {
+  searchQuery: string
+  town: string
+  trade: string
+}
+
+export type ProspectSearchEmptyLeadsSituation = 'noMatchingLead' | 'searchRunning' | 'nothingToDecide'
+
+export type ProspectSearchEmptyLeadsNotice = {
+  title: string
+  description: string
+  shouldOfferNewSearch: boolean
 }

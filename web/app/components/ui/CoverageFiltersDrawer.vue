@@ -158,9 +158,9 @@
 import type { ComputedRef, EmitFn, Ref } from 'vue'
 import { computed, ref } from 'vue'
 import { normalizeCityName, useCoverageStore } from '~/stores/coverage'
-import { useDrawerStackStore } from '~/stores/drawerStack'
 import type { UiCoverageFiltersDrawerEmits, UiCoverageFiltersDrawerProps } from '~/types/UiCoverageFiltersDrawer'
 import { FRANCE_REGIONS } from '~/utils/franceTerritory'
+import { ProspectSearches } from '~/utils/prospectSearches'
 
 /** Coverage map filters: trades, cities and uncovered regions. */
 const props: UiCoverageFiltersDrawerProps = defineProps({
@@ -177,7 +177,6 @@ const props: UiCoverageFiltersDrawerProps = defineProps({
 const emit: EmitFn<UiCoverageFiltersDrawerEmits> = defineEmits<UiCoverageFiltersDrawerEmits>()
 
 const store: ReturnType<typeof useCoverageStore> = useCoverageStore()
-const drawerStack: ReturnType<typeof useDrawerStackStore> = useDrawerStackStore()
 
 /** Trade search query. */
 const tradeQuery: Ref<string> = ref('')
@@ -219,18 +218,16 @@ function regionName(code: string): string {
 }
 
 /**
- * Open the prospect-search drawer prefilled with a suggested city (stacked on
- * top of this drawer — back returns here).
+ * Open the new-search page prefilled with a suggested city.
  * @param city - City to prospect.
  */
 function prospectCity(city: string): void {
-  drawerStack.push({
-    kind: 'search-prospects',
-    prefill: {
+  navigateTo(
+    ProspectSearches.newSearchLocation({
       city,
       ...(store.selectedCategories.length === 1 ? { category: store.selectedCategories[0] as string } : {}),
-    },
-  })
+    }),
+  )
 }
 </script>
 

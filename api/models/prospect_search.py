@@ -9,7 +9,7 @@ from sqlalchemy import JSON, Boolean, Float, Integer, String
 from sqlalchemy.orm import Mapped, mapped_column
 
 from core.database import UTF8MB4_TABLE_OPTIONS, Base
-from enums.prospect_search import ProspectSearchChannel, ProspectSearchStatus
+from enums.prospect_search import ProspectSearchChannel, ProspectSearchStatus, ProspectSearchValidationMode
 
 
 class ProspectSearch(Base):
@@ -26,6 +26,7 @@ class ProspectSearch(Base):
         channel: Contact channel the kept prospects must allow
         only_without_website: Whether a business with a working website is discarded
         minimum_rating: Google rating under which a business is discarded
+        validation_mode: Whether the user accepts each candidate, or the search creates the prospects itself
         status: Lifecycle state
         progress: Counters and scanned cities, per trade
         journal: Short log lines shown to the user, each with the time it was written (naive UTC)
@@ -50,6 +51,9 @@ class ProspectSearch(Base):
     channel: Mapped[str] = mapped_column(String(16), nullable=False, default=ProspectSearchChannel.EMAIL.value)
     only_without_website: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     minimum_rating: Mapped[float | None] = mapped_column(Float, nullable=True)
+    validation_mode: Mapped[str] = mapped_column(
+        String(16), nullable=False, default=ProspectSearchValidationMode.MANUAL.value
+    )
     status: Mapped[str] = mapped_column(
         String(20), nullable=False, default=ProspectSearchStatus.PENDING.value, index=True
     )

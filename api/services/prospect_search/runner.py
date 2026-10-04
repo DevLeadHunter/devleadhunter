@@ -5,7 +5,9 @@ For each trade: go town by town; in each town read the public registries that ca
 an email, then Google's local results page by page, then the Facebook pages a search
 engine knows. Every business seen becomes a candidate, is recognised if it is already
 known, verified with one web search, completed with a contact, and placed: kept, set
-aside, to confirm, waiting for a browser, or discarded with a reason.
+aside, to confirm, waiting for a browser, or discarded with a reason. In an automatic
+search a kept or set-aside candidate becomes a prospect at once; in a manual one it
+waits for the user to accept or refuse it.
 
 The run stops when every trade has its count, when the towns or the request budget
 run out, or when the user cancels. It never holds a database session across a
@@ -32,8 +34,8 @@ from enums.prospect_search import (
     CandidateRejectReason,
     CandidateStatus,
     EmailProofLevel,
-    ProspectSearchChannel,
     ProspectSearchStatus,
+    ProspectSearchValidationMode,
 )
 from models.prospect_search import ProspectSearch
 from models.prospect_search_candidate import ProspectSearchCandidate
@@ -85,6 +87,7 @@ class _RunState:
     cities: list[str]
     count_per_trade: int
     criteria: SearchCriteria
+    creates_prospects: bool
     request_budget: int
     max_towns_per_trade: int
     spent_before: int
@@ -143,12 +146,14 @@ class ProspectSearchRunner:
             waiting_ids = self._waiting_candidate_ids()
             if not waiting_ids or not settings.prospect_search_local_browser:
                 break
-            if await self._read_facebook_pages(waiting_ids) == 0:
+            if await self._read_facebook_pages(state, waiting_ids) == 0:
                 break
 
+        self._reload_counts()
+        kept_words = "gardé(s)" if state.creates_prospects else "complet(s)"
         for profile in profiles:
             kept = self._count(profile.key, CandidateStatus.KEPT)
-            self._log(f"{profile.label} : {kept} gardé(s) sur {state.count_per_trade} demandé(s).")
+            self._log(f"{profile.label} : {kept} {kept_words} sur {state.count_per_trade} demandé(s).")
         is_waiting = bool(self._waiting_candidate_ids())
         if is_waiting:
             self._log("Des candidats attendent la lecture de leur page Facebook par l'application Windows.")
@@ -190,11 +195,8 @@ class ProspectSearchRunner:
                 trades=list(search.trades),
                 cities=list(search.cities or []),
                 count_per_trade=search.count_per_trade,
-                criteria=SearchCriteria(
-                    channel=ProspectSearchChannel(search.channel),
-                    only_without_website=search.only_without_website,
-                    minimum_rating=search.minimum_rating,
-                ),
+                criteria=SearchCriteria.of_search(search),
+                creates_prospects=search.validation_mode == ProspectSearchValidationMode.AUTOMATIC.value,
                 request_budget=(_BASE_REQUEST_BUDGET + _REQUEST_BUDGET_PER_PROSPECT * total_wanted) * granted_runs,
                 max_towns_per_trade=_MAX_TOWNS_PER_TRADE * granted_runs,
                 spent_before=search.request_count,
@@ -229,9 +231,11 @@ class ProspectSearchRunner:
                 continue
             if len(trade_progress["towns"]) >= state.max_towns_per_trade:
                 break
+            self._reload_known_businesses(state)
             await self._scan_town(state, profile, town)
             trade_progress["towns"].append(town)
             self._flush()
+        self._reload_counts()
         if not self._is_filled(state, profile):
             trade_progress["stop_reason"] = "towns"
 
@@ -491,7 +495,7 @@ class ProspectSearchRunner:
         verdict: CandidateVerdict,
     ) -> None:
         """
-        Store a candidate's verdict and create its prospect when it is kept or set aside.
+        Store a candidate's verdict and, in an automatic search, create its prospect when it is kept or set aside.
 
         The creation has the last word: a business that became a prospect meanwhile is discarded
         as already known, and a creation that fails leaves the candidate to the user.
@@ -503,18 +507,19 @@ class ProspectSearchRunner:
             self._add_count(row.trade, row.status, -1)
             CandidateStore.write_back(row, facts, verdict)
             db.commit()
-            await CandidateStore.promote_or_leave_to_confirm(
-                db, row, facts, profile, organization_id=state.organization_id
-            )
-            if row.prospect_id is not None:
-                self._index.remember_prospect(row.identity_keys or [], row.prospect_id)
+            if state.creates_prospects:
+                await CandidateStore.promote_or_leave_to_confirm(
+                    db, row, facts, profile, organization_id=state.organization_id
+                )
+                if row.prospect_id is not None:
+                    self._index.remember_prospect(row.identity_keys or [], row.prospect_id)
             self._add_count(row.trade, row.status, 1)
             final_verdict = CandidateStore.verdict_of(row)
-        self._log(self._journal_line(facts, final_verdict))
+        self._log(self._journal_line(facts, final_verdict, creates_prospects=state.creates_prospects))
         # Written at once: the screen follows the search candidate by candidate, not town by town.
         self._flush()
 
-    async def _read_facebook_pages(self, candidate_ids: list[int]) -> int:
+    async def _read_facebook_pages(self, state: _RunState, candidate_ids: list[int]) -> int:
         """
         Read the waiting Facebook pages with this process's own browser, one at a time.
 
@@ -552,7 +557,8 @@ class ProspectSearchRunner:
             if verdict is not None:
                 self._add_count(trade_key, CandidateStatus.NEEDS_BROWSER.value, -1)
                 self._add_count(trade_key, verdict.status.value, 1)
-                self._log(f"{name} : page Facebook lue, {self._status_words(verdict.status)}.")
+                status_words = self._status_words(verdict.status, creates_prospects=state.creates_prospects)
+                self._log(f"{name} : page Facebook lue, {status_words}.")
             self._flush()
         return read_count
 
@@ -620,9 +626,9 @@ class ProspectSearchRunner:
         """
         Recount the search's candidates from the database.
 
-        Between two towns no verification is in flight, and the counters may be stale: the
-        desktop app hands over Facebook reads, and the user keeps or discards candidates by
-        hand, while the run goes on.
+        Between two towns, and before a trade or the run is judged, no verification is in flight,
+        and the counters may be stale: the desktop app hands over Facebook reads, and the user
+        keeps or discards candidates by hand, while the run goes on.
         """
         with SessionLocal() as db:
             rows = db.execute(
@@ -637,6 +643,18 @@ class ProspectSearchRunner:
         self._counts = {}
         for trade_key, status, total in rows:
             self._add_count(trade_key, status, total)
+
+    def _reload_known_businesses(self, state: _RunState) -> None:
+        """
+        Read again the businesses the search must not propose, before a town is scanned.
+
+        While the run goes on, another search proposes businesses and the user turns candidates
+        into prospects: a business proposed or made a prospect meanwhile is not proposed again.
+        """
+        with SessionLocal() as db:
+            self._index = KnownBusinessIndex.load(
+                db, user_id=state.user_id, organization_id=state.organization_id, search_id=self._search_id
+            )
 
     def _add_count(self, trade_key: str, status: str, delta: int) -> None:
         """Move the in-memory counter of a trade and status."""
@@ -669,17 +687,27 @@ class ProspectSearchRunner:
             db.commit()
 
     @classmethod
-    def _journal_line(cls, facts: CandidateFacts, verdict: CandidateVerdict) -> str:
+    def _journal_line(cls, facts: CandidateFacts, verdict: CandidateVerdict, *, creates_prospects: bool) -> str:
         """One plain line saying what happened to a candidate."""
         if verdict.status == CandidateStatus.REJECTED:
             return f"{facts.name} : écarté. {verdict.detail or ''}".strip()
+        status_words = cls._status_words(verdict.status, creates_prospects=creates_prospects)
         if verdict.status == CandidateStatus.KEPT:
-            return f"{facts.name} : gardé ({facts.email or facts.phone or 'contact trouvé'})."
-        return f"{facts.name} : {cls._status_words(verdict.status)}. {verdict.detail or ''}".strip()
+            return f"{facts.name} : {status_words} ({facts.email or facts.phone or 'contact trouvé'})."
+        return f"{facts.name} : {status_words}. {verdict.detail or ''}".strip()
 
     @staticmethod
-    def _status_words(status: CandidateStatus) -> str:
-        """A candidate status in the user's words."""
+    def _status_words(status: CandidateStatus, *, creates_prospects: bool) -> str:
+        """
+        A candidate status in the user's words.
+
+        In a manual search nothing is kept until the user accepts it: a kept or set-aside
+        candidate is said to wait for that validation.
+        """
+        if not creates_prospects and status == CandidateStatus.KEPT:
+            return "complet, à valider"
+        if not creates_prospects and status == CandidateStatus.SET_ASIDE:
+            return "un seul moyen de contact, à valider"
         return {
             CandidateStatus.KEPT: "gardé",
             CandidateStatus.SET_ASIDE: "mis de côté",

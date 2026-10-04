@@ -135,10 +135,17 @@
       @created="handleProspectCreated"
     />
 
-    <UiSearchProspectsDrawer
-      :open="searchProspectsEntry !== null"
+    <UiProspectSearchDrawer
+      :open="prospectSearchEntry !== null"
       :show-back="hasPrevious"
-      :prefill="searchProspectsEntry?.prefill ?? null"
+      @close="drawerStack.closeAll()"
+      @back="drawerStack.back()"
+    />
+
+    <UiProspectSearchLeadDrawer
+      :open="prospectSearchLeadEntry !== null"
+      :candidate="prospectSearchLeadEntry?.candidate ?? null"
+      :show-back="hasPrevious"
       @close="drawerStack.closeAll()"
       @back="drawerStack.back()"
     />
@@ -277,8 +284,9 @@ import type {
   ProfileDrawerEntry,
   DrawerBrowseDirection,
   ProspectDrawerEntry,
+  ProspectSearchDrawerEntry,
+  ProspectSearchLeadDrawerEntry,
   ProspectSettingsDrawerEntry,
-  SearchProspectsDrawerEntry,
   SendEmailDrawerEntry,
   SendSmsDrawerEntry,
   SmsLogDrawerEntry,
@@ -395,10 +403,15 @@ const addProspectEntry: ComputedRef<AddProspectDrawerEntry | null> = computed(()
   return drawerStack.topEntry?.kind === 'add-prospect' ? drawerStack.topEntry : null
 })
 
-/** Top entry narrowed to the prospect search drawer. */
-const searchProspectsEntry: ComputedRef<SearchProspectsDrawerEntry | null> = computed(
-  (): SearchProspectsDrawerEntry | null => {
-    return drawerStack.topEntry?.kind === 'search-prospects' ? drawerStack.topEntry : null
+const prospectSearchEntry: ComputedRef<ProspectSearchDrawerEntry | null> = computed(
+  (): ProspectSearchDrawerEntry | null => {
+    return drawerStack.topEntry?.kind === 'prospect-search' ? drawerStack.topEntry : null
+  },
+)
+
+const prospectSearchLeadEntry: ComputedRef<ProspectSearchLeadDrawerEntry | null> = computed(
+  (): ProspectSearchLeadDrawerEntry | null => {
+    return drawerStack.topEntry?.kind === 'prospect-search-lead' ? drawerStack.topEntry : null
   },
 )
 
@@ -803,21 +816,70 @@ const route: ReturnType<typeof useRoute> = useRoute()
 /** Whether any drawer is currently open. */
 const isDrawerOpen: ComputedRef<boolean> = computed((): boolean => drawerStack.topEntry !== null)
 
+/** History position of the drawer entry, to tell a back (lower position) from a page rewriting its own address. */
+let drawerHistoryPosition: number | null = null
+
+/**
+ * Read the position Vue Router keeps in the browser history state.
+ * @returns The position of the current history entry, or null when the router has not set one.
+ */
+function readHistoryPosition(): number | null {
+  const position: unknown = window.history.state?.position
+  return typeof position === 'number' ? position : null
+}
+
+/**
+ * Add the drawer entry on top of the address the router is really on.
+ * `useRoute()` lags behind a navigation until the new page has rendered: the router's own route does not.
+ * @param shouldReplace - Rewrite the current entry instead of adding one (the page changed its own address).
+ * @returns A promise resolved once the address carries the drawer hash.
+ */
+async function addDrawerHistoryEntry(shouldReplace: boolean = false): Promise<void> {
+  const current: ReturnType<typeof useRoute> = router.currentRoute.value
+  const target: { path: string; query: typeof current.query; hash: string } = {
+    path: current.path,
+    query: current.query,
+    hash: DRAWER_HISTORY_HASH,
+  }
+  await (shouldReplace ? router.replace(target) : router.push(target))
+  drawerHistoryPosition = readHistoryPosition()
+}
+
 // Opening pushes the hash entry (same route → no remount), closing from the app pops it back.
 watch(isDrawerOpen, (open: boolean, wasOpen: boolean): void => {
-  if (open && !wasOpen && route.hash !== DRAWER_HISTORY_HASH) {
-    router.push({ path: route.path, query: route.query, hash: DRAWER_HISTORY_HASH })
-  } else if (!open && wasOpen && route.hash === DRAWER_HISTORY_HASH) {
+  const currentHash: string = router.currentRoute.value.hash
+  if (open && !wasOpen && currentHash !== DRAWER_HISTORY_HASH) {
+    addDrawerHistoryEntry()
+  } else if (!open && wasOpen && currentHash === DRAWER_HISTORY_HASH) {
     router.back()
   }
 })
 
 watch(
-  (): string => route.hash,
-  (hash: string, previousHash: string): void => {
+  (): [string, string] => [route.path, route.hash],
+  ([path, hash]: [string, string], [previousPath, previousHash]: [string, string]): void => {
+    const hasLostDrawerHash: boolean = previousHash === DRAWER_HISTORY_HASH && hash !== DRAWER_HISTORY_HASH
+    if (!hasLostDrawerHash || drawerStack.topEntry === null) return
+    const hasOpenedAnotherPage: boolean = path !== previousPath
+    const isDrawerCoveringPage: boolean = isMobile.value
+    if (!hasOpenedAnotherPage) {
+      const position: number | null = readHistoryPosition()
+      const hasPageRewrittenItsAddress: boolean =
+        position !== null && drawerHistoryPosition !== null && position >= drawerHistoryPosition
+      // A page changing its own filters in the address is not a back: the drawer stays.
+      if (hasPageRewrittenItsAddress) {
+        addDrawerHistoryEntry(true)
+        return
+      }
+    }
     // Back stripped the drawer hash while a drawer is open → close it, the page stays put.
-    if (previousHash === DRAWER_HISTORY_HASH && hash !== DRAWER_HISTORY_HASH && drawerStack.topEntry !== null) {
+    if (!hasOpenedAnotherPage || isDrawerCoveringPage) {
       drawerStack.closeAll()
+      return
+    }
+    drawerStack.keepPageIndependentEntries()
+    if (drawerStack.topEntry !== null) {
+      addDrawerHistoryEntry()
     }
   },
 )
@@ -841,8 +903,8 @@ onMounted((): void => {
   window.addEventListener('keydown', handleKeydown)
   document.addEventListener('touchstart', preventEdgeBackSwipe, { passive: false })
   // A drawer restored from sessionStorage on load has no hash yet — add one so back still closes it.
-  if (drawerStack.topEntry !== null && route.hash !== DRAWER_HISTORY_HASH) {
-    router.push({ path: route.path, query: route.query, hash: DRAWER_HISTORY_HASH })
+  if (drawerStack.topEntry !== null && router.currentRoute.value.hash !== DRAWER_HISTORY_HASH) {
+    addDrawerHistoryEntry()
   }
 })
 

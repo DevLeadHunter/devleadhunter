@@ -3,11 +3,19 @@ export type UiSidebarProps = {
   isMobile: boolean
 }
 
+export type UiSidebarCounterKey = 'pendingLeads'
+
 /** One navigation entry of the dashboard sidebar. */
 export type UiSidebarLink = {
   to: string
   label: string
   icon: string
+  counterKey?: UiSidebarCounterKey
+}
+
+export type UiSidebarCounter = {
+  count: number
+  description: string
 }
 
 /** A titled group of sidebar navigation entries. */

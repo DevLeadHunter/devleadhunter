@@ -71,7 +71,7 @@
             </p>
             <div class="flex items-center gap-2">
               <button class="app-btn-secondary h-8 px-3 text-xs" @click="selectAllFiltered">Tout sélectionner</button>
-              <button type="button" class="app-btn-secondary h-8 px-3 text-xs" @click="openSearchDrawer">
+              <button type="button" class="app-btn-secondary h-8 px-3 text-xs" @click="openSearchPage">
                 <UIcon name="i-lucide-search" class="h-3.5 w-3.5" />
                 Chercher plus
               </button>
@@ -86,7 +86,7 @@
             <p class="mt-4 text-sm text-[var(--app-ink-soft)]">
               Aucun prospect disponible — ceux déjà pris par une automatisation sont masqués.
             </p>
-            <button type="button" class="app-btn-primary mt-5 inline-flex" @click="openSearchDrawer">
+            <button type="button" class="app-btn-primary mt-5 inline-flex" @click="openSearchPage">
               Trouver des prospects
             </button>
           </div>
@@ -399,6 +399,7 @@ import { EmailTemplatesService } from '~/services/emailTemplatesService'
 import { DEFAULT_DEMO_SITE_THEME, DemoSiteService } from '~/services/demoSiteService'
 import { useDrawerStackStore } from '~/stores/drawerStack'
 import { useProspectSearchStore } from '~/stores/prospectSearch'
+import { PROSPECT_SEARCH_PAGE_PATH } from '~/constants/prospectSearch'
 import { useDashboardScroll } from '~/composables/useDashboardScroll'
 import { useToast } from '~/composables/useToast'
 import { sortTemplatesByRecommendation } from '~/utils/templateRecommendation'
@@ -951,9 +952,9 @@ watch([searchQuery, filterCity, filterCategory, filterWebsite], (): void => {
   currentPage.value = 1
 })
 
-/** Open the prospect-search drawer without leaving the tunnel. */
-function openSearchDrawer(): void {
-  drawerStack.push({ kind: 'search-prospects' })
+/** Open the new-search page; the tunnel draft is saved, so coming back loses nothing. */
+function openSearchPage(): void {
+  navigateTo(PROSPECT_SEARCH_PAGE_PATH)
 }
 
 /** Open the send-policy drawer without leaving the tunnel. */
@@ -998,7 +999,7 @@ async function reloadProspects(isBackgroundRefresh: boolean = false): Promise<vo
   }
 }
 
-// A search launched from the « Chercher plus » drawer keeps creating prospects while it runs.
+// A search keeps creating prospects while it runs.
 watch(
   (): number => searchStore.prospectsCreatedSignal,
   (): void => {

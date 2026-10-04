@@ -15,7 +15,7 @@ const WEBSITES_NAV: UiSidebarGroup[] = [
   {
     heading: 'Prospection',
     links: [
-      { to: '/dashboard/my-prospects', label: 'Mes prospects', icon: 'i-lucide-users' },
+      { to: '/dashboard/my-prospects', label: 'Mes prospects', icon: 'i-lucide-users', counterKey: 'pendingLeads' },
       { to: '/dashboard/coverage', label: 'Carte de prospection', icon: 'i-lucide-map' },
       { to: '/dashboard/demo-sites', label: 'Sites démo', icon: 'i-lucide-app-window' },
       { to: '/dashboard/campaigns', label: 'Campagnes', icon: 'i-lucide-megaphone' },
@@ -40,7 +40,7 @@ const AI_ASSISTANT_NAV: UiSidebarGroup[] = [
   {
     heading: 'Prospection',
     links: [
-      { to: '/dashboard/my-prospects', label: 'Mes prospects', icon: 'i-lucide-users' },
+      { to: '/dashboard/my-prospects', label: 'Mes prospects', icon: 'i-lucide-users', counterKey: 'pendingLeads' },
       { to: '/dashboard/coverage', label: 'Carte de prospection', icon: 'i-lucide-map' },
       { to: '/dashboard/ai-assistants', label: 'Réceptionnistes IA', icon: 'i-lucide-bot' },
       { to: '/dashboard/ai-assistants/requests', label: 'Demandes', icon: 'i-lucide-inbox' },

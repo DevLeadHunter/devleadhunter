@@ -2,7 +2,7 @@ import type { EmailLog, EmailTemplate, Prospect, ProspectCountry, User } from '~
 import type { AiAssistantRequestItem, AiAssistantSummary, AssistantSubscription } from '~/types/AiAssistant'
 import type { Order } from '~/services/ordersService'
 import type { SmsMessage } from '~/services/smsService'
-import type { SearchProspectsPrefill } from '~/types/UiSearchProspectsDrawer'
+import type { ProspectSearchCandidate } from '~/types/ProspectSearch'
 import type { CampaignDetailResponse } from '~/services/campaignService'
 import type { SelectFieldOption } from '~/types/SelectField'
 
@@ -109,9 +109,13 @@ export type AddProspectDrawerEntry = {
   kind: 'add-prospect'
 }
 
-export type SearchProspectsDrawerEntry = {
-  kind: 'search-prospects'
-  prefill?: SearchProspectsPrefill
+export type ProspectSearchDrawerEntry = {
+  kind: 'prospect-search'
+}
+
+export type ProspectSearchLeadDrawerEntry = {
+  kind: 'prospect-search-lead'
+  candidate: ProspectSearchCandidate
 }
 
 /** Picker attaching existing prospects to a campaign (from its Prospects tab). */
@@ -211,7 +215,8 @@ export type DrawerStackEntry =
   | OrganizationDrawerEntry
   | CampaignFormDrawerEntry
   | AddProspectDrawerEntry
-  | SearchProspectsDrawerEntry
+  | ProspectSearchDrawerEntry
+  | ProspectSearchLeadDrawerEntry
   | CampaignProspectsPickerDrawerEntry
   | CampaignReplyDrawerEntry
   | SendPolicyDrawerEntry
@@ -224,6 +229,8 @@ export type DrawerStackEntry =
   | AssistantSourcesDrawerEntry
   | AssistantRequestDrawerEntry
   | UserFormDrawerEntry
+
+export type DrawerStackEntryKind = DrawerStackEntry['kind']
 
 /** Cross-page notice describing the latest prospect mutation done from a drawer. */
 export type ProspectMutationNotice = { type: 'updated'; prospect: Prospect } | { type: 'deleted'; prospectId: number }

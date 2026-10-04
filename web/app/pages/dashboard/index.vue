@@ -137,7 +137,7 @@
             <p class="max-w-xs text-xs text-[var(--app-ink-soft)]">
               Les prospects qui ouvrent vos emails et visitent leur démo apparaîtront ici.
             </p>
-            <button type="button" class="app-btn-primary mt-3" @click="openSearchDrawer">
+            <button type="button" class="app-btn-primary mt-3" @click="openSearchPage">
               <UIcon name="i-lucide-search" class="h-4 w-4" />
               Trouver des prospects
             </button>
@@ -150,7 +150,7 @@
             <button
               type="button"
               class="group flex w-full cursor-pointer items-center gap-3 rounded-xl border border-[var(--app-line)] bg-[var(--app-bg)] px-3 py-2.5 text-left transition-all hover:-translate-y-0.5 hover:border-[var(--app-ink-soft)]"
-              @click="openSearchDrawer"
+              @click="openSearchPage"
             >
               <span
                 class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-[var(--app-line)] bg-[var(--app-blue-soft)]"
@@ -297,6 +297,7 @@ import type { EmailHealthTrendDay } from '~/services/emailHealthService'
 import { EmailHealthService } from '~/services/emailHealthService'
 import { ProspectsService } from '~/services/prospectsService'
 import { useDrawerStackStore } from '~/stores/drawerStack'
+import { PROSPECT_SEARCH_PAGE_PATH } from '~/constants/prospectSearch'
 
 definePageMeta({
   layout: 'dashboard',
@@ -460,9 +461,9 @@ function formatCents(cents: number): string {
   return `${euros.toLocaleString('fr-FR', { maximumFractionDigits: euros % 1 === 0 ? 0 : 2 })} €`
 }
 
-/** Open the prospect-search drawer (same entry point as the search page). */
-function openSearchDrawer(): void {
-  drawerStack.push({ kind: 'search-prospects' })
+/** Open the new-search page. */
+function openSearchPage(): void {
+  navigateTo(PROSPECT_SEARCH_PAGE_PATH)
 }
 
 /**

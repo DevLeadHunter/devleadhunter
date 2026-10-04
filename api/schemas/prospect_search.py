@@ -5,12 +5,14 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Annotated
 
-from pydantic import BaseModel, ConfigDict, Field, StringConstraints
+from pydantic import BaseModel, ConfigDict, Field, StringConstraints, model_validator
 
-from enums.prospect_search import ProspectSearchChannel
+from enums.prospect_search import ProspectSearchChannel, ProspectSearchValidationMode
 
 TypedTrade = Annotated[str, StringConstraints(max_length=60)]
 TypedCity = Annotated[str, StringConstraints(max_length=80)]
+
+_MAX_DECISIONS_PER_REQUEST: int = 100
 
 
 class ProspectSearchCreate(BaseModel):
@@ -23,6 +25,10 @@ class ProspectSearchCreate(BaseModel):
     channel: ProspectSearchChannel = Field(ProspectSearchChannel.EMAIL, description="Contact the prospects must allow")
     only_without_website: bool = Field(True, description="Discard a business with a working website")
     minimum_rating: float | None = Field(None, ge=0, le=5, description="Google rating floor")
+    validation_mode: ProspectSearchValidationMode = Field(
+        ProspectSearchValidationMode.MANUAL,
+        description="Whether the user accepts each candidate, or the search creates the prospects itself",
+    )
 
 
 class SearchTradeOption(BaseModel):
@@ -61,6 +67,7 @@ class ProspectSearchSummary(BaseModel):
     channel: str
     only_without_website: bool
     minimum_rating: float | None
+    validation_mode: str
     status: str
     request_count: int
     judge_call_count: int
@@ -87,6 +94,7 @@ class ProspectSearchCandidateResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     id: int
+    search_id: int
     trade: str
     origin: str
     searched_city: str | None
@@ -112,6 +120,8 @@ class ProspectSearchCandidateResponse(BaseModel):
     reject_detail: str | None
     evidence: list[CandidateEvidenceLine]
     prospect_id: int | None
+    is_pending: bool = Field(description="Waits for the user to accept or refuse it")
+    created_at: datetime
 
 
 class SearchJournalLine(BaseModel):
@@ -144,3 +154,41 @@ class FacebookContactPayload(BaseModel):
     emails: list[str] = Field(default_factory=list, max_length=20)
     phone: str | None = None
     website: str | None = None
+
+
+class ProspectSearchActivity(BaseModel):
+    """What the user has in progress: candidates waiting for a decision, and the search still at work."""
+
+    pending_count: int
+    active_search: ProspectSearchSummary | None
+
+
+class CandidateDecisions(BaseModel):
+    """Candidates the user accepts and candidates the user refuses, in one request."""
+
+    accept: list[int] = Field(default_factory=list, description="Candidates that become prospects")
+    reject: list[int] = Field(default_factory=list, description="Candidates discarded for good")
+
+    @model_validator(mode="after")
+    def check_the_decisions_are_few_and_distinct(self) -> CandidateDecisions:
+        """Refuse a request deciding too many candidates, or accepting and refusing the same one."""
+        if len(self.accept) + len(self.reject) > _MAX_DECISIONS_PER_REQUEST:
+            raise ValueError(f"Pas plus de {_MAX_DECISIONS_PER_REQUEST} décisions à la fois.")
+        if set(self.accept) & set(self.reject):
+            raise ValueError("Un même candidat ne peut pas être accepté et refusé.")
+        return self
+
+
+class RefusedCandidateDecision(BaseModel):
+    """A decision that could not be applied, with the reason in the user's words."""
+
+    candidate_id: int
+    detail: str
+
+
+class CandidateDecisionsOutcome(BaseModel):
+    """How many decisions were applied, and the ones that were not."""
+
+    accepted: int
+    rejected: int
+    refused: list[RefusedCandidateDecision] = Field(default_factory=list)

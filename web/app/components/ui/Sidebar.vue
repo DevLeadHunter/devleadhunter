@@ -134,6 +134,14 @@
               <span :class="navBarClass(isActive(link.to))"></span>
               <UIcon :name="link.icon" class="h-4 w-4 shrink-0" />
               <span class="truncate">{{ link.label }}</span>
+              <span
+                v-if="link.counterKey && counters[link.counterKey].count > 0"
+                class="font-label ml-auto shrink-0 rounded-full bg-[var(--app-accent-soft)] px-1.5 py-0.5 text-[10px] leading-none font-medium text-[var(--app-accent-ink)] tabular-nums"
+                :title="counters[link.counterKey].description"
+                :aria-label="counters[link.counterKey].description"
+              >
+                {{ counters[link.counterKey].count }}
+              </span>
             </NuxtLink>
           </div>
         </div>
@@ -293,7 +301,14 @@
 import type { UseAuthReturn, UseDesktopRuntimeReturn, UseProfilePhotoReturn, UseToastReturn } from '~/types/Composables'
 import type { ComputedRef, Ref } from 'vue'
 import type { AppTheme } from '~/types/AppTheme'
-import type { DlhModule, UiSidebarGroup, UiSidebarLink, UiSidebarProps } from '~/types/UiSidebar'
+import type {
+  DlhModule,
+  UiSidebarCounter,
+  UiSidebarCounterKey,
+  UiSidebarGroup,
+  UiSidebarLink,
+  UiSidebarProps,
+} from '~/types/UiSidebar'
 import { ref, computed, onMounted } from 'vue'
 import { DASHBOARD_MODULES } from '~/utils/dashboardModules'
 import { useModuleStore } from '~/stores/moduleStore'
@@ -302,6 +317,7 @@ import { useAuth } from '~/composables/useAuth'
 import { useAppTheme } from '~/composables/useAppTheme'
 import { useCommandPalette } from '~/composables/useCommandPalette'
 import { useDrawerStackStore } from '~/stores/drawerStack'
+import { useProspectSearchStore } from '~/stores/prospectSearch'
 import { useToast } from '~/composables/useToast'
 import { useHorizontalSwipe } from '~/composables/useHorizontalSwipe'
 import { useProfilePhoto } from '~/composables/useProfilePhoto'
@@ -421,6 +437,20 @@ const activeNavPath: ComputedRef<string | null> = computed((): string | null => 
     return best === null || candidate.length > best.length ? candidate : best
   }, null)
 })
+
+const prospectSearchStore: ReturnType<typeof useProspectSearchStore> = useProspectSearchStore()
+
+const counters: ComputedRef<Record<UiSidebarCounterKey, UiSidebarCounter>> = computed(
+  (): Record<UiSidebarCounterKey, UiSidebarCounter> => {
+    const pendingLeadCount: number = prospectSearchStore.pendingCount
+    return {
+      pendingLeads: {
+        count: pendingLeadCount,
+        description: pendingLeadCount > 1 ? `${pendingLeadCount} leads à valider` : '1 lead à valider',
+      },
+    }
+  },
+)
 
 /** The active module (drives the switcher label and the primary CTA). */
 const activeModule: ComputedRef<DlhModule> = computed((): DlhModule => moduleStore.activeModule)

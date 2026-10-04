@@ -1,5 +1,6 @@
 import type { ComputedRef, MaybeRefOrGetter, Ref } from 'vue'
 import type { LoginCredentials, SignupPayload, User } from '~/types'
+import type { ProspectSearchCandidate } from '~/types/ProspectSearch'
 
 export type UseAuthReturn = {
   login: (credentials: LoginCredentials) => Promise<void>
@@ -49,11 +50,30 @@ export type UseProfilePhotoReturn = {
   refreshProfilePhoto: () => Promise<void>
 }
 
+export type ToastAction = {
+  label: string
+  onSelect: () => void
+}
+
+export type ToastCallOptions = {
+  action?: ToastAction
+  duration?: number
+}
+
 export type UseToastReturn = {
-  success: (message: string) => void
-  error: (message: string) => void
-  info: (message: string) => void
-  warning: (message: string) => void
+  success: (message: string, options?: ToastCallOptions) => void
+  error: (message: string, options?: ToastCallOptions) => void
+  info: (message: string, options?: ToastCallOptions) => void
+  warning: (message: string, options?: ToastCallOptions) => void
+}
+
+export type UseProspectSearchDecisionsReturn = {
+  acceptLead: (candidate: ProspectSearchCandidate) => Promise<boolean>
+  rejectLead: (candidate: ProspectSearchCandidate) => Promise<boolean>
+  acceptLeads: (candidates: ProspectSearchCandidate[]) => Promise<void>
+  rejectLeads: (candidates: ProspectSearchCandidate[]) => Promise<void>
+  openLead: (candidate: ProspectSearchCandidate, browsedCandidates?: ProspectSearchCandidate[]) => void
+  showPendingLeads: () => Promise<void>
 }
 
 /** Options of the horizontal-swipe gesture composable (`useHorizontalSwipe`). */

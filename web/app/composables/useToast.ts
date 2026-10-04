@@ -1,4 +1,4 @@
-import type { UseToastReturn } from '~/types/Composables'
+import type { ToastAction, ToastCallOptions, UseToastReturn } from '~/types/Composables'
 import type { Ref } from 'vue'
 
 /** Toast queue shared between `useToast` callers and `UiToastHost`. */
@@ -12,12 +12,14 @@ export type ToastItem = {
   message: string
   type: ToastType
   duration: number
+  action?: ToastAction
 }
 
-type ToastOptions = {
-  duration?: number
-  type?: ToastType
-}
+const DEFAULT_DURATION_MS: number = 3500
+
+const ERROR_DURATION_MS: number = 5000
+
+const TOAST_WITH_BUTTON_DURATION_MS: number = 7000
 
 let nextToastId: number = 1
 
@@ -37,26 +39,37 @@ export function useToast(): UseToastReturn {
   const queue: Ref<ToastItem[]> = useToastQueue()
 
   /**
+   * Choose how long a toast stays on screen.
+   * @param type - Visual family of the toast.
+   * @param options - Optional button and auto-dismiss duration.
+   * @returns The duration asked for, else the one of a toast with a button, of an error, or the default one.
+   */
+  function resolveDuration(type: ToastType, options: ToastCallOptions): number {
+    if (options.duration !== undefined) return options.duration
+    if (options.action) return TOAST_WITH_BUTTON_DURATION_MS
+    if (type === 'error') return ERROR_DURATION_MS
+    return DEFAULT_DURATION_MS
+  }
+
+  /**
    * Push a toast into the queue (client only — SSR renders nothing).
    * @param message - Text shown to the user.
-   * @param options - Type + auto-dismiss duration.
+   * @param type - Visual family of the toast.
+   * @param options - Optional button and auto-dismiss duration.
    */
-  const showToast: (message: string, options?: ToastOptions) => void = (
-    message: string,
-    options: ToastOptions = {},
-  ): void => {
+  function showToast(message: string, type: ToastType, options: ToastCallOptions = {}): void {
     if (import.meta.server || !import.meta.client) {
       return
     }
-    const { type = 'info', duration = 3500 }: ToastOptions = options
-    queue.value = [...queue.value, { id: nextToastId++, message, type, duration }]
+    const duration: number = resolveDuration(type, options)
+    queue.value = [...queue.value, { id: nextToastId++, message, type, duration, action: options.action }]
   }
 
   return {
-    success: (message: string): void => showToast(message, { type: 'success' }),
-    error: (message: string): void => showToast(message, { type: 'error', duration: 5000 }),
-    info: (message: string): void => showToast(message, { type: 'info' }),
-    warning: (message: string): void => showToast(message, { type: 'warning' }),
+    success: (message: string, options?: ToastCallOptions): void => showToast(message, 'success', options),
+    error: (message: string, options?: ToastCallOptions): void => showToast(message, 'error', options),
+    info: (message: string, options?: ToastCallOptions): void => showToast(message, 'info', options),
+    warning: (message: string, options?: ToastCallOptions): void => showToast(message, 'warning', options),
   }
 }
 

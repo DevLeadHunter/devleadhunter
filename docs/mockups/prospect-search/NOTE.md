@@ -6,7 +6,7 @@
 |---|---|---|
 | `recherche-v2.html` : trois directions (la phrase, le parcours, le fil) | 4 octobre 2026 | **Refusée** : « aucune ne me plaît » |
 | `vivier-v3.html` : le vivier de leads en direct | 4 octobre 2026 | Direction retenue (« ça me plaît bien »), remplacée par la v4 |
-| `vivier-v4.html` : les leads en direct, version reprise, avec la page « Nouvelle recherche » | 4 octobre 2026 | En attente de décision |
+| `vivier-v4.html` : les leads en direct, version reprise, avec la page « Nouvelle recherche » | 4 octobre 2026 | **Refusée** : hors de ce qui existe dans le logiciel |
 
 ## Ce qui est demandé
 
@@ -104,3 +104,27 @@ distingue de « Mes prospects », qui reçoit les leads acceptés.
 1. Le nom du menu : Leads, Radar ou Chasse.
 2. Le mode par défaut : « Je valide » ou « Automatique ».
 3. Un essai sur cinq leads avant la vraie recherche (vu chez Parallel et Clay) : utile ou non.
+
+## Retour sur la v4 et décisions prises (4 octobre, soir)
+
+Retour : l'icône du menu ne plaît pas ; le suivi posé en bas du menu occupe une place déjà prise par
+les crédits et le compte ; la barre de progression n'est pas bonne ; seule la table tient à peu près ;
+la page « Nouvelle recherche » ne va ni pour le visuel, ni pour l'usage, ni pour l'accord avec le
+logiciel. Demande : beaucoup plus professionnel, plus fonctionnel, plus adapté à DevLeadHunter.
+
+Cause : les maquettes inventaient une coquille au lieu de partir des vraies pages. Dans le logiciel,
+la recherche s'ouvre déjà depuis Mes prospects, la Carte de prospection, le tunnel d'automatisation
+et l'accueil ; « Mes prospects » est déjà le vivier (cartes de chiffres, filtres, onglets, tableau) ;
+les volets restent ouverts d'une page à l'autre.
+
+Quatre décisions, prises sur question :
+
+| Sujet | Décision |
+|---|---|
+| Où vivent les leads à valider | Dans « Mes prospects », onglet « À valider » devant « Pas contacté » et « Contacté » |
+| Lancer une recherche | Une page dédiée, sur le modèle du tunnel d'automatisation (étapes en haut, barre « Continuer » en bas) |
+| Suivre depuis une autre page | Un volet « Recherche en cours » qui reste ouvert, et, fermé, un compteur dans le menu plus une notification par lead avec Accepter et Refuser |
+| Validation | Un réglage par recherche : « Je valide » ou « Automatique » |
+
+La suite ne passe plus par une maquette HTML : elle est construite dans le logiciel, avec ses
+composants, sur la branche de travail, et montrée par de vraies captures avant toute mise en ligne.
