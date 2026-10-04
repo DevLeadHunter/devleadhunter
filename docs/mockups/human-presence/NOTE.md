@@ -4,7 +4,7 @@ Ticket Asana « [IA Code] Présence humaine sur la démo : carte « Qui est derr
 
 **État au 03/10** : les choix 1 à 3 sont tranchés (carte en variante C, bouton « Me répondre », prix et date partout) et la carte est en ligne. Les choix 4 à 8 attendent. Voir « Décisions et avis » plus bas.
 
-**04/10** : l'email a sa maquette de décision (`email-frank-finalistes.html`, refaite le jour même sur l'état réel de la prod), quatrième version : trois propositions sans logo, avec l'image du site sans cadre, le lien toujours écrit et le tableau « Votre demande » de dibodev.fr ; avis donné : « le tableau à la place du texte ». La signature est cochée sur les 51 modèles de prod depuis le 04/10. Voir « Finalistes » dans la partie 3.
+**04/10** : l'email a sa maquette de décision (`email-frank-finalistes.html`, refaite le jour même sur l'état réel de la prod), quatrième version : trois propositions sans logo, avec l'image du site sans cadre, le lien toujours écrit et le tableau « Votre demande » de dibodev.fr ; avis donné : « le tableau à la place du texte », sans titre et sans image du site. La signature est cochée sur les 51 modèles de prod depuis le 04/10. Voir « Finalistes » dans la partie 3.
 
 Ouvrir les maquettes dans un navigateur (double-clic suffit, aucun serveur) :
 
@@ -86,7 +86,7 @@ Les cinq versions de la maquette (quatrième version) :
 - **2 · Le récapitulatif en trois lignes** : le texte du modèle en entier, puis le tableau « En bref » à trois lignes courtes (le lien, « 500 €, une seule fois », la date de retrait), fabriqué avec les variables. C'est la demande de Léo au plus près.
 - **3 · Simple, sans tableau** : texte, lien dans sa phrase, image, bouton, prix et date en gras. Ni titre ni tableau.
 
-Dans les trois : pas de logo, signature de prod inchangée, pied discret. Le mail vidéo garde sa vignette (sur toute la largeur de la carte) et sa ligne « La vidéo : lien », sans bouton. La réceptionniste n'a pas d'image tant qu'on n'a pas de capture de sa page. Un bouton « Image du site : avec / sans » montre chaque proposition sans la capture.
+Dans les trois : pas de logo, signature de prod inchangée, pied discret. Le mail vidéo garde sa vignette (sur toute la largeur de la carte) et sa ligne « La vidéo : lien », sans bouton. La réceptionniste n'a pas d'image tant qu'on n'a pas de capture de sa page. Deux réglages « Image du site » et « Titre » (avec / sans) s'appliquent aux trois propositions ; la page s'ouvre sur le choix donné à Léo (la 1, sans titre, sans image).
 
 Mesures sur « Franc - premier contact », image du site comprise (« mots lus » = le corps du mail sans la signature ni le pied) :
 
@@ -98,7 +98,17 @@ Mesures sur « Franc - premier contact », image du site comprise (« mots lus �
 | 3 · Simple, sans tableau | 6 | 9 | 78 | 6,4 Ko |
 | Le mail de dibodev.fr (MJML) | 6 | 8 | 161 | 28,7 Ko |
 
-Avis donné, sans aller dans le sens de Léo : **la 1**. Elle reprend son idée du tableau, mais les lignes portent le texte du modèle : rien n'est dit deux fois et le mail garde la longueur d'aujourd'hui. La 2 est la plus proche du mail de dibodev.fr, mais le lien, le prix et la date y sont écrits deux fois, et son tableau ne dit ni quoi répondre ni comment refuser. Réserves dites à Léo : aucun chiffre ne prouve qu'un mail habillé fait mieux que le mail simple (les 35 % de clics de la vague 3 viennent d'un mail sans image ni mise en page), donc tester la 1 contre le mail simple sur une campagne ; le titre répète l'objet du mail ; l'image du site montre parfois une photo par défaut du métier.
+Avis donné le 04/10, à la demande de Léo (« ton choix honnête, avec quelles options ») : **la 1, sans titre, sans image du site**.
+
+- La 1 plutôt que la 2 ou la 3 : le tableau range le texte du modèle sans rien ajouter ni répéter ; la 2 dit le lien, le prix et la date deux fois ; dans la 3, le prix et la date restent dans les phrases.
+- Sans le titre : il répète l'objet affiché par la messagerie juste au-dessus, et l'aperçu de la boîte de réception commencerait par cette répétition au lieu de « Bonjour, je fais des sites web… ».
+- Sans l'image du site pour l'instant : elle n'existe pas pour les démos sans vidéo (à fabriquer) ; elle montre le site avant le clic alors que c'est sur le site que le prospect répond ; c'est le plus gros changement pour les filtres par rapport au mail de la vague 3. À tester ensuite, seule.
+- Le mail vidéo garde sa vignette.
+- Par rapport au mail d'aujourd'hui : mieux, mais de peu. Le plus gros gain était la signature (faite). Rien ne prouve que l'habillage rapporte plus de réponses : l'envoyer sur la moitié d'une campagne, le mail simple sur l'autre.
+
+Mesures du choix sur « Franc - premier contact » : 5 images (celles de la signature), 8 liens, 75 mots lus, 7,4 Ko (aujourd'hui : 5 images, 7 liens, 76 mots, 4,6 Ko).
+
+Vérification du 04/10 sur les 30 modèles actifs de prod (règle de la proposition 1) : les corps ne contiennent que des `<p>`, des `<ul>` et des vignettes ; 29 modèles passent dans le tableau (20 en Prix / Date / Réponse, 6 en Prix / Réponse, 3 en Prix / Date), 1 reste en texte (n° 38 « le prix, sans détour » : son prix est écrit avant le lien). Trois garde-fous à coder : compter `{lien_carte}` et `{prix_carte}` (carte de fidélité) parmi les liens et les prix ; commencer le tableau après le dernier lien ou la dernière vignette (n° 34 à 36 ont un lien puis une vignette) ; avec moins de deux lignes, laisser le texte en texte. Les variables utilisées par les modèles actifs existent toutes à l'envoi ; le choix donné n'a besoin ni de capture ni de titre.
 
 Écartées en chemin, à ne pas reproposer : le logo Dibodev en haut du mail ; le lien sur une ligne violette terminée par une flèche en texte ; la grosse carte violette numérotée « L'essentiel » ; l'image du site dans un cadre de navigateur ; un bouton sans le lien écrit ; une signature réécrite ou allégée ; un « Aujourd'hui » dessiné sans lire la prod ; une vignette vidéo inventée.
 
@@ -122,7 +132,7 @@ Avis donné, sans aller dans le sens de Léo : **la 1**. Elle reprend son idée 
 | 3 | Prix et date dans la carte | **Tranché : partout** (une démo jamais envoyée n'affiche pas de date) | |
 | 4 | Réceptionniste dans le bandeau | En attente | Après le lancement, pour mesurer la carte seule ; ensuite la position 1 (un seul objet, une seule identité) |
 | 5 | Persona | En attente | Léa, présentée comme l'assistante IA de l'expéditeur (la même que sur dibodev.fr) |
-| 6 | Email | En attente (maquette du 04/10, quatrième version, `email-frank-finalistes.html`) | La 1, « le tableau à la place du texte » : titre, lien dans sa phrase, image du site nue, bouton violet, tableau façon « Votre demande » dont les lignes sont les phrases du modèle. À tester contre le mail simple avant de généraliser |
+| 6 | Email | En attente (maquette du 04/10, quatrième version, `email-frank-finalistes.html`) | La 1, « le tableau à la place du texte », sans titre et sans image du site : lien dans sa phrase, bouton violet, tableau façon « Votre demande » dont les lignes sont les phrases du modèle. Vérifié sur les 30 modèles actifs. À tester contre le mail simple avant de généraliser |
 | 7 | Signature | **Tranché et fait le 04/10 : la signature sur tous les mails.** Cochée sur les 51 modèles de prod | Reste à corriger dans le code : un modèle créé par le seeder ou par un fork naît sans signature |
 | 8 | Copie de Léa | En attente | « Le nom de domaine est compris » est exact ; « sous 48 h » seulement si c'est tenable à chaque vente, sinon « dans les jours qui suivent le paiement ». Le tiret du modèle 30 ne compte plus : les modèles de la bibliothèque n'en ont pas |
 

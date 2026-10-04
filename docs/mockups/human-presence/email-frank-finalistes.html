@@ -71,16 +71,21 @@
 <body>
 <header>
   <h1>Mail de prospection : aujourd'hui, et les propositions</h1>
-  <p>Ce qui part aujourd'hui, le mail que reçoit un client de dibodev.fr, puis trois propositions. Dans les trois : pas de logo, l'image du site sans cadre autour, le lien toujours écrit en clair, un bouton, ta signature telle quelle. Exemple fictif : Menuiserie Lefort.</p>
+  <p>Ce qui part aujourd'hui, le mail que reçoit un client de dibodev.fr, puis trois propositions. Dans les trois : pas de logo, le lien toujours écrit en clair, un bouton, ta signature telle quelle. Le titre et l'image du site se règlent avec les deux boutons « Avec / Sans ». Exemple fictif : Menuiserie Lefort.</p>
 </header>
 
 <div class="block">
   <div class="sheet verdict">
-    <h2>Mon avis, sans aller dans ton sens</h2>
-    <p><strong>Mon choix : la 1, le tableau à la place du texte.</strong> C'est ton idée du tableau « Votre demande », avec une différence : chaque ligne porte une phrase de ton modèle (prix, date, réponse). Rien n'est dit deux fois, et le mail garde la longueur d'aujourd'hui (79 mots contre 76).</p>
-    <p><strong>La 2 est celle que tu décris :</strong> trois lignes courtes, comme « Votre demande ». C'est la plus proche du mail de dibodev.fr. Mais le lien, le prix et la date y sont écrits deux fois, et le tableau ne dit ni quoi répondre ni comment refuser. Pour un premier contact, je garde la version la plus courte qui dit tout.</p>
-    <p><strong>Ce que je ne peux pas te promettre :</strong> qu'un mail habillé fasse mieux que le mail simple. Le seul chiffre qu'on a, 35 % de clics en vague 3, vient d'un mail sans image ni mise en page. La 3 reste la plus proche de ce mail-là. Je testerais la 1 contre le mail simple sur une campagne avant de tout basculer.</p>
-    <p><strong>Deux réserves :</strong> dans la 1 et la 2, le titre répète l'objet du mail, que la messagerie affiche déjà juste au-dessus. Et l'image du site montre parfois une photo par défaut du métier, pas le commerce du prospect.</p>
+    <h2>Le mail que j'enverrais : la 1, sans titre, sans image du site</h2>
+    <p>C'est le réglage affiché à l'ouverture de cette page.</p>
+    <ul>
+      <li><strong>La 1 plutôt que la 2 ou la 3.</strong> Le tableau range ton texte (prix, date, réponse) sans rien ajouter ni répéter. La 2 dit le lien, le prix et la date deux fois. La 3 est correcte, mais le prix et la date y restent noyés dans les phrases.</li>
+      <li><strong>Sans le titre.</strong> Il répète l'objet, que la messagerie affiche déjà juste au-dessus. Et dans la boîte de réception, l'aperçu commencerait par cette répétition au lieu de « Bonjour, je fais des sites web… », qui est ta meilleure accroche. Le titre est fait pour un mail qu'on attend, comme celui de dibodev.fr.</li>
+      <li><strong>Sans l'image du site, pour l'instant.</strong> Trois raisons. Elle n'existe pas aujourd'hui pour les démos sans vidéo : il faudrait la fabriquer. Elle montre le site avant le clic, alors que c'est sur le site que le prospect te répond. Et c'est le plus gros changement pour les filtres par rapport au mail de la vague 3, qui n'avait aucune image. Je la testerais ensuite, seule, sur une campagne.</li>
+      <li><strong>Le mail vidéo garde sa vignette.</strong> Là, l'image promet une vidéo : elle donne envie de cliquer.</li>
+      <li><strong>Plutôt que le mail d'aujourd'hui ?</strong> Oui, mais de peu. Le plus gros gain était la signature, et il est fait. L'habillage rend le mail plus net ; rien ne prouve qu'il rapporte plus de réponses. Je l'enverrais sur la moitié d'une campagne, le mail simple sur l'autre, et je garderais le gagnant.</li>
+    </ul>
+    <p><strong>Vérifié sur tes 30 modèles actifs :</strong> 29 passent dans le tableau (prix, date, réponse selon ce que le modèle contient), 1 reste en texte parce que son prix est écrit avant le lien. Aucun modèle n'est à réécrire, et le réglage choisi n'utilise que des données qu'on a déjà.</p>
   </div>
 </div>
 
@@ -92,8 +97,14 @@
   </label>
   <span class="group">Image du site
     <span class="switch" id="image-switch" role="group" aria-label="Image du site dans le mail">
-      <button type="button" data-image="on" class="is-active">Avec</button>
-      <button type="button" data-image="off">Sans</button>
+      <button type="button" data-image="on">Avec</button>
+      <button type="button" data-image="off" class="is-active">Sans</button>
+    </span>
+  </span>
+  <span class="group">Titre
+    <span class="switch" id="title-switch" role="group" aria-label="Titre en haut du mail">
+      <button type="button" data-title="on">Avec</button>
+      <button type="button" data-title="off" class="is-active">Sans</button>
     </span>
   </span>
 </div>
@@ -120,7 +131,7 @@
         <tbody id="compare-body"></tbody>
       </table>
     </div>
-    <p style="margin-top:12px;">Chiffres mesurés sur le modèle « Franc - premier contact », image du site comprise. « Mots lus » compte le texte du mail sans la signature ni le pied.</p>
+    <p style="margin-top:12px;">Chiffres mesurés sur le modèle « Franc - premier contact », avec les réglages « Image du site » et « Titre » choisis plus haut. « Mots lus » compte le texte du mail sans la signature ni le pied.</p>
   </div>
 </div>
 
@@ -128,10 +139,10 @@
   <div class="sheet">
     <h2>Côté logiciel</h2>
     <ul>
-      <li><strong>Un habillage posé à l'envoi</strong>, sans réécrire aucun modèle. Le titre est l'objet du mail ; le lien reste dans sa phrase ; l'image et le bouton se placent dessous.</li>
-      <li><strong>Proposition 1 :</strong> les paragraphes qui suivent le lien deviennent les lignes du tableau. Le libellé vient de ce que contient le paragraphe : « Prix » s'il contient le prix, « Date » s'il contient la date de retrait, « Réponse » sinon.</li>
+      <li><strong>Un habillage posé à l'envoi</strong>, sans réécrire aucun modèle. Le lien reste dans sa phrase ; le bouton se place dessous. Le titre, s'il est gardé, est l'objet du mail.</li>
+      <li><strong>Proposition 1 :</strong> les paragraphes qui suivent le lien deviennent les lignes du tableau. Le libellé vient de ce que contient le paragraphe : « Prix » s'il contient le prix, « Date » s'il contient la date de retrait, « Réponse » sinon. Trois garde-fous : le tableau commence après le dernier lien ou la dernière vignette ; avec moins de deux lignes, le texte reste du texte ; un modèle sans lien reste du texte.</li>
       <li><strong>Proposition 2 :</strong> le tableau est fabriqué avec ce que l'outil connaît déjà : le lien, le prix, la date de retrait.</li>
-      <li><strong>L'image du site</strong> est la capture que la vidéo utilise déjà. Il faut la produire aussi pour les démos sans vidéo. Sans capture, le mail part sans image : le lien et le bouton suffisent.</li>
+      <li><strong>L'image du site</strong> est la capture que la vidéo utilise déjà. Elle n'existe pas pour les démos sans vidéo : il faudrait la produire. Sans elle, le mail part sans image : le lien et le bouton suffisent.</li>
       <li><strong>Un réglage par modèle</strong> (habillé ou simple) : le test A/B qui existe déjà compare alors le même texte, habillé ou non.</li>
       <li><strong>La signature, le lien de désinscription et ses en-têtes</strong> ne changent pas. La couleur vient du profil.</li>
     </ul>
@@ -202,17 +213,17 @@
       pitch: "Le mail que reçoit un client qui remplit le formulaire de dibodev.fr, rendu avec les fichiers du dépôt dibodev.fr. Le tableau « Votre demande » est celui que les propositions 1 et 2 reprennent.",
       added: '',
       change: 'Le niveau à atteindre. Un mail attendu par celui qui le reçoit.' },
-    { id: 'rows', tab: '1 · Le tableau à la place du texte', badge: 'Mon choix', kind: 'dressed', title: true, table: 'rows',
-      pitch: "Le titre, la phrase avec le lien, l'image du site, le bouton, puis le tableau de dibodev.fr. Chaque ligne du tableau est une phrase de ton modèle : rien n'est dit deux fois.",
-      added: "Le titre (l'objet du mail), l'image, le bouton, les libellés des lignes (Prix, Date, Réponse).",
+    { id: 'rows', tab: '1 · Le tableau à la place du texte', badge: 'Mon choix', kind: 'dressed', table: 'rows',
+      pitch: "La phrase avec le lien, le bouton, puis le tableau de dibodev.fr. Chaque ligne du tableau est une phrase de ton modèle : rien n'est dit deux fois.",
+      added: "Le bouton et les libellés des lignes (Prix, Date, Réponse).",
       change: "Carré, et aussi court qu'aujourd'hui : le tableau remplace les paragraphes au lieu de s'y ajouter." },
-    { id: 'summary', tab: '2 · Le récapitulatif en trois lignes', kind: 'dressed', title: true, table: 'summary',
+    { id: 'summary', tab: '2 · Le récapitulatif en trois lignes', kind: 'dressed', table: 'summary',
       pitch: "Ton texte en entier, puis le tableau « En bref » à trois lignes courtes, comme « Votre demande » : le lien, le prix, la date. Le plus proche du mail de dibodev.fr, mais le prix et la date sont écrits deux fois.",
-      added: "Le titre, l'image, le bouton, et le tableau « En bref » fabriqué avec le lien, le prix et la date.",
+      added: "Le bouton, et le tableau « En bref » fabriqué avec le lien, le prix et la date.",
       change: 'Le plus joli. Le prix et la date sont dits deux fois, et le mail est le plus long.' },
-    { id: 'simple', tab: '3 · Simple, sans tableau', kind: 'dressed', title: false, table: null,
-      pitch: "Le plus court : ton texte, le lien dans sa phrase, l'image du site, le bouton, prix et date en gras. Ni titre ni tableau. C'est le plus proche du mail qui a fait 35 % de clics.",
-      added: "L'image et le bouton. Prix et date en gras.",
+    { id: 'simple', tab: '3 · Simple, sans tableau', kind: 'dressed', table: null,
+      pitch: "Ton texte, le lien dans sa phrase, le bouton, prix et date en gras. Pas de tableau. C'est le plus proche du mail qui a fait 35 % de clics.",
+      added: "Le bouton. Prix et date en gras.",
       change: "Le plus proche du mail d'aujourd'hui. Moins carré que le mail de dibodev.fr." }
   ];
 
@@ -329,7 +340,7 @@
       + '</div></body></html>';
   }
 
-  function buildDressedEmail(template, version, withImage) {
+  function buildDressedEmail(template, version, withImage, withTitle) {
     var blocks = template.body.match(/<p>[\s\S]*?<\/p>|<ul>[\s\S]*?<\/ul>|\{vignette_video\}/g) || [];
     var doorIndex = -1;
     blocks.forEach(function (block, index) { if (doorIndex === -1 && DOOR_PATTERN.test(block)) { doorIndex = index; } });
@@ -337,11 +348,11 @@
     var after = doorIndex === -1 ? [] : blocks.slice(doorIndex + 1);
     var link = doorIndex === -1 ? null : LINKS[blocks[doorIndex].match(DOOR_PATTERN)[1]];
     var paragraphs = after.filter(function (block) { return block.indexOf('<p>') === 0; });
-    var asRows = version.table === 'rows' && paragraphs.length > 0;
+    var asRows = version.table === 'rows' && paragraphs.length >= 2;
     var asSummary = version.table === 'summary' && link !== null;
     var tableComesNext = asRows;
 
-    var content = (version.title ? '<p class="em-title" style="margin:0 0 20px;font-size:26px;line-height:32px;font-weight:600;color:' + COLOR.ink + ';">' + capitalised(plainValue(template.subject)) + '</p>' : '')
+    var content = (withTitle ? '<p class="em-title" style="margin:0 0 20px;font-size:26px;line-height:32px;font-weight:600;color:' + COLOR.ink + ';">' + capitalised(plainValue(template.subject)) + '</p>' : '')
       + before.map(function (block) { return styledBlock(plainValue(block)); }).join('')
       + (link ? doorHtml(blocks[doorIndex], link, withImage, tableComesNext ? 28 : 16) : '');
     if (asRows) {
@@ -369,9 +380,9 @@
       + '</td>\n</tr>\n</table>\n</td>\n</tr>\n</table>\n</body>\n</html>';
   }
 
-  function buildEmail(template, version, withImage) {
+  function buildEmail(template, version, withImage, withTitle) {
     if (version.kind === 'reference') { return DIBODEV_ACKNOWLEDGEMENT_HTML; }
-    return version.kind === 'dressed' ? buildDressedEmail(template, version, withImage) : buildTodayEmail(template);
+    return version.kind === 'dressed' ? buildDressedEmail(template, version, withImage, withTitle) : buildTodayEmail(template);
   }
 
   function withRealImageUrls(html) {
@@ -405,10 +416,11 @@
     return text.length > 110 ? text.slice(0, 110) + '…' : text;
   }
 
-  var state = { version: 'rows', template: 'first', image: 'on' };
+  var state = { version: 'rows', template: 'first', image: 'off', title: 'off' };
   var tabs = document.getElementById('tabs');
   var templateSelect = document.getElementById('template-select');
   var imageButtons = Array.prototype.slice.call(document.querySelectorAll('#image-switch button'));
+  var titleButtons = Array.prototype.slice.call(document.querySelectorAll('#title-switch button'));
   var frames = [document.getElementById('frame-desktop'), document.getElementById('frame-phone')];
 
   function byId(list, id) { return list.filter(function (entry) { return entry.id === id; })[0]; }
@@ -427,8 +439,10 @@
     var version = byId(VERSIONS, state.version);
     var template = byId(TEMPLATES, state.template);
     var isReference = version.kind === 'reference';
-    var hasSiteImage = version.kind === 'dressed' && template.body.indexOf('{lien_demo}') !== -1;
-    var html = buildEmail(template, version, state.image === 'on');
+    var isDressed = version.kind === 'dressed';
+    var hasSiteImage = isDressed && template.body.indexOf('{lien_demo}') !== -1;
+    var withTitle = isDressed && state.title === 'on';
+    var html = buildEmail(template, version, state.image === 'on', withTitle);
     var stats = measure(html);
 
     Array.prototype.slice.call(tabs.children).forEach(function (tab) {
@@ -440,6 +454,14 @@
       button.disabled = !hasSiteImage;
       button.classList.toggle('is-active', hasSiteImage && button.dataset.image === state.image);
     });
+    titleButtons.forEach(function (button) {
+      button.disabled = !isDressed;
+      button.classList.toggle('is-active', isDressed && button.dataset.title === state.title);
+    });
+    document.getElementById('compare-body').innerHTML = VERSIONS.map(function (entry) {
+      var entryStats = measure(buildEmail(TEMPLATES[0], entry, state.image === 'on', state.title === 'on'));
+      return '<tr' + (entry.badge ? ' class="is-pick"' : '') + '><td>' + entry.tab + '</td><td>' + entryStats.images + '</td><td>' + entryStats.links + '</td><td>' + entryStats.words + '</td><td>' + entryStats.kilobytes + ' Ko</td><td>' + entry.change + '</td></tr>';
+    }).join('');
 
     document.getElementById('pitch').textContent = version.pitch;
     var added = document.getElementById('added');
@@ -454,7 +476,7 @@
 
     document.getElementById('inbox').innerHTML = isReference
       ? '<span class="tag">Boîte de réception</span><span class="from">Léo Guillaume · Dibodev</span><span class="subject">Votre demande est bien arrivée</span>Je vous réponds au plus tard lundi 5 octobre. Voici la suite et le récapitulatif de votre demande.'
-      : '<span class="tag">Boîte de réception</span><span class="from">Léo Guillaume</span><span class="subject">' + plainValue(template.subject) + '</span>' + (version.title ? capitalised(plainValue(template.subject)) + ' ' : '') + inboxSnippet(template);
+      : '<span class="tag">Boîte de réception</span><span class="from">Léo Guillaume</span><span class="subject">' + plainValue(template.subject) + '</span>' + (withTitle ? capitalised(plainValue(template.subject)) + ' ' : '') + inboxSnippet(template);
     document.getElementById('code').value = withRealImageUrls(html);
     frames.forEach(function (frame) {
       frame.onload = function () { fitFrame(frame); };
@@ -483,11 +505,9 @@
   imageButtons.forEach(function (button) {
     button.addEventListener('click', function () { state.image = button.dataset.image; render(); });
   });
-
-  document.getElementById('compare-body').innerHTML = VERSIONS.map(function (version) {
-    var stats = measure(buildEmail(TEMPLATES[0], version, true));
-    return '<tr' + (version.badge ? ' class="is-pick"' : '') + '><td>' + version.tab + '</td><td>' + stats.images + '</td><td>' + stats.links + '</td><td>' + stats.words + '</td><td>' + stats.kilobytes + ' Ko</td><td>' + version.change + '</td></tr>';
-  }).join('');
+  titleButtons.forEach(function (button) {
+    button.addEventListener('click', function () { state.title = button.dataset.title; render(); });
+  });
 
   render();
   window.addEventListener('resize', function () { frames.forEach(fitFrame); });
