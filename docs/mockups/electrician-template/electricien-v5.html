@@ -1,0 +1,2417 @@
+<!doctype html>
+<html lang="fr" class="has-rating">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Cz63 Électricité, électricien à Orléat</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Schibsted+Grotesk:wght@400..800&display=swap" rel="stylesheet" />
+    <style>
+      :root {
+        --page: #ffffff;
+        --band: #f4f5f7;
+        --ink: #0b1b2e;
+        --ink-hover: #1a3350;
+        --body: #2b3645;
+        --muted: #667185;
+        --line: #e3e7ed;
+        --line-strong: #cfd5de;
+        --night: #0b1b2e;
+        --night-line: rgba(255, 255, 255, 0.13);
+        --night-muted: #a7b3c4;
+        --accent: #f59e0b;
+        --accent-large: #d97706;
+        --accent-ink: #b45309;
+        --accent-soft: #fef1d8;
+        --star: #f5a623;
+        --font: 'Schibsted Grotesk', 'Segoe UI', sans-serif;
+        --shell: min(1240px, 100% - 48px);
+        --gutter: max(24px, calc((100% - 1240px) / 2));
+        --notch: 28px;
+        --notch-bg: var(--page);
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+      html {
+        scroll-behavior: smooth;
+        -webkit-text-size-adjust: 100%;
+      }
+      body {
+        margin: 0;
+        background: var(--page);
+        color: var(--body);
+        font-family: var(--font);
+        font-size: 17px;
+        line-height: 1.6;
+        -webkit-font-smoothing: antialiased;
+      }
+      ::selection {
+        background: var(--accent-soft);
+      }
+      img {
+        display: block;
+        max-width: 100%;
+      }
+      a {
+        color: inherit;
+        text-decoration: none;
+      }
+      button {
+        font: inherit;
+        color: inherit;
+      }
+      h1,
+      h2,
+      h3,
+      p,
+      figure,
+      blockquote,
+      ul,
+      ol,
+      dl,
+      dd {
+        margin: 0;
+        padding: 0;
+      }
+      ul,
+      ol {
+        list-style: none;
+      }
+      h1,
+      h2,
+      h3 {
+        color: var(--ink);
+        font-weight: 650;
+        letter-spacing: -0.026em;
+        text-wrap: balance;
+      }
+      :focus-visible {
+        outline: 2px solid var(--accent-large);
+        outline-offset: 3px;
+        border-radius: 6px;
+      }
+      main {
+        overflow-x: clip;
+      }
+      .shell {
+        width: var(--shell);
+        margin-inline: auto;
+      }
+      .section {
+        position: relative;
+        padding: 124px 0;
+      }
+      .section--band {
+        background: var(--band);
+        --notch-bg: var(--band);
+      }
+      .section--night {
+        background: var(--night);
+        color: var(--night-muted);
+      }
+      .section--night h2,
+      .section--night h3 {
+        color: #fff;
+      }
+      .section--night .eyebrow {
+        color: var(--accent);
+      }
+      .eyebrow {
+        display: block;
+        font-size: 13px;
+        font-weight: 650;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        color: var(--accent-ink);
+      }
+      .h2 {
+        margin-top: 14px;
+        font-size: 46px;
+        line-height: 1.08;
+      }
+      .lead {
+        font-size: 18.5px;
+        line-height: 1.6;
+      }
+      .head {
+        display: grid;
+        grid-template-columns: minmax(0, 1.15fr) minmax(0, 0.85fr);
+        gap: 64px;
+        align-items: end;
+      }
+      .btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 10px;
+        height: 56px;
+        padding: 0 26px;
+        border: 1.5px solid var(--ink);
+        border-radius: 12px;
+        background: var(--ink);
+        color: #fff;
+        font: 650 16px/1 var(--font);
+        font-variant-numeric: tabular-nums;
+        white-space: nowrap;
+        cursor: pointer;
+        transition:
+          background 0.2s ease,
+          border-color 0.2s ease,
+          color 0.2s ease;
+      }
+      .btn:hover {
+        background: var(--ink-hover);
+        border-color: var(--ink-hover);
+      }
+      .btn svg {
+        width: 18px;
+        height: 18px;
+      }
+      .btn--ghost {
+        background: transparent;
+        border-color: var(--line-strong);
+        color: var(--ink);
+      }
+      .btn--ghost:hover {
+        background: transparent;
+        border-color: var(--ink);
+      }
+      .btn--ghost svg {
+        color: var(--accent-ink);
+      }
+      .btn--light {
+        background: #fff;
+        border-color: #fff;
+        color: var(--ink);
+      }
+      .btn--light:hover {
+        background: var(--accent-soft);
+        border-color: var(--accent-soft);
+      }
+      .tel {
+        display: inline-flex;
+        align-items: center;
+        gap: 10px;
+        font-weight: 650;
+        color: var(--ink);
+        font-variant-numeric: tabular-nums;
+        white-space: nowrap;
+      }
+      .tel svg {
+        width: 18px;
+        height: 18px;
+        color: var(--accent-ink);
+      }
+      .stars {
+        display: inline-flex;
+        gap: 2px;
+        color: var(--star);
+      }
+      .stars svg {
+        width: 17px;
+        height: 17px;
+      }
+      .tile {
+        display: grid;
+        place-items: center;
+        flex: none;
+        width: 46px;
+        height: 46px;
+        border-radius: 13px;
+        background: var(--accent-soft);
+        color: var(--accent-ink);
+      }
+      .tile svg {
+        width: 22px;
+        height: 22px;
+      }
+
+      /* En-tête */
+      .header {
+        position: sticky;
+        top: 0;
+        z-index: 30;
+        background: rgba(255, 255, 255, 0.92);
+        backdrop-filter: blur(14px);
+        border-bottom: 1px solid var(--line);
+      }
+      .header-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 24px;
+        height: 80px;
+      }
+      .brand {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        font-weight: 700;
+        font-size: 19px;
+        line-height: 1.15;
+        color: var(--ink);
+        letter-spacing: -0.015em;
+      }
+      .brand-logo {
+        width: 44px;
+        height: 44px;
+        border-radius: 12px;
+        overflow: hidden;
+        border: 1px solid var(--line);
+        background: #fff;
+        flex: none;
+      }
+      .brand-logo img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+      }
+      .nav {
+        display: flex;
+        gap: 36px;
+        font-size: 16px;
+        font-weight: 500;
+        color: var(--body);
+      }
+      .nav a {
+        transition: color 0.2s ease;
+      }
+      .nav a:hover {
+        color: var(--ink);
+      }
+      .header-right {
+        display: flex;
+        align-items: center;
+        gap: 26px;
+      }
+      .header .btn {
+        height: 46px;
+        padding: 0 20px;
+        font-size: 15px;
+      }
+
+      /* Encoche : un coin de photo découpé, avec des angles rentrants */
+      .notch {
+        position: absolute;
+        left: 0;
+        bottom: 0;
+        z-index: 2;
+        display: flex;
+        align-items: center;
+        gap: 16px;
+        padding: 20px 28px 2px 2px;
+        background: var(--notch-bg);
+        border-top-right-radius: var(--notch);
+      }
+      .notch::before,
+      .notch::after {
+        content: '';
+        position: absolute;
+        width: var(--notch);
+        height: var(--notch);
+        background: radial-gradient(circle at 100% 0, transparent calc(var(--notch) - 0.6px), var(--notch-bg) var(--notch));
+      }
+      .notch::before {
+        left: 0;
+        top: calc(var(--notch) * -1);
+      }
+      .notch::after {
+        left: 100%;
+        bottom: 0;
+      }
+      .notch--right {
+        left: auto;
+        right: 0;
+        padding: 20px 2px 2px 28px;
+        border-radius: var(--notch) 0 0 0;
+      }
+      .notch--right::before,
+      .notch--right::after {
+        background: radial-gradient(circle at 0 0, transparent calc(var(--notch) - 0.6px), var(--notch-bg) var(--notch));
+      }
+      .notch--right::before {
+        left: auto;
+        right: 0;
+      }
+      .notch--right::after {
+        left: auto;
+        right: 100%;
+      }
+      .rating b {
+        font-weight: 650;
+        font-size: 46px;
+        line-height: 1;
+        color: var(--ink);
+        letter-spacing: -0.035em;
+      }
+      .rating span,
+      .pledge span {
+        font-size: 14.5px;
+        line-height: 1.45;
+        color: var(--muted);
+      }
+      .rating .stars {
+        color: var(--star);
+      }
+      .pledge b {
+        display: block;
+        font-weight: 650;
+        font-size: 18px;
+        line-height: 1.25;
+        color: var(--ink);
+      }
+
+      /* Haut de page */
+      .hero {
+        position: relative;
+        display: grid;
+        grid-template-columns: minmax(0, 1.12fr) minmax(0, 0.88fr);
+        gap: 76px;
+        align-items: center;
+        padding: 68px 0 0;
+      }
+      .hero h1 {
+        margin-top: 22px;
+        font-size: 66px;
+        line-height: 1.04;
+        letter-spacing: -0.034em;
+      }
+      .hero h1 em {
+        font-style: normal;
+        color: var(--accent-large);
+      }
+      .hero .lead {
+        margin-top: 26px;
+        max-width: 47ch;
+        font-size: 19px;
+      }
+      .actions {
+        display: flex;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 14px;
+      }
+      .hero .actions {
+        margin-top: 36px;
+      }
+      .points {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px 26px;
+        margin-top: 34px;
+        font-size: 15.5px;
+        font-weight: 500;
+        color: var(--ink);
+      }
+      .points li {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+      }
+      .points svg {
+        width: 17px;
+        height: 17px;
+        color: var(--accent-ink);
+      }
+      .hero-media {
+        position: relative;
+      }
+      .hero-media::before {
+        content: '';
+        position: absolute;
+        inset: -20px -20px 72px 72px;
+        border-radius: 44px;
+        background: var(--accent-soft);
+      }
+      .hero-photo {
+        position: relative;
+        aspect-ratio: 514 / 572;
+        border-radius: 32px;
+        overflow: hidden;
+        background: var(--band);
+      }
+      .hero-photo img,
+      .hero-second img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+      }
+      .hero-second {
+        position: absolute;
+        right: -24px;
+        bottom: -40px;
+        z-index: 3;
+        width: 43%;
+        aspect-ratio: 4 / 3.3;
+        border: 8px solid var(--page);
+        border-radius: 28px;
+        overflow: hidden;
+        background: var(--band);
+      }
+      .hero-text > *,
+      .hero-media {
+        animation: rise 0.9s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+      }
+      .hero-text > :nth-child(2) {
+        animation-delay: 0.06s;
+      }
+      .hero-text > :nth-child(3) {
+        animation-delay: 0.12s;
+      }
+      .hero-text > :nth-child(4) {
+        animation-delay: 0.18s;
+      }
+      .hero-text > :nth-child(5) {
+        animation-delay: 0.24s;
+      }
+      .hero-media {
+        animation-delay: 0.14s;
+      }
+      @keyframes rise {
+        from {
+          opacity: 0;
+          transform: translateY(16px);
+        }
+      }
+
+      /* Repères de confiance */
+      .proof {
+        margin-top: 104px;
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        border: 1px solid var(--line);
+        border-radius: 22px;
+        background: var(--page);
+      }
+      .proof li {
+        display: flex;
+        align-items: center;
+        gap: 16px;
+        padding: 26px 28px;
+      }
+      .proof li + li {
+        border-left: 1px solid var(--line);
+      }
+      .proof b {
+        display: block;
+        font-weight: 650;
+        font-size: 19px;
+        line-height: 1.25;
+        letter-spacing: -0.015em;
+        color: var(--ink);
+      }
+      .proof span {
+        display: block;
+        margin-top: 2px;
+        font-size: 14.5px;
+        line-height: 1.4;
+        color: var(--muted);
+      }
+
+      /* Prestations */
+      .services {
+        margin-top: 60px;
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 48px 26px;
+      }
+      .service {
+        display: grid;
+      }
+      .service figure {
+        grid-area: 1 / 1;
+        aspect-ratio: 4 / 3.1;
+        border-radius: 24px;
+        overflow: hidden;
+        background: var(--band);
+      }
+      .service img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        transition: transform 0.9s cubic-bezier(0.2, 0.8, 0.2, 1);
+      }
+      .service:hover img {
+        transform: scale(1.05);
+      }
+      .service-label {
+        grid-area: 1 / 1;
+        align-self: end;
+        justify-self: start;
+        position: relative;
+        display: flex;
+        align-items: baseline;
+        gap: 12px;
+        max-width: 90%;
+        padding: 16px 24px 0 0;
+        background: var(--notch-bg);
+        border-top-right-radius: var(--notch);
+      }
+      .service-label::before,
+      .service-label::after {
+        content: '';
+        position: absolute;
+        width: var(--notch);
+        height: var(--notch);
+        background: radial-gradient(circle at 100% 0, transparent calc(var(--notch) - 0.6px), var(--notch-bg) var(--notch));
+      }
+      .service-label::before {
+        left: 0;
+        top: calc(var(--notch) * -1);
+      }
+      .service-label::after {
+        left: 100%;
+        bottom: 0;
+      }
+      .service-label span {
+        font-size: 14px;
+        font-weight: 650;
+        color: var(--accent-ink);
+        font-variant-numeric: tabular-nums;
+      }
+      .service h3 {
+        font-size: 22px;
+        line-height: 1.2;
+      }
+      .service p {
+        margin-top: 10px;
+        font-size: 16.5px;
+        max-width: 38ch;
+      }
+
+      /* À propos */
+      .about {
+        display: grid;
+        grid-template-columns: minmax(0, 0.88fr) minmax(0, 1.12fr);
+        gap: 92px;
+        align-items: center;
+      }
+      .about-media {
+        position: relative;
+      }
+      .about-photo {
+        aspect-ratio: 4 / 4.5;
+        border-radius: 32px;
+        overflow: hidden;
+        background: var(--line);
+      }
+      .about-photo img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+      }
+      .about .notch .brand {
+        font-size: 17px;
+      }
+      .about .notch small {
+        display: block;
+        margin-top: 3px;
+        font-size: 14px;
+        font-weight: 400;
+        color: var(--muted);
+        letter-spacing: 0;
+      }
+      .about-text {
+        margin-top: 22px;
+        max-width: 58ch;
+      }
+      .facts {
+        margin-top: 34px;
+        border-top: 1px solid var(--line-strong);
+      }
+      .facts div {
+        display: flex;
+        justify-content: space-between;
+        align-items: baseline;
+        gap: 24px;
+        padding: 17px 0;
+        border-bottom: 1px solid var(--line-strong);
+      }
+      .facts dt {
+        font-size: 15.5px;
+        color: var(--muted);
+      }
+      .facts dd {
+        font-weight: 650;
+        font-size: 17px;
+        color: var(--ink);
+        text-align: right;
+      }
+      .about .btn {
+        margin-top: 36px;
+      }
+
+      /* Déroulé */
+      .steps {
+        position: relative;
+        margin-top: 60px;
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        border-top: 1px solid var(--night-line);
+      }
+      .steps::after {
+        content: '';
+        position: absolute;
+        left: 0;
+        top: -1px;
+        width: 100%;
+        height: 2px;
+        background: var(--accent);
+        transform: scaleX(0);
+        transform-origin: left;
+        transition: transform 1.8s cubic-bezier(0.3, 0.7, 0.2, 1) 0.2s;
+      }
+      .steps.in::after {
+        transform: scaleX(1);
+      }
+      .step {
+        padding: 36px 32px 4px 0;
+      }
+      .step + .step {
+        padding-left: 32px;
+        border-left: 1px solid var(--night-line);
+      }
+      .step-num {
+        display: block;
+        font-weight: 650;
+        font-size: 44px;
+        line-height: 1;
+        letter-spacing: -0.03em;
+        color: var(--accent);
+        font-variant-numeric: tabular-nums;
+      }
+      .step h3 {
+        margin-top: 24px;
+        font-size: 21px;
+        line-height: 1.25;
+      }
+      .step p {
+        margin-top: 10px;
+        font-size: 16px;
+      }
+
+      /* Réalisations */
+      .gallery-head {
+        display: flex;
+        justify-content: space-between;
+        align-items: end;
+        gap: 32px;
+      }
+      .gallery-nav {
+        display: flex;
+        gap: 10px;
+      }
+      .gallery-nav button {
+        display: grid;
+        place-items: center;
+        width: 50px;
+        height: 50px;
+        border: 1.5px solid var(--line-strong);
+        border-radius: 12px;
+        background: transparent;
+        color: var(--ink);
+        cursor: pointer;
+        transition:
+          border-color 0.2s ease,
+          opacity 0.2s ease;
+      }
+      .gallery-nav button:hover {
+        border-color: var(--ink);
+      }
+      .gallery-nav button:disabled {
+        opacity: 0.35;
+        cursor: default;
+        border-color: var(--line-strong);
+      }
+      .gallery-nav svg {
+        width: 20px;
+        height: 20px;
+      }
+      .gallery {
+        margin-top: 48px;
+        display: flex;
+        gap: 20px;
+        overflow-x: auto;
+        padding-inline: var(--gutter);
+        scroll-padding-inline: var(--gutter);
+        scroll-snap-type: x mandatory;
+        scrollbar-width: none;
+      }
+      .gallery::-webkit-scrollbar {
+        display: none;
+      }
+      .gallery figure {
+        flex: none;
+        width: 295px;
+        aspect-ratio: 3 / 4;
+        border-radius: 24px;
+        overflow: hidden;
+        background: var(--band);
+        scroll-snap-align: start;
+      }
+      .gallery img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+      }
+
+      /* Avis */
+      .reviews-head {
+        display: flex;
+        justify-content: space-between;
+        align-items: end;
+        gap: 32px;
+      }
+      .score {
+        display: inline-flex;
+        align-items: center;
+        gap: 18px;
+      }
+      .score b {
+        font-weight: 650;
+        font-size: 58px;
+        line-height: 1;
+        color: var(--ink);
+        letter-spacing: -0.04em;
+      }
+      .score span {
+        font-size: 15px;
+        line-height: 1.5;
+        color: var(--muted);
+      }
+      .score .stars {
+        color: var(--star);
+      }
+      .score .stars svg {
+        width: 19px;
+        height: 19px;
+      }
+      .reviews {
+        margin-top: 52px;
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 22px;
+      }
+      .review {
+        display: flex;
+        flex-direction: column;
+        padding: 30px;
+        border-radius: 24px;
+        background: var(--page);
+      }
+      .review p {
+        margin-top: 18px;
+        font-size: 17px;
+        color: var(--ink);
+      }
+      .review footer {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        margin-top: auto;
+        padding-top: 26px;
+      }
+      .review i {
+        display: grid;
+        place-items: center;
+        width: 46px;
+        height: 46px;
+        border-radius: 50%;
+        background: var(--accent-soft);
+        color: var(--accent-ink);
+        font-weight: 650;
+        font-size: 15px;
+        font-style: normal;
+      }
+      .review footer b {
+        display: block;
+        font-weight: 650;
+        font-size: 16px;
+        line-height: 1.3;
+        color: var(--ink);
+      }
+      .review footer span {
+        font-size: 14px;
+        color: var(--muted);
+      }
+
+      /* Questions */
+      .faq-grid {
+        display: grid;
+        grid-template-columns: minmax(0, 0.78fr) minmax(0, 1.22fr);
+        gap: 84px;
+        align-items: start;
+      }
+      .faq-side {
+        position: sticky;
+        top: 124px;
+      }
+      .faq-side .lead {
+        margin-top: 18px;
+        max-width: 34ch;
+      }
+      .help {
+        margin-top: 34px;
+        display: flex;
+        align-items: center;
+        gap: 16px;
+        padding: 18px 20px;
+        border: 1px solid var(--line);
+        border-radius: 20px;
+      }
+      .help small {
+        display: block;
+        font-size: 14px;
+        color: var(--muted);
+      }
+      .help .tel {
+        font-size: 19px;
+      }
+      .faq {
+        display: grid;
+        gap: 12px;
+      }
+      .faq-item {
+        border: 1px solid var(--line);
+        border-radius: 18px;
+        background: var(--page);
+        transition:
+          border-color 0.25s ease,
+          box-shadow 0.25s ease;
+      }
+      .faq-item.is-open {
+        border-color: var(--line-strong);
+        box-shadow: 0 22px 44px -34px rgba(11, 27, 46, 0.4);
+      }
+      .faq-item button {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 24px;
+        width: 100%;
+        padding: 22px 22px 22px 26px;
+        border: 0;
+        background: none;
+        font-weight: 650;
+        font-size: 19px;
+        line-height: 1.35;
+        color: var(--ink);
+        letter-spacing: -0.012em;
+        text-align: left;
+        cursor: pointer;
+      }
+      .faq-item button i {
+        display: grid;
+        place-items: center;
+        width: 38px;
+        height: 38px;
+        border-radius: 50%;
+        background: var(--accent-soft);
+        color: var(--accent-ink);
+        flex: none;
+        transition: transform 0.3s ease;
+      }
+      .faq-item button svg {
+        width: 18px;
+        height: 18px;
+      }
+      .faq-item.is-open button i {
+        transform: rotate(180deg);
+      }
+      .faq-panel {
+        display: grid;
+        grid-template-rows: 0fr;
+        transition: grid-template-rows 0.35s cubic-bezier(0.3, 0.7, 0.2, 1);
+      }
+      .faq-item.is-open .faq-panel {
+        grid-template-rows: 1fr;
+      }
+      .faq-panel > div {
+        overflow: hidden;
+      }
+      .faq-panel p {
+        padding: 0 84px 24px 26px;
+        font-size: 16.5px;
+      }
+
+      /* Bannière */
+      .section--banner {
+        padding-top: 0;
+      }
+      .banner {
+        position: relative;
+        display: grid;
+        grid-template-columns: minmax(0, 1.08fr) minmax(0, 0.92fr);
+        min-height: 440px;
+        border-radius: 32px;
+        background: var(--night);
+        color: var(--night-muted);
+      }
+      .banner-text {
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: flex-start;
+        padding: 72px 64px;
+      }
+      .banner .eyebrow {
+        color: var(--accent);
+      }
+      .banner h2 {
+        margin-top: 16px;
+        font-size: 54px;
+        line-height: 1.04;
+        letter-spacing: -0.03em;
+        color: #fff;
+      }
+      .banner p {
+        margin-top: 18px;
+        max-width: 40ch;
+        font-size: 19px;
+      }
+      .banner .btn {
+        margin-top: 34px;
+      }
+      .banner-photo {
+        position: relative;
+        border-radius: 0 32px 32px 0;
+        overflow: hidden;
+      }
+      .banner-photo img {
+        position: absolute;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+      }
+      .banner-photo::after {
+        content: '';
+        position: absolute;
+        inset: 0 auto 0 0;
+        width: 34%;
+        background: linear-gradient(90deg, var(--night), transparent);
+      }
+      .banner-tel {
+        display: block;
+        padding-top: 18px;
+      }
+      .banner-tel small {
+        display: block;
+        font-size: 13px;
+        font-weight: 650;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+        color: var(--muted);
+      }
+      .banner-tel a {
+        display: block;
+        margin-top: 2px;
+        font-weight: 650;
+        font-size: 30px;
+        line-height: 1.2;
+        letter-spacing: -0.02em;
+        color: var(--ink);
+        font-variant-numeric: tabular-nums;
+        white-space: nowrap;
+      }
+
+      /* Contact */
+      .contact {
+        display: grid;
+        grid-template-columns: minmax(0, 0.95fr) minmax(0, 1.05fr);
+        gap: 76px;
+        align-items: start;
+      }
+      .contact .lead {
+        margin-top: 18px;
+        max-width: 42ch;
+      }
+      .infos {
+        margin-top: 34px;
+        border-top: 1px solid var(--line-strong);
+      }
+      .infos li {
+        display: grid;
+        grid-template-columns: 46px 1fr;
+        gap: 18px;
+        align-items: center;
+        padding: 18px 0;
+        border-bottom: 1px solid var(--line-strong);
+      }
+      .infos .tile {
+        background: var(--page);
+      }
+      .infos small {
+        display: block;
+        font-size: 12.5px;
+        font-weight: 650;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+        color: var(--muted);
+      }
+      .infos b {
+        font-weight: 650;
+        font-size: 18px;
+        line-height: 1.35;
+        color: var(--ink);
+      }
+      .infos .hours {
+        display: grid;
+        grid-template-columns: auto 1fr;
+        gap: 2px 18px;
+        font-size: 16.5px;
+        font-weight: 500;
+        color: var(--ink);
+      }
+      .infos .hours span:nth-child(even) {
+        color: var(--body);
+        font-weight: 400;
+      }
+      .form {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 18px;
+        padding: 40px;
+        border-radius: 28px;
+        background: var(--page);
+        box-shadow: 0 30px 60px -46px rgba(11, 27, 46, 0.45);
+      }
+      .form h3 {
+        grid-column: 1 / -1;
+        font-size: 24px;
+      }
+      .field {
+        display: grid;
+        gap: 8px;
+      }
+      .field--wide {
+        grid-column: 1 / -1;
+      }
+      .field label {
+        font-size: 14.5px;
+        font-weight: 500;
+        color: var(--ink);
+      }
+      .field input,
+      .field textarea {
+        width: 100%;
+        padding: 15px 16px;
+        border: 1px solid var(--line-strong);
+        border-radius: 12px;
+        background: var(--page);
+        font: 400 16px/1.4 var(--font);
+        color: var(--ink);
+        outline: none;
+        transition:
+          border-color 0.2s ease,
+          box-shadow 0.2s ease;
+      }
+      .field textarea {
+        min-height: 124px;
+        resize: vertical;
+      }
+      .field input:focus,
+      .field textarea:focus {
+        border-color: var(--ink);
+        box-shadow: 0 0 0 4px rgba(11, 27, 46, 0.08);
+      }
+      .form .btn {
+        grid-column: 1 / -1;
+      }
+      .form small {
+        grid-column: 1 / -1;
+        font-size: 14px;
+        color: var(--muted);
+        text-align: center;
+      }
+      .map {
+        position: relative;
+        margin-top: 76px;
+        height: 400px;
+        border-radius: 32px;
+        overflow: hidden;
+        background: #dfe6e2;
+      }
+      .map iframe {
+        width: 100%;
+        height: 100%;
+        border: 0;
+        filter: saturate(0.8);
+      }
+      .map-card {
+        position: absolute;
+        right: 24px;
+        top: 24px;
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        padding: 14px 20px 14px 14px;
+        border-radius: 18px;
+        background: var(--page);
+        box-shadow: 0 18px 40px -22px rgba(11, 27, 46, 0.5);
+        font-size: 14.5px;
+        line-height: 1.35;
+        color: var(--muted);
+      }
+      .map-card b {
+        display: block;
+        font-weight: 650;
+        font-size: 16.5px;
+        color: var(--ink);
+      }
+
+      /* Pied de page */
+      .footer {
+        background: var(--night);
+        color: var(--night-muted);
+        font-size: 15.5px;
+      }
+      .footer-grid {
+        display: grid;
+        grid-template-columns: 1.5fr 1fr 0.8fr 1fr;
+        gap: 56px;
+        padding: 84px 0 56px;
+      }
+      .footer .brand {
+        color: #fff;
+      }
+      .footer .brand-logo {
+        border-color: transparent;
+      }
+      .footer p {
+        margin-top: 18px;
+        max-width: 34ch;
+      }
+      .footer h3 {
+        font-size: 13px;
+        font-weight: 650;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        color: #fff;
+      }
+      .footer ul {
+        margin-top: 20px;
+        display: grid;
+        gap: 12px;
+      }
+      .footer a:hover {
+        color: #fff;
+      }
+      .footer-social {
+        margin-top: 22px;
+        display: inline-flex;
+        align-items: center;
+        gap: 10px;
+        color: #fff;
+      }
+      .footer-social svg {
+        width: 20px;
+        height: 20px;
+      }
+      .footer-bottom {
+        display: flex;
+        justify-content: space-between;
+        gap: 20px;
+        flex-wrap: wrap;
+        padding: 24px 0 110px;
+        border-top: 1px solid var(--night-line);
+        font-size: 14.5px;
+      }
+      .footer-links {
+        display: flex;
+        gap: 24px;
+      }
+
+      /* Apparitions */
+      .reveal {
+        opacity: 0;
+        transform: translateY(18px);
+        transition:
+          opacity 0.8s ease,
+          transform 0.8s cubic-bezier(0.2, 0.8, 0.2, 1);
+        transition-delay: var(--d, 0s);
+      }
+      .reveal.in {
+        opacity: 1;
+        transform: none;
+      }
+
+      /* Blocs affichés selon les données de la fiche */
+      html:not(.has-rating) .if-rating,
+      html.has-rating .if-no-rating,
+      html:not(.has-reviews) .if-reviews,
+      html:not(.has-hours) .if-hours,
+      html:not(.has-address) .if-address,
+      html.has-address .if-no-address,
+      html:not(.has-social) .if-social {
+        display: none !important;
+      }
+
+      /* Réglages de la maquette (hors template) */
+      .mock {
+        position: fixed;
+        left: 50%;
+        bottom: 18px;
+        z-index: 60;
+        transform: translateX(-50%);
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 8px 10px 8px 18px;
+        border-radius: 999px;
+        background: rgba(11, 27, 46, 0.96);
+        color: #c9d1dc;
+        font: 500 13.5px/1 var(--font);
+        box-shadow: 0 20px 40px -18px rgba(0, 0, 0, 0.6);
+        white-space: nowrap;
+      }
+      .mock b {
+        color: #fff;
+        font-weight: 650;
+      }
+      .mock-seg {
+        display: flex;
+        padding: 3px;
+        border-radius: 999px;
+        background: rgba(255, 255, 255, 0.1);
+      }
+      .mock button {
+        height: 32px;
+        padding: 0 13px;
+        border: 0;
+        border-radius: 999px;
+        background: transparent;
+        color: #c9d1dc;
+        font: inherit;
+        cursor: pointer;
+      }
+      .mock button[aria-pressed='true'] {
+        background: #fff;
+        color: var(--ink);
+      }
+      .mock .short {
+        display: none;
+      }
+      html.clean .mock {
+        display: none;
+      }
+      [data-sb] {
+        position: relative;
+      }
+      .sb-tag {
+        display: none;
+      }
+      html.tags [data-sb] {
+        outline: 1.5px dashed #2f6fed;
+        outline-offset: -8px;
+      }
+      html.tags .sb-tag {
+        display: block;
+        position: absolute;
+        left: 20px;
+        top: 20px;
+        z-index: 25;
+        max-width: min(560px, calc(100% - 40px));
+        padding: 10px 14px;
+        border-radius: 12px;
+        background: #2f6fed;
+        color: #fff;
+        font: 500 13.5px/1.45 var(--font);
+        letter-spacing: 0;
+        text-transform: none;
+        box-shadow: 0 12px 26px -14px rgba(47, 111, 237, 0.9);
+      }
+      .sb-tag b {
+        display: block;
+        font-weight: 650;
+      }
+
+      /* Tablette */
+      @media (max-width: 1040px) {
+        .section {
+          padding: 88px 0;
+        }
+        .nav {
+          display: none;
+        }
+        .hero {
+          grid-template-columns: 1fr;
+          gap: 48px;
+          padding-top: 40px;
+        }
+        .hero h1 {
+          font-size: 56px;
+        }
+        .hero-media {
+          max-width: 560px;
+        }
+        .proof {
+          grid-template-columns: 1fr 1fr;
+        }
+        .proof li:nth-child(3) {
+          border-left: 0;
+        }
+        .proof li:nth-child(n + 3) {
+          border-top: 1px solid var(--line);
+        }
+        .head,
+        .about,
+        .faq-grid,
+        .contact {
+          grid-template-columns: 1fr;
+          gap: 40px;
+        }
+        .about-media {
+          max-width: 520px;
+        }
+        .faq-side {
+          position: static;
+        }
+        .services {
+          grid-template-columns: 1fr 1fr;
+        }
+        .steps {
+          grid-template-columns: 1fr 1fr;
+        }
+        .step:nth-child(3) {
+          padding-left: 0;
+          border-left: 0;
+        }
+        .step:nth-child(n + 3) {
+          margin-top: 28px;
+          border-top: 1px solid var(--night-line);
+        }
+        .reviews {
+          grid-template-columns: 1fr;
+        }
+        .banner {
+          grid-template-columns: 1fr;
+        }
+        .banner-text {
+          padding: 56px 40px;
+        }
+        .banner-photo {
+          aspect-ratio: 16 / 9;
+          border-radius: 0 0 32px 32px;
+        }
+        .banner-photo::after {
+          inset: 0 0 auto 0;
+          width: auto;
+          height: 30%;
+          background: linear-gradient(180deg, var(--night), transparent);
+        }
+        .footer-grid {
+          grid-template-columns: 1fr 1fr;
+        }
+        .h2 {
+          font-size: 38px;
+        }
+        .banner h2 {
+          font-size: 44px;
+        }
+      }
+
+      /* Téléphone */
+      @media (max-width: 640px) {
+        :root {
+          --shell: min(1240px, 100% - 36px);
+          --gutter: 18px;
+          --notch: 22px;
+        }
+        body {
+          font-size: 16.5px;
+        }
+        .section {
+          padding: 68px 0;
+        }
+        .header-row {
+          height: 66px;
+        }
+        .brand {
+          font-size: 17px;
+        }
+        .brand-logo {
+          width: 40px;
+          height: 40px;
+        }
+        .header .btn,
+        .header .tel span {
+          display: none;
+        }
+        .header .tel {
+          width: 44px;
+          height: 44px;
+          justify-content: center;
+          border: 1.5px solid var(--line-strong);
+          border-radius: 12px;
+        }
+        .hero {
+          display: flex;
+          flex-direction: column;
+          align-items: stretch;
+          gap: 0;
+          padding-top: 26px;
+        }
+        .hero-text {
+          display: contents;
+        }
+        .hero .eyebrow {
+          order: 1;
+          font-size: 12px;
+        }
+        .hero h1 {
+          order: 2;
+          margin-top: 14px;
+          font-size: 41px;
+          line-height: 1.05;
+        }
+        .hero-media {
+          order: 3;
+          margin-top: 28px;
+          width: 100%;
+        }
+        .hero-media::before {
+          display: none;
+        }
+        .hero .lead {
+          order: 4;
+          margin-top: 56px;
+          font-size: 17.5px;
+        }
+        .hero .actions {
+          order: 5;
+          margin-top: 26px;
+          gap: 10px;
+          width: 100%;
+        }
+        .hero .actions .btn {
+          width: 100%;
+          height: 54px;
+        }
+        .hero .points {
+          order: 6;
+          margin-top: 24px;
+          gap: 8px 20px;
+          font-size: 15px;
+        }
+        .hero-photo {
+          aspect-ratio: 5 / 4.6;
+          border-radius: 24px;
+        }
+        .notch {
+          gap: 12px;
+          padding: 14px 18px 2px 0;
+        }
+        .notch--right {
+          padding: 14px 0 2px 18px;
+        }
+        .rating b {
+          font-size: 32px;
+        }
+        .rating span,
+        .pledge span {
+          font-size: 13px;
+        }
+        .rating .stars svg {
+          width: 14px;
+          height: 14px;
+        }
+        .pledge {
+          max-width: 58%;
+        }
+        .pledge > span {
+          min-width: 0;
+        }
+        .pledge b {
+          font-size: 16px;
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+        }
+        .pledge .tile {
+          width: 40px;
+          height: 40px;
+        }
+        .hero-second {
+          right: 12px;
+          bottom: -34px;
+          width: 38%;
+          border-width: 5px;
+          border-radius: 18px;
+        }
+        .proof {
+          margin-top: 44px;
+          border-radius: 20px;
+        }
+        .proof li {
+          flex-direction: column;
+          align-items: flex-start;
+          gap: 12px;
+          padding: 18px;
+        }
+        .proof b {
+          font-size: 17px;
+        }
+        .proof span {
+          font-size: 13.5px;
+        }
+        .proof .tile {
+          width: 40px;
+          height: 40px;
+        }
+        .h2 {
+          font-size: 31px;
+        }
+        .lead {
+          font-size: 17.5px;
+        }
+        .head {
+          gap: 14px;
+        }
+        .services {
+          grid-template-columns: 1fr;
+          margin-top: 34px;
+          gap: 0;
+          border-top: 1px solid var(--line);
+        }
+        .service {
+          grid-template-columns: 104px 1fr;
+          column-gap: 18px;
+          padding: 18px 0;
+          border-bottom: 1px solid var(--line);
+        }
+        .service figure {
+          grid-area: 1 / 1 / 3 / 2;
+          aspect-ratio: 1;
+          border-radius: 18px;
+        }
+        .service-label {
+          grid-area: 1 / 2;
+          align-self: end;
+          max-width: none;
+          padding: 0;
+          gap: 10px;
+          background: none;
+        }
+        .service-label::before,
+        .service-label::after {
+          display: none;
+        }
+        .service h3 {
+          font-size: 19px;
+        }
+        .service p {
+          grid-area: 2 / 2;
+          margin-top: 4px;
+          font-size: 15.5px;
+          line-height: 1.5;
+        }
+        .about-photo {
+          border-radius: 24px;
+        }
+        .facts dd {
+          font-size: 16px;
+        }
+        .about .btn {
+          width: 100%;
+        }
+        .steps {
+          grid-template-columns: 1fr;
+          margin-top: 40px;
+        }
+        .step,
+        .step + .step,
+        .step:nth-child(n + 3) {
+          display: grid;
+          grid-template-columns: 64px 1fr;
+          column-gap: 8px;
+          margin-top: 0;
+          padding: 24px 0;
+          border-left: 0;
+          border-top: 0;
+          border-bottom: 1px solid var(--night-line);
+        }
+        .step-num {
+          grid-row: 1 / 3;
+          font-size: 32px;
+        }
+        .step h3 {
+          margin-top: 0;
+          font-size: 19px;
+        }
+        .step p {
+          margin-top: 6px;
+        }
+        .gallery-nav {
+          display: none;
+        }
+        .gallery {
+          margin-top: 32px;
+          gap: 12px;
+        }
+        .gallery figure {
+          width: 68%;
+          border-radius: 20px;
+        }
+        .reviews-head {
+          flex-direction: column;
+          align-items: flex-start;
+          gap: 22px;
+        }
+        .score b {
+          font-size: 48px;
+        }
+        .reviews {
+          margin-top: 34px;
+          gap: 14px;
+        }
+        .review {
+          padding: 24px;
+        }
+        .faq-item button {
+          font-size: 17.5px;
+          padding: 18px 16px 18px 20px;
+        }
+        .faq-panel p {
+          padding: 0 20px 20px;
+        }
+        .banner {
+          border-radius: 24px;
+        }
+        .banner-text {
+          padding: 44px 26px 40px;
+        }
+        .banner h2 {
+          font-size: 36px;
+        }
+        .banner p {
+          font-size: 17.5px;
+        }
+        .banner .btn {
+          width: 100%;
+        }
+        .banner-photo {
+          aspect-ratio: 5 / 4;
+          border-radius: 0 0 24px 24px;
+        }
+        .banner-tel a {
+          font-size: 23px;
+        }
+        .form {
+          grid-template-columns: 1fr;
+          padding: 24px 20px;
+          border-radius: 22px;
+        }
+        .map {
+          margin-top: 44px;
+          height: 300px;
+          border-radius: 24px;
+        }
+        .map-card {
+          right: 12px;
+          top: auto;
+          bottom: 34px;
+        }
+        .footer-grid {
+          grid-template-columns: 1fr;
+          gap: 36px;
+          padding: 56px 0 40px;
+        }
+        .mock {
+          left: 10px;
+          right: 10px;
+          transform: none;
+          justify-content: center;
+          padding: 6px;
+          font-size: 12.5px;
+        }
+        .mock > b,
+        .mock .mock-tags,
+        .mock .long {
+          display: none;
+        }
+        .mock .short {
+          display: inline;
+        }
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        *,
+        *::before,
+        *::after {
+          animation: none !important;
+          transition-duration: 0.01ms !important;
+        }
+        .reveal {
+          opacity: 1;
+          transform: none;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <svg width="0" height="0" style="position: absolute" aria-hidden="true">
+      <defs>
+        <symbol id="i-phone" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1 1 .4 1.9.7 2.8a2 2 0 0 1-.5 2.1L8.1 9.9a16 16 0 0 0 6 6l1.3-1.3a2 2 0 0 1 2.1-.4c.9.3 1.8.6 2.8.7a2 2 0 0 1 1.7 2Z" />
+        </symbol>
+        <symbol id="i-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="m6 9 6 6 6-6" />
+        </symbol>
+        <symbol id="i-left" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="m15 6-6 6 6 6" />
+        </symbol>
+        <symbol id="i-right" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="m9 6 6 6-6 6" />
+        </symbol>
+        <symbol id="i-star" viewBox="0 0 24 24" fill="currentColor">
+          <path d="m12 2 3.1 6.3 6.9 1-5 4.9 1.2 6.8-6.2-3.2L5.8 21 7 14.2 2 9.3l6.9-1L12 2Z" />
+        </symbol>
+        <symbol id="i-star-line" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round">
+          <path d="m12 3 2.8 5.7 6.2.9-4.5 4.4 1.1 6.2-5.6-2.9-5.6 2.9 1.1-6.2L3 9.6l6.2-.9L12 3Z" />
+        </symbol>
+        <symbol id="i-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="m5 12.5 4.5 4.5L19 7.5" />
+        </symbol>
+        <symbol id="i-zap" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M13 2 4 14h7l-1 8 9-12h-7l1-8Z" />
+        </symbol>
+        <symbol id="i-shield" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 22s8-3.5 8-10V5l-8-3-8 3v7c0 6.5 8 10 8 10Z" />
+          <path d="m9 12 2 2 4-4" />
+        </symbol>
+        <symbol id="i-badge" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="9" />
+          <path d="m8.5 12.3 2.4 2.4 4.6-5" />
+        </symbol>
+        <symbol id="i-file" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8l-5-5Z" />
+          <path d="M14 3v5h5M9 13h6M9 17h4" />
+        </symbol>
+        <symbol id="i-pin" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 22s7-6.2 7-12a7 7 0 0 0-14 0c0 5.8 7 12 7 12Z" />
+          <circle cx="12" cy="10" r="2.5" />
+        </symbol>
+        <symbol id="i-mail" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="3" y="5" width="18" height="14" rx="2.5" />
+          <path d="m3.5 7.5 8.5 6 8.5-6" />
+        </symbol>
+        <symbol id="i-clock" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="9" />
+          <path d="M12 7.5V12l3 2" />
+        </symbol>
+        <symbol id="i-area" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="9" />
+          <circle cx="12" cy="12" r="3.5" />
+        </symbol>
+        <symbol id="i-facebook" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M15 3h-2a4 4 0 0 0-4 4v3H6v4h3v7h4v-7h3l1-4h-4V7a1 1 0 0 1 1-1h3V3Z" />
+        </symbol>
+      </defs>
+    </svg>
+
+    <header class="header">
+      <div class="shell header-row">
+        <a class="brand" href="#top">
+          <span class="brand-logo"><img data-img="logo" src="electricien-v5-photos/cz63-logo.jpg" alt="" /></span>
+          <span data-t="name">Cz63 Électricité</span>
+        </a>
+        <nav class="nav" aria-label="Navigation principale">
+          <a href="#prestations">Prestations</a>
+          <a href="#a-propos">À propos</a>
+          <a href="#realisations">Réalisations</a>
+          <a href="#questions">Questions</a>
+          <a href="#contact">Contact</a>
+        </nav>
+        <div class="header-right">
+          <a class="tel" data-tel href="tel:0661588679" aria-label="Appeler">
+            <svg><use href="#i-phone" /></svg>
+            <span data-t="phone">06 61 58 86 79</span>
+          </a>
+          <a class="btn" href="#contact">Demander un devis</a>
+        </div>
+      </div>
+    </header>
+
+    <main id="top">
+      <!-- En-tête -->
+      <section class="hero shell" data-sb>
+        <div class="sb-tag"><b>En-tête</b>Badge, titre, accroche, photo principale, deuxième photo, 3 points forts, textes des deux boutons. La note Google vient de la fiche.</div>
+        <div class="hero-text">
+          <span class="eyebrow">Artisan électricien · <span data-t="city">Orléat</span></span>
+          <h1>Votre électricien de&nbsp;confiance à&nbsp;<em data-t="city">Orléat</em></h1>
+          <p class="lead">
+            Dépannage, mise aux normes, rénovation et borne de recharge. Un travail propre, sécurisé et garanti à
+            <span data-t="city">Orléat</span>.
+          </p>
+          <div class="actions">
+            <a class="btn" href="#contact">Demander un devis</a>
+            <a class="btn btn--ghost" data-tel href="tel:0661588679">
+              <svg><use href="#i-phone" /></svg><span data-t="phone">06 61 58 86 79</span>
+            </a>
+          </div>
+          <ul class="points">
+            <li><svg><use href="#i-check" /></svg>Devis gratuit</li>
+            <li><svg><use href="#i-check" /></svg>Intervention rapide</li>
+            <li><svg><use href="#i-check" /></svg>Travail garanti</li>
+          </ul>
+        </div>
+        <div class="hero-media">
+          <div class="hero-photo"><img data-img="heroImage" src="" alt="" /></div>
+          <div class="notch rating if-rating">
+            <b data-t="rating">5,0</b>
+            <span>
+              <span class="stars" aria-hidden="true">
+                <svg><use href="#i-star" /></svg><svg><use href="#i-star" /></svg><svg><use href="#i-star" /></svg
+                ><svg><use href="#i-star" /></svg><svg><use href="#i-star" /></svg>
+              </span>
+              <br /><span data-t="reviewsCount">35</span> avis Google
+            </span>
+          </div>
+          <div class="notch pledge if-no-rating">
+            <i class="tile"><svg><use href="#i-pin" /></svg></i>
+            <span><b data-t="city">Orléat</b>Secteur d'intervention</span>
+          </div>
+          <div class="hero-second"><img data-img="heroSecond" src="" alt="" /></div>
+        </div>
+      </section>
+
+      <!-- Repères de confiance -->
+      <div class="shell" data-sb>
+        <div class="sb-tag" style="top: 40px"><b>Repères de confiance</b>4 repères (valeur et libellé). Le deuxième reprend la vraie note Google, ou « Devis gratuit » quand la fiche n'a pas de note.</div>
+        <ul class="proof reveal">
+          <li>
+            <i class="tile"><svg><use href="#i-zap" /></svg></i>
+            <div><b>7j/7</b><span>Dépannage et urgences</span></div>
+          </li>
+          <li>
+            <i class="tile if-rating"><svg><use href="#i-star-line" /></svg></i>
+            <i class="tile if-no-rating"><svg><use href="#i-file" /></svg></i>
+            <div><b data-t="trustValue">5,0/5</b><span data-t="trustLabel">35 avis</span></div>
+          </li>
+          <li>
+            <i class="tile"><svg><use href="#i-shield" /></svg></i>
+            <div><b>Travail garanti</b><span>Interventions assurées</span></div>
+          </li>
+          <li>
+            <i class="tile"><svg><use href="#i-badge" /></svg></i>
+            <div><b>100% conforme</b><span>Installations aux normes</span></div>
+          </li>
+        </ul>
+      </div>
+
+      <!-- Services -->
+      <section class="section" id="prestations" data-sb>
+        <div class="sb-tag"><b>Services</b>Titre, description, puis 6 services : titre, description et photo pour chacun. Sans photo fournie, celles de la template.</div>
+        <div class="shell">
+          <div class="head">
+            <div>
+              <span class="eyebrow reveal">Prestations</span>
+              <h2 class="h2 reveal">Tout ce qu'il faut pour une installation sûre</h2>
+            </div>
+            <p class="lead reveal">Du simple dépannage à la rénovation complète de votre installation électrique.</p>
+          </div>
+          <div class="services">
+            <article class="service reveal">
+              <figure><img src="https://images.unsplash.com/photo-1758101755915-462eddc23f57?w=900&q=74&auto=format&fit=crop" alt="" /></figure>
+              <div class="service-label"><span>01</span><h3>Dépannage électrique</h3></div>
+              <p>Panne, court-circuit, disjoncteur qui saute : diagnostic et remise en service rapides.</p>
+            </article>
+            <article class="service reveal" style="--d: 0.07s">
+              <figure><img src="https://images.unsplash.com/photo-1751486289947-4f5f5961b3aa?w=900&q=74&auto=format&fit=crop" alt="" /></figure>
+              <div class="service-label"><span>02</span><h3>Mise aux normes</h3></div>
+              <p>Remise à niveau complète de votre installation, aux normes en vigueur, attestation à l'appui.</p>
+            </article>
+            <article class="service reveal" style="--d: 0.14s">
+              <figure><img src="https://images.unsplash.com/photo-1576446470246-499c738d1c8e?w=900&q=74&auto=format&fit=crop" alt="" /></figure>
+              <div class="service-label"><span>03</span><h3>Tableau électrique</h3></div>
+              <p>Remplacement et modernisation de votre tableau et de vos protections.</p>
+            </article>
+            <article class="service reveal">
+              <figure><img src="https://images.unsplash.com/photo-1482731215275-a1f151646268?w=900&q=74&auto=format&fit=crop" alt="" /></figure>
+              <div class="service-label"><span>04</span><h3>Installation et rénovation</h3></div>
+              <p>Neuf ou rénovation : réseau complet, prises, points lumineux.</p>
+            </article>
+            <article class="service reveal" style="--d: 0.07s">
+              <figure><img src="https://images.unsplash.com/photo-1680210849773-f97a41c6b7ed?w=900&q=74&auto=format&fit=crop" alt="" /></figure>
+              <div class="service-label"><span>05</span><h3>Éclairage et domotique</h3></div>
+              <p>Éclairage intérieur et extérieur, interrupteurs connectés, domotique.</p>
+            </article>
+            <article class="service reveal" style="--d: 0.14s">
+              <figure><img src="https://images.unsplash.com/photo-1646753005675-bb29b53507f5?w=900&q=74&auto=format&fit=crop" alt="" /></figure>
+              <div class="service-label"><span>06</span><h3>Borne de recharge</h3></div>
+              <p>Installation de bornes de recharge pour véhicule électrique.</p>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <!-- À propos -->
+      <section class="section section--band" id="a-propos" data-sb>
+        <div class="sb-tag"><b>À propos</b>Titre, texte, photo. Le nom, le logo, la ville et le secteur viennent de « Contact et informations ».</div>
+        <div class="shell about">
+          <div class="about-media reveal">
+            <div class="about-photo"><img data-img="aboutImage" src="" alt="" /></div>
+            <div class="notch notch--right">
+              <span class="brand">
+                <span class="brand-logo"><img data-img="logo" src="electricien-v5-photos/cz63-logo.jpg" alt="" /></span>
+                <span><span data-t="name">Cz63 Électricité</span><small>Électricien à <span data-t="city">Orléat</span></small></span>
+              </span>
+            </div>
+          </div>
+          <div>
+            <span class="eyebrow reveal">À propos</span>
+            <h2 class="h2 reveal">Un travail soigné, du devis au dernier test</h2>
+            <p class="lead about-text reveal" data-t="about">
+              Électricien à Orléat, j'interviens sur Clermont-Ferrand et dans tout le Puy-de-Dôme : dépannage,
+              rénovation, mise aux normes et installations neuves.
+            </p>
+            <dl class="facts reveal">
+              <div><dt>Basé à</dt><dd data-t="city">Orléat</dd></div>
+              <div><dt>Secteur</dt><dd data-t="area">Orléat et ses alentours</dd></div>
+              <div class="if-rating"><dt>Avis Google</dt><dd><span data-t="rating">5,0</span> sur 5, <span data-t="reviewsCount">35</span> avis</dd></div>
+            </dl>
+            <a class="btn btn--ghost reveal" href="#contact">Demander un devis</a>
+          </div>
+        </div>
+      </section>
+
+      <!-- Méthode -->
+      <section class="section section--night" data-sb>
+        <div class="sb-tag"><b>Méthode</b>Titre, puis les étapes : titre et description pour chacune.</div>
+        <div class="shell">
+          <span class="eyebrow reveal">Déroulé</span>
+          <h2 class="h2 reveal">Comment se passe une intervention</h2>
+          <ol class="steps" id="steps">
+            <li class="step reveal">
+              <span class="step-num">01</span>
+              <h3>Premier contact</h3>
+              <p>Vous décrivez votre besoin par téléphone ou par message.</p>
+            </li>
+            <li class="step reveal" style="--d: 0.1s">
+              <span class="step-num">02</span>
+              <h3>Visite et devis</h3>
+              <p>Passage sur place, puis devis gratuit et détaillé.</p>
+            </li>
+            <li class="step reveal" style="--d: 0.2s">
+              <span class="step-num">03</span>
+              <h3>Travaux</h3>
+              <p>Réalisés à la date convenue, chantier laissé propre.</p>
+            </li>
+            <li class="step reveal" style="--d: 0.3s">
+              <span class="step-num">04</span>
+              <h3>Contrôle final</h3>
+              <p>Chaque circuit est testé et expliqué avant le départ.</p>
+            </li>
+          </ol>
+        </div>
+      </section>
+
+      <!-- Photos -->
+      <section class="section" id="realisations" data-sb>
+        <div class="sb-tag"><b>Photos</b>Titre et galerie. Les photos du prospect quand il en a, sinon celles de la template. Toutes recadrées au même format.</div>
+        <div class="shell gallery-head">
+          <div>
+            <span class="eyebrow reveal">Réalisations</span>
+            <h2 class="h2 reveal">Nos chantiers récents</h2>
+          </div>
+          <div class="gallery-nav reveal">
+            <button type="button" id="galleryPrev" aria-label="Photos précédentes"><svg><use href="#i-left" /></svg></button>
+            <button type="button" id="galleryNext" aria-label="Photos suivantes"><svg><use href="#i-right" /></svg></button>
+          </div>
+        </div>
+        <div class="gallery reveal" id="gallery"></div>
+      </section>
+
+      <!-- Avis -->
+      <section class="section section--band if-reviews" id="avis" data-sb>
+        <div class="sb-tag"><b>Avis clients</b>Titre et avis (auteur, note, texte). Sans texte d'avis en base, la section ne s'affiche pas : la note reste visible en haut de page.</div>
+        <div class="shell">
+          <div class="reviews-head">
+            <div>
+              <span class="eyebrow reveal">Avis clients</span>
+              <h2 class="h2 reveal">Ce que disent nos clients</h2>
+            </div>
+            <div class="score reveal">
+              <b>5,0</b>
+              <span>
+                <span class="stars" aria-hidden="true">
+                  <svg><use href="#i-star" /></svg><svg><use href="#i-star" /></svg><svg><use href="#i-star" /></svg
+                  ><svg><use href="#i-star" /></svg><svg><use href="#i-star" /></svg>
+                </span>
+                <br />35 avis Google
+              </span>
+            </div>
+          </div>
+          <div class="reviews">
+            <blockquote class="review reveal">
+              <span class="stars" aria-hidden="true">
+                <svg><use href="#i-star" /></svg><svg><use href="#i-star" /></svg><svg><use href="#i-star" /></svg
+                ><svg><use href="#i-star" /></svg><svg><use href="#i-star" /></svg>
+              </span>
+              <p>Panne un dimanche soir, il a rappelé dans le quart d'heure et tout remis en route le lundi matin. Sérieux et très clair dans ses explications.</p>
+              <footer><i>SM</i><div><b>Sophie M.</b><span>Avis Google</span></div></footer>
+            </blockquote>
+            <blockquote class="review reveal" style="--d: 0.07s">
+              <span class="stars" aria-hidden="true">
+                <svg><use href="#i-star" /></svg><svg><use href="#i-star" /></svg><svg><use href="#i-star" /></svg
+                ><svg><use href="#i-star" /></svg><svg><use href="#i-star" /></svg>
+              </span>
+              <p>Tableau entièrement refait dans une maison ancienne. Devis respecté et chantier laissé propre. Je recommande.</p>
+              <footer><i>JD</i><div><b>Julien D.</b><span>Avis Google</span></div></footer>
+            </blockquote>
+            <blockquote class="review reveal" style="--d: 0.14s">
+              <span class="stars" aria-hidden="true">
+                <svg><use href="#i-star" /></svg><svg><use href="#i-star" /></svg><svg><use href="#i-star" /></svg
+                ><svg><use href="#i-star" /></svg><svg><use href="#i-star" /></svg>
+              </span>
+              <p>Borne de recharge posée en une matinée. Il a pris le temps d'expliquer le fonctionnement et les réglages. Ponctuel et soigneux.</p>
+              <footer><i>NB</i><div><b>Nathalie B.</b><span>Avis Google</span></div></footer>
+            </blockquote>
+          </div>
+        </div>
+      </section>
+
+      <!-- Questions -->
+      <section class="section" id="questions" data-sb>
+        <div class="sb-tag"><b>Questions fréquentes</b>Titre, puis les questions : question et réponse pour chacune.</div>
+        <div class="shell faq-grid">
+          <div class="faq-side">
+            <span class="eyebrow reveal">Questions</span>
+            <h2 class="h2 reveal">Questions fréquentes</h2>
+            <p class="lead reveal">Les réponses aux questions qu'on nous pose le plus souvent.</p>
+            <div class="help reveal">
+              <span class="brand-logo"><img data-img="logo" src="electricien-v5-photos/cz63-logo.jpg" alt="" /></span>
+              <span>
+                <small>Une autre question ?</small>
+                <a class="tel" data-tel href="tel:0661588679"><span data-t="phone">06 61 58 86 79</span></a>
+              </span>
+            </div>
+          </div>
+          <div class="faq reveal" id="faq">
+            <div class="faq-item is-open">
+              <button type="button" aria-expanded="true">Intervenez-vous en urgence&nbsp;?<i><svg><use href="#i-chevron" /></svg></i></button>
+              <div class="faq-panel"><div><p>Oui, pour toute panne électrique nous intervenons au plus vite, 7j/7.</p></div></div>
+            </div>
+            <div class="faq-item">
+              <button type="button" aria-expanded="false">Le devis est-il gratuit&nbsp;?<i><svg><use href="#i-chevron" /></svg></i></button>
+              <div class="faq-panel"><div><p>Le devis est gratuit et sans engagement, remis avant les travaux.</p></div></div>
+            </div>
+            <div class="faq-item">
+              <button type="button" aria-expanded="false">Délivrez-vous une attestation de conformité&nbsp;?<i><svg><use href="#i-chevron" /></svg></i></button>
+              <div class="faq-panel"><div><p>Oui, chaque installation neuve ou mise aux normes est livrée avec son attestation.</p></div></div>
+            </div>
+            <div class="faq-item">
+              <button type="button" aria-expanded="false">Quelles zones couvrez-vous&nbsp;?<i><svg><use href="#i-chevron" /></svg></i></button>
+              <div class="faq-panel"><div><p>Votre ville et ses alentours. Appelez pour vérifier votre commune.</p></div></div>
+            </div>
+            <div class="faq-item">
+              <button type="button" aria-expanded="false">Vos travaux sont-ils garantis&nbsp;?<i><svg><use href="#i-chevron" /></svg></i></button>
+              <div class="faq-panel"><div><p>Oui, nos installations sont conformes et couvertes par notre assurance professionnelle.</p></div></div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Bannière -->
+      <section class="section section--banner" data-sb>
+        <div class="sb-tag" style="top: -20px"><b>Contact : bannière</b>Titre, texte, photo et texte du bouton. Le téléphone vient de « Contact et informations ».</div>
+        <div class="shell">
+          <div class="banner reveal">
+            <div class="banner-text">
+              <span class="eyebrow">Devis gratuit</span>
+              <h2>Une panne ou un&nbsp;projet&nbsp;?</h2>
+              <p>Décrivez votre besoin, vous recevez une réponse rapide et un devis gratuit.</p>
+              <a class="btn btn--light" href="#contact">Demander un devis</a>
+            </div>
+            <div class="banner-photo">
+              <img src="https://images.unsplash.com/photo-1547393947-a6a221f74e59?w=1400&q=76&auto=format&fit=crop" alt="" />
+            </div>
+            <div class="notch notch--right banner-tel">
+              <small>Par téléphone</small>
+              <a data-tel href="tel:0661588679" data-t="phone">06 61 58 86 79</a>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Contact -->
+      <section class="section section--band" id="contact" data-sb>
+        <div class="sb-tag"><b>Contact et informations</b>Titre, description, téléphone, e-mail, ville, secteur, horaires, réseaux sociaux, logo. L'adresse et la carte viennent de la fiche Google.</div>
+        <div class="shell">
+          <div class="contact">
+            <div>
+              <span class="eyebrow reveal">Contact</span>
+              <h2 class="h2 reveal">Parlons de votre projet</h2>
+              <p class="lead reveal">Par téléphone, par e-mail ou avec le formulaire : réponse rapide et devis gratuit.</p>
+              <ul class="infos reveal">
+                <li>
+                  <i class="tile"><svg><use href="#i-phone" /></svg></i>
+                  <div><small>Téléphone</small><b data-t="phone">06 61 58 86 79</b></div>
+                </li>
+                <li>
+                  <i class="tile"><svg><use href="#i-mail" /></svg></i>
+                  <div><small>E-mail</small><b data-t="email">cz63elec@gmail.com</b></div>
+                </li>
+                <li class="if-no-address">
+                  <i class="tile"><svg><use href="#i-area" /></svg></i>
+                  <div><small>Secteur</small><b data-t="area">Orléat et ses alentours</b></div>
+                </li>
+                <li class="if-address">
+                  <i class="tile"><svg><use href="#i-pin" /></svg></i>
+                  <div><small>Adresse</small><b data-t="address"></b></div>
+                </li>
+                <li class="if-hours">
+                  <i class="tile"><svg><use href="#i-clock" /></svg></i>
+                  <div>
+                    <small>Horaires</small>
+                    <div class="hours">
+                      <span>Lundi au vendredi</span><span>8 h à 18 h</span>
+                      <span>Samedi</span><span>9 h à 12 h</span>
+                    </div>
+                  </div>
+                </li>
+              </ul>
+            </div>
+            <form class="form reveal" onsubmit="return false">
+              <h3>Demander un devis</h3>
+              <div class="field"><label for="f-name">Nom</label><input id="f-name" autocomplete="name" /></div>
+              <div class="field"><label for="f-tel">Téléphone</label><input id="f-tel" inputmode="tel" autocomplete="tel" /></div>
+              <div class="field field--wide"><label for="f-mail">E-mail</label><input id="f-mail" type="email" autocomplete="email" /></div>
+              <div class="field field--wide"><label for="f-msg">Votre besoin</label><textarea id="f-msg" placeholder="Par exemple : tableau à remplacer dans une maison de 1975."></textarea></div>
+              <button class="btn" type="submit">Envoyer ma demande</button>
+              <small>Devis gratuit et sans engagement.</small>
+            </form>
+          </div>
+          <div class="map reveal">
+            <iframe id="map" title="Carte du secteur d'intervention" loading="lazy" src="https://www.google.com/maps?q=Orl%C3%A9at%2C%20Puy-de-D%C3%B4me&z=11&output=embed"></iframe>
+            <div class="map-card">
+              <i class="tile"><svg><use href="#i-pin" /></svg></i>
+              <span><b data-t="area">Orléat et ses alentours</b>Secteur d'intervention</span>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer class="footer">
+      <div class="shell footer-grid">
+        <div>
+          <span class="brand">
+            <span class="brand-logo"><img data-img="logo" src="electricien-v5-photos/cz63-logo.jpg" alt="" /></span>
+            <span data-t="name">Cz63 Électricité</span>
+          </span>
+          <p>Dépannage, mise aux normes, rénovation et borne de recharge à <span data-t="city">Orléat</span>.</p>
+          <a class="footer-social if-social" href="#"><svg><use href="#i-facebook" /></svg>Facebook</a>
+        </div>
+        <div>
+          <h3>Contact</h3>
+          <ul>
+            <li><a data-tel href="tel:0661588679" data-t="phone">06 61 58 86 79</a></li>
+            <li><a data-mail href="mailto:cz63elec@gmail.com" data-t="email">cz63elec@gmail.com</a></li>
+            <li data-t="area">Orléat et ses alentours</li>
+          </ul>
+        </div>
+        <div>
+          <h3>Navigation</h3>
+          <ul>
+            <li><a href="#prestations">Prestations</a></li>
+            <li><a href="#a-propos">À propos</a></li>
+            <li><a href="#realisations">Réalisations</a></li>
+            <li><a href="#contact">Contact</a></li>
+          </ul>
+        </div>
+        <div>
+          <h3>Prestations</h3>
+          <ul>
+            <li>Dépannage électrique</li>
+            <li>Mise aux normes</li>
+            <li>Tableau électrique</li>
+            <li>Installation et rénovation</li>
+            <li>Éclairage et domotique</li>
+            <li>Borne de recharge</li>
+          </ul>
+        </div>
+      </div>
+      <div class="shell footer-bottom">
+        <span>© 2026 <span data-t="name">Cz63 Électricité</span></span>
+        <span class="footer-links"><a href="#">Mentions légales</a><a href="#">Confidentialité</a></span>
+      </div>
+    </footer>
+
+    <div class="mock" role="group" aria-label="Réglages de la maquette">
+      <b>Maquette</b>
+      <div class="mock-seg">
+        <button type="button" data-state-btn="cz63" aria-pressed="true"><span class="long">Cz63 : aucune photo à lui</span><span class="short">Cz63</span></button>
+        <button type="button" data-state-btn="fge" aria-pressed="false"><span class="long">Feeling Good : ses vraies photos</span><span class="short">Feeling Good</span></button>
+        <button type="button" data-state-btn="rich" aria-pressed="false"><span class="long">Fiche bien remplie</span><span class="short">Fiche pleine</span></button>
+      </div>
+      <div class="mock-seg mock-tags">
+        <button type="button" id="tagsBtn" aria-pressed="false">Sections du CMS</button>
+      </div>
+    </div>
+
+    <script>
+      const root = document.documentElement
+      const params = new URLSearchParams(location.search)
+      const LOCAL = 'electricien-v5-photos/'
+
+      function stock(id, width) {
+        return `https://images.unsplash.com/${id}?w=${width}&q=76&auto=format&fit=crop`
+      }
+
+      const TEMPLATE_GALLERY = [
+        'photo-1609280069678-ab9ef26a0b05',
+        'photo-1766507680004-1c71007aefe5',
+        'photo-1568605114967-8130f3a36994',
+        'photo-1556912102-ea493a2a5b93',
+        'photo-1659612534697-3edc1892db46',
+        'photo-1526116638181-d787e552d669',
+      ].map((id) => stock(id, 700))
+
+      const cz63 = {
+        name: 'Cz63 Électricité',
+        logo: LOCAL + 'cz63-logo.jpg',
+        city: 'Orléat',
+        area: 'Orléat et ses alentours',
+        phone: '06 61 58 86 79',
+        tel: '0661588679',
+        email: 'cz63elec@gmail.com',
+        about:
+          "Électricien à Orléat, j'interviens sur Clermont-Ferrand et dans tout le Puy-de-Dôme : dépannage, rénovation, mise aux normes et installations neuves.",
+        rating: '5,0',
+        reviewsCount: '35',
+        trustValue: '5,0/5',
+        trustLabel: '35 avis',
+        heroImage: stock('photo-1767710924293-29fba5e3854b', 1300),
+        heroSecond: stock('photo-1576446468729-7674e99608f5', 800),
+        aboutImage: stock('photo-1583275477830-7e8e9d56d15f', 1100),
+        gallery: TEMPLATE_GALLERY,
+        address: '',
+        mapQuery: 'Orléat, Puy-de-Dôme',
+        hasReviews: false,
+        hasHours: false,
+        hasSocial: false,
+      }
+
+      const PROSPECTS = {
+        cz63,
+        fge: {
+          name: 'Feeling Good Electricité',
+          logo: LOCAL + 'feeling-good-logo.jpg',
+          city: 'Tournai',
+          area: 'Tournai et ses alentours',
+          phone: '+32 472 12 01 47',
+          tel: '+32472120147',
+          email: 'info.fgelectricite@gmail.com',
+          about:
+            'Électricité générale à Tournai et dans le Hainaut : installations, rénovations et mises aux normes RGIE. Travail propre et soigné.',
+          rating: '',
+          reviewsCount: '',
+          trustValue: 'Devis gratuit',
+          trustLabel: 'Sans engagement',
+          heroImage: LOCAL + 'feeling-good-entete.jpg',
+          heroSecond: LOCAL + 'feeling-good-chantier-1.jpg',
+          aboutImage: LOCAL + 'feeling-good-a-propos.jpg',
+          gallery: [1, 2, 3, 4, 5].map((index) => `${LOCAL}feeling-good-chantier-${index}.jpg`),
+          address: 'Rue Ladrerie 23, 7620 Brunehaut',
+          mapQuery: 'Rue Ladrerie 23, 7620 Brunehaut',
+          hasReviews: false,
+          hasHours: false,
+          hasSocial: false,
+        },
+        rich: {
+          ...cz63,
+          address: '12 rue des Forges, 63190 Orléat',
+          hasReviews: true,
+          hasHours: true,
+          hasSocial: true,
+        },
+      }
+
+      const gallery = document.getElementById('gallery')
+      const galleryPrev = document.getElementById('galleryPrev')
+      const galleryNext = document.getElementById('galleryNext')
+
+      function syncGalleryButtons() {
+        const maxScroll = gallery.scrollWidth - gallery.clientWidth
+        galleryPrev.disabled = gallery.scrollLeft < 4
+        galleryNext.disabled = gallery.scrollLeft > maxScroll - 4
+      }
+
+      function setProspect(key) {
+        const prospect = PROSPECTS[key]
+        document.querySelectorAll('[data-t]').forEach((element) => {
+          element.textContent = prospect[element.dataset.t]
+        })
+        document.querySelectorAll('[data-img]').forEach((element) => {
+          element.src = prospect[element.dataset.img]
+        })
+        document.querySelectorAll('[data-tel]').forEach((element) => {
+          element.href = `tel:${prospect.tel}`
+        })
+        document.querySelectorAll('[data-mail]').forEach((element) => {
+          element.href = `mailto:${prospect.email}`
+        })
+        gallery.innerHTML = prospect.gallery
+          .map((source) => `<figure><img src="${source}" alt="" loading="lazy" /></figure>`)
+          .join('')
+        gallery.scrollLeft = 0
+        document.getElementById('map').src =
+          `https://www.google.com/maps?q=${encodeURIComponent(prospect.mapQuery)}&z=11&output=embed`
+        root.classList.toggle('has-rating', Boolean(prospect.rating))
+        root.classList.toggle('has-reviews', prospect.hasReviews)
+        root.classList.toggle('has-hours', prospect.hasHours)
+        root.classList.toggle('has-address', Boolean(prospect.address))
+        root.classList.toggle('has-social', prospect.hasSocial)
+        document.title = `${prospect.name}, électricien à ${prospect.city}`
+        document.querySelectorAll('[data-state-btn]').forEach((button) => {
+          button.setAttribute('aria-pressed', String(button.dataset.stateBtn === key))
+        })
+        requestAnimationFrame(syncGalleryButtons)
+      }
+
+      document.querySelectorAll('[data-state-btn]').forEach((button) => {
+        button.addEventListener('click', () => setProspect(button.dataset.stateBtn))
+      })
+      gallery.addEventListener('scroll', syncGalleryButtons, { passive: true })
+      window.addEventListener('resize', syncGalleryButtons)
+      galleryPrev.addEventListener('click', () => gallery.scrollBy({ left: -630, behavior: 'smooth' }))
+      galleryNext.addEventListener('click', () => gallery.scrollBy({ left: 630, behavior: 'smooth' }))
+
+      const tagsButton = document.getElementById('tagsBtn')
+      function setTags(isOn) {
+        root.classList.toggle('tags', isOn)
+        tagsButton.setAttribute('aria-pressed', String(isOn))
+      }
+      tagsButton.addEventListener('click', () => setTags(!root.classList.contains('tags')))
+
+      document.querySelectorAll('.faq-item button').forEach((button) => {
+        button.addEventListener('click', () => {
+          const isOpen = button.parentElement.classList.toggle('is-open')
+          button.setAttribute('aria-expanded', String(isOpen))
+        })
+      })
+
+      setProspect(PROSPECTS[params.get('data')] ? params.get('data') : 'cz63')
+      if (params.has('tags')) setTags(true)
+      if (params.has('clean')) root.classList.add('clean')
+
+      const revealObserver = new IntersectionObserver(
+        (entries) => {
+          entries.forEach((entry) => {
+            if (entry.isIntersecting) {
+              entry.target.classList.add('in')
+              revealObserver.unobserve(entry.target)
+            }
+          })
+        },
+        { rootMargin: '0px 0px -6% 0px' },
+      )
+      document.querySelectorAll('.reveal, #steps').forEach((element) => revealObserver.observe(element))
+    </script>
+  </body>
+</html>

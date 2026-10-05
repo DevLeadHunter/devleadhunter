@@ -1,0 +1,2422 @@
+<!doctype html>
+<html lang="fr" data-state="real" data-hero="a">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Cz63 Électricité, électricien à Orléat</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Schibsted+Grotesk:wght@400..800&display=swap" rel="stylesheet" />
+    <style>
+      :root {
+        --page: #f6f4ef;
+        --surface: #ffffff;
+        --band: #efece5;
+        --ink: #0e1b2c;
+        --body: #2a3340;
+        --muted: #677082;
+        --line: #e2ded5;
+        --night: #0a1422;
+        --night-line: rgba(255, 255, 255, 0.12);
+        --night-muted: #9aa6b8;
+        --accent: #f08a1c;
+        --accent-strong: #bd5d08;
+        --accent-soft: #fcebd6;
+        --accent-light: #ffc37a;
+        --star: #f2a31b;
+        --font: 'Schibsted Grotesk', 'Segoe UI', sans-serif;
+        --shell: min(1240px, 100% - 48px);
+        --notch: 28px;
+        --notch-bg: var(--page);
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+      html {
+        scroll-behavior: smooth;
+        -webkit-text-size-adjust: 100%;
+      }
+      body {
+        margin: 0;
+        background: var(--page);
+        color: var(--body);
+        font-family: var(--font);
+        font-size: 17px;
+        line-height: 1.6;
+        -webkit-font-smoothing: antialiased;
+      }
+      ::selection {
+        background: var(--accent-soft);
+      }
+      img {
+        display: block;
+        max-width: 100%;
+      }
+      a {
+        color: inherit;
+        text-decoration: none;
+      }
+      h1,
+      h2,
+      h3,
+      p,
+      figure,
+      blockquote,
+      ul,
+      ol {
+        margin: 0;
+        padding: 0;
+      }
+      ul,
+      ol {
+        list-style: none;
+      }
+      h1,
+      h2,
+      h3 {
+        color: var(--ink);
+        font-weight: 650;
+        letter-spacing: -0.024em;
+        text-wrap: balance;
+      }
+      :focus-visible {
+        outline: 2px solid var(--accent-strong);
+        outline-offset: 3px;
+        border-radius: 6px;
+      }
+      .shell {
+        width: var(--shell);
+        margin-inline: auto;
+      }
+      .section {
+        position: relative;
+        padding: 120px 0;
+      }
+      .section--surface {
+        background: var(--surface);
+        --notch-bg: var(--surface);
+      }
+      .section--band {
+        background: var(--band);
+        --notch-bg: var(--band);
+      }
+      .eyebrow {
+        display: block;
+        font-size: 13px;
+        font-weight: 650;
+        letter-spacing: 0.11em;
+        text-transform: uppercase;
+        color: var(--accent-strong);
+      }
+      .h2 {
+        margin-top: 14px;
+        font-size: 46px;
+        line-height: 1.08;
+      }
+      .lead {
+        font-size: 18.5px;
+        line-height: 1.6;
+      }
+      .head {
+        display: grid;
+        grid-template-columns: minmax(0, 1.15fr) minmax(0, 0.85fr);
+        gap: 64px;
+        align-items: end;
+      }
+      .btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 10px;
+        height: 54px;
+        padding: 0 26px;
+        border: 0;
+        border-radius: 12px;
+        background: var(--accent-strong);
+        color: #fff;
+        font: 650 16px/1 var(--font);
+        cursor: pointer;
+        transition:
+          background 0.2s ease,
+          transform 0.2s ease;
+      }
+      .btn:hover {
+        background: #a55006;
+        transform: translateY(-1px);
+      }
+      .tel {
+        display: inline-flex;
+        align-items: center;
+        gap: 10px;
+        font-weight: 650;
+        color: var(--ink);
+        font-variant-numeric: tabular-nums;
+        white-space: nowrap;
+      }
+      .tel svg {
+        width: 18px;
+        height: 18px;
+        color: var(--accent-strong);
+      }
+      .stars {
+        display: inline-flex;
+        gap: 2px;
+        color: var(--star);
+      }
+      .stars svg {
+        width: 17px;
+        height: 17px;
+      }
+      .actions {
+        display: flex;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 24px;
+      }
+      .points {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px 24px;
+        font-size: 15.5px;
+        font-weight: 500;
+        color: var(--ink);
+      }
+      .points li {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+      }
+      .points svg {
+        width: 17px;
+        height: 17px;
+        color: var(--accent-strong);
+      }
+
+      /* En-tête */
+      .header {
+        position: sticky;
+        top: 0;
+        z-index: 30;
+        background: rgba(246, 244, 239, 0.9);
+        backdrop-filter: blur(14px);
+        border-bottom: 1px solid transparent;
+        transition:
+          background 0.25s ease,
+          border-color 0.25s ease;
+      }
+      .header.is-stuck {
+        background: rgba(255, 255, 255, 0.94);
+        border-bottom-color: var(--line);
+      }
+      .header-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 24px;
+        height: 84px;
+      }
+      .brand {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        font-weight: 700;
+        font-size: 19px;
+        line-height: 1.15;
+        color: var(--ink);
+        letter-spacing: -0.015em;
+      }
+      .brand-logo {
+        width: 44px;
+        height: 44px;
+        border-radius: 12px;
+        overflow: hidden;
+        border: 1px solid var(--line);
+        background: #fff;
+        flex: none;
+      }
+      .brand-logo img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        transform: scale(1.22);
+      }
+      .nav {
+        display: flex;
+        gap: 36px;
+        font-size: 16px;
+        font-weight: 500;
+        color: var(--body);
+      }
+      .nav a {
+        transition: color 0.2s ease;
+      }
+      .nav a:hover {
+        color: var(--accent-strong);
+      }
+      .header-right {
+        display: flex;
+        align-items: center;
+        gap: 26px;
+      }
+      .header .btn {
+        height: 46px;
+        padding: 0 20px;
+        font-size: 15px;
+      }
+
+      /* Encoche : une carte posée dans le coin d'une photo, aux angles rentrants */
+      .notch {
+        position: absolute;
+        left: 0;
+        bottom: 0;
+        z-index: 2;
+        display: flex;
+        align-items: center;
+        gap: 18px;
+        padding: 20px 30px 2px 2px;
+        background: var(--notch-bg);
+        border-top-right-radius: var(--notch);
+      }
+      .notch::before,
+      .notch::after {
+        content: '';
+        position: absolute;
+        width: var(--notch);
+        height: var(--notch);
+        background: radial-gradient(circle at 100% 0, transparent calc(var(--notch) - 0.6px), var(--notch-bg) var(--notch));
+      }
+      .notch::before {
+        left: 0;
+        top: calc(var(--notch) * -1);
+      }
+      .notch::after {
+        left: 100%;
+        bottom: 0;
+      }
+      .notch--right {
+        left: auto;
+        right: 0;
+        padding: 20px 2px 2px 30px;
+        border-radius: var(--notch) 0 0 0;
+      }
+      .notch--right::before,
+      .notch--right::after {
+        background: radial-gradient(circle at 0 0, transparent calc(var(--notch) - 0.6px), var(--notch-bg) var(--notch));
+      }
+      .notch--right::before {
+        left: auto;
+        right: 0;
+      }
+      .notch--right::after {
+        left: auto;
+        right: 100%;
+      }
+      .rating b {
+        font-weight: 650;
+        font-size: 46px;
+        line-height: 1;
+        color: var(--ink);
+        letter-spacing: -0.035em;
+      }
+      .rating span {
+        font-size: 14.5px;
+        line-height: 1.45;
+        color: var(--muted);
+      }
+      .rating .stars {
+        color: var(--star);
+      }
+
+      /* Haut de page, version immersive (ordinateur) */
+      .hero-a {
+        display: none;
+        position: relative;
+        margin-top: 8px;
+      }
+      .hero-a-card {
+        position: relative;
+        height: 660px;
+        border-radius: 32px;
+        overflow: hidden;
+        background: var(--night);
+      }
+      .hero-a-card img {
+        position: absolute;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        object-position: 50% 42%;
+        animation: settle 2s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+      }
+      @keyframes settle {
+        from {
+          transform: scale(1.06);
+        }
+      }
+      .hero-a-card::after {
+        content: '';
+        position: absolute;
+        inset: 0;
+        background:
+          linear-gradient(90deg, rgba(7, 14, 24, 0.86) 0%, rgba(7, 14, 24, 0.6) 40%, rgba(7, 14, 24, 0.08) 72%, transparent 100%),
+          linear-gradient(0deg, rgba(7, 14, 24, 0.6), transparent 50%);
+      }
+      .hero-a-content {
+        position: absolute;
+        left: 64px;
+        bottom: 60px;
+        z-index: 1;
+        max-width: 720px;
+        color: #fff;
+      }
+      .hero-a .eyebrow {
+        color: var(--accent-light);
+      }
+      .hero-a h1 {
+        margin-top: 20px;
+        font-size: 74px;
+        line-height: 1.02;
+        letter-spacing: -0.034em;
+        color: #fff;
+      }
+      .hero-a h1 em,
+      .hero-b h1 em {
+        font-style: normal;
+      }
+      .hero-a h1 em {
+        color: var(--accent-light);
+      }
+      .hero-a .lead {
+        margin-top: 22px;
+        max-width: 50ch;
+        color: #dfe5ee;
+      }
+      .hero-a .actions {
+        margin-top: 32px;
+      }
+      .hero-a .tel {
+        color: #fff;
+      }
+      .hero-a .tel svg,
+      .hero-a .points svg {
+        color: var(--accent-light);
+      }
+      .hero-a .points {
+        margin-top: 30px;
+        color: #eef2f7;
+      }
+
+      /* Haut de page, version deux colonnes (et téléphone) */
+      .hero-b {
+        position: relative;
+        display: grid;
+        grid-template-columns: minmax(0, 1.04fr) minmax(0, 0.96fr);
+        gap: 72px;
+        align-items: center;
+        padding: 40px 0 0;
+      }
+      .hero-b h1 {
+        margin-top: 20px;
+        font-size: 66px;
+        line-height: 1.03;
+        letter-spacing: -0.032em;
+      }
+      .hero-b h1 em {
+        color: var(--accent-strong);
+      }
+      .hero-b .lead {
+        margin-top: 24px;
+        max-width: 46ch;
+      }
+      .hero-b .actions {
+        margin-top: 32px;
+      }
+      .hero-b .points {
+        margin-top: 34px;
+        padding-top: 26px;
+        border-top: 1px solid var(--line);
+      }
+      .hero-b-media {
+        position: relative;
+      }
+      .hero-b-media::before {
+        content: '';
+        position: absolute;
+        right: -14%;
+        top: -14%;
+        width: 78%;
+        aspect-ratio: 1;
+        background: radial-gradient(closest-side, rgba(240, 138, 28, 0.26), transparent 72%);
+        pointer-events: none;
+      }
+      .hero-b-photo {
+        position: relative;
+        aspect-ratio: 5 / 5.5;
+        border-radius: 30px;
+        overflow: hidden;
+        background: var(--night);
+      }
+      .hero-b-photo img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+      }
+      .hero-second {
+        position: absolute;
+        right: -28px;
+        bottom: -44px;
+        z-index: 3;
+        width: 46%;
+        aspect-ratio: 4 / 3.05;
+        border: 7px solid var(--page);
+        border-radius: 26px;
+        overflow: hidden;
+        background: var(--band);
+      }
+      .hero-second img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+      }
+
+      /* Repères de confiance */
+      .proof {
+        margin-top: 20px;
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 20px;
+      }
+      html[data-hero='b'] .proof {
+        margin-top: 96px;
+      }
+      .proof li {
+        position: relative;
+        display: flex;
+        flex-direction: column;
+        justify-content: flex-end;
+        min-height: 164px;
+        padding: 26px 28px;
+        border-radius: 24px;
+        background: var(--surface);
+        border: 1px solid var(--line);
+      }
+      .proof b {
+        font-weight: 650;
+        font-size: 32px;
+        line-height: 1.1;
+        letter-spacing: -0.03em;
+        color: var(--ink);
+      }
+      .proof span {
+        margin-top: 8px;
+        font-size: 15px;
+        color: var(--muted);
+      }
+      .proof svg {
+        position: absolute;
+        right: 22px;
+        top: 22px;
+        width: 26px;
+        height: 26px;
+        color: var(--accent-strong);
+      }
+      .proof li:nth-child(1) {
+        background: var(--ink);
+        border-color: var(--ink);
+      }
+      .proof li:nth-child(1) b {
+        color: #fff;
+      }
+      .proof li:nth-child(1) span {
+        color: var(--night-muted);
+      }
+      .proof li:nth-child(1) svg {
+        color: var(--accent-light);
+      }
+      .proof li:nth-child(3) {
+        background: var(--accent-soft);
+        border-color: var(--accent-soft);
+      }
+      .proof li:nth-child(3) span {
+        color: #6f5a3f;
+      }
+      .proof li:nth-child(4) {
+        background: var(--accent-strong);
+        border-color: var(--accent-strong);
+      }
+      .proof li:nth-child(4) b,
+      .proof li:nth-child(4) svg {
+        color: #fff;
+      }
+      .proof li:nth-child(4) span {
+        color: #ffe3c2;
+      }
+
+      /* Prestations */
+      .services {
+        margin-top: 60px;
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 44px 26px;
+      }
+      .service {
+        display: grid;
+      }
+      .service figure {
+        grid-area: 1 / 1;
+        aspect-ratio: 4 / 3.1;
+        border-radius: 24px;
+        overflow: hidden;
+        background: var(--band);
+      }
+      .service img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        transition: transform 0.9s cubic-bezier(0.2, 0.8, 0.2, 1);
+      }
+      .service:hover img {
+        transform: scale(1.05);
+      }
+      .service-label {
+        grid-area: 1 / 1;
+        align-self: end;
+        justify-self: start;
+        position: relative;
+        display: flex;
+        align-items: baseline;
+        gap: 12px;
+        max-width: 88%;
+        padding: 16px 24px 0 0;
+        background: var(--notch-bg);
+        border-top-right-radius: var(--notch);
+      }
+      .service-label::before,
+      .service-label::after {
+        content: '';
+        position: absolute;
+        width: var(--notch);
+        height: var(--notch);
+        background: radial-gradient(circle at 100% 0, transparent calc(var(--notch) - 0.6px), var(--notch-bg) var(--notch));
+      }
+      .service-label::before {
+        left: 0;
+        top: calc(var(--notch) * -1);
+      }
+      .service-label::after {
+        left: 100%;
+        bottom: 0;
+      }
+      .service-label span {
+        font-size: 14px;
+        font-weight: 650;
+        color: var(--accent-strong);
+        font-variant-numeric: tabular-nums;
+      }
+      .service h3 {
+        font-size: 22px;
+        line-height: 1.2;
+      }
+      .service p {
+        margin-top: 10px;
+        font-size: 16.5px;
+        max-width: 38ch;
+      }
+
+      /* À propos */
+      .about {
+        display: grid;
+        grid-template-columns: minmax(0, 0.92fr) minmax(0, 1.08fr);
+        gap: 88px;
+        align-items: center;
+      }
+      .about-media {
+        position: relative;
+      }
+      .about-photo {
+        aspect-ratio: 4 / 4.5;
+        border-radius: 30px;
+        overflow: hidden;
+        background: var(--line);
+      }
+      .about-photo img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+      }
+      .about .notch .brand {
+        font-size: 17px;
+      }
+      .about .notch small {
+        display: block;
+        margin-top: 3px;
+        font-size: 14px;
+        font-weight: 400;
+        color: var(--muted);
+        letter-spacing: 0;
+      }
+      .about-text {
+        margin-top: 22px;
+      }
+      .facts {
+        margin-top: 34px;
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 14px;
+      }
+      .facts li {
+        padding: 20px 22px;
+        border-radius: 18px;
+        background: var(--surface);
+      }
+      .facts small {
+        display: block;
+        font-size: 12.5px;
+        font-weight: 650;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+        color: var(--muted);
+      }
+      .facts b {
+        display: block;
+        margin-top: 8px;
+        font-weight: 650;
+        font-size: 18px;
+        line-height: 1.3;
+        color: var(--ink);
+      }
+      .link {
+        display: inline-flex;
+        align-items: center;
+        gap: 10px;
+        margin-top: 32px;
+        font-weight: 650;
+        color: var(--accent-strong);
+      }
+      .link svg {
+        width: 18px;
+        height: 18px;
+        transition: transform 0.2s ease;
+      }
+      .link:hover svg {
+        transform: translateX(4px);
+      }
+
+      /* Déroulé */
+      .steps {
+        position: relative;
+        margin-top: 64px;
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 20px;
+      }
+      .steps::before,
+      .steps::after {
+        content: '';
+        position: absolute;
+        left: 28px;
+        right: 28px;
+        top: 27px;
+        height: 2px;
+        background: var(--line);
+      }
+      .steps::after {
+        background: var(--accent);
+        transform: scaleX(0);
+        transform-origin: left;
+        transition: transform 1.8s cubic-bezier(0.3, 0.7, 0.2, 1) 0.2s;
+      }
+      .steps.in::after {
+        transform: scaleX(1);
+      }
+      .step-num {
+        position: relative;
+        z-index: 1;
+        display: grid;
+        place-items: center;
+        width: 56px;
+        height: 56px;
+        border-radius: 50%;
+        background: var(--accent-soft);
+        box-shadow: 0 0 0 8px var(--surface);
+        color: var(--accent-strong);
+        font-weight: 650;
+        font-size: 17px;
+        font-variant-numeric: tabular-nums;
+      }
+      .step-card {
+        margin-top: 22px;
+        height: calc(100% - 78px);
+        padding: 26px 26px 28px;
+        border: 1px solid var(--line);
+        border-radius: 20px;
+        background: var(--page);
+      }
+      .step h3 {
+        font-size: 21px;
+        line-height: 1.25;
+      }
+      .step p {
+        margin-top: 10px;
+        font-size: 16px;
+      }
+
+      /* Réalisations */
+      .gallery {
+        margin-top: 60px;
+        display: grid;
+        grid-template-columns: repeat(12, 1fr);
+        grid-auto-rows: 270px;
+        gap: 20px;
+      }
+      .gallery figure {
+        border-radius: 24px;
+        overflow: hidden;
+        background: var(--line);
+      }
+      .gallery img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        transition: transform 0.9s cubic-bezier(0.2, 0.8, 0.2, 1);
+      }
+      .gallery figure:hover img {
+        transform: scale(1.04);
+      }
+      .gallery figure:nth-child(1) {
+        grid-column: span 7;
+        grid-row: span 2;
+      }
+      .gallery figure:nth-child(2) {
+        grid-column: span 5;
+      }
+      .gallery figure:nth-child(3) {
+        grid-column: span 3;
+      }
+      .gallery figure:nth-child(4) {
+        grid-column: span 2;
+      }
+      .gallery figure:nth-child(5) {
+        grid-column: span 4;
+      }
+      .gallery figure:nth-child(6) {
+        grid-column: span 8;
+      }
+
+      /* Avis */
+      .reviews-grid {
+        display: grid;
+        grid-template-columns: minmax(0, 0.7fr) minmax(0, 1.3fr);
+        gap: 64px;
+        align-items: start;
+      }
+      .score {
+        margin-top: 34px;
+        display: inline-flex;
+        align-items: center;
+        gap: 22px;
+        padding: 26px 32px;
+        border-radius: 24px;
+        background: var(--surface);
+      }
+      .score b {
+        font-weight: 650;
+        font-size: 64px;
+        line-height: 1;
+        color: var(--ink);
+        letter-spacing: -0.04em;
+      }
+      .score span {
+        font-size: 15px;
+        line-height: 1.5;
+        color: var(--muted);
+      }
+      .score .stars {
+        color: var(--star);
+      }
+      .score .stars svg {
+        width: 20px;
+        height: 20px;
+      }
+      html[data-state='real'] .reviews-grid {
+        grid-template-columns: 1fr;
+      }
+      html[data-state='real'] .reviews-grid > div:first-child {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 0 48px;
+        flex-wrap: wrap;
+      }
+      html[data-state='real'] .reviews-grid .eyebrow {
+        flex-basis: 100%;
+      }
+      html[data-state='real'] .score {
+        margin-top: 0;
+        padding: 30px 40px;
+      }
+      html[data-state='real'] .score b {
+        font-size: 84px;
+      }
+      .reviews {
+        display: grid;
+        gap: 16px;
+      }
+      .review {
+        display: grid;
+        grid-template-columns: 52px 1fr;
+        gap: 20px;
+        padding: 28px 30px;
+        border-radius: 22px;
+        background: var(--surface);
+      }
+      .review i {
+        display: grid;
+        place-items: center;
+        width: 52px;
+        height: 52px;
+        border-radius: 50%;
+        background: var(--accent-soft);
+        color: var(--accent-strong);
+        font-weight: 650;
+        font-size: 16px;
+        font-style: normal;
+      }
+      .review header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 16px;
+      }
+      .review header b {
+        font-weight: 650;
+        font-size: 17px;
+        color: var(--ink);
+      }
+      .review p {
+        margin-top: 10px;
+        font-size: 16.5px;
+      }
+
+      /* Questions */
+      .faq-grid {
+        display: grid;
+        grid-template-columns: minmax(0, 0.78fr) minmax(0, 1.22fr);
+        gap: 80px;
+        align-items: start;
+      }
+      .faq-side {
+        position: sticky;
+        top: 124px;
+      }
+      .faq-side .lead {
+        margin-top: 18px;
+        max-width: 34ch;
+      }
+      .help {
+        margin-top: 32px;
+        display: flex;
+        align-items: center;
+        gap: 16px;
+        padding: 18px 20px;
+        border: 1px solid var(--line);
+        border-radius: 20px;
+        background: var(--surface);
+      }
+      .help small {
+        display: block;
+        font-size: 14px;
+        color: var(--muted);
+      }
+      .help .tel {
+        font-size: 19px;
+      }
+      .faq {
+        display: grid;
+        gap: 12px;
+      }
+      .faq details {
+        border: 1px solid var(--line);
+        border-radius: 18px;
+        background: var(--surface);
+        transition:
+          border-color 0.2s ease,
+          box-shadow 0.2s ease;
+      }
+      .faq details[open] {
+        border-color: #d9c7ad;
+        box-shadow: 0 20px 40px -32px rgba(14, 27, 44, 0.35);
+      }
+      .faq summary {
+        list-style: none;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 24px;
+        padding: 22px 22px 22px 26px;
+        font-weight: 650;
+        font-size: 19px;
+        line-height: 1.35;
+        color: var(--ink);
+        letter-spacing: -0.012em;
+        cursor: pointer;
+      }
+      .faq summary::-webkit-details-marker {
+        display: none;
+      }
+      .faq summary i {
+        display: grid;
+        place-items: center;
+        width: 38px;
+        height: 38px;
+        border-radius: 50%;
+        background: var(--accent-soft);
+        color: var(--accent-strong);
+        flex: none;
+        transition: transform 0.25s ease;
+      }
+      .faq summary svg {
+        width: 18px;
+        height: 18px;
+      }
+      .faq details[open] summary i {
+        transform: rotate(180deg);
+      }
+      .faq details p {
+        padding: 0 84px 24px 26px;
+        font-size: 16.5px;
+      }
+
+      /* Bannière */
+      .banner {
+        position: relative;
+        min-height: 430px;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        border-radius: 32px;
+        overflow: hidden;
+        padding: 72px 64px;
+        background: var(--night);
+        color: #fff;
+        isolation: isolate;
+      }
+      .banner-bg {
+        position: absolute;
+        inset: 0;
+        z-index: -1;
+        background: url('https://images.unsplash.com/photo-1547393947-a6a221f74e59?w=1800&q=74&auto=format&fit=crop') center 40% / cover;
+        transform: scaleX(-1);
+      }
+      .banner::before {
+        content: '';
+        position: absolute;
+        inset: 0;
+        z-index: -1;
+        background: linear-gradient(90deg, rgba(10, 16, 26, 0.92) 0%, rgba(10, 16, 26, 0.7) 44%, rgba(10, 16, 26, 0.1) 78%);
+      }
+      .banner .eyebrow {
+        color: var(--accent-light);
+      }
+      .banner h2 {
+        margin-top: 16px;
+        max-width: 14ch;
+        font-size: 58px;
+        line-height: 1.03;
+        letter-spacing: -0.03em;
+        color: #fff;
+      }
+      .banner p {
+        margin-top: 18px;
+        max-width: 42ch;
+        font-size: 19px;
+        color: #dfe5ee;
+      }
+      .banner .actions {
+        margin-top: 32px;
+      }
+      .banner-tel {
+        display: block;
+      }
+      .banner-tel small {
+        display: block;
+        font-size: 13px;
+        font-weight: 650;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+        color: var(--muted);
+      }
+      .banner-tel a {
+        display: block;
+        margin-top: 2px;
+        font-weight: 650;
+        font-size: 32px;
+        line-height: 1.2;
+        letter-spacing: -0.02em;
+        color: var(--ink);
+        font-variant-numeric: tabular-nums;
+      }
+
+      /* Contact */
+      .contact {
+        display: grid;
+        grid-template-columns: minmax(0, 0.95fr) minmax(0, 1.05fr);
+        gap: 72px;
+        align-items: start;
+      }
+      .contact .lead {
+        margin-top: 18px;
+        max-width: 42ch;
+      }
+      .infos {
+        margin-top: 34px;
+        border-top: 1px solid #d6d2c7;
+      }
+      .infos li {
+        display: grid;
+        grid-template-columns: 46px 1fr;
+        gap: 18px;
+        align-items: center;
+        padding: 18px 0;
+        border-bottom: 1px solid #d6d2c7;
+      }
+      .infos i {
+        display: grid;
+        place-items: center;
+        width: 46px;
+        height: 46px;
+        border-radius: 14px;
+        background: var(--surface);
+        color: var(--accent-strong);
+      }
+      .infos svg {
+        width: 20px;
+        height: 20px;
+      }
+      .infos small {
+        display: block;
+        font-size: 12.5px;
+        font-weight: 650;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+        color: var(--muted);
+      }
+      .infos b {
+        font-weight: 650;
+        font-size: 18px;
+        line-height: 1.35;
+        color: var(--ink);
+      }
+      .infos .hours {
+        display: grid;
+        grid-template-columns: auto 1fr;
+        gap: 2px 18px;
+        font-size: 16.5px;
+        font-weight: 500;
+        color: var(--ink);
+      }
+      .infos .hours span:nth-child(even) {
+        color: var(--body);
+        font-weight: 400;
+      }
+      .form {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 18px;
+        padding: 40px;
+        border-radius: 28px;
+        background: var(--surface);
+        box-shadow: 0 30px 60px -44px rgba(14, 27, 44, 0.4);
+      }
+      .form h3 {
+        grid-column: 1 / -1;
+        font-size: 24px;
+      }
+      .field {
+        display: grid;
+        gap: 8px;
+      }
+      .field--wide {
+        grid-column: 1 / -1;
+      }
+      .field label {
+        font-size: 14.5px;
+        font-weight: 500;
+        color: var(--ink);
+      }
+      .field input,
+      .field textarea {
+        width: 100%;
+        padding: 15px 16px;
+        border: 1px solid #d9d5cb;
+        border-radius: 12px;
+        background: var(--page);
+        font: 400 16px/1.4 var(--font);
+        color: var(--ink);
+        outline: none;
+        transition:
+          border-color 0.2s ease,
+          box-shadow 0.2s ease,
+          background 0.2s ease;
+      }
+      .field textarea {
+        min-height: 124px;
+        resize: vertical;
+      }
+      .field input:focus,
+      .field textarea:focus {
+        border-color: var(--accent);
+        background: #fff;
+        box-shadow: 0 0 0 4px var(--accent-soft);
+      }
+      .form .btn {
+        grid-column: 1 / -1;
+      }
+      .form small {
+        grid-column: 1 / -1;
+        font-size: 14px;
+        color: var(--muted);
+        text-align: center;
+      }
+      .map {
+        position: relative;
+        margin-top: 72px;
+        height: 400px;
+        border-radius: 30px;
+        overflow: hidden;
+        background: #dfe6e2;
+      }
+      .map iframe {
+        width: 100%;
+        height: 100%;
+        border: 0;
+        filter: saturate(0.85);
+      }
+      .map-card {
+        position: absolute;
+        right: 24px;
+        top: 24px;
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        padding: 14px 20px 14px 14px;
+        border-radius: 18px;
+        background: var(--surface);
+        box-shadow: 0 18px 40px -22px rgba(14, 27, 44, 0.5);
+        font-size: 14.5px;
+        line-height: 1.35;
+        color: var(--muted);
+      }
+      .map-card i {
+        display: grid;
+        place-items: center;
+        width: 42px;
+        height: 42px;
+        border-radius: 12px;
+        background: var(--accent-soft);
+        color: var(--accent-strong);
+      }
+      .map-card svg {
+        width: 20px;
+        height: 20px;
+      }
+      .map-card b {
+        display: block;
+        font-weight: 650;
+        font-size: 16.5px;
+        color: var(--ink);
+      }
+
+      /* Pied de page */
+      .footer {
+        background: var(--night);
+        color: var(--night-muted);
+        font-size: 15.5px;
+      }
+      .footer-grid {
+        display: grid;
+        grid-template-columns: 1.5fr 1fr 0.8fr 1fr;
+        gap: 56px;
+        padding: 80px 0 56px;
+      }
+      .footer .brand {
+        color: #fff;
+      }
+      .footer p {
+        margin-top: 18px;
+        max-width: 34ch;
+      }
+      .footer h3 {
+        font-size: 13px;
+        font-weight: 650;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        color: #fff;
+      }
+      .footer ul {
+        margin-top: 20px;
+        display: grid;
+        gap: 12px;
+      }
+      .footer a:hover {
+        color: #fff;
+      }
+      .footer-social {
+        margin-top: 22px;
+        display: inline-flex;
+        align-items: center;
+        gap: 10px;
+        color: #fff;
+      }
+      .footer-social svg {
+        width: 20px;
+        height: 20px;
+      }
+      .footer-bottom {
+        display: flex;
+        justify-content: space-between;
+        gap: 20px;
+        flex-wrap: wrap;
+        padding: 24px 0 110px;
+        border-top: 1px solid var(--night-line);
+        font-size: 14.5px;
+      }
+      .footer-bottom span {
+        display: flex;
+        gap: 24px;
+      }
+
+      /* Apparitions */
+      .reveal {
+        opacity: 0;
+        transform: translateY(18px);
+        transition:
+          opacity 0.8s ease,
+          transform 0.8s cubic-bezier(0.2, 0.8, 0.2, 1);
+        transition-delay: var(--d, 0s);
+      }
+      .reveal.in {
+        opacity: 1;
+        transform: none;
+      }
+
+      /* États de données */
+      html[data-state='real'] .rich-only,
+      html[data-state='rich'] .real-only {
+        display: none !important;
+      }
+
+      /* Réglages de la maquette (hors template) */
+      .mock {
+        position: fixed;
+        left: 50%;
+        bottom: 18px;
+        z-index: 60;
+        transform: translateX(-50%);
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 8px 10px 8px 18px;
+        border-radius: 999px;
+        background: rgba(14, 27, 44, 0.95);
+        color: #c9d1dc;
+        font: 500 13.5px/1 var(--font);
+        box-shadow: 0 20px 40px -18px rgba(0, 0, 0, 0.6);
+        white-space: nowrap;
+      }
+      .mock b {
+        color: #fff;
+        font-weight: 650;
+      }
+      .mock-seg {
+        display: flex;
+        padding: 3px;
+        border-radius: 999px;
+        background: rgba(255, 255, 255, 0.1);
+      }
+      .mock button {
+        height: 32px;
+        padding: 0 13px;
+        border: 0;
+        border-radius: 999px;
+        background: transparent;
+        color: #c9d1dc;
+        font: inherit;
+        cursor: pointer;
+      }
+      .mock button[aria-pressed='true'] {
+        background: #fff;
+        color: var(--ink);
+      }
+      html.clean .mock {
+        display: none;
+      }
+      [data-sb] {
+        position: relative;
+      }
+      .sb-tag {
+        display: none;
+      }
+      html.tags [data-sb] {
+        outline: 1.5px dashed #2f6fed;
+        outline-offset: -8px;
+      }
+      html.tags .sb-tag {
+        display: block;
+        position: absolute;
+        left: 20px;
+        top: 20px;
+        z-index: 25;
+        max-width: min(560px, calc(100% - 40px));
+        padding: 10px 14px;
+        border-radius: 12px;
+        background: #2f6fed;
+        color: #fff;
+        font: 500 13.5px/1.45 var(--font);
+        letter-spacing: 0;
+        text-transform: none;
+        box-shadow: 0 12px 26px -14px rgba(47, 111, 237, 0.9);
+      }
+      .sb-tag b {
+        display: block;
+        font-weight: 650;
+      }
+
+      @media (min-width: 1041px) {
+        html[data-hero='a'] .hero-a {
+          display: block;
+        }
+        html[data-hero='a'] .hero-b {
+          display: none;
+        }
+      }
+
+      /* Tablette et téléphone */
+      @media (max-width: 1040px) {
+        .section {
+          padding: 88px 0;
+        }
+        .nav,
+        .mock-hero {
+          display: none;
+        }
+        .hero-b {
+          grid-template-columns: 1fr;
+          gap: 40px;
+          padding-top: 24px;
+        }
+        .hero-b h1 {
+          font-size: 56px;
+        }
+        .hero-b-photo {
+          aspect-ratio: 5 / 3.6;
+        }
+        .hero-second {
+          right: 24px;
+          width: 34%;
+        }
+        html[data-hero] .proof {
+          margin-top: 84px;
+          grid-template-columns: 1fr 1fr;
+        }
+        .head,
+        .about,
+        .faq-grid,
+        .contact,
+        .reviews-grid {
+          grid-template-columns: 1fr;
+          gap: 36px;
+        }
+        .faq-side {
+          position: static;
+        }
+        .services {
+          grid-template-columns: 1fr 1fr;
+        }
+        .steps {
+          grid-template-columns: 1fr 1fr;
+          gap: 28px 20px;
+        }
+        .steps::before,
+        .steps::after {
+          display: none;
+        }
+        .banner {
+          padding: 60px 40px;
+        }
+        .footer-grid {
+          grid-template-columns: 1fr 1fr;
+        }
+        .h2 {
+          font-size: 38px;
+        }
+        .banner h2 {
+          font-size: 44px;
+        }
+      }
+
+      @media (max-width: 640px) {
+        :root {
+          --shell: min(1240px, 100% - 36px);
+          --notch: 22px;
+        }
+        body {
+          font-size: 16.5px;
+        }
+        .section {
+          padding: 66px 0;
+        }
+        .header-row {
+          height: 66px;
+        }
+        .brand {
+          font-size: 17px;
+        }
+        .brand-logo {
+          width: 40px;
+          height: 40px;
+        }
+        .header .btn,
+        .header .tel span {
+          display: none;
+        }
+        .header .tel {
+          width: 44px;
+          height: 44px;
+          justify-content: center;
+          border-radius: 12px;
+          background: var(--accent-soft);
+        }
+        .hero-b {
+          display: flex;
+          flex-direction: column;
+          gap: 0;
+          padding-top: 18px;
+        }
+        .hero-b-text {
+          display: contents;
+        }
+        .hero-b .eyebrow {
+          order: 1;
+          font-size: 12px;
+        }
+        .hero-b h1 {
+          order: 2;
+          margin-top: 14px;
+          font-size: 41px;
+          line-height: 1.05;
+        }
+        .hero-b-media {
+          order: 3;
+          margin-top: 26px;
+        }
+        .hero-b .lead {
+          order: 4;
+          margin-top: 66px;
+          font-size: 17.5px;
+        }
+        .hero-b .actions {
+          order: 5;
+          margin-top: 26px;
+          gap: 16px;
+        }
+        .hero-b .actions .btn {
+          width: 100%;
+        }
+        .hero-b .points {
+          order: 6;
+          margin-top: 24px;
+          padding-top: 20px;
+        }
+        .hero-b-photo {
+          aspect-ratio: 5 / 4.7;
+          border-radius: 24px;
+        }
+        .notch {
+          gap: 12px;
+          padding: 14px 18px 2px 0;
+        }
+        .notch--right {
+          padding: 14px 0 2px 18px;
+        }
+        .rating b {
+          font-size: 32px;
+        }
+        .rating span {
+          font-size: 13px;
+        }
+        .rating .stars svg {
+          width: 14px;
+          height: 14px;
+        }
+        .hero-second {
+          right: 12px;
+          bottom: -44px;
+          width: 40%;
+          border-width: 5px;
+          border-radius: 18px;
+        }
+        html[data-hero] .proof {
+          margin-top: 40px;
+          gap: 12px;
+        }
+        .proof li {
+          min-height: 132px;
+          padding: 18px 18px 20px;
+          border-radius: 20px;
+        }
+        .proof b {
+          font-size: 23px;
+        }
+        .proof span {
+          font-size: 14px;
+        }
+        .proof svg {
+          right: 16px;
+          top: 16px;
+          width: 22px;
+          height: 22px;
+        }
+        .h2 {
+          font-size: 31px;
+        }
+        .lead {
+          font-size: 17.5px;
+        }
+        .head {
+          gap: 14px;
+        }
+        .services {
+          grid-template-columns: 1fr;
+          margin-top: 34px;
+          gap: 0;
+          border-top: 1px solid var(--line);
+        }
+        .service {
+          grid-template-columns: 104px 1fr;
+          column-gap: 18px;
+          padding: 18px 0;
+          border-bottom: 1px solid var(--line);
+        }
+        .service figure {
+          grid-area: 1 / 1 / 3 / 2;
+          aspect-ratio: 1;
+          border-radius: 18px;
+        }
+        .service-label {
+          grid-area: 1 / 2;
+          align-self: end;
+          max-width: none;
+          padding: 0;
+          gap: 10px;
+          background: none;
+        }
+        .service-label::before,
+        .service-label::after {
+          display: none;
+        }
+        .service h3 {
+          font-size: 19px;
+        }
+        .service p {
+          grid-area: 2 / 2;
+          margin-top: 4px;
+          font-size: 15.5px;
+          line-height: 1.5;
+        }
+        .about-photo {
+          border-radius: 24px;
+        }
+        .facts {
+          grid-template-columns: 1fr;
+          gap: 10px;
+        }
+        .facts li {
+          display: flex;
+          justify-content: space-between;
+          align-items: baseline;
+          gap: 16px;
+          padding: 16px 18px;
+        }
+        .facts b {
+          margin-top: 0;
+          font-size: 16.5px;
+          text-align: right;
+        }
+        .steps {
+          grid-template-columns: 1fr;
+          margin-top: 40px;
+          gap: 14px;
+        }
+        .step {
+          display: grid;
+          grid-template-columns: 48px 1fr;
+          gap: 16px;
+          align-items: start;
+        }
+        .step-num {
+          width: 48px;
+          height: 48px;
+          box-shadow: none;
+          font-size: 15px;
+        }
+        .step-card {
+          margin-top: 0;
+          height: auto;
+          padding: 18px 20px 20px;
+        }
+        .gallery {
+          margin-top: 36px;
+          grid-template-columns: 1fr 1fr;
+          grid-auto-rows: 150px;
+          gap: 10px;
+        }
+        .gallery figure {
+          border-radius: 18px;
+        }
+        .gallery figure:nth-child(n) {
+          grid-column: span 1;
+          grid-row: span 1;
+        }
+        .gallery figure:nth-child(1),
+        .gallery figure:nth-child(6) {
+          grid-column: span 2;
+          grid-row: span 2;
+        }
+        .review {
+          grid-template-columns: 1fr;
+          gap: 14px;
+          padding: 22px;
+        }
+        html[data-state] .score {
+          padding: 20px 22px;
+        }
+        html[data-state] .score b {
+          font-size: 52px;
+        }
+        .faq summary {
+          font-size: 17.5px;
+          padding: 18px 16px 18px 20px;
+        }
+        .faq details p {
+          padding: 0 20px 20px;
+        }
+        .banner {
+          min-height: 0;
+          padding: 44px 26px 0;
+          border-radius: 24px;
+        }
+        .banner::before {
+          background: linear-gradient(180deg, rgba(10, 16, 26, 0.88) 0%, rgba(10, 16, 26, 0.74) 100%);
+        }
+        .banner h2 {
+          font-size: 36px;
+        }
+        .banner .btn {
+          width: 100%;
+        }
+        .banner-tel {
+          position: static;
+          margin: 36px -26px 0 0;
+          align-self: flex-end;
+        }
+        .banner-tel a {
+          font-size: 24px;
+        }
+        .form {
+          grid-template-columns: 1fr;
+          padding: 24px 20px;
+          border-radius: 22px;
+        }
+        .map {
+          margin-top: 44px;
+          height: 300px;
+          border-radius: 24px;
+        }
+        .map-card {
+          right: 12px;
+          top: auto;
+          bottom: 34px;
+        }
+        .footer-grid {
+          grid-template-columns: 1fr;
+          gap: 36px;
+          padding: 56px 0 40px;
+        }
+        .mock {
+          left: 12px;
+          right: 12px;
+          transform: none;
+          justify-content: space-between;
+          padding-left: 14px;
+          gap: 8px;
+          font-size: 12.5px;
+        }
+        .mock > b,
+        .mock .mock-tags {
+          display: none;
+        }
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        *,
+        *::before,
+        *::after {
+          animation: none !important;
+          transition-duration: 0.01ms !important;
+        }
+        .reveal {
+          opacity: 1;
+          transform: none;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <svg width="0" height="0" style="position: absolute" aria-hidden="true">
+      <defs>
+        <symbol id="i-phone" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1 1 .4 1.9.7 2.8a2 2 0 0 1-.5 2.1L8.1 9.9a16 16 0 0 0 6 6l1.3-1.3a2 2 0 0 1 2.1-.4c.9.3 1.8.6 2.8.7a2 2 0 0 1 1.7 2Z" />
+        </symbol>
+        <symbol id="i-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M5 12h14M13 6l6 6-6 6" />
+        </symbol>
+        <symbol id="i-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="m6 9 6 6 6-6" />
+        </symbol>
+        <symbol id="i-star" viewBox="0 0 24 24" fill="currentColor">
+          <path d="m12 2 3.1 6.3 6.9 1-5 4.9 1.2 6.8-6.2-3.2L5.8 21 7 14.2 2 9.3l6.9-1L12 2Z" />
+        </symbol>
+        <symbol id="i-star-line" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round">
+          <path d="m12 3 2.8 5.7 6.2.9-4.5 4.4 1.1 6.200L12 17.300 6.400 20.200l1.100-6.200L3 9.600l6.200-.900L12 3Z" />
+        </symbol>
+        <symbol id="i-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="m5 12.5 4.5 4.5L19 7.5" />
+        </symbol>
+        <symbol id="i-zap" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M13 2 4 14h7l-1 8 9-12h-7l1-8Z" />
+        </symbol>
+        <symbol id="i-shield" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 22s8-3.5 8-10V5l-8-3-8 3v7c0 6.5 8 10 8 10Z" />
+          <path d="m9 12 2 2 4-4" />
+        </symbol>
+        <symbol id="i-badge" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="9" />
+          <path d="m8.500 12.300 2.400 2.400 4.600-5" />
+        </symbol>
+        <symbol id="i-pin" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 22s7-6.2 7-12a7 7 0 0 0-14 0c0 5.8 7 12 7 12Z" />
+          <circle cx="12" cy="10" r="2.5" />
+        </symbol>
+        <symbol id="i-mail" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="3" y="5" width="18" height="14" rx="2.5" />
+          <path d="m3.5 7.5 8.5 6 8.5-6" />
+        </symbol>
+        <symbol id="i-clock" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="9" />
+          <path d="M12 7.5V12l3 2" />
+        </symbol>
+        <symbol id="i-area" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="9" />
+          <circle cx="12" cy="12" r="3.5" />
+        </symbol>
+        <symbol id="i-facebook" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M15 3h-2a4 4 0 0 0-4 4v3H6v4h3v7h4v-7h3l1-4h-4V7a1 1 0 0 1 1-1h3V3Z" />
+        </symbol>
+      </defs>
+    </svg>
+
+    <header class="header" id="header">
+      <div class="shell header-row">
+        <a class="brand" href="#top">
+          <span class="brand-logo">
+            <img src="https://a.storyblok.com/f/295379141804819/4744d7546b/bffd8e3e60d1474605b2.jpg" alt="" />
+          </span>
+          Cz63 Électricité
+        </a>
+        <nav class="nav" aria-label="Navigation principale">
+          <a href="#prestations">Prestations</a>
+          <a href="#a-propos">À propos</a>
+          <a href="#realisations">Réalisations</a>
+          <a href="#questions">Questions</a>
+          <a href="#contact">Contact</a>
+        </nav>
+        <div class="header-right">
+          <a class="tel" href="tel:0661588679" aria-label="Appeler le 06 61 58 86 79">
+            <svg><use href="#i-phone" /></svg>
+            <span>06 61 58 86 79</span>
+          </a>
+          <a class="btn" href="#contact">Demander un devis</a>
+        </div>
+      </div>
+    </header>
+
+    <main id="top">
+      <!-- En-tête, version immersive -->
+      <section class="hero-a shell" data-sb>
+        <div class="sb-tag"><b>En-tête</b>Badge, titre, accroche, photo principale, 3 points forts, texte du bouton. La note Google vient de la fiche.</div>
+        <div class="hero-a-card">
+          <img
+            src="https://images.unsplash.com/photo-1767710924293-29fba5e3854b?w=2200&q=80&auto=format&fit=crop"
+            alt="Maison en pierre éclairée à la tombée de la nuit"
+          />
+          <div class="hero-a-content">
+            <span class="eyebrow">Artisan électricien · Orléat, Puy-de-Dôme</span>
+            <h1>Votre électricien de confiance à <em>Orléat</em></h1>
+            <p class="lead">
+              Dépannage, mise aux normes, rénovation et borne de recharge. Un travail propre, sécurisé et garanti à
+              Orléat.
+            </p>
+            <div class="actions">
+              <a class="btn" href="#contact">Demander un devis</a>
+              <a class="tel" href="tel:0661588679"><svg><use href="#i-phone" /></svg>06 61 58 86 79</a>
+            </div>
+            <ul class="points">
+              <li><svg><use href="#i-check" /></svg>Devis gratuit</li>
+              <li><svg><use href="#i-check" /></svg>Intervention rapide</li>
+              <li><svg><use href="#i-check" /></svg>Travail garanti</li>
+            </ul>
+          </div>
+        </div>
+        <div class="notch notch--right rating">
+          <b>5,0</b>
+          <span>
+            <span class="stars" aria-hidden="true">
+              <svg><use href="#i-star" /></svg><svg><use href="#i-star" /></svg><svg><use href="#i-star" /></svg
+              ><svg><use href="#i-star" /></svg><svg><use href="#i-star" /></svg>
+            </span>
+            <br />35 avis Google
+          </span>
+        </div>
+      </section>
+
+      <!-- En-tête, version deux colonnes (et téléphone) -->
+      <section class="hero-b shell" data-sb>
+        <div class="sb-tag"><b>En-tête</b>Badge, titre, accroche, photo principale, deuxième photo, 3 points forts, texte du bouton. La note Google vient de la fiche.</div>
+        <div class="hero-b-text">
+          <span class="eyebrow">Artisan électricien · Orléat, Puy-de-Dôme</span>
+          <h1>Votre électricien de confiance à <em>Orléat</em></h1>
+          <p class="lead">
+            Dépannage, mise aux normes, rénovation et borne de recharge. Un travail propre, sécurisé et garanti à
+            Orléat.
+          </p>
+          <div class="actions">
+            <a class="btn" href="#contact">Demander un devis</a>
+            <a class="tel" href="tel:0661588679"><svg><use href="#i-phone" /></svg>06 61 58 86 79</a>
+          </div>
+          <ul class="points">
+            <li><svg><use href="#i-check" /></svg>Devis gratuit</li>
+            <li><svg><use href="#i-check" /></svg>Intervention rapide</li>
+            <li><svg><use href="#i-check" /></svg>Travail garanti</li>
+          </ul>
+        </div>
+        <div class="hero-b-media">
+          <div class="hero-b-photo">
+            <img
+              src="https://images.unsplash.com/photo-1767710924293-29fba5e3854b?w=1500&q=78&auto=format&fit=crop"
+              alt="Maison en pierre éclairée à la tombée de la nuit"
+            />
+          </div>
+          <div class="notch rating">
+            <b>5,0</b>
+            <span>
+              <span class="stars" aria-hidden="true">
+                <svg><use href="#i-star" /></svg><svg><use href="#i-star" /></svg><svg><use href="#i-star" /></svg
+                ><svg><use href="#i-star" /></svg><svg><use href="#i-star" /></svg>
+              </span>
+              <br />35 avis Google
+            </span>
+          </div>
+          <div class="hero-second">
+            <img
+              src="https://images.unsplash.com/photo-1660330590022-9f4ff56b63f6?w=800&q=76&auto=format&fit=crop"
+              alt="Intervention sur un tableau électrique"
+            />
+          </div>
+        </div>
+      </section>
+
+      <!-- Repères de confiance -->
+      <div class="shell" data-sb>
+        <div class="sb-tag" style="top: 30px"><b>Repères de confiance</b>4 repères (valeur et libellé). Le repère « avis » reprend la vraie note Google.</div>
+        <ul class="proof">
+          <li class="reveal">
+            <svg><use href="#i-zap" /></svg>
+            <b>7j/7</b><span>Dépannage et urgences</span>
+          </li>
+          <li class="reveal" style="--d: 0.06s">
+            <svg><use href="#i-star-line" /></svg>
+            <b>5,0/5</b><span>35 avis</span>
+          </li>
+          <li class="reveal" style="--d: 0.12s">
+            <svg><use href="#i-shield" /></svg>
+            <b>Travail garanti</b><span>Interventions assurées</span>
+          </li>
+          <li class="reveal" style="--d: 0.18s">
+            <svg><use href="#i-badge" /></svg>
+            <b>100% conforme</b><span>Installations aux normes</span>
+          </li>
+        </ul>
+      </div>
+
+      <!-- Services -->
+      <section class="section" id="prestations" data-sb>
+        <div class="sb-tag"><b>Services</b>Titre, description, puis 6 services : titre, description et photo pour chacun.</div>
+        <div class="shell">
+          <div class="head">
+            <div>
+              <span class="eyebrow reveal">Prestations</span>
+              <h2 class="h2 reveal">Tout ce qu'il faut pour une installation sûre</h2>
+            </div>
+            <p class="lead reveal">Du simple dépannage à la rénovation complète de votre installation électrique.</p>
+          </div>
+          <div class="services">
+            <article class="service reveal">
+              <figure><img src="https://images.unsplash.com/photo-1758101755915-462eddc23f57?w=900&q=74&auto=format&fit=crop" alt="" /></figure>
+              <div class="service-label"><span>01</span><h3>Dépannage électrique</h3></div>
+              <p>Panne, court-circuit, disjoncteur qui saute : diagnostic et remise en service rapides.</p>
+            </article>
+            <article class="service reveal" style="--d: 0.07s">
+              <figure><img src="https://images.unsplash.com/photo-1751486289947-4f5f5961b3aa?w=900&q=74&auto=format&fit=crop" alt="" /></figure>
+              <div class="service-label"><span>02</span><h3>Mise aux normes</h3></div>
+              <p>Remise à niveau complète de votre installation, aux normes en vigueur, attestation à l'appui.</p>
+            </article>
+            <article class="service reveal" style="--d: 0.14s">
+              <figure><img src="https://images.unsplash.com/photo-1576446470246-499c738d1c8e?w=900&q=74&auto=format&fit=crop" alt="" /></figure>
+              <div class="service-label"><span>03</span><h3>Tableau électrique</h3></div>
+              <p>Remplacement et modernisation de votre tableau et de vos protections.</p>
+            </article>
+            <article class="service reveal">
+              <figure><img src="https://images.unsplash.com/photo-1608574839637-2f7d0290d01d?w=900&q=74&auto=format&fit=crop" alt="" /></figure>
+              <div class="service-label"><span>04</span><h3>Installation et rénovation</h3></div>
+              <p>Neuf ou rénovation : réseau complet, prises, points lumineux.</p>
+            </article>
+            <article class="service reveal" style="--d: 0.07s">
+              <figure><img src="https://images.unsplash.com/photo-1609280069678-ab9ef26a0b05?w=900&q=74&auto=format&fit=crop" alt="" /></figure>
+              <div class="service-label"><span>05</span><h3>Éclairage et domotique</h3></div>
+              <p>Éclairage intérieur et extérieur, interrupteurs connectés, domotique.</p>
+            </article>
+            <article class="service reveal" style="--d: 0.14s">
+              <figure><img src="https://images.unsplash.com/photo-1646753005675-bb29b53507f5?w=900&q=74&auto=format&fit=crop" alt="" /></figure>
+              <div class="service-label"><span>06</span><h3>Borne de recharge</h3></div>
+              <p>Installation de bornes de recharge pour véhicule électrique.</p>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <!-- À propos -->
+      <section class="section section--band" id="a-propos" data-sb>
+        <div class="sb-tag"><b>À propos</b>Titre, texte, photo. Le nom, la ville et le secteur viennent de « Contact et informations ».</div>
+        <div class="shell about">
+          <div class="about-media reveal">
+            <div class="about-photo">
+              <img
+                src="https://images.unsplash.com/photo-1660330589827-da8ab7dd3c02?w=1100&q=76&auto=format&fit=crop"
+                alt="L'électricien au travail"
+              />
+            </div>
+            <div class="notch notch--right">
+              <span class="brand">
+                <span class="brand-logo">
+                  <img src="https://a.storyblok.com/f/295379141804819/4744d7546b/bffd8e3e60d1474605b2.jpg" alt="" />
+                </span>
+                <span>Cz63 Électricité<small>Électricien à Orléat</small></span>
+              </span>
+            </div>
+          </div>
+          <div>
+            <span class="eyebrow reveal">À propos</span>
+            <h2 class="h2 reveal">Un travail soigné, du devis au dernier test</h2>
+            <p class="lead about-text reveal">
+              Électricien à Orléat, j'interviens sur Clermont-Ferrand et dans tout le Puy-de-Dôme : dépannage,
+              rénovation, mise aux normes et installations neuves.
+            </p>
+            <ul class="facts reveal">
+              <li><small>Basé à</small><b>Orléat</b></li>
+              <li><small>Secteur</small><b>Orléat et ses alentours</b></li>
+              <li><small>Avis Google</small><b>5,0 sur 5, 35 avis</b></li>
+            </ul>
+            <a class="link reveal" href="#contact">Demander un devis <svg><use href="#i-arrow" /></svg></a>
+          </div>
+        </div>
+      </section>
+
+      <!-- Méthode -->
+      <section class="section section--surface" data-sb>
+        <div class="sb-tag"><b>Méthode</b>Titre, puis les étapes : titre et description pour chacune.</div>
+        <div class="shell">
+          <span class="eyebrow reveal">Déroulé</span>
+          <h2 class="h2 reveal">Comment se passe une intervention</h2>
+          <ol class="steps" id="steps">
+            <li class="step reveal">
+              <span class="step-num">01</span>
+              <div class="step-card">
+                <h3>Premier contact</h3>
+                <p>Vous décrivez votre besoin par téléphone ou par message.</p>
+              </div>
+            </li>
+            <li class="step reveal" style="--d: 0.1s">
+              <span class="step-num">02</span>
+              <div class="step-card">
+                <h3>Visite et devis</h3>
+                <p>Passage sur place, puis devis gratuit et détaillé.</p>
+              </div>
+            </li>
+            <li class="step reveal" style="--d: 0.2s">
+              <span class="step-num">03</span>
+              <div class="step-card">
+                <h3>Travaux</h3>
+                <p>Réalisés à la date convenue, chantier laissé propre.</p>
+              </div>
+            </li>
+            <li class="step reveal" style="--d: 0.3s">
+              <span class="step-num">04</span>
+              <div class="step-card">
+                <h3>Contrôle final</h3>
+                <p>Chaque circuit est testé et expliqué avant le départ.</p>
+              </div>
+            </li>
+          </ol>
+        </div>
+      </section>
+
+      <!-- Photos -->
+      <section class="section" id="realisations" data-sb>
+        <div class="sb-tag"><b>Photos</b>Titre et galerie. Sans photo du prospect, la template montre ses photos par défaut.</div>
+        <div class="shell">
+          <span class="eyebrow reveal">Réalisations</span>
+          <h2 class="h2 reveal">Nos chantiers récents</h2>
+          <div class="gallery">
+            <figure class="reveal">
+              <img src="https://images.unsplash.com/photo-1609280070598-e1770c80b75c?w=1400&q=76&auto=format&fit=crop" alt="Éclairage d'une cuisine" />
+            </figure>
+            <figure class="reveal" style="--d: 0.06s">
+              <img src="https://images.unsplash.com/photo-1766507680004-1c71007aefe5?w=1000&q=74&auto=format&fit=crop" alt="Borne de recharge murale" />
+            </figure>
+            <figure class="reveal" style="--d: 0.12s">
+              <img src="https://images.unsplash.com/photo-1700809887581-c41c239e808e?w=800&q=74&auto=format&fit=crop" alt="Suspension devant un mur en bois" />
+            </figure>
+            <figure class="reveal" style="--d: 0.18s">
+              <img src="https://images.unsplash.com/photo-1526116638181-d787e552d669?w=700&q=74&auto=format&fit=crop" alt="Spots sur rail" />
+            </figure>
+            <figure class="reveal rich-only">
+              <img src="https://images.unsplash.com/photo-1659612534697-3edc1892db46?w=900&q=74&auto=format&fit=crop" alt="Suspensions et éclairage indirect" />
+            </figure>
+            <figure class="reveal rich-only" style="--d: 0.06s">
+              <img src="https://images.unsplash.com/photo-1568605114967-8130f3a36994?w=1400&q=76&auto=format&fit=crop" alt="Éclairage extérieur d'une maison" />
+            </figure>
+          </div>
+        </div>
+      </section>
+
+      <!-- Avis -->
+      <section class="section section--band" id="avis" data-sb>
+        <div class="sb-tag"><b>Avis clients</b>Titre et avis (auteur, note, texte). Sans texte d'avis en base, seule la note Google s'affiche.</div>
+        <div class="shell reviews-grid">
+          <div>
+            <span class="eyebrow reveal">Avis clients</span>
+            <h2 class="h2 reveal">Ce que disent nos clients</h2>
+            <div class="score reveal">
+              <b>5,0</b>
+              <span>
+                <span class="stars" aria-hidden="true">
+                  <svg><use href="#i-star" /></svg><svg><use href="#i-star" /></svg><svg><use href="#i-star" /></svg
+                  ><svg><use href="#i-star" /></svg><svg><use href="#i-star" /></svg>
+                </span>
+                <br />Note moyenne sur 35 avis Google
+              </span>
+            </div>
+          </div>
+          <div class="reviews rich-only">
+            <blockquote class="review reveal">
+              <i>SM</i>
+              <div>
+                <header>
+                  <b>Sophie M.</b>
+                  <span class="stars" aria-hidden="true">
+                    <svg><use href="#i-star" /></svg><svg><use href="#i-star" /></svg><svg><use href="#i-star" /></svg
+                    ><svg><use href="#i-star" /></svg><svg><use href="#i-star" /></svg>
+                  </span>
+                </header>
+                <p>Panne un dimanche soir, il a rappelé dans le quart d'heure et tout remis en route le lundi matin. Sérieux et très clair dans ses explications.</p>
+              </div>
+            </blockquote>
+            <blockquote class="review reveal" style="--d: 0.07s">
+              <i>JD</i>
+              <div>
+                <header>
+                  <b>Julien D.</b>
+                  <span class="stars" aria-hidden="true">
+                    <svg><use href="#i-star" /></svg><svg><use href="#i-star" /></svg><svg><use href="#i-star" /></svg
+                    ><svg><use href="#i-star" /></svg><svg><use href="#i-star" /></svg>
+                  </span>
+                </header>
+                <p>Tableau entièrement refait dans une maison ancienne. Devis respecté et chantier laissé propre. Je recommande.</p>
+              </div>
+            </blockquote>
+            <blockquote class="review reveal" style="--d: 0.14s">
+              <i>NB</i>
+              <div>
+                <header>
+                  <b>Nathalie B.</b>
+                  <span class="stars" aria-hidden="true">
+                    <svg><use href="#i-star" /></svg><svg><use href="#i-star" /></svg><svg><use href="#i-star" /></svg
+                    ><svg><use href="#i-star" /></svg><svg><use href="#i-star" /></svg>
+                  </span>
+                </header>
+                <p>Borne de recharge posée en une matinée. Il a pris le temps d'expliquer le fonctionnement et les réglages. Ponctuel et soigneux.</p>
+              </div>
+            </blockquote>
+          </div>
+        </div>
+      </section>
+
+      <!-- Questions -->
+      <section class="section" id="questions" data-sb>
+        <div class="sb-tag"><b>Questions fréquentes</b>Titre, puis les questions : question et réponse pour chacune.</div>
+        <div class="shell faq-grid">
+          <div class="faq-side">
+            <span class="eyebrow reveal">Questions</span>
+            <h2 class="h2 reveal">Questions fréquentes</h2>
+            <p class="lead reveal">Les réponses aux questions qu'on nous pose le plus souvent.</p>
+            <div class="help reveal">
+              <span class="brand-logo">
+                <img src="https://a.storyblok.com/f/295379141804819/4744d7546b/bffd8e3e60d1474605b2.jpg" alt="" />
+              </span>
+              <span>
+                <small>Une autre question ?</small>
+                <a class="tel" href="tel:0661588679">06 61 58 86 79</a>
+              </span>
+            </div>
+          </div>
+          <div class="faq reveal">
+            <details open>
+              <summary>Intervenez-vous en urgence&nbsp;?<i><svg><use href="#i-chevron" /></svg></i></summary>
+              <p>Oui, pour toute panne électrique nous intervenons au plus vite, 7j/7.</p>
+            </details>
+            <details>
+              <summary>Le devis est-il gratuit&nbsp;?<i><svg><use href="#i-chevron" /></svg></i></summary>
+              <p>Le devis est gratuit et sans engagement, remis avant les travaux.</p>
+            </details>
+            <details>
+              <summary>Délivrez-vous une attestation de conformité&nbsp;?<i><svg><use href="#i-chevron" /></svg></i></summary>
+              <p>Oui, chaque installation neuve ou mise aux normes est livrée avec son attestation.</p>
+            </details>
+            <details>
+              <summary>Quelles zones couvrez-vous&nbsp;?<i><svg><use href="#i-chevron" /></svg></i></summary>
+              <p>Votre ville et ses alentours. Appelez pour vérifier votre commune.</p>
+            </details>
+            <details>
+              <summary>Vos travaux sont-ils garantis&nbsp;?<i><svg><use href="#i-chevron" /></svg></i></summary>
+              <p>Oui, nos installations sont conformes et couvertes par notre assurance professionnelle.</p>
+            </details>
+          </div>
+        </div>
+      </section>
+
+      <!-- Bannière -->
+      <section class="section" data-sb style="padding-top: 0">
+        <div class="sb-tag" style="top: -20px"><b>Contact : bannière</b>Titre, texte, image de fond et texte du bouton. Le téléphone vient de « Contact et informations ».</div>
+        <div class="shell">
+          <div class="banner reveal">
+            <div class="banner-bg" aria-hidden="true"></div>
+            <span class="eyebrow">Devis gratuit</span>
+            <h2>Une panne ou un projet&nbsp;?</h2>
+            <p>Décrivez votre besoin, vous recevez une réponse rapide et un devis gratuit.</p>
+            <div class="actions">
+              <a class="btn" href="#contact">Demander un devis</a>
+            </div>
+            <div class="notch notch--right banner-tel">
+              <small>Par téléphone</small>
+              <a href="tel:0661588679">06 61 58 86 79</a>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Contact -->
+      <section class="section section--band" id="contact" data-sb>
+        <div class="sb-tag"><b>Contact et informations</b>Titre, description, téléphone, e-mail, ville, secteur, horaires, réseaux sociaux, logo. L'adresse et la carte viennent de la fiche Google.</div>
+        <div class="shell">
+          <div class="contact">
+            <div>
+              <span class="eyebrow reveal">Contact</span>
+              <h2 class="h2 reveal">Parlons de votre projet</h2>
+              <p class="lead reveal">Par téléphone, par e-mail ou avec le formulaire : réponse rapide et devis gratuit.</p>
+              <ul class="infos reveal">
+                <li>
+                  <i><svg><use href="#i-phone" /></svg></i>
+                  <div><small>Téléphone</small><b>06 61 58 86 79</b></div>
+                </li>
+                <li>
+                  <i><svg><use href="#i-mail" /></svg></i>
+                  <div><small>E-mail</small><b>cz63elec@gmail.com</b></div>
+                </li>
+                <li class="real-only">
+                  <i><svg><use href="#i-area" /></svg></i>
+                  <div><small>Secteur</small><b>Orléat et ses alentours</b></div>
+                </li>
+                <li class="rich-only">
+                  <i><svg><use href="#i-pin" /></svg></i>
+                  <div><small>Adresse</small><b>12 rue des Forges, 63190 Orléat</b></div>
+                </li>
+                <li class="rich-only">
+                  <i><svg><use href="#i-clock" /></svg></i>
+                  <div>
+                    <small>Horaires</small>
+                    <div class="hours">
+                      <span>Lundi au vendredi</span><span>8 h à 18 h</span>
+                      <span>Samedi</span><span>9 h à 12 h</span>
+                    </div>
+                  </div>
+                </li>
+              </ul>
+            </div>
+            <form class="form reveal" onsubmit="return false">
+              <h3>Demander un devis</h3>
+              <div class="field"><label for="f-name">Nom</label><input id="f-name" autocomplete="name" /></div>
+              <div class="field"><label for="f-tel">Téléphone</label><input id="f-tel" inputmode="tel" autocomplete="tel" /></div>
+              <div class="field field--wide"><label for="f-mail">E-mail</label><input id="f-mail" type="email" autocomplete="email" /></div>
+              <div class="field field--wide"><label for="f-msg">Votre besoin</label><textarea id="f-msg" placeholder="Par exemple : tableau à remplacer dans une maison de 1975."></textarea></div>
+              <button class="btn" type="submit">Envoyer ma demande</button>
+              <small>Devis gratuit et sans engagement.</small>
+            </form>
+          </div>
+          <div class="map reveal">
+            <iframe
+              title="Carte du secteur d'intervention"
+              loading="lazy"
+              src="https://www.google.com/maps?q=Orl%C3%A9at%2C%20Puy-de-D%C3%B4me&z=11&output=embed"
+            ></iframe>
+            <div class="map-card">
+              <i><svg><use href="#i-pin" /></svg></i>
+              <span><b>Orléat et ses alentours</b>Secteur d'intervention</span>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer class="footer">
+      <div class="shell footer-grid">
+        <div>
+          <span class="brand">
+            <span class="brand-logo">
+              <img src="https://a.storyblok.com/f/295379141804819/4744d7546b/bffd8e3e60d1474605b2.jpg" alt="" />
+            </span>
+            Cz63 Électricité
+          </span>
+          <p>Dépannage, mise aux normes, rénovation et borne de recharge à Orléat.</p>
+          <a class="footer-social rich-only" href="#"><svg><use href="#i-facebook" /></svg>Facebook</a>
+        </div>
+        <div>
+          <h3>Contact</h3>
+          <ul>
+            <li><a href="tel:0661588679">06 61 58 86 79</a></li>
+            <li><a href="mailto:cz63elec@gmail.com">cz63elec@gmail.com</a></li>
+            <li>Orléat et ses alentours</li>
+          </ul>
+        </div>
+        <div>
+          <h3>Navigation</h3>
+          <ul>
+            <li><a href="#prestations">Prestations</a></li>
+            <li><a href="#a-propos">À propos</a></li>
+            <li><a href="#realisations">Réalisations</a></li>
+            <li><a href="#contact">Contact</a></li>
+          </ul>
+        </div>
+        <div>
+          <h3>Prestations</h3>
+          <ul>
+            <li>Dépannage électrique</li>
+            <li>Mise aux normes</li>
+            <li>Tableau électrique</li>
+            <li>Installation et rénovation</li>
+            <li>Éclairage et domotique</li>
+            <li>Borne de recharge</li>
+          </ul>
+        </div>
+      </div>
+      <div class="shell footer-bottom">
+        <span>© 2026 Cz63 Électricité</span>
+        <span><a href="#">Mentions légales</a><a href="#">Confidentialité</a></span>
+      </div>
+    </footer>
+
+    <div class="mock" role="group" aria-label="Réglages de la maquette">
+      <b>Maquette</b>
+      <div class="mock-seg mock-hero">
+        <button type="button" data-hero-btn="a" aria-pressed="true">Haut de page immersif</button>
+        <button type="button" data-hero-btn="b" aria-pressed="false">Deux colonnes</button>
+      </div>
+      <div class="mock-seg">
+        <button type="button" data-state-btn="real" aria-pressed="true">Données réelles</button>
+        <button type="button" data-state-btn="rich" aria-pressed="false">Fiche bien remplie</button>
+      </div>
+      <div class="mock-seg mock-tags">
+        <button type="button" id="tagsBtn" aria-pressed="false">Sections du CMS</button>
+      </div>
+    </div>
+
+    <script>
+      const root = document.documentElement
+      const params = new URLSearchParams(location.search)
+
+      function setPressed(selector, attribute, value) {
+        document.querySelectorAll(selector).forEach((button) => {
+          button.setAttribute('aria-pressed', String(button.dataset[attribute] === value))
+        })
+      }
+      function setState(state) {
+        root.dataset.state = state
+        setPressed('[data-state-btn]', 'stateBtn', state)
+      }
+      function setHero(hero) {
+        root.dataset.hero = hero
+        setPressed('[data-hero-btn]', 'heroBtn', hero)
+      }
+      document.querySelectorAll('[data-state-btn]').forEach((button) => {
+        button.addEventListener('click', () => setState(button.dataset.stateBtn))
+      })
+      document.querySelectorAll('[data-hero-btn]').forEach((button) => {
+        button.addEventListener('click', () => setHero(button.dataset.heroBtn))
+      })
+
+      const tagsButton = document.getElementById('tagsBtn')
+      function setTags(isOn) {
+        root.classList.toggle('tags', isOn)
+        tagsButton.setAttribute('aria-pressed', String(isOn))
+      }
+      tagsButton.addEventListener('click', () => setTags(!root.classList.contains('tags')))
+
+      if (params.get('data') === 'rich') setState('rich')
+      if (params.get('hero') === 'b') setHero('b')
+      if (params.has('tags')) setTags(true)
+      if (params.has('clean')) root.classList.add('clean')
+
+      const header = document.getElementById('header')
+      function syncHeader() {
+        header.classList.toggle('is-stuck', window.scrollY > 8)
+      }
+      window.addEventListener('scroll', syncHeader, { passive: true })
+      syncHeader()
+
+      const revealObserver = new IntersectionObserver(
+        (entries) => {
+          entries.forEach((entry) => {
+            if (entry.isIntersecting) {
+              entry.target.classList.add('in')
+              revealObserver.unobserve(entry.target)
+            }
+          })
+        },
+        { rootMargin: '0px 0px -6% 0px' },
+      )
+      document.querySelectorAll('.reveal, #steps').forEach((element) => revealObserver.observe(element))
+    </script>
+  </body>
+</html>
