@@ -1,6 +1,7 @@
 <template>
-  <!-- Téléphone : deux onglets, la grosse loupe, deux onglets. iPad : un onglet de plus de chaque côté, les libellés
-       sous les icônes, et la loupe devient un bouton « Rechercher des leads » posé dans la barre. -->
+  <!-- Comme GoupixDex : téléphone, deux onglets, la grosse loupe ambrée, deux onglets ; l'onglet ouvert passe en ambre.
+       iPad : un onglet de plus de chaque côté, les libellés sous les icônes, et la loupe devient un bouton
+       « Rechercher des leads » posé dans la barre. -->
   <nav
     class="standalone:max-lg:block standalone:pointer-coarse:block hidden shrink-0 border-t border-[var(--app-line)] bg-[var(--app-surface)] pt-1 pr-[env(safe-area-inset-right)] pb-[max(1.5rem,env(safe-area-inset-bottom))] pl-[env(safe-area-inset-left)]"
     aria-label="Navigation rapide"
@@ -36,7 +37,7 @@
           title="Rechercher des leads"
           aria-label="Rechercher des leads"
           :aria-current="isRouteUnder(PROSPECT_SEARCH_PAGE_PATH) ? 'page' : undefined"
-          class="flex size-15 -translate-y-2.5 items-center justify-center gap-2 rounded-full bg-[var(--app-btn-bg)] text-[var(--app-btn-text)] shadow-[var(--app-shadow-soft)] ring-4 ring-[var(--app-surface)] transition-opacity [-webkit-tap-highlight-color:transparent] active:opacity-80 md:h-11 md:w-auto md:translate-y-0 md:px-5 md:shadow-none md:ring-0"
+          class="flex size-15 -translate-y-2.5 items-center justify-center gap-2 rounded-full bg-[var(--app-accent)] text-[#1b1508] transition-opacity [-webkit-tap-highlight-color:transparent] active:opacity-80 md:h-11 md:w-auto md:translate-y-0 md:px-5"
         >
           <UIcon name="i-lucide-search" class="size-7 md:size-5" />
           <span class="hidden text-sm font-semibold whitespace-nowrap md:inline">Rechercher des leads</span>

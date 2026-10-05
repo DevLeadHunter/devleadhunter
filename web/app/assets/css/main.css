@@ -573,6 +573,13 @@ html {
     .input-field {
       min-height: 2.75rem;
     }
+
+    /* Une case de 16 px se rate au doigt. */
+    input[type='checkbox'],
+    input[type='radio'] {
+      min-width: 1.375rem;
+      min-height: 1.375rem;
+    }
   }
 }
 

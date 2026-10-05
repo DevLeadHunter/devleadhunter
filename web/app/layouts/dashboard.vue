@@ -7,7 +7,9 @@
     >
       <div class="loader-smooth"></div>
     </div>
-    <div v-else class="flex h-dvh w-full" :style="{ backgroundColor: 'var(--app-bg)' }">
+    <!-- Fixée aux quatre bords plutôt que `h-dvh` : dans l'app installée sur iPhone, iOS compte 100dvh sans la barre
+         d'état (59 pt de moins), ce qui décollait la barre d'onglets du bas de l'écran. -->
+    <div v-else class="fixed inset-0 flex" :style="{ backgroundColor: 'var(--app-bg)' }">
       <UiSidebar :is-open="isSidebarOpen" :is-mobile="isMobile" @toggle="toggleSidebar" />
 
       <div
@@ -16,16 +18,16 @@
         :class="drawerPushClass"
       >
         <header
-          class="sticky top-0 z-10 border-b border-[var(--app-line)] bg-[var(--app-surface)] pt-[calc(0.75rem+env(safe-area-inset-top))] pr-[max(1rem,env(safe-area-inset-right))] pb-3 pl-[max(1rem,env(safe-area-inset-left))] lg:hidden"
+          class="sticky top-0 z-10 border-b border-[var(--app-line)] bg-[var(--app-surface)] pt-[calc(0.5rem+env(safe-area-inset-top))] pr-[max(1rem,env(safe-area-inset-right))] pb-2 pl-[max(1rem,env(safe-area-inset-left))] lg:hidden"
         >
           <div v-if="showCreditsPopover && isMobile" class="fixed inset-0 z-40" @click="handleClickOutside"></div>
           <div class="flex items-center justify-between">
             <button
-              class="flex h-9 w-9 items-center justify-center rounded-lg text-[var(--app-ink-soft)] transition-colors hover:bg-[var(--app-surface-2)] hover:text-[var(--app-ink)]"
+              class="-ml-3 flex size-11 items-center justify-center rounded-xl text-[var(--app-ink-soft)] transition-colors [-webkit-tap-highlight-color:transparent] hover:bg-[var(--app-surface-2)] hover:text-[var(--app-ink)] active:bg-[var(--app-surface-2)]"
               aria-label="Ouvrir le menu"
               @click="toggleSidebar"
             >
-              <UIcon name="i-lucide-menu" class="h-4 w-4" />
+              <UIcon name="i-lucide-menu" class="size-5" />
             </button>
             <span class="font-display text-base font-semibold tracking-tight text-[var(--app-ink)]">
               devleadhunter
@@ -33,7 +35,7 @@
 
             <div class="relative z-50">
               <button
-                class="flex items-center gap-2 rounded-full border border-[var(--app-line)] bg-[var(--app-surface)] px-3 py-1.5"
+                class="flex h-10 items-center gap-2 rounded-full border border-[var(--app-line)] bg-[var(--app-surface)] px-3.5 [-webkit-tap-highlight-color:transparent]"
                 @click.stop="toggleCreditsPopover"
               >
                 <span class="h-2 w-2 rounded-full" :style="{ backgroundColor: creditDotColor }"></span>
@@ -42,7 +44,7 @@
 
               <div
                 v-if="showCreditsPopover && isMobile"
-                class="app-card absolute top-11 right-0 z-50 w-72 p-4 shadow-[var(--app-shadow-soft)]"
+                class="app-card absolute top-12 right-0 z-50 w-72 p-4 shadow-[var(--app-shadow-soft)]"
                 @click.stop
               >
                 <p class="app-label">Crédits restants</p>

@@ -254,7 +254,7 @@
           <span v-else-if="rowAction === 'delete' && !isLockedForMe(prospect)" class="inline-flex items-center gap-1">
             <button
               type="button"
-              class="flex h-7 w-7 cursor-pointer items-center justify-center rounded-full text-[var(--app-ink-soft)] transition-colors hover:bg-[var(--app-surface-2)] hover:text-[var(--app-ink)]"
+              class="flex h-7 w-7 cursor-pointer items-center justify-center rounded-full text-[var(--app-ink-soft)] transition-colors hover:bg-[var(--app-surface-2)] hover:text-[var(--app-ink)] pointer-coarse:size-10"
               :aria-label="`Modifier ${prospect.name}`"
               title="Modifier"
               @click="emit('editProspect', prospect)"
@@ -263,7 +263,7 @@
             </button>
             <button
               type="button"
-              class="flex h-7 w-7 cursor-pointer items-center justify-center rounded-full text-[var(--app-ink-soft)] transition-colors hover:bg-[var(--app-red-soft)] hover:text-[var(--app-red)]"
+              class="flex h-7 w-7 cursor-pointer items-center justify-center rounded-full text-[var(--app-ink-soft)] transition-colors hover:bg-[var(--app-red-soft)] hover:text-[var(--app-red)] pointer-coarse:size-10"
               :aria-label="`Supprimer ${prospect.name}`"
               title="Supprimer"
               @click="emit('deleteProspect', prospect)"

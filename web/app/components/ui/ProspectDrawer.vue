@@ -3,12 +3,12 @@
     <Transition name="drawer-panel">
       <div
         v-if="open && prospect"
-        class="fixed top-0 right-0 z-50 flex h-[calc(100dvh-var(--app-drawer-bottom))] w-full max-w-[480px] flex-col border-l border-[var(--app-line)] bg-[var(--app-surface)] pt-[env(safe-area-inset-top)] pb-[var(--app-drawer-bottom-padding)] shadow-2xl"
+        class="fixed top-0 right-0 bottom-[var(--app-drawer-bottom)] z-50 flex w-full max-w-[480px] flex-col border-l border-[var(--app-line)] bg-[var(--app-surface)] pt-[env(safe-area-inset-top)] pb-[var(--app-drawer-bottom-padding)] shadow-2xl"
       >
         <div class="flex items-start gap-3 border-b border-[var(--app-line)] px-5 py-4">
           <button
             v-if="showBack"
-            class="flex h-10 w-7 shrink-0 items-center justify-center rounded text-[var(--app-ink-soft)] transition-colors hover:bg-[var(--app-surface-2)] hover:text-[var(--app-ink)]"
+            class="flex h-10 w-7 shrink-0 items-center justify-center rounded text-[var(--app-ink-soft)] transition-colors hover:bg-[var(--app-surface-2)] hover:text-[var(--app-ink)] pointer-coarse:size-11"
             title="Revenir au volet précédent"
             @click="$emit('back')"
           >
@@ -51,7 +51,7 @@
           <div class="flex shrink-0 items-center gap-0.5">
             <button
               v-if="!editMode"
-              class="flex h-7 w-7 items-center justify-center rounded text-[var(--app-ink-soft)] transition-colors hover:bg-[var(--app-surface-2)] hover:text-[var(--app-ink)]"
+              class="flex h-7 w-7 items-center justify-center rounded text-[var(--app-ink-soft)] transition-colors hover:bg-[var(--app-surface-2)] hover:text-[var(--app-ink)] pointer-coarse:size-11"
               title="Modifier ce prospect"
               aria-label="Modifier ce prospect"
               @click="startEdit"
@@ -60,7 +60,7 @@
             </button>
             <button
               v-if="!editMode"
-              class="flex h-7 w-7 items-center justify-center rounded text-[var(--app-ink-soft)] transition-colors hover:bg-[var(--app-surface-2)] hover:text-[var(--app-ink)]"
+              class="flex h-7 w-7 items-center justify-center rounded text-[var(--app-ink-soft)] transition-colors hover:bg-[var(--app-surface-2)] hover:text-[var(--app-ink)] pointer-coarse:size-11"
               title="Réglages du prospect"
               aria-label="Réglages du prospect"
               @click="emit('openSettings', prospect)"
@@ -69,7 +69,7 @@
             </button>
             <button
               v-if="!editMode"
-              class="flex h-7 w-7 items-center justify-center rounded text-[var(--app-ink-soft)] transition-colors hover:bg-[var(--app-red-soft)] hover:text-[var(--app-red)]"
+              class="flex h-7 w-7 items-center justify-center rounded text-[var(--app-ink-soft)] transition-colors hover:bg-[var(--app-red-soft)] hover:text-[var(--app-red)] pointer-coarse:size-11"
               title="Supprimer ce prospect"
               aria-label="Supprimer ce prospect"
               @click="deleteConfirmModal?.open()"
@@ -77,7 +77,7 @@
               <UIcon name="i-lucide-trash-2" class="h-4 w-4" />
             </button>
             <button
-              class="flex h-7 w-7 items-center justify-center rounded text-[var(--app-ink-soft)] transition-colors hover:bg-[var(--app-surface-2)] hover:text-[var(--app-ink)]"
+              class="flex h-7 w-7 items-center justify-center rounded text-[var(--app-ink-soft)] transition-colors hover:bg-[var(--app-surface-2)] hover:text-[var(--app-ink)] pointer-coarse:size-11"
               aria-label="Fermer"
               @click="$emit('close')"
             >
@@ -267,7 +267,7 @@
                   :href="prospect.website"
                   target="_blank"
                   rel="noopener noreferrer"
-                  class="flex h-7 w-7 items-center justify-center rounded text-[var(--app-ink-soft)] transition-colors hover:bg-[var(--app-surface-2)] hover:text-[var(--app-accent-ink)]"
+                  class="flex h-7 w-7 items-center justify-center rounded text-[var(--app-ink-soft)] transition-colors hover:bg-[var(--app-surface-2)] hover:text-[var(--app-accent-ink)] pointer-coarse:size-11"
                   title="Ouvrir le site"
                 >
                   <UIcon name="i-lucide-external-link" class="h-3.5 w-3.5" />
@@ -276,7 +276,7 @@
                   v-if="prospect.website"
                   type="button"
                   :disabled="isSaving"
-                  class="flex h-7 w-7 items-center justify-center rounded text-[var(--app-ink-soft)] transition-colors hover:bg-[var(--app-surface-2)] hover:text-[var(--app-red)] disabled:opacity-50"
+                  class="flex h-7 w-7 items-center justify-center rounded text-[var(--app-ink-soft)] transition-colors hover:bg-[var(--app-surface-2)] hover:text-[var(--app-red)] disabled:opacity-50 pointer-coarse:size-11"
                   title="Ce n'est pas son site (ex. site de la franchise) — le retirer"
                   @click="removeWebsite"
                 >

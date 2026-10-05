@@ -277,23 +277,25 @@
         </div>
       </div>
 
+      <!-- Collée au bas de la zone qui défile : le rembourrage du `main` la pose juste au-dessus de la barre d'onglets
+           (ou de la zone sûre), sans recompter cette dernière ; sur téléphone « Continuer » prend la place de « Précédent ». -->
       <div
-        class="sticky bottom-[calc(1rem+env(safe-area-inset-bottom))] z-10 mt-auto flex items-center justify-between gap-3 rounded-full border border-[var(--app-line)] bg-[var(--app-surface)]/90 px-3 py-2 shadow-lg backdrop-blur"
+        class="sticky bottom-0 z-10 mt-auto flex items-center gap-2 rounded-full border border-[var(--app-line)] bg-[var(--app-surface)]/90 p-1.5 shadow-lg backdrop-blur sm:justify-between sm:gap-3 sm:px-3 sm:py-2"
       >
         <button
           v-if="currentStep > 1"
           type="button"
-          class="app-btn-secondary"
+          class="app-btn-secondary h-11 sm:h-9"
           :disabled="store.isStarting"
           @click="goToStep(currentStep - 1)"
         >
           <UIcon name="i-lucide-arrow-left" class="h-3.5 w-3.5" />Précédent
         </button>
-        <span v-else />
+        <span v-else class="hidden sm:block" />
         <button
           v-if="currentStep < steps.length"
           type="button"
-          class="app-btn-primary"
+          class="app-btn-primary h-11 flex-1 sm:h-9 sm:flex-none"
           :disabled="!canContinue"
           @click="goToStep(currentStep + 1)"
         >
@@ -302,7 +304,7 @@
         <button
           v-else
           type="button"
-          :class="['app-btn-primary', canLaunch && 'app-btn-celebrate']"
+          :class="['app-btn-primary h-11 flex-1 sm:h-9 sm:flex-none', canLaunch && 'app-btn-celebrate']"
           :disabled="!canLaunch"
           :title="store.isQueueFull ? 'La file d’attente est pleine' : undefined"
           @click="launch"

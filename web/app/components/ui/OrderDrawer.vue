@@ -3,12 +3,12 @@
     <Transition name="drawer-panel">
       <div
         v-if="open && (order || isCreateMode)"
-        class="fixed top-0 right-0 z-50 flex h-[calc(100dvh-var(--app-drawer-bottom))] w-full max-w-[480px] flex-col border-l border-[var(--app-line)] bg-[var(--app-surface)] pt-[env(safe-area-inset-top)] pb-[var(--app-drawer-bottom-padding)] shadow-2xl"
+        class="fixed top-0 right-0 bottom-[var(--app-drawer-bottom)] z-50 flex w-full max-w-[480px] flex-col border-l border-[var(--app-line)] bg-[var(--app-surface)] pt-[env(safe-area-inset-top)] pb-[var(--app-drawer-bottom-padding)] shadow-2xl"
       >
         <div class="flex items-start gap-3 border-b border-[var(--app-line)] px-5 py-4">
           <button
             v-if="showBack"
-            class="flex h-10 w-7 shrink-0 items-center justify-center rounded text-[var(--app-ink-soft)] transition-colors hover:bg-[var(--app-surface-2)] hover:text-[var(--app-ink)]"
+            class="flex h-10 w-7 shrink-0 items-center justify-center rounded text-[var(--app-ink-soft)] transition-colors hover:bg-[var(--app-surface-2)] hover:text-[var(--app-ink)] pointer-coarse:size-11"
             title="Revenir au volet précédent"
             @click="$emit('back')"
           >
@@ -41,7 +41,7 @@
           <div class="flex shrink-0 items-center gap-0.5">
             <button
               v-if="!showForm && order"
-              class="flex h-7 w-7 items-center justify-center rounded text-[var(--app-ink-soft)] transition-colors hover:bg-[var(--app-surface-2)] hover:text-[var(--app-ink)]"
+              class="flex h-7 w-7 items-center justify-center rounded text-[var(--app-ink-soft)] transition-colors hover:bg-[var(--app-surface-2)] hover:text-[var(--app-ink)] pointer-coarse:size-11"
               title="Modifier cette vente"
               aria-label="Modifier cette vente"
               @click="startEdit"
@@ -50,7 +50,7 @@
             </button>
             <button
               v-if="!showForm && order"
-              class="flex h-7 w-7 items-center justify-center rounded text-[var(--app-ink-soft)] transition-colors hover:bg-[var(--app-red-soft)] hover:text-[var(--app-red)]"
+              class="flex h-7 w-7 items-center justify-center rounded text-[var(--app-ink-soft)] transition-colors hover:bg-[var(--app-red-soft)] hover:text-[var(--app-red)] pointer-coarse:size-11"
               title="Supprimer cette vente"
               aria-label="Supprimer cette vente"
               @click="deleteConfirmModal?.open()"
@@ -58,7 +58,7 @@
               <UIcon name="i-lucide-trash-2" class="h-4 w-4" />
             </button>
             <button
-              class="flex h-7 w-7 items-center justify-center rounded text-[var(--app-ink-soft)] transition-colors hover:bg-[var(--app-surface)] hover:text-[var(--app-ink)]"
+              class="flex h-7 w-7 items-center justify-center rounded text-[var(--app-ink-soft)] transition-colors hover:bg-[var(--app-surface)] hover:text-[var(--app-ink)] pointer-coarse:size-11"
               aria-label="Fermer"
               @click="$emit('close')"
             >

@@ -4,8 +4,8 @@
     :title="props.label"
     :aria-label="accessibleLabel"
     :aria-current="props.isActive ? 'page' : undefined"
-    class="flex min-w-0 flex-1 flex-col items-center justify-center gap-1.5 transition-opacity [-webkit-tap-highlight-color:transparent] active:opacity-60 md:gap-1"
-    :class="props.isActive ? 'text-[var(--app-ink)]' : 'text-[var(--app-ink-soft)]'"
+    class="flex min-w-0 flex-1 flex-col items-center justify-center gap-1 transition-opacity [-webkit-tap-highlight-color:transparent] active:opacity-60"
+    :class="props.isActive ? 'text-[var(--app-accent-ink)]' : 'text-[var(--app-ink-soft)]'"
   >
     <span class="relative">
       <UIcon :name="props.icon" class="size-6" />
@@ -25,11 +25,6 @@
     >
       {{ props.caption ?? props.label }}
     </span>
-    <span
-      class="h-1 w-1 rounded-full"
-      :class="props.isActive ? 'bg-[var(--app-accent)]' : 'bg-transparent'"
-      aria-hidden="true"
-    ></span>
   </NuxtLink>
 </template>
 
@@ -41,8 +36,8 @@ import { computed } from 'vue'
 const MAXIMUM_SHOWN_BADGE_COUNT: number = 99
 
 /**
- * One link of the installed app's tab bar: an icon, an amber dot when active, an optional count, and from the
- * iPad's width a short caption under the icon (the full label otherwise).
+ * One link of the installed app's tab bar: an icon turning amber when its section is open, an optional count,
+ * and from the iPad's width a short caption under the icon (the full label otherwise).
  */
 const props: UiMobileTabBarTabProps = defineProps({
   to: {

@@ -90,7 +90,7 @@
           </span>
           <button
             type="button"
-            class="flex h-7 w-7 shrink-0 items-center justify-center rounded text-[var(--app-ink-soft)] transition-colors hover:bg-[var(--app-red-soft)] hover:text-[var(--app-red)] disabled:cursor-not-allowed disabled:opacity-30 disabled:hover:bg-transparent disabled:hover:text-[var(--app-ink-soft)]"
+            class="flex h-7 w-7 shrink-0 items-center justify-center rounded text-[var(--app-ink-soft)] transition-colors hover:bg-[var(--app-red-soft)] hover:text-[var(--app-red)] disabled:cursor-not-allowed disabled:opacity-30 disabled:hover:bg-transparent disabled:hover:text-[var(--app-ink-soft)] pointer-coarse:size-11"
             :disabled="draft.length <= 1"
             :title="draft.length <= 1 ? 'Au moins un numéro est requis' : 'Retirer ce numéro'"
             @click="remove(index)"

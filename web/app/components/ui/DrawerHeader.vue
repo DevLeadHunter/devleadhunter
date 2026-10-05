@@ -3,7 +3,7 @@
     <button
       v-if="props.showBack"
       type="button"
-      class="flex h-10 w-7 shrink-0 items-center justify-center rounded text-[var(--app-ink-soft)] transition-colors hover:bg-[var(--app-surface-2)] hover:text-[var(--app-ink)]"
+      class="flex h-10 w-7 shrink-0 items-center justify-center rounded text-[var(--app-ink-soft)] transition-colors hover:bg-[var(--app-surface-2)] hover:text-[var(--app-ink)] pointer-coarse:size-11"
       title="Revenir au volet précédent"
       aria-label="Revenir au volet précédent"
       @click="emit('back')"
@@ -26,7 +26,7 @@
     </div>
     <button
       type="button"
-      class="flex h-7 w-7 items-center justify-center rounded text-[var(--app-ink-soft)] transition-colors hover:bg-[var(--app-surface-2)] hover:text-[var(--app-ink)]"
+      class="flex h-7 w-7 items-center justify-center rounded text-[var(--app-ink-soft)] transition-colors hover:bg-[var(--app-surface-2)] hover:text-[var(--app-ink)] pointer-coarse:size-11"
       aria-label="Fermer"
       @click="emit('close')"
     >

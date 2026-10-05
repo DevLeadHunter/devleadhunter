@@ -220,7 +220,7 @@
       <Transition name="drawer-panel">
         <div
           v-if="htmlPanel.open"
-          class="fixed top-0 right-0 z-50 flex h-dvh w-full max-w-[720px] flex-col border-l border-[var(--app-line)] bg-[var(--app-surface)] shadow-2xl"
+          class="fixed top-0 right-0 bottom-0 z-50 flex w-full max-w-[720px] flex-col border-l border-[var(--app-line)] bg-[var(--app-surface)] shadow-2xl"
         >
           <div class="flex items-center justify-between border-b border-[var(--app-line)] px-5 py-4">
             <div class="min-w-0">
@@ -232,7 +232,7 @@
               </p>
             </div>
             <button
-              class="flex h-7 w-7 shrink-0 items-center justify-center rounded text-[var(--app-ink-soft)] transition-colors hover:bg-[var(--app-surface-2)] hover:text-[var(--app-ink)]"
+              class="flex h-7 w-7 shrink-0 items-center justify-center rounded text-[var(--app-ink-soft)] transition-colors hover:bg-[var(--app-surface-2)] hover:text-[var(--app-ink)] pointer-coarse:size-11"
               @click="htmlPanel.open = false"
             >
               <UIcon name="i-lucide-x" class="h-4 w-4" />
