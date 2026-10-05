@@ -180,8 +180,36 @@
                 Génération en cours (capture + montage)…
               </div>
 
-              <p v-else-if="site.video_status === 'failed'" class="mt-3 text-xs text-[var(--app-red)]">
-                {{ site.video_error || 'La génération a échoué.' }}
+              <div v-else-if="isVideoWaitingForDesktop" class="mt-3">
+                <p class="flex items-start gap-2 text-xs leading-relaxed text-[var(--app-ink-soft)]">
+                  <UIcon
+                    :name="site.is_video_desktop_build_started ? 'i-lucide-loader-circle' : 'i-lucide-monitor'"
+                    :class="['mt-0.5 h-4 w-4 shrink-0', { 'animate-spin': site.is_video_desktop_build_started }]"
+                  />
+                  <span>{{ desktopVideoRequestLabel }}</span>
+                </p>
+                <div v-if="!site.is_video_desktop_build_started" class="mt-2 space-y-2">
+                  <button
+                    type="button"
+                    class="btn-secondary w-full text-xs"
+                    :disabled="cancellingDesktopVideoRequest || generatingVideo"
+                    @click="handleCancelDesktopVideoRequest"
+                  >
+                    {{ cancellingDesktopVideoRequest ? 'Annulation…' : 'Annuler la demande' }}
+                  </button>
+                  <button
+                    type="button"
+                    class="btn-secondary w-full text-xs"
+                    :disabled="cancellingDesktopVideoRequest || generatingVideo"
+                    @click="handleGenerateVideoOnServer"
+                  >
+                    {{ generatingVideo ? 'Lancement…' : 'Générer sur le serveur (sans la séquence Storyblok)' }}
+                  </button>
+                </div>
+              </div>
+
+              <p v-else-if="videoFailureMessage" class="mt-3 text-xs text-[var(--app-red)]">
+                {{ videoFailureMessage }}
               </p>
 
               <template v-if="site.video_status === 'ready' && site.video_page_url">
@@ -203,6 +231,7 @@
                     {{ copied ? 'Lien copié !' : 'Copier le lien vidéo' }}
                   </button>
                   <button
+                    v-if="!isVideoWaitingForDesktop"
                     type="button"
                     class="btn-secondary w-full text-xs"
                     :disabled="generatingVideo"
@@ -213,7 +242,7 @@
                   <button
                     type="button"
                     class="btn-secondary w-full text-xs text-[var(--app-red)]"
-                    :disabled="deletingVideo"
+                    :disabled="deletingVideo || site.is_video_desktop_build_started"
                     @click="askDeleteVideo"
                   >
                     {{ deletingVideo ? 'Suppression…' : 'Supprimer la vidéo' }}
@@ -222,7 +251,7 @@
               </template>
 
               <button
-                v-if="!isVideoGenerating && site.video_status !== 'ready'"
+                v-if="!isVideoGenerating && !isVideoWaitingForDesktop && site.video_status !== 'ready'"
                 type="button"
                 class="btn-primary mt-3 w-full text-xs disabled:cursor-not-allowed disabled:opacity-50"
                 :disabled="generatingVideo"
@@ -461,14 +490,21 @@ import type {
   DemoSiteTemplate,
   DemoSiteTheme,
   DemoSiteUpdatePayload,
+  DemoSiteVideoState,
   StoryblokCollaboratorStatus,
 } from '~/services/demoSiteService'
 import { DEFAULT_DEMO_SITE_THEME, DemoSiteService } from '~/services/demoSiteService'
+import { getScraperSidecarInfo } from '~/services/scraperSidecarService'
 import { StoryblokSidecarService } from '~/services/storyblokSidecarService'
+import { useProspectSearchStore } from '~/stores/prospectSearch'
 import { useToast } from '~/composables/useToast'
 import type { UseVideoGenerationProgressReturn } from '~/composables/useVideoGenerationProgress'
 import { useVideoGenerationProgress } from '~/composables/useVideoGenerationProgress'
 import { ServiceCards } from '~/utils/serviceCards'
+
+const VIDEO_STATE_POLL_INTERVAL_MS: number = 5_000
+
+const DESKTOP_VIDEO_WAIT_POLL_INTERVAL_MS: number = 15_000
 
 definePageMeta({ layout: 'dashboard', middleware: 'auth' })
 
@@ -478,6 +514,7 @@ const { copy, copied }: UseCopyToClipboardReturn = useCopyToClipboard()
 const { openExternalUrl }: UseOpenExternalUrlReturn = useOpenExternalUrl()
 const toast: UseToastReturn = useToast()
 const videoProgress: UseVideoGenerationProgressReturn = useVideoGenerationProgress()
+const prospectSearchStore: ReturnType<typeof useProspectSearchStore> = useProspectSearchStore()
 
 /** Tabs of the sticky side panel: the site's summary/actions, and its visual configuration. */
 const asideTabs: UiTab[] = [
@@ -517,10 +554,12 @@ const exporting: Ref<boolean> = ref(false)
 const generatingVideo: Ref<boolean> = ref(false)
 const videoPrepStatus: Ref<string> = ref('')
 const deletingVideo: Ref<boolean> = ref(false)
+const cancellingDesktopVideoRequest: Ref<boolean> = ref(false)
 const deleteVideoModalRef: Ref<{ open: () => void } | null> = ref(null)
 const deleteSiteModalRef: Ref<{ open: () => void } | null> = ref(null)
 const asideRef: Ref<HTMLElement | null> = ref(null)
-let videoPollTimer: ReturnType<typeof setInterval> | null = null
+let videoPollTimer: ReturnType<typeof setTimeout> | null = null
+let hasLeftPage: boolean = false
 
 const templateLabel: ComputedRef<string> = computed(() => {
   const labels: Record<string, string> = {
@@ -648,7 +687,30 @@ const isVideoGenerating: ComputedRef<boolean> = computed(
   () => site.value?.video_status === 'pending' || site.value?.video_status === 'generating',
 )
 
+const isVideoWaitingForDesktop: ComputedRef<boolean> = computed((): boolean =>
+  Boolean(site.value?.video_desktop_requested_at),
+)
+
+const desktopVideoRequestLabel: ComputedRef<string> = computed((): string => {
+  if (site.value?.is_video_desktop_build_started) {
+    return 'Votre PC génère la vidéo (2 à 3 minutes). Vous pouvez quitter cette page.'
+  }
+  if (prospectSearchStore.isDesktopAppOnline) {
+    return 'Demande envoyée à votre PC : il lance la génération dans la minute.'
+  }
+  return "En attente de votre PC : l'application DevLeadHunter générera la vidéo dès qu'elle sera ouverte. Elle démarre avec Windows."
+})
+
+const videoFailureMessage: ComputedRef<string | null> = computed((): string | null => {
+  if (site.value?.video_status === 'failed') return site.value.video_error || 'La génération a échoué.'
+  if (site.value?.video_status === 'ready' && site.value.video_error) {
+    return `La nouvelle génération a échoué, la vidéo actuelle reste en ligne. ${site.value.video_error}`
+  }
+  return null
+})
+
 const videoStatusLabel: ComputedRef<string | null> = computed(() => {
+  if (isVideoWaitingForDesktop.value) return site.value?.is_video_desktop_build_started ? 'En cours' : 'En attente'
   switch (site.value?.video_status) {
     case 'pending':
     case 'generating':
@@ -663,6 +725,7 @@ const videoStatusLabel: ComputedRef<string | null> = computed(() => {
 })
 
 const videoStatusClass: ComputedRef<string> = computed(() => {
+  if (isVideoWaitingForDesktop.value) return 'bg-[var(--app-accent-soft)] text-[var(--app-accent-ink)]'
   if (site.value?.video_status === 'ready') return 'bg-[var(--app-green)]/20 text-[var(--app-green)]'
   if (site.value?.video_status === 'failed') return 'bg-[var(--app-red)]/20 text-[var(--app-red)]'
   return 'bg-[var(--app-accent-soft)] text-[var(--app-accent-ink)]'
@@ -972,24 +1035,59 @@ async function handleDelete(): Promise<void> {
  */
 function stopVideoPolling(): void {
   if (videoPollTimer !== null) {
-    clearInterval(videoPollTimer)
+    clearTimeout(videoPollTimer)
     videoPollTimer = null
   }
 }
 
 /**
- * Poll the site every 5 s while the video is generating (background job).
+ * Publish what an action on the video returned, keeping the logo colour only the site's own route reads.
+ * @param updated - The site as the video route returned it.
+ */
+function applyVideoActionResult(updated: DemoSite): void {
+  site.value = { ...updated, brand_color: site.value?.brand_color ?? null }
+}
+
+/**
+ * Tell how the video asked from this device ended, once the PC published it or gave it up.
+ */
+function announceDesktopVideoOutcome(): void {
+  if (site.value?.video_error) {
+    toast.error(site.value.video_error)
+    return
+  }
+  if (site.value?.video_status === 'ready') toast.success('Vidéo générée par votre PC')
+}
+
+/**
+ * Read the video's state once, then plan the next read while a generation runs or waits for the PC.
+ * @returns A promise resolved once the state is published.
+ */
+async function pollVideoState(): Promise<void> {
+  videoPollTimer = null
+  const wasWaitingForDesktop: boolean = isVideoWaitingForDesktop.value
+  const state: DemoSiteVideoState | null = await DemoSiteService.getDemoSiteVideoState(demoSiteId).catch(
+    (): null => null,
+  )
+  if (state !== null && site.value !== null) site.value = { ...site.value, ...state }
+  if (isVideoGenerating.value || isVideoWaitingForDesktop.value) {
+    startVideoPolling()
+    return
+  }
+  if (wasWaitingForDesktop) announceDesktopVideoOutcome()
+}
+
+/**
+ * Follow the video while it is generated or waits for the PC: every 5 s, slower until the PC starts.
  */
 function startVideoPolling(): void {
-  if (videoPollTimer !== null) return
-  videoPollTimer = setInterval(async (): Promise<void> => {
-    try {
-      site.value = await DemoSiteService.getDemoSite(demoSiteId)
-    } catch {
-      // Erreur transitoire : on retentera au prochain tick.
-    }
-    if (!isVideoGenerating.value) stopVideoPolling()
-  }, 5000)
+  if (hasLeftPage || videoPollTimer !== null) return
+  const isWaitingForDesktopToStart: boolean =
+    isVideoWaitingForDesktop.value && !site.value?.is_video_desktop_build_started
+  videoPollTimer = setTimeout(
+    pollVideoState,
+    isWaitingForDesktopToStart ? DESKTOP_VIDEO_WAIT_POLL_INTERVAL_MS : VIDEO_STATE_POLL_INTERVAL_MS,
+  )
 }
 
 /**
@@ -1057,12 +1155,64 @@ async function runDesktopFullBuild(): Promise<Awaited<ReturnType<typeof Storyblo
 }
 
 /**
+ * Leave the video to the owner's PC: this device cannot film the site and its Storyblok editor.
+ * @returns A promise resolved once the request waits for the desktop app, or was refused.
+ */
+async function requestVideoFromDesktop(): Promise<void> {
+  try {
+    applyVideoActionResult(await DemoSiteService.requestDesktopVideo(demoSiteId))
+    startVideoPolling()
+    toast.success('Demande envoyée à votre PC')
+  } catch (err: unknown) {
+    toast.error(err instanceof Error && err.message ? err.message : "La demande n'a pas pu être envoyée à votre PC.")
+  }
+}
+
+/**
+ * Withdraw the video request left for the PC; a video already published stays online.
+ * @returns A promise resolved once the request is withdrawn, or the withdrawal was refused.
+ */
+async function handleCancelDesktopVideoRequest(): Promise<void> {
+  cancellingDesktopVideoRequest.value = true
+  try {
+    applyVideoActionResult(await DemoSiteService.cancelDesktopVideoRequest(demoSiteId))
+    toast.success('Demande annulée')
+  } catch (err: unknown) {
+    toast.error(err instanceof Error && err.message ? err.message : "La demande n'a pas pu être annulée.")
+  } finally {
+    cancellingDesktopVideoRequest.value = false
+  }
+}
+
+/**
+ * Generate the video on the server instead of waiting for the PC: it starts at once, without the Storyblok sequence.
+ * @returns A promise resolved once the server generation is launched, or was refused.
+ */
+async function handleGenerateVideoOnServer(): Promise<void> {
+  generatingVideo.value = true
+  try {
+    applyVideoActionResult(await DemoSiteService.generateDemoSiteVideo(demoSiteId))
+    startVideoPolling()
+    toast.success('Génération de la vidéo lancée sur le serveur')
+  } catch (err: unknown) {
+    toast.error(err instanceof Error && err.message ? err.message : 'Échec du lancement de la génération')
+  } finally {
+    generatingVideo.value = false
+  }
+}
+
+/**
  * Start (or restart) the prospection-video generation.
  */
 async function handleGenerateVideo(): Promise<void> {
   generatingVideo.value = true
   const slug: string = site.value?.slug ?? ''
   try {
+    const hasLocalVideoBuilder: boolean = (await getScraperSidecarInfo()) !== null
+    if (!hasLocalVideoBuilder) {
+      await requestVideoFromDesktop()
+      return
+    }
     // Desktop: build the ENTIRE video locally (capture + montage) with the bundled
     // ffmpeg — the VPS is never involved. The modal follows the sidecar's phases so
     // the wait is never opaque. If the Storyblok session expired, open the sign-in
@@ -1178,7 +1328,7 @@ onMounted(async () => {
   try {
     site.value = await DemoSiteService.getDemoSite(demoSiteId)
     resetPendingChanges()
-    if (isVideoGenerating.value) startVideoPolling()
+    if (isVideoGenerating.value || isVideoWaitingForDesktop.value) startVideoPolling()
     if (site.value.storyblok_invite_sent && site.value.storyblok_collaborator_status !== 'joined') {
       refreshCmsStatusSilently()
     }
@@ -1200,6 +1350,7 @@ onMounted(async () => {
 })
 
 onBeforeUnmount((): void => {
+  hasLeftPage = true
   stopVideoPolling()
 })
 </script>

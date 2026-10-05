@@ -79,6 +79,8 @@ class DemoSite(Base):
     video_status: Mapped[str | None] = mapped_column(String(32), nullable=True, index=True)
     video_error: Mapped[str | None] = mapped_column(Text, nullable=True)
     video_generated_at: Mapped[datetime | None] = mapped_column(nullable=True)
+    # Set when a device without the desktop app asked for the video: the owner's desktop app builds it.
+    video_desktop_requested_at: Mapped[datetime | None] = mapped_column(nullable=True)
     local_demo_url: Mapped[str | None] = mapped_column(String(512), nullable=True)
     verification_message: Mapped[str | None] = mapped_column(Text, nullable=True)
     error_message: Mapped[str | None] = mapped_column(Text, nullable=True)

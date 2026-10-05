@@ -15,10 +15,13 @@ from core.config import settings
 from core.database import get_db
 from enums.demo_site_status import DemoSiteStatus
 from enums.demo_video_status import DemoVideoStatus
+from models.demo_site import DemoSite
 from models.prospect_db import ProspectDB
 from models.user import User
 from schemas.demo_site import (
     DemoSiteCreateRequest,
+    DemoSiteDesktopVideoFailureRequest,
+    DemoSiteDesktopVideoRequestResponse,
     DemoSiteImagesResponse,
     DemoSiteImagesUpdateRequest,
     DemoSiteListResponse,
@@ -31,10 +34,12 @@ from schemas.demo_site import (
     DemoSiteTemplateResponse,
     DemoSiteTheme,
     DemoSiteUpdateRequest,
+    DemoSiteVideoStateResponse,
 )
 from services.auth_service import get_current_active_user
 from services.brand_color_service import brand_color_service
 from services.demo_site_service import demo_site_service, reenqueue_campaigns_after_demo_ready
+from services.demo_video_desktop_relay import ALREADY_BUILDING_MESSAGE, demo_video_desktop_relay
 from services.demo_video_service import (
     demo_video_service,
     has_ready_video,
@@ -45,6 +50,7 @@ from services.demo_video_service import (
 from services.email_variables import EmailVariables
 from services.presenter_video_service import presenter_video_service
 from services.prospect_phones import first_mobile_e164
+from services.prospect_search.desktop_app_presence import desktop_app_presence
 from services.r2_storage_service import r2_storage
 from services.service_card_suggestion_service import ServiceCardsUnavailableError
 from services.site_export_service import site_export_service
@@ -108,7 +114,14 @@ def _serialize_demo_site(site, *, include_brand_color: bool = False) -> DemoSite
     if has_ready_video(site):
         payload["video_page_url"] = video_page_url(site.slug)
         payload["video_thumbnail_url"] = public_thumbnail_url(site.slug, site.video_generated_at)
+    payload["is_video_desktop_build_started"] = demo_video_desktop_relay.is_build_started(site)
     return DemoSiteResponse(**payload)
+
+
+def _refuse_while_desktop_builds(site: DemoSite) -> None:
+    """Refuse to replace, withdraw or delete a video the owner's desktop app is building: it would publish it anyway."""
+    if demo_video_desktop_relay.is_build_started(site):
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=ALREADY_BUILDING_MESSAGE)
 
 
 @router.get("/templates", response_model=list[DemoSiteTemplateResponse])
@@ -564,10 +577,120 @@ async def generate_demo_site_video(
     site = demo_site_service.get_for_user(db, current_user.id, demo_site_id)
     if not site:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Demo site not found")
+    _refuse_while_desktop_builds(site)
     try:
         site = demo_video_service.request_generation(db, site, current_user.id)
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+    site = demo_video_desktop_relay.clear_request(db, site)
+    return _serialize_demo_site(site)
+
+
+@router.get("/{demo_site_id}/video/state", response_model=DemoSiteVideoStateResponse)
+async def get_demo_site_video_state(
+    demo_site_id: int,
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db),
+) -> DemoSiteVideoStateResponse:
+    """Where the prospection video stands, for the dashboard to follow a generation without reloading the site."""
+    site = demo_site_service.get_for_user(db, current_user.id, demo_site_id)
+    if not site:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Demo site not found")
+    is_video_ready = has_ready_video(site)
+    return DemoSiteVideoStateResponse(
+        video_status=site.video_status,
+        video_error=site.video_error,
+        video_generated_at=site.video_generated_at,
+        video_desktop_requested_at=site.video_desktop_requested_at,
+        is_video_desktop_build_started=demo_video_desktop_relay.is_build_started(site),
+        video_page_url=video_page_url(site.slug) if is_video_ready else None,
+        video_thumbnail_url=public_thumbnail_url(site.slug, site.video_generated_at) if is_video_ready else None,
+    )
+
+
+@router.get("/video/desktop-requests", response_model=list[DemoSiteDesktopVideoRequestResponse])
+async def list_desktop_video_requests(
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db),
+) -> list[DemoSiteDesktopVideoRequestResponse]:
+    """Videos asked from another device that the caller's desktop app must build. Only the desktop app calls this."""
+    desktop_app_presence.mark_seen(current_user.id)
+    return [
+        DemoSiteDesktopVideoRequestResponse(
+            demo_site_id=site.id,
+            slug=site.slug,
+            business_name=site.business_name,
+            requested_at=site.video_desktop_requested_at,
+        )
+        for site in demo_video_desktop_relay.waiting_sites(db, current_user.id)
+    ]
+
+
+@router.post(
+    "/{demo_site_id}/video/desktop-request", response_model=DemoSiteResponse, status_code=status.HTTP_202_ACCEPTED
+)
+async def request_demo_site_video_from_desktop(
+    demo_site_id: int,
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db),
+) -> DemoSiteResponse:
+    """Ask the owner's desktop app to build the prospection video, from a device that cannot build it."""
+    site = demo_site_service.get_for_user(db, current_user.id, demo_site_id)
+    if not site:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Demo site not found")
+    try:
+        site = demo_video_desktop_relay.request(db, site, current_user.id)
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+    return _serialize_demo_site(site)
+
+
+@router.delete("/{demo_site_id}/video/desktop-request", response_model=DemoSiteResponse)
+async def cancel_demo_site_video_desktop_request(
+    demo_site_id: int,
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db),
+) -> DemoSiteResponse:
+    """Withdraw the video request left for the desktop app; a video already published is untouched."""
+    site = demo_site_service.get_for_user(db, current_user.id, demo_site_id)
+    if not site:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Demo site not found")
+    _refuse_while_desktop_builds(site)
+    return _serialize_demo_site(demo_video_desktop_relay.clear_request(db, site))
+
+
+@router.post("/{demo_site_id}/video/desktop-claim", response_model=DemoSiteResponse)
+async def claim_demo_site_video_desktop_request(
+    demo_site_id: int,
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db),
+) -> DemoSiteResponse:
+    """Tell that the caller's desktop app starts building the requested video, so nothing else takes it."""
+    site = demo_site_service.get_for_user(db, current_user.id, demo_site_id)
+    if not site:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Demo site not found")
+    try:
+        demo_video_desktop_relay.claim(site)
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
+    return _serialize_demo_site(site)
+
+
+@router.post("/{demo_site_id}/video/desktop-failure", response_model=DemoSiteResponse)
+async def report_demo_site_video_desktop_failure(
+    demo_site_id: int,
+    payload: DemoSiteDesktopVideoFailureRequest,
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db),
+) -> DemoSiteResponse:
+    """Close a requested video the desktop app could not build, with the reason the dashboard shows."""
+    site = demo_site_service.get_for_user(db, current_user.id, demo_site_id)
+    if not site:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Demo site not found")
+    try:
+        site = demo_video_desktop_relay.record_failure(db, site, payload.message)
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
     return _serialize_demo_site(site)
 
 
@@ -683,6 +806,7 @@ async def upload_demo_site_video_final(
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
     except VideoGenerationError as exc:
         raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=str(exc)) from exc
+    site = demo_video_desktop_relay.clear_request(db, site)
     return _serialize_demo_site(site)
 
 
@@ -701,7 +825,9 @@ async def delete_demo_site_video(
             status_code=status.HTTP_409_CONFLICT,
             detail="Une génération est en cours — attendez qu'elle se termine.",
         )
+    _refuse_while_desktop_builds(site)
     site = demo_video_service.clear_video(db, site)
+    site = demo_video_desktop_relay.clear_request(db, site)
     return _serialize_demo_site(site)
 
 

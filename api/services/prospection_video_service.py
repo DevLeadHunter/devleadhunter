@@ -129,6 +129,29 @@ class ProspectionVideoService(ABC, Generic[VideoSubjectT]):
         Raises:
             ValueError: when the subject or the presenter clip is not ready, or a generation is already under way.
         """
+        self.ensure_generation_can_start(db, subject, user_id)
+        run_key = self._run_key(subject.id)
+
+        subject.video_status = DemoVideoStatus.PENDING.value
+        subject.video_error = None
+        db.commit()
+        db.refresh(subject)
+
+        video_pipeline.generation_runs.start(run_key, self._run_generation(subject.id, user_id))
+        return subject
+
+    def ensure_generation_can_start(self, db: Session, subject: VideoSubjectT, user_id: int) -> None:
+        """
+        Refuse a video that cannot be generated now, wherever it is about to be built (server or desktop app).
+
+        Args:
+            db: Active database session.
+            subject: The demo site or receptionist, owned by the user.
+            user_id: Owner, whose presenter clip the video uses.
+
+        Raises:
+            ValueError: when the subject or the presenter clip is not ready, or a generation is already under way.
+        """
         from services.presenter_video_service import presenter_video_service
 
         self._check_can_generate(subject)
@@ -144,14 +167,6 @@ class ProspectionVideoService(ABC, Generic[VideoSubjectT]):
                 f"Intro + outro trop longues : il reste {middle_seconds:.0f}s pour montrer {self.shown_subject} "
                 f"(minimum {video_pipeline.MIN_SCROLL_SECONDS:.0f}s)."
             )
-
-        subject.video_status = DemoVideoStatus.PENDING.value
-        subject.video_error = None
-        db.commit()
-        db.refresh(subject)
-
-        video_pipeline.generation_runs.start(run_key, self._run_generation(subject.id, user_id))
-        return subject
 
     def maybe_start_auto_generation(self, db: Session, subject: VideoSubjectT, user_id: int) -> bool:
         """

@@ -203,6 +203,7 @@ MIGRATION_MODULES: list[tuple[str, str]] = [
         "add_prospect_search_candidate_place_before_refusal",
         "migrations.add_prospect_search_candidate_place_before_refusal",
     ),
+    ("add_demo_site_video_desktop_requested_at", "migrations.add_demo_site_video_desktop_requested_at"),
 ]
 
 # Modules of this package that are not migrations and must not be registered.
