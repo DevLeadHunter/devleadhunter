@@ -4,6 +4,9 @@
 
 @config '../../../tailwind.config.js';
 
+/* The app opened from the home screen (installed PWA), not from a browser tab. */
+@custom-variant standalone (@media (display-mode: standalone));
+
 @layer base {
   html {
     scroll-behavior: smooth;
@@ -322,6 +325,31 @@ html.dark {
   background-color: var(--app-bg);
   color: var(--app-ink);
   font-family: var(--app-font-ui);
+}
+
+/* Height of UiMobileTabBar, kept free under the floating elements (toasts) of the installed app:
+   on phones and narrow windows, and on any touch screen such as an iPad held in landscape.
+   The drawers end where the screen ends, with its safe area as padding. */
+:root {
+  --app-tab-bar-offset: 0px;
+  --app-drawer-bottom: 0px;
+  --app-drawer-bottom-padding: env(safe-area-inset-bottom);
+}
+
+@media (display-mode: standalone) and (width < 64rem), (display-mode: standalone) and (pointer: coarse) {
+  :root {
+    --app-tab-bar-offset: calc(3.75rem + max(1.5rem, env(safe-area-inset-bottom)));
+  }
+}
+
+/* On an iPad a drawer covers half the page and stays open from page to page: it stops above the tab
+   bar, which stays usable. A phone's drawer covers the whole screen; from 80rem it pushes the page. */
+@media (display-mode: standalone) and (48rem <= width < 64rem),
+  (display-mode: standalone) and (pointer: coarse) and (48rem <= width < 80rem) {
+  :root {
+    --app-drawer-bottom: var(--app-tab-bar-offset);
+    --app-drawer-bottom-padding: 0px;
+  }
 }
 
 /* Les wizards posent une barre d'action sticky au bas du viewport : réserver

@@ -1,6 +1,8 @@
 <template>
   <Teleport to="body">
-    <div class="pointer-events-none fixed right-4 bottom-4 z-[70] flex flex-col items-end gap-2">
+    <div
+      class="pointer-events-none fixed right-4 bottom-[calc(1rem+var(--app-tab-bar-offset))] z-[70] flex flex-col items-end gap-2"
+    >
       <div :id="TOAST_STACK_EXTENSION_ID" class="contents"></div>
       <TransitionGroup name="toast">
         <div

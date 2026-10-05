@@ -96,6 +96,12 @@ Desktop builds use `NUXT_DESKTOP_BUILD=1` (SSR off, static preset). The app talk
 
 CI release workflow: `.github/workflows/desktop-release.yml` (Windows + macOS, auto-updater).
 
+The desktop app is the PC-side worker of the prospect searches launched from any device (the iPad, a phone): it reads with the local Chrome the Facebook pages a search waits for. So it starts with Windows hidden in the notification area (`--minimized`, enabled once at the first launch, a Task Manager opt-out stays respected), closing its window only hides it, and the tray icon opens or quits it (`src-tauri/src/tray.rs`). While it runs, the activity it polls marks it online (`from_desktop_app=true`), and the other devices tell whether the PC is on to read the pages.
+
+## Installed app (PWA)
+
+Installed from Safari or Chrome (« Sur l'écran d'accueil »), the dashboard opens on `/dashboard` with a bottom tab bar on phones, on iPads in portrait and on any touch screen: Campagnes, Notifications, the large « Rechercher des leads » button, Suivi des emails, Suivi des SMS. Pulling a page down from its top reloads it, the status bar takes the header's colour in both themes, and the session token renews itself twice a day while the app is used.
+
 ## Code quality
 
 | Module | Standards |

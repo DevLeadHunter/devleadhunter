@@ -155,3 +155,16 @@ export type UseVideoGenerationChecksReturn = {
   stopChecks: () => void
   checkNow: () => Promise<void>
 }
+
+export type PullToRefreshOptions = {
+  onRefresh: () => void
+  canStart: () => boolean
+}
+
+export type UsePullToRefreshReturn = {
+  pullDistance: Ref<number>
+  pullProgress: ComputedRef<number>
+  isPulling: Ref<boolean>
+  isRefreshing: Ref<boolean>
+  hasReachedRefreshThreshold: ComputedRef<boolean>
+}

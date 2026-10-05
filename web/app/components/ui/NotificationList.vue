@@ -70,12 +70,15 @@
 <script lang="ts" setup>
 import type { NotificationHistory, NotificationItem } from '~/services/notificationsService'
 import type { Ref } from 'vue'
-import { onBeforeUnmount, onMounted, ref } from 'vue'
+import { onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { NotificationsService } from '~/services/notificationsService'
 import { notificationPresentation } from '~/constants/notificationLevels'
+import { useNotificationStore } from '~/stores/notifications'
 import { formatRelativeTime } from '~/utils/date'
 
 const PAGE_SIZE: number = 20
+
+const notificationStore: ReturnType<typeof useNotificationStore> = useNotificationStore()
 
 const items: Ref<NotificationItem[]> = ref([])
 const unreadCount: Ref<number> = ref(0)
@@ -159,6 +162,8 @@ async function refresh(): Promise<void> {
     items.value = [...fresh, ...items.value]
   }
 }
+
+watch(unreadCount, (count: number): void => notificationStore.setUnreadCount(count))
 
 onMounted((): void => {
   load().catch((): void => {})

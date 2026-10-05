@@ -1,12 +1,13 @@
 {
   "name": "DevleadHunter",
   "short_name": "DevleadHunter",
-  "description": "Turn local businesses without a website into paying clients — end-to-end prospecting automation on web, desktop and mobile.",
+  "description": "Trouvez des entreprises locales sans site web, contactez-les par email et SMS, vendez-leur leur site : la prospection de bout en bout, sur ordinateur, iPad et téléphone.",
   "id": "/",
   "start_url": "/dashboard",
   "scope": "/",
   "display": "standalone",
   "lang": "fr",
+  "categories": ["business", "productivity"],
   "theme_color": "#f4f1e9",
   "background_color": "#f4f1e9",
   "icons": [
@@ -14,5 +15,27 @@
     { "src": "/android-chrome-192x192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
     { "src": "/android-chrome-512x512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
     { "src": "/android-chrome-512x512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ],
+  "shortcuts": [
+    {
+      "name": "Rechercher des leads",
+      "url": "/dashboard/search-prospects",
+      "icons": [{ "src": "/android-chrome-192x192.png", "sizes": "192x192", "type": "image/png" }]
+    },
+    {
+      "name": "Campagnes",
+      "url": "/dashboard/campaigns",
+      "icons": [{ "src": "/android-chrome-192x192.png", "sizes": "192x192", "type": "image/png" }]
+    },
+    {
+      "name": "Suivi des emails",
+      "url": "/dashboard/emails",
+      "icons": [{ "src": "/android-chrome-192x192.png", "sizes": "192x192", "type": "image/png" }]
+    },
+    {
+      "name": "Suivi des SMS",
+      "url": "/dashboard/sms",
+      "icons": [{ "src": "/android-chrome-192x192.png", "sizes": "192x192", "type": "image/png" }]
+    }
   ]
 }

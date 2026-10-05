@@ -82,9 +82,11 @@ export default defineNuxtConfig({
         { name: 'twitter:site', content: '@devleadhunter' },
         { name: 'theme-color', content: '#f4f1e9' },
         // PWA — installable dashboard on the iPhone/Android home screen (standalone).
+        // `default` lets iOS colour the status bar with theme-color, dark text on the light theme:
+        // `black-translucent` always draws white text, unreadable over the light header.
         { name: 'mobile-web-app-capable', content: 'yes' },
         { name: 'apple-mobile-web-app-capable', content: 'yes' },
-        { name: 'apple-mobile-web-app-status-bar-style', content: 'black-translucent' },
+        { name: 'apple-mobile-web-app-status-bar-style', content: 'default' },
         { name: 'apple-mobile-web-app-title', content: 'DevleadHunter' },
       ],
       link: [

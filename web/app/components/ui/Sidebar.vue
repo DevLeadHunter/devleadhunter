@@ -2,9 +2,10 @@
   <aside
     ref="sidebarPanel"
     :class="[
-      'fixed top-0 left-0 z-40 flex h-full w-[min(85vw,22rem)] flex-col border-r border-[var(--app-line)] bg-[var(--app-surface)] transition-transform duration-300 md:w-64',
-      isOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0',
+      'fixed top-0 left-0 z-40 flex h-full w-[min(85vw,22rem)] flex-col border-r border-[var(--app-line)] bg-[var(--app-surface)] pl-[env(safe-area-inset-left)] transition-transform duration-300 lg:w-64',
+      isOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0',
     ]"
+    data-no-pull-to-refresh
   >
     <div class="border-b border-[var(--app-line)] px-4 pt-[calc(1rem+env(safe-area-inset-top))] pb-3">
       <div class="flex items-center gap-2.5 px-1">
@@ -183,7 +184,7 @@
       </template>
     </nav>
 
-    <div class="relative border-t border-[var(--app-line)] px-4 py-3">
+    <div class="relative border-t border-[var(--app-line)] px-4 pt-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))]">
       <div v-if="showUserMenu" class="fixed inset-0 z-40" @click="showUserMenu = false"></div>
 
       <div
@@ -292,7 +293,7 @@
 
   <div
     v-if="isOpen && isMobile"
-    class="fixed inset-0 z-30 bg-[var(--app-overlay)] md:hidden"
+    class="fixed inset-0 z-30 bg-[var(--app-overlay)] lg:hidden"
     @click="$emit('toggle')"
   />
 </template>
@@ -526,7 +527,7 @@ function handleModuleClick(moduleEntry: DlhModule): void {
  */
 function navItemClass(active: boolean): string {
   const base: string =
-    'relative flex cursor-pointer items-center gap-2.5 rounded-lg py-2.5 pr-3 pl-4 text-[15px] font-medium transition-colors md:py-1.5 md:text-sm'
+    'relative flex cursor-pointer items-center gap-2.5 rounded-lg py-2.5 pr-3 pl-4 text-[15px] font-medium transition-colors lg:pointer-fine:py-1.5 lg:pointer-fine:text-sm'
   if (active) {
     return `${base} bg-[var(--app-surface-2)] text-[var(--app-ink)]`
   }

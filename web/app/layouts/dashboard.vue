@@ -7,16 +7,16 @@
     >
       <div class="loader-smooth"></div>
     </div>
-    <div v-else class="flex h-screen w-full" :style="{ backgroundColor: 'var(--app-bg)' }">
+    <div v-else class="flex h-dvh w-full" :style="{ backgroundColor: 'var(--app-bg)' }">
       <UiSidebar :is-open="isSidebarOpen" :is-mobile="isMobile" @toggle="toggleSidebar" />
 
       <div
         ref="mobileSwipeArea"
-        class="ml-0 flex flex-1 flex-col overflow-hidden transition-[margin] duration-200 md:ml-64"
+        class="ml-0 flex min-w-0 flex-1 flex-col overflow-hidden transition-[margin] duration-200 lg:ml-64"
         :class="drawerPushClass"
       >
         <header
-          class="sticky top-0 z-10 border-b border-[var(--app-line)] bg-[var(--app-surface)] px-4 pt-[calc(0.75rem+env(safe-area-inset-top))] pb-3 md:hidden"
+          class="sticky top-0 z-10 border-b border-[var(--app-line)] bg-[var(--app-surface)] pt-[calc(0.75rem+env(safe-area-inset-top))] pr-[max(1rem,env(safe-area-inset-right))] pb-3 pl-[max(1rem,env(safe-area-inset-left))] lg:hidden"
         >
           <div v-if="showCreditsPopover && isMobile" class="fixed inset-0 z-40" @click="handleClickOutside"></div>
           <div class="flex items-center justify-between">
@@ -66,10 +66,12 @@
 
         <main
           :id="DASHBOARD_SCROLL_CONTAINER_ID"
-          class="@container flex-1 scroll-pb-28 overflow-x-hidden overflow-y-auto px-4 pt-5 pb-[calc(1.25rem+env(safe-area-inset-bottom))] md:px-6 md:pt-6 md:pb-6"
+          class="standalone:max-md:pb-5 @container flex-1 scroll-pb-28 overflow-x-hidden overflow-y-auto pt-5 pr-[max(1rem,env(safe-area-inset-right))] pb-[calc(1.25rem+env(safe-area-inset-bottom))] pl-[max(1rem,env(safe-area-inset-left))] md:pt-6 md:pr-[max(1.5rem,env(safe-area-inset-right))] md:pb-6 md:pl-[max(1.5rem,env(safe-area-inset-left))]"
         >
           <slot />
         </main>
+
+        <UiMobileTabBar :is-drawer-open-above="drawerStack.topEntry !== null" />
       </div>
 
       <UiDrawerStackHost />
@@ -77,6 +79,8 @@
       <UiCommandPalette />
 
       <ProspectSearchLeadNotifications />
+
+      <UiPullToRefresh />
     </div>
   </div>
 </template>
@@ -94,13 +98,24 @@ import { useAutomationCompletionNotifier } from '~/composables/useAutomationComp
 import { DASHBOARD_SCROLL_CONTAINER_ID } from '~/composables/useDashboardScroll'
 import { useHorizontalSwipe } from '~/composables/useHorizontalSwipe'
 
+// Tailwind's `lg`: below it the sidebar is a slide-over menu, and the installed app shows its tab bar.
+const SIDEBAR_BREAKPOINT_PX: number = 1024
+
+// The header's `--app-surface` in each theme, for the browser bar and the installed app's status bar.
+const APP_HEADER_COLORS: Record<AppTheme, string> = { light: '#fbf9f3', dark: '#1b1b1a' }
+
+// The token renews twice a day: an hourly look keeps the desktop app hidden in the tray signed in.
+const SESSION_RENEWAL_CHECK_INTERVAL_MS: number = 60 * 60 * 1000
+
+let sessionRenewalTimer: ReturnType<typeof setInterval> | null = null
+
 /** Auth initialization state (boot loader overlay). */
 const isInitializing: Ref<boolean> = ref(true)
 
 /** Sidebar visibility (always open on desktop, toggled on mobile). */
 const isSidebarOpen: Ref<boolean> = ref(false)
 
-/** Whether the viewport is below the md breakpoint. */
+/** Whether the viewport is below the lg breakpoint, where the sidebar becomes a slide-over menu. */
 const isMobile: Ref<boolean> = ref(false)
 
 /** Credits popover visibility (mobile header). */
@@ -130,10 +145,14 @@ useSeoMeta({
 })
 
 // Short document title for Safari "Add to Home Screen" (iOS uses <title>, not the marketing default).
+// The browser bar, and the status bar of the installed app, take the colour of the header in both themes.
 useHead({
   title: 'DevleadHunter',
   titleTemplate: (): string => 'DevleadHunter',
-  meta: [{ name: 'apple-mobile-web-app-title', content: 'DevleadHunter' }],
+  meta: [
+    { name: 'apple-mobile-web-app-title', content: 'DevleadHunter' },
+    { name: 'theme-color', content: computed((): string => APP_HEADER_COLORS[theme.value]) },
+  ],
 })
 
 /**
@@ -197,11 +216,11 @@ async function initializeAuth(): Promise<void> {
 }
 
 /**
- * Track the md breakpoint and force the sidebar open on desktop.
+ * Track the lg breakpoint and force the sidebar open on desktop.
  */
 function checkMobile(): void {
   if (import.meta.client) {
-    isMobile.value = window.innerWidth < 768
+    isMobile.value = window.innerWidth < SIDEBAR_BREAKPOINT_PX
     if (!isMobile.value) {
       isSidebarOpen.value = true
     }
@@ -242,6 +261,9 @@ onMounted(async (): Promise<void> => {
     window.addEventListener('resize', handleResize)
     automationNotifier.start()
     prospectSearchStore.startWatching()
+    sessionRenewalTimer = setInterval((): void => {
+      void userStore.renewTokenIfAging()
+    }, SESSION_RENEWAL_CHECK_INTERVAL_MS)
   }
 })
 
@@ -250,6 +272,7 @@ onUnmounted((): void => {
     window.removeEventListener('resize', handleResize)
     automationNotifier.stop()
     prospectSearchStore.stopWatching()
+    if (sessionRenewalTimer !== null) clearInterval(sessionRenewalTimer)
   }
 })
 </script>

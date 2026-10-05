@@ -284,7 +284,10 @@
     </UiCollapsibleCard>
 
     <Transition name="bulkbar">
-      <div v-if="selectedKeys.length > 0" class="fixed inset-x-0 bottom-6 z-40 flex justify-center px-4">
+      <div
+        v-if="selectedKeys.length > 0"
+        class="fixed inset-x-0 bottom-[calc(1.5rem+var(--app-tab-bar-offset))] z-40 flex justify-center px-4"
+      >
         <div
           class="app-card flex flex-wrap items-center justify-center gap-2 rounded-full px-4 py-2.5 shadow-[var(--app-shadow-soft)] backdrop-blur"
         >
