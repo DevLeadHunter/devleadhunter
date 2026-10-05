@@ -2,8 +2,6 @@
   <div class="landing-theme font-body flex min-h-screen flex-col antialiased">
     <div class="landing-grain" aria-hidden="true"></div>
 
-    <UiStatusBarBackdrop />
-
     <header
       class="sticky top-0 z-50 border-b pt-[env(safe-area-inset-top)] transition-colors duration-300"
       :class="hasScrolled ? 'border-[#e3dccd] bg-[#f6f3ec]/90 backdrop-blur-md' : 'border-transparent bg-transparent'"

@@ -56,7 +56,9 @@ export default defineNuxtConfig({
       },
       meta: [
         { charset: 'utf-8' },
-        { name: 'viewport', content: 'width=device-width, initial-scale=1, viewport-fit=cover' },
+        // Same viewport and status bar as GoupixDex. With `viewport-fit=cover`, the app installed on an iPhone starts
+        // below the status bar yet still loses its height at the bottom: the tab bar stayed 59pt above the screen edge.
+        { name: 'viewport', content: 'width=device-width, initial-scale=1' },
         {
           name: 'description',
           content:
@@ -81,10 +83,7 @@ export default defineNuxtConfig({
         { name: 'twitter:image', content: 'https://devleadhunter.fr/og-image.png' },
         { name: 'twitter:site', content: '@devleadhunter' },
         { name: 'theme-color', content: '#f4f1e9' },
-        // PWA — installable dashboard on the iPhone/Android home screen (standalone).
-        // `black-translucent`, as in GoupixDex: with `default`, the installed iPhone app gets a viewport shorter
-        // than the screen by the status bar height, which left a band under the tab bar whatever the CSS.
-        // Its text is always white: UiStatusBarBackdrop puts a dark band behind it on the light theme.
+        // PWA — installable dashboard on the iPhone/Android home screen (standalone), status bar as in GoupixDex.
         { name: 'mobile-web-app-capable', content: 'yes' },
         { name: 'apple-mobile-web-app-capable', content: 'yes' },
         { name: 'apple-mobile-web-app-status-bar-style', content: 'black-translucent' },

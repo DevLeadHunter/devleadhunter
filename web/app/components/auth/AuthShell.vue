@@ -1,6 +1,5 @@
 <template>
   <div class="landing-theme relative min-h-screen">
-    <UiStatusBarBackdrop />
     <div class="landing-grain"></div>
 
     <div class="flex min-h-screen">
