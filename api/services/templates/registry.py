@@ -54,7 +54,12 @@ TEMPLATE_MODULES = [
 
 TEMPLATES_BY_ID: dict[str, Any] = {module.TEMPLATE_ID: module for module in TEMPLATE_MODULES}
 
-AVAILABLE_TEMPLATES: list[dict[str, object]] = [module.TEMPLATE_META for module in TEMPLATE_MODULES]
+# Hidden from the picker but still registered: the sites already generated with them keep rendering.
+HIDDEN_TEMPLATE_IDS: frozenset[str] = frozenset({plumber_atelier.TEMPLATE_ID, plumber_cuivre.TEMPLATE_ID})
+
+AVAILABLE_TEMPLATES: list[dict[str, object]] = [
+    {**module.TEMPLATE_META, "is_hidden": module.TEMPLATE_ID in HIDDEN_TEMPLATE_IDS} for module in TEMPLATE_MODULES
+]
 
 # The default, multi-trade template (« Édito ») — used when no template is chosen.
 DEFAULT_TEMPLATE_ID: str = artisan_edito.TEMPLATE_ID

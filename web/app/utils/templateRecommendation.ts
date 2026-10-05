@@ -29,6 +29,21 @@ export function isTemplateRecommendedFor(template: DemoSiteTemplate, trade: stri
 }
 
 /**
+ * Templates a user may pick: the hidden ones are left out, except the one already in use.
+ * @param templates - Templates in their catalog order.
+ * @param currentTemplateId - Template the site or the form already uses, or null when none.
+ * @returns The pickable templates, catalog order kept.
+ */
+export function filterSelectableTemplates(
+  templates: DemoSiteTemplate[],
+  currentTemplateId: string | null,
+): DemoSiteTemplate[] {
+  return templates.filter(
+    (template: DemoSiteTemplate): boolean => !template.is_hidden || template.id === currentTemplateId,
+  )
+}
+
+/**
  * Templates with the ones recommended for the trade bubbled to the top.
  * @param templates - Templates in their catalog order.
  * @param trade - Targeted trade, or null when none is known yet.

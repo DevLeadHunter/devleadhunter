@@ -404,7 +404,7 @@ import { useProspectSearchStore } from '~/stores/prospectSearch'
 import { PROSPECT_SEARCH_PAGE_PATH } from '~/constants/prospectSearch'
 import { useDashboardScroll } from '~/composables/useDashboardScroll'
 import { useToast } from '~/composables/useToast'
-import { sortTemplatesByRecommendation } from '~/utils/templateRecommendation'
+import { filterSelectableTemplates, sortTemplatesByRecommendation } from '~/utils/templateRecommendation'
 import { ProspectWebsite } from '~/utils/prospectWebsite'
 
 definePageMeta({
@@ -777,7 +777,10 @@ function selectTemplate(templateId: string): void {
  */
 function applyRecommendedTemplate(): void {
   if (hasPickedTemplate.value || templates.value.length === 0) return
-  const best: DemoSiteTemplate | undefined = sortTemplatesByRecommendation(templates.value, recommendedTrade.value)[0]
+  const best: DemoSiteTemplate | undefined = sortTemplatesByRecommendation(
+    filterSelectableTemplates(templates.value, null),
+    recommendedTrade.value,
+  )[0]
   if (!best || best.id === form.value.templateId) return
   form.value.templateId = best.id
   form.value.theme = { ...best.default_theme }

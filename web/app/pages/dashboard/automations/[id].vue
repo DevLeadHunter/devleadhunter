@@ -278,6 +278,7 @@ import { useAutomationsStore } from '~/stores/automations'
 import { AutomationsService } from '~/services/automationsService'
 import { DemoSiteService } from '~/services/demoSiteService'
 import { useToast } from '~/composables/useToast'
+import { filterSelectableTemplates } from '~/utils/templateRecommendation'
 
 definePageMeta({
   layout: 'dashboard',
@@ -305,7 +306,7 @@ const bulkTemplateId: Ref<string> = ref('')
 /** Bulk-toolbar templates, the first entry keeping each site on its current one. */
 const bulkTemplateOptions: ComputedRef<SelectFieldOption[]> = computed((): SelectFieldOption[] => [
   { value: '', label: 'Changer de template…' },
-  ...demoTemplates.value.map(
+  ...filterSelectableTemplates(demoTemplates.value, null).map(
     (template: DemoSiteTemplate): SelectFieldOption => ({ value: template.id, label: template.name }),
   ),
 ])

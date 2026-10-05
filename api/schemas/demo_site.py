@@ -194,6 +194,7 @@ class DemoSiteTemplateResponse(BaseModel):
     brand_color_key: str = "primary"
     # Editable-cards section (food « Nos spécialités »); None/disabled hides the cards editor.
     service_cards: DemoSiteServiceCardsConfig | None = None
+    is_hidden: bool = False
 
 
 class DemoSiteResponse(BaseModel):

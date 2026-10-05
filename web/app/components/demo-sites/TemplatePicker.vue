@@ -178,7 +178,11 @@ import type {
 } from '~/types/TemplatePicker'
 import type { ComputedRef, EmitFn, PropType, Ref } from 'vue'
 import type { DemoSiteServiceCard, DemoSiteTemplate, DemoSiteTheme } from '~/services/demoSiteService'
-import { isTemplateRecommendedFor, sortTemplatesByRecommendation } from '~/utils/templateRecommendation'
+import {
+  isTemplateRecommendedFor,
+  filterSelectableTemplates,
+  sortTemplatesByRecommendation,
+} from '~/utils/templateRecommendation'
 
 /** Template picker: compact list, real screenshot, live iframe preview with theme colors applied. */
 const props: TemplatePickerProps = defineProps({
@@ -285,7 +289,10 @@ const selectedTemplate: ComputedRef<DemoSiteTemplate | null> = computed(
 
 /** Templates with the ones recommended for the targeted trade bubbled to the top. */
 const sortedTemplates: ComputedRef<DemoSiteTemplate[]> = computed((): DemoSiteTemplate[] =>
-  sortTemplatesByRecommendation(props.templates, props.recommendedTrade ?? null),
+  sortTemplatesByRecommendation(
+    filterSelectableTemplates(props.templates, props.modelValue),
+    props.recommendedTrade ?? null,
+  ),
 )
 
 /**

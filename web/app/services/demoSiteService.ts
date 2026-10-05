@@ -54,6 +54,7 @@ export type DemoSiteTemplate = {
   /** Palette key driving the action colour (== color_roles.action). */
   brand_color_key?: keyof DemoSiteTheme
   service_cards?: DemoSiteServiceCardsConfig | null
+  is_hidden?: boolean
 }
 
 /** ``image`` is a photo URL of the site's pool, or '' (the site then falls back to a real gallery photo). */
