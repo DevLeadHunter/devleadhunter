@@ -205,10 +205,33 @@ export type DemoSite = {
   video_generated_at?: string | null
   video_page_url?: string | null
   video_thumbnail_url?: string | null
+  /** Set while the video, asked from a device without the desktop app, waits for the owner's computer. */
+  video_desktop_requested_at?: string | null
+  is_video_desktop_build_started?: boolean
 }
 
 /** Lifecycle of a demo site's prospection video (null = never generated). */
 export type DemoSiteVideoStatus = 'pending' | 'generating' | 'ready' | 'failed'
+
+/** Where a site's prospection video stands: the part of the site followed while a generation runs. */
+export type DemoSiteVideoState = Pick<
+  DemoSite,
+  | 'video_status'
+  | 'video_error'
+  | 'video_generated_at'
+  | 'video_page_url'
+  | 'video_thumbnail_url'
+  | 'video_desktop_requested_at'
+  | 'is_video_desktop_build_started'
+>
+
+/** A site whose prospection video waits for the owner's desktop app. */
+export type DemoSiteDesktopVideoRequest = {
+  demo_site_id: number
+  slug: string
+  business_name: string
+  requested_at: string
+}
 
 /** Where the client stands on the Storyblok CMS handover (null until first observed). */
 export type StoryblokCollaboratorStatus = 'not_invited' | 'pending' | 'joined' | 'unknown'
@@ -494,6 +517,62 @@ export class DemoSiteService {
    */
   static async deleteDemoSiteVideo(demoSiteId: number): Promise<DemoSite> {
     return ApiClient.delete<DemoSite>(`${BASE_URL}/${demoSiteId}/video`)
+  }
+
+  /**
+   * Read where the prospection video stands, without reloading the whole site.
+   * @param demoSiteId - Id of the demo site.
+   * @returns The video's status, links and desktop request.
+   */
+  static async getDemoSiteVideoState(demoSiteId: number): Promise<DemoSiteVideoState> {
+    return ApiClient.get<DemoSiteVideoState>(`${BASE_URL}/${demoSiteId}/video/state`)
+  }
+
+  /**
+   * Ask the owner's desktop app to build the prospection video, from a device that cannot build it.
+   * @param demoSiteId - Id of the demo site.
+   * @returns The site, waiting for the desktop app.
+   * @throws Error carrying the API message when the video cannot be generated now.
+   */
+  static async requestDesktopVideo(demoSiteId: number): Promise<DemoSite> {
+    return ApiClient.post<DemoSite>(`${BASE_URL}/${demoSiteId}/video/desktop-request`, {})
+  }
+
+  /**
+   * Withdraw the video request left for the desktop app; a video already published is untouched.
+   * @param demoSiteId - Id of the demo site.
+   * @returns The site, without a waiting request.
+   */
+  static async cancelDesktopVideoRequest(demoSiteId: number): Promise<DemoSite> {
+    return ApiClient.delete<DemoSite>(`${BASE_URL}/${demoSiteId}/video/desktop-request`)
+  }
+
+  /**
+   * List the videos asked from another device that this desktop app has to build.
+   * @returns The waiting sites, oldest request first.
+   */
+  static async listDesktopVideoRequests(): Promise<DemoSiteDesktopVideoRequest[]> {
+    return ApiClient.get<DemoSiteDesktopVideoRequest[]>(`${BASE_URL}/video/desktop-requests`)
+  }
+
+  /**
+   * Tell the server this desktop app starts building a requested video, so nothing else takes it.
+   * @param demoSiteId - Id of the demo site.
+   * @returns The site, marked as being built.
+   * @throws Error when the request was withdrawn or another build already took it.
+   */
+  static async claimDesktopVideo(demoSiteId: number): Promise<DemoSite> {
+    return ApiClient.post<DemoSite>(`${BASE_URL}/${demoSiteId}/video/desktop-claim`, {})
+  }
+
+  /**
+   * Close a requested video this desktop app could not build, with the reason the dashboard shows.
+   * @param demoSiteId - Id of the demo site.
+   * @param message - Why the build was given up.
+   * @returns The site, without a waiting request.
+   */
+  static async reportDesktopVideoFailure(demoSiteId: number, message: string): Promise<DemoSite> {
+    return ApiClient.post<DemoSite>(`${BASE_URL}/${demoSiteId}/video/desktop-failure`, { message })
   }
 
   /**

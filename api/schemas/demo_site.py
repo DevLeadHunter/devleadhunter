@@ -236,6 +236,10 @@ class DemoSiteResponse(BaseModel):
     video_status: str | None = None
     video_error: str | None = None
     video_generated_at: datetime | None = None
+    # When the video was handed to the owner's desktop app from another device; None once built or cancelled.
+    video_desktop_requested_at: datetime | None = None
+    # Injected by the route: the desktop app took the request and is building the video.
+    is_video_desktop_build_started: bool = False
     # Injected by the route when the video is ready (not model columns).
     video_page_url: str | None = None
     video_thumbnail_url: str | None = None
@@ -285,3 +289,30 @@ class DemoSiteListResponse(BaseModel):
 
     items: list[DemoSiteResponse]
     total: int
+
+
+class DemoSiteVideoStateResponse(BaseModel):
+    """Where a site's prospection video stands, light enough to be read every few seconds."""
+
+    video_status: str | None = None
+    video_error: str | None = None
+    video_generated_at: datetime | None = None
+    video_desktop_requested_at: datetime | None = None
+    is_video_desktop_build_started: bool = False
+    video_page_url: str | None = None
+    video_thumbnail_url: str | None = None
+
+
+class DemoSiteDesktopVideoRequestResponse(BaseModel):
+    """A site whose prospection video waits for the owner's desktop app."""
+
+    demo_site_id: int
+    slug: str
+    business_name: str
+    requested_at: datetime
+
+
+class DemoSiteDesktopVideoFailureRequest(BaseModel):
+    """Why the desktop app could not build a requested video."""
+
+    message: str = Field(min_length=1, max_length=1000)
