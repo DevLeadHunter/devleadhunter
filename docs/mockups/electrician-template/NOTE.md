@@ -43,6 +43,14 @@ propres photos, deux ont une adresse, un n'a pas de logo.
   qualité.
 - Boutons bleu nuit, la couleur d'accent ne porte jamais de texte : elle peut venir du logo du prospect, même jaune.
 
+## Couleur d'accent : celle du logo (décidé le 05/10)
+
+La maquette reprend la couleur que `brand_color_service` tire déjà du logo : orange pour Cz63 (`#E89C3D`), vert pour
+Feeling Good (`#6AD234`). Elle sert telle quelle sur le bleu nuit, en teinte très pâle pour les pastilles d'icônes, et
+assombrie automatiquement jusqu'à rester lisible quand elle colore du texte sur fond blanc (le nom de la ville, les
+petits intertitres). Les boutons restent bleu nuit. Sans logo, ou avec un logo noir, blanc ou gris, la template garde
+son ambre. Un logo à plusieurs couleurs donne celle qui occupe le plus de place.
+
 ## Ce qui s'affiche selon la fiche
 
 | Donnée absente | Ce que fait la page |
@@ -95,4 +103,3 @@ de la galerie), une photo de bannière, et les champs titre principal, descripti
 
 1. La direction de la cinquième version convient-elle ?
 2. Le jeu de photos par défaut : une quinzaine de photos européennes à choisir.
-3. La couleur d'accent : ambre pour tous, ou tirée du logo de chaque prospect.
