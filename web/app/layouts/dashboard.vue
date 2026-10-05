@@ -1,5 +1,6 @@
 <template>
   <div class="app-theme" :data-theme="theme">
+    <UiStatusBarBackdrop v-if="theme === 'light'" />
     <div
       v-if="isInitializing"
       class="fixed inset-0 z-50 flex items-center justify-center"
@@ -7,8 +8,8 @@
     >
       <div class="loader-smooth"></div>
     </div>
-    <!-- Fixée aux quatre bords plutôt que `h-dvh` : dans l'app installée sur iPhone, iOS compte 100dvh sans la barre
-         d'état (59 pt de moins), ce qui décollait la barre d'onglets du bas de l'écran. -->
+    <!-- Fixée aux quatre bords de l'écran plutôt que dimensionnée par `100dvh`, que chaque navigateur mobile calcule à
+         sa façon. L'app installée sur iPhone couvre tout l'écran grâce à la barre d'état `black-translucent` (nuxt.config). -->
     <div v-else class="fixed inset-0 flex" :style="{ backgroundColor: 'var(--app-bg)' }">
       <UiSidebar :is-open="isSidebarOpen" :is-mobile="isMobile" @toggle="toggleSidebar" />
 

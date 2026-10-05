@@ -1,5 +1,6 @@
 <template>
   <div class="landing-theme relative min-h-screen">
+    <UiStatusBarBackdrop />
     <div class="landing-grain"></div>
 
     <div class="flex min-h-screen">
@@ -42,7 +43,7 @@
       </aside>
 
       <div class="relative flex w-full flex-col border-[#e3dccd] bg-[#fcfaf5] lg:order-1 lg:w-1/2 lg:border-r">
-        <div class="flex items-center justify-between px-6 pt-6 md:px-10">
+        <div class="flex items-center justify-between px-6 pt-[calc(1.5rem+env(safe-area-inset-top))] md:px-10">
           <NuxtLink :to="localePath('/')" class="inline-flex items-center gap-2.5" aria-label="DevLeadHunter">
             <svg
               class="h-4 w-4 fill-current text-[#1b1813]"
