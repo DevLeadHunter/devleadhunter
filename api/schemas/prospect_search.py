@@ -164,6 +164,10 @@ class ProspectSearchActivity(BaseModel):
     queued_searches: list[ProspectSearchSummary] = Field(
         default_factory=list, description="Searches waiting for their turn, in the order they will run"
     )
+    is_desktop_app_online: bool = Field(
+        default=False,
+        description="Whether the user's desktop app is on, ready to read the Facebook pages a search waits for",
+    )
 
 
 class CandidateDecisions(BaseModel):

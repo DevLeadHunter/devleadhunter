@@ -146,6 +146,7 @@ export type ProspectSearchActivity = {
   pending_count: number
   active_search: ProspectSearchSummary | null
   queued_searches: ProspectSearchSummary[]
+  is_desktop_app_online: boolean
 }
 
 export type ProspectSearchDecisionsPayload = {

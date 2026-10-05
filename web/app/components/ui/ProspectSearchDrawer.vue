@@ -3,7 +3,7 @@
     <Transition name="drawer-panel">
       <div
         v-if="props.open"
-        class="fixed top-0 right-0 z-50 flex h-dvh w-full max-w-[460px] flex-col border-l border-[var(--app-line)] bg-[var(--app-surface)] pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)] shadow-2xl"
+        class="fixed top-0 right-0 z-50 flex h-[calc(100dvh-var(--app-drawer-bottom))] w-full max-w-[460px] flex-col border-l border-[var(--app-line)] bg-[var(--app-surface)] pt-[env(safe-area-inset-top)] pb-[var(--app-drawer-bottom-padding)] shadow-2xl"
       >
         <UiDrawerHeader
           :title="drawerTitle"
@@ -79,6 +79,7 @@
                 v-if="store.waitingFacebookPageCount > 0 || facebookReading !== null"
                 :waiting-page-count="store.waitingFacebookPageCount"
                 :can-read-locally="store.canReadFacebookPagesLocally"
+                :is-desktop-app-online="store.isDesktopAppOnline"
                 :is-search-active="isSearchActive"
                 :reading="facebookReading"
                 @retry="store.retryFacebookReading"

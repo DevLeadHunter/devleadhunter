@@ -155,11 +155,14 @@ export class ProspectSearchService {
   }
 
   /**
-   * Read what the shell follows: how many candidates wait, and the search still running.
-   * @returns The waiting count and the active search, if any.
+   * Read what the shell follows: how many candidates wait, the search still running, and whether the PC is on.
+   * @param isFromDesktopApp - True from the desktop app, which reads the Facebook pages: the API then knows it is on.
+   * @returns The waiting count, the active search if any, the queue and the desktop app presence.
    */
-  static async getActivity(): Promise<ProspectSearchActivity> {
-    return ApiClient.get<ProspectSearchActivity>(`${BASE_URL}/activity`)
+  static async getActivity(isFromDesktopApp: boolean): Promise<ProspectSearchActivity> {
+    return ApiClient.get<ProspectSearchActivity>(`${BASE_URL}/activity`, {
+      params: { from_desktop_app: isFromDesktopApp || undefined },
+    })
   }
 
   /**

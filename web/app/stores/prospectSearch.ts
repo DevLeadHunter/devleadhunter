@@ -83,6 +83,7 @@ export const useProspectSearchStore = defineStore('prospectSearch', () => {
   const busyCandidateIds: Ref<number[]> = ref([])
   const facebookReading: Ref<ProspectSearchFacebookReading | null> = ref(null)
   const canReadFacebookPagesLocally: Ref<boolean> = ref(false)
+  const isDesktopAppOnline: Ref<boolean> = ref(false)
   const prospectsCreatedSignal: Ref<number> = ref(0)
 
   const knownCandidateIds: Set<number> = new Set()
@@ -329,11 +330,13 @@ export const useProspectSearchStore = defineStore('prospectSearch', () => {
     stopPolling()
     const revision: number = stateRevision
     try {
-      const activity: ProspectSearchActivity = await ProspectSearchService.getActivity()
+      const hasLocalScraper: boolean = (await getScraperSidecarInfo()) !== null
+      const activity: ProspectSearchActivity = await ProspectSearchService.getActivity(hasLocalScraper)
       if (revision !== stateRevision) return
       const previousActiveSearchId: number | null = activeSearch.value?.id ?? null
       activeSearch.value = activity.active_search
       queuedSearches.value = activity.queued_searches ?? []
+      isDesktopAppOnline.value = activity.is_desktop_app_online ?? false
       reportedPendingCount.value = activity.pending_count
       hasLoadedActivity.value = true
       const justEndedSearchId: number | null = activity.active_search === null ? previousActiveSearchId : null
@@ -866,6 +869,7 @@ export const useProspectSearchStore = defineStore('prospectSearch', () => {
     isPendingTabRequested.value = false
     busyCandidateIds.value = []
     facebookReading.value = null
+    isDesktopAppOnline.value = false
     knownCandidateIds.clear()
     decidedCandidateIds.clear()
   }
@@ -910,6 +914,7 @@ export const useProspectSearchStore = defineStore('prospectSearch', () => {
     busyCandidateIds,
     facebookReading,
     canReadFacebookPagesLocally,
+    isDesktopAppOnline,
     prospectsCreatedSignal,
     isFollowedSearchActive,
     isSearchRunningOnServer,

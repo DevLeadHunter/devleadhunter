@@ -2,7 +2,7 @@
 Prospect search routes — one objective-driven search instead of a choice of sources.
 """
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 
 from core.database import get_db
@@ -22,6 +22,7 @@ from schemas.prospect_search import (
     SearchTradeOption,
 )
 from services.auth_service import require_auth
+from services.prospect_search.desktop_app_presence import desktop_app_presence
 from services.prospect_search.facebook_contact import FacebookContactRead
 from services.prospect_search.service import ProspectSearchError, prospect_search_service
 from services.prospect_search.trade_catalog import TradeCatalog
@@ -106,15 +107,21 @@ async def list_pending_candidates(
 
 @router.get("/activity", response_model=ProspectSearchActivity)
 async def get_prospect_search_activity(
+    from_desktop_app: bool = Query(
+        False, description="Set by the desktop app, which reads the Facebook pages: it is then known to be on"
+    ),
     current_user: User = Depends(require_auth),
     db: Session = Depends(get_db),
 ) -> ProspectSearchActivity:
-    """How many candidates wait for the user, the search still at work, and the ones queued behind it."""
+    """How many candidates wait for the user, the search still at work, the ones queued behind it, and the PC."""
+    if from_desktop_app:
+        desktop_app_presence.mark_seen(current_user.id)
     active_search = prospect_search_service.active_search(db, current_user.id)
     return ProspectSearchActivity(
         pending_count=prospect_search_service.pending_candidate_count(db, current_user.id),
         active_search=_summaries(db, [active_search])[0] if active_search is not None else None,
         queued_searches=_summaries(db, prospect_search_service.queued_searches(db, current_user.id)),
+        is_desktop_app_online=desktop_app_presence.is_online(current_user.id),
     )
 
 

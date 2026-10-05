@@ -1062,7 +1062,7 @@ def test_the_activity_counts_what_waits_and_shows_the_latest_search_at_work(db: 
     _store_candidate(db, running_search_id, "Déjà accepté", CandidateStatus.KEPT, prospect_id=41)
     _store_candidate(db, running_search_id, "D'un autre compte", CandidateStatus.KEPT, user_id=USER_ID + 1)
 
-    activity = asyncio.run(activity_route(current_user=_signed_in_user(), db=db))
+    activity = asyncio.run(activity_route(from_desktop_app=False, current_user=_signed_in_user(), db=db))
 
     assert activity.pending_count == 3
     assert activity.active_search is not None
@@ -1271,6 +1271,7 @@ def test_the_fixed_paths_are_not_taken_for_a_search_id(db: Session) -> None:
         "pending_count": 0,
         "active_search": None,
         "queued_searches": [],
+        "is_desktop_app_online": False,
     }
     assert client.get("/prospect-searches/pending-candidates").json() == []
     decisions = client.post("/prospect-searches/candidates/decisions", json={"accept": [], "reject": []})

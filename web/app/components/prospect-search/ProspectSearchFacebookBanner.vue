@@ -4,8 +4,17 @@
       {{ waitingCandidatesLabel }}
       {{
         props.waitingPageCount > 1
-          ? "Ouvrez cette recherche dans l'application Windows : elle les lira avec le Chrome de votre poste."
-          : "Ouvrez cette recherche dans l'application Windows : elle la lira avec le Chrome de votre poste."
+          ? "L'application DevLeadHunter de votre PC les lira avec son Chrome dès qu'elle sera ouverte : elle démarre avec Windows."
+          : "L'application DevLeadHunter de votre PC la lira avec son Chrome dès qu'elle sera ouverte : elle démarre avec Windows."
+      }}
+    </template>
+
+    <template v-else-if="state === 'readByDesktopApp'">
+      {{ waitingCandidatesLabel }}
+      {{
+        props.waitingPageCount > 1
+          ? "Votre PC s'en charge : l'application DevLeadHunter les lit avec son Chrome, en arrière-plan."
+          : "Votre PC s'en charge : l'application DevLeadHunter la lit avec son Chrome, en arrière-plan."
       }}
     </template>
 
@@ -78,6 +87,10 @@ const props: ProspectSearchFacebookBannerProps = defineProps({
     type: Boolean,
     required: true,
   },
+  isDesktopAppOnline: {
+    type: Boolean,
+    required: true,
+  },
   isSearchActive: {
     type: Boolean,
     required: true,
@@ -91,7 +104,7 @@ const props: ProspectSearchFacebookBannerProps = defineProps({
 const emit: EmitFn<ProspectSearchFacebookBannerEmits> = defineEmits<ProspectSearchFacebookBannerEmits>()
 
 const state: ComputedRef<ProspectSearchFacebookBannerState> = computed((): ProspectSearchFacebookBannerState => {
-  if (!props.canReadLocally) return 'needsDesktopApp'
+  if (!props.canReadLocally) return props.isDesktopAppOnline ? 'readByDesktopApp' : 'needsDesktopApp'
   if (props.reading?.isChromeInstalling) return 'installingChrome'
   if (props.reading?.isRunning) return props.reading.pagesToRead > 0 ? 'reading' : 'preparing'
   if (props.reading?.errorMessage) return 'failed'

@@ -3,6 +3,7 @@ import type { ProspectSearchFacebookReading } from '~/types/ProspectSearch'
 export type ProspectSearchFacebookBannerProps = {
   waitingPageCount: number
   canReadLocally: boolean
+  isDesktopAppOnline: boolean
   isSearchActive: boolean
   reading: ProspectSearchFacebookReading | null
 }
@@ -13,6 +14,7 @@ export type ProspectSearchFacebookBannerEmits = {
 
 export type ProspectSearchFacebookBannerState =
   | 'needsDesktopApp'
+  | 'readByDesktopApp'
   | 'installingChrome'
   | 'reading'
   | 'failed'
