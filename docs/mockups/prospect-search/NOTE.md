@@ -152,3 +152,17 @@ jugé de nouveau, comme avant.
 Essayé à l'écran : refuser puis annuler (tableau, volet), accepter (tableau, fiche, volet, notification),
 la fiche qui passe au lead suivant, le volet gardé d'une page à l'autre, le compteur du menu, le
 lancement qui ouvre « À valider » et le volet. La mise en ligne lance seule les deux migrations de la base.
+
+## Après la v5 : plusieurs recherches, sans note Google (5 octobre)
+
+Retour : le bandeau « Une recherche tourne déjà » est raté ; il faut pouvoir lancer plusieurs
+recherches, en file ou en même temps ; le filtre de note Google ne sert pas à grand-chose.
+
+| Point | Ce qui est fait |
+|---|---|
+| Plusieurs recherches | Une **file d'attente** : une recherche lancée pendant qu'une autre tourne attend son tour et démarre toute seule à la fin de la précédente, dans l'ordre d'arrivée ; cinq au plus attendent |
+| Pourquoi une file plutôt qu'en même temps | Une recherche saute les villes que les recherches finies ont déjà parcourues : en file, la suivante profite de la précédente ; en même temps, les deux paieraient les mêmes pages et proposeraient les mêmes entreprises |
+| Bandeau en haut du tunnel | Retiré. L'étape « Lancer » dit quand la recherche démarre (« tout de suite », « après 3 recherches ») et le bouton devient « Ajouter à la file » |
+| Suivre la file | Le volet « Recherche en cours » liste la file, avec « Retirer » ; le bandeau de Mes prospects dit ce qui suit |
+| Note Google | Le filtre disparaît du tunnel et du récapitulatif ; l'étoile reste sur chaque lead, comme simple information |
+| Responsive | Mes prospects ne défile plus de côté entre 768 et 1 280 pixels : l'en-tête invisible de la dernière colonne élargissait la page |
