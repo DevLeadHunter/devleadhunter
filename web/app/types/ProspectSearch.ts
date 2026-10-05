@@ -4,7 +4,14 @@ export type ProspectSearchChannel = 'email' | 'sms' | 'email_and_sms'
 
 export type ProspectSearchValidationMode = 'manual' | 'automatic'
 
-export type ProspectSearchStatus = 'pending' | 'running' | 'waiting_browser' | 'completed' | 'cancelled' | 'failed'
+export type ProspectSearchStatus =
+  | 'queued'
+  | 'pending'
+  | 'running'
+  | 'waiting_browser'
+  | 'completed'
+  | 'cancelled'
+  | 'failed'
 
 export type ProspectSearchCandidateStatus =
   | 'discovered'
@@ -138,6 +145,7 @@ export type ProspectSearchDetail = ProspectSearchSummary & {
 export type ProspectSearchActivity = {
   pending_count: number
   active_search: ProspectSearchSummary | null
+  queued_searches: ProspectSearchSummary[]
 }
 
 export type ProspectSearchDecisionsPayload = {

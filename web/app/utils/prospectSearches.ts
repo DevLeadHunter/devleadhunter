@@ -95,11 +95,18 @@ export class ProspectSearches {
    * @returns The labels, joined by commas.
    */
   static tradesLabel(search: ProspectSearchSummary): string {
-    const labels: string[] =
-      search.trade_counts.length > 0
-        ? search.trade_counts.map((counts: ProspectSearchTradeCounts): string => counts.label)
-        : search.trades
-    return labels.join(', ')
+    return ProspectSearches.tradeLabels(search).join(', ')
+  }
+
+  /**
+   * Trades of the search in a sentence, so that a list of searches stays readable.
+   * @param search - The search to read.
+   * @returns E.g. « Garage automobile et Couvreur ».
+   */
+  static tradesInWords(search: ProspectSearchSummary): string {
+    const labels: string[] = ProspectSearches.tradeLabels(search)
+    const lastLabel: string | undefined = labels.pop()
+    return labels.length > 0 ? `${labels.join(', ')} et ${lastLabel}` : (lastLabel ?? '')
   }
 
   /**
@@ -237,6 +244,17 @@ export class ProspectSearches {
       ProspectSearches.noWebsiteCriterion(candidate),
       ProspectSearches.ratingCriterion(candidate),
     ]
+  }
+
+  /**
+   * Trades of the search, by their catalog label (the typed words while the totals are not known yet).
+   * @param search - The search to read.
+   * @returns A fresh list of labels.
+   */
+  private static tradeLabels(search: ProspectSearchSummary): string[] {
+    return search.trade_counts.length > 0
+      ? search.trade_counts.map((counts: ProspectSearchTradeCounts): string => counts.label)
+      : [...search.trades]
   }
 
   /**

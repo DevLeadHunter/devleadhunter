@@ -73,12 +73,12 @@ async def create_prospect_search(
     current_user: User = Depends(require_auth),
     db: Session = Depends(get_db),
 ) -> ProspectSearchDetail:
-    """Create a search from an objective and start it in the background."""
+    """Create a search from an objective and start it in the background, or queue it behind the search at work."""
     try:
         search = prospect_search_service.create(db, current_user.id, payload)
     except ProspectSearchError as exc:
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc)) from exc
-    prospect_search_service.start(search.id)
+    prospect_search_service.start_or_queue(db, search)
     return _detail(db, search)
 
 
@@ -109,11 +109,12 @@ async def get_prospect_search_activity(
     current_user: User = Depends(require_auth),
     db: Session = Depends(get_db),
 ) -> ProspectSearchActivity:
-    """How many candidates wait for the user, and the search still at work."""
+    """How many candidates wait for the user, the search still at work, and the ones queued behind it."""
     active_search = prospect_search_service.active_search(db, current_user.id)
     return ProspectSearchActivity(
         pending_count=prospect_search_service.pending_candidate_count(db, current_user.id),
         active_search=_summaries(db, [active_search])[0] if active_search is not None else None,
+        queued_searches=_summaries(db, prospect_search_service.queued_searches(db, current_user.id)),
     )
 
 
@@ -159,8 +160,11 @@ async def resume_prospect_search(
     current_user: User = Depends(require_auth),
     db: Session = Depends(get_db),
 ) -> ProspectSearchDetail:
-    """Carry on a search that stopped short of its objective."""
-    search = prospect_search_service.resume(db, current_user.id, search_id)
+    """Carry on a search that stopped short of its objective, or queue it behind the search at work."""
+    try:
+        search = prospect_search_service.resume(db, current_user.id, search_id)
+    except ProspectSearchError as exc:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
     if search is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=_SEARCH_NOT_FOUND)
     return _detail(db, search)

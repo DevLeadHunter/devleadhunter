@@ -11,21 +11,6 @@
       <h1 class="app-page-title mt-3">Nouvelle recherche</h1>
     </div>
 
-    <UiCallout v-if="store.isSearchRunningOnServer && store.activeSearch" variant="warning" class="mb-5">
-      <div class="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
-        <p>
-          Une recherche tourne déjà (<span class="font-medium text-[var(--app-ink)]">{{
-            ProspectSearches.tradesLabel(store.activeSearch)
-          }}</span
-          >). Vous pourrez en lancer une autre dès qu'elle sera terminée ou arrêtée.
-        </p>
-        <button type="button" class="app-btn-secondary h-8 min-h-8 shrink-0 px-3 text-xs" @click="followRunningSearch">
-          <UIcon name="i-lucide-panel-right-open" class="h-3.5 w-3.5" />
-          Suivre
-        </button>
-      </div>
-    </UiCallout>
-
     <UiWizardStepper :model-value="currentStep" :steps="steps" class="mb-6" @update:model-value="goToStep" />
 
     <div class="flex min-w-0 flex-1 flex-col">
@@ -198,33 +183,20 @@
             />
           </div>
 
-          <div class="grid gap-5 border-t border-[var(--app-line-soft)] pt-5 @2xl:grid-cols-2">
-            <div>
-              <p class="app-label mb-2">Site web</p>
-              <UiCheckbox
-                id="search-only-without-website"
-                v-model="form.onlyWithoutWebsite"
-                label="Uniquement sans site web"
-              />
-              <p class="mt-2 text-xs leading-relaxed text-[var(--app-ink-soft)]">
-                {{
-                  isAssistantModule && !form.onlyWithoutWebsite
-                    ? 'La réceptionniste vit sur sa propre page : avec ou sans site, un pro qui reçoit des demandes est une cible.'
-                    : 'Un site en panne ou un mini-site annuaire compte comme « sans site ».'
-                }}
-              </p>
-            </div>
-            <div>
-              <p class="app-label mb-2">Note Google minimale</p>
-              <UiSegmentedControl
-                v-model="minimumRatingChoice"
-                :options="PROSPECT_SEARCH_MINIMUM_RATING_OPTIONS"
-                label="Note Google minimale"
-              />
-              <p class="mt-2 text-xs leading-relaxed text-[var(--app-ink-soft)]">
-                Une note lue sur moins de trois avis n'écarte personne.
-              </p>
-            </div>
+          <div class="border-t border-[var(--app-line-soft)] pt-5">
+            <p class="app-label mb-2">Site web</p>
+            <UiCheckbox
+              id="search-only-without-website"
+              v-model="form.onlyWithoutWebsite"
+              label="Uniquement sans site web"
+            />
+            <p class="mt-2 text-xs leading-relaxed text-[var(--app-ink-soft)]">
+              {{
+                isAssistantModule && !form.onlyWithoutWebsite
+                  ? 'La réceptionniste vit sur sa propre page : avec ou sans site, un pro qui reçoit des demandes est une cible.'
+                  : 'Un site en panne ou un mini-site annuaire compte comme « sans site ».'
+              }}
+            </p>
           </div>
         </div>
 
@@ -275,10 +247,32 @@
                 </dd>
               </div>
             </dl>
-            <p class="mt-3 flex items-start gap-2 text-xs leading-relaxed text-[var(--app-ink-soft)]">
-              <UIcon name="i-lucide-shield-check" class="mt-0.5 h-3.5 w-3.5 shrink-0" />
-              Les prospects déjà connus ne sont jamais repris.
-            </p>
+            <ul class="mt-3 space-y-2 text-xs leading-relaxed text-[var(--app-ink-soft)]">
+              <li class="flex items-start gap-2">
+                <UIcon name="i-lucide-shield-check" class="mt-0.5 h-3.5 w-3.5 shrink-0" />
+                <span>Les prospects déjà connus ne sont jamais repris.</span>
+              </li>
+              <li v-if="store.isQueueFull" class="flex items-start gap-2 text-[var(--app-accent-ink)]">
+                <UIcon name="i-lucide-circle-alert" class="mt-0.5 h-3.5 w-3.5 shrink-0" />
+                <span>
+                  La file d'attente est pleine : {{ PROSPECT_SEARCH_MAXIMUM_QUEUED_SEARCHES }} recherches attendent
+                  déjà. Retirez-en une ou attendez la fin de celle en cours.
+                </span>
+              </li>
+              <li v-else-if="queueNotice" class="flex items-start gap-2">
+                <UIcon name="i-lucide-list-ordered" class="mt-0.5 h-3.5 w-3.5 shrink-0" />
+                <span>{{ queueNotice }}</span>
+              </li>
+            </ul>
+            <button
+              v-if="store.isSearchRunningOnServer"
+              type="button"
+              class="app-btn-secondary mt-3 h-8 min-h-8 px-3 text-xs"
+              @click="openSearchFollowUp"
+            >
+              <UIcon name="i-lucide-panel-right-open" class="h-3.5 w-3.5" />
+              {{ store.queuedSearches.length > 0 ? 'Voir la file' : 'Suivre la recherche en cours' }}
+            </button>
           </section>
         </div>
       </div>
@@ -310,13 +304,20 @@
           type="button"
           :class="['app-btn-primary', canLaunch && 'app-btn-celebrate']"
           :disabled="!canLaunch"
+          :title="store.isQueueFull ? 'La file d’attente est pleine' : undefined"
           @click="launch"
         >
           <UIcon
-            :name="store.isStarting ? 'i-lucide-loader-circle' : 'i-lucide-search'"
+            :name="
+              store.isStarting
+                ? 'i-lucide-loader-circle'
+                : store.isSearchRunningOnServer
+                  ? 'i-lucide-list-plus'
+                  : 'i-lucide-search'
+            "
             :class="['h-3.5 w-3.5', store.isStarting && 'animate-spin']"
           />
-          {{ store.isStarting ? 'Lancement…' : 'Lancer la recherche' }}
+          {{ launchLabel }}
         </button>
       </div>
     </div>
@@ -329,7 +330,12 @@ import type { LocationQueryValue } from 'vue-router'
 import type { ProspectCountryOption } from '~/utils/prospectCountries'
 import type { CitySuggestion } from '~/types/CityAutocompleteInput'
 import type { UseDashboardScrollReturn, UseToastReturn } from '~/types/Composables'
-import type { ProspectSearchTradeOption, ProspectSearchValidationOption } from '~/types/ProspectSearch'
+import type {
+  ProspectSearchDetail,
+  ProspectSearchSummary,
+  ProspectSearchTradeOption,
+  ProspectSearchValidationOption,
+} from '~/types/ProspectSearch'
 import type {
   ProspectSearchFormState,
   ProspectSearchRecapRow,
@@ -351,10 +357,9 @@ import {
   PROSPECT_SEARCH_MAXIMUM_CITIES,
   PROSPECT_SEARCH_MAXIMUM_CITY_LENGTH,
   PROSPECT_SEARCH_MAXIMUM_COUNT_PER_TRADE,
+  PROSPECT_SEARCH_MAXIMUM_QUEUED_SEARCHES,
   PROSPECT_SEARCH_MAXIMUM_TRADE_LENGTH,
   PROSPECT_SEARCH_MAXIMUM_TRADES,
-  PROSPECT_SEARCH_MINIMUM_RATING_OPTIONS,
-  PROSPECT_SEARCH_NO_MINIMUM_RATING,
   PROSPECT_SEARCH_TUNNEL_STEPS,
   PROSPECT_SEARCH_VALIDATION_OPTIONS,
 } from '~/constants/prospectSearch'
@@ -462,13 +467,6 @@ const selectedTrades: WritableComputedRef<string[]> = computed({
   },
 })
 
-const minimumRatingChoice: WritableComputedRef<number> = computed({
-  get: (): number => form.value.minimumRating ?? PROSPECT_SEARCH_NO_MINIMUM_RATING,
-  set: (choice: number): void => {
-    form.value.minimumRating = choice === PROSPECT_SEARCH_NO_MINIMUM_RATING ? null : choice
-  },
-})
-
 const countPerTrade: ComputedRef<number> = computed((): number =>
   ProspectSearchForm.clampCountPerTrade(Number(form.value.countPerTrade)),
 )
@@ -504,20 +502,33 @@ const recapRows: ComputedRef<ProspectSearchRecapRow[]> = computed((): ProspectSe
     },
     { label: 'Contact', value: PROSPECT_SEARCH_CHANNEL_LABELS[form.value.channel] },
     { label: 'Site web', value: form.value.onlyWithoutWebsite ? 'Uniquement sans site web' : 'Avec ou sans site web' },
-    {
-      label: 'Note Google',
-      value:
-        form.value.minimumRating === null
-          ? 'Aucun minimum'
-          : `${ProspectSearches.ratingLabel(form.value.minimumRating)} au minimum`,
-    },
     { label: 'Validation', value: validation?.label ?? '', detail: validation?.description },
   ]
+})
+
+const queueNotice: ComputedRef<string | null> = computed((): string | null => {
+  const runningSearch: ProspectSearchSummary | null = store.activeSearch
+  if (!store.isSearchRunningOnServer || runningSearch === null) return null
+  const runningTrades: string = ProspectSearches.tradesInWords(runningSearch)
+  const queuedCount: number = store.queuedSearches.length
+  if (queuedCount === 0) {
+    return `Une recherche tourne déjà (${runningTrades}) : celle-ci démarrera toute seule juste après.`
+  }
+  const waitingSearches: string = queuedCount > 1 ? `${queuedCount} autres attendent` : '1 autre attend'
+  return `Une recherche tourne déjà (${runningTrades}) et ${waitingSearches} : celle-ci démarrera toute seule à leur suite.`
+})
+
+const startLabel: ComputedRef<string> = computed((): string => {
+  if (!store.isSearchRunningOnServer) return 'tout de suite'
+  if (store.isQueueFull) return 'file pleine'
+  const searchesAhead: number = store.queuedSearches.length + 1
+  return searchesAhead > 1 ? `après ${searchesAhead} recherches` : 'après celle en cours'
 })
 
 const estimateRows: ComputedRef<ProspectSearchRecapRow[]> = computed((): ProspectSearchRecapRow[] => {
   const maximumRequestCount: number = ProspectSearchForm.maximumRequestCount(form.value)
   return [
+    { label: 'Démarrage', value: startLabel.value },
     { label: 'Requêtes', value: `au plus ${maximumRequestCount.toLocaleString('fr-FR')}` },
     { label: 'Coût', value: `au plus env. ${ProspectSearches.dollarsLabel(maximumRequestCount)}` },
     { label: 'Durée', value: PROSPECT_SEARCH_DURATION_LABEL },
@@ -530,8 +541,13 @@ const canContinue: ComputedRef<boolean> = computed((): boolean => {
 })
 
 const canLaunch: ComputedRef<boolean> = computed(
-  (): boolean => form.value.trades.length > 0 && !store.isStarting && !store.isSearchRunningOnServer,
+  (): boolean => form.value.trades.length > 0 && !store.isStarting && !store.isQueueFull,
 )
+
+const launchLabel: ComputedRef<string> = computed((): string => {
+  if (store.isStarting) return 'Lancement…'
+  return store.isSearchRunningOnServer ? 'Ajouter à la file' : 'Lancer la recherche'
+})
 
 /**
  * Write a trade the way its chip spells it, so a typed « plombier » ticks the « Plombier » chip.
@@ -726,13 +742,14 @@ async function loadVerticals(): Promise<void> {
   }
 }
 
-/** Open the drawer of the search already running. */
-function followRunningSearch(): void {
+/** Open the follow-up drawer: the search at work, and the queue behind it. */
+function openSearchFollowUp(): void {
   drawerStack.push({ kind: 'prospect-search' })
 }
 
 /**
- * Launch the search, then hand over to the prospects page: its « À valider » tab, with the search drawer open.
+ * Launch the search, or queue it behind the one at work, then hand over to the prospects page: its « À valider »
+ * tab, with the search drawer open.
  * @returns A promise resolved once the search is created and followed, or the refusal is reported.
  */
 async function launch(): Promise<void> {
@@ -743,13 +760,18 @@ async function launch(): Promise<void> {
     return
   }
   saveForm()
+  let created: ProspectSearchDetail
   try {
-    await store.startSearch(ProspectSearchForm.toPayload(form.value))
+    created = await store.startSearch(ProspectSearchForm.toPayload(form.value))
   } catch (err: unknown) {
     toast.error(err instanceof Error ? err.message : 'Erreur au lancement de la recherche')
     return
   }
-  toast.success('Recherche lancée')
+  toast.success(
+    created.status === 'queued'
+      ? 'Recherche ajoutée à la file : elle démarrera toute seule après celle en cours'
+      : 'Recherche lancée',
+  )
   store.requestPendingTab()
   // The page first, the drawer after: opening a drawer adds a history entry that would cut the navigation short.
   await navigateTo(MY_PROSPECTS_PAGE_PATH)

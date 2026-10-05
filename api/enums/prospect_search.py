@@ -10,6 +10,7 @@ class ProspectSearchStatus(str, Enum):
     Lifecycle of a prospect search.
 
     Attributes:
+        QUEUED: Waits for the user's search at work on the server to end, then starts on its own
         PENDING: Created, the background run has not started yet
         RUNNING: Discovering and verifying candidates on the server
         WAITING_BROWSER: Server work is done, candidates wait for a Facebook page read on a desktop
@@ -18,6 +19,7 @@ class ProspectSearchStatus(str, Enum):
         FAILED: Stopped by an unexpected error
     """
 
+    QUEUED = "queued"
     PENDING = "pending"
     RUNNING = "running"
     WAITING_BROWSER = "waiting_browser"

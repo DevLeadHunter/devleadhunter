@@ -17,7 +17,6 @@ export type ProspectSearchFormState = {
   countPerTrade: number
   channel: ProspectSearchChannel
   onlyWithoutWebsite: boolean
-  minimumRating: number | null
   validationMode: ProspectSearchValidationMode
 }
 

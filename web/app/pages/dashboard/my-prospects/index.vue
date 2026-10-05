@@ -94,6 +94,7 @@
     <ProspectSearchStatusBanner
       v-if="searchStore.activeSearch"
       :search="searchStore.activeSearch"
+      :queued-searches="searchStore.queuedSearches"
       :latest-journal-message="searchStore.latestJournalMessage"
       :is-cancelling="searchStore.isCancelling"
       @follow="openSearchDrawer"

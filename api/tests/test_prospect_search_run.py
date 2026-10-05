@@ -745,7 +745,11 @@ def test_trades_typed_under_two_spellings_are_searched_once(db: Session) -> None
     assert [line.trade for line in prospect_search_service.trade_counts(db, [search])[search.id]] == ["paysagiste"]
 
 
-def test_a_finished_run_does_not_untrack_the_run_that_replaced_it(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_a_finished_run_does_not_untrack_the_run_that_replaced_it(
+    monkeypatch: pytest.MonkeyPatch, engine: Engine
+) -> None:
+    monkeypatch.setattr(service_module, "SessionLocal", sessionmaker(bind=engine))
+
     async def restart_as_the_first_run_ends() -> bool:
         second_run_may_end = asyncio.Event()
         started_runs: list[int] = []
@@ -1088,6 +1092,7 @@ def test_the_activity_reads_the_search_at_work_without_its_journal(engine: Engin
 @pytest.mark.parametrize(
     ("status", "is_shown_as_active"),
     [
+        (ProspectSearchStatus.QUEUED, False),
         (ProspectSearchStatus.PENDING, True),
         (ProspectSearchStatus.RUNNING, True),
         (ProspectSearchStatus.WAITING_BROWSER, True),
@@ -1108,10 +1113,165 @@ def test_only_a_search_still_at_work_is_the_active_search(
     assert prospect_search_service.active_search(db, USER_ID + 1) is None
 
 
+def _set_statuses(db: Session, statuses: dict[int, ProspectSearchStatus]) -> None:
+    """Give searches the statuses a test starts from, one commit each, in the order given."""
+    for search_id, search_status in statuses.items():
+        search = db.get(ProspectSearch, search_id)
+        assert search is not None
+        search.status = search_status.value
+        db.commit()
+
+
+def _status_of(db: Session, search_id: int) -> str:
+    db.expire_all()
+    search = db.get(ProspectSearch, search_id)
+    assert search is not None
+    return search.status
+
+
+def _end_runs_at_once(monkeypatch: pytest.MonkeyPatch, db: Session) -> None:
+    """Replace the runner by one that ends its search as completed, without searching anything."""
+
+    class _RunEndingCompleted:
+        def __init__(self, search_id: int) -> None:
+            self._search_id = search_id
+
+        async def run(self) -> None:
+            search = db.get(ProspectSearch, self._search_id)
+            assert search is not None
+            if search.status != ProspectSearchStatus.CANCELLED.value:
+                search.status = ProspectSearchStatus.COMPLETED.value
+            db.commit()
+
+    monkeypatch.setattr(service_module, "ProspectSearchRunner", _RunEndingCompleted)
+
+
+_SEARCH_PAYLOAD: dict[str, Any] = {"trades": ["Paysagiste"], "country": "CH", "cities": ["Sion"], "count_per_trade": 1}
+
+
+def test_a_search_launched_while_another_is_at_work_waits_its_turn(
+    db: Session, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    started_search_ids: list[int] = []
+    monkeypatch.setattr(prospect_search_service, "start", started_search_ids.append)
+    client = _client(db)
+
+    first = client.post("/prospect-searches", json=_SEARCH_PAYLOAD).json()
+    second = client.post("/prospect-searches", json=_SEARCH_PAYLOAD).json()
+    third = client.post("/prospect-searches", json=_SEARCH_PAYLOAD).json()
+    activity = client.get("/prospect-searches/activity").json()
+
+    assert (first["status"], second["status"], third["status"]) == ("pending", "queued", "queued")
+    assert started_search_ids == [first["id"]]
+    assert activity["active_search"]["id"] == first["id"]
+    assert [search["id"] for search in activity["queued_searches"]] == [second["id"], third["id"]]
+
+
+def test_the_search_queued_first_starts_when_the_search_at_work_ends(
+    canned_world: None, db: Session, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    at_work_id, first_queued_id, second_queued_id = _create_search(db), _create_search(db), _create_search(db)
+    _set_statuses(
+        db,
+        {
+            at_work_id: ProspectSearchStatus.RUNNING,
+            first_queued_id: ProspectSearchStatus.QUEUED,
+            second_queued_id: ProspectSearchStatus.QUEUED,
+        },
+    )
+    _end_runs_at_once(monkeypatch, db)
+    started_search_ids: list[int] = []
+    monkeypatch.setattr(prospect_search_service, "start", started_search_ids.append)
+
+    asyncio.run(prospect_search_service._run_then_start_the_next(at_work_id))
+
+    assert started_search_ids == [first_queued_id]
+    assert [_status_of(db, search_id) for search_id in (at_work_id, first_queued_id, second_queued_id)] == [
+        "completed",
+        "pending",
+        "queued",
+    ]
+
+
+def test_a_search_taken_out_of_the_queue_never_runs(
+    canned_world: None, db: Session, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    at_work_id, queued_id = _create_search(db), _create_search(db)
+    _set_statuses(db, {at_work_id: ProspectSearchStatus.RUNNING, queued_id: ProspectSearchStatus.QUEUED})
+    _end_runs_at_once(monkeypatch, db)
+    started_search_ids: list[int] = []
+    monkeypatch.setattr(prospect_search_service, "start", started_search_ids.append)
+
+    taken_out = _client(db).post(f"/prospect-searches/{queued_id}/cancel").json()
+    asyncio.run(prospect_search_service._run_then_start_the_next(at_work_id))
+
+    assert taken_out["status"] == "cancelled"
+    assert started_search_ids == []
+    assert _status_of(db, queued_id) == "cancelled"
+
+
+def test_the_queue_refuses_a_search_past_its_limit(db: Session, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(prospect_search_service, "start", lambda search_id: None)
+    client = _client(db)
+
+    statuses = [client.post("/prospect-searches", json=_SEARCH_PAYLOAD).json()["status"] for _ in range(6)]
+    refused = client.post("/prospect-searches", json=_SEARCH_PAYLOAD)
+
+    assert statuses == ["pending", "queued", "queued", "queued", "queued", "queued"]
+    assert refused.status_code == 422
+    assert refused.json()["detail"].startswith("La file d'attente est pleine : 5 recherches attendent déjà.")
+    assert len(client.get("/prospect-searches").json()) == 6
+
+
+def test_carrying_on_a_search_while_another_is_at_work_queues_it(db: Session, monkeypatch: pytest.MonkeyPatch) -> None:
+    at_work_id, stopped_id = _create_search(db), _create_search(db)
+    _set_statuses(db, {at_work_id: ProspectSearchStatus.RUNNING, stopped_id: ProspectSearchStatus.CANCELLED})
+    started_search_ids: list[int] = []
+    monkeypatch.setattr(prospect_search_service, "start", started_search_ids.append)
+
+    resumed = _client(db).post(f"/prospect-searches/{stopped_id}/resume").json()
+
+    assert resumed["status"] == "queued"
+    assert started_search_ids == []
+
+
+def test_a_search_whose_facebook_pages_are_read_queues_behind_the_search_at_work(
+    canned_world: None, db: Session, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    waiting_id, at_work_id = _create_search(db), _create_search(db)
+    _set_statuses(db, {waiting_id: ProspectSearchStatus.WAITING_BROWSER, at_work_id: ProspectSearchStatus.RUNNING})
+    unread = _store_candidate(db, waiting_id, "Page à lire", CandidateStatus.NEEDS_BROWSER)
+    started_search_ids: list[int] = []
+    monkeypatch.setattr(prospect_search_service, "start", started_search_ids.append)
+
+    asyncio.run(prospect_search_service.decide_candidates(db, USER_ID, CandidateDecisions(reject=[unread.id])))
+
+    assert _status_of(db, waiting_id) == "queued"
+    assert started_search_ids == []
+
+
+def test_the_startup_starts_a_queue_left_without_a_search_at_work(
+    canned_world: None, db: Session, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    first_queued_id, second_queued_id = _create_search(db), _create_search(db)
+    _set_statuses(db, {first_queued_id: ProspectSearchStatus.QUEUED, second_queued_id: ProspectSearchStatus.QUEUED})
+    started_search_ids: list[int] = []
+    monkeypatch.setattr(prospect_search_service, "start", started_search_ids.append)
+
+    prospect_search_service.resume_interrupted()
+
+    assert started_search_ids == [first_queued_id]
+    assert (_status_of(db, first_queued_id), _status_of(db, second_queued_id)) == ("pending", "queued")
+
+
 def test_the_fixed_paths_are_not_taken_for_a_search_id(db: Session) -> None:
     client = _client(db)
 
-    assert client.get("/prospect-searches/activity").json() == {"pending_count": 0, "active_search": None}
+    assert client.get("/prospect-searches/activity").json() == {
+        "pending_count": 0,
+        "active_search": None,
+        "queued_searches": [],
+    }
     assert client.get("/prospect-searches/pending-candidates").json() == []
     decisions = client.post("/prospect-searches/candidates/decisions", json={"accept": [], "reject": []})
     assert decisions.json() == {"accepted": 0, "rejected": 0, "refused": []}
@@ -1252,9 +1412,10 @@ def test_decisions_that_fail_unexpectedly_are_reported_while_the_others_are_appl
     canned_world: None, monkeypatch: pytest.MonkeyPatch, db: Session
 ) -> None:
     waiting_search_id, other_search_id = _create_search(db), _create_search(db)
-    waiting_search = db.get(ProspectSearch, waiting_search_id)
-    assert waiting_search is not None
+    waiting_search, other_search = db.get(ProspectSearch, waiting_search_id), db.get(ProspectSearch, other_search_id)
+    assert waiting_search is not None and other_search is not None
     waiting_search.status = ProspectSearchStatus.WAITING_BROWSER.value
+    other_search.status = ProspectSearchStatus.COMPLETED.value
     db.commit()
     unread = _store_candidate(db, waiting_search_id, "Page à lire", CandidateStatus.NEEDS_BROWSER)
     refusal_lost = _store_candidate(db, waiting_search_id, "Jardins Charlie", CandidateStatus.TO_CONFIRM)

@@ -21,7 +21,10 @@ import type {
 } from '~/types/ProspectSearch'
 import { computed, ref, watch } from 'vue'
 import { defineStore } from 'pinia'
-import { PROSPECT_SEARCH_MAXIMUM_DECISIONS_PER_REQUEST } from '~/constants/prospectSearch'
+import {
+  PROSPECT_SEARCH_MAXIMUM_DECISIONS_PER_REQUEST,
+  PROSPECT_SEARCH_MAXIMUM_QUEUED_SEARCHES,
+} from '~/constants/prospectSearch'
 import { ProspectSearchService } from '~/services/prospectSearchService'
 import { getScraperChromeHealth, getScraperSidecarInfo, requestChromeProvision } from '~/services/scraperSidecarService'
 import { useDrawerStackStore } from '~/stores/drawerStack'
@@ -60,6 +63,8 @@ export const useProspectSearchStore = defineStore('prospectSearch', () => {
   const drawerStack: ReturnType<typeof useDrawerStackStore> = useDrawerStackStore()
 
   const activeSearch: Ref<ProspectSearchSummary | null> = ref(null)
+  const queuedSearches: Ref<ProspectSearchSummary[]> = ref([])
+  const cancellingQueuedSearchIds: Ref<number[]> = ref([])
   const followedSearch: Ref<ProspectSearchDetail | null> = ref(null)
   const pendingCandidates: Ref<ProspectSearchCandidate[]> = ref([])
   const reportedPendingCount: Ref<number> = ref(0)
@@ -102,6 +107,11 @@ export const useProspectSearchStore = defineStore('prospectSearch', () => {
 
   const isSearchRunningOnServer: ComputedRef<boolean> = computed(
     (): boolean => activeSearch.value !== null && ProspectSearches.isRunningOnServer(activeSearch.value.status),
+  )
+
+  const isQueueFull: ComputedRef<boolean> = computed(
+    (): boolean =>
+      isSearchRunningOnServer.value && queuedSearches.value.length >= PROSPECT_SEARCH_MAXIMUM_QUEUED_SEARCHES,
   )
 
   const latestJournalMessage: ComputedRef<string | null> = computed(
@@ -242,12 +252,22 @@ export const useProspectSearchStore = defineStore('prospectSearch', () => {
 
   /**
    * Publish the answer of an action on a search (launch, stop, carry on), ahead of the next poll.
+   * A search sent to the queue joins it, and leaves the search at work followed.
    * @param detail - The search the action returned.
    */
   function applySearchAction(detail: ProspectSearchDetail): void {
     stateRevision += 1
-    activeSearch.value = ProspectSearches.isActive(detail.status) ? ProspectSearches.summaryOf(detail) : null
-    applyFollowedSearch(detail)
+    const otherQueuedSearches: ProspectSearchSummary[] = queuedSearches.value.filter(
+      (search: ProspectSearchSummary): boolean => search.id !== detail.id,
+    )
+    if (detail.status === 'queued') {
+      queuedSearches.value = [...otherQueuedSearches, ProspectSearches.summaryOf(detail)]
+      if (followedSearch.value?.id === detail.id) followedSearch.value = detail
+    } else {
+      queuedSearches.value = otherQueuedSearches
+      activeSearch.value = ProspectSearches.isActive(detail.status) ? ProspectSearches.summaryOf(detail) : null
+      applyFollowedSearch(detail)
+    }
     requestRefresh()
   }
 
@@ -313,6 +333,7 @@ export const useProspectSearchStore = defineStore('prospectSearch', () => {
       if (revision !== stateRevision) return
       const previousActiveSearchId: number | null = activeSearch.value?.id ?? null
       activeSearch.value = activity.active_search
+      queuedSearches.value = activity.queued_searches ?? []
       reportedPendingCount.value = activity.pending_count
       hasLoadedActivity.value = true
       const justEndedSearchId: number | null = activity.active_search === null ? previousActiveSearchId : null
@@ -348,17 +369,40 @@ export const useProspectSearchStore = defineStore('prospectSearch', () => {
   }
 
   /**
-   * Launch a search from an objective and follow it.
+   * Launch a search from an objective and follow it, or queue it behind the search at work.
    * @param payload - Trades, country, towns, count per trade, contact channel and validation mode.
-   * @returns A promise resolved once the search is created.
-   * @throws Error carrying the API message when the objective is refused.
+   * @returns The created search: running, or queued.
+   * @throws Error carrying the API message when the objective is refused or the queue is full.
    */
-  async function startSearch(payload: ProspectSearchCreatePayload): Promise<void> {
+  async function startSearch(payload: ProspectSearchCreatePayload): Promise<ProspectSearchDetail> {
     isStarting.value = true
     try {
-      applySearchAction(await ProspectSearchService.createSearch(payload))
+      const created: ProspectSearchDetail = await ProspectSearchService.createSearch(payload)
+      applySearchAction(created)
+      return created
     } finally {
       isStarting.value = false
+    }
+  }
+
+  /**
+   * Take a search out of the queue before it starts; nothing was searched for it.
+   * @param searchId - The queued search.
+   * @returns A promise resolved once the search left the queue.
+   * @throws Error carrying the API message when the search could not be taken out.
+   */
+  async function cancelQueuedSearch(searchId: number): Promise<void> {
+    if (cancellingQueuedSearchIds.value.includes(searchId)) return
+    cancellingQueuedSearchIds.value = [...cancellingQueuedSearchIds.value, searchId]
+    try {
+      await ProspectSearchService.cancelSearch(searchId)
+      stateRevision += 1
+      queuedSearches.value = queuedSearches.value.filter(
+        (search: ProspectSearchSummary): boolean => search.id !== searchId,
+      )
+      requestRefresh()
+    } finally {
+      cancellingQueuedSearchIds.value = cancellingQueuedSearchIds.value.filter((id: number): boolean => id !== searchId)
     }
   }
 
@@ -809,6 +853,8 @@ export const useProspectSearchStore = defineStore('prospectSearch', () => {
     stateRevision += 1
     stoppedFacebookReadingSearchId = isReadingFacebookPages ? (facebookReading.value?.searchId ?? null) : null
     activeSearch.value = null
+    queuedSearches.value = []
+    cancellingQueuedSearchIds.value = []
     followedSearch.value = null
     pendingCandidates.value = []
     reportedPendingCount.value = 0
@@ -844,6 +890,9 @@ export const useProspectSearchStore = defineStore('prospectSearch', () => {
 
   return {
     activeSearch,
+    queuedSearches,
+    cancellingQueuedSearchIds,
+    isQueueFull,
     followedSearch,
     pendingCandidates,
     pendingCount,
@@ -874,6 +923,7 @@ export const useProspectSearchStore = defineStore('prospectSearch', () => {
     stopWatching,
     startSearch,
     cancelSearch,
+    cancelQueuedSearch,
     resumeSearch,
     loadLatestSearch,
     loadTradeOptions,

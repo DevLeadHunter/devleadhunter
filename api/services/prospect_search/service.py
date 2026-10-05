@@ -7,9 +7,10 @@ from __future__ import annotations
 import asyncio
 import functools
 import logging
+from typing import Any
 
 from sqlalchemy import func, select
-from sqlalchemy.orm import Session, defer
+from sqlalchemy.orm import InstrumentedAttribute, Session, defer
 
 from core.clock import naive_utc_now
 from core.database import SessionLocal
@@ -35,8 +36,16 @@ logger = logging.getLogger(__name__)
 
 _RECENT_SEARCHES_LIMIT: int = 30
 _PENDING_CANDIDATES_LIMIT: int = 300
+_MAXIMUM_QUEUED_SEARCHES: int = 5
 _ACTIVE_STATUSES: tuple[str, ...] = (ProspectSearchStatus.PENDING.value, ProspectSearchStatus.RUNNING.value)
 _UNFINISHED_STATUSES: tuple[str, ...] = (*_ACTIVE_STATUSES, ProspectSearchStatus.WAITING_BROWSER.value)
+_CANCELLABLE_STATUSES: tuple[str, ...] = (*_UNFINISHED_STATUSES, ProspectSearchStatus.QUEUED.value)
+# A queued search is touched once, as it enters the queue: its last update is the moment it got in line.
+_QUEUE_ORDER: tuple[InstrumentedAttribute[Any], ...] = (ProspectSearch.updated_at, ProspectSearch.id)
+_QUEUE_FULL: str = (
+    f"La file d'attente est pleine : {_MAXIMUM_QUEUED_SEARCHES} recherches attendent déjà. "
+    "Retirez-en une, ou attendez la fin de la recherche en cours."
+)
 _KNOWN_BUSINESS_REASONS: tuple[str, ...] = (
     CandidateRejectReason.ALREADY_KNOWN.value,
     CandidateRejectReason.DO_NOT_CONTACT.value,
@@ -70,11 +79,13 @@ class ProspectSearchService:
             payload: The objective.
 
         Returns:
-            The stored search, still pending (call :meth:`start` to run it).
+            The stored search, still pending (call :meth:`start_or_queue` to run it).
 
         Raises:
-            ProspectSearchError: No usable trade, or a country the prospection is not open to.
+            ProspectSearchError: No usable trade, a country the prospection is not open to, or a full queue.
         """
+        if self._has_search_at_work(db, user_id) and self._queued_count(db, user_id) >= _MAXIMUM_QUEUED_SEARCHES:
+            raise ProspectSearchError(_QUEUE_FULL)
         typed_trade_by_key: dict[str, str] = {}
         for trade in payload.trades:
             typed_trade = trade.strip()
@@ -106,14 +117,71 @@ class ProspectSearchService:
         db.refresh(search)
         return search
 
+    def start_or_queue(self, db: Session, search: ProspectSearch) -> None:
+        """
+        Run a search now, or queue it behind the user's search at work.
+
+        One search of a user works on the server at a time, the next ones wait their turn, oldest
+        first: a search started after another one skips the towns that one scanned, so the two do
+        not pay twice for the same pages, nor propose the same businesses.
+
+        Args:
+            db: Active database session.
+            search: The search to run, pending, cancelled, failed or waiting for a browser.
+        """
+        has_search_at_work = self._has_search_at_work(db, search.user_id, other_than=search.id)
+        if has_search_at_work or self._queued_count(db, search.user_id) > 0:
+            search.status = ProspectSearchStatus.QUEUED.value
+            search.completed_at = None
+            db.commit()
+            if not has_search_at_work:
+                self.start_next_queued(search.user_id)
+            db.refresh(search)
+            return
+        if search.status != ProspectSearchStatus.PENDING.value:
+            search.status = ProspectSearchStatus.PENDING.value
+            search.completed_at = None
+            db.commit()
+            db.refresh(search)
+        self.start(search.id)
+
     def start(self, search_id: int) -> None:
-        """Run a search in the background; a search already running is left alone."""
+        """Run a search in the background, then its user's next queued one; a search already running is left alone."""
         running = self._tasks.get(search_id)
         if running is not None and not running.done():
             return
-        task = asyncio.create_task(ProspectSearchRunner(search_id).run())
+        task = asyncio.create_task(self._run_then_start_the_next(search_id))
         self._tasks[search_id] = task
         task.add_done_callback(functools.partial(self._forget_finished_run, search_id))
+
+    async def _run_then_start_the_next(self, search_id: int) -> None:
+        """Run a search to its end, then hand the server over to the next search its user queued."""
+        await ProspectSearchRunner(search_id).run()
+        try:
+            with SessionLocal() as db:
+                user_id = db.execute(select(ProspectSearch.user_id).where(ProspectSearch.id == search_id)).scalar()
+            if user_id is not None:
+                self.start_next_queued(user_id)
+        except Exception as exc:
+            logger.error("Prospect search %s: starting the next queued search failed: %s", search_id, exc)
+
+    def start_next_queued(self, user_id: int) -> None:
+        """Start the search the user queued first, unless another search of the user is at work on the server."""
+        with SessionLocal() as db:
+            if self._has_search_at_work(db, user_id):
+                return
+            next_search = db.execute(
+                select(ProspectSearch)
+                .where(ProspectSearch.user_id == user_id, ProspectSearch.status == ProspectSearchStatus.QUEUED.value)
+                .order_by(*_QUEUE_ORDER)
+                .limit(1)
+            ).scalar()
+            if next_search is None:
+                return
+            next_search.status = ProspectSearchStatus.PENDING.value
+            db.commit()
+            next_search_id = next_search.id
+        self.start(next_search_id)
 
     def _forget_finished_run(self, search_id: int, finished: asyncio.Task[None]) -> None:
         """Drop a finished run, unless a newer run of the same search already took its place."""
@@ -170,17 +238,32 @@ class ProspectSearchService:
 
     def active_search(self, db: Session, user_id: int) -> ProspectSearch | None:
         """
-        The user's most recent search still at work (not started yet, running, or waiting for a browser).
+        The user's search at work: the one the server runs, else the latest one waiting for a browser.
 
-        Read without its journal, which the activity does not show.
+        Read without its journal, which the activity does not show. A queued search is not at work yet.
         """
-        return db.execute(
-            select(ProspectSearch)
-            .options(defer(ProspectSearch.journal))
-            .where(ProspectSearch.user_id == user_id, ProspectSearch.status.in_(_UNFINISHED_STATUSES))
-            .order_by(ProspectSearch.id.desc())
-            .limit(1)
-        ).scalar()
+        for statuses in (_ACTIVE_STATUSES, (ProspectSearchStatus.WAITING_BROWSER.value,)):
+            search = db.execute(
+                select(ProspectSearch)
+                .options(defer(ProspectSearch.journal))
+                .where(ProspectSearch.user_id == user_id, ProspectSearch.status.in_(statuses))
+                .order_by(ProspectSearch.id.desc())
+                .limit(1)
+            ).scalar()
+            if search is not None:
+                return search
+        return None
+
+    def queued_searches(self, db: Session, user_id: int) -> list[ProspectSearch]:
+        """The user's searches waiting for their turn, in the order they will run, without their journal."""
+        return list(
+            db.execute(
+                select(ProspectSearch)
+                .options(defer(ProspectSearch.journal))
+                .where(ProspectSearch.user_id == user_id, ProspectSearch.status == ProspectSearchStatus.QUEUED.value)
+                .order_by(*_QUEUE_ORDER)
+            ).scalars()
+        )
 
     def trade_counts(self, db: Session, searches: list[ProspectSearch]) -> dict[int, list[SearchTradeCounts]]:
         """
@@ -238,11 +321,15 @@ class ProspectSearchService:
         return counts_by_search
 
     def cancel(self, db: Session, user_id: int, search_id: int) -> ProspectSearch | None:
-        """Stop a search; what it found is kept. ``None`` when it is not the user's."""
+        """
+        Stop a search, or take it out of the queue; what it found is kept. ``None`` when it is not the user's.
+
+        The next queued search starts once the stopped run has ended.
+        """
         search = self.get_for_user(db, user_id, search_id)
         if search is None:
             return None
-        if search.status in _UNFINISHED_STATUSES:
+        if search.status in _CANCELLABLE_STATUSES:
             search.status = ProspectSearchStatus.CANCELLED.value
             search.completed_at = naive_utc_now()
             db.commit()
@@ -254,24 +341,33 @@ class ProspectSearchService:
         Carry on a search that stopped short (cancelled, failed, or towns left to scan).
 
         A search that had ended gets the request budget and the town limit of one more run;
-        one still running or waiting for a browser is only started again.
+        one waiting for a browser is only started again, and one still at work is left running.
+        Behind another search at work, it waits its turn in the queue.
 
         Returns:
-            The search, running again, or ``None`` when it is not the user's.
+            The search, running again or queued, or ``None`` when it is not the user's.
+
+        Raises:
+            ProspectSearchError: It would have to wait in a queue that is full.
         """
         search = self.get_for_user(db, user_id, search_id)
         if search is None:
             return None
-        if search.status not in _ACTIVE_STATUSES:
-            if search.status != ProspectSearchStatus.WAITING_BROWSER.value:
-                progress = dict(search.progress or {})
-                progress["resume_count"] = int(progress.get("resume_count", 0)) + 1
-                search.progress = progress
-            search.status = ProspectSearchStatus.PENDING.value
-            search.completed_at = None
-            db.commit()
-            db.refresh(search)
-        self.start(search.id)
+        if search.status in _ACTIVE_STATUSES:
+            self.start(search.id)
+            return search
+        if search.status == ProspectSearchStatus.QUEUED.value:
+            return search
+        if (
+            self._has_search_at_work(db, user_id, other_than=search.id)
+            and self._queued_count(db, user_id) >= _MAXIMUM_QUEUED_SEARCHES
+        ):
+            raise ProspectSearchError(_QUEUE_FULL)
+        if search.status != ProspectSearchStatus.WAITING_BROWSER.value:
+            progress = dict(search.progress or {})
+            progress["resume_count"] = int(progress.get("resume_count", 0)) + 1
+            search.progress = progress
+        self.start_or_queue(db, search)
         return search
 
     def browser_tasks(self, db: Session, user_id: int, search_id: int) -> list[ProspectSearchCandidate] | None:
@@ -505,14 +601,23 @@ class ProspectSearchService:
         return outcome
 
     def resume_interrupted(self) -> None:
-        """Restart the searches a deployment or a crash stopped mid-run (called once at startup)."""
+        """Restart the searches a deployment or a crash stopped mid-run, then the queues left without a run (startup)."""
         with SessionLocal() as db:
             interrupted = list(
                 db.execute(select(ProspectSearch.id).where(ProspectSearch.status.in_(_ACTIVE_STATUSES))).scalars()
             )
+            users_with_a_queue = list(
+                db.execute(
+                    select(ProspectSearch.user_id)
+                    .where(ProspectSearch.status == ProspectSearchStatus.QUEUED.value)
+                    .distinct()
+                ).scalars()
+            )
         for search_id in interrupted:
             logger.info("Prospect search %s was interrupted — resuming", search_id)
             self.start(search_id)
+        for user_id in users_with_a_queue:
+            self.start_next_queued(user_id)
 
     async def _promote_accepted_together(
         self, db: Session, candidate_by_id: dict[int, ProspectSearchCandidate], organization_id: int | None
@@ -601,7 +706,8 @@ class ProspectSearchService:
         """
         Start a search waiting for a browser again once none of its candidates is left to read.
 
-        The run then carries on (more towns if the count is not met) or ends.
+        The run then carries on (more towns if the count is not met) or ends; behind another search
+        of the user at work, it waits its turn in the queue.
         """
         search = db.get(ProspectSearch, search_id)
         if search is None or search.status != ProspectSearchStatus.WAITING_BROWSER.value:
@@ -613,7 +719,29 @@ class ProspectSearchService:
             )
         ).scalar()
         if not waiting_candidate_count:
-            self.start(search_id)
+            self.start_or_queue(db, search)
+
+    @staticmethod
+    def _has_search_at_work(db: Session, user_id: int, *, other_than: int | None = None) -> bool:
+        """Whether the server runs a search of the user, or is about to, other than the one given."""
+        query = select(func.count(ProspectSearch.id)).where(
+            ProspectSearch.user_id == user_id, ProspectSearch.status.in_(_ACTIVE_STATUSES)
+        )
+        if other_than is not None:
+            query = query.where(ProspectSearch.id != other_than)
+        return bool(db.execute(query).scalar())
+
+    @staticmethod
+    def _queued_count(db: Session, user_id: int) -> int:
+        """How many searches of the user wait their turn."""
+        return (
+            db.execute(
+                select(func.count(ProspectSearch.id)).where(
+                    ProspectSearch.user_id == user_id, ProspectSearch.status == ProspectSearchStatus.QUEUED.value
+                )
+            ).scalar()
+            or 0
+        )
 
     def _owned_candidate(
         self, db: Session, user_id: int, search_id: int, candidate_id: int

@@ -13,7 +13,6 @@ import type {
   ProspectSearchValidationOption,
 } from '~/types/ProspectSearch'
 import type { ProspectSearchStepDefinition } from '~/types/ProspectSearchCreatePage'
-import type { SelectFieldOption } from '~/types/SelectField'
 import type { StatusPresentation } from '~/types/StatusPresentation'
 
 export const PROSPECT_SEARCH_PAGE_PATH: string = '/dashboard/search-prospects'
@@ -36,20 +35,13 @@ export const PROSPECT_SEARCH_MAXIMUM_TRADE_LENGTH: number = 60
 export const PROSPECT_SEARCH_MAXIMUM_CITY_LENGTH: number = 80
 export const PROSPECT_SEARCH_MAXIMUM_COUNT_PER_TRADE: number = 50
 export const PROSPECT_SEARCH_DEFAULT_COUNT_PER_TRADE: number = 5
-export const PROSPECT_SEARCH_DEFAULT_MINIMUM_RATING: number = 4
-
-export const PROSPECT_SEARCH_NO_MINIMUM_RATING: number = 0
 
 export const PROSPECT_SEARCH_MINIMUM_REVIEWS_FOR_RATING: number = 3
 
-export const PROSPECT_SEARCH_MINIMUM_RATING_OPTIONS: SelectFieldOption<number>[] = [
-  { value: PROSPECT_SEARCH_NO_MINIMUM_RATING, label: 'Aucune' },
-  { value: 3.5, label: '3,5' },
-  { value: 4, label: '4,0' },
-  { value: 4.5, label: '4,5' },
-]
+export const PROSPECT_SEARCH_MAXIMUM_QUEUED_SEARCHES: number = 5
 
 export const PROSPECT_SEARCH_STATUS_PRESENTATION: Record<ProspectSearchStatus, StatusPresentation> = {
+  queued: { label: "En file d'attente", badgeClass: '' },
   pending: { label: 'En cours', badgeClass: 'app-badge--progress' },
   running: { label: 'En cours', badgeClass: 'app-badge--progress' },
   waiting_browser: { label: 'Lecture des pages Facebook', badgeClass: 'app-badge--info' },
@@ -177,7 +169,7 @@ export const PROSPECT_SEARCH_MAXIMUM_DECISIONS_PER_REQUEST: number = 100
 export const PROSPECT_SEARCH_TUNNEL_STEPS: ProspectSearchStepDefinition[] = [
   { key: 'target', label: 'Cible', hint: 'Métiers et nombre' },
   { key: 'zone', label: 'Zone', hint: 'Pays et villes' },
-  { key: 'criteria', label: 'Critères', hint: 'Contact, site, note, validation' },
+  { key: 'criteria', label: 'Critères', hint: 'Contact, site, validation' },
   { key: 'launch', label: 'Lancer', hint: 'Vérifier et démarrer' },
 ]
 

@@ -6,7 +6,7 @@
         class="fixed top-0 right-0 z-50 flex h-dvh w-full max-w-[460px] flex-col border-l border-[var(--app-line)] bg-[var(--app-surface)] pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)] shadow-2xl"
       >
         <UiDrawerHeader
-          :title="isSearchActive ? 'Recherche en cours' : 'Dernière recherche'"
+          :title="drawerTitle"
           icon="i-lucide-search"
           :show-back="props.showBack"
           @back="emit('back')"
@@ -84,6 +84,61 @@
                 @retry="store.retryFacebookReading"
               />
             </div>
+
+            <section
+              v-if="store.queuedSearches.length > 0"
+              class="border-t border-[var(--app-line)] pb-1"
+              aria-labelledby="prospect-search-drawer-queue-title"
+            >
+              <h3
+                id="prospect-search-drawer-queue-title"
+                class="flex items-center gap-2 px-5 pt-4 text-sm font-semibold text-[var(--app-ink)]"
+              >
+                File d'attente
+                <span
+                  class="font-label rounded-full bg-[var(--app-surface-2)] px-2 py-0.5 text-xs font-medium text-[var(--app-ink-soft)]"
+                >
+                  {{ store.queuedSearches.length }}
+                </span>
+              </h3>
+              <p class="px-5 pt-1 pb-2 text-[11px] leading-relaxed text-[var(--app-ink-soft)]">
+                Elles démarrent toutes seules, l'une après l'autre, à la fin de la recherche en cours.
+              </p>
+              <ol class="divide-y divide-[var(--app-line-soft)]">
+                <li
+                  v-for="(queued, position) in store.queuedSearches"
+                  :key="queued.id"
+                  class="flex items-center gap-3 px-5 py-2.5"
+                >
+                  <span
+                    class="font-label flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-[var(--app-line)] text-[11px] text-[var(--app-ink-soft)] tabular-nums"
+                    aria-hidden="true"
+                  >
+                    {{ position + 1 }}
+                  </span>
+                  <div class="min-w-0 flex-1">
+                    <p class="truncate text-sm font-medium text-[var(--app-ink)]">
+                      {{ ProspectSearches.tradesLabel(queued) }}
+                    </p>
+                    <p
+                      class="truncate text-[11px] text-[var(--app-ink-soft)]"
+                      :title="ProspectSearches.objectiveLabel(queued)"
+                    >
+                      {{ queued.count_per_trade }} par métier · {{ ProspectSearches.placeLabel(queued) }}
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    class="app-btn-secondary h-8 min-h-8 shrink-0 px-3 text-xs"
+                    :disabled="store.cancellingQueuedSearchIds.includes(queued.id)"
+                    :aria-label="`Retirer ${ProspectSearches.tradesLabel(queued)} de la file`"
+                    @click="removeFromQueue(queued)"
+                  >
+                    Retirer
+                  </button>
+                </li>
+              </ol>
+            </section>
 
             <section class="border-t border-[var(--app-line)]" aria-labelledby="prospect-search-drawer-leads-title">
               <h3
@@ -203,6 +258,16 @@
               Arrêter la recherche
             </button>
             <button
+              v-else-if="search.status === 'queued'"
+              type="button"
+              class="app-btn-secondary w-full sm:flex-1"
+              :disabled="store.cancellingQueuedSearchIds.includes(search.id)"
+              @click="removeFromQueue(search)"
+            >
+              <UIcon name="i-lucide-list-x" class="h-3.5 w-3.5" />
+              Retirer de la file
+            </button>
+            <button
               v-else-if="canResumeSearch"
               type="button"
               class="app-btn-primary w-full sm:flex-1"
@@ -230,6 +295,7 @@ import type {
   ProspectSearchDetail,
   ProspectSearchFacebookReading,
   ProspectSearchRejectReason,
+  ProspectSearchSummary,
 } from '~/types/ProspectSearch'
 import type { StatusPresentation } from '~/types/StatusPresentation'
 import type {
@@ -279,6 +345,11 @@ const search: ComputedRef<ProspectSearchDetail | null> = computed(
 )
 
 const isSearchActive: ComputedRef<boolean> = computed((): boolean => store.isFollowedSearchActive)
+
+const drawerTitle: ComputedRef<string> = computed((): string => {
+  if (isSearchActive.value) return 'Recherche en cours'
+  return search.value?.status === 'queued' ? "Recherche en file d'attente" : 'Dernière recherche'
+})
 
 const canResumeSearch: ComputedRef<boolean> = computed(
   (): boolean => search.value !== null && ProspectSearches.canResume(search.value),
@@ -339,12 +410,29 @@ async function cancelSearch(): Promise<void> {
 }
 
 /**
+ * Take a search out of the queue before it starts.
+ * @param queued - The queued search.
+ * @returns A promise resolved once the search left the queue, or the failure is reported.
+ */
+async function removeFromQueue(queued: ProspectSearchSummary): Promise<void> {
+  try {
+    await store.cancelQueuedSearch(queued.id)
+    toast.info(`« ${ProspectSearches.tradesLabel(queued)} » retirée de la file`)
+  } catch (err: unknown) {
+    toast.error(err instanceof Error ? err.message : 'Impossible de retirer cette recherche de la file')
+  }
+}
+
+/**
  * Carry on the search that stopped short of its objective.
  * @returns A promise resolved once the search runs again, or the failure is reported.
  */
 async function resumeSearch(): Promise<void> {
   try {
     await store.resumeSearch()
+    if (store.followedSearch?.status === 'queued') {
+      toast.info('Recherche ajoutée à la file : elle reprendra toute seule après celle en cours')
+    }
   } catch (err: unknown) {
     toast.error(err instanceof Error ? err.message : 'Impossible de poursuivre la recherche')
   }

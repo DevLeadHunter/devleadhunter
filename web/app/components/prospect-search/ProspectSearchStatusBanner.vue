@@ -40,6 +40,11 @@
       :trade-counts="props.search.trade_counts"
     />
 
+    <p v-if="queuedLabel" class="flex items-start gap-2 text-xs leading-relaxed text-[var(--app-ink-soft)]">
+      <UIcon name="i-lucide-list-ordered" class="mt-0.5 h-3.5 w-3.5 shrink-0" />
+      <span class="min-w-0 break-words">{{ queuedLabel }}</span>
+    </p>
+
     <p
       v-if="props.latestJournalMessage"
       class="flex items-start gap-2 border-t border-[var(--app-line-soft)] pt-3 text-xs leading-relaxed text-[var(--app-ink-soft)]"
@@ -69,6 +74,10 @@ const props: ProspectSearchStatusBannerProps = defineProps({
     type: Object as PropType<ProspectSearchSummary>,
     required: true,
   },
+  queuedSearches: {
+    type: Array as PropType<ProspectSearchSummary[]>,
+    default: () => [],
+  },
   latestJournalMessage: {
     type: String as PropType<string | null>,
     default: null,
@@ -84,4 +93,13 @@ const emit: EmitFn<ProspectSearchStatusBannerEmits> = defineEmits<ProspectSearch
 const status: ComputedRef<StatusPresentation> = computed(
   (): StatusPresentation => PROSPECT_SEARCH_STATUS_PRESENTATION[props.search.status],
 )
+
+const queuedLabel: ComputedRef<string | null> = computed((): string | null => {
+  const queuedSearches: ProspectSearchSummary[] = props.queuedSearches ?? []
+  if (queuedSearches.length === 0) return null
+  const searchesInWords: string = queuedSearches
+    .map((queued: ProspectSearchSummary): string => ProspectSearches.tradesInWords(queued))
+    .join(', puis ')
+  return `Ensuite, en file d'attente : ${searchesInWords}.`
+})
 </script>

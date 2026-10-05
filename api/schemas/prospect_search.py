@@ -157,10 +157,13 @@ class FacebookContactPayload(BaseModel):
 
 
 class ProspectSearchActivity(BaseModel):
-    """What the user has in progress: candidates waiting for a decision, and the search still at work."""
+    """What the user has in progress: candidates waiting for a decision, the search at work, the queued ones."""
 
     pending_count: int
     active_search: ProspectSearchSummary | None
+    queued_searches: list[ProspectSearchSummary] = Field(
+        default_factory=list, description="Searches waiting for their turn, in the order they will run"
+    )
 
 
 class CandidateDecisions(BaseModel):

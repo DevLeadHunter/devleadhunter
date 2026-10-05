@@ -4,18 +4,14 @@ import type {
   ProspectSearchValidationOption,
 } from '~/types/ProspectSearch'
 import type { ProspectSearchFormState } from '~/types/ProspectSearchCreatePage'
-import type { SelectFieldOption } from '~/types/SelectField'
 import {
   PROSPECT_SEARCH_BASE_REQUEST_COUNT,
   PROSPECT_SEARCH_CHANNEL_OPTIONS,
   PROSPECT_SEARCH_DEFAULT_COUNT_PER_TRADE,
-  PROSPECT_SEARCH_DEFAULT_MINIMUM_RATING,
   PROSPECT_SEARCH_DEFAULT_VALIDATION_MODE,
   PROSPECT_SEARCH_MAXIMUM_CITIES,
   PROSPECT_SEARCH_MAXIMUM_COUNT_PER_TRADE,
   PROSPECT_SEARCH_MAXIMUM_TRADES,
-  PROSPECT_SEARCH_MINIMUM_RATING_OPTIONS,
-  PROSPECT_SEARCH_NO_MINIMUM_RATING,
   PROSPECT_SEARCH_REQUESTS_PER_WANTED_PROSPECT,
   PROSPECT_SEARCH_VALIDATION_OPTIONS,
 } from '~/constants/prospectSearch'
@@ -40,7 +36,6 @@ export class ProspectSearchForm {
       countPerTrade: PROSPECT_SEARCH_DEFAULT_COUNT_PER_TRADE,
       channel: 'email',
       onlyWithoutWebsite: !isForAssistantModule,
-      minimumRating: PROSPECT_SEARCH_DEFAULT_MINIMUM_RATING,
       validationMode: PROSPECT_SEARCH_DEFAULT_VALIDATION_MODE,
     }
   }
@@ -66,7 +61,6 @@ export class ProspectSearchForm {
     try {
       const saved: Partial<Record<keyof ProspectSearchFormState, unknown>> = JSON.parse(raw)
       const savedCount: unknown = saved.countPerTrade
-      const savedRating: unknown = saved.minimumRating
       return {
         trades: ProspectSearchForm.readSavedLabels(saved.trades, PROSPECT_SEARCH_MAXIMUM_TRADES),
         country: typeof saved.country === 'string' ? ProspectCountries.option(saved.country).code : fallback.country,
@@ -79,13 +73,6 @@ export class ProspectSearchForm {
           )?.value ?? fallback.channel,
         onlyWithoutWebsite:
           typeof saved.onlyWithoutWebsite === 'boolean' ? saved.onlyWithoutWebsite : fallback.onlyWithoutWebsite,
-        minimumRating:
-          savedRating === null
-            ? null
-            : (PROSPECT_SEARCH_MINIMUM_RATING_OPTIONS.find(
-                (option: SelectFieldOption<number>): boolean =>
-                  option.value === savedRating && option.value !== PROSPECT_SEARCH_NO_MINIMUM_RATING,
-              )?.value ?? fallback.minimumRating),
         validationMode:
           PROSPECT_SEARCH_VALIDATION_OPTIONS.find(
             (option: ProspectSearchValidationOption): boolean => option.value === saved.validationMode,
@@ -121,7 +108,7 @@ export class ProspectSearchForm {
   }
 
   /**
-   * The objective as the API expects it.
+   * The objective as the API expects it; the Google rating no longer filters anyone out.
    * @param form - The objective as written in the tunnel.
    * @returns The body of the search creation.
    */
@@ -133,7 +120,7 @@ export class ProspectSearchForm {
       count_per_trade: ProspectSearchForm.clampCountPerTrade(form.countPerTrade),
       channel: form.channel,
       only_without_website: form.onlyWithoutWebsite,
-      minimum_rating: form.minimumRating,
+      minimum_rating: null,
       validation_mode: form.validationMode,
     }
   }
