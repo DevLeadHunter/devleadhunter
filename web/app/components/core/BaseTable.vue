@@ -1,5 +1,6 @@
 <template>
-  <div class="md:overflow-x-auto">
+  <!-- Positioned, so a screen-reader-only header (absolute) stays inside the scroll box instead of widening the page. -->
+  <div class="relative md:overflow-x-auto">
     <table class="dlh-card-table w-full border-collapse" :style="tableStyle">
       <thead v-if="$slots.head">
         <tr class="bg-[var(--app-surface-2)]">
