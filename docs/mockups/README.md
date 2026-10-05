@@ -28,6 +28,14 @@ Ticket Asana « [IA Code] Présence humaine sur la démo ». Trois briques pour 
 | `prospect-search/recherche-v2.html` | Première proposition : la phrase, le parcours, le fil | **Refusée le 04/10** (« aucune ne me plaît ») |
 | `prospect-search/NOTE.md` | Ce qui est demandé, ce que montre le vivier, d'où vient chaque élément (dibodev.fr, PrePeers B2B, web), ce que cela change, les points à trancher | À jour |
 
+### Nouvelle template électricien (`electrician-template/`)
+
+| Fichier | Ce qu'il montre | État |
+|---|---|---|
+| `electrician-template/electricien-clarte.html` (+ deux captures pleine page) | Version sobre, dans l'esprit de dibodev.fr : fond blanc, un accent tiré du logo, un bouton plein par écran | En attente (05/10) |
+| `electrician-template/electricien-lueur.html` | Première version : page sombre qui s'allume, interrupteur, disjoncteurs | **Refusée le 05/10** |
+| `electrician-template/NOTE.md` | Le pourquoi, ce qui est inventé dans la maquette, les points à trancher | À jour |
+
 ### Ailleurs
 
 - **Espace client de la réceptionniste** : la refonte du 01/10 (tableau de bord clair, quatre chiffres sur 30 jours, graphique) a été envoyée en captures, retour attendu avant de styliser les écrans secondaires. Maquettes publiées : v6 https://claude.ai/artifact/MPU1yQjGhRAUpDPFj6wizR et v7 https://claude.ai/artifact/6XhTx9kxyx7r7t1xiuhqPX.

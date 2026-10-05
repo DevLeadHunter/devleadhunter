@@ -1,0 +1,2167 @@
+<!doctype html>
+<html lang="fr" data-light="off">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Cz63 Électricité, électricien à Orléat</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400..800&family=DM+Mono:wght@400;500&family=Instrument+Sans:wght@400;500;600&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      :root {
+        --paper: #f6f1e7;
+        --paper-deep: #ece4d4;
+        --card: #fffdf8;
+        --ink: #15181d;
+        --body: #1a1a1a;
+        --muted: #5f5a50;
+        --line: #dcd3c1;
+        --night: #0c0f14;
+        --night-soft: #151a22;
+        --night-line: #262c37;
+        --night-muted: #9aa0ab;
+        --accent: #f08a1a;
+        --accent-deep: #c96a05;
+        --accent-ink: #1b1104;
+        --glow: 255, 173, 84;
+        --display: 'Bricolage Grotesque', 'Segoe UI', sans-serif;
+        --text: 'Instrument Sans', 'Segoe UI', sans-serif;
+        --mono: 'DM Mono', ui-monospace, monospace;
+        --radius: 22px;
+        --shell: min(1180px, 100% - 40px);
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+      html {
+        scroll-behavior: smooth;
+        -webkit-text-size-adjust: 100%;
+      }
+      body {
+        margin: 0;
+        background: var(--paper);
+        color: var(--body);
+        font-family: var(--text);
+        font-size: 17px;
+        line-height: 1.6;
+        -webkit-font-smoothing: antialiased;
+      }
+      img {
+        display: block;
+        max-width: 100%;
+      }
+      a {
+        color: inherit;
+        text-decoration: none;
+      }
+      button {
+        font: inherit;
+        color: inherit;
+        cursor: pointer;
+      }
+      h1,
+      h2,
+      h3 {
+        font-family: var(--display);
+        color: var(--ink);
+        margin: 0;
+        letter-spacing: -0.018em;
+        line-height: 1.05;
+        text-wrap: balance;
+      }
+      p {
+        margin: 0;
+      }
+      .shell {
+        width: var(--shell);
+        margin-inline: auto;
+      }
+      .eyebrow {
+        font-family: var(--mono);
+        font-size: 12px;
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+        color: var(--accent-deep);
+        display: inline-flex;
+        align-items: center;
+        gap: 10px;
+      }
+      .eyebrow::before {
+        content: '';
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background: var(--accent);
+        box-shadow: 0 0 0 4px rgba(var(--glow), 0.28);
+      }
+      .section {
+        padding: clamp(72px, 9vw, 128px) 0;
+      }
+      .section-title {
+        font-size: clamp(34px, 4.6vw, 58px);
+        font-weight: 700;
+        margin-top: 18px;
+      }
+      .section-lead {
+        margin-top: 18px;
+        max-width: 54ch;
+        color: var(--body);
+      }
+
+      .btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 10px;
+        height: 56px;
+        padding: 0 26px;
+        border-radius: 999px;
+        border: 1.5px solid transparent;
+        font-weight: 600;
+        font-size: 16px;
+        transition:
+          transform 0.2s ease,
+          box-shadow 0.25s ease,
+          background 0.25s ease,
+          border-color 0.25s ease;
+        white-space: nowrap;
+      }
+      .btn svg {
+        width: 18px;
+        height: 18px;
+        flex: none;
+      }
+      .btn-primary {
+        background: var(--accent);
+        color: var(--accent-ink);
+        box-shadow:
+          0 1px 0 rgba(255, 255, 255, 0.45) inset,
+          0 14px 30px -12px rgba(var(--glow), 0.9);
+      }
+      .btn-primary:hover {
+        transform: translateY(-2px);
+        box-shadow:
+          0 1px 0 rgba(255, 255, 255, 0.45) inset,
+          0 20px 36px -12px rgba(var(--glow), 1);
+      }
+      .btn-ghost {
+        border-color: currentColor;
+        background: transparent;
+      }
+      .btn-ghost:hover {
+        transform: translateY(-2px);
+      }
+
+      /* ───────── Hero : la page s'allume ───────── */
+      .hero {
+        --h-bg: var(--night);
+        --h-fg: #f4eee2;
+        --h-muted: #a7a295;
+        --h-line: rgba(255, 255, 255, 0.12);
+        position: relative;
+        background: var(--h-bg);
+        color: var(--h-fg);
+        overflow: hidden;
+        transition:
+          background 0.9s ease,
+          color 0.9s ease;
+      }
+      html[data-light='on'] .hero {
+        --h-bg: var(--paper);
+        --h-fg: var(--ink);
+        --h-muted: var(--muted);
+        --h-line: var(--line);
+      }
+      .hero::before {
+        content: '';
+        position: absolute;
+        inset: 0;
+        background: radial-gradient(60% 55% at 78% 38%, rgba(var(--glow), 0.34), transparent 70%);
+        opacity: 0;
+        transition: opacity 1.1s ease;
+        pointer-events: none;
+      }
+      html[data-light='on'] .hero::before {
+        opacity: 1;
+      }
+
+      .header {
+        position: relative;
+        z-index: 3;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 20px;
+        padding: 22px 0;
+        border-bottom: 1px solid var(--h-line);
+        transition: border-color 0.9s ease;
+      }
+      .brand {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        font-family: var(--display);
+        font-weight: 700;
+        font-size: 19px;
+        letter-spacing: -0.02em;
+      }
+      .brand-logo {
+        width: 44px;
+        height: 44px;
+        border-radius: 12px;
+        background: #fff;
+        overflow: hidden;
+        flex: none;
+        box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.06);
+      }
+      .brand-logo img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        transform: scale(1.25);
+      }
+      .nav {
+        display: flex;
+        gap: 30px;
+        font-size: 15px;
+        font-weight: 500;
+        color: var(--h-muted);
+        transition: color 0.9s ease;
+      }
+      .nav a:hover {
+        color: var(--h-fg);
+      }
+      .header-call {
+        display: inline-flex;
+        align-items: center;
+        gap: 10px;
+        height: 46px;
+        padding: 0 20px;
+        border-radius: 999px;
+        background: var(--accent);
+        color: var(--accent-ink);
+        font-weight: 600;
+        font-size: 15px;
+        font-variant-numeric: tabular-nums;
+      }
+      .header-call svg {
+        width: 16px;
+        height: 16px;
+      }
+
+      .hero-grid {
+        position: relative;
+        z-index: 2;
+        display: grid;
+        grid-template-columns: minmax(0, 1.02fr) minmax(0, 0.98fr);
+        gap: clamp(32px, 5vw, 72px);
+        align-items: center;
+        padding: clamp(44px, 6vw, 84px) 0 clamp(64px, 7vw, 104px);
+      }
+      .hero .eyebrow {
+        color: var(--accent);
+      }
+      .hero h1 {
+        color: inherit;
+        font-size: clamp(44px, 6.4vw, 88px);
+        font-weight: 720;
+        margin-top: 22px;
+        letter-spacing: -0.026em;
+      }
+      .hero h1 em {
+        font-style: normal;
+        position: relative;
+        white-space: nowrap;
+      }
+      .hero h1 em::after {
+        content: '';
+        position: absolute;
+        left: -2%;
+        right: -2%;
+        bottom: 0.04em;
+        height: 0.16em;
+        border-radius: 99px;
+        background: var(--accent);
+        transform: scaleX(0);
+        transform-origin: left;
+        transition: transform 0.7s cubic-bezier(0.2, 0.8, 0.2, 1) 0.5s;
+        z-index: -1;
+      }
+      html[data-light='on'] .hero h1 em::after {
+        transform: scaleX(1);
+      }
+      .hero-lead {
+        margin-top: 24px;
+        max-width: 46ch;
+        font-size: 19px;
+        color: var(--h-fg);
+        opacity: 0.86;
+      }
+      .hero-actions {
+        margin-top: 34px;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
+      }
+      .hero-proof {
+        margin-top: 34px;
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        font-size: 15px;
+        color: var(--h-muted);
+        transition: color 0.9s ease;
+      }
+      .hero-proof strong {
+        font-family: var(--display);
+        font-size: 28px;
+        font-weight: 700;
+        color: var(--h-fg);
+        letter-spacing: -0.03em;
+        transition: color 0.9s ease;
+      }
+      .stars {
+        display: inline-flex;
+        gap: 2px;
+        color: var(--accent);
+      }
+      .stars svg {
+        width: 17px;
+        height: 17px;
+      }
+
+      .hero-visual {
+        position: relative;
+      }
+      .hero-photo {
+        position: relative;
+        aspect-ratio: 5 / 5.6;
+        border-radius: 30px;
+        overflow: hidden;
+        background: #05070a;
+        box-shadow: 0 40px 80px -40px rgba(0, 0, 0, 0.7);
+      }
+      .hero-photo img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        filter: brightness(0.26) saturate(0.45) contrast(1.08);
+        transform: scale(1.04);
+        transition:
+          filter 1s ease,
+          transform 1.6s ease;
+      }
+      .hero-photo::after {
+        content: '';
+        position: absolute;
+        inset: 0;
+        background: linear-gradient(180deg, rgba(20, 34, 60, 0.42), rgba(6, 9, 16, 0.6));
+        transition: opacity 1s ease;
+        pointer-events: none;
+      }
+      html[data-light='on'] .hero-photo img {
+        filter: none;
+        transform: none;
+      }
+      html[data-light='on'] .hero-photo::after {
+        opacity: 0;
+      }
+      html.flicker .hero-photo img {
+        animation: flicker 0.55s steps(1) 1;
+      }
+      @keyframes flicker {
+        0% {
+          filter: brightness(0.26) saturate(0.45);
+        }
+        12% {
+          filter: brightness(1.05);
+        }
+        22% {
+          filter: brightness(0.3) saturate(0.5);
+        }
+        38% {
+          filter: brightness(0.95);
+        }
+        48% {
+          filter: brightness(0.45) saturate(0.6);
+        }
+        62%,
+        100% {
+          filter: none;
+        }
+      }
+
+      /* L'interrupteur */
+      .switch-card {
+        position: absolute;
+        left: -34px;
+        bottom: 44px;
+        display: flex;
+        align-items: center;
+        gap: 16px;
+        padding: 14px 20px 14px 14px;
+        border-radius: 20px;
+        background: var(--card);
+        color: var(--ink);
+        box-shadow:
+          0 24px 50px -22px rgba(0, 0, 0, 0.55),
+          0 0 0 1px rgba(0, 0, 0, 0.05);
+      }
+      .switch {
+        position: relative;
+        width: 62px;
+        height: 62px;
+        padding: 0;
+        border: 0;
+        border-radius: 12px;
+        background: linear-gradient(160deg, #ffffff, #e9e5dc);
+        box-shadow:
+          inset 0 0 0 1px rgba(0, 0, 0, 0.1),
+          inset 0 2px 0 #fff,
+          0 2px 4px rgba(0, 0, 0, 0.12);
+        flex: none;
+      }
+      .switch::before {
+        content: '';
+        position: absolute;
+        inset: 9px 14px;
+        border-radius: 6px;
+        background: linear-gradient(180deg, #d9d5cb 0%, #fbfaf7 46%, #ffffff 100%);
+        box-shadow:
+          inset 0 0 0 1px rgba(0, 0, 0, 0.14),
+          0 1px 0 #fff;
+        transition: background 0.18s ease;
+      }
+      .switch::after {
+        content: '';
+        position: absolute;
+        left: 50%;
+        top: 15px;
+        width: 5px;
+        height: 5px;
+        margin-left: -2.5px;
+        border-radius: 50%;
+        background: #c8c3b7;
+        transition:
+          background 0.2s ease,
+          box-shadow 0.2s ease;
+      }
+      html[data-light='on'] .switch::before {
+        background: linear-gradient(180deg, #ffffff 0%, #fbfaf7 54%, #d9d5cb 100%);
+      }
+      html[data-light='on'] .switch::after {
+        background: var(--accent);
+        box-shadow: 0 0 10px 2px rgba(var(--glow), 0.9);
+      }
+      .switch:focus-visible {
+        outline: 3px solid var(--accent);
+        outline-offset: 3px;
+      }
+      .switch-text {
+        font-size: 14px;
+        line-height: 1.35;
+        color: var(--muted);
+      }
+      .switch-text b {
+        display: block;
+        font-family: var(--display);
+        font-size: 17px;
+        font-weight: 700;
+        color: var(--ink);
+        letter-spacing: -0.02em;
+      }
+
+      .tag-photo {
+        position: absolute;
+        right: 18px;
+        top: 18px;
+        padding: 8px 14px;
+        border-radius: 999px;
+        background: rgba(12, 15, 20, 0.62);
+        backdrop-filter: blur(10px);
+        color: #fff;
+        font-family: var(--mono);
+        font-size: 11px;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+      }
+
+      /* Bandeau d'étiquettes */
+      .labels {
+        background: var(--ink);
+        color: #f4eee2;
+      }
+      .labels-row {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+      }
+      .labels-item {
+        padding: 26px 24px;
+        border-left: 1px solid var(--night-line);
+      }
+      .labels-item:first-child {
+        border-left: 0;
+        padding-left: 0;
+      }
+      .labels-item b {
+        display: block;
+        font-family: var(--display);
+        font-size: 24px;
+        font-weight: 700;
+        letter-spacing: -0.02em;
+      }
+      .labels-item span {
+        font-family: var(--mono);
+        font-size: 11.5px;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        color: var(--night-muted);
+      }
+
+      /* ───────── Le tableau des prestations ───────── */
+      .panel-layout {
+        margin-top: 52px;
+        display: grid;
+        grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr);
+        gap: 28px;
+        align-items: stretch;
+      }
+      .panel {
+        position: relative;
+        display: flex;
+        flex-direction: column;
+        padding: 26px 26px 30px;
+        border-radius: 26px;
+        background: linear-gradient(180deg, #232a35, #151a22);
+        box-shadow:
+          inset 0 1px 0 rgba(255, 255, 255, 0.08),
+          0 40px 70px -40px rgba(12, 15, 20, 0.7);
+      }
+      .panel-head {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        font-family: var(--mono);
+        font-size: 11px;
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+        color: var(--night-muted);
+        padding-bottom: 18px;
+      }
+      .panel-head i {
+        display: inline-block;
+        width: 7px;
+        height: 7px;
+        margin-right: 8px;
+        border-radius: 50%;
+        background: #62d98b;
+        box-shadow: 0 0 8px #62d98b;
+      }
+      .rail {
+        flex: 1;
+        min-height: 250px;
+        display: grid;
+        grid-template-columns: repeat(6, 1fr);
+        gap: 10px;
+        padding: 14px;
+        border-radius: 16px;
+        background:
+          linear-gradient(180deg, transparent 47%, rgba(255, 255, 255, 0.07) 47% 53%, transparent 53%),
+          #0c0f14;
+        box-shadow: inset 0 2px 10px rgba(0, 0, 0, 0.6);
+      }
+      .breaker {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        padding: 16px 6px 14px;
+        border: 0;
+        border-radius: 9px;
+        background: linear-gradient(180deg, #faf8f3, #dedad0);
+        box-shadow:
+          inset 0 1px 0 #fff,
+          inset 0 -3px 0 rgba(0, 0, 0, 0.1),
+          0 6px 14px -6px rgba(0, 0, 0, 0.7);
+        transition:
+          transform 0.25s cubic-bezier(0.2, 0.8, 0.2, 1),
+          box-shadow 0.25s ease;
+      }
+      .breaker:hover {
+        transform: translateY(-3px);
+      }
+      .breaker-code {
+        font-family: var(--mono);
+        font-size: 10.5px;
+        letter-spacing: 0.08em;
+        color: #6a665c;
+      }
+      .breaker-slot {
+        position: relative;
+        width: 26px;
+        height: 92px;
+        border-radius: 5px;
+        background: #1b1f27;
+        box-shadow: inset 0 2px 5px rgba(0, 0, 0, 0.7);
+      }
+      .breaker-slot::after {
+        content: '';
+        position: absolute;
+        left: 3px;
+        right: 3px;
+        bottom: 5px;
+        height: 38px;
+        border-radius: 4px;
+        background: linear-gradient(180deg, #8f96a3, #5b6270);
+        transition:
+          bottom 0.28s cubic-bezier(0.3, 1.4, 0.5, 1),
+          background 0.2s ease,
+          box-shadow 0.2s ease;
+      }
+      .breaker[aria-selected='true'] {
+        transform: translateY(-6px);
+        box-shadow:
+          inset 0 1px 0 #fff,
+          inset 0 -3px 0 rgba(0, 0, 0, 0.1),
+          0 0 0 2px var(--accent),
+          0 18px 30px -12px rgba(var(--glow), 0.75);
+      }
+      .breaker[aria-selected='true'] .breaker-slot::after {
+        bottom: 49px;
+        background: linear-gradient(180deg, #ffb45a, var(--accent));
+        box-shadow: 0 0 12px rgba(var(--glow), 0.9);
+      }
+      .breaker-led {
+        width: 16px;
+        height: 5px;
+        border-radius: 2px;
+        background: #b9b4a8;
+      }
+      .breaker[aria-selected='true'] .breaker-led {
+        background: var(--accent);
+      }
+      .tape-row {
+        display: grid;
+        grid-template-columns: repeat(6, 1fr);
+        gap: 10px;
+        padding: 14px 14px 0;
+      }
+      .tape {
+        padding: 7px 4px;
+        border-radius: 3px;
+        background: #07090c;
+        color: #f4eee2;
+        font-family: var(--mono);
+        font-size: 9.5px;
+        line-height: 1.25;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+        text-align: center;
+        box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.08);
+        transition:
+          background 0.2s ease,
+          color 0.2s ease;
+      }
+      .tape.is-on {
+        background: var(--accent);
+        color: var(--accent-ink);
+      }
+
+      .service-card {
+        display: flex;
+        flex-direction: column;
+        padding: 34px;
+        border-radius: 26px;
+        background: var(--card);
+        box-shadow: 0 0 0 1px var(--line);
+      }
+      .service-icon {
+        width: 54px;
+        height: 54px;
+        border-radius: 16px;
+        display: grid;
+        place-items: center;
+        background: rgba(var(--glow), 0.24);
+        color: var(--accent-deep);
+      }
+      .service-icon svg {
+        width: 26px;
+        height: 26px;
+      }
+      .service-card h3 {
+        margin-top: 22px;
+        font-size: 30px;
+        font-weight: 700;
+      }
+      .service-card p {
+        margin-top: 12px;
+      }
+      .service-list {
+        list-style: none;
+        padding: 0;
+        margin: 22px 0 0;
+        display: grid;
+        gap: 10px;
+        font-size: 15.5px;
+      }
+      .service-list li {
+        display: flex;
+        gap: 10px;
+        align-items: flex-start;
+      }
+      .service-list svg {
+        width: 18px;
+        height: 18px;
+        margin-top: 3px;
+        color: var(--accent-deep);
+        flex: none;
+      }
+      .service-card .btn {
+        margin-top: auto;
+        align-self: flex-start;
+        height: 50px;
+      }
+      .service-foot {
+        padding-top: 26px;
+        margin-top: auto;
+      }
+
+      /* ───────── Chantiers ───────── */
+      .works {
+        background: var(--paper-deep);
+      }
+      .works-grid {
+        margin-top: 52px;
+        display: grid;
+        grid-template-columns: 1.35fr 1fr;
+        grid-template-rows: 1fr 1fr;
+        gap: 18px;
+        height: clamp(520px, 62vw, 720px);
+      }
+      .work {
+        position: relative;
+        border-radius: var(--radius);
+        overflow: hidden;
+        background: #111;
+      }
+      .work:first-child {
+        grid-row: span 2;
+      }
+      .work img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        transition: transform 0.8s cubic-bezier(0.2, 0.8, 0.2, 1);
+      }
+      .work:hover img {
+        transform: scale(1.05);
+      }
+      .work figcaption {
+        position: absolute;
+        left: 16px;
+        bottom: 16px;
+        right: 16px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 12px;
+        padding: 12px 16px;
+        border-radius: 14px;
+        background: rgba(255, 253, 248, 0.94);
+        backdrop-filter: blur(8px);
+        font-weight: 600;
+        font-size: 15px;
+        color: var(--ink);
+      }
+      .work figcaption span {
+        font-family: var(--mono);
+        font-weight: 400;
+        font-size: 11px;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+        color: var(--muted);
+      }
+      figure {
+        margin: 0;
+      }
+
+      /* ───────── Panne : section de nuit ───────── */
+      .urgent {
+        position: relative;
+        background: var(--night);
+        color: #f4eee2;
+        overflow: hidden;
+      }
+      .urgent-bg {
+        position: absolute;
+        inset: 0;
+        background:
+          linear-gradient(90deg, rgba(12, 15, 20, 0.96) 0%, rgba(12, 15, 20, 0.72) 55%, rgba(12, 15, 20, 0.5) 100%),
+          url('https://images.unsplash.com/photo-1770819992037-a0787cdecd27?w=1800&q=70&auto=format&fit=crop') center / cover;
+      }
+      .urgent-grid {
+        position: relative;
+        display: grid;
+        grid-template-columns: 1.1fr 0.9fr;
+        gap: clamp(32px, 5vw, 80px);
+        align-items: center;
+      }
+      .urgent h2 {
+        color: #fff;
+        font-size: clamp(38px, 5.2vw, 68px);
+        font-weight: 750;
+        margin-top: 18px;
+      }
+      .urgent .eyebrow {
+        color: var(--accent);
+      }
+      .urgent-lead {
+        margin-top: 18px;
+        max-width: 44ch;
+        color: #d9d4c8;
+      }
+      .urgent-phone {
+        display: inline-flex;
+        align-items: center;
+        gap: 18px;
+        margin-top: 34px;
+        font-family: var(--display);
+        font-size: clamp(34px, 4.8vw, 60px);
+        font-weight: 700;
+        letter-spacing: -0.03em;
+        color: #fff;
+        font-variant-numeric: tabular-nums;
+      }
+      .urgent-phone i {
+        display: grid;
+        place-items: center;
+        width: 62px;
+        height: 62px;
+        border-radius: 50%;
+        background: var(--accent);
+        color: var(--accent-ink);
+        box-shadow: 0 0 0 0 rgba(var(--glow), 0.7);
+        animation: ring 2.4s ease-out infinite;
+        flex: none;
+      }
+      .urgent-phone svg {
+        width: 26px;
+        height: 26px;
+      }
+      @keyframes ring {
+        70%,
+        100% {
+          box-shadow: 0 0 0 22px rgba(var(--glow), 0);
+        }
+      }
+      .reflexes {
+        padding: 30px;
+        border-radius: 26px;
+        background: rgba(21, 26, 34, 0.78);
+        backdrop-filter: blur(14px);
+        box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.09);
+      }
+      .reflexes h3 {
+        color: #fff;
+        font-size: 22px;
+        font-weight: 650;
+      }
+      .reflexes ol {
+        list-style: none;
+        margin: 20px 0 0;
+        padding: 0;
+        display: grid;
+        gap: 16px;
+        counter-reset: reflex;
+      }
+      .reflexes li {
+        counter-increment: reflex;
+        display: grid;
+        grid-template-columns: 34px 1fr;
+        gap: 14px;
+        font-size: 15.5px;
+        color: #d9d4c8;
+      }
+      .reflexes li::before {
+        content: counter(reflex);
+        display: grid;
+        place-items: center;
+        width: 34px;
+        height: 34px;
+        border-radius: 10px;
+        background: rgba(var(--glow), 0.16);
+        color: var(--accent);
+        font-family: var(--mono);
+        font-size: 13px;
+      }
+      .reflexes b {
+        display: block;
+        color: #fff;
+        font-weight: 600;
+      }
+
+      /* ───────── Déroulé : le circuit ───────── */
+      .circuit {
+        position: relative;
+        margin-top: 64px;
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 28px;
+      }
+      .circuit::before {
+        content: '';
+        position: absolute;
+        left: 0;
+        right: 0;
+        top: 21px;
+        height: 2px;
+        background: repeating-linear-gradient(90deg, var(--accent) 0 10px, transparent 10px 18px);
+        animation: current 1.1s linear infinite;
+      }
+      @keyframes current {
+        to {
+          background-position: 18px 0;
+        }
+      }
+      .step {
+        position: relative;
+      }
+      .step-node {
+        position: relative;
+        width: 44px;
+        height: 44px;
+        border-radius: 50%;
+        display: grid;
+        place-items: center;
+        background: var(--paper);
+        border: 2px solid var(--ink);
+        font-family: var(--mono);
+        font-size: 14px;
+        font-weight: 500;
+        color: var(--ink);
+      }
+      .step:last-child .step-node {
+        background: var(--accent);
+        border-color: var(--accent);
+        box-shadow: 0 0 0 7px rgba(var(--glow), 0.28);
+      }
+      .step h3 {
+        margin-top: 24px;
+        font-size: 23px;
+        font-weight: 700;
+      }
+      .step p {
+        margin-top: 10px;
+        font-size: 16px;
+        max-width: 30ch;
+      }
+
+      /* ───────── L'artisan ───────── */
+      .about-grid {
+        display: grid;
+        grid-template-columns: 0.9fr 1.1fr;
+        gap: clamp(32px, 6vw, 88px);
+        align-items: center;
+      }
+      .about-photo {
+        position: relative;
+        aspect-ratio: 4 / 4.7;
+        border-radius: 30px;
+        overflow: hidden;
+      }
+      .about-photo img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+      }
+      .about-badge {
+        position: absolute;
+        left: 18px;
+        bottom: 18px;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 12px 18px 12px 12px;
+        border-radius: 18px;
+        background: var(--card);
+        font-size: 14px;
+        line-height: 1.3;
+        color: var(--muted);
+      }
+      .about-badge b {
+        display: block;
+        font-family: var(--display);
+        font-size: 16px;
+        color: var(--ink);
+      }
+      .about-points {
+        margin-top: 34px;
+        display: grid;
+        gap: 0;
+        border-top: 1px solid var(--line);
+      }
+      .about-point {
+        display: grid;
+        grid-template-columns: 30px 1fr;
+        gap: 16px;
+        padding: 20px 0;
+        border-bottom: 1px solid var(--line);
+      }
+      .about-point svg {
+        width: 24px;
+        height: 24px;
+        color: var(--accent-deep);
+        margin-top: 2px;
+      }
+      .about-point b {
+        display: block;
+        font-family: var(--display);
+        font-size: 19px;
+        color: var(--ink);
+        letter-spacing: -0.015em;
+      }
+      .about-point span {
+        font-size: 15.5px;
+      }
+
+      /* ───────── Avis ───────── */
+      .reviews {
+        background: var(--paper-deep);
+      }
+      .reviews-top {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-end;
+        gap: 32px;
+        flex-wrap: wrap;
+      }
+      .score {
+        display: flex;
+        align-items: center;
+        gap: 20px;
+      }
+      .score-number {
+        font-family: var(--display);
+        font-size: clamp(72px, 9vw, 116px);
+        font-weight: 750;
+        letter-spacing: -0.05em;
+        line-height: 0.9;
+        color: var(--ink);
+      }
+      .score .stars svg {
+        width: 24px;
+        height: 24px;
+      }
+      .score small {
+        display: block;
+        margin-top: 6px;
+        font-family: var(--mono);
+        font-size: 12px;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        color: var(--muted);
+      }
+      .reviews-grid {
+        margin-top: 48px;
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 18px;
+      }
+      .review {
+        display: flex;
+        flex-direction: column;
+        gap: 22px;
+        padding: 28px;
+        border-radius: var(--radius);
+        background: var(--card);
+        box-shadow: 0 0 0 1px var(--line);
+      }
+      .review:nth-child(2) {
+        transform: translateY(22px);
+      }
+      .review p {
+        font-size: 16.5px;
+      }
+      .review footer {
+        margin-top: auto;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        font-size: 14px;
+        color: var(--muted);
+      }
+      .review footer i {
+        display: grid;
+        place-items: center;
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        background: var(--ink);
+        color: var(--paper);
+        font-family: var(--mono);
+        font-style: normal;
+        font-size: 13px;
+      }
+      .review footer b {
+        display: block;
+        color: var(--ink);
+        font-weight: 600;
+        font-size: 15px;
+      }
+
+      /* ───────── Zone + questions ───────── */
+      .info-grid {
+        display: grid;
+        grid-template-columns: 0.85fr 1.15fr;
+        gap: clamp(32px, 6vw, 88px);
+        align-items: start;
+      }
+      .towns {
+        margin-top: 28px;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+      }
+      .towns span {
+        padding: 9px 16px;
+        border-radius: 999px;
+        border: 1px solid var(--line);
+        background: var(--card);
+        font-size: 15px;
+        font-weight: 500;
+        color: var(--ink);
+      }
+      .towns span:first-child {
+        background: var(--ink);
+        border-color: var(--ink);
+        color: var(--paper);
+      }
+      .faq {
+        border-top: 1px solid var(--line);
+      }
+      .faq details {
+        border-bottom: 1px solid var(--line);
+      }
+      .faq summary {
+        list-style: none;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 20px;
+        padding: 22px 0;
+        font-family: var(--display);
+        font-size: 20px;
+        font-weight: 650;
+        color: var(--ink);
+        letter-spacing: -0.015em;
+        cursor: pointer;
+      }
+      .faq summary::-webkit-details-marker {
+        display: none;
+      }
+      .faq summary i {
+        position: relative;
+        width: 34px;
+        height: 34px;
+        border-radius: 50%;
+        border: 1.5px solid var(--ink);
+        flex: none;
+        transition:
+          background 0.2s ease,
+          transform 0.3s ease;
+      }
+      .faq summary i::before,
+      .faq summary i::after {
+        content: '';
+        position: absolute;
+        left: 50%;
+        top: 50%;
+        width: 12px;
+        height: 1.5px;
+        margin: -0.75px 0 0 -6px;
+        background: var(--ink);
+      }
+      .faq summary i::after {
+        transform: rotate(90deg);
+        transition: transform 0.3s ease;
+      }
+      .faq details[open] summary i {
+        background: var(--accent);
+        border-color: var(--accent);
+      }
+      .faq details[open] summary i::after {
+        transform: rotate(0);
+      }
+      .faq details p {
+        padding: 0 54px 24px 0;
+        font-size: 16px;
+      }
+
+      /* ───────── Contact ───────── */
+      .contact {
+        padding-bottom: clamp(72px, 9vw, 128px);
+      }
+      .contact-card {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        border-radius: 34px;
+        overflow: hidden;
+        background: var(--ink);
+        color: #f4eee2;
+      }
+      .contact-left {
+        position: relative;
+        padding: clamp(32px, 5vw, 64px);
+        background:
+          radial-gradient(70% 60% at 12% 100%, rgba(var(--glow), 0.3), transparent 70%), var(--ink);
+      }
+      .contact-left h2 {
+        color: #fff;
+        font-size: clamp(34px, 4.4vw, 54px);
+        font-weight: 750;
+        margin-top: 18px;
+      }
+      .contact-left .eyebrow {
+        color: var(--accent);
+      }
+      .contact-left p {
+        margin-top: 16px;
+        color: #d9d4c8;
+        max-width: 38ch;
+      }
+      .contact-lines {
+        margin-top: 36px;
+        display: grid;
+        gap: 4px;
+      }
+      .contact-line {
+        display: flex;
+        justify-content: space-between;
+        gap: 16px;
+        padding: 16px 0;
+        border-top: 1px solid var(--night-line);
+        font-size: 16px;
+      }
+      .contact-line span {
+        font-family: var(--mono);
+        font-size: 11.5px;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        color: var(--night-muted);
+        padding-top: 4px;
+      }
+      .contact-line b {
+        font-weight: 600;
+        color: #fff;
+        text-align: right;
+      }
+      .contact-form {
+        padding: clamp(32px, 5vw, 64px);
+        background: var(--card);
+        color: var(--body);
+        display: grid;
+        gap: 16px;
+        align-content: center;
+      }
+      .contact-form h3 {
+        font-size: 26px;
+        font-weight: 700;
+        margin-bottom: 6px;
+      }
+      .field {
+        display: grid;
+        gap: 7px;
+      }
+      .field label {
+        font-family: var(--mono);
+        font-size: 11.5px;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        color: var(--muted);
+      }
+      .field input,
+      .field textarea {
+        width: 100%;
+        padding: 15px 16px;
+        border-radius: 14px;
+        border: 1.5px solid var(--line);
+        background: var(--paper);
+        font: inherit;
+        color: var(--ink);
+        outline: none;
+        transition:
+          border-color 0.2s ease,
+          box-shadow 0.2s ease;
+      }
+      .field textarea {
+        min-height: 110px;
+        resize: vertical;
+      }
+      .field input:focus,
+      .field textarea:focus {
+        border-color: var(--accent);
+        box-shadow: 0 0 0 4px rgba(var(--glow), 0.28);
+      }
+      .contact-form .btn {
+        width: 100%;
+        margin-top: 4px;
+      }
+      .contact-form small {
+        font-size: 13.5px;
+        color: var(--muted);
+        text-align: center;
+      }
+
+      .footer {
+        border-top: 1px solid var(--line);
+        padding: 30px 0 110px;
+        font-size: 14.5px;
+        color: var(--muted);
+      }
+      .footer-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 20px;
+        flex-wrap: wrap;
+      }
+      .footer .brand {
+        color: var(--ink);
+        font-size: 17px;
+      }
+      .footer-links {
+        display: flex;
+        gap: 24px;
+      }
+
+      /* Barre d'appel du téléphone */
+      .callbar {
+        position: fixed;
+        left: 12px;
+        right: 12px;
+        bottom: 12px;
+        z-index: 20;
+        display: none;
+        gap: 8px;
+        padding: 8px;
+        border-radius: 999px;
+        background: rgba(12, 15, 20, 0.9);
+        backdrop-filter: blur(14px);
+        box-shadow: 0 20px 40px -18px rgba(0, 0, 0, 0.7);
+        transform: translateY(140%);
+        transition: transform 0.4s cubic-bezier(0.2, 0.8, 0.2, 1);
+      }
+      .callbar.is-visible {
+        transform: none;
+      }
+      .callbar .btn {
+        flex: 1;
+        height: 50px;
+        padding: 0 14px;
+        font-size: 15px;
+      }
+      .callbar .btn-ghost {
+        color: #fff;
+        border-color: rgba(255, 255, 255, 0.28);
+      }
+
+      /* Apparitions */
+      .reveal {
+        opacity: 0;
+        transform: translateY(26px);
+        transition:
+          opacity 0.8s ease,
+          transform 0.8s cubic-bezier(0.2, 0.8, 0.2, 1);
+        transition-delay: var(--d, 0s);
+      }
+      .reveal.in {
+        opacity: 1;
+        transform: none;
+      }
+      .review:nth-child(2).reveal.in {
+        transform: translateY(22px);
+      }
+
+      /* ───────── Téléphone ───────── */
+      @media (max-width: 900px) {
+        body {
+          font-size: 16.5px;
+        }
+        .nav,
+        .header-call span {
+          display: none;
+        }
+        .header {
+          padding: 14px 0;
+        }
+        .header-call {
+          width: 46px;
+          padding: 0;
+          justify-content: center;
+        }
+        .hero-grid {
+          grid-template-columns: 1fr;
+          gap: 30px;
+          padding: 18px 0 54px;
+        }
+        .hero-visual {
+          order: -1;
+        }
+        .hero-photo {
+          aspect-ratio: 5 / 3.9;
+          border-radius: 24px;
+        }
+        .switch-card {
+          left: 12px;
+          bottom: -22px;
+          padding: 10px 16px 10px 10px;
+          gap: 12px;
+          border-radius: 18px;
+        }
+        .switch {
+          width: 52px;
+          height: 52px;
+        }
+        .switch::before {
+          inset: 8px 12px;
+        }
+        .switch::after {
+          top: 13px;
+        }
+        .switch-text {
+          font-size: 13px;
+        }
+        .switch-text b {
+          font-size: 15.5px;
+        }
+        .hero h1 {
+          margin-top: 16px;
+          font-size: clamp(40px, 11.6vw, 58px);
+        }
+        .hero-copy {
+          padding-top: 14px;
+        }
+        .hero-lead {
+          font-size: 17px;
+          margin-top: 18px;
+        }
+        .hero-actions .btn {
+          flex: 1 1 100%;
+        }
+        .labels-row {
+          grid-template-columns: 1fr 1fr;
+        }
+        .labels-item {
+          padding: 20px 16px;
+          border-top: 1px solid var(--night-line);
+        }
+        .labels-item:nth-child(-n + 2) {
+          border-top: 0;
+        }
+        .labels-item:nth-child(odd) {
+          border-left: 0;
+          padding-left: 0;
+        }
+        .labels-item b {
+          font-size: 20px;
+        }
+        .panel-layout,
+        .urgent-grid,
+        .about-grid,
+        .info-grid,
+        .contact-card {
+          grid-template-columns: 1fr;
+        }
+        .panel {
+          padding: 18px 16px 20px;
+          border-radius: 22px;
+        }
+        .rail {
+          min-height: 0;
+        }
+        .tag-photo {
+          font-size: 9.5px;
+          padding: 6px 11px;
+          right: 12px;
+          top: 12px;
+        }
+        .rail,
+        .tape-row {
+          grid-template-columns: repeat(6, 1fr);
+          gap: 6px;
+          padding-inline: 8px;
+        }
+        .breaker {
+          padding: 9px 2px 8px;
+          gap: 8px;
+        }
+        .breaker-code {
+          font-size: 9px;
+        }
+        .breaker-slot {
+          width: 18px;
+          height: 46px;
+        }
+        .breaker-slot::after {
+          height: 19px;
+          bottom: 4px;
+        }
+        .breaker[aria-selected='true'] .breaker-slot::after {
+          bottom: 23px;
+        }
+        .tape {
+          font-size: 7.5px;
+          padding: 6px 1px;
+          letter-spacing: 0.02em;
+        }
+        .service-card {
+          padding: 26px;
+        }
+        .service-card h3 {
+          font-size: 26px;
+        }
+        .works-grid {
+          grid-template-columns: 1fr 1fr;
+          grid-template-rows: auto;
+          height: auto;
+          gap: 10px;
+        }
+        .work {
+          aspect-ratio: 1;
+        }
+        .work:first-child {
+          grid-column: span 2;
+          grid-row: auto;
+          aspect-ratio: 4 / 3.2;
+        }
+        .work figcaption {
+          left: 10px;
+          right: 10px;
+          bottom: 10px;
+          padding: 10px 12px;
+          font-size: 13.5px;
+        }
+        .work:not(:first-child) figcaption span {
+          display: none;
+        }
+        .urgent-phone i {
+          width: 54px;
+          height: 54px;
+        }
+        .circuit {
+          grid-template-columns: 1fr;
+          gap: 34px;
+          margin-top: 44px;
+        }
+        .circuit::before {
+          left: 21px;
+          right: auto;
+          top: 0;
+          bottom: 0;
+          width: 2px;
+          height: auto;
+          background: repeating-linear-gradient(180deg, var(--accent) 0 10px, transparent 10px 18px);
+          animation: none;
+        }
+        .step {
+          display: grid;
+          grid-template-columns: 44px 1fr;
+          column-gap: 18px;
+        }
+        .step h3 {
+          margin-top: 6px;
+          font-size: 21px;
+        }
+        .step p {
+          grid-column: 2;
+          max-width: none;
+        }
+        .reviews-grid {
+          grid-template-columns: 1fr;
+        }
+        .review:nth-child(2),
+        .review:nth-child(2).reveal.in {
+          transform: none;
+        }
+        .contact-card {
+          border-radius: 26px;
+        }
+        .callbar {
+          display: flex;
+        }
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        *,
+        *::before,
+        *::after {
+          animation: none !important;
+          transition-duration: 0.01ms !important;
+        }
+        .reveal {
+          opacity: 1;
+          transform: none;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <svg width="0" height="0" style="position: absolute" aria-hidden="true">
+      <defs>
+        <symbol id="i-phone" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1 1 .4 1.9.7 2.8a2 2 0 0 1-.5 2.1L8.1 9.9a16 16 0 0 0 6 6l1.3-1.3a2 2 0 0 1 2.1-.4c.9.3 1.8.6 2.8.7a2 2 0 0 1 1.7 2Z" />
+        </symbol>
+        <symbol id="i-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M5 12h14M13 6l6 6-6 6" />
+        </symbol>
+        <symbol id="i-star" viewBox="0 0 24 24" fill="currentColor">
+          <path d="m12 2 3.1 6.3 6.9 1-5 4.9 1.2 6.8-6.2-3.2L5.8 21 7 14.200 2 9.300l6.900-1L12 2Z" />
+        </symbol>
+        <symbol id="i-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="m5 12.500 4.500 4.500L19 7.500" />
+        </symbol>
+        <symbol id="i-zap" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M13 2 4 14h7l-1 8 9-12h-7l1-8Z" />
+        </symbol>
+        <symbol id="i-shield" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 22s8-3.500 8-10V5l-8-3-8 3v7c0 6.500 8 10 8 10Z" />
+          <path d="m9 12 2 2 4-4" />
+        </symbol>
+        <symbol id="i-panel" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="3" y="3" width="18" height="18" rx="3" />
+          <path d="M8 8v8M12 8v8M16 8v8" />
+        </symbol>
+        <symbol id="i-home" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="m3 11 9-8 9 8" />
+          <path d="M5 10v10h14V10" />
+          <path d="M10 20v-6h4v6" />
+        </symbol>
+        <symbol id="i-bulb" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M9 18h6M10 22h4" />
+          <path d="M12 2a7 7 0 0 0-4 12.700c.600.500 1 1.200 1 2V17h6v-.300c0-.800.400-1.500 1-2A7 7 0 0 0 12 2Z" />
+        </symbol>
+        <symbol id="i-car" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M5 17H3v-5l2-5h11l3 5h2v5h-2" />
+          <circle cx="7.500" cy="17" r="2" />
+          <circle cx="16.500" cy="17" r="2" />
+          <path d="M9.500 17h5" />
+        </symbol>
+        <symbol id="i-user" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="8" r="4" />
+          <path d="M4 21a8 8 0 0 1 16 0" />
+        </symbol>
+        <symbol id="i-doc" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6Z" />
+          <path d="M14 2v6h6M8 13h8M8 17h5" />
+        </symbol>
+      </defs>
+    </svg>
+
+    <!-- ═════════ Hero ═════════ -->
+    <section class="hero" id="top">
+      <div class="shell">
+        <header class="header">
+          <a class="brand" href="#top">
+            <span class="brand-logo">
+              <img src="https://a.storyblok.com/f/295379141804819/4744d7546b/bffd8e3e60d1474605b2.jpg" alt="" />
+            </span>
+            Cz63 Électricité
+          </a>
+          <nav class="nav">
+            <a href="#prestations">Prestations</a>
+            <a href="#chantiers">Chantiers</a>
+            <a href="#avis">Avis</a>
+            <a href="#contact">Contact</a>
+          </nav>
+          <a class="header-call" href="tel:0661588679" aria-label="Appeler le 06 61 58 86 79">
+            <svg><use href="#i-phone" /></svg>
+            <span>06 61 58 86 79</span>
+          </a>
+        </header>
+
+        <div class="hero-grid">
+          <div class="hero-copy">
+            <span class="eyebrow">Électricien à Orléat, Puy-de-Dôme</span>
+            <h1>L'électricité <em>bien faite</em>, chez vous.</h1>
+            <p class="hero-lead">
+              Dépannage, mise aux normes, rénovation et borne de recharge. Je me déplace à Orléat, à Clermont-Ferrand
+              et dans tout le Puy-de-Dôme.
+            </p>
+            <div class="hero-actions">
+              <a class="btn btn-primary" href="tel:0661588679">
+                <svg><use href="#i-phone" /></svg>
+                Appeler le 06 61 58 86 79
+              </a>
+              <a class="btn btn-ghost" href="#contact">Demander un devis gratuit</a>
+            </div>
+            <div class="hero-proof">
+              <strong>5,0</strong>
+              <span>
+                <span class="stars" aria-hidden="true">
+                  <svg><use href="#i-star" /></svg><svg><use href="#i-star" /></svg><svg><use href="#i-star" /></svg
+                  ><svg><use href="#i-star" /></svg><svg><use href="#i-star" /></svg>
+                </span>
+                <br />35 avis Google
+              </span>
+            </div>
+          </div>
+
+          <div class="hero-visual">
+            <div class="hero-photo">
+              <img
+                src="https://images.unsplash.com/photo-1772208392357-e074b8c1f100?w=1500&q=78&auto=format&fit=crop"
+                alt="Un salon éclairé le soir"
+              />
+              <span class="tag-photo">Rénovation complète, Orléat</span>
+            </div>
+            <div class="switch-card">
+              <button class="switch" id="lightSwitch" type="button" aria-pressed="false" aria-label="Allumer ou éteindre la lumière"></button>
+              <div class="switch-text">
+                <b id="switchTitle">Lumière éteinte</b>
+                <span id="switchHint">Appuyez sur l'interrupteur</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ═════════ Étiquettes ═════════ -->
+    <section class="labels">
+      <div class="shell labels-row">
+        <div class="labels-item"><b>Devis gratuit</b><span>Sans engagement</span></div>
+        <div class="labels-item"><b>Dépannage rapide</b><span>Je rappelle dans l'heure</span></div>
+        <div class="labels-item"><b>Aux normes</b><span>Installations contrôlées</span></div>
+        <div class="labels-item"><b>5,0 sur 5</b><span>35 avis Google</span></div>
+      </div>
+    </section>
+
+    <!-- ═════════ Prestations : le tableau ═════════ -->
+    <section class="section" id="prestations">
+      <div class="shell">
+        <span class="eyebrow reveal">Mes prestations</span>
+        <h2 class="section-title reveal">Tout votre tableau, entre de bonnes mains.</h2>
+        <p class="section-lead reveal">
+          Chaque disjoncteur correspond à un travail que je réalise. Basculez-en un pour voir ce qu'il comprend.
+        </p>
+
+        <div class="panel-layout">
+          <div class="panel reveal" role="tablist" aria-label="Prestations">
+            <div class="panel-head">
+              <span><i></i>Tableau des prestations</span>
+              <span>230 V</span>
+            </div>
+            <div class="rail" id="rail"></div>
+            <div class="tape-row" id="tapes"></div>
+          </div>
+
+          <article class="service-card reveal" style="--d: 0.12s" aria-live="polite">
+            <div class="service-icon"><svg id="serviceIcon"><use href="#i-zap" /></svg></div>
+            <h3 id="serviceTitle"></h3>
+            <p id="serviceText"></p>
+            <ul class="service-list" id="serviceList"></ul>
+            <div class="service-foot">
+              <a class="btn btn-primary" href="#contact">
+                Demander un devis
+                <svg><use href="#i-arrow" /></svg>
+              </a>
+            </div>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <!-- ═════════ Chantiers ═════════ -->
+    <section class="section works" id="chantiers">
+      <div class="shell">
+        <span class="eyebrow reveal">Chantiers récents</span>
+        <h2 class="section-title reveal">Du travail propre, jusque derrière le tableau.</h2>
+        <div class="works-grid">
+          <figure class="work reveal">
+            <img
+              src="https://images.unsplash.com/photo-1758101755915-462eddc23f57?w=1400&q=75&auto=format&fit=crop"
+              alt="Câblage d'un tableau électrique"
+            />
+            <figcaption>Tableau refait à neuf <span>Clermont-Ferrand</span></figcaption>
+          </figure>
+          <figure class="work reveal" style="--d: 0.08s">
+            <img
+              src="https://images.unsplash.com/photo-1649083048391-1c9e82472f65?w=1100&q=75&auto=format&fit=crop"
+              alt="Éclairage d'une cuisine"
+            />
+            <figcaption>Éclairage de cuisine <span>Lezoux</span></figcaption>
+          </figure>
+          <figure class="work reveal" style="--d: 0.16s">
+            <img
+              src="https://images.unsplash.com/photo-1766507680004-1c71007aefe5?w=1100&q=75&auto=format&fit=crop"
+              alt="Borne de recharge murale"
+            />
+            <figcaption>Borne de recharge <span>Orléat</span></figcaption>
+          </figure>
+        </div>
+      </div>
+    </section>
+
+    <!-- ═════════ Panne ═════════ -->
+    <section class="section urgent" id="depannage">
+      <div class="urgent-bg" aria-hidden="true"></div>
+      <div class="shell urgent-grid">
+        <div>
+          <span class="eyebrow reveal">Dépannage</span>
+          <h2 class="reveal">Plus de courant&nbsp;? Appelez-moi.</h2>
+          <p class="urgent-lead reveal">
+            Je vous dis tout de suite si je peux passer aujourd'hui, et je vous guide au téléphone en attendant.
+          </p>
+          <a class="urgent-phone reveal" href="tel:0661588679">
+            <i><svg><use href="#i-phone" /></svg></i>
+            06 61 58 86 79
+          </a>
+        </div>
+        <div class="reflexes reveal" style="--d: 0.12s">
+          <h3>Trois réflexes en attendant</h3>
+          <ol>
+            <li>
+              <span><b>Regardez le tableau</b>Un disjoncteur baissé se remonte une fois. S'il retombe, n'insistez pas.</span>
+            </li>
+            <li>
+              <span><b>Débranchez le dernier appareil</b>C'est souvent lui qui fait sauter l'installation.</span>
+            </li>
+            <li>
+              <span><b>Une odeur de chaud&nbsp;?</b>Coupez le disjoncteur général et appelez-moi sans attendre.</span>
+            </li>
+          </ol>
+        </div>
+      </div>
+    </section>
+
+    <!-- ═════════ Déroulé ═════════ -->
+    <section class="section" id="deroule">
+      <div class="shell">
+        <span class="eyebrow reveal">Comment ça se passe</span>
+        <h2 class="section-title reveal">De votre appel à la lumière.</h2>
+        <div class="circuit">
+          <div class="step reveal">
+            <div class="step-node">1</div>
+            <h3>Vous m'appelez</h3>
+            <p>Vous m'expliquez le besoin. Pour un dépannage, je vous dis quand je peux passer.</p>
+          </div>
+          <div class="step reveal" style="--d: 0.08s">
+            <div class="step-node">2</div>
+            <h3>Je passe voir</h3>
+            <p>Je regarde l'installation sur place et je vous remets un devis gratuit, détaillé.</p>
+          </div>
+          <div class="step reveal" style="--d: 0.16s">
+            <div class="step-node">3</div>
+            <h3>Je fais les travaux</h3>
+            <p>À la date convenue, avec du matériel de marque. Je laisse le chantier propre.</p>
+          </div>
+          <div class="step reveal" style="--d: 0.24s">
+            <div class="step-node"><svg width="20" height="20"><use href="#i-zap" /></svg></div>
+            <h3>Je teste avec vous</h3>
+            <p>Je contrôle chaque circuit, je vous montre le tableau et je reste joignable ensuite.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ═════════ L'artisan ═════════ -->
+    <section class="section" id="artisan" style="padding-top: 0">
+      <div class="shell about-grid">
+        <div class="about-photo reveal">
+          <img
+            src="https://images.unsplash.com/photo-1621905251189-08b45d6a269e?w=1200&q=75&auto=format&fit=crop"
+            alt="L'électricien au travail sur un tableau"
+          />
+          <div class="about-badge">
+            <span class="brand-logo">
+              <img src="https://a.storyblok.com/f/295379141804819/4744d7546b/bffd8e3e60d1474605b2.jpg" alt="" />
+            </span>
+            <span><b>Cz63 Électricité</b>Artisan électricien à Orléat</span>
+          </div>
+        </div>
+        <div>
+          <span class="eyebrow reveal">Qui je suis</span>
+          <h2 class="section-title reveal">Un seul interlocuteur, du devis au dernier test.</h2>
+          <p class="section-lead reveal">
+            Électricien à Orléat, j'interviens sur Clermont-Ferrand et dans tout le Puy-de-Dôme : dépannage,
+            rénovation, mise aux normes et installations neuves.
+          </p>
+          <div class="about-points">
+            <div class="about-point reveal">
+              <svg><use href="#i-user" /></svg>
+              <div><b>C'est moi qui viens</b><span>Vous avez la même personne au téléphone et sur le chantier.</span></div>
+            </div>
+            <div class="about-point reveal" style="--d: 0.06s">
+              <svg><use href="#i-doc" /></svg>
+              <div><b>Un devis clair</b><span>Chaque poste est écrit, le prix est celui que vous payez.</span></div>
+            </div>
+            <div class="about-point reveal" style="--d: 0.12s">
+              <svg><use href="#i-shield" /></svg>
+              <div><b>Un travail assuré</b><span>Installations aux normes, contrôlées avant mon départ.</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ═════════ Avis ═════════ -->
+    <section class="section reviews" id="avis">
+      <div class="shell">
+        <div class="reviews-top">
+          <div>
+            <span class="eyebrow reveal">Avis clients</span>
+            <h2 class="section-title reveal">Ils m'ont ouvert leur porte.</h2>
+          </div>
+          <div class="score reveal">
+            <span class="score-number">5,0</span>
+            <span>
+              <span class="stars" aria-hidden="true">
+                <svg><use href="#i-star" /></svg><svg><use href="#i-star" /></svg><svg><use href="#i-star" /></svg
+                ><svg><use href="#i-star" /></svg><svg><use href="#i-star" /></svg>
+              </span>
+              <small>35 avis sur Google</small>
+            </span>
+          </div>
+        </div>
+        <div class="reviews-grid">
+          <blockquote class="review reveal" style="margin: 0">
+            <span class="stars" aria-hidden="true">
+              <svg><use href="#i-star" /></svg><svg><use href="#i-star" /></svg><svg><use href="#i-star" /></svg
+              ><svg><use href="#i-star" /></svg><svg><use href="#i-star" /></svg>
+            </span>
+            <p>Panne un dimanche soir, il a rappelé dans le quart d'heure et tout remis en route le lundi matin. Sérieux et très clair dans ses explications.</p>
+            <footer><i>SM</i><span><b>Sophie M.</b>Dépannage, Lezoux</span></footer>
+          </blockquote>
+          <blockquote class="review reveal" style="margin: 0; --d: 0.08s">
+            <span class="stars" aria-hidden="true">
+              <svg><use href="#i-star" /></svg><svg><use href="#i-star" /></svg><svg><use href="#i-star" /></svg
+              ><svg><use href="#i-star" /></svg><svg><use href="#i-star" /></svg>
+            </span>
+            <p>Tableau entièrement refait dans une maison ancienne. Devis respecté à l'euro près, chantier laissé propre. Je recommande les yeux fermés.</p>
+            <footer><i>JD</i><span><b>Julien D.</b>Mise aux normes, Clermont-Ferrand</span></footer>
+          </blockquote>
+          <blockquote class="review reveal" style="margin: 0; --d: 0.16s">
+            <span class="stars" aria-hidden="true">
+              <svg><use href="#i-star" /></svg><svg><use href="#i-star" /></svg><svg><use href="#i-star" /></svg
+              ><svg><use href="#i-star" /></svg><svg><use href="#i-star" /></svg>
+            </span>
+            <p>Borne de recharge posée en une matinée. Il a pris le temps de m'expliquer le fonctionnement et les réglages. Ponctuel et soigneux.</p>
+            <footer><i>NB</i><span><b>Nathalie B.</b>Borne de recharge, Orléat</span></footer>
+          </blockquote>
+        </div>
+      </div>
+    </section>
+
+    <!-- ═════════ Zone + questions ═════════ -->
+    <section class="section" id="zone">
+      <div class="shell info-grid">
+        <div>
+          <span class="eyebrow reveal">Zone d'intervention</span>
+          <h2 class="section-title reveal">Orléat et 30&nbsp;km autour.</h2>
+          <p class="section-lead reveal">Vous êtes un peu plus loin&nbsp;? Appelez-moi, je vous réponds franchement.</p>
+          <div class="towns reveal">
+            <span>Orléat</span><span>Lezoux</span><span>Thiers</span><span>Pont-du-Château</span><span>Maringues</span
+            ><span>Billom</span><span>Riom</span><span>Clermont-Ferrand</span>
+          </div>
+        </div>
+        <div class="faq reveal">
+          <details open>
+            <summary>Le devis est-il gratuit&nbsp;?<i></i></summary>
+            <p>Oui. Je me déplace, je regarde l'installation et je vous remets un devis détaillé, sans engagement.</p>
+          </details>
+          <details>
+            <summary>Intervenez-vous en urgence&nbsp;?<i></i></summary>
+            <p>Appelez-moi. Je vous dis tout de suite si je peux passer dans la journée, et sinon quand.</p>
+          </details>
+          <details>
+            <summary>Délivrez-vous une attestation de conformité&nbsp;?<i></i></summary>
+            <p>Pour une installation neuve ou une rénovation complète, je prépare le dossier et je suis présent le jour du contrôle.</p>
+          </details>
+          <details>
+            <summary>Vos travaux sont-ils garantis&nbsp;?<i></i></summary>
+            <p>Oui. Mon travail est assuré, et je reviens si quelque chose ne vous convient pas.</p>
+          </details>
+        </div>
+      </div>
+    </section>
+
+    <!-- ═════════ Contact ═════════ -->
+    <section class="contact" id="contact">
+      <div class="shell">
+        <div class="contact-card reveal">
+          <div class="contact-left">
+            <span class="eyebrow">Contact</span>
+            <h2>Parlons de vos travaux.</h2>
+            <p>Un appel suffit. Vous pouvez aussi m'écrire, je vous rappelle dans la journée.</p>
+            <div class="contact-lines">
+              <div class="contact-line"><span>Téléphone</span><b>06 61 58 86 79</b></div>
+              <div class="contact-line"><span>Secteur</span><b>Orléat, Clermont-Ferrand, Puy-de-Dôme</b></div>
+              <div class="contact-line"><span>Devis</span><b>Gratuit, sans engagement</b></div>
+            </div>
+          </div>
+          <form class="contact-form" onsubmit="return false">
+            <h3>Demander un devis</h3>
+            <div class="field"><label for="f-name">Votre nom</label><input id="f-name" autocomplete="name" /></div>
+            <div class="field"><label for="f-tel">Votre téléphone</label><input id="f-tel" inputmode="tel" autocomplete="tel" /></div>
+            <div class="field"><label for="f-msg">Votre besoin</label><textarea id="f-msg" placeholder="Par exemple : tableau à remplacer dans une maison de 1975."></textarea></div>
+            <button class="btn btn-primary" type="submit">Envoyer ma demande</button>
+            <small>Réponse dans la journée, du lundi au samedi.</small>
+          </form>
+        </div>
+      </div>
+    </section>
+
+    <footer class="footer">
+      <div class="shell footer-row">
+        <span class="brand">
+          <span class="brand-logo">
+            <img src="https://a.storyblok.com/f/295379141804819/4744d7546b/bffd8e3e60d1474605b2.jpg" alt="" />
+          </span>
+          Cz63 Électricité
+        </span>
+        <span>Électricien à Orléat, Puy-de-Dôme</span>
+        <span class="footer-links"><a href="#">Mentions légales</a><a href="#">Confidentialité</a></span>
+      </div>
+    </footer>
+
+    <div class="callbar" id="callbar">
+      <a class="btn btn-primary" href="tel:0661588679"><svg><use href="#i-phone" /></svg>Appeler</a>
+      <a class="btn btn-ghost" href="#contact">Devis gratuit</a>
+    </div>
+
+    <script>
+      const SERVICES = [
+        {
+          code: 'C16',
+          label: 'Dépannage',
+          icon: 'i-zap',
+          title: 'Dépannage électrique',
+          text: "Panne de courant, disjoncteur qui saute, prise qui chauffe. Je cherche la cause, je répare et je vous explique ce qui s'est passé.",
+          points: ['Diagnostic sur place', 'Réparation le jour même quand la pièce est en stock', 'Vérification du reste du circuit'],
+        },
+        {
+          code: 'C20',
+          label: 'Normes',
+          icon: 'i-shield',
+          title: 'Mise aux normes',
+          text: "Installation ancienne, achat d'une maison, vente à préparer. Je remets l'ensemble en sécurité et en conformité.",
+          points: ['État des lieux complet', 'Mise à la terre et protection différentielle', 'Dossier prêt pour le contrôle'],
+        },
+        {
+          code: 'C32',
+          label: 'Tableau',
+          icon: 'i-panel',
+          title: 'Tableau électrique',
+          text: 'Remplacement ou agrandissement de votre tableau, avec chaque circuit repéré et étiqueté pour vous y retrouver.',
+          points: ['Tableau neuf, matériel de marque', 'Circuits étiquetés un par un', 'Place prévue pour vos futurs besoins'],
+        },
+        {
+          code: 'C16',
+          label: 'Rénovation',
+          icon: 'i-home',
+          title: 'Installation et rénovation',
+          text: "Maison neuve, extension ou rénovation complète. Je conçois l'installation avec vous, pièce par pièce.",
+          points: ['Plan des prises et des éclairages', 'Saignées rebouchées, chantier propre', 'Coordination avec vos autres artisans'],
+        },
+        {
+          code: 'C10',
+          label: 'Éclairage',
+          icon: 'i-bulb',
+          title: 'Éclairage et domotique',
+          text: 'Spots, suspensions, éclairage extérieur, volets et chauffage pilotés depuis votre téléphone.',
+          points: ['Conseil sur les ambiances et la consommation', 'Éclairage intérieur et extérieur', 'Pilotage simple, expliqué à la mise en service'],
+        },
+        {
+          code: 'C40',
+          label: 'Borne',
+          icon: 'i-car',
+          title: 'Borne de recharge',
+          text: "Pose d'une borne pour votre voiture électrique, dimensionnée selon votre abonnement et votre trajet quotidien.",
+          points: ['Étude de votre installation', 'Pose en une demi-journée le plus souvent', 'Réglage des heures creuses'],
+        },
+      ]
+
+      const root = document.documentElement
+      const rail = document.getElementById('rail')
+      const tapes = document.getElementById('tapes')
+      const serviceTitle = document.getElementById('serviceTitle')
+      const serviceText = document.getElementById('serviceText')
+      const serviceList = document.getElementById('serviceList')
+      const serviceIcon = document.getElementById('serviceIcon')
+
+      function selectService(index) {
+        const service = SERVICES[index]
+        rail.querySelectorAll('.breaker').forEach((breaker, position) => {
+          breaker.setAttribute('aria-selected', String(position === index))
+        })
+        tapes.querySelectorAll('.tape').forEach((tape, position) => {
+          tape.classList.toggle('is-on', position === index)
+        })
+        serviceTitle.textContent = service.title
+        serviceText.textContent = service.text
+        serviceIcon.innerHTML = `<use href="#${service.icon}" />`
+        serviceList.innerHTML = service.points
+          .map((point) => `<li><svg><use href="#i-check" /></svg><span>${point}</span></li>`)
+          .join('')
+      }
+
+      SERVICES.forEach((service, index) => {
+        const breaker = document.createElement('button')
+        breaker.type = 'button'
+        breaker.className = 'breaker'
+        breaker.setAttribute('role', 'tab')
+        breaker.setAttribute('aria-label', service.title)
+        breaker.innerHTML = `<span class="breaker-code">${service.code}</span><span class="breaker-slot"></span><span class="breaker-led"></span>`
+        breaker.addEventListener('click', () => selectService(index))
+        rail.appendChild(breaker)
+
+        const tape = document.createElement('span')
+        tape.className = 'tape'
+        tape.textContent = service.label
+        tapes.appendChild(tape)
+      })
+      selectService(0)
+
+      const lightSwitch = document.getElementById('lightSwitch')
+      const switchTitle = document.getElementById('switchTitle')
+      const switchHint = document.getElementById('switchHint')
+
+      function setLight(isOn) {
+        root.dataset.light = isOn ? 'on' : 'off'
+        lightSwitch.setAttribute('aria-pressed', String(isOn))
+        switchTitle.textContent = isOn ? 'Lumière allumée' : 'Lumière éteinte'
+        switchHint.textContent = isOn ? 'Essayez de l\'éteindre' : "Appuyez sur l'interrupteur"
+        if (isOn) {
+          root.classList.add('flicker')
+          setTimeout(() => root.classList.remove('flicker'), 600)
+        }
+      }
+      lightSwitch.addEventListener('click', () => setLight(root.dataset.light !== 'on'))
+
+      const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+      setTimeout(() => setLight(true), prefersReducedMotion ? 0 : 900)
+
+      const revealObserver = new IntersectionObserver(
+        (entries) => {
+          entries.forEach((entry) => {
+            if (entry.isIntersecting) {
+              entry.target.classList.add('in')
+              revealObserver.unobserve(entry.target)
+            }
+          })
+        },
+        { rootMargin: '0px 0px -8% 0px' },
+      )
+      document.querySelectorAll('.reveal').forEach((element) => revealObserver.observe(element))
+
+      const callbar = document.getElementById('callbar')
+      const hero = document.querySelector('.hero')
+      new IntersectionObserver(([entry]) => callbar.classList.toggle('is-visible', !entry.isIntersecting)).observe(hero)
+    </script>
+  </body>
+</html>
