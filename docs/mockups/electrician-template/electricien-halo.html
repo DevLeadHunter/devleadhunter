@@ -733,8 +733,11 @@
         display: flex;
         justify-content: space-between;
         align-items: center;
-        gap: 48px;
+        gap: 0 48px;
         flex-wrap: wrap;
+      }
+      html[data-state='real'] .reviews-grid .eyebrow {
+        flex-basis: 100%;
       }
       html[data-state='real'] .score {
         margin-top: 0;
