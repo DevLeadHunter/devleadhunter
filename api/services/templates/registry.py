@@ -24,6 +24,7 @@ from __future__ import annotations
 import re
 from typing import Any
 
+from services.country_profiles import CountryProfiles
 from services.templates import (
     artisan_edito,
     barber,
@@ -227,11 +228,12 @@ def to_storyblok_site_content(template_id: str, site_content: dict[str, Any]) ->
     return module.to_storyblok_site_content(site_content, used_sections, extra_section_images, section_field_overrides)
 
 
-def content_schemas(template_id: str) -> list[dict[str, Any]]:
+def content_schemas(template_id: str, country: str) -> list[dict[str, Any]]:
     """Return the Storyblok component schemas for a template — its per-template image fields included.
 
     A template declares its one-off image slots in ``EXTRA_SECTION_IMAGES`` ({section: [{field, label}]});
-    they become editable asset fields grouped in that section.
+    they become editable asset fields grouped in that section. ``country`` is the prospect's: the editor
+    only gets the licence fields where its law asks the site to show one.
     """
     from services.templates.site_content import build_content_schemas
 
@@ -239,7 +241,12 @@ def content_schemas(template_id: str) -> list[dict[str, Any]]:
     extra_section_images: dict[str, list[dict[str, str]]] | None = getattr(module, "EXTRA_SECTION_IMAGES", None)
     section_field_overrides: dict[str, list[str]] | None = getattr(module, "SECTION_FIELDS", None)
     field_schema_overrides: dict[str, dict[str, Any]] | None = getattr(module, "FIELD_SCHEMA_OVERRIDES", None)
-    return build_content_schemas(extra_section_images, section_field_overrides, field_schema_overrides)
+    return build_content_schemas(
+        extra_section_images,
+        section_field_overrides,
+        field_schema_overrides,
+        with_professional_license=CountryProfiles.get(country).site_legal.is_professional_license_required,
+    )
 
 
 def body_components() -> list[str]:

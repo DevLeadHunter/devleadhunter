@@ -150,6 +150,8 @@ _NON_PROSE_KEYS: frozenset[str] = frozenset(
     }
 )
 
+_PROFESSIONAL_LICENSE_FIELD_KEYS: frozenset[str] = frozenset({"professionalLicenseLabel", "professionalLicenseNumber"})
+
 
 def apply_country_conventions(site_content: dict[str, Any], country: str | None) -> dict[str, Any]:
     """Write a built site the way the prospect's country reads it.
@@ -157,7 +159,8 @@ def apply_country_conventions(site_content: dict[str, Any], country: str | None)
     The phone takes the local display shape (« 514 555-0199 », « 06 12 34 56 78 ») and every prose
     field — editorial defaults included — goes through the country's regional lexicon (Québec reads
     « soumission », « courriel », « cellulaire »). Identity, contact, media and real reviews are left
-    as they are; a country without a lexicon only gets its phone shaped. The input is never mutated:
+    as they are; a country without a lexicon gets its phone shaped. A professional licence stays only
+    where the country's law asks the site to show one. The input is never mutated:
     a template's editorial defaults are module constants shared by every generation, and rewriting
     them in place would turn the next French site Québécois.
 
@@ -173,6 +176,8 @@ def apply_country_conventions(site_content: dict[str, Any], country: str | None)
     phone = content.get("phone")
     if isinstance(phone, str) and phone.strip():
         content["phone"] = format_phone_for_display(phone, country=profile.code)
+    if not profile.site_legal.is_professional_license_required:
+        content.update({key: "" for key in _PROFESSIONAL_LICENSE_FIELD_KEYS if key in content})
     return content
 
 
@@ -880,16 +885,8 @@ FIELD_SCHEMAS: dict[str, dict[str, Any]] = {
     "email": {"type": "text", "display_name": "Email de contact"},
     "city": {"type": "text", "display_name": "Ville"},
     "area": {"type": "text", "display_name": "Secteur d'intervention", "description": "Ex : « Lyon et ses alentours »"},
-    "professionalLicenseLabel": {
-        "type": "text",
-        "display_name": "Libellé de la licence professionnelle",
-        "description": "Ex : « Licence RBQ ». Affiché devant le numéro en pied de page, vide = rien d'affiché",
-    },
-    "professionalLicenseNumber": {
-        "type": "text",
-        "display_name": "Numéro de licence professionnelle",
-        "description": "Ex : « 5678-1234-01 ». Obligatoire sur le site au Québec, vide = rien d'affiché",
-    },
+    "professionalLicenseLabel": {"type": "text", "display_name": "Libellé de la licence professionnelle"},
+    "professionalLicenseNumber": {"type": "text", "display_name": "Numéro de licence professionnelle"},
     "logo": {
         "type": "asset",
         "filetypes": ["images"],
@@ -1144,6 +1141,8 @@ def build_content_schemas(
     extra_section_images: dict[str, list[dict[str, str]]] | None = None,
     section_field_overrides: dict[str, list[str]] | None = None,
     field_schema_overrides: dict[str, dict[str, Any]] | None = None,
+    *,
+    with_professional_license: bool = True,
 ) -> list[dict[str, Any]]:
     """Build the Storyblok component schemas for a template.
 
@@ -1154,12 +1153,21 @@ def build_content_schemas(
     or drops shared fields it never renders. ``None`` keeps every section's default fields.
     ``field_schema_overrides`` patches a shared field's schema (label/description) for this template,
     keyed by field key — how a template relabels a field it repurposes. ``None`` keeps every label.
+    ``with_professional_license`` set to False leaves out the licence fields, for a site whose country's
+    law does not ask for one.
     """
     extra = extra_section_images or {}
     overrides = section_field_overrides or {}
     field_overrides = field_schema_overrides or {}
+    excluded_field_keys: frozenset[str] = frozenset() if with_professional_license else _PROFESSIONAL_LICENSE_FIELD_KEYS
     sections: list[dict[str, Any]] = [
-        _section_component(suffix, display_name, overrides.get(suffix, field_keys), extra.get(suffix), field_overrides)
+        _section_component(
+            suffix,
+            display_name,
+            [key for key in overrides.get(suffix, field_keys) if key not in excluded_field_keys],
+            extra.get(suffix),
+            field_overrides,
+        )
         for suffix, display_name, field_keys in SECTION_DEFINITIONS
     ]
     return sections + _ITEM_BLOK_SCHEMAS

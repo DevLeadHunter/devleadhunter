@@ -373,3 +373,59 @@ def test_landscaper_contact_override_keeps_the_license_fields() -> None:
 
     assert "professionalLicenseNumber" in landscaper_verdure.SECTION_FIELDS["contact"]
     assert "professionalLicenseLabel" in landscaper_verdure.SECTION_FIELDS["contact"]
+
+
+def test_a_license_reaches_only_the_site_of_a_country_whose_law_asks_for_one() -> None:
+    """Québec (RBQ) and Luxembourg (autorisation d'établissement) show a license; any other country drops it."""
+    site = {
+        "businessName": "Toitures Gagnon",
+        "professionalLicenseLabel": "Licence",
+        "professionalLicenseNumber": "5678-1234-01",
+    }
+
+    for country in ("CA", "LU"):
+        assert sc.apply_country_conventions(site, country)["professionalLicenseNumber"] == "5678-1234-01"
+    for country in ("FR", "CH", "BE"):
+        dropped = sc.apply_country_conventions(site, country)
+        assert dropped["professionalLicenseLabel"] == ""
+        assert dropped["professionalLicenseNumber"] == ""
+    assert site["professionalLicenseNumber"] == "5678-1234-01"
+
+
+def test_a_license_typed_for_a_french_prospect_never_reaches_its_built_site() -> None:
+    """The country gate runs where every site is built, from the same enrichment."""
+    from services.storyblok_service import StoryblokService
+
+    def built_license_number(country: str) -> str:
+        return StoryblokService().build_content_json(
+            business_name="Toitures Gagnon",
+            phone=None,
+            email=None,
+            city="Laval",
+            description=None,
+            template_id="artisan-edito",
+            enrichment={"professional_license_label": "Licence RBQ", "professional_license_number": "5678-1234-01"},
+            country=country,
+        )["professionalLicenseNumber"]
+
+    assert built_license_number("CA") == "5678-1234-01"
+    assert built_license_number("FR") == ""
+
+
+def test_the_cms_gets_the_license_fields_only_where_the_law_asks_for_a_license() -> None:
+    """A French site's contact form has no license fields; a Québec or Luxembourg one keeps them, overrides included."""
+    from services.templates import registry
+
+    license_fields = {"professionalLicenseLabel", "professionalLicenseNumber"}
+    for template_id in ("artisan-edito", "landscaper-verdure"):
+        contact_by_country = {
+            country: next(
+                component["schema"]
+                for component in registry.content_schemas(template_id, country)
+                if component["name"] == "section_contact"
+            )
+            for country in ("FR", "CA", "LU")
+        }
+        assert license_fields.isdisjoint(contact_by_country["FR"])
+        assert license_fields <= contact_by_country["CA"].keys()
+        assert license_fields <= contact_by_country["LU"].keys()

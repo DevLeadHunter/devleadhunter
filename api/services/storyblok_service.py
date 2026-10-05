@@ -556,19 +556,20 @@ class StoryblokService:
         async with httpx.AsyncClient(timeout=60.0) as client:
             await self._configure_preview_url(client, space_id, preview_url)
 
-    async def resync_components(self, space_id: int, template_id: str | None = None) -> None:
+    async def resync_components(self, space_id: int, template_id: str | None = None, country: str = "FR") -> None:
         """Re-sync (upsert) the blok schemas of an EXISTING space.
 
         Propagates new fields (e.g. ``social``) and updated FR labels to
         already-provisioned spaces — the audit's missing "re-sync command".
         ``template_id`` uses that template's own schema (per-template ``SECTION_FIELDS``
         overrides included, e.g. landscaper's editable hero title); ``None`` falls back to
-        the shared default schema. Idempotent; no-op in mock mode.
+        the shared default schema. ``country`` is the prospect's: it decides whether the
+        licence fields stay. Idempotent; no-op in mock mode.
         """
         if not self.is_configured or not space_id:
             return
         async with httpx.AsyncClient(timeout=60.0) as client:
-            await self._ensure_template_components(client, space_id, template_id)
+            await self._ensure_template_components(client, space_id, template_id, country)
 
     async def invite_collaborator(self, space_id: int, collaborator_email: str) -> None:
         """Invite a client as Storyblok space admin. Storyblok sends the invitation email."""
@@ -734,6 +735,7 @@ class StoryblokService:
             preview_url=preview_url,
             content_json=content_json,
             invite_client=invite_client,
+            country=country,
         )
 
     async def provision_space_with_content(
@@ -747,11 +749,13 @@ class StoryblokService:
         content_json: dict[str, Any],
         invite_client: bool = False,
         rehost_all_assets: bool = False,
+        country: str = "FR",
     ) -> StoryblokProvisionResult:
         """
         Create a Storyblok space and seed the home story from an existing ``content_json``.
 
         Used for initial provisioning and for outreach swaps that must preserve published edits.
+        ``country`` is the prospect's: it decides whether the editor gets the licence fields.
         """
         if not self.is_configured:
             mock_password: str = self._generate_password()
@@ -786,7 +790,7 @@ class StoryblokService:
             try:
                 await asyncio.gather(
                     self._configure_preview_url(client, space_id, preview_url),
-                    self._ensure_template_components(client, space_id, template_id),
+                    self._ensure_template_components(client, space_id, template_id, country),
                     self._register_publish_webhook(client, space_id),
                 )
                 await self._publish_home_story(
@@ -839,14 +843,17 @@ class StoryblokService:
                 ) from exc
 
     async def update_home_story_content(
-        self, space_id: int, content_json: dict[str, Any], template_id: str | None = None
+        self, space_id: int, content_json: dict[str, Any], template_id: str | None = None, country: str = "FR"
     ) -> None:
-        """Update and publish the home story content in an existing Storyblok space."""
+        """Update and publish the home story content in an existing Storyblok space.
+
+        ``country`` is the prospect's: it decides whether the editor keeps the licence fields.
+        """
         if not self.is_configured or not space_id:
             return
 
         async with httpx.AsyncClient(timeout=60.0) as client:
-            await self._ensure_template_components(client, space_id, template_id)
+            await self._ensure_template_components(client, space_id, template_id, country)
 
             story_id = await self._find_home_story_id(client, space_id)
             await self._publish_home_story(client, space_id, content_json, story_id=story_id, template_id=template_id)
@@ -953,7 +960,7 @@ class StoryblokService:
         }
 
     async def _ensure_template_components(
-        self, client: httpx.AsyncClient, space_id: int, template_id: str | None = None
+        self, client: httpx.AsyncClient, space_id: int, template_id: str | None, country: str
     ) -> None:
         """Upsert (create OR update) the blok components the client actually edits.
 
@@ -962,7 +969,8 @@ class StoryblokService:
         blok family (``SITE_CONTENT_SCHEMAS``). The legacy per-section bloks
         (hero/trust/…) and the per-template rich schemas are intentionally NOT
         registered anymore — they were never consumed by demo-host and polluted
-        the client's editor with ~60 unusable blok types.
+        the client's editor with ~60 unusable blok types. ``country`` is the
+        prospect's: the licence fields are only registered where its law asks for one.
 
         **Existing components are UPDATED (PUT)** — this is what propagates new fields
         (e.g. ``social``) and FR labels to already-provisioned spaces (the re-sync the
@@ -1001,7 +1009,7 @@ class StoryblokService:
             },
             # Per-template schemas add that template's one-off image fields to the right sections;
             # ``None`` (e.g. a space-only resync) falls back to the shared default schema.
-            *(template_registry.content_schemas(template_id) if template_id else SITE_CONTENT_SCHEMAS),
+            *(template_registry.content_schemas(template_id, country) if template_id else SITE_CONTENT_SCHEMAS),
         ]
 
         existing: dict[str, int] = await self._list_component_ids(client, space_id)

@@ -57,6 +57,7 @@ class SiteLegalFacts:
         vat_number_label: How the VAT number reads on the page.
         is_publication_director_required: Whether the law asks for a publication director (France).
         is_host_disclosure_required: Whether the law asks the legal notice to name the hosting provider.
+        is_professional_license_required: Whether the law asks the site to show a licence number (Québec, Luxembourg).
         privacy_regime: The data protection law the privacy section follows.
         privacy_authority_name: The authority a visitor can turn to.
         privacy_authority_url: Its website.
@@ -73,6 +74,7 @@ class SiteLegalFacts:
     vat_number_label: str
     is_publication_director_required: bool
     is_host_disclosure_required: bool
+    is_professional_license_required: bool
     privacy_regime: PrivacyRegime
     privacy_authority_name: str
     privacy_authority_url: str
@@ -238,6 +240,7 @@ class CountryProfiles:
                 vat_number_label="TVA intracommunautaire",
                 is_publication_director_required=True,
                 is_host_disclosure_required=True,
+                is_professional_license_required=False,
                 privacy_regime=PrivacyRegime.GDPR,
                 privacy_authority_name="Commission nationale de l'informatique et des libertés (CNIL)",
                 privacy_authority_url="https://www.cnil.fr",
@@ -276,6 +279,7 @@ class CountryProfiles:
                 vat_number_label="TVA",
                 is_publication_director_required=False,
                 is_host_disclosure_required=False,
+                is_professional_license_required=False,
                 privacy_regime=PrivacyRegime.SWISS_FADP,
                 privacy_authority_name="Préposé fédéral à la protection des données et à la transparence (PFPDT)",
                 privacy_authority_url="https://www.edoeb.admin.ch",
@@ -315,6 +319,7 @@ class CountryProfiles:
                 vat_number_label="TVA",
                 is_publication_director_required=False,
                 is_host_disclosure_required=False,
+                is_professional_license_required=False,
                 privacy_regime=PrivacyRegime.GDPR,
                 privacy_authority_name="Autorité de protection des données (APD)",
                 privacy_authority_url="https://www.autoriteprotectiondonnees.be",
@@ -353,6 +358,7 @@ class CountryProfiles:
                 vat_number_label="TVA",
                 is_publication_director_required=False,
                 is_host_disclosure_required=False,
+                is_professional_license_required=True,
                 privacy_regime=PrivacyRegime.GDPR,
                 privacy_authority_name="Commission nationale pour la protection des données (CNPD)",
                 privacy_authority_url="https://cnpd.public.lu",
@@ -392,6 +398,7 @@ class CountryProfiles:
                 vat_number_label="Numéros de TPS et de TVQ",
                 is_publication_director_required=False,
                 is_host_disclosure_required=False,
+                is_professional_license_required=True,
                 privacy_regime=PrivacyRegime.QUEBEC_PRIVATE_SECTOR,
                 privacy_authority_name="Commission d'accès à l'information du Québec",
                 privacy_authority_url="https://www.cai.gouv.qc.ca",

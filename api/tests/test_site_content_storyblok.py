@@ -147,7 +147,7 @@ def test_landscaper_schema_reflects_its_overrides() -> None:
     """The landscaper template exposes servicesLead + steps and relabels/moves ctaCallLabel to contact."""
     from services.templates import registry
 
-    by_name = {component["name"]: component for component in registry.content_schemas("landscaper-verdure")}
+    by_name = {component["name"]: component for component in registry.content_schemas("landscaper-verdure", "FR")}
 
     assert "servicesLead" in by_name["section_services"]["schema"]
     assert "steps" in by_name["section_method"]["schema"]
