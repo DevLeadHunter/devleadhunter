@@ -181,8 +181,30 @@
         </div>
       </div>
 
+      <div
+        v-if="desktopJob"
+        class="rounded-lg border border-[var(--app-line)] bg-[var(--app-bg)] p-3 text-xs text-[var(--app-ink-soft)]"
+      >
+        <p class="flex items-start gap-2 leading-relaxed">
+          <UIcon
+            :name="desktopJob.status === 'running' ? 'i-lucide-loader-circle' : 'i-lucide-monitor'"
+            :class="['mt-0.5 h-4 w-4 shrink-0', desktopJob.status === 'running' && 'animate-spin']"
+          />
+          <span>{{ desktopJobLabel }}</span>
+        </p>
+        <button
+          v-if="desktopJob.status === 'waiting'"
+          type="button"
+          class="btn-secondary mt-2 w-full text-xs"
+          :disabled="isCancellingDesktopJob"
+          @click="cancelDesktopJob"
+        >
+          {{ isCancellingDesktopJob ? 'Annulation…' : 'Annuler la demande' }}
+        </button>
+      </div>
+
       <button
-        v-if="!record || record.status === 'pending'"
+        v-if="!desktopJob && (!record || record.status === 'pending' || isAwaitingFirstData)"
         class="btn-secondary w-full"
         :disabled="isRunning"
         @click="run"
@@ -194,7 +216,7 @@
         Récupérer les données
       </button>
 
-      <template v-else>
+      <template v-if="record && record.status !== 'pending' && !isAwaitingFirstData">
         <div class="grid grid-cols-2 gap-3">
           <div>
             <label class="mb-1 block text-[10px] text-[var(--app-ink-soft)]">Note (/5)</label>
@@ -460,7 +482,7 @@
         <p v-if="record.error_message" class="text-[11px] text-[var(--app-red)]">{{ record.error_message }}</p>
 
         <div class="flex gap-2 pt-1">
-          <button class="btn-secondary flex-1 text-xs" :disabled="isRunning" @click="run">
+          <button class="btn-secondary flex-1 text-xs" :disabled="isRunning || desktopJob !== null" @click="run">
             <UIcon
               :name="isRunning ? 'i-lucide-loader-circle' : 'i-lucide-rotate-cw'"
               :class="['h-3.5 w-3.5', isRunning && 'animate-spin']"
@@ -481,14 +503,20 @@
 import type { UseDragToReorderReturn, UseToastReturn } from '~/types/Composables'
 import type { EnrichmentForm, UiProspectEnrichmentProps } from '~/types/UiProspectEnrichment'
 import type { ComponentPublicInstance, ComputedRef, PropType, Ref } from 'vue'
+import type { DesktopJob } from '~/services/desktopJobService'
 import type { EnrichmentOpeningHours, ProspectEnrichment } from '~/services/enrichmentService'
 import type { ProspectCountry } from '~/types'
 import { computed, onBeforeUnmount, ref, watch } from 'vue'
+import { DesktopJobService } from '~/services/desktopJobService'
 import { EnrichmentService } from '~/services/enrichmentService'
+import { getScraperSidecarInfo } from '~/services/scraperSidecarService'
+import { useProspectSearchStore } from '~/stores/prospectSearch'
 import { useDragToReorder } from '~/composables/useDragToReorder'
 import { useToast } from '~/composables/useToast'
 import { PhotoLabels } from '~/utils/photoLabels'
 import { PROFESSIONAL_LICENSE_SOURCE_LABELS } from '~/constants/professionalLicense'
+
+const DESKTOP_JOB_POLL_INTERVAL_MS: number = 10_000
 
 /** Prospect data enrichment form and actions. */
 const props: UiProspectEnrichmentProps = defineProps({
@@ -542,7 +570,14 @@ const photoDrag: UseDragToReorderReturn<string> = useDragToReorder({
   morphGhostToSlot: morphPhotoGhostHeight,
 })
 
+const prospectSearchStore: ReturnType<typeof useProspectSearchStore> = useProspectSearchStore()
+
 const record: Ref<ProspectEnrichment | null> = ref(null)
+/** The enrichment another device left for the PC, while it waits or runs there. */
+const desktopJob: Ref<DesktopJob | null> = ref(null)
+const isCancellingDesktopJob: Ref<boolean> = ref(false)
+let desktopJobPollTimer: ReturnType<typeof setTimeout> | null = null
+let hasLeftComponent: boolean = false
 const isLoading: Ref<boolean> = ref(false)
 const isRunning: Ref<boolean> = ref(false)
 const isSaving: Ref<boolean> = ref(false)
@@ -642,6 +677,26 @@ const STATUS_LABELS: Record<string, string> = {
 }
 
 const statusLabel: ComputedRef<string> = computed((): string => STATUS_LABELS[record.value?.status ?? ''] ?? '')
+
+/** A first enrichment is under way on the PC: the record exists but holds nothing to show or edit yet. */
+const isAwaitingFirstData: ComputedRef<boolean> = computed(
+  (): boolean =>
+    record.value !== null &&
+    record.value.status === 'enriching' &&
+    !record.value.rating &&
+    !record.value.description &&
+    (record.value.photos ?? []).length === 0,
+)
+
+const desktopJobLabel: ComputedRef<string> = computed((): string => {
+  if (desktopJob.value?.status === 'running') {
+    return 'Votre PC lit les pages de ce prospect avec son Chrome (environ une minute).'
+  }
+  if (prospectSearchStore.isDesktopAppOnline) {
+    return "Demande envoyée à votre PC : il s'en occupe dans la minute."
+  }
+  return "En attente de votre PC : l'application DevLeadHunter s'en occupera dès qu'elle sera ouverte. Elle démarre avec Windows."
+})
 const statusClass: ComputedRef<string> = computed((): string => {
   switch (record.value?.status) {
     case 'completed':
@@ -769,16 +824,98 @@ async function load(): Promise<void> {
   try {
     record.value = await EnrichmentService.getProspectEnrichment(props.prospectId)
     syncForm()
+    await loadDesktopJob()
   } finally {
     isLoading.value = false
   }
 }
 
-/** Run (or re-run) the enrichment scraper. */
+/** Stop following the enrichment left for the PC. */
+function stopDesktopJobPolling(): void {
+  if (desktopJobPollTimer !== null) {
+    clearTimeout(desktopJobPollTimer)
+    desktopJobPollTimer = null
+  }
+}
+
+/**
+ * Read the enrichment the PC still has to do for this prospect, and keep following it until it ends.
+ * @returns A promise resolved once the job state is published.
+ */
+async function loadDesktopJob(): Promise<void> {
+  const prospectId: number | null = props.prospectId
+  if (!prospectId) return
+  const wasWaitingForDesktop: boolean = desktopJob.value !== null
+  const jobs: DesktopJob[] = await DesktopJobService.listActive('prospect_enrichment', prospectId).catch(
+    (): DesktopJob[] => [],
+  )
+  if (hasLeftComponent || prospectId !== props.prospectId) return
+  desktopJob.value = jobs[0] ?? null
+  stopDesktopJobPolling()
+  if (desktopJob.value !== null) {
+    desktopJobPollTimer = setTimeout((): void => {
+      void loadDesktopJob()
+    }, DESKTOP_JOB_POLL_INTERVAL_MS)
+    return
+  }
+  if (wasWaitingForDesktop) {
+    record.value = await EnrichmentService.getProspectEnrichment(prospectId)
+    syncForm()
+    if (record.value?.status === 'completed') toast.success('Données récupérées par votre PC')
+    else if (record.value?.error_message) toast.error(record.value.error_message)
+  }
+}
+
+/**
+ * Leave the enrichment to the PC: this device has no Chrome of its own to read the prospect's pages.
+ * @returns A promise resolved once the request waits for the desktop app, or was refused.
+ */
+async function requestDesktopEnrichment(): Promise<void> {
+  if (!props.prospectId) return
+  try {
+    await DesktopJobService.request('prospect_enrichment', props.prospectId)
+    record.value = await EnrichmentService.getProspectEnrichment(props.prospectId)
+    syncForm()
+    await loadDesktopJob()
+    toast.success('Demande envoyée à votre PC')
+  } catch (err: unknown) {
+    toast.error(err instanceof Error && err.message ? err.message : "La demande n'a pas pu être envoyée à votre PC.")
+  }
+}
+
+/**
+ * Withdraw the enrichment left for the PC; the record goes back to what it was.
+ * @returns A promise resolved once the request is withdrawn, or the withdrawal was refused.
+ */
+async function cancelDesktopJob(): Promise<void> {
+  const job: DesktopJob | null = desktopJob.value
+  if (job === null || !props.prospectId) return
+  isCancellingDesktopJob.value = true
+  try {
+    await DesktopJobService.cancel(job.id)
+    desktopJob.value = null
+    stopDesktopJobPolling()
+    record.value = await EnrichmentService.getProspectEnrichment(props.prospectId)
+    syncForm()
+    toast.success('Demande annulée')
+  } catch (err: unknown) {
+    toast.error(err instanceof Error && err.message ? err.message : "La demande n'a pas pu être annulée.")
+    await loadDesktopJob()
+  } finally {
+    isCancellingDesktopJob.value = false
+  }
+}
+
+/** Run (or re-run) the enrichment scraper, or hand it to the PC from a device without one. */
 async function run(): Promise<void> {
   if (!props.prospectId) return
   isRunning.value = true
   try {
+    const hasLocalScraper: boolean = (await getScraperSidecarInfo()) !== null
+    if (!hasLocalScraper) {
+      await requestDesktopEnrichment()
+      return
+    }
     record.value = await EnrichmentService.runProspectEnrichment(
       props.prospectId,
       props.prospectName,
@@ -970,6 +1107,8 @@ watch(
 )
 
 onBeforeUnmount((): void => {
+  hasLeftComponent = true
   photoDrag.cancelDrag()
+  stopDesktopJobPolling()
 })
 </script>

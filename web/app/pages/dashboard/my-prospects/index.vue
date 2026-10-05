@@ -468,7 +468,9 @@ import type {
 import { ProspectCountries } from '~/utils/prospectCountries'
 import { downloadProspectsJson, downloadProspectTemplateJson, parseProspectsJson } from '~/utils/prospectJson'
 import { ProspectWebsite } from '~/utils/prospectWebsite'
+import { DesktopJobService } from '~/services/desktopJobService'
 import { EnrichmentService } from '~/services/enrichmentService'
+import { getScraperSidecarInfo } from '~/services/scraperSidecarService'
 import { useDrawerStackStore } from '~/stores/drawerStack'
 import { useToast } from '~/composables/useToast'
 import { useMyProspectsFilters } from '~/composables/useMyProspectsFilters'
@@ -798,9 +800,38 @@ function goToSiteGeneration(): void {
 }
 
 /**
+ * Leave the enrichment of the selected prospects to the PC, from a device without a Chrome of its own.
+ * @param prospectIds - The prospects to enrich.
+ * @returns A promise resolved once every request is left for the desktop app.
+ */
+async function requestDesktopEnrichments(prospectIds: number[]): Promise<void> {
+  let requested: number = 0
+  for (const prospectId of prospectIds) {
+    try {
+      await DesktopJobService.request('prospect_enrichment', prospectId)
+      requested += 1
+    } catch {
+      continue
+    }
+    bulkProgress.value = { completed: requested, total: prospectIds.length }
+  }
+  if (requested === 0) {
+    toast.error("Les demandes n'ont pas pu être envoyées à votre PC.")
+    return
+  }
+  const count: string = requested > 1 ? `${requested} enrichissements envoyés` : '1 enrichissement envoyé'
+  toast.success(
+    searchStore.isDesktopAppOnline
+      ? `${count} à votre PC : il s'en occupe dans la minute.`
+      : `${count} à votre PC : il s'en occupera dès que l'application sera ouverte.`,
+  )
+  clearSelection()
+}
+
+/**
  * Enrich every selected prospect through the local sidecar (residential IP),
- * with live progress. Without the desktop app the service refuses rather than
- * scraping from the server (blocked by Google).
+ * with live progress. Without the desktop app, the work is left for the PC
+ * instead of scraping from the server (blocked by Google).
  */
 async function bulkEnrich(): Promise<void> {
   if (bulkBusy.value || selectedIds.value.length === 0) return
@@ -822,6 +853,11 @@ async function bulkEnrich(): Promise<void> {
   bulkBusy.value = true
   bulkProgress.value = { completed: 0, total: targets.length }
   try {
+    const hasLocalScraper: boolean = (await getScraperSidecarInfo()) !== null
+    if (!hasLocalScraper) {
+      await requestDesktopEnrichments(targets.map((target: BulkEnrichTarget): number => target.id))
+      return
+    }
     const res: BulkEnrichResult = await EnrichmentService.runBulkEnrichment(
       targets,
       (completed: number, total: number): void => {

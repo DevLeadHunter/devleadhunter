@@ -93,6 +93,7 @@ import type { ComputedRef, Ref } from 'vue'
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useUserStore } from '~/stores/user'
 import { useAppTheme } from '~/composables/useAppTheme'
+import { useDesktopJobRelayStore } from '~/stores/desktopJobRelay'
 import { useDesktopVideoRelayStore } from '~/stores/desktopVideoRelay'
 import { useDrawerStackStore } from '~/stores/drawerStack'
 import { useProspectSearchStore } from '~/stores/prospectSearch'
@@ -139,6 +140,8 @@ const drawerStack: ReturnType<typeof useDrawerStackStore> = useDrawerStackStore(
 const prospectSearchStore: ReturnType<typeof useProspectSearchStore> = useProspectSearchStore()
 
 const desktopVideoRelayStore: ReturnType<typeof useDesktopVideoRelayStore> = useDesktopVideoRelayStore()
+
+const desktopJobRelayStore: ReturnType<typeof useDesktopJobRelayStore> = useDesktopJobRelayStore()
 
 /** Background watcher toasting automatisation completions across every dashboard page. */
 const automationNotifier: UseAutomationCompletionNotifierReturn = useAutomationCompletionNotifier()
@@ -266,6 +269,7 @@ onMounted(async (): Promise<void> => {
     automationNotifier.start()
     prospectSearchStore.startWatching()
     desktopVideoRelayStore.startWatching()
+    desktopJobRelayStore.startWatching()
     sessionRenewalTimer = setInterval((): void => {
       void userStore.renewTokenIfAging()
     }, SESSION_RENEWAL_CHECK_INTERVAL_MS)
@@ -278,6 +282,7 @@ onUnmounted((): void => {
     automationNotifier.stop()
     prospectSearchStore.stopWatching()
     desktopVideoRelayStore.stopWatching()
+    desktopJobRelayStore.stopWatching()
     if (sessionRenewalTimer !== null) clearInterval(sessionRenewalTimer)
   }
 })

@@ -26,6 +26,7 @@ from .routes import (
     dashboard,
     demo_events,
     demo_sites,
+    desktop_jobs,
     domains,
     email_accounts,
     email_health,
@@ -64,6 +65,7 @@ router.include_router(auth.router)
 router.include_router(health.router)
 router.include_router(prospects.router)
 router.include_router(prospect_searches.router)
+router.include_router(desktop_jobs.router)
 router.include_router(users.router)
 router.include_router(credit_settings.router)
 router.include_router(credits.router)

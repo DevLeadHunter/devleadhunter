@@ -24,6 +24,7 @@ from models.credit_settings import CreditSettings
 from models.credit_transaction import CreditTransaction
 from models.demo_site import DemoSite
 from models.demo_site_lead import DemoSiteLead
+from models.desktop_job import DesktopJob
 from models.email_account import EmailAccount
 from models.email_log import EmailLog
 from models.email_queue import EmailQueue
@@ -84,6 +85,7 @@ __all__ = [
     "CreditTransaction",
     "DemoSite",
     "DemoSiteLead",
+    "DesktopJob",
     "EmailAccount",
     "EmailLog",
     "EmailQueue",
