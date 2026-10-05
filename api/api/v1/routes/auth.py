@@ -161,6 +161,19 @@ async def login(request: Request, user_credentials: UserLogin, db: Session = Dep
     return {"access_token": access_token, "token_type": "bearer"}
 
 
+@router.post("/refresh", response_model=Token)
+async def refresh_access_token(current_user: User = Depends(get_current_active_user)) -> Any:
+    """
+    Trade a still valid access token for a new one, with the full lifetime again.
+
+    An app that stays open (the desktop app in the tray, the app installed on the iPad) renews its
+    token while it is used, instead of being signed out when the token expires.
+    """
+    access_token_expires = timedelta(minutes=settings.access_token_expire_minutes)
+    access_token = AuthService.create_access_token(data={"sub": current_user.email}, expires_delta=access_token_expires)
+    return {"access_token": access_token, "token_type": "bearer"}
+
+
 @router.get("/me", response_model=UserResponse)
 async def get_current_user_info(
     current_user: User = Depends(get_current_active_user), db: Session = Depends(get_db)

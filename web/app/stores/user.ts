@@ -3,7 +3,7 @@ import { defineStore } from 'pinia'
 import type { User, LoginCredentials, SignupPayload, ProfileUpdate } from '~/types'
 import type { ComputedRef, Ref } from 'vue'
 import { ref, computed } from 'vue'
-import { AuthService } from '~/services/authService'
+import { AuthService, TokenRejectedError } from '~/services/authService'
 
 /** Pinia store for auth session, profile and onboarding flag. */
 // Pinia ne fournit pas de type nommé pour un store : TypeScript l'élide, il est inécrivable.
@@ -18,6 +18,12 @@ export const useUserStore = defineStore('user', () => {
 
   // Cache validation for 30 seconds to avoid excessive API calls
   const VALIDATION_CACHE_TIME: number = 30000
+
+  // An app left open (the desktop app in the tray, the app installed on the iPad) trades its token
+  // for a fresh one twice a day, so it never reaches the token's expiry while it is used.
+  const TOKEN_RENEWAL_INTERVAL_MS: number = 12 * 60 * 60 * 1000
+  const TOKEN_RENEWED_AT_KEY: string = 'token_renewed_at'
+  let isRenewingToken: boolean = false
 
   // Getters
   const isAuthenticated: ComputedRef<boolean> = computed(() => {
@@ -55,6 +61,7 @@ export const useUserStore = defineStore('user', () => {
       if (import.meta.client) {
         localStorage.setItem('token', token.value)
         localStorage.setItem('user', JSON.stringify(user.value))
+        localStorage.setItem(TOKEN_RENEWED_AT_KEY, String(Date.now()))
       }
     } catch (err) {
       error.value = err instanceof Error ? err.message : 'Login failed'
@@ -90,6 +97,7 @@ export const useUserStore = defineStore('user', () => {
       if (import.meta.client) {
         localStorage.setItem('token', token.value)
         localStorage.setItem('user', JSON.stringify(user.value))
+        localStorage.setItem(TOKEN_RENEWED_AT_KEY, String(Date.now()))
       }
     } catch (err) {
       error.value = err instanceof Error ? err.message : 'Signup failed'
@@ -108,6 +116,7 @@ export const useUserStore = defineStore('user', () => {
     lastValidationTime.value = null
     localStorage.removeItem('token')
     localStorage.removeItem('user')
+    localStorage.removeItem(TOKEN_RENEWED_AT_KEY)
   }
 
   /**
@@ -226,8 +235,16 @@ export const useUserStore = defineStore('user', () => {
       // Update validation cache time
       lastValidationTime.value = now
 
+      void renewTokenIfAging()
       return true
     } catch (error) {
+      // The API out of reach (no network yet when Windows starts the desktop app, a restart) says
+      // nothing about the token: the session read from this device stays, the next check confirms it.
+      const storedUser: string | null = localStorage.getItem('user')
+      if (!(error instanceof TokenRejectedError) && storedUser) {
+        user.value = user.value ?? JSON.parse(storedUser)
+        return true
+      }
       // Token is invalid or expired, clear auth
       console.error('Auth validation failed:', error)
       token.value = null
@@ -235,7 +252,32 @@ export const useUserStore = defineStore('user', () => {
       lastValidationTime.value = null
       localStorage.removeItem('token')
       localStorage.removeItem('user')
+      localStorage.removeItem(TOKEN_RENEWED_AT_KEY)
       return false
+    }
+  }
+
+  /**
+   * Trade the token for a fresh one when it was last renewed more than half a day ago.
+   * @returns A promise resolved once the token is renewed, or was recent enough.
+   */
+  async function renewTokenIfAging(): Promise<void> {
+    if (!import.meta.client || !token.value || isRenewingToken) return
+    const renewedAt: number = Number(localStorage.getItem(TOKEN_RENEWED_AT_KEY) ?? 0)
+    if (Date.now() - renewedAt < TOKEN_RENEWAL_INTERVAL_MS) return
+    const renewedToken: string = token.value
+    isRenewingToken = true
+    try {
+      const renewal: TokenResponse = await AuthService.refreshToken(renewedToken)
+      // A sign-out or another account while the request ran: the answer belongs to nobody now.
+      if (token.value !== renewedToken) return
+      token.value = renewal.access_token
+      localStorage.setItem('token', renewal.access_token)
+      localStorage.setItem(TOKEN_RENEWED_AT_KEY, String(Date.now()))
+    } catch {
+      // Tried again at the next check; a token the API refuses is handled by validateAuth.
+    } finally {
+      isRenewingToken = false
     }
   }
 
@@ -299,6 +341,7 @@ export const useUserStore = defineStore('user', () => {
     completeOnboarding,
     initializeAuth,
     validateAuth,
+    renewTokenIfAging,
     refreshUser,
   }
 })

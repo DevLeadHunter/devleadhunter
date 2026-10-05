@@ -6,6 +6,14 @@ function getApiUrl(): string {
   return config.public.apiBase
 }
 
+/** Answers by which the API turns a token down: invalid or expired (401, 403), account deactivated (400). */
+const TOKEN_REJECTION_STATUSES: number[] = [400, 401, 403]
+
+/**
+ * The API answered and refused the token, as opposed to an API out of reach (no network yet, a restart).
+ */
+export class TokenRejectedError extends Error {}
+
 export class AuthService {
   /**
    * Login user
@@ -57,7 +65,7 @@ export class AuthService {
    * Get current user information
    * @param token - JWT token
    * @returns Current user
-   * @throws If request fails
+   * @throws TokenRejectedError when the API refuses the token, Error when it cannot be reached
    */
   static async getCurrentUser(token: string): Promise<User> {
     const response: Response = await fetch(`${getApiUrl()}/api/v1/auth/me`, {
@@ -68,8 +76,36 @@ export class AuthService {
       },
     })
 
+    if (TOKEN_REJECTION_STATUSES.includes(response.status)) {
+      throw new TokenRejectedError('Token rejected')
+    }
     if (!response.ok) {
       throw new Error('Failed to get current user')
+    }
+
+    return response.json()
+  }
+
+  /**
+   * Trade a still valid token for a new one with the full lifetime again.
+   * @param token - JWT token.
+   * @returns The new token.
+   * @throws TokenRejectedError when the API refuses the token, Error when it cannot be reached.
+   */
+  static async refreshToken(token: string): Promise<TokenResponse> {
+    const response: Response = await fetch(`${getApiUrl()}/api/v1/auth/refresh`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+    })
+
+    if (TOKEN_REJECTION_STATUSES.includes(response.status)) {
+      throw new TokenRejectedError('Token rejected')
+    }
+    if (!response.ok) {
+      throw new Error('Failed to refresh the token')
     }
 
     return response.json()
