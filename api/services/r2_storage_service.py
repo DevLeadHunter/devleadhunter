@@ -36,7 +36,8 @@ class R2StorageService:
 
         videos/websites/{slug}.mp4               generated prospection video
         videos/assistant/{slug}.mp4              receptionist prospection video
-        videos/presenter/{user_id}.mp4           source webcam clip, one per user
+        videos/presenter/takes/{user_id}/{uuid}.mp4      webcam takes, several per module
+        videos/presenter/examples/{user_id}/{uuid}.mp4   a take's example video, to compare the takes
         images/websites/{slug}.jpg               email thumbnail ({vignette_video})
         images/assistant/{slug}.jpg              receptionist email thumbnail ({vignette_video_assistant})
         images/profile/{user_id}.jpg             profile photo, the bubble on the email thumbnails
@@ -189,23 +190,33 @@ class R2StorageService:
         return f"{cls.IMAGES_ASSISTANT_PREFIX}/{slug}.jpg"
 
     @classmethod
-    def presenter_key(cls, user_id: int, module: str = "websites") -> str:
+    def presenter_take_key(cls, user_id: int) -> str:
         """
-        Build the key of a user's source webcam clip for a sellable module.
+        Build the key of a new presenter take, unique so a new recording never overwrites an older take.
 
-        The website clip keeps its historic key (``videos/presenter/{user_id}.mp4``) so existing
-        clips never move; other modules get a suffixed key.
+        Takes kept before several were allowed stay under their historic key (``videos/presenter/{user_id}.mp4``,
+        ``videos/presenter/{user_id}-{module}.mp4``).
 
         Args:
-            user_id: Owner of the clip.
-            module: The sellable module the clip belongs to (``websites`` / ``ai-assistant``).
+            user_id: Owner of the take.
 
         Returns:
             The object key.
         """
-        if module == "websites":
-            return f"{cls.VIDEOS_PRESENTER_PREFIX}/{user_id}.mp4"
-        return f"{cls.VIDEOS_PRESENTER_PREFIX}/{user_id}-{module}.mp4"
+        return f"{cls.VIDEOS_PRESENTER_PREFIX}/takes/{user_id}/{uuid.uuid4().hex}.mp4"
+
+    @classmethod
+    def presenter_example_key(cls, user_id: int) -> str:
+        """
+        Build the key of a take's example video, new at each build so no cache serves the previous one.
+
+        Args:
+            user_id: Owner of the take.
+
+        Returns:
+            The object key.
+        """
+        return f"{cls.VIDEOS_PRESENTER_PREFIX}/examples/{user_id}/{uuid.uuid4().hex}.mp4"
 
     @classmethod
     def profile_photo_key(cls, user_id: int) -> str:

@@ -1,371 +1,156 @@
 <template>
-  <div class="space-y-8">
+  <div class="space-y-6">
     <UiLoader v-if="isLoading" />
 
     <template v-else>
-      <section class="space-y-3">
+      <section class="space-y-4">
         <div class="flex items-center justify-between gap-3">
           <h2 class="text-sm font-semibold text-[var(--app-ink)]">{{ wording.title }}</h2>
-          <span v-if="isClipFileMissing" class="app-badge app-badge--danger font-medium">
+          <span v-if="activeTake?.is_clip_missing" class="app-badge app-badge--danger font-medium">
             <UIcon name="i-lucide-triangle-alert" class="h-3.5 w-3.5" />
             Fichier introuvable
           </span>
-          <span v-else-if="info?.has_video" class="app-badge app-badge--success font-medium">
+          <span v-else-if="activeTake" class="app-badge app-badge--success font-medium">
             <UIcon name="i-lucide-check" class="h-3.5 w-3.5" />
             Prêt
           </span>
         </div>
         <p v-if="wording.subtitle" class="text-muted text-sm leading-relaxed">{{ wording.subtitle }}</p>
 
-        <UiCallout v-if="isClipFileMissing" variant="danger">
-          Un clip est enregistré mais son fichier est introuvable sur le stockage — les vidéos de prospection ne peuvent
-          pas être générées. Refilmez ou réimportez un clip pour repartir.
+        <UiCallout v-if="activeTake?.is_clip_missing" variant="danger">
+          La prise utilisée est enregistrée mais son fichier est introuvable sur le stockage : les vidéos de prospection
+          ne peuvent pas être générées. Choisissez une autre prise ou ajoutez-en une.
         </UiCallout>
-        <div v-if="showClipPlayer" class="space-y-3">
-          <div class="relative">
-            <video
-              :src="previewUrl ?? undefined"
-              controls
-              playsinline
-              preload="auto"
-              class="aspect-video w-full rounded-xl border border-[var(--app-line)] bg-black"
-              @loadeddata="revealFirstFrame"
-            />
-            <button
-              type="button"
-              class="btn-danger absolute top-3 right-3 z-10 flex h-8 min-h-8 items-center justify-center px-2.5 text-xs disabled:opacity-50 pointer-coarse:min-h-11 pointer-coarse:text-sm"
-              :disabled="isDeleting"
-              aria-label="Supprimer le clip"
-              title="Supprimer le clip"
-              @click="askDeleteClip"
-            >
-              <UIcon
-                :name="isDeleting ? 'i-lucide-loader-circle' : 'i-lucide-x'"
-                :class="['h-3.5 w-3.5', isDeleting && 'animate-spin']"
-              />
-            </button>
+
+        <PresenterVideoTakeCapture
+          v-if="isCaptureShown"
+          :module="props.module"
+          :auto-generate="autoGenerate"
+          :can-go-back-to-takes="takes.length > 0"
+          @saved="handleTakeSaved"
+          @back-to-takes="isAddingTake = false"
+        />
+
+        <template v-else>
+          <p class="text-muted text-sm leading-relaxed">
+            Une nouvelle prise ne remplace rien : comparez leurs vidéos d’exemple, puis choisissez celle que vos vidéos
+            utilisent. Les vidéos déjà générées gardent leur prise.
+          </p>
+
+          <div
+            v-if="isDesktopApp"
+            class="space-y-3 rounded-xl border border-[var(--app-line)] bg-[var(--app-surface)] px-4 py-3.5"
+          >
+            <div class="flex flex-col gap-3 @2xl:flex-row @2xl:items-end">
+              <div class="min-w-0 flex-1">
+                <label class="text-muted mb-1.5 block text-xs font-medium">{{ wording.exampleDemoLabel }}</label>
+                <UiSelectField
+                  v-if="exampleDemos.length > 0"
+                  v-model="selectedExampleDemoId"
+                  :options="exampleDemoOptions"
+                  :placeholder="wording.exampleDemoPlaceholder"
+                  :disabled="isBuildRunning"
+                />
+                <p v-else class="text-muted text-xs leading-relaxed">{{ wording.noExampleDemo }}</p>
+              </div>
+              <button
+                type="button"
+                class="app-btn-primary h-11 px-4 text-sm whitespace-nowrap @2xl:pointer-fine:h-9 @2xl:pointer-fine:text-xs"
+                :disabled="!selectedExampleDemo || takesWithoutExampleOnDemo.length === 0 || isBuildRunning"
+                @click="buildMissingExamples"
+              >
+                <UIcon
+                  :name="isBuildRunning ? 'i-lucide-loader-circle' : 'i-lucide-clapperboard'"
+                  :class="['h-3.5 w-3.5', isBuildRunning && 'animate-spin']"
+                />
+                {{ buildAllButtonLabel }}
+              </button>
+            </div>
+            <p class="text-muted text-xs leading-relaxed">{{ wording.exampleDetail }}</p>
+          </div>
+          <div
+            v-else
+            class="flex items-start gap-3 rounded-xl border border-[var(--app-line)] bg-[var(--app-surface)] px-4 py-3.5"
+          >
+            <UIcon name="i-lucide-monitor" class="mt-0.5 h-4 w-4 shrink-0 text-[var(--app-ink)]" />
+            <p class="text-muted text-xs leading-relaxed">
+              Les vidéos d’exemple se montent dans l’application desktop : ouvrez-la pour comparer vos prises. D’ici,
+              vous pouvez les regarder et choisir celle à utiliser.
+            </p>
           </div>
 
-          <div class="flex flex-wrap items-center justify-between gap-3">
-            <p class="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-[var(--app-ink-soft)]">
-              <span v-if="clipDurationLabel" class="font-label text-[var(--app-ink)]">{{ clipDurationLabel }}</span>
-              <span v-if="clipDurationLabel && info?.original_filename" aria-hidden="true">·</span>
-              <span v-if="info?.original_filename" class="truncate">{{ info.original_filename }}</span>
-              <span aria-hidden="true">·</span>
-              <span>{{ isRecordedClip ? 'Filmé dans l’application' : 'Fichier importé' }}</span>
-            </p>
-            <button type="button" class="app-btn-secondary h-8 px-3 text-xs" @click="startClipReplacement">
-              <UIcon name="i-lucide-refresh-cw" class="h-3.5 w-3.5" />
-              Remplacer le clip
-            </button>
-          </div>
-        </div>
-        <template v-else>
-          <button
-            v-if="isReplacingClip && captureMode === null"
-            type="button"
-            class="cursor-pointer text-xs font-medium text-[var(--app-ink-soft)] underline underline-offset-4 transition-colors hover:text-[var(--app-ink)]"
-            @click="isReplacingClip = false"
-          >
-            Garder le clip actuel
-          </button>
-          <div v-if="captureMode === null" class="grid gap-3 sm:grid-cols-2">
-            <button
-              v-for="option in CAPTURE_OPTIONS"
-              :key="option.mode"
-              type="button"
-              class="flex cursor-pointer flex-col items-start gap-2 rounded-xl border border-[var(--app-line)] bg-[var(--app-surface)] px-4 py-4 text-left transition-colors hover:border-[var(--app-ink-soft)] hover:bg-[var(--app-surface-2)]"
-              @click="captureMode = option.mode"
-            >
-              <span
-                class="flex h-9 w-9 items-center justify-center rounded-lg border border-[var(--app-line)] bg-[var(--app-bg)]"
-              >
-                <UIcon :name="option.icon" class="h-4 w-4 text-[var(--app-ink)]" />
-              </span>
-              <span class="text-sm font-semibold text-[var(--app-ink)]">{{ option.title }}</span>
-              <span class="text-muted text-xs leading-relaxed">{{ option.detail }}</span>
-              <span v-if="option.badge" class="app-badge app-badge--info mt-1 font-medium">{{ option.badge }}</span>
-            </button>
-          </div>
-          <UiPresenterVideoRecorder
-            v-else-if="captureMode === 'record'"
-            :module="props.module"
-            :auto-generate="autoGenerate"
-            @saved="handleRecorded"
-            @cancel="captureMode = null"
-          />
-          <div v-else class="space-y-3">
-            <UiPresenterVideoDropzone
-              :selected-file="selectedFile"
-              :is-dragging="isDragging"
-              :is-uploading="isUploading"
-              :picked-clip-preview-url="pickedClipPreviewUrl"
-              :is-compressing="isCompressing"
-              :compression-progress="compressionProgress"
-              :bytes-before-compression="pickedClipOriginalBytes"
-              :size-error-message="clipSizeErrorMessage"
-              @pick="openFilePicker"
-              @drop-file="handleDropFile"
-              @dragging="isDragging = $event"
-              @upload="handleUpload"
+          <div class="grid gap-4 @2xl:grid-cols-2">
+            <PresenterVideoTakeCard
+              v-for="take in takes"
+              :key="take.id"
+              :take="take"
+              :can-build-example="canBuildExamples"
+              :is-building-example="buildingTakeId === take.id"
+              :is-another-build-running="isBuildRunning && buildingTakeId !== take.id"
+              :is-activating="activatingTakeId === take.id"
+              :is-deleting="deletingTakeId === take.id"
+              :can-delete="!take.is_active || takes.length === 1"
+              :selected-example-demo-id="selectedExampleDemo?.id ?? null"
+              @activate="activateTake(take)"
+              @build-example="buildExample(take)"
+              @delete="askDeleteTake(take)"
             />
             <button
               type="button"
-              class="cursor-pointer text-xs font-medium text-[var(--app-ink-soft)] underline underline-offset-4 transition-colors hover:text-[var(--app-ink)]"
-              @click="captureMode = null"
+              class="flex min-h-48 cursor-pointer flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-[var(--app-line)] px-6 py-8 text-center transition-colors hover:border-[var(--app-ink-soft)] hover:bg-[var(--app-surface-2)]"
+              @click="isAddingTake = true"
             >
-              Revenir au choix
+              <span
+                class="flex h-10 w-10 items-center justify-center rounded-full border border-[var(--app-line)] bg-[var(--app-surface)]"
+              >
+                <UIcon name="i-lucide-plus" class="h-5 w-5 text-[var(--app-ink)]" />
+              </span>
+              <span class="text-sm font-semibold text-[var(--app-ink)]">Nouvelle prise</span>
+              <span class="text-muted text-xs leading-relaxed text-balance">
+                Filmez ou importez une autre version, sans perdre celles-ci.
+              </span>
             </button>
           </div>
         </template>
       </section>
-      <div class="space-y-4">
-        <div
-          v-if="info?.has_video"
-          class="flex items-center justify-between gap-4 rounded-xl border border-[var(--app-line)] bg-[var(--app-surface)] px-4 py-3.5"
-        >
-          <div class="flex min-w-0 items-start gap-3">
-            <UIcon name="i-lucide-sparkles" class="mt-0.5 h-4 w-4 shrink-0 text-[var(--app-ink)]" />
-            <div class="min-w-0">
-              <p class="text-sm font-semibold text-[var(--app-ink)]">Génération automatique</p>
-              <p class="text-muted text-xs leading-relaxed">{{ wording.autoGenerateDetail }}</p>
-            </div>
+
+      <div
+        v-if="takes.length > 0"
+        class="flex items-center justify-between gap-4 rounded-xl border border-[var(--app-line)] bg-[var(--app-surface)] px-4 py-3.5"
+      >
+        <div class="flex min-w-0 items-start gap-3">
+          <UIcon name="i-lucide-sparkles" class="mt-0.5 h-4 w-4 shrink-0 text-[var(--app-ink)]" />
+          <div class="min-w-0">
+            <p class="text-sm font-semibold text-[var(--app-ink)]">Génération automatique</p>
+            <p class="text-muted text-xs leading-relaxed">{{ wording.autoGenerateDetail }}</p>
           </div>
-          <UiSwitch :id="`${fieldIdPrefix}-auto-generate`" v-model="autoGenerate" />
         </div>
-        <section
-          v-if="info?.has_video"
-          class="space-y-5 rounded-xl border border-[var(--app-line)] bg-[var(--app-surface)] px-4 py-4"
-        >
-          <div class="flex items-start gap-3">
-            <UIcon name="i-lucide-scissors" class="mt-0.5 h-4 w-4 shrink-0 text-[var(--app-ink)]" />
-            <div class="min-w-0">
-              <p class="text-sm font-semibold text-[var(--app-ink)]">Déroulé de la vidéo</p>
-              <p class="text-muted mt-0.5 text-xs leading-relaxed">{{ wording.flowDetail }}</p>
-            </div>
-          </div>
-
-          <div>
-            <div
-              class="flex h-9 w-full overflow-hidden rounded-lg border border-[var(--app-line)]"
-              role="img"
-              :aria-label="timelineAriaLabel"
-            >
-              <div
-                v-for="segment in timelineSegments"
-                :key="segment.key"
-                :class="['flex min-w-0 items-center justify-center', segment.tone]"
-                :style="{ width: segment.width }"
-              >
-                <span class="truncate px-1.5 text-[10px] font-semibold">{{ segment.shortLabel }}</span>
-              </div>
-            </div>
-            <div class="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-[11px] text-[var(--app-ink-soft)]">
-              <span
-                v-for="segment in timelineSegments"
-                :key="`legend-${segment.key}`"
-                class="inline-flex items-center gap-1.5"
-              >
-                <span
-                  :class="['h-2.5 w-2.5 shrink-0 rounded-sm border border-[var(--app-line)]', segment.tone]"
-                  aria-hidden="true"
-                />
-                {{ segment.label }} · {{ formatSegment(segment.seconds) }}
-              </span>
-            </div>
-          </div>
-
-          <div v-if="hasEditableCuts" :class="['grid gap-3', timingGridClass]">
-            <div v-if="!isRecordedClip">
-              <label class="text-muted mb-1.5 block text-xs font-medium" :for="`${fieldIdPrefix}-intro`"
-                >Intro (s)</label
-              >
-              <input
-                :id="`${fieldIdPrefix}-intro`"
-                v-model.number="introSeconds"
-                type="number"
-                min="0"
-                max="30"
-                step="0.5"
-                class="input-field"
-                placeholder="5"
-              />
-            </div>
-            <div v-if="!isReceptionistClip">
-              <label class="text-muted mb-1.5 block text-xs font-medium" :for="`${fieldIdPrefix}-site`"
-                >Partie site (s)</label
-              >
-              <input
-                :id="`${fieldIdPrefix}-site`"
-                v-model.number="siteScrollSeconds"
-                type="number"
-                min="0"
-                :max="Math.round(middleSeconds)"
-                step="0.5"
-                class="input-field"
-                placeholder="12"
-              />
-            </div>
-            <div v-if="!isRecordedClip">
-              <label class="text-muted mb-1.5 block text-xs font-medium" :for="`${fieldIdPrefix}-outro`"
-                >Outro (s)</label
-              >
-              <input
-                :id="`${fieldIdPrefix}-outro`"
-                v-model.number="outroSeconds"
-                type="number"
-                min="0"
-                max="30"
-                step="0.5"
-                class="input-field"
-                placeholder="8"
-              />
-            </div>
-          </div>
-          <p v-if="isRecordedClip" class="text-muted text-xs leading-relaxed">
-            Intro ({{ formatSegment(introSeconds) }}) et outro ({{ formatSegment(outroSeconds) }}) sont mesurées sur vos
-            prises — {{ wording.recordedCutsDetail }}
-          </p>
-          <p v-if="!isReceptionistClip" class="text-muted text-xs leading-relaxed">
-            Partie Storyblok :
-            <span class="font-medium text-[var(--app-ink)]">{{ formatSegment(storyblokSegmentSeconds) }}</span>
-            (le reste du milieu). Plus la partie site est longue, plus le défilement est lent.
-          </p>
-          <UiCallout v-if="isStoryblokSegmentShort" variant="warning">
-            Moins de {{ STORYBLOK_COMFORT_SECONDS }} s pour la séquence Storyblok : la démonstration d'édition sera
-            coupée avant la fin. Raccourcissez la partie site si vous voulez la montrer en entier.
-          </UiCallout>
-          <UiCallout v-if="isSpaceChapterDropped" variant="warning">
-            Moins de {{ MIN_WIDGET_SCENE_SECONDS + RECEPTIONIST_SPACE_CHAPTER_SECONDS }} s au milieu : la vidéo montrera
-            le chat sans l'espace client. Allongez la prise du milieu pour le montrer.
-          </UiCallout>
-
-          <div v-if="isDesktopApp" class="space-y-3 border-t border-[var(--app-line)] pt-4">
-            <div class="min-w-0">
-              <p class="text-sm font-medium text-[var(--app-ink)]">Aperçu de calibration</p>
-              <p class="text-muted mt-0.5 text-xs leading-relaxed">{{ wording.previewDetail }}</p>
-            </div>
-            <div class="flex flex-wrap items-end gap-3">
-              <div class="min-w-56 flex-1">
-                <label class="text-muted mb-1.5 block text-xs font-medium">{{ wording.previewPickerLabel }}</label>
-                <UiSelectField
-                  v-model="previewExampleId"
-                  :options="previewExampleOptions"
-                  :placeholder="wording.previewPickerPlaceholder"
-                />
-              </div>
-              <button
-                type="button"
-                class="app-btn-secondary"
-                :disabled="isBuildingPreview || !previewExampleId"
-                @click="handleGeneratePreview"
-              >
-                <UIcon
-                  :name="isBuildingPreview ? 'i-lucide-loader-circle' : 'i-lucide-play'"
-                  :class="['h-3.5 w-3.5', isBuildingPreview && 'animate-spin']"
-                />
-                {{ isBuildingPreview ? 'Génération en cours (~2-3 min)…' : 'Générer un aperçu' }}
-              </button>
-            </div>
-            <video
-              v-if="previewVideoUrl"
-              ref="previewPlayerRef"
-              :key="previewVideoUrl"
-              :src="previewVideoUrl"
-              controls
-              preload="auto"
-              playsinline
-              class="aspect-video w-full rounded-xl border border-[var(--app-line)] bg-black"
-              @loadeddata="revealFirstFrame"
-            />
-          </div>
-        </section>
-
-        <UiCollapsibleCard
-          v-if="captureMode !== 'record'"
-          icon="i-lucide-clapperboard"
-          title="Comment enregistrer votre clip"
-        >
-          <div class="space-y-6 px-4 py-5">
-            <ol class="space-y-4">
-              <li v-for="(step, index) in workflowSteps" :key="step.title" class="flex items-start gap-3">
-                <span
-                  class="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-[var(--app-line)] bg-[var(--app-bg)] text-[11px] font-bold text-[var(--app-ink)]"
-                >
-                  {{ index + 1 }}
-                </span>
-                <div class="min-w-0 pt-0.5">
-                  <p class="text-sm font-medium text-[var(--app-ink)]">{{ step.title }}</p>
-                  <p class="text-muted mt-0.5 text-xs leading-relaxed">{{ step.detail }}</p>
-                </div>
-              </li>
-            </ol>
-            <div class="space-y-4 rounded-lg bg-[var(--app-bg)] p-4">
-              <p class="text-[11px] font-semibold tracking-wide text-[var(--app-ink-soft)] uppercase">
-                Le speech à lire (~{{ speechTotalSeconds }} s)
-              </p>
-              <div v-for="segment in speechSegments" :key="segment.timing" class="flex items-start gap-3">
-                <span
-                  class="mt-0.5 w-16 shrink-0 rounded-md bg-[var(--app-surface-2)] px-2 py-1 text-center text-[10px] font-bold tracking-wide text-[var(--app-ink-soft)] uppercase"
-                >
-                  {{ segment.timing }}
-                </span>
-                <div class="min-w-0">
-                  <p class="text-[10px] font-semibold tracking-wide text-[var(--app-ink-soft)] uppercase">
-                    {{ segment.role }}
-                  </p>
-                  <p class="mt-0.5 text-sm leading-relaxed text-[var(--app-ink)] italic">« {{ segment.text }} »</p>
-                </div>
-              </div>
-            </div>
-            <div class="space-y-3">
-              <p class="text-[11px] font-semibold tracking-wide text-[var(--app-ink-soft)] uppercase">
-                Conseils de tournage
-              </p>
-              <div class="flex flex-wrap gap-2">
-                <span
-                  v-for="tip in RECORDING_TIPS"
-                  :key="tip"
-                  class="rounded-full border border-[var(--app-line)] bg-[var(--app-bg)] px-3 py-1 text-xs text-[var(--app-ink)]"
-                >
-                  {{ tip }}
-                </span>
-              </div>
-              <p class="text-muted flex items-start gap-2 text-xs leading-relaxed">
-                <UIcon name="i-lucide-circle-alert" class="mt-0.5 h-3.5 w-3.5 shrink-0 text-[var(--app-ink-soft)]" />
-                <span>
-                  <strong class="font-semibold text-[var(--app-ink)]">Restez générique</strong> :
-                  {{ wording.stayGenericTip }}
-                </span>
-              </p>
-            </div>
-          </div>
-        </UiCollapsibleCard>
-        <div v-if="info?.has_video" class="flex flex-col sm:flex-row sm:justify-end">
-          <button
-            type="button"
-            class="btn-primary h-11 sm:h-9"
-            :disabled="isSavingSettings"
-            @click="handleSaveSettings"
-          >
-            <UIcon v-if="isSavingSettings" name="i-lucide-loader-circle" class="mr-1.5 h-4 w-4 animate-spin" />
-            {{ isSavingSettings ? 'Enregistrement…' : 'Enregistrer les réglages' }}
-          </button>
-        </div>
+        <UiSwitch
+          :id="`${props.module}-auto-generate`"
+          :model-value="autoGenerate"
+          @update:model-value="handleAutoGenerateChange"
+        />
       </div>
-      <input
-        ref="fileInputRef"
-        type="file"
-        accept="video/mp4,video/webm,video/quicktime,video/x-matroska,.mp4,.webm,.mov,.mkv"
-        class="hidden"
-        @change="handleFileSelected"
+
+      <PresenterVideoTimingsCard
+        v-if="timingsTake && !isCaptureShown"
+        :take="timingsTake"
+        :module="props.module"
+        :take-options="takeOptions"
+        :can-build-preview="canBuildExamples"
+        :is-build-running="isBuildRunning"
+        :is-building-preview="isBuildingTimingsPreview"
+        :preview-video-url="timingsPreviewUrl"
+        @select-take="timingsTakeId = $event"
+        @saved="handleTimingsSaved"
+        @preview="previewTimings"
       />
     </template>
 
     <UiConfirmModal
       ref="deleteModalRef"
-      title="Supprimer le clip"
-      message="Supprimer votre clip de présentation ? Les vidéos déjà générées restent en ligne, mais plus aucune nouvelle vidéo ne pourra être créée tant qu'un clip n'est pas configuré."
+      title="Supprimer la prise"
+      :message="deleteTakeMessage"
       confirm-text="Supprimer"
       cancel-text="Annuler"
       @confirm="handleDeleteConfirmed"
@@ -373,7 +158,7 @@
 
     <UiVideoGenerationModal
       :open="videoProgress.isOpen.value"
-      title="Aperçu de calibration"
+      :title="buildModalTitle"
       :steps="videoProgress.steps.value"
       :log-lines="videoProgress.logLines.value"
       :elapsed-seconds="videoProgress.elapsedSeconds.value"
@@ -385,41 +170,35 @@
 </template>
 
 <script lang="ts" setup>
-import type { UseAuthReturn, UseToastReturn } from '~/types/Composables'
+import type { ComputedRef, EmitFn, PropType, Ref } from 'vue'
+import type { UseToastReturn } from '~/types/Composables'
+import type { ProspectionScriptModule } from '~/composables/useProspectionScript'
+import type { UseVideoGenerationProgressReturn } from '~/composables/useVideoGenerationProgress'
 import type {
-  PresenterVideoCaptureMode,
   PresenterVideoConfigEmits,
   PresenterVideoConfigProps,
+  PresenterVideoExampleDemo,
   PresenterVideoModuleWording,
-  PresenterVideoPreviewExample,
-  PresenterVideoTimelineSegment,
+  PresenterVideoTimingsPreview,
 } from '~/types/PresenterVideoConfig'
-import type { ComputedRef, EmitFn, PropType, Ref } from 'vue'
-import type { PresenterVideo } from '~/services/presenterVideoService'
+import type { PresenterVideoTake, PresenterVideoTakeList } from '~/types/PresenterVideoTake'
 import type { DemoSite, DemoSiteListResponse } from '~/services/demoSiteService'
 import type { PreviewVideoResult } from '~/services/storyblokSidecarService'
 import type { AssistantPreviewVideoResult } from '~/types/AssistantSidecar'
 import type { AiAssistantListResponse, AiAssistantSummary } from '~/types/AiAssistant'
 import type { SelectFieldOption } from '~/types/SelectField'
-import type { ProspectionScriptModule, ProspectionScriptSegment } from '~/composables/useProspectionScript'
-import type { UseVideoCompressionReturn, VideoCompressionResult } from '~/composables/useVideoCompression'
-import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { PresenterVideoService } from '~/services/presenterVideoService'
 import { DemoSiteService } from '~/services/demoSiteService'
 import { AiAssistantService } from '~/services/aiAssistantService'
 import { StoryblokSidecarService } from '~/services/storyblokSidecarService'
 import { AssistantSidecarService } from '~/services/assistantSidecarService'
 import { getScraperSidecarInfo } from '~/services/scraperSidecarService'
-import type { UseVideoGenerationProgressReturn } from '~/composables/useVideoGenerationProgress'
 import { useVideoGenerationProgress } from '~/composables/useVideoGenerationProgress'
-import { buildScriptFor } from '~/composables/useProspectionScript'
 import { PRESENTER_VIDEO_WORDINGS } from '~/constants/presenterVideoWordings'
 import { RECEPTIONIST_VIDEO_BUILD_PHASES, SITE_VIDEO_BUILD_PHASES } from '~/constants/videoBuildPhases'
-import { PRESENTER_VIDEO_MAX_BYTES, useVideoCompression } from '~/composables/useVideoCompression'
+import { PresenterVideoTimings } from '~/utils/presenterVideoTimings'
 import { useToast } from '~/composables/useToast'
-import { useAuth } from '~/composables/useAuth'
-
-/** Presenter video upload, tuning and deletion for prospect videos, for the site's clip or the receptionist's. */
 
 const props: PresenterVideoConfigProps = defineProps({
   module: {
@@ -430,719 +209,448 @@ const props: PresenterVideoConfigProps = defineProps({
 
 const emit: EmitFn<PresenterVideoConfigEmits> = defineEmits<PresenterVideoConfigEmits>()
 
-/** The two ways in, offered side by side when no clip exists yet. */
-const CAPTURE_OPTIONS: Array<{
-  mode: PresenterVideoCaptureMode
-  icon: string
-  title: string
-  detail: string
-  badge: string
-}> = [
-  {
-    mode: 'record',
-    icon: 'i-lucide-video',
-    title: 'Filmer ici, avec le texte à lire',
-    detail:
-      'Trois prises courtes — intro, milieu, fin — guidées par un prompteur. Chacune se refait toute seule si elle ne vous plaît pas.',
-    badge: 'Le plus simple',
-  },
-  {
-    mode: 'import',
-    icon: 'i-lucide-upload',
-    title: 'Importer un fichier',
-    detail: 'Vous avez déjà filmé, au reflex, au téléphone ou avec un autre outil ? Déposez le fichier ici.',
-    badge: '',
-  },
-]
-
-/** Short recording tips rendered as pills. */
-const RECORDING_TIPS: string[] = ['1080p suffit', 'Lumière face à vous', 'Regardez l’objectif']
-
-/** Mirror of the server's automatic split: Storyblok budget carved out of the middle. */
-const AUTO_STORYBLOK_SECONDS: number = 17
-
-/** Mirror of the server's floor for the site-scroll part. */
-const MIN_SITE_SCROLL_SECONDS: number = 6
-
-/** Under this, the scripted Storyblok edit demo gets visibly cut. */
-const STORYBLOK_COMFORT_SECONDS: number = 10
-
-/** Mirror of the server's client-space chapter, which closes the receptionist's middle. */
-const RECEPTIONIST_SPACE_CHAPTER_SECONDS: number = 7
-
-/** Mirror of the server's shortest chat scene: below it plus the chapter, the chapter is dropped. */
-const MIN_WIDGET_SCENE_SECONDS: number = 6
-
 const toast: UseToastReturn = useToast()
-const { user }: UseAuthReturn = useAuth()
 const videoProgress: UseVideoGenerationProgressReturn = useVideoGenerationProgress(
   props.module === 'ai-assistant' ? RECEPTIONIST_VIDEO_BUILD_PHASES : SITE_VIDEO_BUILD_PHASES,
 )
-const { isCompressing, compressionProgress, compressPresenterClip }: UseVideoCompressionReturn = useVideoCompression()
 
-const info: Ref<PresenterVideo | null> = ref(null)
-const previewUrl: Ref<string | null> = ref(null)
-const isLoading: Ref<boolean> = ref(true)
-const isUploading: Ref<boolean> = ref(false)
-const isSavingSettings: Ref<boolean> = ref(false)
-const isDeleting: Ref<boolean> = ref(false)
-const isDragging: Ref<boolean> = ref(false)
-const selectedFile: Ref<File | null> = ref(null)
-const fileInputRef: Ref<HTMLInputElement | null> = ref(null)
-const deleteModalRef: Ref<{ open: () => void } | null> = ref(null)
-const introSeconds: Ref<number> = ref(4)
-const outroSeconds: Ref<number> = ref(5)
-const siteScrollSeconds: Ref<number> = ref(12)
+const takes: Ref<PresenterVideoTake[]> = ref([])
 const autoGenerate: Ref<boolean> = ref(true)
-const captureMode: Ref<PresenterVideoCaptureMode | null> = ref(null)
+const isLoading: Ref<boolean> = ref(true)
 
-/** Whether the app runs in the desktop shell (the calibration preview needs the sidecar). */
+/** Whether the capture UI is shown on purpose while takes already exist. */
+const isAddingTake: Ref<boolean> = ref(false)
+
+/** Whether the app runs in the desktop shell (the example videos need the sidecar). */
 const isDesktopApp: Ref<boolean> = ref(false)
 
-/** Site or receptionist used as the calibration example, as a select value. */
-const previewExampleId: Ref<string> = ref('')
-const previewExamples: Ref<PresenterVideoPreviewExample[]> = ref([])
-const isBuildingPreview: Ref<boolean> = ref(false)
+const exampleDemos: Ref<PresenterVideoExampleDemo[]> = ref([])
 
-/** The calibration preview <video>, scrolled into view once the render lands. */
-const previewPlayerRef: Ref<HTMLVideoElement | null> = ref(null)
+/** Site or receptionist used as the example, as a select value. */
+const selectedExampleDemoId: Ref<string> = ref('')
 
-/** Object URL of the locally rendered calibration example. */
-const previewVideoUrl: Ref<string | null> = ref(null)
-
-/** Playable preview of the clip just picked, before it is sent. */
-const pickedClipPreviewUrl: Ref<string | null> = ref(null)
-
-/** Weight of the picked clip before compression, to show what was gained. */
-const pickedClipOriginalBytes: Ref<number | null> = ref(null)
-
-/** Blocking message when the picked clip is still too heavy to be sent. */
-const clipSizeErrorMessage: Ref<string | null> = ref(null)
-
-/** Whether the capture UI is shown on purpose while a clip already exists. */
-const isReplacingClip: Ref<boolean> = ref(false)
-
-/** Whether the stored clip is registered but its file cannot be fetched. */
-const isClipFileMissing: Ref<boolean> = ref(false)
-
-/** Whether the stored clip was filmed in-app (its cut points are measured). */
-const isRecordedClip: ComputedRef<boolean> = computed((): boolean => info.value?.source === 'recorded')
-
-const isReceptionistClip: ComputedRef<boolean> = computed((): boolean => props.module === 'ai-assistant')
-
-/** Prefix of the form ids, so the site's clip and the receptionist's can sit on one page. */
-const fieldIdPrefix: ComputedRef<string> = computed((): string =>
-  isReceptionistClip.value ? 'receptionist-video' : 'video',
-)
+/** One build at a time: the desktop builder keeps a single result per demo. */
+const buildingTakeId: Ref<number | null> = ref(null)
+const isBuildingTimingsPreview: Ref<boolean> = ref(false)
+const timingsPreview: Ref<PresenterVideoTimingsPreview | null> = ref(null)
+const activatingTakeId: Ref<number | null> = ref(null)
+const deletingTakeId: Ref<number | null> = ref(null)
+const timingsTakeId: Ref<number | null> = ref(null)
+const takePendingDeletion: Ref<PresenterVideoTake | null> = ref(null)
+const deleteModalRef: Ref<{ open: () => void } | null> = ref(null)
 
 const wording: ComputedRef<PresenterVideoModuleWording> = computed(
   (): PresenterVideoModuleWording => PRESENTER_VIDEO_WORDINGS[props.module],
 )
 
-/** The recommended takes of this module's clip, as the teleprompter shows them. */
-const scriptSegments: ComputedRef<ProspectionScriptSegment[]> = computed((): ProspectionScriptSegment[] =>
-  buildScriptFor(props.module, user.value?.name ?? '', user.value?.company_name ?? ''),
+const activeTake: ComputedRef<PresenterVideoTake | null> = computed(
+  (): PresenterVideoTake | null => takes.value.find((take: PresenterVideoTake): boolean => take.is_active) ?? null,
 )
 
-/** Length of the whole recommended speech, for the guide. */
-const speechTotalSeconds: ComputedRef<number> = computed((): number =>
-  scriptSegments.value.reduce((total: number, segment: ProspectionScriptSegment): number => {
-    return total + segment.targetSeconds
-  }, 0),
+const isCaptureShown: ComputedRef<boolean> = computed((): boolean => takes.value.length === 0 || isAddingTake.value)
+
+const timingsTake: ComputedRef<PresenterVideoTake | null> = computed(
+  (): PresenterVideoTake | null =>
+    takes.value.find((take: PresenterVideoTake): boolean => take.id === timingsTakeId.value) ??
+    activeTake.value ??
+    takes.value[0] ??
+    null,
 )
 
-/** Speech segments aligned with the in-app teleprompter script. */
-const speechSegments: ComputedRef<Array<{ timing: string; role: string; text: string }>> = computed(
-  (): Array<{ timing: string; role: string; text: string }> =>
-    scriptSegments.value.map((segment: ProspectionScriptSegment): { timing: string; role: string; text: string } => ({
-      timing: `~${segment.targetSeconds} s`,
-      role: segment.title,
-      text: segment.text,
-    })),
-)
-
-/** The three steps of the folded guide, worded for the chosen capture method. */
-const workflowSteps: ComputedRef<Array<{ title: string; detail: string }>> = computed(
-  (): Array<{ title: string; detail: string }> => [
-    {
-      title: `Filmez-vous ~${speechTotalSeconds.value} s, une seule fois`,
-      detail:
-        captureMode.value === 'import'
-          ? 'Webcam + micro, face caméra, en lisant le speech ci-dessous.'
-          : 'En trois prises courtes dans l’application, ou avec l’outil de votre choix puis en important le fichier.',
-    },
-    {
-      title: captureMode.value === 'import' ? 'Déposez le fichier' : 'Gardez vos prises',
-      detail: 'C’est votre seule action : le découpage et la personnalisation sont ensuite automatiques.',
-    },
-    {
-      title: 'Chaque prospect reçoit sa vidéo',
-      detail: wording.value.resultStepDetail,
-    },
-  ],
-)
-
-/** Whether the stored clip is shown in its player rather than the capture UI. */
-const showClipPlayer: ComputedRef<boolean> = computed(
-  (): boolean => Boolean(info.value?.has_video) && previewUrl.value !== null && !isReplacingClip.value,
-)
-
-/** Clip length, spelled out next to the player. */
-const clipDurationLabel: ComputedRef<string> = computed((): string => {
-  const seconds: number | undefined = info.value?.duration_seconds
-  if (!seconds) return ''
-  return `${Math.round(seconds)} s`
+const timingsPreviewUrl: ComputedRef<string | null> = computed((): string | null => {
+  if (!timingsPreview.value || timingsPreview.value.take.id !== timingsTake.value?.id) return null
+  return timingsPreview.value.url
 })
 
-/** Show the capture choice again, keeping the current clip until a new one is saved. */
-function startClipReplacement(): void {
-  captureMode.value = null
-  isReplacingClip.value = true
-}
-
-/** Seconds between intro and outro — shared by the site scroll and the Storyblok sequence. */
-const middleSeconds: ComputedRef<number> = computed((): number => {
-  const duration: number = info.value?.duration_seconds ?? 0
-  return Math.max(0, duration - introSeconds.value - outroSeconds.value)
-})
-
-/** Seconds left for the Storyblok editor sequence (the middle minus the site part). */
-const storyblokSegmentSeconds: ComputedRef<number> = computed((): number =>
-  Math.max(0, middleSeconds.value - siteScrollSeconds.value),
-)
-
-/** Whether the Storyblok demo will be visibly cut with the current split. */
-const isStoryblokSegmentShort: ComputedRef<boolean> = computed(
-  (): boolean =>
-    !isReceptionistClip.value &&
-    Boolean(info.value?.has_video) &&
-    storyblokSegmentSeconds.value < STORYBLOK_COMFORT_SECONDS,
-)
-
-/** Seconds of the receptionist's middle given to the client space, 0 when the chat would be left too short. */
-const spaceChapterSeconds: ComputedRef<number> = computed((): number =>
-  middleSeconds.value >= MIN_WIDGET_SCENE_SECONDS + RECEPTIONIST_SPACE_CHAPTER_SECONDS
-    ? RECEPTIONIST_SPACE_CHAPTER_SECONDS
-    : 0,
-)
-
-/** Whether the receptionist's video will skip its client-space chapter with the current cuts. */
-const isSpaceChapterDropped: ComputedRef<boolean> = computed(
-  (): boolean => isReceptionistClip.value && Boolean(info.value?.has_video) && spaceChapterSeconds.value === 0,
-)
-
-/** Whether any cut point is edited by hand: the intro and outro of an imported clip, the site part of the site's. */
-const hasEditableCuts: ComputedRef<boolean> = computed(
-  (): boolean => !isReceptionistClip.value || !isRecordedClip.value,
-)
-
-const timingGridClass: ComputedRef<string> = computed((): string => {
-  if (isReceptionistClip.value) return 'max-w-xs grid-cols-2'
-  return isRecordedClip.value ? 'max-w-xs grid-cols-1' : 'max-w-md grid-cols-3'
-})
-
-/** The parts of the timeline bar, widths proportional to their durations. */
-const timelineSegments: ComputedRef<PresenterVideoTimelineSegment[]> = computed((): PresenterVideoTimelineSegment[] => {
-  const duration: number = info.value?.duration_seconds ?? 0
-  if (duration <= 0) return []
-  const parts: Array<Omit<PresenterVideoTimelineSegment, 'width'>> = isReceptionistClip.value
-    ? receptionistTimelineParts()
-    : siteTimelineParts()
-  return parts.map(
-    (part: Omit<PresenterVideoTimelineSegment, 'width'>): PresenterVideoTimelineSegment => ({
-      ...part,
-      width: `${Math.max(2, (part.seconds / duration) * 100)}%`,
+const takeOptions: ComputedRef<SelectFieldOption<number>[]> = computed((): SelectFieldOption<number>[] =>
+  takes.value.map(
+    (take: PresenterVideoTake): SelectFieldOption<number> => ({
+      value: take.id,
+      label: take.is_active ? `Prise ${take.take_number} (utilisée)` : `Prise ${take.take_number}`,
     }),
-  )
-})
-
-/** Select options for the calibration example, from the loaded sites or receptionists. */
-const previewExampleOptions: ComputedRef<SelectFieldOption[]> = computed((): SelectFieldOption[] =>
-  previewExamples.value.map(
-    (example: PresenterVideoPreviewExample): SelectFieldOption => ({ value: String(example.id), label: example.label }),
   ),
 )
 
-/** Spoken description of the timeline for assistive tech. */
-const timelineAriaLabel: ComputedRef<string> = computed((): string =>
-  timelineSegments.value
-    .map((segment: PresenterVideoTimelineSegment): string => `${segment.label} ${formatSegment(segment.seconds)}`)
-    .join(', '),
+const exampleDemoOptions: ComputedRef<SelectFieldOption[]> = computed((): SelectFieldOption[] =>
+  exampleDemos.value.map(
+    (demo: PresenterVideoExampleDemo): SelectFieldOption => ({ value: String(demo.id), label: demo.name }),
+  ),
 )
 
-/**
- * The site video's timeline: intro, the site scrolling, the Storyblok editor, outro.
- * @returns The parts, without their widths.
- */
-function siteTimelineParts(): Array<Omit<PresenterVideoTimelineSegment, 'width'>> {
-  return [
-    {
-      key: 'intro',
-      label: 'Intro webcam',
-      shortLabel: 'Intro',
-      seconds: introSeconds.value,
-      tone: 'bg-[var(--app-surface-2)] text-[var(--app-ink-soft)]',
-    },
-    {
-      key: 'site',
-      label: 'Site qui défile',
-      shortLabel: 'Site',
-      seconds: Math.min(siteScrollSeconds.value, middleSeconds.value),
-      tone: 'bg-[var(--app-ink)] text-[var(--app-bg)]',
-    },
-    {
-      key: 'storyblok',
-      label: 'Éditeur Storyblok',
-      shortLabel: 'Storyblok',
-      seconds: storyblokSegmentSeconds.value,
-      tone: 'bg-[var(--app-ink-soft)] text-[var(--app-bg)]',
-    },
-    {
-      key: 'outro',
-      label: 'Outro webcam',
-      shortLabel: 'Outro',
-      seconds: outroSeconds.value,
-      tone: 'bg-[var(--app-surface-2)] text-[var(--app-ink-soft)]',
-    },
-  ]
-}
+const selectedExampleDemo: ComputedRef<PresenterVideoExampleDemo | null> = computed(
+  (): PresenterVideoExampleDemo | null =>
+    exampleDemos.value.find(
+      (demo: PresenterVideoExampleDemo): boolean => String(demo.id) === selectedExampleDemoId.value,
+    ) ?? null,
+)
 
-/**
- * The receptionist video's timeline: intro, the chat answering, the client space when there is room, outro.
- * @returns The parts, without their widths.
- */
-function receptionistTimelineParts(): Array<Omit<PresenterVideoTimelineSegment, 'width'>> {
-  const intro: Omit<PresenterVideoTimelineSegment, 'width'> = {
-    key: 'intro',
-    label: 'Intro webcam',
-    shortLabel: 'Intro',
-    seconds: introSeconds.value,
-    tone: 'bg-[var(--app-surface-2)] text-[var(--app-ink-soft)]',
-  }
-  const chat: Omit<PresenterVideoTimelineSegment, 'width'> = {
-    key: 'chat',
-    label: 'Chat de la réceptionniste',
-    shortLabel: 'Chat',
-    seconds: middleSeconds.value - spaceChapterSeconds.value,
-    tone: 'bg-[var(--app-ink)] text-[var(--app-bg)]',
-  }
-  const space: Omit<PresenterVideoTimelineSegment, 'width'> = {
-    key: 'space',
-    label: 'Espace client',
-    shortLabel: 'Espace',
-    seconds: spaceChapterSeconds.value,
-    tone: 'bg-[var(--app-ink-soft)] text-[var(--app-bg)]',
-  }
-  const outro: Omit<PresenterVideoTimelineSegment, 'width'> = {
-    key: 'outro',
-    label: 'Outro webcam',
-    shortLabel: 'Outro',
-    seconds: outroSeconds.value,
-    tone: 'bg-[var(--app-surface-2)] text-[var(--app-ink-soft)]',
-  }
-  return spaceChapterSeconds.value > 0 ? [intro, chat, space, outro] : [intro, chat, outro]
-}
+const canBuildExamples: ComputedRef<boolean> = computed(
+  (): boolean => isDesktopApp.value && selectedExampleDemo.value !== null,
+)
 
-/**
- * Release the current preview object URL (avoids leaking blobs).
- */
-function releasePreview(): void {
-  if (previewUrl.value) {
-    URL.revokeObjectURL(previewUrl.value)
-    previewUrl.value = null
-  }
-}
+const isBuildRunning: ComputedRef<boolean> = computed(
+  (): boolean => buildingTakeId.value !== null || isBuildingTimingsPreview.value,
+)
 
-/**
- * Sync the local form state from a fresh API payload.
- * @param payload - Clip metadata returned by the API.
- */
-function applyInfo(payload: PresenterVideo): void {
-  info.value = payload
-  introSeconds.value = payload.intro_seconds ?? 4
-  outroSeconds.value = payload.outro_seconds ?? 5
-  siteScrollSeconds.value = payload.site_seconds ?? autoSiteSeconds(payload)
-  autoGenerate.value = payload.auto_generate ?? true
-}
+const takesWithoutExampleOnDemo: ComputedRef<PresenterVideoTake[]> = computed((): PresenterVideoTake[] =>
+  takes.value.filter(
+    (take: PresenterVideoTake): boolean =>
+      !take.is_clip_missing &&
+      (take.example_video_url === null || take.example_subject_id !== selectedExampleDemo.value?.id),
+  ),
+)
 
-/**
- * Effective site-scroll seconds before a custom split is saved (server's automatic split).
- * @param payload - Clip metadata.
- * @returns The middle minus the Storyblok budget, floored like the server does.
- */
-function autoSiteSeconds(payload: PresenterVideo): number {
-  const middle: number = Math.max(
-    0,
-    (payload.duration_seconds ?? 0) - (payload.intro_seconds ?? 4) - (payload.outro_seconds ?? 5),
+const buildAllButtonLabel: ComputedRef<string> = computed((): string => {
+  if (isBuildRunning.value) return 'Montage en cours…'
+  const count: number = takesWithoutExampleOnDemo.value.length
+  if (count === 0) return 'Exemples à jour'
+  return count === 1 ? 'Générer l’exemple manquant' : `Générer les ${count} exemples`
+})
+
+const buildModalTitle: ComputedRef<string> = computed((): string => {
+  if (isBuildingTimingsPreview.value) return `Aperçu de la prise ${timingsTake.value?.take_number ?? ''}`
+  const buildingTake: PresenterVideoTake | undefined = takes.value.find(
+    (take: PresenterVideoTake): boolean => take.id === buildingTakeId.value,
   )
-  return Math.max(MIN_SITE_SCROLL_SECONDS, Math.round((middle - AUTO_STORYBLOK_SECONDS) * 2) / 2)
-}
+  return buildingTake ? `Exemple de la prise ${buildingTake.take_number}` : 'Exemple'
+})
+
+const deleteTakeMessage: ComputedRef<string> = computed((): string => {
+  const take: PresenterVideoTake | null = takePendingDeletion.value
+  if (!take) return ''
+  const deletedContentLabel: string = take.example_video_url
+    ? `la prise ${take.take_number} et sa vidéo d’exemple`
+    : `la prise ${take.take_number}`
+  return `Supprimer ${deletedContentLabel} ? Les vidéos déjà générées pour vos prospects ne changent pas.`
+})
 
 /**
- * Load the clip metadata + preview blob from the API.
+ * Show a fresh take list from the API.
+ * @param list - The module's takes and its auto-generation setting.
  */
-async function loadInfo(): Promise<void> {
-  isLoading.value = true
-  isClipFileMissing.value = false
+function applyTakeList(list: PresenterVideoTakeList): void {
+  takes.value = list.takes
+  autoGenerate.value = list.auto_generate
+}
+
+/** Reload the module's takes. */
+async function loadTakes(): Promise<void> {
   try {
-    applyInfo(await PresenterVideoService.getPresenterVideo(props.module))
-    isReplacingClip.value = false
-    releasePreview()
-    if (!info.value?.has_video) return
-    previewUrl.value = await PresenterVideoService.getPresenterVideoObjectUrl(props.module)
-    // Le service renvoie null sur une 404 : enregistrement présent, fichier absent du stockage.
-    isClipFileMissing.value = previewUrl.value === null
+    applyTakeList(await PresenterVideoService.listTakes(props.module))
   } catch (err: unknown) {
-    toast.error(err instanceof Error ? err.message : 'Impossible de charger le clip')
-  } finally {
-    isLoading.value = false
+    toast.error(err instanceof Error ? err.message : 'Impossible de charger vos prises')
   }
 }
 
-/** Force the first decoded frame so the preview is not a black box on load. */
-function revealFirstFrame(event: Event): void {
-  const video: HTMLVideoElement | null = event.target as HTMLVideoElement | null
-  if (!video || video.currentTime > 0) return
+/**
+ * Put an updated take in place of its previous version.
+ * @param updatedTake - The take as the API returned it.
+ */
+function replaceTake(updatedTake: PresenterVideoTake): void {
+  takes.value = takes.value.map(
+    (take: PresenterVideoTake): PresenterVideoTake => (take.id === updatedTake.id ? updatedTake : take),
+  )
+}
+
+/**
+ * Show the takes again with the new one, then build the missing examples so the comparison is ready.
+ * @param take - The take just stored.
+ */
+async function handleTakeSaved(take: PresenterVideoTake): Promise<void> {
+  isAddingTake.value = false
+  await loadTakes()
+  timingsTakeId.value = take.id
+  if (canBuildExamples.value && takes.value.length > 1) await buildMissingExamples()
+}
+
+/**
+ * Make a take the one the module's next videos are built with.
+ * @param take - The take to use.
+ */
+async function activateTake(take: PresenterVideoTake): Promise<void> {
+  activatingTakeId.value = take.id
   try {
-    video.currentTime = Math.min(0.1, (video.duration || 1) / 2)
-  } catch {
-    // Some engines throw if the media is not seekable yet — safe to ignore.
-  }
-}
-
-/**
- * Format a cut point for the read-only « découpage automatique » line.
- * @param seconds - Segment length.
- * @returns A short label (e.g. « 4,5 s »).
- */
-function formatSegment(seconds: number): string {
-  return `${seconds.toFixed(1).replace(/\.0$/, '').replace('.', ',')} s`
-}
-
-/**
- * Adopt the clip just assembled from the three in-app takes.
- * @param payload - Fresh clip metadata returned by the API.
- */
-async function handleRecorded(payload: PresenterVideo): Promise<void> {
-  applyInfo(payload)
-  captureMode.value = null
-  isReplacingClip.value = false
-  releasePreview()
-  previewUrl.value = await PresenterVideoService.getPresenterVideoObjectUrl(props.module)
-}
-
-/**
- * Open the hidden file input from the drop zone.
- */
-function openFilePicker(): void {
-  fileInputRef.value?.click()
-}
-
-/**
- * Keep the selected file from the input change event.
- * @param event - Native change event of the file input.
- */
-async function handleFileSelected(event: Event): Promise<void> {
-  const input: HTMLInputElement | null = event.target as HTMLInputElement | null
-  const file: File | null = input?.files?.[0] ?? null
-  if (file) await adoptPickedClip(file)
-}
-
-/**
- * Accept a file dropped on the drop zone.
- * @param file - The dropped file.
- */
-async function handleDropFile(file: File): Promise<void> {
-  await adoptPickedClip(file)
-}
-
-/** Drop the preview of the clip awaiting upload (avoids leaking blobs). */
-function releasePickedClipPreview(): void {
-  if (pickedClipPreviewUrl.value) {
-    URL.revokeObjectURL(pickedClipPreviewUrl.value)
-    pickedClipPreviewUrl.value = null
-  }
-}
-
-/** Forget the clip awaiting upload, along with its preview and messages. */
-function resetPickedClip(): void {
-  releasePickedClipPreview()
-  selectedFile.value = null
-  pickedClipOriginalBytes.value = null
-  clipSizeErrorMessage.value = null
-  if (fileInputRef.value) fileInputRef.value.value = ''
-}
-
-/**
- * Show a picked clip right away, then shrink it to the montage canvas.
- *
- * Compression is transparent: the user drops a file and sees the preview, the
- * final weight, and — if the clip still cannot be sent — why.
- *
- * @param file - The clip dropped on the zone or chosen in the file picker.
- */
-async function adoptPickedClip(file: File): Promise<void> {
-  // Two concurrent re-encodings would race to overwrite `selectedFile`.
-  if (isCompressing.value || isUploading.value) return
-
-  releasePickedClipPreview()
-  selectedFile.value = file
-  pickedClipOriginalBytes.value = null
-  clipSizeErrorMessage.value = null
-  pickedClipPreviewUrl.value = URL.createObjectURL(file)
-
-  const result: VideoCompressionResult = await compressPresenterClip(file)
-  selectedFile.value = result.file
-  pickedClipOriginalBytes.value = result.wasCompressed ? result.originalBytes : null
-  clipSizeErrorMessage.value = describeOversizedClip(result)
-}
-
-/**
- * Explain, in the user's terms, why a clip cannot be sent as-is.
- *
- * Returning `null` means the clip is good to go.
- *
- * @param result - Outcome of the compression attempt.
- * @returns A sentence naming the fix, or `null` when the clip fits.
- */
-function describeOversizedClip(result: VideoCompressionResult): string | null {
-  if (result.file.size <= PRESENTER_VIDEO_MAX_BYTES) return null
-
-  const currentMb: number = Math.round(result.file.size / (1024 * 1024))
-  const maxMb: number = Math.round(PRESENTER_VIDEO_MAX_BYTES / (1024 * 1024))
-  const limits: string = `Cette vidéo pèse ${currentMb} Mo, au-delà de la limite d'envoi de ${maxMb} Mo.`
-
-  if (result.skipReason === 'undecodable') {
-    return `${limits} Son format n'a pas pu être lu ici pour l'alléger automatiquement — ré-exportez-la en MP4 (H.264), 720p suffit.`
-  }
-  return `${limits} Ré-exportez-la en 720p ou raccourcissez-la (30 à 45 s suffisent).`
-}
-
-/**
- * Upload the selected clip (replaces the previous one server-side).
- */
-async function handleUpload(): Promise<void> {
-  if (!selectedFile.value || isCompressing.value) return
-
-  // Without this guard the request dies in nginx, surfacing as « Failed to fetch ».
-  if (selectedFile.value.size > PRESENTER_VIDEO_MAX_BYTES) {
-    toast.error(clipSizeErrorMessage.value ?? 'Cette vidéo est trop lourde pour être envoyée.')
-    return
-  }
-
-  isUploading.value = true
-  try {
-    applyInfo(
-      await PresenterVideoService.uploadPresenterVideo(
-        selectedFile.value,
-        introSeconds.value,
-        outroSeconds.value,
-        autoGenerate.value,
-        props.module,
-      ),
-    )
-    resetPickedClip()
-    isReplacingClip.value = false
-    releasePreview()
-    previewUrl.value = await PresenterVideoService.getPresenterVideoObjectUrl(props.module)
-    toast.success(wording.value.uploadedToast)
+    await PresenterVideoService.activateTake(take.id)
+    await loadTakes()
+    toast.success(`Prise ${take.take_number} utilisée pour vos prochaines vidéos`)
   } catch (err: unknown) {
-    toast.error(err instanceof Error ? err.message : "Échec de l'envoi du clip")
+    toast.error(err instanceof Error ? err.message : 'Impossible de changer de prise')
   } finally {
-    isUploading.value = false
+    activatingTakeId.value = null
   }
 }
 
 /**
- * Persist the segment cuts + auto-generation toggle.
- */
-async function handleSaveSettings(): Promise<void> {
-  isSavingSettings.value = true
-  try {
-    applyInfo(
-      await PresenterVideoService.updatePresenterVideoSettings(
-        introSeconds.value,
-        outroSeconds.value,
-        autoGenerate.value,
-        isReceptionistClip.value ? null : siteScrollSeconds.value,
-        props.module,
-      ),
-    )
-    toast.success('Réglages enregistrés')
-  } catch (err: unknown) {
-    toast.error(err instanceof Error ? err.message : 'Échec de la mise à jour')
-  } finally {
-    isSavingSettings.value = false
-  }
-}
-
-/**
- * The user's demo sites that can be filmed: those with a public URL.
- * @returns Them as calibration examples.
- */
-async function loadSiteExamples(): Promise<PresenterVideoPreviewExample[]> {
-  const response: DemoSiteListResponse = await DemoSiteService.listDemoSites()
-  return response.items
-    .filter((site: DemoSite): boolean => Boolean(site.demo_url))
-    .map(
-      (site: DemoSite): PresenterVideoPreviewExample => ({ id: site.id, slug: site.slug, label: site.business_name }),
-    )
-}
-
-/**
- * The user's receptionists that can be filmed: the live demos, a sold one is never filmed again.
- * @returns Them as calibration examples.
- */
-async function loadReceptionistExamples(): Promise<PresenterVideoPreviewExample[]> {
-  const response: AiAssistantListResponse = await AiAssistantService.list()
-  return response.assistants
-    .filter((assistant: AiAssistantSummary): boolean => assistant.status === 'active')
-    .map(
-      (assistant: AiAssistantSummary): PresenterVideoPreviewExample => ({
-        id: assistant.id,
-        slug: assistant.slug,
-        label: assistant.business_name,
-      }),
-    )
-}
-
-/** Load the demos usable as calibration examples: the sites for the site's clip, the receptionists for theirs. */
-async function loadPreviewExamples(): Promise<void> {
-  try {
-    previewExamples.value = isReceptionistClip.value ? await loadReceptionistExamples() : await loadSiteExamples()
-    if (!previewExampleId.value && previewExamples.value.length > 0) {
-      previewExampleId.value = String(previewExamples.value[0]!.id)
-    }
-  } catch {
-    // Pas bloquant : le sélecteur reste vide et le bouton d'aperçu désactivé.
-  }
-}
-
-/**
- * Render this module's calibration example on the desktop with the CURRENT (possibly unsaved) timings.
- * @param exampleId - The site or receptionist filmed.
+ * Have the desktop app render the video a take gives on a demo; nothing is published.
+ * @param demoId - The site or receptionist filmed.
+ * @param take - The take montaged, with the cut points to use.
  * @returns The rendered mp4, or why it could not be made.
  */
-function buildPreview(exampleId: number): Promise<PreviewVideoResult | AssistantPreviewVideoResult> {
-  if (isReceptionistClip.value) {
-    return AssistantSidecarService.buildPreviewVideo(exampleId, {
-      presenter_intro: introSeconds.value,
-      presenter_outro: outroSeconds.value,
-      total_seconds: middleSeconds.value,
-    })
+function renderTake(
+  demoId: number,
+  take: PresenterVideoTake,
+): Promise<PreviewVideoResult | AssistantPreviewVideoResult> {
+  if (props.module === 'ai-assistant') {
+    return AssistantSidecarService.buildPreviewVideo(
+      demoId,
+      PresenterVideoTimings.receptionistBuildTimings(take),
+      take.id,
+    )
   }
-  return StoryblokSidecarService.buildPreviewVideo(exampleId, {
-    presenter_intro: introSeconds.value,
-    presenter_outro: outroSeconds.value,
-    site_seconds: siteScrollSeconds.value,
-    total_seconds: middleSeconds.value,
-  })
-}
-
-/** Release the calibration preview's object URL (avoids leaking blobs). */
-function releaseCalibrationPreview(): void {
-  if (previewVideoUrl.value) {
-    URL.revokeObjectURL(previewVideoUrl.value)
-    previewVideoUrl.value = null
-  }
+  return StoryblokSidecarService.buildPreviewVideo(demoId, PresenterVideoTimings.siteBuildTimings(take), take.id)
 }
 
 /**
- * Render a calibration example locally with the CURRENT (possibly unsaved) timings.
- *
- * Nothing is published: the sidecar returns the mp4 straight back and it plays inline,
- * so the split can be adjusted like in a video editor before saving.
+ * Render a take on a demo while the progress modal follows the build.
+ * @param demo - The site or receptionist filmed.
+ * @param take - The take montaged, with the cut points to use.
+ * @param finalStepLabel - The modal's last step, once the video is rendered.
+ * @returns The rendered mp4, or null when it could not be made (the user is told why).
  */
-async function handleGeneratePreview(): Promise<void> {
-  if (!previewExampleId.value) return
-  const chosenExample: PresenterVideoPreviewExample | undefined = previewExamples.value.find(
-    (candidate: PresenterVideoPreviewExample): boolean => String(candidate.id) === previewExampleId.value,
-  )
-  isBuildingPreview.value = true
-  videoProgress.start(chosenExample?.slug ?? '', "Récupération de l'aperçu")
+async function renderTakeWithProgress(
+  demo: PresenterVideoExampleDemo,
+  take: PresenterVideoTake,
+  finalStepLabel: string,
+): Promise<Blob | null> {
+  videoProgress.start(demo.slug, finalStepLabel)
   try {
-    const result: PreviewVideoResult | AssistantPreviewVideoResult = await buildPreview(Number(previewExampleId.value))
-    if (result.status === 'done' && result.video) {
-      videoProgress.finish()
-      releaseCalibrationPreview()
-      previewVideoUrl.value = URL.createObjectURL(result.video)
-      videoProgress.close()
-      toast.success('Aperçu prêt — rien n’a été publié')
-      await nextTick()
-      previewPlayerRef.value?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
-      return
-    }
+    const result: PreviewVideoResult | AssistantPreviewVideoResult = await renderTake(demo.id, take)
+    if (result.status === 'done' && result.video) return result.video
     if (result.status === 'needs_login') {
       videoProgress.close()
       toast.error('Session Storyblok expirée — reconnectez-vous via la carte « Connexion Storyblok ».')
-      return
+      return null
     }
     if (result.status === 'unavailable') {
       videoProgress.close()
       toast.error("Disponible uniquement dans l'application desktop.")
-      return
+      return null
     }
-    videoProgress.fail(result.message ?? "Échec de la génération de l'aperçu.")
-    toast.error(result.message ?? "Échec de la génération de l'aperçu.")
-  } catch (error) {
-    const message: string = error instanceof Error ? error.message : "Échec de la génération de l'aperçu."
+    const message: string = result.message ?? 'Échec du montage de la vidéo.'
     videoProgress.fail(message)
     toast.error(message)
-  } finally {
-    isBuildingPreview.value = false
+    return null
+  } catch (error: unknown) {
+    const message: string = error instanceof Error ? error.message : 'Échec du montage de la vidéo.'
+    videoProgress.fail(message)
+    toast.error(message)
+    return null
   }
 }
 
 /**
- * Open the delete confirmation modal.
+ * Keep a rendered video as a take's example and show it on its card.
+ * @param takeId - The take the video was montaged with.
+ * @param video - The rendered mp4.
+ * @param demo - The site or receptionist filmed.
  */
-function askDeleteClip(): void {
+async function keepExample(takeId: number, video: Blob, demo: PresenterVideoExampleDemo): Promise<void> {
+  replaceTake(await PresenterVideoService.uploadTakeExample(takeId, video, demo.id, demo.name))
+}
+
+/**
+ * Build a take's example video on the chosen demo, then keep it on the take.
+ * @param take - The take to show.
+ * @returns Whether the example is ready.
+ */
+async function buildExample(take: PresenterVideoTake): Promise<boolean> {
+  const demo: PresenterVideoExampleDemo | null = selectedExampleDemo.value
+  if (!demo || isBuildRunning.value) return false
+
+  buildingTakeId.value = take.id
+  try {
+    const video: Blob | null = await renderTakeWithProgress(demo, take, "Enregistrement de l'exemple")
+    if (!video) return false
+    await keepExample(take.id, video, demo)
+    videoProgress.finish()
+    videoProgress.close()
+    return true
+  } catch (error: unknown) {
+    const message: string = error instanceof Error ? error.message : "Impossible d'enregistrer l'exemple."
+    videoProgress.fail(message)
+    toast.error(message)
+    return false
+  } finally {
+    buildingTakeId.value = null
+  }
+}
+
+/** Build, one after the other, every example missing on the chosen demo; stops at the first failure. */
+async function buildMissingExamples(): Promise<void> {
+  const pendingTakes: PresenterVideoTake[] = [...takesWithoutExampleOnDemo.value]
+  for (const take of pendingTakes) {
+    if (!(await buildExample(take))) return
+  }
+  if (pendingTakes.length > 0) toast.success('Exemples prêts : comparez-les, puis choisissez la prise à utiliser.')
+}
+
+/** Drop the preview of unsaved cut points (avoids leaking its blob). */
+function releaseTimingsPreview(): void {
+  if (timingsPreview.value) URL.revokeObjectURL(timingsPreview.value.url)
+  timingsPreview.value = null
+}
+
+/**
+ * Render a take with cut points not saved yet, to judge them before saving; nothing is published.
+ * @param take - The take carrying the cut points of the timeline form.
+ */
+async function previewTimings(take: PresenterVideoTake): Promise<void> {
+  const demo: PresenterVideoExampleDemo | null = selectedExampleDemo.value
+  if (!demo || isBuildRunning.value) return
+
+  isBuildingTimingsPreview.value = true
+  try {
+    const video: Blob | null = await renderTakeWithProgress(demo, take, "Récupération de l'aperçu")
+    if (!video) return
+    releaseTimingsPreview()
+    timingsPreview.value = { take, demo, video, url: URL.createObjectURL(video) }
+    videoProgress.finish()
+    videoProgress.close()
+    toast.success('Aperçu prêt — rien n’a été publié')
+  } finally {
+    isBuildingTimingsPreview.value = false
+  }
+}
+
+/**
+ * Show a take with its saved cut points; the preview made with exactly these becomes its example.
+ * @param savedTake - The take as the API saved it.
+ */
+async function handleTimingsSaved(savedTake: PresenterVideoTake): Promise<void> {
+  replaceTake(savedTake)
+  const preview: PresenterVideoTimingsPreview | null = timingsPreview.value
+  if (!preview || preview.take.id !== savedTake.id) return
+  if (!PresenterVideoTimings.haveSameCutPoints(preview.take, savedTake)) return
+  try {
+    await keepExample(savedTake.id, preview.video, preview.demo)
+    releaseTimingsPreview()
+  } catch (err: unknown) {
+    toast.error(err instanceof Error ? err.message : "Impossible d'enregistrer l'exemple.")
+  }
+}
+
+/**
+ * Ask before deleting a take.
+ * @param take - The take to delete.
+ */
+function askDeleteTake(take: PresenterVideoTake): void {
+  takePendingDeletion.value = take
   deleteModalRef.value?.open()
 }
 
-/**
- * Delete the clip once confirmed in the modal.
- */
+/** Delete the take once confirmed in the modal. */
 async function handleDeleteConfirmed(): Promise<void> {
-  isDeleting.value = true
+  const take: PresenterVideoTake | null = takePendingDeletion.value
+  if (!take) return
+  deletingTakeId.value = take.id
   try {
-    applyInfo(await PresenterVideoService.deletePresenterVideo(props.module))
-    isReplacingClip.value = false
-    releasePreview()
-    // Repartir du choix, pas de la méthode utilisée la fois précédente.
-    captureMode.value = null
-    toast.success('Clip supprimé')
+    await PresenterVideoService.deleteTake(take.id)
+    if (timingsTakeId.value === take.id) timingsTakeId.value = null
+    if (timingsPreview.value?.take.id === take.id) releaseTimingsPreview()
+    await loadTakes()
+    toast.success(`Prise ${take.take_number} supprimée`)
   } catch (err: unknown) {
     toast.error(err instanceof Error ? err.message : 'Échec de la suppression')
   } finally {
-    isDeleting.value = false
+    deletingTakeId.value = null
+    takePendingDeletion.value = null
   }
 }
 
-// Let the host know whether a clip is in place (used by the setup wizard).
+/**
+ * Save the module's auto-generation right away, back to the previous value if it fails.
+ * @param isOn - Whether every new demo gets its video on its own.
+ */
+async function handleAutoGenerateChange(isOn: boolean): Promise<void> {
+  autoGenerate.value = isOn
+  try {
+    applyTakeList(await PresenterVideoService.setAutoGenerate(isOn, props.module))
+  } catch (err: unknown) {
+    autoGenerate.value = !isOn
+    toast.error(err instanceof Error ? err.message : 'Échec de la mise à jour')
+  }
+}
+
+/**
+ * The user's demo sites that can be filmed: live, with the Storyblok space the editor sequence opens.
+ * @returns Them as example demos.
+ */
+async function loadSiteExampleDemos(): Promise<PresenterVideoExampleDemo[]> {
+  const response: DemoSiteListResponse = await DemoSiteService.listDemoSites()
+  return response.items
+    .filter(
+      (site: DemoSite): boolean =>
+        site.status === 'active' && Boolean(site.demo_url) && Boolean(site.storyblok_editor_url),
+    )
+    .map((site: DemoSite): PresenterVideoExampleDemo => ({ id: site.id, slug: site.slug, name: site.business_name }))
+}
+
+/**
+ * The user's receptionists that can be filmed: the live demos, a sold one is never filmed again.
+ * @returns Them as example demos.
+ */
+async function loadReceptionistExampleDemos(): Promise<PresenterVideoExampleDemo[]> {
+  const response: AiAssistantListResponse = await AiAssistantService.list()
+  return response.assistants
+    .filter((assistant: AiAssistantSummary): boolean => assistant.status === 'active')
+    .map(
+      (assistant: AiAssistantSummary): PresenterVideoExampleDemo => ({
+        id: assistant.id,
+        slug: assistant.slug,
+        name: assistant.business_name,
+      }),
+    )
+}
+
+/**
+ * The demo the most recent example was built on, so a new example is compared on the same one.
+ * @returns Its id, or null when no take has an example yet.
+ */
+function latestExampleDemoId(): number | null {
+  let latestTake: PresenterVideoTake | null = null
+  for (const take of takes.value) {
+    if (!take.example_generated_at) continue
+    if (!latestTake || take.example_generated_at > (latestTake.example_generated_at ?? '')) latestTake = take
+  }
+  return latestTake?.example_subject_id ?? null
+}
+
+/** Load the demos usable as examples; keep the one of the latest example, else take one at random. */
+async function loadExampleDemos(): Promise<void> {
+  try {
+    exampleDemos.value =
+      props.module === 'ai-assistant' ? await loadReceptionistExampleDemos() : await loadSiteExampleDemos()
+  } catch {
+    // Pas bloquant : le sélecteur reste vide et la génération des exemples désactivée.
+    return
+  }
+  if (exampleDemos.value.length === 0) return
+
+  const previousDemoId: number | null = latestExampleDemoId()
+  const previousDemo: PresenterVideoExampleDemo | undefined = exampleDemos.value.find(
+    (demo: PresenterVideoExampleDemo): boolean => demo.id === previousDemoId,
+  )
+  const randomDemo: PresenterVideoExampleDemo =
+    exampleDemos.value[Math.floor(Math.random() * exampleDemos.value.length)]!
+  selectedExampleDemoId.value = String((previousDemo ?? randomDemo).id)
+}
+
+// Let the host know whether a take is in place (used by the setup wizard).
 watch(
-  (): boolean => Boolean(info.value?.has_video),
+  (): boolean => takes.value.length > 0,
   (hasVideo: boolean): void => {
     emit('has-video', hasVideo)
   },
 )
 
-// Shrinking the middle (longer intro/outro) must never leave the site part overflowing it.
-watch(middleSeconds, (middle: number): void => {
-  if (siteScrollSeconds.value > middle) {
-    siteScrollSeconds.value = Math.max(0, Math.round(middle * 2) / 2)
-  }
-})
-
 onMounted(async (): Promise<void> => {
-  await loadInfo()
+  await loadTakes()
+  isLoading.value = false
   isDesktopApp.value = (await getScraperSidecarInfo()) !== null
-  if (isDesktopApp.value) await loadPreviewExamples()
+  if (isDesktopApp.value) await loadExampleDemos()
 })
 
 onBeforeUnmount((): void => {
-  releasePreview()
-  releasePickedClipPreview()
-  releaseCalibrationPreview()
+  releaseTimingsPreview()
 })
 </script>

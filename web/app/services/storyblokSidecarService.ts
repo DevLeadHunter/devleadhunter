@@ -12,6 +12,7 @@
  * @module services/storyblokSidecarService
  */
 import { DemoSiteService } from '~/services/demoSiteService'
+import { PresenterVideoService } from '~/services/presenterVideoService'
 import { ProfilePhotoService } from '~/services/profilePhotoService'
 import { getScraperSidecarInfo } from '~/services/scraperSidecarService'
 import {
@@ -56,8 +57,9 @@ export type FullVideoBuildResult = {
   message?: string
 }
 
-/** Timing overrides a preview build applies, straight from the unsaved settings form. */
+/** Timing overrides a preview build applies, from the take it is montaged with. */
 export type PreviewTimingOverrides = {
+  presenter_duration: number
   presenter_intro: number
   presenter_outro: number
   site_seconds: number
@@ -168,12 +170,17 @@ export class StoryblokSidecarService {
    * timings override the stored settings and the mp4 comes straight back to be
    * played inline — the site's real video is untouched.
    * @param demoSiteId - The demo site used as the example.
-   * @param overrides - Timings from the settings form.
+   * @param overrides - Timings of the take, saved or from the settings form.
+   * @param presenterTakeId - The take montaged instead of the one in use.
    * @returns The rendered mp4, or why it could not be produced.
    */
-  static async buildPreviewVideo(demoSiteId: number, overrides: PreviewTimingOverrides): Promise<PreviewVideoResult> {
+  static async buildPreviewVideo(
+    demoSiteId: number,
+    overrides: PreviewTimingOverrides,
+    presenterTakeId: number,
+  ): Promise<PreviewVideoResult> {
     const build: { status: FullVideoBuildStatus; blob?: Blob; message?: string } =
-      await StoryblokSidecarService.requestFullBuild(demoSiteId, { ...overrides, preview: true })
+      await StoryblokSidecarService.requestFullBuild(demoSiteId, { ...overrides, preview: true }, presenterTakeId)
     if (build.status !== 'done' || !build.blob) {
       return { status: build.status, message: build.message }
     }
@@ -200,11 +207,13 @@ export class StoryblokSidecarService {
    * killed by the webview): start it, poll its progress, then fetch the file.
    * @param demoSiteId - The demo site to render.
    * @param payloadExtras - Fields merged over the context before sending.
+   * @param presenterTakeId - The take to montage, or null for the one in use.
    * @returns The produced file, or the failure status.
    */
   private static async requestFullBuild(
     demoSiteId: number,
     payloadExtras: Record<string, unknown>,
+    presenterTakeId: number | null = null,
   ): Promise<{ status: FullVideoBuildStatus; blob?: Blob; message?: string }> {
     const info: Awaited<ReturnType<typeof getScraperSidecarInfo>> = await getScraperSidecarInfo()
     if (!info) return { status: 'unavailable' }
@@ -213,7 +222,10 @@ export class StoryblokSidecarService {
     let presenter: Blob
     try {
       context = await DemoSiteService.getVideoBackgroundContext(demoSiteId)
-      presenter = await DemoSiteService.fetchPresenterVideoFile()
+      presenter =
+        presenterTakeId === null
+          ? await DemoSiteService.fetchPresenterVideoFile()
+          : await PresenterVideoService.fetchTakeFile(presenterTakeId)
     } catch (error) {
       return { status: 'failed', message: error instanceof Error ? error.message : 'Contexte vidéo indisponible.' }
     }

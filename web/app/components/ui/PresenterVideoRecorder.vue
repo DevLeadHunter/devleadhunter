@@ -323,7 +323,7 @@ import type { UseAuthReturn, UseToastReturn } from '~/types/Composables'
 import type { ComputedRef, PropType, Ref, WritableComputedRef } from 'vue'
 import type { SelectFieldOption } from '~/types/SelectField'
 import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue'
-import type { PresenterVideo } from '~/services/presenterVideoService'
+import type { PresenterVideoTake } from '~/types/PresenterVideoTake'
 import type { ProspectionScriptModule, ProspectionScriptSegment } from '~/composables/useProspectionScript'
 import type { RecordedTake, RecorderDevice } from '~/composables/useWebcamRecorder'
 import type { KeptTake, RecorderPhase, UiPresenterVideoRecorderProps } from '~/types/UiPresenterVideoRecorder'
@@ -347,12 +347,12 @@ const props: UiPresenterVideoRecorderProps = defineProps({
 
 const emit: {
   /** The clip was assembled and stored — carries the fresh API payload. */
-  (e: 'saved', info: PresenterVideo): void
+  (e: 'saved', take: PresenterVideoTake): void
   /** The user backed out of recording. */
   (e: 'cancel'): void
 } = defineEmits<{
   /** The clip was assembled and stored — carries the fresh API payload. */
-  (e: 'saved', info: PresenterVideo): void
+  (e: 'saved', take: PresenterVideoTake): void
   /** The user backed out of recording. */
   (e: 'cancel'): void
 }>()
@@ -684,7 +684,7 @@ async function sendTakes(): Promise<void> {
           type: kept.take.blob.type,
         }),
     )
-    const info: PresenterVideo = await PresenterVideoService.uploadPresenterVideoSegments(
+    const take: PresenterVideoTake = await PresenterVideoService.uploadPresenterVideoSegments(
       intro!,
       middle!,
       outro!,
@@ -693,12 +693,7 @@ async function sendTakes(): Promise<void> {
     )
     releaseAllTakes()
     recorder.stopEverything()
-    toast.success(
-      props.module === 'ai-assistant'
-        ? 'Votre vidéo est prête — les prochaines réceptionnistes l’utiliseront automatiquement'
-        : 'Votre vidéo est prête — les prochains sites démo l’utiliseront automatiquement',
-    )
-    emit('saved', info)
+    emit('saved', take)
   } catch (err: unknown) {
     toast.error(err instanceof Error ? err.message : "Échec de l'assemblage")
   } finally {

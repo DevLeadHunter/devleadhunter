@@ -3,7 +3,7 @@
     <UiPageHeader
       eyebrow="Prospection"
       title="Vidéo de prospection"
-      description="Un clip webcam par module, enregistré une seule fois. Chaque site démo et chaque réceptionniste génère ensuite sa vidéo personnalisée, prête pour vos emails."
+      description="Vos prises webcam, par module. Gardez-en plusieurs, comparez leurs vidéos d'exemple et choisissez celle qui sert : chaque site démo et chaque réceptionniste génère ensuite sa vidéo personnalisée, prête pour vos emails."
     />
 
     <PresenterVideoConfig />

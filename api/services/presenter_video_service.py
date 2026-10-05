@@ -1,9 +1,11 @@
-"""Presenter (webcam) source clip management.
+"""Presenter (webcam) takes management.
 
-One clip per user, either uploaded as a file from the app settings page or
-recorded in-app with the teleprompter (three takes concatenated here). The
-clip is the generic voice/webcam track (« Bonjour, moi c'est Léo… ») reused
-by every generated prospection video — see ``demo_video_service``.
+A user keeps several takes per sellable module, each either uploaded as a file
+from the app settings page or recorded in-app with the teleprompter (three
+parts concatenated here). A take is the generic voice/webcam track
+(« Bonjour, moi c'est Léo… ») reused by every generated prospection video —
+see ``demo_video_service``. A new take never replaces an older one: the user
+compares their example videos and picks the take the videos are built with.
 """
 
 from __future__ import annotations
@@ -17,9 +19,10 @@ import tempfile
 from pathlib import Path
 
 from fastapi import HTTPException, UploadFile, status
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
+from core.clock import naive_utc_now
 from core.config import settings
 from models.presenter_video import PresenterVideo
 from services.r2_storage_service import r2_storage
@@ -60,9 +63,16 @@ _RECORDING_WIDTH = 1280
 _RECORDING_HEIGHT = 720
 _RECORDING_FPS = 30
 
+# FLOAT columns read back with noise (4.3 comes back as 4.300000190734863): below this gap, a cut point has not moved.
+_CUT_POINT_TOLERANCE_SECONDS = 0.01
+
 
 class FfmpegUnavailableError(RuntimeError):
     """Raised when the ffmpeg binary is missing — a server fault, not a bad upload."""
+
+
+class PresenterTakeInUseError(Exception):
+    """Raised when deleting the take in use while the module keeps others: the videos must never switch silently."""
 
 
 def _ffmpeg_missing_error() -> HTTPException:
@@ -202,13 +212,215 @@ async def has_audio_stream(file_path: str) -> bool:
 
 
 class PresenterVideoService:
-    """CRUD for the per-user presenter clip (file on disk + DB row)."""
+    """Presenter takes of each user and module: clips on R2, rows in ``presenter_videos``."""
 
     def get_for_user(self, db: Session, user_id: int, module: str = "websites") -> PresenterVideo | None:
-        """Return the user's presenter clip row for a module ('websites' by default), or None."""
-        return db.execute(
-            select(PresenterVideo).where(PresenterVideo.user_id == user_id, PresenterVideo.module == module)
-        ).scalar_one_or_none()
+        """Return the take the module's prospection videos are built with, or None when the module has no take."""
+        statement = (
+            select(PresenterVideo)
+            .where(
+                PresenterVideo.user_id == user_id,
+                PresenterVideo.module == module,
+                PresenterVideo.is_active.is_(True),
+            )
+            .order_by(PresenterVideo.id.desc())
+        )
+        return db.execute(statement).scalars().first()
+
+    def list_takes(self, db: Session, user_id: int, module: str) -> list[PresenterVideo]:
+        """Return the module's takes, the oldest first."""
+        statement = (
+            select(PresenterVideo)
+            .where(PresenterVideo.user_id == user_id, PresenterVideo.module == module)
+            .order_by(PresenterVideo.take_number, PresenterVideo.id)
+        )
+        return list(db.execute(statement).scalars().all())
+
+    def get_take(self, db: Session, user_id: int, take_id: int) -> PresenterVideo | None:
+        """Return one of the user's takes, or None when it does not exist or belongs to someone else."""
+        statement = select(PresenterVideo).where(PresenterVideo.id == take_id, PresenterVideo.user_id == user_id)
+        return db.execute(statement).scalar_one_or_none()
+
+    def is_module_auto_generating(self, db: Session, user_id: int, module: str) -> bool:
+        """Whether every new demo of the module gets its video on its own; on by default before the first take."""
+        take_in_use = self.get_for_user(db, user_id, module)
+        return take_in_use.auto_generate if take_in_use is not None else True
+
+    def activate_take(self, db: Session, take: PresenterVideo) -> PresenterVideo:
+        """
+        Make this take the one the module's prospection videos are built with.
+
+        Videos already generated keep the take they were made with.
+
+        Args:
+            db: Active database session.
+            take: The user's take to use from now on.
+
+        Returns:
+            The take, now in use.
+        """
+        for candidate in self.list_takes(db, take.user_id, take.module):
+            candidate.is_active = candidate.id == take.id
+        db.commit()
+        db.refresh(take)
+        return take
+
+    def set_auto_generate(self, db: Session, user_id: int, module: str, auto_generate: bool) -> None:
+        """
+        Turn the module's automatic video generation on or off.
+
+        The setting belongs to the module: it is written on each of its takes so whichever take is chosen carries it.
+
+        Args:
+            db: Active database session.
+            user_id: Owner of the takes.
+            module: The sellable module.
+            auto_generate: Whether every new demo of the module gets its video on its own.
+        """
+        for take in self.list_takes(db, user_id, module):
+            take.auto_generate = auto_generate
+        db.commit()
+
+    def update_take_timings(
+        self,
+        db: Session,
+        take: PresenterVideo,
+        intro_seconds: float,
+        outro_seconds: float,
+        site_seconds: float | None,
+    ) -> PresenterVideo:
+        """
+        Adjust the cut points of one take.
+
+        An example video built with the previous cut points no longer shows what prospects would receive, so it is
+        dropped when they move.
+
+        Args:
+            db: Active database session.
+            take: The user's take.
+            intro_seconds: Full-screen webcam seconds at the start.
+            outro_seconds: Full-screen webcam seconds at the end.
+            site_seconds: Length of the site-scroll part inside the middle (the Storyblok sequence gets the rest);
+                None restores the automatic split.
+
+        Returns:
+            The up-to-date take.
+        """
+        if self._apply_timings(take, intro_seconds, outro_seconds, site_seconds):
+            self._drop_example(take)
+        db.commit()
+        db.refresh(take)
+        return take
+
+    def delete_take(self, db: Session, take: PresenterVideo) -> None:
+        """
+        Delete a take: its clip, its example video and its row.
+
+        Args:
+            db: Active database session.
+            take: The user's take.
+
+        Raises:
+            PresenterTakeInUseError: The take is in use and the module keeps other takes — choose one of them first.
+        """
+        has_other_takes = any(candidate.id != take.id for candidate in self.list_takes(db, take.user_id, take.module))
+        if take.is_active and has_other_takes:
+            raise PresenterTakeInUseError(
+                "Cette prise sert aux vidéos : choisissez-en une autre avant de la supprimer."
+            )
+        self._delete_stored_files(take)
+        db.delete(take)
+        db.commit()
+
+    async def store_example(
+        self,
+        db: Session,
+        take: PresenterVideo,
+        video: UploadFile,
+        subject_id: int,
+        subject_name: str,
+    ) -> PresenterVideo:
+        """
+        Keep the example video a take gives on one of the user's demos, in place of its previous one.
+
+        The desktop app builds it (the editor sequence needs the owner's Storyblok session) and sends it here only to
+        be kept: nothing is published, the demo's own video is untouched.
+
+        Args:
+            db: Active database session.
+            take: The user's take the example was built with.
+            video: The finished MP4.
+            subject_id: The demo site or receptionist filmed.
+            subject_name: Its business name, shown under the example.
+
+        Returns:
+            The take with its new example.
+
+        Raises:
+            HTTPException: 400/413 when the file is empty, not an MP4 or too heavy; 500 when the storage refuses it.
+        """
+        if self._resolve_extension(video) != ".mp4":
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="La vidéo d'exemple doit être un MP4.")
+        data = await video.read()
+        if not data:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Vidéo d'exemple vide.")
+        if len(data) > settings.presenter_video_max_mb * 1024 * 1024:
+            raise HTTPException(
+                status_code=status.HTTP_413_CONTENT_TOO_LARGE,
+                detail=f"La vidéo d'exemple dépasse {settings.presenter_video_max_mb} MB.",
+            )
+
+        key = r2_storage.presenter_example_key(take.user_id)
+        try:
+            await r2_storage.upload_bytes_async(key, data, "video/mp4")
+        except Exception as exc:
+            logger.exception("[Presenter] example upload failed for take=%s", take.id)
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Impossible d'enregistrer la vidéo d'exemple sur le stockage. Réessayez.",
+            ) from exc
+
+        replaced_key = take.example_video_key
+        take.example_video_key = key
+        take.example_subject_id = subject_id
+        take.example_subject_name = subject_name
+        take.example_generated_at = naive_utc_now()
+        db.commit()
+        db.refresh(take)
+        if replaced_key:
+            self._delete_object(replaced_key)
+        return take
+
+    @staticmethod
+    def find_missing_clips(takes: list[PresenterVideo]) -> set[int]:
+        """
+        Return the ids of the takes whose clip is gone from the storage. Blocking: run it in a worker thread.
+
+        Storage left unconfigured (tests, a misconfigured server) reports nothing rather than every clip missing.
+
+        Args:
+            takes: Takes to check.
+
+        Returns:
+            The ids of the takes no video can be built with.
+        """
+        if not r2_storage.is_configured():
+            return set()
+        missing: set[int] = set()
+        for take in takes:
+            stored = str(take.file_path or "")
+            try:
+                if stored.startswith(r2_storage.VIDEOS_PRESENTER_PREFIX):
+                    is_present = r2_storage.exists(stored)
+                else:
+                    # Ligne écrite avant la migration R2 : fichier encore sur disque.
+                    is_present = Path(stored).is_file()
+            except Exception:
+                logger.warning("[Presenter] clip check failed for take=%s", take.id, exc_info=True)
+                continue
+            if not is_present:
+                missing.add(take.id)
+        return missing
 
     async def store_upload(
         self,
@@ -221,18 +433,19 @@ class PresenterVideoService:
         module: str = "websites",
     ) -> PresenterVideo:
         """
-        Persist the uploaded presenter clip (replaces any previous one).
+        Keep an uploaded clip as a new take of the module, next to the older ones.
 
         Args:
             db: Active database session.
-            user_id: Owner of the clip.
+            user_id: Owner of the take.
             file: Uploaded video file (mp4 / webm / mov / mkv).
             intro_seconds: Full-screen webcam seconds at the start.
             outro_seconds: Full-screen webcam seconds at the end.
-            auto_generate: Auto-generate the video for every new demo site.
+            auto_generate: Auto-generate the video for every new demo site, when this is the module's first take.
+            module: The sellable module the take belongs to.
 
         Returns:
-            The up-to-date ``PresenterVideo`` row.
+            The new take, in use only when the module had none.
 
         Raises:
             HTTPException: 400/413 on invalid format, size or duration.
@@ -274,24 +487,20 @@ class PresenterVideoService:
             # rendu plus fiable et stockage divisé par 10 à 20.
             normalized_path = work_dir / "presenter.mp4"
             await self._normalize_clip(source_path, normalized_path)
-            object_key = await self._publish(user_id, normalized_path, module)
+            object_key = await self._publish(user_id, normalized_path)
         finally:
             shutil.rmtree(work_dir, ignore_errors=True)
 
-        record = self.get_for_user(db, user_id, module)
-        if record is None:
-            record = PresenterVideo(user_id=user_id, module=module, file_path=object_key)
-            db.add(record)
-        record.file_path = object_key
-        record.original_filename = file.filename or f"presenter{extension}"
-        record.duration_seconds = duration
-        record.intro_seconds = self._clamp_segment(intro_seconds, duration)
-        record.outro_seconds = self._clamp_segment(outro_seconds, duration)
-        record.auto_generate = auto_generate
-        record.source = "upload"
+        take = self._add_take(db, user_id, module, auto_generate)
+        take.file_path = object_key
+        take.original_filename = file.filename or f"presenter{extension}"
+        take.duration_seconds = duration
+        take.intro_seconds = self._clamp_segment(intro_seconds, duration)
+        take.outro_seconds = self._clamp_segment(outro_seconds, duration)
+        take.source = "upload"
         db.commit()
-        db.refresh(record)
-        return record
+        db.refresh(take)
+        return take
 
     async def store_recorded_segments(
         self,
@@ -304,25 +513,26 @@ class PresenterVideoService:
         module: str = "websites",
     ) -> PresenterVideo:
         """
-        Assemble the three in-app takes into the single presenter clip.
+        Assemble the three parts filmed in-app into a new take of the module, next to the older ones.
 
-        Unlike :meth:`store_upload`, the cut points are not guessed: each take
+        Unlike :meth:`store_upload`, the cut points are not guessed: each part
         *is* a segment, so ``intro_seconds``/``outro_seconds`` are exactly the
-        measured durations of the first and last take. The three files are
+        measured durations of the first and last part. The three files are
         concatenated and re-encoded into one normalised MP4 (the browser hands
-        us WebM, and the takes are levelled with ``loudnorm`` so the two cuts
+        us WebM, and the parts are levelled with ``loudnorm`` so the two cuts
         are not audible).
 
         Args:
             db: Active database session.
-            user_id: Owner of the clip.
-            intro: Full-screen greeting take.
-            middle: Take played over the prospect's scrolling site.
-            outro: Full-screen call-to-action take.
-            auto_generate: Auto-generate the video for every new demo site.
+            user_id: Owner of the take.
+            intro: Full-screen greeting part.
+            middle: Part played over the prospect's scrolling site.
+            outro: Full-screen call-to-action part.
+            auto_generate: Auto-generate the video for every new demo site, when this is the module's first take.
+            module: The sellable module the take belongs to.
 
         Returns:
-            The up-to-date ``PresenterVideo`` row.
+            The new take, in use only when the module had none.
 
         Raises:
             HTTPException: 400/413 on invalid format, size or duration.
@@ -421,42 +631,69 @@ class PresenterVideoService:
                 logger.warning("[Presenter] temp dir not fully cleaned: %s", work_dir)
 
         try:
-            object_key = await self._publish(user_id, target_path, module)
+            object_key = await self._publish(user_id, target_path)
         finally:
             shutil.rmtree(out_dir, ignore_errors=True)
 
-        record = self.get_for_user(db, user_id, module)
-        if record is None:
-            record = PresenterVideo(user_id=user_id, module=module, file_path=object_key)
-            db.add(record)
-        record.file_path = object_key
-        record.original_filename = "enregistrement-devleadhunter.mp4"
-        record.duration_seconds = duration if duration > 0 else total
-        record.intro_seconds = round(intro_seconds, 2)
-        record.outro_seconds = round(outro_seconds, 2)
-        record.auto_generate = auto_generate
-        record.source = "recorded"
+        take = self._add_take(db, user_id, module, auto_generate)
+        take.file_path = object_key
+        take.original_filename = "enregistrement-devleadhunter.mp4"
+        take.duration_seconds = duration if duration > 0 else total
+        take.intro_seconds = round(intro_seconds, 2)
+        take.outro_seconds = round(outro_seconds, 2)
+        take.source = "recorded"
         db.commit()
-        db.refresh(record)
-        return record
+        db.refresh(take)
+        return take
 
-    @staticmethod
-    async def _publish(user_id: int, local_path: Path, module: str = "websites") -> str:
+    def _add_take(self, db: Session, user_id: int, module: str, auto_generate: bool) -> PresenterVideo:
         """
-        Push the normalised clip to R2 and return its object key.
+        Register a new take of the module, still without its file.
+
+        The module's first take is put in use; a later one waits until the user chooses it, so no video is built
+        with a take they have not compared yet. Auto-generation stays the module's setting.
 
         Args:
-            user_id: Owner of the clip.
-            local_path: Normalised MP4 to upload.
-            module: The sellable module the clip belongs to (drives the object key).
+            db: Active database session.
+            user_id: Owner of the take.
+            module: The sellable module.
+            auto_generate: The auto-generation setting, kept only for the module's first take.
 
         Returns:
-            The R2 key stored on the row (``videos/presenter/{user_id}.mp4`` for websites).
+            The new row, added to the session but not committed.
+        """
+        take_in_use = self.get_for_user(db, user_id, module)
+        highest_take_number = db.execute(
+            select(func.max(PresenterVideo.take_number)).where(
+                PresenterVideo.user_id == user_id, PresenterVideo.module == module
+            )
+        ).scalar()
+        take = PresenterVideo(
+            user_id=user_id,
+            module=module,
+            take_number=(highest_take_number or 0) + 1,
+            is_active=take_in_use is None,
+            auto_generate=take_in_use.auto_generate if take_in_use is not None else auto_generate,
+        )
+        db.add(take)
+        return take
+
+    @staticmethod
+    async def _publish(user_id: int, local_path: Path) -> str:
+        """
+        Push a normalised take to R2 and return its object key.
+
+        Args:
+            user_id: Owner of the take.
+            local_path: Normalised MP4 to upload.
+
+        Returns:
+            The R2 key stored on the row, new for each take so no older take is ever overwritten.
 
         Raises:
             HTTPException: 500 when the storage rejects the upload.
         """
-        key = r2_storage.presenter_key(user_id, module)
+        key = r2_storage.presenter_take_key(user_id)
         try:
             await r2_storage.upload_file_async(local_path, key, "video/mp4")
         except Exception as exc:
@@ -681,47 +918,121 @@ class PresenterVideoService:
         *,
         site_seconds: float | None = None,
     ) -> PresenterVideo:
-        """Update the segment cuts + auto-generation toggle of an existing clip.
-
-        ``site_seconds`` is the user-chosen length of the site-scroll part inside the
-        middle segment (the Storyblok sequence gets the remainder); None restores the
-        automatic split. It is clamped to the middle so the timeline stays coherent.
         """
-        record.intro_seconds = self._clamp_segment(intro_seconds, record.duration_seconds)
-        record.outro_seconds = self._clamp_segment(outro_seconds, record.duration_seconds)
-        if site_seconds is None:
-            record.site_seconds = None
-        else:
-            middle = max(0.0, record.duration_seconds - record.intro_seconds - record.outro_seconds)
-            record.site_seconds = round(min(max(site_seconds, 0.0), middle), 2)
-        record.auto_generate = auto_generate
-        db.commit()
-        db.refresh(record)
-        return record
+        Update the cut points of the take in use and the module's auto-generation, as the single-clip form sends them.
+
+        Args:
+            db: Active database session.
+            record: The module's take in use.
+            intro_seconds: Full-screen webcam seconds at the start.
+            outro_seconds: Full-screen webcam seconds at the end.
+            auto_generate: Whether every new demo of the module gets its video on its own.
+            site_seconds: Length of the site-scroll part; None restores the automatic split.
+
+        Returns:
+            The up-to-date take.
+        """
+        for take in self.list_takes(db, record.user_id, record.module):
+            take.auto_generate = auto_generate
+        return self.update_take_timings(db, record, intro_seconds, outro_seconds, site_seconds)
 
     def delete_for_user(self, db: Session, user_id: int, module: str = "websites") -> bool:
-        """Delete the user's presenter clip for a module (object + row). Returns True if one existed."""
-        record = self.get_for_user(db, user_id, module)
-        if record is None:
+        """
+        Delete the module's take in use, as the single-clip form asks.
+
+        Args:
+            db: Active database session.
+            user_id: Owner of the takes.
+            module: The sellable module.
+
+        Returns:
+            Whether the module had a take in use.
+
+        Raises:
+            PresenterTakeInUseError: The module keeps other takes — one of them must be chosen first.
+        """
+        take_in_use = self.get_for_user(db, user_id, module)
+        if take_in_use is None:
             return False
-        stored = str(record.file_path or "")
-        try:
-            if stored.startswith(r2_storage.VIDEOS_PRESENTER_PREFIX):
-                r2_storage.delete(stored)
-            elif stored:
-                # Ligne écrite avant la migration R2 : fichier encore sur disque.
-                Path(stored).unlink(missing_ok=True)
-        except Exception:
-            logger.warning("[Presenter] clip cleanup failed for user=%s", user_id, exc_info=True)
-        db.delete(record)
-        db.commit()
+        self.delete_take(db, take_in_use)
         return True
+
+    def _apply_timings(
+        self,
+        take: PresenterVideo,
+        intro_seconds: float,
+        outro_seconds: float,
+        site_seconds: float | None,
+    ) -> bool:
+        """
+        Write clamped cut points on a take, without committing.
+
+        ``site_seconds`` is clamped to the middle so the timeline stays coherent.
+
+        Returns:
+            Whether a cut point moved.
+        """
+        intro = self._clamp_segment(intro_seconds, take.duration_seconds)
+        outro = self._clamp_segment(outro_seconds, take.duration_seconds)
+        site: float | None = None
+        if site_seconds is not None:
+            middle = max(0.0, take.duration_seconds - intro - outro)
+            site = round(min(max(site_seconds, 0.0), middle), 2)
+
+        has_moved = (
+            self._differs(take.intro_seconds, intro)
+            or self._differs(take.outro_seconds, outro)
+            or self._differs(take.site_seconds, site)
+        )
+        take.intro_seconds = intro
+        take.outro_seconds = outro
+        take.site_seconds = site
+        return has_moved
+
+    def _drop_example(self, take: PresenterVideo) -> None:
+        """Drop a take's example video (object and fields), without committing."""
+        if take.example_video_key:
+            self._delete_object(take.example_video_key)
+        take.example_video_key = None
+        take.example_subject_id = None
+        take.example_subject_name = None
+        take.example_generated_at = None
+
+    def _delete_stored_files(self, take: PresenterVideo) -> None:
+        """Delete a take's clip and example video from the storage; a leftover never blocks the deletion."""
+        stored = str(take.file_path or "")
+        if stored.startswith(r2_storage.VIDEOS_PRESENTER_PREFIX):
+            self._delete_object(stored)
+        elif stored:
+            # Ligne écrite avant la migration R2 : fichier encore sur disque.
+            try:
+                Path(stored).unlink(missing_ok=True)
+            except OSError:
+                logger.warning("[Presenter] local clip cleanup failed for take=%s", take.id, exc_info=True)
+        if take.example_video_key:
+            self._delete_object(take.example_video_key)
+
+    @staticmethod
+    def _delete_object(key: str) -> None:
+        """Delete one R2 object, logging instead of failing: an orphan file is better than a lost user action."""
+        try:
+            r2_storage.delete(key)
+        except Exception:
+            logger.warning("[Presenter] storage cleanup failed for key=%s", key, exc_info=True)
+
+    @staticmethod
+    def _differs(stored: float | None, wanted: float | None) -> bool:
+        """Whether a cut point really changes, ignoring the noise of FLOAT columns."""
+        if stored is None or wanted is None:
+            return stored is not wanted
+        return abs(stored - wanted) > _CUT_POINT_TOLERANCE_SECONDS
 
     @staticmethod
     def _clamp_segment(value: float, duration: float) -> float:
         """Keep an intro/outro segment sane: ≥0 and ≤ a third of the clip."""
         upper = max(duration / 3.0, 1.0) if duration > 0 else 10.0
-        return round(min(max(value, 0.0), upper), 1)
+        # To the hundredth, like the measured parts of a filmed take: rounding further would move them at every save.
+        return round(min(max(value, 0.0), upper), 2)
 
 
 presenter_video_service = PresenterVideoService()
