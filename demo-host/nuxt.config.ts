@@ -11,7 +11,7 @@ export default defineNuxtConfig({
     'github:DevLeadHunter/devleadhunter-template-plumber-signature#v1.4.0',
     'github:DevLeadHunter/devleadhunter-template-plumber-atelier#v1.5.0',
     'github:DevLeadHunter/devleadhunter-template-plumber-cuivre#v1.4.0',
-    'github:DevLeadHunter/devleadhunter-template-electrician-eclat#v1.0.1',
+    'github:DevLeadHunter/devleadhunter-template-electrician-eclat#v1.0.2',
     'github:DevLeadHunter/devleadhunter-template-electrician-lumen#v1.4.0',
     'github:DevLeadHunter/devleadhunter-template-mechanic-pitlane#v1.4.0',
     'github:DevLeadHunter/devleadhunter-template-dental#v1.3.0',

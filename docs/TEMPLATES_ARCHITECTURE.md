@@ -49,7 +49,7 @@ Toute l'intégration (bridge Storyblok, tracking démo, fetch par slug, type `De
 | `plumber-signature` | Plombier | **v1.4.0** | La plus riche (11 sections) |
 | `plumber-atelier` | Plombier | **v1.5.0** | DA typographique « fiche d'intervention » |
 | `plumber-cuivre` | Plombier | **v1.4.0** | DA bleu eau « Source » |
-| `electrician-eclat` | Électricien | **v1.0.1** | Claire et sobre : boutons bleu nuit, couleur du logo en touches (`palette.primary`), aucun texte sur photo ; titre, méthode et bannière éditables via `SECTION_FIELDS` ; proposée avant Lumen |
+| `electrician-eclat` | Électricien | **v1.0.2** | Claire et sobre : boutons bleu nuit, couleur du logo en touches (`palette.primary`), aucun texte sur photo ; titre, méthode et bannière éditables via `SECTION_FIELDS` ; proposée avant Lumen |
 | `electrician-lumen` | Électricien | **v1.4.0** | GSAP embarqué dans SES deps |
 | `mechanic-pitlane` | Mécanicien / garagiste | **v1.4.0** | DA asphalt / racing red (AutoWorks), one-page vendable |
 | `dental` | Dentiste / cabinet dentaire | **v1.3.0** | DA Family Dental Care (El Messiri + Nunito), FR, palette thémable, mailto, favicon logo, fallbacks Unsplash |
