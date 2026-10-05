@@ -32,7 +32,7 @@ Ticket Asana « [IA Code] Présence humaine sur la démo ». Trois briques pour 
 
 | Fichier | Ce qu'il montre | État |
 |---|---|---|
-| `electrician-template/electricien-v5.html` (+ dossier `electricien-v5-photos/`) | Cinquième version : fond blanc, bleu nuit et touches ambre, haut de page en deux colonnes sans texte sur la photo ; trois états, dont un vrai prospect avec ses propres photos ; réglage « sections du CMS » | En attente (05/10) |
+| `electrician-template/electricien-v5.html` (+ dossier `electricien-v5-photos/`) | Cinquième version : fond blanc, bleu nuit et touches ambre, haut de page en deux colonnes sans texte sur la photo ; trois états, dont un vrai prospect avec ses propres photos ; réglage « sections du CMS » | **Retenue et codée le 05/10** : template `electrician-eclat` |
 | `electrician-template/electricien-v4.html` | Quatrième version : texte sur une grande photo, cartes de couleurs | **Refusée le 05/10** |
 | `electrician-template/electricien-halo.html` (+ quatre captures pleine page) | Troisième version : sobre, portée par les photos, calée sur les champs réels du contenu | « Pas mal » mais loin de l'effet attendu (05/10) |
 | `electrician-template/electricien-clarte.html` (+ deux captures pleine page) | Deuxième version, dans l'esprit de dibodev.fr | « Beaucoup mieux » mais encore loin des meilleures templates (05/10) |
@@ -49,3 +49,4 @@ Ticket Asana « [IA Code] Présence humaine sur la démo ». Trois briques pour 
 | Fichier | Ce qu'il montre | Devenu |
 |---|---|---|
 | `campaign-results-tab.html` | L'onglet « Résultats » d'une campagne (maquette v4) | Codé et en prod le 03/10 |
+| `electrician-template/electricien-v5.html` | La nouvelle template électricien (cinquième version) | Template `electrician-eclat` (dépôt `devleadhunter-template-electrician-eclat`), codée le 05/10 |

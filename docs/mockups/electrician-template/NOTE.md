@@ -10,7 +10,7 @@ fini, pour le même métier, obtient-il plus de réponses ?
 
 | Fichier | Ce qu'il montre | État |
 |---|---|---|
-| `electricien-v5.html` (+ dossier `electricien-v5-photos/`) | Cinquième version : fond blanc, bleu nuit et touches ambre ; haut de page en deux colonnes sans texte sur la photo ; trois états de données, dont un vrai prospect avec ses propres photos | En attente du retour du 05/10 |
+| `electricien-v5.html` (+ dossier `electricien-v5-photos/`) | Cinquième version : fond blanc, bleu nuit et touches ambre ; haut de page en deux colonnes sans texte sur la photo ; trois états de données, dont un vrai prospect avec ses propres photos | **Retenue et codée le 05/10** (template `electrician-eclat`) |
 | `electricien-v4.html` | Quatrième version : texte posé sur une grande photo, quatre cartes de couleurs sous la photo | **Refusée le 05/10** : pas de texte sur une image, pas de cartes multicolores, pas pensée pour les photos des prospects |
 | `electricien-halo.html` (+ quatre captures `electricien-halo-*.jpg`) | Troisième version : sobre, portée par les photos, calée sur les champs réels du contenu | « Pas mal » le 05/10, mais loin de l'effet attendu : barre de menu flottante et pastille à point jugées « design IA », texte du haut de page mal agencé sur ordinateur. La découpe de la photo et le rendu téléphone ont plu |
 | `electricien-clarte.html` (+ deux captures) | Deuxième version : sobre, dans l'esprit de dibodev.fr | « Beaucoup mieux » le 05/10, mais encore loin des templates garage et paysagiste, et pas alignée sur les données |
@@ -99,7 +99,16 @@ ailleurs : une deuxième photo d'en-tête (comme la deuxième photo « à propos
 de la galerie), une photo de bannière, et les champs titre principal, description des services, description du contact
 (comme le paysagiste).
 
-## À trancher
+## Codée le 05/10
 
-1. La direction de la cinquième version convient-elle ?
-2. Le jeu de photos par défaut : une quinzaine de photos européennes à choisir.
+La cinquième version est devenue la template `electrician-eclat` (« Électricien Éclat ») : dépôt
+`devleadhunter-template-electrician-eclat`, module `api/services/templates/electrician_eclat.py`. Elle est proposée
+avant `electrician-lumen`, qui reste disponible pour comparer les deux en vague 4.
+
+Écarts avec la maquette :
+
+- Les photos par défaut ont été rechoisies, presque toutes au standard européen (tableau, prise, borne de recharge,
+  artisan au travail).
+- Une photo d'en-tête de moins de 480 pixels de large est remplacée par celle de la template.
+- La carte « Une autre question ? » montre une icône de téléphone, pour fonctionner sans logo.
+- Le pied de page n'a pas de liens légaux : demo-host ajoute les siens.

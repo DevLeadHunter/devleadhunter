@@ -15,16 +15,17 @@ GITHUB_ORG = "DevLeadHunter"
 
 # template_id -> (repo name, live tag). Mirror of demo-host/nuxt.config.ts `extends`.
 TEMPLATE_REPOS: dict[str, tuple[str, str]] = {
-    "artisan-edito": ("devleadhunter-template-artisan-edito", "v1.2.2"),
-    "plumber-signature": ("devleadhunter-template-plumber-signature", "v1.2.2"),
-    "plumber-atelier": ("devleadhunter-template-plumber-atelier", "v1.3.2"),
-    "plumber-cuivre": ("devleadhunter-template-plumber-cuivre", "v1.2.2"),
-    "electrician-lumen": ("devleadhunter-template-electrician-lumen", "v1.2.2"),
-    "mechanic-pitlane": ("devleadhunter-template-mechanic-pitlane", "v1.3.7"),
-    "dental": ("devleadhunter-template-dental", "v1.2.3"),
-    "food": ("devleadhunter-template-food", "v1.1.4"),
-    "barber": ("devleadhunter-template-barber", "v1.2.7"),
-    "landscaper-verdure": ("devleadhunter-template-landscaper-verdure", "v1.3.2"),
+    "artisan-edito": ("devleadhunter-template-artisan-edito", "v1.4.1"),
+    "plumber-signature": ("devleadhunter-template-plumber-signature", "v1.4.0"),
+    "plumber-atelier": ("devleadhunter-template-plumber-atelier", "v1.5.0"),
+    "plumber-cuivre": ("devleadhunter-template-plumber-cuivre", "v1.4.0"),
+    "electrician-eclat": ("devleadhunter-template-electrician-eclat", "v1.0.1"),
+    "electrician-lumen": ("devleadhunter-template-electrician-lumen", "v1.4.0"),
+    "mechanic-pitlane": ("devleadhunter-template-mechanic-pitlane", "v1.4.0"),
+    "dental": ("devleadhunter-template-dental", "v1.3.0"),
+    "food": ("devleadhunter-template-food", "v1.2.0"),
+    "barber": ("devleadhunter-template-barber", "v1.3.0"),
+    "landscaper-verdure": ("devleadhunter-template-landscaper-verdure", "v1.7.0"),
 }
 
 

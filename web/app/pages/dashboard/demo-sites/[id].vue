@@ -525,6 +525,7 @@ let videoPollTimer: ReturnType<typeof setInterval> | null = null
 const templateLabel: ComputedRef<string> = computed(() => {
   const labels: Record<string, string> = {
     'plumber-cuivre': 'Plombier Source',
+    'electrician-eclat': 'Électricien Éclat',
     'electrician-lumen': 'Électricien Lumen',
   }
   return labels[site.value?.template_id ?? ''] ?? site.value?.template_id ?? ''

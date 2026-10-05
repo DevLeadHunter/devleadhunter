@@ -70,6 +70,18 @@ DEFAULT_IMAGES: dict[str, dict[str, Any]] = {
             "https://images.unsplash.com/photo-1638799869566-b17fa794c4de?auto=format&fit=crop&w=1200&q=80",
         ],
     },
+    "electrician-eclat": {
+        "heroImage": "https://images.unsplash.com/photo-1767710924293-29fba5e3854b?auto=format&fit=crop&w=1400&q=80",
+        "aboutImage": "https://images.unsplash.com/photo-1646640381839-02748ae8ddf0?auto=format&fit=crop&w=1200&q=80",
+        "gallery": [
+            "https://images.unsplash.com/photo-1732194044246-9c5f6bc6582c?auto=format&fit=crop&w=900&q=80",
+            "https://images.unsplash.com/photo-1666585607888-3f6fe0b323d8?auto=format&fit=crop&w=900&q=80",
+            "https://images.unsplash.com/photo-1788619371179-b3031f2cbe23?auto=format&fit=crop&w=900&q=80",
+            "https://images.unsplash.com/photo-1576446470246-499c738d1c8e?auto=format&fit=crop&w=900&q=80",
+            "https://images.unsplash.com/photo-1508920291026-c344bbfca1ab?auto=format&fit=crop&w=900&q=80",
+            "https://images.unsplash.com/photo-1680416124510-5eae1beca412?auto=format&fit=crop&w=900&q=80",
+        ],
+    },
     "electrician-lumen": {
         "heroImage": "https://images.unsplash.com/photo-1758101755915-462eddc23f57?auto=format&fit=crop&w=1400&q=80",
         "aboutImage": "https://images.unsplash.com/photo-1687819280272-95f9d2a3cdab?auto=format&fit=crop&w=1200&q=80",

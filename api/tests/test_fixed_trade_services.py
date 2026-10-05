@@ -51,6 +51,7 @@ _FIXED_GRID_TEMPLATES: list[str] = [
     "plumber-atelier",
     "plumber-cuivre",
     "electrician-lumen",
+    "electrician-eclat",
 ]
 
 

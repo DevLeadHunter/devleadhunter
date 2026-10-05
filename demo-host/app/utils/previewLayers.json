@@ -455,6 +455,193 @@
       }
     ]
   },
+  "electrician-eclat": {
+    "businessName": "Volta Électricité",
+    "phone": "02 41 00 12 34",
+    "email": "contact@volta-electricite.fr",
+    "address": "18 rue des Lices, 49100 Angers",
+    "city": "Angers",
+    "area": "Angers et ses alentours",
+    "professionalLicenseLabel": "",
+    "professionalLicenseNumber": "",
+    "subtitle": "Dépannage, mise aux normes, rénovation et borne de recharge. Un travail propre, sécurisé et garanti à Angers.",
+    "about": "Électricien qualifié à votre service pour vos dépannages, installations et mises aux normes. Travail conforme, soigné et sécurisé, avec un diagnostic clair et un prix juste.",
+    "logo": "",
+    "heroImage": "https://images.unsplash.com/photo-1767710924293-29fba5e3854b?auto=format&fit=crop&w=1400&q=80",
+    "aboutImage": "https://images.unsplash.com/photo-1646640381839-02748ae8ddf0?auto=format&fit=crop&w=1200&q=80",
+    "gallery": [
+      {
+        "url": "https://images.unsplash.com/photo-1732194044246-9c5f6bc6582c?auto=format&fit=crop&w=900&q=80",
+        "alt": ""
+      },
+      {
+        "url": "https://images.unsplash.com/photo-1666585607888-3f6fe0b323d8?auto=format&fit=crop&w=900&q=80",
+        "alt": ""
+      },
+      {
+        "url": "https://images.unsplash.com/photo-1788619371179-b3031f2cbe23?auto=format&fit=crop&w=900&q=80",
+        "alt": ""
+      },
+      {
+        "url": "https://images.unsplash.com/photo-1576446470246-499c738d1c8e?auto=format&fit=crop&w=900&q=80",
+        "alt": ""
+      },
+      {
+        "url": "https://images.unsplash.com/photo-1508920291026-c344bbfca1ab?auto=format&fit=crop&w=900&q=80",
+        "alt": ""
+      },
+      {
+        "url": "https://images.unsplash.com/photo-1680416124510-5eae1beca412?auto=format&fit=crop&w=900&q=80",
+        "alt": ""
+      }
+    ],
+    "rating": 4.9,
+    "reviewsCount": 64,
+    "lat": null,
+    "lng": null,
+    "palette": {
+      "primary": "#F59E0B",
+      "secondary": "#0B1B2E",
+      "accent": "#F59E0B"
+    },
+    "reviews": [
+      {
+        "author": "Sophie M.",
+        "text": "Panne un dimanche soir, il a rappelé dans le quart d'heure et tout remis en route le lundi matin. Sérieux et très clair dans ses explications.",
+        "rating": 5
+      },
+      {
+        "author": "Julien D.",
+        "text": "Tableau entièrement refait dans une maison ancienne. Devis respecté et chantier laissé propre. Je recommande.",
+        "rating": 5
+      },
+      {
+        "author": "Nathalie B.",
+        "text": "Borne de recharge posée en une matinée. Il a pris le temps d'expliquer le fonctionnement et les réglages.",
+        "rating": 5
+      }
+    ],
+    "openingHours": [
+      {
+        "day": "Samedi",
+        "hours": "9h - 12h"
+      }
+    ],
+    "social": [],
+    "services": [
+      {
+        "title": "Dépannage électrique",
+        "description": "Panne, court-circuit, disjoncteur qui saute : diagnostic et remise en service rapides.",
+        "image": "https://images.unsplash.com/photo-1758101755915-462eddc23f57?auto=format&fit=crop&w=900&q=80"
+      },
+      {
+        "title": "Mise aux normes",
+        "description": "Remise à niveau complète de votre installation, aux normes en vigueur, attestation à l'appui.",
+        "image": "https://images.unsplash.com/photo-1751486289947-4f5f5961b3aa?auto=format&fit=crop&w=900&q=80"
+      },
+      {
+        "title": "Tableau électrique",
+        "description": "Remplacement et modernisation de votre tableau et de vos protections.",
+        "image": "https://images.unsplash.com/photo-1544724569-5f546fd6f2b5?auto=format&fit=crop&w=900&q=80"
+      },
+      {
+        "title": "Installation et rénovation",
+        "description": "Neuf ou rénovation : réseau complet, prises, points lumineux.",
+        "image": "https://images.unsplash.com/photo-1665242043190-0ef29390d289?auto=format&fit=crop&w=900&q=80"
+      },
+      {
+        "title": "Éclairage et domotique",
+        "description": "Éclairage intérieur et extérieur, interrupteurs connectés, domotique.",
+        "image": "https://images.unsplash.com/photo-1782457696919-08e1aa4f7427?auto=format&fit=crop&w=900&q=80"
+      },
+      {
+        "title": "Borne de recharge",
+        "description": "Installation de bornes de recharge pour véhicule électrique.",
+        "image": "https://images.unsplash.com/photo-1653665674648-7cc7fa657547?auto=format&fit=crop&w=900&q=80"
+      }
+    ],
+    "faq": [
+      {
+        "question": "Intervenez-vous en urgence ?",
+        "answer": "Oui, pour toute panne électrique nous intervenons au plus vite, 7j/7."
+      },
+      {
+        "question": "Le devis est-il gratuit ?",
+        "answer": "Le devis est gratuit et sans engagement, remis avant les travaux."
+      },
+      {
+        "question": "Délivrez-vous une attestation de conformité ?",
+        "answer": "Oui, chaque installation neuve ou mise aux normes est livrée avec son attestation."
+      },
+      {
+        "question": "Quelles zones couvrez-vous ?",
+        "answer": "Nous intervenons dans notre commune et celles des alentours. Un doute sur la vôtre ? Appelez-nous."
+      },
+      {
+        "question": "Vos travaux sont-ils garantis ?",
+        "answer": "Oui, nos installations sont conformes et couvertes par notre assurance professionnelle."
+      }
+    ],
+    "heroBadge": "Artisan électricien",
+    "heroPoints": [
+      "Devis gratuit",
+      "Intervention rapide",
+      "Travail garanti"
+    ],
+    "ctaQuoteLabel": "Demander un devis",
+    "trustItems": [
+      {
+        "value": "7j/7",
+        "label": "Dépannage et urgences"
+      },
+      {
+        "value": "4,9/5",
+        "label": "64 avis"
+      },
+      {
+        "value": "Travail garanti",
+        "label": "Interventions assurées"
+      },
+      {
+        "value": "100% conforme",
+        "label": "Installations aux normes"
+      }
+    ],
+    "servicesHeading": "Tout ce qu'il faut pour une installation sûre",
+    "servicesLead": "Du simple dépannage à la rénovation complète de votre installation électrique.",
+    "aboutHeading": "Un travail soigné, du devis au dernier test",
+    "stepsHeading": "Comment se passe une intervention",
+    "galleryHeading": "Nos chantiers récents",
+    "reviewsHeading": "Ce que disent nos clients",
+    "faqHeading": "Questions fréquentes",
+    "ctaTitle": "Une panne ou un projet ?",
+    "ctaLead": "Décrivez votre besoin, vous recevez une réponse rapide et un devis gratuit.",
+    "contactHeading": "Parlons de votre projet",
+    "contactLead": "Par téléphone, par e-mail ou avec le formulaire : réponse rapide et devis gratuit.",
+    "heroTitle": "Votre électricien de confiance à Angers",
+    "steps": [
+      {
+        "title": "Premier contact",
+        "description": "Vous décrivez votre besoin par téléphone ou par message."
+      },
+      {
+        "title": "Visite et devis",
+        "description": "Passage sur place, puis devis gratuit et détaillé."
+      },
+      {
+        "title": "Travaux",
+        "description": "Réalisés à la date convenue, chantier laissé propre."
+      },
+      {
+        "title": "Contrôle final",
+        "description": "Chaque circuit est testé et expliqué avant le départ."
+      }
+    ],
+    "images": {
+      "heroSecondary": "https://images.unsplash.com/photo-1682345262055-8f95f3c513ea?auto=format&fit=crop&w=900&q=80",
+      "ctaBackground": "https://images.unsplash.com/photo-1547393947-a6a221f74e59?auto=format&fit=crop&w=1400&q=80"
+    }
+  },
   "electrician-lumen": {
     "businessName": "Breizh Electrik",
     "phone": "02 40 89 12 34",
