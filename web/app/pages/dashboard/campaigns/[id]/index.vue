@@ -519,9 +519,15 @@
           </label>
         </section>
 
-        <div class="flex items-center justify-end gap-3">
-          <span v-if="settingsDirty" class="text-muted text-xs">Modifications non enregistrées</span>
-          <button :disabled="isSavingSettings" class="btn-primary disabled:opacity-50" @click="saveSettings">
+        <div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-end sm:gap-3">
+          <span v-if="settingsDirty" class="text-muted text-center text-xs sm:text-left">
+            Modifications non enregistrées
+          </span>
+          <button
+            :disabled="isSavingSettings"
+            class="btn-primary h-11 disabled:opacity-50 sm:h-9"
+            @click="saveSettings"
+          >
             <UIcon v-if="isSavingSettings" name="i-lucide-loader-circle" class="mr-2 h-4 w-4 animate-spin" />
             <UIcon v-else name="i-lucide-check" class="mr-2 h-4 w-4" />
             Enregistrer

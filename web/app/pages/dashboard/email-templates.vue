@@ -1,19 +1,20 @@
 <template>
   <div class="space-y-5">
-    <div class="flex flex-wrap items-center justify-between gap-3">
-      <div>
-        <p class="app-label flex items-center gap-2">
-          <LandingAsterisk class="text-[0.6rem] text-[var(--app-accent)]" />
-          Prospection
-        </p>
-        <h1 class="app-page-title mt-2">Modèles d'email</h1>
-        <p class="text-muted mt-1 text-sm">Les contenus réutilisés par vos campagnes et relances.</p>
-      </div>
-      <button class="btn-primary" @click="openCreateDrawer">
-        <UIcon name="i-lucide-plus" class="h-4 w-4" />
-        <span>Nouveau modèle</span>
-      </button>
-    </div>
+    <UiPageHeader
+      eyebrow="Prospection"
+      title="Modèles d'email"
+      description="Les contenus réutilisés par vos campagnes et relances."
+    >
+      <template #primary-action>
+        <button
+          class="app-btn-primary h-11 px-4 text-sm whitespace-nowrap @2xl:h-9 @2xl:text-xs"
+          @click="openCreateDrawer"
+        >
+          <UIcon name="i-lucide-plus" class="h-3.5 w-3.5" />
+          Nouveau modèle
+        </button>
+      </template>
+    </UiPageHeader>
 
     <div
       class="flex flex-col-reverse gap-3 border-b border-[var(--app-line)] @2xl:flex-row @2xl:items-end @2xl:justify-between @2xl:gap-4"

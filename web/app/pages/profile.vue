@@ -1,6 +1,6 @@
 <template>
   <div class="max-w-2xl">
-    <h1 class="mb-4 text-xl font-semibold text-[var(--app-ink)]">Profil</h1>
+    <UiPageHeader eyebrow="Compte" title="Profil" class="mb-6" />
 
     <div class="card">
       <form class="space-y-4" @submit.prevent="handleSubmit">
@@ -14,11 +14,11 @@
           <input id="email" v-model="email" type="email" required class="input-field" placeholder="jean@exemple.fr" />
         </div>
 
-        <div class="flex justify-end gap-3 pt-2">
-          <NuxtLink to="/dashboard" class="btn-secondary">
+        <div class="grid grid-cols-2 gap-3 pt-2 sm:flex sm:justify-end">
+          <NuxtLink to="/dashboard" class="btn-secondary h-11 sm:h-9">
             <span> Annuler </span>
           </NuxtLink>
-          <button type="submit" :disabled="isLoading" class="btn-primary">
+          <button type="submit" :disabled="isLoading" class="btn-primary h-11 sm:h-9">
             <span v-if="isLoading">Enregistrement…</span>
             <span v-else>Enregistrer</span>
           </button>

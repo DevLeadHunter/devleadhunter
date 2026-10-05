@@ -1,56 +1,54 @@
 <template>
   <div class="space-y-6">
-    <div class="flex flex-col gap-4 @2xl:flex-row @2xl:items-end @2xl:justify-between">
-      <div class="min-w-0">
-        <p class="app-label flex items-center gap-2">
-          <LandingAsterisk class="text-[0.6rem] text-[var(--app-accent)]" />
-          Campagnes
-        </p>
-        <h1 class="app-page-title mt-2">Suivi des emails</h1>
-        <p class="mt-1.5 text-sm text-[var(--app-ink-soft)]">
-          Historique et statut de chaque email de prospection envoyé
-        </p>
-      </div>
-      <div
-        class="flex w-full flex-col-reverse items-stretch gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:justify-end @2xl:w-auto"
-      >
-        <div class="flex flex-wrap items-center gap-2 sm:gap-3">
-          <NuxtLink to="/dashboard/email-health" class="app-btn-secondary h-9 shrink-0 px-4 text-xs whitespace-nowrap">
-            <UIcon name="i-lucide-heart-pulse" class="h-3.5 w-3.5" />
-            Santé email
-          </NuxtLink>
-          <button
-            :disabled="isLoading || isSyncing"
-            class="app-btn-secondary h-9 shrink-0 px-4 text-xs whitespace-nowrap disabled:cursor-not-allowed disabled:opacity-50"
-            :title="'Synchronise les statuts depuis Resend (utile en local sans webhook)'"
-            @click="syncStatus(true)"
-          >
-            <UIcon
-              :name="isSyncing ? 'i-lucide-loader-circle' : 'i-lucide-rotate-cw'"
-              :class="['h-3.5 w-3.5', isSyncing && 'animate-spin']"
-            />
-            {{ isSyncing ? 'Sync…' : 'Sync Resend' }}
-          </button>
-          <button
-            :disabled="isLoading"
-            class="app-btn-secondary h-9 shrink-0 px-4 text-xs whitespace-nowrap disabled:cursor-not-allowed disabled:opacity-50"
-            @click="loadLogs"
-          >
-            <UIcon name="i-lucide-rotate-cw" class="h-3.5 w-3.5" />
-            Actualiser
-          </button>
-        </div>
+    <UiPageHeader
+      eyebrow="Campagnes"
+      title="Suivi des emails"
+      description="Historique et statut de chaque email de prospection envoyé"
+    >
+      <template #actions>
+        <NuxtLink
+          to="/dashboard/email-health"
+          class="app-btn-secondary h-11 px-4 text-sm whitespace-nowrap @2xl:h-9 @2xl:text-xs"
+        >
+          <UIcon name="i-lucide-heart-pulse" class="h-3.5 w-3.5" />
+          Santé email
+        </NuxtLink>
         <button
-          class="app-btn-primary h-9 w-full shrink-0 px-4 text-xs sm:w-auto"
+          :disabled="isLoading || isSyncing"
+          class="app-btn-secondary h-11 px-4 text-sm whitespace-nowrap disabled:cursor-not-allowed disabled:opacity-50 @2xl:h-9 @2xl:text-xs"
+          :title="'Synchronise les statuts depuis Resend (utile en local sans webhook)'"
+          @click="syncStatus(true)"
+        >
+          <UIcon
+            :name="isSyncing ? 'i-lucide-loader-circle' : 'i-lucide-rotate-cw'"
+            :class="['h-3.5 w-3.5', isSyncing && 'animate-spin']"
+          />
+          {{ isSyncing ? 'Sync…' : 'Sync Resend' }}
+        </button>
+        <button
+          :disabled="isLoading"
+          class="app-btn-secondary h-11 px-4 text-sm whitespace-nowrap disabled:cursor-not-allowed disabled:opacity-50 @2xl:h-9 @2xl:text-xs"
+          @click="loadLogs"
+        >
+          <UIcon name="i-lucide-rotate-cw" class="h-3.5 w-3.5" />
+          Actualiser
+        </button>
+      </template>
+      <template #primary-action>
+        <button
+          class="app-btn-primary h-11 px-4 text-sm @2xl:h-9 @2xl:text-xs"
           @click="drawerStack.push({ kind: 'send-email', prospect: null })"
         >
           <UIcon name="i-lucide-send" class="h-3.5 w-3.5" />
           Envoyer un email
         </button>
-      </div>
-    </div>
+      </template>
+    </UiPageHeader>
 
-    <div class="grid grid-cols-2 gap-3 @sm:grid-cols-4 @4xl:grid-cols-7">
+    <!-- Sept chiffres : sur deux ou quatre colonnes, le dernier s'élargit pour finir la ligne. -->
+    <div
+      class="grid grid-cols-2 gap-3 @sm:grid-cols-4 @4xl:grid-cols-7 [&>*:last-child:nth-child(odd)]:col-span-2 @4xl:[&>*:last-child:nth-child(odd)]:col-span-1"
+    >
       <div class="card text-center">
         <p class="text-muted text-xs font-medium">Envoyés</p>
         <p class="mt-1 text-2xl font-bold text-[var(--app-ink)]">{{ stats.total_sent }}</p>
@@ -87,9 +85,12 @@
       @mark-handled="markPendingReplyHandled"
     />
 
+    <!-- Filtres : la recherche sur toute la largeur d'un téléphone, une seule ligne dès que la place le permet. -->
     <div class="card">
-      <div class="grid grid-cols-2 gap-4 @4xl:grid-cols-4">
-        <div>
+      <div
+        class="grid grid-cols-2 gap-3 @3xl:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)_minmax(0,1fr)_auto] @3xl:items-end @3xl:gap-4"
+      >
+        <div class="col-span-2 @3xl:col-span-1">
           <label class="text-muted mb-1.5 block text-xs font-medium">Rechercher</label>
           <input v-model="searchQuery" type="text" placeholder="Email, nom, sujet..." class="input-field" />
         </div>
@@ -101,9 +102,9 @@
           <label class="text-muted mb-1.5 block text-xs font-medium">Campagne</label>
           <UiSelectField v-model="filterCampaignId" :options="campaignOptions" />
         </div>
-        <div class="flex items-end">
-          <button class="btn-secondary w-full" @click="clearFilters">Réinitialiser</button>
-        </div>
+        <button class="btn-secondary col-span-2 w-full @3xl:col-span-1 @3xl:px-5" @click="clearFilters">
+          Réinitialiser
+        </button>
       </div>
     </div>
 

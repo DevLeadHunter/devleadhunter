@@ -1,44 +1,44 @@
 <template>
   <div class="space-y-6">
-    <div class="flex flex-col gap-4 @2xl:flex-row @2xl:items-end @2xl:justify-between">
-      <div class="min-w-0">
-        <p class="app-label flex items-center gap-2">
-          <LandingAsterisk class="text-[0.6rem] text-[var(--app-accent)]" />
-          Prospection
-        </p>
-        <h1 class="app-page-title mt-2">Suivi des SMS</h1>
-        <p class="mt-1.5 text-sm text-[var(--app-ink-soft)]">
-          Historique et statut de chaque SMS envoyé à vos prospects
-        </p>
-      </div>
-      <div
-        class="flex w-full flex-col-reverse items-stretch gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:justify-end @2xl:w-auto"
-      >
-        <div class="flex flex-wrap items-center gap-2 sm:gap-3">
-          <NuxtLink to="/dashboard/settings/sms" class="app-btn-secondary h-9 shrink-0 px-4 text-xs whitespace-nowrap">
-            <UIcon name="i-lucide-settings-2" class="h-3.5 w-3.5" />
-            Relance & expéditeur
-          </NuxtLink>
-          <button
-            :disabled="isLoading"
-            class="app-btn-secondary h-9 shrink-0 px-4 text-xs whitespace-nowrap disabled:cursor-not-allowed disabled:opacity-50"
-            @click="loadAll"
-          >
-            <UIcon name="i-lucide-rotate-cw" :class="['h-3.5 w-3.5', isLoading && 'animate-spin']" />
-            Actualiser
-          </button>
-        </div>
+    <UiPageHeader
+      eyebrow="Prospection"
+      title="Suivi des SMS"
+      description="Historique et statut de chaque SMS envoyé à vos prospects"
+    >
+      <template #actions>
+        <NuxtLink
+          to="/dashboard/settings/sms"
+          class="app-btn-secondary h-11 px-4 text-sm whitespace-nowrap @2xl:h-9 @2xl:text-xs"
+        >
+          <UIcon name="i-lucide-settings-2" class="h-3.5 w-3.5" />
+          Relance & expéditeur
+        </NuxtLink>
         <button
-          class="app-btn-primary h-9 w-full shrink-0 px-4 text-xs sm:w-auto"
+          :disabled="isLoading"
+          class="app-btn-secondary h-11 px-4 text-sm whitespace-nowrap disabled:cursor-not-allowed disabled:opacity-50 @2xl:h-9 @2xl:text-xs"
+          @click="loadAll"
+        >
+          <UIcon name="i-lucide-rotate-cw" :class="['h-3.5 w-3.5', isLoading && 'animate-spin']" />
+          Actualiser
+        </button>
+      </template>
+      <template #primary-action>
+        <button
+          class="app-btn-primary h-11 px-4 text-sm @2xl:h-9 @2xl:text-xs"
           @click="drawerStack.push({ kind: 'send-sms', prospect: null })"
         >
           <UIcon name="i-lucide-send" class="h-3.5 w-3.5" />
           Envoyer un SMS
         </button>
-      </div>
-    </div>
+      </template>
+    </UiPageHeader>
 
-    <div :class="['grid grid-cols-2 gap-3', canSeeCredit ? '@sm:grid-cols-5' : '@sm:grid-cols-4']">
+    <div
+      :class="[
+        'grid grid-cols-2 gap-3 [&>*:last-child:nth-child(odd)]:col-span-2 @sm:[&>*:last-child:nth-child(odd)]:col-span-1',
+        canSeeCredit ? '@sm:grid-cols-5' : '@sm:grid-cols-4',
+      ]"
+    >
       <div class="card text-center">
         <p class="text-muted text-xs font-medium">Envoyés</p>
         <p class="mt-1 text-2xl font-bold text-[var(--app-ink)]">{{ stats.sent }}</p>

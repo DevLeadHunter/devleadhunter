@@ -6,10 +6,13 @@
       :aria-expanded="isOpen"
       @click="isOpen = !isOpen"
     >
-      <span class="flex items-center gap-3 text-sm font-semibold text-[var(--app-ink)]">
+      <span class="flex min-w-0 items-center gap-3 text-sm font-semibold text-[var(--app-ink)]">
         <UIcon :name="icon" class="h-4 w-4 shrink-0" />
-        {{ title }}
-        <span v-if="suffix" class="text-muted text-xs font-normal">{{ suffix }}</span>
+        <!-- Un seul bloc de texte : à l'étroit, le complément passe à la ligne après le titre au lieu de former une seconde colonne. -->
+        <span class="min-w-0">
+          {{ title }}
+          <span v-if="suffix" class="text-muted ml-1.5 text-xs font-normal whitespace-nowrap">{{ suffix }}</span>
+        </span>
       </span>
       <UIcon
         name="i-lucide-chevron-down"

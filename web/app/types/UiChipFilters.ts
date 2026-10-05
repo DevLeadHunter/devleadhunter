@@ -1,7 +1,6 @@
 import type { SelectFieldOption, SelectFieldValue } from '~/types/SelectField'
 
-export type UiSegmentedControlProps<TValue extends SelectFieldValue = string> = {
+export type UiChipFiltersProps<TValue extends SelectFieldValue = string> = {
   options: SelectFieldOption<TValue>[]
   label: string
-  isStretchedOnNarrowScreens: boolean
 }

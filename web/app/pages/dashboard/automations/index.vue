@@ -1,23 +1,21 @@
 <template>
   <div class="space-y-5">
-    <div class="flex flex-col gap-4 @2xl:flex-row @2xl:items-end @2xl:justify-between">
-      <div>
-        <p class="app-label flex items-center gap-2">
-          <LandingAsterisk class="text-[0.6rem] text-[var(--app-accent)]" />
-          Automatisation
-        </p>
-        <h1 class="app-page-title mt-2">Automatisations</h1>
-        <p class="mt-1.5 text-sm text-[var(--app-ink-soft)]">
-          Trouver <UIcon name="i-lucide-arrow-right" class="inline-block h-3.5 w-3.5 align-[-2px]" /> générer les sites
-          <UIcon name="i-lucide-arrow-right" class="inline-block h-3.5 w-3.5 align-[-2px]" /> valider
-          <UIcon name="i-lucide-arrow-right" class="inline-block h-3.5 w-3.5 align-[-2px]" /> démarcher, en une passe.
-        </p>
-      </div>
-      <NuxtLink to="/dashboard/automations/new" class="app-btn-primary h-9 px-4 text-xs">
-        <UIcon name="i-lucide-plus" class="h-3.5 w-3.5" />
-        Nouvelle automatisation
-      </NuxtLink>
-    </div>
+    <UiPageHeader eyebrow="Automatisation" title="Automatisations">
+      <template #description>
+        Trouver <UIcon name="i-lucide-arrow-right" class="inline-block h-3.5 w-3.5 align-[-2px]" /> générer les sites
+        <UIcon name="i-lucide-arrow-right" class="inline-block h-3.5 w-3.5 align-[-2px]" /> valider
+        <UIcon name="i-lucide-arrow-right" class="inline-block h-3.5 w-3.5 align-[-2px]" /> démarcher, en une passe.
+      </template>
+      <template #primary-action>
+        <NuxtLink
+          to="/dashboard/automations/new"
+          class="app-btn-primary h-11 px-4 text-sm whitespace-nowrap @2xl:h-9 @2xl:text-xs"
+        >
+          <UIcon name="i-lucide-plus" class="h-3.5 w-3.5" />
+          Nouvelle automatisation
+        </NuxtLink>
+      </template>
+    </UiPageHeader>
 
     <NuxtLink
       v-if="store.awaitingReviewCount > 0"

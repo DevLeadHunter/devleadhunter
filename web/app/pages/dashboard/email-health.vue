@@ -1,24 +1,17 @@
 <template>
   <div class="space-y-8">
-    <div class="flex flex-col gap-4 @2xl:flex-row @2xl:items-end @2xl:justify-between">
-      <div>
-        <p class="app-label flex items-center gap-2">
-          <LandingAsterisk class="text-[0.6rem] text-[var(--app-accent)]" />
-          Prospection
-        </p>
-        <h1 class="app-page-title mt-2">Santé email</h1>
-        <p class="mt-1.5 max-w-xl text-sm text-[var(--app-ink-soft)]">
-          Délivrabilité, réputation du domaine et signaux spam de votre adresse d'envoi — tout ce qui peut expliquer un
-          silence des prospects.
-        </p>
-      </div>
-      <div class="flex items-center gap-2">
+    <UiPageHeader
+      eyebrow="Prospection"
+      title="Santé email"
+      description="Délivrabilité, réputation du domaine et signaux spam de votre adresse d'envoi — tout ce qui peut expliquer un silence des prospects."
+    >
+      <template #actions>
         <div class="flex overflow-hidden rounded-lg border border-[var(--app-line)]">
           <button
             v-for="preset in PERIODS"
             :key="preset"
             type="button"
-            class="px-3 py-1.5 text-xs font-medium transition-colors"
+            class="h-11 flex-1 px-3 text-sm font-medium whitespace-nowrap transition-colors @2xl:h-8 @2xl:flex-none @2xl:text-xs"
             :class="
               period === preset
                 ? 'bg-[var(--app-ink)] text-[var(--app-surface)]'
@@ -29,12 +22,17 @@
             {{ preset }} j
           </button>
         </div>
-        <button type="button" class="app-btn-secondary h-8 px-3 text-xs" :disabled="isLoading" @click="load">
+        <button
+          type="button"
+          class="app-btn-secondary h-11 px-3 text-sm whitespace-nowrap @2xl:h-8 @2xl:text-xs"
+          :disabled="isLoading"
+          @click="load"
+        >
           <UIcon name="i-lucide-rotate-cw" :class="['h-3.5 w-3.5', isLoading && 'animate-spin']" />
           Actualiser
         </button>
-      </div>
-    </div>
+      </template>
+    </UiPageHeader>
 
     <div
       v-if="loadError"

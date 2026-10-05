@@ -1,36 +1,33 @@
 <template>
   <div class="flex min-h-full flex-col gap-5">
-    <div class="flex flex-col gap-3 @3xl:flex-row @3xl:items-end @3xl:justify-between">
-      <div>
-        <p class="app-label flex items-center gap-2">
-          <LandingAsterisk class="text-[0.6rem] text-[var(--app-accent)]" />
-          Prospection
-        </p>
-        <h1 class="app-page-title mt-2">Carte de prospection</h1>
-        <p class="text-muted mt-1 max-w-2xl text-sm leading-relaxed">
-          Cliquez une ville ou une région : zone couverte
-          <UIcon name="i-lucide-arrow-right" class="inline-block h-3.5 w-3.5 align-[-2px]" /> ses prospects, zone vierge
-          <UIcon name="i-lucide-arrow-right" class="inline-block h-3.5 w-3.5 align-[-2px]" /> nouvelle recherche.
-        </p>
-      </div>
-
-      <div class="flex shrink-0 flex-wrap items-center gap-2">
-        <div v-if="members.length > 0" class="w-full sm:w-56">
+    <UiPageHeader eyebrow="Prospection" title="Carte de prospection">
+      <template #description>
+        Cliquez une ville ou une région : zone couverte
+        <UIcon name="i-lucide-arrow-right" class="inline-block h-3.5 w-3.5 align-[-2px]" /> ses prospects, zone vierge
+        <UIcon name="i-lucide-arrow-right" class="inline-block h-3.5 w-3.5 align-[-2px]" /> nouvelle recherche.
+      </template>
+      <template v-if="members.length > 0" #actions>
+        <div class="w-full @2xl:w-56">
           <UiSelectField v-model="scope" :options="scopeOptions" :disabled="store.isLoading" />
         </div>
-
-        <button type="button" class="btn-primary relative h-9 text-xs" @click="openFiltersDrawer">
-          <UIcon name="i-lucide-sliders-horizontal" class="mr-1.5 h-3.5 w-3.5" />
+      </template>
+      <template #primary-action>
+        <button
+          type="button"
+          class="app-btn-primary relative h-11 px-4 text-sm whitespace-nowrap @2xl:h-9 @2xl:text-xs"
+          @click="openFiltersDrawer"
+        >
+          <UIcon name="i-lucide-sliders-horizontal" class="h-3.5 w-3.5" />
           Filtrer
           <span
             v-if="store.selectedCategories.length > 0"
-            class="ml-1.5 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-[var(--app-bg)] px-1 text-[10px] font-semibold text-[var(--app-ink)]"
+            class="inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-[var(--app-bg)] px-1 text-[10px] font-semibold text-[var(--app-ink)]"
           >
             {{ store.selectedCategories.length }}
           </span>
         </button>
-      </div>
-    </div>
+      </template>
+    </UiPageHeader>
 
     <div v-if="store.selectedCategories.length > 0" class="flex flex-wrap items-center gap-1.5">
       <span

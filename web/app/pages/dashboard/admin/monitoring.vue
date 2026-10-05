@@ -1,22 +1,22 @@
 <template>
   <div class="space-y-6">
-    <div class="flex flex-col gap-3 @2xl:flex-row @2xl:items-center @2xl:justify-between">
-      <div>
-        <p class="app-label flex items-center gap-2">
-          <LandingAsterisk class="text-[0.6rem] text-[var(--app-accent)]" />
-          Administration
-        </p>
-        <h1 class="app-page-title mt-2">Monitoring</h1>
-        <p class="text-muted mt-1 text-sm">
-          Le journal complet du logiciel — chaque action (mail, SMS, démo, vente, scraping, erreur…) apparaît ici, en
-          temps réel.
-        </p>
-      </div>
-      <button type="button" class="btn-secondary h-9 shrink-0 px-3 text-xs" :disabled="isLoading" @click="reloadAll">
-        <UIcon name="i-lucide-refresh-cw" :class="['mr-1.5 h-3.5 w-3.5', isLoading ? 'animate-spin' : '']" />
-        Rafraîchir
-      </button>
-    </div>
+    <UiPageHeader
+      eyebrow="Administration"
+      title="Monitoring"
+      description="Le journal complet du logiciel — chaque action (mail, SMS, démo, vente, scraping, erreur…) apparaît ici, en temps réel."
+    >
+      <template #actions>
+        <button
+          type="button"
+          class="app-btn-secondary h-11 px-4 text-sm whitespace-nowrap disabled:cursor-not-allowed disabled:opacity-50 @2xl:h-9 @2xl:text-xs"
+          :disabled="isLoading"
+          @click="reloadAll"
+        >
+          <UIcon name="i-lucide-refresh-cw" :class="['h-3.5 w-3.5', isLoading && 'animate-spin']" />
+          Rafraîchir
+        </button>
+      </template>
+    </UiPageHeader>
 
     <div
       v-if="error"
@@ -26,7 +26,9 @@
     </div>
 
     <div v-if="overview" class="grid grid-cols-2 gap-3 @xl:grid-cols-4">
-      <div class="rounded-lg border border-[var(--app-line)] bg-[var(--app-surface)] px-4 py-3">
+      <div
+        class="flex flex-col justify-between rounded-lg border border-[var(--app-line)] bg-[var(--app-surface)] px-4 py-3"
+      >
         <p class="text-muted text-[10px] tracking-wide uppercase">Base de données</p>
         <p class="mt-1 flex items-center gap-2 text-sm font-semibold">
           <span
@@ -38,12 +40,16 @@
           </span>
         </p>
       </div>
-      <div class="rounded-lg border border-[var(--app-line)] bg-[var(--app-surface)] px-4 py-3">
-        <p class="text-muted text-[10px] tracking-wide uppercase">Sources actives (24 h)</p>
+      <div
+        class="flex flex-col justify-between rounded-lg border border-[var(--app-line)] bg-[var(--app-surface)] px-4 py-3"
+      >
+        <p class="text-muted text-[10px] tracking-wide uppercase">Sources actives (24&nbsp;h)</p>
         <p class="mt-1 text-sm font-semibold text-[var(--app-ink)] tabular-nums">{{ overview.sources.length }}</p>
       </div>
-      <div class="rounded-lg border border-[var(--app-line)] bg-[var(--app-surface)] px-4 py-3">
-        <p class="text-muted text-[10px] tracking-wide uppercase">Incidents scraping (24 h)</p>
+      <div
+        class="flex flex-col justify-between rounded-lg border border-[var(--app-line)] bg-[var(--app-surface)] px-4 py-3"
+      >
+        <p class="text-muted text-[10px] tracking-wide uppercase">Incidents scraping (24&nbsp;h)</p>
         <p
           class="mt-1 text-sm font-semibold tabular-nums"
           :style="{ color: totalIncidents24h > 0 ? 'var(--app-red)' : 'var(--app-green)' }"
@@ -51,7 +57,9 @@
           {{ totalIncidents24h }}
         </p>
       </div>
-      <div class="rounded-lg border border-[var(--app-line)] bg-[var(--app-surface)] px-4 py-3">
+      <div
+        class="flex flex-col justify-between rounded-lg border border-[var(--app-line)] bg-[var(--app-surface)] px-4 py-3"
+      >
         <p class="text-muted text-[10px] tracking-wide uppercase">Actions loguées</p>
         <p class="mt-1 text-sm font-semibold text-[var(--app-ink)] tabular-nums">{{ overview.activity_total }}</p>
       </div>

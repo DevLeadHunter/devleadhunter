@@ -72,13 +72,13 @@
           <div v-if="!isEditing">
             <label class="text-muted mb-1.5 block text-xs font-medium">Canal d'envoi</label>
             <div
-              class="inline-flex rounded-full border border-[var(--app-line)] bg-[var(--app-surface-2)] p-0.5"
+              class="flex w-full rounded-full border border-[var(--app-line)] bg-[var(--app-surface-2)] p-0.5 sm:inline-flex sm:w-auto"
               role="group"
               aria-label="Canal d'envoi"
             >
               <button
                 type="button"
-                class="flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium transition-colors"
+                class="flex h-10 flex-1 items-center justify-center gap-1.5 rounded-full px-3 text-sm font-medium transition-colors sm:h-auto sm:flex-none sm:py-1.5 sm:text-xs"
                 :class="
                   form.channel === 'email'
                     ? 'bg-[var(--app-ink)] text-[var(--app-bg)]'
@@ -92,7 +92,7 @@
               </button>
               <button
                 type="button"
-                class="flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium transition-colors"
+                class="flex h-10 flex-1 items-center justify-center gap-1.5 rounded-full px-3 text-sm font-medium transition-colors sm:h-auto sm:flex-none sm:py-1.5 sm:text-xs"
                 :class="
                   form.channel === 'sms'
                     ? 'bg-[var(--app-ink)] text-[var(--app-bg)]'

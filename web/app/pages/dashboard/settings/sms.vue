@@ -1,14 +1,10 @@
 <template>
   <div class="max-w-3xl space-y-6">
-    <header>
-      <p class="app-label">Réglages</p>
-      <h1 class="app-page-title">Relance SMS</h1>
-      <p class="text-muted mt-1 text-sm">
-        Relancez par SMS les prospects qui n'ont pas répondu à votre email — un rappel vers leur site de démonstration.
-        L'envoi respecte les horaires légaux (lun–ven 8h–20h, sam 10h–19h, jamais dimanche ni jour férié), ne vise que
-        des mobiles du pays du prospect (France ou Suisse), et porte toujours la mention de désinscription.
-      </p>
-    </header>
+    <UiPageHeader
+      eyebrow="Réglages"
+      title="Relance SMS"
+      description="Relancez par SMS les prospects qui n'ont pas répondu à votre email — un rappel vers leur site de démonstration. L'envoi respecte les horaires légaux (lun–ven 8h–20h, sam 10h–19h, jamais dimanche ni jour férié), ne vise que des mobiles du pays du prospect (France ou Suisse), et porte toujours la mention de désinscription."
+    />
 
     <section class="app-card p-5">
       <h2 class="text-sm font-semibold text-[var(--app-ink)]">Votre expéditeur</h2>
@@ -39,8 +35,8 @@
         </label>
       </div>
 
-      <div class="mt-4 flex items-center gap-3">
-        <button class="app-btn-primary" :disabled="isSaving" @click="save">
+      <div class="mt-4 flex flex-col-reverse gap-2 @md:flex-row @md:items-center @md:gap-3">
+        <button class="app-btn-primary h-11 @md:h-9" :disabled="isSaving" @click="save">
           {{ isSaving ? 'Enregistrement…' : 'Enregistrer' }}
         </button>
         <span v-if="senderPreview" class="text-xs text-[var(--app-ink-soft)]"> Aperçu : « {{ senderPreview }} » </span>

@@ -1,21 +1,16 @@
 <template>
   <div>
-    <div class="mb-6 flex flex-wrap items-end justify-between gap-4">
-      <div>
-        <p class="app-label flex items-center gap-2">
-          <LandingAsterisk class="text-[0.6rem] text-[var(--app-accent)]" />
-          Compte
-        </p>
-        <h1 class="app-page-title mt-2">Mes crédits</h1>
-      </div>
-      <NuxtLink
-        to="/dashboard/buy-credits"
-        class="flex items-center gap-1.5 text-sm text-[var(--app-ink)] transition-colors hover:text-[var(--app-ink-soft)]"
-      >
-        Voir les tarifs
-        <UIcon name="i-lucide-external-link" class="h-3.5 w-3.5" />
-      </NuxtLink>
-    </div>
+    <UiPageHeader eyebrow="Compte" title="Mes crédits" class="mb-6">
+      <template #primary-action>
+        <NuxtLink
+          to="/dashboard/buy-credits"
+          class="app-btn-primary h-11 px-4 text-sm whitespace-nowrap @2xl:h-9 @2xl:text-xs"
+        >
+          <UIcon name="i-lucide-plus" class="h-3.5 w-3.5" />
+          Acheter des crédits
+        </NuxtLink>
+      </template>
+    </UiPageHeader>
 
     <div v-if="isLoading" class="space-y-6">
       <div class="card">
@@ -28,14 +23,8 @@
 
     <div v-else class="space-y-6">
       <div class="card">
-        <div class="mb-4 flex items-center justify-between">
-          <h2 class="text-lg font-semibold text-[var(--app-ink)]">Consommation de crédits</h2>
-          <NuxtLink to="/dashboard/buy-credits" class="btn-primary h-auto px-4 py-2 text-xs">
-            Acheter des crédits
-          </NuxtLink>
-        </div>
-
-        <p class="mb-4 text-xs text-[var(--app-ink-soft)]">Mis à jour le {{ lastUpdated }}</p>
+        <h2 class="text-lg font-semibold text-[var(--app-ink)]">Consommation de crédits</h2>
+        <p class="mt-1 mb-4 text-xs text-[var(--app-ink-soft)]">Mis à jour le {{ lastUpdated }}</p>
 
         <div ref="progressBarRef" class="relative">
           <div
@@ -156,8 +145,8 @@
         <div v-if="chartData && chartData.labels && chartData.labels.length > 0" class="h-64">
           <canvas ref="chartCanvasRef"></canvas>
         </div>
-        <div v-else class="flex h-64 items-center justify-center text-[var(--app-ink-soft)]">
-          <p>Aucune donnée de consommation</p>
+        <div v-else class="flex h-32 items-center justify-center text-[var(--app-ink-soft)]">
+          <p class="text-sm">Aucune donnée de consommation</p>
         </div>
       </div>
 
@@ -195,14 +184,16 @@
       </div>
 
       <div class="card border-[var(--app-line)] bg-gradient-to-r from-[var(--app-surface)] to-[var(--app-bg)]">
-        <div class="flex flex-col items-center justify-between gap-4 @2xl:flex-row">
+        <div class="flex flex-col gap-4 @2xl:flex-row @2xl:items-center @2xl:justify-between">
           <div>
             <h3 class="mb-2 text-lg font-semibold text-[var(--app-ink)]">Besoin de plus de crédits ?</h3>
             <p class="text-sm text-[var(--app-ink-soft)]">
               Rechargez pour continuer à chercher des prospects et envoyer vos campagnes.
             </p>
           </div>
-          <NuxtLink to="/dashboard/buy-credits" class="btn-primary whitespace-nowrap"> Acheter des crédits </NuxtLink>
+          <NuxtLink to="/dashboard/buy-credits" class="btn-primary h-11 whitespace-nowrap @2xl:h-9">
+            Acheter des crédits
+          </NuxtLink>
         </div>
       </div>
     </div>

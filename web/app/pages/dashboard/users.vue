@@ -1,38 +1,36 @@
 <template>
   <div class="space-y-5">
-    <div class="flex flex-col gap-4 @2xl:flex-row @2xl:items-end @2xl:justify-between">
-      <div class="min-w-0">
-        <p class="app-label flex items-center gap-2">
-          <LandingAsterisk class="text-[0.6rem] text-[var(--app-accent)]" />
-          Administration
-        </p>
-        <h1 class="app-page-title mt-2">Utilisateurs</h1>
-        <p class="mt-1.5 max-w-2xl text-sm text-[var(--app-ink-soft)]">
-          Les comptes ayant accès à l'outil, leur rôle et leur consommation de crédits.
-        </p>
-      </div>
-      <div class="flex flex-wrap items-center gap-2 sm:gap-3 @2xl:justify-end">
+    <UiPageHeader
+      eyebrow="Administration"
+      title="Utilisateurs"
+      description="Les comptes ayant accès à l'outil, leur rôle et leur consommation de crédits."
+    >
+      <template #actions>
         <button
           type="button"
-          class="app-btn-secondary h-9 shrink-0 px-4 text-xs whitespace-nowrap disabled:cursor-not-allowed disabled:opacity-50"
+          class="app-btn-secondary h-11 px-4 text-sm whitespace-nowrap disabled:cursor-not-allowed disabled:opacity-50 @2xl:h-9 @2xl:text-xs"
           :disabled="isLoading"
           @click="loadUsers"
         >
           <UIcon name="i-lucide-refresh-cw" :class="['h-3.5 w-3.5', isLoading && 'animate-spin']" />
           Actualiser
         </button>
+      </template>
+      <template #primary-action>
         <button
           type="button"
-          class="app-btn-primary h-9 shrink-0 px-4 text-xs whitespace-nowrap"
+          class="app-btn-primary h-11 px-4 text-sm whitespace-nowrap @2xl:h-9 @2xl:text-xs"
           @click="openUserDrawer('create', null)"
         >
           <UIcon name="i-lucide-plus" class="h-3.5 w-3.5" />
           Ajouter un utilisateur
         </button>
-      </div>
-    </div>
+      </template>
+    </UiPageHeader>
 
-    <div class="grid grid-cols-1 gap-4 @sm:grid-cols-3">
+    <div
+      class="grid grid-cols-2 gap-4 @sm:grid-cols-3 [&>*:last-child:nth-child(odd)]:col-span-2 @sm:[&>*:last-child:nth-child(odd)]:col-span-1"
+    >
       <UiStatCard label="Comptes" :value="users.length" icon="i-lucide-users" accent="neutral" />
       <UiStatCard label="Administrateurs" :value="adminCount" icon="i-lucide-shield-check" accent="sky" />
       <UiStatCard label="Crédits consommés" :value="totalCreditsConsumed" icon="i-lucide-coins" accent="emerald" />

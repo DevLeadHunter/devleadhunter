@@ -106,11 +106,14 @@
         </ul>
       </UiCollapsibleCard>
 
-      <div class="flex items-center justify-end gap-4">
-        <NuxtLink to="/dashboard/support" class="text-muted text-xs font-medium hover:text-[var(--app-ink)]">
+      <div class="flex flex-col-reverse gap-1 sm:flex-row sm:items-center sm:justify-end sm:gap-4">
+        <NuxtLink
+          to="/dashboard/support"
+          class="text-muted py-2.5 text-center text-sm font-medium hover:text-[var(--app-ink)] sm:py-0 sm:text-xs"
+        >
           Annuler
         </NuxtLink>
-        <button type="submit" class="btn-primary" :disabled="isSubmitting">
+        <button type="submit" class="btn-primary h-11 sm:h-9" :disabled="isSubmitting">
           <UIcon v-if="isSubmitting" name="i-lucide-loader-circle" class="mr-1.5 h-4 w-4 animate-spin" />
           {{ isSubmitting ? 'Création…' : 'Créer le ticket' }}
         </button>

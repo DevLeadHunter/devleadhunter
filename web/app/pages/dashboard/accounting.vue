@@ -1,15 +1,10 @@
 <template>
   <div class="space-y-6">
-    <div>
-      <p class="app-label flex items-center gap-2">
-        <LandingAsterisk class="text-[0.6rem] text-[var(--app-accent)]" />
-        Paramètres
-      </p>
-      <h1 class="app-page-title mt-2">Comptabilité</h1>
-      <p class="mt-1.5 max-w-2xl text-sm text-[var(--app-ink-soft)]">
-        Vue d'ensemble des paiements Stripe et des achats de crédits sur la plateforme.
-      </p>
-    </div>
+    <UiPageHeader
+      eyebrow="Paramètres"
+      title="Comptabilité"
+      description="Vue d'ensemble des paiements Stripe et des achats de crédits sur la plateforme."
+    />
 
     <UiLoader v-if="isLoading" label="Chargement de la comptabilité…" />
 
@@ -64,8 +59,8 @@
             <p class="mt-0.5 text-xs text-[var(--app-ink-soft)]">Paiements synchronisés depuis Stripe</p>
           </div>
 
-          <div class="grid grid-cols-2 gap-4 @4xl:grid-cols-4">
-            <div class="@4xl:col-span-2">
+          <div class="grid grid-cols-2 gap-x-3 gap-y-4 @4xl:grid-cols-4 @4xl:gap-4">
+            <div class="col-span-2">
               <label class="app-label mb-1.5 block">Rechercher</label>
               <div class="relative">
                 <UIcon
@@ -84,14 +79,16 @@
               <label class="app-label mb-1.5 block">Statut</label>
               <UiSelectField v-model="statusFilter" :options="statusFilterOptions" />
             </div>
-            <div>
+            <!-- Conteneur : le sens du tri n'affiche son libellé que si la cellule a la place, sinon l'icône seule. -->
+            <div class="@container">
               <label class="app-label mb-1.5 block">Tri</label>
               <div class="flex items-center gap-2">
                 <UiSelectField v-model="sortKey" :options="sortOptions" class="min-w-0 flex-1" />
                 <button
                   type="button"
-                  class="app-btn-secondary h-9 shrink-0 px-3 text-xs whitespace-nowrap"
+                  class="app-btn-secondary h-9 w-9 shrink-0 px-0 text-xs whitespace-nowrap @min-[15rem]:w-auto @min-[15rem]:px-3"
                   :title="sortDirection === 'asc' ? 'Ordre croissant' : 'Ordre décroissant'"
+                  :aria-label="sortDirection === 'asc' ? 'Ordre croissant' : 'Ordre décroissant'"
                   @click="toggleSortDirection"
                 >
                   <UIcon
@@ -100,7 +97,9 @@
                     "
                     class="h-3.5 w-3.5"
                   />
-                  {{ sortDirection === 'asc' ? 'Croissant' : 'Décroissant' }}
+                  <span class="hidden @min-[15rem]:inline">
+                    {{ sortDirection === 'asc' ? 'Croissant' : 'Décroissant' }}
+                  </span>
                 </button>
               </div>
             </div>
@@ -477,7 +476,7 @@ const statusOptions: ComputedRef<string[]> = computed((): string[] => {
 })
 
 const statusFilterOptions: ComputedRef<SelectFieldOption[]> = computed((): SelectFieldOption[] => [
-  { value: 'all', label: 'Tous les statuts' },
+  { value: 'all', label: 'Tous' },
   ...statusOptions.value.map((status: string): SelectFieldOption => ({ value: status, label: getStatusLabel(status) })),
 ])
 

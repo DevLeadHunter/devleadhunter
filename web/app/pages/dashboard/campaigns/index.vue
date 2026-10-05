@@ -1,15 +1,11 @@
 <template>
   <div class="space-y-5">
-    <div class="flex flex-wrap items-center justify-between gap-3">
-      <div>
-        <p class="app-label flex items-center gap-2">
-          <LandingAsterisk class="text-[0.6rem] text-[var(--app-accent)]" />
-          Prospection
-        </p>
-        <h1 class="app-page-title mt-2">Campagnes</h1>
-        <p class="text-muted mt-1 text-sm">Vos séquences d'emails et de SMS, de l'envoi initial aux relances.</p>
-      </div>
-      <div class="flex w-full flex-col gap-2 @2xl:w-auto @2xl:flex-row @2xl:items-center @2xl:gap-3">
+    <UiPageHeader
+      eyebrow="Prospection"
+      title="Campagnes"
+      description="Vos séquences d'emails et de SMS, de l'envoi initial aux relances."
+    >
+      <template #actions>
         <div
           class="flex w-full gap-0.5 rounded-full border border-[var(--app-line)] bg-[var(--app-surface)] p-0.5 @2xl:inline-flex @2xl:w-auto"
           role="tablist"
@@ -33,12 +29,14 @@
             {{ option.label }}
           </button>
         </div>
-        <button class="btn-primary w-full justify-center @2xl:w-auto" @click="openCreateDrawer">
-          <UIcon name="i-lucide-plus" class="h-4 w-4" />
-          <span>Nouvelle campagne</span>
+      </template>
+      <template #primary-action>
+        <button class="app-btn-primary h-11 px-4 text-sm @2xl:h-9 @2xl:text-xs" @click="openCreateDrawer">
+          <UIcon name="i-lucide-plus" class="h-3.5 w-3.5" />
+          Nouvelle campagne
         </button>
-      </div>
-    </div>
+      </template>
+    </UiPageHeader>
 
     <UiCampaignForecast v-if="view === 'forecast'" />
 
@@ -52,21 +50,21 @@
 
       <template v-else-if="campaignsStore.campaignsCount > 0">
         <div class="grid grid-cols-2 gap-3 @4xl:grid-cols-4">
-          <div class="card p-3.5">
+          <div class="card flex flex-col justify-between p-3.5">
             <p class="app-label">Actives</p>
             <p class="mt-1 text-2xl font-bold text-[var(--app-green)] tabular-nums">{{ activeCampaignsCount }}</p>
           </div>
-          <div class="card p-3.5">
+          <div class="card flex flex-col justify-between p-3.5">
             <p class="app-label">Prochains envois · 7 j</p>
             <p class="mt-1 text-2xl font-bold text-[var(--app-ink)] tabular-nums">
               {{ campaignsStore.upcomingSends7d }}
             </p>
           </div>
-          <div class="card p-3.5">
+          <div class="card flex flex-col justify-between p-3.5">
             <p class="app-label">Emails envoyés</p>
             <p class="mt-1 text-2xl font-bold text-[var(--app-ink)] tabular-nums">{{ totalEmailsSent }}</p>
           </div>
-          <div class="card p-3.5">
+          <div class="card flex flex-col justify-between p-3.5">
             <p class="app-label">Ouverture moyenne</p>
             <p class="mt-1 text-2xl font-bold text-[var(--app-violet)] tabular-nums">
               {{ averageOpenRate === null ? '—' : `${averageOpenRate}%` }}
@@ -74,10 +72,10 @@
           </div>
         </div>
 
-        <!-- Filtres : recherche à gauche, tri + période à droite. -->
+        <!-- Filtres : sur une ligne dès qu'elle a la place ; sinon la recherche, le canal, puis tri et période côte à côte. -->
         <div class="card p-3">
-          <div class="flex flex-col gap-3 @2xl:flex-row @2xl:items-center @2xl:justify-between">
-            <div class="relative w-full @2xl:max-w-xs">
+          <div class="flex flex-col gap-2.5 @3xl:flex-row @3xl:items-center @3xl:gap-2">
+            <div class="relative min-w-0 @3xl:flex-1">
               <UIcon
                 name="i-lucide-search"
                 class="pointer-events-none absolute top-1/2 left-3 h-3.5 w-3.5 -translate-y-1/2 text-[var(--app-faint)]"
@@ -87,31 +85,39 @@
                 type="search"
                 placeholder="Rechercher une campagne…"
                 aria-label="Rechercher une campagne"
-                class="app-input pl-9"
+                class="app-input h-10 pl-9 text-sm @3xl:h-9"
               />
             </div>
 
-            <div class="flex flex-wrap items-center gap-2">
-              <UiSegmentedControl v-model="channelFilter" :options="CHANNEL_OPTIONS" label="Canal des campagnes" />
+            <UiSegmentedControl
+              v-model="channelFilter"
+              :options="CHANNEL_OPTIONS"
+              label="Canal des campagnes"
+              is-stretched-on-narrow-screens
+              class="@3xl:shrink-0"
+            />
 
+            <div class="grid grid-cols-2 gap-2 @3xl:flex @3xl:shrink-0 @3xl:items-center">
               <div ref="sortMenuEl" class="relative">
                 <button
                   type="button"
-                  class="app-btn-secondary h-9 px-4 text-xs whitespace-nowrap"
+                  class="app-btn-secondary h-10 w-full justify-between gap-1.5 px-3 text-sm whitespace-nowrap @3xl:h-9 @3xl:w-auto @3xl:justify-center @3xl:gap-2 @3xl:px-4 @3xl:text-xs"
                   :aria-expanded="isSortMenuOpen"
                   aria-haspopup="menu"
                   @click="isSortMenuOpen = !isSortMenuOpen"
                 >
-                  <UIcon name="i-lucide-arrow-up-down" class="h-3.5 w-3.5" />
-                  <span>{{ sortLabel }}</span>
+                  <span class="inline-flex min-w-0 items-center gap-1.5 @3xl:gap-2">
+                    <UIcon name="i-lucide-arrow-up-down" class="h-3.5 w-3.5 shrink-0 @max-[22rem]:hidden" />
+                    <span class="truncate">{{ sortLabel }}</span>
+                  </span>
                   <UIcon
                     name="i-lucide-chevron-down"
-                    :class="['h-3 w-3 opacity-60 transition-transform', isSortMenuOpen && 'rotate-180']"
+                    :class="['h-3 w-3 shrink-0 opacity-60 transition-transform', isSortMenuOpen && 'rotate-180']"
                   />
                 </button>
                 <div
                   v-if="isSortMenuOpen"
-                  class="absolute right-0 z-50 mt-1.5 w-52 rounded-xl border border-[var(--app-line)] bg-[var(--app-surface)] p-1.5 shadow-[var(--app-shadow-soft)]"
+                  class="absolute left-0 z-50 mt-1.5 w-52 rounded-xl border border-[var(--app-line)] bg-[var(--app-surface)] p-1.5 shadow-[var(--app-shadow-soft)] @3xl:right-0 @3xl:left-auto"
                   role="menu"
                 >
                   <button
@@ -133,7 +139,7 @@
                 </div>
               </div>
 
-              <UiPeriodFilter v-model="period" />
+              <UiPeriodFilter v-model="period" is-stretched-on-narrow-screens />
             </div>
           </div>
         </div>

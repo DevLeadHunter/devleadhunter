@@ -2,16 +2,30 @@
   <div ref="rootEl" class="relative">
     <button
       type="button"
-      class="app-btn-secondary h-9 px-4 text-xs whitespace-nowrap"
+      class="app-btn-secondary whitespace-nowrap"
+      :class="
+        props.isStretchedOnNarrowScreens
+          ? 'h-10 w-full justify-between gap-1.5 px-3 text-sm @3xl:h-9 @3xl:w-auto @3xl:justify-center @3xl:gap-2 @3xl:px-4 @3xl:text-xs'
+          : 'h-9 px-4 text-xs'
+      "
       :aria-expanded="isOpen"
       aria-haspopup="dialog"
       @click="toggle"
     >
-      <UIcon name="i-lucide-calendar" class="h-3.5 w-3.5" />
-      <span>{{ triggerLabel }}</span>
+      <span
+        class="inline-flex min-w-0 items-center"
+        :class="props.isStretchedOnNarrowScreens ? 'gap-1.5 @3xl:gap-2' : 'gap-2'"
+      >
+        <UIcon
+          name="i-lucide-calendar"
+          class="h-3.5 w-3.5 shrink-0"
+          :class="props.isStretchedOnNarrowScreens && '@max-[22rem]:hidden'"
+        />
+        <span class="truncate">{{ triggerLabel }}</span>
+      </span>
       <UIcon
         name="i-lucide-chevron-down"
-        :class="['h-3 w-3 opacity-60 transition-transform', isOpen && 'rotate-180']"
+        :class="['h-3 w-3 shrink-0 opacity-60 transition-transform', isOpen && 'rotate-180']"
       />
     </button>
 
@@ -113,9 +127,17 @@
 import type { ComputedRef, ModelRef, Ref } from 'vue'
 import { computed, ref } from 'vue'
 import { onClickOutside } from '@vueuse/core'
-import type { PeriodPreset, PeriodValue } from '~/types/UiPeriodFilter'
+import type { PeriodPreset, PeriodValue, UiPeriodFilterProps } from '~/types/UiPeriodFilter'
 
 const modelValue: ModelRef<PeriodValue> = defineModel<PeriodValue>({ required: true })
+
+/** Period picker: presets and a custom range; on narrow screens its trigger can span its cell like a select. */
+const props: UiPeriodFilterProps = defineProps({
+  isStretchedOnNarrowScreens: {
+    type: Boolean,
+    default: false,
+  },
+})
 
 /** Presets offered above the custom-range calendar. */
 const PRESETS: { key: PeriodPreset; label: string }[] = [

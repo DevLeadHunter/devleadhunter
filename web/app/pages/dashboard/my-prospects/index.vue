@@ -1,95 +1,81 @@
 <template>
   <div class="space-y-5">
-    <div class="flex flex-col gap-4 @2xl:flex-row @2xl:items-end @2xl:justify-between">
-      <div class="min-w-0">
-        <p class="app-label flex items-center gap-2">
-          <LandingAsterisk class="text-[0.6rem] text-[var(--app-accent)]" />
-          Prospection
-        </p>
-        <h1 class="app-page-title mt-2">Mes prospects</h1>
-        <p class="mt-1.5 text-sm text-[var(--app-ink-soft)]">Tous vos prospects sauvegardés depuis vos recherches</p>
-      </div>
-      <div
-        class="flex w-full flex-col gap-2 @2xl:w-auto @2xl:flex-row @2xl:flex-wrap @2xl:items-center @2xl:justify-end @2xl:gap-3"
-      >
+    <UiPageHeader
+      eyebrow="Prospection"
+      title="Mes prospects"
+      description="Tous vos prospects sauvegardés depuis vos recherches"
+    >
+      <template #actions>
+        <button
+          :disabled="isLoading"
+          class="app-btn-secondary h-11 px-4 text-sm whitespace-nowrap disabled:cursor-not-allowed disabled:opacity-50 @2xl:h-9 @2xl:text-xs"
+          @click="refreshProspects"
+        >
+          <UIcon name="i-lucide-refresh-cw" class="h-3.5 w-3.5" />
+          Actualiser
+        </button>
+        <div class="relative">
+          <button
+            type="button"
+            class="app-btn-secondary h-11 w-full px-4 text-sm whitespace-nowrap disabled:cursor-not-allowed disabled:opacity-50 @2xl:h-9 @2xl:w-auto @2xl:text-xs"
+            :disabled="isImporting"
+            :aria-expanded="showImportMenu"
+            @click.stop="showImportMenu = !showImportMenu"
+          >
+            <UIcon
+              :name="isImporting ? 'i-lucide-loader-circle' : 'i-lucide-upload'"
+              :class="['h-3.5 w-3.5', isImporting && 'animate-spin']"
+            />
+            {{ isImporting ? 'Import…' : 'Importer' }}
+            <UIcon
+              name="i-lucide-chevron-down"
+              :class="['h-3 w-3 opacity-60 transition-transform', showImportMenu && 'rotate-180']"
+            />
+          </button>
+
+          <div v-if="showImportMenu" class="fixed inset-0 z-40" @click="showImportMenu = false"></div>
+          <div
+            v-if="showImportMenu"
+            class="absolute right-0 z-50 mt-1.5 w-56 rounded-xl border border-[var(--app-line)] bg-[var(--app-surface)] p-1 shadow-lg shadow-black/5"
+          >
+            <button
+              type="button"
+              class="flex w-full cursor-pointer items-center gap-2.5 rounded-lg px-2.5 py-2 text-left text-xs font-medium text-[var(--app-ink)] transition-colors hover:bg-[var(--app-surface-2)]"
+              @click="handleImportClick"
+            >
+              <UIcon name="i-lucide-upload" class="h-3.5 w-3.5 shrink-0 text-[var(--app-ink-soft)]" />
+              Importer un fichier JSON
+            </button>
+            <button
+              type="button"
+              class="flex w-full cursor-pointer items-center gap-2.5 rounded-lg px-2.5 py-2 text-left text-xs font-medium text-[var(--app-ink)] transition-colors hover:bg-[var(--app-surface-2)]"
+              @click="handleDownloadTemplate"
+            >
+              <UIcon name="i-lucide-file-json" class="h-3.5 w-3.5 shrink-0 text-[var(--app-ink-soft)]" />
+              Télécharger le modèle JSON
+            </button>
+          </div>
+        </div>
+        <button
+          type="button"
+          class="app-btn-secondary h-11 px-4 text-sm whitespace-nowrap disabled:cursor-not-allowed disabled:opacity-50 @2xl:h-9 @2xl:text-xs"
+          @click="openAddProspectDrawer"
+        >
+          <UIcon name="i-lucide-user-plus" class="h-3.5 w-3.5" />
+          Ajouter manuellement
+        </button>
+      </template>
+      <template #primary-action>
         <NuxtLink
           to="/dashboard/search-prospects"
-          class="app-btn-primary h-11 w-full px-4 text-sm whitespace-nowrap @2xl:order-2 @2xl:h-9 @2xl:w-auto @2xl:text-xs"
+          class="app-btn-primary h-11 px-4 text-sm whitespace-nowrap @2xl:h-9 @2xl:text-xs"
         >
           <UIcon name="i-lucide-search" class="h-3.5 w-3.5" />
           Nouvelle recherche
         </NuxtLink>
-        <div
-          class="grid w-full grid-cols-2 gap-2 @2xl:order-1 @2xl:flex @2xl:w-auto @2xl:flex-wrap @2xl:items-center @2xl:gap-3"
-        >
-          <button
-            :disabled="isLoading"
-            class="app-btn-secondary h-11 w-full px-4 text-sm whitespace-nowrap disabled:cursor-not-allowed disabled:opacity-50 @2xl:h-9 @2xl:w-auto @2xl:text-xs"
-            @click="refreshProspects"
-          >
-            <UIcon name="i-lucide-refresh-cw" class="h-3.5 w-3.5" />
-            Actualiser
-          </button>
-          <div class="relative shrink-0">
-            <button
-              type="button"
-              class="app-btn-secondary h-11 w-full px-4 text-sm whitespace-nowrap disabled:cursor-not-allowed disabled:opacity-50 @2xl:h-9 @2xl:w-auto @2xl:text-xs"
-              :disabled="isImporting"
-              :aria-expanded="showImportMenu"
-              @click.stop="showImportMenu = !showImportMenu"
-            >
-              <UIcon
-                :name="isImporting ? 'i-lucide-loader-circle' : 'i-lucide-upload'"
-                :class="['h-3.5 w-3.5', isImporting && 'animate-spin']"
-              />
-              {{ isImporting ? 'Import…' : 'Importer' }}
-              <UIcon
-                name="i-lucide-chevron-down"
-                :class="['h-3 w-3 opacity-60 transition-transform', showImportMenu && 'rotate-180']"
-              />
-            </button>
-
-            <div v-if="showImportMenu" class="fixed inset-0 z-40" @click="showImportMenu = false"></div>
-            <div
-              v-if="showImportMenu"
-              class="absolute right-0 z-50 mt-1.5 w-56 rounded-xl border border-[var(--app-line)] bg-[var(--app-surface)] p-1 shadow-lg shadow-black/5"
-            >
-              <button
-                type="button"
-                class="flex w-full cursor-pointer items-center gap-2.5 rounded-lg px-2.5 py-2 text-left text-xs font-medium text-[var(--app-ink)] transition-colors hover:bg-[var(--app-surface-2)]"
-                @click="handleImportClick"
-              >
-                <UIcon name="i-lucide-upload" class="h-3.5 w-3.5 shrink-0 text-[var(--app-ink-soft)]" />
-                Importer un fichier JSON
-              </button>
-              <button
-                type="button"
-                class="flex w-full cursor-pointer items-center gap-2.5 rounded-lg px-2.5 py-2 text-left text-xs font-medium text-[var(--app-ink)] transition-colors hover:bg-[var(--app-surface-2)]"
-                @click="handleDownloadTemplate"
-              >
-                <UIcon name="i-lucide-file-json" class="h-3.5 w-3.5 shrink-0 text-[var(--app-ink-soft)]" />
-                Télécharger le modèle JSON
-              </button>
-            </div>
-          </div>
-          <input
-            ref="importInput"
-            type="file"
-            accept=".json,application/json"
-            class="hidden"
-            @change="handleImportFile"
-          />
-          <button
-            type="button"
-            class="app-btn-secondary col-span-2 h-11 w-full px-4 text-sm whitespace-nowrap @2xl:col-auto @2xl:h-9 @2xl:w-auto @2xl:text-xs"
-            @click="openAddProspectDrawer"
-          >
-            <UIcon name="i-lucide-user-plus" class="h-3.5 w-3.5" />
-            Ajouter manuellement
-          </button>
-        </div>
-      </div>
-    </div>
+      </template>
+    </UiPageHeader>
+    <input ref="importInput" type="file" accept=".json,application/json" class="hidden" @change="handleImportFile" />
 
     <ProspectSearchStatusBanner
       v-if="searchStore.activeSearch"

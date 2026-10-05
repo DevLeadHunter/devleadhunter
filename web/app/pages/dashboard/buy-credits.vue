@@ -88,10 +88,10 @@
           </div>
         </div>
 
-        <div class="flex justify-end border-t border-[var(--app-line)] pt-4">
+        <div class="flex flex-col border-t border-[var(--app-line)] pt-4 @md:flex-row @md:justify-end">
           <button
             type="submit"
-            class="btn-primary cursor-pointer"
+            class="btn-primary h-11 cursor-pointer @md:h-9"
             :disabled="isProcessing || !creditSettings || credits < creditSettings.minimum_credits_purchase"
           >
             <span v-if="isProcessing">Redirection…</span>

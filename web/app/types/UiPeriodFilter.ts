@@ -17,7 +17,7 @@ export type PeriodValue = {
   end: string | null
 }
 
-/** Props of the `UiPeriodFilter` component. */
+/** Props of the `UiPeriodFilter` component; the period itself is its v-model. */
 export type UiPeriodFilterProps = {
-  modelValue: PeriodValue
+  isStretchedOnNarrowScreens: boolean
 }

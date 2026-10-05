@@ -1,16 +1,10 @@
 <template>
   <div class="max-w-3xl space-y-8">
-    <div>
-      <p class="app-label flex items-center gap-2">
-        <LandingAsterisk class="text-[0.6rem] text-[var(--app-accent)]" />
-        Prospection
-      </p>
-      <h1 class="app-page-title mt-2">Vidéo de prospection</h1>
-      <p class="text-muted mt-2 max-w-2xl text-sm leading-relaxed">
-        Un clip webcam par module, enregistré une seule fois. Chaque site démo et chaque réceptionniste génère ensuite
-        sa vidéo personnalisée, prête pour vos emails.
-      </p>
-    </div>
+    <UiPageHeader
+      eyebrow="Prospection"
+      title="Vidéo de prospection"
+      description="Un clip webcam par module, enregistré une seule fois. Chaque site démo et chaque réceptionniste génère ensuite sa vidéo personnalisée, prête pour vos emails."
+    />
 
     <PresenterVideoConfig />
     <div id="clip-receptionniste" class="border-t border-[var(--app-line)] pt-8">

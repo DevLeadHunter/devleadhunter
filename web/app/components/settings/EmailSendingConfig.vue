@@ -201,8 +201,8 @@
           </div>
         </details>
 
-        <div class="flex justify-end">
-          <button type="submit" :disabled="isSavingResend" class="btn-primary disabled:opacity-50">
+        <div class="flex flex-col sm:flex-row sm:justify-end">
+          <button type="submit" :disabled="isSavingResend" class="btn-primary h-11 disabled:opacity-50 sm:h-9">
             <UIcon v-if="isSavingResend" name="i-lucide-loader-circle" class="h-4 w-4 animate-spin" />
             {{ isSavingResend ? 'Enregistrement…' : 'Enregistrer' }}
           </button>

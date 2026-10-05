@@ -341,8 +341,13 @@
             </div>
           </div>
         </UiCollapsibleCard>
-        <div v-if="info?.has_video" class="flex justify-end">
-          <button type="button" class="btn-primary" :disabled="isSavingSettings" @click="handleSaveSettings">
+        <div v-if="info?.has_video" class="flex flex-col sm:flex-row sm:justify-end">
+          <button
+            type="button"
+            class="btn-primary h-11 sm:h-9"
+            :disabled="isSavingSettings"
+            @click="handleSaveSettings"
+          >
             <UIcon v-if="isSavingSettings" name="i-lucide-loader-circle" class="mr-1.5 h-4 w-4 animate-spin" />
             {{ isSavingSettings ? 'Enregistrement…' : 'Enregistrer les réglages' }}
           </button>

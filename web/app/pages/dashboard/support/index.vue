@@ -1,49 +1,29 @@
 <template>
   <div class="space-y-5">
-    <div class="flex flex-col gap-4 @2xl:flex-row @2xl:items-end @2xl:justify-between">
-      <div class="min-w-0">
-        <p class="app-label flex items-center gap-2">
-          <LandingAsterisk class="text-[0.6rem] text-[var(--app-accent)]" />
-          Aide
-        </p>
-        <h1 class="app-page-title mt-2">Support</h1>
-        <p class="mt-1.5 max-w-2xl text-sm text-[var(--app-ink-soft)]">
-          Vos demandes et leurs réponses, au même endroit.
-        </p>
-      </div>
-      <div class="flex flex-wrap items-center gap-2 sm:gap-3 @2xl:justify-end">
+    <UiPageHeader eyebrow="Aide" title="Support" description="Vos demandes et leurs réponses, au même endroit.">
+      <template #actions>
         <button
           type="button"
-          class="app-btn-secondary h-9 shrink-0 px-4 text-xs whitespace-nowrap disabled:cursor-not-allowed disabled:opacity-50"
+          class="app-btn-secondary h-11 px-4 text-sm whitespace-nowrap disabled:cursor-not-allowed disabled:opacity-50 @2xl:h-9 @2xl:text-xs"
           :disabled="isLoading"
           @click="loadTickets"
         >
           <UIcon name="i-lucide-refresh-cw" :class="['h-3.5 w-3.5', isLoading && 'animate-spin']" />
           Actualiser
         </button>
-        <NuxtLink to="/dashboard/support/new" class="app-btn-primary h-9 shrink-0 px-4 text-xs whitespace-nowrap">
+      </template>
+      <template #primary-action>
+        <NuxtLink
+          to="/dashboard/support/new"
+          class="app-btn-primary h-11 px-4 text-sm whitespace-nowrap @2xl:h-9 @2xl:text-xs"
+        >
           <UIcon name="i-lucide-plus" class="h-3.5 w-3.5" />
           Nouveau ticket
         </NuxtLink>
-      </div>
-    </div>
+      </template>
+    </UiPageHeader>
 
-    <div v-if="isAdmin" class="flex flex-wrap gap-2">
-      <button
-        v-for="filter in STATUS_FILTERS"
-        :key="filter.value"
-        type="button"
-        :class="[
-          'cursor-pointer rounded-full border px-3 py-1 text-xs transition-colors',
-          activeStatus === filter.value
-            ? 'border-[var(--app-ink)] bg-[var(--app-ink)] text-[var(--app-surface)]'
-            : 'border-[var(--app-line)] text-[var(--app-ink)] hover:bg-[var(--app-surface-2)]',
-        ]"
-        @click="updateStatus(filter.value)"
-      >
-        {{ filter.label }}
-      </button>
-    </div>
+    <UiChipFilters v-if="isAdmin" v-model="activeStatus" :options="STATUS_FILTERS" label="Statut des tickets" />
 
     <UiLoader v-if="isLoading" label="Chargement des tickets…" />
 
@@ -106,6 +86,7 @@
 import { SUPPORT_STATUS_PRESENTATION } from '~/constants/supportStatus'
 import type { UseToastReturn } from '~/types/Composables'
 import type { SupportWebsocketEvent } from '~/types/SupportListPage'
+import type { SelectFieldOption } from '~/types/SelectField'
 import type { ComputedRef, Ref } from 'vue'
 import type { SupportTicketStatus, SupportTicketSummary } from '~/types'
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
@@ -117,7 +98,7 @@ import { isPlatformAdmin } from '~/utils/userRoles'
 definePageMeta({ layout: 'dashboard', middleware: 'auth' })
 
 /** Status filters offered to admins (members see all their tickets). */
-const STATUS_FILTERS: Array<{ value: string; label: string }> = [
+const STATUS_FILTERS: SelectFieldOption[] = [
   { value: 'open', label: 'Ouverts' },
   { value: 'waiting_support', label: 'Attente support' },
   { value: 'waiting_user', label: 'Attente client' },
@@ -213,15 +194,6 @@ async function loadTickets(): Promise<void> {
   } finally {
     isLoading.value = false
   }
-}
-
-/**
- * Switch the active status filter.
- * @param value - Status to activate.
- */
-function updateStatus(value: string): void {
-  if (activeStatus.value === value) return
-  activeStatus.value = value
 }
 
 /**

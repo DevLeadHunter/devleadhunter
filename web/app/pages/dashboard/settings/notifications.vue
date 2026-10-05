@@ -1,12 +1,10 @@
 <template>
   <div class="max-w-3xl space-y-6">
-    <header>
-      <p class="app-label">Réglages</p>
-      <h1 class="app-page-title">Notifications</h1>
-      <p class="text-muted mt-1 text-sm">
-        Reçois sur ton téléphone tout ce qui se passe : ouvertures d'email, clics, visites de démo, ventes.
-      </p>
-    </header>
+    <UiPageHeader
+      eyebrow="Réglages"
+      title="Notifications"
+      description="Reçois sur ton téléphone tout ce qui se passe : ouvertures d'email, clics, visites de démo, ventes."
+    />
 
     <section>
       <div class="app-card p-5">

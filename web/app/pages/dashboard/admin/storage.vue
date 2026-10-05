@@ -1,30 +1,25 @@
 <template>
   <div class="space-y-5">
-    <div class="flex flex-col gap-4 @2xl:flex-row @2xl:items-end @2xl:justify-between">
-      <div class="min-w-0">
-        <p class="app-label flex items-center gap-2">
-          <LandingAsterisk class="text-[0.6rem] text-[var(--app-accent)]" />
-          Administration
-        </p>
-        <h1 class="app-page-title mt-2">Stockage</h1>
-        <p class="mt-1.5 max-w-2xl text-sm text-[var(--app-ink-soft)]">
-          <template v-if="listing">
-            {{ listing.total }} fichier{{ listing.total > 1 ? 's' : '' }} · {{ formatSize(listing.total_size) }} ·
-            <span class="text-[var(--app-ink)]">{{ listing.bucket }}</span>
-          </template>
-          <template v-else>Fichiers hébergés sur Cloudflare R2.</template>
-        </p>
-      </div>
-      <button
-        type="button"
-        class="app-btn-secondary h-9 shrink-0 self-start px-4 text-xs whitespace-nowrap disabled:cursor-not-allowed disabled:opacity-50"
-        :disabled="isLoading"
-        @click="load"
-      >
-        <UIcon name="i-lucide-refresh-cw" :class="['h-3.5 w-3.5', isLoading && 'animate-spin']" />
-        Actualiser
-      </button>
-    </div>
+    <UiPageHeader eyebrow="Administration" title="Stockage">
+      <template #description>
+        <template v-if="listing">
+          {{ listing.total }} fichier{{ listing.total > 1 ? 's' : '' }} · {{ formatSize(listing.total_size) }} ·
+          <span class="text-[var(--app-ink)]">{{ listing.bucket }}</span>
+        </template>
+        <template v-else>Fichiers hébergés sur Cloudflare R2.</template>
+      </template>
+      <template #actions>
+        <button
+          type="button"
+          class="app-btn-secondary h-11 px-4 text-sm whitespace-nowrap disabled:cursor-not-allowed disabled:opacity-50 @2xl:h-9 @2xl:text-xs"
+          :disabled="isLoading"
+          @click="load"
+        >
+          <UIcon name="i-lucide-refresh-cw" :class="['h-3.5 w-3.5', isLoading && 'animate-spin']" />
+          Actualiser
+        </button>
+      </template>
+    </UiPageHeader>
 
     <UiCallout v-if="error" variant="danger">{{ error }}</UiCallout>
 
@@ -49,34 +44,24 @@
     </div>
 
     <div class="app-card space-y-3 p-4">
-      <div class="flex flex-wrap items-center justify-between gap-3">
+      <div class="flex flex-col gap-3 @3xl:flex-row @3xl:items-center @3xl:justify-between">
         <div class="flex items-center gap-2">
           <UIcon name="i-lucide-upload" class="h-4 w-4 text-[var(--app-ink-soft)]" />
           <span class="text-sm font-semibold text-[var(--app-ink)]">Importer un fichier</span>
         </div>
-        <div class="flex rounded-full border border-[var(--app-line)] p-0.5">
-          <button
-            v-for="mode in IMPORT_MODES"
-            :key="mode.value"
-            type="button"
-            :class="[
-              'cursor-pointer rounded-full px-3 py-1 text-xs transition-colors',
-              importMode === mode.value
-                ? 'bg-[var(--app-ink)] text-[var(--app-surface)]'
-                : 'text-[var(--app-ink-soft)] hover:text-[var(--app-ink)]',
-            ]"
-            @click="importMode = mode.value"
-          >
-            {{ mode.label }}
-          </button>
-        </div>
+        <UiSegmentedControl
+          v-model="importMode"
+          :options="IMPORT_MODES"
+          label="Source du fichier"
+          is-stretched-on-narrow-screens
+        />
       </div>
 
-      <div v-if="importMode === 'file'" class="flex flex-wrap items-center gap-3">
+      <div v-if="importMode === 'file'" class="flex flex-col gap-2 @3xl:flex-row @3xl:items-center @3xl:gap-3">
         <input ref="fileInput" type="file" accept="image/*,application/pdf" class="hidden" @change="onFilePicked" />
         <button
           type="button"
-          class="app-btn-secondary h-9 px-4 text-xs"
+          class="app-btn-secondary h-11 px-4 text-sm @3xl:h-9 @3xl:text-xs"
           :disabled="isImporting"
           @click="fileInput?.click()"
         >
@@ -89,16 +74,20 @@
         <span class="text-xs text-[var(--app-ink-soft)]">JPEG, PNG, WebP, GIF, AVIF ou PDF · 15 Mo max</span>
       </div>
 
-      <form v-else class="flex flex-wrap items-center gap-2" @submit.prevent="submitUrlImport">
+      <form v-else class="flex flex-col gap-2 @3xl:flex-row @3xl:items-center" @submit.prevent="submitUrlImport">
         <input
           v-model="importUrl"
           type="url"
           inputmode="url"
           placeholder="Colle une URL d'image (ex. lien Facebook fbcdn…)"
-          class="app-input min-w-0 flex-1 text-sm"
+          class="app-input h-11 min-w-0 flex-1 text-sm @3xl:h-9"
           :disabled="isImporting"
         />
-        <button type="submit" class="app-btn-primary h-9 px-4 text-xs" :disabled="isImporting || !importUrl.trim()">
+        <button
+          type="submit"
+          class="app-btn-primary h-11 px-4 text-sm @3xl:h-9 @3xl:text-xs"
+          :disabled="isImporting || !importUrl.trim()"
+        >
           <UIcon
             :name="isImporting ? 'i-lucide-loader-circle' : 'i-lucide-download'"
             :class="['h-3.5 w-3.5', isImporting && 'animate-spin']"
@@ -120,22 +109,12 @@
       </div>
     </div>
 
-    <div class="flex flex-wrap gap-2">
-      <button
-        v-for="filter in FILTERS"
-        :key="filter.prefix"
-        type="button"
-        :class="[
-          'cursor-pointer rounded-full border px-3 py-1 text-xs transition-colors',
-          activePrefix === filter.prefix
-            ? 'border-[var(--app-ink)] bg-[var(--app-ink)] text-[var(--app-surface)]'
-            : 'border-[var(--app-line)] text-[var(--app-ink)] hover:bg-[var(--app-surface-2)]',
-        ]"
-        @click="applyFilter(filter.prefix)"
-      >
-        {{ filter.label }}
-      </button>
-    </div>
+    <UiChipFilters
+      :model-value="activePrefix"
+      :options="FILTERS"
+      label="Catégorie de fichiers"
+      @update:model-value="applyFilter"
+    />
 
     <UiLoader v-if="isLoading" label="Lecture du bucket…" />
 
@@ -334,6 +313,7 @@
 import { formatShortMonthDate } from '~/utils/date'
 import type { UseToastReturn } from '~/types/Composables'
 import type { PendingStorageAction } from '~/types/StoragePage'
+import type { SelectFieldOption } from '~/types/SelectField'
 import type { ComputedRef, Ref } from 'vue'
 import type {
   StorageActionResponse,
@@ -364,20 +344,20 @@ const IMPORT_MODES: Array<{ value: 'file' | 'url'; label: string }> = [
   { value: 'url', label: 'Depuis une URL' },
 ]
 
-/** Prefix filters shown as pills. */
-const FILTERS: Array<{ label: string; prefix: string }> = [
-  { label: 'Tout', prefix: '' },
-  { label: 'Vidéos', prefix: 'videos/websites/' },
-  { label: 'Vignettes', prefix: 'images/websites/' },
-  { label: 'Vidéos réceptionniste', prefix: 'videos/assistant/' },
-  { label: 'Vignettes réceptionniste', prefix: 'images/assistant/' },
-  { label: 'Clips webcam', prefix: 'videos/presenter/' },
-  { label: 'Photos prospects', prefix: PROSPECT_PHOTOS_PREFIX },
-  { label: 'Photos de devis', prefix: 'images/assistant-photos/' },
-  { label: 'Documents assistants', prefix: 'documents/assistant/' },
-  { label: 'Portraits réceptionniste', prefix: 'images/assistant-avatars/' },
-  { label: 'Support', prefix: 'images/support/' },
-  { label: 'Imports manuels', prefix: 'uploads/manual/' },
+/** Prefix filters shown as pills (the value is the key prefix). */
+const FILTERS: SelectFieldOption[] = [
+  { label: 'Tout', value: '' },
+  { label: 'Vidéos', value: 'videos/websites/' },
+  { label: 'Vignettes', value: 'images/websites/' },
+  { label: 'Vidéos réceptionniste', value: 'videos/assistant/' },
+  { label: 'Vignettes réceptionniste', value: 'images/assistant/' },
+  { label: 'Clips webcam', value: 'videos/presenter/' },
+  { label: 'Photos prospects', value: PROSPECT_PHOTOS_PREFIX },
+  { label: 'Photos de devis', value: 'images/assistant-photos/' },
+  { label: 'Documents assistants', value: 'documents/assistant/' },
+  { label: 'Portraits réceptionniste', value: 'images/assistant-avatars/' },
+  { label: 'Support', value: 'images/support/' },
+  { label: 'Imports manuels', value: 'uploads/manual/' },
 ]
 
 const VIDEO_KINDS: StorageObjectKind[] = ['website_video', 'website_background', 'assistant_video', 'presenter']

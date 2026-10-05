@@ -1,6 +1,9 @@
 <template>
-  <div class="app-card group p-4 transition-colors duration-200 hover:border-[var(--app-ink-soft)]">
-    <div class="flex items-start justify-between gap-3">
+  <div
+    class="app-card group @container flex flex-col p-4 transition-colors duration-200 hover:border-[var(--app-ink-soft)]"
+  >
+    <!-- Tuile étroite (deux par ligne sur téléphone) : l'icône passe au-dessus pour laisser toute la largeur au libellé, et les valeurs d'une même rangée restent alignées en bas même si un libellé tient sur deux lignes. -->
+    <div class="flex flex-1 flex-col-reverse items-start justify-between gap-3 @min-[13rem]:flex-row">
       <div class="min-w-0">
         <p class="app-label line-clamp-2">{{ label }}</p>
         <p class="font-display mt-1.5 text-xl font-semibold text-[var(--app-ink)] tabular-nums sm:text-2xl">

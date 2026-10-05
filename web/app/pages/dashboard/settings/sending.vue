@@ -1,15 +1,10 @@
 <template>
   <div class="max-w-3xl space-y-6">
-    <div>
-      <p class="app-label flex items-center gap-2">
-        <LandingAsterisk class="text-[0.6rem] text-[var(--app-accent)]" />
-        Prospection
-      </p>
-      <h1 class="app-page-title mt-2">Configuration d'envoi</h1>
-      <p class="text-muted mt-2 max-w-2xl text-sm leading-relaxed">
-        Choisissez et configurez la méthode d'envoi de vos emails de prospection : votre domaine (via Resend) ou Gmail.
-      </p>
-    </div>
+    <UiPageHeader
+      eyebrow="Prospection"
+      title="Configuration d'envoi"
+      description="Choisissez et configurez la méthode d'envoi de vos emails de prospection : votre domaine (via Resend) ou Gmail."
+    />
 
     <EmailSendingConfig />
 
