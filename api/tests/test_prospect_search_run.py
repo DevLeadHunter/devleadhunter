@@ -1395,13 +1395,68 @@ def test_restoring_a_candidate_the_user_did_not_refuse_is_refused(
     assert candidate.status == status.value
 
 
-def test_a_restored_candidate_the_rules_would_discard_is_left_to_the_user(db: Session) -> None:
+@pytest.mark.parametrize(
+    ("status", "detail", "email", "phone"),
+    [
+        (CandidateStatus.KEPT, None, "alpha@bluewin.ch", None),
+        (CandidateStatus.SET_ASIDE, "Portable sans email : joignable par SMS.", None, "079 473 19 61"),
+        (
+            CandidateStatus.TO_CONFIRM,
+            "La vérification sur Google n'a pas répondu : fiche non contrôlée.",
+            "alpha@bluewin.ch",
+            None,
+        ),
+    ],
+)
+def test_undoing_a_refusal_gives_the_lead_back_the_place_it_had(
+    db: Session, status: CandidateStatus, detail: str | None, email: str | None, phone: str | None
+) -> None:
     search_id = _create_search(db)
-    without_contact = _store_candidate(db, search_id, "Jardins Sans Contact", CandidateStatus.TO_CONFIRM)
-    candidate_path = f"/prospect-searches/{search_id}/candidates/{without_contact.id}"
+    lead = _store_candidate(db, search_id, "Jardins Alpha", status, email=email, phone=phone, detail=detail)
+    candidate_path = f"/prospect-searches/{search_id}/candidates/{lead.id}"
     client = _client(db)
 
     client.post(f"{candidate_path}/reject")
+    restored = client.post(f"{candidate_path}/restore").json()
+    db.expire_all()
+
+    assert (restored["status"], restored["reject_reason"], restored["reject_detail"], restored["is_pending"]) == (
+        status.value,
+        None,
+        detail,
+        True,
+    )
+    assert (lead.status_before_refusal, lead.detail_before_refusal) == (None, None)
+
+
+def test_a_lead_refused_twice_still_comes_back_with_the_place_it_had(db: Session) -> None:
+    search_id = _create_search(db)
+    unverified_detail = "La vérification sur Google n'a pas répondu : fiche non contrôlée."
+    lead = _store_candidate(
+        db, search_id, "Jardins Alpha", CandidateStatus.TO_CONFIRM, email="alpha@bluewin.ch", detail=unverified_detail
+    )
+    client = _client(db)
+
+    client.post(f"/prospect-searches/{search_id}/candidates/{lead.id}/reject")
+    client.post("/prospect-searches/candidates/decisions", json={"accept": [], "reject": [lead.id]})
+    restored = client.post(f"/prospect-searches/{search_id}/candidates/{lead.id}/restore").json()
+
+    assert (restored["status"], restored["reject_detail"]) == ("to_confirm", unverified_detail)
+
+
+def test_a_restored_candidate_the_rules_would_discard_is_left_to_the_user(db: Session) -> None:
+    search_id = _create_search(db)
+    refused_before_places_were_kept = _store_candidate(
+        db,
+        search_id,
+        "Jardins Sans Contact",
+        CandidateStatus.REJECTED,
+        detail="Écarté à la main.",
+        reject_reason=CandidateRejectReason.MANUAL,
+    )
+    candidate_path = f"/prospect-searches/{search_id}/candidates/{refused_before_places_were_kept.id}"
+    client = _client(db)
+
     restored = client.post(f"{candidate_path}/restore").json()
 
     assert (restored["status"], restored["reject_reason"], restored["reject_detail"], restored["is_pending"]) == (

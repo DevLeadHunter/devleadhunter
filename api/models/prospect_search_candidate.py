@@ -57,6 +57,8 @@ class ProspectSearchCandidate(Base):
         reject_detail: The reason in plain words, shown to the user
         evidence: Proof lines (field, value, source, url, snippet)
         identity_keys: Keys used to recognise the same business elsewhere
+        status_before_refusal: The place a lead had when the user refused it, given back if the refusal is undone
+        detail_before_refusal: The plain-words detail of that place
         prospect_id: The prospect created from this candidate
         created_at: When it was found
         updated_at: Last change
@@ -98,6 +100,8 @@ class ProspectSearchCandidate(Base):
     reject_detail: Mapped[str | None] = mapped_column(String(500), nullable=True)
     evidence: Mapped[list[dict[str, Any]]] = mapped_column(JSON, nullable=False, default=list)
     identity_keys: Mapped[list[str]] = mapped_column(JSON, nullable=False, default=list)
+    status_before_refusal: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    detail_before_refusal: Mapped[str | None] = mapped_column(String(500), nullable=True)
     prospect_id: Mapped[int | None] = mapped_column(Integer, nullable=True, index=True)
     created_at: Mapped[datetime] = mapped_column(default=datetime.utcnow, nullable=False)
     updated_at: Mapped[datetime | None] = mapped_column(onupdate=datetime.utcnow, nullable=True)

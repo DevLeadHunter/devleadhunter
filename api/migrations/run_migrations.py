@@ -199,6 +199,10 @@ MIGRATION_MODULES: list[tuple[str, str]] = [
     ("add_email_template_layout", "migrations.add_email_template_layout"),
     ("set_email_template_layout_default_card_table", "migrations.set_email_template_layout_default_card_table"),
     ("add_prospect_search_validation_mode", "migrations.add_prospect_search_validation_mode"),
+    (
+        "add_prospect_search_candidate_place_before_refusal",
+        "migrations.add_prospect_search_candidate_place_before_refusal",
+    ),
 ]
 
 # Modules of this package that are not migrations and must not be registered.

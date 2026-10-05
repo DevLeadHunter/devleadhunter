@@ -368,9 +368,12 @@ class ProspectSearchService:
         """
         Undo the user's refusal of a candidate: it waits for a decision again, without becoming a prospect.
 
-        Its place is decided again from what its search stored and with the search's criteria, its
-        checks and its Facebook read taken as done: the row does not keep which ones it went through.
-        A place the rules discard becomes « à confirmer ». No prospect is created, even in an automatic search.
+        A lead refused while it waited for that decision gets back the place it had, with its detail: a
+        lead the search could not verify comes back to check, never complete. A candidate refused without
+        a kept place (refused before it was placed, or before the place was kept) has its place decided
+        again from what its search stored and with the search's criteria, its checks and its Facebook read
+        taken as done; a place the rules discard then becomes « à confirmer ». No prospect is created, even
+        in an automatic search.
 
         Raises:
             ProspectSearchError: The candidate was not refused by the user, or it is a prospect already.
@@ -389,14 +392,21 @@ class ProspectSearchService:
             raise ProspectSearchError(_CANDIDATE_ALREADY_A_PROSPECT)
 
         facts = CandidateStore.facts_of(candidate)
-        facts.is_verified = True
-        facts.is_facebook_page_read = True
-        verdict = CandidateDecision.decide(
-            facts, TradeCatalog.resolve(candidate.trade), SearchCriteria.of_search(search)
-        )
-        if verdict.status == CandidateStatus.REJECTED:
-            verdict = CandidateVerdict(CandidateStatus.TO_CONFIRM, detail="Remis à valider à la main.")
+        if candidate.status_before_refusal is not None:
+            verdict = CandidateVerdict(
+                CandidateStatus(candidate.status_before_refusal), detail=candidate.detail_before_refusal
+            )
+        else:
+            facts.is_verified = True
+            facts.is_facebook_page_read = True
+            verdict = CandidateDecision.decide(
+                facts, TradeCatalog.resolve(candidate.trade), SearchCriteria.of_search(search)
+            )
+            if verdict.status == CandidateStatus.REJECTED:
+                verdict = CandidateVerdict(CandidateStatus.TO_CONFIRM, detail="Remis à valider à la main.")
         CandidateStore.write_back(candidate, facts, verdict)
+        candidate.status_before_refusal = None
+        candidate.detail_before_refusal = None
         db.commit()
         db.refresh(candidate)
         self._carry_on_after_browser_round(db, search_id)
@@ -566,16 +576,25 @@ class ProspectSearchService:
         """
         Discard a candidate on the user's decision.
 
+        A lead waiting for that decision keeps its place aside, for :meth:`restore_candidate`; a lead
+        refused again keeps the place it had before the first refusal.
+
         Raises:
             ProspectSearchError: The candidate already became a prospect.
         """
         if candidate.prospect_id is not None:
             raise ProspectSearchError("Ce candidat est déjà un prospect : supprimez-le depuis vos prospects.")
+        place_before_refusal = (
+            (candidate.status, candidate.reject_detail)
+            if candidate.is_pending
+            else (candidate.status_before_refusal, candidate.detail_before_refusal)
+        )
         CandidateStore.write_back(
             candidate,
             CandidateStore.facts_of(candidate),
             CandidateVerdict(CandidateStatus.REJECTED, CandidateRejectReason.MANUAL, "Écarté à la main."),
         )
+        candidate.status_before_refusal, candidate.detail_before_refusal = place_before_refusal
         db.commit()
 
     def _carry_on_after_browser_round(self, db: Session, search_id: int) -> None:
