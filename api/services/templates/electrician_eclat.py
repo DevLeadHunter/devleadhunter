@@ -79,7 +79,9 @@ USED_SECTIONS: list[str] = [
 # One-off photos this template renders beyond hero/about, exposed as dedicated Storyblok asset fields
 # grouped in the section where they appear, editable via ``SiteContent.images``.
 EXTRA_SECTION_IMAGES: dict[str, list[dict[str, str]]] = {
-    "hero": [{"field": "heroSecondary", "label": "Deuxième photo de l'en-tête"}],
+    "hero": [
+        {"field": "heroSecondary", "label": "Deuxième photo de l'en-tête (vide : première photo des réalisations)"}
+    ],
     "contact": [{"field": "ctaBackground", "label": "Photo de la bannière « Une panne ou un projet ? »"}],
 }
 
@@ -296,11 +298,10 @@ def build_site_content(
     site["heroTitle"] = _hero_title(city)
     site["steps"] = [dict(step) for step in _DEFAULT_STEPS]
     apply_real_trust_stats(site, enrichment)
-    # The small photo over the hero: the prospect's first gallery photo when he has one, so his own
-    # pictures stay together; the template's otherwise.
-    gallery: list[dict[str, str]] = site.get("gallery") or []
-    site["images"] = {
-        "heroSecondary": gallery[0]["url"] if gallery else _DEFAULT_HERO_SECONDARY,
-        "ctaBackground": _DEFAULT_CTA_BACKGROUND,
-    }
+    site["images"] = {"ctaBackground": _DEFAULT_CTA_BACKGROUND}
+    # The small photo over the hero is left empty when the prospect has gallery photos: the layer then
+    # shows his first gallery photo, so it follows any reordering (live preview included) instead of
+    # freezing a copy here. Without gallery photos the template's own photo is seeded.
+    if not site.get("gallery"):
+        site["images"]["heroSecondary"] = _DEFAULT_HERO_SECONDARY
     return site

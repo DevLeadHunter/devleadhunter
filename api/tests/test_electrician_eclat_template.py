@@ -70,13 +70,14 @@ def test_rating_slot_shows_the_real_rating_or_a_neutral_claim() -> None:
     assert "4,9/5" not in [value for value, _ in without_rating]
 
 
-def test_small_hero_photo_is_the_prospects_own_when_he_has_gallery_photos() -> None:
-    """With enough photos, the photo over the hero is the prospect's first gallery photo, not a stock one."""
+def test_small_hero_photo_is_left_to_the_layer_when_the_prospect_has_gallery_photos() -> None:
+    """With gallery photos no stock photo is seeded: the layer shows the first gallery photo, whatever its order."""
     photos = [f"https://cdn.example.fr/chantier-{index}.jpg" for index in range(4)]
     site = _site(enrichment={"photos": photos})
     assert site["heroImage"] == photos[0]
     assert site["aboutImage"] == photos[1]
-    assert site["images"]["heroSecondary"] == photos[2]
+    assert site["gallery"][0]["url"] == photos[2]
+    assert "heroSecondary" not in site["images"]
 
 
 def test_default_images_fill_only_empty_slots() -> None:
