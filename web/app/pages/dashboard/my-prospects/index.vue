@@ -8,7 +8,7 @@
       <template #actions>
         <button
           :disabled="isLoading"
-          class="app-btn-secondary h-11 px-4 text-sm whitespace-nowrap disabled:cursor-not-allowed disabled:opacity-50 @2xl:h-9 @2xl:text-xs"
+          class="app-btn-secondary h-11 px-4 text-sm whitespace-nowrap disabled:cursor-not-allowed disabled:opacity-50 @2xl:pointer-fine:h-9 @2xl:pointer-fine:text-xs"
           @click="refreshProspects"
         >
           <UIcon name="i-lucide-refresh-cw" class="h-3.5 w-3.5" />
@@ -17,7 +17,7 @@
         <div class="relative">
           <button
             type="button"
-            class="app-btn-secondary h-11 w-full px-4 text-sm whitespace-nowrap disabled:cursor-not-allowed disabled:opacity-50 @2xl:h-9 @2xl:w-auto @2xl:text-xs"
+            class="app-btn-secondary h-11 w-full px-4 text-sm whitespace-nowrap disabled:cursor-not-allowed disabled:opacity-50 @2xl:pointer-fine:h-9 @2xl:pointer-fine:w-auto @2xl:pointer-fine:text-xs"
             :disabled="isImporting"
             :aria-expanded="showImportMenu"
             @click.stop="showImportMenu = !showImportMenu"
@@ -58,7 +58,7 @@
         </div>
         <button
           type="button"
-          class="app-btn-secondary h-11 px-4 text-sm whitespace-nowrap disabled:cursor-not-allowed disabled:opacity-50 @2xl:h-9 @2xl:text-xs"
+          class="app-btn-secondary h-11 px-4 text-sm whitespace-nowrap disabled:cursor-not-allowed disabled:opacity-50 @2xl:pointer-fine:h-9 @2xl:pointer-fine:text-xs"
           @click="openAddProspectDrawer"
         >
           <UIcon name="i-lucide-user-plus" class="h-3.5 w-3.5" />
@@ -68,7 +68,7 @@
       <template #primary-action>
         <NuxtLink
           to="/dashboard/search-prospects"
-          class="app-btn-primary h-11 px-4 text-sm whitespace-nowrap @2xl:h-9 @2xl:text-xs"
+          class="app-btn-primary h-11 px-4 text-sm whitespace-nowrap @2xl:pointer-fine:h-9 @2xl:pointer-fine:text-xs"
         >
           <UIcon name="i-lucide-search" class="h-3.5 w-3.5" />
           Nouvelle recherche
@@ -96,7 +96,7 @@
 
     <div class="app-card space-y-3 p-4">
       <div class="flex justify-end">
-        <div class="relative w-full @2xl:w-80">
+        <div class="relative w-full @2xl:pointer-fine:w-80">
           <UIcon
             name="i-lucide-search"
             class="pointer-events-none absolute top-1/2 left-3 h-3.5 w-3.5 -translate-y-1/2 text-[var(--app-faint)]"
@@ -265,7 +265,7 @@
         <div class="flex items-center gap-2">
           <button
             :disabled="currentPage === 1"
-            class="app-btn-secondary h-8 min-h-8 px-3 text-xs disabled:cursor-not-allowed disabled:opacity-50"
+            class="app-btn-secondary h-8 min-h-8 px-3 text-xs disabled:cursor-not-allowed disabled:opacity-50 pointer-coarse:min-h-11 pointer-coarse:text-sm"
             @click="currentPage--"
           >
             Précédent
@@ -275,7 +275,7 @@
           </span>
           <button
             :disabled="currentPage === totalPages"
-            class="app-btn-secondary h-8 min-h-8 px-3 text-xs disabled:cursor-not-allowed disabled:opacity-50"
+            class="app-btn-secondary h-8 min-h-8 px-3 text-xs disabled:cursor-not-allowed disabled:opacity-50 pointer-coarse:min-h-11 pointer-coarse:text-sm"
             @click="currentPage++"
           >
             Suivant

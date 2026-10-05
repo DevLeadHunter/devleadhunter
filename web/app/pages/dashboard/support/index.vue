@@ -4,7 +4,7 @@
       <template #actions>
         <button
           type="button"
-          class="app-btn-secondary h-11 px-4 text-sm whitespace-nowrap disabled:cursor-not-allowed disabled:opacity-50 @2xl:h-9 @2xl:text-xs"
+          class="app-btn-secondary h-11 px-4 text-sm whitespace-nowrap disabled:cursor-not-allowed disabled:opacity-50 @2xl:pointer-fine:h-9 @2xl:pointer-fine:text-xs"
           :disabled="isLoading"
           @click="loadTickets"
         >
@@ -15,7 +15,7 @@
       <template #primary-action>
         <NuxtLink
           to="/dashboard/support/new"
-          class="app-btn-primary h-11 px-4 text-sm whitespace-nowrap @2xl:h-9 @2xl:text-xs"
+          class="app-btn-primary h-11 px-4 text-sm whitespace-nowrap @2xl:pointer-fine:h-9 @2xl:pointer-fine:text-xs"
         >
           <UIcon name="i-lucide-plus" class="h-3.5 w-3.5" />
           Nouveau ticket

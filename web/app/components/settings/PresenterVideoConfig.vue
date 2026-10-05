@@ -33,7 +33,7 @@
             />
             <button
               type="button"
-              class="btn-danger absolute top-3 right-3 z-10 flex h-8 min-h-8 items-center justify-center px-2.5 text-xs disabled:opacity-50"
+              class="btn-danger absolute top-3 right-3 z-10 flex h-8 min-h-8 items-center justify-center px-2.5 text-xs disabled:opacity-50 pointer-coarse:min-h-11 pointer-coarse:text-sm"
               :disabled="isDeleting"
               aria-label="Supprimer le clip"
               title="Supprimer le clip"

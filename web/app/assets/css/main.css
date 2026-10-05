@@ -554,6 +554,26 @@ html {
       display: none;
     }
   }
+
+  /* Écran tactile (téléphone, iPad) : chaque bouton et chaque champ offre au moins 44 px au doigt, la cible
+     minimale des guides Apple ; un bouton icône devient un rond de 44 px. À la souris, les tailles compactes restent.
+     `min-*` plutôt que `h-*` : l'emporte sur les hauteurs compactes posées en utilitaires (`h-8`, `@2xl:h-9`…). */
+  @media (pointer: coarse) {
+    .app-btn-primary,
+    .app-btn-secondary,
+    .app-btn-danger,
+    .btn-primary,
+    .btn-secondary,
+    .btn-danger {
+      min-height: 2.75rem;
+      min-width: 2.75rem;
+    }
+
+    .app-input,
+    .input-field {
+      min-height: 2.75rem;
+    }
+  }
 }
 
 /* Les classes legacy (.card / .btn-* / .input-field / .text-muted / h1) sont
@@ -587,9 +607,10 @@ html {
   }
 }
 
-/* Phone inputs stay ≥16px so iOS doesn't zoom in on focus (and never zoom back).
+/* Phone and touch-tablet inputs stay ≥16px so iOS doesn't zoom in on focus (and never zoom back) — an iPad or a
+   phone held sideways is wider than 767px but zooms all the same.
    `!important` so it overrides every component input class (.app-input, .landing-input, …). */
-@media (max-width: 767px) {
+@media (max-width: 767px), (pointer: coarse) {
   input,
   select,
   textarea {
@@ -632,6 +653,54 @@ html {
     text-align: right;
   }
   .dlh-card-table td[data-label]::before {
+    content: attr(data-label);
+    flex-shrink: 0;
+    font-family: var(--app-font-mono);
+    font-size: 0.62rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--app-ink-soft);
+    text-align: left;
+    white-space: nowrap;
+  }
+}
+
+/* iPad tenu droit : un tableau trop large pour 820 px (`dlh-card-table--touch`) passe aussi en cartes, plutôt que
+   de cacher ses dernières colonnes derrière un défilement de côté. Mêmes règles que le bloc téléphone ci-dessus. */
+@media (pointer: coarse) and (min-width: 768px) and (max-width: 1023px) {
+  .dlh-card-table--touch {
+    display: block;
+    min-width: 0 !important;
+  }
+  .dlh-card-table--touch thead {
+    display: none;
+  }
+  .dlh-card-table--touch tbody {
+    display: block;
+  }
+  .dlh-card-table--touch tr {
+    display: block;
+    margin-bottom: 0.625rem;
+    border: 1px solid var(--app-line);
+    border-radius: 0.75rem;
+    padding: 0.375rem 0.875rem;
+  }
+  .dlh-card-table--touch tr:last-child {
+    margin-bottom: 0;
+  }
+  .dlh-card-table--touch td {
+    display: block;
+    padding: 0.375rem 0;
+    text-align: left;
+  }
+  .dlh-card-table--touch td[data-label] {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 1rem;
+    text-align: right;
+  }
+  .dlh-card-table--touch td[data-label]::before {
     content: attr(data-label);
     flex-shrink: 0;
     font-family: var(--app-font-mono);

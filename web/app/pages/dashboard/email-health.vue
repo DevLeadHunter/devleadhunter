@@ -11,7 +11,7 @@
             v-for="preset in PERIODS"
             :key="preset"
             type="button"
-            class="h-11 flex-1 px-3 text-sm font-medium whitespace-nowrap transition-colors @2xl:h-8 @2xl:flex-none @2xl:text-xs"
+            class="h-10.5 flex-1 px-3 text-sm font-medium whitespace-nowrap transition-colors @2xl:pointer-fine:h-8 @2xl:pointer-fine:flex-none @2xl:pointer-fine:text-xs"
             :class="
               period === preset
                 ? 'bg-[var(--app-ink)] text-[var(--app-surface)]'
@@ -24,7 +24,7 @@
         </div>
         <button
           type="button"
-          class="app-btn-secondary h-11 px-3 text-sm whitespace-nowrap @2xl:h-8 @2xl:text-xs"
+          class="app-btn-secondary h-11 px-3 text-sm whitespace-nowrap @2xl:pointer-fine:h-8 @2xl:pointer-fine:text-xs"
           :disabled="isLoading"
           @click="load"
         >

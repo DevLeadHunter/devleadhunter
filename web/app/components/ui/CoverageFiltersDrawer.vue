@@ -70,7 +70,7 @@
             <div class="mt-2.5 flex flex-wrap items-center gap-1.5">
               <button
                 type="button"
-                class="cursor-pointer rounded-full border px-2.5 py-1 text-xs font-medium transition-colors"
+                class="cursor-pointer rounded-full border px-2.5 py-1 text-xs font-medium transition-colors pointer-coarse:min-h-10 pointer-coarse:px-3.5 pointer-coarse:text-sm"
                 :class="
                   store.selectedCategories.length === 0
                     ? 'border-[var(--app-ink)] bg-[var(--app-ink)] text-[var(--app-bg)]'

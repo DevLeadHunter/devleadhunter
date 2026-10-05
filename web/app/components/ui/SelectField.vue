@@ -1,12 +1,13 @@
 <template>
-  <!-- Portalled to body with no z-index of its own: without this it opens behind a drawer. -->
+  <!-- Portalled to body with no z-index of its own: without this it opens behind a drawer. On a touch screen the
+       trigger keeps the 44px finger target of the app's other fields. -->
   <USelectMenu
     v-model="selectedOption"
     :items="props.options"
     label-key="label"
     :placeholder="props.placeholder"
     :disabled="props.disabled"
-    :ui="{ content: 'z-[110]' }"
+    :ui="{ base: 'pointer-coarse:min-h-11', content: 'z-[110]' }"
     class="w-full"
   />
 </template>

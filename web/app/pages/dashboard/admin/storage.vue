@@ -11,7 +11,7 @@
       <template #actions>
         <button
           type="button"
-          class="app-btn-secondary h-11 px-4 text-sm whitespace-nowrap disabled:cursor-not-allowed disabled:opacity-50 @2xl:h-9 @2xl:text-xs"
+          class="app-btn-secondary h-11 px-4 text-sm whitespace-nowrap disabled:cursor-not-allowed disabled:opacity-50 @2xl:pointer-fine:h-9 @2xl:pointer-fine:text-xs"
           :disabled="isLoading"
           @click="load"
         >
@@ -45,7 +45,7 @@
 
     <div class="app-card space-y-3 p-4">
       <div class="flex flex-col gap-3 @3xl:flex-row @3xl:items-center @3xl:justify-between">
-        <div class="flex items-center gap-2">
+        <div class="flex shrink-0 items-center gap-2">
           <UIcon name="i-lucide-upload" class="h-4 w-4 text-[var(--app-ink-soft)]" />
           <span class="text-sm font-semibold text-[var(--app-ink)]">Importer un fichier</span>
         </div>
@@ -61,7 +61,7 @@
         <input ref="fileInput" type="file" accept="image/*,application/pdf" class="hidden" @change="onFilePicked" />
         <button
           type="button"
-          class="app-btn-secondary h-11 px-4 text-sm @3xl:h-9 @3xl:text-xs"
+          class="app-btn-secondary h-11 px-4 text-sm @3xl:pointer-fine:h-9 @3xl:pointer-fine:text-xs"
           :disabled="isImporting"
           @click="fileInput?.click()"
         >
@@ -80,12 +80,12 @@
           type="url"
           inputmode="url"
           placeholder="Colle une URL d'image (ex. lien Facebook fbcdn…)"
-          class="app-input h-11 min-w-0 flex-1 text-sm @3xl:h-9"
+          class="app-input h-11 min-w-0 flex-1 text-sm @3xl:pointer-fine:h-9"
           :disabled="isImporting"
         />
         <button
           type="submit"
-          class="app-btn-primary h-11 px-4 text-sm @3xl:h-9 @3xl:text-xs"
+          class="app-btn-primary h-11 px-4 text-sm @3xl:pointer-fine:h-9 @3xl:pointer-fine:text-xs"
           :disabled="isImporting || !importUrl.trim()"
         >
           <UIcon

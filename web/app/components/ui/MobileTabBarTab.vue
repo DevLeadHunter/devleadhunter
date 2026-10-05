@@ -4,7 +4,7 @@
     :title="props.label"
     :aria-label="accessibleLabel"
     :aria-current="props.isActive ? 'page' : undefined"
-    class="flex min-w-0 flex-1 flex-col items-center justify-center gap-1.5 transition-opacity [-webkit-tap-highlight-color:transparent] active:opacity-60"
+    class="flex min-w-0 flex-1 flex-col items-center justify-center gap-1.5 transition-opacity [-webkit-tap-highlight-color:transparent] active:opacity-60 md:gap-1"
     :class="props.isActive ? 'text-[var(--app-ink)]' : 'text-[var(--app-ink-soft)]'"
   >
     <span class="relative">
@@ -16,6 +16,14 @@
       >
         {{ badgeLabel }}
       </span>
+    </span>
+    <!-- La place de l'iPad permet d'écrire chaque onglet sous son icône ; le téléphone garde les icônes seules. -->
+    <span
+      class="hidden max-w-full truncate px-1 text-[11px] leading-3 md:block"
+      :class="props.isActive ? 'font-semibold' : 'font-medium'"
+      aria-hidden="true"
+    >
+      {{ props.caption ?? props.label }}
     </span>
     <span
       class="h-1 w-1 rounded-full"
@@ -32,7 +40,10 @@ import { computed } from 'vue'
 
 const MAXIMUM_SHOWN_BADGE_COUNT: number = 99
 
-/** One link of the installed app's tab bar: an icon, an amber dot when active, an optional count. */
+/**
+ * One link of the installed app's tab bar: an icon, an amber dot when active, an optional count, and from the
+ * iPad's width a short caption under the icon (the full label otherwise).
+ */
 const props: UiMobileTabBarTabProps = defineProps({
   to: {
     type: String,
@@ -45,6 +56,10 @@ const props: UiMobileTabBarTabProps = defineProps({
   label: {
     type: String,
     required: true,
+  },
+  caption: {
+    type: String as PropType<string | null>,
+    default: null,
   },
   isActive: {
     type: Boolean,

@@ -130,7 +130,7 @@
                   </div>
                   <button
                     type="button"
-                    class="app-btn-secondary h-8 min-h-8 shrink-0 px-3 text-xs"
+                    class="app-btn-secondary h-8 min-h-8 shrink-0 px-3 text-xs pointer-coarse:min-h-11 pointer-coarse:text-sm"
                     :disabled="store.cancellingQueuedSearchIds.includes(queued.id)"
                     :aria-label="`Retirer ${ProspectSearches.tradesLabel(queued)} de la file`"
                     @click="removeFromQueue(queued)"
@@ -181,7 +181,7 @@
                     </span>
                     <button
                       type="button"
-                      class="app-btn-secondary h-8 min-h-8 shrink-0 px-3 text-xs"
+                      class="app-btn-secondary h-8 min-h-8 shrink-0 px-3 text-xs pointer-coarse:min-h-11 pointer-coarse:text-sm"
                       :disabled="store.busyCandidateIds.includes(lead.id)"
                       @click="decisions.rejectLead(lead)"
                     >
@@ -189,7 +189,7 @@
                     </button>
                     <button
                       type="button"
-                      class="app-btn-primary h-8 min-h-8 shrink-0 px-3 text-xs"
+                      class="app-btn-primary h-8 min-h-8 shrink-0 px-3 text-xs pointer-coarse:min-h-11 pointer-coarse:text-sm"
                       :disabled="store.busyCandidateIds.includes(lead.id)"
                       @click="decisions.acceptLead(lead)"
                     >

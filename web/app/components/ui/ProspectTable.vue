@@ -1,6 +1,6 @@
 <template>
   <div ref="tableHostRef" class="overflow-hidden">
-    <BaseTable :animate-row-moves="reorderable">
+    <BaseTable :animate-row-moves="reorderable" is-stacked-on-touch-tablet>
       <template #head>
         <BaseTableTh v-if="reorderable" sr-only>Réordonner</BaseTableTh>
         <BaseTableTh v-if="!hideSelection" class="w-12">

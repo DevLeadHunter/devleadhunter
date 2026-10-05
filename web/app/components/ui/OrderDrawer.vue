@@ -190,7 +190,7 @@
                   :key="candidate.domain"
                   type="button"
                   :class="[
-                    'inline-flex items-center gap-1.5 rounded-full border px-2 py-0.5 text-[11px] transition-colors',
+                    'inline-flex items-center gap-1.5 rounded-full border px-2 py-0.5 text-[11px] transition-colors pointer-coarse:min-h-10 pointer-coarse:px-3.5 pointer-coarse:text-sm',
                     goLiveDomain === candidate.domain
                       ? 'border-[var(--app-accent)] bg-[var(--app-accent-soft)] text-[var(--app-accent-ink)]'
                       : 'border-[var(--app-line)] text-[var(--app-ink-soft)] hover:border-[var(--app-accent)]',

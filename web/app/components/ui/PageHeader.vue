@@ -1,6 +1,9 @@
 <template>
-  <header class="flex flex-col gap-4 @2xl:flex-row @2xl:flex-wrap @2xl:items-end @2xl:justify-between @2xl:gap-x-6">
-    <div class="min-w-0 @2xl:min-w-64 @2xl:flex-1">
+  <!-- Souris : actions à côté du titre. Tactile (iPad) : actions sous le titre, en une rangée qui prend toute la largeur. -->
+  <header
+    class="flex flex-col gap-4 @2xl:pointer-fine:flex-row @2xl:pointer-fine:flex-wrap @2xl:pointer-fine:items-end @2xl:pointer-fine:justify-between @2xl:pointer-fine:gap-x-6"
+  >
+    <div class="min-w-0 @2xl:pointer-fine:min-w-64 @2xl:pointer-fine:flex-1">
       <p v-if="props.eyebrow" class="app-label flex items-center gap-2">
         <LandingAsterisk v-if="props.hasEyebrowMark" class="text-[0.6rem] text-[var(--app-accent)]" />
         {{ props.eyebrow }}
@@ -13,12 +16,9 @@
 
     <div
       v-if="slots.actions || slots['primary-action']"
-      class="flex flex-col gap-2 @2xl:ml-auto @2xl:shrink-0 @2xl:flex-row @2xl:items-center"
+      class="flex flex-col gap-2 @2xl:flex-row @2xl:items-center @2xl:pointer-coarse:flex-wrap @2xl:pointer-fine:ml-auto @2xl:pointer-fine:shrink-0 @2xl:pointer-coarse:[&>*]:flex-auto @2xl:pointer-coarse:[&>*>*]:flex-auto"
     >
-      <div
-        v-if="slots.actions"
-        class="grid grid-cols-2 gap-2 @2xl:flex @2xl:items-center [&>*:last-child:nth-child(odd)]:col-span-2"
-      >
+      <div v-if="slots.actions" class="grid grid-cols-2 gap-2 @2xl:contents [&>*:last-child:nth-child(odd)]:col-span-2">
         <slot name="actions" />
       </div>
       <div v-if="slots['primary-action']" class="order-first flex flex-col @2xl:order-none">
@@ -35,8 +35,9 @@ import { useSlots } from 'vue'
 
 /**
  * Title of a dashboard page with its actions. On a phone the primary action spans the width and the
- * others share rows two by two; from the tablet width everything stands on one line, and when the
- * actions do not fit beside the title they move below it together, never split over two lines.
+ * others share rows two by two. From the tablet width, with a mouse everything stands on one line and
+ * the actions move below the title together when they do not fit beside it; on a touch screen they
+ * always sit below the title, stretched over one finger-sized row.
  */
 const props: UiPageHeaderProps = defineProps({
   title: {

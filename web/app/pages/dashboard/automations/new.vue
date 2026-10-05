@@ -110,14 +110,14 @@
               <div class="flex items-center gap-2">
                 <button
                   :disabled="currentPage === 1"
-                  class="app-btn-secondary h-8 min-h-8 px-3 text-xs disabled:opacity-50"
+                  class="app-btn-secondary h-8 min-h-8 px-3 text-xs disabled:opacity-50 pointer-coarse:min-h-11 pointer-coarse:text-sm"
                   @click="currentPage -= 1"
                 >
                   Précédent
                 </button>
                 <button
                   :disabled="currentPage === totalPages"
-                  class="app-btn-secondary h-8 min-h-8 px-3 text-xs disabled:opacity-50"
+                  class="app-btn-secondary h-8 min-h-8 px-3 text-xs disabled:opacity-50 pointer-coarse:min-h-11 pointer-coarse:text-sm"
                   @click="currentPage += 1"
                 >
                   Suivant

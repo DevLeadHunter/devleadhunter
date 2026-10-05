@@ -115,7 +115,7 @@
                 type="button"
                 role="radio"
                 :aria-checked="countryOption.code === form.country"
-                class="flex cursor-pointer items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs transition-colors"
+                class="flex cursor-pointer items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs transition-colors pointer-coarse:min-h-10 pointer-coarse:px-3.5 pointer-coarse:text-sm"
                 :class="
                   countryOption.code === form.country
                     ? 'border-[var(--app-ink)] bg-[var(--app-ink)] text-[var(--app-bg)]'
@@ -267,7 +267,7 @@
             <button
               v-if="store.isSearchRunningOnServer"
               type="button"
-              class="app-btn-secondary mt-3 h-8 min-h-8 px-3 text-xs"
+              class="app-btn-secondary mt-3 h-8 min-h-8 px-3 text-xs pointer-coarse:min-h-11 pointer-coarse:text-sm"
               @click="openSearchFollowUp"
             >
               <UIcon name="i-lucide-panel-right-open" class="h-3.5 w-3.5" />

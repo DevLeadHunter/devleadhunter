@@ -12,7 +12,7 @@
       type="button"
       :aria-pressed="option.value === modelValue"
       :class="[
-        'h-9 shrink-0 cursor-pointer rounded-full border px-4 text-sm whitespace-nowrap transition-colors @3xl:h-auto @3xl:px-3 @3xl:py-1 @3xl:text-xs',
+        'h-10 shrink-0 cursor-pointer rounded-full border px-4 text-sm whitespace-nowrap transition-colors @3xl:pointer-fine:h-auto @3xl:pointer-fine:px-3 @3xl:pointer-fine:py-1 @3xl:pointer-fine:text-xs',
         option.value === modelValue
           ? 'border-[var(--app-ink)] bg-[var(--app-ink)] text-[var(--app-surface)]'
           : 'border-[var(--app-line)] text-[var(--app-ink)] hover:bg-[var(--app-surface-2)]',

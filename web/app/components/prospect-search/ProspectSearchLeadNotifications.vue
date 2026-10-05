@@ -22,7 +22,7 @@
         <div class="ml-auto flex shrink-0 items-center gap-1.5">
           <button
             type="button"
-            class="app-btn-secondary h-8 min-h-8 px-3 text-xs"
+            class="app-btn-secondary h-8 min-h-8 px-3 text-xs pointer-coarse:min-h-11 pointer-coarse:text-sm"
             :disabled="store.busyCandidateIds.includes(candidate.id)"
             @click="decisions.rejectLead(candidate)"
           >
@@ -30,7 +30,7 @@
           </button>
           <button
             type="button"
-            class="app-btn-primary h-8 min-h-8 px-3 text-xs"
+            class="app-btn-primary h-8 min-h-8 px-3 text-xs pointer-coarse:min-h-11 pointer-coarse:text-sm"
             :disabled="store.busyCandidateIds.includes(candidate.id)"
             @click="decisions.acceptLead(candidate)"
           >

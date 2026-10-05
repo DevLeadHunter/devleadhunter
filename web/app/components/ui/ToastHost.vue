@@ -26,7 +26,7 @@
           <button
             v-if="toast.action"
             type="button"
-            class="app-btn-secondary h-7 min-h-7 shrink-0 px-2.5 text-xs"
+            class="app-btn-secondary h-7 min-h-7 shrink-0 px-2.5 text-xs pointer-coarse:min-h-11 pointer-coarse:text-sm"
             @click="selectAction(toast)"
           >
             {{ toast.action.label }}

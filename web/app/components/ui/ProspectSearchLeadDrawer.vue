@@ -70,7 +70,7 @@
                   :href="link.href"
                   target="_blank"
                   rel="noopener noreferrer"
-                  class="app-btn-secondary h-8 min-h-8 px-3 text-xs"
+                  class="app-btn-secondary h-8 min-h-8 px-3 text-xs pointer-coarse:min-h-11 pointer-coarse:text-sm"
                 >
                   <UIcon :name="link.icon" class="h-3.5 w-3.5 shrink-0" />
                   {{ link.label }}

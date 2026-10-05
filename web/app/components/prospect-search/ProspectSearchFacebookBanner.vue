@@ -44,7 +44,7 @@
       <button
         v-if="props.isSearchActive"
         type="button"
-        class="app-btn-secondary mt-2 h-8 min-h-8 px-3 text-xs"
+        class="app-btn-secondary mt-2 h-8 min-h-8 px-3 text-xs pointer-coarse:min-h-11 pointer-coarse:text-sm"
         @click="emit('retry')"
       >
         <UIcon name="i-lucide-rotate-cw" class="h-3.5 w-3.5" />

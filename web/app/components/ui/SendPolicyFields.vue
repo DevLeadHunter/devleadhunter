@@ -20,7 +20,7 @@
           v-for="(label, index) in SEND_POLICY_DAY_LABELS"
           :key="label"
           type="button"
-          class="cursor-pointer rounded-full border px-3.5 py-1.5 text-xs font-medium transition-colors"
+          class="cursor-pointer rounded-full border px-3.5 py-1.5 text-xs font-medium transition-colors pointer-coarse:min-h-10 pointer-coarse:px-4 pointer-coarse:text-sm"
           :class="
             modelValue.days_of_week.includes(index)
               ? 'border-[var(--app-ink)] bg-[var(--app-ink)] text-[var(--app-surface)]'

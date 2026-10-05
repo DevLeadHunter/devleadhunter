@@ -8,7 +8,7 @@
       <template #actions>
         <button
           type="button"
-          class="app-btn-secondary h-11 px-4 text-sm whitespace-nowrap disabled:cursor-not-allowed disabled:opacity-50 @2xl:h-9 @2xl:text-xs"
+          class="app-btn-secondary h-11 px-4 text-sm whitespace-nowrap disabled:cursor-not-allowed disabled:opacity-50 @2xl:pointer-fine:h-9 @2xl:pointer-fine:text-xs"
           :disabled="isLoading"
           @click="loadUsers"
         >
@@ -19,7 +19,7 @@
       <template #primary-action>
         <button
           type="button"
-          class="app-btn-primary h-11 px-4 text-sm whitespace-nowrap @2xl:h-9 @2xl:text-xs"
+          class="app-btn-primary h-11 px-4 text-sm whitespace-nowrap @2xl:pointer-fine:h-9 @2xl:pointer-fine:text-xs"
           @click="openUserDrawer('create', null)"
         >
           <UIcon name="i-lucide-plus" class="h-3.5 w-3.5" />
@@ -37,7 +37,7 @@
     </div>
 
     <div class="flex justify-end">
-      <div class="relative w-full @2xl:w-72">
+      <div class="relative w-full @2xl:pointer-fine:w-72">
         <UIcon
           name="i-lucide-search"
           class="pointer-events-none absolute top-1/2 left-3 h-3.5 w-3.5 -translate-y-1/2 text-[var(--app-faint)]"

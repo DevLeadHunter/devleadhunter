@@ -71,7 +71,7 @@
           <slot />
         </main>
 
-        <UiMobileTabBar :is-drawer-open-above="drawerStack.topEntry !== null" />
+        <UiMobileTabBar />
       </div>
 
       <UiDrawerStackHost />

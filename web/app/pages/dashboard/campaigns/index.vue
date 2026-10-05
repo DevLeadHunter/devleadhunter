@@ -7,7 +7,7 @@
     >
       <template #actions>
         <div
-          class="flex w-full gap-0.5 rounded-full border border-[var(--app-line)] bg-[var(--app-surface)] p-0.5 @2xl:inline-flex @2xl:w-auto"
+          class="flex w-full gap-0.5 rounded-full border border-[var(--app-line)] bg-[var(--app-surface)] p-0.5 @2xl:w-auto @2xl:pointer-fine:inline-flex"
           role="tablist"
           aria-label="Vue"
         >
@@ -18,7 +18,7 @@
             role="tab"
             :aria-selected="view === option.key"
             :class="[
-              'inline-flex flex-1 cursor-pointer items-center justify-center gap-1.5 rounded-full px-3.5 py-2.5 text-sm font-medium transition-colors @2xl:flex-none @2xl:py-1.5 @2xl:text-xs',
+              'inline-flex h-9.5 flex-1 cursor-pointer items-center justify-center gap-1.5 rounded-full px-3.5 text-sm font-medium transition-colors @2xl:pointer-fine:h-7 @2xl:pointer-fine:flex-none @2xl:pointer-fine:text-xs',
               view === option.key
                 ? 'bg-[var(--app-ink)] text-[var(--app-bg)]'
                 : 'text-[var(--app-ink-soft)] hover:text-[var(--app-ink)]',
@@ -31,7 +31,10 @@
         </div>
       </template>
       <template #primary-action>
-        <button class="app-btn-primary h-11 px-4 text-sm @2xl:h-9 @2xl:text-xs" @click="openCreateDrawer">
+        <button
+          class="app-btn-primary h-11 px-4 text-sm @2xl:pointer-fine:h-9 @2xl:pointer-fine:text-xs"
+          @click="openCreateDrawer"
+        >
           <UIcon name="i-lucide-plus" class="h-3.5 w-3.5" />
           Nouvelle campagne
         </button>
@@ -72,10 +75,10 @@
           </div>
         </div>
 
-        <!-- Filtres : sur une ligne dès qu'elle a la place ; sinon la recherche, le canal, puis tri et période côte à côte. -->
+        <!-- Filtres : à la souris sur une ligne dès qu'elle a la place ; sur iPad la recherche, puis le canal, le tri et la période ; sur téléphone la recherche, le canal, puis tri et période côte à côte. -->
         <div class="card p-3">
-          <div class="flex flex-col gap-2.5 @3xl:flex-row @3xl:items-center @3xl:gap-2">
-            <div class="relative min-w-0 @3xl:flex-1">
+          <div class="flex flex-col gap-2.5 @3xl:flex-row @3xl:flex-wrap @3xl:items-center @3xl:gap-2">
+            <div class="relative min-w-0 @3xl:flex-1 @3xl:pointer-coarse:basis-full">
               <UIcon
                 name="i-lucide-search"
                 class="pointer-events-none absolute top-1/2 left-3 h-3.5 w-3.5 -translate-y-1/2 text-[var(--app-faint)]"
@@ -85,7 +88,7 @@
                 type="search"
                 placeholder="Rechercher une campagne…"
                 aria-label="Rechercher une campagne"
-                class="app-input h-10 pl-9 text-sm @3xl:h-9"
+                class="app-input h-11 pl-9 text-sm @3xl:pointer-fine:h-9"
               />
             </div>
 
@@ -94,14 +97,14 @@
               :options="CHANNEL_OPTIONS"
               label="Canal des campagnes"
               is-stretched-on-narrow-screens
-              class="@3xl:shrink-0"
+              class="@3xl:pointer-coarse:flex-1 @3xl:pointer-fine:shrink-0"
             />
 
             <div class="grid grid-cols-2 gap-2 @3xl:flex @3xl:shrink-0 @3xl:items-center">
               <div ref="sortMenuEl" class="relative">
                 <button
                   type="button"
-                  class="app-btn-secondary h-10 w-full justify-between gap-1.5 px-3 text-sm whitespace-nowrap @3xl:h-9 @3xl:w-auto @3xl:justify-center @3xl:gap-2 @3xl:px-4 @3xl:text-xs"
+                  class="app-btn-secondary h-11 w-full justify-between gap-1.5 px-3 text-sm whitespace-nowrap @3xl:w-auto @3xl:justify-center @3xl:gap-2 @3xl:px-4 @3xl:pointer-fine:h-9 @3xl:pointer-fine:text-xs"
                   :aria-expanded="isSortMenuOpen"
                   aria-haspopup="menu"
                   @click="isSortMenuOpen = !isSortMenuOpen"

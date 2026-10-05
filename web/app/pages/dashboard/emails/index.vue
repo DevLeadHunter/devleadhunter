@@ -8,14 +8,14 @@
       <template #actions>
         <NuxtLink
           to="/dashboard/email-health"
-          class="app-btn-secondary h-11 px-4 text-sm whitespace-nowrap @2xl:h-9 @2xl:text-xs"
+          class="app-btn-secondary h-11 px-4 text-sm whitespace-nowrap @2xl:pointer-fine:h-9 @2xl:pointer-fine:text-xs"
         >
           <UIcon name="i-lucide-heart-pulse" class="h-3.5 w-3.5" />
           Santé email
         </NuxtLink>
         <button
           :disabled="isLoading || isSyncing"
-          class="app-btn-secondary h-11 px-4 text-sm whitespace-nowrap disabled:cursor-not-allowed disabled:opacity-50 @2xl:h-9 @2xl:text-xs"
+          class="app-btn-secondary h-11 px-4 text-sm whitespace-nowrap disabled:cursor-not-allowed disabled:opacity-50 @2xl:pointer-fine:h-9 @2xl:pointer-fine:text-xs"
           :title="'Synchronise les statuts depuis Resend (utile en local sans webhook)'"
           @click="syncStatus(true)"
         >
@@ -27,7 +27,7 @@
         </button>
         <button
           :disabled="isLoading"
-          class="app-btn-secondary h-11 px-4 text-sm whitespace-nowrap disabled:cursor-not-allowed disabled:opacity-50 @2xl:h-9 @2xl:text-xs"
+          class="app-btn-secondary h-11 px-4 text-sm whitespace-nowrap disabled:cursor-not-allowed disabled:opacity-50 @2xl:pointer-fine:h-9 @2xl:pointer-fine:text-xs"
           @click="loadLogs"
         >
           <UIcon name="i-lucide-rotate-cw" class="h-3.5 w-3.5" />
@@ -36,7 +36,7 @@
       </template>
       <template #primary-action>
         <button
-          class="app-btn-primary h-11 px-4 text-sm @2xl:h-9 @2xl:text-xs"
+          class="app-btn-primary h-11 px-4 text-sm @2xl:pointer-fine:h-9 @2xl:pointer-fine:text-xs"
           @click="drawerStack.push({ kind: 'send-email', prospect: null })"
         >
           <UIcon name="i-lucide-send" class="h-3.5 w-3.5" />
@@ -217,7 +217,7 @@
         <div class="flex items-center gap-2">
           <button
             :disabled="currentPage === 1"
-            class="btn-secondary h-auto min-h-0 px-3 py-1 text-xs disabled:cursor-not-allowed disabled:opacity-50"
+            class="btn-secondary h-auto min-h-0 px-3 py-1 text-xs disabled:cursor-not-allowed disabled:opacity-50 pointer-coarse:min-h-11 pointer-coarse:text-sm"
             @click="currentPage--"
           >
             Précédent
@@ -225,7 +225,7 @@
           <span class="text-muted text-sm">{{ currentPage }} / {{ totalPages }}</span>
           <button
             :disabled="currentPage === totalPages"
-            class="btn-secondary h-auto min-h-0 px-3 py-1 text-xs disabled:cursor-not-allowed disabled:opacity-50"
+            class="btn-secondary h-auto min-h-0 px-3 py-1 text-xs disabled:cursor-not-allowed disabled:opacity-50 pointer-coarse:min-h-11 pointer-coarse:text-sm"
             @click="currentPage++"
           >
             Suivant

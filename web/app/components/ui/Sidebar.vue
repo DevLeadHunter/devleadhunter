@@ -85,7 +85,7 @@
     <div v-if="activeModule.primaryCta" class="px-4 pt-2">
       <NuxtLink
         :to="activeModule.primaryCta.to"
-        class="app-btn-primary h-8 min-h-8 w-full text-xs"
+        class="app-btn-primary h-8 min-h-8 w-full text-xs pointer-coarse:min-h-11 pointer-coarse:text-sm"
         @click="handleClick"
       >
         <UIcon :name="activeModule.primaryCta.icon" class="h-3.5 w-3.5" />

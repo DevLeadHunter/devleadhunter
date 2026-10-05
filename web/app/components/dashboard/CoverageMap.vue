@@ -5,7 +5,7 @@
         v-for="option in countryOptions"
         :key="option.code"
         type="button"
-        class="flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs transition-colors"
+        class="flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs transition-colors pointer-coarse:min-h-10 pointer-coarse:px-3.5 pointer-coarse:text-sm"
         :class="
           option.code === selectedCountry
             ? 'border-[var(--app-ink)] bg-[var(--app-ink)] text-[var(--app-bg)]'

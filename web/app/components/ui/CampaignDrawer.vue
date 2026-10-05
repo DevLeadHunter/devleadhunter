@@ -72,13 +72,13 @@
           <div v-if="!isEditing">
             <label class="text-muted mb-1.5 block text-xs font-medium">Canal d'envoi</label>
             <div
-              class="flex w-full rounded-full border border-[var(--app-line)] bg-[var(--app-surface-2)] p-0.5 sm:inline-flex sm:w-auto"
+              class="flex w-full rounded-full border border-[var(--app-line)] bg-[var(--app-surface-2)] p-0.5 sm:pointer-fine:inline-flex sm:pointer-fine:w-auto"
               role="group"
               aria-label="Canal d'envoi"
             >
               <button
                 type="button"
-                class="flex h-10 flex-1 items-center justify-center gap-1.5 rounded-full px-3 text-sm font-medium transition-colors sm:h-auto sm:flex-none sm:py-1.5 sm:text-xs"
+                class="flex h-9.5 flex-1 items-center justify-center gap-1.5 rounded-full px-3 text-sm font-medium transition-colors sm:pointer-fine:h-auto sm:pointer-fine:flex-none sm:pointer-fine:py-1.5 sm:pointer-fine:text-xs"
                 :class="
                   form.channel === 'email'
                     ? 'bg-[var(--app-ink)] text-[var(--app-bg)]'
@@ -92,7 +92,7 @@
               </button>
               <button
                 type="button"
-                class="flex h-10 flex-1 items-center justify-center gap-1.5 rounded-full px-3 text-sm font-medium transition-colors sm:h-auto sm:flex-none sm:py-1.5 sm:text-xs"
+                class="flex h-9.5 flex-1 items-center justify-center gap-1.5 rounded-full px-3 text-sm font-medium transition-colors sm:pointer-fine:h-auto sm:pointer-fine:flex-none sm:pointer-fine:py-1.5 sm:pointer-fine:text-xs"
                 :class="
                   form.channel === 'sms'
                     ? 'bg-[var(--app-ink)] text-[var(--app-bg)]'

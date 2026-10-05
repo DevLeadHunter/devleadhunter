@@ -116,7 +116,7 @@
 
         <template v-else>
           <div class="md:overflow-x-auto">
-            <table class="dlh-card-table w-full min-w-[960px] border-collapse">
+            <table class="dlh-card-table dlh-card-table--touch w-full min-w-[960px] border-collapse">
               <thead>
                 <tr class="bg-[var(--app-surface-2)]">
                   <th class="app-label border-b border-[var(--app-line)] px-4 py-2.5 text-left">Statut</th>
@@ -379,7 +379,7 @@
               </div>
               <div class="flex items-center gap-2">
                 <button
-                  class="app-btn-secondary h-8 min-h-8 px-3 text-xs disabled:cursor-not-allowed disabled:opacity-50"
+                  class="app-btn-secondary h-8 min-h-8 px-3 text-xs disabled:cursor-not-allowed disabled:opacity-50 pointer-coarse:min-h-11 pointer-coarse:text-sm"
                   :disabled="page <= 1"
                   @click="goToPrevPage"
                 >
@@ -389,7 +389,7 @@
                   Page {{ page }} / {{ totalPages }}
                 </span>
                 <button
-                  class="app-btn-secondary h-8 min-h-8 px-3 text-xs disabled:cursor-not-allowed disabled:opacity-50"
+                  class="app-btn-secondary h-8 min-h-8 px-3 text-xs disabled:cursor-not-allowed disabled:opacity-50 pointer-coarse:min-h-11 pointer-coarse:text-sm"
                   :disabled="page >= totalPages"
                   @click="goToNextPage"
                 >

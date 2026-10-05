@@ -60,21 +60,21 @@
                   <div class="flex shrink-0 items-center gap-1.5">
                     <button
                       v-if="!signature.is_default"
-                      class="btn-secondary h-8 min-h-8 px-2.5 text-xs"
+                      class="btn-secondary h-8 min-h-8 px-2.5 text-xs pointer-coarse:min-h-11 pointer-coarse:text-sm"
                       title="Définir par défaut"
                       @click="setAsDefault(signature)"
                     >
                       <UIcon name="i-lucide-star" class="h-3.5 w-3.5" />
                     </button>
                     <button
-                      class="btn-secondary h-8 min-h-8 px-2.5 text-xs"
+                      class="btn-secondary h-8 min-h-8 px-2.5 text-xs pointer-coarse:min-h-11 pointer-coarse:text-sm"
                       title="Modifier"
                       @click="openEditor(signature)"
                     >
                       <UIcon name="i-lucide-square-pen" class="h-3.5 w-3.5" />
                     </button>
                     <button
-                      class="btn-danger flex h-8 min-h-8 items-center justify-center px-2.5 text-xs"
+                      class="btn-danger flex h-8 min-h-8 items-center justify-center px-2.5 text-xs pointer-coarse:min-h-11 pointer-coarse:text-sm"
                       title="Supprimer"
                       @click="confirmDelete(signature)"
                     >

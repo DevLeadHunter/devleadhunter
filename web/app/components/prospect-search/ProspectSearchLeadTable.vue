@@ -1,6 +1,6 @@
 <template>
   <div class="overflow-hidden">
-    <BaseTable min-width="1040px">
+    <BaseTable min-width="1040px" is-stacked-on-touch-tablet>
       <template #head>
         <BaseTableTh class="w-12">
           <input
@@ -103,7 +103,7 @@
           <span class="flex items-center gap-2 md:justify-end">
             <button
               type="button"
-              class="app-btn-secondary h-10 min-h-10 flex-1 px-3 text-xs md:h-9 md:min-h-9 md:w-9 md:flex-none md:px-0"
+              class="app-btn-secondary h-10 min-h-10 flex-1 px-3 text-xs md:flex-none md:px-0 pointer-coarse:min-h-11 md:pointer-coarse:size-11 md:pointer-fine:size-9 md:pointer-fine:min-h-9"
               :disabled="isSendingDecision(candidate)"
               title="Refuser"
               @click="emit('reject', candidate)"
@@ -113,7 +113,7 @@
             </button>
             <button
               type="button"
-              class="app-btn-primary h-10 min-h-10 flex-1 px-3 text-xs md:h-9 md:min-h-9 md:w-9 md:flex-none md:px-0"
+              class="app-btn-primary h-10 min-h-10 flex-1 px-3 text-xs md:flex-none md:px-0 pointer-coarse:min-h-11 md:pointer-coarse:size-11 md:pointer-fine:size-9 md:pointer-fine:min-h-9"
               :disabled="isSendingDecision(candidate)"
               title="Accepter"
               @click="emit('accept', candidate)"

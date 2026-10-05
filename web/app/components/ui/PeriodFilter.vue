@@ -5,8 +5,8 @@
       class="app-btn-secondary whitespace-nowrap"
       :class="
         props.isStretchedOnNarrowScreens
-          ? 'h-10 w-full justify-between gap-1.5 px-3 text-sm @3xl:h-9 @3xl:w-auto @3xl:justify-center @3xl:gap-2 @3xl:px-4 @3xl:text-xs'
-          : 'h-9 px-4 text-xs'
+          ? 'h-11 w-full justify-between gap-1.5 px-3 text-sm @3xl:w-auto @3xl:justify-center @3xl:gap-2 @3xl:px-4 @3xl:pointer-fine:h-9 @3xl:pointer-fine:text-xs'
+          : 'h-9 px-4 text-xs pointer-coarse:text-sm'
       "
       :aria-expanded="isOpen"
       aria-haspopup="dialog"
@@ -131,7 +131,10 @@ import type { PeriodPreset, PeriodValue, UiPeriodFilterProps } from '~/types/UiP
 
 const modelValue: ModelRef<PeriodValue> = defineModel<PeriodValue>({ required: true })
 
-/** Period picker: presets and a custom range; on narrow screens its trigger can span its cell like a select. */
+/**
+ * Period picker: presets and a custom range. Stretched, its trigger spans its cell like a select on a phone, and keeps
+ * its touch size on any touch screen.
+ */
 const props: UiPeriodFilterProps = defineProps({
   isStretchedOnNarrowScreens: {
     type: Boolean,

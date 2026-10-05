@@ -1,6 +1,9 @@
 <template>
   <div class="space-y-8">
-    <div class="flex flex-col gap-4 @2xl:flex-row @2xl:items-end @2xl:justify-between">
+    <!-- Souris : période et actualisation à côté du titre. Tactile (iPad) : sous le titre, sur toute la largeur. -->
+    <div
+      class="flex flex-col gap-4 @2xl:pointer-fine:flex-row @2xl:pointer-fine:items-end @2xl:pointer-fine:justify-between"
+    >
       <div>
         <p class="app-label flex items-center gap-2">
           <LandingAsterisk class="text-[0.6rem] text-[var(--app-accent)]" />
@@ -12,12 +15,14 @@
         </p>
       </div>
       <div class="flex flex-col items-stretch gap-2 @2xl:flex-row @2xl:flex-wrap @2xl:items-center">
-        <div class="flex w-full overflow-hidden rounded-lg border border-[var(--app-line)] @2xl:w-auto">
+        <div
+          class="flex w-full overflow-hidden rounded-lg border border-[var(--app-line)] @2xl:pointer-coarse:flex-1 @2xl:pointer-fine:w-auto"
+        >
           <button
             v-for="preset in PERIOD_PRESETS"
             :key="preset.days"
             type="button"
-            class="flex-1 cursor-pointer px-2.5 py-2.5 text-sm font-medium whitespace-nowrap transition-colors @2xl:flex-none @2xl:py-1.5 @2xl:text-xs"
+            class="h-10.5 flex-1 cursor-pointer px-2.5 text-sm font-medium whitespace-nowrap transition-colors @2xl:pointer-fine:h-auto @2xl:pointer-fine:flex-none @2xl:pointer-fine:py-1.5 @2xl:pointer-fine:text-xs"
             :class="
               periodDays === preset.days
                 ? 'bg-[var(--app-ink)] text-[var(--app-surface)]'
@@ -30,11 +35,14 @@
         </div>
         <button
           type="button"
-          class="app-btn-secondary h-11 w-full text-sm @2xl:h-8 @2xl:w-auto @2xl:px-3 @2xl:text-xs"
+          class="app-btn-secondary h-11 w-full text-sm @2xl:w-auto @2xl:pointer-coarse:px-5 @2xl:pointer-fine:h-8 @2xl:pointer-fine:px-3 @2xl:pointer-fine:text-xs"
           :disabled="isLoading"
           @click="load"
         >
-          <UIcon name="i-lucide-rotate-cw" :class="['h-4 w-4 @2xl:h-3.5 @2xl:w-3.5', isLoading && 'animate-spin']" />
+          <UIcon
+            name="i-lucide-rotate-cw"
+            :class="['h-4 w-4 @2xl:pointer-fine:h-3.5 @2xl:pointer-fine:w-3.5', isLoading && 'animate-spin']"
+          />
           Actualiser
         </button>
         <span
