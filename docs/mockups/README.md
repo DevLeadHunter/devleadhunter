@@ -22,6 +22,7 @@ Ticket Asana « [IA Code] Présence humaine sur la démo ». Trois briques pour 
 
 | Fichier | Ce qu'il montre | État |
 |---|---|---|
+| `prospect-search/recherche-v5-captures.html` (+ `captures-v5/`) | **Douze vraies captures du logiciel** : la page « Nouvelle recherche » en quatre étapes, le volet « Recherche en cours » gardé d'une page à l'autre, la notification d'un nouveau lead, l'onglet « À valider » de Mes prospects, la fiche d'un lead, le thème sombre et le téléphone | **Retenue le 05/10** et intégrée au pixel près ; en attente de mise en ligne |
 | `prospect-search/vivier-v4.html` | **Les leads en direct, version reprise** (maquette qui vit) : page des leads avec critères vérifiés en pastilles, barre de répartition, tri en lot ; page « Nouvelle recherche » en cinq questions avec résumé et coût ; barre de suivi large et basse sur les autres pages ; trois noms de menu à comparer | **Refusée le 04/10** ; décisions prises ensuite (voir la note) : la suite se construit dans le logiciel |
 | `prospect-search/vivier-v3.html` | Première version du vivier en direct | Direction retenue le 04/10, remplacée par la v4 |
 | `prospect-search/recherche-v2.html` | Première proposition : la phrase, le parcours, le fil | **Refusée le 04/10** (« aucune ne me plaît ») |

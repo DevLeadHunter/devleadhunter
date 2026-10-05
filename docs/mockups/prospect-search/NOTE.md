@@ -7,6 +7,7 @@
 | `recherche-v2.html` : trois directions (la phrase, le parcours, le fil) | 4 octobre 2026 | **Refusée** : « aucune ne me plaît » |
 | `vivier-v3.html` : le vivier de leads en direct | 4 octobre 2026 | Direction retenue (« ça me plaît bien »), remplacée par la v4 |
 | `vivier-v4.html` : les leads en direct, version reprise, avec la page « Nouvelle recherche » | 4 octobre 2026 | **Refusée** : hors de ce qui existe dans le logiciel |
+| `recherche-v5-captures.html` : douze vraies captures du logiciel, dans `captures-v5/` | 5 octobre 2026 | **Retenue** : intégrée au pixel près, en attente de mise en ligne |
 
 ## Ce qui est demandé
 
@@ -128,3 +129,26 @@ Quatre décisions, prises sur question :
 
 La suite ne passe plus par une maquette HTML : elle est construite dans le logiciel, avec ses
 composants, sur la branche de travail, et montrée par de vraies captures avant toute mise en ligne.
+
+## Version 5 : intégrée (5 octobre)
+
+Demande : intégrer la recherche telle que la montrent les captures de `recherche-v5-captures.html`, au
+pixel près. Les douze vues ont été refaites sur une base locale qui reprend leurs données, aux mêmes
+tailles (1440 × 900, téléphone 390 × 844), en clair et en sombre, puis comparées pixel par pixel :
+boîtes, bordures, icônes et positions tombent juste, seul le lissage du texte diffère (Windows contre
+Linux).
+
+Deux écarts avec les captures, voulus :
+
+- Le journal ne dit plus « gardé » en mode « Je valide » : « complet, à valider » pour un lead complet,
+  « un seul moyen de contact, à valider » pour un lead qui n'a qu'un contact.
+- La page Campagnes porte le filtre « Tous canaux, Email, SMS », arrivé entre-temps.
+
+« Annuler » après un refus rend au lead la place qu'il avait, avec son explication : un lead resté
+« À vérifier » parce que Google n'a pas répondu revenait « Complet ». La place est gardée au refus
+(colonnes `status_before_refusal` et `detail_before_refusal`) ; un refus antérieur à ces colonnes est
+jugé de nouveau, comme avant.
+
+Essayé à l'écran : refuser puis annuler (tableau, volet), accepter (tableau, fiche, volet, notification),
+la fiche qui passe au lead suivant, le volet gardé d'une page à l'autre, le compteur du menu, le
+lancement qui ouvre « À valider » et le volet. La mise en ligne lance seule les deux migrations de la base.
