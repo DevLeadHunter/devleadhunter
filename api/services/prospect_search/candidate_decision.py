@@ -83,6 +83,11 @@ class CandidateDecision:
             return CandidateVerdict(
                 CandidateStatus.TO_CONFIRM, detail="La vérification sur Google n'a pas répondu : fiche non contrôlée."
             )
+        if facts.is_swiss_directory_unanswered:
+            return CandidateVerdict(
+                CandidateStatus.TO_CONFIRM,
+                detail="L'annuaire suisse n'a pas répondu : l'astérisque « pas de publicité » n'a pas été lu.",
+            )
         has_untraced_website = facts.has_website_button is True and facts.website is None and facts.facebook_url is None
         if criteria.only_without_website and has_untraced_website:
             return CandidateVerdict(

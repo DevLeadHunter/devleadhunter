@@ -16,7 +16,11 @@ from services.prospect_search.candidate_store import CandidateStore
 from services.prospect_search.candidate_verifier import CandidateVerifier
 from services.prospect_search.contact_finder import ContactFinder
 from services.prospect_search.search_judge import SearchJudge
-from services.prospect_search.swiss_directory import SwissDirectory, SwissDirectoryEntry
+from services.prospect_search.swiss_directory import (
+    SwissDirectory,
+    SwissDirectoryEntry,
+    SwissDirectoryUnavailableError,
+)
 from services.prospect_search.trade_catalog import TradeCatalog
 from services.website_liveness_service import website_liveness_service
 
@@ -91,17 +95,21 @@ class _ScriptedDirectory(SwissDirectory):
         self._entry_pages = entry_pages or {}
         self.asked_phones: list[str | None] = []
         self.asked_names: list[str] = []
+        self.is_unavailable = False
 
     async def entry_for_phone(self, phone: str | None) -> SwissDirectoryEntry | None:
         self.asked_phones.append(phone)
+        if self.is_unavailable:
+            raise SwissDirectoryUnavailableError("search.ch answered 429")
         return self._entry
 
     async def entries_for_name(self, name: str, town: str) -> list[SwissDirectoryEntry]:
         self.asked_names.append(name)
         return self._entries_by_name
 
-    async def entry_at(self, entry_url: str) -> SwissDirectoryEntry | None:
-        return self._entry_pages.get(entry_url)
+    async def entry_at(self, entry_url: str) -> SwissDirectoryEntry:
+        listed = next((entry for entry in self._entries_by_name if entry.url == entry_url), _entry(url=entry_url))
+        return self._entry_pages.get(entry_url, listed)
 
 
 @pytest.fixture(autouse=True)
@@ -545,3 +553,33 @@ def test_the_directory_is_asked_the_name_without_its_legal_form() -> None:
     _verify(_facts(name="Conthey Centre Automobile Sàrl", city="Conthey", phone="078 870 68 80"), directory)
 
     assert directory.asked_names == ["Conthey Centre Automobile"]
+
+
+def test_a_directory_that_does_not_answer_leaves_the_candidate_to_confirm() -> None:
+    facts = _facts(email="svauto.vevey@gmail.com", email_proof_level=EmailProofLevel.PUBLISHED.value)
+    directory = _ScriptedDirectory(None)
+    directory.is_unavailable = True
+
+    _verify(facts, directory)
+    verdict = CandidateDecision.decide(facts, _GARAGE, _EMAIL_SEARCH)
+
+    assert verdict.status == CandidateStatus.TO_CONFIRM
+    assert verdict.detail == "L'annuaire suisse n'a pas répondu : l'astérisque « pas de publicité » n'a pas été lu."
+
+
+def test_a_refused_lookup_raises_while_an_unlisted_number_has_no_entry(monkeypatch: pytest.MonkeyPatch) -> None:
+    with pytest.raises(SwissDirectoryUnavailableError):
+        _read_directory(monkeypatch, {"/tel/": (429, "")}, "021 925 36 66")
+
+
+def test_an_entry_page_without_vcard_still_gives_its_asterisk(monkeypatch: pytest.MonkeyPatch) -> None:
+    entry = _read_directory(
+        monkeypatch,
+        {
+            "/tel/": (200, '<a href="/tel/vevey/avenue-reller-25/sv-automobiles-sarl">SV</a>'),
+            "/tel/vevey/avenue-reller-25/sv-automobiles-sarl.fr.html": (200, _PAGE_WITH_ASTERISK),
+        },
+        "021 922 91 68",
+    )
+
+    assert entry is not None and entry.refuses_advertising is True

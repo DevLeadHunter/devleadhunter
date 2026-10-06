@@ -30,7 +30,12 @@ from services.prospect_search.candidate_facts import CandidateFacts
 from services.prospect_search.candidate_identity import CandidateIdentity
 from services.prospect_search.facebook_page_results import FacebookPageResults
 from services.prospect_search.search_judge import JudgeVerdict, SearchJudge, SearchResultLine
-from services.prospect_search.swiss_directory import SwissDirectory, SwissDirectoryEntry, swiss_directory
+from services.prospect_search.swiss_directory import (
+    SwissDirectory,
+    SwissDirectoryEntry,
+    SwissDirectoryUnavailableError,
+    swiss_directory,
+)
 from services.prospect_search.trade_catalog import TradeProfile
 from services.validation_service import validation_service
 from services.website_liveness_service import website_liveness_service
@@ -324,7 +329,12 @@ class CandidateVerifier:
         is_already_out = facts.is_closed or facts.is_chain or facts.is_other_business or not facts.matches_trade
         if facts.country != "CH" or is_already_out:
             return
-        entry = await self._directory.entry_for_phone(facts.phone) or await self._entry_found_by_name(facts, trade)
+        try:
+            entry = await self._directory.entry_for_phone(facts.phone) or await self._entry_found_by_name(facts, trade)
+        except SwissDirectoryUnavailableError as exc:
+            logger.info("Swiss directory unanswered for %s: %s", facts.name, exc)
+            facts.add_evidence("directory_unanswered", "search.ch", source="Annuaire search.ch")
+            return
         if entry is None:
             return
         if entry.refuses_advertising and not facts.refuses_advertising:
@@ -353,7 +363,7 @@ class CandidateVerifier:
                 f"{listed_entry.name} {listed_entry.extra_line}", facts, trade
             )
             if is_entry_of_business:
-                return await self._directory.entry_at(listed_entry.url) or listed_entry
+                return await self._directory.entry_at(listed_entry.url)
         return None
 
     @staticmethod

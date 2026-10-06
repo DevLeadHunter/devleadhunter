@@ -53,6 +53,11 @@ class CandidateFacts:
         return self.city or self.searched_city or ""
 
     @property
+    def is_swiss_directory_unanswered(self) -> bool:
+        """Whether search.ch did not answer for the candidate, so its asterisk could not be read."""
+        return any(line.get("fact") == "directory_unanswered" for line in self.evidence)
+
+    @property
     def is_abroad(self) -> bool:
         """Whether the address ends with another country than the search's."""
         return CountryProfiles.foreign_country_of_address(self.address, country=self.country) is not None

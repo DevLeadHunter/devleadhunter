@@ -37,6 +37,7 @@ _NO_ADVERTISING_NUMBER_RE: re.Pattern[str] = re.compile(
 _VCARD_LINE_RE: re.Pattern[str] = re.compile(r"^(EMAIL|URL|TEL)[^:\n]*:(.+)$", re.MULTILINE)
 _VCARD_FOLD_RE: re.Pattern[str] = re.compile(r"\r?\n[ \t]")
 _BUSINESS_ENTRY_MARK: str = 'data-entrytype="Business"'
+_NOT_LISTED_STATUS: int = 404
 _RESULT_LIST_RE: re.Pattern[str] = re.compile(r'<ol class="tel-results tel-entries">(.*?)</ol>', re.DOTALL)
 _RESULT_ENTRY_START_RE: re.Pattern[str] = re.compile(r'<li class="tel-(?=person|commercial)')
 _RESULT_ENTRY_NAME_RE: re.Pattern[str] = re.compile(r'<h1><a href="(/tel/[^"]+)"[^>]*>([^<]+)</a></h1>')
@@ -59,6 +60,10 @@ class SwissDirectoryEntry:
     extra_line: str = ""
 
 
+class SwissDirectoryUnavailableError(Exception):
+    """search.ch did not answer: whether the subscriber refuses advertising stays unknown."""
+
+
 class SwissDirectory:
     """Reads one search.ch entry, found by the phone number a business already showed or by its name."""
 
@@ -73,7 +78,10 @@ class SwissDirectory:
         of entries, and the first one is read.
 
         Returns:
-            The entry, or ``None`` for a number that is not Swiss, not listed, or a directory that does not answer.
+            The entry, or ``None`` for a number that is not Swiss or not listed.
+
+        Raises:
+            SwissDirectoryUnavailableError: The directory did not answer.
         """
         national_number = self.national_number(phone)
         if national_number is None:
@@ -85,26 +93,29 @@ class SwissDirectory:
                 headers=website_liveness_service.REQUEST_HEADERS,
             ) as http:
                 page = await http.get(f"{_BASE_URL}/tel/", params={"was": national_number, "lang": "fr"})
-                if page.status_code != 200:
+                if page.status_code == _NOT_LISTED_STATUS:
                     return None
+                self._raise_unless_answered(page)
                 entry_url = str(page.url)
                 entry_path = None if _VCARD_PATH_RE.search(page.text) else _ENTRY_PATH_RE.search(page.text)
                 if entry_path is not None:
                     entry_url = f"{_BASE_URL}{entry_path.group(1)}.fr.html"
                     page = await http.get(entry_url)
-                    if page.status_code != 200:
-                        return None
+                    self._raise_unless_answered(page)
                 vcard_path = _VCARD_PATH_RE.search(page.text)
-                if vcard_path is None:
-                    return None
-                vcard = await http.get(f"{_BASE_URL}{html.unescape(vcard_path.group(1))}")
+                vcard = await http.get(f"{_BASE_URL}{html.unescape(vcard_path.group(1))}") if vcard_path else None
         except httpx.HTTPError as exc:
-            logger.info("search.ch lookup of %s failed: %s", national_number, exc)
-            return None
-        vcard_text = vcard.text if vcard.status_code == 200 else ""
+            raise SwissDirectoryUnavailableError(f"search.ch lookup of {national_number} failed: {exc}") from exc
+        vcard_text = vcard.text if vcard is not None and vcard.status_code == 200 else ""
         return self.parse_entry(entry_url, page.text, vcard_text)
 
-    async def entry_at(self, entry_url: str) -> SwissDirectoryEntry | None:
+    @staticmethod
+    def _raise_unless_answered(page: httpx.Response) -> None:
+        """Stop a lookup the directory refused (rate limit, outage): an unread page proves nothing."""
+        if page.status_code != 200:
+            raise SwissDirectoryUnavailableError(f"search.ch answered {page.status_code} for {page.url}")
+
+    async def entry_at(self, entry_url: str) -> SwissDirectoryEntry:
         """
         Read the entry page of one subscriber and its vCard.
 
@@ -112,7 +123,10 @@ class SwissDirectory:
             entry_url: Address of the entry page, as a result list gives it.
 
         Returns:
-            The entry, or ``None`` when the directory does not answer.
+            The entry.
+
+        Raises:
+            SwissDirectoryUnavailableError: The directory did not answer.
         """
         try:
             async with httpx.AsyncClient(
@@ -121,13 +135,11 @@ class SwissDirectory:
                 headers=website_liveness_service.REQUEST_HEADERS,
             ) as http:
                 page = await http.get(entry_url)
-                if page.status_code != 200:
-                    return None
+                self._raise_unless_answered(page)
                 vcard_path = _VCARD_PATH_RE.search(page.text)
                 vcard = await http.get(f"{_BASE_URL}{html.unescape(vcard_path.group(1))}") if vcard_path else None
         except httpx.HTTPError as exc:
-            logger.info("search.ch entry %s failed: %s", entry_url, exc)
-            return None
+            raise SwissDirectoryUnavailableError(f"search.ch entry {entry_url} failed: {exc}") from exc
         vcard_text = vcard.text if vcard is not None and vcard.status_code == 200 else ""
         return self.parse_entry(entry_url, page.text, vcard_text)
 
@@ -143,7 +155,10 @@ class SwissDirectory:
             town: The business's town.
 
         Returns:
-            The entries, empty when nothing is listed or the directory does not answer.
+            The entries, empty when nothing is listed.
+
+        Raises:
+            SwissDirectoryUnavailableError: The directory did not answer.
         """
         if not name.strip() or not town.strip():
             return []
@@ -155,10 +170,10 @@ class SwissDirectory:
             ) as http:
                 page = await http.get(f"{_BASE_URL}/tel/", params={"was": name, "wo": town, "lang": "fr"})
         except httpx.HTTPError as exc:
-            logger.info("search.ch lookup of %s in %s failed: %s", name, town, exc)
+            raise SwissDirectoryUnavailableError(f"search.ch lookup of {name} in {town} failed: {exc}") from exc
+        if page.status_code == _NOT_LISTED_STATUS:
             return []
-        if page.status_code != 200:
-            return []
+        self._raise_unless_answered(page)
         if _VCARD_PATH_RE.search(page.text):
             return [self.parse_entry(str(page.url), page.text, "")]
         return self.parse_result_list(page.text)
