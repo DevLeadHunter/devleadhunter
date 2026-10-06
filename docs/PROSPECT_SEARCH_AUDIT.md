@@ -92,6 +92,14 @@ liquidation » au registre du commerce est écartée comme fermée, une adresse 
 écartée, une page Facebook sans téléphone attend une confirmation, et une page « bientôt en ligne »
 servie avec le code 503 compte comme un site en ligne.
 
+Depuis les manches 3 et 4 (6 octobre au soir) : la fiche suisse trouvée par le nom est lue en entier,
+les mots du nom se comparent mot à mot, un business déjà proposé par la recherche n'est pas proposé
+une seconde fois, une publication Facebook d'une autre page ou un résultat montrant un autre numéro
+ne donnent plus d'email, le site qui publie l'email du business (sous un nom tiré de cet email) et le
+domaine d'email qui épelle son nom comptent comme son site, un domaine écrit dans le nom de la fiche
+est contrôlé, les emails de plateformes, de réseaux de garages et les boîtes `dpo@` sont refusés, et
+la liste RGE des électriciens ne garde que les radiateurs électriques.
+
 **Ce qui reste (lots de la section 10)**
 
 - Lot 2, en partie : le bouton « Vérifier » sur un prospect importé, ajouté à la main ou déjà en
