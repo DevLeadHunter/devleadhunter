@@ -617,7 +617,7 @@ class CandidateVerifier:
     def _is_domain_named_after(domain: str, facts: CandidateFacts) -> bool:
         """Whether a domain spells the business name, give or take a letter (« bcp-paysagiste.com » for « Bcp Paysagistes »)."""
         compact_label = re.sub(r"[^a-z0-9]", "", fold(domain.rsplit(".", 1)[0]))
-        compact_name = re.sub(r"[^a-z0-9]", "", fold(facts.name))
+        compact_name = re.sub(r"[^a-z0-9]", "", fold(_LEGAL_FORM_RE.sub(" ", facts.name)))
         similarity = difflib.SequenceMatcher(None, compact_label, compact_name).ratio()
         return bool(compact_label) and similarity >= _DOMAIN_NAMED_AFTER_BUSINESS_SIMILARITY
 

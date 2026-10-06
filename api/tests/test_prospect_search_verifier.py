@@ -676,3 +676,14 @@ def test_the_phone_search_takes_no_email_from_a_foreign_page_a_group_or_a_docume
     asyncio.run(ContactFinder(_OnePageClient(page), _ScriptedJudge()).find(facts, TradeCatalog.resolve("garage")))  # type: ignore[arg-type]
 
     assert facts.email is None
+
+
+def test_an_email_domain_spelling_the_name_without_its_legal_form_is_its_website(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    facts = _facts(name="ADN Autos Sàrl", city="Bulle", phone=None, email="info@adnauto.ch")
+    _serve_front_page(monkeypatch, "https://adnauto.ch/", "<title>Bienvenue</title>")
+
+    asyncio.run(CandidateVerifier.consider_email_domain(facts, TradeCatalog.resolve("garage")))
+
+    assert facts.website == "https://adnauto.ch/"
