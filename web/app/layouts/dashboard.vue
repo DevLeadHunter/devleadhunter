@@ -67,12 +67,17 @@
 
         <main
           :id="DASHBOARD_SCROLL_CONTAINER_ID"
-          class="standalone:max-md:pb-5 @container flex-1 scroll-pb-28 overflow-x-hidden overflow-y-auto pt-5 pr-[max(1rem,env(safe-area-inset-right))] pb-[calc(1.25rem+env(safe-area-inset-bottom))] pl-[max(1rem,env(safe-area-inset-left))] md:pt-6 md:pr-[max(1.5rem,env(safe-area-inset-right))] md:pb-6 md:pl-[max(1.5rem,env(safe-area-inset-left))]"
+          :class="[
+            '@container min-h-0 flex-1 overflow-x-hidden',
+            shouldFillDashboardViewport
+              ? 'flex flex-col overflow-y-hidden pr-[env(safe-area-inset-right)] pl-[env(safe-area-inset-left)]'
+              : 'standalone:max-md:pb-5 scroll-pb-28 overflow-y-auto pt-5 pr-[max(1rem,env(safe-area-inset-right))] pb-[calc(1.25rem+env(safe-area-inset-bottom))] pl-[max(1rem,env(safe-area-inset-left))] md:pt-6 md:pr-[max(1.5rem,env(safe-area-inset-right))] md:pb-6 md:pl-[max(1.5rem,env(safe-area-inset-left))]',
+          ]"
         >
           <slot />
         </main>
 
-        <UiMobileTabBar />
+        <UiMobileTabBar v-if="!shouldFillDashboardViewport" />
       </div>
 
       <UiDrawerStackHost />
@@ -90,6 +95,7 @@
 import type { AppTheme } from '~/types/AppTheme'
 import type { UseAutomationCompletionNotifierReturn } from '~/types/Composables'
 import type { ComputedRef, Ref } from 'vue'
+import type { RouteLocationNormalizedLoaded } from 'vue-router'
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useUserStore } from '~/stores/user'
 import { useAppTheme } from '~/composables/useAppTheme'
@@ -126,6 +132,9 @@ const showCreditsPopover: Ref<boolean> = ref(false)
 
 /** Content column — target of the left-edge swipe that opens the nav on mobile. */
 const mobileSwipeArea: Ref<HTMLElement | null> = ref(null)
+
+/** Current route, whose page meta tells whether the page fills the content area itself. */
+const route: RouteLocationNormalizedLoaded = useRoute()
 
 /** User store instance. */
 const userStore: ReturnType<typeof useUserStore> = useUserStore()
@@ -172,6 +181,10 @@ const drawerPushClass: ComputedRef<string> = computed((): string => {
   if (!top) return ''
   return top.kind === 'email-template' ? 'xl:mr-[560px]' : 'xl:mr-[480px]'
 })
+
+const shouldFillDashboardViewport: ComputedRef<boolean> = computed(
+  (): boolean => route.meta.shouldFillDashboardViewport === true,
+)
 
 /** Credits counter shown in the pill ("∞" when unlimited). */
 const creditIconValue: ComputedRef<string> = computed((): string => {

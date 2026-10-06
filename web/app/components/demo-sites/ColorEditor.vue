@@ -11,6 +11,7 @@
               ? 'border-[var(--app-ink)] bg-[var(--app-surface-2)]'
               : 'border-[var(--app-line)] hover:border-[var(--app-ink-soft)]',
           ]"
+          :aria-pressed="useBrandColor === true"
           @click="selectBrandSource(true)"
         >
           <span
@@ -31,6 +32,7 @@
               ? 'border-[var(--app-ink)] bg-[var(--app-surface-2)]'
               : 'border-[var(--app-line)] hover:border-[var(--app-ink-soft)]',
           ]"
+          :aria-pressed="useBrandColor === false"
           @click="selectBrandSource(false)"
         >
           <span
@@ -47,42 +49,44 @@
         </button>
       </div>
     </div>
-    <p class="app-label mb-2.5">Toutes les couleurs</p>
-    <div class="flex flex-wrap gap-3">
-      <div v-for="color in editableColors" :key="color.key" class="min-w-[7rem] flex-1">
-        <span class="mb-1 flex items-center gap-1 text-[10px] tracking-wide text-[var(--app-ink-soft)] uppercase">
-          {{ color.label }}
-        </span>
-        <div class="flex items-center gap-1.5">
-          <div class="group relative h-10 w-10 shrink-0">
-            <div
-              class="pointer-events-none h-10 w-10 rounded-lg border border-[var(--app-line)] transition-transform group-hover:scale-105"
-              :style="{ backgroundColor: theme[color.key] }"
-            ></div>
+    <div>
+      <p class="app-label mb-2.5">{{ showBrandSourcePicker ? 'Toutes les couleurs' : 'Couleurs du site' }}</p>
+      <div class="flex flex-wrap gap-3">
+        <div v-for="color in editableColors" :key="color.key" class="min-w-[7rem] flex-1">
+          <span class="mb-1 flex items-center gap-1 text-[10px] tracking-wide text-[var(--app-ink-soft)] uppercase">
+            {{ color.label }}
+          </span>
+          <div class="flex items-center gap-1.5">
+            <div class="group relative h-10 w-10 shrink-0">
+              <div
+                class="pointer-events-none h-10 w-10 rounded-lg border border-[var(--app-line)] transition-transform group-hover:scale-105"
+                :style="{ backgroundColor: theme[color.key] }"
+              ></div>
+              <input
+                :value="theme[color.key]"
+                type="color"
+                :title="`Choisir la couleur ${color.label.toLowerCase()}`"
+                :aria-label="`Choisir la couleur ${color.label.toLowerCase()}`"
+                class="absolute inset-0 h-full w-full cursor-pointer opacity-0"
+                @input="onEditColor(color.key, ($event.target as HTMLInputElement).value)"
+              />
+            </div>
             <input
               :value="theme[color.key]"
-              type="color"
-              :title="`Choisir la couleur ${color.label.toLowerCase()}`"
-              :aria-label="`Choisir la couleur ${color.label.toLowerCase()}`"
-              class="absolute inset-0 h-full w-full cursor-pointer opacity-0"
+              type="text"
+              class="input-field h-10 min-w-0 text-xs"
+              placeholder="#1d4ed8"
+              maxlength="7"
               @input="onEditColor(color.key, ($event.target as HTMLInputElement).value)"
             />
           </div>
-          <input
-            :value="theme[color.key]"
-            type="text"
-            class="input-field h-10 min-w-0 text-xs"
-            placeholder="#1d4ed8"
-            maxlength="7"
-            @input="onEditColor(color.key, ($event.target as HTMLInputElement).value)"
-          />
         </div>
       </div>
+      <p class="mt-3 flex items-center gap-1.5 text-[11px] text-[var(--app-ink-soft)]">
+        <UIcon name="i-lucide-info" class="h-3 w-3 shrink-0" />
+        Vos couleurs s'appliquent en direct dans l'aperçu.
+      </p>
     </div>
-    <p class="mt-2.5 flex items-center gap-1.5 text-[11px] text-[var(--app-ink-soft)]">
-      <UIcon name="i-lucide-info" class="h-3 w-3 shrink-0" />
-      Vos couleurs s'appliquent en direct dans l'aperçu.
-    </p>
   </div>
 </template>
 
@@ -152,7 +156,7 @@ const editableColors: ComputedRef<EditableColor[]> = computed((): EditableColor[
   )
 })
 
-/** The template's own default for the action colour (the "Template" pill). */
+/** The template's own default for the action colour (the « Celle de la template » card). */
 const templateActionColor: ComputedRef<string | null> = computed((): string | null => {
   const tpl: DemoSiteTemplate | null = props.template
   const actionKey: TemplateThemeColorKey | undefined = tpl?.color_roles?.action ?? tpl?.brand_color_key

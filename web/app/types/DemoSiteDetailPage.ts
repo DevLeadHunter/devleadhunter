@@ -1,4 +1,3 @@
-import type { DemoSiteServiceCard, DemoSiteTheme } from '~/services/demoSiteService'
 import type { TemplatePreviewDevice } from '~/types/TemplatePicker'
 
 /** The tools of the atelier bar. */
@@ -20,13 +19,14 @@ export type DemoSitePreviewDeviceOption = {
   icon: string
 }
 
-/** Props of the atelier preview: the published site, redrawn live with the unsaved edits. */
-export type DemoSiteAtelierPreviewProps = {
-  siteUrl: string
-  device?: TemplatePreviewDevice
-  templateId: string
-  previewTheme?: DemoSiteTheme | null
-  previewPhotos?: string[] | null
-  previewServices?: DemoSiteServiceCard[] | null
-  reloadNonce?: number
+/** How high the sheet stands: the setting height, with the site above it, or nearly the whole area. */
+export type DemoSiteAtelierSheetSize = 'setting' | 'expanded'
+
+/** A drag of the sheet's handle, followed from the finger or the pointer that started it. */
+export type DemoSiteAtelierSheetDrag = {
+  pointerId: number
+  startY: number
+  startHeight: number
+  areaHeight: number
+  hasMoved: boolean
 }

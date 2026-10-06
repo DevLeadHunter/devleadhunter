@@ -10,7 +10,7 @@
       ]"
       :style="frameStyle"
       title="Le site, en direct"
-      @load="isLoading = false"
+      @load="endFrameLoad"
     />
     <Transition name="preview-veil">
       <div
@@ -27,12 +27,12 @@
 <script lang="ts" setup>
 import type { ComputedRef, PropType, Ref } from 'vue'
 import type { DemoSiteServiceCard, DemoSiteTheme } from '~/services/demoSiteService'
-import type { DemoSiteAtelierPreviewProps } from '~/types/DemoSiteDetailPage'
+import type { AtelierPreviewProps, AtelierPreviewScreenSize } from '~/types/AtelierPreview'
 import type { TemplatePreviewDevice } from '~/types/TemplatePicker'
 import { computed, onBeforeUnmount, ref, watch } from 'vue'
 
 /** Real screens, at scale 1: a laptop and a phone. The frame keeps their ratio whatever the pane. */
-const FRAME_SIZES: Record<TemplatePreviewDevice, { width: number; height: number }> = {
+const FRAME_SIZES: Record<TemplatePreviewDevice, AtelierPreviewScreenSize> = {
   desktop: { width: 1440, height: 900 },
   mobile: { width: 390, height: 844 },
 }
@@ -40,11 +40,17 @@ const FRAME_SIZES: Record<TemplatePreviewDevice, { width: number; height: number
 /** Air kept around the frame, so it reads as a device and not as a cut-out. */
 const FRAME_INSET_PX: number = 16
 
+/** An unreachable demo host never fires `load`: past this delay the veil lifts anyway. */
+const FRAME_LOAD_TIMEOUT_MS: number = 8_000
+
+/** Pause after the last edit before it is pushed into the site, so typing a colour does not flood it. */
+const OVERRIDES_DEBOUNCE_MS: number = 200
+
 /**
  * The published site in a real screen (laptop or phone) scaled to fit the pane, scrolling inside, redrawn live
  * with the unsaved edits (template, colours, photo order, cards) through the demo host's `_edit=1` mode.
  */
-const props: DemoSiteAtelierPreviewProps = defineProps({
+const props: AtelierPreviewProps = defineProps({
   siteUrl: {
     type: String,
     required: true,
@@ -82,6 +88,7 @@ const paneHeight: Ref<number> = ref(0)
 const isLoading: Ref<boolean> = ref(true)
 let resizeObserver: ResizeObserver | null = null
 let messageTimer: ReturnType<typeof setTimeout> | null = null
+let frameLoadTimeoutTimer: ReturnType<typeof setTimeout> | null = null
 
 const frameUrl: ComputedRef<string> = computed((): string => {
   const separator: string = props.siteUrl.includes('?') ? '&' : '?'
@@ -92,7 +99,7 @@ const frameUrl: ComputedRef<string> = computed((): string => {
 /** Scale of the frame so the whole screen fits the pane, whichever side is tight. */
 const frameScale: ComputedRef<number> = computed((): number => {
   if (paneWidth.value === 0 || paneHeight.value === 0) return 1
-  const frame: { width: number; height: number } = FRAME_SIZES[props.device ?? 'mobile']
+  const frame: AtelierPreviewScreenSize = FRAME_SIZES[props.device ?? 'mobile']
   const widthScale: number = (paneWidth.value - FRAME_INSET_PX * 2) / frame.width
   const heightScale: number = (paneHeight.value - FRAME_INSET_PX * 2) / frame.height
   return Math.min(1, widthScale, heightScale)
@@ -101,7 +108,7 @@ const frameScale: ComputedRef<number> = computed((): number => {
 /** The frame at its real size, scaled and centred in the pane. */
 const frameStyle: ComputedRef<Record<string, string>> = computed((): Record<string, string> => {
   const scale: number = frameScale.value
-  const frame: { width: number; height: number } = FRAME_SIZES[props.device ?? 'mobile']
+  const frame: AtelierPreviewScreenSize = FRAME_SIZES[props.device ?? 'mobile']
   return {
     width: `${frame.width}px`,
     height: `${frame.height}px`,
@@ -142,7 +149,28 @@ function postOverrides(): void {
  */
 function scheduleOverrides(): void {
   if (messageTimer) clearTimeout(messageTimer)
-  messageTimer = setTimeout(postOverrides, 200)
+  messageTimer = setTimeout(postOverrides, OVERRIDES_DEBOUNCE_MS)
+}
+
+/**
+ * Cover the frame while the site loads, for a bounded time.
+ */
+function beginFrameLoad(): void {
+  isLoading.value = true
+  if (frameLoadTimeoutTimer) clearTimeout(frameLoadTimeoutTimer)
+  frameLoadTimeoutTimer = setTimeout((): void => {
+    isLoading.value = false
+  }, FRAME_LOAD_TIMEOUT_MS)
+}
+
+/**
+ * Lift the veil once the site is loaded and send it the unsaved edits again: a fresh load starts from the
+ * published site, so edits made before it (or while the frame was away) would be lost otherwise.
+ */
+function endFrameLoad(): void {
+  if (frameLoadTimeoutTimer) clearTimeout(frameLoadTimeoutTimer)
+  isLoading.value = false
+  postOverrides()
 }
 
 watch(
@@ -156,9 +184,7 @@ watch(
   { deep: true },
 )
 
-watch(frameUrl, (): void => {
-  isLoading.value = true
-})
+watch(frameUrl, beginFrameLoad, { immediate: true })
 
 watch(paneElement, (element: HTMLElement | null): void => {
   resizeObserver?.disconnect()
@@ -176,6 +202,7 @@ watch(paneElement, (element: HTMLElement | null): void => {
 onBeforeUnmount((): void => {
   resizeObserver?.disconnect()
   if (messageTimer) clearTimeout(messageTimer)
+  if (frameLoadTimeoutTimer) clearTimeout(frameLoadTimeoutTimer)
 })
 </script>
 

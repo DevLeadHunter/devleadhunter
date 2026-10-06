@@ -1,16 +1,9 @@
 <template>
   <div class="@container">
     <div
-      :class="
-        previewOnly
-          ? ''
-          : templatesBelowPreview
-            ? 'flex flex-col-reverse gap-4'
-            : 'grid gap-4 @3xl:grid-cols-[280px_minmax(0,1fr)]'
-      "
+      :class="templatesBelowPreview ? 'flex flex-col-reverse gap-4' : 'grid gap-4 @3xl:grid-cols-[280px_minmax(0,1fr)]'"
     >
       <div
-        v-if="!previewOnly"
         :class="[
           'flex gap-2 overflow-x-auto pb-1',
           templatesBelowPreview
@@ -64,8 +57,7 @@
         <div
           ref="previewContainer"
           :class="[
-            'relative aspect-[16/10] overflow-hidden',
-            previewOnly ? '' : 'border-b border-[var(--app-line)]',
+            'relative aspect-[16/10] overflow-hidden border-b border-[var(--app-line)]',
             isLivePreview && previewDevice === 'mobile' ? 'bg-[var(--app-surface-2)]' : '',
           ]"
         >
@@ -147,7 +139,7 @@
           </div>
         </div>
 
-        <div v-if="!previewOnly" class="space-y-4 p-5">
+        <div class="space-y-4 p-5">
           <div>
             <div class="flex flex-wrap items-center gap-2">
               <p class="font-semibold text-[var(--app-ink)]">{{ selectedTemplate.name }}</p>
@@ -221,10 +213,6 @@ const props: TemplatePickerProps = defineProps({
     default: 0,
   },
   // When true, stack a full-width preview with the template strip below it (demo site page).
-  previewOnly: {
-    type: Boolean,
-    default: false,
-  },
   templatesBelowPreview: {
     type: Boolean,
     default: false,
