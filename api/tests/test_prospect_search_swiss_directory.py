@@ -35,13 +35,13 @@ _PAGE_WITHOUT_ASTERISK = (
 )
 _RESULT_LIST_PAGE = (
     '<ol class="tel-results tel-entries"><li class="tel-person"><article class="tel-resultentry">'
-    '<h1><a href="/tel/saxon/route-de-pro-bovey-12/jean-pierre-pellaud" data-stats="x">Pellaud, Jean-Pierre</a></h1>'
-    '<ul><li><a class="tel-result-action" href="tel:+41277442588" data-entrytype="Private">027 744 25 88</a></li></ul>'
+    '<h1><a href="/tel/saxon/route-de-pro-bovey-12/jean-paul-rochat" data-stats="x">Rochat, Jean-Paul</a></h1>'
+    '<ul><li><a class="tel-result-action" href="tel:+41277440001" data-entrytype="Private">027 744 00 01</a></li></ul>'
     "</article></li>"
     '<li class="tel-commercial"><article class="tel-resultentry"><div class="tel-categories">Garage</div>'
     '<h1><a href="/tel/saxon/route-du-leman-62/zodiac" data-stats="x">Zodiac</a></h1>'
-    '<div class="tel-context"><span class="sl_context_label">Zusatzzeile: </span>Pellaud Jean-Pierre</div>'
-    '<ul><li><a class="tel-result-action" href="tel:+41792190990" data-entrytype="Business">079 219 09 90 *</a></li></ul>'
+    '<div class="tel-context"><span class="sl_context_label">Zusatzzeile: </span>Rochat Jean-Paul</div>'
+    '<ul><li><a class="tel-result-action" href="tel:+41790000002" data-entrytype="Business">079 000 00 02 *</a></li></ul>'
     "</article></li></ol>"
     '<ol class="tel-results"><li class="tel-ad"><article>'
     '<h1><a href="/tel/saxon/route-du-village-93/carrieres-de-saxon">Carrières de Saxon</a></h1>'
@@ -160,8 +160,8 @@ def test_a_number_ending_with_the_asterisk_refuses_advertising() -> None:
 def test_the_asterisk_written_after_a_second_number_refuses_advertising() -> None:
     page = (
         '<a href="tel:+41277761523" data-entrytype="Business">027 776 15 23</a>'
-        '<tr><th>Mobile Maurice</th><td><span class="sl-nowrap"><a href="tel:+41794475380" title="Appeler" '
-        'data-entrytype="Business">079 447 53 80</a> <span title="* Ne souhaite pas de publicité">*</span></span></td>'
+        '<tr><th>Mobile Paul</th><td><span class="sl-nowrap"><a href="tel:+41790000003" title="Appeler" '
+        'data-entrytype="Business">079 000 00 03</a> <span title="* Ne souhaite pas de publicité">*</span></span></td>'
     )
 
     assert SwissDirectory.parse_entry(_ENTRY_URL, page, "").refuses_advertising is True
@@ -451,14 +451,14 @@ def test_a_result_list_gives_each_entry_its_extra_line_and_its_asterisk() -> Non
     entries = SwissDirectory.parse_result_list(_RESULT_LIST_PAGE)
 
     assert [(entry.name, entry.is_business, entry.refuses_advertising, entry.extra_line) for entry in entries] == [
-        ("Pellaud, Jean-Pierre", False, False, ""),
-        ("Zodiac", True, True, "Pellaud Jean-Pierre"),
+        ("Rochat, Jean-Paul", False, False, ""),
+        ("Zodiac", True, True, "Rochat Jean-Paul"),
     ]
     assert entries[1].url == "https://search.ch/tel/saxon/route-du-leman-62/zodiac.fr.html"
 
 
 def test_a_business_named_after_its_owner_refuses_advertising_on_its_entry_found_by_name() -> None:
-    facts = _facts(name="Pellaud Jean Pierre", city="Saxon", phone="027 744 31 91")
+    facts = _facts(name="Rochat Jean Paul", city="Saxon", phone="027 744 00 04")
     entries = SwissDirectory.parse_result_list(_RESULT_LIST_PAGE)
 
     _verify(facts, _ScriptedDirectory(None, entries_by_name=entries))

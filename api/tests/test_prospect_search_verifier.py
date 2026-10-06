@@ -575,7 +575,7 @@ def test_the_email_of_a_namesake_showing_another_number_is_not_taken() -> None:
             _result(
                 "https://www.facebook.com/lesjardinsdevalentin/?locale=fr_FR",
                 "Les jardins de valentin (@lesjardinsdevalentin)",
-                "Pour tout renseignement : Mail : hublart.valentin.jardin@gmail.com Tél : 0491.08.63.41.",
+                "Pour tout renseignement : Mail : valentin.jardins@gmail.com Tél : 0470.00.00.01.",
             )
         ]
     }
