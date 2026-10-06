@@ -136,7 +136,7 @@
         </div>
       </div>
 
-      <div class="rounded-lg border border-[var(--app-line)] bg-[var(--app-bg)] p-3">
+      <div v-if="requiredProfessionalLicense" class="rounded-lg border border-[var(--app-line)] bg-[var(--app-bg)] p-3">
         <div class="mb-2 flex items-center justify-between">
           <p
             class="flex items-center gap-1.5 text-[10px] font-semibold tracking-wider text-[var(--app-ink-soft)] uppercase"
@@ -156,7 +156,7 @@
               type="text"
               maxlength="60"
               class="input-field"
-              placeholder="Licence RBQ"
+              :placeholder="requiredProfessionalLicense.label"
             />
           </div>
           <div>
@@ -166,14 +166,10 @@
               type="text"
               maxlength="60"
               class="input-field"
-              placeholder="5678-1234-01"
+              :placeholder="requiredProfessionalLicense.numberExample"
             />
           </div>
         </div>
-        <p class="text-muted mt-1.5 text-[10px] leading-relaxed">
-          Affichée en pied de page du site. Obligatoire au Québec pour les entrepreneurs en construction (licence RBQ,
-          cherchée automatiquement dans le registre public). Vide = rien d'affiché.
-        </p>
         <div v-if="isProfessionalLicenseDirty" class="mt-2 flex justify-end">
           <button type="button" class="btn-primary text-xs" :disabled="isSaving" @click="saveProfessionalLicenseOnly">
             Enregistrer
@@ -506,6 +502,7 @@ import type { ComponentPublicInstance, ComputedRef, PropType, Ref } from 'vue'
 import type { DesktopJob } from '~/services/desktopJobService'
 import type { EnrichmentOpeningHours, ProspectEnrichment } from '~/services/enrichmentService'
 import type { ProspectCountry } from '~/types'
+import type { RequiredProfessionalLicense } from '~/types/ProfessionalLicense'
 import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import { DesktopJobService } from '~/services/desktopJobService'
 import { EnrichmentService } from '~/services/enrichmentService'
@@ -514,7 +511,7 @@ import { useProspectSearchStore } from '~/stores/prospectSearch'
 import { useDragToReorder } from '~/composables/useDragToReorder'
 import { useToast } from '~/composables/useToast'
 import { PhotoLabels } from '~/utils/photoLabels'
-import { PROFESSIONAL_LICENSE_SOURCE_LABELS } from '~/constants/professionalLicense'
+import { PROFESSIONAL_LICENSE_SOURCE_LABELS, REQUIRED_PROFESSIONAL_LICENSES } from '~/constants/professionalLicense'
 
 const DESKTOP_JOB_POLL_INTERVAL_MS: number = 10_000
 
@@ -657,6 +654,10 @@ const contactDirty: ComputedRef<boolean> = computed(
   (): boolean =>
     form.value.contact_first_name !== (record.value?.contact_first_name ?? '') ||
     form.value.contact_last_name !== (record.value?.contact_last_name ?? ''),
+)
+
+const requiredProfessionalLicense: ComputedRef<RequiredProfessionalLicense | null> = computed(
+  (): RequiredProfessionalLicense | null => REQUIRED_PROFESSIONAL_LICENSES[props.prospectCountry] ?? null,
 )
 
 const professionalLicenseSourceLabel: ComputedRef<string> = computed(

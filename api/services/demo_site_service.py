@@ -457,6 +457,7 @@ class DemoSiteService:
                     demo_site.storyblok_space_id,
                     content_json,
                     demo_site.template_id,
+                    self._prospect_country_for_site(db, demo_site),
                 )
             except Exception as exc:
                 # Sync CMS en échec : on garde le content_json rebâti, la vérification statue.
@@ -1264,6 +1265,7 @@ class DemoSiteService:
                 content_json=content_json,
                 invite_client=False,
                 rehost_all_assets=True,
+                country=self._prospect_country_for_site(db, site),
             )
 
             self._apply_storyblok_provision(site, provision)

@@ -77,10 +77,14 @@ main, aucun n'a de site. Durée : 5 à 7 minutes par recherche, lecture des page
 - Ce que la main avait mieux fait : un email donné par un annuaire sous un autre nom que la fiche
   Google. Corrigé le jour même : recherche par numéro de téléphone, et titre long cherché sans
   guillemets (le cas est rejoué en test).
-- Ce que l'app ne fait toujours pas : lire l'astérisque « pas de publicité » de l'annuaire suisse,
-  trouver un artisan qui n'a ni fiche Google ni page Facebook (annonces dans des groupes), ouvrir le
-  bouton « Site Web » d'une fiche quand Google ne montre pas le site ailleurs (ces fiches attendent
-  dans « À confirmer »).
+- Ce que l'app ne fait toujours pas : trouver un artisan qui n'a ni fiche Google ni page Facebook
+  (annonces dans des groupes), ouvrir le bouton « Site Web » d'une fiche quand Google ne montre pas le
+  site ailleurs (ces fiches attendent dans « À confirmer »).
+
+Depuis le 6 octobre (manche 1 de l'entraînement, `docs/PROSPECT_SEARCH_TRAINING.md`) : la fiche
+search.ch de chaque candidat suisse est lue par son numéro (astérisque « pas de publicité » = écarté,
+email et site de l'annuaire pris en compte), une ville que Google n'a pas servie est reprise au lieu
+d'être comptée comme parcourue, et la Suisse compte 69 villes au lieu de 20.
 
 **Ce qui reste (lots de la section 10)**
 

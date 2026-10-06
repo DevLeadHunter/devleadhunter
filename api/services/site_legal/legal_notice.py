@@ -97,6 +97,9 @@ class LegalNoticeBuilder:
         business = sources.business
         country = sources.country
         license_label = business.professional_license_label or "Licence professionnelle"
+        license_number = (
+            business.professional_license_number if country.site_legal.is_professional_license_required else None
+        )
         return SiteLegalBlock(
             heading=heading,
             kind="identity",
@@ -117,7 +120,7 @@ class LegalNoticeBuilder:
                         cls._shown_legal_id(country, business.legal_id),
                     ),
                     *lines.value(country.site_legal.vat_number_label, business.vat_number),
-                    *lines.value(license_label, business.professional_license_number),
+                    *lines.value(license_label, license_number),
                     *lines.value("Directeur de la publication", director),
                 ],
             ),

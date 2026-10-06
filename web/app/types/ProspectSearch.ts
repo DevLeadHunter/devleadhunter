@@ -26,6 +26,7 @@ export type ProspectSearchCandidateOrigin = 'google_local' | 'facebook_search' |
 export type ProspectSearchRejectReason =
   | 'has_website'
   | 'closed'
+  | 'no_advertising'
   | 'homonym'
   | 'chain'
   | 'wrong_trade'

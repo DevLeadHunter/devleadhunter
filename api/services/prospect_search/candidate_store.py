@@ -73,6 +73,7 @@ class CandidateStore:
             owner_name=row.owner_name,
             registry_number=row.registry_number,
             has_website_button=row.has_website_button,
+            refuses_advertising=any(line.get("fact") == "no_advertising" for line in row.evidence or []),
             evidence=list(row.evidence or []),
         )
 

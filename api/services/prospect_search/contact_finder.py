@@ -30,6 +30,8 @@ from services.validation_service import validation_service
 logger = logging.getLogger(__name__)
 
 _MAIL_LOOKUP_TIMEOUT_SECONDS: float = 4.0
+_REFERENCE_MAIL_DOMAIN: str = "gmail.com"
+_PUBLIC_RESOLVERS: tuple[str, ...] = ("8.8.8.8", "1.1.1.1")
 # National numbers are nine digits after the trunk zero in France, Switzerland and Belgium.
 _PHONE_MATCH_DIGITS: int = 9
 _QUOTED_NAME_MAXIMUM_WORDS: int = 3
@@ -46,8 +48,9 @@ class EmailDomainCheck:
         """
         Whether the email's domain has a mail server.
 
-        A lookup that times out is not a proof: only a domain that does not exist, or
-        answers with no mail record, makes the email unusable.
+        A lookup that times out is not a proof: only a domain that does not exist, answers
+        with no mail record, or whose name servers all fail while the resolver works, makes
+        the email unusable.
 
         Args:
             email: The address to check.
@@ -87,7 +90,35 @@ class EmailDomainCheck:
             except dns.exception.DNSException:
                 return False
         except dns.exception.DNSException:
+            return not EmailDomainCheck._name_servers_fail(domain)
+
+    @staticmethod
+    def _name_servers_fail(domain: str) -> bool:
+        """
+        Whether the domain's own name servers fail, asked again through public resolvers.
+
+        A slow lookup proves nothing; every server answering with a failure does, once the
+        same resolvers answer for a domain known to receive mail.
+        """
+        public_resolver = dns.resolver.Resolver(configure=False)
+        public_resolver.nameservers = list(_PUBLIC_RESOLVERS)
+        public_resolver.lifetime = _MAIL_LOOKUP_TIMEOUT_SECONDS
+        try:
+            public_resolver.resolve(domain, "MX")
+            return False
+        except dns.resolver.NoNameservers:
+            return EmailDomainCheck._answers_for_reference_domain(public_resolver)
+        except dns.exception.DNSException:
+            return False
+
+    @staticmethod
+    def _answers_for_reference_domain(resolver: dns.resolver.Resolver) -> bool:
+        """Whether the resolver answers for a domain known to receive mail."""
+        try:
+            resolver.resolve(_REFERENCE_MAIL_DOMAIN, "MX")
             return True
+        except dns.exception.DNSException:
+            return False
 
 
 class ContactFinder:

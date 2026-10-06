@@ -360,6 +360,20 @@ def test_a_quebec_demo_without_neq_still_shows_its_rbq_licence() -> None:
     assert "NEQ" not in _all_text(notice)
 
 
+def test_a_licence_is_shown_only_where_the_law_asks_the_site_for_one() -> None:
+    licensed = BusinessLegalIdentity(
+        name="Électricité Muller",
+        professional_license_label="Autorisation d'établissement",
+        professional_license_number="10078566/0",
+    )
+
+    luxembourg = _rendered(_block(_section(_notice("LU", licensed, is_demo=False), 0), "Éditeur du site"))
+    france = _all_text(_notice("FR", licensed, is_demo=False))
+
+    assert "Autorisation d'établissement : 10078566/0" in luxembourg
+    assert "10078566/0" not in france
+
+
 def test_a_business_name_is_never_rewritten_in_regional_words() -> None:
     notice = _notice("CA", BusinessLegalIdentity(name="Mail Express"), is_demo=False)
 

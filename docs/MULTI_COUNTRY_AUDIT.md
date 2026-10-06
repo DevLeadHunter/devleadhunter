@@ -101,7 +101,7 @@ n'est pas vérifié (`SmsProspectingRules.AUTOMATIC_SMS_COUNTRIES`).
 | `invoice_locale`, `vat_exemption_reason`, `invoice_currency`, `vat_number_required`, `tax_id_pattern`, `registrant_must_be_local` | Qonto : `locale`, code TVA, devise du client ; n° TVA du client obligatoire pour l'autoliquidation (BE/LU) ; validation de l'identifiant fiscal par pays ; `.ca` réservé à un titulaire canadien | 6 |
 | `postal_area_prefix_len`, `mailbox_provider_domains` | garde-fou homonyme par zone (FR 2, CA 3) ; familles de boîtes mail par pays (bluewin.ch, skynet.be, videotron.ca…) pour la page Santé email | 3, 8 |
 | Côté commande (pas pays) : `orders.billing_region` | province québécoise (champ `state` Stripe, adresse Qonto `province_code`) | 6 |
-| fait : `site_legal` (`SiteLegalFacts` : `locale`, titres et liens du pied, `legal_id_label`, `vat_number_label`, `is_publication_director_required`, `is_host_disclosure_required`, `privacy_regime`, autorité de contrôle) ; restent `trade_permit_label`, `contact_label`, `payment_methods_phrase` | pied de page et page légale des sites générés (§ 4.3) ; restent « Nous joindre », moyens de paiement, autorisation d'établissement | 4 |
+| fait : `site_legal` (`SiteLegalFacts` : `locale`, titres et liens du pied, `legal_id_label`, `vat_number_label`, `is_publication_director_required`, `is_host_disclosure_required`, `is_professional_license_required`, `privacy_regime`, autorité de contrôle) ; restent `trade_permit_label`, `contact_label`, `payment_methods_phrase` | pied de page et page légale des sites générés (§ 4.3) ; restent « Nous joindre », moyens de paiement | 4 |
 | `map_region_label`, `map_regions_file` | carte : « Régions administratives », fichier geojson du pays | 2 |
 | Côté utilisateur (pas pays) : `users.postal_address`, `users.city`, `ai_assistants.timezone` | pied CASL, script vidéo, fuseau de l'artisan | 5, 4, 7 |
 
@@ -279,7 +279,9 @@ Constat principal : **le pays n'arrive jamais jusqu'au site**. `demo_site_servic
 
 Livré : un bloc `legal` calculé par l'API à chaque service du site (`api/services/site_legal/`), jamais stocké dans `content_json` (une publication Storyblok peut mettre à jour une ligne de contact, pas l'effacer), à partir du prospect, de l'identité de registre de confiance, de la vente et du profil pays (`CountryProfile.site_legal`) ; un lien discret en pied de chaque site et deux pages, `/legal` et `/privacy` (démo : `/{slug}/legal` et `/{slug}/privacy`), rendues par demo-host, sans toucher aux 10 layers ni au contrat `website-content`. Une démo nomme son éditeur (l'utilisateur DevLeadHunter, établi en France, avec l'adresse et le SIRET de « Mon profil ») et décrit la mesure PostHog ; un site vendu nomme l'entreprise et dit qu'il ne mesure rien.
 
-Reste à collecter à la vente (aucune donnée en base aujourd'hui) : FR, le registre (« RCS de la ville du greffe » ou « RNE »), le capital d'une société, la mention « EI », le médiateur de la consommation ; BE, la forme légale et le tribunal d'une société ; LU, le numéro de l'autorisation d'établissement.
+Reste à collecter à la vente (aucune donnée en base aujourd'hui) : FR, le registre (« RCS de la ville du greffe » ou « RNE »), le capital d'une société, la mention « EI », le médiateur de la consommation ; BE, la forme légale et le tribunal d'une société.
+
+Licence professionnelle (licence RBQ au Québec, autorisation d'établissement au Luxembourg) : le bloc du volet prospect, les deux champs Storyblok du contact, le pied du site et la page légale n'existent que pour ces deux pays (`SiteLegalFacts.is_professional_license_required`) ; ailleurs, une licence saisie ne sort jamais sur le site.
 
 ## 5. Emails et SMS
 

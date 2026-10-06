@@ -19,6 +19,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+from collections import deque
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -211,13 +212,17 @@ class ProspectSearchRunner:
         )
         await self._verify_and_place_candidates(state, profile, self._discovered_candidate_ids(state, profile.key))
 
-        towns = SearchZones.plan(
-            country=state.country,
-            asked_cities=state.cities,
-            already_scanned=state.scanned_before.get(profile.key, set()),
-            seed=self._search_id,
+        towns_to_scan: deque[str] = deque(
+            SearchZones.plan(
+                country=state.country,
+                asked_cities=state.cities,
+                already_scanned=state.scanned_before.get(profile.key, set()),
+                seed=self._search_id,
+            )
         )
-        for town in towns:
+        retried_towns: set[str] = set()
+        while towns_to_scan:
+            town = towns_to_scan.popleft()
             self._reload_counts()
             if self._is_filled(state, profile):
                 trade_progress["stop_reason"] = None
@@ -232,15 +237,26 @@ class ProspectSearchRunner:
             if len(trade_progress["towns"]) >= state.max_towns_per_trade:
                 break
             self._reload_known_businesses(state)
-            await self._scan_town(state, profile, town)
+            if not await self._scan_town(state, profile, town):
+                if town not in retried_towns:
+                    retried_towns.add(town)
+                    towns_to_scan.append(town)
+                self._flush()
+                continue
             trade_progress["towns"].append(town)
             self._flush()
         self._reload_counts()
         if not self._is_filled(state, profile):
             trade_progress["stop_reason"] = "towns"
 
-    async def _scan_town(self, state: _RunState, profile: TradeProfile, town: str) -> None:
-        """Read every source of one town for one trade, verifying candidates as they come."""
+    async def _scan_town(self, state: _RunState, profile: TradeProfile, town: str) -> bool:
+        """
+        Read every source of one town for one trade, verifying candidates as they come.
+
+        Returns:
+            Whether the town was read; ``False`` when Google did not answer its first page, the
+            town then being tried again later instead of counted as scanned.
+        """
         self._log(f"{profile.label} · {town} : recherche en cours.")
         self._flush()
         companies = await self._registry_companies(state, profile, town)
@@ -255,9 +271,12 @@ class ProspectSearchRunner:
             page_count = _PAGES_FOR_MAIN_TERM if term_position == 0 else 1
             for page in range(page_count):
                 if self._is_filled(state, profile) or self._is_over_budget(state) or self._is_cancelled():
-                    return
+                    return True
                 query = " ".join(part for part in (term, town, region) if part)
                 listings = await self._local_listings(query, state.country, page)
+                if listings is None and term_position == 0 and page == 0:
+                    self._log(f"{profile.label} · {town} : Google n'a pas répondu, la ville sera reprise plus tard.")
+                    return False
                 if not listings:
                     break
                 candidate_ids = self._store_listings(state, profile, town, listings)
@@ -275,15 +294,23 @@ class ProspectSearchRunner:
             if candidate_ids:
                 self._log(f"{profile.label} · {town} : {len(candidate_ids)} page(s) Facebook à vérifier.")
                 await self._verify_and_place_candidates(state, profile, candidate_ids)
+        return True
 
-    async def _local_listings(self, query: str, country: str, page: int) -> list[LocalListing]:
-        """One page of Google local results: the HTML first, Bright Data's parsed JSON when it is not recognised."""
+    async def _local_listings(self, query: str, country: str, page: int) -> list[LocalListing] | None:
+        """
+        One page of Google local results: the HTML first, Bright Data's parsed JSON when it is not recognised.
+
+        Returns:
+            The listings, empty when Google shows none, ``None`` when no request gave a readable page.
+        """
         start = page * _LISTINGS_PER_PAGE
         html = await self._client.google_local_html(query, country=country, start=start)
         listings = GoogleLocalResultsParser.parse_html(html, country=country) if html else []
         if listings:
             return listings
         parsed = await self._client.google_parsed(query, country=country, start=start, local=True)
+        if parsed is None:
+            return None
         return GoogleLocalResultsParser.parse_snack_pack((parsed or {}).get("snack_pack") or [])
 
     async def _registry_companies(self, state: _RunState, profile: TradeProfile, town: str) -> list[RegistryCompany]:

@@ -1,4 +1,4 @@
-"""Shared test setup: every model registered on the metadata, an in-memory database per test, no real storage."""
+"""Shared test setup: every model registered on the metadata, an in-memory database per test, no real storage or directory."""
 
 import importlib
 import pkgutil
@@ -13,6 +13,7 @@ from sqlalchemy.pool import StaticPool
 import models
 from core.config import settings
 from core.database import Base
+from services.prospect_search.swiss_directory import SwissDirectoryEntry, swiss_directory
 from services.r2_storage_service import r2_storage
 
 for _module in pkgutil.iter_modules(models.__path__):
@@ -24,6 +25,16 @@ def storage_unconfigured(monkeypatch: pytest.MonkeyPatch) -> None:
     """Storage as in CI, unconfigured unless a test fakes it: a local run never touches the developer's real bucket."""
     monkeypatch.setattr(settings, "r2_endpoint", None)
     monkeypatch.setattr(r2_storage, "_client", None)
+
+
+@pytest.fixture(autouse=True)
+def swiss_directory_offline(monkeypatch: pytest.MonkeyPatch) -> None:
+    """The Swiss directory lists nobody unless a test scripts an entry: a run never calls search.ch."""
+
+    async def no_entry(phone: str | None) -> SwissDirectoryEntry | None:
+        return None
+
+    monkeypatch.setattr(swiss_directory, "entry_for_phone", no_entry)
 
 
 @pytest.fixture

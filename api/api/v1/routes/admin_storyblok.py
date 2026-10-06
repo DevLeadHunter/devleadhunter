@@ -14,8 +14,10 @@ from sqlalchemy.orm import Session
 
 from core.database import get_db
 from models.demo_site import DemoSite
+from models.prospect_db import ProspectDB
 from models.user import User
 from services.auth_service import require_admin
+from services.country_profiles import DEFAULT_COUNTRY_CODE
 from services.storyblok_service import storyblok_service
 
 router = APIRouter(prefix="/admin/storyblok", tags=["admin-storyblok"])
@@ -27,15 +29,17 @@ async def resync_space(
     current_user: User = Depends(require_admin),
     db: Session = Depends(get_db),
 ) -> dict[str, Any]:
-    """Re-sync (upsert) one existing Storyblok space using ITS template's schema (overrides included)."""
-    template_id: str | None = (
-        db.query(DemoSite.template_id)
+    """Re-sync (upsert) one existing Storyblok space using ITS template's schema (overrides included) and country."""
+    site = (
+        db.query(DemoSite.template_id, ProspectDB.country)
+        .outerjoin(ProspectDB, ProspectDB.id == DemoSite.prospect_id)
         .filter(DemoSite.storyblok_space_id == space_id)
         .order_by(DemoSite.id.desc())
-        .limit(1)
-        .scalar()
+        .first()
     )
-    await storyblok_service.resync_components(space_id, template_id)
+    template_id: str | None = site.template_id if site else None
+    country: str = (site.country if site else None) or DEFAULT_COUNTRY_CODE
+    await storyblok_service.resync_components(space_id, template_id, country)
     return {"space_id": space_id, "resynced": True, "template_id": template_id}
 
 
@@ -44,16 +48,17 @@ async def resync_all(
     current_user: User = Depends(require_admin),
     db: Session = Depends(get_db),
 ) -> dict[str, Any]:
-    """Re-sync every provisioned Storyblok space, each with its own template's schema."""
-    template_by_space: dict[int, str | None] = {}
-    for space_id, template_id in (
-        db.query(DemoSite.storyblok_space_id, DemoSite.template_id)
+    """Re-sync every provisioned Storyblok space, each with its own template's schema and country."""
+    template_and_country_by_space: dict[int, tuple[str | None, str]] = {}
+    for space_id, template_id, country in (
+        db.query(DemoSite.storyblok_space_id, DemoSite.template_id, ProspectDB.country)
+        .outerjoin(ProspectDB, ProspectDB.id == DemoSite.prospect_id)
         .filter(DemoSite.storyblok_space_id.isnot(None))
         .order_by(DemoSite.id.desc())
         .all()
     ):
-        if space_id and int(space_id) not in template_by_space:
-            template_by_space[int(space_id)] = template_id
-    for space_id, template_id in template_by_space.items():
-        await storyblok_service.resync_components(space_id, template_id)
-    return {"resynced_spaces": len(template_by_space), "space_ids": list(template_by_space)}
+        if space_id and int(space_id) not in template_and_country_by_space:
+            template_and_country_by_space[int(space_id)] = (template_id, country or DEFAULT_COUNTRY_CODE)
+    for space_id, (template_id, country) in template_and_country_by_space.items():
+        await storyblok_service.resync_components(space_id, template_id, country)
+    return {"resynced_spaces": len(template_and_country_by_space), "space_ids": list(template_and_country_by_space)}
