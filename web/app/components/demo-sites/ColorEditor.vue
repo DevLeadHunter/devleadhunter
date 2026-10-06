@@ -1,6 +1,53 @@
 <template>
-  <div v-if="template">
-    <p class="app-label mb-2.5">Couleurs du site</p>
+  <div v-if="template" class="space-y-4">
+    <div v-if="showBrandSourcePicker" role="group" aria-label="Couleur des boutons">
+      <p class="app-label mb-2">Couleur des boutons</p>
+      <div class="grid grid-cols-2 gap-2">
+        <button
+          type="button"
+          :class="[
+            'flex items-center gap-3 rounded-xl border p-3 text-left transition-colors',
+            useBrandColor
+              ? 'border-[var(--app-ink)] bg-[var(--app-surface-2)]'
+              : 'border-[var(--app-line)] hover:border-[var(--app-ink-soft)]',
+          ]"
+          @click="selectBrandSource(true)"
+        >
+          <span
+            class="h-10 w-10 shrink-0 rounded-lg border border-black/10"
+            :style="{ backgroundColor: brandColor ?? undefined }"
+          ></span>
+          <span class="min-w-0 flex-1">
+            <span class="block text-sm font-semibold text-[var(--app-ink)]">Celle du logo</span>
+            <span class="font-label block text-[11px] text-[var(--app-ink-soft)] uppercase">{{ brandColor }}</span>
+          </span>
+          <UIcon v-if="useBrandColor" name="i-lucide-check" class="h-4 w-4 shrink-0 text-[var(--app-ink)]" />
+        </button>
+        <button
+          type="button"
+          :class="[
+            'flex items-center gap-3 rounded-xl border p-3 text-left transition-colors',
+            !useBrandColor
+              ? 'border-[var(--app-ink)] bg-[var(--app-surface-2)]'
+              : 'border-[var(--app-line)] hover:border-[var(--app-ink-soft)]',
+          ]"
+          @click="selectBrandSource(false)"
+        >
+          <span
+            class="h-10 w-10 shrink-0 rounded-lg border border-black/10"
+            :style="{ backgroundColor: templateActionColor ?? undefined }"
+          ></span>
+          <span class="min-w-0 flex-1">
+            <span class="block text-sm font-semibold text-[var(--app-ink)]">Celle de la template</span>
+            <span class="font-label block text-[11px] text-[var(--app-ink-soft)] uppercase">
+              {{ templateActionColor }}
+            </span>
+          </span>
+          <UIcon v-if="!useBrandColor" name="i-lucide-check" class="h-4 w-4 shrink-0 text-[var(--app-ink)]" />
+        </button>
+      </div>
+    </div>
+    <p class="app-label mb-2.5">Toutes les couleurs</p>
     <div class="flex flex-wrap gap-3">
       <div v-for="color in editableColors" :key="color.key" class="min-w-[7rem] flex-1">
         <span class="mb-1 flex items-center gap-1 text-[10px] tracking-wide text-[var(--app-ink-soft)] uppercase">
@@ -14,9 +61,9 @@
           </span>
         </span>
         <div class="flex items-center gap-1.5">
-          <div class="group relative h-8 w-8 shrink-0">
+          <div class="group relative h-10 w-10 shrink-0">
             <div
-              class="pointer-events-none h-8 w-8 rounded-lg border border-[var(--app-line)] transition-transform group-hover:scale-105"
+              class="pointer-events-none h-10 w-10 rounded-lg border border-[var(--app-line)] transition-transform group-hover:scale-105"
               :style="{ backgroundColor: theme[color.key] }"
             ></div>
             <input
@@ -31,50 +78,11 @@
           <input
             :value="theme[color.key]"
             type="text"
-            class="input-field h-8 min-w-0 text-xs"
+            class="input-field h-10 min-w-0 text-xs"
             placeholder="#1d4ed8"
             maxlength="7"
             @input="onEditColor(color.key, ($event.target as HTMLInputElement).value)"
           />
-        </div>
-        <div
-          v-if="color.isAction && showBrandSourcePicker"
-          class="mt-1.5 flex gap-1"
-          role="group"
-          aria-label="Source de la couleur d'action"
-        >
-          <button
-            type="button"
-            class="flex flex-1 items-center justify-center gap-1 rounded-md border px-1.5 py-1 text-[10px] font-medium transition-colors"
-            :class="
-              useBrandColor
-                ? 'border-[var(--app-ink)] bg-[var(--app-surface-2)] text-[var(--app-ink)]'
-                : 'border-[var(--app-line)] text-[var(--app-ink-soft)] hover:bg-[var(--app-surface-2)]'
-            "
-            @click="selectBrandSource(true)"
-          >
-            <span
-              class="h-2.5 w-2.5 rounded-full border border-[var(--app-line)]"
-              :style="{ backgroundColor: brandColor ?? undefined }"
-            />
-            Logo
-          </button>
-          <button
-            type="button"
-            class="flex flex-1 items-center justify-center gap-1 rounded-md border px-1.5 py-1 text-[10px] font-medium transition-colors"
-            :class="
-              !useBrandColor
-                ? 'border-[var(--app-ink)] bg-[var(--app-surface-2)] text-[var(--app-ink)]'
-                : 'border-[var(--app-line)] text-[var(--app-ink-soft)] hover:bg-[var(--app-surface-2)]'
-            "
-            @click="selectBrandSource(false)"
-          >
-            <span
-              class="h-2.5 w-2.5 rounded-full border border-[var(--app-line)]"
-              :style="{ backgroundColor: templateActionColor ?? undefined }"
-            />
-            Template
-          </button>
         </div>
       </div>
     </div>

@@ -1,6 +1,6 @@
 <template>
   <div class="space-y-4">
-    <div>
+    <div v-if="!isHeadingHidden">
       <p class="app-label">Images du site</p>
       <p class="mt-1 text-xs leading-relaxed text-[var(--app-ink-soft)]">
         La 1ʳᵉ photo devient l'en-tête, la 2ᵉ la section « à propos », le reste la galerie. Chaque changement s'affiche
@@ -155,6 +155,10 @@ const props: ImageSlotsProps = defineProps({
   order: {
     type: Array as PropType<string[]>,
     required: true,
+  },
+  isHeadingHidden: {
+    type: Boolean,
+    default: false,
   },
 })
 

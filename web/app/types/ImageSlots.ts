@@ -2,6 +2,7 @@
 export type ImageSlotsProps = {
   pool: string[]
   order: string[]
+  isHeadingHidden?: boolean
 }
 
 export type ImageSlotsEmits = {

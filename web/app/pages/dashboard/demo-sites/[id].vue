@@ -1,15 +1,44 @@
 <template>
-  <div class="space-y-8">
-    <div class="flex flex-col gap-4 @2xl:flex-row @2xl:items-center @2xl:justify-between">
-      <NuxtLink to="/dashboard/demo-sites" class="btn-secondary inline-flex w-fit items-center gap-2">
-        <UIcon name="i-lucide-arrow-left" class="h-4 w-4" />
-        Retour aux sites
-      </NuxtLink>
-      <div class="flex flex-wrap items-center gap-2">
+  <div class="atelier -mx-4 -mt-5 flex flex-col md:-mx-6 md:-mt-6">
+    <UiLoader v-if="pending" />
+
+    <div
+      v-else-if="loadError"
+      class="card m-4 border-[var(--app-red)]/30 bg-[var(--app-red-soft)] p-6 text-[var(--app-red)]"
+    >
+      {{ loadError }}
+    </div>
+
+    <template v-else-if="site">
+      <header
+        class="flex shrink-0 items-center gap-2 border-b border-[var(--app-line)] bg-[var(--app-surface)] px-3 py-2 md:px-4"
+      >
+        <NuxtLink
+          to="/dashboard/demo-sites"
+          class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-[var(--app-ink-soft)] transition-colors hover:bg-[var(--app-surface-2)] hover:text-[var(--app-ink)]"
+          title="Retour aux sites"
+        >
+          <UIcon name="i-lucide-arrow-left" class="h-5 w-5" />
+        </NuxtLink>
+        <div class="min-w-0 flex-1">
+          <div class="flex min-w-0 items-center gap-2">
+            <h1 class="truncate text-base font-semibold text-[var(--app-ink)]">{{ site.business_name }}</h1>
+            <span
+              :class="[
+                'inline-flex shrink-0 items-center gap-1.5 rounded-full px-2 py-0.5 text-[11px] font-medium',
+                statusClass,
+              ]"
+            >
+              <span class="h-1.5 w-1.5 rounded-full bg-current"></span>
+              {{ statusLabel }}
+            </span>
+          </div>
+          <p class="truncate text-xs text-[var(--app-ink-soft)]">{{ siteFactsLine }}</p>
+        </div>
         <template v-if="hasPendingChanges">
           <button
             type="button"
-            class="btn-secondary inline-flex items-center gap-2"
+            class="btn-secondary hidden h-10 md:inline-flex"
             :disabled="saving"
             @click="resetPendingChanges"
           >
@@ -17,328 +46,149 @@
           </button>
           <button
             type="button"
-            class="btn-primary inline-flex items-center gap-2 disabled:cursor-not-allowed disabled:opacity-50"
+            class="btn-primary inline-flex h-10 items-center gap-2 disabled:cursor-not-allowed disabled:opacity-50"
             :disabled="saving || !canSavePendingChanges"
             :title="!canSavePendingChanges ? serviceCardsValidationMessage : undefined"
             @click="savePendingChanges"
           >
-            <UIcon name="i-lucide-save" class="h-4 w-4" />
-            {{ saving ? 'Sauvegarde…' : 'Sauvegarder' }}
+            <UIcon name="i-lucide-upload" class="h-4 w-4" />
+            {{ saving ? 'Publication…' : 'Publier' }}
           </button>
         </template>
-        <NuxtLink
-          v-if="site"
-          :to="`/dashboard/demo-sites/${site.id}/edit`"
-          class="btn-secondary inline-flex items-center gap-2"
-        >
-          <UIcon name="i-lucide-square-pen" class="h-4 w-4" />
-          Modifier
-        </NuxtLink>
-        <button
-          v-if="openUrl"
-          type="button"
-          class="btn-secondary inline-flex items-center gap-2"
-          @click="openDemoUrl(DemoSiteService.withInternalFlag(openUrl))"
-        >
-          <UIcon name="i-lucide-external-link" class="h-4 w-4" />
-          Ouvrir le site
-        </button>
-      </div>
-    </div>
-
-    <UiLoader v-if="pending" />
-
-    <div
-      v-else-if="loadError"
-      class="card border-[var(--app-red)]/30 bg-[var(--app-red-soft)] p-6 text-[var(--app-red)]"
-    >
-      {{ loadError }}
-    </div>
-
-    <template v-else-if="site">
-      <header class="space-y-2">
-        <p class="text-xs font-semibold tracking-wider text-[var(--app-ink-soft)] uppercase">Site démo</p>
-        <h1 class="app-page-title">{{ site.business_name }}</h1>
-        <p class="text-sm text-[var(--app-ink-soft)]">{{ site.slug }} · {{ templateLabel }}</p>
+        <template v-else>
+          <button
+            v-if="openUrl"
+            type="button"
+            class="flex h-10 w-10 items-center justify-center rounded-full border border-[var(--app-line)] text-[var(--app-ink)] transition-colors hover:bg-[var(--app-surface-2)]"
+            :title="copied ? 'Lien copié' : 'Copier le lien'"
+            @click="copyDemoUrl(openUrl)"
+          >
+            <UIcon :name="copied ? 'i-lucide-check' : 'i-lucide-link'" class="h-4 w-4" />
+          </button>
+          <button
+            v-if="openUrl"
+            type="button"
+            class="btn-primary inline-flex h-10 items-center gap-2"
+            @click="openDemoUrl(DemoSiteService.withInternalFlag(openUrl))"
+          >
+            <UIcon name="i-lucide-external-link" class="h-4 w-4" />
+            <span class="hidden sm:inline">Ouvrir</span>
+          </button>
+        </template>
       </header>
 
-      <div class="grid items-start gap-6 @4xl:grid-cols-[360px_minmax(0,1fr)]">
-        <aside ref="asideRef" class="card sticky top-6 max-h-[calc(100vh-3rem)] space-y-5 overflow-y-auto p-5">
-          <UiTabs v-model="activeTab" :tabs="asideTabs" />
+      <div class="flex shrink-0 justify-center border-b border-[var(--app-line)] bg-[var(--app-surface)] py-2">
+        <div class="flex overflow-hidden rounded-full border border-[var(--app-line)] bg-[var(--app-bg)]">
+          <button
+            v-for="device in previewDevices"
+            :key="device.key"
+            type="button"
+            :class="[
+              'flex h-9 items-center gap-1.5 px-4 text-xs font-medium transition-colors',
+              previewDevice === device.key
+                ? 'bg-[var(--app-ink)] text-[var(--app-bg)]'
+                : 'text-[var(--app-ink-soft)] hover:text-[var(--app-ink)]',
+            ]"
+            @click="previewDevice = device.key"
+          >
+            <UIcon :name="device.icon" class="h-3.5 w-3.5" />
+            {{ device.label }}
+          </button>
+        </div>
+      </div>
 
-          <template v-if="activeTab === 'resume'">
-            <div>
-              <h2 class="text-sm font-semibold tracking-wide text-[var(--app-ink)] uppercase">Résumé</h2>
-              <dl class="mt-4 space-y-3 text-xs">
-                <div class="flex justify-between gap-3">
-                  <dt class="text-[var(--app-ink-soft)]">Statut</dt>
-                  <dd>
-                    <span :class="['rounded-full px-2.5 py-0.5 text-[10px] font-bold uppercase', statusClass]">
-                      {{ statusLabel }}
-                    </span>
-                  </dd>
-                </div>
-                <div class="flex justify-between gap-3">
-                  <dt class="text-[var(--app-ink-soft)]">Template</dt>
-                  <dd class="text-right text-[var(--app-ink)]">{{ templateLabel }}</dd>
-                </div>
-                <div v-if="site.city" class="flex justify-between gap-3">
-                  <dt class="text-[var(--app-ink-soft)]">Ville</dt>
-                  <dd class="text-right text-[var(--app-ink)]">{{ site.city }}</dd>
-                </div>
-                <div v-if="site.email" class="flex justify-between gap-3">
-                  <dt class="text-[var(--app-ink-soft)]">Email client</dt>
-                  <dd class="text-right break-all text-[var(--app-ink)]">{{ site.email }}</dd>
-                </div>
-                <div v-if="site.phone" class="flex justify-between gap-3">
-                  <dt class="text-[var(--app-ink-soft)]">Téléphone</dt>
-                  <dd class="text-right text-[var(--app-ink)]">{{ site.phone }}</dd>
-                </div>
-                <div class="flex justify-between gap-3">
-                  <dt class="text-[var(--app-ink-soft)]">Expire dans</dt>
-                  <dd class="text-right text-[var(--app-ink)]">
-                    <template v-if="site && DemoSiteService.isTtlPending(site)">En attente d'envoi</template>
-                    <template v-else>{{ daysLeft }} jours</template>
-                  </dd>
-                </div>
-                <div class="flex justify-between gap-3">
-                  <dt class="text-[var(--app-ink-soft)]">Créé le</dt>
-                  <dd class="text-right text-[var(--app-ink)]">{{ formatNumericDate(site.created_at) }}</dd>
-                </div>
-              </dl>
+      <div class="min-h-0 flex-1">
+        <DemoSitesAtelierPreview
+          v-if="openUrl"
+          :site-url="openUrl"
+          :device="previewDevice"
+          :template-id="selectedTemplateId || site.template_id"
+          :preview-theme="previewTheme"
+          :preview-photos="previewPhotos"
+          :preview-services="previewServices"
+          :reload-nonce="previewReloadNonce"
+        />
+        <div v-else class="flex h-full items-center justify-center p-6">
+          <UiEmptyState
+            icon="i-lucide-globe"
+            title="Pas encore d'adresse"
+            description="Le site n'est pas encore en ligne."
+          />
+        </div>
+      </div>
+
+      <Transition name="atelier-sheet">
+        <div
+          v-if="activeTool"
+          class="relative flex max-h-[44%] shrink-0 flex-col rounded-t-2xl border-t border-[var(--app-line)] bg-[var(--app-surface)] shadow-[0_-12px_40px_rgba(0,0,0,0.08)]"
+        >
+          <div class="flex shrink-0 items-center gap-3 px-4 pt-2 pb-2 md:px-5">
+            <span class="absolute top-1.5 left-1/2 h-1 w-10 -translate-x-1/2 rounded-full bg-[var(--app-line)]"></span>
+            <div class="min-w-0 flex-1 pt-2">
+              <h2 class="text-sm font-semibold text-[var(--app-ink)]">{{ activeToolMeta?.title }}</h2>
+              <p class="truncate text-xs text-[var(--app-ink-soft)]">{{ activeToolMeta?.hint }}</p>
             </div>
-
-            <div v-if="openUrl" class="border-t border-[var(--app-line)] pt-4">
-              <h3 class="text-sm font-semibold text-[var(--app-ink)]">Lien de la démo</h3>
-              <div class="mt-2 flex items-center gap-2">
-                <input :value="openUrl" readonly class="input-field h-9 flex-1 truncate text-xs" />
-                <button
-                  type="button"
-                  class="flex h-9 w-9 shrink-0 cursor-pointer items-center justify-center rounded border border-[var(--app-line)] text-[var(--app-ink-soft)] hover:text-[var(--app-ink)]"
-                  :title="copied ? 'Lien copié !' : 'Copier le lien'"
-                  @click="copyDemoUrl(openUrl)"
-                >
-                  <UIcon :name="copied ? 'i-lucide-check' : 'i-lucide-copy'" class="h-4 w-4" />
-                </button>
-              </div>
-            </div>
-
-            <div v-if="site.description" class="border-t border-[var(--app-line)] pt-4">
-              <h3 class="text-sm font-semibold text-[var(--app-ink)]">Description</h3>
-              <p class="mt-2 text-xs leading-relaxed whitespace-pre-wrap text-[var(--app-ink-soft)]">
-                {{ site.description }}
-              </p>
-            </div>
-
-            <div class="space-y-2 border-t border-[var(--app-line)] pt-4">
-              <h3 class="text-sm font-semibold text-[var(--app-ink)]">Actions</h3>
-              <button
-                type="button"
-                class="btn-secondary inline-flex w-full items-center justify-center gap-2 text-xs"
-                :disabled="exporting"
-                @click="handleExport"
-              >
-                <UIcon name="i-lucide-download" class="h-3.5 w-3.5" />
-                {{ exporting ? 'Préparation du zip…' : 'Exporter le code' }}
-              </button>
-              <button
-                type="button"
-                class="btn-secondary w-full text-xs text-[var(--app-red)]"
-                :disabled="deleting"
-                @click="deleteSiteModalRef?.open()"
-              >
-                {{ deleting ? 'Suppression…' : 'Supprimer' }}
-              </button>
-
-              <UiConfirmModal
-                ref="deleteSiteModalRef"
-                title="Supprimer le site"
-                :message="`Supprimer le site « ${site?.business_name} » ? La démo et son espace CMS seront retirés. Cette action est irréversible.`"
-                confirm-text="Supprimer"
-                cancel-text="Annuler"
-                @confirm="handleDelete"
-              />
-            </div>
-
-            <div class="rounded-xl border border-[var(--app-line)] bg-[var(--app-bg)] p-4">
-              <div class="flex items-center justify-between gap-3">
-                <h3 class="text-sm font-semibold text-[var(--app-ink)]">Vidéo de prospection</h3>
-                <span
-                  v-if="videoStatusLabel"
-                  :class="['rounded-full px-2.5 py-0.5 text-[10px] font-bold uppercase', videoStatusClass]"
-                >
-                  {{ videoStatusLabel }}
-                </span>
-              </div>
-              <p class="mt-1.5 text-xs leading-relaxed text-[var(--app-ink-soft)]">
-                Votre webcam + le site du prospect qui défile, avec « Bonjour {Prénom} » à l'écran. La vignette est
-                utilisable dans les emails via {vignette_video}.
-              </p>
-
-              <div v-if="isVideoGenerating" class="mt-3 flex items-center gap-2 text-xs text-[var(--app-ink-soft)]">
-                <UIcon name="i-lucide-loader-circle" class="h-4 w-4 animate-spin" />
-                Génération en cours (capture + montage)…
-              </div>
-
-              <div v-else-if="isVideoWaitingForDesktop" class="mt-3">
-                <p class="flex items-start gap-2 text-xs leading-relaxed text-[var(--app-ink-soft)]">
-                  <UIcon
-                    :name="site.is_video_desktop_build_started ? 'i-lucide-loader-circle' : 'i-lucide-monitor'"
-                    :class="['mt-0.5 h-4 w-4 shrink-0', { 'animate-spin': site.is_video_desktop_build_started }]"
-                  />
-                  <span>{{ desktopVideoRequestLabel }}</span>
-                </p>
-                <div v-if="!site.is_video_desktop_build_started" class="mt-2 space-y-2">
-                  <button
-                    type="button"
-                    class="btn-secondary w-full text-xs"
-                    :disabled="cancellingDesktopVideoRequest || generatingVideo"
-                    @click="handleCancelDesktopVideoRequest"
-                  >
-                    {{ cancellingDesktopVideoRequest ? 'Annulation…' : 'Annuler la demande' }}
-                  </button>
-                  <button
-                    type="button"
-                    class="btn-secondary w-full text-xs"
-                    :disabled="cancellingDesktopVideoRequest || generatingVideo"
-                    @click="handleGenerateVideoOnServer"
-                  >
-                    {{ generatingVideo ? 'Lancement…' : 'Générer sur le serveur (sans la séquence Storyblok)' }}
-                  </button>
-                </div>
-              </div>
-
-              <p v-else-if="videoFailureMessage" class="mt-3 text-xs text-[var(--app-red)]">
-                {{ videoFailureMessage }}
-              </p>
-
-              <template v-if="site.video_status === 'ready' && site.video_page_url">
-                <button
-                  type="button"
-                  class="mt-3 block w-full cursor-pointer overflow-hidden rounded-lg border border-[var(--app-line)] transition-opacity hover:opacity-90"
-                  title="Ouvrir la page vidéo"
-                  @click="openVideoPage(site.video_page_url)"
-                >
-                  <img
-                    v-if="site.video_thumbnail_url"
-                    :src="site.video_thumbnail_url"
-                    alt="Vignette de la vidéo de prospection"
-                    class="w-full"
-                  />
-                </button>
-                <div class="mt-2 space-y-2">
-                  <button type="button" class="btn-secondary w-full text-xs" @click="copyVideoUrl(site.video_page_url)">
-                    {{ copied ? 'Lien copié !' : 'Copier le lien vidéo' }}
-                  </button>
-                  <button
-                    v-if="!isVideoWaitingForDesktop"
-                    type="button"
-                    class="btn-secondary w-full text-xs"
-                    :disabled="generatingVideo"
-                    @click="handleGenerateVideo"
-                  >
-                    {{ generatingVideo ? 'Lancement…' : 'Régénérer la vidéo' }}
-                  </button>
-                  <button
-                    type="button"
-                    class="btn-secondary w-full text-xs text-[var(--app-red)]"
-                    :disabled="deletingVideo || site.is_video_desktop_build_started"
-                    @click="askDeleteVideo"
-                  >
-                    {{ deletingVideo ? 'Suppression…' : 'Supprimer la vidéo' }}
-                  </button>
-                </div>
-              </template>
-
-              <button
-                v-if="!isVideoGenerating && !isVideoWaitingForDesktop && site.video_status !== 'ready'"
-                type="button"
-                class="btn-primary mt-3 w-full text-xs disabled:cursor-not-allowed disabled:opacity-50"
-                :disabled="generatingVideo"
-                @click="handleGenerateVideo"
-              >
-                <UIcon name="i-lucide-clapperboard" class="mr-1.5 h-3.5 w-3.5" />
-                {{ generatingVideo ? 'Lancement…' : site.video_status === 'failed' ? 'Réessayer' : 'Générer la vidéo' }}
-              </button>
-
-              <p v-if="videoPrepStatus" class="text-muted mt-3 text-center text-[11px] leading-relaxed">
-                {{ videoPrepStatus }}
-              </p>
-
-              <NuxtLink
-                to="/dashboard/settings/video"
-                class="mt-2 block w-full text-center text-[11px] text-[var(--app-ink-soft)] underline underline-offset-2 transition-colors hover:text-[var(--app-ink)]"
-              >
-                Configurer mon clip webcam (Paramètres
-                <UIcon name="i-lucide-arrow-right" class="inline-block h-3 w-3 align-[-1px]" /> Vidéo de prospection)
-              </NuxtLink>
-            </div>
-
-            <UiConfirmModal
-              ref="deleteVideoModalRef"
-              title="Supprimer la vidéo"
-              message="Supprimer la vidéo de prospection de ce site ? Le lien envoyé dans les emails ne fonctionnera plus."
-              confirm-text="Supprimer"
-              cancel-text="Annuler"
-              @confirm="handleDeleteVideoConfirmed"
-            />
-
-            <div
-              v-if="site.storyblok_editor_url"
-              class="rounded-xl border border-[var(--app-line)] bg-[var(--app-bg)] p-4"
+            <button
+              v-if="hasPendingChanges"
+              type="button"
+              class="btn-secondary mt-2 h-9 text-xs md:hidden"
+              :disabled="saving"
+              @click="resetPendingChanges"
             >
-              <div class="flex items-center justify-between gap-3">
-                <h3 class="text-sm font-semibold text-[var(--app-ink)]">Storyblok CMS</h3>
-                <span
-                  v-if="cmsStatusLabel"
-                  :class="['rounded-full px-2.5 py-0.5 text-[10px] font-bold uppercase', cmsStatusClass]"
-                >
-                  {{ cmsStatusLabel }}
-                </span>
-              </div>
+              Annuler
+            </button>
+            <button
+              type="button"
+              class="mt-2 flex h-9 w-9 items-center justify-center rounded-full text-[var(--app-ink-soft)] transition-colors hover:bg-[var(--app-surface-2)] hover:text-[var(--app-ink)]"
+              title="Fermer"
+              @click="activeTool = null"
+            >
+              <UIcon name="i-lucide-x" class="h-4 w-4" />
+            </button>
+          </div>
+
+          <div class="min-h-0 flex-1 overflow-y-auto px-4 pb-[max(1rem,env(safe-area-inset-bottom))] md:px-5">
+            <div v-if="activeTool === 'template'" class="flex gap-3 overflow-x-auto pb-2">
               <button
+                v-for="template in selectableTemplates"
+                :key="template.id"
                 type="button"
-                class="mt-2 text-xs text-blue-400 underline"
-                @click="openDemoUrl(site.storyblok_editor_url!)"
+                :class="[
+                  'w-52 shrink-0 rounded-xl border p-2 text-left transition-colors',
+                  selectedTemplateId === template.id
+                    ? 'border-[var(--app-ink)] ring-1 ring-[var(--app-ink)]/15'
+                    : 'border-[var(--app-line)] hover:border-[var(--app-ink-soft)]',
+                ]"
+                @click="selectedTemplateId = template.id"
               >
-                Ouvrir l'éditeur
-              </button>
-
-              <p v-if="cmsStatus === 'joined'" class="mt-2 text-xs text-[var(--app-green)]">
-                Le client a rejoint le CMS{{ cmsJoinedAtLabel ? ` le ${cmsJoinedAtLabel}` : '' }} ({{
-                  site.storyblok_login_email || site.email
-                }}).
-              </p>
-
-              <template v-else-if="cmsStatus === 'pending'">
-                <p class="mt-2 text-xs text-[var(--app-ink-soft)]">
-                  Invitation envoyée à {{ site.storyblok_login_email || site.email }} — en attente qu'il rejoigne
-                  l'espace.
-                </p>
-                <button
-                  type="button"
-                  class="btn-secondary mt-3 w-full text-xs disabled:opacity-50"
-                  :disabled="refreshingCms"
-                  @click="handleRefreshCmsStatus"
-                >
-                  {{ refreshingCms ? 'Vérification…' : 'Vérifier s’il a rejoint' }}
-                </button>
-              </template>
-
-              <button
-                v-else
-                type="button"
-                class="btn-secondary mt-3 w-full text-xs"
-                :disabled="inviting"
-                @click="handleInvite"
-              >
-                {{ inviting ? 'Envoi…' : 'Inviter le client au CMS' }}
+                <div class="relative aspect-[16/10] overflow-hidden rounded-lg border border-[var(--app-line)]">
+                  <img
+                    :src="`/templates/${template.id}.jpg`"
+                    :alt="`Aperçu du template ${template.name}`"
+                    class="absolute inset-0 h-full w-full object-cover object-top"
+                    loading="lazy"
+                  />
+                  <span
+                    v-if="selectedTemplateId === template.id"
+                    class="absolute top-1.5 right-1.5 flex h-5 w-5 items-center justify-center rounded-full bg-[var(--app-ink)] text-[var(--app-bg)]"
+                  >
+                    <UIcon name="i-lucide-check" class="h-3 w-3" />
+                  </span>
+                </div>
+                <div class="mt-2 flex items-center justify-between gap-2 px-0.5">
+                  <span class="truncate text-[13px] font-semibold text-[var(--app-ink)]">{{ template.name }}</span>
+                  <span
+                    v-if="template.id === site.template_id"
+                    class="shrink-0 rounded-full bg-[var(--app-surface-2)] px-1.5 py-0.5 text-[10px] font-semibold text-[var(--app-ink-soft)]"
+                  >
+                    Actuelle
+                  </span>
+                </div>
               </button>
             </div>
-          </template>
 
-          <template v-else>
             <DemoSitesColorEditor
+              v-else-if="activeTool === 'couleurs'"
               :template="selectedTemplate"
               :theme="selectedTheme"
               :use-brand-color="selectedUseBrandColor"
@@ -347,115 +197,359 @@
               @update:use-brand-color="selectedUseBrandColor = $event"
             />
 
-            <div v-if="siteImages && siteImages.pool.length" class="border-t border-[var(--app-line)] pt-4">
-              <DemoSitesImageSlots :pool="siteImages.pool" :order="imagesOrder" @update:order="onImageOrderChange" />
-            </div>
-            <p
-              v-else
-              class="rounded-xl border border-dashed border-[var(--app-line)] p-4 text-xs text-[var(--app-ink-soft)]"
-            >
-              Aucune photo exploitable pour ce prospect : le site garde les images par défaut du template.
-            </p>
-
-            <div v-if="serviceCards && isServiceCardsEditorVisible" class="border-t border-[var(--app-line)] pt-4">
-              <DemoSitesServiceCardsEditor
-                :cards="serviceCardsDraft"
-                :pool="serviceCards.pool"
-                :config="serviceCards.config"
-                :ai-available="serviceCards.ai_available"
-                :suggesting="suggestingServiceCards"
-                :suggestion-error="serviceCardsSuggestionError"
-                :analysis="serviceCardsAnalysis"
-                :override-active="serviceCards.override_active"
-                :override-source="serviceCards.override_source"
-                :labels-pending="serviceCards.labels_pending"
-                @update:cards="onServiceCardsChange"
-                @suggest="suggestServiceCards"
-                @reset="resetServiceCardsModalRef?.open()"
+            <template v-else-if="activeTool === 'photos'">
+              <DemoSitesImageSlots
+                v-if="siteImages && siteImages.pool.length"
+                :pool="siteImages.pool"
+                :order="imagesOrder"
+                is-heading-hidden
+                @update:order="onImageOrderChange"
               />
-            </div>
+              <UiEmptyState
+                v-else
+                icon="i-lucide-image-off"
+                title="Aucune photo exploitable"
+                description="Ce prospect n'a pas de photo utilisable : le site garde les images par défaut de la template."
+              />
+            </template>
 
-            <UiConfirmModal
-              ref="resetServiceCardsModalRef"
-              title="Revenir aux cartes automatiques"
-              message="Les cartes personnalisées seront supprimées et le site régénéré avec les cartes automatiques. Continuer ?"
-              confirm-text="Revenir"
-              cancel-text="Annuler"
-              @confirm="restoreGeneratedServiceCards"
+            <DemoSitesServiceCardsEditor
+              v-else-if="activeTool === 'prestations' && serviceCards"
+              :cards="serviceCardsDraft"
+              :pool="serviceCards.pool"
+              :config="serviceCards.config"
+              :ai-available="serviceCards.ai_available"
+              :suggesting="suggestingServiceCards"
+              :suggestion-error="serviceCardsSuggestionError"
+              :analysis="serviceCardsAnalysis"
+              :override-active="serviceCards.override_active"
+              :override-source="serviceCards.override_source"
+              :labels-pending="serviceCards.labels_pending"
+              @update:cards="onServiceCardsChange"
+              @suggest="suggestServiceCards"
+              @reset="resetServiceCardsModalRef?.open()"
             />
-          </template>
-        </aside>
 
-        <section class="space-y-6">
-          <div
-            v-if="site.verification_message && !DemoSiteService.isDemoSiteReachable(site)"
-            class="card border-[var(--app-red)]/30 bg-[var(--app-red-soft)] p-4 text-sm text-[var(--app-red)]"
-          >
-            {{ site.verification_message }}
-          </div>
-          <div
-            v-if="site.local_demo_url && site.local_demo_url !== site.demo_url"
-            class="card border-[var(--app-green)]/30 bg-[var(--app-green)]/10 p-4 text-sm text-[var(--app-green)]"
-          >
-            URL locale : {{ site.local_demo_url }}
-          </div>
+            <div v-else-if="activeTool === 'video'" class="grid gap-4 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
+              <div>
+                <div class="flex items-center justify-between gap-3">
+                  <p class="text-xs text-[var(--app-ink-soft)]">
+                    Votre webcam + le site qui défile, avec « Bonjour {Prénom} » à l'écran.
+                  </p>
+                  <span
+                    v-if="videoStatusLabel"
+                    :class="['rounded-full px-2.5 py-0.5 text-[10px] font-bold uppercase', videoStatusClass]"
+                  >
+                    {{ videoStatusLabel }}
+                  </span>
+                </div>
+                <div v-if="isVideoGenerating" class="mt-3 flex items-center gap-2 text-xs text-[var(--app-ink-soft)]">
+                  <UIcon name="i-lucide-loader-circle" class="h-4 w-4 animate-spin" />
+                  Génération en cours (capture + montage)…
+                </div>
 
-          <div class="grid grid-cols-2 gap-4 @4xl:grid-cols-4">
-            <div v-for="stat in stats" :key="stat.label" class="card p-4">
-              <p class="text-xs font-medium tracking-wide text-[var(--app-ink-soft)] uppercase">{{ stat.label }}</p>
-              <p
-                class="mt-1 text-xl font-semibold text-[var(--app-ink)]"
-                :class="[
-                  stat.tone === 'success' && 'text-[var(--app-green)]',
-                  stat.tone === 'danger' && 'text-[var(--app-red)]',
-                  stat.tone === 'muted' && 'truncate text-base',
-                ]"
+                <div v-else-if="isVideoWaitingForDesktop" class="mt-3">
+                  <p class="flex items-start gap-2 text-xs leading-relaxed text-[var(--app-ink-soft)]">
+                    <UIcon
+                      :name="site.is_video_desktop_build_started ? 'i-lucide-loader-circle' : 'i-lucide-monitor'"
+                      :class="['mt-0.5 h-4 w-4 shrink-0', { 'animate-spin': site.is_video_desktop_build_started }]"
+                    />
+                    <span>{{ desktopVideoRequestLabel }}</span>
+                  </p>
+                  <div v-if="!site.is_video_desktop_build_started" class="mt-2 space-y-2">
+                    <button
+                      type="button"
+                      class="btn-secondary w-full text-xs"
+                      :disabled="cancellingDesktopVideoRequest || generatingVideo"
+                      @click="handleCancelDesktopVideoRequest"
+                    >
+                      {{ cancellingDesktopVideoRequest ? 'Annulation…' : 'Annuler la demande' }}
+                    </button>
+                    <button
+                      type="button"
+                      class="btn-secondary w-full text-xs"
+                      :disabled="cancellingDesktopVideoRequest || generatingVideo"
+                      @click="handleGenerateVideoOnServer"
+                    >
+                      {{ generatingVideo ? 'Lancement…' : 'Générer sur le serveur (sans la séquence Storyblok)' }}
+                    </button>
+                  </div>
+                </div>
+
+                <p v-else-if="videoFailureMessage" class="mt-3 text-xs text-[var(--app-red)]">
+                  {{ videoFailureMessage }}
+                </p>
+
+                <template v-if="site.video_status === 'ready' && site.video_page_url">
+                  <button
+                    type="button"
+                    class="mt-3 block w-full cursor-pointer overflow-hidden rounded-lg border border-[var(--app-line)] transition-opacity hover:opacity-90"
+                    title="Ouvrir la page vidéo"
+                    @click="openVideoPage(site.video_page_url)"
+                  >
+                    <img
+                      v-if="site.video_thumbnail_url"
+                      :src="site.video_thumbnail_url"
+                      alt="Vignette de la vidéo de prospection"
+                      class="w-full"
+                    />
+                  </button>
+                  <div class="mt-2 space-y-2">
+                    <button
+                      type="button"
+                      class="btn-secondary w-full text-xs"
+                      @click="copyVideoUrl(site.video_page_url)"
+                    >
+                      {{ copied ? 'Lien copié !' : 'Copier le lien vidéo' }}
+                    </button>
+                    <button
+                      v-if="!isVideoWaitingForDesktop"
+                      type="button"
+                      class="btn-secondary w-full text-xs"
+                      :disabled="generatingVideo"
+                      @click="handleGenerateVideo"
+                    >
+                      {{ generatingVideo ? 'Lancement…' : 'Régénérer la vidéo' }}
+                    </button>
+                    <button
+                      type="button"
+                      class="btn-secondary w-full text-xs text-[var(--app-red)]"
+                      :disabled="deletingVideo || site.is_video_desktop_build_started"
+                      @click="askDeleteVideo"
+                    >
+                      {{ deletingVideo ? 'Suppression…' : 'Supprimer la vidéo' }}
+                    </button>
+                  </div>
+                </template>
+
+                <button
+                  v-if="!isVideoGenerating && !isVideoWaitingForDesktop && site.video_status !== 'ready'"
+                  type="button"
+                  class="btn-primary mt-3 w-full text-xs disabled:cursor-not-allowed disabled:opacity-50"
+                  :disabled="generatingVideo"
+                  @click="handleGenerateVideo"
+                >
+                  <UIcon name="i-lucide-clapperboard" class="mr-1.5 h-3.5 w-3.5" />
+                  {{
+                    generatingVideo ? 'Lancement…' : site.video_status === 'failed' ? 'Réessayer' : 'Générer la vidéo'
+                  }}
+                </button>
+
+                <p v-if="videoPrepStatus" class="text-muted mt-3 text-center text-[11px] leading-relaxed">
+                  {{ videoPrepStatus }}
+                </p>
+
+                <NuxtLink
+                  to="/dashboard/settings/video"
+                  class="mt-2 block w-full text-center text-[11px] text-[var(--app-ink-soft)] underline underline-offset-2 transition-colors hover:text-[var(--app-ink)]"
+                >
+                  Configurer mon clip webcam (Paramètres
+                  <UIcon name="i-lucide-arrow-right" class="inline-block h-3 w-3 align-[-1px]" /> Vidéo de prospection)
+                </NuxtLink>
+              </div>
+              <div
+                class="rounded-xl border border-[var(--app-line)] bg-[var(--app-bg)] p-4 text-xs text-[var(--app-ink-soft)]"
               >
-                {{ stat.value }}
-              </p>
+                <p class="font-semibold text-[var(--app-ink)]">Comment elle part</p>
+                <ul class="mt-2 space-y-2">
+                  <li class="flex gap-2">
+                    <UIcon name="i-lucide-mail" class="mt-0.5 h-3.5 w-3.5 shrink-0" />
+                    <span>
+                      Email : <code class="font-label">{vignette_video}</code> pose la vignette cliquable,
+                      <code class="font-label">{lien_video}</code> le lien.
+                    </span>
+                  </li>
+                  <li class="flex gap-2">
+                    <UIcon name="i-lucide-message-square-text" class="mt-0.5 h-3.5 w-3.5 shrink-0" />
+                    <span>SMS : <code class="font-label">{lien_video}</code> donne le lien court.</span>
+                  </li>
+                  <li class="flex gap-2">
+                    <UIcon name="i-lucide-eye" class="mt-0.5 h-3.5 w-3.5 shrink-0" />
+                    <span>La page vidéo mesure la lecture : lancement, 25 / 50 / 75 %, vue en entier.</span>
+                  </li>
+                </ul>
+              </div>
             </div>
-          </div>
 
-          <div class="card overflow-hidden p-0">
-            <div class="border-b border-[var(--app-line)] px-5 py-4">
-              <h2 class="font-semibold text-[var(--app-ink)]">Aperçu &amp; template</h2>
-              <p class="text-xs text-[var(--app-ink-soft)]">
-                Votre vrai site, mis à jour en direct : couleurs, images et template s'y reflètent instantanément —
-                sauvegardez pour publier.
-              </p>
-            </div>
-            <div class="space-y-4 p-5">
-              <div v-if="loadingTemplates" class="flex items-center justify-center py-24">
-                <div class="loader-smooth"></div>
+            <div v-else-if="activeTool === 'plus'" class="grid gap-3 md:grid-cols-2">
+              <div class="rounded-xl border border-[var(--app-line)] bg-[var(--app-bg)] p-4">
+                <p class="text-sm font-semibold text-[var(--app-ink)]">Lien de la démo</p>
+                <p class="mt-1 text-xs text-[var(--app-ink-soft)]">{{ expiryLabel }}</p>
+                <div v-if="openUrl" class="mt-3 flex items-center gap-2">
+                  <input :value="openUrl" readonly class="input-field h-10 flex-1 truncate text-xs" />
+                  <button
+                    type="button"
+                    class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-[var(--app-line)] text-[var(--app-ink-soft)] hover:text-[var(--app-ink)]"
+                    :title="copied ? 'Lien copié !' : 'Copier le lien'"
+                    @click="copyDemoUrl(openUrl)"
+                  >
+                    <UIcon :name="copied ? 'i-lucide-check' : 'i-lucide-copy'" class="h-4 w-4" />
+                  </button>
+                </div>
               </div>
-              <DemoSitesTemplatePicker
-                v-else-if="templates.length"
-                v-model="selectedTemplateId"
-                :templates="templates"
-                :theme="selectedTheme"
-                :use-brand-color="selectedUseBrandColor"
-                :brand-color="site?.brand_color ?? null"
-                :published-site-url="openUrl"
-                :reload-nonce="previewReloadNonce"
-                :show-colors="false"
-                :preview-photos="previewPhotos"
-                :preview-theme="previewTheme"
-                :preview-services="previewServices"
-                templates-below-preview
-                @update:theme="selectedTheme = $event"
-                @update:use-brand-color="selectedUseBrandColor = $event"
-              />
-              <div v-else-if="openUrl">
-                <iframe
-                  :src="openUrl"
-                  class="h-[600px] w-full rounded-lg border border-[var(--app-line)] bg-white"
-                  title="Aperçu live"
-                />
+
+              <div
+                v-if="site.storyblok_editor_url"
+                class="rounded-xl border border-[var(--app-line)] bg-[var(--app-bg)] p-4"
+              >
+                <div class="flex items-center justify-between gap-3">
+                  <p class="text-sm font-semibold text-[var(--app-ink)]">Espace d'administration du client</p>
+                  <span
+                    v-if="cmsStatusLabel"
+                    :class="['rounded-full px-2.5 py-0.5 text-[10px] font-bold uppercase', cmsStatusClass]"
+                  >
+                    {{ cmsStatusLabel }}
+                  </span>
+                </div>
+                <p class="mt-1 text-xs text-[var(--app-ink-soft)]">
+                  <template v-if="cmsStatus === 'joined'">
+                    Le client a rejoint l'espace{{ cmsJoinedAtLabel ? ` le ${cmsJoinedAtLabel}` : '' }}.
+                  </template>
+                  <template v-else-if="cmsStatus === 'pending'">
+                    Invitation envoyée à {{ site.storyblok_login_email || site.email }}, en attente.
+                  </template>
+                  <template v-else>Il modifie textes et photos lui-même. À inviter une fois le site vendu.</template>
+                </p>
+                <div class="mt-3 flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    class="btn-secondary h-10 text-xs"
+                    @click="openDemoUrl(site.storyblok_editor_url!)"
+                  >
+                    <UIcon name="i-lucide-external-link" class="h-3.5 w-3.5" />
+                    Ouvrir l'éditeur
+                  </button>
+                  <button
+                    v-if="cmsStatus === 'pending'"
+                    type="button"
+                    class="btn-secondary h-10 text-xs disabled:opacity-50"
+                    :disabled="refreshingCms"
+                    @click="handleRefreshCmsStatus"
+                  >
+                    {{ refreshingCms ? 'Vérification…' : 'Vérifier s’il a rejoint' }}
+                  </button>
+                  <button
+                    v-else-if="cmsStatus !== 'joined'"
+                    type="button"
+                    class="btn-primary h-10 text-xs"
+                    :disabled="inviting"
+                    @click="handleInvite"
+                  >
+                    {{ inviting ? 'Envoi…' : 'Inviter le client' }}
+                  </button>
+                </div>
+              </div>
+
+              <div class="rounded-xl border border-[var(--app-line)] bg-[var(--app-bg)] p-4">
+                <p class="text-sm font-semibold text-[var(--app-ink)]">Informations</p>
+                <dl class="mt-2 space-y-1.5 text-xs">
+                  <div v-if="site.email" class="flex justify-between gap-3">
+                    <dt class="text-[var(--app-ink-soft)]">Email</dt>
+                    <dd class="truncate text-[var(--app-ink)]">{{ site.email }}</dd>
+                  </div>
+                  <div v-if="site.phone" class="flex justify-between gap-3">
+                    <dt class="text-[var(--app-ink-soft)]">Téléphone</dt>
+                    <dd class="text-[var(--app-ink)]">{{ site.phone }}</dd>
+                  </div>
+                  <div class="flex justify-between gap-3">
+                    <dt class="text-[var(--app-ink-soft)]">Créé le</dt>
+                    <dd class="text-[var(--app-ink)]">{{ formatNumericDate(site.created_at) }}</dd>
+                  </div>
+                  <div class="flex justify-between gap-3">
+                    <dt class="text-[var(--app-ink-soft)]">Template</dt>
+                    <dd class="text-[var(--app-ink)]">{{ templateLabel }}</dd>
+                  </div>
+                </dl>
+                <NuxtLink :to="`/dashboard/demo-sites/${site.id}/edit`" class="btn-secondary mt-3 h-10 text-xs">
+                  <UIcon name="i-lucide-square-pen" class="h-3.5 w-3.5" />
+                  Modifier les infos
+                </NuxtLink>
+              </div>
+
+              <div class="rounded-xl border border-[var(--app-line)] bg-[var(--app-bg)] p-4">
+                <p class="text-sm font-semibold text-[var(--app-ink)]">Après la vente</p>
+                <p class="mt-1 text-xs text-[var(--app-ink-soft)]">
+                  Le code du site en zip, prêt à lancer, pour un travail sur mesure.
+                </p>
+                <div class="mt-3 flex flex-wrap gap-2">
+                  <button type="button" class="btn-secondary h-10 text-xs" :disabled="exporting" @click="handleExport">
+                    <UIcon name="i-lucide-download" class="h-3.5 w-3.5" />
+                    {{ exporting ? 'Préparation du zip…' : 'Exporter le code' }}
+                  </button>
+                  <button
+                    type="button"
+                    class="btn-secondary h-10 text-xs text-[var(--app-red)]"
+                    :disabled="deleting"
+                    @click="deleteSiteModalRef?.open()"
+                  >
+                    <UIcon name="i-lucide-trash-2" class="h-3.5 w-3.5" />
+                    {{ deleting ? 'Suppression…' : 'Supprimer le site' }}
+                  </button>
+                </div>
               </div>
             </div>
           </div>
-        </section>
-      </div>
+        </div>
+      </Transition>
+
+      <nav
+        class="flex shrink-0 items-stretch border-t border-[var(--app-line)] bg-[var(--app-surface)] pb-[env(safe-area-inset-bottom)]"
+        aria-label="Outils du site"
+      >
+        <button
+          v-for="tool in visibleTools"
+          :key="tool.key"
+          type="button"
+          :class="[
+            'relative flex min-h-16 flex-1 flex-col items-center justify-center gap-1 text-[11px] font-medium transition-colors [-webkit-tap-highlight-color:transparent]',
+            activeTool === tool.key
+              ? 'text-[var(--app-ink)]'
+              : 'text-[var(--app-ink-soft)] hover:text-[var(--app-ink)]',
+          ]"
+          :aria-pressed="activeTool === tool.key"
+          @click="toggleTool(tool.key)"
+        >
+          <span
+            :class="[
+              'flex h-8 w-12 items-center justify-center rounded-full transition-colors',
+              activeTool === tool.key ? 'bg-[var(--app-ink)] text-[var(--app-bg)]' : '',
+            ]"
+          >
+            <UIcon :name="tool.icon" class="h-5 w-5" />
+          </span>
+          {{ tool.label }}
+          <span
+            v-if="toolPendingChanges[tool.key]"
+            class="absolute top-2 right-[calc(50%-18px)] h-2 w-2 rounded-full bg-[var(--app-accent)]"
+            title="Modifications non publiées"
+          ></span>
+        </button>
+      </nav>
+
+      <UiConfirmModal
+        ref="deleteSiteModalRef"
+        title="Supprimer le site"
+        :message="`Supprimer le site « ${site.business_name} » ? La démo et son espace CMS seront retirés. Cette action est irréversible.`"
+        confirm-text="Supprimer"
+        cancel-text="Annuler"
+        @confirm="handleDelete"
+      />
+      <UiConfirmModal
+        ref="deleteVideoModalRef"
+        title="Supprimer la vidéo"
+        message="Supprimer la vidéo de prospection de ce site ? Le lien envoyé dans les emails ne fonctionnera plus."
+        confirm-text="Supprimer"
+        cancel-text="Annuler"
+        @confirm="handleDeleteVideoConfirmed"
+      />
+      <UiConfirmModal
+        ref="resetServiceCardsModalRef"
+        title="Revenir aux cartes automatiques"
+        message="Les cartes personnalisées seront supprimées et le site régénéré avec les cartes automatiques. Continuer ?"
+        confirm-text="Revenir"
+        cancel-text="Annuler"
+        @confirm="restoreGeneratedServiceCards"
+      />
     </template>
 
     <UiVideoGenerationModal
@@ -474,10 +568,14 @@
 <script lang="ts" setup>
 import { formatNumericDate } from '~/utils/date'
 import type { UseCopyToClipboardReturn, UseOpenExternalUrlReturn, UseToastReturn } from '~/types/Composables'
-import type { DemoSiteStat } from '~/types/DemoSiteDetailPage'
+import type {
+  DemoSiteAtelierTool,
+  DemoSiteAtelierToolKey,
+  DemoSitePreviewDeviceOption,
+} from '~/types/DemoSiteDetailPage'
+import { filterSelectableTemplates, sortTemplatesByRecommendation } from '~/utils/templateRecommendation'
 import type { ServiceCardDraft } from '~/types/ServiceCardsEditor'
-import type { UiTab } from '~/types/UiTabs'
-import type { TemplateThemeColorKey } from '~/types/TemplatePicker'
+import type { TemplatePreviewDevice, TemplateThemeColorKey } from '~/types/TemplatePicker'
 import type { ComputedRef, Ref } from 'vue'
 import type {
   DemoSite,
@@ -516,10 +614,56 @@ const toast: UseToastReturn = useToast()
 const videoProgress: UseVideoGenerationProgressReturn = useVideoGenerationProgress()
 const prospectSearchStore: ReturnType<typeof useProspectSearchStore> = useProspectSearchStore()
 
-/** Tabs of the sticky side panel: the site's summary/actions, and its visual configuration. */
-const asideTabs: UiTab[] = [
-  { key: 'resume', label: 'Résumé', icon: 'i-lucide-clipboard-list' },
-  { key: 'config', label: 'Configuration', icon: 'i-lucide-sliders-horizontal' },
+/** The tools of the atelier, in the order of the bottom bar; « Prestations » only when the template has cards. */
+const atelierTools: DemoSiteAtelierTool[] = [
+  {
+    key: 'template',
+    label: 'Template',
+    icon: 'i-lucide-layout-template',
+    title: 'Template',
+    hint: 'Le site se redessine en direct ; publiez pour l’appliquer.',
+  },
+  {
+    key: 'couleurs',
+    label: 'Couleurs',
+    icon: 'i-lucide-palette',
+    title: 'Couleurs',
+    hint: 'Couleur du logo ou de la template, et le fond.',
+  },
+  {
+    key: 'photos',
+    label: 'Photos',
+    icon: 'i-lucide-images',
+    title: 'Photos',
+    hint: 'La première devient l’en-tête, la deuxième « à propos », le reste la galerie.',
+  },
+  {
+    key: 'prestations',
+    label: 'Prestations',
+    icon: 'i-lucide-list-checks',
+    title: 'Prestations',
+    hint: 'Les cartes de services montrées sur le site.',
+  },
+  {
+    key: 'video',
+    label: 'Vidéo',
+    icon: 'i-lucide-clapperboard',
+    title: 'Vidéo de prospection',
+    hint: 'La vidéo envoyée dans les emails et les SMS.',
+  },
+  {
+    key: 'plus',
+    label: 'Plus',
+    icon: 'i-lucide-ellipsis',
+    title: 'Lien, client et après-vente',
+    hint: 'Le lien de la démo, l’espace du client, les informations, le code.',
+  },
+]
+
+/** The two ways of looking at the site. */
+const previewDevices: DemoSitePreviewDeviceOption[] = [
+  { key: 'mobile', label: 'Téléphone', icon: 'i-lucide-smartphone' },
+  { key: 'desktop', label: 'Ordinateur', icon: 'i-lucide-monitor' },
 ]
 
 const site: Ref<DemoSite | null> = ref(null)
@@ -527,7 +671,8 @@ const pending: Ref<boolean> = ref(true)
 const loadError: Ref<string | null> = ref(null)
 const templates: Ref<DemoSiteTemplate[]> = ref([])
 const loadingTemplates: Ref<boolean> = ref(true)
-const activeTab: Ref<string> = ref('resume')
+const activeTool: Ref<DemoSiteAtelierToolKey | null> = ref(null)
+const previewDevice: Ref<TemplatePreviewDevice> = ref('mobile')
 const selectedTemplateId: Ref<string> = ref('')
 const selectedTheme: Ref<DemoSiteTheme> = ref({ ...DEFAULT_DEMO_SITE_THEME })
 /** Action colour source: logo (true) / template (false) — #13. */
@@ -557,17 +702,21 @@ const deletingVideo: Ref<boolean> = ref(false)
 const cancellingDesktopVideoRequest: Ref<boolean> = ref(false)
 const deleteVideoModalRef: Ref<{ open: () => void } | null> = ref(null)
 const deleteSiteModalRef: Ref<{ open: () => void } | null> = ref(null)
-const asideRef: Ref<HTMLElement | null> = ref(null)
 let videoPollTimer: ReturnType<typeof setTimeout> | null = null
 let hasLeftPage: boolean = false
 
-const templateLabel: ComputedRef<string> = computed(() => {
+const templateLabel: ComputedRef<string> = computed((): string => {
+  const templateId: string = site.value?.template_id ?? ''
+  const catalogued: DemoSiteTemplate | undefined = templates.value.find(
+    (template: DemoSiteTemplate): boolean => template.id === templateId,
+  )
+  if (catalogued) return catalogued.name
   const labels: Record<string, string> = {
     'plumber-cuivre': 'Plombier Source',
     'electrician-eclat': 'Électricien Éclat',
     'electrician-lumen': 'Électricien Lumen',
   }
-  return labels[site.value?.template_id ?? ''] ?? site.value?.template_id ?? ''
+  return labels[templateId] ?? templateId
 })
 
 const openUrl: ComputedRef<string | null> = computed(() =>
@@ -763,31 +912,78 @@ const cmsJoinedAtLabel: ComputedRef<string | null> = computed((): string | null 
   site.value?.storyblok_joined_at ? formatNumericDate(site.value.storyblok_joined_at) : null,
 )
 
-const stats: ComputedRef<DemoSiteStat[]> = computed(() => {
-  if (!site.value) return []
-  const urlLive: boolean = DemoSiteService.isDemoSiteReachable(site.value)
+/** The tools shown in the bar: « Prestations » only when the template has service cards. */
+const visibleTools: ComputedRef<DemoSiteAtelierTool[]> = computed((): DemoSiteAtelierTool[] =>
+  atelierTools.filter(
+    (tool: DemoSiteAtelierTool): boolean => tool.key !== 'prestations' || isServiceCardsEditorVisible.value,
+  ),
+)
+
+const activeToolMeta: ComputedRef<DemoSiteAtelierTool | null> = computed(
+  (): DemoSiteAtelierTool | null =>
+    atelierTools.find((tool: DemoSiteAtelierTool): boolean => tool.key === activeTool.value) ?? null,
+)
+
+/** Which tools hold an unpublished change, for the dot on their button. */
+const toolPendingChanges: ComputedRef<Record<DemoSiteAtelierToolKey, boolean>> = computed(
+  (): Record<DemoSiteAtelierToolKey, boolean> => ({
+    template: templateChanged.value,
+    couleurs: themeChanged.value || brandSourceChanged.value,
+    photos: imagesChanged.value,
+    prestations: serviceCardsChanged.value,
+    video: false,
+    plus: false,
+  }),
+)
+
+/** The templates offered in the sheet: the current one first, then the recommended ones. */
+const selectableTemplates: ComputedRef<DemoSiteTemplate[]> = computed((): DemoSiteTemplate[] => {
+  const currentId: string | null = site.value?.template_id ?? null
+  const offered: DemoSiteTemplate[] = sortTemplatesByRecommendation(
+    filterSelectableTemplates(templates.value, currentId),
+    null,
+  )
   return [
-    {
-      label: 'Statut URL',
-      value: urlLive ? 'Live' : 'Offline',
-      tone: urlLive ? 'success' : 'danger',
-    },
-    {
-      label: 'Jours restants',
-      value: site.value && DemoSiteService.isTtlPending(site.value) ? 'En attente' : String(daysLeft.value),
-      tone: undefined,
-    },
-    {
-      label: 'CMS',
-      value: cmsStatus.value === 'joined' ? 'Rejoint' : cmsStatus.value === 'pending' ? 'Invité' : 'Non invité',
-      tone: cmsStatus.value === 'joined' ? 'success' : undefined,
-    },
-    {
-      label: 'Slug',
-      value: site.value.slug,
-      tone: 'muted',
-    },
+    ...offered.filter((template: DemoSiteTemplate): boolean => template.id === currentId),
+    ...offered.filter((template: DemoSiteTemplate): boolean => template.id !== currentId),
   ]
+})
+
+/** One line under the title: time left, video, client space. */
+const siteFactsLine: ComputedRef<string> = computed((): string => {
+  if (!site.value) return ''
+  const facts: string[] = []
+  facts.push(DemoSiteService.isTtlPending(site.value) ? 'Pas encore envoyé' : `Expire dans ${daysLeft.value} j`)
+  facts.push(
+    site.value.video_status === 'ready'
+      ? 'Vidéo prête'
+      : isVideoGenerating.value || isVideoWaitingForDesktop.value
+        ? 'Vidéo en cours'
+        : 'Pas de vidéo',
+  )
+  facts.push(
+    cmsStatus.value === 'joined'
+      ? 'Client dans son espace'
+      : cmsStatus.value === 'pending'
+        ? 'Client invité'
+        : 'Client pas encore invité',
+  )
+  return facts.join(' · ')
+})
+
+/**
+ * Open a tool's sheet, or close it when it is the one open.
+ * @param key - The tool touched in the bar.
+ */
+function toggleTool(key: DemoSiteAtelierToolKey): void {
+  activeTool.value = activeTool.value === key ? null : key
+}
+
+/** When the demo goes offline, in words. */
+const expiryLabel: ComputedRef<string> = computed((): string => {
+  if (!site.value) return ''
+  if (DemoSiteService.isTtlPending(site.value)) return 'Le compte à rebours démarre au premier email envoyé.'
+  return `Elle est retirée dans ${daysLeft.value} jour${daysLeft.value > 1 ? 's' : ''}, le ${formatNumericDate(site.value.expires_at)}.`
 })
 
 /**
@@ -796,11 +992,7 @@ const stats: ComputedRef<DemoSiteStat[]> = computed(() => {
  * @param next - The reordered list of placed photo URLs.
  */
 function onImageOrderChange(next: string[]): void {
-  const scrollTop: number = asideRef.value?.scrollTop ?? 0
   imagesOrder.value = next
-  nextTick((): void => {
-    if (asideRef.value) asideRef.value.scrollTop = scrollTop
-  })
 }
 
 /**
@@ -808,12 +1000,8 @@ function onImageOrderChange(next: string[]): void {
  * @param next - The edited cards.
  */
 function onServiceCardsChange(next: ServiceCardDraft[]): void {
-  const scrollTop: number = asideRef.value?.scrollTop ?? 0
   serviceCardsDraft.value = next
   serviceCardsDraftFromAi.value = false
-  nextTick((): void => {
-    if (asideRef.value) asideRef.value.scrollTop = scrollTop
-  })
 }
 
 /**
@@ -1356,6 +1544,33 @@ onBeforeUnmount((): void => {
 </script>
 
 <style scoped>
+.atelier {
+  height: calc(100% + 2.5rem + env(safe-area-inset-bottom));
+  margin-bottom: calc(-1.25rem - env(safe-area-inset-bottom));
+}
+@media (min-width: 768px) {
+  .atelier {
+    height: calc(100% + 3rem);
+    margin-bottom: -1.5rem;
+  }
+}
+.atelier-sheet-enter-active,
+.atelier-sheet-leave-active {
+  transition:
+    transform 0.22s ease,
+    opacity 0.22s ease;
+}
+.atelier-sheet-enter-from,
+.atelier-sheet-leave-to {
+  transform: translateY(24px);
+  opacity: 0;
+}
+@media (prefers-reduced-motion: reduce) {
+  .atelier-sheet-enter-active,
+  .atelier-sheet-leave-active {
+    transition: none;
+  }
+}
 .loader-smooth {
   width: 48px;
   height: 48px;
