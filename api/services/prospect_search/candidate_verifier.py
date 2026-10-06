@@ -113,6 +113,7 @@ _NAME_WORD_SEPARATORS_RE: re.Pattern[str] = re.compile(r"[^a-z0-9]+")
 
 # Directories, marketplaces and network sites missing from the shared blocklist. A garage's page on
 # its network's site (AD, Motrio, a car brand…) is not its own website.
+_COMPARISON_SITE_HOST_WORDS: tuple[str, ...] = ("comparatif", "vergleich", "comparison", "comparazione")
 _EXTRA_THIRD_PARTY_HOSTS: frozenset[str] = frozenset(
     {
         "leboncoin.fr",
@@ -173,6 +174,10 @@ _EXTRA_THIRD_PARTY_HOSTS: frozenset[str] = frozenset(
         "wa.me",
         "whatsapp.com",
         "t.me",
+        "oeffnungszeitenbuch.de",
+        "firmen.ch",
+        "landi.ch",
+        "autofit.ch",
         "yoojo.ch",
         "yoojo.fr",
         "idgarages.com",
@@ -507,7 +512,7 @@ class CandidateVerifier:
         """Whether a result sits on a social network, a directory, a registry or a booking platform."""
         if validation_service.is_social_url(link) or validation_service.is_platform_url(link):
             return True
-        if email_candidate_scorer.is_directory_host(host):
+        if email_candidate_scorer.is_directory_host(host) or any(word in host for word in _COMPARISON_SITE_HOST_WORDS):
             return True
         return any(host == known or host.endswith(f".{known}") for known in _EXTRA_THIRD_PARTY_HOSTS)
 

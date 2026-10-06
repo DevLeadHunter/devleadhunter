@@ -519,3 +519,18 @@ def test_an_entry_page_is_read_with_its_vcard(monkeypatch: pytest.MonkeyPatch) -
 
     assert entry is not None
     assert entry.emails == ("garageduvalais@hotmail.com",)
+
+
+@pytest.mark.parametrize(
+    "link",
+    [
+        "https://www.gardening-company-comparison.ch/en/d/gardening-companies/r-a-paysagiste-d:x1",
+        "https://www.horticole-comparatif.ch/d/horticultures/heritier-creation-d:5XhkSzmXq",
+        "https://gardening.gartenbauvergleich.ch/d/gardening-companies/ns-design-d:9ghqSXRB7",
+        "https://autofit.ch/fr/garage/garage-des-bains/",
+    ],
+)
+def test_a_comparison_site_or_a_network_page_is_never_a_website(link: str) -> None:
+    host = link.split("/")[2].removeprefix("www.")
+
+    assert CandidateVerifier.is_known_third_party(link, host) is True
