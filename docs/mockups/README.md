@@ -36,6 +36,14 @@ Ticket Asana « [IA Code] Présence humaine sur la démo ». Trois briques pour 
 | `demo-site-page/captures-v1/` | L'état d'aujourd'hui (Résumé, Configuration, téléphone) et deux captures de la première proposition en onglets | **v1 refusée le 06/10** (« ça ressemble à ce que j'ai déjà ») |
 | `demo-site-page/NOTE.md` | Le pourquoi, les trois directions, ce que l'atelier garde de l'existant, le code touché sur la branche `mockup/demo-site-page`, les points à trancher | À jour |
 
+### Page d'une réceptionniste (`receptionist-page/`)
+
+| Fichier | Ce qu'il montre | État |
+|---|---|---|
+| `receptionist-page/captures-atelier/` | **Le même atelier pour la réceptionniste** : la page de démo en plein écran dans un vrai téléphone, six outils en bas (Identité, Réponses, Demandes, Alertes, Vidéo, Plus), la page qui change en direct pendant qu'on tape (`dibodev-ipad-07-identite-en-direct.jpg`) ; captures du vrai logiciel sur les deux vraies réceptionnistes, iPad portrait, sombre, ordinateur | **En attente du retour de Léo** (07/10) ; code sur la branche `mockup/receptionist-page` |
+| `receptionist-page/captures-aujourdhui/` | L'état d'aujourd'hui sur iPad : la page d'une réceptionniste vendue déborde à droite, le reste est une longue colonne de cartes | Constat |
+| `receptionist-page/NOTE.md` | Le pourquoi, le constat, ce que l'atelier contient, le code touché, les points à trancher | À jour |
+
 ### Nouvelle template électricien (`electrician-template/`)
 
 | Fichier | Ce qu'il montre | État |
