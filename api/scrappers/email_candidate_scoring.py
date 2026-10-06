@@ -214,6 +214,9 @@ BLOCKED_DOMAIN_SUBSTRINGS: tuple[str, ...] = (
     "mairie",
     "prefecture",
     "gendarmerie",
+    "paroisse",
+    "diocese",
+    "eglise",
 )
 
 # Collectivity / tourist-office shapes matched on the full domain.
@@ -235,6 +238,7 @@ BLOCKED_DOMAIN_PATTERNS: tuple[re.Pattern[str], ...] = (
     re.compile(r"(^|[.-])ot-"),
     re.compile(r"-tourisme\.(fr|com)$"),
     re.compile(r"(^|[.-])tourisme-"),
+    re.compile(r"(^|[.-])cath([.-]|$)"),
 )
 
 # Local parts that are never the real business contact.

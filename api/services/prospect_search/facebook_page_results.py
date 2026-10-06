@@ -2,9 +2,9 @@
 Facebook page results — telling a business page of the searched town from the noise.
 
 A search engine query « site:facebook.com "trade" "town" » returns posts, videos,
-groups and pages of other towns that merely contain the words. Only a result that
-is the root of a page, whose title or snippet places it in the town, becomes a
-candidate.
+groups, personal profiles and pages of other towns that merely contain the words.
+Only a result that is the root of a business page, whose title or snippet places it
+in the town (not merely a name that sounds like the town), becomes a candidate.
 """
 
 from __future__ import annotations
@@ -19,6 +19,11 @@ from services.prospect_search.search_judge import SearchResultLine
 
 _PAGE_SUB_TABS: frozenset[str] = frozenset({"about", "reviews"})
 _NAME_MAX_CHARS: int = 80
+_PERSONAL_PROFILE_MARKERS: tuple[str, ...] = (
+    "personnes que vous pouvez connaitre",
+    "others you may know",
+    "anderen, die du kennst",
+)
 
 
 @dataclass(frozen=True)
@@ -53,7 +58,9 @@ class FacebookPageResults:
             name, title_town = cls._split_title(line.title)
             if not name or len(name) > _NAME_MAX_CHARS or "#" in name or name.endswith(("...", "…")):
                 continue
-            if not cls._is_in_town(title_town, line.description, town):
+            if any(marker in fold(line.description) for marker in _PERSONAL_PROFILE_MARKERS):
+                continue
+            if not cls._is_in_town(title_town, line.description, town, name=name):
                 continue
             pages[page_url] = FacebookBusinessPage(page_url=page_url, name=name, result_link=line.link)
         return list(pages.values())
@@ -80,9 +87,14 @@ class FacebookPageResults:
         return parts[0], parts[1] if len(parts) > 1 else None
 
     @staticmethod
-    def _is_in_town(title_town: str | None, description: str, town: str) -> bool:
-        """Whether the page is placed in the searched town, by its title or else by its snippet."""
+    def _is_in_town(title_town: str | None, description: str, town: str, *, name: str) -> bool:
+        """
+        Whether the page is placed in the searched town, by its title or else by its snippet.
+
+        The page's own name does not count: « Paul Rolle » is no page of the town of Rolle.
+        """
         searched = fold(town)
         if title_town is not None:
             return searched in fold(title_town)
-        return re.search(rf"\b{re.escape(searched)}\b", fold(description)) is not None
+        description_without_name = fold(description).replace(fold(name), " ")
+        return re.search(rf"\b{re.escape(searched)}\b", description_without_name) is not None

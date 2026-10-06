@@ -11,6 +11,8 @@ Léo's philosophy under test:
   - floor rule: as long as one candidate survives, return the best, even low-scored.
 """
 
+import pytest
+
 from scrappers.email_candidate_scoring import EmailCandidateScorer
 
 scorer = EmailCandidateScorer()
@@ -219,3 +221,15 @@ def test_a_platform_or_a_data_protection_inbox_is_never_the_business_email() -> 
     assert _only("contact@motrio.fr", name="Garage de l'Europe") is None
     assert _only("pdv06298@mousquetaires.com", name="Drapeau Automobiles") is None
     assert _only("contact@garage-martin.fr", name="Garage Martin") == "contact@garage-martin.fr"
+
+
+@pytest.mark.parametrize(
+    "email",
+    ["paul.rochat@fri-cath.ch", "secretariat@cath-vd.ch", "accueil@paroisse-exemple.ch", "info@eglise-exemple.fr"],
+)
+def test_a_church_or_parish_address_belongs_to_an_institution(email: str) -> None:
+    assert scorer.belongs_to_an_institution(email, city="Fribourg") is True
+
+
+def test_a_name_starting_like_a_church_word_is_no_institution() -> None:
+    assert scorer.belongs_to_an_institution("info@catherine-jardins.ch", city="Fribourg") is False

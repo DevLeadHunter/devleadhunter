@@ -489,6 +489,27 @@ class TestFacebookPageResults:
         assert [page.name for page in pages] == ["Les Jardins Dupont", "Paysages Martin"]
         assert pages[1].page_url == "https://www.facebook.com/100075901827931"
 
+    def test_a_person_named_like_the_town_or_a_personal_profile_is_no_page_of_the_town(self) -> None:
+        pages = FacebookPageResults.business_pages(
+            [
+                self._line("https://www.facebook.com/paul.rolle.10/", "Paul Rolle", "Paul Rolle, électricien."),
+                self._line(
+                    "https://www.facebook.com/jean.dupont.52/",
+                    "Jean Dupont",
+                    "Jean Dupont est sur Facebook. Inscrivez-vous sur Facebook pour communiquer avec Jean Dupont "
+                    "et d'autres personnes que vous pouvez connaître. Rolle.",
+                ),
+                self._line(
+                    "https://www.facebook.com/electriciterolle/",
+                    "Electricité Paul Rolle",
+                    "Electricité Paul Rolle, Route de Genève 1, 1180 Rolle.",
+                ),
+            ],
+            town="Rolle",
+        )
+
+        assert [page.name for page in pages] == ["Electricité Paul Rolle"]
+
 
 class TestSearchJudgeAnswer:
     _RESULTS: ClassVar[list[SearchResultLine]] = [
