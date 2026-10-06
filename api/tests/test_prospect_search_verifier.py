@@ -645,3 +645,34 @@ def test_an_email_under_a_facebook_group_post_is_a_stranger_s() -> None:
     asyncio.run(ContactFinder(_OnePageClient(page), _ScriptedJudge()).find(facts, _LANDSCAPER))  # type: ignore[arg-type]
 
     assert facts.email is None
+
+
+@pytest.mark.parametrize(
+    ("link", "title", "description"),
+    [
+        (
+            "https://turismoroma.it/de/node/116484",
+            "Casa per Ferie Suore",
+            "Casa per Ferie Suore 0677205613. Email: casaferie.roma@gmail.com",
+        ),
+        (
+            "https://www.facebook.com/groups/1283255909671137/posts/1647369846593073/",
+            "Entraide Pau",
+            "Votre extérieur, notre métier 06 77 20 56 13 servicepau@gmail.com",
+        ),
+        (
+            "https://paysdenay.fr/item/download/2002_986807a36e4a7ecec877bf2c515dad94",
+            "Décision du président",
+            "Lot 13 : 06 77 20 56 13. Lot 14 : entreprise voisine sgr.voisin@orange.fr",
+        ),
+    ],
+)
+def test_the_phone_search_takes_no_email_from_a_foreign_page_a_group_or_a_document(
+    link: str, title: str, description: str
+) -> None:
+    facts = _facts(name="Garage Négoce Auto Paloise", city="Pau", country="FR", phone="06 77 20 56 13")
+    page = {"organic": [_result(link, title, description)]}
+
+    asyncio.run(ContactFinder(_OnePageClient(page), _ScriptedJudge()).find(facts, TradeCatalog.resolve("garage")))  # type: ignore[arg-type]
+
+    assert facts.email is None

@@ -22,6 +22,7 @@ from enums.prospect_search import EmailProofLevel
 from scrappers.brightdata_client import BrightDataClient
 from scrappers.email_candidate_scoring import GENERIC_EMAIL_PROVIDERS, email_candidate_scorer
 from scrappers.facebook_page_urls import FacebookPageUrl
+from services.country_profiles import CountryProfiles
 from services.decision_maker.normalize import fold
 from services.prospect_search.candidate_facts import CandidateFacts
 from services.prospect_search.candidate_verifier import CandidateVerifier
@@ -41,6 +42,7 @@ _QUOTED_NAME_MAXIMUM_WORDS: int = 3
 _NON_DIGITS_RE: re.Pattern[str] = re.compile(r"\D")
 _PHONE_NUMBER_RE: re.Pattern[str] = re.compile(r"(?:\+|\b0)\d{1,3}(?:[\s./-]?\d{2,3}){3,4}\b")
 _LEGAL_NOTICE_WORDS: tuple[str, ...] = ("mentions legales", "impressum")
+_INTERNATIONAL_COUNTRY_DOMAINS: tuple[str, ...] = (".eu", ".io", ".co", ".me", ".tv", ".ai")
 
 
 class EmailDomainCheck:
@@ -196,7 +198,7 @@ class ContactFinder:
         candidates = [
             (email, index)
             for index, line in enumerate(results)
-            if not CandidateVerifier.is_group_discussion(line.link)
+            if not self._is_unreliable_source(line, facts)
             for email in self._usable_emails(line.text, facts)
         ]
         if not candidates:
@@ -274,7 +276,7 @@ class ContactFinder:
         if page is None:
             return
         for line in CandidateVerifier.result_lines(page):
-            if not self._shows_phone(line.text, facts):
+            if not self._shows_phone(line.text, facts) or self._is_foreign_page(line, facts):
                 continue
             CandidateVerifier.read_no_advertising_mark(facts, line)
             if self._is_legal_notice_of_a_website(line):
@@ -285,11 +287,32 @@ class ContactFinder:
                     source="Ses mentions légales montrent son numéro",
                     proof_url=line.link,
                 )
+            if self._is_unreliable_source(line, facts):
+                continue
             emails = self._usable_emails(line.text, facts)
             if len(emails) == 1:
                 facts.offer_email(
                     emails[0], EmailProofLevel.DIRECTORY, source=line.host, url=line.link, snippet=line.text
                 )
+
+    @classmethod
+    def _is_unreliable_source(cls, line: SearchResultLine, facts: CandidateFacts) -> bool:
+        """Whether a result can show the candidate's number beside a stranger's email: a group post, a document, a foreign page."""
+        is_shared_page = CandidateVerifier.is_group_discussion(line.link) or cls._is_downloaded_document(line.link)
+        return is_shared_page or cls._is_foreign_page(line, facts)
+
+    @staticmethod
+    def _is_foreign_page(line: SearchResultLine, facts: CandidateFacts) -> bool:
+        """Whether a result sits on another country's domain, where the same digits make another number (« 06 … » in Rome)."""
+        country_domain = f".{line.host.rsplit('.', 1)[-1]}"
+        is_country_domain = len(country_domain) == 3 and country_domain not in _INTERNATIONAL_COUNTRY_DOMAINS
+        return is_country_domain and country_domain not in CountryProfiles.get(facts.country).domain_tlds
+
+    @staticmethod
+    def _is_downloaded_document(link: str) -> bool:
+        """Whether a result is a document (a tender, a list of companies) where a number and an email sit side by side by chance."""
+        path = urlparse(link).path.lower()
+        return path.endswith(".pdf") or "/download/" in path
 
     @staticmethod
     def _is_legal_notice_of_a_website(line: SearchResultLine) -> bool:
