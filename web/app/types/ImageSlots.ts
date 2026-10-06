@@ -8,3 +8,15 @@ export type ImageSlotsProps = {
 export type ImageSlotsEmits = {
   'update:order': [order: string[]]
 }
+
+/** A finger resting on a grid tile, waiting to hold long enough to lift the photo. */
+export type ImageGridLongPress = {
+  url: string
+  tile: HTMLElement
+  pointerId: number
+  startClientX: number
+  startClientY: number
+  lastClientX: number
+  lastClientY: number
+  timer: ReturnType<typeof setTimeout>
+}

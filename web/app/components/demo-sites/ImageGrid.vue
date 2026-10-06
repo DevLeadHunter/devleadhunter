@@ -3,7 +3,8 @@
     <div v-if="!isHeadingHidden">
       <p class="app-label">Images du site</p>
       <p class="mt-1 text-xs leading-relaxed text-[var(--app-ink-soft)]">
-        Glissez une photo pour la déplacer. La première est l’en-tête, la deuxième « à propos », le reste la galerie.
+        Maintenez une photo puis glissez-la pour la déplacer. La première est l’en-tête, la deuxième « à propos », le
+        reste la galerie.
       </p>
     </div>
 
@@ -20,11 +21,19 @@
         :key="url"
         :data-reorder-key="url"
         :class="[
-          'group relative aspect-[4/3] cursor-grab touch-none overflow-hidden rounded-xl border bg-[var(--app-bg)] select-none [-webkit-touch-callout:none] active:cursor-grabbing',
+          'group relative aspect-[4/3] cursor-grab touch-pan-y overflow-hidden rounded-xl border bg-[var(--app-bg)] transition-transform duration-150 select-none [-webkit-touch-callout:none] active:cursor-grabbing motion-reduce:transition-none',
           i === 0 ? 'border-[var(--app-accent)] ring-2 ring-[var(--app-accent)]/30' : 'border-[var(--app-line)]',
           draggedUrl === url ? 'drag-reorder-slot' : '',
+          pressedUrl === url ? 'scale-[0.97]' : '',
         ]"
-        @pointerdown="placementDrag.onGripPointerDown($event, url)"
+        @pointerdown="onTilePointerDown($event, url)"
+        @pointermove="onTilePointerMove"
+        @pointerup="onTilePointerEnd"
+        @pointercancel="onTilePointerEnd"
+        @touchmove="onTileTouchMove"
+        @touchend="onTileTouchEnd"
+        @touchcancel="onTileTouchEnd"
+        @contextmenu.prevent
       >
         <img :src="url" :alt="`Photo ${i + 1}`" class="h-full w-full object-cover" draggable="false" />
         <span
@@ -107,7 +116,7 @@
 
 <script lang="ts" setup>
 import type { UseDragToReorderReturn } from '~/types/Composables'
-import type { ImageSlotsEmits, ImageSlotsProps } from '~/types/ImageSlots'
+import type { ImageGridLongPress, ImageSlotsEmits, ImageSlotsProps } from '~/types/ImageSlots'
 import type { ComponentPublicInstance, ComputedRef, EmitFn, PropType, Ref } from 'vue'
 import { computed, onBeforeUnmount, ref } from 'vue'
 import { useDragToReorder } from '~/composables/useDragToReorder'
@@ -133,10 +142,19 @@ const props: ImageSlotsProps = defineProps({
 
 const emit: EmitFn<ImageSlotsEmits> = defineEmits<ImageSlotsEmits>()
 
+/** How long a finger rests on a photo before it lifts: a quicker swipe scrolls the sheet instead. */
+const LONG_PRESS_DELAY_MS: number = 200
+
+/** Travel allowed during the hold; past it the gesture is a scroll and the photo stays put. */
+const LONG_PRESS_MOVE_TOLERANCE_PX: number = 8
+
 const placementGridRef: Ref<ComponentPublicInstance | null> = ref(null)
 const draggedUrl: Ref<string | null> = ref(null)
 const draftOrder: Ref<string[] | null> = ref(null)
 const lightboxIndex: Ref<number | null> = ref(null)
+const pressedUrl: Ref<string | null> = ref(null)
+let longPress: ImageGridLongPress | null = null
+let isTileLifted: boolean = false
 
 const placementDrag: UseDragToReorderReturn<string> = useDragToReorder({
   axis: 'grid',
@@ -168,6 +186,109 @@ const lightboxPhotos: ComputedRef<string[]> = computed((): string[] => [...displ
 function placementGridElement(): HTMLElement | null {
   const element: unknown = placementGridRef.value?.$el
   return element instanceof HTMLElement ? element : null
+}
+
+/**
+ * A press on a tile: a mouse or a pen picks the photo up at once, a finger has to rest on it first.
+ * @param event - The pointer pressed on the tile.
+ * @param url - The photo of the tile.
+ */
+function onTilePointerDown(event: PointerEvent, url: string): void {
+  if (!event.isTrusted) return
+  if (event.pointerType !== 'touch') {
+    placementDrag.onGripPointerDown(event, url)
+    return
+  }
+  if (!event.isPrimary || !(event.currentTarget instanceof HTMLElement)) return
+  cancelLongPress()
+  longPress = {
+    url,
+    tile: event.currentTarget,
+    pointerId: event.pointerId,
+    startClientX: event.clientX,
+    startClientY: event.clientY,
+    lastClientX: event.clientX,
+    lastClientY: event.clientY,
+    timer: setTimeout(liftPressedPhoto, LONG_PRESS_DELAY_MS),
+  }
+  pressedUrl.value = url
+}
+
+/**
+ * Follow the resting finger: if it travels before the photo lifts, the gesture is a scroll.
+ * @param event - The pointer moving over the tile.
+ */
+function onTilePointerMove(event: PointerEvent): void {
+  if (!longPress || event.pointerId !== longPress.pointerId) return
+  longPress.lastClientX = event.clientX
+  longPress.lastClientY = event.clientY
+  const travel: number = Math.hypot(event.clientX - longPress.startClientX, event.clientY - longPress.startClientY)
+  if (travel > LONG_PRESS_MOVE_TOLERANCE_PX) cancelLongPress()
+}
+
+/**
+ * The finger left or the browser took the gesture over for a scroll before the photo lifted.
+ * @param event - The pointer lifted or cancelled.
+ */
+function onTilePointerEnd(event: PointerEvent): void {
+  if (longPress && event.pointerId === longPress.pointerId) cancelLongPress()
+}
+
+/**
+ * Forget the resting finger, without lifting anything.
+ */
+function cancelLongPress(): void {
+  if (longPress) clearTimeout(longPress.timer)
+  longPress = null
+  pressedUrl.value = null
+}
+
+/**
+ * The finger rested long enough: hand the press to the reorder engine, as if the tile had just been grabbed where the
+ * finger is now, so the next moves drag the photo instead of scrolling the sheet.
+ */
+function liftPressedPhoto(): void {
+  const press: ImageGridLongPress | null = longPress
+  longPress = null
+  pressedUrl.value = null
+  if (!press) return
+  isTileLifted = true
+  /**
+   * Start the drag from the tile itself, which the engine reads as the grabbed grip.
+   * @param event - The press replayed on the tile.
+   */
+  const grabTile: (event: PointerEvent) => void = (event: PointerEvent): void => {
+    placementDrag.onGripPointerDown(event, press.url)
+  }
+  press.tile.addEventListener('pointerdown', grabTile, { once: true })
+  press.tile.dispatchEvent(
+    new PointerEvent('pointerdown', {
+      pointerId: press.pointerId,
+      pointerType: 'touch',
+      isPrimary: true,
+      button: 0,
+      buttons: 1,
+      clientX: press.lastClientX,
+      clientY: press.lastClientY,
+      cancelable: true,
+    }),
+  )
+}
+
+/**
+ * Once a photo is lifted, the finger drags it: the sheet must not scroll under it.
+ * @param event - The finger moving.
+ */
+function onTileTouchMove(event: TouchEvent): void {
+  if (isTileLifted && event.cancelable) event.preventDefault()
+}
+
+/**
+ * The finger left the screen: the next touch starts again with a scroll or a hold.
+ */
+function onTileTouchEnd(): void {
+  isTileLifted = false
+  cancelLongPress()
 }
 
 /**
@@ -233,6 +354,7 @@ function openLightbox(url: string): void {
 }
 
 onBeforeUnmount((): void => {
+  cancelLongPress()
   placementDrag.cancelDrag()
 })
 </script>

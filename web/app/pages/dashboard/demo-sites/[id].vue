@@ -751,7 +751,7 @@ const atelierTools: DemoSiteAtelierTool[] = [
     title: 'Photos',
     hint: 'La première devient l’en-tête, la deuxième « à propos », le reste la galerie.',
     coarsePointerHint:
-      'Glissez une photo pour la déplacer. La première est l’en-tête, la deuxième « à propos », le reste la galerie.',
+      'Maintenez une photo puis glissez-la. La première est l’en-tête, la deuxième « à propos », le reste la galerie.',
   },
   {
     key: 'prestations',
