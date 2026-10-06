@@ -268,3 +268,22 @@ quotidien épuisé) : 24 gardés en 51 minutes, 529 requêtes.
 ### Résultat de la manche
 
 17 bons pour 24 gardés : la France email est presque complète (39 sur 40).
+
+## Manches 7 et 8 — Suisse garages + électriciens, Québec garages + électriciens (nuit du 6 au 7 octobre)
+
+| Recherche | Gardés | Bons | Faux |
+|---|---|---|---|
+| n° 9, Suisse, 8 par métier (90 minutes, 664 requêtes) | 11 | 5 (prospects 315 à 319) | 2 astérisques ratés, 2 sites, 2 vendeurs de voitures d'occasion |
+| n° 10, Québec, 4 par métier (12 minutes, 99 requêtes) | 10 | 9 (prospects 320 à 328) | 1 site |
+
+### Écarts et causes
+
+| Écart | Cause | Correction |
+|---|---|---|
+| Un garage « … Sàrl » dont la fiche de l'annuaire porte l'astérisque passait pour non listé | search.ch exige tous les mots : la forme juridique (« Sàrl ») absente de la fiche la cachait | Le nom est cherché sans sa forme juridique (Sàrl, SA, GmbH, Inc…) |
+| Un domaine d'email au nom du garage (« adnauto.ch » pour « ADN Autos Sàrl ») non relié | La forme juridique faussait la comparaison | La comparaison se fait sans forme juridique |
+| Un électricien gardé alors que son numéro porte l'astérisque dans l'annuaire | Un annuaire qui ne répond pas (limite de requêtes, panne) était lu comme « pas listé » | Annuaire muet = « À confirmer » (astérisque non lu) ; une fiche sans vCard est lue quand même |
+
+### Résultat
+
+Le 7 octobre à 0 h 15 : France email 40/40, Québec 25/20, SMS France 15/15, Suisse 16/40.
