@@ -411,9 +411,8 @@ class ProspectSearchService:
                 return None
         await facebook_contact_recorder.record(candidate_id, read)
         with SessionLocal() as db:
-            candidate = db.get(ProspectSearchCandidate, candidate_id)
             self._carry_on_after_browser_round(db, search_id)
-        return candidate
+            return db.get(ProspectSearchCandidate, candidate_id)
 
     async def keep_candidate(
         self, db: Session, user_id: int, search_id: int, candidate_id: int

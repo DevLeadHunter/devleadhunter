@@ -49,6 +49,7 @@ from prospect_search_cli import _parse_args as parse_command_line
 from schemas.prospect_search import (
     CandidateDecisions,
     FacebookContactPayload,
+    ProspectSearchCandidateResponse,
     ProspectSearchCreate,
     ProspectSearchDetail,
     RefusedCandidateDecision,
@@ -489,6 +490,7 @@ def test_a_facebook_read_completes_the_waiting_candidate(canned_world: None, db:
     db.expire_all()
 
     assert updated is not None
+    assert ProspectSearchCandidateResponse.model_validate(updated).status == "kept"
     candidate = db.get(ProspectSearchCandidate, waiting.id)
     assert candidate is not None
     assert (candidate.status, candidate.email, candidate.email_proof_level) == ("kept", "grainedevie@gmail.com", "a")
