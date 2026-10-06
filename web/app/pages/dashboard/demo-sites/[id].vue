@@ -162,7 +162,7 @@
               <div class="flex shrink-0 items-start gap-3 px-4 pt-1 pb-2 md:px-5">
                 <div class="min-w-0 flex-1">
                   <h2 class="text-sm font-semibold text-[var(--app-ink)]">{{ activeToolMeta.title }}</h2>
-                  <p class="truncate text-xs text-[var(--app-ink-soft)]">{{ activeToolMeta.hint }}</p>
+                  <p class="truncate text-xs text-[var(--app-ink-soft)]">{{ activeToolHint }}</p>
                 </div>
                 <button
                   type="button"
@@ -243,13 +243,22 @@
                 />
 
                 <template v-else-if="activeTool === 'photos'">
-                  <DemoSitesImageSlots
-                    v-if="siteImages && siteImages.pool.length"
-                    :pool="siteImages.pool"
-                    :order="imagesOrder"
-                    is-heading-hidden
-                    @update:order="onImageOrderChange"
-                  />
+                  <template v-if="siteImages && siteImages.pool.length">
+                    <DemoSitesImageGrid
+                      v-if="isCoarsePointer"
+                      :pool="siteImages.pool"
+                      :order="imagesOrder"
+                      is-heading-hidden
+                      @update:order="onImageOrderChange"
+                    />
+                    <DemoSitesImageSlots
+                      v-else
+                      :pool="siteImages.pool"
+                      :order="imagesOrder"
+                      is-heading-hidden
+                      @update:order="onImageOrderChange"
+                    />
+                  </template>
                   <UiEmptyState
                     v-else
                     title="Aucune photo exploitable"
@@ -694,6 +703,7 @@ import type { UseVideoGenerationProgressReturn } from '~/composables/useVideoGen
 import { useVideoGenerationProgress } from '~/composables/useVideoGenerationProgress'
 import { ServiceCards } from '~/utils/serviceCards'
 import { useEventListener } from '@vueuse/core'
+import { useCoarsePointer } from '~/composables/useCoarsePointer'
 
 const VIDEO_STATE_POLL_INTERVAL_MS: number = 5_000
 
@@ -716,6 +726,7 @@ const { openExternalUrl }: UseOpenExternalUrlReturn = useOpenExternalUrl()
 const toast: UseToastReturn = useToast()
 const videoProgress: UseVideoGenerationProgressReturn = useVideoGenerationProgress()
 const prospectSearchStore: ReturnType<typeof useProspectSearchStore> = useProspectSearchStore()
+const isCoarsePointer: Ref<boolean> = useCoarsePointer()
 
 /** The tools of the atelier, in the order of the bottom bar; « Prestations » only when the template has cards. */
 const atelierTools: DemoSiteAtelierTool[] = [
@@ -739,6 +750,8 @@ const atelierTools: DemoSiteAtelierTool[] = [
     icon: 'i-lucide-images',
     title: 'Photos',
     hint: 'La première devient l’en-tête, la deuxième « à propos », le reste la galerie.',
+    coarsePointerHint:
+      'Glissez une photo pour la déplacer. La première est l’en-tête, la deuxième « à propos », le reste la galerie.',
   },
   {
     key: 'prestations',
@@ -1039,6 +1052,13 @@ const activeToolMeta: ComputedRef<DemoSiteAtelierTool | null> = computed(
     atelierTools.find((tool: DemoSiteAtelierTool): boolean => tool.key === activeTool.value) ?? null,
 )
 
+/** The sheet's subtitle: on a touch screen, a tool may explain its finger gestures instead. */
+const activeToolHint: ComputedRef<string> = computed((): string => {
+  const tool: DemoSiteAtelierTool | null = activeToolMeta.value
+  if (!tool) return ''
+  return isCoarsePointer.value && tool.coarsePointerHint ? tool.coarsePointerHint : tool.hint
+})
+
 /** Which tools hold an unpublished change, for the dot on their button. */
 const toolPendingChanges: ComputedRef<Record<DemoSiteAtelierToolKey, boolean>> = computed(
   (): Record<DemoSiteAtelierToolKey, boolean> => ({
@@ -1220,11 +1240,13 @@ function toggleSheetSize(): void {
 }
 
 /**
- * Close the open sheet with Escape, unless something else already handled the key.
+ * Close the open sheet with Escape, unless something else already handled the key or a dialog above the page
+ * (the photo viewer) takes it for itself.
  * @param event - The key pressed anywhere on the page.
  */
 function onDocumentKeydown(event: KeyboardEvent): void {
   if (event.key !== 'Escape' || event.defaultPrevented || activeTool.value === null) return
+  if (document.querySelector('[role="dialog"], [aria-modal="true"]')) return
   closeActiveTool()
 }
 

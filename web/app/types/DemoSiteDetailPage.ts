@@ -3,13 +3,14 @@ import type { TemplatePreviewDevice } from '~/types/TemplatePicker'
 /** The tools of the atelier bar. */
 export type DemoSiteAtelierToolKey = 'template' | 'couleurs' | 'photos' | 'prestations' | 'video' | 'plus'
 
-/** One tool of the atelier bar and the title of its sheet. */
+/** One tool of the atelier bar and the title of its sheet; `coarsePointerHint` replaces `hint` on a touch screen. */
 export type DemoSiteAtelierTool = {
   key: DemoSiteAtelierToolKey
   label: string
   icon: string
   title: string
   hint: string
+  coarsePointerHint?: string
 }
 
 /** One way of looking at the site in the atelier. */
