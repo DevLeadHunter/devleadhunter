@@ -3,8 +3,10 @@
 import asyncio
 from typing import Any
 
+import httpx
 import pytest
 
+import services.prospect_search.swiss_directory as swiss_directory_module
 from enums.prospect_search import CandidateOrigin, CandidateRejectReason, CandidateStatus, EmailProofLevel
 from enums.website_status import WebsiteStatus
 from models.prospect_search_candidate import ProspectSearchCandidate
@@ -257,3 +259,83 @@ def test_a_marketplace_page_given_as_the_listing_s_website_is_not_its_website() 
     )
 
     assert facts.website is None
+
+
+def _directory_answering(pages: dict[str, tuple[int, str]]) -> httpx.MockTransport:
+    """A search.ch stand-in answering each path (with its query) from *pages*."""
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        key = request.url.path + (f"?{request.url.query.decode()}" if request.url.query else "")
+        status, body = pages.get(key, pages.get(request.url.path, (404, "")))
+        return httpx.Response(status, text=body)
+
+    return httpx.MockTransport(handler)
+
+
+def _read_directory(monkeypatch: pytest.MonkeyPatch, pages: dict[str, tuple[int, str]], phone: str) -> Any:
+    transport = _directory_answering(pages)
+    real_client = httpx.AsyncClient
+
+    def client_with_transport(**kwargs: Any) -> httpx.AsyncClient:
+        return real_client(transport=transport, **kwargs)
+
+    monkeypatch.setattr(swiss_directory_module.httpx, "AsyncClient", client_with_transport)
+    return asyncio.run(SwissDirectory().entry_for_phone(phone))
+
+
+def test_a_number_listed_once_opens_its_entry_at_once(monkeypatch: pytest.MonkeyPatch) -> None:
+    entry_page = _PAGE_WITH_ASTERISK + '<a href="/tel/vcard/SV-Automobiles.fr.vcf?key=03cba86fb3ea3899">vCard</a>'
+    entry = _read_directory(
+        monkeypatch,
+        {
+            "/tel/": (200, entry_page),
+            "/tel/vcard/SV-Automobiles.fr.vcf": (200, "EMAIL:svauto.vevey@gmail.com\r\n"),
+        },
+        "021 922 91 68",
+    )
+
+    assert entry is not None
+    assert (entry.refuses_advertising, entry.emails) == (True, ("svauto.vevey@gmail.com",))
+
+
+def test_a_number_listed_several_times_opens_the_first_entry_of_the_list(monkeypatch: pytest.MonkeyPatch) -> None:
+    listing = '<a href="https://search.ch/tel/clarens/rue-du-lac-133/garage-ad">ad</a><a href="/tel/saxon/route-du-leman-34/garage-du-valais-sarl">Garage du Valais</a>'
+    entry_page = _PAGE_WITHOUT_ASTERISK + '<a href="/tel/vcard/Garage-du-Valais.fr.vcf?key=ab476683a7d58228">vCard</a>'
+    entry = _read_directory(
+        monkeypatch,
+        {
+            "/tel/": (200, listing),
+            "/tel/saxon/route-du-leman-34/garage-du-valais-sarl.fr.html": (200, entry_page),
+            "/tel/vcard/Garage-du-Valais.fr.vcf": (200, _VCARD),
+        },
+        "027 744 47 48",
+    )
+
+    assert entry is not None
+    assert entry.url == "https://search.ch/tel/saxon/route-du-leman-34/garage-du-valais-sarl.fr.html"
+    assert entry.emails == ("garageduvalais@hotmail.com",)
+
+
+def test_an_unlisted_number_has_no_entry(monkeypatch: pytest.MonkeyPatch) -> None:
+    assert _read_directory(monkeypatch, {"/tel/": (404, "")}, "021 925 36 66") is None
+
+
+def test_the_asterisk_of_a_local_ch_extract_refuses_advertising_without_the_directory() -> None:
+    facts = _facts(name="Garage des Adonis Lambiel Sàrl", city="Saxon", phone="027 744 20 05")
+    page = {
+        "organic": [
+            {
+                "link": "https://www.local.ch/fr/d/saxon/1907/garage/garage-des-adonis-lambiel-sarl-rsl0p",
+                "title": "Garage des Adonis Lambiel Sàrl - Saxon",
+                "description": "Adresse: Route du Léman 55, 1907 Saxon ; Numéro de téléphone: 027 744 20 05* ; "
+                "Email: garageadonis.lambiel@netplus.ch",
+            }
+        ]
+    }
+
+    asyncio.run(
+        CandidateVerifier(_OnePageClient(page), _SilentJudge(), _ScriptedDirectory(None)).verify(facts, _GARAGE)  # type: ignore[arg-type]
+    )
+
+    assert facts.refuses_advertising is True
+    assert CandidateDecision.decide(facts, _GARAGE, _EMAIL_SEARCH).reject_reason == CandidateRejectReason.NO_ADVERTISING

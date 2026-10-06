@@ -60,6 +60,9 @@ class SwissDirectory:
         Args:
             phone: The number as the business wrote it.
 
+        A number listed once opens its entry page at once; listed several times, it opens the list
+        of entries, and the first one is read.
+
         Returns:
             The entry, or ``None`` for a number that is not Swiss, not listed, or a directory that does not answer.
         """
@@ -72,20 +75,24 @@ class SwissDirectory:
                 follow_redirects=True,
                 headers=website_liveness_service.REQUEST_HEADERS,
             ) as http:
-                listing = await http.get(f"{_BASE_URL}/tel/", params={"was": national_number})
-                entry_path = _ENTRY_PATH_RE.search(listing.text) if listing.status_code == 200 else None
-                if entry_path is None:
-                    return None
-                entry_url = f"{_BASE_URL}{entry_path.group(1)}.fr.html"
-                page = await http.get(entry_url)
+                page = await http.get(f"{_BASE_URL}/tel/", params={"was": national_number, "lang": "fr"})
                 if page.status_code != 200:
                     return None
+                entry_url = str(page.url)
+                entry_path = None if _VCARD_PATH_RE.search(page.text) else _ENTRY_PATH_RE.search(page.text)
+                if entry_path is not None:
+                    entry_url = f"{_BASE_URL}{entry_path.group(1)}.fr.html"
+                    page = await http.get(entry_url)
+                    if page.status_code != 200:
+                        return None
                 vcard_path = _VCARD_PATH_RE.search(page.text)
-                vcard = await http.get(f"{_BASE_URL}{html.unescape(vcard_path.group(1))}") if vcard_path else None
+                if vcard_path is None:
+                    return None
+                vcard = await http.get(f"{_BASE_URL}{html.unescape(vcard_path.group(1))}")
         except httpx.HTTPError as exc:
             logger.info("search.ch lookup of %s failed: %s", national_number, exc)
             return None
-        vcard_text = vcard.text if vcard is not None and vcard.status_code == 200 else ""
+        vcard_text = vcard.text if vcard.status_code == 200 else ""
         return self.parse_entry(entry_url, page.text, vcard_text)
 
     @staticmethod

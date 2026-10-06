@@ -38,6 +38,8 @@ logger = logging.getLogger(__name__)
 _EMAIL_RE: re.Pattern[str] = re.compile(r"[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}", re.IGNORECASE)
 _FEATURE_ID_RE: re.Pattern[str] = re.compile(r"0x[0-9a-f]+:0x([0-9a-f]+)", re.IGNORECASE)
 _SWISS_COMPANY_NUMBER_RE: re.Pattern[str] = re.compile(r"CHE-\d{3}\.\d{3}\.\d{3}")
+_SWISS_DIRECTORY_HOSTS: tuple[str, ...] = ("local.ch", "search.ch")
+_STARRED_SWISS_NUMBER_RE: re.Pattern[str] = re.compile(r"(?:\+41|\b0)\s?\d{2}(?:[\s.]?\d){7}\s?\*")
 _CLOSED_MARKERS: tuple[str, ...] = (
     "définitivement fermé",
     "fermé définitivement",
@@ -211,6 +213,7 @@ class CandidateVerifier:
         self._read_knowledge_panel(facts, page.get("knowledge"))
         results = self.result_lines(page)
         has_unsettled_results = self._read_results(facts, results, trade)
+        self._read_no_advertising_marks(facts, results, trade)
         snippet_emails = self._emails_in(results)
 
         verdict: JudgeVerdict | None = None
@@ -232,6 +235,23 @@ class CandidateVerifier:
             facts.website_status = status.value if status is not None else None
         await self.consider_email_domain(facts, trade)
 
+    def _read_no_advertising_marks(
+        self, facts: CandidateFacts, results: list[SearchResultLine], trade: TradeProfile
+    ) -> None:
+        """Read the asterisk a Swiss directory prints after the numbers of a subscriber who refuses advertising."""
+        if facts.country != "CH" or facts.refuses_advertising:
+            return
+        for line in results:
+            is_directory_page = any(
+                line.host == host or line.host.endswith(f".{host}") for host in _SWISS_DIRECTORY_HOSTS
+            )
+            if not is_directory_page or not self.names_business(line.title, facts, trade):
+                continue
+            if _STARRED_SWISS_NUMBER_RE.search(line.description):
+                facts.refuses_advertising = True
+                facts.add_evidence("no_advertising", "*", source=line.host, url=line.link, snippet=line.text)
+                return
+
     async def _read_swiss_directory(self, facts: CandidateFacts, trade: TradeProfile) -> None:
         """
         Read the search.ch entry of a Swiss business, found by its phone number.
@@ -246,7 +266,7 @@ class CandidateVerifier:
         entry = await self._directory.entry_for_phone(facts.phone)
         if entry is None:
             return
-        if entry.refuses_advertising:
+        if entry.refuses_advertising and not facts.refuses_advertising:
             facts.refuses_advertising = True
             facts.add_evidence("no_advertising", "*", source="Annuaire search.ch", url=entry.url)
         if not (entry.is_business or self.names_business(entry.name, facts, trade)):
