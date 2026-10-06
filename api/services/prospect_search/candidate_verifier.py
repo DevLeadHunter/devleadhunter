@@ -184,6 +184,7 @@ _EXTRA_THIRD_PARTY_HOSTS: frozenset[str] = frozenset(
         "firmen.ch",
         "landi.ch",
         "autofit.ch",
+        "411habitation.com",
         "yoojo.ch",
         "yoojo.fr",
         "idgarages.com",

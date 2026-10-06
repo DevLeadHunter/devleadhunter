@@ -528,6 +528,7 @@ def test_an_entry_page_is_read_with_its_vcard(monkeypatch: pytest.MonkeyPatch) -
         "https://www.horticole-comparatif.ch/d/horticultures/heritier-creation-d:5XhkSzmXq",
         "https://gardening.gartenbauvergleich.ch/d/gardening-companies/ns-design-d:9ghqSXRB7",
         "https://autofit.ch/fr/garage/garage-des-bains/",
+        "https://www.411habitation.com/elagueur/lanaudiere/saint-paul-4/arbo-douceur-inc.htm",
     ],
 )
 def test_a_comparison_site_or_a_network_page_is_never_a_website(link: str) -> None:

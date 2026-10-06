@@ -76,7 +76,7 @@ _PROFILES: tuple[TradeProfile, ...] = (
         search_terms={_DEFAULT_COUNTRY: ("électricien",), "CA": ("électricien", "entrepreneur électricien")},
         category_keywords=("electri",),
         excluded_category_keywords=(*_SHOP_CATEGORIES, "fournisseur d'electricite", "compagnie d'electricite"),
-        rge_domains=("Radiateurs électriques, dont régulation.", "Ventilation mécanique"),
+        rge_domains=("Radiateurs électriques, dont régulation.",),
         rbq_subcategories=("16",),
     ),
     TradeProfile(

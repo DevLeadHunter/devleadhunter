@@ -67,6 +67,9 @@ class TestTradeCatalog:
         assert profile.terms_for("FR") == ("Serrurier",)
         assert profile.prospect_category == "serrurier"
 
+    def test_the_electrician_registry_domains_leave_out_the_heating_trades(self) -> None:
+        assert TradeCatalog.resolve("électricien").rge_domains == ("Radiateurs électriques, dont régulation.",)
+
     def test_a_shop_category_is_not_the_trade(self) -> None:
         assert _LANDSCAPER.accepts_category("Paysagiste") is True
         assert _LANDSCAPER.accepts_category("Magasin d'articles pour l'aménagement paysager") is False
