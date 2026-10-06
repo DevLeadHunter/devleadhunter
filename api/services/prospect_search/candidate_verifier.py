@@ -28,7 +28,7 @@ from services.prospect_search.business_name import BusinessName
 from services.prospect_search.candidate_facts import CandidateFacts
 from services.prospect_search.candidate_identity import CandidateIdentity
 from services.prospect_search.search_judge import JudgeVerdict, SearchJudge, SearchResultLine
-from services.prospect_search.swiss_directory import SwissDirectory, swiss_directory
+from services.prospect_search.swiss_directory import SwissDirectory, SwissDirectoryEntry, swiss_directory
 from services.prospect_search.trade_catalog import TradeProfile
 from services.validation_service import validation_service
 from services.website_liveness_service import website_liveness_service
@@ -299,9 +299,8 @@ class CandidateVerifier:
         is_already_out = facts.is_closed or facts.is_chain or facts.is_other_business or not facts.matches_trade
         if facts.country != "CH" or is_already_out:
             return
-        entry = await self._directory.entry_for_phone(facts.phone)
+        entry = await self._directory.entry_for_phone(facts.phone) or await self._entry_found_by_name(facts, trade)
         if entry is None:
-            await self._read_swiss_directory_by_name(facts, trade)
             return
         if entry.refuses_advertising and not facts.refuses_advertising:
             facts.refuses_advertising = True
@@ -316,21 +315,20 @@ class CandidateVerifier:
             ):
                 facts.offer_email(email, EmailProofLevel.DIRECTORY, source="Annuaire search.ch", url=entry.url)
 
-    async def _read_swiss_directory_by_name(self, facts: CandidateFacts, trade: TradeProfile) -> None:
+    async def _entry_found_by_name(self, facts: CandidateFacts, trade: TradeProfile) -> SwissDirectoryEntry | None:
         """
-        Look up by its name, in its town, a Swiss business whose number the directory does not list.
+        The entry of a Swiss business whose number the directory does not list, found by its name in its town.
 
-        A business entry naming it, by its own name or by the owner on its extra line, is the
-        business's entry: its asterisk refuses advertising.
+        A business entry naming it, by its own name or by the owner on its extra line, is its entry;
+        its page is read whole, since the list leaves out the asterisk of a second number.
         """
-        for entry in await self._directory.entries_for_name(facts.name, facts.town):
-            is_entry_of_business = entry.is_business and self.names_business(
-                f"{entry.name} {entry.extra_line}", facts, trade
+        for listed_entry in await self._directory.entries_for_name(facts.name, facts.town):
+            is_entry_of_business = listed_entry.is_business and self.names_business(
+                f"{listed_entry.name} {listed_entry.extra_line}", facts, trade
             )
-            if is_entry_of_business and entry.refuses_advertising:
-                facts.refuses_advertising = True
-                facts.add_evidence("no_advertising", "*", source="Annuaire search.ch", url=entry.url)
-                return
+            if is_entry_of_business:
+                return await self._directory.entry_at(listed_entry.url) or listed_entry
+        return None
 
     @staticmethod
     def is_chain_name(name: str) -> bool:

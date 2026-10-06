@@ -60,7 +60,7 @@ class SwissDirectoryEntry:
 
 
 class SwissDirectory:
-    """Reads one search.ch entry, found by the phone number a business already showed."""
+    """Reads one search.ch entry, found by the phone number a business already showed or by its name."""
 
     async def entry_for_phone(self, phone: str | None) -> SwissDirectoryEntry | None:
         """
@@ -102,6 +102,33 @@ class SwissDirectory:
             logger.info("search.ch lookup of %s failed: %s", national_number, exc)
             return None
         vcard_text = vcard.text if vcard.status_code == 200 else ""
+        return self.parse_entry(entry_url, page.text, vcard_text)
+
+    async def entry_at(self, entry_url: str) -> SwissDirectoryEntry | None:
+        """
+        Read the entry page of one subscriber and its vCard.
+
+        Args:
+            entry_url: Address of the entry page, as a result list gives it.
+
+        Returns:
+            The entry, or ``None`` when the directory does not answer.
+        """
+        try:
+            async with httpx.AsyncClient(
+                timeout=_TIMEOUT_SECONDS,
+                follow_redirects=True,
+                headers=website_liveness_service.REQUEST_HEADERS,
+            ) as http:
+                page = await http.get(entry_url)
+                if page.status_code != 200:
+                    return None
+                vcard_path = _VCARD_PATH_RE.search(page.text)
+                vcard = await http.get(f"{_BASE_URL}{html.unescape(vcard_path.group(1))}") if vcard_path else None
+        except httpx.HTTPError as exc:
+            logger.info("search.ch entry %s failed: %s", entry_url, exc)
+            return None
+        vcard_text = vcard.text if vcard is not None and vcard.status_code == 200 else ""
         return self.parse_entry(entry_url, page.text, vcard_text)
 
     async def entries_for_name(self, name: str, town: str) -> list[SwissDirectoryEntry]:

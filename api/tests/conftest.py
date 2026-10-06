@@ -37,8 +37,12 @@ def swiss_directory_offline(monkeypatch: pytest.MonkeyPatch) -> None:
     async def no_entries(name: str, town: str) -> list[SwissDirectoryEntry]:
         return []
 
+    async def no_entry_page(entry_url: str) -> SwissDirectoryEntry | None:
+        return None
+
     monkeypatch.setattr(swiss_directory, "entry_for_phone", no_entry)
     monkeypatch.setattr(swiss_directory, "entries_for_name", no_entries)
+    monkeypatch.setattr(swiss_directory, "entry_at", no_entry_page)
 
 
 @pytest.fixture

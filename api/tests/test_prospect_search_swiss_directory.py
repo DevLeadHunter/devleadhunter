@@ -81,10 +81,14 @@ class _ScriptedDirectory(SwissDirectory):
     """A directory answering prepared entries, and remembering the numbers it was asked."""
 
     def __init__(
-        self, entry: SwissDirectoryEntry | None, entries_by_name: list[SwissDirectoryEntry] | None = None
+        self,
+        entry: SwissDirectoryEntry | None,
+        entries_by_name: list[SwissDirectoryEntry] | None = None,
+        entry_pages: dict[str, SwissDirectoryEntry] | None = None,
     ) -> None:
         self._entry = entry
         self._entries_by_name = entries_by_name or []
+        self._entry_pages = entry_pages or {}
         self.asked_phones: list[str | None] = []
 
     async def entry_for_phone(self, phone: str | None) -> SwissDirectoryEntry | None:
@@ -93,6 +97,9 @@ class _ScriptedDirectory(SwissDirectory):
 
     async def entries_for_name(self, name: str, town: str) -> list[SwissDirectoryEntry]:
         return self._entries_by_name
+
+    async def entry_at(self, entry_url: str) -> SwissDirectoryEntry | None:
+        return self._entry_pages.get(entry_url)
 
 
 @pytest.fixture(autouse=True)
@@ -467,3 +474,48 @@ def test_an_entry_of_another_business_found_by_name_brings_nothing() -> None:
     _verify(facts, _ScriptedDirectory(None, entries_by_name=[neighbour]))
 
     assert facts.refuses_advertising is False
+
+
+def test_the_page_of_an_entry_found_by_name_gives_the_asterisk_the_list_left_out() -> None:
+    facts = _facts(name="Dumoulin Michel & Fils", city="Savièse", phone="079 219 16 30", trade_key="paysagiste")
+    listed = _entry(
+        url="https://search.ch/tel/saviese/chemin-de-pradzere-54/dumoulin-michel-fils.fr.html",
+        name="Dumoulin Michel & Fils",
+        is_business=True,
+    )
+    page = _entry(
+        url=listed.url,
+        name="Dumoulin Michel & Fils, Paysagistes à Savièse",
+        is_business=True,
+        refuses_advertising=True,
+        emails=("info@dumoulin-paysagiste.ch",),
+    )
+
+    _verify(facts, _ScriptedDirectory(None, entries_by_name=[listed], entry_pages={listed.url: page}))
+
+    assert facts.refuses_advertising is True
+    assert facts.email == "info@dumoulin-paysagiste.ch"
+
+
+def test_an_entry_page_is_read_with_its_vcard(monkeypatch: pytest.MonkeyPatch) -> None:
+    transport = _directory_answering(
+        {
+            "/tel/saxon/route-du-leman-34/garage-du-valais-sarl.fr.html": (
+                200,
+                _PAGE_WITHOUT_ASTERISK + '<a href="/tel/vcard/Garage-du-Valais.fr.vcf?key=ab476683a7d58228">vCard</a>',
+            ),
+            "/tel/vcard/Garage-du-Valais.fr.vcf": (200, _VCARD),
+        }
+    )
+    real_client = httpx.AsyncClient
+
+    def client_with_transport(**kwargs: Any) -> httpx.AsyncClient:
+        return real_client(transport=transport, **kwargs)
+
+    monkeypatch.setattr(swiss_directory_module.httpx, "AsyncClient", client_with_transport)
+    entry = asyncio.run(
+        SwissDirectory().entry_at("https://search.ch/tel/saxon/route-du-leman-34/garage-du-valais-sarl.fr.html")
+    )
+
+    assert entry is not None
+    assert entry.emails == ("garageduvalais@hotmail.com",)
