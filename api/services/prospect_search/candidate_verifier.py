@@ -28,6 +28,7 @@ from services.prospect_search.business_name import BusinessName
 from services.prospect_search.candidate_facts import CandidateFacts
 from services.prospect_search.candidate_identity import CandidateIdentity
 from services.prospect_search.search_judge import JudgeVerdict, SearchJudge, SearchResultLine
+from services.prospect_search.swiss_directory import SwissDirectory, swiss_directory
 from services.prospect_search.trade_catalog import TradeProfile
 from services.validation_service import validation_service
 from services.website_liveness_service import website_liveness_service
@@ -128,6 +129,34 @@ _EXTRA_THIRD_PARTY_HOSTS: frozenset[str] = frozenset(
         "edirex.ch",
         "yellowpages.swiss",
         "artisanlocal.ch",
+        "autoscout24.ch",
+        "autoscout24.com",
+        "motoscout24.ch",
+        "garage-comparatif.ch",
+        "garage-vergleich.ch",
+        "garage-comparazione.ch",
+        "garageromand.ch",
+        "garagesuisse.com",
+        "auto2day.ch",
+        "cargpt.ch",
+        "grip500reifen.ch",
+        "pneus-online-suisse.ch",
+        "centralepneus.ch",
+        "firststop.ch",
+        "bestdrive.ch",
+        "electricien-comparatif.ch",
+        "elektrikervergleich.ch",
+        "nosavis.ch",
+        "starofservice.ch",
+        "guidefribourg.ch",
+        "zip.ch",
+        "1820.ch",
+        "ranq.ch",
+        "graph.swiss",
+        "lixt.ch",
+        "pappers.ch",
+        "jobup.ch",
+        "emploisuisse.com",
         "yoojo.ch",
         "yoojo.fr",
         "idgarages.com",
@@ -153,9 +182,12 @@ _EXTRA_THIRD_PARTY_HOSTS: frozenset[str] = frozenset(
 class CandidateVerifier:
     """Verifies one candidate with a single web search."""
 
-    def __init__(self, client: BrightDataClient, judge: SearchJudge) -> None:
+    def __init__(
+        self, client: BrightDataClient, judge: SearchJudge, directory: SwissDirectory = swiss_directory
+    ) -> None:
         self._client = client
         self._judge = judge
+        self._directory = directory
         self.judge_call_count: int = 0
 
     async def verify(self, facts: CandidateFacts, trade: TradeProfile) -> None:
@@ -193,11 +225,39 @@ class CandidateVerifier:
             )
         self._apply_verdict(facts, verdict, results, trade)
         self._keep_snippet_emails(facts, snippet_emails, results, verdict, trade)
+        await self._read_swiss_directory(facts, trade)
 
         if facts.website:
             status = await website_liveness_service.check_website_status(facts.website)
             facts.website_status = status.value if status is not None else None
         await self.consider_email_domain(facts, trade)
+
+    async def _read_swiss_directory(self, facts: CandidateFacts, trade: TradeProfile) -> None:
+        """
+        Read the search.ch entry of a Swiss business, found by its phone number.
+
+        The asterisk refusing advertising belongs to the number, whoever the entry names; the
+        website and the email count only for a business entry, or an entry naming the business
+        (never for a private person sharing the number).
+        """
+        is_already_out = facts.is_closed or facts.is_chain or facts.is_other_business or not facts.matches_trade
+        if facts.country != "CH" or not facts.phone or is_already_out:
+            return
+        entry = await self._directory.entry_for_phone(facts.phone)
+        if entry is None:
+            return
+        if entry.refuses_advertising:
+            facts.refuses_advertising = True
+            facts.add_evidence("no_advertising", "*", source="Annuaire search.ch", url=entry.url)
+        if not (entry.is_business or self.names_business(entry.name, facts, trade)):
+            return
+        for website in entry.websites:
+            self._consider_website(facts, website, source="Annuaire search.ch", proof_url=entry.url)
+        for email in entry.emails:
+            if validation_service.is_valid_email(email) and not email_candidate_scorer.belongs_to_an_institution(
+                email, city=facts.town
+            ):
+                facts.offer_email(email, EmailProofLevel.DIRECTORY, source="Annuaire search.ch", url=entry.url)
 
     @staticmethod
     def is_chain_name(name: str) -> bool:

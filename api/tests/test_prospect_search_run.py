@@ -401,6 +401,61 @@ def test_the_command_line_shows_a_journal_time_in_the_machine_s_timezone() -> No
     assert ProspectSearchCli.local_clock_time("2026-10-04T12:34:56") == expected
 
 
+class _SilentFirstPagesClient(_CannedSearchClient):
+    """Bright Data under load: the first local requests get no readable page, the later ones are answered."""
+
+    silent_local_requests: int = 1
+
+    def __init__(self) -> None:
+        super().__init__()
+        self._local_requests = 0
+
+    async def google_local_html(self, query: str, *, country: str = "FR", start: int = 0) -> str | None:
+        self._local_requests += 1
+        if self._local_requests <= self.silent_local_requests:
+            self.request_count += 1
+            return None
+        return await super().google_local_html(query, country=country, start=start)
+
+    async def google_parsed(
+        self, query: str, *, country: str = "FR", start: int = 0, local: bool = False
+    ) -> dict[str, Any] | None:
+        if local and self._local_requests <= self.silent_local_requests:
+            self.request_count += 1
+            return None
+        return await super().google_parsed(query, country=country, start=start, local=local)
+
+
+def test_a_town_google_did_not_answer_is_read_again_before_the_search_ends(
+    canned_world: None, db: Session, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(runner_module, "BrightDataClient", _SilentFirstPagesClient)
+    search_id = _create_search(db)
+
+    asyncio.run(ProspectSearchRunner(search_id).run())
+    db.expire_all()
+    search = db.get(ProspectSearch, search_id)
+
+    assert _candidates(db, search_id)["Tendance Nature"].status == CandidateStatus.KEPT.value
+    assert search.progress["trades"]["paysagiste"]["towns"] == ["Sion"]
+    assert any("Sion : Google n'a pas répondu" in line["message"] for line in search.journal)
+
+
+def test_a_town_google_never_answered_is_not_counted_as_scanned(
+    canned_world: None, db: Session, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(_SilentFirstPagesClient, "silent_local_requests", 100)
+    monkeypatch.setattr(runner_module, "BrightDataClient", _SilentFirstPagesClient)
+    search_id = _create_search(db)
+
+    asyncio.run(ProspectSearchRunner(search_id).run())
+    db.expire_all()
+    search = db.get(ProspectSearch, search_id)
+
+    assert search.progress["trades"]["paysagiste"]["towns"] == []
+    assert _candidates(db, search_id) == {}
+
+
 def test_the_website_button_of_a_listing_is_stored_with_its_candidate(canned_world: None, db: Session) -> None:
     search_id = _create_search(db, count=2)
 
@@ -920,14 +975,15 @@ def test_refusing_a_kept_candidate_while_the_search_runs_sends_it_on_to_the_next
 
     async def scan_town_then_refuse_what_sion_gave(
         runner: ProspectSearchRunner, state: Any, profile: Any, town: str
-    ) -> None:
-        await scan_town(runner, state, profile, town)
+    ) -> bool:
+        was_read = await scan_town(runner, state, profile, town)
         if town != "Sion" or not refuses_the_kept_candidate:
-            return
+            return was_read
         with sessionmaker(bind=engine)() as session:
             kept = _candidates(session, search_id)["Tendance Nature"]
             assert kept.status == CandidateStatus.KEPT.value
             prospect_search_service.reject_candidate(session, USER_ID, search_id, kept.id)
+        return was_read
 
     monkeypatch.setattr(ProspectSearchRunner, "_scan_town", scan_town_then_refuse_what_sion_gave)
 
@@ -948,11 +1004,12 @@ def test_a_candidate_refused_during_the_last_town_no_longer_counts_at_the_end_of
 
     async def scan_town_then_refuse_what_it_kept(
         runner: ProspectSearchRunner, state: Any, profile: Any, town: str
-    ) -> None:
-        await scan_town(runner, state, profile, town)
+    ) -> bool:
+        was_read = await scan_town(runner, state, profile, town)
         with sessionmaker(bind=engine)() as session:
             kept = _candidates(session, search_id)["Tendance Nature"]
             prospect_search_service.reject_candidate(session, USER_ID, search_id, kept.id)
+        return was_read
 
     monkeypatch.setattr(ProspectSearchRunner, "_scan_town", scan_town_then_refuse_what_it_kept)
 

@@ -40,6 +40,7 @@ class CandidateFacts:
     is_closed: bool = False
     is_chain: bool = False
     is_other_business: bool = False
+    refuses_advertising: bool = False
     matches_trade: bool = True
     is_facebook_page_read: bool = False
     is_verified: bool = False

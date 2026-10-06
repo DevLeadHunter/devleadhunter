@@ -87,6 +87,7 @@ class CandidateRejectReason(str, Enum):
     Attributes:
         HAS_WEBSITE: Owns a working website
         CLOSED: Permanently or temporarily closed
+        NO_ADVERTISING: Its Swiss directory entry refuses advertising (the asterisk)
         HOMONYM: The verification found another business of the same name
         CHAIN: Franchise or chain outlet, the owner does not decide alone
         WRONG_TRADE: Not the searched trade
@@ -101,6 +102,7 @@ class CandidateRejectReason(str, Enum):
 
     HAS_WEBSITE = "has_website"
     CLOSED = "closed"
+    NO_ADVERTISING = "no_advertising"
     HOMONYM = "homonym"
     CHAIN = "chain"
     WRONG_TRADE = "wrong_trade"

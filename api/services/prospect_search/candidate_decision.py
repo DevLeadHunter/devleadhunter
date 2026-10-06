@@ -127,6 +127,11 @@ class CandidateDecision:
         """The reason a candidate is out of the objective, if any."""
         if facts.is_closed:
             return cls._rejected(CandidateRejectReason.CLOSED, "Fiche Google marquée fermée.")
+        if facts.refuses_advertising:
+            return cls._rejected(
+                CandidateRejectReason.NO_ADVERTISING,
+                "Refuse la publicité dans l'annuaire suisse (astérisque) : la loi interdit de le démarcher.",
+            )
         if facts.is_other_business:
             return cls._rejected(
                 CandidateRejectReason.HOMONYM, "Google montre une autre entreprise du même nom, dans une autre ville."

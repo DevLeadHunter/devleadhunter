@@ -34,6 +34,7 @@ _REJECTION_MEMORY: timedelta = timedelta(days=120)
 _LASTING_REJECT_REASONS: tuple[str, ...] = (
     CandidateRejectReason.HAS_WEBSITE.value,
     CandidateRejectReason.CLOSED.value,
+    CandidateRejectReason.NO_ADVERTISING.value,
     CandidateRejectReason.CHAIN.value,
     CandidateRejectReason.HOMONYM.value,
     CandidateRejectReason.MANUAL.value,
