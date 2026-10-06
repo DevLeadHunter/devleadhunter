@@ -11,7 +11,7 @@ from services.prospect_search.candidate_decision import CandidateDecision, Searc
 from services.prospect_search.candidate_facts import CandidateFacts
 from services.prospect_search.candidate_verifier import CandidateVerifier
 from services.prospect_search.contact_finder import ContactFinder
-from services.prospect_search.search_judge import JudgedEmail, JudgeVerdict, SearchJudge
+from services.prospect_search.search_judge import JudgedEmail, JudgeVerdict, SearchJudge, SearchResultLine
 from services.prospect_search.trade_catalog import TradeCatalog
 from services.website_liveness_service import website_liveness_service
 
@@ -547,3 +547,22 @@ def test_a_name_inside_a_longer_word_does_not_name_the_business() -> None:
 
     assert CandidateVerifier.names_business("Jardins Alexandre SA - Corminboeuf", facts, _LANDSCAPER) is False
     assert CandidateVerifier.names_business("André & Jardin, paysagiste à Diesse", facts, _LANDSCAPER) is True
+
+
+def test_a_post_of_another_page_naming_the_business_is_not_its_page() -> None:
+    facts = _facts(name="Jardin-Création", city="Aigle", phone="079 433 44 30")
+    magazine_post = SearchResultLine(
+        link="https://www.facebook.com/ZEmag36/posts/daniel-moquet-signe-vos-jardins-creation-paysagere-123/",
+        host="facebook.com",
+        title="Jardin Création - Daniel Moquet signe vos jardins",
+        description="Entretien, création paysagère, aménagement de jardin.",
+    )
+    own_post = SearchResultLine(
+        link="https://www.facebook.com/jardincreationaigle/posts/456/",
+        host="facebook.com",
+        title="Jardin Création - Nos réalisations",
+        description="Création paysagère à Aigle.",
+    )
+
+    assert CandidateVerifier.is_facebook_page_of(magazine_post, facts, _LANDSCAPER) is False
+    assert CandidateVerifier.is_facebook_page_of(own_post, facts, _LANDSCAPER) is True

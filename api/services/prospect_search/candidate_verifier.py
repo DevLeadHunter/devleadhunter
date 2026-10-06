@@ -14,7 +14,7 @@ import json
 import logging
 import re
 from typing import Any
-from urllib.parse import urlparse
+from urllib.parse import unquote, urlparse
 
 import httpx
 
@@ -27,6 +27,7 @@ from services.decision_maker.normalize import company_similarity, company_tokens
 from services.prospect_search.business_name import BusinessName
 from services.prospect_search.candidate_facts import CandidateFacts
 from services.prospect_search.candidate_identity import CandidateIdentity
+from services.prospect_search.facebook_page_results import FacebookPageResults
 from services.prospect_search.search_judge import JudgeVerdict, SearchJudge, SearchResultLine
 from services.prospect_search.swiss_directory import SwissDirectory, SwissDirectoryEntry, swiss_directory
 from services.prospect_search.trade_catalog import TradeProfile
@@ -391,10 +392,27 @@ class CandidateVerifier:
         """
         if not cls.names_business(line.title, facts, trade):
             return False
+        if not FacebookPageResults.is_page_root(line.link) and not cls._page_address_names_business(
+            line.link, facts, trade
+        ):
+            return False
         text = fold(line.text)
         is_in_town = bool(facts.town) and fold(facts.town) in text
         trade_words = (*trade.category_keywords, *trade.aliases)
         return is_in_town or any(fold(word) in text for word in trade_words)
+
+    @classmethod
+    def _page_address_names_business(cls, link: str, facts: CandidateFacts, trade: TradeProfile) -> bool:
+        """Whether the page that published a Facebook post carries, in its address, a distinctive word of the business."""
+        segments = [segment for segment in urlparse(link).path.split("/") if segment]
+        if not segments:
+            return False
+        page_segment = segments[1] if len(segments) > 1 and segments[0] in {"p", "pages", "people"} else segments[0]
+        compact_page_segment = re.sub(r"[^a-z0-9]", "", fold(unquote(page_segment)))
+        return any(
+            len(token) >= _DISTINCTIVE_TOKEN_MIN_CHARS and token in compact_page_segment
+            for token in cls.distinctive_tokens(facts, trade)
+        )
 
     @staticmethod
     def is_named_after(host: str, link: str, facts: CandidateFacts) -> bool:

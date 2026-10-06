@@ -48,7 +48,7 @@ class FacebookPageResults:
         pages: dict[str, FacebookBusinessPage] = {}
         for line in results:
             page_url = FacebookPageUrl.canonical(line.link)
-            if not page_url or page_url in pages or not cls._is_page_root(line.link):
+            if not page_url or page_url in pages or not cls.is_page_root(line.link):
                 continue
             name, title_town = cls._split_title(line.title)
             if not name or len(name) > _NAME_MAX_CHARS or "#" in name or name.endswith(("...", "…")):
@@ -59,7 +59,7 @@ class FacebookPageResults:
         return list(pages.values())
 
     @staticmethod
-    def _is_page_root(link: str) -> bool:
+    def is_page_root(link: str) -> bool:
         """Whether a link points at a page itself, not at one of its posts, videos or photos."""
         segments = [segment for segment in urlparse(link).path.split("/") if segment]
         if not segments:
