@@ -210,3 +210,10 @@ def test_a_capitalised_address_starting_with_mail_is_left_whole() -> None:
 
 def test_the_email_label_a_directory_glues_to_the_address_is_still_detached() -> None:
     assert _only("Emailgarage.dupont@orange.fr", name="Garage Dupont", city="Lyon") == "garage.dupont@orange.fr"
+
+
+def test_a_platform_or_a_data_protection_inbox_is_never_the_business_email() -> None:
+    assert _only("dpo@plus-que-pro.fr", name="Winterstein Elagueur Paysagiste") is None
+    assert _only("dpo@garage-martin.fr", name="Garage Martin") is None
+    assert _only("contact@habitatpresto.com", name="Garage Martin") is None
+    assert _only("contact@garage-martin.fr", name="Garage Martin") == "contact@garage-martin.fr"

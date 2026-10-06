@@ -583,3 +583,11 @@ def test_the_email_of_a_namesake_showing_another_number_is_not_taken() -> None:
     asyncio.run(ContactFinder(_OnePageClient(page), _ScriptedJudge()).find(facts, _LANDSCAPER))  # type: ignore[arg-type]
 
     assert facts.email is None
+
+
+def test_a_listing_named_after_its_website_has_that_website() -> None:
+    facts = _facts(name="Brunet Dijon-Paysagiste.fr", city="Dijon", country="FR", phone="06 12 34 56 78")
+
+    _verify(facts, {"organic": []})
+
+    assert facts.website == "https://dijon-paysagiste.fr/"

@@ -40,6 +40,9 @@ _EMAIL_RE: re.Pattern[str] = re.compile(r"[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}"
 _FEATURE_ID_RE: re.Pattern[str] = re.compile(r"0x[0-9a-f]+:0x([0-9a-f]+)", re.IGNORECASE)
 _SWISS_COMPANY_NUMBER_RE: re.Pattern[str] = re.compile(r"CHE-\d{3}\.\d{3}\.\d{3}")
 _SWISS_DIRECTORY_HOSTS: tuple[str, ...] = ("local.ch", "search.ch")
+_DOMAIN_IN_NAME_RE: re.Pattern[str] = re.compile(
+    r"\b([a-z0-9][a-z0-9-]*\.(?:fr|ch|be|lu|ca|com|net|eu))\b", re.IGNORECASE
+)
 _STARRED_SWISS_NUMBER_RE: re.Pattern[str] = re.compile(r"(?:\+41|\b0)\s?\d{2}(?:[\s.]?\d){7}\s?\*")
 _LISTED_WEBSITE_RE: re.Pattern[str] = re.compile(
     r"(?:site web|site internet|website|webseite)\s*:\s*((?:https?://|www\.)[^\s;,]+)", re.IGNORECASE
@@ -229,6 +232,14 @@ class CandidateVerifier:
         if page is None:
             return
         facts.is_verified = True
+        domain_in_name = _DOMAIN_IN_NAME_RE.search(facts.name)
+        if domain_in_name:
+            self.consider_website(
+                facts,
+                f"https://{domain_in_name.group(1).lower()}/",
+                source="Nom de la fiche Google",
+                proof_url=facts.google_maps_url or f"https://{domain_in_name.group(1).lower()}/",
+            )
 
         self._read_knowledge_panel(facts, page.get("knowledge"))
         results = self.result_lines(page)

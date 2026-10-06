@@ -136,6 +136,12 @@ BLOCKED_DOMAINS: frozenset[str] = frozenset(
         "starofservice.com",
         "ootravaux.fr",
         "travaux.com",
+        "plus-que-pro.fr",
+        "habitatpresto.com",
+        "quotatis.fr",
+        "123devis.com",
+        "allovoisins.com",
+        "jemepropose.com",
         "houzz.fr",
         "local.ch",
         "search.ch",
@@ -229,6 +235,8 @@ BLOCKED_LOCAL_PREFIXES: tuple[str, ...] = (
     "avis@",
     "mairie",
 )
+
+BLOCKED_LOCAL_PARTS: frozenset[str] = frozenset({"dpo", "rgpd", "privacy", "abuse", "postmaster", "webmaster"})
 
 # Role inboxes that are typically the business's own contact address.
 ROLE_LOCAL_PARTS: frozenset[str] = frozenset(
@@ -353,7 +361,7 @@ class EmailCandidateScorer:
         local, _, domain = email.partition("@")
         if not domain:
             return True
-        if any(local.startswith(prefix) for prefix in BLOCKED_LOCAL_PREFIXES):
+        if any(local.startswith(prefix) for prefix in BLOCKED_LOCAL_PREFIXES) or local in BLOCKED_LOCAL_PARTS:
             return True
         if self._is_blocked_domain(domain):
             return True
