@@ -38,7 +38,7 @@ Léo (06/10/2026) : la page d'un site démo (`/dashboard/demo-sites/{id}`) et ce
 ## À trancher
 
 - Deux hauteurs de volet (réglage / plein) tirées au doigt, ou une seule.
-- Les photos en grille de grandes vignettes glissables plutôt qu'une liste à flèches.
+- Les photos en grille de grandes vignettes glissables plutôt qu'une liste à flèches : **maquette faite le 07/10** (`captures-atelier/ipad-03b-photos-grille-*.jpg`, composant `DemoSitesImageGrid` sur la branche, moteur `useDragToReorder` en axe `grid`). **Tranché le 07/10** : grille sur écran tactile (iPad, téléphone), liste actuelle à la souris (ordinateur). Prompt pour l'autre modèle : `PROMPT-PHOTOS-GRILLE.md`.
 - Masquer la barre d'onglets du bas (app installée) sur cette page.
 - Le même atelier pour la page d'une réceptionniste (demande de Léo : « ensuite on verra pour les autres modules »).
 
