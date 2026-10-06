@@ -628,3 +628,20 @@ def test_an_email_domain_spelling_the_business_name_is_its_website(monkeypatch: 
     asyncio.run(CandidateVerifier.consider_email_domain(facts, _LANDSCAPER))
 
     assert facts.website == "https://bcp-paysagiste.com/"
+
+
+def test_an_email_under_a_facebook_group_post_is_a_stranger_s() -> None:
+    facts = _facts(name="Pelouse Sylex", city="Victoriaville", country="CA", phone="(819) 352-0428")
+    page = {
+        "organic": [
+            _result(
+                "https://www.facebook.com/groups/EmploiVictoriaville/posts/24567126339604367/",
+                "Pelouse Sylex recrute!",
+                "Emploi Victoriaville et sa région. Nettoyage A+ menage.aplus@outlook.com · Read more",
+            )
+        ]
+    }
+
+    asyncio.run(ContactFinder(_OnePageClient(page), _ScriptedJudge()).find(facts, _LANDSCAPER))  # type: ignore[arg-type]
+
+    assert facts.email is None

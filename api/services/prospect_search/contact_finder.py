@@ -194,7 +194,10 @@ class ContactFinder:
             return
         results = CandidateVerifier.result_lines(page)
         candidates = [
-            (email, index) for index, line in enumerate(results) for email in self._usable_emails(line.text, facts)
+            (email, index)
+            for index, line in enumerate(results)
+            if not CandidateVerifier.is_group_discussion(line.link)
+            for email in self._usable_emails(line.text, facts)
         ]
         if not candidates:
             return

@@ -540,6 +540,11 @@ class CandidateVerifier:
             )
 
     @staticmethod
+    def is_group_discussion(link: str) -> bool:
+        """Whether a result is a post of a Facebook group, whose snippet mixes the comments of strangers."""
+        return "facebook.com/groups/" in link.lower()
+
+    @staticmethod
     def is_known_third_party(link: str, host: str) -> bool:
         """Whether a result sits on a social network, a directory, a registry or a booking platform."""
         if validation_service.is_social_url(link) or validation_service.is_platform_url(link):
@@ -705,6 +710,8 @@ class CandidateVerifier:
         """Every email written in the results, with the index of its result."""
         found: list[tuple[str, int]] = []
         for index, line in enumerate(results):
+            if CandidateVerifier.is_group_discussion(line.link):
+                continue
             for match in _EMAIL_RE.finditer(email_candidate_scorer.without_glued_labels(line.text)):
                 found.append((match.group(0).lower().rstrip("."), index))
         return found
