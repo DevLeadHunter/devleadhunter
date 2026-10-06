@@ -201,7 +201,7 @@
               />
 
               <template v-else-if="activeTool === 'photos'">
-                <DemoSitesImageSlots
+                <DemoSitesImageGrid
                   v-if="siteImages && siteImages.pool.length"
                   :pool="siteImages.pool"
                   :order="imagesOrder"
@@ -648,7 +648,7 @@ const atelierTools: DemoSiteAtelierTool[] = [
     label: 'Photos',
     icon: 'i-lucide-images',
     title: 'Photos',
-    hint: 'La première devient l’en-tête, la deuxième « à propos », le reste la galerie.',
+    hint: 'Glissez une photo pour la déplacer. La première est l’en-tête, la deuxième « à propos », le reste la galerie.',
   },
   {
     key: 'prestations',
