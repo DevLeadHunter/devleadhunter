@@ -13,6 +13,7 @@ from pathlib import Path
 from types import SimpleNamespace
 from typing import Any
 
+import httpx
 import pytest
 from fastapi import FastAPI, HTTPException
 from fastapi.testclient import TestClient
@@ -21,6 +22,7 @@ from sqlalchemy.engine import Connection, Engine
 from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm import Session, sessionmaker
 
+import prospect_search_cli as prospect_search_cli_module
 import services.activity_log_service as activity_log_module
 import services.prospect_search.facebook_contact as facebook_contact_module
 import services.prospect_search.runner as runner_module
@@ -1704,3 +1706,36 @@ def test_the_command_line_starts_an_automatic_search_unless_told_otherwise() -> 
     asyncio.run(cli.create(parse_command_line(["--trades", "paysagiste", "--validation", "manual"])))
 
     assert [search["validation_mode"] for search in api.created_searches] == ["automatic", "manual"]
+
+
+def test_the_command_line_waits_for_an_api_that_restarts(monkeypatch: pytest.MonkeyPatch) -> None:
+    request = httpx.Request("GET", "https://api.example/prospect-searches/7")
+
+    class _RestartingApi:
+        def __init__(self) -> None:
+            self.answers: list[httpx.Response | Exception] = [
+                httpx.ConnectError("connection refused", request=request),
+                httpx.Response(502, request=request),
+                httpx.Response(200, request=request, json={"status": "completed", "journal": []}),
+            ]
+
+        async def get(self, path: str) -> httpx.Response:
+            answer = self.answers.pop(0)
+            if isinstance(answer, Exception):
+                raise answer
+            return answer
+
+    async def no_wait(seconds: float) -> None:
+        return None
+
+    monkeypatch.setattr(prospect_search_cli_module.asyncio, "sleep", no_wait)
+    cli = ProspectSearchCli(_RestartingApi(), reads_facebook_pages=False)  # type: ignore[arg-type]
+
+    assert asyncio.run(cli.follow(7))["status"] == "completed"
+
+
+def test_a_server_error_is_not_taken_for_a_restart() -> None:
+    request = httpx.Request("POST", "https://api.example/prospect-searches/7/candidates/1/facebook-contact")
+    server_error = httpx.HTTPStatusError("boom", request=request, response=httpx.Response(500, request=request))
+
+    assert ProspectSearchCli.is_api_restarting(server_error) is False

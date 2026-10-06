@@ -43,6 +43,9 @@ _FINISHED_STATUSES: frozenset[str] = frozenset({"completed", "cancelled", "faile
 _REPORTED_STATUSES: tuple[str, ...] = ("kept", "set_aside", "to_confirm")
 _CHANNELS: tuple[str, ...] = ("email", "sms", "email_and_sms")
 _VALIDATION_MODES: tuple[str, ...] = ("manual", "automatic")
+_API_RESTART_STATUSES: frozenset[int] = frozenset({502, 503, 504})
+_API_RESTART_WAIT_SECONDS: float = 10.0
+_API_RESTART_MAXIMUM_WAITS: int = 30
 
 
 class ProspectSearchCli:
@@ -104,17 +107,34 @@ class ProspectSearchCli:
         Returns:
             The search's final detail (totals, journal, candidates).
         """
+        waits_for_restart = 0
         while True:
-            detail = await self._detail(search_id)
-            self._print_new_journal_lines(detail)
-            status = str(detail.get("status"))
-            if status in _FINISHED_STATUSES:
-                return detail
-            read_count = await self._read_waiting_pages(search_id) if self._reads_facebook_pages else 0
+            try:
+                detail = await self._detail(search_id)
+                self._print_new_journal_lines(detail)
+                status = str(detail.get("status"))
+                if status in _FINISHED_STATUSES:
+                    return detail
+                read_count = await self._read_waiting_pages(search_id) if self._reads_facebook_pages else 0
+            except (httpx.RequestError, httpx.HTTPStatusError) as exc:
+                if not self.is_api_restarting(exc) or waits_for_restart >= _API_RESTART_MAXIMUM_WAITS:
+                    raise
+                waits_for_restart += 1
+                print(f"  the API does not answer ({exc}): new try in a moment…", file=sys.stderr, flush=True)
+                await asyncio.sleep(_API_RESTART_WAIT_SECONDS)
+                continue
+            waits_for_restart = 0
             if status == "waiting_browser" and read_count == 0:
                 # Nothing left this machine can read: the search stays as it is for the desktop app.
                 return detail
             await asyncio.sleep(_POLL_SECONDS)
+
+    @staticmethod
+    def is_api_restarting(exc: httpx.RequestError | httpx.HTTPStatusError) -> bool:
+        """Whether an API error is the API restarting (a deployment), which a later try gets through."""
+        if isinstance(exc, httpx.RequestError):
+            return True
+        return exc.response.status_code in _API_RESTART_STATUSES
 
     async def _detail(self, search_id: int) -> dict[str, Any]:
         """The search with its journal and candidates."""
@@ -154,16 +174,20 @@ class ProspectSearchCli:
                     flush=True,
                 )
                 continue
-            posted = await self._api.post(
-                f"/prospect-searches/{search_id}/candidates/{candidate_id}/facebook-contact",
-                json={
-                    "is_readable": page.place_title is not None,
-                    "emails": list(page.emails),
-                    "phone": page.phone,
-                    "website": page.website,
-                },
-            )
-            posted.raise_for_status()
+            try:
+                posted = await self._api.post(
+                    f"/prospect-searches/{search_id}/candidates/{candidate_id}/facebook-contact",
+                    json={
+                        "is_readable": page.place_title is not None,
+                        "emails": list(page.emails),
+                        "phone": page.phone,
+                        "website": page.website,
+                    },
+                )
+                posted.raise_for_status()
+            except (httpx.RequestError, httpx.HTTPStatusError):
+                self._read_candidate_ids.discard(candidate_id)
+                raise
             handed_over += 1
         return handed_over
 
