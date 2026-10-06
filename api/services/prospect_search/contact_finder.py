@@ -13,6 +13,7 @@ from __future__ import annotations
 import asyncio
 import logging
 import re
+from urllib.parse import urlparse
 
 import dns.exception
 import dns.resolver
@@ -21,11 +22,13 @@ from enums.prospect_search import EmailProofLevel
 from scrappers.brightdata_client import BrightDataClient
 from scrappers.email_candidate_scoring import GENERIC_EMAIL_PROVIDERS, email_candidate_scorer
 from scrappers.facebook_page_urls import FacebookPageUrl
+from services.decision_maker.normalize import fold
 from services.prospect_search.candidate_facts import CandidateFacts
 from services.prospect_search.candidate_verifier import CandidateVerifier
-from services.prospect_search.search_judge import SearchJudge
+from services.prospect_search.search_judge import SearchJudge, SearchResultLine
 from services.prospect_search.trade_catalog import TradeProfile
 from services.validation_service import validation_service
+from services.website_liveness_service import website_liveness_service
 
 logger = logging.getLogger(__name__)
 
@@ -36,6 +39,7 @@ _PUBLIC_RESOLVERS: tuple[str, ...] = ("8.8.8.8", "1.1.1.1")
 _PHONE_MATCH_DIGITS: int = 9
 _QUOTED_NAME_MAXIMUM_WORDS: int = 3
 _NON_DIGITS_RE: re.Pattern[str] = re.compile(r"\D")
+_LEGAL_NOTICE_WORDS: tuple[str, ...] = ("mentions legales", "impressum")
 
 
 class EmailDomainCheck:
@@ -144,6 +148,9 @@ class ContactFinder:
             await self._search_email(facts, trade)
         if facts.email is None and facts.phone:
             await self._search_by_phone(facts)
+        if facts.website and facts.website_status is None:
+            status = await website_liveness_service.check_website_status(facts.website)
+            facts.website_status = status.value if status is not None else None
         await self.drop_dead_email(facts)
         await CandidateVerifier.consider_email_domain(facts, trade)
 
@@ -204,6 +211,8 @@ class ContactFinder:
             is_about_business = CandidateVerifier.names_business(line.title, facts, trade) or self._shows_phone(
                 line.text, facts
             )
+            if is_about_business:
+                CandidateVerifier.read_no_advertising_mark(facts, line)
             if judged.get((email, index)) is False or (judged.get((email, index)) is None and not is_about_business):
                 continue
             is_directory_entry = CandidateVerifier.is_known_third_party(line.link, line.host) and is_about_business
@@ -248,11 +257,27 @@ class ContactFinder:
         for line in CandidateVerifier.result_lines(page):
             if not self._shows_phone(line.text, facts):
                 continue
+            CandidateVerifier.read_no_advertising_mark(facts, line)
+            if self._is_legal_notice_of_a_website(line):
+                site = urlparse(line.link)
+                CandidateVerifier.consider_website(
+                    facts,
+                    f"{site.scheme}://{site.netloc}/",
+                    source="Ses mentions légales montrent son numéro",
+                    proof_url=line.link,
+                )
             emails = self._usable_emails(line.text, facts)
             if len(emails) == 1:
                 facts.offer_email(
                     emails[0], EmailProofLevel.DIRECTORY, source=line.host, url=line.link, snippet=line.text
                 )
+
+    @staticmethod
+    def _is_legal_notice_of_a_website(line: SearchResultLine) -> bool:
+        """Whether a result is the legal notice of a site that is no directory: the site of the number it shows."""
+        if CandidateVerifier.is_known_third_party(line.link, line.host):
+            return False
+        return any(words in fold(line.text) for words in _LEGAL_NOTICE_WORDS)
 
     @staticmethod
     def _usable_emails(text: str, facts: CandidateFacts) -> list[str]:

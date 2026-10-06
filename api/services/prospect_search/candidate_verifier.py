@@ -40,6 +40,9 @@ _FEATURE_ID_RE: re.Pattern[str] = re.compile(r"0x[0-9a-f]+:0x([0-9a-f]+)", re.IG
 _SWISS_COMPANY_NUMBER_RE: re.Pattern[str] = re.compile(r"CHE-\d{3}\.\d{3}\.\d{3}")
 _SWISS_DIRECTORY_HOSTS: tuple[str, ...] = ("local.ch", "search.ch")
 _STARRED_SWISS_NUMBER_RE: re.Pattern[str] = re.compile(r"(?:\+41|\b0)\s?\d{2}(?:[\s.]?\d){7}\s?\*")
+_LISTED_WEBSITE_RE: re.Pattern[str] = re.compile(
+    r"(?:site web|site internet|website|webseite)\s*:\s*((?:https?://|www\.)[^\s;,]+)", re.IGNORECASE
+)
 _CLOSED_MARKERS: tuple[str, ...] = (
     "définitivement fermé",
     "fermé définitivement",
@@ -159,6 +162,9 @@ _EXTRA_THIRD_PARTY_HOSTS: frozenset[str] = frozenset(
         "pappers.ch",
         "jobup.ch",
         "emploisuisse.com",
+        "wa.me",
+        "whatsapp.com",
+        "t.me",
         "yoojo.ch",
         "yoojo.fr",
         "idgarages.com",
@@ -213,7 +219,7 @@ class CandidateVerifier:
         self._read_knowledge_panel(facts, page.get("knowledge"))
         results = self.result_lines(page)
         has_unsettled_results = self._read_results(facts, results, trade)
-        self._read_no_advertising_marks(facts, results, trade)
+        self._read_swiss_directory_extracts(facts, results, trade)
         snippet_emails = self._emails_in(results)
 
         verdict: JudgeVerdict | None = None
@@ -235,22 +241,44 @@ class CandidateVerifier:
             facts.website_status = status.value if status is not None else None
         await self.consider_email_domain(facts, trade)
 
-    def _read_no_advertising_marks(
+    def _read_swiss_directory_extracts(
         self, facts: CandidateFacts, results: list[SearchResultLine], trade: TradeProfile
     ) -> None:
-        """Read the asterisk a Swiss directory prints after the numbers of a subscriber who refuses advertising."""
-        if facts.country != "CH" or facts.refuses_advertising:
+        """
+        Read the local.ch and search.ch extracts about a Swiss business.
+
+        They print an asterisk after the numbers of a subscriber who refuses advertising, and
+        the website the directory lists (« Site web: www.… »).
+        """
+        if facts.country != "CH":
             return
         for line in results:
-            is_directory_page = any(
-                line.host == host or line.host.endswith(f".{host}") for host in _SWISS_DIRECTORY_HOSTS
-            )
-            if not is_directory_page or not self.names_business(line.title, facts, trade):
+            if not self.is_swiss_directory_page(line) or not self.names_business(line.title, facts, trade):
                 continue
-            if _STARRED_SWISS_NUMBER_RE.search(line.description):
-                facts.refuses_advertising = True
-                facts.add_evidence("no_advertising", "*", source=line.host, url=line.link, snippet=line.text)
-                return
+            self.read_no_advertising_mark(facts, line)
+            listed_website = _LISTED_WEBSITE_RE.search(line.description)
+            if listed_website:
+                self.consider_website(facts, listed_website.group(1).rstrip("."), source=line.host, proof_url=line.link)
+
+    @staticmethod
+    def is_swiss_directory_page(line: SearchResultLine) -> bool:
+        """Whether a result is a page of local.ch or search.ch."""
+        return any(line.host == host or line.host.endswith(f".{host}") for host in _SWISS_DIRECTORY_HOSTS)
+
+    @classmethod
+    def read_no_advertising_mark(cls, facts: CandidateFacts, line: SearchResultLine) -> None:
+        """
+        Take the asterisk a Swiss directory prints after the numbers of a subscriber refusing advertising.
+
+        Args:
+            facts: The candidate, completed in place.
+            line: A result already known to be about the candidate.
+        """
+        if facts.country != "CH" or facts.refuses_advertising or not cls.is_swiss_directory_page(line):
+            return
+        if _STARRED_SWISS_NUMBER_RE.search(line.description):
+            facts.refuses_advertising = True
+            facts.add_evidence("no_advertising", "*", source=line.host, url=line.link, snippet=line.text)
 
     async def _read_swiss_directory(self, facts: CandidateFacts, trade: TradeProfile) -> None:
         """
@@ -272,7 +300,7 @@ class CandidateVerifier:
         if not (entry.is_business or self.names_business(entry.name, facts, trade)):
             return
         for website in entry.websites:
-            self._consider_website(facts, website, source="Annuaire search.ch", proof_url=entry.url)
+            self.consider_website(facts, website, source="Annuaire search.ch", proof_url=entry.url)
         for email in entry.emails:
             if validation_service.is_valid_email(email) and not email_candidate_scorer.belongs_to_an_institution(
                 email, city=facts.town
@@ -399,7 +427,7 @@ class CandidateVerifier:
             facts.add_evidence("closed", closed_marker, source="Fiche Google", url=maps_link or None)
         site = str(panel.get("site") or "").strip()
         if site:
-            self._consider_website(facts, site, source="Fiche Google", proof_url=maps_link or site)
+            self.consider_website(facts, site, source="Fiche Google", proof_url=maps_link or site)
 
     def _read_results(self, facts: CandidateFacts, results: list[SearchResultLine], trade: TradeProfile) -> bool:
         """
@@ -428,7 +456,7 @@ class CandidateVerifier:
                 continue
             compact_host = re.sub(r"[^a-z0-9]", "", line.host.rsplit(".", 1)[0])
             if any(len(token) >= _DISTINCTIVE_TOKEN_MIN_CHARS and token in compact_host for token in distinctive):
-                self._consider_website(facts, line.link, source="Recherche Google", proof_url=line.link)
+                self.consider_website(facts, line.link, source="Recherche Google", proof_url=line.link)
             else:
                 has_unsettled_results = True
         return has_unsettled_results
@@ -442,7 +470,8 @@ class CandidateVerifier:
             return True
         return any(host == known or host.endswith(f".{known}") for known in _EXTRA_THIRD_PARTY_HOSTS)
 
-    def _consider_website(self, facts: CandidateFacts, website: str, *, source: str, proof_url: str) -> None:
+    @classmethod
+    def consider_website(cls, facts: CandidateFacts, website: str, *, source: str, proof_url: str) -> None:
         """Keep *website* as the business's own unless it is a social page, a platform or a directory."""
         if validation_service.is_social_url(website):
             facebook_page = FacebookPageUrl.canonical(website)
@@ -452,7 +481,7 @@ class CandidateVerifier:
             return
         parsed = urlparse(website if "//" in website else f"//{website}")
         host = (parsed.hostname or "").lower().removeprefix("www.")
-        if not validation_service.is_valid_website(website) or self.is_known_third_party(website, host):
+        if not validation_service.is_valid_website(website) or cls.is_known_third_party(website, host):
             return
         if facts.website is None:
             facts.website = website
@@ -521,7 +550,7 @@ class CandidateVerifier:
         if verdict.own_website_index is not None and facts.website is None:
             line = results[verdict.own_website_index]
             if self.is_named_after(line.host, line.link, facts):
-                self._consider_website(facts, line.link, source="Recherche Google (lu par l'IA)", proof_url=line.link)
+                self.consider_website(facts, line.link, source="Recherche Google (lu par l'IA)", proof_url=line.link)
         if verdict.is_chain_or_franchise:
             facts.is_chain = True
             facts.add_evidence("chain", "franchise ou chaîne", source="Recherche Google (lu par l'IA)")

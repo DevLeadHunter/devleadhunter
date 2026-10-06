@@ -14,6 +14,7 @@ from services.prospect_search.candidate_decision import CandidateDecision, Searc
 from services.prospect_search.candidate_facts import CandidateFacts
 from services.prospect_search.candidate_store import CandidateStore
 from services.prospect_search.candidate_verifier import CandidateVerifier
+from services.prospect_search.contact_finder import ContactFinder
 from services.prospect_search.search_judge import SearchJudge
 from services.prospect_search.swiss_directory import SwissDirectory, SwissDirectoryEntry
 from services.prospect_search.trade_catalog import TradeCatalog
@@ -339,3 +340,71 @@ def test_the_asterisk_of_a_local_ch_extract_refuses_advertising_without_the_dire
 
     assert facts.refuses_advertising is True
     assert CandidateDecision.decide(facts, _GARAGE, _EMAIL_SEARCH).reject_reason == CandidateRejectReason.NO_ADVERTISING
+
+
+def test_the_website_a_local_ch_extract_lists_is_the_business_s_website() -> None:
+    facts = _facts(name="JANTES ALU", city="Saxon", phone="027 744 31 12")
+    page = {
+        "organic": [
+            {
+                "link": "https://www.local.ch/fr/d/saxon/1907/garage/jantes-alu-k2Hq",
+                "title": "JANTES ALU - Saxon",
+                "description": "Adresse: Route du Léman 12, 1907 Saxon ; Site web: www.jantes-alu.ch ; "
+                "Email: pacherix@bluewin.ch",
+            }
+        ]
+    }
+
+    asyncio.run(
+        CandidateVerifier(_OnePageClient(page), _SilentJudge(), _ScriptedDirectory(None)).verify(facts, _GARAGE)  # type: ignore[arg-type]
+    )
+
+    assert facts.website == "www.jantes-alu.ch"
+    assert CandidateDecision.decide(facts, _GARAGE, _EMAIL_SEARCH).reject_reason == CandidateRejectReason.HAS_WEBSITE
+
+
+def test_a_whatsapp_link_given_as_the_listing_s_website_is_not_its_website() -> None:
+    facts = _facts(name="Garage Auto Express", city="Martigny", phone="079 123 45 67")
+    page = {"knowledge": {"name": "Garage Auto Express", "site": "https://wa.me/41791234567"}, "organic": []}
+
+    asyncio.run(
+        CandidateVerifier(_OnePageClient(page), _SilentJudge(), _ScriptedDirectory(None)).verify(facts, _GARAGE)  # type: ignore[arg-type]
+    )
+
+    assert facts.website is None
+
+
+def test_the_legal_notice_showing_the_number_gives_the_business_s_website() -> None:
+    facts = _facts(name="Garage Auto Express", city="Martigny", phone="079 123 45 67")
+    page = {
+        "organic": [
+            {
+                "link": "https://www.easy-autos.ch/mentions-legales",
+                "title": "Mentions légales - Easy Autos",
+                "description": "Mentions légales. Easy Autos Sàrl, Rue du Simplon 12, 1920 Martigny. "
+                "Téléphone : 079 123 45 67.",
+            }
+        ]
+    }
+
+    asyncio.run(ContactFinder(_OnePageClient(page), _SilentJudge()).find(facts, _GARAGE))  # type: ignore[arg-type]
+
+    assert facts.website == "https://www.easy-autos.ch/"
+    assert facts.website_status == WebsiteStatus.LIVE.value
+
+
+def test_the_asterisk_found_by_the_phone_search_refuses_advertising() -> None:
+    facts = _facts(name="Garage Auto Express", city="Martigny", phone="027 722 11 22")
+    page = {
+        "organic": [
+            {
+                "link": "https://www.local.ch/fr/d/martigny/1920/garage/easy-autos-sarl-p3Xz",
+                "title": "Easy Autos Sàrl - Martigny",
+                "description": "Adresse: Rue du Simplon 12, 1920 Martigny ; Numéro de téléphone: 027 722 11 22*",
+            }
+        ]
+    }
+
+    asyncio.run(ContactFinder(_OnePageClient(page), _SilentJudge()).find(facts, _GARAGE))  # type: ignore[arg-type]
+
+    assert facts.refuses_advertising is True
