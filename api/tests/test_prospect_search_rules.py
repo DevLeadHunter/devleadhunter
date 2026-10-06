@@ -25,6 +25,7 @@ from services.prospect_search.candidate_decision import CandidateDecision, Searc
 from services.prospect_search.candidate_facts import CandidateFacts
 from services.prospect_search.candidate_identity import CandidateIdentity, KnownBusinessIndex
 from services.prospect_search.facebook_page_results import FacebookPageResults
+from services.prospect_search.registry_sources import RegistryCompany
 from services.prospect_search.search_judge import SearchJudge, SearchResultLine
 from services.prospect_search.search_zones import SearchZones
 from services.prospect_search.trade_catalog import TradeCatalog
@@ -69,6 +70,24 @@ class TestTradeCatalog:
 
     def test_the_electrician_registry_domains_leave_out_the_heating_trades(self) -> None:
         assert TradeCatalog.resolve("électricien").rge_domains == ("Radiateurs électriques, dont régulation.",)
+
+    def test_a_garage_door_supplier_is_not_a_garage(self) -> None:
+        garage = TradeCatalog.resolve("garage")
+
+        assert garage.accepts_category("Fournisseur de portes de garage") is False
+        assert garage.accepts_category("Garage door supplier") is False
+        assert garage.accepts_category("Atelier de réparation automobile") is True
+
+    def test_a_hospital_keeping_an_electrical_licence_is_no_tradesperson(self) -> None:
+        assert (
+            RegistryCompany.is_institution("Hôpital Ste-Croix", "contact@ssss.gouv.qc.ca", city="Drummondville") is True
+        )
+        assert (
+            RegistryCompany.is_institution(
+                "Ouellet Électrique inc.", "ouelletelectrique@hotmail.ca", city="Trois-Rivières"
+            )
+            is False
+        )
 
     def test_a_shop_category_is_not_the_trade(self) -> None:
         assert _LANDSCAPER.accepts_category("Paysagiste") is True

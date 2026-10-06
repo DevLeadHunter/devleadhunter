@@ -130,6 +130,8 @@ _PROFILES: tuple[TradeProfile, ...] = (
             "location",
             "pieces",
             "lavage",
+            "porte",
+            "door",
             "controle technique",
             "parking",
             "station-service",

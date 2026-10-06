@@ -27,6 +27,7 @@ from pathlib import Path
 import httpx
 
 from enums.prospect_search import CandidateOrigin
+from scrappers.email_candidate_scoring import email_candidate_scorer
 from services.decision_maker.normalize import fold
 from services.prospect_search.trade_catalog import TradeProfile
 
@@ -41,6 +42,14 @@ _RBQ_FILE_URL: str = (
 _RBQ_PUBLIC_URL: str = "https://www.donneesquebec.ca/recherche/dataset/licencesactives"
 _RBQ_FILE_MAX_AGE_SECONDS: float = 24 * 3600
 _REQUEST_TIMEOUT_SECONDS: float = 60.0
+_INSTITUTION_NAME_MARKERS: tuple[str, ...] = (
+    "hopital",
+    "ciusss",
+    "cisss",
+    "cegep",
+    "universite",
+    "commission scolaire",
+)
 
 
 @dataclass(frozen=True)
@@ -57,6 +66,13 @@ class RegistryCompany:
     source_label: str
     source_url: str
     owner_name: str | None = None
+
+    @staticmethod
+    def is_institution(name: str, email: str, *, city: str) -> bool:
+        """Whether a registered holder is a hospital, a school or a public body that keeps its own licence, not a tradesperson."""
+        folded_name = fold(name)
+        has_institution_name = any(marker in folded_name for marker in _INSTITUTION_NAME_MARKERS)
+        return has_institution_name or email_candidate_scorer.belongs_to_an_institution(email, city=city)
 
 
 class RgeRegistry:
@@ -109,7 +125,7 @@ class RgeRegistry:
         for row in listed.json().get("results") or []:
             name = str(row.get("nom_entreprise") or "").strip()
             email = str(row.get("email") or "").strip().lower()
-            if not name or "@" not in email:
+            if not name or "@" not in email or RegistryCompany.is_institution(name, email, city=city):
                 continue
             companies.append(
                 RegistryCompany(
@@ -198,6 +214,10 @@ class RbqRegistry:
                 continue
             legal_name = str(row.get("Nom de l'intervenant") or "").strip()
             trade_name = str(row.get("Autre nom") or "").strip()
+            if RegistryCompany.is_institution(
+                f"{legal_name} {trade_name}", email, city=str(row.get("Municipalité") or "")
+            ):
+                continue
             is_person = fold(str(row.get("Statut juridique") or "")) == "personne physique"
             companies[licence] = RegistryCompany(
                 name=trade_name or legal_name,
