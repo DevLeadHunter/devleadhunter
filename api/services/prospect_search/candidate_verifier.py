@@ -54,6 +54,10 @@ _DOMAIN_IN_NAME_RE: re.Pattern[str] = re.compile(
     r"\b([a-z0-9][a-z0-9-]*\.(?:fr|ch|be|lu|ca|com|net|eu))\b", re.IGNORECASE
 )
 _STARRED_SWISS_NUMBER_RE: re.Pattern[str] = re.compile(r"(?:\+41|\b0)\s?\d{2}(?:[\s.]?\d){7}\s?\*")
+_NO_ADVERTISING_NOTICE_RE: re.Pattern[str] = re.compile(
+    r"\*\s*(?:ne desire pas recevoir de publicite|ne souhaite pas de publicite|pas de publicite|keine werbung"
+    r"|blocco pubblicita|no advertising)"
+)
 _HOUSE_NUMBER_RE: re.Pattern[str] = re.compile(r"(\d+)\s?[a-z]?$", re.IGNORECASE)
 _ENTRY_HOUSE_NUMBER_RE: re.Pattern[str] = re.compile(r"/tel/[^/?]+/[a-z0-9-]*?-(\d+)[a-z]?/")
 _LISTED_WEBSITE_RE: re.Pattern[str] = re.compile(
@@ -306,15 +310,17 @@ class CandidateVerifier:
         """
         Read the local.ch and search.ch extracts about a Swiss business.
 
-        They print an asterisk after the numbers of a subscriber who refuses advertising, and
-        the website the directory lists (« Site web: www.… »).
+        They print an asterisk after the numbers of a subscriber who refuses advertising (sites
+        copying them print the notice), and the website the directory lists (« Site web: www.… »).
         """
         if facts.country != "CH":
             return
         for line in results:
-            if not self.is_swiss_directory_page(line) or not self.names_business(line.title, facts, trade):
+            if not self.names_business(line.title, facts, trade):
                 continue
             self.read_no_advertising_mark(facts, line)
+            if not self.is_swiss_directory_page(line):
+                continue
             listed_website = _LISTED_WEBSITE_RE.search(line.description)
             if listed_website:
                 self.consider_website(facts, listed_website.group(1).rstrip("."), source=line.host, proof_url=line.link)
@@ -329,13 +335,18 @@ class CandidateVerifier:
         """
         Take the asterisk a Swiss directory prints after the numbers of a subscriber refusing advertising.
 
+        A site copying the directory prints the notice instead (« * Ne désire pas recevoir de publicité »).
+
         Args:
             facts: The candidate, completed in place.
             line: A result already known to be about the candidate.
         """
-        if facts.country != "CH" or facts.refuses_advertising or not cls.is_swiss_directory_page(line):
+        if facts.country != "CH" or facts.refuses_advertising:
             return
-        if _STARRED_SWISS_NUMBER_RE.search(line.description):
+        has_starred_number = (
+            cls.is_swiss_directory_page(line) and _STARRED_SWISS_NUMBER_RE.search(line.description) is not None
+        )
+        if has_starred_number or _NO_ADVERTISING_NOTICE_RE.search(fold(line.text)):
             facts.refuses_advertising = True
             facts.add_evidence("no_advertising", "*", source=line.host, url=line.link, snippet=line.text)
 

@@ -596,6 +596,35 @@ def test_a_number_google_reveals_is_looked_up_for_its_asterisk() -> None:
     assert facts.refuses_advertising is True
 
 
+@pytest.mark.parametrize(
+    ("link", "title", "description"),
+    [
+        (
+            "https://garageromand.ch/company/garage-exemple-service",
+            "Garage Exemple Service Sàrl - garageromand.ch",
+            "Route du Simplon 72 1957 Ardon. Tél. * : 027 000 00 61. Téléphone mobile * : 078 000 00 60 "
+            "* Ne désire pas recevoir de publicité.",
+        ),
+        (
+            "https://zip.ch/fr/garage-exemple-service-route-du-simplon-ardon-x1/",
+            "Garage Exemple Service, Garages - Ardon",
+            "Garage Exemple Service. Mobile. 078 000 00 60 *. * Pas de publicité. Route du Simplon 72 1957 Ardon",
+        ),
+    ],
+)
+def test_the_notice_a_site_copying_the_directory_prints_refuses_advertising(
+    link: str, title: str, description: str
+) -> None:
+    facts = _facts(name="Garage Exemple Service Sàrl", city="Ardon", phone="078 000 00 60")
+    page = {"organic": [{"link": link, "title": title, "description": description}]}
+
+    asyncio.run(
+        CandidateVerifier(_OnePageClient(page), _SilentJudge(), _ScriptedDirectory(None)).verify(facts, _GARAGE)  # type: ignore[arg-type]
+    )
+
+    assert facts.refuses_advertising is True
+
+
 def test_an_entry_page_is_read_with_its_vcard(monkeypatch: pytest.MonkeyPatch) -> None:
     transport = _directory_answering(
         {
