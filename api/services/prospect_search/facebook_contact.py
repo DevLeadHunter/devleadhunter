@@ -4,7 +4,8 @@ Facebook contact — what a browser read on a candidate's Facebook page, and wha
 The search runs on the server, which cannot open Facebook. A browser on the user's
 machine (the desktop app, or the API itself when it runs on a workstation) reads the
 page's contact block and hands it over here: the email becomes the best-proven one
-(the business published it itself), a website shown on the page is checked, and the
+(the business published it itself), a website shown on the page is checked, a Swiss
+number the page gives is looked up in the directory for its asterisk, and the
 candidate gets its final place.
 """
 
@@ -19,10 +20,12 @@ from models.prospect_search_candidate import ProspectSearchCandidate
 from scrappers.email_candidate_scoring import email_candidate_scorer
 from services.organization_service import organization_service
 from services.prospect_search.candidate_decision import CandidateDecision, CandidateVerdict, SearchCriteria
+from services.prospect_search.candidate_facts import CandidateFacts
 from services.prospect_search.candidate_identity import KnownBusinessIndex
 from services.prospect_search.candidate_store import CandidateStore
 from services.prospect_search.candidate_verifier import CandidateVerifier
 from services.prospect_search.contact_finder import EmailDomainCheck
+from services.prospect_search.swiss_directory import SwissDirectoryUnavailableError, swiss_directory
 from services.prospect_search.trade_catalog import TradeCatalog
 from services.validation_service import validation_service
 from services.website_liveness_service import website_liveness_service
@@ -75,6 +78,7 @@ class FacebookContactRecorder:
         facts.is_verified = True
         facts.is_facebook_page_read = True
         page_url = facts.facebook_url or ""
+        has_learnt_phone = False
         if not read.is_readable:
             facts.add_evidence("facebook_unread", "page illisible sans connexion", source="Page Facebook", url=page_url)
         else:
@@ -90,12 +94,15 @@ class FacebookContactRecorder:
             if read.phone and not facts.phone:
                 facts.phone = read.phone
                 facts.add_evidence("phone", read.phone, source="Page Facebook", url=page_url)
+                has_learnt_phone = True
             if read.website and facts.website is None and validation_service.is_valid_website(read.website):
                 facts.website = read.website
                 status = await website_liveness_service.check_website_status(read.website)
                 facts.website_status = status.value if status is not None else None
                 facts.add_evidence("website", read.website, source="Page Facebook", url=page_url)
 
+        if facts.country == "CH" and has_learnt_phone:
+            await self._read_directory_asterisk(facts)
         await self._domain_check.drop_dead_email(facts)
         await CandidateVerifier.consider_email_domain(facts, trade)
 
@@ -115,6 +122,16 @@ class FacebookContactRecorder:
             if creates_prospect:
                 await CandidateStore.promote_or_leave_to_confirm(db, row, facts, trade, organization_id=organization_id)
             return CandidateStore.verdict_of(row)
+
+    @staticmethod
+    async def _read_directory_asterisk(facts: CandidateFacts) -> None:
+        """Look up in search.ch the number the page gave: without it, the search could not read its asterisk."""
+        try:
+            entry = await swiss_directory.entry_for_phone(facts.phone)
+        except SwissDirectoryUnavailableError as exc:
+            CandidateVerifier.note_directory_unanswered(facts, exc)
+            return
+        CandidateVerifier.take_directory_asterisk(facts, entry)
 
 
 facebook_contact_recorder = FacebookContactRecorder()

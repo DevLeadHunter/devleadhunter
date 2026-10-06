@@ -537,6 +537,36 @@ def test_a_facebook_read_completes_the_waiting_candidate(canned_world: None, db:
     assert search is not None and search.status == ProspectSearchStatus.COMPLETED.value
 
 
+def test_a_swiss_number_read_on_a_facebook_page_is_looked_up_for_its_asterisk(
+    canned_world: None, monkeypatch: pytest.MonkeyPatch, db: Session
+) -> None:
+    async def entry_refusing_advertising(phone: str | None) -> SwissDirectoryEntry | None:
+        if phone != "079 000 00 30":
+            return None
+        return SwissDirectoryEntry(
+            url="https://search.ch/tel/sion/rue-du-rhone-1/jardins-rochat.fr.html",
+            name="Jardins Rochat",
+            is_business=True,
+            refuses_advertising=True,
+            emails=(),
+            websites=(),
+            mobile_phones=(),
+        )
+
+    monkeypatch.setattr(swiss_directory, "entry_for_phone", entry_refusing_advertising)
+    search_id = _create_search(db)
+    waiting = _store_candidate(db, search_id, "Jardins Rochat", CandidateStatus.NEEDS_BROWSER)
+
+    verdict = asyncio.run(
+        facebook_contact_recorder.record(
+            waiting.id,
+            FacebookContactRead(is_readable=True, emails=["jardins.rochat@gmail.com"], phone="079 000 00 30"),
+        )
+    )
+
+    assert verdict is not None and verdict.reject_reason == CandidateRejectReason.NO_ADVERTISING
+
+
 def test_a_facebook_email_on_the_business_s_own_domain_reveals_its_website(canned_world: None, db: Session) -> None:
     search_id = _create_search(db, count=2)
     asyncio.run(ProspectSearchRunner(search_id).run())

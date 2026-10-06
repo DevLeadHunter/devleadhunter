@@ -353,13 +353,23 @@ class CandidateVerifier:
                 or await self._entry_found_at_address(facts, trade)
             )
         except SwissDirectoryUnavailableError as exc:
-            logger.info("Swiss directory unanswered for %s: %s", facts.name, exc)
-            facts.add_evidence("directory_unanswered", "search.ch", source="Annuaire search.ch")
+            self.note_directory_unanswered(facts, exc)
             return None
+        self.take_directory_asterisk(facts, entry)
+        return entry
+
+    @staticmethod
+    def take_directory_asterisk(facts: CandidateFacts, entry: SwissDirectoryEntry | None) -> None:
+        """Mark the candidate as refusing advertising when its search.ch entry carries the asterisk."""
         if entry is not None and entry.refuses_advertising and not facts.refuses_advertising:
             facts.refuses_advertising = True
             facts.add_evidence("no_advertising", "*", source="Annuaire search.ch", url=entry.url)
-        return entry
+
+    @staticmethod
+    def note_directory_unanswered(facts: CandidateFacts, error: SwissDirectoryUnavailableError) -> None:
+        """Record that search.ch did not answer, so the candidate's asterisk stays unread."""
+        logger.info("Swiss directory unanswered for %s: %s", facts.name, error)
+        facts.add_evidence("directory_unanswered", "search.ch", source="Annuaire search.ch")
 
     def _read_swiss_directory_entry(
         self, facts: CandidateFacts, entry: SwissDirectoryEntry | None, trade: TradeProfile
