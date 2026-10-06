@@ -177,3 +177,36 @@ complète (un second numéro).
 
 Les paysagistes suisses sont la case la plus difficile : 4 bons pour 197 candidats. L'astérisque en
 écarte deux sur cinq, et la loi l'impose.
+
+## Manche 4 — France, paysagistes + garages + électriciens, email (6 octobre au soir)
+
+Recherche de l'app n° 6, villes choisies par le moteur (Dijon, Rouen, Blois et leurs environs), 8 par
+métier : 25 gardés en 36 minutes, 385 requêtes, 54 appels du juge. Les électriciens viennent tous de
+la liste des entreprises RGE.
+
+### Vérité terrain des 25 gardés
+
+| | Nombre | Détail |
+|---|---|---|
+| Bons | 9 | 3 paysagistes, 4 garages, 2 électriciens (dont un site mort) : prospects 268 à 276 |
+| Site en ligne | 8 | dont 2 dont l'email était lu sur leur propre site, 1 dont le domaine de l'email épelle le nom, 1 dont le nom de fiche contient le domaine |
+| Email d'un tiers | 3 | la boîte `dpo@` d'une plateforme d'artisans, l'adresse d'un réseau de garages, celle d'un groupe de distribution |
+| Autre métier | 3 | un plombier et deux chauffagistes venus de la liste RGE |
+| Autre métier non vérifiable | 1 | laissé à confirmer |
+
+En plus, 4 businesses joignables par SMS seulement (prospects 277 à 280) complètent la campagne SMS
+France.
+
+### Écarts et causes
+
+| Écart | Cause | Correction |
+|---|---|---|
+| L'email lu sur le site du business, et le site ignoré | Le site porte un autre nom que la fiche Google (« Passion Paysage 21 » pour « Plaisir Paysage ») | Un site qui n'est pas un annuaire, qui publie l'email et dont l'adresse reprend un mot de cet email, est le site du business |
+| Un domaine d'email au nom du business, et son site ignoré | La page d'accueil ne nomme pas le business et la fiche n'a pas de téléphone | Un domaine qui épelle le nom du business, à une lettre près, suffit |
+| Une fiche nommée « … Dijon-Paysagiste.fr » gardée sans site | Le nom de la fiche n'était pas lu | Un domaine écrit dans le nom est contrôlé comme son site |
+| Emails de plateformes, de réseaux de garages, d'un groupe | Domaines absents des listes | Plateformes d'artisans, réseaux de garages, marques et groupe ajoutés ; boîtes `dpo@`, `rgpd@`, `privacy@`… jamais retenues |
+| Un plombier et des chauffagistes proposés comme électriciens | La liste RGE des électriciens comptait la « Ventilation mécanique » | Seuls les « Radiateurs électriques » restent |
+
+### Résultat de la manche
+
+9 bons pour 25 gardés. Chaque faux a sa correction, en production le soir même.
