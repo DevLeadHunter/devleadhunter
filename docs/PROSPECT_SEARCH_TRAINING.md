@@ -242,3 +242,29 @@ viennent tous du fichier des licences de la RBQ.
 
 16 bons pour 25 gardés. Au Québec, presque tous les paysagistes ont un site : les garages et les
 électriciens de la RBQ rendent mieux.
+
+## Manche 6 — France, paysagistes + garages + électriciens, email (6 octobre, nuit)
+
+Recherche de l'app n° 8 (Pau, Gap, Limoges et alentours), 7 par métier, sans le juge (quota
+quotidien épuisé) : 24 gardés en 51 minutes, 529 requêtes.
+
+### Vérité terrain des 24 gardés
+
+| | Nombre | Détail |
+|---|---|---|
+| Bons | 17 | 4 paysagistes, 6 garages, 7 électriciens (dont 4 sites morts) : prospects 297 à 313 |
+| Email d'un tiers | 4 | un réseau social russe, une publication de groupe Facebook, un site romain dont le numéro a les mêmes chiffres, un appel d'offres public qui liste plusieurs entreprises |
+| Site en ligne | 2 | dont un site injoignable ce soir-là mais indexé, d'un garage de dix salariés |
+| Autre métier | 1 | un plombier venu de la liste RGE |
+
+### Écarts et causes
+
+| Écart | Cause | Correction |
+|---|---|---|
+| Un email lu sur un site italien gardé pour un garage français | Le fixe romain « 06 7720 5613 » a les mêmes chiffres que le portable français « 06 77 20 56 13 » | Une page d'un autre pays (domaine national) ne prouve rien par le numéro |
+| Un email lu dans un appel d'offres | Un document liste plusieurs entreprises : un numéro et un email s'y côtoient par hasard | Aucun email n'est pris dans un document téléchargé |
+| Un email pris sous une publication de groupe Facebook, par la recherche du numéro | La règle des groupes ne couvrait que la recherche par email | Elle couvre aussi la recherche par le numéro |
+
+### Résultat de la manche
+
+17 bons pour 24 gardés : la France email est presque complète (39 sur 40).
