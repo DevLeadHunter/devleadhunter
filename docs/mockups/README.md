@@ -40,9 +40,10 @@ Ticket Asana « [IA Code] Présence humaine sur la démo ». Trois briques pour 
 
 | Fichier | Ce qu'il montre | État |
 |---|---|---|
-| `receptionist-page/captures-atelier/` | **Le même atelier pour la réceptionniste** : la page de démo en plein écran dans un vrai téléphone, six outils en bas (Identité, Réponses, Demandes, Alertes, Vidéo, Plus), la page qui change en direct pendant qu'on tape (`dibodev-ipad-07-identite-en-direct.jpg`) ; captures du vrai logiciel sur les deux vraies réceptionnistes, iPad portrait, sombre, ordinateur | **En attente du retour de Léo** (07/10) ; code sur la branche `mockup/receptionist-page` |
+| `receptionist-page/receptionniste-atelier-captures.html` (+ `captures-atelier/`) | **Le même atelier pour la réceptionniste** : la page de démo en plein écran dans un vrai téléphone, six outils en bas ; Identité en volet (la page change en direct pendant qu'on tape), Réponses, Demandes, Alertes, Vidéo et Plus en pages dédiées ; captures du vrai logiciel sur les deux vraies réceptionnistes, iPad portrait, sombre, ordinateur | **Retenue le 07/10** (« vas-y continue », règle : pas de volet quand l'aperçu n'est pas utile) ; code sur la branche `mockup/receptionist-page`, prompt `PROMPT-IMPLEMENTATION.md` pour l'autre modèle |
 | `receptionist-page/captures-aujourdhui/` | L'état d'aujourd'hui sur iPad : la page d'une réceptionniste vendue déborde à droite, le reste est une longue colonne de cartes | Constat |
 | `receptionist-page/NOTE.md` | Le pourquoi, le constat, ce que l'atelier contient, le code touché, les points à trancher | À jour |
+| `receptionist-page/PROMPT-IMPLEMENTATION.md` | Le prompt à coller à un modèle de code pour implémenter l'atelier de la réceptionniste à partir de la branche de maquette | À jour |
 
 ### Nouvelle template électricien (`electrician-template/`)
 
