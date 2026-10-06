@@ -1,5 +1,6 @@
-import type { ComputedRef, MaybeRefOrGetter, Ref } from 'vue'
+import type { ComponentPublicInstance, ComputedRef, MaybeRefOrGetter, Ref, StyleValue } from 'vue'
 import type { LoginCredentials, SignupPayload, User } from '~/types'
+import type { AtelierSheetSize, AtelierTool } from '~/types/AtelierToolSheet'
 import type { ProspectSearchCandidate } from '~/types/ProspectSearch'
 
 export type UseAuthReturn = {
@@ -167,4 +168,24 @@ export type UsePullToRefreshReturn = {
   isPulling: Ref<boolean>
   isRefreshing: Ref<boolean>
   hasReachedRefreshThreshold: ComputedRef<boolean>
+}
+
+/** What an atelier page gets from `useAtelierToolSheet`: the open tool, the sheet and the handlers of its handle. */
+export type UseAtelierToolSheetReturn<TKey extends string> = {
+  activeTool: Ref<TKey | null>
+  sheetSize: Ref<AtelierSheetSize>
+  workAreaElement: Ref<HTMLElement | null>
+  sheetElement: Ref<HTMLElement | null>
+  isToolSheetOpen: ComputedRef<boolean>
+  activeToolMeta: ComputedRef<AtelierTool<TKey> | null>
+  activeToolHint: ComputedRef<string>
+  sheetStyle: ComputedRef<StyleValue>
+  toggleTool: (key: TKey) => void
+  closeActiveTool: () => void
+  registerToolButton: (key: TKey, element: Element | ComponentPublicInstance | null) => void
+  startSheetDrag: (event: PointerEvent) => void
+  followSheetDrag: (event: PointerEvent) => void
+  endSheetDrag: (event: PointerEvent) => void
+  cancelSheetDrag: () => void
+  toggleSheetSize: () => void
 }

@@ -1,7 +1,6 @@
 <template>
   <form class="flex flex-col gap-6" @submit.prevent="save">
-    <section class="flex flex-col gap-4">
-      <h3 class="app-label !text-[0.6rem]">Identité</h3>
+    <section v-if="isIdentityShown" class="flex flex-col gap-4">
       <label class="flex flex-col gap-1">
         <span class="text-xs font-medium text-[var(--app-ink)]">Entreprise affichée</span>
         <input v-model="form.business_name" type="text" class="app-input" maxlength="255" required />
@@ -48,7 +47,7 @@
           <input
             v-model="form.accent_color"
             type="color"
-            class="h-8 w-10 cursor-pointer rounded border border-[var(--app-line)] bg-transparent"
+            class="h-10 w-12 cursor-pointer rounded border border-[var(--app-line)] bg-transparent"
             aria-label="Choisir la couleur d'accent"
           />
           <input
@@ -63,9 +62,8 @@
       </div>
     </section>
 
-    <section class="flex flex-col gap-4 border-t border-[var(--app-line-soft)] pt-5">
+    <section v-if="isAlertsShown" class="flex flex-col gap-4">
       <div class="flex flex-col gap-1">
-        <h3 class="app-label !text-[0.6rem]">Alertes au commerçant</h3>
         <p class="text-muted text-xs leading-relaxed">
           Une fois l'assistant vendu : chaque demande par email, et un SMS pour celles qui ne peuvent pas attendre.
           Rappel le lendemain si elle n'est pas traitée.
@@ -135,7 +133,7 @@
       </div>
     </section>
 
-    <section class="flex flex-col gap-2 border-t border-[var(--app-line-soft)] pt-5">
+    <section v-if="isAlertsShown" class="flex flex-col gap-2 border-t border-[var(--app-line-soft)] pt-5">
       <h3 class="app-label !text-[0.6rem]">Boîte mail Gmail (bêta)</h3>
       <UiSwitch id="assistant-mailbox" v-model="form.mailbox_enabled" label="Préparer les réponses aux emails" />
       <p class="text-muted text-xs leading-relaxed">
@@ -145,7 +143,7 @@
       </p>
     </section>
 
-    <section class="flex flex-col gap-2 border-t border-[var(--app-line-soft)] pt-5">
+    <section v-if="isAlertsShown" class="flex flex-col gap-2 border-t border-[var(--app-line-soft)] pt-5">
       <h3 class="app-label !text-[0.6rem]">Modèle</h3>
       <UiSwitch id="assistant-eu-only" v-model="form.eu_only" label="IA hébergée en Europe (Mistral)" />
       <p class="text-muted text-xs leading-relaxed">
@@ -153,20 +151,6 @@
         (l'assistant propose alors de laisser ses coordonnées).
       </p>
     </section>
-
-    <div class="flex flex-col gap-2 border-t border-[var(--app-line)] pt-4">
-      <button
-        type="submit"
-        class="btn-primary w-full disabled:cursor-not-allowed disabled:opacity-50"
-        :disabled="isSaving || form.languages.length === 0"
-      >
-        <UIcon v-if="isSaving" name="i-lucide-loader-circle" class="mr-1.5 h-4 w-4 animate-spin" />
-        Enregistrer
-      </button>
-      <p class="text-muted text-center text-[11px] leading-relaxed">
-        La démo, le widget installé et l'espace client changent aussitôt ; l'aperçu ci-contre se recharge.
-      </p>
-    </div>
   </form>
 </template>
 
@@ -179,7 +163,12 @@ import type {
   AiAssistantSummary,
   AiAssistantUpdatePayload,
 } from '~/types/AiAssistant'
-import type { AssistantSettingsFormEmits, AssistantSettingsFormProps } from '~/types/AssistantSettingsForm'
+import type {
+  AssistantSettingsFormChangedSections,
+  AssistantSettingsFormEmits,
+  AssistantSettingsFormProps,
+  AssistantSettingsFormSection,
+} from '~/types/AssistantSettingsForm'
 import type { UseToastReturn } from '~/types/Composables'
 import type { SelectFieldOption } from '~/types/SelectField'
 import { computed, ref, watch } from 'vue'
@@ -192,9 +181,17 @@ import { widgetLanguageCode } from '~/utils/aiAssistantLabels'
 import { formatAssistantTone, parseAssistantTone } from '~/utils/assistantTone'
 import { withRecordChanges } from '~/utils/formSync'
 
+/**
+ * One part of an assistant's settings, the identity or the alerts, without a submit button: the page publishes it
+ * through the exposed `save()`, which sends only the fields of that part.
+ */
 const props: AssistantSettingsFormProps = defineProps({
   assistant: {
     type: Object as PropType<AiAssistantSummary>,
+    required: true,
+  },
+  section: {
+    type: String as PropType<AssistantSettingsFormSection>,
     required: true,
   },
 })
@@ -230,11 +227,25 @@ const LANGUAGE_OPTIONS: SelectFieldOption<string>[] = [
   { value: 'lb', label: 'Lëtzebuergesch' },
 ]
 
+/** The fields of the identity section; every other field belongs to the alerts section. */
+const IDENTITY_FIELDS: (keyof AiAssistantEditForm)[] = [
+  'assistant_name',
+  'business_name',
+  'tone',
+  'accent_color',
+  'avatar_enabled',
+  'languages',
+]
+
 const form: Ref<AiAssistantEditForm> = ref(formOf(props.assistant))
 /** The tone as chips; the stored sentence is written from them on save. */
 const toneWords: Ref<string[]> = ref(parseAssistantTone(props.assistant.tone))
 const isSaving: Ref<boolean> = ref(false)
 const isAvatarModalOpen: Ref<boolean> = ref(false)
+
+const isIdentityShown: ComputedRef<boolean> = computed((): boolean => props.section === 'identity')
+
+const isAlertsShown: ComputedRef<boolean> = computed((): boolean => props.section === 'alerts')
 
 /** The tone chips: the known tones, plus any word of the stored tone that is not one of them (nothing is lost). */
 const toneOptions: ComputedRef<SelectFieldOption<string>[]> = computed((): SelectFieldOption<string>[] => {
@@ -252,6 +263,40 @@ const toneSummary: ComputedRef<string> = computed((): string => {
   const sentence: string = formatAssistantTone(toneWords.value)
   return sentence ? `Ton : ${sentence}.` : 'Aucun ton imposé : professionnel et chaleureux par défaut.'
 })
+
+/** The form as it stands, the tone sentence written from its chips. */
+const draft: ComputedRef<AiAssistantEditForm> = computed(
+  (): AiAssistantEditForm => ({ ...form.value, tone: formatAssistantTone(toneWords.value) }),
+)
+
+/** The form as the assistant is saved, to tell an edit from a refresh. */
+const savedForm: ComputedRef<AiAssistantEditForm> = computed(
+  (): AiAssistantEditForm => ({
+    ...formOf(props.assistant),
+    tone: formatAssistantTone(parseAssistantTone(props.assistant.tone)),
+  }),
+)
+
+/** Which sections differ from the saved assistant. */
+const changedSections: ComputedRef<AssistantSettingsFormChangedSections> = computed(
+  (): AssistantSettingsFormChangedSections => {
+    const changedFields: (keyof AiAssistantEditForm)[] = (
+      Object.keys(draft.value) as (keyof AiAssistantEditForm)[]
+    ).filter(
+      (field: keyof AiAssistantEditForm): boolean =>
+        JSON.stringify(draft.value[field]) !== JSON.stringify(savedForm.value[field]),
+    )
+    return {
+      identity: changedFields.some((field: keyof AiAssistantEditForm): boolean => IDENTITY_FIELDS.includes(field)),
+      alerts: changedFields.some((field: keyof AiAssistantEditForm): boolean => !IDENTITY_FIELDS.includes(field)),
+    }
+  },
+)
+
+/** An unsaved edit in the part this form shows (the other part's fields are another form's business). */
+const hasChanges: ComputedRef<boolean> = computed((): boolean =>
+  props.section === 'identity' ? changedSections.value.identity : changedSections.value.alerts,
+)
 
 /**
  * The assistant's languages among the widget's, a stored « lu » read as « lb », without duplicates.
@@ -318,24 +363,14 @@ function changedAlertFields(alerts: AiAssistantAlertSettings, edited: AiAssistan
 async function save(): Promise<void> {
   const target: AiAssistantSummary = props.assistant
   if (isSaving.value) return
-  if (form.value.languages.length === 0) {
+  if (props.section === 'identity' && form.value.languages.length === 0) {
     toast.error('Choisissez au moins une langue.')
     return
   }
   isSaving.value = true
   try {
-    const payload: AiAssistantUpdatePayload = {
-      assistant_name: form.value.assistant_name,
-      business_name: form.value.business_name,
-      tone: formatAssistantTone(toneWords.value),
-      accent_color: form.value.accent_color,
-      languages: form.value.languages,
-      ...(form.value.email.trim() !== (target.email ?? '') ? { email: form.value.email.trim() } : {}),
-      ...changedAlertFields(target.alerts, form.value),
-      ...(form.value.eu_only !== target.eu_only ? { eu_only: form.value.eu_only } : {}),
-      ...(form.value.mailbox_enabled !== target.mailbox_enabled ? { mailbox_enabled: form.value.mailbox_enabled } : {}),
-      ...(form.value.avatar_enabled !== target.avatar_enabled ? { avatar_enabled: form.value.avatar_enabled } : {}),
-    }
+    const payload: AiAssistantUpdatePayload =
+      props.section === 'identity' ? identityPayload(target) : alertsPayload(target)
     const updated: AiAssistantSummary = await AiAssistantService.update(target.id, payload)
     form.value = formOf(updated)
     toneWords.value = parseAssistantTone(updated.tone)
@@ -349,6 +384,44 @@ async function save(): Promise<void> {
   } finally {
     isSaving.value = false
   }
+}
+
+/**
+ * The identity as typed, the avatar switch only when it moved.
+ * @param target - The assistant as it is saved.
+ * @returns The identity fields to send.
+ */
+function identityPayload(target: AiAssistantSummary): AiAssistantUpdatePayload {
+  return {
+    assistant_name: form.value.assistant_name,
+    business_name: form.value.business_name,
+    tone: formatAssistantTone(toneWords.value),
+    accent_color: form.value.accent_color,
+    languages: form.value.languages,
+    ...(form.value.avatar_enabled !== target.avatar_enabled ? { avatar_enabled: form.value.avatar_enabled } : {}),
+  }
+}
+
+/**
+ * The alert, mailbox and model fields that differ from the saved assistant.
+ * @param target - The assistant as it is saved.
+ * @returns The alert fields to send.
+ */
+function alertsPayload(target: AiAssistantSummary): AiAssistantUpdatePayload {
+  return {
+    ...(form.value.email.trim() !== (target.email ?? '') ? { email: form.value.email.trim() } : {}),
+    ...changedAlertFields(target.alerts, form.value),
+    ...(form.value.eu_only !== target.eu_only ? { eu_only: form.value.eu_only } : {}),
+    ...(form.value.mailbox_enabled !== target.mailbox_enabled ? { mailbox_enabled: form.value.mailbox_enabled } : {}),
+  }
+}
+
+/**
+ * Drop every unsaved edit: the form goes back to the assistant as it is saved.
+ */
+function reset(): void {
+  form.value = formOf(props.assistant)
+  toneWords.value = parseAssistantTone(props.assistant.tone)
 }
 
 /**
@@ -373,4 +446,14 @@ watch(
     if (assistant.tone !== previous.tone) toneWords.value = parseAssistantTone(assistant.tone)
   },
 )
+
+watch(
+  draft,
+  (edited: AiAssistantEditForm): void => {
+    emit('draft', edited)
+  },
+  { deep: true },
+)
+
+defineExpose({ hasChanges, changedSections, isSaving, save, reset })
 </script>

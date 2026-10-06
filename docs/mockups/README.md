@@ -32,9 +32,18 @@ Ticket Asana « [IA Code] Présence humaine sur la démo ». Trois briques pour 
 
 | Fichier | Ce qu'il montre | État |
 |---|---|---|
-| `demo-site-page/site-demo-atelier-captures.html` (+ `captures-atelier/`) | **L'atelier** : le site en plein écran dans un vrai téléphone ou un vrai écran d'ordinateur, barre d'outils en bas (Template, Couleurs, Photos, Prestations, Vidéo, Plus), volet qui monte sans jamais cacher le site ; captures du vrai logiciel sur iPad portrait, sombre, ordinateur | En attente du retour de Léo (06/10, après trois corrections le soir même) |
+| `demo-site-page/site-demo-atelier-captures.html` (+ `captures-atelier/`) | **L'atelier** : le site en plein écran dans un vrai téléphone ou un vrai écran d'ordinateur, barre d'outils en bas (Template, Couleurs, Photos, Prestations, Vidéo, Plus), volet qui monte sans jamais cacher le site ; captures du vrai logiciel sur iPad portrait, sombre, ordinateur | **Retenue le 06/10, codée et en prod le 07/10** (atelier + grille de photos au doigt sur tactile, liste à la souris) ; voir la note pour ce qui reste à vérifier sur un vrai iPad |
 | `demo-site-page/captures-v1/` | L'état d'aujourd'hui (Résumé, Configuration, téléphone) et deux captures de la première proposition en onglets | **v1 refusée le 06/10** (« ça ressemble à ce que j'ai déjà ») |
 | `demo-site-page/NOTE.md` | Le pourquoi, les trois directions, ce que l'atelier garde de l'existant, le code touché sur la branche `mockup/demo-site-page`, les points à trancher | À jour |
+
+### Page d'une réceptionniste (`receptionist-page/`)
+
+| Fichier | Ce qu'il montre | État |
+|---|---|---|
+| `receptionist-page/receptionniste-atelier-captures.html` (+ `captures-atelier/`) | **Le même atelier pour la réceptionniste** : la page de démo en plein écran dans un vrai téléphone, six outils en bas ; Identité en volet (la page change en direct pendant qu'on tape), Réponses, Demandes, Alertes, Vidéo et Plus en pages dédiées ; captures du vrai logiciel sur les deux vraies réceptionnistes, iPad portrait, sombre, ordinateur | **Retenue le 07/10, codée et en prod le jour même** (`da2f1e3d`, livrée par l'autre session) ; règle : pas de volet quand l'aperçu n'est pas utile ; voir la note pour ce qui reste à vérifier sur un vrai iPad |
+| `receptionist-page/captures-aujourdhui/` | L'état d'aujourd'hui sur iPad : la page d'une réceptionniste vendue déborde à droite, le reste est une longue colonne de cartes | Constat |
+| `receptionist-page/NOTE.md` | Le pourquoi, le constat, ce que l'atelier contient, le code touché, les points à trancher | À jour |
+| `receptionist-page/PROMPT-IMPLEMENTATION.md` | Le prompt à coller à un modèle de code pour implémenter l'atelier de la réceptionniste à partir de la branche de maquette | À jour |
 
 ### Nouvelle template électricien (`electrician-template/`)
 

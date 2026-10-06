@@ -1,7 +1,2 @@
-export type DemoSiteStatTone = 'success' | 'danger' | 'muted' | undefined
-
-export type DemoSiteStat = {
-  label: string
-  value: string
-  tone: DemoSiteStatTone
-}
+/** The tools of the demo site's atelier bar. */
+export type DemoSiteAtelierToolKey = 'template' | 'couleurs' | 'photos' | 'prestations' | 'video' | 'plus'

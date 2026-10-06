@@ -6,6 +6,8 @@ export type AssistantVideoCardProps = {
   isRemovingVideo: boolean
   isTakingLongerThanExpected: boolean
   isRefreshingVideo: boolean
+  isHeadingHidden?: boolean
+  isFramed?: boolean
 }
 
 export type AssistantVideoCardEmits = {
