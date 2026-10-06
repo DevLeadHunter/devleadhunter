@@ -154,6 +154,7 @@ class ContactFinder:
             facts.website_status = status.value if status is not None else None
         await self.drop_dead_email(facts)
         await CandidateVerifier.consider_email_domain(facts, trade)
+        await CandidateVerifier.consider_email_source_site(facts, trade)
 
     async def drop_dead_email(self, facts: CandidateFacts) -> None:
         """Forget the candidate's email when its domain receives no mail."""

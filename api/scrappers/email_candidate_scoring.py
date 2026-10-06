@@ -142,6 +142,7 @@ BLOCKED_DOMAINS: frozenset[str] = frozenset(
         "123devis.com",
         "allovoisins.com",
         "jemepropose.com",
+        "mousquetaires.com",
         "motrio.fr",
         "motrio.com",
         "ad.fr",

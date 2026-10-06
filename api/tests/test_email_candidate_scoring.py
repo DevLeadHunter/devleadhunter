@@ -217,4 +217,5 @@ def test_a_platform_or_a_data_protection_inbox_is_never_the_business_email() -> 
     assert _only("dpo@garage-martin.fr", name="Garage Martin") is None
     assert _only("contact@habitatpresto.com", name="Garage Martin") is None
     assert _only("contact@motrio.fr", name="Garage de l'Europe") is None
+    assert _only("pdv06298@mousquetaires.com", name="Drapeau Automobiles") is None
     assert _only("contact@garage-martin.fr", name="Garage Martin") == "contact@garage-martin.fr"

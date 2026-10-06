@@ -591,3 +591,40 @@ def test_a_listing_named_after_its_website_has_that_website() -> None:
     _verify(facts, {"organic": []})
 
     assert facts.website == "https://dijon-paysagiste.fr/"
+
+
+def test_the_site_publishing_the_email_under_a_name_from_that_address_is_the_website() -> None:
+    facts = _facts(
+        name="Plaisir Paysage", city="Dijon", country="FR", phone="06 98 39 14 26", email="passion.paysage21@gmail.com"
+    )
+    facts.add_evidence(
+        "email", facts.email or "", source="passion-paysage-dijon.fr", url="https://passion-paysage-dijon.fr/contact"
+    )
+
+    asyncio.run(CandidateVerifier.consider_email_source_site(facts, _LANDSCAPER))
+
+    assert (facts.website, facts.website_status) == ("https://passion-paysage-dijon.fr/", WebsiteStatus.LIVE.value)
+
+
+def test_a_town_hall_page_quoting_the_email_is_not_the_website() -> None:
+    facts = _facts(name="Jardin Conseil", city="Le Noirmont", email="secretariat@jardinconseil.ch")
+    facts.add_evidence(
+        "email", facts.email or "", source="noirmont.ch", url="https://www.noirmont.ch/Entreprises/Paysagistes"
+    )
+
+    asyncio.run(CandidateVerifier.consider_email_source_site(facts, _LANDSCAPER))
+
+    assert facts.website is None
+
+
+def test_an_email_domain_spelling_the_business_name_is_its_website(monkeypatch: pytest.MonkeyPatch) -> None:
+    facts = _facts(name="Bcp Paysagistes", city="Dijon", country="FR", phone=None, email="contact@bcp-paysagiste.com")
+    _serve_front_page(
+        monkeypatch,
+        "https://bcp-paysagiste.com/",
+        "<title>Votre paysagiste à Dijon, Bourgogne Création Paysage</title>",
+    )
+
+    asyncio.run(CandidateVerifier.consider_email_domain(facts, _LANDSCAPER))
+
+    assert facts.website == "https://bcp-paysagiste.com/"

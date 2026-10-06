@@ -10,6 +10,7 @@ judge. Every fact kept carries the page it was read on.
 
 from __future__ import annotations
 
+import difflib
 import json
 import logging
 import re
@@ -66,6 +67,7 @@ _LIQUIDATION_WORDS_BY_REGISTER_MARKER: dict[str, str] = {
 _SAME_BUSINESS_SIMILARITY: float = 0.5
 _NAMED_IN_TEXT_SIMILARITY: float = 0.4
 _DISTINCTIVE_TOKEN_MIN_CHARS: int = 5
+_DOMAIN_NAMED_AFTER_BUSINESS_SIMILARITY: float = 0.85
 _OWN_DOMAIN_TIMEOUT_SECONDS: float = 8.0
 _OWN_DOMAIN_READ_CHARS: int = 200_000
 
@@ -265,6 +267,7 @@ class CandidateVerifier:
             status = await website_liveness_service.check_website_status(facts.website)
             facts.website_status = status.value if status is not None else None
         await self.consider_email_domain(facts, trade)
+        await self.consider_email_source_site(facts, trade)
 
     def _read_swiss_directory_extracts(
         self, facts: CandidateFacts, results: list[SearchResultLine], trade: TradeProfile
@@ -590,7 +593,7 @@ class CandidateVerifier:
         phone_digits = re.sub(r"\D", "", facts.phone or "")[-8:]
         names_it = cls.names_business(page_text, facts, trade)
         shows_its_phone = len(phone_digits) == 8 and phone_digits in re.sub(r"\D", "", page_text)
-        if not (names_it or shows_its_phone):
+        if not (names_it or shows_its_phone or cls._is_domain_named_after(domain, facts)):
             return
         status = await website_liveness_service.check_website_status(page_url)
         if facts.website is not None and status != WebsiteStatus.LIVE:
@@ -598,6 +601,63 @@ class CandidateVerifier:
         facts.website = page_url
         facts.website_status = status.value if status is not None else None
         facts.add_evidence("website", page_url, source="Le domaine de son email répond", url=page_url)
+
+    @staticmethod
+    def _is_domain_named_after(domain: str, facts: CandidateFacts) -> bool:
+        """Whether a domain spells the business name, give or take a letter (« bcp-paysagiste.com » for « Bcp Paysagistes »)."""
+        compact_label = re.sub(r"[^a-z0-9]", "", fold(domain.rsplit(".", 1)[0]))
+        compact_name = re.sub(r"[^a-z0-9]", "", fold(facts.name))
+        similarity = difflib.SequenceMatcher(None, compact_label, compact_name).ratio()
+        return bool(compact_label) and similarity >= _DOMAIN_NAMED_AFTER_BUSINESS_SIMILARITY
+
+    @classmethod
+    async def consider_email_source_site(cls, facts: CandidateFacts, trade: TradeProfile) -> None:
+        """
+        A site publishing the business's email under a name taken from that address is the business's own.
+
+        « passion.paysage21@gmail.com » read on passion-paysage-dijon.fr makes that site its website; a town
+        hall or a newspaper quoting the address is named otherwise and proves nothing.
+
+        Args:
+            facts: The candidate, completed in place.
+            trade: Profile of the searched trade.
+        """
+        if facts.email is None or facts.website_status == WebsiteStatus.LIVE.value:
+            return
+        source_url = next(
+            (
+                line.get("url")
+                for line in reversed(facts.evidence)
+                if line.get("fact") == "email" and line.get("value") == facts.email and line.get("url")
+            ),
+            None,
+        )
+        if not source_url:
+            return
+        source = urlparse(source_url)
+        host = (source.hostname or "").lower().removeprefix("www.")
+        if not host or cls.is_known_third_party(source_url, host):
+            return
+        common_words = {
+            token
+            for word in (*trade.category_keywords, *trade.aliases, trade.label, facts.town)
+            for token in re.split(r"[^a-z0-9]+", fold(word))
+        }
+        host_words = [
+            word
+            for word in re.split(r"[^a-z0-9]+", host.rsplit(".", 1)[0])
+            if len(word) >= _DISTINCTIVE_TOKEN_MIN_CHARS and word not in common_words
+        ]
+        compact_local_part = re.sub(r"[^a-z0-9]", "", fold(facts.email.split("@", 1)[0]))
+        if not any(word in compact_local_part for word in host_words):
+            return
+        site = f"{source.scheme}://{source.netloc}/"
+        status = await website_liveness_service.check_website_status(site)
+        if facts.website is not None and status != WebsiteStatus.LIVE:
+            return
+        facts.website = site
+        facts.website_status = status.value if status is not None else None
+        facts.add_evidence("website", site, source="Le site qui publie son email", url=source_url)
 
     @staticmethod
     async def _front_page_of(domain: str) -> tuple[str, str] | None:
