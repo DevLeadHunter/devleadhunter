@@ -115,9 +115,9 @@ _CHAIN_NAME_MARKERS: tuple[str, ...] = (
 )
 _NAME_WORD_SEPARATORS_RE: re.Pattern[str] = re.compile(r"[^a-z0-9]+")
 
+_COMPARISON_SITE_HOST_WORDS: tuple[str, ...] = ("comparatif", "vergleich", "comparison", "comparazione")
 # Directories, marketplaces and network sites missing from the shared blocklist. A garage's page on
 # its network's site (AD, Motrio, a car brand…) is not its own website.
-_COMPARISON_SITE_HOST_WORDS: tuple[str, ...] = ("comparatif", "vergleich", "comparison", "comparazione")
 _EXTRA_THIRD_PARTY_HOSTS: frozenset[str] = frozenset(
     {
         "leboncoin.fr",
