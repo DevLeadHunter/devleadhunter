@@ -57,6 +57,7 @@ from schemas.prospect_search import (
     RefusedCandidateDecision,
 )
 from scrappers.facebook_enrichment_scraper import facebook_enrichment_scraper
+from scrappers.google_website_button import google_website_button
 from services.auth_service import require_auth
 from services.enrichment_service import enrichment_service
 from services.prospect_search.candidate_identity import CandidateIdentity, KnownBusinessIndex
@@ -470,6 +471,40 @@ def test_the_website_button_of_a_listing_is_stored_with_its_candidate(canned_wor
     assert candidates["Filvert Sarl"].has_website_button is True
     assert candidates["Tendance Nature"].has_website_button is False
     assert CandidateStore.facts_of(candidates["Filvert Sarl"]).has_website_button is True
+
+
+def test_a_website_button_leading_to_a_live_site_costs_no_google_search(
+    canned_world: None, monkeypatch: pytest.MonkeyPatch, db: Session
+) -> None:
+    async def own_website(link: str | None) -> str | None:
+        return "http://www.filvertsarl.ch/"
+
+    monkeypatch.setattr(google_website_button, "destination", own_website)
+    search_id = _create_search(db, count=2)
+    run = ProspectSearchRunner(search_id)
+
+    asyncio.run(run.run())
+    db.expire_all()
+    filvert = _candidates(db, search_id)["Filvert Sarl"]
+
+    assert filvert.reject_reason == CandidateRejectReason.HAS_WEBSITE.value
+    assert filvert.website == "http://www.filvertsarl.ch/"
+    assert '"Filvert Sarl" Sion' not in run._client.queries
+
+
+def test_a_website_button_leading_to_a_directory_page_shows_no_website(
+    canned_world: None, monkeypatch: pytest.MonkeyPatch, db: Session
+) -> None:
+    async def directory_page(link: str | None) -> str | None:
+        return "https://yellow.local.ch/d/K9KKuhWx"
+
+    monkeypatch.setattr(google_website_button, "destination", directory_page)
+    search_id = _create_search(db, count=2)
+
+    asyncio.run(ProspectSearchRunner(search_id).run())
+    db.expire_all()
+
+    assert _candidates(db, search_id)["Filvert Sarl"].has_website_button is False
 
 
 def test_a_facebook_read_completes_the_waiting_candidate(canned_world: None, db: Session) -> None:

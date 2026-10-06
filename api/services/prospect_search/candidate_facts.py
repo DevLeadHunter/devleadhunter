@@ -7,6 +7,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 
 from enums.prospect_search import EmailProofLevel
+from enums.website_status import WebsiteStatus
 from services.country_profiles import CountryProfiles
 from services.sms.phone_normalizer import PhoneNumberPlans
 
@@ -61,6 +62,11 @@ class CandidateFacts:
     def is_abroad(self) -> bool:
         """Whether the address ends with another country than the search's."""
         return CountryProfiles.foreign_country_of_address(self.address, country=self.country) is not None
+
+    @property
+    def is_ruled_out_before_search(self) -> bool:
+        """Whether the candidate is out before any paid search: a chain, a refusal of advertising, a live website."""
+        return self.is_chain or self.refuses_advertising or self.website_status == WebsiteStatus.LIVE.value
 
     @property
     def has_mobile_phone(self) -> bool:

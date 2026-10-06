@@ -56,6 +56,7 @@ def test_the_website_button_and_the_google_identifier_are_read_from_the_links() 
     listing = GoogleLocalResultsParser.parse_html(_PAGE, country="CH")[0]
 
     assert listing.has_website_button is True
+    assert listing.website_link == "/goto?url=CAESVQHrOzAV"
     assert listing.cid == str(int("66d92e58019e9a3e", 16))
     assert listing.maps_url == f"https://www.google.com/maps?cid={listing.cid}"
 

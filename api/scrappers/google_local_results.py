@@ -53,6 +53,7 @@ class LocalListing:
     reviews_count: int | None = None
     # None when the page was read from the parsed JSON, which does not carry the button.
     has_website_button: bool | None = None
+    website_link: str | None = None
     is_permanently_closed: bool = False
     is_temporarily_closed: bool = False
     cid: str | None = None
@@ -222,6 +223,7 @@ class GoogleLocalResultsParser:
             label = anchor.get_text(" ", strip=True).lower()
             if label in _WEBSITE_BUTTON_LABELS or href.startswith("/goto?"):
                 listing.has_website_button = True
+                listing.website_link = listing.website_link or href or None
             if "/maps/dir/" not in href:
                 continue
             feature_id = _FEATURE_ID_RE.search(href)

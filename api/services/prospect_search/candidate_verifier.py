@@ -233,7 +233,8 @@ class CandidateVerifier:
         """
         Search the business by name and town, and write what the results prove into *facts*.
 
-        A Swiss business whose directory entry refuses advertising is not searched: the law already rules it out.
+        A Swiss business whose directory entry refuses advertising is not searched, nor a business
+        whose card already leads to a live website: either is ruled out.
 
         Args:
             facts: The candidate, completed in place.
@@ -245,6 +246,8 @@ class CandidateVerifier:
             return
         directory_entry = await self._find_swiss_directory_entry(facts, trade)
         if facts.refuses_advertising:
+            return
+        if facts.website is not None and await self._is_website_live(facts):
             return
 
         page = await self._client.google_parsed(f'"{facts.name}" {facts.town}'.strip(), country=facts.country)
@@ -285,6 +288,13 @@ class CandidateVerifier:
             facts.website_status = status.value if status is not None else None
         await self.consider_email_domain(facts, trade)
         await self.consider_email_source_site(facts, trade)
+
+    @staticmethod
+    async def _is_website_live(facts: CandidateFacts) -> bool:
+        """Check the website already known (the one the card's button leads to) and tell whether it is live."""
+        status = await website_liveness_service.check_website_status(facts.website)
+        facts.website_status = status.value if status is not None else None
+        return status == WebsiteStatus.LIVE
 
     def _read_swiss_directory_extracts(
         self, facts: CandidateFacts, results: list[SearchResultLine], trade: TradeProfile

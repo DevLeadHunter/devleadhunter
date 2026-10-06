@@ -13,6 +13,7 @@ from sqlalchemy.pool import StaticPool
 import models
 from core.config import settings
 from core.database import Base
+from scrappers.google_website_button import google_website_button
 from services.prospect_search.swiss_directory import SwissDirectoryEntry, swiss_directory
 from services.r2_storage_service import r2_storage
 
@@ -47,6 +48,16 @@ def swiss_directory_offline(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(swiss_directory, "entries_for_name", no_entries)
     monkeypatch.setattr(swiss_directory, "entries_at_address", no_entries_at_address)
     monkeypatch.setattr(swiss_directory, "entry_at", no_entry_page)
+
+
+@pytest.fixture(autouse=True)
+def google_website_buttons_offline(monkeypatch: pytest.MonkeyPatch) -> None:
+    """A card's « Site Web » button leads nowhere unless a test scripts it: a run never calls google.com."""
+
+    async def nowhere(link: str | None) -> str | None:
+        return None
+
+    monkeypatch.setattr(google_website_button, "destination", nowhere)
 
 
 @pytest.fixture

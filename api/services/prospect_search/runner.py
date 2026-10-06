@@ -43,6 +43,7 @@ from models.prospect_search_candidate import ProspectSearchCandidate
 from scrappers.brightdata_client import BrightDataClient
 from scrappers.facebook_enrichment_scraper import facebook_enrichment_scraper
 from scrappers.google_local_results import GoogleLocalResultsParser, LocalListing
+from scrappers.google_website_button import google_website_button
 from services.decision_maker.normalize import fold
 from services.organization_service import organization_service
 from services.prospect_search.business_name import BusinessName
@@ -282,7 +283,8 @@ class ProspectSearchRunner:
                     return False
                 if not listings:
                     break
-                candidate_ids = self._store_listings(state, profile, town, listings)
+                destinations = await self._website_button_destinations(listings)
+                candidate_ids = self._store_listings(state, profile, town, listings, destinations)
                 without_site = sum(1 for listing in listings if listing.has_website_button is False)
                 self._log(
                     f"{profile.label} · {town} : {len(listings)} fiches Google lues, "
@@ -352,12 +354,29 @@ class ProspectSearchRunner:
             db.commit()
         return to_verify
 
+    @staticmethod
+    async def _website_button_destinations(listings: list[LocalListing]) -> dict[str, str]:
+        """Where the « Site Web » button of each card leads, by the button's link, read one card after the other."""
+        destinations: dict[str, str] = {}
+        for link in dict.fromkeys(listing.website_link for listing in listings if listing.website_link):
+            destination = await google_website_button.destination(link)
+            if destination is not None:
+                destinations[link] = destination
+        return destinations
+
     def _store_listings(
-        self, state: _RunState, profile: TradeProfile, town: str, listings: list[LocalListing]
+        self,
+        state: _RunState,
+        profile: TradeProfile,
+        town: str,
+        listings: list[LocalListing],
+        destinations: dict[str, str],
     ) -> list[int]:
         """
         Save a page of Google listings as candidates; return the ones worth a verification, best first.
 
+        A card's « Site Web » button counts only when it leads to the business's own website: one
+        leading to a directory page shows no website, one leading to a Facebook page gives that page.
         A listing left out because the budget runs low stays unverified: it is verified when the search is resumed.
         """
         leaves_website_listings_unverified = self._leaves_website_listings_unverified(state)
@@ -381,13 +400,19 @@ class ProspectSearchRunner:
                     has_website_button=listing.has_website_button,
                     is_closed=listing.is_permanently_closed or listing.is_temporarily_closed,
                 )
+                destination = destinations.get(listing.website_link or "")
+                if destination is not None:
+                    CandidateVerifier.consider_website(
+                        facts, destination, source="Bouton « Site Web » de la fiche Google", proof_url=destination
+                    )
+                    facts.has_website_button = facts.website is not None
                 early_verdict: CandidateVerdict | None = None
                 if facts.is_closed or facts.is_abroad or not profile.accepts_category(listing.category):
                     early_verdict = CandidateDecision.decide(facts, profile, state.criteria)
                 candidate_id = self._store_candidate(db, state, facts, early_verdict=early_verdict)
-                is_left_unverified = bool(listing.has_website_button) and leaves_website_listings_unverified
+                is_left_unverified = bool(facts.has_website_button) and leaves_website_listings_unverified
                 if candidate_id is not None and not is_left_unverified:
-                    to_verify.append((bool(listing.has_website_button), candidate_id))
+                    to_verify.append((bool(facts.has_website_button), candidate_id))
             db.commit()
         return [candidate_id for _, candidate_id in sorted(to_verify)]
 
@@ -488,7 +513,7 @@ class ProspectSearchRunner:
 
             try:
                 await self._verifier.verify(facts, profile)
-                has_no_answer = not facts.is_verified and not (facts.is_chain or facts.refuses_advertising)
+                has_no_answer = not facts.is_verified and not facts.is_ruled_out_before_search
                 if has_no_answer and candidate_id not in self._retried_candidate_ids:
                     # Bright Data answers nothing now and then under load: one calmer retry settles it.
                     self._unanswered_candidate_ids.append(candidate_id)
