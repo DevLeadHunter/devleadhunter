@@ -281,7 +281,7 @@
                 />
 
                 <div v-else-if="activeTool === 'video'">
-                  <div>
+                  <div class="mx-auto w-full max-w-md">
                     <div class="flex items-center justify-between gap-3">
                       <p class="text-xs text-[var(--app-ink-soft)]">
                         Votre webcam + le site qui défile, avec « Bonjour {Prénom} » à l'écran.
