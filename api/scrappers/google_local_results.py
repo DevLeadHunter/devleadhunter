@@ -165,11 +165,7 @@ class GoogleLocalResultsParser:
 
     @classmethod
     def _read_rating_line(cls, listing: LocalListing, segments: list[str], country: str) -> None:
-        """
-        Read « 5,0 (17) · Paysagiste » (or « Aucun avis · Paysagiste ») into the listing.
-
-        A card without a category shows its phone or its street there instead (« 4,6 (12) · (450) 755-6599 »).
-        """
+        """Read « 5,0 (17) · Paysagiste » (or « Aucun avis · Paysagiste ») into the listing."""
         if not segments:
             return
         match = _RATING_LINE_RE.match(segments[0])
