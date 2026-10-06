@@ -45,3 +45,7 @@ Léo (06/10/2026) : la page d'un site démo (`/dashboard/demo-sites/{id}`) et ce
 ## Comment rejouer les captures
 
 Pile locale jetable (voir la mémoire `local-dev-environment`), base seedée avec le vrai site TP Motorsport (`scratchpad/api-local/seed3.py` de la session du 06/10), serveurs `api-relay-8022`, `demo-host-relay-3001`, `web-mockup-5173` (worktree), puis `scratchpad/shoot_atelier.py` (Playwright du venv API).
+
+## État au 07/10/2026 : en ligne
+
+L'atelier, la grille de photos au doigt et l'appui long (200 ms) sont sur `main` et en production (fast-forward `6798b7a8` → `40a8f6f0`, livrés par l'autre session). Relecture faite le 07/10 : un défaut corrigé (`b3098e94`), « Modifier ces informations » ouvrait l'atelier au lieu de la page d'édition parce que `[id].vue` était la page parente de `[id]/edit.vue` ; la page vit maintenant dans `[id]/index.vue`. Vérifié en local : page d'édition rendue, grille sur écran tactile (10 tuiles), liste à la souris. Pas encore vérifié : l'appui long et le défilement automatique dans Safari sur un vrai iPad.
