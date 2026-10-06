@@ -488,7 +488,7 @@ class ProspectSearchRunner:
 
             try:
                 await self._verifier.verify(facts, profile)
-                has_no_answer = not facts.is_verified and not facts.is_chain
+                has_no_answer = not facts.is_verified and not (facts.is_chain or facts.refuses_advertising)
                 if has_no_answer and candidate_id not in self._retried_candidate_ids:
                     # Bright Data answers nothing now and then under load: one calmer retry settles it.
                     self._unanswered_candidate_ids.append(candidate_id)

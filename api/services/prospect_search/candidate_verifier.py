@@ -233,6 +233,8 @@ class CandidateVerifier:
         """
         Search the business by name and town, and write what the results prove into *facts*.
 
+        A Swiss business whose directory entry refuses advertising is not searched: the law already rules it out.
+
         Args:
             facts: The candidate, completed in place.
             trade: Profile of the searched trade.
@@ -240,6 +242,9 @@ class CandidateVerifier:
         if self.is_chain_name(facts.name):
             facts.is_chain = True
             facts.add_evidence("chain", facts.name, source="Nom de l'enseigne")
+            return
+        directory_entry = await self._find_swiss_directory_entry(facts, trade)
+        if facts.refuses_advertising:
             return
 
         page = await self._client.google_parsed(f'"{facts.name}" {facts.town}'.strip(), country=facts.country)
@@ -273,7 +278,7 @@ class CandidateVerifier:
             )
         self._apply_verdict(facts, verdict, results, trade)
         self._keep_snippet_emails(facts, snippet_emails, results, verdict, trade)
-        await self._read_swiss_directory(facts, trade)
+        self._read_swiss_directory_entry(facts, directory_entry, trade)
 
         if facts.website:
             status = await website_liveness_service.check_website_status(facts.website)
@@ -320,17 +325,17 @@ class CandidateVerifier:
             facts.refuses_advertising = True
             facts.add_evidence("no_advertising", "*", source=line.host, url=line.link, snippet=line.text)
 
-    async def _read_swiss_directory(self, facts: CandidateFacts, trade: TradeProfile) -> None:
+    async def _find_swiss_directory_entry(
+        self, facts: CandidateFacts, trade: TradeProfile
+    ) -> SwissDirectoryEntry | None:
         """
-        Read the search.ch entry of a Swiss business, found by its phone number, else by its name, else at its address.
+        Find the search.ch entry of a Swiss business by its phone number, else by its name, else at its address.
 
-        The asterisk refusing advertising belongs to the number, whoever the entry names; the
-        website and the email count only for a business entry, or an entry naming the business
-        (never for a private person sharing the number).
+        The asterisk refusing advertising belongs to the number, whoever the entry names: it is
+        taken at once, before any paid search.
         """
-        is_already_out = facts.is_closed or facts.is_chain or facts.is_other_business or not facts.matches_trade
-        if facts.country != "CH" or is_already_out:
-            return
+        if facts.country != "CH" or not facts.matches_trade:
+            return None
         try:
             entry = (
                 await self._directory.entry_for_phone(facts.phone)
@@ -340,12 +345,24 @@ class CandidateVerifier:
         except SwissDirectoryUnavailableError as exc:
             logger.info("Swiss directory unanswered for %s: %s", facts.name, exc)
             facts.add_evidence("directory_unanswered", "search.ch", source="Annuaire search.ch")
-            return
-        if entry is None:
-            return
-        if entry.refuses_advertising and not facts.refuses_advertising:
+            return None
+        if entry is not None and entry.refuses_advertising and not facts.refuses_advertising:
             facts.refuses_advertising = True
             facts.add_evidence("no_advertising", "*", source="Annuaire search.ch", url=entry.url)
+        return entry
+
+    def _read_swiss_directory_entry(
+        self, facts: CandidateFacts, entry: SwissDirectoryEntry | None, trade: TradeProfile
+    ) -> None:
+        """
+        Take the website and the email a Swiss business's search.ch entry lists.
+
+        They count only for a business entry, or an entry naming the business (never for a private
+        person sharing the number), and never for a business the results already ruled out.
+        """
+        is_already_out = facts.is_closed or facts.is_chain or facts.is_other_business or not facts.matches_trade
+        if entry is None or is_already_out:
+            return
         if not (entry.is_business or self.names_business(entry.name, facts, trade)):
             return
         for website in entry.websites:

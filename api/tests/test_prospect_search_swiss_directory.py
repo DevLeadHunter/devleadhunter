@@ -502,16 +502,30 @@ def test_the_page_of_an_entry_found_by_name_gives_the_asterisk_the_list_left_out
         is_business=True,
     )
     page = _entry(
-        url=listed.url,
-        name="Rochat Paul & Fils, Paysagistes à Savièse",
-        is_business=True,
-        refuses_advertising=True,
-        emails=("info@rochat-paysagiste.ch",),
+        url=listed.url, name="Rochat Paul & Fils, Paysagistes à Savièse", is_business=True, refuses_advertising=True
     )
 
     _verify(facts, _ScriptedDirectory(None, entries_by_name=[listed], entry_pages={listed.url: page}))
 
     assert facts.refuses_advertising is True
+
+
+def test_the_page_of_an_entry_found_by_name_gives_its_email() -> None:
+    facts = _facts(name="Rochat Paul & Fils", city="Savièse", phone="079 000 00 15", trade_key="paysagiste")
+    listed = _entry(
+        url="https://search.ch/tel/saviese/chemin-de-pradzere-54/rochat-paul-fils.fr.html",
+        name="Rochat Paul & Fils",
+        is_business=True,
+    )
+    page = _entry(
+        url=listed.url,
+        name="Rochat Paul & Fils, Paysagistes à Savièse",
+        is_business=True,
+        emails=("info@rochat-paysagiste.ch",),
+    )
+
+    _verify(facts, _ScriptedDirectory(None, entries_by_name=[listed], entry_pages={listed.url: page}))
+
     assert facts.email == "info@rochat-paysagiste.ch"
 
 

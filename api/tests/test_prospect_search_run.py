@@ -68,6 +68,7 @@ from services.prospect_search.registry_sources import rge_registry
 from services.prospect_search.runner import ProspectSearchRunner
 from services.prospect_search.search_judge import search_judge
 from services.prospect_search.service import ProspectSearchError, ProspectSearchService, prospect_search_service
+from services.prospect_search.swiss_directory import SwissDirectoryEntry, swiss_directory
 from services.prospect_service import prospect_service
 from services.website_liveness_service import website_liveness_service
 
@@ -539,6 +540,37 @@ def test_a_business_discarded_once_costs_nothing_to_the_next_search(canned_world
     assert candidates["Filvert Sarl"].reject_reason == CandidateRejectReason.PREVIOUSLY_REJECTED.value
     assert candidates["Tendance Nature"].reject_reason == CandidateRejectReason.ALREADY_KNOWN.value
     assert '"Filvert Sarl" Sion' not in second_run._client.queries
+
+
+def test_a_swiss_number_refusing_advertising_costs_no_google_search(
+    canned_world: None, monkeypatch: pytest.MonkeyPatch, db: Session
+) -> None:
+    asked_phones: list[str | None] = []
+
+    async def entry_refusing_advertising(phone: str | None) -> SwissDirectoryEntry | None:
+        asked_phones.append(phone)
+        if phone != "078 757 57 42":
+            return None
+        return SwissDirectoryEntry(
+            url="https://search.ch/tel/sion/rte-de-la-courtaz-70/tendance-nature.fr.html",
+            name="Tendance Nature",
+            is_business=True,
+            refuses_advertising=True,
+            emails=(),
+            websites=(),
+            mobile_phones=(),
+        )
+
+    monkeypatch.setattr(swiss_directory, "entry_for_phone", entry_refusing_advertising)
+    search_id = _create_search(db, count=2, validation_mode=_AUTOMATIC)
+    run = ProspectSearchRunner(search_id)
+
+    asyncio.run(run.run())
+    db.expire_all()
+
+    assert _candidates(db, search_id)["Tendance Nature"].reject_reason == CandidateRejectReason.NO_ADVERTISING.value
+    assert '"Tendance Nature" Sion' not in run._client.queries
+    assert asked_phones.count("078 757 57 42") == 1
 
 
 def test_another_user_cannot_read_or_correct_a_search(canned_world: None, db: Session) -> None:
