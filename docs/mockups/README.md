@@ -32,7 +32,7 @@ Ticket Asana « [IA Code] Présence humaine sur la démo ». Trois briques pour 
 
 | Fichier | Ce qu'il montre | État |
 |---|---|---|
-| `demo-site-page/site-demo-atelier-captures.html` (+ `captures-atelier/`) | **L'atelier** : le site en plein écran dans un vrai téléphone ou un vrai écran d'ordinateur, barre d'outils en bas (Template, Couleurs, Photos, Prestations, Vidéo, Plus), volet qui monte sans jamais cacher le site ; captures du vrai logiciel sur iPad portrait, sombre, ordinateur | **Retenue le 06/10** (cinq corrections le soir même) ; implémentation à partir de `demo-site-page/PROMPT-IMPLEMENTATION.md` |
+| `demo-site-page/site-demo-atelier-captures.html` (+ `captures-atelier/`) | **L'atelier** : le site en plein écran dans un vrai téléphone ou un vrai écran d'ordinateur, barre d'outils en bas (Template, Couleurs, Photos, Prestations, Vidéo, Plus), volet qui monte sans jamais cacher le site ; captures du vrai logiciel sur iPad portrait, sombre, ordinateur | **Retenue le 06/10** (cinq corrections le soir même) ; implémentation à partir de `demo-site-page/PROMPT-IMPLEMENTATION.md` ; photos en grille sur tactile tranchées le 07/10 (`PROMPT-PHOTOS-GRILLE.md`) |
 | `demo-site-page/captures-v1/` | L'état d'aujourd'hui (Résumé, Configuration, téléphone) et deux captures de la première proposition en onglets | **v1 refusée le 06/10** (« ça ressemble à ce que j'ai déjà ») |
 | `demo-site-page/NOTE.md` | Le pourquoi, les trois directions, ce que l'atelier garde de l'existant, le code touché sur la branche `mockup/demo-site-page`, les points à trancher | À jour |
 
