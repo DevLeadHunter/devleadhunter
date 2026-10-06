@@ -43,9 +43,9 @@ _FINISHED_STATUSES: frozenset[str] = frozenset({"completed", "cancelled", "faile
 _REPORTED_STATUSES: tuple[str, ...] = ("kept", "set_aside", "to_confirm")
 _CHANNELS: tuple[str, ...] = ("email", "sms", "email_and_sms")
 _VALIDATION_MODES: tuple[str, ...] = ("manual", "automatic")
-_API_RESTART_STATUSES: frozenset[int] = frozenset({502, 503, 504})
-_API_RESTART_WAIT_SECONDS: float = 10.0
-_API_RESTART_MAXIMUM_WAITS: int = 30
+_API_TRANSIENT_STATUSES: frozenset[int] = frozenset({500, 502, 503, 504})
+_API_RETRY_WAIT_SECONDS: float = 10.0
+_API_RETRY_MAXIMUM_WAITS: int = 30
 
 
 class ProspectSearchCli:
@@ -107,7 +107,7 @@ class ProspectSearchCli:
         Returns:
             The search's final detail (totals, journal, candidates).
         """
-        waits_for_restart = 0
+        failed_polls = 0
         while True:
             try:
                 detail = await self._detail(search_id)
@@ -117,24 +117,24 @@ class ProspectSearchCli:
                     return detail
                 read_count = await self._read_waiting_pages(search_id) if self._reads_facebook_pages else 0
             except (httpx.RequestError, httpx.HTTPStatusError) as exc:
-                if not self.is_api_restarting(exc) or waits_for_restart >= _API_RESTART_MAXIMUM_WAITS:
+                if not self.is_transient_api_error(exc) or failed_polls >= _API_RETRY_MAXIMUM_WAITS:
                     raise
-                waits_for_restart += 1
+                failed_polls += 1
                 print(f"  the API does not answer ({exc}): new try in a moment…", file=sys.stderr, flush=True)
-                await asyncio.sleep(_API_RESTART_WAIT_SECONDS)
+                await asyncio.sleep(_API_RETRY_WAIT_SECONDS)
                 continue
-            waits_for_restart = 0
+            failed_polls = 0
             if status == "waiting_browser" and read_count == 0:
                 # Nothing left this machine can read: the search stays as it is for the desktop app.
                 return detail
             await asyncio.sleep(_POLL_SECONDS)
 
     @staticmethod
-    def is_api_restarting(exc: httpx.RequestError | httpx.HTTPStatusError) -> bool:
-        """Whether an API error is the API restarting (a deployment), which a later try gets through."""
+    def is_transient_api_error(exc: httpx.RequestError | httpx.HTTPStatusError) -> bool:
+        """Whether an API error is passing (a deployment restarting it, a database that times out), worth a new try."""
         if isinstance(exc, httpx.RequestError):
             return True
-        return exc.response.status_code in _API_RESTART_STATUSES
+        return exc.response.status_code in _API_TRANSIENT_STATUSES
 
     async def _detail(self, search_id: int) -> dict[str, Any]:
         """The search with its journal and candidates."""

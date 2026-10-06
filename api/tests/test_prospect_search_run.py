@@ -1708,7 +1708,7 @@ def test_the_command_line_starts_an_automatic_search_unless_told_otherwise() -> 
     assert [search["validation_mode"] for search in api.created_searches] == ["automatic", "manual"]
 
 
-def test_the_command_line_waits_for_an_api_that_restarts(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_the_command_line_waits_for_an_api_that_does_not_answer(monkeypatch: pytest.MonkeyPatch) -> None:
     request = httpx.Request("GET", "https://api.example/prospect-searches/7")
 
     class _RestartingApi:
@@ -1734,8 +1734,8 @@ def test_the_command_line_waits_for_an_api_that_restarts(monkeypatch: pytest.Mon
     assert asyncio.run(cli.follow(7))["status"] == "completed"
 
 
-def test_a_server_error_is_not_taken_for_a_restart() -> None:
+def test_a_refused_request_is_not_tried_again() -> None:
     request = httpx.Request("POST", "https://api.example/prospect-searches/7/candidates/1/facebook-contact")
-    server_error = httpx.HTTPStatusError("boom", request=request, response=httpx.Response(500, request=request))
+    refusal = httpx.HTTPStatusError("refused", request=request, response=httpx.Response(422, request=request))
 
-    assert ProspectSearchCli.is_api_restarting(server_error) is False
+    assert ProspectSearchCli.is_transient_api_error(refusal) is False
