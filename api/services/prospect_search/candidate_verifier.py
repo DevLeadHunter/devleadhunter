@@ -54,6 +54,8 @@ _DOMAIN_IN_NAME_RE: re.Pattern[str] = re.compile(
     r"\b([a-z0-9][a-z0-9-]*\.(?:fr|ch|be|lu|ca|com|net|eu))\b", re.IGNORECASE
 )
 _STARRED_SWISS_NUMBER_RE: re.Pattern[str] = re.compile(r"(?:\+41|\b0)\s?\d{2}(?:[\s.]?\d){7}\s?\*")
+_HOUSE_NUMBER_RE: re.Pattern[str] = re.compile(r"(\d+)\s?[a-z]?$", re.IGNORECASE)
+_ENTRY_HOUSE_NUMBER_RE: re.Pattern[str] = re.compile(r"/tel/[^/?]+/[a-z0-9-]*?-(\d+)[a-z]?/")
 _LISTED_WEBSITE_RE: re.Pattern[str] = re.compile(
     r"(?:site web|site internet|website|webseite)\s*:\s*((?:https?://|www\.)[^\s;,]+)", re.IGNORECASE
 )
@@ -320,7 +322,7 @@ class CandidateVerifier:
 
     async def _read_swiss_directory(self, facts: CandidateFacts, trade: TradeProfile) -> None:
         """
-        Read the search.ch entry of a Swiss business, found by its phone number, else by its name.
+        Read the search.ch entry of a Swiss business, found by its phone number, else by its name, else at its address.
 
         The asterisk refusing advertising belongs to the number, whoever the entry names; the
         website and the email count only for a business entry, or an entry naming the business
@@ -330,7 +332,11 @@ class CandidateVerifier:
         if facts.country != "CH" or is_already_out:
             return
         try:
-            entry = await self._directory.entry_for_phone(facts.phone) or await self._entry_found_by_name(facts, trade)
+            entry = (
+                await self._directory.entry_for_phone(facts.phone)
+                or await self._entry_found_by_name(facts, trade)
+                or await self._entry_found_at_address(facts, trade)
+            )
         except SwissDirectoryUnavailableError as exc:
             logger.info("Swiss directory unanswered for %s: %s", facts.name, exc)
             facts.add_evidence("directory_unanswered", "search.ch", source="Annuaire search.ch")
@@ -363,6 +369,25 @@ class CandidateVerifier:
                 f"{listed_entry.name} {listed_entry.extra_line}", facts, trade
             )
             if is_entry_of_business:
+                return await self._directory.entry_at(listed_entry.url)
+        return None
+
+    async def _entry_found_at_address(self, facts: CandidateFacts, trade: TradeProfile) -> SwissDirectoryEntry | None:
+        """
+        The entry at the business's own address that carries its name, a sole trader's private entry included.
+
+        Only the same house number counts, a namesake further down the street is someone else;
+        the page is read whole, since the list leaves out the asterisk of a second number.
+        """
+        address = facts.address or ""
+        house_number = _HOUSE_NUMBER_RE.search(address.split(",")[0].strip())
+        name_words = sorted(self.distinctive_tokens(facts, trade), key=lambda word: (-len(word), word))
+        if house_number is None or not name_words:
+            return None
+        for listed_entry in await self._directory.entries_at_address(name_words[0], address):
+            entry_house_number = _ENTRY_HOUSE_NUMBER_RE.search(listed_entry.url)
+            is_at_same_house = entry_house_number is None or entry_house_number.group(1) == house_number.group(1)
+            if is_at_same_house and self.names_business(f"{listed_entry.name} {listed_entry.extra_line}", facts, trade):
                 return await self._directory.entry_at(listed_entry.url)
         return None
 

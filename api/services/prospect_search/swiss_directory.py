@@ -6,7 +6,8 @@ email, its website, its mobile numbers, and the asterisk of a subscriber who ref
 advertising. Swiss law forbids advertising to such a subscriber (LCD art. 3 al. 1
 let. u), so a search reads the asterisk before proposing the business. The directory
 is read the way a person checks a listing: by the number the business already showed,
-or by its name in its town when that number is not listed; it is never listed in bulk.
+or by its name in its town, or its owner's name at its address, when that number is not
+listed; it is never listed in bulk.
 """
 
 from __future__ import annotations
@@ -65,7 +66,7 @@ class SwissDirectoryUnavailableError(Exception):
 
 
 class SwissDirectory:
-    """Reads one search.ch entry, found by the phone number a business already showed or by its name."""
+    """Reads one search.ch entry, found by the phone number a business already showed, by its name or at its address."""
 
     async def entry_for_phone(self, phone: str | None) -> SwissDirectoryEntry | None:
         """
@@ -162,15 +163,40 @@ class SwissDirectory:
         """
         if not name.strip() or not town.strip():
             return []
+        return await self._listed_entries({"was": name, "wo": town}, lookup=f"{name} in {town}")
+
+    async def entries_at_address(self, name_word: str, address: str) -> list[SwissDirectoryEntry]:
+        """
+        The entries the directory lists under a word of a name along a street, as its result list shows them.
+
+        A sole trader often lists the business number on the entry of their own name, which
+        the business name does not find (« F. Rochat Sàrl » under « Rochat, Paul »).
+
+        Args:
+            name_word: The word of the business name the entry carries, its owner's family name.
+            address: The business's street address.
+
+        Returns:
+            The entries, empty when nothing is listed.
+
+        Raises:
+            SwissDirectoryUnavailableError: The directory did not answer.
+        """
+        if not name_word.strip() or not address.strip():
+            return []
+        return await self._listed_entries({"was": name_word, "wo": address}, lookup=f"{name_word} at {address}")
+
+    async def _listed_entries(self, query: dict[str, str], *, lookup: str) -> list[SwissDirectoryEntry]:
+        """Run one search of the directory: a single entry opens at once, several make a result list."""
         try:
             async with httpx.AsyncClient(
                 timeout=_TIMEOUT_SECONDS,
                 follow_redirects=True,
                 headers=website_liveness_service.REQUEST_HEADERS,
             ) as http:
-                page = await http.get(f"{_BASE_URL}/tel/", params={"was": name, "wo": town, "lang": "fr"})
+                page = await http.get(f"{_BASE_URL}/tel/", params={**query, "lang": "fr"})
         except httpx.HTTPError as exc:
-            raise SwissDirectoryUnavailableError(f"search.ch lookup of {name} in {town} failed: {exc}") from exc
+            raise SwissDirectoryUnavailableError(f"search.ch lookup of {lookup} failed: {exc}") from exc
         if page.status_code == _NOT_LISTED_STATUS:
             return []
         self._raise_unless_answered(page)

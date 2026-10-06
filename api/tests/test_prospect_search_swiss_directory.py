@@ -89,12 +89,15 @@ class _ScriptedDirectory(SwissDirectory):
         entry: SwissDirectoryEntry | None,
         entries_by_name: list[SwissDirectoryEntry] | None = None,
         entry_pages: dict[str, SwissDirectoryEntry] | None = None,
+        entries_by_address: list[SwissDirectoryEntry] | None = None,
     ) -> None:
         self._entry = entry
         self._entries_by_name = entries_by_name or []
         self._entry_pages = entry_pages or {}
+        self._entries_by_address = entries_by_address or []
         self.asked_phones: list[str | None] = []
         self.asked_names: list[str] = []
+        self.asked_addresses: list[tuple[str, str]] = []
         self.is_unavailable = False
 
     async def entry_for_phone(self, phone: str | None) -> SwissDirectoryEntry | None:
@@ -107,8 +110,13 @@ class _ScriptedDirectory(SwissDirectory):
         self.asked_names.append(name)
         return self._entries_by_name
 
+    async def entries_at_address(self, name_word: str, address: str) -> list[SwissDirectoryEntry]:
+        self.asked_addresses.append((name_word, address))
+        return self._entries_by_address
+
     async def entry_at(self, entry_url: str) -> SwissDirectoryEntry:
-        listed = next((entry for entry in self._entries_by_name if entry.url == entry_url), _entry(url=entry_url))
+        listed_entries = [*self._entries_by_name, *self._entries_by_address]
+        listed = next((entry for entry in listed_entries if entry.url == entry_url), _entry(url=entry_url))
         return self._entry_pages.get(entry_url, listed)
 
 
@@ -505,6 +513,58 @@ def test_the_page_of_an_entry_found_by_name_gives_the_asterisk_the_list_left_out
 
     assert facts.refuses_advertising is True
     assert facts.email == "info@rochat-paysagiste.ch"
+
+
+def test_the_owner_s_entry_at_the_business_address_gives_its_asterisk() -> None:
+    facts = _facts(
+        name="F. Rochat Sàrl", city="Leytron", phone="027 306 00 01", address="Rte de Chamoson 95, 1912 Leytron"
+    )
+    owner = _entry(url="https://search.ch/tel/leytron/route-de-chamoson-95/paul-rochat.fr.html", name="Rochat, Paul")
+    owner_page = _entry(url=owner.url, name="Rochat, Paul", refuses_advertising=True)
+    directory = _ScriptedDirectory(None, entries_by_address=[owner], entry_pages={owner.url: owner_page})
+
+    _verify(facts, directory)
+
+    assert directory.asked_addresses == [("rochat", "Rte de Chamoson 95, 1912 Leytron")]
+    assert facts.refuses_advertising is True
+    assert CandidateDecision.decide(facts, _GARAGE, _EMAIL_SEARCH).reject_reason == CandidateRejectReason.NO_ADVERTISING
+
+
+def test_a_namesake_further_down_the_street_is_not_the_business_entry() -> None:
+    facts = _facts(
+        name="F. Rochat Sàrl", city="Leytron", phone="027 306 00 01", address="Rte de Chamoson 95, 1912 Leytron"
+    )
+    namesake = _entry(
+        url="https://search.ch/tel/leytron/route-de-chamoson-133/anne-rochat.fr.html",
+        name="Rochat, Anne",
+        refuses_advertising=True,
+    )
+
+    _verify(facts, _ScriptedDirectory(None, entries_by_address=[namesake]))
+
+    assert facts.refuses_advertising is False
+
+
+def test_an_address_search_opening_one_entry_at_once_gives_that_entry(monkeypatch: pytest.MonkeyPatch) -> None:
+    transport = _directory_answering(
+        {
+            "/tel/": (
+                200,
+                _PAGE_WITH_ASTERISK + '<a href="/tel/vcard/SV-Automobiles.fr.vcf?key=03cba86fb3ea3899">vCard</a>',
+            )
+        }
+    )
+    real_client = httpx.AsyncClient
+
+    def client_with_transport(**kwargs: Any) -> httpx.AsyncClient:
+        return real_client(transport=transport, **kwargs)
+
+    monkeypatch.setattr(swiss_directory_module.httpx, "AsyncClient", client_with_transport)
+    entries = asyncio.run(SwissDirectory().entries_at_address("automobiles", "Avenue Reller 25, 1800 Vevey"))
+
+    assert [(entry.name, entry.refuses_advertising) for entry in entries] == [
+        ("SV Automobiles Sàrl, Garage à Vevey", True)
+    ]
 
 
 def test_an_entry_page_is_read_with_its_vcard(monkeypatch: pytest.MonkeyPatch) -> None:
