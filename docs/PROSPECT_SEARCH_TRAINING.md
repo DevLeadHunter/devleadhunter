@@ -210,3 +210,35 @@ France.
 ### Résultat de la manche
 
 9 bons pour 25 gardés. Chaque faux a sa correction, en production le soir même.
+
+## Manche 5 — Québec, paysagistes + garages + électriciens, email (6 octobre au soir)
+
+Recherche de l'app n° 7, villes choisies par le moteur (Trois-Rivières, Joliette, Victoriaville,
+Repentigny, Saint-Jérôme), 7 par métier : 25 gardés en une heure, 506 requêtes, 65 appels du juge
+(le quota quotidien du juge était épuisé pendant une partie de la recherche). Les électriciens
+viennent tous du fichier des licences de la RBQ.
+
+### Vérité terrain des 25 gardés
+
+| | Nombre | Détail |
+|---|---|---|
+| Bons | 16 | 5 paysagistes, 5 garages, 6 électriciens avec leur licence RBQ : prospects 281 à 296 |
+| Site en ligne | 3 | dont un site « en construction » |
+| Autre métier | 2 | un vendeur de portes de garage, une entreprise d'excavation |
+| Email d'un tiers | 2 | le commentaire d'une entreprise de ménage sous une annonce d'emploi, l'adresse d'un réseau de santé |
+| À confirmer | 2 | l'email de la page Facebook ne correspond pas sûrement au garage |
+
+### Écarts et causes
+
+| Écart | Cause | Correction |
+|---|---|---|
+| 76 garages sur 104 écartés comme « autre métier » | Sur les fiches québécoises sans catégorie, le numéro de téléphone ou la rue prenaient la place de la catégorie | Un téléphone ou une rue n'est jamais une catégorie ; le numéro est gardé |
+| Un hôpital proposé comme électricien | Le fichier de la RBQ liste aussi les établissements qui ont une licence ; ses emails n'étaient pas filtrés | Les établissements publics (nom ou domaine d'email) sont écartés des registres |
+| Un vendeur de portes de garage pris pour un garage | « garage » dans la catégorie suffisait | Les catégories de portes sont exclues |
+| L'email d'un commentateur gardé | Le résumé d'une publication de groupe Facebook mélange les commentaires | Aucun email n'est pris sous une publication de groupe |
+| Un annuaire (411habitation) pris pour le site d'un paysagiste | Absent de la liste des tiers | Ajouté |
+
+### Résultat de la manche
+
+16 bons pour 25 gardés. Au Québec, presque tous les paysagistes ont un site : les garages et les
+électriciens de la RBQ rendent mieux.
