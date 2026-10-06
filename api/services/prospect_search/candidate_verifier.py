@@ -41,6 +41,10 @@ _EMAIL_RE: re.Pattern[str] = re.compile(r"[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}"
 _FEATURE_ID_RE: re.Pattern[str] = re.compile(r"0x[0-9a-f]+:0x([0-9a-f]+)", re.IGNORECASE)
 _SWISS_COMPANY_NUMBER_RE: re.Pattern[str] = re.compile(r"CHE-\d{3}\.\d{3}\.\d{3}")
 _SWISS_DIRECTORY_HOSTS: tuple[str, ...] = ("local.ch", "search.ch")
+_LEGAL_FORM_RE: re.Pattern[str] = re.compile(
+    r"(?<!\w)(s\.?\s?[aà]\.?\s?r\.?\s?l\.?|s\.?\s?a\.?|gmbh|ag|sagl|snc|eurl|sasu?|inc\.?|enr\.?|lt[ée]e)(?!\w)",
+    re.IGNORECASE,
+)
 _DOMAIN_IN_NAME_RE: re.Pattern[str] = re.compile(
     r"\b([a-z0-9][a-z0-9-]*\.(?:fr|ch|be|lu|ca|com|net|eu))\b", re.IGNORECASE
 )
@@ -343,7 +347,8 @@ class CandidateVerifier:
         A business entry naming it, by its own name or by the owner on its extra line, is its entry;
         its page is read whole, since the list leaves out the asterisk of a second number.
         """
-        for listed_entry in await self._directory.entries_for_name(facts.name, facts.town):
+        name_without_legal_form = " ".join(_LEGAL_FORM_RE.sub(" ", facts.name).split()) or facts.name
+        for listed_entry in await self._directory.entries_for_name(name_without_legal_form, facts.town):
             is_entry_of_business = listed_entry.is_business and self.names_business(
                 f"{listed_entry.name} {listed_entry.extra_line}", facts, trade
             )

@@ -90,12 +90,14 @@ class _ScriptedDirectory(SwissDirectory):
         self._entries_by_name = entries_by_name or []
         self._entry_pages = entry_pages or {}
         self.asked_phones: list[str | None] = []
+        self.asked_names: list[str] = []
 
     async def entry_for_phone(self, phone: str | None) -> SwissDirectoryEntry | None:
         self.asked_phones.append(phone)
         return self._entry
 
     async def entries_for_name(self, name: str, town: str) -> list[SwissDirectoryEntry]:
+        self.asked_names.append(name)
         return self._entries_by_name
 
     async def entry_at(self, entry_url: str) -> SwissDirectoryEntry | None:
@@ -535,3 +537,11 @@ def test_a_comparison_site_or_a_network_page_is_never_a_website(link: str) -> No
     host = link.split("/")[2].removeprefix("www.")
 
     assert CandidateVerifier.is_known_third_party(link, host) is True
+
+
+def test_the_directory_is_asked_the_name_without_its_legal_form() -> None:
+    directory = _ScriptedDirectory(None)
+
+    _verify(_facts(name="Conthey Centre Automobile Sàrl", city="Conthey", phone="078 870 68 80"), directory)
+
+    assert directory.asked_names == ["Conthey Centre Automobile"]
