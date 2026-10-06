@@ -379,8 +379,7 @@ class CandidateVerifier:
         if company_similarity(text, facts.name) >= _NAMED_IN_TEXT_SIMILARITY:
             return True
         distinctive = cls.distinctive_tokens(facts, trade)
-        folded = fold(text)
-        return bool(distinctive) and all(token in folded for token in distinctive)
+        return bool(distinctive) and distinctive <= company_tokens(text)
 
     @classmethod
     def is_facebook_page_of(cls, line: SearchResultLine, facts: CandidateFacts, trade: TradeProfile) -> bool:

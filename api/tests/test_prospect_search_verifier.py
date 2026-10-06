@@ -540,3 +540,10 @@ def test_a_short_name_is_searched_word_for_word() -> None:
     asyncio.run(ContactFinder(client, _ScriptedJudge()).find(facts, _LANDSCAPER))  # type: ignore[arg-type]
 
     assert client.queries[-1].startswith('"Tendance Nature" Sion email')
+
+
+def test_a_name_inside_a_longer_word_does_not_name_the_business() -> None:
+    facts = _facts(name="André & Jardin", city="Diesse", phone="076 216 58 47")
+
+    assert CandidateVerifier.names_business("Jardins Alexandre SA - Corminboeuf", facts, _LANDSCAPER) is False
+    assert CandidateVerifier.names_business("André & Jardin, paysagiste à Diesse", facts, _LANDSCAPER) is True
