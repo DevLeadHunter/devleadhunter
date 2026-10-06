@@ -26,12 +26,13 @@
 
 <script lang="ts" setup>
 import type { ComputedRef, PropType, Ref } from 'vue'
-import type { AtelierDevicePreviewProps, AtelierDevicePreviewScreenSize } from '~/types/AtelierDevicePreview'
+import type { AtelierDevicePreviewProps } from '~/types/AtelierDevicePreview'
+import type { AtelierPreviewScreenSize } from '~/types/AtelierPreview'
 import type { TemplatePreviewDevice } from '~/types/TemplatePicker'
 import { computed, onBeforeUnmount, ref, watch } from 'vue'
 
 /** Real screens, at scale 1: a laptop and a phone. The frame keeps their ratio whatever the pane. */
-const FRAME_SIZES: Record<TemplatePreviewDevice, AtelierDevicePreviewScreenSize> = {
+const FRAME_SIZES: Record<TemplatePreviewDevice, AtelierPreviewScreenSize> = {
   desktop: { width: 1440, height: 900 },
   mobile: { width: 390, height: 844 },
 }
@@ -45,10 +46,7 @@ const FRAME_LOAD_TIMEOUT_MS: number = 8_000
 /** Pause after the last edit before it is pushed into the page, so typing does not flood it. */
 const OVERRIDES_DEBOUNCE_MS: number = 200
 
-/**
- * A published page in a real screen (laptop or phone) scaled to fit the pane, scrolling inside, told the unsaved
- * edits through the host's `_edit=1` mode: every message is posted as `{ type: 'dlh:preview', ...previewMessage }`.
- */
+/** A published page in a real screen, told the unsaved edits as `{ type: 'dlh:preview', ...previewMessage }` (host mode `_edit=1`). */
 const props: AtelierDevicePreviewProps = defineProps({
   pageUrl: {
     type: String,
@@ -86,7 +84,7 @@ const frameUrl: ComputedRef<string> = computed((): string => {
 /** Scale of the frame so the whole screen fits the pane, whichever side is tight. */
 const frameScale: ComputedRef<number> = computed((): number => {
   if (paneWidth.value === 0 || paneHeight.value === 0) return 1
-  const frame: AtelierDevicePreviewScreenSize = FRAME_SIZES[props.device ?? 'mobile']
+  const frame: AtelierPreviewScreenSize = FRAME_SIZES[props.device ?? 'mobile']
   const widthScale: number = (paneWidth.value - FRAME_INSET_PX * 2) / frame.width
   const heightScale: number = (paneHeight.value - FRAME_INSET_PX * 2) / frame.height
   return Math.min(1, widthScale, heightScale)
@@ -95,7 +93,7 @@ const frameScale: ComputedRef<number> = computed((): number => {
 /** The frame at its real size, scaled and centred in the pane. */
 const frameStyle: ComputedRef<Record<string, string>> = computed((): Record<string, string> => {
   const scale: number = frameScale.value
-  const frame: AtelierDevicePreviewScreenSize = FRAME_SIZES[props.device ?? 'mobile']
+  const frame: AtelierPreviewScreenSize = FRAME_SIZES[props.device ?? 'mobile']
   return {
     width: `${frame.width}px`,
     height: `${frame.height}px`,
@@ -140,8 +138,7 @@ function beginFrameLoad(): void {
 }
 
 /**
- * Lift the veil once the page is loaded and send it the unsaved edits again: a fresh load starts from the
- * published page, so edits made before it would be lost otherwise.
+ * Lift the veil once the page is loaded and send it the unsaved edits again, since a fresh load starts from the published page.
  */
 function endFrameLoad(): void {
   if (frameLoadTimeoutTimer) clearTimeout(frameLoadTimeoutTimer)

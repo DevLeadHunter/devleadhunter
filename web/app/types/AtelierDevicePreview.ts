@@ -7,9 +7,3 @@ export type AtelierDevicePreviewProps = {
   previewMessage?: Record<string, unknown> | null
   reloadNonce?: number
 }
-
-/** The size of a real screen, in CSS pixels at scale 1. */
-export type AtelierDevicePreviewScreenSize = {
-  width: number
-  height: number
-}

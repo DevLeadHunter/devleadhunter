@@ -1,10 +1,6 @@
 import type { ComponentPublicInstance, ComputedRef, Ref, StyleValue } from 'vue'
-import type {
-  AtelierSheetDrag,
-  AtelierSheetSize,
-  AtelierTool,
-  UseAtelierToolSheetReturn,
-} from '~/types/AtelierToolSheet'
+import type { AtelierSheetDrag, AtelierSheetSize, AtelierTool } from '~/types/AtelierToolSheet'
+import type { UseAtelierToolSheetReturn } from '~/types/Composables'
 import { useEventListener } from '@vueuse/core'
 import { computed, nextTick, ref } from 'vue'
 
@@ -21,8 +17,7 @@ const SHEET_DRAG_START_DISTANCE_PX: number = 6
 const SHEET_CLOSE_HEIGHT_RATIO: number = 0.5
 
 /**
- * The tool bar and the sheet of an atelier page: one tool open at a time, in a sheet under the preview that the
- * finger drags between two heights; the keys in `pageToolKeys` open a full page instead of a sheet.
+ * The tool bar and the sheet of an atelier page: one tool open at a time, in a sheet the finger drags between two heights.
  * @param tools - The tools of the bar, in order.
  * @param pageToolKeys - The tools that take the whole area rather than a sheet.
  * @param isCoarsePointer - Whether the screen is touched, which picks the finger hints.
@@ -145,8 +140,7 @@ export function useAtelierToolSheet<TKey extends string>(
   }
 
   /**
-   * Settle the sheet where the drag left it: expanded past the middle of its two heights, closed when pulled
-   * well below its setting height, back to its setting height otherwise.
+   * Settle the sheet where the drag left it: expanded, closed when pulled well below its setting height, or at rest.
    * @param event - The finger or the pointer lifted.
    */
   function endSheetDrag(event: PointerEvent): void {
@@ -189,8 +183,7 @@ export function useAtelierToolSheet<TKey extends string>(
   }
 
   /**
-   * Close the open sheet with Escape, unless something else already handled the key or a dialog above the page
-   * takes it for itself.
+   * Close the open sheet with Escape, unless the key was already handled or a dialog above the page takes it.
    * @param event - The key pressed anywhere on the page.
    */
   function onDocumentKeydown(event: KeyboardEvent): void {
