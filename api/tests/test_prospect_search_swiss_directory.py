@@ -33,6 +33,20 @@ _PAGE_WITHOUT_ASTERISK = (
     "<title>Garage du Valais Sàrl, Atelier mécanique à Saxon - search.ch</title>"
     '<a href="tel:+41277444748" data-entrytype="Private" title="Appeler">027 744 47 48</a>'
 )
+_RESULT_LIST_PAGE = (
+    '<ol class="tel-results tel-entries"><li class="tel-person"><article class="tel-resultentry">'
+    '<h1><a href="/tel/saxon/route-de-pro-bovey-12/jean-pierre-pellaud" data-stats="x">Pellaud, Jean-Pierre</a></h1>'
+    '<ul><li><a class="tel-result-action" href="tel:+41277442588" data-entrytype="Private">027 744 25 88</a></li></ul>'
+    "</article></li>"
+    '<li class="tel-commercial"><article class="tel-resultentry"><div class="tel-categories">Garage</div>'
+    '<h1><a href="/tel/saxon/route-du-leman-62/zodiac" data-stats="x">Zodiac</a></h1>'
+    '<div class="tel-context"><span class="sl_context_label">Zusatzzeile: </span>Pellaud Jean-Pierre</div>'
+    '<ul><li><a class="tel-result-action" href="tel:+41792190990" data-entrytype="Business">079 219 09 90 *</a></li></ul>'
+    "</article></li></ol>"
+    '<ol class="tel-results"><li class="tel-ad"><article>'
+    '<h1><a href="/tel/saxon/route-du-village-93/carrieres-de-saxon">Carrières de Saxon</a></h1>'
+    "</article></li></ol>"
+)
 _VCARD = (
     "BEGIN:VCARD\r\n"
     "TEL;TYPE=WORK,pref:+41277444748\r\n"
@@ -64,15 +78,21 @@ class _SilentJudge(SearchJudge):
 
 
 class _ScriptedDirectory(SwissDirectory):
-    """A directory answering one prepared entry, and remembering the numbers it was asked."""
+    """A directory answering prepared entries, and remembering the numbers it was asked."""
 
-    def __init__(self, entry: SwissDirectoryEntry | None) -> None:
+    def __init__(
+        self, entry: SwissDirectoryEntry | None, entries_by_name: list[SwissDirectoryEntry] | None = None
+    ) -> None:
         self._entry = entry
+        self._entries_by_name = entries_by_name or []
         self.asked_phones: list[str | None] = []
 
     async def entry_for_phone(self, phone: str | None) -> SwissDirectoryEntry | None:
         self.asked_phones.append(phone)
         return self._entry
+
+    async def entries_for_name(self, name: str, town: str) -> list[SwissDirectoryEntry]:
+        return self._entries_by_name
 
 
 @pytest.fixture(autouse=True)
@@ -408,3 +428,32 @@ def test_the_asterisk_found_by_the_phone_search_refuses_advertising() -> None:
     asyncio.run(ContactFinder(_OnePageClient(page), _SilentJudge()).find(facts, _GARAGE))  # type: ignore[arg-type]
 
     assert facts.refuses_advertising is True
+
+
+def test_a_result_list_gives_each_entry_its_extra_line_and_its_asterisk() -> None:
+    entries = SwissDirectory.parse_result_list(_RESULT_LIST_PAGE)
+
+    assert [(entry.name, entry.is_business, entry.refuses_advertising, entry.contact_line) for entry in entries] == [
+        ("Pellaud, Jean-Pierre", False, False, ""),
+        ("Zodiac", True, True, "Pellaud Jean-Pierre"),
+    ]
+    assert entries[1].url == "https://search.ch/tel/saxon/route-du-leman-62/zodiac.fr.html"
+
+
+def test_a_business_named_after_its_owner_refuses_advertising_on_its_entry_found_by_name() -> None:
+    facts = _facts(name="Pellaud Jean Pierre", city="Saxon", phone="027 744 31 91")
+    entries = SwissDirectory.parse_result_list(_RESULT_LIST_PAGE)
+
+    _verify(facts, _ScriptedDirectory(None, entries_by_name=entries))
+
+    assert facts.refuses_advertising is True
+    assert CandidateDecision.decide(facts, _GARAGE, _EMAIL_SEARCH).reject_reason == CandidateRejectReason.NO_ADVERTISING
+
+
+def test_an_entry_of_another_business_found_by_name_brings_nothing() -> None:
+    facts = _facts(name="Garage des Bains SA", city="Saillon", phone="027 744 27 28")
+    neighbour = _entry(name="Carrosserie du Rhône", is_business=True, refuses_advertising=True)
+
+    _verify(facts, _ScriptedDirectory(None, entries_by_name=[neighbour]))
+
+    assert facts.refuses_advertising is False

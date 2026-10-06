@@ -379,7 +379,7 @@ class ProspectSearchRunner:
                     is_closed=listing.is_permanently_closed or listing.is_temporarily_closed,
                 )
                 early_verdict: CandidateVerdict | None = None
-                if facts.is_closed or not profile.accepts_category(listing.category):
+                if facts.is_closed or facts.is_abroad or not profile.accepts_category(listing.category):
                     early_verdict = CandidateDecision.decide(facts, profile, state.criteria)
                 candidate_id = self._store_candidate(db, state, facts, early_verdict=early_verdict)
                 is_left_unverified = bool(listing.has_website_button) and leaves_website_listings_unverified

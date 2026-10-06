@@ -122,3 +122,16 @@ def test_a_province_that_is_also_a_city_stays_when_nothing_else_names_the_city()
 def test_luxembourg_keeps_its_capital() -> None:
     """The capital bears the country's name: nothing is dropped from a Luxembourg address."""
     assert CountryProfiles.get("LU").strip_address_tail("12 rue X, Luxembourg") == "12 rue X, Luxembourg"
+
+
+def test_an_address_ending_with_another_country_is_abroad() -> None:
+    romont_in_france = CountryProfiles.foreign_country_of_address(
+        "6 Rue des Vignes, 88700 Romont, France", country="CH"
+    )
+    laval = CountryProfiles.foreign_country_of_address("12 Rue X, Laval, QC, Canada", country="FR")
+
+    assert romont_in_france is not None and romont_in_france.code == "FR"
+    assert laval is not None and laval.code == "CA"
+    assert CountryProfiles.foreign_country_of_address("Rue du Rhône 12, 1204 Genève, Suisse", country="CH") is None
+    assert CountryProfiles.foreign_country_of_address("Route du Léman 55, 1907 Saxon", country="CH") is None
+    assert CountryProfiles.foreign_country_of_address(None, country="CH") is None

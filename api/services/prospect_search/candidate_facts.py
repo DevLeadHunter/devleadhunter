@@ -7,6 +7,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 
 from enums.prospect_search import EmailProofLevel
+from services.country_profiles import CountryProfiles
 from services.sms.phone_normalizer import PhoneNumberPlans
 
 _SNIPPET_MAX_CHARS: int = 240
@@ -50,6 +51,11 @@ class CandidateFacts:
     def town(self) -> str:
         """Town of the business, or the searched town when the listing gave none."""
         return self.city or self.searched_city or ""
+
+    @property
+    def is_abroad(self) -> bool:
+        """Whether the address ends with another country than the search's."""
+        return CountryProfiles.foreign_country_of_address(self.address, country=self.country) is not None
 
     @property
     def has_mobile_phone(self) -> bool:

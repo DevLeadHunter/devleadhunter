@@ -383,6 +383,33 @@ class TestCandidateDecision:
         assert facts.offer_email("annuaire@gmail.com", EmailProofLevel.DIRECTORY, source="annuaire") is False
         assert facts.email == "page@gmail.com"
 
+    def test_a_listing_whose_address_is_in_another_country_is_discarded(self) -> None:
+        facts = _facts(
+            address="6 Rue des Vignes, 88700 Romont, France",
+            email="electricitemazza@outlook.fr",
+            email_proof_level=EmailProofLevel.PUBLISHED.value,
+        )
+
+        assert CandidateDecision.decide(facts, _LANDSCAPER, _EMAIL_ONLY).reject_reason is (
+            CandidateRejectReason.OUT_OF_COUNTRY
+        )
+
+    def test_a_facebook_page_without_a_phone_is_left_to_the_user(self) -> None:
+        facts = _facts(
+            origin=CandidateOrigin.FACEBOOK_SEARCH.value,
+            city=None,
+            searched_city="Martigny",
+            facebook_url="https://www.facebook.com/electric.vs",
+            is_facebook_page_read=True,
+            email="willkommen@elektroverband-oberwallis.ch",
+            email_proof_level=EmailProofLevel.PUBLISHED.value,
+        )
+
+        assert CandidateDecision.decide(facts, _LANDSCAPER, _EMAIL_ONLY).status is CandidateStatus.TO_CONFIRM
+
+        facts.phone = "079 842 33 64"
+        assert CandidateDecision.decide(facts, _LANDSCAPER, _EMAIL_ONLY).status is CandidateStatus.KEPT
+
 
 class TestFacebookPageResults:
     def _line(self, link: str, title: str, description: str = "") -> SearchResultLine:

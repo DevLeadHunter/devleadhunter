@@ -5,8 +5,8 @@ search.ch publishes, for each subscriber, what the business gave the directory: 
 email, its website, its mobile numbers, and the asterisk of a subscriber who refuses
 advertising. Swiss law forbids advertising to such a subscriber (LCD art. 3 al. 1
 let. u), so a search reads the asterisk before proposing the business. The directory
-is read one entry at a time, by the number the business already showed, the way a
-person checks a listing; it is never listed in bulk.
+is read the way a person checks a listing: by the number the business already showed,
+or by its name in its town when that number is not listed; it is never listed in bulk.
 """
 
 from __future__ import annotations
@@ -35,6 +35,12 @@ _NO_ADVERTISING_NUMBER_RE: re.Pattern[str] = re.compile(r'href="tel:[^"]+"[^>]*>
 _VCARD_LINE_RE: re.Pattern[str] = re.compile(r"^(EMAIL|URL|TEL)[^:\n]*:(.+)$", re.MULTILINE)
 _VCARD_FOLD_RE: re.Pattern[str] = re.compile(r"\r?\n[ \t]")
 _BUSINESS_ENTRY_MARK: str = 'data-entrytype="Business"'
+_RESULT_LIST_RE: re.Pattern[str] = re.compile(r'<ol class="tel-results tel-entries">(.*?)</ol>', re.DOTALL)
+_RESULT_ENTRY_START_RE: re.Pattern[str] = re.compile(r'<li class="tel-(?=person|commercial)')
+_RESULT_ENTRY_NAME_RE: re.Pattern[str] = re.compile(r'<h1><a href="(/tel/[^"]+)"[^>]*>([^<]+)</a></h1>')
+_RESULT_ENTRY_CONTEXT_RE: re.Pattern[str] = re.compile(
+    r'<div class="tel-context">(?:<span[^>]*>[^<]*</span>)?([^<]*)</div>'
+)
 
 
 @dataclass(frozen=True)
@@ -48,6 +54,7 @@ class SwissDirectoryEntry:
     emails: tuple[str, ...]
     websites: tuple[str, ...]
     mobile_phones: tuple[str, ...]
+    contact_line: str = ""
 
 
 class SwissDirectory:
@@ -94,6 +101,72 @@ class SwissDirectory:
             return None
         vcard_text = vcard.text if vcard.status_code == 200 else ""
         return self.parse_entry(entry_url, page.text, vcard_text)
+
+    async def entries_for_name(self, name: str, town: str) -> list[SwissDirectoryEntry]:
+        """
+        The entries the directory lists for a name in a town, as its result list shows them.
+
+        The directory finds the name anywhere in an entry, the owner written on its extra line
+        included. Only the list is read: each entry's name, extra line and asterisk.
+
+        Args:
+            name: The business name as its listing writes it.
+            town: The business's town.
+
+        Returns:
+            The entries, empty when nothing is listed or the directory does not answer.
+        """
+        if not name.strip() or not town.strip():
+            return []
+        try:
+            async with httpx.AsyncClient(
+                timeout=_TIMEOUT_SECONDS,
+                follow_redirects=True,
+                headers=website_liveness_service.REQUEST_HEADERS,
+            ) as http:
+                page = await http.get(f"{_BASE_URL}/tel/", params={"was": name, "wo": town, "lang": "fr"})
+        except httpx.HTTPError as exc:
+            logger.info("search.ch lookup of %s in %s failed: %s", name, town, exc)
+            return []
+        if page.status_code != 200:
+            return []
+        if _VCARD_PATH_RE.search(page.text):
+            return [self.parse_entry(str(page.url), page.text, "")]
+        return self.parse_result_list(page.text)
+
+    @staticmethod
+    def parse_result_list(page_html: str) -> list[SwissDirectoryEntry]:
+        """
+        Read the entries of a result list, the paid ones beside it left out.
+
+        Args:
+            page_html: The result page.
+
+        Returns:
+            One entry per listed subscriber, without its email or website (the list shows neither).
+        """
+        result_list = _RESULT_LIST_RE.search(page_html)
+        if result_list is None:
+            return []
+        entries: list[SwissDirectoryEntry] = []
+        for block in _RESULT_ENTRY_START_RE.split(result_list.group(1))[1:]:
+            name = _RESULT_ENTRY_NAME_RE.search(block)
+            if name is None:
+                continue
+            context = _RESULT_ENTRY_CONTEXT_RE.search(block)
+            entries.append(
+                SwissDirectoryEntry(
+                    url=f"{_BASE_URL}{name.group(1)}.fr.html",
+                    name=html.unescape(name.group(2)).strip(),
+                    is_business=block.startswith("commercial"),
+                    refuses_advertising=_NO_ADVERTISING_NUMBER_RE.search(block) is not None,
+                    emails=(),
+                    websites=(),
+                    mobile_phones=(),
+                    contact_line=html.unescape(context.group(1)).strip() if context else "",
+                )
+            )
+        return entries
 
     @staticmethod
     def national_number(phone: str | None) -> str | None:

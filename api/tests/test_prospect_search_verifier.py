@@ -5,8 +5,9 @@ from typing import Any
 
 import pytest
 
-from enums.prospect_search import CandidateOrigin, EmailProofLevel
+from enums.prospect_search import CandidateOrigin, CandidateRejectReason, EmailProofLevel, ProspectSearchChannel
 from enums.website_status import WebsiteStatus
+from services.prospect_search.candidate_decision import CandidateDecision, SearchCriteria
 from services.prospect_search.candidate_facts import CandidateFacts
 from services.prospect_search.candidate_verifier import CandidateVerifier
 from services.prospect_search.contact_finder import ContactFinder
@@ -16,6 +17,9 @@ from services.website_liveness_service import website_liveness_service
 
 _LANDSCAPER = TradeCatalog.resolve("paysagiste")
 _PLUMBER = TradeCatalog.resolve("plombier")
+_ELECTRICIAN = TradeCatalog.resolve("électricien")
+_GARAGE = TradeCatalog.resolve("garage")
+_EMAIL_ONLY = SearchCriteria(channel=ProspectSearchChannel.EMAIL, only_without_website=True, minimum_rating=None)
 
 
 class _OnePageClient:
@@ -122,6 +126,51 @@ def test_a_closed_listing_is_flagged_with_its_proof() -> None:
 
     assert facts.is_closed is True
     assert any(line["fact"] == "closed" for line in facts.evidence)
+
+
+def test_a_register_writing_the_company_in_liquidation_closes_it() -> None:
+    facts = _facts(name="ZTD électricité", city="Vernayaz", trade_key="electricien", phone="076 631 23 41")
+
+    _verify(
+        facts,
+        {
+            "organic": [
+                _result(
+                    "https://www.moneyhouse.ch/fr/company/ztd-electricite-sarl-12378620581",
+                    "ZTD Electricité Sàrl en liquidation",
+                    "ZTD Electricité Sàrl en liquidation à Vernayaz ✓ en liquidation ✓ Fondée 2022",
+                )
+            ]
+        },
+        trade=_ELECTRICIAN,
+    )
+    verdict = CandidateDecision.decide(facts, _ELECTRICIAN, _EMAIL_ONLY)
+
+    assert (verdict.reject_reason, verdict.detail) == (
+        CandidateRejectReason.CLOSED,
+        "Société en liquidation selon moneyhouse.ch.",
+    )
+
+
+def test_a_neighbour_in_liquidation_on_the_same_register_page_does_not_close_the_business() -> None:
+    facts = _facts(name="Mécanique GT'n'Co", city="Vernayaz", trade_key="garage", phone="027 764 11 22")
+
+    _verify(
+        facts,
+        {
+            "organic": [
+                _result(
+                    "https://www.help.ch/firma/CHE-206.831.147/ztd-electricite-sarl-en-liquidation-vernayaz",
+                    "ZTD Electricité Sàrl en liquidation in Vernayaz",
+                    "Unter der Adresse Route de la Cascade 3a, 1904 Vernayaz sind neben ZTD Electricité Sàrl en "
+                    "liquidation auch diese Unternehmen eingetragen: Mécanique GT'n'Co",
+                )
+            ]
+        },
+        trade=_GARAGE,
+    )
+
+    assert facts.is_closed is False
 
 
 def test_directories_and_registries_are_not_websites_and_need_no_judge() -> None:

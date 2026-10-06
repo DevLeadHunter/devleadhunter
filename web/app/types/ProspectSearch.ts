@@ -27,6 +27,7 @@ export type ProspectSearchRejectReason =
   | 'has_website'
   | 'closed'
   | 'no_advertising'
+  | 'out_of_country'
   | 'homonym'
   | 'chain'
   | 'wrong_trade'

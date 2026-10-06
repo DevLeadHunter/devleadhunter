@@ -11,7 +11,13 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from enums.prospect_search import CandidateRejectReason, CandidateStatus, EmailProofLevel, ProspectSearchChannel
+from enums.prospect_search import (
+    CandidateOrigin,
+    CandidateRejectReason,
+    CandidateStatus,
+    EmailProofLevel,
+    ProspectSearchChannel,
+)
 from enums.website_status import WebsiteStatus
 from models.prospect_search import ProspectSearch
 from services.prospect_search.candidate_facts import CandidateFacts
@@ -83,6 +89,14 @@ class CandidateDecision:
                 CandidateStatus.TO_CONFIRM,
                 detail="Un site est déclaré sur sa fiche Google, mais il n'a pas été retrouvé : à vérifier.",
             )
+        is_page_without_phone = (
+            facts.origin == CandidateOrigin.FACEBOOK_SEARCH.value and facts.is_facebook_page_read and not facts.phone
+        )
+        if is_page_without_phone and (has_proven_email or has_guessed_email):
+            return CandidateVerdict(
+                CandidateStatus.TO_CONFIRM,
+                detail="Page Facebook sans téléphone : rien ne montre que c'est un artisan du coin, à vérifier.",
+            )
         if cls._meets_channel(criteria.channel, has_email=has_proven_email, has_mobile=has_mobile):
             return CandidateVerdict(CandidateStatus.KEPT)
         if not has_proven_email and can_read_facebook_page and criteria.channel != ProspectSearchChannel.SMS:
@@ -126,7 +140,11 @@ class CandidateDecision:
     ) -> CandidateVerdict | None:
         """The reason a candidate is out of the objective, if any."""
         if facts.is_closed:
-            return cls._rejected(CandidateRejectReason.CLOSED, "Fiche Google marquée fermée.")
+            return cls._rejected(CandidateRejectReason.CLOSED, cls._closed_detail(facts))
+        if facts.is_abroad:
+            return cls._rejected(
+                CandidateRejectReason.OUT_OF_COUNTRY, f"Adresse dans un autre pays que la recherche : {facts.address}"
+            )
         if facts.refuses_advertising:
             return cls._rejected(
                 CandidateRejectReason.NO_ADVERTISING,
@@ -163,6 +181,14 @@ class CandidateDecision:
                 f"Note Google {facts.google_rating:.1f} sur {facts.google_reviews_count} avis, sous le seuil demandé.",
             )
         return None
+
+    @staticmethod
+    def _closed_detail(facts: CandidateFacts) -> str:
+        """Where the closing was read: the Google listing, or a register writing the company in liquidation."""
+        closing = next((line for line in facts.evidence if line.get("fact") == "closed"), None)
+        if closing is None or closing.get("source") == "Fiche Google":
+            return "Fiche Google marquée fermée."
+        return f"Société {closing['value']} selon {closing['source']}."
 
     @staticmethod
     def _rejected(reason: CandidateRejectReason, detail: str) -> CandidateVerdict:

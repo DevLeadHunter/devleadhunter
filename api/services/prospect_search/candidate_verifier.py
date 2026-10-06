@@ -51,6 +51,14 @@ _CLOSED_MARKERS: tuple[str, ...] = (
     "temporairement fermé",
     "temporarily closed",
 )
+_LIQUIDATION_WORDS_BY_REGISTER_MARKER: dict[str, str] = {
+    "en liquidation": "en liquidation",
+    "in liquidation": "en liquidation",
+    "in auflosung": "en liquidation",
+    "liquidation judiciaire": "en liquidation judiciaire",
+    "societe radiee": "radiée",
+    "entreprise radiee": "radiée",
+}
 _SAME_BUSINESS_SIMILARITY: float = 0.5
 _NAMED_IN_TEXT_SIMILARITY: float = 0.4
 _DISTINCTIVE_TOKEN_MIN_CHARS: int = 5
@@ -282,17 +290,18 @@ class CandidateVerifier:
 
     async def _read_swiss_directory(self, facts: CandidateFacts, trade: TradeProfile) -> None:
         """
-        Read the search.ch entry of a Swiss business, found by its phone number.
+        Read the search.ch entry of a Swiss business, found by its phone number, else by its name.
 
         The asterisk refusing advertising belongs to the number, whoever the entry names; the
         website and the email count only for a business entry, or an entry naming the business
         (never for a private person sharing the number).
         """
         is_already_out = facts.is_closed or facts.is_chain or facts.is_other_business or not facts.matches_trade
-        if facts.country != "CH" or not facts.phone or is_already_out:
+        if facts.country != "CH" or is_already_out:
             return
         entry = await self._directory.entry_for_phone(facts.phone)
         if entry is None:
+            await self._read_swiss_directory_by_name(facts, trade)
             return
         if entry.refuses_advertising and not facts.refuses_advertising:
             facts.refuses_advertising = True
@@ -306,6 +315,20 @@ class CandidateVerifier:
                 email, city=facts.town
             ):
                 facts.offer_email(email, EmailProofLevel.DIRECTORY, source="Annuaire search.ch", url=entry.url)
+
+    async def _read_swiss_directory_by_name(self, facts: CandidateFacts, trade: TradeProfile) -> None:
+        """
+        Look up by its name, in its town, a Swiss business whose number the directory does not list.
+
+        A business entry naming it, by its own name or by the owner on its extra line, is the
+        business's entry: its asterisk refuses advertising.
+        """
+        for entry in await self._directory.entries_for_name(facts.name, facts.town):
+            is_its_entry = entry.is_business and self.names_business(f"{entry.name} {entry.contact_line}", facts, trade)
+            if is_its_entry and entry.refuses_advertising:
+                facts.refuses_advertising = True
+                facts.add_evidence("no_advertising", "*", source="Annuaire search.ch", url=entry.url)
+                return
 
     @staticmethod
     def is_chain_name(name: str) -> bool:
@@ -439,6 +462,7 @@ class CandidateVerifier:
         distinctive = self.distinctive_tokens(facts, trade)
         has_unsettled_results = False
         for line in results:
+            self._read_liquidation(facts, line, trade)
             company_number = _SWISS_COMPANY_NUMBER_RE.search(line.text)
             if company_number and not facts.registry_number and self.names_business(line.text, facts, trade):
                 facts.registry_number = company_number.group(0)
@@ -460,6 +484,23 @@ class CandidateVerifier:
             else:
                 has_unsettled_results = True
         return has_unsettled_results
+
+    @classmethod
+    def _read_liquidation(cls, facts: CandidateFacts, line: SearchResultLine, trade: TradeProfile) -> None:
+        """Take a register's title naming the business « en liquidation » or struck off as its closing."""
+        if facts.is_closed or not cls.names_business(line.title, facts, trade):
+            return
+        folded_title = fold(line.title)
+        marker = next((marker for marker in _LIQUIDATION_WORDS_BY_REGISTER_MARKER if marker in folded_title), None)
+        if marker:
+            facts.is_closed = True
+            facts.add_evidence(
+                "closed",
+                _LIQUIDATION_WORDS_BY_REGISTER_MARKER[marker],
+                source=line.host,
+                url=line.link,
+                snippet=line.text,
+            )
 
     @staticmethod
     def is_known_third_party(link: str, host: str) -> bool:

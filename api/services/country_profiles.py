@@ -448,6 +448,26 @@ class CountryProfiles:
         return cls._PROFILES.get(code.strip().upper())
 
     @classmethod
+    def foreign_country_of_address(cls, address: str | None, *, country: str) -> CountryProfile | None:
+        """The other country an address ends with: « …, 88700 Romont, France » read for a Swiss search.
+
+        Args:
+            address: The address as a listing writes it.
+            country: ISO code of the country the address is expected in.
+
+        Returns:
+            The profile of the country the address names last, ``None`` when it names none or *country*.
+        """
+        segments = [segment.strip().lower() for segment in (address or "").split(",") if segment.strip()]
+        if not segments:
+            return None
+        for profile in cls._PROFILES.values():
+            trailing_names = {name.lower() for name in profile.address_trailing_names}
+            if profile.code != country.strip().upper() and segments[-1] in trailing_names:
+                return profile
+        return None
+
+    @classmethod
     def enabled(cls) -> list[CountryProfile]:
         """The countries open to prospection, in declaration order."""
         return [profile for profile in cls._PROFILES.values() if profile.enabled]
