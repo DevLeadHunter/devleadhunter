@@ -566,3 +566,20 @@ def test_a_post_of_another_page_naming_the_business_is_not_its_page() -> None:
 
     assert CandidateVerifier.is_facebook_page_of(magazine_post, facts, _LANDSCAPER) is False
     assert CandidateVerifier.is_facebook_page_of(own_post, facts, _LANDSCAPER) is True
+
+
+def test_the_email_of_a_namesake_showing_another_number_is_not_taken() -> None:
+    facts = _facts(name="Les jardins de Valentin", city="Bienne", phone="078 600 40 24")
+    page = {
+        "organic": [
+            _result(
+                "https://www.facebook.com/lesjardinsdevalentin/?locale=fr_FR",
+                "Les jardins de valentin (@lesjardinsdevalentin)",
+                "Pour tout renseignement : Mail : hublart.valentin.jardin@gmail.com Tél : 0491.08.63.41.",
+            )
+        ]
+    }
+
+    asyncio.run(ContactFinder(_OnePageClient(page), _ScriptedJudge()).find(facts, _LANDSCAPER))  # type: ignore[arg-type]
+
+    assert facts.email is None

@@ -39,6 +39,7 @@ _PUBLIC_RESOLVERS: tuple[str, ...] = ("8.8.8.8", "1.1.1.1")
 _PHONE_MATCH_DIGITS: int = 9
 _QUOTED_NAME_MAXIMUM_WORDS: int = 3
 _NON_DIGITS_RE: re.Pattern[str] = re.compile(r"\D")
+_PHONE_NUMBER_RE: re.Pattern[str] = re.compile(r"(?:\+|\b0)\d{1,3}(?:[\s./-]?\d{2,3}){3,4}\b")
 _LEGAL_NOTICE_WORDS: tuple[str, ...] = ("mentions legales", "impressum")
 
 
@@ -170,6 +171,8 @@ class ContactFinder:
             facebook_page = FacebookPageUrl.canonical(line.link)
             if not facebook_page or not CandidateVerifier.is_facebook_page_of(line, facts, trade):
                 continue
+            if self._shows_only_other_phones(line.text, facts):
+                continue
             if facts.facebook_url is None:
                 facts.facebook_url = facebook_page
                 facts.add_evidence("facebook", facebook_page, source="Recherche Facebook", url=line.link)
@@ -208,9 +211,10 @@ class ContactFinder:
         }
         for email, index in candidates:
             line = results[index]
-            is_about_business = CandidateVerifier.names_business(line.title, facts, trade) or self._shows_phone(
-                line.text, facts
-            )
+            is_named_without_another_phone = CandidateVerifier.names_business(
+                line.title, facts, trade
+            ) and not self._shows_only_other_phones(line.text, facts)
+            is_about_business = is_named_without_another_phone or self._shows_phone(line.text, facts)
             if is_about_business:
                 CandidateVerifier.read_no_advertising_mark(facts, line)
             if judged.get((email, index)) is False or (judged.get((email, index)) is None and not is_about_business):
@@ -237,6 +241,17 @@ class ContactFinder:
         if len(phone_digits) < _PHONE_MATCH_DIGITS:
             return False
         return phone_digits[-_PHONE_MATCH_DIGITS:] in _NON_DIGITS_RE.sub("", text)
+
+    @staticmethod
+    def _shows_only_other_phones(text: str, facts: CandidateFacts) -> bool:
+        """Whether a text shows phone numbers, none of them the candidate's: the page of a namesake."""
+        own_digits = _NON_DIGITS_RE.sub("", facts.phone or "")
+        if len(own_digits) < _PHONE_MATCH_DIGITS:
+            return False
+        shown_numbers = [_NON_DIGITS_RE.sub("", number) for number in _PHONE_NUMBER_RE.findall(text)]
+        return bool(shown_numbers) and all(
+            number[-_PHONE_MATCH_DIGITS:] != own_digits[-_PHONE_MATCH_DIGITS:] for number in shown_numbers
+        )
 
     async def _search_by_phone(self, facts: CandidateFacts) -> None:
         """
