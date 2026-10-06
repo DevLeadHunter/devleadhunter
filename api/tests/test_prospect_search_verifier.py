@@ -678,6 +678,42 @@ def test_the_phone_search_takes_no_email_from_a_foreign_page_a_group_or_a_docume
     assert facts.email is None
 
 
+@pytest.mark.parametrize(
+    ("link", "title", "description", "expected_email"),
+    [
+        (
+            "https://www.atelier-exemple.ch/contact.html",
+            "Contact - Atelier-galerie Exemple",
+            "Atelier-galerie Exemple Nathalie Rochat Imp. de la Forge 16 1723 Marly nat.rochat@gmail.com Tél. 026 000 00 50",
+            None,
+        ),
+        (
+            "https://www.local.ch/fr/d/marly/1723/paysagistes/rochat-roland-k3x",
+            "Rochat, Roland - Paysagistes à Marly",
+            "Rte du Roule 55A, 1723 Marly ; Téléphone 026 000 00 50 ; Email roland.rochat@bluewin.ch",
+            "roland.rochat@bluewin.ch",
+        ),
+        (
+            "https://www.marly-artisans-exemple.ch/rochat",
+            "R. Rochat, paysagiste à Marly",
+            "R. Rochat, paysagiste. Tél. 026 000 00 50. rochat.jardins@gmail.com",
+            "rochat.jardins@gmail.com",
+        ),
+    ],
+)
+def test_the_phone_search_takes_an_email_only_from_a_directory_or_a_page_named_after_the_business(
+    link: str, title: str, description: str, expected_email: str | None
+) -> None:
+    facts = _facts(
+        name="R. ROCHAT", city="Marly", phone="026 000 00 50", facebook_url="https://www.facebook.com/rochatjardins"
+    )
+    page = {"organic": [_result(link, title, description)]}
+
+    asyncio.run(ContactFinder(_OnePageClient(page), _ScriptedJudge()).find(facts, _LANDSCAPER))  # type: ignore[arg-type]
+
+    assert facts.email == expected_email
+
+
 def test_an_email_domain_spelling_the_name_without_its_legal_form_is_its_website(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:

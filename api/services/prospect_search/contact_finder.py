@@ -150,7 +150,7 @@ class ContactFinder:
         if facts.email is None and facts.facebook_url is None:
             await self._search_email(facts, trade)
         if facts.email is None and facts.phone:
-            await self._search_by_phone(facts)
+            await self._search_by_phone(facts, trade)
         if facts.website and facts.website_status is None:
             status = await website_liveness_service.check_website_status(facts.website)
             facts.website_status = status.value if status is not None else None
@@ -259,13 +259,15 @@ class ContactFinder:
             number[-_PHONE_MATCH_DIGITS:] != own_digits[-_PHONE_MATCH_DIGITS:] for number in shown_numbers
         )
 
-    async def _search_by_phone(self, facts: CandidateFacts) -> None:
+    async def _search_by_phone(self, facts: CandidateFacts, trade: TradeProfile) -> None:
         """
         Search the phone number itself: directories list a business under names the listing does not use.
 
-        A result showing the candidate's number is about the candidate, whatever name it carries;
-        the one email it shows next to the number is kept as given by a third party. A result
-        showing several emails is a list of businesses and proves nothing.
+        A directory result showing the candidate's number is about the candidate, whatever name it
+        carries; the one email it shows next to the number is kept as given by a third party. Any
+        other site must name the business in its title: a home number is shared with a relative's
+        own activity (a gallery, a shop). A result showing several emails is a list of businesses
+        and proves nothing.
         """
         phone_digits = _NON_DIGITS_RE.sub("", facts.phone or "")
         if len(phone_digits) < _PHONE_MATCH_DIGITS:
@@ -288,6 +290,11 @@ class ContactFinder:
                     proof_url=line.link,
                 )
             if self._is_unreliable_source(line, facts):
+                continue
+            is_directory_page = CandidateVerifier.is_known_third_party(
+                line.link, line.host
+            ) and not validation_service.is_social_url(line.link)
+            if not (is_directory_page or CandidateVerifier.names_business(line.title, facts, trade)):
                 continue
             emails = self._usable_emails(line.text, facts)
             if len(emails) == 1:
