@@ -36,13 +36,17 @@ export default defineNuxtConfig({
       prefix: 'Dashboard',
     },
     {
+      path: '~/components/atelier',
+      prefix: 'Atelier',
+    },
+    {
       path: '~/components/core',
       pathPrefix: false,
     },
     {
       path: '~/components',
       pathPrefix: false,
-      ignore: ['**/ui/**', '**/demo-sites/**', '**/dashboard/**', '**/core/**'],
+      ignore: ['**/ui/**', '**/demo-sites/**', '**/dashboard/**', '**/atelier/**', '**/core/**'],
     },
   ],
   devtools: { enabled: !isDesktopBuild },

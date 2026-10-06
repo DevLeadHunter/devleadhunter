@@ -26,13 +26,12 @@
 
 <script lang="ts" setup>
 import type { ComputedRef, PropType, Ref } from 'vue'
-import type { AtelierDevicePreviewProps } from '~/types/AtelierDevicePreview'
-import type { AtelierPreviewScreenSize } from '~/types/AtelierPreview'
+import type { AtelierDevicePreviewProps, AtelierDevicePreviewScreenSize } from '~/types/AtelierDevicePreview'
 import type { TemplatePreviewDevice } from '~/types/TemplatePicker'
 import { computed, onBeforeUnmount, ref, watch } from 'vue'
 
 /** Real screens, at scale 1: a laptop and a phone. The frame keeps their ratio whatever the pane. */
-const FRAME_SIZES: Record<TemplatePreviewDevice, AtelierPreviewScreenSize> = {
+const FRAME_SIZES: Record<TemplatePreviewDevice, AtelierDevicePreviewScreenSize> = {
   desktop: { width: 1440, height: 900 },
   mobile: { width: 390, height: 844 },
 }
@@ -84,7 +83,7 @@ const frameUrl: ComputedRef<string> = computed((): string => {
 /** Scale of the frame so the whole screen fits the pane, whichever side is tight. */
 const frameScale: ComputedRef<number> = computed((): number => {
   if (paneWidth.value === 0 || paneHeight.value === 0) return 1
-  const frame: AtelierPreviewScreenSize = FRAME_SIZES[props.device ?? 'mobile']
+  const frame: AtelierDevicePreviewScreenSize = FRAME_SIZES[props.device ?? 'mobile']
   const widthScale: number = (paneWidth.value - FRAME_INSET_PX * 2) / frame.width
   const heightScale: number = (paneHeight.value - FRAME_INSET_PX * 2) / frame.height
   return Math.min(1, widthScale, heightScale)
@@ -93,7 +92,7 @@ const frameScale: ComputedRef<number> = computed((): number => {
 /** The frame at its real size, scaled and centred in the pane. */
 const frameStyle: ComputedRef<Record<string, string>> = computed((): Record<string, string> => {
   const scale: number = frameScale.value
-  const frame: AtelierPreviewScreenSize = FRAME_SIZES[props.device ?? 'mobile']
+  const frame: AtelierDevicePreviewScreenSize = FRAME_SIZES[props.device ?? 'mobile']
   return {
     width: `${frame.width}px`,
     height: `${frame.height}px`,
@@ -104,7 +103,8 @@ const frameStyle: ComputedRef<Record<string, string>> = computed((): Record<stri
 })
 
 /**
- * Push the unsaved edits into the page, which repaints at once.
+ * Push the unsaved edits into the page, which repaints at once. The message is copied to plain data first: a reactive
+ * array or object inside it could not cross to the frame.
  */
 function postOverrides(): void {
   const frame: HTMLIFrameElement | null = frameElement.value
@@ -115,7 +115,8 @@ function postOverrides(): void {
   } catch {
     return
   }
-  frame.contentWindow.postMessage({ type: 'dlh:preview', ...props.previewMessage }, origin)
+  const plainMessage: Record<string, unknown> = JSON.parse(JSON.stringify(props.previewMessage))
+  frame.contentWindow.postMessage({ type: 'dlh:preview', ...plainMessage }, origin)
 }
 
 /**

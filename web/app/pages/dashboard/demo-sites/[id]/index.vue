@@ -100,7 +100,7 @@
             aria-label="Format de l'aperçu"
           >
             <button
-              v-for="device in previewDevices"
+              v-for="device in ATELIER_PREVIEW_DEVICES"
               :key="device.key"
               type="button"
               :class="[
@@ -120,14 +120,11 @@
 
         <div ref="workAreaElement" class="flex min-h-0 flex-1 flex-col">
           <div class="min-h-0 flex-1">
-            <DemoSitesAtelierPreview
+            <AtelierDevicePreview
               v-if="openUrl"
-              :site-url="openUrl"
+              :page-url="openUrl"
               :device="previewDevice"
-              :template-id="selectedTemplateId || site.template_id"
-              :preview-theme="previewTheme"
-              :preview-photos="previewPhotos"
-              :preview-services="previewServices"
+              :preview-message="previewMessage"
               :reload-nonce="previewReloadNonce"
             />
             <div v-else class="flex h-full items-center justify-center bg-[var(--app-surface-2)] p-6">
@@ -283,7 +280,7 @@
                   @reset="resetServiceCardsModalRef?.open()"
                 />
 
-                <div v-else-if="activeTool === 'video'" class="grid gap-4 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
+                <div v-else-if="activeTool === 'video'">
                   <div>
                     <div class="flex items-center justify-between gap-3">
                       <p class="text-xs text-[var(--app-ink-soft)]">
@@ -408,28 +405,6 @@
                       <UIcon name="i-lucide-arrow-right" class="inline-block h-3 w-3 align-[-1px]" /> Vidéo de
                       prospection)
                     </NuxtLink>
-                  </div>
-                  <div
-                    class="rounded-xl border border-[var(--app-line)] bg-[var(--app-bg)] p-4 text-xs text-[var(--app-ink-soft)]"
-                  >
-                    <p class="font-semibold text-[var(--app-ink)]">Comment elle part</p>
-                    <ul class="mt-2 space-y-2">
-                      <li class="flex gap-2">
-                        <UIcon name="i-lucide-mail" class="mt-0.5 h-3.5 w-3.5 shrink-0" />
-                        <span>
-                          Email : <code class="font-label">{vignette_video}</code> pose la vignette cliquable,
-                          <code class="font-label">{lien_video}</code> le lien.
-                        </span>
-                      </li>
-                      <li class="flex gap-2">
-                        <UIcon name="i-lucide-message-square-text" class="mt-0.5 h-3.5 w-3.5 shrink-0" />
-                        <span>SMS : <code class="font-label">{lien_video}</code> donne le lien court.</span>
-                      </li>
-                      <li class="flex gap-2">
-                        <UIcon name="i-lucide-eye" class="mt-0.5 h-3.5 w-3.5 shrink-0" />
-                        <span>La page vidéo mesure la lecture : lancement, 25 / 50 / 75 %, vue en entier.</span>
-                      </li>
-                    </ul>
                   </div>
                 </div>
               </div>
@@ -668,18 +643,18 @@
 
 <script lang="ts" setup>
 import { formatNumericDate } from '~/utils/date'
-import type { UseCopyToClipboardReturn, UseOpenExternalUrlReturn, UseToastReturn } from '~/types/Composables'
 import type {
-  DemoSiteAtelierSheetDrag,
-  DemoSiteAtelierSheetSize,
-  DemoSiteAtelierTool,
-  DemoSiteAtelierToolKey,
-  DemoSitePreviewDeviceOption,
-} from '~/types/DemoSiteDetailPage'
+  UseAtelierToolSheetReturn,
+  UseCopyToClipboardReturn,
+  UseOpenExternalUrlReturn,
+  UseToastReturn,
+} from '~/types/Composables'
+import type { DemoSiteAtelierToolKey } from '~/types/DemoSiteDetailPage'
+import type { AtelierTool } from '~/types/AtelierToolSheet'
 import { filterSelectableTemplates, sortTemplatesByRecommendation } from '~/utils/templateRecommendation'
 import type { ServiceCardDraft } from '~/types/ServiceCardsEditor'
 import type { TemplatePreviewDevice, TemplateThemeColorKey } from '~/types/TemplatePicker'
-import type { ComponentPublicInstance, ComputedRef, Ref, StyleValue } from 'vue'
+import type { ComponentPublicInstance, ComputedRef, Ref } from 'vue'
 import type {
   DemoSite,
   DemoSiteImages,
@@ -702,20 +677,13 @@ import { useToast } from '~/composables/useToast'
 import type { UseVideoGenerationProgressReturn } from '~/composables/useVideoGenerationProgress'
 import { useVideoGenerationProgress } from '~/composables/useVideoGenerationProgress'
 import { ServiceCards } from '~/utils/serviceCards'
-import { useEventListener } from '@vueuse/core'
+import { useAtelierToolSheet } from '~/composables/useAtelierToolSheet'
+import { ATELIER_PREVIEW_DEVICES } from '~/constants/atelierPreviewDevices'
 import { useCoarsePointer } from '~/composables/useCoarsePointer'
 
 const VIDEO_STATE_POLL_INTERVAL_MS: number = 5_000
 
 const DESKTOP_VIDEO_WAIT_POLL_INTERVAL_MS: number = 15_000
-
-const SHEET_SETTING_MAX_HEIGHT_RATIO: number = 0.44
-
-const SHEET_EXPANDED_HEIGHT_RATIO: number = 0.8
-
-const SHEET_DRAG_START_DISTANCE_PX: number = 6
-
-const SHEET_CLOSE_HEIGHT_RATIO: number = 0.5
 
 definePageMeta({ layout: 'dashboard', middleware: 'auth', shouldFillDashboardViewport: true })
 
@@ -729,7 +697,7 @@ const prospectSearchStore: ReturnType<typeof useProspectSearchStore> = useProspe
 const isCoarsePointer: Ref<boolean> = useCoarsePointer()
 
 /** The tools of the atelier, in the order of the bottom bar; « Prestations » only when the template has cards. */
-const atelierTools: DemoSiteAtelierTool[] = [
+const atelierTools: AtelierTool<DemoSiteAtelierToolKey>[] = [
   {
     key: 'template',
     label: 'Template',
@@ -776,23 +744,34 @@ const atelierTools: DemoSiteAtelierTool[] = [
   },
 ]
 
-/** The two ways of looking at the site. */
-const previewDevices: DemoSitePreviewDeviceOption[] = [
-  { key: 'mobile', label: 'Téléphone', icon: 'i-lucide-smartphone' },
-  { key: 'desktop', label: 'Ordinateur', icon: 'i-lucide-monitor' },
-]
+const {
+  activeTool,
+  sheetSize,
+  workAreaElement,
+  sheetElement,
+  isToolSheetOpen,
+  activeToolMeta,
+  activeToolHint,
+  sheetStyle,
+  toggleTool,
+  closeActiveTool,
+  registerToolButton,
+  startSheetDrag,
+  followSheetDrag,
+  endSheetDrag,
+  cancelSheetDrag,
+  toggleSheetSize,
+}: UseAtelierToolSheetReturn<DemoSiteAtelierToolKey> = useAtelierToolSheet<DemoSiteAtelierToolKey>(
+  atelierTools,
+  ['plus'],
+  isCoarsePointer,
+)
 
 const site: Ref<DemoSite | null> = ref(null)
 const pending: Ref<boolean> = ref(true)
 const loadError: Ref<string | null> = ref(null)
 const templates: Ref<DemoSiteTemplate[]> = ref([])
 const loadingTemplates: Ref<boolean> = ref(true)
-const activeTool: Ref<DemoSiteAtelierToolKey | null> = ref(null)
-const sheetSize: Ref<DemoSiteAtelierSheetSize> = ref('setting')
-/** Height of the sheet while its handle is dragged, in pixels; null when it rests at one of its two heights. */
-const sheetDragHeight: Ref<number | null> = ref(null)
-const workAreaElement: Ref<HTMLElement | null> = ref(null)
-const sheetElement: Ref<HTMLElement | null> = ref(null)
 const failedTemplateThumbnailIds: Ref<Set<string>> = ref(new Set())
 const previewDevice: Ref<TemplatePreviewDevice> = ref('mobile')
 const selectedTemplateId: Ref<string> = ref('')
@@ -826,9 +805,6 @@ const deleteVideoModalRef: Ref<{ open: () => void } | null> = ref(null)
 const deleteSiteModalRef: Ref<{ open: () => void } | null> = ref(null)
 let videoPollTimer: ReturnType<typeof setTimeout> | null = null
 let hasLeftPage: boolean = false
-let sheetDrag: DemoSiteAtelierSheetDrag | null = null
-let shouldIgnoreNextHandleClick: boolean = false
-const toolButtonElements: Map<DemoSiteAtelierToolKey, HTMLElement> = new Map()
 
 const templateLabel: ComputedRef<string> = computed((): string => {
   const templateId: string = site.value?.template_id ?? ''
@@ -955,6 +931,16 @@ const previewTheme: ComputedRef<DemoSiteTheme | null> = computed((): DemoSiteThe
   templateChanged.value || themeChanged.value || brandSourceChanged.value ? selectedTheme.value : null,
 )
 
+/** What the live site is told: the template picked, and the colours, photos and cards only while they are unpublished. */
+const previewMessage: ComputedRef<Record<string, unknown>> = computed(
+  (): Record<string, unknown> => ({
+    templateId: selectedTemplateId.value || site.value?.template_id || '',
+    palette: previewTheme.value,
+    photos: previewPhotos.value,
+    services: previewServices.value,
+  }),
+)
+
 const isVideoGenerating: ComputedRef<boolean> = computed(
   () => site.value?.video_status === 'pending' || site.value?.video_status === 'generating',
 )
@@ -1036,28 +1022,13 @@ const cmsJoinedAtLabel: ComputedRef<string | null> = computed((): string | null 
 )
 
 /** The tools shown in the bar: « Prestations » only when the template has service cards. */
-const visibleTools: ComputedRef<DemoSiteAtelierTool[]> = computed((): DemoSiteAtelierTool[] =>
-  atelierTools.filter(
-    (tool: DemoSiteAtelierTool): boolean => tool.key !== 'prestations' || isServiceCardsEditorVisible.value,
-  ),
+const visibleTools: ComputedRef<AtelierTool<DemoSiteAtelierToolKey>[]> = computed(
+  (): AtelierTool<DemoSiteAtelierToolKey>[] =>
+    atelierTools.filter(
+      (tool: AtelierTool<DemoSiteAtelierToolKey>): boolean =>
+        tool.key !== 'prestations' || isServiceCardsEditorVisible.value,
+    ),
 )
-
-/** A tool sheet stands under the preview (« Plus » is a page of its own, not a sheet). */
-const isToolSheetOpen: ComputedRef<boolean> = computed(
-  (): boolean => activeTool.value !== null && activeTool.value !== 'plus',
-)
-
-const activeToolMeta: ComputedRef<DemoSiteAtelierTool | null> = computed(
-  (): DemoSiteAtelierTool | null =>
-    atelierTools.find((tool: DemoSiteAtelierTool): boolean => tool.key === activeTool.value) ?? null,
-)
-
-/** The sheet's subtitle: on a touch screen, a tool may explain its finger gestures instead. */
-const activeToolHint: ComputedRef<string> = computed((): string => {
-  const tool: DemoSiteAtelierTool | null = activeToolMeta.value
-  if (!tool) return ''
-  return isCoarsePointer.value && tool.coarsePointerHint ? tool.coarsePointerHint : tool.hint
-})
 
 /** Which tools hold an unpublished change, for the dot on their button. */
 const toolPendingChanges: ComputedRef<Record<DemoSiteAtelierToolKey, boolean>> = computed(
@@ -1112,143 +1083,6 @@ const expiryLabel: ComputedRef<string> = computed((): string => {
   if (DemoSiteService.isTtlPending(site.value)) return 'Le compte à rebours démarre au premier email envoyé.'
   return `Elle est retirée dans ${daysLeft.value} jour${daysLeft.value > 1 ? 's' : ''}, le ${formatNumericDate(site.value.expires_at)}.`
 })
-
-/** The sheet's height: following the finger during a drag, otherwise its setting or its expanded height. */
-const sheetStyle: ComputedRef<StyleValue> = computed((): StyleValue => {
-  if (sheetDragHeight.value !== null) return { height: `${sheetDragHeight.value}px` }
-  if (sheetSize.value === 'expanded') return { height: `${SHEET_EXPANDED_HEIGHT_RATIO * 100}%` }
-  return { maxHeight: `${SHEET_SETTING_MAX_HEIGHT_RATIO * 100}%` }
-})
-
-/**
- * Open a tool, at the setting height when no sheet was open, or close it when it is the one open.
- * @param key - The tool touched in the bar.
- */
-function toggleTool(key: DemoSiteAtelierToolKey): void {
-  if (activeTool.value === key) {
-    closeActiveTool()
-    return
-  }
-  if (activeTool.value === null) sheetSize.value = 'setting'
-  sheetDragHeight.value = null
-  activeTool.value = key
-  if (key !== 'plus') {
-    void nextTick((): void => {
-      sheetElement.value?.focus({ preventScroll: true })
-    })
-  }
-}
-
-/**
- * Close the open sheet (or the « Plus » page) and give the focus back to its tool in the bar.
- */
-function closeActiveTool(): void {
-  const closedTool: DemoSiteAtelierToolKey | null = activeTool.value
-  activeTool.value = null
-  sheetDragHeight.value = null
-  sheetDrag = null
-  sheetSize.value = 'setting'
-  if (closedTool === null) return
-  void nextTick((): void => {
-    toolButtonElements.get(closedTool)?.focus({ preventScroll: true })
-  })
-}
-
-/**
- * Remember a tool's button in the bar, to give it the focus back when its sheet closes.
- * @param key - The tool the button opens.
- * @param element - The rendered button, or null when it leaves the bar.
- */
-function registerToolButton(key: DemoSiteAtelierToolKey, element: Element | ComponentPublicInstance | null): void {
-  if (element instanceof HTMLElement) {
-    toolButtonElements.set(key, element)
-    return
-  }
-  toolButtonElements.delete(key)
-}
-
-/**
- * Start following a drag of the sheet's handle.
- * @param event - The finger or the pointer pressed on the handle.
- */
-function startSheetDrag(event: PointerEvent): void {
-  shouldIgnoreNextHandleClick = false
-  if (!sheetElement.value || !workAreaElement.value) return
-  sheetDrag = {
-    pointerId: event.pointerId,
-    startY: event.clientY,
-    startHeight: sheetElement.value.offsetHeight,
-    areaHeight: workAreaElement.value.clientHeight,
-    hasMoved: false,
-  }
-  if (event.currentTarget instanceof HTMLElement) event.currentTarget.setPointerCapture(event.pointerId)
-}
-
-/**
- * Resize the sheet with the finger, between nothing and its expanded height.
- * @param event - The finger or the pointer moving.
- */
-function followSheetDrag(event: PointerEvent): void {
-  if (!sheetDrag || event.pointerId !== sheetDrag.pointerId) return
-  const raisedDistance: number = sheetDrag.startY - event.clientY
-  if (!sheetDrag.hasMoved && Math.abs(raisedDistance) < SHEET_DRAG_START_DISTANCE_PX) return
-  sheetDrag.hasMoved = true
-  const expandedHeight: number = sheetDrag.areaHeight * SHEET_EXPANDED_HEIGHT_RATIO
-  sheetDragHeight.value = Math.min(expandedHeight, Math.max(0, sheetDrag.startHeight + raisedDistance))
-}
-
-/**
- * Settle the sheet where the drag left it: expanded past the middle of its two heights, closed when pulled
- * well below its setting height, back to its setting height otherwise.
- * @param event - The finger or the pointer lifted.
- */
-function endSheetDrag(event: PointerEvent): void {
-  if (!sheetDrag || event.pointerId !== sheetDrag.pointerId) return
-  const finishedDrag: DemoSiteAtelierSheetDrag = sheetDrag
-  sheetDrag = null
-  if (!finishedDrag.hasMoved) return
-  shouldIgnoreNextHandleClick = true
-  const releasedHeight: number = sheetDragHeight.value ?? finishedDrag.startHeight
-  sheetDragHeight.value = null
-  const settingHeight: number =
-    sheetSize.value === 'setting' ? finishedDrag.startHeight : finishedDrag.areaHeight * SHEET_SETTING_MAX_HEIGHT_RATIO
-  const expandedHeight: number = finishedDrag.areaHeight * SHEET_EXPANDED_HEIGHT_RATIO
-  if (releasedHeight < settingHeight * SHEET_CLOSE_HEIGHT_RATIO) {
-    closeActiveTool()
-    return
-  }
-  sheetSize.value = releasedHeight > (settingHeight + expandedHeight) / 2 ? 'expanded' : 'setting'
-}
-
-/**
- * Put the sheet back at its resting height when the system takes the gesture over.
- */
-function cancelSheetDrag(): void {
-  sheetDrag = null
-  sheetDragHeight.value = null
-}
-
-/**
- * Switch the sheet between its two heights when its handle is touched (or pressed from the keyboard).
- */
-function toggleSheetSize(): void {
-  if (shouldIgnoreNextHandleClick) {
-    shouldIgnoreNextHandleClick = false
-    return
-  }
-  sheetSize.value = sheetSize.value === 'expanded' ? 'setting' : 'expanded'
-}
-
-/**
- * Close the open sheet with Escape, unless something else already handled the key or a dialog above the page
- * (the photo viewer) takes it for itself.
- * @param event - The key pressed anywhere on the page.
- */
-function onDocumentKeydown(event: KeyboardEvent): void {
-  if (event.key !== 'Escape' || event.defaultPrevented || activeTool.value === null) return
-  if (document.querySelector('[role="dialog"], [aria-modal="true"]')) return
-  closeActiveTool()
-}
 
 /**
  * Apply a new photo placement.
@@ -1778,8 +1612,6 @@ watch(selectedTemplateId, (templateId: string, previous: string): void => {
 watch(isServiceCardsEditorVisible, (isVisible: boolean): void => {
   if (!isVisible && activeTool.value === 'prestations') closeActiveTool()
 })
-
-useEventListener('keydown', onDocumentKeydown)
 
 onMounted(async () => {
   try {
