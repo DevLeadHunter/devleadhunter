@@ -52,13 +52,6 @@
       <div v-for="color in editableColors" :key="color.key" class="min-w-[7rem] flex-1">
         <span class="mb-1 flex items-center gap-1 text-[10px] tracking-wide text-[var(--app-ink-soft)] uppercase">
           {{ color.label }}
-          <span
-            v-if="color.isAction"
-            class="rounded-sm bg-[var(--app-ink)] px-1 py-px text-[8px] font-semibold tracking-normal text-[var(--app-bg)] normal-case"
-            title="Couleur des boutons et de la marque"
-          >
-            boutons
-          </span>
         </span>
         <div class="flex items-center gap-1.5">
           <div class="group relative h-10 w-10 shrink-0">
