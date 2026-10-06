@@ -324,8 +324,10 @@ class CandidateVerifier:
         business's entry: its asterisk refuses advertising.
         """
         for entry in await self._directory.entries_for_name(facts.name, facts.town):
-            is_its_entry = entry.is_business and self.names_business(f"{entry.name} {entry.contact_line}", facts, trade)
-            if is_its_entry and entry.refuses_advertising:
+            is_entry_of_business = entry.is_business and self.names_business(
+                f"{entry.name} {entry.extra_line}", facts, trade
+            )
+            if is_entry_of_business and entry.refuses_advertising:
                 facts.refuses_advertising = True
                 facts.add_evidence("no_advertising", "*", source="Annuaire search.ch", url=entry.url)
                 return

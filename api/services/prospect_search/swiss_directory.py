@@ -40,7 +40,7 @@ _BUSINESS_ENTRY_MARK: str = 'data-entrytype="Business"'
 _RESULT_LIST_RE: re.Pattern[str] = re.compile(r'<ol class="tel-results tel-entries">(.*?)</ol>', re.DOTALL)
 _RESULT_ENTRY_START_RE: re.Pattern[str] = re.compile(r'<li class="tel-(?=person|commercial)')
 _RESULT_ENTRY_NAME_RE: re.Pattern[str] = re.compile(r'<h1><a href="(/tel/[^"]+)"[^>]*>([^<]+)</a></h1>')
-_RESULT_ENTRY_CONTEXT_RE: re.Pattern[str] = re.compile(
+_RESULT_ENTRY_EXTRA_LINE_RE: re.Pattern[str] = re.compile(
     r'<div class="tel-context">(?:<span[^>]*>[^<]*</span>)?([^<]*)</div>'
 )
 
@@ -56,7 +56,7 @@ class SwissDirectoryEntry:
     emails: tuple[str, ...]
     websites: tuple[str, ...]
     mobile_phones: tuple[str, ...]
-    contact_line: str = ""
+    extra_line: str = ""
 
 
 class SwissDirectory:
@@ -152,20 +152,20 @@ class SwissDirectory:
             return []
         entries: list[SwissDirectoryEntry] = []
         for block in _RESULT_ENTRY_START_RE.split(result_list.group(1))[1:]:
-            name = _RESULT_ENTRY_NAME_RE.search(block)
-            if name is None:
+            name_link = _RESULT_ENTRY_NAME_RE.search(block)
+            if name_link is None:
                 continue
-            context = _RESULT_ENTRY_CONTEXT_RE.search(block)
+            extra_line = _RESULT_ENTRY_EXTRA_LINE_RE.search(block)
             entries.append(
                 SwissDirectoryEntry(
-                    url=f"{_BASE_URL}{name.group(1)}.fr.html",
-                    name=html.unescape(name.group(2)).strip(),
+                    url=f"{_BASE_URL}{name_link.group(1)}.fr.html",
+                    name=html.unescape(name_link.group(2)).strip(),
                     is_business=block.startswith("commercial"),
                     refuses_advertising=_NO_ADVERTISING_NUMBER_RE.search(block) is not None,
                     emails=(),
                     websites=(),
                     mobile_phones=(),
-                    contact_line=html.unescape(context.group(1)).strip() if context else "",
+                    extra_line=html.unescape(extra_line.group(1)).strip() if extra_line else "",
                 )
             )
         return entries

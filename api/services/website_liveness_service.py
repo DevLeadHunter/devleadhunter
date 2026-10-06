@@ -59,7 +59,7 @@ class WebsiteLivenessService:
         }
     )
 
-    # Lowercase markers of hosting error pages that a dead site answers with, whatever their status.
+    # Lowercase markers of hosting error pages that answer for a dead site.
     DEAD_PAGE_MARKERS: tuple[str, ...] = (
         "site not found",
         "account suspended",
@@ -161,8 +161,9 @@ class WebsiteLivenessService:
 
         The verdict errs on the side of LIVE: only definitive signals (DNS
         failure, connection refused, 404/410, a 5xx without the site's own
-        page, hosting error page) mark a site dead. An inconclusive probe (timeout, odd 4xx) is treated as live
-        so a prospect is never pitched "your site is down" by mistake.
+        page, hosting error page) mark a site dead. An inconclusive probe
+        (timeout, odd 4xx) is treated as live so a prospect is never pitched
+        "your site is down" by mistake.
 
         Args:
             website: Raw URL found by a scraper, or None when nothing was found.

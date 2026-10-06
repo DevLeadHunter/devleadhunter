@@ -86,6 +86,12 @@ search.ch de chaque candidat suisse est lue par son numéro (astérisque « pas 
 email et site de l'annuaire pris en compte), une ville que Google n'a pas servie est reprise au lieu
 d'être comptée comme parcourue, et la Suisse compte 69 villes au lieu de 20.
 
+Depuis la manche 2 (6 octobre) : un numéro absent de l'annuaire fait chercher le nom du
+business dans sa ville, l'astérisque écrit après un second numéro est lu, une société « en
+liquidation » au registre du commerce est écartée comme fermée, une adresse dans un autre pays est
+écartée, une page Facebook sans téléphone attend une confirmation, et une page « bientôt en ligne »
+servie avec le code 503 compte comme un site en ligne.
+
 **Ce qui reste (lots de la section 10)**
 
 - Lot 2, en partie : le bouton « Vérifier » sur un prospect importé, ajouté à la main ou déjà en

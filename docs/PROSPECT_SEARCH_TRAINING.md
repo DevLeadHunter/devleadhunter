@@ -83,3 +83,59 @@ des prospects l'écarte avant toute vérification.
 Coût de la recherche de l'app : 25 minutes, 313 requêtes (environ 0,47 $), 104 appels du juge, 7
 villes dont 2 sans réponse de Google. 114 des 145 écartés avaient un site : les grandes villes coûtent
 cher pour les électriciens.
+
+## Manche 2 — Suisse, garages + électriciens, email (6 octobre)
+
+Recherche de l'app n° 4 sur les six villes de mes trouvailles de la manche 1 (Saxon, Romont, Moudon,
+Fribourg, Vétroz, Martigny), 8 par métier. Les corrections de la manche 1 ont été déployées pendant
+qu'elle tournait : les garages ont été vérifiés avant celle de la fiche search.ch ouverte
+directement, les électriciens après.
+
+### Par l'app
+
+- Garages : objectif atteint autour de Saxon (10 gardés) avant Romont, Moudon, Fribourg et Vétroz. La
+  comparaison avec la main ne vaut donc que pour Saxon et Martigny.
+- Électriciens : 4 gardés sur 8 ; l'astérisque de l'annuaire en a écarté une quinzaine.
+- 368 requêtes, 88 appels du juge. La recherche s'est arrêtée en attendant la lecture de trois pages
+  Facebook par le PC ; l'API a répondu par une erreur 500 à la dernière (corrigé, voir plus bas).
+
+### Vérité terrain des 15 gardés et du candidat à confirmer
+
+| | Nombre | Détail |
+|---|---|---|
+| Bons | 3 | Garage des Bains (Saillon), SwedenSpeed (Saxon), Jantes Alu (Saxon, site mort) : prospects 261 à 263 |
+| Refusent la publicité | 7 | 4 garages vérifiés avant le déploiement du correctif de la fiche ouverte directement, 2 dont l'astérisque est sur un second numéro, 1 garage au nom de son patron trouvé seulement par le nom |
+| En liquidation au registre du commerce | 3 | dont le candidat à confirmer |
+| Adresse en France | 1 | Romont existe aussi dans les Vosges |
+| Site en ligne | 1 | page « bientôt en ligne » servie avec le code 503, prise pour un site mort |
+| Page Facebook d'une association | 1 | ni téléphone ni adresse, email d'une association professionnelle |
+
+### Écarts et causes
+
+| Écart | Cause | Correction |
+|---|---|---|
+| 2 astérisques manqués sur une fiche pourtant lue | L'astérisque d'un second numéro (le portable du patron) est écrit après le lien, pas dedans | Les deux écritures sont lues |
+| Un garage au nom de son patron, absent de l'annuaire sous son numéro, refuse la publicité sur la fiche du garage | La fiche n'était cherchée que par le numéro | Numéro absent : l'annuaire est cherché par le nom dans la ville ; une fiche d'entreprise qui nomme le business, ou son patron sur sa ligne supplémentaire, transmet son astérisque |
+| 3 sociétés en liquidation gardées ou à confirmer | Le registre du commerce l'écrit dans le titre (« … Sàrl en liquidation ») ; rien ne le lisait | Un titre de registre qui nomme le business « en liquidation » (ou radié) l'écarte comme fermé, avec la source |
+| Un électricien des Vosges gardé dans une recherche suisse | Google renvoie aussi le Romont français ; l'adresse finissait par « France » | Une adresse qui finit par un autre pays est écartée (« Dans un autre pays ») avant toute requête payante |
+| Une page Facebook d'association gardée comme électricien | Une page trouvée par la recherche Facebook, sans téléphone, gardée sur son seul email | Une page Facebook sans téléphone va dans « À confirmer », jamais dans les gardés |
+| Un électricien de Martigny gardé avec un « site mort » | Son site « bientôt en ligne » répond avec le code 503 | Un 503 qui sert la page du site compte comme un site en ligne ; une page d'hébergeur (« site suspendu ») reste un site mort |
+| Erreur 500 quand le PC rend la dernière page Facebook attendue | La recherche redémarre, et l'API renvoyait le candidat après avoir rendu sa connexion à la base | Le candidat est relu avant de rendre la connexion ; un test rejoue l'erreur |
+| Un garage cherché sous le nom de sa fiche Google, alors que l'annuaire et son site portent un autre nom | Le site n'est cherché que sous le nom de la fiche Google | Pas corrigé : l'astérisque l'écartait de toute façon |
+
+### Retour sur la manche 1
+
+- Garage du Valais (Saxon), compté bon à la main, a un nouveau site en ligne (l'annuaire donnait
+  l'ancienne adresse, morte) : l'app l'a trouvé et l'a écarté à raison.
+- Un des cinq prospects créés à la manche 1 porte l'astérisque sur un second numéro : marqué « Ne
+  plus contacter ».
+
+### Résultat de la manche
+
+Rejeu de 22 candidats dans le moteur corrigé (80 requêtes, 10 appels du juge, 4 vérifications sans
+réponse de Google) : chaque faux dont la cause était corrigée est écarté pour la bonne raison. Les
+corrections suivantes (liquidation, recherche par le nom, second numéro, code 503) ont été vérifiées
+sur les fiches et les sites réels des candidats concernés.
+
+La manche rapporte 3 prospects pour 15 gardés : la précision de l'app passe avant la vitesse pour la
+prochaine manche.

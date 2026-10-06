@@ -443,7 +443,7 @@ def test_the_asterisk_found_by_the_phone_search_refuses_advertising() -> None:
 def test_a_result_list_gives_each_entry_its_extra_line_and_its_asterisk() -> None:
     entries = SwissDirectory.parse_result_list(_RESULT_LIST_PAGE)
 
-    assert [(entry.name, entry.is_business, entry.refuses_advertising, entry.contact_line) for entry in entries] == [
+    assert [(entry.name, entry.is_business, entry.refuses_advertising, entry.extra_line) for entry in entries] == [
         ("Pellaud, Jean-Pierre", False, False, ""),
         ("Zodiac", True, True, "Pellaud Jean-Pierre"),
     ]
