@@ -139,3 +139,41 @@ sur les fiches et les sites réels des candidats concernés.
 
 La manche rapporte 3 prospects pour 15 gardés : la précision de l'app passe avant la vitesse pour la
 prochaine manche.
+
+## Manche 3 — Suisse, 8 paysagistes, email (6 octobre au soir)
+
+Recherche de l'app n° 5, villes choisies par le moteur (Jura, Jura bernois, Neuchâtel, Chablais,
+Lavaux, Bienne), avec les corrections de la manche 2 en production.
+
+### À la main
+
+Listes search.ch « paysagiste » de Fully, Conthey, Savièse et Collombey-Muraz : 21 entreprises, dont
+12 avec l'astérisque dans la liste. Des 9 autres, aucun prospect par email : sites en ligne, une
+société en liquidation, pas d'email trouvé, et une fiche dont l'astérisque n'apparaît que sur la page
+complète (un second numéro).
+
+### Par l'app
+
+- 7 gardés sur 8 demandés, en 40 minutes : 423 requêtes (environ 0,63 $), 78 appels du juge.
+- 197 candidats : 81 refusent la publicité (41 %), 36 ont un site, 22 sont d'un autre métier.
+- Vérité terrain des 7 gardés : 4 bons (La Ferrière, Porrentruy, Servion, Châtel-Saint-Denis, ce
+  dernier avec un site mort) : prospects 264 à 267. 3 faux : le même paysagiste gardé deux fois
+  (deux fiches Google, un seul numéro), l'email d'un magazine français dont la page Facebook avait
+  parlé d'un homonyme, et l'email d'un homonyme belge.
+
+### Écarts et causes
+
+| Écart | Cause | Correction |
+|---|---|---|
+| Une fiche trouvée par le nom passait pour sans astérisque | La liste de search.ch ne montre pas l'astérisque d'un second numéro | La fiche trouvée par le nom est lue en entier (page et vCard), comme celle trouvée par le numéro |
+| Un paysagiste écarté pour l'astérisque d'une autre entreprise | « André » était trouvé dans « Alexandre » : les mots du nom étaient cherchés comme des bouts de texte | Les mots distinctifs du nom se comparent mot à mot |
+| Un même paysagiste gardé deux fois | Deux fiches Google ; le numéro et l'email n'apparaissent qu'à la vérification, après le contrôle des doublons | Un business déjà proposé par la recherche est reconnu à son numéro ou à son email, même sous une autre fiche |
+| L'email d'un magazine gardé pour un paysagiste | Une publication qui nomme le business faisait de la page qui l'a publiée la page du business | Une publication ne compte que si l'adresse de la page porte le nom du business |
+| L'email d'un homonyme belge gardé | Le résultat nomme le business mais montre un autre numéro (belge) | Un résultat qui nomme le business mais ne montre que d'autres numéros est celui d'un homonyme |
+| Des comparateurs (horticole-comparatif, gartenbauvergleich…) et des pages de réseau (autofit) risquaient de passer pour des sites | Absents de la liste des tiers | Tout domaine « comparatif », « vergleich », « comparison » ou « comparazione » est un tiers ; autofit, landi et deux annuaires ajoutés |
+| Le suivi de la recherche s'arrêtait pendant un déploiement ou une coupure de la base | La ligne de commande quittait à la première erreur de l'API | Elle réessaie pendant cinq minutes ; une lecture Facebook non transmise sera relue |
+
+### Résultat de la manche
+
+Les paysagistes suisses sont la case la plus difficile : 4 bons pour 197 candidats. L'astérisque en
+écarte deux sur cinq, et la loi l'impose.
