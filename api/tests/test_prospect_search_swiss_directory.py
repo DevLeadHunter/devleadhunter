@@ -150,6 +150,16 @@ def test_a_number_ending_with_the_asterisk_refuses_advertising() -> None:
     assert (private_entry.refuses_advertising, private_entry.is_business) == (False, False)
 
 
+def test_the_asterisk_written_after_a_second_number_refuses_advertising() -> None:
+    page = (
+        '<a href="tel:+41277761523" data-entrytype="Business">027 776 15 23</a>'
+        '<tr><th>Mobile Maurice</th><td><span class="sl-nowrap"><a href="tel:+41794475380" title="Appeler" '
+        'data-entrytype="Business">079 447 53 80</a> <span title="* Ne souhaite pas de publicité">*</span></span></td>'
+    )
+
+    assert SwissDirectory.parse_entry(_ENTRY_URL, page, "").refuses_advertising is True
+
+
 def test_the_vcard_gives_the_email_the_website_and_the_mobiles() -> None:
     entry = SwissDirectory.parse_entry(_ENTRY_URL, _PAGE_WITHOUT_ASTERISK, _VCARD)
 

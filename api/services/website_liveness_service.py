@@ -12,12 +12,15 @@ actually respond.
 from __future__ import annotations
 
 import logging
+import re
 from typing import ClassVar
 from urllib.parse import urlparse
 
 import httpx
 
 from enums.website_status import WebsiteStatus
+
+_TITLE_RE: re.Pattern[str] = re.compile(r"<title[^>]*>([^<]*)</title>", re.IGNORECASE)
 
 logger = logging.getLogger(__name__)
 
@@ -56,7 +59,7 @@ class WebsiteLivenessService:
         }
     )
 
-    # Lowercase markers of hosting error pages that answer 200 for a dead site.
+    # Lowercase markers of hosting error pages that a dead site answers with, whatever their status.
     DEAD_PAGE_MARKERS: tuple[str, ...] = (
         "site not found",
         "account suspended",
@@ -69,11 +72,23 @@ class WebsiteLivenessService:
         "domain zu verkaufen",
         "domain ist zu verkaufen",
         "domain steht zum verkauf",
+        "site is currently suspended",
+        "website unavailable",
     )
 
     # Statuses that prove the page is gone. Other 4xx (401/403/429…) usually
     # mean bot protection on a perfectly working site — never call those dead.
     DEAD_HTTP_STATUSES: frozenset[int] = frozenset({404, 410})
+    MAINTENANCE_HTTP_STATUS: int = 503
+    SERVER_ERROR_TITLE_WORDS: tuple[str, ...] = (
+        "503",
+        "unavailable",
+        "indisponible",
+        "suspended",
+        "suspendu",
+        "error",
+        "erreur",
+    )
 
     # A browser-like UA: default python UAs get blocked by common WAFs, which
     # would look like a dead site.
@@ -145,8 +160,8 @@ class WebsiteLivenessService:
         Classify a scraped website URL.
 
         The verdict errs on the side of LIVE: only definitive signals (DNS
-        failure, connection refused, 404/410/5xx, hosting error page) mark a
-        site dead. An inconclusive probe (timeout, odd 4xx) is treated as live
+        failure, connection refused, 404/410, a 5xx without the site's own
+        page, hosting error page) mark a site dead. An inconclusive probe (timeout, odd 4xx) is treated as live
         so a prospect is never pitched "your site is down" by mistake.
 
         Args:
@@ -181,6 +196,15 @@ class WebsiteLivenessService:
         self._status_by_url[normalized] = status
         return status
 
+    @classmethod
+    def _shows_own_page(cls, page_text: str) -> bool:
+        """Whether a 503 answer is the site's own page (« coming soon », maintenance), not a server's error page."""
+        title = _TITLE_RE.search(page_text[: cls.BODY_SNIFF_CHARS])
+        if title is None:
+            return False
+        lowered_title = title.group(1).strip().lower()
+        return bool(lowered_title) and not any(word in lowered_title for word in cls.SERVER_ERROR_TITLE_WORDS)
+
     async def _probe(self, url: str) -> WebsiteStatus:
         """
         Fetch the URL and classify the response.
@@ -208,11 +232,15 @@ class WebsiteLivenessService:
             logger.debug("Website %s probe inconclusive: %s", url, exc)
             return WebsiteStatus.LIVE
 
-        if response.status_code in self.DEAD_HTTP_STATUSES or response.status_code >= 500:
-            return WebsiteStatus.DEAD
-
         body_start = response.text[: self.BODY_SNIFF_CHARS].lower()
         if any(marker in body_start for marker in self.DEAD_PAGE_MARKERS):
+            return WebsiteStatus.DEAD
+        is_own_page_offline = response.status_code == self.MAINTENANCE_HTTP_STATUS and self._shows_own_page(
+            response.text
+        )
+        if is_own_page_offline:
+            return WebsiteStatus.LIVE
+        if response.status_code in self.DEAD_HTTP_STATUSES or response.status_code >= 500:
             return WebsiteStatus.DEAD
 
         return WebsiteStatus.LIVE

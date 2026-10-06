@@ -85,6 +85,30 @@ def test_server_error_website_is_dead() -> None:
     assert _check(service, "https://plomberie-morel.fr") is WebsiteStatus.DEAD
 
 
+def test_a_coming_soon_page_answered_with_503_is_live() -> None:
+    """A site in maintenance or « coming soon » answers 503 with its own page: a visitor sees it."""
+    service = WebsiteLivenessService()
+    _FakeAsyncClient.response = _FakeResponse(
+        status_code=503, text="<html><title>Atelier-E | Votre spécialiste électrique régional.</title></html>"
+    )
+    assert _check(service, "https://atelier-e.swiss/") is WebsiteStatus.LIVE
+
+
+def test_a_server_s_own_503_page_is_dead() -> None:
+    service = WebsiteLivenessService()
+    _FakeAsyncClient.response = _FakeResponse(status_code=503, text="<title>503 Service Unavailable</title>")
+    assert _check(service, "https://plomberie-morel.fr") is WebsiteStatus.DEAD
+
+
+def test_a_suspended_hosting_answered_with_503_is_dead() -> None:
+    service = WebsiteLivenessService()
+    _FakeAsyncClient.response = _FakeResponse(
+        status_code=503,
+        text="<title>Website unavailable - OVHcloud</title><p>This site is currently suspended.</p>",
+    )
+    assert _check(service, "https://www.voltarys.ch/") is WebsiteStatus.DEAD
+
+
 def test_bot_protection_status_is_not_dead() -> None:
     """403/429 usually mean a WAF on a working site — never call those dead."""
     service = WebsiteLivenessService()

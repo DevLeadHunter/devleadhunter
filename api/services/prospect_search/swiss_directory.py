@@ -31,7 +31,9 @@ _ENTRY_PATH_RE: re.Pattern[str] = re.compile(
 )
 _VCARD_PATH_RE: re.Pattern[str] = re.compile(r'(/tel/vcard/[^"]+?\.vcf\?key=[0-9a-f]+)')
 _TITLE_RE: re.Pattern[str] = re.compile(r"<title>([^<]+)</title>")
-_NO_ADVERTISING_NUMBER_RE: re.Pattern[str] = re.compile(r'href="tel:[^"]+"[^>]*>[^<]*\*</a>')
+_NO_ADVERTISING_NUMBER_RE: re.Pattern[str] = re.compile(
+    r'href="tel:[^"]+"[^>]*>[^<]*(?:\*</a>|</a>\s*<span[^>]*>\s*\*\s*</span>)'
+)
 _VCARD_LINE_RE: re.Pattern[str] = re.compile(r"^(EMAIL|URL|TEL)[^:\n]*:(.+)$", re.MULTILINE)
 _VCARD_FOLD_RE: re.Pattern[str] = re.compile(r"\r?\n[ \t]")
 _BUSINESS_ENTRY_MARK: str = 'data-entrytype="Business"'
