@@ -139,6 +139,7 @@ class KnownBusinessIndex:
         self._contacted_keys: set[str] = set()
         self._rejected_keys: set[str] = set()
         self._awaiting_decision_keys: set[str] = set()
+        self._proposed_keys: set[str] = set()
 
     @classmethod
     def load(cls, db: Session, *, user_id: int, organization_id: int | None, search_id: int) -> KnownBusinessIndex:
@@ -244,6 +245,12 @@ class KnownBusinessIndex:
                 "Déjà proposé par une recherche précédente : il attend votre validation.",
                 None,
             )
+        if any(key in self._proposed_keys for key in keys):
+            return KnownBusiness(
+                CandidateRejectReason.AWAITING_DECISION,
+                "Déjà proposé par cette recherche sous une autre fiche : il attend votre validation.",
+                None,
+            )
         if any(key in self._rejected_keys for key in keys):
             return KnownBusiness(
                 CandidateRejectReason.PREVIOUSLY_REJECTED, "Déjà écarté par une recherche précédente.", None
@@ -254,3 +261,7 @@ class KnownBusinessIndex:
         """Record a prospect created during the run, so the same run never creates it twice."""
         for key in keys:
             self._prospect_id_by_key.setdefault(key, prospect_id)
+
+    def remember_proposed(self, keys: list[str]) -> None:
+        """Record a business the run proposed without creating it, so a second listing of it is not proposed too."""
+        self._proposed_keys.update(key for key in keys if not key.startswith("name:"))

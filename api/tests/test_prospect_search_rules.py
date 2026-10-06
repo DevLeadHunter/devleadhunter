@@ -193,6 +193,15 @@ class TestKnownBusinessIndex:
         assert remembered is not None and remembered.reason is CandidateRejectReason.PREVIOUSLY_REJECTED
         assert same_search.match(["tel:+41794731961"]) is None
 
+    def test_a_second_listing_of_a_business_the_run_proposed_is_not_proposed_again(self) -> None:
+        index = KnownBusinessIndex()
+        index.remember_proposed(["tel:+41794491915", "name:ducret paysagiste|servion"])
+
+        second_listing = index.match(["tel:+41794491915", "name:ducret paysagiste|jongny"])
+
+        assert second_listing is not None and second_listing.reason is CandidateRejectReason.AWAITING_DECISION
+        assert index.match(["name:ducret paysagiste|servion"]) is None
+
     def test_a_business_awaiting_validation_is_not_proposed_again_by_a_later_search(self, db: Session) -> None:
         db.add(
             ProspectSearchCandidate(

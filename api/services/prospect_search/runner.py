@@ -183,6 +183,9 @@ class ProspectSearchRunner:
                 if row.search_id == search.id:
                     self._seen_keys.update(row.identity_keys or [])
                     self._add_count(row.trade, row.status, 1)
+                    is_proposed = row.status not in (CandidateStatus.REJECTED.value, CandidateStatus.DISCOVERED.value)
+                    if is_proposed and row.prospect_id is None:
+                        self._index.remember_proposed(row.identity_keys or [])
                 elif row.searched_city:
                     scanned_before.setdefault(row.trade, set()).add(fold(row.searched_city))
 
@@ -540,6 +543,8 @@ class ProspectSearchRunner:
                 )
                 if row.prospect_id is not None:
                     self._index.remember_prospect(row.identity_keys or [], row.prospect_id)
+            if row.prospect_id is None and row.status != CandidateStatus.REJECTED.value:
+                self._index.remember_proposed(row.identity_keys or [])
             self._add_count(row.trade, row.status, 1)
             final_verdict = CandidateStore.verdict_of(row)
         self._log(self._journal_line(facts, final_verdict, creates_prospects=state.creates_prospects))
