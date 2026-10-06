@@ -27,7 +27,7 @@ figcaption { margin-top: 8px; color: var(--soft); font-size: 14px; }
 <section><h2>1. Le principe</h2>
 <ul>
 <li><strong>Le site en plein écran</strong>, dans un vrai téléphone (390 × 844) ou un vrai écran d'ordinateur (1440 × 900) réduit à l'échelle ; il défile à l'intérieur. En haut, une barre fine : retour, nom, état, « Expire dans 8 j · Vidéo prête · Client pas encore invité », copier le lien, ouvrir.</li>
-<li><strong>Une barre d'outils en bas</strong> : Template, Couleurs, Photos, Prestations (seulement pour les templates qui en ont), Vidéo, Plus.</li>
+<li><strong>Une barre d'outils en bas</strong> : Template, Couleurs, Photos, Prestations (seulement pour les templates qui en ont), Vidéo, Plus. « Plus » ouvre une vraie page (lien, espace du client, informations, code, suppression), sans l'aperçu.</li>
 <li><strong>Un volet qui monte</strong> quand on touche un outil. Il prend au plus 44 % de l'écran : le site se réduit au-dessus, il n'est jamais caché, et il change en direct pendant qu'on règle.</li>
 <li><strong>Publier</strong> remplace « Sauvegarder » : dès qu'il y a une modification, le bouton apparaît en haut et un point ambre marque l'outil concerné.</li>
 </ul>
@@ -40,14 +40,14 @@ figcaption { margin-top: 8px; color: var(--soft); font-size: 14px; }
 </div>
 <div class="row">
 <figure><img src="captures-atelier/ipad-01-template.jpg" alt=""><figcaption>Template : les templates défilent de côté, l'actuelle en premier ; le site se redessine en direct.</figcaption></figure>
-<figure><img src="captures-atelier/ipad-10-ordinateur-couleurs.jpg" alt=""><figcaption>Couleurs : deux cartes avec la couleur dedans, celle du logo ou celle de la template, puis le réglage fin.</figcaption></figure>
+<figure><img src="captures-atelier/ipad-10-ordinateur-couleurs.jpg" alt=""><figcaption>Couleurs : deux cartes avec la couleur dedans, celle du logo ou celle de la template, puis le réglage fin (sans pastille « boutons »).</figcaption></figure>
 </div>
 <div class="row">
 <figure><img src="captures-atelier/ipad-03-photos.jpg" alt=""><figcaption>Photos : la liste à réordonner en bas, le site qui suit au-dessus.</figcaption></figure>
 <figure><img src="captures-atelier/ipad-04-video.jpg" alt=""><figcaption>Vidéo : la vidéo de prospection et la façon dont elle part.</figcaption></figure>
 </div>
 <div class="row">
-<figure><img src="captures-atelier/ipad-05-plus.jpg" alt=""><figcaption>Plus : le lien, l'espace du client, les informations, le code et la suppression.</figcaption></figure>
+<figure><img src="captures-atelier/ipad-05-plus.jpg" alt=""><figcaption>Plus : une vraie page, sans l'aperçu : le lien, l'espace du client, les informations, le code et la suppression.</figcaption></figure>
 <figure><img src="captures-atelier/ipad-sombre-01-photos.jpg" alt=""><figcaption>Thème sombre.</figcaption></figure>
 </div>
 </section>
@@ -57,7 +57,9 @@ figcaption { margin-top: 8px; color: var(--soft); font-size: 14px; }
 <figure class="wide"><img src="captures-atelier/ordinateur-01-couleurs.jpg" alt=""><figcaption>Ordinateur 1440 px, volet Couleurs ouvert.</figcaption></figure>
 </section>
 
-<section><h2>4. Ce qui reste à décider</h2>
+<section><h2>4. Décision</h2>
+<p><strong>Direction retenue par Léo le 06/10</strong> (« c'est très bien »), après deux dernières corrections : « Plus » en vraie page sans aperçu, et plus de pastille « boutons » à côté de la couleur d'action. Un autre modèle implémentera la maquette dans le code à partir de <code>PROMPT-IMPLEMENTATION.md</code>.</p>
+<p>Encore ouvert, à décider pendant l'implémentation :</p>
 <ul>
 <li>Le volet pourrait se tirer plus haut au doigt (deux hauteurs : réglage, plein) ; ici une seule hauteur.</li>
 <li>Les photos restent une liste à flèches : sur iPad, une grille de grandes vignettes qu'on glisse serait plus naturelle. À dessiner si cette direction est retenue.</li>
