@@ -224,6 +224,30 @@ class TestKnownBusinessIndex:
         assert second_listing is not None and second_listing.reason is CandidateRejectReason.AWAITING_DECISION
         assert index.match(["name:ducret paysagiste|servion"]) is None
 
+    def test_a_second_listing_of_a_business_the_run_discarded_for_good_is_discarded_too(self) -> None:
+        index = KnownBusinessIndex()
+        index.remember_rejected(
+            ["tel:+41790000041", "name:jardins rochat|sion"], CandidateRejectReason.NO_ADVERTISING.value
+        )
+        index.remember_rejected(["tel:+41790000042"], CandidateRejectReason.NO_CONTACT.value)
+
+        second_listing = index.match(["cid:3475807440485315643", "tel:+41790000041"])
+
+        assert second_listing is not None and second_listing.reason is CandidateRejectReason.PREVIOUSLY_REJECTED
+        assert second_listing.detail == "Déjà écarté par cette recherche sous une autre fiche."
+        assert index.match(["tel:+41790000042"]) is None
+
+    def test_what_the_run_proposed_and_discarded_survives_the_reload_before_a_town(self, db: Session) -> None:
+        index = KnownBusinessIndex.load(db, user_id=USER_ID, organization_id=None, search_id=1)
+        index.remember_proposed(["tel:+41790000043"])
+        index.remember_rejected(["tel:+41790000044"], CandidateRejectReason.HAS_WEBSITE.value)
+
+        reloaded = KnownBusinessIndex.load(db, user_id=USER_ID, organization_id=None, search_id=1)
+        reloaded.take_run_memory_from(index)
+
+        assert reloaded.match(["tel:+41790000043"]) is not None
+        assert reloaded.match(["tel:+41790000044"]) is not None
+
     def test_a_business_awaiting_validation_is_not_proposed_again_by_a_later_search(self, db: Session) -> None:
         db.add(
             ProspectSearchCandidate(

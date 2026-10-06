@@ -90,8 +90,10 @@ class _ScriptedDirectory(SwissDirectory):
         entries_by_name: list[SwissDirectoryEntry] | None = None,
         entry_pages: dict[str, SwissDirectoryEntry] | None = None,
         entries_by_address: list[SwissDirectoryEntry] | None = None,
+        listed_phone: str | None = None,
     ) -> None:
         self._entry = entry
+        self._listed_phone = listed_phone
         self._entries_by_name = entries_by_name or []
         self._entry_pages = entry_pages or {}
         self._entries_by_address = entries_by_address or []
@@ -104,6 +106,8 @@ class _ScriptedDirectory(SwissDirectory):
         self.asked_phones.append(phone)
         if self.is_unavailable:
             raise SwissDirectoryUnavailableError("search.ch answered 429")
+        if self._listed_phone is not None and phone != self._listed_phone:
+            return None
         return self._entry
 
     async def entries_for_name(self, name: str, town: str) -> list[SwissDirectoryEntry]:
@@ -579,6 +583,17 @@ def test_an_address_search_opening_one_entry_at_once_gives_that_entry(monkeypatc
     assert [(entry.name, entry.refuses_advertising) for entry in entries] == [
         ("SV Automobiles Sàrl, Garage à Vevey", True)
     ]
+
+
+def test_a_number_google_reveals_is_looked_up_for_its_asterisk() -> None:
+    facts = _facts(name="Rochat Paysagisme & Concept Sàrl", city="Crans-Montana", phone=None, trade_key="paysagiste")
+    page = {"knowledge": {"name": "Rochat Paysagisme & Concept Sàrl", "phone": "079 000 00 40"}, "organic": []}
+    directory = _ScriptedDirectory(_entry(refuses_advertising=True), listed_phone="079 000 00 40")
+
+    asyncio.run(CandidateVerifier(_OnePageClient(page), _SilentJudge(), directory).verify(facts, _GARAGE))  # type: ignore[arg-type]
+
+    assert directory.asked_phones == [None, "079 000 00 40"]
+    assert facts.refuses_advertising is True
 
 
 def test_an_entry_page_is_read_with_its_vcard(monkeypatch: pytest.MonkeyPatch) -> None:

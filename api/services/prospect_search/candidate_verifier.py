@@ -234,7 +234,8 @@ class CandidateVerifier:
         Search the business by name and town, and write what the results prove into *facts*.
 
         A Swiss business whose directory entry refuses advertising is not searched, nor a business
-        whose card already leads to a live website: either is ruled out.
+        whose card already leads to a live website: either is ruled out. A number or an address
+        Google reveals is looked up in the directory too.
 
         Args:
             facts: The candidate, completed in place.
@@ -244,6 +245,7 @@ class CandidateVerifier:
             facts.is_chain = True
             facts.add_evidence("chain", facts.name, source="Nom de l'enseigne")
             return
+        contact_before_search = (facts.phone, facts.address)
         directory_entry = await self._find_swiss_directory_entry(facts, trade)
         if facts.refuses_advertising:
             return
@@ -281,6 +283,8 @@ class CandidateVerifier:
             )
         self._apply_verdict(facts, verdict, results, trade)
         self._keep_snippet_emails(facts, snippet_emails, results, verdict, trade)
+        if (facts.phone, facts.address) != contact_before_search:
+            directory_entry = await self._find_swiss_directory_entry(facts, trade) or directory_entry
         self._read_swiss_directory_entry(facts, directory_entry, trade)
 
         if facts.website:

@@ -140,6 +140,7 @@ class KnownBusinessIndex:
         self._rejected_keys: set[str] = set()
         self._awaiting_decision_keys: set[str] = set()
         self._proposed_keys: set[str] = set()
+        self._rejected_in_run_keys: set[str] = set()
 
     @classmethod
     def load(cls, db: Session, *, user_id: int, organization_id: int | None, search_id: int) -> KnownBusinessIndex:
@@ -251,6 +252,10 @@ class KnownBusinessIndex:
                 "Déjà proposé par cette recherche sous une autre fiche : il attend votre validation.",
                 None,
             )
+        if any(key in self._rejected_in_run_keys for key in keys):
+            return KnownBusiness(
+                CandidateRejectReason.PREVIOUSLY_REJECTED, "Déjà écarté par cette recherche sous une autre fiche.", None
+            )
         if any(key in self._rejected_keys for key in keys):
             return KnownBusiness(
                 CandidateRejectReason.PREVIOUSLY_REJECTED, "Déjà écarté par une recherche précédente.", None
@@ -265,3 +270,13 @@ class KnownBusinessIndex:
     def remember_proposed(self, keys: list[str]) -> None:
         """Record a business the run proposed without creating it, so a second listing of it is not proposed too."""
         self._proposed_keys.update(key for key in keys if not key.startswith("name:"))
+
+    def remember_rejected(self, keys: list[str], reason: str | None) -> None:
+        """Record a business the run discarded for good (a website, an asterisk…), so a second listing of it is too."""
+        if reason in _LASTING_REJECT_REASONS:
+            self._rejected_in_run_keys.update(key for key in keys if not key.startswith("name:"))
+
+    def take_run_memory_from(self, previous: KnownBusinessIndex) -> None:
+        """Keep what the run proposed and discarded itself when the index is read again before a town."""
+        self._proposed_keys.update(previous._proposed_keys)
+        self._rejected_in_run_keys.update(previous._rejected_in_run_keys)

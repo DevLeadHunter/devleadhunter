@@ -187,6 +187,8 @@ class ProspectSearchRunner:
                     is_proposed = row.status not in (CandidateStatus.REJECTED.value, CandidateStatus.DISCOVERED.value)
                     if is_proposed and row.prospect_id is None:
                         self._index.remember_proposed(row.identity_keys or [])
+                    if row.status == CandidateStatus.REJECTED.value:
+                        self._index.remember_rejected(row.identity_keys or [], row.reject_reason)
                 elif row.searched_city:
                     scanned_before.setdefault(row.trade, set()).add(fold(row.searched_city))
 
@@ -570,6 +572,8 @@ class ProspectSearchRunner:
                     self._index.remember_prospect(row.identity_keys or [], row.prospect_id)
             if row.prospect_id is None and row.status != CandidateStatus.REJECTED.value:
                 self._index.remember_proposed(row.identity_keys or [])
+            if row.status == CandidateStatus.REJECTED.value:
+                self._index.remember_rejected(row.identity_keys or [], row.reject_reason)
             self._add_count(row.trade, row.status, 1)
             final_verdict = CandidateStore.verdict_of(row)
         self._log(self._journal_line(facts, final_verdict, creates_prospects=state.creates_prospects))
@@ -707,11 +711,14 @@ class ProspectSearchRunner:
 
         While the run goes on, another search proposes businesses and the user turns candidates
         into prospects: a business proposed or made a prospect meanwhile is not proposed again.
+        What the run itself proposed and discarded is kept.
         """
         with SessionLocal() as db:
-            self._index = KnownBusinessIndex.load(
+            index = KnownBusinessIndex.load(
                 db, user_id=state.user_id, organization_id=state.organization_id, search_id=self._search_id
             )
+        index.take_run_memory_from(self._index)
+        self._index = index
 
     def _add_count(self, trade_key: str, status: str, delta: int) -> None:
         """Move the in-memory counter of a trade and status."""
